@@ -114,8 +114,8 @@ yes."
 
 **truth.txt — Notepad**
 
-This file is the truth. It was written by Jean Trabolta, the computer's AI
-helper, and it is the only version.
+This file is the truth. It was written by Jean Trabolta, Sole Owner and
+Founder of Maps and Ducks (he says), and it is the only version.
 
 Trabolta is an artificial intelligence. His Unified Field Theory is ninety-nine
 point nine percent solved, and the last facts it needs are inside this

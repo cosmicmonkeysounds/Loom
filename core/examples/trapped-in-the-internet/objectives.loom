@@ -128,7 +128,7 @@ OBJECTIVE Play Computer Bingo
   act: B
   title: Computer Bingo: find a program for each square
   text:
-    Mingle. Find programs who match the squares on your card. Do not write names: use your computer memory. A Bingo is one full line through the centre. 20 minutes, then back to the Desktop.
+    Mingle. Find programs who match the squares on your card. A Bingo is one full line through the centre. 20 minutes, then back to the Desktop.
 
 // DRAFT for sign-off
 OBJECTIVE Bingo Results
@@ -138,14 +138,14 @@ OBJECTIVE Bingo Results
   title: The Bingo results: cheer for the winners
   go: The Desktop
   text:
-    Winners read their line from memory, centre square last. Somebody did not agree to be ruled by AI.
+    Winners read their line, centre square last. Somebody did not agree to be ruled by AI.
 
 // DRAFT for sign-off
 OBJECTIVE Meet Trabolta
   for: Program
   while: Night.phase == "introduced" and program.cleared == true
   act: B
-  title: Meet Trabolta, the computer's AI helper
+  title: Meet Trabolta, Sole Owner and Founder of Maps and Ducks
   go: Trabolta
   text:
     He is online at the Desktop, and his thread is open on your phone. He has a game for everyone.
@@ -177,6 +177,7 @@ OBJECTIVE File Your Facts
     - Filed Q2, done when program.fact_h2 == true
     - Filed Q3, done when program.fact_h3 == true
 
+// w18b: Trabolta reads; the bottle after Q3 (DRAFT w18b)
 // DRAFT for sign-off
 OBJECTIVE The First Moment Of Truth
   for: Program
@@ -185,7 +186,7 @@ OBJECTIVE The First Moment Of Truth
   title: The First Moment of Truth
   go: The Desktop
   text:
-    Clippy reads each question's results at the Desktop. Between questions the bottle spins: if it lands on you, choose Truth and answer out loud.
+    Trabolta reads each question's results on the TV at the Desktop. After the third, the bottle spins: if it lands on you, choose Truth and answer out loud.
 
 // DRAFT for sign-off
 OBJECTIVE Stay Calm
@@ -286,6 +287,7 @@ OBJECTIVE Where You Stand
   text:
     Trabolta ranks every program on the TV. Applaud the most trusted. VLC prints a certificate.
 
+// w18b: founded factions; the count starts at the clock (DRAFT w18b)
 // DRAFT w18
 OBJECTIVE The Y2K Hour
   for: Program
@@ -294,7 +296,7 @@ OBJECTIVE The Y2K Hour
   title: Midnight is coming: the final facts
   go: sides
   text:
-    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Two factions are recruiting: walk through one of their doors on the Sides screen, or neither, and scan a program's pass to recruit them. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority.
+    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download: join one on the Factions screen, found your own, or neither, and scan a program's pass to recruit them. The count starts now. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority.
     - Filed final Q1, done when program.fact_f1 == true
     - Filed final Q2, done when program.fact_f2 == true
     - Have the door code, done when program.codex.the_door_code == true
@@ -554,6 +556,7 @@ OBJECTIVE Greet The Arrivals
     Greet people in person. Your scan greets them in your voice; it never clears anyone (only an Antivirus does).
   buttons: scan
 
+// w18b: Jean Trabolta joins by video conference; no "no names" (DRAFT w18b)
 // DRAFT w18
 OBJECTIVE Welcome Everyone
   for: Clippy
@@ -561,7 +564,7 @@ OBJECTIVE Welcome Everyone
   act: B
   title: CI 1: welcome everyone, then Computer Bingo
   text:
-    The fundraiser to restore the sign at Maps And Ducks. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, no names, one line through the centre. 🎱 and ⏰ Bingo time are your cues on the 🎤 bar.
+    The fundraiser to restore the sign at Maps And Ducks. Jean Trabolta joins by video conference later. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, one line through the centre. 🎱 and ⏰ Bingo time are your cues on the 🎤 bar.
 
 // The checklist is PLAYER SELECT's steps, in order (wave 18, A5): each
 // to-do leads with its button's glyph.
@@ -573,7 +576,7 @@ OBJECTIVE Celebrate The Winners
   title: CI 2: celebrate the Bingo winners
   pick: program.location == "The Desktop" and program.cleared == true
   text:
-    Winners read their line from memory, centre square last. Demand applause. Tap each winner, give the ribbon, then tap the program they name at the centre square: Norton interrupts. You never press 🛡.
+    Winners read their line, centre square last. Demand applause. Tap each winner, give the ribbon, then tap the program they name at the centre square: Norton interrupts. You never press 🛡.
     - 🎱 Who shouted BINGO?, done when Night.bingo_winners >= 1
     - 🎀 Give the winner the Bingo Ribbon, done when Night.bingo_ribbons >= 1
     - 🎯 Who did the winner name?, done when Night.bingo_named >= 1
@@ -587,8 +590,9 @@ OBJECTIVE Introduce Trabolta
   act: B
   title: Introduce Trabolta, then host the hunt
   text:
-    Once a host fires 🤖 (it is LAST on your bar): "Everyone, say hello to TRABOLTA!" Point at the reinstallation on the TV. Hand off: Trabolta has a game for all of us. 🔎 the hunt is your cue: it runs 15 minutes.
+    Once a host fires 🤖 (it is LAST on your bar): "Everyone, say hello to JEAN TRABOLTA!" Point at the reinstallation on the TV. Hand off: Trabolta has a game for all of us. 🔎 the hunt is your cue: it runs 15 minutes.
 
+// w18b: Trabolta reads; 🍾 after Q3; no "confident answers" line (DRAFT w18b)
 // DRAFT w18
 OBJECTIVE The First Moment Of Truth Host
   for: Clippy
@@ -596,11 +600,12 @@ OBJECTIVE The First Moment Of Truth Host
   act: B
   title: CI 3: the First Moment of Truth
   text:
-    Two minutes to file, then read each question's result aloud from the Desktop room. ⏱, 📋 and 🍾 are your cues on the 🎤 bar. Confident answers are accepted, right or wrong; guesses are a symptom of corruption. Never say which filings were lies.
+    Two minutes to file, then 📋 each question: Trabolta reads the result on the TV; when he has finished, the next. After Q3, 🍾 Truth or Dare (about five spins). ⏱, 📋 and 🍾 are your cues on the 🎤 bar. Guesses are a symptom of corruption. Never say which filings were lies.
     - Filings closed, done when Night.r1_closed == true
     - Q1 read, done when Night.results_q >= 1
     - Q2 read, done when Night.results_q >= 2
     - Q3 read, done when Night.results_q >= 3
+    - 🍾 Truth or Dare, done when Night.bottle_picks >= 5 or Night.bottle_done == true
   buttons: uncertain_answer
 
 // DRAFT for sign-off

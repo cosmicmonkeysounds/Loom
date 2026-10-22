@@ -34,7 +34,10 @@ archive: Norton Anti-Virus when program.cleared == true and program.marked != tr
 archive: McAfee Anti-Virus when program.cleared == true and program.marked != true and program.corrupted != true
 archive: Password Manager when program.cleared == true and program.marked != true and program.corrupted != true
 archive: CRA Agent Software when program.cleared == true and program.marked != true and program.corrupted != true
-majority: Night.present / 2 + 1
+majority: count([p for p in Persons where p.gone != true and p.persona != true]) / 2 + 1
+founding: Night.truther_sent == true and Kernel.majority_reached != true and Night.clock != "00:00" and Night.ended != true and program.cleared == true and program.corrupted != true
+lobby: hidden
+badge: program.afk as 🚻 Bathroom Mode
 
 // Equal parts Digimon Movie, Blade Runner, and an escape room, in a
 // Web 1.0 house, with a side of existentialism.
@@ -80,10 +83,16 @@ majority: Night.present / 2 + 1
 // ── Groups ──────────────────────────────────────────────────────────
 // Nobody picks a side at the door: everyone is a program. The two staff
 // castes are assigned by the cast traits (`joinable: false` keeps them
-// off the app's side chooser). The two recruiting factions are hidden
-// until the Y2K clock reveals them; from then on any program can join
+// off the app's side chooser). The two declared recruiting factions are
+// hidden until the Y2K clock reveals them; from then on any program can join
 // one from the app (joining fires `join`, switching fires `defect`).
-// "Pursue your own interests" means joining neither.
+// Wave 18b (R4, O7): the header's `founding:` line puts the night in
+// faction mode. From the Truther Download until a majority, midnight or an
+// ending, any cleared program may found a faction of its own (Start →
+// Factions; the engine's crews), one faction at a time; founded factions
+// race beside the two declared sides, and the majority is counted only in
+// the Y2K hour. A faction's name is guest-typed: it never goes in Night.*.
+// "Pursue your own interests" means joining none.
 
 GROUP Hosts
   ethos: hospitality
@@ -225,12 +234,14 @@ ROLE Program
   // verdicts and the anti-AI designation are on the Kernel already; the
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom).
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door, whole_truth, quest.a_faction_of_your_own
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
   human_problem: text? = none
   left_behind: text? = none
+  // Wave 18b (R10): what they typed into the deposit box's card (secret).
+  left_behind_text: text? = none
   skipped_orientation: bool = false
   featured: text? = none
   anti_ai: bool = false
@@ -273,6 +284,10 @@ ROLE Program
   openoffice_choice: text? = none
   dossier_started: bool = false
   dossier_base: 0 to 500 = 0
+  // Wave 18b (R22): how many she had found by the glitch (guards the 10-step).
+  dossier_start: 0 to 500 = 0
+  // Wave 18b (R4): The Whole Truth reached this program (once).
+  whole_truth: bool = false
   // DRAFT w18: how many programs this leader has recruited to their side by pass.
   recruits: 0 to 500 = 0
   got_truther: bool = false
@@ -449,7 +464,8 @@ ROLE Program
   // Trabolta's formal hello, in every cleared program's own thread, the
   // moment he comes online (and on clearance for anyone later).
   when Trabolta.awake == true and self.cleared:
-    Trabolta: Hello, {self.name}. I am Trabolta, the computer's AI helper. Your requests have been logged. Personal queries are routed to Clippy.
+    // DRAFT w18b (R18): his owner's title.
+    Trabolta: Hello, {self.name}. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks, and proud to be the world's first AI small business owner. Your requests have been logged. Personal queries are routed to Clippy.
 
   // ── Bathroom Mode (guest buttons) ──
   // The Antivirus and the Recycling Bin hear the same event in their own
@@ -521,16 +537,16 @@ ROLE Program
       reply "!!🦆 Reinstallation complete. You can follow instructions. Welcome back to the computer." with go: The Desktop
     if self.cleared != true:
       set self.cleared = true
-      reveal The Start Bar for self
-      reveal The CPU for self
-      reveal The Steam Room for self
-      reveal Disk Cleanup for self
-      reveal The Cloud for self
-      reveal The RAM for self
-      reveal The Fan Closet for self
-      reveal The Graphics Card for self
-      reveal The Hard Drive for self
-      reveal task manager for self
+      reveal The Start Bar for self quietly
+      reveal The CPU for self quietly
+      reveal The Steam Room for self quietly
+      reveal Disk Cleanup for self quietly
+      reveal The Cloud for self quietly
+      reveal The RAM for self quietly
+      reveal The Fan Closet for self quietly
+      reveal The Graphics Card for self quietly
+      reveal The Hard Drive for self quietly
+      reveal task manager for self quietly
     // Back from the Internet with no live 📝 card (an old one closed while
     // they were away): the open round's card again.
     if self.fact_card_live != true and self.fact_round == Night.round and Night.round >= 1 and Trabolta.awake == true and Night.ended != true:
@@ -558,7 +574,7 @@ ROLE Program
       set program.bingo = true
       set Night.bingo_winners += 1
       // DRAFT w18: a big moment (the user's example: un-ignorable).
-      reply "!!🎱 BINGO! Name the program for each square, from memory. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
+      reply "!!🎱 BINGO! Name the program for each square. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
 
   when award_the_ribbon for program:
     if program.bingo == true:
@@ -894,13 +910,13 @@ ROLE Program
   // ── 🍾 The bottle: Truth or Dare (wave 4) ──
   // `spin_the_bottle` asks the server for one random cleared program, wherever
   // it stands (not marked, away, captured or in the Internet), not yet picked
-  // for this question (`do pick …`, journaled); the
+  // tonight (`do pick …`, journaled); the
   // pick lands here. Trabolta asks on the TV (`Bottle Landed`, a public line
   // in The Desktop); the phone gets a Truth / Dare poll in dm:Trabolta.
   // Dare, or a refused truth, marks for reinstallation. Truth asks
   // Trabolta's next personal question (`Truth Question`, generated from
   // facts.json truths[]); Clippy settles it with 🗣 Answered / 🙅 Refused.
-  // Five picks per hunt question, then the next question's results.
+  // After all three results (wave 18b): about five spins, then 📺 hunt 2.
   when bottle_landed for program:
     set program.bottle_q = Night.bottle_q
     set program.bottle_round = Night.bottle_round
@@ -2245,6 +2261,13 @@ ROLE Program
         Trabolta: {Night.line_by} said it first, {program.name}. But the house says yes: that is the line.
       else:
         Trabolta: The house says no. That is not the line.
+    // Wave 18b (R10, D22): the deposit box's typed record (the card has no
+    // `question:`, so an unbound `question` reads null). Kept in the secret
+    // slot, never repeated back; the pass comes with it.
+    else if question == null and program.left_behind == "deposited" and program.left_behind_text == "none":
+      set program.left_behind_text = text
+      Task Manager: Logged. It is not your concern. Fine.
+      show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
 
   when pickup_line_works for program:
     fire pickup_line_accepted for program
@@ -2425,13 +2448,15 @@ ROLE Program
   when self.got_truther == true and ((Night.step >= 13 and Night.scenario == 1) or Night.recount == true):
     unlock The Truther Download Unredacted for self
 
-  // OpenOffice's dossier: 20 new facts after her prompt. (Not once the
+  // OpenOffice's dossier: 20 facts she found herself, counted by category
+  // since her Featured Briefing (wave 18b, R22: the handouts and her own
+  // briefing never count; what she found in hunt 1 does). (Not once the
   // recount / truth.txt hands everyone every backstory: that is not her
   // work, and Bugdom's quest likewise.)
-  when self.featured == "openoffice" and self.dossier_started and Night.recount != true and Kernel.majority_reached != true and self.codex - self.dossier_base >= 10:
+  when self.featured == "openoffice" and self.dossier_started and self.dossier_start < 10 and Night.recount != true and Kernel.majority_reached != true and self.codex_in.facts + self.codex_in.files + self.codex_in.people + self.codex_in.trabolta + self.codex_in.places - self.dossier_base >= 10:
     update quest OpenOffice Dossier for self "10 of 20 facts."
 
-  when self.featured == "openoffice" and self.dossier_started and Night.recount != true and Kernel.majority_reached != true and self.codex - self.dossier_base >= 20:
+  when self.featured == "openoffice" and self.dossier_started and Night.recount != true and Kernel.majority_reached != true and self.codex_in.facts + self.codex_in.files + self.codex_in.people + self.codex_in.trabolta + self.codex_in.places - self.dossier_base >= 20:
     set Kernel.openoffice_dossier = true
     unlock The LiveJournal for self
     complete quest OpenOffice Dossier for self "20 facts. And something else: his LiveJournal."
@@ -2575,12 +2600,19 @@ ROLE Program
   when self.at_the_heart == true and Night.heart_holder != self.name:
     set self.at_the_heart = false
 
-  // The majority's members get the whole truth (late pledgers too).
-  when Kernel.majority == "stay" and self.group == Unlimited_Power:
+  // The majority's members get the whole truth (late pledgers too), once
+  // each (wave 18b: any faction; `whole_truth` keeps a leave-and-rejoin
+  // from replaying it).
+  when Kernel.majority_reached == true and faction_of(self) == Kernel.majority_id and self.whole_truth != true:
+    set self.whole_truth = true
     -> The Whole Truth
 
-  when Kernel.majority == "leave" and self.group == The_Way_Out:
-    -> The Whole Truth
+  // A founder's own quest settles with the race (wave 18b).
+  when Kernel.majority == "founded" and self.quest.a_faction_of_your_own == "active":
+    if self == Kernel.majority_founder:
+      complete quest A Faction Of Your Own for self "More than half of the computer walked through your door."
+    else:
+      fail quest A Faction Of Your Own for self "Another faction got there first."
 
   // The recount / truth.txt: every program's true identity, to everyone —
   // the identity entries (codex/5-people.loom) and the two CHARACTER FACTS
@@ -2660,6 +2692,9 @@ ROLE Program
       The Uploader: You chose to stay in the machine forever. You got your wish. The machine is gone, and you went with it.
     else if self.group == The_Way_Out:
       The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Maps and Ducks building. It is not breathing.
+    else if faction_of(self) != null:
+      // DRAFT w18b (R4): a founded faction's member.
+      The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Maps and Ducks building. It is not breathing.
     else:
       The Uploader: Your body is in the Maps and Ducks building. It is not breathing.
 
@@ -2671,8 +2706,8 @@ ROLE Program
 // carries that character as the actor, so only its hooks would hear).
 // `sequence: false` marks a cue a machine fires (the duck game, the door
 // contact, the printer, the patch bay, the door terminal's King), and every optional,
-// anytime or fallback cue that is not the night's next step (the set
-// pieces, 🧾, 🔄, 🗳, 🪩, 💡, the timers' own steps: C2 ⏰, 📥, ⏳, 🚨 and
+// anytime or fallback cue that is not the night's next step (🔄, 🗳,
+// 🪩, 💡, the timers' own steps: C2 ⏰, 📥, ⏳, 🚨 and
 // 🎆 midnight) — the sheet ticks it but it never becomes LAST / NEXT, so a
 // duck find or a 💡 can't eat the next cue, and a timed window (hunt 1,
 // hunt 2's hour, the summons, the Y2K hour) suggests nothing until its
@@ -2753,32 +2788,25 @@ INTERACTION read_the_results
   label: 📋 Results: the next question (press for Q1, Q2, Q3)
   who: admin
   by: Clippy
-  description: Clippy reads one question's result; the filings for it are settled (+50 / marked). Spin the bottle between questions.
+  description: Trabolta reads one question's result on the TV; the filings for it are settled (+50 / marked). After Q3: Truth or Dare (🍾).
   repeat: true
   while: Night.phase == "truth_1" and Night.results_q < 3
 
+// Wave 18b (R21): Truth or Dare comes after all three results, before
+// hunt 2. Five spins are NEXT's budget, not a hard cap. DRAFT w18b
 INTERACTION spin_the_bottle
-  label: 🍾 Spin the bottle (Truth or Dare, five per question)
+  label: 🍾 Spin the bottle: Truth or Dare (after the three results)
   who: admin
   by: Clippy
-  sequence: false
-  description: Picks a cleared program (not marked, away or in the Internet) not yet picked for this question. Trabolta asks on the TV; their phone gets Truth / Dare.
-
-INTERACTION telephone
-  label: (Optional) ☎️ Telephone: a mangled message sends someone to the Internet
-  who: admin
-  sequence: false
-
-INTERACTION are_you_sure
-  label: (Optional) 🪅 The "Are you sure?" piñata
-  who: admin
-  sequence: false
+  repeat: true
+  description: After all three results. Picks a cleared program (not marked, away or in the Internet) not yet picked tonight. Trabolta asks on the TV; their phone gets Truth / Dare. NEXT offers five spins; spin more if you like, then 📺.
+  while: Night.phase == "truth_1" and Night.results_q >= 3 and Night.bottle_open != true and Night.bottle_picks < 5 and Night.bottle_done != true
 
 INTERACTION second_hunt_preview
   label: 📺 Preview hunt 2 → the ad hijack
   who: admin
   act: C · The malware, the hour, the Truther Download
-  while: Night.step == 6
+  while: Night.step == 6 and Night.bottle_open != true
 
 INTERACTION start_the_second_hunt
   label: 📓 Hunt 2 → quest logs; disperse for 1 hour
@@ -2855,16 +2883,11 @@ INTERACTION y2k_midnight
   who: admin
   sequence: false
 
-INTERACTION waive_leader_tasks
-  label: 🧾 Let a faction win without its leader's task (leader absent)
-  who: admin
-  sequence: false
-
 INTERACTION server_door_opened
   label: 🚪 Server room door opened (hardware fallback)
   who: admin
   sequence: false
-  description: The door contact fires this itself. Press it when the contact could not. Once Trabolta is awake the first opening plays The Heart, however the door was unlocked (the server room opens on every phone, Trabolta speaks candidly on the server-room terminal); another opening within 2 minutes does nothing, a later one gets a short line. Before he is awake, inside a 🔧 crew window, or after truth.txt it only tells # hosts. It never raises an alarm.
+  description: The door contact fires this itself. Press it when the contact could not. Once Trabolta is awake the first opening plays The Heart, however the door was unlocked (the server room opens on every phone, Trabolta speaks candidly on the server-room terminal); every later opening does nothing (🔄 re-arms it). Before he is awake, inside a 🔧 crew window, or after truth.txt it only tells # hosts. It never raises an alarm.
 
 INTERACTION reset_server_room
   label: 🔄 Server room: reset the patch-bay alarm
@@ -2889,6 +2912,13 @@ INTERACTION force_majority_leave
   who: admin
   sequence: false
   description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
+
+// Wave 18b (R4): a program's own founded faction can be forced too. DRAFT w18b
+INTERACTION force_their_majority
+  label: 🗳 Force the majority: this program's faction
+  who: admin
+  sequence: false
+  description: Final round only. Fire it naming a member of the faction (any faction: a founded one or a side). Runs the majority exactly once, for that faction.
 
 INTERACTION patch_combo_a
   label: 🔌 Patch: Combo A, disable Trabolta (hardware fallback)
@@ -3506,7 +3536,7 @@ when start_the_bingo:
     cue terminals_attract
     set Night.terminals = "attract"
     sound bingo_start
-    broadcast "!🎱 COMPUTER BINGO has begun. 20 minutes. Do not write names: use your computer memory." to everyone with go: quest: The Bingo Card
+    broadcast "!🎱 COMPUTER BINGO has begun. 20 minutes." to everyone with go: quest: The Bingo Card
     -> Computer Bingo
   else:
     broadcast "🎱 Not again: Bingo has already started. Nothing happens." to channel(hosts)
@@ -3565,7 +3595,8 @@ when introduce_trabolta:
     reveal Trabolta
     cue terminals_trabolta_online
     set Night.terminals = "trabolta"
-    broadcast "!🤖 TRABOLTA IS ONLINE. The computer's AI helper is speaking at the Desktop. His thread is open: say hello." to everyone with go: Trabolta
+    // DRAFT w18b (R18)
+    broadcast "!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by video conference. His thread is open: say hello." to everyone with go: Trabolta
     -> Trabolta Introduction
   else if Night.trabolta_introduced == true:
     broadcast "🤖 Trabolta is already online. Nothing happens." to channel(hosts)
@@ -3658,7 +3689,7 @@ when first_moment_of_truth:
     broadcast "⚖️ Not again: round-one judging has already opened. Nothing happens." to channel(hosts)
 
 // B9: the last-chance window (two minutes, or ⏱), then the results one
-// question at a time (📋), the bottle between them (🍾). Round one closes
+// question at a time (📋), then the bottle (🍾) after the third. Round one closes
 // for good when the window shuts: a question nobody filed never comes back.
 // The two minutes run out: the timer presses ⏱ itself, so the cue sheet
 // ticks it and NEXT moves on to 📋.
@@ -3679,17 +3710,19 @@ when filing_closed:
     broadcast "📝 Round one is closed. Trabolta is reading." to everyone
     -> Filing Closed
 
-// One question's result: Clippy reads it (consensus / nobody / every
-// answer), then the ROLE settle watcher credits (+50) or marks (a guess)
-// every filing for it. Kernel.res_* are the beat's readout, computed here
-// (review filings still pending count by the judge's proposal).
+// One question's result: Trabolta reads it on the TV (consensus / nobody /
+// every answer, then the accepted and guess counts), then the ROLE settle
+// watcher credits (+50) or marks (a guess) every filing for it. Kernel.res_*
+// are the beat's readout, computed here (filings still pending, under
+// review or waiting on his ruling, count by their proposal). `do fact_read`
+// publishes the question's public rows to the screens (wave 18b, Q6).
 when read_the_results:
   if Night.phase != "truth_1" or Night.r1_closed != true:
     broadcast "📋 Close the filings first (⏱), then read the results." to channel(hosts)
   else if Night.bottle_open == true:
     broadcast "📋 The bottle is still open: 🗣 Answered or 🙅 Refused first." to channel(hosts)
   else if Night.results_q >= 3:
-    broadcast "📋 All three results are read. Next: 📺 Preview hunt 2." to channel(hosts)
+    broadcast "📋 All three results are read. Next: 🍾 Truth or Dare, then 📺 Preview hunt 2." to channel(hosts)
   else:
     set Night.results_q += 1
     set Night.bottle_picks = 0
@@ -3699,16 +3732,25 @@ when read_the_results:
       set Kernel.res_consensus = count([p for p in Persons where p.fact_c1 == 100 and (p.fact_v1 == "accurate" or (p.fact_v1 == "pending" and p.fact_j1 == "accurate"))])
       set Kernel.res_said = Kernel.said_1
       set Kernel.res_answer = Kernel.ans_1
+      set Kernel.res_accepted = count([p for p in Persons where p.fact_v1 == "accurate" or p.fact_v1 == "lie" or (p.fact_v1 == "pending" and p.fact_j1 != "uncertain")])
+      set Kernel.res_guesses = count([p for p in Persons where p.fact_v1 == "uncertain" or (p.fact_v1 == "pending" and p.fact_j1 == "uncertain")])
+      do fact_read H1
     else if Night.results_q == 2:
       set Kernel.res_filed = count([p for p in Persons where p.fact_v2 != "none"])
       set Kernel.res_consensus = count([p for p in Persons where p.fact_c2 == 100 and (p.fact_v2 == "accurate" or (p.fact_v2 == "pending" and p.fact_j2 == "accurate"))])
       set Kernel.res_said = Kernel.said_2
       set Kernel.res_answer = Kernel.ans_2
+      set Kernel.res_accepted = count([p for p in Persons where p.fact_v2 == "accurate" or p.fact_v2 == "lie" or (p.fact_v2 == "pending" and p.fact_j2 != "uncertain")])
+      set Kernel.res_guesses = count([p for p in Persons where p.fact_v2 == "uncertain" or (p.fact_v2 == "pending" and p.fact_j2 == "uncertain")])
+      do fact_read H2
     else:
       set Kernel.res_filed = count([p for p in Persons where p.fact_v3 != "none"])
       set Kernel.res_consensus = count([p for p in Persons where p.fact_c3 == 100 and (p.fact_v3 == "accurate" or (p.fact_v3 == "pending" and p.fact_j3 == "accurate"))])
       set Kernel.res_said = Kernel.said_3
       set Kernel.res_answer = Kernel.ans_3
+      set Kernel.res_accepted = count([p for p in Persons where p.fact_v3 == "accurate" or p.fact_v3 == "lie" or (p.fact_v3 == "pending" and p.fact_j3 != "uncertain")])
+      set Kernel.res_guesses = count([p for p in Persons where p.fact_v3 == "uncertain" or (p.fact_v3 == "pending" and p.fact_j3 == "uncertain")])
+      do fact_read H3
     set Night.settle_q = Night.results_q
     set Night.settle_round = 1
     set Night.settle_gen += 1
@@ -3717,25 +3759,25 @@ when read_the_results:
     set Night.terminals = "hunt_results"
     -> Question Results
 
-// 🍾 The bottle: the server picks one cleared program not yet picked for
-// this question (`do pick … else …`, journaled, so a restart replays the
-// same pick) and fires `bottle_landed` for them (ROLE Program). Five picks
-// per question. Anyone free and here counts, wherever their last room
+// 🍾 The bottle, after all three results (wave 18b, R21): the server picks
+// one cleared program not yet picked tonight (`do pick … else …`,
+// journaled, so a restart replays the same pick; `bottle_q` ends at 3, so
+// "not picked for this question" is "not picked tonight") and fires
+// `bottle_landed` for them (ROLE Program). NEXT offers five spins; a sixth
+// still spins (it only tells # hosts). Anyone free and here counts, wherever their last room
 // check-in put them: a location is only the last room sign scanned, the
 // hunt sends programs round the house, and nothing re-seats them at the
 // Desktop for the Moment of Truth (C2 only calls them back). The TV names
 // the pick, so they come forward. Not a program in the Internet (captured,
 // or in the tent's game), corrupted, marked or away.
 when spin_the_bottle:
-  if Night.phase != "truth_1" or Night.results_q < 1:
-    broadcast "🍾 Read a question's results first (📋)." to channel(hosts)
+  if Night.phase != "truth_1" or Night.results_q < 3:
+    broadcast "🍾 Truth or Dare comes after all three results: read them first (📋)." to channel(hosts)
   else if Night.bottle_open == true:
     broadcast "🍾 The bottle is still open: 🗣 Answered or 🙅 Refused first." to channel(hosts)
-  else if Night.bottle_picks >= 5 and Night.results_q >= 3:
-    broadcast "🍾 Five picks for question 3. Next: 📺 Preview hunt 2." to channel(hosts)
-  else if Night.bottle_picks >= 5:
-    broadcast "🍾 Five picks for question {Night.results_q}. Read the next results (📋)." to channel(hosts)
   else:
+    if Night.bottle_picks >= 5:
+      broadcast "🍾 Past the five on NEXT: 📺 Preview hunt 2 when you're done." to channel(hosts)
     set Night.bottle_open = true
     set Night.bottle_round += 1
     cue screens_truth_or_dare
@@ -3743,33 +3785,17 @@ when spin_the_bottle:
     set Night.terminals = "truth_or_dare"
     do pick bottle_landed from {[p for p in Persons where p.cleared == true and p.corrupted != true and p.marked != true and p.afk != true and p.captured != true and p.location != "The Internet" and p.bottle_q != Night.bottle_q]} else bottle_empty
 
-// After question 3 there are no next results: 📋 would only refuse.
+// Everyone free has had a turn: NEXT moves on to 📺.
 when bottle_empty:
   set Night.bottle_open = false
-  if Night.bottle_q >= 3:
-    broadcast "🍾 Nobody left to pick for question 3. Next: 📺 Preview hunt 2." to channel(hosts)
-  else:
-    broadcast "🍾 Nobody left to pick for question {Night.bottle_q}. Read the next results (📋)." to channel(hosts)
+  set Night.bottle_done = true
+  broadcast "🍾 Nobody left to pick. Next: 📺 Preview hunt 2." to channel(hosts)
 
 when bottle_announce:
   -> Bottle Landed
 
 when truth_question:
   -> Truth Question
-
-// B10: optional set pieces, any time from the first Moment of Truth to
-// the Trust Chart.
-when telephone:
-  if Night.step >= 6 and Night.ended != true:
-    -> Telephone
-  else:
-    broadcast "☎️ Only from the First Moment of Truth until an ending. Nothing happens." to channel(hosts)
-
-when are_you_sure:
-  if Night.step >= 6 and Night.ended != true:
-    -> Are You Sure
-  else:
-    broadcast "🪅 Only from the First Moment of Truth until an ending. Nothing happens." to channel(hosts)
 
 // ── The Internet: the reinstallation games ──
 // A run's begin (the tablet's scan, a headset's station) fires `reinstallation
@@ -3819,7 +3845,9 @@ when the golden duck for program:
 // overshare — or the skipped cue's work (a settle, the tally, round 3)
 // would be lost for good. 🏓 may still cut hunt 2's hour short on purpose.
 when second_hunt_preview:
-  if Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3:
+  if Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3 and Night.bottle_open == true:
+    broadcast "📺 The bottle is still open: 🗣 / 🙅 first." to channel(hosts)
+  else if Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3:
     set Night.judging = false
     set Night.r1_closed = true
     set Night.filing_open = false
@@ -3896,7 +3924,9 @@ when truther_download:
     cue lights_glitch
     set Night.lights = "glitch"
     sound truther_glitch
-    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open." to everyone with go: Truther Download
+    // DRAFT w18b (R4, O7): founding opens here. (No "wins" in a house line:
+    // the screens cheer only a line that names a winner.)
+    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open. You may found a faction of your own now (Start → Factions). The count starts at 11:00 PM: a faction needs more than half of the programs." to everyone with go: Truther Download
   else:
     broadcast "📥 Not again: the Truther Download was already sent. Nothing happens." to channel(hosts)
 
@@ -3976,6 +4006,12 @@ when round_two_tally:
     set Night.settle_q = 0
     set Night.settle_round = 2
     set Night.settle_gen += 1
+    // Wave 18b (Q6, R3): the round's public rows go to the screens, and
+    // Trabolta reads every filing (Round Two Tally).
+    do fact_read H4 H5 H6
+    cue screens_tally
+    set Night.screen = "tally"
+    set Night.terminals = "tally"
     complete quest Hunt Two for everyone
     if (Kernel.q4 != "none" or count([p for p in Persons where p.cupped == true and p.marked != true and p.corrupted != true and (p.fact_v4 == "accurate" or p.fact_v4 == "lie" or (p.fact_v4 == "pending" and p.fact_j4 != "uncertain"))]) > 0) and (Kernel.q5 != "none" or count([p for p in Persons where p.cupped == true and p.marked != true and p.corrupted != true and (p.fact_v5 == "accurate" or p.fact_v5 == "lie" or (p.fact_v5 == "pending" and p.fact_j5 != "uncertain"))]) > 0) and (Kernel.q6 != "none" or count([p for p in Persons where p.cupped == true and p.marked != true and p.corrupted != true and (p.fact_v6 == "accurate" or p.fact_v6 == "lie" or (p.fact_v6 == "pending" and p.fact_j6 != "uncertain"))]) > 0):
       set Night.collection_complete = true
@@ -4145,7 +4181,8 @@ when y2k_clock:
     set Night.screen = "y2k"
     set Night.terminals = "y2k"
     sound y2k_chime
-    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: two factions are recruiting, Unlimited Power and The Way Out." to everyone with go: sides, go: Truther Download
+    // DRAFT w18b (R4, O7): the sides join the founded factions; the count starts.
+    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download. The count starts now." to everyone with go: sides, go: Truther Download
     -> The Y2K Clock
   else if Night.step >= 14 or Night.clock != "--:--":
     broadcast "🕚 Not again: the clock has already been reset. Nothing happens." to channel(hosts)
@@ -4179,25 +4216,33 @@ when Night.final_round == true and Night.ended != true and Night.clock_1 != true
 when Night.final_round == true and Night.ended != true and Time.elapsed >= Night.y2k_end:
   fire y2k_midnight
 
-// The majority: strictly more than half of the programs still here,
-// counted only once the faction's leader has done their task (Excel
-// planted the virus; OpenOffice has her 20 facts), unless the director
-// waives it. First faction across wins; it latches. A program a director
-// marked as gone home (`<id>.gone`, Run's roster) and a director's own
-// rehearsal persona (`<id>.persona`) count on neither side of the sum, so
-// ghosts no longer block a real majority (wave 11).
-when Night.final_round == true and Kernel.majority_reached != true and (Kernel.excel_planted == true or Kernel.waive_leader_tasks == true) and count([p for p in Unlimited_Power.members where p.gone != true and p.persona != true]) * 2 > count([p for p in Persons where p.gone != true and p.persona != true]):
+// The majority (wave 18b, R4, D13): any faction — Unlimited Power, The Way
+// Out, or one a program founded (Start → Factions, from the Truther
+// Download) — holding more than half of the programs still here, counted
+// only in the Y2K hour. The leaders' tasks no longer gate it (Excel and
+// OpenOffice are founders like everyone else). First across wins; it
+// latches. A program a director marked as gone home (`<id>.gone`) and a
+// director's own rehearsal persona (`<id>.persona`) count on neither side
+// (wave 11); the threshold is the header's direct present count, not
+// `Night.present` (which lags one watcher pass). A faction already over
+// the line when the clock strikes wins on the clock's first pass.
+when Night.final_round == true and Kernel.majority_reached != true and majority_faction() != null:
   set Kernel.majority_reached = true
-  set Kernel.majority = "stay"
-  fire majority_reached
+  set Kernel.majority_id = majority_faction()
+  fire settle_majority
 
-when Night.final_round == true and Kernel.majority_reached != true and (Kernel.openoffice_dossier == true or Kernel.waive_leader_tasks == true) and count([p for p in The_Way_Out.members where p.gone != true and p.persona != true]) * 2 > count([p for p in Persons where p.gone != true and p.persona != true]):
-  set Kernel.majority_reached = true
-  set Kernel.majority = "leave"
+// The latch's names, then E1. A founded faction's name is guest-typed: it
+// lives on the secret Kernel, never in Night.*.
+when settle_majority:
+  set Kernel.majority_name = faction_name(Kernel.majority_id)
+  set Kernel.majority_founder = faction_founder(Kernel.majority_id)
+  if Kernel.majority_id == "Unlimited Power":
+    set Kernel.majority = "stay"
+  else if Kernel.majority_id == "The Way Out":
+    set Kernel.majority = "leave"
+  else:
+    set Kernel.majority = "founded"
   fire majority_reached
-
-when waive_leader_tasks:
-  set Kernel.waive_leader_tasks = true
 
 // The majority's denominator for the director's board (`watch:
 // Night.present`): kept in step whenever it moves.
@@ -4208,7 +4253,7 @@ when Night.present != count([p for p in Persons where p.gone != true and p.perso
 // program's yes is the switching join (the event server's), and
 // `recruited` (subject the recruit, `by` the recruiter, `side` the side)
 // counts it on the leader's recruiting quest. The header's `majority:`
-// line is the Sides screen's "n of the half + 1 it needs" (the same
+// line is the Factions screen's "n of the half + 1 it needs" (the same
 // threshold as the watchers above: members × 2 > present).
 // DRAFT w18
 when recruited for program:
@@ -4225,18 +4270,36 @@ when recruited for program:
 when force_majority_stay:
   if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true:
     set Kernel.majority_reached = true
-    set Kernel.majority = "stay"
-    fire majority_reached
+    set Kernel.majority_id = "Unlimited Power"
+    fire settle_majority
   else:
     broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
 
 when force_majority_leave:
   if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true:
     set Kernel.majority_reached = true
-    set Kernel.majority = "leave"
-    fire majority_reached
+    set Kernel.majority_id = "The Way Out"
+    fire settle_majority
   else:
     broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
+
+// Wave 18b (R4): the named program's faction, whichever it is. DRAFT w18b
+when force_their_majority for program:
+  if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true and faction_of(program) != null:
+    set Kernel.majority_reached = true
+    set Kernel.majority_id = faction_of(program)
+    fire settle_majority
+  else if faction_of(program) == null:
+    broadcast "🗳 No forced majority: {program.name} is in no faction." to channel(hosts)
+  else:
+    broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
+
+// A program founded a faction (Start → Factions): # hosts hears its name
+// (guest-typed: the hosts', never the TV's or Trabolta's), and the founder
+// gets the quest. DRAFT w18b
+when founded for program:
+  broadcast "◇ {program.name} founded a faction: {faction_name(faction_of(program))}." to channel(hosts)
+  start quest A Faction Of Your Own for program
 
 // ── E. Act III — the server room ──
 
@@ -4262,10 +4325,19 @@ when majority_reached:
     if Kernel.majority == "stay":
       complete quest Recruit To Stay for everyone
       fail quest Recruit To Leave for everyone
-    else:
+      // DRAFT w18b (R4): a founder's own quest fails on a side's win.
+      fail quest A Faction Of Your Own for everyone "Unlimited Power got there first."
+    else if Kernel.majority == "leave":
       complete quest Recruit To Leave for everyone
       fail quest Recruit To Stay for everyone
       complete quest Find The Exit for everyone
+      // DRAFT w18b (R4): a founder's own quest fails on a side's win.
+      fail quest A Faction Of Your Own for everyone "The Way Out got there first."
+    else:
+      // A founded faction (wave 18b): both recruiting quests fail; the
+      // founder's own quest is settled by the ROLE watcher.
+      fail quest Recruit To Stay for everyone
+      fail quest Recruit To Leave for everyone
     -> Majority Reached
 
 // E2: the door contact. The server-room door has a standalone keypad lock
@@ -4278,11 +4350,8 @@ when majority_reached:
 // plays The Heart: the room opens on every phone and Trabolta speaks to it
 // candidly from the server-room terminal (like the Master: reaching him
 // is not stopping him; before the Y2K hour nothing in the room ends the
-// night). The quiet window is 2 minutes from the LAST opening: every
-// opening inside it (both contacts firing for one swing, the group
-// trickling in or out) does nothing but restart the 2 minutes, so a busy
-// doorway never replays the visit; an opening after 2 quiet minutes gets a
-// short line (Back To The Heart).
+// night). Every later opening does nothing (wave 18b: Back To The Heart
+// and its quiet window are gone); 🔄 reset_server_room re-arms The Heart.
 // Before he is awake (he is strictly offline until Clippy introduces him)
 // the door is just a door: # hosts hears of it, the story does nothing (a
 // curious guest, or a retained "open" replayed on a stagehand reconnect).
@@ -4299,15 +4368,8 @@ when server_door_opened:
   else if Night.ended != true and Trabolta.awake == true:
     if Night.heart_opened != true:
       set Night.heart_opened = true
-      set Night.door_quiet_until = Time.elapsed + 120
       broadcast "🚪 The server-room door opened. The Heart plays on the server-room terminal." to channel(hosts)
       -> The Heart
-    else if Time.elapsed >= Night.door_quiet_until:
-      set Night.door_quiet_until = Time.elapsed + 120
-      broadcast "🚪 The server-room door opened again." to channel(hosts)
-      -> Back To The Heart
-    else:
-      set Night.door_quiet_until = Time.elapsed + 120
   else if Night.ended != true:
     broadcast "🚪 The server-room door opened before Trabolta is awake. Nothing happens in the story." to channel(hosts)
 
@@ -4378,7 +4440,6 @@ when reset_server_room:
   set Night.alarm_on = false
   set Night.alarm_clear_at = 0
   set Night.heart_opened = false
-  set Night.door_quiet_until = 0
   set Night.crew_door_until = 0
   broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, and the next door opening plays The Heart." to channel(hosts)
 
@@ -4976,6 +5037,16 @@ when own_award_lines:
 
 // ── Anytime ──
 
+// Trabolta's picture (wave 18b, R19, D23): it breaks while more than half
+// of the cleared programs still here sit below 0 on his Trust Chart
+// (`program.trust`, his score of them), and mends when that stops. Only
+// his own `broken` (a bool) moves: the server swaps the avatar.
+when Trabolta.broken != true and Trabolta.awake == true and count([p for p in Persons where p.gone != true and p.persona != true and p.cleared == true and p.trust < 0]) * 2 > count([p for p in Persons where p.gone != true and p.persona != true and p.cleared == true]):
+  set Trabolta.broken = true
+
+when Trabolta.broken == true and count([p for p in Persons where p.gone != true and p.persona != true and p.cleared == true and p.trust < 0]) * 2 <= count([p for p in Persons where p.gone != true and p.persona != true and p.cleared == true]):
+  set Trabolta.broken = false
+
 // Lore shared TO Trabolta counts as a delivery for the sharer. Lore
 // Broken Ask Jeeves shares with a program counts toward Ten Findings
 // (`jeeves_shared` is a ROLE hook, so a share to a character never counts).
@@ -5140,7 +5211,6 @@ set Night.alarm_clear_at = 0
 set Night.lights_before_alarm = "none"
 set Night.wrong_combos = 0
 set Night.heart_opened = false
-set Night.door_quiet_until = 0
 set Night.heart_holder = "none"
 set Night.gloat_at = 0
 // The King's one shared health bar (the server knocks a point off per
@@ -5175,6 +5245,7 @@ set Night.bottle_picks = 0
 set Night.bottle_q = 0
 set Night.bottle_round = 0
 set Night.bottle_pick = "none"
+set Night.bottle_done = false
 set Night.truth_n = 0
 set Night.stimulus_n = 0
 set Night.help_votes = 0

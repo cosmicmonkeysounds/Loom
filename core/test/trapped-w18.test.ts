@@ -106,7 +106,7 @@ describe("Trapped in the Internet — wave 18: big moments with their exits (C12
     const n = boot();
     for (const c of TO_BINGO) n.press(c);
     const win = n.signal("bingo_winner", "g1", undefined, "Clippy");
-    expect(bigFor(win, "g1").map((m) => m.text)).toEqual(["🎱 BINGO! Name the program for each square, from memory. Centre square last."]);
+    expect(bigFor(win, "g1").map((m) => m.text)).toEqual(["🎱 BINGO! Name the program for each square. Centre square last."]);
     // NM-F1: the win carries its way there and the card (never just "Collect ✓").
     expect(bigFor(win, "g1")[0]!.go).toEqual([
       { kind: "room", id: "loc:The Desktop", label: "🎱 To the Desktop" },
@@ -127,11 +127,11 @@ describe("Trapped in the Internet — wave 18: big moments with their exits (C12
 
   it("the bottle, Help / Thwart and the pickup line are big cards; the awards and the banishment are big with the way there", () => {
     const n = boot();
-    for (const c of [...TO_TRUTH_1, "close_the_filing", "read_the_results", "spin_the_bottle"]) n.press(c);
+    for (const c of [...TO_TRUTH_1, "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "spin_the_bottle"]) n.press(c);
     const bottle = n.signal("bottle_landed", "g2");
     expect(bigFor(bottle, "g2").find((m) => m.kind === "widget")).toMatchObject({ widget: { kind: "poll" }, channel: "dm:Trabolta", go: [{ kind: "dm", id: "dm:Trabolta" }] });
     n.signal("truth_answered", "g2", undefined, "Clippy");
-    for (const c of ["read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "bobbing_for_truth"]) n.press(c);
+    for (const c of ["second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "bobbing_for_truth"]) n.press(c);
     n.signal("brought_up_the_bag", "g1", undefined, "Clippy");
     n.press("read_truth_txt");
     const grok = n.take(n.sim.fireBeat("Grok Prom"));
@@ -430,11 +430,11 @@ describe("Trapped in the Internet — wave 18: objectives (C5, C11, A5, A7, S3, 
     expect(cel.checklist.map((c) => c.label.slice(0, 2))).toEqual(["🎱", "🎀", "🎯", "Th"]);
     expect([...(cel.pick ?? [])].sort()).toEqual(PROGRAMS.map(([g]) => g).sort());
     // The bottle names its program.
-    for (const c of ["introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results", "spin_the_bottle"]) n.press(c);
+    for (const c of ["introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "spin_the_bottle"]) n.press(c);
     n.signal("bottle_landed", "g4");
     expect(obj("Clippy", "The Bottle")?.target).toMatchObject({ id: "g4", name: "MS Paint" });
     n.signal("truth_answered", "g4", undefined, "Clippy");
-    for (const c of ["read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "five_minute_warning"]) n.press(c);
+    for (const c of ["second_hunt_preview", "start_the_second_hunt", "five_minute_warning"]) n.press(c);
     n.signal("checked_in", "g1", { at: "The Desktop" });
     n.signal("go to the bathroom", "g2");
     const missing = obj("Task Manager", "Summons Door")!;
@@ -528,9 +528,13 @@ describe("Trapped in the Internet — wave 18: side leaders, the majority and re
     const by = Object.fromEntries(sides.map((s) => [s.name, s]));
     expect(by["Unlimited Power"]).toMatchObject({ leader: "Microsoft Excel" });
     expect(by["The Way Out"]).toMatchObject({ leader: "OpenOffice" });
-    // Six programs here: a majority is four (4 × 2 > 6).
-    expect(by["Unlimited Power"]!.needs).toBe(4);
-    expect(by["The Way Out"]!.needs).toBe(4);
+    // Wave 18b (R5, faction mode): no count on a faction that isn't yours.
+    for (const side of sides) expect(side, side.name).not.toHaveProperty("needs");
+    for (const side of sides) expect(side, side.name).not.toHaveProperty("members");
+    // The leader's own row: six programs here, a majority is four (4 × 2 > 6).
+    const mine = (guestView(n.sim, "g2").sides ?? []).find((x) => x.name === "Unlimited Power")!;
+    expect(mine).toMatchObject({ mine: true, needs: 4, kind: "side" });
+    expect((guestView(n.sim, "g2").sides ?? []).find((x) => x.name === "The Way Out")).not.toHaveProperty("needs");
   }, SLOW);
 
   it("a recruit by pass is a step on the leader's quest; a recruit to the other side is not", () => {

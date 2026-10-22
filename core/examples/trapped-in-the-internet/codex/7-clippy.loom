@@ -13,6 +13,7 @@
 // Nothing here may mention Sandy, the server room or the patch bay: a
 // performer's codex rides along when she talks to Trabolta.
 
+// DRAFT w18b (R17, R14): Jean Trabolta joins by video conference; no names rule.
 CODEX Clippy Instructions 1
   title: CLIPPY INSTRUCTIONS - 1/X - BEGINNING OF NIGHT
   category: Missions
@@ -23,7 +24,12 @@ CODEX Clippy Instructions 1
     And Ducks.
     - Introduce yourself as Clippy, the official Office Assistant with
     Maps and Ducks. If anyone needs Help With That, you'll be available.
-    - Jean Trabolta himself will make an appearance later tonight.
+    - Jean Trabolta will be joining us later in the night, by video
+    conference: we are all people who have become computer programs, but
+    he has ALWAYS been a computer program. He may or may not have already
+    shared that he is an AI, but rest assured: he is the true owner of Maps
+    and Ducks, and he is excited to lead everyone through Jean Trabolta's
+    Scavenger Hunt.
     - Introduce the hosts: Task Manager, Adobe Acrobat, and the Recycling
     Bin. Task Manager will keep things running, Adobe Acrobat will assist
     with documents and printing, and Recycling Bin is responsible for
@@ -32,8 +38,6 @@ CODEX Clippy Instructions 1
     the other programs and learn what everyone does.
     - Hand out the cards and markers. Ask everyone to mingle and find
     programs who match the descriptions on their card.
-    - Do NOT write down names. Remind everyone to use their special
-    computer memory to remember who answered each square.
     - Explain that a Bingo means completing one of the marked lines on the
     card: horizontal, vertical, or diagonal through the centre.
     - Give everyone 20 minutes.
@@ -50,7 +54,7 @@ CODEX Clippy Instructions 2
     themselves and getting to know their fellow programs.
     - Ask who completed a Bingo. Invite each winner to read out the
     descriptions in their completed line and name the program they
-    matched to each one (from memory: nobody wrote names down). Save the
+    matched to each one. Save the
     centre square for last.
     - (App) Press 🎱 Bingo winner on each winner's card. Several winners
     are fine.
@@ -79,9 +83,9 @@ CODEX Clippy Instructions 2
     - Explain that the Internet is where programs go to be reinstalled.
     They will complete a short activity to demonstrate that they can
     follow instructions, then return to the computer.
-    - Introduce Trabolta as the computer's AI helper. Explain that he
-    keeps the computer running, and that you are here to help communicate
-    his instructions.
+    - Introduce Jean Trabolta, the Sole Owner and Founder of Maps and
+    Ducks, joining by video conference: the world's first AI small
+    business owner. You are here to help communicate his instructions.
     - (App) After your corruption speech, a host fires "Clippy
     introduces Trabolta". He comes online, and the TV mirror comes up with
     him.
@@ -94,6 +98,8 @@ CODEX Clippy Instructions 2
     help to interpret. Trabolta will explain the rules.
 
 // DRAFT w18 (B6, Q1/Q2): Clippy fires the game cues from the 🎤 bar; any host fires the rest.
+// DRAFT w18b (Q6, R20, R21): Trabolta reads the results on the TV; the
+// bottle comes after the third; "confident answers are accepted" is gone.
 CODEX Clippy Instructions 3
   title: CLIPPY INSTRUCTIONS - 3/X - FIRST MOMENT OF TRUTH
   category: Missions
@@ -108,26 +114,26 @@ CODEX Clippy Instructions 3
     - There is a two-minute last-chance window. Tell everyone to file
     anything they found with Trabolta NOW. You close it with ⏱ on your 🎤
     bar (or it closes itself at two minutes). A closed round never reopens.
-    - (App) You fire 📋 Results from your 🎤 bar, for each question in turn. Your
-    phone shows that question's result in the Desktop room: CONSENSUS
-    (every answer matches and everyone was sure), nobody filed, or the
-    list of what everyone told Trabolta. Read it aloud. Then say that
-    confident answers are accepted, right or wrong, and that guesses are
+    - (App) You fire 📋 Results from your 🎤 bar, for each question in
+    turn. Trabolta reads the result on the TV: CONSENSUS (every answer
+    matches and everyone was sure), nobody filed, or the list of what
+    everyone told him, with how many were accepted and how many were
+    guesses. When he has finished, the next 📋. Then say that guesses are
     a symptom of corruption. The app settles the filings on its own:
     +50 Truthcoin for an accepted answer, a mark for a guess.
     - Never say which filings were lies: the room hears "accepted" for
     every confident answer.
-    - Between questions, the bottle. You fire 🍾 Spin the bottle from
-    your 🎤 bar, up to five times per question. Trabolta names the program on
-    the TV; their phone asks Truth or Dare.
+    - After question three, Truth or Dare: when he has finished the third,
+    🍾 Spin the bottle on your 🎤 bar, about five spins (NEXT offers five;
+    spin more if the room wants it). Trabolta names the program on the TV;
+    their phone asks Truth or Dare.
     - Dare: they are marked for reinstallation for not choosing Truth.
     (App) If their phone is dead, 🎩 Chose Dare on their card does the same.
     - Truth: Trabolta asks them a personal question on the TV. Make them
     answer it, in front of everyone. (App) 🗣 Truth answered on their card
     when they do; 🙅 Truth refused if they will not — a refusal is marked
     for reinstallation and escorted.
-    - After five spins, fire 📋 for the next question's results.
-    After question three, the second hunt is previewed.
+    - After the spins, the second hunt is previewed (📺).
     - Ribbons are always allowed: 🎀 Award a ribbon on anyone who deserves
     one.
 

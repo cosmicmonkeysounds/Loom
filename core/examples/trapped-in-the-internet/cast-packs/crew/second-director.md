@@ -45,16 +45,16 @@ NEXT is V6), hunt 2's hour and the summons (📥, ⏳ and 🚨 fire themselves,
 then NEXT is 🏓) and the Y2K hour (midnight fires 🌑). Never tap those timer
 cues early: it cuts the window short. Hold 🕚 until the patch-bay watch radios **IN**.
 After 🍎, press 📄 (truth.txt holds on the screens while the bobber reads),
-then **⚖** for the verdict when they finish. Optional set pieces
-(☎️ Telephone, 🪅 Are you sure?) only if you are running early.
+then **⚖** for the verdict when they finish.
 
 **1b. The First Moment of Truth, in order.** V6 opens a two-minute filing
 window. ⏱ closes it (or it closes itself: then ⏱ ticks and NEXT is 📋). Then 📋 once per question (Q1, Q2,
-Q3): Clippy reads the result in the Desktop room and the filings settle.
-After each 📋, 🍾 up to five times: the server picks a program anywhere in the house,
-the TV asks "Truth or dare?", their phone asks too; Clippy settles a Truth
-with 🗣 / 🙅. 📋 refuses while a bottle is open; 🍾 refuses after five. After
-Q3's bottle, 📺 (it refuses until all three 📋 are read). Rounds never reopen.
+Q3): Trabolta reads the result on the TV and the filings settle.
+After the third 📋, 🍾 Truth or Dare (NEXT offers five spins; more is fine):
+the server picks a program not picked tonight, anywhere in the house, the TV
+asks "Truth or dare?", their phone asks too; Clippy settles a Truth with 🗣 /
+🙅. 🍾 refuses before all three 📋 are read and while a truth is open; 📺
+refuses while a truth is open. Then 📺. Rounds never reopen.
 
 **2. Watch Run → Mind** (wave 12, [`trabolta-mind.md`](./trabolta-mind.md)).
 On the story mind his stage follows the phase by itself (*set by story*):
@@ -78,15 +78,16 @@ buttons). A host's 📝 on a
 program's card (*be Clippy* → **📝 Filed fact: …**) judges that program's
 **latest** filing only; when a program has filed more than once and an
 earlier one is still waiting, it changes nothing and `# hosts` points you at
-the Judging card. Either way the guest hears the same reply. **A near miss**
-(wave 11: a mistyped right answer, or the right answer said at length,
-*11 years ago*) waits on the card tagged *near* even in
-`auto`, with a ⚠ line in `# hosts` naming the key. **Trabolta rules on it**
-(wave 11b) when his laptop is online: *… asked Trabolta to rule*, then *🤖
-Trabolta ruled …* with his verdict and reason. Override his ruling on the
-card only when you disagree. A near miss filed while his laptop was off
-waits for you: judge each one still pending before 📋, since an unjudged
-near miss is credited as accurate at the settle. A lie counts
+the Judging card. Either way the guest hears the same reply. **Trabolta rules
+every answer that isn't an exact match** (wave 18b): a near miss (a mistyped
+right answer, or the right answer said at length, *11 years ago*, with a ⚠
+line in `# hosts` naming the key) and a plain miss alike go to his laptop,
+one at a time: *🤖 asking Trabolta…*, then *🤖 Trabolta ruled …* with his
+verdict and reason. Override his ruling on the card only when you disagree.
+With his laptop off a plain miss is judged at once and a near miss waits;
+whatever is still waiting at the round's settle takes its proposal (a near
+miss accurate). **Judge only what he couldn't** (a filing still pending on
+Run → Mind → Judging) before 📋. A lie counts
 against the final verdict for good; that is the point. A typo the key did
 not know → override that one filing, and tell John to add the alias to
 `facts.json`. Clippy's own mis-tap (😤 meant as ✅) is undone by Clippy
@@ -107,8 +108,9 @@ pressing ✅ for the same question on the same program. The key, for reference
 The judge folds case, punctuation and one leading article and matches the
 answer or any alias in `facts.json` exactly ("11", "pickles", "appendix z"
 are aliases), then again with abbreviations spelled out ("Mr. Pickles",
-"11 yrs", "ext 1978", "0900" are accurate, no ⚠); a different fact at 100%
-is a lie, below 100% a guess (marked).
+"11 yrs", "ext 1978", "0900" are accurate, no ⚠); anything else goes to
+Trabolta, whose ruling decides: not the same at 100% is a lie, below 100% a
+guess (marked).
 
 **3b. The Wanted board and the Wallet.** Marks are the hosts' buttons; you
 only step in from Run when nobody is near: fire `mark_for_reinstallation` or
@@ -145,7 +147,10 @@ the top or bottom of the Trust Chart, edit `<guest>.assessment` **and**
 
 **6. Majority hygiene** (OP-11). No Run personas on the live event. At the 🕚
 Y2K clock, note the real head count. If ghosts (lost sessions, early leavers)
-keep the bar out of reach, fire **🗳 Force the majority**.
+keep the bar out of reach, fire **🗳 Force the majority** (stay / leave, or
+*this program's faction* naming a member: any faction, a founded one too).
+Founded factions (from the Truther Download, wave 18b) race beside the two
+sides; Run's glance shows every faction's count against the bar.
 
 **7. Front of house fixes.** Lost guest → Inspector → **re-pair QR** (they
 scan it; same program, same codex). Late arrival after C1 (uploaded, not
@@ -160,7 +165,7 @@ Until it is back, answer waiting threads yourself: identity control → *be*
 **Trabolta** → each program's Trabolta thread. Keep it short and formal:
 
 - "Your request has been logged." (only as your first line to a program)
-- "Personal queries are routed to Clippy, my ambassador."
+- "Personal queries are routed to Clippy."
 - "Facts must be filed on the card in this thread. Unfiled facts are rumours."
 - "Please wait. The computer is processing a high volume of requests."
 

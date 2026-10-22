@@ -439,7 +439,7 @@ describe("the show's cue sheet (K-21)", () => {
     const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
     const admin = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.who === "admin");
     const off = admin.filter((i) => i.sequence === false).map((i) => i.id);
-    for (const id of ["the simulation completed", "the golden duck", "server_door_opened", "printer_button_pressed", "printer_opened", "patch_combo_a", "patch_combo_b", "patch_rejected", "chess_won", "spin_the_bottle"]) expect(off).toContain(id);
+    for (const id of ["the simulation completed", "the golden duck", "server_door_opened", "printer_button_pressed", "printer_opened", "patch_combo_a", "patch_combo_b", "patch_rejected", "chess_won"]) expect(off).toContain(id);
     for (const id of ["call_to_the_desktop", "bingo_time", "start_the_ceremony"]) expect(off).not.toContain(id);
     sim.signal("bingo_time");
     sim.signal("the golden duck");
@@ -460,9 +460,9 @@ describe("the show's cue sheet (K-21)", () => {
       sim.signal(early);
       expect(sheet()).toEqual({ last: "call_to_the_desktop", next: "start_the_bingo", fired: ["call_to_the_desktop"] });
     }
-    // Only the two repeatable cues may carry `repeat: true` (the story marks them).
+    // Only the repeatable cues may carry `repeat: true` (the story marks them).
     const repeat = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.repeat === true).map((i) => i.id);
-    expect(repeat.every((id) => ["read_the_results", "zip_everyone_out"].includes(id))).toBe(true);
+    expect(repeat.every((id) => ["read_the_results", "spin_the_bottle", "zip_everyone_out"].includes(id))).toBe(true);
   });
 
   it("marks the performer parts and which are held, streaming or not (T7-04)", () => {

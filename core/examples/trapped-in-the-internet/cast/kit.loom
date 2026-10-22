@@ -94,18 +94,18 @@ TRAIT Enforcer is Person
       Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. You are late: the night is already under way. Listen for the house. Go through the Tube.
     Self: The Tube is a tunnel of lights. Wires. Chips. The cables brush your face like hair. Keep walking.
     move program to The Desktop
-    reveal The Start Bar for program
-    reveal The CPU for program
-    reveal The Steam Room for program
-    reveal Disk Cleanup for program
-    reveal The Cloud for program
-    reveal The RAM for program
-    reveal The Fan Closet for program
-    reveal The Graphics Card for program
-    reveal The Hard Drive for program
-    // Right after the rooms, so the phone folds the house and its help
-    // desk into one "📂 … and # task-manager are open now." notice.
-    reveal task manager for program
+    reveal The Start Bar for program quietly
+    reveal The CPU for program quietly
+    reveal The Steam Room for program quietly
+    reveal Disk Cleanup for program quietly
+    reveal The Cloud for program quietly
+    reveal The RAM for program quietly
+    reveal The Fan Closet for program quietly
+    reveal The Graphics Card for program quietly
+    reveal The Hard Drive for program quietly
+    // Quietly (wave 18b, Q3): the rooms open with no "📂 … are open now."
+    // notice; Task Manager's line below says # task-manager is open.
+    reveal task manager for program quietly
     // An overlay on the Tube strip only (wled/tube), never a house look:
     // no `Night.lights` mirror, so a clearance mid-cut keeps Trabolta's 90 s
     // restore and stagehand's catch-up never replays the chase as the scene.

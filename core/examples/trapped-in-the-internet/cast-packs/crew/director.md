@@ -43,23 +43,22 @@ live and end are yours alone, at Run.
 | 5 | **V4/V5 🔎** Hunt 1 (15 min) | (auto **C2 ⏰** at 15 min) | *hungry* at C2 |
 | 6 | **V6 ⚖️** First Moment of Truth (two-minute filing window) | the server judges every filing | |
 | 6a | **⏱** Close round-one filings (auto at 2 min) | Clippy: "Pencils down" | |
-| 6b | **📋** Results: the next question (press three times: Q1, Q2, Q3) | Clippy reads the result; filings settle (+50 / marked) | |
-| 6c | **🍾** Spin the bottle, up to five times per question (off-sequence) | the TV asks Truth or dare; Clippy 🗣 / 🙅 | |
-| 7 | (optional) **☎️** Telephone · **🪅** Are you sure? — only if running early | | |
-| 8 | **📺** Preview hunt 2 → the ad hijack | Clippy panics | *rattled* |
-| 9 | **📓** Hunt 2: disperse for 1 hour | (auto **📥** +2 min · **⏳** 55 min · **🚨** +5 min; the sheet suggests nothing until 🚨 has fired) | |
-| 10 | **🏓** Truth Pong | | *judge* |
-| 11 | **🧮** Trabolta tallies round 2 | | |
-| 12 | **📊** Trust Chart → **🏆** rankings | VLC + the printer | |
-| 13 | **🫘** printer opened (only if the lid sensor fails; Adobe radios BEANS) | | *unravelling* |
-| 14 | **🗜** zip everyone out | | |
-| 15 | **🤖** Trabolta shares the next facts (press it; the scenario picks itself) | | |
-| 16 | wait for **IN** from the patch-bay watch → **🕚** Y2K clock (60 min) | (auto majority; clock warnings) | *desperate* |
-| 17 | door / patch bay (or the Tier 0 buttons 🚪 🔌 💥 ❌) | blackout → (auto 🪩) | |
-| 18 | **🏍** (after Combo A) or **🪦** (after Combo B), else auto **🌑** at midnight | | *last act* at 🌑 |
-| 19 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | | |
-| 20 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
-| 21 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT goes G9 → G11) → **G11 🎃** Resurrection (last: ends the show) | | |
+| 6b | **📋** Results: the next question (press three times: Q1, Q2, Q3) | Trabolta reads the result on the TV; filings settle (+50 / marked) | |
+| 6c | **🍾** Truth or Dare after the third result (NEXT offers five spins; more is fine) | the TV asks Truth or dare; Clippy 🗣 / 🙅 | |
+| 7 | **📺** Preview hunt 2 → the ad hijack | Clippy panics | *rattled* |
+| 8 | **📓** Hunt 2: disperse for 1 hour | (auto **📥** +2 min · **⏳** 55 min · **🚨** +5 min; the sheet suggests nothing until 🚨 has fired) | |
+| 9 | **🏓** Truth Pong | | *judge* |
+| 10 | **🧮** Trabolta tallies round 2 | | |
+| 11 | **📊** Trust Chart → **🏆** rankings | VLC + the printer | |
+| 12 | **🫘** printer opened (only if the lid sensor fails; Adobe radios BEANS) | | *unravelling* |
+| 13 | **🗜** zip everyone out | | |
+| 14 | **🤖** Trabolta shares the next facts (press it; the scenario picks itself) | | |
+| 15 | wait for **IN** from the patch-bay watch → **🕚** Y2K clock (60 min) | (auto majority; clock warnings) | *desperate* |
+| 16 | door / patch bay (or the Tier 0 buttons 🚪 🔌 💥 ❌) | blackout → (auto 🪩) | |
+| 17 | **🏍** (after Combo A) or **🪦** (after Combo B), else auto **🌑** at midnight | | *last act* at 🌑 |
+| 18 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | | |
+| 19 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
+| 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT goes G9 → G11) → **G11 🎃** Resurrection (last: ends the show) | | |
 
 A cue that doesn't apply yet does nothing but tell `# hosts` why (*"⚖ Not
 yet: 📄 Read truth.txt first."*, *"📺 Not yet: read Q2's results first
@@ -71,7 +70,7 @@ owns the night**: all of hunt 1 (until C2 ⏰ fires itself, then V6), hunt
 (until midnight fires 🌑). Never tap a timer's cue early: it cuts the window
 short. When the filing window closes by itself, ⏱ ticks and NEXT is 📋.
 After the dance NEXT is the ending's own cue. The timer cues (⏰ 📥 ⏳ 🚨)
-and the anytime ones (🍾 🗜 🎆 🧾 🔄 ♟ 🕊 🗳 🪩 💡 ✍) never become LAST or
+and the anytime ones (🗜 🎆 🔄 ♟ 🕊 🗳 🪩 💡 ✍) never become LAST or
 NEXT. The hardware fallbacks (🖨 🫘 🔌 💥 ❌) stay silent when early.
 
 **Judging is automatic.** Every fact filed on the 📝 card (question + answer
@@ -91,18 +90,20 @@ the question, then that filing's ✅ accurate / 😤 confident lie / 🤷
 uncertain (the current verdict is outlined; a filing that was settled as a
 mark, a guess, has no buttons). A host's 📝 on a program's card judges only that program's
 **latest** filing: while an earlier one still waits, it changes nothing and
-`# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. **A near miss** (wave
-11: a mistyped right answer, *Mr Pickels*, *Grko*, or the right answer said at length, *11
-years ago*) is never judged by itself, even in `auto`: it
-waits on the Judging card tagged *near* and `# hosts` gets a ⚠ line naming the key. **Trabolta
-rules on it** (wave 11b): with his laptop online the ⚠ line ends *… asked Trabolta to rule*,
-the card reads *🤖 asking Trabolta…*, and seconds later `# hosts` gets *🤖 Trabolta ruled …:
-the same as / not "<key>" (<verdict>).* with his reason. **You override only when you
-disagree**: that ruling's ✅ / 😤 / 🤷 on the card (the later verdict wins). Judging it
-yourself while he is asked cancels his ruling. A near miss filed while his laptop was off
-waits for you, and unjudged the settle credits it as accurate, so **judge every ⚠ still
-pending before 📋**. An abbreviation (*Mr. Pickles*, *11 yrs*, *0900*) is
-simply accurate, no ⚠; a plainly wrong answer at 100% is still an automatic lie. A program may file every
+`# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. **Trabolta rules every answer that isn't an exact match** (wave 18b): a
+near miss (*Mr Pickels*, *Grko*, *11 years ago*, with a ⚠ line in `# hosts`
+naming the key) and a plain miss alike go to his laptop, one at a time, his
+voice replies first. The card reads *🤖 asking Trabolta…* (or queued), and
+seconds later `# hosts` gets *🤖 Trabolta ruled …: the same as / not "<key>"
+(<verdict>).* with his reason; the screens show his stamp on each filing.
+**You override only when you disagree**: that ruling's ✅ / 😤 / 🤷 on the
+card (the later verdict wins); judging it yourself while he is asked cancels
+his ruling. With his laptop off a plain miss is judged at once (a lie at
+100%, a guess below) and a near miss waits; whatever is still waiting when
+the round settles takes its proposal (a near miss accurate). **Judge only
+what he couldn't** (a filing still pending on Run → Mind → Judging) before
+📋. An abbreviation (*Mr. Pickles*, *11 yrs*, *0900*) is
+simply accurate, no ⚠ and nothing asked. A program may file every
 open question, once each; a question not filed when its round closes never
 comes back. Clippy and the hosts still judge what is **said out loud** at
 Truth Pong and the final reveal (✅ / 😤 / 🤷 by question number).
@@ -125,10 +126,9 @@ never from a guest card.
 | stuck quest | fire the story event that advances it |
 | stale Bathroom Mode | Run → World → that guest's `afk` = false (at each summons) |
 | a guest left the party | Run → their row → **👋 Went home** (wave 11): they stop counting toward the majority (the board's *Present programs*); **Back** undoes it |
-| ghosts block the majority at Y2K | mark the ones who left 👋 Went home first; then **🗳 Force the majority** (stay / leave) |
+| ghosts block the majority at Y2K | mark the ones who left 👋 Went home first; then **🗳 Force the majority** (stay / leave), or **🗳 this program's faction** naming a member (a founded faction too) |
 | a featured guest lost their invitation, or their program reads 🔒 | Run → Join → 🖨 Print sheet → Invitations → that program's **🔓 lost? open 2 min** (two taps): anyone can pick it for two minutes, so have the invitee ready |
 | `# hosts` says Trabolta's worker is stalled (⏳) | the tech op restarts the `agents` job; answer his DMs as Trabolta from Run meanwhile (every waiting thread got his hold line once) |
-| a faction leader absent or stuck | **🧾** Let a faction win without its leader's task |
 | dead door terminal (the King's chess) | **♟** They beat the King: the door code (fallback), **naming the winner** (with nobody named it only reminds `# hosts`); the door terminal reports its own wins *by Terminal · <name>* |
 | the King's health knocked down too early, or after a rehearsal | **👑** Restore the King's health (Anytime): back to 15/15 in both games and at the door |
 | the crew need to open the server-room door themselves | **🔧** Crew going through the server-room door (Anytime; the server-room Antivirus has it too): for 2 minutes an opening only tells `# hosts`, The Heart is kept |

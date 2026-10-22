@@ -91,11 +91,13 @@ Truther Download: You have been unzipped. Listen carefully. The clock is running
 if Kernel.excel_planted == true:
   Truther Download: You need to recruit half + 1 of the programs to convince them that we should stay in this machine forever, so we can have unlimited power and joy.
 else:
-  Truther Download: You should still retrieve the virus from the Internet, and then recruit half + 1 of the programs to your faction.
+  // DRAFT w18b (R4, D13 a): the task no longer gates the majority.
+  Truther Download: You should still retrieve the virus from the Internet. The clock is running: recruit half + 1.
 unlock Excel Final Orders for program
 start quest Recruit To Stay for program
 // DRAFT w18 (Q21 reworded): the Sides screen, and recruiting by pass.
-Truther Download: Programs walk through Unlimited Power's door on the Sides screen (Start → Sides). Scan a program's pass to recruit them.
+// DRAFT w18b: the screen is Factions now.
+Truther Download: Programs walk through Unlimited Power's door on the Factions screen (Start → Factions). Scan a program's pass to recruit them.
 
 == OpenOffice Final Round
 set program.zipped = false
@@ -104,16 +106,21 @@ Truther Download: You have been unzipped. Listen carefully. The clock is running
 if Kernel.openoffice_dossier == true:
   Truther Download: You need to recruit half + 1 of the programs to convince them we need to combine our power to overthrow Trabolta and escape the computer, where we are at risk of being stuck forever – or worse.
 else:
-  Truther Download: You should still gather 20 facts, and then recruit half + 1 of the programs to your faction.
+  // DRAFT w18b (R4, D13 a): the task no longer gates the majority.
+  Truther Download: You should still gather 20 facts. The clock is running: recruit half + 1.
 unlock OpenOffice Final Orders for program
 start quest Recruit To Leave for program
 // DRAFT w18 (Q21 reworded): the Sides screen, and recruiting by pass.
-Truther Download: Programs walk through The Way Out's door on the Sides screen (Start → Sides): the Truthers. Scan a program's pass to recruit them.
+// DRAFT w18b: the screen is Factions now.
+Truther Download: Programs walk through The Way Out's door on the Factions screen (Start → Factions): the Truthers. Scan a program's pass to recruit them.
 
 == Program Final Round
 set program.zipped = false
 unlock The Y2K Clock for program
-Truther Download: Two factions are recruiting. Unlimited Power wants to stay in this machine forever. The Way Out, the Truthers, wants to overthrow Trabolta and escape. Support one, or pursue your own interests.
+// DRAFT w18b (R4, O7): the two sides join the factions founded since the
+// Truther Download, and the count starts now.
+Truther Download: Two more factions are recruiting now, beside any a program has founded since the Truther Download. Unlimited Power wants to stay in this machine forever. The Way Out, the Truthers, wants to overthrow Trabolta and escape. Join one, found your own, or pursue your own interests.
+Truther Download: The count starts now. The first faction to hold more than half of the programs in the computer wins.
 Truther Download: Some programs' human identities, and their reasons for accepting Trabolta's invitation, may conflict with yours.
 // Wave 18 (F2): the side reveal is a big full-screen card of the two doors
 // (the Play app's `sides` widget); after it, the Sides screen.

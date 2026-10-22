@@ -72,11 +72,13 @@ needle them in person.
 
 **The clubs (from the 🕚 Y2K clock).** Your Quest Log: *Patrol: the clubs* (from
 Task Manager). Unlimited Power and The Way Out become joinable: programs walk
-through a side's door on their phone's Sides screen, or say yes when a
-member recruits them by scanning their pass. Every join shows
-in your booth: *🔑 X joined Unlimited Power.* You know the score before
-anyone. A host may ask you for a count. The quest completes at the
-majority.
+through a side's door on their phone's Factions screen, or say yes when a
+member recruits them by scanning their pass. Since the Truther Download any
+program may also have **founded a faction of its own** (wave 18b); those race
+too, and the first faction past half + 1 from the clock on wins. Every join
+to a side shows in your booth: *🔑 X joined Unlimited Power.* (a founded
+faction's joins don't). You know the score before anyone. A host may ask you
+for a count. The quest completes at the majority.
 
 **Private rooms.** `# hidden-partition` and `# back-channel` are invite-only.
 You decide who gets in: invite programs who earn it (a password, a favour, a
@@ -142,8 +144,8 @@ left out.
   into a host's: a NEXT bar above the taskbar and a console. Leave the cues
   to the hosts: whoever is calling shows as 📣 on the bar.
 - **🕚 Y2K → the end:** watch the club joins. A majority (more than half of all
-  guest programs, once its leader has done their task) gives its members the
-  server-room door code. Anyone with the code belongs in the room; police the
+  guest programs still here, any faction: a side or one a program founded)
+  gives its members the server-room door code. Anyone with the code belongs in the room; police the
   patch bay (the second wrong combination trips the alarm).
 
 ## Props

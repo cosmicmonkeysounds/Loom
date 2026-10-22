@@ -65,7 +65,8 @@ addresses, codes, where things are kept).
   --filter @loom/core titi:facts` regenerates the story and
   `generated/print-stacks.md`); the server judges every 📝 filing (the
   confidence slider, 1–100); the First Moment of Truth is ⏱ → 📋 per question
-  → 🍾 the bottle; a host's verdict **marks** a program and the Antivirus
+  (Trabolta reads it on the TV) → 🍾 the bottle after the third (wave 18b);
+  a host's verdict **marks** a program and the Antivirus
   escort them (`# quarantine`); Truthcoin moves from each program's Wallet
   (CRA approves every third transfer); Clippy and the Antivirus have Quest
   Logs in their booths; the Installation Wizard (Julia) is a voice, the tent
@@ -103,7 +104,9 @@ addresses, codes, where things are kept).
   on a 📝 card, or one said at length, is a **near miss** (⚠ in `# hosts`);
   since wave 11b Trabolta rules on it (*🤖 Trabolta ruled …*) and a
   director overrides only when they disagree; an abbreviation (*Mr.
-  Pickles*) is simply accurate.
+  Pickles*) is simply accurate. **Wave 18b:** Trabolta rules every answer
+  that isn't an exact match, a plain miss too; directors judge only what
+  he couldn't (a filing still pending on Run → Mind → Judging) before 📋.
 - **Waves 8 and 9:** wave 8 shipped as `w8-1018`; wave 9 (2026-10-18) is
   merged and ships as `w9-1018`, and every pack is written to it: McAfee
   referees bets and holds no pot (a bet settles player to player, the
@@ -163,7 +166,10 @@ addresses, codes, where things are kept).
     everyone.
   - **Q21:** sides are joined on the **Sides screen** (two doors at the Y2K
     clock), and a member recruits by **scanning another program's pass**;
-    guests may also found their own **crews** (never a side).
+    guests may also found their own **crews** (never a side). **Wave 18b:**
+    the screen is **Factions**; from the Truther Download a program may
+    found a faction that races beside the two sides (the leaders' tasks no
+    longer gate the majority; 🧾 is gone).
   The new lines are `// DRAFT w18` until the user signs off
   `../SIGNOFF-w18.md`; every pack below is written to the drafts.
 
