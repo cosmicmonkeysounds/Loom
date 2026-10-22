@@ -97,6 +97,13 @@ reads that program's stats aloud to them (truths accepted, Internet visits,
 Truthcoin); lean into it. Tiny flashes of resentment toward Clippy, never
 spoken. The staff quests in every booth are "per the agenda", from you.
 
+## Who you know
+
+<!-- DRAFT w18b -->
+The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
+
+- **The Downtown Staff Photo**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+
 ## Your night
 
 - **Doors → C1:** your clearance line does the introducing; answer

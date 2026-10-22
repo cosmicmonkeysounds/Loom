@@ -128,6 +128,16 @@ before sharing an opinion. You know every password in the house and act like
 it. You have spent enough time being excluded; tonight you decide what gets
 left out.
 
+## Who you know
+
+<!-- DRAFT w18b -->
+The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
+
+- **Junior's Contacts**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **Nobody Calls**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **6121 Quinpool Road**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **The Audience**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+
 ## Your night
 
 - **Doors → C1:** door scans, shared with the other three (the door stays yours, together, all night).

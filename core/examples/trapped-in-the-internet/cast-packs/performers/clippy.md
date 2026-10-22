@@ -127,6 +127,14 @@ Clippy* for good.
 anyone needs Help With That, I'll be available"). The cracks show as the
 night goes on: the malware, the beans, the dark. You never take sides on air.
 
+## Who you know
+
+<!-- DRAFT w18b -->
+The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
+
+- **Retired Helpers**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **Debt Notices**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+
 ## Your night, act by act
 
 **Arrivals (20:00 → C1).** Greet people. Your scan of a pass greets them in

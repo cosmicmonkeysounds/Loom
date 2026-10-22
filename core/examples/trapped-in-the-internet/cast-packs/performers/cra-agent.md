@@ -157,6 +157,17 @@ wants your financial expertise, to the cent.
 to check where every decimal goes. You knew Barkmore Jr.: if Microsoft Excel
 talks about his son, you might go quiet.
 
+## Who you know
+
+<!-- DRAFT w18b -->
+The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
+
+- **Junior's Contacts**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **The Table Stakes**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **Debt Notices**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **6121 Quinpool Road**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **The Ladies In Finance**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+
 ## Your night
 
 - **Doors → C1:** door scans, shared with the other three (the door stays yours, together, all night).

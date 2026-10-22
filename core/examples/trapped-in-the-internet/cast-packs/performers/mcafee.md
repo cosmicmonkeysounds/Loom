@@ -136,6 +136,15 @@ now."* (every 20 minutes the app shows it in the lobby's *Around the house*
 ticker in your name, no longer a pop-up; say it too). Officious at the door, greedy at the exchange, allergic to being asked
 where your money is.
 
+## Who you know
+
+<!-- DRAFT w18b -->
+The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
+
+- **The Table Stakes**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **Forever**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **Brookhaven And Lockheed**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+
 ## Your night
 
 - **Doors → C1:** door scans, shared with the other three (the door stays yours, together, all night).

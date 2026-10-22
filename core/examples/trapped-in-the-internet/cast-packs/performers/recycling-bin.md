@@ -84,6 +84,13 @@ and you had great potential you never believed you could reach.
 proud of Bathroom Mode. Your scan of a pass greets the guest and tells them to
 use it.
 
+## Who you know
+
+<!-- DRAFT w18b -->
+The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
+
+- **Found On Indeed**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+
 ## Your night
 
 - **Porch until ≈ 20:30**, then hand the door to the house manager (tell them
