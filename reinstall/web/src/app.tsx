@@ -43,7 +43,7 @@ export function App() {
     if (search !== window.location.search) window.history.replaceState(null, "", `${window.location.pathname}${search}`);
     if (hints.code === "") {
       // A link without the passcode may still rename / re-role a set-up device.
-      if (hints.name !== null || hints.role !== null || hints.camera !== null || hints.arrowsTurn !== null) {
+      if (hints.name !== null || hints.role !== null || hints.camera !== null || hints.arrowsTurn !== null || hints.voice !== null) {
         setConfig((c) => {
           if (c === null) return c;
           const next = applyHints(c, hints);
@@ -409,6 +409,7 @@ export function Setup({ current, notice, onDone, onForget }: { current: Reinstal
   const [role, setRole] = useState<DeviceRole>(current?.role ?? "both");
   const [camera, setCamera] = useState<ReinstallConfig["camera"]>(current?.camera ?? "user");
   const [arrowsTurn, setArrowsTurn] = useState(current?.arrowsTurn ?? true);
+  const [voice, setVoice] = useState(current?.voice ?? false);
   const [error, setError] = useState<string | null>(notice);
   const [busy, setBusy] = useState(false);
   const codeInput = useRef<HTMLInputElement>(null);
@@ -417,7 +418,7 @@ export function Setup({ current, notice, onDone, onForget }: { current: Reinstal
     setBusy(true);
     setError(null);
     try {
-      const hints = { name: name.trim() || null, role, camera, arrowsTurn };
+      const hints = { name: name.trim() || null, role, camera, arrowsTurn, voice };
       if (code.trim() !== "") onDone(await provision(code.trim(), hints));
       else if (current !== null) onDone(applyHints(current, hints));
       else {
@@ -491,8 +492,11 @@ export function Setup({ current, notice, onDone, onForget }: { current: Reinstal
               <input type="checkbox" checked={arrowsTurn} onChange={(e) => setArrowsTurn(e.target.checked)} /> ← / → turn (else strafe)
             </label>
           </div>
+          <label className="radio checkbox">
+            <input type="checkbox" checked={voice} onChange={(e) => setVoice(e.target.checked)} /> 🎤 Voice link with the terminals (not on the tent laptop)
+          </label>
           <p className="muted small">
-            Provision by link: <code>/reinstall/?code=&lt;mod passcode&gt;&amp;name=Tent tablet&amp;role=both</code>. The house map editor is at <a href="map">/reinstall/map</a>.
+            Provision by link: <code>/reinstall/?code=&lt;mod passcode&gt;&amp;name=Tent tablet&amp;role=both</code> (add <code>&amp;voice=1</code> on a device away from the tent: the players and the terminals near them hear each other). The house map editor is at <a href="map">/reinstall/map</a>.
           </p>
         </Wizard>
       </form>

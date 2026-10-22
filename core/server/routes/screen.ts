@@ -842,6 +842,12 @@ export interface ScreenDevice {
   /** The page is full screen (wave 17; absent: a build that can't be, has it
    *  turned off in ⚙, or predates the flag). */
   fullscreen?: boolean;
+  /** The voice link's microphone (wave 19, `MIC_STATES`): `live` (open),
+   *  `muted` (turned off in ⚙ on that tablet), `denied` (the permission
+   *  refused), `insecure` (plain http: no getUserMedia), `locked` (open, but
+   *  the page's sound waits for a touch), `off` (the view or the map turns it
+   *  off). Absent: a build that predates it. */
+  mic?: ScreenMic;
   /** The terminal's build stamp. */
   version?: string;
   /** (wave 18b, Q8) The tablet says the house announcements right now
@@ -849,9 +855,13 @@ export interface ScreenDevice {
   announce?: boolean;
 }
 
+/** What a terminal's `mic=` may say (wave 19). */
+export const MIC_STATES = ["live", "muted", "denied", "insecure", "locked", "off"] as const;
+export type ScreenMic = (typeof MIC_STATES)[number];
+
 /** The device fields off a poll's query (`audio=1|0`, `vis=v|h`,
- *  `bat=<0-100>[c]`, `fs=1|0`, `ver=<build>`, wave 18b `ann=1|0`);
- *  anything malformed is left out. */
+ *  `bat=<0-100>[c]`, `fs=1|0`, `mic=<MIC_STATES>`, `ver=<build>`, wave 18b
+ *  `ann=1|0`); anything malformed is left out. */
 export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   const d: ScreenDevice = {};
   const audio = q("audio");
@@ -865,6 +875,8 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   }
   const fs = q("fs");
   if (fs === "1" || fs === "0") d.fullscreen = fs === "1";
+  const mic = q("mic");
+  if ((MIC_STATES as readonly string[]).includes(mic)) d.mic = mic as ScreenMic;
   const ver = q("ver").replace(/[^\w.:+-]/gu, "").slice(0, 24);
   if (ver !== "") d.version = ver;
   const ann = q("ann");

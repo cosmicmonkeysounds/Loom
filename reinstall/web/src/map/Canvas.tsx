@@ -17,7 +17,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { buildWalls, polyArea, polyBounds, roomById, wallEnds } from "@loom/house";
+import { buildWalls, polyArea, polyBounds, roomById, voiceOn, wallEnds } from "@loom/house";
 import type { AudioConfig, HouseMap, PlayerState, Vec2, WallSegment } from "@loom/house";
 import { aimSpeaker, coverageRadius, moveSpeaker, rotateSpeaker, speakerFloor } from "./audio.ts";
 import { doorGap, moveDoorAlong, placeDoor } from "./doors.ts";
@@ -531,6 +531,7 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
               </g>
               <text className="marker-label" x={t.pos[0]} y={t.pos[2] + 0.42}>
                 {t.name}
+                {voiceOn(house, t) ? "" : " 🔇"}
               </text>
               {edit && on && <circle className="rot-handle" cx={handle[0]} cy={handle[1]} r={0.13} onPointerDown={(e) => startDrag(e, { kind: "aim", sel: s, base: house })} />}
             </g>

@@ -6,14 +6,14 @@ golden duck, in a virtual copy of the house. The design contract is
 [`docs/loom-reinstall.md`](../../docs/loom-reinstall.md) (§5 for this game, §1
 for the house map, §2 for the server).
 
-Thumbsticks, plus one button for the King:
+Thumbsticks, plus one button for the King (and a laser in the lobby):
 
 | | |
 |---|---|
 | **Left stick** | walk where you look (dead zone 0.15, 1.8 m/s) |
 | **Right stick** | snap-turn 45° (flick, let go, flick); smooth turn with `smooth_turn` |
 | **Trigger** (either hand) or **A / X** | hit the King, near and facing him — once per visit |
-| **Lobby** | stick up / down picks a program, hold **right** for 1 s to start |
+| **Lobby** | point a controller at your program's tile and pull the **trigger** (either hand: a thin beam shows where), or walk the tiles with the stick and hold **right** for 1 s; then **START** (trigger, or hold right again) or **BACK** |
 
 ## Layout
 
@@ -26,9 +26,9 @@ Thumbsticks, plus one button for the King:
 | `net/server_link.gd` | The `ServerLink` autoload: config, mod login, station polling, begin / pose / found / King hit / end, house fetch, the shared King, and the spatial stream (`sse_client.gd` + `sse_parser.gd`). The 10 Hz pose pump is latest-only and flushes the newest pose before a claim (`pose_pump.gd`). |
 | `net/cam_feeds.gd` | The terminals' live camera feeds: the list every 2 s, the nearest four on the player's floor within 12 m at ~3 fps, one request per spot, JPEG into a texture updated in place, back-off, stopped with the session. |
 | `net/avatar_cache.gd` | The ghosts' profile pictures: two downloads at a time off the event's `/api/avatar/<key>`, 2 MB cap, cached, a failure not retried until the next visit; PNG / JPEG / WebP / SVG (rendered once near 256 px, whatever size it declares) by magic bytes, drawn as a Win98-bevelled tile. |
-| `net/config.gd` | Station configuration and its precedence. |
-| `player/` | The XR rig on a CharacterBody3D (`player.tscn`), the locomotion maths (`locomotion.gd`), and the comfort vignette. |
-| `game/` | The state machine (`game_flow.gd`, `game.gd`), the lobby and its picker, the duck, the chevron trail, ghosts of other players, and the HUD. |
+| `net/config.gd` | Station configuration and its precedence; the in-headset setup's `user://station.json` (`save_user` / `forget_user`). |
+| `player/` | The XR rig on a CharacterBody3D (`player.tscn`), the locomotion maths (`locomotion.gd`), the comfort vignette, and the lobby's pointer (`pointer.gd`: a laser from each hand's aim pose, the mouse on a desktop). |
+| `game/` | The state machine (`game_flow.gd`, `game.gd`), the lobby (`lobby.gd`: the picture tiles, the confirm card; `lobby_tiles.gd`: its geometry; `picker.gd`: the stick; `setup_panel.gd`: SET UP THIS HEADSET), the duck, the chevron trail, ghosts of other players, and the HUD. |
 | `main.tscn` / `main.gd` | Bootstrap: OpenXR when there is a runtime, else the desktop rig. |
 | `test/` | The headless checks (`run.sh`). |
 | `tools/` | `quest.sh` builds, sideloads and provisions the Quest APK (below); `make_action_map.gd` regenerates `openxr_action_map.tres`; `screenshot.gd` renders a few views. |
@@ -52,12 +52,66 @@ or a `house` / `hello` frame), for example because the fetch failed and the
 bundled map is still up, the link retries every 2 s and the HUD says the
 house may be wrong until the event's map arrives.
 
+## Run it from the Godot editor
+
+Open `reinstall/vr/project.godot` in Godot 4.7 and press **F5**. No headset,
+no build, no arguments:
+
+1. **The OpenXR noise is harmless.** With no OpenXR runtime on the Mac the
+   log shows five `OpenXR-Loader` errors, `OpenXR: Failed to enumerate
+   number of extension properties` and *OpenXR was requested but failed to
+   start … Godot will start in normal mode.* (`startup_alert=false`, so no
+   dialog). The game then runs on the desktop rig.
+2. **SET UP THIS HEADSET.** The committed `config/station.json` carries the
+   placeholder passcode, so the lobby asks: pick a server (the show's,
+   or **This computer · 127.0.0.1:7000** (`http://127.0.0.1:7000`), which an editor or desktop
+   run always offers), type the event's **moderator passcode** on the
+   on-screen keyboard or the Mac's keys (Tab switches to the name field,
+   Enter connects), and click **CONNECT**. A wrong code says *That isn't a
+   moderator passcode.*; no server says *Can't reach the server.*; **PLAY
+   OFFLINE** plays this run with no server. The Output panel prints each
+   lobby view (`reinstall-vr: lobby — SET UP THIS HEADSET`).
+3. **It asks once.** A working passcode is saved to `user://station.json`
+   — on a Mac `~/Library/Application Support/Godot/app_userdata/Reinstallation
+   VR/station.json` — so the next F5 goes straight to PICK YOUR PROGRAM.
+   To forget it, hold the lobby's **⚙** for 2 s (or delete that file).
+   Never put a dev file under `config/`: the Quest preset ships
+   `config/*.json`, passcode included.
+4. **Pick and play with the mouse and keys.** In the lobby the mouse is
+   never captured: click a tile, then **START**. The keys work too (W/S
+   ↑/↓ a row, A/← and a quick D/→ a tile, hold D/E/→ 1 s to pick, Enter to
+   pick / start, Backspace to go back). In the house: WASD walk, Q/E turn,
+   Space / F hit the King, click to capture the mouse and look, Esc to let
+   it go.
+
+**A local server.** *This computer* is `http://127.0.0.1:7000`, the event
+server `pnpm dev` runs (`--sync "<project>"` pushes a story into it); the
+moderator passcode is on the editor's Run page. A scratch server on another
+port works too (`LOOM_PORT=7641 LOOM_MOD_PASS=… pnpm --filter @loom/core
+serve`, plus `LOOM_DB_WAIT=off` with no database): name it with
+`--server http://127.0.0.1:7641` (below) and the setup panel offers it
+first. Only a marked or captured program has a tile (`/api/mod/set
+{id, field: "captured", value: true}` makes one).
+
+**Run arguments from the editor.** *Debug → Customize Run Instances…* →
+*Main Run Args*, everything after `--` (the command-line flags below):
+`-- --offline`, `-- --server http://127.0.0.1:7641`, or a whole station
+`-- --server http://127.0.0.1:7000 --code <mod passcode> --station vr-1`
+(which skips the setup panel and saves nothing).
+
+**The microphone.** Once the voice link records (`audio/driver/enable_input`
+in `project.godot`), macOS asks once whether Godot may use the microphone;
+the prompt is attributed to Godot.app. Allow it to be heard on the
+terminals; the game plays either way.
+
 ## Run it on a desktop
 
 Without an OpenXR runtime (a Mac) the game runs on the desktop rig. WASD or
-↑↓ walk, Q/E or ←→ turn, Space or F hits the King, and the mouse looks
-(click to capture it, Esc to release it). In the lobby the same keys drive the picker: W/S choose, and
-holding D or E for 1 s confirms.
+↑↓ walk, Q/E or ←→ turn, Space or F hits the King, M mutes the microphone,
+and the mouse looks (click to capture it, Esc to release it). In the lobby
+the mouse points instead: click a tile, then START. The keys drive the stick picker there:
+W/S a row up / down, A or a quick D a tile left / right, holding D or E
+for 1 s picks, Enter picks / starts, Backspace goes back.
 
 ```bash
 G=/Applications/Godot.app/Contents/MacOS/Godot
@@ -93,15 +147,29 @@ and logs in as a moderator. Settings are applied in this order (lowest first):
 
 1. built-in defaults
 2. `res://config/station.json`: committed, with placeholders (`CHANGEME` never dials out)
-3. `user://station.json`: per headset
-4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--smooth-turn] [--autopilot]`
+3. `user://station.json`: per headset — written by the lobby's **SET UP THIS
+   HEADSET** panel (or pushed by `quest.sh provision`)
+4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--smooth-turn] [--autopilot] [--voice false] [--mic false]`
+
+`voice` (on by default) is the voice link; `mic: false` keeps it but
+listens only (the headset hears the terminals and is never heard).
 
 ```json
 { "server": "https://app.mapsandducks.com", "code": "4821", "station": "vr-1", "name": "Headset 1", "smooth_turn": false }
 ```
 
 `station` is the id the tablet's **Send to <station>** targets (§2.1). Give
-every headset its own `station` and `name`.
+every headset its own `station` and `name`. A headset set up in the lobby
+mints its own station id from its name (`vr-<name>-<4 hex>`), so two
+headsets both called *Headset* never share one.
+
+**Setting a headset up in the headset.** An APK with no passcode baked in
+(`quest.sh build` or `build --debug` without `--station`: the committed
+placeholder) shows **SET UP THIS HEADSET** in the lobby instead of dialling
+out — so one APK can serve every headset: point at the server, type
+the moderator passcode on the keyboard with the laser, name the headset,
+pull the trigger on **CONNECT**. A headset build never offers *This
+computer*. The setup is kept until someone holds the lobby's ⚙ for 2 s.
 
 ## The Quest build
 
@@ -183,9 +251,14 @@ with `released: true` while you walk to Gerald.
 
 ### On the night
 
-- The headset waits in the lobby. Scanning a pass on the tent tablet and
-  choosing **Send to Headset 1** starts that program within a second. Without
-  a tablet, the player picks themselves from the list.
+- The headset waits in the lobby: **PICK YOUR PROGRAM**, a tile with the
+  profile picture of every program marked for reinstallation (*Nobody is
+  marked for reinstallation yet.* when there are none). The player points
+  at theirs and pulls the trigger (or walks the tiles with the stick and
+  holds right 1 s), then **START** on *Start as <name>?* — no tablet
+  needed. Scanning a pass on the tent tablet and choosing **Send to
+  Headset 1** still starts that program within a second, whatever the
+  lobby shows.
 - Taking the headset off ends the session after a 2 s grace (`user_presence`
   OpenXR extension). On runtimes without it, losing focus ends the session
   after 15 s. The grace runs on the wall clock, so a headset that went to
@@ -247,6 +320,39 @@ with `released: true` while you walk to Gerald.
   puts the terminal's own screen back (a timeout or a 5xx alone keeps the
   last frame); failures back off, a spot's frames up to 5 s, the list up
   to 30 s.
+- **The terminals can hear and be heard** (wave 19, `net/voice_link.gd`,
+  [§2.4](../../docs/loom-reinstall.md)): while playing, a person talking at
+  a wall terminal is heard from that terminal's screen in the virtual
+  house (panned from where it hangs; the server sets how loud — full in the
+  same room, fading to nothing at 12 m, the nearest four on your floor),
+  and the player's voice is heard on the terminals within 8 m of them. The
+  mic is open with a level gate (nothing goes up in silence). While a
+  terminal's voice plays here, plus 0.3 s, the gate is **raised** to
+  −28 dBFS instead of held (D5b, the barge-in): the room's echo off the
+  Quest's speakers stays home, but a player who speaks up is heard at once,
+  and the terminal then holds its own mic, so the room pauses for them. A
+  faint, far terminal (gain under 0.2) raises nothing. It only uploads
+  while some terminal can hear it. **B / Y** (either hand; **M** on a Mac) mutes and unmutes the
+  mic. The HUD's bottom line says **🎤 LIVE** (· *someone can hear you*
+  when a terminal listens), **🎤 MUTED**, or **NO MIC** (**🎤 …** until
+  the mic hands over a real sample: a missing or denied input gives only
+  zeros, which read NO MIC). The tent's terminal (the tent laptop beside
+  the headsets) is never in the link. A Quest asks to allow recording audio
+  (Android's microphone prompt) **in the lobby**, before the first session
+  (the dialog pauses the app; in a session that would end it); one still up
+  at a start ends nobody's session. Until it is allowed the HUD says *NO MIC ·
+  allow the microphone* and the game still hears the terminals. To ask
+  again after a refusal: Settings → Apps → Reinstallation VR → Permissions
+  → Microphone (or reinstall the APK). Offline there is no voice.
+- **The microphone from the Godot editor**: `project.godot` turns audio
+  input on (`audio/driver/enable_input`), so an F5 run on a Mac asks once
+  for the microphone, as *Godot* (the game runs inside Godot.app). If it
+  was refused, the HUD still says 🎤 LIVE but nothing goes up (macOS hands
+  the game silence); reset the answer with `tccutil reset Microphone
+  org.godotengine.godot` and run again. Debug → Customize Run Instances →
+  Main Run Args takes the same arguments as the command line (e.g.
+  `-- --server http://127.0.0.1:7000 --code <mod> --station vr-1`, or
+  `--mic false` to run without the microphone).
 
 ## Tests
 
@@ -264,7 +370,20 @@ scene, then runs `test/game.gd` headless with `--offline`:
   rotate-about-head
 - config precedence and command-line parsing
 - latest-only pose coalescing, and the SSE parser
-- the lobby picker's hold-to-confirm
+- the lobby picker's hold-to-confirm, and the tile grid's stick (rows,
+  left / right, a right flick let go early moves on)
+- the lobby's tiles (layout, pages, hit mapping, the ray onto the panel,
+  the beam's hand rule), and on `main.tscn` with a fake link: tiles with
+  pictures / initials / tags, the laser's hover and press, *Start as
+  <name>?* with START / BACK, Enter / Backspace, a card closed when its
+  program leaves, the tablet's program landing with a card up, pages, the
+  ⚙ hold
+- the SET UP panel: the laser and physical keys typing, the server choice,
+  CONNECT's answers, PLAY OFFLINE; and the server link's setup over a fake
+  transport (every refusal stays unconfigured, a working passcode is saved
+  to a user file and links, an older setup's late answer is dropped,
+  forget, offline); the committed `config/station.json` still holds
+  `CHANGEME`
 - the server link over a fake transport: the heartbeat, the claim schedule,
   the map refetch / warning when the wrong map is up, the duck adopted
   from the map answer and from `duck` frames, the shared King from `hello` /
@@ -283,6 +402,18 @@ scene, then runs `test/game.gd` headless with `--offline`:
   texture updates, the panel's transform from pos / yaw / pitch, and the
   loop over a fake requester (one request per spot, ~3 fps, a 404 → the
   screen back, kept across a rebuild, stop ignores late answers)
+- the voice link (`net/voice_codec.gd` against `@loom/house`'s vectors in
+  `test/golden/voice-mulaw.json` — the constants, every μ-law byte, the
+  resampler, the RMS level, the gate, the jitter plan, `voice_on` and
+  `hears_terminals` on the show map), the uplink over a fake
+  `HTTPClient`-like (one keep-alive connection, one POST in flight, `seq`
+  up, two chunks a batch, at most 1 s queued, reconnects, the idle
+  reopen), and the link with fake frames / playbacks / clock (listen on
+  and off, the gate, half-duplex, the emitter under `Terminal_<id>` at the
+  server's gain, the jitter target and skip, `bye`, a rebuild re-attaching
+  it, mute, stop, listen-only), and the game running it while a session
+  plays (B / Y / M, the HUD line, stopped in the lobby, off offline or with
+  `--voice false`)
 - a smoke test that `main.tscn` builds the house
 - `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed)
 - the autopilot reaching every duck spot of the show from the spawn, once

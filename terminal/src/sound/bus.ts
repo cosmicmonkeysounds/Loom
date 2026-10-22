@@ -4,7 +4,8 @@
 //! a per-view level and a soft compressor, so a pile of popups never clips:
 //!
 //!   sfx parts → sfx bus (view level: tv 0.35, others 0.6) → compressor ─┐
-//!   the announcement chime, the casino's jingles ───────────────────────┴→ master → speakers
+//!   the announcement chime, the casino's jingles ───────────────────────┤
+//!   the players' voices (wave 19, `voice/playback.ts`) → voices bus ────┴→ master → speakers
 //!
 //! The rules for an effect (`sfxGate`, pure): it is **dropped, never
 //! queued**, when sound is still locked (no gesture yet), when the page is
@@ -18,6 +19,13 @@
 //! levels on the master bus and skip the gate but for the lock. So does the
 //! reinstallation game on the tent laptop (wave 18b, `soundOutput()`: the
 //! game's quack, fanfare, buzz and thud play on the master bus).
+//!
+//! The voices bus (wave 19) carries the reinstallation players this terminal
+//! hears: never the voice floor's (Trabolta's replies never queue behind a
+//! player), ducked to `VOICES_DUCK` while the floor is busy, and muted with
+//! the effects (`setSoundMuted`: the TV's director mute, the mirror). The
+//! microphone's half-duplex asks `soundPlayingUntil()` when this page's own
+//! effects, jingles and chime stop, so they are never sent to the games.
 
 import { audioContext, voiceFloor } from "../speech/engine.ts";
 import { CHIME_PARTS, partsLength, recipe, type NoisePart, type Part, type SfxName, type TonePart } from "./library.ts";
@@ -28,6 +36,12 @@ export const VIEW_VOLUME = { tv: 0.35, other: 0.6 } as const;
 export const OVER_GAIN = 0.4;
 /** The same effect again inside this long plays once (ms). */
 export const MIN_GAP_MS = 35;
+/** The players' voices' level. */
+export const VOICES_LEVEL = 1;
+/** …while the voice floor is busy (the character or an announcement speaking). */
+export const VOICES_DUCK = 0.3;
+/** A duck / mute on the voices bus ramps over this long (s): no click. */
+const VOICES_RAMP_S = 0.08;
 
 export interface SfxOpts {
   /** Play under a speaking voice (at `OVER_GAIN`) instead of dropping. */
@@ -58,6 +72,9 @@ interface Bus {
   ctx: SoundContext;
   master: GainNode;
   sfx: GainNode;
+  voices: GainNode;
+  /** The level the voices bus is (ramping) at. */
+  voicesAt: number;
   noise: AudioBuffer | null;
 }
 
@@ -65,12 +82,16 @@ let override: SoundContext | null | undefined;
 let bus: Bus | null = null;
 let muted = false;
 let volume: number = VIEW_VOLUME.other;
+let ducked = false;
+/** Context seconds when the last effect / jingle / chime scheduled ends. */
+let until = 0;
 const lastPlayed = new Map<string, number>();
 
 /** Use this context instead of the page's (tests; undefined = the page's again). */
 export function setSoundContext(c: SoundContext | null | undefined): void {
   override = c;
   bus = null;
+  until = 0;
   lastPlayed.clear();
 }
 
@@ -95,14 +116,56 @@ function ensureBus(): Bus | null {
     sfx.connect(comp);
     comp.connect(master);
   } else sfx.connect(master);
-  bus = { ctx, master, sfx, noise: null };
+  const voices = ctx.createGain();
+  voices.gain.value = voicesLevel();
+  voices.connect(master);
+  bus = { ctx, master, sfx, voices, voicesAt: voices.gain.value, noise: null };
   return bus;
+}
+
+function voicesLevel(): number {
+  return muted ? 0 : ducked ? VOICES_DUCK : VOICES_LEVEL;
+}
+
+function applyVoices(b: Bus): void {
+  const v = voicesLevel();
+  if (b.voicesAt === v) return;
+  const g = b.voices.gain;
+  const t = b.ctx.currentTime;
+  g.setValueAtTime(b.voicesAt, t);
+  g.linearRampToValueAtTime(v, t + VOICES_RAMP_S);
+  b.voicesAt = v;
 }
 
 /** Mute every effect on this page (the TV's director mute). The chime and the casino are not effects. */
 export function setSoundMuted(on: boolean): void {
   muted = on;
-  if (bus !== null) bus.sfx.gain.value = on ? 0 : volume;
+  if (bus !== null) {
+    bus.sfx.gain.value = on ? 0 : volume;
+    applyVoices(bus);
+  }
+}
+
+/** Duck the players' voices under the voice floor (the voice link polls `voiceFloor.busy`). */
+export function setVoicesDucked(on: boolean): void {
+  ducked = on;
+  if (bus !== null) applyVoices(bus);
+}
+
+/** The voices bus to play the players on (null: no audio here). */
+export function voicesOut(): { ctx: SoundContext; out: AudioNode } | null {
+  try {
+    const b = ensureBus();
+    return b === null ? null : { ctx: b.ctx, out: b.voices };
+  } catch {
+    return null;
+  }
+}
+
+/** Context seconds when this page's own effects, jingles and chime stop
+ *  (0 = none yet): the microphone holds its uplink until then. */
+export function soundPlayingUntil(): number {
+  return until;
 }
 
 export function soundMuted(): boolean {
@@ -196,6 +259,7 @@ function scheduleNoise(b: Bus, p: NoisePart, t0: number, out: AudioNode, level: 
 
 /** Schedule parts on `out` from `t0` (context seconds). */
 function schedule(b: Bus, parts: readonly Part[], t0: number, out: AudioNode, level: number, pitch = 1): void {
+  until = Math.max(until, t0 + partsLength(parts) + 0.02);
   for (const p of parts) {
     if (p.kind === "tone") scheduleTone(b, p, t0, out, level, pitch);
     else scheduleNoise(b, p, t0, out, level, pitch);

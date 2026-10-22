@@ -60,6 +60,29 @@ func notice(text: String) -> void:
 	_sub.text = text
 
 
+# --- voice ---
+
+var _mic: Label3D
+
+
+## The voice link's line under the hint (🎤 LIVE / 🎤 MUTED / NO MIC; "" hides it).
+func set_mic(text: String) -> void:
+	if _mic == null:
+		if text == "":
+			return
+		_mic = _label(0.026, HouseLook.TEAL_GLOW, Vector3(0, -0.465, -1.1))
+	_mic.text = text
+
+
+func mic_text() -> String:
+	return _mic.text if _mic != null else ""
+
+
+## The notice up now ("" for none).
+func notice_text() -> String:
+	return _sub.text if _big.text == "" else ""
+
+
 func big_text() -> String:
 	return _big.text
 
