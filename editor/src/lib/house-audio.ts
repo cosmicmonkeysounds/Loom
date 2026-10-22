@@ -43,6 +43,10 @@ export interface AudioStatus {
   warnings: string[]
   /** (wave 18b) The server's clock (ms) as of this answer; absent from an older server. */
   now?: number
+  /** (wave 18b) The tablets list is this event's own (`POST
+   *  /api/mod/audio/announce`), laid over `source`; Save to project writes
+   *  it into the file. Absent (false) from an older server. */
+  announceSaved?: boolean
 }
 
 /** `POST /api/mod/audio/stop`. */
@@ -69,6 +73,7 @@ export function audioStatusOf(wire: unknown): AudioStatus | null {
     problems: strings(w['problems']),
     warnings: strings(w['warnings']),
     ...(typeof w['now'] === 'number' ? { now: w['now'] } : {}),
+    ...(w['announceSaved'] === true ? { announceSaved: true } : {}),
   }
 }
 
@@ -169,6 +174,10 @@ export function sameBesideHouseList(a: Record<string, unknown>, b: Record<string
 }
 
 /** The card's warning while a director save is in force. */
+/** Under the card when only the tablets list is this event's own. */
+export const LIST_SAVED_NOTE =
+  'The tablets list is this event’s only (the speakers are the config in force, and a newer audio.json pushed to the project still plays here). Save to project keeps the list after End → relaunch.'
+
 export const DIRECTOR_SAVE_PINS =
   'This event’s save holds the whole speaker config (the device, the speakers, the routes and this list), not only the list: while it stands, a newer audio.json pushed to the project (a sync) does not play here. Save to project ends it.'
 

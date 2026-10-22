@@ -176,18 +176,18 @@ Front of house: getting people in.
   playing now. A tablet on a ticked spot says them aloud unless its own
   ⚙ says Always or Never. They are off by default: the house speakers
   reach most rooms, and a tablet in a room with a house speaker would say
-  each one twice. A tick is saved for **this event only** (the card says
-  *In force: this event's save*); **Save to project** writes it into the
-  project's `audio.json`, so it survives End → relaunch. That save holds
-  the **whole** speaker config, not only the list: while it stands, a
-  newer `audio.json` synced to the project does not play on this event,
-  and the card says so. When the project's file has other speakers than
-  the save (a sync since the tick, or a map-page save on this event),
-  Save to project asks first and then keeps the project's speakers,
-  adding only the list; to write the map page's speakers, use Save to
-  project on the map page's Audio panel. If someone saved the speakers
-  from the map page since the card read them, the tick is refused and the
-  card reloads: tick it again.
+  each one twice. A tick is kept for **this event only**: only the list
+  is laid over the speakers in force, so a newer `audio.json` synced to
+  the project still plays here, and the card says the list is this
+  event's. **Save to project** writes it into the project's `audio.json`,
+  so it survives End → relaunch. A speaker save from the map page is
+  different: it holds the **whole** speaker config, and while it stands a
+  newer synced `audio.json` does not play on this event (the card says
+  so). When the project's file has other speakers than that save, Save to
+  project asks first and then keeps the project's speakers, adding only
+  the list; to write the map page's speakers, use Save to project on the
+  map page's Audio panel. If someone saved the speakers since the card
+  read them, the tick is refused and the card reloads: tick it again.
 - **House map** — when the event has a house map, one button per map
   variant (*Trapped in the Internet*: **Tent** | **Shed**), the one
   playing now highlighted. Press the other to switch every tablet,

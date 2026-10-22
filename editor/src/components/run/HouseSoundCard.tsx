@@ -14,7 +14,7 @@ import { RunBackend, useCockpit } from '@/store/cockpit'
 import { useHouseAudio } from '@/store/house-audio'
 import { useTerminals } from '@/store/terminals'
 import { TerminalStatus } from '@/lib/terminals'
-import { DIRECTOR_SAVE_PINS, StopOutcome, announceTerminalsOf, routerLine, sourceLabel, stopButtonLabel } from '@/lib/house-audio'
+import { DIRECTOR_SAVE_PINS, LIST_SAVED_NOTE, StopOutcome, announceTerminalsOf, routerLine, sourceLabel, stopButtonLabel } from '@/lib/house-audio'
 import { useNow } from '@/components/cockpit/director/clock'
 
 const btn = 'rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40'
@@ -153,7 +153,7 @@ export function HouseSoundCard() {
       )}
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
         <span data-testid="run-house-sound-source">In force: {sourceLabel(status.source)}</span>
-        {status.source === 'director' && (
+        {(status.source === 'director' || status.announceSaved === true) && (
           <button className={btn} disabled={busy !== null} onClick={() => void saveToProject()} data-testid="run-house-sound-project">
             {busy === 'project' ? 'Saving…' : 'Save to project'}
           </button>
@@ -162,6 +162,11 @@ export function HouseSoundCard() {
       {status.source === 'director' && (
         <p className="mt-1 text-[11px] text-amber-300/90" data-testid="run-house-sound-pins">
           {DIRECTOR_SAVE_PINS}
+        </p>
+      )}
+      {status.source !== 'director' && status.announceSaved === true && (
+        <p className="mt-1 text-[11px] text-zinc-400" data-testid="run-house-sound-list-saved">
+          {LIST_SAVED_NOTE}
         </p>
       )}
     </section>

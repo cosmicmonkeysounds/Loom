@@ -515,6 +515,15 @@ export const audioApi = {
     const r = await req<{ version?: unknown; warnings?: unknown }>('POST', `/e/${eventId}/api/mod/audio`, { audio, base })
     return { version: typeof r.version === 'string' ? r.version : '', warnings: Array.isArray(r.warnings) ? r.warnings.filter((w): w is string => typeof w === 'string') : [] }
   },
+  /** One map terminal spot on (or off) the house list of tablets that also
+   *  say the announcements (`base` = the version it was read at: 409 when
+   *  someone saved since). Laid over the config in force for this event,
+   *  never a whole director's save, so a newer project audio.json still
+   *  plays here; Save to project writes the list into the file. */
+  async announce(eventId: string, spot: string, on: boolean, base: string): Promise<{ version: string; terminals: string[] }> {
+    const r = await req<{ version?: unknown; terminals?: unknown }>('POST', `/e/${eventId}/api/mod/audio/announce`, { spot, on, base })
+    return { version: typeof r.version === 'string' ? r.version : '', terminals: Array.isArray(r.terminals) ? r.terminals.filter((t): t is string => typeof t === 'string') : [] }
+  },
   /** The config in force becomes the project's `audio.json` (survives End → relaunch). */
   async saveToProject(eventId: string): Promise<void> {
     await req<unknown>('POST', `/e/${eventId}/api/mod/audio/project`, {})

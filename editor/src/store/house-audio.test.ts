@@ -23,6 +23,10 @@ let calls: Call[] = []
 let version = 'v1'
 let audio: Record<string, unknown> = { version: 1, cues: {}, announce: { to: ['everywhere'], chime: true } }
 let saveStatus = 200
+/** The server has `POST /api/mod/audio/announce` (an older one answers 404 unknown mod action). */
+let announceRoute = true
+/** The tablets list is this event's own (the announce route laid it over the config). */
+let listSaved = false
 /** The project's audio.json text (null = no such file; 'error' = the read fails). */
 let projectFile: string | null | 'error' = null
 let stopAnswer: { status: number; body: unknown } = { status: 200, body: { ok: true, seq: 3, router: { online: true, lastSeen: 1, name: 'house-mac' } } }
@@ -39,6 +43,8 @@ beforeEach(() => {
   version = 'v1'
   audio = { version: 1, cues: {}, announce: { to: ['everywhere'], chime: true } }
   saveStatus = 200
+  announceRoute = true
+  listSaved = false
   projectFile = null
   dialog.answer = true
   dialog.asked = []
@@ -58,9 +64,26 @@ beforeEach(() => {
           releaseGet = r
         })
       }
-      return answer(200, { audio: snap.audio, version: snap.version, source: snap.version === 'v1' ? 'project' : 'director', router: { online: true, lastSeen: 1, name: 'house-mac' }, problems: [], warnings: [], now: 2 })
+      return answer(200, { audio: snap.audio, version: snap.version, source: snap.version === 'v1' || listSaved ? 'project' : 'director', router: { online: true, lastSeen: 1, name: 'house-mac' }, problems: [], warnings: [], now: 2, ...(listSaved ? { announceSaved: true } : {}) })
     }
     if (path === '/e/ev1/api/mod/audio/stop') return answer(stopAnswer.status, stopAnswer.body)
+    if (path === '/e/ev1/api/mod/audio/announce') {
+      if (!announceRoute) return answer(404, { error: 'unknown mod action' })
+      if (saveStatus !== 200 || body!['base'] !== version) {
+        version = 'v9'
+        return answer(409, { error: 'the speakers changed since you loaded them', version })
+      }
+      const block = { ...(audio['announce'] as Record<string, unknown>) }
+      const had = Array.isArray(block['terminals']) ? (block['terminals'] as string[]) : []
+      const spot = body!['spot'] as string
+      const list = body!['on'] === true ? (had.includes(spot) ? had : [...had, spot]) : had.filter((t) => t !== spot)
+      if (list.length > 0) block['terminals'] = list
+      else delete block['terminals']
+      audio = { ...audio, announce: block }
+      version = version === 'v2' ? 'v3' : 'v2'
+      listSaved = true
+      return answer(200, { ok: true, version, terminals: list })
+    }
     if (path === '/e/ev1/api/mod/audio') {
       if (saveStatus !== 200) {
         version = 'v9'
@@ -76,6 +99,7 @@ beforeEach(() => {
     }
     if (path === '/e/ev1/api/mod/audio/project') {
       version = 'v1'
+      listSaved = false
       return answer(200, { ok: true, file: 'audio.json', version, source: 'project' })
     }
     return answer(404, { error: 'no' })
@@ -121,12 +145,14 @@ describe('the house sound store', () => {
     expect(useHouseAudio.getState().busy).toBeNull()
   })
 
-  it('a tick saves the whole config back with base, then re-reads', async () => {
+  it('a tick sends only that spot with base (never a whole save), then re-reads', async () => {
     await bound()
     await useHouseAudio.getState().setTerminal('tent', true)
-    const save = calls.find((c) => c.method === 'POST' && c.path === '/e/ev1/api/mod/audio')!
-    expect(save.body).toEqual({ audio: { version: 1, cues: {}, announce: { to: ['everywhere'], chime: true, terminals: ['tent'] } }, base: 'v1' })
-    expect(useHouseAudio.getState().status).toMatchObject({ version: 'v2', source: 'director' })
+    const tick = calls.find((c) => c.method === 'POST' && c.path === '/e/ev1/api/mod/audio/announce')!
+    expect(tick.body).toEqual({ spot: 'tent', on: true, base: 'v1' })
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/e/ev1/api/mod/audio')).toBe(false)
+    expect(useHouseAudio.getState().status).toMatchObject({ version: 'v2', source: 'project', announceSaved: true })
+    expect(useHouseAudio.getState().status?.audio['announce']).toMatchObject({ terminals: ['tent'] })
     expect(useHouseAudio.getState().savedAt).not.toBeNull()
     // Already on the list: no save.
     const before = calls.length
@@ -167,12 +193,23 @@ describe('the house sound store', () => {
     expect(calls.filter((c) => c.method === 'GET').length).toBe(3)
     await useHouseAudio.getState().setTerminal('casino', true)
     expect(useHouseAudio.getState().saveError).toBeNull()
-    const last = calls.filter((c) => c.method === 'POST' && c.path === '/e/ev1/api/mod/audio').at(-1)!
+    const last = calls.filter((c) => c.method === 'POST' && c.path === '/e/ev1/api/mod/audio/announce').at(-1)!
     expect(last.body?.['base']).toBe('v2')
+  })
+
+  it('an older server without the announce route gets the whole save, as before', async () => {
+    announceRoute = false
+    await bound()
+    await useHouseAudio.getState().setTerminal('tent', true)
+    const save = calls.find((c) => c.method === 'POST' && c.path === '/e/ev1/api/mod/audio')!
+    expect(save.body).toEqual({ audio: { version: 1, cues: {}, announce: { to: ['everywhere'], chime: true, terminals: ['tent'] } }, base: 'v1' })
+    expect(useHouseAudio.getState().status).toMatchObject({ version: 'v2', source: 'director' })
   })
 
   describe('Save to project over a director save', () => {
     async function ticked(): Promise<void> {
+      // A director save from an older server (no announce route).
+      announceRoute = false
       useHouseAudio.getState().bind('ev1', 'p1')
       await vi.waitFor(() => expect(useHouseAudio.getState().status).not.toBeNull())
       await useHouseAudio.getState().setTerminal('tent', true)
@@ -185,7 +222,8 @@ describe('the house sound store', () => {
       await ticked()
       await useHouseAudio.getState().saveToProject()
       expect(dialog.asked).toEqual([])
-      expect(posts()).toEqual(['/e/ev1/api/mod/audio', '/e/ev1/api/mod/audio/project'])
+      // The older server's 404 on the narrow route, its whole save, then the project.
+      expect(posts()).toEqual(['/e/ev1/api/mod/audio/announce', '/e/ev1/api/mod/audio', '/e/ev1/api/mod/audio/project'])
     })
 
     it('a project audio.json synced since the save: asks, then keeps its speakers and adds only the list', async () => {

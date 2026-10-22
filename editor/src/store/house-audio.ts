@@ -166,10 +166,21 @@ export const useHouseAudio = create<HouseAudioState>((set, get) => ({
     set({ busy: 'save', saveError: null, status: { ...status, audio: next } })
     writeGen++
     try {
-      const r = await audioApi.save(eventId, next, status.version)
+      // The narrow route lays the list over the config in force (never a
+      // whole director's save, which would pin the speakers too); an older
+      // server without it takes the whole save, as before.
+      let version: string
+      let source = status.source
+      try {
+        version = (await audioApi.announce(eventId, spot, on, status.version)).version
+      } catch (e) {
+        if (!(e instanceof ApiError && e.status === 404 && e.message === 'unknown mod action')) throw e
+        version = (await audioApi.save(eventId, next, status.version)).version
+        source = 'director'
+      }
       // Hold the save's version at once (a poll may already be in flight), so
       // the next tick is based on it, not the one before it.
-      if (get().eventId === eventId) set({ savedAt: Date.now(), status: { ...status, audio: next, version: r.version || status.version, source: 'director' } })
+      if (get().eventId === eventId) set({ savedAt: Date.now(), status: { ...status, audio: next, version: version || status.version, source, ...(source !== 'director' ? { announceSaved: true } : {}) } })
     } catch (e) {
       if (get().eventId !== eventId) return
       set({
