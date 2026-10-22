@@ -282,7 +282,7 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     ["Calculator", "WinZip", "GarageBand", "LimeWire"].forEach((n, i) => upload(sim, `p-${PROBLEMS[i]}`, n, i));
     // Every deed line, and a goal met and missed.
     for (const [k, v] of [["Night.facts_accepted", "7"], ["Night.first_reinstall", "WinZip"], ["Kernel.virus_planter", "Microsoft Excel"], ["Night.lj_reader", "VLC"], ["Night.most_trusted", "Pong"], ["Night.least_trusted", "WinZip"], ["f-pong.quest.keep_the_ball_in_play", "done"], ["Night.ending", "song"], ["Night.ended", "true"]] as const) sim.setVar(k, v);
-    const msgs = composeGuestMessages(sim, sim.signal("start_the_ceremony", null)).map((m, i) => ({ ...m, seq: 1000 + i }));
+    const msgs = composeGuestMessages(sim, sim.signal("start_the_ceremony")).map((m, i) => ({ ...m, seq: 1000 + i, hidden: false }));
     const his = msgs.filter((m) => m.channel === "loc:The Desktop" && m.from === "Trabolta" && m.kind === "line");
     expect(his.some((m) => m.text.startsWith("Met their goal tonight: Pong."))).toBe(true);
     expect(his.some((m) => m.text.startsWith("Before the awards, a review of the night."))).toBe(true);
