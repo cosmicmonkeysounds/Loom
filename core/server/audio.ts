@@ -23,6 +23,15 @@
 //!   `problems`, 409 on a stale `base`);
 //! - `POST /api/mod/audio/project` → the config in force becomes the
 //!   project's `audio.json`;
+//! - `POST /api/mod/audio/announce {spot, on, base?}` → `{ok, version,
+//!   terminals}` (wave 18b, Q8): puts one map terminal spot on (or off) the
+//!   house list of tablets that also say the announcements, **without**
+//!   pinning the rest of the config as a director's save: the list is laid
+//!   over whatever is in force (the project's `audio.json`, a director's
+//!   save, …) and kept in the event's state dir (`announceSaved` on the
+//!   GET) until a Save to project writes it into the file or a whole save
+//!   replaces it (409 on a stale `base`, 404 for a spot the map in force
+//!   doesn't have when turning it on);
 //! - `POST /api/mod/audio/test {speaker} | {out}` → `{ok, seq}`: the router
 //!   plays an identifying tone + label there (the last `AUDIO_TESTS`, memory
 //!   only, `AUDIO_TEST_MS` old at most, ride every GET);
@@ -182,12 +191,28 @@ export interface AudioHubInit {
   now?: () => number;
 }
 
+/** `audio` with its tablets list set to exactly `list` (wave 18b): an
+ *  `audio.json` with no `announce` block gets the router's default one
+ *  (`to: ["everywhere"]`, the chime on), so the list never moves the house
+ *  speakers; an empty list drops the key. */
+export function withAnnounceTerminals(audio: AudioConfig, list: readonly string[]): AudioConfig {
+  const next = JSON.parse(JSON.stringify(audio)) as AudioConfig;
+  const block = next.announce ?? { to: ["everywhere"] };
+  if (list.length > 0) block.terminals = [...list];
+  else delete block.terminals;
+  next.announce = block;
+  return next;
+}
+
 /** The config an event plays, its tests, and the long poll's waiters. */
 export class AudioHub {
   private readonly store: Store;
   private projectText: string | null;
   private projectMemo: { text: string; audio: AudioConfig | null } | null = null;
   private director: AudioConfig | null;
+  /** Wave 18b (Q8): the tablets list laid over the config in force (null =
+   *  none set this event: the config's own `announce.terminals`). */
+  private announceList: string[] | null;
   private readonly envFile: string | null;
   private envMemo: { mtimeMs: number; audio: AudioConfig | null } | null = null;
   private readonly now: () => number;
@@ -212,6 +237,13 @@ export class AudioHub {
     if (init.projectText !== undefined) init.store.saveAudio(init.projectText);
     const saved = init.store.loadAudioSave();
     this.director = saved !== null && validateAudio(saved).ok ? (saved as AudioConfig) : null;
+    this.announceList = init.store.loadAudioAnnounce();
+  }
+
+  /** Is the tablets list this event's own (`setAnnounceTerminal`), laid over
+   *  the config in force rather than read from it? */
+  get announceSaved(): boolean {
+    return this.announceList !== null;
   }
 
   /** The project's `audio.json` text as this event holds it. */
@@ -229,7 +261,11 @@ export class AudioHub {
 
   /** The config in force, its version (content hash) and where it is from. */
   current(): { audio: AudioConfig; version: string; source: AudioSource } {
-    const pick = (audio: AudioConfig, source: AudioSource) => ({ audio, version: audioHash(audio), source });
+    const list = this.announceList;
+    const pick = (base: AudioConfig, source: AudioSource) => {
+      const audio = list === null ? base : withAnnounceTerminals(base, list);
+      return { audio, version: audioHash(audio), source };
+    };
     if (this.director !== null) return pick(this.director, "director");
     const project = this.projectAudio();
     if (project !== null) return pick(project, "project");
@@ -288,6 +324,9 @@ export class AudioHub {
     const audio = JSON.parse(JSON.stringify(raw)) as AudioConfig;
     this.director = audio;
     this.store.saveAudioSave(audio);
+    // A whole save carries its own tablets list.
+    this.announceList = null;
+    this.store.saveAudioAnnounce(null);
     this.wake();
     return { status: 200, version: audioHash(audio), warnings: v.warnings };
   }
@@ -299,7 +338,28 @@ export class AudioHub {
     this.store.saveAudio(text);
     this.director = null;
     this.store.clearAudioSave();
+    this.announceList = null;
+    this.store.saveAudioAnnounce(null);
     this.wake();
+  }
+
+  /** Put one terminal spot on (or off) the tablets list (wave 18b, Q8),
+   *  laid over the config in force: never a whole save, so a newer project
+   *  `audio.json` still plays here. Refused on a stale `base`; a spot the
+   *  map in force has no terminal for can only be turned off. */
+  setAnnounceTerminal(spot: unknown, on: unknown, base: unknown, house: HouseMap | null): { status: 200; version: string; terminals: string[] } | { status: 400 | 404 | 409; body: Record<string, unknown> } {
+    if (typeof spot !== "string" || spot.trim() === "" || typeof on !== "boolean") return { status: 400, body: { error: "send {spot, on}" } };
+    const cur = this.current();
+    if (typeof base === "string" && base !== "" && base !== cur.version) {
+      return { status: 409, body: { error: "the speakers changed since you loaded them", version: cur.version, source: cur.source } };
+    }
+    if (on && house !== null && !house.terminals.some((t) => t.id === spot)) return { status: 404, body: { error: "no such terminal spot on the house map" } };
+    const had = cur.audio.announce?.terminals ?? [];
+    const list = on ? (had.includes(spot) ? [...had] : [...had, spot]) : had.filter((t) => t !== spot);
+    this.announceList = list;
+    this.store.saveAudioAnnounce(list);
+    this.wake();
+    return { status: 200, version: this.current().version, terminals: list };
   }
 
   /** The router polled (or answered a long poll): it is listening. */
@@ -416,6 +476,9 @@ export interface AudioView {
   now: number;
   /** Is the router on the house Mac listening (a Test is played only then)? */
   router: AudioRouterPresence;
+  /** (wave 18b, Q8) The tablets list is this event's own (Run's House sound
+   *  card), laid over `source`; Save to project writes it into the file. */
+  announceSaved: boolean;
   /** The config in force checked against the house in force (a map edit
    *  can leave a speaker outside its room) — advice, never a refusal here. */
   problems: string[];
@@ -426,7 +489,7 @@ export function audioView(hub: AudioHub, ctx: AudioContext): AudioView {
   const cur = hub.current();
   const model = ctx.model();
   const v = validateAudio(cur.audio, ctx.house());
-  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), stops: hub.stops(), now: hub.clock(), router: hub.router(), problems: v.problems, warnings: v.warnings };
+  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), stops: hub.stops(), now: hub.clock(), router: hub.router(), announceSaved: hub.announceSaved, problems: v.problems, warnings: v.warnings };
 }
 
 /**
@@ -510,6 +573,15 @@ export async function handleAudioPost(hub: AudioHub, ctx: AudioContext, path: st
       }
       process.stdout.write(`  🔊 audio: ${by} saved the speakers to the project as ${AUDIO_FILE}\n`);
       sendJson(res, 200, { ok: true, file: AUDIO_FILE, version: hub.current().version, source: "project" });
+      return true;
+    }
+    case "/api/mod/audio/announce": {
+      const r = hub.setAnnounceTerminal(body["spot"], body["on"], body["base"], ctx.house());
+      if (r.status !== 200) sendJson(res, r.status, r.body);
+      else {
+        process.stdout.write(`  📢 audio: ${by} set the tablets that say the announcements: ${r.terminals.join(", ") || "none"}\n`);
+        sendJson(res, 200, { ok: true, version: r.version, terminals: r.terminals });
+      }
       return true;
     }
     case "/api/mod/audio/test": {
