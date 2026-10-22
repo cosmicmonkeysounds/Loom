@@ -12,8 +12,8 @@
 //! with no `kind` / `canFound` (an older server, a story with no
 //! `founding:`) reads exactly as wave 18 did.
 
-import type { FactionKind, GuestView, PersonCard } from "../types.ts";
-import { canFoundOf, extOf, type CrewView, type InviteView, type SideView } from "../guest/wire.ts";
+import type { GuestView, PersonCard } from "../types.ts";
+import { canFoundOf, extOf, type CrewView, type InviteView } from "../guest/wire.ts";
 
 export { factionModeOf, factionNameOf, factionsOffered, leadsOf, myRow, sidesLabelOf, sidesOf } from "./mode.ts";
 export type { SideRow } from "./mode.ts";
