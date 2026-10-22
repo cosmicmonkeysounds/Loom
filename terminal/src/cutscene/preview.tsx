@@ -367,7 +367,6 @@ function PreviewList() {
   );
 }
 
-/** `&night=scenario:1,collection_complete:true,ended:false`: night vars for the fake state. */
 /** The preview's made-up results block (`results=`): `auto` gives each reading scene its own. */
 export function previewResults(id: string, mode: string, target: SceneTarget, rows: number, night: Record<string, string | number | boolean | null>) {
   const tv = target === "tv";
@@ -382,6 +381,7 @@ export function previewResults(id: string, mode: string, target: SceneTarget, ro
   return null;
 }
 
+/** `&night=scenario:1,collection_complete:true,ended:false`: night vars for the fake state. */
 function nightParam(raw: string | null): Record<string, string | number | boolean | null> {
   const out: Record<string, string | number | boolean | null> = {};
   for (const pair of (raw ?? "").split(",")) {
