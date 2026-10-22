@@ -101,6 +101,25 @@ webview, another browser) lands on `LinkLanding` — the code in big type
 with *I haven't joined yet → Join* as the secondary path; never the picker.
 A session just cut in this browser (a restart) shows its notice instead,
 with *Join again →* (the link still redeems / checks in once in).
+**Wave 18b (on `oct31-w18/integ`, not yet shipped).** A scan or a typed
+code says it worked (`scan-done.tsx`, a lazy chunk: *🔓 Code accepted* /
+*📓 Already yours* → the Codex on that entry, unfolded; *📍 Checked in*
+with the story's reply lines → the room; a miss or a refusal keeps the
+scanner open with the reason). The fact card (its own chunk,
+`widgets-fact.tsx`) keeps *File it* tappable and points at the missing
+piece in red (*⚠ Set how sure you are before filing…*). `badge:` lines
+show as `NameBadges` (🚻) beside names in People, Who's here, the thread
+rows, the pickers and every booth list (`booth/badges.tsx`), never on a
+bubble. A CRA-flagged transfer reads 🚩 with the audit banner on both
+phones. `lobby: hidden` drops the Chat log row; a lobby target opens
+Notifications, where a guest's lobby-only line is a quiet row. Faction
+mode (`sides/`, `sides/mode.ts` for the first-load readers,
+`css/factions.css` in `styles.css`): one Factions list, ＋ Found a
+faction, walk-in Join, your own count and *N more to win* only, the
+Mission tile. Trabolta's pictures ship as `public/pictures/trabolta.svg`
+/ `trabolta-broken.svg`. Hosts and the director phone get 🔇 Stop all
+house sounds (`house-sound.ts`), and the host Judge tab counts the
+filings with Trabolta.
 **Reserved programs (wave 11, `claim.ts`).** An invitation's
 `?code=…&claim=<token>` opens the guest join and rides `/api/identities`,
 the picture lookup and `/api/guest/register`; rows with `reserved: true`
