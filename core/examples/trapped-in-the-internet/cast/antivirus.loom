@@ -57,7 +57,10 @@ CHARACTER CRA Agent Software is Enforcer
   // Truthcoin, to the cent. Especially the cent.
   // The wallet's approver: every third transfer waits in this booth's
   // Wallet room for Approve / Deny; any other one can be denied for 60 s.
-  wallet: approver, every 3, window 60s
+  // Wave 18b (R13): on the wallet cards the approver reads MyCRA and a held
+  // transfer is "flagged for a CRA audit" to both parties (the booth and
+  // the character keep their name).
+  wallet: approver, every 3, window 60s, as MyCRA, audit "a CRA audit"
 
   when truther_download:
     if Night.truther_sent != true:

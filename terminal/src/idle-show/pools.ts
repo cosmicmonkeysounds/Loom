@@ -4,7 +4,11 @@
 //! character's own copy (`names: true`) plays only on a screen that may
 //! name him — awake, introduced, never on attract (D1: an asleep screen
 //! shows the same show minus anything naming the character, and before the
-//! introduction nothing on any screen names him).
+//! introduction nothing on any screen names him). Wave 18b (D19): an
+//! `owner: true` item names "Jean Trabolta" only in the third person, as
+//! the owner of Maps and Ducks who joins by video conference later tonight;
+//! it plays from the Desktop (`Night.phase` desktop / bingo) onward, asleep
+//! or not, never at the doors (no phase, `arrivals`).
 
 import type { ScreenState } from "../screen.ts";
 
@@ -89,10 +93,19 @@ export interface Pooled {
   scan?: boolean;
   /** Wall terminals only (asks for a tap). */
   wall?: boolean;
+  /** It names "Jean Trabolta" in the third person, as the owner (D19): from the Desktop on (`ownerMay`). */
+  owner?: boolean;
+}
+
+/** May an `owner` item play at this phase? From the Desktop on: never at the doors (no phase, `arrivals`). */
+export function ownerMay(phase: string): boolean {
+  const p = phase.trim().toLowerCase();
+  return p !== "" && p !== "arrivals";
 }
 
 export function eligible(item: Pooled, ctx: IdleContext): boolean {
   if (item.names === true && !ctx.names) return false;
+  if (item.owner === true && !ownerMay(ctx.phase)) return false;
   if (item.scan === true && !ctx.scan) return false;
   if (item.wall === true && ctx.target !== "wall") return false;
   if (item.pools !== undefined && !item.pools.includes(ctx.pool)) return false;

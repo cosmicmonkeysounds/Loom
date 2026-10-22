@@ -553,6 +553,59 @@ patch leaves the row alone) and `agentQueueOf(…, now)` ages it — the header
 ticks by the second while a queue waits, the glance every 5 s. In `auto`
 mode a near miss still waits on the card (`judgeModeTitle`).
 
+**Wave 18b** (built 2026-10-22, on `oct31-w18/editor`, merged on
+`oct31-w18/integ`). **Judging (O4):** with a `judge:` character every
+filing that isn't an exact match goes to him, so the auto line and the
+mode tooltip read *The house accepts exact matches; {judge} rules every
+other filing; what he can't rule … falls back to the house rule and can
+be judged here.* (`autoJudgeCopy`, `judgeModeTitle(mode, judge)`); a
+pending plain miss shows **🤖 queued for {judge}** / **🤖 asking
+{judge}…** like a near miss (`isQueuedFiling`, `queuedText`; only a near
+miss keeps the ⚠ tag); the header's queue badge reads
+`AgentQueue.judging` (`judgingQueueOf` off the cast row, else the mind
+summary; `judgingBadge`: *🤖 N queued · 1 out · oldest m:ss*, aged off
+its arrival like the voice queue, or *⏳ {judge} isn't ruling* on a judge
+stall). **The race:** `CockpitState.race` (← `ModView.race`, faction
+mode only, on both backends) feeds the glance's People section
+(`director/glance.ts` `raceGlance` / `racePct` / `raceLead`: one bar per
+race faction, founded or declared, on one scale of the present, an amber
+tick at the line; the faction over it reads **over the line**, never
+*won*; the strip's *🗳 X over the line*); `withFoundedFactions`
+(`store/cockpit.ts`) joins `ModView.crews` onto the roster rows in
+faction mode so `FactionPill` (`founded`) reads *◇ The Pirates*, not
+*unaligned*. **Badges:** `RosterRow.badges` (the story's `badge:` line,
+e.g. 🚻) through `NameBadges` (`cockpit/ui.tsx`) on the rail, Roster,
+Stage chips and Inspector header, as text in Players' *+ Guest…*
+options (`badgeText`), never on a chat line. **Wallet:** a held or
+CRA-flagged transfer reads 🚩 (`walletStepTag` / `walletCardTag`, the
+`audit` words off `WalletCard.audit`). **House sound (Q7 / Q8):**
+`audioApi` (`lib/api.ts`: `status` = `GET /api/mod/audio` without
+`router=1`, `stop` → `POST /api/mod/audio/stop {announce}`, `save`,
+`saveToProject`, `announce` → the narrow `POST /api/mod/audio/announce
+{spot, on, base}`, which edits only `announce.terminals` over the config
+in force; an older server's 404 falls back to the whole save with
+`base`), pure rules in `lib/house-audio.ts` (`withAnnounceTerminal`,
+`routerLine`, `stopResultText`, the stop outcomes), `store/house-audio.ts`
+bound from `App.tsx` beside the terminal heartbeat (a 10 s poll while a
+server run is bound), and `run/HouseSoundCard.tsx`: **■ Stop house
+sounds** (`StopSoundsButton`) in the `RunStage` header on server runs
+only (one press, no confirm; for 4 s *■ Stopped*, *■ No router: stop it
+on the house Mac* or *■ Stop failed: retry*, `stopButtonLabel`), and the Run page's House sound card (the router line, the stop
+± announcements, D5's scope sentence, *Tablets that also say the
+announcements* per map spot with a 409 reload, this event's list vs
+**Save to project**). **Terminals:** the 📢 badge off the heartbeat's
+`ann=1`; `TerminalView.Reinstall` in `lib/terminal-setup.ts`
+(`isStationView` = chess / casino / reinstall: no room, no character;
+`suggestView('tent')` → reinstall), the builder writing `announce=1`
+only when *Always* is ticked and no `announce` otherwise (an explicit
+`announce=0` would pin the tablet to Never); `fullscreenTitle` gives a
+`view=reinstall` row its own Chrome `--kiosk` hint. Help
+`authoring/43-run-mode`. Tests: `store/w18b-cockpit`, `cockpit/badges`,
+`cockpit/founded`, `director/race-glance`, `lib/house-audio`,
+`store/house-audio`, `run/house-sound-card`, plus additions to `mind`,
+`glance`, `wallet`, `terminal-setup`, `terminals` (editor 531 / 66 files
+on the integration branch).
+
 **The super-admin's peek** (`cockpit/Inspector.tsx`): a guest shows
 **Their view** (side / where / score / deciding / rooms / can — exact
 when they are the lens), **Their feed** (the last 60 messages

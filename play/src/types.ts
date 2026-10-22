@@ -294,6 +294,9 @@ export interface GuestView {
   sides?: SideView[];
   /** Wave 18b, faction mode only: may you found a faction now? */
   canFound?: boolean;
+  /** Wave 18b, faction mode only: the race side you lead (listed or still
+   *  hidden); absent when none. */
+  leads?: string;
   /** Wave 18b: your own badges (`badge:` lines true for you). */
   badges?: NameBadge[];
   /** Wave 18b: header `lobby: hidden` — never list the lobby (its lines

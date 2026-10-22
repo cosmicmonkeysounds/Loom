@@ -183,6 +183,10 @@ export interface CrewGuestFields {
   /** Faction mode only (wave 18b): may this guest found a faction now
    *  (`mayFound`)? A boolean, never the reason. */
   canFound?: boolean;
+  /** Faction mode only: the race side this guest leads (its name), listed
+   *  or still hidden — a hidden side is no row, so without this its leader
+   *  reads unaligned and is offered Joins that answer 409. Absent when none. */
+  leads?: string;
 }
 
 /** One race faction as a director sees it (`ModView.race`). */
@@ -649,7 +653,14 @@ export class Crews {
         ...(leader !== null ? { founder: leader } : {}),
       };
     });
-    return { crew: crew === null ? null : this.crewView(crew), invites: this.inviteViews(person), sides, canFound: this.mayFound(person) };
+    const led = this.ledSide(person);
+    return {
+      crew: crew === null ? null : this.crewView(crew),
+      invites: this.inviteViews(person),
+      sides,
+      canFound: this.mayFound(person),
+      ...(led !== null && this.isRaceFaction(led) ? { leads: led } : {}),
+    };
   }
 
   private inviteViews(person: string): InviteView[] {

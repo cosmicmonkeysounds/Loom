@@ -38,6 +38,16 @@ more time on this earth, so you can run for Mayor **one more time**.
 Jean Trabolta's offer: a pilot program to upload your consciousness to the
 Cloud. **Everlasting life.** You did not read the terms.
 
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
+
+## Who you know
+
+When you're scanned in, three files about **who you're connected to** arrive in your Codex under **Connections**. Each one points at other people in the house without naming them; whoever holds the same file is connected to you. Ask around ("you have the staff photo too?"), and never say who is behind a program.
+
+- **Junior's Contacts**: your son's phone: the three people he never crossed out.
+- **Forever**: everyone here who came to live forever, like you.
+- **The Ladies In Finance**: the City's books from the end of your fifth term, and who followed the money since.
+
 ## How to play
 
 - When you're scanned in, the app restores your "user profile": your memories

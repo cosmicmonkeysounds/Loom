@@ -120,9 +120,9 @@ describe("the starter audio.json (Trapped in the Internet)", () => {
       const house = JSON.parse(readFileSync(join(dir, map), "utf8"));
       expect(validateAudio(audio, house).problems).toEqual([]);
     }
-    expect(audio.device).toMatchObject({ name: "MOTU", inputs: 16, outputs: 16 });
-    expect(audio.outputs).toHaveLength(16);
-    expect(audio.inputs).toHaveLength(16);
+    expect(audio.device).toMatchObject({ name: "828x", inputs: 24, outputs: 22, expect: { inputs: 32, outputs: 30 } });
+    expect(audio.outputs).toHaveLength(18);
+    expect(audio.inputs).toHaveLength(24);
     expect(audio.zones.map((z) => z.id)).toEqual(["living"]);
     // Every `sound X` in the show has a cue (but the chime, rung with the
     // announcements: LA-2), and every cue is a show sound.
@@ -411,6 +411,47 @@ describe("stop all house sounds (wave 18b, Q7)", () => {
     expect((await call(rt, "POST", "/api/mod/audio/test", { speaker: "hall", token }, { token })).status).toBe(403);
     expect((await view(rt)).stops[0]!.by).toBe("Booth · Task Manager");
     rt.dispose();
+  });
+
+  it("Q8: POST /api/mod/audio/announce ticks one tablet on the list without pinning the rest as a director's save", async () => {
+    const dir = freshDir();
+    const p = fakeProject();
+    const showHouse = join(import.meta.dirname, "..", "examples", "trapped-in-the-internet", "house.json");
+    const make = () => new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "t", scenarioSource: STORY, joinBase: () => "http://localhost", houseFile: showHouse, audioFile: null, audio: AUDIO_TEXT, project: p.link });
+    const rt = make();
+    const before = await view(rt);
+    expect(before).toMatchObject({ source: "project", announceSaved: false });
+    // A bad body, a spot the map lacks, a stale base.
+    expect((await call(rt, "POST", "/api/mod/audio/announce", { spot: "tent" })).status).toBe(400);
+    expect((await call(rt, "POST", "/api/mod/audio/announce", { spot: "attic", on: true, base: before.version })).status).toBe(404);
+    expect((await call(rt, "POST", "/api/mod/audio/announce", { spot: "tent", on: true, base: "stale" })).status).toBe(409);
+    const on = await call(rt, "POST", "/api/mod/audio/announce", { spot: "tent", on: true, base: before.version });
+    expect(on.json).toMatchObject({ ok: true, terminals: ["tent"] });
+    const after = await view(rt);
+    // The project's config stays the source: only the list is laid over it.
+    expect(after).toMatchObject({ source: "project", announceSaved: true, version: on.json["version"] });
+    expect(after.audio.announce?.terminals).toEqual(["tent"]);
+    expect(after.audio.speakers).toEqual(AUDIO.speakers);
+    // A fresh project audio.json (a sync) still plays here, list kept.
+    const synced = structuredClone(AUDIO);
+    synced.speakers[0]!.gain = -3;
+    (rt as unknown as { audio: { setProjectText(t: string): void } }).audio.setProjectText(JSON.stringify(synced));
+    const resynced = await view(rt);
+    expect(resynced.source).toBe("project");
+    expect(resynced.audio.speakers[0]!.gain).toBe(-3);
+    expect(resynced.audio.announce?.terminals).toEqual(["tent"]);
+    rt.dispose();
+    // A restart keeps the list; Save to project writes it into the file and ends it.
+    const again = make();
+    expect((await view(again)).announceSaved).toBe(true);
+    expect((await call(again, "POST", "/api/mod/audio/project")).status).toBe(200);
+    expect(JSON.parse(p.files.get("audio.json")!).announce.terminals).toEqual(["tent"]);
+    expect(await view(again)).toMatchObject({ source: "project", announceSaved: false });
+    // Off again (a spot no longer on the map may always be turned off).
+    const v2 = await view(again);
+    const off = await call(again, "POST", "/api/mod/audio/announce", { spot: "tent", on: false, base: v2.version });
+    expect(off.json).toMatchObject({ ok: true, terminals: [] });
+    again.dispose();
   });
 
   it("Q8: the screen state answers a spot's house setting; the heartbeat records the tablet's own", async () => {

@@ -144,6 +144,12 @@ unless asked for). ⚙ → *say the house announcements* has three settings
   list says (`&announce=1` on the provisioning link).
 - **Never** (`&announce=0`).
 
+A link built on Run → Terminals' *Set up a terminal* carries
+`&announce=1` only when *Always* is ticked, and no `announce` otherwise
+(the house setting). A hand-written `&announce=0` pins the tablet to
+**Never**, ignoring the house list: leave `announce` off the link unless
+you mean Always or Never.
+
 A tablet set up before wave 18b with announcements off reads as *House
 setting*. The heartbeat reports what the tablet does now (`ann=1|0`).
 

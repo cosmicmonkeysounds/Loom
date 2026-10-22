@@ -49,7 +49,7 @@ Under the story mind, this is all that ever makes a row in the trace:
 | `Night.phase` changes | the phase card is applied in code: stage, favours, drives, live powers, brief | none (one revision *set by story*) |
 | a conversation goes quiet (3 or more turns, then 120 s with nothing new) | one **summary** call on the voice model, trigger *quiet*. Never while a line is waiting, never while he is asleep or after the night has ended | 1 |
 | you press **Rewrite brief** | one **brief** call on the voice model | 1 |
-| a near-miss filing | the **judge** (below) | 1 |
+| a filing that isn't an exact match | the **judge** (below), one at a time, never while he is answering a line | 1 |
 
 A line to him or a ruling always goes first: a summary or a Rewrite
 brief that is running when one arrives is stopped and runs again once
@@ -168,7 +168,7 @@ labelled: **voice** (the fast model answering a line), **lookup** (the
 second call after it asked the session about a program, room, or
 lore), **reflect** (the orchestrator after an exchange), **survey**
 (the orchestrator looking at the whole house), **re-run**, **judge** (a
-ruling on a near-miss filing, below), **brief** (a Rewrite brief),
+ruling on a filing that isn't an exact match, below), **brief** (a Rewrite brief),
 **summary** (the story mind summing up a conversation that has gone
 quiet), and the markers **reset** / **control** / **error**. Each row
 says who it was with, which model, what triggered it, how long it took
@@ -306,13 +306,17 @@ It shows even before a worker has reported; on a project with no
 - **The mode switch** — `auto` / `review`, writing the variable the
   card names (`Night.judge_mode` by default) through the same journaled
   `set` as the World page. In `auto` every filed fact gets its verdict
-  at once — except a **near miss** (a typo of the key, a number written
-  out, the key said at length), which waits here as in review (or goes
-  to the story's `judge:` character first, below); in `review` every verdict is a
+  at once when it is an **exact match** (the fold, an alias, a
+  spelled-out abbreviation). With a `judge:` character and its worker
+  online, every other filing (a near miss or a plain miss) goes to him
+  first (below); with nobody to rule, a **near miss** (a typo of the
+  key, a number written out, the key said at length) waits here as in
+  review and a plain miss is judged at once; in `review` every verdict is a
   proposal until someone confirms it, and a round closing settles the
   rest by the proposal. Beside it: *nothing pending* or *N pending*,
   and how many of those are near misses.
-- **Pending filings** (review mode, and near misses in either mode): one
+- **Pending filings** (review mode, near misses in either mode, and
+  every non-exact filing the judge is ruling on): one
   row per filing waiting for a verdict — the program, the question id,
   the answer in quotes, the confidence, and *proposed accurate / lie /
   uncertain*. A near miss is tagged *⚠ near "<key>"*, the key it is
@@ -328,10 +332,16 @@ It shows even before a worker has reported; on a project with no
   the story reacts exactly as it would to a host, and the override is
   journaled under your name.
 - **Rulings** (a story whose header names `judge: <Character>`, like
-  *Trapped in the Internet*'s `judge: Trabolta`). In `auto` mode a near
-  miss is put to that character's worker the moment it is filed, if a
-  worker voicing it is online and not stalled. Its row reads **🤖 asking
-  Trabolta…** and `# hosts` says *… asked Trabolta to rule*. The worker
+  *Trapped in the Internet*'s `judge: Trabolta`). In `auto` mode every
+  filing that isn't an exact match, a near miss or a plain miss, is put
+  to that character's worker when it is filed, if a worker voicing it is
+  online and not stalled. The rulings wait in a **queue**, oldest first:
+  one frame is out at a time, and none is sent while he is answering a
+  line, so a guest's message to him goes first. A waiting row reads
+  **🤖 queued for Trabolta**, the one out **🤖 asking Trabolta…**, and the
+  card's header counts the queue (**🤖 4 queued · 1 out · oldest 1:05**).
+  `# hosts` says *… asked Trabolta to rule* (*⚠ Near miss…* for a near
+  miss, *📝 Not an exact match…* for a plain one). The worker
   makes one separate model call that sees only the question, the key and
   the filed answer, and answers *same* or *not*. *Same* is judged
   accurate; *not* is a confident lie at confidence 100, uncertain below.
@@ -342,10 +352,17 @@ It shows even before a worker has reported; on a project with no
   — why*, *now accurate*) with its own ✅ / 😤 / 🤷: press one to
   override it (the later verdict wins, and the row says *overridden by*
   you). Judge a row yourself while it is asking and his ruling is
-  dropped. If no worker is online when the filing lands, the near miss
-  waits for you as above and is never asked later (only a server
-  restart asks the ones still pending). A ruling with no answer in 60
-  seconds is dropped the same way. In `review` mode nothing is asked.
+  dropped. If no worker is online when the filing lands, a near miss
+  waits for you as above and a plain miss is judged at once; neither is
+  asked later (only a server restart asks the ones still pending). A
+  ruling expires 60 seconds after it was sent (never while it waits its
+  turn); two expiries in a row read **⏳ Trabolta isn't ruling** in the
+  header, and `# hosts` hears *⚖ Trabolta isn't ruling: filings fall
+  back to the house rule.* once. Whatever is still queued or out when
+  its round settles falls back to the proposal: a near miss credited, a
+  plain miss a lie at 100, uncertain below. A full round can take him
+  several minutes, so check the queue before 📋. In `review` mode
+  nothing is asked.
   The key goes into that one call only: never his voice, his mind, the
   orchestrator or `/api/agent/facts`.
 - **The tallies** — per question: filed, accurate, lie, uncertain,

@@ -2,7 +2,7 @@
 title: The house map — drawing the house from a survey
 section: Live Shows
 order: 39
-keywords: house map, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, inputs, outputs, routing, matrix, zone, cue, announcements, TV voice, test, router, stagehand
+keywords: house map, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop
 ---
 
 The reinstallation games and the wall terminals share one **house map**
@@ -58,6 +58,9 @@ out is plenty; 5 cm is close enough.
   speaker. The link is on everywhere except the spawn room (the tent or
   the shed), where the headsets and the tent laptop are; the plan marks a
   terminal without it 🔇.
+  A terminal's screen of **reinstall** is the tent laptop: the idle show
+  between walks, and the reinstallation wizard and game for a marked
+  pass; it belongs to no room (no *speaks*).
 - **🔊 Speaker** — click where a house speaker hangs (or **+ Speaker
   here** on a selected room). It is drawn as a small cabinet facing the
   way it points, with a badge of its interface outputs (a red **—** when
@@ -109,15 +112,24 @@ where you put it) and its position in that room.
 The **Audio** tab is the rest of the file, top to bottom:
 
 - **Interface** — the audio interface on the house Mac: its name (part of
-  the name the Mac shows, e.g. `MOTU`), how many inputs and outputs it has
-  (16 and 16 on the show's MOTU), and its rate.
+  the name the Mac shows: `828x` for the show's MOTU 828x), how many inputs
+  and outputs we use, its rate, and **the device reports** — how many it
+  must report when its layout is as planned. The show uses 24 in and 22 out
+  of the 828x + an 8-channel ADAT expander, numbered as the 828x numbers
+  them: outputs 1–8 are Analog 1–8, 9–10 the Main outs, **15–22 the
+  expander** (Optical A); inputs 1–2 are the front Mic/Gtr, 3–10 Analog
+  1–8, **17–24 the expander**. Outputs 11–14 (Phones, S/PDIF) are left
+  unlabelled. The device reports 32 in / 30 out; when mirroring, 96 kHz or
+  an optical port on TOSLink changes that, every channel after the change
+  is off, so `stagehand check` fails and the router logs it (it still
+  plays). Live mics are mixed on the interface itself (CueMix FX).
 - **Speakers** — every speaker, its room and its outputs. Select one on
   the plan for its inspector: name, id (renaming it renames it in every
   zone and cue), position and height, angle, gain in dB, its outputs as a
-  grid of 16 (an output another speaker uses is marked) and its zones.
+  grid (an output another speaker uses is marked) and its zones.
 - **Outputs** — a label per output and the speakers on it.
 - **Inputs** — a label per input and what it is: software (the house
-  Mac, QLab), a mic, or a line from another device.
+  Mac, a virtual return), a mic, or a line from another device.
 - **Routing** — the inputs × outputs matrix. Tap a cell to send that input
   to that output at 0 dB, tap again to cut it; the selected cell has a
   gain field.
@@ -132,6 +144,14 @@ The **Audio** tab is the rest of the file, top to bottom:
   announcements play on (and whether a chime goes first), and the
   speakers the TV's voice should also reach (patched on the interface's
   own mixer for now).
+- **Tablets that also say them** — every terminal spot on the map, by
+  room. Tick a spot and the tablet hanging there also says each house
+  announcement in its own voice. It is an option, off for every room until
+  you tick it. Each row says whether the house speakers already reach that
+  room (*the tablet would echo them*) or none do (*the tablet would be the
+  only voice*). A tablet set to *Always* or *Never* on its own ⚙ ignores
+  this list; one left on *House setting* follows it. The list is part of
+  `audio.json`, so ticking a spot never changes the map.
 
 Hovering a speaker, a zone or a cue lights the speakers it reaches.
 
@@ -151,14 +171,15 @@ writes `audio.json` into the project for the next launch and every
 co-writer; **Download JSON** gives you the file. With no file yet the tab starts from a blank
 16 in / 16 out interface.
 
-The router runs only once the house Mac's YAML has an `audio:` section
-(the show's `trapped.house.yaml` keeps it commented out); until then a
-Test is only queued. With both switches off it runs the routing matrix
-and the Tests. It plays the story's sounds only with `play_sounds: true`,
-and the announcements only with `announce: true`; until then QLab and
-the house announcement player play them as before, and the cues you set
-here change nothing. Setting it up: `docs/trapped/room-audio.md` §11 and
-the `audio` module in `stagehand/README.md`.
+The house Mac's speaker router plays every story sound and every house
+announcement (the show's `trapped.house.yaml` turns both on; there is no
+QLab). Until each real sound file is in, it plays a labelled placeholder:
+a short tone, then the sound's name spoken (`stagehand sounds
+placeholders`); a real file always wins, and `stagehand check` lists the
+placeholders still there. **■ Stop house sounds** on Run (or a host's
+phone) fades every story sound at once; see [Run mode](43-run-mode.md).
+Setting it up: `scripts/house-mac/audio.md`, `docs/trapped/room-audio.md`
+§11–§12 and the `audio` module in `stagehand/README.md`.
 
 ## Tent or shed, and keeping the map
 

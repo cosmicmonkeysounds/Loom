@@ -323,7 +323,12 @@ follows the house's own list of terminals out of earshot of the
 speakers: Run → Terminals marks those with 📢, and a director turns a
 spot on or off there. **Always** says them whatever the list says, and
 **Never** never does. On a provisioning link, `&announce=1` is Always and
-`&announce=0` Never. The TV stays off: its room hears the speakers.
+`&announce=0` Never. A link built on Run → Terminals' *Set up a
+terminal* carries `&announce=1` only when you tick Always and no
+`announce` at all otherwise, so the tablet follows the house list. Never
+write `&announce=0` by hand unless you mean Never: it pins the tablet
+quiet whatever the house list says. The TV stays off: its room hears the
+speakers.
 
 The tent laptop: `/terminal/?code=<mod passcode>&spot=tent&announce=1`,
 in Chrome started in kiosk mode (the crew's kiosk notes have the line).

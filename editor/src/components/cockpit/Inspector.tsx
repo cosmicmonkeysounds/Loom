@@ -279,7 +279,7 @@ function TheirView({ id }: { id: string }) {
       </div>
       <div className="mx-3 mb-1 grid grid-cols-2 gap-x-3 gap-y-0.5 rounded border border-zinc-800 px-2 py-1.5 text-xs">
         <span className="text-zinc-500">side</span>
-        <span className="text-zinc-200">{faction ?? 'none yet'}</span>
+        <span className="text-zinc-200">{faction ?? (row?.founded ? `◇ ${row.founded.name}` : 'none yet')}</span>
         <span className="text-zinc-500">where</span>
         <span className="text-zinc-200">{location ?? '—'}</span>
         <span className="text-zinc-500">score</span>
@@ -545,6 +545,11 @@ function GuestInspector({ id }: { id: string }) {
           )}
           {row.captured && <span className="text-xs text-red-400">🔒 captured</span>}
           {row.restricted && <span className="text-xs text-red-400" title="restricted">⛔ restricted</span>}
+          {(row.badges ?? []).map((b) => (
+            <span key={`${b.glyph}${b.label}`} className="text-xs text-zinc-300" data-testid="inspector-badge">
+              {b.glyph} {b.label}
+            </span>
+          ))}
           <button
             onClick={() => {
               setPerspective(id)
@@ -634,6 +639,11 @@ function GuestInspector({ id }: { id: string }) {
               </option>
             ))}
           </select>
+          {!locked && row.founded && (
+            <div className="mt-1 text-[11px] text-emerald-300" data-testid="inspector-founded">
+              ◇ {row.founded.name} (a faction a guest founded)
+            </div>
+          )}
         </Field>
 
         <Field label="Location">

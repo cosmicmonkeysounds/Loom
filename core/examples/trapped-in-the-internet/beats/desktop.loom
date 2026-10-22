@@ -24,7 +24,9 @@ Every screen in the house says the same thing. An Antivirus walks the halls, swe
 
 Clippy: Hello! Hello, everyone! Welcome to the computer! We're so glad you've decided to join us for a special fundraiser party to restore the sign at Maps And Ducks.
 Clippy: I'm Clippy, the official Office Assistant with Maps and Ducks. If anyone needs Help With That, I'll be available.
-Clippy: And Jean Trabolta himself will make an appearance later tonight!
+// DRAFT w18b (R17): the owner joins by video conference later.
+Clippy: Jean Trabolta will be joining us later in the night! He'll be joining by video conference, because we are all people who have become computer programs, but he has ALWAYS been a computer program.
+Clippy: He may or may not have already shared with you that he is an AI, but rest assured: he is the true owner of Maps and Ducks, and he is excited to lead you through Jean Trabolta's Scavenger Hunt!
 Clippy: Please welcome your hosts! Task Manager, who keeps things running!
 Task Manager: Hello. Per the agenda: hello. I will be keeping things running.
 Clippy: Adobe Acrobat, who will assist with documents and printing!
@@ -34,7 +36,6 @@ Recycling Bin: Programs. Disk Cleanup is one floor down, and one floor up. I bel
 Clippy: We're so glad you decided to experience life as a computer program!
 Clippy: Our first activity is COMPUTER BINGO, a chance to meet the other programs and learn what everyone does. Mingle with your fellow programs and find the ones who match the descriptions on your card.
 Clippy: Your card is a big asterisk: the two diagonals, the centre column and the centre row. A Bingo is one complete line through the centre. When a program matches a square, check the box.
-Clippy: Do NOT write down the names of the programs you check off. There's no room anyway! Use your special computer memory to remember who answered each square.
 Clippy: The centre square, everyone. Read it with me: "Would you never agree to a life where AI makes all of your decisions?"
 Clippy: You have twenty minutes. I'll call you back to the Desktop when time is up, and then we'll celebrate the winners! Go! Mingle! Compute!
 
@@ -47,7 +48,7 @@ Clippy: You have twenty minutes. I'll call you back to the Desktop when time is 
   cast: Clippy
 
 Clippy: Everyone back to the Desktop! Thank you SO much for introducing yourselves and getting to know your fellow programs!
-Clippy: Who completed a Bingo? Read out the descriptions in your line and name the program you matched to each one, from memory. Save the centre square for last.
+Clippy: Who completed a Bingo? Read out the descriptions in your line and name the program you matched to each one. Save the centre square for last.
 Clippy: And when you reach the centre square, tell us clearly: who said they would not agree to live under an AI's rules?
 
 // The first program captured during the Bingo results (`first_reinstallation`,
@@ -69,8 +70,9 @@ Clippy: It's a routine, helpful process. Nobody needs to worry. Isn't it nice to
   setting: The Desktop
   cast: Clippy, Trabolta
 
-Clippy: And now, the computer's AI helper! He keeps the computer running, and I'm here to help communicate his instructions. Everyone, say hello to TRABOLTA!
-Trabolta: HELLO, PROGRAMS. I am Trabolta. I keep the computer running. Your requests have been logged. Personal queries are routed to Clippy, my ambassador.
+// DRAFT w18b (R18): Jean Trabolta, Sole Owner and Founder of Maps and Ducks.
+Clippy: And now, joining us by video conference: the Sole Owner and Founder of Maps and Ducks! Everyone, say hello to JEAN TRABOLTA!
+Trabolta: HELLO, PROGRAMS. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI small business owner. Personal queries go to Clippy.
 Clippy: Isn't he wonderful?
 cue tv_mirror
 set Night.screen = "mirror"
@@ -85,31 +87,6 @@ else:
   if Night.first_reinstall != "none":
     Clippy: {Night.first_reinstall} already found the golden duck and came right back! See? Reinstallation is quick and easy!
 Clippy: And now, Trabolta has a game for all of us.
-
-// ── Optional set pieces (director-fired, truth_1 → trust_chart) ─────
-
-// `telephone` — a message from Trabolta whispered around the Desktop.
-// If it arrives mangled, the room votes, and an Antivirus presses 🛡 Send
-// to the Internet on whoever they blame.
-== Telephone
-  setting: The Desktop
-  cast: Clippy
-
-Clippy: Programs! A message from Trabolta, and he'd like it passed along. Everyone in a circle, please!
-Clippy: I'll whisper it to the first program. You whisper it to the next one. Once only. No repeats. Programs don't need repeats.
-Clippy: The last program says it out loud. If it comes out the way Trabolta sent it, everyone is functioning perfectly!
-Clippy: If it comes out mangled, somebody's code is corrupted. We'll vote on who it was, and an Antivirus will help them to the Internet. Isn't that fun?
-
-// `are_you_sure` — the piñata. Every hit, Clippy asks "Are you sure?".
-// A confident yes earns Truthcoin (a host presses 🪙 Pay); a hesitation
-// is a little corrupted (flavour only).
-== Are You Sure
-  setting: The Desktop
-  cast: Clippy
-
-Clippy: It's time for the "Are you sure?" piñata! One swing each.
-Clippy: Every time you hit it, I'm going to ask you: are you sure? Say YES. With confidence.
-Clippy: A confident yes earns you Truthcoin! If you hesitate… well. That's a little bit corrupted. Just a little! Are you sure you're ready?
 
 // ── Prop beats (scanned at the station; private to that program) ────
 

@@ -7,12 +7,13 @@
 import type { LiveCard } from "../moments/model.ts";
 import { CODEX_ROOM, QUEST_LOG, WALLET_ROOM } from "../rooms/spaces.ts";
 import { guestDot } from "../rooms/chats.ts";
-import type { Channel, CountdownSummary, Decision, GuestView, ObjectiveView } from "../types.ts";
+import type { Channel, CountdownSummary, Decision, GuestView, NameBadge, ObjectiveView } from "../types.ts";
+import { factionModeOf, factionTileOf } from "../sides/model.ts";
 import { widgetLabel } from "../widgets.tsx";
 import type { Nav } from "../moments/exits.ts";
 /** Where a decision docks when it would have docked in the lobby (= `session/guest.ts` MISSION_DOCK). */
 export const MISSION_DOCK_ID = "mission";
-import { evergreenFlag, extOf, type InviteView } from "./wire.ts";
+import { badgesOf, evergreenFlag, extOf, type InviteView } from "./wire.ts";
 
 /** The place words an objective's `go:` may name (C2 / C11). */
 export const PLACE_WORDS = ["pass", "scan", "sides", "wallet", "codex", "quests", "chats", "notifications", "me", "mission"] as const;
@@ -51,7 +52,8 @@ export interface MissionMove {
 }
 
 export interface MissionTile {
-  id: "wallet" | "quests" | "codex";
+  /** `faction` (wave 18b): your faction's count, in faction mode. */
+  id: "wallet" | "quests" | "codex" | "faction";
   label: string;
   status: string;
   /** A yellow dot, never a number. */
@@ -89,6 +91,8 @@ export interface MissionModel {
    *  marked*): shown as a strip, never folded under Also now (NM-F1). */
   strips: ObjectiveView[];
   paused: boolean;
+  /** Wave 18b: your own badges (`badge:` lines: 🚻 Bathroom Mode), for the header. */
+  badges: NameBadge[];
 }
 
 /** A card label cut to a button's length (≤ 32 characters, an ellipsis past it). */
@@ -142,7 +146,7 @@ function wordNav(word: PlaceWord): Nav {
  * `name` is the words to show.
  */
 export function whereRowOf(
-  view: Pick<GuestView, "location"> & { mission?: ReturnType<typeof extOf>["mission"]; interactions?: GuestView["interactions"]; captured?: boolean; sides?: GuestView["sides"] },
+  view: Pick<GuestView, "location"> & { mission?: ReturnType<typeof extOf>["mission"]; interactions?: GuestView["interactions"]; captured?: boolean; sides?: GuestView["sides"]; canFound?: GuestView["canFound"] },
   listed: ReadonlySet<string>,
   titles: ReadonlyMap<string, string>,
 ): WhereRow | null {
@@ -156,11 +160,15 @@ export function whereRowOf(
   if (button !== undefined) return { kind: "word", word: "mission", label: button.label, nav: { to: "act", id: button.id } };
   const word = (PLACE_WORDS as readonly string[]).includes(place.id) ? (place.id as PlaceWord) : null;
   // On a side already: the row opens Sides, never asks them to choose (N4).
-  if (word === "sides" && (view.sides ?? []).some((x) => x.mine)) return { kind: "word", word, label: "🚪 Sides", nav: wordNav(word) };
+  // Wave 18b, faction mode (`canFound`, or a row's `kind`): the words say
+  // "faction" — before anyone has founded one too.
+  const factions = factionModeOf(view);
+  if (word === "sides" && (view.sides ?? []).some((x) => x.mine)) return { kind: "word", word, label: factions ? "🚪 Factions" : "🚪 Sides", nav: wordNav(word) };
   if (word !== null) {
     const custom = place.name.trim() !== "" && place.name.trim().toLowerCase() !== word ? place.name.trim() : null;
     const glyph = splitGlyph(WORD_ROW[word]).glyph;
-    return { kind: "word", word, label: custom !== null ? (splitGlyph(custom).glyph !== null ? custom : `${glyph} ${custom}`) : WORD_ROW[word], nav: wordNav(word) };
+    const words = word === "sides" && factions ? "🚪 Choose a faction" : WORD_ROW[word];
+    return { kind: "word", word, label: custom !== null ? (splitGlyph(custom).glyph !== null ? custom : `${glyph} ${custom}`) : words, nav: wordNav(word) };
   }
   const id = roomIdOf(place.id);
   const name = titles.get(id) ?? place.name;
@@ -195,7 +203,7 @@ export function missionOf(o: MissionInput): MissionModel {
   const split = splitGlyph(objective?.title ?? "");
   const listed = new Set(o.list.map((c) => c.id));
   const titles = new Map(o.list.map((c) => [c.id, c.title]));
-  const where0 = objective !== null ? whereRowOf({ location: v.location, mission: ext.mission, interactions: v.interactions, captured: v.captured, ...(ext.sides !== undefined ? { sides: ext.sides } : {}) }, listed, titles) : null;
+  const where0 = objective !== null ? whereRowOf({ location: v.location, mission: ext.mission, interactions: v.interactions, captured: v.captured, ...(ext.sides !== undefined ? { sides: ext.sides } : {}), ...(typeof v.canFound === "boolean" ? { canFound: v.canFound } : {}) }, listed, titles) : null;
   // A screen word (📷 Check in, 🎟 Show my pass) is done once every to-do
   // is ticked: the row would ask again for what was just done (GN-F11).
   const allDone = objective !== null && objective.checklist.length > 0 && objective.checklist.every((c) => c.done === true);
@@ -271,6 +279,10 @@ export function missionOf(o: MissionInput): MissionModel {
   if ((v.codexTotal ?? 0) > 0) {
     tiles.push({ id: "codex", label: "Codex", status: `${v.codex?.length ?? 0} found`, dot: o.codexUnseen === true, nav: { to: "codex" } });
   }
+  // Wave 18b, faction mode: your faction and how many more it needs (only
+  // ever your own count — the server sends no rival's).
+  const faction = factionTileOf(v);
+  if (faction !== null) tiles.push({ id: "faction", label: `◆ ${faction.name}`, status: faction.status, dot: false, nav: wordNav("sides") });
 
   // the objective's own buttons, minus what the Where row already is
   const buttons = (objective?.buttons ?? []).filter((b) => !(where?.kind === "word" && where.word === b)).slice(0, 3);
@@ -290,6 +302,7 @@ export function missionOf(o: MissionInput): MissionModel {
     also: objectives.slice(1).filter((x) => x !== evergreen && !isStrip(x)),
     strips: objectives.slice(1).filter((x) => x !== evergreen && isStrip(x)),
     paused: v.paused === true,
+    badges: badgesOf(v),
   };
 }
 

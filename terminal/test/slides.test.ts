@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IdentifyOverlay, ScreenLayer, SlideView } from "../src/ScreenLayer.tsx";
 import { EMPTY_NIGHT, parseScreenState, type ScreenProgram, type ScreenState } from "../src/screen.ts";
-import { BLACKOUT_MS, FLICKER_FRESH_MS, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
+import { BLACKOUT_MS, FLICKER_FRESH_MS, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
 
 const T0 = 1_000_000;
 const empty: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
@@ -413,8 +413,17 @@ describe("slides", () => {
     expect(slideCopy("award_best_liar")).toEqual({ title: "AWARD BEST LIAR" });
   });
 
-  it("slides that can show before the introduction never name the character", () => {
-    for (const v of ["call_desktop", "bingo", "bingo_time", "screensaver"]) expect(JSON.stringify(slideCopy(v))).not.toMatch(/trabolta/iu);
+  it("slides that can show before the introduction never name the character, but as the owner (D19)", () => {
+    for (const v of ["call_desktop", "bingo", "bingo_time", "screensaver"]) {
+      const c = slideCopy(v);
+      // An owner slide may carry only the owner's third-person lines.
+      const rest = c.owner === true ? { ...c, lines: (c.lines ?? []).filter((l) => !OWNER_LINES.includes(l)) } : c;
+      expect(JSON.stringify(rest), v).not.toMatch(/trabolta/iu);
+    }
+    for (const l of OWNER_LINES) expect(l).toMatch(/^Jean Trabolta .*video conference/u);
+    expect(slideCopy("bingo").lines).toContain(OWNER_LINE);
+    // R14: the bingo slide no longer asks for no names.
+    expect(JSON.stringify(slideCopy("bingo"))).not.toMatch(/write names|memory/iu);
   });
 
   it("the trivia slides ask exactly the Quest Log's questions", () => {

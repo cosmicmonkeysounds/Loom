@@ -423,6 +423,25 @@ body {
    "not set" — "confident" is something the guest chooses. */
 .fact-confidence.unset input[type=range] { opacity: 0.45; filter: grayscale(1); }
 .fact-confidence.unset output { font-style: italic; color: var(--muted-ink); }
+/* Wave 18b (R2): File it tapped with a piece missing — the hint turns red
+   and the piece is outlined (classes only, no :has()). The button stays
+   tappable, just dimmed while the card can't file. */
+.fact-confidence .req { font-weight: 400; font-size: 12px; color: var(--dim-ink); }
+.fact-confidence .req::before { content: "("; }
+.fact-confidence .req::after { content: ")"; }
+.fact-hint.error { font-weight: 700; color: var(--bad); }
+.fact-confidence.missing, .fact-answer.missing, .fact-questions.missing { outline: 2px dashed var(--bad); outline-offset: 3px; }
+.fact-confidence.missing .req { color: var(--bad); font-weight: 700; }
+.widget-foot .choice.widget-go { flex: 0 0 auto; white-space: nowrap; }
+.widget-foot .choice.widget-go.waiting { color: var(--muted-ink); opacity: 1; box-shadow: var(--raised); }
+@media (prefers-reduced-motion: no-preference) {
+  .fact-confidence.missing { animation: fact-shake 300ms ease-out 1; }
+}
+@keyframes fact-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
 .answer-text { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical;
   border: none; background: var(--white); color: var(--ink); box-shadow: var(--sunken); border-radius: var(--radius); }
 
@@ -793,6 +812,8 @@ footer {
 .wallet-card.denied, .wallet-card.declined, .wallet-card.failed, .wallet-card.cancelled, .wallet-card.expired { opacity: 0.85; }
 .wallet-party { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
 .wallet-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
+/* Wave 18b (R13): a transfer the audit holds, on both phones. */
+.wallet-audit { margin: 8px 0 0; padding: 6px 8px; font: 700 13px/1.35 var(--ui-font); color: var(--black); background: var(--highlight); box-shadow: inset 0 0 0 1px var(--black); border-radius: var(--radius); }
 .wallet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
 .wallet-foot .link { margin: 0; width: auto; font-size: 12px; }
 .msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 1px solid var(--line); }
@@ -838,7 +859,12 @@ footer {
 }
 .people-top { display: flex; align-items: center; gap: 6px; }
 .people-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.people-name { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .people-id .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Wave 18b (R15): a person's badges (🚻 Bathroom Mode) beside their name,
+   on people lists, presence, the booth and the host — never on a bubble. */
+.name-badge { display: inline-block; flex: 0 0 auto; margin-left: 4px; font-size: 1em; line-height: 1; font-weight: 400; vertical-align: baseline; cursor: default; }
+.people-name .name-badge { margin-left: 0; }
 .people-tags { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
 .people-top .choice { margin: 0; padding: 3px 8px; font-size: 14px; width: auto; flex-shrink: 0; }
 .people-where { font-size: 12px; color: var(--muted-ink); }

@@ -1,0 +1,107 @@
+# Every story `sound <name>` the router plays (wave 18b, Q1), with what the
+# real file should be. `uv run stagehand sounds placeholders --config
+# trapped.house.yaml` writes one labelled placeholder per name into the
+# router's sounds_dir (stagehand/media/sounds/, git-ignored: the real tracks
+# include copyrighted songs and live only on the house Mac):
+#
+#   <name>.wav   48 kHz / 16-bit / mono, ≈ −6 dBFS peak: a distinct synth
+#                motif, then "Placeholder. <name>." in the Mac's `say` voice;
+#                a RIFF INFO chunk tags it `loom-placeholder v1 — <real>`.
+#
+# A real file always wins: the generator never overwrites an untagged file
+# and skips a name that already has a real .wav / .aiff / .aif / .flac, and
+# the router prefers a real file over a tagged one. `stagehand check` lists
+# every placeholder still in the folder (the pre-show gate: replace them).
+#
+# Keys per sound:
+#   motif         the placeholder's synth pattern (stagehand/audio/placeholders.py)
+#   seconds       the motif's length
+#   lead_silence  seconds of silence before it (dance_song: the blackout)
+#   no_duck       never ducked under an announcement (trapped.house.yaml no_duck)
+#   real          what the real file should be (the asset list, HW-AUD-15)
+#
+# `announce_chime` is not here: the router synthesises the chime
+# (`chime: synth`) and rings it with the announcements.
+# tests/test_trapped_house.py keeps this list equal to the story's sounds.
+version: 1
+sounds:
+  modem_handshake:
+    motif: modem
+    seconds: 4
+    real: "56k dial-up handshake, ~6 s, The Optical Drive (arrival, the Login beat)"
+  bingo_start:
+    motif: arpeggio_up
+    seconds: 2.5
+    real: "game-show 'let's play' sting, 2-3 s, living room (Computer Bingo starts)"
+  ad_jingle:
+    motif: jingle
+    seconds: 6
+    real: "cheesy 1999 TV-ad jingle with '000. 000. 000.', 10-20 s, everywhere (the ad hijack)"
+  truther_glitch:
+    motif: glitch
+    seconds: 3
+    real: "data-corruption glitch burst + a download chirp, 3-5 s, everywhere (the Truther Download)"
+  countdown_tick:
+    motif: ticks
+    seconds: 5
+    real: "clock-tick countdown bed, 5-10 s, everywhere (the five-minute call)"
+  printer_grind:
+    motif: grind
+    seconds: 4
+    real: "dot-matrix printer jam grind, 4-6 s, living room (the printer button)"
+  beans_spill:
+    motif: rattle
+    seconds: 3
+    real: "beans pouring and rattling, 2-4 s, living room (PRINT FAILED)"
+  zip:
+    motif: zip
+    seconds: 1.5
+    real: "zipper / compression whoosh, ~1.5 s, everywhere (the Antivirus zip everyone out)"
+  y2k_chime:
+    motif: bell
+    seconds: 3
+    real: "one clock-tower strike, 3-5 s, everywhere (the Y2K hour and midnight; plays 6x)"
+  alarm_siren:
+    motif: siren
+    seconds: 6
+    real: "server-room alarm siren, 6-10 s, everywhere (the alarm latch)"
+  windows_shutdown:
+    motif: shutdown
+    seconds: 3
+    real: "Windows 98 shutdown chord, ~3 s, everywhere (before the dance)"
+  dance_song:
+    motif: beat
+    seconds: 20
+    lead_silence: 10
+    no_duck: true
+    real: "the dance track; MUST open with 10 s of silence (the blackout: Night.dance_at = +10); full song length; never ducked"
+  motorcycle:
+    motif: engine
+    seconds: 5
+    real: "motorcycle start + ride away, 5-8 s, everywhere (Trabolta leaves)"
+  youre_the_one_vocoder:
+    motif: vocoder
+    seconds: 12
+    real: "'You're the One' vocoder arrangement (Trabolta + Sandy), full length (the song ending)"
+  youre_the_one_sandy_only:
+    motif: vocoder_sad
+    seconds: 10
+    real: "the Sandy-only version, full length (the rave ending)"
+  rave:
+    motif: beat_fast
+    seconds: 20
+    no_duck: true
+    real: "rave track, full length; never ducked (the rave ending)"
+  hand_jive:
+    motif: beat_swing
+    seconds: 20
+    no_duck: true
+    real: "hand-jive track, full length; never ducked (the hand jive ending)"
+  ceremony_bed:
+    motif: pad
+    seconds: 60
+    real: "quiet awards music bed, as long as the ceremony (15+ min, or loop-friendly)"
+  award_fanfare:
+    motif: fanfare
+    seconds: 3
+    real: "brass fanfare, 2-4 s, living room (each award)"

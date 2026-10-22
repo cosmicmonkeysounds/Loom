@@ -54,6 +54,7 @@ CHANNEL hosts
 // ── The cast ───────────────────────────────────────────────────────────
 
 CHARACTER Night
+  playable: false
   phase: text = "doors"
   truther_sent: bool = false
   final_round: bool = false
@@ -65,6 +66,7 @@ CHARACTER Night
 
 CHARACTER Kernel
   secret: true
+  playable: false
   majority_reached: bool = false
   majority: text? = none
   majority_id: text? = none
@@ -255,8 +257,16 @@ when make_leaders for program:
     add program to The Way Out
     set The_Way_Out.leader = program
 
-when deal_the_fact:
-  show fact "File a fact" to everyone with thread: Oracle, questions: "H1: How many rubber ducks are on the Desktop?"
+// Fired naming a program (a card dealt `to everyone` from a rule with no
+// setting lands in the lobby, which `lobby: hidden` keeps off every phone).
+when deal_the_fact for program:
+  show fact "File a fact" to program with thread: Oracle, questions: "H1: How many rubber ducks are on the Desktop?"
+
+// A room sign's check-in (`/api/guest/checkin`, the scan dialog's 📍).
+when checked_in for program:
+  if at == "The Cellar":
+    move program to The Cellar
+    reply 📍 Checked in at the Cellar.
 
 when read_the_results:
   set Night.settle_gen += 1

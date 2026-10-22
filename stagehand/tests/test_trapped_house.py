@@ -33,12 +33,14 @@ import yaml
 
 from stagehand.conditions import Condition
 from stagehand.config import load_config
-from stagehand.show.cuemap import MqttCue, OscCue, evaluate_cues
+from stagehand.audio.placeholders import load_manifest
+from stagehand.show.cuemap import MqttCue, evaluate_cues
 from stagehand.show.sensormap import Debouncer, evaluate_sensors
 
 ROOT = Path(__file__).resolve().parents[1]
 HOUSE = ROOT / "trapped.house.yaml"
 STORY = ROOT.parent / "core/examples/trapped-in-the-internet"
+AUDIO_JSON = STORY / "audio.json"
 
 
 def _raw() -> dict:
@@ -81,11 +83,20 @@ def _targets(on_directive: str) -> set[str]:
 
 
 def test_the_house_config_loads():
+    """wave 18b (Q1): the router plays the sounds AND the announcements;
+    QLab (no OSC target at all) and the `alexa` player are gone."""
     cfg = load_config(HOUSE)
-    assert list(cfg.modules) == ["show", "alexa"]
+    assert list(cfg.modules) == ["show", "audio"]
     show = cfg.modules["show"].cfg
-    assert show.mqtt is not None and "qlab" in show.osc_targets
+    assert show.mqtt is not None and show.osc_targets == {}
     assert show.cues and show.sensors
+    audio = cfg.modules["audio"].cfg
+    assert audio.play_sounds and audio.announce and audio.passthrough is False
+    assert audio.mqtt is not None and ipaddress.ip_address(audio.mqtt.host).is_loopback
+    assert set(audio.no_duck) == {n for n, s in load_manifest().items() if s.no_duck} == {"dance_song", "rave", "hand_jive"}
+    # The uplink-down boot routes from the repo's files.
+    assert audio.config_file == str(AUDIO_JSON.resolve()) and audio.house_file == str((STORY / "house.json").resolve())
+    assert audio.sounds_dir == str((ROOT / "media" / "sounds").resolve())
 
 
 RETAINED_OK = {"show/serverroom/lock"}  # an indicator, not a command
@@ -126,30 +137,43 @@ def test_every_light_scene_and_flicker_cue_has_a_rule():
         assert evaluate_cues(_show().cues, _directive("cue", name)), name
 
 
-def test_every_sound_has_a_qlab_cue():
-    used = set(re.findall(r"^\s*(?:sound|sfx)\s+([A-Za-z0-9_]+)\s*$", _code(_story_text()), re.M))
+def _story_sounds() -> set[str]:
+    return set(re.findall(r"^\s*(?:sound|sfx)\s+([A-Za-z0-9_]+)\s*$", _code(_story_text()), re.M))
+
+
+def test_every_sound_is_routed():
+    """wave 18b (Q1): every story sound but the chime has an audio.json cue
+    (where it plays) and a manifest entry (its placeholder); no sound rule
+    goes to OSC; the chime rides show/chime to the announcing router."""
+    used = _story_sounds()
     assert used, "the story plays no sounds?"
-    missing = sorted(used - _targets("sfx"))
-    assert not missing, f"sounds with no rule in trapped.house.yaml: {missing}"
+    cues = json.loads(AUDIO_JSON.read_text(encoding="utf-8"))["cues"]
+    manifest = load_manifest()
+    assert sorted(cues) == sorted(used - {"announce_chime"}), "audio.json cues != the story's sounds"
+    assert sorted(manifest) == sorted(used - {"announce_chime"}), "media/sounds.yaml != the story's sounds"
+    assert all(r.get("osc") is None for r in _rules("sfx")) and _targets("sfx") == {"announce_chime"}
     for name in used:
-        cues = evaluate_cues(_show().cues, _directive("sfx", name))
-        if name == "announce_chime":  # the announce player's chime, not QLab (K-20)
-            assert cues == [MqttCue(topic="show/chime", payload="{}", retain=False, qos=0)]
-            assert load_config(HOUSE).modules["alexa"].cfg.chime_topic == "show/chime"
+        out = evaluate_cues(_show().cues, _directive("sfx", name))
+        if name == "announce_chime":  # the router rings it with the announcements (K-20)
+            assert out == [MqttCue(topic="show/chime", payload="{}", retain=False, qos=0)]
+            assert load_config(HOUSE).modules["audio"].cfg.chime_topic == "show/chime"
             continue
-        assert cues == [OscCue(addr=f"/cue/{name}/start", args=(), t_exec_offset_ms=None, to=("qlab",))], name
+        assert out == [], name  # the router plays it off the feed
 
 
 def test_the_ceremony_sounds_are_cued():
     """K-25: the ceremony beats (and the rule that opens them) play their own
-    sounds; each is a `sound` line the story really emits, with a QLab rule."""
+    sounds; each is a `sound` line the story really emits, routed by the
+    router (an audio.json cue + a placeholder)."""
     ceremony = _code((STORY / "beats/ceremony.loom").read_text(encoding="utf-8"))
     main = _code((STORY / "main.loom").read_text(encoding="utf-8"))
     opener = main[main.index("when start_the_ceremony:") :].split("\nwhen ", 1)[0]
     sounds = set(re.findall(r"^\s*(?:sound|sfx)\s+([A-Za-z0-9_]+)\s*$", ceremony + "\n" + opener, re.M))
     assert {"ceremony_bed", "award_fanfare"} <= sounds, sounds
+    cues = json.loads(AUDIO_JSON.read_text(encoding="utf-8"))["cues"]
+    manifest = load_manifest()
     for name in sounds:
-        assert evaluate_cues(_show().cues, _directive("sfx", name)) == [OscCue(addr=f"/cue/{name}/start", args=(), t_exec_offset_ms=None, to=("qlab",))], name
+        assert name in cues and cues[name]["to"] and name in manifest, name
 
 
 def _mqtt(cues) -> list[tuple[str, dict]]:
@@ -186,17 +210,17 @@ def test_every_room_trabolta_can_darken_goes_off_and_comes_back():
         assert evaluate_cues(_show().cues, _directive("cue", f"lights, room: {room}, state: off")) == [], room
 
 
-def test_every_announcement_plays_and_ducks_the_music():
-    """SW-AUD-05: every `do announce "…"` reaches the announcement player AND
-    fires QLab's `duck_music` cue (the cue map fires every matching rule)."""
+def test_every_announcement_reaches_the_router():
+    """SW-AUD-05 (wave 18b): every `do announce "…"` is one show/announce
+    message to the router, which ducks its own sounds under it (no QLab
+    `duck_music`)."""
     lines = re.findall(r'^\s*do announce ("[^"]+")', _code(_story_text()), re.M)
     assert lines, "the story no longer announces anything"
+    audio = load_config(HOUSE).modules["audio"]
+    assert audio.cfg.announce_topic == "show/announce" and not audio.announcements_from_feed()
     for line in lines:
         cues = evaluate_cues(_show().cues, _directive("announce", line))
-        assert cues == [
-            MqttCue(topic="show/announce", payload=json.dumps({"text": line.strip('"')}), retain=False, qos=0),
-            OscCue(addr="/cue/duck_music/start", args=(), t_exec_offset_ms=None, to=("qlab",)),
-        ], line
+        assert cues == [MqttCue(topic="show/announce", payload=json.dumps({"text": line.strip('"')}), retain=False, qos=0)], line
 
 
 def _lights_values() -> set[str]:
@@ -602,24 +626,32 @@ def test_scene_cues_hit_both_zigbee_and_wled(cue):
     assert "zigbee2mqtt/house/set" in topics and "wled/all/api" in topics
 
 
-def test_alexa_speaks_with_the_macs_own_voice():
-    """Decision 2026-10-15: the house speakers use the Mac's `say` voice, so
-    an announcement never waits on (or needs) the VPS."""
-    alexa = load_config(HOUSE).modules["alexa"].cfg
-    assert alexa.engine == "say"
-    assert alexa.say_voice
-    assert (alexa.device, alexa.channels) == ("MOTU", (1, 2, 3, 4))
+def test_the_router_speaks_with_the_macs_own_voice():
+    """Decision 2026-10-15, kept by the router (wave 18b): the house speakers
+    use the Mac's `say` voice, so an announcement never waits on (or needs)
+    the VPS. No `alexa:` section: one owner of the house's voice."""
+    raw = _raw()
+    assert "alexa" not in raw
+    audio = load_config(HOUSE).modules["audio"].cfg
+    assert audio.say_voice and audio.chime == "synth"
 
 
-def test_alexa_prewarms_every_scripted_announcement():
-    """Every `do announce "…"` line is listed for the opt-in server voice
-    (`engine: server` caches them on the house Mac at boot — a line missing
-    here would cost the server round trip on the night)."""
-    lines = set(re.findall(r'^\s*do announce "([^"]+)"', _code(_story_text()), re.M))
-    alexa = load_config(HOUSE).modules["alexa"].cfg
-    assert lines, "the story no longer announces anything — drop the alexa prewarm list"
-    assert lines <= set(alexa.prewarm), f"add to alexa.prewarm: {sorted(lines - set(alexa.prewarm))}"
-    assert alexa.topic == "show/announce" == _rules("announce")[0]["mqtt"]["topic"]
+def test_the_starter_audio_json_is_the_828x_with_its_expander():
+    """wave 18b (Q2, D1): our channel numbers are the 828x's own — 24 in /
+    22 out used, the device must report 32 / 30 (`device.expect`), the
+    expander on Optical A (outputs 15–22, inputs 17–24), the placed speakers
+    unmoved on 1, 2, 3, 4 and 8, and no tablet says the announcements by
+    itself (`announce.terminals` empty)."""
+    audio = json.loads(AUDIO_JSON.read_text(encoding="utf-8"))
+    dev = audio["device"]
+    assert (dev["name"], dev["inputs"], dev["outputs"], dev["rate"], dev["expect"]) == ("828x", 24, 22, 48000, {"inputs": 32, "outputs": 30})
+    assert [c["ch"] for c in audio["inputs"]] == list(range(1, 25))
+    assert [c["ch"] for c in audio["outputs"]] == [*range(1, 11), *range(15, 23)]
+    assert all("ADAT A" in c["label"] for c in audio["outputs"] if c["ch"] >= 15)
+    assert all("ADAT A" in c["label"] for c in audio["inputs"] if c["ch"] >= 17)
+    assert {s["id"]: s["out"] for s in audio["speakers"]} == {"living-l": [1], "living-r": [2], "kitchen-l": [3], "kitchen-r": [4], "optical-drive": [8]}
+    assert audio["routes"] == [] and audio["announce"] == {"to": ["everywhere"], "chime": True, "terminals": []}
+    assert "QLab" not in json.dumps(audio)
 
 
 def test_server_open_catches_up_the_y2k_house_look_underneath():

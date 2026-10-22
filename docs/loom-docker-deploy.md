@@ -540,7 +540,7 @@ address they fall back to typing the guest's name.
 2026-10-15): each tablet's `speechSynthesis`, Fully Kiosk's text-to-speech
 on the old Android tablets, the macOS voices on the house Mac's Chrome
 (`terminal/README.md` → *The voice*, `docs/trapped/kiosk.md`). The house
-speakers' announcements use the Mac's `say` (`scripts/house-mac/alexa.md`).
+speakers' announcements use the Mac's `say` (`scripts/house-mac/audio.md`).
 **Nothing to deploy, and nothing on the night depends on the VPS for a
 voice.** A plain `docker compose up -d` does not start Kokoro, and
 `LOOM_TTS_URL` defaults to `off` — `/api/mod/tts` answers 503 and any

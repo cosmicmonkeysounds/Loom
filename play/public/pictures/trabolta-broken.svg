@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>Jean Trabolta (image not available)</title>
+  <rect width="256" height="256" fill="#04110a"/>
+  <path d="M64 36 H160 L192 68 V116 L176 128 L160 112 L140 132 L120 112 L100 132 L80 112 L64 126 Z" fill="#e9fff1" stroke="#3dff7a" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M160 36 V68 H192" fill="#9cf5b8" stroke="#3dff7a" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="98" cy="72" r="12" fill="#17c45a"/>
+  <path d="M74 112 L102 84 L120 102 L138 86 L162 108" fill="none" stroke="#17c45a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M64 150 L80 136 L100 156 L120 136 L140 156 L160 136 L176 152 L192 140 V220 H64 Z" fill="#e9fff1" stroke="#3dff7a" stroke-width="6" stroke-linejoin="round"/>
+  <rect x="84" y="176" width="88" height="10" rx="2" fill="#9cf5b8"/>
+  <rect x="84" y="196" width="60" height="10" rx="2" fill="#9cf5b8"/>
+  <path d="M206 44 L222 60 M222 44 L206 60" stroke="#3dff7a" stroke-width="6" stroke-linecap="round"/>
+</svg>

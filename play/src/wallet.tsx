@@ -134,7 +134,10 @@ export function frozenNote(view: WalletView, clock?: number): string | null {
 const STEP_GLYPH: Record<string, string> = {
   sent: "💸",
   pending: "⏳",
-  held: "⏳",
+  // Wave 18b (R13): a transfer the approver's audit held is flagged 🚩, on
+  // the sender's card (`held`) and the recipient's (`flagged`) alike.
+  held: "🚩",
+  flagged: "🚩",
   settled: "✅",
   received: "💰",
   approved: "✅",
@@ -164,7 +167,7 @@ const STEP_GLYPH: Record<string, string> = {
 export function walletGlyph(card: WalletCard, state?: string | null): string {
   if (card.kind === "grant") return "🎁";
   if (card.kind === "freeze" && card.step === "expired") return "☀️";
-  if ((card.step === "pending" || card.step === "held") && state != null && STEP_GLYPH[state] !== undefined) return STEP_GLYPH[state]!;
+  if ((card.step === "pending" || card.step === "held" || card.step === "flagged") && state != null && STEP_GLYPH[state] !== undefined) return STEP_GLYPH[state]!;
   return STEP_GLYPH[card.step] ?? "💰";
 }
 
@@ -219,6 +222,9 @@ export function walletStepLine(card: WalletCard, me?: string | null): string {
       return card.kind === "freeze" ? `☀️ The freeze on ${card.toName} is over` : "⌛ Expired";
     case "received":
       return card.kind === "grant" ? `🎁 ${card.fromName} granted you ${amt}` : `💰 Received ${amt} from ${card.fromName}`;
+    case "held":
+    case "flagged":
+      return card.kind === "transfer" ? `🚩 ${auditLine(card)}` : `${walletGlyph(card)} ${amt}`;
     case "won":
     case "lost":
     case "push":
@@ -226,6 +232,22 @@ export function walletStepLine(card: WalletCard, me?: string | null): string {
     default:
       return `${walletGlyph(card)} ${amt}`;
   }
+}
+
+/** "Flagged for a CRA audit — MyCRA must approve it" (wave 18b, R13): the
+ *  story's `audit` phrase and the approver's `as` name, else plain words. */
+export function auditLine(card: Pick<WalletCard, "audit" | "approver">): string {
+  const audit = card.audit?.trim() || "an audit";
+  const who = card.approver?.replace(/_/gu, " ").trim();
+  return who ? `Flagged for ${audit} — ${who} must approve it` : `Flagged for ${audit} — it must be approved first`;
+}
+
+/** The banner a transfer's card wears while its audit holds it, on both
+ *  phones (the sender's `held` card, the recipient's `flagged` one); null
+ *  for any other card or once it has settled. */
+export function walletAuditNote(card: WalletCard, state: string | null): string | null {
+  if (card.kind !== "transfer" || (card.step !== "held" && card.step !== "flagged") || state !== "held") return null;
+  return `🚩 ${auditLine(card)}.`;
 }
 
 /** One casino bet: "THE COIN · 10 on HEADS → HEADS · won 20". */
@@ -240,6 +262,7 @@ export function walletCardTitle(card: WalletCard): string {
   const title = card.entryTitle ?? card.entry ?? "a fact";
   switch (card.kind) {
     case "transfer":
+      if (card.step === "flagged") return `${card.fromName} is sending you ${amt}`;
       return card.step === "received" ? `${card.fromName} sent you ${amt}` : `You sent ${card.toName} ${amt}`;
     case "approval":
       return `${card.fromName} → ${card.toName}: ${amt}`;
@@ -506,7 +529,8 @@ export function WalletCardView({
   const buttons = walletButtonsFor(card, actions.view, actions.me, actions.restricted ?? false, frozenUntil(actions.view, actions.clock) !== null);
   const open = onOpenThread ? () => onOpenThread(msg.seq) : undefined;
   const other =
-    card.kind === "approval" ? card.fromName : card.step === "received" || card.step === "asked" || card.step === "offered" || card.step === "frozen" ? card.fromName : card.toName;
+    card.kind === "approval" ? card.fromName : card.step === "received" || card.step === "flagged" || card.step === "asked" || card.step === "offered" || card.step === "frozen" ? card.fromName : card.toName;
+  const audit = walletAuditNote(card, state);
   return (
     <div className={`msg wallet-msg ${msg.hidden ? "hidden" : ""}`}>
       <div className={`wallet-card ${card.kind} ${state ?? "closed"}`}>
@@ -526,6 +550,11 @@ export function WalletCardView({
         {other && card.kind !== "stimulus" && card.kind !== "casino" && (
           <div className="wallet-party">
             <PersonAvatar name={other} size="sm" /> {other.replace(/_/gu, " ")}
+          </div>
+        )}
+        {audit !== null && (
+          <div className="wallet-audit" role="note">
+            {audit}
           </div>
         )}
         {msg.text && <p className="wallet-text">{msg.text}</p>}

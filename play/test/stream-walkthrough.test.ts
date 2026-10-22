@@ -8,6 +8,12 @@ import { hasPendingCard, withAgents } from "../src/session.ts";
 import type { Channel, ChatMessage, GuestView } from "../src/types.ts";
 import { FACT_CLOSED_NOTE, WIDGETS, cardAsks, supersededCards } from "../src/widgets.tsx";
 import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
+import { FactCard } from "../src/widgets-fact.tsx";
+import type { WidgetProps } from "../src/widgets.tsx";
+
+/** The 📝 card itself (its own chunk since wave 18b; the registry lazy-loads it). */
+const renderFact = (p: WidgetProps) => createElement(FactCard, p);
 
 function msg(seq: number, channel: string, extra: Partial<ChatMessage> = {}): ChatMessage {
   return { seq, channel, channelKind: "dm", title: channel, from: "Trabolta", kind: "line", text: `line ${seq}`, ts: seq, audience: ["g-1"], parentSeq: null, hidden: false, ...extra };
@@ -63,17 +69,17 @@ describe("a fact card with no open questions is closed, not a task (B14)", () =>
   });
 
   it("renders as a note, not a form", () => {
-    const html = renderToStaticMarkup(WIDGETS.fact!.render({ card: fact(9, "").widget!, seed: 9, onAnswer: () => {} }) as never);
+    const html = renderToStaticMarkup(renderFact({ card: fact(9, "").widget!, seed: 9, onAnswer: () => {} }) as never);
     expect(html).toContain(FACT_CLOSED_NOTE);
     expect(html).not.toContain("<textarea");
-    expect(renderToStaticMarkup(WIDGETS.fact!.render({ card: fact(3, "H2: Round 1 Q2.").widget!, seed: 3, onAnswer: () => {} }) as never)).toContain("<textarea");
+    expect(renderToStaticMarkup(renderFact({ card: fact(3, "H2: Round 1 Q2.").widget!, seed: 3, onAnswer: () => {} }) as never)).toContain("<textarea");
   });
 
   it("a card with one question left shows it picked, and says what File it waits for (T5-04)", () => {
-    const html = renderToStaticMarkup(WIDGETS.fact!.render({ card: fact(3, "H2: Round 1 Q2.").widget!, seed: 3, onAnswer: () => {} }) as never);
+    const html = renderToStaticMarkup(renderFact({ card: fact(3, "H2: Round 1 Q2.").widget!, seed: 3, onAnswer: () => {} }) as never);
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("Type your answer");
-    const two = renderToStaticMarkup(WIDGETS.fact!.render({ card: fact(4, "H2: Q2 | H3: Q3").widget!, seed: 4, onAnswer: () => {} }) as never);
+    const two = renderToStaticMarkup(renderFact({ card: fact(4, "H2: Q2 | H3: Q3").widget!, seed: 4, onAnswer: () => {} }) as never);
     expect(two).not.toContain('aria-pressed="true"');
     expect(two).toContain("Pick a question above");
   });

@@ -23,6 +23,7 @@ import { PartPresence, partPresence, partPresenceTitle, performerParts } from '@
 import { recapPath, runAge } from './run-chrome'
 import { PrintSheet } from './PrintSheet'
 import { TerminalsCard } from './TerminalsCard'
+import { HouseSoundCard } from './HouseSoundCard'
 import { HouseMapCard } from './HouseMapCard'
 import { WalletCard, WalletLocalNote } from './WalletCard'
 
@@ -427,6 +428,7 @@ export function RunPage() {
             <JoinCard />
             <DirectingCard />
             <TerminalsCard />
+            <HouseSoundCard />
             <HouseMapCard key={run.eventId ?? ''} />
             <WalletCard />
             <LookupCard />

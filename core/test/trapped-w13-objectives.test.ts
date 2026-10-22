@@ -51,6 +51,8 @@ export class Night {
     const ev = this.sim.signal(name, subject);
     notePress(this.sim, ev);
     expect(pressRefused(this.sim, ev), name).toBe(false);
+    // Wave 18b: ⚖'s ending follows The Verdict's TV pages (34 s of story time).
+    if (name === "the_verdict") for (let i = 0; i < 34; i++) ev.push(...this.sim.tick(1000));
     return this.take(ev);
   }
   scan(scanner: string, id: string): ChatMessage[] {
@@ -138,7 +140,7 @@ describe("Trapped in the Internet — wave 13: the host parts", () => {
 describe("Trapped in the Internet — wave 13: codex categories", () => {
   it("every CODEX entry carries a guest-facing category (titi:facts writes the generated ones)", () => {
     const m = Sim.fromSources(SRC).model;
-    const allowed = new Set(["People", "Places", "The story", "How it works", "Files", "Trabolta", "Missions", "Facts", "The cold door"]);
+    const allowed = new Set(["People", "Places", "The story", "How it works", "Files", "Trabolta", "Missions", "Facts", "The cold door", "Connections"]);
     const missing = [...m.codex.values()].filter((c) => c.category === null).map((c) => c.id);
     expect(missing).toEqual([]);
     for (const c of m.codex.values()) {
@@ -281,7 +283,8 @@ describe("Trapped in the Internet — wave 13: the cards that ask", () => {
     const n = boot();
     for (const c of TO_TRUTH_1) n.press(c);
     n.press("close_the_filing");
-    n.press("read_the_results");
+    // Wave 18b (R21): the bottle after all three results.
+    for (let q = 0; q < 3; q++) n.press("read_the_results");
     n.press("spin_the_bottle");
     // The server's pick lands as `bottle_landed` (the Sim has no random).
     const spin = n.signal("bottle_landed", "g2");
@@ -289,7 +292,7 @@ describe("Trapped in the Internet — wave 13: the cards that ask", () => {
     const card = spin.find((m) => m.kind === "widget" && m.text.startsWith("🍾 The bottle landed on you"))!;
     expect(card).toMatchObject({ moment: "big", audience: [pick.id] });
     // The pickup line (after truth.txt, both branches).
-    for (const c of ["read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "bobbing_for_truth"]) {
+    for (const c of ["second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "bobbing_for_truth"]) {
       if (v(n.sim, "Night.bottle_open") === true) n.signal("truth_answered", pick.id, undefined, "Clippy");
       n.press(c);
     }
@@ -320,7 +323,7 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
     ["📊 the Trust Chart", /^📊 THE TRUST CHART\./u, () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally"]) n.press(c); return { n, out: n.press("trust_chart") }; }],
     ["🫘 the beans", /^🫘 PRINT FAILED\./u, () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings"]) n.press(c); n.signal("praise_the_top"); n.signal("shame_the_bottom"); expect(v(n.sim, "Night.printer_called")).toBe(true); return { n, out: n.press("printer_opened") }; }],
     ["🤖 the overshare", /^🤖 Trabolta is sharing the final facts/u, () => { const n = boot(); for (const c of TO_OVERSHARE.slice(0, -1)) n.press(c); return { n, out: n.press("trabolta_overshares") }; }],
-    ["🕚 the Y2K orders + factions exposed", /^🕚 SYSTEM CLOCK RESET.*two factions are recruiting/u, () => { const n = boot(); for (const c of TO_OVERSHARE) n.press(c); return { n, out: n.press("y2k_clock") }; }],
+    ["🕚 the Y2K orders + factions exposed", /^🕚 SYSTEM CLOCK RESET.*Unlimited Power and The Way Out are recruiting/u, () => { const n = boot(); for (const c of TO_OVERSHARE) n.press(c); return { n, out: n.press("y2k_clock") }; }],
     ["📂 # clipboard opens (hunt 2)", /^📓 Round 2 .*# clipboard is open\./u, () => { const n = boot(); for (const c of TO_HOUR.slice(0, -1)) n.press(c); const out = n.press("start_the_second_hunt"); expect(majorFor(out, "g1").some((m) => m.text.includes("# clipboard"))).toBe(true); return { n, out }; }],
     ["📂 # truthcoin-exchange opens (the Truther Download)", /^📥 TRUTHER DOWNLOAD received\..*# truthcoin-exchange is open\./u, () => { const n = boot(); for (const c of TO_HOUR) n.press(c); const out = n.tick(125); expect(majorFor(out, "g1").some((m) => m.text.includes("# truthcoin-exchange"))).toBe(true); return { n, out }; }],
     ["⑥ the Truther Download (your messages, your mission)", /^📥 TRUTHER DOWNLOAD received\./u, () => { const n = boot(); for (const c of TO_HOUR) n.press(c); return { n, out: n.tick(125) }; }],
@@ -331,7 +334,7 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
       for (const e of ["Cold Door First Digit", "Cold Door Second Digit", "Cold Door Third Digit"]) n.take(n.sim.unlock("g1", e));
       return { n, out: n.take(n.sim.unlock("g1", "Cold Door Fourth Digit")) };
     }],
-    ["🗝 the door code by the majority (The Whole Truth)", /^🗝 THE WHOLE TRUTH:/u, () => { const n = Y2K(); for (const [id] of PROGRAMS) n.take(n.sim.join(id, "Unlimited Power")); return { n, out: n.press("force_majority_stay").concat(n.tick(1)) }; }],
+    ["🗝 the door code by the majority (The Whole Truth)", /^🗝 THE WHOLE TRUTH:/u, () => { const n = Y2K(); n.take(n.sim.join("g1", "Unlimited Power")); return { n, out: n.press("force_majority_stay").concat(n.tick(1)) }; /* wave 18b: no plant gate, so one member short of a real majority */ }],
     ["🚪 The Heart", /^🚪 THE SERVER ROOM IS OPEN\./u, () => { const n = Y2K(); return { n, out: n.signal("server_door_opened") }; }],
     ["⏰ you are late", /^⏰ You are late\./u, () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c); return { n, out: n.press("summons_closed") }; }],
     ["🎵 the song ending (the verdict, every fact accurate)", /^🎵 TRABOLTA SOLVED IT\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); const out = n.press("the_verdict"); expect(v(n.sim, "Night.ending")).toBe("song"); return { n, out }; }],
@@ -491,12 +494,12 @@ function nightSteps(ending: "song" | "hand_jive"): Step[] {
     ["g6 back", (n) => { n.signal("back from the bathroom", "g6"); }],
     press("close_the_filing"),
     press("read_the_results"),
-    press("spin_the_bottle"),
-    ["the bottle lands on g2", (n) => { n.signal("bottle_landed", "g2"); }],
-    by("truth_answered", "g2", "Clippy"),
     by("uncertain_answer", "g5", "Clippy"),
     press("read_the_results"),
     press("read_the_results"),
+    press("spin_the_bottle"),
+    ["the bottle lands on g2", (n) => { n.signal("bottle_landed", "g2"); }],
+    by("truth_answered", "g2", "Clippy"),
     press("second_hunt_preview"),
     press("start_the_second_hunt"),
     ["+2 min (the Truther Download)", (n) => { n.tick(125); }],

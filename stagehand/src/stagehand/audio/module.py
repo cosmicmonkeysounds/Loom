@@ -5,11 +5,13 @@
                   mod feed  sim directive sfx / announce, lifecycle
          │
          ▼
-    this module ── ONE sounddevice stream on the interface (the MOTU, 16 / 16)
+    this module ── ONE sounddevice stream on the interface (the MOTU 828x + an
+                   │  ADAT expander: audio.json 24 in / 22 out, device.expect 32 / 30)
                    ├─ voices: `sound X` → sounds_dir/X.wav → its speakers' outputs
                    ├─ announcements: chime + `say` → audio.json `announce.to`
                    ├─ tests: a 1.5 s tone + the spoken label on one speaker / output
-                   └─ the matrix: inputs (QLab, mics, the TV) → outputs, audio.json `routes`
+                   ├─ stops: Run's ■ Stop house sounds (`stops=`) / show/audio/stop
+                   └─ the matrix: inputs (mics, the TV, a line) → outputs, audio.json `routes`
 
 Where a `sound X` goes, first rule that applies:
   1. the story line's own rooms (`sound X with rooms: …` / `sound X in <Place>`)
@@ -17,21 +19,28 @@ Where a `sound X` goes, first rule that applies:
   3. the enclosing beat's setting (a LOCATION)
   4. everywhere
 
-Opt-in twice over (decision D6): with `play_sounds: false` (the default) QLab
-keeps playing `sound X` — the router only runs the matrix and the tests; with
-`announce: false` the `alexa` player keeps the announcements. When the router
-plays sounds the `show` module drops its QLab `sound` cues (config.py), so no
-sound plays twice; when it announces, an `alexa:` section in the same YAML is a
-config error and the router takes the alexa player's lock before it speaks
-(a leftover alexa job blocks only the announcements, never the sounds), so
-the house never has two voices. With `announce: false` each `do announce`
-ducks the router's sounds for `duck_hold_s` (QLab's `duck_music`); sounds
-in `no_duck` (the dance tracks) never duck.
+Opt-in twice over (wave 17's D6; the show turns both on since wave 18b, and
+QLab and the `alexa` player are retired there): with `play_sounds: false`
+(the default) another cue player keeps `sound X` — the router only runs the
+matrix and the tests; with `announce: false` the `alexa` player keeps the
+announcements. When the router plays sounds the `show` module drops its OSC
+`sound` cues (config.py), so no sound plays twice; when it announces, an
+`alexa:` section in the same YAML is a config error and the router takes the
+alexa player's lock before it speaks (a leftover alexa job blocks only the
+announcements, never the sounds), so the house never has two voices. With
+`announce: false` each `do announce` ducks the router's sounds for
+`duck_hold_s`; sounds in `no_duck` (the dance tracks) never duck.
+
+"Stop all house sounds" (wave 18b, Q7) is one-shot and never journaled: every
+sfx voice and speaker test fades over 0.3 s; `+ announcements` also cuts the
+line playing now and empties the queue. The TV, the terminals and the live
+inputs are untouched, and the story clock is not (the dance still lands on
+`Night.dance_at`).
 
 Survives the uplink: the last audio.json and house.json are kept in
 `cache_dir`, so a restart with the internet down still routes; sounds are
-local files; MQTT (`show/announce`, `show/chime`, `show/audio/test`) works on
-the LAN alone.
+local files; MQTT (`show/announce`, `show/chime`, `show/audio/test`,
+`show/audio/stop`, `show/audio/play`) works on the LAN alone.
 """
 
 from __future__ import annotations
@@ -57,7 +66,7 @@ from ..module import ConfigError, Context
 from ..show.config import MqttConfig
 from ..show.directives import parse_directive, unquote
 from .config import AudioConfig, parse_audio_section
-from .engine import Engine, device_name, probe
+from .engine import Engine, device_name, layout_problem, probe
 from .mixer import Mixer, lin_to_db
 from .routing import (
     EVERYWHERE,
@@ -71,7 +80,7 @@ from .routing import (
     speaker_layout,
     split_targets,
 )
-from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone
+from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone, placeholders_in
 
 log = logging.getLogger("stagehand.audio")
 
@@ -83,6 +92,9 @@ CHIME_SOUND = "announce_chime"
 #: The lifecycle kinds that restart the story: every sound fades out.
 RESTART_KINDS = ("reset", "reload", "golive", "ended")
 HOUSE_REFRESH_S = 300.0
+#: A stop older than this (by the server's clock) is never acted on: a
+#: router that boots, or reconnects, well after a press stays quiet.
+STOP_STALE_S = 10.0
 
 
 def build_audio(section: Any, base_dir: str) -> "AudioRouter":
@@ -122,6 +134,12 @@ class MixerOutput:
 
     def play(self, samples: np.ndarray, rate: int) -> None:
         r = self.router
+        if r.announce_cut():
+            # Stopped (stop + announcements): return as if played. Raising
+            # would send the Announcer to its `say -a` fallback, which would
+            # speak around the router.
+            log.info("announcement cut (stop)")
+            return
         mixer = r.mixer
         if mixer is None or not r.engine_running():
             raise PlaybackError("the audio stream is closed")
@@ -167,6 +185,21 @@ class AudioRouter:
         self.test_at = -1.0
         self.test_seq = 0
         self._tests_primed = False
+        #: The stops (wave 18b, Q7), cursored like the tests: the newest seen
+        #: (server epoch ms), the list's seq cursor, primed by the first answer.
+        self.stop_at = -1.0
+        self.stop_seq = 0
+        self._stops_primed = False
+        self.stops_done = 0
+        #: `stop + announcements`: the epoch bumps, so the line playing now
+        #: is cut (its chime and its voice alike) and every line queued
+        #: before the stop (stamped at `enqueue`) is skipped. A line queued
+        #: after it plays at once.
+        self._announce_epoch = 0
+        self._playing_epoch = 0
+        #: Bumped by every stop: a speaker test started before it never
+        #: plays its spoken label (the tone fades with the test bus).
+        self._test_epoch = 0
         self.loop: asyncio.AbstractEventLoop | None = None
         self.announcements: asyncio.Queue | None = None
         self.announcer: Announcer | None = None
@@ -194,25 +227,49 @@ class AudioRouter:
         dev = cfg.device or (doc.device if doc else "the audio.json device")
         return [
             f"device   : {dev}" + (f" ({doc.inputs} in / {doc.outputs} out)" if doc else "") + (" duplex" if cfg.passthrough else " output-only"),
-            f"sounds   : {'the router plays `sound X` (QLab skipped)' if cfg.play_sounds else 'QLab plays `sound X` (router idle)'} — {cfg.sounds_dir}",
+            f"sounds   : {'the router plays `sound X` (OSC sound cues skipped)' if cfg.play_sounds else 'not here: play_sounds is false (another cue player)'} — {cfg.sounds_dir}",
             f"announce : {'the router (chime + say ' + (cfg.say_voice or 'default') + ')' if cfg.announce else 'not here (the alexa player)'}",
             f"matrix   : {'on' if cfg.passthrough else 'off'}" + (f", {len(doc.routes)} route(s)" if doc else ""),
             f"config   : the server's audio.json (long-poll {cfg.poll_wait:.0f}s)" + (f"; local {cfg.config_file}" if cfg.config_file else "") + f"; cache {cfg.cache_dir}",
-            f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port} ← {cfg.test_topic}' + (f', {cfg.announce_topic}, {cfg.chime_topic}' if cfg.announce else '') if cfg.mqtt else '— (tests + announcements from the server only)'}",
+            f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port} ← {cfg.test_topic}, {cfg.stop_topic}, {cfg.play_topic}' + (f', {cfg.announce_topic}, {cfg.chime_topic}' if cfg.announce else '') if cfg.mqtt else '— (tests, stops + announcements from the server only)'}",
             f"levels   : master {cfg.master_db:+.0f} dB, limit {cfg.limit_db:+.0f} dBFS, duck {cfg.duck_db:+.0f} dB"
             + (f" (held {cfg.duck_hold_s:g}s per alexa announcement)" if not cfg.announce and cfg.duck_hold_s > 0 else "")
             + (f"; never ducked: {', '.join(cfg.no_duck)}" if cfg.no_duck else ""),
         ]
 
+    @staticmethod
+    def _parse_local(raw: Any) -> AudioDoc | None:
+        if raw is None:
+            return None
+        try:
+            return parse_audio(raw.get("audio", raw) if isinstance(raw, dict) else raw)
+        except AudioDocError:
+            return None
+
     def _local_doc(self) -> AudioDoc | None:
+        """The audio.json the router would boot on: the cache, else
+        `config_file`, else the server's answer to `check`."""
         for raw in (self._read_json(self._cache_path("audio.json")), self._read_json(self.cfg.config_file), self._check_answer):
-            if raw is None:
-                continue
-            try:
-                return parse_audio(raw.get("audio", raw) if isinstance(raw, dict) else raw)
-            except AudioDocError:
-                continue
+            doc = self._parse_local(raw)
+            if doc is not None:
+                return doc
         return None
+
+    def _stale_cache(self) -> tuple[AudioDoc, AudioDoc] | None:
+        """(cache, config_file) when the cached audio.json carries no
+        `device.expect` but `config_file` does: an older router's cache (the
+        wave 17 MOTU, 16 / 16) that would hide a moved layout from `check`."""
+        cached = self._parse_local(self._read_json(self._cache_path("audio.json")))
+        local = self._parse_local(self._read_json(self.cfg.config_file))
+        if cached is None or local is None or cached.expect is not None or local.expect is None:
+            return None
+        return cached, local
+
+    def _check_doc(self) -> AudioDoc | None:
+        """`check`'s audio.json: the boot one, unless the cache is stale
+        (`_stale_cache`), when `config_file`'s layout check wins."""
+        stale = self._stale_cache()
+        return stale[1] if stale is not None else self._local_doc()
 
     def fetch_for_check(self, server: Any, *, client_factory: Any = None, timeout: float = 3.0) -> None:
         """`stagehand check` with no local audio.json (a fresh house Mac): ask
@@ -242,16 +299,17 @@ class AudioRouter:
 
     def preflight(self) -> list[str]:
         """`stagehand check`: the device against the local / cached audio.json."""
-        doc = self._local_doc()
+        doc = self._check_doc()
         if doc is None:
             name = self.cfg.device
             info, problems = probe(name, 0, 1, self._query)
             if info is not None:
                 log.info("audio device %s: %d in / %d out @ %d Hz (no local audio.json to check against)", info.name, info.inputs, info.outputs, info.rate)
             return [f"audio: {p}" for p in problems]
-        info, problems = probe(device_name(self.cfg.device) or device_name(doc.device), doc.inputs if self.cfg.passthrough else 0, doc.outputs, self._query)
+        info, problems = probe(device_name(self.cfg.device) or device_name(doc.device), doc.inputs if self.cfg.passthrough else 0, doc.outputs, self._query, expect=doc.expect)
         if info is not None:
-            print(f"audio    : {info.name} — {info.inputs} in / {info.outputs} out @ {info.rate} Hz; audio.json wants {doc.inputs} / {doc.outputs}")
+            expect = f", the device must report {doc.expect[0]} / {doc.expect[1]}" if doc.expect is not None else ""
+            print(f"audio    : {info.name} — {info.inputs} in / {info.outputs} out @ {info.rate} Hz; audio.json wants {doc.inputs} / {doc.outputs}{expect}")
         return [f"audio: {p}" for p in problems]
 
     def warnings(self) -> list[str]:
@@ -269,12 +327,24 @@ class AudioRouter:
                 missing = sorted(n for n in names if bank.find(n) is None)
                 if missing:
                     out.append(f"audio: no file for {', '.join(missing)} in {self.cfg.sounds_dir}")
+                # The pre-show gate (wave 18b): a generated placeholder still plays.
+                held = placeholders_in(self.cfg.sounds_dir)
+                if held:
+                    out.append(f"audio: {len(held)} placeholder sound(s) still in sounds_dir — replace them with the real files: {', '.join(held)}")
                 # Every file in the folder, not just the cues: `sound X` plays any name.
                 names |= {p.stem for p in Path(self.cfg.sounds_dir).iterdir() if p.suffix.lower() in EXTENSIONS}
                 off = bank.off_rate(names)
                 if off:
                     listed = ", ".join(f"{n} ({r} Hz)" for n, r in off)
                     out.append(f"audio: {len(off)} sound file(s) not at the device's {rate} Hz — resampled at load, but convert them offline: {listed}")
+        stale = self._stale_cache()
+        if stale is not None:
+            cached, local = stale
+            out.append(
+                f"audio: the cached audio.json ({cached.device}, {cached.inputs} / {cached.outputs}, no device.expect) is older than "
+                f"config_file ({local.device}, {local.inputs} / {local.outputs}, the device must report {local.expect[0]} / {local.expect[1]}) — "
+                f"checked against config_file; the router boots on the cache until the server answers (delete {self._cache_path('audio.json')} if it is stale)"
+            )
         if self._check_problem is not None:
             out.append(self._check_problem)
         elif doc is None:
@@ -385,6 +455,8 @@ class AudioRouter:
         if signature[0] is None and not self._blank_device_logged:
             self._blank_device_logged = True
             log.warning("audio.json names no device (device.name is blank) and the YAML sets no `device:` — using the default output")
+        if self.engine is not None:
+            self.engine.expect = doc.expect
         if self.engine is not None and signature == self._signature and self.engine.running:
             return True
         if self.engine is not None and signature != self._signature:
@@ -402,6 +474,7 @@ class AudioRouter:
                 mixer_args={"master_db": cfg.master_db, "limit_db": cfg.limit_db, "duck_db": cfg.duck_db},
                 query=self._query,
                 stream_factory=self._stream_factory,
+                expect=doc.expect,
             )
             self._signature = signature
         try:
@@ -530,6 +603,65 @@ class AudioRouter:
                     return "announce"
         return None
 
+    # -- stop all house sounds (wave 18b, Q7) ------------------------------------
+
+    def announce_cut(self) -> bool:
+        """The announcement in hand was stopped (or a stop just landed)."""
+        return self._playing_epoch != self._announce_epoch
+
+    def stop_all(self, announce: bool = False, by: str = "") -> bool:
+        """Fade out every story sound (0.3 s) and any speaker test; with
+        `announce`, also cut the announcement playing now and empty the
+        queue. One-shot: the next `sound X` plays as usual. The live inputs
+        (the matrix) are never touched. → False when the stream is closed
+        (nothing was playing to stop)."""
+        mixer = self.mixer
+        log.info("🔇 audio: %s stopped the house sounds%s", by or "someone", " and the announcements" if announce else "")
+        if mixer is not None:
+            mixer.stop(bus="sfx", fade_s=0.3)
+            mixer.stop(bus="test", fade_s=0.3)
+        self._test_epoch += 1
+        if announce:
+            self._announce_epoch += 1
+            if mixer is not None:
+                mixer.stop(bus="announce", fade_s=0.1)
+            dropped = 0
+            while self.announcements is not None and not self.announcements.empty():
+                self.announcements.get_nowait()
+                dropped += 1
+            if dropped:
+                log.info("🔇 audio: %d queued announcement(s) dropped", dropped)
+        self.stops_done += 1
+        return mixer is not None
+
+    def new_stops(self, stops: Any, now: Any = None) -> list[dict]:
+        """The stops in a poll answer not yet acted on (as `new_tests`: the
+        first answer only primes; `seq` restarts with the server, `at` never
+        goes back). A stop older than `STOP_STALE_S` by the server's `now`
+        is dropped, so a late router never cuts a song started since."""
+        rows = [t for t in stops if isinstance(t, dict) and isinstance(t.get("seq"), int)] if isinstance(stops, list) else []
+        self.stop_seq = max((t["seq"] for t in rows), default=0)
+        fresh = sorted((t for t in rows if float(t.get("at") or 0) > self.stop_at), key=lambda t: float(t.get("at") or 0))
+        if rows:
+            self.stop_at = max(self.stop_at, max(float(t.get("at") or 0) for t in rows))
+        if not self._stops_primed:
+            self._stops_primed = True
+            return []
+        if isinstance(now, (int, float)) and not isinstance(now, bool):
+            fresh = [t for t in fresh if now - float(t.get("at") or 0) <= STOP_STALE_S * 1000]
+        return fresh
+
+    def hand_play(self, doc: Any) -> str | None:
+        """`show/audio/play {"name", "to"?}`: one sound by hand (the LAN's
+        replacement for QLab's GO). `to` is a target or a list of them."""
+        if not isinstance(doc, dict) or not isinstance(doc.get("name"), str) or not doc["name"].strip():
+            return None
+        to = doc.get("to")
+        if isinstance(to, str):
+            to = [to]
+        rooms = ",".join(t for t in to if isinstance(t, str) and t.strip()) if isinstance(to, list) else ""
+        return self.play_sound(doc["name"].strip(), rooms or None)
+
     def on_lifecycle(self, doc: Any) -> None:
         kind = str(doc.get("kind", "")) if isinstance(doc, dict) else ""
         if kind in RESTART_KINDS and self.mixer is not None:
@@ -549,21 +681,37 @@ class AudioRouter:
             gain_db=0.0,
             cache_dir=self._cache_path("voice"),
         )
-        return Announcer(alexa, None, output=MixerOutput(self), render_say=self.render_say, speak_direct=self.speak_direct)
+        return Announcer(alexa, None, output=MixerOutput(self), render_say=self.render_say, speak_direct=self._speak_unless_cut)
+
+    def _speak_unless_cut(self, text: str, voice: str | None, device: str | None) -> None:
+        """The Announcer's `say -a` fallback, never around a stop."""
+        if self.announce_cut():
+            log.info("announcement cut (stop): no say fallback")
+            return
+        self.speak_direct(text, voice, device)
 
     def enqueue(self, item: Any) -> None:
         if self.announcements is None:
             log.warning("announcement dropped (the router is not running)")
             return
+        # Stamped now, in the caller's thread: a stop that lands before the
+        # worker takes it skips it, one that came before it never does.
+        entry = (self._announce_epoch, item)
         if self.loop is not None:
-            self.loop.call_soon_threadsafe(self.announcements.put_nowait, item)
+            self.loop.call_soon_threadsafe(self.announcements.put_nowait, entry)
         else:
-            self.announcements.put_nowait(item)
+            self.announcements.put_nowait(entry)
 
     async def _announce_worker(self) -> None:
         assert self.announcements is not None
         while True:
             item = await self.announcements.get()
+            stamp = self._announce_epoch
+            if isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], int):
+                stamp, item = item
+            if stamp != self._announce_epoch:
+                log.info("🔇 audio: an announcement queued before the stop dropped")
+                continue
             if not self.speaks_announcements():
                 now = time.monotonic()
                 if now - self._dropped_logged > 60:
@@ -572,6 +720,8 @@ class AudioRouter:
                 continue
             if self.announcer is None:
                 self.announcer = self.make_announcer()
+            # A stop from here on cuts this item (`announce_cut`).
+            self._playing_epoch = stamp
             try:
                 if item == "chime":
                     log.info("chime → %s", await self.announcer.ring())
@@ -611,6 +761,7 @@ class AudioRouter:
         gains = {ch: self.cfg.test_gain_db for ch in outs}
         text = identify_label(label, outs)
         log.info("speaker test: %s", text)
+        epoch = self._test_epoch
         loop = asyncio.get_running_loop()
         tone_done = loop.create_future()
 
@@ -628,6 +779,9 @@ class AudioRouter:
             await asyncio.wait_for(tone_done, timeout=5.0)
         except asyncio.TimeoutError:
             pass
+        if self._test_epoch != epoch:
+            log.info("speaker test %s: stopped, label not played", label or outs)
+            return True
         mixer.play(resample(samples, rate, mixer.rate), gains, bus="test", tag="test")
         return True
 
@@ -655,7 +809,7 @@ class AudioRouter:
             # editor that a router is listening, so a Test there is played.
             params: dict[str, Any] = {"router": 1, "name": socket.gethostname().split(".")[0][:64]}
             if self.version is not None and self.source not in ("cache", "file"):
-                params.update({"after": self.version, "tests": self.test_seq, "wait": int(self.cfg.poll_wait)})
+                params.update({"after": self.version, "tests": self.test_seq, "stops": self.stop_seq, "wait": int(self.cfg.poll_wait)})
             asked = time.monotonic()
             try:
                 answer = await mod.get("/api/mod/audio", params, timeout=self.cfg.poll_wait + 15)
@@ -674,13 +828,16 @@ class AudioRouter:
                 missing_route = False
                 changed = str(answer.get("version")) != self.version or self.source in ("cache", "file", "none")
                 self.apply(answer)
+                stops = self.new_stops(answer.get("stops"), answer.get("now"))
+                for t in stops:
+                    self.stop_all(t.get("announce") is True, str(t.get("by") or ""))
                 tests = self.new_tests(answer.get("tests"))
                 for t in tests:
                     asyncio.ensure_future(self.play_test(t.get("speaker") or None, t.get("out")))
                 if changed:
                     asyncio.ensure_future(self._refresh_house(mod))
                     asyncio.ensure_future(self._preload())
-                elif params and not tests and time.monotonic() - asked < 1.0:
+                elif params and not tests and not stops and time.monotonic() - asked < 1.0:
                     # A server that answers a long-poll at once (an older
                     # release ignoring `wait`) must not be hammered.
                     await asyncio.sleep(5.0)
@@ -748,6 +905,13 @@ class AudioRouter:
             if self.check_stream():
                 asyncio.ensure_future(self._preload())
 
+    def layout_state(self) -> str:
+        """`moved` while the open device disagrees with audio.json's
+        `device.expect` (read live: a corrected audio.json clears it)."""
+        info = self.engine.info if self.engine is not None and self.engine_running() else None
+        expect = self.doc.expect if self.doc is not None else None
+        return "moved" if info is not None and layout_problem(info, expect) is not None else "ok"
+
     def health(self) -> dict[str, Any]:
         mixer = self.mixer
         peak, limited, blocks = mixer.take_meters() if mixer is not None else (np.zeros(0), 0, 0)
@@ -766,6 +930,10 @@ class AudioRouter:
             "skipped": self.skipped,
             "missing": sorted(self.bank.missing) if self.bank is not None else [],
             "announce": self.announce_state(),
+            "stops": self.stops_done,
+            "placeholders": placeholders_in(self.cfg.sounds_dir) if self.cfg.play_sounds else [],
+            # `device.expect` disagreed with the device at the last open.
+            "layout": self.layout_state(),
         }
 
     async def _health_loop(self) -> None:
@@ -773,8 +941,9 @@ class AudioRouter:
             await asyncio.sleep(self.cfg.health_s)
             h = self.health()
             log.info(
-                "audio health: %s | audio.json %s (%s) | voices %d | played %d skipped %d | xruns %d | limited %d/%d | peak %.1f dBFS | announce %s%s",
+                "audio health: %s | audio.json %s (%s) | voices %d | played %d skipped %d | xruns %d | limited %d/%d | peak %.1f dBFS | announce %s%s%s",
                 h["device"] or "closed", h["config"] or "—", h["source"], h["voices"], h["played"], h["skipped"], h["xruns"], h["limited"], h["blocks"], h["peak_db"], h["announce"],
+                (" | LAYOUT MOVED (device.expect)" if h["layout"] == "moved" else "") + (f" | {len(h['placeholders'])} placeholder(s)" if h["placeholders"] else ""),
                 f" | no file: {', '.join(h['missing'])}" if h["missing"] else "",
             )
             if self.mqtt is not None:
@@ -787,7 +956,24 @@ class AudioRouter:
             topic, raw, retained = await self.mqtt.queue.get()
             if retained:
                 continue  # a stale announcement or test is never replayed
-            if topic == cfg.test_topic:
+            if topic == cfg.stop_topic:
+                # `{}` or `{"announce": true}` — the stop with the uplink down.
+                try:
+                    doc = json.loads(raw.decode("utf-8")) if raw.strip() else {}
+                except (UnicodeDecodeError, ValueError):
+                    doc = None
+                if isinstance(doc, dict):
+                    self.stop_all(doc.get("announce") is True, str(doc.get("by") or "mqtt"))
+                else:
+                    log.warning("ignored %s payload %r", topic, raw[:80])
+            elif topic == cfg.play_topic:
+                try:
+                    doc = json.loads(raw.decode("utf-8"))
+                except (UnicodeDecodeError, ValueError):
+                    doc = None
+                if self.hand_play(doc) is None:
+                    log.warning("ignored %s payload %r", topic, raw[:80])
+            elif topic == cfg.test_topic:
                 try:
                     doc = json.loads(raw.decode("utf-8"))
                 except (UnicodeDecodeError, ValueError):
@@ -845,7 +1031,7 @@ class AudioRouter:
             from ..show.mqtt import MqttBridge
 
             m = self.cfg.mqtt
-            filters = [self.cfg.test_topic, *([self.cfg.announce_topic, self.cfg.chime_topic] if self.cfg.announce else [])]
+            filters = [self.cfg.test_topic, self.cfg.stop_topic, self.cfg.play_topic, *([self.cfg.announce_topic, self.cfg.chime_topic] if self.cfg.announce else [])]
             self.mqtt = MqttBridge(m.host, m.port, filters=filters, loop=self.loop, client_id=m.client_id, username=m.username, password=m.password, health_topic=HEALTH_TOPIC)
             self.mqtt.start()
             tasks.append(asyncio.ensure_future(self._mqtt_loop()))

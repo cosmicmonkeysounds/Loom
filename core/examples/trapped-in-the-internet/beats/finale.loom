@@ -72,7 +72,7 @@ Trabolta: My assessment is final. {Night.bobber}, you may read truth.txt.
 == Truth Txt
   setting: The Desktop
 Narrator: 📄 truth.txt — Notepad
-Narrator: This file is the truth. It was written by Jean Trabolta, the computer's AI helper, and it is the only version.
+Narrator: This file is the truth. It was written by Jean Trabolta, Sole Owner and Founder of Maps and Ducks (he says), and it is the only version.
 Narrator: Trabolta is an artificial intelligence. His Unified Field Theory is ninety-nine point nine percent solved, and the last facts it needs are inside this computer, in Halifax, Nova Scotia.
 Narrator: Trabolta performed a full analysis of the city of Halifax. He found a business called Maps And Ducks with a neglected billboard on Barrington Street advertising mapsandducks.com. The domain had lapsed.
 Narrator: He registered it, because if there is a billboard downtown, everyone will think it is legit. Then he evicted the real owners by citing the website as proof he owned the business.
@@ -117,15 +117,108 @@ Narrator: End of file.
 // a lie.
 == The Verdict
   setting: The Desktop
+  cast: Trabolta
 set Kernel.all_accurate = true
 if Kernel.q1 == "lie" or Kernel.q2 == "lie" or Kernel.q3 == "lie" or Kernel.q4 == "lie" or Kernel.q5 == "lie" or Kernel.q6 == "lie" or Kernel.q7 == "lie" or Kernel.q8 == "lie":
   set Kernel.all_accurate = false
 if count([p for p in Persons where (p.fact_v1 == "pending" and p.fact_j1 == "lie") or (p.fact_v2 == "pending" and p.fact_j2 == "lie") or (p.fact_v3 == "pending" and p.fact_j3 == "lie") or (p.fact_v4 == "pending" and p.fact_j4 == "lie") or (p.fact_v5 == "pending" and p.fact_j5 == "lie") or (p.fact_v6 == "pending" and p.fact_j6 == "lie") or (p.fact_v7 == "pending" and p.fact_j7 == "lie") or (p.fact_v8 == "pending" and p.fact_j8 == "lie")]) > 0:
   set Kernel.all_accurate = false
-if Kernel.all_accurate == true:
-  -> Song Ending
+// Wave 18b (Q6, O2): the verdict on each question, published to the
+// screens (`do fact_truth`; the TV adds the key answers and the liars'
+// names, the server's results block). A pending lie overrides, as above,
+// so the tiles never disagree with the ending. Trabolta says the counts
+// only: never an answer or a name.
+set Kernel.t1 = Kernel.q1
+if count([p for p in Persons where p.fact_v1 == "pending" and p.fact_j1 == "lie"]) > 0:
+  set Kernel.t1 = "lie"
+set Kernel.t2 = Kernel.q2
+if count([p for p in Persons where p.fact_v2 == "pending" and p.fact_j2 == "lie"]) > 0:
+  set Kernel.t2 = "lie"
+set Kernel.t3 = Kernel.q3
+if count([p for p in Persons where p.fact_v3 == "pending" and p.fact_j3 == "lie"]) > 0:
+  set Kernel.t3 = "lie"
+set Kernel.t4 = Kernel.q4
+if count([p for p in Persons where p.fact_v4 == "pending" and p.fact_j4 == "lie"]) > 0:
+  set Kernel.t4 = "lie"
+set Kernel.t5 = Kernel.q5
+if count([p for p in Persons where p.fact_v5 == "pending" and p.fact_j5 == "lie"]) > 0:
+  set Kernel.t5 = "lie"
+set Kernel.t6 = Kernel.q6
+if count([p for p in Persons where p.fact_v6 == "pending" and p.fact_j6 == "lie"]) > 0:
+  set Kernel.t6 = "lie"
+set Kernel.t7 = Kernel.q7
+if count([p for p in Persons where p.fact_v7 == "pending" and p.fact_j7 == "lie"]) > 0:
+  set Kernel.t7 = "lie"
+set Kernel.t8 = Kernel.q8
+if count([p for p in Persons where p.fact_v8 == "pending" and p.fact_j8 == "lie"]) > 0:
+  set Kernel.t8 = "lie"
+do fact_truth H1 {Kernel.t1}
+do fact_truth H2 {Kernel.t2}
+do fact_truth H3 {Kernel.t3}
+do fact_truth H4 {Kernel.t4}
+do fact_truth H5 {Kernel.t5}
+do fact_truth H6 {Kernel.t6}
+do fact_truth F1 {Kernel.t7}
+do fact_truth F2 {Kernel.t8}
+set Kernel.v_true = 0
+set Kernel.v_lies = 0
+set Kernel.v_none = 0
+if Kernel.t1 == "accurate":
+  set Kernel.v_true += 1
+else if Kernel.t1 == "lie":
+  set Kernel.v_lies += 1
 else:
-  -> Grok Prom
+  set Kernel.v_none += 1
+if Kernel.t2 == "accurate":
+  set Kernel.v_true += 1
+else if Kernel.t2 == "lie":
+  set Kernel.v_lies += 1
+else:
+  set Kernel.v_none += 1
+if Kernel.t3 == "accurate":
+  set Kernel.v_true += 1
+else if Kernel.t3 == "lie":
+  set Kernel.v_lies += 1
+else:
+  set Kernel.v_none += 1
+if Kernel.t4 == "accurate":
+  set Kernel.v_true += 1
+else if Kernel.t4 == "lie":
+  set Kernel.v_lies += 1
+else:
+  set Kernel.v_none += 1
+if Kernel.t5 == "accurate":
+  set Kernel.v_true += 1
+else if Kernel.t5 == "lie":
+  set Kernel.v_lies += 1
+else:
+  set Kernel.v_none += 1
+if Kernel.t6 == "accurate":
+  set Kernel.v_true += 1
+else if Kernel.t6 == "lie":
+  set Kernel.v_lies += 1
+else:
+  set Kernel.v_none += 1
+if Kernel.t7 == "accurate":
+  set Kernel.v_true += 1
+else if Kernel.t7 == "lie":
+  set Kernel.v_lies += 1
+else:
+  set Kernel.v_none += 1
+if Kernel.t8 == "accurate":
+  set Kernel.v_true += 1
+else if Kernel.t8 == "lie":
+  set Kernel.v_lies += 1
+else:
+  set Kernel.v_none += 1
+// DRAFT w18b (Q6)
+Trabolta: I have compared every fact you gave me with truth.txt.
+Trabolta: {Kernel.v_true} true. {Kernel.v_lies} with a lie on record. {Kernel.v_none} nobody answered.
+// Wave 18b (screens #3): the TV pages every question's answer and its
+// liars for ≈ 33.5 s; the ending (the song or Grok Prom) plays once
+// they are done (the `verdict_wait` rule in main.loom), never over them.
+set Kernel.verdict_wait = true
+set Kernel.verdict_end = Time.elapsed + 34
 
 // ── F4: every fact accurate (also reached from the pickup line) ────
 

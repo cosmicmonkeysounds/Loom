@@ -63,6 +63,9 @@ export interface SceneDef {
   priority?: number;
   /** Says or shows the character's name: never before the introduction. */
   namesCharacter?: boolean;
+  /** Names "Jean Trabolta" only in the third person, as the owner who joins by
+   *  video conference later (wave 18b, D19): may play before the introduction. */
+  owner?: boolean;
   /** May it play on this night (the story's own gates: not after an ending …)? Checked
    *  with the introduction gate, on arrival; absent = always. */
   gate?: (night: ScreenNight) => boolean;
@@ -75,4 +78,7 @@ export interface SceneDef {
   face?: Mood;
   /** How long that mood holds (ms; default `FACE_FLASH_MS`). */
   faceMs?: number;
+  /** Flash `face` only on such a night (one def, two takes: the results slide is the
+   *  filing window too, which is no reading); absent = always. */
+  faceWhen?: (night: ScreenNight) => boolean;
 }

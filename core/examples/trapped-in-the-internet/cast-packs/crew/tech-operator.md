@@ -26,11 +26,13 @@
 5. stagehand **`show`** job and **`agents`** job (separate launchd jobs:
    `com.mapsandducks.stagehand.show` / `.agents`; `uv run stagehand launchd
    status`). Run → Mind shows Trabolta's worker connected.
-6. The house announcements player running: stagehand's `alexa` module
-   (its code name; in the show it is only "the house system") — launchd
-   job `com.mapsandducks.stagehand-alexa`, runbook `scripts/house-mac/alexa.md`.
-   It owns the chime: the story's `sound announce_chime` rides MQTT
-   `show/chime` to it, never QLab, so a chime and an announcement ring once.
+6. The house sound router running (wave 18b): stagehand's `audio` module
+   plays the story's sounds and the house announcements (in the show only
+   "the house system") through the 828x — launchd job
+   `com.mapsandducks.stagehand.audio`, runbook `scripts/house-mac/audio.md`
+   (the old `alexa` job is retired). It owns the chime: the story's
+   `sound announce_chime` rides MQTT `show/chime` to it, so a chime and an
+   announcement ring once. ■ Stop house sounds on Run fades them out.
 7. QLab show file open, audio routed to the MOTU zones. [[EDIT: or the
    router, if it replaced QLab]]
 8. Chrome kiosk on the TV: `/terminal/?code=<mod>&name=TV&character=Trabolta&spot=desktop-tv&view=tv`. **Click once into the TV page after every boot**

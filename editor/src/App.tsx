@@ -15,6 +15,7 @@ import { useAuth } from '@/store/auth'
 import { useProjects } from '@/store/projects'
 import { useOperate } from '@/store/operate'
 import { useTerminals } from '@/store/terminals'
+import { useHouseAudio } from '@/store/house-audio'
 import { armChime } from '@/lib/chime'
 import { captureLinkFromLocation } from '@/lib/invite-link'
 
@@ -51,12 +52,14 @@ export default function App() {
     useOperate.getState().attach(projectId)
     return () => useOperate.getState().detach()
   }, [projectId])
-  // The terminal heartbeat watch (K-29) follows the server run, from any mode.
+  // The terminal heartbeat watch (K-29) and the house sound (wave 18b: the
+  // router's presence + the Stop button) follow the server run, from any mode.
   const runEventId = useOperate((s) => (s.run !== null && s.event !== null ? s.event.id : null))
   useEffect(() => {
     armChime()
     useTerminals.getState().bind(runEventId)
-  }, [runEventId])
+    useHouseAudio.getState().bind(runEventId, projectId)
+  }, [runEventId, projectId])
 
   return (
     <>

@@ -54,6 +54,9 @@ CHARACTER Kernel
   q8_hunt: text? = none
   lies_accepted: 0 to 50 = 0
   all_accurate: bool = false
+  // Wave 18b: The Verdict is on the TV; the ending waits for its pages.
+  verdict_wait: bool = false
+  verdict_end: 0 to 1000000 = 0
   said_1: text? = none
   said_2: text? = none
   said_3: text? = none
@@ -74,11 +77,31 @@ CHARACTER Kernel
   res_consensus: 0 to 999 = 0
   res_said: text? = none
   res_answer: text? = none
+  // Wave 18b (Q6): a reading's accepted / guess counts (by proposal, like
+  // res_consensus), the verdict's per-question truths (accurate | lie |
+  // none, published with `do fact_truth`) and its totals.
+  res_accepted: 0 to 999 = 0
+  res_guesses: 0 to 999 = 0
+  t1: text? = none
+  t2: text? = none
+  t3: text? = none
+  t4: text? = none
+  t5: text? = none
+  t6: text? = none
+  t7: text? = none
+  t8: text? = none
+  v_true: 0 to 8 = 0
+  v_lies: 0 to 8 = 0
+  v_none: 0 to 8 = 0
   virus_planted: bool = false
   excel_planted: bool = false
   virus_planter: text? = none
   openoffice_dossier: bool = false
-  waive_leader_tasks: bool = false
   majority_reached: bool = false
+  // "stay" | "leave" | "founded" (wave 18b: any faction can win), and the
+  // winner's id, display name and founder (a person id), set once.
   majority: text? = none
+  majority_id: text? = none
+  majority_name: text? = none
+  majority_founder: text? = none
   jeeves_reached: 0 to 99 = 0

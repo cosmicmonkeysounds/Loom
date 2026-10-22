@@ -36,7 +36,7 @@ ifconfig | awk '/inet /{print $2}' | grep -qx "$BROKER" && ok "this Mac owns the
 mosquitto_pub -h "$HOST" -t n08/ping -m x 2>/dev/null && ok "Mosquitto answers on $HOST" || bad "Mosquitto not reachable on $HOST:1883"
 if [ -n "${LOOM_MQTT_PASS:-}" ]; then   # the props password (secrets.h SR_MQTT_PASS)
   mosquitto_pub -h "$BROKER" -p 1884 -u props -P "$LOOM_MQTT_PASS" -t n08/ping -m x 2>/dev/null \
-    && ok "props listener answers on $BROKER:1884" || bad "no props listener on $BROKER:1884 (scripts/house-mac/alexa.md → Lock down the broker)"
+    && ok "props listener answers on $BROKER:1884" || bad "no props listener on $BROKER:1884 (scripts/house-mac/audio.md → Lock down the broker)"
 else
   echo "  · set LOOM_MQTT_PASS=<props password> to also check $BROKER:1884"
 fi

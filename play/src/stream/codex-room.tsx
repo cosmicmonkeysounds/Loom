@@ -10,7 +10,7 @@ import { CODEX_SEEN_MS, loadSeen, saveSeen } from "./codex-seen.ts";
 import type { ChatMessage } from "../types.ts";
 import { PersonAvatar } from "../ui/primitives.tsx";
 import { useCardActions } from "./bubble.tsx";
-import { codexGroups, codexRows, codexSub, markSeen, newEntries, questSections, type CodexRow, type QuestRow } from "./codex-groups.ts";
+import { codexGroups, codexMatches, codexRows, codexSub, markSeen, newEntries, questSections, type CodexRow, type QuestRow } from "./codex-groups.ts";
 
 /** Show the filter box once the cabinet holds this many entries. */
 export const CODEX_FILTER_AT = 4;
@@ -28,7 +28,7 @@ function CodexEntryRow({ row, isNew, open, onToggle }: { row: CodexRow; isNew: b
   const actions = useCardActions();
   const sub = codexSub(row);
   return (
-    <li id={`codex-entry-${row.card.entry}`} className={`stream-row ${open ? "open" : ""} ${row.msg.hidden ? "hidden" : ""}`}>
+    <li data-codex-entry={row.card.entry} className={`stream-row ${open ? "open" : ""} ${row.msg.hidden ? "hidden" : ""}`}>
       <button type="button" className="stream-row-head" aria-expanded={open} onClick={onToggle}>
         <span className="stream-row-main">
           <span className="stream-row-title">{row.card.title}</span>
@@ -55,6 +55,17 @@ function CodexEntryRow({ row, isNew, open, onToggle }: { row: CodexRow; isNew: b
   );
 }
 
+/** What the cabinet must change to show `entry` (wave 18b, R1: a scan
+ *  lands on its entry): null while the entry isn't in the rows yet (its card
+ *  may come in on the stream just after the redeem answered — try again on
+ *  the next rows), else the group to unfold and whether the filter box has
+ *  to be cleared (it hides the entry). */
+export function focusPlan(rows: readonly CodexRow[], entry: string, query: string): { group: string; clearQuery: boolean } | null {
+  const row = rows.find((r) => r.card.entry === entry);
+  if (row === undefined) return null;
+  return { group: row.category, clearQuery: query !== "" && !codexMatches(row, query) };
+}
+
 export function CodexRoom({ messages, meId, empty, focusEntry }: { messages: readonly ChatMessage[]; meId?: string | null; empty: string; focusEntry?: string | null }) {
   const host = usePlayHost();
   const rows = useMemo(() => codexRows(messages), [messages]);
@@ -77,13 +88,44 @@ export function CodexRoom({ messages, meId, empty, focusEntry }: { messages: rea
     }, CODEX_SEEN_MS);
     return () => clearTimeout(t);
   }, [host, meId]);
-  // A Codex entry exit (`go codex: <Entry>`) opens on that entry.
+  // A Codex entry exit (`go codex: <Entry>`, a scan's dialog) opens on that
+  // entry: open its row, unfold its group, clear a filter that hides it, and
+  // scroll to it. Wave 18b (R1): retried as the rows change until the entry
+  // is there (its card can land on the stream just after the redeem), and
+  // looked up under this room's own root — never `document`, which an
+  // embedded player's shadow root hides it from.
+  const root = useRef<HTMLDivElement>(null);
+  const focusing = useRef<string | null>(null);
   useEffect(() => {
-    if (!focusEntry) return;
-    setOpen((o) => (o.has(focusEntry) ? o : new Set(o).add(focusEntry)));
-    const el = typeof document !== "undefined" ? document.getElementById(`codex-entry-${focusEntry}`) : null;
-    el?.scrollIntoView?.({ block: "center" });
+    focusing.current = focusEntry ?? null;
   }, [focusEntry]);
+  useEffect(() => {
+    const entry = focusing.current;
+    if (entry === null) return;
+    const plan = focusPlan(rows, entry, query);
+    if (plan === null) return;
+    setOpen((o) => (o.has(entry) ? o : new Set(o).add(entry)));
+    setFolded((f) => {
+      if (!f.has(plan.group)) return f;
+      const n = new Set(f);
+      n.delete(plan.group);
+      return n;
+    });
+    if (plan.clearQuery) setQuery("");
+    // Scroll once the row has rendered (after the state above).
+    const t = window.setTimeout(() => {
+      const list = root.current?.querySelectorAll<HTMLElement>("[data-codex-entry]");
+      if (list === undefined) return;
+      for (let i = 0; i < list.length; i++) {
+        const el = list[i]!;
+        if (el.getAttribute("data-codex-entry") !== entry) continue;
+        el.scrollIntoView?.({ block: "center" });
+        focusing.current = null;
+        return;
+      }
+    }, 30);
+    return () => window.clearTimeout(t);
+  }, [focusEntry, rows, query]);
   const fresh = newEntries(rows, seen);
   const groups = codexGroups(rows, query);
   const note = lastNote(messages);
@@ -110,7 +152,7 @@ export function CodexRoom({ messages, meId, empty, focusEntry }: { messages: rea
       return n;
     });
   return (
-    <div className="thread stream-cabinet">
+    <div className="thread stream-cabinet" ref={root}>
       {rows.length >= CODEX_FILTER_AT && (
         <label className="stream-filter">
           <span className="stream-sr">Filter your Codex</span>

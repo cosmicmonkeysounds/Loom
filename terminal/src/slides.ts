@@ -345,15 +345,30 @@ export interface SlideCopy {
   lines?: readonly string[];
   /** A slide that is just a dark screen. */
   dark?: boolean;
+  /** Its copy names "Jean Trabolta" only in the third person, as the owner
+   *  who joins by video conference later (wave 18b, D19; only `OWNER_LINES`). */
+  owner?: boolean;
+}
+
+/** The owner's line on the bingo slide (D19: third person, before the introduction). */
+export const OWNER_LINE = "Jean Trabolta joins by video conference later tonight.";
+/** The only lines that may name him on a slide that can show before the introduction. */
+export const OWNER_LINES: readonly string[] = [OWNER_LINE];
+
+/** A slide's lines as drawn: the owner's "joins … later tonight" lines only before the
+ *  introduction (a restart can leave the bingo slide up after he has joined). */
+export function ownerLinesFor(lines: readonly string[], introduced: boolean): readonly string[] {
+  return introduced ? lines.filter((l) => !OWNER_LINES.includes(l)) : lines;
 }
 
 /** Copy for the cue registry's slides (DESIGN.md §2.13). The trivia lines are
  *  the Quest Log's own questions (a test keeps them in step with the show's
  *  `generated/questions.loom`, which is generated from its facts.json).
- *  Slides that can show before the introduction never name the character. */
+ *  Slides that can show before the introduction never name the character,
+ *  but in `OWNER_LINES` (an `owner` slide: wave 18b, D19). */
 export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   call_desktop: { title: "REPORT TO THE DESKTOP", lines: ["All programs: a game is about to begin."] },
-  bingo: { title: "COMPUTER BINGO", lines: ["Find a program for every square.", "Do not write names: use your computer memory.", "* One square is the important question."] },
+  bingo: { title: "COMPUTER BINGO", lines: ["Find a program for every square.", "* One square is the important question.", OWNER_LINE], owner: true },
   bingo_time: { title: "BINGO TIME", lines: ["Back to the Desktop. Bring your card."] },
   trivia_1: {
     title: "TRABOLTA TRIVIA · ROUND 1",
@@ -373,6 +388,7 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   },
   return: { title: "RETURN TO THE DESKTOP", lines: ["Time is up."] },
   hunt_results: { title: "THE RESULTS", lines: ["The First Moment of Truth."] },
+  tally: { title: "THE TALLY", lines: ["The second collection is closed.", "Trabolta is reading every fact you filed."] },
   truth_or_dare: { title: "TRUTH OR DARE", lines: ["The bottle is spinning."] },
   ad_hijack: { title: "000. 000. 000.", lines: ["A special offer for you."] },
   truther: { title: "TRUTHER DOWNLOAD", lines: ["Downloading… do not turn off your computer."] },

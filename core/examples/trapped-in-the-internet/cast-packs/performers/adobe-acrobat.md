@@ -85,6 +85,13 @@ creativity, by pretending to be Adobe Acrobat.
 is exactly why nobody ever paid me." "Need something printed? For a small fee,
 yes."
 
+## Who you know
+
+<!-- DRAFT w18b -->
+The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
+
+- **The Pirate Site**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+
 ## Your night
 
 - **Clearance:** Task Manager's line in the app introduces the four hosts to
@@ -114,8 +121,8 @@ yes."
 
 **truth.txt — Notepad**
 
-This file is the truth. It was written by Jean Trabolta, the computer's AI
-helper, and it is the only version.
+This file is the truth. It was written by Jean Trabolta, Sole Owner and
+Founder of Maps and Ducks (he says), and it is the only version.
 
 Trabolta is an artificial intelligence. His Unified Field Theory is ninety-nine
 point nine percent solved, and the last facts it needs are inside this

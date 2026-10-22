@@ -6,7 +6,7 @@ import { CockpitContext, nullCockpit, type CockpitState } from '@/store/cockpit'
 import { Messages, MindTab, PersonFile } from './MindTab'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
 import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, byTitle, isDirectorBy, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindChips, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, heldState, personExtras, phaseTitle, prefixRef, promptMsOf, sliderHold, sliderStep, stageFromPhase, stagePrompt, surveyButton, timingText, type SliderEvent, type SliderHold, type SliderState } from './mind'
-import { ALL_KINDS, KIND_META, agentQueueOf, askingOf, askingText, judgeModeTitle, ruledFilings, rulingOf, rulingText, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
+import { ALL_KINDS, KIND_META, agentQueueOf, askingOf, askingText, autoJudgeCopy, isQueuedFiling, judgeOf, judgingBadge, judgingQueueOf, queuedText, judgeModeTitle, ruledFilings, rulingOf, rulingText, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
 import { stampAgentQueues, type AgentQueue, type CastSummary } from '@/store/cockpit'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
 import { mergeThoughts } from '@/store/operate'
@@ -222,6 +222,80 @@ describe('judging', () => {
     expect(judgeModeOf([{ path: 'Night.judge_mode', value: 'review' }], null)).toBe('review')
     expect(judgeModeOf([{ path: 'Night.judge_mode', value: 'auto' }], null)).toBe('auto')
     expect(judgeModeOf([], null)).toBe('auto')
+  })
+
+  it('wave 18b (O4): a plain miss waits on the judge like a near miss, queued or asked', () => {
+    const extra = (o: Record<string, unknown>) => o as unknown as Partial<FactsFiling>
+    const q = [
+      // A plain miss (no near), its ruling queued behind another.
+      filing({ person: 'g1', name: 'Ada', question: 'H1', answer: 'nine', confidence: 100, verdict: 'lie', at: 1, ...extra({ asking: true, queued: true }) }),
+      // A plain miss at 80 whose frame is out.
+      filing({ person: 'g2', name: 'Ben', question: 'H1', answer: 'six', confidence: 80, verdict: 'uncertain', at: 2, ...extra({ asking: true }) }),
+    ]
+    const v = view({ mode: 'auto', pending: 2, questions: [{ id: 'H1', round: 1, text: 'Ducks?', filings: q, tally: tally(q) }], ...({ judge: 'Trabolta' } as Partial<FactsView>) })
+    expect(judgeOf(v)).toBe('Trabolta')
+    expect(judgeOf(view())).toBeNull()
+    expect(pendingFilings(v).map((r) => [r.name, r.near, r.asking, r.queued === true])).toEqual([
+      ['Ada', null, true, true],
+      ['Ben', null, true, false],
+    ])
+    expect(isQueuedFiling(v, 'g1', 'H1')).toBe(true)
+    expect(isQueuedFiling(v, 'g2', 'H1')).toBe(false)
+    expect(queuedText(v)).toBe('🤖 queued for Trabolta')
+    expect(queuedText(view())).toBe('🤖 queued for the judge')
+  })
+
+  it('wave 18b (O4): the judge queue badge off the cast row (else the mind summary)', () => {
+    const cast = [{ id: 'Trabolta', faction: null, agent: true, agentQueue: { depth: 0, oldestMs: null, stalled: false, judging: { queued: 4, out: 1, oldestMs: 65_000, stalled: false } } }]
+    const j = judgingQueueOf('Trabolta', cast, [])
+    expect(j).toEqual({ queued: 4, out: 1, oldestMs: 65_000, stalled: false })
+    expect(judgingBadge(j, 'Trabolta')).toMatchObject({ text: '🤖 4 queued · 1 out · oldest 1:05', stalled: false })
+    expect(judgingBadge({ queued: 2, out: 0, oldestMs: null, stalled: true }, 'Trabolta')).toMatchObject({ text: "⏳ Trabolta isn't ruling · 2 queued", stalled: true })
+    expect(judgingBadge({ queued: 0, out: 0, oldestMs: null, stalled: false }, 'Trabolta')).toBeNull()
+    expect(judgingBadge(null, 'Trabolta')).toBeNull()
+    expect(judgingQueueOf('Trabolta', [{ id: 'Trabolta', faction: null, agentQueue: { depth: 1, oldestMs: 3, stalled: false } }], [])).toBeNull()
+    expect(judgingQueueOf(null, cast, [])).toBeNull()
+    const minds = [{ character: 'Trabolta', agentQueue: { depth: 0, oldestMs: null, stalled: false, judging: { queued: 1, out: 0, oldestMs: 2_000, stalled: false } } }] as unknown as Parameters<typeof judgingQueueOf>[2]
+    expect(judgingQueueOf('Trabolta', [], minds)).toMatchObject({ queued: 1 })
+  })
+
+  it('wave 18b (O4): the judge queue’s oldest wait ages between snapshots, stamped apart from the voice queue', () => {
+    const row = (judging: Record<string, unknown>, depth = 0, oldestMs: number | null = null): CastSummary =>
+      ({ id: 'Trabolta', faction: null, agent: true, agentQueue: { depth, oldestMs, stalled: false, judging } }) as unknown as CastSummary
+    const first = stampAgentQueues([row({ queued: 2, out: 1, oldestMs: 3_000, stalled: false })], [], 10_000)
+    expect(first[0]!.agentQueue?.judging?.receivedAt).toBe(10_000)
+    // 50 s later, no new snapshot: the badge reads 0:53, not 0:03.
+    const j = judgingQueueOf('Trabolta', first, [], 60_000)
+    expect(j?.oldestMs).toBe(53_000)
+    expect(judgingBadge(j, 'Trabolta')?.text).toBe('🤖 2 queued · 1 out · oldest 0:53')
+    // A snapshot that leaves the judge queue alone keeps its stamp, though the voice queue moved.
+    const second = stampAgentQueues([row({ queued: 2, out: 1, oldestMs: 3_000, stalled: false }, 1, 500)], first, 20_000)
+    expect(second[0]!.agentQueue?.judging?.receivedAt).toBe(10_000)
+    expect(second[0]!.agentQueue?.receivedAt).toBe(20_000)
+    // A new judge reading re-stamps it.
+    const third = stampAgentQueues([row({ queued: 1, out: 1, oldestMs: 1_000, stalled: false })], second, 30_000)
+    expect(third[0]!.agentQueue?.judging?.receivedAt).toBe(30_000)
+    // Nothing queued or out never ages; no now, no aging.
+    expect(judgingQueueOf('Trabolta', stampAgentQueues([row({ queued: 0, out: 0, oldestMs: 3_000, stalled: true })], [], 0), [], 9_000)?.oldestMs).toBe(3_000)
+    expect(judgingQueueOf('Trabolta', first, [])?.oldestMs).toBe(3_000)
+  })
+
+  it('wave 18b (O4): the Judging card in auto with a judge says who rules and shows his queue', () => {
+    const extra = (o: Record<string, unknown>) => o as unknown as Partial<FactsFiling>
+    const q = [
+      filing({ person: 'g1', name: 'Ada', question: 'H1', answer: 'nine', confidence: 100, verdict: 'lie', at: 1, ...extra({ asking: true, queued: true }) }),
+      filing({ person: 'g2', name: 'Ben', question: 'H1', answer: 'sevn', confidence: 100, verdict: 'accurate', at: 2, ...extra({ asking: true, near: { key: 'seven' } }) }),
+    ]
+    const facts = view({ mode: 'auto', pending: 2, questions: [{ id: 'H1', round: 1, text: 'Ducks?', filings: q, tally: tally(q) }], ...({ judge: 'Trabolta' } as Partial<FactsView>) })
+    const cast = [{ id: 'Trabolta', faction: null, agent: true, agentQueue: { depth: 0, oldestMs: null, stalled: false, judging: { queued: 1, out: 1, oldestMs: 4_000, stalled: false } } }]
+    const html = render({ facts, cast })
+    expect(html).toContain('data-testid="judging-auto-copy"')
+    expect(html).toContain(autoJudgeCopy('Trabolta').replace(/'/gu, '&#x27;'))
+    expect(html).toContain('🤖 1 queued · 1 out')
+    expect(html).toContain('🤖 queued for Trabolta')
+    expect(html).toContain('🤖 asking Trabolta…')
+    // Only the near miss carries the ⚠ near tag; the plain miss shows none.
+    expect(html.match(/data-testid="judging-near"/gu)?.length).toBe(1)
   })
 
   it('pendingFilings: only unsettled filings, oldest first', () => {
@@ -440,10 +514,17 @@ describe("an agent's queue (wave 11 C6)", () => {
 })
 
 
-describe('the Judging mode tooltip (wave 11 C6)', () => {
+describe('the Judging mode tooltip (wave 11 C6, wave 18b O4)', () => {
   it('auto names the near-miss exception; review says a near miss waits too', () => {
     expect(judgeModeTitle('auto')).toMatch(/at once, except a near miss/u)
     expect(judgeModeTitle('review')).toMatch(/near miss waits here/u)
+  })
+
+  it('with a judge: character, auto says the house takes exact matches and he rules the rest', () => {
+    expect(judgeModeTitle('auto', 'Trabolta')).toBe(
+      "The house accepts exact matches; Trabolta rules every other filing; what he can't rule (no worker, a stall, an expired or unfinished ruling) falls back to the house rule and can be judged here.",
+    )
+    expect(judgeModeTitle('review', 'Trabolta')).toMatch(/near miss waits here/u)
   })
 })
 

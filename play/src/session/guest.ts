@@ -17,9 +17,12 @@ import { guestDotOf } from "../stream/badges.ts";
 import type { ChatMessage, Decision, GuestView } from "../types.ts";
 import { useTyping } from "../typing.ts";
 import type { WidgetResult } from "../widgets.tsx";
+import type { CheckinAnswer, RedeemAnswer, ScanDone } from "../scan-done.tsx";
+import { loadScanDone, settled } from "../scan-done-lazy.tsx";
 import { buildGuestChannels, withAgents } from "./channels.ts";
 import { NO_ANSWERS, mergeAnswered, registerBody, tokenDead, useLandingBrand, usePerSession, useTheme, type ResolvedCode } from "./shared.ts";
 import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../room.ts";
+import { lobbyHidden } from "../guest/wire.ts";
 import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
 
@@ -195,12 +198,21 @@ export interface GuestSession {
   inviteToChannel: (person: string, channel: string) => Promise<unknown>;
   /** Leave a membership-gated channel. */
   leaveChannel: (channel: string) => Promise<unknown>;
-  /** Codex: type (or scan) an unlock code. Resolves to the entry unlocked, if any. */
-  redeem: (code: string) => Promise<string | null>;
-  /** Check in at a room's sign (its slug, K-13) and open that room — or
-   *  banner why not (captured, on rails, a room not open yet). Resolves to
-   *  the room's channel, or null when refused. */
-  checkin: (at: string) => Promise<string | null>;
+  /** Codex: type (or scan) an unlock code. Resolves to the server's answer
+   *  (a hit, a code already held, a miss); rejects with the refusal. */
+  redeem: (code: string) => Promise<RedeemAnswer>;
+  /** Check in at a room's sign (its slug, K-13). Resolves to the server's
+   *  answer (the story may still keep the guest out: `moved: false`);
+   *  rejects with the refusal (captured, on rails, a room not open yet) —
+   *  wave 18b: the 📷 sheet says it, so nothing is swallowed here. */
+  checkin: (at: string) => Promise<CheckinAnswer>;
+  /** The "scan done" dialog up now (wave 18b, R1), until `clearScan`. */
+  scanDone: ScanDone | null;
+  /** Show the dialog (the app lands on its `go` first). A check-in's reply
+   *  lines are recorded as the guest's own answer, so the moments layer
+   *  drops the balloon that repeats them. */
+  showScan: (done: Omit<ScanDone, "id">) => void;
+  clearScan: () => void;
   /** Codex: hand an entry you hold to another participant or a listed character. */
   shareCodex: (entry: string, to: string) => Promise<unknown>;
   /** The wallet (a story with a `currency:`): every call posts to its route;
@@ -257,7 +269,10 @@ export interface SidesCalls {
   answer(id: string, yes: boolean): Promise<unknown>;
   found(name: string): Promise<{ ok: boolean; crew?: { id: string; name: string } }>;
   invite(to: string): Promise<unknown>;
-  leaveCrew(): Promise<unknown>;
+  /** A founder's leave disbands the faction (wave 18b: `dissolved: true`). */
+  leaveCrew(): Promise<{ ok: boolean; dissolved?: boolean }>;
+  /** Wave 18b, faction mode: walk into a founded faction from the list. */
+  joinCrew(crew: string): Promise<unknown>;
 }
 
 /**
@@ -266,7 +281,7 @@ export interface SidesCalls {
  * becomes a `Nav` once signed in with the backlog in — the lobby lands on
  * Mission, an unlisted room on Mission, never a room the guest can't see.
  */
-function useGuestLinks(signedIn: boolean, listed: readonly string[]): { nav: Nav | null; take: () => void } {
+function useGuestLinks(signedIn: boolean, listed: readonly string[], lobbyHidden = false): { nav: Nav | null; take: () => void } {
   const { ownsPage } = usePlayHost();
   // The link waiting to land: its query (`?room=…&entry=…`, `?go=pass`).
   const [want, setWant] = useState<string | null>(() => (ownsPage ? linkFromSearch(window.location.search) : null));
@@ -297,7 +312,7 @@ function useGuestLinks(signedIn: boolean, listed: readonly string[]): { nav: Nav
         /* fine */
       }
     }
-    setNav(navFromSearch(want, listed));
+    setNav(navFromSearch(want, listed, lobbyHidden));
     // `listed` is rebuilt each render; the request is what matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [want, signedIn]);
@@ -493,13 +508,16 @@ export function useGuestSession(): GuestSession {
   const leaveChannel = useCallback((channel: string) => post("/api/guest/channel/leave", { channel }), [post]);
 
   // --- codex + people ---
-  const redeem = useCallback(
-    async (code: string): Promise<string | null> => {
-      const r = await post<{ unlocked: string | null }>("/api/guest/codex/redeem", { code });
-      return r.unlocked;
-    },
-    [post],
-  );
+  const redeem = useCallback((code: string) => post<RedeemAnswer>("/api/guest/codex/redeem", { code }), [post]);
+  // The "scan done" dialog: one at a time, the newest wins.
+  const [scanDone, setScanDone] = useState<ScanDone | null>(null);
+  const scanIds = useRef(0);
+  const showScan = useCallback((done: Omit<ScanDone, "id">) => {
+    if (done.go.to === "room") for (const line of done.body.split("\n")) alertsRef.current?.raise(line, { quiet: true, silent: true });
+    scanIds.current += 1;
+    setScanDone({ ...done, id: scanIds.current });
+  }, []);
+  const clearScan = useCallback(() => setScanDone(null), []);
   // A refused share banners the server's reason (and resolves null), so it
   // never looks like a share that worked.
   const shareCodex = useCallback(
@@ -561,10 +579,18 @@ export function useGuestSession(): GuestSession {
     } catch {
       /* fine */
     }
-    void redeem(code)
-      .then(() => setOpenCodex(true))
-      .catch(() => {});
-  }, [me, status, redeem]);
+    // A hit or a code already held: the dialog, on its entry. A miss opens
+    // the Codex, where the room's own ⛔ row says so.
+    void Promise.all([loadScanDone(), settled(redeem(code))]).then(
+      ([m, a]) => {
+        if ("e" in a) return alertsRef.current?.raise(m.scanErrorNote(a.e, "unlock"), { quiet: true });
+        const o = m.redeemOutcome(a.r);
+        if ("done" in o) showScan(o.done);
+        else setOpenCodex(true);
+      },
+      () => setOpenCodex(true),
+    );
+  }, [me, status, redeem, showScan]);
 
   // Widgets: one answer per card. The server refuses a second (409), and
   // the snapshot lists the cards already answered so a reload renders them
@@ -622,28 +648,14 @@ export function useGuestSession(): GuestSession {
     },
     [me, threads],
   );
-  // A wall QR just unlocked something: show it where it landed.
+  // A wall QR's code missed: open the Codex, where its ⛔ row says so.
   useEffect(() => {
     if (!openCodex) return;
     setOpenCodex(false);
     threads.open(CODEX_ROOM);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openCodex]);
-  const threadsRef = useRef(threads);
-  threadsRef.current = threads;
-  const checkin = useCallback(
-    async (at: string): Promise<string | null> => {
-      try {
-        const r = await post<{ channel: string }>("/api/guest/checkin", { at });
-        threadsRef.current.open(r.channel);
-        return r.channel;
-      } catch (e) {
-        alertsRef.current?.raise(e instanceof Error ? e.message : "Check-in failed.", { quiet: true });
-        return null;
-      }
-    },
-    [post],
-  );
+  const checkin = useCallback((at: string) => post<CheckinAnswer>("/api/guest/checkin", { at }), [post]);
   // A room's sign carries `?checkin=<slug>` (K-13): check in once signed in
   // with the doors open, then open that room's chat — or banner why not
   // (captured, still on rails, a room the story hasn't opened yet).
@@ -657,10 +669,20 @@ export function useGuestSession(): GuestSession {
     } catch {
       /* fine */
     }
-    void checkin(at);
+    // In: the dialog over the room. Kept out (by the story or the server):
+    // a quiet banner says why.
+    void Promise.all([loadScanDone(), settled(checkin(at))]).then(
+      ([m, a]) => {
+        if ("e" in a) return alertsRef.current?.raise(m.scanErrorNote(a.e, "checkin"), { quiet: true });
+        const o = m.checkinOutcome(a.r);
+        if ("done" in o) showScan(o.done);
+        else alertsRef.current?.raise(o.note, { quiet: true });
+      },
+      () => {},
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, status, post]);
-  const links = useGuestLinks(me !== null && ready && status !== null, threads.list.map((c) => c.id));
+  const links = useGuestLinks(me !== null && ready && status !== null, threads.list.map((c) => c.id), lobbyHidden(status));
   const sides = useMemo<SidesCalls>(
     () => ({
       join: (side) => post("/api/guest/join", { faction: side }),
@@ -670,7 +692,8 @@ export function useGuestSession(): GuestSession {
       answer: (id, yes) => post("/api/guest/recruit/answer", { id, yes }),
       found: (name) => post<{ ok: boolean; crew?: { id: string; name: string } }>("/api/guest/crew/found", { name }),
       invite: (to) => post("/api/guest/crew/invite", { to }),
-      leaveCrew: () => post("/api/guest/crew/leave", {}),
+      leaveCrew: () => post<{ ok: boolean; dissolved?: boolean }>("/api/guest/crew/leave", {}),
+      joinCrew: (crew) => post("/api/guest/crew/join", { crew }),
     }),
     [post],
   );
@@ -699,6 +722,9 @@ export function useGuestSession(): GuestSession {
     leaveChannel,
     redeem,
     checkin,
+    scanDone,
+    showScan,
+    clearScan,
     shareCodex,
     wallet,
     message,

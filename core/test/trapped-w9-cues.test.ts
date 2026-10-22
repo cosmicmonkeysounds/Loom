@@ -110,7 +110,16 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     step("close_the_filing", "read_the_results");
     step("read_the_results", "read_the_results");
     step("read_the_results", "read_the_results");
-    step("read_the_results", "second_hunt_preview");
+    step("read_the_results", "spin_the_bottle");
+    // Wave 18b (R21): Truth or Dare after Q3. An open bottle suggests
+    // nothing (🍾 and 📺 both wait); a pick and a settled truth bring 🍾
+    // back until five, then 📺.
+    step("spin_the_bottle", null);
+    sim.signal("bottle_landed", "g1");
+    sim.signal("truth_answered", "g1", null, "Clippy");
+    expect(sheet(sim).next).toBe("spin_the_bottle");
+    sim.setVar("Night.bottle_picks", "5");
+    expect(sheet(sim).next).toBe("second_hunt_preview");
     step("second_hunt_preview", "start_the_second_hunt");
     // Hunt 2's hour, then the summons: the timers run it all.
     step("start_the_second_hunt", null);
@@ -199,7 +208,7 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(press(sim, "read_the_results").refused).toBe(false);
     expect(v(sim, "Night.results_q")).toBe(2);
     press(sim, "read_the_results");
-    expect(sheet(sim).next).toBe("second_hunt_preview");
+    expect(sheet(sim).next).toBe("spin_the_bottle");
     expect(press(sim, "second_hunt_preview").refused).toBe(false);
     expect(v(sim, "Night.phase")).toBe("malware");
     refuses(sim, "second_hunt_preview", "📺 Not again: the ad hijack has already played. Nothing happens.");

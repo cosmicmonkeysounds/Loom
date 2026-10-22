@@ -122,6 +122,15 @@ to fight viruses once before; it will not happen again. Your scan cycles
 are out of date. So are mine."*; a marked program hears *"Corruption detected:
 you are marked for reinstallation…"* instead.
 
+## Who you know
+
+<!-- DRAFT w18b -->
+The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
+
+- **The Volunteer Sheet**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **Found On Indeed**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **6121 Quinpool Road**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+
 ## Your night
 
 - **Doors → C1:** door scans with the other three (you share the door all night). You also log guests who

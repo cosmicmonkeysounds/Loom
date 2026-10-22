@@ -550,7 +550,7 @@ when drift_on_filing for program:
     // `# hosts` line come out of one fanout of four commits.
     (rt as unknown as { agents: { attach(w: unknown): void } }).agents.attach({ id: "w1", name: "laptop", characters: new Set(["Oracle"]), send() {} });
     await cue(rt, "drift_on_filing", d.id);
-    await cue(rt, "deal_the_fact");
+    await cue(rt, "deal_the_fact", d.id);
     const card = rt.chatHistoryFor(d.id).filter((m) => m.kind === "widget" && m.widget?.kind === "fact").at(-1)!;
     expect((await post(rt, "/api/guest/widget", { token: d.token, seq: card.seq, result: { question: "H1", answer: "twelve", confidence: 80 } })).status).toBe(200);
     const texts = chat(rt).map((m) => m.text);

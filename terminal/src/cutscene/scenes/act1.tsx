@@ -30,7 +30,7 @@
 
 import "./act1.css";
 import { useRef, type CSSProperties, type ReactNode } from "react";
-import { SLIDE_COPY, SLIDE_HOLD_MS } from "../../slides.ts";
+import { SLIDE_COPY, SLIDE_HOLD_MS, ownerLinesFor } from "../../slides.ts";
 import type { ScreenState } from "../../screen.ts";
 import type { SfxName, SfxOpts } from "../../sound/index.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
@@ -70,6 +70,9 @@ import {
   type StormMessage,
 } from "../kit/index.ts";
 import { INTRO_MS, IntroTv, IntroWall, POWER_ON_MS, PowerOnTv, PowerOnWall } from "../kit/tv1-boot.tsx";
+import { CountsBoard, ReadingRows, filedCount, useHeldResults } from "../kit/results-parts.tsx";
+import { ROW_MS, STAMP_AT, nextAfter, readQuestion, readingPlan, totalsLine } from "../kit/results.ts";
+import type { ScreenResultQuestion } from "../../screen.ts";
 import { AlarmClock, Beacon, BingoBall, BottleTable, Chevrons, DataRain, March, Redacted, Ribbon, WallCard, useEndAt } from "../kit/tv1-parts.tsx";
 import {
   BOTTLE_EMPTY_SPIN_MS,
@@ -261,7 +264,7 @@ export function freshTick(t: number): { cell: number; k: number } {
  *             right (under 5 minutes it turns hot); the ticker says how to play
  */
 function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
-  const lines = linesOf("bingo");
+  const lines = ownerLinesFor(linesOf("bingo"), state.character?.hidden === false);
   useSfxCues(t, sfx, [
     ...[0, 1, 2, 3, 4].map((i) => [B.title + i * 160, "blip", { pitch: 1 + i * 0.12, gain: 0.6 }] as const),
     [B.card, "chord", { gain: 0.6 }],
@@ -317,7 +320,7 @@ function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
         </div>
       )}
       <Marquee t={reduced ? 0 : t} speed={120} className="a1-ticker gold a1-bingo-ticker" style={{ opacity: progress(t, B.card, 600) }}>
-        ★ MINGLE ★ FIND A PROGRAM FOR EVERY SQUARE ★ CHECK THE BOX YOURSELF ★ NO NAMES: USE YOUR COMPUTER MEMORY ★
+        ★ MINGLE ★ FIND A PROGRAM FOR EVERY SQUARE ★ CHECK THE BOX YOURSELF ★ ONE LINE THROUGH THE CENTRE IS A BINGO ★
       </Marquee>
     </TvStage>
   );
@@ -361,7 +364,7 @@ function BingoMingle({ t, reduced }: { t: number; reduced: boolean }) {
   );
 }
 
-function BingoWall({ t, sfx, reduced }: SceneProps) {
+function BingoWall({ t, sfx, reduced, state }: SceneProps) {
   useSfxCues(t, sfx, [[200, "chord", { gain: 0.6 }], ...periodicCues(t, B.hold, BALL_EVERY).map((x) => [x + TICK_AFTER, "blip", { gain: 0.35 }] as const)]);
   const ticks = bingoTicks(t);
   return (
@@ -372,7 +375,7 @@ function BingoWall({ t, sfx, reduced }: SceneProps) {
       icon="document"
       tone="purple"
       title={copy("bingo").title}
-      lines={linesOf("bingo")}
+      lines={ownerLinesFor(linesOf("bingo"), state.character?.hidden === false)}
       bg="radial-gradient(ellipse at 50% 30%, #2a1a7a 0, #0b0630 70%)"
       art={
         <div className="a1-bingo-card small">
@@ -429,7 +432,7 @@ function BingoTimeTv({ t, sfx, reduced }: SceneProps) {
       </div>
       <Confetti t={t} start={burst} dur={4500} density={reduced ? 0 : 1} seed={6 + Math.floor(burst / 1000)} />
       <Marquee t={reduced ? 0 : t} speed={140} className="a1-ticker gold" style={{ opacity: progress(t, 2600, 600) }}>
-        ★ WHO HAS A BINGO? ★ READ YOUR LINE FROM MEMORY ★ SAVE THE CENTRE SQUARE FOR LAST ★
+        ★ WHO HAS A BINGO? ★ READ YOUR LINE ALOUD ★ SAVE THE CENTRE SQUARE FOR LAST ★
       </Marquee>
     </TvStage>
   );
@@ -807,17 +810,86 @@ const RULES: ReadonlyArray<{ text: string; ok: boolean }> = [
  *   5200–     hold: filings fly into his inbox tray; the two-minute window counts down;
  *             at zero (or once Filing Closed lands) PENCILS DOWN · TRABOLTA IS READING,
  *             an eye sweeping the pile
- * A question's results (`read_the_results`):
- *   0–1200    QUESTION n (or THE RESULTS) slams; the question types (round one's)
- *   1200–6400 the filings ride up through a scanning beam, each stamped READ
- *   6400–     hold: THE RESULTS ARE IN pulses, the scanner keeps sweeping, the bottle
- *             turns in the corner: NEXT, THE BOTTLE
- * Unknown (history, an older server): the title and the scanner, looping.
+ * A question's results (`read_the_results`, wave 18b: Trabolta reads them
+ * aloud; the screen state's `results` block, `do fact_read`):
+ *   0–1200    QUESTION n slams; the question's own text types (the server's)
+ *   3600      "n FILED" counts up
+ *   5200–     one filing every ROW_MS (≈ his voice saying "X said Y, certain."):
+ *             the name, "what they said", SURE / NOT SURE; at +0.6 × ROW_MS its
+ *             stamps land: ✔ ACCEPTED, ✘ GUESS or — NOT COUNTED, and beside it his
+ *             ruling (🤖 SAME / NOT THE SAME below 100; 🤖 … while he is asking,
+ *             changed in place by the next poll; nothing for an exact match, and
+ *             nothing on a sure row: held until ⚖, D11). The list scrolls, eight in view
+ *   after     ACCEPTED a · GUESSES g; then NEXT: QUESTION n+1 (or TRUTH OR DARE
+ *             after the third, the bottle in the corner). A consensus: a gold
+ *             banner with the answer; nobody filed: NOBODY FILED
+ * With no `results` (an older server, history): the title and the scanner, looping.
  */
 function ResultsTv({ t, at, state, target, sfx, reduced }: SceneProps) {
   const r = useResultsKind(state, at);
+  const results = useHeldResults(state, "read");
   if (r.kind === "filing") return <FilingWindow t={t} at={at} state={state} target={target} sfx={sfx} reduced={reduced} />;
-  return <QuestionResults t={t} n={r.kind === "question" ? r.n : null} known={r.kind === "question"} sfx={sfx} reduced={reduced} />;
+  const n = r.kind === "question" ? r.n : null;
+  const q = r.kind === "question" ? readQuestion(results, n) : null;
+  if (q !== null) return <QuestionReading t={t} n={n ?? q.n} q={q} sfx={sfx} reduced={reduced} />;
+  return <QuestionResults t={t} n={n} known={r.kind === "question"} sfx={sfx} reduced={reduced} />;
+}
+
+/** His reading of one question off the `results` block (the TV: every row). */
+function QuestionReading({ t, n, q, sfx, reduced }: { t: number; n: number; q: ScreenResultQuestion; sfx: SceneProps["sfx"]; reduced: boolean }) {
+  const rows = q.rows ?? [];
+  const plan = readingPlan(rows.length);
+  useSfxCues(t, sfx, [
+    [0, "drumroll", { gain: 0.4, over: true }],
+    [1100, "boom", { gain: 0.35, over: true }],
+    ...rows.map((_, i) => [plan.rows + i * ROW_MS + Math.round(ROW_MS * STAMP_AT), "tick", { gain: 0.25, over: true }] as const),
+    [plan.summary, "chord", { gain: 0.4, over: true }],
+  ]);
+  const slam = reduced ? progress(t, 0, 300) : eased(t, 200, 500, ease.outBack);
+  const nobody = q.filed === 0;
+  const done = t >= plan.summary;
+  const bottleNext = !(n >= 1 && n < 3);
+  return (
+    <TvStage bg="radial-gradient(ellipse at 50% 30%, #0a3a2a 0, #010a06 75%)">
+      <div className="a1-res-title" style={{ opacity: clamp01(slam * 2), transform: `translate(-50%, 0) scale(${(1.7 - 0.7 * slam).toFixed(3)})` }}>
+        QUESTION {n}
+      </div>
+      {q.text !== null && (
+        <Win98Window title={`Round 1 · Question ${n}`} icon="question" x={4} y={15} width="40em" open={eased(t, 900, 260, ease.linear)} reduced={reduced} className="a1-res-q a1-read-q">
+          <Typewriter text={q.text} t={t} start={1200} cps={50} caret={false} />
+        </Win98Window>
+      )}
+      <div className="a1-read-filed" style={{ opacity: progress(t, 3400, 300) }}>
+        <b>{filedCount(q.filed, t, 3600)}</b> FILED
+      </div>
+      {nobody ? (
+        t >= plan.rows && (
+          <div className="a1-read-nobody" style={{ opacity: progress(t, plan.rows, 400), transform: reduced ? undefined : `scale(${(1 + 0.04 * pulse(t, 1600)).toFixed(3)})` }}>
+            NOBODY FILED
+          </div>
+        )
+      ) : (
+        <ReadingRows q={q} plan={plan} t={t} reduced={reduced} className="a1-read-rows" />
+      )}
+      {done && !nobody && (
+        <div className="a1-read-totals" style={{ opacity: progress(t, plan.summary, 400) }}>
+          {totalsLine(q)}
+          {q.more > 0 && <span className="a1-read-more"> · +{q.more} more filed</span>}
+        </div>
+      )}
+      {done && q.consensus && q.answer !== null && (
+        <div className="a1-read-consensus" style={{ opacity: progress(t, plan.summary + 300, 400), transform: reduced ? undefined : `scale(${(1.4 - 0.4 * eased(t, plan.summary + 300, 400, ease.outBack)).toFixed(3)})` }}>
+          <span className="a1-read-consensus-tag">CONSENSUS</span> The answer is: {q.answer}
+        </div>
+      )}
+      {t >= plan.next && (
+        <div className="a1-res-next a1-read-next" style={{ opacity: progress(t, plan.next, 600) }}>
+          {bottleNext && <BottleTable t={t} angle={reduced ? 0 : bottleFree(t) * 0.12} reduced={reduced} className="mini" />}
+          <div>{nextAfter(n)}</div>
+        </div>
+      )}
+    </TvStage>
+  );
 }
 
 function FilingWindow({ t, at, state, target, sfx, reduced }: { t: number; at: number; state: ScreenState; target: SceneProps["target"]; sfx: SceneProps["sfx"]; reduced: boolean }) {
@@ -945,9 +1017,8 @@ function QuestionResults({ t, n, known, sfx, reduced }: { t: number; n: number |
           const read = y < 46;
           return (
             <div key={i} className="a1-scan-lane" style={{ transform: `translate3d(0, ${y.toFixed(1)}%, 0)` }}>
-              <div className="a1-scan-card">
-                <Win98Icon kind="document" size="1.4em" /> filing.txt
-                {read && <span className="a1-scan-read">READ</span>}
+              <div className={`a1-scan-card${read ? " read" : ""}`}>
+                <Win98Icon kind="document" size="1.4em" />
               </div>
             </div>
           );
@@ -990,12 +1061,20 @@ function Gavel({ t, reduced }: { t: number; reduced: boolean }) {
   );
 }
 
+/** The wall's take: the counts only (rows and names are the TV's), else the scanner. */
 function ResultsWall({ t, at, state, sfx, reduced }: SceneProps) {
   const r = useResultsKind(state, at);
+  const results = useHeldResults(state, "read");
   useSfxCues(t, sfx, [[100, "drumroll", { gain: 0.4 }]]);
   const left = r.kind === "filing" ? windowClock(at, t, FILING_MS, filingHold("wall")) : null;
-  const title = r.kind === "filing" ? "THE FIRST MOMENT OF TRUTH" : r.kind === "question" && r.n !== null ? `QUESTION ${r.n}` : copy("hunt_results").title;
-  const lines = r.kind === "filing" ? ["File anything you found with Trabolta now: you have two minutes.", "Then the results, one question at a time."] : r.kind === "question" ? ["Clippy is reading the results.", "And then: the bottle."] : linesOf("hunt_results");
+  const q = r.kind === "question" ? readQuestion(results, r.n) : null;
+  const n = r.kind === "question" ? (r.n ?? q?.n ?? null) : null;
+  const title = r.kind === "filing" ? "THE FIRST MOMENT OF TRUTH" : n !== null ? `QUESTION ${n}` : copy("hunt_results").title;
+  const lines = r.kind === "filing" ? ["File anything you found with Trabolta now: you have two minutes.", "Then the results, one question at a time."] : r.kind === "question" ? ["Trabolta is reading the results.", n !== null && n < 3 ? `Then question ${n + 1}.` : "And then: truth or dare."] : linesOf("hunt_results");
+  if (q !== null)
+    return (
+      <WallCard t={t} reduced={reduced} caption="The Results" icon="info" tone="green" title={title} lines={lines} bg="radial-gradient(ellipse at 50% 30%, #0a3a2a 0, #010a06 75%)" art={<div className="a1-art-centre a1-read-board" style={{ transform: "translate(-50%, -50%)" }}><CountsBoard q={q} t={t} start={1200} /></div>} />
+    );
   return (
     <WallCard
       t={t}
@@ -1012,7 +1091,7 @@ function ResultsWall({ t, at, state, sfx, reduced }: SceneProps) {
             {Array.from({ length: 5 }, (_, i) => (
               <div key={i} className="a1-scan-lane" style={{ transform: `translate3d(0, ${(100 - (reduced ? i / 5 : loop(t / 7000 + i / 5, 1)) * 120).toFixed(1)}%, 0)` }}>
                 <div className="a1-scan-card">
-                  <Win98Icon kind="document" size="1.2em" /> filing.txt
+                  <Win98Icon kind="document" size="1.2em" />
                 </div>
               </div>
             ))}
@@ -1693,13 +1772,13 @@ export const ACT1_TRIGGERS = {
 export const SCENES: SceneDef[] = [
   { id: "power_on", when: [{ moment: "beat", name: "Power On" }], ms: POWER_ON_MS, tv: PowerOnTv, wall: PowerOnWall, priority: 1 },
   { id: "call_desktop", when: [{ slide: "call_desktop" }], ms: "hold", tv: CallDesktopTv, wall: CallDesktopWall },
-  { id: "bingo", when: [{ slide: "bingo" }], ms: "hold", tv: BingoTv, wall: BingoWall, countdown: "tv" },
+  { id: "bingo", when: [{ slide: "bingo" }], ms: "hold", tv: BingoTv, wall: BingoWall, countdown: "tv", owner: true },
   { id: "bingo_time", when: [{ slide: "bingo_time" }], ms: "hold", tv: BingoTimeTv, wall: BingoTimeWall },
   { id: "corrupted_code", when: [{ moment: "beat", name: "Corrupted Code" }], ms: 12_000, tv: CorruptedTv, wall: CorruptedWall, priority: 2 },
   { id: "trabolta_introduction", when: [{ moment: "beat", name: "Trabolta Introduction" }], ms: INTRO_MS, tv: IntroTv, wall: IntroWall, priority: 5, namesCharacter: true },
   { id: "trivia_1", when: [{ slide: "trivia_1" }], ms: "hold", tv: TriviaTv, wall: TriviaWall, namesCharacter: true, countdown: "tv" },
   { id: "return", when: [{ slide: "return" }], ms: "hold", tv: ReturnTv, wall: ReturnWall },
-  { id: "hunt_results", when: [{ slide: "hunt_results" }], ms: "hold", tv: ResultsTv, wall: ResultsWall, namesCharacter: true, countdown: true },
+  { id: "hunt_results", when: [{ slide: "hunt_results" }], ms: "hold", tv: ResultsTv, wall: ResultsWall, namesCharacter: true, countdown: true, face: "thinking", faceWhen: (n) => n.results_q !== 0 },
   { id: "filing_closed", when: [{ moment: "beat", name: "Filing Closed" }], ms: 6500, tv: FilingClosedTv, wall: FilingClosedWall, priority: 1, namesCharacter: true, face: "thinking" },
   { id: "truth_or_dare", when: [{ slide: "truth_or_dare" }], ms: "hold", tv: TruthOrDareTv, wall: TruthOrDareWall },
   { id: "bottle_landed", when: [{ moment: "signal", name: "bottle_landed" }], ms: 14_000, tv: BottleLandedTv, wall: BottleWall, priority: 2, face: "curious" },

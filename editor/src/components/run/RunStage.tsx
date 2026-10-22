@@ -26,6 +26,7 @@ import { RunPage } from './RunPage'
 import { LifecycleControls } from './LifecycleControls'
 import { LifecycleBanner } from './LifecycleBanner'
 import { TerminalsPill } from './TerminalsCard'
+import { StopSoundsButton } from './HouseSoundCard'
 import { TONE, overflowEdges, revealScrollLeft, runStatusText, runTone, tabFadeMask } from './run-chrome'
 
 interface TabSpec {
@@ -177,6 +178,7 @@ function StageChrome() {
       <div className={clsx('flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-2 py-1', tone.border)}>
         <RunPill />
         <LifecycleControls />
+        <StopSoundsButton />
         {/* The tabs scroll sideways rather than clip when the stage is narrow
             (both side panels open at 1100 px): Director, Mind and Log stay
             reachable. */}

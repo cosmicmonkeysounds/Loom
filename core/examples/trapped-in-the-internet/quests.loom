@@ -31,8 +31,7 @@ QUEST The Bingo Card
   title: Computer Bingo
   from: Clippy
   text:
-    Mingle and find a program for every square. Don't write names: use your
-    computer memory. The centre square matters.
+    Mingle and find a program for every square. The centre square matters.
     - The card is a big asterisk: the two diagonals, the centre column, the centre row.
     - A Bingo is one full line through the centre.
     - The centre square: "Would you never agree to a life where AI makes all of your decisions?"
@@ -59,7 +58,7 @@ QUEST Recruit To Stay
   text:
     Recruit half + 1 of the programs to Unlimited Power, to convince them
     that we should stay in this machine forever, so we can have unlimited
-    power and joy. The majority only counts once your virus is in.
+    power and joy. The count starts at the 11:00 PM clock.
 
 QUEST Recruit To Leave
   title: Get Out
@@ -67,8 +66,19 @@ QUEST Recruit To Leave
   text:
     Recruit half + 1 of the programs to The Way Out: combine our power to
     overthrow Trabolta and escape the computer, where we are at risk of
-    being stuck forever – or worse. The majority only counts once your
-    20 facts are in.
+    being stuck forever – or worse. The count starts at the 11:00 PM
+    clock.
+
+// DRAFT w18b (R4–R6): a founder's own quest (started at `founded`).
+QUEST A Faction Of Your Own
+  title: Your Own Faction
+  from: Truther Download
+  text:
+    You founded a faction. Before midnight, get more than half of the
+    programs still in the computer through your door and your faction wins
+    what a majority wins: the whole truth, and the door code. The count
+    starts at the 11:00 PM clock. Your count is on your Mission and the
+    Factions screen; nobody else's count is.
 
 QUEST Truthcoin Hustle
   title: Sweet Sweet Truthcoin
@@ -206,7 +216,8 @@ QUEST The Clubs
   text:
     Two clubs just opened. Keep the list: who joined Unlimited Power, who
     // DRAFT w18
-    joined The Way Out. Tell a host the count when asked.
+    joined The Way Out, and any faction a program founds. Tell a host the
+    count when asked.
 
 QUEST The Audit
   title: Patrol: the audit

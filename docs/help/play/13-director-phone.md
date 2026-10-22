@@ -3,7 +3,7 @@ title: The cue sheet on your phone
 section: Performers
 order: 13
 role: performer
-keywords: director, caller, calling, i'll call, stop calling, fire anyway, cue, cue sheet, cues, phone, fire, arm, double tap, act, acts, fallbacks, anytime, countdown, strip, next bar, mod, moderator, passcode, next, last, not taken, refused, value, award, winner, stage manager, radio, laptop, role=director
+keywords: stop sounds, 🔇, director, caller, calling, i'll call, stop calling, fire anyway, cue, cue sheet, cues, phone, fire, arm, double tap, act, acts, fallbacks, anytime, countdown, strip, next bar, mod, moderator, passcode, next, last, not taken, refused, value, award, winner, stage manager, radio, laptop, role=director
 ---
 
 Away from the laptop? The director's **cue sheet** — the same running
@@ -147,4 +147,7 @@ marks follow cues fired from the laptop or another phone. It stops
 refreshing while the phone is locked and picks up again when you look.
 
 Pausing, restarting, going live, chat and the World editor stay on the
-laptop. **☰ → Keep my screen on** stops the phone sleeping mid-show.
+laptop. **☰ → Keep my screen on** stops the phone sleeping mid-show, and
+**☰ → 🔇 Stop all house sounds** fades out every story sound playing
+through the house speakers (never the TV's voice or the announcements:
+those are on the laptop and a host's phone).

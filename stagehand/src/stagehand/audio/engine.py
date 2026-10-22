@@ -82,13 +82,34 @@ def query_device(name: str | None, query: Callable | None = None) -> DeviceInfo:
     )
 
 
-def probe(name: str | None, want_in: int, want_out: int, query: Callable | None = None) -> tuple[DeviceInfo | None, list[str]]:
+def layout_problem(info: DeviceInfo, expect: tuple[int, int] | None) -> str | None:
+    """`device.expect` against what the device reports: None when they agree
+    (or nothing is expected), else why the channel numbers can't be trusted."""
+    if expect is None or (info.inputs, info.outputs) == tuple(expect):
+        return None
+    return (
+        f"{info.name!r} reports {info.inputs} in / {info.outputs} out; audio.json device.expect is "
+        f"{expect[0]} / {expect[1]} — the layout has moved (mirroring, 96 kHz or an optical port on TOSLink?), "
+        "so the channel numbers are off: fix it in MOTU Audio Setup / CueMix"
+    )
+
+
+def probe(
+    name: str | None,
+    want_in: int,
+    want_out: int,
+    query: Callable | None = None,
+    expect: tuple[int, int] | None = None,
+) -> tuple[DeviceInfo | None, list[str]]:
     """(the device, problems) — for `stagehand check` and the boot log."""
     try:
         info = query_device(name, query)
     except Exception as err:  # noqa: BLE001 — ValueError (missing / ambiguous), no PortAudio
         return None, [f"audio device {name or '(default)'!r}: {err}"]
     problems = []
+    moved = layout_problem(info, expect)
+    if moved is not None:
+        problems.append(moved)
     if info.outputs < want_out:
         problems.append(f"{info.name!r} has {info.outputs} outputs; audio.json asks for {want_out}")
     if info.inputs < want_in:
@@ -111,8 +132,14 @@ class Engine:
         query: Callable | None = None,
         stream_factory: Callable | None = None,
         reinit: Callable[[], None] | None = None,
+        expect: tuple[int, int] | None = None,
     ) -> None:
         self.device = device_name(device)
+        #: `device.expect`: compared on every open (the router updates it).
+        self.expect = expect
+        #: The last open found the device's layout moved (it plays anyway:
+        #: refusing to open mid-show would be worse).
+        self.layout_moved = False
         self.want_in, self.want_out = n_in, n_out
         self.want_rate = rate
         self.duplex = duplex
@@ -173,6 +200,10 @@ class Engine:
         n_in = min(self.want_in, info.inputs) if self.duplex else 0
         if n_out < 1:
             raise ValueError(f"{info.name!r} has no outputs")
+        moved = layout_problem(info, self.expect)
+        self.layout_moved = moved is not None
+        if moved is not None:
+            log.error("%s — playing anyway", moved)
         if n_out < self.want_out or (self.duplex and n_in < self.want_in):
             log.warning("%s: %d in / %d out, audio.json wants %d / %d — the rest are dropped", info.name, info.inputs, info.outputs, self.want_in, self.want_out)
         rate = self.want_rate or info.rate

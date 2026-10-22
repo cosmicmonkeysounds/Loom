@@ -4,6 +4,7 @@
 //! the next pass.
 
 import { PersonAvatar } from "../ui/primitives.tsx";
+import { GuestBadges } from "./badges.tsx";
 import { BoothLayer } from "./layer.tsx";
 import { mmss, type DoorEntry } from "./popouts/model.ts";
 
@@ -32,7 +33,10 @@ export function DoorWindow({ queue, now, me, canClaim, onClaim, onScan, onCard, 
             <li key={e.id} className="rows-row">
               <button type="button" className="rows-who" onClick={() => onCard(e.id)}>
                 <PersonAvatar name={e.name} size="sm" />
-                <span className="rows-name">{e.name}</span>
+                <span className="rows-name">
+                  {e.name}
+                  <GuestBadges id={e.id} />
+                </span>
                 <span className="rows-place">waiting {mmss(now - e.since)}</span>
               </button>
               <div className="rows-btns">

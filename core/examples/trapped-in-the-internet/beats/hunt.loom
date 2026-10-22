@@ -1,6 +1,6 @@
 // The first Truth Scavenger Hunt, the First Moment of Truth (the
-// last-chance filing window, the results one question at a time) and the
-// bottle (Truth or Dare) between the questions.
+// last-chance filing window, the results one question at a time, read by
+// Trabolta on the TV) and the bottle (Truth or Dare) after the third.
 //
 // Trabolta needs facts. They are obscure, un-googleable, and in the
 // Desktop's books: each answer is printed on a document carrying a codex
@@ -55,20 +55,28 @@ Clippy: Pencils down! Trabolta is reading. Question one, coming up.
 
 // `read_the_results` — one question's result (Kernel.res_* are set by the
 // rule). The settle watcher (+50 / marked) runs right after this beat.
+// Wave 18b (Q6, R20, R21): Trabolta reads and judges, voiced by the TV; the
+// screens show the rows (`do fact_read`). Every house line of this beat is
+// kept out of his worker's `recent` by name. The bottle waits for Q3.
+// DRAFT w18b
 == Question Results
   setting: The Desktop
-  cast: Clippy
+  cast: Trabolta, Clippy
 
 if Kernel.res_filed == 0:
-  Clippy: Question {Night.results_q}. Nobody filed an answer. Trabolta has nothing. That's okay! That's okay. We have a backup. It's called Truth or Dare, and I have a bottle.
+  Trabolta: Question {Night.results_q}. Nobody filed an answer. I have nothing.
+  Clippy: That's okay! That's okay.
 else if Kernel.res_consensus == Kernel.res_filed:
-  Clippy: Question {Night.results_q}. {Kernel.res_filed} filed. Every answer matches, and every one of you was one hundred percent sure. CONSENSUS!
-  Clippy: Trabolta accepts it. The answer is: {Kernel.res_answer}.
+  Trabolta: Question {Night.results_q}. {Kernel.res_filed} filed. Every answer matches, and every one of you was one hundred percent sure. Consensus.
+  Trabolta: I accept it. The answer is: {Kernel.res_answer}.
 else:
-  Clippy: Question {Night.results_q}. {Kernel.res_filed} filed. No consensus. Here is what you told Trabolta.
-  Clippy: {Kernel.res_said}
-  Clippy: Confident answers are accepted, right or wrong. Guesses are a symptom of corruption. Antivirus, you know what to do.
-Clippy: And now: the bottle. Five spins, then the next question.
+  Trabolta: Question {Night.results_q}. {Kernel.res_filed} filed. No consensus. I will read what you told me.
+  Trabolta: {Kernel.res_said}
+  Trabolta: {Kernel.res_accepted} accepted. {Kernel.res_guesses} guesses. A guess is a symptom of corruption. Antivirus, you know what to do.
+if Night.results_q < 3:
+  Clippy: Question {Night.results_q + 1}, coming up!
+else:
+  Clippy: That's all three! And before the next hunt: TRUTH OR DARE. I have a bottle.
 
 // `bottle_announce` — the pick, spoken on the TV (a public Trabolta line in
 // The Desktop; `view=tv` reads the room).

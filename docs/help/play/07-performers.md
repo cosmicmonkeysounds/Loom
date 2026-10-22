@@ -285,19 +285,26 @@ of saying it (see [Filing a fact](quests.md)): a question, the answer,
 and a confidence slider. The **server judges it** the moment it is
 filed, against the story's answer key — *accurate*, a *confident lie*
 (wrong at 100%), or *uncertain* (wrong below) — and the story reacts at
-once; nothing waits for a host. The one exception is a **near miss**: an
-answer close to the key but not exact (*Dr Whiskars* for *Doctor
+once; nothing waits for a host. That is so for an **exact match** (the
+key, one of its aliases, an abbreviation like *Dr. Whiskers*). Anything
+else is checked first. A **near miss** (*Dr Whiskars* for *Doctor
 Whiskers*, a number written out, the right answer with a few more
-words). An abbreviation (*Dr. Whiskers*) is simply accurate. A near
-miss is never judged a lie or a guess by itself: it is *proposed
-accurate*, a ⚠ line in `# hosts` names the answer it is close to, and it
-waits for a person (you, with the buttons below, a host's Judge tab, or
-the director's Judging card). At *Trapped in the Internet* Trabolta
-rules on it first when his laptop is online: `# hosts` says *… asked
-Trabolta to rule*, then *🤖 Trabolta ruled …* with his verdict and
-reason, and the story reacts as if a host had pressed. You only step in
-when you disagree. If nobody judges it, it counts as accurate when the
-round closes. At *Trapped in the Internet* the `# hosts` room shows each
+words) is never judged a lie or a guess by itself: it is *proposed
+accurate*, and a ⚠ line in `# hosts` names the answer it is close to.
+At *Trapped in the Internet* Trabolta rules on **every answer that
+isn't an exact match**, near miss or plain miss, when his laptop is
+online: `# hosts` says *… asked Trabolta to rule* (*📝 Not an exact
+match…* for a plain miss), then *🤖 Trabolta ruled …* with his verdict
+and reason, and the story reacts as if a host had pressed. His rulings
+wait in a queue and he takes one at a time, after any guest talking to
+him, so a round can take him a few minutes. If his laptop is off
+when the answer lands, a near miss waits for a person (you, with the
+buttons below, a host's Judge tab, or the director's Judging card) and
+a plain miss is judged at once; if he stops ruling (*⚖ Trabolta isn't
+ruling* in `# hosts`), the ones he still holds wait for the round to
+close. You only step in when you disagree. Whatever is still waiting when the
+round closes takes its proposal: a near miss counts as accurate, a
+plain miss as a lie at 100% or uncertain below. At *Trapped in the Internet* the `# hosts` room shows each
 filing as it lands ("📝 *Name* filed H5 (round 2 Q2): *answer* —
 certain. Judged lie."). The story's buttons on that guest's card —
 **📝 Filed fact: accurate** / **confident lie** / **uncertain (a

@@ -127,6 +127,14 @@ Clippy* for good.
 anyone needs Help With That, I'll be available"). The cracks show as the
 night goes on: the malware, the beans, the dark. You never take sides on air.
 
+## Who you know
+
+<!-- DRAFT w18b -->
+The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
+
+- **Retired Helpers**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+- **Debt Notices**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
+
 ## Your night, act by act
 
 **Arrivals (20:00 → C1).** Greet people. Your scan of a pass greets them in
@@ -140,21 +148,25 @@ little line from you; play it up.
 **C1 · 📣 Call to the Desktop.** Everyone is swept to the living room. Your
 booth: *📋 Instructions 1/X…*. Welcome everyone (CI 1): the fundraiser to
 restore the sign at Maps And Ducks; you are Clippy, the official Office
-Assistant; *Jean Trabolta himself will make an appearance later tonight*.
+Assistant; *Jean Trabolta will be joining us later in the night! He'll be
+joining by video conference, because we are all people who have become
+computer programs, but he has ALWAYS been a computer program. He may or may
+not have already shared with you that he is an AI, but rest assured: he is
+the true owner of Maps and Ducks, and he is excited to lead you through Jean
+Trabolta's Scavenger Hunt!*
 Introduce the hosts: Task Manager keeps things running, Adobe Acrobat assists
 with documents and printing, Recycling Bin is hygiene and maintenance.
 
 **V2 · 🎱 Computer Bingo (20 min).** Your Quest Log: *Per the agenda: Computer Bingo*. Hand out
 cards and markers. The card is a big asterisk: a Bingo is one full line
-through the centre (two diagonals, the centre column, the centre row).
-**Nobody writes names**: they use their special computer memory. The centre
+through the centre (two diagonals, the centre column, the centre row). The centre
 square: *"Would you never agree to a life where AI makes all of your
 decisions?"* At 20 minutes every phone is called back and your bar turns
 yellow: **🎤 Call it**, then **FIRE ⏰ Bingo time**.
 
 **V3 · ⏰ Bingo results** (CI 2). Your ⏰ opens **🎮 PLAYER SELECT** by itself:
 everyone at the Desktop as picture tiles, three moves along the top (**① 🎱 ②
-🎀 ③ 🎯**). Winners read their line and name each match from memory, centre
+🎀 ③ 🎯**). Winners read their line and name each match, centre
 square last. **① tap the winner's tile, then 🎱 Bingo winner**: their phone
 pops a full-screen *🎱 BINGO!*. **② 🎀** offers the same winner (**SAME: …
 🎀 Give**): one tap, and their phone gets the medal while every other phone
@@ -172,8 +184,9 @@ following the directives of Jean Trabolta; the Internet is where programs are
 reinstalled with a short activity; they come right back. Routine. Reassuring.
 
 **🤖 Introduce Trabolta.** Radio **INTRO** (so the tent starts the first game);
-a host (or the director) fires 🤖, and it shows as LAST on your bar. Your line is on the TV: *"Everyone, say hello to
-TRABOLTA!"* He speaks. The TV switches to the reinstallation mirror: point at
+a host (or the director) fires 🤖, and it shows as LAST on your bar. Your line is on the TV: *"And now, joining us by video
+conference: the Sole Owner and Founder of Maps and Ducks! Everyone, say hello
+to JEAN TRABOLTA!"* He speaks. The TV switches to the reinstallation mirror: point at
 it, *"Look! That's {the first program}! Doing great!"* Hand off: *"And now,
 Trabolta has a game for all of us."*
 
@@ -195,20 +208,23 @@ Internet. Then:
    Trabolta is reading."* A closed round never reopens: a question nobody
    filed never comes back.
 2. **📋 Results, one question at a time** (you press 📋 on your bar for Q1,
-   then Q2, then Q3; it stays your cue until the third). Your phone shows that question's result in the Desktop
-   room; read it aloud. Three shapes: **CONSENSUS** (every answer matches and
-   everyone was 100% sure: Trabolta accepts it and you read the answer) ·
-   **nobody filed** (*"We have a backup. It's called Truth or Dare, and I
-   have a bottle."*) · **no consensus** (the list of what everyone told
-   Trabolta: read it, then *confident answers are accepted, right or wrong;
-   guesses are a symptom of corruption. Antivirus, you know what to do.*).
-   The app settles each filing as you read: +50 Truthcoin for an accepted
+   then Q2, then Q3; it stays your cue until the third). **Trabolta reads
+   the result on the TV** (the screens show every filing); you react and
+   keep the room with him. Three shapes: **CONSENSUS** (every answer matches
+   and everyone was 100% sure: he accepts it and says the answer) ·
+   **nobody filed** (he has nothing; you: *"That's okay! That's okay."*) ·
+   **no consensus** (he reads what everyone told him, then how many were
+   accepted and how many were guesses: *"A guess is a symptom of
+   corruption. Antivirus, you know what to do."*). When he has finished,
+   you say *"Question two, coming up!"* (or, after the third, *"That's all
+   three! And before the next hunt: TRUTH OR DARE. I have a bottle."*).
+   The app settles each filing as he reads: +50 Truthcoin for an accepted
    answer, marked for reinstallation for a guess. **Never say which filings
    were lies**: the room hears "accepted" for every confident answer.
-3. **🍾 The bottle.** After each question you spin it (🍾 on your bar) up to
-   **five times**. The server picks a cleared program who has not been
-   picked for this question, wherever they are in the house (call them
-   forward); the TV says *"{name}. Truth or dare?"*
+3. **🍾 The bottle, after all three results.** Spin it (🍾 on your bar)
+   about **five times** (NEXT offers five; more if the room wants it). The
+   server picks a cleared program who has not been picked tonight, wherever
+   they are in the house (call them forward); the TV says *"{name}. Truth or dare?"*
    and their phone asks. **Dare** → marked for reinstallation (programs
    choose Truth). **Truth** → Trabolta asks them a personal question on the
    TV; make them answer it in front of everyone, then press **🗣 Truth
@@ -216,8 +232,8 @@ Internet. Then:
    Truthcoin; no scan). Won't answer → **🙅 Truth refused** (two taps):
    marked, and the Antivirus come for them. A dead phone → **🎩 Chose Dare**
    (two taps) does the same as their tap.
-4. After five spins, 📋 for the next question's results. After Q3, preview
-   hunt 2 and fire **📓 Hunt 2** from your bar when you're ready.
+4. After the spins, a host previews hunt 2 (📺: it waits while a truth is
+   open), then fire **📓 Hunt 2** from your bar when you're ready.
 
 **📺 The ad hijack** (CI 4). You begin previewing round 2; an ad takes over
 every screen. A **private message from Trabolta** lands in your booth (and
@@ -304,16 +320,19 @@ password · … Nothing to carry: the TV and the phone ask.
 **CI 1/X · Beginning of night.** Welcome everyone to the computer: a special
 fundraiser party to restore the sign at Maps And Ducks. You are Clippy, the
 official Office Assistant; if anyone needs Help With That, you'll be available.
-Jean Trabolta himself will make an appearance later tonight. Introduce Task
+Jean Trabolta will be joining us later in the night, by video conference: we
+are all people who have become computer programs, but he has ALWAYS been a
+computer program; he may or may not have shared that he is an AI, but he is
+the true owner of Maps and Ducks and is excited to lead you through Jean
+Trabolta's Scavenger Hunt. Introduce Task
 Manager (keeps things running), Adobe Acrobat (documents and printing),
 Recycling Bin (hygiene and maintenance). First activity: Computer Bingo, to
 meet the other programs. Hand out cards and markers; mingle; find programs who
-match the squares. **Do NOT write down names**: use your special computer
-memory. A Bingo = one marked line through the centre. 20 minutes. You'll call
+match the squares. A Bingo = one marked line through the centre. 20 minutes. You'll call
 them back to celebrate the winners. Send them off enthusiastically.
 
 **CI 2/X · Bingo results.** Thank everyone. Who completed a Bingo? Each winner
-reads their line and names the match for each square from memory, centre
+reads their line and names the match for each square, centre
 last. (🎱 each winner.) At the centre square, have them clearly identify the
 program who would not agree to live under an AI's rules (🎯 on that program).
 Congratulate, ribbon (🎀), applause. An Antivirus interrupts: let them explain;
@@ -321,8 +340,9 @@ if the winner refuses to name anyone, follow the Antivirus. (Norton presses
 🛡, not you.) No Bingo? Task Manager hands you a completed card (🃏 on MS
 Paint): read the name, invite them up, let the Antivirus respond to the
 denial. As they are escorted out: corruption is normal; the Internet is where
-programs are reinstalled; a short activity, then back. Introduce Trabolta (a
-host fires it after your speech; the TV mirror comes up). Point at the
+programs are reinstalled; a short activity, then back. Introduce Jean
+Trabolta, Sole Owner and Founder of Maps and Ducks, joining by video
+conference (a host fires it after your speech; the TV mirror comes up). Point at the
 reinstallation; be encouraging. Announce the Truth Scavenger Hunt: files
 around the computer Trabolta needs help interpreting. He explains the rules.
 
@@ -331,17 +351,17 @@ answer filed with Trabolta on the phone is judged. Accurate → accepted; filed
 100% sure → accepted even if nonsensical; wrong at normal or low confidence,
 or a clear guess → corruption: the Antivirus escort them. Two-minute
 last-chance window: file NOW; you close it with ⏱ on your 🎤 bar (or it
-closes itself); a closed round never reopens. Then 📋 per question: read the result
-in the Desktop room (CONSENSUS / nobody filed / what everyone told Trabolta),
-say that confident answers are accepted right or wrong and guesses are a
-symptom of corruption; the app settles the filings (+50 accepted, a mark for
-a guess). Never say which filings were lies. Between questions, the bottle:
-🍾 up to five times per question; Trabolta names the program on the TV, their
+closes itself); a closed round never reopens. Then 📋 per question: Trabolta
+reads the result on the TV (CONSENSUS / nobody filed / what everyone told
+him, then the accepted and guess counts); when he has finished, the next 📋.
+Guesses are a symptom of corruption; the app settles the filings (+50
+accepted, a mark for a guess). Never say which filings were lies. After Q3,
+Truth or Dare: 🍾 about five times; Trabolta names the program on the TV, their
 phone asks Truth or Dare. Dare → marked (dead phone: 🎩 on their card).
 Truth → Trabolta asks a personal question; make them answer it in front of
 everyone: 🗣 Truth answered when they do, 🙅 Truth refused if they won't
-(marked and escorted). After five spins, the next question; after Q3, the
-second hunt is previewed. Ribbons always allowed.
+(marked and escorted). After the spins, the second hunt is previewed.
+Ribbons always allowed.
 
 **CI 4/X · The malware.** Preview round 2; an ad hijacks the screens. Trabolta's
 private message: "Don't let everyone know but if the malware continues we are

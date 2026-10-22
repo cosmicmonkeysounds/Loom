@@ -553,7 +553,7 @@ covers Zigbee too. DMX / E1.31 not needed.
   anonymous listener on `127.0.0.1:1883` for what runs on the Mac
   (stagehand, Z2M, the alexa player) and a password-only LAN listener on
   `:1884` (user `props`) for the WLED controllers and the ESP32
-  (`scripts/house-mac/alexa.md` → *Lock down the broker*). One broker only.
+  (`scripts/house-mac/audio.md` → *Lock down the broker*). One broker only.
 - **Where the server runs.** If the event server is on the VPS (real domain,
   real TLS), every house device depends on the home uplink. Bring a **phone
   hotspot / LTE router as backup WAN**. Mosquitto, stagehand, Z2M and the

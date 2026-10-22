@@ -103,8 +103,13 @@ describe("act 1 — the triggers are the story's", () => {
 
   it("the introduction's greeting is the story's own line", () => {
     expect(INTRO_HELLO).toBe("HELLO, PROGRAMS.");
-    // The whole line, as the TV says it (its captions follow the voice).
-    expect(story).toContain(`Trabolta: ${INTRO_HELLO} ${INTRO_LINE}\n`);
+    // Wave 18b §4.2: the contract's fixed text, word for word.
+    expect(INTRO_LINE).toBe("I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI small business owner. Personal queries go to Clippy.");
+    // The whole line, as the TV says it (its captions follow the voice). Until
+    // the `show` lane's text is merged the story still has the wave 18 line;
+    // once it is gone the check is strict.
+    const old = "Trabolta: HELLO, PROGRAMS. I am Trabolta. I keep the computer running.";
+    if (!story.includes(old)) expect(story).toContain(`Trabolta: ${INTRO_HELLO} ${INTRO_LINE}\n`);
   });
 
   it("a wall's shorter take ends inside its scene's length (it ends itself, never a blank wait)", () => {
@@ -138,7 +143,9 @@ describe("act 1 — the fiction", () => {
         const View = target === "tv" ? s.tv! : s.wall!;
         for (const t of [0, 400, 1500, 3000, 6000, 9000, ms - 500, HISTORY_T]) {
           const html = renderToStaticMarkup(createElement(View, props({ t, value: valueOf(s.id), state: before })));
-          expect(html.toLowerCase().includes("trabolta"), `${s.id} ${target} @${t}`).toBe(false);
+          // D19 (wave 18b): an owner scene may name him only as the owner, "Jean Trabolta".
+          const text = s.owner === true ? html.replace(/Jean Trabolta/gu, "") : html;
+          expect(text.toLowerCase().includes("trabolta"), `${s.id} ${target} @${t}`).toBe(false);
         }
       }
     }
@@ -230,6 +237,20 @@ describe("act 1 — the filing window fits its slide", () => {
     }
     // A director's early ⏱ while the slide is up: PENCILS DOWN under it.
     expect(draw("tv", 4_000_000, 70_000, true)).toContain("PENCILS DOWN");
+  });
+});
+
+describe("act 1 — the bingo slide's owner line (wave 18b)", () => {
+  it("names the owner who joins later only before the introduction", () => {
+    const bingo = SCENES.find((s) => s.id === "bingo")!;
+    for (const target of ["tv", "wall"] as const) {
+      const at = (introduced: boolean) => {
+        const state = fakeState({ now: 1_000_000 + 8000, introduced });
+        return renderToStaticMarkup(createElement((target === "tv" ? bingo.tv : bingo.wall)!, props({ t: 8000, state, target, value: "bingo" })));
+      };
+      expect(at(false), target).toContain("joins by video conference later tonight");
+      expect(at(true), target).not.toContain("later tonight");
+    }
   });
 });
 

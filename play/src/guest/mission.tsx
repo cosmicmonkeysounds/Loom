@@ -8,6 +8,7 @@ import { Icon } from "../chrome/icons.tsx";
 import { countdownItems, useStoryNow } from "../countdown.tsx";
 import { ObjectiveCard } from "../ui/objective.tsx";
 import { BlockBar } from "../ui/progress.tsx";
+import { NameBadges } from "../ui/primitives.tsx";
 import type { CountdownSummary } from "../types.ts";
 import type { Nav } from "../moments/exits.ts";
 import { countdownText, missionOf, type MissionInput, type MissionModel, type MissionTile, type WhereRow } from "./mission-model.ts";
@@ -41,14 +42,14 @@ function Where({ where, onGo }: { where: WhereRow; onGo: (n: Nav) => void }) {
   );
 }
 
-const TILE_ICON: Record<MissionTile["id"], "coin" | "quest" | "codex"> = { wallet: "coin", quests: "quest", codex: "codex" };
+const TILE_ICON: Record<MissionTile["id"], "coin" | "quest" | "codex" | "door"> = { wallet: "coin", quests: "quest", codex: "codex", faction: "door" };
 
 function Tiles({ tiles, onGo }: { tiles: readonly MissionTile[]; onGo: (n: Nav) => void }) {
   if (tiles.length === 0) return null;
   return (
     <div className="desk-tiles">
       {tiles.map((t) => (
-        <button key={t.id} type="button" className="desk-tile" data-tour={t.id} onClick={() => onGo(t.nav)} aria-label={`${t.label}: ${t.status}${t.dot ? ", something new" : ""}`}>
+        <button key={t.id} type="button" className={`desk-tile${t.id === "faction" ? " faction" : ""}`} data-tour={t.id} onClick={() => onGo(t.nav)} aria-label={`${t.label}: ${t.status}${t.dot ? ", something new" : ""}`}>
           <span className="desk-tile-icon">
             <Icon name={t.frozen === true ? "frozen" : TILE_ICON[t.id]} size={32} />
             {t.dot && <span className="guest-dot" aria-hidden />}
@@ -101,6 +102,7 @@ export function MissionWindow({
             <span className="w95-title ico-title">
               <Icon name="mission" />
               <span>Mission{model.paused ? " (Paused)" : ""}</span>
+              <NameBadges badges={model.badges} />
             </span>
           </div>
           <div className="mission-body">

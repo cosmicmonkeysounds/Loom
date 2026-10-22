@@ -20,7 +20,8 @@ import { usePlayHost } from "../host.ts";
 import type { Push } from "../push.ts";
 import { iosPushCopy, PushRow } from "../push-card.tsx";
 import { showPushCard } from "../push.ts";
-import type { Channel, Interaction, ObjectiveView, WalletView } from "../types.ts";
+import type { Channel, GuestView, Interaction, ObjectiveView, WalletView } from "../types.ts";
+import { factionModeOf, factionsOffered } from "../sides/mode.ts";
 import { GroupPill, PersonAvatar, Sheet } from "../ui/primitives.tsx";
 import { useWakeLock } from "../wake-lock.ts";
 
@@ -123,6 +124,8 @@ export interface GuestStartInput {
   interactions: readonly Interaction[];
   /** The story has sides open, or the guest has a crew: "Sides & crews". */
   sides: boolean;
+  /** Wave 18b, faction mode (`founding:`): the item reads "Factions". */
+  factions?: boolean;
   people: boolean;
   open: {
     act: (i: Interaction) => void;
@@ -132,6 +135,15 @@ export interface GuestStartInput {
     help: () => void;
     leave: () => void;
   };
+}
+
+/** Start's sides item off the view (wave 18b): offered whenever a faction
+ *  is listed, you have a crew, or you may found one — in the show founding
+ *  opens at the Truther Download while the declared sides stay hidden, so
+ *  the list may hold nothing yet — and labelled "Factions" in faction mode.
+ *  `guest/app.tsx` spreads it into `guestStartItems`. */
+export function startSidesOf(view: GuestView | null | undefined): Pick<GuestStartInput, "sides" | "factions"> {
+  return { sides: factionsOffered(view), factions: factionModeOf(view) };
 }
 
 /** A story button's label split into the menu's icon column and its words:
@@ -155,7 +167,7 @@ export function guestStartItems(o: GuestStartInput): StartItem[] {
     onClick: () => o.open.act(i),
     ...(i.arm === true ? { arm: true } : {}),
   }));
-  if (o.sides) items.push({ id: "sides", label: "Sides & crews", icon: <Icon name="door" />, onClick: o.open.sides });
+  if (o.sides) items.push({ id: "sides", label: o.factions === true ? "Factions" : "Sides & crews", icon: <Icon name="door" />, onClick: o.open.sides });
   if (o.people) items.push({ id: "people", label: "People", icon: <Icon name="people" />, onClick: o.open.people });
   items.push({ id: "notifications", label: "Notifications", icon: <Icon name="bell" />, onClick: o.open.notifications });
   items.push({ id: "help", label: "Help", icon: <Icon name="help" />, onClick: o.open.help });

@@ -4,12 +4,14 @@
 #
 #   uv run stagehand check --config trapped.house.yaml
 #   uv run stagehand run   --config trapped.house.yaml --only show
+#   uv run stagehand run   --config trapped.house.yaml --only audio
 #
 # On the night it runs as its own launchd job, next to (never inside) the
 # agents worker on the same Mac — restart one without touching the other,
 # and never `pkill -f "stagehand run"`:
 #
 #   uv run stagehand launchd install --job show   --config trapped.house.yaml
+#   uv run stagehand launchd install --job audio  --config trapped.house.yaml
 #   uv run stagehand launchd install --job agents --config laptop.yaml
 #   uv run stagehand launchd restart --job show   # logs: ~/Library/Logs/stagehand/
 #
@@ -17,18 +19,22 @@
 # real show. tests/test_trapped_house.py cross-checks it against the story.)
 #
 # THE RIG — one house Mac does it all: Mosquitto + Zigbee2MQTT, this file
-#   (stagehand `show`), the agents worker + Ollama, QLab, the TV over the
-#   long HDMI run and the speakers through the MOTU. It has a STATIC IP (a
+#   (stagehand `show` + the `audio` router), the agents worker + Ollama, the
+#   TV over the long HDMI run and the speakers through the MOTU 828x + an
+#   8-channel ADAT expander (wave 18b; no QLab). It has a STATIC IP (a
 #   DHCP reservation on the router, 192.168.8.10) that the server-room ESP32
 #   firmware hard-codes (hardware/server-room/server_room/config.h).
 #   Mosquitto runs two listeners: anonymous on 127.0.0.1:1883 for what runs
-#   on this Mac (stagehand — `mqtt.host` below — Zigbee2MQTT, the alexa
-#   player), and password-only on the LAN at :1884 (user `props`) for the
-#   network props (the WLED controllers, the ESP32) —
-#   scripts/house-mac/alexa.md → "Lock down the broker".
+#   on this Mac (stagehand — `mqtt.host` below — Zigbee2MQTT, the router),
+#   and password-only on the LAN at :1884 (user `props`) for the network
+#   props (the WLED controllers, the ESP32) —
+#   scripts/house-mac/audio.md → "Lock down the broker".
 #   The story server is the VPS (https://app.mapsandducks.com); this machine
-#   only dials out. If the house internet dies, fire the cues by hand
-#   (QLab + the Z2M frontend scenes + WLED presets).
+#   only dials out. If the house internet dies, fire the cues by hand: the
+#   sounds with `uv run stagehand sounds play <name>` (or
+#   `mosquitto_pub -t show/audio/play -m '{"name":"<name>"}'`), the stop with
+#   `uv run stagehand sounds stop`, the lights with the Z2M frontend scenes +
+#   the WLED presets.
 #
 #   Z2M groups, one per lit room plus a whole-house group. The ids predate
 #   the real house's room names (2026-10-15) and stay as wired:
@@ -55,11 +61,14 @@
 #   segment looks it needs (e.g. ps 22 = the tube segment dim, the others off).
 #   Preset 22 (tube_safe) lives on the tube controller: a dim, STATIC warm
 #   white on the halls + stairs — what the blackout leaves lit.
-#   QLab (or any OSC cue player) on this machine, UDP 53000: one cue per
-#   `sound <name>`, its cue NUMBER = the name (e.g. cue "dance_song").
+#
+#   SOUND: the `audio:` router at the bottom of this file plays every story
+#   `sound <name>` from media/sounds/<name>.wav and the house announcements,
+#   through the speakers in the event's audio.json (the map editor's Audio
+#   tab). Run → ■ Stop house sounds (or `stagehand sounds stop`) fades them.
 #
 # RULES OF THUMB (docs/loom-show-control.md → the sensor map + retained topics;
-# the house Mac runbook is scripts/house-mac/alexa.md)
+# the house Mac runbook is scripts/house-mac/audio.md)
 #   - retain: false on every /set and /api command (a retained "OFF" survives
 #     into tomorrow night). That is the default, so no rule sets it.
 #   - Quote "on" inside WLED payloads: a bare `on:` key is YAML boolean true.
@@ -118,10 +127,6 @@ show:
     host: 127.0.0.1          # Mosquitto on this Mac (the props reach it on 192.168.8.10:1884)
     port: 1883
     client_id: stagehand-house
-
-  osc:
-    targets:
-      qlab: { host: 127.0.0.1, port: 53000 }
 
   # --- story → house ----------------------------------------------------------
   cues:
@@ -352,87 +357,24 @@ show:
       match: { target: screens_flicker }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { effect: "blink" } }
 
-    # ── Sound: `sound <name>` (directive sfx) → the QLab cue of that name ──
-    # (no t_exec: QLab does not want the extra argument)
-    - on: { directive: sfx }
-      match: { target: modem_handshake }
-      osc: { addr: "/cue/modem_handshake/start", to: qlab }
+    # ── Sound: every `sound <name>` (directive sfx) is the `audio:` router's
+    # (play_sounds: true, below) — it plays media/sounds/<name>.wav on the
+    # audio.json cue's speakers, so no rule here. The one exception is the
+    # chime: the router rings it with the announcements (merged into a fresh
+    # one, K-20) and hears the story's `sound announce_chime` on show/chime,
+    # so an announcement and the chime beside it ring once, not twice. ──
     - on: { directive: sfx }
       match: { target: announce_chime }
-      # Not QLab: the announcement player owns the chime (K-20), so an
-      # announcement and the story's `sound announce_chime` beside it ring
-      # once, not twice.
       mqtt: { topic: "show/chime", payload: {} }
-    - on: { directive: sfx }
-      match: { target: bingo_start }
-      osc: { addr: "/cue/bingo_start/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: ad_jingle }
-      osc: { addr: "/cue/ad_jingle/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: truther_glitch }
-      osc: { addr: "/cue/truther_glitch/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: countdown_tick }
-      osc: { addr: "/cue/countdown_tick/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: printer_grind }
-      osc: { addr: "/cue/printer_grind/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: beans_spill }
-      osc: { addr: "/cue/beans_spill/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: zip }
-      osc: { addr: "/cue/zip/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: y2k_chime }
-      osc: { addr: "/cue/y2k_chime/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: alarm_siren }
-      osc: { addr: "/cue/alarm_siren/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: windows_shutdown }
-      osc: { addr: "/cue/windows_shutdown/start", to: qlab }
-    # dance_song: the file opens with 10 s of silence (the blackout).
-    - on: { directive: sfx }
-      match: { target: dance_song }
-      osc: { addr: "/cue/dance_song/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: motorcycle }
-      osc: { addr: "/cue/motorcycle/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: youre_the_one_vocoder }
-      osc: { addr: "/cue/youre_the_one_vocoder/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: youre_the_one_sandy_only }
-      osc: { addr: "/cue/youre_the_one_sandy_only/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: rave }
-      osc: { addr: "/cue/rave/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: hand_jive }
-      osc: { addr: "/cue/hand_jive/start", to: qlab }
-    # The awards ceremony (K-25): a bed under the whole ceremony, a fanfare
-    # on every award. Assets: HW-AUD-15.
-    - on: { directive: sfx }
-      match: { target: ceremony_bed }
-      osc: { addr: "/cue/ceremony_bed/start", to: qlab }
-    - on: { directive: sfx }
-      match: { target: award_fanfare }
-      osc: { addr: "/cue/award_fanfare/start", to: qlab }
 
-    # ── House announcements (the `alexa:` module): `do announce "…"` →
-    # show/announce {"text": "…"} → the `alexa:` section below (same box)
-    # plays it on the house speakers. A system voice, never a character. ──
+    # ── House announcements: `do announce "…"` → show/announce {"text": "…"}
+    # → the `audio:` router (announce: true, below) rings the chime and says
+    # it in the Mac's own `say` voice on audio.json `announce.to`, ducking
+    # the story's sounds under it (never dance_song, rave or hand_jive).
+    # A system voice, never a character. The router takes announcements only
+    # from MQTT while it has a broker, so this rule is the one path. ──
     - on: { directive: announce }
       mqtt: { topic: "show/announce", payload: { text: "{target}" } }
-    # …and the music ducks under it (SW-AUD-05): the cue map fires EVERY
-    # matching rule, so this second rule rides the same `do announce`. QLab's
-    # `duck_music` group cue (non-code, the tech op builds it) fades the bed /
-    # background group only (never dance_song, rave or hand_jive) −12 dB over
-    # 0.3 s, holds ≈ 7 s (the chime + the longest line), fades back over 1 s.
-    - on: { directive: announce }
-      osc: { addr: "/cue/duck_music/start", to: qlab }
 
     # ── The server-room door INDICATOR. The door has a STANDALONE keypad lock
     # (code set by hand on the lock, never networked; egress is mechanical:
@@ -550,61 +492,31 @@ show:
     - on: { topic: "sensors/patchbay/state", when: "complete == true && combo != 'V2-D5,V4-D1,V6-D8,V7-D3' && combo != 'V1-D6,V3-D2,V5-D7,V8-D4'" }
       signal: { name: patch_rejected, debounce_s: 10 }
 
-# --- the house announcement player (K-20; module key `alexa:` kept for now, a cleanup) ---
-# Runs on this same house Mac as its own launchd job (`--only alexa`, see
-# scripts/house-mac/alexa.md) so a show restart never cuts an announcement.
-# show/announce → chime + the Mac's own `say` voice → the MOTU, Z1 + Z2 (no
-# server round-trip; works with the house internet down). Falls back to
-# `say -a` on the device, then the default output. Wall terminals provisioned
-# with `&announce=1` say the same line in their own voice (N-09).
-# Find the device's exact name with `uv run python -m sounddevice`.
-alexa:
-  mqtt:
-    host: 127.0.0.1
-    port: 1883
-    client_id: stagehand-alexa
-  topic: show/announce
-  chime_topic: show/chime    # `sound announce_chime` (merged into a fresh announcement)
-  device: "MOTU"             # a substring of the interface's CoreAudio name
-  channels: [1, 2, 3, 4]     # Z1 living (1/2) + Z2 kitchen (3/4) — B-4
-  engine: say                # the Mac's own voice (decision 2026-10-15)
-  say_voice: Samantha        # `say -v '?'` lists them; an Enhanced/Premium one is nicer
-  chime: synth               # or a file: chime: media/announce_chime.wav
-  gain_db: 0
-  # engine: server only (the VPS's opt-in Kokoro, COMPOSE_PROFILES=tts):
-  voice: af_sky              # Kokoro, via the event server's /api/mod/tts
-  tts_timeout: 4
-  # Every `do announce "…"` line in the story (tests/test_trapped_house.py
-  # keeps this in step) — with `engine: server`, fetched once at boot and
-  # kept on disk, so the scripted lines play instantly and survive the house
-  # internet dying. Unused with `engine: say`.
-  prewarm:
-    - "All programs, report to the Desktop. A game is about to begin."
-    - "Five minutes. Everyone to the Desktop."
-    - "Go to the living room."
-    - "Time is up. Return to the Desktop."
-
-# --- the house speaker router (wave 17; module `audio:`, OFF until switched on) ---
-# The speakers, zones, the MOTU's input→output matrix and where every
-# `sound X` goes live in the event's audio.json (the map editor's Audio
-# panel). This section only says what the router may do on this Mac. Its
-# own launchd job: `uv run stagehand launchd install --job audio --config
-# trapped.house.yaml`. Keep it in THIS file: the show job reads it.
-#   1. Uncomment with both switches false: the router only runs the matrix
-#      (audio.json routes) and the map editor's speaker Test buttons.
-#   2. play_sounds: true — the router plays every `sound X` from sounds_dir
-#      and the QLab sound cues above are skipped (restart the show job too).
-#   3. announce: true — the router plays `do announce` on audio.json
-#      `announce.to`; DELETE the `alexa:` section first (one owner of the
-#      house's voice) and stop its launchd agent.
-# audio:
-#   sounds_dir: media/sounds     # <sound name>.wav | .aiff | .flac
-#   play_sounds: false
-#   announce: false
-#   passthrough: true            # false = output-only (no microphone permission)
-#   duck_hold_s: 7               # announce: false — each `do announce` ducks the
-#                                # router's beds this long (duck_music's hold)
-#   no_duck: [dance_song, rave, hand_jive]   # never ducked (as duck_music)
-#   mqtt: { host: 127.0.0.1, port: 1883, client_id: stagehand-audio }
-#   say_voice: Samantha
-#   chime: synth
+# --- the house speaker router (wave 18b: every story sound AND the house announcements) ---
+# The speakers, zones, the 828x's channels and where every `sound X` goes
+# live in the event's audio.json (the map editor's Audio tab); this section
+# only says what the router may do on this Mac. Its own launchd job (keep it
+# in THIS file: the show job reads `play_sounds`):
+#   uv run stagehand launchd install --job audio --config trapped.house.yaml
+# The `alexa` announcement player is retired for this show (wave 18b; its
+# module code stays): `scripts/house-mac/install-alexa.sh --uninstall` first,
+# since the router and alexa share one voice lock (scripts/house-mac/audio.md).
+audio:
+  sounds_dir: media/sounds        # stagehand/media/sounds/<name>.wav — git-ignored; placeholders
+                                  # from `uv run stagehand sounds placeholders`, real files replace
+                                  # them (a real file always wins; `check` lists what is left)
+  play_sounds: true               # the router plays every `sound X`
+  announce: true                  # chime + the Mac's `say` on audio.json announce.to
+  passthrough: false              # output-only: live mics are mixed in CueMix FX (hardware, no
+                                  # latency, no microphone permission for a launchd job)
+  no_duck: [dance_song, rave, hand_jive]   # never ducked under an announcement
+  mqtt: { host: 127.0.0.1, port: 1883, client_id: stagehand-audio }
+                                  # show/announce, show/chime, show/audio/test, show/audio/stop,
+                                  # show/audio/play — all work on the LAN with the uplink down
+  say_voice: Samantha             # `say -v '?'` lists them; an Enhanced/Premium one is nicer
+  chime: synth                    # or a file: chime: media/announce_chime.wav
+  announce_gain_db: 0
+  # Boot with the uplink down: route from these until the server answers
+  # (the last answer cached in ~/Library/Caches/stagehand-audio wins when it exists).
+  config_file: ../core/examples/trapped-in-the-internet/audio.json
+  house_file: ../core/examples/trapped-in-the-internet/house.json

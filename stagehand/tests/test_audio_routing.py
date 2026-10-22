@@ -133,3 +133,21 @@ def test_split_targets_keeps_a_spaced_location_whole():
 def test_output_gains_add_the_cue_and_take_the_louder_speaker():
     gains = output_gains(AUDIO, ("desk-l", "bar-1"), gain_db=-4)
     assert gains == {1: -4.0, 3: -7.0, 4: -7.0}
+
+
+def test_parse_reads_device_expect_leniently_and_ignores_the_tablets_list():
+    """wave 18b (Q2, Q8): `device.expect` is read for the layout check; a
+    malformed one is not compared (routing never needs it); `announce.terminals`
+    is the tablets' list, never the router's."""
+    base = FIXTURE["audio"]
+    assert parse_audio(base).expect is None
+    dev = {**base["device"], "expect": {"inputs": 32, "outputs": 30}}
+    doc = parse_audio({**base, "device": dev, "announce": {"to": ["living"], "terminals": ["desktop-tv", "start-bar"]}})
+    assert doc.expect == (32, 30) and doc.announce_to == ("living",)
+    for bad in ({"inputs": 0, "outputs": 30}, {"inputs": 32}, {"inputs": True, "outputs": 30}, {"inputs": 65, "outputs": 30}, "32/30"):
+        assert parse_audio({**base, "device": {**base["device"], "expect": bad}}).expect is None, bad
+
+
+def test_the_shared_basic_fixture_carries_expect_and_an_empty_tablet_list():
+    assert SHARED_AUDIO.expect == (32, 30)
+    assert _shared("audio-basic.json")["announce"]["terminals"] == []

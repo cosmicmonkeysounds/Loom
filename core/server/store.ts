@@ -106,6 +106,9 @@ const FACTS = "project-facts.json";
 const AUDIO = "project-audio.json";
 /** A director's speaker save (the map editor), which wins over the project's. */
 const AUDIO_SAVE = "audio-save.json";
+/** Wave 18b (Q8): the house list of tablets a director ticked on Run's
+ *  House sound card, laid over the config in force (never a whole save). */
+const AUDIO_ANNOUNCE = "audio-announce.json";
 /** Web Push subscriptions by device (K-31a, `push.ts`). */
 const PUSH = "push.json";
 /** Every duck found this story (SW-RE-14, the ceremony's speedrun). */
@@ -349,6 +352,17 @@ export class Store {
   }
   clearAudioSave(): void {
     rmSync(this.path(AUDIO_SAVE), { force: true });
+  }
+  /** The house tablets list a director set (`POST /api/mod/audio/announce`),
+   *  or null when none was set this event. */
+  loadAudioAnnounce(): string[] | null {
+    const v = readJson<{ version?: unknown; terminals?: unknown }>(this.path(AUDIO_ANNOUNCE));
+    if (v === null || v.version !== 1 || !Array.isArray(v.terminals)) return null;
+    return v.terminals.filter((t): t is string => typeof t === "string" && t.trim() !== "");
+  }
+  saveAudioAnnounce(terminals: string[] | null): void {
+    if (terminals === null) rmSync(this.path(AUDIO_ANNOUNCE), { force: true });
+    else writeFileSync(this.path(AUDIO_ANNOUNCE), JSON.stringify({ version: 1, terminals }));
   }
 
   // One line per duck found (`spatial.ts` `DuckRun`), cleared with the

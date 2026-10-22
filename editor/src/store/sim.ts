@@ -29,6 +29,7 @@ import {
   OPERATOR_LENS,
   RunBackend,
   RunMode,
+  withFoundedFactions,
   type CockpitState,
   type Lens,
   type RunInfo,
@@ -83,7 +84,7 @@ function indexedSources(): CompiledSource[] {
 function empty(): Pick<
   SimState,
   | 'phase' | 'run' | 'connected' | 'roster' | 'factions' | 'locations' | 'cast' | 'channels' | 'spaces'
-  | 'beats' | 'events' | 'interactions' | 'cues' | 'codex' | 'quests' | 'facts' | 'wallet' | 'storyClock' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
+  | 'beats' | 'events' | 'interactions' | 'cues' | 'codex' | 'quests' | 'facts' | 'wallet' | 'storyClock' | 'race' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
   | 'watch' | 'watchDeclared' | 'countdowns'
   | 'choices' | 'selection' | 'perspective' | 'lens' | 'error' | 'entryBeat'
 > {
@@ -110,6 +111,7 @@ function empty(): Pick<
     // project); the Wallet card says so.
     wallet: null,
     storyClock: null,
+    race: null,
     watch: [],
     watchDeclared: false,
     countdowns: [],
@@ -156,7 +158,11 @@ export const useSim = create<SimState>((set, get) => {
     const lens = lensFor(s.perspective)
     const perspective = s.perspective === OPERATOR_LENS || lens !== null ? s.perspective : OPERATOR_LENS
     set({
-      roster: view.roster.map((r) => ({ ...r, owner: s.personas.includes(r.id) ? ME : null })),
+      roster: withFoundedFactions(
+        view.roster.map((r) => ({ ...r, owner: s.personas.includes(r.id) ? ME : null })),
+        view.crews,
+        view.race !== undefined,
+      ),
       factions: view.factions,
       locations: view.locations,
       cast: view.cast,
@@ -171,6 +177,9 @@ export const useSim = create<SimState>((set, get) => {
       watchDeclared: view.watch !== undefined,
       countdowns: view.countdowns ?? [],
       storyClock: typeof view.clock === 'number' ? { ms: view.clock, at: Date.now() } : null,
+      // The race is the engine's own (`views.ts`), so a folder rehearsal of
+      // a `founding:` story shows the same bars as a server run.
+      race: view.race ?? null,
       codex: view.codex ?? [],
       quests: view.quests ?? [],
       ledgerLen: view.ledgerLen,

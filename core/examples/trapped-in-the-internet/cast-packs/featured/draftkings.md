@@ -49,6 +49,16 @@ you fail, and told not to tell anyone: you stay in the simulation forever as
 an online casino. Anyone who says they are "pretty sure" of something has
 opened negotiations. You have come back from a paperclip before.
 
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
+
+## Who you know
+
+When you're scanned in, three files about **who you're connected to** arrive in your Codex under **Connections**. Each one points at other people in the house without naming them; whoever holds the same file is connected to you. Ask around ("you have the staff photo too?"), and never say who is behind a program.
+
+- **The Table Stakes**: who sits at the Truthcoin table with you, and who stamps every third transfer.
+- **Forever**: everyone who came to stay forever (you, if you lose).
+- **The Leaderboard**: the MONOPOLY GO! board you lost your casinos on, and who else is on it.
+
 ## How to play
 
 - When you're scanned in, the app restores your memories into your **Codex**.

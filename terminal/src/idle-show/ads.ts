@@ -8,7 +8,9 @@
 //!
 //! Pools (`pools.ts`): an ad with no `pools` plays all night; `names: true`
 //! copy says `{character}` and plays only on an awake screen after the
-//! introduction. Nothing else may name him (`test/attract.test.ts`).
+//! introduction. Nothing else may name him (`test/attract.test.ts`), but
+//! the `owner: true` ads (wave 18b, D19): "Jean Trabolta" in the third
+//! person, the owner of Maps and Ducks who joins by video conference.
 
 import type { Pooled } from "./pools.ts";
 
@@ -111,7 +113,10 @@ export const IDLE_ADS: readonly IdleAd[] = [
   { id: "ad-fan-closet", skin: "warning", art: "bolt", title: "CPU TEMPERATURE: SPICY", body: "Cool down in The Fan Closet, downstairs by the laundry. Your thermal paste will thank you.", button: "Cool off", pools: ["hunt", "malware", "late", "y2k", "finale"] },
   { id: "ad-wallet", skin: "tycoon", art: "coin", kicker: "PERSONAL FINANCE", title: "INVEST IN TRUTHCOIN", body: "Send it, request it, trade a file for it. Past performance is not a fact. Check your phone's Wallet.", button: "Open wallet" },
   // --- the doors and the first games ------------------------------------------
-  { id: "ad-bingo", skin: "lottery", art: "star", kicker: "AT THE DESKTOP", title: "COMPUTER BINGO", body: "Find a program for every square. Don't write names: use your computer memory. One line through the centre is a Bingo.", button: "B-I-N-G-O", pools: ["early"] },
+  { id: "ad-bingo", skin: "lottery", art: "star", kicker: "AT THE DESKTOP", title: "COMPUTER BINGO", body: "Find a program for every square. One line through the centre is a Bingo.", button: "B-I-N-G-O", pools: ["early"] },
+  // D19: the owner, in the third person (from the Desktop on, never at the doors).
+  { id: "ad-owner-founder", skin: "fundraiser", art: "map", kicker: "TONIGHT'S HOST", title: "MAPS AND DUCKS", body: "Sole Owner & Founder: Jean Trabolta. He joins us by video conference later tonight. He has always been a computer program.", button: "Learn more", pools: ["early"], owner: true },
+  { id: "ad-owner-hunt", skin: "lottery", art: "map", kicker: "COMING SOON", title: "Jean Trabolta's Scavenger Hunt", body: "Facts are hidden all over this house. The owner of Maps and Ducks will explain, by video conference.", button: "Get ready", pools: ["early"], owner: true },
   { id: "ad-welcome", skin: "win98", art: "face", title: "Welcome to this house", body: "You have been uploaded. Please remain calm. An Antivirus program will scan your pass shortly.", button: "Get started", pools: ["early"] },
   // --- the hunt -----------------------------------------------------------------
   { id: "ad-facts-wanted", skin: "classified", art: "chart", kicker: "WANTED", title: "FACTS. ANY FACTS.", body: "Every room hides a code. Scan it with your phone's 📷 Scan and file what you find.", button: "Scan a fact", pools: ["hunt", "malware"] },
