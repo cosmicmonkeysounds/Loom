@@ -2610,6 +2610,35 @@ describe("Trapped in the Internet — the verdict", () => {
     expect(lines(fire(sim, "answer answered", "g2", { question: "P1", text: "hello", verdict: "lie", card: 1 }), "Trabolta")).toEqual(["The house says no. That is not the line."]);
   });
 
+  it("⚖ publishes each question's truth to the screens and Trabolta says only the counts (wave 18b, Q6, O2)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toBobbing(sim, { lie: true, skipF2: true });
+    fire(sim, "read_truth_txt");
+    const vd = fire(sim, "the_verdict");
+    expect(["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"].map((t) => v(sim, `Kernel.${t}`))).toEqual(["accurate", "accurate", "lie", "accurate", "accurate", "accurate", "accurate", "none"]);
+    expect(cues(vd).filter((c) => c.startsWith("fact_truth"))).toEqual(["fact_truth H1 accurate", "fact_truth H2 accurate", "fact_truth H3 lie", "fact_truth H4 accurate", "fact_truth H5 accurate", "fact_truth H6 accurate", "fact_truth F1 accurate", "fact_truth F2 none"]);
+    expect([v(sim, "Kernel.v_true"), v(sim, "Kernel.v_lies"), v(sim, "Kernel.v_none")]).toEqual([6, 1, 1]);
+    expect(lines(vd, "Trabolta").slice(0, 2)).toEqual(["I have compared every fact you gave me with truth.txt.", "6 true. 1 with a lie on record. 1 nobody answered."]);
+    // No line of the verdict beat says a key answer or a program's name:
+    // those are the TV's results block only (O2).
+    const verdict = (vd.filter((e) => e.type === "dialogue") as Ev<"dialogue">[]).filter((e) => e.beat === "The Verdict").map((e) => e.text);
+    expect(verdict).toHaveLength(2);
+    const forms = BOOK.questions.flatMap((q) => q.forms).filter((f) => f.length >= 4);
+    for (const t of verdict) {
+      for (const f of forms) expect(t.toLowerCase(), f).not.toContain(f.toLowerCase());
+      for (const [, name] of PROGRAMS) expect(t, name).not.toContain(name);
+    }
+  });
+
+  it("a DM bluff makes its question's truth tile a lie, as it does the ending (wave 18b, A4)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toBobbing(sim, { dmLie: true });
+    fire(sim, "read_truth_txt");
+    const vd = fire(sim, "the_verdict");
+    expect(cues(vd)).toContain("fact_truth H5 lie");
+    expect(v(sim, "Night.phase")).toBe("grok_prom");
+  });
+
   it("eight accurate answers that skip F2 → the Song Ending: an unanswered question is not a lie (U14)", { timeout: SLOW }, () => {
     const sim = boot();
     toBobbing(sim, { skipF2: true });
@@ -3169,6 +3198,16 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     for (const g of ["g4", "g5", "g6", "g1"]) fire(sim, "made_the_cup", g, null, "Clippy");
     const tally = fire(sim, "round_two_tally");
     expect(v(sim, "Night.collection_complete")).toBe(true);
+    // Wave 18b (Q6, R3): the screens get the round's rows, and Trabolta
+    // reads every filing aloud, question by question; the 61 % line stands.
+    expect(cues(tally)).toEqual(expect.arrayContaining(["fact_read H4 H5 H6", "cue screens_tally"]));
+    expect(v(sim, "Night.screen")).toBe("tally");
+    const read = (tally.filter((e) => e.type === "dialogue") as Ev<"dialogue">[]).filter((e) => e.beat === "Round Two Tally" && e.speaker === "Trabolta").map((e) => e.text.trim());
+    expect(read.slice(0, 2)).toEqual(["The second collection is closed. I will now tally the facts I have received.", "I will read every fact you filed. Only a cup counts."]);
+    expect(read[2]).toMatch(/^Question four\. Winamp said 1978, /u);
+    expect(read[3]).toMatch(/^Question five\. .*MS Paint said Clippy, /u);
+    expect(read[4]).toMatch(/^Question six\. Calculator said appendix z, /u);
+    expect(read[5]).toContain("sixty-one percent");
     expect(v(sim, "Kernel.q4")).toBe("accurate");
     expect(v(sim, "Kernel.q5")).toBe("lie"); // an accurate filing never clears a lie on the same question
     expect(v(sim, "Kernel.lies_accepted")).toBe(1);
