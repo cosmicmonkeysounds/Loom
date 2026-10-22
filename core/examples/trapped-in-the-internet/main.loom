@@ -4325,11 +4325,13 @@ when majority_reached:
     if Kernel.majority == "stay":
       complete quest Recruit To Stay for everyone
       fail quest Recruit To Leave for everyone
+      // DRAFT w18b (R4): a founder's own quest fails on a side's win.
       fail quest A Faction Of Your Own for everyone "Unlimited Power got there first."
     else if Kernel.majority == "leave":
       complete quest Recruit To Leave for everyone
       fail quest Recruit To Stay for everyone
       complete quest Find The Exit for everyone
+      // DRAFT w18b (R4): a founder's own quest fails on a side's win.
       fail quest A Faction Of Your Own for everyone "The Way Out got there first."
     else:
       // A founded faction (wave 18b): both recruiting quests fail; the
