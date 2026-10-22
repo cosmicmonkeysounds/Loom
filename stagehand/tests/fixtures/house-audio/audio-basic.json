@@ -1,7 +1,7 @@
 {
   "version": 1,
   "note": "fixture: the shared resolveTargets cases (audio-resolve.json) run on this",
-  "device": { "name": "MOTU", "inputs": 16, "outputs": 16, "rate": 48000 },
+  "device": { "name": "MOTU", "inputs": 16, "outputs": 16, "rate": 48000, "expect": { "inputs": 32, "outputs": 30 } },
   "inputs": [
     { "ch": 1, "label": "QLab 1", "kind": "software" },
     { "ch": 2, "label": "QLab 2", "kind": "software" },
@@ -33,6 +33,6 @@
     "printer_grind": { "to": ["The Desktop"], "gain": -3 },
     "zip": { "to": ["The Tube"] }
   },
-  "announce": { "to": ["everywhere"], "chime": true },
+  "announce": { "to": ["everywhere"], "chime": true, "terminals": [] },
   "voice": { "tv": ["living"] }
 }

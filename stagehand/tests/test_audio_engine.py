@@ -231,6 +231,24 @@ def test_a_blank_device_name_is_the_default_output():
     assert probe("", 0, 2, query)[1] == []
 
 
+def test_probe_and_open_compare_the_layout_with_device_expect(caplog):
+    """wave 18b (Q2): the 828x + an expander reports 32 / 30 when its layout
+    is as planned; anything else (mirroring, 96 kHz, TOSLink) moved every
+    channel after it. `check` fails; the stream still opens and plays."""
+    assert probe("MOTU", 24, 22, fake_query(32, 30), expect=(32, 30))[1] == []
+    info, problems = probe("MOTU", 24, 22, fake_query(32, 26), expect=(32, 30))
+    assert info is not None and len(problems) == 1 and "layout has moved" in problems[0] and "32 in / 26 out" in problems[0]
+    assert probe("MOTU", 24, 22, fake_query(32, 26))[1] == []  # nothing expected: nothing compared
+    e = Engine("MOTU", 24, 22, duplex=False, query=fake_query(32, 26), stream_factory=lambda **kw: FakeStream(**kw), expect=(32, 30))
+    with caplog.at_level("ERROR", logger="stagehand.audio"):
+        mixer = e.open()
+    assert e.running and mixer.n_out == 22 and e.layout_moved
+    assert any("layout has moved" in r.message and "playing anyway" in r.message for r in caplog.records)
+    e.expect = (32, 26)
+    e.open()
+    assert not e.layout_moved
+
+
 def test_probe_reports_missing_and_short_devices():
     info, problems = probe("MOTU", 16, 16, fake_query(8, 8))
     assert info.outputs == 8 and len(problems) == 2 and "8 outputs" in problems[0]

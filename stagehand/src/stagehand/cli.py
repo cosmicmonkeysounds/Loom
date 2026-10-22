@@ -4,9 +4,19 @@
     stagehand check  --config laptop.yaml [--only agents]   validate + describe, exit
     stagehand modules                                        list the module kinds
     stagehand announce --config house.yaml [--no-chime] text…
-                     play one announcement through the `alexa:` section's
-                     device right now (no broker, no story) — the routing
-                     check and the hand-fired fallback.
+                     play one announcement now (no story): with an `alexa:`
+                     section through its device; else (wave 18b) through the
+                     house speaker router — published on its MQTT announce
+                     topic, so the `audio` job must be running.
+    stagehand sounds stop [--announce] --config house.yaml
+    stagehand sounds play <name> [--to T[,T…]] … --config house.yaml
+                     the router by hand over MQTT (the LAN alone: the uplink
+                     can be down): stop every house sound (+ the
+                     announcements), or play one `sound X` (QLab's old GO).
+    stagehand sounds placeholders --config house.yaml [--force] [--no-say] [--only a,b] [--out DIR]
+                     write a labelled placeholder per story sound
+                     (media/sounds.yaml) into the router's sounds_dir; never
+                     touches a real file.
     stagehand launchd install|uninstall|restart|status|print --job show|agents|audio [--config f.yaml]
                      one launchd job per module on the house Mac (see launchd.py)
     stagehand ask    --config laptop.yaml [--character Trabolta] [--name Ada] [--reflect] [text…]
@@ -60,6 +70,19 @@ def main(argv: list[str] | None = None) -> int:
     ann.add_argument("--voice", help="server voice (default: the section's voice)")
     ann.add_argument("--offline", action="store_true", help="don't ask the server — cache, then say")
     ann.add_argument("text", nargs="+")
+    snd = sub.add_parser("sounds", help="the house speaker router by hand: stop, play, placeholders")
+    snd.add_argument("action", choices=("stop", "play", "placeholders"))
+    snd.add_argument("name", nargs="?", help="play: the story sound's name")
+    snd.add_argument("--config", required=True)
+    snd.add_argument("--announce", action="store_true", help="stop: also cut the announcement and empty the queue")
+    # One value per --to (repeat it, or a comma list), so the name may come
+    # before or after it: `sounds play --to living zip` never takes `zip` as a target.
+    snd.add_argument("--to", action="append", default=[], metavar="TARGET", help="play: a zone / room / LOCATION / speaker, repeatable or a comma list (default: its audio.json cue)")
+    snd.add_argument("--force", action="store_true", help="placeholders: rewrite existing placeholders (never a real file)")
+    snd.add_argument("--no-say", action="store_true", help="placeholders: no spoken label (no `say`)")
+    snd.add_argument("--only", help="placeholders: a comma list of names")
+    snd.add_argument("--out", help="placeholders: write here instead of the router's sounds_dir")
+    snd.add_argument("--manifest", help="placeholders: another manifest (default: media/sounds.yaml)")
     ld = sub.add_parser("launchd", help="install / restart a module as its own launchd job (macOS)")
     ld.add_argument("action", choices=("install", "uninstall", "restart", "status", "print"))
     ld.add_argument("--job", choices=JOBS, help="which module (status: default every job)")
@@ -91,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
         return _launchd(args)
 
     try:
-        only = {"ask": ["agents"], "announce": ["alexa"]}.get(args.command) or _only(getattr(args, "only", None))
+        only = {"ask": ["agents"], "announce": [_announcer(args.config)], "sounds": ["audio"]}.get(args.command) or _only(getattr(args, "only", None))
         cfg = load_config(args.config, only=only)
     except ConfigError as err:
         print(f"config error: {err}", file=sys.stderr)
@@ -101,6 +124,8 @@ def main(argv: list[str] | None = None) -> int:
         return _ask(cfg, args)
     if args.command == "announce":
         return _announce(cfg, args)
+    if args.command == "sounds":
+        return _sounds(cfg, args)
 
     print(_describe(cfg))
     todo = placeholders(cfg.server)
@@ -133,9 +158,114 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _announcer(path: str) -> str:
+    """Which section speaks a hand-fired announcement: `alexa:` while the
+    YAML still has one, else the house speaker router (wave 18b)."""
+    import yaml
+
+    try:
+        doc = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return "alexa"  # load_config reports the real error
+    return "alexa" if isinstance(doc, dict) and "alexa" in doc else "audio"
+
+
+#: `paho.mqtt.publish.single`, swapped in the tests.
+def _publish_single(topic: str, payload: str, *, hostname: str, port: int, client_id: str, auth: dict | None) -> None:
+    import paho.mqtt.publish as publish
+
+    publish.single(topic, payload, qos=1, retain=False, hostname=hostname, port=port, client_id=client_id, auth=auth)
+
+
+PUBLISH = _publish_single
+
+
+#: The router's retained health topic (`online` / `offline` / `lost`).
+ROUTER_HEALTH = "health/audio"
+
+
+def _read_retained(topic: str, *, hostname: str, port: int, client_id: str, auth: dict | None, timeout: float = 1.5) -> str | None:
+    """A topic's retained payload, or None when nothing is retained (or the
+    broker is unreachable) within `timeout` s."""
+    import threading
+
+    import paho.mqtt.client as mqtt
+
+    got: list[str] = []
+    done = threading.Event()
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=client_id)
+    if auth:
+        client.username_pw_set(auth["username"], auth.get("password"))
+
+    def on_connect(c, _u, _f, rc, _p=None):
+        if not getattr(rc, "is_failure", rc != 0):
+            c.subscribe(topic, qos=1)
+        else:
+            done.set()
+
+    def on_message(_c, _u, msg):
+        if msg.retain:
+            got.append(msg.payload.decode("utf-8", "replace"))
+        done.set()
+
+    client.on_connect, client.on_message = on_connect, on_message
+    try:
+        client.connect(hostname, port, keepalive=10)
+    except OSError:
+        return None
+    client.loop_start()
+    try:
+        done.wait(timeout)
+    finally:
+        client.loop_stop()
+        client.disconnect()
+    return got[0] if got else None
+
+
+#: `_read_retained`, swapped in the tests.
+READ_RETAINED = _read_retained
+
+
+def _to_router(router, topic: str, doc: dict) -> int:
+    """One MQTT message to the router (never retained). → the exit code."""
+    m = router.cfg.mqtt
+    if m is None:
+        print("the audio: section has no mqtt: broker — the router can only be reached through the server (Run → Stop house sounds)", file=sys.stderr)
+        return 2
+    auth = {"username": m.username, "password": m.password} if m.username else None
+    try:
+        PUBLISH(topic, json.dumps(doc), hostname=m.host, port=m.port, client_id=f"{m.client_id}-cli", auth=auth)
+    except Exception as err:  # noqa: BLE001 — a refused socket, paho's own errors
+        print(f"no broker at {m.host}:{m.port} ({err}) — is Mosquitto running on this Mac?", file=sys.stderr)
+        return 2
+    # Nothing is retained on these topics: with no router listening the
+    # message is gone, so say so rather than "sent".
+    try:
+        state = READ_RETAINED(ROUTER_HEALTH, hostname=m.host, port=m.port, client_id=f"{m.client_id}-cli-health", auth=auth)
+    except Exception:  # noqa: BLE001 — the message went; the look is best effort
+        state = None
+    if state != "online":
+        print(
+            f"sent {topic}, but no router is listening ({ROUTER_HEALTH}: {state or 'nothing retained'}) — it played nothing. "
+            "Is the audio job running? `uv run stagehand launchd status --job audio`",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"sent to the router: {topic} {json.dumps(doc)}")
+    return 0
+
+
 def _announce(cfg: StagehandConfig, args: argparse.Namespace) -> int:
     from .alexa.module import Alexa, Announcement
     from .modapi import ModClient
+
+    if "alexa" not in cfg.modules:
+        router = cfg.modules["audio"]
+        if not router.cfg.announce:  # type: ignore[attr-defined]
+            print("the audio: section has announce: false — the router does not speak announcements", file=sys.stderr)
+            return 2
+        text = " ".join(" ".join(args.text).split())
+        return _to_router(router, router.cfg.announce_topic, {"text": text, "chime": not args.no_chime})  # type: ignore[attr-defined]
 
     alexa = cfg.modules["alexa"]
     assert isinstance(alexa, Alexa)
@@ -155,6 +285,38 @@ def _announce(cfg: StagehandConfig, args: argparse.Namespace) -> int:
     path = asyncio.run(go())
     print(f"played via {path}")
     return 0 if path != "failed" else 1
+
+
+def _sounds(cfg: StagehandConfig, args: argparse.Namespace) -> int:
+    router = cfg.modules["audio"]
+    rc = router.cfg  # type: ignore[attr-defined]
+    if args.action == "stop":
+        return _to_router(router, rc.stop_topic, {"announce": True, "by": "cli"} if args.announce else {"by": "cli"})
+    if args.action == "play":
+        if not args.name:
+            print("sounds play: which sound? (e.g. `sounds play zip --to living`)", file=sys.stderr)
+            return 2
+        to = [t.strip() for v in args.to for t in v.split(",") if t.strip()]
+        return _to_router(router, rc.play_topic, {"name": args.name, **({"to": to} if to else {})})
+    from .audio.placeholders import MANIFEST, generate, load_manifest
+
+    try:
+        manifest = load_manifest(args.manifest or MANIFEST)
+    except (OSError, ValueError) as err:
+        print(f"sounds placeholders: {err}", file=sys.stderr)
+        return 2
+    only = {n.strip() for n in (args.only or "").split(",") if n.strip()} or None
+    unknown = sorted((only or set()) - set(manifest))
+    if unknown:
+        print(f"sounds placeholders: not in the manifest: {', '.join(unknown)}", file=sys.stderr)
+        return 2
+    out = Path(args.out).resolve() if args.out else Path(rc.sounds_dir)
+    done = generate(out, manifest, say=not args.no_say, force=args.force, only=only)
+    for name, action in done:
+        print(f"{action:<5} {name}" + {"keep": " (a real file is there)", "skip": " (a placeholder is there; --force rewrites it)"}.get(action, ""))
+    wrote = sum(1 for _, a in done if a == "wrote")
+    print(f"{wrote} placeholder(s) written to {out}")
+    return 0
 
 
 def _launchd(args: argparse.Namespace) -> int:

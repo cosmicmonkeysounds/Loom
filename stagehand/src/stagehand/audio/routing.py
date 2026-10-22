@@ -90,6 +90,13 @@ class AudioDoc:
     cues: dict[str, Cue] = field(default_factory=dict)
     announce_to: tuple[str, ...] = (EVERYWHERE,)
     announce_chime: bool = True
+    #: `device.expect` (wave 18b): the (inputs, outputs) the device itself
+    #: reports when its layout is as planned (the 828x + an ADAT expander:
+    #: 32 / 30). Anything else means the layout moved (mirroring, 96 kHz,
+    #: TOSLink) and every channel number after the move is wrong. None:
+    #: nothing to compare. (`announce.terminals` is the tablets' list, never
+    #: the router's: it is not read here.)
+    expect: tuple[int, int] | None = None
 
     def speaker(self, sid: str) -> Speaker | None:
         return next((s for s in self.speakers if s.id == sid), None)
@@ -146,6 +153,7 @@ def parse_audio(doc: Any) -> AudioDoc:
     rate = dev.get("rate")
     if rate is not None:
         rate = int(_num(rate, "audio.device.rate", 8000, 384000))
+    expect = _expect(dev.get("expect"))
 
     input_labels: dict[int, str] = {}
     for i, raw in enumerate(_list(doc, "inputs")):
@@ -230,7 +238,19 @@ def parse_audio(doc: Any) -> AudioDoc:
         cues=cues,
         announce_to=announce_to,
         announce_chime=announce.get("chime") is not False,
+        expect=expect,
     )
+
+
+def _expect(raw: Any) -> tuple[int, int] | None:
+    """`device.expect` read leniently: routing never needs it, so a malformed
+    one (the server refuses it anyway) is simply not compared."""
+    if not isinstance(raw, dict):
+        return None
+    vals = [raw.get("inputs"), raw.get("outputs")]
+    if not all(isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= MAX_CHANNELS for v in vals):
+        return None
+    return int(vals[0]), int(vals[1])
 
 
 @dataclass(frozen=True)

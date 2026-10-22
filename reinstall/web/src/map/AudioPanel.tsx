@@ -3,9 +3,12 @@
 //! with what each carries, the 16 outputs with the speakers on each), the
 //! input → output routing matrix (tap a cell for 0 dB, a gain per cell),
 //! zones (lit on the plan), every story sound's targets, the announcement
-//! and TV voice targets, a Test per speaker / output, and its own save
-//! (`base` → 409), Save to project and Download JSON. Every edit is an op
-//! from `audio.ts` handed to `commit` (one undo step each).
+//! and TV voice targets, the tablets that also say the announcements (wave
+//! 18b, Q8: `announce.terminals`, by room with a speaker-reach hint), the
+//! device's expected layout (`device.expect`, the 828x), a Test per speaker /
+//! output, and its own save (`base` → 409), Save to project and Download
+//! JSON. Every edit is an op from `audio.ts` handed to `commit` (one undo
+//! step each).
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -14,6 +17,7 @@ import type { AudioConfig, AudioInputKind, HouseMap } from "@loom/house";
 import { audioConflictText, routerBadge, testAge, type AudioTestRow, type AudioView } from "./audio-api.ts";
 import {
   addZone,
+  announceTerminalRows,
   cellGain,
   cueRows,
   inputLabel,
@@ -24,10 +28,12 @@ import {
   patchZone,
   removeZone,
   setAnnounce,
+  setAnnounceTerminal,
   setCell,
   setCueGain,
   setCueTargets,
   setDevice,
+  setExpect,
   setTvVoice,
   setZoneMember,
   targetChip,
@@ -82,7 +88,7 @@ const SOURCE_TEXT: Record<AudioView["source"], string> = {
   default: "nothing configured yet (the default interface)",
 };
 
-const KIND_TEXT: Record<AudioInputKind, string> = { software: "software (house Mac / QLab)", mic: "mic", line: "line (a device)" };
+const KIND_TEXT: Record<AudioInputKind, string> = { software: "software (house Mac / virtual)", mic: "mic", line: "line (a device)" };
 const RATES = [44100, 48000, 88200, 96000];
 
 /** A collapsible section, open by default, remembered while the tab is up. */
@@ -169,6 +175,7 @@ export function AudioPanel(p: AudioPanelProps) {
   }, []);
   const options = useMemo(() => targetOptions(audio, house, p.view !== null && p.view.locations.length > 0 ? p.view.locations : null), [audio, house, p.view]);
   const rows = useMemo(() => cueRows(audio, p.view?.sounds ?? []), [audio, p.view]);
+  const tablets = useMemo(() => announceTerminalRows(audio, house), [audio, house]);
   const reach = (to: readonly string[]) => resolveTargets(audio, house, to).speakers;
   // A pinned zone stays lit; hovering anything else lights that for a moment.
   const hover = (ids: readonly string[] | null) => p.onHighlight(ids ?? pinnedIds);
@@ -286,6 +293,15 @@ export function AudioPanel(p: AudioPanelProps) {
             </select>
           </label>
         </div>
+        <div className="num-row">
+          <Num label="the device reports: in" value={audio.device.expect?.inputs ?? null} step={1} placeholder="—" disabled={off} onChange={(v) => commit(setExpect(audio, { inputs: v }))} />
+          <Num label="out" value={audio.device.expect?.outputs ?? null} step={1} placeholder="—" disabled={off} onChange={(v) => commit(setExpect(audio, { outputs: v }))} />
+        </div>
+        <p className="muted small">
+          {audio.device.expect !== undefined
+            ? `The interface must report ${audio.device.expect.inputs} in / ${audio.device.expect.outputs} out (the 828x + an ADAT expander: 32 / 30). Anything else means its layout moved (mirroring, 96 kHz, TOSLink) and every channel number after it is off: stagehand check fails and the router logs it.`
+            : "The channel counts the interface itself reports (blank: not checked). Set them so stagehand check catches a layout that has moved."}
+        </p>
       </Section>
 
       <Section title="Speakers" count={audio.speakers.length}>
@@ -492,6 +508,28 @@ export function AudioPanel(p: AudioPanelProps) {
           </span>
           <Targets value={audio.voice?.tv ?? []} options={options} disabled={off} empty="(only the TV)" onChange={(to) => commit(setTvVoice(audio, to))} />
         </div>
+      </Section>
+
+      <Section title="Tablets that also say them" count={`${tablets.filter((t) => t.on).length} of ${tablets.length}`} open={tablets.some((t) => t.on)}>
+        <p className="muted small">
+          A wall terminal can say each house announcement in its own voice too. Off by default; tick the spots whose tablets should. A tablet set to <i>Always</i> or <i>Never</i> on its own ⚙ ignores this list. It lives in audio.json, so a toggle never changes the map.
+        </p>
+        {tablets.length === 0 && <p className="muted small">No terminal spots on the map yet: select a room and press “+ Terminal here”.</p>}
+        <table className="audio-table">
+          <tbody>
+            {tablets.map((t, i) => (
+              <tr key={t.id} onMouseEnter={() => hover(audio.speakers.filter((s) => s.room === t.roomId).map((s) => s.id))} onMouseLeave={() => hover(null)}>
+                <td className="small">{i === 0 || tablets[i - 1]!.room !== t.room ? <b>{t.room}</b> : null}</td>
+                <td>
+                  <label className="radio checkbox small">
+                    <input type="checkbox" checked={t.on} disabled={off} aria-label={`${t.name} also says the announcements`} onChange={(e) => commit(setAnnounceTerminal(audio, t.id, e.target.checked))} /> {t.name} <code className="small">{t.id}</code>
+                  </label>
+                  <div className={`small ${t.reached.length > 0 && t.on ? "bad-text" : "muted"}`}>{t.hint}</div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Section>
 
       <Section title="Recent tests" count={p.view?.tests.length ?? 0} open={(p.view?.tests.length ?? 0) > 0}>

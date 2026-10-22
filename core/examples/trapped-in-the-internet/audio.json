@@ -1,158 +1,210 @@
 {
   "version": 1,
-  "note": "DRAFT (wave 17): a starter, not the house. Outputs follow the old plan (1/2 living, 3/4 kitchen = the announcement channels); only the living room, the kitchen and the mud room (The Optical Drive, so every arrival hears the modem) have speakers yet. The chime is rung with the announcements (announce.to), never as a cue. Place the rest in the map editor's 🔊 Speaker tool, confirm the interface's channel counts with `stagehand check`, then Save to project.",
+  "note": "DRAFT (wave 18b): MOTU 828x + an 8-ch ADAT expander on Optical A, 48 kHz, internal clock, Main outs + Phones NOT mirrored (else every channel after them shifts: stagehand check catches it via device.expect 32 / 30). Our channels are the device's own (no map): Analog 1-8, Main 9-10, ADAT A 15-22 out; Mic/Gtr 1-2, Analog 3-10, ADAT A 17-24 in. Phones 11-12 / S/PDIF 13-14 out are left unlabelled (the director's cue monitor is set in CueMix). Live mics are mixed in CueMix FX (hardware, no latency); the router's passthrough is off. Only the living room, the kitchen and the mud room (The Optical Drive, so every arrival hears the modem) have speakers yet; place the rest with the map editor's Speaker tool, Test each one, then Save to project.",
   "device": {
-    "name": "MOTU",
-    "inputs": 16,
-    "outputs": 16,
-    "rate": 48000
+    "name": "828x",
+    "inputs": 24,
+    "outputs": 22,
+    "rate": 48000,
+    "expect": {
+      "inputs": 32,
+      "outputs": 30
+    }
   },
   "inputs": [
     {
       "ch": 1,
-      "label": "QLab 1",
-      "kind": "software"
+      "label": "Mic/Gtr 1 (front)",
+      "kind": "mic"
     },
     {
       "ch": 2,
-      "label": "QLab 2",
-      "kind": "software"
+      "label": "Mic/Gtr 2 (front)",
+      "kind": "mic"
     },
     {
       "ch": 3,
-      "label": "QLab 3",
-      "kind": "software"
+      "label": "Analog 1",
+      "kind": "line"
     },
     {
       "ch": 4,
-      "label": "QLab 4",
-      "kind": "software"
+      "label": "Analog 2",
+      "kind": "line"
     },
     {
       "ch": 5,
-      "label": "House announcements (say)",
-      "kind": "software"
+      "label": "Analog 3",
+      "kind": "line"
     },
     {
       "ch": 6,
-      "label": "TV voice (Chrome)",
-      "kind": "software"
+      "label": "Analog 4",
+      "kind": "line"
     },
     {
       "ch": 7,
-      "label": "Host mic",
-      "kind": "mic"
+      "label": "Analog 5",
+      "kind": "line"
     },
     {
       "ch": 8,
-      "label": "Wireless mic 2",
-      "kind": "mic"
+      "label": "Analog 6",
+      "kind": "line"
     },
     {
       "ch": 9,
-      "label": "Wireless mic 3",
-      "kind": "mic"
+      "label": "Analog 7",
+      "kind": "line"
     },
     {
       "ch": 10,
-      "label": "Wireless mic 4",
-      "kind": "mic"
+      "label": "Analog 8",
+      "kind": "line"
     },
     {
       "ch": 11,
-      "label": "Line 11",
-      "kind": "line"
+      "label": "Reverb return L (virtual)",
+      "kind": "software"
     },
     {
       "ch": 12,
-      "label": "Line 12",
-      "kind": "line"
+      "label": "Reverb return R (virtual)",
+      "kind": "software"
     },
     {
       "ch": 13,
-      "label": "Line 13",
-      "kind": "line"
+      "label": "Stereo return L (virtual)",
+      "kind": "software"
     },
     {
       "ch": 14,
-      "label": "Line 14",
-      "kind": "line"
+      "label": "Stereo return R (virtual)",
+      "kind": "software"
     },
     {
       "ch": 15,
-      "label": "Line 15",
+      "label": "S/PDIF L",
       "kind": "line"
     },
     {
       "ch": 16,
-      "label": "Line 16",
+      "label": "S/PDIF R",
       "kind": "line"
+    },
+    {
+      "ch": 17,
+      "label": "ADAT A 1 (expander mic 1)",
+      "kind": "mic"
+    },
+    {
+      "ch": 18,
+      "label": "ADAT A 2 (expander mic 2)",
+      "kind": "mic"
+    },
+    {
+      "ch": 19,
+      "label": "ADAT A 3 (expander mic 3)",
+      "kind": "mic"
+    },
+    {
+      "ch": 20,
+      "label": "ADAT A 4 (expander mic 4)",
+      "kind": "mic"
+    },
+    {
+      "ch": 21,
+      "label": "ADAT A 5 (expander mic 5)",
+      "kind": "mic"
+    },
+    {
+      "ch": 22,
+      "label": "ADAT A 6 (expander mic 6)",
+      "kind": "mic"
+    },
+    {
+      "ch": 23,
+      "label": "ADAT A 7 (expander mic 7)",
+      "kind": "mic"
+    },
+    {
+      "ch": 24,
+      "label": "ADAT A 8 (expander mic 8)",
+      "kind": "mic"
     }
   ],
   "outputs": [
     {
       "ch": 1,
-      "label": "Living L"
+      "label": "Analog 1 — Living L"
     },
     {
       "ch": 2,
-      "label": "Living R"
+      "label": "Analog 2 — Living R"
     },
     {
       "ch": 3,
-      "label": "Kitchen L"
+      "label": "Analog 3 — Kitchen L"
     },
     {
       "ch": 4,
-      "label": "Kitchen R"
+      "label": "Analog 4 — Kitchen R"
     },
     {
       "ch": 5,
-      "label": "Hall (The Tube)"
+      "label": "Analog 5 — Hall (The Tube)"
     },
     {
       "ch": 6,
-      "label": "Steam Room"
+      "label": "Analog 6 — Steam Room"
     },
     {
       "ch": 7,
-      "label": "CPU"
+      "label": "Analog 7 — CPU"
     },
     {
       "ch": 8,
-      "label": "Optical Drive"
+      "label": "Analog 8 — Optical Drive"
     },
     {
       "ch": 9,
-      "label": "Backyard"
+      "label": "Main L (XLR, front knob)"
     },
     {
       "ch": 10,
-      "label": "Tent / Shed"
-    },
-    {
-      "ch": 11,
-      "label": "RAM"
-    },
-    {
-      "ch": 12,
-      "label": "Server Room"
-    },
-    {
-      "ch": 13,
-      "label": "Basement hall"
-    },
-    {
-      "ch": 14,
-      "label": "Upstairs"
+      "label": "Main R (XLR, front knob)"
     },
     {
       "ch": 15,
-      "label": "Cue monitor L"
+      "label": "ADAT A 1 — Backyard"
     },
     {
       "ch": 16,
-      "label": "Cue monitor R"
+      "label": "ADAT A 2 — Tent / Shed"
+    },
+    {
+      "ch": 17,
+      "label": "ADAT A 3 — RAM"
+    },
+    {
+      "ch": 18,
+      "label": "ADAT A 4 — Server Room"
+    },
+    {
+      "ch": 19,
+      "label": "ADAT A 5 — Basement hall"
+    },
+    {
+      "ch": 20,
+      "label": "ADAT A 6 — Upstairs"
+    },
+    {
+      "ch": 21,
+      "label": "ADAT A 7 — Graphics Card"
+    },
+    {
+      "ch": 22,
+      "label": "ADAT A 8 — spare"
     }
   ],
   "speakers": [
@@ -344,7 +396,8 @@
     "to": [
       "everywhere"
     ],
-    "chime": true
+    "chime": true,
+    "terminals": []
   },
   "voice": {
     "tv": [

@@ -9,9 +9,11 @@
 # `audio.json` (the map editor's Audio panel, GET /api/mod/audio) — this
 # section only says what the router is allowed to do on this Mac.
 #
-# On the show, put the `audio:` section in trapped.house.yaml (beside
+# On the show, the `audio:` section lives in trapped.house.yaml (beside
 # `show:`), not a file of its own: the `show` job reads it to know whether
-# QLab still plays `sound X`.
+# it still sends its OSC `sound X` cues. Since wave 18b the show's router
+# plays every sound and the announcements (QLab and the alexa player are
+# retired there); this generic example keeps both switches off.
 
 server:
   url: "https://CHANGE-ME.example.com"
@@ -21,16 +23,18 @@ server:
 audio:
   # Story sounds: `sound printer_grind` plays sounds_dir/printer_grind.wav
   # (or .aiff / .aif / .flac). A name with no file is logged once, never fatal.
+  # `uv run stagehand sounds placeholders --config …` fills it with labelled
+  # placeholders (media/sounds.yaml); a real file always wins over one.
   sounds_dir: media/sounds
 
   # Opt-in, twice (decision D6):
   play_sounds: false   # true: the router plays every `sound X`; the `show`
-                       # module then skips its QLab `sound` cues (no double play)
+                       # module then skips its OSC `sound` cues (no double play)
   announce: false      # true: the router plays `do announce` (chime + `say`)
                        # on audio.json `announce.to` — remove the `alexa:`
                        # section first (one owner of the house's voice)
 
-  # The audio.json routes (QLab / mics / the TV on the inputs → outputs).
+  # The audio.json routes (mics / a line / the TV on the inputs → outputs).
   # false opens an output-only stream: no microphone permission needed.
   passthrough: true
 
@@ -43,8 +47,7 @@ audio:
   duck_db: -12         # sounds under an announcement
   duck_hold_s: 7       # announce: false — how long each `do announce` (spoken
                        # by the alexa player) ducks the router's sounds
-  no_duck: [dance_song, rave, hand_jive]   # never ducked (QLab's duck_music
-                                           # always skipped the dance tracks)
+  no_duck: [dance_song, rave, hand_jive]   # never ducked (the dance tracks)
 
   # Until the server answers (the house internet down at boot) the router
   # routes from the last audio.json it saw (cache_dir), else this file:
@@ -60,13 +63,18 @@ audio:
   announce_gain_db: 0
   test_gain_db: -12    # the map editor's Test: a 1.5 s tone + the speaker's name
 
-  # Optional: the LAN broker. Speaker tests by hand
+  # Optional: the LAN broker. Speaker tests, stops and sounds by hand
   #   mosquitto_pub -t show/audio/test -m '{"speaker":"desk-l"}'   (or {"out": 3})
-  # and, with announce: true, announcements from the show module's
-  # show/announce rule (then never from the feed, so nothing plays twice).
+  #   mosquitto_pub -t show/audio/stop -m '{}'                     (or {"announce": true})
+  #   mosquitto_pub -t show/audio/play -m '{"name":"zip","to":["living"]}'
+  # (`stagehand sounds stop | play` send the same), and, with announce: true,
+  # announcements from the show module's show/announce rule (then never
+  # from the feed, so nothing plays twice).
   # mqtt:
   #   host: 127.0.0.1
   #   port: 1883
   # announce_topic: show/announce
   # chime_topic: show/chime
   # test_topic: show/audio/test
+  # stop_topic: show/audio/stop
+  # play_topic: show/audio/play

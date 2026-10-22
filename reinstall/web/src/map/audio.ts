@@ -10,10 +10,12 @@
 //! speaker; the speakers following an edited map (`followHouse`: a moved
 //! room, a dragged edge, a renamed or deleted room, a floor raised); the
 //! interface (device, input / output labels, the input → output matrix);
-//! zones; the story's cues and the announce / TV voice targets; and the
-//! problem list (`validateAudio` read back to the speaker it names).
+//! zones; the story's cues and the announce / TV voice targets; the
+//! tablets that also say the announcements (`announce.terminals`, wave 18b
+//! Q8) and the device's expected layout (`device.expect`, the 828x); and
+//! the problem list (`validateAudio` read back to the speaker it names).
 
-import { AUDIO_CHIME_SOUND, AUDIO_EVERYWHERE, AUDIO_GAIN_MAX, AUDIO_GAIN_MIN, AUDIO_INPUT_KINDS, AUDIO_MAX_CHANNELS, cloneData, defaultAudio, foldTarget, pointInPoly, distanceToBoundary, roomAt, roomById, roomElevation, validateAudio, wrapYaw, yawToward } from "@loom/house";
+import { AUDIO_CHIME_SOUND, AUDIO_EVERYWHERE, AUDIO_GAIN_MAX, AUDIO_GAIN_MIN, AUDIO_INPUT_KINDS, AUDIO_MAX_CHANNELS, cloneData, defaultAudio, foldTarget, pointInPoly, distanceToBoundary, resolveTargets, roomAt, roomById, roomElevation, validateAudio, wrapYaw, yawToward } from "@loom/house";
 import type { AudioConfig, AudioCue, AudioInputKind, AudioSpeaker, HouseMap, Room, Vec2 } from "@loom/house";
 import type { Problem } from "./check.ts";
 import type { History } from "./history.ts";
@@ -532,13 +534,104 @@ export function setCueGain(audio: AudioConfig, name: string, gain: number | null
   return next;
 }
 
-/** Where house announcements play (empty: the section goes — the router's default). */
+/** Where house announcements play (empty: the section goes — the router's
+ *  default). The tablets' list (`terminals`) is kept as it is. */
 export function setAnnounce(audio: AudioConfig, to: readonly string[], chime?: boolean): AudioConfig {
   const next = clone(audio);
   const list = [...new Set(to)];
   const c = chime ?? audio.announce?.chime;
-  if (list.length === 0 && c === undefined) delete next.announce;
-  else next.announce = { to: list, ...(c !== undefined ? { chime: c } : {}) };
+  const terminals = audio.announce?.terminals;
+  if (list.length === 0 && c === undefined && (terminals === undefined || terminals.length === 0)) delete next.announce;
+  else next.announce = { to: list, ...(c !== undefined ? { chime: c } : {}), ...(terminals !== undefined ? { terminals: [...terminals] } : {}) };
+  return next;
+}
+
+/**
+ * A map terminal spot on or off the house list of tablets that also say
+ * the announcements (wave 18b, Q8: `announce.terminals`). A tablet set to
+ * Always / Never on its own ⚙ ignores the list. The list lives here, not in
+ * `house.json`, so a toggle never bumps the map version.
+ */
+export function setAnnounceTerminal(audio: AudioConfig, spot: string, on: boolean): AudioConfig {
+  const next = clone(audio);
+  const was = audio.announce?.terminals ?? [];
+  const list = on ? (was.includes(spot) ? [...was] : [...was, spot]) : was.filter((t) => t !== spot);
+  // An empty `to` means everywhere to the router; say so, so the problem
+  // list never warns that it names nothing.
+  const to = next.announce?.to !== undefined && next.announce.to.length > 0 ? next.announce.to : [AUDIO_EVERYWHERE];
+  const chime = next.announce?.chime;
+  const isDefault = to.length === 1 && foldTarget(to[0]!) === AUDIO_EVERYWHERE;
+  if (list.length === 0 && chime === undefined && isDefault) delete next.announce;
+  else next.announce = { to, ...(chime !== undefined ? { chime } : {}), terminals: list };
+  return next;
+}
+
+/** One terminal spot in the Audio tab's *Tablets that also say them*. */
+export interface AnnounceTerminalRow {
+  id: string;
+  name: string;
+  /** The room's label ("⚠ <id>" when the map has no such room). */
+  room: string;
+  roomId: string;
+  floor: string | null;
+  /** On the house list. */
+  on: boolean;
+  /** Speakers placed in this room. */
+  speakers: string[];
+  /** …of which the announcements play on (`announce.to`). */
+  reached: string[];
+  /** The speaker-reach hint. */
+  hint: string;
+}
+
+/**
+ * The house map's terminal spots, grouped by room (floor, then room label,
+ * then the spot's name), each with whether it is on the list and whether
+ * the announcement's speakers already reach its room — a tablet there
+ * doubles the house voice; one in a room with none is the only voice.
+ * A listed id that names no spot on the map comes last (`room` "⚠ …").
+ */
+export function announceTerminalRows(audio: AudioConfig, house: HouseMap): AnnounceTerminalRow[] {
+  const listed = audio.announce?.terminals ?? [];
+  const to = audio.announce?.to !== undefined && audio.announce.to.length > 0 ? audio.announce.to : [AUDIO_EVERYWHERE];
+  const reach = new Set(resolveTargets(audio, house, to).speakers);
+  const floorOrder = new Map(house.floors.map((f, i) => [f.id, i]));
+  const rows = house.terminals.map((t): AnnounceTerminalRow => {
+    const room = roomById(house, t.room);
+    const here = audio.speakers.filter((s) => s.room === t.room);
+    const reached = here.filter((s) => reach.has(s.id)).map((s) => s.name);
+    const hint =
+      here.length === 0
+        ? "no house speaker in this room: the tablet would be the only voice"
+        : reached.length > 0
+          ? `the house speakers here say them too (${reached.join(", ")}): the tablet would echo them`
+          : `speakers here (${here.map((s) => s.name).join(", ")}), but the announcements don't play on them`;
+    return { id: t.id, name: t.name || t.id, room: room?.label ?? `⚠ ${t.room}`, roomId: t.room, floor: room?.floor ?? null, on: listed.includes(t.id), speakers: here.map((s) => s.name), reached, hint };
+  });
+  rows.sort((a, b) => (floorOrder.get(a.floor ?? "") ?? 99) - (floorOrder.get(b.floor ?? "") ?? 99) || a.room.localeCompare(b.room) || a.name.localeCompare(b.name));
+  const known = new Set(house.terminals.map((t) => t.id));
+  for (const id of listed) {
+    if (!known.has(id)) rows.push({ id, name: id, room: "⚠ not on the map", roomId: "", floor: null, on: true, speakers: [], reached: [], hint: "no terminal spot has this id on the house map: untick it to drop it" });
+  }
+  return rows;
+}
+
+/**
+ * `device.expect` — the channel counts the device itself reports when its
+ * layout is as planned (the 828x + an ADAT expander: 32 / 30). Either count
+ * cleared drops it (nothing is compared); a count given alone takes the
+ * device's own for the other.
+ */
+export function setExpect(audio: AudioConfig, patch: { inputs?: number | null; outputs?: number | null }): AudioConfig {
+  const next = clone(audio);
+  const d = next.device;
+  if (patch.inputs === null || patch.outputs === null) {
+    delete d.expect;
+    return next;
+  }
+  const clamp = (v: number | undefined, was: number): number => (v === undefined || !Number.isFinite(v) ? was : Math.max(1, Math.min(AUDIO_MAX_CHANNELS, Math.round(v))));
+  const base = d.expect ?? { inputs: d.inputs, outputs: d.outputs };
+  d.expect = { inputs: clamp(patch.inputs, base.inputs), outputs: clamp(patch.outputs, base.outputs) };
   return next;
 }
 

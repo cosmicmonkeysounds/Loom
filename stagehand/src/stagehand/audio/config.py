@@ -5,7 +5,7 @@ Shape (`audio.example.yaml` carries a commented copy):
     audio:
       sounds_dir: media/sounds     # <name>.wav|aiff|flac per story `sound <name>`
       play_sounds: false           # true: the router plays `sound X` (the show
-                                   # module's QLab sound cues are then skipped)
+                                   # module's OSC sound cues are then skipped)
       announce: false              # true: the router plays `do announce` too
                                    # (the `alexa:` section must be gone)
       passthrough: true            # the audio.json input→output matrix; false
@@ -35,6 +35,8 @@ Shape (`audio.example.yaml` carries a commented copy):
       announce_topic: show/announce
       chime_topic: show/chime
       test_topic: show/audio/test
+      stop_topic: show/audio/stop  # {} or {"announce": true}: stop every house sound
+      play_topic: show/audio/play  # {"name": "zip", "to"?: ["living"]}: hand-play one
 
 Everything has a default, so `audio: {}` is a router that only passes the
 matrix through and answers the map editor's Test buttons.
@@ -82,6 +84,10 @@ class AudioConfig:
     announce_topic: str = "show/announce"
     chime_topic: str = "show/chime"
     test_topic: str = "show/audio/test"
+    #: wave 18b (Q7): the LAN's own "stop all house sounds" (the uplink down)
+    #: and a hand-fired `sound X` (the router replaces QLab's hand-fire).
+    stop_topic: str = "show/audio/stop"
+    play_topic: str = "show/audio/play"
     #: The `alexa` player's lock directory: an announcing router holds the
     #: same lock, so the two never both own the house's voice.
     announce_lock_dir: str = ALEXA_CACHE
@@ -195,12 +201,14 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         announce_topic=_str(doc, "announce_topic", "show/announce") or "show/announce",
         chime_topic=_str(doc, "chime_topic", "show/chime") or "show/chime",
         test_topic=_str(doc, "test_topic", "show/audio/test") or "show/audio/test",
+        stop_topic=_str(doc, "stop_topic", "show/audio/stop") or "show/audio/stop",
+        play_topic=_str(doc, "play_topic", "show/audio/play") or "show/audio/play",
         announce_lock_dir=os.path.expanduser(_str(doc, "announce_lock_dir", ALEXA_CACHE) or ALEXA_CACHE),
     )
 
 
 def plays_sounds(section: Any) -> bool:
-    """Does this raw `audio:` section take `sound X` from QLab? (read by the
+    """Does this raw `audio:` section take `sound X` from an OSC cue player? (read by the
     config loader for the `show` module, which may run in another job)."""
     return isinstance(section, dict) and section.get("play_sounds") is True
 
