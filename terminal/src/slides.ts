@@ -355,6 +355,12 @@ export const OWNER_LINE = "Jean Trabolta joins by video conference later tonight
 /** The only lines that may name him on a slide that can show before the introduction. */
 export const OWNER_LINES: readonly string[] = [OWNER_LINE];
 
+/** A slide's lines as drawn: the owner's "joins … later tonight" lines only before the
+ *  introduction (a restart can leave the bingo slide up after he has joined). */
+export function ownerLinesFor(lines: readonly string[], introduced: boolean): readonly string[] {
+  return introduced ? lines.filter((l) => !OWNER_LINES.includes(l)) : lines;
+}
+
 /** Copy for the cue registry's slides (DESIGN.md §2.13). The trivia lines are
  *  the Quest Log's own questions (a test keeps them in step with the show's
  *  `generated/questions.loom`, which is generated from its facts.json).

@@ -240,6 +240,20 @@ describe("act 1 — the filing window fits its slide", () => {
   });
 });
 
+describe("act 1 — the bingo slide's owner line (wave 18b)", () => {
+  it("names the owner who joins later only before the introduction", () => {
+    const bingo = SCENES.find((s) => s.id === "bingo")!;
+    for (const target of ["tv", "wall"] as const) {
+      const at = (introduced: boolean) => {
+        const state = fakeState({ now: 1_000_000 + 8000, introduced });
+        return renderToStaticMarkup(createElement((target === "tv" ? bingo.tv : bingo.wall)!, props({ t: 8000, state, target, value: "bingo" })));
+      };
+      expect(at(false), target).toContain("joins by video conference later tonight");
+      expect(at(true), target).not.toContain("later tonight");
+    }
+  });
+});
+
 describe("act 1 — bingo's hold", () => {
   it("every meeting blips softly (no ball draw: nobody calls the Bingo) and its square ticks a beat later; every fourth rings the chord", () => {
     // Walk 90 s of the hold collecting each due cue once (as useSfxCues would).

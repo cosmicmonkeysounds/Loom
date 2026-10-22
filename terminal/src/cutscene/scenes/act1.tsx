@@ -30,7 +30,7 @@
 
 import "./act1.css";
 import { useRef, type CSSProperties, type ReactNode } from "react";
-import { SLIDE_COPY, SLIDE_HOLD_MS } from "../../slides.ts";
+import { SLIDE_COPY, SLIDE_HOLD_MS, ownerLinesFor } from "../../slides.ts";
 import type { ScreenState } from "../../screen.ts";
 import type { SfxName, SfxOpts } from "../../sound/index.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
@@ -264,7 +264,7 @@ export function freshTick(t: number): { cell: number; k: number } {
  *             right (under 5 minutes it turns hot); the ticker says how to play
  */
 function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
-  const lines = linesOf("bingo");
+  const lines = ownerLinesFor(linesOf("bingo"), state.character?.hidden === false);
   useSfxCues(t, sfx, [
     ...[0, 1, 2, 3, 4].map((i) => [B.title + i * 160, "blip", { pitch: 1 + i * 0.12, gain: 0.6 }] as const),
     [B.card, "chord", { gain: 0.6 }],
@@ -364,7 +364,7 @@ function BingoMingle({ t, reduced }: { t: number; reduced: boolean }) {
   );
 }
 
-function BingoWall({ t, sfx, reduced }: SceneProps) {
+function BingoWall({ t, sfx, reduced, state }: SceneProps) {
   useSfxCues(t, sfx, [[200, "chord", { gain: 0.6 }], ...periodicCues(t, B.hold, BALL_EVERY).map((x) => [x + TICK_AFTER, "blip", { gain: 0.35 }] as const)]);
   const ticks = bingoTicks(t);
   return (
@@ -375,7 +375,7 @@ function BingoWall({ t, sfx, reduced }: SceneProps) {
       icon="document"
       tone="purple"
       title={copy("bingo").title}
-      lines={linesOf("bingo")}
+      lines={ownerLinesFor(linesOf("bingo"), state.character?.hidden === false)}
       bg="radial-gradient(ellipse at 50% 30%, #2a1a7a 0, #0b0630 70%)"
       art={
         <div className="a1-bingo-card small">
