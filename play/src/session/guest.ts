@@ -257,7 +257,10 @@ export interface SidesCalls {
   answer(id: string, yes: boolean): Promise<unknown>;
   found(name: string): Promise<{ ok: boolean; crew?: { id: string; name: string } }>;
   invite(to: string): Promise<unknown>;
-  leaveCrew(): Promise<unknown>;
+  /** A founder's leave disbands the faction (wave 18b: `dissolved: true`). */
+  leaveCrew(): Promise<{ ok: boolean; dissolved?: boolean }>;
+  /** Wave 18b, faction mode: walk into a founded faction from the list. */
+  joinCrew(crew: string): Promise<unknown>;
 }
 
 /**
@@ -670,7 +673,8 @@ export function useGuestSession(): GuestSession {
       answer: (id, yes) => post("/api/guest/recruit/answer", { id, yes }),
       found: (name) => post<{ ok: boolean; crew?: { id: string; name: string } }>("/api/guest/crew/found", { name }),
       invite: (to) => post("/api/guest/crew/invite", { to }),
-      leaveCrew: () => post("/api/guest/crew/leave", {}),
+      leaveCrew: () => post<{ ok: boolean; dissolved?: boolean }>("/api/guest/crew/leave", {}),
+      joinCrew: (crew) => post("/api/guest/crew/join", { crew }),
     }),
     [post],
   );

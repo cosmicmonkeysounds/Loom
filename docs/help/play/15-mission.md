@@ -2,7 +2,7 @@
 title: Your mission (home)
 section: Guest Guide
 order: 1.5
-keywords: mission, home, what do I do, what now, where do I go, now, objective, title bar, where, go to, you're here, checklist, progress, big buttons, your move, also now, free roam, who's here, tiles, desktop, paused, captured, check in, choose a side, taskbar, start, chats, pass, scan, tray, me, picture
+keywords: mission, home, faction tile, more to win, what do I do, what now, where do I go, now, objective, title bar, where, go to, you're here, checklist, progress, big buttons, your move, also now, free roam, who's here, tiles, desktop, paused, captured, check in, choose a side, taskbar, start, chats, pass, scan, tray, me, picture
 ---
 
 Every screen of the app answers two questions at a glance: **what do I do
@@ -22,9 +22,11 @@ The phone is the old computer you're trapped in, so it looks like one.
   the **Recycle Bin** at its right end holds your [notifications](notifications.md)
   (it fills up, with a count, when something new is in it). While the show
   is paused the bar greys and says *(Paused)*; captured it turns red,
-  restricted ochre.
+  restricted ochre. A badge the story gives you (🚻 in Bathroom Mode) sits
+  beside **Mission** and beside your name on Me.
 - **The taskbar** at the bottom, on every screen, inside rooms too: **⊞
-  Start** (the story's own buttons such as 🚻 Bathroom Mode, Sides & crews,
+  Start** (the story's own buttons such as 🚻 Bathroom Mode, Sides & crews
+  (Factions when programs found their own),
   People, Notifications, Help, Leave the event), **▣ Mission**, **💬
   Chats**, **🎟 Pass** and **📷 Scan**. The button for the screen you're on
   looks pressed in. Mission shows **!** when there's a new objective since
@@ -74,7 +76,11 @@ A teal strip of icons, like a 1999 desktop: **🪙 Wallet** (your balance),
 **📜 Quest Log** (how many quests are active) and **📓 Codex** (how much
 you've found). A yellow dot means something new inside; never a number.
 They open your [Wallet](wallet.md), [Quest Log](quests.md) and
-[Codex](codex.md).
+[Codex](codex.md). In a story where programs found factions, a **◆** tile
+shows your own faction: *◆ The Night Shift · 7 of 13 · 6 more to win* (or
+*over the line · hold on to them*: enough for now, but nothing is won
+until the story counts); it opens [Factions](sides.md). Nobody else's count is
+ever on it.
 
 ## Also now
 

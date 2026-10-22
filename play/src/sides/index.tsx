@@ -3,14 +3,48 @@
 //! your crew), the Recruit sheet a scanned pass opens, the answer sheet for
 //! an invitation, and Found a crew. One lazy chunk (`sides/lazy.tsx`),
 //! with the doors and the invite card (`doors.tsx`, `invite.tsx`).
+//!
+//! Wave 18b, faction mode (`founding:`): the sheet is **Factions** — the
+//! declared sides and the founded factions as one list, each with who
+//! founded or leads it and its ethos; only your own card has a count
+//! (BlockBar + *N more to win*), 📷 Recruit and Leave / Disband; another
+//! card offers Join (or *Switch to X? You'll leave Y.*); ＋ Found a faction
+//! while the story allows it. An older server, or a story with no
+//! `founding:`, gets the wave 18 Sides & crews sheet unchanged.
 
 import { useEffect, useState } from "react";
 import type { GuestView } from "../types.ts";
 import type { SidesCalls } from "../session/guest.ts";
-import { PersonAvatar, Sheet } from "../ui/primitives.tsx";
+import { NameBadges, PersonAvatar, Sheet } from "../ui/primitives.tsx";
 import { BlockBar } from "../ui/progress.tsx";
-import type { InviteView } from "../guest/wire.ts";
-import { countLine, crewNameOk, crewOf, crewRefusal, crewRoom, memberCount, recruitOffer, recruitRefusal, sideAction, sidesOf, switchQuestion, type SideRow } from "./model.ts";
+import { badgesOf, canFoundOf, type InviteView } from "../guest/wire.ts";
+import {
+  countLine,
+  crewNameOk,
+  crewOf,
+  crewRefusal,
+  crewRoom,
+  factionAction,
+  factionCountLine,
+  factionModeOf,
+  inviteLeaveLine,
+  joinFaction,
+  leadsOf,
+  leaveFaction,
+  leaveQuestion,
+  memberCount,
+  myRow,
+  recruitOffer,
+  recruitRefusal,
+  sideAction,
+  sidesOf,
+  switchQuestion,
+  whoLine,
+  type SideAction,
+  type SideRow,
+} from "./model.ts";
+import { stayNote } from "./stay.ts";
+import "../css/factions.css";
 
 export type SidesWhich =
   | { sheet: "sides" }
@@ -124,7 +158,159 @@ function SideCard({ side, view, rows, calls, scan }: { side: SideRow; view: Gues
   );
 }
 
-export function SidesSheet({ view, calls, openRoom, scan, show, onClose }: Omit<SidesLayerProps, "which" | "profile">) {
+/** Your founded faction's members, with their badges (🚻 …). */
+function MemberList({ view }: { view: GuestView }) {
+  const crew = crewOf(view);
+  if (crew === null) return null;
+  const people = new Map((view.people ?? []).map((p) => [p.id, p]));
+  return (
+    <ul className="faction-members" aria-label={`${crew.name}'s members`}>
+      {crew.members.map((id, i) => (
+        <li key={id}>
+          {crew.memberNames[i] ?? people.get(id)?.name ?? id}
+          <NameBadges badges={id === view.id ? badgesOf(view) : badgesOf(people.get(id))} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** One faction's card (faction mode). */
+function FactionCard({ side, view, rows, calls, scan, openRoom }: { side: SideRow; view: GuestView; rows: readonly SideRow[]; calls: SidesCalls; scan: () => void; openRoom: (id: string) => void }) {
+  const [asking, setAsking] = useState<"leave" | "switch" | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const act: SideAction = factionAction(side, view, rows);
+  const mine = myRow(view, rows);
+  const isMine = mine !== null && mine.id === side.id;
+  // With other factions listed, the sheet says why you stay once, under
+  // the list (`FactionsSheet`); alone, your own card says it.
+  const others = rows.some((r) => r.id !== side.id);
+  const crew = crewOf(view);
+  const run = (f: () => Promise<unknown>) => {
+    setBusy(true);
+    setErr(null);
+    void f().then(
+      () => {
+        setBusy(false);
+        setAsking(null);
+      },
+      (e: unknown) => {
+        setBusy(false);
+        setErr(errText(e));
+      },
+    );
+  };
+  const who = whoLine(side);
+  const count = isMine ? factionCountLine(side) : "";
+  return (
+    <section className={`side-card faction-card${isMine ? " mine" : ""}`} aria-label={side.name}>
+      <div className="side-card-head">
+        <span className="side-card-name">◆ {side.name}</span>
+        {isMine && <span className="side-in">YOU'RE IN</span>}
+      </div>
+      {who !== null && <div className="faction-who">{who}</div>}
+      {side.ethos !== null && <p className="faction-ethos">{side.ethos}</p>}
+      {isMine && count !== "" && (
+        <div className="side-card-line faction-count">
+          {side.needs !== null && side.members !== null && <BlockBar done={Math.min(side.members, side.needs)} total={side.needs} cells={10} />}
+          <span>{count}</span>
+        </div>
+      )}
+      {isMine && side.kind === "founded" && crew !== null && crew.id === side.id && <MemberList view={view} />}
+      {isMine && !others && (act === "leader" || act === "restricted") && <p className="side-note">{stayNote(act)}</p>}
+      {asking === "leave" && (
+        <div className="side-ask" role="group" aria-label={leaveQuestion(side, act)}>
+          <span>{leaveQuestion(side, act)}</span>
+          <button type="button" className="w95-btn danger" disabled={busy} onClick={() => run(() => leaveFaction(side, calls))}>
+            {act === "founder" ? "Disband" : "Leave"}
+          </button>
+          <button type="button" className="w95-btn" onClick={() => setAsking(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {asking === "switch" && (
+        <div className="side-ask" role="group" aria-label={switchQuestion(side.name, mine?.name)}>
+          <span>{switchQuestion(side.name, mine?.name)}</span>
+          <button type="button" className="w95-btn" disabled={busy} onClick={() => run(() => joinFaction(side, view, rows, calls))}>
+            Switch
+          </button>
+          <button type="button" className="w95-btn" onClick={() => setAsking(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {asking === null && (
+        <div className="side-buttons">
+          {isMine && (act === "in" || act === "founder" || act === "leader") && (
+            <button type="button" className="w95-btn side-btn" onClick={scan}>
+              📷 Recruit someone
+            </button>
+          )}
+          {isMine && side.kind === "founded" && crew !== null && crew.id === side.id && (
+            <button type="button" className="w95-btn side-btn" onClick={() => openRoom(crewRoom(crew))}>
+              💬 Open the room
+            </button>
+          )}
+          {isMine && (act === "in" || act === "founder") && (
+            <button type="button" className="w95-btn side-btn" onClick={() => setAsking("leave")}>
+              {act === "founder" ? "Disband" : "Leave"}
+            </button>
+          )}
+          {!isMine && act === "join" && (
+            <button type="button" className="w95-btn side-btn" disabled={busy} onClick={() => run(() => joinFaction(side, view, rows, calls))}>
+              Join {side.name}
+            </button>
+          )}
+          {!isMine && act === "switch" && (
+            <button type="button" className="w95-btn side-btn" onClick={() => setAsking("switch")}>
+              Join {side.name}
+            </button>
+          )}
+        </div>
+      )}
+      {err !== null && <p className="err side-err">{err}</p>}
+    </section>
+  );
+}
+
+/** The Factions sheet (wave 18b, faction mode). */
+export function FactionsSheet({ view, calls, openRoom, scan, show, onClose }: Omit<SidesLayerProps, "which" | "profile">) {
+  const rows = sidesOf(view);
+  const mine = myRow(view, rows);
+  const other = rows.find((r) => mine === null || r.id !== mine.id);
+  // A leader whose side isn't listed yet (still hidden) is told which.
+  const led = mine === null ? leadsOf(view) : null;
+  const note = led !== null ? `You lead ${led}. Leaders stay with their side.` : other !== undefined ? stayNote(factionAction(other, view, rows)) : null;
+  const canFound = canFoundOf(view);
+  return (
+    <Sheet title="Factions" onClose={onClose} tall>
+      <div className="sides-sheet factions-sheet">
+        {rows.length === 0 ? (
+          <p className="side-note">{canFound ? "No factions yet. Found the first one." : "No factions yet. The house will tell you when they open."}</p>
+        ) : (
+          rows.map((r) => <FactionCard key={r.id} side={r} view={view} rows={rows} calls={calls} scan={scan} openRoom={openRoom} />)
+        )}
+        {note !== null && <p className="side-note faction-stay">{note}</p>}
+        {canFound && (
+          <button type="button" className="choice side-found" onClick={() => show({ sheet: "found" })}>
+            ＋ Found a faction
+          </button>
+        )}
+        <p className="side-dim">One faction at a time. More than half of the programs still here wins.</p>
+      </div>
+    </Sheet>
+  );
+}
+
+export function SidesSheet(p: Omit<SidesLayerProps, "which" | "profile">) {
+  if (factionModeOf(p.view)) return <FactionsSheet {...p} />;
+  return <CrewSidesSheet {...p} />;
+}
+
+/** The wave 18 Sides & crews sheet (no `founding:`, or an older server). */
+function CrewSidesSheet({ view, calls, openRoom, scan, show, onClose }: Omit<SidesLayerProps, "which" | "profile">) {
   const rows = sidesOf(view);
   const crew = crewOf(view);
   const [asking, setAsking] = useState(false);
@@ -234,7 +420,9 @@ export function RecruitSheet({ id, view, calls, profile, onClose }: { id: string
 
 export function RecruitAnswerSheet({ invite, view, calls, onClose }: { invite: InviteView; view: GuestView; calls: SidesCalls; onClose: () => void }) {
   const [err, setErr] = useState<string | null>(null);
-  const side = invite.kind === "side" ? sidesOf(view).find((s) => s.id === invite.target || s.name === invite.targetName) : undefined;
+  // Faction mode: never a count on an invitation (nobody counts a rival).
+  const side = invite.kind === "side" && !factionModeOf(view) ? sidesOf(view).find((s) => s.id === invite.target || s.name === invite.targetName) : undefined;
+  const leave = inviteLeaveLine(view, invite);
   const answer = (yes: boolean) =>
     void calls.answer(invite.id, yes).then(
       () => onClose(),
@@ -255,13 +443,14 @@ export function RecruitAnswerSheet({ invite, view, calls, onClose }: { invite: I
             Join {invite.targetName}
           </button>
         </div>
+        {leave !== null && <p className="side-dim invite-leave">{leave}</p>}
         {err !== null && <p className="err">{err}</p>}
       </div>
     </Sheet>
   );
 }
 
-export function FoundCrewSheet({ calls, onClose }: { calls: SidesCalls; onClose: () => void }) {
+export function FoundCrewSheet({ calls, onClose, faction = false }: { calls: SidesCalls; onClose: () => void; faction?: boolean }) {
   const [name, setName] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -278,7 +467,7 @@ export function FoundCrewSheet({ calls, onClose }: { calls: SidesCalls; onClose:
     );
   };
   return (
-    <Sheet title="Found a crew" onClose={onClose}>
+    <Sheet title={faction ? "Found a faction" : "Found a crew"} onClose={onClose}>
       <form
         className="found-crew"
         onSubmit={(e) => {
@@ -286,11 +475,15 @@ export function FoundCrewSheet({ calls, onClose }: { calls: SidesCalls; onClose:
           submit();
         }}
       >
-        <label htmlFor="crew-name">Name your crew</label>
+        <label htmlFor="crew-name">{faction ? "Name your faction" : "Name your crew"}</label>
         <input id="crew-name" className="found-crew-input" value={name} maxLength={24} autoComplete="off" onChange={(e) => setName(e.target.value)} />
-        <p className="side-dim">A crew is your own club with its own room. It isn't a side and never counts toward one. Invite people by scanning their pass.</p>
+        <p className="side-dim">
+          {faction
+            ? "Your faction gets its own room. More than half of the programs still here wins. Recruit by scanning passes; you can't join another while you lead it."
+            : "A crew is your own club with its own room. It isn't a side and never counts toward one. Invite people by scanning their pass."}
+        </p>
         <button type="submit" className="choice primary" disabled={!crewNameOk(name) || busy}>
-          Found it ◇
+          {faction ? "Found it ◆" : "Found it ◇"}
         </button>
         {err !== null && <p className="err">{err}</p>}
       </form>
@@ -308,7 +501,7 @@ export function SidesLayer(p: SidesLayerProps) {
     case "answer":
       return <RecruitAnswerSheet invite={p.which.invite} view={p.view} calls={p.calls} onClose={p.onClose} />;
     case "found":
-      return <FoundCrewSheet calls={p.calls} onClose={p.onClose} />;
+      return <FoundCrewSheet calls={p.calls} onClose={p.onClose} faction={factionModeOf(p.view)} />;
   }
 }
 

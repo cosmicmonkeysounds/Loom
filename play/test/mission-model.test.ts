@@ -174,3 +174,48 @@ describe("the promoted card's button (GN-F18)", () => {
     expect(m.cardButton!.label).not.toContain("TWO DOORS");
   });
 });
+
+describe("wave 18b, faction mode: your faction's tile and your badges", () => {
+  const mine = { id: "crew-1", name: "The Night Shift", leader: "Winamp", members: 7, needs: 13, more: 6, mine: true, kind: "founded" as const, founder: "Winamp" };
+  const rival = { id: "The Way Out", name: "The Way Out", leader: "OpenOffice", mine: false, kind: "side" as const, founder: "OpenOffice" };
+  it("◆ {name} · a of b · n more to win, after the story's tiles; taps to Factions", () => {
+    const m = missionOf(input({ view: view({ canFound: false, sides: [rival, mine], codexTotal: 9, codex: [] }) }));
+    expect(m.tiles.map((t) => t.id)).toEqual(["codex", "faction"]);
+    expect(m.tiles[1]).toMatchObject({ label: "◆ The Night Shift", status: "7 of 13 · 6 more to win", dot: false, nav: { to: "sides" } });
+  });
+  it("over the line at 0 more; no tile in no faction, outside faction mode, or with no count", () => {
+    expect(missionOf(input({ view: view({ canFound: false, sides: [{ ...mine, members: 13, more: 0 }] }) })).tiles[0]!.status).toBe("13 in · over the line · hold on to them");
+    expect(missionOf(input({ view: view({ canFound: false, sides: [{ ...mine, members: 14, more: 0 }] }) })).tiles[0]!.status).toBe("14 in · over the line · hold on to them");
+    expect(missionOf(input({ view: view({ canFound: true, sides: [rival] }) })).tiles).toEqual([]);
+    expect(missionOf(input({ view: view({ sides: [{ id: "x", name: "X", leader: null, members: 4, needs: 13, mine: true }] }) })).tiles).toEqual([]);
+    expect(missionOf(input({ view: view({ canFound: false, sides: [{ ...mine, members: undefined, needs: undefined, more: undefined }] }) })).tiles).toEqual([]);
+  });
+  it("the leader of a declared side gets the tile too", () => {
+    const side = { id: "Unlimited Power", name: "Unlimited Power", leader: "Excel", members: 4, needs: 13, more: 9, mine: true, kind: "side" as const, founder: "Excel" };
+    expect(missionOf(input({ view: view({ name: "Excel", faction: "Unlimited Power", canFound: false, sides: [side] }) })).tiles[0]).toMatchObject({ label: "◆ Unlimited Power", status: "4 of 13 · 9 more to win" });
+  });
+  it("the header's badges are your own (🚻 Bathroom Mode), [] for an older server", () => {
+    expect(missionOf(input({ view: view({ badges: [{ glyph: "🚻", label: "Bathroom Mode" }] }) })).badges).toEqual([{ glyph: "🚻", label: "Bathroom Mode" }]);
+    expect(missionOf(input()).badges).toEqual([]);
+  });
+  it("the Where row says faction in faction mode", () => {
+    const listed = new Set<string>();
+    const titles = new Map<string, string>();
+    const place = { objective: "x", place: { id: "sides", name: "sides" } };
+    expect(whereRowOf({ location: null, mission: place, sides: [rival] }, listed, titles)).toMatchObject({ label: "🚪 Choose a faction" });
+    expect(whereRowOf({ location: null, mission: place, sides: [rival, mine] }, listed, titles)).toMatchObject({ label: "🚪 Factions" });
+    expect(whereRowOf({ location: null, mission: place, sides: [{ id: "x", name: "X", leader: null, mine: true }] }, listed, titles)).toMatchObject({ label: "🚪 Sides" });
+  });
+
+  it("wave 18b fix: before anyone founds one, `canFound` alone says faction mode (never \"Choose a side\")", () => {
+    const listed = new Set<string>();
+    const titles = new Map<string, string>();
+    const place = { objective: "x", place: { id: "sides", name: "sides" } };
+    expect(whereRowOf({ location: null, mission: place, sides: [], canFound: true }, listed, titles)).toMatchObject({ label: "🚪 Choose a faction" });
+    // Not allowed to found (a leader, the window shut) is still faction mode.
+    expect(whereRowOf({ location: null, mission: place, sides: [], canFound: false }, listed, titles)).toMatchObject({ label: "🚪 Choose a faction" });
+    // The mission model passes the view's `canFound` through.
+    const m = missionOf(input({ view: view({ canFound: true, sides: [], objectives: [obj("found")], mission: place }) }));
+    expect(m.where).toMatchObject({ label: "🚪 Choose a faction" });
+  });
+});

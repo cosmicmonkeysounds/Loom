@@ -6,7 +6,9 @@
 
 import { Icon, IconTitle } from "../chrome/icons.tsx";
 import type { GuestView } from "../types.ts";
-import { PersonAvatar, Sheet } from "../ui/primitives.tsx";
+import { NameBadges, PersonAvatar, Sheet } from "../ui/primitives.tsx";
+import { badgesOf, canFoundOf } from "./wire.ts";
+import { factionModeOf, leadsOf } from "../sides/model.ts";
 
 export interface MeBadge {
   name: string;
@@ -20,6 +22,10 @@ export function meBadges(view: Pick<GuestView, "faction" | "groups" | "factions"
   const sides = new Set([...(view.factions ?? []), ...(Array.isArray(view.sides) ? view.sides : []).map((s) => s.name)]);
   const names = [...(view.groups ?? [])];
   if (view.faction !== null && !names.includes(view.faction)) names.unshift(view.faction);
+  // Faction mode: the side you lead shows though it is still hidden.
+  const led = leadsOf(view);
+  if (led !== null) sides.add(led);
+  if (led !== null && !names.includes(led)) names.unshift(led);
   const out: MeBadge[] = [];
   const seen = new Set<string>();
   for (const n of names) {
@@ -49,7 +55,8 @@ export function MeSheet({
   wake: { supported: boolean; on: boolean; toggle: () => void } | null;
   /** The phone can get alerts (`pushOffered`). */
   push: boolean;
-  /** Sides are open or the guest has a crew. */
+  /** Sides are open or the guest has a crew (a faction you may found
+   *  shows the row too, wave 18b). */
   sides: boolean;
   onPass: () => void;
   onPicture: () => void;
@@ -58,13 +65,19 @@ export function MeSheet({
   onClose: () => void;
 }) {
   const badges = meBadges(view);
+  // Wave 18b, faction mode: "Factions", offered while you may found one too.
+  const factions = factionModeOf(view);
+  const showSides = sides || canFoundOf(view);
   return (
     <Sheet title={<IconTitle icon="people">Me</IconTitle>} onClose={onClose} tall>
       <div className="me-sheet">
         <div className="me-head">
           <PersonAvatar name={view.name} size="lg" />
           <div className="me-head-body">
-            <strong className="me-name">{view.name}</strong>
+            <strong className="me-name">
+              {view.name}
+              <NameBadges badges={badgesOf(view)} />
+            </strong>
             <span className="me-where">{where}</span>
             {view.wallet !== undefined && (
               <span className="me-coin">
@@ -80,7 +93,7 @@ export function MeSheet({
           <div className="me-badges">
             {badges.map((b) => (
               <span key={`${b.kind}:${b.name}`} className={`me-badge ${b.kind}`}>
-                {b.kind === "crew" ? "◇" : "◆"} {b.name}
+                {b.kind === "crew" && !factions ? "◇" : "◆"} {b.name}
               </span>
             ))}
           </div>
@@ -91,9 +104,9 @@ export function MeSheet({
         <button type="button" className="choice me-row" onClick={onPicture}>
           <Icon name="picture" /> Change my picture <span aria-hidden>›</span>
         </button>
-        {sides && (
+        {showSides && (
           <button type="button" className="choice me-row" onClick={onSides}>
-            <Icon name="door" /> Sides &amp; crews <span aria-hidden>›</span>
+            <Icon name="door" /> {factions ? "Factions" : "Sides & crews"} <span aria-hidden>›</span>
           </button>
         )}
         {(wake !== null && wake.supported) || push ? <div className="sheet-h">SETTINGS</div> : null}
