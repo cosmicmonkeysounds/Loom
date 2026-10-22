@@ -167,8 +167,8 @@ answer**; only the details around it are vetoable.
 | O24 | **A parked headset send** is not in the spatial stream, so re-scanning that pass at the tent asks nothing (the new begin replaces the parked one). The tent's quick picks and station polls run all night (every 5 s / 2 s, stopped during a walk). | As built. |
 | O25 | **The doors widget** still says *🚪 choose a side* (right at the 🕚 doors, and Mission's card button reads it); `moments/exits.ts` still says "Choose a side" / "Sides" for a `sides` exit label. | Change on request. |
 | O26 | **The story let a director skip ahead**: with `Night.y2k_end` forced to 0, 🍎 `bobbing_for_truth` worked although Truth Pong / the tally had been refused. Only a director forcing vars can do this. | As built. |
-| O28 | **`terminal/src/config.ts:49`'s doc comment** still shows the tent link with `&view=reinstall`, which `docs/trapped/kiosk.md` and help `play/09-terminals` say never to add (the map's `tent` spot already makes it `reinstall`). | Fix the comment. |
 | O27 | **The host Judge tab** counts what is with Trabolta from the rows (the host view carries no `agentQueue.judging`): no oldest wait or stall on the phone. Run's Judging card has both. | As built. |
+| O28 | **`terminal/src/config.ts:49`'s doc comment** still shows the tent link with `&view=reinstall`, which `docs/trapped/kiosk.md` and help `play/09-terminals` say never to add (the map's `tent` spot already makes it `reinstall`). | Fix the comment. |
 
 ## 2. Show text changes
 
@@ -182,7 +182,7 @@ Lines with no old text are new.
 | `beats/login.loom:79`–`:80` | Task Manager, deposited | *Deposited. It will be looked after. It is not your concern. Fine.* | *Deposited. Now tell me what it was, for the record. It will be looked after.* + `show answer "What did you leave in the deposit box?" to program with max: 80, button: "Leave it behind"` (R10) |
 | `main.loom:2286` | Task Manager, after typing | — | *Logged. It is not your concern. Fine.* (+ the pass card) |
 | `beats/login.loom:86` | The Uploader | *By uploading you agree that the computer's AI helper may make all of your decisions. You agree.* | *By uploading you agree that Jean Trabolta, Sole Owner and Founder of Maps and Ducks, may make all of your decisions. You agree.* |
-| `beats/login.loom:~99` | the pass | shown to every program | shown here only when not deposited (a deposited program gets it with the typed record) |
+| `beats/login.loom:99` | the pass | shown to every program | shown here only when not deposited (a deposited program gets it with the typed record) |
 | `codex/1-world.loom:94`, `:104` | The Terms Of Service, The Centre Square | *…the computer's AI helper may make all of your decisions…* | *…Jean Trabolta, Sole Owner and Founder of Maps and Ducks, may make all of your decisions…* |
 | `cast/kit.loom` (TRAIT Enforcer), `main.loom:557`–`:566` | clearance reveals | `reveal <room> for program` ×10 (one *📂 … are open now.* notice) | `reveal <room> for program quietly` ×10 (no notice; Task Manager's line says # task-manager is open) |
 | `main.loom:39` (header) | the lobby | — | `lobby: hidden` |
@@ -243,14 +243,14 @@ Lines with no old text are new.
 | `main.loom:37`–`:38` (header) | the race | `majority: Night.present / 2 + 1` | `majority: count([p for p in Persons where p.gone != true and p.persona != true]) / 2 + 1` · `founding: Night.truther_sent == true and Kernel.majority_reached != true and Night.clock != "00:00" and Night.ended != true and program.cleared == true and program.corrupted != true` |
 | `beats/malware.loom:47` | Truther Download | — | *You may found a faction of your own now (Start → Factions). The count starts at 11:00 PM: more than half of the programs wins.* |
 | `main.loom:3946` | 📥 → everyone | *!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open.* | *…# truthcoin-exchange is open. You may found a faction of your own now (Start → Factions). The count starts at 11:00 PM: a faction needs more than half of the programs.* |
-| `beats/malware.loom:~123` | OpenOffice Dossier quest start | *0 of 20 facts.* | *{program.dossier_start} of 20 facts.* (R22; the base taken at her Featured Briefing, `beats/login.loom:~155`) |
+| `beats/malware.loom:123` | OpenOffice Dossier quest start | *0 of 20 facts.* | *{program.dossier_start} of 20 facts.* (R22; the base taken at her Featured Briefing, `beats/login.loom:155`) |
 | `beats/pong.loom:51`–`:63` | Round Two Tally (Trabolta) | — | *I will read every fact you filed. Only a cup counts.* · then *Question four. {Kernel.said_4}* / *Question four. Nobody filed.* (five, six likewise) (R3) |
-| `main.loom:~4029` | `round_two_tally` | — | `do fact_read H4 H5 H6` · `cue screens_tally` (slide `tally`) |
+| `main.loom:4028` | `round_two_tally` | — | `do fact_read H4 H5 H6` · `cue screens_tally` (slide `tally`) |
 | `beats/overshare.loom:95`, `:110` | the leaders' else lines | *You should still retrieve the virus from the Internet, and then recruit half + 1 of the programs to your faction.* / *You should still gather 20 facts, and then recruit…* | *You should still retrieve the virus from the Internet. The clock is running: recruit half + 1.* / *You should still gather 20 facts. The clock is running: recruit half + 1.* |
 | `beats/overshare.loom:100`, `:115` | the doors | *…on the Sides screen (Start → Sides)…* | *…on the Factions screen (Start → Factions)…* |
 | `beats/overshare.loom:122`–`:123` | Program Final Round | *Two factions are recruiting. … Support one, or pursue your own interests.* | *Two more factions are recruiting now, beside any a program has founded since the Truther Download. … Join one, found your own, or pursue your own interests.* · *The count starts now. The first faction to hold more than half of the programs in the computer wins.* |
 | `main.loom:4202` | 🕚 → everyone | *…New orders are in your messages: two factions are recruiting, Unlimited Power and The Way Out.* | *…New orders are in your messages: Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download. The count starts now.* |
-| `main.loom:~4237`–`:4262` | the race rule | two side rules gated on the leaders' tasks (or 🧾) | one rule on `majority_faction()`, then `settle_majority` (`Kernel.majority_id` / `majority_name` / `majority_founder`; `majority` = stay / leave / founded) |
+| `main.loom:4246`–`:4262` | the race rule | two side rules gated on the leaders' tasks (or 🧾) | one rule on `majority_faction()`, then `settle_majority` (`Kernel.majority_id` / `majority_name` / `majority_founder`; `majority` = stay / leave / founded) |
 | master `main.loom:2858` | INTERACTION `waive_leader_tasks` | *🧾 Let a faction win without its leader's task (leader absent)* | deleted (D13 a) |
 | `main.loom:2934` | INTERACTION `force_their_majority` | — | label *🗳 Force the majority: this program's faction*; description *Final round only. Fire it naming a member of the faction (any faction: a founded one or a side). Runs the majority exactly once, for that faction.* |
 | `main.loom:4293`–`:4312` | `# hosts` | — | *🗳 No forced majority: it needs the final round and no majority yet.* · *🗳 No forced majority: {program.name} is in no faction.* |
@@ -282,8 +282,8 @@ Lines with no old text are new.
 | `beats/server-room.loom:285`–`:286` | Purgatory | — | *{Kernel.majority_name} won the majority, a faction founded tonight.* |
 | `beats/server-room.loom:291` | Purgatory | the goal lines inline | *The report also lists who everyone really was.* · `-> The Report On Everyone` · `-> The Goals Report` |
 | `beats/server-room.loom:295` | Clippy, the backstory | *Here is the backstory. Our AI helper, Jean Trabolta, registered the lapsed mapsandducks.com…* | *Here is the backstory. Jean Trabolta, the Sole Owner and Founder of Maps and Ducks, registered the lapsed mapsandducks.com…* |
-| `main.loom:~5045`, `beats/ceremony.loom:32`–`:36` | 🏆 `start_the_ceremony` | `cue screens_ceremony` … `-> The Ceremony` | `set Night.review_gen += 1` · `-> The Night In Review`; the ceremony cue moved to the head of `== The Ceremony` |
-| `main.loom:~2365` | Lore Hoarder | `set Night.award_value = program.codex` | `= program.codex - program.codex_in.connections` |
+| `main.loom:5045`, `beats/ceremony.loom:32`–`:36` | 🏆 `start_the_ceremony` | `cue screens_ceremony` … `-> The Ceremony` | `set Night.review_gen += 1` · `-> The Night In Review`; the ceremony cue moved to the head of `== The Ceremony` |
+| `main.loom:2365` | Lore Hoarder | `set Night.award_value = program.codex` | `= program.codex - program.codex_in.connections` |
 
 ### New beats and entries (every line DRAFT w18b)
 
