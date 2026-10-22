@@ -2433,7 +2433,6 @@ describe("Trapped in the Internet — ghosts and personas never block a majority
   it("a program marked gone and a director's persona count on neither side; the board shows who is present", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
-    fire(sim, "waive_leader_tasks");
     expect(v(sim, "Night.present")).toBe(6);
     expect(sim.model.watch.some((l) => l.items.some((i) => i.path === "Night.present"))).toBe(true);
     // Excel (g2) chose to stay at the Truther Download; 3 of 6 is not more than half…
@@ -2448,7 +2447,6 @@ describe("Trapped in the Internet — ghosts and personas never block a majority
   it("a program a director marked gone counts on neither side, even in the faction", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
-    fire(sim, "waive_leader_tasks");
     sim.setVar("g5.gone", "true");
     sim.setVar("g6.gone", "true");
     expect(v(sim, "Night.present")).toBe(4);
@@ -2502,7 +2500,6 @@ describe("Trapped in the Internet — forced majorities (N-06)", () => {
     evs.push(...fire(sim, "force_majority_stay"));
     evs.push(...fire(sim, "force_majority_leave"));
     for (const g of ["g1", "g3", "g4", "g5", "g6"]) evs.push(...sim.join(g, "The Way Out"));
-    evs.push(...fire(sim, "waive_leader_tasks"));
     expect(v(sim, "Kernel.majority")).toBe("stay");
     expect(beats(evs).filter((b) => b === "Majority Reached")).toHaveLength(1);
   });
@@ -6039,7 +6036,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     // The hour runs on the house (the door, the chess, the patch bay): nothing
     // to suggest until midnight fires 🌑 itself (a tap would cut the hour).
     expect(sheet(sim)).toEqual({ last: "y2k_clock", next: null });
-    fireAll(sim, "waive_leader_tasks", "reset_server_room", "restore_the_lights");
+    fireAll(sim, "reset_server_room", "restore_the_lights");
     expect(sheet(sim)).toEqual({ last: "y2k_clock", next: null });
   });
 
