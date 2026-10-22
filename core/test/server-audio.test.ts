@@ -120,9 +120,9 @@ describe("the starter audio.json (Trapped in the Internet)", () => {
       const house = JSON.parse(readFileSync(join(dir, map), "utf8"));
       expect(validateAudio(audio, house).problems).toEqual([]);
     }
-    expect(audio.device).toMatchObject({ name: "MOTU", inputs: 16, outputs: 16 });
-    expect(audio.outputs).toHaveLength(16);
-    expect(audio.inputs).toHaveLength(16);
+    expect(audio.device).toMatchObject({ name: "828x", inputs: 24, outputs: 22, expect: { inputs: 32, outputs: 30 } });
+    expect(audio.outputs).toHaveLength(18);
+    expect(audio.inputs).toHaveLength(24);
     expect(audio.zones.map((z) => z.id)).toEqual(["living"]);
     // Every `sound X` in the show has a cue (but the chime, rung with the
     // announcements: LA-2), and every cue is a show sound.
