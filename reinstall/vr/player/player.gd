@@ -4,7 +4,8 @@
 ##
 ## - **Left stick** walks where the head looks (dead zone 0.15, 1.8 m/s).
 ## - **Right stick** snap-turns 45° about the head (re-arm under 0.3), or
-##   turns smoothly with [member smooth_turn].
+##   turns smoothly with [member smooth_turn]. With the left stick idle (one
+##   controller), its forward / back walks too.
 ## - **Room scale**: each physics tick the head's horizontal offset from the
 ##   body is folded into the body with its own slide (so a real step climbs a
 ##   stair and slides along a wall like a stick step) and taken back out of
@@ -15,11 +16,13 @@
 ##   snap turn, opening gently after.
 ## - **Hit** ([member hit_button]): either trigger, or A / X — the King's
 ##   hit (the game takes the press, not the hold).
+## - **Mute** ([member mute_button]): B / Y — the voice link's mic.
 ##
 ## Without OpenXR (a Mac, the tests) it is a desktop rig: WASD / ↑↓ walk,
-## Q/E / ←→ turn, Space / F hit, mouse look (click to capture, Esc to
-## release) — all feeding the same sticks and button, so the game logic
-## can't tell the difference.
+## Q/E / ←→ turn, Space / F hit, M mute, mouse look (click to capture, Esc to
+## release; never in the lobby, where the mouse points — [member
+## capture_mouse]) — all feeding the same sticks and button, so the game
+## logic can't tell the difference.
 class_name VrPlayer
 extends CharacterBody3D
 
@@ -53,8 +56,14 @@ var right_stick := Vector2.ZERO
 ## The hit button held (a trigger, A / X; Space / F on the desktop rig),
 ## refreshed with the sticks.
 var hit_button := false
+## The mute button held (B / Y; M on the desktop rig), refreshed with the
+## sticks — the game toggles the voice link's mic on the press.
+var mute_button := false
 ## Read the devices each tick (off in tests that drive the sticks).
 var read_input := true
+## Desktop rig: a click captures the mouse for looking around (off in the
+## lobby, where the mouse clicks tiles).
+var capture_mouse := true
 
 @onready var origin: XROrigin3D = $XROrigin3D
 @onready var camera: XRCamera3D = $XROrigin3D/XRCamera3D
@@ -127,6 +136,10 @@ func teleport(pos: Vector3, yaw: float) -> void:
 	else:
 		origin.transform = Transform3D.IDENTITY
 		origin.global_rotation = Vector3(0, deg_to_rad(yaw), 0)
+		# Level again: a pitch kept from play would leave the lobby's panel
+		# off screen, with no captured mouse there to look back up.
+		_pitch = 0.0
+		camera.rotation.x = 0.0
 	_snap.armed = false  # a stick held through a teleport must not snap at once
 
 
@@ -169,16 +182,22 @@ func _read_sticks() -> void:
 	if xr_active:
 		left_stick = Locomotion.dead_zone(left_hand.get_vector2("primary"))
 		right_stick = Locomotion.dead_zone(right_hand.get_vector2("primary"))
+		# One controller: with the left stick idle (or no left controller),
+		# the right stick's forward / back walks while its sideways turns.
+		if left_stick == Vector2.ZERO:
+			left_stick = Vector2(0.0, right_stick.y)
 		hit_button = false
 		for hand: XRController3D in [right_hand, left_hand]:
 			if hand.is_button_pressed("trigger_click") or hand.is_button_pressed("ax_button") or hand.get_float("trigger") > 0.8:
 				hit_button = true
+		mute_button = right_hand.is_button_pressed("by_button") or left_hand.is_button_pressed("by_button")
 		return
 	var k := func(a: Key, b: Key) -> float:
 		return 1.0 if Input.is_physical_key_pressed(a) or Input.is_physical_key_pressed(b) else 0.0
 	left_stick = Vector2(k.call(KEY_D, KEY_NONE) - k.call(KEY_A, KEY_NONE), k.call(KEY_W, KEY_UP) - k.call(KEY_S, KEY_DOWN)).limit_length(1.0)
 	right_stick = Vector2(k.call(KEY_E, KEY_RIGHT) - k.call(KEY_Q, KEY_LEFT), 0.0)
 	hit_button = k.call(KEY_SPACE, KEY_F) > 0.0
+	mute_button = k.call(KEY_M, KEY_NONE) > 0.0
 
 
 ## Room scale: move the body under the head with a slide of its own (floor
@@ -234,7 +253,7 @@ func vignette_strength() -> float:
 func _unhandled_input(event: InputEvent) -> void:
 	if xr_active:
 		return
-	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+	if event is InputEventMouseButton and event.pressed and capture_mouse and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	elif event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -243,3 +262,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		origin.global_transform = Locomotion.rotate_about(origin.global_transform, camera.global_position, -m.relative.x * MOUSE_SENSITIVITY)
 		_pitch = clampf(_pitch - m.relative.y * MOUSE_SENSITIVITY, -80.0, 80.0)
 		camera.rotation.x = deg_to_rad(_pitch)
+
+
+## The lobby: stop capturing clicks, and let go of a captured mouse.
+func release_mouse() -> void:
+	capture_mouse = false
+	if not xr_active and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

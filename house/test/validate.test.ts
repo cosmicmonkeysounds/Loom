@@ -61,11 +61,14 @@ describe("validateHouse", () => {
     expect(p).toEqual(['duplicate room id "a"']);
   });
 
-  it("takes a terminal's optional screen type and room-terminal flag", () => {
+  it("takes a terminal's optional screen type, room-terminal flag and voice link", () => {
     expect(problems("two-rooms", (h) => Object.assign(h.terminals[0]!, { view: "casino", speaks: true }))).toEqual([]);
     for (const v of TERMINAL_VIEWS) expect(problems("two-rooms", (h) => (h.terminals[0]!.view = v))).toEqual([]);
     refuses("two-rooms", (h) => ((h.terminals[0] as { view: string }).view = "kiosk"), /terminals\[0\] "t": view must be one of auto, world/);
     refuses("two-rooms", (h) => ((h.terminals[0] as { speaks: unknown }).speaks = "yes"), /terminals\[0\] "t": speaks must be a boolean/);
+    expect(problems("two-rooms", (h) => (h.terminals[0]!.voice = false))).toEqual([]);
+    expect(problems("two-rooms", (h) => (h.terminals[0]!.voice = true))).toEqual([]);
+    refuses("two-rooms", (h) => ((h.terminals[0] as { voice: unknown }).voice = 1), /terminals\[0\] "t": voice must be a boolean/);
   });
 
   it("refuses non-finite numbers and bad types", () => {

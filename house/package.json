@@ -7,7 +7,8 @@
   "description": "The house map: one coordinate frame shared by the reinstallation games (VR + web), the event server and the wall terminals — schema, validation, procedural geometry, locate, routing, and a three.js scene builder (@loom/house/three).",
   "exports": {
     ".": "./src/index.ts",
-    "./three": "./src/three/index.ts"
+    "./three": "./src/three/index.ts",
+    "./voice-on": "./src/voice-on.ts"
   },
   "scripts": {
     "test": "vitest run",

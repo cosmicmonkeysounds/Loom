@@ -28,6 +28,7 @@ import {
 } from "../src/map/edit.ts";
 import { along, clientToPlan, hitRectEdge, labelSpot, planBounds, playerColor, pointsAttr, propCorners, rectOf, roomUnder, snap, snap2, stairArrow, viewBoxOf, viewCone } from "../src/map/plan.ts";
 import { L_ROOM, STAIR, TWO_FLOOR as SHOW, TWO_ROOMS } from "./houses.ts";
+import { voiceProblems } from "../src/map/check.ts";
 
 describe("plan — the SVG frame", () => {
   it("bounds every floor, and pads the viewBox", () => {
@@ -239,12 +240,44 @@ describe("edit — every op returns a copy", () => {
     expect(house.terminals.find((x) => x.id === "kitchen")!.view).toBeUndefined();
     const back = patchTerminal(screen, "kitchen", { view: "auto", speaks: false }).terminals.find((x) => x.id === "kitchen")!;
     expect("view" in back || "speaks" in back).toBe(false);
+    expect("voice" in back).toBe(false);
     const k = t.terminals.find((x) => x.id === "kitchen")!;
     expect(k.name).toBe("Kitchen tablet");
     expect("fov" in k).toBe(false);
     const r = patchRoom(house, "tent", { location: "" }).rooms.find((x) => x.id === "tent")!;
     expect("location" in r).toBe(false);
     expect(patchRoom(house, "nope", { label: "x" })).toBe(house);
+  });
+
+  it("keeps an explicit voice off always, an on only where the default is off (S5)", () => {
+    const house = frozen();
+    const spawnRoom = house.spawn.room;
+    const inSpawn = house.terminals.find((x) => x.room === spawnRoom)!;
+    const elsewhere = house.terminals.find((x) => x.room !== spawnRoom)!;
+    const spot = (h: HouseMap, id: string) => h.terminals.find((x) => x.id === id)!;
+    expect("voice" in inSpawn || "voice" in elsewhere).toBe(false);
+    // Off elsewhere / on in the spawn room are stored; the defaults are not.
+    expect(spot(patchTerminal(house, elsewhere.id, { voice: false }), elsewhere.id).voice).toBe(false);
+    expect("voice" in spot(patchTerminal(house, elsewhere.id, { voice: true }), elsewhere.id)).toBe(false);
+    expect(spot(patchTerminal(house, inSpawn.id, { voice: true }), inSpawn.id).voice).toBe(true);
+    // An explicit off is kept even where it is the default (the tent): ticked
+    // on and off again, the tent still says voice: false.
+    expect(spot(patchTerminal(house, inSpawn.id, { voice: false }), inSpawn.id).voice).toBe(false);
+    const toggled = patchTerminal(patchTerminal(house, inSpawn.id, { voice: true }), inSpawn.id, { voice: false });
+    expect(spot(toggled, inSpawn.id).voice).toBe(false);
+    // An on back where the default is on drops it; undefined drops it.
+    const off = patchTerminal(house, elsewhere.id, { voice: false });
+    expect("voice" in spot(patchTerminal(off, elsewhere.id, { voice: true }), elsewhere.id)).toBe(false);
+    expect("voice" in spot(patchTerminal(off, elsewhere.id, { voice: undefined }), elsewhere.id)).toBe(false);
+    // Another field's patch leaves an explicit flag alone (the show's tent: voice: false in the spawn room).
+    const explicit = structuredClone(house);
+    spot(explicit, inSpawn.id).voice = false;
+    expect(spot(patchTerminal(explicit, inSpawn.id, { name: "Tent tablet" }), inSpawn.id).voice).toBe(false);
+    expect(spot(patchTerminal(off, elsewhere.id, { pitch: -5 }), elsewhere.id).voice).toBe(false);
+    expect(validateHouse(patchTerminal(house, inSpawn.id, { voice: true })).ok).toBe(true);
+    // The problem list warns of a spawn-room terminal with the link on.
+    expect(voiceProblems(house)).toEqual([]);
+    expect(voiceProblems(patchTerminal(house, inSpawn.id, { voice: true }))).toEqual([expect.objectContaining({ level: "warning", sel: { kind: "terminal", id: inSpawn.id } })]);
   });
 
   it("sets a height", () => {

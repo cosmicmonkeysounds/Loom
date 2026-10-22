@@ -9,7 +9,7 @@
 //! them; a LOCATION no room is). Those two are warnings: they never block
 //! a save.
 
-import { locate, roomById, route, visibleIn } from "@loom/house";
+import { locate, roomById, route, visibleIn, voiceOn } from "@loom/house";
 import type { HouseMap, Vec2 } from "@loom/house";
 import { REACH } from "../game/hud.ts";
 import type { Selection } from "./edit.ts";
@@ -203,7 +203,19 @@ export function walkabilityProblems(house: HouseMap): Problem[] {
     const r = roomById(house, room)!;
     return { text: `room "${room}" (${r.label}) is guarded by king "${king}" at door "${door}" — it opens when he falls`, sel: { kind: "door", id: door }, level: "warning" };
   });
-  return [...ducks, ...leaks, ...rooms, ...guarded];
+  return [...ducks, ...leaks, ...rooms, ...guarded, ...voiceProblems(house)];
+}
+
+/** The voice link as warnings: a terminal standing in the spawn room (the
+ *  tent, beside the headsets) with the link on. */
+export function voiceProblems(house: HouseMap): Problem[] {
+  return house.terminals
+    .filter((t) => t.room === house.spawn.room && voiceOn(house, t))
+    .map((t): Problem => ({
+      text: `terminal "${t.id}" stands in the spawn room with the voice link on — the headsets beside it would hear the room twice (the tent laptop's is off)`,
+      sel: { kind: "terminal", id: t.id },
+      level: "warning",
+    }));
 }
 
 /** A story LOCATION, as the mod view lists them. */
