@@ -220,6 +220,129 @@ backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
 
+**Wave 18b — rehearsal fixes, founded factions, results on the screens,
+the house router, built 2026-10-22** (Stage A lanes
+`oct31-w18/{engine,server,termbase}` merged on `oct31-w18/integ-a`, then
+with the tent lane `oct31-w18/tent` to master as c98759ec and **shipped
+as `w18b-1021`**; Stage B lanes
+`oct31-w18/{show,ending,factions,play,editor,screens,audio}` merged
+`--no-ff` in that order into `oct31-w18/integ` (8c7bc0aa … 1b2527b9),
+then the contract's §4.6 hooks and the integration fixes, cross-lane
+tests (`core/test/w18b-integ.test.ts`), a live round on a no-DB scratch
+server (18 / 18) and the docs; **Stage B is not merged to master or
+shipped**). The user's answers to the wave 17 questions and two batches
+of rehearsal notes: the router plays *"sounds + announcements"* through a
+*"MOTU 828x + an ADAT expander"* (no QLab; the `alexa` player retires),
+Telephone, the Are You Sure piñata, Back To The Heart and clearance's
+*the house is open* line *"are actually no longer part of the event"*
+(the rooms still open), *"the laptop in the internet is both the terminal
+& reinstallation wizard"*, *"verdict scene and all scenes like it should
+show results, and Trabolta should be primarily judging results"*, a *stop
+all house sounds* control, tablets saying announcements *"just an
+option"*, and *"enable people to start their own factions that they win
+the codes if they get a majority of people"* (any program founds; a
+founder sees only their own count and how many more they need), plus a
+scan that says it worked, a confidence that must be set, Trabolta reading
+round two's filings, Broken Ask Jeeves' transfer, an ending monologue,
+overlapping relationship facts, a typed left-behind, no *Trapped In The
+Internet* chat room, a CRA-audit note to both parties, 🚻 beside names in
+Bathroom Mode, marked-only reinstallation at every entry point, Clippy's
+new opening, *Jean Trabolta, Sole Owner and Founder of Maps and Ducks …
+the world's first AI small business owner*, his green grin that breaks
+when trust is low, Truth or Dare after the first reveal and *Facts Are
+Currency* counting found facts. The follow-up answers (2026-10-21): O2 at
+⚖ the TV shows the true answers **and** names the programs who lied (TV
+only, never before ⚖, never on an agent path); O4 **every non-exact
+filing** goes to Trabolta's AI judge; O5 *trust* is his Trust Chart
+score (the picture breaks while more than half the cleared programs
+still here are below 0); O7 founding opens **at the Truther Download**
+and stays open until a faction wins (the majority still counted only in
+the Y2K hour); O3 / O6 defaults kept; O1 open. **Engine** (help
+`authoring/30-live-shows`, `32-chat-rooms`, `33-live-verbs`,
+`45-currency`, `90-cheat-sheet`, `92-common-mistakes`): `reveal …
+quietly`, `codex_in.<category>`, `names()`, header `badge:` (L1219),
+`lobby: hidden`, `founding:` faction mode (one race, exclusive
+membership, `joinCrew`, the faction builtins, `ModView.race`, L1220),
+approver `as` / `audit` → step `flagged`, `avatar: picture:… when …`.
+**Server** (help `36-widgets`): the results block
+(`do fact_read` / `do fact_truth` → `ScreenState.results`, rows and
+stamps on the TV, the answers + liars at ⚖ on the TV only), the judge
+queue (exact = at once; one frame out per worker, voice first, the
+settle's fallback, the stall line), the spatial gate on every entry
+point (`mayPlay`, `leave unmarked`), scan answers, the flagged wallet
+card, `picture:` serving, race sides and reading-beat lines kept from the
+agent, `POST /api/mod/audio/stop`, `device.expect`, `announce.terminals`.
+**The tent laptop** (help `play/09-terminals`, `play/11-reinstallation`,
+`authoring/39-house-map`, `docs/trapped/kiosk.md`): `view=reinstall`, the
+idle show + scan box + the wizard and the game in one device, an unmarked
+pass refused with NOT MARKED, overlays holding a walk. **Stage B — the
+show** (all `// DRAFT w18b`): §4's fixed texts (Clippy's opening, the
+introduction, the DM hello, the online broadcast, truth.txt, the
+recount, the persona), Question Results / Round Two Tally / The Verdict
+read by Trabolta with a 34 s hold for the TV's pages, 🍾 after 📋×3,
+Telephone / piñata / Back To The Heart gone, `reveal … quietly` at
+clearance, `lobby: hidden`, `badge: program.afk as 🚻 Bathroom Mode`,
+MyCRA, `Trabolta.broken`, the founded race from 📥 (🧾 deleted, 🗳
+`force_their_majority`, *A Faction Of Your Own*), `left_behind_text`, Facts
+Are Currency by category, the 16 ties (`codex/85-ties.loom`, Connections)
++ The DSL Line + Program Briefing, The Night In Review before every
+ceremony + a private Your File (`beats/review.loom`), Jeeves' *What
+happened on the line* / *Glitch menu*, *Who you know* in every pack that
+holds a tie. **Play** (help `play/02`, `06`, `08`, `10`, `12`–`17`): the scan
+dialog, the required confidence, 🚻 badges, the flagged transfer, no Chat
+log row, 🔇 on the host dock and the director phone, Trabolta's two
+pictures, the Judge tab, **Factions** (one list, your own count only,
+Join / Switch / Disband, ＋ Found, the Mission tile). **Screens**: the
+results scenes (hunt_results, the tally, the verdict), Final Assessment,
+the recount / purgatory numbers, the owner-only naming before the
+introduction. **Router** (help `39-house-map`,
+`scripts/house-mac/audio.md`, `docs/trapped/room-audio.md` §12): the
+show's sounds + announcements through the 828x, placeholders, the stop.
+**Editor** (help `43-run-mode`): ■ Stop house sounds, the House sound
+card and the tablets list, 📢, the race glance, the Judging card's
+queue. **Decisions taken for the user (vetoable):**
+`core/examples/trapped-in-the-internet/SIGNOFF-w18b.md` §1 D1–D30 (D8,
+D10, D11, D13 b, D14 and D23 carry the user's answers), plus integration's
+own: the verdict's 34 s story-time hold before the ending
+(`Kernel.verdict_wait` / `verdict_end`; a second ⚖ meanwhile only tells
+`# hosts`), the narrow announce route (`POST /api/mod/audio/announce`,
+the list kept as `audio-announce.json` until Save to project), the
+ceremony cue at the head of The Ceremony. **Deploy order:** check the
+preview's roster first; the server first (`ship.sh`; Stage A is already
+live as `w18b-1021`, the rest is additive); then `sync-show
+--replace-maps --replace-audio` **with its reload, before doors** (the
+story text changes what an old journal replays to; merge any speaker
+survey saved to the project into the repo's `audio.json` first) and
+restart every other non-ended event; on the house Mac `git pull`, retire
+the `alexa` job and install the router's (`stagehand sounds
+placeholders`, `stagehand check --only audio`, `stagehand launchd install
+--job audio`, per `scripts/house-mac/audio.md`), `stagehand launchd
+restart --job show` and `--job agents` (the persona, the mind file and the
+judge prompt changed), then Run → Mind → Reset; reload every terminal,
+the TV and the tent laptop (`/terminal/?code=<mod>&spot=tent&view=reinstall&announce=1`,
+Chrome `--kiosk --autoplay-policy=no-user-gesture-required`);
+re-export the Quest APK; reprint the cast packs after the sign-off (and
+the Bingo card without *Write every name down clearly*). **Open:** the
+show text awaits the user's sign-off; O1 (that Bingo line is not in the
+repo, probably only on the printed card); the ceremony slide shows when
+🏆 is pressed, while the review is still read; `trabolta_heard` counts a
+shared tie as a delivery (up to 16, +2 truth each); the 34 s verdict hold
+pauses with the clock; *EVERY ANSWERED FACT IS TRUE* with nothing
+answered; the guest's first load is 144.85 of 145 kB; the orchestrator's
+late-night reflect is ≈ 20471 of 20480 tokens; the judge queue has no
+size cap (≈ 3 s a ruling on the house laptop: the K-04 / SW-AI-23 check);
+the bank, the Rust engine and the TextMate grammar don't know the new
+header keys (the bank warns `liveHeadersIgnored`); two scratch servers
+rehydrated the dev events in `loom_dev` for a while (a no-DB server needs a
+dead `DATABASE_URL`, not an unset one); device-only checks: the 828x on
+the house Mac, the tent laptop's webcam walk, the phones' scan dialog /
+required hint / flagged transfer / 🚻 / both pictures / factions, the TV
+and an old wall reading results. Suites on `oct31-w18/integ`: core 2472
+(149 files, incl. Postgres), play 1315 (136), editor 531 (66), terminal
+792 (68), reinstall/web 483, house 250 + 4 skipped, chess 23, bank 146,
+stagehand 905, VR 730 + `quest.sh` 27; loomcheck `--smoke` 0 / 0 (34
+files), `titi:facts --check` up to date, K-14 OK.
+
 **Wave 19 — the voice link + the in-headset program picker, built
 2026-10-21** (lanes `oct31-w19/{house,server,terminal,web,vrvoice,vrlobby}`
 merged `--no-ff` in that order into `oct31-w19/integration`, an integration
