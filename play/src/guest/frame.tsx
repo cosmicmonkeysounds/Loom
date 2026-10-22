@@ -21,7 +21,7 @@ import type { Push } from "../push.ts";
 import { iosPushCopy, PushRow } from "../push-card.tsx";
 import { showPushCard } from "../push.ts";
 import type { Channel, GuestView, Interaction, ObjectiveView, WalletView } from "../types.ts";
-import { factionModeOf, factionsOffered } from "../sides/model.ts";
+import { factionModeOf, factionsOffered } from "../sides/mode.ts";
 import { GroupPill, PersonAvatar, Sheet } from "../ui/primitives.tsx";
 import { useWakeLock } from "../wake-lock.ts";
 

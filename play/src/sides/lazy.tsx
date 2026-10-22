@@ -7,7 +7,7 @@ import { createElement } from "react";
 import type { WidgetProps } from "../widgets.tsx";
 import type { SidesLayerProps } from "./index.tsx";
 import { lazyPart, type LazyPart } from "../guest/lazy-part.tsx";
-import { sidesLabelOf } from "./model.ts";
+import { sidesLabelOf } from "./mode.ts";
 
 const loadSides = () => import("./index.tsx").then((m) => ({ default: m.SidesLayer }));
 const LazyFactions = lazyPart<SidesLayerProps>(loadSides, "Factions");
