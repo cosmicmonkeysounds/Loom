@@ -341,6 +341,26 @@ describe("faction mode: who sees what", () => {
     expect(guestView(sim, "g3").canFound).toBe(true);
   });
 
+  it("a leader is told the side they lead, though it is still hidden (no row of theirs)", () => {
+    const sim = night(3);
+    sim.setVar("Night.open", "true");
+    sim.join("g3", "Blue"); // Blue is hidden: no row for anyone
+    sim.setVar("Blue.leader", "g3");
+    sim.crew({ op: "foundCrew", by: "g1", name: "Night Shift" });
+    const g3 = guestView(sim, "g3");
+    expect(g3.sides!.map((s) => s.id)).toEqual(["crew-1"]);
+    expect(g3.faction).toBeNull();
+    expect(g3.leads).toBe("Blue");
+    expect(g3.canFound).toBe(false);
+    for (const who of ["g1", "g2"]) expect(guestView(sim, who)).not.toHaveProperty("leads");
+    sim.reveal("Blue");
+    expect(guestView(sim, "g3").leads).toBe("Blue");
+    expect(guestView(sim, "g3").sides!.find((s) => s.id === "Blue")).toMatchObject({ mine: true, members: 1 });
+    // A non-race group's leader leads no race side.
+    sim.setVar("Hosts.leader", "g2");
+    expect(guestView(sim, "g2")).not.toHaveProperty("leads");
+  });
+
   it("People cards show a faction only to its own members, or for its founder / leader", () => {
     const sim = race();
     const card = (viewer: string, who: string) => guestView(sim, viewer).people.find((p) => p.id === who)!;
