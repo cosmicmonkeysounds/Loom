@@ -288,6 +288,10 @@ ROLE Program
   dossier_start: 0 to 500 = 0
   // Wave 18b (R4): The Whole Truth reached this program (once).
   whole_truth: bool = false
+  // Wave 18b (R8, R9): the last Night In Review that sent this program
+  // its file, and whether its ties were dealt at clearance.
+  review_seen: 0 to 99 = 0
+  ties_dealt: bool = false
   // DRAFT w18: how many programs this leader has recruited to their side by pass.
   recruits: 0 to 500 = 0
   got_truther: bool = false
@@ -453,6 +457,19 @@ ROLE Program
   // is told to keep them to itself).
   when self.cleared and self.featured != "none":
     -> Featured Briefing
+
+  // Wave 18b (R9): every program's ties, dealt privately at clearance
+  // (codex/85-ties.loom, Program Briefing).
+  when self.cleared == true and self.ties_dealt != true:
+    set self.ties_dealt = true
+    -> Program Briefing
+
+  // Wave 18b (R8): each Night In Review sends every cleared program still
+  // here its own file from The Uploader (beats/review.loom, Your File).
+  when Night.review_gen > self.review_seen:
+    set self.review_seen = Night.review_gen
+    if self.cleared == true and self.gone != true and self.persona != true:
+      -> Your File
 
   // The designated anti-AI program (Kernel.anti_ai, MS Paint unless a
   // director changes it before Bingo) is told the truth about the centre
@@ -5008,12 +5025,12 @@ when start_the_ceremony:
       set Night.ceremony_host = "Clippy"
     else:
       set Night.ceremony_host = "Trabolta"
-    cue screens_ceremony
-    set Night.screen = "ceremony"
-    set Night.terminals = "ceremony"
     sound ceremony_bed
     broadcast "!🏆 THE AWARDS CEREMONY. Every program to the living room." to everyone with go: The Desktop
-    -> The Ceremony
+    // Wave 18b (R8): the review first, then the awards. The ceremony's
+    // slide is cued at the head of The Ceremony (beats/ceremony.loom).
+    set Night.review_gen += 1
+    -> The Night In Review
   else if Night.ceremony == true:
     broadcast "🏆 The ceremony has already started. Nothing happens." to channel(hosts)
   else if Night.ending == "banished":
@@ -5267,6 +5284,7 @@ set Night.signatures = 0
 set Night.goals_todo = ""
 set Night.sweep_target = "none"
 set Night.ceremony = false
+set Night.review_gen = 0
 set Night.ceremony_host = "none"
 set Night.award = "none"
 set Night.award_title = "none"

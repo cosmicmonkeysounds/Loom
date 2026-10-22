@@ -153,8 +153,12 @@ describe("wave 18b ending — the ties (R9)", () => {
   it("Program Briefing deals every featured program its three, and a pool program The Old Machines + its problem's tie", { timeout: SLOW }, () => {
     const sim = house();
     for (const id of [...Object.keys(FEATURED).map((s) => `f-${s}`), ...PROBLEMS.map((p) => `p-${p}`)]) {
-      expect(tiesHeld(sim, id), id).toEqual([]); // nothing before the briefing
+      // The §4.6 watcher already dealt them at clearance (ties_dealt); a
+      // second briefing deals nothing new and is still private.
+      expect(sim.world.peek(`${id}.ties_dealt`), id).toMatchObject({ value: true });
+      const before = tiesHeld(sim, id);
       const evs = briefing(sim, id);
+      expect(tiesHeld(sim, id), id).toEqual(before);
       // The Uploader's private lines only: nobody else hears a briefing.
       for (const m of composeGuestMessages(sim, evs)) expect(m.audience, `${id}: ${m.text}`).toEqual([id]);
       expect(lines(evs, "The Uploader").length, id).toBe(2);
@@ -270,10 +274,9 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
   });
 
   it("fits a full house into one TV voice block: every line he says at the ceremony reaches the TV", { timeout: SLOW }, () => {
-    // The §4.6 ceremony hook, applied here as integ will.
-    const hook = "    -> The Ceremony\n  else if Night.ceremony == true:";
-    expect(SRC_HOOKED).toContain(hook);
-    const sim = Sim.fromSources(SRC_HOOKED.replace(hook, "    -> The Night In Review\n  else if Night.ceremony == true:"));
+    // The §4.6 ceremony hook, applied at integration.
+    expect(SRC_HOOKED).toContain("    set Night.review_gen += 1\n    -> The Night In Review\n  else if Night.ceremony == true:");
+    const sim = Sim.fromSources(SRC_HOOKED);
     sim.fireBeat("Power On");
     for (const [slug, name] of Object.entries(FEATURED)) upload(sim, `f-${slug}`, name);
     ["Calculator", "WinZip", "GarageBand", "LimeWire"].forEach((n, i) => upload(sim, `p-${PROBLEMS[i]}`, n, i));

@@ -672,7 +672,7 @@ describe("Trapped in the Internet — the whole night", () => {
     }
     // …and nobody else's: Excel holds none of MS Paint's.
     for (const entry of red("MS Paint")) expect(sim.holdsCodex("g2", entry), entry).toBe(false);
-    expect(sim.codexFor("g4").map((e) => e.id)).toEqual(["The Optical Drive", "The Terms Of Service", "The Centre Square", "Bathroom Mode", "Maria Sophia Paine", "Four Failed Theses", "The Million Dollar Painting"]);
+    expect(sim.codexFor("g4").map((e) => e.id)).toEqual(["The Optical Drive", "The Terms Of Service", "The Centre Square", "Bathroom Mode", "Maria Sophia Paine", "The Pirate Site", "Debt Notices", "The Old Machines", "Four Failed Theses", "The Million Dollar Painting"]);
     for (const gone of ["The Valley Librarian", "Bugdom VR", "The Fire Ants", "The Paperclip Trade", "The Boardwalk Bet", "Twenty Four Years Online", "Expelled From NSCAD"]) expect(sim.model.codex.has(gone), gone).toBe(false);
     // The performers hold all three of theirs from the start (`about:` them).
     for (const [who, entries] of [["Clippy", ["Tippi MacDonald", "The Memorial Veterinary Clinic", "Failed Clippy"]], ["Norton Anti-Virus", ["Julie Horton-Norton", "Miniature Doses", "Stable Island"]], ["McAfee Anti-Virus", ["John McAfee", "The Lamborghini Certificate", "Keep Them On Track"]], ["Password Manager", ["Bridget Troelsen", "What Happened To Hamtaro", "Founding Moderator"]], ["CRA Agent Software", ["Sharon Penney", "The Decimal Point", "Approve Or Deny"]]] as const) {
@@ -3782,7 +3782,8 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     expect(t).toContain("Calculator came to my heart and told me the truth. She was never going to answer. Nobody pulled a cable. I stopped.");
     expect(t.some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(false);
     const cer = lines(fire(sim, "start_the_ceremony"), "Trabolta");
-    expect(cer[0]).toBe("Before I go. One last report. You talked me down, so I can at least hand out the awards myself.");
+    // Wave 18b: The Night In Review is read first, then The Ceremony's opener.
+    expect(cer).toContain("Before I go. One last report. You talked me down, so I can at least hand out the awards myself.");
     // A second press changes nothing.
     expect(hostsOnly(fire(sim, "talked_down"))).toEqual(["🕊 Nothing to stand down: it needs the Y2K hour, before any ending."]);
   });
@@ -4130,7 +4131,12 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     expect(cues(s)).toContain("cue screens_ceremony");
     expect(casts(s).map((c) => c.cue.replace(/^"|"$/gu, ""))).toEqual(["!🏆 THE AWARDS CEREMONY. Every program to the living room."]);
     expect(composeGuestMessages(sim, s).some((m) => m.alert === true)).toBe(true);
-    expect(desktop(sim, s).length).toBe(2);
+    // Wave 18b: The Night In Review, then The Ceremony's two opening lines.
+    expect(beats(s).indexOf("The Night In Review")).toBeLessThan(beats(s).indexOf("The Ceremony"));
+    expect(desktop(sim, s).slice(-2)).toEqual([
+      "Trabolta: Programs. Before the prom, a ceremony. I kept score of every one of you tonight.",
+      "Trabolta: These are the awards of the night. When I say your name, come up to the screen and collect your trophy.",
+    ]);
     expect(desktop(sim, s).every((l) => l.startsWith("Trabolta: "))).toBe(true);
 
     sim.setVar("g1.trust", "42");
@@ -4193,9 +4199,10 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
       expect(cues(a), ending).toContain("cue screens_award_least_trusted");
     }
     const d = ended("disabled");
-    expect(saidBy(fire(d, "start_the_ceremony"), "Trabolta")[0]!.text).toMatch(/^Before I go\./u);
+    // Wave 18b: after The Night In Review's lines.
+    expect(saidBy(fire(d, "start_the_ceremony"), "Trabolta").some((l) => /^Before I go\./u.test(l.text))).toBe(true);
     const c = ended("destroyed");
-    expect(lines(fire(c, "start_the_ceremony"), "Clippy")[0]).toMatch(/^The computer is off\./u);
+    expect(lines(fire(c, "start_the_ceremony"), "Clippy").some((l) => /^The computer is off\./u.test(l))).toBe(true);
   });
 
   it("banished is not final: no ceremony until the hand jive ends the night", () => {

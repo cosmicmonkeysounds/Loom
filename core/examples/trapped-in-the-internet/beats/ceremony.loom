@@ -29,6 +29,11 @@
 
 == The Ceremony
   setting: The Desktop
+// Wave 18b: the ceremony's slide once The Night In Review is read (it
+// was cued by 🏆 itself, so it held through the review).
+cue screens_ceremony
+set Night.screen = "ceremony"
+set Night.terminals = "ceremony"
 if Night.ceremony_host == "Clippy":
   if Night.ending == "destroyed":
     Clippy: The computer is off. Trabolta is not running. Before it went dark, the chat app auto-generated a summary of the night.
