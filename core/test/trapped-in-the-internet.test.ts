@@ -3585,6 +3585,34 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     rt.dispose();
   });
 
+  it("Trabolta's reading lines never ride his worker's recent (wave 18b, Q6: 📋 reads guest-typed answers)", { timeout: SLOW }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-trapped-"));
+    tmp.push(dir);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Calculator", passcode: CODES.event });
+    const id = g.json["id"] as string;
+    const token = g.json["token"] as string;
+    const mod = (name: string, extra: Record<string, unknown> = {}) => call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
+    await mod("captcha answered", { subject: id, args: { passed: false } });
+    await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token });
+    await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token });
+    await call(rt, "POST", "/api/mod/scan", { as: "Norton Anti-Virus", target: id }, { moderator: true });
+    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth"]) await mod(n);
+    await mod("fact answered", { subject: id, args: { question: "H1", answer: "Twelve purple kittens", confidence: 100, verdict: "lie", card: 1 } });
+    await mod("close_the_filing");
+    await mod("read_the_results");
+    const read = rt.chatHistoryFor(id).filter((m) => m.from === "Trabolta" && m.beat === "Question Results");
+    expect(read.some((m) => m.text.includes("Twelve purple kittens"))).toBe(true);
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "How did I do?" }, { token })).status).toBe(200);
+    const req = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest)[0]!;
+    const recent = JSON.stringify(req.recent ?? []);
+    for (const leak of ["Twelve purple kittens", "No consensus", "accepted.", "Question 1"]) expect(recent, leak).not.toContain(leak);
+    expect(Object.keys(req.world).filter((k) => /verdict|said_|ans_|res_|^event#/u.test(k))).toEqual([]);
+    rt.dispose();
+  });
+
   it("the server room's secrets are secret: no other entry spells a combo or gives the door code, no Trabolta line says it (wave 7)", () => {
     const m = fresh().model;
     for (const id of ["The Legendary Fact", "Combo A First Half", "Combo A Second Half", "Combo B First Half", "Combo B Second Half", FACTS.door!.codex.id]) {
