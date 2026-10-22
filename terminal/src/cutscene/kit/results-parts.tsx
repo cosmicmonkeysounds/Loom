@@ -60,7 +60,9 @@ function Row({ row, i, k, stampK, reduced }: { row: ResultRow; i: number; k: num
  */
 export function ReadingRows({ q, plan, t, reduced, visible = ROWS_VISIBLE, className }: { q: ScreenResultQuestion; plan: ReadingPlan; t: number; reduced: boolean; visible?: number; className?: string }) {
   const rows = q.rows ?? [];
-  const scroll = rowScroll(plan, rows.length, t, visible);
+  // Reduced motion: the list steps a whole row at a time, never glides.
+  const glide = rowScroll(plan, rows.length, t, visible);
+  const scroll = reduced ? Math.floor(glide) : glide;
   const first = Math.max(0, Math.floor(scroll));
   return (
     <div className={`res-rows${className ? ` ${className}` : ""}`} style={{ height: `${(visible * ROW_EM).toFixed(2)}em` }}>

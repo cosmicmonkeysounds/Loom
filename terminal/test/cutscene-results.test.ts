@@ -8,6 +8,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { fakeReadQuestion, fakeResults, fakeState } from "../src/cutscene/fake.ts";
 import { componentFor } from "../src/cutscene/pick.ts";
+import { ROW_EM, ReadingRows } from "../src/cutscene/kit/results-parts.tsx";
 import { SCENES } from "../src/cutscene/registry.ts";
 import {
   ROW_MS,
@@ -65,6 +66,19 @@ function draw(id: string, target: SceneTarget, t: number, o: { results?: ScreenR
 
 /** Text only (tags out, entities back), for reading what a frame says. */
 const text = (html: string) => html.replace(/<[^>]+>/gu, " ").replace(/&amp;/gu, "&").replace(/&#x27;/gu, "'").replace(/&quot;/gu, '"').replace(/\s+/gu, " ");
+
+describe("the reading list under reduced motion", () => {
+  it("steps a whole row at a time, never glides", () => {
+    const q = fakeReadQuestion(1, 20);
+    const plan = readingPlan(20);
+    const rowsOff = (reduced: boolean, t: number) => -Number(/translate3d\(0, (-?[\d.]+)em/u.exec(renderToStaticMarkup(createElement(ReadingRows, { q, plan, t, reduced })))?.[1] ?? "NaN") / ROW_EM;
+    const ts = Array.from({ length: 80 }, (_, i) => plan.rows + 24_000 + i * 397);
+    // Moving, the list glides between rows; reduced, it sits on one.
+    expect(ts.some((t) => Math.abs(rowsOff(false, t) - Math.round(rowsOff(false, t))) > 0.05)).toBe(true);
+    for (const t of ts) expect(Math.abs(rowsOff(true, t) - Math.round(rowsOff(true, t))), String(t)).toBeLessThan(1e-3);
+    expect(Math.max(...ts.map((t) => rowsOff(true, t)))).toBeGreaterThan(0);
+  });
+});
 
 describe("the stamps (O4, D10)", () => {
   it("map every ruling to its stamp; none for an exact match, the house rule or a director", () => {
