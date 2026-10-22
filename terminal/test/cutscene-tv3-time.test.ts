@@ -59,7 +59,7 @@ describe("tv3 timelines — the awards", () => {
     expect(awardValue("none")).toBeNull();
     expect(awardValue(" ")).toBeNull();
     expect(awardValue(Number.NaN)).toBeNull();
-    expect(awardValue(412)).toBe(412);
+    expect(awardValue(38)).toBe(38);
     expect(awardValue("17")).toBe(17);
     expect(awardValue("2:31")).toBe("2:31");
   });
@@ -114,7 +114,11 @@ describe("tv3 timelines — the bob", () => {
 
 describe("tv3 timelines — truth.txt", () => {
   it("types only what Truth Txt narrates, every night's lines (the featured ones need who came)", () => {
-    for (const line of TRUTH_TXT) expect(FINALE, line).toContain(`Narrator: ${line}`);
+    // Wave 18b §4.3: the first line is the contract's fixed text. Until the
+    // `show` lane's text is merged the story still has the wave 18 line.
+    expect(TRUTH_TXT[0]).toBe("This file is the truth. It was written by Jean Trabolta, Sole Owner and Founder of Maps and Ducks (he says), and it is the only version.");
+    const pre18b = FINALE.includes("It was written by Jean Trabolta, the computer's AI helper");
+    for (const line of pre18b ? TRUTH_TXT.slice(1) : TRUTH_TXT) expect(FINALE, line).toContain(`Narrator: ${line}`);
     expect(TRUTH_TXT[TRUTH_TXT.length - 1]).toBe("End of file.");
     expect(TRUTH_TXT.some((l) => /Microsoft Excel|DraftKings|OpenOffice/u.test(l))).toBe(false);
   });

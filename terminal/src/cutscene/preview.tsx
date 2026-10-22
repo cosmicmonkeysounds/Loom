@@ -14,7 +14,10 @@
 //! `countdown=<s>` (a running countdown, counting down with `t`),
 //! `beats=<Beat>@<ms>,…` (house-wide beat moments that many ms after the
 //! scene started: `beats=The Bag Of Truth@20000`), `world=1` (a world view
-//! is on this screen: the duck's see-through take).
+//! is on this screen: the duck's see-through take), `results=auto|none|read|
+//! verdict` (wave 18b: a made-up results block — `auto` gives the reading
+//! scenes theirs: question `results_q` for hunt_results, H4–H6 for the
+//! tally, the verdict for The Verdict), `rows=<n>` (filings per question).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./kit/kit.css";
@@ -24,7 +27,7 @@ import { sfx } from "../sound/bus.ts";
 import { audioUnlocked, unlock } from "../speech/engine.ts";
 import { SceneStage } from "./CutsceneLayer.tsx";
 import { useReducedMotion } from "./clock.ts";
-import { fakeState } from "./fake.ts";
+import { fakeResults, fakeState } from "./fake.ts";
 import { introduced } from "./pick.ts";
 import { noteWorldShowing } from "./world-bus.ts";
 import { ACTS } from "./registry.ts";
@@ -126,22 +129,26 @@ function PreviewOne({ id, q }: { id: string; q: URLSearchParams }) {
   const intro = q.get("intro") !== "0";
   const nightQ = q.get("night");
   const beats = q.get("beats") ?? "";
+  const resultsQ = q.get("results") ?? "auto";
+  const rowsQ = q.get("rows");
   // `world=1`: before the scene mounts, as a world view would be.
   const [world] = useState(() => (q.get("world") === "1" ? noteWorldShowing() : null));
   useEffect(() => () => world?.(), [world]);
-  const state = useMemo(
-    () =>
-      fakeState({
-        now: AT + t,
-        introduced: intro,
-        target: target === "tv" ? "tv" : "terminals",
-        night: { ...nightParam(nightQ), ...(phase !== null ? { phase } : {}) },
-        countdown: countdown !== null ? "y2k" : null,
-        remaining: countdown !== null ? Math.max(0, Number(countdown) - Math.floor(t / 1000)) : null,
-        moments: previewBeats(beats, t),
-      }),
-    [t, target, countdown, phase, intro, nightQ, beats],
-  );
+  const state = useMemo(() => {
+    const night: Record<string, string | number | boolean | null> = { ...nightParam(nightQ), ...(phase !== null ? { phase } : {}) };
+    const results = previewResults(id, resultsQ, target, rowsQ === null ? 12 : Math.max(0, Number(rowsQ) || 0), night);
+    if (results !== null && id === "hunt_results" && night["results_q"] === undefined) night["results_q"] = results.questions[0]?.n ?? 1;
+    return fakeState({
+      now: AT + t,
+      introduced: intro,
+      target: target === "tv" ? "tv" : "terminals",
+      night,
+      countdown: countdown !== null ? "y2k" : null,
+      remaining: countdown !== null ? Math.max(0, Number(countdown) - Math.floor(t / 1000)) : null,
+      moments: previewBeats(beats, t),
+      results,
+    });
+  }, [t, target, countdown, phase, intro, nightQ, beats, id, resultsQ, rowsQ]);
   if (def === null) return <div className="pv-missing">No scene called “{id}”. Try ?preview=list.</div>;
   const blocked = def.namesCharacter === true && !introduced(state);
   // Scrubbing is silent: sounds only while it plays.
@@ -358,6 +365,20 @@ function PreviewList() {
       </main>
     </div>
   );
+}
+
+/** The preview's made-up results block (`results=`): `auto` gives each reading scene its own. */
+export function previewResults(id: string, mode: string, target: SceneTarget, rows: number, night: Record<string, string | number | boolean | null>) {
+  const tv = target === "tv";
+  const auto = mode === "auto";
+  if (mode === "none") return null;
+  if (mode === "verdict" || (auto && id === "verdict")) return fakeResults("verdict", { tv });
+  if (mode === "read" || (auto && id === "hunt_results")) {
+    const n = typeof night["results_q"] === "number" && night["results_q"] >= 1 ? night["results_q"] : 1;
+    return fakeResults("read", { ns: [n], rows, tv });
+  }
+  if (auto && id === "round_two_tally") return fakeResults("read", { ns: [4, 5, 6], rows: Math.min(rows, 6), tv });
+  return null;
 }
 
 /** `&night=scenario:1,collection_complete:true,ended:false`: night vars for the fake state. */

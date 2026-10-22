@@ -93,7 +93,7 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
   // when a held slide's scene leads again after a moment over it.
   const lead = pick.top ?? (typeof pick.base === "object" ? pick.base : null);
   useEffect(() => {
-    const f = faceFlashFor(lead, target, flashedFor(target));
+    const f = faceFlashFor(lead, target, flashedFor(target), state?.night);
     if (f !== null) flashFace(f.mood, f.ms);
   }, [lead, target]);
   // The idle show pauses under a moment's scene (`moment-bus.ts`).

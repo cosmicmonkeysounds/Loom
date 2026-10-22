@@ -105,8 +105,22 @@ describe("act 2 timelines — moments a scene reads", () => {
     expect(tallyNumber(null)).toBeNull();
   });
 
+  it("never reads a guest's filing as the number: only the scripted sentence counts", () => {
+    const line = (seq: number, text: string) => ({ seq, from: "Trabolta", text, beat: "Round Two Tally" });
+    const said61 = { lines: [line(1, "The second collection is closed."), line(2, "Question four. 12"), line(3, "Question five. twelve years"), line(4, "My confidence that we will defeat the malware is sixty-one percent.")] };
+    const said12 = { lines: [line(1, "Question four. 61"), line(2, "Question six. sixty-one"), line(3, "My confidence that we will defeat the malware is twelve percent."), line(4, "Twelve. I would like everyone to sit with that number.")] };
+    expect(tallyNumber(said61)).toBe(61);
+    expect(tallyNumber(said12)).toBe(12);
+    expect(tallyNumber({ lines: [line(1, "Question four. 12"), line(2, "Question five. sixty-one")] })).toBeNull();
+    // The night's own var wins over any line.
+    expect(tallyOf(said12, { collection_complete: true })).toBe(61);
+    expect(tallyOf(said61, { collection_complete: false })).toBe(12);
+    expect(tallyOf(said61, { collection_complete: null })).toBe(61);
+    expect(tallyOf(said12, { collection_complete: null })).toBe(12);
+  });
+
   it("falls back on the night's collection_complete, and the scene latches what it read once", () => {
-    const said = { lines: [{ seq: 1, from: "Trabolta", text: "…is sixty-one percent.", beat: "Round Two Tally" }] };
+    const said = { lines: [{ seq: 1, from: "Trabolta", text: "My confidence that we will defeat the malware is sixty-one percent.", beat: "Round Two Tally" }] };
     const none = { collection_complete: null };
     expect(tallyOf(said, none)).toBe(61);
     expect(tallyOf(null, { collection_complete: false })).toBe(12);

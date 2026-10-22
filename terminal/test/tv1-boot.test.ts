@@ -60,7 +60,8 @@ describe("tv1 boot — the introduction", () => {
     expect(draw(IntroTv, 800)).toContain("Memory Test");
     expect(draw(IntroTv, 1200)).toContain("a1-face");
     expect(draw(IntroTv, IN.setup + 1000)).toContain("Trabolta Setup");
-    expect(draw(IntroTv, IN.logo + 1500)).toContain("the computer&#x27;s AI helper");
+    expect(draw(IntroTv, IN.logo + 1500)).toContain("Sole Owner &amp; Founder · Maps and Ducks");
+    expect(draw(IntroTv, IN.logo + 1500)).not.toMatch(/AI helper/u);
     expect(draw(IntroTv, IN.online + 500)).toContain("ALL SYSTEMS ONLINE");
   });
 
@@ -74,6 +75,14 @@ describe("tv1 boot — the introduction", () => {
     expect(draw(IntroTv, INTRO_MS)).toMatch(/opacity:0[;"]/u);
     expect(draw(IntroWall, INTRO_WALL_MS)).toBe("");
     expect(INTRO_WALL_MS).toBeLessThan(INTRO_MS);
+  });
+
+  it("the wall's online line is fully typed with 2.5 s to read before the fade", () => {
+    // The card fades from 11.5 s; the line starts typing at 5.6 s.
+    const line = (t: number) => /class="a1w-line">([\s\S]*?)<\/div>/u.exec(draw(IntroWall, t))?.[1] ?? "";
+    expect(line(9000)).toContain("say hello.");
+    expect(line(9000)).not.toContain("kit-type-rest");
+    expect(line(8000)).toContain("kit-type-rest");
   });
 });
 

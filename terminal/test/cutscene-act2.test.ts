@@ -8,7 +8,7 @@ import { KING_SIGNALS } from "@loom/house";
 import { foldName } from "../src/config.ts";
 import { fakeChart, fakeState } from "../src/cutscene/fake.ts";
 import { allowed, componentFor } from "../src/cutscene/pick.ts";
-import { SCENES, OVERSHARE_CURSOR_DELAY, tallyOkRate } from "../src/cutscene/scenes/act2.tsx";
+import { SCENES, OVERSHARE_CURSOR_DELAY } from "../src/cutscene/scenes/act2.tsx";
 import type { SceneDef, SceneProps, SceneTarget } from "../src/cutscene/types.ts";
 import { EMPTY_NIGHT, type ScreenMoment, type ScreenState } from "../src/screen.ts";
 
@@ -38,7 +38,9 @@ describe("act 2's triggers are the story's own names", () => {
   for (const s of SCENES) {
     it(`${s.id}: ${s.when.map((w) => ("slide" in w ? w.slide : `${w.moment} ${w.name}`)).join(", ")}`, () => {
       for (const w of s.when) {
-        if ("slide" in w) expect(CUES.has(w.slide), `cue screens_${w.slide}`).toBe(true);
+        // Wave 18b: the `tally` slide is cued by the show lane's text; until it is
+        // merged the story still plays Round Two Tally with no slide (then this is strict).
+        if ("slide" in w) expect(CUES.has(w.slide) || (w.slide === "tally" && !STORY.includes("do fact_read")), `cue screens_${w.slide}`).toBe(true);
         else if (w.moment === "beat") expect(BEATS.has(foldName(w.name)), `== ${w.name}`).toBe(true);
         else if (w.moment === "sfx") expect(SOUNDS.has(foldName(w.name)), `sound ${w.name}`).toBe(true);
         else if (w.moment === "signal") {
@@ -109,6 +111,20 @@ describe("act 2's scenes draw", () => {
     q.mockRestore();
   });
 
+  it("the Y2K hour's ticker asks for the two sides or a faction of your own (wave 18b)", () => {
+    const q = quiet();
+    const y2k = SCENES.find((s) => s.id === "y2k")!;
+    const html = draw(y2k, "tv", 30_000, stateAt(30_000, { countdown: "y2k", remaining: 3000 }));
+    expect(html).toContain("OR A FACTION OF YOUR OWN");
+    expect(html).not.toContain("TWO FACTIONS");
+    // A faction has the majority: founding and the race are closed, and nothing says who won.
+    const won = draw(y2k, "tv", 30_000, stateAt(30_000, { countdown: "y2k", remaining: 3000, night: { ...EMPTY_NIGHT, phase: "majority" } }));
+    expect(won).not.toMatch(/FACTION OF YOUR OWN|RECRUITING|MORE THAN HALF/u);
+    expect(won).toContain("SYSTEM CLOCK RESET");
+    for (const t of [8000, 20_000, 40_000]) expect(draw(y2k, "tv", t, stateAt(t, { countdown: "y2k", remaining: 600, night: { ...EMPTY_NIGHT, phase: "majority" } }))).not.toMatch(/faction of your own/iu);
+    q.mockRestore();
+  });
+
   it("the Trust Chart keeps the card's reveal and its call-outs", () => {
     const q = quiet();
     const chart = SCENES.find((s) => s.id === "trust_chart")!;
@@ -132,8 +148,8 @@ describe("act 2's scenes draw", () => {
     const q = quiet();
     const tally = SCENES.find((s) => s.id === "round_two_tally")!;
     const withVoice = (text: string): ScreenState => ({ ...stateAt(14_000), voice: { room: "The Desktop", muted: false, head: 1, lines: [{ seq: 1, from: "Trabolta", text, beat: "Round Two Tally" }] } });
-    expect(draw(tally, "tv", 14_000, withVoice("…is sixty-one percent."))).toContain("61%");
-    expect(draw(tally, "tv", 14_000, withVoice("…is twelve percent."))).toContain("12%");
+    expect(draw(tally, "tv", 14_000, withVoice("My confidence that we will defeat the malware is sixty-one percent."))).toContain("61%");
+    expect(draw(tally, "tv", 14_000, withVoice("My confidence that we will defeat the malware is twelve percent."))).toContain("12%");
     const deaf = draw(tally, "tv", 14_000, stateAt(14_000));
     expect(deaf).toContain("TALLY COMPLETE");
     expect(deaf).not.toMatch(/\b(61|12)%/u);
@@ -261,16 +277,13 @@ describe("act 2's scenes draw", () => {
   });
 });
 
-describe("the round-two tally's fact rows (F8)", () => {
-  it("all read RECEIVED on a 61 % night, few on a 12 % one", () => {
+describe("the round-two tally never invents fact rows (wave 18b)", () => {
+  it("with no results (an older server) it shows the tally bar, never a FACT #NNN row", () => {
     const q = vi.spyOn(console, "error").mockImplementation(() => {});
     const tally = SCENES.find((s) => s.id === "round_two_tally")!;
     const full = draw(tally, "tv", 2000, stateAt(2000, { night: { ...EMPTY_NIGHT, collection_complete: true } }));
-    expect(full).toContain("✓ RECEIVED");
-    expect(full).not.toContain("✗ MISSING");
+    expect(full).not.toMatch(/FACT #|RECEIVED|MISSING/u);
+    expect(full).toContain("Tallying the facts received");
     q.mockRestore();
-    expect(tallyOkRate(61)).toBe(1);
-    expect(tallyOkRate(12)).toBeLessThan(0.5);
-    expect(tallyOkRate(null)).toBeGreaterThan(0);
   });
 });

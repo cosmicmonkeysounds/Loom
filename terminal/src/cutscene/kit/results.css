@@ -1,0 +1,59 @@
+/* The reading scenes' shared pieces (wave 18b): the filing rows and their
+   stamps. Chrome 87 / Safari 14: no :has, no color-mix, no flex gap; motion is
+   transform / opacity only, from the scene's t. */
+
+.res-stamp {
+  display: inline-block;
+  padding: 0.05em 0.35em;
+  font-family: "Tahoma", sans-serif;
+  font-weight: bold;
+  font-size: 0.72em;
+  white-space: nowrap;
+  border: 0.12em solid;
+  border-radius: 0.15em;
+  background: rgba(0, 0, 0, 0.35);
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+.res-stamp.ok { color: #3ddc84; border-color: #3ddc84; }
+.res-stamp.no { color: #ff4b4b; border-color: #ff4b4b; }
+.res-stamp.skip { color: #c8c8c8; border-color: #8a8a8a; }
+.res-stamp.wait { color: #ffd23f; border-color: #ffd23f; }
+.res-stamp.rule { margin-left: 0.5em; color: #9cf5b8; border-color: #3dff7a; }
+.res-stamp.rule.no { color: #ffb0b0; border-color: #ff4b4b; }
+.res-stamp.rule.wait { color: #ffe9a0; border-color: #ffd23f; }
+
+.res-rows { position: relative; overflow: hidden; }
+.res-rows-list { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+.res-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1.7em;
+  display: flex;
+  align-items: center;
+  padding: 0 0.5em;
+  font-family: var(--mono);
+  font-size: 1em;
+  color: #e9fff1;
+  background: rgba(4, 30, 14, 0.72);
+  border-left: 0.2em solid #3dff7a;
+  will-change: transform, opacity;
+}
+.res-who { flex: 0 0 9em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #ffd23f; }
+.res-said { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 0 0.6em; }
+.res-sure { flex: none; width: 5em; font-size: 0.75em; color: #9a9a9a; }
+.res-sure.sure { color: #ffffff; }
+.res-stamps { flex: none; min-width: 14.5em; margin-left: 0.4em; display: flex; justify-content: flex-start; align-items: center; }
+
+/* A wall's counts (no rows, no names). */
+.res-board { text-align: center; font-family: var(--mono); color: #e9fff1; }
+.res-board-label { font-size: 0.9em; letter-spacing: 0.1em; color: #ffd23f; margin-bottom: 0.2em; }
+.res-board-cells { display: flex; justify-content: center; }
+.res-board-cell { margin: 0 0.5em; min-width: 3.6em; }
+.res-board-cell b { display: block; font-size: 2.2em; line-height: 1; }
+.res-board-cell span { display: block; font-size: 0.65em; letter-spacing: 0.08em; color: #c8c8c8; }
+.res-board-cell.ok b { color: #3ddc84; }
+.res-board-cell.no b { color: #ff4b4b; }
+.res-board-cell.skip b { color: #a0a0a0; }
+.res-board-consensus { display: inline-block; margin-top: 0.3em; padding: 0 0.4em; font-weight: bold; color: #1a1200; background: #ffd23f; }

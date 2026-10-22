@@ -258,7 +258,7 @@
 .a1-in-setup-row { margin-bottom: 0.5em; }
 .a1-in-setup-row > div:first-child { margin-bottom: 0.25em; font-family: var(--mono); }
 .a1-in-word.right { left: 41%; right: 2%; top: 58%; font-size: 4.4em; }
-.a1-in-tag.right { left: 41%; right: 2%; top: 73%; font-size: 1.4em; }
+.a1-in-tag.right { left: 41%; right: 2%; top: 73%; font-size: 1.1em; letter-spacing: 0.14em; white-space: nowrap; }
 .a1-in-bar.right { left: 49%; right: 10%; top: 81%; }
 .a1-in-allok {
   position: absolute;

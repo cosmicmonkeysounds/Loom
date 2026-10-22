@@ -17,6 +17,10 @@ import "./act3.css";
 import { useEffect, useRef, type ComponentType, type CSSProperties } from "react";
 import { HISTORY_T } from "../clock.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
+import type { ScreenNight, ScreenResultQuestion } from "../../screen.ts";
+import { useHeldResults } from "../kit/results-parts.tsx";
+import { VERDICT_MS, VERDICT_PLAN, VERDICT_WALL_MS, liarsLine, liarsSize, roundChip, truthStamp, verdictHasPages, verdictPageAt, verdictStamp, verdictTotals, verdictTotalsLine } from "../kit/results.ts";
+import { useEndAt } from "../kit/tv1-parts.tsx";
 import {
   BigNumber,
   Confetti,
@@ -316,7 +320,7 @@ function Bobbing({ t, at, state, sfx, reduced, target }: SceneProps) {
   const ty = reduced ? 0 : lerp(-120, 0, ease.outBounce(progress(t, 500, 900)));
   const splash: Emitter[] = [{ x: 0.5, y: 0.62, w: 0.4, start: 950, end: 1150, rate: 500, life: 1200, speed: 0.7, angle: -90, spread: 70, gravity: 1.4, drag: 0.2, size: 7, colors: ["#bfe3ff", "#ffffff", "#7ec4ff"], shape: "dot", seed: 51 }];
   const wait = countdownParts(Math.max(0, t - 1500)).text;
-  if (upT !== null) return <BagIsUp t={t} upT={upT} judgeT={judgeT} final={final} reduced={reduced} lite={lite} />;
+  if (upT !== null) return <BagIsUp t={t} upT={upT} judgeT={judgeT} final={final} reduced={reduced} lite={lite} night={state.night} />;
   return (
     <Stage bg="linear-gradient(180deg, #0b1238 0%, #22104a 60%, #0b1238 100%)" className="tv3-bob-stage">
       <BobTank t={t} rise={rise} reduced={reduced} apples={lite ? 4 : 5} />
@@ -357,8 +361,18 @@ function Bobbing({ t, at, state, sfx, reduced, target }: SceneProps) {
   );
 }
 
-/** The bob's hold once the bag is up: it floats, locked, while the assessment runs; then the lock opens. */
-function BagIsUp({ t, upT, judgeT, final, reduced, lite }: { t: number; upT: number; judgeT: number | null; final: boolean; reduced: boolean; lite: boolean }) {
+/** "Most trusted: X · Least trusted: Y" off the night (wave 18b: the bobbing slide's call-outs), or null. */
+export function trustCallout(night: Pick<ScreenNight, "most_trusted" | "least_trusted">): string | null {
+  const parts: string[] = [];
+  if (night.most_trusted !== null) parts.push(`Most trusted: ${night.most_trusted}`);
+  if (night.least_trusted !== null) parts.push(`Least trusted: ${night.least_trusted}`);
+  return parts.length === 0 ? null : parts.join(" · ");
+}
+
+/** The bob's hold once the bag is up: it floats, locked, while the assessment runs; then the lock
+ *  opens, naming his most and least trusted (wave 18b; the night carries them while the slide is up). */
+function BagIsUp({ t, upT, judgeT, final, reduced, lite, night }: { t: number; upT: number; judgeT: number | null; final: boolean; reduced: boolean; lite: boolean; night: ScreenNight }) {
+  const trust = final ? trustCallout(night) : null;
   const lift = reduced ? 1 : eased(upT, 0, 1400, ease.outBack);
   const finalT = judgeT === null ? -1 : judgeT - ASSESSMENT_MS;
   const unlock = final ? (reduced ? 1 : eased(finalT, 0, 700, ease.outBack)) : 0;
@@ -387,6 +401,11 @@ function BagIsUp({ t, upT, judgeT, final, reduced, lite }: { t: number; upT: num
       <div className="tv3-bob-caption tv3-bob-hold" style={{ opacity: final ? progress(finalT, 300, 600) : 0.75 + 0.25 * pulse(t, 2000) }}>
         {final ? "You may read truth.txt." : "Do not read it yet."}
       </div>
+      {trust !== null && (
+        <div className={`tv3-bob-trust${lite ? " lite" : ""}`} style={{ opacity: progress(finalT, 900, 600), transform: reduced ? undefined : `translate3d(0, ${((1 - eased(finalT, 900, 600, ease.outCubic)) * 0.6).toFixed(2)}em, 0)` }}>
+          {trust}
+        </div>
+      )}
       {!lite && (
         <Win98Window title={final ? "Assessment - Complete" : "Assessment"} icon={final ? "document" : "info"} x={3} y={70} width="24em" open={reduced ? 1 : eased(upT, 900, 260, ease.linear)} reduced={reduced} className="tv3-bob-search" status={judgeT === null ? "Waiting for the assessment…" : final ? "Assessment is final." : "Weighing…"}>
           <div className="tv3-row">
@@ -523,14 +542,24 @@ function TruthTxt({ t, sfx, reduced, target }: SceneProps) {
 
 // --- F3b · the verdict (The Verdict) ----------------------------------------------------------------
 //
+// Wave 18b (Q6, O2, D11): the beat publishes each question's truth (`do
+// fact_truth`), and the screen state's `results` block (`kind: "verdict"`)
+// carries them; on the TV only, also the key answers and the programs who
+// lied (names only).
+//
 //   0–800     black; the scales swing in
-//   800–4200  eight answers checked, Q1…Q8: each flips 0 / 1 and settles (a
-//             tick each, never the result: the song or the prom says that);
-//             "Compiling the verdict" lurches to 100 %
-//   4400      THE VERDICT IS IN stamps down (a boom, a shake, sparks)
-//   5900–6500 out
+//   800–6400  eight tiles flip, one every 700 ms (a tick each): Q{n}, its round,
+//             ✔ TRUE / ✘ LIE / — NOBODY ANSWERED, "f filed · a accepted"
+//   7000      x TRUE · y LIES · z UNANSWERED
+//   8400      EVERY ANSWERED FACT IS TRUE (sparks) or A LIE IS ON RECORD (static)
+//   11000 →   the TV: one page per question, ≈ 2.5 s each — Q{n}, its truth, the
+//             key answer, who lied ("Lied: A, B 🤖" — 🤖 where his ruling made the
+//             lie; "+N more"; "Nobody lied."); it holds on the last page to its end
+//   walls     the tiles, the totals and the stamp only (no answers, no names), then out
+// No `results` (an older server): the old picture — the eight bits settle to ■,
+// THE VERDICT IS IN, never a result.
 
-const VERDICT = { check: 800, stamp: 4400, out: 5900, end: 6500 } as const;
+const VERDICT_BARE = { check: 800, stamp: 4400, out: 5900, end: 6500 } as const;
 
 function Scales({ t, reduced }: { t: number; reduced: boolean }) {
   const tilt = reduced ? 0 : Math.sin(t / 420) * 14 * (1 - progress(t, 3000, 1400));
@@ -548,25 +577,133 @@ function Scales({ t, reduced }: { t: number; reduced: boolean }) {
   );
 }
 
-function Verdict({ t, sfx, reduced, target }: SceneProps) {
+function Verdict(p: SceneProps) {
+  const results = useHeldResults(p.state, "verdict");
+  const qs = results?.questions ?? [];
+  if (!qs.some((q) => q.truth !== null)) return <VerdictBare {...p} />;
+  return <VerdictLive {...p} qs={qs} />;
+}
+
+/** One question's tile: the back (bits) until it flips, then its truth. */
+function VerdictTile({ q, i, t, reduced }: { q: ScreenResultQuestion; i: number; t: number; reduced: boolean }) {
+  const at = VERDICT_PLAN.tiles + i * VERDICT_PLAN.tileEvery;
+  const k = reduced ? (t >= at ? 1 : 0) : progress(t, at - 200, 400);
+  const front = k >= 0.5;
+  const sx = Math.abs(Math.cos(k * Math.PI));
+  const truth = truthStamp(q.truth);
+  const bit = noise1(71, Math.floor(t / 70) + i * 13) < 0.5 ? "0" : "1";
+  return (
+    <div className={`tv3-vt ${front ? truth.tone : "back"}`} style={{ opacity: t >= VERDICT_PLAN.tiles - 300 + i * 80 ? 1 : 0, transform: reduced ? undefined : `scaleX(${Math.max(0.02, sx).toFixed(3)})` }}>
+      <div className="tv3-vt-head">
+        <b>Q{q.n}</b>
+        {roundChip(q.round) !== "" && <span className="tv3-vt-chip">{roundChip(q.round)}</span>}
+      </div>
+      {front ? (
+        <>
+          <div className="tv3-vt-truth">{truth.text}</div>
+          <div className="tv3-vt-count">
+            {q.filed} filed · {q.accepted} accepted
+          </div>
+        </>
+      ) : (
+        <div className="tv3-vt-bit">{bit}</div>
+      )}
+    </div>
+  );
+}
+
+function VerdictLive({ t, sfx, reduced, target, done, qs }: SceneProps & { qs: readonly ScreenResultQuestion[] }) {
   const lite = target === "wall";
+  // O2: the pages ride the TV's block only (a wall's carries no answers or names, and never draws them).
+  const pages = !lite && verdictHasPages(qs) ? qs : [];
+  useEndAt(t, pages.length > 0 ? VERDICT_MS : VERDICT_WALL_MS, done);
+  const totals = verdictTotals(qs);
+  const stamp = verdictStamp(totals);
+  useSfxCues(t, sfx, [
+    [200, "whoosh", { over: true }],
+    [VERDICT_PLAN.tiles - 300, "drumroll", { gain: 0.6, over: true }],
+    ...qs.map((_, i) => [VERDICT_PLAN.tiles + i * VERDICT_PLAN.tileEvery, "tick", { gain: 0.4, over: true }] as const),
+    [VERDICT_PLAN.stamp, stamp.win ? "tada" : "boom", { over: true }],
+    ...pages.map((_, i) => [VERDICT_PLAN.pages + i * VERDICT_PLAN.pageMs, "popup", { gain: 0.35, over: true }] as const),
+  ]);
+  const page = verdictPageAt(t, pages.length);
+  const paging = page >= 0;
+  const out = pages.length > 0 ? 1 : 1 - progress(t, VERDICT_WALL_MS - 700, 700);
+  const tilesUp = paging ? 1 - progress(t, VERDICT_PLAN.pages, 500) : 1;
+  return (
+    <Stage bg="radial-gradient(ellipse at 50% 40%, #1a1440 0%, #04030c 75%)" fit={!lite} className={lite ? "tv3-vw" : "tv3-vtv"}>
+      <div className="kit-fill" style={{ opacity: out, transform: shake(t, VERDICT_PLAN.stamp, reduced) }}>
+        <div className="tv3-v-scales" style={{ opacity: progress(t, 0, 600) * tilesUp, transform: reduced ? undefined : `translateY(${lerp(-40, 0, eased(t, 0, 700, ease.outBack)).toFixed(1)}%)` }}>
+          <Scales t={t} reduced={reduced} />
+        </div>
+        <div className="tv3-v-tiles" style={{ opacity: tilesUp }}>
+          {qs.map((q, i) => (
+            <VerdictTile key={q.id} q={q} i={i} t={t} reduced={reduced} />
+          ))}
+        </div>
+        {t >= VERDICT_PLAN.totals && (
+          <div className="tv3-v-totals" style={{ opacity: progress(t, VERDICT_PLAN.totals, 400) * tilesUp }}>
+            {verdictTotalsLine(totals)}
+          </div>
+        )}
+        {t >= VERDICT_PLAN.stamp && (
+          <div className={`tv3-v-stamp ${stamp.win ? "win" : "lose"}`} style={{ ...slam(t, VERDICT_PLAN.stamp, reduced, 320), ...(paging ? { opacity: 1 - progress(t, VERDICT_PLAN.pages, 500) } : {}) }}>
+            {stamp.text}
+          </div>
+        )}
+        {paging && <VerdictPage q={pages[page]!} index={page} count={pages.length} t={t} reduced={reduced} />}
+        {!lite && !reduced && stamp.win && <Particles t={t} emitters={burst(0.5, 0.72, VERDICT_PLAN.stamp, GOLD, 77)} blend="add" />}
+        {!stamp.win && t >= VERDICT_PLAN.stamp && <Noise t={t} alpha={0.08 * (1 - progress(t, VERDICT_PLAN.stamp + 1500, 1500))} reduced={reduced} />}
+      </div>
+    </Stage>
+  );
+}
+
+/** The TV's page for one question (O2): its truth, the key answer, who lied. Names only (D11). */
+function VerdictPage({ q, index, count, t, reduced }: { q: ScreenResultQuestion; index: number; count: number; t: number; reduced: boolean }) {
+  const at = VERDICT_PLAN.pages + index * VERDICT_PLAN.pageMs;
+  const k = reduced ? progress(t, at, 200) : eased(t, at, 420, ease.outBack);
+  const truth = truthStamp(q.truth);
+  return (
+    <div className="tv3-vp" style={{ opacity: clamp01(k * 2), transform: reduced ? undefined : `translate3d(${((1 - k) * 6).toFixed(2)}em, 0, 0)` }}>
+      <div className="tv3-vp-head">
+        <b>Q{q.n}</b>
+        {roundChip(q.round) !== "" && <span className="tv3-vt-chip">{roundChip(q.round)}</span>}
+        <span className={`tv3-vp-truth ${truth.tone}`}>{truth.text}</span>
+        <span className="tv3-vp-of">
+          {index + 1} / {count}
+        </span>
+      </div>
+      {q.answer !== null && (
+        <div className="tv3-vp-answer">
+          <span>The answer:</span> {q.answer}
+        </div>
+      )}
+      <div className={`tv3-vp-liars${(q.liars ?? []).length > 0 ? " some" : ""}${liarsSize(q)}`}>{liarsLine(q)}</div>
+    </div>
+  );
+}
+
+function VerdictBare({ t, sfx, reduced, target, done }: SceneProps) {
+  const lite = target === "wall";
+  useEndAt(t, VERDICT_BARE.end, done);
   useSfxCues(t, sfx, [
     [200, "whoosh"],
-    [VERDICT.check, "drumroll", { gain: 0.7 }],
-    ...Array.from({ length: 8 }, (_, i) => [VERDICT.check + 600 + i * 300, "tick", { gain: 0.4 }] as const),
-    [VERDICT.stamp, "boom"],
+    [VERDICT_BARE.check, "drumroll", { gain: 0.7 }],
+    ...Array.from({ length: 8 }, (_, i) => [VERDICT_BARE.check + 600 + i * 300, "tick", { gain: 0.4 }] as const),
+    [VERDICT_BARE.stamp, "boom"],
   ]);
-  const bar = fakeProgress(t - VERDICT.check, VERDICT.stamp - VERDICT.check - 300, 47, 2);
+  const bar = fakeProgress(t - VERDICT_BARE.check, VERDICT_BARE.stamp - VERDICT_BARE.check - 300, 47, 2);
   return (
     <Stage bg="radial-gradient(ellipse at 50% 40%, #1a1440 0%, #04030c 75%)">
-      <div className="kit-fill tv3-verdict" style={{ opacity: fade(t, 0, 300, VERDICT.out, VERDICT.end - VERDICT.out), transform: shake(t, VERDICT.stamp, reduced) }}>
+      <div className="kit-fill tv3-verdict" style={{ opacity: fade(t, 0, 300, VERDICT_BARE.out, VERDICT_BARE.end - VERDICT_BARE.out), transform: shake(t, VERDICT_BARE.stamp, reduced) }}>
         <div className="tv3-verdict-scales" style={{ opacity: progress(t, 0, 600), transform: reduced ? undefined : `translateY(${lerp(-40, 0, eased(t, 0, 700, ease.outBack)).toFixed(1)}%)` }}>
           <Scales t={t} reduced={reduced} />
         </div>
         <div className="tv3-verdict-qs">
           {Array.from({ length: 8 }, (_, i) => {
-            const settle = VERDICT.check + 600 + i * 300;
-            const shown = t >= VERDICT.check + i * 80;
+            const settle = VERDICT_BARE.check + 600 + i * 300;
+            const shown = t >= VERDICT_BARE.check + i * 80;
             const settled = t >= settle;
             const bit = noise1(71, Math.floor(t / 70) + i * 13) < 0.5 ? "0" : "1";
             return (
@@ -578,16 +715,16 @@ function Verdict({ t, sfx, reduced, target }: SceneProps) {
           })}
         </div>
         {!lite && (
-          <div className="tv3-verdict-bar" style={{ opacity: fade(t, VERDICT.check, 300, VERDICT.stamp, 400) }}>
+          <div className="tv3-verdict-bar" style={{ opacity: fade(t, VERDICT_BARE.check, 300, VERDICT_BARE.stamp, 400) }}>
             <ProgressBar value={bar} label="Compiling the verdict…" percent />
           </div>
         )}
-        {t >= VERDICT.stamp && (
-          <div className="tv3-verdict-stamp" style={slam(t, VERDICT.stamp, reduced, 320)}>
+        {t >= VERDICT_BARE.stamp && (
+          <div className="tv3-verdict-stamp" style={slam(t, VERDICT_BARE.stamp, reduced, 320)}>
             THE VERDICT IS IN
           </div>
         )}
-        {!lite && !reduced && <Particles t={t} emitters={burst(0.5, 0.72, VERDICT.stamp, GOLD, 77)} blend="add" />}
+        {!lite && !reduced && <Particles t={t} emitters={burst(0.5, 0.72, VERDICT_BARE.stamp, GOLD, 77)} blend="add" />}
       </div>
     </Stage>
   );
@@ -1264,7 +1401,7 @@ export const SCENES: SceneDef[] = [
   { id: "bobbing", when: [{ slide: "bobbing" }], ms: "hold", ...both(Bobbing), face: "sly" },
   { id: "bag_of_truth", when: [{ moment: "beat", name: "The Bag Of Truth" }], ms: 8000, ...both(BagOfTruth), priority: 2, face: "attentive" },
   { id: "truth_txt", when: [{ slide: "truth_txt" }], ms: "hold", ...both(TruthTxt), namesCharacter: true },
-  { id: "verdict", when: [{ moment: "beat", name: "The Verdict" }], ms: VERDICT.end, ...both(Verdict), priority: 3, face: "thinking" },
+  { id: "verdict", when: [{ moment: "beat", name: "The Verdict" }], ms: VERDICT_MS, ...both(Verdict), priority: 3, face: "thinking" },
   { id: "pickup_line", when: [{ moment: "beat", name: "Pickup Line" }], ms: 8000, ...both(PickupLine), priority: 3, face: "pleased" },
   { id: "song", when: [{ slide: "song" }], ms: "hold", ...both(SongScene), namesCharacter: true, face: "pleased" },
   { id: "grok_prom", when: [{ slide: "grok_prom" }], ms: "hold", ...both(GrokProm), face: "angry" },

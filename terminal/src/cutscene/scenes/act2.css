@@ -142,11 +142,6 @@
 .tv2-tally-head { text-align: center; font-weight: bold; letter-spacing: 0.08em; font-size: 1.1em; margin-bottom: 0.5em; }
 .tv2-tally-facts { height: 15em; display: flex; flex-direction: column; }
 .tv2-tally-clip { flex: 1 1 auto; min-height: 0; overflow: hidden; }
-.tv2-tally-scroll { will-change: transform; padding-top: 12em; }
-.tv2-tally-row { display: flex; align-items: baseline; font-family: var(--mono); font-size: 1.3em; line-height: 1.25; }
-.tv2-tally-row b { font-weight: normal; }
-.tv2-tally-row .ok { color: #006000; }
-.tv2-tally-row .no { color: #a00000; }
 .tv2-dots { flex: 1 1 auto; margin: 0 0.4em; border-bottom: 0.1em dotted #808080; }
 .tv2-tally-bar { flex: none; padding-top: 0.4em; }
 .tv2-tally-gauge { text-align: center; height: 15em; }
@@ -512,3 +507,27 @@
 .tv2-wall-doors span { position: absolute; top: 0; bottom: 0; width: 50%; background: linear-gradient(90deg, #a8a8a8, #c8c8c8 40%, #9a9a9a); border: 0.15em solid; border-color: #fff #404040 #404040 #fff; will-change: transform; }
 .tv2-wall-doors span:first-child { left: 0; }
 .tv2-wall-doors span:last-child { right: 0; }
+
+/* --- the tally's pages (wave 18b): `top` in % of the stage -------------------------------- */
+.tv2-tp-head { position: absolute; left: 0; right: 0; top: 3%; text-align: center; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 1.4em; letter-spacing: 0.12em; color: #9cc8ff; }
+.tv2-tp { will-change: opacity; }
+.tv2-tp-title { position: absolute; left: 3em; top: 9%; font-family: var(--mono); font-size: 3em; color: #ffd23f; text-shadow: 0 0 0.3em rgba(255, 210, 63, 0.5), 0.06em 0.06em 0 #000; transform-origin: 0 50%; will-change: transform, opacity; }
+.tv2-tp-text { position: absolute; left: 3em; right: 16em; top: 21%; font-family: "Tahoma", sans-serif; font-size: 1.2em; line-height: 1.25; color: #fff; }
+.tv2-tp-filed { position: absolute; right: 4%; top: 10%; font-family: var(--mono); font-size: 1.8em; color: #9cf5b8; }
+.tv2-tp-filed b { font-size: 1.8em; color: #ffd23f; margin-right: 0.15em; }
+.res-rows.tv2-tp-rows { position: absolute; left: 3em; right: 3em; top: 10.8em; }
+.tv2-tp-nobody { position: absolute; left: 0; right: 0; top: 45%; text-align: center; font-family: var(--mono); font-size: 3em; color: #c8c8c8; }
+.tv2-tp-totals { position: absolute; left: 3em; top: 78%; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 1.3em; color: #fff; }
+.tv2-tp-dots { position: absolute; right: 4%; top: 86%; font-family: var(--mono); font-size: 1.4em; }
+.tv2-tp-dots span { display: inline-block; margin-left: 0.6em; padding: 0 0.3em; color: #5a6a8a; border: 0.08em solid #2a3a5a; }
+.tv2-tp-dots span.on { color: #000; background: #ffd23f; border-color: #ffd23f; }
+.tv2-tp-dots span.done { color: #9cc8ff; border-color: #9cc8ff; }
+.tv2-tally-wait { padding-top: 5em; text-align: center; font-family: var(--mono); font-size: 1.3em; }
+.tv2-wall-tq { font-family: var(--mono); font-size: 1em; }
+.tv2-wall-tq-row { display: flex; justify-content: center; align-items: baseline; margin: 0.15em 0; }
+.tv2-wall-tq-row b { margin-right: 0.6em; color: #000080; }
+.tv2-wall-tq-row span { margin: 0 0.4em; }
+.tv2-wall-tq-row .ok { color: #006000; }
+.tv2-wall-tq-row .no { color: #a00000; }
+/* the recount's real numbers (wave 18b) */
+.tv2-recount-sum { margin-top: 0.6em; padding: 0.3em 0.5em; font-family: var(--mono); font-size: 1em; color: #7fd6c8; background: #101820; border: 1px solid #2a3a44; }
