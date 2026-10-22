@@ -696,6 +696,63 @@ pushes during journal replay. The play app's `/sw.js` +
   play, terminal and reinstall dists. `deploy/Caddyfile` holds requests
   60 s through a restart.
 
+### Wave 18b — founded factions, results on the screens, the house router (on `oct31-w18/integ`, Stage B not yet shipped)
+
+- **Language** (`parser/statements.ts`, `runtime/sim/`): `reveal X [for
+  who] quietly` (`splitRevealQuietly`; `revealed` / `factionRevealed`
+  carry `quiet`, no "📂 … open now" notice, no screen moment); the
+  per-category codex mirror `<id>.codex_in.<slug>` (`codexCategorySlug`,
+  a ROLE secret, never in an agent request); `names(list)` ("A, B and
+  C", `joinNames`); header `badge: <path> as <glyph> <label>[, while
+  <cond>]` (`runtime/sim/badges.ts` `badgesOf`, on person cards, the
+  roster, booths and hosts; lint **L1219** `BadgeOnSecret`, also for a
+  `while` that reads a secret); header `lobby: hidden` (`model.lobbyHidden`
+  → `GuestView.lobby`; a guest's `/api/guest/say` into it answers 404);
+  **faction mode**, switched on by header `founding: <cond>`
+  (`crews.ts`: exclusive race factions, the founded crews plus the
+  declared joinable sides, `raceView` → `ModView.race`, `SideView`
+  `kind` / `ethos` / `founder` / `more` only on your own row,
+  `GuestView.canFound` / `leads` (`ledSide`), the builtins
+  `majority_faction()` / `faction_of` / `faction_name` /
+  `faction_founder`; lint **L1220** `FoundingInvalid`); the approver's
+  `as <name>` / `audit "<phrase>"` clauses and the wallet step
+  `flagged`; `avatar: picture:<file> | … when <cond>` (`avatarRules`).
+- **Server:** `POST /api/guest/crew/join {crew}` (faction mode only,
+  `JOINS_PER_MINUTE` 6, a founder's leave disbands); crew notices drafted
+  after every commit, in the same order live and on replay; redeem
+  answers `title` / `already` / `missed`, check-in `room` / `replies`;
+  a held transfer is flagged to its recipient too (`walletLine`'s 🚩
+  copy, the approver's `as` name); `picture:` refs served from the play
+  app's `dist/pictures/` (`LOCAL_PICTURE_FILE`, no network) and
+  `syncConditionalAvatars` on every fanout; the spatial `mayPlay` gate
+  (a parked claim, a live walk and a find of a program no longer marked
+  end as `unmarked`, 410; a `force: true` begin is exempt); the results
+  block `ScreenState.results` (`screenResultsOf` off `do fact_read <ids>`
+  / `do fact_truth <id> <accurate|lie|none>`: counts, rows `[who, said,
+  sure, out, ruled]` on the TV only, ≤ `MAX_RESULT_ROWS` 40, a reading
+  never shows the last round, and at the verdict (`RESULTS_VERDICT_MS`
+  120 s) the key answers and the liars' names on the TV only); four
+  slide-gated night values (`most_trusted`, `least_trusted`,
+  `facts_accepted`, `first_reinstall`); **every non-exact filing goes to
+  the `judge:` character** (`isExact`; a FIFO queue in `agents.ts`,
+  `AGENT_JUDGE_INFLIGHT` 1 per worker and never while it voices a line,
+  `AGENT_JUDGE_STALL_EXPIRIES` 2 → `judgeStallNotice`, `missNotice` for a
+  plain miss, `AgentQueue.judging`, `FactsFiling.queued`; what is left at
+  the round's settle takes its proposal); `buildRecent` drops every line
+  of the reading beats (`READING_BEATS`); in faction mode the race sides
+  never ride an agent request or `/api/agent/facts` (`agentHiddenRace`);
+  `POST /api/mod/audio/stop {announce?}` (on the host allowlist; `stops`
+  / `now` on the GET), `POST /api/mod/audio/announce {spot, on, base}`
+  (the tablets' list laid over the config in force, kept in
+  `audio-announce.json` until Save to project), `audio.json`
+  `device.expect` and `announce.terminals`, the heartbeat's `ann=1|0`,
+  the screen state's `spot: {announce}`.
+- Tests: `w18b-engine`, `w18b-factions`, `w18b-mini` (the fixture
+  `test/fixtures/w18b-mini/`), `screen-results`, `w18b-integ` (the whole
+  night, O4 / O2 against a fake worker), plus additions across the crews,
+  wallet, spatial, audio, facts-judge and agent-recent suites. core 2472
+  (149 files, incl. Postgres) on the integration branch.
+
 ### The spatial plane (the reinstallation games)
 
 Every event also hosts the **reinstallation games** — a corrupted program
