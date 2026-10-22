@@ -63,6 +63,7 @@ check "preset targets Quest 3" grep -q '^meta_xr_features/quest_3_support=true' 
 check "preset is OpenXR" grep -q '^xr_features/xr_mode=1' "$preset"
 check "preset is arm64-v8a only" bash -c "grep -q '^architectures/arm64-v8a=true' '$preset' && grep -q '^architectures/armeabi-v7a=false' '$preset'"
 check "preset uses the Gradle build" grep -q '^gradle_build/use_gradle_build=true' "$preset"
+check "preset asks for the microphone (the voice link)" grep -q '^permissions/record_audio=true' "$preset"
 check "preset ships config/*.json" grep -q 'include_filter=.*config/\*.json' "$preset"
 
 rm -rf "$fake"

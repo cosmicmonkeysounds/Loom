@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { deviceHealth, deviceQuery, watchBattery } from "../src/health.ts";
+import { VOICE_OFF, voiceStatus } from "../src/voice/status.ts";
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -15,6 +16,16 @@ describe("device health (SW-SCR-21)", () => {
     expect(deviceQuery({ ...h, fullscreen: true })).toEqual({ ver: "v1", fs: "1" });
     expect(deviceQuery({ ...h, fullscreen: false })).toEqual({ ver: "v1", fs: "0" });
     expect(deviceQuery({ ...h, fullscreen: null })).toEqual({ ver: "v1" });
+  });
+
+  it("says the voice link's microphone (mic, wave 19), only when there is something to say", () => {
+    const h = { audio: null, visible: null, battery: null, charging: null, version: "v1" };
+    for (const mic of ["live", "muted", "denied", "insecure", "off"] as const) expect(deviceQuery({ ...h, mic })).toEqual({ ver: "v1", mic });
+    expect(deviceQuery({ ...h, mic: null })).toEqual({ ver: "v1" });
+    voiceStatus.set({ ...VOICE_OFF, report: "denied" });
+    expect(deviceHealth().mic).toBe("denied");
+    voiceStatus.set(VOICE_OFF);
+    expect(deviceHealth().mic).toBe("off");
   });
 
   it("reads getBattery once and follows its events", async () => {

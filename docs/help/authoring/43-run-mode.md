@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued, invitations, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
+keywords: run, microphone, mic, 🎤, voice link, denied, invitations, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -137,7 +137,15 @@ Front of house: getting people in.
   it is not full screen (on a tablet, touch it once: it asks again on
   every touch; on the TV it means its Chrome was started without
   `--kiosk`, so relaunch it with the kiosk line; a tablet that can't go
-  full screen, or has it turned off in ⚙, shows nothing), its battery (red under 20 % and not charging), and its build (amber when
+  full screen, or has it turned off in ⚙, shows nothing), the **voice
+  link's microphone** (wave 19): **🎤** live (the games near it hear this
+  room), **🎤 off** (⚙ on that tablet, its view or the map turns it off),
+  and in red, where a microphone belongs, **🎤 denied** (the permission
+  was refused: allow it in the browser's site settings, or Fully Kiosk's
+  *Enable Microphone Access*, then reload), **🎤 http** (plain http has no
+  microphone: use the https address) and **🎤 tap** (open, but nobody has
+  touched it since it loaded, so it neither hears nor is heard — touch it
+  once), its battery (red under 20 % and not charging), and its build (amber when
   it isn't the one the others run, or **old build** when it reports none
   at all while the others do: either way, reload it before doors). **identify**
   puts that screen's name and spot full screen for 10 seconds, with a

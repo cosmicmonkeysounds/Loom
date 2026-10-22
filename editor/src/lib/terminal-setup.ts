@@ -80,6 +80,9 @@ export interface MapTerminal {
   view?: TerminalView
   /** The map marks it a room terminal (`TerminalSpot.speaks`), when it says. */
   speaks?: boolean
+  /** The map's voice-link flag (`TerminalSpot.voice`), when it says; unset =
+   *  on, except in the spawn room (`@loom/house` `voiceOn`). */
+  voice?: boolean
 }
 
 /** The terminal spots of a `GET /api/spatial/house` answer (or a bare
@@ -99,7 +102,7 @@ export function mapTerminals(wire: unknown): MapTerminal[] {
   const out: MapTerminal[] = []
   const seen = new Set<string>()
   for (const t of Array.isArray(house.terminals) ? house.terminals : []) {
-    const spot = t as { id?: unknown; name?: unknown; room?: unknown; view?: unknown; speaks?: unknown }
+    const spot = t as { id?: unknown; name?: unknown; room?: unknown; view?: unknown; speaks?: unknown; voice?: unknown }
     if (typeof spot?.id !== 'string' || spot.id === '' || seen.has(spot.id)) continue
     seen.add(spot.id)
     const room = typeof spot.room === 'string' ? spot.room : ''
@@ -110,6 +113,7 @@ export function mapTerminals(wire: unknown): MapTerminal[] {
       location: locations.get(room) ?? '',
       ...(isTerminalView(spot.view) ? { view: spot.view } : {}),
       ...(typeof spot.speaks === 'boolean' ? { speaks: spot.speaks } : {}),
+      ...(typeof spot.voice === 'boolean' ? { voice: spot.voice } : {}),
     })
   }
   return out

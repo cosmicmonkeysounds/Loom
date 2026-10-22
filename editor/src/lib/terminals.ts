@@ -16,9 +16,9 @@
 //!
 //! A current terminal build also reports its device on every poll
 //! (SW-SCR-21): sound unlocked, page visible, battery, full screen (wave
-//! 17), build stamp — the row's badges (`terminalBadges`). An older build
-//! reports none. Wave 18b adds 📢 when the tablet says the house
-//! announcements (`ann=1` on its poll).
+//! 17), the voice link's mic (wave 19), build stamp — the row's badges
+//! (`terminalBadges`). An older build reports none. Wave 18b adds 📢 when
+//! the tablet says the house announcements (`ann=1` on its poll).
 //!
 //! A room terminal (wave 7) also reports the LOCATION it belongs to (`room`):
 //! the row says so, and one that isn't on the server-room spot is amber
@@ -42,6 +42,8 @@ export interface TerminalPoll {
   charging?: boolean
   /** Full screen (wave 17); absent: can't be, turned off in ⚙, or an older build. */
   fullscreen?: boolean
+  /** The voice link's mic (wave 19, `MicState`); absent: an older build. */
+  mic?: MicState
   version?: string
   /** It says the house announcements right now (wave 18b, Q8: its own
    *  Always / Never, else the house list `audio.json` `announce.terminals`
@@ -49,8 +51,14 @@ export interface TerminalPoll {
   announce?: boolean
 }
 
+/** What a terminal's mic reports (wave 19): open, turned off in ⚙ on that
+ *  tablet (`muted`), the permission refused, plain http (no microphone at
+ *  all), open but the page's sound locked until a touch (`locked`: nothing is
+ *  captured or played), or off by its view / the map's voice link. */
+export type MicState = 'live' | 'muted' | 'denied' | 'insecure' | 'locked' | 'off'
+
 /** A row's device health, as its last listed poll said. */
-export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'version' | 'announce'>
+export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'mic' | 'version' | 'announce'>
 
 /** `GET /api/mod/screen/terminals`. */
 export interface ScreenTerminals {
@@ -115,7 +123,7 @@ export function mergeTerminals(
   const listed = new Map<string, TerminalDevice>()
   for (const p of server?.terminals ?? []) {
     if (p.name === '') continue
-    listed.set(p.name, { audio: p.audio, visible: p.visible, battery: p.battery, charging: p.charging, fullscreen: p.fullscreen, version: p.version, announce: p.announce })
+    listed.set(p.name, { audio: p.audio, visible: p.visible, battery: p.battery, charging: p.charging, fullscreen: p.fullscreen, mic: p.mic, version: p.version, announce: p.announce })
     const lastSeen = clientNow - Math.max(0, p.ago)
     const prev = next[p.name]
     // A server restart forgets; never move a remembered poll backwards.
@@ -192,7 +200,7 @@ export function strayRoom(row: Pick<TerminalRow, 'room' | 'spot'>): boolean {
 export const LOW_BATTERY = 20
 
 export interface TerminalBadge {
-  key: 'audio' | 'hidden' | 'fullscreen' | 'battery' | 'version' | 'announce'
+  key: 'audio' | 'hidden' | 'fullscreen' | 'mic' | 'battery' | 'version' | 'announce'
   text: string
   title: string
   /** Needs a hand: red (amber for an odd version). */
@@ -218,11 +226,43 @@ export function fullscreenTitle(row: Pick<TerminalRow, 'view'>): string {
     : 'Not full screen: touch the screen once (it asks again on every touch)'
 }
 
+/** Should this terminal have a working mic (wave 19, D9)? Placed on a spot,
+ *  and not a mirror (which neither hears nor is heard). A TV's is off by
+ *  default, but one that reports `denied` / `insecure` was turned on in ⚙. */
+export function micWanted(row: Pick<TerminalRow, 'spot' | 'view'>): boolean {
+  return row.spot !== '' && row.view !== 'mirror'
+}
+
+/** The 🎤 badge (wave 19): grey while live, held or off; red when a terminal
+ *  that should hear the games can't (the permission refused, or plain http). */
+export function micBadge(row: Pick<TerminalRow, 'spot' | 'view'>, mic: MicState): TerminalBadge {
+  switch (mic) {
+    case 'live':
+      return { key: 'mic', text: '🎤', title: 'Mic live: the games near it hear this room', warn: false }
+    case 'muted':
+      return { key: 'mic', text: '🎤 off', title: 'Mic turned off in ⚙ on this tablet (its view would have it on)', warn: false }
+    case 'locked':
+      return micWanted(row)
+        ? { key: 'mic', text: '🎤 tap', title: 'Mic open, but the page’s sound waits for a touch: nothing is heard or played until someone taps the screen (Fully Kiosk: Autoplay audio)', warn: true }
+        : { key: 'mic', text: '🎤 off', title: 'Mic off (its sound is locked, but this view has no mic)', warn: false }
+    case 'off':
+      return { key: 'mic', text: '🎤 off', title: 'Mic off: its view, ⚙ or the map’s voice link turns it off', warn: false }
+    case 'denied':
+      return micWanted(row)
+        ? { key: 'mic', text: '🎤 denied', title: 'Microphone permission refused: allow it in the browser’s site settings (Fully Kiosk: its own microphone setting), then reload', warn: true }
+        : { key: 'mic', text: '🎤 off', title: 'Mic off (the permission was refused, but this view has no mic)', warn: false }
+    case 'insecure':
+      return micWanted(row)
+        ? { key: 'mic', text: '🎤 http', title: 'No microphone over plain http: open the terminal on the https address (or localhost)', warn: true }
+        : { key: 'mic', text: '🎤 off', title: 'Mic off (plain http, but this view has no mic)', warn: false }
+  }
+}
+
 /** A row's install-day badges: 🔇 sound locked, 💤 page hidden, ⛶ not full
- *  screen (only when the build says so: one that can't be sends nothing),
- *  📢 it says the house announcements (wave 18b), the battery, and the
- *  build (flagged when it differs from the majority's, or is missing while
- *  the others report one). */
+ *  screen (only when the build says so: one that can't be sends nothing), 🎤
+ *  the voice link's mic (when reported), 📢 it says the house announcements
+ *  (wave 18b), the battery, and the build (flagged when it differs from the
+ *  majority's, or is missing while the others report one). */
 export function terminalBadges(row: TerminalRow, majority: string | null): TerminalBadge[] {
   const d = row.device
   if (d === null) return []
@@ -230,6 +270,7 @@ export function terminalBadges(row: TerminalRow, majority: string | null): Termi
   if (d.audio === false) out.push({ key: 'audio', text: '🔇', title: 'Sound is locked: touch the screen once so it can speak', warn: true })
   if (d.visible === false) out.push({ key: 'hidden', text: '💤', title: 'The page is hidden: the screen is off, or another app / a screensaver is on top', warn: true })
   if (d.fullscreen === false) out.push({ key: 'fullscreen', text: '⛶', title: fullscreenTitle(row), warn: true })
+  if (d.mic !== undefined) out.push(micBadge(row, d.mic))
   if (d.announce === true) {
     out.push({ key: 'announce', text: '📢', title: 'Says the house announcements aloud (its own ⚙ setting, or the house list for its spot)', warn: false })
   }

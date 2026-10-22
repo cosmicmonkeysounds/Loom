@@ -128,6 +128,17 @@ describe('suggestions', () => {
     expect(pickSpot(BLANK, m[1]!)).toMatchObject({ view: 'auto', room: 'The Server Room' })
     expect(pickSpot(BLANK, m[2]!)).toMatchObject({ view: 'face', room: '' })
   })
+  it('carries the map’s voice-link flag only when it is a boolean', () => {
+    const m = mapTerminals({ house: { ...HOUSE.house, terminals: [
+      { id: 'tent', name: 'Tent', room: 'tent', voice: false },
+      { id: 'hall', name: 'Hall', room: 'hall', voice: true },
+      { id: 'cpu', name: 'CPU', room: 'cpu' },
+      { id: 'odd', name: 'Odd', room: 'cpu', voice: 'no' },
+    ] } })
+    expect(m.map((t) => t.voice)).toEqual([false, true, undefined, undefined])
+    expect(m[2]).not.toHaveProperty('voice')
+    expect(m[3]).not.toHaveProperty('voice')
+  })
   it('room options: the map’s, then the story’s, unique', () => {
     expect(roomOptions(map, mapLocations(HOUSE), ['The Desktop', 'The Cloud', 'the tube'])).toEqual(['The Desktop', 'The Server Room', 'The Tube', 'The Cloud'])
   })
