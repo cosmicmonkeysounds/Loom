@@ -15,6 +15,7 @@ describe("styles.css is only the lane files, in order", () => {
       "./css/themes.css",
       "./css/w95.css",
       "./css/chrome.css",
+      "./css/factions.css",
       "./css/stream.css",
       "./css/moments.css",
       "./css/booth.css",

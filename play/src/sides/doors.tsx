@@ -22,7 +22,6 @@ import { canFoundOf } from "../guest/wire.ts";
 import { useSides } from "./context.ts";
 import { countLine, crewNameOk, crewRefusal, factionAction, factionModeOf, joinFaction, myRow, sidesOf, switchQuestion, whoLine, type SideRow } from "./model.ts";
 import { stayNote } from "./stay.ts";
-import "../css/factions.css";
 
 /** How long the chosen door says so before the card answers. */
 export const DOOR_SAY_MS = 1200;

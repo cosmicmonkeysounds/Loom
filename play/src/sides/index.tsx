@@ -44,7 +44,6 @@ import {
   type SideRow,
 } from "./model.ts";
 import { stayNote } from "./stay.ts";
-import "../css/factions.css";
 
 export type SidesWhich =
   | { sheet: "sides" }

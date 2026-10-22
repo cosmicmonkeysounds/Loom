@@ -1,7 +1,7 @@
 /* ── Factions (wave 18b, faction mode: the story's `founding:` line) ──
    The Factions sheet and the doors reuse the Sides & crews rules in
-   chrome.css; these are only what faction mode adds. Imported by the
-   lazy sides chunk (`sides/index.tsx`, `sides/doors.tsx`) and Mission. */
+   chrome.css; these are only what faction mode adds. Part of styles.css
+   (after chrome.css), so the editor's Run → Players panes get it too. */
 
 .faction-who { font-size: 13px; color: var(--dim-ink); }
 .faction-ethos { margin: 0; font: italic 13px/1.35 var(--chat-font); color: var(--ink); overflow-wrap: anywhere; }

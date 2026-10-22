@@ -13,7 +13,6 @@ import type { CountdownSummary } from "../types.ts";
 import type { Nav } from "../moments/exits.ts";
 import { countdownText, missionOf, type MissionInput, type MissionModel, type MissionTile, type WhereRow } from "./mission-model.ts";
 import type { InviteView } from "./wire.ts";
-import "../css/factions.css";
 
 /** A to-do short enough to sit three to a row. */
 export const SHORT_TODO = 14;
