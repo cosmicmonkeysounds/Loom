@@ -46,6 +46,21 @@ Clippy: Everyone outside! Line up! It's going to be so fun!
   cast: Trabolta
 
 Trabolta: The second collection is closed. I will now tally the facts I have received.
+// DRAFT w18b (R3): he reads every round-two filing. Every house line of this
+// beat stays out of his worker's `recent` (agent-recent.ts).
+Trabolta: I will read every fact you filed. Only a cup counts.
+if Kernel.said_4 == "":
+  Trabolta: Question four. Nobody filed.
+else:
+  Trabolta: Question four. {Kernel.said_4}
+if Kernel.said_5 == "":
+  Trabolta: Question five. Nobody filed.
+else:
+  Trabolta: Question five. {Kernel.said_5}
+if Kernel.said_6 == "":
+  Trabolta: Question six. Nobody filed.
+else:
+  Trabolta: Question six. {Kernel.said_6}
 if Night.collection_complete == true:
   Trabolta: I have every fact I asked for. My confidence that we will defeat the malware is sixty-one percent.
   Trabolta: That is the highest number I have said tonight. Thank you, programs. Your cooperation has been logged.

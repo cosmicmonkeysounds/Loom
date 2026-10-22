@@ -4006,6 +4006,12 @@ when round_two_tally:
     set Night.settle_q = 0
     set Night.settle_round = 2
     set Night.settle_gen += 1
+    // Wave 18b (Q6, R3): the round's public rows go to the screens, and
+    // Trabolta reads every filing (Round Two Tally).
+    do fact_read H4 H5 H6
+    cue screens_tally
+    set Night.screen = "tally"
+    set Night.terminals = "tally"
     complete quest Hunt Two for everyone
     if (Kernel.q4 != "none" or count([p for p in Persons where p.cupped == true and p.marked != true and p.corrupted != true and (p.fact_v4 == "accurate" or p.fact_v4 == "lie" or (p.fact_v4 == "pending" and p.fact_j4 != "uncertain"))]) > 0) and (Kernel.q5 != "none" or count([p for p in Persons where p.cupped == true and p.marked != true and p.corrupted != true and (p.fact_v5 == "accurate" or p.fact_v5 == "lie" or (p.fact_v5 == "pending" and p.fact_j5 != "uncertain"))]) > 0) and (Kernel.q6 != "none" or count([p for p in Persons where p.cupped == true and p.marked != true and p.corrupted != true and (p.fact_v6 == "accurate" or p.fact_v6 == "lie" or (p.fact_v6 == "pending" and p.fact_j6 != "uncertain"))]) > 0):
       set Night.collection_complete = true
