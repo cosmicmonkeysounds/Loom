@@ -218,12 +218,18 @@ export function majorityVersion(rows: readonly TerminalRow[]): string | null {
 }
 
 /** What to do about ⛶. A terminal counts Chrome's `--kiosk` / F11 and a Home
- *  Screen app as full screen, so on the TV (nobody taps it) a ⛶ means its
- *  Chrome was started without `--kiosk`; a tablet just needs a touch. */
+ *  Screen app as full screen, so on the TV and the tent laptop (both started
+ *  with `--kiosk`) a ⛶ means its Chrome was started without it; a tablet just
+ *  needs a touch. */
 export function fullscreenTitle(row: Pick<TerminalRow, 'view'>): string {
-  return isTvView(row.view)
-    ? 'Not full screen: this Chrome was started without --kiosk. Quit it and relaunch with the kiosk flags (kiosk.md → the TV); a click on the screen also asks'
-    : 'Not full screen: touch the screen once (it asks again on every touch)'
+  if (isTvView(row.view)) {
+    return 'Not full screen: this Chrome was started without --kiosk. Quit it and relaunch with the kiosk flags (kiosk.md → the TV); a click on the screen also asks'
+  }
+  // Wave 18b: the tent laptop (view=reinstall) runs Chrome --kiosk too.
+  if (row.view === 'reinstall') {
+    return 'Not full screen: this laptop’s Chrome was started without --kiosk. Quit it and relaunch with the kiosk flags (kiosk.md → the Internet laptop); a click on the screen also asks'
+  }
+  return 'Not full screen: touch the screen once (it asks again on every touch)'
 }
 
 /** Should this terminal have a working mic (wave 19, D9)? Placed on a spot,

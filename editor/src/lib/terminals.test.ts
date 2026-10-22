@@ -162,6 +162,10 @@ describe('device badges (SW-SCR-21)', () => {
     expect(fullscreenTitle({ view: 'mirror' })).toMatch(/--kiosk/)
     expect(fullscreenTitle({ view: 'face' })).toMatch(/touch the screen once/)
     expect(fullscreenTitle({ view: 'face' })).not.toMatch(/kiosk/)
+    // Wave 18b: the tent laptop is started with --kiosk like the TV.
+    expect(fullscreenTitle({ view: 'reinstall' })).toMatch(/--kiosk/)
+    expect(fullscreenTitle({ view: 'reinstall' })).toMatch(/Internet laptop/)
+    expect(fullscreenTitle({ view: 'reinstall' })).not.toMatch(/touch the screen once/)
   })
 
   it('flags a build that differs from the majority (none on a tie)', () => {
