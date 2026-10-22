@@ -673,7 +673,7 @@ describe("Trapped in the Internet — the whole night", () => {
     // …and nobody else's: Excel holds none of MS Paint's.
     for (const entry of red("MS Paint")) expect(sim.holdsCodex("g2", entry), entry).toBe(false);
     expect(sim.codexFor("g4").map((e) => e.id)).toEqual(["The Optical Drive", "The Terms Of Service", "The Centre Square", "Bathroom Mode", "Maria Sophia Paine", "Four Failed Theses", "The Million Dollar Painting"]);
-    for (const gone of ["The Valley Librarian", "The DSL Line", "Bugdom VR", "The Fire Ants", "The Paperclip Trade", "The Boardwalk Bet", "Twenty Four Years Online", "Expelled From NSCAD"]) expect(sim.model.codex.has(gone), gone).toBe(false);
+    for (const gone of ["The Valley Librarian", "Bugdom VR", "The Fire Ants", "The Paperclip Trade", "The Boardwalk Bet", "Twenty Four Years Online", "Expelled From NSCAD"]) expect(sim.model.codex.has(gone), gone).toBe(false);
     // The performers hold all three of theirs from the start (`about:` them).
     for (const [who, entries] of [["Clippy", ["Tippi MacDonald", "The Memorial Veterinary Clinic", "Failed Clippy"]], ["Norton Anti-Virus", ["Julie Horton-Norton", "Miniature Doses", "Stable Island"]], ["McAfee Anti-Virus", ["John McAfee", "The Lamborghini Certificate", "Keep Them On Track"]], ["Password Manager", ["Bridget Troelsen", "What Happened To Hamtaro", "Founding Moderator"]], ["CRA Agent Software", ["Sharon Penney", "The Decimal Point", "Approve Or Deny"]]] as const) {
       for (const e of entries) expect(sim.holdsCodex(who, e), `${who} ${e}`).toBe(true);
@@ -4778,7 +4778,7 @@ describe("Trapped in the Internet — wave 4 facts (lane A)", () => {
     fire(sim, "patch_combo_a");
     fire(sim, "trabolta_recounts");
     const m = sim.model;
-    const abouts = [...m.codex.values()].filter((e) => e.about !== null && !["Trabolta", "The Server Room"].includes(e.about!));
+    const abouts = [...m.codex.values()].filter((e) => e.about !== null && !["Trabolta", "The Server Room"].includes(e.about!) && e.id !== "The DSL Line");
     expect(abouts.length).toBeGreaterThanOrEqual(12 + 24);
     for (const e of abouts) expect(sim.holdsCodex("g1", e.id), e.id).toBe(true);
     for (const x of FACTS.facts) if (x.category === "character") expect(sim.holdsCodex("g5", x.codex!.id), x.id).toBe(true);

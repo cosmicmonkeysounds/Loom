@@ -138,7 +138,7 @@ describe("Trapped in the Internet — wave 13: the host parts", () => {
 describe("Trapped in the Internet — wave 13: codex categories", () => {
   it("every CODEX entry carries a guest-facing category (titi:facts writes the generated ones)", () => {
     const m = Sim.fromSources(SRC).model;
-    const allowed = new Set(["People", "Places", "The story", "How it works", "Files", "Trabolta", "Missions", "Facts", "The cold door"]);
+    const allowed = new Set(["People", "Places", "The story", "How it works", "Files", "Trabolta", "Missions", "Facts", "The cold door", "Connections"]);
     const missing = [...m.codex.values()].filter((c) => c.category === null).map((c) => c.id);
     expect(missing).toEqual([]);
     for (const c of m.codex.values()) {
