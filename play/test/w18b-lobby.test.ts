@@ -44,6 +44,10 @@ when unveil:
   reveal Hall
 when flicker:
   -> Nowhere
+when greet:
+  Clippy: Welcome to the house!
+
+CHARACTER Clippy
 
 == Boot
 The lights come up on the house.
@@ -69,7 +73,7 @@ function lobbyLines(): ChatMessage[] {
   take(sim.fireBeat("Boot"));
   take(sim.signal("ping", "g1"));
   take(sim.signal("loud", "g1"));
-  for (const e of ["bulletin", "siren", "ribbon", "shrug", "unveil", "flicker"]) take(sim.signal(e));
+  for (const e of ["bulletin", "siren", "ribbon", "shrug", "unveil", "flicker", "greet"]) take(sim.signal(e));
   return out;
 }
 
@@ -90,7 +94,7 @@ describe("the lobby hidden from guests", () => {
     // Every kind is in the sample: narration with no setting, both
     // readouts, a plain and a `!` broadcast, a `~` notice, an unaddressed
     // reply, a house "open now" notice.
-    for (const want of [/lights come up/u, /Your own readout/u, /Your loud readout/u, /bar is open/u, /Come to the Hall/u, /won a ribbon/u, /nothing to say/u, /open now/u, /lights flicker/u]) {
+    for (const want of [/lights come up/u, /Your own readout/u, /Your loud readout/u, /bar is open/u, /Come to the Hall/u, /won a ribbon/u, /nothing to say/u, /open now/u, /lights flicker/u, /Welcome to the house/u]) {
       expect(texts.some((t) => want.test(t)), String(want)).toBe(true);
     }
     const groups = notificationGroups(lines, viewer, null, new Set());
@@ -103,6 +107,18 @@ describe("the lobby hidden from guests", () => {
     // in the Chat log only, as before.
     const kept = notificationGroups(lines, { role: "guest", me: "g1" }, null, new Set());
     expect(kept.length).toBeLessThan(groups.length);
+  });
+
+  it("typed chat in the lobby (a booth's, another guest's) is never a Notifications row", () => {
+    const sim = Sim.fromSources(SOURCE);
+    sim.createPerson("g1", "Ada");
+    sim.createPerson("g2", "Bob");
+    let seq = 1;
+    const lines = composeGuestMessages(sim, sim.say("g2", "lobby", "anyone seen the bar?"))
+      .map((d) => ({ ...d, seq: seq++, hidden: false }) as ChatMessage)
+      .filter((m) => m.channel === "lobby");
+    expect(lines.length).toBe(1);
+    expect(notificationGroups(lines, viewer, null, new Set())).toEqual([]);
   });
 
   it("the lobby's lines never ring the bell; its moments still do", () => {

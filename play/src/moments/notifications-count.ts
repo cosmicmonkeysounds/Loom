@@ -48,10 +48,14 @@ export function noticeMoment(m: ChatMessage, phase: string | null): Moment {
 /** A lobby line a guest receives that is no moment and no `~` notice (a
  *  plain broadcast, a house system notice, a story's unaddressed reply or
  *  narration): with the lobby hidden (wave 18b, D18) this is where it lives.
- *  Not a pin's take-down marker, not an ambient line. */
+ *  Not a pin's take-down marker, not an ambient line, and not typed chat (a
+ *  `line` with no `beat`: a booth's or another guest's words in the lobby
+ *  are chatter, not the house — a story's own line always carries `beat`,
+ *  null from a rule). */
 export function lobbyOnly(m: ChatMessage, viewer: Viewer): boolean {
   if (viewer.role !== "guest" || viewer.lobbyHidden !== true || m.channel !== "lobby") return false;
   if (m.ambient === true || m.unpin !== undefined || m.text.trim() === "") return false;
+  if (m.kind === "line" && m.beat === undefined) return false;
   return m.audience === "all" || m.audience.includes(viewer.me);
 }
 
