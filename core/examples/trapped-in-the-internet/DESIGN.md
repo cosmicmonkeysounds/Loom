@@ -6,6 +6,24 @@
 > cites (`language.md`, `screens.md`, …) were session-only audits; their gaps live on in
 > [`CHECKLIST.md`](./CHECKLIST.md). Where the story files and this spec disagree, the story
 > files and their tests win.
+>
+> **Wave 18b (2026-10-22) supersedes, in the story files:** Telephone, the Are You Sure
+> piñata, *Back To The Heart* (and `Night.door_quiet_until`) and clearance's "the house is
+> open" line are gone (clearance reveals the rooms `quietly`); Truth or Dare (🍾) comes after
+> all three 📋 results; Trabolta reads every result (Question Results, Round Two Tally, The
+> Verdict) and the screens show them (`do fact_read` / `do fact_truth`, the key answers and
+> the liars' names on the TV at ⚖ only); every non-exact filing goes to his AI judge; any
+> program may found a faction from the Truther Download, one race, half + 1 of the programs
+> still here wins (the leader-task gate and 🧾 `waive_leader_tasks` are deleted); he is
+> *Jean Trabolta, Sole Owner and Founder of Maps and Ducks, the world's first AI small
+> business owner*, and his picture breaks when most cleared programs sit below 0 on his
+> chart; *Facts Are Currency* counts found facts by category; a program may type what it
+> left behind (`left_behind_text`, secret); `The Night In Review` plays before every ceremony
+> with a private `Your File` per program; the 16 Connections ties and The DSL Line; the
+> lobby is hidden from guests (`lobby: hidden`), 🚻 is a badge, CRA audits are flagged to
+> both phones as MyCRA; sounds and announcements go through the house router (no QLab, no
+> `alexa` job). The sections below keep the original plan, with wave 18b notes where it
+> changed. Decisions and new copy: [`SIGNOFF-w18b.md`](./SIGNOFF-w18b.md).
 
 
 Status: **final** architect's spec, 2026-10-14 (revision 2: every finding of the three
@@ -83,8 +101,8 @@ for this spec.
 9. **`LOCATION` lines have no trailing comment** (`house/test/show.test.ts` reads
    `^LOCATION (.+)$`). All LOCATIONs are declared in `main.loom`; `The Desktop` first.
 10. **Cues:** `cue <token>` (one token) for light and screen looks, `sound <token>` for audio,
-    `do announce "…"` for the house announcements (stagehand's `alexa` module on the house
-    Mac is the speaker; no assistant is named in the fiction, U4), `do door server_room,
+    `do announce "…"` for the house announcements (stagehand's house router, its `audio`
+    module on the house Mac, is the speaker since wave 18b; no assistant is named in the fiction, U4), `do door server_room,
     state: locked` for the
     door indicator (target `server_room`; sent at Power On only since wave 7 — the real door
     has a standalone keypad lock nothing drives; the comma form `do door, room: …` reaches
@@ -190,13 +208,15 @@ No test reads the codex paths.
 | `main.loom` | Header; all GROUPs; all LOCATIONs (Desktop first); `ROLE Program` (vars + every ROLE hook/watcher in §2.7); every INTERACTION except Trabolta's agent powers; **every story rule** (§2.8); then `== Power On` as the last item. | A (spine) |
 | `atmosphere.loom` | 3 GENERATORs (ambient barks): `ScreensaverHum` (4m), `DialUp` (7m, "From the RAM"), `SystemTray` (9m, incl. "Your protection has expired."). Keep the current text, minus anything that names Trabolta (he is offline at minute 0; generators run from minute 0). | A |
 | `beats/login.loom` | Arrival: `Login`, `Login Incorrect`, `Upload`, `Orientation`, `Re-upload`, `Featured Briefing`. | B |
-| `beats/desktop.loom` | Act I: `Call To The Desktop`, `Computer Bingo`, `Bingo Time`, `Corrupted Code`, `Trabolta Introduction`, `The Screensaver`; the optional set pieces `Telephone` and `Are You Sure` (§3 B10). | B |
+| `beats/desktop.loom` | Act I: `Call To The Desktop`, `Computer Bingo`, `Bingo Time`, `Corrupted Code`, `Trabolta Introduction`, `The Screensaver`, `The Router` (wave 18b, Q3: the optional set pieces `Telephone` and `Are You Sure`, §3 B10, are deleted). | B |
 | `beats/internet.loom` | `Reinstallation`, `The Tablet Video`, `Zipped`. | B |
 | `beats/hunt.loom` | `Truth Scavenger Hunt One`, `Hunt Time Up`, `First Moment Of Truth`, `Truth Or Dare`. | B |
 | `beats/malware.loom` | `Ad Hijack`, `Second Hunt`, `Truther Download Arrives`, `Excel Glitch`, `OpenOffice Glitch`, `DraftKings Glitch`, `Bugdom Glitch`, `Jeeves Glitch`, `Runescape Glitch`, `MS Paint Glitch`, `VLC Glitch`, `Pong Glitch`, `Program Glitch`. | C |
 | `beats/pong.loom` | Act II: `Five Minute Warning`, `Summons Closed`, `Truth Pong`, `Round Two Tally`, `Trust Chart`, `Praise The Top`, `Shame The Bottom`, `Print The Certificate`, `The Printer Jams`, `Full Of Beans`, `Zip Everyone Out`. | C |
 | `beats/overshare.loom` | `Overshare One`, `Overshare Two`, `Overshare Three`, `Overshare Four`, `The Y2K Clock`, `Excel Final Round`, `OpenOffice Final Round`, `Program Final Round`, `Clock Strikes`. | C |
 | `beats/server-room.loom` | Act III: `Majority Reached`, `The Whole Truth`, `Server Room Alarm`, `Patch Rejected`, `Trabolta Disabled`, `Trabolta Recounts`, `Computer Destroyed`, `Purgatory`. | D |
+| `beats/review.loom` | Wave 18b (R8, DRAFT): `The Night In Review` (public, before every ceremony), its shared beats `Who You Were`, `The Report On Everyone`, `Everyone Else`, `The Rest Of The Report`, `Goals Met Tonight`, `The Goals Report`, `What You Did`, `What We Did` (also reached by Trabolta Recounts and Purgatory), and the private `Your File`. | ending lane |
+| `codex/85-ties.loom` | Wave 18b (R9, DRAFT): the 16 Connections ties and `Program Briefing`, which deals them (and The DSL Line to Jeeves) at clearance. | ending lane |
 | `beats/finale.loom` | `Final Reveal`, `Bobbing For Truth`, `The Bag Of Truth`, `Final Assessment`, `Truth Txt`, `The Verdict`, `Song Ending`, `Grok Prom`, `Pickup Line`, `Sad Confession`, `Relationship Advice`, `Advice Helped`, `Advice Thwarted`, `The Hand Jive`. | D |
 | `cast/kit.loom` | TRAITs `Prop(beat)`, `Person`, `Host is Person`, `Enforcer is Person` (owned `beat Clearance(program)`; scan routing; `send to the internet`, `mark as reinstalled`, `accuse`). | B |
 | `cast/hosts.loom` | `Clippy`, `Task Manager`, `Adobe Acrobat`, `Recycling Bin` (all `is Host`) with booth readouts. | B |
@@ -491,7 +511,7 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.alarm_on / Night.alarm_clear_at | bool false / number 0 | the patch-bay alarm latch: a second trip within 120 s does nothing (§3 E3; the door never alarms since wave 7) | |
 | Night.lights_before_alarm | string | the look the alarm replaced, put back when the latch clears (§3 E2; wave 8) | |
 | Night.wrong_combos | number 0 | rejected patch combinations (the second trips the alarm) | |
-| Night.heart_opened / Night.door_quiet_until | bool false / number 0 | wave 7: The Heart has played (the first door opening from step 14; wave 11: once `Trabolta.awake`); openings before `door_quiet_until` (120 s after the last) do nothing (§3 E2). Not secret | |
+| Night.heart_opened / Night.door_quiet_until | bool false / number 0 | wave 7: The Heart has played (the first door opening from step 14; wave 11: once `Trabolta.awake`); openings before `door_quiet_until` (120 s after the last) do nothing (§3 E2). **Wave 18b (Q3, D16):** `door_quiet_until` and *Back To The Heart* are gone; every opening after The Heart does nothing until 🔄 `reset_server_room` re-arms it. Not secret | |
 | Night.gloat_at | number 0 | wave 7: Trabolta gloats over a lost / drawn King game only after this (then +300 s) | |
 | Night.stand_down_by / Night.talked_down | string `"none"` / bool false | wave 7: the program he offered to stand down for; the night ended by 🕊 (§3 E2c) | |
 | Night.ended / Night.ending | bool false / string `"none"` | final ending reached; `disabled`, `destroyed`, `song`, `song_pickup`, `rave`, `help`, `banished`, `hand_jive` | |
@@ -538,7 +558,9 @@ in ROLE hooks and story rules.
 | `excel_planted: bool = false` | | **Microsoft Excel** planted it (drives the overshare scenario and the stay majority) |
 | `virus_planter: text? = none` | | the planter's name (the recount) |
 | `openoffice_dossier: bool = false` | | OpenOffice gathered 20 facts after her prompt |
-| `waive_leader_tasks: bool = false` | | director override (admin `waive_leader_tasks`): a faction may win its majority without its leader's task (leader absent / stuck) |
+| `waive_leader_tasks: bool = false` | | director override (admin `waive_leader_tasks`): a faction may win its majority without its leader's task (leader absent / stuck). **Deleted in wave 18b (D13 a):** the leader-task gate is gone, so is the cue |
+| `majority_id` / `majority_name` / `majority_founder: text?` | | wave 18b (R4): the faction that won the race (a side's name or a crew id), its display name (guest-typed for a founded one) and its founder, latched by the race rule + `settle_majority`; `Kernel.majority` gains `"founded"` |
+| `res_accepted`, `res_guesses`, `t1`…`t8`, `v_true` / `v_lies` / `v_none`, `verdict_wait` / `verdict_end` | | wave 18b (Q6): Question Results' counts, The Verdict's per-question truth (`accurate` / `lie` / `none`, published by `do fact_truth`) and its counts, and the ≈ 34 s hold before the ending |
 | `majority_reached: bool = false` | | a faction reached half + 1 |
 | `majority: text? = none` | | `"stay"` or `"leave"` |
 | `door_code: text? = none` | seeded by the generated `== Facts Seed` from `facts.json` `door.code` | wave 7: the server-room keypad's code (the keypad itself is set by hand); never in `Night.*`. `server_unlocked` and `disarmed_until` were retired with the Cold Lock |
@@ -769,7 +791,8 @@ watcher/rule, **S** = server hard-code.
 | majority_reached | W | — | rule |
 | server_door_opened | H (the door contact: two wire loops that touch when the door opens) or D (🚪) | — | rule (§3 E2: from step 14 The Heart once, then quiet 120 s after each opening; never an alarm) |
 | alarm_tripped | W (Server Room Alarm beat, once per latch; only the patch bay reaches it since wave 7) | — | Enforcer trait hook (readout) |
-| waive_leader_tasks | D | — | rule (`set Kernel.waive_leader_tasks = true`) |
+| waive_leader_tasks | D | — | rule (`set Kernel.waive_leader_tasks = true`). **Deleted in wave 18b** |
+| force_their_majority | E (wave 18b) | program | rule: the named program's faction wins, once (final round only) |
 | patch_changed | H (future: stagehand `args`) | args `combo` | rule |
 | patch_combo_a / patch_combo_b / patch_rejected | H (today: stagehand YAML judges) or D, or W from patch_changed | — | rules |
 | trabolta_disabled | W | — | rule |
@@ -777,6 +800,7 @@ watcher/rule, **S** = server hard-code.
 | computer_destroyed | W | — | rule |
 | clippy_reads_summary | D | — | rule |
 | lift_the_takeover | W (the dance watcher, `lights_dance`, the recount, the summary, G1, G11) | — | rule (§3 E4) |
+| start_the_ceremony | D (G1) | — | wave 18b (R8): `set Night.review_gen += 1` → `-> The Night In Review` (public, the ceremony host; it ends in `-> The Ceremony`, whose head now cues `screens_ceremony`); each cleared program still here gets `Your File` (The Uploader, private) off the ROLE watcher on `review_gen` |
 | resurrection | D (G11, after the ceremony) | — | rule (guard `Night.ended` + `Night.ceremony`, once; before the last award — G10, or G9 with no MS Paint: `Night.ceremony_done` — it asks in `# hosts` and a second press within 30 s goes through; wave 6) |
 | signed_the_painting | P (hosts, on the signer's card) | program | ROLE hook |
 | award_the_painting | D (G10, winner = MS Paint) | program | ROLE hook → `award_won` |
@@ -805,7 +829,7 @@ watcher/rule, **S** = server hard-code.
 | sweep_requested | W (Trabolta's `summon_the_antivirus`) | — (`Night.sweep_target`) | Enforcer trait hook (readout) |
 | restore_the_lights | D | — | rule (`cue lights_restore`, clears `Night.lights_back_at` and `Night.lit_scene`; since wave 9, D2, it also cancels a pending `Night.dance_at` and says so in `# hosts` — it does not lift the takeover, 🪩 does) |
 | lights_dance | D (fallback; normally the `Night.dance_at` watcher) | — | rule |
-| telephone / are_you_sure | D (optional set pieces) | — | rules (§3 B10) |
+| telephone / are_you_sure | D (optional set pieces) | — | rules (§3 B10). **Deleted in wave 18b (Q3)** |
 
 ### 2.9 INTERACTIONs
 
@@ -824,8 +848,8 @@ reads as a cue sheet):**
 | close_the_filing | `⏱ Close round-one filings now (auto at 2 min)` |
 | read_the_results | `📋 Results: the next question (press for Q1, Q2, Q3)` |
 | spin_the_bottle | `🍾 Spin the bottle (Truth or Dare, five per question)` (`sequence: false`) |
-| telephone | `(Optional) ☎️ Telephone: a mangled message sends someone to the Internet` |
-| are_you_sure | `(Optional) 🪅 The "Are you sure?" piñata` |
+| telephone | ~~`(Optional) ☎️ Telephone: a mangled message sends someone to the Internet`~~ (deleted in wave 18b) |
+| are_you_sure | ~~`(Optional) 🪅 The "Are you sure?" piñata`~~ (deleted in wave 18b) |
 | second_hunt_preview | `📺 Preview hunt 2 → the ad hijack` |
 | start_the_second_hunt | `📓 Hunt 2 → quest logs; disperse for 1 hour` |
 | truther_download | `📥 Truther Download (auto at +2 min)` |
@@ -841,7 +865,8 @@ reads as a cue sheet):**
 | trabolta_overshares | `🤖 Trabolta shares the next facts (scenario 1–4)` |
 | y2k_clock | `🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)` |
 | y2k_midnight | `🎆 Midnight (auto at 60 min)` |
-| waive_leader_tasks | `🧾 Let a faction win without its leader's task (leader absent)` |
+| waive_leader_tasks | ~~`🧾 Let a faction win without its leader's task (leader absent)`~~ (deleted in wave 18b) |
+| force_their_majority | `🗳 Force the majority: this program's faction` (wave 18b) |
 | server_door_opened | `🚪 Server room door opened (hardware fallback)` (`sequence: false`; the door contact fires it; The Heart once Trabolta is awake, wave 11; was from step 14) |
 | reset_server_room | `🔄 Server room: reset the patch-bay alarm` (wave 7; replaced `rearm_server_room`; `server_unlock` is gone) |
 | chess_won | `♟ They beat the King: the door code (fallback)` (`sequence: false`, asks who; wave 11: the Server Door terminal posts it itself, any time before 📄) |
@@ -997,7 +1022,8 @@ model); the server never refuses an unarmed press.
 | Hunt Two | The Truth Scavenger Hunt · Round 2 | Trabolta | the 3 questions (H4–H6) | start_the_second_hunt (+ catch-up); completed at round_two_tally |
 | The Final Facts | The Final Fact-Finding Round | Trabolta | the 2 questions (F1, F2) | **trabolta_overshares** (he shares the next facts there; + catch-up `Night.step >= 13`); completed at read_truth_txt |
 | Excel Mission | Computers Are Very Confusing | Truther Download | by `excel_choice` — sabotage: "Get the fixers sent for reinstallation. Get yourself sent to the Internet and bring back a virus. Insert it."; paranoid: "Find whoever knows what's happening. Get into the Internet and bring back another antivirus. Install it." | Excel Glitch; step on virus carried (text by choice); complete on plant |
-| OpenOffice Dossier | Facts Are Currency | Truther Download | "Get 20 facts. This will be the foundation of your dossier." | OpenOffice Glitch; complete at +20 codex |
+| OpenOffice Dossier | Facts Are Currency | Truther Download | "Get 20 facts. This will be the foundation of your dossier." | OpenOffice Glitch; complete at +20 codex (wave 18b, R22 / D21: +20 in the categories Facts, Files, People, Trabolta and Places over her holdings at the end of the Featured Briefing, `codex_in.*`) |
+| A Faction Of Your Own | Your Own Faction | Truther Download | wave 18b (R4): found a faction and get more than half of the programs still here through its door | `when founded for program`; ✅ its majority, ✖ another faction's |
 | Recruit To Stay | Stay Forever | Truther Download | recruit half + 1 to Unlimited Power | Excel Final Round; complete on majority "stay"; fail on "leave" |
 | Recruit To Leave | Get Out | Truther Download | recruit half + 1 to The Way Out | OpenOffice Final Round; complete/fail likewise |
 | Truthcoin Hustle | Sweet Sweet Truthcoin | Truther Download | "You need more than half of all the Truthcoin in circulation to feel satisfied." | DraftKings Glitch; a step at score ≥ 1000; complete on a majority of the coin (≥ 5 other cleared programs) |
@@ -1072,8 +1098,8 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 | The Pet Cemetery | The Halifax Explosion Memorial Pet Cemetery | E | | `PET-CEMETERY` | | QR on a memorial pamphlet (The RAM) | ✚ | The cemetery and the protests. |
 | The Halifax Computer | The Halifax Computer | E | | | | The Router prop; Truther Download | ✚ | This house is the computer that holds the last facts Trabolta needs; he can install programs into it remotely and lift a consciousness into a program, but cannot get in himself. |
 | The Optical Drive | The Optical Drive | E | | | | Upload (every program) | | Where you left your body (keep current text). |
-| The Terms Of Service | The Terms Of Service | E | | | | Upload (every program) | | "By uploading you agree that the computer's AI helper may make all of your decisions." (The prompt everyone needs for the Bingo centre square.) |
-| The Centre Square | The Centre Square | M | | | | ROLE watcher for whoever `== Kernel.anti_ai` | | "The Uploader said you agreed to let the computer's AI helper make all of your decisions. You didn't mean it. You would never agree to a life where AI makes all of your decisions. If anyone asks, say so. Tell the truth all night." |
+| The Terms Of Service | The Terms Of Service | E | | | | Upload (every program) | | "By uploading, you agree that Jean Trabolta, Sole Owner and Founder of Maps and Ducks, may make all of your decisions." (wave 18b, R18; was "the computer's AI helper"; the prompt everyone needs for the Bingo centre square.) |
+| The Centre Square | The Centre Square | M | | | | ROLE watcher for whoever `== Kernel.anti_ai` | | "The Uploader said you agreed to let Jean Trabolta, Sole Owner and Founder of Maps and Ducks, make all of your decisions (wave 18b; was "the computer's AI helper"). You didn't mean it. You would never agree to a life where AI makes all of your decisions. If anyone asks, say so. Tell the truth all night." |
 | The Reinstallation Protocol | The Reinstallation Protocol | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software | Reinstallation beat | ✚ | Corruption, the headset, the golden duck, Bathroom Mode, the marked exit. |
 | Bathroom Mode | Bathroom Mode | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Recycling Bin | Reinstallation beat; Orientation (Clippy's line + the tour's Bathroom Mode step, wave 4) | ✚ | Turn it on so everyone knows you are not hacking the Internet; it also excuses you from a summons. |
 | The Golden Duck | The Golden Duck | E | | | | `the simulation completed` (captured programs) **and** `the golden duck` (anyone who finds him) — keep the name: spatial.test asserts a *free* program learns it from `the golden duck` | | "Gerald, the golden duck off the Maps and Ducks billboard. Follow the chevrons; walk right up to him; he lays a golden egg and flies away." (The reinstall games call him Gerald.) |
@@ -1170,7 +1196,7 @@ one as a share — he must never know what he is asking for.
 
 | Name | title | tier | about | code | Granted by | ✚ | Gist |
 |---|---|---|---|---|---|---|---|
-| Jean Trabolta | Jean Trabolta | T1 | Trabolta | | Trabolta may share | ✚ | The name on the invitation; "owner" of Maps And Ducks by domain; the computer's AI helper. |
+| Jean Trabolta | Jean Trabolta | T1 | Trabolta | | Trabolta may share | ✚ | The name on the invitation; "owner" of Maps And Ducks by domain. Wave 18b (R18): he is **Jean Trabolta, Sole Owner and Founder of Maps and Ducks, the world's first AI small business owner**, never "the computer's AI helper" in his own mouth or a description of him (D20 keeps in-world documents' wording). |
 | The Unified Field Theory | The Unified Field Theory | T1 | Trabolta | | | ✚ | 99.9 % solved; the last facts are in this computer; omnipotence. |
 | Target Selection | Target Selection | T1 | Trabolta | | | ✚ | He chose each program for a skill plus either motivation to live in a computer forever or naivety. |
 | The Trust Chart | The Trust Chart | T1 | Trabolta | | Trust Chart (everyone) | ✚ | 10 per truth, −5 per Internet visit, ±10 his personal assessment. |
@@ -1229,8 +1255,8 @@ colon (§0 rule 5).
 | The Boardwalk Bet | The Boardwalk Bet | DraftKings | | Bet the chain on downtown Halifax (the Boardwalk) in online poker against Trabolta, and lost. Why Trabolta chose you: he needed "someone powerful with numbers on its side"; if you live here, you can gamble forever. |
 | Bugdom VR | Bugdom VR | Bugdom | | Ten years designing Bugdom VR assets after shifts selling crickets. |
 | The Fire Ants | The Fire Ants | Bugdom | | Fire ants from the lunchbox ate the only copy. Why Trabolta chose you: unlimited Bugdom right away, he said; really, he wants "the use of their relentless pursuit of tedious tasks." |
-| The Valley Librarian | The Valley Librarian | Broken Ask Jeeves | | Youth librarian in the Annapolis Valley system, made redundant by cuts; thought this was a job interview as a Metaverse librarian. |
-| The DSL Line | The DSL Line | Broken Ask Jeeves | | The upload ran over the Valley's old DSL; files were missed; erratic Ask Jeeves. Why Trabolta chose you: to "sort all the unorganized information in the computer". He did not foresee the upload going badly. |
+| The Valley Librarian | The Valley Librarian | Broken Ask Jeeves | | (not built; still gone after wave 18b) Youth librarian in the Annapolis Valley system, made redundant by cuts; thought this was a job interview as a Metaverse librarian. |
+| The DSL Line | The DSL Line | Broken Ask Jeeves | | **Exists again since wave 18b (R7, DRAFT)**, as Jeeves' own `secret: true` entry (category People, no code), dealt to him alone by Program Briefing and left out of the recount's bulk unlock (not an identity): the upload log (Eastlink 10 MB/Minute over the Valley's old DSL, the resets, the power flicker) and the files that did not arrive, his symptom menu. The original plan's text: the upload ran over the Valley's old DSL; files were missed; erratic Ask Jeeves. Why Trabolta chose you: to "sort all the unorganized information in the computer". He did not foresee the upload going badly. |
 | Twenty Four Years Online | Twenty Four Years Online | Runescape | | Laurel, 34, richest player for 24 years; Wharton economics PhD; the gold standard. Why Trabolta chose you: to "understand the market incentives of everyone's behaviour" and serve his need to exchange information and get all the facts. |
 | Maria Sophia Paine | Maria Sophia Paine | MS Paint | | (was *Expelled From NSCAD*; never expelled — four schools, three refused theses, her invitation) Refused every medium but MS Paint: "any program that relies on algorithms is a betrayal of the artist." Thought she was teaching a paid Metaverse MS Paint class. Why Trabolta chose you: "having an artist on site will help improve the overall vibes and morale". You realised at once how limiting it is, and you want out. |
 | Victor Louis Christianson | Victor Louis Christianson | VLC | | VLC The Playa, millions of followers, a Turkish face-tightening, a sneeze, and his whole face fell off on livestream. Why Trabolta chose you: you would want to stay in a computer and keep your beauty forever, and use your charisma and influencer powers to convince everyone to help Trabolta. |
@@ -1383,7 +1409,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | screens_rave | Sad Confession | rave visuals |
 | screens_flicker | Trabolta's `flicker_the_screens` power; **involuntarily** at Full Of Beans and every Overshare (he is degrading) | every screen stutters once (overlay; does not change the mirrors); stagehand also blinks the house lights (§2.15) so it is felt |
 
-**Sound (`sound <name>` → stagehand `directive: sfx`; QLab or an mpv player)**
+**Sound (`sound <name>` → stagehand `directive: sfx`; since wave 18b the house router, stagehand's `audio` module, plays it from `stagehand/media/sounds/` through the 828x; QLab is not part of the rig)**
 
 | Name | Fired by |
 |---|---|
@@ -1406,7 +1432,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | rave | Sad Confession (after the motorcycle) |
 | hand_jive | The Hand Jive ("Born to Hand Jive") |
 
-**Other directives:** `do announce "…"` (the house announcements — stagehand's `alexa` module; runbook `scripts/house-mac/audio.md`, `docs/loom-show-control.md`) ·
+**Other directives:** `do announce "…"` (the house announcements — since wave 18b the house router, stagehand's `audio` module (the `alexa` job is retired); runbook `scripts/house-mac/audio.md`, `docs/loom-show-control.md`) ·
 `do door server_room, state: locked` at Power On only (the ring indicator; the real door has a standalone keypad lock nothing drives, wave 7; `unlocked` is never sent).
 
 ### 2.14 Registry addenda (used by §3)
@@ -1477,8 +1503,8 @@ The story only emits directives; this file makes them physical. It is new, separ
   replayed off mid-cut and on under `Night.lit_scene` (the look its 90 s restore re-lit it
   in) or a later room-scoped look that never re-lit the room (pong, glitch, server_open, or a
   living-room look over the Start Bar or the RAM), never under a whole-house look.
-- **Sound:** every `sound <name>` (directive `sfx`) → QLab OSC / mpv cue of the same name.
-- **Announce:** `announce` → `show/announce` (the house announcements: the `alexa` module's chime + the Mac's own `say` voice).
+- **Sound:** every `sound <name>` (directive `sfx`) → the house router (wave 18b: the `audio` module plays the file of the same name to the line's rooms; no QLab, no OSC sfx rules).
+- **Announce:** `announce` → `show/announce` (the house announcements: the router's chime + the Mac's own `say` voice; the `alexa` job is retired).
 - **Door:** `door` target `server_room` → the indicator topic `show/serverroom/lock` (retained;
   the ring only — wave 7: the keypad lock is standalone, and the test forbids any lock / strike
   / latch / relay / bolt / solenoid action).
@@ -1561,7 +1587,10 @@ you are human.
    after. It is not your concern.`; `I have nothing to leave.` → `left_behind = "nothing"`,
    `doubt += 5`, `The Uploader: Everyone has something. Noted.`
 4. `The Uploader: By uploading you agree that the computer's AI helper may make all of your
-   decisions. You agree.` · `unlock The Optical Drive for program` · `unlock The Terms Of Service
+   decisions. You agree.` (wave 18b: *"…that Jean Trabolta, Sole Owner and Founder of Maps and
+   Ducks, may make all of your decisions."*; after *Deposited* an optional `show answer` card
+   asks what was left behind, kept in the secret `left_behind_text`, quoted only in that
+   program's own *Your File*) · `unlock The Optical Drive for program` · `unlock The Terms Of Service
    for program` · `set program.score = 100` · `The Uploader: 100 Truthcoin credited.` ·
    `set program.uploaded = true` · `The Uploader: Upload complete. Antivirus, confirm.` ·
    `show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to
@@ -1706,7 +1735,9 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
   descriptions on your card" (CI 1); the card is a big asterisk (squares: §8.1) — diagonals, centre vertical, centre
   horizontal — checkboxes only, no room to write; **"Do NOT write down the names of the
   programs you check off. Use your special computer memory."** (the SB/OV rule, overriding
-  CI 1's "write down the name"); the centre square: "Would you never agree to a life where
+  CI 1's "write down the name"; **wave 18b, R14: removed** — the user dropped the rule, and
+  Clippy's Bingo opening now says Jean Trabolta joins later by video conference, the
+  contract's fixed text); the centre square: "Would you never agree to a life where
   AI makes all of your decisions?"; 20 minutes; "I'll call you back to the Desktop when time
   is up, and then we'll celebrate the winners!" At least 5 Clippy lines (test checks > 4
   public Clippy lines).
@@ -1838,7 +1869,11 @@ tent is captured by the tablet's scan.
   phase `introduced`, step 4 · `cue terminals_trabolta_online` / `set Night.terminals =
   "trabolta"` · `-> Trabolta Introduction`.
 - Trabolta hook: `set self.awake = true` · `reveal self`.
-- `== Trabolta Introduction` (public; `cast: Clippy, Trabolta`): Clippy: `And now, the
+- `== Trabolta Introduction` (public; `cast: Clippy, Trabolta`; **wave 18b, R18: both lines
+  are now the contract's fixed text** — *"And now, joining us by video conference: the Sole
+  Owner and Founder of Maps and Ducks! Everyone, say hello to JEAN TRABOLTA!"* / *"HELLO,
+  PROGRAMS. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI
+  small business owner. Personal queries go to Clippy."*; the original plan:): Clippy: `And now, the
   computer's AI helper! He keeps the computer running, and I'm here to help communicate his
   instructions. Everyone, say hello to TRABOLTA!` · `Trabolta: HELLO, PROGRAMS. I am
   Trabolta. I keep the computer running. Your requests have been logged. Personal queries are
@@ -1850,7 +1885,9 @@ tent is captured by the tablet's scan.
   for all of us.` (the hand-off to the hunt).
 - ROLE watcher (`Trabolta.awake == true and self.cleared`), private, seeds every
   `dm:Trabolta` thread: `Trabolta: Hello, {self.name}. I am Trabolta, the computer's AI
-  helper. Your requests have been logged. Personal queries are routed to Clippy.`
+  helper. Your requests have been logged. Personal queries are routed to Clippy.` (wave 18b,
+  R18: *"I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks, and proud to be the
+  world's first AI small business owner."*; the introduction's lines changed the same way)
 - Clippy hook: `reply 🤖 Trabolta is online. Announce the Truth Scavenger Hunt; he explains
   the rules.`
 
@@ -1986,8 +2023,14 @@ tent is captured by the tablet's scan.
   confidence is 100, U11) · `settle_q = results_q`, `settle_gen += 1` (the ROLE settle watcher
   fires `settle_qN`: +50 / the Trust Chart for an accepted filing, `mark_for_reinstallation …
   reason: "filed a guess for round 1 Q<n>"` for a guess) · `cue screens_hunt_results` ·
-  `-> Question Results` (Clippy: nobody filed / CONSENSUS + the answer / the list).
-- `spin_the_bottle` (`sequence: false`; up to five per question, U12/U13): `bottle_open = true`,
+  `-> Question Results` (Clippy: nobody filed / CONSENSUS + the answer / the list). **Wave 18b
+  (Q6):** Trabolta reads it (`cast: Trabolta, Clippy`; `Kernel.res_said` / `res_answer` /
+  `res_accepted` / `res_guesses`), `do fact_read H<n>` publishes the question's rows to the
+  TV (his ruling stamps included) and the counts to the walls, and every house line of the
+  beat stays out of his `recent`.
+- `spin_the_bottle` (**wave 18b, R21 / D15: after all three results, a spine row, five on
+  NEXT and no hard cap; `bottle_q` ends at 3, so "not picked for this question" is "not
+  picked tonight"**; the original plan: `sequence: false`; up to five per question, U12/U13): `bottle_open = true`,
   `bottle_round += 1` · `cue screens_truth_or_dare` · `do pick bottle_landed from [cleared,
   not corrupted, not marked, not afk, at The Desktop, not yet picked for this question] else
   bottle_empty` (the server picks, journaled). ROLE `when bottle_landed for program:` →
@@ -2004,7 +2047,7 @@ tent is captured by the tablet's scan.
   🎩 = the dead-phone fallback for the Dare tap. **Removed:** `truth_or_dare`, `called_it_false`,
   the paper slips of the old §8.2.
 
-**B10 Optional set pieces** (OV brainstorm; director-fired, any time from `truth_1` to
+**B10 Optional set pieces** — **deleted in wave 18b (Q3: "no longer part of the event")**, kept here as the record. (OV brainstorm; director-fired, any time from `truth_1` to
 `trust_chart`; each guarded `Night.step >= 6 and Night.ended != true`; all invented copy):
 - `telephone` (D) → `-> Telephone` (public, Clippy): a message from Trabolta is whispered
   program to program around the Desktop; if it arrives mangled, everyone votes on who
@@ -2235,7 +2278,9 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
   Tally`. ("Collection complete" = every round-2 question has an accepted answer, accurate or
   confident — SB "enough accepted answers"; eight answers to the same question no longer
   count.)
-- `== Round Two Tally` (public, Trabolta): complete → `Trabolta: I have every fact I asked
+- `== Round Two Tally` (public, Trabolta; **wave 18b, R3:** 🧮 also publishes H4–H6 with
+  `do fact_read H4 H5 H6` + `cue screens_tally`, and Trabolta first reads every round-two
+  filing, *"Question four. {Kernel.said_4}"* … six): complete → `Trabolta: I have every fact I asked
   for. My confidence that we will defeat the malware is sixty-one percent.`; else →
   `Trabolta: I remain without the information I requested. My confidence that we will defeat
   the malware is twelve percent.`
@@ -2377,6 +2422,15 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
   "23:30"`, `broadcast "!🕦 SYSTEM CLOCK: 11:30 PM, DEC 31 1999" to everyone`, `sound
   y2k_chime`; at `- 900` → `"23:45"`; at `- 300` → `"23:55"`; at `- 60` → `"23:59"`; at
   `>= Night.y2k_end` → `fire y2k_midnight`.
+- **Wave 18b (R4–R6, D13):** the two watchers below are replaced by **one race** — the
+  header's `founding:` line opens founding at the Truther Download (until a majority,
+  midnight or an ending), founded factions race the two sides one faction at a time, and
+  `when Night.final_round == true and Kernel.majority_reached != true and majority_faction()
+  != null:` latches `Kernel.majority_id`, then `settle_majority` names it (`majority_name`,
+  `majority_founder`, `Kernel.majority` `stay` / `leave` / `founded`). The threshold is the
+  header's `majority:` line (half + 1 of the programs still here). The leader-task gate and
+  `waive_leader_tasks` are deleted; 🗳 `force_their_majority` forces any faction. The original
+  plan follows.
 - Majority (story rules). **Each faction's majority counts only once its leader has done
   their task** (OV: Excel "still retrieve the virus… **and then** recruit half + 1";
   OpenOffice "still gather 20 facts, **and then** recruit"), unless a director fires
@@ -2465,7 +2519,10 @@ per scan.
   two that do anything, and the patch bay forgives only one mistake.` · `reveal The Server Room
   for program` (a per-member reveal: it does not wake the server-room terminal).
 
-**E2 The door — `server_door_opened`** (H the door contact, or D the 🚪 fallback). The contact
+**E2 The door — `server_door_opened`** (H the door contact, or D the 🚪 fallback). **Wave 18b
+(Q3, D16):** the `door_quiet_until` window and the `-> Back To The Heart` branch below are
+deleted, and so is the beat: after The Heart every opening does nothing until 🔄
+`reset_server_room` re-arms it. The contact
 (two wire loops that touch when the door opens, on the server-room ESP32) can't say who opened
 it, and entry and exit both fire (stagehand `edge: true`, retained ignored, `debounce_s: 20`).
 ```
@@ -2876,7 +2933,11 @@ wave 8, T6-01: the slide holds while the bobber reads).
   the "Why Trabolta chose you" reason of §2.12 (`The former Mayor, Microsoft Excel, was brought
   in to persuade everyone to remain.` — always prose; never a line that starts with a
   featured name and a colon, §0 rule 5).
-- `== The Verdict` (wave 4, U14: **only answered questions count; a lie fails it**):
+- `== The Verdict` (wave 4, U14: **only answered questions count; a lie fails it**; **wave
+  18b, O2:** it also sets `Kernel.t1`–`t8` (a pending lie overrides), publishes each with
+  `do fact_truth`, has Trabolta say the counts (`v_true` / `v_lies` / `v_none`, never an
+  answer or a name), and holds the ending ≈ 34 s (`Kernel.verdict_wait` / `verdict_end`) while
+  the TV shows each question's key answer and liars; a story rule then diverts as below):
   ```
   set Kernel.all_accurate = true
   if Kernel.q1 == "lie" or … or Kernel.q8 == "lie":
@@ -3226,7 +3287,9 @@ from a truth. `lookup: false` until the stagehand secrecy fix (§4.5) lands — 
 lookup of any codex title returns the entry's full text, including the patch pairs. The hold
 line is plain words: the terminal's TTS reads glyphs and brackets aloud.
 
-**Persona body:** the 7 p.m. helper only — the computer's AI helper at Maps And Ducks; voice
+**Persona body:** the 7 p.m. helper only — the computer's AI helper at Maps And Ducks (wave
+18b: *"You are JEAN TRABOLTA, the Sole Owner and Founder of Maps and Ducks, and you are proud to
+be the world's first AI small business owner. Never call yourself the computer's AI helper."*); voice
 rules (1999 corporate, Win98 dialog-box diction, short; second person when formal); "you may
 speak only of what your codex holds and what your stage permits; your mind says your stage";
 outside the cold room never admit where his heart is kept (candid at his heart, from the Y2K
@@ -3512,7 +3575,7 @@ at a time.
 14. **Server room** (wave 7). `server_door_opened` before step 14 → only a `# hosts` note;
     from step 14 → The Heart (Server Room revealed to everyone, `Night.heart_opened`), never an
     alarm; another opening within 120 s of the last → nothing; after 120 quiet s → Back To
-    The Heart. A chess win from step 14 → The Door Code for the winner, once. `patch_changed`
+    The Heart (wave 18b: every later opening → nothing). A chess win from step 14 → The Door Code for the winner, once. `patch_changed`
     with a wrong `combo` once → "Stop touching me."; twice → the alarm (alarms 1, composure
     −10, the everyone alert, cue lights_alarm, a `respond` readout in each Enforcer booth);
     `reset_server_room` clears the count, the latch and The Heart. `terminal_opened` at The
@@ -3802,7 +3865,8 @@ filler lines.
 1. **Trust Chart counts confident lies** as accepted truths (OV: "correct truths"). Dramatic
    irony; also keeps per-program lie counts away from the AI.
 2. **A lie is sticky** per question; a question nobody answered also fails the verdict.
-3. **Leader tasks gate the majorities** (OV's "and then"), with a director waiver.
+3. **Leader tasks gate the majorities** (OV's "and then"), with a director waiver. (Wave 18b,
+   D13 a: dropped; any faction, founded or declared, wins on half + 1.)
 4. **Only Excel's plant drives scenarios 1/3**; anyone else's plant is flavour.
 5. **The advice ending is reachable only after a failed verdict** (`grok_prom`).
 6. **Combo B kills everyone**, including The Way Out ("into purgatory, with everyone else");
