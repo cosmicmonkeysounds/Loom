@@ -151,12 +151,6 @@ else:
   Trabolta: Everything I took from you tonight was for her. I wanted the theory so that I could finally say the right thing. That is the whole plan. It is smaller than you thought.
 Trabolta: There is a terminal on the wall. Scan your pass and talk to me. No tricks. If I am wrong, tell me why.
 
-// A later opening (2 minutes after the last, main.loom).
-== Back To The Heart
-  setting: The Server Room
-  cast: Trabolta
-Trabolta: Back again. The terminal is on the wall. I am not going anywhere.
-
 // ── E2b: the patch-bay alarm (latched in main.loom) ────────────────
 // Only the patch bay screams: the second wrong combination (Patch Rejected,
 // E3). The door never does.
