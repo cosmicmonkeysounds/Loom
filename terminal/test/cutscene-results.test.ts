@@ -16,6 +16,7 @@ import {
   VERDICT_PLAN,
   VERDICT_WALL_MS,
   liarsLine,
+  liarsSize,
   verdictHasPages,
   verdictPageAt,
   verdictTotals,
@@ -291,6 +292,14 @@ describe("the verdict (O2, D11)", () => {
     const page1 = text(draw("verdict", "tv", VERDICT_PLAN.pages + 800, { results }));
     expect(page1).toContain("Nobody lied.");
     expect(liarsLine({ liars: [{ who: "A", ruled: false }], liarsMore: 3 })).toBe("Lied: A +3 more");
+    // Near the server's 40-name cap the page draws 24 and folds the rest in, smaller.
+    const forty = Array.from({ length: 40 }, (_, i) => ({ who: `Program Number ${i + 1}`, ruled: false }));
+    const line = liarsLine({ liars: forty, liarsMore: 5 });
+    expect(line.split(", ").length).toBe(24);
+    expect(line).toMatch(/Program Number 24 \+21 more$/u);
+    expect(liarsSize({ liars: forty })).toBe(" most");
+    expect(liarsSize({ liars: forty.slice(0, 10) })).toBe(" many");
+    expect(liarsSize({ liars: forty.slice(0, 3) })).toBe("");
     // It holds on the last page to its end, and its length covers all eight.
     expect(verdictPageAt(VERDICT_MS - 1, 8)).toBe(7);
     expect(verdictPageAt(VERDICT_MS - 1, 3)).toBe(2);

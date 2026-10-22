@@ -280,12 +280,24 @@ export function verdictPageAt(t: number, pages: number): number {
   return Math.min(pages - 1, Math.floor((t - VERDICT_PLAN.pages) / VERDICT_PLAN.pageMs));
 }
 
+/** The most names a verdict page draws: past this the rest fold into "+N more", so the
+ *  line never runs off the TV stage (the server caps a question at 40). */
+export const LIARS_DRAWN = 24;
+
 /** A page's who-lied line: "Lied: A, B 🤖, C" (+N more), or "Nobody lied." Names only (D11). */
 export function liarsLine(q: Pick<ScreenResultQuestion, "liars" | "liarsMore">): string {
   const list = q.liars ?? [];
   if (list.length === 0 && q.liarsMore === 0) return "Nobody lied.";
-  const names = list.map((l) => (l.ruled ? `${l.who} 🤖` : l.who)).join(", ");
-  return `Lied: ${names}${q.liarsMore > 0 ? ` +${q.liarsMore} more` : ""}`;
+  const drawn = list.slice(0, LIARS_DRAWN);
+  const more = q.liarsMore + (list.length - drawn.length);
+  const names = drawn.map((l) => (l.ruled ? `${l.who} 🤖` : l.who)).join(", ");
+  return `Lied: ${names}${more > 0 ? ` +${more} more` : ""}`;
+}
+
+/** The liars line's size step: smaller type as the drawn names pile up. */
+export function liarsSize(q: Pick<ScreenResultQuestion, "liars">): "" | " many" | " most" {
+  const n = Math.min(LIARS_DRAWN, (q.liars ?? []).length);
+  return n > 16 ? " most" : n > 8 ? " many" : "";
 }
 
 /** A round's chip on a tile ("R1"), or "" when the book has none. */

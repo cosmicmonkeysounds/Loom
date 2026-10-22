@@ -19,7 +19,7 @@ import { HISTORY_T } from "../clock.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
 import type { ScreenNight, ScreenResultQuestion } from "../../screen.ts";
 import { useHeldResults } from "../kit/results-parts.tsx";
-import { VERDICT_MS, VERDICT_PLAN, VERDICT_WALL_MS, liarsLine, roundChip, truthStamp, verdictHasPages, verdictPageAt, verdictStamp, verdictTotals, verdictTotalsLine } from "../kit/results.ts";
+import { VERDICT_MS, VERDICT_PLAN, VERDICT_WALL_MS, liarsLine, liarsSize, roundChip, truthStamp, verdictHasPages, verdictPageAt, verdictStamp, verdictTotals, verdictTotalsLine } from "../kit/results.ts";
 import { useEndAt } from "../kit/tv1-parts.tsx";
 import {
   BigNumber,
@@ -679,7 +679,7 @@ function VerdictPage({ q, index, count, t, reduced }: { q: ScreenResultQuestion;
           <span>The answer:</span> {q.answer}
         </div>
       )}
-      <div className={`tv3-vp-liars${(q.liars ?? []).length > 0 ? " some" : ""}`}>{liarsLine(q)}</div>
+      <div className={`tv3-vp-liars${(q.liars ?? []).length > 0 ? " some" : ""}${liarsSize(q)}`}>{liarsLine(q)}</div>
     </div>
   );
 }

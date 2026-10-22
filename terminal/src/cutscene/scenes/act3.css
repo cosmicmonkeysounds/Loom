@@ -376,6 +376,8 @@
 .tv3-vp-answer span { color: #c8d4ff; font-size: 0.7em; margin-right: 0.3em; }
 .tv3-vp-liars { margin-top: 0.8em; font-family: var(--mono); font-size: 1.5em; line-height: 1.3; color: #c8d4ff; }
 .tv3-vp-liars.some { color: #ff9b9b; }
+.tv3-vp-liars.many { font-size: 1.2em; }
+.tv3-vp-liars.most { font-size: 0.95em; }
 /* a wall: vmin, any aspect */
 .tv3-vw .tv3-v-scales { width: 18vmin; margin-left: -9vmin; top: 3%; }
 .tv3-vw .tv3-v-tiles { left: 2%; right: 2%; top: 24%; }
