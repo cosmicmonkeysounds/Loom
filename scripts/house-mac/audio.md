@@ -189,9 +189,9 @@ Groups) and never sleep: every stagehand job is a per-user LaunchAgent
 
 ## Acceptance
 
-`scripts/accept/K-20.sh` still drives the retired alexa agent; until it is
-rewritten, walk the same steps through the router: `check --only audio`
-(32 / 30, no layout move) → `announce "Test."` (chime + line on announce.to)
-→ `sounds play` one placeholder → fire `call_to_the_desktop` on a rehearsal
-(chime + line within 3 s) → ■ Stop house sounds from Run, from a host
-phone, and over MQTT with the uplink down.
+`scripts/accept/K-20.sh` walks it through the router (wave 18b):
+`devices` → `check` (32 / 30, no layout move) → `install` (the `audio`
+job) → `announce` (chime + line on announce.to) → `chime` → `play` one
+placeholder → `stop` → `MOD_CODE=… story` (fire `call_to_the_desktop` on
+a rehearsal: chime + line within 3 s). Then ■ Stop house sounds from Run,
+from a host phone, and over MQTT with the uplink down.

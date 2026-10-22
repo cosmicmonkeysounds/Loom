@@ -24,7 +24,7 @@ address is `192.168.8.21`. Change both in `server_room/config.h`. It dials
 Mosquitto's **password-only LAN listener** on `:1884` as user `props`
 (`SR_MQTT_USER` / `SR_MQTT_PASS` in `secrets.h`); the anonymous listener is
 bound to 127.0.0.1 for stagehand + Zigbee2MQTT on the Mac
-(`scripts/house-mac/alexa.md` → *Lock down the broker*;
+(`scripts/house-mac/audio.md` → *Lock down the broker*;
 `stagehand/tests/test_serverroom_firmware.py` pins the port and login,
 `scripts/accept/K-05.sh` checks the Mac owns the address).
 

@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
-# K-20 — the house announcements through the house speakers (OCT31.md §5;
-# the player is stagehand's `alexa` module — the module name stays). Run ON THE
-# HOUSE MAC, top to bottom; stand where you can hear the living room AND the
-# kitchen (or have someone in the kitchen). ≈ 10 minutes.
+# K-20 — the house announcements and story sounds through the house speakers
+# (OCT31.md §5). Wave 18b: the player is stagehand's `audio` module (the
+# router, launchd job `audio`) on the 828x; the old `alexa` job is retired
+# (scripts/house-mac/audio.md → *Retire the alexa job, switch the router on*).
+# Run ON THE HOUSE MAC, top to bottom; stand where you can hear the living
+# room AND the kitchen (or have someone in the kitchen). ≈ 10 minutes.
 #
-#   scripts/accept/K-20.sh devices    1. CoreAudio outputs — copy the MOTU's name into alexa.device
-#   scripts/accept/K-20.sh local      2. chime + the Mac's `say` voice on Z1 + Z2 now (no broker, no story)
-#   scripts/accept/K-20.sh offline    3. the same line with no server link at all (what engine: say
-#                                        always does; with engine: server, the internet-down voice)
-#   scripts/accept/K-20.sh install    4. install / restart the launchd agent (install-alexa.sh)
-#   scripts/accept/K-20.sh mqtt       5. publish show/announce like the show does → the agent plays it
-#   scripts/accept/K-20.sh chime      6. `sound announce_chime` alone (show/chime)
+#   scripts/accept/K-20.sh devices    1. CoreAudio devices — the 828x must be listed (audio.json device.name)
+#   scripts/accept/K-20.sh check      2. `stagehand check --only audio`: 32 / 30 channels, layout not
+#                                        moved, placeholders still present listed
+#   scripts/accept/K-20.sh install    3. install / restart the router's launchd job (`launchd install --job audio`)
+#   scripts/accept/K-20.sh announce   4. one announcement through the router now (`stagehand announce`)
+#   scripts/accept/K-20.sh chime      5. `sound announce_chime` alone (show/chime)
+#   scripts/accept/K-20.sh play [name] 6. one story sound by hand (`stagehand sounds play`, default zip)
+#   scripts/accept/K-20.sh stop       7. ■ stop: every house sound and the announcement fade out
 #   MOD_CODE=… scripts/accept/K-20.sh story [event]
-#                                     7. THE ACCEPTANCE: fire a story event whose beat does
+#                                     8. THE ACCEPTANCE: fire a story event whose beat does
 #                                        `do announce` (default call_to_the_desktop) on a
 #                                        REHEARSAL run and time it — chime + line in both
 #                                        rooms within 3 s. (Or fire it from Run → Director.)
@@ -20,21 +23,21 @@
 #                                        --i-know-this-is-live; y/N unless --yes).
 #   scripts/accept/K-20.sh status     launchd state + the last log lines
 #
-# CONFIG=<yaml> (default stagehand/house.yaml) · BASE (default https://app.mapsandducks.com)
+# CONFIG=<yaml> (default stagehand/trapped.house.yaml) · BASE (default https://app.mapsandducks.com)
 set -euo pipefail
 source "$(dirname "$0")/guard.sh" "$@"; set -- ${ARGS[@]+"${ARGS[@]}"}
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 STAGEHAND="$ROOT/stagehand"
-CONFIG="${CONFIG:-$STAGEHAND/house.yaml}"
+CONFIG="${CONFIG:-$STAGEHAND/trapped.house.yaml}"
 BASE="${BASE:-https://app.mapsandducks.com}"
-LOG="$HOME/Library/Logs/stagehand-alexa.log"
-LABEL=com.mapsandducks.stagehand-alexa
+LOG="$HOME/Library/Logs/stagehand/audio.log"
+LABEL=com.mapsandducks.stagehand.audio
 LINE="${LINE:-This is a test of the house speakers. Living room and kitchen.}"
 
 stage() { (cd "$STAGEHAND" && uv run "$@"); }
-need_config() { [[ -f "$CONFIG" ]] || { echo "FAIL no $CONFIG — cp stagehand/trapped.house.yaml stagehand/house.yaml and set server.* + alexa.device"; exit 1; }; }
-broker() { python3 -I -c 'import sys,yaml; a=yaml.safe_load(open(sys.argv[1]))["alexa"]["mqtt"]; print(a["host"], a.get("port",1883))' "$CONFIG" 2>/dev/null || echo "127.0.0.1 1883"; }
+need_config() { [[ -f "$CONFIG" ]] || { echo "FAIL no $CONFIG"; exit 1; }; }
+broker() { python3 -I -c 'import sys,yaml; a=yaml.safe_load(open(sys.argv[1]))["audio"]["mqtt"]; print(a["host"], a.get("port",1883))' "$CONFIG" 2>/dev/null || echo "127.0.0.1 1883"; }
 pub() {
   read -r host port < <(broker)
   if command -v mosquitto_pub > /dev/null; then
@@ -55,31 +58,34 @@ wait_log() { # wait_log <since-line-count> <pattern> <seconds>
 case "${1:-}" in
   devices)
     stage python -m sounddevice
-    echo "→ put a unique part of the MOTU's name in alexa.device; Z1 = ch 1/2, Z2 = ch 3/4 (alexa.channels)" ;;
-  local)
+    echo "→ the 828x must be listed with 32 in / 30 out (CueMix: Main outs + Phones NOT mirrored, 48 kHz)" ;;
+  check)
+    need_config
+    stage stagehand check --config "$CONFIG" --only audio
+    echo "PASS if: no 'layout has moved', the device reports 32 / 30, and no placeholder sounds are left before the show" ;;
+  install)
+    need_config
+    stage stagehand launchd install --job audio --config "$CONFIG"
+    stage stagehand launchd restart --job audio --config "$CONFIG" || true ;;
+  status)
+    launchctl print "gui/$UID/$LABEL" 2>/dev/null | grep -E "state =|pid =|last exit" || echo "job not loaded — run: $0 install"
+    tail -n 15 "$LOG" 2>/dev/null || true ;;
+  announce)
     need_config
     stage stagehand announce --config "$CONFIG" "$LINE"
-    echo "PASS if: one chime, then the line, in the living room AND the kitchen ('played via device-say' = the Mac's voice; 'via device' = the opt-in server voice)" ;;
-  offline)
-    need_config
-    stage stagehand announce --config "$CONFIG" --offline "$LINE"
-    echo "PASS if: chime + the macOS voice in both rooms ('played via device-say')" ;;
-  install)
-    "$ROOT/scripts/house-mac/install-alexa.sh" --config "$CONFIG" ;;
-  status)
-    launchctl print "gui/$UID/$LABEL" 2>/dev/null | grep -E "state =|pid =|last exit" || echo "agent not loaded — run: $0 install"
-    tail -n 15 "$LOG" 2>/dev/null || true ;;
-  mqtt)
-    need_config
-    n=$(wc -l < "$LOG" 2>/dev/null || echo 0)
-    pub show/announce "{\"text\": \"$LINE\"}"
-    if wait_log "$n" "received" 3; then echo "agent received it"; else echo "FAIL the agent logged nothing in 3 s — $0 status"; exit 1; fi
-    wait_log "$n" " via " 20 && tail -n +"$(( n + 1 ))" "$LOG" | grep " via " | tail -1
-    echo "PASS if: chime + line in both rooms" ;;
+    echo "PASS if: 'sent to the router', then one chime and the line in the living room AND the kitchen" ;;
   chime)
     need_config
     pub show/chime "{}"
     echo "PASS if: the chime alone, in both rooms" ;;
+  play)
+    need_config
+    stage stagehand sounds play --config "$CONFIG" "${2:-zip}"
+    echo "PASS if: the sound (or its labelled placeholder) on its rooms' speakers" ;;
+  stop)
+    need_config
+    stage stagehand sounds stop --config "$CONFIG" --announce
+    echo "PASS if: whatever was playing (a sound, an announcement) fades out within a second" ;;
   story)
     : "${MOD_CODE:?set MOD_CODE to the moderator passcode of a REHEARSAL run}"
     ev="${2:-call_to_the_desktop}"
@@ -91,13 +97,12 @@ case "${1:-}" in
     n=$(wc -l < "$LOG" 2>/dev/null || echo 0)
     t0=$(python3 -c 'import time; print(time.time())')
     curl -fsS -X POST "$BASE/e/$event/api/mod/signal" -H "x-loom-token: $token" -H 'content-type: application/json' -d "{\"name\":\"$ev\"}" > /dev/null
-    if wait_log "$n" "received" 5; then
-      printf 'received %.1f s after the fire (the chime starts now; budget 3 s)\n' "$(python3 -c "import time; print(time.time() - $t0)")"
+    if wait_log "$n" "chime\|announce" 5; then
+      printf 'the router heard it %.1f s after the fire (budget 3 s)\n' "$(python3 -c "import time; print(time.time() - $t0)")"
     else
-      echo "FAIL nothing reached the player in 5 s — is the show job running (show/announce rule) and the broker up?"; exit 1
+      echo "FAIL nothing reached the router in 5 s — is the show job running (show/announce rule), the audio job up and the broker up? ($0 status)"; exit 1
     fi
-    wait_log "$n" " via " 20 && tail -n +"$(( n + 1 ))" "$LOG" | grep " via " | tail -1
-    echo "PASS if: one chime + the line in the living room AND the kitchen (a 'merged' chime line means no double chime)" ;;
+    echo "PASS if: one chime + the line in the living room AND the kitchen" ;;
   *)
-    sed -n '2,20p' "$0"; exit 2 ;;
+    sed -n '2,25p' "$0"; exit 2 ;;
 esac

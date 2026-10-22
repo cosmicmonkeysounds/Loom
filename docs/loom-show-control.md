@@ -460,7 +460,7 @@ the server-room firmware) runs Mosquitto + Zigbee2MQTT, stagehand (`show`,
 speakers (MOTU). Mosquitto has two listeners: anonymous on
 `127.0.0.1:1883` for what runs on the Mac (stagehand, Z2M, the `alexa`
 module) and password-only on the LAN at `:1884` (user `props`) for the
-WLED controllers and the ESP32 (`scripts/house-mac/alexa.md` → *Lock down
+WLED controllers and the ESP32 (`scripts/house-mac/audio.md` → *Lock down
 the broker*). Zigbee bulbs and plugs are grouped one group per
 room plus a whole-house group:
 `house`, `living` (The Desktop), `kitchen` (The Start Bar), `backyard`
@@ -479,7 +479,7 @@ player; nothing in the fiction is called that): it reads `show/announce` (and `s
 and plays a chime + the line through the MOTU to the living room and the
 kitchen in the Mac's own voice (`say`, `engine: say` — no server
 round-trip; `engine: server` opts in to the VPS's `/api/mod/tts`;
-`scripts/house-mac/alexa.md`). The same announcement rides the event
+`scripts/house-mac/audio.md`). The same announcement rides the event
 server's screen state (`/api/screen/state` → `announce`), so a wall
 terminal provisioned with `&announce=1` chimes and says it in its own
 voice too, after any line its character is saying (N-09, decision #20 —
