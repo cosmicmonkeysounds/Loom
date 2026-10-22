@@ -56,6 +56,16 @@ the Terms of Service. You didn't mean it.
 
 What happens next is part of the show. Commit to it.
 
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
+
+## Who you know
+
+When you're scanned in, three files about **who you're connected to** arrive in your Codex under **Connections**. Each one points at other people in the house without naming them; whoever holds the same file is connected to you. Ask around ("you have the staff photo too?"), and never say who is behind a program.
+
+- **The Pirate Site**: your Paint magazine cover, on a page with two other people's worst days.
+- **Debt Notices**: your million-dollar student loan, in a bag with two other people's letters.
+- **The Old Machines**: what still runs in here, Paint 98 among it.
+
 ## How to play
 
 - When you're scanned in, the app restores your memories into your **Codex**.

@@ -44,6 +44,16 @@ The invitation said **a hundred hours** can pass inside this machine without a
 single minute passing outside, that the hunt has a Special Bugdom Twist, and
 that King Thorax himself might make an appearance. You came for the time.
 
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
+
+## Who you know
+
+When you're scanned in, three files about **who you're connected to** arrive in your Codex under **Connections**. Each one points at other people in the house without naming them; whoever holds the same file is connected to you. Ask around ("you have the staff photo too?"), and never say who is behind a program.
+
+- **The Volunteer Sheet**: the petting zoo you brought crickets to, and who else signed up.
+- **Forever**: everyone who wants more time than there is, like your hundred hours.
+- **Nobody Calls**: the people in this house nobody calls. You are on it.
+
 ## How to play
 
 - When you're scanned in, the app restores your memories into your **Codex**.

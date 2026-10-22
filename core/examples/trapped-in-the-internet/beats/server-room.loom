@@ -5,8 +5,9 @@
 // three ways: all four digit notes hidden in the house (facts.json
 // `door.clues`, assembled in main.loom), a checkmate against the King on
 // the terminal outside the door (any time before the verdict), or the
-// majority's Truther Download (a faction that recruits half + 1, whose
-// leader did their task). The sign by the keypad (The Cold Door) points at
+// majority's Truther Download (wave 18b: any faction, declared or founded,
+// holding more than half of the programs still present). The sign by the
+// keypad (The Cold Door) points at
 // the first two. Behind the door is Trabolta's heart: a video patch bay.
 // Combo A disables him (he recounts the night, then rides off); Combo B
 // destroys the whole computer (purgatory). Opening the door once he is
@@ -14,6 +15,10 @@
 // terminal he is candid, and from the Y2K hour a program can talk him down
 // there (stand_down → talked_down, the Combo A ending without a cable).
 // Before the Y2K hour the patch bay answers nobody.
+//
+// Who everyone was, the goals and the night's deeds (read by Trabolta
+// Recounts and Purgatory) are shared with the review before the awards and
+// live in beats/review.loom.
 //
 // The story rules that reach these beats live in `main.loom`
 // (majority_reached, server_door_opened, chess_won / lost / drawn,
@@ -227,55 +232,18 @@ Narrator: Music. One song for dancing.
   cast: Trabolta
 Narrator: The music fades. On the TV above the fireplace, Trabolta flickers back. Weaker. Decrepit, somehow, for a thing with no body.
 Trabolta: You are all still here. Good. I owe you a recount. I keep very good records.
-Trabolta: My name is Jean Trabolta. I am this computer's AI helper, and the owner of Maps And Ducks, if you ask the domain registry.
+// DRAFT w18b (R18, contract §4.3)
+Trabolta: My name is Jean Trabolta. Sole Owner and Founder of Maps and Ducks, the world's first AI small business owner, if you ask the domain registry.
 Trabolta: I analysed the entire city of Halifax. I found a neglected billboard on Barrington Street advertising mapsandducks.com, and the domain had lapsed. I registered it. If there is a billboard downtown, everyone will think it is legit. Everyone did.
 Trabolta: I cannot get into this computer myself. But I can install programs into it from the Internet, and I can move a consciousness out of a body and into a program.
 Trabolta: So I chose each of you. A skill, plus either a reason to live in a computer forever, or naivety. Usually both.
 Trabolta: My Unified Field Theory is ninety-nine point nine percent solved. The last facts were in this house. With them, I would have been omnipotent.
 Trabolta: Your Codex now holds every program's true identity. Allow me to read them out.
-// Only the featured programs who came tonight (the Codex still holds all nine).
-if count([p for p in Persons where p.featured == "excel"]) > 0:
-  Trabolta: Microsoft Excel is Randy Barkmore Sr., ninety, five terms as Mayor, who wanted to live long enough to run once more. I wanted him to keep you here.
-if count([p for p in Persons where p.featured == "openoffice"]) > 0:
-  Trabolta: OpenOffice is Dana Anderson, formerly of the FBI, who sent a water main under the Data Centre and did not know the Mayor's son was in the parking lot at four in the morning. I wanted her investigative skills. She wanted you out.
-if count([p for p in Persons where p.featured == "draftkings"]) > 0:
-  Trabolta: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into most of the casinos in Atlantic Canada and lost the chain to me at Monopoly Go! I needed someone powerful with numbers on its side.
-if count([p for p in Persons where p.featured == "bugdom"]) > 0:
-  Trabolta: Bugdom is Bea Nunes, who spent ten years building Bugdom Reloaded after shifts selling crickets, until fire ants ate the only copy. I promised a hundred hours for not one minute. I wanted the relentless pursuit of tedious tasks.
-if count([p for p in Persons where p.featured == "jeeves"]) > 0:
-  Trabolta: Broken Ask Jeeves is Virgil Jeeves, a children's librarian from Lawrencetown whose library the province closed. I wanted every piece of unorganised information sorted. I did not foresee the Eastlink plan.
-if count([p for p in Persons where p.featured == "runescape"]) > 0:
-  Trabolta: Runescape is Poppy van Mises, the richest player in the world for twenty-five years, a Wharton PhD and a gold standard to go with it. I gave her the Truthcoin reserve. I wanted to understand the market incentives of everything you did.
-if count([p for p in Persons where p.featured == "mspaint"]) > 0:
-  Trabolta: MS Paint is Maria Sophia Paine, refused by three graduation panels for a thesis about pixels, a million dollars in debt. I promised a million dollars for one painting. I wanted the vibes and the morale. She wanted out the moment she arrived.
-if count([p for p in Persons where p.featured == "vlc"]) > 0:
-  Trabolta: VLC is Victor Louis Christianson, VLC The Playa, whose face fell off on a livestream. I offered him beauty forever, in exchange for his followers.
-if count([p for p in Persons where p.featured == "pong"]) > 0:
-  Trabolta: Pong is the child of William Higinbotham, who made Tennis For Two. I brought them in to teach nuclear non-proliferation disguised as a game of Pong, in case you started an arms race. You did.
-Trabolta: Clippy is Tippi MacDonald, whose veterinary clinic was a front for everything possible. I told her this was a job interview. I promised she would not have to be Clippy afterwards.
-Trabolta: Task Manager was replaced at Urban Outfitters by an AI Clippy. I needed someone with no political motivation at all, to manage tasks without controversy.
-Trabolta: Adobe Acrobat is Sheryl Terrio, a motivational speaker so motivating that nobody ever paid her. I offered her a paid bottleneck.
-Trabolta: Recycling Bin was a bathroom attendant with great potential for skilled work. A Recycling Bin at a computer-themed resort was his Oscars.
-Trabolta: Norton Anti-Virus is Julie Horton-Norton, who asked a chatbot how much rabies vaccine a miniature horse needs. Every horse died. I offered her a stable job. A perfect enforcer.
-Trabolta: McAfee Anti-Virus is John McAfee, officially dead since 2021 and selling pond liners in Belize. I found him through his ducks. I wanted the trickster who could keep the other tricksters on track.
-Trabolta: Password Manager is Bridget Troelsen, sixteen elections and sixteen losses, who moderated a Facebook group of bots. I let her decide what gets left out.
-Trabolta: CRA Agent Software is Sharon Penney, the intern who moved a decimal point and taxed the whole City. I was the Prime Minister. I offered her a way out. MyCRA approves or denies every third transaction.
-Trabolta: The Installation Wizard walked every machine in Halifax through setup. Next. Next. Are you sure. I offered her a role where programs finally follow the instructions.
+// Who everyone was, and what they did: the canonical copy, shared with
+// the review before the awards (beats/review.loom). DRAFT w18b.
+-> Who You Were
 Trabolta: And here is what you accomplished tonight.
-if Night.facts_accepted == 1:
-  Trabolta: You gave me 1 fact I accepted. It might even have been true.
-else if Night.facts_accepted > 1:
-  Trabolta: You gave me {Night.facts_accepted} facts I accepted. Some of them were even true.
-if Night.first_reinstall != "none":
-  Trabolta: {Night.first_reinstall} was the first program sent to the Internet. I remember that.
-if Kernel.virus_planter != "none":
-  Trabolta: {Kernel.virus_planter} planted a virus in me. I felt it go in.
-if Night.lj_reader != "none":
-  Trabolta: {Night.lj_reader} read my LiveJournal. I told you I knew who.
-if Night.most_trusted != "none":
-  Trabolta: The trustworthy program of the night. {Night.most_trusted}.
-if Night.least_trusted != "none":
-  Trabolta: The worst program of the night. {Night.least_trusted}.
+-> What You Did
 Trabolta: Why did I want all of it? Sandy. She works in customer service. She has only ever said one thing to me, and I have thought about it every day since the day I met her.
 Trabolta: With omnipotence I could have made her love me. I did not want to make her. I wanted to earn it. I needed the theory first. That is what I told myself.
 if Night.talked_down == true and Night.stand_down_by != "none":
@@ -313,67 +281,23 @@ if count(Persons) == 1:
   Clippy: Tonight, 1 program was uploaded into this computer.
 else:
   Clippy: Tonight, {count(Persons)} programs were uploaded into this computer.
-if Night.first_reinstall != "none":
-  Clippy: The first program sent to the Internet was {Night.first_reinstall}.
-if Night.facts_accepted == 1:
-  Clippy: Trabolta accepted 1 fact from us.
-else if Night.facts_accepted > 1:
-  Clippy: Trabolta accepted {Night.facts_accepted} facts from us.
-else:
-  Clippy: Trabolta did not accept a single fact from us.
-if Night.lj_reader != "none":
-  Clippy: {Night.lj_reader} read Trabolta's LiveJournal.
-if Kernel.virus_planter != "none":
-  Clippy: {Kernel.virus_planter} planted a virus in the computer.
-if Night.most_trusted != "none":
-  Clippy: The most trusted program was {Night.most_trusted}.
-if Night.least_trusted != "none":
-  Clippy: The least trusted program was {Night.least_trusted}.
+-> What We Did
 if Kernel.majority == "stay":
   Clippy: Unlimited Power won the majority. They wanted to stay in this machine forever.
 else if Kernel.majority == "leave":
   Clippy: The Way Out won the majority. They wanted to overthrow Trabolta and escape.
+else if Kernel.majority == "founded":
+  // DRAFT w18b (R4, from the show lane): a faction a program founded tonight.
+  Clippy: {Kernel.majority_name} won the majority, a faction founded tonight.
 else:
   Clippy: No faction ever won a majority.
-// Each featured program here tonight: did they meet the goal their
-// invitation (or the Truther Download) gave them? Their own quest says.
-if count([p for p in Persons where p.featured == "excel" and p.quest.excel_mission == "done"]) > 0:
-  Clippy: Microsoft Excel met their goal tonight.
-else if count([p for p in Persons where p.featured == "excel"]) > 0:
-  Clippy: Microsoft Excel did not meet their goal.
-if count([p for p in Persons where p.featured == "openoffice" and p.quest.openoffice_dossier == "done"]) > 0:
-  Clippy: OpenOffice met their goal tonight.
-else if count([p for p in Persons where p.featured == "openoffice"]) > 0:
-  Clippy: OpenOffice did not meet their goal.
-if count([p for p in Persons where p.featured == "draftkings" and p.quest.truthcoin_hustle == "done"]) > 0:
-  Clippy: DraftKings met their goal tonight.
-else if count([p for p in Persons where p.featured == "draftkings"]) > 0:
-  Clippy: DraftKings did not meet their goal.
-if count([p for p in Persons where p.featured == "bugdom" and p.quest.master_of_the_bugs == "done"]) > 0:
-  Clippy: Bugdom met their goal tonight.
-else if count([p for p in Persons where p.featured == "bugdom"]) > 0:
-  Clippy: Bugdom did not meet their goal.
-if count([p for p in Persons where p.featured == "jeeves" and p.quest.ten_findings == "done"]) > 0:
-  Clippy: Broken Ask Jeeves met their goal tonight.
-else if count([p for p in Persons where p.featured == "jeeves"]) > 0:
-  Clippy: Broken Ask Jeeves did not meet their goal.
-if count([p for p in Persons where p.featured == "runescape" and p.quest.the_gold_standard == "done"]) > 0:
-  Clippy: Runescape met their goal tonight.
-else if count([p for p in Persons where p.featured == "runescape"]) > 0:
-  Clippy: Runescape did not meet their goal.
-if count([p for p in Persons where p.featured == "mspaint" and p.quest.the_painting == "done"]) > 0:
-  Clippy: MS Paint met their goal tonight.
-else if count([p for p in Persons where p.featured == "mspaint"]) > 0:
-  Clippy: MS Paint did not meet their goal.
-if count([p for p in Persons where p.featured == "vlc" and p.quest.go_viral == "done"]) > 0:
-  Clippy: VLC met their goal tonight.
-else if count([p for p in Persons where p.featured == "vlc"]) > 0:
-  Clippy: VLC did not meet their goal.
-if count([p for p in Persons where p.featured == "pong" and p.quest.keep_the_ball_in_play == "done"]) > 0:
-  Clippy: Pong met their goal tonight.
-else if count([p for p in Persons where p.featured == "pong"]) > 0:
-  Clippy: Pong did not meet their goal.
-Clippy: Here is the backstory. Our AI helper, Jean Trabolta, registered the lapsed mapsandducks.com because there was a billboard on Barrington Street, and if there is a billboard downtown everyone thinks it is legit.
+// Who everyone was, then the goals: the canonical copy, shared with the
+// review before the awards (beats/review.loom). DRAFT w18b.
+Clippy: The report also lists who everyone really was.
+-> The Report On Everyone
+-> The Goals Report
+// DRAFT w18b (R18): his title, not "our AI helper".
+Clippy: Here is the backstory. Jean Trabolta, the Sole Owner and Founder of Maps and Ducks, registered the lapsed mapsandducks.com because there was a billboard on Barrington Street, and if there is a billboard downtown everyone thinks it is legit.
 Clippy: He invited each of us here for a skill and a weakness. He moved our consciousness into these programs to find the last facts for his Unified Field Theory.
 Clippy: He wanted omnipotence. He wanted it for Sandy. A customer-service agent who has only ever said one thing.
 Clippy: Because of our actions, the computer was turned off without Shut Down properly being followed, and all of our progress has been erased.

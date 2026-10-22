@@ -1,6 +1,8 @@
 // G. The awards ceremony (K-25): after any final ending.
 //
-//   start_the_ceremony → The Ceremony   (the host opens, per ending)
+//   start_the_ceremony → The Night In Review → The Ceremony
+//                        (wave 18b: who everyone was, beats/review.loom;
+//                        then the host opens, per ending)
 //   award_<name> for W → Present Award  (the award slide + the host's line)
 //
 // The director fires each award from the cue sheet WITH THE WINNER AS THE
@@ -16,7 +18,7 @@
 // which persists over the screensaver).
 //
 // Sound: `start_the_ceremony` starts `ceremony_bed` under the whole
-// ceremony; every award opens on `award_fanfare` (QLab cues in
+// ceremony; every award opens on `award_fanfare` (story sounds, mapped in
 // `stagehand/trapped.house.yaml`, pinned by its cross-check test).
 //
 // When Trabolta's worker has written better lines (the cast-thread trick,
