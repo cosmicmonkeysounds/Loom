@@ -47,7 +47,7 @@ import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
 import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { actLine, missionLine, titleFallback } from "../chrome/title-bar.tsx";
 import { useArmButtons } from "../arm.ts";
-import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, MeButton, NowBar, guestStartItems, guestTaskbarButtons, liveCardsOf, objectiveButton, pushOffered, useStartWake, whereLine } from "./frame.tsx";
+import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, MeButton, NowBar, guestStartItems, guestTaskbarButtons, liveCardsOf, objectiveButton, pushOffered, startSidesOf, useStartWake, whereLine } from "./frame.tsx";
 import { lobbyNav, type ExitContext, type Nav } from "../moments/exits.ts";
 import { pressedWindow, questRootsOf, useGuestNav, type GuestWindow } from "./nav.ts";
 import { LazyMission } from "./mission-lazy.tsx";
@@ -57,7 +57,8 @@ import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
 import { rowClockOf } from "./show-time.ts";
 import { prefetchQr } from "../pass-qr.tsx";
 import { prefetchFactCard } from "../widgets.tsx";
-import { badgesOf, extOf, hasSidesOrCrew, lobbyHidden } from "./wire.ts";
+import { badgesOf, canFoundOf, extOf, lobbyHidden } from "./wire.ts";
+import { factionNameOf } from "../sides/mode.ts";
 import { SidesContext } from "../sides/context.ts";
 import { LazySidesLayer } from "../sides/lazy.tsx";
 import type { SidesWhich } from "../sides/index.tsx";
@@ -213,7 +214,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     cards,
     dms: t.list.filter((c) => c.kind === "dm").map((c) => ({ id: c.id, title: c.title, last: c.messages[c.messages.length - 1]?.seq ?? -1 })),
     actions: liveActions,
-    sides: (ext.sides ?? []).length > 0,
+    sides: (ext.sides ?? []).length > 0 || canFoundOf(st),
     sideChosen: (ext.sides ?? []).some((x) => x.mine),
     actionLabels: new Map(interactions.map((i) => [i.id, i.label])),
     lobbyHidden: noLobby,
@@ -534,7 +535,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const missionInput = { view: st, list: t.list, cards, decision: s.decision, codexUnseen: codexRoom !== undefined && codexUnseen(host.storage, meId, codexRoom.messages) };
   const here = st.location !== null ? t.list.find((c) => c.id === `loc:${st.location}`) : undefined;
   const peopleHere = (here?.people ?? []).filter((p) => p.id !== meId).length;
-  const sidesOpen = hasSidesOrCrew(st);
+  // Start → Factions (wave 18b): offered while you may found one too.
+  const startSides = startSidesOf(st);
+  const sidesOpen = startSides.sides;
   const windowBody =
     nav.window === "notifications" ? (
       <div className="screen notifications">
@@ -566,7 +569,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     name: meName,
     faction: st.faction,
     interactions,
-    sides: sidesOpen,
+    ...startSides,
     people: (st.people?.length ?? 0) > 0,
     open: {
       act,
@@ -595,7 +598,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const taskbar = (
     <Taskbar
       start={start}
-      startHeader={<GuestStartHeader name={meName} faction={st.faction} where={where} onMe={() => nav.go({ to: "me" })} />}
+      startHeader={<GuestStartHeader name={meName} faction={factionNameOf(st)} where={where} onMe={() => nav.go({ to: "me" })} />}
       brand={st.title ?? s.me.title ?? undefined}
       buttons={guestTaskbarButtons({
         now,
