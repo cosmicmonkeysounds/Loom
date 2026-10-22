@@ -2362,7 +2362,7 @@ ROLE Program
     if Night.ceremony == true:
       set Night.award = "lore_hoarder"
       set Night.award_title = "Lore Hoarder"
-      set Night.award_value = program.codex
+      set Night.award_value = program.codex - program.codex_in.connections
       fire award_won for program with value: value
     else:
       broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
