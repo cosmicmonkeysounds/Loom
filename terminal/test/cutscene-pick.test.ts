@@ -399,6 +399,15 @@ describe("the face flash", () => {
     expect(faceFlashFor(null, "tv", seen)).toBeNull();
     expect(faceFlashFor(lead(y2k, "y2k:s9"), "wall", seen)).toBeNull(); // only the TV has a face
   });
+
+  it("a scene's faceWhen keeps the flash off on a night it doesn't fit (the results slide's filing window)", () => {
+    const results = def({ id: "results", when: [{ slide: "hunt_results" }], ms: "hold", face: "thinking", faceWhen: (n) => n.results_q !== 0 });
+    const lead = (key: string) => ({ kind: "slide" as const, def: results, seq: 1, at: T0, start: T0, value: "", who: null, key });
+    const seen = new Set<string>();
+    expect(faceFlashFor(lead("r:s1"), "tv", seen, { ...EMPTY_NIGHT, results_q: 0 })).toBeNull();
+    expect(faceFlashFor(lead("r:s2"), "tv", seen, { ...EMPTY_NIGHT, results_q: 1 })).toEqual({ mood: "thinking", ms: FACE_FLASH_MS });
+    expect(faceFlashFor(lead("r:s3"), "tv", seen)).toEqual({ mood: "thinking", ms: FACE_FLASH_MS }); // no night: as before
+  });
 });
 
 describe("one countdown, never two (livetv-3)", () => {

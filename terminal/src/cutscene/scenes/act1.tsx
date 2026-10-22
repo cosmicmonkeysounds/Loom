@@ -1778,7 +1778,7 @@ export const SCENES: SceneDef[] = [
   { id: "trabolta_introduction", when: [{ moment: "beat", name: "Trabolta Introduction" }], ms: INTRO_MS, tv: IntroTv, wall: IntroWall, priority: 5, namesCharacter: true },
   { id: "trivia_1", when: [{ slide: "trivia_1" }], ms: "hold", tv: TriviaTv, wall: TriviaWall, namesCharacter: true, countdown: "tv" },
   { id: "return", when: [{ slide: "return" }], ms: "hold", tv: ReturnTv, wall: ReturnWall },
-  { id: "hunt_results", when: [{ slide: "hunt_results" }], ms: "hold", tv: ResultsTv, wall: ResultsWall, namesCharacter: true, countdown: true, face: "thinking" },
+  { id: "hunt_results", when: [{ slide: "hunt_results" }], ms: "hold", tv: ResultsTv, wall: ResultsWall, namesCharacter: true, countdown: true, face: "thinking", faceWhen: (n) => n.results_q !== 0 },
   { id: "filing_closed", when: [{ moment: "beat", name: "Filing Closed" }], ms: 6500, tv: FilingClosedTv, wall: FilingClosedWall, priority: 1, namesCharacter: true, face: "thinking" },
   { id: "truth_or_dare", when: [{ slide: "truth_or_dare" }], ms: "hold", tv: TruthOrDareTv, wall: TruthOrDareWall },
   { id: "bottle_landed", when: [{ moment: "signal", name: "bottle_landed" }], ms: 14_000, tv: BottleLandedTv, wall: BottleWall, priority: 2, face: "curious" },

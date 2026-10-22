@@ -21,7 +21,7 @@
 
 import { epochMoved } from "../announce.ts";
 import { foldName } from "../config.ts";
-import type { ScreenMoment, ScreenState } from "../screen.ts";
+import type { ScreenMoment, ScreenNight, ScreenState } from "../screen.ts";
 import type { ScreenLayers } from "../slides.ts";
 import { sceneT } from "./clock.ts";
 import type { ComponentType } from "react";
@@ -285,10 +285,11 @@ function historyStart(seen: Map<number, number> | undefined, seq: number, now: n
  * again after a moment over it never flashes twice; the caller clears it on
  * a story restart). Records the key whatever the target.
  */
-export function faceFlashFor(lead: ActiveScene | null, target: SceneTarget, seen: Set<string>): { mood: NonNullable<SceneDef["face"]>; ms: number } | null {
+export function faceFlashFor(lead: ActiveScene | null, target: SceneTarget, seen: Set<string>, night?: ScreenNight): { mood: NonNullable<SceneDef["face"]>; ms: number } | null {
   if (lead === null || seen.has(lead.key)) return null;
   seen.add(lead.key);
   if (target !== "tv" || lead.def.face === undefined) return null;
+  if (lead.def.faceWhen !== undefined && night !== undefined && !lead.def.faceWhen(night)) return null;
   return { mood: lead.def.face, ms: lead.def.faceMs ?? FACE_FLASH_MS };
 }
 

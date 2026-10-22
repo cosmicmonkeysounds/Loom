@@ -78,4 +78,7 @@ export interface SceneDef {
   face?: Mood;
   /** How long that mood holds (ms; default `FACE_FLASH_MS`). */
   faceMs?: number;
+  /** Flash `face` only on such a night (one def, two takes: the results slide is the
+   *  filing window too, which is no reading); absent = always. */
+  faceWhen?: (night: ScreenNight) => boolean;
 }
