@@ -33,7 +33,7 @@ export function fakeState(o: FakeOpts = {}): ScreenState {
   return {
     now,
     receivedAt: now,
-    night: { ...EMPTY_NIGHT, phase: "desktop", step: 6, bottle_pick: "Winamp", award_winner: "Excel", award_value: 412, help_votes: 7, thwart_votes: 3, alerts: "dialog", ...o.night },
+    night: { ...EMPTY_NIGHT, phase: "desktop", step: 6, bottle_pick: "Winamp", award_winner: "Excel", award_value: 38, help_votes: 7, thwart_votes: 3, alerts: "dialog", ...o.night },
     moments: o.moments ?? [],
     cues: {},
     character: { id: "Trabolta", hidden: o.introduced === false, awake: o.introduced !== false, online: true, hold: false },

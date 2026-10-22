@@ -59,7 +59,7 @@ describe("tv3 timelines — the awards", () => {
     expect(awardValue("none")).toBeNull();
     expect(awardValue(" ")).toBeNull();
     expect(awardValue(Number.NaN)).toBeNull();
-    expect(awardValue(412)).toBe(412);
+    expect(awardValue(38)).toBe(38);
     expect(awardValue("17")).toBe(17);
     expect(awardValue("2:31")).toBe("2:31");
   });
