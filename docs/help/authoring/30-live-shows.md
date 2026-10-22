@@ -200,9 +200,14 @@ Gardeners)`, `guest.group == The_Gardeners` — and react to them with
 guests money: one header line, `currency: score as Truthcoin`, turns a
 ROLE slot into a wallet they send, request and trade from their phones
 ([currency](currency.md)). A show that judges filed facts against a
-`facts.json` key can name an agent-voiced character to rule on the
-near misses with `judge: <Character>` in the header (*Trapped in the
-Internet*: `judge: Trabolta`); [cards & widgets](widgets.md) has how.
+`facts.json` key can name an agent-voiced character to rule on every
+filing that isn't an exact match with `judge: <Character>` in the
+header (*Trapped in the Internet*: `judge: Trabolta`). An exact match is
+accepted at once; the rest wait in a queue his worker takes one at a
+time (a guest talking to him goes first), and whatever he can't rule
+by the round's settle falls back to the house rule (a near miss
+credited, a plain miss a lie at 100, a guess below); [cards &
+widgets](widgets.md) has how.
 
 ## Sides, recruiting and crews
 
