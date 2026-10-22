@@ -90,18 +90,20 @@ the question, then that filing's ✅ accurate / 😤 confident lie / 🤷
 uncertain (the current verdict is outlined; a filing that was settled as a
 mark, a guess, has no buttons). A host's 📝 on a program's card judges only that program's
 **latest** filing: while an earlier one still waits, it changes nothing and
-`# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. **A near miss** (wave
-11: a mistyped right answer, *Mr Pickels*, *Grko*, or the right answer said at length, *11
-years ago*) is never judged by itself, even in `auto`: it
-waits on the Judging card tagged *near* and `# hosts` gets a ⚠ line naming the key. **Trabolta
-rules on it** (wave 11b): with his laptop online the ⚠ line ends *… asked Trabolta to rule*,
-the card reads *🤖 asking Trabolta…*, and seconds later `# hosts` gets *🤖 Trabolta ruled …:
-the same as / not "<key>" (<verdict>).* with his reason. **You override only when you
-disagree**: that ruling's ✅ / 😤 / 🤷 on the card (the later verdict wins). Judging it
-yourself while he is asked cancels his ruling. A near miss filed while his laptop was off
-waits for you, and unjudged the settle credits it as accurate, so **judge every ⚠ still
-pending before 📋**. An abbreviation (*Mr. Pickles*, *11 yrs*, *0900*) is
-simply accurate, no ⚠; a plainly wrong answer at 100% is still an automatic lie. A program may file every
+`# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. **Trabolta rules every answer that isn't an exact match** (wave 18b): a
+near miss (*Mr Pickels*, *Grko*, *11 years ago*, with a ⚠ line in `# hosts`
+naming the key) and a plain miss alike go to his laptop, one at a time, his
+voice replies first. The card reads *🤖 asking Trabolta…* (or queued), and
+seconds later `# hosts` gets *🤖 Trabolta ruled …: the same as / not "<key>"
+(<verdict>).* with his reason; the screens show his stamp on each filing.
+**You override only when you disagree**: that ruling's ✅ / 😤 / 🤷 on the
+card (the later verdict wins); judging it yourself while he is asked cancels
+his ruling. With his laptop off a plain miss is judged at once (a lie at
+100%, a guess below) and a near miss waits; whatever is still waiting when
+the round settles takes its proposal (a near miss accurate). **Judge only
+what he couldn't** (a filing still pending on Run → Mind → Judging) before
+📋. An abbreviation (*Mr. Pickles*, *11 yrs*, *0900*) is
+simply accurate, no ⚠ and nothing asked. A program may file every
 open question, once each; a question not filed when its round closes never
 comes back. Clippy and the hosts still judge what is **said out loud** at
 Truth Pong and the final reveal (✅ / 😤 / 🤷 by question number).

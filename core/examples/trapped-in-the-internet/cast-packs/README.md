@@ -104,7 +104,9 @@ addresses, codes, where things are kept).
   on a 📝 card, or one said at length, is a **near miss** (⚠ in `# hosts`);
   since wave 11b Trabolta rules on it (*🤖 Trabolta ruled …*) and a
   director overrides only when they disagree; an abbreviation (*Mr.
-  Pickles*) is simply accurate.
+  Pickles*) is simply accurate. **Wave 18b:** Trabolta rules every answer
+  that isn't an exact match, a plain miss too; directors judge only what
+  he couldn't (a filing still pending on Run → Mind → Judging) before 📋.
 - **Waves 8 and 9:** wave 8 shipped as `w8-1018`; wave 9 (2026-10-18) is
   merged and ships as `w9-1018`, and every pack is written to it: McAfee
   referees bets and holds no pot (a bet settles player to player, the

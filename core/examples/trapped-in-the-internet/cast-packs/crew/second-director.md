@@ -78,15 +78,16 @@ buttons). A host's 📝 on a
 program's card (*be Clippy* → **📝 Filed fact: …**) judges that program's
 **latest** filing only; when a program has filed more than once and an
 earlier one is still waiting, it changes nothing and `# hosts` points you at
-the Judging card. Either way the guest hears the same reply. **A near miss**
-(wave 11: a mistyped right answer, or the right answer said at length,
-*11 years ago*) waits on the card tagged *near* even in
-`auto`, with a ⚠ line in `# hosts` naming the key. **Trabolta rules on it**
-(wave 11b) when his laptop is online: *… asked Trabolta to rule*, then *🤖
-Trabolta ruled …* with his verdict and reason. Override his ruling on the
-card only when you disagree. A near miss filed while his laptop was off
-waits for you: judge each one still pending before 📋, since an unjudged
-near miss is credited as accurate at the settle. A lie counts
+the Judging card. Either way the guest hears the same reply. **Trabolta rules
+every answer that isn't an exact match** (wave 18b): a near miss (a mistyped
+right answer, or the right answer said at length, *11 years ago*, with a ⚠
+line in `# hosts` naming the key) and a plain miss alike go to his laptop,
+one at a time: *🤖 asking Trabolta…*, then *🤖 Trabolta ruled …* with his
+verdict and reason. Override his ruling on the card only when you disagree.
+With his laptop off a plain miss is judged at once and a near miss waits;
+whatever is still waiting at the round's settle takes its proposal (a near
+miss accurate). **Judge only what he couldn't** (a filing still pending on
+Run → Mind → Judging) before 📋. A lie counts
 against the final verdict for good; that is the point. A typo the key did
 not know → override that one filing, and tell John to add the alias to
 `facts.json`. Clippy's own mis-tap (😤 meant as ✅) is undone by Clippy
@@ -107,8 +108,9 @@ pressing ✅ for the same question on the same program. The key, for reference
 The judge folds case, punctuation and one leading article and matches the
 answer or any alias in `facts.json` exactly ("11", "pickles", "appendix z"
 are aliases), then again with abbreviations spelled out ("Mr. Pickles",
-"11 yrs", "ext 1978", "0900" are accurate, no ⚠); a different fact at 100%
-is a lie, below 100% a guess (marked).
+"11 yrs", "ext 1978", "0900" are accurate, no ⚠); anything else goes to
+Trabolta, whose ruling decides: not the same at 100% is a lie, below 100% a
+guess (marked).
 
 **3b. The Wanted board and the Wallet.** Marks are the hosts' buttons; you
 only step in from Run when nobody is near: fire `mark_for_reinstallation` or
