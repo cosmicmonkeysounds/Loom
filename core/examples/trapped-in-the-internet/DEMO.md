@@ -18,7 +18,7 @@ change the order here, change it there.
    follows the wave 18b story, which reaches the VPS only after
    [`SIGNOFF-w18b.md`](./SIGNOFF-w18b.md) and a `sync-show`; featured programs join only
    with their invitations; the cue sheet refuses 📺 until all three 📋 are read and
-   while a truth is pending), and the show's story is in your
+   while the bottle is open), and the show's story is in your
    server project: `LOOM_SSH=loom-vps pnpm sync-show` (with
    `LOOM_PROJECT="<your project name>"` if it isn't *Untitled Project*;
    since wave 9 it refuses to reload a **live** event with real guests,
