@@ -2,7 +2,7 @@
 title: Lore, people & private messages
 section: Guest Guide
 order: 8
-keywords: codex, unlock, redeem, scan, code accepted, already yours, camera, 📷, secret, lore, knowledge, share, category, filter, new, people, directory, message, private, dm, puzzle, wall, read
+keywords: codex, connections, ties, unlock, redeem, scan, code accepted, already yours, camera, 📷, secret, lore, knowledge, share, category, filter, new, people, directory, message, private, dm, puzzle, wall, read
 ---
 
 Some stories run on **knowledge**. What you know is yours to keep — or to
@@ -18,6 +18,11 @@ story*, and whatever the story files its entries under), each entry one
 line — its title, who or what it's about, and how you got it. Tap a line
 to open it and read the whole entry; tap again to fold it. A new entry is
 marked **NEW** until the Codex has shown it to you for a couple of seconds.
+At *Trapped in the Internet* one heading is **Connections**: a few files
+the house hands you privately when you are cleared, each about a tie
+between you and other people at the party. A connection points at
+people, it never names them; whoever holds the same file is connected
+to you, so ask around.
 A notification about an entry (**Read "…"**) opens the Codex on that entry. With four or more entries a box at the
 top filters them as you type.
 
