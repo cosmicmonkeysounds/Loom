@@ -4,8 +4,9 @@
 
 import { useState } from "react";
 import { ChannelRow } from "../rooms/list.tsx";
-import { guestDot, otherRoomsLabelOf, type Chats } from "../rooms/chats.ts";
-import type { Channel } from "../types.ts";
+import { guestDot, otherRoomsLabelOf, threadPersonId, type Chats } from "../rooms/chats.ts";
+import { badgesOf } from "./wire.ts";
+import type { Channel, PersonCard } from "../types.ts";
 
 /** A quiet chatroom's line under Other rooms. */
 export const QUIET_ROOM_SUB = "chat room";
@@ -14,8 +15,13 @@ function quietSub(c: Channel): string | undefined {
   return c.kind === "open" || c.kind === "private" || c.kind === "group" || c.kind === "faction" ? QUIET_ROOM_SUB : undefined;
 }
 
-export function ChatsWindow({ chats, activeId, meId, onOpen }: { chats: Chats; activeId: string | null; meId: string; onOpen: (id: string) => void }) {
+export function ChatsWindow({ chats, activeId, meId, onOpen, people }: { chats: Chats; activeId: string | null; meId: string; onOpen: (id: string) => void; people?: readonly PersonCard[] }) {
   const [othersOpen, setOthersOpen] = useState(false);
+  // Wave 18b (R15): a one-to-one thread's row wears its person's badges.
+  const badgesFor = (c: Channel) => {
+    const id = threadPersonId(c.id, meId);
+    return id === null ? undefined : badgesOf(people?.find((p) => p.id === id));
+  };
   const empty = chats.sections.length === 0 && chats.other.length === 0;
   return (
     <div className="screen side chats" data-tour="chats-list">
@@ -25,7 +31,7 @@ export function ChatsWindow({ chats, activeId, meId, onOpen }: { chats: Chats; a
           <div key={s.id} className="space-section chats-section">
             <div className="space-title">{s.title}</div>
             {s.channels.map((c) => (
-              <ChannelRow key={c.id} channel={c} active={c.id === activeId} meId={meId} onOpen={onOpen} dot={guestDot(c)} />
+              <ChannelRow key={c.id} channel={c} active={c.id === activeId} meId={meId} onOpen={onOpen} dot={guestDot(c)} badges={badgesFor(c)} />
             ))}
           </div>
         ))}
@@ -35,7 +41,7 @@ export function ChatsWindow({ chats, activeId, meId, onOpen }: { chats: Chats; a
               <span aria-hidden>{othersOpen ? "▾" : "▸"}</span> {otherRoomsLabelOf(chats.other.length)}
             </button>
             {othersOpen &&
-              chats.other.map((c) => <ChannelRow key={c.id} channel={c} active={c.id === activeId} meId={meId} onOpen={onOpen} dot={guestDot(c)} sub={quietSub(c)} />)}
+              chats.other.map((c) => <ChannelRow key={c.id} channel={c} active={c.id === activeId} meId={meId} onOpen={onOpen} dot={guestDot(c)} sub={quietSub(c)} badges={badgesFor(c)} />)}
           </div>
         )}
       </div>

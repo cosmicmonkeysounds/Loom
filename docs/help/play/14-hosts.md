@@ -3,7 +3,7 @@ title: The host console
 section: Performers
 order: 14
 role: performer
-keywords: host, hosts, caller, calling, who's calling, i'll call, stop calling, fire anyway, did, then, judging, auto, review, wanted, marked, escorts, night, house, setup, crews, host console, drawer, next bar, next, last, arm, fire, cue, cues, cue sheet, strip, act, phase, needs, judge tab, people, more, open the doors, doors, pause, resume, announce, announcement, alert level, dial, balloon, sticky, dialog, blue screen, glitch, wallet holds, king, terminals, codes, join qr, invitation, open 2 min, release, part, trabolta, answer as, waiting, task manager, adobe acrobat, recycling bin, cues moved, not taken
+keywords: stop sounds, house sound, 🔇, judge queue, queued, host, hosts, caller, calling, who's calling, i'll call, stop calling, fire anyway, did, then, judging, auto, review, wanted, marked, escorts, night, house, setup, crews, host console, drawer, next bar, next, last, arm, fire, cue, cues, cue sheet, strip, act, phase, needs, judge tab, people, more, open the doors, doors, pause, resume, announce, announcement, alert level, dial, balloon, sticky, dialog, blue screen, glitch, wallet holds, king, terminals, codes, join qr, invitation, open 2 min, release, part, trabolta, answer as, waiting, task manager, adobe acrobat, recycling bin, cues moved, not taken
 ---
 
 A **host** runs the night from their own booth: the cue sheet, what
@@ -80,12 +80,17 @@ five tabs:
   offline, a character with no worker, a long queue at Trabolta, guests
   nobody has seen in a while (**👋 Went home** on each), silent wall
   terminals. Each row opens where you fix it.
-- **Judge (n)** — the **Judging** switch: *Auto* (the house judges; near
-  misses wait here) or *Review* (every filing waits for a host). Then, when
-  the story judges filed facts: each filing waiting
-  for a verdict and the latest judged ones, with **✅** accurate, **😤**
-  confident lie and **🤷** uncertain. A near miss shows the answer it is
-  close to and Trabolta's ruling (or that he's been asked).
+- **Judge (n)** — the **Judging** switch: *Auto* (the house accepts exact
+  matches, Trabolta rules the rest; what he can't rule waits here) or
+  *Review* (every filing waits for a host). The line under it counts
+  what is with him (*🤖 3 with Trabolta (2 queued)*). Then, when the story
+  judges filed facts: each filing waiting for a verdict and the latest
+  judged ones, with **✅** accurate, **😤** confident lie and **🤷**
+  uncertain. A filing he has reads *🤖 queued for Trabolta* (waiting its
+  turn) or *🤖 asking Trabolta…* (he is ruling now), then his ruling; a
+  near miss also shows the answer it is close to (⚠). Judge only what he
+  couldn't rule before 📋: one still waiting at the round's results
+  keeps the house's proposal, and your verdict always wins over his.
 - **People** — find a guest, then **🗂 Open card**, **🚻 End Bathroom
   Mode** (when it's on), **⛔ Restrict / Unrestrict**, **👋 Went home /
   Back**, **🔁 Re-pair** (a single-use QR for a lost phone) and **📡 Scan
@@ -113,6 +118,13 @@ five tabs:
   - **♚ The King**: his health, **Set…** and **👑 Restore**.
   - **📟 Terminals**: every wall terminal and the TV, red when silent,
     **Identify**, and the TV's mute.
+  - **🔊 House sound**: **🔇 Stop all house sounds** fades out every story
+    sound and speaker test playing through the house speakers;
+    **🔇 + the announcement** also cuts what the house is saying and the
+    ones queued behind it. It never touches the TV's voice (its mute is
+    above), the terminals or the live mics, and stopping the dance song
+    doesn't move the story's clock. If nothing is listening (the house
+    Mac's audio job is down) it says so.
   - **🎟 Codes and invitations**: **Show the codes** (the guests' and the
     performers'), **▦ Show the join QR** for a guest to scan off your
     screen, and each invitation's **▦ QR** and **🔓 Open 2 min** for a

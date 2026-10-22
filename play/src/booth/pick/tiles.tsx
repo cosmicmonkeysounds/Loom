@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { PersonAvatar } from "../../ui/primitives.tsx";
+import { GuestBadges } from "../badges.tsx";
 import { filterGuests } from "../model.ts";
 import type { PrimeGuest } from "../../types.ts";
 
@@ -39,7 +40,10 @@ export function GuestTiles({ list, everyone, chosen, greyed, disabled = false, o
               <span className="tile-pic">
                 <PersonAvatar name={g.name} size="lg" />
               </span>
-              <span className="tile-name">{g.name}</span>
+              <span className="tile-name">
+                {g.name}
+                <GuestBadges id={g.id} />
+              </span>
               {grey !== undefined && <span className="tile-grey">{grey}</span>}
             </button>
           );

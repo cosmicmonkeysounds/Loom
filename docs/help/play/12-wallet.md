@@ -2,7 +2,7 @@
 title: Your wallet
 section: Guest Guide
 order: 12
-keywords: wallet, coin, balance, send, request, pay, trade, offer, approve, approved, denied, declined, stimulus, truthcoin, money, audit, pending, held, refund, expired, grant, reserve, freeze, frozen, thaw
+keywords: wallet, coin, balance, send, request, pay, trade, offer, approve, approved, denied, declined, stimulus, truthcoin, money, audit, flagged, 🚩, mycra, pending, held, refund, expired, grant, reserve, freeze, frozen, thaw
 ---
 
 Some stories give you **money**. In *Trapped in the Internet* it is
@@ -75,7 +75,12 @@ it settles by itself after a short window (a minute) unless the
 auditor denies it — or, every third transfer anyone at the party sends,
 **held** until the auditor presses Approve (its card counts down:
 *auto-approves in 4:59* — nobody auditing in five minutes means it goes
-through). A denied transfer comes straight back to you,
+through). A held transfer is **🚩 flagged** on both phones: yours, and
+the person it's for, who gets a card of their own (*Winamp is sending you
+10 Truthcoin*) with a banner naming the audit and the auditor (at
+*Trapped in the Internet*, *🚩 Flagged for a CRA audit* and MyCRA). It
+has no buttons for them: it lands, or doesn't, by itself,
+and their card says which. A denied transfer comes straight back to you,
 refunded, and the card says who denied it. Trades don't go through the
 audit; a request someone pays does, like any send.
 

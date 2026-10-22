@@ -7,6 +7,7 @@ import type { AlertLevel } from "../../../core/src/delivery.ts";
 import { AWARD_SOURCES, PartPresence, REASON_WAIT_MS, REFUSED_NEEDS_MS, type NeedTarget } from "../../../core/src/host-board.ts";
 import type { CueRow } from "../../../core/src/cue-sheet.ts";
 import type { ChatMessage, HostNeed, HostPerson, HostView } from "../types.ts";
+import { badgesOf } from "../guest/wire.ts";
 import { onDeck } from "../../../core/src/cue-sheet.ts";
 import { STOPPED, actHandle, clockRuns, formatLeft, formatWatchValue, soonestCountdown, URGENT_S, type SheetLayout } from "../director.tsx";
 
@@ -88,7 +89,7 @@ export const MORE_TABS: ReadonlyArray<{ id: MoreTabId; label: string }> = [
  *  parts). */
 export function moreTabOf(section: MoreFocus): MoreTabId {
   if (section === "codes" || section === "parts") return "setup";
-  if (section === "wallet" || section === "king" || section === "terminals" || section === "crews" || section.startsWith("agents")) return "house";
+  if (section === "wallet" || section === "king" || section === "terminals" || section === "sound" || section === "crews" || section.startsWith("agents")) return "house";
   return "night";
 }
 
@@ -199,7 +200,7 @@ export function needSection(n: Pick<HostNeed, "target" | "character">): MoreFocu
   return null;
 }
 
-export type MoreSection = "show" | "clock" | "announce" | "alerts" | "wallet" | "king" | "terminals" | "codes" | "parts" | "agents" | "crews";
+export type MoreSection = "show" | "clock" | "announce" | "alerts" | "wallet" | "king" | "terminals" | "sound" | "codes" | "parts" | "agents" | "crews";
 
 /** Where More scrolls to: a section, or one agent-voiced character's. */
 export type MoreFocus = MoreSection | `agents-${string}`;
@@ -216,6 +217,9 @@ export function moreSections(view: Pick<HostView, "wallet" | "king" | "terminals
   if (view.wallet !== null) out.push("wallet");
   if (view.king !== null) out.push("king");
   if (view.terminals !== null) out.push("terminals");
+  // Wave 18b (Q7): stop every house sound, on any event (the router plays
+  // whether or not a terminal has polled).
+  out.push("sound");
   out.push("codes");
   if (view.parts.length > 0) out.push("parts");
   if (view.agents.length > 0) out.push("agents");
@@ -424,9 +428,21 @@ export function isBathroomFlag(f: { label: string; path: string }): boolean {
   return /(^|\.)afk$/iu.test(f.path.trim()) || /bathroom/iu.test(f.label);
 }
 
-/** Is this guest in Bathroom Mode right now (an `on` Bathroom flag)? */
-export function inBathroom(p: Pick<HostPerson, "flags">): boolean {
-  return (p.flags ?? []).some((f) => f.on && isBathroomFlag(f));
+/** Is this badge Bathroom Mode (🚻, or a label naming it)? Wave 18b. */
+export function isBathroomBadge(b: { glyph: string; label: string }): boolean {
+  return b.glyph.includes("🚻") || /bathroom/iu.test(b.label);
+}
+
+/** Is this guest in Bathroom Mode right now: a Bathroom badge (wave 18b's
+ *  `badge:` line), else an `on` Bathroom flag (an older server). */
+export function inBathroom(p: Pick<HostPerson, "flags"> & { badges?: unknown }): boolean {
+  return badgesOf(p).some(isBathroomBadge) || (p.flags ?? []).some((f) => f.on && isBathroomFlag(f));
+}
+
+/** The row's own "🚻 bathroom" tag: only when no badge already says it
+ *  (the badge wins; the tag is the heuristic an older server needs). */
+export function bathroomTag(p: Pick<HostPerson, "flags"> & { badges?: unknown }): boolean {
+  return !badgesOf(p).some(isBathroomBadge) && inBathroom(p);
 }
 
 /** "seen 12 m ago" / "seen just now" / "not seen since the server started". */

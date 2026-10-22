@@ -2,7 +2,7 @@
 title: Your quest log
 section: Guest Guide
 order: 10
-keywords: quest, quests, quest log, task, mission, in progress, done, progress, complete, failed, pinned, steps, folded, file a fact, fact, answer, confidence, sure, filed, judged, verdict, staff quest, performer quest
+keywords: quest, quests, quest log, task, mission, in progress, done, progress, complete, failed, pinned, steps, folded, file a fact, fact, answer, confidence, sure, required, missing, filed, judged, verdict, staff quest, performer quest
 ---
 
 Some stories hand you things to **do**. They land in your **📜 Quest
@@ -45,16 +45,19 @@ Some stories let you hand an answer to a character instead of saying it
 out loud: a **📝 File a fact** card in their private thread. Pick the
 question (with only one left, it's picked for you), type your answer,
 set the slider — *Please select your confidence level in this response*,
-1 to 100 — and tap **File it**. The slider starts **not set** (greyed):
-touch or drag it, or use the arrow keys, to choose how sure you are;
-moving onto it with Tab doesn't count. Until the card can go, it says
-what it is waiting for: *Pick a question above*, *Type your answer*, or
-*Set how sure you are*.
+1 to 100, marked *(required)* — and tap **File it**. The slider starts
+**not set** (greyed): touch or drag it, or use the arrow keys, to choose
+how sure you are; moving onto it with Tab doesn't count. Until the card
+can go, it says what it is waiting for: *Pick a question above*, *Type
+your answer*, or *Set how sure you are*. Tap **File it** anyway and the
+card says it in red (*⚠ Set how sure you are before filing — drag the
+slider (1–100%).*), outlines what is missing and moves you to it.
 Only filed facts count — telling the character in chat is just a rumour.
 You can file each open question once, and the reply is the same whether
-you were right or not: it is judged the moment you file it (an answer
-that is nearly right, a typo, waits for a person to judge it), and the
-story decides what to do with a right answer, a wrong one you were sure
+you were right or not: an exact answer is judged the moment you file it,
+and anything else (a typo, other words for it, a different answer) is
+checked first, by the story's judge or a host, before the round's
+results. The story decides what to do with a right answer, a wrong one you were sure
 of, and a guess. Mind the slider — at *Trapped in the Internet*, a wrong
 answer filed at 100 is a lie on the record, and a guess filed below 100
 is a guess. The card waits in the tray above the message box while you

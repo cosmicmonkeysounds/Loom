@@ -40,6 +40,8 @@ export interface ChatsContext {
   archived?: ReadonlySet<string>;
   /** Rooms holding a live card for the guest. */
   cardRooms: ReadonlySet<string>;
+  /** Wave 18b (R12): `lobby: hidden` — no 📜 Chat log row at all. */
+  lobbyHidden?: boolean;
 }
 
 export interface Chats {
@@ -106,7 +108,7 @@ export function chatSections(list: readonly Channel[], ctx: ChatsContext): Chats
     else if (c.kind === "faction" || guestDot(c) || (c.member !== false && ctx.now - lastTs(c) <= QUIET_MS)) out.rooms.push(c);
     else other.push(c);
   }
-  if (lobby !== null) other.push(lobby);
+  if (lobby !== null && ctx.lobbyHidden !== true) other.push(lobby);
   const sections = (Object.keys(out) as ChatSectionId[]).filter((id) => out[id].length > 0).map((id) => ({ id, title: CHAT_SECTION_TITLES[id], channels: out[id] }));
   return { sections, other };
 }
@@ -114,6 +116,17 @@ export function chatSections(list: readonly Channel[], ctx: ChatsContext): Chats
 /** The Chats taskbar button's dot: any row in Chats has one. */
 export function chatsDot(chats: Chats): boolean {
   return chats.sections.some((s) => s.channels.some(guestDot)) || chats.other.some(guestDot);
+}
+
+/** The person a one-to-one thread is with (wave 18b, R15: their badges sit
+ *  on its row): the other party of a `pm:<a>:<b>`, the character of a
+ *  `dm:<Character>`; null for any other room. */
+export function threadPersonId(channel: string, meId: string): string | null {
+  if (channel.startsWith("dm:")) return channel.slice(3) || null;
+  if (!channel.startsWith("pm:")) return null;
+  const parties = channel.slice(3).split(":");
+  if (parties.length !== 2 || !parties.includes(meId)) return null;
+  return parties[0] === meId ? parties[1]! : parties[0]!;
 }
 
 /** The fold's button: "Other rooms (6)". */

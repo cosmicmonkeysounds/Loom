@@ -215,6 +215,8 @@ export interface PickItem {
   sub?: string;
   /** Show an avatar tile for this row (a person). */
   avatar?: boolean;
+  /** Wave 18b: the person's badges (🚻 Bathroom Mode) beside the label. */
+  badges?: ReadonlyArray<{ glyph: string; label: string }>;
 }
 
 /**
@@ -255,7 +257,10 @@ export function PickerSheet({
           }}
         >
           {it.avatar && <PersonAvatar name={it.label} size="sm" />}
-          <span className="pick-label">{it.label}</span>
+          <span className="pick-label">
+            {it.label}
+            <NameBadges badges={it.badges} />
+          </span>
           {it.sub && <span className="pick-sub">{it.sub}</span>}
         </button>
       ))}

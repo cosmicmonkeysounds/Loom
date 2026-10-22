@@ -15,6 +15,7 @@ import { Sheet } from "../ui/primitives.tsx";
 import type { HostView } from "../types.ts";
 import { joinLink, type HostCodes } from "./api.ts";
 import { ALERT_LADDER, MORE_TABS, optimisticValue, tvVoiceLabel, type Optimistic, agentQueue, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreDefaultTab, moreGroups, presenceText, releasable, showControl, stimulusInput, threadLine, waitingFor, type MoreFocus, type MoreTabId } from "./model.ts";
+import { STOP_SOUNDS_LABEL, STOP_WITH_ANNOUNCE_LABEL, stopSoundsLine, type StopAnswer } from "../house-sound.ts";
 import { ActButton, ConfirmButton, HostEmpty, HostSection, failText, useHost, useRevealed } from "./kit.tsx";
 import { clockText, setToFields, setToTime, showClockOf, useShowClock } from "../show-clock.ts";
 
@@ -66,6 +67,8 @@ export function MoreTab({ focus }: { focus: MoreFocus | null }) {
             return <King key={s} king={view.king!} />;
           case "terminals":
             return <Terminals key={s} terminals={view.terminals!} />;
+          case "sound":
+            return <HouseSound key={s} />;
           case "codes":
             return <Codes key={s} />;
           case "parts":
@@ -390,6 +393,33 @@ function Terminals({ terminals }: { terminals: NonNullable<HostView["terminals"]
           if (await run(want ? "🔇 TV voice muted" : "🔊 TV voice on", () => calls.tvMute(want))) setFlipped({ value: want, at: Date.now() });
         }}
       />
+    </HostSection>
+  );
+}
+
+/** 🔇 Stop all house sounds (wave 18b Q7): beside the TV voice. The story's
+ *  sounds and any speaker test fade out over 0.3 s; "+ announcement" also
+ *  cuts what the house is saying and empties its queue. The TV voice keeps
+ *  its own mute; the dance song stopping never moves the story's clock. */
+function HouseSound() {
+  const { calls, run } = useHost();
+  const [said, setSaid] = useState<string | null>(null);
+  const stop = (announce: boolean) =>
+    run("", async () => {
+      const answer = (await calls.stopSounds(announce)) as StopAnswer;
+      setSaid(stopSoundsLine(answer, announce));
+    });
+  return (
+    <HostSection id="sound" title="🔊 House sound">
+      <div className="host-actions">
+        <ActButton label={STOP_SOUNDS_LABEL} onClick={() => stop(false)} />
+        <ActButton label={STOP_WITH_ANNOUNCE_LABEL} onClick={() => stop(true)} />
+      </div>
+      {said !== null && (
+        <p className="host-note" role="status">
+          {said}
+        </p>
+      )}
     </HostSection>
   );
 }

@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { useArmButtons } from "../../arm.ts";
 import { PersonAvatar } from "../../ui/primitives.tsx";
+import { GuestBadges } from "../badges.tsx";
 import type { Interaction, PrimeActResult, PrimeGuest } from "../../types.ts";
 import { BoothLayer } from "../layer.tsx";
 import { armsFirst, filterGuests } from "../model.ts";
@@ -133,6 +134,7 @@ export function RowsWindow(p: RowsProps) {
                       <span className="rows-name">
                         {gone ? "✓ " : ""}
                         {g.name}
+                        <GuestBadges id={g.id} />
                       </span>
                       <span className="rows-place">{rowsPlace(p.placeTitle(g.location), summons)}</span>
                     </button>

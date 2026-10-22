@@ -13,6 +13,8 @@ import { mmss, parseAmount, secondsLeft } from "./wallet.tsx";
 export interface WalletPerson {
   id: string;
   name: string;
+  /** Wave 18b: their badges (🚻 Bathroom Mode), shown beside the name. */
+  badges?: ReadonlyArray<{ glyph: string; label: string }>;
 }
 
 function AmountField({ max, unit, onSubmit, verb }: { max: number; unit: string; onSubmit: (n: number) => void; verb: string }) {
@@ -75,7 +77,7 @@ export function PeopleAmountSheet({
     );
   }
   if (who === null) {
-    const items: PickItem[] = people.map((p) => ({ id: p.id, label: p.name, avatar: true }));
+    const items: PickItem[] = people.map((p) => ({ id: p.id, label: p.name, avatar: true, ...(p.badges !== undefined && p.badges.length > 0 ? { badges: p.badges } : {}) }));
     return (
       <PickerSheet
         title={mode === "send" ? "Send to…" : mode === "grant" ? "🎁 Grant to…" : "Ask…"}

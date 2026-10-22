@@ -36,6 +36,13 @@ you, and never where a question waits for you: those go to Mission and to
 your [notifications](notifications.md). You can still read it, and talk in
 it.
 
+Some stories hide the Chat log from guests altogether: then there is no
+Chat log row, and nothing is lost. Everything the house says to you still
+reaches you, as a pop-up or as a row in 🔔 Notifications (the plain
+announcements arrive there quietly, without lighting the bell), and a
+notification that would have opened the Chat log opens Notifications
+instead.
+
 ## Kinds of room
 
 | Room | Is |
@@ -91,7 +98,10 @@ came from (Mission or Chats).
 Some rooms have a sign with a QR code: **Scan to enter this room's
 chat**. Tap **📷 Scan** on the taskbar and point it at the sign (or
 type the room's name in the box under the camera), and you're checked
-in: you're standing in that room and its chat opens. (Your phone's own
+in: you're standing in that room, its chat opens, and a **📍 Checked
+in** box over it says what the room has to tell you (**OK**, or a tap
+anywhere, closes it). If the story keeps you out, or the room can't be
+checked into right now, the scanner stays open and says why. (Your phone's own
 camera works too if it opens the same browser you joined in; if it
 opens another one, the page names the room and tells you to scan it
 with the app's 📷 Scan instead.) It won't work while you're captured or

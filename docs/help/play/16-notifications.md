@@ -2,7 +2,7 @@
 title: Notifications & big moments
 section: Guest Guide
 order: 3.5
-keywords: notifications, recycle bin, bin, bell, alert, alerts, pop-up, popup, balloon, banner, sticky, dialog, blue screen, glitch, big moment, full screen, achievement, collect, cheer, house news, virus detected, quarantined, missed, clear all, delete, access is denied, full of beans, in use, take me there, go there, buttons, chime, push, get alerts, locked, keep screen on, iphone, home screen, takeover, flashing, go to the living room
+keywords: notifications, chat log hidden, announcements, checked in, recycle bin, bin, bell, alert, alerts, pop-up, popup, balloon, banner, sticky, dialog, blue screen, glitch, big moment, full screen, achievement, collect, cheer, house news, virus detected, quarantined, missed, clear all, delete, access is denied, full of beans, in use, take me there, go there, buttons, chime, push, get alerts, locked, keep screen on, iphone, home screen, takeover, flashing, go to the living room
 ---
 
 The story interrupts you when it matters, and **every interruption has a
@@ -63,6 +63,12 @@ first, each with its time and its buttons. It fills up (paper sticking out,
 and a count) when there's something you haven't seen. A run of notes about
 other people folds into one row (*🎀 2 updates about others*). Nothing in it
 pops up or sticks: it's the place to catch up.
+
+Some stories hide the 📜 Chat log from guests. Then the house's plain
+announcements land here too, quietly: they are rows in the bin but never
+fill it, and a notification that would have opened the Chat log opens the
+bin instead. A scan's **📍 Checked in** note stays here as well, after its
+box has closed.
 
 **✕** on a row deletes it. **🗑 Clear all** deletes the lot. It is a 1999
 computer, so it argues: sometimes *Are you sure you want to send '…' to the

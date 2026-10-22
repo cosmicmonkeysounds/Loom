@@ -5,10 +5,11 @@
 
 import { useState } from "react";
 import { PassQr } from "../pass-qr.tsx";
-import { PersonAvatar, PickerSheet, Sheet } from "../ui/primitives.tsx";
+import { NameBadges, PersonAvatar, PickerSheet, Sheet } from "../ui/primitives.tsx";
+import { badgesOf } from "../guest/wire.ts";
 import type { HostPerson } from "../types.ts";
 import type { PairCode } from "./api.ts";
-import { filterPeople, inBathroom, personLine, seenText } from "./model.ts";
+import { bathroomTag, filterPeople, inBathroom, personLine, seenText } from "./model.ts";
 import { ActButton, ConfirmButton, HostEmpty, useHost } from "./kit.tsx";
 
 export function PeopleTab() {
@@ -48,9 +49,10 @@ function PersonRow({ p, open, onToggle }: { p: HostPerson; open: boolean; onTogg
         <span className="host-person-body">
           <span className="host-person-name">
             {p.name}
+            <NameBadges badges={badgesOf(p)} />
             {p.persona === true && <span className="host-tag">persona</span>}
             {p.restricted && <span className="host-tag alarm">⛔ restricted</span>}
-            {bathroom && <span className="host-tag">🚻 bathroom</span>}
+            {bathroomTag(p) && <span className="host-tag">🚻 bathroom</span>}
           </span>
           {line !== "" && <span className="host-person-line">{line}</span>}
           {seen !== null && <span className="host-person-seen">{seen}</span>}

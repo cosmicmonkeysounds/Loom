@@ -24,6 +24,9 @@ export interface NotificationGroup {
   fold?: { glyph: string; phase: string; list: ChatMessage[] };
   at: number;
   seq: number | null;
+  /** A hidden lobby's line (wave 18b, D18): listed, but it never rings the
+   *  bell — the lobby's lines never badged anything. */
+  quiet?: true;
 }
 
 /** A `~` notice as a moment (it never is one on the ladder). */
@@ -40,6 +43,26 @@ export function noticeMoment(m: ChatMessage, phase: string | null): Moment {
     phase: phaseOf(m, phase),
     ...(m.audience === "all" ? { house: true } : {}),
   };
+}
+
+/** A lobby line a guest receives that is no moment and no `~` notice (a
+ *  plain broadcast, a house system notice, a story's unaddressed reply or
+ *  narration): with the lobby hidden (wave 18b, D18) this is where it lives.
+ *  Not a pin's take-down marker, not an ambient line, and not typed chat (a
+ *  `line` with no `beat`: a booth's or another guest's words in the lobby
+ *  are chatter, not the house — a story's own line always carries `beat`,
+ *  null from a rule). */
+export function lobbyOnly(m: ChatMessage, viewer: Viewer): boolean {
+  if (viewer.role !== "guest" || viewer.lobbyHidden !== true || m.channel !== "lobby") return false;
+  if (m.ambient === true || m.unpin !== undefined || m.text.trim() === "") return false;
+  if (m.kind === "line" && m.beat === undefined) return false;
+  return m.audience === "all" || m.audience.includes(viewer.me);
+}
+
+/** Its row's moment: captioned like a lobby moment (an announcement for
+ *  everyone, else a line for you). */
+export function lobbyMoment(m: ChatMessage, phase: string | null): Moment {
+  return { ...noticeMoment(m, phase), caption: m.from.trim() !== "" && m.from.trim() !== "Narrator" ? m.from.trim() : m.audience === "all" ? "Announcement" : "For you" };
 }
 
 /**
@@ -63,6 +86,12 @@ export function notificationGroups(messages: Iterable<ChatMessage>, viewer: View
     const own = momentOf(m, viewer, phase);
     if (own !== null) {
       if (own.peekOf === undefined) one(own, [m.seq]);
+      continue;
+    }
+    if (m.notice === undefined && lobbyOnly(m, viewer)) {
+      const moment = lobbyMoment(m, phase);
+      out.push({ key: moment.key, members: [m.seq], moment, at: moment.at, seq: moment.seq, quiet: true });
+      keys.add(moment.key);
       continue;
     }
     if (m.notice === undefined || m.ambient === true) continue;
@@ -98,10 +127,10 @@ export function isUnread(r: Pick<NotificationGroup, "key" | "members">, seen: Re
   return r.members.some((s) => s > readMark && !seen.has(`m:${s}`));
 }
 
-/** The bell's count: the unread rows. */
-export function unreadOf(rows: readonly Pick<NotificationGroup, "key" | "members">[], seen: ReadonlySet<string>, readMark: number): number {
+/** The bell's count: the unread rows (never a hidden lobby's quiet one). */
+export function unreadOf(rows: readonly (Pick<NotificationGroup, "key" | "members"> & { quiet?: true })[], seen: ReadonlySet<string>, readMark: number): number {
   let n = 0;
-  for (const r of rows) if (isUnread(r, seen, readMark)) n++;
+  for (const r of rows) if (r.quiet !== true && isUnread(r, seen, readMark)) n++;
   return n;
 }
 

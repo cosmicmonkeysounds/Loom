@@ -5,6 +5,7 @@
 //! inset for a wanted guest.
 
 import { PersonAvatar } from "../../ui/primitives.tsx";
+import { GuestBadges } from "../badges.tsx";
 import { STALE_CLAIM_MS, boothSeen } from "../popouts/model.ts";
 import type { WantedEntry } from "../wire.ts";
 
@@ -53,6 +54,7 @@ export function Poster(p: PosterProps) {
         <div className="wanted-text">
           <button type="button" className="wanted-name" onClick={p.onCard}>
             {w.name}
+            <GuestBadges id={w.id} />
           </button>
           {w.captured ? (
             <span className="wanted-tag caught">{w.claimedBy !== null ? `CAUGHT BY ${w.claimedBy.toUpperCase()}` : "CAUGHT"}</span>

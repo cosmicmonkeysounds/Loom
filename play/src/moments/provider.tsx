@@ -179,6 +179,9 @@ export interface MomentsInput {
   /** Wave 18 recheck (a guest): `GuestView.captured` — a sent-to-the-Internet
    *  big still queued after a release is not news (BN2-FB / NMR-1). */
   captured?: boolean;
+  /** Wave 18b (R12, D18): the story hides the lobby from guests — its lines
+   *  that are no moment become Notifications rows. */
+  lobbyHidden?: boolean;
 }
 
 /** How long the NOW bar stays flashed open on a new objective (visible time). */
@@ -264,7 +267,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
 
   const live = useRef({ visible, level, held, phase: input.phase ?? null });
   live.current = { visible, level, held, phase: input.phase ?? null };
-  const viewer: Viewer = { role, me: input.me, here: input.here ?? null, filter: input.filter, ...(input.name !== undefined ? { name: input.name } : {}) };
+  const viewer: Viewer = { role, me: input.me, here: input.here ?? null, filter: input.filter, ...(input.name !== undefined ? { name: input.name } : {}), ...(input.lobbyHidden === true ? { lobbyHidden: true } : {}) };
   const viewerRef = useRef(viewer);
   viewerRef.current = viewer;
   const inputRef = useRef(input);

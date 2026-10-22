@@ -2,7 +2,7 @@
 title: Lore, people & private messages
 section: Guest Guide
 order: 8
-keywords: codex, unlock, redeem, scan, camera, 📷, secret, lore, knowledge, share, category, filter, new, people, directory, message, private, dm, puzzle, wall, read
+keywords: codex, unlock, redeem, scan, code accepted, already yours, camera, 📷, secret, lore, knowledge, share, category, filter, new, people, directory, message, private, dm, puzzle, wall, read
 ---
 
 Some stories run on **knowledge**. What you know is yours to keep — or to
@@ -24,10 +24,13 @@ top filters them as you type.
 Lore reaches you three ways:
 
 - **A code.** Tap **📷 Scan** (on the taskbar, or beside the Codex's
-  message box) and point it at a QR code on a wall: it unlocks the entry
-  and shows it in your Codex. Or type the code, in the box under the
-  camera or in the Codex's message box (press **Unlock**, the way you'd
-  send a message). Use the app's
+  message box) and point it at a QR code on a wall: a **🔓 Code
+  accepted** box names the entry, and your Codex opens on it, unfolded.
+  A code you already hold says **📓 Already yours** and opens it too.
+  A code that unlocks nothing keeps the scanner open with
+  *⛔ That code unlocks nothing*, so you can try again. Or type the code,
+  in the box under the camera or in the Codex's message box (press
+  **Unlock**, the way you'd send a message). Use the app's
   📷, not the phone's own camera: that may open another browser, where
   you aren't joined (it then shows the code in big letters to type in
   here). Codes don't care about capitals, dashes or spaces. A

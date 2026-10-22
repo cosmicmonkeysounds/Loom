@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { playTone } from "../alerts.ts";
 import { ARM_LINE, useArmButtons } from "../arm.ts";
 import { PersonAvatar } from "../ui/primitives.tsx";
+import { GuestBadges } from "./badges.tsx";
 import { Icon } from "../chrome/icons.tsx";
 import type { PrimeActResult } from "../types.ts";
 import { Outcome } from "./card.tsx";
@@ -100,7 +101,10 @@ export function ConfrontScreen(p: ConfrontProps) {
           <PersonAvatar name={c.name} size="lg" />
           <span className="stamp slam">C A P T U R E D</span>
         </div>
-        <div className="confront-name">{c.name}</div>
+        <div className="confront-name">
+          {c.name}
+          <GuestBadges id={c.guest} />
+        </div>
         <p className="confront-walk">Walk {c.name} through the Tube to the tent. Their phone shows them the way.</p>
         {phase.lines.length > 0 && phase.lines.some((l) => l.kind !== "none") && (
           <div className="booth-earlier">
@@ -133,7 +137,10 @@ export function ConfrontScreen(p: ConfrontProps) {
       <div className="confront-pic">
         <PersonAvatar name={c.name} size="lg" />
       </div>
-      <div className="confront-name">{c.name}</div>
+      <div className="confront-name">
+          {c.name}
+          <GuestBadges id={c.guest} />
+        </div>
       <p className="confront-reason">{reason !== "" ? `Marked for reinstallation: ${reason}` : "Marked for reinstallation."}</p>
       {(p.said ?? []).length > 0 && (
         <div className="confront-say w95-inset">

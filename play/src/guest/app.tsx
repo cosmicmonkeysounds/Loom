@@ -34,6 +34,7 @@ import { redeemErrorText, shareTargets } from "../codex.ts";
 import { activePins, activeTakeover } from "../pins.ts";
 import { Takeover } from "../takeover.tsx";
 import { LinkLanding, ScanSheet, landingLink, type GuestScan } from "../guest-scan.tsx";
+import { LazyScanDone, loadScanDone, settled } from "../scan-done-lazy.tsx";
 import { BellButton, MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
 import { GuestRegister, PictureChanger } from "./register.tsx";
 import { FullPass } from "../chrome/pass.tsx";
@@ -47,7 +48,7 @@ import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { actLine, missionLine, titleFallback } from "../chrome/title-bar.tsx";
 import { useArmButtons } from "../arm.ts";
 import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, MeButton, NowBar, guestStartItems, guestTaskbarButtons, liveCardsOf, objectiveButton, pushOffered, useStartWake, whereLine } from "./frame.tsx";
-import type { ExitContext, Nav } from "../moments/exits.ts";
+import { lobbyNav, type ExitContext, type Nav } from "../moments/exits.ts";
 import { pressedWindow, questRootsOf, useGuestNav, type GuestWindow } from "./nav.ts";
 import { LazyMission } from "./mission-lazy.tsx";
 import { ChatsWindow } from "./chats.tsx";
@@ -55,7 +56,8 @@ import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
 import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
 import { rowClockOf } from "./show-time.ts";
 import { prefetchQr } from "../pass-qr.tsx";
-import { extOf, hasSidesOrCrew } from "./wire.ts";
+import { prefetchFactCard } from "../widgets.tsx";
+import { badgesOf, extOf, hasSidesOrCrew, lobbyHidden } from "./wire.ts";
 import { SidesContext } from "../sides/context.ts";
 import { LazySidesLayer } from "../sides/lazy.tsx";
 import type { SidesWhich } from "../sides/index.tsx";
@@ -69,6 +71,8 @@ LazyMission.prefetch();
 // The pass's QR encoder: its own chunk, fetched just after the first paint
 // (the pass is one tap away; the arrival's `show pass` card follows soon).
 if (typeof window !== "undefined") window.setTimeout(prefetchQr, 1200);
+// The 📝 fact card's chunk (wave 18b), a little later: it is dealt in the hunts.
+if (typeof window !== "undefined") window.setTimeout(prefetchFactCard, 2500);
 
 /**
  * Is the app on rails? While the story has the guest in a `cutscene`
@@ -189,9 +193,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const listed = useMemo(() => new Set(t.list.map((c) => c.id)), [t.list]);
   const interactions = st?.interactions ?? [];
   const liveActions = new Set(interactions.filter((i) => i.live !== false).map((i) => i.id));
+  // Wave 18b (R12, D18): `lobby: hidden` — no Chat log row; a link to the
+  // lobby lands on Notifications, which carries its lines.
+  const noLobby = lobbyHidden(st);
   const nav = useGuestNav(
     t,
-    () => ({ listed, actions: liveActions, armed: new Set(interactions.filter((i) => i.arm === true).map((i) => i.id)), questRoots: questRootsOf(s.messages.values()) }),
+    () => ({ listed, actions: liveActions, armed: new Set(interactions.filter((i) => i.arm === true).map((i) => i.id)), questRoots: questRootsOf(s.messages.values()), lobbyHidden: noLobby }),
     (id) => {
       const i = interactions.find((x) => x.id === id);
       void s.act(id, i?.label).catch(() => {});
@@ -209,12 +216,13 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     sides: (ext.sides ?? []).length > 0,
     sideChosen: (ext.sides ?? []).some((x) => x.mine),
     actionLabels: new Map(interactions.map((i) => [i.id, i.label])),
+    lobbyHidden: noLobby,
   });
   const arm = useArmButtons();
   const archived = ext.archived;
   const chats = useMemo(
-    () => chatSections(t.list, { now: st?.clock ?? 0, cardRooms: new Set(cards.map((c) => c.channel)), ...(archived !== undefined ? { archived: new Set(archived) } : {}) }),
-    [t.list, st?.clock, cards, archived],
+    () => chatSections(t.list, { now: st?.clock ?? 0, cardRooms: new Set(cards.map((c) => c.channel)), ...(archived !== undefined ? { archived: new Set(archived) } : {}), lobbyHidden: noLobby }),
+    [t.list, st?.clock, cards, archived, noLobby],
   );
   // Mission's "!" on the taskbar: the NOW objective changed since Mission
   // was last on screen.
@@ -256,6 +264,22 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     if (staged !== null && stagedMax >= 0) t.markRead(staged);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stagedMax]);
+  // A scan done (R1): land where it went — the Codex on its entry, the room
+  // checked into (opened even before the snapshot lists it: a hidden place
+  // appears once stood in) — then the dialog says so on top. Never under
+  // the cutscene: it waits for the guest to step into the app.
+  const scanDoneId = signedIn ? (s.scanDone?.id ?? null) : null;
+  useEffect(() => {
+    const d = s.scanDone;
+    if (scanDoneId === null || d === null) return;
+    if (d.go.to === "codex") nav.go({ to: "codex", entry: d.go.entry });
+    else nav.openRoom(d.go.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanDoneId]);
+  // The 📷 sheet open: fetch the scan-done chunk its answer needs.
+  useEffect(() => {
+    if (nav.overlay === "scan") LazyScanDone.prefetch();
+  }, [nav.overlay]);
   // The tour starts on Mission with no room open (§10).
   useEffect(() => {
     if (tourSeq !== null) nav.go({ to: "mission" });
@@ -277,25 +301,30 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // restricted guest whose list hides the lobby still sees it.
   const takeover = <Takeover pin={activeTakeover(s.messages.values())} />;
   const restricted = st?.restricted ?? false;
-  // A scanned codex code redeems like a typed one (the Codex room answers a
-  // wrong code itself); a room's sign checks in and opens that room;
-  // someone else's pass opens the Recruit sheet (wave 18, F3).
+  // A scanned codex code redeems like a typed one, a room's sign checks in,
+  // someone else's pass opens the Recruit sheet (wave 18, F3). Wave 18b
+  // (R1): a hit, a code already held or a check-in closes the sheet and the
+  // "scan done" dialog lands on the entry / the room; a miss or a refusal
+  // keeps the sheet open with the reason (the camera keeps reading).
   const onScanned = async (scan: Exclude<GuestScan, { kind: "note" }>): Promise<string | null> => {
-    if (scan.kind === "checkin") {
-      await s.checkin(scan.at);
-      return null;
-    }
     if (scan.kind === "pass") {
       setSidesWhich({ sheet: "recruit", id: scan.id });
       return null;
     }
-    nav.openRoom(CODEX_ROOM, "mission");
-    try {
-      await s.redeem(scan.code);
+    // The dialog's chunk loads beside the request (the sheet prefetched it).
+    let o;
+    if (scan.kind === "checkin") {
+      const [m, a] = await Promise.all([loadScanDone(), settled(s.checkin(scan.at))]);
+      if ("e" in a) return m.scanErrorNote(a.e, "checkin");
+      o = m.checkinOutcome(a.r);
+    } else {
+      const [m, a] = await Promise.all([loadScanDone(), settled(s.redeem(scan.code))]);
+      if ("e" in a) return m.scanErrorNote(a.e, "unlock");
       setCodexNote(null);
-    } catch (e) {
-      setCodexNote(redeemErrorText(e));
+      o = m.redeemOutcome(a.r);
     }
+    if ("note" in o) return o.note;
+    s.showScan(o.done);
     return null;
   };
   const scanButton = (
@@ -340,7 +369,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         }
       : undefined;
   // A room the old moments engine names: the lobby is never one (G2).
-  const openRoomExit = (id: string) => (id === "lobby" ? nav.go({ to: "mission" }) : nav.go({ to: "room", id }));
+  const openRoomExit = (id: string) => (id === "lobby" ? nav.go(lobbyNav(noLobby)) : nav.go({ to: "room", id }));
   // The moments layer (wave 13): one provider over both the cutscene and the
   // main frame, so the queue, its holds and the beat's blue screen carry
   // across the cutscene → app switch. Wave 18: the moments lane's exits land
@@ -372,6 +401,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     name: s.me.name,
     sideChosen: (ext.sides ?? []).some((x) => x.mine),
     captured: st.captured,
+    lobbyHidden: noLobby,
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)
@@ -432,7 +462,15 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         active.kind === "codex"
           ? (text: string) =>
               void s.redeem(text).then(
-                () => setCodexNote(null),
+                (r) => {
+                  setCodexNote(null);
+                  // A hit or a code already held: the dialog, on the entry.
+                  // A miss is answered in the room itself (its ⛔ row).
+                  void loadScanDone().then((m) => {
+                    const o = m.redeemOutcome(r);
+                    if ("done" in o) s.showScan(o.done);
+                  });
+                },
                 (e: unknown) => setCodexNote(redeemErrorText(e)),
               )
           : active.kind === "quests" || active.kind === "wallet"
@@ -489,7 +527,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const meId = s.me.id;
   const meName = s.me.name;
   // The other guests, for the wallet's pickers (never me, never a character).
-  const walletPeople = (st.people ?? []).filter((p) => p.kind === "guest" && p.id !== meId).map((p) => ({ id: p.id, name: p.name }));
+  const walletPeople = (st.people ?? []).filter((p) => p.kind === "guest" && p.id !== meId).map((p) => ({ id: p.id, name: p.name, badges: badgesOf(p) }));
   const act = (i: Interaction) => void s.act(i.id, i.label).catch(() => {});
   const renderButton = objectiveButton({ interactions, arm, onPass: () => nav.go({ to: "pass" }), onScan: () => nav.go({ to: "scan" }), onAct: act });
   const codexRoom = t.list.find((c) => c.id === CODEX_ROOM);
@@ -503,7 +541,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         <LazyNotificationsWindow onClose={() => nav.go({ to: "mission" })} timeOf={rowClockOf(st)} />
       </div>
     ) : nav.window === "chats" ? (
-      <ChatsWindow chats={chats} activeId={t.activeId} meId={meId} onOpen={(id) => nav.openRoom(id, "chats")} />
+      <ChatsWindow chats={chats} activeId={t.activeId} meId={meId} onOpen={(id) => nav.openRoom(id, "chats")} people={st.people} />
     ) : (
       <LazyMission
         input={missionInput}
@@ -681,7 +719,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       {sharing && (
         <PickerSheet
           title={`Share “${sharing.title}” with…`}
-          items={shareTargets(st.people ?? [], (st.codex ?? []).find((e) => e.id === sharing.entry)).map((p) => ({ id: p.id, label: p.name, sub: p.kind === "character" ? "character" : (p.faction ?? "guest"), avatar: true }))}
+          items={shareTargets(st.people ?? [], (st.codex ?? []).find((e) => e.id === sharing.entry)).map((p) => ({ id: p.id, label: p.name, sub: p.kind === "character" ? "character" : (p.faction ?? "guest"), avatar: true, badges: badgesOf(p) }))}
           onPick={(id) => void s.shareCodex(sharing.entry, id)}
           onClose={() => setSharing(null)}
           empty="Nobody else is here yet."
@@ -689,6 +727,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       )}
       {people !== null && <PeopleSheet session={s} only={people === "all" ? undefined : people} onClose={() => setPeople(null)} />}
       {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
+      {s.scanDone !== null && <LazyScanDone done={s.scanDone} onClose={s.clearScan} />}
       {nav.overlay === "scan" && <ScanSheet meId={s.me.id} onScan={onScanned} onClose={() => nav.setOverlay(null)} rooms={scanRooms} />}
       {passing && <FullPass guestId={meId} name={meName} onClose={() => nav.setOverlay(null)} />}
       {st.wallet && (walletSheet === "send" || walletSheet === "request" || walletSheet === "grant") && (

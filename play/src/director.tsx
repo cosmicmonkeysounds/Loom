@@ -58,6 +58,7 @@ export { URGENT_S, formatLeft, storyNow } from "./clock.ts";
 import { DIRECTOR_KEY } from "./app-role.ts";
 import { URGENT_S, formatLeft, storyNow } from "./clock.ts";
 import { clockText, showClockOf, useShowClock } from "./show-clock.ts";
+import { STOP_SOUNDS_LABEL, stopSoundsLine, type StopAnswer } from "./house-sound.ts";
 
 export interface DirectorAuth {
   token: string;
@@ -725,7 +726,24 @@ function useDirectorSession() {
     [auth, base],
   );
 
-  return { auth, view, receivedAt, connected, notice, login, fire, claim, leave: () => drop(null) };
+  /** 🔇 Stop all house sounds (wave 18b Q7, `POST /api/mod/audio/stop`).
+   *  Resolves to the line to show; rejects with the server's refusal. */
+  const stopSounds = useCallback(
+    async (announce: boolean): Promise<string> => {
+      if (auth === null) return "";
+      const res = await fetch(`${base}/api/mod/audio/stop`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-loom-token": auth.token },
+        body: JSON.stringify({ announce }),
+      });
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok) throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
+      return stopSoundsLine(data as StopAnswer, announce);
+    },
+    [auth, base],
+  );
+
+  return { auth, view, receivedAt, connected, notice, login, fire, claim, stopSounds, leave: () => drop(null) };
 }
 
 // --- the screens -----------------------------------------------------------------
@@ -1221,6 +1239,7 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
   const anyway = useFireAnyway(caller, me);
   const desk = useCueDesk(rows, marks, s.view?.roster, (id, subject, value, presses) => s.fire(id, subject, value, presses), undefined, { confirm: anyway.confirm });
   const [claimNote, setClaimNote] = useState<string | null>(null);
+  const [soundNote, setSoundNote] = useState<string | null>(null);
   // The countdowns tick once a second between polls (story clock + the
   // wall time since the view landed).
   const runs = clockRuns(s.view);
@@ -1359,6 +1378,23 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
               {claimNote !== null && <p className="muted">{claimNote}</p>}
             </div>
           )}
+          <div className="pad">
+            <button
+              className="choice"
+              data-testid="director-stop-sounds"
+              onClick={() => {
+                setSoundNote(null);
+                void s.stopSounds(false).then(setSoundNote, (e: unknown) => setSoundNote(`Not done — ${e instanceof Error ? e.message : String(e)}`));
+              }}
+            >
+              {STOP_SOUNDS_LABEL}
+            </button>
+            {soundNote !== null && (
+              <p className="muted" role="status">
+                {soundNote}
+              </p>
+            )}
+          </div>
           <WakeLockToggle />
           <button
             className="choice danger"

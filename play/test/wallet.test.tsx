@@ -37,6 +37,8 @@ import {
   walletStepText,
   walletSummary,
   walletTicking,
+  auditLine,
+  walletAuditNote,
 } from "../src/wallet.tsx";
 import { FreezeSheet, OfferSheet, PeopleAmountSheet, StimulusSheet, buyChoice, sellChoice } from "../src/wallet-sheets.tsx";
 import type { ChatMessage, GuestView, PrimeView, WalletCard, WalletQueueView, WalletTxView, WalletView } from "../src/types.ts";
@@ -795,5 +797,56 @@ describe("casino cards (wave 15)", () => {
     expect(walletStepLine(bet("won", 20))).toBe("🎰 THE COIN · 10 on HEADS → HEADS · won 20");
     expect(walletStepLine(bet("lost", 0))).toBe("🎰 THE COIN · 10 on HEADS → TAILS · lost");
     expect(walletStepLine(bet("push", 10))).toBe("🎰 THE COIN · 10 on HEADS → TAILS · stake back");
+  });
+});
+
+describe("a CRA-audited transfer, on both phones (wave 18b, R13)", () => {
+  const heldTx = tx({ state: "held", settleAt: 301_000 });
+  const sender = card({ step: "held", approver: "MyCRA", audit: "a CRA audit", settleAt: 301_000 });
+  const recipient = card({ step: "flagged", approver: "MyCRA", audit: "a CRA audit", settleAt: 301_000 });
+
+  it("🚩 on the sender's held card and the recipient's flagged one", () => {
+    expect(walletGlyph(sender, "held")).toBe("🚩");
+    expect(walletGlyph(recipient, "held")).toBe("🚩");
+    // Settled or denied, the live state's own glyph.
+    expect(walletGlyph(recipient, "settled")).toBe("✅");
+    expect(walletGlyph(recipient, "denied")).toBe("⛔");
+  });
+
+  it("the recipient's card says who is sending; the line names the audit and MyCRA", () => {
+    expect(walletCardTitle(recipient)).toBe("Winamp is sending you 50 Truthcoin");
+    expect(walletCardTitle(sender)).toBe("You sent Paint 50 Truthcoin");
+    expect(auditLine(recipient)).toBe("Flagged for a CRA audit — MyCRA must approve it");
+    expect(auditLine({})).toBe("Flagged for an audit — it must be approved first");
+    expect(walletStepLine(recipient)).toBe("🚩 Flagged for a CRA audit — MyCRA must approve it");
+  });
+
+  it("the banner shows while held, on both cards, and goes once it settles", () => {
+    expect(walletAuditNote(sender, "held")).toBe("🚩 Flagged for a CRA audit — MyCRA must approve it.");
+    expect(walletAuditNote(recipient, "held")).toBe("🚩 Flagged for a CRA audit — MyCRA must approve it.");
+    expect(walletAuditNote(recipient, "settled")).toBeNull();
+    expect(walletAuditNote(recipient, null)).toBeNull();
+    expect(walletAuditNote(card({ step: "pending" }), "pending")).toBeNull();
+    expect(walletAuditNote(card({ kind: "approval", step: "held" }), "held")).toBeNull();
+  });
+
+  it("the recipient gets no buttons; the sender may still cancel", () => {
+    const recipientView = view({ transfers: [heldTx] });
+    expect(walletButtonsFor(recipient, recipientView, "g2")).toEqual([]);
+    expect(walletButtonsFor(sender, view({ transfers: [heldTx] }), "me")).toEqual(["cancel"]);
+  });
+
+  it("renders the banner, the sender's name and the auto-approve countdown on the recipient's card", () => {
+    const html = render(
+      <WalletActionsProvider value={{ view: view({ transfers: [heldTx] }), me: "g2", clock: 1000 }}>
+        <WalletCardView msg={msg(recipient, { text: "🚩 Flagged for a CRA audit: Winamp is sending you 50 Truthcoin." })} card={recipient} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toContain('<div class="wallet-audit" role="note">🚩 Flagged for a CRA audit — MyCRA must approve it.</div>');
+    expect(html).toContain("Winamp is sending you 50 Truthcoin");
+    expect(html).toMatch(/wallet-party">.*Winamp/su);
+    expect(html).toMatch(/auto-approves in \d:\d\d/u);
+    expect(html).not.toContain("card-actions");
+    expect(readBundledCss()).toMatch(/\.wallet-audit \{/u);
   });
 });

@@ -318,6 +318,17 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .scan-typed-input::placeholder { color: var(--dim-ink); text-transform: none; letter-spacing: 0; }
 .scan-typed-input:focus-visible { outline: 1px dotted var(--ink); outline-offset: 2px; }
 .scan-typed-go { font-weight: 700; }
+
+/* ── the scan-done dialog (wave 18b, R1): over the room the scan landed in,
+   just under the pass / scan layers; a tap outside closes it ─────────── */
+.scan-done-layer {
+  position: fixed; inset: 0; z-index: 44; z-index: calc(var(--z-pass) - 1); display: flex; align-items: center; justify-content: center;
+  padding: calc(8px + var(--safe-top)) 12px calc(8px + var(--safe-bottom)); background: var(--scrim);
+}
+.scan-done { width: 100%; max-width: 360px; }
+.scan-done-body { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 12px; }
+.scan-done-line { margin: 0; font: 15px/1.35 var(--ui-font); overflow-wrap: anywhere; }
+.scan-done-ok { align-self: center; min-width: 96px; min-height: var(--tap); margin-top: 6px; font-weight: 700; }
 .w95-btn:disabled { color: var(--dim-ink); cursor: default; }
 
 /* ── the room list's fold ──────────────────────────────────────────────── */

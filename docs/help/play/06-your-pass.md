@@ -2,7 +2,7 @@
 title: Your pass, score & fate
 section: Guest Guide
 order: 6
-keywords: pass, qr, scan, full screen, brightness, start, start menu, me, profile, picture, badges, settings, score, balance, coin, wallet, faction, side, defect, captured, escape, leave, menu, restricted, marked, reinstallation, greyed, bathroom, bathroom mode, tour, resurrection, human again, show over
+keywords: pass, qr, scan, scanned, checked in, code accepted, full screen, brightness, start, start menu, me, profile, picture, badges, settings, score, balance, coin, wallet, faction, side, defect, captured, escape, leave, menu, restricted, marked, reinstallation, greyed, bathroom, bathroom mode, 🚻, tour, resurrection, human again, show over
 ---
 
 Tap **🎟 Pass** on the taskbar, from any screen: your pass fills the
@@ -42,7 +42,10 @@ Mission. At *Trapped in the Internet* one of them is **🚻 Bathroom
 Mode**: open Start and tap it before you step out so the Antivirus know
 you are not hacking the Internet, and tap **Back from the bathroom** (in
 Start, or on Mission) when you're back. It turns itself off after
-fifteen minutes; tap it again if you're still away. The guided tour
+fifteen minutes; tap it again if you're still away. While it's on, a
+**🚻** sits beside your name everywhere people are listed (People,
+Who's here, your messages, the performers' and the hosts' lists), so
+nobody goes looking for you. The guided tour
 points it out over Start when the story uses it.
 
 A button you can't take back takes **two taps**: the first arms it (it

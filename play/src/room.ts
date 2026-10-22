@@ -104,6 +104,6 @@ export function opensHome(signedIn: boolean, wide: boolean, activeId: string | n
 }
 
 /** A guest's landing for the service worker's `open-room` message (null for anything else). */
-export function navFromMessage(data: unknown, listed: Iterable<string>): Nav | null {
-  return navFromRoom(roomFromMessage(data), listed);
+export function navFromMessage(data: unknown, listed: Iterable<string>, lobbyHidden = false): Nav | null {
+  return navFromRoom(roomFromMessage(data), listed, lobbyHidden);
 }

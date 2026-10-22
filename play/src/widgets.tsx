@@ -7,8 +7,9 @@
 //! Adding a widget = adding a `WidgetDef` to `WIDGETS`. Unknown kinds render
 //! as plain text so an older client never hides a newer story's card.
 
-import { createElement, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { createElement, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { PassQr } from "./pass-qr.tsx";
+import { lazyPart } from "./guest/lazy-part.tsx";
 import type { ChatMessage, WidgetCard } from "./types.ts";
 
 export type WidgetResult = Record<string, string | number | boolean>;
@@ -367,7 +368,7 @@ export function keepFootInView(field: Element): void {
 }
 
 /** …and once the keyboard has come up (the tray has just shrunk). */
-function footInViewSoon(field: Element): void {
+export function footInViewSoon(field: Element): void {
   window.setTimeout(() => keepFootInView(field), 350);
 }
 
@@ -399,152 +400,10 @@ export function setsConfidence(key: string): boolean {
   return SLIDER_KEYS.has(key);
 }
 
-/**
- * `show fact "📝 File a fact" to program with thread: Trabolta, questions:
- * "H1: … | H2: …"` — file an answer to one of tonight's questions with a
- * character, and say how sure you are (a 1–100 slider). The server judges
- * it (when the project has a `facts.json`) and the story decides what the
- * verdict does; the character's reply is the same whether the answer was
- * right, a confident lie or a guess. The answer is
- * `{question, answer, confidence}` → `fact answered`.
- */
-function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
-  const questions = factQuestions(card.params["questions"]);
-  const [picked, setQuestion] = useState("");
-  const question = factQuestionOf(picked, questions);
-  const [answer, setAnswer] = useState("");
-  // Unset until the guest touches the slider: File it stays off.
-  const [confidence, setConfidence] = useState<number | null>(null);
-  // Once a question is picked the others fold away (the card fits the tray:
-  // the answer box and the slider stay on screen); its button reopens them.
-  const [choosing, setChoosing] = useState(false);
-  const answerBox = useRef<HTMLTextAreaElement>(null);
-  const sureBox = useRef<HTMLLabelElement>(null);
-  const done = answered !== null && answered !== undefined;
-  const result = factResult(question, answer, confidence);
-  const filedFor = done && typeof answered["question"] === "string" ? questions.find((q) => q.id === answered["question"])?.label ?? String(answered["question"]) : null;
-  // "Sent", not "filed": the story still has to accept it (a question from
-  // a round that hasn't opened, a second filing… is refused in its reply).
-  const sentSure = done && typeof answered["confidence"] === "number" ? ` · ${answered["confidence"]}%` : "";
-  const sent = filedFor ? `✔ sent: ${filedFor}${sentSure}` : `✔ sent${sentSure}`;
-  if (!done && questions.length === 0) {
-    // Dealt after a round closed with nothing left to file (B14): a note.
-    return (
-      <div className="widget fact done folded closed" role="note">
-        <span className="widget-glyph" aria-hidden>
-          📝
-        </span>{" "}
-        <span className="widget-state">{FACT_CLOSED_NOTE}</span>
-      </div>
-    );
-  }
-  if (superseded) {
-    return (
-      <div className="widget fact done folded" role="note">
-        <span className="widget-glyph" aria-hidden>
-          📝
-        </span>{" "}
-        <span className="widget-state">{done ? sent : "An earlier card — use the newest one below."}</span>
-      </div>
-    );
-  }
-  return (
-    <div className={`widget fact ${done ? "done" : ""}${question !== "" && !choosing ? " picked" : ""}`} role="group" aria-label={card.text || "File a fact"}>
-      <div className="widget-head">
-        <span className="widget-glyph" aria-hidden>
-          📝
-        </span>
-        <div>
-          <div className="widget-title">{card.text || "File a fact"}</div>
-          <div className="widget-sub">Pick a question, type the answer, say how sure you are. One filing per question.</div>
-        </div>
-      </div>
-      {!done && onAnswer && (
-        <>
-          <div className="poll-options fact-questions">
-            {factQuestionsShown(questions, question, choosing).map((q) => (
-              <button
-                key={q.id}
-                type="button"
-                className={`choice ${question === q.id ? "primary" : "ghost"}`}
-                aria-pressed={question === q.id}
-                aria-expanded={questions.length > 1 && question === q.id ? choosing : undefined}
-                onClick={() => {
-                  // The picked one, tapped again, opens the list to change it.
-                  if (question === q.id && !choosing && questions.length > 1) {
-                    setChoosing(true);
-                    return;
-                  }
-                  setQuestion(q.id);
-                  setChoosing(false);
-                  // The answer box next, in view (the tray scrolls).
-                  window.setTimeout(() => answerBox.current?.scrollIntoView?.({ block: "nearest" }), 0);
-                }}
-              >
-                {question === q.id && (
-                  <span className="fact-picked" aria-hidden>
-                    ✔{" "}
-                  </span>
-                )}
-                {q.label}
-                {question === q.id && !choosing && questions.length > 1 && <span className="fact-change">change</span>}
-              </button>
-            ))}
-          </div>
-          <textarea
-            ref={answerBox}
-            className="fact-answer"
-            rows={2}
-            maxLength={FACT_MAX}
-            placeholder="Your answer"
-            value={answer}
-            onChange={(e) => {
-              setAnswer(e.target.value);
-              keepFootInView(e.currentTarget);
-            }}
-            onFocus={(e) => footInViewSoon(e.currentTarget)}
-            // Done typing (the keyboard goes down): the slider next, in view.
-            onBlur={() => sureBox.current?.scrollIntoView?.({ block: "nearest" })}
-          />
-          <label ref={sureBox} className={`fact-confidence ${confidence === null ? "unset" : ""}`}>
-            <span>{CONFIDENCE_LABEL}</span>
-            {/* A range always has a value, so an unset one rests greyed in
-                the middle. A tap on the thumb itself changes nothing, so
-                pointer-up and the value keys set it too (never Tab). */}
-            <input
-              type="range"
-              min={CONFIDENCE_MIN}
-              max={CONFIDENCE_MAX}
-              step={1}
-              value={confidence ?? CONFIDENCE_REST}
-              onChange={(e) => setConfidence(confidenceFrom(e.target.value))}
-              onPointerUp={(e) => setConfidence(confidenceFrom(e.currentTarget.value))}
-              onKeyUp={(e) => {
-                if (setsConfidence(e.key)) setConfidence(confidenceFrom(e.currentTarget.value));
-              }}
-              aria-valuetext={confidence === null ? CONFIDENCE_UNSET : `${confidence}%`}
-            />
-            <output>{confidence === null ? CONFIDENCE_UNSET : `${confidence}%`}</output>
-          </label>
-        </>
-      )}
-      <div className="widget-foot">
-        {done ? (
-          <span className="widget-state">{sent} — the reply says whether it's accepted</span>
-        ) : onAnswer ? (
-          <>
-            {result === null && factFileHint(question, answer, confidence) !== null && <span className="widget-state fact-hint">{factFileHint(question, answer, confidence)}</span>}
-            <button type="button" className="choice primary widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
-              File it
-            </button>
-          </>
-        ) : (
-          <span className="widget-state">shown to a guest</span>
-        )}
-      </div>
-    </div>
-  );
-}
+/** The 📝 card's own chunk (wave 18b: out of the first load). */
+const LazyFactCard = lazyPart<WidgetProps>(() => import("./widgets-fact.tsx").then((m) => ({ default: m.FactCard })), "The fact card", <div className="widget fact folded" role="status">📝 Opening the card…</div>);
+/** Fetch the 📝 card's chunk ahead of the first one (the guest app calls it after the first paint). */
+export const prefetchFactCard = LazyFactCard.prefetch;
 
 // --- answer -----------------------------------------------------------------
 
@@ -614,7 +473,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
   poll: { label: "📊 poll", answerable: true, inline: true, render: (p) => <Poll {...p} /> },
   tutorial: { label: "📘 orientation", answerable: true, overlay: true, render: (p) => <TutorialCard {...p} /> },
   pass: { label: "🎟️ your pass", answerable: false, render: (p) => <PassCard {...p} /> },
-  fact: { label: "📝 file a fact", answerable: true, supersedes: true, closed: (c) => factQuestions(c.params["questions"]).length === 0, render: (p) => <FactCard {...p} /> },
+  fact: { label: "📝 file a fact", answerable: true, supersedes: true, closed: (c) => factQuestions(c.params["questions"]).length === 0, render: (p) => <LazyFactCard {...p} /> },
   answer: { label: "💬 your answer", answerable: true, inline: true, render: (p) => <AnswerCard {...p} /> },
 };
 

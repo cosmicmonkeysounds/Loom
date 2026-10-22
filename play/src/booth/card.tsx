@@ -10,6 +10,7 @@
 import { showClockOf } from "../show-clock.ts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PersonAvatar, PickerSheet } from "../ui/primitives.tsx";
+import { GuestBadges } from "./badges.tsx";
 import { usePlayHost } from "../host.ts";
 import { ARM_LINE, useArmButtons } from "../arm.ts";
 import type { PrimeSession } from "../session/prime.ts";
@@ -332,7 +333,10 @@ export function GuestCardBody({
         <div className="booth-card-who">
           <PersonAvatar name={name} size="md" />
           <div className="booth-card-name">
-            <strong>{name}</strong>
+            <strong>
+              {name}
+              <GuestBadges id={guestId} />
+            </strong>
             <span className="booth-card-id">
               {guest?.faction ?? "unaligned"} · {guestId}
             </span>
