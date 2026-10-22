@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fetchNightEnded } from "../src/api.ts";
 import type { ReinstallConfig } from "../src/config.ts";
 
-const config: ReinstallConfig = { eventId: "ev 1", title: "T", token: "tok", name: "Tent", role: "both", camera: "user", arrowsTurn: true };
+const config: ReinstallConfig = { eventId: "ev 1", title: "T", token: "tok", name: "Tent", role: "both", camera: "user", arrowsTurn: true, voice: false };
 
 function answer(status: number, body: unknown) {
   const fetch = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: status < 400, status, json: async () => body }) as unknown as Response);

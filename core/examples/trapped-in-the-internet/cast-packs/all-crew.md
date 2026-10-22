@@ -20,6 +20,13 @@
 
 Keep radio talk short: call word, then where, then who. "LATE, two in the kitchen."
 
+**The wall terminals have ears (wave 19).** A terminal showing a small **🎤**
+at its left edge is heard right now by a player in the reinstallation games
+(VR or a tablet) standing near that room in the virtual house, and a player
+near it is heard out of its speaker. Talk to them, they can talk back. Never
+say a secret (the door code, a combo, a hunt answer) by a 🎤 terminal, and
+keep the radio away from them. The TV and the tent laptop never send sound.
+
 ## The performer basics (every booth)
 
 - **Sign in** after go-live on the morning of 10-31: https://app.mapsandducks.com →

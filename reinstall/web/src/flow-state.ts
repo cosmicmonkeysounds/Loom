@@ -25,3 +25,47 @@ export function firstStep(program: Pick<Program, "captured" | "restricted" | "el
   if (role === "both" && (onlineVr === null || onlineVr > 0)) return "choose";
   return canDraw ? "play" : "choose";
 }
+
+/** What `armIdleTimeout` needs of `window` (a fake in the tests). */
+export interface TimeoutHost {
+  addEventListener(type: string, fn: () => void, opts?: AddEventListenerOptions): void;
+  removeEventListener(type: string, fn: () => void, opts?: AddEventListenerOptions): void;
+  setTimeout(fn: () => void, ms: number): number;
+  clearTimeout(id: number): void;
+}
+
+/** The input that counts as someone still at the card. */
+export const IDLE_INPUTS = ["pointerdown", "keydown", "touchstart", "wheel"] as const;
+
+/**
+ * Calls `onTimeout` once after `ms` with no touch, click, key or wheel on
+ * `host` (any input restarts the count). The unattended tent laptop's
+ * choose card (wave 18b): a guest who walks away from it must not hold the
+ * station busy all night. Returns the disarm.
+ */
+export function armIdleTimeout(host: TimeoutHost, ms: number, onTimeout: () => void): () => void {
+  let timer = 0;
+  let done = false;
+  const fire = () => {
+    if (done) return;
+    done = true;
+    disarm();
+    onTimeout();
+  };
+  const restart = () => {
+    if (done) return;
+    host.clearTimeout(timer);
+    timer = host.setTimeout(fire, ms);
+  };
+  const opts: AddEventListenerOptions = { capture: true, passive: true };
+  const disarm = () => {
+    host.clearTimeout(timer);
+    for (const t of IDLE_INPUTS) host.removeEventListener(t, restart, opts);
+  };
+  for (const t of IDLE_INPUTS) host.addEventListener(t, restart, opts);
+  restart();
+  return () => {
+    done = true;
+    disarm();
+  };
+}

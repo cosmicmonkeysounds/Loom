@@ -504,7 +504,9 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     // author session lets the editor read them too.)
     // A camera poll carrying its own token (a terminal's mod token, a game
     // session) never needs the session lookup: the token decides.
-    const camPoll = method === "GET" && (subPath === "/api/spatial/cams" || subPath === "/api/spatial/cam") && runtime.camTokenReads(queryTokenOf(req, url));
+    // So does a voice stream opening on a token (a terminal, a headset).
+    const camPoll =
+      method === "GET" && (subPath === "/api/spatial/cams" || subPath === "/api/spatial/cam" || subPath === "/api/spatial/voice/stream") && runtime.camTokenReads(queryTokenOf(req, url));
     if (boot.controlPlane && !camPoll && (subPath.startsWith("/api/mod/") || wantsModRead(subPath, url.searchParams))) {
       const user = await authUser(req);
       if (user !== null) {

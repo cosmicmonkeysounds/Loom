@@ -2,7 +2,7 @@
 title: The house map — drawing the house from a survey
 section: Live Shows
 order: 39
-keywords: house map, map editor, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop
+keywords: house map, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop
 ---
 
 The reinstallation games and the wall terminals share one **house map**
@@ -51,7 +51,13 @@ out is plenty; 5 cm is close enough.
   the lower and upper rooms and the side it rises toward. It needs 30 cm
   of floor beyond its foot and its head.
 - **+ Terminal here** / **+ Duck spot here** on a selected room; drag
-  them (and the spawn) into place, turn them with the round handle.
+  them (and the spawn) into place, turn them with the round handle. A
+  selected terminal sets its **screen**, whether it is a **room
+  terminal**, and its **🎤 Voice link**: the tablet's microphone is heard
+  in the games at that screen, and players near it are heard on its
+  speaker. The link is on everywhere except the spawn room (the tent or
+  the shed), where the headsets and the tent laptop are; the plan marks a
+  terminal without it 🔇.
 - **🔊 Speaker** — click where a house speaker hangs (or **+ Speaker
   here** on a selected room). It is drawn as a small cabinet facing the
   way it points, with a badge of its interface outputs (a red **—** when

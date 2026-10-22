@@ -23,13 +23,14 @@
 //! soundOutput), [])`, disposed on unmount, and a memoised config — never
 //! inline in the JSX.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Assignment, HouseMap, KingState, StationInfo } from "@loom/house";
 import { ApiError, begin, fetchDealtHouse, fetchNightEnded, fetchStations, postEnd } from "./api.ts";
 import { baseOf, type ReinstallConfig } from "./config.ts";
 import type { Sfx } from "./game/audio.ts";
 import { findFlash } from "./game/hud.ts";
+import { requestMic, stopStream } from "./game/voice.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
 import { beginErrorText, NOT_MARKED, programPitch, programState, programStatus, startingHeading, type Program } from "./program.ts";
 import { firstStep } from "./flow-state.ts";
@@ -116,8 +117,31 @@ export function ReinstallFlow({
   }, [playing]);
   useEffect(() => () => playingRef.current?.(false), []);
 
+  // The voice link's mic (wave 19), asked for in the Play here tap (Safari
+  // wants the gesture) and handed to the game; let go if it never starts.
+  // Off on the tent laptop (`config.voice` false there).
+  const mic = useRef<Promise<MediaStream | null> | null>(null);
+  const releaseMic = useCallback(() => {
+    const p = mic.current;
+    mic.current = null;
+    void p?.then(stopStream);
+  }, []);
+  const takeMic = useCallback(() => {
+    const p = mic.current;
+    mic.current = null;
+    return p;
+  }, []);
+  useEffect(() => {
+    if (step.kind !== "starting" && step.kind !== "play") releaseMic();
+  }, [step.kind, releaseMic]);
+  useEffect(() => releaseMic, [releaseMic]);
+
   const playHere = async () => {
     sfx.resume();
+    if (config.voice) {
+      releaseMic();
+      mic.current = requestMic();
+    }
     setStep({ kind: "starting", label: "Copying files…" });
     try {
       const assignment = await begin(config, program.id, "web");
@@ -180,6 +204,7 @@ export function ReinstallFlow({
         {...(step.king !== undefined ? { king: step.king } : {})}
         sfx={sfx}
         held={held}
+        takeMic={takeMic}
         onExit={(e: PlayExit) => exit.current(e)}
       />
     );

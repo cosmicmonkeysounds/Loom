@@ -131,6 +131,12 @@ export interface TerminalSpot {
    * everyone, then speaks the character's lines said there. Unset: false.
    */
   speaks?: boolean;
+  /**
+   * The voice link (§2.4): this terminal's mic is heard in the games at its
+   * screen, and the players near it are heard on its speaker. Unset: on,
+   * except a terminal in the spawn room (off) — `voiceOn`.
+   */
+  voice?: boolean;
 }
 
 /** A terminal screen type — the values of `TERMINAL_VIEWS`. `reinstall` (wave 18b,
