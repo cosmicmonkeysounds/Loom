@@ -1,6 +1,8 @@
 // A minimal stand-in for an AudioContext: records the nodes the sound bus
 // makes, what they connect to and when they start, so the tests can check
-// what would have played without a browser.
+// what would have played without a browser. Wave 19 adds the capture nodes
+// (a media stream source, a script processor that tests fire by hand) and
+// disconnect / onended for the voice link's playback.
 
 export class FakeParam {
   value = 0;
@@ -27,9 +29,14 @@ export class FakeNode {
     readonly kind: string,
     readonly ctx: FakeAudioContext,
   ) {}
+  disconnected = false;
   connect(n: FakeNode) {
     this.out.push(n);
     return n;
+  }
+  disconnect() {
+    this.out = [];
+    this.disconnected = true;
   }
 }
 
@@ -53,6 +60,20 @@ export class FakeOsc extends FakeNode {
 export class FakeSource extends FakeOsc {
   buffer: unknown = null;
   loop = false;
+  onended: (() => void) | null = null;
+}
+/** A script processor: `fire(samples)` is one `onaudioprocess`. */
+export class FakeProcessor extends FakeNode {
+  onaudioprocess: ((e: { inputBuffer: { getChannelData: (ch: number) => Float32Array } }) => void) | null = null;
+  constructor(
+    ctx: FakeAudioContext,
+    readonly frames: number,
+  ) {
+    super("processor", ctx);
+  }
+  fire(samples: Float32Array) {
+    this.onaudioprocess?.({ inputBuffer: { getChannelData: () => samples } });
+  }
 }
 export class FakeFilter extends FakeNode {
   type = "lowpass";
@@ -71,6 +92,19 @@ export class FakeAudioContext {
   destination = new FakeNode("destination", this);
   sources: FakeOsc[] = [];
   gains: FakeGain[] = [];
+  buffers: Array<{ length: number; sampleRate: number; data: Float32Array }> = [];
+  processors: FakeProcessor[] = [];
+  streams: FakeNode[] = [];
+  createMediaStreamSource(_stream: unknown) {
+    const n = new FakeNode("mic", this);
+    this.streams.push(n);
+    return n;
+  }
+  createScriptProcessor(frames: number) {
+    const p = new FakeProcessor(this, frames);
+    this.processors.push(p);
+    return p;
+  }
   createGain() {
     const g = new FakeGain("gain", this);
     this.gains.push(g);
@@ -88,9 +122,10 @@ export class FakeAudioContext {
   createDynamicsCompressor() {
     return new FakeCompressor("compressor", this);
   }
-  createBuffer(_ch: number, len: number) {
+  createBuffer(_ch: number, len: number, sampleRate = this.sampleRate) {
     const data = new Float32Array(len);
-    return { getChannelData: () => data, length: len };
+    this.buffers.push({ length: len, sampleRate, data });
+    return { getChannelData: () => data, length: len, sampleRate, duration: len / sampleRate };
   }
   /** Does `n` reach the destination, and through which gains? */
   path(n: FakeNode): string[] {

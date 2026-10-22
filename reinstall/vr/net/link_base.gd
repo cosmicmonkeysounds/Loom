@@ -40,6 +40,9 @@ signal king_changed(king: Dictionary)
 signal king_hit_answered(result: String, data: Dictionary)
 ## A raw spatial stream frame (`hello`, `join`, `poses`, `leave`, …) for the ghosts.
 signal stream_frame(event: String, data: Variant)
+## The answer to [method try_setup]: `ok`, else `message` for the SET UP
+## panel ("That isn't a moderator passcode." / "Can't reach the server.").
+signal setup_answered(ok: bool, message: String)
 
 ## The station's configuration ([StationConfig]).
 var config: Dictionary = StationConfig.defaults()
@@ -106,6 +109,26 @@ func cams_token() -> String:
 	return ""
 
 
+# --- voice ---
+
+
+## The voice link's stream for the playing session
+## (`http://…/e/<event>/api/spatial/voice/stream?token=<session>`), "" when
+## there is none (offline, no session).
+func voice_stream_url() -> String:
+	return ""
+
+
+## Where the voice chunks go (`http://…/e/<event>/api/spatial/voice`), "" offline.
+func voice_upload_url() -> String:
+	return ""
+
+
+## The voice link's token: the playing session's ("" = none).
+func voice_token() -> String:
+	return ""
+
+
 ## End our session (found + celebrated, headset off, …).
 func end_session(_reason: String) -> void:
 	session = {}
@@ -121,6 +144,61 @@ func has_session() -> bool:
 
 func station_name() -> String:
 	return str(config.get("name", "Headset"))
+
+
+# --- in-headset setup (wave 19): no-op defaults, so fakes keep working ---------
+
+
+## Whether the lobby should show the SET UP panel: no passcode yet, not offline.
+func needs_setup() -> bool:
+	return false
+
+
+## Whether the event link is up (the lobby says [member status] instead of
+## "Nobody is marked…" while it isn't).
+func linked() -> bool:
+	return true
+
+
+## The SET UP panel's NAME to start with.
+func default_station_name() -> String:
+	return StationConfig.DEFAULT_NAME
+
+
+## The servers the SET UP panel offers (`[{url, label}]`, first = default).
+func server_choices() -> Array:
+	return []
+
+
+## Try `server` + moderator passcode `code` as station `name`
+## ([signal setup_answered]); a working one is saved to `user://station.json`.
+func try_setup(_server: String, _code: String, _name: String) -> void:
+	pass
+
+
+## Play without a server for this run (the SET UP panel's PLAY OFFLINE).
+func play_offline() -> void:
+	pass
+
+
+## Whether there is a setup to forget (a saved file, or offline chosen here).
+func can_forget_setup() -> bool:
+	return false
+
+
+## Forget the saved setup (⚙): back to the SET UP panel.
+func forget_setup() -> void:
+	pass
+
+
+## Take a new configuration without a restart ([method reconnect] dials it).
+func configure(cfg: Dictionary) -> void:
+	config = cfg
+
+
+## Drop any link and dial [member config] again.
+func reconnect() -> void:
+	pass
 
 
 func _set_status(text: String) -> void:

@@ -42,13 +42,13 @@ steps: **CONNECT** (the moderator passcode; skipped when the tablet already
 has access), then **WHICH TERMINAL IS THIS?** — the event's live house map's
 terminals (the map it plays: a director's save, the shed variant), by floor
 and room, each saying its room + LOCATION and its screen in words (*TV*,
-*casino*, *chess board*, *room terminal — The Server Room*, *house
-terminal*), with *⚠ online now: <name>, seen 5 s ago* when another tablet
+*casino*, *chess board*, *reinstallation station*, *room terminal — The
+Server Room*, *house terminal*), with *⚠ online now: <name>, seen 5 s ago* when another tablet
 polls from that spot. One tap powers on: the name, the screen (`view`) and
 the room come from the map entry (`TerminalSpot.view` / `speaks`, set in
 the map editor at `/reinstall/map`), the character defaults to Trabolta.
-Camera, voice, announcements, the camera feed and a manual screen / room
-sit under a folded *advanced*. ⚙ on a running terminal reopens step 2
+Camera, voice, announcements, the camera feed, the voice link's microphone
+and speaker and a manual screen / room sit under a folded *advanced*. ⚙ on a running terminal reopens step 2
 (*change passcode*, *forget this terminal*), so a tablet is re-pointed in
 two taps. A terminal set up from the map follows its entry on its next
 boot (a variant switch, a save); a manual screen or room stops that.
@@ -355,6 +355,48 @@ https://<server>/terminal/?code=<mod passcode>&name=Casino&spot=graphics-card&vi
   (`CasinoTerminal-*.js`, ~20 kB). Pure session in `src/casino/session.ts`
   (`test/casino-session.test.ts`), calls in `test/casino-post.test.ts`.
 
+**The reinstallation station** (wave 18b, `view=reinstall`;
+`src/reinstall/`): the laptop in the tent, one device that is a wall
+terminal **and** the reinstallation wizard (Q4).
+
+```
+https://<server>/terminal/?code=<mod passcode>&spot=tent&announce=1
+```
+
+(the map's tent spot carries `view: reinstall` on both variants, so the
+spot alone sets the view and the name, *Tent* or *Shed*, and the laptop
+follows the map's variant; a link that also names `&view=reinstall` is an
+old fleet link to `urlConfig`: it keeps the name it was given, *Terminal*,
+and never follows the map).
+
+- **Awake all night**, no character, no room (the Internet's lines are
+  prisoners' own DMs, never said aloud). Idle: the wall idle show (its
+  `asleep` naming gate: nothing names Trabolta before the introduction),
+  the scan box + typed fallback, a red **☣ IN THE INTERNET NOW** strip of
+  the captured programs (one tap each; never the marked: D8), the world
+  view beside the show while someone walks on a headset, and the story's
+  slides, cutscenes, moments and overlays as on any wall terminal.
+- **A pass** (`src/reinstall/session.ts`, pure): the candidates decide.
+  Healthy or director-held → the **NOT MARKED** card for 8 s and nothing
+  else (no `/api/mod/scan`, no Trabolta line: D8 / O6). Already walking
+  on a headset → *Play here instead?* (names the headset station). Marked,
+  captured, or anyone after an ending → the reinstall app's own flow
+  (`@loom/reinstall/flow.tsx`, `start: "auto"`: straight to Play here with
+  no headset online, else the choose card), in a shadow root with its own
+  React root (`src/reinstall/pane.tsx`) and the reinstall stylesheet
+  re-scoped (`scope-css.ts`). The begin never sends `force`.
+- **A capture** (`cue tablet_wizard` → the screen state's `cues.tablet`
+  seq): a 12 s Win98 card, *Setup is preparing to reinstall a program*,
+  naming nobody; never the boot's own seq, never over a walk.
+- **During a walk** `onBusy(true)`: the app counts the terminal as
+  piloting, so story slides and beat cutscenes stand aside. An overlay
+  **holds** the walk (`held = takeover` → `Game.hold`): controls, leash,
+  quacks and a find pause, the pose keepalives go on. The game's sounds
+  ride the master bus (`createSfx(soundOutput)`, built once).
+- Its own lazy chunk (`ReinstallTerminal-*.js`, ~120 kB beside three.js),
+  preloaded at boot on this view only. Tests: `test/reinstall-session`,
+  `reinstall-css`, `reinstall-layers`.
+
 ## The voice
 
 **Every device speaks with its own voice** (decision 2026-10-15: "for the
@@ -388,12 +430,16 @@ sentence and the transcript reveals as it is said.
 
 **The house announcements** (OCT31 N-09, decision #20, `src/announce.ts`):
 the story's `do announce "Go to the living room."` already plays out of the
-house speakers (stagehand `alexa`, K-20). The screen poll carries the
+house speakers (the house Mac's stagehand router since wave 18b; the
+`alexa` player before it, K-20). The screen poll carries the
 last three too (`announces: [{seq, text, at}]`, oldest first, beside the
 latest in `announce` for older builds), and a terminal with
-**`announce`** on (⚙ → *say the house announcements here*, or
-`&announce=1`; **off by default**, the TV too — its room hears the house
-speakers) rings a two-tone chime and says it in its own voice under a 📢
+**`announce`** on — ⚙ → *say the house announcements*, three-way since
+wave 18b: **House setting** (the default; on only for a spot on the house
+list, `audio.json` `announce.terminals`, which the screen state answers as
+`spot.announce` — the 📢 on Run → Terminals), **Always** (`&announce=1`) or
+**Never** (`&announce=0`); the TV too stays off — its room hears the house
+speakers — rings a two-tone chime and says it in its own voice under a 📢
 banner — each of two inside one poll, in order. Never one that was current
 when the page loaded, never replayed history after a server reboot or a
 story restart (one announced right after a restart is said: the state's
@@ -536,6 +582,79 @@ view, room and character are pickers (the event's house map, the views
 with a line each, the map's LOCATIONs, the story's cast), and a spot the
 map lacks — from ⚙ or a provisioning URL — says so.
 
+**The voice link (wave 19, `src/voice/`).** The other half of the window:
+a placed terminal's **microphone** is heard in the reinstallation games at
+its screen, and the players near it are **heard out of its speaker** —
+the wire is `docs/loom-reinstall.md` §2.4 (`@loom/house` `voice.ts`:
+G.711 μ-law, mono, 16 kHz, 200 ms chunks; the server routes, every stream
+carrying only what that spot can hear, with a gain).
+
+- **Who takes part** (`voice/roles.ts` `voiceRoles`, D9): auto / world /
+  shadow / face (the heart terminal too) / chess / casino hear and are
+  heard; the TV plays the players (under the director's TV mute) but its
+  microphone is off unless ⚙ / `&mic=1` turns it on; the mirror, an
+  unplaced tablet and a spot whose map `voice` is off (the tent: unset in
+  the spawn room is off) take no part; nothing runs on the setup screen.
+  ⚙ → advanced: *let the games hear this room* (`mic`, absent = the view's
+  default) and *play the players near this screen* (`voices`, on); the
+  URL's `&mic=0|1` / `&voices=0|1` (untouched, the ⚙ box reads as
+  following the screen you pick). The map's flag is copied as `voiceLink`
+  and followed (`setup-map.ts` `followVoice`); the page reads the live map
+  before opening anything (retried 5 s → 60 s, re-read every minute, the
+  link restarted only when the spot's answer changes; a config no map ever
+  set takes no part until one is read).
+- **Up** (`mic.ts` → `capture.ts` → `uplink.ts`): its own audio-only
+  `getUserMedia` (`MicHub`, ref-counted like the camera's, never a track on
+  the camera's stream; echo cancellation / noise suppression / AGC asked
+  **off** — the gate is in software, and on Android they switch the device
+  into its voice-call audio mode), a `ScriptProcessorNode` on the page's
+  context through a zero gain
+  (Safari 14.0 has no AudioWorklet), resampled to 16 kHz in JS, 200 ms
+  chunks through the level gate (−42 dBFS, 400 ms hang, one chunk of
+  pre-roll), μ-law, then raw POSTs to `/api/spatial/voice?seq=&spot=`
+  (`x-loom-token`: the mod token), one in flight, backing off 1 s → 30 s,
+  stopping on 401 / 403 (`voice is off at this terminal`) / 404 / 410.
+  **Only while someone hears it**: the voice stream's `listen {on}` is the
+  authority (a POST's late `listening: false` only empties the queue); an
+  uplink a 403 / 404 stopped mid-night (a map edit) is rebuilt when a
+  `hello` / `listen {on}` proves the spot good again. **Half-duplex in
+  software, a hard hold**: nothing goes up while this page plays a player,
+  speaks (the voice floor), plays an effect / jingle / chime
+  (`sound/bus.ts` `soundPlayingUntil`), and for 300 ms after — plus the
+  chunk's span, the capture buffer and the output latency (a chunk is
+  judged when its buffer ends). The games raise their gate instead (D5b),
+  so a player speaking up is heard here, and this hold then pauses the
+  room for them.
+- **What works** goes on the stream: `?mic=0|1&hear=0|1` (no mic while it
+  is refused / missing / the page's audio locked; no speaker under the TV
+  mute or locked), re-opened when either changes (`VoiceLink.refresh`,
+  every 150 ms), so the server never routes a player to a device that
+  can't hear them nor counts a dead mic among a player's four terminals.
+- **Down** (`stream.ts` → `playback.ts`): one `EventSource` on
+  `/api/spatial/voice/stream?token=&spot=` (`hello` / `listen` / `voice` /
+  `bye`; reconnects like the spatial stream), each player's chunks
+  resampled up to the context's rate in JS and scheduled as
+  `AudioBufferSourceNode`s on a new **voices** bus beside the effects
+  (ducked to 0.3 under the voice floor, muted with `setSoundMuted`): a
+  250 ms jitter buffer per player, a backlog over 600 ms cut back, fades on
+  start and `bye`, a gain per frame.
+- Capture and playback wait for the context to run: the first touch
+  anywhere (every view, the shadow / chess / casino screens included), or
+  at once on the TV's Chrome (`--autoplay-policy=no-user-gesture-required`).
+- A small **🎤** at the left edge, half way down (`MicCue.tsx`), shows while a player
+  can hear this room (never while locked or while the uplink is stopped).
+  ⚙ shows the link's status as it stood when ⚙ opened (*tap the screen to
+  start it* while the page's audio is locked); the heartbeat sends
+  `mic=live|muted|denied|insecure|locked|off` (`voice/roles.ts`
+  `micReport`; `muted` = ⚙ turned it off) for Run → Terminals.
+- `voice/link.ts` (`VoiceLink`, every effect injected, + `startPageLink`)
+  is its own lazy chunk, loaded by `voice/hook.ts` `useVoiceLink` only on a
+  terminal that takes part; the entry takes `voiceOn` from
+  `@loom/house/voice-on`, so the codec stays in that chunk.
+- Device-only: the old tablets' WebView echo and speaker volume with the
+  microphone open; an iPad's play-and-record session (quieter speaker, a
+  sample-rate change, a camera track muted by the second `getUserMedia`).
+
 **Before the character exists (attract).** A character can arrive partway
 through the night: in *Trapped in the Internet* Trabolta is `hidden: true`
 and asleep until Clippy introduces him (`introduce_trabolta`). Every
@@ -565,6 +684,9 @@ src/webgl.ts           the one-time WebGL2 probe + the pane routing: no WebGL2 �
 src/raycast/           the raycaster (wave 16, lazy chunk, no three.js): the game recreated in Canvas 2D from the
                        terminal's spot — raycast.ts (camera, rays, sprites; pure) + plan.ts (the inset, words) + RaycastView.tsx
 src/config.ts          per-tablet config (localStorage) + URL provisioning
+src/voice/             the voice link (wave 19): roles.ts (who takes part, mic=), mic.ts (MicHub), capture.ts
+                       (resample → gate → μ-law), uplink.ts, stream.ts, playback.ts (jitter buffer), status.ts,
+                       link.ts (VoiceLink, lazy), hook.ts (useVoiceLink), MicCue.tsx (🎤)
 src/scanner.tsx        camera + QR (BarcodeDetector, else jsQR)
 src/scan.ts            what a scanned code means; the typed-name fallback
 src/pilot.ts           impersonate / end / say; the DM thread off the guest stream; a room terminal's terminal opened / closed
@@ -633,7 +755,9 @@ attract screen still takes over while the character is asleep.
 
 **Sound** (`src/sound/`). One master `GainNode` over the shared
 `audioContext()`, an effects bus at the view's level (TV 0.35, others 0.6)
-through a soft compressor, and 30 synthesised effects — no files:
+through a soft compressor, a **voices** bus for the reinstallation players
+(wave 19, ducked under the voice floor and muted with the effects), and 30
+synthesised effects — no files:
 `sfx(name, {over?, gain?, pitch?, delay?}) → boolean`, names in
 `SFX_NAMES` (`ding chord error critical exclamation startup shutdown tada
 click popup close modem glitch type whoosh drumroll fanfare siren coin tick

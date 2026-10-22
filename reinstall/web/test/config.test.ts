@@ -22,29 +22,42 @@ describe("URL hints", () => {
       role: "player",
       camera: "environment",
       arrowsTurn: false,
+      voice: null,
     });
   });
 
+  it("reads the voice link switch (voice=1 / voice=0)", () => {
+    expect(hintsFromSearch("?voice=1").voice).toBe(true);
+    expect(hintsFromSearch("?voice=0").voice).toBe(false);
+    expect(hintsFromSearch("?voice=yes").voice).toBeNull();
+  });
+
   it("ignores junk and blanks", () => {
-    expect(hintsFromSearch("?name=%20&role=admin&camera=side&arrows=x")).toEqual({ code: "", name: null, role: null, camera: null, arrowsTurn: null });
+    expect(hintsFromSearch("?name=%20&role=admin&camera=side&arrows=x")).toEqual({ code: "", name: null, role: null, camera: null, arrowsTurn: null, voice: null });
   });
 
   it("withoutSecrets scrubs the passcode and the hints but keeps the rest", () => {
     expect(withoutSecrets("?code=ab12&name=Tent&role=both&debug=1")).toBe("?debug=1");
     expect(withoutSecrets("?code=ab12&camera=user&arrows=turn")).toBe("");
+    expect(withoutSecrets("?voice=1&debug=1")).toBe("?debug=1");
     expect(withoutSecrets("")).toBe("");
   });
 
   it("applyHints renames / re-roles a configured device", () => {
     const c = defaultConfig({ eventId: "e1", token: "t" });
-    expect(applyHints(c, { name: "Spare laptop", role: null, camera: null, arrowsTurn: false })).toMatchObject({ name: "Spare laptop", role: "both", arrowsTurn: false });
+    expect(applyHints(c, { name: "Spare laptop", role: null, camera: null, arrowsTurn: false, voice: null })).toMatchObject({ name: "Spare laptop", role: "both", arrowsTurn: false, voice: false });
+    expect(applyHints(c, { name: null, role: null, camera: null, arrowsTurn: null, voice: true }).voice).toBe(true);
+  });
+
+  it("the voice link is off by default (the tent laptop is the tent's own terminal)", () => {
+    expect(defaultConfig({ eventId: "e1", token: "t" }).voice).toBe(false);
   });
 });
 
 describe("stored config", () => {
   it("round-trips, and is forgotten", () => {
     const s = new MemoryStorage();
-    const c = defaultConfig({ eventId: "e1", token: "t", name: "Tent tablet", role: "station" });
+    const c = defaultConfig({ eventId: "e1", token: "t", name: "Tent tablet", role: "station", voice: true });
     saveConfig(c, s);
     expect(loadConfig(s)).toEqual(c);
     dropConfig(s);
@@ -62,7 +75,7 @@ describe("stored config", () => {
 
   it("repairs bad fields with the defaults", () => {
     const s = new MemoryStorage();
-    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "e1", token: "t", role: "admin", name: "  ", camera: 3, arrowsTurn: "yes" }));
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "e1", token: "t", role: "admin", name: "  ", camera: 3, arrowsTurn: "yes", voice: "on" }));
     expect(loadConfig(s)).toEqual(defaultConfig({ eventId: "e1", token: "t" }));
   });
 
@@ -89,7 +102,7 @@ describe("provision", () => {
       "/api/resolve-code": { status: 200, body: { eventId: "e1", role: "mod", title: "Trapped" } },
       "/e/e1/api/mod/login": { status: 200, body: { token: "mod-token" } },
     });
-    const c = await provision("ab12", { name: "Tent tablet", role: null, camera: "environment", arrowsTurn: null });
+    const c = await provision("ab12", { name: "Tent tablet", role: null, camera: "environment", arrowsTurn: null, voice: null });
     expect(c).toEqual(defaultConfig({ eventId: "e1", token: "mod-token", title: "Trapped", name: "Tent tablet", camera: "environment" }));
     expect(calls.map((x) => x.url)).toEqual(["/api/resolve-code", "/e/e1/api/mod/login"]);
     expect(calls[1]!.body).toEqual({ passcode: "ab12" });
@@ -97,8 +110,8 @@ describe("provision", () => {
 
   it("refuses a guest or performer code, and an unknown one", async () => {
     respond({ "/api/resolve-code": { status: 200, body: { eventId: "e1", role: "prime" } } });
-    await expect(provision("p", { name: null, role: null, camera: null, arrowsTurn: null })).rejects.toThrow(/performer code/);
+    await expect(provision("p", { name: null, role: null, camera: null, arrowsTurn: null, voice: null })).rejects.toThrow(/performer code/);
     respond({});
-    await expect(provision("x", { name: null, role: null, camera: null, arrowsTurn: null })).rejects.toThrow(/No event answers/);
+    await expect(provision("x", { name: null, role: null, camera: null, arrowsTurn: null, voice: null })).rejects.toThrow(/No event answers/);
   });
 });
