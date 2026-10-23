@@ -128,6 +128,10 @@ def catch_up_look(answer: Any, doc: LightsDoc | None) -> tuple[str | None, str]:
         return DOOR_LOOK, f"the door is open ({night.get('heart_stage')})"
     look = night.get("heart_look")
     if isinstance(look, str) and look not in ("", "none"):
+        spec = doc.look(look) if doc is not None else None
+        if isinstance(spec, dict) and spec.get("then") == "restore":
+            # A nag / warn gives back a settled state nobody holds after a restart.
+            return boot, f"boot (the story's {look} only gives the light back)"
         return look, "the story's heart look"
     return boot, "boot"
 
@@ -395,8 +399,10 @@ class HouseLights:
             pass
 
     def _give_back(self, run: Run) -> None:
-        """A `restore` look's end: the loop it interrupted, else the settled state."""
+        """A `restore` look's end: the loop it interrupted, else the settled
+        state, else (nothing settled since a restart) the `boot` look."""
         loops: dict[str, set[str]] = {}
+        unsettled: set[str] = set()
         for fid in sorted(run.owned):
             loop = run.resume.get(fid)
             if loop is not None and self.doc is not None and self.doc.look(loop) is not None:
@@ -405,11 +411,18 @@ class HouseLights:
                 state = self.settled.get(fid)
                 if state:
                     self._send(fid, {**state, "transition": state.get("transition", RESTORE_FADE_S)})
+                else:
+                    unsettled.add(fid)
                 if self.running.get(fid) is run:
                     del self.running[fid]
         run.owned.clear()
         for loop, fids in loops.items():
             self.play(loop, only=fids, why="given back")
+        boot = self.doc.boot if self.doc is not None else None
+        if unsettled and boot and boot != run.name:
+            spec = self.doc.look(boot)
+            if isinstance(spec, dict) and spec.get("then") != "restore":
+                self.play(boot, only=unsettled, why="given back (boot)")
 
     def stop_all(self) -> None:
         """A story restart: every look stops and the settled states are forgotten."""

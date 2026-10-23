@@ -357,3 +357,24 @@ def test_the_show_hands_its_cue_rules_to_the_lights_module(tmp_path):
     assert len(show.cfg.cues) == 2 and not show.ask_lights
     # The server's looks, later: the same drop.
     assert show.hand_looks_to_lights({"lights_y2k"}) == 1 and show.cfg.cues[0].match["target"] == "heart_idle"
+
+
+@_async
+async def test_a_restore_after_a_restart_gives_back_the_boot_look():
+    """Nothing settled since a restart: a nag / warn ends on `boot`, never on
+    its own last step (a full red swell left on the bulb)."""
+    timer = FakeTimer()
+    lights = _lights(timer)
+    lights.stop_all()
+    lights.play("heart_warn")
+    await timer.advance(2200)
+    assert lights.last_look == "heart_idle"
+    assert _on(lights.mqtt.log)[-1][1] == {"state": "ON", "brightness": 60, "color": {"hex": "#00E5FF"}, "transition": 3}
+    assert lights.running["server-room-rgb"].name == "heart_idle"
+
+
+def test_the_catch_up_never_lands_on_a_restore_look():
+    doc = parse_lights(BASIC)
+    for look in ("heart_nag", "heart_warn"):
+        got, why = catch_up_look({"night": {"heart_look": look, "server_door": "closed", "alarm_on": False}}, doc)
+        assert got == "heart_idle" and look in why
