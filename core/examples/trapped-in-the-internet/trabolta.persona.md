@@ -160,12 +160,6 @@ situations:
     prompt: |
       Nobody has heard her name tonight; the download that mentions her has it blacked out.
       Say "her", never her name, even here.
-  # DRAFT w20: thrown out of his heart tonight (Heart Eject / Barred).
-  - name: thrown out of your heart
-    when: them.at_the_heart == true && them.heart_out == true
-    prompt: |
-      You threw this program out of your heart tonight. You will not talk with them here.
-      One short line, cold and final, then nothing more. Never candid, never a question.
   - name: heart to heart
     when: them.at_the_heart == true && them.heart_chat == true && them.heart_out != true
     max_sentences: 4

@@ -1147,7 +1147,7 @@ describe("The Heart — secrets and the fiction (wave 20, D29)", () => {
     const facts2 = /^facts: (.*)$/mu.exec(front)![1]!.split(",").map((s) => s.trim());
     expect(facts2).toEqual(expect.arrayContaining(["Night.heart_stage", "Night.server_door"]));
     const names = [...front.slice(front.indexOf("\nsituations:\n")).matchAll(/^ {2}- name: (.+)$/gmu)].map((m) => m[1]!);
-    expect(names).toEqual(["at your heart", "marked at your heart", "a choice is open", "her name has been said", "her name is still blacked out", "thrown out of your heart", "heart to heart"]);
+    expect(names).toEqual(["at your heart", "marked at your heart", "a choice is open", "her name has been said", "her name is still blacked out", "heart to heart"]);
     const h2h = front.slice(front.indexOf("  - name: heart to heart"));
     expect(h2h).toMatch(/when: them\.at_the_heart == true && them\.heart_chat == true && them\.heart_out != true/u);
     expect(h2h).toMatch(/max_sentences: 4/u);

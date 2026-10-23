@@ -112,7 +112,7 @@ def test_the_shipped_persona_has_its_situations_and_whitelists():
     p = load_persona(TRABOLTA)
     # Wave 20: standing down is gone (D13: the story's talk decides), a docked
     # choice has its own block and the heart to heart wins over the rest (§7).
-    assert [s.heading for s in p.situations] == ["at your heart", "marked at your heart", "a choice is open", "her name has been said", "her name is still blacked out", "thrown out of your heart", "heart to heart"]
+    assert [s.heading for s in p.situations] == ["at your heart", "marked at your heart", "a choice is open", "her name has been said", "her name is still blacked out", "heart to heart"]
     assert {"at_the_heart", "heart_layer", "heart_menu", "heart_convinced", "heart_chat", "heart_out"} <= set(p.them or ())
     assert {"Night.heart_opened", "Night.talked_down", "Night.heart_stage", "Night.server_door"} <= set(p.facts)
     assert "stand_down" not in [x["id"] for x in allowed_powers(p, heart_request())]
@@ -129,13 +129,12 @@ def test_the_heart_block_appears_only_at_the_heart():
 
 
 def test_a_program_thrown_out_of_his_heart_gets_no_candour():
-    # D24: Heart Barred — a barred program's re-scan gets the cold block only.
+    # D24: Heart Barred — a barred program's re-scan gets no candid block.
     p = load_persona(TRABOLTA)
     req = heart_request("true")
     req["them"]["vars"]["heart_out"] = "true"
     req["them"]["vars"]["heart_chat"] = "true"
     names = [s.heading for s in matching_situations(p, req)]
-    assert "thrown out of your heart" in names
     assert not {"at your heart", "marked at your heart", "heart to heart"} & set(names)
 
 
