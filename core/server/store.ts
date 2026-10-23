@@ -109,6 +109,11 @@ const AUDIO_SAVE = "audio-save.json";
 /** Wave 18b (Q8): the house list of tablets a director ticked on Run's
  *  House sound card, laid over the config in force (never a whole save). */
 const AUDIO_ANNOUNCE = "audio-announce.json";
+/** The project's `lights.json` as this event snapshotted it (wave 20,
+ *  `lights.ts`). Not `lights.json`: `LOOM_LIGHTS` may sit in the same dir. */
+const LIGHTS = "project-lights.json";
+/** A director's lights save (the map editor), which wins over the project's. */
+const LIGHTS_SAVE = "lights-save.json";
 /** Web Push subscriptions by device (K-31a, `push.ts`). */
 const PUSH = "push.json";
 /** Every duck found this story (SW-RE-14, the ceremony's speedrun). */
@@ -363,6 +368,30 @@ export class Store {
   saveAudioAnnounce(terminals: string[] | null): void {
     if (terminals === null) rmSync(this.path(AUDIO_ANNOUNCE), { force: true });
     else writeFileSync(this.path(AUDIO_ANNOUNCE), JSON.stringify({ version: 1, terminals }));
+  }
+
+  // The project's `lights.json` this event snapshotted (launch, reload,
+  // `/api/mod/load {lights}`, Save to project) and a director's save, which
+  // wins over it (`lights.ts`, wave 20). Neither is story state: a restart
+  // keeps both.
+
+  loadLights(): string | null {
+    const v = readJson<{ version?: unknown; text?: unknown }>(this.path(LIGHTS));
+    if (v === null || v.version !== 1) return null;
+    return typeof v.text === "string" ? v.text : null;
+  }
+  saveLights(text: string | null): void {
+    writeFileSync(this.path(LIGHTS), JSON.stringify({ version: 1, text }));
+  }
+  /** The director's save, unvalidated (the hub checks it). */
+  loadLightsSave(): unknown {
+    return readJson<unknown>(this.path(LIGHTS_SAVE));
+  }
+  saveLightsSave(lights: unknown): void {
+    writeFileSync(this.path(LIGHTS_SAVE), JSON.stringify(lights, null, 2));
+  }
+  clearLightsSave(): void {
+    rmSync(this.path(LIGHTS_SAVE), { force: true });
   }
 
   // One line per duck found (`spatial.ts` `DuckRun`), cleared with the
