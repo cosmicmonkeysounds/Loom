@@ -125,6 +125,7 @@ import {
   agentThought,
   type AgentAct,
   type AgentActResult,
+  type AgentDossier,
   type AgentFacts,
   type AgentLine,
   type AgentPower,
@@ -134,6 +135,7 @@ import {
   type AgentThread,
   threadKey,
 } from "./agents.ts";
+import { agentDossierOn, buildDossier, codeMentions } from "./agent-dossier.ts";
 import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
@@ -2539,7 +2541,81 @@ export class EventRuntime {
       // and a pause's shift read the same time.
       at: this.clock(),
       ...(tag !== null ? this.agentRecentOf(thread, performer !== null ? "performer" : "guest", speakerId, speakerName, all, lines, tag) : {}),
+      // Wave 20 (D26): the guest's night, only at his heart (else absent).
+      ...(performer === null && agentDossierOn() ? this.agentDossierOf(thread, who, speakerName, all) : {}),
     };
+  }
+
+  /** `dossier` for one request (wave 20, D26): built only for a guest
+   *  standing at his heart, from the sim log, the chat log, the world and
+   *  the facts ledger, every time (never stored). */
+  private agentDossierOf(thread: AgentThread, id: string, name: string, all: readonly ChatMessage[]): { dossier: AgentDossier } | Record<string, never> {
+    const sim = this.sim!;
+    const peek = (path: string) => worldString(sim.world.peek(path));
+    const person = sim.persons.get(id);
+    if (person === undefined || peek(`${id}.at_the_heart`) !== "true") return {};
+    const unseen = (g: string) => this.agentHiddenGroup(g) || this.agentHiddenRace(g);
+    const want = foldName(name);
+    const played = [...sim.model.characters.values()].find((c) => !c.secret && foldName(c.id) === want);
+    const book = this.factsBook();
+    const filings =
+      book === null
+        ? []
+        : this.factsWatch
+            .all(sim, book.confirm)
+            .filter((f) => f.person === id)
+            .sort((a, b) => (a.logAt ?? 0) - (b.logAt ?? 0))
+            .map((f) => ({ question: f.question, verdict: f.final === null ? ("pending" as const) : f.final === "marked" ? ("lie" as const) : f.final, ...(f.logAt !== undefined ? { logAt: f.logAt } : {}) }));
+    const leaks = this.agentLeakChecks();
+    const dossier = buildDossier({
+      character: thread.character,
+      speaker: { id, name },
+      storyAt: sim.elapsed(),
+      log: sim.log.all(),
+      messages: all,
+      peek,
+      secretSlots: sim.model.roles.get(person.role)?.secret ?? new Set<string>(),
+      program: played?.id ?? null,
+      faction: sim.publicFactionOf(id),
+      groups: sim.groupsOf(id),
+      groupVisible: (g) => !unseen(g),
+      captured: sim.isCaptured(id),
+      restricted: sim.isRestricted(id),
+      persons: [...sim.persons.values()].map((p) => ({ id: p.id, name: p.name })),
+      codex: sim.codexFor(id).map((e) => ({ title: e.title, text: e.text, secret: e.secret })),
+      codexDef: (entry) => {
+        const e = sim.model.codex.get(entry);
+        return e === undefined ? undefined : { title: e.title, text: e.text, secret: e.secret };
+      },
+      quests: sim.questsFor(id).map((q) => ({ id: q.def.id, title: q.def.title, status: q.status })),
+      location: (loc) => {
+        const l = sim.model.locations.get(loc);
+        return l === undefined ? null : (l.label ?? l.id);
+      },
+      filings,
+      currencySlot: sim.model.currency?.slot ?? null,
+      ...(leaks.mentionsAnswer !== undefined ? { mentionsAnswer: leaks.mentionsAnswer } : {}),
+      mentionsSecret: leaks.mentionsSecret,
+      mentionsCode: codeMentions([...sim.model.codex.values()].flatMap((e) => (e.code === null ? [] : [e.code]))),
+    });
+    return dossier === null ? {} : { dossier };
+  }
+
+  /** The leak checks a request's house-held text goes through (wave 12
+   *  C0.1 / C1.2, shared by `recent` and the wave 20 dossier): the facts
+   *  book's answer forms (absent with no book in force) and the current
+   *  values of every `secret: true` character. */
+  private agentLeakChecks(): { mentionsAnswer?: (text: string) => boolean; mentionsSecret: (text: string) => boolean } {
+    const sim = this.sim!;
+    const book = this.factsBook();
+    const topics = new Map((book?.raw.questions ?? []).map((q) => [q.id, q.topics ?? []] as const));
+    const mentionsAnswer = book === null ? undefined : answerMentions([...book.questions, ...book.answers].map((k) => ({ forms: k.forms, topics: topics.get(k.id) ?? [] })));
+    const secretHeads = new Set([...sim.model.characters.values()].filter((c) => c.secret).map((c) => c.id));
+    const secretValues = sim.world
+      .entries()
+      .flatMap(([path, v]) => (v.kind === "string" && secretHeads.has(path.split(".")[0]!) ? [v.value] : []));
+    const mentionsSecret = secretMentions(secretValues, [...sim.persons.values()].map((p) => p.name));
+    return { ...(mentionsAnswer !== undefined ? { mentionsAnswer } : {}), mentionsSecret };
   }
 
   /** `recent` + `storyAt` for one request (wave 12, C1.2): rebuilt from the
