@@ -623,6 +623,8 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
       final_reveal: "F · The final reveal and the endings",
       own_award_lines: "G · The awards ceremony",
       "the simulation completed": "Anytime",
+      // Wave 20: 🚪 closed / trust and 🕊 autoend, appended after 👑 / 🔧, rejoin E.
+      server_door_closed: "E · Act III: the Y2K hour and the server room",
     };
     const bare = scenarioSource("trapped-in-the-internet").replace(/^ {2}act:.*\n/gmu, "");
     let tagged = bare;
@@ -639,7 +641,7 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
       return { cues: v.cues, rows };
     };
     const tagRows = cueRows(modView(acted, "open", "x").interactions ?? [], { last: null, fired: [] });
-    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 10", "C 5", "D 8", "E 13", "Anytime 6", "F 12", "G 12"]); // wave 18b: −☎️ −🪅
+    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 10", "C 5", "D 8", "E 16", "Anytime 6", "F 12", "G 12"]); // wave 18b: −☎️ −🪅; wave 20: +3 in E
     expect(marks(acted)).toEqual(marks(plain));
     const admin = [...plain.model.interactions.values()].filter((i) => i.who === "admin").map((i) => i.id);
     for (const id of admin.slice(0, 30)) {
