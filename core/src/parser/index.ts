@@ -25,6 +25,8 @@ export {
   applyInsertBeat,
   applyMoveBeat,
   applyRemoveBeat,
+  choiceTextRange,
+  editChoiceText,
   insertBeat,
   insertBodyLines,
   moveBeat,
