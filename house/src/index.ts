@@ -16,4 +16,5 @@ export * from "./frames.ts";
 export * from "./duck.ts";
 export * from "./king.ts";
 export * from "./audio.ts";
+export * from "./lights.ts";
 export * from "./voice.ts";
