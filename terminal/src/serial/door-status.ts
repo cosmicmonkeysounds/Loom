@@ -70,3 +70,31 @@ export function doorStatusText(s: DoorStatus, now: number = Date.now()): string 
   if (r.door === "fault") return `${tag}: FAULT (${r.fault ?? "?"})${r.level !== undefined ? ` · level ${r.level}` : ""}`;
   return `${tag}: ${r.door === "open" ? "OPEN" : "SHUT"} · level ${r.level ?? 0}${r.warn !== undefined ? ` · ⚠ ${r.warn}` : ""}`;
 }
+
+/** What ⚙ can ask of the running bridge (null: none running). */
+export interface DoorActions {
+  /** `cal closed` / `cal open`: the answer (or the firmware's error). */
+  calibrate(which: "closed" | "open"): Promise<CalLine | ErrLine>;
+}
+
+let actions: DoorActions | null = null;
+
+export function setDoorActions(a: DoorActions | null): void {
+  actions = a;
+}
+
+export function doorActions(): DoorActions | null {
+  return actions;
+}
+
+const rescanners = new Set<() => void>();
+
+/** A port was just granted (⚙): the running bridge looks for it now. */
+export function doorRescan(): void {
+  for (const r of [...rescanners]) r();
+}
+
+export function onDoorRescan(r: () => void): () => void {
+  rescanners.add(r);
+  return () => void rescanners.delete(r);
+}
