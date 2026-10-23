@@ -39,3 +39,28 @@ export function redone<T>(h: History<T>, current: T): { history: History<T>; pre
   if (next === undefined) return null;
   return { history: { past: [...h.past, current], future: h.future.slice(0, -1) }, present: next };
 }
+
+/**
+ * The history after another director's save of one part of the document
+ * (`key`: the speakers, the lights) was adopted: every entry takes the
+ * adopted `value`, so the other parts' steps still undo, and a step that
+ * only changed that part (now the same document twice: every other part
+ * the same value as its neighbour) disappears. The present wins a tie.
+ */
+export function rebaseField<D extends object, K extends keyof D>(h: History<D>, present: D, key: K, value: D[K]): History<D> {
+  const line = [...h.past.map((d) => ({ d, now: false })), { d: present, now: true }, ...[...h.future].reverse().map((d) => ({ d, now: false }))];
+  const others = (Object.keys(present) as (keyof D)[]).filter((k) => k !== key);
+  const same = (a: D, b: D): boolean => others.every((k) => a[k] === b[k]);
+  const kept: { d: D; now: boolean }[] = [];
+  for (const x of line) {
+    const last = kept[kept.length - 1];
+    if (last !== undefined && same(last.d, x.d)) {
+      if (x.now) kept[kept.length - 1] = x;
+      continue;
+    }
+    kept.push(x);
+  }
+  const at = kept.findIndex((x) => x.now);
+  const re = (x: { d: D }): D => ({ ...x.d, [key]: value });
+  return { past: kept.slice(0, at).map(re), future: kept.slice(at + 1).map(re).reverse() };
+}
