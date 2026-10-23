@@ -280,7 +280,7 @@
             "color": "#FF0000",
             "transition": 0.8
           },
-          "topic": "wled/server/api",
+          "topic": "wled/bench/api",
           "payload": {
             "on": true,
             "bri": 254,
@@ -328,7 +328,7 @@
             "color": "#7A2DFF",
             "effect": "breathe"
           },
-          "topic": "wled/server/api",
+          "topic": "wled/bench/api",
           "payload": {
             "bri": 60,
             "seg": [
@@ -379,7 +379,7 @@
             "brightness": 120,
             "transition": 2
           },
-          "topic": "wled/server/api",
+          "topic": "wled/bench/api",
           "payload": {
             "on": true,
             "bri": 120,
@@ -598,7 +598,7 @@
         "state": "ON",
         "brightness": 50
       },
-      "topic": "wled/server/api",
+      "topic": "wled/bench/api",
       "payload": {
         "on": true,
         "bri": 50
@@ -614,7 +614,7 @@
         "brightness": 50,
         "effect": "blink"
       },
-      "topic": "wled/server/api",
+      "topic": "wled/bench/api",
       "payload": {
         "bri": 50,
         "seg": [

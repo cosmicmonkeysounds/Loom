@@ -224,7 +224,7 @@ async def test_the_safety_clamp_holds_on_the_wire():
     assert lights.run_test({"fixture": "server-room-rgb", "set": {"state": "OFF"}}) == "set server-room-rgb"
     assert lights.run_test({"fixture": "server-strip", "set": {"brightness": 1}}) == "set server-strip"
     assert lights.mqtt.log[0][1:] == (RGB, {"state": "ON", "brightness": 40})
-    assert lights.mqtt.log[1][1:] == ("wled/server/api", {"bri": 50})
+    assert lights.mqtt.log[1][1:] == ("wled/bench/api", {"bri": 50})
 
 
 @_async
@@ -236,9 +236,9 @@ async def test_tests_identify_and_pairing():
     assert lights.run_test({"fixture": "server-room-rgb"}) == "identify server-room-rgb"
     assert lights.mqtt.log[-1][1:] == (RGB, {"effect": "okay"})
     lights.run_test({"fixture": "server-strip"})
-    assert lights.mqtt.log[-1][1:] == ("wled/server/api", {"on": True, "bri": 255, "seg": [{"col": [[255, 255, 255]], "fx": 0}]})
+    assert lights.mqtt.log[-1][1:] == ("wled/bench/api", {"on": True, "bri": 255, "seg": [{"col": [[255, 255, 255]], "fx": 0}]})
     await timer.advance(2000)
-    assert lights.mqtt.log[-1][1:] == ("wled/server/api", {"seg": [{"fx": 0}]})
+    assert lights.mqtt.log[-1][1:] == ("wled/bench/api", {"seg": [{"fx": 0}]})
     assert lights.run_test({"look": "heart_nag"}) == "look heart_nag"
     assert lights.run_test({"look": "nope"}) == "no look nope"
     assert lights.run_test({"fixture": "nope"}) == "no fixture nope"
