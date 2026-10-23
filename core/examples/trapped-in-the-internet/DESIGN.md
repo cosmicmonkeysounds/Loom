@@ -2570,10 +2570,11 @@ the menu pattern, arithmetic) and §4 (looks); every line is `// DRAFT w20` (`SI
   off by default), and 🔄 can reopen the heart until someone presses it (a convinced program then
   gets the short **Heart Return**). With autoend turned on `talked_down` fires 25 s later (the
   autoend watcher). Combo A sets `done` and fades the bulb the same way.
-- **Lights (D10, D11).** The RGB bulb is `lights.json`'s (`server-room-rgb`, safety, ≥ 40 / 254);
+- **Lights (D10, D11).** The RGB bulb is `lights.json`'s (`server-room-rgb`, safety, ≥ 80 / 254);
   every look is `set Night.heart_look` + `cue heart_x` only while `Night.alarm_on != true`;
   `heart_alarm` under the patch-bay alarm, the latch's end puts back the door loop / the settled
-  look / `heart_idle`. The WLED strip `wled/server` stays the room's safety light (YAML).
+  look / `heart_idle`. The bulb is the room's only light (no strip, w20b Q6) and so its safety
+  light; no YAML rule touches it or its `server_room` group (Q10), so no house look fights the heart.
 - **Deleted:** `INTERACTION stand_down` and its hook, the persona's *standing down* block, the
   mind file's `stand_down` powers (D13).
 

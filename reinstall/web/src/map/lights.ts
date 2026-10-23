@@ -168,10 +168,21 @@ export function patchLight(lights: LightsConfig, id: string, patch: { name?: str
 }
 
 /**
- * Devices that are always a safety light (D11: the server room's WLED strip,
- * which the blackout keeps lit): a fixture given one by name is marked safety.
+ * Devices that are always a safety light, with the floor each gets (Z2M
+ * brightness 0–254). The server room's RGB bulb `server_room_rgb` is that
+ * room's only light (Q6 / Q10: no strip), so it is the room's safety light,
+ * at 80: a fixture given one of these — typed, or picked from the
+ * Zigbee2MQTT list — is marked safety with at least that floor.
  */
-export const SAFETY_DEVICES: readonly string[] = ["wled/server"];
+export const SAFETY_DEVICES: Readonly<Record<string, number>> = { server_room_rgb: 80 };
+
+/** The safety patch for a device in SAFETY_DEVICES (never lowering a higher `min`), else nothing. */
+function safetyFor(lights: LightsConfig, id: string, device: string): { safety?: true; min?: number } {
+  const floor = SAFETY_DEVICES[device.trim().toLowerCase()];
+  if (floor === undefined) return {};
+  const own = lightById(lights, id)?.min;
+  return { safety: true, min: Math.max(floor, typeof own === "number" && Number.isFinite(own) ? own : 0) };
+}
 
 /** The confirm before a safety light stops being one. */
 export function safetyOffText(f: Pick<LightFixture, "name">): string {
@@ -193,10 +204,9 @@ export function setLightDevice(lights: LightsConfig, id: string, device: Z2mDevi
   if (typeof device === "string") {
     const name = device.trim();
     const wled = /^wled\//i.test(name);
-    const safety = SAFETY_DEVICES.includes(name.toLowerCase()) ? { safety: true } : {};
-    return patchLight(lights, id, { device: name, ...safety, ...(wled ? { kind: "wled" as const } : lightById(lights, id)?.kind === "wled" ? { kind: "zigbee" as const } : {}) });
+    return patchLight(lights, id, { device: name, ...safetyFor(lights, id, name), ...(wled ? { kind: "wled" as const } : lightById(lights, id)?.kind === "wled" ? { kind: "zigbee" as const } : {}) });
   }
-  return patchLight(lights, id, { device: device.friendly, kind: deviceKind(device), ...(device.caps !== null ? { caps: { ...device.caps } } : {}) });
+  return patchLight(lights, id, { device: device.friendly, kind: deviceKind(device), ...safetyFor(lights, id, device.friendly), ...(device.caps !== null ? { caps: { ...device.caps } } : {}) });
 }
 
 /** Swap a target name everywhere a look (or one of its steps) names it. */

@@ -893,7 +893,7 @@ function LightInspector({ house, edit, onSelect, onNotice, id, lights = null, sa
         </select>
       </label>
       <div className="field">
-        device <span className="muted">({f.kind === "wled" ? "the WLED MQTT topic, e.g. wled/server" : "its Zigbee2MQTT friendly name"})</span>
+        device <span className="muted">({f.kind === "wled" ? "the WLED MQTT topic, e.g. wled/tube" : "its Zigbee2MQTT friendly name"})</span>
         {choices.length > 0 && (
           <select
             className="w98-input"
@@ -919,7 +919,7 @@ function LightInspector({ house, edit, onSelect, onNotice, id, lights = null, sa
             {listed && <option value="__typed">type a name…</option>}
           </select>
         )}
-        {showTyped && <CommitText label={choices.length > 0 ? "or type it" : "type it"} value={f.device} disabled={!edit} placeholder={f.kind === "wled" ? "wled/server" : "server_room_rgb"} onCommit={(v) => commit(setLightDevice(lights, id, v))} />}
+        {showTyped && <CommitText label={choices.length > 0 ? "or type it" : "type it"} value={f.device} disabled={!edit} placeholder={f.kind === "wled" ? "wled/tube" : "server_room_rgb"} onCommit={(v) => commit(setLightDevice(lights, id, v))} />}
         {choices.length === 0 && <div className="muted small">No devices reported yet: the house Mac's lights module posts Zigbee2MQTT's list. Pair the bulb from the 💡 Lights tab, or type its friendly name.</div>}
       </div>
       <div className="field">

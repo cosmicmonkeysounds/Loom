@@ -122,8 +122,8 @@ the 🚪 buttons), then `pnpm sync-show` with its reload before doors, then
 | D6 | **The stagehand `lights` module** (house Mac, its own launchd job) plays the story's `cue heart_*` looks on Zigbee2MQTT / WLED, tests, identifies, pairs, posts the Z2M device list, catches up after a reconnect, and `show` hands it the looks `lights.json` defines. | |
 | D7 | **The map editor places lights**: 💡 Light tool, inspector, *+ Light here*, the 💡 Lights tab (fixtures, Z2M devices + *Pair new device*, looks with steps, ▶ Test), Save to project, one undo history with the map and the speakers. | |
 | D8 | **Run** shows a 🚪 badge per terminal (shut / open + level, a red fault, ⚠ a warning, amber *override*), the glance shows the heart (the story's `watch:` lines), and a 💡 row on the House map card. | |
-| D10 | **The RGB bulb belongs to `lights.json` alone**: it leaves the Z2M `server_room` group, so the YAML's `lights_server_open` and `lights_alarm` no longer touch it; the story cues `heart_alarm` for it under the patch-bay alarm and puts the room's look back when the latch ends. | |
-| D11 | **The room's safety light is the WLED strip `wled/server`**: no heart look touches it, and `lights_alarm` gives it a steady red, never a strobe. The RGB bulb is a safety fixture too (`power_on_behavior: on`; never off, never under 40 / 254), but 40 / 254 in red or violet is only a few lumens. The drama is colour, slow swells and timing; never fast flicker over Zigbee. | |
+| D10 | **The RGB bulb belongs to `lights.json` alone.** You confirmed it is the only bulb in the Z2M `server_room` group (Q10), so it can stay there: `lights.json` addresses it by name, and the YAML sends neither the group nor the bulb anything (`lights_server_open` and `lights_alarm` no longer touch it, and no house look can fight a heart look). The story cues `heart_alarm` for it under the patch-bay alarm and puts the room's look back when the latch ends. | |
+| D11 | **The RGB bulb is the room's safety light** (Q6: no strip in the server room, so every `wled/server` rule left the YAML): `power_on_behavior: on`, never off, and its floor is raised from 40 to **80 / 254**, since it is the room's only light; every heart look's low step now reads 80. The drama is colour, slow swells and timing; never fast flicker over Zigbee. | |
 | D20 | **A short look gives the light back** (`heart_nag`, `heart_warn`): the module plays it, then restores the loop it interrupted or the settled look. | |
 | D21 | **The lights catch up from the story**, not a cache: after a reconnect the module reads the screen state (the alarm → `heart_alarm`; the door open mid-heart → `heart_door_open`; else the settled heart look; else `boot`). | |
 
@@ -145,11 +145,11 @@ the 🚪 buttons), then `pnpm sync-show` with its reload before doors, then
 | Q3 | In the Y2K hour, should success end the night by itself after 25 s, or always wait for a director's 🕊? | by itself (🕊 Heart autoend on; with it off, 🔄 can undo a declined 🕊) | *"Unsure, likely leaning towards the directors sign-off required for the night truly ending."* Built (w20b): autoend off by default, the toggle kept, NEXT points at 🕊. |
 | Q4 | Before the Y2K hour a convinced program hears *not yet*. Should an early convince end the night at once instead? | not yet (the Y2K gate kept) | *"Yes."* Built (w20b): Heart Shutdown at any hour, the night ends on 🕊 (Q3); 🕊 with nothing on record still needs the Y2K hour. |
 | Q5 | Is the LED on 3V3 (always lit) or can it move to a pin on the M4? Only a pin gives the room-light-proof `mod` reading. | `auto` handles both | *"Currently on 5V, actually, but it could be on a digital pin to allow pulsing for better light/dark detection."* Built (w20b): `LED_MODE` steady (5V, the default) or pulsed (D2); wiring for both in `hardware/server-room-door/README.md`. |
-| Q6 | Is the WLED strip `wled/server` still in the server room and working? It is the room's safety light (D11); without it the bulb is the only light and should stay brighter. | yes | |
+| Q6 | Is the WLED strip `wled/server` still in the server room and working? It is the room's safety light (D11); without it the bulb is the only light and should stay brighter. | yes | **No strips in the server room, just the one RGB bulb.** → the `wled/server` rules are gone; the bulb is the safety light at 80 / 254 (D11). |
 | Q7 | Is the ESP32 still on the door frame? D16 stops listening to it; the copper tape can come off. | ignored | *"No, just the Grand Central M4."* Documented (w20b): the patch bay is pressed by the Antivirus watch (`radio_*`), the siren is the router's; K-05 and the watch card follow. |
 | Q8 | May guests answer the tree from their phone while standing at the terminal, or mouse only? | phone too (D14) | *"No, keep it simple."* D14 unchanged. |
 | Q9 | Does the keypad stay exactly as it is? | yes (D17) | *"Yes the keypad keeps the door locked."* |
-| Q10 | Is the RGB bulb the only bulb in the Z2M `server_room` group? If so the group's YAML lines are dead and removed; if not they stay for the others. | treated as the only one | |
+| Q10 | Is the RGB bulb the only bulb in the Z2M `server_room` group? If so the group's YAML lines are dead and removed; if not they stay for the others. | treated as the only one | **Yes, only one RGB bulb in the server room.** → the group's YAML lines are gone; the bulb may stay in the group (D10). |
 
 ---
 
@@ -352,11 +352,11 @@ All new; the server-room terminal only, never the TV.
 
 Colours: his cold cyan `#00E5FF`, listening blue `#2D6BFF`, argument violet
 `#7A2DFF`, warning amber `#FF6A00`, alarm red `#FF0000`, waking red-orange
-`#FF2A00`. Never under 40 / 254, never off.
+`#FF2A00`. Never under 80 / 254 (the room's only light, Q6), never off.
 
 | Look | When | What it does |
 |---|---|---|
-| `heart_idle` | boot, Leave, an eject settles, 🔄 | dim cold cyan (60) |
+| `heart_idle` | boot, Leave, an eject settles, 🔄 | dim cold cyan (80) |
 | `heart_wake` | The Heart | red-orange at full, four brightness flickers over 1.6 s, then settles cyan |
 | `heart_nag` | each nag | one amber swell, then the door loop comes back |
 | `heart_door_open` | the door open mid-heart | a slow amber swell every 2 s until the next look |

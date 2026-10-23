@@ -354,7 +354,7 @@ describe("payloads", () => {
     expect(lightTopic(fixture("server-room-rgb"))).toBe("zigbee2mqtt/server_room_rgb/set");
     expect(lightTopic(fixture("hall-group"))).toBe("zigbee2mqtt/hall_lights/set");
     expect(lightTopic(fixture("hall-group"), "z2m")).toBe("z2m/hall_lights/set");
-    expect(lightTopic(fixture("server-strip"))).toBe("wled/server/api");
+    expect(lightTopic(fixture("server-strip"))).toBe("wled/bench/api");
   });
 
   it("Z2M: only the set fields, the colour as {hex}", () => {

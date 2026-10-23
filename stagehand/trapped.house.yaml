@@ -47,8 +47,8 @@
 #     house · living (The Desktop) · kitchen (The Start Bar) · backyard (The Cloud)
 #     registry (The RAM, the basement studio) · tube (the halls + both stairs)
 #     mudroom (The Optical Drive) · bathroom (Disk Cleanup: both bathrooms)
-#     tent (The Internet) · server_room (wave 20: EMPTY — its one bulb, the
-#     RGB `server_room_rgb`, left it for lights.json; see below)
+#     tent (The Internet) · server_room (only the RGB bulb `server_room_rgb`,
+#     which is lights.json's: nothing here sends the group anything; see below)
 #   The CPU, the Steam Room, the Fan Closet, the Graphics Card and the Hard
 #   Drive have no group of their own: their bulbs join `house`.
 #   SAFETY: the stairs, the bathrooms, the tent, the server room and the
@@ -56,20 +56,22 @@
 #   darkening cue targets), so no `house` scene and no blackout can darken
 #   them; give those bulbs `power_on_behavior: on`. `bathroom` and `tent`
 #   exist for their own looks only; nothing here turns them off.
-#   THE SERVER ROOM (wave 20, D10 / D11): its RGB bulb `server_room_rgb`
-#   belongs to lights.json alone (the `lights` module: Trabolta's heart_*
-#   looks, never below 40 / 254, power_on_behavior: on) and is in NO group
-#   here — it was the `server_room` group's only bulb (CHECKLIST §C), so no
-#   rule below sends that group anything. The room's safety light is the WLED
-#   strip `wled/server`: the blackout leaves it alone, lights_server_open puts
-#   it on ps 11, and lights_alarm gives it a STEADY red, never ps 12's strobe.
+#   THE SERVER ROOM (wave 20, D10 / D11, Q6 / Q10): its one light is the RGB
+#   bulb `server_room_rgb` — no strip, no other bulb. The bulb belongs to
+#   lights.json alone (the `lights` module: Trabolta's heart_* looks), which
+#   addresses it by its own name; it may stay the `server_room` group's only
+#   member, but no rule below sends that group (or the bulb) anything, and it
+#   is never in `house`, so no house look, blackout, alarm or restore here
+#   ever touches it. It is the room's SAFETY light: power_on_behavior: on,
+#   never off, never below 80 / 254 (its lights.json floor).
 #   Scenes: `scene_store` each look ONCE while setting up — a whole-house look
 #   on the `house` group itself, a room look on that room's group — with the
 #   IDs in the table below, then the show only ever sends `scene_recall`.
 #
 #   WLED: the PAUTIX strips are addressable, on off-the-shelf WLED
 #   controllers. Group topic `wled/all`, plus device topics wled/tube,
-#   wled/living, wled/kitchen, wled/backyard, wled/registry, wled/server.
+#   wled/living, wled/kitchen, wled/backyard, wled/registry. The server room
+#   has no strip (Q6), so no WLED topic reaches it.
 #   Build IDENTICAL preset IDs on every controller (same table). If one
 #   controller drives several runs as segments, build each preset with the
 #   segment looks it needs (e.g. ps 22 = the tube segment dim, the others off).
@@ -99,11 +101,11 @@
 #   8  lights_pong           backyard floods full                 backyard ps 8
 #   9  lights_trust_chart    living scene 9  blue podium          living ps 9
 #  10  lights_y2k            house  scene 10 amber, dim           ps 10 per device (slow red pulse); tube ps 22
-#  11  lights_server_open    — (the RGB bulb is lights.json's)    server ps 11
+#  11  lights_server_open    — (the RGB bulb is lights.json's)    — (the server room has no strip)
 #  12  lights_alarm          house 12 (the bulb: heart_alarm)     ps 12 per device (red strobe) — never
-#                                                                  `wled/all`: tube + server hold a steady red
+#                                                                  `wled/all`: the tube holds a steady red
 #  13  lights_blackout       house  OFF, no transition            per device: living/kitchen/backyard/
-#                                                                  registry off, tube ps 22, server untouched
+#                                                                  registry off, tube ps 22
 #  14  lights_dance          house  scene 14 dance                ps 14 per device (audio-reactive); tube ps 22
 #  15  lights_final_reveal   house  scene 15 near dark            ps 15 per device (embers); tube ps 22
 #  16  lights_song           house  scene 16 pink, romantic       all ps 16
@@ -117,14 +119,14 @@
 #  22  (tube_safe)           —                                    tube ps 22 (dim static: the blackout's
 #                                                                  stair light)
 #
-# SAFETY STRIPS (D11). `wled/tube` (halls + both stairs) and `wled/server`
-# (the server room) never get an effect preset that goes dark between frames:
-# every strobe / lightning / pulse / audio-reactive / embers look (ps 7, 10,
-# 12, 14, 15, 17) goes PER DEVICE, the tube held on its dim static ps 22, the
-# server strip left on its steady look (lights_alarm gives both a steady red).
+# SAFETY STRIP (D11). `wled/tube` (halls + both stairs) never gets an effect
+# preset that goes dark between frames: every strobe / lightning / pulse /
+# audio-reactive / embers look (ps 7, 10, 12, 14, 15, 17) goes PER DEVICE, the
+# tube held on its dim static ps 22 (lights_alarm gives it a steady red).
 # Only ps 1, 3, 6, 16, 18, 19 and 20 still go to `wled/all`: build those on the
-# tube and server controllers as SOLID looks (fx 0, or a slow drift that never
-# drops a run of pixels to dark) and check it on the controllers.
+# tube controller as SOLID looks (fx 0, or a slow drift that never drops a run
+# of pixels to dark) and check it on the controller. (The server room has no
+# strip: its safety light is the RGB bulb, lights.json's.)
 #
 # SCREENS. The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no
 # rule here on purpose: the Screens layer (design §7 #13) consumes them from
@@ -242,8 +244,7 @@ show:
       match: { target: lights_glitch }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { effect: "breathe" } }
     # ps 7 is an effect: per device, never `wled/all` (D11). The tube strip
-    # (halls + stairs) holds its dim static ps 22; the server-room strip is
-    # left on its steady look.
+    # (halls + stairs) holds its dim static ps 22.
     - on: { directive: cue }
       match: { target: lights_glitch }
       mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 7 } }
@@ -278,8 +279,7 @@ show:
       match: { target: lights_y2k }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 10, transition: 4 } }
     # ps 10 is an effect: per device, never `wled/all` (D11). The tube strip
-    # (halls + stairs) holds its dim static ps 22; the server-room strip is
-    # left on its steady look.
+    # (halls + stairs) holds its dim static ps 22.
     - on: { directive: cue }
       match: { target: lights_y2k }
       mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 10 } }
@@ -296,21 +296,21 @@ show:
       match: { target: lights_y2k }
       mqtt: { topic: "wled/tube/api", payload: { "on": true, ps: 22 } }
 
-    - on: { directive: cue }
-      match: { target: lights_server_open }
-      mqtt: { topic: "wled/server/api", payload: { "on": true, ps: 11 } }
+    # lights_server_open is the story's "the server room is open" look: the
+    # room's only light is the RGB bulb, which the story lights with its own
+    # heart_* looks (lights.json), so here it only stops the ESP32's alarm.
     - on: { directive: cue }
       match: { target: lights_server_open }
       mqtt: { topic: "show/serverroom/alarm", payload: { state: "off" } }
 
     # The server-room RGB bulb is not here: the story cues `heart_alarm`
-    # (lights.json, a slow red swell above 40 / 254) from the same latch.
+    # (lights.json, a slow red swell above its 80 / 254 floor) from the same latch.
     - on: { directive: cue }
       match: { target: lights_alarm }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 12, transition: 0 } }
-    # WLED per device, never `wled/all` (D11): the server-room strip and the
-    # tube strip (halls + stairs) are safety lights, so both get a STEADY full
-    # red (fx 0), never ps 12's strobe, which goes dark between flashes.
+    # WLED per device, never `wled/all` (D11): the tube strip (halls + stairs)
+    # is a safety light, so it gets a STEADY full red (fx 0), never ps 12's
+    # strobe, which goes dark between flashes.
     - on: { directive: cue }
       match: { target: lights_alarm }
       mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 12 } }
@@ -326,9 +326,6 @@ show:
     - on: { directive: cue }
       match: { target: lights_alarm }
       mqtt: { topic: "wled/tube/api", payload: { "on": true, bri: 255, seg: [{ col: [[255, 0, 0]], fx: 0 }] } }
-    - on: { directive: cue }
-      match: { target: lights_alarm }
-      mqtt: { topic: "wled/server/api", payload: { "on": true, bri: 255, seg: [{ col: [[255, 0, 0]], fx: 0 }] } }
     # The server-room ESP32's own siren + ring strobe, for the story's 120 s
     # alarm latch (it strobes locally even if the Wi-Fi drops mid-alarm). Since
     # wave 7 only the patch bay trips it (the second wrong combination); the
@@ -341,8 +338,8 @@ show:
     # (Night.dance_at), so the off here needs no timer. `house` holds no
     # safety bulb (see THE RIG), and WLED goes off PER DEVICE: never
     # `wled/all`, so the tube strip (hall + stair landing) drops to its dim
-    # static preset and the server-room strip (guests are in there) is left
-    # alone.
+    # static preset. The server room (guests are in there) has no strip and
+    # its bulb is in no group here, so the blackout never reaches it.
     - on: { directive: cue }
       match: { target: lights_blackout }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { state: "OFF", transition: 0 } }
@@ -366,8 +363,7 @@ show:
       match: { target: lights_dance }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 14, transition: 0 } }
     # ps 14 is an effect: per device, never `wled/all` (D11). The tube strip
-    # (halls + stairs) holds its dim static ps 22; the server-room strip is
-    # left on its steady look.
+    # (halls + stairs) holds its dim static ps 22.
     - on: { directive: cue }
       match: { target: lights_dance }
       mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 14 } }
@@ -388,8 +384,7 @@ show:
       match: { target: lights_final_reveal }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 15, transition: 3 } }
     # ps 15 is an effect: per device, never `wled/all` (D11). The tube strip
-    # (halls + stairs) holds its dim static ps 22; the server-room strip is
-    # left on its steady look.
+    # (halls + stairs) holds its dim static ps 22.
     - on: { directive: cue }
       match: { target: lights_final_reveal }
       mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 15 } }
@@ -417,8 +412,7 @@ show:
       match: { target: lights_rave }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 17, transition: 0 } }
     # ps 17 is an effect: per device, never `wled/all` (D11). The tube strip
-    # (halls + stairs) holds its dim static ps 22; the server-room strip is
-    # left on its steady look.
+    # (halls + stairs) holds its dim static ps 22.
     - on: { directive: cue }
       match: { target: lights_rave }
       mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 17 } }
@@ -514,9 +508,9 @@ show:
   # replayed: it would re-arm the server room's 120 s siren. The director's
   # re-fire of the current lights cue (OP-16) stays the fallback.
   # `server_open` (the majority, The Heart) is the server room's look on
-  # top of the Y2K house look — lights_server_open touches that room's WLED
-  # strip alone (since wave 20 the RGB bulb is lights.json's, and the
-  # `lights` module catches it up from the story itself, D21) —
+  # top of the Y2K house look — lights_server_open now lights nothing (the
+  # room's only light is the RGB bulb, lights.json's, which the `lights`
+  # module catches up from the story itself, D21) —
   # and is only ever set before the final reveal, on lights_y2k. So it
   # replays the house layer first, the way the story's own alarm restore
   # does (`lights_y2k` then `lights_server_open`).
