@@ -441,8 +441,16 @@ export const DEVICE_MOMENT_SIGNALS: readonly string[] = [...Object.values(KING_S
 
 /** Never a moment: a checkmate (the story tells only the winner and
  *  `# hosts` — a public one would hint who now holds the door code). Folded,
- *  so the show's admin `chess_won` press is quiet too. */
-export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won].map(foldName);
+ *  so the show's admin `chess_won` press is quiet too. Wave 20: the server
+ *  room's admin door cues and the heart's autoend toggle (a door that opens
+ *  and shuts is no house-wide event; the sensor's own `door_sensor_*` and
+ *  the story's `heart_door_*` are not admin cues, so never moments anyway). */
+export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won, "server_door_opened", "server_door_closed", "server_door_trust", "heart_autoend"].map(foldName);
+
+/** (wave 20) Subject-free beats that never become a `beat` moment, folded:
+ *  the server room's door chatter (the nag, the door again, the shut, the
+ *  sealing). *The Heart* itself stays a moment. */
+export const QUIET_MOMENT_BEATS: readonly string[] = ["Heart Nag", "Heart Door Again", "Heart Door Shut", "Heart Sealed"].map(foldName);
 
 /** The booth presses that may stand as a draw's verdict (🗣 / 🙅 / 🎩 on the
  *  bottle's pick) — only those the story declares as an INTERACTION. Every
@@ -595,7 +603,7 @@ export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets
   };
   switch (e.type) {
     case "beatEntered":
-      return e.subject === null ? make("beat", e.beat, null) : null;
+      return e.subject === null && !QUIET_MOMENT_BEATS.includes(foldName(e.beat)) ? make("beat", e.beat, null) : null;
     case "signal": {
       if (e.name === FOUND_FIRST) return null;
       if (e.name === FOUND_SIGNAL && e.subject !== null && sim.persons.has(e.subject)) {
@@ -665,6 +673,14 @@ export const SCREEN_NIGHT_VARS = {
   least_trusted: "Night.least_trusted",
   facts_accepted: "Night.facts_accepted",
   first_reinstall: "Night.first_reinstall",
+  // Wave 20: the server room's door and Trabolta's heart, always carried
+  // (no slide gate): the door bridge, the room terminal and the lights
+  // module's catch-up all read them.
+  server_door: "Night.server_door",
+  heart_stage: "Night.heart_stage",
+  heart_look: "Night.heart_look",
+  alarm_on: "Night.alarm_on",
+  door_override: "Night.door_override",
 } as const;
 /** A story var holding this names nobody / nothing yet (the show's "none"). */
 const NIGHT_NONE = "none";
@@ -700,6 +716,16 @@ export interface ScreenNight {
    *  `purgatory` slide is up: facts accepted, the first reinstalled program. */
   facts_accepted: number | null;
   first_reinstall: string | null;
+  /** (wave 20) `Night.server_door`: "open" | "closed" (null: no story / unset). */
+  server_door: "open" | "closed" | null;
+  /** (wave 20) `Night.heart_stage`: "sealed" | "door" | "scan" | "talk" | "done". */
+  heart_stage: string | null;
+  /** (wave 20) `Night.heart_look`: the settled heart look ("none" reads null). */
+  heart_look: string | null;
+  /** (wave 20) `Night.alarm_on`: the patch-bay alarm latch. */
+  alarm_on: boolean | null;
+  /** (wave 20) `Night.door_override`: the story follows the 🚪 buttons, not the sensor. */
+  door_override: boolean | null;
 }
 
 // --- the results block (wave 18b) ----------------------------------------------
@@ -853,7 +879,26 @@ export interface ScreenDevice {
   /** (wave 18b, Q8) The tablet says the house announcements right now
    *  (`ann=1|0`: its own setting, else the house list). */
   announce?: boolean;
+  /** (wave 20) The door sensor this terminal bridges (`door=`, `DOOR_STATES`):
+   *  absent = none configured (or a build that predates it). */
+  door?: ScreenDoor;
+  /** The sensor's last level (`dlv=`, 0–4095: the lit − dark difference in
+   *  the firmware's `mod` mode). */
+  doorLevel?: number;
+  /** The blocking fault while `door === "fault"` (`dft=`: `ldr_saturated` |
+   *  `led_dead` | `stale` | `no_port`). */
+  doorFault?: string;
+  /** A non-blocking warning (`dwn=`, `ldr_open`): the door state above still holds. */
+  doorWarn?: string;
 }
+
+/** What a terminal's `door=` may say (wave 20). */
+export const DOOR_STATES = ["open", "closed", "fault", "none"] as const;
+export type ScreenDoor = (typeof DOOR_STATES)[number];
+/** The door sensor's 12-bit ceiling (`dlv=`). */
+export const DOOR_LEVEL_MAX = 4095;
+/** A door fault or warning code as the heartbeat may carry it. */
+const DOOR_CODE = /^[a-z_]{1,24}$/u;
 
 /** What a terminal's `mic=` may say (wave 19). */
 export const MIC_STATES = ["live", "muted", "denied", "insecure", "locked", "off"] as const;
@@ -861,7 +906,8 @@ export type ScreenMic = (typeof MIC_STATES)[number];
 
 /** The device fields off a poll's query (`audio=1|0`, `vis=v|h`,
  *  `bat=<0-100>[c]`, `fs=1|0`, `mic=<MIC_STATES>`, `ver=<build>`, wave 18b
- *  `ann=1|0`); anything malformed is left out. */
+ *  `ann=1|0`, wave 20 `door=<DOOR_STATES>`, `dlv=<0-4095>`, `dft=` /
+ *  `dwn=<[a-z_]{1,24}>`); anything malformed is left out. */
 export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   const d: ScreenDevice = {};
   const audio = q("audio");
@@ -881,6 +927,14 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   if (ver !== "") d.version = ver;
   const ann = q("ann");
   if (ann === "1" || ann === "0") d.announce = ann === "1";
+  const door = q("door");
+  if ((DOOR_STATES as readonly string[]).includes(door)) d.door = door as ScreenDoor;
+  const dlv = q("dlv");
+  if (/^\d{1,4}$/u.test(dlv) && Number(dlv) <= DOOR_LEVEL_MAX) d.doorLevel = Number(dlv);
+  const dft = q("dft");
+  if (DOOR_CODE.test(dft)) d.doorFault = dft;
+  const dwn = q("dwn");
+  if (DOOR_CODE.test(dwn)) d.doorWarn = dwn;
   return d;
 }
 
@@ -992,6 +1046,39 @@ export function screenKingOf(king: KingState | null, armed: { path: string; min:
 export interface ScreenRoom {
   id: string;
   open: boolean;
+  /** (wave 20) The last `cue room_<name>` played in a beat whose setting folds
+   *  to this LOCATION (id or label), else null (also before the doors and for
+   *  an unknown room). */
+  cue: ScreenRoomCue | null;
+}
+
+/** (wave 20) A room terminal's picture cue (`cue room_heart_wake` in a beat set
+ *  in its LOCATION): its room scenes key on it. Never a screen cue family,
+ *  never a moment, never seen by a wall or the TV. */
+export interface ScreenRoomCue {
+  /** The cue's first token, as written: `room_heart_wake`. */
+  value: string;
+  /** Bumps on every such cue for this room, a repeat included. */
+  seq: number;
+  /** Server epoch ms the fold first saw it; 0 = before this server's fold (history: never played). */
+  at: number;
+}
+
+/** The prefix a room terminal's picture cue carries (`cue room_heart_wake`). */
+export const ROOM_CUE_PREFIX = "room_";
+
+/** `room_heart_wake, slow` → `room_heart_wake`; anything not `room_<name>` → null. */
+export function roomCueOf(args: string): string | null {
+  const head = args.trim().split(/[\s,]+/u)[0] ?? "";
+  return head.startsWith(ROOM_CUE_PREFIX) && head.length > ROOM_CUE_PREFIX.length ? head : null;
+}
+
+/** The declared LOCATION a folded name (a beat's `setting`, a poll's `room`)
+ *  names by id or label, else undefined. */
+function locationNamed(model: SimModel | null, name: string) {
+  const want = foldName(name);
+  if (model === null || want === "") return undefined;
+  return [...model.locations.values()].find((l) => foldName(l.id) === want || (l.label !== null && foldName(l.label) === want));
 }
 
 export interface ScreenWho {
@@ -1030,6 +1117,8 @@ export class ScreenWatch {
    *  every later cue is stamped with the clock — not mistaken for history. */
   private seeded = false;
   private readonly cues = new Map<ScreenCueFamily, ScreenCue>();
+  /** (wave 20) Per LOCATION id, the last `cue room_*` played in a beat set there. */
+  private readonly roomCues = new Map<string, ScreenRoomCue>();
   private readonly programs = new Map<ScreenTarget, ScreenProgram>();
   private shots = 0;
   /** The last `ANNOUNCE_RING` announcements, oldest first. */
@@ -1090,6 +1179,7 @@ export class ScreenWatch {
       this.cursor = 0;
       this.seeded = false;
       this.cues.clear();
+      this.roomCues.clear();
       this.programs.clear();
       this.shots = 0;
       this.announcements = [];
@@ -1163,6 +1253,13 @@ export class ScreenWatch {
         continue;
       }
       if (e.verb !== "cue") continue;
+      // Wave 20: a room terminal's picture, kept per LOCATION (last wins).
+      const roomCue = roomCueOf(e.args);
+      if (roomCue !== null) {
+        const loc = e.setting == null ? undefined : locationNamed(sim.model, e.setting);
+        if (loc !== undefined) this.roomCues.set(loc.id, { value: roomCue, seq: (this.roomCues.get(loc.id)?.seq ?? 0) + 1, at });
+        continue;
+      }
       const hit = screenCueOf(e.args);
       if (hit === null) continue;
       const prev = this.cues.get(hit.family);
@@ -1331,17 +1428,19 @@ export class ScreenWatch {
 
     const identifyLeft = this.identifyLeft(who.name);
     const model = sim?.model ?? declared;
-    const locationOf = (name: string) => {
-      const want = foldName(name);
-      return model === null ? undefined : [...model.locations.values()].find((l) => foldName(l.id) === want || (l.label !== null && foldName(l.label) === want));
-    };
+    const locationOf = (name: string) => locationNamed(model, name);
     // A room terminal (wave 7): asleep until its LOCATION is open to everyone.
     // Before the doors (no sim) a declared room is named but closed, so only
     // a typo reads as "no room called …" (S1-03).
     let room: ScreenRoom | undefined;
     if (who.room !== undefined && who.room !== "") {
       const loc = locationOf(who.room);
-      room = loc === undefined ? { id: "", open: false } : sim === null ? { id: loc.id, open: false } : { id: loc.id, open: !loc.hidden || sim.isRevealed(loc.id) };
+      room =
+        loc === undefined
+          ? { id: "", open: false, cue: null }
+          : sim === null
+            ? { id: loc.id, open: false, cue: null }
+            : { id: loc.id, open: !loc.hidden || sim.isRevealed(loc.id), cue: this.roomCues.get(loc.id) ?? null };
     }
     let voice: ScreenVoice | undefined;
     const voiceRoom = who.voice !== undefined && who.voice !== "" ? who.voice : (who.room ?? "");
@@ -1400,6 +1499,11 @@ export class ScreenWatch {
       least_trusted: bobbingUp ? named(SCREEN_NIGHT_VARS.least_trusted) : null,
       facts_accepted: summaryUp ? num(SCREEN_NIGHT_VARS.facts_accepted) : null,
       first_reinstall: summaryUp ? named(SCREEN_NIGHT_VARS.first_reinstall) : null,
+      server_door: ((v) => (v === "open" || v === "closed" ? v : null))(peek(SCREEN_NIGHT_VARS.server_door)),
+      heart_stage: named(SCREEN_NIGHT_VARS.heart_stage),
+      heart_look: named(SCREEN_NIGHT_VARS.heart_look),
+      alarm_on: flag(SCREEN_NIGHT_VARS.alarm_on),
+      door_override: flag(SCREEN_NIGHT_VARS.door_override),
     };
 
     // Wave 18b: the published results — the verdict for its window, else a
