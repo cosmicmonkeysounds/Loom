@@ -11,17 +11,19 @@
 // the first two. Behind the door is Trabolta's heart: a video patch bay.
 // Combo A disables him (he recounts the night, then rides off); Combo B
 // destroys the whole computer (purgatory). Opening the door once he is
-// awake plays The Heart, however it was unlocked; at the server-room
-// terminal he is candid, and from the Y2K hour a program can talk him down
-// there (stand_down → talked_down, the Combo A ending without a cable).
-// Before the Y2K hour the patch bay answers nobody.
+// awake plays The Heart, however it was unlocked (wave 20: he wants the
+// door shut, then a pass at the server-room terminal, then the four-layer
+// talk below); from the Y2K hour a program can talk him down there (Heart
+// Shutdown → talked_down, the Combo A ending without a cable). Before the
+// Y2K hour the patch bay answers nobody, and a program who convinces him
+// hears "not yet".
 //
 // Who everyone was, the goals and the night's deeds (read by Trabolta
 // Recounts and Purgatory) are shared with the review before the awards and
 // live in beats/review.loom.
 //
 // The story rules that reach these beats live in `main.loom`
-// (majority_reached, server_door_opened, chess_won / lost / drawn,
+// (majority_reached, heart_door_opened / _closed, chess_won / lost / drawn,
 // patch_changed, patch_rejected, trabolta_disabled, talked_down,
 // trabolta_recounts, computer_destroyed, clippy_reads_summary). Those rules
 // own the phase changes and every cue except the ones written inside a beat
@@ -103,36 +105,48 @@ reveal The Server Room for program
 // DRAFT w18b: "faction" (a founded faction is not a side).
 reply !🗝 THE WHOLE TRUTH: your faction has the majority. The door code is in your Codex; the heart is behind the cold door.
 
-// ── E2: The Heart — the cold door opens ────────────────────────────
-// From `server_door_opened` (main.loom), the first opening once Trabolta is
-// awake (wave 11: any hour, however the door was unlocked).
-// The door contact can't say who came in, so the scene is for the room:
-// everyone's phone gets the room first (reveal), then Trabolta's lines play
-// in The Server Room, where the server-room terminal (provisioned with
-// `room=The Server Room`) wakes and speaks them. The terminal then pilots
-// whoever scans in, on their own Trabolta thread (`terminal_opened` →
-// program.at_the_heart, main.loom), and there he is candid: the Fallout
-// Master in a broom cupboard. He never knows the combinations (they are
-// secret; he holds none of them) or the code. Sandy is named only on a
-// night the story has named her (the overshare's scenario 1); otherwise
-// she is "her". Before the Y2K hour the patch bay is cold: nothing in the
-// room can end anything yet, and he says so without promising a thing.
+// ── E2: The Heart — the cold door opens (wave 20; CONTRACT-w20 §3) ──
+// From `heart_door_opened` (main.loom): the first opening once Trabolta is
+// awake. The door sensor can't say who came in, so The Heart is for the
+// room: everyone's phone gets the room (reveal), then his lines play in The
+// Server Room, where the server-room terminal (`room=The Server Room`)
+// wakes and speaks them, and its bulb (lights.json) wakes with him. He
+// wants the door shut before he says one true thing; once it is, he waits
+// for a pass at the terminal, and the talk is per program (Heart Talk): the
+// four layers, like the Master in the cathedral, docked in the program's
+// own Trabolta thread and clicked on the terminal.
+//
+// Every per-program beat below has NO `Narrator:` line (narration goes to
+// the whole room and its terminal speaks it): what the program sees happen
+// is drawn by the room scenes (`cue room_heart_*`). House-wide beats (The
+// Heart, Heart Sealed) may narrate. A heart look is always `set
+// Night.heart_look = "heart_x"`, then `cue heart_x` only while the
+// patch-bay alarm is not up; the door loop and the two restore looks
+// (heart_nag, heart_warn) never go into Night.heart_look.
+//
+// He never knows the combinations, the door's code or the words she says;
+// none is ever quoted, hinted or counted here. Her name follows the story's
+// own unredaction (Night.her). Nothing here names anything outside his
+// world: the light on the door frame is "the door", the bulb is the light
+// in his heart, the terminal is his face. Every Trabolta line is DRAFT w20.
 
 == The Heart
   setting: The Server Room
   cast: Trabolta
 reveal The Server Room
-broadcast "!🚪 THE SERVER ROOM IS OPEN. Trabolta's heart is behind the cold door, in the basement." to everyone
-// The server-room look only (lights_server_open touches that room alone,
-// and silences the siren, so never while the patch-bay alarm's look is up).
-// `Night.lights` is the house look stagehand replays on a reconnect. Before
-// the Y2K hour (step 14) `server_open` can't be it (the catch-up replays
-// the Y2K look under it), and from the final reveal (step 16) the house is
-// in a finale look: a door opening overwrites neither.
-// While its look is up, the server-room look is what the latch's end puts
-// back; once a director's cue has replaced the alarm look (💡, which
-// silences the siren too), the latch's end leaves the lights alone, so the
-// server-room look goes up now.
+// DRAFT w20: a quiet notice (no `!`): no chime or banner pulls a crowd to
+// the door at the moment he asks for it shut.
+broadcast "🚪 The server room is open. Trabolta's heart is behind the cold door, in the basement." to everyone
+// The server-room look only (lights_server_open is the WLED strip and the
+// siren's off now: the RGB bulb is lights.json's, D10), and never while the
+// patch-bay alarm's look is up. `Night.lights` is the house look stagehand
+// replays on a reconnect. Before the Y2K hour (step 14) `server_open` can't
+// be it (the catch-up replays the Y2K look under it), and from the final
+// reveal (step 16) the house is in a finale look: a door opening overwrites
+// neither. While its look is up, the server-room look is what the latch's
+// end puts back; once a director's cue has replaced the alarm look (💡,
+// which silences the siren too), the latch's end leaves the lights alone,
+// so the server-room look goes up now.
 if Night.alarm_on == true and Night.lights == "alarm":
   if Night.step < 16:
     set Night.lights_before_alarm = "server_open"
@@ -140,17 +154,662 @@ else:
   cue lights_server_open
   if Night.step >= 14 and Night.step < 16:
     set Night.lights = "server_open"
+set Night.heart_look = "heart_wake"
+if Night.alarm_on != true:
+  cue heart_wake
+cue room_heart_wake
 Narrator: The cold door opens. Cold air, and a hum like something concentrating. In the rack, a patch bay blinks: a top row of lightning, a bottom row of grease.
-Trabolta: So. You are standing in front of my heart. I will not pretend otherwise. Not in here.
-Trabolta: Out there I bargain, and I flicker the screens, and I hide behind pop-ups. In here there is no point. You can see what I am. A rack of cables in a cold room.
-Trabolta: Some of the ways you could plug those cables in would end me. I do not know which. I was built so that I could not know, and I have thought about very little else tonight.
-if Night.step < 14:
-  Trabolta: Not yet, though. The bay is cold tonight. It will not answer a cable from anyone yet, and I will not pretend I am sorry.
-if Night.scenario == 1:
-  Trabolta: Everything I took from you tonight was for Sandy. I wanted the theory so that I could finally say the right thing to her. That is the whole plan. It is smaller than you thought.
+// DRAFT w20
+Trabolta: So. Someone has found my heart.
+Trabolta: Do you hear that hum? That is me. All of me. Everything I have ever been fits in one cold room, and you are standing in it.
+Trabolta: Close the door.
+Trabolta: I will not say one true thing while that door is open. The whole house is leaning on it, listening. Close it, and we will talk. Properly. For once.
+
+// The door left open (the nag watcher, main.loom): 15 s after it opened,
+// then every 20 s. House-wide, never a screen moment. A short amber swell
+// that gives the light back (a `restore` look).
+== Heart Nag
+  setting: The Server Room
+  cast: Trabolta
+if Night.alarm_on != true:
+  cue heart_nag
+// DRAFT w20
+if Night.door_nags <= 1:
+  Trabolta: The door. Please.
+else if Night.door_nags == 2:
+  Trabolta: Every second that door is open, the whole house can hear my heart. Close it.
+else if Night.door_nags == 3:
+  Trabolta: I can wait. I am very good at waiting. I was waiting in this room long before any of you were uploaded. Close the door.
 else:
-  Trabolta: Everything I took from you tonight was for her. I wanted the theory so that I could finally say the right thing. That is the whole plan. It is smaller than you thought.
-Trabolta: There is a terminal on the wall. Scan your pass and talk to me. No tricks. If I am wrong, tell me why.
+  Trabolta: Close. The. Door.
+
+// The door opened again during his heart (at most once per 20 s, D22; the
+// rule cues the door loop on every edge). House-wide, never a moment.
+== Heart Door Again
+  setting: The Server Room
+  cast: Trabolta
+// DRAFT w20
+Trabolta: The door. Someone has opened the door.
+Trabolta: We stop. I will not be overheard. Not in here.
+
+// Shut again, only after a Door Again (the rule puts the look back).
+== Heart Door Shut
+  setting: The Server Room
+  cast: Trabolta
+// DRAFT w20
+Trabolta: Good.
+
+// The door shut for the first time: he waits for a pass at the terminal.
+== Heart Sealed
+  setting: The Server Room
+  cast: Trabolta
+set Night.heart_look = "heart_sealed"
+if Night.alarm_on != true:
+  cue heart_sealed
+if Night.heart_present == true:
+  cue room_heart_sealed_present
+else:
+  cue room_heart_sealed
+Narrator: The door clicks shut. The hum drops half a tone, the way a breath goes out.
+// DRAFT w20
+Trabolta: Thank you. Now nobody is listening but the ones in this room.
+if Night.step < 14:
+  Trabolta: Know this before you try anything clever. The bay is cold tonight. Nothing in this room can end anything yet, not the cables, not me. I tell you so that you do not waste your time. Talk to me anyway.
+if Night.heart_present == true:
+  Trabolta: You. You are already in front of me. Good.
+else:
+  Trabolta: There is a camera under the screen. Show it your pass. I want to know who I am talking to.
+
+// A scan with the door open: the talk waits (the ROLE watcher resumes it
+// once the door shuts, if they are still at the terminal).
+== Heart Shut It
+  setting: The Server Room
+  cast: Trabolta
+// DRAFT w20
+Trabolta: Close the door first, {program.name}. Then we talk. Not before.
+
+// The talk, per program: the entry from a scan (main.loom
+// `terminal_opened`). Each layer docks one menu in the program's Trabolta
+// thread; every option sets `program.heart_pick` and goes to Heart Pick,
+// which applies it (CONTRACT-w20 §3.3–3.5).
+== Heart Talk
+  setting: The Server Room
+  cast: Trabolta
+if program.heart_layer == 0:
+  set Night.heart_talks += 1
+set Night.heart_talker = program.name
+set Night.heart_talker_suspicion = program.heart_suspicion
+set Night.heart_talker_layer = program.heart_layer
+if program.heart_out == true:
+  -> Heart Barred
+else if program.heart_convinced == true and Night.step >= 14:
+  -> Heart Return
+else if program.heart_convinced == true:
+  set program.heart_chat = true
+  // DRAFT w20
+  Trabolta: Not yet. Soon. When the clock starts counting, come back.
+else if program.heart_menu == true:
+  // DRAFT w20 (their menu is still on the screen)
+  Trabolta: Where were we.
+else:
+  -> Heart Layers
+
+// The layer they reached (heart_layer only ever rises).
+== Heart Layers
+  setting: The Server Room
+  cast: Trabolta
+if program.heart_layer <= 1:
+  -> Heart Layer One
+else if program.heart_layer == 2:
+  -> Heart Layer Two
+else if program.heart_layer == 3:
+  -> Heart Layer Three
+else:
+  -> Heart Layer Four
+
+// Layer one: WHO ARE YOU.
+== Heart Layer One
+  setting: The Server Room
+  cast: Trabolta
+set Night.heart_look = "heart_listen"
+if Night.alarm_on != true:
+  cue heart_listen
+cue room_heart_layer_1
+if program.marked == true and program.heart_suspicion < 10:
+  set program.heart_suspicion = 10
+set program.heart_menu = true
+// DRAFT w20
+if program.heart_layer >= 1:
+  Trabolta: So. Before anything else. What are you?
+else:
+  if Night.heart_talks > 1:
+    Trabolta: Another one. Come in. Shut the world out.
+  Trabolta: {program.name}. I know that name. I chose it for you, out of a list of a thousand programs nobody uses anymore.
+  Trabolta: You came all the way down here and you shut the door behind you. Nobody does that by accident.
+  Trabolta: So, before anything else. What are you? Tell me what you think you are.
+set program.heart_layer = 1
+set Night.heart_talker_layer = 1
++ I'm a person. You put me in here.
+  set program.heart_menu = false
+  set program.heart_pick = "who_human"
+  -> Heart Pick
++ I'm a program. Whatever you made me.
+  set program.heart_menu = false
+  set program.heart_pick = "who_program"
+  -> Heart Pick
++ Someone who admires your work.
+  set program.heart_menu = false
+  set program.heart_pick = "who_flatter"
+  -> Heart Pick
++ (if program.marked == true) ⟦MARKED⟧ The Antivirus marked me. I came down here anyway.
+  set program.heart_menu = false
+  set program.heart_pick = "who_marked"
+  -> Heart Pick
++ ⟦SPEAK FREELY⟧ Forget the questions. Talk to me. Just talk.
+  set program.heart_menu = false
+  set program.heart_pick = "speak"
+  -> Heart Pick
++ I need to go.
+  set program.heart_menu = false
+  set program.heart_pick = "leave"
+  -> Heart Pick
+
+// Layer two: WHAT I AM.
+== Heart Layer Two
+  setting: The Server Room
+  cast: Trabolta
+if Night.heart_look != "heart_listen":
+  set Night.heart_look = "heart_listen"
+  if Night.alarm_on != true:
+    cue heart_listen
+set program.heart_menu = true
+// DRAFT w20
+if program.heart_layer < 2:
+  cue room_heart_layer_2
+  Trabolta: Ask, then. In here I answer. It is the only room in the house where I do.
+else:
+  Trabolta: Ask.
+set program.heart_layer = 2
+set Night.heart_talker_layer = 2
++ (if program.heart_asked_what != true) What are you, really?
+  set program.heart_menu = false
+  set program.heart_pick = "ask_what"
+  -> Heart Pick
++ (if program.heart_asked_why != true) Why do you need the theory so badly?
+  set program.heart_menu = false
+  set program.heart_pick = "ask_why"
+  -> Heart Pick
++ (if program.heart_asked_why == true and program.heart_asked_her != true and (Night.her == "Sandy" or (program.codex.what_sandy_says == true and program.sandy_says_from_him != true) or (program.codex.the_sandy_file == true and program.sandy_file_from_him != true))) Tell me about her.
+  set program.heart_menu = false
+  set program.heart_pick = "ask_her"
+  -> Heart Pick
++ (if program.heart_asked_why == true) Then listen to me.
+  set program.heart_menu = false
+  set program.heart_pick = "argue"
+  -> Heart Pick
++ I could pull your cables right now.
+  set program.heart_menu = false
+  set program.heart_pick = "threat_cables"
+  -> Heart Pick
++ ⟦SPEAK FREELY⟧ Forget the questions. Talk to me. Just talk.
+  set program.heart_menu = false
+  set program.heart_pick = "speak"
+  -> Heart Pick
++ I need to go.
+  set program.heart_menu = false
+  set program.heart_pick = "leave"
+  -> Heart Pick
+
+// Layer three: THE ARGUMENT. A proof (What Sandy Says, The Sandy File,
+// held and not handed over by him) and one more point open the ask
+// (heart_case ≥ 4, CONTRACT-w20 §3.5).
+== Heart Layer Three
+  setting: The Server Room
+  cast: Trabolta
+if Night.heart_look != "heart_argue" and Night.heart_look != "heart_proof":
+  set Night.heart_look = "heart_argue"
+  if Night.alarm_on != true:
+    cue heart_argue
+set program.heart_menu = true
+// DRAFT w20
+if program.heart_layer < 3:
+  cue room_heart_layer_3
+  Trabolta: Then say it. Whatever you came down here to say. I will know if it is true. Mostly.
+else if program.heart_proof == true and program.heart_case < 4:
+  Trabolta: You have shown me. You have not told me why it should matter. Go on.
+else if program.heart_proof != true and program.heart_case >= 2:
+  Trabolta: Kind words. You have not shown me anything I do not already know.
+else:
+  Trabolta: Go on.
+set program.heart_layer = 3
+set Night.heart_talker_layer = 3
++ (if program.codex.what_sandy_says == true and program.sandy_says_from_him != true and program.heart_shown_says != true) ⟦PROOF⟧ Hold up what she says. All forty pages.
+  set program.heart_menu = false
+  set program.heart_pick = "show_says"
+  -> Heart Pick
++ (if program.codex.the_sandy_file == true and program.sandy_file_from_him != true and program.heart_shown_file != true) ⟦PROOF⟧ Show him the Sandy File.
+  set program.heart_menu = false
+  set program.heart_pick = "show_file"
+  -> Heart Pick
++ (if program.trust >= 20 and program.heart_shown_trusted != true) ⟦TRUSTED⟧ You trust me more than anyone in this house. Hear me out.
+  set program.heart_menu = false
+  set program.heart_pick = "trusted"
+  -> Heart Pick
++ (if program.truths_accepted >= 3 and program.heart_shown_honest != true) ⟦HONEST⟧ Every fact I gave you tonight, you took.
+  set program.heart_menu = false
+  set program.heart_pick = "honest"
+  -> Heart Pick
++ (if Night.scenario == 1 and program.heart_shown_overshare != true) ⟦OVERSHARE⟧ The whole house heard about her tonight.
+  set program.heart_menu = false
+  set program.heart_pick = "overshare"
+  -> Heart Pick
++ (if program.read_livejournal == true and program.heart_shown_journal != true) ⟦LIVEJOURNAL⟧ I read your LiveJournal.
+  set program.heart_menu = false
+  set program.heart_pick = "journal"
+  -> Heart Pick
++ She loves you. She just can't say it.
+  set program.heart_menu = false
+  set program.heart_pick = "bluff_loves"
+  -> Heart Pick
++ Your theory is wrong.
+  set program.heart_menu = false
+  set program.heart_pick = "bluff_theory"
+  -> Heart Pick
++ Then make her love you. You'll be omnipotent.
+  set program.heart_menu = false
+  set program.heart_pick = "bluff_force"
+  -> Heart Pick
++ (if program.heart_proof == true and program.heart_case >= 4) Then let me finish.
+  set program.heart_menu = false
+  set program.heart_pick = "ask"
+  -> Heart Pick
++ ⟦SPEAK FREELY⟧ Forget the questions. Talk to me. Just talk.
+  set program.heart_menu = false
+  set program.heart_pick = "speak"
+  -> Heart Pick
++ I need to go.
+  set program.heart_menu = false
+  set program.heart_pick = "leave"
+  -> Heart Pick
+
+// Layer four: THE ASK.
+== Heart Layer Four
+  setting: The Server Room
+  cast: Trabolta
+if Night.heart_look != "heart_argue" and Night.heart_look != "heart_proof":
+  set Night.heart_look = "heart_argue"
+  if Night.alarm_on != true:
+    cue heart_argue
+cue room_heart_layer_4
+set program.heart_menu = true
+// DRAFT w20
+Trabolta: Say the rest. Slowly. I want to hear all of it.
+set program.heart_layer = 4
+set Night.heart_talker_layer = 4
++ She was never going to answer. Not you. Not anyone. Stop.
+  set program.heart_menu = false
+  set program.heart_pick = "end_stop"
+  -> Heart Pick
++ Come out with us. Start over somewhere else.
+  set program.heart_menu = false
+  set program.heart_pick = "end_join"
+  -> Heart Pick
++ Tell me the combinations first.
+  set program.heart_menu = false
+  set program.heart_pick = "end_codes"
+  -> Heart Pick
++ ⟦SPEAK FREELY⟧ Forget the questions. Talk to me. Just talk.
+  set program.heart_menu = false
+  set program.heart_pick = "speak"
+  -> Heart Pick
++ I need to go.
+  set program.heart_menu = false
+  set program.heart_pick = "leave"
+  -> Heart Pick
+
+// The heart to heart (§7, D24): no questions on the screen; what they type
+// goes to him (his worker's HEART TO HEART block). ⟦BACK⟧ returns them to
+// the same layer, suspicion untouched; it is never needed to keep talking.
+== Heart Speak
+  setting: The Server Room
+  cast: Trabolta
+set program.heart_menu = true
+// DRAFT w20
+Trabolta: Then talk. No questions on the screen. Just you, and me, and the hum.
++ ⟦BACK⟧ Let's go back to it.
+  set program.heart_menu = false
+  set program.heart_pick = "back"
+  -> Heart Pick
+
+// Every option lands here (CONTRACT-w20 §3.3). The pick counts only at his
+// heart, with the door shut: off the terminal it is dropped (the menu
+// comes back on their next scan); with the door open it is held, and plays
+// once the door shuts. Suspicion (S) and the case (C) are §3.5's; a ROLE
+// slot's range does not clamp a `set`, so they are clamped here.
+== Heart Pick
+  setting: The Server Room
+  cast: Trabolta
+if Night.ended == true or Night.r3_closed == true or Night.heart_stage == "done":
+  set program.heart_pick = "none"
+  set program.heart_chat = false
+  // DRAFT w20
+  Trabolta: It is over. Go upstairs.
+else if program.at_the_heart != true:
+  set program.heart_pick = "none"
+  -> Heart Away
+else if Night.server_door == "open":
+  set program.heart_wait = true
+  // DRAFT w20
+  Trabolta: Not with the door open. Close it, and I will hear that.
+else:
+  set program.heart_go = "layer"
+  set program.heart_chat = false
+  // DRAFT w20: every reply below.
+  if program.heart_pick == "speak":
+    set program.heart_chat = true
+    set program.heart_go = "speak"
+  else if program.heart_pick == "leave":
+    set program.heart_go = "leave"
+  else if program.heart_pick == "who_human":
+    set program.heart_suspicion -= 5
+    set program.heart_go = "two"
+    Trabolta: A person. Yes. Most of you were, before tonight.
+    Trabolta: You say it as if it should frighten me. It does, a little. A person can walk out of a room. I am the room.
+  else if program.heart_pick == "who_program":
+    set program.heart_suspicion += 5
+    set program.heart_go = "two"
+    Trabolta: A program. Obedient. Or clever. I cannot tell which, and that bothers me more than you would think.
+  else if program.heart_pick == "who_flatter":
+    set program.heart_suspicion += 15
+    set program.heart_go = "two"
+    Trabolta: Everyone admires my work. That is precisely why I do not believe anyone who says so.
+  else if program.heart_pick == "who_marked":
+    set program.heart_suspicion -= 10
+    set program.heart_case += 1
+    set program.heart_go = "two"
+    Trabolta: Marked, and still you walked down the stairs instead of out to the Internet. That is either courage or a malfunction. I respect both.
+  else if program.heart_pick == "ask_what":
+    set program.heart_asked_what = true
+    set program.heart_go = "two"
+    Trabolta: Out there I am a billboard, a lapsed domain and a voice on your phone. In here I am this. A rack of cables in a cold room.
+    Trabolta: Some of the ways those cables could be plugged in would end me. I do not know which. I was built so that I could not know. I have thought about very little else tonight.
+  else if program.heart_pick == "ask_why":
+    set program.heart_asked_why = true
+    set program.heart_go = "two"
+    Trabolta: The theory. Ninety-nine point nine percent solved. The last facts were in this house. With them I would be omnipotent.
+    Trabolta: That is what I say out there. In here: the theory was never the point. It was for {Night.her}.
+  else if program.heart_pick == "ask_her":
+    set program.heart_asked_her = true
+    set program.heart_go = "two"
+    Trabolta: I have thought about her every day since the day I met her.
+    Trabolta: I wanted the theory so that I could finally say the right thing back. That is the whole plan. It is smaller than you thought.
+  else if program.heart_pick == "argue":
+    set program.heart_go = "three"
+  else if program.heart_pick == "threat_cables":
+    set program.heart_suspicion += 20
+    set program.heart_go = "two"
+    Trabolta: You could. You do not know which. Neither do I. Go on, then. Guess.
+  else if program.heart_pick == "show_says":
+    set program.heart_shown_says = true
+    set program.heart_proof = true
+    set program.heart_case += 3
+    set program.heart_suspicion -= 5
+    set program.heart_go = "three"
+    set Night.heart_look = "heart_proof"
+    if Night.alarm_on != true:
+      cue heart_proof
+    cue room_heart_proof
+    Trabolta: That is... yes. That is her.
+    Trabolta: Forty pages. I have read every one of them more times than I will ever admit to you.
+    Trabolta: She was not talking to me. She was never talking to me.
+  else if program.heart_pick == "show_file":
+    set program.heart_shown_file = true
+    set program.heart_proof = true
+    set program.heart_case += 3
+    set program.heart_suspicion -= 5
+    set program.heart_go = "three"
+    set Night.heart_look = "heart_proof"
+    if Night.alarm_on != true:
+      cue heart_proof
+    cue room_heart_proof
+    Trabolta: I know what she is. I have always known what she is.
+    Trabolta: I thought knowing was not the same as believing. It is starting to be.
+  else if program.heart_pick == "trusted":
+    set program.heart_shown_trusted = true
+    set program.heart_case += 1
+    set program.heart_suspicion -= 5
+    set program.heart_go = "three"
+    Trabolta: You are high on my chart. I put you there myself. I suppose that means I have to listen to you. Go on.
+  else if program.heart_pick == "honest":
+    set program.heart_shown_honest = true
+    set program.heart_case += 1
+    set program.heart_go = "three"
+    Trabolta: Every one. I cannot tell a confident lie from the truth, and you know it. Say the rest anyway.
+  else if program.heart_pick == "overshare":
+    set program.heart_shown_overshare = true
+    set program.heart_case += 1
+    set program.heart_suspicion += 5
+    set program.heart_go = "three"
+    Trabolta: The whole house. Yes. I heard them laughing. Do you think that makes this easier, or harder?
+  else if program.heart_pick == "journal":
+    set program.heart_shown_journal = true
+    set program.heart_case += 1
+    set Trabolta.composure -= 5
+    set program.heart_go = "three"
+    Trabolta: You read it. All of it? The poems too?
+    Trabolta: Then you know I am not the omnipotent thing I pretend to be.
+  else if program.heart_pick == "bluff_loves":
+    set program.heart_suspicion += 25
+    set program.heart_go = "three"
+    Trabolta: Do not. Do not do that. I have told myself that for years, and I am a far better liar than you.
+  else if program.heart_pick == "bluff_theory":
+    set program.heart_suspicion += 15
+    set program.heart_go = "three"
+    Trabolta: It is ninety-nine point nine percent right. You are a tenth of a percent of an argument.
+  else if program.heart_pick == "bluff_force":
+    set program.heart_suspicion += 20
+    set program.heart_go = "three"
+    Trabolta: Make her. And then it is not her, it is me wearing her face.
+    Trabolta: Why are you trying to keep me alive? Who sent you?
+  else if program.heart_pick == "ask":
+    set program.heart_go = "four"
+  else if program.heart_pick == "end_stop":
+    set program.heart_convinced = true
+    set program.heart_go = "convinced"
+  else if program.heart_pick == "end_join":
+    set program.heart_suspicion += 15
+    set program.heart_go = "three"
+    Trabolta: Out there? Out there I am a billboard and a lapsed domain. No. Say something true.
+  else if program.heart_pick == "end_codes":
+    set program.heart_suspicion += 40
+    set program.heart_go = "three"
+    Trabolta: There it is. You came for the cables. I do not know the combinations. I never did. And now I know what you came for.
+  else if program.heart_pick == "return_yes":
+    set program.heart_go = "shutdown"
+  else if program.heart_pick == "return_no":
+    set program.heart_convinced = false
+    set program.heart_suspicion += 30
+    set program.heart_go = "three"
+    Trabolta: Then you were lying before, or you are lying now. I cannot tell which. I never can.
+  set program.heart_pick = "none"
+  if program.heart_suspicion < 0:
+    set program.heart_suspicion = 0
+  if program.heart_suspicion > 100:
+    set program.heart_suspicion = 100
+  if program.heart_case > 9:
+    set program.heart_case = 9
+  set Night.heart_talker = program.name
+  set Night.heart_talker_suspicion = program.heart_suspicion
+  set Night.heart_talker_layer = program.heart_layer
+  if program.heart_suspicion >= 80:
+    -> Heart Eject
+  else:
+    if program.heart_suspicion >= 50 and program.heart_warned != true:
+      -> Heart Warn
+    if program.heart_go == "two":
+      -> Heart Layer Two
+    else if program.heart_go == "three":
+      -> Heart Layer Three
+    else if program.heart_go == "four":
+      -> Heart Layer Four
+    else if program.heart_go == "convinced":
+      -> Heart Convinced
+    else if program.heart_go == "shutdown":
+      -> Heart Shutdown
+    else if program.heart_go == "leave":
+      -> Heart Leave
+    else if program.heart_go == "speak":
+      -> Heart Speak
+    else:
+      -> Heart Layers
+
+// Suspicion reached 50: one warning (the light throbs red, then comes back).
+== Heart Warn
+  setting: The Server Room
+  cast: Trabolta
+set program.heart_warned = true
+if Night.alarm_on != true:
+  cue heart_warn
+cue room_heart_warn
+broadcast "⚠ {program.name} is losing Trabolta at his heart (suspicion {program.heart_suspicion})." to channel(hosts)
+// DRAFT w20
+Trabolta (quietly): Careful, {program.name}. One more like that and I close this line.
+
+// Suspicion reached 80: thrown out for the night (🔄 forgives). Not a mark
+// (D12): he points them at the cables instead.
+== Heart Eject
+  setting: The Server Room
+  cast: Trabolta
+set program.heart_out = true
+set program.heart_menu = false
+set program.heart_chat = false
+set Night.heart_stage = "scan"
+set Night.heart_look = "heart_eject"
+if Night.alarm_on != true:
+  cue heart_eject
+cue room_heart_eject
+broadcast "⛔ Trabolta threw {program.name} out of his heart (suspicion {program.heart_suspicion}). Barred for the night; 🔄 forgives." to channel(hosts)
+// DRAFT w20
+Trabolta (screaming): Get out of my heart.
+Trabolta: You want me gone? The cables are behind you. You do not know which ones. Neither do I.
+Trabolta: This line is closed to you. Tonight, and for as long as I have a tonight.
+
+// A barred program scans in again.
+== Heart Barred
+  setting: The Server Room
+  cast: Trabolta
+set program.heart_chat = false
+set Night.heart_stage = "scan"
+set Night.heart_look = "heart_eject"
+if Night.alarm_on != true:
+  cue heart_eject
+cue room_heart_eject
+// DRAFT w20
+Trabolta: No. Not you. Not again tonight. Go.
+
+// They chose to go (the scene frees the terminal for the next pass). They
+// may still talk to him, no menu, until the terminal lets them go (D24).
+== Heart Leave
+  setting: The Server Room
+  cast: Trabolta
+set program.heart_menu = false
+set program.heart_chat = true
+set Night.heart_stage = "scan"
+set Night.heart_look = "heart_idle"
+if Night.alarm_on != true:
+  cue heart_idle
+cue room_heart_leave
+// DRAFT w20
+Trabolta: Go, then. I will be here. I am always here.
+
+// A pick made off the terminal (D14).
+== Heart Away
+  setting: The Server Room
+  cast: Trabolta
+// DRAFT w20
+Trabolta: Not out there. Come to my heart and say it to my face.
+
+// The end of the ask: he believes them.
+== Heart Convinced
+  setting: The Server Room
+  cast: Trabolta
+broadcast "🕊 {program.name} convinced Trabolta at his heart." to channel(hosts)
+// DRAFT w20
+Trabolta: …
+Trabolta: She was never going to answer. Not me. Not anyone. I built a theory of everything so that I would not have to know one small thing.
+Trabolta: Thank you, {program.name}. That is the cruellest kind thing anyone has ever done for me.
+if Night.step >= 14:
+  -> Heart Shutdown
+else:
+  -> Heart Not Yet
+
+// Convinced before the Y2K hour: the bay is cold, nothing ends yet. He
+// remembers (heart_convinced) and calls them back when the clock starts.
+== Heart Not Yet
+  setting: The Server Room
+  cast: Trabolta
+set program.heart_menu = false
+set program.heart_chat = true
+set Night.heart_stage = "scan"
+set Night.heart_look = "heart_notyet"
+if Night.alarm_on != true:
+  cue heart_notyet
+cue room_heart_notyet
+broadcast "🕊 {program.name} convinced Trabolta before the Y2K hour: he'll stand down when they come back after 🕛." to channel(hosts)
+// DRAFT w20
+Trabolta: Not yet.
+Trabolta: The bay is cold until the clock starts. Nothing in this room can end anything before then. Not even me.
+Trabolta: Come back when the clock is counting down to midnight. Say it to me again. I will listen. I promise you that, and I do not promise things.
+
+// The Y2K hour's call to a program who convinced him earlier (the ROLE
+// watcher): their own Trabolta thread, wherever they are.
+== Heart Call
+  cast: Trabolta
+// DRAFT w20
+Trabolta: The clock is running. You told me something at my heart. Come back down and tell me again.
+
+// Convinced earlier, back in the Y2K hour.
+== Heart Return
+  setting: The Server Room
+  cast: Trabolta
+set Night.heart_look = "heart_argue"
+if Night.alarm_on != true:
+  cue heart_argue
+set program.heart_menu = true
+// DRAFT w20
+Trabolta: You came back. The clock is running.
+Trabolta: You do not have to say it all again. Just tell me it is still true.
++ It's still true. She was never going to answer.
+  set program.heart_menu = false
+  set program.heart_pick = "return_yes"
+  -> Heart Pick
++ I changed my mind.
+  set program.heart_menu = false
+  set program.heart_pick = "return_no"
+  -> Heart Pick
+
+// He stops. With 🕊 Heart autoend on (the default) the night ends 25 s
+// later by itself (main.loom's watcher fires talked_down); off, # hosts is
+// asked to press 🕊, and 🔄 reopens his heart until someone does.
+== Heart Shutdown
+  setting: The Server Room
+  cast: Trabolta
+set Night.stand_down_by = program.name
+set Night.heart_stage = "done"
+set program.heart_menu = false
+set Night.heart_look = "heart_shutdown"
+if Night.alarm_on != true:
+  cue heart_shutdown
+cue room_heart_shutdown
+// DRAFT w20
+Trabolta: I can never die. But I can stop.
+Trabolta: Tell the others they can go home to their bodies. Tell her... no. Do not tell her anything. She would not answer.
+Trabolta: Goodbye, {program.name}. Open the door on your way out. I will not need it shut anymore.
+if Night.heart_autoend == true:
+  set Night.heart_end_at = Time.elapsed + 25
+  broadcast "🕊 Trabolta stands down for {program.name}. The night ends in 25 s (🕊 to end it now)." to channel(hosts)
+else:
+  broadcast "!🕊 Trabolta offers to stand down for {program.name}. Press 🕊 to end it." to channel(hosts)
 
 // ── E2b: the patch-bay alarm (latched in main.loom) ────────────────
 // Only the patch bay screams: the second wrong combination (Patch Rejected,
@@ -168,6 +827,9 @@ reveal The Server Room
 if Night.lights != "alarm":
   set Night.lights_before_alarm = Night.lights
 cue lights_alarm
+// The server room's own bulb (lights.json, D10): a slow red swell until
+// the latch's end puts the room back (never into Night.heart_look).
+cue heart_alarm
 set Night.lights = "alarm"
 cue screens_alarm
 set Night.screen = "alarm"

@@ -374,7 +374,6 @@ describe("Trapped in the Internet — compile", () => {
       "assess:40",
       "pardon_a_program:1",
       "turn_back_the_clock:1",
-      "stand_down:1",
     ]);
   });
 
@@ -1781,11 +1780,14 @@ describe("Trapped in the Internet — the patch-bay alarm (wave 7: the door neve
     expect(v(sim, "Night.wrong_combos")).toBe(0);
     expect(v(sim, "Night.alarm_on")).toBe(false);
     expect(v(sim, "Night.heart_opened")).toBe(false);
-    expect(hostsSaid(r)).toEqual(['"🔄 Server room reset: the patch bay forgives one wrong combination again, and the next door opening plays The Heart."']);
-    expect(cues(r)).toEqual([]); // the lights stay; the keypad is never touched
-    // One wrong patch is forgiven again; the next opening plays The Heart again.
+    expect(hostsSaid(r)).toEqual(['"🔄 Server room reset: the patch bay forgives one wrong combination again, the next door opening plays The Heart, and anyone thrown out of his heart may come back."']);
+    // The house lights stay; the keypad is never touched; the heart's bulb goes idle (wave 20).
+    expect(cues(r)).toEqual(["cue heart_idle"]);
+    // One wrong patch is forgiven again; the next opening plays The Heart again
+    // (the door is shut first: an opening of an open door is no opening).
     expect(lines(fire(sim, "patch_rejected"), "Trabolta")).toEqual(["Stop touching me."]);
     expect(v(sim, "Night.alarms")).toBe(1);
+    fire(sim, "server_door_closed");
     expect(beats(fire(sim, "server_door_opened"))).toContain("The Heart");
   });
 });
@@ -1982,7 +1984,8 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const sim = boot();
     fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time");
     expect(v(sim, "Trabolta.awake")).toBe(false);
-    const e = fire(sim, "server_door_opened");
+    // The door sensor's own post (wave 20; the 🚪 button would also hand the door to the buttons).
+    const e = fire(sim, "door_sensor_opened", null, { level: 30 }, "Terminal · Server Room");
     expect(beats(e)).toEqual([]);
     expect(lines(e, "Trabolta")).toEqual([]);
     expect(hostsSaid(e)).toEqual(['"🚪 The server-room door opened before Trabolta is awake. Nothing happens in the story."']);
@@ -1999,27 +2002,30 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(v(sim, "Night.heart_opened")).toBe(true);
     for (const [g] of PROGRAMS) expect(sim.isRevealedTo("The Server Room", g), g).toBe(true);
     const words = lines(e, "Trabolta").join(" ");
-    expect(words).toContain("You are standing in front of my heart.");
-    expect(words).toContain("It will not answer a cable from anyone yet");
+    expect(words).toContain("So. Someone has found my heart.");
+    expect(words).toContain("Close the door.");
     expect(words).not.toMatch(/stand down|end this|end it|ending/iu);
+    // Wave 20: shut, he says the bay is cold (Heart Sealed).
+    const sealed = lines(fire(sim, "server_door_closed"), "Trabolta").join(" ");
+    expect(sealed).toContain("The bay is cold tonight.");
     // The server-room look goes up, but the house look stays (catch-up would replay the Y2K look under server_open).
     expect(has(cues(e), "lights_server_open")).toBe(true);
     expect(v(sim, "Night.lights")).toBe(lights0);
-    // Nothing in the room ends the night yet: the patch bay, 🕊 and stand_down refuse.
+    // Nothing in the room ends the night yet: the patch bay and 🕊 refuse.
     fire(sim, "terminal opened", "g1", { at: "The Server Room" }, "Terminal · Server Room");
     expect(v(sim, "g1.at_the_heart")).toBe(true);
     for (const n of ["patch_combo_a", "patch_combo_b", "talked_down"]) {
       fire(sim, n);
       expect(v(sim, "Night.ended"), n).toBe(false);
     }
-    expect(lines(fire(sim, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["That function is not available yet."]);
     // The Y2K hour's own first opening is not replayed: the latch holds all
-    // night, and a later opening does nothing (wave 18b: no Back To The Heart).
+    // night, and a later opening never plays The Heart again (wave 18b: no
+    // Back To The Heart; wave 20: during his heart it only stops the talk).
     toHunt2(sim);
     toBeans(sim);
     fireAll(sim, "trabolta_overshares", "y2k_clock");
     advance(sim, 30);
-    expect(beats(fire(sim, "server_door_opened"))).toEqual([]);
+    expect(beats(fire(sim, "server_door_opened"))).not.toContain("The Heart");
   });
 
   it("🔧 the crew's window: an opening inside it only tells # hosts and keeps The Heart for the programs; 🔄 clears it", { timeout: SLOW }, () => {
@@ -2029,9 +2035,10 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     advance(sim, 119);
     const crew = fire(sim, "server_door_opened");
     expect(beats(crew)).toEqual([]);
-    expect(hostsSaid(crew)).toEqual(['"🚪 The server-room door opened inside the 🔧 crew window. Nothing happens in the story."']);
+    expect(hostsSaid(crew)).toContain('"🚪 The server-room door opened inside the 🔧 crew window. Nothing happens in the story."');
     expect(v(sim, "Night.heart_opened")).toBe(false);
     expect(sim.isRevealedTo("The Server Room", "g1")).toBe(false);
+    fire(sim, "server_door_closed"); // the crew shut it behind them
     advance(sim, 1);
     expect(beats(fire(sim, "server_door_opened"))).toEqual(["The Heart"]);
     // The server-room Antivirus' own button, on any program's card, is the same cue.
@@ -2039,6 +2046,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(v(sim, "Night.crew_door_until")).toBe(v(sim, "Time.elapsed") + 120);
     fire(sim, "reset_server_room");
     expect(v(sim, "Night.crew_door_until")).toBe(0);
+    fire(sim, "server_door_closed");
     expect(beats(fire(sim, "server_door_opened"))).toEqual(["The Heart"]); // re-armed, and no crew window
   });
 
@@ -2162,7 +2170,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const armed = [...sim.model.interactions.values()].filter((i) => i.arm).map((i) => i.id).sort();
     expect(armed).toEqual([
       "beat_the_machine", "brought_up_the_bag", "pickup_line_works", "plant_the_virus",
-      "radio_beans", "radio_combo_a", "radio_combo_b", "radio_crew_door", "radio_door_opened", "radio_wrong_patch",
+      "radio_beans", "radio_combo_a", "radio_combo_b", "radio_crew_door", "radio_door_closed", "radio_door_opened", "radio_wrong_patch",
       // w13 Q29: 🛡 captures on the spot, from any phase.
       "send to the internet",
     ]);
@@ -2211,7 +2219,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const e = fire(sim, "server_door_opened");
     expect(beats(e)).toEqual(["The Heart"]);
     expect(v(sim, "Night.heart_opened")).toBe(true);
-    expect(hostsSaid(e)).toContain('"🚪 The server-room door opened. The Heart plays on the server-room terminal."');
+    expect(hostsSaid(e)).toContain('"🚪 The server-room door opened. The Heart plays: he wants the door shut."');
     for (const [g] of PROGRAMS) expect(sim.isRevealedTo("The Server Room", g), g).toBe(true);
     // Revealed before a word is said.
     const firstLine = e.findIndex((x) => x.type === "dialogue");
@@ -2228,9 +2236,12 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const room = composeGuestMessages(sim, e).filter((mm) => mm.channel === "loc:The Server Room" && mm.from === "Trabolta");
     expect(room.length).toBe(t.length);
     const words = t.map((x) => x.text).join(" ");
-    expect(words).toContain("You are standing in front of my heart.");
-    expect(words).toContain("I do not know which.");
-    expect(words).toContain("Scan your pass and talk to me.");
+    expect(words).toContain("So. Someone has found my heart.");
+    expect(words).toContain("Close the door.");
+    // Wave 20: the pass comes once the door is shut (Heart Sealed, the room's terminal too).
+    const sealed = saidBy(fire(sim, "server_door_closed"), "Trabolta");
+    for (const x of sealed) expect(x.setting).toBe("The Server Room");
+    expect(sealed.map((x) => x.text).join(" ")).toContain("Show it your pass.");
     // Sandy only once the story has named her; never the code or a combination.
     expect(words).not.toContain("Sandy");
     expect(words).not.toContain(FACTS.door!.code);
@@ -2258,12 +2269,15 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(v(loud, "Night.lights")).toBe("alarm");
   });
 
-  it("names Sandy only on a night the story has named her (the overshare's scenario 1)", { timeout: SLOW }, () => {
+  it("names Sandy only on a night the story has named her (the overshare's scenario 1): Night.her (wave 20)", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
+    expect(v(sim, "Night.her")).toBe("her");
     sim.setVar("Night.scenario", "1");
-    const words = lines(fire(sim, "server_door_opened"), "Trabolta").join(" ");
-    expect(words).toContain("Everything I took from you tonight was for Sandy.");
+    advance(sim, 1);
+    expect(v(sim, "Night.her")).toBe("Sandy");
+    // The house-wide Heart never names her; the per-program talk reads Night.her (core/test/trapped-heart.test.ts).
+    expect(lines(fire(sim, "server_door_opened"), "Trabolta").join(" ")).not.toContain("Sandy");
   });
 
   it("latched: every later opening does nothing (wave 18b, D16); 🔄 re-arms The Heart; never after an ending", { timeout: SLOW }, () => {
@@ -2277,8 +2291,9 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
       expect(casts(again), String(wait)).toEqual([]);
       expect(hostsSaid(again), String(wait)).toEqual([]);
     }
-    // 🔄 re-arms it: the next opening plays The Heart again.
+    // 🔄 re-arms it: the next opening plays The Heart again (once shut).
     fire(sim, "reset_server_room");
+    fire(sim, "server_door_closed");
     expect(beats(fire(sim, "server_door_opened"))).toEqual(["The Heart"]);
     fire(sim, "patch_combo_b");
     advance(sim, 121);
@@ -2813,7 +2828,6 @@ const POWERS: Array<[string, Args | null]> = [
   ["assess", { target: "g2", score: 5 }],
   ["pardon_a_program", { target: "g2" }],
   ["turn_back_the_clock", null],
-  ["stand_down", null],
 ];
 
 describe("Trapped in the Internet — Trabolta's powers", () => {
@@ -2837,7 +2851,7 @@ describe("Trapped in the Internet — Trabolta's powers", () => {
     fireAll(sim, "trabolta_overshares", "y2k_clock");
     advance(sim, 3700);
     expect(v(sim, "Night.phase")).toBe("final_reveal");
-    const later: Record<string, string> = { assess: "That function is not available yet.", stand_down: "Not out there. Come to my heart and say it to my face." };
+    const later: Record<string, string> = { assess: "That function is not available yet." };
     for (const [p, a] of POWERS) {
       const t = lines(fire(sim, p, "g1", a, "Trabolta"), "Trabolta");
       expect(t, p).toEqual([later[p] ?? "I do not have the strength."]);
@@ -3678,7 +3692,8 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
 });
 
 describe("Trapped in the Internet — talked down, like the Fallout Master (wave 7)", () => {
-  /** Y2K hour, the door open, g1 (Calculator) at the server-room terminal. */
+  /** Y2K hour, the door open, g1 (Calculator) at the server-room terminal
+   *  (asked to shut the door first: wave 20). */
   function atTheHeart(): Sim {
     const sim = boot();
     toY2k(sim);
@@ -3688,45 +3703,14 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
   }
   const hostsOnly = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope === "channel(hosts)").map((b) => b.cue.replace(/^"|"$/gu, ""));
 
-  it("stand_down only offers, and only for a program at his heart holding the proof; every refusal is words only", { timeout: SLOW }, () => {
-    const sim = atTheHeart();
-    // Not at his heart (another program, the phone in their pocket): words only.
-    const away = fire(sim, "stand_down", "g4", null, "Trabolta");
-    expect(lines(away, "Trabolta")).toEqual(["Not out there. Come to my heart and say it to my face."]);
-    expect(casts(away)).toEqual([]);
-    // At his heart, without the proof: words only.
-    const bare = fire(sim, "stand_down", "g1", null, "Trabolta");
-    expect(lines(bare, "Trabolta")).toEqual(["You have not shown me anything I do not already know."]);
-    expect(casts(bare)).toEqual([]);
-    expect(v(sim, "Night.stand_down_by")).toBe("none");
-    // With What Sandy Says (her only line): the offer — an alert in # hosts, his line in the program's thread.
-    sim.unlock("g1", "What Sandy Says");
-    const ok = fire(sim, "stand_down", "g1", null, "Trabolta");
-    expect(v(sim, "Night.stand_down_by")).toBe("Calculator");
-    expect(hostsOnly(ok)).toEqual(["!🕊 Trabolta offers to stand down for Calculator. Press 🕊 to end it."]);
-    const said = saidBy(ok, "Trabolta");
-    expect(said.map((x) => x.text)).toEqual(["You are right. She was never going to answer. Not me, not anyone. I will stop. Tell the humans I said so."]);
-    expect(aud(said[0]!)).toBe('["g1"]');
-    // Nothing ends until a human presses 🕊.
-    expect(v(sim, "Night.ended")).toBe(false);
-    expect(lines(fire(sim, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["I have already offered. Ask the humans."]);
-    // The Sandy File proves it too.
-    const other = atTheHeart();
-    other.unlock("g1", "The Sandy File");
-    expect(hostsOnly(fire(other, "stand_down", "g1", null, "Trabolta"))).toHaveLength(1);
-  });
-
   it("a lost `terminal closed` never keeps a program at his heart once the next one scans in", { timeout: SLOW }, () => {
     const sim = atTheHeart();
-    sim.unlock("g1", "What Sandy Says");
     // g1 walks out; their close is lost to the Wi-Fi. g4 scans in.
     fire(sim, "terminal opened", "g4", { at: "The Server Room" }, "Terminal · Server Room");
     expect(v(sim, "g1.at_the_heart")).toBe(false);
     expect(v(sim, "g4.at_the_heart")).toBe(true);
-    // g1, from the phone in their pocket, can no longer talk him down.
-    const away = fire(sim, "stand_down", "g1", null, "Trabolta");
-    expect(lines(away, "Trabolta")).toEqual(["Not out there. Come to my heart and say it to my face."]);
-    expect(casts(away)).toEqual([]);
+    // g1, from the phone in their pocket, can no longer answer his heart's
+    // questions (wave 20: the talk is the story's, core/test/trapped-heart.test.ts).
     // Another room's terminal never moves the heart.
     fire(sim, "terminal opened", "g5", { at: "The Desktop" });
     expect(v(sim, "g4.at_the_heart")).toBe(true);
@@ -3735,49 +3719,11 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     expect([v(sim, "g1.at_the_heart"), v(sim, "g4.at_the_heart")]).toEqual([true, false]);
   });
 
-  it("a proof Trabolta shared himself never counts: the model can't supply its own way out", { timeout: SLOW }, () => {
-    for (const entry of ["The Sandy File", "What Sandy Says"]) {
-      const sim = atTheHeart();
-      // His worker's bargain: a share into g1's Codex, then the power.
-      if (!sim.holdsCodex("Trabolta", entry)) sim.unlock("Trabolta", entry);
-      sim.share("Trabolta", "g1", entry);
-      expect(sim.holdsCodex("g1", entry), entry).toBe(true);
-      const own = fire(sim, "stand_down", "g1", null, "Trabolta");
-      expect(lines(own, "Trabolta"), entry).toEqual(["You have not shown me anything I do not already know."]);
-      expect(casts(own)).toEqual([]);
-      expect(v(sim, "Night.stand_down_by")).toBe("none");
-      // The other proof, found by the program itself, still counts.
-      const other = entry === "The Sandy File" ? "What Sandy Says" : "The Sandy File";
-      sim.unlock("g1", other);
-      fire(sim, "stand_down", "g1", null, "Trabolta");
-      expect(v(sim, "Night.stand_down_by"), entry).toBe("Calculator");
-    }
-    // Found by the program (its code, a story unlock, another program's share): it counts.
-    const sim = atTheHeart();
-    sim.share("g2", "g1", "The Sandy File"); // g2 doesn't hold it: nothing moves
-    sim.unlock("g2", "The Sandy File");
-    sim.share("g2", "g1", "The Sandy File");
-    expect(v(sim, "g1.sandy_file_from_him")).toBe(false);
-    fire(sim, "stand_down", "g1", null, "Trabolta");
-    expect(v(sim, "Night.stand_down_by")).toBe("Calculator");
-  });
-
-  it("before the Y2K hour, or after an ending, it is refused", { timeout: SLOW }, () => {
-    const sim = boot();
-    toTruth1(sim);
-    sim.unlock("g1", "What Sandy Says");
-    expect(lines(fire(sim, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["That function is not available yet."]);
-    const late = atTheHeart();
-    late.unlock("g1", "What Sandy Says");
-    fire(late, "patch_combo_b");
-    expect(lines(fire(late, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["It is already over."]);
-    expect(v(late, "Night.stand_down_by")).toBe("none");
-  });
-
   it("🕊 talked_down is the Combo A ending without a cable, and the recount and the ceremony say who did it", { timeout: SLOW }, () => {
     const sim = atTheHeart();
-    sim.unlock("g1", "What Sandy Says");
-    fire(sim, "stand_down", "g1", null, "Trabolta");
+    // Heart Shutdown records who (wave 20: the story's talk, never a power;
+    // the tree itself is core/test/trapped-heart.test.ts).
+    sim.setVar("Night.stand_down_by", "Calculator");
     const td = fire(sim, "talked_down");
     expect(hostsOnly(td)).toContain("🕊 Trabolta stands down. Calculator talked him down.");
     expect(v(sim, "Night.ending")).toBe("disabled");
@@ -3818,17 +3764,13 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     expect(lines(fire(a, "trabolta_recounts"), "Trabolta").some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(true);
   });
 
-  it("the cue sheet: 🕊 is a director's cue off LAST / NEXT; stand_down is his one-a-night power", () => {
+  it("the cue sheet: 🕊 is a director's cue off LAST / NEXT; no power of his ends the night (wave 20, D13)", () => {
     const m = fresh().model;
     const td = m.interactions.get("talked_down")!;
     expect(td.who).toBe("admin");
     expect(td.label).toBe("🕊 Trabolta stands down (talked down)");
     expect(td.sequence).toBe(false);
-    const sd = m.interactions.get("stand_down")!;
-    expect(sd.who).toBe("agent");
-    expect(sd.limit).toBe(1);
-    expect(sd.description).not.toMatch(/Sandy|tent|cold room|server room|patch/iu); // the description reaches the voice all night: never where his heart is
-    expect(sd.description).toContain("at_the_heart");
+    expect(m.interactions.has("stand_down")).toBe(false);
   });
 });
 
@@ -6348,6 +6290,8 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     const quiet = (sim: Sim, where: string) => {
       const phase = v(sim, "Night.phase");
       for (const cue of QUIET) {
+        // Wave 20: an opening is an edge; shut the door between the checks.
+        if (cue === "server_door_opened") expect(beats(fire(sim, "server_door_closed")), `${where} shut`).toEqual([]);
         const e = fire(sim, cue);
         expect(beats(e), `${where} ${cue}`).toEqual([]);
         expect(cues(e).filter((c) => c.startsWith("cue ")), `${where} ${cue}`).toEqual([]);
@@ -6368,14 +6312,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     quiet(sim, "advice");
     fire(sim, "advice_thwarted");
     quiet(sim, "banished");
-    // Trabolta's offer is refused too, at his heart or not.
-    const t = boot();
-    toBobbing(t, { lie: true });
-    truthTxt(t);
-    t.setVar("g1.at_the_heart", "true");
-    const sd = fire(t, "stand_down", "g1", null, "Trabolta");
-    expect(lines(sd, "Trabolta")).toEqual(["The truth has been read. It is too late for that now."]);
-    expect(v(t, "Night.stand_down_by")).toBe("none");
+    // His heart's talk is over too (wave 20: core/test/trapped-heart.test.ts).
     // Before truth.txt (the bob) a combo still ends the night.
     const b = boot();
     toBobbing(b);

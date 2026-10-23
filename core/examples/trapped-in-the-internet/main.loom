@@ -10,7 +10,8 @@ watch: program.cleared as Cleared, program.marked as Marked, program.door_by as 
 watch: program.afk as Bathroom Mode, program.late as Late, program.corrupted as In the Internet, program.checked_in as Checked in
 watch: Night.results_q as Results read, while Night.phase == "truth_1"
 watch: Night.scenario as Overshare scenario, while Night.scenario > 0 and Night.ended != true
-watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_opened as The Heart, program.at_the_heart as At the heart, while Trabolta.awake == true and Night.ended != true
+watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_stage as The Heart, Night.server_door as Server door, Night.door_override as Door on buttons, program.at_the_heart as At the heart, while Trabolta.awake == true and Night.ended != true
+watch: Night.heart_talker as At his heart, Night.heart_talker_layer as Heart layer, Night.heart_talker_suspicion as Heart suspicion, while Night.heart_stage == "talk"
 watch: Kernel.lies_accepted as Lies accepted, while Night.round >= 1
 watch: Night.ending as Ending, while Night.ended == true
 watch: Night.signatures as Signatures, while Night.painting == true
@@ -388,11 +389,45 @@ ROLE Program
   // the story rules by The Heart). Not secret: Trabolta's worker reads it
   // (persona `them:`) and drops the act for this program alone.
   at_the_heart: bool = false
-  // The stand_down proof came from Trabolta himself (he shared What Sandy
+  // The heart's proof came from Trabolta himself (he shared What Sandy
   // Says / The Sandy File into this program's Codex): it shows him nothing
-  // he did not know, so it never counts (cast/trabolta.loom).
+  // he did not know, so its ⟦PROOF⟧ option never shows (beats/server-room.loom).
   sandy_says_from_him: bool = false
   sandy_file_from_him: bool = false
+  // ── The Heart's talk (wave 20; beats/server-room.loom) ──
+  // A program's own way through the four layers at his heart, kept between
+  // visits (🔄 forgives a barred program and its suspicion, nothing else).
+  // Not secret: his worker reads heart_layer / heart_menu / heart_convinced
+  // / heart_chat / heart_out (persona `them:`); none of these says anything
+  // about a hunt answer, a code or a cable. Every `+=` is clamped by hand
+  // in Heart Pick: a ROLE slot's range does not clamp a story `set`.
+  heart_layer: 0 to 4 = 0
+  heart_suspicion: 0 to 100 = 0
+  heart_case: 0 to 9 = 0
+  heart_proof: bool = false
+  // The option picked last (an id, §3.4 of CONTRACT-w20), held while the
+  // door is open; "none" once applied.
+  heart_pick: text? = none
+  // Where the pick goes next (Heart Pick's own bookkeeping).
+  heart_go: text? = none
+  heart_menu: bool = false
+  heart_wait: bool = false
+  heart_out: bool = false
+  heart_warned: bool = false
+  heart_convinced: bool = false
+  heart_called: bool = false
+  heart_gen_seen: 0 to 99 = 0
+  // The heart to heart (§7, D24): free talk with him at the terminal.
+  heart_chat: bool = false
+  heart_asked_what: bool = false
+  heart_asked_why: bool = false
+  heart_asked_her: bool = false
+  heart_shown_says: bool = false
+  heart_shown_file: bool = false
+  heart_shown_trusted: bool = false
+  heart_shown_honest: bool = false
+  heart_shown_overshare: bool = false
+  heart_shown_journal: bool = false
   // How many of the cold door's four digit notes this program holds (the
   // story rule `door_digit_found` counts them; wave 11).
   door_digits: 0 to 4 = 0
@@ -2111,7 +2146,7 @@ ROLE Program
   when self.codex.the_door_code == true and self.quest.the_cold_door == "active":
     complete quest The Cold Door for self "The door code is in your Codex. The keypad is by the cold door in the basement."
 
-  // ── The stand_down proof (wave 7) ──
+  // ── The heart's proofs (wave 7; wave 20: the ⟦PROOF⟧ options) ──
   // His worker may share lore as a bargain; a proof he handed over himself
   // can't talk him down (the program must find it: the card, the hunt, a
   // Facts Bundle, another program).
@@ -2617,6 +2652,37 @@ ROLE Program
   when self.at_the_heart == true and Night.heart_holder != self.name:
     set self.at_the_heart = false
 
+  // ── The Heart (wave 20) ──
+  // A pick held while the door stood open plays once it is shut, if the
+  // program is still at the terminal (a re-scan is `terminal_opened`'s,
+  // which clears heart_wait first, so the two never dock two menus).
+  when Night.server_door == "closed" and self.heart_wait == true and self.at_the_heart == true and Night.ended != true:
+    set self.heart_wait = false
+    set Night.heart_stage = "talk"
+    if self.heart_pick != "none":
+      -> Heart Pick
+    else:
+      -> Heart Talk
+
+  // Convinced before the Y2K hour: when the clock starts, he calls them
+  // back (their own Trabolta thread).
+  when Night.step >= 14 and self.heart_convinced == true and self.heart_called != true and Night.ended != true and Night.r3_closed != true:
+    set self.heart_called = true
+    broadcast "🕊 {self.name} convinced Trabolta before the Y2K hour. He'll stand down when they scan in again." to channel(hosts)
+    -> Heart Call
+
+  // 🔄 forgives: a program thrown out of his heart may come back, and
+  // everyone's suspicion starts again (their layer and case stay).
+  when Night.heart_gen > self.heart_gen_seen:
+    set self.heart_gen_seen = Night.heart_gen
+    set self.heart_out = false
+    set self.heart_suspicion = 0
+    set self.heart_warned = false
+
+  // An ending, an eject or a closed terminal ends any heart to heart.
+  when Night.ended == true and self.heart_chat == true:
+    set self.heart_chat = false
+
   // The majority's members get the whole truth (late pledgers too), once
   // each (wave 18b: any faction; `whole_truth` keeps a leave-and-rejoin
   // from replaying it).
@@ -2901,10 +2967,10 @@ INTERACTION y2k_midnight
   sequence: false
 
 INTERACTION server_door_opened
-  label: 🚪 Server room door opened (hardware fallback)
+  label: 🚪 Server room door opened (sensor fallback)
   who: admin
   sequence: false
-  description: The door contact fires this itself. Press it when the contact could not. Once Trabolta is awake the first opening plays The Heart, however the door was unlocked (the server room opens on every phone, Trabolta speaks candidly on the server-room terminal); every later opening does nothing (🔄 re-arms it). Before he is awake, inside a 🔧 crew window, or after truth.txt it only tells # hosts. It never raises an alarm.
+  description: The door sensor on the server-room terminal reports this itself. Press it when the sensor is wrong or in fault (Run → Terminals). Once Trabolta is awake the first opening plays The Heart and asks for the door to be shut; an opening during his heart stops the talk until it is shut. Pressing it hands the door to the 🚪 buttons until 🚪 Trust the door sensor. Before he is awake, inside a 🔧 crew window, or after truth.txt it only tells # hosts. It never raises an alarm.
 
 INTERACTION reset_server_room
   label: 🔄 Server room: reset the patch-bay alarm
@@ -2956,7 +3022,7 @@ INTERACTION talked_down
   label: 🕊 Trabolta stands down (talked down)
   who: admin
   sequence: false
-  description: When # hosts reads "🕊 Trabolta offers to stand down for X" (a program at the server-room terminal showed him that what he wants is impossible). The Combo A ending without a cable: the blackout, the dance, the recount, which says who talked him down. With no offer on record it still works (the director's call) and # hosts is told so. From the Y2K hour, before any ending.
+  description: When # hosts reads "🕊 Trabolta stands down for X" or "Trabolta offers to stand down for X" (a program reached the end of his heart's talk at the server-room terminal). The Combo A ending without a cable: the blackout, the dance, the recount, which says who talked him down. With 🕊 Heart autoend on it fires itself 25 s after his goodbye; press it to end it at once. With no offer on record it still works (the director's call) and # hosts is told so. From the Y2K hour, before any ending.
 
 INTERACTION lights_dance
   label: 🪩 Dance lights (fallback: auto 10 s after the blackout)
@@ -3152,6 +3218,29 @@ INTERACTION crew_through_the_door
   sequence: false
   description: Before a crew member opens the cold door for the crew's own reasons (a check, the patch-bay watch going in or out). For the next 2 minutes a door opening only tells # hosts: The Heart is not spent and nobody's phone hears of it. The server-room Antivirus has the same button.
 
+// Wave 20, appended so no cue number moves; they rejoin the server-room
+// act (E) beside 🚪 opened: the door sensor's other fallback, handing the
+// door back to the sensor, and the heart's autoend toggle.
+INTERACTION server_door_closed
+  label: 🚪 Server room door closed (sensor fallback)
+  who: admin
+  act: E · Act III: the Y2K hour and the server room
+  sequence: false
+  description: Press it when the door sensor is wrong or in fault (Run → Terminals). From then on the story follows the 🚪 buttons, not the sensor, until 🚪 Trust the door sensor. The heart's talk waits for the door to be shut.
+
+INTERACTION server_door_trust
+  label: 🚪 Trust the door sensor again
+  who: admin
+  sequence: false
+  while: Night.door_override == true
+  description: After a 🚪 opened / closed press: hands the door back to the sensor on the server-room terminal (its next poll brings the story in line with the real door).
+
+INTERACTION heart_autoend
+  label: 🕊 Heart: end the night on his own (toggle)
+  who: admin
+  sequence: false
+  description: On by default. On: a program who talks Trabolta down at his heart in the Y2K hour ends the night 25 s later by itself (🕊 ends it at once). Off: # hosts asks you to press 🕊; until you do, 🔄 can reopen his heart. # hosts says which way it is now.
+
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
 // `mark as reinstalled`, which work on any program at any time.
@@ -3342,7 +3431,15 @@ INTERACTION radio_door_opened
   by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
   while: Night.ended != true and Night.r3_closed != true and Trabolta.awake == true and Time.elapsed >= Night.crew_door_until
-  description: Only when the door opened and the room heard nothing (the contact failed). The first opening plays The Heart. Hidden inside a 🔧 crew window.
+  description: Only when the door opened and the story missed it (the door sensor is wrong or in fault). The first opening plays The Heart. From then on the story follows the 🚪 buttons until a director trusts the sensor again. Hidden inside a 🔧 crew window.
+
+INTERACTION radio_door_closed
+  label: 🚪 The server-room door is shut
+  who: performer
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  arm: true
+  while: Night.ended != true and Night.server_door == "open"
+  description: Only when the door is shut and the story still thinks it is open (the door sensor is wrong or in fault). Trabolta's talk goes on once it is shut. From then on the story follows the 🚪 buttons until a director trusts the sensor again.
 
 INTERACTION radio_crew_door
   label: 🔧 Crew going through the door (2 min)
@@ -4357,38 +4454,138 @@ when majority_reached:
       fail quest Recruit To Leave for everyone
     -> Majority Reached
 
-// E2: the door contact. The server-room door has a standalone keypad lock
-// (the code is set by hand on the lock; nothing in the story can lock or
-// unlock it), and the contact — two strips of copper tape that touch when
-// the door opens — can't say who opened it, or how they got the code (the
+// E2: the door and The Heart (wave 20; CONTRACT-w20 §3). The server-room
+// door has a standalone keypad lock (the code is set by hand on the lock;
+// nothing in the story can lock or unlock it). The door sensor (a light
+// shining across the frame, read by the server-room terminal) says only
+// open or shut: it can't say who opened it, or how they got the code (the
 // digit notes, a checkmate at the door terminal, the majority, a crew key).
 // Opening it is a clean entry, whoever you are: the door never raises an
-// alarm (the patch bay does, E3). Once Trabolta is awake the first opening
-// plays The Heart: the room opens on every phone and Trabolta speaks to it
-// candidly from the server-room terminal (like the Master: reaching him
-// is not stopping him; before the Y2K hour nothing in the room ends the
-// night). Every later opening does nothing (wave 18b: Back To The Heart
-// and its quiet window are gone); 🔄 reset_server_room re-arms The Heart.
-// Before he is awake (he is strictly offline until Clippy introduces him)
-// the door is just a door: # hosts hears of it, the story does nothing (a
-// curious guest, or a retained "open" replayed on a stagehand reconnect).
-// Inside a 🔧 crew window (crew_through_the_door) an opening is the crew's
-// own: # hosts only, The Heart kept for the programs. Once the verdict is
-// in (📄 truth.txt closed round three: then ⚖, Grok Prom, the advice poll,
-// the banishment) the server room is quiet too: the night ends at the
-// Desktop now, so the door, the patch bay and 🕊 only tell # hosts.
+// alarm (the patch bay does, E3).
+//
+// Two inputs, one door (D19): the sensor posts `door_sensor_opened` /
+// `_closed`; the 🚪 admin cues and the server-room Antivirus' 🚪 buttons
+// fire `server_door_*` / `radio_door_*`. Both become the story's own
+// `heart_door_opened` / `heart_door_closed`. A 🚪 press puts the door on
+// the buttons (Night.door_override) and the sensor is ignored until 🚪
+// Trust the door sensor, so a wrong-but-healthy sensor never undoes a
+// director.
+//
+// The heart's stages (Night.heart_stage): sealed → door (The Heart played,
+// he wants the door shut) → scan (shut; he waits for a pass at the
+// terminal) → talk (a program at his heart, the four layers in
+// beats/server-room.loom) → done (he stood down, or an ending). Before he
+// is awake the door is just a door: # hosts hears of it, nothing else (a
+// curious guest). Inside a 🔧 crew window (crew_through_the_door) an
+// opening is the crew's own: # hosts only, The Heart kept for the
+// programs. Once the verdict is in (📄 truth.txt closed round three) the
+// server room is quiet too: the night ends at the Desktop now, so the
+// door, the patch bay and 🕊 only tell # hosts. Every heart light cue
+// waits out the patch-bay alarm (the alarm look owns the bulb until the
+// latch's end puts the room back).
+when door_sensor_opened:
+  if Night.door_override != true:
+    fire heart_door_opened
+
+when door_sensor_closed:
+  if Night.door_override != true:
+    fire heart_door_closed
+
 when server_door_opened:
-  if Night.ended != true and Night.r3_closed == true:
-    broadcast "🚪 The server-room door opened after truth.txt. The verdict is in: nothing happens in the story." to channel(hosts)
-  else if Night.ended != true and Time.elapsed < Night.crew_door_until:
-    broadcast "🚪 The server-room door opened inside the 🔧 crew window. Nothing happens in the story." to channel(hosts)
-  else if Night.ended != true and Trabolta.awake == true:
-    if Night.heart_opened != true:
+  if Night.door_override != true:
+    broadcast "🚪 The story now follows the 🚪 buttons, not the door sensor. Press 🚪 Trust the door sensor to hand it back." to channel(hosts)
+  set Night.door_override = true
+  fire heart_door_opened
+
+when server_door_closed:
+  if Night.door_override != true:
+    broadcast "🚪 The story now follows the 🚪 buttons, not the door sensor. Press 🚪 Trust the door sensor to hand it back." to channel(hosts)
+  set Night.door_override = true
+  fire heart_door_closed
+
+when server_door_trust:
+  set Night.door_override = false
+  broadcast "🚪 The story follows the door sensor again." to channel(hosts)
+
+when heart_door_opened:
+  if Night.server_door != "open":
+    set Night.server_door = "open"
+    if Night.ended != true and Night.r3_closed == true:
+      broadcast "🚪 The server-room door opened after truth.txt. The verdict is in: nothing happens in the story." to channel(hosts)
+    else if Night.ended != true and Time.elapsed < Night.crew_door_until:
+      broadcast "🚪 The server-room door opened inside the 🔧 crew window. Nothing happens in the story." to channel(hosts)
+    else if Night.ended != true and Trabolta.awake != true:
+      broadcast "🚪 The server-room door opened before Trabolta is awake. Nothing happens in the story." to channel(hosts)
+    else if Night.ended != true and Night.heart_stage == "sealed" and Night.heart_opened != true:
       set Night.heart_opened = true
-      broadcast "🚪 The server-room door opened. The Heart plays on the server-room terminal." to channel(hosts)
+      set Night.heart_stage = "door"
+      set Night.door_nag_at = Time.elapsed + 15
+      set Night.door_nags = 0
+      broadcast "🚪 The server-room door opened. The Heart plays: he wants the door shut." to channel(hosts)
       -> The Heart
-  else if Night.ended != true:
-    broadcast "🚪 The server-room door opened before Trabolta is awake. Nothing happens in the story." to channel(hosts)
+    else if Night.ended != true and (Night.heart_stage == "door" or Night.heart_stage == "scan" or Night.heart_stage == "talk"):
+      // The light follows every edge; his words at most once per 20 s (D22).
+      set Night.door_nag_at = Time.elapsed + 15
+      if Night.alarm_on != true:
+        cue heart_door_open
+      if Time.elapsed >= Night.door_again_at:
+        set Night.door_again_at = Time.elapsed + 20
+        set Night.door_again_said = true
+        if Night.heart_stage == "talk":
+          broadcast "🚪 The door opened during the heart (stage {Night.heart_stage}). The talk waits until it is shut." to channel(hosts)
+        -> Heart Door Again
+
+when heart_door_closed:
+  if Night.server_door != "closed":
+    set Night.server_door = "closed"
+    set Night.door_nags = 0
+    if Night.ended != true and Night.r3_closed != true:
+      if Night.heart_stage == "door":
+        set Night.heart_stage = "scan"
+        set Night.door_again_said = false
+        broadcast "🚪 Door shut. Trabolta waits for a pass at the server-room terminal." to channel(hosts)
+        -> Heart Sealed
+      else if Night.heart_stage == "scan" or Night.heart_stage == "talk":
+        // The room's look back (the door loop never settles).
+        if Night.alarm_on != true:
+          if Night.heart_look != "none":
+            do cue {Night.heart_look}
+          else:
+            cue heart_idle
+        if Night.door_again_said == true:
+          set Night.door_again_said = false
+          -> Heart Door Shut
+
+// The door left open: he asks again 15 s after it opened, then every 20 s
+// (Heart Nag; a short amber swell over the door loop). # hosts hears at the
+// third: a minute open means someone should shut it, or the sensor is
+// wrong.
+when Night.server_door == "open" and Night.heart_opened == true and Night.heart_stage != "sealed" and Night.heart_stage != "done" and Night.ended != true and Night.r3_closed != true and Time.elapsed >= Night.door_nag_at:
+  set Night.door_nag_at = Time.elapsed + 20
+  set Night.door_nags += 1
+  if Night.door_nags == 3:
+    broadcast "🚪 The server-room door has been open a minute. Someone shut it, or press 🚪 Closed if the sensor is wrong (the story then follows the 🚪 buttons until 🚪 Trust the door sensor)." to channel(hosts)
+  -> Heart Nag
+
+// He stood down at his heart in the Y2K hour (Heart Shutdown) and the house
+// lets him end it himself (🕊 Heart autoend, on by default): 25 s after his
+// goodbye, the 🕊 talked_down ending. Any other ending first clears it.
+when Night.heart_end_at > 0 and Time.elapsed >= Night.heart_end_at and Night.ended != true:
+  set Night.heart_end_at = 0
+  fire talked_down
+
+when heart_autoend:
+  if Night.heart_autoend == true:
+    set Night.heart_autoend = false
+    broadcast "🕊 Heart autoend is OFF: a talk-down at his heart waits for you to press 🕊." to channel(hosts)
+  else:
+    set Night.heart_autoend = true
+    broadcast "🕊 Heart autoend is ON: a talk-down at his heart in the Y2K hour ends the night 25 s later by itself." to channel(hosts)
+
+// Her name at his heart follows the story's own unredaction (the overshare
+// on a scenario-1 night, else the recount), like the persona's.
+when Night.her != "Sandy" and ((Night.step >= 13 and Night.scenario == 1) or Night.recount == true):
+  set Night.her = "Sandy"
 
 // 🔧 The crew are going through the cold door themselves: for 2 minutes an
 // opening is theirs (above). The director's cue and the server-room
@@ -4417,7 +4614,16 @@ when radio_wrong_patch:
   fire patch_rejected
 
 when radio_door_opened:
-  fire server_door_opened
+  if Night.door_override != true:
+    broadcast "🚪 The story now follows the 🚪 buttons, not the door sensor. Press 🚪 Trust the door sensor to hand it back." to channel(hosts)
+  set Night.door_override = true
+  fire heart_door_opened
+
+when radio_door_closed:
+  if Night.door_override != true:
+    broadcast "🚪 The story now follows the 🚪 buttons, not the door sensor. Press 🚪 Trust the door sensor to hand it back." to channel(hosts)
+  set Night.door_override = true
+  fire heart_door_closed
 
 when radio_crew_door:
   fire crew_through_the_door
@@ -4447,18 +4653,44 @@ when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
     else:
       cue lights_y2k
       set Night.lights = "y2k"
+  // The server room's own bulb (lights.json): the door loop while the door
+  // stands open on his heart, else the room's settled look, else the idle
+  // look (an alarm before The Heart or after 🔄 must never leave the red
+  // swell looping).
+  if Night.server_door == "open" and (Night.heart_stage == "door" or Night.heart_stage == "scan" or Night.heart_stage == "talk"):
+    cue heart_door_open
+  else if Night.heart_look != "none":
+    do cue {Night.heart_look}
+  else:
+    cue heart_idle
 
 // Reset mid-show (a rehearsal, or a wrong patch the crew forgave): the
 // wrong-patch count back to zero (the bay forgives one again), the alarm
 // latch cleared, and the door cutscene re-armed (the next opening once
 // Trabolta is awake plays The Heart again). The keypad is never touched.
+// The heart reopens too (wave 20): sealed again, so the next opening plays
+// The Heart, and everyone he threw out may come back (the ROLE watcher on
+// Night.heart_gen). A heart that is `done` stays done once the night has
+// ended or he was talked down; a shutdown the director declined (🕊 never
+// pressed, autoend off) reopens.
 when reset_server_room:
   set Night.wrong_combos = 0
   set Night.alarm_on = false
   set Night.alarm_clear_at = 0
   set Night.heart_opened = false
   set Night.crew_door_until = 0
-  broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, and the next door opening plays The Heart." to channel(hosts)
+  set Night.heart_gen += 1
+  if Night.heart_stage != "done" or (Night.ended != true and Night.talked_down != true):
+    set Night.heart_stage = "sealed"
+    set Night.heart_present = false
+    set Night.heart_end_at = 0
+    set Night.stand_down_by = "none"
+    set Night.heart_look = "heart_idle"
+    cue heart_idle
+  else if Night.heart_look != "none":
+    // The alarm latch cleared here never reaches its end: the room's look back.
+    do cue {Night.heart_look}
+  broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, the next door opening plays The Heart, and anyone thrown out of his heart may come back." to channel(hosts)
 
 // The server-room terminal (a wall terminal provisioned with `room=The
 // Server Room`) posts `terminal opened` when it starts piloting a guest's
@@ -4471,17 +4703,52 @@ when reset_server_room:
 // whoever was at his heart before (Night.heart_holder; the ROLE watcher
 // clears them): a `terminal closed` lost to a Wi-Fi blip never leaves a
 // program at his heart once someone else has scanned in.
+//
+// Wave 20: the scan is how the talk starts. With the door still open he
+// asks for it shut first (the talk waits; the ROLE watcher picks it up
+// when it shuts); with it shut the program's own talk opens (Heart Talk),
+// or a pick they made with the door open is applied now (Heart Pick).
+// Exactly one branch runs, so this rule and the resume watcher never dock
+// two menus. After truth.txt the terminal is only his voice (the LLM).
 when terminal_opened for program:
   if program.name != null:
     if Night.ended != true and (at == "The Server Room" or at == "the server room" or at == "Server Room" or at == "server room" or at == "server-room" or at == "server_room" or at == "The_Server_Room"):
       set Night.heart_holder = program.name
       set program.at_the_heart = true
+      if Night.r3_closed != true:
+        if Night.heart_stage == "door":
+          set program.heart_wait = true
+          set Night.heart_present = true
+          -> Heart Shut It
+        else if Night.heart_stage == "scan" or Night.heart_stage == "talk":
+          set Night.heart_present = true
+          if Night.server_door == "open":
+            set program.heart_wait = true
+            -> Heart Shut It
+          else if program.heart_wait == true:
+            set program.heart_wait = false
+            set Night.heart_stage = "talk"
+            if program.heart_pick != "none":
+              -> Heart Pick
+            else:
+              -> Heart Talk
+          else:
+            set Night.heart_stage = "talk"
+            -> Heart Talk
     else:
       set program.at_the_heart = false
 
 when terminal_closed for program:
   if program.name != null:
     set program.at_the_heart = false
+    set program.heart_chat = false
+    if program.name == Night.heart_holder:
+      set Night.heart_present = false
+      if Night.heart_stage == "talk":
+        set Night.heart_stage = "scan"
+        set Night.heart_look = "heart_idle"
+        if Night.alarm_on != true:
+          cue heart_idle
 
 // The King (wave 11). He stands at the server-room door twice. In the
 // simulation he guards its virtual copy in both reinstallation games, with
@@ -4646,10 +4913,10 @@ when patch_combo_b:
 when patch_after_verdict:
   broadcast "🔌 A patch after truth.txt. The verdict is in: the patch bay is quiet, nothing happens in the story." to channel(hosts)
 
-// Talked down, like the Fallout Master: Trabolta's `stand_down` power
-// (cast/trabolta.loom) only OFFERS, so a model misfire can never end the
-// night; this is a human confirming it, or the director's own call with no
-// offer on record. It is the Combo A ending without a cable
+// Talked down, like the Fallout Master: the story's own talk at his heart
+// (wave 20, beats/server-room.loom: Heart Shutdown) fires this 25 s after
+// his goodbye when 🕊 Heart autoend is on, else asks a human to confirm;
+// or it is the director's own call with no offer on record. It is the Combo A ending without a cable
 // (trabolta_disabled), with Night.talked_down so the blackout, the recount
 // and the ceremony say who talked him down.
 when talked_down:
@@ -4683,9 +4950,17 @@ when Night.ended == true:
   set Night.bingo_end = 0
   set Night.y2k_end = 0
 
-// E4: Combo A — take the grease out of the lightning.
+// E4: Combo A — take the grease out of the lightning. His heart is done
+// however he ends (the cables, or talked down); the bulb in the cold room
+// fades the same way (a talk-down cued it already).
 when trabolta_disabled:
   if Night.ended != true:
+    set Night.heart_stage = "done"
+    set Night.heart_end_at = 0
+    if Night.heart_look != "heart_shutdown":
+      set Night.heart_look = "heart_shutdown"
+      if Night.alarm_on != true:
+        cue heart_shutdown
     set Night.ended = true
     set Night.ending = "disabled"
     set Night.phase = "finale_killed"
@@ -4764,6 +5039,8 @@ when trabolta_recounts:
 // E6: Combo B — the computer is turned off without Shut Down.
 when computer_destroyed:
   if Night.ended != true:
+    set Night.heart_stage = "done"
+    set Night.heart_end_at = 0
     set Night.ended = true
     set Night.ending = "destroyed"
     set Night.phase = "finale_shutdown"
@@ -5241,6 +5518,24 @@ set Night.lights_before_alarm = "none"
 set Night.wrong_combos = 0
 set Night.heart_opened = false
 set Night.heart_holder = "none"
+// The heart (wave 20): the door, its stages, the talker on the glance.
+set Night.server_door = "closed"
+set Night.heart_stage = "sealed"
+set Night.door_override = false
+set Night.door_again_at = 0
+set Night.door_again_said = false
+set Night.heart_present = false
+set Night.heart_talker = "none"
+set Night.heart_talker_suspicion = 0
+set Night.heart_talker_layer = 0
+set Night.heart_talks = 0
+set Night.door_nag_at = 0
+set Night.door_nags = 0
+set Night.heart_look = "none"
+set Night.heart_autoend = true
+set Night.heart_end_at = 0
+set Night.heart_gen = 0
+set Night.her = "her"
 set Night.gloat_at = 0
 // The King's one shared health bar (the server knocks a point off per
 // hit in the reinstallation games; 👑 restores it) and his stakes.
