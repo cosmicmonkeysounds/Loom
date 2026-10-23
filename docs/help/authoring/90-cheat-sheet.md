@@ -45,6 +45,8 @@ with underscores: `Ivo_Marsh.trusts.guest`.
 | `* text` | once-only choice |
 | `+ text` | sticky choice |
 | `text[ hidden]` | words shown only after the choice |
+| `+ (if cond) text` | offered only while `cond` holds |
+| `⟦TAG⟧ text` | a tag on an option (never `[TAG]`) |
 | `-> The Beat` | go to a beat |
 | `-> self.Beat` / `-> Owner.Beat` | go to an owned beat |
 | `-> folder/beat` , `-> file#knot` | disambiguated jumps |
