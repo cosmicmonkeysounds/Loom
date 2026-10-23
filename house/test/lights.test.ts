@@ -307,6 +307,13 @@ describe("planLook", () => {
     ]);
   });
 
+  it("clamps before the caps: OFF on a safety fixture that can't dim is just ON", () => {
+    const l = fresh();
+    l.fixtures[0]!.caps = { color: true, ct: true, dim: false };
+    l.looks["x"] = { to: ["heart"], set: { state: "OFF", transition: 1 } };
+    expect(planLook(l, HOUSE, "x")!.commands).toEqual([{ at: 0, fixture: "server-room-rgb", set: { state: "ON", transition: 1 } }]);
+  });
+
   it("without a house a LOCATION target reaches nothing", () => {
     expect(planLook(LIGHTS, null, "server_alarm")!.commands.map((c) => c.fixture)).toEqual(["server-room-rgb"]);
   });

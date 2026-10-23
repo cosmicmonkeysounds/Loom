@@ -283,8 +283,8 @@ function stepsOf(look: LightLook): LightStep[] {
 
 /**
  * Expand a look into timed commands: each step over its targets (the
- * step's `to`, else the look's), the fields a fixture's caps can't do
- * dropped (a command left doing nothing is dropped too), safety-clamped,
+ * step's `to`, else the look's), safety-clamped, then the fields a
+ * fixture's caps can't do dropped (a command left doing nothing is dropped too),
  * sorted by `at` then the fixtures' file order. `period` = the look's, else
  * the last step's `at` + `LIGHT_STEP_MIN_MS` (a `restore` look:
  * + `LIGHT_RESTORE_MS`); `repeat` = 0 for a loop, else the look's (1).
@@ -304,9 +304,11 @@ export function planLook(lights: LightsConfig, house: HouseMap | null | undefine
     for (const id of resolveLightTargets(lights, house, to).fixtures) {
       const hit = byId.get(id);
       if (hit === undefined) continue;
-      const set = forCaps(hit.f, step.set ?? {});
+      // Clamp first, then the caps: an OFF on a safety fixture that can't
+      // dim is ON (its floor's brightness dropped with the caps).
+      const set = forCaps(hit.f, clampForSafety(hit.f, step.set ?? {}));
       if (!effective(set)) continue;
-      commands.push({ at: step.at, fixture: id, set: ordered(clampForSafety(hit.f, set)), order: hit.i });
+      commands.push({ at: step.at, fixture: id, set: ordered(set), order: hit.i });
     }
   }
   commands.sort((a, b) => a.at - b.at || a.order - b.order);
