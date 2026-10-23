@@ -340,7 +340,9 @@ for the next pass); they keep their place.
   reads *"🕊 X convinced Trabolta before the Y2K hour."* When 🕚 sets the
   clock he calls them on their phone (*"The clock is running … Come back
   down and tell me again."*). Back at the terminal they only have to
-  say it is **still true** (or change their mind, which costs them).
+  say it is **still true** (or change their mind, which costs them). If
+  they are still at the terminal when the clock starts, he asks them
+  there and then instead of calling.
 - **In the Y2K hour** (before 📄) he stops: *"I can never die. But I can
   stop."*, the patch bay on the terminal goes dark row by row, and the
   light fades to warm white. With **🕊 Heart: end the night on his own**
@@ -413,9 +415,12 @@ wrong patch the crew forgave) clears the wrong-combination count (the
 bay forgives one again), the alarm latch, the crew window and The Heart:
 the heart is *sealed* again (the next opening once Trabolta is awake
 plays it again), anyone he threw out may come back, and everyone's
-suspicion starts again (their layer is kept). A heart that is *done*
-stays done once the night has ended or he was talked down; a stand-down
-you never confirmed (autoend off) reopens. The house lights stay as they
+suspicion starts again (their layer is kept); a pick held for a shut
+door is dropped, a menu still on the screen answers *"Not now."*, and a
+heart to heart ends. A heart that is *done* stays done once the night has
+ended or he was talked down, and during the 25 seconds before an autoend
+(`# hosts`: *"His stand-down stands"*); a stand-down you never confirmed
+(autoend off) reopens. The house lights stay as they
 are — **💡 Restore the house lights** brings them back — and the room's
 bulb goes back to idle. It never touches the keypad or the King. It
 never changes the door's state: the door is open or shut for real.
