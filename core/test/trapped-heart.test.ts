@@ -735,6 +735,45 @@ describe("The Heart — convinced (wave 20)", () => {
     expect(beats(open(sim))).toEqual(["The Heart"]);
   });
 
+  it("a pick held by a program who walked away never reopens a heart another program shut down", { timeout: SLOW }, () => {
+    const sim = awake();
+    toY2K(sim);
+    atLayerOne(sim, "g4");
+    open(sim);
+    pick(sim, "g4", "I'm a person"); // held for the shut door
+    expect(v(sim, "g4.heart_wait")).toBe(true);
+    unscan(sim, "g4");
+    shut(sim);
+    scan(sim, "g1");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer One");
+    toAsk(sim);
+    pick(sim, "g1", "She was never going to answer");
+    expect(v(sim, "Night.heart_stage")).toBe("done");
+    unscan(sim, "g1");
+    const e = scan(sim, "g4"); // inside the 25 s
+    expect(beats(e)).not.toContain("Heart Pick");
+    expect(beats(e)).not.toContain("Heart Talk");
+    expect(v(sim, "Night.heart_stage")).toBe("done");
+    expect(heartMenu(sim, "g4")).toBeNull();
+    advance(sim, 25);
+    expect(v(sim, "Night.talked_down")).toBe(true);
+    expect(v(sim, "Night.heart_stage")).toBe("done");
+  });
+
+  it("🔄 drops a pick held for the shut door", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    open(sim);
+    pick(sim, "g1", "I'm a person");
+    expect(v(sim, "g1.heart_wait")).toBe(true);
+    fire(sim, "reset_server_room");
+    expect(v(sim, "g1.heart_wait")).toBe(false);
+    expect(v(sim, "g1.heart_pick")).toBe("none");
+    const e = shut(sim);
+    expect(beats(e)).not.toContain("Heart Pick");
+    expect(v(sim, "Night.heart_stage")).toBe("sealed");
+    expect(v(sim, "g1.heart_layer")).toBe(1);
+  });
+
   it("the autoend watcher after Combo A does nothing; the heart is done and the bulb fades", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);

@@ -2656,7 +2656,9 @@ ROLE Program
   // A pick held while the door stood open plays once it is shut, if the
   // program is still at the terminal (a re-scan is `terminal_opened`'s,
   // which clears heart_wait first, so the two never dock two menus).
-  when Night.server_door == "closed" and self.heart_wait == true and self.at_the_heart == true and Night.ended != true:
+  // Only while the talk is open: a held pick never reopens a heart that is
+  // done (a shutdown) or sealed again (🔄).
+  when Night.server_door == "closed" and self.heart_wait == true and self.at_the_heart == true and Night.ended != true and Night.r3_closed != true and (Night.heart_stage == "scan" or Night.heart_stage == "talk"):
     set self.heart_wait = false
     set Night.heart_stage = "talk"
     if self.heart_pick != "none":
@@ -2672,13 +2674,16 @@ ROLE Program
     -> Heart Call
 
   // 🔄 forgives: a program thrown out of his heart may come back, and
-  // everyone's suspicion starts again (their layer and case stay).
+  // everyone's suspicion starts again (their layer and case stay); a pick
+  // held for a shut door is dropped.
   when Night.heart_gen > self.heart_gen_seen:
     set self.heart_gen_seen = Night.heart_gen
     set self.heart_out = false
     set self.heart_suspicion = 0
     set self.heart_warned = false
     set self.heart_chat = false
+    set self.heart_wait = false
+    set self.heart_pick = "none"
 
   // An ending, an eject, a closed terminal or 🔄 ends any heart to heart.
   when Night.ended == true and self.heart_chat == true:
