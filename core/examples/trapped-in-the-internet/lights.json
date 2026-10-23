@@ -1,0 +1,386 @@
+{
+  "version": 1,
+  "note": "Wave 20: the server room's RGB bulb only. Every other light is still trapped.house.yaml's. DRAFT: retune on site.",
+  "fixtures": [
+    {
+      "id": "server-room-rgb",
+      "name": "Server room RGB bulb",
+      "room": "server-room",
+      "floor": "basement",
+      "pos": {
+        "x": 4.6,
+        "y": -0.6,
+        "z": 25.2
+      },
+      "kind": "zigbee",
+      "device": "server_room_rgb",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      },
+      "safety": true,
+      "min": 40
+    }
+  ],
+  "zones": [
+    {
+      "id": "heart",
+      "name": "The Heart",
+      "fixtures": [
+        "server-room-rgb"
+      ]
+    }
+  ],
+  "boot": "heart_idle",
+  "looks": {
+    "heart_idle": {
+      "to": [
+        "heart"
+      ],
+      "set": {
+        "state": "ON",
+        "color": "#00E5FF",
+        "brightness": 60,
+        "transition": 3
+      },
+      "note": "The boot look: his heart dim and cold, waiting."
+    },
+    "heart_wake": {
+      "to": [
+        "heart"
+      ],
+      "steps": [
+        {
+          "at": 0,
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color": "#FF2A00",
+            "transition": 0
+          }
+        },
+        {
+          "at": 400,
+          "set": {
+            "brightness": 40,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 800,
+          "set": {
+            "brightness": 254,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 1200,
+          "set": {
+            "brightness": 40,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 1600,
+          "set": {
+            "brightness": 254,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 2400,
+          "set": {
+            "brightness": 120,
+            "color": "#00E5FF",
+            "transition": 3
+          }
+        }
+      ],
+      "note": "The Heart: a red-orange stutter (brightness only after the first colour), then settling cold."
+    },
+    "heart_nag": {
+      "to": [
+        "heart"
+      ],
+      "steps": [
+        {
+          "at": 0,
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color": "#FF6A00",
+            "transition": 0.5
+          }
+        }
+      ],
+      "then": "restore",
+      "period": 1500,
+      "note": "One amber swell per nag; then the light he was showing comes back (the door loop restarts)."
+    },
+    "heart_door_open": {
+      "to": [
+        "heart"
+      ],
+      "steps": [
+        {
+          "at": 0,
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color": "#FF6A00",
+            "transition": 0.8
+          }
+        },
+        {
+          "at": 1000,
+          "set": {
+            "brightness": 70,
+            "transition": 0.8
+          }
+        }
+      ],
+      "loop": true,
+      "period": 2000,
+      "note": "A slow amber swell while the door stands open; never the settled look."
+    },
+    "heart_sealed": {
+      "to": [
+        "heart"
+      ],
+      "set": {
+        "state": "ON",
+        "color": "#00E5FF",
+        "brightness": 90,
+        "transition": 2
+      },
+      "note": "The door shut: cold and still."
+    },
+    "heart_listen": {
+      "to": [
+        "heart"
+      ],
+      "set": {
+        "state": "ON",
+        "color": "#2D6BFF",
+        "brightness": 110,
+        "transition": 1.5
+      },
+      "note": "Layers one and two: listening blue."
+    },
+    "heart_argue": {
+      "to": [
+        "heart"
+      ],
+      "set": {
+        "state": "ON",
+        "color": "#7A2DFF",
+        "brightness": 140,
+        "transition": 1.5
+      },
+      "note": "Layer three on: the argument, violet."
+    },
+    "heart_proof": {
+      "to": [
+        "heart"
+      ],
+      "steps": [
+        {
+          "at": 0,
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color_temp": 153,
+            "transition": 0
+          }
+        },
+        {
+          "at": 500,
+          "set": {
+            "brightness": 60,
+            "color": "#7A2DFF",
+            "transition": 4
+          }
+        }
+      ],
+      "note": "A white flash, then a long fall."
+    },
+    "heart_warn": {
+      "to": [
+        "heart"
+      ],
+      "steps": [
+        {
+          "at": 0,
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color": "#FF0000",
+            "transition": 0.3
+          }
+        },
+        {
+          "at": 600,
+          "set": {
+            "brightness": 60,
+            "transition": 0.3
+          }
+        },
+        {
+          "at": 1200,
+          "set": {
+            "brightness": 254,
+            "transition": 0.3
+          }
+        },
+        {
+          "at": 1800,
+          "set": {
+            "brightness": 60,
+            "transition": 0.3
+          }
+        },
+        {
+          "at": 2400,
+          "set": {
+            "brightness": 254,
+            "transition": 0.3
+          }
+        }
+      ],
+      "then": "restore",
+      "period": 3400,
+      "note": "Three red throbs (colour on the first step only), then the settled look comes back."
+    },
+    "heart_eject": {
+      "to": [
+        "heart"
+      ],
+      "steps": [
+        {
+          "at": 0,
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color": "#FF0000",
+            "transition": 0
+          }
+        },
+        {
+          "at": 400,
+          "set": {
+            "brightness": 40,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 800,
+          "set": {
+            "brightness": 254,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 1200,
+          "set": {
+            "brightness": 40,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 1600,
+          "set": {
+            "brightness": 254,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 3000,
+          "set": {
+            "brightness": 80,
+            "transition": 2
+          }
+        }
+      ],
+      "note": "Thrown out: a red stutter that stays red."
+    },
+    "heart_notyet": {
+      "to": [
+        "heart"
+      ],
+      "set": {
+        "state": "ON",
+        "color": "#FFB000",
+        "brightness": 100,
+        "transition": 3
+      },
+      "note": "Not yet: warm and patient."
+    },
+    "heart_shutdown": {
+      "to": [
+        "heart"
+      ],
+      "steps": [
+        {
+          "at": 0,
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color": "#7A2DFF"
+          }
+        },
+        {
+          "at": 1000,
+          "set": {
+            "brightness": 200,
+            "color": "#2D6BFF",
+            "transition": 3
+          }
+        },
+        {
+          "at": 5000,
+          "set": {
+            "brightness": 120,
+            "color": "#00E5FF",
+            "transition": 6
+          }
+        },
+        {
+          "at": 12000,
+          "set": {
+            "brightness": 40,
+            "color_temp": 370,
+            "transition": 10
+          }
+        }
+      ],
+      "note": "He stops: violet to blue to cyan, ending at the safety floor in warm white."
+    },
+    "heart_alarm": {
+      "to": [
+        "heart"
+      ],
+      "steps": [
+        {
+          "at": 0,
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color": "#FF0000",
+            "transition": 0.8
+          }
+        },
+        {
+          "at": 1000,
+          "set": {
+            "brightness": 60,
+            "transition": 0.8
+          }
+        }
+      ],
+      "loop": true,
+      "period": 2000,
+      "note": "The patch-bay alarm: a slow red swell, never a Zigbee strobe, until the latch's end re-cues the room."
+    }
+  }
+}
