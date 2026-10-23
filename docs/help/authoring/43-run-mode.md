@@ -225,7 +225,8 @@ Front of house: getting people in.
   Mac's lights module stopped checking in, so light cues play nowhere;
   *never connected* when it hasn't since the server started), a
   **pairing … s** countdown while a director has opened Zigbee pairing
-  from the map page, and a count of problems (red) and warnings (amber),
+  from the map page (just **pairing open** from a server that doesn't say
+  its time), and a count of problems (red) and warnings (amber),
   each listed when you hover. It refreshes every 15 seconds; placing a
   light, pairing a bulb and testing a look all happen on the map page.
 - **Look up a guest** — scan a guest's pass QR (or type their id) to

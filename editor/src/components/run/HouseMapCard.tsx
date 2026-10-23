@@ -38,6 +38,7 @@ import {
   pairText,
   problemsText,
   type LightsStatus,
+  type PairClock,
 } from '@/lib/lights-status'
 import { canSwitchTo, freshTarget, switchBase, switchConfirm, variantLabel, variantTitle, type MapVariant, type MapVariantsResponse } from '@/lib/map-variants'
 
@@ -81,8 +82,8 @@ function useKing(eventId: string | null): [KingView | null, (k: KingView | null)
  *  `LIGHTS_POLL_MS` (`LIGHTS_PAIR_POLL_MS` while pairing is open); null = no
  *  lights route (an older server) or nothing read yet. `deadline`: when an
  *  open pairing closes, on this editor's clock (`pairDeadline`). */
-function useLights(eventId: string | null): { status: LightsStatus | null; deadline: number | null } {
-  const [read, setRead] = useState<{ status: LightsStatus | null; deadline: number | null }>({ status: null, deadline: null })
+function useLights(eventId: string | null): { status: LightsStatus | null; deadline: PairClock | null } {
+  const [read, setRead] = useState<{ status: LightsStatus | null; deadline: PairClock | null }>({ status: null, deadline: null })
   const pairing = read.deadline !== null
   useEffect(() => {
     if (eventId === null) return
@@ -116,8 +117,8 @@ function useSecondTick(on: boolean): number {
   return now
 }
 
-export function LightsRow({ status, deadline }: { status: LightsStatus; deadline: number | null }) {
-  const now = useSecondTick(deadline !== null)
+export function LightsRow({ status, deadline }: { status: LightsStatus; deadline: PairClock | null }) {
+  const now = useSecondTick(deadline !== null && deadline.closesAt !== null)
   const pairing = pairText(deadline, now)
   const issues = problemsText(status)
   const online = status.module?.online === true

@@ -30,8 +30,11 @@ export interface LightsStatus {
   devices: number
   problems: string[]
   warnings: string[]
-  /** The newest server time the answer carries (its `now` when a server
-   *  sends one, else the latest stamp in it): the countdown's anchor. */
+  /** The server's clock when it answered (`now`), the countdown's anchor;
+   *  null from a server that sends none. The answer's other stamps
+   *  (`module.at`, `pair.at`, `devicesAt`, a test's `at`) are all in the
+   *  past, up to a long poll (≈ 25 s) old, so anchoring on them would count
+   *  high: with no `now` the row says *pairing open* and gives no number. */
   serverNow: number | null
 }
 
@@ -51,14 +54,6 @@ export function lightsStatusOf(v: unknown): LightsStatus | null {
     isRecord(p) && isNum(p['seq']) && isNum(p['at']) && isNum(p['seconds']) && isNum(p['until']) && p['seconds'] > 0
       ? { seq: p['seq'], at: p['at'], seconds: p['seconds'], until: p['until'] }
       : null
-  const stamps: number[] = []
-  if (isNum(v['now'])) stamps.push(v['now'])
-  else {
-    if (module !== null) stamps.push(module.at)
-    if (pair !== null) stamps.push(pair.at)
-    if (isNum(v['devicesAt'])) stamps.push(v['devicesAt'])
-    if (Array.isArray(v['tests'])) for (const t of v['tests']) if (isRecord(t) && isNum(t['at'])) stamps.push(t['at'])
-  }
   const source = SOURCES.find((s) => s === v['source']) ?? 'default'
   return {
     version: v['version'],
@@ -69,7 +64,7 @@ export function lightsStatusOf(v: unknown): LightsStatus | null {
     devices: Array.isArray(v['devices']) ? v['devices'].length : 0,
     problems: strings(v['problems']),
     warnings: strings(v['warnings']),
-    serverNow: stamps.length > 0 ? Math.max(...stamps) : null,
+    serverNow: isNum(v['now']) ? v['now'] : null,
   }
 }
 
@@ -79,24 +74,35 @@ export function lightsShown(s: LightsStatus | null): s is LightsStatus {
   return s !== null && (s.fixtures > 0 || s.module !== null || s.pair !== null || s.problems.length > 0)
 }
 
-/**
- * When pairing closes, on this editor's clock. The answer carries no clock
- * of its own, so the time left is read off the newest server stamp in it (a
- * lower bound on the server's clock: never more time than the server gave)
- * and counted down from when the answer arrived (`receivedAt`, client ms).
- * Null: pairing isn't open.
- */
-export function pairDeadline(s: LightsStatus, receivedAt: number): number | null {
-  if (s.pair === null) return null
-  const anchor = s.serverNow ?? s.pair.at
-  const left = Math.min(s.pair.seconds * 1000, s.pair.until - anchor)
-  return left > 0 ? receivedAt + left : null
+/** An open pairing on this editor's clock: `closesAt` (client ms), or null
+ *  when the answer carries no server `now` to count from. */
+export interface PairClock {
+  closesAt: number | null
 }
 
-/** `pairing 87 s` while open (null once the deadline passed). */
-export function pairText(deadline: number | null, now: number): string | null {
-  if (deadline === null || deadline <= now) return null
-  return `pairing ${Math.ceil((deadline - now) / 1000)} s`
+/**
+ * An open pairing's clock. The time left is `until − now` off the server's
+ * own `now` (capped at the seconds asked for), counted down from when the
+ * answer arrived (`receivedAt`, client ms): it can only run low, by the
+ * answer's travel time, never high. A server with no `now` gives no number
+ * (`closesAt` null: *pairing open*), since every other stamp in the answer is
+ * older than the server's clock and would make the count run high by that
+ * stamp's age. Null: pairing isn't open (or has run out).
+ */
+export function pairDeadline(s: LightsStatus, receivedAt: number): PairClock | null {
+  if (s.pair === null) return null
+  if (s.serverNow === null) return { closesAt: null }
+  const left = Math.min(s.pair.seconds * 1000, s.pair.until - s.serverNow)
+  return left > 0 ? { closesAt: receivedAt + left } : null
+}
+
+/** `pairing 87 s` while open, `pairing open` with no server clock to count
+ *  from, null once closed or run out. */
+export function pairText(clock: PairClock | null, now: number): string | null {
+  if (clock === null) return null
+  if (clock.closesAt === null) return 'pairing open'
+  if (clock.closesAt <= now) return null
+  return `pairing ${Math.ceil((clock.closesAt - now) / 1000)} s`
 }
 
 /** The row's words: `💡 lights module online · 1 fixture` / `… offline …`. */

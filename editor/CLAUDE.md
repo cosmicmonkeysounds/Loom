@@ -619,8 +619,10 @@ and *Door sensor on this laptop* (`door=serial`, ticked for the
 **House map:** the 💡 row (`LightsRow` in `HouseMapCard.tsx`, pure
 `lib/lights-status.ts`, `lightsApi.status` = `GET /api/mod/lights` with no
 `after`, every 15 s / 5 s while pairing): module online / offline / never
-connected · N fixtures, *pairing … s* (`pairDeadline`, anchored on the
-answer's newest server stamp), problems / warnings. The glance needs no
+connected · N fixtures, *pairing … s* (`pairDeadline`, counted off the
+answer's server `now`; a server with none reads *pairing open* with no
+number, since its other stamps are older than its clock and would count
+high), problems / warnings. The glance needs no
 change for the heart's `watch:` lines (`director/heart-watch.test.ts`).
 Help `authoring/43-run-mode`.
 

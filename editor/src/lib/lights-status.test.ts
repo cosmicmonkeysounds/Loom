@@ -20,7 +20,8 @@ const view = (over: Record<string, unknown> = {}) => ({
 describe('lightsStatusOf (wave 20)', () => {
   it('reads the parts the 💡 row needs', () => {
     const s = lightsStatusOf(view({ module: { name: 'house-mac', at: 1000, online: true }, devices: [{}, {}], problems: ['p'], warnings: ['w1', 'w2'] }))
-    expect(s).toMatchObject({ version: 'abc12345', source: 'project', fixtures: 1, devices: 2, module: { name: 'house-mac', online: true }, problems: ['p'], warnings: ['w1', 'w2'], serverNow: 1000 })
+    expect(s).toMatchObject({ version: 'abc12345', source: 'project', fixtures: 1, devices: 2, module: { name: 'house-mac', online: true }, problems: ['p'], warnings: ['w1', 'w2'], serverNow: null })
+    expect(lightsStatusOf(view({ now: 4321 }))?.serverNow).toBe(4321)
   })
 
   it('anything that isn’t a lights view is null; a stray source reads default', () => {
@@ -61,25 +62,34 @@ describe('the 💡 line', () => {
 })
 
 describe('the pairing countdown', () => {
-  it('counts down from the answer’s newest server stamp, on this editor’s clock', () => {
-    // Opened at 10 000 for 120 s; the module last polled at 40 000 → at most 90 s left.
-    const s = lightsStatusOf(view({ pair: { seq: 1, at: 10_000, seconds: 120, until: 130_000, by: 'Ada' }, module: { name: 'm', at: 40_000, online: true } }))!
-    const deadline = pairDeadline(s, 500_000)
-    expect(deadline).toBe(590_000)
-    expect(pairText(deadline, 500_000)).toBe('pairing 90 s')
-    expect(pairText(deadline, 589_001)).toBe('pairing 1 s')
-    expect(pairText(deadline, 590_000)).toBeNull()
+  it('counts down from the server’s `now`, on this editor’s clock', () => {
+    // Opened at 10 000 for 120 s; the server answered at 40 000 → 90 s left.
+    const s = lightsStatusOf(view({ now: 40_000, pair: { seq: 1, at: 10_000, seconds: 120, until: 130_000, by: 'Ada' }, module: { name: 'm', at: 15_000, online: true } }))!
+    const clock = pairDeadline(s, 500_000)
+    expect(clock).toEqual({ closesAt: 590_000 })
+    expect(pairText(clock, 500_000)).toBe('pairing 90 s')
+    expect(pairText(clock, 589_001)).toBe('pairing 1 s')
+    expect(pairText(clock, 590_000)).toBeNull()
   })
 
-  it('a server `now` wins over the stamps; never more than the seconds asked for', () => {
-    const withNow = lightsStatusOf(view({ now: 100_000, pair: { seq: 1, at: 10_000, seconds: 120, until: 130_000, by: 'Ada' } }))!
-    expect(pairDeadline(withNow, 0)).toBe(30_000)
-    const fresh = lightsStatusOf(view({ pair: { seq: 1, at: 10_000, seconds: 120, until: 130_000, by: 'Ada' } }))!
-    expect(pairDeadline(fresh, 0)).toBe(120_000)
+  it('never more than the seconds asked for; run out reads closed', () => {
+    const early = lightsStatusOf(view({ now: 0, pair: { seq: 1, at: 10_000, seconds: 120, until: 130_000, by: 'Ada' } }))!
+    expect(pairDeadline(early, 0)).toEqual({ closesAt: 120_000 })
+    const late = lightsStatusOf(view({ now: 131_000, pair: { seq: 1, at: 10_000, seconds: 120, until: 130_000, by: 'Ada' } }))!
+    expect(pairDeadline(late, 0)).toBeNull()
   })
 
-  it('no pair, no deadline', () => {
-    expect(pairDeadline(lightsStatusOf(view())!, 0)).toBeNull()
+  it('with no server `now`, no number: the stamps are old and would count high', () => {
+    // The module's stamp is from when its long poll began, up to ≈ 25 s ago:
+    // until − that stamp would show more time than is left.
+    const s = lightsStatusOf(view({ pair: { seq: 1, at: 10_000, seconds: 120, until: 130_000, by: 'Ada' }, module: { name: 'm', at: 40_000, online: true }, devicesAt: 41_000 }))!
+    const clock = pairDeadline(s, 500_000)
+    expect(clock).toEqual({ closesAt: null })
+    expect(pairText(clock, 999_999)).toBe('pairing open')
+  })
+
+  it('no pair, no clock', () => {
+    expect(pairDeadline(lightsStatusOf(view({ now: 1 }))!, 0)).toBeNull()
     expect(pairText(null, 0)).toBeNull()
   })
 })
