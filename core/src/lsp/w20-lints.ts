@@ -5,9 +5,12 @@
 //!   as false (a diagnostic), so the option is never offered.
 //!
 //! Text-driven, so it reaches every choice: a beat's, a CHARACTER's owned
-//! beat and a story rule's (those bodies stay raw until compile).
+//! beat and a story rule's (those bodies stay raw until compile). Comments
+//! (the parser's own pre-pass), ``` fences and the prose of a `text:` /
+//! `brief:` block are not choices, so they are skipped.
 
 import { splitChoiceGuard } from "../parser/parser.ts";
+import { strip } from "../parser/comments.ts";
 import { Code } from "../parser/diagnostics.ts";
 import { parseExpr } from "../runtime/expr.ts";
 import type { Range } from "./types.ts";
@@ -15,12 +18,30 @@ import type { Range } from "./types.ts";
 type Push = (uri: string, range: Range, error: boolean, code: string, message: string) => void;
 
 const CHOICE_LINE = /^(\s*)[*+][ \t]+/u;
+/** A key whose indented lines are prose (a CODEX / QUEST / OBJECTIVE
+ *  `text:`, a `brief:`), read as `decl-body.ts` reads them. */
+const PROSE_KEY = /^(text|brief)\s*:/iu;
 
 export function wave20Lints(docs: ReadonlyArray<[string, { text: string }]>, push: Push): void {
   for (const [uri, doc] of docs) {
-    const lines = doc.text.split("\n");
+    // Comments blank to spaces with every line kept, so ranges still hold.
+    const lines = strip(doc.text)[0].split("\n");
+    let inFence = false;
+    // The indent of an open `text:` / `brief:` block, else null.
+    let proseIndent: number | null = null;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!.replace(/\r$/u, "");
+      const trimmed = line.trim();
+      if (trimmed === "") continue;
+      if (trimmed.startsWith("```")) {
+        // A one-line ```…``` neither opens nor closes.
+        if (!(trimmed.length >= 6 && trimmed.endsWith("```"))) inFence = !inFence;
+        continue;
+      }
+      if (inFence) continue;
+      const indent = line.length - line.trimStart().length;
+      if (proseIndent !== null && indent > proseIndent) continue;
+      proseIndent = PROSE_KEY.test(trimmed) ? indent : null;
       const m = CHOICE_LINE.exec(line);
       if (m === null) continue;
       const [guard] = splitChoiceGuard(line.slice(m[0].length));

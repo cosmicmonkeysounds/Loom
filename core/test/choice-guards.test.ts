@@ -176,4 +176,26 @@ describe("guarded choices — lint L1221", () => {
     const src = "CHARACTER Trabolta\n  beat ask\n    + (if self.awake ==) Hi.\n\n== b\n+ (if (a.x + 1) > 2 and b.y) Ok.\n";
     expect(l1221(src).map((d) => d.range.start.line)).toEqual([2]);
   });
+
+  it("skips comments, ``` fences and text: / brief: prose", () => {
+    const src = [
+      "CODEX Notes",
+      "  text:",
+      "    + (if nope ==) a bullet in prose.",
+      "QUEST Hunt",
+      "  brief: find it",
+      "    * (if nope ==) more prose.",
+      "== a",
+      "// + (if nope ==) commented out.",
+      "/* * (if nope ==) a block comment. */",
+      "```",
+      "+ (if nope ==) inside a fence.",
+      "```",
+      "```inline```",
+      "+ (if bad ==) Real.",
+      "  text: here",
+      "+ (if worse ==) After a dedent.",
+    ].join("\n");
+    expect(l1221(src).map((d) => d.range.start.line)).toEqual([13, 15]);
+  });
 });
