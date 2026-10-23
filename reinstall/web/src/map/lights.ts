@@ -888,6 +888,17 @@ export function lightProblemList(lights: LightsConfig, house: HouseMap, opts: { 
   return { errors: [...dark, ...v.problems.map(friendly).map(item("error"))], warnings: [...lost, ...v.warnings.map(item("warning"))] };
 }
 
+/**
+ * A lights view the long poll brought while this page's save was in flight
+ * (the poll's cursor moved past it, so it never comes again): offered once
+ * the save settles unless it is the version the page now holds (its own save
+ * echoed back). Adopting it shows the "changed" banner, or takes it when
+ * the page is clean.
+ */
+export function stashedLightsView<V extends { version: string }>(stash: V | null, holding: string | null): V | null {
+  return stash !== null && stash.version !== holding ? stash : null;
+}
+
 /** The Download JSON button's file. */
 export function lightsDownload(lights: LightsConfig): { name: string; text: string } {
   return { name: "lights.json", text: `${JSON.stringify(lights, null, 2)}\n` };

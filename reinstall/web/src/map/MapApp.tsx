@@ -47,7 +47,7 @@ import { fetchAudio, routerOf, saveAudio, saveAudioToProject, testAudio, testRef
 import { runAudioPoll } from "./audio-poll.ts";
 import { AudioPanel } from "./AudioPanel.tsx";
 import "./audio.css";
-import { duplicateLight, followHouseLights, lightById, localPair, removeLightConfirm, lightPlan, lightProblemList, lightSavePlan, lightsDownload, lightsDropped, moveLight, normalizeLights, placeLight, rebaseLightsHistory, removeLight, sameLights, saveEverythingPlan, setLightDevice, stateTint, withLightsText } from "./lights.ts";
+import { duplicateLight, followHouseLights, lightById, localPair, removeLightConfirm, stashedLightsView, lightPlan, lightProblemList, lightSavePlan, lightsDownload, lightsDropped, moveLight, normalizeLights, placeLight, rebaseLightsHistory, removeLight, sameLights, saveEverythingPlan, setLightDevice, stateTint, withLightsText } from "./lights.ts";
 import { fetchLights, lightRefusal, lightTestSentText, pairLights, saveLights, saveLightsToProject, testLight, type LightTestTarget, type LightsView, type Z2mDevice } from "./lights-api.ts";
 import { runLightsPoll } from "./lights-poll.ts";
 import { LightsPanel } from "./LightsPanel.tsx";
@@ -191,6 +191,8 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   lightsRef.current = lights;
   const lightsVersionRef = useRef<string | null>(null);
   const lightsSaving = useRef(false);
+  /** A view the long poll brought while our save was in flight (`stashedLightsView`). */
+  const lightsStashRef = useRef<LightsView | null>(null);
   const lightsDirtyRef = useRef(false);
   const lightTestSeqRef = useRef(0);
   const lightPairSeqRef = useRef(0);
@@ -327,7 +329,11 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       took = true;
     }
     if (v.version === lightsVersionRef.current && !force) return took;
-    if (lightsSaving.current && !force) return took;
+    if (lightsSaving.current && !force) {
+      // Another director's save landed while ours is in flight: weigh it once ours settles.
+      lightsStashRef.current = v;
+      return took;
+    }
     const first = lightsVersionRef.current === null;
     if (lightsDirtyRef.current && !force) {
       if (!first) {
@@ -600,6 +606,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     if (!(await unlock())) return null;
     setLightsSaveState({ kind: "saving" });
     lightsSaving.current = true;
+    lightsStashRef.current = null;
     const sent = lights;
     try {
       const r = await saveLights(base, config.token, sent, lightsVersionRef.current);
@@ -616,6 +623,10 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       return null;
     } finally {
       lightsSaving.current = false;
+      // (Read through the ref: the assignment above would narrow it to null.)
+      const stash = stashedLightsView<LightsView>(lightsStashRef.current as LightsView | null, lightsVersionRef.current);
+      lightsStashRef.current = null;
+      if (stash !== null) adoptLights(stash);
     }
   };
 

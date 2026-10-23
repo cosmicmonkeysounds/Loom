@@ -63,6 +63,7 @@ import {
   setLookMode,
   setLookPeriod,
   setLookTargets,
+  stashedLightsView,
   stepsOfLook,
   swatchSet,
   testable,
@@ -569,6 +570,13 @@ describe("problems, history, saving", () => {
     expect(p.errors.find((e) => /y 5/.test(e.text))!.sel).toEqual({ kind: "light", id: "server-room-rgb" });
     expect(p.errors.find((e) => /broken/.test(e.text))!.tab).toBe("lights");
     expect(p.errors.every((e) => e.text.startsWith("💡 "))).toBe(true);
+  });
+
+  it("offers a remote save that landed during ours once ours settles, never our own echo", () => {
+    const remote = { version: "r2" };
+    expect(stashedLightsView(remote, "mine")).toBe(remote);
+    expect(stashedLightsView({ version: "mine" }, "mine")).toBeNull();
+    expect(stashedLightsView(null, "mine")).toBeNull();
   });
 
   it("normalizes whatever the server sends", () => {
