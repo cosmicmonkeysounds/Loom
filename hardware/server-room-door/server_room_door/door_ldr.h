@@ -182,10 +182,12 @@ struct Sampler {
 
 // ── The classifier ─────────────────────────────────────────────────────────
 // Closed once level ≥ close for CLOSE_MS of frames, open once level ≤ open
-// for OPEN_MS; between the two the last state holds. A run counts from its
-// first frame, so it takes at least two frames: in `mod` (≈ 320 ms frames)
-// an opening reads ≈ 320–640 ms after the beam breaks. A frame in the band
-// breaks a run, so a flicker on an open door never reads closed.
+// for OPEN_MS; between the two the last state holds. A run counts from the
+// start of its first frame (`span` = how long a frame takes), so in `mod`
+// at the default settle (300 ms frames) one whole open frame is enough: an
+// opening reads when the first frame lit after the break ends, 150–450 ms
+// after the beam breaks (plus the cell's own lag; N-20 measures it). A frame
+// in the band breaks a run, so a flicker on an open door never reads closed.
 
 struct Classifier {
   bool known = false, open = true;
@@ -199,7 +201,7 @@ struct Classifier {
   }
 
   // True when `open` changed (the first frame sets it and counts as a change).
-  bool update(uint16_t level, const Settings& s, uint32_t now) {
+  bool update(uint16_t level, const Settings& s, uint32_t now, uint32_t span = 0) {
     if (!known) {
       known = true;
       open = level < (uint16_t)((s.open + s.close) / 2);
@@ -214,8 +216,7 @@ struct Classifier {
     }
     if (run != want) {
       run = want;
-      since = now;
-      return false;
+      since = now - span;
     }
     if ((uint32_t)(now - since) < (want == 1 ? (uint32_t)CLOSE_MS : (uint32_t)OPEN_MS)) return false;
     open = want == -1;

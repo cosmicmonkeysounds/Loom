@@ -104,8 +104,9 @@ mod|steady|auto` overrides it (kept by `save`).
 ## How it decides
 
 - **Shut** once `level ≥ close` for 1 s; **open** once `level ≤ open` for
-  250 ms (a run counts from its first frame, so in `mod` an opening reads
-  ≈ 450–750 ms after the beam breaks). Between `open` and `close` the last
+  250 ms (a run counts from the start of its first frame, so in `mod` at
+  the default settle one whole open frame decides: an opening reads
+  150–450 ms after the beam breaks, plus the cell's own lag). Between `open` and `close` the last
   state holds, and a frame there breaks a run, so a hand flickering in the
   beam of an open door never reads shut. Defaults `close` 1800, `open`
   1200.

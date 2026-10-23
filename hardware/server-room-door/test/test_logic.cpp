@@ -194,6 +194,11 @@ static void test_the_first_frame_decides_then_debounce() {
   CHECK(feed(c, 2400, now, 100) == 1 && !c.open);
   dl::Classifier boot;
   CHECK(boot.update(1499, defaults(), now) && boot.open);  // below the band's middle
+  // A run counts from the start of its first frame: one 300 ms frame opens.
+  dl::Classifier whole;
+  whole.update(2400, defaults(), now);
+  CHECK(whole.update(100, defaults(), now += 300, 300) && whole.open);
+  CHECK(!whole.update(2400, defaults(), now += 300, 300) && whole.open);  // 300 < CLOSE_MS
 }
 
 static void test_the_band_holds_the_last_state() {
@@ -293,19 +298,27 @@ static void test_mod_frames_take_two_settles_and_blink_the_led() {
     if (s.tick(d, t, f)) at.push_back(t);
   CHECK(at.size() == 5 && at[0] == 300 && at[1] == 600);
   CHECK(d.ledWrites >= 10 && d.pinHigh);  // back on, ready for the next lit phase
-  Rig r;  // the engine in mod: an opening reads within ≈ 320–640 ms
-  r.begin();
-  CHECK(r.e.mode() == dl::kMod);
-  r.run(1000);
-  CHECK(!r.e.open());
-  r.d.shut = false;
-  // The beam breaks at some point in a frame: the first open frame ends
-  // 150–450 ms later, the second (≥ OPEN_MS into the run) 300 ms after that.
-  int t = r.until(true, 2000);
-  CHECK(t >= 450 && t <= 760);
-  r.d.shut = true;
-  t = r.until(false, 3000);
-  CHECK(t >= 1000 && t <= 1650);
+  // The engine in mod: a run counts from the start of its first frame, so
+  // one whole open frame (300 ms ≥ OPEN_MS) opens the door. The beam breaks
+  // at some point in a frame; the first frame whose lit read follows the
+  // break ends 150–450 ms later, and that frame decides (contract §2.9).
+  int lo = 1 << 20, hi = 0;
+  for (uint32_t phase = 0; phase < 300; phase += 25) {
+    Rig r;
+    r.begin();
+    CHECK(r.e.mode() == dl::kMod);
+    r.run(1000 + phase);
+    CHECK(!r.e.open());
+    r.d.shut = false;
+    int t = r.until(true, 2000);
+    CHECK(t >= 150 && t <= 455);
+    lo = t < lo ? t : lo;
+    hi = t > hi ? t : hi;
+    r.d.shut = true;
+    t = r.until(false, 3000);
+    CHECK(t >= 1050 && t <= 1355);  // CLOSE_MS: four frames, the first counted whole
+  }
+  CHECK(hi - lo >= 250);  // the phases really did spread over a frame
 }
 
 // ── auto ───────────────────────────────────────────────────────────────────

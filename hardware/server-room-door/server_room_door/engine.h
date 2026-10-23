@@ -163,7 +163,7 @@ class Engine {
     // light flash never reads {"open":true,"fault":null}.
     bool hold = health_.rising();
     if (health_.fault()) cls_.reset();
-    else if (!hold) cls_.update(f.level, s_, now);
+    else if (!hold) cls_.update(f.level, s_, now, mode_ == dl::kMod ? 2u * s_.settle : (uint32_t)STEADY_FRAME_MS);
     uint16_t mean;
     if (avg_.running && health_.fault()) {
       // A fault mid-average: its frames would poison the reference.
