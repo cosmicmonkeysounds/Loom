@@ -1,0 +1,654 @@
+{
+  "comment": "planLook + payload cases, shared by @loom/house (test/lights.test.ts) and stagehand's lights module (its Python mirror). Each look plans on lights-basic.json + lights-house.json: each step over its targets (the step's `to`, else the look's), safety-clamped first, then the fields a fixture's caps can't do dropped (a command left doing nothing dropped too; an OFF on a safety fixture that can't dim is just ON), sorted by `at` then the fixtures' file order; `period` = the look's, else the last step's `at` + 150 (a `then: \"restore\"` look: + 1000); `repeat` 0 = loop. `topic` / `payload`: zigbee + zigbee-group → `zigbee2mqtt/<device>/set` with `color` as {hex}; wled → `<device>/api` with on / bri / transition in tenths / seg [{col, fx}]. `clamp`: clampForSafety, and the payload of the unclamped state (the builders clamp too).",
+  "lights": "lights-basic.json",
+  "house": "lights-house.json",
+  "looks": [
+    {
+      "look": "heart_idle",
+      "loop": false,
+      "period": 150,
+      "repeat": 1,
+      "restore": false,
+      "commands": [
+        {
+          "at": 0,
+          "fixture": "server-room-rgb",
+          "set": {
+            "state": "ON",
+            "brightness": 60,
+            "color": "#00E5FF",
+            "transition": 3
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "state": "ON",
+            "brightness": 60,
+            "color": {
+              "hex": "#00E5FF"
+            },
+            "transition": 3
+          }
+        }
+      ]
+    },
+    {
+      "look": "heart_wake",
+      "loop": false,
+      "period": 2550,
+      "repeat": 1,
+      "restore": false,
+      "commands": [
+        {
+          "at": 0,
+          "fixture": "server-room-rgb",
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color": "#FF2A00",
+            "transition": 0
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "state": "ON",
+            "brightness": 254,
+            "color": {
+              "hex": "#FF2A00"
+            },
+            "transition": 0
+          }
+        },
+        {
+          "at": 400,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 40,
+            "transition": 0.2
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 40,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 800,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 254,
+            "transition": 0.2
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 254,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 1200,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 40,
+            "transition": 0.2
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 40,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 1600,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 254,
+            "transition": 0.2
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 254,
+            "transition": 0.2
+          }
+        },
+        {
+          "at": 2400,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 120,
+            "color": "#00E5FF",
+            "transition": 3
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 120,
+            "color": {
+              "hex": "#00E5FF"
+            },
+            "transition": 3
+          }
+        }
+      ]
+    },
+    {
+      "look": "heart_nag",
+      "loop": false,
+      "period": 1500,
+      "repeat": 1,
+      "restore": true,
+      "commands": [
+        {
+          "at": 0,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 254,
+            "color": "#FF6A00",
+            "transition": 0.5
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 254,
+            "color": {
+              "hex": "#FF6A00"
+            },
+            "transition": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "look": "heart_door_open",
+      "loop": true,
+      "period": 2000,
+      "repeat": 0,
+      "restore": false,
+      "commands": [
+        {
+          "at": 0,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 254,
+            "color": "#FF6A00",
+            "transition": 0.8
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 254,
+            "color": {
+              "hex": "#FF6A00"
+            },
+            "transition": 0.8
+          }
+        },
+        {
+          "at": 1000,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 70,
+            "transition": 0.8
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 70,
+            "transition": 0.8
+          }
+        }
+      ]
+    },
+    {
+      "look": "heart_warn",
+      "loop": false,
+      "period": 2200,
+      "repeat": 1,
+      "restore": true,
+      "commands": [
+        {
+          "at": 0,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 254,
+            "color": "#FF0000",
+            "transition": 0.3
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 254,
+            "color": {
+              "hex": "#FF0000"
+            },
+            "transition": 0.3
+          }
+        },
+        {
+          "at": 600,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 60,
+            "transition": 0.3
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 60,
+            "transition": 0.3
+          }
+        },
+        {
+          "at": 1200,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 254,
+            "transition": 0.3
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 254,
+            "transition": 0.3
+          }
+        }
+      ]
+    },
+    {
+      "look": "server_alarm",
+      "loop": true,
+      "period": 2000,
+      "repeat": 0,
+      "restore": false,
+      "commands": [
+        {
+          "at": 0,
+          "fixture": "server-room-rgb",
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color": "#FF0000",
+            "transition": 0.8
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "state": "ON",
+            "brightness": 254,
+            "color": {
+              "hex": "#FF0000"
+            },
+            "transition": 0.8
+          }
+        },
+        {
+          "at": 0,
+          "fixture": "server-strip",
+          "set": {
+            "state": "ON",
+            "brightness": 254,
+            "color": "#FF0000",
+            "transition": 0.8
+          },
+          "topic": "wled/server/api",
+          "payload": {
+            "on": true,
+            "bri": 254,
+            "transition": 8,
+            "seg": [
+              {
+                "col": [
+                  [
+                    255,
+                    0,
+                    0
+                  ]
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "at": 1000,
+          "fixture": "server-room-rgb",
+          "set": {
+            "brightness": 60,
+            "transition": 0.8
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "brightness": 60,
+            "transition": 0.8
+          }
+        }
+      ]
+    },
+    {
+      "look": "strip_breathe",
+      "loop": false,
+      "period": 150,
+      "repeat": 1,
+      "restore": false,
+      "commands": [
+        {
+          "at": 0,
+          "fixture": "server-strip",
+          "set": {
+            "brightness": 60,
+            "color": "#7A2DFF",
+            "effect": "breathe"
+          },
+          "topic": "wled/server/api",
+          "payload": {
+            "bri": 60,
+            "seg": [
+              {
+                "col": [
+                  [
+                    122,
+                    45,
+                    255
+                  ]
+                ],
+                "fx": 2
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "look": "house_warm",
+      "loop": false,
+      "period": 150,
+      "repeat": 1,
+      "restore": false,
+      "commands": [
+        {
+          "at": 0,
+          "fixture": "server-room-rgb",
+          "set": {
+            "state": "ON",
+            "brightness": 120,
+            "color_temp": 370,
+            "transition": 2
+          },
+          "topic": "zigbee2mqtt/server_room_rgb/set",
+          "payload": {
+            "state": "ON",
+            "brightness": 120,
+            "color_temp": 370,
+            "transition": 2
+          }
+        },
+        {
+          "at": 0,
+          "fixture": "server-strip",
+          "set": {
+            "state": "ON",
+            "brightness": 120,
+            "transition": 2
+          },
+          "topic": "wled/server/api",
+          "payload": {
+            "on": true,
+            "bri": 120,
+            "transition": 20
+          }
+        },
+        {
+          "at": 0,
+          "fixture": "desk-lamp",
+          "set": {
+            "state": "ON",
+            "brightness": 120,
+            "transition": 2
+          },
+          "topic": "zigbee2mqtt/desk_lamp/set",
+          "payload": {
+            "state": "ON",
+            "brightness": 120,
+            "transition": 2
+          }
+        },
+        {
+          "at": 0,
+          "fixture": "hall-group",
+          "set": {
+            "state": "ON",
+            "brightness": 120,
+            "color_temp": 370,
+            "transition": 2
+          },
+          "topic": "zigbee2mqtt/hall_lights/set",
+          "payload": {
+            "state": "ON",
+            "brightness": 120,
+            "color_temp": 370,
+            "transition": 2
+          }
+        },
+        {
+          "at": 0,
+          "fixture": "attic-bulb",
+          "set": {
+            "state": "ON",
+            "brightness": 120,
+            "color_temp": 370,
+            "transition": 2
+          },
+          "topic": "zigbee2mqtt/attic_bulb/set",
+          "payload": {
+            "state": "ON",
+            "brightness": 120,
+            "color_temp": 370,
+            "transition": 2
+          }
+        }
+      ]
+    },
+    {
+      "look": "tube_dim",
+      "loop": false,
+      "period": 2000,
+      "repeat": 3,
+      "restore": false,
+      "commands": [
+        {
+          "at": 0,
+          "fixture": "hall-group",
+          "set": {
+            "brightness": 30,
+            "transition": 1
+          },
+          "topic": "zigbee2mqtt/hall_lights/set",
+          "payload": {
+            "brightness": 30,
+            "transition": 1
+          }
+        }
+      ]
+    },
+    {
+      "look": "upstairs_off",
+      "loop": false,
+      "period": 150,
+      "repeat": 1,
+      "restore": false,
+      "commands": [
+        {
+          "at": 0,
+          "fixture": "desk-lamp",
+          "set": {
+            "state": "OFF",
+            "transition": 1.5
+          },
+          "topic": "zigbee2mqtt/desk_lamp/set",
+          "payload": {
+            "state": "OFF",
+            "transition": 1.5
+          }
+        },
+        {
+          "at": 0,
+          "fixture": "hall-group",
+          "set": {
+            "state": "OFF",
+            "transition": 1.5
+          },
+          "topic": "zigbee2mqtt/hall_lights/set",
+          "payload": {
+            "state": "OFF",
+            "transition": 1.5
+          }
+        },
+        {
+          "at": 0,
+          "fixture": "attic-bulb",
+          "set": {
+            "state": "OFF",
+            "transition": 1.5
+          },
+          "topic": "zigbee2mqtt/attic_bulb/set",
+          "payload": {
+            "state": "OFF",
+            "transition": 1.5
+          }
+        }
+      ]
+    }
+  ],
+  "clamp": [
+    {
+      "fixture": "server-room-rgb",
+      "set": {
+        "state": "OFF"
+      },
+      "out": {
+        "state": "ON",
+        "brightness": 40
+      },
+      "topic": "zigbee2mqtt/server_room_rgb/set",
+      "payload": {
+        "state": "ON",
+        "brightness": 40
+      }
+    },
+    {
+      "fixture": "server-room-rgb",
+      "set": {
+        "state": "OFF",
+        "transition": 2
+      },
+      "out": {
+        "state": "ON",
+        "brightness": 40,
+        "transition": 2
+      },
+      "topic": "zigbee2mqtt/server_room_rgb/set",
+      "payload": {
+        "state": "ON",
+        "brightness": 40,
+        "transition": 2
+      }
+    },
+    {
+      "fixture": "server-room-rgb",
+      "set": {
+        "brightness": 10,
+        "color": "#FF0000"
+      },
+      "out": {
+        "brightness": 40,
+        "color": "#FF0000"
+      },
+      "topic": "zigbee2mqtt/server_room_rgb/set",
+      "payload": {
+        "brightness": 40,
+        "color": {
+          "hex": "#FF0000"
+        }
+      }
+    },
+    {
+      "fixture": "server-room-rgb",
+      "set": {
+        "brightness": 40
+      },
+      "out": {
+        "brightness": 40
+      },
+      "topic": "zigbee2mqtt/server_room_rgb/set",
+      "payload": {
+        "brightness": 40
+      }
+    },
+    {
+      "fixture": "server-room-rgb",
+      "set": {
+        "state": "ON",
+        "brightness": 254
+      },
+      "out": {
+        "state": "ON",
+        "brightness": 254
+      },
+      "topic": "zigbee2mqtt/server_room_rgb/set",
+      "payload": {
+        "state": "ON",
+        "brightness": 254
+      }
+    },
+    {
+      "fixture": "server-strip",
+      "set": {
+        "state": "OFF"
+      },
+      "out": {
+        "state": "ON",
+        "brightness": 50
+      },
+      "topic": "wled/server/api",
+      "payload": {
+        "on": true,
+        "bri": 50
+      }
+    },
+    {
+      "fixture": "server-strip",
+      "set": {
+        "brightness": 5,
+        "effect": "blink"
+      },
+      "out": {
+        "brightness": 50,
+        "effect": "blink"
+      },
+      "topic": "wled/server/api",
+      "payload": {
+        "bri": 50,
+        "seg": [
+          {
+            "fx": 1
+          }
+        ]
+      }
+    },
+    {
+      "fixture": "desk-lamp",
+      "set": {
+        "state": "OFF"
+      },
+      "out": {
+        "state": "OFF"
+      },
+      "topic": "zigbee2mqtt/desk_lamp/set",
+      "payload": {
+        "state": "OFF"
+      }
+    },
+    {
+      "fixture": "desk-lamp",
+      "set": {
+        "brightness": 0
+      },
+      "out": {
+        "brightness": 0
+      },
+      "topic": "zigbee2mqtt/desk_lamp/set",
+      "payload": {
+        "brightness": 0
+      }
+    }
+  ]
+}

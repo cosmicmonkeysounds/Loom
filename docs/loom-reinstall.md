@@ -505,6 +505,7 @@ tolerance: metres, and m² for orientations).
   /api/mod/audio`, `POST /api/mod/audio/{project,test}`
   (`core/server/audio.ts`); the house Mac's stagehand `audio` router reads
   it — [`docs/trapped/room-audio.md`](./trapped/room-audio.md) §11.
+- **The house lights are not in the map either** (wave 20, §1.4).
 
 The shared code is the pure-TS package **`@loom/house`** (`house/`, no
 dependencies): schema, `validateHouse`, `buildWalls`/`buildFloors`/
@@ -530,6 +531,78 @@ rounded to 1 mm: walls = `WallSegment[]`; routes = `[{from, to, path}]`;
 locate = `[{p, floor, room, height, standable}]` with `height = heightAt([x, z], y)` and `standable = standable(house, p)` (the queries include every solid prop's base and top). A map with a king also gets `<name>.king.json` = `[{king, feet, yaw, reach, slack}]` (`kingReach` plain and with `KING_HIT_SLACK`, feet on 8 bearings at 0.4 / 1.2 / 1.4 / 1.7 m facing him and 50° / 70° / 90° / 180° off, plus a point on every other floor) and `<name>.fallen.json` = the route queries again with every king fallen; today only `show` has a king.
 Queries are stored with their answers, so a port only reads and compares.
 A test fails when the committed goldens drift from the code.
+
+### 1.4 House lights — `lights.json` (wave 20)
+
+The lights the story drives live in the project file **`lights.json`**
+(`@loom/house` `LightsConfig`; `house/src/lights.ts`), beside `audio.json`
+and for the same reasons: placing a bulb mid-show never bumps the map
+version, and both map variants share one physical house. Never name it
+`house.lights.json` (that reads as a map variant).
+
+- **Fixtures**: a Zigbee bulb (`kind: "zigbee"`, `device` = its
+  Zigbee2MQTT friendly name), a Z2M group (`zigbee-group`) or a WLED strip
+  (`wled`, `device` = its base topic, `wled/server`), each on a
+  `house.json` room id with a position in the **absolute** house frame
+  (metres, Y up: the basement ceiling is at −0.6), what it can do (`caps
+  {color, ct, dim}`) and, for a **safety** fixture, a floor
+  (`LIGHT_SAFETY_MIN` 40 / 254, a hard floor; a higher `min` raises it, a
+  lower one has no effect and is a warning). A safety fixture is never OFF and never
+  below its floor: `validateLights` refuses a look written that way, and
+  `clampForSafety` lifts anything that reaches it anyway.
+- **Zones** name groups of fixtures. **Targets** (`resolveLightTargets`,
+  folded like the speakers' — case, `_` / `-` and spaces don't matter):
+  `everywhere`, a fixture id, a zone id or name, a room id, and with a house
+  a room's label or a LOCATION.
+- **Looks** are keyed by the story's cue name: `cue heart_wake` plays
+  `looks.heart_wake` (a look name is `^[a-z][a-z0-9_]*$` and never starts
+  with a screens cue family: `screens_`, `terminals_`, `tv_`, `tablet_`,
+  `room_`). A look is one command (`set`) or timed `steps` (`at` ms, each
+  with an optional narrower `to`), in Zigbee2MQTT's words (`state`,
+  `brightness` 0–254, `color` `#rrggbb` or `color_temp` 150–500 mireds,
+  `effect`, `transition` s); played once, `repeat` N times, in a `loop`
+  until the next look, or once and then **giving the light back**
+  (`then: "restore"`: the loop it interrupted restarts, else each
+  fixture's settled state is re-published; it never becomes the settled
+  state). Zigbee bulbs drop fast commands and flicker badly, so steps on one
+  fixture are ≥ `LIGHT_STEP_MIN_MS` 150 apart (≥ `LIGHT_COLOR_STEP_MIN_MS`
+  400 for a colour change: a refusal) and a loop under
+  `LIGHT_LOOP_MIN_PERIOD_MS` 1.5 s on Zigbee is a warning. `boot` names the
+  look the module plays on start and after a story reset.
+- `planLook` expands a look into timed, cap-filtered, safety-clamped
+  commands; `z2mPayload` (topic `zigbee2mqtt/<device>/set`, `color` as
+  `{hex}`) and `wledPayload` (topic `<device>/api`: `on`, `bri`,
+  `transition` in tenths, one segment's `col` / `fx`) build what goes on
+  MQTT. stagehand's `lights` module mirrors routing, plans and payloads in
+  Python, pinned byte for byte by `house/test/fixtures/lights-{basic,house,resolve,plan}.json`.
+- **Where it lives** (`core/server/lights.ts`, the audio rules): snapshotted
+  at launch beside the maps (the event row's `house_maps` record, key
+  `lights.json`; `project-lights.json` in the state dir), a director's save
+  from the map editor (`lights-save.json`) wins over it until **Save to
+  project**, `LOOM_LIGHTS` is the LAN fallback (re-read on mtime, the last
+  good file kept), else nothing is placed. A project PUT of a broken
+  `lights.json` answers 400 `problems`; `/api/mod/load {lights}` takes a
+  fresh snapshot; a reload (Push draft) picks up an edit and the event reads
+  stale until then; `sync-example` merges it like a map with its own
+  `--keep-lights` / `--replace-lights` (never the map or audio switches),
+  and `scripts/sync-show.sh` passes them through.
+- **Routes** (a mod token or the author's session; never a host's booth):
+  `GET /api/mod/lights[?after=&tests=&pairs=&devicesAt=&wait=&module=1&name=]` (the
+  config, the story's cue names that can be looks, LOCATIONs, recent tests,
+  the open pairing, the Z2M devices, the module's presence, problems /
+  warnings against the house in force; with `after` a long poll that wakes
+  on a save, a snapshot, a test, a pair or a new device list, and answers at
+  once when the device list is newer than `devicesAt` — send the last
+  view's, so a list posted between two polls is never parked on), `POST
+  /api/mod/lights {lights, base?}` (400 `problems`, 409 `stale`), `POST
+  /api/mod/lights/project`, `POST /api/mod/lights/test {fixture} | {look} |
+  {fixture, set}` (identify, play a look, publish one state; 400 `set does
+  nothing` for a set with no field but `transition`), `POST
+  /api/mod/lights/devices {devices}` (the module's reduced
+  `zigbee2mqtt/bridge/devices` + `groups`, ≤ 500, ≤ 256 KB), `POST
+  /api/mod/lights/pair {seconds}` (Z2M permit-join; 0 closes, and a close
+  rides the GET for 60 s so the module sends it). Tests, pairs and devices
+  are memory only.
 
 ## 2. Server — `core/server/spatial.ts`
 
