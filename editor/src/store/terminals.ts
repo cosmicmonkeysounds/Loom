@@ -10,6 +10,8 @@ import { mapApi, screensApi } from '@/lib/api'
 import { playChime } from '@/lib/chime'
 import {
   TERMINALS_POLL_MS,
+  doorOverrideFromScreen,
+  hasDoorSensor,
   mergeTerminals,
   newlySilent,
   pruneAcks,
@@ -27,6 +29,10 @@ interface TerminalsState {
   voiceMuted: boolean | null
   /** Why the last TV-mute flip failed (offline, a 403), shown on the card; null = fine. */
   muteError: string | null
+  /** (wave 20) The screen state's `night.door_override`: the story follows
+   *  the 🚪 buttons, not the sensor. Read only while a terminal reports a door
+   *  sensor (false otherwise, and until the first read). */
+  doorOverride: boolean
   /** The terminal spots of the house map the event plays now (wave 14);
    *  null = no map (or not read yet / an older server) — nothing is flagged. */
   map: MapTerminal[] | null
@@ -99,6 +105,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
   acked: new Set(),
   map: null,
   mapRooms: [],
+  doorOverride: false,
 
   bind: (eventId) => {
     if (get().eventId === eventId) return
@@ -107,7 +114,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
     memory = eventId === null ? {} : load(eventId)
     lastChime = 0
     ticks = 0
-    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, identifyError: null, reachable: true, acked: new Set(), map: null, mapRooms: [] })
+    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, identifyError: null, reachable: true, acked: new Set(), map: null, mapRooms: [], doorOverride: false })
     if (eventId === null) return
     timer = setInterval(() => void get().tick(), TERMINALS_POLL_MS)
     void get().tick()
@@ -188,5 +195,15 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
       playChime()
     }
     set({ rows, acked, reachable: server !== null, ...(server !== null ? { voiceMuted: server.voiceMuted } : {}) })
+    // Wave 20: the 🚪 override rides the screen state, read only while some
+    // terminal bridges the door sensor (no sensor, no badge to colour).
+    if (server !== null && rows.some((r) => hasDoorSensor(r.device))) {
+      try {
+        const doorOverride = doorOverrideFromScreen(await screensApi.state(eventId))
+        if (get().eventId === eventId) set({ doorOverride })
+      } catch {
+        // keep the last reading; the next poll retries
+      }
+    } else if (get().doorOverride) set({ doorOverride: false })
   },
 }))

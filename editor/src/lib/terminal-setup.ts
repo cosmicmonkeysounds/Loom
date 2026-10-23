@@ -203,12 +203,34 @@ export interface TerminalSetup {
    *  (wave 18b, Q8: unticked, the link names none and the tablet follows
    *  `audio.json`'s `announce.terminals` for its spot). */
   announce: boolean
+  /** (wave 20) A keyboard is plugged in: typed lines to the character. Absent
+   *  = true; false writes `keys=0` (a mouse-only rig: the composer hidden). */
+  keys?: boolean
+  /** (wave 20) This tablet bridges the server-room door sensor over Web
+   *  Serial (`door=serial`). Absent = false. */
+  door?: boolean
 }
 
-/** The builder's state after picking a spot: its name, suggested view + room, the rest kept. */
+/** The spot whose terminal bridges the door sensor (the server room's own
+ *  terminal: the laptop the sensor is plugged into). */
+export const DOOR_SENSOR_SPOT = ROOM_TERMINAL_SPOT
+
+/** Does this view offer a keyboard (a composer to the character)? */
+export function viewHasKeys(view: TerminalView): boolean {
+  return viewHasCharacter(view) && view !== TerminalView.Tv && view !== TerminalView.Mirror
+}
+
+/** Can this view bridge the door sensor? Not a station (chess, casino, the
+ *  tent's reinstallation), the TV or a mirror. */
+export function viewHasDoor(view: TerminalView): boolean {
+  return viewHasKeys(view)
+}
+
+/** The builder's state after picking a spot: its name, suggested view + room,
+ *  the door sensor ticked on the server room's own spot (wave 20), the rest kept. */
 export function pickSpot(prev: TerminalSetup, spot: MapTerminal | null): TerminalSetup {
   const view = spot === null ? prev.view : (spot.view ?? suggestView(spot.id))
-  return { ...prev, spot: spot?.id ?? '', name: spot?.name ?? prev.name, view, room: suggestRoom(spot, view) }
+  return { ...prev, spot: spot?.id ?? '', name: spot?.name ?? prev.name, view, room: suggestRoom(spot, view), door: spot?.id === DOOR_SENSOR_SPOT && viewHasDoor(view) }
 }
 
 /** The builder's state after picking a view: the room follows the view's rule for the spot. */
@@ -227,11 +249,14 @@ export function terminalBase(joinUrl: string): string | null {
 }
 
 /** The provisioning link a tablet opens once
- *  (`/terminal/?code=&name=&character=&spot=&view=&room=&announce=1`). A
+ *  (`/terminal/?code=&name=&character=&spot=&view=&room=&announce=1&keys=0&door=serial`). A
  *  station (the chess board, the casino, the reinstallation station) carries
  *  no character and no room; a blank room or spot is left out. `announce=1`
  *  only when ticked: with none the tablet follows the house setting (wave
- *  18b — an `announce=0` would pin it to Never). */
+ *  18b — an `announce=0` would pin it to Never). Wave 20: `keys=0` for a
+ *  mouse-only rig (the default is a keyboard) and `door=serial` for the
+ *  tablet the door sensor is plugged into, each only where the view has a
+ *  composer (`viewHasKeys` / `viewHasDoor`). */
 export function terminalLink(base: string, modCode: string, s: TerminalSetup): string {
   const p = new URLSearchParams()
   p.set('code', modCode)
@@ -241,6 +266,9 @@ export function terminalLink(base: string, modCode: string, s: TerminalSetup): s
   p.set('view', s.view)
   if (!isStationView(s.view) && s.room.trim() !== '') p.set('room', s.room.trim())
   if (s.announce) p.set('announce', '1')
+  // Wave 20: only the non-defaults, and only on a view that has them.
+  if (s.keys === false && viewHasKeys(s.view)) p.set('keys', '0')
+  if (s.door === true && viewHasDoor(s.view)) p.set('door', 'serial')
   return `${base}?${p.toString().replace(/\+/g, '%20')}`
 }
 

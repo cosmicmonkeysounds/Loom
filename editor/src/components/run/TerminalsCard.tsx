@@ -12,6 +12,9 @@
 //! isn't on the map playing now, or two live terminals claim it), the map's
 //! spots no live terminal claims are listed, and **Set up a terminal**
 //! (`TerminalSetup.tsx`) builds a tablet's provisioning link from pickers.
+//! Wave 20: the server-room terminal's 🚪 door sensor badges (green shut /
+//! amber open with the level, red fault, a small ⚠ warning, amber override
+//! while the story follows the 🚪 buttons) lead its row (`doorBadges`).
 
 import clsx from 'clsx'
 import { CockpitTab, useCockpit } from '@/store/cockpit'
@@ -55,6 +58,7 @@ export function TerminalsCard() {
   const identify = useTerminals((s) => s.identify)
   const identifyError = useTerminals((s) => s.identifyError)
   const map = useTerminals((s) => s.map)
+  const doorOverride = useTerminals((s) => s.doorOverride)
   const majority = majorityVersion(rows)
   const doubled = doubleClaims(rows)
   const unclaimed = map === null ? [] : unclaimedSpots(map, rows)
@@ -135,14 +139,25 @@ export function TerminalsCard() {
                     room {r.room}
                   </span>
                 )}
-                {terminalBadges(r, majority).map((b) => (
+                {terminalBadges(r, majority, doorOverride).map((b) => (
                   <span
                     key={b.key}
                     title={b.title}
                     className={clsx(
                       'rounded px-1 text-[10px] tabular-nums',
-                      !b.warn ? 'text-zinc-500' : b.key === 'version' ? 'bg-amber-950/60 text-amber-200' : 'bg-red-950/70 text-red-200',
+                      b.tone === 'ok'
+                        ? 'bg-emerald-950/60 text-emerald-200'
+                        : b.tone === 'amber'
+                          ? 'bg-amber-950/60 text-amber-200'
+                          : b.tone === 'red'
+                            ? 'bg-red-950/70 text-red-200'
+                            : !b.warn
+                              ? 'text-zinc-500'
+                              : b.key === 'version'
+                                ? 'bg-amber-950/60 text-amber-200'
+                                : 'bg-red-950/70 text-red-200',
                     )}
+                    data-tone={b.tone}
                     data-testid={`run-terminal-badge-${b.key}`}
                   >
                     {b.text}
