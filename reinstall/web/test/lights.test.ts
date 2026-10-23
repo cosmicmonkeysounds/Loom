@@ -186,10 +186,17 @@ describe("placing a light", () => {
     expect(lightById(patchLight(l, "desk-lamp", { min: 12 }), "desk-lamp")!.min).toBe(12);
   });
 
-  it("marks the server room's WLED strip a safety light when its topic is typed", () => {
+  it("marks the server room's RGB bulb (the room's only light) a safety light at 80, typed or picked", () => {
     const { lights, id } = bulbIn(HOUSE(), "server-room", "");
-    expect(lightById(setLightDevice(lights, id, "wled/server"), id)!.safety).toBe(true);
-    expect(lightById(setLightDevice(lights, id, "wled/attic"), id)!.safety).toBeUndefined();
+    const typed = lightById(setLightDevice(lights, id, " server_room_rgb "), id)!;
+    expect([typed.safety, typed.min]).toEqual([true, 80]);
+    const bulb: Z2mDevice = { friendly: "server_room_rgb", ieee: "0x1", type: "Router", model: "m", vendor: "v", description: "d", caps: { color: true, ct: true, dim: true } };
+    const picked = lightById(setLightDevice(lights, id, bulb), id)!;
+    expect([picked.safety, picked.min]).toEqual([true, 80]);
+    // A higher floor of its own is kept; there is no server-room strip any more.
+    expect(lightById(setLightDevice(patchLight(lights, id, { safety: true, min: 120 }), id, "server_room_rgb"), id)!.min).toBe(120);
+    expect(lightById(setLightDevice(lights, id, "wled/server"), id)!.safety).toBeUndefined();
+    expect(lightById(setLightDevice(lights, id, "attic_bulb"), id)!.safety).toBeUndefined();
     expect(safetyOffText({ name: "Server room RGB bulb" })).toMatch(/Server room RGB bulb.*below 40/);
   });
 
@@ -241,9 +248,9 @@ describe("placing a light", () => {
     expect(a.fixtures[0]!.caps).toEqual({ color: true, ct: false, dim: true });
     const g = setLightDevice(a, id, { ...bulb, friendly: "hall_lights", type: "Group" });
     expect(g.fixtures[0]!.kind).toBe("zigbee-group");
-    const w = setLightDevice(g, id, " wled/server ");
+    const w = setLightDevice(g, id, " wled/tube ");
     expect(w.fixtures[0]!.kind).toBe("wled");
-    expect(w.fixtures[0]!.device).toBe("wled/server");
+    expect(w.fixtures[0]!.device).toBe("wled/tube");
     expect(setLightDevice(w, id, "attic_bulb").fixtures[0]!.kind).toBe("zigbee");
   });
 
