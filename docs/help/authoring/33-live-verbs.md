@@ -2,7 +2,7 @@
 title: Live verbs — building game rules from primitives
 section: Live Shows
 order: 33
-keywords: quietly, reveal quietly, arm, two taps, caller, callers, by on an admin cue, cue bar, L1217, recruited, founded, unaligned, tap again to fire, not your button, king hit, king fallen, capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
+keywords: door sensor, door_sensor_opened, door_sensor_closed, stand_down, ends the night, quietly, reveal quietly, arm, two taps, caller, callers, by on an admin cue, cue bar, L1217, recruited, founded, unaligned, tap again to fire, not your button, king hit, king fallen, capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
 ---
 
 Live shows run on **hooks** — `when <event>:` blocks in a CHARACTER,
@@ -564,8 +564,10 @@ health into the story (`Night.king_hp`). The rule only narrates; it
 never changes the health itself. Write the rule so a duplicate is harmless
 (here a second win changes nothing but a note), and never let a machine
 drive something a person relies on for safety: the real door's lock is
-standalone, and the story only hears that it opened
-(`server_door_opened`). Give the director a
+standalone, and the story only hears that it opened or shut (the door
+sensor's `door_sensor_opened` / `door_sensor_closed`, through rules that
+ignore the sensor once a director has pressed a 🚪 fallback, until they
+trust it again). Give the director a
 manual button for anything a crowd decides too — the show's *Force the
 majority* cues settle a vote ghosts would otherwise block, once.
 A story with a [currency](currency.md) hears its wallet the same way:
@@ -610,6 +612,16 @@ the count survives a server restart; a director firing the same event
 from Run never spends one. The `description:` is what the model reads, so say what the
 power does and which args it takes. The character may also **share** any
 codex entry it holds, exactly as a performer's booth would.
+
+Never give a character with a mind a power that **ends the night** or
+decides the story's big choice. *Trapped in the Internet* used to let
+Trabolta fire `stand_down` when a program at his heart convinced him;
+since wave 20 that power is gone, and the talk at his heart is the
+story's own: four layers of [choices](choices.md) docked on the
+server-room terminal, options that appear only while a check holds
+(`+ (if program.trust >= 20) ⟦TRUSTED⟧ …`), and only the last one stops
+him. The model still talks between the questions (see the mind
+debugger's *situations*), but nothing it says ends anything.
 
 ## How the phrase is read
 
