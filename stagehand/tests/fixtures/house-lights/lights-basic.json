@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "note": "Lights fixture: the server room's RGB bulb (safety) and WLED strip (safety), a dimmable lamp, a Zigbee group in the hall, a white bulb in the attic. Every look the module plays is here.",
+  "fixtures": [
+    { "id": "server-room-rgb", "name": "Server room RGB bulb", "room": "server-room", "floor": "basement", "pos": { "x": 2, "y": -0.6, "z": 1.5 }, "kind": "zigbee", "device": "server_room_rgb", "caps": { "color": true, "ct": true, "dim": true }, "safety": true, "min": 40 },
+    { "id": "server-strip", "name": "Server room strip", "room": "server-room", "floor": "basement", "pos": { "x": 3.9, "y": -1, "z": 0.1 }, "kind": "wled", "device": "wled/server", "caps": { "color": true, "ct": false, "dim": true }, "safety": true, "min": 50 },
+    { "id": "desk-lamp", "name": "Desk lamp", "room": "desktop", "pos": { "x": 1, "y": 0.8, "z": 1 }, "kind": "zigbee", "device": "desk_lamp", "caps": { "color": false, "ct": false, "dim": true } },
+    { "id": "hall-group", "name": "Hall bulbs", "room": "hall", "floor": "main", "pos": { "x": 4.5, "y": 2.4, "z": 5 }, "kind": "zigbee-group", "device": "hall_lights", "caps": { "color": true, "ct": true, "dim": true } },
+    { "id": "attic-bulb", "name": "Attic bulb", "room": "attic", "floor": "top", "pos": { "x": 4.5, "y": 5, "z": 3 }, "kind": "zigbee", "device": "attic_bulb", "caps": { "color": false, "ct": true, "dim": true } }
+  ],
+  "zones": [
+    { "id": "heart", "name": "The Heart", "fixtures": ["server-room-rgb"] },
+    { "id": "upstairs", "name": "Up Stairs", "fixtures": ["desk-lamp", "hall-group", "attic-bulb"] }
+  ],
+  "boot": "heart_idle",
+  "looks": {
+    "heart_idle": { "to": ["heart"], "set": { "state": "ON", "color": "#00E5FF", "brightness": 60, "transition": 3 } },
+    "heart_wake": {
+      "to": ["heart"],
+      "steps": [
+        { "at": 0, "set": { "state": "ON", "color": "#FF2A00", "brightness": 254, "transition": 0 } },
+        { "at": 400, "set": { "brightness": 40, "transition": 0.2 } },
+        { "at": 800, "set": { "brightness": 254, "transition": 0.2 } },
+        { "at": 1200, "set": { "brightness": 40, "transition": 0.2 } },
+        { "at": 1600, "set": { "brightness": 254, "transition": 0.2 } },
+        { "at": 2400, "set": { "color": "#00E5FF", "brightness": 120, "transition": 3 } }
+      ]
+    },
+    "heart_nag": { "to": ["heart"], "set": { "color": "#FF6A00", "brightness": 254, "transition": 0.5 }, "then": "restore", "period": 1500 },
+    "heart_door_open": {
+      "to": ["heart"],
+      "steps": [
+        { "at": 0, "set": { "color": "#FF6A00", "brightness": 254, "transition": 0.8 } },
+        { "at": 1000, "set": { "brightness": 70, "transition": 0.8 } }
+      ],
+      "loop": true,
+      "period": 2000
+    },
+    "heart_warn": {
+      "to": ["heart"],
+      "steps": [
+        { "at": 0, "set": { "color": "#FF0000", "brightness": 254, "transition": 0.3 } },
+        { "at": 600, "set": { "brightness": 60, "transition": 0.3 } },
+        { "at": 1200, "set": { "brightness": 254, "transition": 0.3 } }
+      ],
+      "then": "restore"
+    },
+    "server_alarm": {
+      "to": ["The Server Room"],
+      "steps": [
+        { "at": 0, "set": { "state": "ON", "color": "#FF0000", "brightness": 254, "transition": 0.8 } },
+        { "at": 1000, "set": { "brightness": 60, "transition": 0.8 }, "to": ["server-room-rgb"] }
+      ],
+      "loop": true,
+      "period": 2000
+    },
+    "strip_breathe": { "to": ["server-strip"], "set": { "color": "#7A2DFF", "brightness": 60, "effect": "breathe" } },
+    "house_warm": { "to": ["everywhere"], "set": { "state": "ON", "color_temp": 370, "brightness": 120, "transition": 2 } },
+    "tube_dim": { "to": ["The Tube"], "set": { "brightness": 30, "transition": 1 }, "repeat": 3, "period": 2000 },
+    "upstairs_off": { "to": ["Up Stairs"], "set": { "state": "OFF", "transition": 1.5 } }
+  }
+}
