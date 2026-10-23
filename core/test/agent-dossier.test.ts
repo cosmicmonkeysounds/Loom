@@ -353,14 +353,42 @@ describe("buildDossier: the never-list", () => {
     for (const d of [slots, whole]) for (const bad of ["Cold Door", "Spreadsheet"]) expect(JSON.stringify(d)).not.toContain(bad);
   });
 
-  it("codeMentions: folded like the redeem box (case, dashes, underscores, spaces); short codes ignored", () => {
+  it("codeMentions: a standalone token folded like the redeem box (case, dashes, underscores); short codes ignored", () => {
     const m = codeMentions(["ribbon1", "x9"]);
     expect(m("it was Ribbon-1!")).toBe(true);
-    expect(m("R I B B O N _ 1")).toBe(true);
-    expect(m("ribbon 12")).toBe(true); // over-matching is the safe side
+    expect(m("RIBBON_1")).toBe(true);
+    expect(m("ribbon12")).toBe(false); // a longer token is not the code
     expect(m("a ribbon")).toBe(false);
     expect(m("x9 again")).toBe(false);
     expect(codeMentions([])("anything")).toBe(false);
+  });
+
+  it("codeMentions never matches a title or prose that only shares the code's words (live walk)", () => {
+    const m = codeMentions(["TRUST-CHART", "SANDY-FILE", "TRABOLTA-4EVER", "NO-EXIT", "SILICON"]);
+    for (const t of ["The Trust Chart", "The Sandy File", "I showed you the Sandy File", "there's no exit"]) expect(m(t)).toBe(false);
+    for (const t of ["it's sandy-file", "TRUSTCHART?", "trabolta_4ever", "No-Exit", "type silicon"]) expect(m(t)).toBe(true);
+  });
+
+  it("keeps coded entries the guest holds (a title is not its code) ", () => {
+    const d = buildDossier(
+      input({
+        codex: [
+          { title: "The Sandy File", text: "…", secret: false },
+          { title: "Trabolta's LiveJournal (trabolta_4ever)", text: "…", secret: false },
+        ],
+        codexDef: (e) => ({ title: e, text: "fine", secret: false }),
+        log: [{ type: "codexUnlocked", person: "Trabolta", entry: "The Sandy File", via: "share", from: "g1" }],
+        messages: [
+          msg({ text: "a director typing", via: "Steph" }),
+          msg({ text: "I showed you the Sandy File" }),
+          msg({ text: "the code is SANDY-FILE" }),
+        ],
+        mentionsCode: codeMentions(["SANDY-FILE", "TRABOLTA-4EVER"]),
+      }),
+    )!;
+    expect(d.codex).toEqual(["The Sandy File", "Trabolta's LiveJournal (trabolta_4ever)"]);
+    expect(d.gifts).toEqual(["The Sandy File"]);
+    expect(d.said).toEqual(["I showed you the Sandy File"]);
   });
 });
 

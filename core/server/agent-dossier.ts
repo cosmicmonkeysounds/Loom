@@ -130,17 +130,20 @@ export function atTheHeart(peek: (path: string) => string | null, id: string): b
 const fold = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/gu, " ").trim();
 
 /** A check for the codex unlock codes (a code typed into a line is never
- *  carried), folded the way the redeem box folds them (`foldCode`: case,
- *  dashes, underscores and spaces are noise): the squashed text contains
- *  the squashed code. Codes under four characters are ignored, and
- *  over-matching (a code inside a longer run) is the safe side. */
+ *  carried), matched as a standalone token: the code's letters in order,
+ *  `-` or `_` allowed between any two (the redeem box's fold, never a
+ *  space) and bounded by anything but a letter or digit, so
+ *  `NO-EXIT` is caught as `no-exit` / `no_exit` / `noexit` but never inside
+ *  "there's no exit", and `SANDY-FILE` never in "the Sandy File". Codes
+ *  under four characters are ignored. Titles are never run through this
+ *  (a title is not its code). */
 export function codeMentions(codes: readonly string[]): (text: string) => boolean {
-  const runs = [...new Set(codes.map(squash))].filter((c) => c.length >= 4);
-  if (runs.length === 0) return () => false;
-  return (text: string): boolean => {
-    const t = squash(text);
-    return runs.some((c) => t.includes(c));
-  };
+  const pats = [...new Set(codes.map(squash))]
+    .filter((c) => c.length >= 4)
+    .map((c) => [...c].map((ch) => ch.replace(/[.*+?^${}()|[\]\\/]/gu, "\\$&")).join("[_\\-]?"));
+  if (pats.length === 0) return () => false;
+  const re = new RegExp(`(?<![a-z0-9])(?:${pats.join("|")})(?![a-z0-9])`, "u");
+  return (text: string): boolean => re.test(text.toLowerCase());
 }
 
 /** `foldCode`'s fold, over any text. */
@@ -167,8 +170,11 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
   // A quest the role keeps secret (`quest`, or `quest.<slug>` as the sim
   // mirrors it: `quest.the_cold_door`) is never named, listed or a moment.
   const questSecret = (quest: string): boolean => input.secretSlots.has("quest") || input.secretSlots.has(`quest.${Sim.codexSlug(quest)}`);
-  const leaks = (text: string): boolean =>
-    text.includes(HUNT_ANSWER_MARK) || input.mentionsAnswer?.(text) === true || input.mentionsSecret?.(text) === true || input.mentionsCode?.(text) === true;
+  // A house-made text (a title, a moment) is checked for answers and
+  // secrets; only a line they typed is checked for unlock codes too.
+  const leaksTitle = (text: string): boolean =>
+    text.includes(HUNT_ANSWER_MARK) || input.mentionsAnswer?.(text) === true || input.mentionsSecret?.(text) === true;
+  const leaks = (text: string): boolean => leaksTitle(text) || input.mentionsCode?.(text) === true;
 
   // The log walk: rooms, gifts, the bottle, his heart, the moments.
   const rooms: string[] = [];
@@ -180,7 +186,7 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
   let marked = false;
   let atHeart = false;
   const moment = (at: number, text: string) => {
-    if (!leaks(text)) moments.push({ at, text });
+    if (!leaksTitle(text)) moments.push({ at, text });
   };
   input.log.forEach((e, i) => {
     switch (e.type) {
@@ -236,7 +242,7 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
       case "codexUnlocked": {
         if (e.person !== input.character || e.via !== "share" || e.from !== id) break;
         const def = input.codexDef(e.entry);
-        if (def === undefined || def.secret || leaks(def.title) || def.text.includes(HUNT_ANSWER_MARK)) break;
+        if (def === undefined || def.secret || leaksTitle(def.title) || def.text.includes(HUNT_ANSWER_MARK)) break;
         gifts.push(def.title);
         moment(i, `gave him ${def.title}`);
         break;
@@ -311,8 +317,8 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
     else truths.uncertain += 1;
     if (shown(f) === "lie") truths.lies += 1;
   }
-  const codex = input.codex.filter((e) => !e.secret && !leaks(e.title) && !e.text.includes(HUNT_ANSWER_MARK)).map((e) => e.title).slice(-DOSSIER_CODEX_MAX);
-  const quests = input.quests.filter((q) => !questSecret(q.id) && !leaks(q.title)).map((q) => ({ title: q.title, status: q.status })).slice(-DOSSIER_QUESTS_MAX);
+  const codex = input.codex.filter((e) => !e.secret && !leaksTitle(e.title) && !e.text.includes(HUNT_ANSWER_MARK)).map((e) => e.title).slice(-DOSSIER_CODEX_MAX);
+  const quests = input.quests.filter((q) => !questSecret(q.id) && !leaksTitle(q.title)).map((q) => ({ title: q.title, status: q.status })).slice(-DOSSIER_QUESTS_MAX);
   const flag = (slot: string): boolean => mine(slot) === "true";
   const balance = input.currencySlot === null ? null : num(input.currencySlot);
   const bottleRound = num("bottle_round");
