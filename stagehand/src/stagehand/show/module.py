@@ -76,6 +76,11 @@ class ShowControl:
         self._feed_cues = 0
         #: QLab `sound` cues dropped because the `audio` router plays them.
         self.sounds_handed_off = 0
+        #: `cue` rules dropped because lights.json plays those looks (D6).
+        self.looks_handed_off: set[str] = set()
+        #: `lights.take_looks` in the same YAML: at start (and after a story
+        #: reload) ask the server's lights.json which looks it defines.
+        self.ask_lights = False
 
     def hand_sounds_to_router(self) -> None:
         """The `audio` router plays `sound X` (`audio.play_sounds: true`):
@@ -85,12 +90,58 @@ class ShowControl:
         self.sounds_handed_off = len(self.cfg.cues) - len(keep)
         self.cfg = replace(self.cfg, cues=keep)
 
+    def hand_looks_to_lights(self, names: set[str]) -> int:
+        """The `lights` module plays these looks (lights.json): drop every
+        `on: {directive: cue}` rule whose `match.target` is one of them, so a
+        bulb never gets two commands for one cue. → how many rules went
+        (logged once per look)."""
+        names = {n for n in names if isinstance(n, str) and n}
+        keep = []
+        dropped: set[str] = set()
+        for r in self.cfg.cues:
+            target = r.match.get("target") if r.on_directive == "cue" else None
+            if isinstance(target, str) and target in names:
+                dropped.add(target)
+                continue
+            keep.append(r)
+        gone = len(self.cfg.cues) - len(keep)
+        if gone:
+            self.cfg = replace(self.cfg, cues=keep)
+            fresh = dropped - self.looks_handed_off
+            if fresh:
+                log.info("handed to the lights module (lights.json): %s (%d rule(s) dropped)", ", ".join(sorted(fresh)), gone)
+            self.looks_handed_off |= dropped
+        return gone
+
+    async def _ask_lights(self) -> None:
+        """Which looks the event's lights.json defines (a plain GET, no long
+        poll); retried every 60 s until a server answers. An older server
+        (404) has none: nothing is handed off."""
+        assert self.mod is not None
+        while True:
+            try:
+                answer = await self.mod.get("/api/mod/lights", {"wait": 0})
+            except ModApiError as err:
+                if err.status == 404:
+                    return
+            except (httpx.HTTPError, OSError, ValueError):
+                pass
+            else:
+                lights = answer.get("lights") if isinstance(answer, dict) else None
+                looks = lights.get("looks") if isinstance(lights, dict) else None
+                if isinstance(looks, dict):
+                    self.hand_looks_to_lights(set(looks))
+                return
+            await asyncio.sleep(60)
+
     def describe(self) -> list[str]:
         cfg = self.cfg
         lines = [
             f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port}' if cfg.mqtt else '— (no broker)'}",
             f"osc      : {', '.join(f'{n}={h}:{p}' for n, (h, p) in cfg.osc_targets.items()) or '— (no targets)'}",
-            f"cues     : {len(cfg.cues)} rule(s)" + (f" ({self.sounds_handed_off} QLab sound cue(s) handed to the audio router)" if self.sounds_handed_off else ""),
+            f"cues     : {len(cfg.cues)} rule(s)" + (f" ({self.sounds_handed_off} QLab sound cue(s) handed to the audio router)" if self.sounds_handed_off else "")
+            + (f" (looks {', '.join(sorted(self.looks_handed_off))} handed to the lights module)" if self.looks_handed_off else "")
+            + (" (lights.json's looks go to the lights module)" if self.ask_lights else ""),
             f"sensors  : {len(cfg.sensors)} rule(s)",
             f"catch-up : {', '.join(r.path for r in cfg.catch_up) or '—'}",
         ]
@@ -115,6 +166,8 @@ class ShowControl:
             self.mqtt.on_connected = lambda: self._schedule_catch_up("mqtt")
             self.mqtt.start()
         tasks = [asyncio.ensure_future(self._sse_loop())]
+        if self.ask_lights:
+            tasks.append(asyncio.ensure_future(self._ask_lights()))
         if self.mqtt is not None and self.cfg.sensors:
             tasks.append(asyncio.ensure_future(self._sensor_loop()))
         try:
@@ -159,6 +212,8 @@ class ShowControl:
     def _on_lifecycle(self, doc: dict) -> None:
         kind = str(doc.get("kind", "")) if isinstance(doc, dict) else ""
         if kind in _RESTART_KINDS:
+            if self.ask_lights and kind == "reload" and self.mod is not None:
+                asyncio.ensure_future(self._ask_lights())  # a reload may bring a new lights.json
             self._schedule_catch_up(kind, delay=self.catch_up_delay_s)
         else:
             log.info("lifecycle %s", kind or "?")

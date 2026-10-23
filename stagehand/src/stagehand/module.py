@@ -9,6 +9,7 @@ absent means the module is off on that machine:
     agents:  { llm, characters }             # agent-voiced characters (the laptop)
     alexa:   { mqtt, device, channels, … }   # announcements out of the house speakers
     audio:   { sounds_dir, play_sounds, … }  # the house speaker router (audio.json)
+    lights:  { mqtt, z2m_base, … }           # the house lights (lights.json → Zigbee2MQTT / WLED)
 
 A module is a small class registered in `REGISTRY` under its section
 name. It parses its own section at load (so a bad map fails at boot, not
@@ -95,5 +96,9 @@ REGISTRY: dict[str, ModuleSpec] = {
     "audio": ModuleSpec(
         "the house speaker router — audio.json speakers + matrix on the interface; `sound X` / announcements / speaker tests (opt-in)",
         "stagehand.audio.module:build_audio",
+    ),
+    "lights": ModuleSpec(
+        "house lights from lights.json (Zigbee2MQTT + WLED)",
+        "stagehand.lights.module:build_lights",
     ),
 }

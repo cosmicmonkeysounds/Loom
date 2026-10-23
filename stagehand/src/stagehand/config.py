@@ -5,12 +5,15 @@
     agents:  { … }     # stagehand.agents — see agents.example.yaml
     alexa:   { … }     # stagehand.alexa  — see trapped.house.yaml
     audio:   { … }     # stagehand.audio  — see audio.example.yaml
+    lights:  { … }     # stagehand.lights — see lights.example.yaml
 
 Two sections read each other here, because each module may run as its own
 job (`--only show`) from the same file: an `audio:` that plays `sound X`
 (`play_sounds: true`) takes the `show` module's QLab `sound` cues away, and
 an `audio:` that announces (`announce: true`) may not sit beside `alexa:` —
-one owner of the house's voice.
+one owner of the house's voice. A `lights:` with `take_looks` (the default)
+takes the `show` module's YAML `cue` rules for every look lights.json
+defines: the local `config_file`'s at load, the server's when `show` starts.
 
 A top-level key that isn't `server` or a registered module is an error
 (a typo'd section would otherwise silently switch a job off). A config
@@ -130,9 +133,31 @@ def parse_config(
     show = modules.get("show")
     if show is not None and isinstance(audio, dict) and audio.get("play_sounds") is True:
         show.hand_sounds_to_router()  # type: ignore[attr-defined]
+    lights = doc.get("lights")
+    if show is not None and "lights" in doc and (lights is None or (isinstance(lights, dict) and lights.get("take_looks", True) is True)):
+        show.ask_lights = True  # type: ignore[attr-defined]
+        show.hand_looks_to_lights(_local_looks(lights, base_dir))  # type: ignore[attr-defined]
     if not modules:
         raise ConfigError(f"nothing to run — add a module section ({', '.join(REGISTRY)})")
     return StagehandConfig(server=server, modules=modules)
+
+
+def _local_looks(section: Any, base_dir: str) -> set[str]:
+    """The look names in the `lights:` section's local `config_file` (empty
+    when it has none or it doesn't read)."""
+    import json
+
+    raw = section.get("config_file") if isinstance(section, dict) else None
+    if not isinstance(raw, str) or raw == "":
+        return set()
+    p = Path(os.path.expanduser(raw))
+    p = p if p.is_absolute() else Path(base_dir) / p
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    looks = doc.get("looks") if isinstance(doc, dict) else None
+    return set(looks) if isinstance(looks, dict) else set()
 
 
 def placeholders(server: ServerConfig) -> list[str]:

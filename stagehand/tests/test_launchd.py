@@ -41,7 +41,7 @@ def test_each_module_is_its_own_job_with_its_own_log():
         job: job_plist(job, Path("/h/x.yaml"), stagehand_dir=ROOT, uv="/u/uv", log_dir=Path("/logs"), path_env="/u:/usr/bin")
         for job in JOBS
     }
-    assert {p["Label"] for p in plists.values()} == {label_for("show"), label_for("agents"), label_for("audio")}
+    assert {p["Label"] for p in plists.values()} == {label_for("show"), label_for("agents"), label_for("audio"), label_for("lights")}
     for job, p in plists.items():
         args = p["ProgramArguments"]
         assert args[:2] == ["/u/uv", "run"] and args[-2:] == ["--only", job]
