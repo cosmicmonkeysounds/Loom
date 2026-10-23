@@ -913,6 +913,27 @@ export function decisionChannelFor(events: readonly SimEvent[], person: string):
   return speaker ? `dm:${speaker}` : LOBBY.channel;
 }
 
+/**
+ * The per-menu twin of `decisionChannelFor` (wave 20, D18): every menu
+ * prompted to a person in `events`, by its id → the DM of the character
+ * whose line last reached that person before it, else the lobby. A batch
+ * may prompt one person twice (a hook's menu after a beat's); each gets
+ * the speaker that asked it. Menus with no id (a hand-built event) are
+ * left out.
+ */
+export function menuChannelsFor(events: readonly SimEvent[]): Map<number, string> {
+  const speaker = new Map<string, string>();
+  const out = new Map<number, string>();
+  for (const e of events) {
+    if (e.type === "dialogue") for (const p of e.audience) speaker.set(p, e.speaker);
+    if (e.type === "choicePrompted" && e.person !== null && e.id !== undefined) {
+      const who = speaker.get(e.person);
+      out.set(e.id, who !== undefined ? `dm:${who}` : LOBBY.channel);
+    }
+  }
+  return out;
+}
+
 /** The audience entry for a holder: a guest's id, or `@<Character>` — the
  *  booth convention `/api/prime/say` already uses for a performer's own
  *  conversation with an agent (`event-runtime.ts` visibleToPrime). A guest

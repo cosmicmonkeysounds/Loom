@@ -1414,6 +1414,13 @@ export class Sim {
     return queue.map((q) => ({ id: q.id, beat: q.beat, options: q.options.map((o) => o.text) }));
   }
 
+  /** The id of every outstanding menu, anyone's (D18). */
+  pendingChoiceIds(): Set<number> {
+    const out = new Set<number>();
+    for (const queue of this.pendingChoices.values()) for (const q of queue) out.add(q.id);
+    return out;
+  }
+
   /** Every outstanding choice's options, keyed by person id (`__global`
    *  for unbound menus) — the operator mirror of `pendingChoiceFor`, so
    *  the run panel can see (and answer) a stuck decision. */

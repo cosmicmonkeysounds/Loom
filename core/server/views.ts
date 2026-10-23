@@ -408,6 +408,11 @@ export interface GuestView {
   pendingChoice: string[] | null;
   /** Channel the pending decision docks under (`"lobby"`, a DM, …). */
   decisionChannel: string | null;
+  /** Every menu awaiting this guest, oldest first (wave 20, D18): its id
+   *  (answer it with `/api/guest/choose {choice: id}` wherever it sits in
+   *  the queue), the beat it sits in, the channel its prompt went to and its
+   *  shown options. `pendingChoice` / `decisionChannel` are the first one's. */
+  choices: GuestChoice[];
   /** Standing in a `cutscene: true` location: the app goes on rails — a
    *  full-screen stream of what is said to this guest, no rooms sidebar. */
   cutscene: boolean;
@@ -496,7 +501,18 @@ export interface GuestMission {
   place: { id: string; name: string } | null;
 }
 
-export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>): GuestView {
+/** One pending menu on a `GuestView` (wave 20, D18). */
+export interface GuestChoice {
+  id: number;
+  beat: string;
+  channel: string;
+  options: string[];
+}
+
+/** `menuChannels`: each pending menu's id → the channel its prompt went to
+ *  (the runtime's `menuChannelsFor` record); a menu not in it docks in the
+ *  lobby. */
+export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>, menuChannels?: ReadonlyMap<number, string>): GuestView {
   const p = sim.persons.get(id);
   const pendingChoice = sim.pendingChoiceFor(id);
   const interactions = interactionsFor(sim, ["guest"], { subject: id, self: id }).filter(
@@ -518,6 +534,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     canEscape: !(sim.model.locations.get(sim.locationOf(id) ?? "")?.sealed ?? false),
     pendingChoice,
     decisionChannel: pendingChoice ? (decisionChannel ?? "lobby") : null,
+    choices: sim.pendingChoicesFor(id).map((c) => ({ ...c, channel: menuChannels?.get(c.id) ?? "lobby" })),
     cutscene: sim.cutsceneFor(id),
     channels: sim.visibleChannelsFor(id),
     spaces: sim.spaceList(),

@@ -26,7 +26,7 @@ import { allSnapshotFlags, awardOnly, callsCue, cueState, guestCardView, interac
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
-import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
+import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, menuChannelsFor, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
 import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, readRawBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
@@ -663,6 +663,9 @@ export class EventRuntime {
   private readonly chat = new ChatStore();
   // Where each guest's pending decision docks (channel id). Ephemeral.
   private readonly decisionChannels = new Map<string, string>();
+  // Wave 20 (D18): each pending menu's id → the channel its prompt went to
+  // (`GuestView.choices`). Ephemeral like the above; rebuilt by a replay.
+  private readonly menuChannels = new Map<number, string>();
   // W-03 reserved programs: the claim tokens + a director's open windows.
   private readonly claims: Claims;
   // W-04 / OP-11: guest id → when they were last heard from (wall ms): a
@@ -1147,7 +1150,7 @@ export class EventRuntime {
   /** A guest's snapshot, plus the cards they have already answered. */
   private guestViewFor(id: string, online: ReadonlySet<string>, avatars = this.avatarMap()): GuestView {
     return {
-      ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online),
+      ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online, this.menuChannels),
       answered: this.answeredFor(id),
       avatars,
       ...(this.wallet !== null ? { wallet: this.wallet.viewFor(id) } : {}),
@@ -1695,6 +1698,7 @@ export class EventRuntime {
    *  drew: `runPicks` commits its own), for a press's card lines (C1). */
   private fanout(events: SimEvent[], via?: string): ChatMessage[] {
     if (this.agents.judging.length > 0) this.dropMootRulings();
+    for (const [menu, channel] of menuChannelsFor(events)) this.menuChannels.set(menu, channel);
     for (const e of events) {
       if (e.type === "respond") {
         // The alert `!` stripped, as the Inbox row has it (`alert` says it was there).
@@ -1756,6 +1760,7 @@ export class EventRuntime {
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
+    this.pruneMenuChannels();
     // Wave 18b: a `when` picture whose condition moved (the snapshots below carry it).
     this.syncConditionalAvatars();
     this.pushSnapshots();
@@ -3738,10 +3743,18 @@ export class EventRuntime {
     return true;
   }
 
+  /** Forget the channel of every menu no longer pending (D18). */
+  private pruneMenuChannels(): void {
+    if (this.menuChannels.size === 0) return;
+    const pending = this.sim?.pendingChoiceIds() ?? new Set<number>();
+    for (const menu of [...this.menuChannels.keys()]) if (!pending.has(menu)) this.menuChannels.delete(menu);
+  }
+
   private resetChat(): void {
     this.chat.clear();
     this.store.clearHidden();
     this.decisionChannels.clear();
+    this.menuChannels.clear();
   }
 
   private persistMeta(): void {
@@ -4238,6 +4251,7 @@ export class EventRuntime {
           }
           if (Array.isArray(out)) {
             const batch = out as SimEvent[];
+            for (const [menu, channel] of menuChannelsFor(batch)) this.menuChannels.set(menu, channel);
             for (const ev of batch) {
               if (ev.type === "choicePrompted" && ev.person !== null) {
                 this.decisionChannels.set(ev.person, decisionChannelFor(batch, ev.person));
@@ -4268,6 +4282,7 @@ export class EventRuntime {
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
+    this.pruneMenuChannels();
     this.setPhase(meta.phase);
     for (const [id, owner] of meta.owners ?? []) this.personaOwners.set(id, owner);
     const entries = this.store.loadSessions();
@@ -5199,7 +5214,27 @@ export class EventRuntime {
           return true;
         }
         const idx = Number(body["index"] ?? -1);
-        this.fanout(this.commit("choose", id, idx));
+        // Wave 20 (D15, D18): `choice` names the menu by its id (absent: the
+        // oldest), and `text` is the option the client showed at `index` — a
+        // click racing a new menu is refused (409 `moved`), never misapplied.
+        const text = typeof body["text"] === "string" ? body["text"] : undefined;
+        const raw = body["choice"];
+        const choice = raw === undefined || raw === null ? undefined : Number(raw);
+        if (text !== undefined || choice !== undefined) {
+          const menus = this.reqSim().pendingChoicesFor(id);
+          const menu = choice === undefined ? menus[0] : menus.find((m) => m.id === choice);
+          if (menu === undefined) {
+            sendJson(res, 409, { error: "no choice", options: null });
+            return true;
+          }
+          if (text !== undefined && menu.options[idx] !== text) {
+            sendJson(res, 409, { error: "moved", options: menu.options });
+            return true;
+          }
+        }
+        // The menu id rides the journal line only when given, so an old
+        // client's line (and an old journal) replays as before.
+        this.fanout(choice === undefined ? this.commit("choose", id, idx) : this.commit("choose", id, idx, choice));
         sendJson(res, 200, { ok: true });
         return true;
       }
