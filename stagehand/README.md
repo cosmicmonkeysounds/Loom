@@ -684,8 +684,7 @@ the `audio` router over MQTT (`show/announce`, `show/chime`; every other
 lock is a standalone keypad lock, code set by hand, never networked, and
 nothing here drives it), `lights_alarm` to the server-room box's own siren
 (`show/serverroom/alarm`; only a wrong patch-bay combo trips it) and to WLED
-per device (the server-room strip, that room's safety light, a steady red,
-never the strobe), and the sensors that come back as story signals (the
+per device (the Tube strip a steady red, never the strobe), and the sensors that come back as story signals (the
 printer's button and lid, and the patch bay's `patch_combo_a` /
 `patch_combo_b` / `patch_rejected`, judged here until signals carry
 arguments). **Since wave 20 the server-room door is not read here** (D16):
@@ -693,8 +692,9 @@ an LDR + LED on the frame feeds a Grand Central M4 beside his heart's
 terminal, and that terminal page posts `door_sensor_opened` /
 `door_sensor_closed` itself (`hardware/server-room-door/`); a YAML rule
 posting `server_door_opened` would be a director's 🚪 override in the story.
-The server room's RGB bulb `server_room_rgb` left the Z2M `server_room` group
-(its only member) for `lights.json` and the `lights` job (D10). The
+The server room's one light, the RGB bulb `server_room_rgb` (no strip,
+w20b Q6), is `lights.json`'s and the `lights` job's (D10): nothing here sends
+it or its Z2M `server_room` group (the bulb is the only member) anything. The
 safety rooms (stairs, bathroom, tent, server room, the server-room →
 living-room path) are out of the `house` group, and `lights_blackout`
 turns WLED off per device, leaving the Tube strip on dim preset 22.
@@ -703,8 +703,8 @@ light cue has a rule, every sound an `audio.json` cue and a
 `media/sounds.yaml` entry, every sensor signal has a `when` in
 `main.loom`, the two combos match the `Kernel.combo_*` seeds and the
 codex halves — and it pins the safety edits (no cue darkens a safety
-room or all of WLED, nothing drives a lock, no rule reads the door, the
-server-room strip never strobes). The wiring walkthrough is in
+room or all of WLED, nothing drives a lock, no rule reads the door,
+nothing here reaches the server room's bulb). The wiring walkthrough is in
 [`docs/loom-show-control.md`](../docs/loom-show-control.md) → *Trapped in
 the Internet: the house rig*.
 

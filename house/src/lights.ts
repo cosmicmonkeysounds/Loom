@@ -77,7 +77,7 @@ export interface LightFixture {
   /** Metres, the house frame (absolute: Y up, the basement below 0). */
   pos: { x: number; y: number; z: number };
   kind: LightKind;
-  /** Z2M friendly name (zigbee), Z2M group friendly name (zigbee-group), or the WLED base topic (`wled/server`). */
+  /** Z2M friendly name (zigbee), Z2M group friendly name (zigbee-group), or the WLED base topic (`wled/tube`). */
   device: string;
   caps: LightCaps;
   /** Never OFF, never below `max(min, LIGHT_SAFETY_MIN)`: a `min` can only raise the floor. */

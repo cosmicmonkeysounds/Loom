@@ -62,8 +62,9 @@ connected; with the uplink down use `mosquitto_pub` (`zigbee.md` §7).
   stops the old one there. A `then: "restore"` look (the nag, the warning)
   gives the light back after: the door loop it interrupted restarts, else
   the last settled look comes back.
-- **Safety.** A safety fixture (the RGB bulb) is never sent OFF and never
-  below 40 / 254, whatever a look or a test says.
+- **Safety.** A safety fixture is never sent OFF and never below its floor
+  (40 / 254 at least; the RGB bulb's is 80, since it is the server room's
+  only light), whatever a look or a test says.
 - **Catch-up.** After a restart of the job, a broker or feed reconnect, or
   a story reset / reload / go live, it reads the story (`/api/screen/state`):
   the alarm → `heart_alarm`; the door open in the heart sequence →
@@ -78,6 +79,6 @@ connected; with the uplink down use `mosquitto_pub` (`zigbee.md` §7).
 | Symptom | Look at |
 |---|---|
 | The bulb ignores the story | `lights.log` (`look … →` lines); `stagehand lights devices` (is the module online, is the device named `server_room_rgb`?) |
-| A look plays twice / fights a scene | the `show` job was not restarted after the install (it still has a YAML rule for that cue); the bulb is still in the Z2M `server_room` group |
+| A look plays twice / fights a scene | the `show` job was not restarted after the install (it still has a YAML rule for that cue); the bulb was added to the Z2M `house` group (a house look then reaches it) |
 | Identify / Test does nothing | `stagehand lights devices` → module offline: `launchctl kickstart -k gui/$(id -u)/com.mapsandducks.stagehand.lights` |
 | Pair new device does nothing | the same; or Z2M offline (`zigbee.md`) |

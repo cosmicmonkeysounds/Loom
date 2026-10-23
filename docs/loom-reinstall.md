@@ -542,7 +542,7 @@ version, and both map variants share one physical house. Never name it
 
 - **Fixtures**: a Zigbee bulb (`kind: "zigbee"`, `device` = its
   Zigbee2MQTT friendly name), a Z2M group (`zigbee-group`) or a WLED strip
-  (`wled`, `device` = its base topic, `wled/server`), each on a
+  (`wled`, `device` = its base topic, e.g. `wled/tube`), each on a
   `house.json` room id with a position in the **absolute** house frame
   (metres, Y up: the basement ceiling is at −0.6), what it can do (`caps
   {color, ct, dim}`) and, for a **safety** fixture, a floor

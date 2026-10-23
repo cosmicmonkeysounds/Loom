@@ -174,7 +174,7 @@ if grep -q '"ps": 22' "$MQ" || grep -q '"ps":22' "$MQ"; then
 else
   echo "  (no blackout seen on MQTT — fire one from Run if the combos didn't, and re-run step 4)"
 fi
-ask "during the blackout: were the stairs, bathroom, tent, server room (its WLED strip) + the path to the living room LIT, and the Tube strip dim-on? (answer below)"
+ask "during the blackout: were the stairs, bathroom, tent, server room (its RGB bulb, never under 80) + the path to the living room LIT, and the Tube strip dim-on? (answer below)"
 read -r -p "  y/n: " Y; [ "$Y" = y ] && ok "safety lights stayed on" || bad "a safety light went dark — fix the Z2M groups / WLED preset 22"
 rm -f "$MQ"
 

@@ -166,12 +166,14 @@ bulb, until step 6).
    ```bash
    mosquitto_pub -h 127.0.0.1 -t zigbee2mqtt/server_room_rgb/set -m '{"power_on_behavior": "on"}'
    ```
-6. **Leave it out of the `server_room` group** (wave 20, D10: the bulb is
-   `lights.json`'s alone). If it was paired before and is a member:
+6. **Never add it to `house`** (or any group a house look reaches). It is
+   the server room's only light and `lights.json`'s alone (wave 20, D10 /
+   w20b Q10): `lights.json` addresses it by its own name, and nothing in
+   `trapped.house.yaml` sends it or the `server_room` group anything, so it
+   may stay that group's only member. To check what a group holds:
 
    ```bash
-   mosquitto_pub -h 127.0.0.1 -t zigbee2mqtt/bridge/request/group/members/remove \
-     -m '{"group": "server_room", "device": "server_room_rgb"}'
+   mosquitto_sub -h 127.0.0.1 -t zigbee2mqtt/bridge/groups -C 1
    ```
 
 Pairing closes on its own after the two minutes (or *Pair new device* →
@@ -188,7 +190,8 @@ uv run stagehand lights devices --config trapped.house.yaml   # Z2M's list as th
 ```
 
 Never send it `"state": "OFF"` by hand on the night: the story never does
-(it is a safety light, floor 40 / 254), and nothing would turn it back on
+(it is the room's only light and its safety light, floor 80 / 254), and
+nothing would turn it back on
 but a look.
 
 ## 8. Place it and test it

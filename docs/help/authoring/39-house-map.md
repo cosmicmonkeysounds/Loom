@@ -217,7 +217,7 @@ ticks these off as you go):
    inspector shows the floor's height band and a button to put it back.
 4. In the inspector: its **device** (the list puts the bulbs nobody has
    placed first; *type a name…* for one the module hasn't reported, or a
-   WLED topic like `wled/server`, which makes it a WLED strip), its
+   WLED topic like `wled/tube`, which makes it a WLED strip), its
    **kind**, what it **can do** (colour, white temperature, dim — filled
    in from the device), **safety light** for any light people need to see
    by (never off, never below its floor: 40 of 254 at least), and its
