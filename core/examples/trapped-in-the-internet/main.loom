@@ -4590,7 +4590,13 @@ when Night.heart_end_at > 0 and Time.elapsed >= Night.heart_end_at and Night.end
 when heart_autoend:
   if Night.heart_autoend == true:
     set Night.heart_autoend = false
-    broadcast "🕊 Heart autoend is OFF: a talk-down at his heart waits for you to press 🕊." to channel(hosts)
+    if Night.heart_end_at > 0 and Night.ended != true:
+      // A stand-down already counting its 25 s: off stops it, so the night
+      // ends only on 🕊 (and 🔄 may reopen his heart until someone does).
+      set Night.heart_end_at = 0
+      broadcast "🕊 Heart autoend is OFF: the 25 s countdown is stopped. Trabolta has stood down; press 🕊 to end the night." to channel(hosts)
+    else:
+      broadcast "🕊 Heart autoend is OFF: a talk-down at his heart waits for you to press 🕊." to channel(hosts)
   else:
     set Night.heart_autoend = true
     broadcast "🕊 Heart autoend is ON: a talk-down at his heart in the Y2K hour ends the night 25 s later by itself." to channel(hosts)

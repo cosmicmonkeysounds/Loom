@@ -772,6 +772,21 @@ describe("The Heart — convinced (wave 20)", () => {
     expect(v(sim, "Night.ending")).toBe("disabled");
   });
 
+  it("autoend turned off inside the 25 s stops the countdown: the night waits for 🕊", { timeout: SLOW }, () => {
+    const sim = awake();
+    toY2K(sim);
+    atLayerOne(sim);
+    toAsk(sim);
+    pick(sim, "g1", "She was never going to answer");
+    advance(sim, 10);
+    const t = fire(sim, "heart_autoend");
+    expect(hosts(t)[0]).toContain("countdown is stopped");
+    expect(v(sim, "Night.heart_end_at")).toBe(0);
+    advance(sim, 30);
+    expect(v(sim, "Night.ended")).toBe(false);
+    expect(v(sim, "Night.heart_stage")).toBe("done");
+  });
+
   it("convinced in the Y2K hour with autoend off: only the # hosts alert; 🔄 reopens the heart and clears stand_down_by", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);
