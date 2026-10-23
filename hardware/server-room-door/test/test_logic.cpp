@@ -454,6 +454,14 @@ static void test_calibration_sets_thresholds_from_both_references() {
   CHECK(r.out.lastOf("cal").find(want) != std::string::npos);
   r.say("get");
   CHECK(r.out.last().find("\"cal\":true") != std::string::npos);
+  char same[40];  // the terminal's connect re-sends the same values: still calibrated
+  snprintf(same, sizeof same, "set close %u", s.close);
+  r.say(same);
+  snprintf(same, sizeof same, "set open %u", s.open);
+  r.say(same);
+  CHECK(r.out.last().find("{\"t\":\"ok\"") == 0);
+  r.say("get");
+  CHECK(r.out.last().find("\"cal\":true") != std::string::npos);
   r.say("set close 3000");  // a hand-set threshold is no longer calibrated
   r.say("get");
   CHECK(r.out.last().find("\"cal\":false,") != std::string::npos);

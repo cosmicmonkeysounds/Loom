@@ -68,9 +68,11 @@ class Engine {
         bool close = c.kind == proto::kSetClose;
         long open = close ? s_.open : c.value, shut = close ? c.value : s_.close;
         if (open >= shut) return err("open must be below close", cmd);
+        // The terminal re-sends both on every connect: only a new value
+        // makes the thresholds hand-set.
+        if (open != s_.open || shut != s_.close) s_.cal = false;
         s_.open = (uint16_t)open;
         s_.close = (uint16_t)shut;
-        s_.cal = false;
         return ok(cmd);
       }
       case proto::kSetMode: {
