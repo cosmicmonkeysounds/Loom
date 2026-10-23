@@ -172,7 +172,10 @@ def test_the_situation_rules_reach_the_prompt():
     assert "Here you may answer at length: up to 1 sentences." in sys  # the plain heart block's own cap
     assert sys.index("=== NOT FROM YOUR WORLD") < sys.index("=== LIVE STATE")
     lean = build_lean_messages(replace(lean_persona(), outside=p.outside), heart_req(), context())
-    assert "=== NOT FROM YOUR WORLD" in lean[0]["content"] and "Steph's laptop" in lean[0]["content"]
+    assert "=== NOT FROM YOUR WORLD" in lean[0]["content"]
+    # The guard's words never reach the prompt (they would tell him the outside).
+    for word in p.outside:
+        assert word not in sys and word not in lean[0]["content"], word
 
 
 # -- the guards ---------------------------------------------------------------------

@@ -217,15 +217,16 @@ def situation_block(situation: Situation) -> str:
 
 
 def outside_block(persona: Persona) -> str | None:
-    """(D29) The persona's `outside:` words: not things he knows. None when
-    the persona has none (the prompt is then what it always was)."""
+    """(D29) The persona's `outside:` words are for the output guard only:
+    the prompt never lists them (naming them would hand him the very outside
+    facts the rule keeps from him). With any, a generic in-world instruction;
+    None when the persona has none (the prompt is then what it always was)."""
     if not persona.outside:
         return None
     return (
         "=== NOT FROM YOUR WORLD ===\n"
-        "These names and words belong to nothing you know; they are not part of your world, and you never say them: "
-        + ", ".join(persona.outside)
-        + ". If someone brings one up, you don't know it: answer from inside your own world."
+        "Names and words from beyond your own world mean nothing to you. If someone brings one up, "
+        "you have never heard of it: answer puzzled, from inside your own world, and never repeat it."
     )
 
 
