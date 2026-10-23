@@ -135,7 +135,7 @@ import {
   type AgentThread,
   threadKey,
 } from "./agents.ts";
-import { agentDossierOn, buildDossier, codeMentions } from "./agent-dossier.ts";
+import { agentDossierOn, buildDossier, codeMentions, dossierVerdictOf } from "./agent-dossier.ts";
 import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
@@ -2565,7 +2565,7 @@ export class EventRuntime {
             .all(sim, book.confirm)
             .filter((f) => f.person === id)
             .sort((a, b) => (a.logAt ?? 0) - (b.logAt ?? 0))
-            .map((f) => ({ question: f.question, verdict: f.final === null ? ("pending" as const) : f.final === "marked" ? ("lie" as const) : f.final, confidence: f.confidence, ...(f.logAt !== undefined ? { logAt: f.logAt } : {}) }));
+            .map((f) => ({ question: f.question, verdict: dossierVerdictOf(f), confidence: f.confidence, ...(f.logAt !== undefined ? { logAt: f.logAt } : {}) }));
     const leaks = this.agentLeakChecks();
     const dossier = buildDossier({
       character: thread.character,

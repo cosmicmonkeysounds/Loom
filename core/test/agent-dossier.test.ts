@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { DOSSIER_MAX_BYTES, DOSSIER_SAID_CHARS, agentDossierOn, buildDossier, codeMentions, trimDossier, type DossierInput } from "../server/agent-dossier.ts";
+import { DOSSIER_MAX_BYTES, DOSSIER_SAID_CHARS, agentDossierOn, buildDossier, codeMentions, dossierVerdictOf, trimDossier, type DossierInput } from "../server/agent-dossier.ts";
 import type { AgentDossier, AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
 import { scenarioDir, scenarioSource } from "../examples/load.ts";
@@ -230,6 +230,23 @@ describe("buildDossier: the shape", () => {
     const after = buildDossier(input({ filings, log }))!;
     expect(after.filings?.map((f) => f.verdict)).toEqual(["accurate", "lie", "uncertain", "accurate", "pending"]);
     expect(after.truths).toEqual({ accepted: 2, lies: 1, uncertain: 2 });
+  });
+
+  it("dossierVerdictOf: a marked filing reads as the verdict the mark replaced, else the proposal — never a lie", () => {
+    expect(dossierVerdictOf({ final: null, verdict: "lie" })).toBe("pending");
+    expect(dossierVerdictOf({ final: "accurate", verdict: "uncertain" })).toBe("accurate");
+    expect(dossierVerdictOf({ final: "marked", verdict: "uncertain" })).toBe("uncertain");
+    expect(dossierVerdictOf({ final: "marked", verdict: "accurate" })).toBe("accurate");
+    expect(dossierVerdictOf({ final: "marked", verdict: "lie", before: { final: "uncertain", how: "overridden", by: "Steph" } })).toBe("uncertain");
+    // A marked guess is a guess: counted uncertain, never a published lie.
+    const filings = [{ question: "H1", verdict: dossierVerdictOf({ final: "marked", verdict: "uncertain" }), confidence: 50, logAt: 0 }];
+    const log: SimEvent[] = [
+      { type: "directive", verb: "fact_read", args: "H1", setting: null },
+      { type: "directive", verb: "fact_truth", args: "H1 lie", setting: null },
+    ];
+    const d = buildDossier(input({ filings, log }))!;
+    expect(d.filings).toEqual([{ question: "H1", verdict: "uncertain" }]);
+    expect(d.truths).toEqual({ accepted: 0, lies: 0, uncertain: 1 });
   });
 
   it("a right guess and a wrong guess read the same until the screens tell them apart", () => {

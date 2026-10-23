@@ -33,7 +33,7 @@
 import type { AgentDossier, AgentDossierVerdict } from "./agents.ts";
 import type { ChatMessage } from "./chat.ts";
 import { HUNT_ANSWER_MARK } from "./agent-recent.ts";
-import { CONFIDENCE_MAX } from "./facts.ts";
+import { CONFIDENCE_MAX, type FactsFiling } from "./facts.ts";
 import { RESULTS_READ_VERB, RESULTS_TRUTH_VERB, SCREEN_CHARTS, resultIdsOf } from "./routes/screen.ts";
 import { foldName } from "../src/parser/names.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
@@ -111,6 +111,16 @@ export interface DossierInput {
   mentionsAnswer?: (text: string) => boolean;
   mentionsSecret?: (text: string) => boolean;
   mentionsCode?: (text: string) => boolean;
+}
+
+/** A filing's verdict for the dossier: `pending` while unjudged; a `marked`
+ *  final (a settle marked it: a guess, or a sure round-2 filing with no cup)
+ *  reads as the verdict the mark replaced, else the judge's proposal, the
+ *  way the tally and the screens read it — never as a lie. */
+export function dossierVerdictOf(f: Pick<FactsFiling, "final" | "verdict" | "before">): AgentDossierVerdict {
+  if (f.final === null) return "pending";
+  if (f.final === "marked") return f.before?.final ?? f.verdict;
+  return f.final;
 }
 
 /** Is this guest at his heart? (the dossier's gate). */
