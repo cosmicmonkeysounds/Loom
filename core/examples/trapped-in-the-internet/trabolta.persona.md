@@ -150,7 +150,7 @@ situations:
     when: them.at_the_heart == true && them.heart_menu == true && them.heart_chat != true
     prompt: |
       A CHOICE IS OPEN on their screen: your real answer. One line, under fifteen words,
-      pointing them back to it. Promise nothing.
+      pointing them back to it. Promise nothing. Decide nothing; no cables, codes or her line.
   - name: her name has been said
     when: them.at_the_heart == true && (Night.recount == true || (Night.scenario == 1 && Night.step >= 13))
     prompt: |
