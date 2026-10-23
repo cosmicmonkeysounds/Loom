@@ -837,6 +837,21 @@ describe("The Heart — convinced (wave 20)", () => {
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Two");
   });
 
+  it("🔄 with a program still at the terminal: The Heart, then the sealed line greets them and their talk resumes", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    fire(sim, "reset_server_room");
+    expect(v(sim, "g1.at_the_heart")).toBe(true);
+    expect(v(sim, "Night.heart_present")).toBe(true);
+    pick(sim, "g1", "I'm a person"); // the old menu: Not now.
+    expect(beats(open(sim))).toEqual(["The Heart"]);
+    const sealed = [...shut(sim), ...advance(sim, 8)];
+    expect(beats(sealed)).toContain("Heart Sealed");
+    expect(lines(sealed)).toContain("You. You are already in front of me. Good.");
+    expect(lines(sealed).some((l) => l.includes("Show it your pass"))).toBe(false);
+    expect(roomCues(sealed)[0]).toBe("room_heart_sealed_present");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer One");
+  });
+
   it("a pick held by a program who walked away never reopens a heart another program shut down", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);
@@ -868,7 +883,7 @@ describe("The Heart — convinced (wave 20)", () => {
     pick(sim, "g1", "I'm a person");
     expect(v(sim, "g1.heart_wait")).toBe(true);
     fire(sim, "reset_server_room");
-    expect(v(sim, "g1.heart_wait")).toBe(false);
+    expect(v(sim, "g1.heart_wait")).toBe(true); // still at the terminal: the talk (not the pick) waits for the reopened heart
     expect(v(sim, "g1.heart_pick")).toBe("none");
     const e = shut(sim);
     expect(beats(e)).not.toContain("Heart Pick");

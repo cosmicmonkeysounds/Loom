@@ -2694,6 +2694,12 @@ ROLE Program
     set self.heart_chat = false
     set self.heart_wait = false
     set self.heart_pick = "none"
+    // Still standing at the terminal when it reopened: they are in front
+    // of him already (Heart Sealed says so) and their talk resumes once
+    // The Heart has played and the door is shut again.
+    if self.at_the_heart == true and Night.heart_holder == self.name and Night.heart_stage == "sealed":
+      set self.heart_wait = true
+      set Night.heart_present = true
 
   // An ending, an eject, a closed terminal or 🔄 ends any heart to heart.
   when Night.ended == true and self.heart_chat == true:

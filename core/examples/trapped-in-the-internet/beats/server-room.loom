@@ -506,9 +506,11 @@ else if program.at_the_heart != true:
   -> Heart Away
 else if Night.heart_stage == "sealed" or Night.heart_stage == "door":
   // A menu left docked across 🔄: the heart is sealed again, so the talk
-  // waits for The Heart (their layer stays; the next scan docks it again).
+  // waits for The Heart (their layer stays). Still at the terminal, the
+  // talk resumes once the door is shut after it (the ROLE watcher).
   set program.heart_pick = "none"
-  set program.heart_wait = false
+  set program.heart_wait = true
+  set Night.heart_present = true
   // DRAFT w20
   Trabolta: Not now.
 else if Night.server_door == "open":
