@@ -778,7 +778,9 @@ describe("being anyone — the mod reads a participant's own projection", () => 
     // decision under the Recruiter's DM).
     // (plus the runtime's own `answered` cards list — empty here)
     // (plus the profile-picture map — empty with no program directory)
-    expect(asGuest.json).toEqual(JSON.parse(JSON.stringify({ ...guestView(rt.liveSim!, id, "dm:Recruiter"), answered: [], avatars: {} })));
+    // Wave 20 (D18): each pending menu docks where its prompt went (the Recruiter's DM).
+    const menus = new Map(rt.liveSim!.pendingChoicesFor(id).map((c) => [c.id, "dm:Recruiter"] as const));
+    expect(asGuest.json).toEqual(JSON.parse(JSON.stringify({ ...guestView(rt.liveSim!, id, "dm:Recruiter", undefined, menus), answered: [], avatars: {} })));
     const asPrime = await get(rt, "/api/state?role=prime&as=Recruiter");
     expect(asPrime.status).toBe(200);
     // (plus the booth's own `answered` cards list — empty here, and the

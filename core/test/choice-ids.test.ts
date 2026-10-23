@@ -129,7 +129,7 @@ describe("menu ids — the view", () => {
     expect(v.pendingChoice).toEqual(["Up the stairs.", "I don't know."]);
     expect(v.decisionChannel).toBe("dm:Clippy");
     // No channel record: the lobby.
-    expect(guestView(sim, "g1").choices.map((c) => c.channel)).toEqual(["lobby", "lobby"]);
+    expect(guestView(sim, "g1").choices!.map((c) => c.channel)).toEqual(["lobby", "lobby"]);
     sim.createPerson("g2", "Word");
     expect(guestView(sim, "g2").choices).toEqual([]);
   });

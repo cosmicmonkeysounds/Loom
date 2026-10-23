@@ -412,7 +412,7 @@ export interface GuestView {
    *  (answer it with `/api/guest/choose {choice: id}` wherever it sits in
    *  the queue), the beat it sits in, the channel its prompt went to and its
    *  shown options. `pendingChoice` / `decisionChannel` are the first one's. */
-  choices: GuestChoice[];
+  choices?: GuestChoice[];
   /** Standing in a `cutscene: true` location: the app goes on rails — a
    *  full-screen stream of what is said to this guest, no rooms sidebar. */
   cutscene: boolean;
