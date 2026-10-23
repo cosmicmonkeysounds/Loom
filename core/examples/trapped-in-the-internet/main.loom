@@ -2649,8 +2649,11 @@ ROLE Program
 
   // One server-room terminal: the program it opened a line for last is the
   // only one at his heart (a close that never landed can't keep anyone else).
+  // Their heart to heart and any held pick end with it, as a close would.
   when self.at_the_heart == true and Night.heart_holder != self.name:
     set self.at_the_heart = false
+    set self.heart_chat = false
+    set self.heart_wait = false
 
   // ── The Heart (wave 20) ──
   // A pick held while the door stood open plays once it is shut, if the

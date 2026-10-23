@@ -772,6 +772,17 @@ describe("The Heart — convinced (wave 20)", () => {
     expect(v(sim, "Night.ending")).toBe("disabled");
   });
 
+  it("another program scanning in ends the first one's heart to heart (a lost terminal closed)", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toAsk(sim);
+    pick(sim, "g1", "She was never going to answer"); // not yet: heart_chat
+    expect(v(sim, "g1.heart_chat")).toBe(true);
+    scan(sim, "g2");
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+    expect(v(sim, "g1.heart_chat")).toBe(false);
+    expect(v(sim, "g1.heart_wait")).toBe(false);
+  });
+
   it("autoend turned off inside the 25 s stops the countdown: the night waits for 🕊", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);
