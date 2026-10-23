@@ -222,6 +222,10 @@ describe("The Heart — the door (wave 20)", () => {
     expect(v(sim, "g1.heart_wait")).toBe(true);
     expect(heartMenu(sim, "g1")).toBeNull();
     const e = shut(sim);
+    expect(beats(e)).toEqual(["Heart Sealed"]); // its 6 s room scene first (the terminal would never see it under layer 1)
+    expect(roomCues(e)).toEqual(["room_heart_sealed_present"]);
+    expect(heartMenu(sim, "g1")).toBeNull();
+    e.push(...advance(sim, 7));
     expect(beats(e)).toEqual(expect.arrayContaining(["Heart Sealed", "Heart Talk", "Heart Layer One"]));
     expect(roomCues(e)).toEqual(["room_heart_sealed_present", "room_heart_layer_1"]);
     expect(v(sim, "Night.heart_stage")).toBe("talk");
@@ -844,11 +848,14 @@ describe("The Heart — convinced (wave 20)", () => {
     expect(v(sim, "Night.heart_present")).toBe(true);
     pick(sim, "g1", "I'm a person"); // the old menu: Not now.
     expect(beats(open(sim))).toEqual(["The Heart"]);
-    const sealed = [...shut(sim), ...advance(sim, 8)];
+    const sealed = shut(sim);
     expect(beats(sealed)).toContain("Heart Sealed");
+    expect(roomCues(sealed)).toEqual(["room_heart_sealed_present"]); // its 6 s scene, not overwritten in the same drain
+    expect(heartMenu(sim, "g1")).toBeNull();
+    sealed.push(...advance(sim, 7));
     expect(lines(sealed)).toContain("You. You are already in front of me. Good.");
     expect(lines(sealed).some((l) => l.includes("Show it your pass"))).toBe(false);
-    expect(roomCues(sealed)[0]).toBe("room_heart_sealed_present");
+    expect(roomCues(sealed)).toEqual(["room_heart_sealed_present", "room_heart_layer_1"]);
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer One");
   });
 

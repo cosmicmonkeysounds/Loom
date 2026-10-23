@@ -2661,7 +2661,10 @@ ROLE Program
   // which clears heart_wait first, so the two never dock two menus).
   // Only while the talk is open: a held pick never reopens a heart that is
   // done (a shutdown) or sealed again (🔄).
-  when Night.server_door == "closed" and self.heart_wait == true and self.at_the_heart == true and Night.ended != true and Night.r3_closed != true and (Night.heart_stage == "scan" or Night.heart_stage == "talk"):
+  // After Heart Sealed greets a program already in front of him, the talk
+  // waits out its 6 s room scene (Night.heart_resume_at), so the terminal
+  // shows it before the layer's own scene replaces it.
+  when Night.server_door == "closed" and self.heart_wait == true and self.at_the_heart == true and Night.ended != true and Night.r3_closed != true and (Night.heart_stage == "scan" or Night.heart_stage == "talk") and Time.elapsed >= Night.heart_resume_at:
     set self.heart_wait = false
     set Night.heart_stage = "talk"
     if self.heart_pick != "none":
@@ -5566,6 +5569,7 @@ set Night.door_nags = 0
 set Night.heart_look = "none"
 set Night.heart_autoend = true
 set Night.heart_end_at = 0
+set Night.heart_resume_at = 0
 set Night.heart_gen = 0
 set Night.her = "her"
 set Night.gloat_at = 0

@@ -208,6 +208,7 @@ if Night.alarm_on != true:
   cue heart_sealed
 if Night.heart_present == true:
   cue room_heart_sealed_present
+  set Night.heart_resume_at = Time.elapsed + 6
 else:
   cue room_heart_sealed
 Narrator: The door clicks shut. The hum drops half a tone, the way a breath goes out.
