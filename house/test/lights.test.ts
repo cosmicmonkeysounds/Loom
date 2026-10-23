@@ -244,6 +244,16 @@ describe("validateLights — looks", () => {
 });
 
 describe("validateLights — warnings", () => {
+  it("blink / breathe / channel_change on a Zigbee safety fixture (the bulb dims it, the clamp can't)", () => {
+    for (const effect of ["blink", "breathe", "channel_change"] as const) {
+      expect(withLook("x", { to: ["heart"], set: { effect } }).warnings).toEqual([`looks["x"].set: effect "${effect}" dims or flashes safety fixture "server-room-rgb" (the bulb does it: the floor can't hold)`]);
+    }
+    expect(withLook("x", { to: ["heart"], set: { effect: "okay" } }).warnings).toEqual([]);
+    // Not a safety fixture, or not Zigbee: no warning.
+    expect(withLook("x", { to: ["hall-group"], set: { effect: "blink" } }).warnings).toEqual([]);
+    expect(withLook("x", { to: ["server-strip"], set: { effect: "blink" } }).warnings).toEqual([]);
+  });
+
   it("a fast loop on Zigbee, never on WLED alone", () => {
     const fast = { to: ["heart"], steps: [{ at: 0, set: { brightness: 254 } }, { at: 500, set: { brightness: 60 } }], loop: true, period: 1000 };
     const v = withLook("x", fast);

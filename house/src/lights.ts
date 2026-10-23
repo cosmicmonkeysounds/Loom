@@ -568,6 +568,7 @@ export function validateLights(lights: unknown, house?: HouseMap | null): Lights
             if (s.set["state"] === "OFF") problems.push(`${s.where} turns safety fixture "${f.id}" OFF (it never goes dark)`);
             else if (f.caps?.dim === true && isInt(s.set["brightness"]) && s.set["brightness"] < min) problems.push(`${s.where} dims safety fixture "${f.id}" to ${s.set["brightness"]} (its floor is ${min})`);
           }
+          if (f.safety === true && (f.kind === "zigbee" || f.kind === "zigbee-group") && (s.set["effect"] === "blink" || s.set["effect"] === "breathe" || s.set["effect"] === "channel_change")) warnings.push(`${s.where}: effect "${s.set["effect"]}" dims or flashes safety fixture "${f.id}" (the bulb does it: the floor can't hold)`);
           if (f.kind === "wled" && isStr(s.set["effect"]) && s.set["effect"] !== "blink" && s.set["effect"] !== "breathe") warnings.push(`${s.where}: WLED "${f.id}" has no "${s.set["effect"]}" effect (only blink and breathe); it is played solid`);
         }
       }
