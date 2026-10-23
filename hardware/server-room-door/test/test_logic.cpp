@@ -47,7 +47,7 @@ static int failures = 0, checks = 0;
 // datasheet: N-20 measures the real cell.
 
 struct Door : dl::Pins {
-  bool ledOnPin = true;    // the LED's anode on D2 (else on 3V3: always lit)
+  bool ledOnPin = true;    // the LED switched by D2 (else on 5V / 3V3: always lit)
   bool ledAlive = true;
   bool pinHigh = false;
   bool shut = true;
@@ -71,8 +71,9 @@ struct Door : dl::Pins {
     double r = e <= 0 ? 1e6 : fmin(1e6, 1e4 * pow(10.0 / e, 0.7));
     return (uint16_t)lround(4095.0 * 1e4 / (1e4 + r));
   }
-  // The cathode over 47 Ω: ≈ 5 mA → ≈ 0.24 V → ≈ 290 while driven.
-  uint16_t sense() override { return lit() && ledOnPin ? 290 : 0; }
+  // The cathode over 47 Ω: ≈ 5 mA → ≈ 0.24 V → ≈ 290 while lit (off D2 or
+  // on 5V alike: the 47 Ω holds the cathode near GND either way).
+  uint16_t sense() override { return lit() ? 290 : 0; }
   void wait(uint32_t ms) override { now += ms; }
 };
 
@@ -100,7 +101,9 @@ struct Rig {
   store::FlashStore flash;
   Lines out;
   door::Engine e;
-  explicit Rig(bool sense = false) : e(d, flash, out, sense) {}
+  // `build`: the firmware's LED_MODE. Most tests below were written against
+  // `auto` (which probes D2); the shipped build's own tests pass kBuildMode.
+  explicit Rig(bool sense = false, dl::Mode build = dl::kAuto) : e(d, flash, out, sense, build) {}
   void begin() { e.begin(d.now); }
   // Runs loop() every 5 ms for `ms`.
   void run(uint32_t ms) {
@@ -137,7 +140,7 @@ static void test_every_line_matches_the_fixture(const char* path) {
     if (!l.empty()) want.push_back(l);
   char l[proto::kLine];
   std::vector<std::string> got;
-  proto::hello({DOOR_FW, "steady", true, 1800, 1200, 150, false, false}, l, sizeof l);
+  proto::hello({DOOR_FW, "steady", false, 1800, 1200, 150, false, false}, l, sizeof l);
   got.push_back(l);
   proto::door(17, false, 2410, 3020, 610, nullptr, nullptr, l, sizeof l);
   got.push_back(l);
@@ -406,6 +409,143 @@ static void test_auto_booted_with_the_door_open_moves_to_mod_once_it_shuts() {
   CHECK(fixed.e.mode() == dl::kSteady);
 }
 
+// ── The two wirings (LED_MODE, Q5) ─────────────────────────────────────────
+
+static void storeMode(dl::Mode m);
+static int openWithoutFault(const Lines& out);
+
+// When the engine reports `open == want` after the door moves at `phase` ms
+// into a run; -1 if never.
+static int edgeAfter(Rig& r, bool shut, uint32_t limit) {
+  r.d.shut = shut;
+  return r.until(!shut, limit);
+}
+
+static void test_the_shipped_build_is_steady_with_the_led_on_5v() {
+  // Today's rig: the LED on the board's 5V, always lit. The shipped build
+  // runs `steady` from a blank board without probing or touching D2.
+  CHECK(dl::kBuildMode == dl::kSteady && dl::Settings().mode == dl::kSteady);
+  CHECK(LED_MODE == LED_STEADY);
+  erase();
+  Rig r(false, dl::kBuildMode);
+  r.d.ledOnPin = false;
+  r.begin();
+  CHECK(r.e.mode() == dl::kSteady);
+  CHECK(r.d.now == 0);        // no boot probe: nothing waited
+  CHECK(r.d.ledWrites == 1);  // D2 set high once, then left alone
+  CHECK(r.out.all.size() == 1 && r.out.last().find("\"mode\":\"steady\",\"auto\":false") != std::string::npos);
+  r.run(500);
+  CHECK(!r.e.open());
+  // An opening reads 250–300 ms after the beam breaks (OPEN_MS, counted from
+  // the start of the first 50 ms frame), a close about a second after.
+  for (int i = 0; i < 4; i++) {
+    r.run(37 * i);  // a different phase each time
+    int t = edgeAfter(r, false, 2000);
+    CHECK(t >= 200 && t <= 305);
+    t = edgeAfter(r, true, 3000);
+    CHECK(t >= 950 && t <= 1055);
+  }
+  CHECK(r.d.ledWrites == 1);  // no re-probe on a close: the loop never blocks
+  r.say("reset");             // `reset` goes back to the build's mode
+  r.say("get");
+  CHECK(r.out.last().find("\"mode\":\"steady\",\"auto\":false") != std::string::npos);
+  // Its weak spot: room light inside the shroud reads as the beam. With 5 lux
+  // getting in (the shroud's worst case, test above) and a little of the LED
+  // spilling round the open door, the open door reads shut.
+  r.run(2000);
+  r.d.shut = false;
+  r.d.ambient = 5.0;
+  r.d.spill = 3.0;
+  r.run(2000);
+  CHECK(!r.e.open());
+}
+
+static void test_the_pulsed_build_rejects_room_light() {
+  // The LED moved to D2 (through a resistor, or an NPN for the 5 V LED) and
+  // the firmware built with LED_MODE LED_PULSED: `mod` from a blank board.
+  erase();
+  Rig r(false, dl::kMod);
+  r.begin();
+  CHECK(r.e.mode() == dl::kMod);
+  CHECK(r.d.now == 0);  // no probe: the build says where the LED is
+  CHECK(r.out.last().find("\"mode\":\"mod\",\"auto\":false") != std::string::npos);
+  r.run(1000);
+  CHECK(!r.e.open());
+  // The same scene as the steady build's weak spot: 5 lux of the red heart
+  // bulb (or a hall lamp) in the shroud, the LED spilling round the open
+  // door. It raises lit and dark alike, so lit − dark stays low: open.
+  r.d.ambient = 5.0;
+  r.d.spill = 3.0;
+  int t = edgeAfter(r, false, 2000);
+  CHECK(t >= 150 && t <= 455);  // §2.9: 150–450 ms at settle 150
+  r.run(3000);
+  CHECK(r.e.open() && r.e.status() != door::kFault);
+  // …and the shut door under that light still reads shut on the defaults.
+  t = edgeAfter(r, true, 3000);
+  CHECK(t >= 1050 && t <= 1355);
+  // Far more light in the shroud shrinks a CdS cell's step below `close`
+  // (the cell is non-linear): it then reads open, never a false shut, and
+  // calibrating with the room lit as on the night moves the thresholds.
+  r.d.ambient = 500.0;
+  r.run(3000);
+  CHECK(r.e.open());
+  r.d.ambient = 1.0;
+  r.d.spill = 0.0;
+  // `pulsed` is a name for `mod` on the wire; the lines keep saying `mod`.
+  r.out.clear();
+  r.say("set mode steady");
+  r.say("set mode pulsed");
+  CHECK_STR(r.out.last(), "{\"t\":\"ok\",\"cmd\":\"set mode pulsed\"}");
+  r.say("get");
+  CHECK(r.out.last().find("\"mode\":\"mod\",\"auto\":false") != std::string::npos);
+  r.say("reset");
+  r.say("get");
+  CHECK(r.out.last().find("\"mode\":\"mod\",\"auto\":false") != std::string::npos);
+  // A board saved in another mode boots what it saved, whatever the build.
+  storeMode(dl::kSteady);
+  Rig saved(false, dl::kMod);
+  saved.begin();
+  CHECK(saved.e.mode() == dl::kSteady);
+  erase();
+}
+
+static void test_a_dead_led_in_either_build() {
+  // Pulsed, with the sense wire: a dead LED is the blocking fault, the door
+  // forced open and nothing posted, within FAULT_MS (+ a frame).
+  erase();
+  Rig p(true, dl::kMod);
+  p.begin();
+  p.run(1000);
+  CHECK(!p.e.open());
+  p.out.clear();
+  p.d.ledAlive = false;
+  p.run(2700);
+  CHECK(p.out.count("\"fault\":\"led_dead\"") >= 1 && p.e.status() == door::kFault);
+  CHECK(openWithoutFault(p.out) == 0);  // never a plain opening first
+  // Steady on 5V with the same 47 Ω under the cathode: the same fault.
+  Rig s(true, dl::kSteady);
+  s.d.ledOnPin = false;
+  s.begin();
+  s.run(1000);
+  s.out.clear();
+  s.d.ledAlive = false;
+  s.run(2700);
+  CHECK(s.out.count("\"fault\":\"led_dead\"") >= 1 && s.e.status() == door::kFault);
+  // Without the sense wire, in either build, lit − dark (or lit) falls just
+  // as it does when the door opens: the LDR alone can't tell the two apart,
+  // so it reads open, unflagged. The README asks for the sense wire with
+  // the pulsed wiring for this reason.
+  for (dl::Mode m : {dl::kMod, dl::kSteady}) {
+    Rig b(false, m);
+    b.d.ledOnPin = m == dl::kMod;
+    b.begin();
+    b.run(1000);
+    b.d.ledAlive = false;
+    b.run(4000);
+    CHECK(b.e.open() && b.out.count("led_dead") == 0 && b.e.status() != door::kFault);
+  }
+}
+
 // ── Faults and the warning ────────────────────────────────────────────────
 
 static void test_a_saturated_ldr_is_a_blocking_fault_after_2_s() {
@@ -643,9 +783,9 @@ static void test_every_command_and_its_reply() {
     return r.out.last();
   };
   CHECK_STR(reply("ping"), "{\"t\":\"pong\",\"up\":" + std::to_string(r.d.now) + "}");
-  CHECK(reply("version").find("{\"t\":\"hello\",\"fw\":\"door-m4 1.0.0\"") == 0);
+  CHECK(reply("version").find("{\"t\":\"hello\",\"fw\":\"door-m4 1.1.0\"") == 0);
   CHECK_STR(reply("get"),
-            "{\"t\":\"cfg\",\"fw\":\"door-m4 1.0.0\",\"mode\":\"steady\",\"auto\":true,\"close\":1800,\"open\":1200,"
+            "{\"t\":\"cfg\",\"fw\":\"door-m4 1.1.0\",\"mode\":\"steady\",\"auto\":true,\"close\":1800,\"open\":1200,"
             "\"settle\":150,\"cal\":false,\"sense\":false,\"saved\":false}");
   CHECK_STR(reply("set close 1900"), "{\"t\":\"ok\",\"cmd\":\"set close 1900\"}");
   CHECK_STR(reply("  set close 1950 \r"), "{\"t\":\"ok\",\"cmd\":\"set close 1950\"}");
@@ -662,7 +802,7 @@ static void test_every_command_and_its_reply() {
   CHECK_STR(reply("set settle 200"), "{\"t\":\"ok\",\"cmd\":\"set settle 200\"}");
   CHECK(r.e.settings().settle == 200 && r.e.settings().close == 1950 && r.e.settings().open == 1300);
   CHECK_STR(reply("save"),
-            "{\"t\":\"cfg\",\"fw\":\"door-m4 1.0.0\",\"mode\":\"steady\",\"auto\":false,\"close\":1950,\"open\":1300,"
+            "{\"t\":\"cfg\",\"fw\":\"door-m4 1.1.0\",\"mode\":\"steady\",\"auto\":false,\"close\":1950,\"open\":1300,"
             "\"settle\":200,\"cal\":false,\"sense\":false,\"saved\":true}");
   CHECK(reply("get").find("\"saved\":true}") != std::string::npos);
   CHECK_STR(reply("reset"), "{\"t\":\"ok\",\"cmd\":\"reset\"}");
@@ -792,7 +932,7 @@ static void test_the_flash_record() {
 
   erase();
   EEPROM.put(0, bad);  // a corrupt record boots with the defaults
-  Rig r;
+  Rig r(false, dl::kBuildMode);
   r.d.ledOnPin = false;
   r.begin();
   CHECK(r.e.settings() == dl::Settings());
@@ -810,6 +950,9 @@ int main(int argc, char** argv) {
   test_mod_frames_take_two_settles_and_blink_the_led();
   test_auto_picks_mod_with_the_led_on_d2_else_steady();
   test_auto_booted_with_the_door_open_moves_to_mod_once_it_shuts();
+  test_the_shipped_build_is_steady_with_the_led_on_5v();
+  test_the_pulsed_build_rejects_room_light();
+  test_a_dead_led_in_either_build();
   test_a_saturated_ldr_is_a_blocking_fault_after_2_s();
   test_a_flood_of_light_never_reads_open_without_its_fault();
   test_a_dead_led_is_a_fault_only_with_the_sense_wire();
