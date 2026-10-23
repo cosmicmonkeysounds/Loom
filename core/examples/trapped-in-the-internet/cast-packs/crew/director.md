@@ -132,9 +132,13 @@ never from a guest card.
 | dead door terminal (the King's chess) | **♟** They beat the King: the door code (fallback), **naming the winner** (with nobody named it only reminds `# hosts`); the door terminal reports its own wins *by Terminal · <name>* |
 | the King's health knocked down too early, or after a rehearsal | **👑** Restore the King's health (Anytime): back to 15/15 in both games and at the door |
 | the crew need to open the server-room door themselves | **🔧** Crew going through the server-room door (Anytime; the server-room Antivirus has it too): for 2 minutes an opening only tells `# hosts`, The Heart is kept |
-| the server-room door opened and nothing happened | **🚪** Server room door opened (the contact's fallback; the server-room Antivirus has it too): once Trabolta is awake the first one plays The Heart |
+| the server-room door opened and nothing happened | **🚪** Server room door opened (the door sensor's fallback; the server-room Antivirus has it too): once Trabolta is awake the first one plays The Heart. Run → Terminals shows the sensor: a red 🚪 is a fault |
+| the door is shut but his screen still says CLOSE THE DOOR | **🚪** Server room door closed (sensor fallback). After either 🚪 the story follows the buttons (*Door on buttons* on the glance) until **🚪 Trust the door sensor again** |
+| you want a talk-down to wait for you | **🕊 Heart: end the night on his own** off (on by default: 25 s after Heart Shutdown the night ends by itself); turning it off inside the 25 s stops the countdown |
 | a wrong patch the crew forgave, or after a rehearsal | **🔄** Server room: reset the patch-bay alarm (clears the wrong-combination count, the alarm latch and The Heart); the lights stay as they are, so if the house is still red press **💡** Restore the house lights |
-| `# hosts`: "🕊 Trabolta offers to stand down for X" | your call: **🕊** Trabolta stands down (talked down) ends the night the Combo A way, without a cable |
+| `# hosts`: "🕊 Trabolta stands down for X. The night ends in 25 s" | nothing (it ends itself), or **🕊** to end it now |
+| `# hosts`: "!🕊 Trabolta offers to stand down for X" (autoend off) | your call: **🕊** Trabolta stands down (talked down) ends the night the Combo A way, without a cable; until you do, 🔄 reopens his heart |
+| `# hosts`: "⛔ Trabolta threw X out of his heart" | nothing; 🔄 forgives (they are not marked) |
 | a dead keypad battery or a jammed lock | the house manager's override key; prop the door; fire **🚪** if the cutscene has not played (W-35) |
 | dead patch bay | the server-room Antivirus radios A / B / WRONG → 🔌 / 💥 / ❌ |
 | lost guest / new phone | Inspector → **re-pair QR** (never re-register) |
@@ -223,7 +227,7 @@ after doors.
    **not muted** (a rehearsal's mute survives every restart).
 6. Lights: Z2M + WLED up; screensaver look on; one blackout test (stairs,
    bathroom, tent, server room, the path stay lit; the Tube strip dim).
-7. Server-room door: the contact reads open/closed; the keypad opens from
+7. Server-room door (wave 20): a real open → shut shows 🚪 *open* / *shut* on Run → Terminals within a second, no fault, no *override*, and the bulb follows; then 🔄 (and 🚪 Trust the door sensor if anyone pressed a 🚪); the keypad opens from
    outside with the story's code (`facts.json` `door.code`, tested at 15:00);
    the patch bay is all unplugged; the server-room terminal is green and asleep.
 8. Audio: one test cue per zone through the MOTU at show level; the house-announcement test.

@@ -55,7 +55,9 @@ Anyone may call **ALL STOP** on the radio, or shout it, for any safety reason.
   the handle **always opens, with no code** (batteries dead or not). Nothing in
   the house can lock anyone in. The override key is with the house manager.
 - The stairs, the bathroom, the tent, the server room and the path from the
-  server room to the living room **stay lit**, even in the blackout.
+  server room to the living room **stay lit**, even in the blackout. (In the
+  server room that is the LED strip; the coloured bulb never goes out either,
+  but it can be dim and red, so never rely on it alone.)
 - Flashing lights are at most 3 per second. Anyone who needs to step out of a
   flashing scene can: walk them to the porch [[EDIT: or another calm spot]].
 - No open flames anywhere. VR is played **seated**, with a spotter.

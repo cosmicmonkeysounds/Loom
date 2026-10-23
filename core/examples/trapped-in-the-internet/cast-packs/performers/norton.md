@@ -147,6 +147,22 @@ The house deals the programs files about **who they are connected to** (Codex �
   the server room. The door has a keypad lock: anyone who opens it with the
   code belongs inside. Only the patch bay alarms (the second wrong
   combination); whoever is at the cables then goes to the Internet.
+
+**The server-room door (wave 20).** The door sensor is a **light on the
+frame** shining into a small eye: the story knows the door is shut only while
+the beam is unbroken. Once Trabolta is awake the first opening plays **The
+Heart** (the room's screen goes red, the bulb wakes, and he asks for the door
+to be shut); **nothing goes on until it is shut**, and he nags every 20 s
+while it stands open. So: **close the door behind the program** (and behind
+yourself), never prop it, and don't stand in the beam. Only with the door
+shut does a pass scanned at his screen start the program's talk (four layers
+they click through with the mouse, or type to him at the keyboard). If the
+story has it wrong, press on your booth (any program's card) **🚪 The
+server-room door opened** or **🚪 The server-room door is shut**; from then on
+the story follows the buttons, not the light, until the director presses 🚪
+*Trust the door sensor again*: tell them on the radio which you pressed. A
+program he throws out of his heart is **not** marked: they may go to the
+cables like anyone.
 - **If Trabolta thwarted gets everyone banished:** you are banished too. Go to
   the Internet; then everyone does the hand jive together.
 

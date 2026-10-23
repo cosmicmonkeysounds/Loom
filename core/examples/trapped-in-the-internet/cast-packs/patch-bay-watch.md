@@ -34,7 +34,7 @@ keypad, never on the radio).
 1. **Be inside with the door shut before 🕚**, then radio **"IN"**:
    whoever is calling the show (📣) fires 🕚 only after it. Once Trabolta is awake
    the **first opening of the door plays The Heart**, whoever opens it, and
-   the door contact can't tell you from a guest: **press 🔧 *Crew going
+   the door sensor (a light on the frame) can't tell you from a guest: **press 🔧 *Crew going
    through the door* on your booth (any program's card) before you open
    it yourself**, and for 2 minutes an opening only tells `# hosts`. Stand
    where you can see the bay and the door, and don't open it until guests
@@ -58,21 +58,37 @@ keypad, never on the radio).
 
 - **The door.** It has a standalone keypad lock (nothing in the show drives
   it). Whoever opens it with the code is a clean entry, whoever they are: let
-  them in. The door never alarms. Once Trabolta is awake the first opening
-  plays **The Heart**: the room opens on every phone and Trabolta speaks from the
-  server-room terminal on the wall. If nothing happens when the door first
-  opens, press **🚪 The server-room door opened** on your booth (on the
-  card of whoever came in), or radio a host or the director, who fires
-  **🚪**.
+  them in. The door never alarms. **Wave 20:** the door sensor is a **light on
+  the frame** shining into a small eye; the story knows the door is shut only
+  while the beam is unbroken. Once Trabolta is awake the first opening
+  plays **The Heart**: the room opens on every phone, his screen goes red, the
+  room's bulb wakes, and **he asks for the door to be shut. Nothing goes on
+  until it is.** He nags every 20 s while it stands open, and a door opened
+  in the middle of a program's talk freezes it (*CLOSE THE DOOR* on his
+  screen) until it is shut again. So **close the door behind every program**
+  (and behind yourself), never prop it, and keep out of the beam. If the
+  story has it wrong (the door opened and nothing happened, or it is shut
+  and his screen still says CLOSE THE DOOR), press **🚪 The server-room door
+  opened** or **🚪 The server-room door is shut** on your booth (any
+  program's card), or radio a host or the director, who fires **🚪**. After a
+  🚪 press the story follows the buttons, not the light, until the director
+  presses 🚪 *Trust the door sensor again*: say on the radio which you pressed.
   Never say the code on the radio.
 - **Both server-room terminals have ears (wave 19).** While one shows a
   **🎤** at its left edge, a player in the reinstallation games near the
   server room hears this room and can be heard here. **Never say the door
   code or a combo by them**, and step away from them to radio.
-- **The server-room terminal.** A guest scans their pass and talks to Trabolta
-  on their own thread; at his heart he is candid. If he offers to stand down,
-  `# hosts` reads "🕊 Trabolta offers to stand down for …" and the director
-  decides. You do nothing but keep the queue polite.
+- **The server-room terminal** (wave 20: a monitor, a mouse, a keyboard and a
+  webcam under the screen). With the door shut a guest holds their pass to
+  the webcam and talks to Trabolta in **four layers** they click through
+  (WHO ARE YOU, WHAT I AM, THE ARGUMENT, THE ASK), or picks *Forget the
+  questions. Talk to me.* and types to him at the keyboard. One at a time:
+  keep the queue polite and the door shut. If they convince him in the Y2K
+  hour, his screen shuts down and the night ends by itself about 25 s later
+  (`# hosts` says so); before the Y2K hour he says *not yet*. If he throws
+  someone out (a blue screen), they are barred from his heart, **not**
+  marked: they may go to the cables like anyone. You do nothing but keep the
+  queue polite.
 - **The door terminal** (outside, by the keypad). Programs scan their pass
   and play the King at chess: no hints, and how well he plays is his
   health in the simulation (the bar on the screen). A checkmate reports
@@ -82,8 +98,9 @@ keypad, never on the radio).
   terminal could not** and you **saw** "checkmate" (OP-12): press **♟ They
   beat the machine** on the winner's card. Terminal dead → radio a host or
   the director, who fires ♟ naming the winner.
-- **The real gear** (router, UPS, the dongle, the ESP32 power) is taped off and
-  out of reach. Keep guests off it, politely and firmly. In Act III the room
+- **The real gear** (router, UPS, the dongle, the ESP32 power, the laptop under
+  his screen and the small board on its USB lead) is taped off and out of
+  reach. Keep guests off it, politely and firmly. In Act III the room
   fills up.
 - **Blackout:** guide everyone in the room to the living room. The server room
   and its path stay lit.

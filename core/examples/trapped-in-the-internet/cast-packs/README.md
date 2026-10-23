@@ -71,6 +71,19 @@ addresses, codes, where things are kept).
   (CRA approves every third transfer); Clippy and the Antivirus have Quest
   Logs in their booths; the Installation Wizard (Julia) is a voice, the tent
   is in the backyard through the tunnel. Every pack below is written to that.
+- **Wave 20 (2026-10-23), on `oct31-w20/integration`, not shipped; text in
+  [`SIGNOFF-w20.md`](../SIGNOFF-w20.md):** Trabolta's heart. The door sensor
+  is a light on the frame (an LED into an LDR, read by the server-room
+  terminal); the first opening once he is awake plays The Heart and **he
+  wants the door shut before anything goes on**; a pass at his screen starts
+  a four-layer talk (clicked with the mouse) or a heart to heart (typed at
+  the keyboard); the room's bulb follows him. The server-room Antivirus
+  close the door behind every program and have 🚪 *opened* / *is shut* on
+  their booths; the director has 🚪 closed, 🚪 *Trust the door sensor again*
+  and 🕊 *Heart: end the night on his own*. `stand_down` is gone: a talk-down
+  in the Y2K hour ends the night by itself 25 s later. Reprint after the
+  sign-off: the four server-room Antivirus packs, the patch-bay watch, the
+  emergency card, all-crew, the director's and the tech operator's cards.
 - **Wave 7 (2026-10-17), not yet deployed:** the server-room door has a real,
   standalone **keypad lock** (outside only; the inside handle always opens
   with no code; nothing in the show can lock or unlock it). A program gets
