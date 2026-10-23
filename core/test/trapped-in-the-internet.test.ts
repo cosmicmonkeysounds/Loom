@@ -3741,13 +3741,13 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     // Wave 18b: The Night In Review is read first, then The Ceremony's opener.
     expect(cer).toContain("Before I go. One last report. You talked me down, so I can at least hand out the awards myself.");
     // A second press changes nothing.
-    expect(hostsOnly(fire(sim, "talked_down"))).toEqual(["🕊 Nothing to stand down: it needs the Y2K hour, before any ending."]);
+    expect(hostsOnly(fire(sim, "talked_down"))).toEqual(["🕊 Nothing to stand down: nobody talked him down at his heart, and without that it needs the Y2K hour, before any ending."]);
   });
 
   it("with no offer on record 🕊 still works (the director's call) and says so; never before the Y2K hour", { timeout: SLOW }, () => {
     const early = boot();
     toTruth1(early);
-    expect(hostsOnly(fire(early, "talked_down"))).toEqual(["🕊 Nothing to stand down: it needs the Y2K hour, before any ending."]);
+    expect(hostsOnly(fire(early, "talked_down"))).toEqual(["🕊 Nothing to stand down: nobody talked him down at his heart, and without that it needs the Y2K hour, before any ending."]);
     expect(v(early, "Night.ended")).toBe(false);
     const sim = boot();
     toY2k(sim);
@@ -3764,12 +3764,14 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     expect(lines(fire(a, "trabolta_recounts"), "Trabolta").some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(true);
   });
 
-  it("the cue sheet: 🕊 is a director's cue off LAST / NEXT; no power of his ends the night (wave 20, D13)", () => {
+  it("the cue sheet: 🕊 is a director's cue, NEXT ahead of the order only while a stand-down waits (w20b, Q3); no power of his ends the night (wave 20, D13)", () => {
     const m = fresh().model;
     const td = m.interactions.get("talked_down")!;
     expect(td.who).toBe("admin");
     expect(td.label).toBe("🕊 Trabolta stands down (talked down)");
-    expect(td.sequence).toBe(false);
+    expect(td.sequence).toBe(true);
+    expect(td.urgent).toBe(true);
+    expect(td.while).toContain('Night.stand_down_by != "none"');
     expect(m.interactions.has("stand_down")).toBe(false);
   });
 });
