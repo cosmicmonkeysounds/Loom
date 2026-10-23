@@ -75,5 +75,8 @@ describe("the door sensor's protocol (§2.9)", () => {
     expect(settingsCommands({ close: 1800, open: 1300, mode: "auto", settle: 200 }, now).map(formatCommand)).toEqual(["set open 1300", "set settle 200"]);
     expect(settingsCommands({ close: 1800, open: 1200, mode: "mod" }, now).map(formatCommand)).toEqual(["set mode mod"]);
     expect(settingsCommands({ close: 1800, open: 1200 }, null).map(formatCommand)).toEqual(["set close 1800", "set open 1200"]);
+    // Unknown settings: ordered as if the board ran its defaults (1800 / 1200).
+    expect(settingsCommands({ close: 1000, open: 600 }, null).map(formatCommand)).toEqual(["set open 600", "set close 1000"]);
+    expect(settingsCommands({ close: 3000, open: 2000 }, null).map(formatCommand)).toEqual(["set close 3000", "set open 2000"]);
   });
 });

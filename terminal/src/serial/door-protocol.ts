@@ -203,6 +203,9 @@ export function parseDoorSettings(raw: string | null): DoorSettings | null {
   }
 }
 
+/** The firmware's own thresholds before anything is stored (`config.h` `DEF_CLOSE` / `DEF_OPEN`). */
+export const FIRMWARE_DEFAULTS = { close: 1800, open: 1200 } as const;
+
 /**
  * The commands that put a just-connected board on the stored settings,
  * given what it says it runs now (`cfg` / `hello`). The firmware refuses an
@@ -215,7 +218,8 @@ export function settingsCommands(want: DoorSettings, now: Pick<HelloLine, "close
   const out: DoorCommand[] = [];
   const closeCmd: DoorCommand = { c: "set", key: "close", value: want.close };
   const openCmd: DoorCommand = { c: "set", key: "open", value: want.open };
-  if (now === null) out.push(closeCmd, openCmd);
+  // Unknown settings: send both, ordered as if the board ran its defaults.
+  if (now === null) out.push(...(want.close > FIRMWARE_DEFAULTS.open ? [closeCmd, openCmd] : [openCmd, closeCmd]));
   else {
     const needClose = now.close !== want.close;
     const needOpen = now.open !== want.open;
