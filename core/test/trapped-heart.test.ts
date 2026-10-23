@@ -833,6 +833,15 @@ describe("The Heart — the heart to heart (wave 20, §7)", () => {
     expect(v(sim, "g1.heart_chat")).toBe(false);
   });
 
+  it("🔄 clears heart_chat for a program still at the terminal", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    pick(sim, "g1", "⟦SPEAK FREELY⟧");
+    expect(v(sim, "g1.heart_chat")).toBe(true);
+    expect(v(sim, "g1.at_the_heart")).toBe(true);
+    fire(sim, "reset_server_room");
+    expect(v(sim, "g1.heart_chat")).toBe(false);
+  });
+
   it("an ending clears heart_chat", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);

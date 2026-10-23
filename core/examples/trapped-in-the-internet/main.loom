@@ -2678,8 +2678,9 @@ ROLE Program
     set self.heart_out = false
     set self.heart_suspicion = 0
     set self.heart_warned = false
+    set self.heart_chat = false
 
-  // An ending, an eject or a closed terminal ends any heart to heart.
+  // An ending, an eject, a closed terminal or 🔄 ends any heart to heart.
   when Night.ended == true and self.heart_chat == true:
     set self.heart_chat = false
 
