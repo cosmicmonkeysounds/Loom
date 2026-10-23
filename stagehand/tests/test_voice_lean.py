@@ -20,7 +20,7 @@ from stagehand.agents.persona import Persona, load_persona, parse_persona
 from stagehand.agents.prompt import build_messages
 from stagehand.agents.secrets import Secrets
 from stagehand.agents.trace import Trace
-from stagehand.agents.voice import answer_lean, build_lean_messages, history_turns, render_p1, render_p2, render_p3, reminder
+from stagehand.agents.voice import answer_lean, build_lean_messages, history_turns, render_p1, render_p2, render_p3, reminder, situation_powers
 
 SHOW = Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the-internet"
 MARKER = "▒ HUNT ANSWER"
@@ -801,12 +801,17 @@ def test_a_power_a_situation_names_is_never_live_in_p2_and_counted_only_in_its_s
     assert "- stand_down: end it" in render_p1(p, heart)
 
 
-def test_the_shipped_persona_keeps_stand_down_out_of_p2_on_the_final_reveal():
+def test_the_shipped_persona_names_no_power_in_a_situation_on_the_final_reveal():
+    # Wave 20 (D13): stand_down is gone from the show; no situation names a
+    # power, so P2's live list is the phase card's alone.
     shipped = load_persona(str(SHOW / "trabolta.persona.md"))
-    powers = [{"id": "stand_down", "label": "Offer to stand down", "description": "end it", "limit": 1, "used": 0}, {"id": "assess", "label": "Assess", "description": "rate them", "limit": None, "used": 0}]
-    ctx = context(phase=replace(context().phase, phase="bobbing", live_powers=("assess", "stand_down"), tell=()))
+    powers = [{"id": "assess", "label": "Assess", "description": "rate them", "limit": None, "used": 0}]
+    ctx = context(phase=replace(context().phase, phase="bobbing", live_powers=("assess",), tell=()))
     req = request(powers=powers, world={"Night.phase": "bobbing", "Night.step": "16", "Night.lj_reader": "none"})
-    assert "Live powers now: assess" in render_p2(shipped, req, ctx) and "stand_down" not in render_p2(shipped, req, ctx)
+    assert "Live powers now: assess" in render_p2(shipped, req, ctx)
+    assert situation_powers(shipped, req) == set()
+    heart = request(powers=powers, them={**req["them"], "vars": {**req["them"]["vars"], "at_the_heart": "true"}}, world=req["world"])
+    assert situation_powers(shipped, heart) == set()
 
 
 # -- the warm head (K-04: the prompt cache under gpt-oss's sliding window) ---------------

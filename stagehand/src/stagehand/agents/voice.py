@@ -169,7 +169,8 @@ def _live_ids(persona: Persona, req: dict[str, Any], phase: PhaseView) -> list[s
 
 def situation_powers(persona: Persona, req: dict[str, Any]) -> set[str]:
     """Allowed power ids that a persona situation names in its prompt (the
-    show's `stand_down`, in STANDING DOWN). Such a power belongs to its
+    show named `stand_down` in STANDING DOWN until wave 20 removed both; the
+    mechanism stays for any persona). Such a power belongs to its
     situation: P2's "Live powers now" never lists it (P2 is the same for every
     speaker), and P3's uses-left line counts it only while one of the
     situations naming it holds. It stays fireable: the story decides."""
