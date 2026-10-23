@@ -107,6 +107,11 @@ services:
       # launch and wins; LOOM_AUDIO is only the fallback (no default file:
       # unset = an empty 16 / 16 interface). Bind-mount, never blank.
       # LOOM_AUDIO: /config/audio.json
+      # The house lights (wave 20): a project's lights.json is snapshotted at
+      # launch and wins; LOOM_LIGHTS is only the fallback (no default file:
+      # unset = no fixtures, so the stagehand lights module plays nothing).
+      # Bind-mount, never blank.
+      # LOOM_LIGHTS: /config/lights.json
       # Optional: pin the default event's passcodes (otherwise auto-generated
       # and printed in the logs + saved under the state volume):
       # LOOM_EVENT_PASS: ...
