@@ -360,6 +360,19 @@ describe('the 🚪 door badges (wave 20)', () => {
     expect(hasDoorSensor({})).toBe(false)
   })
 
+  it('a silent laptop’s stale reading reads 🚪 ? (silent), never a green shut', () => {
+    const bs = doorBadges(rowWith({ door: 'closed', doorLevel: 3900, doorWarn: 'ldr_open' }).device, true, true)
+    expect(bs.map((b) => b.key)).toEqual(['door', 'door-override'])
+    expect(bs[0]).toMatchObject({ text: '🚪 ? (silent)', tone: 'amber', warn: true })
+    expect(bs[0]!.title).toContain('stopped polling')
+    expect(bs[0]!.title).toContain('use 🚪 opened / closed')
+    // terminalBadges reads the row's status: silent past `silentMs`.
+    const late = mergeTerminals({}, server({ ...poll('Server Room', 60_000, 'face'), door: 'closed', doorLevel: 3900 }), now).rows[0]!
+    expect(late.status).toBe(TerminalStatus.Silent)
+    expect(terminalBadges(late, null)[0]).toMatchObject({ key: 'door', text: '🚪 ? (silent)' })
+    expect(terminalBadges(rowWith({ door: 'closed', doorLevel: 3900 }), null)[0]).toMatchObject({ text: '🚪 shut 3900' })
+  })
+
   it('terminalBadges leads with the door badges and passes the override through', () => {
     const r = rowWith({ door: 'closed', doorLevel: 3900, audio: true, version: 'v1' })
     expect(terminalBadges(r, 'v1', true).map((b) => b.key)).toEqual(['door', 'door-override', 'version'])

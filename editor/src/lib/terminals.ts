@@ -264,12 +264,22 @@ const DOOR_FAULTS: Record<string, string> = {
  *  amber *open* with the level, red *fault: <code>* — a small *⚠ <warn>* for a
  *  non-blocking warning, and amber *override* while the story follows the 🚪
  *  buttons (`override` = the screen state's `night.door_override`). None when
- *  the terminal bridges no sensor. */
-export function doorBadges(d: TerminalDevice | null, override: boolean): TerminalBadge[] {
+ *  the terminal bridges no sensor. A `silent` terminal's last reading is
+ *  stale (the server keeps its last poll), so it reads one amber *🚪 ?
+ *  (silent)* instead of a state a director might trust. */
+export function doorBadges(d: TerminalDevice | null, override: boolean, silent = false): TerminalBadge[] {
   if (d === null || !hasDoorSensor(d)) return []
   const out: TerminalBadge[] = []
   const level = typeof d.doorLevel === 'number' ? ` ${d.doorLevel}` : ''
-  if (d.door === 'fault') {
+  if (silent) {
+    out.push({
+      key: 'door',
+      text: '🚪 ? (silent)',
+      title: 'The door sensor’s laptop stopped polling, so its last reading may be stale; use 🚪 opened / closed',
+      warn: true,
+      tone: 'amber',
+    })
+  } else if (d.door === 'fault') {
     const code = d.doorFault ?? 'unknown'
     const what = DOOR_FAULTS[code]
     out.push({
@@ -284,7 +294,7 @@ export function doorBadges(d: TerminalDevice | null, override: boolean): Termina
   } else {
     out.push({ key: 'door', text: `🚪 open${level}`, title: `The door sensor reads the server-room door open${level !== '' ? ` (level${level} of 4095)` : ''}`, warn: false, tone: 'amber' })
   }
-  if (d.doorWarn !== undefined && d.doorWarn !== '') {
+  if (!silent && d.doorWarn !== undefined && d.doorWarn !== '') {
     out.push({
       key: 'door-warn',
       text: `⚠ ${d.doorWarn}`,
@@ -382,7 +392,7 @@ export function micBadge(row: Pick<TerminalRow, 'spot' | 'view'>, mic: MicState)
 export function terminalBadges(row: TerminalRow, majority: string | null, doorOverride = false): TerminalBadge[] {
   const d = row.device
   if (d === null) return []
-  const out: TerminalBadge[] = [...doorBadges(d, doorOverride)]
+  const out: TerminalBadge[] = [...doorBadges(d, doorOverride, row.status === TerminalStatus.Silent)]
   if (d.audio === false) out.push({ key: 'audio', text: '🔇', title: 'Sound is locked: touch the screen once so it can speak', warn: true })
   if (d.visible === false) out.push({ key: 'hidden', text: '💤', title: 'The page is hidden: the screen is off, or another app / a screensaver is on top', warn: true })
   if (d.fullscreen === false) out.push({ key: 'fullscreen', text: '⛶', title: fullscreenTitle(row), warn: true })

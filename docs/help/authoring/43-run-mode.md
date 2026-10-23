@@ -171,7 +171,10 @@ Front of house: getting people in.
   the 🚪 opened / closed cues until it is fixed. A small amber **⚠
   ldr_open** after the state means the sensor sees almost no light:
   normal for an open door in a dark hall, a cut wire if the door is
-  shut; the state still counts. An amber **override** means a 🚪 button
+  shut; the state still counts. When that laptop goes silent its last
+  reading can't be trusted, so the badge reads amber **🚪 ? (silent)**:
+  use the 🚪 opened / closed cues until it polls again. An amber
+  **override** (it rides the door-sensor terminal's row) means a 🚪 button
   was pressed and the story now follows the buttons, not the sensor:
   press **🚪 Trust the door sensor** to hand it back (the next poll
   brings the story into line with the sensor). **🛠 Set up a terminal…** builds a
