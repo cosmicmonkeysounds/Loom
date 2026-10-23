@@ -111,7 +111,7 @@ import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerShown, heartMenuOf, heartTouched, isHeartTerminal, menusOf, pilotEndFor, splitTag, type HeartMenu } from "./heart/heart.ts";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerShown, heartMenuOf, heartTouched, isHeartTerminal, menusOf, pilotEndOf, splitTag, type HeartMenu } from "./heart/heart.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
@@ -1028,11 +1028,8 @@ function Terminal({
   // line's eject cue must not end this one).
   const pilotSince = useRef(0);
   const sinceFor = useRef<Pilot | null>(null);
-  // Was this line ever at the heart (a menu docked)? Only then does an eject end it.
-  const hadMenu = useRef(false);
   if (pilot !== sinceFor.current) {
     sinceFor.current = pilot;
-    hadMenu.current = false;
     pilotSince.current = pilot === null ? 0 : serverNow(state);
   }
   const characterId = characterIdOf(config.character, session.view);
@@ -1046,7 +1043,6 @@ function Terminal({
   if (cueNow !== null && cueMark.current?.seq !== cueNow.seq) cueMark.current = { seq: cueNow.seq, lineSeq: session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1) };
   const typedAfter = pilot !== null && cueMark.current !== null && session.lines.some((l) => !l.theirs && l.from === pilot.name && l.seq > cueMark.current!.lineSeq);
   const heart = menu !== null || (pilot !== null && heartTouched(cueNow, pilotSince.current, typedAfter));
-  if (menu !== null) hadMenu.current = true;
   const [echoes, setEchoes] = useState<Array<{ key: string; text: string; after: number }>>([]);
   useEffect(() => setEchoes([]), [pilot]);
   const choose = useCallback(
@@ -1082,10 +1078,11 @@ function Terminal({
   const stateRef = useRef(state);
   stateRef.current = state;
   useEffect(() => {
-    if (pilot === null || roomCue === null || roomCue.at <= 0 || roomCue.at < pilotSince.current) return;
-    const plan = pilotEndFor(roomCue.value, config.keys);
-    // An eject only throws a program whose line reached the heart (a menu docked).
-    if (plan === null || (plan.why === "thrown" && !hadMenu.current)) return;
+    if (pilot === null || roomCue === null) return;
+    // An eject ends the line whether or not a menu docked: Heart Barred
+    // (a barred program's re-scan) docks none, and has no heart to heart.
+    const plan = pilotEndOf(roomCue, pilotSince.current, config.keys);
+    if (plan === null) return;
     const wait = Math.max(0, roomCue.at + plan.ms - serverNow(stateRef.current));
     const t = window.setTimeout(() => endRef.current(plan.why), wait);
     return () => window.clearTimeout(t);

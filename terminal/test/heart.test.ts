@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FILES_IDLE_MS, HEART_IDLE_MS, HEART_WARN_MS, IDLE_MS, WARN_MS, lineLeash } from "../src/idle.ts";
 import { ApiError, RequestTimeout } from "@loom/play/client.ts";
-import { chooseBody, chooseErrorText, composerShown, doorOverlayOn, heartMenuOf, heartTouched, isChatMenu, isHeartTerminal, isStaleChoice, menusOf, panelModel, pilotEndFor, splitTag, type HeartMenu } from "../src/heart/heart.ts";
+import { chooseBody, chooseErrorText, composerShown, doorOverlayOn, heartMenuOf, heartTouched, isChatMenu, isHeartTerminal, isStaleChoice, menusOf, panelModel, pilotEndFor, pilotEndOf, splitTag, type HeartMenu } from "../src/heart/heart.ts";
 
 const stale: HeartMenu = { id: 40, beat: "The Tablet Video", channel: "dm:Trabolta", options: ["Where is the exit?"] };
 const layerOne: HeartMenu = { id: 212, beat: "Heart Layer One", channel: "dm:Trabolta", options: ["I'm a person. You put me in here.", "⟦MARKED⟧ The Antivirus marked me. I came down here anyway.", "⟦SPEAK FREELY⟧ Forget the questions. Talk to me.", "I need to go."] };
@@ -127,6 +127,10 @@ describe("the line's end and the door overlay", () => {
     expect(pilotEndFor("room_heart_notyet", false)).toEqual({ why: "done", ms: 6000 });
     expect(pilotEndFor("room_heart_leave", false)).toEqual({ why: "done", ms: 3000 });
     expect(pilotEndFor("room_heart_layer_1", false)).toBeNull();
+    // A barred re-scan (no menu ever docked) is thrown out too; a cue from before the line is not.
+    expect(pilotEndOf({ value: "room_heart_eject", at: 5_000 }, 4_000, true)).toEqual({ why: "thrown", ms: 8000 });
+    expect(pilotEndOf({ value: "room_heart_eject", at: 3_000 }, 4_000, true)).toBeNull();
+    expect(pilotEndOf(null, 0, true)).toBeNull();
   });
 
   it("CLOSE THE DOOR while the door is open in door / scan / talk", () => {

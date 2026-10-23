@@ -129,6 +129,17 @@ export function pilotEndFor(cue: string, keys: boolean): { why: "thrown" | "done
 }
 
 /**
+ * The pilot's end for the room cue now showing, or null: only a cue raised
+ * since this line opened counts (`since`, server time), and an eject ends it
+ * whether or not a menu ever docked — a barred program's re-scan (Heart
+ * Barred) gets no heart to heart either (D24).
+ */
+export function pilotEndOf(cue: { value: string; at: number } | null, since: number, keys: boolean): { why: "thrown" | "done"; ms: number } | null {
+  if (cue === null || cue.at <= 0 || cue.at < since) return null;
+  return pilotEndFor(cue.value, keys);
+}
+
+/**
  * Has a heart scene played for this line (a `room_heart_*` cue since it
  * opened)? Then the long leash holds. After *not yet* or a Leave the tree is
  * over: the normal leash runs (a program who walks off frees the terminal in
