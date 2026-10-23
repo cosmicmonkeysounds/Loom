@@ -24,9 +24,9 @@
 // ── The pins ───────────────────────────────────────────────────────────────
 
 struct BoardPins : dl::Pins {
-  void led(bool on) override { digitalWrite(PIN_LED, on ? HIGH : LOW); }
-  uint16_t ldr() override { return (uint16_t)analogRead(PIN_LDR); }
-  uint16_t sense() override { return (uint16_t)analogRead(PIN_SENSE); }
+  void led(bool on) override { digitalWrite(PIN_DOOR_LED, on ? HIGH : LOW); }
+  uint16_t ldr() override { return (uint16_t)analogRead(PIN_DOOR_LDR); }
+  uint16_t sense() override { return (uint16_t)analogRead(PIN_DOOR_SENSE); }
   void wait(uint32_t ms) override { delay(ms); }
 };
 
@@ -61,10 +61,10 @@ static uint32_t colourOf(door::Status s) {
 
 void setup() {
   analogReadResolution(12);  // SAMD defaults to 10-bit; the thresholds assume 12
-  pinMode(PIN_LED, OUTPUT);
-  digitalWrite(PIN_LED, HIGH);
+  pinMode(PIN_DOOR_LED, OUTPUT);
+  digitalWrite(PIN_DOOR_LED, HIGH);
 #if LED_SENSE
-  pinMode(PIN_SENSE, INPUT);
+  pinMode(PIN_DOOR_SENSE, INPUT);
 #endif
   pixel.begin();
   pixel.setPixelColor(0, colourOf(door::kWaiting));

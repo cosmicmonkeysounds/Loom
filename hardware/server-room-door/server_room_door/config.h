@@ -10,15 +10,16 @@
 // ── Pins (Adafruit Grand Central M4 Express) ──────────────────────────────
 // LDR from 3V3 to A0, 10 kΩ from A0 to GND: more light → a higher reading,
 // near 4095 with the LED shining straight into it.
-#define PIN_LDR A0
+#define PIN_DOOR_LDR A0
 // The LED's anode through 220 Ω (or a 2N7000 / NPN for a brighter LED).
 // Wired here, the firmware blinks it and reads `lit − dark` (mode `mod`), so
 // room light can't fake "closed". On 3V3 instead it is always lit (`steady`).
-#define PIN_LED 2
+// (Not PIN_LED: the board's variant.h already names pin 13 that.)
+#define PIN_DOOR_LED 2
 // Optional: the LED's cathode → 47 Ω → GND, with A1 on the cathode. Set
 // LED_SENSE to 1 once it is wired: a reading under 20 while the LED is
 // driven is the blocking fault `led_dead`.
-#define PIN_SENSE A1
+#define PIN_DOOR_SENSE A1
 #define LED_SENSE 0
 
 // ── Defaults (12-bit readings, 0–4095) ────────────────────────────────────
