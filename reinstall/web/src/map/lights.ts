@@ -592,7 +592,8 @@ export function minPeriod(look: LightLook): number | null {
   const last = Math.max(...steps.map((s) => s.at));
   if (mode === "restore") return last + LIGHT_COLOR_STEP_MIN_MS;
   const first = [...steps].sort((a, b) => a.at - b.at)[0]!;
-  const gap = setsColour(first.set) ? LIGHT_COLOR_STEP_MIN_MS : LIGHT_STEP_MIN_MS;
+  // Any fixture's first step may be the colour one (`validateLights` checks each fixture's own).
+  const gap = steps.some((s) => s.at === first.at && setsColour(s.set)) ? LIGHT_COLOR_STEP_MIN_MS : LIGHT_STEP_MIN_MS;
   return Math.max(last - first.at + gap, last + 1, LIGHT_LOOP_MIN_PERIOD_MS);
 }
 

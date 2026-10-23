@@ -377,6 +377,22 @@ describe("the looks builder", () => {
     }
   });
 
+  it("takes the colour gap when any step at the first moment sets a colour", () => {
+    const l = BASIC();
+    l.looks["two"] = {
+      to: ["server-room-rgb", "desk-lamp"],
+      loop: true,
+      steps: [
+        { at: 0, set: { brightness: 200 }, to: ["desk-lamp"] },
+        { at: 0, set: { color: "#FF0000" }, to: ["server-room-rgb"] },
+        { at: 1200, set: { brightness: 90 }, to: ["server-room-rgb", "desk-lamp"] },
+      ],
+    };
+    expect(minPeriod(l.looks["two"]!)).toBe(1200 + LIGHT_COLOR_STEP_MIN_MS);
+    const fixed = setLookMode(l, "two", "loop");
+    expect(validateLights(fixed, HOUSE()).problems.filter((p) => p.includes('"two"'))).toEqual([]);
+  });
+
   it("refuses a step that darkens a safety bulb (the builder shows the validator's line)", () => {
     const { house, l } = base();
     const a = addLook(l, "dark", ["heart"]);
