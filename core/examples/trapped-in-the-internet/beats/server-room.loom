@@ -715,8 +715,9 @@ Trabolta: You want me gone? The cables are behind you. You do not know which one
 Trabolta: This line is closed to you. Tonight, and for as long as I have a tonight.
 -> Heart Mark
 
-// Thrown out (Heart Eject) or turned away again (Heart Barred): the mark,
-// once. A mark lifted since (🩹) comes back on the next barred scan.
+// Thrown out (Heart Eject): the mark, once. A barred re-scan never marks
+// (a mark a host lifted with 🩹, or a program reinstalled since, stays
+// unmarked; only a new throw-out after 🔄 marks again).
 == Heart Mark
   setting: The Server Room
   cast: Trabolta
@@ -742,9 +743,9 @@ set Night.heart_look = "heart_idle"
 if Night.alarm_on != true:
   cue heart_eject
 cue room_heart_eject
+broadcast "⛔ {program.name} scanned in again: still barred from his heart (🔄 forgives). No new mark." to channel(hosts)
 // DRAFT w20
 Trabolta: No. Not you. Not again tonight. Go.
--> Heart Mark
 
 // They chose to go (the scene frees the terminal for the next pass). They
 // may still talk to him, no menu, until the terminal lets them go (D24).

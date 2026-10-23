@@ -531,8 +531,8 @@ describe("The Heart — the talk (wave 20)", () => {
     const again = scan(sim, "g1");
     expect(beats(again)).toContain("Heart Barred");
     expect(lines(again)).toEqual(["No. Not you. Not again tonight. Go."]);
-    // Already marked: never a second mark, and # hosts says why.
-    expect(hosts(again)).toEqual(['"⛔ Calculator is already marked for reinstallation: thrown out of his heart, no second mark."']);
+    // A barred re-scan never marks: # hosts hears they are still barred.
+    expect(hosts(again)).toEqual(['"⛔ Calculator scanned in again: still barred from his heart (🔄 forgives). No new mark."']);
     expect(heartMenu(sim, "g1")).toBeNull();
     // 🔄 forgives: suspicion back to 0, the layer kept.
     unscan(sim, "g1");
@@ -548,7 +548,7 @@ describe("The Heart — the talk (wave 20)", () => {
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Two");
   });
 
-  it("thrown out marks once (Q2): an already-marked program is not marked again, # hosts says why; a lifted mark comes back on a barred scan", { timeout: SLOW }, () => {
+  it("thrown out marks once (Q2): an already-marked program is not marked again, # hosts says why; a mark lifted with 🩹 stays lifted on a barred scan", { timeout: SLOW }, () => {
     const eject = (sim: Sim, id: string) => {
       pick(sim, id, "Someone who admires your work");
       for (let i = 0; i < 4 && v(sim, `${id}.heart_out`) !== true; i++) {
@@ -566,14 +566,15 @@ describe("The Heart — the talk (wave 20)", () => {
     expect(hosts(ej)).toContain('"⛔ Calculator is already marked for reinstallation: thrown out of his heart, no second mark."');
     expect(hosts(ej).some((h) => h.includes("is marked for reinstallation: Trabolta threw"))).toBe(false);
     expect(lines(ej)).not.toContain("And the Antivirus will know your name before you reach the stairs.");
-    // Lifted (🩹) while barred: the next barred scan marks them again.
+    // Lifted (🩹) while barred: a barred re-scan never undoes the host's call.
     fire(sim, "unmark_for_reinstallation", "g1");
     expect(v(sim, "g1.marked")).toBe(false);
     unscan(sim, "g1");
     const again = scan(sim, "g1");
     expect(beats(again)).toContain("Heart Barred");
-    expect(v(sim, "g1.marked")).toBe(true);
-    expect(v(sim, "g1.marked_for")).toBe("thrown out of Trabolta's heart");
+    expect(beats(again)).not.toContain("Heart Mark");
+    expect(v(sim, "g1.marked")).toBe(false);
+    expect(hosts(again)).toEqual(['"⛔ Calculator scanned in again: still barred from his heart (🔄 forgives). No new mark."']);
     // Their phone hears the story's own soft heads-up (subject-bound).
     const ej2 = (() => { const s2 = atLayerOne(awake(), "g2"); return { s2, e: eject(s2, "g2") }; })();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
