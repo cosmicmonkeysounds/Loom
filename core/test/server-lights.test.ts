@@ -311,6 +311,7 @@ describe("POST /api/mod/lights/devices and /pair", () => {
     for (const seconds of [-1, 255, 1.5, "60"]) expect((await call(rt, "POST", "/api/mod/lights/pair", { seconds })).status).toBe(400);
     expect(await call(rt, "POST", "/api/mod/lights/pair", { seconds: 120 })).toEqual({ status: 200, json: { ok: true, seq: 1, until: 4_120_000 } });
     expect((await view(rt)).pair).toEqual({ seq: 1, at: 4_000_000, seconds: 120, until: 4_120_000, by: "Director" });
+    expect((await view(rt)).now).toBe(4_000_000); // the anchor a client counts the pairing down from
     t += 119_000;
     expect((await view(rt)).pair?.seq).toBe(1);
     t += 1000;

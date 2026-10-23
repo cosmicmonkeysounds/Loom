@@ -136,6 +136,10 @@ export interface LightsView {
    *  leave a fixture outside its room) — advice, never a refusal here. */
   problems: string[];
   warnings: string[];
+  /** The server's clock when it answered (ms): the anchor for every other
+   *  stamp here (a pairing's `until`, `module.at`, `devicesAt`), so a
+   *  client counts down without trusting its own clock. */
+  now: number;
 }
 
 /** How many tests ride a GET, and for how long. */
@@ -295,6 +299,11 @@ export class LightsHub {
   }
 
   /** The config in force, its version (content hash) and where it is from. */
+  /** The hub's clock (server ms): `LightsView.now`. */
+  clock(): number {
+    return this.now();
+  }
+
   current(): { lights: LightsConfig; version: string; source: LightsSource } {
     const pick = (lights: LightsConfig, source: LightsSource) => ({ lights, version: lightsHash(lights), source });
     if (this.director !== null) return pick(this.director, "director");
@@ -486,7 +495,7 @@ export function lightsView(hub: LightsHub, ctx: LightsContext): LightsView {
   const cur = hub.current();
   const model = ctx.model();
   const v = validateLights(cur.lights, ctx.house());
-  return { ...cur, looks: storyLooks(model), locations: storyLocations(model), tests: hub.tests(), pair: hub.currentPair(), ...hub.devices(), module: hub.module(), problems: v.problems, warnings: v.warnings };
+  return { ...cur, looks: storyLooks(model), locations: storyLocations(model), tests: hub.tests(), pair: hub.currentPair(), ...hub.devices(), module: hub.module(), problems: v.problems, warnings: v.warnings, now: hub.clock() };
 }
 
 /**

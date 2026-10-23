@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { LIGHT_EFFECTS, LIGHT_MAX_REPEAT, resolveLightTargets, validateLights } from "@loom/house";
 import type { HouseMap, LightEffect, LightLook, LightsConfig, LightState } from "@loom/house";
-import { lightsConflictText, moduleBadge, type LightTestTarget, type LightsView, type Z2mDevice } from "./lights-api.ts";
+import { lightsConflictText, moduleBadge, serverNowOf, type LightTestTarget, type LightsView, type Z2mDevice } from "./lights-api.ts";
 import {
   addLightZone,
   addLook,
@@ -181,8 +181,10 @@ export function LightsPanel(p: LightsPanelProps) {
   const coverage = lookCoverage(lights, p.view?.looks ?? []);
   const devices = p.view?.devices ?? [];
   const rows = deviceRows(devices, lights);
-  const pairLeft = pairSecondsLeft(p.view?.pair ?? null, now);
-  const badge = moduleBadge(p.view?.module ?? null, now);
+  // The answer's stamps are server time: count on the server's clock.
+  const serverNow = serverNowOf(p.view ?? null, now);
+  const pairLeft = pairSecondsLeft(p.view?.pair ?? null, serverNow);
+  const badge = moduleBadge(p.view?.module ?? null, serverNow);
   const busy = p.saveState.kind === "saving" || p.mapBusy === true;
   const plan = p.lightSave;
   const saveable = (plan.alone || plan.withMap) && !busy;
@@ -293,7 +295,7 @@ export function LightsPanel(p: LightsPanelProps) {
         </ul>
       </Section>
 
-      <Section title="Devices (Zigbee2MQTT)" count={p.view?.devicesAt != null ? `reported ${ago(p.view.devicesAt, now)}` : "none reported"}>
+      <Section title="Devices (Zigbee2MQTT)" count={p.view?.devicesAt != null ? `reported ${ago(p.view.devicesAt, serverNow)}` : "none reported"}>
         <div className="button-row">
           {pairLeft > 0 ? (
             <>
@@ -432,7 +434,7 @@ export function LightsPanel(p: LightsPanelProps) {
           <ul className="small">
             {[...tests].reverse().map((t) => (
               <li key={t.seq}>
-                #{t.seq} · {t.look !== null ? `look ${t.look}` : t.set !== null ? `${t.fixture} ← ${describeState(t.set)}` : `identify ${t.fixture}`} · {t.by} · {ago(t.at, now)}
+                #{t.seq} · {t.look !== null ? `look ${t.look}` : t.set !== null ? `${t.fixture} ← ${describeState(t.set)}` : `identify ${t.fixture}`} · {t.by} · {ago(t.at, serverNow)}
               </li>
             ))}
           </ul>

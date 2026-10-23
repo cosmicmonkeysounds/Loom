@@ -67,6 +67,18 @@ export interface LightsView {
   module: LightsModuleInfo | null;
   problems: string[];
   warnings: string[];
+  /** The server's clock when it answered (null: an older server), and when
+   *  this browser got the answer (client ms): every stamp above is server
+   *  time, so a countdown runs on `serverNowOf`, never on `Date.now()`. */
+  now: number | null;
+  receivedAt: number;
+}
+
+/** The server's clock now, off the last answer (`clientNow` - `receivedAt`
+ *  since its `now`); the client's own clock from an older server. */
+export function serverNowOf(view: Pick<LightsView, "now" | "receivedAt"> | null, clientNow: number): number {
+  if (view === null || view.now === null) return clientNow;
+  return view.now + Math.max(0, clientNow - view.receivedAt);
 }
 
 type Obj = Record<string, unknown>;
@@ -112,7 +124,7 @@ export function moduleOf(v: unknown): LightsModuleInfo | null {
 }
 
 /** A GET answer → a view (anything missing read as empty: an older shape never throws). */
-export function lightsViewOf(data: Obj): LightsView {
+export function lightsViewOf(data: Obj, receivedAt: number = Date.now()): LightsView {
   const source = data["source"];
   return {
     lights: normalizeLights(data["lights"]),
@@ -127,6 +139,8 @@ export function lightsViewOf(data: Obj): LightsView {
     module: moduleOf(data["module"]),
     problems: strings(data["problems"]),
     warnings: strings(data["warnings"]),
+    now: num(data["now"]) ? data["now"] : null,
+    receivedAt,
   };
 }
 

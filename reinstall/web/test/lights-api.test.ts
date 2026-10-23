@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultLights } from "@loom/house";
-import { fetchLights, lightRefusal, lightTestSentText, lightsConflictText, lightsViewOf, moduleBadge, pairLights, saveLights, testLight, type LightsFetch, type LightsQuery, type LightsView } from "../src/map/lights-api.ts";
+import { fetchLights, lightRefusal, lightTestSentText, lightsConflictText, lightsViewOf, moduleBadge, pairLights, saveLights, serverNowOf, testLight, type LightsFetch, type LightsQuery, type LightsView } from "../src/map/lights-api.ts";
 import { runLightsPoll } from "../src/map/lights-poll.ts";
 
 function fakeFetch(status: number, body: unknown, seen: { url: string; init?: RequestInit }[] = []): typeof fetch {
@@ -10,7 +10,17 @@ function fakeFetch(status: number, body: unknown, seen: { url: string; init?: Re
   }) as unknown as typeof fetch;
 }
 
-const view = (version: string, extra: Partial<LightsView> = {}): LightsView => ({ lights: defaultLights(), version, source: "director", looks: [], locations: [], tests: [], pair: null, devices: [], devicesAt: null, module: null, problems: [], warnings: [], ...extra });
+const view = (version: string, extra: Partial<LightsView> = {}): LightsView => ({ lights: defaultLights(), version, source: "director", looks: [], locations: [], tests: [], pair: null, devices: [], devicesAt: null, module: null, problems: [], warnings: [], now: null, receivedAt: 0, ...extra });
+
+describe("the server's clock", () => {
+  it("counts from the answer's now (skewed client clocks don't move a countdown); an older server uses the client's", () => {
+    const v = lightsViewOf({ now: 1_000_000 }, 50_000);
+    expect(v.now).toBe(1_000_000);
+    expect(serverNowOf(v, 53_000)).toBe(1_003_000);
+    expect(serverNowOf(lightsViewOf({}, 50_000), 53_000)).toBe(53_000);
+    expect(serverNowOf(null, 7)).toBe(7);
+  });
+});
 
 describe("the lights routes", () => {
   it("reads a GET answer, tolerating an older or odd shape", () => {
