@@ -15,6 +15,7 @@ describe("guarded choices in a bank", () => {
     expect(d[0]!.message).toContain("line 3");
     expect(d[0]!.message).toContain("program.trust >= 20");
     expect(d[0]!.program).toBe("ask");
+    expect(d[0]!.line).toBe(3);
     const menu = bank.menus[0]!;
     expect(menu.options).toHaveLength(2);
     expect(menu.options.map((o) => o.cond)).toEqual([-1, -1]);
