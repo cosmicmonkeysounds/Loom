@@ -134,9 +134,9 @@ describe("buildDossier: the shape", () => {
           quests: [{ id: "orientation", title: "Orientation", status: "done" }],
           location: (id) => (id === "The Start Bar" ? "The Start Bar (kitchen)" : id),
           filings: [
-            { question: "H1", verdict: "accurate", logAt: 9 },
-            { question: "H2", verdict: "lie", logAt: 10 },
-            { question: "H3", verdict: "pending", logAt: 11 },
+            { question: "H1", verdict: "accurate", confidence: 100, logAt: 9 },
+            { question: "H2", verdict: "lie", confidence: 100, logAt: 10 },
+            { question: "H3", verdict: "pending", confidence: 40, logAt: 11 },
           ],
           currencySlot: "score",
         },
@@ -170,8 +170,8 @@ describe("buildDossier: the shape", () => {
       reinstalled: 1,
       restricted: true,
       trust: { score: 40, rank: 2, of: 3 },
-      // Confident filings are accepted; their truth waits for The Verdict.
-      truths: { accepted: 2, lies: 0, uncertain: 0 },
+      // Nothing is counted or shown before Question Results reads it.
+      truths: { accepted: 0, lies: 0, uncertain: 0 },
       filings: [
         { question: "H1", verdict: "pending" },
         { question: "H2", verdict: "pending" },
@@ -205,28 +205,44 @@ describe("buildDossier: the shape", () => {
     expect(d.moments).toHaveLength(10);
   });
 
-  it("a confident filing's verdict shows only once its question's truth is published (The Verdict)", () => {
+  it("every verdict waits for Question Results; accurate / lie wait for The Verdict; the counts cover read questions only", () => {
     const filings = [
-      { question: "H1", verdict: "accurate" as const, logAt: 0 },
-      { question: "H2", verdict: "lie" as const, logAt: 1 },
-      { question: "H3", verdict: "uncertain" as const, logAt: 2 },
-      { question: "H4", verdict: "lie" as const, logAt: 3 },
+      { question: "H1", verdict: "accurate" as const, confidence: 100, logAt: 0 },
+      { question: "H2", verdict: "lie" as const, confidence: 100, logAt: 1 },
+      { question: "H3", verdict: "uncertain" as const, confidence: 60, logAt: 2 },
+      { question: "H4", verdict: "accurate" as const, confidence: 40, logAt: 3 },
+      { question: "H5", verdict: "lie" as const, confidence: 100, logAt: 4 },
     ];
     const before = buildDossier(input({ filings }))!;
-    expect(before.filings).toEqual([
-      { question: "H1", verdict: "pending" },
-      { question: "H2", verdict: "pending" },
-      { question: "H3", verdict: "uncertain" },
-      { question: "H4", verdict: "pending" },
-    ]);
-    expect(before.truths).toEqual({ accepted: 3, lies: 0, uncertain: 1 });
+    expect(before.filings?.map((f) => f.verdict)).toEqual(["pending", "pending", "pending", "pending", "pending"]);
+    expect(before.truths).toEqual({ accepted: 0, lies: 0, uncertain: 0 });
+    // Question Results reads H1–H4: a judged guess shows; a right one does not.
+    const read: SimEvent[] = [{ type: "directive", verb: "fact_read", args: "H1 H2, H3 H4", setting: null }];
+    const mid = buildDossier(input({ filings, log: read }))!;
+    expect(mid.filings?.map((f) => f.verdict)).toEqual(["pending", "pending", "uncertain", "pending", "pending"]);
+    expect(mid.truths).toEqual({ accepted: 2, lies: 0, uncertain: 2 });
     const log: SimEvent[] = [
+      ...read,
       { type: "directive", verb: "fact_truth", args: "H1 true", setting: null },
       { type: "directive", verb: "fact_truth", args: "H2 lie", setting: null },
+      { type: "directive", verb: "fact_truth", args: "H4 true", setting: null },
     ];
     const after = buildDossier(input({ filings, log }))!;
-    expect(after.filings?.map((f) => f.verdict)).toEqual(["accurate", "lie", "uncertain", "pending"]);
-    expect(after.truths).toEqual({ accepted: 3, lies: 1, uncertain: 1 });
+    expect(after.filings?.map((f) => f.verdict)).toEqual(["accurate", "lie", "uncertain", "accurate", "pending"]);
+    expect(after.truths).toEqual({ accepted: 2, lies: 1, uncertain: 2 });
+  });
+
+  it("a right guess and a wrong guess read the same until the screens tell them apart", () => {
+    const right = [{ question: "H1", verdict: "accurate" as const, confidence: 70, logAt: 0 }];
+    const wrong = [{ question: "H1", verdict: "uncertain" as const, confidence: 70, logAt: 0 }];
+    expect(buildDossier(input({ filings: right }))).toEqual(buildDossier(input({ filings: wrong })));
+    // Another question read changes nothing for H1.
+    const log: SimEvent[] = [{ type: "directive", verb: "fact_read", args: "H2", setting: null }];
+    expect(buildDossier(input({ filings: right, log }))).toEqual(buildDossier(input({ filings: wrong, log })));
+    // Two sure filings, right and wrong, read the same even once read.
+    const sure = (verdict: "accurate" | "lie") => [{ question: "H1", verdict, confidence: 100, logAt: 0 }];
+    const readH1: SimEvent[] = [{ type: "directive", verb: "fact_read", args: "H1", setting: null }];
+    expect(buildDossier(input({ filings: sure("accurate"), log: readH1 }))).toEqual(buildDossier(input({ filings: sure("lie"), log: readH1 })));
   });
 
   it("leaves out an unseen group, an unknown room and an unknown gift", () => {
@@ -676,7 +692,9 @@ describe("on the show: the dossier never carries a secret", () => {
     // Calculator's night: the H1 key accepted, a guess on H3; Notepad was marked.
     const calcD = withDossier.filter((r) => r.speaker.name === "Calculator").at(-1)!.dossier!;
     expect(calcD.filings?.map((f) => f.question)).toEqual(["H1", "H3"]);
-    expect(calcD.truths?.accepted).toBe(1);
+    // Nothing read yet: every verdict pending, nothing counted.
+    expect(calcD.filings?.map((f) => f.verdict)).toEqual(["pending", "pending"]);
+    expect(calcD.truths).toEqual({ accepted: 0, lies: 0, uncertain: 0 });
     const padD = withDossier.filter((r) => r.speaker.name === "Notepad").at(-1)!.dossier!;
     expect(padD.marked).toBe(true);
     expect(padD.moments).toContain("marked for reinstallation");

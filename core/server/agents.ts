@@ -183,12 +183,14 @@ export interface AgentDossier {
   restricted?: boolean;
   /** His Trust Chart: their score, and their rank among the cleared programs. */
   trust?: { score: number; rank?: number; of?: number };
-  /** Their filings, counted: `accepted` = the confident ones the house
-   *  accepted (right or wrong), `lies` = those published as lies at The
-   *  Verdict, `uncertain` = their guesses. */
+  /** Their filings on the questions Question Results has read, counted:
+   *  `accepted` = the confident ones (right or wrong), `uncertain` = their
+   *  guesses, `lies` = those published as lies at The Verdict. */
   truths?: { accepted: number; lies: number; uncertain: number };
-  /** A confident filing reads `pending` until its question's truth is
-   *  published (`do fact_truth`): never a hunt answer's confirmation. */
+  /** Every verdict reads `pending` until Question Results reads its
+   *  question (`do fact_read`), then only a guess reads `uncertain`;
+   *  `accurate` / `lie` wait for its truth (`do fact_truth`): never a hunt
+   *  answer's confirmation. */
   filings?: Array<{ question: string; verdict: AgentDossierVerdict }>;
   /** Titles of the non-secret codex entries they hold. */
   codex?: string[];

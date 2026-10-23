@@ -13,12 +13,16 @@
 //! the dossier reads is checked against the role's `secret:` list anyway,
 //! and so is every quest (`quest.<slug>`: *The Cold Door*, a secret mission).
 //! A filing is its question id and verdict, never the answer, the key or
-//! the confidence, and a confident filing's verdict (`accurate` / `lie`)
-//! reads `pending` until the house has published that question's truth
-//! (`do fact_truth <id> …`, The Verdict): before it, *your H1 was accurate*
-//! would confirm a hunt answer (wave 12's rule). `truths.accepted` counts
-//! the confident filings the house accepted (right or wrong, as Question
-//! Results reads them), `lies` only the published ones. Codex titles, gift titles and their own lines are
+//! the confidence, and the dossier says no more than the screens have:
+//! every verdict reads `pending` until Question Results reads its question
+//! (`do fact_read <ids>`), then a guess reads `uncertain` only when the
+//! judge called it one, and `accurate` / `lie` wait for the house to publish
+//! that question's truth (`do fact_truth <id> …`, The Verdict). Before
+//! that, *your H1 was accurate* — or a right guess that is not `uncertain`
+//! — would confirm a hunt answer (wave 12's rule). The counts cover read
+//! questions only and come off the confidence, never the verdict:
+//! `truths.accepted` = the sure filings, `uncertain` = the guesses, `lies`
+//! = the published lies. Codex titles, gift titles and their own lines are
 //! dropped when they carry the `▒ HUNT ANSWER` marker, mention a facts.json
 //! answer form (`mentionsAnswer`), a secret character's current value
 //! (`mentionsSecret`) or a codex unlock code (`mentionsCode`). Their own
@@ -29,7 +33,8 @@
 import type { AgentDossier, AgentDossierVerdict } from "./agents.ts";
 import type { ChatMessage } from "./chat.ts";
 import { HUNT_ANSWER_MARK } from "./agent-recent.ts";
-import { RESULTS_TRUTH_VERB, SCREEN_CHARTS } from "./routes/screen.ts";
+import { CONFIDENCE_MAX } from "./facts.ts";
+import { RESULTS_READ_VERB, RESULTS_TRUTH_VERB, SCREEN_CHARTS, resultIdsOf } from "./routes/screen.ts";
 import { foldName } from "../src/parser/names.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 
@@ -97,9 +102,10 @@ export interface DossierInput {
   /** A LOCATION id's display name (null: unknown — dropped). */
   location: (id: string) => string | null;
   /** Their facts filings (newest step per question), in log order, with the
-   *  judge's verdict (the builder holds back a confident one until its truth
-   *  is published). */
-  filings: ReadonlyArray<{ question: string; verdict: AgentDossierVerdict; logAt?: number }>;
+   *  judge's verdict (`pending` while unjudged) and the filer's confidence
+   *  (read to count, never output). The builder holds every verdict back
+   *  until the screens have shown it. */
+  filings: ReadonlyArray<{ question: string; verdict: AgentDossierVerdict; confidence: number; logAt?: number }>;
   /** The story's currency slot (`score`), null when it has none. */
   currencySlot: string | null;
   mentionsAnswer?: (text: string) => boolean;
@@ -268,16 +274,26 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
     }
   }
 
-  // The questions whose truth the house has published (The Verdict).
+  // The questions Question Results has read (`do fact_read`), and those
+  // whose truth the house has published (The Verdict).
+  const read = new Set<string>();
   const published = new Set<string>();
-  for (const e of input.log) if (e.type === "directive" && e.verb === RESULTS_TRUTH_VERB) published.add(e.args.trim().split(/\s+/u)[0] ?? "");
-  const shown = (f: { question: string; verdict: AgentDossierVerdict }): AgentDossierVerdict =>
-    (f.verdict === "accurate" || f.verdict === "lie") && !published.has(f.question) ? "pending" : f.verdict;
+  for (const e of input.log) {
+    if (e.type !== "directive") continue;
+    if (e.verb === RESULTS_READ_VERB) for (const q of resultIdsOf(e.args)) read.add(q);
+    else if (e.verb === RESULTS_TRUTH_VERB) published.add(e.args.trim().split(/\s+/u)[0] ?? "");
+  }
+  const seen = (q: string): boolean => read.has(q) || published.has(q);
+  const shown = (f: { question: string; verdict: AgentDossierVerdict }): AgentDossierVerdict => {
+    if (published.has(f.question)) return f.verdict;
+    return read.has(f.question) && f.verdict === "uncertain" ? "uncertain" : "pending";
+  };
   const filings = input.filings.slice(-DOSSIER_FILINGS_MAX).map((f) => ({ question: f.question, verdict: shown(f) }));
   const truths = { accepted: 0, lies: 0, uncertain: 0 };
   for (const f of input.filings) {
-    if (f.verdict === "accurate" || f.verdict === "lie") truths.accepted += 1;
-    if (f.verdict === "uncertain") truths.uncertain += 1;
+    if (f.verdict === "pending" || !seen(f.question)) continue;
+    if (f.confidence >= CONFIDENCE_MAX) truths.accepted += 1;
+    else truths.uncertain += 1;
     if (shown(f) === "lie") truths.lies += 1;
   }
   const codex = input.codex.filter((e) => !e.secret && !leaks(e.title) && !e.text.includes(HUNT_ANSWER_MARK)).map((e) => e.title).slice(-DOSSIER_CODEX_MAX);

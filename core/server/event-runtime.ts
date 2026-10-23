@@ -2565,7 +2565,7 @@ export class EventRuntime {
             .all(sim, book.confirm)
             .filter((f) => f.person === id)
             .sort((a, b) => (a.logAt ?? 0) - (b.logAt ?? 0))
-            .map((f) => ({ question: f.question, verdict: f.final === null ? ("pending" as const) : f.final === "marked" ? ("lie" as const) : f.final, ...(f.logAt !== undefined ? { logAt: f.logAt } : {}) }));
+            .map((f) => ({ question: f.question, verdict: f.final === null ? ("pending" as const) : f.final === "marked" ? ("lie" as const) : f.final, confidence: f.confidence, ...(f.logAt !== undefined ? { logAt: f.logAt } : {}) }));
     const leaks = this.agentLeakChecks();
     const dossier = buildDossier({
       character: thread.character,
