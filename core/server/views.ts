@@ -519,6 +519,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     (i) => i.live !== false && (!sim.isRestricted(id) || sim.model.interactions.get(i.id)?.allowRestricted === true),
   );
   const objectives = objectivesWith(sim, { guest: id }, new Set(interactions.map((i) => i.id)));
+  const choices = sim.pendingChoicesFor(id);
   return {
     id,
     name: p?.name ?? id,
@@ -533,8 +534,10 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     restricted: sim.isRestricted(id),
     canEscape: !(sim.model.locations.get(sim.locationOf(id) ?? "")?.sealed ?? false),
     pendingChoice,
-    decisionChannel: pendingChoice ? (decisionChannel ?? "lobby") : null,
-    choices: sim.pendingChoicesFor(id).map((c) => ({ ...c, channel: menuChannels?.get(c.id) ?? "lobby" })),
+    // The oldest menu's own channel (D18): `decisionChannel` is the newest
+    // prompt's, and with menus queued the tray docks the oldest's options.
+    decisionChannel: pendingChoice ? (menuChannels?.get(choices[0]?.id ?? -1) ?? decisionChannel ?? "lobby") : null,
+    choices: choices.map((c) => ({ ...c, channel: menuChannels?.get(c.id) ?? "lobby" })),
     cutscene: sim.cutsceneFor(id),
     channels: sim.visibleChannelsFor(id),
     spaces: sim.spaceList(),

@@ -128,6 +128,9 @@ describe("menu ids — the view", () => {
     // The phone's tray keeps reading the oldest.
     expect(v.pendingChoice).toEqual(["Up the stairs.", "I don't know."]);
     expect(v.decisionChannel).toBe("dm:Clippy");
+    // The runtime's per-person record names the newest prompt's channel;
+    // the tray still docks under the oldest menu's own.
+    expect(guestView(sim, "g1", "dm:Trabolta", undefined, menuChannelsFor(batch)).decisionChannel).toBe("dm:Clippy");
     // No channel record: the lobby.
     expect(guestView(sim, "g1").choices!.map((c) => c.channel)).toEqual(["lobby", "lobby"]);
     sim.createPerson("g2", "Word");

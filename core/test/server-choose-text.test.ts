@@ -58,21 +58,21 @@ Trabolta: Close the door.
 `;
 
 const dirs: string[] = [];
-function runtimeIn(d: string, limits?: ConstructorParameters<typeof EventRuntime>[0]["limits"]): EventRuntime {
+function runtimeIn(d: string, limits?: ConstructorParameters<typeof EventRuntime>[0]["limits"], source = SOURCE): EventRuntime {
   return new EventRuntime({
     eventId: "evt",
     store: new Store(d),
     codes: CODES,
     scenarioName: "heart",
-    scenarioSource: SOURCE,
+    scenarioSource: source,
     joinBase: () => "http://localhost",
     limits,
   });
 }
-function freshRuntime(limits?: ConstructorParameters<typeof EventRuntime>[0]["limits"]): EventRuntime {
+function freshRuntime(limits?: ConstructorParameters<typeof EventRuntime>[0]["limits"], source = SOURCE): EventRuntime {
   const d = mkdtempSync(join(tmpdir(), "loom-choose-"));
   dirs.push(d);
-  return runtimeIn(d, limits);
+  return runtimeIn(d, limits, source);
 }
 afterAll(() => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
@@ -209,5 +209,16 @@ describe("/api/guest/choose", () => {
     expect(back).toEqual(live);
     expect(back.map((c) => c.channel)).toEqual(["dm:Clippy", "dm:Trabolta"]);
     again.dispose();
+  });
+});
+
+describe("the channel a menu docks under", () => {
+  it("decisionChannel is the oldest menu's, not the newest prompt's", async () => {
+    const rt = freshRuntime();
+    const { g } = await twoMenus(rt);
+    const v = (await state(rt, g.token)).json;
+    expect(v["pendingChoice"]).toEqual(["Up the stairs.", "I don't know."]);
+    expect(v["decisionChannel"]).toBe("dm:Clippy");
+    rt.dispose();
   });
 });
