@@ -2637,6 +2637,36 @@ export class EventRuntime {
     return dossier === null ? {} : { dossier };
   }
 
+  /**
+   * Answer `person`'s pending menu (`/api/guest/choose`, `/api/mod/choose`).
+   * Wave 20 (D15, D18): `choice` names the menu by its id (absent: the
+   * oldest), and `text` is the option the client showed at `index` — a click
+   * racing a new menu is refused (409 `moved`), never misapplied, and an
+   * index the named menu doesn't offer is refused too, never journaled as a
+   * no-op pick. The menu id rides the journal line only when given, so an
+   * old client's line (and an old journal) replays as before.
+   */
+  private chooseFor(person: string, body: Record<string, unknown>, res: ServerResponse): void {
+    const idx = Number(body["index"] ?? -1);
+    const text = typeof body["text"] === "string" ? body["text"] : undefined;
+    const raw = body["choice"];
+    const choice = raw === undefined || raw === null ? undefined : Number(raw);
+    if (text !== undefined || choice !== undefined) {
+      const menus = this.reqSim().pendingChoicesFor(person);
+      const menu = choice === undefined ? menus[0] : menus.find((m) => m.id === choice);
+      if (menu === undefined) {
+        sendJson(res, 409, { error: "no choice", options: null });
+        return;
+      }
+      if (!Number.isInteger(idx) || idx < 0 || idx >= menu.options.length || (text !== undefined && menu.options[idx] !== text)) {
+        sendJson(res, 409, { error: "moved", options: menu.options });
+        return;
+      }
+    }
+    this.fanout(choice === undefined ? this.commit("choose", person, idx) : this.commit("choose", person, idx, choice));
+    sendJson(res, 200, { ok: true });
+  }
+
   /** The leak checks a request's house-held text goes through (wave 12
    *  C0.1 / C1.2, shared by `recent` and the wave 20 dossier): the facts
    *  book's answer forms (absent with no book in force) and the current
@@ -5323,31 +5353,7 @@ export class EventRuntime {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
-        const idx = Number(body["index"] ?? -1);
-        // Wave 20 (D15, D18): `choice` names the menu by its id (absent: the
-        // oldest), and `text` is the option the client showed at `index` — a
-        // click racing a new menu is refused (409 `moved`), never misapplied.
-        const text = typeof body["text"] === "string" ? body["text"] : undefined;
-        const raw = body["choice"];
-        const choice = raw === undefined || raw === null ? undefined : Number(raw);
-        if (text !== undefined || choice !== undefined) {
-          const menus = this.reqSim().pendingChoicesFor(id);
-          const menu = choice === undefined ? menus[0] : menus.find((m) => m.id === choice);
-          if (menu === undefined) {
-            sendJson(res, 409, { error: "no choice", options: null });
-            return true;
-          }
-          // An index the named menu doesn't offer is refused too, never
-          // journaled as a no-op pick.
-          if (!Number.isInteger(idx) || idx < 0 || idx >= menu.options.length || (text !== undefined && menu.options[idx] !== text)) {
-            sendJson(res, 409, { error: "moved", options: menu.options });
-            return true;
-          }
-        }
-        // The menu id rides the journal line only when given, so an old
-        // client's line (and an old journal) replays as before.
-        this.fanout(choice === undefined ? this.commit("choose", id, idx) : this.commit("choose", id, idx, choice));
-        sendJson(res, 200, { ok: true });
+        this.chooseFor(id, body, res);
         return true;
       }
       case "/api/guest/escape": {
@@ -7080,9 +7086,9 @@ export class EventRuntime {
           sendJson(res, 400, { error: "missing person" });
           return true;
         }
-        const idx = Number(body["index"] ?? -1);
-        this.fanout(this.commit("choose", person, idx));
-        sendJson(res, 200, { ok: true });
+        // `choice` / `text` as on `/api/guest/choose` (D15, D18): a director
+        // may answer a menu that sits behind a stale one.
+        this.chooseFor(person, body, res);
         return true;
       }
       default:

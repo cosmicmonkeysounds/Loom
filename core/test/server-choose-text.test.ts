@@ -182,6 +182,18 @@ describe("/api/guest/choose", () => {
     rt.dispose();
   });
 
+  it("/api/mod/choose takes `choice` + `text` too: a director answers the heart menu behind a stale one", async () => {
+    const rt = freshRuntime();
+    const { g, choices } = await twoMenus(rt);
+    const moved = await post(rt, "/api/mod/choose", { person: g.id, index: 0, text: "⟦LEAVE⟧ Goodbye.", choice: choices[1]!.id }, true);
+    expect(moved).toEqual({ status: 409, json: { error: "moved", options: ["⟦ASK⟧ Why are you here?", "⟦LEAVE⟧ Goodbye."] } });
+    const ok = await post(rt, "/api/mod/choose", { person: g.id, index: 1, text: "⟦LEAVE⟧ Goodbye.", choice: choices[1]!.id }, true);
+    expect(ok.status).toBe(200);
+    expect(picked(rt, g.id)).toBe("bye");
+    expect(rt.liveSim!.pendingChoicesFor(g.id).map((c) => c.id)).toEqual([choices[0]!.id]);
+    rt.dispose();
+  });
+
   it("an id that is not pending is 409 `no choice`", async () => {
     const rt = freshRuntime();
     const { g } = await twoMenus(rt);
