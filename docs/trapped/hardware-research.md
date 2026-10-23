@@ -1,3 +1,5 @@
+> **Wave 20 (2026-10-23) supersedes §A again.** The server-room door is read by an **LED shining on an LDR** across the gap (the beam reaches the LDR only while the door is shut), on an **Adafruit Grand Central M4** plugged into Steph's laptop in the server room. The server-room terminal page reads it over **Web Serial** and posts `door_sensor_opened` / `door_sensor_closed` to the event; the ESP32's wire-loop contact and the Zigbee contact are no longer read (D16). See §A.5, [`hardware/server-room-door/`](../../hardware/server-room-door) and the wave 20 contract (`core/examples/trapped-in-the-internet/CONTRACT-w20.md` §1.2, §2.9). The keypad lock is unchanged.
+>
 > **Wave 7 (2026-10-17) supersedes the door sections (§A, ≈ lines 34–113).** The server-room door now has a real **standalone keypad lock** (outside only, set by hand to `facts.json` `door.code`, never networked; the inside handle always opens with no code), and the sensor is **two loops of wire / copper tape that touch when the door opens** (`kClosedWhenOpen`, the reed optional; `hardware/server-room/README.md`). The door never alarms; only the second wrong patch-bay combination does. Read the notes below as history; [OCT31 §5 *Wave 7 status*](../../core/examples/trapped-in-the-internet/OCT31.md) and CHECKLIST §D (HW-DOOR-09) are current.
 >
 > Design/audit note from the 2026-10-14/15 planning sessions for *Trapped in the Internet* (see [SCHEDULE](../../core/examples/trapped-in-the-internet/SCHEDULE.md) / [CHECKLIST](../../core/examples/trapped-in-the-internet/CHECKLIST.md)). File:line citations are a snapshot of commit `6884a96`–`fba382b` and will drift.
@@ -125,6 +127,32 @@ buzz), and sends `<prop: server_room, alarm: true>` back to the siren.
 accepts `args` (`core/server/event-runtime.ts:2745-2748`). Payload fields
 such as `{"correct": 3}` from the patch bay can't reach the story until
 stagehand forwards `args`. It's a small change.
+
+### A.5 Wave 20: LED + LDR on the Grand Central M4 (current)
+
+The user's door: *"There is a door sensor (LDR + LED -- the door is
+"closed" when the LED is shining on the LDR, which reads about max value on
+an Arduino) … In the server room is Steph's laptop with an Arduino plugged
+into it (Grand Central M4) -- the door sensor is connected to it. This
+should transmit to the Loom server."* Built in
+[`hardware/server-room-door/`](../../hardware/server-room-door) (its README
+has the wiring, the protocol and the on-site calibration).
+
+| | |
+|---|---|
+| Parts | Grand Central M4 (ATSAMD51, 12-bit ADC), a CdS LDR + 10 kΩ pull-down on A0, a bright LED + 220 Ω on **D2** (or on 3V3), a **black shroud tube** over the LDR, optional 47 Ω LED-sense resistor on A1 |
+| How it reads | 3V3 → LDR → A0 → 10 kΩ → GND: more light, higher reading (near 4095 lit). With the LED on D2 the firmware blinks it and uses `lit − dark` (**`mod`**), so room light can't fake *shut*; on 3V3 it reads the raw level (**`steady`**). `auto` (the default) toggles D2 at boot and picks |
+| Timing | A CdS cell is slow: ≥ 30 ms before it starts to fall and far longer to settle, so `mod` waits 150 ms per phase (stored, 20–1000): a frame ≈ 300 ms. Open after 250 ms of open frames (≈ 450–750 ms after the beam breaks), shut after 1 s; a hysteresis band (defaults 1200 / 1800) holds the last state |
+| Room light | Non-linear: more ambient raises `dark` and **shrinks** `lit − dark`. The shroud is the fix; `scripts/accept/N-20.sh` measures the worst case on site and proposes the thresholds |
+| Failure modes | A saturated cell (`mod`: dark > 4000) or a dead LED (with the sense wire) is a **blocking fault**: the door reads open and the terminal posts nothing (Run shows 🚪 red; the directors' 🚪 buttons take over, `Night.door_override`). A **cut LDR wire** reads exactly like an open door in a dark hall, so `ldr_open` is only a warning and the door still reports open. An unplugged cable → the terminal's `no_port` / `stale` fault |
+| Transport | USB CDC JSON lines at 115200 → Chrome's Web Serial in the terminal page (desktop Chrome on https; the port granted once in the kiosk profile, reconnected by `navigator.serial.getPorts()`, granted again after a reflash) → `POST /api/mod/signal` with the terminal's mod token. No Wi-Fi, MQTT or stagehand on the path |
+| Calibration | `cal closed` / `cal open` average 2 s each; thresholds at 35 % / 65 % of the span, refused under 200; `save` keeps them in flash (FlashStorage_SAMD), and the terminal re-sends its own on every connect |
+
+Why not the earlier options: the copper-tape / wire-loop contact failed
+silently when a loop broke (§A.1, wave 7's README), and the user already
+had the LED + LDR and the M4 on the laptop that runs the server-room
+terminal. The browser bridge needs no new daemon (contract D1; a stagehand
+serial reader is out of scope).
 
 ---
 
