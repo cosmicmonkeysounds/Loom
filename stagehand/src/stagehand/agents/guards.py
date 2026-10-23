@@ -5,7 +5,10 @@ CONTRACTS.md §C2.2, in this order:
   1. **never** — a line carrying a `secrets.never` word (the door code, a
      patch-bay pair) becomes the persona's fallback; an act whose JSON
      carries one is dropped, and so is a memo (the semantics of
-     `module.withhold_never`, reimplemented here);
+     `module.withhold_never`, reimplemented here); wave 20 (D29) treats a
+     persona `outside:` word (a name or a word from outside his world) the
+     same way, and a holding situation's `acts: none` drops every act and
+     its `max_sentences` cuts a longer line to that many sentences;
   2. **answer words** — a line naming a hunt answer word the guest never
      typed in this thread (and that the phase card, the brief or his own
      house-wide lines didn't bring up) becomes the fallback; an act whose
@@ -104,6 +107,80 @@ def never_guard(persona: Persona, reply: Reply) -> tuple[Reply, list[str]]:
     if not notes:
         return reply, []
     return replace(reply, say=say, acts=acts, memo=memo), notes
+
+
+@lru_cache(maxsize=64)
+def _outside_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
+    parts = [r"\s+".join(re.escape(t) for t in fold(w).split()) for w in words if fold(w)]
+    if not parts:
+        return None
+    return re.compile(r"(?<![a-z0-9])(?:" + "|".join(parts) + r")(?:s|es)?(?![a-z0-9])")
+
+
+def mentions_outside(persona: Persona, text: str) -> bool:
+    """(D29) Does `text` name something from outside his world (the persona's
+    `outside:` list; folded, whole words, a plural too: `actors`)?"""
+    pattern = _outside_pattern(tuple(getattr(persona, "outside", ()) or ()))
+    return pattern is not None and pattern.search(fold(text)) is not None
+
+
+def outside_guard(persona: Persona, reply: Reply) -> tuple[Reply, list[str]]:
+    """(D29) Like `never_guard`: a line naming an `outside:` word is the
+    fallback, an act carrying one is dropped, and so is a memo."""
+    if not getattr(persona, "outside", ()):
+        return reply, []
+    notes: list[str] = []
+    acts = tuple(a for a in reply.acts if not mentions_outside(persona, json.dumps(a, ensure_ascii=False)))
+    if len(acts) != len(reply.acts):
+        notes.append("outside (act dropped)")
+    say = reply.say
+    if mentions_outside(persona, say):
+        say = persona.fallback
+        notes.append("outside (line withheld)")
+    memo = reply.memo
+    if memo and mentions_outside(persona, memo):
+        memo = ""
+        notes.append("outside (memo dropped)")
+    if not notes:
+        return reply, []
+    return replace(reply, say=say, acts=acts, memo=memo), notes
+
+
+def situation_rules(persona: Persona, gate: dict[str, Any] | None) -> tuple[int | None, bool]:
+    """The holding situations' wave 20 keys: `max_sentences` (the last
+    holding situation that sets it, in file order) and whether any says
+    `acts: none`."""
+    if not persona.situations or gate is None:
+        return None, False
+    cap: int | None = None
+    no_acts = False
+    for sit in persona.situations:
+        if not sit.when.evaluate(gate):
+            continue
+        if sit.max_sentences is not None:
+            cap = sit.max_sentences
+        no_acts = no_acts or sit.no_acts
+    return cap, no_acts
+
+
+def cap_sentences(say: str, cap: int) -> str:
+    parts = [p for p in _SENTENCE.split(say.strip()) if p.strip()]
+    return say if len(parts) <= cap else " ".join(parts[:cap])
+
+
+def situation_guard(persona: Persona, reply: Reply, gate: dict[str, Any] | None) -> tuple[Reply, list[str]]:
+    """`acts: none` drops every act; `max_sentences` cuts a longer line."""
+    cap, no_acts = situation_rules(persona, gate)
+    notes: list[str] = []
+    if no_acts and reply.acts:
+        notes.append(f"acts: none ({len(reply.acts)} dropped)")
+        reply = replace(reply, acts=())
+    if cap is not None and reply.say:
+        cut = cap_sentences(reply.say, cap)
+        if cut != reply.say:
+            notes.append(f"cut to {cap} sentences")
+            reply = replace(reply, say=cut)
+    return reply, notes
 
 
 # -- 2. answer words ----------------------------------------------------------------
@@ -475,14 +552,20 @@ def guard_pass(
     guard 1 or 2 withheld is the fallback and is never retried; with
     `repeat_guard` off nothing is (a catchphrase-only line is the fallback)."""
     out = Pass(reply=reply)
-    original = reply.say
     out.reply, notes = never_guard(persona, out.reply)
     out.notes += notes
+    out.reply, more = outside_guard(persona, out.reply)
+    out.notes += more
+    blocked = any(n.endswith("(line withheld)") for n in (*notes, *more))
+    # The situation's own rules (wave 20): a cut is never a reason to retry.
+    out.reply, notes = situation_guard(persona, out.reply, gate)
+    out.notes += notes
+    original = out.reply.say
     # Guard 2 always runs: a line guard 1 withheld still has its acts (and
     # the fallback it now says is checked like any line).
     out.reply, notes = answer_guard(persona, out.reply, allowed)
     out.notes += notes
-    withheld = out.reply.say != original
+    withheld = blocked or out.reply.say != original
     if not withheld:
         out.reply, notes, emptied = invented_guard(persona, out.reply, house)
         out.notes += notes
