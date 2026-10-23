@@ -694,6 +694,34 @@ describe("The Heart — convinced (wave 20)", () => {
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Three");
   });
 
+  it("still at his heart when the Y2K hour starts: no call to come back down, the short return there and then", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toAsk(sim);
+    pick(sim, "g1", "She was never going to answer");
+    expect(v(sim, "g1.heart_chat")).toBe(true);
+    expect(v(sim, "g1.at_the_heart")).toBe(true);
+    const y = [] as SimEvent[];
+    readResults(sim);
+    fireAll(sim, "second_hunt_preview", "start_the_second_hunt");
+    advance(sim, 120);
+    sim.choose("g2", 0);
+    sim.choose("g3", 0);
+    fireAll(sim, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "trabolta_overshares");
+    y.push(...fire(sim, "y2k_clock"));
+    y.push(...advance(sim, 2));
+    expect(beats(y)).not.toContain("Heart Call");
+    expect(beats(y)).toContain("Heart Return");
+    expect(lines(y).some((l) => l.startsWith("The clock is running. You told me"))).toBe(false);
+    expect(hosts(y).some((h) => h.includes("is at his heart now"))).toBe(true);
+    expect(v(sim, "g1.heart_called")).toBe(true);
+    expect(v(sim, "g1.heart_chat")).toBe(false);
+    expect(v(sim, "Night.heart_stage")).toBe("talk");
+    expect(heartMenus(sim, "g1")).toHaveLength(1);
+    expect(offered(sim, "g1")).toEqual(["It's still true. She was never going to answer.", "I changed my mind."]);
+    advance(sim, 5);
+    expect(heartMenus(sim, "g1")).toHaveLength(1);
+  });
+
   it("convinced in the Y2K hour with autoend on: Heart Shutdown, then talked_down 25 s later, then trabolta_disabled", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);

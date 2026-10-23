@@ -2667,11 +2667,18 @@ ROLE Program
       -> Heart Talk
 
   // Convinced before the Y2K hour: when the clock starts, he calls them
-  // back (their own Trabolta thread).
-  when Night.step >= 14 and self.heart_convinced == true and self.heart_called != true and Night.ended != true and Night.r3_closed != true:
+  // back (their own Trabolta thread). Still at his heart when it starts
+  // (the heart to heart after not yet): he asks them again there and then.
+  when Night.step >= 14 and self.heart_convinced == true and self.heart_called != true and self.at_the_heart != true and Night.ended != true and Night.r3_closed != true:
     set self.heart_called = true
     broadcast "🕊 {self.name} convinced Trabolta before the Y2K hour. He'll stand down when they scan in again." to channel(hosts)
     -> Heart Call
+  when Night.step >= 14 and self.heart_convinced == true and self.heart_called != true and self.at_the_heart == true and (Night.heart_stage == "scan" or Night.heart_stage == "talk") and Night.ended != true and Night.r3_closed != true:
+    set self.heart_called = true
+    set self.heart_chat = false
+    set Night.heart_stage = "talk"
+    broadcast "🕊 {self.name} convinced Trabolta before the Y2K hour and is at his heart now: he asks them again." to channel(hosts)
+    -> Heart Talk
 
   // 🔄 forgives: a program thrown out of his heart may come back, and
   // everyone's suspicion starts again (their layer and case stay); a pick
