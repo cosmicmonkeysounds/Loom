@@ -16,13 +16,17 @@ constexpr int kReads = 8;        // reads averaged per phase
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
+// `mod` is the pulsed wiring (config.h LED_PULSED); the wire keeps the name.
 enum Mode : uint8_t { kAuto = 0, kMod = 1, kSteady = 2 };
+static_assert(LED_AUTO == kAuto && LED_PULSED == kMod && LED_STEADY == kSteady, "config.h LED_MODE values are dl::Mode's");
+static_assert(LED_MODE >= LED_AUTO && LED_MODE <= LED_STEADY, "LED_MODE is LED_STEADY, LED_PULSED or LED_AUTO");
+constexpr Mode kBuildMode = (Mode)LED_MODE;  // what a blank board and `reset` run
 
 inline const char* modeName(Mode m) { return m == kMod ? "mod" : m == kSteady ? "steady" : "auto"; }
 
 inline bool parseMode(const char* s, Mode& out) {
   if (strcmp(s, "auto") == 0) out = kAuto;
-  else if (strcmp(s, "mod") == 0) out = kMod;
+  else if (strcmp(s, "mod") == 0 || strcmp(s, "pulsed") == 0) out = kMod;
   else if (strcmp(s, "steady") == 0) out = kSteady;
   else return false;
   return true;
@@ -30,7 +34,7 @@ inline bool parseMode(const char* s, Mode& out) {
 
 struct Settings {
   uint16_t close = DEF_CLOSE, open = DEF_OPEN, settle = DEF_SETTLE;
-  Mode mode = kAuto;  // what was asked for; Engine::mode() is what runs
+  Mode mode = kBuildMode;  // what was asked for; Engine::mode() is what runs
   bool cal = false;   // the thresholds came from `cal closed` + `cal open`
 
   bool operator==(const Settings& o) const {

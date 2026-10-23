@@ -23,12 +23,14 @@ enum Status { kFault, kWaiting, kShut, kOpen };
 
 class Engine {
  public:
-  Engine(dl::Pins& pins, store::Store& st, Sink& out, bool sense)
-      : pins_(pins), store_(st), out_(out), sense_(sense) {}
+  // `build`: the mode a blank board and `reset` run (config.h LED_MODE; the
+  // tests pass each wiring's).
+  Engine(dl::Pins& pins, store::Store& st, Sink& out, bool sense, dl::Mode build = dl::kBuildMode)
+      : pins_(pins), store_(st), out_(out), sense_(sense), build_(build) {}
 
   void begin(uint32_t now) {
     hasStored_ = store_.load(stored_);
-    s_ = hasStored_ ? stored_ : dl::Settings();
+    s_ = hasStored_ ? stored_ : defaults();
     restart(now);
     hello();
   }
@@ -93,7 +95,7 @@ class Engine {
         hasStored_ = true;
         return cfg(true);
       case proto::kReset:
-        s_ = dl::Settings();
+        s_ = defaults();
         refOpen_ = refClosed_ = -1;
         restart(now);
         return ok(cmd);
@@ -117,6 +119,13 @@ class Engine {
   store::Store& store_;
   Sink& out_;
   bool sense_;
+  dl::Mode build_;
+
+  dl::Settings defaults() const {
+    dl::Settings d;
+    d.mode = build_;
+    return d;
+  }
 
   dl::Settings s_, stored_;
   bool hasStored_ = false;
