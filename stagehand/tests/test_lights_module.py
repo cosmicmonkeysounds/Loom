@@ -317,15 +317,19 @@ async def test_a_live_cue_during_the_catch_up_wins():
     assert lights.last_look == "heart_wake"
 
 
-@_async
-async def test_a_story_restart_stops_every_look_and_catches_up():
+@pytest.mark.parametrize("kind", ["reset", "reload", "golive"])
+def test_a_story_restart_stops_every_look_and_catches_up(kind):
+    asyncio.run(_restart_catches_up(kind))
+
+
+async def _restart_catches_up(kind):
     timer = FakeTimer()
     lights = _lights(timer, mod=FakeMod({"night": {"server_door": "closed", "heart_stage": "sealed", "heart_look": None, "alarm_on": False}}))
     lights.catch_up_delay_s = 0.01
     lights.play("heart_door_open")
     lights.play("heart_wake")
     await timer.advance(10)
-    lights.on_lifecycle({"kind": "reset"})
+    lights.on_lifecycle({"kind": kind})
     assert lights.running == {} and lights.settled == {}
     await asyncio.sleep(0.05)
     assert lights.last_look == "heart_idle"
@@ -359,6 +363,13 @@ def test_the_show_hands_its_cue_rules_to_the_lights_module(tmp_path):
     assert show.hand_looks_to_lights({"lights_y2k"}) == 1 and show.cfg.cues[0].match["target"] == "heart_idle"
 
 
+def test_a_pause_is_no_restart():
+    lights = _lights(FakeTimer())
+    lights.settled["server-room-rgb"] = {"state": "ON"}
+    lights.on_lifecycle({"kind": "pause"})
+    assert lights.settled == {"server-room-rgb": {"state": "ON"}}
+
+
 @_async
 async def test_a_restore_after_a_restart_gives_back_the_boot_look():
     """Nothing settled since a restart: a nag / warn ends on `boot`, never on
@@ -378,3 +389,112 @@ def test_the_catch_up_never_lands_on_a_restore_look():
     for look in ("heart_nag", "heart_warn"):
         got, why = catch_up_look({"night": {"heart_look": look, "server_door": "closed", "alarm_on": False}}, doc)
         assert got == "heart_idle" and look in why
+
+
+@_async
+async def test_health_publishes_the_stats_retained():
+    timer = FakeTimer()
+    lights = _lights(timer)
+    import dataclasses
+
+    lights.cfg = dataclasses.replace(lights.cfg, health_s=0.01)
+    lights.play("heart_idle")
+    task = asyncio.ensure_future(lights._health_loop())
+    await asyncio.sleep(0.05)
+    task.cancel()
+    stats = json.loads(lights.mqtt.retained["health/lights/stats"])
+    assert set(stats) == {"fixtures", "looks", "devices", "last_look", "last_at", "z2m"}
+    assert stats["fixtures"] == 5 and stats["last_look"] == "heart_idle"
+
+
+def test_the_broker_link_announces_health_lights_online_and_its_will_lost():
+    from stagehand.show.mqtt import MqttBridge
+
+    loop = asyncio.new_event_loop()
+    try:
+        bridge = MqttBridge("127.0.0.1", 1883, filters=["zigbee2mqtt/bridge/state"], loop=loop, client_id="t", health_topic="health/lights")
+        will = bridge._client._will_topic
+        assert (will.decode() if isinstance(will, bytes) else will) == "health/lights"
+        assert bridge._client._will_payload == b"lost" and bridge._client._will_retain
+
+        sent: list[tuple] = []
+
+        class Client:
+            def publish(self, topic, payload, retain=False):
+                sent.append((topic, payload, retain))
+
+            def subscribe(self, f):
+                pass
+
+        bridge._on_connect(Client(), None, None, 0, None)
+        assert sent[0] == ("health/lights", "online", True)
+    finally:
+        loop.close()
+
+
+@_async
+async def test_a_broker_or_feed_reconnect_catches_the_lights_up(tmp_path, monkeypatch):
+    """§1.5: the module's run() wires both reconnects to the catch-up."""
+    import stagehand.lights.module as mod_module
+    import stagehand.show.mqtt as mqtt_module
+
+    bridges: list = []
+
+    class FakeBridge:
+        def __init__(self, *a, **k):
+            self.kwargs = k
+            self.queue: asyncio.Queue = asyncio.Queue()
+            self.connected = asyncio.Event()
+            self.connected.set()
+            self.on_connected = None
+            self.retained: dict = {}
+            bridges.append(self)
+
+        def publish(self, topic, payload, retain=False, qos=0):
+            pass
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    feeds: list = []
+
+    async def fake_stream(mod, url, on_frame, label="", on_connect=None):
+        feeds.append(on_connect)
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(mqtt_module, "MqttBridge", FakeBridge)
+    monkeypatch.setattr(mod_module, "run_stream", fake_stream)
+    (tmp_path / "lights.json").write_text(json.dumps(BASIC))
+
+    class Mod(FakeMod):
+        def feed_url(self, name):
+            return "feed"
+
+        async def get(self, path, params=None, timeout=None):
+            self.gets.append(path)
+            if path == "/api/screen/state":
+                return {"night": {"heart_look": "heart_idle", "server_door": "closed", "alarm_on": False}}
+            raise ModApiError("old server", 404)
+
+    server = Mod()
+    lights = HouseLights(parse_lights_section({"mqtt": {"host": "h"}, "config_file": "lights.json", "cache_dir": "cache"}, str(tmp_path)))
+
+    class Ctx:
+        mod = server
+
+    task = asyncio.ensure_future(lights.run(Ctx()))
+    await asyncio.sleep(0.05)
+    assert bridges and bridges[0].kwargs["health_topic"] == "health/lights" and feeds
+    start = server.gets.count("/api/screen/state")
+    assert start == 1  # the start catch-up
+    bridges[0].on_connected()
+    await asyncio.sleep(0.05)
+    assert server.gets.count("/api/screen/state") == 2 and lights.last_look == "heart_idle"
+    feeds[0]()
+    await asyncio.sleep(0.05)
+    assert server.gets.count("/api/screen/state") == 3
+    task.cancel()
+    await asyncio.gather(task, return_exceptions=True)
