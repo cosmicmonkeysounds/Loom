@@ -369,8 +369,15 @@ const LOOK_RE = /^[a-z][a-z0-9_]*$/u;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/u;
 const STATE_KEYS = new Set(["state", "brightness", "color", "color_temp", "effect", "transition"]);
 
-/** The problems with one `LightState` (`at`: where, for the message). */
-function stateProblems(at: string, s: unknown): string[] {
+/** Can `name` be a look (and so a story `cue name` the lights play)? Lower-case
+ *  letters, digits and `_`, starting with a letter, never a screens cue family. */
+export function isLightLookName(name: string): boolean {
+  return LOOK_RE.test(name) && !LIGHT_RESERVED_PREFIXES.some((p) => name.startsWith(p));
+}
+
+/** The problems with one `LightState` (`at`: where, for the message): a
+ *  direct test's `set` is checked with it too. [] = fine. */
+export function lightStateProblems(at: string, s: unknown): string[] {
   const p: string[] = [];
   if (!isObj(s)) return [`${at} must be an object {state?, brightness?, color?, color_temp?, effect?, transition?}`];
   for (const k of Object.keys(s)) if (!STATE_KEYS.has(k)) p.push(`${at}: unknown field "${k}"`);
@@ -510,7 +517,7 @@ export function validateLights(lights: unknown, house?: HouseMap | null): Lights
       // The steps, each with its own targets.
       const steps: Array<{ at: number; set: Obj; to: string[]; where: string }> = [];
       if (hasSet) {
-        const sp = stateProblems(`${at}.set`, look["set"]);
+        const sp = lightStateProblems(`${at}.set`, look["set"]);
         problems.push(...sp);
         if (sp.length === 0) steps.push({ at: 0, set: look["set"] as Obj, to: lookTo, where: `${at}.set` });
       } else if (!Array.isArray(look["steps"]) || look["steps"].length === 0) problems.push(`${at}.steps must be a non-empty list of {at, set, to?}`);
@@ -521,7 +528,7 @@ export function validateLights(lights: unknown, house?: HouseMap | null): Lights
           if (!isObj(s)) return void problems.push(`${where} must be an object {at, set, to?}`);
           const t = s["at"];
           if (!isNum(t) || t < 0) problems.push(`${where}.at must be ms from the look's start (≥ 0)`);
-          const sp = stateProblems(`${where}.set`, s["set"]);
+          const sp = lightStateProblems(`${where}.set`, s["set"]);
           problems.push(...sp);
           let to = lookTo;
           if (s["to"] !== undefined) {

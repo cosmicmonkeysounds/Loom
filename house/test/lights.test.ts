@@ -12,6 +12,8 @@ import {
   LIGHT_LOOP_MIN_PERIOD_MS,
   LIGHT_SAFETY_MIN,
   clampForSafety,
+  isLightLookName,
+  lightStateProblems,
   defaultLights,
   lightTopic,
   lightsHash,
@@ -357,4 +359,22 @@ describe("the shared cases (stagehand mirrors these)", () => {
       expect(f.kind === "wled" ? wledPayload(f, c.set) : z2mPayload(f, c.set)).toEqual(c.payload);
     });
   }
+});
+
+describe("isLightLookName / lightStateProblems", () => {
+  it("a look name is a cue name that is not a screens family", () => {
+    expect(isLightLookName("heart_wake")).toBe(true);
+    expect(isLightLookName("h2")).toBe(true);
+    expect(isLightLookName("Heart_wake")).toBe(false);
+    expect(isLightLookName("2heart")).toBe(false);
+    expect(isLightLookName("room_heart_wake")).toBe(false);
+    expect(isLightLookName("screens_flicker")).toBe(false);
+    expect(isLightLookName("")).toBe(false);
+  });
+
+  it("checks one state", () => {
+    expect(lightStateProblems("set", { state: "ON", brightness: 254, color: "#FF0000", transition: 0 })).toEqual([]);
+    expect(lightStateProblems("set", { brightness: 300 })).toEqual(["set.brightness must be a whole number from 0 to 254"]);
+    expect(lightStateProblems("set", "red")).toEqual(["set must be an object {state?, brightness?, color?, color_temp?, effect?, transition?}"]);
+  });
 });
