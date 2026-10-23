@@ -386,7 +386,7 @@ check "any other failure is passed through too" eq "$rc" 1
 teardown
 
 echo "── checklist"
-check "prints the 19 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 19 ]"
+check "prints the 20 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 20 ]"
 printed="$(bash "$ROOT/scripts/ops/checklist.sh")"
 # The morning-of reset covers waves 4–7 (facts + judge + wallet, the wave 5
 # knobs, the orchestrator context / terminal names / rain-night clues, the
@@ -408,7 +408,7 @@ probe_sheet() { # probe_sheet MODE → the sheet's health line against fake-loom
 }
 check "--probe heads the sheet with a healthy /api/health" bash -c "grep -q '✔ {\"ok\":true}' <<<\"\$1\"" _ "$(probe_sheet up)"
 check "--probe flags a 503 (control plane / events not back)" bash -c "grep -q '⚠ .*/api/health answered 503' <<<\"\$1\"" _ "$(probe_sheet starting)"
-check "--probe still prints every box" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' --probe http://127.0.0.1:1 | grep -c '^\[ \]') -eq 19 ]"
+check "--probe still prints every box" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' --probe http://127.0.0.1:1 | grep -c '^\[ \]') -eq 20 ]"
 
 echo "── Caddy holds requests through a loom restart (T4-01)"
 # A 502 closes an EventSource for good: the proxy must retry the dial while
