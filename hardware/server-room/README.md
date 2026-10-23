@@ -1,5 +1,14 @@
 # Server-room box (N-08)
 
+> **Wave 20: the door moved.** The server-room door is now read by an LED
+> shining on an LDR, on a Grand Central M4 plugged into Steph's laptop
+> ([`hardware/server-room-door/`](../server-room-door)), and the
+> server-room terminal page posts it to the event over Web Serial. Stagehand
+> no longer listens to `sensors/serverroom/door` (D16): this box's door code
+> stays in the firmware and still publishes, unread, and the copper tape can
+> come off. The box keeps the patch bay, the ring, the siren and the relay.
+> `scripts/accept/N-08.sh` no longer tests the door (N-20 does).
+
 One ESP32 in the server room (cold storage) that does three jobs for
 *Trapped in the Internet*:
 
@@ -71,6 +80,9 @@ and the relay, with all grounds common. **Never plug USB in while the 5 V
 supply is connected** (it back-feeds the host). Flash with the supply off.
 
 ## The door
+
+*Retired in wave 20 (see the note at the top): kept for the record and for
+the ring's lock indicator, which still works.*
 
 **The lock is not ours.** The server-room door has a standalone electronic
 keypad lock on the **outside only**: the code is set by hand on the lock and
