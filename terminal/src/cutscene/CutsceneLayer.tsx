@@ -57,6 +57,8 @@ function historyFor(t: SceneTarget): Map<number, number> {
   if (s === undefined) historyStarts.set(t, (s = new Map()));
   return s;
 }
+/** Room scenes (wave 20) that ended themselves, by key. */
+const roomEnded = new Set<string>();
 function endedFor(t: SceneTarget): Set<number> {
   let s = endedSlides.get(t);
   if (s === undefined) endedSlides.set(t, (s = new Set()));
@@ -79,19 +81,21 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
       // A restart: its seqs start over.
       ended.clear();
       history.clear();
+      roomEnded.clear();
       flashedFor(target).clear();
     }
     epoch.current = state.announceEpoch;
     queue.update(state, serverNow(state), scenes, target);
   }
   const now = serverNow(state, Date.now());
-  const pick = pickScene({ state, now, layers, bare, target, scenes, queue, slideDone: (seq) => ended.has(seq), historyStarts: history });
-  const playing = typeof pick.base === "object" || pick.top !== null || queue.pending > 0;
+  const pick = pickScene({ state, now, layers, bare, target, scenes, queue, slideDone: (seq) => ended.has(seq), historyStarts: history, roomDone: (key) => roomEnded.has(key) });
+  const room = pick.room ?? null;
+  const playing = typeof pick.base === "object" || pick.top !== null || room !== null || queue.pending > 0;
   useSceneClock(playing, SCENE_FPS);
 
   // The TV face wears a starting scene's mood — once per scene, never again
   // when a held slide's scene leads again after a moment over it.
-  const lead = pick.top ?? (typeof pick.base === "object" ? pick.base : null);
+  const lead = room ?? pick.top ?? (typeof pick.base === "object" ? pick.base : null);
   useEffect(() => {
     const f = faceFlashFor(lead, target, flashedFor(target), state?.night);
     if (f !== null) flashFace(f.mood, f.ms);
@@ -126,6 +130,7 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
       silent={hidden}
       onDone={() => {
         if (s.kind === "slide") ended.add(s.seq);
+        else if (s.kind === "room") roomEnded.add(s.key);
         else queue.done(s.seq);
         bump();
       }}
@@ -145,6 +150,14 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
         <div className="cutscene-top" onClick={stopTap}>
           {host(pick.top)}
           {layers.slide === null && <div className="screen-gear">{gear}</div>}
+        </div>
+      )}
+      {/* A room terminal's room scene (wave 20): the whole screen when it
+          covers, else over the face only, taking no taps (never over the
+          heart's docked choices). */}
+      {room !== null && (
+        <div className={room.def.covers === true ? "cutscene-top cutscene-room" : "cutscene-room-side"} data-room-scene={room.def.id} onClick={stopTap}>
+          {host(room)}
         </div>
       )}
     </>
@@ -186,7 +199,7 @@ function SceneHostView({ scene, now, state, target, reduced, silent, onDone }: S
  * A scene drawn at a given `t` on its stage, behind its own error boundary —
  * what the layer draws, and what the preview draws at any `t` it likes.
  */
-export function SceneStage({ def, kind, target, t, at, seq, value, who, state, reduced, play, onDone }: { def: SceneDef; kind: "slide" | "moment"; target: SceneTarget; t: number; at: number; seq: number; value: string; who: string | null; state: ScreenState; reduced: boolean; play: SceneProps["sfx"]; onDone: () => void }) {
+export function SceneStage({ def, kind, target, t, at, seq, value, who, state, reduced, play, onDone }: { def: SceneDef; kind: "slide" | "moment" | "room"; target: SceneTarget; t: number; at: number; seq: number; value: string; who: string | null; state: ScreenState; reduced: boolean; play: SceneProps["sfx"]; onDone: () => void }) {
   const View = componentFor(def, target);
   if (View === null) return null;
   return (

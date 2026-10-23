@@ -47,9 +47,39 @@ export function nameMatches(pattern: string, value: string): boolean {
   return foldName(p) === foldName(value);
 }
 
-export function triggerMatches(trigger: SceneTrigger, on: { slide: string } | { moment: ScreenMoment }): boolean {
+export function triggerMatches(trigger: SceneTrigger, on: { slide: string } | { moment: ScreenMoment } | { room: string }): boolean {
+  if ("room" in trigger) return "room" in on && foldName(trigger.room) === foldName(roomCueName(on.room));
   if ("slide" in trigger) return "slide" in on && nameMatches(trigger.slide, on.slide);
   return "moment" in on && trigger.moment === on.moment.kind && nameMatches(trigger.name, on.moment.name);
+}
+
+/** `room_heart_wake` → `heart_wake` (a room trigger's name). */
+export function roomCueName(value: string): string {
+  return value.startsWith("room_") ? value.slice(5) : value;
+}
+
+/** The scene for a room cue, on a wall target only (and, given the state, that may play now). */
+export function sceneForRoom(scenes: readonly SceneDef[], value: string, target: SceneTarget, state?: Pick<ScreenState, "character"> | null): SceneDef | null {
+  if (target !== "wall") return null;
+  return scenes.find((d) => d.wall !== undefined && (state === undefined || allowed(d, state)) && d.when.some((w) => triggerMatches(w, { room: value }))) ?? null;
+}
+
+/**
+ * The room scene on screen at server `now` (wave 20, D4): the room's last
+ * picture cue, from its own `at`, for its `ms` — never one from history
+ * (`at` 0), never past its end or once it called `done()` (`roomDone`). A
+ * newer cue replaces it (the server keeps the last).
+ */
+export function roomSceneAt(o: { state: Pick<ScreenState, "room" | "character"> | null; now: number; target: SceneTarget; scenes: readonly SceneDef[]; roomDone?: (key: string) => boolean }): ActiveScene | null {
+  const cue = o.state?.room?.cue ?? null;
+  if (cue === null || cue.at <= 0 || o.state === null) return null;
+  const def = sceneForRoom(o.scenes, cue.value, o.target, o.state);
+  if (def === null) return null;
+  const ms = typeof def.ms === "number" ? def.ms : MOMENT_HOLD_MAX_MS;
+  if (o.now >= cue.at + ms || o.now < cue.at - 5000) return null;
+  const key = `${def.id}:r${cue.seq}:${cue.at}`;
+  if (o.roomDone?.(key) === true) return null;
+  return { kind: "room", def, seq: cue.seq, at: cue.at, start: cue.at, value: roomCueName(cue.value), who: null, key };
 }
 
 /** The component a scene draws on this target (the TV falls back to the wall's), or null. */
@@ -89,7 +119,7 @@ const priorityOf = (d: SceneDef) => d.priority ?? 0;
 
 /** One scene on screen (or due). `start` is server ms; `t` follows from it. */
 export interface ActiveScene {
-  kind: "slide" | "moment";
+  kind: "slide" | "moment" | "room";
   def: SceneDef;
   seq: number;
   /** The cue's / moment's own `at` (0 = history). */
@@ -222,6 +252,8 @@ export interface ScenePick {
   base: ActiveScene | "card" | null;
   top: ActiveScene | null;
   under: ActiveScene | "card" | null;
+  /** A room terminal's room scene (wave 20), drawn whatever the line is doing. */
+  room?: ActiveScene | null;
 }
 
 export const NO_PICK: ScenePick = { base: null, top: null, under: null };
@@ -245,10 +277,15 @@ export function pickScene(o: {
   queue: MomentQueue;
   slideDone?: (seq: number) => boolean;
   historyStarts?: Map<number, number>;
+  /** A room scene that ended itself early (its key). */
+  roomDone?: (key: string) => boolean;
 }): ScenePick {
   // The queue moves on whatever is drawn (its scenes run on the server's clock).
   const moment = o.queue.current(o.now);
-  if (o.state === null || o.layers.overlay !== null || o.bare) return NO_PICK;
+  if (o.state === null || o.layers.overlay !== null) return NO_PICK;
+  // A room terminal (bare: no slides, no moments) still draws its room's scenes.
+  const room = roomSceneAt({ state: o.state, now: o.now, target: o.target, scenes: o.scenes, roomDone: o.roomDone });
+  if (o.bare) return room === null ? NO_PICK : { ...NO_PICK, room };
   const slide = o.layers.slide;
   let base: ScenePick["base"] = null;
   let slideScene: ActiveScene | null = null;
@@ -264,9 +301,11 @@ export function pickScene(o: {
       }
     }
   }
-  if (moment === null) return { base, top: null, under: null };
-  if (slideScene !== null && priorityOf(slideScene.def) > priorityOf(moment.def)) return { base, top: null, under: null };
-  return moment.def.over === true ? { base, top: moment, under: null } : { base: null, top: moment, under: base };
+  // (A wall with no room cue carries no `room` at all: the pick reads as before.)
+  const r = room === null ? {} : { room };
+  if (moment === null) return { base, top: null, under: null, ...r };
+  if (slideScene !== null && priorityOf(slideScene.def) > priorityOf(moment.def)) return { base, top: null, under: null, ...r };
+  return moment.def.over === true ? { base, top: moment, under: null, ...r } : { base: null, top: moment, under: base, ...r };
 }
 
 /** A history slide's start: `HISTORY_T` before the first time it was drawn (recorded in `seen`). */
@@ -288,7 +327,8 @@ function historyStart(seen: Map<number, number> | undefined, seq: number, now: n
 export function faceFlashFor(lead: ActiveScene | null, target: SceneTarget, seen: Set<string>, night?: ScreenNight): { mood: NonNullable<SceneDef["face"]>; ms: number } | null {
   if (lead === null || seen.has(lead.key)) return null;
   seen.add(lead.key);
-  if (target !== "tv" || lead.def.face === undefined) return null;
+  // The TV's scenes, and (wave 20) a room scene on its room's wall terminal.
+  if ((target !== "tv" && lead.kind !== "room") || lead.def.face === undefined) return null;
   if (lead.def.faceWhen !== undefined && night !== undefined && !lead.def.faceWhen(night)) return null;
   return { mood: lead.def.face, ms: lead.def.faceMs ?? FACE_FLASH_MS };
 }

@@ -60,7 +60,7 @@ function draw(id: string, target: SceneTarget, t: number, o: { results?: ScreenR
   const at = o.at ?? AT;
   const state = fakeState({ now: at + t, target: target === "tv" ? "tv" : "terminals", night: o.night, moments: o.moments, results: o.results ?? null });
   const w = def.when[0]!;
-  const props: SceneProps = { t, at, seq: 1, value: "slide" in w ? w.slide.replace(/\*$/u, "") : w.name, state, night: state.night, who: null, target, sfx: () => false, done: () => {}, reduced: false };
+  const props: SceneProps = { t, at, seq: 1, value: "slide" in w ? w.slide.replace(/\*$/u, "") : "room" in w ? w.room : w.name, state, night: state.night, who: null, target, sfx: () => false, done: () => {}, reduced: false };
   return renderToStaticMarkup(createElement(View, props));
 }
 

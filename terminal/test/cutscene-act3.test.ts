@@ -46,6 +46,7 @@ describe("tv3 triggers name the story's real cues, beats and signals", () => {
     for (const s of ALL)
       for (const w of s.when) {
         if ("slide" in w) expect(STORY, `${s.id}: slide ${w.slide}`).toMatch(screenCue(w.slide));
+        else if ("room" in w) throw new Error(`${s.id}: unexpected room trigger ${w.room}`);
         else if (w.moment === "beat") expect(beatNames.has(w.name), `${s.id}: beat ${w.name}`).toBe(true);
         else if (w.moment === "signal") expect(adminCues.has(w.name), `${s.id}: admin cue ${w.name}`).toBe(true);
         else if (w.moment === "found") expect(["golden duck", "golden duck kept"], s.id).toContain(w.name);
