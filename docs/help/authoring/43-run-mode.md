@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, door sensor, 🚪, door override, trust the door sensor, ldr_open, fault, lights, 💡, lights module, zigbee, pairing, fixtures, keys=0, door=serial, microphone, mic, 🎤, voice link, denied, invitations, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
+keywords: run, door sensor, 🚪, door override, trust the door sensor, ldr_open, fault, lights, 💡, lights module, zigbee, pairing, fixtures, keys=0, door=serial, microphone, mic, 🎤, voice link, denied, invitations, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, urgent, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -431,6 +431,10 @@ countdown): a click opens the Director page and never fires.
   decides what happens. Acts never change NEXT: they only group the page.
 - A `repeat: true` cue **stays NEXT** while you keep pressing it and its
   `while:` holds (📋 once per question, until the third).
+- An `urgent: true` cue **jumps the order**: while its `while:` holds and
+  it has not fired it is NEXT wherever LAST is (the show's 🕊 *Trabolta
+  stands down* once a program talks him down at his heart: the night
+  ends on your press).
 - A press the story **turns down** counts for nothing: it never becomes
   LAST and never ticks. A show's cues pressed out of turn say why in
   `# hosts` and do nothing else — a cue pressed ahead of its turn is
