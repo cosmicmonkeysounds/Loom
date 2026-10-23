@@ -52,6 +52,16 @@
         prompt: |                      # appended to the voice's system prompt
           You are in the cold room…    #   (and the orchestrator's reflect for
                                        #   that speaker) while `when` is true
+        max_sentences: 4               # (wave 20) his line may run this long here
+                                       #   (the guards cut a longer one; the last
+                                       #   holding situation that sets it wins)
+        acts: none                     # (wave 20) he decides nothing here: every
+                                       #   act the model returns is dropped
+    outside:                           # (wave 20, D29) names and words from outside
+      - John                           #   his world: never in his line (swapped for
+      - Loom                           #   a fallback, its acts dropped, like a
+                                       #   `secrets.never` hit), and the prompt says
+                                       #   they are not things he knows
     ---
     You are TRABOLTA, …
 
@@ -101,9 +111,10 @@ _KNOWN = {
     "catchphrase_stages",
     "fallbacks",
     "unsaid",
+    "outside",
 }
 
-_SITUATION_KEYS = {"name", "when", "prompt"}
+_SITUATION_KEYS = {"name", "when", "prompt", "max_sentences", "acts"}
 
 
 @dataclass(frozen=True)
@@ -117,6 +128,11 @@ class Situation:
     when: Condition
     prompt: str
     name: str = ""
+    #: (wave 20) His line may run up to this many sentences here; the guards
+    #: cut a longer one. None = no limit of its own.
+    max_sentences: int | None = None
+    #: (wave 20) `acts: none`: he decides nothing here — every act dropped.
+    no_acts: bool = False
 
     @property
     def heading(self) -> str:
@@ -182,6 +198,9 @@ class Persona:
     stage_cards: dict[str, str] = field(default_factory=dict)
     #: Not fatal, worth a look (`stagehand check` prints them).
     warnings: tuple[str, ...] = ()
+    #: (wave 20, D29) Names and words from outside his world (`outside:`):
+    #: a hit in his output is treated like a `secrets.never` hit.
+    outside: tuple[str, ...] = ()
 
 
 POLICY_FAVOURS = ("none", "earned", "loose")
@@ -262,7 +281,13 @@ def _situations(value: Any, source: str) -> tuple[Situation, ...]:
         name = raw.get("name")
         if name is not None and not isinstance(name, str):
             raise ConfigError(f"{where}: name must be text")
-        out.append(Situation(when=when, prompt=prompt.strip(), name=(name or "").strip()))
+        cap = raw.get("max_sentences")
+        if cap is not None and (isinstance(cap, bool) or not isinstance(cap, int) or not 1 <= cap <= 12):
+            raise ConfigError(f"{where}: max_sentences must be a whole number from 1 to 12")
+        acts = raw.get("acts")
+        if acts is not None and acts not in ("none", "any"):
+            raise ConfigError(f"{where}: acts must be none (or any, the default)")
+        out.append(Situation(when=when, prompt=prompt.strip(), name=(name or "").strip(), max_sentences=cap, no_acts=acts == "none"))
     return tuple(out)
 
 
@@ -360,6 +385,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         catchphrase_stages=_catchphrase_stages(meta.get("catchphrase_stages"), stages, source),
         fallbacks=_fallbacks(meta.get("fallbacks"), stages, secrets, source),
         unsaid=_unsaid(meta.get("unsaid"), source),
+        outside=_names(meta.get("outside"), f"{source}: outside"),
         phase_cards=dict(table.cards),
         stage_cards=dict(table.stage_cards),
         warnings=table.warnings,
