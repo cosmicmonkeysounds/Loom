@@ -151,6 +151,9 @@ export interface InteractionSummary {
   /** True for a cue pressed again and again (`repeat: true`): the cue
    *  sheet still suggests it once it has fired. */
   repeat?: true;
+  /** True for an admin cue the sheet suggests ahead of the running order
+   *  while it is live and unfired (`urgent: true`). */
+  urgent?: true;
   /** Whose button this is — character ids, from the INTERACTION's `by:`
    *  (characters, or a GROUP's members) plus every character that owns a
    *  hook for it (a trait's `when vouch for program:`). Absent = anyone's.
@@ -320,6 +323,7 @@ function interactionsFor(
       if (subjectOnly.has(foldName(i.id))) s.subject = true;
       if (!i.sequence) s.sequence = false;
       if (i.repeat) s.repeat = true;
+      if (i.urgent === true) s.urgent = true;
       if (i.arm) s.arm = true;
       const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
       if (by !== undefined) s.actors = by;

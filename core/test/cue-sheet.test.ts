@@ -801,3 +801,28 @@ describe("countdowns on the cue sheet", () => {
     expect(Object.keys(bare).sort()).toEqual(["cues", "interactions", "roster", "world"]);
   });
 });
+
+describe("an `urgent: true` cue jumps the running order (w20b: 🕊 while a stand-down waits)", () => {
+  type Ix = { id: string; label: string; who: string; live?: false; urgent?: true; sequence?: false };
+  const ix = (id: string, extra: { live?: false; urgent?: true; sequence?: false } = {}): Ix => ({ id, label: id, who: "admin", ...extra });
+  const next = (sheet: Ix[], last: string | null, fired: string[]) => cueRows(sheet, { last, fired }).find((r) => r.next)?.id ?? null;
+
+  it("is NEXT while live and unfired, wherever LAST is; otherwise the sheet runs as before", () => {
+    const sheet = [ix("bingo"), ix("hunt"), ix("y2k"), ix("talked_down", { urgent: true }), ix("reveal"), ix("bobbing")];
+    expect(next(sheet, "bingo", ["bingo"])).toBe("talked_down"); // LAST before it
+    expect(next(sheet, "reveal", ["bingo", "hunt", "y2k", "reveal"])).toBe("talked_down"); // LAST after it
+    expect(cueRows(sheet, { last: "bingo", fired: ["bingo"] }).filter((r) => r.next)).toHaveLength(1);
+    const idle = sheet.map((i) => (i.id === "talked_down" ? ix("talked_down", { urgent: true, live: false }) : i));
+    expect(next(idle, "bingo", ["bingo"])).toBe("hunt");
+    expect(next(sheet, "talked_down", ["bingo", "talked_down"])).toBe("reveal"); // fired: back to the order
+    const aside = sheet.map((i) => (i.id === "talked_down" ? ix("talked_down", { urgent: true, sequence: false }) : i));
+    expect(next(aside, "bingo", ["bingo"])).toBe("hunt"); // an aside is never NEXT
+  });
+
+  it("the lean view carries the flag", () => {
+    const sheet = [ix("a"), ix("b", { urgent: true })];
+    const lean = cueSheetView({ interactions: sheet }).interactions;
+    expect(lean.find((i) => i.id === "b")).toMatchObject({ urgent: true });
+    expect(lean.find((i) => i.id === "a")).not.toHaveProperty("urgent");
+  });
+});

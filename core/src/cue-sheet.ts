@@ -7,7 +7,8 @@
 //! as buttons: the code split off, the last cue marked, the next one (the
 //! first declaration after the last that hasn't fired and is on tonight's
 //! branch — `while:` holds — or the last itself while it is a `repeat: true`
-//! cue, pressed once per question / per trip) suggested, a free-text filter, and the story's `Night.phase` read off
+//! cue, pressed once per question / per trip; an `urgent: true` cue that is
+//! live and unfired comes first) suggested, a free-text filter, and the story's `Night.phase` read off
 //! the world.
 //!
 //! On top of the rows (wave 10, display only — never NEXT / LAST): the
@@ -33,6 +34,9 @@ export interface CueInteraction {
   subject?: boolean;
   /** Pressed again and again (`repeat: true`): still NEXT once fired. */
   repeat?: true;
+  /** `urgent: true`: NEXT ahead of the running order while it is live and
+   *  unfired (an in-sequence cue only). */
+  urgent?: true;
   /** False while the cue's `while:` is false — off tonight's branch (🏍
    *  before Combo A): never NEXT, still pressable. */
   live?: false;
@@ -150,8 +154,13 @@ export function cueRows(interactions: readonly CueInteraction[], cues: CueMarks)
     return act;
   });
   const lastIdx = cues.last === null ? -1 : admin.findIndex((i) => i.id === cues.last);
+  // An urgent cue (live, unfired, in sequence) jumps the running order: a
+  // stand-down waiting on the director's 🕊 is NEXT wherever LAST is.
+  const urgentIdx = admin.findIndex((i) => i.urgent === true && i.sequence !== false && i.live !== false && !fired.has(i.id));
   const nextIdx =
-    lastIdx >= 0 && admin[lastIdx]!.repeat === true && admin[lastIdx]!.live !== false
+    urgentIdx >= 0
+      ? urgentIdx
+      : lastIdx >= 0 && admin[lastIdx]!.repeat === true && admin[lastIdx]!.live !== false
       ? lastIdx
       : admin.findIndex((i, idx) => idx > lastIdx && i.sequence !== false && i.live !== false && (!fired.has(i.id) || i.repeat === true));
   return admin.map((i, idx) => {
@@ -511,6 +520,7 @@ export function cueSheetView(view: {
         ...(i.sequence === false ? { sequence: false as const } : {}),
         ...(i.subject === true ? { subject: true } : {}),
         ...(i.repeat === true ? { repeat: true as const } : {}),
+        ...(i.urgent === true ? { urgent: true as const } : {}),
         ...(i.live === false ? { live: false as const } : {}),
         ...(typeof i.act === "string" && i.act.trim() !== "" ? { act: i.act } : {}),
         ...(i.arm === true ? { arm: true as const } : {}),
