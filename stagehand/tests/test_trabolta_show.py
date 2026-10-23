@@ -207,8 +207,11 @@ def test_the_fiction_boundary_lists_what_is_outside_his_world():
 
     meta = yaml.safe_load((SHOW / "trabolta.persona.md").read_text(encoding="utf-8").split("---")[1])
     outside = meta["outside"]
-    for w in ("John", "Steph", "Jesse", "Steph's laptop", "party", "the show", "actor", "performer", "rehearsal", "Loom", "stagehand", "Arduino", "Zigbee"):
+    for w in ("Steph", "Jesse", "Steph's laptop", "the show", "actor", "performer", "rehearsal", "Loom", "stagehand", "Arduino", "Zigbee"):
         assert w in outside, w
+    # His own world is never outside it: John McAfee, the fundraiser party.
+    for w in ("John", "party", "parties"):
+        assert w not in outside, w
     p = load_persona(TRABOLTA)
     texts = [p.system, p.bargain] + [s.prompt for s in p.situations]
     for t in texts:

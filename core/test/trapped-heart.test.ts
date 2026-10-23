@@ -9,7 +9,7 @@
 //! guest view for where each menu docks.
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
@@ -1052,8 +1052,24 @@ describe("The Heart — secrets and the fiction (wave 20, D29)", () => {
   });
 
   it("no heart line, option or notice names anything outside his world (the persona's outside: list)", () => {
-    expect(OUTSIDE).toEqual(expect.arrayContaining(["John", "Steph", "Jesse", "party", "Arduino", "Zigbee", "Loom"]));
+    expect(OUTSIDE).toEqual(expect.arrayContaining(["Steph", "Jesse", "Arduino", "Zigbee", "Loom"]));
     for (const line of heartText()) for (const w of OUTSIDE) expect(wordHit(line, w), `${line} ~ ${w}`).toBe(false);
+  });
+
+  it("outside: never names something of his own world (John McAfee, the fundraiser party, any codex text)", () => {
+    expect(OUTSIDE).not.toContain("John");
+    expect(OUTSIDE).not.toContain("party");
+    expect(OUTSIDE).not.toContain("parties");
+    const own = ["John McAfee", "a special fundraiser party to restore the sign"];
+    for (const f of readdirSync(join(DIR, "codex"))) {
+      for (const raw of read(join("codex", f)).split("\n")) {
+        const l = raw.trim();
+        if (l !== "" && !l.startsWith("//")) own.push(l);
+      }
+    }
+    for (const raw of read("beats/review.loom").split("\n")) if (raw.trim().startsWith("Trabolta:")) own.push(raw.trim());
+    for (const line of own) for (const w of OUTSIDE) expect(wordHit(line, w), `${line} ~ ${w}`).toBe(false);
+    expect(PERSONA).toMatch(/fundraiser\nparty to restore the sign/u);
   });
 
   it("the persona's own spoken lines and the new situations stay inside his world", () => {
