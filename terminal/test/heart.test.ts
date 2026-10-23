@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FILES_IDLE_MS, HEART_IDLE_MS, HEART_WARN_MS, IDLE_MS, WARN_MS, lineLeash } from "../src/idle.ts";
+import { FILES_IDLE_MS, HEART_IDLE_MS, HEART_WARN_MS, IDLE_MS, WARN_MS, lineLeash, talkWaitsOnDoor } from "../src/idle.ts";
 import { ApiError, RequestTimeout } from "@loom/play/client.ts";
 import { chooseBody, chooseErrorText, composerShown, doorOverlayOn, heartMenuOf, heartTouched, isChatMenu, isHeartTerminal, isStaleChoice, menusOf, panelModel, pilotEndFor, pilotEndOf, splitTag, type HeartMenu } from "../src/heart/heart.ts";
 
@@ -68,14 +68,17 @@ describe("the composer (D23, D28)", () => {
 });
 
 describe("the leash", () => {
-  it("is the normal 30 s, the file panel's 120 s, the heart's 180 s, held while answering or the door is open", () => {
+  it("is the normal 30 s, the file panel's 120 s, the heart's 180 s, held while answering, long while the door is open", () => {
     expect(lineLeash({ answering: false, filesOpen: false })).toEqual({ busy: false, limit: IDLE_MS, warnMs: WARN_MS });
     expect(lineLeash({ answering: true, filesOpen: false }).busy).toBe(true);
     expect(lineLeash({ answering: false, filesOpen: true }).limit).toBe(FILES_IDLE_MS);
     expect(lineLeash({ answering: false, filesOpen: false, heart: true })).toEqual({ busy: false, limit: HEART_IDLE_MS, warnMs: HEART_WARN_MS });
     expect(lineLeash({ answering: false, filesOpen: true, heart: true }).limit).toBe(HEART_IDLE_MS);
-    expect(lineLeash({ answering: false, filesOpen: false, doorOpen: true }).busy).toBe(true);
-    expect(lineLeash({ answering: false, filesOpen: false, heart: true, doorOpen: true })).toEqual({ busy: true, limit: HEART_IDLE_MS, warnMs: HEART_WARN_MS });
+    // An open door the talk waits on lengthens the leash; it never holds it for good.
+    expect(lineLeash({ answering: false, filesOpen: false, doorOpen: true })).toEqual({ busy: false, limit: HEART_IDLE_MS, warnMs: HEART_WARN_MS });
+    expect(lineLeash({ answering: false, filesOpen: false, heart: true, doorOpen: true })).toEqual({ busy: false, limit: HEART_IDLE_MS, warnMs: HEART_WARN_MS });
+    expect(["door", "scan", "talk"].map(talkWaitsOnDoor)).toEqual([true, true, true]);
+    expect(["sealed", "done", null].map(talkWaitsOnDoor)).toEqual([false, false, false]);
     expect([HEART_IDLE_MS, HEART_WARN_MS]).toEqual([180_000, 30_000]);
   });
 

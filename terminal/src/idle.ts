@@ -26,15 +26,23 @@ export const HEART_WARN_MS = 30_000;
 
 /**
  * The piloted line's leash: held while the character is answering
- * (`answering`: composing, speaking, a room line playing) and while the
- * server-room door is open (`doorOpen`: the talk waits for it, the program
- * is told to shut it — never their fault); the heart (`heart`: a heart menu
- * docked, or a heart to heart) and an open file panel lengthen it instead.
+ * (`answering`: composing, speaking, a room line playing). The heart
+ * (`heart`: a heart menu docked, or a heart to heart), a server-room door
+ * the talk is waiting on (`doorOpen`: the program is told to shut it, never
+ * their fault) and an open file panel lengthen it instead. An open door
+ * never holds the line for good: a program who opened it on their way out,
+ * or a door that reads open with nobody there, still frees the terminal.
  */
 export function lineLeash(o: { answering: boolean; filesOpen: boolean; heart?: boolean; doorOpen?: boolean }): { busy: boolean; limit: number; warnMs: number } {
-  const busy = o.answering || o.doorOpen === true;
-  if (o.heart === true) return { busy, limit: HEART_IDLE_MS, warnMs: HEART_WARN_MS };
+  const busy = o.answering;
+  if (o.heart === true || o.doorOpen === true) return { busy, limit: HEART_IDLE_MS, warnMs: HEART_WARN_MS };
   return o.filesOpen ? { busy, limit: FILES_IDLE_MS, warnMs: FILES_WARN_MS } : { busy, limit: IDLE_MS, warnMs: WARN_MS };
+}
+
+/** Is the talk at his heart waiting on the door (`Night.heart_stage` door /
+ *  scan / talk)? Sealed or done, an open door is nothing to wait for. */
+export function talkWaitsOnDoor(stage: string | null | undefined): boolean {
+  return stage === "door" || stage === "scan" || stage === "talk";
 }
 
 export class IdleClock {
