@@ -1028,8 +1028,11 @@ function Terminal({
   // line's eject cue must not end this one).
   const pilotSince = useRef(0);
   const sinceFor = useRef<Pilot | null>(null);
+  // Was this line ever at the heart (a menu docked)? Only then does an eject end it.
+  const hadMenu = useRef(false);
   if (pilot !== sinceFor.current) {
     sinceFor.current = pilot;
+    hadMenu.current = false;
     pilotSince.current = pilot === null ? 0 : serverNow(state);
   }
   const characterId = characterIdOf(config.character, session.view);
@@ -1043,6 +1046,7 @@ function Terminal({
   if (cueNow !== null && cueMark.current?.seq !== cueNow.seq) cueMark.current = { seq: cueNow.seq, lineSeq: session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1) };
   const typedAfter = pilot !== null && cueMark.current !== null && session.lines.some((l) => !l.theirs && l.from === pilot.name && l.seq > cueMark.current!.lineSeq);
   const heart = menu !== null || (pilot !== null && heartTouched(cueNow, pilotSince.current, typedAfter));
+  if (menu !== null) hadMenu.current = true;
   const [echoes, setEchoes] = useState<Array<{ key: string; text: string; after: number }>>([]);
   useEffect(() => setEchoes([]), [pilot]);
   const choose = useCallback(
@@ -1080,7 +1084,8 @@ function Terminal({
   useEffect(() => {
     if (pilot === null || roomCue === null || roomCue.at <= 0 || roomCue.at < pilotSince.current) return;
     const plan = pilotEndFor(roomCue.value, config.keys);
-    if (plan === null) return;
+    // An eject only throws a program whose line reached the heart (a menu docked).
+    if (plan === null || (plan.why === "thrown" && !hadMenu.current)) return;
     const wait = Math.max(0, roomCue.at + plan.ms - serverNow(stateRef.current));
     const t = window.setTimeout(() => endRef.current(plan.why), wait);
     return () => window.clearTimeout(t);
