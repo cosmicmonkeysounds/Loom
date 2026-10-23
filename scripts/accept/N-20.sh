@@ -122,6 +122,8 @@ if h is None:
 ok(f"{h['fw']} · mode {h['mode']} (auto {h['auto']}) · close {h['close']} open {h['open']} settle {h['settle']} · cal {h['cal']} · sense {h['sense']}")
 start = reply("get", ("cfg",))
 before = {k: start[k] for k in ("close", "open", "settle")} if start else None
+# The mode it ran: `auto` if its probe picked, else the build's (LED_MODE) or a saved one.
+before_mode = ("auto" if start["auto"] else start["mode"]) if start else "steady"
 d = doors(1.6)
 ok(f"door lines every second ({len(d)} in 1.6 s)") if len(d) >= 1 else bad("no door lines")
 
@@ -227,10 +229,12 @@ if yes("apply and save it on the board?"):
         ok(f"saved: mode {s['mode']} close {s['close']} open {s['open']} settle {s['settle']}")
     else:
         bad(f"save: {s}")
-    print("    · the terminal re-sends its own stored thresholds on connect: enter the same values in its ⚙ (or run Calibrate there)")
+    print("    · the terminal re-sends its own stored calibration on connect (when it was taken in this mode): run ⚙ → Calibrate there too, so the two agree")
+    if use == "mod" and before_mode == "steady":
+        print("    · saved as mod: worth reflashing with LED_MODE LED_PULSED (config.h) so a blank board or `reset` runs it too")
 else:
     print("    · not applied; put the board back as it was")
-    reply("set mode auto", ("ok",))
+    reply(f"set mode {before_mode}", ("ok",))
     cur = reply("get", ("cfg",))
     if before and cur:
         pair = [f"set open {before['open']}", f"set close {before['close']}"] if before["open"] < cur["close"] else [f"set close {before['close']}", f"set open {before['open']}"]

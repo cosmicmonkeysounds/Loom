@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultConfig } from "../src/config.ts";
 import { ADAFRUIT_VID, doorSignalRequest, pickPort, postDoorSignal, requestDoorPort, startDoorLink, type SerialLike, type SerialPortLike } from "../src/serial/door-serial.ts";
 import { DOOR_SETTINGS_KEY } from "../src/serial/door-protocol.ts";
-import { doorActions, doorHeartbeat, doorStatus } from "../src/serial/door-status.ts";
+import { doorActions, doorHeartbeat, doorStatus, doorStatusText } from "../src/serial/door-status.ts";
 
 const config = defaultConfig({ eventId: "evt", token: "MODTOK", name: "Heart", door: "sim" });
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -132,7 +132,7 @@ describe("Web Serial (door=serial)", () => {
     for (let i = 0; i < 5; i++) await tick();
     expect(b.port.open).toHaveBeenCalledWith({ baudRate: 115200 });
     expect(doorStatus().connected).toBe(true);
-    b.say('{"t":"cfg","fw":"door-m4 1.0.0","mode":"mod","auto":false,"close":1800,"open":1200,"settle":150,"cal":true,"sense":false,"saved":true}\n');
+    b.say('{"t":"cfg","fw":"door-m4 1.1.0","mode":"mod","auto":false,"close":1800,"open":1200,"settle":150,"cal":true,"sense":false,"saved":true}\n');
     for (let i = 0; i < 5; i++) await tick();
     expect(b.written.join("")).toBe("get\nset close 1900\nset open 1300\n");
     link.screen({ server_door: "closed", door_override: false });
@@ -141,6 +141,26 @@ describe("Web Serial (door=serial)", () => {
     for (let i = 0; i < 5; i++) await tick();
     expect(posts).toEqual(["door_sensor_opened"]);
     expect(doorHeartbeat()).toEqual({ door: "open", dlv: "35" });
+    link.stop();
+  });
+
+  it("after the LED moves to D2 (a pulsed build), a steady calibration is not re-sent: ⚙ asks for a new one", async () => {
+    const b = fakeBoard();
+    const store = memory();
+    store.setItem(DOOR_SETTINGS_KEY, JSON.stringify({ close: 3600, open: 2900, mode: "steady", settle: 150 }));
+    const link = startDoorLink({ ...config, door: "serial" }, { serial: b.serial, store, fetchFn: (async () => new Response("{}")) as unknown as typeof fetch });
+    for (let i = 0; i < 5; i++) await tick();
+    b.say('{"t":"hello","fw":"door-m4 1.1.0","mode":"mod","auto":false,"close":1800,"open":1200,"settle":150,"cal":false,"sense":true}\n');
+    b.say('{"t":"door","seq":1,"open":false,"level":2410,"lit":3020,"dark":610,"fault":null,"warn":null}\n');
+    for (let i = 0; i < 5; i++) await tick();
+    expect(b.written.join("")).toBe("get\n"); // no set mode, no thresholds
+    expect(doorStatus().recal).toBe(true);
+    expect(doorStatusText(doorStatus())).toBe("door sensor: SHUT · level 2410 · pulsed · ⚠ calibrate again: the sensor's wiring changed");
+    // A calibration on the new wiring stores its mode and clears the ask.
+    b.say('{"t":"cal","which":"open","ref":120,"close":2100,"open":900}\n');
+    for (let i = 0; i < 5; i++) await tick();
+    expect(doorStatus().recal).toBe(false);
+    expect(JSON.parse(store.m.get(DOOR_SETTINGS_KEY)!)).toEqual({ close: 2100, open: 900, mode: "mod", settle: 150 });
     link.stop();
   });
 });

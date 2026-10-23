@@ -2,7 +2,7 @@
 # K-05 bench acceptance (wave 20), run ON THE HOUSE MAC with the real door
 # (its standalone keypad lock + the LED / LDR sensor on the Grand Central M4),
 # Steph's laptop running the server-room terminal page with the sensor
-# connected (`door=serial`), the patch bay and the lights powered. ~12
+# connected (`door=serial`) and the lights powered (ESP32=1: the patch-bay scanner too). ~12
 # minutes; it tells you when to touch what and checks the event, stagehand's
 # log and the MQTT traffic for you.
 #
@@ -160,14 +160,24 @@ grep -q "sensor closed .*fault -" "$TMP/wan" && ok "the door terminal is posting
 
 step "4. each combo fires exactly once; the blackout leaves the safe lights on"
 MQ=$(mktemp); mosquitto_sub -h "$HOST" -v -t 'wled/+/api' -t 'zigbee2mqtt/+/set' > "$MQ" & SUB=$!
-for C in a b; do
-  L=$(lines); ask "plug in COMBO $(echo "$C" | tr a-z A-Z) completely, leave it in ~70 s, then press enter"
-  N=$(count_since "$L" "'name': 'patch_combo_$C'")
-  F=$(fails_since "$L" "'name': 'patch_combo_$C'")
-  [ "$F" = 0 ] || bad "patch_combo_$C: $F call(s) FAILED at the server (see $LOG)"
-  [ "$N" = 1 ] && ok "patch_combo_$C fired once" || bad "patch_combo_$C fired $N times"
-  ask "pull the cables (and restore the house look from Run if it went dark)"
-done
+if [ "${ESP32:-0}" = 1 ]; then
+  # The ESP32 patch-bay scanner (hardware/server-room/) is installed: stagehand judges the cables.
+  for C in a b; do
+    L=$(lines); ask "plug in COMBO $(echo "$C" | tr a-z A-Z) completely, leave it in ~70 s, then press enter"
+    N=$(count_since "$L" "'name': 'patch_combo_$C'")
+    F=$(fails_since "$L" "'name': 'patch_combo_$C'")
+    [ "$F" = 0 ] || bad "patch_combo_$C: $F call(s) FAILED at the server (see $LOG)"
+    [ "$N" = 1 ] && ok "patch_combo_$C fired once" || bad "patch_combo_$C fired $N times"
+    ask "pull the cables (and restore the house look from Run if it went dark)"
+  done
+else
+  # Oct 31 (Q7): no ESP32 in the server room, so nothing scans the bay. The
+  # Antivirus watch presses the combo on their booth (radio_combo_a / _b;
+  # core's trapped-in-the-internet tests cover the press → the ending).
+  echo "  (no ESP32: the bay is judged by the patch-bay watch; ESP32=1 runs the scanner check)"
+  ask "in the rehearsal's Y2K hour, on an Antivirus booth, press 🔌 Patch: Combo A is in (arm, then fire)"
+  ask "restore the house look from Run (and 🔄 reset the run if you need the night back)"
+fi
 kill "$SUB" 2>/dev/null
 if grep -q '"ps": 22' "$MQ" || grep -q '"ps":22' "$MQ"; then
   grep -q '^wled/all/api .*"on": *false' "$MQ" && bad "something turned ALL of WLED off" || ok "blackout: per-device WLED offs, tube on preset 22"

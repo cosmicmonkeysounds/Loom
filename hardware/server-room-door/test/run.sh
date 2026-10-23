@@ -33,3 +33,7 @@ for lib in FlashStorage_SAMD "Adafruit NeoPixel"; do
   "$CLI" lib list "$lib" 2>/dev/null | grep -qi "^${lib// /.}" || "$CLI" lib install "$lib"
 done
 "$CLI" compile --fqbn "$FQBN" --warnings default --build-path "$OUT/build" "$HERE/server_room_door"
+# The other wiring's build (the LED switched by D2): config.h's LED_MODE.
+"$CLI" compile --fqbn "$FQBN" --warnings default --build-path "$OUT/build-pulsed" --clean \
+  --build-property "compiler.cpp.extra_flags=-DLED_MODE=LED_PULSED" "$HERE/server_room_door" >/dev/null
+echo "pulsed build: ok"

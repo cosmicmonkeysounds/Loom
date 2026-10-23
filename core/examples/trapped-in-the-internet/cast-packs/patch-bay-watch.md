@@ -7,9 +7,9 @@
 > only those four Antivirus booths show 🔌 💥 ❌ 🚪 🔧 to a performer; since
 > wave 13 the three host booths can press them too, but the watch and the
 > press are yours). **Keep this card face-down in your pocket.** It holds the
-> two combinations, which no guest may see. It is only needed if the patch-bay
-> scanner fails on the bench (10-22) or flakes on the night (W-31, OP-13);
-> otherwise the bay judges itself and you just watch.
+> two combinations, which no guest may see. **On Oct 31 nothing scans the
+> bay** (no scanner box in the room, Q7): you are the judge. Every
+> combination the guests make counts only when you press it (step 2).
 
 ## The bay
 
@@ -98,7 +98,7 @@ keypad, never on the radio).
   terminal could not** and you **saw** "checkmate" (OP-12): press **♟ They
   beat the machine** on the winner's card. Terminal dead → radio a host or
   the director, who fires ♟ naming the winner.
-- **The real gear** (router, UPS, the dongle, the ESP32 power, the laptop under
+- **The real gear** (router, UPS, the dongle, the laptop under
   his screen and the small board on its USB lead) is taped off and out of
   reach. Keep guests off it, politely and firmly. In Act III the room
   fills up.

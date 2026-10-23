@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { LineSplitter, formatCommand, parseDoorLine, parseDoorSettings, settingsCommands } from "../src/serial/door-protocol.ts";
+import { LineSplitter, boardMode, formatCommand, parseDoorLine, parseDoorSettings, settingsCommands, settingsFit } from "../src/serial/door-protocol.ts";
 
 const OURS = fileURLToPath(new URL("./fixtures/door-lines.jsonl", import.meta.url));
 const FIRMWARE = fileURLToPath(new URL("../../hardware/server-room-door/test/fixtures/lines.jsonl", import.meta.url));
@@ -16,7 +16,7 @@ describe("the door sensor's protocol (§2.9)", () => {
     const parsed = lines.map(parseDoorLine);
     expect(parsed.every((p) => p !== null)).toBe(true);
     expect(parsed.map((p) => p?.t)).toEqual(["hello", "door", "door", "door", "door", "pong", "cfg", "cal", "ok", "err"]);
-    expect(parsed[0]).toEqual({ t: "hello", fw: "door-m4 1.0.0", mode: "steady", auto: true, close: 1800, open: 1200, settle: 150, cal: false, sense: false });
+    expect(parsed[0]).toEqual({ t: "hello", fw: "door-m4 1.1.0", mode: "steady", auto: false, close: 1800, open: 1200, settle: 150, cal: false, sense: false });
     expect(parsed[1]).toEqual({ t: "door", seq: 17, open: false, level: 2410, lit: 3020, dark: 610, fault: null, warn: null });
     expect(parsed[3]).toMatchObject({ open: true, fault: null, warn: "ldr_open" });
     expect(parsed[4]).toMatchObject({ open: true, fault: "ldr_saturated", warn: null });
@@ -73,10 +73,34 @@ describe("the door sensor's protocol (§2.9)", () => {
     // Down below today's open: open first.
     expect(settingsCommands({ close: 900, open: 400 }, now).map(formatCommand)).toEqual(["set open 400", "set close 900"]);
     expect(settingsCommands({ close: 1800, open: 1300, mode: "auto", settle: 200 }, now).map(formatCommand)).toEqual(["set open 1300", "set settle 200"]);
-    expect(settingsCommands({ close: 1800, open: 1200, mode: "mod" }, now).map(formatCommand)).toEqual(["set mode mod"]);
+    // Never a `set mode`: the wiring is the firmware's (its LED_MODE build).
+    expect(settingsCommands({ close: 1800, open: 1300, mode: "auto" }, now).map(formatCommand)).toEqual(["set open 1300"]);
     expect(settingsCommands({ close: 1800, open: 1200 }, null).map(formatCommand)).toEqual(["set close 1800", "set open 1200"]);
     // Unknown settings: ordered as if the board ran its defaults (1800 / 1200).
     expect(settingsCommands({ close: 1000, open: 600 }, null).map(formatCommand)).toEqual(["set open 600", "set close 1000"]);
     expect(settingsCommands({ close: 3000, open: 2000 }, null).map(formatCommand)).toEqual(["set close 3000", "set open 2000"]);
+  });
+
+  it("never re-sends a calibration taken in another mode (the LED rewired, the firmware rebuilt)", () => {
+    // Today's rig: the LED on 5V, the shipped build runs steady (not auto).
+    const steady = { close: 1800, open: 1200, mode: "steady" as const, auto: false, settle: 150 };
+    // Moved to D2 and reflashed LED_PULSED: the board says mod.
+    const pulsed = { ...steady, mode: "mod" as const };
+    const calSteady = { close: 3600, open: 2900, mode: "steady" as const, settle: 150 };
+    const calPulsed = { close: 2100, open: 900, mode: "mod" as const, settle: 200 };
+    expect(boardMode(steady)).toBe("steady");
+    expect(boardMode({ mode: "mod", auto: true })).toBe("auto");
+    expect(settingsFit(calSteady, steady)).toBe(true);
+    expect(settingsCommands(calSteady, steady).map(formatCommand)).toEqual(["set close 3600", "set open 2900"]);
+    expect(settingsFit(calSteady, pulsed)).toBe(false);
+    expect(settingsCommands(calSteady, pulsed)).toEqual([]); // a steady level is not a lit − dark level
+    expect(settingsCommands(calPulsed, steady)).toEqual([]); // and never forces the board back to mod
+    expect(settingsCommands(calPulsed, pulsed).map(formatCommand)).toEqual(["set close 2100", "set open 900", "set settle 200"]);
+    // An auto board's stored settings say auto, whichever mode it probed.
+    expect(settingsFit({ close: 2000, open: 1000, mode: "auto" }, { mode: "mod", auto: true })).toBe(true);
+    expect(settingsFit({ close: 2000, open: 1000, mode: "auto" }, steady)).toBe(false);
+    // Older stored settings with no mode, or a board not heard yet: sent as before.
+    expect(settingsFit({ close: 2000, open: 1000 }, pulsed)).toBe(true);
+    expect(settingsFit(calSteady, null)).toBe(true);
   });
 });
