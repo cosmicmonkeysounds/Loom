@@ -5337,7 +5337,9 @@ export class EventRuntime {
             sendJson(res, 409, { error: "no choice", options: null });
             return true;
           }
-          if (text !== undefined && menu.options[idx] !== text) {
+          // An index the named menu doesn't offer is refused too, never
+          // journaled as a no-op pick.
+          if (!Number.isInteger(idx) || idx < 0 || idx >= menu.options.length || (text !== undefined && menu.options[idx] !== text)) {
             sendJson(res, 409, { error: "moved", options: menu.options });
             return true;
           }

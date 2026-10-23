@@ -170,6 +170,18 @@ describe("/api/guest/choose", () => {
     rt.dispose();
   });
 
+  it("an index the named menu does not offer is 409 `moved` (never a journaled no-op)", async () => {
+    const rt = freshRuntime();
+    const { g, choices } = await twoMenus(rt);
+    expect(await post(rt, "/api/guest/choose", { token: g.token, index: 42, choice: choices[1]!.id })).toEqual({
+      status: 409,
+      json: { error: "moved", options: ["⟦ASK⟧ Why are you here?", "⟦LEAVE⟧ Goodbye."] },
+    });
+    expect((await post(rt, "/api/guest/choose", { token: g.token, index: -1, choice: choices[1]!.id })).status).toBe(409);
+    expect(rt.liveSim!.pendingChoicesFor(g.id).length).toBe(2);
+    rt.dispose();
+  });
+
   it("an id that is not pending is 409 `no choice`", async () => {
     const rt = freshRuntime();
     const { g } = await twoMenus(rt);
