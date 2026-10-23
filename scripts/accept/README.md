@@ -1,4 +1,4 @@
-# Acceptance checks (OCT31 waves 1–4)
+# Acceptance checks (OCT31 waves 1–20)
 
 One check per item of
 [`core/examples/trapped-in-the-internet/OCT31.md`](../../core/examples/trapped-in-the-internet/OCT31.md)
@@ -30,7 +30,7 @@ anytime.
 |---|---|---|
 | K-01 | `k01.sh` | Laptop: public join base, invite site, uncompressed SSE (two 25 s pings). Then one phone joins over cellular |
 | K-04 (SW-AI-23) | `K-04-burst.ts --code … [--dms 30] [--spread 0]` | The worker on the house Mac voicing Trabolta, Trabolta introduced: 30 persona DMs at once, the time to each first real reply (the server's hold line and the worker's canned `fallback:` / `unavailable:` lines from `trabolta.persona.md` counted apart — never a PASS), p95 + a `record:` line (guarded; `--reset-after` clears the bots, then Reset the mind). Pure half: `node --no-warnings --test scripts/accept/burst.test.ts` |
-| K-05 | `K-05.sh` | House Mac, rig powered: open the server-room door with the keypad code from outside and by the inside handle (one `server_door_opened` each; the handle always opens with no code), patch the bay, watch the lights. Checks stagehand's log, MQTT, the static IP and the launchd jobs |
+| K-05 | `K-05.sh [trapped.house.yaml]` (`MOD_CODE`) | Wave 20: house Mac + the real door, the server-room terminal on Steph's laptop with the M4 door sensor connected (`door=serial`; run N-20 first). Open the door with the keypad code from outside and by the inside handle: each edge reaches the story as `door_sensor_opened` / `door_sensor_closed` (Run → Terminals 🚪, `Night.server_door`), and stagehand fires **no** door signal any more (D16). Then the patch bay and the lights |
 | K-06 + N-07 | `k06.sh` | An iPhone, an Android phone and an Antivirus booth. Lock both phones, send a `!` alert, and it banners and chimes on wake. The booth banners the alert and the late list (N-07) |
 | K-08 | `K-08.sh [nightly\|show]` | House Mac over ssh: a show-night copy, a restore drill into a scratch `loom-drill` project, rollback timing (asks first, restarts the live site twice), the 10-minute backup job |
 | K-10 | `k10.sh before` → End + relaunch → `k10.sh after` | The codes survive End → relaunch. Then scan an old QR on cellular |
@@ -50,7 +50,7 @@ anytime.
 | K-24 + N-05 | `K-24.md` + `K-24.ts setup\|check` | iPhone files a 📝 fact (true and confident lie). Check the score, `Kernel.lies_accepted` and the `# hosts` lines |
 | K-25 | `K-25.md` + `K-25.ts end\|start\|award\|…` | Run the awards ceremony for each ending's host on 3 phones + the TV |
 | K-26 | `K-26.md` + `K-26.ts [--json]` | `/api/mod/recap` text in < 1 s, lists match the run (read-only) |
-| K-27 + N-06 | `K-27.md` + `K-27.ts setup\|persona\|chess\|door\|wrong\|reset\|stay\|leave\|room\|visit\|watch` | Bench door (keypad lock + contact): a chess win from the Y2K hour puts *The Door Code* in the winner's Codex, the keypad opens with it, the opening plays the server-room cutscene with no alarm, the second wrong combo alarms and the latch puts the house look back, `reset_server_room`, forced majorities give the majority the code. The server-room terminal (wave 7): `room` (asleep until 🚪 The Heart; exits 1 on a mistyped `room=`), a scan there sets `at_the_heart` + `heart_holder` (`visit --who A [--close]` without the tablet), a second scan moves it, and the 🕊 offer (`watch` shows all four) |
+| K-27 + N-06 | `K-27.md` + `K-27.ts setup\|persona\|chess\|door\|shut\|trust\|wrong\|reset\|stay\|leave\|room\|visit\|watch` | Bench door (keypad lock + the M4's LED / LDR sensor, or `door=sim`): a chess win puts *The Door Code* in the winner's Codex, the keypad opens with it, the first opening plays The Heart and waits for the door to be shut (`door` / `shut` post the sensor's `door_sensor_opened` / `door_sensor_closed`; 🚪 on Run sets `door_override`, `trust` clears it), a scan docks the four layers, the patch bay alarms only on the second wrong combination, 🔄 seals the heart again; N-06 the forced majorities |
 | K-29 | `K-29.sh [--watch\|--fake <name>]` | Run page Terminals card: every tablet + the TV green, a silent one red + chime after 20 s |
 | K-30 | `K-30.sh` | Export and sideload two Quest APKs, each station polls the VPS, a captured program walks to Gerald → `released: true` |
 | K-31a | `k31a.sh` | VAPID keys set: 2 locked Android phones on cellular get a `!` alert and a Trabolta DM as notifications (no duplicate in the foreground); a locked Antivirus booth gets the server-room alarm |
@@ -58,6 +58,7 @@ anytime.
 | K-32 | `k32-load.ts --code …` | VPS load test (45 guests, 9 booths, 6 terminals, 2 directors, bursts): step latency + `/api/mod/metrics` CPU + each director console ≤ 1 Mbit/s (the LTE failover budget; delta consoles by default, `--full-directors` for the old whole-view stream) (guarded) |
 | N-01 | `n01.sh` | 10 pass QRs on screen. An iPhone booth (jsQR) and an Android booth scan 10/10 hands-free |
 | N-02 + N-10 | `n02.sh` | Re-pair a wiped phone from Inspector → 🔁 Re-pair (< 30 s, same Person). Release a booth's part and re-sign on a loaner |
-| N-08 | `N-08.sh [port]` | House Mac, box on the bench: flash, the door contact alone (shut → `open:false`, open → `open:true`, held open → nothing more; `diag` `door_mode` `tape`), the 2×12 patch scan, ring + siren over MQTT (`:1884` as `props`) |
+| N-08 | `N-08.sh [port]` | House Mac, the ESP32 box on the bench: flash, the 2×12 patch scan, ring + siren over MQTT (`:1884` as `props`). Wave 20 retired its door steps: the door is the M4's (N-20, D16) |
+| N-20 | `N-20.sh [/dev/cu.usbmodem…]` | Wave 20: the laptop the Grand Central M4 is plugged into, the LED + LDR (in its shroud) across the real door. Records lit / dark / level in `mod` and `steady`, shut and open, room lights on and off; finds the settle a CdS cell needs; proposes `mode`, `settle`, `close`, `open` and offers to `set` + `save` them; then one real opening and closing. Serial only (close the Arduino IDE's monitor and the terminal page first) |
 | N-11 | `N-11.md` + `N-11.ts --guest …` | Worker stopped: a DM to Trabolta gets the story's `hold:` line once, ~20 s later |
 | Wave 4 wallet (C·5) | `wave4-wallet.sh run\|look\|device` (`MOD_CODE` + `EVENT_CODE` + `PRIME_CODE`) | Two guest phones + the CRA Agent Software booth: three sends (the held one waits for Approve), a deny inside 60 s, a request, a Runescape stimulus, a codex trade (`run` is guarded; `look` and `device` are read-only) |

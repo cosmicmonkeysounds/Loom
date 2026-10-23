@@ -1,6 +1,6 @@
-// K-27 + N-06 acceptance helper (wave 7): the door code, the server-room
-// cutscene and the patch-bay alarm — on the bench door with its keypad lock
-// and wire-loop contact.
+// K-27 + N-06 acceptance helper (wave 7; the door sensor since wave 20):
+// the door code, The Heart and the patch-bay alarm — on the bench door with
+// its keypad lock and the LED + LDR door sensor on the Grand Central M4.
 //
 // Drives a REHEARSAL event (never the live show) with the mod code. The door
 // itself is the LED + LDR sensor on the Grand Central M4, bridged by the
