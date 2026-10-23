@@ -16,17 +16,19 @@
 //! the problem list (`validateAudio` read back to the speaker it names).
 
 import { AUDIO_CHIME_SOUND, AUDIO_EVERYWHERE, AUDIO_GAIN_MAX, AUDIO_GAIN_MIN, AUDIO_INPUT_KINDS, AUDIO_MAX_CHANNELS, cloneData, defaultAudio, foldTarget, pointInPoly, distanceToBoundary, resolveTargets, roomAt, roomById, roomElevation, validateAudio, wrapYaw, yawToward } from "@loom/house";
-import type { AudioConfig, AudioCue, AudioInputKind, AudioSpeaker, HouseMap, Room, Vec2 } from "@loom/house";
+import type { AudioConfig, AudioCue, AudioInputKind, AudioSpeaker, HouseMap, LightsConfig, Room, Vec2 } from "@loom/house";
 import type { Problem } from "./check.ts";
-import type { History } from "./history.ts";
+import { rebaseField, type History } from "./history.ts";
 import { rectSideOf, round } from "./doors.ts";
 import { uniqueId, slug, freshId } from "./ids.ts";
 import { labelSpot, rectOf } from "./plan.ts";
 
-/** What the editor's undo history holds: the map and its speakers together. */
+/** What the editor's undo history holds: the map, its speakers and (wave
+ *  20) its lights together, so a room move that carries both is one step. */
 export interface Doc {
   house: HouseMap;
   audio: AudioConfig;
+  lights: LightsConfig;
 }
 
 /** A speaker is hung this far above its floor. */
@@ -729,25 +731,14 @@ export function speakersDropped(before: HouseMap, after: HouseMap, audio: AudioC
 // --- the shared history -----------------------------------------------------
 
 /**
- * The `{house, audio}` history after another director's speaker save was
- * adopted: every entry takes the adopted speakers, so the map's own steps
- * still undo, and a step that only changed speakers (now the same map
- * twice) disappears. The present wins a tie.
+ * The `{house, audio, lights}` history after another director's speaker
+ * save was adopted: every entry takes the adopted speakers, so the map's
+ * (and the lights') own steps still undo, and a step that only changed
+ * speakers (now the same map and lights twice) disappears. The present
+ * wins a tie.
  */
-export function rebaseHistory(h: History<Doc>, present: Doc, audio: AudioConfig): History<Doc> {
-  const line = [...h.past.map((d) => ({ d, now: false })), { d: present, now: true }, ...[...h.future].reverse().map((d) => ({ d, now: false }))];
-  const kept: { d: Doc; now: boolean }[] = [];
-  for (const x of line) {
-    const last = kept[kept.length - 1];
-    if (last !== undefined && last.d.house === x.d.house) {
-      if (x.now) kept[kept.length - 1] = x;
-      continue;
-    }
-    kept.push(x);
-  }
-  const at = kept.findIndex((x) => x.now);
-  const re = (x: { d: Doc }): Doc => ({ house: x.d.house, audio });
-  return { past: kept.slice(0, at).map(re), future: kept.slice(at + 1).map(re).reverse() };
+export function rebaseHistory<D extends { house: HouseMap; audio: AudioConfig }>(h: History<D>, present: D, audio: AudioConfig): History<D> {
+  return rebaseField(h, present, "audio", audio);
 }
 
 // --- saving -----------------------------------------------------------------

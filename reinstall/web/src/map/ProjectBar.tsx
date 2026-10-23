@@ -34,6 +34,8 @@ import type { ReactNode } from "react";
 import type { HouseMap, MapVariantsResponse } from "@loom/house";
 import { fetchHouse, fetchVariants, saveToProject, switchVariant } from "../api.ts";
 import {
+  lightsProjectPlan,
+  switchLightsOffer,
   activeOf,
   canSaveToProject,
   canSwitch,
@@ -49,7 +51,7 @@ import {
   type BarStatus,
 } from "./project.ts";
 import { saveBaseOf } from "./edit.ts";
-import type { MapToolbarContext } from "./tools.ts";
+import type { LightsBarContext, MapToolbarContext } from "./tools.ts";
 
 export interface ProjectBarProps {
   /** The event's API base (`baseOf(config)`). */
@@ -80,9 +82,12 @@ export interface ProjectBarProps {
   /** Before a switch or a save to the project: the moderator passcode again
    *  (`MapUnlock`, once per page load); false = cancelled, nothing is written. */
   unlock?: () => Promise<boolean>;
+  /** The house lights (wave 20): Save to project writes `lights.json` too,
+   *  and a switch offers to save unsaved light edits first. */
+  lights?: LightsBarContext;
 }
 
-export function ProjectBar({ base, token, house, version, remoteVersion = null, players = 0, dirty = false, onSwitched, onSaved, saveDraft, confirm = (m) => window.confirm(m), unlock = async () => true }: ProjectBarProps) {
+export function ProjectBar({ base, token, house, version, remoteVersion = null, players = 0, dirty = false, onSwitched, onSaved, saveDraft, confirm = (m) => window.confirm(m), unlock = async () => true, lights }: ProjectBarProps) {
   const [list, setList] = useState<MapVariantsResponse | null>(null);
   const [status, setStatus] = useState<BarStatus>({ kind: "idle" });
   const busy = status.kind === "busy";
@@ -113,6 +118,12 @@ export function ProjectBar({ base, token, house, version, remoteVersion = null, 
     if (!canSwitch(v, busy)) return;
     if (!(await unlock())) return;
     const all = current?.variants ?? [];
+    // Unsaved light edits: saved first when the director says so.
+    const lightsAsk = switchLightsOffer(lights);
+    if (lightsAsk !== null && lights !== undefined && confirm(lightsAsk) && (await lights.save()) === null) {
+      setStatus({ kind: "error", text: "The light edits didn't save (see the 💡 Lights tab) — nothing was switched." });
+      return;
+    }
     // A director's save on the event is offered to the project first; the
     // switch then posts from the version that save left (the reload the
     // switch does covers the save's `onSaved`, unless it stops there).
@@ -180,8 +191,22 @@ export function ProjectBar({ base, token, house, version, remoteVersion = null, 
         return;
       }
     }
-    await saveToProjectNow(file, at);
+    const mapAt = await saveToProjectNow(file, at);
     void refresh();
+    if (mapAt === null) return;
+    // The lights follow the map into the project (a light edit saved to the event first).
+    const plan = lightsProjectPlan(lights);
+    if (lights === undefined || plan.step === "none") {
+      if (plan.skipped !== null) setStatus({ kind: "ok", text: `Saved ${file} to the project — ${plan.skipped}.` });
+      return;
+    }
+    setStatus({ kind: "busy", what: "Saving lights.json to the project…" });
+    if (plan.step === "save" && (await lights.save()) === null) {
+      setStatus({ kind: "error", text: `Saved ${file} to the project, but the light edits didn't save (see the 💡 Lights tab).` });
+      return;
+    }
+    const ok = await lights.toProject();
+    setStatus(ok ? { kind: "ok", text: `Saved ${file} and lights.json to the project${plan.skipped !== null ? ` — ${plan.skipped}` : ""}` } : { kind: "error", text: `Saved ${file} to the project, but not lights.json (see the 💡 Lights tab).` });
   };
 
   const download = () => {
@@ -229,7 +254,7 @@ export function ProjectBar({ base, token, house, version, remoteVersion = null, 
         </span>
       )}
       {list?.project === true && (
-        <button className="w98-button small" disabled={!canSaveToProject(list, version, busy)} onClick={() => void toProject()} title={`Write the map into the project as ${saveTarget(list)}${dirty && saveDraft !== undefined ? " (your edits are saved first)" : ""} — the next launch and every co-writer see it`}>
+        <button className="w98-button small" disabled={!canSaveToProject(list, version, busy)} onClick={() => void toProject()} title={`Write the map into the project as ${saveTarget(list)}${dirty && saveDraft !== undefined ? " (your edits are saved first)" : ""}${lightsProjectPlan(lights).step !== "none" ? ", and the lights as lights.json" : ""} — the next launch and every co-writer see it`}>
           Save to project
         </button>
       )}
@@ -267,6 +292,7 @@ export function projectBarExtras(ctx: MapToolbarContext): ReactNode {
       onSaved={() => void ctx.reload()}
       unlock={ctx.unlock}
       {...(saveDraft !== undefined ? { saveDraft } : {})}
+      {...(ctx.lights !== undefined ? { lights: ctx.lights } : {})}
     />
   );
 }

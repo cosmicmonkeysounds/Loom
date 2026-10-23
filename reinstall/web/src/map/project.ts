@@ -244,3 +244,37 @@ export function statusOf(r: MapReply<{ file: string }>, action: "switch" | "save
   const first = r.problems[0];
   return { kind: "error", text: first !== undefined ? `${r.error}: ${first}${r.problems.length > 1 ? ` (+${r.problems.length - 1} more)` : ""}` : r.error };
 }
+
+// --- the lights (wave 20) ------------------------------------------------------
+
+/** What the bar knows of the lights (`tools.ts` `LightsBarContext`, minus the calls). */
+export interface LightsBarState {
+  dirty: boolean;
+  saveable: boolean;
+  project: boolean;
+  director: boolean;
+}
+
+/**
+ * What "Save to project" does with the lights after the map: `save` the
+ * page's light edits to the event and then write them to the project;
+ * `project` only write (a director's save not yet in the project); `none`
+ * when the project already has them (or the server has no lights). Light
+ * edits that can't be saved yet are left out, and `skipped` says why.
+ */
+export function lightsProjectPlan(l: LightsBarState | null | undefined): { step: "none" | "project" | "save"; skipped: string | null } {
+  if (l == null || !l.project) return { step: "none", skipped: null };
+  if (l.dirty) return l.saveable ? { step: "save", skipped: null } : { step: l.director ? "project" : "none", skipped: "your unsaved light edits don't pass the checks yet, so they were left out" };
+  return { step: l.director ? "project" : "none", skipped: null };
+}
+
+/**
+ * Before a variant switch: the page's unsaved light edits are checked
+ * against the map in force, which the switch replaces — offer to save them
+ * first (OK saves; Cancel goes on and keeps them as a draft). Null when
+ * there are none or they can't be saved.
+ */
+export function switchLightsOffer(l: LightsBarState | null | undefined): string | null {
+  if (l == null || !l.project || !l.dirty || !l.saveable) return null;
+  return "You have unsaved light edits. Save them to the event before switching the map?\n\nOK saves them first. Cancel switches and keeps them here as an unsaved draft.";
+}

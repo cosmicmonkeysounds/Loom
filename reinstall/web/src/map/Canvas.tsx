@@ -14,12 +14,17 @@
 //! wave 17) stand on their room's floor: a cabinet facing its yaw, its
 //! output channels in a badge, a coverage ring; the 🔊 palette places one,
 //! and a speaker drags and turns like a terminal (edits go to `onEditAudio`).
+//! The house lights (`lights.json`, wave 20) hang on the same plan: a bulb
+//! tinted by the colour it was last tested in, a ring when it is a safety
+//! light, its Zigbee2MQTT device under it (⚠ while none is picked); the 💡
+//! palette places one and a light drags like a speaker (`onEditLights`).
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { buildWalls, polyArea, polyBounds, roomById, voiceOn, wallEnds } from "@loom/house";
-import type { AudioConfig, HouseMap, PlayerState, Vec2, WallSegment } from "@loom/house";
+import type { AudioConfig, HouseMap, LightsConfig, PlayerState, Vec2, WallSegment } from "@loom/house";
 import { aimSpeaker, coverageRadius, moveSpeaker, rotateSpeaker, speakerFloor } from "./audio.ts";
+import { lightFloor, moveLight } from "./lights.ts";
 import { doorGap, moveDoorAlong, placeDoor } from "./doors.ts";
 import { aimAt, MIN_ROOM, moveRectEdge, moveRoom, moveTo, setYaw, yawOf, type Selection } from "./edit.ts";
 import {
@@ -66,7 +71,8 @@ type Drag =
   | { kind: "draw"; tool: "room" | "yard" | "stair"; from: Vec2 }
   | { kind: "pan"; vb: ViewBox; client: Vec2 }
   | { kind: "spk-move"; id: string; base: AudioConfig; grab: Vec2; origin: Vec2 }
-  | { kind: "spk-aim"; id: string; base: AudioConfig };
+  | { kind: "spk-aim"; id: string; base: AudioConfig }
+  | { kind: "light-move"; id: string; base: LightsConfig; grab: Vec2; origin: Vec2 };
 
 /** How close (screen px) a room edge pulls a dragged edge onto it. */
 const EDGE_PULL_PX = 9;
@@ -92,11 +98,17 @@ export interface CanvasProps {
   audio?: AudioConfig | null;
   /** A speaker edit (a drag frame, a turn). */
   onEditAudio?: (next: AudioConfig, mode: EditMode) => void;
-  /** Speakers to light up (a zone or a cue picked in the Audio tab). */
+  /** Speakers / lights to light up (a zone, a cue or a look picked in a tab). */
   highlight?: ReadonlySet<string>;
+  /** The house lights (null: none to draw). */
+  lights?: LightsConfig | null;
+  /** A light edit (a drag frame). */
+  onEditLights?: (next: LightsConfig, mode: EditMode) => void;
+  /** Each light's last tested colour (CSS), for its bulb's tint. */
+  tints?: ReadonlyMap<string, string>;
 }
 
-export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSelect, onEdit, onNotice, placing = null, onPlace, audio = null, onEditAudio, highlight }: CanvasProps) {
+export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSelect, onEdit, onNotice, placing = null, onPlace, audio = null, onEditAudio, highlight, lights = null, onEditLights, tints }: CanvasProps) {
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<Drag | null>(null);
   /** The running drag has pushed its starting map on the undo stack. */
@@ -214,6 +226,13 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
     dragPushed.current = true;
   };
 
+  /** A light drag's frame, the same way. */
+  const frameLights = (next: LightsConfig) => {
+    if (lights === null || onEditLights === undefined || JSON.stringify(next) === JSON.stringify(lights)) return;
+    onEditLights(next, dragPushed.current ? "replace" : "push");
+    dragPushed.current = true;
+  };
+
   const pull = () => pxToPlan(EDGE_PULL_PX);
   const coords = (except: string | null) => edgeCoords(house, floor, except);
   /** A drawing corner: snapped, then pulled onto a room edge. */
@@ -268,6 +287,8 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
         return frameAudio(moveSpeaker(d.base, house, d.id, snap2([d.origin[0] + p[0] - d.grab[0], d.origin[1] + p[1] - d.grab[1]], e.altKey ? 0.001 : snapStep)));
       case "spk-aim":
         return frameAudio(aimSpeaker(d.base, d.id, p, e.shiftKey ? 1 : YAW_STEP));
+      case "light-move":
+        return frameLights(moveLight(d.base, house, d.id, snap2([d.origin[0] + p[0] - d.grab[0], d.origin[1] + p[1] - d.grab[1]], e.altKey ? 0.001 : snapStep)));
     }
   };
 
@@ -579,6 +600,33 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
             );
           })}
 
+        {/* house lights: a bulb tinted by its last test, a ring when it is a safety light */}
+        {lights !== null &&
+          lights.fixtures.map((f) => {
+            if (lightFloor(house, f) !== floor) return null;
+            const ls: Selection = { kind: "light", id: f.id };
+            const on = selected("light", f.id);
+            const lit = highlight?.has(f.id) === true;
+            const k = Math.max(1, Math.min(2.6, viewBox[2] / 12));
+            const tint = tints?.get(f.id) ?? null;
+            const label = f.device === "" ? "⚠ no device" : f.device;
+            return (
+              <g key={`light-${f.id}`} className={`light${on ? " selected" : ""}${lit ? " lit" : ""}${f.device === "" ? " unpaired" : ""}`} transform={`translate(${f.pos.x} ${f.pos.z}) scale(${k})`}>
+                <g onPointerDown={(e) => pick(e, ls, { kind: "light-move", id: f.id, base: lights, grab: toPlan(e), origin: [f.pos.x, f.pos.z] })}>
+                  {f.safety === true && <circle className="safety-ring" r={0.24} />}
+                  {tint !== null && <circle className="glow" r={0.3} fill={tint} />}
+                  <circle className="bulb" r={0.15} {...(tint !== null ? { fill: tint } : {})} />
+                  <path className="base" d="M -0.06 0.13 L 0.06 0.13 L 0.05 0.21 L -0.05 0.21 Z" />
+                  <circle className="hit" r={0.34} />
+                </g>
+                <text className="light-name" y={0.45}>
+                  {label}
+                </text>
+                <title>{`💡 ${f.name} (${f.id}) · ${f.kind} ${f.device === "" ? "— no device picked yet" : f.device}${f.safety === true ? " · safety light (never dark)" : ""} · y ${f.pos.y} m`}</title>
+              </g>
+            );
+          })}
+
         {/* duck spots */}
         {house.duck.spots.map((d) => {
           if (!onFloor(d.room)) return null;
@@ -674,13 +722,13 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
         </button>
       </div>
       <div className="map-legend">
-        <span className="lg wall" /> wall <span className="lg fence" /> fence <span className="lg rail" /> rail <span className="lg door" /> door <span className="lg term" /> terminal <span className="lg duck" /> duck spot{audio !== null && audio.speakers.length > 0 && <><span className="lg spk" /> speaker (outputs)</>}
+        <span className="lg wall" /> wall <span className="lg fence" /> fence <span className="lg rail" /> rail <span className="lg door" /> door <span className="lg term" /> terminal <span className="lg duck" /> duck spot{audio !== null && audio.speakers.length > 0 && <><span className="lg spk" /> speaker (outputs)</>}{lights !== null && lights.fixtures.length > 0 && <><span className="lg light" /> light (device)</>}
         <span className="muted">
           {" "}
           · wheel zooms · drag empty ground (or Space-drag) pans
           {edit &&
             (placing !== null
-              ? ` · click inside a room to place the ${placing === "speaker" ? "speaker" : placing} · Esc cancels`
+              ? ` · click inside a room to place the ${placing} · Esc cancels`
               : tool === "select"
                 ? " · drag to move (⌥ no snap) · the round handle, R / ⇧R or ⌥-wheel turns · arrows nudge · ⌘D duplicates · Delete removes · ⌘Z / ⇧⌘Z"
                 : " · Esc back to Select")}
