@@ -1025,11 +1025,14 @@ function Terminal({
   useEffect(() => setFilesOpen(false), [pilot]);
   // --- the heart (wave 20) ---
   // When this line opened, on the server's clock (a heart scene since then holds the long leash).
+  // Read in render the moment the pilot changes (never a frame late: an older
+  // line's eject cue must not end this one).
   const pilotSince = useRef(0);
-  useEffect(() => {
-    if (pilot !== null) pilotSince.current = serverNow(state);
-    // Only when the pilot changes: the clock is read once per line.
-  }, [pilot]);
+  const sinceFor = useRef<Pilot | null>(null);
+  if (pilot !== sinceFor.current) {
+    sinceFor.current = pilot;
+    pilotSince.current = pilot === null ? 0 : serverNow(state);
+  }
   const characterId = characterIdOf(config.character, session.view);
   const menu: HeartMenu | null = pilot === null ? null : heartMenuOf(menusOf(session.view), characterId);
   const heart = menu !== null || (pilot !== null && heartTouched(state?.room?.cue ?? null, pilotSince.current));
@@ -1063,19 +1066,20 @@ function Terminal({
   }, [takeover, pilot, end]);
   // Thrown out of his heart (and, on a mouse-only rig, *not yet* / a leave):
   // the line ends once that room scene has played (D24).
-  const endingCue = useRef<string | null>(null);
+  const endRef = useRef(end);
+  endRef.current = end;
   const roomCue = state?.room?.cue ?? null;
+  const stateRef = useRef(state);
+  stateRef.current = state;
   useEffect(() => {
     if (pilot === null || roomCue === null || roomCue.at <= 0 || roomCue.at < pilotSince.current) return;
     const plan = pilotEndFor(roomCue.value, config.keys);
-    const key = `${roomCue.seq}:${roomCue.at}`;
-    if (plan === null || endingCue.current === key) return;
-    endingCue.current = key;
-    const wait = Math.max(0, roomCue.at + plan.ms - serverNow(state));
-    const t = window.setTimeout(() => end(plan.why), wait);
+    if (plan === null) return;
+    const wait = Math.max(0, roomCue.at + plan.ms - serverNow(stateRef.current));
+    const t = window.setTimeout(() => endRef.current(plan.why), wait);
     return () => window.clearTimeout(t);
-    // `state` only for the clock: the cue's seq / at decide.
-  }, [pilot, roomCue?.seq, roomCue?.at, roomCue?.value, config.keys, end]);
+    // The cue's seq / at decide; a new pilot or cue reschedules.
+  }, [pilot, roomCue?.seq, roomCue?.at, roomCue?.value, config.keys]);
 
   // Mood follows the situation when nothing is being said.
   useEffect(() => {
