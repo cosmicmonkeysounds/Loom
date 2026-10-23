@@ -350,10 +350,13 @@ describe("The Heart — the light in his heart (wave 20)", () => {
     const plan = (n: string) => planLook(lights, null, n)!;
     expect([plan("heart_nag").restore, plan("heart_warn").restore]).toEqual([true, true]);
     expect([plan("heart_door_open").loop, plan("heart_alarm").loop]).toEqual([true, true]);
-    // Never dark: every command keeps the bulb on at ≥ 40.
+    // Q6 / Q10: the bulb is the server room's only light (no strip) and the
+    // only fixture: a safety light at 80, and every command keeps it on at ≥ 80.
+    expect(lights.fixtures.map((f) => [f.id, f.kind, f.device, f.safety, f.min])).toEqual([["server-room-rgb", "zigbee", "server_room_rgb", true, 80]]);
+    expect(JSON.stringify(lights)).not.toMatch(/wled/iu);
     for (const n of looks) for (const c of plan(n).commands) {
       expect(c.set.state, n).not.toBe("OFF");
-      if (c.set.brightness !== undefined) expect(c.set.brightness, n).toBeGreaterThanOrEqual(40);
+      if (c.set.brightness !== undefined) expect(c.set.brightness, n).toBeGreaterThanOrEqual(80);
     }
   });
 
