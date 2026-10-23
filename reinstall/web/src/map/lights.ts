@@ -791,6 +791,18 @@ export function capsText(c: LightCaps | null): string {
   return parts.length === 0 ? "on / off" : parts.join(" · ");
 }
 
+/**
+ * A pairing window on this browser's clock: the server's `until − at` from
+ * when this page first saw it (a wake on the pairing, or this page's own
+ * request), so a skewed clock never shows in the countdown. The same
+ * pairing seen again keeps its first local times.
+ */
+export function localPair(prev: LightPairInfo | null, next: LightPairInfo | null, receivedAt: number): LightPairInfo | null {
+  if (next === null) return null;
+  if (prev !== null && prev.seq === next.seq && prev.seconds === next.seconds) return prev;
+  return { ...next, at: receivedAt, until: receivedAt + Math.max(0, next.until - next.at) };
+}
+
 /** Whole seconds left on a pairing (0 when closed or past). */
 export function pairSecondsLeft(pair: LightPairInfo | null, now: number): number {
   if (pair === null || pair.seconds === 0) return 0;

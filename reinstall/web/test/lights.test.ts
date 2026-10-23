@@ -26,6 +26,7 @@ import {
   lightTargetChip,
   lightTargetOptions,
   lightsDropped,
+  localPair,
   lookCoverage,
   lookMayReachZigbee,
   lookMode,
@@ -483,6 +484,19 @@ describe("devices, swatches, pairing", () => {
     ];
     expect(lastTint(tests, "a")).toBe("#FF0000");
     expect(lastTint(tests, "c")).toBeNull();
+  });
+
+  it("runs a pairing's countdown on this browser's clock, whatever the server's says", () => {
+    // The server's clock is 50 s ahead of the browser's.
+    const server = { seq: 4, at: 1_050_000, seconds: 120, until: 1_170_000, by: "x" };
+    const seen = localPair(null, server, 1_000_000)!;
+    expect(pairSecondsLeft(seen, 1_000_000)).toBe(120);
+    expect(pairSecondsLeft(seen, 1_060_000)).toBe(60);
+    // The same pairing again (a later poll) keeps its first local times.
+    expect(localPair(seen, server, 1_030_000)).toBe(seen);
+    // A stop is a new entry; closed is null.
+    expect(pairSecondsLeft(localPair(seen, { ...server, seq: 5, seconds: 0, until: server.at }, 1_040_000), 1_040_000)).toBe(0);
+    expect(localPair(seen, null, 1_040_000)).toBeNull();
   });
 
   it("counts a pairing window down off its until", () => {

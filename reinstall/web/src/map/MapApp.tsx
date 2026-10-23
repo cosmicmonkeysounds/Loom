@@ -47,7 +47,7 @@ import { fetchAudio, routerOf, saveAudio, saveAudioToProject, testAudio, testRef
 import { runAudioPoll } from "./audio-poll.ts";
 import { AudioPanel } from "./AudioPanel.tsx";
 import "./audio.css";
-import { duplicateLight, followHouseLights, lightById, lightPlan, lightProblemList, lightSavePlan, lightsDownload, lightsDropped, moveLight, normalizeLights, placeLight, rebaseLightsHistory, removeLight, sameLights, saveEverythingPlan, setLightDevice, stateTint, withLightsText } from "./lights.ts";
+import { duplicateLight, followHouseLights, lightById, localPair, lightPlan, lightProblemList, lightSavePlan, lightsDownload, lightsDropped, moveLight, normalizeLights, placeLight, rebaseLightsHistory, removeLight, sameLights, saveEverythingPlan, setLightDevice, stateTint, withLightsText } from "./lights.ts";
 import { fetchLights, lightRefusal, lightTestSentText, pairLights, saveLights, saveLightsToProject, testLight, type LightTestTarget, type LightsView, type Z2mDevice } from "./lights-api.ts";
 import { runLightsPoll } from "./lights-poll.ts";
 import { LightsPanel } from "./LightsPanel.tsx";
@@ -194,6 +194,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const lightsDirtyRef = useRef(false);
   const lightTestSeqRef = useRef(0);
   const lightPairSeqRef = useRef(0);
+  const lightPairRef = useRef<LightsView["pair"]>(null);
   const lightDevicesAtRef = useRef<number | null>(null);
   /** A device the 💡 tool was armed with (Devices → Place it): the placed light takes it. */
   const placeDevice = useRef<Z2mDevice | null>(null);
@@ -304,7 +305,9 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   /** The server's lights config — `adoptAudio`'s rules, plus the tests,
    *  the pairing window and the device list (each one a reason to wake). */
   const adoptLights = useCallback((v: LightsView, force = false): boolean => {
-    setLightsView(v);
+    // The pairing countdown runs on this browser's clock (`localPair`).
+    lightPairRef.current = localPair(lightPairRef.current, v.pair, Date.now());
+    setLightsView({ ...v, pair: lightPairRef.current });
     setLightsStatus("ok");
     let took = false;
     for (const t of v.tests) {
@@ -687,7 +690,9 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       if (r.ok) {
         lightPairSeqRef.current = Math.max(lightPairSeqRef.current, r.result.seq);
         const at = Date.now();
-        setLightsView((v) => (v === null ? v : { ...v, pair: { seq: r.result.seq, at, seconds, until: at + seconds * 1000, by: config.name } }));
+        const mine = { seq: r.result.seq, at, seconds, until: at + seconds * 1000, by: config.name };
+        lightPairRef.current = mine;
+        setLightsView((v) => (v === null ? v : { ...v, pair: mine }));
         setNotice(seconds === 0 ? "📡 Pairing closed." : `📡 Pairing open for ${seconds} s — reset the bulb now; it appears under Devices as ★ new.`);
       } else setNotice(lightRefusal(r, { pair: seconds }));
     },
