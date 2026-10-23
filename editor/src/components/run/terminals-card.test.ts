@@ -92,6 +92,10 @@ describe('TerminalsCard (wave 14 spot claims + set up)', () => {
     // No announce: the tablet follows the house setting (wave 18b, Q8).
     expect(html).toContain('https://loom.test/terminal/?code=MODC&amp;character=Trabolta&amp;view=auto</p>')
     expect(html).toContain('Always (ignore the house setting)')
+    // Wave 20: a keyboard by default (no keys key), the door sensor offered unticked.
+    expect(html).toMatch(/data-testid="run-terminal-setup-keys"/)
+    expect(html).toMatch(/<input type="checkbox"[^>]*data-testid="run-terminal-setup-door"/)
+    expect(html).not.toMatch(/checked=""[^>]*data-testid="run-terminal-setup-door"/)
   })
 
   it('no map: rows carry no off-map flag and the builder says the spot list is empty', () => {
