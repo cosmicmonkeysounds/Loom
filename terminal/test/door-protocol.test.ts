@@ -96,7 +96,12 @@ describe("the door sensor's protocol (§2.9)", () => {
     expect(settingsCommands(calSteady, pulsed)).toEqual([]); // a steady level is not a lit − dark level
     expect(settingsCommands(calPulsed, steady)).toEqual([]); // and never forces the board back to mod
     expect(settingsCommands(calPulsed, pulsed).map(formatCommand)).toEqual(["set close 2100", "set open 900", "set settle 200"]);
-    // An auto board's stored settings say auto, whichever mode it probed.
+    // A calibration stores the mode the board read in: an auto board that
+    // probed steady and the shipped steady build read the same levels.
+    expect(settingsFit(calSteady, { mode: "steady", auto: true })).toBe(true);
+    expect(settingsFit(calPulsed, { mode: "mod", auto: true })).toBe(true);
+    expect(settingsFit(calSteady, { mode: "mod", auto: true })).toBe(false);
+    // A wave 20 record says only auto: it fits an auto board, never a fixed build.
     expect(settingsFit({ close: 2000, open: 1000, mode: "auto" }, { mode: "mod", auto: true })).toBe(true);
     expect(settingsFit({ close: 2000, open: 1000, mode: "auto" }, steady)).toBe(false);
     // Older stored settings with no mode, or a board not heard yet: sent as before.

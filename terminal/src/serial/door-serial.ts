@@ -339,7 +339,7 @@ export function startDoorLink(config: TerminalConfig, o: { fetchFn?: typeof fetc
           if (l.open < l.close) {
             patchDoorStatus({ recal: false });
             const b = doorStatus().board;
-            const keep = { close: l.close, open: l.open, ...(b !== null ? { mode: b.auto ? "auto" : b.mode, settle: b.settle } : {}) };
+            const keep = { close: l.close, open: l.open, ...(b !== null ? { mode: b.mode, settle: b.settle } : {}) };
             try {
               store?.setItem(DOOR_SETTINGS_KEY, JSON.stringify(keep));
             } catch {

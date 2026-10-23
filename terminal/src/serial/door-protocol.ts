@@ -206,7 +206,7 @@ export function parseDoorSettings(raw: string | null): DoorSettings | null {
 /** The firmware's own thresholds before anything is stored (`config.h` `DEF_CLOSE` / `DEF_OPEN`). */
 export const FIRMWARE_DEFAULTS = { close: 1800, open: 1200 } as const;
 
-/** What a board runs, as a stored `mode`: `auto` when its boot probe picked. */
+/** How ⚙ names what a board runs: `auto` when its boot probe picked (a calibration stores the probed `mode` itself, see `settingsFit`). */
 export function boardMode(now: Pick<HelloLine, "mode" | "auto">): DoorMode {
   return now.auto ? "auto" : now.mode;
 }
@@ -221,7 +221,13 @@ export function boardMode(now: Pick<HelloLine, "mode" | "auto">): DoorMode {
  * an unknown board, fit.
  */
 export function settingsFit(want: DoorSettings, now: Pick<HelloLine, "mode" | "auto"> | null): boolean {
-  return want.mode === undefined || now === null || boardMode(now) === want.mode;
+  if (want.mode === undefined || now === null) return true;
+  // A calibration names the mode the board actually read in (`steady` /
+  // `mod`), so an auto board that probed steady and a `LED_STEADY` build
+  // read the same levels and fit. Only a record from before that (wave 20
+  // stored `auto` for every probing board) can't say which mode it was taken
+  // in, so it fits an auto board alone.
+  return want.mode === "auto" ? now.auto : now.mode === want.mode;
 }
 
 /**

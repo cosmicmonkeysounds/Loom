@@ -163,4 +163,26 @@ describe("Web Serial (door=serial)", () => {
     expect(JSON.parse(store.m.get(DOOR_SETTINGS_KEY)!)).toEqual({ close: 2100, open: 900, mode: "mod", settle: 150 });
     link.stop();
   });
+
+  it("a calibration on an auto board stores the mode it probed, so the steady build that replaces it keeps it", async () => {
+    const b = fakeBoard();
+    const store = memory();
+    const link = startDoorLink({ ...config, door: "serial" }, { serial: b.serial, store, fetchFn: (async () => new Response("{}")) as unknown as typeof fetch });
+    for (let i = 0; i < 5; i++) await tick();
+    b.say('{"t":"hello","fw":"door-m4 1.0.0","mode":"steady","auto":true,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false}\n');
+    for (let i = 0; i < 5; i++) await tick();
+    b.say('{"t":"cal","which":"open","ref":2900,"close":3600,"open":3100}\n');
+    for (let i = 0; i < 5; i++) await tick();
+    expect(JSON.parse(store.m.get(DOOR_SETTINGS_KEY)!)).toEqual({ close: 3600, open: 3100, mode: "steady", settle: 150 });
+    link.stop();
+    // Reflashed 1.1.0 (LED_STEADY, flash wiped): the stored thresholds go back on.
+    const b2 = fakeBoard();
+    const link2 = startDoorLink({ ...config, door: "serial" }, { serial: b2.serial, store, fetchFn: (async () => new Response("{}")) as unknown as typeof fetch });
+    for (let i = 0; i < 5; i++) await tick();
+    b2.say('{"t":"hello","fw":"door-m4 1.1.0","mode":"steady","auto":false,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false}\n');
+    for (let i = 0; i < 5; i++) await tick();
+    expect(doorStatus().recal).toBe(false);
+    expect(b2.written.join("")).toBe("get\nset close 3600\nset open 3100\n");
+    link2.stop();
+  });
 });
