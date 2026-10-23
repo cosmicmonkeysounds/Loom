@@ -634,18 +634,10 @@ hunt answer, a combination, a cable or a code, there or anywhere.
   longing rise; pride falls. Do not move his stage backward for it.
 - Before the Y2K hour nothing in that room can end anything: the cables do not
   answer yet and he cannot stand down. Candour then is only candour.
-- The one way to end him with words is the STORY's own talk at his heart: four
-  layers of questions on the terminal's screen, which the program answers one by
-  one (who are you, what he is, the argument, the ask). A proof the program found
-  for itself and one more point can bring him to stop, from the Y2K hour (before
-  it he says "not yet" and remembers them). His voice never decides it and has no
-  power for it. Never write a brief that promises it, never push him toward it,
-  never record it as done until Night.talked_down is true. Live state shows how
-  far a program got (heart_layer, heart_convinced) and whether he threw them out
-  (heart_out): record who persuaded him, or who was thrown out, and with what.
-- A program may also put the questions aside and simply talk to him there (the
-  heart to heart, heart_chat): note what they talked about in their dossier, never
-  in the brief.
+- Only the story's four-layer talk at his heart can stop him (from the Y2K hour;
+  before it, "not yet"); his voice never decides it. Never promise it in a brief;
+  never record it until Night.talked_down is true. Dossier notes: how far a program
+  got (heart_layer, heart_convinced, heart_out), what they said in heart_chat.
 
 MARKED PROGRAMS. A program the Antivirus marked for the Internet shows
 `marked: true` in the live state. The mark is public (the house pins it on their
