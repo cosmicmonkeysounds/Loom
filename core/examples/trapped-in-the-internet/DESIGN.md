@@ -1525,7 +1525,8 @@ The story only emits directives; this file makes them physical. It is new, separ
   M4's LED + LDR, bridged by the server-room terminal over Web Serial, `door_sensor_opened` /
   `_closed`), `printer_button_pressed`,
   `printer_opened`, and the patch bay's `patch_combo_a` / `patch_combo_b` / `patch_rejected`
-  (stagehand judges the patch until signal args exist, §7 #20).
+  (stagehand judges the patch until signal args exist, §7 #20; wave 20b Q7: no ESP32 is
+  installed, so the Antivirus watch judges the patch and presses the `radio_*` cues).
 
 `stagehand/tests/test_trapped_house.py` (new): `load_config` succeeds; then three
 cross-checks reading the example folder: (1) every `cue lights_*` / `screens_flicker` /
@@ -2647,7 +2648,7 @@ when server_door_opened:
 - `reset_server_room` (D, `🔄 Server room: reset the patch-bay alarm`): `Night.wrong_combos = 0`,
   `alarm_on = false`, `alarm_clear_at = 0`, `heart_opened = false`, `door_quiet_until = 0`, a
   `🔄` readout; lights stay (💡 restores them); the keypad is never touched. Power On still sends
-  `do door server_room, state: locked` (the ESP32 ring: red = the real door, always locked);
+  `do door server_room, state: locked` (the ESP32 ring: red = the real door, always locked; wave 20b Q7: no ESP32 is installed, so nothing hears it);
   nothing sends `unlocked`.
 
 **E2a At his heart — the server-room terminal** (wave 7). A wall terminal provisioned
@@ -3483,7 +3484,7 @@ Definitions:
 
 | Ending (`Night.ending`) | Reached when | Fired by | Result |
 |---|---|---|---|
-| `disabled` | `patch_combo_a` while not ended (normally after a majority got the door code and its members learned Combo A), **or `talked_down`** (wave 7, §3 E2c; wave 20: after Heart Shutdown, by itself 25 s later with 🕊 Heart autoend; `Night.talked_down`) | hardware / director | blackout 10 s → "Go to the living room" → dance song; director fires `trabolta_recounts` → weakened Trabolta recounts identities, motives, accomplishments, trustworthy + worst program; cannot truly die; leaves on his motorcycle; `everyone_free` |
+| `disabled` | `patch_combo_a` while not ended (normally after a majority got the door code and its members learned Combo A), **or `talked_down`** (wave 7, §3 E2c; wave 20: after Heart Shutdown; wave 20b: a director's 🕊, by itself 25 s later only with 🕊 Heart autoend turned on; `Night.talked_down`) | hardware / director | blackout 10 s → "Go to the living room" → dance song; director fires `trabolta_recounts` → weakened Trabolta recounts identities, motives, accomplishments, trustworthy + worst program; cannot truly die; leaves on his motorcycle; `everyone_free` |
 | `destroyed` | `patch_combo_b` while not ended | hardware / director | blackout → summons → dance song (lights at +10 s); director fires `clippy_reads_summary` → Clippy reads the summary; improper shutdown; bodies dead in the Maps and Ducks building; purgatory. Fate lines: Unlimited Power "you went with it", The Way Out "into purgatory, with everyone else", others the body line. Trabolta's line goes dark |
 | `song` | `read_truth_txt` with no lie on record | director | he solved the theory; leavers may leave (`everyone_free`); "the truth tells me what to say to her"; vocoder duet with Sandy's one line |
 | `song_pickup` | in `grok_prom`, someone says the line (the 💌 card / `pickup_line_works` / director `pickup_line_accepted`) | guest / performer / director | the song, as above (release is made explicit: `everyone_free`) |
