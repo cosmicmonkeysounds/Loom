@@ -221,4 +221,43 @@ describe("the channel a menu docks under", () => {
     expect(v["decisionChannel"]).toBe("dm:Clippy");
     rt.dispose();
   });
+
+  // An option that only `set`s, then diverts to a menu: the choose's batch
+  // has no line before the new prompt.
+  const STRAIGHT = SOURCE.replace(
+    `+ ⟦LEAVE⟧ Goodbye.
+  set program.picked = "bye"`,
+    `+ ⟦LEAVE⟧ Goodbye.
+  set program.picked = "bye"
+  -> Heart Pick
+
+== Heart Pick
+  setting: Server Room
++ ⟦STAY⟧ Stay.
+  set program.picked = "stay"
++ ⟦GO⟧ Go.
+  set program.picked = "go"`,
+  );
+
+  it("a menu reached with no line in its batch docks under the last speaker", async () => {
+    for (const restart of [false, true]) {
+      const d = mkdtempSync(join(tmpdir(), "loom-choose-"));
+      dirs.push(d);
+      let rt = runtimeIn(d, undefined, STRAIGHT);
+      rt.openDoors();
+      const g = await guest(rt);
+      await post(rt, "/api/guest/act", { token: g.token, name: "heart" });
+      const [heart] = (await state(rt, g.token)).json["choices"] as Choice[];
+      expect((await post(rt, "/api/guest/choose", { token: g.token, index: 1, text: "⟦LEAVE⟧ Goodbye.", choice: heart!.id })).status).toBe(200);
+      if (restart) {
+        rt.dispose();
+        rt = runtimeIn(d, undefined, STRAIGHT);
+        expect(rt.restore()).not.toBeNull();
+      }
+      const v = (await state(rt, g.token)).json;
+      expect((v["choices"] as Choice[]).map((c) => [c.beat, c.channel])).toEqual([["Heart Pick", "dm:Trabolta"]]);
+      expect(v["decisionChannel"]).toBe("dm:Trabolta");
+      rt.dispose();
+    }
+  });
 });

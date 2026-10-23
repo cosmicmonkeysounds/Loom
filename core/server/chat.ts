@@ -920,9 +920,14 @@ export function decisionChannelFor(events: readonly SimEvent[], person: string):
  * may prompt one person twice (a hook's menu after a beat's); each gets
  * the speaker that asked it. Menus with no id (a hand-built event) are
  * left out.
+ *
+ * `lastSpeaker` (person → speaker), when given, carries the speaker across
+ * batches: it seeds the lookup and is updated in place, so a menu reached
+ * with no line in its own batch (an option that `set`s, then `->` a menu)
+ * still docks under the character who last spoke to that person.
  */
-export function menuChannelsFor(events: readonly SimEvent[]): Map<number, string> {
-  const speaker = new Map<string, string>();
+export function menuChannelsFor(events: readonly SimEvent[], lastSpeaker?: Map<string, string>): Map<number, string> {
+  const speaker = lastSpeaker ?? new Map<string, string>();
   const out = new Map<number, string>();
   for (const e of events) {
     if (e.type === "dialogue") for (const p of e.audience) speaker.set(p, e.speaker);

@@ -115,6 +115,15 @@ describe("menu ids — the view", () => {
     expect(menuChannelsFor([{ type: "choicePrompted", person: "g1", promptId: "g1", options: ["a"] }]).size).toBe(0);
   });
 
+  it("a menu with no line in its batch docks under the last speaker carried in", () => {
+    const last = new Map<string, string>();
+    menuChannelsFor([{ type: "dialogue", speaker: "Trabolta", text: "So.", audience: ["g1"] } as SimEvent], last);
+    expect(last.get("g1")).toBe("Trabolta");
+    expect([...menuChannelsFor([{ type: "choicePrompted", person: "g1", promptId: "g1", options: ["a"], id: 9 }], last)]).toEqual([[9, "dm:Trabolta"]]);
+    // Another person's speaker never reaches g1's menu.
+    expect([...menuChannelsFor([{ type: "choicePrompted", person: "g2", promptId: "g2", options: ["a"], id: 10 }], last)]).toEqual([[10, "lobby"]]);
+  });
+
   it("GuestView.choices lists every pending menu, oldest first, with its channel", () => {
     const sim = Sim.fromSources(SOURCE);
     sim.createPerson("g1", "Excel");

@@ -666,6 +666,9 @@ export class EventRuntime {
   // Wave 20 (D18): each pending menu's id → the channel its prompt went to
   // (`GuestView.choices`). Ephemeral like the above; rebuilt by a replay.
   private readonly menuChannels = new Map<number, string>();
+  /** Person → the character whose line last reached them (D18): a menu's
+   *  channel falls back to it when its own batch has no line. */
+  private readonly lastSpeakers = new Map<string, string>();
   // W-03 reserved programs: the claim tokens + a director's open windows.
   private readonly claims: Claims;
   // W-04 / OP-11: guest id → when they were last heard from (wall ms): a
@@ -1698,7 +1701,7 @@ export class EventRuntime {
    *  drew: `runPicks` commits its own), for a press's card lines (C1). */
   private fanout(events: SimEvent[], via?: string): ChatMessage[] {
     if (this.agents.judging.length > 0) this.dropMootRulings();
-    for (const [menu, channel] of menuChannelsFor(events)) this.menuChannels.set(menu, channel);
+    for (const [menu, channel] of menuChannelsFor(events, this.lastSpeakers)) this.menuChannels.set(menu, channel);
     for (const e of events) {
       if (e.type === "respond") {
         // The alert `!` stripped, as the Inbox row has it (`alert` says it was there).
@@ -3755,6 +3758,7 @@ export class EventRuntime {
     this.store.clearHidden();
     this.decisionChannels.clear();
     this.menuChannels.clear();
+    this.lastSpeakers.clear();
   }
 
   private persistMeta(): void {
@@ -4251,7 +4255,7 @@ export class EventRuntime {
           }
           if (Array.isArray(out)) {
             const batch = out as SimEvent[];
-            for (const [menu, channel] of menuChannelsFor(batch)) this.menuChannels.set(menu, channel);
+            for (const [menu, channel] of menuChannelsFor(batch, this.lastSpeakers)) this.menuChannels.set(menu, channel);
             for (const ev of batch) {
               if (ev.type === "choicePrompted" && ev.person !== null) {
                 this.decisionChannels.set(ev.person, decisionChannelFor(batch, ev.person));
