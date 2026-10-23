@@ -4,7 +4,8 @@
 //! `terminal opened` still sets `at_the_heart`, his worker's request carries
 //! `marked` (not secret; the persona's `them:` reads it, its situations gate
 //! on it) but never the reason, the terminal's 📎 GIVE (the piloted guest's
-//! own share) still lands, and STANDING DOWN is still open to them.
+//! own share) still lands, and (wave 20) his heart's talk is still theirs to
+//! win: the ⟦MARKED⟧ option, never a door closed on them.
 
 import { afterAll, describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -132,7 +133,7 @@ describe("Trapped in the Internet — a marked program at his heart (wave 11b)",
     rt.dispose();
   });
 
-  it("the terminal's 📎 GIVE still hands him a marked program's file, and STANDING DOWN is still theirs to win", { timeout: SLOW }, async () => {
+  it("the terminal's 📎 GIVE still hands him a marked program's file, and his heart's talk is still theirs to win", { timeout: SLOW }, async () => {
     const { rt, sim, id, mod } = await markedProgram();
     const pilot = await call(rt, "POST", "/api/mod/impersonate", { role: "guest", id, label: "Terminal · Server Room" }, { moderator: true });
     const ptoken = pilot.json["token"] as string;
@@ -141,17 +142,14 @@ describe("Trapped in the Internet — a marked program at his heart (wave 11b)",
     expect(sim.holdsCodex("Trabolta", "The Optical Drive")).toBe(false);
     expect((await call(rt, "POST", "/api/guest/codex/share", { entry: "The Optical Drive", to: "Trabolta" }, { token: ptoken })).status).toBe(200);
     expect(sim.holdsCodex("Trabolta", "The Optical Drive")).toBe(true);
-    // From the Y2K hour, holding her one line, the mark doesn't close the door on standing down.
-    sim.setVar("Night.step", "14");
-    sim.unlock(id, "What Sandy Says");
-    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
-    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "She only ever says one thing. She can't answer you." }, { token: ptoken });
-    const req = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest)[0]!;
-    expect(req.powers.map((p) => p.id)).toContain("stand_down");
-    const reply = await call(rt, "POST", "/api/agent/reply", { id: req.id, say: "You are right.", acts: [{ kind: "fire", name: "stand_down" }] }, { moderator: true });
-    expect(reply.status).toBe(200);
-    expect(reply.json["acted"]).toEqual([{ kind: "fire", ok: true, what: "stand_down" }]);
-    expect(sim.world.peek("Night.stand_down_by")).toMatchObject({ value: "Calculator" });
+    // Wave 20: the talk is the story's, and the mark only adds an option
+    // (⟦MARKED⟧) and a wary start (suspicion 10): it never closes it.
+    sim.setVar("Night.heart_stage", "scan");
+    await mod("terminal opened", { subject: id, args: { at: "The Server Room" }, label: "Terminal · Server Room" });
+    const menu = sim.pendingChoicesFor(id).filter((c) => c.beat === "Heart Layer One");
+    expect(menu).toHaveLength(1);
+    expect(menu[0]!.options.some((o) => o.startsWith("⟦MARKED⟧"))).toBe(true);
+    expect(sim.world.peek(`${id}.heart_suspicion`)).toMatchObject({ value: 10 });
     rt.dispose();
   });
 });

@@ -335,7 +335,6 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
       return { n, out: n.take(n.sim.unlock("g1", "Cold Door Fourth Digit")) };
     }],
     ["🗝 the door code by the majority (The Whole Truth)", /^🗝 THE WHOLE TRUTH:/u, () => { const n = Y2K(); n.take(n.sim.join("g1", "Unlimited Power")); return { n, out: n.press("force_majority_stay").concat(n.tick(1)) }; /* wave 18b: no plant gate, so one member short of a real majority */ }],
-    ["🚪 The Heart", /^🚪 THE SERVER ROOM IS OPEN\./u, () => { const n = Y2K(); return { n, out: n.signal("server_door_opened") }; }],
     ["⏰ you are late", /^⏰ You are late\./u, () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c); return { n, out: n.press("summons_closed") }; }],
     ["🎵 the song ending (the verdict, every fact accurate)", /^🎵 TRABOLTA SOLVED IT\./u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); const out = n.press("the_verdict"); expect(v(n.sim, "Night.ending")).toBe("song"); return { n, out }; }],
     ["💔 the verdict: Grok Prom", /^💔 THE VERDICT:/u, () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); return { n, out: n.take(n.sim.fireBeat("Grok Prom")) }; }],
@@ -351,6 +350,15 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
       expect(major.some((t) => text.test(t)), `${label}: ${JSON.stringify(major)}`).toBe(true);
     }, SLOW);
   }
+
+  // Wave 20 (CONTRACT-w20 §3.4): The Heart's notice is quiet on purpose: no
+  // chime or banner pulls a crowd to the door at the moment he asks for it shut.
+  it("🚪 The Heart is a quiet notice on every phone, never a major moment (wave 20)", () => {
+    const n = Y2K();
+    const out = n.signal("server_door_opened");
+    expect(forGuest(out, "g1").filter((m) => /^🚪 The server room is open\./u.test(m.text))).toHaveLength(1);
+    expect(majorFor(out, "g1").filter((m) => m.text.startsWith("🚪"))).toEqual([]);
+  }, SLOW);
 
   it("a late printer lid (the Y2K hour) plays only the beans: no alert reaches a phone", () => {
     const n = boot();
