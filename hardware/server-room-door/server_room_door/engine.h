@@ -155,7 +155,13 @@ class Engine {
     health_.update(f, mode_, now);
     cls_.update(f.level, s_, now);
     uint16_t mean;
-    if (avg_.feed(f.level, now, mean)) calibrated(mean);
+    if (avg_.running && health_.fault()) {
+      // A fault mid-average: its frames would poison the reference.
+      avg_.running = false;
+      err("sensor fault", calCmd_);
+    } else if (avg_.feed(f.level, now, mean)) {
+      calibrated(mean);
+    }
     bool changed = !seen_ || open() != sentOpen_ || health_.fault() != sentFault_ || health_.warn() != sentWarn_;
     seen_ = true;
     if (changed) report(now);

@@ -479,6 +479,16 @@ static void test_a_calibration_without_a_span_is_refused() {
   CHECK(r.out.lastOf("err") == "{\"t\":\"err\",\"error\":\"cal span too small\",\"cmd\":\"cal open\"}");
   CHECK(r.out.count("\"which\":\"open\"") == 0);
   CHECK(r.e.settings().close == DEF_CLOSE && r.e.settings().open == DEF_OPEN && !r.e.settings().cal);
+  Rig mid;  // a fault that comes on mid-average aborts it
+  mid.begin();
+  mid.run(1000);
+  mid.say("cal closed");
+  mid.d.forced = 4095;
+  mid.out.clear();
+  mid.run(3000);
+  CHECK(!mid.e.calibrating() && mid.out.count("\"t\":\"cal\"") == 0);
+  CHECK(mid.out.count("{\"t\":\"err\",\"error\":\"sensor fault\",\"cmd\":\"cal closed\"}") == 1);
+  CHECK(mid.e.settings().close == DEF_CLOSE);
   r.d.forced = 4095;  // no calibration through a fault
   r.run(3000);
   r.say("cal closed");
