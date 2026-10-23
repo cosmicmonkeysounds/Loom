@@ -244,6 +244,9 @@ describe("POST /api/mod/lights/test", () => {
     expect(await call(rt, "POST", "/api/mod/lights/test", { look: "heart_dream" })).toEqual({ status: 404, json: { error: "no such look" } });
     expect(await call(rt, "POST", "/api/mod/lights/test", { fixture: "ghost" })).toEqual({ status: 404, json: { error: "no such fixture" } });
     expect(await call(rt, "POST", "/api/mod/lights/test", { fixture: "desk-lamp", set: { brightness: 999 } })).toEqual({ status: 400, json: { error: "set.brightness must be a whole number from 0 to 254" } });
+    // A set that does nothing (empty, or only a transition) is no test.
+    expect(await call(rt, "POST", "/api/mod/lights/test", { fixture: "desk-lamp", set: {} })).toEqual({ status: 400, json: { error: "set does nothing" } });
+    expect(await call(rt, "POST", "/api/mod/lights/test", { fixture: "desk-lamp", set: { transition: 1 } })).toEqual({ status: 400, json: { error: "set does nothing" } });
     expect((await call(rt, "POST", "/api/mod/lights/test", { look: "heart_idle" }, {})).status).toBe(403);
     expect(await call(rt, "POST", "/api/mod/lights/test", { fixture: "server-room-rgb" })).toEqual({ status: 200, json: { ok: true, seq: 1, module: false } });
     t += 1000;

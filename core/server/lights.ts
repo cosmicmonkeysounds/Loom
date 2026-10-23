@@ -29,7 +29,7 @@
 //! - `POST /api/mod/lights/test {fixture} | {look} | {fixture, set}` →
 //!   `{ok, seq, module}`: identify a fixture, play a look, or publish one
 //!   state (the last `LIGHT_TESTS`, memory only, `LIGHT_TEST_MS` old at most,
-//!   ride every GET);
+//!   ride every GET; 400 `set does nothing` for an empty or transition-only set);
 //! - `POST /api/mod/lights/devices {devices}` → the module's reduced
 //!   Zigbee2MQTT device + group list (memory only, replaced whole);
 //! - `POST /api/mod/lights/pair {seconds}` → let new Zigbee devices join for
@@ -45,6 +45,7 @@ import {
   LIGHTS_FILE,
   defaultLights,
   isLightLookName,
+  lightStateDoes,
   lightStateProblems,
   lightsHash,
   validateLights,
@@ -598,6 +599,10 @@ export async function handleLightsPost(hub: LightsHub, ctx: LightsContext, path:
         const problems = lightStateProblems("set", set);
         if (problems.length > 0) {
           sendJson(res, 400, { error: problems[0] });
+          return true;
+        }
+        if (!lightStateDoes(set as LightState)) {
+          sendJson(res, 400, { error: "set does nothing" });
           return true;
         }
       }

@@ -594,7 +594,8 @@ version, and both map variants share one physical house. Never name it
   on a save, a snapshot, a test, a pair or a new device list), `POST
   /api/mod/lights {lights, base?}` (400 `problems`, 409 `stale`), `POST
   /api/mod/lights/project`, `POST /api/mod/lights/test {fixture} | {look} |
-  {fixture, set}` (identify, play a look, publish one state), `POST
+  {fixture, set}` (identify, play a look, publish one state; 400 `set does
+  nothing` for a set with no field but `transition`), `POST
   /api/mod/lights/devices {devices}` (the module's reduced
   `zigbee2mqtt/bridge/devices` + `groups`, ≤ 500, ≤ 256 KB), `POST
   /api/mod/lights/pair {seconds}` (Z2M permit-join; 0 closes, and a close

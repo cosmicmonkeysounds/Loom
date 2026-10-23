@@ -257,8 +257,9 @@ function forCaps(f: LightFixture, s: LightState): LightState {
   return out;
 }
 
-/** Does a state still do something (not just a transition)? */
-function effective(s: LightState): boolean {
+/** Does a state still do something (not just a transition)? The server
+ *  refuses a test `set` that doesn't. */
+export function lightStateDoes(s: LightState): boolean {
   return s.state !== undefined || s.brightness !== undefined || s.color !== undefined || s.color_temp !== undefined || s.effect !== undefined;
 }
 
@@ -307,7 +308,7 @@ export function planLook(lights: LightsConfig, house: HouseMap | null | undefine
       // Clamp first, then the caps: an OFF on a safety fixture that can't
       // dim is ON (its floor's brightness dropped with the caps).
       const set = forCaps(hit.f, clampForSafety(hit.f, step.set ?? {}));
-      if (!effective(set)) continue;
+      if (!lightStateDoes(set)) continue;
       commands.push({ at: step.at, fixture: id, set: ordered(set), order: hit.i });
     }
   }
@@ -611,7 +612,7 @@ export function validateLights(lights: unknown, house?: HouseMap | null): Lights
       // A look that does nothing on any of its fixtures.
       if (steps.length > 0 && canResolve) {
         const targeted = steps.some((s) => resolve(s.to).length > 0);
-        const does = steps.some((s) => resolve(s.to).some((f) => effective(forCaps(f, s.set as LightState))));
+        const does = steps.some((s) => resolve(s.to).some((f) => lightStateDoes(forCaps(f, s.set as LightState))));
         if (targeted && !does) warnings.push(`${at}: its fixtures can't do anything it sets (check their caps)`);
       }
     }
