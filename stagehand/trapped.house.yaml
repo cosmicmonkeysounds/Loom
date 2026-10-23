@@ -25,6 +25,11 @@
 #   8-channel ADAT expander (wave 18b; no QLab). It has a STATIC IP (a
 #   DHCP reservation on the router, 192.168.8.10) that the server-room ESP32
 #   firmware hard-codes (hardware/server-room/server_room/config.h).
+#   THE ESP32 BOX IS NOT INSTALLED FOR OCT 31 (Q7, 2026-10-23: "just the
+#   Grand Central M4"). Its rules below stay (every show/serverroom/* publish
+#   and the sensors/patchbay/state signals): with no box on the broker they
+#   publish to nobody and never fire, the siren is the router's alarm_siren,
+#   and the patch bay is judged by the Antivirus watch's 🔌 💥 ❌ (radio_*).
 #   Mosquitto runs two listeners: anonymous on 127.0.0.1:1883 for what runs
 #   on this Mac (stagehand — `mqtt.host` below — Zigbee2MQTT, the router),
 #   and password-only on the LAN at :1884 (user `props`) for the network
@@ -486,7 +491,8 @@ show:
     # the inside handle always opens). Nothing here can lock or unlock it,
     # and no rule may ever drive a lock, strike or relay on that door.
     # `do door server_room, state: locked|unlocked` drives ONLY the ESP32's
-    # ring: red breathing = locked, green = unlocked. The story sends
+    # ring: red breathing = locked, green = unlocked. ESP32 (not installed
+    # for Oct 31, Q7): the retained `locked` waits on the broker for nobody. The story sends
     # `locked` at Power On (true: the real door is locked) and nothing sends
     # `unlocked` since wave 7; the rule stays for the bench. The one retained
     # command here — it is an indicator, so a rebooted ESP32 re-converges on
@@ -570,6 +576,10 @@ show:
       edge: true
       signal: { name: printer_opened, debounce_s: 30 }
 
+    # ESP32 (not installed for Oct 31, Q7): nothing publishes this topic, so
+    # these three never fire; the patch-bay watch presses 🔌 💥 ❌ on their
+    # booth (radio_combo_a / radio_combo_b / radio_wrong_patch → the same
+    # patch_* story events). Kept for a show with the scanner fitted.
     # The patch bay (Trabolta's heart): the scanner publishes the canonical,
     # V-sorted pairs once stable, e.g.
     #   sensors/patchbay/state {"combo": "V2-D5,V4-D1,V6-D8,V7-D3", "complete": true}
