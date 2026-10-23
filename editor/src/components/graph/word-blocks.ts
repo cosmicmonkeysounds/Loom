@@ -145,7 +145,9 @@ function lower(items: BodyItem[], depth: number, ancestorTop: number | null): Wo
       }
       case 'choice':
         out.push(
-          block(WordBlockKind.Choice, depth, item.value.sticky ? '+' : '*', item.value.text, top, {
+          // A guarded option (wave 20) shows its guard beside the marker;
+          // the inline edit is the raw line, so the guard is kept as typed.
+          block(WordBlockKind.Choice, depth, choiceLabel(item.value), item.value.text, top, {
             span: item.value.span,
             firstLineOnly: true,
           }),
@@ -202,6 +204,12 @@ function displayTarget(d: Extract<BodyItem, { kind: 'divert' }>['value']): strin
  * first physical line when the block only owns its opening line.
  * `null` for display-only blocks or a stale span.
  */
+/** A choice block's label: its marker, plus `(if …)` when guarded. */
+function choiceLabel(c: { sticky: boolean; guard?: string | null }): string {
+  const marker = c.sticky ? '+' : '*'
+  return c.guard ? `${marker} (if ${c.guard})` : marker
+}
+
 export function blockEditRange(source: string, block: WordBlock): [number, number] | null {
   if (block.spanStart === null || block.spanEnd === null) return null
   const start = block.spanStart

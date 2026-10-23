@@ -14,7 +14,7 @@
 
 import { create } from 'zustand'
 import { Sim, SimEventType, namedEvents, type SimEvent } from '@loom/core/sim'
-import { ChatStore, composeGuestMessages } from '@loom/core/chat'
+import { ChatStore, composeGuestMessages, menuChannelsFor } from '@loom/core/chat'
 import { guestView, modView, notePress, pressRefused, primeView, type RuntimePhase } from '@loom/core/views'
 import type { StatField } from '@/lib/api'
 import { lspWorkspaceSync, pathForUri } from '@/lib/lsp-client'
@@ -132,8 +132,10 @@ function empty(): Pick<
 export const useSim = create<SimState>((set, get) => {
   /** The lens identity's own projection, if a non-operator lens is active. */
   const lensFor = (perspective: string): Lens => {
+    // A guest's menus dock where the server docks them (D18): each menu's
+    // channel off the whole log, the last speaker carried across lines.
     if (sim === null || perspective === OPERATOR_LENS) return null
-    if (sim.persons.has(perspective)) return { kind: 'guest', id: perspective, view: guestView(sim, perspective, null) }
+    if (sim.persons.has(perspective)) return { kind: 'guest', id: perspective, view: guestView(sim, perspective, null, undefined, menuChannelsFor(sim.log.all())) }
     const def = sim.model.characters.get(perspective)
     if (def !== undefined) {
       // A host part's (`admin: true`) booth holds the host capability, as

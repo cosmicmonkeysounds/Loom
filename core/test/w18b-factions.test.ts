@@ -411,6 +411,10 @@ describe("no `founding:` line: a wave 18 night is unchanged", () => {
     const sim = Sim.fromSources(CREW_SOURCE);
     playJournal(sim);
     const got = JSON.parse(JSON.stringify({ guests: ["g1", "g2", "g3", "g4"].map((g) => guestView(sim, g)), mod: modView(sim, "open", null), log: sim.log.all() }));
+    // Wave 20 (D18) added menu ids (`choicePrompted.id`, `GuestView.choices`):
+    // the master fixture stays frozen, so those additive fields are set aside.
+    for (const g of got.guests as Array<Record<string, unknown>>) delete g["choices"];
+    for (const e of got.log as Array<Record<string, unknown>>) if (e["type"] === "choicePrompted") delete e["id"];
     expect(got.log).toEqual(want.log);
     expect(got.guests).toEqual(want.guests);
     expect(got.mod).toEqual(want.mod);

@@ -156,7 +156,7 @@ The bridge posts `POST /e/:eventId/api/mod/signal` with the header **`x-loom-tok
 - Without `text` / `choice`: unchanged (old clients).
 - 200 `{ok: true}`.
 - **Sim:** `PendingChoice` gains `id: number` (the log index of its `choicePrompted` event; equal after a restore) and `beat: string`; `Sim.choose(person, index, id?)` answers that menu and leaves the others queued; the journaled `choose` mutation gains an optional `choice` (an old journal without it replays as today). `choicePrompted` carries `id`.
-- **View:** `GuestView.choices: Array<{id: number; beat: string; channel: string; options: string[]}>`, oldest first; `channel` is where that menu's prompt went (the per-menu twin of `decisionChannelFor`, rebuilt on restore). `pendingChoice` / `decisionChannel` stay as today (the oldest menu; the phone's tray).
+- **View:** `GuestView.choices: Array<{id: number; beat: string; channel: string; options: string[]}>`, oldest first; `channel` is where that menu's prompt went (the per-menu twin of `decisionChannelFor`, rebuilt on restore). `pendingChoice` / `decisionChannel` stay as today (the oldest menu; the phone's tray). *As built:* `choices?` is optional on the `GuestView` type (an older server and the frozen w18 view fixtures carry none), so every client reads `view.choices ?? []`; `decisionChannel` is the oldest menu's own channel; a menu whose batch has no line before it docks under the character who last spoke to that person (carried across batches, rebuilt on restore), else the lobby.
 
 ### 2.3 Guarded choices (D9)
 
@@ -166,7 +166,7 @@ The bridge posts `POST /e/:eventId/api/mod/signal` with the header **`x-loom-tok
 - **AST:** `Choice` gains `guard: string | null` (the condition source, trimmed); `text` is what follows the `)`, trimmed.
 - **Sim:** when a menu is prompted (`case "choice"`), each option's guard is evaluated in the frame's bindings exactly like `if`; false or an evaluation error (→ a `diagnostic` event) drops the option. If no option is left, nothing is queued, no `choicePrompted` is recorded and execution continues after the menu. `PendingChoice.options` and `choicePrompted.options` hold only the shown options, so `choose(person, index)` indexes the shown list. Replay is deterministic (the guard reads the same world).
 - **Lint:** `L1221 ChoiceGuardInvalid` (the condition doesn't parse; the option is then never offered).
-- **Bank:** diagnostic `choiceGuardIgnored {beat, line}`; the option compiles unguarded.
+- **Bank:** diagnostic `choiceGuardIgnored {beat, line}`; the option compiles unguarded. *As built:* the beat rides `BankDiagnostic.program` (the beat's key), `line` is 1-based.
 - **Tags:** a Fallout-style tag is written `⟦WORD⟧` at the start of the text (U+27E6 / U+27E7). Never `[…]`: in a choice that is hidden text.
 
 ### 2.4 Screen state additions (`GET /api/screen/state`)

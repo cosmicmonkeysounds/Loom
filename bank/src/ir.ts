@@ -360,6 +360,9 @@ export interface BankDiagnostic {
   code: string;
   message: string;
   program?: string;
+  /** The 1-based source line, where the diagnostic names one (wave 20,
+   *  `choiceGuardIgnored`). */
+  line?: number;
 }
 
 /**

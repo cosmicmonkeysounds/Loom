@@ -14,10 +14,10 @@
 //! offsets (`Position.offset`) where the Rust uses UTF-8 byte offsets;
 //! identical for ASCII source.
 
-import type { Beat, BodyItem, Item, LoomFile } from "./ast.ts";
+import type { Beat, BodyItem, Choice, Item, LoomFile } from "./ast.ts";
 import { divertSpan } from "./ast.ts";
 import type { Span } from "./source.ts";
-import { parse } from "./parser.ts";
+import { parse, splitChoiceGuard } from "./parser.ts";
 
 /**
  * A single range splice into the original source. `start..end` is a
@@ -288,19 +288,49 @@ export function appendDivert(
 
 /**
  * Append a choice option (`* text` / `+ text`), optionally already
- * wired to a target beat.
+ * wired to a target beat, and optionally guarded (`+ (if <cond>) text`,
+ * wave 20).
  */
 export function appendChoice(
   source: string,
   file: LoomFile,
   beat: string,
   text: string,
-  opts?: { sticky?: boolean; target?: string },
+  opts?: { sticky?: boolean; target?: string; guard?: string },
 ): TextEdit[] {
   const marker = opts?.sticky === true ? "+" : "*";
-  const lines = [`${marker} ${text}`];
+  const guard = opts?.guard?.trim();
+  const lines = [`${marker} ${guard ? `(if ${guard}) ` : ""}${text}`];
   if (opts?.target !== undefined) lines.push(`  -> ${opts.target}`);
   return appendBodyLines(source, file, beat, lines);
+}
+
+/**
+ * The source range of a choice option's own text on its opener line —
+ * after the `*` / `+` marker and any `(if <cond>)` guard, to the end of
+ * the line (any `[hidden]` text included, as written). An edit there keeps
+ * the marker and the guard (wave 20). Null when the line no longer reads
+ * as a choice (a stale span).
+ */
+export function choiceTextRange(source: string, choice: Choice): [number, number] | null {
+  const [ls, le] = lineBounds(source, choice.span.start.offset);
+  const line = source.slice(ls, le).replace(/\r$/u, "");
+  const m = /^\s*[*+][ \t]+/u.exec(line);
+  if (m === null) return null;
+  const rest = line.slice(m[0].length);
+  const [, after] = splitChoiceGuard(rest);
+  return [ls + line.length - after.length, ls + line.length];
+}
+
+/**
+ * Rewrite a choice option's text in place (`choiceTextRange`), keeping
+ * its marker and guard. `expect` is the text the caller saw there; a
+ * mismatch is a stale anchor.
+ */
+export function editChoiceText(source: string, choice: Choice, expect: string, next: string): TextEdit[] {
+  const range = choiceTextRange(source, choice);
+  if (range === null) throw new EditError("staleAnchor", `anchor no longer reads \`${expect}\``);
+  return replaceExact(source, range[0], range[1], expect, next);
 }
 
 /**

@@ -5,7 +5,7 @@ export * from "./source.ts";
 export * from "./diagnostics.ts";
 export * from "./ast.ts";
 export * from "./keywords.ts";
-export { parse, parseDivertTarget } from "./parser.ts";
+export { parse, parseDivertTarget, splitChoiceGuard } from "./parser.ts";
 export { scan, scannedLineSpan, type LineKind, type ScannedLine } from "./lexer.ts";
 export { FoldedIndex, foldKey, foldName, isNameShaped, parseSpeakerHead } from "./names.ts";
 export { statementToDirective } from "./statements.ts";
@@ -25,6 +25,8 @@ export {
   applyInsertBeat,
   applyMoveBeat,
   applyRemoveBeat,
+  choiceTextRange,
+  editChoiceText,
   insertBeat,
   insertBodyLines,
   moveBeat,

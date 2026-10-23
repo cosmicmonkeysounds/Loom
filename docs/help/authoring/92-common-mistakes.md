@@ -46,6 +46,11 @@ keywords: mistakes, errors, troubleshooting, gotchas, faq, why, broken, diagnost
 - **Keep the `is` clause on one line.** A trailing comma or unbalanced
   parenthesis raises *unterminated mixin clause* (`L1008`).
 - **A choice needs text.** A bare `*` line is an error (`L1003`).
+- **`[` in a choice is hidden text.** `+ [TRUSTED] You trust me.` shows
+  the button *You trust me.* and hides the tag. Write tags as `⟦TRUSTED⟧`.
+- **A guard closes on its own line.** `+ (if program.trust >= 20) …` is a
+  guard; an unclosed `(if …` is just text, and a condition that doesn't
+  parse (`L1221`) hides the option for good.
 - **`slot:` keeps its colon, `fill` doesn't.** `slot: pitch` is a
   labelled blank; `fill pitch` opens the block that fills it.
 - **Every `slot:` needs a `fill`.** An unfilled hole is the *unfilled
