@@ -310,7 +310,7 @@ export function doorBadges(d: TerminalDevice | null, override: boolean, silent =
     out.push({
       key: 'door-override',
       text: 'override',
-      title: 'The story follows the 🚪 buttons; press 🚪 Trust the door sensor to hand it back',
+      title: 'The story follows the 🚪 buttons; press 🚪 Trust the door sensor again to hand it back',
       warn: true,
       tone: 'amber',
     })

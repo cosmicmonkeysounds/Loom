@@ -349,7 +349,7 @@ describe('the 🚪 door badges (wave 20)', () => {
   it('override is amber and tells the director how to hand it back', () => {
     const bs = doorBadges(rowWith({ door: 'closed', doorLevel: 3900 }).device, true)
     expect(bs.at(-1)).toMatchObject({ key: 'door-override', text: 'override', tone: 'amber' })
-    expect(bs.at(-1)!.title).toContain('Trust the door sensor')
+    expect(bs.at(-1)!.title).toContain('press 🚪 Trust the door sensor again')
   })
 
   it('no badge for a terminal with no sensor (none, absent, not listed), override or not', () => {

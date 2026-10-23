@@ -176,7 +176,7 @@ Front of house: getting people in.
   use the 🚪 opened / closed cues until it polls again. An amber
   **override** (it rides the door-sensor terminal's row) means a 🚪 button
   was pressed and the story now follows the buttons, not the sensor:
-  press **🚪 Trust the door sensor** to hand it back (the next poll
+  press **🚪 Trust the door sensor again** to hand it back (the next poll
   brings the story into line with the sensor). **🛠 Set up a terminal…** builds a
   tablet's provisioning link from pickers: the spot, the view (including
   **Reinstall**, the tent laptop: the idle show like any wall terminal,
