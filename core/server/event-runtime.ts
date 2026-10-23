@@ -6691,7 +6691,12 @@ export class EventRuntime {
         const press = this.commit("signal", str(body, "name"), subject === "" ? undefined : subject, args, actor === "" ? null : actor);
         // `refused`: the story turned the press down (its `# hosts` line says
         // why) — the cue sheet's own judgement, so a phone needn't say "fired".
-        const refused = pressRefused(this.sim, press);
+        // Only a cue (a declared INTERACTION) is judged: a device's own
+        // signal (the door sensor's edge under the override, `terminal
+        // opened`) that changes nothing is not a refused press.
+        const signalled = foldName(str(body, "name"));
+        const isCue = [...this.sim.model.interactions.values()].some((i) => foldName(i.id) === signalled);
+        const refused = isCue && pressRefused(this.sim, press);
         // C8: what the press said (its lines) and the staff rooms' lines.
         const lines = cueLines(this.fanout(press), new Set(staffRoomChannels(this.sim.model)));
         // `presses`: the count after this press — the screen holds its lock

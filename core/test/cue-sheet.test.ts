@@ -147,6 +147,25 @@ async function call(rt: EventRuntime, method: string, p: string, body: unknown, 
 }
 
 describe("the phone cue page's server surface (W-26)", () => {
+  it("a device's signal that changes nothing (a door sensor edge) is never answered `refused`", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
+    dirs.push(dir);
+    const src = `${SOURCE}
+when door_sensor_closed:
+  if Night.phase == "never":
+    set Night.phase = "shut"
+`;
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "cue-phone", scenarioSource: src, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const token = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    const r = await call(rt, "POST", "/api/mod/signal", { name: "door_sensor_closed", args: { level: 3000 }, label: "Terminal · Server Room" }, token);
+    expect(r.status).toBe(200);
+    expect(r.json["refused"]).toBeUndefined();
+    // A cue out of turn still says so.
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "hunt_time_up" }, token)).json["refused"]).toBe(true);
+    rt.dispose();
+  });
+
   it("a mod token reads the cue sheet and fires a cue under the phone's label", async () => {
     const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
     dirs.push(dir);
