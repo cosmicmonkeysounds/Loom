@@ -2,7 +2,7 @@
 title: Instructions — verbs, cues, and the long form
 section: Language
 order: 19
-keywords: directive, sfx, cue, sound in, rooms, speakers, house speakers, audio.json, zone, L1213, pause, flash, anchor, fire, set, goal, spawn, run, broadcast, angle brackets, luau, extension, instruction, verb, sound, reply, move, add, remove, reveal, do, long form, show, widget, captcha
+keywords: directive, sfx, cue, room cue, room_, room terminal, server room, sound in, rooms, speakers, house speakers, audio.json, zone, L1213, pause, flash, anchor, fire, set, goal, spawn, run, broadcast, angle brackets, luau, extension, instruction, verb, sound, reply, move, add, remove, reveal, do, long form, show, widget, captcha
 ---
 
 An **instruction** is a plain lowercase verb at the start of a line —
@@ -30,6 +30,7 @@ set storm = true
 | `let name = expr` | a live, self-updating binding |
 | `cycle a \| b` / `shuffle a \| b` | variety |
 | `cue lx_dawn` | fire a lighting/tech cue |
+| `cue room_heart_wake` | a picture on the terminal in the beat's room (below) |
 | `sound bell_toll` (or `sfx`) | play a sound effect |
 | `sound bell_toll in The Bell Tower` / `sound bell_toll with rooms: tower, The Cellar` | …on the house speakers in those places only (below) |
 | `pause` | hold for a beat |
@@ -113,6 +114,44 @@ Lint **`L1213 SoundRoomUnresolved`** (a warning) flags a target of
 several words that is no LOCATION — a misspelt place, or two Capitalised
 zones written side by side without a comma. One-word targets live in
 `audio.json`, which the story can't see, so the lint can't check those.
+
+## Pictures on a room's terminal: `cue room_*`
+
+A **room terminal** is a wall terminal that belongs to one place (set up
+with `room=`: the server-room terminal belongs to *The Server Room*). A
+`cue` whose name starts with **`room_`**, played in a beat set in that
+place, is a picture for that terminal alone:
+
+```loom
+== Heart Wake
+  setting: The Server Room
+  cast: Trabolta
+cue room_heart_wake
+Trabolta: You came all the way down here.
+```
+
+- The beat's `setting:` picks the room (its name or its label, either
+  spelling). A `cue room_…` in a beat with no setting, or in a rule, goes
+  nowhere.
+- The terminal plays the scene keyed on the cue's name: put the cue on
+  the line the picture belongs to, not at the top of the beat, and the
+  story times the picture to the words.
+- The same cue twice plays twice (each one counts). A cue played before
+  the terminal last loaded (a restart's replay, an earlier part of the
+  night) never plays: a terminal only ever animates what happens while it
+  watches.
+- Only that room's terminal sees it. The TV and the other walls never do,
+  it is never one of the house's screen cues (`screens_…`, `tv_…`), and it
+  is never one of the *moments* the screens animate. So a beat played for
+  one program can carry it without the rest of the house seeing their
+  business.
+- Write it as one word after `cue`. `cue room_heart_glow, slow` is not
+  an instruction (a comma breaks the one-name shape) and stays prose: use
+  the long form `<cue: room_heart_glow, slow>` for extra words; only the
+  first word names the picture.
+
+The room terminal reads it off its screen state as `room.cue` (`value`,
+a `seq` that bumps on every cue, the time the server first saw it).
 
 ## The long form: `<verb: args>`
 
