@@ -35,7 +35,9 @@ struct SerialSink : door::Sink {
     // No host has the port open (DTR low): drop the line rather than fill
     // the USB buffer. A page that connects later sends `version` for the
     // hello, and the periodic door line repeats the state within 1 s.
-    if (!Serial) return;
+    // Serial.dtr(), not `!Serial`: the core's operator bool delays 10 ms on
+    // every call and reads false for the first 500 ms after boot.
+    if (!Serial.dtr()) return;
     Serial.write(s, strlen(s));
     Serial.write('\n');
   }
