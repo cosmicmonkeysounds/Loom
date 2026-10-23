@@ -103,7 +103,7 @@ import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
 import type { ReinstallTerminalProps } from "./reinstall/ReinstallTerminal.tsx";
 import { PeekClock, canPeek, screenLayers } from "./slides.ts";
-import { api, ApiError } from "@loom/play/client.ts";
+import { api, withTimeout } from "@loom/play/client.ts";
 import { serverNow } from "./cutscene/clock.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
 import { useDoorLink } from "./serial/use-door.ts";
@@ -111,7 +111,7 @@ import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { chooseBody, composerShown, heartMenuOf, heartTouched, isHeartTerminal, isStaleChoice, menusOf, pilotEndFor, splitTag, type HeartMenu } from "./heart/heart.ts";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerShown, heartMenuOf, heartTouched, isHeartTerminal, menusOf, pilotEndFor, splitTag, type HeartMenu } from "./heart/heart.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
@@ -1049,13 +1049,12 @@ function Terminal({
     async (m: HeartMenu, index: number) => {
       if (pilot === null) return;
       try {
-        await api(`${baseOf(config)}/api/guest/choose`, chooseBody(m, index), pilot.token);
+        await withTimeout(api(`${baseOf(config)}/api/guest/choose`, chooseBody(m, index), pilot.token), CHOOSE_TIMEOUT_MS);
       } catch (e) {
-        // The menu moved under the click, or is gone: the next view redraws it.
-        if (e instanceof ApiError && isStaleChoice(e.status, e.message)) return;
-        if (e instanceof ApiError && e.status === 409) throw new Error("NOT NOW — THE DOORS ARE CLOSED");
-        if (e instanceof ApiError && (e.status === 401 || e.status === 404)) throw new Error("THE LINE WAS CUT");
-        throw new Error(`DIDN'T SEND — ${(e as Error).message.toUpperCase()}`);
+        // The menu moved under the click, or is gone (null): the next view redraws it.
+        const text = chooseErrorText(e);
+        if (text === null) return;
+        throw new Error(text);
       }
       const after = session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1);
       setEchoes((list) => [...list, { key: `${m.id}:${index}`, text: splitTag(m.options[index] ?? "").text, after }]);

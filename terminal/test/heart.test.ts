@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FILES_IDLE_MS, HEART_IDLE_MS, HEART_WARN_MS, IDLE_MS, WARN_MS, lineLeash } from "../src/idle.ts";
-import { chooseBody, composerShown, doorOverlayOn, heartMenuOf, heartTouched, isChatMenu, isHeartTerminal, isStaleChoice, menusOf, panelModel, pilotEndFor, splitTag, type HeartMenu } from "../src/heart/heart.ts";
+import { ApiError, RequestTimeout } from "@loom/play/client.ts";
+import { chooseBody, chooseErrorText, composerShown, doorOverlayOn, heartMenuOf, heartTouched, isChatMenu, isHeartTerminal, isStaleChoice, menusOf, panelModel, pilotEndFor, splitTag, type HeartMenu } from "../src/heart/heart.ts";
 
 const stale: HeartMenu = { id: 40, beat: "The Tablet Video", channel: "dm:Trabolta", options: ["Where is the exit?"] };
 const layerOne: HeartMenu = { id: 212, beat: "Heart Layer One", channel: "dm:Trabolta", options: ["I'm a person. You put me in here.", "⟦MARKED⟧ The Antivirus marked me. I came down here anyway.", "⟦SPEAK FREELY⟧ Forget the questions. Talk to me.", "I need to go."] };
@@ -103,6 +104,18 @@ describe("which terminal is the heart's", () => {
     expect(isHeartTerminal("the server room", "off")).toBe(true);
     expect(isHeartTerminal("The Desktop", "off")).toBe(false);
     expect(isHeartTerminal(null, "off")).toBe(false);
+  });
+});
+
+describe("a pick that didn't go through", () => {
+  it("is silent when stale, never says door, and says so on a timeout", () => {
+    expect(chooseErrorText(new ApiError("moved", 409))).toBeNull();
+    expect(chooseErrorText(new ApiError("no choice", 409))).toBeNull();
+    expect(chooseErrorText(new ApiError("doors are closed", 409))).toBe("NOT NOW — HE IS PAUSED");
+    expect(chooseErrorText(new ApiError("bad token", 401))).toBe("THE LINE WAS CUT");
+    expect(chooseErrorText(new RequestTimeout(15_000))).toBe("DIDN'T SEND — TRY AGAIN");
+    expect(chooseErrorText(new Error("boom"))).toBe("DIDN'T SEND — BOOM");
+    for (const e of [new ApiError("x", 409), new ApiError("x", 500), new RequestTimeout(1)]) expect(chooseErrorText(e) ?? "").not.toMatch(/DOOR/);
   });
 });
 

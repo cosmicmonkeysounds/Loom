@@ -15,6 +15,7 @@
 //! - **The composer** (D23): shown when this terminal has a keyboard (`keys`),
 //!   except while a heart menu other than the ⟦BACK⟧ menu is docked.
 
+import { ApiError, RequestTimeout } from "@loom/play/client.ts";
 import { foldName } from "../config.ts";
 
 export interface HeartMenu {
@@ -147,6 +148,24 @@ export function isHeartTerminal(room: string | null, door: string): boolean {
 
 /** The LOCATION the heart lives in. */
 export const HEART_ROOM = "The Server Room";
+
+/**
+ * What the panel says when a pick didn't go through (null: say nothing — the
+ * menu moved under the click, and the next view redraws it). Never "door":
+ * at the heart that reads as the server-room door.
+ */
+export function chooseErrorText(e: unknown): string | null {
+  if (e instanceof RequestTimeout) return "DIDN'T SEND — TRY AGAIN";
+  if (e instanceof ApiError) {
+    if (isStaleChoice(e.status, e.message)) return null;
+    if (e.status === 409) return "NOT NOW — HE IS PAUSED";
+    if (e.status === 401 || e.status === 404) return "THE LINE WAS CUT";
+  }
+  return `DIDN'T SEND — ${(e as Error)?.message?.toUpperCase?.() ?? "TRY AGAIN"}`;
+}
+
+/** How long a pick may take before the panel says so (ms). */
+export const CHOOSE_TIMEOUT_MS = 15_000;
 
 /** Does the door overlay show? The door open while the heart wants it shut. */
 export function doorOverlayOn(doorOpen: boolean | null, stage: string | null): boolean {
