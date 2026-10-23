@@ -20,6 +20,7 @@ import {
   LIGHT_MAX_REPEAT,
   LIGHT_MAX_STEPS,
   LIGHT_RESTORE_MS,
+  LIGHT_SAFETY_MIN,
   LIGHT_STEP_MIN_MS,
   LIGHTS_EVERYWHERE,
   cloneData,
@@ -160,7 +161,8 @@ export function patchLight(lights: LightsConfig, id: string, patch: { name?: str
     }
     if ("min" in patch) {
       if (patch.min === null || patch.min === undefined || !Number.isFinite(patch.min)) delete f.min;
-      else f.min = Math.max(1, Math.min(254, Math.round(patch.min)));
+      // A safety light's floor is never under LIGHT_SAFETY_MIN (the server would use 40 anyway).
+      else f.min = Math.max(f.safety === true ? LIGHT_SAFETY_MIN : 1, Math.min(254, Math.round(patch.min)));
     }
   });
 }

@@ -19,6 +19,7 @@ import {
   lastTint,
   LIGHT_HEIGHT,
   LIGHT_SWATCHES,
+  lightById,
   lightFloor,
   lightIdError,
   lightProblemList,
@@ -171,6 +172,13 @@ describe("placing a light", () => {
     expect(renameLight(l, "heart-bulb", "everywhere")).toBe(l);
     expect(lightIdError(l, "Bad Id")).toMatch(/lower-case/);
     expect(validateLights(l, HOUSE()).ok).toBe(true);
+  });
+
+  it("never stores a safety light's floor under 40 (the server ignores one)", () => {
+    const l = BASIC();
+    expect(lightById(patchLight(l, "server-room-rgb", { min: 12 }), "server-room-rgb")!.min).toBe(40);
+    expect(lightById(patchLight(l, "server-room-rgb", { min: 90 }), "server-room-rgb")!.min).toBe(90);
+    expect(lightById(patchLight(l, "desk-lamp", { min: 12 }), "desk-lamp")!.min).toBe(12);
   });
 
   it("deletes from every zone and target list", () => {
