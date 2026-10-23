@@ -1105,6 +1105,7 @@ describe("The Heart — secrets and the fiction (wave 20, D29)", () => {
     expect(h2h).toMatch(/Halifax/u);
     const choice = front.slice(front.indexOf("  - name: a choice is open"), front.indexOf("  - name: her name has been said"));
     expect(choice).toMatch(/them\.heart_menu == true && them\.heart_chat != true/u);
+    expect(choice).toMatch(/Promise nothing\. Decide nothing; no cables, codes or her line\./u);
   });
 });
 
