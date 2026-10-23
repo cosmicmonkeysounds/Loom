@@ -95,6 +95,21 @@ function saveEchoes(save: (key: string, value: unknown) => void, token: string, 
  *  G2): on Mission, never the Chat log. */
 export const MISSION_DOCK = "mission";
 
+/** The menu a pick was made on (D18): its id, and the option's text. */
+export interface ChoiceRef {
+  id: number;
+  text: string;
+}
+
+/** `/api/guest/choose`'s body: the menu's id + the option's text when the
+ *  dock knew them (the server answers 409 if the menu moved), else the
+ *  index alone (an older server's view). */
+export function chooseBody(index: number, menu?: ChoiceRef): { index: number; choice?: number; text?: string } {
+  return menu === undefined ? { index } : { index, choice: menu.id, text: menu.text };
+}
+
+const sameOptions = (a: readonly string[], b: readonly string[]): boolean => a.length === b.length && a.every((x, k) => x === b[k]);
+
 /**
  * The one required decision (if any), and where it docks: the room the
  * story names, or Mission when that would be the lobby (G2 — the lobby is
@@ -105,16 +120,19 @@ export const MISSION_DOCK = "mission";
  */
 export function requiredDecision(
   status: GuestView | null,
-  acts: { choose: (i: number) => void; escape: () => void; join?: (f: string) => void },
+  acts: { choose: (i: number, menu?: ChoiceRef) => void; escape: () => void; join?: (f: string) => void },
 ): { channel: string; decision: Decision } | null {
   if (!status) return null;
   if (status.pendingChoice) {
     const room = status.decisionChannel ?? "lobby";
+    // The menu drawn here (D18): its id and each option's text ride the pick.
+    const shown = status.choices?.[0];
+    const menuId = shown !== undefined && sameOptions(shown.options, status.pendingChoice) ? shown.id : undefined;
     return {
       channel: room === "lobby" ? MISSION_DOCK : room,
       decision: {
         title: "Your move…",
-        options: status.pendingChoice.map((opt, i) => ({ label: opt, onClick: () => acts.choose(i) })),
+        options: status.pendingChoice.map((opt, i) => ({ label: opt, onClick: () => acts.choose(i, menuId === undefined ? undefined : { id: menuId, text: opt }) })),
       },
     };
   }
@@ -421,9 +439,9 @@ export function useGuestSession(): GuestSession {
   const pendingRef = useRef<{ options: string[] | null; channel: string }>({ options: null, channel: "lobby" });
   pendingRef.current = { options: status?.pendingChoice ?? null, channel: status?.decisionChannel ?? "lobby" };
   const choose = useCallback(
-    async (index: number) => {
+    async (index: number, menu?: ChoiceRef) => {
       const { options, channel } = pendingRef.current;
-      const text = options?.[index];
+      const text = menu?.text ?? options?.[index];
       const last = maxSeqOf(messages.values());
       const echo = text !== undefined && me !== null ? choiceEcho(channel, text, me, last, messages.get(last)?.ts ?? 0) : null;
       if (echo !== null) {
@@ -431,7 +449,7 @@ export function useGuestSession(): GuestSession {
         setEchoes((prev) => saveEchoes(save, me!.token, [...prev, echo]));
       }
       try {
-        return await post("/api/guest/choose", { index });
+        return await post("/api/guest/choose", chooseBody(index, menu));
       } catch (e) {
         if (echo !== null) setEchoes((prev) => saveEchoes(save, me!.token, prev.filter((m) => m.seq !== echo.seq)));
         throw e;
@@ -633,7 +651,7 @@ export function useGuestSession(): GuestSession {
   );
 
   const [opened, setOpened] = usePerSession(me?.token ?? null, NONE_OPENED);
-  const dock = requiredDecision(status, { choose: (i) => void choose(i), escape: () => void escape() });
+  const dock = requiredDecision(status, { choose: (i, m) => void choose(i, m), escape: () => void escape() });
   const threads = useThreads(
     withAgents(buildGuestChannels(shown, dock, status, opened, new Set(answeredNow.keys())), status, typing),
     { store: host.storage, slot: GUEST_READ, session: me?.token ?? null },
