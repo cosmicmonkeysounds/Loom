@@ -54,6 +54,7 @@ import { documentSymbols } from "./symbols.ts";
 import { referencesAt } from "./references.ts";
 import { wave18Lints } from "./w18-lints.ts";
 import { wave18bLints } from "./w18b-lints.ts";
+import { wave20Lints } from "./w20-lints.ts";
 
 /** A single open document plus its latest parse. */
 export interface OpenDoc {
@@ -209,6 +210,8 @@ export class Workspace {
     // Wave 18: moment exits, booth pickers, header lines, callers, big broadcasts.
     wave18Lints(this.orderedDocs(), this.compiled, (uri, range, error, code, message) => this.pushProject(uri, range, error, code, message));
     wave18bLints(this.orderedDocs(), this.compiled, (uri, range, error, code, message) => this.pushProject(uri, range, error, code, message));
+    // Wave 20: a choice guard that does not parse.
+    wave20Lints(this.orderedDocs(), (uri, range, error, code, message) => this.pushProject(uri, range, error, code, message));
   }
 
   /** Push one project diagnostic onto a document. */

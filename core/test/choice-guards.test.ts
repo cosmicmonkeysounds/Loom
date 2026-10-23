@@ -6,6 +6,7 @@ import { parse } from "../src/parser/index.ts";
 import type { BodyItem, Choice } from "../src/parser/index.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
+import { Workspace } from "../src/lsp/index.ts";
 
 function choicesOf(src: string): Choice[] {
   const [file] = parse(src);
@@ -154,5 +155,25 @@ describe("guarded choices — the sim", () => {
     expect(a.pendingChoicesFor("g1")[0]!.options).toEqual(["⟦TRUSTED⟧ You trust me.", "Who are you?"]);
     b.choose("g1", 0);
     expect(b.world.get("g1.picked")).toMatchObject({ value: "trusted" });
+  });
+});
+
+describe("guarded choices — lint L1221", () => {
+  const l1221 = (src: string) => {
+    const ws = new Workspace();
+    ws.open("file:///main.loom", src);
+    return (ws.diagnosticsFor("file:///main.loom")?.diagnostics ?? []).filter((d) => d.code === "L1221");
+  };
+
+  it("flags a guard that does not parse, on its line", () => {
+    const d = l1221("== a\n+ (if program.trust >= ) Never.\n+ (if program.trust >= 20) Fine.\n* Plain.\n");
+    expect(d).toHaveLength(1);
+    expect(d[0]!.range.start.line).toBe(1);
+    expect(d[0]!.message).toContain("never offered");
+  });
+
+  it("reaches a CHARACTER's owned beat too, and leaves good guards alone", () => {
+    const src = "CHARACTER Trabolta\n  beat ask\n    + (if self.awake ==) Hi.\n\n== b\n+ (if (a.x + 1) > 2 and b.y) Ok.\n";
+    expect(l1221(src).map((d) => d.range.start.line)).toEqual([2]);
   });
 });
