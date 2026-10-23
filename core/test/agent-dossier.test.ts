@@ -369,7 +369,7 @@ describe("buildDossier: the never-list", () => {
     for (const t of ["it's sandy-file", "TRUSTCHART?", "trabolta_4ever", "No-Exit", "type silicon"]) expect(m(t)).toBe(true);
   });
 
-  it("keeps coded entries the guest holds (a title is not its code) ", () => {
+  it("keeps coded entries the guest holds (a title is not its code) and a wall terminal's pilot lines", () => {
     const d = buildDossier(
       input({
         codex: [
@@ -379,6 +379,7 @@ describe("buildDossier: the never-list", () => {
         codexDef: (e) => ({ title: e, text: "fine", secret: false }),
         log: [{ type: "codexUnlocked", person: "Trabolta", entry: "The Sandy File", via: "share", from: "g1" }],
         messages: [
+          msg({ text: "Do you ever feel lonely down here?", via: "Terminal · Server Room" }),
           msg({ text: "a director typing", via: "Steph" }),
           msg({ text: "I showed you the Sandy File" }),
           msg({ text: "the code is SANDY-FILE" }),
@@ -388,7 +389,7 @@ describe("buildDossier: the never-list", () => {
     )!;
     expect(d.codex).toEqual(["The Sandy File", "Trabolta's LiveJournal (trabolta_4ever)"]);
     expect(d.gifts).toEqual(["The Sandy File"]);
-    expect(d.said).toEqual(["I showed you the Sandy File"]);
+    expect(d.said).toEqual(["Do you ever feel lonely down here?", "I showed you the Sandy File"]);
   });
 });
 

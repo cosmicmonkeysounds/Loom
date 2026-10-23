@@ -146,6 +146,10 @@ export function codeMentions(codes: readonly string[]): (text: string) => boolea
   return (text: string): boolean => re.test(text.toLowerCase());
 }
 
+/** The prefix a wall terminal's pilot carries as `via` (`Terminal · Server
+ *  Room`): the guest's own typing, unlike a director's speech-as. */
+export const TERMINAL_VIA_PREFIX = "Terminal · ";
+
 /** `foldCode`'s fold, over any text. */
 const squash = (s: string): string => s.trim().toLowerCase().replace(/[\s_\-]+/gu, "");
 
@@ -273,7 +277,9 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
   for (const m of input.messages) {
     if (joinedAt === null && m.audience !== "all" && m.audience.includes(id)) joinedAt = m.ts;
     if (m.channel !== `dm:${input.character}` || m.kind !== "line" || m.hidden === true || m.from !== speaker.name) continue;
-    if (m.audience === "all" || !m.audience.includes(id) || m.via !== undefined) continue;
+    if (m.audience === "all" || !m.audience.includes(id)) continue;
+    // A director's speech-as is not theirs; a wall terminal's pilot is.
+    if (m.via !== undefined && !m.via.startsWith(TERMINAL_VIA_PREFIX)) continue;
     const text = m.text.trim();
     if (text === "" || leaks(text)) continue;
     said.push(clipText(text, DOSSIER_SAID_CHARS));
