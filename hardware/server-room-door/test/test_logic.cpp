@@ -477,6 +477,30 @@ static void test_a_calibration_without_a_span_is_refused() {
   CHECK(r.out.last() == "{\"t\":\"err\",\"error\":\"sensor fault\",\"cmd\":\"cal closed\"}");
 }
 
+static void test_a_restart_answers_a_running_calibration() {
+  for (const char* cmd : {"set mode mod", "set settle 200", "reset"}) {
+    erase();
+    Rig r;
+    r.begin();
+    r.run(1000);
+    r.say("cal closed");
+    r.out.clear();
+    r.say(cmd);
+    CHECK(r.out.all.size() == 2);
+    CHECK_STR(r.out.all[0], "{\"t\":\"err\",\"error\":\"cal cancelled\",\"cmd\":\"cal closed\"}");
+    CHECK_STR(r.out.all[1], std::string("{\"t\":\"ok\",\"cmd\":\"") + cmd + "\"}");
+    CHECK(!r.e.calibrating());
+    r.run(2400);
+    CHECK(r.out.count("\"t\":\"cal\"") == 0);
+  }
+  erase();
+  Rig idle;  // nothing running: no err
+  idle.begin();
+  idle.out.clear();
+  idle.say("set settle 200");
+  CHECK(idle.out.count("cal cancelled") == 0);
+}
+
 // ── Commands ───────────────────────────────────────────────────────────────
 
 static void test_every_command_and_its_reply() {
@@ -662,6 +686,7 @@ int main(int argc, char** argv) {
   test_a_cut_ldr_wire_is_a_warning_that_still_reports_open();
   test_calibration_sets_thresholds_from_both_references();
   test_a_calibration_without_a_span_is_refused();
+  test_a_restart_answers_a_running_calibration();
   test_every_command_and_its_reply();
   test_the_line_reader();
   test_a_door_line_every_second_with_seq_counting_up();

@@ -136,7 +136,10 @@ class Engine {
 
   // A new mode or settle: probe if asked, and start sampling afresh (levels
   // in `mod` and `steady` mean different things, so the state is relearnt).
+  // A calibration in progress is answered, never dropped: the terminal's
+  // Calibrate button waits for its `cal` or `err` line.
   void restart(uint32_t now) {
+    if (avg_.running) err("cal cancelled", calCmd_);
     mode_ = s_.mode == dl::kAuto ? dl::probe(pins_, s_.settle) : s_.mode;
     sampler_.begin(mode_, s_.settle, sense_, pins_, now);
     cls_.reset();
