@@ -80,8 +80,11 @@ addresses, codes, where things are kept).
   the keyboard); the room's bulb follows him. The server-room Antivirus
   close the door behind every program and have 🚪 *opened* / *is shut* on
   their booths; the director has 🚪 closed, 🚪 *Trust the door sensor again*
-  and 🕊 *Heart: end the night on his own*. `stand_down` is gone: a talk-down
-  in the Y2K hour ends the night by itself 25 s later. Reprint after the
+  and 🕊 *Heart: end the night on his own*. `stand_down` is gone. **Wave 20b (the
+  user's answers):** a talk-down works at any hour and the night ends on the
+  director's 🕊 (no automatic end); a program thrown out of his heart is
+  marked for reinstallation; the room has no ESP32 (the patch-bay watch
+  judges the bay) and no strip (the bulb is the room's light). Reprint after the
   sign-off: the four server-room Antivirus packs, the patch-bay watch, the
   emergency card, all-crew, the director's and the tech operator's cards.
 - **Wave 7 (2026-10-17), not yet deployed:** the server-room door has a real,

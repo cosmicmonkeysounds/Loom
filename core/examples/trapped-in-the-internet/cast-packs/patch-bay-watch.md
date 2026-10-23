@@ -83,12 +83,12 @@ keypad, never on the radio).
   the webcam and talks to Trabolta in **four layers** they click through
   (WHO ARE YOU, WHAT I AM, THE ARGUMENT, THE ASK), or picks *Forget the
   questions. Talk to me.* and types to him at the keyboard. One at a time:
-  keep the queue polite and the door shut. If they convince him in the Y2K
-  hour, his screen shuts down and the night ends by itself about 25 s later
-  (`# hosts` says so); before the Y2K hour he says *not yet*. If he throws
-  someone out (a blue screen), they are barred from his heart, **not**
-  marked: they may go to the cables like anyone. You do nothing but keep the
-  queue polite.
+  keep the queue polite and the door shut. If they convince him (at any
+  hour), his screen shuts down and the night ends when the director
+  presses 🕊 (`# hosts` says so; it no longer ends by itself). If he throws
+  someone out (a blue screen), they are barred from his heart and **marked
+  for reinstallation** (wave 20b): their poster lands on the Wanted board,
+  but your job stays the bay. You do nothing but keep the queue polite.
 - **The door terminal** (outside, by the keypad). Programs scan their pass
   and play the King at chess: no hints, and how well he plays is his
   health in the simulation (the bar on the screen). A checkmate reports

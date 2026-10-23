@@ -161,8 +161,10 @@ story has it wrong, press on your booth (any program's card) **🚪 The
 server-room door opened** or **🚪 The server-room door is shut**; from then on
 the story follows the buttons, not the light, until the director presses 🚪
 *Trust the door sensor again*: tell them on the radio which you pressed. A
-program he throws out of his heart is **not** marked: they may go to the
-cables like anyone.
+program he throws out of his heart (a blue screen) **is marked for
+reinstallation** (wave 20b): their poster lands on your Wanted board like
+any mark. They stay barred from his heart until the director's 🔄; a barred
+re-scan never marks them again.
 - **If Trabolta thwarted gets everyone banished:** you are banished too. Go to
   the Internet; then everyone does the hand jive together.
 
