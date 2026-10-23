@@ -378,6 +378,16 @@ describe("the long poll", () => {
     await new Promise((r) => setTimeout(r, 20));
     await call(rt, "POST", "/api/mod/lights/devices", { devices: [DEVICE] });
     expect((await parked).devices).toEqual([DEVICE]);
+    // A list posted between two polls answers at once against the last view's devicesAt.
+    const seen = (await view(rt)).devicesAt!;
+    t1 = Date.now();
+    expect((await view(rt, `?after=${v.version}&tests=1&pairs=1&devicesAt=${seen}&wait=0.2`)).devices).toEqual([DEVICE]);
+    expect(Date.now() - t1).toBeGreaterThanOrEqual(150);
+    expect(rt.lights.moved(v.version, 1, 1, seen)).toBe(false);
+    expect(rt.lights.moved(v.version, 1, 1, seen - 1)).toBe(true);
+    t1 = Date.now();
+    expect((await view(rt, `?after=${v.version}&tests=1&pairs=1&devicesAt=${seen - 1}&wait=5`)).devices).toEqual([DEVICE]);
+    expect(Date.now() - t1).toBeLessThan(1000);
     // A save wakes it with the new version.
     parked = view(rt, `?after=${v.version}&tests=1&pairs=1&wait=5`);
     await new Promise((r) => setTimeout(r, 20));

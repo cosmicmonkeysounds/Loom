@@ -587,11 +587,13 @@ version, and both map variants share one physical house. Never name it
   `--keep-lights` / `--replace-lights` (never the map or audio switches),
   and `scripts/sync-show.sh` passes them through.
 - **Routes** (a mod token or the author's session; never a host's booth):
-  `GET /api/mod/lights[?after=&tests=&pairs=&wait=&module=1&name=]` (the
+  `GET /api/mod/lights[?after=&tests=&pairs=&devicesAt=&wait=&module=1&name=]` (the
   config, the story's cue names that can be looks, LOCATIONs, recent tests,
   the open pairing, the Z2M devices, the module's presence, problems /
   warnings against the house in force; with `after` a long poll that wakes
-  on a save, a snapshot, a test, a pair or a new device list), `POST
+  on a save, a snapshot, a test, a pair or a new device list, and answers at
+  once when the device list is newer than `devicesAt` — send the last
+  view's, so a list posted between two polls is never parked on), `POST
   /api/mod/lights {lights, base?}` (400 `problems`, 409 `stale`), `POST
   /api/mod/lights/project`, `POST /api/mod/lights/test {fixture} | {look} |
   {fixture, set}` (identify, play a look, publish one state; 400 `set does

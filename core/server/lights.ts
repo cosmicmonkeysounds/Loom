@@ -15,10 +15,11 @@
 //! 4. `defaultLights()` (no fixtures, no looks).
 //!
 //! Routes (a mod token or the author's session; none on the host allowlist):
-//! - `GET /api/mod/lights[?after=<version>&tests=<seq>&pairs=<seq>&wait=<s>&module=1&name=<host>]`
+//! - `GET /api/mod/lights[?after=<version>&tests=<seq>&pairs=<seq>&devicesAt=<ms>&wait=<s>&module=1&name=<host>]`
 //!   → `LightsView`; with `after` it is a long poll (the module, the map
-//!   editor): it answers at once when the version moved on or a test / pair
-//!   newer than the cursors is pending, else after the first change (a
+//!   editor): it answers at once when the version moved on, a test / pair
+//!   newer than the cursors is pending or the device list is newer than
+//!   `devicesAt` (the last view's), else after the first change (a
 //!   save, a project snapshot, a test, a pair, a new device list) or `wait`
 //!   seconds (default 25, at most 30). `module=1` records the module's
 //!   presence (`LightsView.module`);
@@ -433,8 +434,11 @@ export class LightsHub {
   /** Is anything newer than the poller's view? A cursor past this hub's own
    *  counter was issued by an earlier process (a server restart counts from
    *  1 again): stale, so the poll answers at once. */
-  moved(after: string, testsAfter: number | null, pairsAfter: number | null = null): boolean {
+  moved(after: string, testsAfter: number | null, pairsAfter: number | null = null, devicesAfter: number | null = null): boolean {
     if (this.current().version !== after) return true;
+    // A device list newer than the poller's `devicesAt` (posted between two
+    // of its polls) answers at once.
+    if (devicesAfter !== null && this.devicesSeenAt !== null && this.devicesSeenAt > devicesAfter) return true;
     if (testsAfter !== null && (testsAfter > this.testSeq || this.tests().some((t) => t.seq > testsAfter))) return true;
     if (pairsAfter !== null) {
       if (pairsAfter > this.pairSeq) return true;
@@ -486,7 +490,7 @@ export function lightsView(hub: LightsHub, ctx: LightsContext): LightsView {
 }
 
 /**
- * `GET /api/mod/lights[?after=&tests=&pairs=&wait=&module=1&name=]` — the
+ * `GET /api/mod/lights[?after=&tests=&pairs=&devicesAt=&wait=&module=1&name=]` — the
  * config + the long poll. Returns true when it answered (or will: a parked
  * long poll).
  */
@@ -503,13 +507,14 @@ export async function handleLightsGet(hub: LightsHub, ctx: LightsContext, req: I
   const after = url.searchParams.get("after");
   const testsAfter = cursor("tests");
   const pairsAfter = cursor("pairs");
+  const devicesAfter = cursor("devicesAt");
   const waitRaw = Number(url.searchParams.get("wait") ?? LIGHTS_WAIT_S);
   const waitS = Number.isFinite(waitRaw) ? Math.min(LIGHTS_WAIT_MAX_S, Math.max(0, waitRaw)) : LIGHTS_WAIT_S;
   // The house Mac's module says who it is (`module=1`); the map editor's own
   // long poll does not, so it never passes for one.
   const isModule = url.searchParams.get("module") === "1";
   if (isModule) hub.noteModule(url.searchParams.get("name"));
-  if (after !== null && after !== "" && !hub.moved(after, testsAfter, pairsAfter) && waitS > 0) {
+  if (after !== null && after !== "" && !hub.moved(after, testsAfter, pairsAfter, devicesAfter) && waitS > 0) {
     const w = hub.waitChange(waitS * 1000);
     // A caller that hangs up frees its waiter at once.
     req.on?.("close", w.cancel);
