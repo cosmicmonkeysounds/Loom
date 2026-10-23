@@ -108,10 +108,10 @@ import { serverNow } from "./cutscene/clock.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
 import { useDoorLink } from "./serial/use-door.ts";
 import { useDoorStatus } from "./serial/door-status.ts";
-import { doorOpenNow, doorReport } from "./serial/door-bridge.ts";
+import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { chooseBody, composerShown, heartMenuOf, heartTouched, isStaleChoice, menusOf, pilotEndFor, splitTag, type HeartMenu } from "./heart/heart.ts";
+import { chooseBody, composerShown, heartMenuOf, heartTouched, isHeartTerminal, isStaleChoice, menusOf, pilotEndFor, splitTag, type HeartMenu } from "./heart/heart.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
@@ -434,13 +434,12 @@ export function App() {
   const top = screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare });
   const takeover = top.overlay !== null;
   const covered = takeover || top.slide !== null;
-  // The heart terminal: the server-room terminal, or any with a door sensor.
-  const heartTerminal = room !== null || config.door !== "off";
-  const doorFault = door.configured ? doorReport({ connected: door.connected, sensor: door.sensor, now: Date.now() }) : null;
+  // The heart terminal: the server room's own room terminal, or any with a door sensor.
+  const heartTerminal = isHeartTerminal(room, config.door);
   const layer = (
     <>
       {heartTerminal && <DoorOverlay doorOpen={doorOpen} stage={screenState.state?.night.heart_stage ?? null} />}
-      {doorFault !== null && doorFault.door === "fault" && <div className="door-fault">DOOR SENSOR FAULT</div>}
+      {/* A sensor fault is never on a guest's screen (D29: the sensor is the door): ⚙ and Run → Terminals show it. */}
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
       <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />

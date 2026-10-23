@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FILES_IDLE_MS, HEART_IDLE_MS, HEART_WARN_MS, IDLE_MS, WARN_MS, lineLeash } from "../src/idle.ts";
-import { chooseBody, composerShown, doorOverlayOn, heartMenuOf, heartTouched, isChatMenu, isStaleChoice, menusOf, panelModel, pilotEndFor, splitTag, type HeartMenu } from "../src/heart/heart.ts";
+import { chooseBody, composerShown, doorOverlayOn, heartMenuOf, heartTouched, isChatMenu, isHeartTerminal, isStaleChoice, menusOf, panelModel, pilotEndFor, splitTag, type HeartMenu } from "../src/heart/heart.ts";
 
 const stale: HeartMenu = { id: 40, beat: "The Tablet Video", channel: "dm:Trabolta", options: ["Where is the exit?"] };
 const layerOne: HeartMenu = { id: 212, beat: "Heart Layer One", channel: "dm:Trabolta", options: ["I'm a person. You put me in here.", "⟦MARKED⟧ The Antivirus marked me. I came down here anyway.", "⟦SPEAK FREELY⟧ Forget the questions. Talk to me.", "I need to go."] };
@@ -84,6 +84,17 @@ describe("the leash", () => {
     expect(heartTouched({ value: "room_heart_layer_1", at: 0 }, 0)).toBe(false); // history
     expect(heartTouched({ value: "room_other", at: 2000 }, 1000)).toBe(false);
     expect(heartTouched(null, 0)).toBe(false);
+  });
+});
+
+describe("which terminal is the heart's", () => {
+  it("a door sensor, or the server room's own room terminal — never another room's", () => {
+    expect(isHeartTerminal(null, "serial")).toBe(true);
+    expect(isHeartTerminal(null, "sim")).toBe(true);
+    expect(isHeartTerminal("The Server Room", "off")).toBe(true);
+    expect(isHeartTerminal("the server room", "off")).toBe(true);
+    expect(isHeartTerminal("The Desktop", "off")).toBe(false);
+    expect(isHeartTerminal(null, "off")).toBe(false);
   });
 });
 

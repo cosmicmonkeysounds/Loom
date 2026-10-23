@@ -429,7 +429,8 @@ only (the event's own address is; never a bare `http://192.168…`).
   token in its stored config, and a guest at the external keyboard can
   only type to him.
 - **What a fault looks like.** Unplugged, silent for 3 s, or flooded with
-  light: the corner reads *DOOR SENSOR FAULT*, Run → Terminals shows 🚪
+  light: nothing shows on the guest's screen (the sensor is *the door* in
+  the fiction), ⚙ reads *door sensor: FAULT (…)*, Run → Terminals shows 🚪
   red with the reason, and the page tells the story **nothing** — use the
   🚪 *opened* / *closed* buttons on the cue sheet, which put the door on
   the buttons (amber *override* on Run) until 🚪 *Trust the door sensor*.

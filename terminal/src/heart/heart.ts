@@ -132,6 +132,14 @@ export function heartTouched(cue: { value: string; at: number } | null, since: n
   return cue !== null && cue.at > 0 && cue.at >= since && cue.value.startsWith("room_heart_") && cue.value !== "room_heart_eject";
 }
 
+/** Is this the heart terminal (the door overlay, the greyed menu)? One with a door sensor, or the server room's own room terminal. */
+export function isHeartTerminal(room: string | null, door: string): boolean {
+  return door !== "off" || (room !== null && foldName(room) === foldName(HEART_ROOM));
+}
+
+/** The LOCATION the heart lives in. */
+export const HEART_ROOM = "The Server Room";
+
 /** Does the door overlay show? The door open while the heart wants it shut. */
 export function doorOverlayOn(doorOpen: boolean | null, stage: string | null): boolean {
   return doorOpen === true && (stage === "door" || stage === "scan" || stage === "talk");

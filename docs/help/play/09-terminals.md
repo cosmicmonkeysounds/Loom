@@ -346,7 +346,7 @@ sensor** and pick the board in Chrome's list (once per browser profile),
 then **Calibrate: door shut**, open the door, **Calibrate: door open**.
 After that it reconnects on every boot and replug. ⚙ shows the live
 reading (*SHUT · level 2410*); a sensor that can't be trusted (unplugged,
-silent, flooded with light) shows **DOOR SENSOR FAULT** in a corner and
+silent, flooded with light) shows nothing to guests, reads *FAULT* in ⚙ and
 tells the story nothing — Run → Terminals shows 🚪 red, and the 🚪 buttons
 on the cue sheet take over until *Trust the door sensor*. `&keys=0` is a
 mouse-only screen (no typing, only the choices). `&door=sim` is for
