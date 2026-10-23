@@ -546,12 +546,15 @@ export function validateLights(lights: unknown, house?: HouseMap | null): Lights
       }
       // Timing per fixture: increasing, spaced for Zigbee.
       const lastAt = new Map<string, number>();
+      // Each fixture's first step (the one a repeat wraps to) and whether it sets a colour.
+      const firstOf = new Map<string, { at: number; colour: boolean }>();
       let longest = 0;
       for (const s of steps) {
         longest = Math.max(longest, s.at);
         const colour = s.set["color"] !== undefined || s.set["color_temp"] !== undefined;
         for (const f of resolve(s.to)) {
           used.add(f.id);
+          if (!firstOf.has(f.id)) firstOf.set(f.id, { at: s.at, colour });
           const prev = lastAt.get(f.id);
           if (prev !== undefined) {
             const gap = colour ? LIGHT_COLOR_STEP_MIN_MS : LIGHT_STEP_MIN_MS;
@@ -582,6 +585,24 @@ export function validateLights(lights: unknown, house?: HouseMap | null): Lights
       const effPeriod = isNum(period) ? period : longest + (then === "restore" ? LIGHT_RESTORE_MS : LIGHT_STEP_MIN_MS);
       if (longest > LIGHT_LOOK_MAX_MS || (isNum(period) && period > LIGHT_LOOK_MAX_MS)) problems.push(`${at} runs past ${LIGHT_LOOK_MAX_MS} ms`);
       const repeats = loop === true || (isInt(repeat) && repeat > 1);
+      // The wrap: a repeat's next first step, or the restore publish, lands
+      // after each fixture's last step at least a step's gap later (the
+      // colour gap when the step wrapped to sets a colour; a restore
+      // re-publishes a whole state, so always the colour gap).
+      if (!(period !== undefined && (!isNum(period) || period <= longest))) {
+        for (const [id, last] of lastAt) {
+          const first = firstOf.get(id)!;
+          if (repeats) {
+            const gap = first.colour ? LIGHT_COLOR_STEP_MIN_MS : LIGHT_STEP_MIN_MS;
+            const wrap = effPeriod - last + first.at;
+            if (wrap < gap) problems.push(`${at}: the next ${loop === true ? "loop" : "repeat"} reaches "${id}" ${wrap} ms after its last step (at least ${gap} ms${first.colour ? " for a colour change" : ""}: Zigbee drops faster commands; lengthen period)`);
+          }
+          if (then === "restore") {
+            const wrap = effPeriod - last;
+            if (wrap < LIGHT_COLOR_STEP_MIN_MS) problems.push(`${at}: the restore reaches "${id}" ${wrap} ms after its last step (at least ${LIGHT_COLOR_STEP_MIN_MS} ms: Zigbee drops faster commands; lengthen period)`);
+          }
+        }
+      }
       if (repeats && effPeriod < LIGHT_LOOP_MIN_PERIOD_MS) {
         const zig = [...new Set(steps.flatMap((s) => resolve(s.to)))].filter((f) => f.kind === "zigbee" || f.kind === "zigbee-group");
         if (zig.length > 0) warnings.push(`${at} repeats every ${effPeriod} ms on Zigbee (${zig.map((f) => f.id).join(", ")}): under ${LIGHT_LOOP_MIN_PERIOD_MS} ms it reads as flicker and drops commands`);

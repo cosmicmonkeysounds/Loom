@@ -196,6 +196,26 @@ describe("validateLights — looks", () => {
     expect(withLook("x", { ...one({ brightness: 9 }), period: -5 }).problems).toEqual(['looks["x"].period must be ms (> 0)']);
   });
 
+  it("the wrap: a loop's / repeat's next first step and a restore keep the Zigbee gap", () => {
+    const two = (first: LightState, extra: Partial<LightLook>): LightLook => ({ to: ["heart"], steps: [{ at: 0, set: first }, { at: 1000, set: { brightness: 100 } }], ...extra });
+    // A loop wrapping to a brightness step: 150 ms.
+    expect(withLook("x", two({ brightness: 99 }, { loop: true, period: 1149 })).problems).toEqual(['looks["x"]: the next loop reaches "server-room-rgb" 149 ms after its last step (at least 150 ms: Zigbee drops faster commands; lengthen period)']);
+    expect(withLook("x", two({ brightness: 99 }, { loop: true, period: 1150 })).problems).toEqual([]);
+    // Wrapping to a colour step: 400 ms; a later first step counts toward it.
+    expect(withLook("x", two({ color: "#FF0000" }, { loop: true, period: 1001 })).problems).toEqual(['looks["x"]: the next loop reaches "server-room-rgb" 1 ms after its last step (at least 400 ms for a colour change: Zigbee drops faster commands; lengthen period)']);
+    expect(withLook("x", two({ color: "#FF0000" }, { loop: true, period: 1400 })).problems).toEqual([]);
+    expect(withLook("x", { to: ["heart"], steps: [{ at: 300, set: { color: "#FF0000" } }, { at: 1000, set: { brightness: 100 } }], loop: true, period: 1100 }).problems).toEqual([]);
+    // The default period (last + 150) is too short to wrap to a colour.
+    expect(withLook("x", two({ color: "#FF0000" }, { loop: true })).problems).toEqual(['looks["x"]: the next loop reaches "server-room-rgb" 150 ms after its last step (at least 400 ms for a colour change: Zigbee drops faster commands; lengthen period)']);
+    // A repeat > 1 is the same; a single play never wraps.
+    expect(withLook("x", two({ brightness: 99 }, { repeat: 3, period: 1001 })).problems).toEqual(['looks["x"]: the next repeat reaches "server-room-rgb" 1 ms after its last step (at least 150 ms: Zigbee drops faster commands; lengthen period)']);
+    expect(withLook("x", two({ brightness: 99 }, { period: 1001 })).problems).toEqual([]);
+    // A restore re-publishes a whole state: the colour gap.
+    expect(withLook("x", two({ brightness: 99 }, { then: "restore", period: 1399 })).problems).toEqual(['looks["x"]: the restore reaches "server-room-rgb" 399 ms after its last step (at least 400 ms: Zigbee drops faster commands; lengthen period)']);
+    expect(withLook("x", two({ brightness: 99 }, { then: "restore", period: 1400 })).problems).toEqual([]);
+    expect(withLook("x", two({ brightness: 99 }, { then: "restore" })).problems).toEqual([]);
+  });
+
   it("a safety fixture is never written dark: OFF or under its floor is refused", () => {
     expect(withLook("x", { to: ["heart"], set: { state: "OFF" } }).problems).toEqual(['looks["x"].set turns safety fixture "server-room-rgb" OFF (it never goes dark)']);
     expect(withLook("x", { to: ["heart"], set: { brightness: 39 } }).problems).toEqual(['looks["x"].set dims safety fixture "server-room-rgb" to 39 (its floor is 40)']);
