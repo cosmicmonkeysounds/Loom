@@ -56,6 +56,9 @@ export interface EventSpec {
   /** The project's `audio.json` as the row snapshotted it (`audio.ts`):
    *  null = the project has none; absent = no row snapshot at all. */
   audio?: string | null;
+  /** The project's `lights.json` as the row snapshotted it (`lights.ts`):
+   *  null = the project has none; absent = no row snapshot at all. */
+  lights?: string | null;
   /** The way back to the project ("Save to project"); absent → none. */
   project?: ProjectLink | null;
   /** The reserved programs' claim secret the row pins (`event.claim_secret`);
@@ -128,6 +131,7 @@ export class EventRegistry {
       mapVariant: spec.mapVariant ?? null,
       ...(spec.facts !== undefined ? { facts: spec.facts } : {}),
       ...(spec.audio !== undefined ? { audio: spec.audio } : {}),
+      ...(spec.lights !== undefined ? { lights: spec.lights } : {}),
       project: spec.project ?? null,
       ...(spec.claimSecret !== undefined ? { claimSecret: spec.claimSecret } : {}),
       ...(spec.onClaimSecret !== undefined ? { onClaimSecret: spec.onClaimSecret } : {}),

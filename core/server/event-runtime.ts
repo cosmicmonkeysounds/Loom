@@ -73,6 +73,7 @@ import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
 import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, type AudioContext } from "./audio.ts";
+import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProblems, type LightsContext } from "./lights.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
@@ -351,6 +352,13 @@ export function defaultAudioFile(): string | null {
   return v !== undefined && v.trim() !== "" ? v : null;
 }
 
+/** The house lights' LAN fallback (`lights.ts`, wave 20): `LOOM_LIGHTS`,
+ *  else none (no fixtures). */
+export function defaultLightsFile(): string | null {
+  const v = process.env.LOOM_LIGHTS;
+  return v !== undefined && v.trim() !== "" ? v : null;
+}
+
 /** Show maps by path: the last *good* read, keyed on the file's mtime — a
  *  hand edit (or a file mounted after boot) is picked up on the next read,
  *  and a missing / half-saved / invalid file never sticks: the last good
@@ -517,6 +525,11 @@ export interface EventRuntimeInit {
   audio?: string | null;
   /** The speakers' LAN fallback file (`LOOM_AUDIO`; null = none). */
   audioFile?: string | null;
+  /** The project's `lights.json` text snapshotted at launch (`lights.ts`,
+   *  wave 20): null = the project has none; absent = no row snapshot. */
+  lights?: string | null;
+  /** The lights' LAN fallback file (`LOOM_LIGHTS`; null = none). */
+  lightsFile?: string | null;
   /** The reserved programs' claim secret as the event row pins it
    *  (`event.claim_secret`, routes/claims.ts). Absent / null → the state
    *  dir's copy, else a fresh one (saved there, and handed to
@@ -730,6 +743,8 @@ export class EventRuntime {
   private readonly factsWatch = new FactsWatch();
   /** The house speakers + the audio interface (`audio.ts`, wave 17). */
   readonly audio: AudioHub;
+  /** The house lights + the Zigbee devices (`lights.ts`, wave 20). */
+  readonly lights: LightsHub;
   /** Near misses a restore found still pending (person, question, answer):
    *  the only ones put to the `judge:` character after they landed —
    *  contract J. A near miss filed with nobody online keeps wave 11's
@@ -835,6 +850,7 @@ export class EventRuntime {
     if (init.facts !== undefined) this.store.saveFacts(init.facts);
     // The speakers ride the same record; a director's save in the state dir wins.
     this.audio = new AudioHub({ store: this.store, ...(init.audio !== undefined ? { projectText: init.audio } : {}), envFile: init.audioFile !== undefined ? init.audioFile : defaultAudioFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
+    this.lights = new LightsHub({ store: this.store, ...(init.lights !== undefined ? { projectText: init.lights } : {}), envFile: init.lightsFile !== undefined ? init.lightsFile : defaultLightsFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
     this.random = init.random ?? Math.random;
     if (init.now !== undefined) this.clock = init.now;
     this.claims = new Claims({ secret: this.resolveClaimSecret(init), now: () => this.clock() });
@@ -1867,7 +1883,8 @@ export class EventRuntime {
    *  `asMapFiles`, the facts with `factsOf`). */
   private dataSnapshot(maps: MapFiles): MapFiles {
     const audio = this.audio.project;
-    return { ...maps, ...(this.projectFacts !== null ? { [FACTS_FILE]: this.projectFacts } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}) };
+    const lights = this.lights.project;
+    return { ...maps, ...(this.projectFacts !== null ? { [FACTS_FILE]: this.projectFacts } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}), ...(lights !== null ? { [LIGHTS_FILE]: lights } : {}) };
   }
 
   /** A reload's fresh snapshot of the project's `audio.json` (`events-api.ts`,
@@ -1878,6 +1895,17 @@ export class EventRuntime {
 
   /** What the audio routes read off this event (`audio.ts`). */
   private audioContext(): AudioContext {
+    return { house: () => this.spatialHouse(), model: () => this.sim?.model ?? this.declaredModel };
+  }
+
+  /** A reload's fresh snapshot of the project's `lights.json` (`events-api.ts`,
+   *  `/api/mod/load {lights}`); a director's save still wins over it. */
+  setProjectLights(text: string | null): void {
+    this.lights.setProjectText(text);
+  }
+
+  /** What the lights routes read off this event (`lights.ts`). */
+  private lightsContext(): LightsContext {
     return { house: () => this.spatialHouse(), model: () => this.sim?.model ?? this.declaredModel };
   }
 
@@ -4642,6 +4670,8 @@ export class EventRuntime {
     }
     // --- the house speakers (wave 17, audio.ts): the config + stagehand's long poll ---
     if (method === "GET" && path === "/api/mod/audio") return handleAudioGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
+    // --- the house lights (wave 20, lights.ts): the config + the lights module's long poll ---
+    if (method === "GET" && path === "/api/mod/lights") return handleLightsGet(this.lights, this.lightsContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     // A host booth may mute the TV and identify a terminal (§2.7). Both are
     // host-visible writes handled before the generic body parse, so they
@@ -4870,6 +4900,12 @@ export class EventRuntime {
         const project = this.project;
         const link = project === null ? null : { writeFile: (file: string, text: string) => project.writeFile(file, text), saveSnapshot: () => project.saveSnapshot(this.dataSnapshot(this.projectMaps ?? {})) };
         if (await handleAudioPost(this.audio, this.audioContext(), path, body, res, link, by)) return true;
+      }
+      if (path === "/api/mod/lights" || path.startsWith("/api/mod/lights/")) {
+        // A booth never gets here: lights are not on the host allowlist.
+        const project = this.project;
+        const link = project === null ? null : { writeFile: (file: string, text: string) => project.writeFile(file, text), saveSnapshot: () => project.saveSnapshot(this.dataSnapshot(this.projectMaps ?? {})) };
+        if (await handleLightsPost(this.lights, this.lightsContext(), path, body, res, link, by)) return true;
       }
       if (path === "/api/mod/load") await this.resyncProjectFiles();
       if (path === "/api/mod/resync") {
@@ -6071,9 +6107,22 @@ export class EventRuntime {
           sendJson(res, 400, { error: `invalid ${AUDIO_FILE}`, problems: audioBad });
           return true;
         }
+        // `lights` (optional): the project's lights.json, like `audio`.
+        const lights = body["lights"];
+        if (lights !== undefined && lights !== null && typeof lights !== "string") {
+          sendJson(res, 400, { error: "bad lights" });
+          return true;
+        }
+        const lightsText = typeof lights === "string" && lights.trim() !== "" ? lights : null;
+        const lightsBad = lightsText !== null ? lightsProblems(lightsText) : [];
+        if (lightsBad.length > 0) {
+          sendJson(res, 400, { error: `invalid ${LIGHTS_FILE}`, problems: lightsBad });
+          return true;
+        }
         this.restart(source, name, { by });
         if (facts !== undefined) this.setProjectFacts(factsText);
         if (audio !== undefined) this.setProjectAudio(audioText);
+        if (lights !== undefined) this.setProjectLights(lightsText);
         if (maps !== null) {
           this.setProjectMaps(maps);
           this.project?.saveSnapshot(this.dataSnapshot(maps)).catch((err: unknown) => {
