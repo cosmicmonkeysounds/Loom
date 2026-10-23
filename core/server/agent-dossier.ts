@@ -54,8 +54,6 @@ export const DOSSIER_QUESTS_MAX = 24;
 export const AT_THE_HEART = "at_the_heart";
 /** The duck's find (`EventRuntime.commitFound`): one reinstallation. */
 const FOUND_SIGNAL = foldName("the golden duck");
-/** The room terminal's pilot opening (`terminal opened`): a visit to his heart. */
-const HEART_VISIT_SIGNAL = foldName("terminal opened");
 /** The bottle's verdicts (Clippy's 🗣 / 🙅 / 🎩), folded. */
 const BOTTLE_CHOICES: ReadonlyMap<string, "truth" | "refused" | "dare"> = new Map([
   [foldName("truth_answered"), "truth"],
@@ -180,6 +178,7 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
   let visits = 0;
   let bottle: "truth" | "refused" | "dare" | null = null;
   let marked = false;
+  let atHeart = false;
   const moment = (at: number, text: string) => {
     if (!leaks(text)) moments.push({ at, text });
   };
@@ -217,6 +216,15 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
           const now = e.value === "true";
           if (now !== marked) moment(i, now ? "marked for reinstallation" : "unmarked");
           marked = now;
+        } else if (e.path === `${id}.${AT_THE_HEART}`) {
+          // A visit to his heart: the story setting the flag (the server
+          // room's terminal only), never any room terminal's opening.
+          const now = e.value === "true";
+          if (now && !atHeart) {
+            visits += 1;
+            if (visits === 1) moment(i, "came to his heart");
+          }
+          atHeart = now;
         }
         break;
       case "quest": {
@@ -240,9 +248,6 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
         if (name === FOUND_SIGNAL) {
           reinstalled += 1;
           moment(i, "reinstalled");
-        } else if (name === HEART_VISIT_SIGNAL) {
-          visits += 1;
-          if (visits === 1) moment(i, "came to his heart");
         } else if (choice !== undefined) {
           bottle = choice;
           moment(i, bottle === "truth" ? "answered the bottle's truth" : bottle === "dare" ? "chose dare" : "refused the bottle's truth");

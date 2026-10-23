@@ -100,8 +100,12 @@ describe("buildDossier: the shape", () => {
       { type: "codexUnlocked", person: "Trabolta", entry: "The Ribbon", via: "share", from: "g2" },
       { type: "quest", person: "g1", quest: "orientation", action: "complete", text: null },
       { type: "signal", name: "truth_answered", subject: "g1" },
+      // A room terminal elsewhere opens (no flag): not his heart.
       { type: "signal", name: "terminal opened", subject: "g1" },
-      { type: "signal", name: "terminal opened", subject: "g1" },
+      { type: "worldSet", path: "g1.at_the_heart", value: "true" },
+      { type: "worldSet", path: "g1.at_the_heart", value: "true" },
+      { type: "worldSet", path: "g1.at_the_heart", value: "false" },
+      { type: "worldSet", path: "g1.at_the_heart", value: "true" },
     ];
     const messages = [
       msg({ channel: "lobby", channelKind: "lobby", from: "", kind: "system", text: "Welcome, Ada.", ts: 5 * 60_000, audience: ["g1"] }),
@@ -548,7 +552,8 @@ describe("the request's dossier (wave 20)", () => {
     expect(d).toMatchObject({ name: "Ada", marked: false, captured: false, reinstalled: 0, restricted: false, codex: ["The Ribbon"], gifts: ["The Ribbon"], wallet: { balance: 100 }, said: ["Hello out there."] });
     // The line he is answering is theirs too, but it typed a code: dropped.
     expect(d.rooms).toContain("The Server Room");
-    expect(d.moments).toEqual(["joined", "gave him The Ribbon"]);
+    expect(d.moments).toEqual(["joined", "gave him The Ribbon", "came to his heart"]);
+    expect(d.heart?.visits).toBe(1);
     expect(new TextEncoder().encode(JSON.stringify(d)).length).toBeLessThanOrEqual(DOSSIER_MAX_BYTES);
     // The never-list on the wire: the secret entry, its code, the secret slot, the Kernel.
     const json = JSON.stringify(d);
