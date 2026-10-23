@@ -59,5 +59,10 @@ describe("the door sensor + keyboard config (wave 20)", () => {
     const on = { ...DOOR_OFF, configured: true, kind: "serial" as const, connected: true };
     expect(doorStatusText({ ...on, sensor: { open: false, level: 2410, fault: null, warn: null, at: 0 } }, 10)).toBe("door sensor: SHUT · level 2410");
     expect(doorStatusText({ ...on, sensor: { open: true, level: 0, fault: "ldr_saturated", warn: null, at: 0 } }, 10)).toMatch(/FAULT \(ldr_saturated\)/);
+    // Once the board has said what it runs, the LED's wiring follows (`mod` is the pulsed LED).
+    const board = { fw: "door-m4 1.1.0", mode: "steady" as const, auto: false, close: 1800, open: 1200, settle: 150, cal: false, sense: false };
+    const shut = { open: false, level: 3900, fault: null, warn: null, at: 0 };
+    expect(doorStatusText({ ...on, board, sensor: shut }, 10)).toBe("door sensor: SHUT · level 3900 · steady");
+    expect(doorStatusText({ ...on, board: { ...board, mode: "mod", auto: true }, sensor: shut }, 10)).toBe("door sensor: SHUT · level 3900 · pulsed (auto)");
   });
 });

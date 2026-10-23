@@ -1,10 +1,10 @@
-{"t":"hello","fw":"door-m4 1.0.0","mode":"steady","auto":true,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false}
+{"t":"hello","fw":"door-m4 1.1.0","mode":"steady","auto":false,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false}
 {"t":"door","seq":17,"open":false,"level":2410,"lit":3020,"dark":610,"fault":null,"warn":null}
 {"t":"door","seq":18,"open":true,"level":35,"lit":640,"dark":605,"fault":null,"warn":null}
 {"t":"door","seq":19,"open":true,"level":0,"lit":3,"dark":2,"fault":null,"warn":"ldr_open"}
 {"t":"door","seq":20,"open":true,"level":0,"lit":4095,"dark":4095,"fault":"ldr_saturated","warn":null}
 {"t":"pong","up":123456}
-{"t":"cfg","fw":"door-m4 1.0.0","mode":"mod","auto":false,"close":1800,"open":1200,"settle":150,"cal":true,"sense":false,"saved":true}
+{"t":"cfg","fw":"door-m4 1.1.0","mode":"mod","auto":false,"close":1800,"open":1200,"settle":150,"cal":true,"sense":false,"saved":true}
 {"t":"cal","which":"closed","ref":2400,"close":1880,"open":1320}
 {"t":"ok","cmd":"set close 1900"}
 {"t":"err","error":"cal span too small","cmd":"cal open"}

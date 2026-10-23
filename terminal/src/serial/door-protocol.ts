@@ -206,15 +206,36 @@ export function parseDoorSettings(raw: string | null): DoorSettings | null {
 /** The firmware's own thresholds before anything is stored (`config.h` `DEF_CLOSE` / `DEF_OPEN`). */
 export const FIRMWARE_DEFAULTS = { close: 1800, open: 1200 } as const;
 
+/** What a board runs, as a stored `mode`: `auto` when its boot probe picked. */
+export function boardMode(now: Pick<HelloLine, "mode" | "auto">): DoorMode {
+  return now.auto ? "auto" : now.mode;
+}
+
+/**
+ * Whether a terminal's stored settings belong to the board as it runs now.
+ * Calibration stores the board's mode beside the thresholds, and a level in
+ * `mod` (lit − dark, the LED pulsed on D2) is not a level in `steady` (the
+ * raw reading, the LED on 5V): after a rewire and a reflash (the firmware's
+ * `LED_MODE`) the old thresholds would judge the door wrong, so nothing is
+ * re-sent and ⚙ asks for a calibration instead. Settings with no mode, or
+ * an unknown board, fit.
+ */
+export function settingsFit(want: DoorSettings, now: Pick<HelloLine, "mode" | "auto"> | null): boolean {
+  return want.mode === undefined || now === null || boardMode(now) === want.mode;
+}
+
 /**
  * The commands that put a just-connected board on the stored settings,
  * given what it says it runs now (`cfg` / `hello`). The firmware refuses an
  * `open` that is not below its current `close` (and the other way round), so
  * the two thresholds go in whichever order keeps `open < close` at every
- * step. Nothing is sent for a value that already matches; `mode` / `settle`
- * last (each restarts the sampler: a silent gap of up to 2 s).
+ * step. Nothing is sent for a value that already matches; `settle` last (it
+ * restarts the sampler: a silent gap of up to 2 s). The mode is never sent:
+ * it is the wiring's, which the firmware's build (`LED_MODE`) or its own
+ * flash knows; settings stored in another mode send nothing (`settingsFit`).
  */
 export function settingsCommands(want: DoorSettings, now: Pick<HelloLine, "close" | "open" | "mode" | "auto" | "settle"> | null): DoorCommand[] {
+  if (!settingsFit(want, now)) return [];
   const out: DoorCommand[] = [];
   const closeCmd: DoorCommand = { c: "set", key: "close", value: want.close };
   const openCmd: DoorCommand = { c: "set", key: "open", value: want.open };
@@ -227,10 +248,6 @@ export function settingsCommands(want: DoorSettings, now: Pick<HelloLine, "close
     if (needClose && needOpen) out.push(...(want.close > now.open ? [closeCmd, openCmd] : [openCmd, closeCmd]));
     else if (needClose) out.push(closeCmd);
     else if (needOpen) out.push(openCmd);
-  }
-  if (want.mode !== undefined) {
-    const current: DoorMode | null = now === null ? null : now.auto ? "auto" : now.mode;
-    if (current !== want.mode) out.push({ c: "set", key: "mode", value: want.mode });
   }
   if (want.settle !== undefined && (now === null || now.settle !== want.settle)) out.push({ c: "set", key: "settle", value: want.settle });
   return out;

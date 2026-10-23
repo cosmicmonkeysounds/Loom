@@ -14,7 +14,7 @@
 
 import { baseOf, type TerminalConfig } from "../config.ts";
 import { DoorBridge, type DoorSignal, type PostOutcome, type StoryDoor } from "./door-bridge.ts";
-import { DOOR_SETTINGS_KEY, LineSplitter, formatCommand, parseDoorLine, parseDoorSettings, settingsCommands, type CalLine, type DoorCommand, type DoorLine, type ErrLine, type HelloLine } from "./door-protocol.ts";
+import { DOOR_SETTINGS_KEY, LineSplitter, formatCommand, parseDoorLine, parseDoorSettings, settingsCommands, settingsFit, type CalLine, type DoorCommand, type DoorLine, type ErrLine, type HelloLine } from "./door-protocol.ts";
 import { DOOR_OFF, doorStatus, onDoorRescan, patchDoorStatus, setDoorActions, setDoorStatus } from "./door-status.ts";
 
 /** Adafruit's USB vendor id (the Grand Central M4). */
@@ -323,8 +323,10 @@ export function startDoorLink(config: TerminalConfig, o: { fetchFn?: typeof fetc
         case "hello":
         case "cfg": {
           const { t: _t, ...board } = l as HelloLine & { saved?: boolean };
-          patchDoorStatus({ board });
           const want = parseDoorSettings(store?.getItem(DOOR_SETTINGS_KEY) ?? null);
+          // Stored settings from another mode (the LED rewired, the firmware
+          // rebuilt) are not sent: ⚙ asks for a calibration instead.
+          patchDoorStatus({ board, recal: want !== null && !settingsFit(want, l) });
           // Put the board on this terminal's stored settings once per connect.
           if (!applied && want !== null && source !== null) {
             applied = true;
@@ -335,6 +337,7 @@ export function startDoorLink(config: TerminalConfig, o: { fetchFn?: typeof fetc
         case "cal": {
           patchDoorStatus({ cal: l });
           if (l.open < l.close) {
+            patchDoorStatus({ recal: false });
             const b = doorStatus().board;
             const keep = { close: l.close, open: l.open, ...(b !== null ? { mode: b.auto ? "auto" : b.mode, settle: b.settle } : {}) };
             try {

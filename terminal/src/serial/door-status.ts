@@ -25,9 +25,13 @@ export interface DoorStatus {
   cal: CalLine | ErrLine | null;
   /** Why the port isn't open (⚙). */
   problem: string | null;
+  /** This terminal's stored calibration was taken in another mode than the
+   *  board runs now (the LED rewired, the firmware rebuilt): it was not
+   *  re-sent, and ⚙ asks for a calibration. */
+  recal: boolean;
 }
 
-export const DOOR_OFF: DoorStatus = { configured: false, kind: null, connected: false, unsupported: false, sensor: null, board: null, cal: null, problem: null };
+export const DOOR_OFF: DoorStatus = { configured: false, kind: null, connected: false, unsupported: false, sensor: null, board: null, cal: null, problem: null, recal: false };
 
 let status: DoorStatus = DOOR_OFF;
 const listeners = new Set<() => void>();
@@ -67,8 +71,11 @@ export function doorStatusText(s: DoorStatus, now: number = Date.now()): string 
   if (!s.connected) return s.problem ?? (s.kind === "sim" ? "simulated door: starting" : "door sensor not connected — press Connect door sensor");
   const r = doorReport({ connected: true, sensor: s.sensor, now });
   const tag = s.kind === "sim" ? "simulated door" : "door sensor";
-  if (r.door === "fault") return `${tag}: FAULT (${r.fault ?? "?"})${r.level !== undefined ? ` · level ${r.level}` : ""}`;
-  return `${tag}: ${r.door === "open" ? "OPEN" : "SHUT"} · level ${r.level ?? 0}${r.warn !== undefined ? ` · ⚠ ${r.warn}` : ""}`;
+  // The LED's wiring as the board runs it: `mod` is the LED pulsed on D2.
+  const wiring = s.board === null ? "" : ` · ${s.board.mode === "mod" ? "pulsed" : "steady"}${s.board.auto ? " (auto)" : ""}`;
+  const recal = s.recal ? " · ⚠ calibrate again: the sensor's wiring changed" : "";
+  if (r.door === "fault") return `${tag}: FAULT (${r.fault ?? "?"})${r.level !== undefined ? ` · level ${r.level}` : ""}${wiring}${recal}`;
+  return `${tag}: ${r.door === "open" ? "OPEN" : "SHUT"} · level ${r.level ?? 0}${r.warn !== undefined ? ` · ⚠ ${r.warn}` : ""}${wiring}${recal}`;
 }
 
 /** What ⚙ can ask of the running bridge (null: none running). */
