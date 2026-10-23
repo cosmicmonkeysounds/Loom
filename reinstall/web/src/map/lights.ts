@@ -205,8 +205,40 @@ function retarget(l: LightsConfig, from: string, to: string | null): void {
   const fix = (list: string[]): string[] => [...new Set(list.flatMap((t) => (foldTarget(t) === f ? (to === null ? [] : [to]) : [t])))];
   for (const look of Object.values(l.looks)) {
     if (Array.isArray(look.to)) look.to = fix(look.to);
-    for (const s of Array.isArray(look.steps) ? look.steps : []) if (Array.isArray(s.to)) s.to = fix(s.to);
+    for (const s of Array.isArray(look.steps) ? look.steps : []) {
+      if (!Array.isArray(s.to) || s.to.length === 0) continue;
+      s.to = fix(s.to);
+      // A step left naming nothing falls back to the look's own targets.
+      if (s.to.length === 0) delete s.to;
+    }
   }
+}
+
+/** The looks a delete leaves lighting nothing: they named something before and resolve to no fixture after. */
+export function emptiedLooks(before: LightsConfig, after: LightsConfig, house: HouseMap | null): string[] {
+  const reach = (l: LightsConfig, look: LightLook): number => resolveLightTargets(l, house, lookTargets(look)).fixtures.length;
+  return Object.keys(after.looks)
+    .filter((n) => before.looks[n] !== undefined && reach(before, before.looks[n]!) > 0 && reach(after, after.looks[n]!) === 0)
+    .sort();
+}
+
+/** Every name a look and its steps target. */
+export function lookTargets(look: LightLook): string[] {
+  return [...new Set([...(Array.isArray(look.to) ? look.to : []), ...stepsOfLook(look).flatMap((s) => (Array.isArray(s.to) ? s.to : []))])];
+}
+
+/** The confirm before deleting a fixture or zone (null: nothing to ask): a safety light, or looks left lighting nothing. */
+export function removeLightConfirm(lights: LightsConfig, house: HouseMap | null, id: string): string | null {
+  const f = lightById(lights, id);
+  const z = lights.zones.find((x) => x.id === id);
+  if (f === undefined && z === undefined) return null;
+  const after = f !== undefined ? removeLight(lights, id) : removeLightZone(lights, id);
+  const empty = emptiedLooks(lights, after, house);
+  const why = [
+    f?.safety === true ? "It is a safety light (never dark)." : null,
+    empty.length > 0 ? `${empty.length === 1 ? "The look" : `${empty.length} looks`} ${empty.join(", ")} would light nothing.` : null,
+  ].filter((x): x is string => x !== null);
+  return why.length === 0 ? null : `Delete ${f !== undefined ? f.name : `zone ${z!.name}`}? ${why.join(" ")}`;
 }
 
 /** Why an id can't be a fixture's / zone's (null: it can). */
@@ -624,8 +656,7 @@ export function lookMayReachZigbee(lights: LightsConfig, look: LightLook): boole
     const k = lightById(lights, id)?.kind;
     return k === "zigbee" || k === "zigbee-group";
   };
-  const names = [...(Array.isArray(look.to) ? look.to : []), ...stepsOfLook(look).flatMap((s) => (Array.isArray(s.to) ? s.to : []))];
-  for (const n of new Set(names)) {
+  for (const n of lookTargets(look)) {
     const hit = resolveLightTargets(lights, null, [n]).fixtures;
     if (hit.length === 0 ? lights.fixtures.some((f) => zig(f.id)) : hit.some(zig)) return true;
   }
@@ -829,7 +860,7 @@ export function pairSecondsLeft(pair: LightPairInfo | null, now: number): number
  * `validateLights` (against the draft map) as the problem panel's items:
  * each one naming a fixture selects it; the rest open the 💡 Lights tab.
  */
-export function lightProblemList(lights: LightsConfig, house: HouseMap, opts: { saved?: LightsConfig | null } = {}): { errors: Problem[]; warnings: Problem[] } {
+export function lightProblemList(lights: LightsConfig, house: HouseMap, opts: { saved?: LightsConfig | null; storyLooks?: readonly string[] } = {}): { errors: Problem[]; warnings: Problem[] } {
   const v = validateLights(lights, house);
   const sel = (text: string): Problem["sel"] => {
     const m = /^fixtures\[\d+\] "([^"]*)"/.exec(text) ?? /^fixture "([^"]*)" is in no look/.exec(text);
@@ -849,7 +880,12 @@ export function lightProblemList(lights: LightsConfig, house: HouseMap, opts: { 
     if (now === undefined) lost.push({ text: `💡 safety light "${f.id}" (${f.name}) is deleted in this draft — saved, nothing keeps that room lit`, sel: null, level: "warning", tab: "lights" });
     else if (now.safety !== true) lost.push({ text: `💡 "${f.id}" is no longer a safety light (it was saved as one): its looks may turn it off or below ${LIGHT_SAFETY_MIN}`, sel: { kind: "light", id: f.id }, level: "warning" });
   }
-  return { errors: v.problems.map(friendly).map(item("error")), warnings: [...lost, ...v.warnings.map(item("warning"))] };
+  // A look the story cues that lights nothing goes dark on show night: an error, not a warning.
+  const dark: Problem[] = [...new Set(opts.storyLooks ?? [])]
+    .filter((n) => lights.looks[n] !== undefined && resolveLightTargets(lights, house, lookTargets(lights.looks[n]!)).fixtures.length === 0)
+    .sort()
+    .map((n) => ({ text: `💡 look "${n}" is cued by the story but lights nothing — give it a light or a zone`, sel: null, level: "error" as const, tab: "lights" as const }));
+  return { errors: [...dark, ...v.problems.map(friendly).map(item("error"))], warnings: [...lost, ...v.warnings.map(item("warning"))] };
 }
 
 /** The Download JSON button's file. */

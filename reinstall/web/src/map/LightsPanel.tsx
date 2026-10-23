@@ -34,6 +34,7 @@ import {
   minStepAt,
   pairSecondsLeft,
   patchLookStep,
+  removeLightConfirm,
   removeLightZone,
   removeLook,
   removeLookStep,
@@ -352,7 +353,11 @@ export function LightsPanel(p: LightsPanelProps) {
               ))}
             </span>
             {edit && (
-              <button className="w98-button small" onClick={() => commit(removeLightZone(lights, z.id))}>
+              <button className="w98-button small" onClick={() => {
+                  const ask = removeLightConfirm(lights, house, z.id);
+                  if (ask !== null && !window.confirm(ask)) return;
+                  commit(removeLightZone(lights, z.id));
+                }}>
                 Delete zone
               </button>
             )}

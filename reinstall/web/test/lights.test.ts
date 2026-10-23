@@ -14,6 +14,7 @@ import {
   deviceRows,
   duplicateLight,
   duplicateLook,
+  emptiedLooks,
   effectivePeriod,
   followHouseLights,
   lastTint,
@@ -46,6 +47,7 @@ import {
   placeLight,
   rebaseLightsHistory,
   removeLight,
+  removeLightConfirm,
   removeLightZone,
   removeLook,
   removeLookStep,
@@ -204,7 +206,28 @@ describe("placing a light", () => {
     const l = removeLight(BASIC(), "server-room-rgb");
     expect(l.fixtures.some((f) => f.id === "server-room-rgb")).toBe(false);
     expect(l.zones[0]!.fixtures).toEqual([]);
-    expect(l.looks["server_alarm"]!.steps![1]!.to).toEqual([]);
+    // A step left naming nothing falls back to the look's own targets.
+    expect(l.looks["server_alarm"]!.steps![1]!.to).toBeUndefined();
+  });
+
+  it("asks before a delete leaves a look lighting nothing or takes a safety light", () => {
+    const house = HOUSE();
+    const l = BASIC();
+    const ask = removeLightConfirm(l, house, "server-room-rgb")!;
+    expect(ask).toMatch(/safety light/);
+    expect(ask).toMatch(/heart_/);
+    expect(emptiedLooks(l, removeLightZone(l, "heart"), house).length).toBeGreaterThan(0);
+    expect(removeLightConfirm(l, house, "heart")).toMatch(/^Delete zone The Heart\?/);
+    expect(removeLightConfirm(l, house, "nope")).toBeNull();
+  });
+
+  it("makes a story-cued look that lights nothing an error", () => {
+    const house = HOUSE();
+    const l = removeLightZone(BASIC(), "heart");
+    const dark = emptiedLooks(BASIC(), l, house);
+    const p = lightProblemList(l, house, { storyLooks: dark });
+    for (const n of dark) expect(p.errors.some((e) => e.text.includes(`look "${n}" is cued by the story but lights nothing`) && e.tab === "lights")).toBe(true);
+    expect(lightProblemList(BASIC(), house, { storyLooks: Object.keys(BASIC().looks) }).errors.some((e) => /lights nothing/.test(e.text))).toBe(false);
   });
 
   it("picks a device: a Zigbee2MQTT bulb brings its caps, a group its kind, a typed wled/ topic makes a strip", () => {

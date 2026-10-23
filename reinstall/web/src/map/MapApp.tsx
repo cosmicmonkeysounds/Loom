@@ -47,7 +47,7 @@ import { fetchAudio, routerOf, saveAudio, saveAudioToProject, testAudio, testRef
 import { runAudioPoll } from "./audio-poll.ts";
 import { AudioPanel } from "./AudioPanel.tsx";
 import "./audio.css";
-import { duplicateLight, followHouseLights, lightById, localPair, lightPlan, lightProblemList, lightSavePlan, lightsDownload, lightsDropped, moveLight, normalizeLights, placeLight, rebaseLightsHistory, removeLight, sameLights, saveEverythingPlan, setLightDevice, stateTint, withLightsText } from "./lights.ts";
+import { duplicateLight, followHouseLights, lightById, localPair, removeLightConfirm, lightPlan, lightProblemList, lightSavePlan, lightsDownload, lightsDropped, moveLight, normalizeLights, placeLight, rebaseLightsHistory, removeLight, sameLights, saveEverythingPlan, setLightDevice, stateTint, withLightsText } from "./lights.ts";
 import { fetchLights, lightRefusal, lightTestSentText, pairLights, saveLights, saveLightsToProject, testLight, type LightTestTarget, type LightsView, type Z2mDevice } from "./lights-api.ts";
 import { runLightsPoll } from "./lights-poll.ts";
 import { LightsPanel } from "./LightsPanel.tsx";
@@ -798,8 +798,8 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     const h = draftRef.current;
     if (h === null || sel === null) return;
     if (sel.kind === "light") {
-      const f = lightById(lightsRef.current, sel.id);
-      if (f?.safety === true && !window.confirm(`Delete ${f.name}? It is a safety light (never dark).`)) return;
+      const ask = removeLightConfirm(lightsRef.current, h, sel.id);
+      if (ask !== null && !window.confirm(ask)) return;
       applyLights(removeLight(lightsRef.current, sel.id));
       setSel(null);
       return;
@@ -978,7 +978,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     );
   };
   const speakerProblems = audioProblemList(audio, house);
-  const lightProblems = lightProblemList(lights, house, { saved: savedLights });
+  const lightProblems = lightProblemList(lights, house, { saved: savedLights, storyLooks: lightsView?.looks ?? [] });
   const errors = [...(textError !== null ? [{ text: textError, sel: null, level: "error" as const }] : structuredProblems(house, validation?.problems ?? [])), ...speakerProblems.errors, ...lightProblems.errors];
   const warnings = [...(walk ?? []), ...locationProblems(house, locations), ...speakerProblems.warnings, ...lightProblems.warnings];
   const busy = saveState.kind === "saving" || audioSaveState.kind === "saving" || lightsSaveState.kind === "saving";
