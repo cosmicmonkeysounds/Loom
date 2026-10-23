@@ -498,3 +498,44 @@ async def test_a_broker_or_feed_reconnect_catches_the_lights_up(tmp_path, monkey
     assert server.gets.count("/api/screen/state") == 3
     task.cancel()
     await asyncio.gather(task, return_exceptions=True)
+
+
+@pytest.mark.parametrize("kind", ["reset", "reload", "golive"])
+def test_the_show_re_asks_the_looks_on_every_restart(tmp_path, kind):
+    asyncio.run(_show_re_asks(tmp_path, kind))
+
+
+async def _show_re_asks(tmp_path, kind):
+    (tmp_path / "lights.json").write_text(json.dumps({"version": 1, "fixtures": [], "zones": [], "looks": {}}))
+    doc = {
+        "server": {"url": "http://x", "mod_token": "t"},
+        "show": {"mqtt": {"host": "h"}, "cues": [
+            {"on": {"directive": "cue"}, "match": {"target": "heart_new"}, "mqtt": {"topic": "a"}},
+            {"on": {"directive": "cue"}, "match": {"target": "lights_y2k"}, "mqtt": {"topic": "b"}},
+        ]},
+        "lights": {"config_file": "lights.json"},
+    }
+    show = parse_config(doc, base_dir=str(tmp_path)).modules["show"]
+    show.catch_up_delay_s = 0.01
+    show.mod = FakeMod({"version": 2, "lights": {"looks": {"heart_new": {}}}})
+    show._on_lifecycle({"kind": kind})
+    await asyncio.sleep(0.05)
+    assert "/api/mod/lights" in show.mod.gets
+    assert [r.match["target"] for r in show.cfg.cues] == ["lights_y2k"]
+
+
+@_async
+async def test_the_show_re_asks_the_looks_every_few_minutes(monkeypatch):
+    import stagehand.show.module as show_module
+
+    asked: list[int] = []
+
+    class Show:
+        async def _ask_lights(self):
+            asked.append(1)
+
+    monkeypatch.setattr(show_module, "LIGHTS_REASK_S", 0.01)
+    task = asyncio.ensure_future(show_module.ShowControl._lights_loop(Show()))
+    await asyncio.sleep(0.05)
+    task.cancel()
+    assert len(asked) >= 3

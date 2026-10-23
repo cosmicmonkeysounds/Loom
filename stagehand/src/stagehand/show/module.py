@@ -48,6 +48,9 @@ _RESTART_KINDS = ("reset", "reload", "golive")
 #: How long a catch-up waits for the broker session before giving up (the
 #: broker's own reconnect schedules another).
 MQTT_READY_TIMEOUT_S = 10.0
+#: How often `show` re-asks which looks lights.json defines (a director's save
+#: in the 💡 tab adds looks without any lifecycle frame).
+LIGHTS_REASK_S = 300.0
 
 
 def build_show(section: Any, base_dir: str) -> "ShowControl":
@@ -134,6 +137,13 @@ class ShowControl:
                 return
             await asyncio.sleep(60)
 
+    async def _lights_loop(self) -> None:
+        """Ask at start, then every LIGHTS_REASK_S: a look added later by a
+        director's save takes its YAML rule away too (never two commands)."""
+        while True:
+            await self._ask_lights()
+            await asyncio.sleep(LIGHTS_REASK_S)
+
     def describe(self) -> list[str]:
         cfg = self.cfg
         lines = [
@@ -167,7 +177,7 @@ class ShowControl:
             self.mqtt.start()
         tasks = [asyncio.ensure_future(self._sse_loop())]
         if self.ask_lights:
-            tasks.append(asyncio.ensure_future(self._ask_lights()))
+            tasks.append(asyncio.ensure_future(self._lights_loop()))
         if self.mqtt is not None and self.cfg.sensors:
             tasks.append(asyncio.ensure_future(self._sensor_loop()))
         try:
@@ -212,8 +222,8 @@ class ShowControl:
     def _on_lifecycle(self, doc: dict) -> None:
         kind = str(doc.get("kind", "")) if isinstance(doc, dict) else ""
         if kind in _RESTART_KINDS:
-            if self.ask_lights and kind == "reload" and self.mod is not None:
-                asyncio.ensure_future(self._ask_lights())  # a reload may bring a new lights.json
+            if self.ask_lights and self.mod is not None:
+                asyncio.ensure_future(self._ask_lights())  # a restart may bring a new lights.json
             self._schedule_catch_up(kind, delay=self.catch_up_delay_s)
         else:
             log.info("lifecycle %s", kind or "?")
