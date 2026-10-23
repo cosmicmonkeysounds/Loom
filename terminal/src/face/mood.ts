@@ -4,7 +4,7 @@
 //! composing, speaking — and off the *text* of each line as it is said:
 //! shouting is anger, a question is curiosity, an ellipsis is slyness.
 
-export type Mood = "idle" | "attentive" | "thinking" | "neutral" | "pleased" | "angry" | "curious" | "sly" | "alarmed" | "glitch";
+export type Mood = "idle" | "attentive" | "thinking" | "neutral" | "pleased" | "angry" | "curious" | "sly" | "alarmed" | "glitch" | "dying";
 
 /** Read a mood off one line of dialogue. */
 export function moodOfText(text: string): Mood {
@@ -47,7 +47,19 @@ export const EXPRESSIONS: Record<Mood, Expression> = {
   sly: { browLift: -0.2, browTilt: -0.4, eyeOpen: 0.55, pupil: 1, mouthCurve: 0.5, mouthWidth: 1.15, gazeBias: { x: 0.5, y: 0.1 }, tint: -0.3 },
   alarmed: { browLift: 1, browTilt: 0.9, eyeOpen: 1, pupil: 1.4, mouthCurve: -0.5, mouthWidth: 0.7, gazeBias: { x: 0, y: 0 }, tint: 1 },
   glitch: { browLift: 0.3, browTilt: -0.5, eyeOpen: 1, pupil: 0.6, mouthCurve: -0.2, mouthWidth: 1.3, gazeBias: { x: 0.8, y: -0.5 }, tint: -1 },
+  // Wave 20: the heart's shutdown. Brows drooping, lids heavy, the mouth a
+  // flat line, eyes down; the face draws its colour away to grey (`Face.tsx`).
+  dying: { browLift: -0.5, browTilt: 0.8, eyeOpen: 0.32, pupil: 0.75, mouthCurve: 0, mouthWidth: 0.85, gazeBias: { x: 0, y: 0.85 }, tint: -1 },
 };
+
+/** How long the `dying` face takes to drain to grey when no flash says (ms). */
+export const DYING_DRAIN_MS = 20_000;
+
+/** The `dying` face's drain at `elapsed` ms of `total` (0 = full colour … 1 = grey). */
+export function dyingDrain(elapsed: number, total: number = DYING_DRAIN_MS): number {
+  if (!(elapsed > 0)) return 0;
+  return Math.min(1, elapsed / Math.max(1, total));
+}
 
 /** Move `from` toward `to` by `k` (0..1) — the per-frame ease. */
 export function blend(from: Expression, to: Expression, k: number): Expression {

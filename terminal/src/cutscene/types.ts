@@ -12,9 +12,14 @@ import type { sfx } from "../sound/bus.ts";
  * What starts a scene. `{slide}` — a story slide cue's value (`trivia_1`;
  * a trailing `*` matches a prefix: `award_*`). `{moment, name}` — a live
  * moment off the screen state (`{moment: "signal", name: "bottle landed"}`).
- * Names match folded: case, spaces, `_` and `-` don't count.
+ * Names match folded: case, spaces, `_` and `-` don't count. `{room}` (wave
+ * 20) — a room terminal's picture cue (`cue room_heart_wake` in a beat set in
+ * its LOCATION → the screen state's `room.cue`), matched exactly (folded)
+ * against the cue without its `room_` prefix: `{room: "heart_wake"}`. Room
+ * scenes play on that room's terminal only, whatever else it is doing (a
+ * line open included); walls and the TV never see them.
  */
-export type SceneTrigger = { slide: string } | { moment: ScreenMoment["kind"]; name: string };
+export type SceneTrigger = { slide: string } | { moment: ScreenMoment["kind"]; name: string } | { room: string };
 
 /** Which screen draws it: the TV over the fireplace, or a wall terminal. */
 export type SceneTarget = "tv" | "wall";
@@ -71,6 +76,11 @@ export interface SceneDef {
   gate?: (night: ScreenNight) => boolean;
   /** A moment scene that draws over the slide under it (a popup) instead of in its place. */
   over?: boolean;
+  /** A room scene (wave 20) that takes the whole screen, the heart's choices
+   *  included (the wake, the seal, an eject, *not yet*, a leave, the
+   *  shutdown). Else it draws over the face only, never over a docked menu,
+   *  and takes no taps. */
+  covers?: boolean;
   /** The scene draws the story's countdown itself (on both targets, or only
    *  the TV's take): the corner countdown stands aside while it shows. */
   countdown?: boolean | "tv";

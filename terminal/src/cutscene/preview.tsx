@@ -71,11 +71,12 @@ export function triggerValue(def: SceneDef): string {
   const w = def.when[0];
   if (w === undefined) return def.id;
   if ("slide" in w) return w.slide.replace(/\*$/u, "");
+  if ("room" in w) return w.room;
   return w.name;
 }
 
 function triggerText(def: SceneDef): string {
-  return def.when.map((w) => ("slide" in w ? `slide ${w.slide}` : `${w.moment} "${w.name}"`)).join(" · ");
+  return def.when.map((w) => ("slide" in w ? `slide ${w.slide}` : "room" in w ? `room cue room_${w.room}` : `${w.moment} "${w.name}"`)).join(" · ");
 }
 
 export function Preview() {

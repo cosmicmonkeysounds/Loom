@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, congratulations, winner, confetti, house win, idle show, screensavers, popups, pop-up, popup storm, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, house speakers, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture, reinstallation station, tent, tent laptop, the Internet, wizard, not marked, say the house announcements, house setting, always, never, microphone, mic, hear, heard, voice link, headset voices, players' voices, 🎤, on air, privacy
+keywords: terminal, congratulations, winner, confetti, house win, idle show, screensavers, popups, pop-up, popup storm, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, house speakers, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture, reinstallation station, tent, tent laptop, the Internet, wizard, not marked, say the house announcements, house setting, always, never, microphone, mic, hear, heard, voice link, headset voices, players' voices, 🎤, on air, privacy, heart, his heart, server room, close the door, door, choices, answers, layer, speak freely, back, thrown out, not yet, door sensor, keyboard
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -151,6 +151,39 @@ takes: a secret one reads *A SECRET FILE: HE WON'T TAKE IT*, and one
 about somebody else *ABOUT … : HE WON'T TAKE IT*. While the file panel
 is open the line waits two minutes for you instead of thirty seconds
 (*STILL THERE?* near the end).
+
+## His heart
+
+The terminal inside the Server Room is his **heart**, and it plays by
+its own rules.
+
+- **The first time the door opens**, the screen tears open in red, his
+  heart wakes, and he asks for one thing: **close the door**. Nothing
+  happens in there with the door open. While it stands open a banner runs
+  across the top — **CLOSE THE DOOR** — and he keeps asking.
+- **Shut it**, and the lock clunks, the hum drops, and he asks to see
+  your **pass**. Show it to the camera under the screen.
+- Then he **talks to you**, properly, in layers — who you are, what he
+  is, what you came to say, and the last thing you'd ask of him. Your
+  answers are on the screen under his words: **click one** (or press its
+  number). Some answers have a tag like **⟦TRUSTED⟧** or **⟦PROOF⟧**:
+  they only show up when you've earned them tonight. Push him the wrong
+  way and he'll warn you once; push again and he **throws you out** of
+  his heart for the night.
+- **⟦SPEAK FREELY⟧** puts the questions aside: type anything to him on
+  the keyboard and he answers, as himself. **⟦BACK⟧** (small, under where
+  you type) takes you back to the questions, right where you left them.
+  You can also keep talking after the questions are done.
+- The same answers sit in your **Trabolta** chat on your phone, but they
+  only count here, at his heart: an answer from the phone while you're
+  elsewhere is held back (*Not out there*).
+- **Someone opens the door mid-talk?** Everything stops: the answers grey
+  out under **CLOSE THE DOOR** and your line waits (it won't time out on
+  you) until the door is shut again.
+- He gives you three minutes between answers rather than thirty seconds —
+  it's a hard conversation. After *Leave* or *not yet* it's thirty
+  seconds again unless you keep typing to him. **DISCONNECT** frees the
+  screen for the next program.
 
 ## The King's terminal
 
@@ -305,6 +338,21 @@ mutes the TV. It has no camera and no chat — just watch and listen.
 simulation, full screen.)
 
 ## Setting a terminal up (for the crew)
+
+**The heart terminal (the Server Room, wave 20).** It bridges the room's
+door sensor and has a keyboard and mouse:
+`/terminal/?code=<mod passcode>&spot=server-room&door=serial`. The first
+time, hold ⚙ 2 seconds → *advanced* → *door sensor* → **Connect door
+sensor** and pick the board in Chrome's list (once per browser profile),
+then **Calibrate: door shut**, open the door, **Calibrate: door open**.
+After that it reconnects on every boot and replug. ⚙ shows the live
+reading (*SHUT · level 2410*); a sensor that can't be trusted (unplugged,
+silent, flooded with light) shows nothing to guests, reads *FAULT* in ⚙ and
+tells the story nothing — Run → Terminals shows 🚪 red, and the 🚪 buttons
+on the cue sheet take over until *Trust the door sensor*. `&keys=0` is a
+mouse-only screen (no typing, only the choices). `&door=sim` is for
+testing: **O** opens a pretend door, **C** shuts it, **F** toggles a
+fault. The crew's kiosk notes have the laptop's launch line.
 
 Open `/terminal/` on the tablet, type the event's **moderator passcode**,
 then **tap the terminal** this tablet is: the list is the event's house

@@ -49,6 +49,7 @@ describe("act 1 — the triggers are the story's", () => {
     for (const s of SCENES)
       for (const w of s.when) {
         if ("slide" in w) slides.add(w.slide);
+        else if ("room" in w) throw new Error(`unexpected room trigger ${w.room}`);
         else if (w.moment === "beat") beats.add(w.name);
         else if (w.moment === "signal") signals.add(w.name);
         else throw new Error(`unexpected trigger kind ${w.moment}`);
@@ -155,7 +156,7 @@ describe("act 1 — the fiction", () => {
 const valueOf = (id: string): string => {
   const s = SCENES.find((x) => x.id === id)!;
   const w = s.when[0]!;
-  return "slide" in w ? w.slide : w.name;
+  return "slide" in w ? w.slide : "room" in w ? w.room : w.name;
 };
 
 function props(o: Partial<SceneProps> & { t: number }): SceneProps {

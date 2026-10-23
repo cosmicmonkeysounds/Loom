@@ -36,11 +36,12 @@ describe("act 2's triggers are the story's own names", () => {
   });
 
   for (const s of SCENES) {
-    it(`${s.id}: ${s.when.map((w) => ("slide" in w ? w.slide : `${w.moment} ${w.name}`)).join(", ")}`, () => {
+    it(`${s.id}: ${s.when.map((w) => ("slide" in w ? w.slide : "room" in w ? `room ${w.room}` : `${w.moment} ${w.name}`)).join(", ")}`, () => {
       for (const w of s.when) {
         // Wave 18b: the `tally` slide is cued by the show lane's text; until it is
         // merged the story still plays Round Two Tally with no slide (then this is strict).
         if ("slide" in w) expect(CUES.has(w.slide) || (w.slide === "tally" && !STORY.includes("do fact_read")), `cue screens_${w.slide}`).toBe(true);
+        else if ("room" in w) throw new Error(`unexpected room trigger ${w.room}`);
         else if (w.moment === "beat") expect(BEATS.has(foldName(w.name)), `== ${w.name}`).toBe(true);
         else if (w.moment === "sfx") expect(SOUNDS.has(foldName(w.name)), `sound ${w.name}`).toBe(true);
         else if (w.moment === "signal") {
@@ -76,7 +77,7 @@ const AT = NOW - 1;
 function draw(def: SceneDef, target: SceneTarget, t: number, state: ScreenState, who: string | null = "Winamp", reduced = false): string {
   const View = componentFor(def, target);
   if (View === null) return "";
-  const props: SceneProps = { t, at: AT, seq: 1, value: "slide" in def.when[0]! ? def.when[0].slide : def.when[0]!.name, state, night: state.night, who, target, sfx: () => false, done: () => {}, reduced };
+  const props: SceneProps = { t, at: AT, seq: 1, value: ((w) => ("slide" in w ? w.slide : "room" in w ? w.room : w.name))(def.when[0]!), state, night: state.night, who, target, sfx: () => false, done: () => {}, reduced };
   return renderToStaticMarkup(createElement(View, props));
 }
 

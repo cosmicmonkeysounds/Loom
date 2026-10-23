@@ -55,6 +55,14 @@
 //! takes no part, and neither does a spot the map's `voice` turns off (the
 //! tent).
 //!
+//! The server-room terminal (wave 20) bridges the door sensor on the Grand
+//! Central M4 plugged into its laptop (`&door=serial`, Web Serial: ⚙'s
+//! *Connect door sensor* grants the port once) and has a keyboard; a
+//! mouse-only rig adds `&keys=0` (no composer). `&door=sim` is the dev rig: the
+//! keys O / C toggle a pretend door and F a fault.
+//!
+//!   /terminal/?code=<mod passcode>&spot=server-room&door=serial
+//!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets
 //! a terminal pilot a scanned guest through `/api/mod/impersonate`, and
@@ -136,10 +144,24 @@ export interface TerminalConfig {
   /** Full screen on every tap while not (wave 17, `fullscreen.ts`): on by
    *  default; ⚙ turns it off. Stored only — no URL hint. */
   fullscreen: boolean;
+  /** The door sensor this terminal bridges (wave 20, `serial/`): `serial` —
+   *  the Grand Central M4 over Web Serial; `sim` — the dev keys O / C / F;
+   *  `off` — none (the default). */
+  door: DoorConfig;
+  /** A keyboard is here (wave 20, D23): the composer shows (default true).
+   *  False: a mouse-only rig, no composer — the heart's choices only. */
+  keys: boolean;
   /** Set up by tapping a terminal of the event's house map: at boot the
    *  name / view / room follow that map entry (`setup-map.ts` `followMap`).
    *  A manual view / room in ⚙'s advanced section clears it. */
   fromMap?: boolean;
+}
+
+export type DoorConfig = "serial" | "sim" | "off";
+export const DOOR_CONFIGS: readonly DoorConfig[] = ["off", "serial", "sim"];
+
+export function doorConfigOf(v: unknown): DoorConfig {
+  return v === "serial" || v === "sim" ? v : "off";
 }
 
 export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino" | "reinstall";
@@ -234,6 +256,8 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     voices: true,
     voiceLink: true,
     fullscreen: true,
+    door: "off",
+    keys: true,
     ...partial,
   };
 }
@@ -249,7 +273,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     const room = typeof c.room === "string" ? c.room : "";
     // `v` was an earlier wave 18b draft's marker: dropped, never trusted.
     const { v: _version, announceMode, ...stored } = c;
-    const loaded = defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, announceMode), camFeed: c.camFeed !== false, voices: c.voices !== false, voiceLink: c.voiceLink !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true });
+    const loaded = defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, announceMode), camFeed: c.camFeed !== false, voices: c.voices !== false, voiceLink: c.voiceLink !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true, door: doorConfigOf(c.door), keys: c.keys !== false });
     if (typeof c.mic === "boolean") loaded.mic = c.mic;
     else delete loaded.mic;
     return loaded;
@@ -266,7 +290,7 @@ export function dropConfig(storage: Pick<Storage, "removeItem"> = localStorage):
   storage.removeItem(CONFIG_KEY);
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=&door=&keys=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -284,6 +308,10 @@ export interface UrlHints {
   mic?: boolean | null;
   /** `voices=0` / `1`: play the players' voices (null = not given: on). */
   voices?: boolean | null;
+  /** `door=serial|sim|off`: the door sensor (null = not given: off). */
+  door?: DoorConfig | null;
+  /** `keys=0` / `1`: a keyboard is here (null = not given: yes). */
+  keys?: boolean | null;
 }
 
 /** A URL on/off switch: true / false, null = not given or unreadable. */
@@ -310,6 +338,8 @@ export function hintsFromSearch(search: string): UrlHints {
     camFeed: flagOf(p.get("cam")),
     mic: flagOf(p.get("mic")),
     voices: flagOf(p.get("voices")),
+    door: ((v) => (v === "serial" || v === "sim" || v === "off" ? v : null))(p.get("door")),
+    keys: flagOf(p.get("keys")),
   };
 }
 
@@ -328,6 +358,8 @@ export function withoutSecrets(search: string): string {
   p.delete("cam");
   p.delete("mic");
   p.delete("voices");
+  p.delete("door");
+  p.delete("keys");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -352,6 +384,8 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     announce: hints.announce ?? null,
     camFeed: hints.camFeed ?? true,
     voices: hints.voices ?? true,
+    door: hints.door ?? "off",
+    keys: hints.keys ?? true,
   });
   if (typeof hints.mic === "boolean") given.mic = hints.mic;
   return given;

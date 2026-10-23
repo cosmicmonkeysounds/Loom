@@ -8,9 +8,17 @@ import { retryable } from "../retry.ts";
 
 export const loadCutscenes = retryable(() => import("./CutsceneLayer.tsx").then((m) => ({ default: m.CutsceneLayer })));
 
-/** Does a terminal draw story slides (and so cutscenes)? Not a room terminal, the board or the casino. */
-export function drawsSlides(view: string, room: string | null): boolean {
-  return room === null && view !== "chess" && view !== "casino";
+/** Does a terminal mount the cutscene layer? Every view but the board and
+ *  the casino. A room terminal (wave 20, D4) mounts it for its **room scenes
+ *  only**: it is layered bare (`roomOnly`), so it never draws a story slide
+ *  or a house moment. */
+export function drawsSlides(view: string, _room: string | null): boolean {
+  return view !== "chess" && view !== "casino";
+}
+
+/** Does this terminal draw only its room's scenes (a room terminal)? */
+export function roomOnly(view: string, room: string | null): boolean {
+  return room !== null && drawsSlides(view, room);
 }
 
 /** The idle show's and the scenes' target for a view: the TV, and its
