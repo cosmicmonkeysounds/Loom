@@ -13,6 +13,7 @@ import { defaultLights, lightsHash, type LightsConfig } from "@loom/house";
 
 import { LIGHTS_FILE, LightsHub, isLightsFile, lightsFileOf, lightsFileText, lightsOf, lightsProblems, parseZ2mDevice, storyLooks } from "../server/lights.ts";
 import { Store } from "../server/store.ts";
+import { exampleLights, planLightsSync, syncOptions } from "../scripts/sync-example.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 
 const LIGHTS_TEXT = readFileSync(join(import.meta.dirname, "..", "..", "house", "test", "fixtures", "lights-basic.json"), "utf8");
@@ -118,5 +119,26 @@ describe("LightsHub", () => {
     expect(hub.save(LIGHTS, "00000000", null)).toEqual({ status: 409, body: { error: "stale", version: v, source: "project" } });
     expect(hub.save({ version: 2 }, v, null)).toMatchObject({ status: 400, body: { problems: ["version must be 1", "fixtures must be a list", "zones must be a list", "looks must be an object {cue name: look}"] } });
     expect(hub.current().version).toBe(v);
+  });
+});
+
+describe("sync-example: lights.json goes like a map, on its own switch", () => {
+  it("--replace-maps / --replace-audio never touch lights.json; --replace-lights / --keep-lights do", () => {
+    expect(syncOptions(["Trapped", "--replace-maps", "--replace-audio"], {})).toMatchObject({ mapMode: "replace", audioMode: "replace", lightsMode: "merge" });
+    expect(syncOptions(["Trapped", "--replace-lights"], {})).toMatchObject({ mapMode: "merge", audioMode: "merge", lightsMode: "replace" });
+    expect(syncOptions(["Trapped", "--keep-lights", "--keep-audio"], {})).toMatchObject({ audioMode: "keep", lightsMode: "keep" });
+  });
+
+  it("merge adds it when the project has none and keeps a differing copy; replace and keep; a broken kept copy stops the sync", () => {
+    const ex = { "lights.json": LIGHTS_TEXT };
+    const mine = JSON.stringify({ ...LIGHTS, note: "placed in the house" });
+    expect(planLightsSync({}, ex, "merge")).toEqual({ text: LIGHTS_TEXT, put: true, kept: false, replaced: null });
+    expect(planLightsSync({ "lights.json": mine }, ex, "merge")).toEqual({ text: mine, put: false, kept: true, replaced: null });
+    expect(planLightsSync({ "lights.json": mine }, ex, "replace")).toEqual({ text: LIGHTS_TEXT, put: true, kept: false, replaced: mine });
+    expect(planLightsSync({ "lights.json": mine }, ex, "keep")).toEqual({ text: mine, put: false, kept: false, replaced: null });
+    expect(planLightsSync({ "lights.json": mine }, {}, "replace")).toEqual({ text: null, put: false, kept: false, replaced: mine });
+    expect(planLightsSync({}, {}, "merge")).toEqual({ text: null, put: false, kept: false, replaced: null });
+    expect(() => planLightsSync({ "lights.json": '{"version":2}' }, ex, "merge")).toThrow(/project's lights\.json does not validate/u);
+    expect(exampleLights("glass-orchard")).toEqual({});
   });
 });
