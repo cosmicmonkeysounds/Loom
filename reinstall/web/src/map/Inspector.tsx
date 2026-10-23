@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, propSolid, roomById, voiceOn } from "@loom/house";
 import { LIGHT_KINDS, LIGHT_SAFETY_MIN } from "@loom/house";
 import type { AudioConfig, Compass, HouseMap, LightKind, LightsConfig, PropKind, Vec3 } from "@loom/house";
-import { addLight, addLightZone, capsText, defaultLightY, deviceChoices, dimSet, heightBand, LIGHT_HEIGHT, LIGHT_SWATCHES, lightById, lightIdError, lightsDropped, lightZonesOf, moveLight, moveLightToRoom, patchLight, removeLight, renameLight, setLightDevice, setLightHeight, setLightZoneMember, swatchSet, testable, withLightsText } from "./lights.ts";
+import { addLight, addLightZone, capsText, defaultLightY, deviceChoices, dimSet, heightBand, LIGHT_HEIGHT, LIGHT_SWATCHES, lightById, lightIdError, lightsDropped, lightZonesOf, moveLight, moveLightToRoom, patchLight, removeLight, renameLight, safetyOffText, setLightDevice, setLightHeight, setLightZoneMember, swatchSet, testable, withLightsText } from "./lights.ts";
 import type { LightTestTarget, Z2mDevice } from "./lights-api.ts";
 import { addSpeaker, addZone, outputLabel, outputUsers, patchSpeaker, removeSpeaker, renameSpeaker, rotateSpeaker, setSpeakerHeight, setSpeakerYaw, setZoneMember, moveSpeaker, speakerById, speakersDropped, toggleSpeakerOutput, withSpeakersText, zonesOf } from "./audio.ts";
 import type { StoryLocation } from "./check.ts";
@@ -934,7 +934,10 @@ function LightInspector({ house, edit, onSelect, onNotice, id, lights = null, sa
       </div>
       <div className="num-row">
         <label className="radio checkbox" title="A safety light never goes dark: never OFF, never below its floor. Use it for any light people need to see by.">
-          <input type="checkbox" checked={f.safety === true} disabled={!edit} onChange={(e) => commit(patchLight(lights, id, { safety: e.target.checked }))} /> safety light (never dark)
+          <input type="checkbox" checked={f.safety === true} disabled={!edit} onChange={(e) => {
+              if (!e.target.checked && f.safety === true && !window.confirm(safetyOffText(f))) return;
+              commit(patchLight(lights, id, { safety: e.target.checked }));
+            }} /> safety light (never dark)
         </label>
         {f.safety === true && <Num label={`floor (${LIGHT_SAFETY_MIN}–254)`} value={f.min ?? null} step={1} placeholder={String(LIGHT_SAFETY_MIN)} disabled={!edit} onChange={(v) => commit(patchLight(lights, id, { min: v }))} />}
       </div>
@@ -973,6 +976,7 @@ function LightInspector({ house, edit, onSelect, onNotice, id, lights = null, sa
           <button
             className="w98-button"
             onClick={() => {
+              if (f.safety === true && !window.confirm(`Delete ${f.name}? It is a safety light (never dark).`)) return;
               commit(removeLight(lights, id));
               onSelect(null);
             }}

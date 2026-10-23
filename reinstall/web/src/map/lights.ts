@@ -167,6 +167,17 @@ export function patchLight(lights: LightsConfig, id: string, patch: { name?: str
   });
 }
 
+/**
+ * Devices that are always a safety light (D11: the server room's WLED strip,
+ * which the blackout keeps lit): a fixture given one by name is marked safety.
+ */
+export const SAFETY_DEVICES: readonly string[] = ["wled/server"];
+
+/** The confirm before a safety light stops being one. */
+export function safetyOffText(f: Pick<LightFixture, "name">): string {
+  return `Turn off safety for ${f.name}? Its looks could then turn it off or dim it below ${LIGHT_SAFETY_MIN}.`;
+}
+
 /** The kind a Zigbee2MQTT entry is played as. */
 export function deviceKind(d: Pick<Z2mDevice, "type">): LightKind {
   return d.type === "Group" ? "zigbee-group" : "zigbee";
@@ -182,7 +193,8 @@ export function setLightDevice(lights: LightsConfig, id: string, device: Z2mDevi
   if (typeof device === "string") {
     const name = device.trim();
     const wled = /^wled\//i.test(name);
-    return patchLight(lights, id, { device: name, ...(wled ? { kind: "wled" as const } : lightById(lights, id)?.kind === "wled" ? { kind: "zigbee" as const } : {}) });
+    const safety = SAFETY_DEVICES.includes(name.toLowerCase()) ? { safety: true } : {};
+    return patchLight(lights, id, { device: name, ...safety, ...(wled ? { kind: "wled" as const } : lightById(lights, id)?.kind === "wled" ? { kind: "zigbee" as const } : {}) });
   }
   return patchLight(lights, id, { device: device.friendly, kind: deviceKind(device), ...(device.caps !== null ? { caps: { ...device.caps } } : {}) });
 }
@@ -817,7 +829,7 @@ export function pairSecondsLeft(pair: LightPairInfo | null, now: number): number
  * `validateLights` (against the draft map) as the problem panel's items:
  * each one naming a fixture selects it; the rest open the 💡 Lights tab.
  */
-export function lightProblemList(lights: LightsConfig, house: HouseMap): { errors: Problem[]; warnings: Problem[] } {
+export function lightProblemList(lights: LightsConfig, house: HouseMap, opts: { saved?: LightsConfig | null } = {}): { errors: Problem[]; warnings: Problem[] } {
   const v = validateLights(lights, house);
   const sel = (text: string): Problem["sel"] => {
     const m = /^fixtures\[\d+\] "([^"]*)"/.exec(text) ?? /^fixture "([^"]*)" is in no look/.exec(text);
@@ -829,7 +841,15 @@ export function lightProblemList(lights: LightsConfig, house: HouseMap): { error
   };
   // An unpicked device reads as what to do, not as a schema line.
   const friendly = (t: string): string => t.replace(/\.device must name the Zigbee2MQTT device \/ group or the WLED topic$/, ": pick its device (💡 Lights → Devices, or type the name)");
-  return { errors: v.problems.map(friendly).map(item("error")), warnings: v.warnings.map(item("warning")) };
+  // A light saved as a safety light that the draft no longer keeps safe.
+  const lost: Problem[] = [];
+  for (const f of opts.saved?.fixtures ?? []) {
+    if (f.safety !== true) continue;
+    const now = lightById(lights, f.id);
+    if (now === undefined) lost.push({ text: `💡 safety light "${f.id}" (${f.name}) is deleted in this draft — saved, nothing keeps that room lit`, sel: null, level: "warning", tab: "lights" });
+    else if (now.safety !== true) lost.push({ text: `💡 "${f.id}" is no longer a safety light (it was saved as one): its looks may turn it off or below ${LIGHT_SAFETY_MIN}`, sel: { kind: "light", id: f.id }, level: "warning" });
+  }
+  return { errors: v.problems.map(friendly).map(item("error")), warnings: [...lost, ...v.warnings.map(item("warning"))] };
 }
 
 /** The Download JSON button's file. */

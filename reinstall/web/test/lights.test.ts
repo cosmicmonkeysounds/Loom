@@ -52,6 +52,7 @@ import {
   renameLight,
   renameLightZone,
   renameLook,
+  safetyOffText,
   saveEverythingPlan,
   setBoot,
   setLightDevice,
@@ -179,6 +180,24 @@ describe("placing a light", () => {
     expect(lightById(patchLight(l, "server-room-rgb", { min: 12 }), "server-room-rgb")!.min).toBe(40);
     expect(lightById(patchLight(l, "server-room-rgb", { min: 90 }), "server-room-rgb")!.min).toBe(90);
     expect(lightById(patchLight(l, "desk-lamp", { min: 12 }), "desk-lamp")!.min).toBe(12);
+  });
+
+  it("marks the server room's WLED strip a safety light when its topic is typed", () => {
+    const { lights, id } = bulbIn(HOUSE(), "server-room", "");
+    expect(lightById(setLightDevice(lights, id, "wled/server"), id)!.safety).toBe(true);
+    expect(lightById(setLightDevice(lights, id, "wled/attic"), id)!.safety).toBeUndefined();
+    expect(safetyOffText({ name: "Server room RGB bulb" })).toMatch(/Server room RGB bulb.*below 40/);
+  });
+
+  it("warns when a light saved as safety is no longer safe or is gone from the draft", () => {
+    const house = HOUSE();
+    const saved = BASIC();
+    expect(lightProblemList(saved, house, { saved }).warnings.some((w) => /safety light/.test(w.text))).toBe(false);
+    const off = patchLight(saved, "server-room-rgb", { safety: false });
+    const w = lightProblemList(off, house, { saved }).warnings.find((x) => /no longer a safety light/.test(x.text))!;
+    expect(w.sel).toEqual({ kind: "light", id: "server-room-rgb" });
+    const gone = removeLight(saved, "server-room-rgb");
+    expect(lightProblemList(gone, house, { saved }).warnings.some((x) => /"server-room-rgb".*deleted/.test(x.text))).toBe(true);
   });
 
   it("deletes from every zone and target list", () => {
