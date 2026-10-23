@@ -136,8 +136,8 @@ reveal The Server Room
 // DRAFT w20: a quiet notice (no `!`): no chime or banner pulls a crowd to
 // the door at the moment he asks for it shut.
 broadcast "🚪 The server room is open. Trabolta's heart is behind the cold door, in the basement." to everyone
-// The server-room look only (lights_server_open is the WLED strip and the
-// siren's off now: the RGB bulb is lights.json's, D10), and never while the
+// The server-room look only (lights_server_open is only the siren's off now:
+// no strip in the room, w20b Q6; the RGB bulb is lights.json's, D10), and never while the
 // patch-bay alarm's look is up. `Night.lights` is the house look stagehand
 // replays on a reconnect. Before the Y2K hour (step 14) `server_open` can't
 // be it (the catch-up replays the Y2K look under it), and from the final
