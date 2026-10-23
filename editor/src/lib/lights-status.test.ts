@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lightsLine, lightsShown, lightsStatusOf, moduleTitle, pairDeadline, pairText, problemsText } from '@/lib/lights-status'
+import { lightsLine, lightsReadFor, lightsShown, lightsStatusOf, moduleTitle, pairDeadline, pairText, problemsText } from '@/lib/lights-status'
 
 const view = (over: Record<string, unknown> = {}) => ({
   lights: { version: 1, fixtures: [{ id: 'server-room-rgb' }], zones: [], looks: {} },
@@ -91,5 +91,15 @@ describe('the pairing countdown', () => {
   it('no pair, no clock', () => {
     expect(pairDeadline(lightsStatusOf(view({ now: 1 }))!, 0)).toBeNull()
     expect(pairText(null, 0)).toBeNull()
+  })
+})
+
+describe('a read belongs to its event', () => {
+  it('a run switched to another shows nothing until its own answer lands', () => {
+    const status = lightsStatusOf(view({ module: { name: 'm', at: 1, online: true } }))!
+    const read = { eventId: 'ev-a', status, deadline: { closesAt: null } }
+    expect(lightsReadFor(read, 'ev-a')).toEqual({ status, deadline: { closesAt: null } })
+    expect(lightsReadFor(read, 'ev-b')).toEqual({ status: null, deadline: null })
+    expect(lightsReadFor(read, null)).toEqual({ status: null, deadline: null })
   })
 })

@@ -125,3 +125,17 @@ export function problemsText(s: LightsStatus): string | null {
   if (s.warnings.length > 0) parts.push(`${s.warnings.length} ${s.warnings.length === 1 ? 'warning' : 'warnings'}`)
   return parts.length > 0 ? parts.join(' · ') : null
 }
+
+/** One read of the lights, tagged with the event it was read for. */
+export interface LightsRead {
+  eventId: string | null
+  status: LightsStatus | null
+  deadline: PairClock | null
+}
+
+/** The read the row shows for `eventId`: nothing until this event's first
+ *  answer lands, so a run switched to another never flashes the last run's
+ *  fixtures, module or pairing. */
+export function lightsReadFor(read: LightsRead, eventId: string | null): { status: LightsStatus | null; deadline: PairClock | null } {
+  return read.eventId === eventId && eventId !== null ? { status: read.status, deadline: read.deadline } : { status: null, deadline: null }
+}

@@ -32,11 +32,13 @@ import {
   LIGHTS_PAIR_POLL_MS,
   LIGHTS_POLL_MS,
   lightsLine,
+  lightsReadFor,
   lightsShown,
   moduleTitle,
   pairDeadline,
   pairText,
   problemsText,
+  type LightsRead,
   type LightsStatus,
   type PairClock,
 } from '@/lib/lights-status'
@@ -83,15 +85,16 @@ function useKing(eventId: string | null): [KingView | null, (k: KingView | null)
  *  lights route (an older server) or nothing read yet. `deadline`: when an
  *  open pairing closes, on this editor's clock (`pairDeadline`). */
 function useLights(eventId: string | null): { status: LightsStatus | null; deadline: PairClock | null } {
-  const [read, setRead] = useState<{ status: LightsStatus | null; deadline: PairClock | null }>({ status: null, deadline: null })
-  const pairing = read.deadline !== null
+  const [read, setRead] = useState<LightsRead>({ eventId: null, status: null, deadline: null })
+  const shown = lightsReadFor(read, eventId)
+  const pairing = shown.deadline !== null
   useEffect(() => {
     if (eventId === null) return
     let cancelled = false
     const load = async () => {
       try {
         const status = await lightsApi.status(eventId)
-        if (!cancelled) setRead({ status, deadline: status === null ? null : pairDeadline(status, Date.now()) })
+        if (!cancelled) setRead({ eventId, status, deadline: status === null ? null : pairDeadline(status, Date.now()) })
       } catch {
         // keep the last reading; the next poll retries
       }
@@ -103,7 +106,7 @@ function useLights(eventId: string | null): { status: LightsStatus | null; deadl
       clearInterval(t)
     }
   }, [eventId, pairing])
-  return read
+  return shown
 }
 
 /** A 1 s clock while `on` (the pairing countdown). */
