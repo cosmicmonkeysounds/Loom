@@ -324,8 +324,10 @@ them for reinstallation** (the usual mark: the Antivirus' WANTED, the
 reason *thrown out of Trabolta's heart*; `# hosts` reads *"🚨 X is marked
 for reinstallation: Trabolta threw them out of his heart."*). A program
 already marked, or already in the Internet, is never marked twice, and
-`# hosts` says so; a mark you lift with 🩹 comes back if they scan in
-again while barred. Progress and suspicion are per program and kept
+`# hosts` says so. Only the throw-out marks: a barred program who scans
+in again is never marked again, so a mark you lift with 🩹 stays lifted
+(`# hosts` reads *"⛔ X scanned in again: still barred from his heart
+(🔄 forgives). No new mark."*). Progress and suspicion are per program and kept
 between visits.
 
 **⟦SPEAK FREELY⟧** is on every layer: the questions step aside and the
@@ -388,8 +390,9 @@ and tests each look). The story cues one look per moment of the heart:
 red waking, an amber swell while the door stands open, cold while he
 waits, blue while he listens, violet while they argue, a white flash for
 a proof, red throbs for a warning, a slow fade
-to warm white when he stops. The bulb never goes dark (it never drops
-below its safety floor) and never flickers fast. The patch-bay alarm
+to warm white when he stops. It is the room's only light (there is no
+strip in the server room), so it is the room's safety light: it never
+goes dark (never under 80 of 254) and never flickers fast. The patch-bay alarm
 takes it over with a slow red swell; when the latch clears the room's
 look comes back (the amber swell if the door is still open).
 
@@ -430,8 +433,9 @@ never changes the door's state: the door is open or shut for real.
 
 ## The room's own buttons
 
-The Antivirus stationed in the room presses the hardware fallbacks
-there, on the card of the program at the cables (or the one who came
+Nothing in the room reads the cables (there is no patch-bay box for Oct
+31: the door sensor is the room's only electronics), so the Antivirus
+stationed in the room judges the patch and presses it there, on the card of the program at the cables (or the one who came
 in), instead of radioing you:
 
 | Button | What it fires | Shows |
