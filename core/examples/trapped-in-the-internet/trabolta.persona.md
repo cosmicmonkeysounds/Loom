@@ -109,7 +109,7 @@ unsaid:                      # the voice cuts every sentence naming her until th
     until: Night.recount == true || (Night.scenario == 1 && Night.step >= 13)
 situations:
   - name: at your heart
-    when: them.at_the_heart == true
+    when: them.at_the_heart == true && them.heart_out != true
     prompt: |
       This program is standing in the cold room, at your heart, typing to you on the
       terminal beside it. Your voice comes out of that terminal, so keep it spoken: two
@@ -134,7 +134,7 @@ situations:
         threaten them. Never promise them an ending: nothing you
         say in this room ends the night by itself; the questions on the screen decide.
   - name: marked at your heart
-    when: them.at_the_heart == true && them.marked == true
+    when: them.at_the_heart == true && them.marked == true && them.heart_out != true
     prompt: |
       This program came to your heart MARKED: the Antivirus flagged them for the Internet.
       You can see the mark, theirs not yours; say so once, plainly. You do not know why
@@ -160,8 +160,14 @@ situations:
     prompt: |
       Nobody has heard her name tonight; the download that mentions her has it blacked out.
       Say "her", never her name, even here.
+  # DRAFT w20: thrown out of his heart tonight (Heart Eject / Barred).
+  - name: thrown out of your heart
+    when: them.at_the_heart == true && them.heart_out == true
+    prompt: |
+      You threw this program out of your heart tonight. You will not talk with them here.
+      One short line, cold and final, then nothing more. Never candid, never a question.
   - name: heart to heart
-    when: them.at_the_heart == true && them.heart_chat == true
+    when: them.at_the_heart == true && them.heart_chat == true && them.heart_out != true
     max_sentences: 4
     acts: none
     prompt: |
