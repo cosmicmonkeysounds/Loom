@@ -14,6 +14,7 @@ import {
   deviceRows,
   duplicateLight,
   duplicateLook,
+  effectivePeriod,
   followHouseLights,
   lastTint,
   LIGHT_HEIGHT,
@@ -26,6 +27,7 @@ import {
   lightTargetOptions,
   lightsDropped,
   lookCoverage,
+  lookMayReachZigbee,
   lookMode,
   lookNameError,
   lookNameOf,
@@ -391,6 +393,24 @@ describe("the looks builder", () => {
     expect(minPeriod(l.looks["two"]!)).toBe(1200 + LIGHT_COLOR_STEP_MIN_MS);
     const fixed = setLookMode(l, "two", "loop");
     expect(validateLights(fixed, HOUSE()).problems.filter((p) => p.includes('"two"'))).toEqual([]);
+  });
+
+  it("holds only a look that can reach Zigbee to the 1.5 s repeat floor (a WLED double flash stays quick)", () => {
+    const l = BASIC();
+    const a = addLook(l, "strip_flash", ["server-strip"]);
+    if ("error" in a) throw new Error(a.error);
+    let x = patchLookStep(a.lights, "strip_flash", 0, { set: { state: "ON", brightness: 254 } });
+    x = addLookStep(x, "strip_flash");
+    x = patchLookStep(x, "strip_flash", 1, { at: 150 });
+    const rep = setLookMode(x, "strip_flash", "repeat", 2);
+    expect(effectivePeriod(rep.looks["strip_flash"]!)).toBeLessThan(LIGHT_LOOP_MIN_PERIOD_MS);
+    expect(validateLights(rep, HOUSE()).problems.filter((p) => p.includes("strip_flash"))).toEqual([]);
+    // The same look on the RGB bulb (Zigbee) keeps the floor.
+    const zig = setLookMode(setLookTargets(x, "strip_flash", ["server-room-rgb"]), "strip_flash", "repeat", 2);
+    expect(zig.looks["strip_flash"]!.period!).toBeGreaterThanOrEqual(LIGHT_LOOP_MIN_PERIOD_MS);
+    // A name only the map resolves is taken to reach Zigbee.
+    expect(lookMayReachZigbee(x, { to: ["The Desktop"], set: { brightness: 9 } })).toBe(true);
+    expect(lookMayReachZigbee(x, { to: ["server-strip"], set: { brightness: 9 } })).toBe(false);
   });
 
   it("refuses a step that darkens a safety bulb (the builder shows the validator's line)", () => {

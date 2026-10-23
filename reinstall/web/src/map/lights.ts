@@ -29,6 +29,7 @@ import {
   foldTarget,
   isLightLookName,
   pointInPoly,
+  resolveLightTargets,
   roomAt,
   roomById,
   roomElevation,
@@ -537,7 +538,7 @@ export function patchLookStep(lights: LightsConfig, name: string, i: number, pat
       if (patch.to === null || patch.to.length === 0) delete s.to;
       else s.to = [...new Set(patch.to)];
     }
-    return keepPeriod(canonical(look, steps));
+    return keepPeriod(canonical(look, steps), lights);
   });
 }
 
@@ -553,8 +554,8 @@ export function addLookStep(lights: LightsConfig, name: string): LightsConfig {
     steps.push({ at, set: { brightness: was !== undefined && was >= 128 ? 60 : 254, transition: 0.5 } });
     // A repeating look's period must stay past the new last step.
     const out = canonical(look, steps);
-    if (out.period !== undefined && out.period <= at) out.period = minPeriod(out) ?? at + LIGHT_COLOR_STEP_MIN_MS;
-    return keepPeriod(out);
+    if (out.period !== undefined && out.period <= at) out.period = minPeriod(out, lights) ?? at + LIGHT_COLOR_STEP_MIN_MS;
+    return keepPeriod(out, lights);
   });
 }
 
@@ -563,7 +564,7 @@ export function removeLookStep(lights: LightsConfig, name: string, i: number): L
   return withLook(lights, name, (look) => {
     const steps = stepsOfLook(look);
     if (steps.length <= 1 || i < 0 || i >= steps.length) return look;
-    return keepPeriod(canonical(look, steps.filter((_, j) => j !== i).map((s) => cloneData(s))));
+    return keepPeriod(canonical(look, steps.filter((_, j) => j !== i).map((s) => cloneData(s))), lights);
   });
 }
 
@@ -579,12 +580,14 @@ export function lookMode(look: LightLook): LookMode {
 
 /**
  * The shortest `period` that keeps the Zigbee spacing across the wrap (the
- * repeat's next first step, or the restore), with a loop / repeat on Zigbee
- * also held to `LIGHT_LOOP_MIN_PERIOD_MS` (anything faster reads as
- * flicker). Null for a once-only look (no period needed). Look-wide: the
- * last step and the first, as `validateLights` checks each fixture.
+ * repeat's next first step, or the restore), with a loop / repeat that can
+ * reach a Zigbee light also held to `LIGHT_LOOP_MIN_PERIOD_MS` (anything
+ * faster reads as flicker: `validateLights` warns); a WLED-only look may
+ * repeat faster. Without `lights` every look is taken to reach Zigbee.
+ * Null for a once-only look (no period needed). Look-wide: the last step
+ * and the first, as `validateLights` checks each fixture.
  */
-export function minPeriod(look: LightLook): number | null {
+export function minPeriod(look: LightLook, lights?: LightsConfig): number | null {
   const mode = lookMode(look);
   if (mode === "once") return null;
   const steps = stepsOfLook(look);
@@ -594,7 +597,25 @@ export function minPeriod(look: LightLook): number | null {
   const first = [...steps].sort((a, b) => a.at - b.at)[0]!;
   // Any fixture's first step may be the colour one (`validateLights` checks each fixture's own).
   const gap = steps.some((s) => s.at === first.at && setsColour(s.set)) ? LIGHT_COLOR_STEP_MIN_MS : LIGHT_STEP_MIN_MS;
-  return Math.max(last - first.at + gap, last + 1, LIGHT_LOOP_MIN_PERIOD_MS);
+  return Math.max(last - first.at + gap, last + 1, lights === undefined || lookMayReachZigbee(lights, look) ? LIGHT_LOOP_MIN_PERIOD_MS : 0);
+}
+
+/**
+ * Can a look reach a Zigbee bulb or group? Its targets resolved without the
+ * map (fixtures, zones, a fixture's room); a name only the map resolves (a
+ * LOCATION, a room label) counts as reaching any Zigbee light there is.
+ */
+export function lookMayReachZigbee(lights: LightsConfig, look: LightLook): boolean {
+  const zig = (id: string): boolean => {
+    const k = lightById(lights, id)?.kind;
+    return k === "zigbee" || k === "zigbee-group";
+  };
+  const names = [...(Array.isArray(look.to) ? look.to : []), ...stepsOfLook(look).flatMap((s) => (Array.isArray(s.to) ? s.to : []))];
+  for (const n of new Set(names)) {
+    const hit = resolveLightTargets(lights, null, [n]).fixtures;
+    if (hit.length === 0 ? lights.fixtures.some((f) => zig(f.id)) : hit.some(zig)) return true;
+  }
+  return false;
 }
 
 /** The period the look plays with (its own, else the schema's default). */
@@ -619,7 +640,7 @@ export function setLookMode(lights: LightsConfig, name: string, mode: LookMode, 
     else if (mode === "repeat") out.repeat = Math.max(2, Math.min(LIGHT_MAX_REPEAT, Math.round(repeat)));
     else if (mode === "restore") out.then = "restore";
     else delete out.period;
-    return keepPeriod(out);
+    return keepPeriod(out, lights);
   });
 }
 
@@ -629,8 +650,8 @@ export function setLookMode(lights: LightsConfig, name: string, mode: LookMode, 
  * added or is dropped, so no edit in the builder leaves a period the
  * server refuses.
  */
-function keepPeriod(look: LightLook): LightLook {
-  const min = minPeriod(look);
+function keepPeriod(look: LightLook, lights: LightsConfig): LightLook {
+  const min = minPeriod(look, lights);
   if (min !== null && (look.period === undefined ? effectivePeriod(look) < min : look.period < min)) return { ...look, period: Math.ceil(min / 100) * 100 };
   return look;
 }

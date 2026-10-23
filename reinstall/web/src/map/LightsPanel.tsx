@@ -464,7 +464,7 @@ function LookEditor(p: {
   const { name, look, lights, off, commit } = p;
   const steps = stepsOfLook(look);
   const mode = lookMode(look);
-  const min = minPeriod(look);
+  const min = minPeriod(look, lights);
   const reached = p.reach(look.to);
   return (
     <details className={`look${p.problems.length > 0 ? " bad" : ""}`} open={p.open} onToggle={(e) => p.onToggle((e.currentTarget as HTMLDetailsElement).open)} onMouseEnter={() => p.onHighlight(reached)} onMouseLeave={() => p.onHighlight(null)}>
