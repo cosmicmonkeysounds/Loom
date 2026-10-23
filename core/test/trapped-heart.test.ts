@@ -648,6 +648,18 @@ function toAsk(sim: Sim, id = "g1") {
   expect(heartMenu(sim, id)?.beat).toBe("Heart Layer Four");
 }
 
+describe("The Heart — the ask (wave 20)", () => {
+  it("back from the ask to Three, heart_layer stays 4 (it only ever rises)", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toAsk(sim);
+    expect(v(sim, "g1.heart_layer")).toBe(4);
+    pick(sim, "g1", "Come out with us");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Three");
+    expect(v(sim, "g1.heart_layer")).toBe(4);
+    expect(v(sim, "Night.heart_talker_layer")).toBe(4);
+  });
+});
+
 describe("The Heart — convinced (wave 20)", () => {
   it("before the Y2K hour: not yet, remembered; the clock's call; the short return; both return options", { timeout: SLOW }, () => {
     const sim = atLayerOne();

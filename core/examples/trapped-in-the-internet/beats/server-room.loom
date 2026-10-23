@@ -386,8 +386,10 @@ else if program.heart_proof != true and program.heart_case >= 2:
   Trabolta: Kind words. You have not shown me anything I do not already know.
 else:
   Trabolta: Go on.
-set program.heart_layer = 3
-set Night.heart_talker_layer = 3
+// heart_layer only ever rises: back from the ask (→ Three) it stays 4.
+if program.heart_layer < 3:
+  set program.heart_layer = 3
+set Night.heart_talker_layer = program.heart_layer
 + (if program.codex.what_sandy_says == true and program.sandy_says_from_him != true and program.heart_shown_says != true) ⟦PROOF⟧ Hold up what she says. All forty pages.
   set program.heart_menu = false
   set program.heart_pick = "show_says"
