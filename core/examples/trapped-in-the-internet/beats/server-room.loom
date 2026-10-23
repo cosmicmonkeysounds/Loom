@@ -698,7 +698,9 @@ set program.heart_out = true
 set program.heart_menu = false
 set program.heart_chat = false
 set Night.heart_stage = "scan"
-set Night.heart_look = "heart_eject"
+// The red stutter plays once; the room settles idle (a door shut or a
+// catch-up puts back heart_idle, never the stutter again).
+set Night.heart_look = "heart_idle"
 if Night.alarm_on != true:
   cue heart_eject
 cue room_heart_eject
@@ -714,7 +716,9 @@ Trabolta: This line is closed to you. Tonight, and for as long as I have a tonig
   cast: Trabolta
 set program.heart_chat = false
 set Night.heart_stage = "scan"
-set Night.heart_look = "heart_eject"
+// The red stutter plays once; the room settles idle (a door shut or a
+// catch-up puts back heart_idle, never the stutter again).
+set Night.heart_look = "heart_idle"
 if Night.alarm_on != true:
   cue heart_eject
 cue room_heart_eject

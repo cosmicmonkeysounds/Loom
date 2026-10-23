@@ -509,6 +509,8 @@ describe("The Heart — the talk (wave 20)", () => {
     expect(v(sim, "Night.heart_stage")).toBe("scan");
     expect(heartCues(ej)).toEqual(["heart_eject"]);
     expect(roomCues(ej)).toEqual(["room_heart_eject"]);
+    expect(v(sim, "Night.heart_look")).toBe("heart_idle"); // the stutter never becomes the settled look
+    expect(heartCues([...open(sim), ...shut(sim)]).filter((c) => c === "heart_eject")).toEqual([]);
     expect(hosts(ej)[0]).toContain("⛔ Trabolta threw Calculator out of his heart");
     expect(heartMenu(sim, "g1")).toBeNull();
     // Barred: a re-scan is turned away.
