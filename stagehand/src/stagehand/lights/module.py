@@ -24,7 +24,8 @@ A `then: "restore"` look (D20) gives the light back at `period`: it restarts
 the loop it interrupted on that fixture (a nag over the door loop), else
 re-publishes the fixture's **settled** state — the state the last look that
 is neither looping nor `restore` leaves it in (its commands merged in order,
-taken when it starts). Memory only; never a loop's step, never a restore.
+taken when it starts, the last `transition` kept so the give-back fades —
+0.8 s when it had none). Memory only; never a loop's step, never a restore.
 
 **The catch-up (D21) reads the story, never a cache.** On module start, on
 every MQTT or feed (re)connect, and 1.5 s after a `lifecycle` reset /
@@ -75,6 +76,8 @@ HOUSE_REFRESH_S = 300.0
 DEVICES_DEBOUNCE_S = 2.0
 #: A WLED identify blinks this long, then the fixture's settled state comes back.
 WLED_IDENTIFY_MS = 2000
+#: A restore look gives the settled state back over this many seconds when it carried no `transition` (§4's swells).
+RESTORE_FADE_S = 0.8
 #: The heart stages in which an open door plays the door loop (D21).
 DOOR_STAGES = ("door", "scan", "talk")
 ALARM_LOOK = "heart_alarm"
@@ -362,8 +365,7 @@ class HouseLights:
                 for c in plan.commands:
                     if c.fixture == fid:
                         merged.update(c.set)
-                merged.pop("transition", None)
-                self.settled[fid] = ordered(merged)
+                self.settled[fid] = ordered(merged)  # the last command's `transition` kept: a give-back fades
         run.task = self._spawn(self._run(run))
         self.last_look, self.last_at = name, time.time()
         self.played += 1
@@ -402,7 +404,7 @@ class HouseLights:
             else:
                 state = self.settled.get(fid)
                 if state:
-                    self._send(fid, state)
+                    self._send(fid, {**state, "transition": state.get("transition", RESTORE_FADE_S)})
                 if self.running.get(fid) is run:
                     del self.running[fid]
         run.owned.clear()

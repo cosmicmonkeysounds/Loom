@@ -172,8 +172,22 @@ async def test_a_restore_look_with_no_loop_gives_back_the_settled_state():
     lights.play("heart_warn")  # then restore, default period 1200 + 1000
     await timer.advance(2200)
     last = _on(lights.mqtt.log)[-1]
-    assert last == (2300, {"state": "ON", "brightness": 60, "color": {"hex": "#00E5FF"}})
-    assert lights.settled["server-room-rgb"] == {"state": "ON", "brightness": 60, "color": "#00E5FF"}
+    # The give-back fades with heart_idle's own transition (3 s), never a snap.
+    assert last == (2300, {"state": "ON", "brightness": 60, "color": {"hex": "#00E5FF"}, "transition": 3})
+    assert lights.settled["server-room-rgb"] == {"state": "ON", "brightness": 60, "color": "#00E5FF", "transition": 3}
+
+
+@_async
+async def test_a_give_back_with_no_transition_fades_over_0_8_s():
+    timer = FakeTimer()
+    doc = json.loads(json.dumps(BASIC))
+    del doc["looks"]["heart_idle"]["set"]["transition"]
+    lights = _lights(timer, doc=doc)
+    lights.play("heart_idle")
+    await timer.advance(100)
+    lights.play("heart_warn")
+    await timer.advance(2200)
+    assert _on(lights.mqtt.log)[-1] == (2300, {"state": "ON", "brightness": 60, "color": {"hex": "#00E5FF"}, "transition": 0.8})
 
 
 @_async
