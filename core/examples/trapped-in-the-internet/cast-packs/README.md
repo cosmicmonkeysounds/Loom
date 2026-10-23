@@ -90,7 +90,8 @@ addresses, codes, where things are kept).
   the code with the winning majority (and, since wave 11, the two ways below).
   Opening the door is a clean entry, whoever does it: the door never alarms.
   Only the server-room terminal on the wall is his heart: Trabolta speaks
-  candidly there, and from the Y2K hour a program can talk him down (🕊).
+  candidly there, and from the Y2K hour a program can talk him down (🕊;
+  wave 20b: at any hour, ended by the director's 🕊).
   Only the patch bay alarms, on the **second** wrong combination. CRA
   approves or denies every third transaction (C16), everywhere. The code is
   never written on a card or said on the radio.

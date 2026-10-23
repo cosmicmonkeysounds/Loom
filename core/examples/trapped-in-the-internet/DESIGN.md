@@ -517,7 +517,7 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.server_door / heart_stage / door_override | `"open"` \| `"closed"` / `"sealed"` … `"done"` / bool | wave 20 (§3 E2w): the door as the story knows it; the heart's stage; the story follows the 🚪 buttons, not the sensor. On the screen state's `night` | |
 | Night.heart_look / heart_present / heart_talks / heart_talker (+ `_suspicion`, `_layer`) | string `"none"` / bool / number / string | wave 20: the settled light in his heart (the latch's end and the lights catch-up put it back); the holder is at the terminal; talks started; the talker's mirrors for the `watch:` glance | |
 | Night.door_nag_at / door_nags / door_again_at / door_again_said | number / number / number / bool | wave 20: the nag watcher (15 s, then every 20 s) and the bounce limit (*Door Again* ≤ once per 20 s, *Good.* only after one) | |
-| Night.heart_autoend / heart_end_at / heart_resume_at / heart_gen / her | bool true / number / number / number / `"her"` \| `"Sandy"` | wave 20: a talk-down ends the night by itself 25 s later; the countdown; the sealed-present scene's 6 s; 🔄's forgiveness counter; her name in heart lines (the story's unredaction) | |
+| Night.heart_autoend / heart_end_at / heart_resume_at / heart_gen / her | bool false / number / number / number / `"her"` \| `"Sandy"` | wave 20: when on, a talk-down ends the night by itself 25 s later (wave 20b: off by default, the director's 🕊 ends it); the countdown; the sealed-present scene's 6 s; 🔄's forgiveness counter; her name in heart lines (the story's unredaction) | |
 | Night.ended / Night.ending | bool false / string `"none"` | final ending reached; `disabled`, `destroyed`, `song`, `song_pickup`, `rave`, `help`, `banished`, `hand_jive` | |
 | Night.bobber | string `"none"` | who brought up the Bag of Truth | |
 | Night.poll | string `"none"` | which poll card is current (`"advice"`) | |
@@ -878,10 +878,10 @@ reads as a cue sheet):**
 | server_door_opened | `🚪 Server room door opened (sensor fallback)` (`sequence: false`; wave 20: the door sensor posts `door_sensor_opened` itself, a press hands the door to the 🚪 buttons) |
 | server_door_closed | `🚪 Server room door closed (sensor fallback)` (wave 20) |
 | server_door_trust | `🚪 Trust the door sensor again` (wave 20; `while: Night.door_override == true`) |
-| heart_autoend | `🕊 Heart: end the night on his own (toggle)` (wave 20; on by default) |
+| heart_autoend | `🕊 Heart: end the night on his own (toggle)` (wave 20; off by default since wave 20b) |
 | reset_server_room | `🔄 Server room: reset the patch-bay alarm` (wave 7; replaced `rearm_server_room`; `server_unlock` is gone) |
 | chess_won | `♟ They beat the King: the door code (fallback)` (`sequence: false`, asks who; wave 11: the Server Door terminal posts it itself, any time before 📄) |
-| talked_down | `🕊 Trabolta stands down (talked down)` (`sequence: false`; wave 7; wave 20: after Heart Shutdown, fired by itself 25 s later while 🕊 Heart autoend is on) |
+| talked_down | `🕊 Trabolta stands down (talked down)` (wave 7; wave 20: after Heart Shutdown, fired by itself 25 s later while 🕊 Heart autoend is on; wave 20b: in sequence, `urgent: true`, live while a stand-down waits, so NEXT points at it) |
 | force_majority_stay | `🗳 Force the majority: Unlimited Power (stay)` |
 | force_majority_leave | `🗳 Force the majority: The Way Out (leave)` |
 | patch_combo_a | `🔌 Patch: Combo A, disable Trabolta (hardware fallback)` |
@@ -2504,7 +2504,8 @@ now reads *FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. O
 AT THE TERMINAL BY THIS DOOR.* The King has **one shared health bar for the night** in both
 reinstallation games (E2b). **The Heart plays on the first opening once Trabolta is awake**,
 however the door was unlocked (D1 below); like the Master in Fallout 1, reaching him is not
-stopping him: before the Y2K hour nothing in the room ends the night, and Trabolta says so.
+stopping him: before the Y2K hour the cables answer nobody, and Trabolta says so (wave 20b: the
+heart's talk can stand him down at any hour; the director's 🕊 ends the night).
 Decisions taken for the user (OCT31.md §5 *Wave 11 status*, veto any): **D1** The Heart needs
 `Trabolta.awake` (he stays strictly offline before `introduce_trabolta`); before it, inside a 🔧
 crew window and after 📄 an opening only tells `# hosts`; the patch bay, `stand_down` and 🕊 stay
@@ -2557,17 +2558,18 @@ the menu pattern, arithmetic) and §4 (looks); every line is `// DRAFT w20` (`SI
   (opens at a proof + one more point, `heart_case ≥ 4`; *She was never going to answer* convinces
   him). Every option sets `program.heart_pick` and goes to **Heart Pick**, which applies it only at
   his heart with the door shut (*Not out there* off the terminal, D14). Suspicion: a warning at 50,
-  thrown out for the night at 80 (**Heart Eject**, `heart_out`; not a mark, D12; 🔄 forgives).
+  thrown out for the night at 80 (**Heart Eject**, `heart_out`; wave 20b Q2: and marked for
+  reinstallation through **Heart Mark**, never twice, `# hosts` says why; 🔄 forgives).
 - **The heart to heart (§7, D23–D28).** ⟦SPEAK FREELY⟧ on every layer sets `program.heart_chat`
-  and docks only ⟦BACK⟧; *not yet* and Leave leave it on. The keyboard's lines go to his worker
+  and docks only ⟦BACK⟧; Leave leaves it on. The keyboard's lines go to his worker
   with the program's **dossier** (D26) and the persona's *heart to heart* block (`max_sentences:
   4`, `acts: none`). An eject ends it.
-- **Endings.** Before 🕚 a convinced program hears **Heart Not Yet** and is called back at 🕚
-  (*Heart Call* in their thread; already at his heart, *Heart Return* there). In the Y2K hour
-  **Heart Shutdown** writes `Night.stand_down_by`, sets `done`, plays `room_heart_shutdown` +
-  `heart_shutdown`, and with `Night.heart_autoend` (default on) `talked_down` fires 25 s later
-  (the autoend watcher); off, `# hosts` asks for 🕊 and 🔄 can reopen the heart. Combo A sets `done`
-  and fades the bulb the same way.
+- **Endings.** At any hour (wave 20b Q4; *Heart Not Yet* and *Heart Call* are gone) **Heart
+  Shutdown** writes `Night.stand_down_by`, sets `done`, plays `room_heart_shutdown` +
+  `heart_shutdown`; `# hosts` asks for 🕊 and NEXT points at it (wave 20b Q3: `Night.heart_autoend`
+  off by default), and 🔄 can reopen the heart until someone presses it (a convinced program then
+  gets the short **Heart Return**). With autoend turned on `talked_down` fires 25 s later (the
+  autoend watcher). Combo A sets `done` and fades the bulb the same way.
 - **Lights (D10, D11).** The RGB bulb is `lights.json`'s (`server-room-rgb`, safety, ≥ 40 / 254);
   every look is `set Night.heart_look` + `cue heart_x` only while `Night.alarm_on != true`;
   `heart_alarm` under the patch-bay alarm, the latch's end puts back the door loop / the settled
