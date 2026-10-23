@@ -3,7 +3,8 @@
 // and wire-loop contact.
 //
 // Drives a REHEARSAL event (never the live show) with the mod code. The door
-// itself is the real contact through stagehand; see K-27.md. The keypad lock
+// itself is the LED + LDR sensor on the Grand Central M4, bridged by the
+// server-room terminal (door=serial); see K-27.md. The keypad lock
 // is standalone (its code is set by hand): this helper never touches it.
 //
 //   node --experimental-strip-types scripts/accept/K-27.ts <cmd> --base https://app.mapsandducks.com --code <MOD CODE>
@@ -15,8 +16,13 @@
 //   chess [--who N]      fire chess_won for that guest / persona (what ♟ They beat
 //                        the machine does) → The Door Code in their Codex. With no
 //                        --who it has no subject: # hosts says to use ♟ on a card.
-//   door                 fire server_door_opened (the director's 🚪 fallback; the
-//                        real path is the contact through stagehand)
+//   door                 fire door_sensor_opened {level: 0}: what the server-room
+//                        terminal's door bridge posts when the M4 sees the door
+//                        open (wave 20; the story ignores it while a 🚪 press
+//                        holds Night.door_override)
+//   shut                 fire door_sensor_closed {level: 4095} (the bridge's close)
+//   trust                fire server_door_trust (🚪 Trust the door sensor: clears
+//                        the override, so the story follows the sensor again)
 //   wrong                fire patch_rejected (a wrong combo, if the bay isn't wired)
 //   reset                fire reset_server_room (clears wrong_combos + both latches)
 //   stay | leave         fire force_majority_stay / _leave (N-06)
@@ -70,12 +76,17 @@ console.log(`event ${String(hit["eventId"])} · ${String(hit["title"])}`);
 
 const SIGNALS: Record<string, string> = {
   chess: "chess_won",
-  door: "server_door_opened",
+  door: "door_sensor_opened",
+  shut: "door_sensor_closed",
+  trust: "server_door_trust",
   wrong: "patch_rejected",
   reset: "reset_server_room",
   stay: "force_majority_stay",
   leave: "force_majority_leave",
 };
+
+/** What the door bridge sends as `level` (contract §2.1): the M4's reading. */
+const SENSOR_LEVEL: Record<string, number> = { door: 0, shut: 4095 };
 
 /** The server-room terminal's LOCATION (its `room=`), as the show names it. */
 const HEART_ROOM = "The Server Room";
@@ -120,6 +131,9 @@ async function door(): Promise<string> {
   });
   return [
     `step ${w.get("Night.step")}`,
+    `server_door ${w.get("Night.server_door")}`,
+    `door_override ${w.get("Night.door_override")}`,
+    `heart_stage ${w.get("Night.heart_stage")}`,
     `heart_opened ${w.get("Night.heart_opened")}`,
     `heart_holder ${w.get("Night.heart_holder")}`,
     `at_the_heart ${atHeart.join(", ") || "nobody"}`,
@@ -149,7 +163,12 @@ if (cmd === "setup") {
 } else if (cmd !== undefined && cmd in SIGNALS) {
   const who = cmd === "chess" ? maybe("who") : undefined;
   const subject = who === undefined ? undefined : await guestId(who);
-  const r = await post(`${ev}/api/mod/signal`, { name: SIGNALS[cmd], ...(subject ? { subject } : {}) }, token);
+  const level = SENSOR_LEVEL[cmd];
+  const r = await post(
+    `${ev}/api/mod/signal`,
+    { name: SIGNALS[cmd], ...(subject ? { subject } : {}), ...(level === undefined ? {} : { args: { level }, label: "K-27 door sensor" }) },
+    token,
+  );
   console.log(`  ${r["refused"] === true ? "refused (# hosts says why)" : "fired"} ${SIGNALS[cmd]}${who ? ` for ${who}` : ""}`);
   console.log(`  ${await door()}`);
 } else if (cmd === "room") {
@@ -176,5 +195,5 @@ if (cmd === "setup") {
     await new Promise((r) => setTimeout(r, 2000));
   }
 } else {
-  console.log("usage: K-27.ts setup|persona|chess|door|wrong|reset|stay|leave|room|visit|watch --base <url> --code <mod code> [--who <guest>] [--name <persona>] [--room <location>] [--close]");
+  console.log("usage: K-27.ts setup|persona|chess|door|shut|trust|wrong|reset|stay|leave|room|visit|watch --base <url> --code <mod code> [--who <guest>] [--name <persona>] [--room <location>] [--close]");
 }
