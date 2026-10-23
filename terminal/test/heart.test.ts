@@ -104,3 +104,22 @@ describe("the line's end and the door overlay", () => {
     expect(doorOverlayOn(null, "talk")).toBe(false);
   });
 });
+
+import { DYING_DRAIN_MS, EXPRESSIONS, dyingDrain } from "../src/face/mood.ts";
+
+describe("the dying face (the heart's shutdown)", () => {
+  it("droops, lids heavy, the mouth flat, eyes down and cold", () => {
+    const d = EXPRESSIONS.dying;
+    expect(d.browLift).toBeLessThan(0);
+    expect(d.eyeOpen).toBeLessThan(EXPRESSIONS.neutral.eyeOpen);
+    expect(d.mouthCurve).toBe(0);
+    expect(d.gazeBias.y).toBeGreaterThan(0.5);
+    expect(d.tint).toBe(-1);
+  });
+  it("drains to grey over its time", () => {
+    expect(dyingDrain(0)).toBe(0);
+    expect(dyingDrain(DYING_DRAIN_MS / 2)).toBeCloseTo(0.5);
+    expect(dyingDrain(25_000, 25_000)).toBe(1);
+    expect(dyingDrain(99_000, 25_000)).toBe(1);
+  });
+});

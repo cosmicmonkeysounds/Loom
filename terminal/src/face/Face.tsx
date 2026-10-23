@@ -10,7 +10,7 @@
 //! and not at all while `paused` (fully covered: the idle show, attract).
 
 import { useEffect, useRef } from "react";
-import { EXPRESSIONS, blend, mouthFromLevel, type Expression, type Mood } from "./mood.ts";
+import { DYING_DRAIN_MS, EXPRESSIONS, blend, dyingDrain, mouthFromLevel, type Expression, type Mood } from "./mood.ts";
 
 export interface FaceHandle {
   /** Feed the current loudness (0..1) — called every frame while speaking. */
@@ -45,13 +45,15 @@ export function Face({ mood, speaking, handle, paused = false }: { mood: Mood; s
   target.current = EXPRESSIONS[mood];
   const moodRef = useRef(mood);
   moodRef.current = mood;
-  const flashRef = useRef<{ mood: Mood; until: number } | null>(null);
+  const flashRef = useRef<{ mood: Mood; until: number; ms: number } | null>(null);
 
   useEffect(() => {
     handle.current = {
       level: (v) => (level.current = v),
       flash: (m, ms) => {
-        flashRef.current = { mood: m, until: performance.now() + Math.max(0, Math.min(FLASH_MAX_MS, ms)) };
+        // `dying` (the shutdown scene, 25 s) may hold past the usual cap: it is the last thing he does.
+        const hold = Math.max(0, Math.min(m === "dying" ? 60_000 : FLASH_MAX_MS, ms));
+        flashRef.current = { mood: m, until: performance.now() + hold, ms: hold };
       },
     };
     return () => {
@@ -88,6 +90,8 @@ export function Face({ mood, speaking, handle, paused = false }: { mood: Mood; s
     let nextBlink = performance.now() + 1500;
     let blinkPhase: "none" | "closing" | "opening" = "none";
     let glitchUntil = 0;
+    let dyingSince: number | null = null;
+    let drainWritten = -1;
     let lastMood = moodRef.current;
     let raf = 0;
     let drawn = 0;
@@ -142,17 +146,27 @@ export function Face({ mood, speaking, handle, paused = false }: { mood: Mood; s
       glintR.setAttribute("cx", String(px - pr * 0.35));
       glintR.setAttribute("cy", String(py - pr * 0.35));
 
-      // Blinks: every 2–6 s (sooner when attentive), ~120 ms down, ~160 ms up.
+      // Blinks: every 2–6 s (sooner when attentive), ~120 ms down, ~160 ms up;
+      // dying, a slow heavy blink every 3–5 s.
+      const dying = want === "dying";
       if (blinkPhase === "none" && now > nextBlink) blinkPhase = "closing";
       if (blinkPhase === "closing") {
-        blink = Math.min(1, blink + 0.34 * f);
+        blink = Math.min(1, blink + (dying ? 0.06 : 0.34) * f);
         if (blink >= 1) blinkPhase = "opening";
       } else if (blinkPhase === "opening") {
-        blink = Math.max(0, blink - 0.22 * f);
+        blink = Math.max(0, blink - (dying ? 0.03 : 0.22) * f);
         if (blink <= 0) {
           blinkPhase = "none";
-          nextBlink = now + 2000 + Math.random() * 4000;
+          nextBlink = now + (dying ? 3000 + Math.random() * 2000 : 2000 + Math.random() * 4000);
         }
+      }
+      // Dying: the colour drains to grey over the flash's length (else 20 s).
+      if (dying) dyingSince ??= now;
+      else dyingSince = null;
+      const drain = dyingSince === null ? 0 : dyingDrain(now - dyingSince, flashRef.current?.mood === "dying" ? flashRef.current.ms : DYING_DRAIN_MS);
+      if (Math.abs(drain - drainWritten) >= 0.01) {
+        root.style.filter = drain > 0 ? `grayscale(${drain.toFixed(2)}) brightness(${(1 - drain * 0.55).toFixed(2)})` : "";
+        drainWritten = drain;
       }
       // Lid height: how closed the eye is from mood + blink.
       const closed = Math.max(1 - cur.eyeOpen, blink);
