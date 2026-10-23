@@ -376,6 +376,55 @@ static void test_a_saturated_ldr_is_a_blocking_fault_after_2_s() {
   CHECK(s.out.count("ldr_saturated") == 0 && !s.e.open());
 }
 
+// A door line the bridge would post as door_sensor_opened.
+static int openWithoutFault(const Lines& out) {
+  int n = 0;
+  for (auto& l : out.all)
+    n += l.find("\"t\":\"door\"") != std::string::npos && l.find("\"open\":true") != std::string::npos &&
+         l.find("\"fault\":null") != std::string::npos;
+  return n;
+}
+
+static void storeMode(dl::Mode m) {
+  erase();
+  dl::Settings s;
+  s.mode = m;
+  store::FlashStore().save(s);
+}
+
+static void test_a_flood_of_light_never_reads_open_without_its_fault() {
+  storeMode(dl::kMod);
+  Rig boot;  // flooded from power-on: silent until the fault latches
+  boot.d.ambient = 1e7;
+  boot.begin();
+  boot.run(5000);
+  CHECK(openWithoutFault(boot.out) == 0);
+  CHECK(boot.out.count("\"open\":true,") >= 1 && boot.out.lastOf("door").find("\"fault\":\"ldr_saturated\"") != std::string::npos);
+  boot.out.clear();  // the terminal reconnects and re-sends its settings
+  boot.say("set mode mod");
+  boot.say("set settle 150");
+  boot.run(5000);
+  CHECK(openWithoutFault(boot.out) == 0 && boot.out.count("ldr_saturated") >= 1);
+  boot.d.ambient = 1.0;  // the lamp goes: the shut door reads shut, never open first
+  boot.out.clear();
+  boot.run(5000);
+  CHECK(openWithoutFault(boot.out) == 0 && !boot.e.open());
+  CHECK(boot.out.lastOf("door").find("\"open\":false") != std::string::npos);
+
+  Rig flash;  // the room's RGB bulb flashes into the shroud for 1.5 s
+  flash.begin();
+  flash.run(1000);
+  CHECK(!flash.e.open());
+  flash.out.clear();
+  flash.d.forced = 4095;
+  flash.run(1500);
+  flash.d.forced = -1;
+  flash.run(3000);
+  CHECK(openWithoutFault(flash.out) == 0 && flash.out.count("\"open\":true") == 0 && !flash.e.open());
+  CHECK(flash.out.count("\"t\":\"door\"") >= 4);  // the periodic line kept coming, shut
+  erase();
+}
+
 static void test_a_dead_led_is_a_fault_only_with_the_sense_wire() {
   erase();
   Rig r(true);
@@ -700,6 +749,7 @@ int main(int argc, char** argv) {
   test_mod_frames_take_two_settles_and_blink_the_led();
   test_auto_picks_mod_with_the_led_on_d2_else_steady();
   test_a_saturated_ldr_is_a_blocking_fault_after_2_s();
+  test_a_flood_of_light_never_reads_open_without_its_fault();
   test_a_dead_led_is_a_fault_only_with_the_sense_wire();
   test_a_cut_ldr_wire_is_a_warning_that_still_reports_open();
   test_calibration_sets_thresholds_from_both_references();

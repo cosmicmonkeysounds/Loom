@@ -113,7 +113,10 @@ mod|steady|auto` overrides it (kept by `save`).
   `open: true`, and the terminal posts nothing while one holds):
   `ldr_saturated` (`mod` only: `dark > 4000`, a lamp straight into the
   shroud) and `led_dead` (with `LED_SENSE`: the sense reading under 20 while
-  the LED is driven).
+  the LED is driven). While one is building (those 2 s) the last state
+  holds and calibration skips the frames, so a light flash never reads as
+  an opening; after a boot or a `set mode` / `set settle` / `reset` no
+  `door` line goes out until a clean frame decides (or the fault latches).
 - **Warning** `ldr_open` (`lit < 8` and `dark < 8` for 2 s): a cut LDR wire
   reads exactly like an open door in a dark hall, so it is reported (`warn`)
   and never changes `open` or blocks.

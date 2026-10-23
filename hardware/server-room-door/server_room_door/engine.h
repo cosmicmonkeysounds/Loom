@@ -36,7 +36,7 @@ class Engine {
   void tick(uint32_t now) {
     dl::Frame f;
     if (sampler_.tick(pins_, now, f)) frame(f, now);
-    if (seen_ && (uint32_t)(now - lastLine_) >= REPORT_MS) report(now);
+    if (seen_ && ready() && (uint32_t)(now - lastLine_) >= REPORT_MS) report(now);
   }
 
   void command(const char* raw, bool tooLong, uint32_t now) {
@@ -150,18 +150,29 @@ class Engine {
     seen_ = false;
   }
 
+  // The door is known: the classifier has decided, or a fault forces open.
+  bool ready() const { return cls_.known || health_.fault() != nullptr; }
+
   void frame(const dl::Frame& f, uint32_t now) {
     last_ = f;
     health_.update(f, mode_, now);
-    cls_.update(f.level, s_, now);
+    // Under a fault the levels mean nothing: relearn from the first clean
+    // frame. While one is building, hold: neither the classifier nor a
+    // calibration sees those frames, and after a restart nothing is
+    // reported until a clean frame decides (or the fault latches), so a
+    // light flash never reads {"open":true,"fault":null}.
+    bool hold = health_.rising();
+    if (health_.fault()) cls_.reset();
+    else if (!hold) cls_.update(f.level, s_, now);
     uint16_t mean;
     if (avg_.running && health_.fault()) {
       // A fault mid-average: its frames would poison the reference.
       avg_.running = false;
       err("sensor fault", calCmd_);
-    } else if (avg_.feed(f.level, now, mean)) {
+    } else if (!hold && avg_.feed(f.level, now, mean)) {
       calibrated(mean);
     }
+    if (!ready()) return;
     bool changed = !seen_ || open() != sentOpen_ || health_.fault() != sentFault_ || health_.warn() != sentWarn_;
     seen_ = true;
     if (changed) report(now);

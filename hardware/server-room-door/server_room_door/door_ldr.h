@@ -247,6 +247,8 @@ struct Latch {
     pending = false;
     return true;
   }
+  // Coming on, not yet latched.
+  bool rising() const { return pending && !on; }
 };
 
 constexpr const char* kLdrSaturated = "ldr_saturated";
@@ -268,6 +270,10 @@ struct Health {
     changed |= ldrOpen.update(f.lit < 8 && f.dark < 8, now);
     return changed;
   }
+  // A blocking fault is building: its frames say nothing true about the
+  // door (a flood of light reads level ≈ 0, an open door), so the engine
+  // holds the last state until it latches or clears.
+  bool rising() const { return saturated.rising() || ledDead.rising(); }
   // Blocking: forces open, and the terminal posts nothing while it holds.
   const char* fault() const { return saturated.on ? kLdrSaturated : ledDead.on ? kLedDead : nullptr; }
   // Reported only: a cut LDR wire reads the same as an open door in a dark
