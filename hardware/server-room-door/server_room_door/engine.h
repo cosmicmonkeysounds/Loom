@@ -140,9 +140,11 @@ class Engine {
   // in `mod` and `steady` mean different things, so the state is relearnt).
   // A calibration in progress is answered, never dropped: the terminal's
   // Calibrate button waits for its `cal` or `err` line.
-  void restart(uint32_t now) {
+  void restart(uint32_t now) { start(s_.mode == dl::kAuto ? dl::probe(pins_, s_.settle) : s_.mode, now); }
+
+  void start(dl::Mode m, uint32_t now) {
     if (avg_.running) err("cal cancelled", calCmd_);
-    mode_ = s_.mode == dl::kAuto ? dl::probe(pins_, s_.settle) : s_.mode;
+    mode_ = m;
     sampler_.begin(mode_, s_.settle, sense_, pins_, now);
     cls_.reset();
     health_.reset();
@@ -162,8 +164,10 @@ class Engine {
     // reported until a clean frame decides (or the fault latches), so a
     // light flash never reads {"open":true,"fault":null}.
     bool hold = health_.rising();
+    bool closed = false;
     if (health_.fault()) cls_.reset();
-    else if (!hold) cls_.update(f.level, s_, now, mode_ == dl::kMod ? 2u * s_.settle : (uint32_t)STEADY_FRAME_MS);
+    else if (!hold)
+      closed = cls_.update(f.level, s_, now, mode_ == dl::kMod ? 2u * s_.settle : (uint32_t)STEADY_FRAME_MS) && !cls_.open;
     uint16_t mean;
     if (avg_.running && health_.fault()) {
       // A fault mid-average: its frames would poison the reference.
@@ -176,6 +180,11 @@ class Engine {
     bool changed = !seen_ || open() != sentOpen_ || health_.fault() != sentFault_ || health_.warn() != sentWarn_;
     seen_ = true;
     if (changed) report(now);
+    // `auto` probed with the door open: the beam was blocked, so an LED on
+    // D2 looked like none and `steady` won. Probe again each time the door
+    // reads shut, and move to `mod` once the LED shows.
+    if (closed && s_.mode == dl::kAuto && mode_ == dl::kSteady && dl::probe(pins_, s_.settle) == dl::kMod)
+      start(dl::kMod, now);
   }
 
   void calibrated(uint16_t ref) {

@@ -358,6 +358,54 @@ static void test_auto_picks_mod_with_the_led_on_d2_else_steady() {
   CHECK(on3v3.out.last().find("\"mode\":\"steady\",\"auto\":true") != std::string::npos);
 }
 
+static void test_auto_booted_with_the_door_open_moves_to_mod_once_it_shuts() {
+  erase();
+  Rig r;  // the LED on D2, the beam blocked at boot: the probe sees nothing
+  r.d.shut = false;
+  r.begin();
+  CHECK(r.e.mode() == dl::kSteady && r.d.pinHigh);
+  r.run(1000);
+  CHECK(r.e.open());
+  r.d.shut = true;  // the door shuts: steady reads it, then the probe sees the LED
+  r.run(2000);
+  CHECK(r.e.mode() == dl::kMod && !r.e.open());
+  r.say("get");
+  CHECK(r.out.last().find("\"mode\":\"mod\",\"auto\":true") != std::string::npos);
+  r.out.clear();
+  r.run(2000);
+  CHECK(r.out.count("\"open\":true") == 0);  // the switch never reads as an opening
+  r.d.shut = false;  // and now room light can't fake shut
+  r.d.ambient = 500.0;
+  r.d.spill = 3.0;
+  r.run(1000);
+  CHECK(r.e.open());
+
+  r.d.ambient = 1.0;  // a terminal reconnect re-sends set mode auto with the door open
+  r.d.spill = 0.0;
+  r.say("set mode auto");
+  CHECK(r.e.mode() == dl::kSteady);
+  r.d.shut = true;
+  r.run(2000);
+  CHECK(r.e.mode() == dl::kMod && !r.e.open());
+
+  Rig wired;  // the LED on 3V3: every probe says steady, the door still reads
+  wired.d.ledOnPin = false;
+  wired.d.shut = false;
+  wired.begin();
+  wired.run(1000);
+  wired.d.shut = true;
+  wired.run(2000);
+  CHECK(wired.e.mode() == dl::kSteady && !wired.e.open());
+
+  Rig fixed;  // `set mode steady` is an override: never re-probed
+  fixed.d.shut = false;
+  fixed.begin();
+  fixed.say("set mode steady");
+  fixed.d.shut = true;
+  fixed.run(2000);
+  CHECK(fixed.e.mode() == dl::kSteady);
+}
+
 // ── Faults and the warning ────────────────────────────────────────────────
 
 static void test_a_saturated_ldr_is_a_blocking_fault_after_2_s() {
@@ -761,6 +809,7 @@ int main(int argc, char** argv) {
   test_room_light_raises_dark_and_shrinks_the_level_in_mod();
   test_mod_frames_take_two_settles_and_blink_the_led();
   test_auto_picks_mod_with_the_led_on_d2_else_steady();
+  test_auto_booted_with_the_door_open_moves_to_mod_once_it_shuts();
   test_a_saturated_ldr_is_a_blocking_fault_after_2_s();
   test_a_flood_of_light_never_reads_open_without_its_fault();
   test_a_dead_led_is_a_fault_only_with_the_sense_wire();

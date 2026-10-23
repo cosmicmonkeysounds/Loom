@@ -90,6 +90,15 @@ difference of 200 or more means the LED hangs off D2 → **`mod`**, else
 **`steady`**. `hello` reports what it chose with `"auto":true`. `set mode
 mod|steady|auto` overrides it (kept by `save`).
 
+**Boot it, and connect the terminal, with the door shut.** With the door
+open the beam is blocked, so an LED on D2 looks like no LED and the probe
+picks `steady` (the LED then held on, `level = lit`, where room light can
+read *shut*). `auto` running as `steady` probes again each time the door
+reads shut and moves to `mod` once it sees the LED, but until then an open
+door in a bright room may read shut. With the LED on 3V3 that re-probe
+costs ≈ 6 × `settle` (0.9 s) on every close: `set mode steady` + `save`
+skips it.
+
 - **`mod`**: LED on, wait `settle`, average 8 reads → `lit`; LED off, wait
   `settle`, average 8 → `dark`; `level = max(0, lit − dark)`. One frame per
   ≈ 2 × `settle` (300 ms at the default 150). A CdS cell is slow (≥ 30 ms
