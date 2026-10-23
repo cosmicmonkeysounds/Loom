@@ -965,11 +965,22 @@ export class Sim {
   /** A live participant answers a pending choice (by index into its shown
    *  options): the menu with id `choice` (wave 20, D18) wherever it sits in
    *  their queue, else (absent / null — an old journal) their oldest. The
-   *  other menus stay queued. An unknown id answers nothing. */
-  choose(person: string, index: number, choice?: number | null): SimEvent[] {
+   *  other menus stay queued. `beat` / `text` (the menu's beat and the
+   *  option's text, journaled beside the id) are its structural key: an id
+   *  is a log index, so a replay over edited text (Push draft, a reload)
+   *  shifts it — then the oldest menu of that beat offering that text at
+   *  `index` is answered instead. Nothing matching answers nothing (a
+   *  diagnostic says so when a key was given). */
+  choose(person: string, index: number, choice?: number | null, beat?: string | null, text?: string | null): SimEvent[] {
     const from = this.log.len();
     const queue = this.pendingChoices.get(person);
-    const at = queue === undefined ? -1 : choice === undefined || choice === null ? (queue.length > 0 ? 0 : -1) : queue.findIndex((q) => q.id === choice);
+    const keyed = (beat !== undefined && beat !== null) || (text !== undefined && text !== null);
+    const fits = (q: PendingChoice): boolean => (beat === undefined || beat === null || q.beat === beat) && (text === undefined || text === null || q.options[index]?.text === text);
+    let at = queue === undefined ? -1 : choice === undefined || choice === null ? (queue.length > 0 ? 0 : -1) : queue.findIndex((q) => q.id === choice && fits(q));
+    if (queue !== undefined && at < 0 && keyed && choice !== undefined && choice !== null) {
+      at = queue.findIndex(fits);
+      if (at < 0) this.record({ type: "diagnostic", message: `choose: no pending menu for ${person} matches id ${choice} (${beat ?? "?"} / ${text ?? "?"})` });
+    }
     if (queue !== undefined && at >= 0) {
       const pc = queue[at]!;
       const opt = pc.options[index];

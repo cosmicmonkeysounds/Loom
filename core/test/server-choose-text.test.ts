@@ -236,6 +236,28 @@ describe("/api/guest/choose", () => {
   });
 });
 
+describe("a replay over edited text (Push draft, a reload)", () => {
+  it("finds an id'd pick by the menu's beat and the option's text when the ids shifted", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-choose-"));
+    dirs.push(d);
+    const rt = runtimeIn(d);
+    const { g, choices } = await twoMenus(rt);
+    await post(rt, "/api/guest/choose", { token: g.token, index: 1, text: "⟦LEAVE⟧ Goodbye.", choice: choices[1]!.id });
+    rt.dispose();
+    const line = new Store(d).readJournal().find((e) => e.m === "choose");
+    expect(line?.a).toEqual([g.id, 1, choices[1]!.id, "Heart Talk", "⟦LEAVE⟧ Goodbye."]);
+    // One more line before the menus: every log index (every menu id) moves.
+    const store = new Store(d);
+    const meta = store.loadMeta()!;
+    store.saveMeta({ ...meta, scenarioSource: SOURCE.replace("Narrator: The gate.", "Narrator: The gate.\nNarrator: It hums.") });
+    const again = runtimeIn(d);
+    expect(again.restore()).not.toBeNull();
+    expect(picked(again, g.id)).toBe("bye");
+    expect(again.liveSim!.pendingChoicesFor(g.id).map((c) => c.beat)).toEqual(["Tablet Video"]);
+    again.dispose();
+  });
+});
+
 describe("the channel a menu docks under", () => {
   it("decisionChannel is the oldest menu's, not the newest prompt's", async () => {
     const rt = freshRuntime();

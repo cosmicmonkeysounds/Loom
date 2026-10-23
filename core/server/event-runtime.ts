@@ -2643,14 +2643,16 @@ export class EventRuntime {
    * oldest), and `text` is the option the client showed at `index` — a click
    * racing a new menu is refused (409 `moved`), never misapplied, and an
    * index the named menu doesn't offer is refused too, never journaled as a
-   * no-op pick. The menu id rides the journal line only when given, so an
-   * old client's line (and an old journal) replays as before.
+   * no-op pick. The menu id (with its beat and the option's text) rides
+   * the journal line only when given, so an old client's line (and an old
+   * journal) replays as before.
    */
   private chooseFor(person: string, body: Record<string, unknown>, res: ServerResponse): void {
     const idx = Number(body["index"] ?? -1);
     const text = typeof body["text"] === "string" ? body["text"] : undefined;
     const raw = body["choice"];
     const choice = raw === undefined || raw === null ? undefined : Number(raw);
+    let key: [string, string] | null = null;
     if (text !== undefined || choice !== undefined) {
       const menus = this.reqSim().pendingChoicesFor(person);
       const menu = choice === undefined ? menus[0] : menus.find((m) => m.id === choice);
@@ -2662,8 +2664,11 @@ export class EventRuntime {
         sendJson(res, 409, { error: "moved", options: menu.options });
         return;
       }
+      key = [menu.beat, menu.options[idx]!];
     }
-    this.fanout(choice === undefined ? this.commit("choose", person, idx) : this.commit("choose", person, idx, choice));
+    // The menu's beat + the option's text ride beside its id: the id is a
+    // log index, so a replay over edited text finds the menu by them.
+    this.fanout(choice === undefined ? this.commit("choose", person, idx) : this.commit("choose", person, idx, choice, ...(key ?? [])));
     sendJson(res, 200, { ok: true });
   }
 
