@@ -2,7 +2,7 @@
 title: The house map — drawing the house from a survey
 section: Live Shows
 order: 39
-keywords: house map, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop
+keywords: house map, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop, light, lights, bulb, lights.json, Lights tab, Zigbee, Zigbee2MQTT, Z2M, pair, pairing, permit join, device, identify, colour, look, looks, cue, safety light, WLED, zone
 ---
 
 The reinstallation games and the wall terminals share one **house map**
@@ -67,9 +67,17 @@ out is plenty; 5 cm is close enough.
   it has none) and a dashed ring that grows with its gain. Drag it, turn
   it with the handle or **R** / **⇧R**, nudge it with the arrows, **⌘D**
   copies it, **Delete** removes it. See *The house speakers* below.
+- **💡 Light** — click where a house light hangs (or **+ Light here** on a
+  selected room). It is drawn as a bulb tinted with the colour you last
+  tested it in, a dashed green ring when it is a safety light, and its
+  Zigbee2MQTT device under it (a red **⚠ no device** until you pick one).
+  Drag it, nudge it with the arrows, **⌘D** copies it (without the
+  device: one bulb is one device), **Delete** removes it. See *The house
+  lights* below.
 
-Doors, wall terminals and speakers follow a room you move or resize
-(deleting a room deletes its speakers; the confirm says how many). Everything
+Doors, wall terminals, speakers and lights follow a room you move or
+resize (deleting a room deletes its speakers and lights; the confirm says
+how many). Everything
 snaps to the **snap** step, and room edges pull onto their neighbours'.
 The wheel zooms; drag empty ground (or hold Space) to pan. **⌘Z** /
 **⇧⌘Z** undo and redo any edit; **New blank house** starts over from one
@@ -180,6 +188,82 @@ placeholders still there. **■ Stop house sounds** on Run (or a host's
 phone) fades every story sound at once; see [Run mode](43-run-mode.md).
 Setting it up: `scripts/house-mac/audio.md`, `docs/trapped/room-audio.md`
 §11–§12 and the `audio` module in `stagehand/README.md`.
+
+## The house lights
+
+The lights the story drives live in their own project file,
+**`lights.json`**, beside `audio.json` — never in the map, so placing a
+bulb mid-show never moves the map's version, and the tent and the shed
+share them. The house Mac's **lights module** (stagehand's `lights` job)
+plays them over Zigbee2MQTT (and WLED): a story `cue heart_wake` plays the
+look named `heart_wake`.
+
+**Getting a bulb working on site** (the **💡 Lights** tab's first section
+ticks these off as you go):
+
+1. Check the tab's badge says **💡 module online**. If it says *no lights
+   module yet* or *last seen …*, start it on the house Mac (`stagehand
+   launchd install --job lights`, then `stagehand check --only lights`):
+   pairing and tests go through it.
+2. **📡 Pair new device** opens Zigbee joining for two minutes (the
+   countdown shows; **Stop pairing** closes it). Reset the bulb — most
+   switch off and on 5–6 times, a second each — and within a minute it
+   appears under **Devices** marked **★ new**. (You can rename it in the
+   Zigbee2MQTT frontend first; the list follows the new name.)
+3. Tick **Edit**, then **Place it** on the ★ new row and click where it
+   hangs — or place a 💡 Light and pick the device in the inspector. A new
+   light hangs **2.1 m above its floor** in the house frame (the basement
+   floor is at −2.7, so a basement ceiling bulb is at y −0.6); the
+   inspector shows the floor's height band and a button to put it back.
+4. In the inspector: its **device** (the list puts the bulbs nobody has
+   placed first; *type a name…* for one the module hasn't reported, or a
+   WLED topic like `wled/server`, which makes it a WLED strip), its
+   **kind**, what it **can do** (colour, white temperature, dim — filled
+   in from the device), **safety light** for any light people need to see
+   by (never off, never below its floor: 40 of 254 at least), and its
+   zones.
+5. **💾 Save**, then **💡 Identify** (the bulb pulses) and the colour
+   swatches (red, amber, white, cyan, blue, violet, Dim). A test needs the
+   light saved with that device: the module only knows saved lights. If
+   the test says the light *would change nothing*, its caps can't do that
+   colour — fix **can do**, or try another swatch.
+
+**Looks.** The **Looks** section lists every look; the story's `cue`
+names that have no look yet appear as **+ name** buttons, and a look no
+cue plays says so. Open a look to set:
+
+- **plays on** — lights, zones, rooms or the story's LOCATIONs (`The
+  Server Room` reaches every light in a room that is that LOCATION);
+- **steps** — each step at a time in ms from the start: on / off,
+  brightness (0–254), a colour or a white temperature (mireds), an
+  effect, a fade in seconds. Zigbee drops commands sent too fast, so a
+  step is at least **150 ms** after the one before on the same light,
+  **400 ms** when it changes the colour; a step too early turns red and
+  says how early it may come. **+ Step** adds one far enough along, a
+  swell back the other way;
+- **ends** — *once*, *a few times*, *loop until the next look* or *once,
+  then give the light back* (the light returns to what it showed before:
+  a running loop restarts). A loop's or repeat's **period** must leave the
+  same gap between the last step and the first again (and on Zigbee at
+  least 1.5 s, or it reads as flicker); choosing the mode sets a safe
+  period for you, and a period typed too short says the least it can be.
+
+Each look shows the checker's problems inline; **▶ Test look** plays the
+saved look now. The **boot look** plays when the module starts and after a
+story reset. A look may never turn a safety light off or below its floor
+(the save is refused), and its name is the story's cue name (lower-case
+letters, digits and `_`; never a `screens_` / `terminals_` / `tv_` /
+`tablet_` / `room_` cue, which are the screens').
+
+**Saving.** 💾 saves the map, then the speakers, then the lights, each
+when it fits the map the server holds (a light standing in a room only
+your draft has saves after the map). Another director's save in between
+answers *changed since you loaded them* and offers a reload; a save
+elsewhere while you hold no light edits just arrives. **Save to project**
+(on the tab, and on the toolbar's project bar after the map) writes
+`lights.json` into the project for the next launch and every co-writer;
+**Download JSON** gives you the file. Every lights problem is in the
+problem list with a 💡: click one to select the light or open the tab.
 
 ## Tent or shed, and keeping the map
 
