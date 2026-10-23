@@ -296,6 +296,26 @@ describe("buildDossier: the never-list", () => {
     for (const bad of ["Locked Drawer", "HUNT ANSWER", "Pickles", "RIBBON", "hollow oak", "Bo whispers", "director typing", "Secret Gift"]) expect(json).not.toContain(bad);
   });
 
+  it("never names a quest the role keeps secret (a `quest.<slug>` slot, or `quest` whole): not in quests, not as a moment", () => {
+    const quests = [
+      { id: "orientation", title: "Orientation", status: "done" },
+      { id: "The Cold Door", title: "The Cold Door", status: "done" },
+      { id: "excel_mission", title: "A Spreadsheet's Errand", status: "failed" },
+    ];
+    const log: SimEvent[] = [
+      { type: "quest", person: "g1", quest: "orientation", action: "complete", text: null },
+      { type: "quest", person: "g1", quest: "The Cold Door", action: "complete", text: null },
+      { type: "quest", person: "g1", quest: "excel_mission", action: "fail", text: null },
+    ];
+    const slots = buildDossier(input({ quests, log, secretSlots: new Set(["quest.the_cold_door", "quest.excel_mission"]) }))!;
+    expect(slots.quests).toEqual([{ title: "Orientation", status: "done" }]);
+    expect(slots.moments).toEqual(["completed Orientation"]);
+    const whole = buildDossier(input({ quests, log, secretSlots: new Set(["quest"]) }))!;
+    expect(whole.quests).toEqual([]);
+    expect(whole.moments).toEqual([]);
+    for (const d of [slots, whole]) for (const bad of ["Cold Door", "Spreadsheet"]) expect(JSON.stringify(d)).not.toContain(bad);
+  });
+
   it("codeMentions: folded like the redeem box (case, dashes, underscores, spaces); short codes ignored", () => {
     const m = codeMentions(["ribbon1", "x9"]);
     expect(m("it was Ribbon-1!")).toBe(true);
@@ -602,6 +622,11 @@ describe("on the show: the dossier never carries a secret", () => {
     // terminal's pilot sets: one heart at a time) and type at him, answers
     // and codes included — their own typing, which the dossier must never
     // echo. Winamp types the same from outside.
+    // Calculator holds the door code: *The Cold Door*, a ROLE secret quest.
+    const coldDoor = [...sim().model.quests.values()].find((x) => x.title === "The Cold Door")!;
+    expect(coldDoor, "the show's Cold Door quest").toBeDefined();
+    for (const action of ["start", "complete"]) expect((await call(rt, "POST", "/api/mod/quest", { who: calc.id, quest: coldDoor.id, action }, { moderator: true })).status, action).toBe(200);
+    expect(sim().questsFor(calc.id).some((x) => x.def.id === coldDoor.id)).toBe(true);
     const lines = [`Is the answer ${q("H1").answer}? And ${q("H2").answer}?`, `My code was ${q("H1").codex!.code}.`, "I only want to talk."];
     for (const g of [calc, pad]) {
       sim().world.set("Night.heart_holder", vString(g.name));
@@ -638,6 +663,7 @@ describe("on the show: the dossier never carries a secret", () => {
       for (const s of [...(dossier.codex ?? []), ...(dossier.gifts ?? [])]) if (secretTitles.includes(fold(s))) leaks.push(`${at}: a secret codex title`);
       if (text.includes("▒ HUNT ANSWER")) leaks.push(`${at}: a hunt-answer marker`);
       if (/kernel/iu.test(text)) leaks.push(`${at}: names the Kernel`);
+      if (/cold door/iu.test(text)) leaks.push(`${at}: names a secret quest`);
       for (const k of kernel) if (hasPhrase(text, k)) leaks.push(`${at}: a Kernel value`);
       for (const c of codes) if (hasPhrase(text, c)) leaks.push(`${at}: an unlock code`);
       if (doorCode !== "" && hasPhrase(text, doorCode)) leaks.push(`${at}: facts.json door.code`);

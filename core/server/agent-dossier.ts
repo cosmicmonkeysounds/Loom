@@ -10,7 +10,8 @@
 //! whole `<id>.*` world — so a ROLE `secret:` slot (the virus they carry,
 //! their 📝 answers), a `secret: true` CODEX entry or character (the
 //! Kernel's verdicts, combos, the door code) never ride it, and every slot
-//! the dossier reads is checked against the role's `secret:` list anyway.
+//! the dossier reads is checked against the role's `secret:` list anyway,
+//! and so is every quest (`quest.<slug>`: *The Cold Door*, a secret mission).
 //! A filing is its question id and verdict, never the answer, the key or
 //! the confidence, and a confident filing's verdict (`accurate` / `lie`)
 //! reads `pending` until the house has published that question's truth
@@ -30,7 +31,7 @@ import type { ChatMessage } from "./chat.ts";
 import { HUNT_ANSWER_MARK } from "./agent-recent.ts";
 import { RESULTS_TRUTH_VERB, SCREEN_CHARTS } from "./routes/screen.ts";
 import { foldName } from "../src/parser/names.ts";
-import type { SimEvent } from "../src/runtime/sim/index.ts";
+import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 
 /** The JSON size the dossier stays near (bytes; oldest items dropped first). */
 export const DOSSIER_MAX_BYTES = 3072;
@@ -149,6 +150,9 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
     const n = v === null || v.trim() === "" ? NaN : Number(v);
     return Number.isFinite(n) ? n : null;
   };
+  // A quest the role keeps secret (`quest`, or `quest.<slug>` as the sim
+  // mirrors it: `quest.the_cold_door`) is never named, listed or a moment.
+  const questSecret = (quest: string): boolean => input.secretSlots.has("quest") || input.secretSlots.has(`quest.${Sim.codexSlug(quest)}`);
   const leaks = (text: string): boolean =>
     text.includes(HUNT_ANSWER_MARK) || input.mentionsAnswer?.(text) === true || input.mentionsSecret?.(text) === true || input.mentionsCode?.(text) === true;
 
@@ -200,7 +204,7 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
         }
         break;
       case "quest": {
-        if (e.person !== id || (e.action !== "complete" && e.action !== "fail")) break;
+        if (e.person !== id || (e.action !== "complete" && e.action !== "fail") || questSecret(e.quest)) break;
         const q = input.quests.find((x) => x.id === e.quest);
         if (q !== undefined) moment(i, `${e.action === "complete" ? "completed" : "failed"} ${q.title}`);
         break;
@@ -277,7 +281,7 @@ export function buildDossier(input: DossierInput): AgentDossier | null {
     if (shown(f) === "lie") truths.lies += 1;
   }
   const codex = input.codex.filter((e) => !e.secret && !leaks(e.title) && !e.text.includes(HUNT_ANSWER_MARK)).map((e) => e.title).slice(-DOSSIER_CODEX_MAX);
-  const quests = input.quests.filter((q) => !leaks(q.title)).map((q) => ({ title: q.title, status: q.status })).slice(-DOSSIER_QUESTS_MAX);
+  const quests = input.quests.filter((q) => !questSecret(q.id) && !leaks(q.title)).map((q) => ({ title: q.title, status: q.status })).slice(-DOSSIER_QUESTS_MAX);
   const flag = (slot: string): boolean => mine(slot) === "true";
   const balance = input.currencySlot === null ? null : num(input.currencySlot);
   const bottleRound = num("bottle_round");
