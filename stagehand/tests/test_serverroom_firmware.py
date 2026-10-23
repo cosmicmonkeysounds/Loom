@@ -11,7 +11,9 @@ the source:
    handles, with the payload words it matches (`locked`/`unlocked`, `on`/`off`,
    `seconds`);
 3. every server-room / patch-bay sensor topic the YAML listens on is one the
-   firmware publishes, retained exactly where the YAML expects it;
+   firmware publishes, retained exactly where the YAML expects it — since
+   wave 20 that is the patch bay alone: the door is the Grand Central M4's
+   (D16), and the box's door topic is published but read by nobody;
 4. the payloads the firmware builds fire the right signals through the real
    sensor rules, and the combo strings its host tests pin are the YAML's;
 5. the box ships reading the wave 7 door contact: two wire loops that TOUCH
@@ -111,11 +113,12 @@ def test_every_sensor_topic_for_the_box_is_one_it_publishes():
     topics = _defines("topics.h")
     sketch = _sketch()
     ours = {t for t in _sensor_topics() if t.startswith(("sensors/serverroom/", "sensors/patchbay/"))}
-    assert ours == {topics["T_DOOR"], topics["T_PATCH_STATE"]}
-    # The door is retained (an edge rule primes on it, so a stagehand restart
-    # with the door open fires nothing); the patch state is not (a replayed
-    # wrong combo would fire patch_rejected).
-    assert re.search(r"publish\(T_DOOR, \w+, true\)", sketch)
+    # Wave 20 (D16): the patch bay only. The box still publishes its door
+    # topic (retained), but no rule reads it: the door is the M4's now.
+    assert ours == {topics["T_PATCH_STATE"]}
+    assert topics["T_DOOR"] not in _sensor_topics()
+    # The patch state is not retained (a replayed wrong combo would fire
+    # patch_rejected).
     assert re.search(r"publish\(T_PATCH_STATE, \w+, false\)", sketch)
     assert re.search(r'mqtt\.connect\(SR_CLIENT_ID, SR_MQTT_USER, SR_MQTT_PASS, T_HEALTH, 1, true, "lost"\)', sketch)
     assert re.search(r'publish\(T_HEALTH, "online", true\)', sketch)
@@ -150,26 +153,11 @@ def test_the_firmwares_payloads_fire_the_right_signals():
     half = {"pairs": [["V2", "D5"]], "combo": "V2-D5", "count": 1, "complete": False}
     assert _fire("sensors/patchbay/state", half, deb, 200.0) == []
 
-    # The door payload exactly as test_logic.cpp pins payloadJson for the
-    # shipped DOOR_TAPE mode: one opening, one signal; the retained replay
-    # after a reconnect primes and fires nothing.
-    opened, shut = _host_door_payloads()
-    assert opened == {"open": True, "tape": True, "mode": "tape"}
-    assert shut == {"open": False, "tape": False, "mode": "tape"}
+    # Wave 20 (D16): the box's door payload fires nothing any more — the
+    # door is read by the Grand Central M4 through the server-room terminal.
     deb = Debouncer()
-    assert _fire("sensors/serverroom/door", opened, deb, 0.0, retained=True) == []
-    _fire("sensors/serverroom/door", shut, deb, 10.0)
-    assert _fire("sensors/serverroom/door", opened, deb, 20.0) == ["server_door_opened"]
-
-
-def _host_door_payloads() -> tuple[dict, dict]:
-    """The DOOR_TAPE payloads test_logic.cpp pins (open, then shut)."""
-    text = HOST_TEST.read_text(encoding="utf-8")
-    pinned = re.findall(
-        r'payloadJson\(door::kTape, (true|false),[^;]*;\s*CHECK_STR\(buf, "((?:[^"\\]|\\.)*)"\)', text
-    )
-    by_open = {o: json.loads(b.encode().decode("unicode_escape")) for o, b in pinned}
-    return by_open["true"], by_open["false"]
+    for payload in ({"open": True, "tape": True, "mode": "tape"}, {"open": False, "tape": False, "mode": "tape"}):
+        assert _fire("sensors/serverroom/door", payload, deb, 20.0) == []
 
 
 def _config() -> str:

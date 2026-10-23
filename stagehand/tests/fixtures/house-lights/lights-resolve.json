@@ -1,0 +1,31 @@
+{
+  "comment": "resolveLightTargets cases, shared by @loom/house (test/lights.test.ts) and stagehand's lights module (its Python mirror). Each `to` resolves on lights-basic.json + lights-house.json (`house: false`: no house — a LOCATION or a room label then reaches nothing). Targets fold: case, _ / - and runs of spaces don't matter; each target reaches the union of every fixture, zone (id or name), room (id, or with a house its label) and LOCATION it names; fixtures come back in file order, de-duplicated.",
+  "lights": "lights-basic.json",
+  "house": "lights-house.json",
+  "cases": [
+    { "to": ["everywhere"], "fixtures": ["server-room-rgb", "server-strip", "desk-lamp", "hall-group", "attic-bulb"] },
+    { "to": ["EVERYWHERE"], "fixtures": ["server-room-rgb", "server-strip", "desk-lamp", "hall-group", "attic-bulb"] },
+    { "to": ["server-room-rgb"], "fixtures": ["server-room-rgb"] },
+    { "to": ["Server Room RGB"], "fixtures": ["server-room-rgb"] },
+    { "to": ["heart"], "fixtures": ["server-room-rgb"] },
+    { "to": ["The Heart"], "fixtures": ["server-room-rgb"] },
+    { "to": ["up stairs"], "fixtures": ["desk-lamp", "hall-group", "attic-bulb"] },
+    { "to": ["upstairs"], "fixtures": ["desk-lamp", "hall-group", "attic-bulb"] },
+    { "to": ["server-room"], "fixtures": ["server-room-rgb", "server-strip"] },
+    { "to": ["server_room"], "fixtures": ["server-room-rgb", "server-strip"] },
+    { "to": ["The Server Room"], "fixtures": ["server-room-rgb", "server-strip"] },
+    { "to": ["the_server_room"], "fixtures": ["server-room-rgb", "server-strip"] },
+    { "to": ["Server Room (cold storage)"], "fixtures": ["server-room-rgb", "server-strip"] },
+    { "to": ["The Tube"], "fixtures": ["hall-group"] },
+    { "to": ["The Hard Drive", "desk-lamp"], "fixtures": ["desk-lamp", "attic-bulb"] },
+    { "to": ["attic-bulb", "heart", "server-room-rgb"], "fixtures": ["server-room-rgb", "attic-bulb"] },
+    { "to": ["basement-hall"], "fixtures": [] },
+    { "to": ["The Cloud"], "fixtures": [] },
+    { "to": [""], "fixtures": [] },
+    { "to": [], "fixtures": [] },
+    { "to": ["The Server Room"], "house": false, "fixtures": [] },
+    { "to": ["server-room"], "house": false, "fixtures": ["server-room-rgb", "server-strip"] },
+    { "to": ["hall"], "house": false, "fixtures": ["hall-group"] },
+    { "to": ["heart", "everywhere"], "house": false, "fixtures": ["server-room-rgb", "server-strip", "desk-lamp", "hall-group", "attic-bulb"] }
+  ]
+}

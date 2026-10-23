@@ -7,7 +7,13 @@ notes, the dossier on whoever is talking — `mind.py`), then a live
 selected world facts, who is talking and what they know), then the
 character's **powers** and bargain policy, then one block per persona
 **situation** whose `when:` holds for this request (`situations:` — e.g.
-the guest is standing at the character's heart), then the reply protocol. The
+the guest is standing at the character's heart), then the reply protocol. Wave
+20 adds two blocks, each only when there is something to say (so a request
+or a persona without them builds the same prompt, byte for byte): the
+guest's night (`req.dossier`, the server's, at his heart only) as a **WHO
+THIS IS — TONIGHT** block after the live state, and the persona's
+**outside:** words as a short "not from your world" block after the
+persona. The
 thread follows as alternating user / assistant turns — a rolling summary
 first when the conversation has grown long — ending on the speaker. A
 lookup round appends the session's answers and asks again.
@@ -40,9 +46,15 @@ def build_messages(
     sid = str(speaker.get("id") or "")
     thread_key = _thread_key(req)
     system = [persona.system]
+    outside = outside_block(persona)
+    if outside:
+        system.append(outside)
     if mind is not None:
         system.append(mind.prompt_block(sid))
     system.append(state_block(persona, req))
+    dossier = dossier_block(req.get("dossier"))
+    if dossier:
+        system.append(dossier)
     powers = allowed_powers(persona, req)
     if powers or persona.lookup:
         system.append(powers_block(persona, powers, lookups is None))
@@ -192,10 +204,125 @@ def matching_situations(persona: Persona, req: dict[str, Any]) -> list[Situation
 
 
 def situation_block(situation: Situation) -> str:
+    rules = []
+    if situation.max_sentences is not None:
+        rules.append(f"Here you may answer at length: up to {situation.max_sentences} sentences.")
+    if situation.no_acts:
+        rules.append("Here you decide nothing: no act, no share, no power. Just talk.")
     return (
         f"=== SITUATION: {situation.heading.upper()} (true right now, for this conversation; "
         f"where it differs from the page above, this block wins) ===\n{situation.prompt}"
+        + ("\n" + " ".join(rules) if rules else "")
     )
+
+
+def outside_block(persona: Persona) -> str | None:
+    """(D29) The persona's `outside:` words: not things he knows. None when
+    the persona has none (the prompt is then what it always was)."""
+    if not persona.outside:
+        return None
+    return (
+        "=== NOT FROM YOUR WORLD ===\n"
+        "These names and words belong to nothing you know; they are not part of your world, and you never say them: "
+        + ", ".join(persona.outside)
+        + ". If someone brings one up, you don't know it: answer from inside your own world."
+    )
+
+
+#: The dossier's lines are clipped to this many characters each.
+DOSSIER_LINE = 220
+_VERDICT_WORDS = {"accurate": "accurate", "lie": "a lie", "uncertain": "a guess", "pending": "not judged yet"}
+
+
+def _clip(value: Any, limit: int = 80) -> str:
+    text = " ".join(str(value).split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+def _list(values: Any, limit: int = 40, each: int = 60) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    return [_clip(v, each) for v in values[:limit] if isinstance(v, (str, int, float)) and str(v).strip()]
+
+
+def dossier_block(dossier: Any) -> str | None:
+    """(D26 / D27) The guest's night as the server built it (`req.dossier`):
+    who they are, what they did, what they said to him. None when absent."""
+    if not isinstance(dossier, dict) or not dossier:
+        return None
+    d = dossier
+    lines = ["=== WHO THIS IS — TONIGHT (what the house knows of this program's night; for you only: remember it, let it show, never read it out as a list) ==="]
+    name = _clip(d.get("name") or "someone")
+    program = d.get("program")
+    who = f"Name: {name}" + (f" (the program {_clip(program)})" if isinstance(program, str) and program and program != d.get("name") else "")
+    here = d.get("storyMinutes")
+    if isinstance(here, (int, float)) and not isinstance(here, bool):
+        who += f" · here {int(here)} minutes"
+    lines.append(who)
+    side = []
+    if isinstance(d.get("faction"), str) and d["faction"]:
+        side.append(f"faction {_clip(d['faction'])}")
+    groups = _list(d.get("groups"), 8)
+    if groups:
+        side.append(f"groups {', '.join(groups)}")
+    if side:
+        lines.append("Side: " + " · ".join(side))
+    status = []
+    if d.get("marked") is True:
+        status.append("marked for the Internet")
+    if d.get("captured") is True:
+        status.append("captured")
+    if d.get("restricted") is True:
+        status.append("restricted")
+    if isinstance(d.get("reinstalled"), int) and d["reinstalled"] > 0:
+        status.append(f"reinstalled {d['reinstalled']}×")
+    if d.get("bingo") is True:
+        status.append("won at Bingo")
+    if status:
+        lines.append("Tonight they were: " + ", ".join(status))
+    trust = d.get("trust")
+    if isinstance(trust, dict) and isinstance(trust.get("score"), (int, float)):
+        t = f"Your Trust Chart: {trust['score']}"
+        if isinstance(trust.get("rank"), int) and isinstance(trust.get("of"), int):
+            t += f" (rank {trust['rank']} of {trust['of']})"
+        lines.append(t)
+    truths = d.get("truths")
+    if isinstance(truths, dict):
+        lines.append(f"Their truths so far: {truths.get('accepted', 0)} filed sure, {truths.get('uncertain', 0)} guesses, {truths.get('lies', 0)} published as lies")
+    filings = [f for f in d.get("filings") or [] if isinstance(f, dict) and f.get("question")]
+    if filings:
+        lines.append("Their filings: " + ", ".join(f"{_clip(f['question'], 12)} {_VERDICT_WORDS.get(str(f.get('verdict')), 'not judged yet')}" for f in filings[:12]))
+    bottle = d.get("bottle")
+    if isinstance(bottle, dict) and bottle.get("picked") is True:
+        lines.append("The bottle picked them" + (f": they chose {bottle['choice']}" if bottle.get("choice") in ("truth", "dare") else ": they refused" if bottle.get("choice") == "refused" else ""))
+    wallet = d.get("wallet")
+    if isinstance(wallet, dict) and isinstance(wallet.get("balance"), (int, float)):
+        lines.append(f"Their wallet: {wallet['balance']} Truthcoin")
+    for key, label in (("codex", "Files they hold"), ("gifts", "Files they gave you"), ("rooms", "Where they have been, in order")):
+        items = _list(d.get(key), 40)
+        if items:
+            lines.append(f"{label}: " + "; ".join(items))
+    quests = [q for q in d.get("quests") or [] if isinstance(q, dict) and q.get("title")]
+    if quests:
+        lines.append("Their quests: " + "; ".join(f"{_clip(q['title'], 50)} ({_clip(q.get('status') or '?', 12)})" for q in quests[:12]))
+    heart = d.get("heart")
+    if isinstance(heart, dict):
+        bits = [f"layer {heart.get('layer', 0)}", f"suspicion {heart.get('suspicion', 0)}"]
+        if heart.get("convinced") is True:
+            bits.append("they convinced you once")
+        if heart.get("barred") is True:
+            bits.append("barred from your heart")
+        if isinstance(heart.get("visits"), int):
+            bits.append(f"visit {heart['visits']}")
+        lines.append("At your heart: " + ", ".join(bits))
+    said = _list(d.get("said"), 8, 200)
+    if said:
+        lines.append("What they have said to you tonight:")
+        lines.extend(f"- “{x}”" for x in said)
+    moments = _list(d.get("moments"), 10)
+    if moments:
+        lines.append("Their night: " + " · ".join(moments))
+    return "\n".join(_clip(line, DOSSIER_LINE) if not line.startswith("- “") else line for line in lines)
 
 
 def gate_context(req: dict[str, Any]) -> dict[str, Any]:

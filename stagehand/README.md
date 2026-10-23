@@ -11,9 +11,10 @@ machine, **modules** switched on by section:
 | **agents** | `agents:` | the house Mac (Ollama) | answers every conversation with a `mind: external` character through a local model |
 | **alexa** | `alexa:` | (retired for the show, wave 18b) | MQTT `show/announce` → a chime + the Mac's own `say` voice on a named CoreAudio device + channel map (`engine: server` opts in to `/api/mod/tts`, cached on disk). The router speaks the show's announcements now; the module stays for a house that wants a player of its own |
 | **audio** | `audio:` | the house Mac | the house speaker router: the event's `audio.json` (speakers, zones, the interface's input→output matrix) on one stream (the show's MOTU 828x + an ADAT expander); every story `sound X` per room, the house announcements, the map editor's speaker tests and Run's ■ Stop house sounds. The show switches both on (wave 18b) |
+| **lights** | `lights:` | the house Mac | the house lights from the event's `lights.json` (wave 20): every story `cue <look>` it defines → timed, safety-clamped Zigbee2MQTT / WLED commands; the map editor's identify / test / *Pair new device*; Z2M's device list to the server; a catch-up from the story's screen state |
 
-All four can run on one machine (the show runs three on one house Mac:
-`show`, `audio`, `agents`); they run as **separate launchd jobs** (see
+All five can run on one machine (the show runs four on one house Mac:
+`show`, `audio`, `lights`, `agents`); they run as **separate launchd jobs** (see
 *launchd* below).
 
 ```
@@ -21,6 +22,7 @@ trapped.house.yaml (the house Mac)     laptop.yaml (same Mac, the agents job)
   server: {url, event, code}             server: {url, event, code}
   show:   {mqtt, cues, sensors}          agents: {llm, characters}
   audio:  {sounds_dir, play_sounds, announce, mqtt, …}
+  lights: {mqtt, z2m_base, config_file, …}
 ```
 
 Every module shares the process's one authenticated link to the server
@@ -197,6 +199,19 @@ Trust Chart rank — plus `storyAt`. A hunt-answer entry, a secret entry,
 a line naming an answer form or a secret character's current value never
 rides it. The guest's codex arrives as titles only. `LOOM_AGENT_RECENT=off`
 on the server sends the wave 11b request field for field.
+
+**The guest's night at his heart** (wave 20, D26 / D27): when the speaker
+is a guest standing at his heart (`at_the_heart`), the server adds
+`dossier` (`core/server/agent-dossier.ts`, ≈ 3 KB, never a secret: their
+name and program, minutes here, side, marked / captured / reinstalled, his
+Trust Chart score and rank, their truths counted, filings as ids + verdicts,
+non-secret file titles, quests, rooms in order, Bingo, the bottle, their
+wallet, the files they gave him, the heart's layer / suspicion, their last
+lines to him, short moments of their night). Both layouts render it as a
+`=== WHO THIS IS — TONIGHT ===` block (classic: after the live state; lean:
+in P3, after the person card, so the cached P1 / P2 never move). No dossier
+→ the prompt is byte for byte what it was. `LOOM_AGENT_DOSSIER=off` on the
+server sends none.
 
 **The YAML** (`agents.example.yaml`; each switch `on | off`, read only in
 `mind_mode: new`):
@@ -505,7 +520,8 @@ is YAML frontmatter + the system prompt:
 | `lookup_power` | a `who: agent` power fired with `target` = each program a lookup resolves (Trabolta: `snoop`) — being read is felt, deterministically |
 | `powers` | `all` (default), `none`, or a list of `who: agent` interaction names |
 | `bargain` | the favour policy the fast model reads (the orchestrator adjusts it in the brief) |
-| `situations` | a list of `{when, prompt}` (+ an optional `name` for the heading): extra instructions for a kind of moment. Each `when` is read like the gate above; while it holds for a request, its prompt is appended to the voice's system prompt as its own `=== SITUATION: … ===` block and shown to the orchestrator's reflect on that exchange (which keeps it out of the shared brief, in that person's dossier) |
+| `situations` | a list of `{when, prompt}` (+ an optional `name` for the heading): extra instructions for a kind of moment. Each `when` is read like the gate above; while it holds for a request, its prompt is appended to the voice's system prompt as its own `=== SITUATION: … ===` block and shown to the orchestrator's reflect on that exchange (which keeps it out of the shared brief, in that person's dossier). Wave 20: **`max_sentences: N`** (1–12) lets his line run to N sentences there, said in the block and enforced by the guards of both voices (a longer line is cut; the last holding situation that sets it wins); **`acts: none`** says he decides nothing there and the guards drop every act the model returns |
+| `outside` | (wave 20, D29) names and words from outside his world, a list or a comma list (the crew's real names, *party*, *actor*, *Loom*, *Arduino*, …): a `=== NOT FROM YOUR WORLD ===` block tells him they are nothing he knows, and a hit in his output (whole words, folded, a plural too) is treated like a `secrets.never` hit — the line becomes the fallback, its act and memo are dropped. Matching is word-exact, so a common word (*show*) trips in every sense: list names and phrases (*the show*, *a party*, *real world*); `stagehand check` warns when an entry is in his own in-world text (the system prompt, `fallback(s)`, `catchphrases`, `unavailable`, the phase and stage cards), and a fallback that names one is never said |
 
 Trabolta's situations (wave 7): **at your heart** (`them.at_the_heart ==
 true`, set by the story while the server-room terminal pilots that
@@ -667,15 +683,18 @@ the `audio` router over MQTT (`show/announce`, `show/chime`; every other
 **indicator** (`show/serverroom/lock`, the one retained command; the real
 lock is a standalone keypad lock, code set by hand, never networked, and
 nothing here drives it), `lights_alarm` to the server-room box's own siren
-(`show/serverroom/alarm`; only a wrong patch-bay combo trips it), and the
-sensors that come back as story signals (`server_door_opened` from the
-wire-loop contact that closes when the door opens, on
-`sensors/serverroom/door`, plus an optional Zigbee contact, both
-`edge: true`, 20 s apart at most once; the story starts the server-room
-cutscene on it, an entry with the code and an exit by the inside handle
-alike; the printer's button
-and lid, and the patch bay's `patch_combo_a` / `patch_combo_b` /
-`patch_rejected`, judged here until signals carry arguments). The
+(`show/serverroom/alarm`; only a wrong patch-bay combo trips it) and to WLED
+per device (the server-room strip, that room's safety light, a steady red,
+never the strobe), and the sensors that come back as story signals (the
+printer's button and lid, and the patch bay's `patch_combo_a` /
+`patch_combo_b` / `patch_rejected`, judged here until signals carry
+arguments). **Since wave 20 the server-room door is not read here** (D16):
+an LDR + LED on the frame feeds a Grand Central M4 beside his heart's
+terminal, and that terminal page posts `door_sensor_opened` /
+`door_sensor_closed` itself (`hardware/server-room-door/`); a YAML rule
+posting `server_door_opened` would be a director's 🚪 override in the story.
+The server room's RGB bulb `server_room_rgb` left the Z2M `server_room` group
+(its only member) for `lights.json` and the `lights` job (D10). The
 safety rooms (stairs, bathroom, tent, server room, the server-room →
 living-room path) are out of the `house` group, and `lights_blackout`
 turns WLED off per device, leaving the Tube strip on dim preset 22.
@@ -684,8 +703,8 @@ light cue has a rule, every sound an `audio.json` cue and a
 `media/sounds.yaml` entry, every sensor signal has a `when` in
 `main.loom`, the two combos match the `Kernel.combo_*` seeds and the
 codex halves — and it pins the safety edits (no cue darkens a safety
-room or all of WLED, nothing drives a lock, edge-only door sensors that
-fire once per opening in either direction). The wiring walkthrough is in
+room or all of WLED, nothing drives a lock, no rule reads the door, the
+server-room strip never strobes). The wiring walkthrough is in
 [`docs/loom-show-control.md`](../docs/loom-show-control.md) → *Trapped in
 the Internet: the house rig*.
 
@@ -700,6 +719,65 @@ Setup: `scripts/house-mac/audio.md` → *Lock down the broker*.
 uv run stagehand check --config trapped.house.yaml
 uv run stagehand run   --config trapped.house.yaml --only show
 uv run stagehand run   --config trapped.house.yaml --only audio
+uv run stagehand run   --config trapped.house.yaml --only lights   # once `lights:` is uncommented
+```
+
+## lights — the house lights (wave 20)
+
+The event's `lights.json` (a project file beside `audio.json`, edited on the
+map editor's 💡 Lights tab, served at `GET /api/mod/lights`; schema in
+`@loom/house` `house/src/lights.ts`) places every light the story drives —
+a Zigbee bulb, a Z2M group or a WLED strip — on a room, groups them in
+zones, and defines **looks** keyed by cue name: `cue heart_wake` plays
+`looks.heart_wake`. This module plays them on this Mac's broker (Zigbee2MQTT's).
+Setup: [`scripts/house-mac/zigbee.md`](../scripts/house-mac/zigbee.md), then
+[`scripts/house-mac/lights.md`](../scripts/house-mac/lights.md); the section's
+shape is [`lights.example.yaml`](./lights.example.yaml).
+
+- **The sequencer.** A look plans (`lights/plan.py`, the mirror of
+  `planLook`, pinned byte for byte with `routing.py` and `z2m.py` to the
+  house package's `lights-*.json` fixtures copied into
+  `tests/fixtures/house-lights/`) into timed commands per fixture; one task
+  per look publishes them at their offsets, `repeat` times or every
+  `period` in a loop. A new look on a fixture takes it from the one running
+  there. A `then: "restore"` look gives the light back at `period`: the loop
+  it interrupted restarts (a nag over the door loop), else the fixture's
+  **settled** state — what the last look that is neither a loop nor a
+  restore left it at — is re-published, fading with that look's last
+  `transition` (0.8 s when it had none); with nothing settled since a
+  restart it plays `boot` instead, and the catch-up never lands on a
+  restore look (`boot` again). Memory only.
+- **Safety.** A `safety: true` fixture is never OFF and never under
+  `max(40, min)` (`clamp_for_safety`, applied before the caps and again by
+  both payload builders), whatever a look or a test says.
+- **Tests, pairing, devices.** The long poll carries the map editor's
+  identify (Z2M `{"effect": "okay"}`; WLED blinks 2 s, a `safety` strip
+  flashes a steady white instead), look tests and
+  state tests, and *Pair new device* (`zigbee2mqtt/bridge/request/permit_join
+  {"time": N}`). `zigbee2mqtt/bridge/devices` + `bridge/groups` are reduced
+  to `{friendly, ieee, type, model, vendor, description, caps, members?}`
+  and posted to `POST /api/mod/lights/devices` (2 s debounce, again whenever
+  the server has none).
+- **The catch-up (D21) reads the story.** On start, on a broker or feed
+  reconnect, and 1.5 s after a reset / reload / go live it reads
+  `GET /api/screen/state`: `night.alarm_on` → `heart_alarm`; else the door
+  open in the `door` / `scan` / `talk` stage → `heart_door_open`; else
+  `night.heart_look`; else `boot`. An older server → `boot`. A live cue that
+  lands meanwhile wins.
+- **The hand-off.** With `take_looks: true` (the default), a `show:` in the
+  same YAML drops each of its `on: {directive: cue}` rules whose
+  `match.target` is a look `lights.json` defines (the local `config_file`'s
+  at load, the server's when `show` starts), so a cue never drives a bulb
+  twice.
+- **Health.** `health/lights` (`online`, LWT `lost`) and
+  `health/lights/stats` (retained `{fixtures, looks, devices, last_look,
+  last_at, z2m}`).
+
+```bash
+uv run stagehand check   --config trapped.house.yaml --only lights   # broker, Z2M online, every fixture's device
+uv run stagehand lights devices --config trapped.house.yaml
+uv run stagehand lights test heart_wake --config trapped.house.yaml   # or a fixture id (identify), --color / --brightness / --off
+uv run stagehand lights pair --seconds 120 --config trapped.house.yaml
 ```
 
 ## audio — the house speaker router
@@ -865,14 +943,14 @@ every battery report; the broker replays a retained "open" on every
 reconnect). Two per-rule switches make it fire once per real change:
 
 ```yaml
-- on: { topic: "sensors/serverroom/door", when: "open == true" }
+- on: { topic: "zigbee2mqtt/printer_lid", when: "contact == false" }
   edge: true                 # fire on false → true only (per topic)
-  signal: { name: server_door_opened, debounce_s: 20 }
+  signal: { name: printer_opened, debounce_s: 30 }
 ```
 
 - **Retained messages never fire a rule** unless it says
   `accept_retained: true`. On an `edge: true` rule they still set the
-  level, so a restart with the door propped open fires nothing.
+  level, so a restart with the lid propped open fires nothing.
 - `edge: true` needs a `when:`; the level starts false (the first "open"
   after boot fires), and a message carrying none of the fields the
   condition reads (a battery-only report) is ignored.
@@ -883,6 +961,7 @@ reconnect). Two per-rule switches make it fire once per real change:
 uv run stagehand launchd install --job show   --config trapped.house.yaml
 uv run stagehand launchd install --job agents --config laptop.yaml
 uv run stagehand launchd install --job audio  --config trapped.house.yaml   # the speaker router
+uv run stagehand launchd install --job lights --config trapped.house.yaml   # the house lights (lights.json)
 uv run stagehand launchd status                    # every job
 uv run stagehand launchd restart --job show        # only the show; agents keep talking
 uv run stagehand launchd print --job agents --config laptop.yaml   # the plist, not installed

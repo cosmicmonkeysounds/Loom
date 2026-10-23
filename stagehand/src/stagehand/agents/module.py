@@ -64,6 +64,7 @@ from . import story_mind
 from .cards import PersonCard, PhaseView, VoiceContext, VoiceOptions
 from .config import AgentsConfig, parse_agents
 from .facts import Facts, FactsClient
+from .guards import outside_guard, situation_guard
 from .judge import JUDGE_DEADLINE_S, Ruling, judge_messages, judge_model, parse_ruling
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
 from .mind import Mind, mind_path
@@ -184,6 +185,12 @@ async def answer(
             acts=tuple({**a, "args": facts.canonical_args(a["args"])} if a.get("kind") == "fire" and isinstance(a.get("args"), dict) else a for a in reply.acts),
         )
     reply = withhold_never(persona, reply)
+    # Wave 20 (D29, D27): a word from outside his world is withheld like a
+    # never word; a holding situation's `acts: none` / `max_sentences` apply.
+    reply, notes = outside_guard(persona, reply)
+    reply, more = situation_guard(persona, reply, gate_context(req))
+    if notes or more:
+        log.info("%s: %s", persona.character, "; ".join((*notes, *more)))
     if reply.empty:
         log.warning("%s: the model said nothing usable: %r", persona.character, raw[:200])
         return Reply(say=persona.fallback)

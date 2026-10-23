@@ -17,7 +17,14 @@
                      write a labelled placeholder per story sound
                      (media/sounds.yaml) into the router's sounds_dir; never
                      touches a real file.
-    stagehand launchd install|uninstall|restart|status|print --job show|agents|audio [--config f.yaml]
+    stagehand lights test <fixture|look> [--color #rrggbb] [--brightness N] [--off] --config house.yaml
+    stagehand lights pair [--seconds 120] --config house.yaml
+    stagehand lights devices --config house.yaml
+                     the house lights through the event server (the `lights`
+                     job must be running to act): identify a fixture, play a
+                     look or publish one state; open Zigbee pairing (0 closes
+                     it); list Zigbee2MQTT's devices and the module's status.
+    stagehand launchd install|uninstall|restart|status|print --job show|agents|audio|lights [--config f.yaml]
                      one launchd job per module on the house Mac (see launchd.py)
     stagehand ask    --config laptop.yaml [--character Trabolta] [--name Ada] [--reflect] [text…]
                      talk to an agent persona straight through the model — no
@@ -83,6 +90,14 @@ def main(argv: list[str] | None = None) -> int:
     snd.add_argument("--only", help="placeholders: a comma list of names")
     snd.add_argument("--out", help="placeholders: write here instead of the router's sounds_dir")
     snd.add_argument("--manifest", help="placeholders: another manifest (default: media/sounds.yaml)")
+    lt = sub.add_parser("lights", help="the house lights by hand, through the server: test, pair, devices")
+    lt.add_argument("action", choices=("test", "pair", "devices"))
+    lt.add_argument("name", nargs="?", help="test: a fixture id (identify) or a look name (play it)")
+    lt.add_argument("--config", required=True)
+    lt.add_argument("--color", help="test: publish this colour (#rrggbb) to the fixture")
+    lt.add_argument("--brightness", type=int, help="test: publish this brightness (0–254, safety-clamped)")
+    lt.add_argument("--off", action="store_true", help="test: publish OFF (a safety fixture stays at its floor)")
+    lt.add_argument("--seconds", type=int, default=120, help="pair: how long joining stays open (0 closes it)")
     ld = sub.add_parser("launchd", help="install / restart a module as its own launchd job (macOS)")
     ld.add_argument("action", choices=("install", "uninstall", "restart", "status", "print"))
     ld.add_argument("--job", choices=JOBS, help="which module (status: default every job)")
@@ -114,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
         return _launchd(args)
 
     try:
-        only = {"ask": ["agents"], "announce": [_announcer(args.config)], "sounds": ["audio"]}.get(args.command) or _only(getattr(args, "only", None))
+        only = {"ask": ["agents"], "announce": [_announcer(args.config)], "sounds": ["audio"], "lights": ["lights"]}.get(args.command) or _only(getattr(args, "only", None))
         cfg = load_config(args.config, only=only)
     except ConfigError as err:
         print(f"config error: {err}", file=sys.stderr)
@@ -126,6 +141,8 @@ def main(argv: list[str] | None = None) -> int:
         return _announce(cfg, args)
     if args.command == "sounds":
         return _sounds(cfg, args)
+    if args.command == "lights":
+        return _lights(cfg, args)
 
     print(_describe(cfg))
     todo = placeholders(cfg.server)
@@ -317,6 +334,87 @@ def _sounds(cfg: StagehandConfig, args: argparse.Namespace) -> int:
     wrote = sum(1 for _, a in done if a == "wrote")
     print(f"{wrote} placeholder(s) written to {out}")
     return 0
+
+
+def _lights_request(cfg: StagehandConfig, args: argparse.Namespace) -> tuple[str, str, dict] | str:
+    """→ (method, path, body) for a `stagehand lights` action, or an error line."""
+    if args.action == "devices":
+        return ("GET", "/api/mod/lights", {})
+    if args.action == "pair":
+        if not 0 <= args.seconds <= 254:
+            return "lights pair: --seconds is 0–254"
+        return ("POST", "/api/mod/lights/pair", {"seconds": args.seconds})
+    if not args.name:
+        return "lights test: which fixture or look? (e.g. `lights test server-room-rgb --color #FF0000`)"
+    state: dict = {}
+    if args.off:
+        state["state"] = "OFF"
+    if args.color:
+        state["color"] = args.color
+    if args.brightness is not None:
+        state["brightness"] = args.brightness
+    if state:
+        return ("POST", "/api/mod/lights/test", {"fixture": args.name, "set": state})
+    from .lights.routing import is_look_name
+
+    # A fixture id has a `-` or no `_`; a look name is snake_case. Ask the
+    # server which it is only when both could fit: `heart` is tried as a look.
+    key = "look" if is_look_name(args.name) and "-" not in args.name else "fixture"
+    return ("POST", "/api/mod/lights/test", {key: args.name})
+
+
+def _lights(cfg: StagehandConfig, args: argparse.Namespace) -> int:
+    from .modapi import ModApiError, ModClient
+
+    req = _lights_request(cfg, args)
+    if isinstance(req, str):
+        print(req, file=sys.stderr)
+        return 2
+    method, path, body = req
+    s = cfg.server
+
+    async def go() -> dict:
+        mod = ModClient(s.url, event=s.event, token=s.mod_token, passcode=s.mod_passcode)
+        try:
+            return await (mod.get(path) if method == "GET" else mod.post(path, body))
+        finally:
+            await mod.aclose()
+
+    try:
+        answer = asyncio.run(go())
+    except ModApiError as err:
+        print(f"lights: {err}", file=sys.stderr)
+        return 1
+    except Exception as err:  # noqa: BLE001 — httpx / OS errors: no server
+        print(f"lights: the server didn't answer ({err})", file=sys.stderr)
+        return 1
+    print(_lights_report(args.action, answer))
+    if args.action != "devices" and answer.get("module") is False:
+        print("the server took it, but no lights module is listening — is the job running? `uv run stagehand launchd status --job lights`", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _lights_report(action: str, answer: dict) -> str:
+    if action == "pair":
+        return f"Zigbee pairing {'closed' if not answer.get('until') else 'open'} (seq {answer.get('seq')})"
+    if action == "test":
+        return f"sent (seq {answer.get('seq')})"
+    module = answer.get("module")
+    lines = [
+        f"module   : {('online · ' if module.get('online') else 'OFFLINE · last seen ') + str(module.get('name') or '?')}" if isinstance(module, dict) else "module   : never polled this server",
+        f"config   : {answer.get('version')} ({answer.get('source')}), {len((answer.get('lights') or {}).get('fixtures') or [])} fixture(s)",
+    ]
+    devices = answer.get("devices") or []
+    placed = {f.get("device") for f in (answer.get("lights") or {}).get("fixtures") or [] if isinstance(f, dict)}
+    lines.append(f"devices  : {len(devices)}" + ("" if answer.get("devicesAt") else " (Zigbee2MQTT never reported)"))
+    for d in devices:
+        caps = d.get("caps")
+        what = "not a light" if caps is None else "+".join(k for k in ("color", "ct", "dim") if caps.get(k)) or "on/off"
+        lines.append(f"  {'💡' if d.get('friendly') in placed else '  '} {d.get('friendly'):<24} {d.get('type'):<11} {what}" + (f"  ({d.get('vendor')} {d.get('model')})" if d.get("model") else ""))
+    if answer.get("problems"):
+        lines.append("problems : " + "; ".join(answer["problems"]))
+    return "\n".join(lines)
 
 
 def _launchd(args: argparse.Namespace) -> int:
