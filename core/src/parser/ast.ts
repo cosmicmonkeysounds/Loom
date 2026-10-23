@@ -968,6 +968,12 @@ export interface DialogueBlock {
 
 export interface Choice {
   sticky: boolean;
+  /** `+ (if <cond>) text` — the condition source (trimmed) that must hold
+   *  when the menu is prompted for the option to be offered (wave 20, D9);
+   *  null for an unguarded option. Split off before the `[hidden]` text,
+   *  so a `[` inside the condition is never read as hidden text. */
+  guard: string | null;
+  /** What follows the guard's `)` (or the marker), trimmed, `[hidden]` text removed. */
   text: string;
   suppressed: string | null;
   body: BodyItem[];

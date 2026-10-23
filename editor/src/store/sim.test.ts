@@ -54,6 +54,18 @@ CHARACTER Bouncer
   You ride.
 `
 
+// A menu addressed to one guest, after the character who asks it.
+const ORACLE = `CHARACTER Oracle
+  when consult for guest:
+    -> Consult
+
+== Consult
+  cast: Oracle
+Oracle: Pick one.
+* Left
+* Right
+`
+
 async function start(): Promise<void> {
   await useSim.getState().startRun(RunMode.Rehearsal)
 }
@@ -230,6 +242,16 @@ describe('local run store', () => {
     useSim.getState().setPerspective('nobody')
     expect(useSim.getState().perspective).toBe(OPERATOR_LENS)
     expect(useSim.getState().lens).toBeNull()
+  })
+
+  it('a guest lens docks each menu where the server does (D18)', async () => {
+    lspWorkspaceSync().updateMany([[uriFor('oracle.loom'), ORACLE]])
+    await start()
+    await useSim.getState().fireSignal('consult', 'p1')
+    useSim.getState().setPerspective('p1')
+    const lens = useSim.getState().lens
+    expect(lens?.kind === 'guest' && lens.view.choices?.map((c) => [c.beat, c.channel])).toEqual([['Consult', 'dm:Oracle']])
+    expect(lens?.kind === 'guest' && lens.view.decisionChannel).toBe('dm:Oracle')
   })
 
   it('restart() keeps the snapshot; pushDraft() recompiles; stale is live state; end() keeps the run', async () => {

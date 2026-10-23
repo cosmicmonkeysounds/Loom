@@ -1,0 +1,37 @@
+# stagehand — the house lights (the `lights` module), on the house Mac.
+#
+#   uv run stagehand check --config lights.example.yaml --only lights   # broker, Z2M, devices
+#   uv run stagehand run   --config lights.example.yaml --only lights
+#   uv run stagehand launchd install --job lights --config trapped.house.yaml
+#   uv run stagehand lights devices --config trapped.house.yaml          # what Z2M has
+#   uv run stagehand lights test server-room-rgb --config …              # identify (the okay blink)
+#   uv run stagehand lights test heart_wake --config …                   # play a look
+#   uv run stagehand lights pair --seconds 120 --config …                # let a new bulb join
+#
+# Which lights exist, where they hang and the looks the story's `cue X`
+# plays all live in the event's `lights.json` (the map editor's 💡 Lights
+# tab, GET /api/mod/lights) — this section only says where Zigbee2MQTT is.
+# A safety fixture is never OFF and never under 40 / 254, whatever a look
+# or a test says. On the show the section lives in trapped.house.yaml
+# (beside `show:`, which then hands lights.json's looks over), commented
+# until Zigbee2MQTT runs: scripts/house-mac/zigbee.md, then lights.md.
+
+server:
+  url: "https://CHANGE-ME.example.com"
+  event: "CHANGE-ME"            # or LOOM_EVENT_ID
+  mod_passcode: "CHANGE-ME"     # or LOOM_MOD_PASSCODE / a git-ignored *.local.yaml
+
+lights:
+  # Zigbee2MQTT's broker: the anonymous loopback listener on this Mac.
+  mqtt: { host: 127.0.0.1, port: 1883, client_id: stagehand-lights }
+  z2m_base: zigbee2mqtt          # Z2M's base_topic
+  # Boot with the uplink down: play this until the server answers (the last
+  # answer, cached in cache_dir, wins when it exists).
+  config_file: null              # e.g. ../core/examples/trapped-in-the-internet/lights.json
+  house_file: null               # a house.json, so a look's LOCATION targets resolve offline
+  cache_dir: ~/Library/Caches/stagehand-lights
+  poll_wait: 25                  # the long poll (s)
+  health_s: 15                   # health/lights/stats every N s (retained)
+  # The `show` job in the same YAML drops its own `cue` rules for every look
+  # lights.json defines, so one cue never drives a bulb twice.
+  take_looks: true

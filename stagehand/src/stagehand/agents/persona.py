@@ -52,6 +52,16 @@
         prompt: |                      # appended to the voice's system prompt
           You are in the cold room…    #   (and the orchestrator's reflect for
                                        #   that speaker) while `when` is true
+        max_sentences: 4               # (wave 20) his line may run this long here
+                                       #   (the guards cut a longer one; the last
+                                       #   holding situation that sets it wins)
+        acts: none                     # (wave 20) he decides nothing here: every
+                                       #   act the model returns is dropped
+    outside:                           # (wave 20, D29) names and words from outside
+      - John                           #   his world: never in his line (swapped for
+      - Loom                           #   a fallback, its acts dropped, like a
+                                       #   `secrets.never` hit), and the prompt says
+                                       #   they are not things he knows
     ---
     You are TRABOLTA, …
 
@@ -101,9 +111,10 @@ _KNOWN = {
     "catchphrase_stages",
     "fallbacks",
     "unsaid",
+    "outside",
 }
 
-_SITUATION_KEYS = {"name", "when", "prompt"}
+_SITUATION_KEYS = {"name", "when", "prompt", "max_sentences", "acts"}
 
 
 @dataclass(frozen=True)
@@ -117,6 +128,11 @@ class Situation:
     when: Condition
     prompt: str
     name: str = ""
+    #: (wave 20) His line may run up to this many sentences here; the guards
+    #: cut a longer one. None = no limit of its own.
+    max_sentences: int | None = None
+    #: (wave 20) `acts: none`: he decides nothing here — every act dropped.
+    no_acts: bool = False
 
     @property
     def heading(self) -> str:
@@ -182,6 +198,9 @@ class Persona:
     stage_cards: dict[str, str] = field(default_factory=dict)
     #: Not fatal, worth a look (`stagehand check` prints them).
     warnings: tuple[str, ...] = ()
+    #: (wave 20, D29) Names and words from outside his world (`outside:`):
+    #: a hit in his output is treated like a `secrets.never` hit.
+    outside: tuple[str, ...] = ()
 
 
 POLICY_FAVOURS = ("none", "earned", "loose")
@@ -262,7 +281,13 @@ def _situations(value: Any, source: str) -> tuple[Situation, ...]:
         name = raw.get("name")
         if name is not None and not isinstance(name, str):
             raise ConfigError(f"{where}: name must be text")
-        out.append(Situation(when=when, prompt=prompt.strip(), name=(name or "").strip()))
+        cap = raw.get("max_sentences")
+        if cap is not None and (isinstance(cap, bool) or not isinstance(cap, int) or not 1 <= cap <= 12):
+            raise ConfigError(f"{where}: max_sentences must be a whole number from 1 to 12")
+        acts = raw.get("acts")
+        if acts is not None and acts not in ("none", "any"):
+            raise ConfigError(f"{where}: acts must be none (or any, the default)")
+        out.append(Situation(when=when, prompt=prompt.strip(), name=(name or "").strip(), max_sentences=cap, no_acts=acts == "none"))
     return tuple(out)
 
 
@@ -330,6 +355,18 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         powers = ()
     else:
         powers = _names(raw_powers, f"{source}: powers")
+    outside = _names(meta.get("outside"), f"{source}: outside")
+    fallbacks = _fallbacks(meta.get("fallbacks"), stages, secrets, source)
+    catchphrases = _catchphrases(meta.get("catchphrases"), source)
+    in_world: list[tuple[str, str]] = [("the system prompt", body), ("fallback:", str(meta.get("fallback") or "")), ("unavailable:", str(meta.get("unavailable") or ""))]
+    in_world += [(f"fallbacks: {stage or '(any)'}", line) for stage, lines in fallbacks.items() for line in lines]
+    in_world += [("catchphrases:", line) for line in catchphrases]
+    for phase, card in table.cards.items():
+        if "brief" in card.own or "cue" in card.own:
+            in_world.append((f"the {phase} card", f"{card.brief} {card.cue}"))
+        if "tell" in card.own:
+            in_world += [(f"the {phase} card's tell", t) for t in card.tell]
+    in_world += [(f"the {stage} stage card", text) for stage, text in table.stage_cards.items()]
     return Persona(
         character=character.strip(),
         system=body,
@@ -356,14 +393,31 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         bargain=str(meta.get("bargain") or "").strip(),
         secrets=secrets,
         situations=_situations(meta.get("situations"), source),
-        catchphrases=_catchphrases(meta.get("catchphrases"), source),
+        catchphrases=catchphrases,
         catchphrase_stages=_catchphrase_stages(meta.get("catchphrase_stages"), stages, source),
-        fallbacks=_fallbacks(meta.get("fallbacks"), stages, secrets, source),
+        fallbacks=fallbacks,
         unsaid=_unsaid(meta.get("unsaid"), source),
+        outside=outside,
         phase_cards=dict(table.cards),
         stage_cards=dict(table.stage_cards),
-        warnings=table.warnings,
+        warnings=table.warnings + _outside_warnings(outside, in_world, source),
     )
+
+
+def _outside_warnings(outside: tuple[str, ...], texts: list[tuple[str, str]], source: str) -> tuple[str, ...]:
+    """(D29) An `outside:` entry his own in-world text uses (`show` in *let me
+    show you*, `party` in *the party favour*) would swap every such line he
+    says for a fallback: list a phrase instead (*the show*, *a party*)."""
+    if not outside:
+        return ()
+    from .guards import outside_hit  # guards imports this module
+
+    out: list[str] = []
+    for where, text in texts:
+        hit = outside_hit(outside, text)
+        if hit:
+            out.append(f"{source}: outside: {hit!r} is in {where} (in-world text) — every line of his that says it would be withheld; list a phrase instead")
+    return tuple(out)
 
 
 def _catchphrases(value: Any, source: str) -> tuple[str, ...]:

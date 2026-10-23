@@ -2,7 +2,9 @@
 // (WROOM-32) that
 //   - reports the server-room door (a wire-loop contact that closes when the
 //     door opens; a reed is optional) on sensors/serverroom/door — the real
-//     door has a standalone keypad lock that nothing here drives,
+//     door has a standalone keypad lock that nothing here drives; retired in
+//     wave 20 (D16: the door is the M4's LED + LDR, hardware/server-room-door/,
+//     and stagehand no longer reads this topic),
 //   - scans Trabolta's heart, the 2×12 patch bay, on two MCP23017s and
 //     reports the patch on sensors/patchbay/state,
 //   - shows the lock indicator / alarm on a WS2812 ring and plays the siren +

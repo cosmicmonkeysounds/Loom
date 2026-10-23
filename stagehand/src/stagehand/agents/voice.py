@@ -2,12 +2,14 @@
 
 CONTRACTS.md §C3. The message list is
 
-    [0] system  P1  the persona, the power catalogue (no counts), the protocol
+    [0] system  P1  the persona, its `outside:` words (wave 20, when it has
+                    any), the power catalogue (no counts), the protocol
                     — the same bytes all night, whoever speaks
     [1] system  P2  the night now: stage + stage card, favours, drives, live
                     powers, the wary list, the lore he may tell in full, the brief
                     — changes with the phase card (or a director)
-    [2] system  P3  live state, the person card, since you last spoke, what just
+    [2] system  P3  live state, the person card, WHO THIS IS — TONIGHT (wave 20:
+                    the server's dossier, at his heart only), since you last spoke, what just
                     happened, what the house posted here as him, ALREADY SAID,
                     his lore titles, the director's whispers, the situations
                     — every call
@@ -41,7 +43,7 @@ from .facts import Facts
 from .guards import Pass, allowed_answer_words, cut_exact_repeats, guard_pass, mentions_hunt, pick_fallback, repeats, retry_message, scrub_memo, thread_replies, uses_catchphrase
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
-from .prompt import allowed_powers, build_messages, gate_context, matching_situations, situation_block, their_variables
+from .prompt import allowed_powers, build_messages, dossier_block, gate_context, matching_situations, outside_block, situation_block, their_variables
 from .reply import MAX_MEMO, Reply, fold, parse_reply
 from .story_mind import card_for, gift_line
 from .trace import Trace, new_thought
@@ -83,6 +85,9 @@ def render_p1(persona: Persona, req: dict[str, Any], *, memo: bool = True) -> st
     night): byte-identical for every speaker, phase and hour."""
     powers = _catalogue(persona, req)
     parts = [persona.system]
+    outside = outside_block(persona)
+    if outside:
+        parts.append(outside)  # (D29) fixed all night: the cache holds
     if powers or persona.lookup:
         lines = ["=== WHAT YOU CAN DO BESIDES TALK ==="]
         if powers:
@@ -169,7 +174,8 @@ def _live_ids(persona: Persona, req: dict[str, Any], phase: PhaseView) -> list[s
 
 def situation_powers(persona: Persona, req: dict[str, Any]) -> set[str]:
     """Allowed power ids that a persona situation names in its prompt (the
-    show's `stand_down`, in STANDING DOWN). Such a power belongs to its
+    show named `stand_down` in STANDING DOWN until wave 20 removed both; the
+    mechanism stays for any persona). Such a power belongs to its
     situation: P2's "Live powers now" never lists it (P2 is the same for every
     speaker), and P3's uses-left line counts it only while one of the
     situations naming it holds. It stays fireable: the story decides."""
@@ -408,6 +414,9 @@ def render_p3(persona: Persona, req: dict[str, Any], ctx: VoiceContext, *, live:
     if told is None:
         told = tuple(str(e.get("title", "")) for e in tell_entries(persona, req, ctx.phase))
     blocks = [_live_state(persona, req, live if live is not None else _live_ids(persona, req, ctx.phase)), _person(persona, req, ctx)]
+    dossier = dossier_block(req.get("dossier"))
+    if dossier:
+        blocks.append(dossier)  # (D27) at his heart only: the server sends it nowhere else
     since = [_one_line(x) for x in ctx.since[:4] if _one_line(x)]
     if since:
         blocks.append("=== SINCE YOU LAST SPOKE WITH THEM ===\n" + "\n".join(since))

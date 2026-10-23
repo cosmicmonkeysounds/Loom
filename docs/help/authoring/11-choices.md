@@ -2,7 +2,7 @@
 title: Choices & branching
 section: Language
 order: 11
-keywords: choice, sticky, once, star, plus, divert, arrow, goto, END, entry, branch, nesting, hidden text, tunnel, start, return, parameters, with
+keywords: choice, sticky, once, star, plus, guard, condition, if, tag, needs, divert, arrow, goto, END, entry, branch, nesting, hidden text, tunnel, start, return, parameters, with
 ---
 
 ## A choice
@@ -95,6 +95,40 @@ is taken:
 The audience sees the button **Leave quietly.** After they click it, the
 narration reads: *Leave quietly. But you wonder what you're walking away
 from.*
+
+## Options that need something
+
+Write `(if <condition>)` right after the `*` or `+` and the option is
+offered only while the condition holds:
+
+```loom
+Trabolta: Why should I listen to you?
+
++ (if program.trust >= 20) ⟦TRUSTED⟧ You trust me more than anyone here.
+  -> Trusted
++ (if program.has_proof == true) ⟦PROOF⟧ I have Sandy's file.
+  -> Proof
++ Who are you?
+  -> Who
+```
+
+- The condition is read **when the menu appears**, with the same names an
+  `if` would see (`program.…`, `Night.…`, `self.…`). An option whose
+  condition is false simply isn't there; the others keep their order.
+- If **no** option is left, there is no menu at all — the story carries on
+  with the line after it.
+- The parenthesis must close on the same line, and parentheses inside the
+  condition nest. Anything else (`* (whispering) Hello.`) is ordinary text.
+- A condition that doesn't parse is flagged while you write (`L1221`) and
+  the option is never offered.
+- Tag an option with `⟦WORD⟧` (the white square brackets), never `[WORD]`:
+  in a choice, `[…]` is hidden text (above).
+- In a live event a menu is offered again each time its beat plays, so a
+  "once only" option is a `+` with a flag you set yourself
+  (`set program.asked_why = true`, and `(if program.asked_why != true)` on
+  the option).
+- Game-engine banks don't run the condition yet: the option banks always
+  offered, and the compiler says so (`choiceGuardIgnored`).
 
 ## Nesting
 

@@ -335,7 +335,11 @@ Environment: `LOOM_PORT` (7000), `LOOM_HOST` (0.0.0.0), `LOOM_EVENT_PASS`,
 `LOOM_STATE_DIR`, `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`,
 `LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_FACTS` (the facts judge's key
 for an event with no project `facts.json`; default `facts.json` beside the
-house map), `LOOM_TTS_*` (the opt-in speech
+house map), `LOOM_AUDIO` / `LOOM_LIGHTS` (the house speakers' `audio.json`
+and, since wave 20, the house lights' `lights.json` for an event with no
+project copy and no director's save; no default file; re-read on mtime),
+`LOOM_AGENT_DOSSIER` (wave 20: `off` drops the guest's dossier from an
+agent request at the server-room terminal), `LOOM_TTS_*` (the opt-in speech
 proxy; `LOOM_TTS_URL` unset / blank / `off` / `none` / `false` / `0` = no
 server voice, the default — the terminals use the devices' own voices;
 compose's `kokoro` is behind `--profile tts`), `LOOM_VAPID_PUBLIC_KEY` /

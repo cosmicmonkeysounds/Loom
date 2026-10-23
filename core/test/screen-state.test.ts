@@ -90,6 +90,16 @@ async function call(rt: EventRuntime, method: string, p: string, body: unknown, 
   return { status: res.statusCode, json, res };
 }
 
+/** The wave 20 heart vars as the show sets them (the story lane owns their
+ *  values): the night block always carries the keys, typed. */
+function heartNight(s: ScreenState): Pick<ScreenState["night"], "server_door" | "heart_stage" | "heart_look" | "alarm_on" | "door_override"> {
+  const n = s.night;
+  expect([null, "open", "closed"]).toContain(n.server_door);
+  for (const k of ["heart_stage", "heart_look"] as const) expect(n[k] === null || typeof n[k] === "string").toBe(true);
+  for (const k of ["alarm_on", "door_override"] as const) expect(n[k] === null || typeof n[k] === "boolean").toBe(true);
+  return { server_door: n.server_door, heart_stage: n.heart_stage, heart_look: n.heart_look, alarm_on: n.alarm_on, door_override: n.door_override };
+}
+
 describe("screenCueOf", () => {
   it("splits a screen cue family off its value, ignores the rest", () => {
     expect(screenCueOf("screens_call_desktop")).toEqual({ family: "screens", value: "call_desktop" });
@@ -391,7 +401,7 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     let s = await state(rt);
     expect(s.character).toMatchObject({ id: "Trabolta", hidden: true, awake: false, online: false });
     expect(s.attract).toBe(true);
-    expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver", phase: "arrivals", step: 0, bottle_pick: null, bottle_open: false, results_q: 0, award_winner: null, award_value: null, help_votes: 0, thwart_votes: 0, alerts: "sticky", ended: false, collection_complete: false, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null });
+    expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver", phase: "arrivals", step: 0, bottle_pick: null, bottle_open: false, results_q: 0, award_winner: null, award_value: null, help_votes: 0, thwart_votes: 0, alerts: "sticky", ended: false, collection_complete: false, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null, ...heartNight(s) });
     // The doors' entry beat is live (the sim is folded from its birth), so
     // the TV's Power On scene plays on a real door-open.
     expect(s.moments.find((m) => m.kind === "beat" && m.name === "Power On")).toMatchObject({ seq: 1 });
@@ -677,7 +687,7 @@ describe("ScreenWatch — a room terminal (wave 7)", () => {
     const w = new ScreenWatch();
     const poll = (room: string) => w.poll(sim, { name: "Server Room", spot: "server-room", view: "face", character: "Trabolta", room, after: -1 }, () => true);
     let s = poll("the server room");
-    expect(s.room).toEqual({ id: "The Server Room", open: false });
+    expect(s.room).toEqual({ id: "The Server Room", open: false, cue: null });
     expect(s.character?.hidden).toBe(false);
     expect(s.attract).toBe(true);
     // A terminal with no room is unchanged: awake, no room block.
@@ -685,8 +695,8 @@ describe("ScreenWatch — a room terminal (wave 7)", () => {
     expect(plain.room).toBeUndefined();
     expect(plain.attract).toBe(false);
     // By label too; an unknown name is closed with no id.
-    expect(poll("The Server Room (cold storage)").room).toEqual({ id: "The Server Room", open: false });
-    expect(poll("The Vault").room).toEqual({ id: "", open: false });
+    expect(poll("The Server Room (cold storage)").room).toEqual({ id: "The Server Room", open: false, cue: null });
+    expect(poll("The Vault").room).toEqual({ id: "", open: false, cue: null });
     expect(poll("The Vault").attract).toBe(true);
     // An open (never hidden) room is open at once.
     expect(poll("The Desktop")).toMatchObject({ room: { id: "The Desktop", open: true }, attract: false });
@@ -697,7 +707,7 @@ describe("ScreenWatch — a room terminal (wave 7)", () => {
     expect(poll("The Server Room").attract).toBe(true);
     sim.signal("door_opened");
     s = poll("The Server Room");
-    expect(s.room).toEqual({ id: "The Server Room", open: true });
+    expect(s.room).toEqual({ id: "The Server Room", open: true, cue: null });
     expect(s.attract).toBe(false);
     // The heartbeat names the room.
     expect(w.seen().find((p) => p.name === "Server Room")?.room).toBe("The Server Room");
@@ -706,7 +716,7 @@ describe("ScreenWatch — a room terminal (wave 7)", () => {
 
   it("no story: a room terminal is closed (attract), never open", () => {
     const s = new ScreenWatch().poll(null, { name: "Server Room", spot: "", view: "face", character: "Trabolta", room: "The Server Room" }, () => false);
-    expect(s.room).toEqual({ id: "", open: false });
+    expect(s.room).toEqual({ id: "", open: false, cue: null });
     expect(s.attract).toBe(true);
   });
 
@@ -716,8 +726,8 @@ describe("ScreenWatch — a room terminal (wave 7)", () => {
     const poll = (room: string) => w.poll(null, { name: "Server Room", spot: "", view: "face", character: "Trabolta", room }, () => false, [], model);
     expect(poll("The Server Room")).toMatchObject({ room: { id: "The Server Room", open: false }, attract: true });
     // Even a never-hidden room stays closed until a sim says so.
-    expect(poll("The Desktop").room).toEqual({ id: "The Desktop", open: false });
-    expect(poll("The Vault").room).toEqual({ id: "", open: false });
+    expect(poll("The Desktop").room).toEqual({ id: "The Desktop", open: false, cue: null });
+    expect(poll("The Vault").room).toEqual({ id: "", open: false, cue: null });
   });
 });
 
@@ -732,8 +742,8 @@ describe("GET /api/screen/state?room= — the room terminal", () => {
     const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: "vault", scenarioSource: ROOM_SOURCE, joinBase: () => "http://localhost" });
     expect(rt.liveSim).toBeNull();
     const room = async (name: string) => ((await call(rt, "GET", `/api/screen/state?name=Server%20Room&view=face&character=Trabolta&room=${encodeURIComponent(name)}`, {}, { moderator: true })).json as unknown as ScreenState).room;
-    expect(await room("The Server Room")).toEqual({ id: "The Server Room", open: false });
-    expect(await room("The Servr Room")).toEqual({ id: "", open: false });
+    expect(await room("The Server Room")).toEqual({ id: "The Server Room", open: false, cue: null });
+    expect(await room("The Servr Room")).toEqual({ id: "", open: false, cue: null });
   });
 
   it("answers the room and its voice; the cutscene's lines arrive with the wake; the TV mute never silences it", { timeout: SLOW }, async () => {
@@ -747,7 +757,7 @@ describe("GET /api/screen/state?room= — the room terminal", () => {
     const tv = (after: number) => get(`name=TV&spot=desktop-tv&view=tv&character=Trabolta&voice=The%20Desktop&after=${after}`);
 
     let s = await room(null);
-    expect(s.room).toEqual({ id: "The Server Room", open: false });
+    expect(s.room).toEqual({ id: "The Server Room", open: false, cue: null });
     expect(s.attract).toBe(true);
     expect(s.voice).toMatchObject({ room: "loc:The Server Room", muted: false, lines: [] });
     const asleep = s.voice!.head;
@@ -755,7 +765,7 @@ describe("GET /api/screen/state?room= — the room terminal", () => {
     // The door opens: the reveal and the lines land together.
     expect((await signal(rt, "door_opened")).status).toBe(200);
     s = await room(asleep);
-    expect(s.room).toEqual({ id: "The Server Room", open: true });
+    expect(s.room).toEqual({ id: "The Server Room", open: true, cue: null });
     expect(s.attract).toBe(false);
     expect(s.voice!.lines.map((l) => [l.from, l.text])).toEqual([
       ["Trabolta", "You found my heart."],
@@ -769,7 +779,7 @@ describe("GET /api/screen/state?room= — the room terminal", () => {
     // A room terminal that also names a voice room speaks that one.
     const both = await get(`name=X&view=face&character=Trabolta&room=The%20Server%20Room&voice=The%20Desktop&after=-1`);
     expect(both.voice!.room).toBe("loc:The Desktop");
-    expect(both.room).toEqual({ id: "The Server Room", open: true });
+    expect(both.room).toEqual({ id: "The Server Room", open: true, cue: null });
     rt.dispose();
   });
 
@@ -777,7 +787,7 @@ describe("GET /api/screen/state?room= — the room terminal", () => {
     const rt = await showRuntime(freshDir());
     const r = await call(rt, "GET", `/api/screen/state?name=Server%20Room&spot=server-room&view=face&character=Trabolta&room=The%20Server%20Room`, {}, { moderator: true });
     const s = r.json as unknown as ScreenState;
-    expect(s.room).toEqual({ id: "The Server Room", open: false });
+    expect(s.room).toEqual({ id: "The Server Room", open: false, cue: null });
     expect(s.attract).toBe(true);
     rt.dispose();
   });
@@ -916,6 +926,29 @@ describe("the heartbeat's device health and the director's identify", () => {
     for (const mic of ["live", "muted", "denied", "insecure", "locked", "off"]) expect(screenDeviceOf(q({ mic }))).toEqual({ mic });
     expect(screenDeviceOf(q({ mic: "loud" }))).toEqual({});
     expect(screenDeviceOf(q({ fs: "" }))).toEqual({});
+  });
+
+  it("reads the door sensor (wave 20): door / dlv / dft / dwn, anything malformed left out", () => {
+    for (const door of ["open", "closed", "fault", "none"]) expect(screenDeviceOf(q({ door }))).toEqual({ door });
+    expect(screenDeviceOf(q({ door: "closed", dlv: "3812" }))).toEqual({ door: "closed", doorLevel: 3812 });
+    expect(screenDeviceOf(q({ door: "fault", dlv: "4095", dft: "ldr_saturated" }))).toEqual({ door: "fault", doorLevel: 4095, doorFault: "ldr_saturated" });
+    expect(screenDeviceOf(q({ door: "open", dlv: "0", dwn: "ldr_open" }))).toEqual({ door: "open", doorLevel: 0, doorWarn: "ldr_open" });
+    // Malformed: an unknown state, a level out of range / not an integer, a code with other characters.
+    expect(screenDeviceOf(q({ door: "ajar", dlv: "4096", dft: "LED_DEAD", dwn: "x".repeat(25) }))).toEqual({});
+    expect(screenDeviceOf(q({ dlv: "-1" }))).toEqual({});
+    expect(screenDeviceOf(q({ dlv: "12.5" }))).toEqual({});
+    expect(screenDeviceOf(q({ dft: "no port" }))).toEqual({});
+    expect(screenDeviceOf(q({ dwn: "" }))).toEqual({});
+  });
+
+  it("carries the door keys on /api/mod/screen/terminals (wave 20)", () => {
+    const w = new ScreenWatch({ now: () => 1_000 });
+    w.poll(null, { name: "Server Room", spot: "server-room", view: "face", character: "Trabolta", device: screenDeviceOf(q({ door: "fault", dlv: "12", dft: "stale", ver: "w20" })) }, () => false);
+    w.poll(null, { name: "Hall", spot: "hall", view: "auto", character: "", device: screenDeviceOf(q({})) }, () => false);
+    const [room, hall] = [...screenTerminals(w).terminals].reverse();
+    expect(room).toMatchObject({ name: "Server Room", door: "fault", doorLevel: 12, doorFault: "stale", version: "w20" });
+    expect(hall).not.toHaveProperty("door");
+    expect(hall).not.toHaveProperty("doorLevel");
   });
 
   it("reads the voice link's mic (wave 19): live / muted / denied / insecure / off, anything else left out", () => {

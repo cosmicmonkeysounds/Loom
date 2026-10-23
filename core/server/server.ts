@@ -27,7 +27,12 @@
 //! house map — a project's own `facts.json`, snapshotted at launch,
 //! overrides it; `server/facts.ts`), LOOM_AUDIO (the house speakers'
 //! fallback `audio.json`; default none — a project's own `audio.json`,
-//! snapshotted at launch, and a director's save override it; `server/audio.ts`).
+//! snapshotted at launch, and a director's save override it; `server/audio.ts`),
+//! LOOM_LIGHTS (wave 20: the house lights' fallback `lights.json`; default
+//! none — a project's own `lights.json`, snapshotted at launch, and a
+//! director's save override it; re-read on mtime; `server/lights.ts`),
+//! LOOM_AGENT_DOSSIER (wave 20: `off` leaves the guest's dossier out of an
+//! agent request at the server-room terminal; `server/agent-dossier.ts`).
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";

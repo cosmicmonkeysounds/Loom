@@ -151,6 +151,9 @@ export interface InteractionSummary {
   /** True for a cue pressed again and again (`repeat: true`): the cue
    *  sheet still suggests it once it has fired. */
   repeat?: true;
+  /** True for an admin cue the sheet suggests ahead of the running order
+   *  while it is live and unfired (`urgent: true`). */
+  urgent?: true;
   /** Whose button this is — character ids, from the INTERACTION's `by:`
    *  (characters, or a GROUP's members) plus every character that owns a
    *  hook for it (a trait's `when vouch for program:`). Absent = anyone's.
@@ -320,6 +323,7 @@ function interactionsFor(
       if (subjectOnly.has(foldName(i.id))) s.subject = true;
       if (!i.sequence) s.sequence = false;
       if (i.repeat) s.repeat = true;
+      if (i.urgent === true) s.urgent = true;
       if (i.arm) s.arm = true;
       const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
       if (by !== undefined) s.actors = by;
@@ -408,6 +412,11 @@ export interface GuestView {
   pendingChoice: string[] | null;
   /** Channel the pending decision docks under (`"lobby"`, a DM, …). */
   decisionChannel: string | null;
+  /** Every menu awaiting this guest, oldest first (wave 20, D18): its id
+   *  (answer it with `/api/guest/choose {choice: id}` wherever it sits in
+   *  the queue), the beat it sits in, the channel its prompt went to and its
+   *  shown options. `pendingChoice` / `decisionChannel` are the first one's. */
+  choices?: GuestChoice[];
   /** Standing in a `cutscene: true` location: the app goes on rails — a
    *  full-screen stream of what is said to this guest, no rooms sidebar. */
   cutscene: boolean;
@@ -496,13 +505,25 @@ export interface GuestMission {
   place: { id: string; name: string } | null;
 }
 
-export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>): GuestView {
+/** One pending menu on a `GuestView` (wave 20, D18). */
+export interface GuestChoice {
+  id: number;
+  beat: string;
+  channel: string;
+  options: string[];
+}
+
+/** `menuChannels`: each pending menu's id → the channel its prompt went to
+ *  (the runtime's `menuChannelsFor` record); a menu not in it docks in the
+ *  lobby. */
+export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>, menuChannels?: ReadonlyMap<number, string>): GuestView {
   const p = sim.persons.get(id);
   const pendingChoice = sim.pendingChoiceFor(id);
   const interactions = interactionsFor(sim, ["guest"], { subject: id, self: id }).filter(
     (i) => i.live !== false && (!sim.isRestricted(id) || sim.model.interactions.get(i.id)?.allowRestricted === true),
   );
   const objectives = objectivesWith(sim, { guest: id }, new Set(interactions.map((i) => i.id)));
+  const choices = sim.pendingChoicesFor(id);
   return {
     id,
     name: p?.name ?? id,
@@ -517,7 +538,10 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     restricted: sim.isRestricted(id),
     canEscape: !(sim.model.locations.get(sim.locationOf(id) ?? "")?.sealed ?? false),
     pendingChoice,
-    decisionChannel: pendingChoice ? (decisionChannel ?? "lobby") : null,
+    // The oldest menu's own channel (D18): `decisionChannel` is the newest
+    // prompt's, and with menus queued the tray docks the oldest's options.
+    decisionChannel: pendingChoice ? (menuChannels?.get(choices[0]?.id ?? -1) ?? decisionChannel ?? "lobby") : null,
+    choices: choices.map((c) => ({ ...c, channel: menuChannels?.get(c.id) ?? "lobby" })),
     cutscene: sim.cutsceneFor(id),
     channels: sim.visibleChannelsFor(id),
     spaces: sim.spaceList(),

@@ -144,6 +144,69 @@ export interface AgentRequest {
   recent?: AgentRecent[];
   /** The story clock (`sim.elapsed()`, ms) when this body was built. */
   storyAt?: number;
+  /** Wave 20 (D26): the guest's night, for the heart to heart — built only
+   *  when the speaker is a guest standing at his heart (`<id>.at_the_heart`),
+   *  bounded to ≈ 3 KB, never a secret (`agent-dossier.ts`). Absent
+   *  everywhere else, while `LOOM_AGENT_DOSSIER=off`, or from an older server. */
+  dossier?: AgentDossier;
+}
+
+/** A verdict on one of the guest's filings, as the dossier carries it (an id
+ *  and a verdict: never the answer, the key or the confidence). */
+export type AgentDossierVerdict = "accurate" | "lie" | "uncertain" | "pending";
+
+/**
+ * Who this guest is tonight (wave 20, D26): what the house already knows
+ * about the program at his heart, so the heart to heart can remember it.
+ * Every field is optional (a story without the var leaves it out); every
+ * list is oldest first and bounded, and the whole thing stays near
+ * `DOSSIER_MAX_BYTES` of JSON (oldest items dropped first). Never: a
+ * `secret: true` codex entry or character's value, the Kernel, a ROLE
+ * `secret:` slot, a hunt answer or key, a code, a patch pair, another
+ * guest's private line.
+ */
+export interface AgentDossier {
+  /** Their display name (the program they registered as). */
+  name: string;
+  /** The declared CHARACTER they play, when their name is one (a featured or pool program). */
+  program?: string;
+  /** Story ms of their first line in the house (their arrival), when known. */
+  joinedAt?: number;
+  /** Story minutes they have been here (since `joinedAt`, else the night's). */
+  storyMinutes: number;
+  faction?: string;
+  groups?: string[];
+  marked?: boolean;
+  captured?: boolean;
+  /** How many times they found the golden duck. */
+  reinstalled?: number;
+  restricted?: boolean;
+  /** His Trust Chart: their score, and their rank among the cleared programs. */
+  trust?: { score: number; rank?: number; of?: number };
+  /** Their filings on the questions Question Results has read, counted:
+   *  `accepted` = the confident ones (right or wrong), `uncertain` = their
+   *  guesses, `lies` = those published as lies at The Verdict. */
+  truths?: { accepted: number; lies: number; uncertain: number };
+  /** Every verdict reads `pending` until Question Results reads its
+   *  question (`do fact_read`), then only a guess reads `uncertain`;
+   *  `accurate` / `lie` wait for its truth (`do fact_truth`): never a hunt
+   *  answer's confirmation. */
+  filings?: Array<{ question: string; verdict: AgentDossierVerdict }>;
+  /** Titles of the non-secret codex entries they hold. */
+  codex?: string[];
+  quests?: Array<{ title: string; status: string }>;
+  /** The places they have stood in, first visit order. */
+  rooms?: string[];
+  bingo?: boolean;
+  bottle?: { picked: boolean; choice: "truth" | "refused" | "dare" | null };
+  wallet?: { balance: number };
+  /** Titles of the files they gave him. */
+  gifts?: string[];
+  heart?: { layer: number; suspicion: number; convinced: boolean; barred: boolean; visits: number };
+  /** Their own last lines to him (any thread), clipped. */
+  said?: string[];
+  /** Short lines of their night, in story order ("joined", "marked", "reinstalled", "filed H3", …). */
+  moments?: string[];
 }
 
 /** An `INTERACTION … who: agent` — something the story lets the agent

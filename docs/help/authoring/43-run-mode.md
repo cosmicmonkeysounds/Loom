@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, microphone, mic, 🎤, voice link, denied, invitations, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
+keywords: run, door sensor, 🚪, door override, trust the door sensor, ldr_open, fault, lights, 💡, lights module, zigbee, pairing, fixtures, keys=0, door=serial, microphone, mic, 🎤, voice link, denied, invitations, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, urgent, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -161,14 +161,36 @@ Front of house: getting people in.
   room terminal's room resolves before the doors too: *the story has no
   room called …* means a typo in its `room=`. A **📢** on a row means
   that tablet says the house announcements aloud right now (its own ⚙
-  setting, or the house list below). **🛠 Set up a terminal…** builds a
+  setting, or the house list below). The terminal the server room's door
+  sensor is plugged into leads its row with a **🚪** badge (wave 20):
+  green **🚪 shut** or amber **🚪 open**, each with the sensor's level
+  (0–4095), or red **🚪 fault: <code>** (`no_port`: the sensor isn't
+  connected, so ⚙ *Connect door sensor*; `stale`: it stopped sending;
+  `ldr_saturated`: light floods the sensor; `led_dead`: the door's LED
+  is out). While it reports a fault it tells the story nothing, so use
+  the 🚪 opened / closed cues until it is fixed. A small amber **⚠
+  ldr_open** after the state means the sensor sees almost no light:
+  normal for an open door in a dark hall, a cut wire if the door is
+  shut; the state still counts. When that laptop goes silent its last
+  reading can't be trusted, so the badge reads amber **🚪 ? (silent)**:
+  use the 🚪 opened / closed cues until it polls again. An amber
+  **override** (it rides the door-sensor terminal's row) means a 🚪 button
+  was pressed and the story now follows the buttons, not the sensor:
+  press **🚪 Trust the door sensor again** to hand it back (the next poll
+  brings the story into line with the sensor). **🛠 Set up a terminal…** builds a
   tablet's provisioning link from pickers: the spot, the view (including
   **Reinstall**, the tent laptop: the idle show like any wall terminal,
   and a marked pass plays the reinstallation right there or sends it to
   a headset; like Chess and Casino it has no room and no character),
   the room and the character. Its announcements box reads **Always
   (ignore the house setting)**: leave it unticked and the tablet follows
-  the house list for its spot.
+  the house list for its spot. On a view with a typing box two more boxes
+  show: **Keyboard plugged in** (ticked by default; untick it for a
+  mouse-only rig, which writes `keys=0` and hides the typing box) and
+  **Door sensor on this laptop** (`door=serial`), ticked for you when
+  you pick the server room's spot. That laptop runs desktop Chrome on
+  the https address; press ⚙ *Connect door sensor* on it once and it
+  reconnects by itself after that.
 - **House sound** — whether the router on the house Mac is listening,
   **■ Stop house sounds** with a **+ announcements** box (also cuts the
   announcement playing and drops the queue), and **Tablets that also say
@@ -200,6 +222,16 @@ Front of house: getting people in.
   (his door open in both games). **Set…** types any value 0 to his
   maximum; **👑 Restore** puts him back to full. Both ask first, and
   are journaled under your name ([the server room](38-server-room.md)).
+  When the event has house lights placed (the map page's 💡 Lights tab)
+  or the lights module has ever checked in, a **💡** row follows:
+  *💡 lights module online · N fixtures* (amber *offline* when the house
+  Mac's lights module stopped checking in, so light cues play nowhere;
+  *never connected* when it hasn't since the server started), a
+  **pairing … s** countdown while a director has opened Zigbee pairing
+  from the map page (just **pairing open** from a server that doesn't say
+  its time), and a count of problems (red) and warnings (amber),
+  each listed when you hover. It refreshes every 15 seconds; placing a
+  light, pairing a bulb and testing a look all happen on the map page.
 - **Look up a guest** — scan a guest's pass QR (or type their id) to
   open them in the Inspector.
 
@@ -399,6 +431,10 @@ countdown): a click opens the Director page and never fires.
   decides what happens. Acts never change NEXT: they only group the page.
 - A `repeat: true` cue **stays NEXT** while you keep pressing it and its
   `while:` holds (📋 once per question, until the third).
+- An `urgent: true` cue **jumps the order**: while its `while:` holds and
+  it has not fired it is NEXT wherever LAST is (the show's 🕊 *Trabolta
+  stands down* once a program talks him down at his heart: the night
+  ends on your press).
 - A press the story **turns down** counts for nothing: it never becomes
   LAST and never ticks. A show's cues pressed out of turn say why in
   `# hosts` and do nothing else — a cue pressed ahead of its turn is
@@ -471,6 +507,14 @@ between are fine): the server reads that header only. Lint `L1205` flags a line 
 head names nothing, a global spelled unlike the lines that set it
 (`night.round` for `Night.round`), a board line below the header, or a
 board line in another file.
+
+A value someone must see only while it matters belongs on its own gated
+line. *Trapped in the Internet* watches the heart this way: **The
+Heart** (its stage), **Server door** and **Door on buttons** (the 🚪
+override) while Trabolta is awake, and the program at his heart, their
+layer and their suspicion only while the stage is `talk`. A ROLE slot
+would be a count over every guest, so the story copies the one talker's
+values onto `Night` for the board.
 
 **On a phone.** The same running order runs in the participant app: open
 the event's address with `?role=director`, type the director (mod)

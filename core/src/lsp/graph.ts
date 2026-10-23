@@ -1037,7 +1037,8 @@ export function previewBody(items: BodyItem[]): string[] {
           break;
         }
         case "choice":
-          if (!push(`${item.value.sticky ? "+" : "*"} ${item.value.text}`)) return false;
+          // A guarded option shows its guard (wave 20).
+          if (!push(`${item.value.sticky ? "+" : "*"} ${item.value.guard !== null ? `(if ${item.value.guard}) ` : ""}${item.value.text}`)) return false;
           break;
         case "divert": {
           const d = item.value;

@@ -3,7 +3,7 @@
 //! the context a toolbar extra (the project bar) is handed.
 
 import { roomById } from "@loom/house";
-import type { AudioConfig, HouseMap, PropKind } from "@loom/house";
+import type { AudioConfig, HouseMap, LightsConfig, PropKind } from "@loom/house";
 import type { LoadedHouse } from "../api.ts";
 import type { ReinstallConfig } from "../config.ts";
 import { doorFloor } from "./doors.ts";
@@ -20,14 +20,14 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: "stair", label: "▤ Stairs", key: "s", hint: "Drag the stair's rectangle on its lower floor (S)" },
 ];
 
-/** What the next click on the plan places: a palette prop, or a 🔊 speaker. */
-export type Placing = PropKind | "speaker";
+/** What the next click on the plan places: a palette prop, a 🔊 speaker or a 💡 light. */
+export type Placing = PropKind | "speaker" | "light";
 
 /** `push`: a new undo step. `replace`: the running drag's next frame (its step was pushed when it started changing). */
 export type EditMode = "push" | "replace";
 
-/** The floor the selected thing is on ("" when unknown; a speaker needs its `audio`). */
-export function floorOfSelection(house: HouseMap, sel: Selection, audio?: AudioConfig | null): string {
+/** The floor the selected thing is on ("" when unknown; a speaker needs its `audio`, a light its `lights`). */
+export function floorOfSelection(house: HouseMap, sel: Selection, audio?: AudioConfig | null, lights?: LightsConfig | null): string {
   const ofRoom = (id: string) => roomById(house, id)?.floor ?? "";
   switch (sel.kind) {
     case "terminal":
@@ -52,11 +52,15 @@ export function floorOfSelection(house: HouseMap, sel: Selection, audio?: AudioC
       const s = audio?.speakers.find((x) => x.id === sel.id);
       return s === undefined ? "" : (roomById(house, s.room)?.floor ?? s.floor ?? "");
     }
+    case "light": {
+      const f = lights?.fixtures.find((x) => x.id === sel.id);
+      return f === undefined ? "" : (roomById(house, f.room)?.floor ?? f.floor ?? "");
+    }
   }
 }
 
-/** Whether a selection still names something in the map (or, for a speaker, in `audio`). */
-export function selectionExists(house: HouseMap, sel: Selection, audio?: AudioConfig | null): boolean {
+/** Whether a selection still names something in the map (or, for a speaker, in `audio`; a light, `lights`). */
+export function selectionExists(house: HouseMap, sel: Selection, audio?: AudioConfig | null, lights?: LightsConfig | null): boolean {
   switch (sel.kind) {
     case "terminal":
       return house.terminals.some((t) => t.id === sel.id);
@@ -76,6 +80,8 @@ export function selectionExists(house: HouseMap, sel: Selection, audio?: AudioCo
       return house.floors.some((f) => f.id === sel.id);
     case "speaker":
       return audio?.speakers.some((s) => s.id === sel.id) ?? false;
+    case "light":
+      return lights?.fixtures.some((f) => f.id === sel.id) ?? false;
   }
 }
 
@@ -110,6 +116,25 @@ export interface MapToolbarContext {
   save: () => Promise<string | null>;
   /** Ask for the moderator passcode before the page's first write (W-15): false = cancelled, don't write. */
   unlock: () => Promise<boolean>;
+  /** The house lights (wave 20): the project bar's Save to project and a
+   *  variant switch cover them too. Absent: a host without lights. */
+  lights?: LightsBarContext;
+}
+
+/** What the project bar knows of the lights. */
+export interface LightsBarContext {
+  /** Unsaved light edits on this page. */
+  dirty: boolean;
+  /** Those edits can be saved now (valid against the saved map). */
+  saveable: boolean;
+  /** The server has the lights routes. */
+  project: boolean;
+  /** The lights in force are a director's save (not yet the project's). */
+  director: boolean;
+  /** Save the lights to the event: the new version, null when refused. */
+  save: () => Promise<string | null>;
+  /** Write the lights in force into the project as lights.json. */
+  toProject: () => Promise<boolean>;
 }
 
 /** A number field's text: a number, `null` for an empty field, `undefined` for something that isn't one. */

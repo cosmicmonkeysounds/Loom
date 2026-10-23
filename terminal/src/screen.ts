@@ -111,6 +111,30 @@ export interface VoiceLine {
 export interface ScreenRoom {
   id: string;
   open: boolean;
+  /** (wave 20) The last `cue room_<name>` played in a beat set in this room
+   *  (its room scenes key on it), else null — also from an older server. */
+  cue: ScreenRoomCue | null;
+}
+
+/** A room terminal's picture cue (wave 20, `cue room_heart_wake`). */
+export interface ScreenRoomCue {
+  /** The cue's first token, as written: `room_heart_wake`. */
+  value: string;
+  /** Bumps on every such cue for this room, a repeat included. */
+  seq: number;
+  /** Server epoch ms the cue played; 0 = history (never played). */
+  at: number;
+}
+
+/** A room cue off the wire; anything malformed is null. */
+export function roomCueOf(raw: unknown): ScreenRoomCue | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  const value = r["value"];
+  const seq = r["seq"];
+  if (typeof value !== "string" || !value.startsWith("room_") || value.length <= 5 || typeof seq !== "number" || !Number.isFinite(seq)) return null;
+  const at = typeof r["at"] === "number" && Number.isFinite(r["at"]) && r["at"] > 0 ? r["at"] : 0;
+  return { value, seq, at };
 }
 
 /** The King on the screen state (wave 11): his shared health bar + stakes. */
@@ -231,9 +255,19 @@ export interface ScreenNight {
    *  (null: nobody — the story's `"none"`). */
   facts_accepted: number | null;
   first_reinstall: string | null;
+  /** (wave 20) `Night.server_door`: the story's door (null: no story / unset). */
+  server_door: "open" | "closed" | null;
+  /** (wave 20) `Night.heart_stage`: sealed / door / scan / talk / done. */
+  heart_stage: string | null;
+  /** (wave 20) The settled heart look (the story's "none" reads null). */
+  heart_look: string | null;
+  /** (wave 20) The patch-bay alarm latch. */
+  alarm_on: boolean | null;
+  /** (wave 20) A director has the door on the 🚪 buttons: the story ignores the sensor. */
+  door_override: boolean | null;
 }
 
-export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, bottle_open: null, results_q: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null, ended: null, collection_complete: null, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null };
+export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, bottle_open: null, results_q: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null, ended: null, collection_complete: null, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null, server_door: null, heart_stage: null, heart_look: null, alarm_on: null, door_override: null };
 
 /** The night block off the wire; anything missing or malformed is null. */
 export function nightOf(raw: unknown): ScreenNight {
@@ -266,6 +300,11 @@ export function nightOf(raw: unknown): ScreenNight {
     least_trusted: who(r["least_trusted"]),
     facts_accepted: accepted !== null && accepted >= 0 ? Math.floor(accepted) : null,
     first_reinstall: who(r["first_reinstall"]),
+    server_door: r["server_door"] === "open" || r["server_door"] === "closed" ? r["server_door"] : null,
+    heart_stage: str(r["heart_stage"]),
+    heart_look: who(r["heart_look"]),
+    alarm_on: bool(r["alarm_on"]),
+    door_override: bool(r["door_override"]),
   };
 }
 
@@ -562,7 +601,7 @@ export function roomOf(raw: unknown): ScreenRoom | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
   if (typeof r["id"] !== "string" || typeof r["open"] !== "boolean") return null;
-  return { id: r["id"], open: r["open"] };
+  return { id: r["id"], open: r["open"], cue: roomCueOf(r["cue"]) };
 }
 
 /** A voice block off the wire; malformed lines are dropped, a malformed block is null. */

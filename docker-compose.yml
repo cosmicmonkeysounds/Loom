@@ -60,6 +60,8 @@ services:
       # Trabolta's request extras (wave 12): `off` sends the wave 11b request
       # field for field (no story tags, no `recent`). Blank = on.
       LOOM_AGENT_RECENT: ${LOOM_AGENT_RECENT:-}
+      # The guest's dossier at his heart (wave 20): `off` leaves it out. Blank = on.
+      LOOM_AGENT_DOSSIER: ${LOOM_AGENT_DOSSIER:-}
       # Share-invite email (either transport; both blank = links only).
       LOOM_SMTP_URL: ${LOOM_SMTP_URL:-}
       LOOM_RESEND_API_KEY: ${LOOM_RESEND_API_KEY:-}
@@ -107,6 +109,11 @@ services:
       # launch and wins; LOOM_AUDIO is only the fallback (no default file:
       # unset = an empty 16 / 16 interface). Bind-mount, never blank.
       # LOOM_AUDIO: /config/audio.json
+      # The house lights (wave 20): a project's lights.json is snapshotted at
+      # launch and wins; LOOM_LIGHTS is only the fallback (no default file:
+      # unset = no fixtures, so the stagehand lights module plays nothing).
+      # Bind-mount, never blank.
+      # LOOM_LIGHTS: /config/lights.json
       # Optional: pin the default event's passcodes (otherwise auto-generated
       # and printed in the logs + saved under the state volume):
       # LOOM_EVENT_PASS: ...

@@ -1,0 +1,57 @@
+/* ════════════════════════════════════════════════════════════════════════
+   House lights on the map page (wave 20): the bulb glyph on the plan
+   (amber, so it never reads as a speaker's violet or a terminal's cyan),
+   tinted by the colour it was last tested in, a dashed ring on a safety
+   light, the device name under it; and the 💡 Lights tab (it borrows the
+   Audio tab's sections and chips, `audio.css`).
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --lamp: #b86e00;
+  --lamp-fill: #ffe7a8;
+}
+
+/* ── the plan ─────────────────────────────────────────────────────────── */
+.light .bulb { fill: var(--lamp-fill); stroke: var(--lamp); stroke-width: 0.03; }
+.light .base { fill: var(--lamp); }
+.light .glow { opacity: 0.35; pointer-events: none; }
+.light .safety-ring { fill: none; stroke: #1f7a1f; stroke-width: 0.03; stroke-dasharray: 0.06 0.05; pointer-events: none; }
+.light .hit { fill: transparent; }
+.light .light-name { font-size: 0.16px; text-anchor: middle; fill: var(--lamp); font-family: var(--ui); pointer-events: none; }
+.light.unpaired .light-name { fill: var(--bad); font-weight: bold; }
+.light.unpaired .bulb { stroke: var(--bad); stroke-dasharray: 0.05 0.04; }
+.light.selected .bulb { stroke: #ff00aa; stroke-width: 0.05; }
+.light.lit .bulb { stroke: var(--gold); stroke-width: 0.06; }
+.lg.light { width: 0.75em; height: 0.75em; border-radius: 50%; background: var(--lamp-fill); border: 1px solid var(--lamp); }
+
+/* ── the inspector ────────────────────────────────────────────────────── */
+.swatches { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 4px; }
+.swatches .swatch { width: 26px; min-width: 26px; height: 22px; padding: 0; }
+.swatches .swatch:disabled { opacity: 0.35; }
+
+/* ── the tab ──────────────────────────────────────────────────────────── */
+.lights-panel .lights-steps { margin: 0; padding-left: 1.4em; }
+.lights-panel .lights-steps li { margin: 2px 0; }
+.lights-panel .lights-steps li.done { color: #1f7a1f; }
+.lights-panel .lights-steps li.done::marker { content: "✓ "; }
+.lights-panel .light-rows,
+.lights-panel .device-rows { list-style: none; margin: 0; padding: 0; }
+.lights-panel .light-row,
+.lights-panel .device-rows li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 3px 2px; border-bottom: 1px dotted #c0c0c0; }
+.lights-panel .light-row.on { background: #fff2fb; }
+.lights-panel .light-row .link { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; text-decoration: underline; }
+.lights-panel .dot { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 50%; background: var(--lamp-fill); border: 1px solid var(--lamp); vertical-align: middle; }
+.lights-panel .pairing { color: #1f7a1f; }
+.lights-panel .look { border: 1px solid #c0c0c0; margin: 4px 0; padding: 2px 4px; background: #fff; }
+.lights-panel .look.bad { border-color: var(--bad); }
+.lights-panel .look summary { cursor: pointer; }
+.lights-panel .look-body { padding: 4px 0; }
+.lights-panel table.steps { border-collapse: collapse; width: 100%; font-size: 12px; }
+.lights-panel table.steps th { text-align: left; font-weight: normal; color: #555; padding: 0 2px; }
+.lights-panel table.steps td { padding: 1px 2px; vertical-align: top; }
+.lights-panel table.steps tr.bad td { background: #ffecec; }
+.lights-panel table.steps .num input,
+.lights-panel table.steps select { width: 5.2em; }
+.lights-panel .colour-cell { display: inline-flex; gap: 2px; align-items: center; }
+.lights-panel .colour-cell input[type="color"] { width: 2.2em; height: 1.6em; padding: 0; border: 1px solid #808080; }
+.lights-panel .zone-row { border-bottom: 1px dotted #c0c0c0; padding: 3px 0; }

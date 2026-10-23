@@ -116,6 +116,24 @@ with the code belongs inside, so let them in. Only the patch bay alarms (the
 second wrong combination), and then whoever is at the cables goes to the
 Internet. From inside, the handle always opens with no code.
 
+**The server-room door (wave 20).** The door sensor is a **light on the
+frame** shining into a small eye: the story knows the door is shut only while
+the beam is unbroken. Once Trabolta is awake the first opening plays **The
+Heart** (the room's screen goes red, the bulb wakes, and he asks for the door
+to be shut); **nothing goes on until it is shut**, and he nags every 20 s
+while it stands open. So: **close the door behind the program** (and behind
+yourself), never prop it, and don't stand in the beam. Only with the door
+shut does a pass scanned at his screen start the program's talk (four layers
+they click through with the mouse, or type to him at the keyboard). If the
+story has it wrong, press on your booth (any program's card) **🚪 The
+server-room door opened** or **🚪 The server-room door is shut**; from then on
+the story follows the buttons, not the light, until the director presses 🚪
+*Trust the door sensor again*: tell them on the radio which you pressed. A
+program he throws out of his heart (a blue screen) **is marked for
+reinstallation** (wave 20b): their poster lands on your Wanted board like
+any mark. They stay barred from his heart until the director's 🔄; a barred
+re-scan never marks them again.
+
 **Your booth:** the **NOW card** on top (this part of the night's job, its
 to-dos ticking themselves) · **📷 Scan** and **🗂 Guests** on the taskbar ·
 **Wallet** (the approvals; the tray shows **🧾 n** while transfers wait on you,

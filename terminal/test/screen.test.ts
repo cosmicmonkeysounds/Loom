@@ -200,7 +200,7 @@ describe("a room terminal (wave 7: the server-room terminal)", () => {
 
   it("parses the room block; an older server (no block) keeps a room terminal asleep", () => {
     const open = parseScreenState({ ...body, attract: false, room: { id: "The Server Room", open: true } })!;
-    expect(open.room).toEqual({ id: "The Server Room", open: true });
+    expect(open.room).toEqual({ id: "The Server Room", open: true, cue: null });
     expect(attractOf(open, true)).toBe(false);
     const closed = parseScreenState({ ...body, attract: true, room: { id: "The Server Room", open: false } })!;
     expect(attractOf(closed, true)).toBe(true);

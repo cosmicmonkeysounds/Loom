@@ -2,7 +2,7 @@
 title: The mind debugger — watching an agent think
 section: The Editor
 order: 44
-keywords: story mind, mind_mode, switches, kill switch, ladder, laptop.yaml, guard, answer-guard, invented fact, unsaid, catchphrase, fallback, dead air, retry, repeat, warm head, phase card, stage card, summary, quiet summary, classic, new mode, phase table, rewrite brief, set by story, set by director, memo, memo by voice, first met, gifts, filings, house trust, prompt_ms, same prefix, quiet, slider, near miss, ruling, judge thought, queue, stalled, busy, mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus, secrets, never, door code, combo, suppressed, restart, limit
+keywords: story mind, mind_mode, switches, kill switch, ladder, laptop.yaml, guard, answer-guard, invented fact, unsaid, catchphrase, fallback, dead air, retry, repeat, warm head, phase card, stage card, summary, quiet summary, classic, new mode, phase table, rewrite brief, set by story, set by director, memo, memo by voice, first met, gifts, filings, house trust, prompt_ms, same prefix, quiet, slider, near miss, ruling, judge thought, queue, stalled, busy, mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus, secrets, never, door code, combo, suppressed, restart, limit, dossier, who this is tonight, heart to heart, outside, fiction, max_sentences, acts none, a choice is open, stand_down, situation keys, LOOM_AGENT_DOSSIER
 ---
 
 A character marked `mind: external` has no performer: a language model
@@ -428,13 +428,54 @@ exchange sees it too, so a thought's messages show exactly when it
 applied. Trabolta's *at your heart* situation is the server-room
 terminal (`them.at_the_heart`, whenever he is awake): there, and only
 there, he is candid, and the reflect keeps that candour in the program's
-dossier, never the shared brief. A separate *standing down* situation
-(the same place, from the Y2K hour) carries the `stand_down` rules; the
-persona never fires that power without it. Two more decide whether he may say
+dossier, never the shared brief. Two more decide whether he may say
 Sandy's name yet. A situation's `when:` reads the same values as the
-gate, so a `secret:` slot never reaches one. See [the server
-room](server-room.md) for what a director does when he offers to stand
-down.
+gate, so a `secret:` slot never reaches one.
+
+**Since wave 20 the talk at his heart is the story's, not the model's.**
+The old *standing down* situation and Trabolta's `stand_down` power are
+gone: a conversation never decides an ending. The story docks four layers
+of choices on the server-room terminal (options that show only while a
+check holds: see [choices](choices.md)), and only its last one stops him.
+His voice fills the gaps, through two more situations:
+
+- **a choice is open** (`them.heart_menu`): one short line pointing the
+  program back at the screen. He decides nothing and promises nothing.
+- **heart to heart** (`them.heart_chat`: the program picked ⟦SPEAK
+  FREELY⟧, or the tree is over): he talks at length, candid and bleak,
+  and this block wins over the other heart blocks.
+
+A situation can carry two more keys besides `name`, `when` and `prompt`:
+`max_sentences: N` (the voice keeps at most N sentences of that reply;
+*heart to heart* says 4) and `acts: none` (any act the model returns in
+that reply is dropped: he may talk, never do). A program he threw out of
+his heart (`them.heart_out`) gets no candid block at all.
+
+**The dossier.** While a guest stands at his heart, the request carries
+their night, built by the server from what the story already knows: their
+program, faction and groups, marked / captured / reinstalled, his Trust
+Chart rank, how many of their truths he accepted, their filings as
+question ids with a verdict (never an answer or a key), the non-secret
+codex titles they hold, their quests, the rooms they visited, their own
+last lines to him, and how far they got at his heart. The voice reads it
+as a *WHO THIS IS — TONIGHT* block (on a thought, it is in the prompt).
+Never in it: a secret entry, a secret character's value, a hunt answer,
+a code, a patch pair, another guest's private line, or anyone's real name
+or account (a director's speech-as is skipped). Away from his heart
+there is no dossier, and the prompt is exactly what it was. The server's
+`LOOM_AGENT_DOSSIER=off` turns it off.
+
+**His world.** Trabolta lives in Halifax, in the world of Maps and
+Ducks. The persona's `outside:` frontmatter lists names and words from
+beyond it (the real crew, the event and its kit). His prompt names none
+of them; the guards check his **output**, and a reply that names one is
+withheld like a `never` word (the act dropped, the line swapped for a
+`fallbacks:` line). Keep a word that also lives in his world off the
+list: *Trapped in the Internet* leaves out a bare *John* (John McAfee is
+in it) and *party* (his invitation is to one). `stagehand check` warns
+when an `outside:` word appears in the persona's own in-world text. See
+[the server room](server-room.md) for the talk itself and what a director
+does when he stands down.
 
 The mind file's `secrets:` keep the hunt's answers from him, and its
 `never` list (written by `titi:facts` from `facts.json` and the story's

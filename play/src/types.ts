@@ -235,6 +235,11 @@ export interface GuestView {
   pendingChoice: string[] | null;
   /** Channel the pending decision docks under. */
   decisionChannel: string | null;
+  /** (wave 20, D18) Every pending menu, oldest first, with its id: the one
+   *  `pendingChoice` shows is `choices[0]`. A pick names it (`choice` +
+   *  the option's `text`) so a tap racing a new menu is refused, never
+   *  applied to another menu's option at that index. Absent on an older server. */
+  choices?: Array<{ id: number; options: string[]; beat?: string; channel?: string }>;
   /** Standing in a `cutscene: true` location: the app goes on rails — a
    *  full-screen stream of what is said to you, no rooms sidebar. */
   cutscene?: boolean;

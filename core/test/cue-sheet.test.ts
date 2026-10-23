@@ -147,6 +147,25 @@ async function call(rt: EventRuntime, method: string, p: string, body: unknown, 
 }
 
 describe("the phone cue page's server surface (W-26)", () => {
+  it("a device's signal that changes nothing (a door sensor edge) is never answered `refused`", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
+    dirs.push(dir);
+    const src = `${SOURCE}
+when door_sensor_closed:
+  if Night.phase == "never":
+    set Night.phase = "shut"
+`;
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "cue-phone", scenarioSource: src, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const token = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    const r = await call(rt, "POST", "/api/mod/signal", { name: "door_sensor_closed", args: { level: 3000 }, label: "Terminal · Server Room" }, token);
+    expect(r.status).toBe(200);
+    expect(r.json["refused"]).toBeUndefined();
+    // A cue out of turn still says so.
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "hunt_time_up" }, token)).json["refused"]).toBe(true);
+    rt.dispose();
+  });
+
   it("a mod token reads the cue sheet and fires a cue under the phone's label", async () => {
     const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
     dirs.push(dir);
@@ -623,6 +642,8 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
       final_reveal: "F · The final reveal and the endings",
       own_award_lines: "G · The awards ceremony",
       "the simulation completed": "Anytime",
+      // Wave 20: 🚪 closed / trust and 🕊 autoend, appended after 👑 / 🔧, rejoin E.
+      server_door_closed: "E · Act III: the Y2K hour and the server room",
     };
     const bare = scenarioSource("trapped-in-the-internet").replace(/^ {2}act:.*\n/gmu, "");
     let tagged = bare;
@@ -639,7 +660,7 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
       return { cues: v.cues, rows };
     };
     const tagRows = cueRows(modView(acted, "open", "x").interactions ?? [], { last: null, fired: [] });
-    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 10", "C 5", "D 8", "E 13", "Anytime 6", "F 12", "G 12"]); // wave 18b: −☎️ −🪅
+    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 10", "C 5", "D 8", "E 16", "Anytime 6", "F 12", "G 12"]); // wave 18b: −☎️ −🪅; wave 20: +3 in E
     expect(marks(acted)).toEqual(marks(plain));
     const admin = [...plain.model.interactions.values()].filter((i) => i.who === "admin").map((i) => i.id);
     for (const id of admin.slice(0, 30)) {
@@ -778,5 +799,30 @@ describe("countdowns on the cue sheet", () => {
     // Nothing to carry: no keys at all (an old server's view).
     const bare = cueSheetView({ interactions: [] });
     expect(Object.keys(bare).sort()).toEqual(["cues", "interactions", "roster", "world"]);
+  });
+});
+
+describe("an `urgent: true` cue jumps the running order (w20b: 🕊 while a stand-down waits)", () => {
+  type Ix = { id: string; label: string; who: string; live?: false; urgent?: true; sequence?: false };
+  const ix = (id: string, extra: { live?: false; urgent?: true; sequence?: false } = {}): Ix => ({ id, label: id, who: "admin", ...extra });
+  const next = (sheet: Ix[], last: string | null, fired: string[]) => cueRows(sheet, { last, fired }).find((r) => r.next)?.id ?? null;
+
+  it("is NEXT while live and unfired, wherever LAST is; otherwise the sheet runs as before", () => {
+    const sheet = [ix("bingo"), ix("hunt"), ix("y2k"), ix("talked_down", { urgent: true }), ix("reveal"), ix("bobbing")];
+    expect(next(sheet, "bingo", ["bingo"])).toBe("talked_down"); // LAST before it
+    expect(next(sheet, "reveal", ["bingo", "hunt", "y2k", "reveal"])).toBe("talked_down"); // LAST after it
+    expect(cueRows(sheet, { last: "bingo", fired: ["bingo"] }).filter((r) => r.next)).toHaveLength(1);
+    const idle = sheet.map((i) => (i.id === "talked_down" ? ix("talked_down", { urgent: true, live: false }) : i));
+    expect(next(idle, "bingo", ["bingo"])).toBe("hunt");
+    expect(next(sheet, "talked_down", ["bingo", "talked_down"])).toBe("reveal"); // fired: back to the order
+    const aside = sheet.map((i) => (i.id === "talked_down" ? ix("talked_down", { urgent: true, sequence: false }) : i));
+    expect(next(aside, "bingo", ["bingo"])).toBe("hunt"); // an aside is never NEXT
+  });
+
+  it("the lean view carries the flag", () => {
+    const sheet = [ix("a"), ix("b", { urgent: true })];
+    const lean = cueSheetView({ interactions: sheet }).interactions;
+    expect(lean.find((i) => i.id === "b")).toMatchObject({ urgent: true });
+    expect(lean.find((i) => i.id === "a")).not.toHaveProperty("urgent");
   });
 });

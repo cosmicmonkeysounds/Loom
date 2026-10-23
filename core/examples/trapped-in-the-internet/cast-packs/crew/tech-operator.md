@@ -127,8 +127,12 @@ terminal, or read them over the radio to the room.
 
 ## Before the night
 
-- [ ] Bench Thu 10-22 with John: the door contact (wire loops that touch when
-      the door opens), the keypad lock (code + egress), the bay, the lights, the blackout
+- [ ] Bench with John: the door sensor (wave 20: the LED + LDR on the
+      Grand Central M4, `scripts/accept/N-20.sh`, then the kiosk's ⚙
+      *Connect door sensor* + both calibrations on Steph's laptop, then
+      `K-05.sh`), the server room's RGB bulb (paired as `server_room_rgb`,
+      `power_on_behavior: on`, placed in the map editor, every `heart_*` look
+      ▶ Tested; `stagehand check --only lights` green), the keypad lock (code + egress), the bay, the lights, the blackout
       test (stopwatch every flashing preset ≤ 3 Hz).
 - [ ] Tech run 10-28, dress 10-29 (incl. the shed switch in < 15 min).
 - [ ] Your device has the mod code and the map page (`/reinstall/map`) provisioned

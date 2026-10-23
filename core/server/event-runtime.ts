@@ -26,7 +26,7 @@ import { allSnapshotFlags, awardOnly, callsCue, cueState, guestCardView, interac
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
-import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
+import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, menuChannelsFor, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
 import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, readRawBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
@@ -73,6 +73,7 @@ import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
 import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, type AudioContext } from "./audio.ts";
+import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProblems, type LightsContext } from "./lights.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
@@ -125,6 +126,7 @@ import {
   agentThought,
   type AgentAct,
   type AgentActResult,
+  type AgentDossier,
   type AgentFacts,
   type AgentLine,
   type AgentPower,
@@ -134,6 +136,7 @@ import {
   type AgentThread,
   threadKey,
 } from "./agents.ts";
+import { agentDossierOn, buildDossier, codeMentions, dossierVerdictOf } from "./agent-dossier.ts";
 import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
@@ -351,6 +354,13 @@ export function defaultAudioFile(): string | null {
   return v !== undefined && v.trim() !== "" ? v : null;
 }
 
+/** The house lights' LAN fallback (`lights.ts`, wave 20): `LOOM_LIGHTS`,
+ *  else none (no fixtures). */
+export function defaultLightsFile(): string | null {
+  const v = process.env.LOOM_LIGHTS;
+  return v !== undefined && v.trim() !== "" ? v : null;
+}
+
 /** Show maps by path: the last *good* read, keyed on the file's mtime — a
  *  hand edit (or a file mounted after boot) is picked up on the next read,
  *  and a missing / half-saved / invalid file never sticks: the last good
@@ -517,6 +527,11 @@ export interface EventRuntimeInit {
   audio?: string | null;
   /** The speakers' LAN fallback file (`LOOM_AUDIO`; null = none). */
   audioFile?: string | null;
+  /** The project's `lights.json` text snapshotted at launch (`lights.ts`,
+   *  wave 20): null = the project has none; absent = no row snapshot. */
+  lights?: string | null;
+  /** The lights' LAN fallback file (`LOOM_LIGHTS`; null = none). */
+  lightsFile?: string | null;
   /** The reserved programs' claim secret as the event row pins it
    *  (`event.claim_secret`, routes/claims.ts). Absent / null → the state
    *  dir's copy, else a fresh one (saved there, and handed to
@@ -663,6 +678,12 @@ export class EventRuntime {
   private readonly chat = new ChatStore();
   // Where each guest's pending decision docks (channel id). Ephemeral.
   private readonly decisionChannels = new Map<string, string>();
+  // Wave 20 (D18): each pending menu's id → the channel its prompt went to
+  // (`GuestView.choices`). Ephemeral like the above; rebuilt by a replay.
+  private readonly menuChannels = new Map<number, string>();
+  /** Person → the character whose line last reached them (D18): a menu's
+   *  channel falls back to it when its own batch has no line. */
+  private readonly lastSpeakers = new Map<string, string>();
   // W-03 reserved programs: the claim tokens + a director's open windows.
   private readonly claims: Claims;
   // W-04 / OP-11: guest id → when they were last heard from (wall ms): a
@@ -730,6 +751,8 @@ export class EventRuntime {
   private readonly factsWatch = new FactsWatch();
   /** The house speakers + the audio interface (`audio.ts`, wave 17). */
   readonly audio: AudioHub;
+  /** The house lights + the Zigbee devices (`lights.ts`, wave 20). */
+  readonly lights: LightsHub;
   /** Near misses a restore found still pending (person, question, answer):
    *  the only ones put to the `judge:` character after they landed —
    *  contract J. A near miss filed with nobody online keeps wave 11's
@@ -835,6 +858,7 @@ export class EventRuntime {
     if (init.facts !== undefined) this.store.saveFacts(init.facts);
     // The speakers ride the same record; a director's save in the state dir wins.
     this.audio = new AudioHub({ store: this.store, ...(init.audio !== undefined ? { projectText: init.audio } : {}), envFile: init.audioFile !== undefined ? init.audioFile : defaultAudioFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
+    this.lights = new LightsHub({ store: this.store, ...(init.lights !== undefined ? { projectText: init.lights } : {}), envFile: init.lightsFile !== undefined ? init.lightsFile : defaultLightsFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
     this.random = init.random ?? Math.random;
     if (init.now !== undefined) this.clock = init.now;
     this.claims = new Claims({ secret: this.resolveClaimSecret(init), now: () => this.clock() });
@@ -1147,7 +1171,7 @@ export class EventRuntime {
   /** A guest's snapshot, plus the cards they have already answered. */
   private guestViewFor(id: string, online: ReadonlySet<string>, avatars = this.avatarMap()): GuestView {
     return {
-      ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online),
+      ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online, this.menuChannels),
       answered: this.answeredFor(id),
       avatars,
       ...(this.wallet !== null ? { wallet: this.wallet.viewFor(id) } : {}),
@@ -1695,6 +1719,7 @@ export class EventRuntime {
    *  drew: `runPicks` commits its own), for a press's card lines (C1). */
   private fanout(events: SimEvent[], via?: string): ChatMessage[] {
     if (this.agents.judging.length > 0) this.dropMootRulings();
+    for (const [menu, channel] of menuChannelsFor(events, this.lastSpeakers)) this.menuChannels.set(menu, channel);
     for (const e of events) {
       if (e.type === "respond") {
         // The alert `!` stripped, as the Inbox row has it (`alert` says it was there).
@@ -1756,6 +1781,7 @@ export class EventRuntime {
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
+    this.pruneMenuChannels();
     // Wave 18b: a `when` picture whose condition moved (the snapshots below carry it).
     this.syncConditionalAvatars();
     this.pushSnapshots();
@@ -1867,7 +1893,8 @@ export class EventRuntime {
    *  `asMapFiles`, the facts with `factsOf`). */
   private dataSnapshot(maps: MapFiles): MapFiles {
     const audio = this.audio.project;
-    return { ...maps, ...(this.projectFacts !== null ? { [FACTS_FILE]: this.projectFacts } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}) };
+    const lights = this.lights.project;
+    return { ...maps, ...(this.projectFacts !== null ? { [FACTS_FILE]: this.projectFacts } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}), ...(lights !== null ? { [LIGHTS_FILE]: lights } : {}) };
   }
 
   /** A reload's fresh snapshot of the project's `audio.json` (`events-api.ts`,
@@ -1878,6 +1905,17 @@ export class EventRuntime {
 
   /** What the audio routes read off this event (`audio.ts`). */
   private audioContext(): AudioContext {
+    return { house: () => this.spatialHouse(), model: () => this.sim?.model ?? this.declaredModel };
+  }
+
+  /** A reload's fresh snapshot of the project's `lights.json` (`events-api.ts`,
+   *  `/api/mod/load {lights}`); a director's save still wins over it. */
+  setProjectLights(text: string | null): void {
+    this.lights.setProjectText(text);
+  }
+
+  /** What the lights routes read off this event (`lights.ts`). */
+  private lightsContext(): LightsContext {
     return { house: () => this.spatialHouse(), model: () => this.sim?.model ?? this.declaredModel };
   }
 
@@ -2539,7 +2577,116 @@ export class EventRuntime {
       // and a pause's shift read the same time.
       at: this.clock(),
       ...(tag !== null ? this.agentRecentOf(thread, performer !== null ? "performer" : "guest", speakerId, speakerName, all, lines, tag) : {}),
+      // Wave 20 (D26): the guest's night, only at his heart (else absent).
+      ...(performer === null && agentDossierOn() ? this.agentDossierOf(thread, who, speakerName, all) : {}),
     };
+  }
+
+  /** `dossier` for one request (wave 20, D26): built only for a guest
+   *  standing at his heart, from the sim log, the chat log, the world and
+   *  the facts ledger, every time (never stored). */
+  private agentDossierOf(thread: AgentThread, id: string, name: string, all: readonly ChatMessage[]): { dossier: AgentDossier } | Record<string, never> {
+    const sim = this.sim!;
+    const peek = (path: string) => worldString(sim.world.peek(path));
+    const person = sim.persons.get(id);
+    if (person === undefined || peek(`${id}.at_the_heart`) !== "true") return {};
+    const unseen = (g: string) => this.agentHiddenGroup(g) || this.agentHiddenRace(g);
+    const want = foldName(name);
+    const played = [...sim.model.characters.values()].find((c) => !c.secret && foldName(c.id) === want);
+    const book = this.factsBook();
+    const filings =
+      book === null
+        ? []
+        : this.factsWatch
+            .all(sim, book.confirm)
+            .filter((f) => f.person === id)
+            .sort((a, b) => (a.logAt ?? 0) - (b.logAt ?? 0))
+            .map((f) => ({ question: f.question, verdict: dossierVerdictOf(f), confidence: f.confidence, ...(f.logAt !== undefined ? { logAt: f.logAt } : {}) }));
+    const leaks = this.agentLeakChecks();
+    const dossier = buildDossier({
+      character: thread.character,
+      speaker: { id, name },
+      storyAt: sim.elapsed(),
+      log: sim.log.all(),
+      messages: all,
+      peek,
+      secretSlots: sim.model.roles.get(person.role)?.secret ?? new Set<string>(),
+      program: played?.id ?? null,
+      faction: sim.publicFactionOf(id),
+      groups: sim.groupsOf(id),
+      groupVisible: (g) => !unseen(g),
+      captured: sim.isCaptured(id),
+      restricted: sim.isRestricted(id),
+      persons: [...sim.persons.values()].map((p) => ({ id: p.id, name: p.name })),
+      codex: sim.codexFor(id).map((e) => ({ title: e.title, text: e.text, secret: e.secret })),
+      codexDef: (entry) => {
+        const e = sim.model.codex.get(entry);
+        return e === undefined ? undefined : { title: e.title, text: e.text, secret: e.secret };
+      },
+      quests: sim.questsFor(id).map((q) => ({ id: q.def.id, title: q.def.title, status: q.status })),
+      location: (loc) => {
+        const l = sim.model.locations.get(loc);
+        return l === undefined ? null : (l.label ?? l.id);
+      },
+      filings,
+      currencySlot: sim.model.currency?.slot ?? null,
+      ...(leaks.mentionsAnswer !== undefined ? { mentionsAnswer: leaks.mentionsAnswer } : {}),
+      mentionsSecret: leaks.mentionsSecret,
+      mentionsCode: codeMentions([...sim.model.codex.values()].flatMap((e) => (e.code === null ? [] : [e.code]))),
+    });
+    return dossier === null ? {} : { dossier };
+  }
+
+  /**
+   * Answer `person`'s pending menu (`/api/guest/choose`, `/api/mod/choose`).
+   * Wave 20 (D15, D18): `choice` names the menu by its id (absent: the
+   * oldest), and `text` is the option the client showed at `index` — a click
+   * racing a new menu is refused (409 `moved`), never misapplied, and an
+   * index the named menu doesn't offer is refused too, never journaled as a
+   * no-op pick. The menu id (with its beat and the option's text) rides
+   * the journal line only when given, so an old client's line (and an old
+   * journal) replays as before.
+   */
+  private chooseFor(person: string, body: Record<string, unknown>, res: ServerResponse): void {
+    const idx = Number(body["index"] ?? -1);
+    const text = typeof body["text"] === "string" ? body["text"] : undefined;
+    const raw = body["choice"];
+    const choice = raw === undefined || raw === null ? undefined : Number(raw);
+    let key: [string, string] | null = null;
+    if (text !== undefined || choice !== undefined) {
+      const menus = this.reqSim().pendingChoicesFor(person);
+      const menu = choice === undefined ? menus[0] : menus.find((m) => m.id === choice);
+      if (menu === undefined) {
+        sendJson(res, 409, { error: "no choice", options: null });
+        return;
+      }
+      if (!Number.isInteger(idx) || idx < 0 || idx >= menu.options.length || (text !== undefined && menu.options[idx] !== text)) {
+        sendJson(res, 409, { error: "moved", options: menu.options });
+        return;
+      }
+      key = [menu.beat, menu.options[idx]!];
+    }
+    // The menu's beat + the option's text ride beside its id: the id is a
+    // log index, so a replay over edited text finds the menu by them.
+    this.fanout(choice === undefined ? this.commit("choose", person, idx) : this.commit("choose", person, idx, choice, ...(key ?? [])));
+    sendJson(res, 200, { ok: true });
+  }
+
+  /** The leak checks a request's house-held text goes through (wave 12
+   *  C0.1 / C1.2, shared by `recent` and the wave 20 dossier): the facts
+   *  book's answer forms (absent with no book in force) and the current
+   *  values of every `secret: true` character. */
+  private agentLeakChecks(): { mentionsAnswer?: (text: string) => boolean; mentionsSecret: (text: string) => boolean } {
+    const sim = this.sim!;
+    const book = this.factsBook();
+    const topics = new Map((book?.raw.questions ?? []).map((q) => [q.id, q.topics ?? []] as const));
+    const mentionsAnswer = book === null ? undefined : answerMentions([...book.questions, ...book.answers].map((k) => ({ forms: k.forms, topics: topics.get(k.id) ?? [] })));
+    const secretHeads = new Set([...sim.model.characters.values()].filter((c) => c.secret).map((c) => c.id));
+    const secretValues = sim.world
+      .entries()
+      .flatMap(([path, v]) => (v.kind === "string" && secretHeads.has(path.split(".")[0]!) ? [v.value] : []));
+    const mentionsSecret = secretMentions(secretValues, [...sim.persons.values()].map((p) => p.name));
+    return { ...(mentionsAnswer !== undefined ? { mentionsAnswer } : {}), mentionsSecret };
   }
 
   /** `recent` + `storyAt` for one request (wave 12, C1.2): rebuilt from the
@@ -2557,15 +2704,9 @@ export class EventRuntime {
     }
     const book = this.factsBook();
     const filings = book === null || kind !== "guest" ? [] : this.factsWatch.all(sim, book.confirm).map((f) => ({ person: f.person, question: f.question, at: f.at }));
-    const topics = new Map((book?.raw.questions ?? []).map((q) => [q.id, q.topics ?? []] as const));
-    const mentionsAnswer = book === null ? undefined : answerMentions([...book.questions, ...book.answers].map((k) => ({ forms: k.forms, topics: topics.get(k.id) ?? [] })));
     // C0.1: a house line filled in from a secret character (the Kernel) is
     // never his to read, whatever the hour.
-    const secretHeads = new Set([...sim.model.characters.values()].filter((c) => c.secret).map((c) => c.id));
-    const secretValues = sim.world
-      .entries()
-      .flatMap(([path, v]) => (v.kind === "string" && secretHeads.has(path.split(".")[0]!) ? [v.value] : []));
-    const mentionsSecret = secretMentions(secretValues, [...sim.persons.values()].map((p) => p.name));
+    const { mentionsAnswer, mentionsSecret } = this.agentLeakChecks();
     const recent = buildRecent({
       character: thread.character,
       speaker: { kind, id, name },
@@ -3738,10 +3879,19 @@ export class EventRuntime {
     return true;
   }
 
+  /** Forget the channel of every menu no longer pending (D18). */
+  private pruneMenuChannels(): void {
+    if (this.menuChannels.size === 0) return;
+    const pending = this.sim?.pendingChoiceIds() ?? new Set<number>();
+    for (const menu of [...this.menuChannels.keys()]) if (!pending.has(menu)) this.menuChannels.delete(menu);
+  }
+
   private resetChat(): void {
     this.chat.clear();
     this.store.clearHidden();
     this.decisionChannels.clear();
+    this.menuChannels.clear();
+    this.lastSpeakers.clear();
   }
 
   private persistMeta(): void {
@@ -4238,6 +4388,7 @@ export class EventRuntime {
           }
           if (Array.isArray(out)) {
             const batch = out as SimEvent[];
+            for (const [menu, channel] of menuChannelsFor(batch, this.lastSpeakers)) this.menuChannels.set(menu, channel);
             for (const ev of batch) {
               if (ev.type === "choicePrompted" && ev.person !== null) {
                 this.decisionChannels.set(ev.person, decisionChannelFor(batch, ev.person));
@@ -4268,6 +4419,7 @@ export class EventRuntime {
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
+    this.pruneMenuChannels();
     this.setPhase(meta.phase);
     for (const [id, owner] of meta.owners ?? []) this.personaOwners.set(id, owner);
     const entries = this.store.loadSessions();
@@ -4642,6 +4794,8 @@ export class EventRuntime {
     }
     // --- the house speakers (wave 17, audio.ts): the config + stagehand's long poll ---
     if (method === "GET" && path === "/api/mod/audio") return handleAudioGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
+    // --- the house lights (wave 20, lights.ts): the config + the lights module's long poll ---
+    if (method === "GET" && path === "/api/mod/lights") return handleLightsGet(this.lights, this.lightsContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     // A host booth may mute the TV and identify a terminal (§2.7). Both are
     // host-visible writes handled before the generic body parse, so they
@@ -4870,6 +5024,12 @@ export class EventRuntime {
         const project = this.project;
         const link = project === null ? null : { writeFile: (file: string, text: string) => project.writeFile(file, text), saveSnapshot: () => project.saveSnapshot(this.dataSnapshot(this.projectMaps ?? {})) };
         if (await handleAudioPost(this.audio, this.audioContext(), path, body, res, link, by)) return true;
+      }
+      if (path === "/api/mod/lights" || path.startsWith("/api/mod/lights/")) {
+        // A booth never gets here: lights are not on the host allowlist.
+        const project = this.project;
+        const link = project === null ? null : { writeFile: (file: string, text: string) => project.writeFile(file, text), saveSnapshot: () => project.saveSnapshot(this.dataSnapshot(this.projectMaps ?? {})) };
+        if (await handleLightsPost(this.lights, this.lightsContext(), path, body, res, link, by)) return true;
       }
       if (path === "/api/mod/load") await this.resyncProjectFiles();
       if (path === "/api/mod/resync") {
@@ -5198,9 +5358,7 @@ export class EventRuntime {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
-        const idx = Number(body["index"] ?? -1);
-        this.fanout(this.commit("choose", id, idx));
-        sendJson(res, 200, { ok: true });
+        this.chooseFor(id, body, res);
         return true;
       }
       case "/api/guest/escape": {
@@ -6071,9 +6229,22 @@ export class EventRuntime {
           sendJson(res, 400, { error: `invalid ${AUDIO_FILE}`, problems: audioBad });
           return true;
         }
+        // `lights` (optional): the project's lights.json, like `audio`.
+        const lights = body["lights"];
+        if (lights !== undefined && lights !== null && typeof lights !== "string") {
+          sendJson(res, 400, { error: "bad lights" });
+          return true;
+        }
+        const lightsText = typeof lights === "string" && lights.trim() !== "" ? lights : null;
+        const lightsBad = lightsText !== null ? lightsProblems(lightsText) : [];
+        if (lightsBad.length > 0) {
+          sendJson(res, 400, { error: `invalid ${LIGHTS_FILE}`, problems: lightsBad });
+          return true;
+        }
         this.restart(source, name, { by });
         if (facts !== undefined) this.setProjectFacts(factsText);
         if (audio !== undefined) this.setProjectAudio(audioText);
+        if (lights !== undefined) this.setProjectLights(lightsText);
         if (maps !== null) {
           this.setProjectMaps(maps);
           this.project?.saveSnapshot(this.dataSnapshot(maps)).catch((err: unknown) => {
@@ -6531,7 +6702,12 @@ export class EventRuntime {
         const press = this.commit("signal", str(body, "name"), subject === "" ? undefined : subject, args, actor === "" ? null : actor);
         // `refused`: the story turned the press down (its `# hosts` line says
         // why) — the cue sheet's own judgement, so a phone needn't say "fired".
-        const refused = pressRefused(this.sim, press);
+        // Only a cue (a declared INTERACTION) is judged: a device's own
+        // signal (the door sensor's edge under the override, `terminal
+        // opened`) that changes nothing is not a refused press.
+        const signalled = foldName(str(body, "name"));
+        const isCue = [...this.sim.model.interactions.values()].some((i) => foldName(i.id) === signalled);
+        const refused = isCue && pressRefused(this.sim, press);
         // C8: what the press said (its lines) and the staff rooms' lines.
         const lines = cueLines(this.fanout(press), new Set(staffRoomChannels(this.sim.model)));
         // `presses`: the count after this press — the screen holds its lock
@@ -6915,9 +7091,9 @@ export class EventRuntime {
           sendJson(res, 400, { error: "missing person" });
           return true;
         }
-        const idx = Number(body["index"] ?? -1);
-        this.fanout(this.commit("choose", person, idx));
-        sendJson(res, 200, { ok: true });
+        // `choice` / `text` as on `/api/guest/choose` (D15, D18): a director
+        // may answer a menu that sits behind a stale one.
+        this.chooseFor(person, body, res);
         return true;
       }
       default:

@@ -54,6 +54,13 @@
 //! replaces it (the project's copy backed up to a temp directory first; an
 //! example with none removes the project's), `--keep-audio` leaves it alone.
 //! It rides the row's snapshot and the reload as `audio`.
+//!
+//! The example's `lights.json` (the house lights, `server/lights.ts`, wave
+//! 20) follows the same rules on **its own** switch: the project's copy wins
+//! (added only when the project has none), `--replace-lights` replaces it
+//! (backed up first; an example with none removes the project's),
+//! `--keep-lights` leaves it alone. Neither the map nor the audio switches
+//! touch it. It rides the row's snapshot and the reload as `lights`.
 
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -65,6 +72,7 @@ import { scenarioDir, scenarioFactsFile, scenarioFiles, scenarioMapFiles } from 
 import { isMapFile, mapProblems, mapSummary, planMapSync, type MapFiles, type MapSyncMode } from "../server/house-maps.ts";
 import { FACTS_FILE, factsProblems } from "../server/facts.ts";
 import { AUDIO_FILE, audioProblems } from "../server/audio.ts";
+import { LIGHTS_FILE, lightsProblems } from "../server/lights.ts";
 import { LIVE_OVERRIDE, reloadVerdict, type GuardRow } from "./live-guard.ts";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://127.0.0.1:5432/loom_dev";
@@ -73,7 +81,7 @@ export const LIVE_OVERRIDE_ENV = "LOOM_I_KNOW_THIS_IS_LIVE";
 
 function usage(): never {
   process.stderr.write(
-    `usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps | --replace-maps] [--keep-audio | --replace-audio] [--${LIVE_OVERRIDE}]   (or ${LIVE_OVERRIDE_ENV}=1)\n`,
+    `usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps | --replace-maps] [--keep-audio | --replace-audio] [--keep-lights | --replace-lights] [--${LIVE_OVERRIDE}]   (or ${LIVE_OVERRIDE_ENV}=1)\n`,
   );
   process.exit(2);
 }
@@ -208,6 +216,8 @@ export interface SyncOptions {
   mapMode: MapSyncMode;
   /** `audio.json`'s own mode (`--replace-audio` / `--keep-audio`): never the maps'. */
   audioMode: MapSyncMode;
+  /** `lights.json`'s own mode (`--replace-lights` / `--keep-lights`): never the maps' or the audio's. */
+  lightsMode: MapSyncMode;
   positional: string[];
 }
 
@@ -239,6 +249,29 @@ export function planAudioSync(project: Record<string, string>, example: Record<s
   return { text, put: plan.put.includes(AUDIO_FILE), kept: plan.kept.includes(AUDIO_FILE), replaced: plan.replaced.includes(AUDIO_FILE) ? (project[AUDIO_FILE] ?? null) : null };
 }
 
+/** The example's `lights.json` as a one-file record (none → empty); one that
+ *  doesn't validate stops the sync. */
+export function exampleLights(example: string): Record<string, string> {
+  const path = join(scenarioDir(example), LIGHTS_FILE);
+  if (!existsSync(path)) return {};
+  const text = readFileSync(path, "utf8");
+  const problems = lightsProblems(text);
+  if (problems.length > 0) throw new Error(`the example's ${LIGHTS_FILE} does not validate — nothing synced:\n  ${problems.join("\n  ")}`);
+  return { [LIGHTS_FILE]: text };
+}
+
+/** What a sync does to the project's `lights.json`: `planAudioSync`'s rules
+ *  (`planMapSync`'s for one file), its own error text. */
+export function planLightsSync(project: Record<string, string>, example: Record<string, string>, mode: MapSyncMode): { text: string | null; put: boolean; kept: boolean; replaced: string | null } {
+  const plan = planMapSync(project, example, mode);
+  const text = plan.maps[LIGHTS_FILE] ?? null;
+  if (text !== null && !plan.put.includes(LIGHTS_FILE)) {
+    const problems = lightsProblems(text);
+    if (problems.length > 0) throw new Error(`the project's ${LIGHTS_FILE} does not validate — nothing synced (fix it, or --replace-lights / --keep-lights):\n  ${problems.join("\n  ")}`);
+  }
+  return { text, put: plan.put.includes(LIGHTS_FILE), kept: plan.kept.includes(LIGHTS_FILE), replaced: plan.replaced.includes(LIGHTS_FILE) ? (project[LIGHTS_FILE] ?? null) : null };
+}
+
 /** Parse the arguments. `LOOM_I_KNOW_THIS_IS_LIVE=1` is the override for
  *  the callers that can't pass a flag through (`pnpm dev --sync`, the root
  *  `pnpm sync-example`). */
@@ -249,6 +282,7 @@ export function syncOptions(args: readonly string[], env: NodeJS.ProcessEnv = pr
     override: env[LIVE_OVERRIDE_ENV] === "1",
     mapMode: "merge",
     audioMode: "merge",
+    lightsMode: "merge",
     positional: [],
   };
   for (let i = 0; i < args.length; i++) {
@@ -259,6 +293,8 @@ export function syncOptions(args: readonly string[], env: NodeJS.ProcessEnv = pr
     else if (a === "--replace-maps") o.mapMode = "replace";
     else if (a === "--keep-audio") o.audioMode = "keep";
     else if (a === "--replace-audio") o.audioMode = "replace";
+    else if (a === "--keep-lights") o.lightsMode = "keep";
+    else if (a === "--replace-lights") o.lightsMode = "replace";
     else if (a === `--${LIVE_OVERRIDE}`) o.override = true;
     else if (a.startsWith("-")) usage();
     else o.positional.push(a);
@@ -268,7 +304,7 @@ export function syncOptions(args: readonly string[], env: NodeJS.ProcessEnv = pr
 
 /** The whole sync; resolves to the process exit code. */
 export async function main(args: readonly string[]): Promise<number> {
-  const { server, reload, override, mapMode, audioMode, positional } = syncOptions(args);
+  const { server, reload, override, mapMode, audioMode, lightsMode, positional } = syncOptions(args);
   const [projectRef, example = "trapped-in-the-internet"] = positional;
   if (!projectRef) usage();
 
@@ -288,9 +324,11 @@ export async function main(args: readonly string[]): Promise<number> {
     // (--replace-audio for the speakers; see the header).
     const projectMaps: MapFiles = {};
     const projectAudio: Record<string, string> = {};
+    const projectLights: Record<string, string> = {};
     for (const r of (await pool.query<{ path: string; content: string }>(`select path, content from project_file where project_id = $1`, [project.id])).rows) {
       if (isMapFile(r.path)) projectMaps[r.path] = r.content;
       else if (r.path === AUDIO_FILE && r.content.trim() !== "") projectAudio[r.path] = r.content;
+      else if (r.path === LIGHTS_FILE && r.content.trim() !== "") projectLights[r.path] = r.content;
     }
     const exampleMaps: MapFiles = Object.fromEntries(scenarioMapFiles(example).map((f) => [f.path, f.source]));
     const bad = mapProblems(exampleMaps);
@@ -321,19 +359,28 @@ export async function main(args: readonly string[]): Promise<number> {
       process.stdout.write(`⚠️  replacing the project's ${AUDIO_FILE} — its copy is in ${dir}\n`);
     }
     if (audioPlan.kept) process.stdout.write(`⚠️  kept the project's ${AUDIO_FILE} (it differs from the example's — --replace-audio to overwrite it)\n`);
+    // The lights: likewise, on their own switch (--replace-lights).
+    const lightsPlan = planLightsSync(projectLights, exampleLights(example), lightsMode);
+    const lights = lightsPlan.text;
+    if (lightsPlan.replaced !== null) {
+      const dir = mkdtempSync(join(tmpdir(), "loom-sync-lights-"));
+      writeFileSync(join(dir, LIGHTS_FILE), lightsPlan.replaced);
+      process.stdout.write(`⚠️  replacing the project's ${LIGHTS_FILE} — its copy is in ${dir}\n`);
+    }
+    if (lightsPlan.kept) process.stdout.write(`⚠️  kept the project's ${LIGHTS_FILE} (it differs from the example's — --replace-lights to overwrite it)\n`);
     // The facts key: always the example's (generated, never edited in the project).
     const facts = scenarioFactsFile(example);
     if (facts !== null) {
       const problems = factsProblems(facts.source);
       if (problems.length > 0) throw new Error(`the example's ${FACTS_FILE} does not validate — nothing synced:\n  ${problems.join("\n  ")}`);
     }
-    const pushed = [...files, ...plan.put.map((path) => ({ path, source: exampleMaps[path]! })), ...(facts !== null ? [facts] : []), ...(audioPlan.put && audio !== null ? [{ path: AUDIO_FILE, source: audio }] : [])];
+    const pushed = [...files, ...plan.put.map((path) => ({ path, source: exampleMaps[path]! })), ...(facts !== null ? [facts] : []), ...(audioPlan.put && audio !== null ? [{ path: AUDIO_FILE, source: audio }] : []), ...(lightsPlan.put && lights !== null ? [{ path: LIGHTS_FILE, source: lights }] : [])];
 
     // Files: upsert every example file by path, drop the rest.
     const client = await pool.connect();
     try {
       await client.query("begin");
-      const keep = [...files.map((f) => f.path), ...Object.keys(maps), ...(facts !== null ? [FACTS_FILE] : []), ...(audio !== null ? [AUDIO_FILE] : [])];
+      const keep = [...files.map((f) => f.path), ...Object.keys(maps), ...(facts !== null ? [FACTS_FILE] : []), ...(audio !== null ? [AUDIO_FILE] : []), ...(lights !== null ? [LIGHTS_FILE] : [])];
       await client.query(`delete from project_file where project_id = $1 and not (path = any($2::text[]))`, [project.id, keep]);
       for (const f of pushed) {
         const r = await client.query(
@@ -360,8 +407,9 @@ export async function main(args: readonly string[]): Promise<number> {
     );
     process.stdout.write(facts !== null ? `✓ ${FACTS_FILE}: the example's (${facts.source.length} bytes)\n` : `✓ ${FACTS_FILE}: none in the example\n`);
     process.stdout.write(audio === null ? `✓ ${AUDIO_FILE}: none\n` : `✓ ${AUDIO_FILE}: ${audioPlan.put ? "the example's" : "the project's own"}\n`);
-    // The row's data-file record: the maps plus the facts key and the speakers (`events-api.ts`).
-    const snapshot: Record<string, string> = { ...maps, ...(facts !== null ? { [FACTS_FILE]: facts.source } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}) };
+    process.stdout.write(lights === null ? `✓ ${LIGHTS_FILE}: none\n` : `✓ ${LIGHTS_FILE}: ${lightsPlan.put ? "the example's" : "the project's own"}\n`);
+    // The row's data-file record: the maps plus the facts key, the speakers and the lights (`events-api.ts`).
+    const snapshot: Record<string, string> = { ...maps, ...(facts !== null ? { [FACTS_FILE]: facts.source } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}), ...(lights !== null ? { [LIGHTS_FILE]: lights } : {}) };
 
     // The concatenation the server uses (`db/queries.ts` projectSource).
     const source = [...files]
@@ -385,7 +433,7 @@ export async function main(args: readonly string[]): Promise<number> {
       await pool.query(`alter table event add column if not exists house_maps jsonb`);
       await pool.query(`update event set scenario_source = $2, house_maps = $3::jsonb where id = $1`, [event.id, source, JSON.stringify(snapshot)]);
     };
-    return await reloadEvent({ server, event, override, reload, saveSnapshot, body: { source, name: project.name, maps, facts: facts?.source ?? null, audio } });
+    return await reloadEvent({ server, event, override, reload, saveSnapshot, body: { source, name: project.name, maps, facts: facts?.source ?? null, audio, lights } });
   } finally {
     await pool.end();
   }

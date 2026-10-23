@@ -16,6 +16,7 @@ import { collabHub } from "./collab.ts";
 import { isMapFile, mapProblems } from "./house-maps.ts";
 import { factsProblems, isFactsFile } from "./facts.ts";
 import { AUDIO_FILE, audioProblems, isAudioFile } from "./audio.ts";
+import { LIGHTS_FILE, isLightsFile, lightsProblems } from "./lights.ts";
 import { EDITOR_URL } from "./config.ts";
 import { readBody, sendJson, str } from "./http-util.ts";
 import { inviteEmail, sendQuietly, type Delivery } from "./mail.ts";
@@ -85,6 +86,9 @@ async function seedFiles(projectId: string, template: string): Promise<void> {
   // …and its audio.json (the house speakers, `audio.ts`), when it has one.
   const audio = join(scenarioDir(name), AUDIO_FILE);
   if (existsSync(audio)) await upsertFile(projectId, AUDIO_FILE, readFileSync(audio, "utf8"));
+  // …and its lights.json (the house lights, `lights.ts`), when it has one.
+  const lights = join(scenarioDir(name), LIGHTS_FILE);
+  if (existsSync(lights)) await upsertFile(projectId, LIGHTS_FILE, readFileSync(lights, "utf8"));
 }
 
 /** The public shape of a project row + its active-event summary. */
@@ -409,6 +413,14 @@ export async function handleProjects(
         // the map is checked when a director saves from the map editor).
         if (isAudioFile(filePath) && content.trim() !== "") {
           const problems = audioProblems(content);
+          if (problems.length > 0) {
+            sendJson(res, 400, { error: `invalid ${filePath}`, problems });
+            return true;
+          }
+        }
+        // The house lights (`lights.json`, `lights.ts`) likewise.
+        if (isLightsFile(filePath) && content.trim() !== "") {
+          const problems = lightsProblems(content);
           if (problems.length > 0) {
             sendJson(res, 400, { error: `invalid ${filePath}`, problems });
             return true;

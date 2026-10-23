@@ -13,6 +13,7 @@ import type { RecapWire } from '@/components/cockpit/award-suggest'
 import type { MapVariantsResponse, SwitchVariantResult } from '@/lib/map-variants'
 import { kingFromScreen, kingFromWire, type KingView } from '@/lib/king'
 import { audioStatusOf, routerOf, type AudioStatus, type AudioStopAnswer } from '@/lib/house-audio'
+import { lightsStatusOf, type LightsStatus } from '@/lib/lights-status'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -487,6 +488,13 @@ export const screensApi = {
   async setVoiceMuted(eventId: string, muted: boolean): Promise<{ muted: boolean }> {
     return await req<{ muted: boolean }>('POST', `/e/${eventId}/api/mod/screen/voice`, { muted })
   },
+  /** The lean screen state every terminal polls (`GET /api/screen/state`, no
+   *  terminal name, so this read never shows up on the heartbeat card). Raw:
+   *  the Terminals card reads `night.door_override` off it (wave 20,
+   *  `lib/terminals.ts` `doorOverrideFromScreen`). */
+  async state(eventId: string): Promise<unknown> {
+    return await req<unknown>('GET', `/e/${eventId}/api/screen/state`)
+  },
   /** Make one terminal show its name + spot full screen for 10 s (SW-SCR-21, install day). */
   async identify(eventId: string, name: string): Promise<{ name: string; until: number }> {
     return await req<{ name: string; until: number }>('POST', `/e/${eventId}/api/mod/screen/identify`, { name })
@@ -527,6 +535,23 @@ export const audioApi = {
   /** The config in force becomes the project's `audio.json` (survives End → relaunch). */
   async saveToProject(eventId: string): Promise<void> {
     await req<unknown>('POST', `/e/${eventId}/api/mod/audio/project`, {})
+  },
+}
+
+// --- the house lights (wave 20, D8) --------------------------------------
+
+export const lightsApi = {
+  /** The event's `lights.json` in force, the lights module's presence and
+   *  any open Zigbee pairing (`GET /api/mod/lights` with no `after`: it
+   *  answers at once, never parks, and no `module=1`, so this read never
+   *  counts as the module). Null from a server with no lights route. */
+  async status(eventId: string): Promise<LightsStatus | null> {
+    try {
+      return lightsStatusOf(await req<unknown>('GET', `/e/${eventId}/api/mod/lights`))
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return null
+      throw e
+    }
   },
 }
 

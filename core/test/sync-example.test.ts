@@ -45,7 +45,7 @@ describe("syncOptions", () => {
 
   it("reads the rest of the line", () => {
     const o = syncOptions(["Trapped", "escape-the-internet", "--server", "http://x:1", "--no-reload", "--replace-maps"], { LOOM_PORT: "7311" });
-    expect(o).toEqual({ server: "http://x:1", reload: false, override: false, mapMode: "replace", audioMode: "merge", positional: ["Trapped", "escape-the-internet"] });
+    expect(o).toEqual({ server: "http://x:1", reload: false, override: false, mapMode: "replace", audioMode: "merge", lightsMode: "merge", positional: ["Trapped", "escape-the-internet"] });
     expect(syncOptions([], { LOOM_PORT: "7311" }).server).toBe("http://localhost:7311");
   });
 });

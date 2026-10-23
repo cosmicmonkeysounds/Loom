@@ -1,9 +1,11 @@
 //! The thread — one conversation, rendered like a terminal log: the
 //! character's lines in phosphor, the program's in a dimmer tone, and the
 //! line being spoken revealed as far as the voice has got (`revealed` is
-//! a character offset per message seq). Scrolls to the newest line.
+//! a character offset per message seq). Scrolls to the newest line. At the
+//! heart (wave 20) a pick from the choice panel is echoed `› <text>` where it
+//! was said (`echoes`: this page's only, never stored).
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type FormEvent } from "react";
 import type { Line } from "./pilot.ts";
 
 function stamp(ts: number): string {
@@ -17,6 +19,7 @@ export function Thread({
   typing,
   character,
   guestName,
+  echoes = [],
 }: {
   lines: Line[];
   /** How much of each of the character's messages to show (seq → chars). */
@@ -24,15 +27,29 @@ export function Thread({
   typing: boolean;
   character: string;
   guestName: string;
+  /** The program's own picks at the heart, each after the line `after` (seq). */
+  echoes?: ReadonlyArray<{ key: string; text: string; after: number }>;
 }) {
   const end = useRef<HTMLDivElement>(null);
   const last = lines[lines.length - 1];
   const lastReveal = last !== undefined ? revealed.get(last.seq) : undefined;
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
-  }, [lines.length, typing, lastReveal]);
+  }, [lines.length, typing, lastReveal, echoes.length]);
+  const echoAfter = (seq: number | null) =>
+    echoes
+      .filter((e) => (seq === null ? lines.every((l) => l.seq > e.after) : e.after >= seq && !lines.some((l) => l.seq > seq && l.seq <= e.after)))
+      .map((e) => (
+        <div key={`echo-${e.key}`} className="line mine echo">
+          <span className="meta">
+            <span className="who">YOU</span>
+          </span>
+          <span className="text">› {e.text}</span>
+        </div>
+      ));
   return (
     <div className="thread" role="log" aria-live="polite">
+      {echoAfter(null)}
       {lines.length === 0 && (
         <div className="line system">
           <span className="text">— direct line to {character.toUpperCase()} open. say something. —</span>
@@ -44,7 +61,8 @@ export function Thread({
         const partial = cut !== undefined && cut < m.text.length;
         const who = m.theirs ? character : m.from === guestName ? "you" : m.from;
         return (
-          <div key={m.seq} className={`line ${m.theirs ? "theirs" : "mine"} kind-${m.kind}${partial ? " partial" : ""}`}>
+          <Fragment key={m.seq}>
+          <div className={`line ${m.theirs ? "theirs" : "mine"} kind-${m.kind}${partial ? " partial" : ""}`}>
             <span className="meta">
               <span className="who">{who.toUpperCase()}</span>
               <span className="when">{stamp(m.ts)}</span>
@@ -54,6 +72,8 @@ export function Thread({
               {partial && <span className="cursor">▮</span>}
             </span>
           </div>
+          {echoAfter(m.seq)}
+          </Fragment>
         );
       })}
       {typing && (

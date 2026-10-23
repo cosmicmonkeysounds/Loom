@@ -14,13 +14,34 @@
 //! health bar for the whole night, off the lean screen state polled every
 //! few seconds, with **Set…** and **👑 Restore** (`POST /api/mod/spatial/king
 //! {hp}`, journaled `by` you). Rules + wire parsing in pure `lib/king.ts`.
+//!
+//! Wave 20 (D8): the **💡 row** (`LightsRow`) — the house lights at a glance
+//! off `GET /api/mod/lights` (no long poll; every 15 s, every 5 s while
+//! pairing): *💡 lights module online · N fixtures* (or *offline*), *pairing
+//! … s* while Zigbee joining is open, and the problems / warnings counts.
+//! Placing fixtures, looks and *Pair new device* live in the map editor's
+//! 💡 Lights tab. Rules + wire parsing in pure `lib/lights-status.ts`.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { useCockpit } from '@/store/cockpit'
 import { confirmAction, promptText } from '@/store/dialog'
-import { ApiError, mapApi } from '@/lib/api'
+import { ApiError, lightsApi, mapApi } from '@/lib/api'
 import { KingReadOrder, kingConfirm, kingFill, kingHpText, kingStatusLine, parseKingHp, type KingView } from '@/lib/king'
+import {
+  LIGHTS_PAIR_POLL_MS,
+  LIGHTS_POLL_MS,
+  lightsLine,
+  lightsReadFor,
+  lightsShown,
+  moduleTitle,
+  pairDeadline,
+  pairText,
+  problemsText,
+  type LightsRead,
+  type LightsStatus,
+  type PairClock,
+} from '@/lib/lights-status'
 import { canSwitchTo, freshTarget, switchBase, switchConfirm, variantLabel, variantTitle, type MapVariant, type MapVariantsResponse } from '@/lib/map-variants'
 
 /** How often the card re-reads the King (a hit in the tent shows within it). */
@@ -57,6 +78,74 @@ function useKing(eventId: string | null): [KingView | null, (k: KingView | null)
     }
   }, [eventId])
   return [king, adopt]
+}
+
+/** The house lights off `GET /api/mod/lights`, re-read every
+ *  `LIGHTS_POLL_MS` (`LIGHTS_PAIR_POLL_MS` while pairing is open); null = no
+ *  lights route (an older server) or nothing read yet. `deadline`: when an
+ *  open pairing closes, on this editor's clock (`pairDeadline`). */
+function useLights(eventId: string | null): { status: LightsStatus | null; deadline: PairClock | null } {
+  const [read, setRead] = useState<LightsRead>({ eventId: null, status: null, deadline: null })
+  const shown = lightsReadFor(read, eventId)
+  const pairing = shown.deadline !== null
+  useEffect(() => {
+    if (eventId === null) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        const status = await lightsApi.status(eventId)
+        if (!cancelled) setRead({ eventId, status, deadline: status === null ? null : pairDeadline(status, Date.now()) })
+      } catch {
+        // keep the last reading; the next poll retries
+      }
+    }
+    void load()
+    const t = setInterval(() => void load(), pairing ? LIGHTS_PAIR_POLL_MS : LIGHTS_POLL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [eventId, pairing])
+  return shown
+}
+
+/** A 1 s clock while `on` (the pairing countdown). */
+function useSecondTick(on: boolean): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!on) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [on])
+  return now
+}
+
+export function LightsRow({ status, deadline }: { status: LightsStatus; deadline: PairClock | null }) {
+  const now = useSecondTick(deadline !== null && deadline.closesAt !== null)
+  const pairing = pairText(deadline, now)
+  const issues = problemsText(status)
+  const online = status.module?.online === true
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-zinc-800 pt-2 text-xs" data-testid="run-house-lights">
+      <span className={clsx(online ? 'text-zinc-300' : 'text-amber-300')} title={moduleTitle(status)} data-testid="run-house-lights-line" data-online={online ? 'true' : 'false'}>
+        {lightsLine(status)}
+      </span>
+      {pairing !== null && (
+        <span className="rounded bg-sky-950/60 px-1 text-[11px] tabular-nums text-sky-200" title="Zigbee joining is open: put the new bulb in pairing mode now" data-testid="run-house-lights-pair">
+          {pairing}
+        </span>
+      )}
+      {issues !== null && (
+        <span
+          className={clsx('rounded px-1 text-[11px]', status.problems.length > 0 ? 'bg-red-950/70 text-red-200' : 'bg-amber-950/60 text-amber-200')}
+          title={[...status.problems, ...status.warnings].join('\n')}
+          data-testid="run-house-lights-issues"
+        >
+          {issues}
+        </span>
+      )}
+    </div>
+  )
 }
 
 function KingRow({ eventId, king, onKing }: { eventId: string; king: KingView; onKing: (k: KingView | null) => void }) {
@@ -131,6 +220,8 @@ function KingRow({ eventId, king, onKing }: { eventId: string; king: KingView; o
 export function HouseMapCard() {
   const eventId = useCockpit((s) => s.run?.eventId ?? null)
   const [king, setKingView] = useKing(eventId)
+  const lights = useLights(eventId)
+  const showLights = lightsShown(lights.status)
   const [data, setData] = useState<MapVariantsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -162,7 +253,7 @@ export function HouseMapCard() {
     }
   }, [eventId, tick])
 
-  if (eventId === null || ((data === null || data.variants.length === 0) && error === null && king === null)) return null
+  if (eventId === null || ((data === null || data.variants.length === 0) && error === null && king === null && !showLights)) return null
 
   const switchTo = async (v: MapVariant) => {
     if (data === null || busy || !canSwitchTo(v)) return
@@ -235,6 +326,7 @@ export function HouseMapCard() {
         </button>
       </div>
       {king !== null && <KingRow eventId={eventId} king={king} onKing={setKingView} />}
+      {showLights && <LightsRow status={lights.status!} deadline={lights.deadline} />}
       {variants.length === 1 && <p className="text-[11px] text-zinc-600">This event has one map — add a house.&lt;variant&gt;.json to the project for a second.</p>}
       {note && <p className="text-[11px] text-zinc-400" data-testid="run-house-map-note">{note}</p>}
       {error && <p className="text-[11px] text-red-400" data-testid="run-house-map-error">{error}</p>}

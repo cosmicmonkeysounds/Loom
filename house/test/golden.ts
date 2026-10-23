@@ -72,11 +72,12 @@ export function fixture(name: string): HouseMap {
 }
 
 /** Every golden map: the fixtures (by file name) + "show". The `audio-*`
- *  fixtures are `audio.json`'s (test/audio.test.ts) and `voice-*` the voice
- *  link's vectors (test/voice-golden.ts), never a golden map. */
+ *  fixtures are `audio.json`'s (test/audio.test.ts), `lights-*` `lights.json`'s
+ *  (test/lights.test.ts) and `voice-*` the voice link's vectors
+ *  (test/voice-golden.ts), never a golden map. */
 export function goldenMaps(): { name: string; house: HouseMap }[] {
   const names = readdirSync(FIXTURES)
-    .filter((f) => f.endsWith(".json") && !f.startsWith("audio-") && !f.startsWith("voice-"))
+    .filter((f) => f.endsWith(".json") && !f.startsWith("audio-") && !f.startsWith("lights-") && !f.startsWith("voice-"))
     .map((f) => f.slice(0, -5))
     .sort();
   return [...names.map((name) => ({ name, house: fixture(name) })), { name: "show", house: loadHouse(SHOW_HOUSE) }];

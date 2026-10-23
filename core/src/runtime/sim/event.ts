@@ -127,7 +127,10 @@ export type SimEvent =
   // binding, else `self` when self is a person) — null for a global beat.
   // Powers per-person story-position tracking in every console.
   | { type: "beatEntered"; beat: string; setting: string | null; subject: string | null }
-  | { type: "choicePrompted"; person: string | null; promptId: string; options: string[] }
+  // `id` (wave 20, D18): this event's own log index — the menu's id, equal
+  // after a restore (a replay records the same log); `options` lists only
+  // the options whose guard held (D9). Optional only for hand-built events.
+  | { type: "choicePrompted"; person: string | null; promptId: string; options: string[]; id?: number }
   | {
       type: "respond";
       to: string;

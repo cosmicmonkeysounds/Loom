@@ -102,6 +102,18 @@ describe('word-block source anchors', () => {
     expect(SRC.slice(range[0], range[1])).toBe('* Take the stairs')
   })
 
+  it('a guarded choice shows its guard, and its inline edit is the whole line (the guard kept)', () => {
+    const src = `== heart
+  + (if program.trust >= 20) ⟦TRUSTED⟧ You trust me.
+    -> pick
+`
+    const [guarded] = toWordBlocks(bodyOf(src, 'heart')).filter((b) => b.kind === WordBlockKind.Choice)
+    expect(guarded!.label).toBe('+ (if program.trust >= 20)')
+    expect(guarded!.text).toBe('⟦TRUSTED⟧ You trust me.')
+    const range = blockEditRange(src, guarded!)!
+    expect(src.slice(range[0], range[1])).toBe('+ (if program.trust >= 20) ⟦TRUSTED⟧ You trust me.')
+  })
+
   it('branch heads and slot holes are display-only', () => {
     const branch = blocks.find((b) => b.kind === WordBlockKind.Branch)!
     expect(branch.spanStart).toBeNull()

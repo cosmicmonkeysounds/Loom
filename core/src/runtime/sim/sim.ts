@@ -128,6 +128,13 @@ interface Frame {
  * body — in the right order across nested beats/hooks.
  */
 interface PendingChoice {
+  /** The log index of the menu's `choicePrompted` event (wave 20, D18) —
+   *  deterministic on replay, so a client may answer this menu by id
+   *  wherever it sits in the person's queue. */
+  id: number;
+  /** The beat the menu sits in ("" outside one). */
+  beat: string;
+  /** Only the options whose guard held when the menu was prompted (D9). */
   options: Array<{ text: string; body: BodyItem[] }>;
   bindings: Bindings;
   continuation: Frame[];
@@ -955,17 +962,32 @@ export class Sim {
     return this.log.since(from);
   }
 
-  /** A live participant answers their oldest pending choice (by index). */
-  choose(person: string, index: number): SimEvent[] {
+  /** A live participant answers a pending choice (by index into its shown
+   *  options): the menu with id `choice` (wave 20, D18) wherever it sits in
+   *  their queue, else (absent / null — an old journal) their oldest. The
+   *  other menus stay queued. `beat` / `text` (the menu's beat and the
+   *  option's text, journaled beside the id) are its structural key: an id
+   *  is a log index, so a replay over edited text (Push draft, a reload)
+   *  shifts it — then the oldest menu of that beat offering that text at
+   *  `index` is answered instead. Nothing matching answers nothing (a
+   *  diagnostic says so when a key was given). */
+  choose(person: string, index: number, choice?: number | null, beat?: string | null, text?: string | null): SimEvent[] {
     const from = this.log.len();
     const queue = this.pendingChoices.get(person);
-    if (queue !== undefined && queue.length > 0) {
-      const pc = queue[0]!;
+    const keyed = (beat !== undefined && beat !== null) || (text !== undefined && text !== null);
+    const fits = (q: PendingChoice): boolean => (beat === undefined || beat === null || q.beat === beat) && (text === undefined || text === null || q.options[index]?.text === text);
+    let at = queue === undefined ? -1 : choice === undefined || choice === null ? (queue.length > 0 ? 0 : -1) : queue.findIndex((q) => q.id === choice && fits(q));
+    if (queue !== undefined && at < 0 && keyed && choice !== undefined && choice !== null) {
+      at = queue.findIndex(fits);
+      if (at < 0) this.record({ type: "diagnostic", message: `choose: no pending menu for ${person} matches id ${choice} (${beat ?? "?"} / ${text ?? "?"})` });
+    }
+    if (queue !== undefined && at >= 0) {
+      const pc = queue[at]!;
       const opt = pc.options[index];
       // Validate before consuming, so a fat-fingered index can't destroy
       // the prompt — the participant can retry.
       if (opt !== undefined) {
-        queue.shift();
+        queue.splice(at, 1);
         if (queue.length === 0) this.pendingChoices.delete(person);
         // Resume the selected option, then the full saved continuation.
         // Every frame field has to survive the round trip: dropping
@@ -1394,6 +1416,20 @@ export class Sim {
   pendingChoiceFor(person: string): string[] | null {
     const queue = this.pendingChoices.get(person);
     return queue !== undefined && queue.length > 0 ? queue[0]!.options.map((o) => o.text) : null;
+  }
+
+  /** Every outstanding menu of a person, oldest first (wave 20, D18): its
+   *  id, the beat it sits in and its shown options. */
+  pendingChoicesFor(person: string): Array<{ id: number; beat: string; options: string[] }> {
+    const queue = this.pendingChoices.get(person) ?? [];
+    return queue.map((q) => ({ id: q.id, beat: q.beat, options: q.options.map((o) => o.text) }));
+  }
+
+  /** The id of every outstanding menu, anyone's (D18). */
+  pendingChoiceIds(): Set<number> {
+    const out = new Set<number>();
+    for (const queue of this.pendingChoices.values()) for (const q of queue) out.add(q.id);
+    return out;
   }
 
   /** Every outstanding choice's options, keyed by person id (`__global`
@@ -1874,10 +1910,16 @@ export class Sim {
           const options: Array<{ text: string; body: BodyItem[] }> = [];
           while (j < frame.items.length && frame.items[j]!.kind === "choice") {
             const c = frame.items[j]! as Extract<BodyItem, { kind: "choice" }>;
-            options.push({ text: this.interpolate(c.value.text, b), body: c.value.body });
+            // A guarded option (wave 20, D9) is offered only while its
+            // condition holds, read now, in this frame's bindings.
+            if (c.value.guard === null || this.guardHolds(c.value.guard, b)) {
+              options.push({ text: this.interpolate(c.value.text, b), body: c.value.body });
+            }
             j += 1;
           }
           frame.index = j; // advance past the whole menu
+          // Nothing left to offer: no menu, the story runs on past it.
+          if (options.length === 0) break;
           const person = this.subjectAudience(b)[0] ?? "__global";
           const continuation = stack.map((f) => ({
             items: f.items,
@@ -1890,13 +1932,15 @@ export class Sim {
             manner: f.manner,
           }));
           const queue = this.pendingChoices.get(person) ?? [];
-          queue.push({ options, bindings: b, continuation });
+          const id = this.log.len(); // the index `record` gives the prompt below
+          queue.push({ id, beat: frame.beat ?? "", options, bindings: b, continuation });
           this.pendingChoices.set(person, queue);
           this.record({
             type: "choicePrompted",
             person: person === "__global" ? null : person,
             promptId: person,
             options: options.map((o) => o.text),
+            id,
           });
           return; // suspend
         }
@@ -2804,6 +2848,20 @@ export class Sim {
 
   private evalCond(src: string, bindings: Bindings): boolean {
     return truthy(this.evalValue(src, bindings));
+  }
+
+  /** A choice option's guard (wave 20, D9): `evalCond`, except a condition
+   *  that does not parse or evaluate is a `diagnostic` and false — the
+   *  option is not offered (lint L1221 names it while writing). */
+  private guardHolds(src: string, bindings: Bindings): boolean {
+    this.currentBindings = bindings;
+    try {
+      return truthy(evaluate(parseExprCached(src), this.world, this.callFn, bindings));
+    } catch (e) {
+      if (!(e instanceof ExprError)) throw e;
+      this.record({ type: "diagnostic", message: `choice guard \`(if ${src})\`: ${e.message} — the option is not offered` });
+      return false;
+    }
   }
 
   private callFn = (name: string, args: CallArg[]): Value => {

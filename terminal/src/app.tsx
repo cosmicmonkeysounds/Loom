@@ -56,6 +56,17 @@
 //! with a Wake Lock from boot (re-taken on that tap and whenever the page
 //! comes back into view), and the ⚙ opens setup only on a 2 s hold
 //! (`kiosk.ts`) — a guest's short tap does nothing.
+//!
+//! The heart (wave 20): the server-room terminal bridges the door sensor
+//! (`serial/`, `door=serial`) and shows the room's own scenes (`cue room_*`,
+//! `cutscene/scenes/heart.tsx`) whatever it is doing. While a line is open
+//! its program's heart menu docks under the thread (`heart/ChoicePanel.tsx`:
+//! the newest `Heart …` menu on `dm:<character>`, picked by id), greyed while
+//! the door is open; *CLOSE THE DOOR* runs across the top while the heart
+//! wants it shut (`heart/DoorOverlay.tsx`). The composer shows when there is
+//! a keyboard (`keys`), except while a tree menu (not the heart to heart's
+//! ⟦BACK⟧) is docked. Thrown out of his heart, the line ends when the scene
+//! has played.
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
@@ -68,7 +79,7 @@ import { MicCue } from "./voice/MicCue.tsx";
 import { useCameraLive, type Facing } from "./camera.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
-import { lineLeash, useIdleTimeout } from "./idle.ts";
+import { lineLeash, talkWaitsOnDoor, useIdleTimeout } from "./idle.ts";
 import { FilePanel } from "./FilePanel.tsx";
 import { VisitLatch, beginPilot, characterIdOf, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { parseScan } from "./scan.ts";
@@ -92,6 +103,15 @@ import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
 import type { ReinstallTerminalProps } from "./reinstall/ReinstallTerminal.tsx";
 import { PeekClock, canPeek, screenLayers } from "./slides.ts";
+import { api, withTimeout } from "@loom/play/client.ts";
+import { serverNow } from "./cutscene/clock.ts";
+import { onSceneFace } from "./cutscene/face-bus.ts";
+import { useDoorLink } from "./serial/use-door.ts";
+import { useDoorStatus } from "./serial/door-status.ts";
+import { doorOpenNow } from "./serial/door-bridge.ts";
+import { ChoicePanel } from "./heart/ChoicePanel.tsx";
+import { DoorOverlay } from "./heart/DoorOverlay.tsx";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerShown, heartMenuOf, heartTouched, isHeartTerminal, menusOf, pilotEndOf, splitTag, type HeartMenu } from "./heart/heart.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
@@ -152,6 +172,11 @@ export function App() {
   }, [config]);
   // The house announcements (N-09), when this screen is set to say them.
   const announcement = useAnnouncements(config, screenState.state);
+  // The door sensor (wave 20): the bridge runs whatever the screen shows, so
+  // the story hears the door on attract, during a line and in setup alike.
+  useDoorLink(config, screenState.state);
+  const door = useDoorStatus();
+  const doorOpen = doorOpenNow(door.sensor, screenState.state?.night ?? null, Date.now());
   // The camera feed (wave 14): a placed terminal sends its camera to the games.
   useCamFeed(config);
   // The voice link (wave 19): this room heard in the games at this screen,
@@ -409,8 +434,12 @@ export function App() {
   const top = screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare });
   const takeover = top.overlay !== null;
   const covered = takeover || top.slide !== null;
+  // The heart terminal: the server room's own room terminal, or any with a door sensor.
+  const heartTerminal = isHeartTerminal(room, config.door);
   const layer = (
     <>
+      {heartTerminal && <DoorOverlay doorOpen={doorOpen} stage={screenState.state?.night.heart_stage ?? null} />}
+      {/* A sensor fault is never on a guest's screen (D29: the sensor is the door): ⚙ and Run → Terminals show it. */}
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
       <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
@@ -555,6 +584,7 @@ export function App() {
         asleep={asleep}
         voiceCursor={voiceCursor}
         visits={visits}
+        doorOpen={heartTerminal ? doorOpen : null}
         takeover={takeover}
         covered={covered}
         onSetup={openSetup}
@@ -767,6 +797,7 @@ function Terminal({
   asleep,
   voiceCursor,
   visits,
+  doorOpen,
   takeover,
   covered,
   onSetup,
@@ -788,6 +819,8 @@ function Terminal({
   voiceCursor: MutableRefObject<number | null>;
   /** The open visit at a room terminal (owned by the app, like the cursor). */
   visits: MutableRefObject<VisitLatch>;
+  /** The server-room door, as the heart reads it (null: not a heart terminal, or nobody knows). */
+  doorOpen: boolean | null;
   /** A story overlay covers the screen: no scanning, and an open line ends. */
   takeover: boolean;
   /** A slide or an overlay covers the screen: the idle show pauses under it. */
@@ -811,6 +844,8 @@ function Terminal({
   /** A room line being said resolves here when its utterance is done (or cut). */
   const waiters = useRef(new Map<number, () => void>());
   const room = roomOf(config);
+  // A room scene's face mood (wave 20: the heart's scenes) reaches this face.
+  useEffect(() => onSceneFace((m, ms) => face.current?.flash(m, ms)), []);
   // The pane going away with a line open (⚙ setup over a pilot): the story
   // still hears the visit close.
   const configRef = useRef(config);
@@ -952,7 +987,7 @@ function Terminal({
 
   // --- the leash ---
   const end = useCallback(
-    (why: "timeout" | "dead" | "left") => {
+    (why: "timeout" | "dead" | "left" | "thrown" | "done") => {
       if (pilot === null) return;
       roomPlayer.stop(); // stops the queue too, and releases a room line's waiter
       queue.stop();
@@ -963,6 +998,7 @@ function Terminal({
       setScreen({ kind: "attract" });
       if (why === "timeout") setFlash(`${pilot.name.toUpperCase()} DISCONNECTED — NO INPUT`);
       else if (why === "dead") setFlash("CONNECTION LOST — THE SYSTEM RESTARTED");
+      else if (why === "thrown") setFlash(`${pilot.name.toUpperCase()} — ACCESS TO THE HEART TERMINATED`);
       void endPilot(config, pilot);
       // A room terminal: the story hears the line close (best-effort; also
       // after a restart, whose replay re-opened the visit).
@@ -986,7 +1022,46 @@ function Terminal({
   // never holds it — a guest who walks away still gets disconnected.
   const [filesOpen, setFilesOpen] = useState(false);
   useEffect(() => setFilesOpen(false), [pilot]);
-  const leash = lineLeash({ answering: session.typing || speaking || queue.busy || roomBusy, filesOpen });
+  // --- the heart (wave 20) ---
+  // When this line opened, on the server's clock (a heart scene since then holds the long leash).
+  // Read in render the moment the pilot changes (never a frame late: an older
+  // line's eject cue must not end this one).
+  const pilotSince = useRef(0);
+  const sinceFor = useRef<Pilot | null>(null);
+  if (pilot !== sinceFor.current) {
+    sinceFor.current = pilot;
+    pilotSince.current = pilot === null ? 0 : serverNow(state);
+  }
+  const characterId = characterIdOf(config.character, session.view);
+  const menu: HeartMenu | null = pilot === null ? null : heartMenuOf(menusOf(session.view), characterId);
+  // The heart to heart after *not yet* / Leave keeps the long leash once the
+  // program types: the thread's newest seq when that cue was first seen, and
+  // a line of theirs past it. (A chat line's `ts` is story time, the cue's
+  // `at` server time: seqs, not clocks.)
+  const cueNow = state?.room?.cue ?? null;
+  const cueMark = useRef<{ seq: number; lineSeq: number } | null>(null);
+  if (cueNow !== null && cueMark.current?.seq !== cueNow.seq) cueMark.current = { seq: cueNow.seq, lineSeq: session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1) };
+  const typedAfter = pilot !== null && cueMark.current !== null && session.lines.some((l) => !l.theirs && l.from === pilot.name && l.seq > cueMark.current!.lineSeq);
+  const heart = menu !== null || (pilot !== null && heartTouched(cueNow, pilotSince.current, typedAfter));
+  const [echoes, setEchoes] = useState<Array<{ key: string; text: string; after: number }>>([]);
+  useEffect(() => setEchoes([]), [pilot]);
+  const choose = useCallback(
+    async (m: HeartMenu, index: number) => {
+      if (pilot === null) return;
+      try {
+        await withTimeout(api(`${baseOf(config)}/api/guest/choose`, chooseBody(m, index), pilot.token), CHOOSE_TIMEOUT_MS);
+      } catch (e) {
+        // The menu moved under the click, or is gone (null): the next view redraws it.
+        const text = chooseErrorText(e);
+        if (text === null) return;
+        throw new Error(text);
+      }
+      const after = session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1);
+      setEchoes((list) => [...list, { key: `${m.id}:${index}`, text: splitTag(m.options[index] ?? "").text, after }]);
+    },
+    [config, pilot, session.lines],
+  );
+  const leash = lineLeash({ answering: session.typing || speaking || queue.busy || roomBusy, filesOpen, heart, doorOpen: doorOpen === true && talkWaitsOnDoor(state?.night?.heart_stage) });
   const busy = leash.busy;
   const { touch, warning, remaining } = useIdleTimeout({ active: pilot !== null, busy, limit: leash.limit, warnMs: leash.warnMs, onTimeout: () => end("timeout") });
   useEffect(() => {
@@ -995,6 +1070,24 @@ function Terminal({
   useEffect(() => {
     if (takeover && pilot !== null) end("left");
   }, [takeover, pilot, end]);
+  // Thrown out of his heart (and, on a mouse-only rig, *not yet* / a leave):
+  // the line ends once that room scene has played (D24).
+  const endRef = useRef(end);
+  endRef.current = end;
+  const roomCue = state?.room?.cue ?? null;
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  useEffect(() => {
+    if (pilot === null || roomCue === null) return;
+    // An eject ends the line whether or not a menu docked: Heart Barred
+    // (a barred program's re-scan) docks none, and has no heart to heart.
+    const plan = pilotEndOf(roomCue, pilotSince.current, config.keys);
+    if (plan === null) return;
+    const wait = Math.max(0, roomCue.at + plan.ms - serverNow(stateRef.current));
+    const t = window.setTimeout(() => endRef.current(plan.why), wait);
+    return () => window.clearTimeout(t);
+    // The cue's seq / at decide; a new pilot or cue reschedules.
+  }, [pilot, roomCue?.seq, roomCue?.at, roomCue?.value, config.keys]);
 
   // Mood follows the situation when nothing is being said.
   useEffect(() => {
@@ -1124,16 +1217,22 @@ function Terminal({
                   📎 GIVE HIM A FILE
                 </button>
               )}
-              <Thread lines={session.lines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} />
-              <Composer
-                onSend={async (t) => {
-                  touch();
-                  await session.say(t);
-                }}
-                disabled={!session.ready}
-                onInput={touch}
-                placeholder={session.ready ? `say something to ${config.character}` : "connecting…"}
-              />
+              <Thread lines={session.lines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} echoes={echoes} />
+              {menu !== null && !composerShown({ keys: config.keys, menu }) && (
+                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} />
+              )}
+              {composerShown({ keys: config.keys, menu }) && (
+                <Composer
+                  onSend={async (t) => {
+                    touch();
+                    await session.say(t);
+                  }}
+                  disabled={!session.ready}
+                  onInput={touch}
+                  placeholder={session.ready ? `say something to ${config.character}` : "connecting…"}
+                />
+              )}
+              {menu !== null && composerShown({ keys: config.keys, menu }) && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={false} onActivity={touch} onPick={(i) => choose(menu, i)} />}
             </>
           )}
         </section>

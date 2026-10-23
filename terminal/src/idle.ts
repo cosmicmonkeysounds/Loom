@@ -18,13 +18,31 @@ export const FILES_IDLE_MS = 120_000;
 /** …with the countdown for its last 20 s. */
 export const FILES_WARN_MS = 20_000;
 
+/** The heart (wave 20): a menu docked, or a heart to heart — reading four
+ *  layers of a hard conversation and choosing takes a while. */
+export const HEART_IDLE_MS = 180_000;
+/** …with the countdown for its last 30 s. */
+export const HEART_WARN_MS = 30_000;
+
 /**
- * The piloted line's leash: held only while the character is answering
- * (`answering`: composing, speaking, a room line playing); an open file
- * panel lengthens it instead of holding it.
+ * The piloted line's leash: held while the character is answering
+ * (`answering`: composing, speaking, a room line playing). The heart
+ * (`heart`: a heart menu docked, or a heart to heart), a server-room door
+ * the talk is waiting on (`doorOpen`: the program is told to shut it, never
+ * their fault) and an open file panel lengthen it instead. An open door
+ * never holds the line for good: a program who opened it on their way out,
+ * or a door that reads open with nobody there, still frees the terminal.
  */
-export function lineLeash(o: { answering: boolean; filesOpen: boolean }): { busy: boolean; limit: number; warnMs: number } {
-  return o.filesOpen ? { busy: o.answering, limit: FILES_IDLE_MS, warnMs: FILES_WARN_MS } : { busy: o.answering, limit: IDLE_MS, warnMs: WARN_MS };
+export function lineLeash(o: { answering: boolean; filesOpen: boolean; heart?: boolean; doorOpen?: boolean }): { busy: boolean; limit: number; warnMs: number } {
+  const busy = o.answering;
+  if (o.heart === true || o.doorOpen === true) return { busy, limit: HEART_IDLE_MS, warnMs: HEART_WARN_MS };
+  return o.filesOpen ? { busy, limit: FILES_IDLE_MS, warnMs: FILES_WARN_MS } : { busy, limit: IDLE_MS, warnMs: WARN_MS };
+}
+
+/** Is the talk at his heart waiting on the door (`Night.heart_stage` door /
+ *  scan / talk)? Sealed or done, an open door is nothing to wait for. */
+export function talkWaitsOnDoor(stage: string | null | undefined): boolean {
+  return stage === "door" || stage === "scan" || stage === "talk";
 }
 
 export class IdleClock {

@@ -20,6 +20,8 @@ import {
   terminalLink,
   unclaimedSpots,
   viewHasCharacter,
+  viewHasDoor,
+  viewHasKeys,
   type TerminalSetup,
 } from '@/lib/terminal-setup'
 
@@ -192,5 +194,48 @@ describe('spot claims', () => {
   })
   it('flags a spot two live terminals claim', () => {
     expect([...doubleClaims([{ spot: 'tent', status: 'live' }, { spot: 'tent', status: 'live' }, { spot: 'ram', status: 'live' }, { spot: 'ram', status: 'silent' }])]).toEqual(['tent'])
+  })
+})
+
+describe('the keyboard and the door sensor (wave 20)', () => {
+  const map = mapTerminals(HOUSE)
+  const spot = (id: string) => map.find((t) => t.id === id)!
+  const link = (s: Partial<TerminalSetup>) => new URL(terminalLink('https://x.test/terminal/', 'M', { ...BLANK, ...s })).searchParams
+
+  it('a keyboard is the default: no keys key unless unticked', () => {
+    expect(link({ view: TerminalView.Face }).has('keys')).toBe(false)
+    expect(link({ view: TerminalView.Face, keys: true }).has('keys')).toBe(false)
+    expect(link({ view: TerminalView.Face, keys: false }).get('keys')).toBe('0')
+  })
+
+  it('door=serial only when ticked', () => {
+    expect(link({ view: TerminalView.Face }).has('door')).toBe(false)
+    expect(link({ view: TerminalView.Face, door: true }).get('door')).toBe('serial')
+  })
+
+  it('neither rides a view with no composer (stations, the TV, a mirror)', () => {
+    for (const view of [TerminalView.Chess, TerminalView.Casino, TerminalView.Reinstall, TerminalView.Tv, TerminalView.Mirror]) {
+      expect(viewHasKeys(view)).toBe(false)
+      expect(viewHasDoor(view)).toBe(false)
+      const p = link({ view, keys: false, door: true })
+      expect(p.has('keys')).toBe(false)
+      expect(p.has('door')).toBe(false)
+    }
+    for (const view of [TerminalView.Auto, TerminalView.Face, TerminalView.World, TerminalView.Shadow]) expect(viewHasKeys(view)).toBe(true)
+  })
+
+  it('picking the server room’s spot ticks the door sensor; another spot clears it', () => {
+    const sr = pickSpot(BLANK, spot('server-room'))
+    expect(sr).toMatchObject({ view: 'face', door: true })
+    expect(link(sr).get('door')).toBe('serial')
+    expect(pickSpot(sr, spot('desktop-tv')).door).toBe(false)
+    expect(pickSpot(sr, spot('server-room-door')).door).toBe(false)
+  })
+
+  it('the server room’s whole link', () => {
+    const s = { ...pickSpot(BLANK, spot('server-room')), keys: false }
+    expect(terminalLink('https://x.test/terminal/', 'MOD1', s)).toBe(
+      'https://x.test/terminal/?code=MOD1&name=Server%20Room&character=Trabolta&spot=server-room&view=face&room=The%20Server%20Room&keys=0&door=serial',
+    )
   })
 })

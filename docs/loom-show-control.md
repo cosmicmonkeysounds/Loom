@@ -466,7 +466,8 @@ room plus a whole-house group:
 `house`, `living` (The Desktop), `kitchen` (The Start Bar), `backyard`
 (The Cloud), `registry` (The RAM, the basement studio), `tube` (the halls and
 both stairs), `mudroom` (The Optical Drive), `bathroom` (Disk Cleanup, both
-bathrooms), `tent` (The Internet) and `server_room`; the ids predate the
+bathrooms), `tent` (The Internet) and `server_room` (empty since wave 20:
+its one bulb moved to `lights.json`, below); the ids predate the
 real house's room names and stay as wired. **The stairs, the bathrooms, the tent,
 the server room and the server-room → living-room path are not in
 `house`**, so no whole-house scene or blackout can darken them (their
@@ -483,13 +484,30 @@ round-trip; `engine: server` opts in to the VPS's `/api/mod/tts`;
 server's screen state (`/api/screen/state` → `announce`), so a wall
 terminal provisioned with `&announce=1` chimes and says it in its own
 voice too, after any line its character is saying (N-09, decision #20 —
-for the rooms the house speakers don't reach). The server room has a door
-contact (two wire loops that touch when the door opens; a reed is
-optional), the patch-bay scanner and an indicator ring on one ESP32
-(firmware in [`hardware/server-room/`](../hardware/server-room)). The door
-itself has a **standalone keypad lock** (code set by hand on the lock, never
-networked; the inside handle always opens): nothing in stagehand or on the
-ESP32 drives it.
+for the rooms the house speakers don't reach). The server room has the
+patch-bay scanner and an indicator ring on one ESP32 (firmware in
+[`hardware/server-room/`](../hardware/server-room)). **Since wave 20 the
+door is read elsewhere**: an LDR + LED on the frame (the door is shut while
+the LED shines on the LDR) feeds a Grand Central M4 on a USB cable to the
+computer behind his heart's terminal, and that terminal page (Web Serial)
+posts the edges to the story itself (`door_sensor_opened` /
+`door_sensor_closed`; firmware in
+[`hardware/server-room-door/`](../hardware/server-room-door)). The ESP32's
+old wire-loop contact and the optional Zigbee contact are no longer read by
+stagehand. The door itself has a **standalone keypad lock** (code set by
+hand on the lock, never networked; the inside handle always opens): nothing
+in stagehand, on the ESP32 or on the M4 drives it.
+
+**The house lights' new home (wave 20).** A project file beside
+`audio.json`, `lights.json` (the map editor's 💡 Lights tab; schema in
+`@loom/house` `house/src/lights.ts`), places the lights the story drives on
+the map and defines **looks** keyed by cue name; stagehand's `lights` job
+(`scripts/house-mac/lights.md`) plays them on Zigbee2MQTT / WLED with timed
+steps, never under a safety fixture's floor, and catches up from the story's
+screen state after any reconnect. This wave's file holds one fixture, the
+server room's RGB bulb `server_room_rgb` (Trabolta's `heart_*` looks); every
+other light is still the `show` rules below. Zigbee2MQTT on the house Mac,
+its CC2652P coordinator and the pairing: `scripts/house-mac/zigbee.md`.
 
 **Story → house.** The story only emits directives (the full registry
 is in the design spec §2.13):
@@ -498,11 +516,12 @@ is in the design spec §2.13):
 |---|---|
 | `cue lights_<look>` (screensaver, tube_chase, call_desktop, game, truth_time, ad_hijack, glitch, pong, trust_chart, y2k, server_open, alarm, blackout, dance, final_reveal, song, rave, purgatory, banish, restore) | Z2M `scene_recall <id>` to the room or `house` group + WLED preset `ps <id>`. Each look has the same ID everywhere: `scene_store` it once per group and build identical WLED presets on every controller. Flicker is a bulb `effect` or a WLED preset, never streamed over Zigbee. |
 | `<cue: lights, room: The Start Bar, state: off>` (Trabolta's `cut_the_lights`; allow-listed to The Start Bar, The Desktop, The RAM) | that room's Z2M group `state` + its WLED strip on/off (the kitchen only dims to ~20%). The story turns the room back on 90 s later itself, unless a look that re-lights it (a whole-house look; a living-room look over a Desktop cut; the alarm latch's end) has run since, and records the look it restored under in `Night.lit_scene`. Catch-up replays the room off only mid-cut under a look that kept it dark, and on only under `Night.lit_scene` or a later room-scoped look (pong, glitch, server_open, or a living-room look over any room but The Desktop), never under a whole-house look. |
+| `cue heart_<look>` (wake, nag, door_open, sealed, listen, argue, proof, warn, eject, notyet, shutdown, idle, alarm: wave 20) | nothing from `show`: the `lights` job plays `lights.json`'s look on the server room's RGB bulb (Z2M `server_room_rgb/set`, timed steps ≥ 150 ms apart, ≥ 400 ms for a colour, loops ≥ 2 s; never under 40 / 254). `show` drops any YAML rule whose cue `lights.json` defines (`take_looks`) |
 | `cue lights_blackout` | `house` OFF; WLED off **per device** (living, kitchen, backyard, registry), the Tube strip on dim static preset 22, the server room untouched |
 | `cue screens_flicker` | a one-shot `effect: blink` on the bulbs (it reverts by itself), so the power is felt in the house. Since wave 9 the LED strips are left alone: the old WLED preset 21 left them on its look after a flicker |
 | `sound <name>` (directive `sfx`) | OSC `/cue/<name>/start` to QLab |
 | `do announce "…"` | `show/announce {"text": "…"}` → the `alexa` player (chime + the Mac's `say` voice, one line at a time); `sound announce_chime` → `show/chime` (not QLab). Also the screen state's `announce` → terminals with `announce` on (N-09) |
-| `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring only, never the real (standalone keypad) lock; the story sends `locked` at Power On and nothing sends `unlocked` since wave 7. `lights_alarm` (only a second wrong patch-bay combo) also sends `show/serverroom/alarm` for its local siren. The story ends the alarm look itself: when its 120 s latch clears it cues back the look the alarm replaced (`lights_y2k`, + `lights_server_open`, `lights_final_reveal` or `lights_restore`) unless a later cue changed it, and since `lights_server_open` also silences the siren, a majority or The Heart inside the latch holds its server-room look until then |
+| `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring only, never the real (standalone keypad) lock; the story sends `locked` at Power On and nothing sends `unlocked` since wave 7. `lights_alarm` (only a second wrong patch-bay combo) also sends `show/serverroom/alarm` for its local siren, the house scene 12 and WLED preset 12 **per device** — never `wled/all`, since the tube strip (halls + stairs) is a safety light and gets a steady red instead of the strobe (wave 20, D11; every other effect preset — 7, 10, 14, 15, 17 — goes per device too, the tube held on ps 22; the server room has no strip, w20b Q6); the room's RGB bulb plays the story's `heart_alarm` (`lights.json`). The story ends the alarm look itself: when its 120 s latch clears it cues back the look the alarm replaced (`lights_y2k`, + `lights_server_open`, `lights_final_reveal` or `lights_restore`) unless a later cue changed it, and since `lights_server_open` also silences the siren, a majority or The Heart inside the latch holds its server-room look until then |
 
 The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no
 stagehand rule: the screens read them from the server. Every wall terminal
@@ -517,7 +536,7 @@ of the mod feed.
 
 | Sensor | Signal |
 |---|---|
-| The door contact on the server-room ESP32 (`sensors/serverroom/door {"open": true, "tape": true, "mode": "tape"}`: wire loops that close when the door opens), plus an optional Zigbee contact (`contact == false`) | `server_door_opened`, `edge: true` + 20 s debounce (once per opening, either direction — an entry with the keypad code and an exit by the inside handle each fire; a group filing through is one; retained replays ignored); from the Y2K hour the first opening starts the server-room cutscene and the story latches it (no alarm) |
+| *(not stagehand, wave 20)* The LDR + LED on the server-room door, read by the Grand Central M4 at his heart's terminal (Web Serial) | the terminal posts `door_sensor_opened` / `door_sensor_closed` (`{level}`) itself; the story ignores them while a director's 🚪 override is on. The ESP32's `sensors/serverroom/door` and the Zigbee `server_room_door` are no longer read: a stagehand rule posting `server_door_opened` would itself be a 🚪 override |
 | Zigbee button over the printer's START key | `printer_button_pressed` |
 | Reed switch on the printer lid | `printer_opened` (the first opening before 🤖 plays the beans + the glitch look; one opened late — the overshare or the Y2K hour — plays only *Full Of Beans*, the spill sound and −20 composure, and leaves the step, the lights, the screens and the terminals alone) |
 | The patch bay scanner (`sensors/patchbay/state {"combo", "complete"}`) | `patch_combo_a` / `patch_combo_b` / `patch_rejected`, judged in the YAML until signals carry arguments |

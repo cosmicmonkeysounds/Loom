@@ -124,6 +124,9 @@ export const Code = {
   /** A header `founding:` line that is no expression, so nobody can found
    *  a faction (wave 18b, a warning). */
   L1220FoundingInvalid: "L1220",
+  /** A choice's `(if <cond>)` guard that does not parse — the option is
+   *  never offered (wave 20, a warning). */
+  L1221ChoiceGuardInvalid: "L1221",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

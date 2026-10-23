@@ -51,6 +51,13 @@ change the order here, change it there.
    - *(Optional)* **The Server Door terminal**: `https://app.mapsandducks.com/terminal/?code=<moderator code>&name=Server Door&spot=server-room-door&view=chess`
      (THE KING, his bar, the scanner: hold up a phone's pass and play him;
      there is no chess on the tent tablet any more).
+   - *(Optional, wave 20)* **The server-room terminal** (Trabolta's heart):
+     `https://app.mapsandducks.com/terminal/?code=<moderator code>&spot=server-room&door=sim`
+     on a laptop with a keyboard and a webcam. `door=sim` fakes the door sensor:
+     **O** opens the door, **C** shuts it, **F** throws a sensor fault (the real
+     rig is `door=serial` and the Grand Central M4; a mouse-only rig adds `&keys=0`).
+     It sleeps until The Heart opens the room. Wave 20 reaches the VPS only
+     after [`SIGNOFF-w20.md`](./SIGNOFF-w20.md), a ship and a `sync-show`.
 5. Optional: Trabolta's voice. Start stagehand's `agents` worker on the
    laptop/house Mac (`uv run stagehand run --config <machine>.yaml --only agents`,
    see `stagehand/README.md`). Without it, DMs to Trabolta get his hold line
@@ -132,11 +139,11 @@ guest's card in that performer's booth (phone C / D), or in Run while you
    fire **🗳 Force the majority: The Way Out** (or **🗳 Force the majority: this program's
    faction** naming a member of a founded one).
    Members get the whole truth (50+ codex entries, *The Legendary Fact*, and *The Door Code* last) and The Server Room appears on their phones.
-   *(Optional, wave 7; any time once Trabolta is awake since wave 11)* **🚪 Server room door opened** → **The Heart**: The Server Room opens on every phone, and Trabolta speaks his candid opener there (and on the server-room terminal, if one is provisioned). Fire it again: nothing (wave 18b: no *Back To The Heart*; 🔄 re-arms The Heart).
+   *(Optional; any time once Trabolta is awake)* **open the door** (**O** on the `door=sim` terminal, or **🚪 Server room door opened**) → **The Heart** (wave 20): The Server Room opens on every phone (a quiet notice), the terminal wakes in red, and Trabolta asks for the door shut; leave it open and he nags at 15 s, then every 20 s. Shut it (**C**, or **🚪 Server room door closed**) → *Show it your pass*. Hold a phone's pass to the webcam → **WHO ARE YOU** docks on the terminal: click through the layers. Open the door mid-talk and the options grey out under *CLOSE THE DOOR* until it is shut. A 🚪 press hands the door to the buttons (*Door on buttons* on the glance) until **🚪 Trust the door sensor again**; 🔄 seals his heart for the next demo.
 2. **🔌 Patch: Combo A** → every phone: 🔔 **GO TO THE LIVING ROOM**; the TV: blackout, then the flashing overlay; 10 s later the dance look.
 3. **🏍 After the dance: weakened Trabolta recounts** — he reads every identity of the programs who came, the first reinstall, the virus planter, the best and worst program, and rides off. Everyone is released.
 
-**A′ · Talked down (wave 7)** — the same ending without a cable. After 🚪 (above), a program at the server-room terminal who shows Trabolta that Sandy can never answer (they hold *What Sandy Says* or *The Sandy File*) gets his offer: `# hosts` reads *"🕊 Trabolta offers to stand down for X"*. Without a terminal or a worker, a director can still press **🕊 Trabolta stands down (talked down)** (`# hosts` notes there was no offer) → the blackout opens on the patch bay going quiet on its own, then the dance and a recount that says nobody pulled a cable.
+**A′ · Talked down (wave 20: the heart's talk)** — the same ending without a cable. Give the program at the terminal *The Sandy File* first (Run → a guest → Codex, or `POST /api/mod/codex`), then at the terminal: **What are you, really?** → **Why do you need the theory so badly?** → **Then listen to me.** → ⟦PROOF⟧ **Show him the Sandy File** + one more tagged point (⟦TRUSTED⟧ / ⟦HONEST⟧ / ⟦OVERSHARE⟧ / ⟦LIVEJOURNAL⟧, or a marked program's ⟦MARKED⟧ earlier) → **Then let me finish.** → **She was never going to answer.** Before 🕚 he says *not yet* (and calls them back once 🕚 is fired); in the Y2K hour he shuts down on the screen and, with 🕊 Heart autoend on, the night ends by itself 25 s later (`# hosts`: *"🕊 Trabolta stands down for X. The night ends in 25 s"*). ⟦SPEAK FREELY⟧ lets the program type to him at length with the keyboard (it needs the worker). Without a terminal, a director can still press **🕊 Trabolta stands down (talked down)** (`# hosts` notes nobody talked him down) → the blackout opens on the patch bay going quiet on its own, then the dance and a recount that says nobody pulled a cable.
 
 **B · The verdict (Grok Prom → the song)**
 
@@ -177,7 +184,7 @@ them out).
 ## What is not built yet (say so on the day)
 
 - **The house map is a placeholder** (3 floors + the tent, not measured; K-28). The game walks it fine; the rooms won't line up with the real ones yet.
-- **No hardware in the loop**: the server-room door (🚪), the patch bay and the printer button are the admin fallback buttons on the cue sheet; the door code comes from the King at the door terminal or the four digit notes (above), with ♟ as the fallback. The ESP32 firmware exists but isn't wired to the VPS demo, and the keypad lock is a real lock on a real door.
+- **No hardware in the loop**: the server-room door (🚪), the patch bay and the printer button are the admin fallback buttons on the cue sheet; the door code comes from the King at the door terminal or the four digit notes (above), with ♟ as the fallback. The ESP32 firmware (the patch bay) and the M4's door-sensor firmware (wave 20) exist but aren't wired to the VPS demo (`door=sim` fakes the door), the server room's RGB bulb needs the house Mac's `lights` module and Zigbee2MQTT, and the keypad lock is a real lock on a real door.
 - **VR headsets** aren't part of this demo (the Quest build exists; a headset runs the same game, the King's shared health bar included).
 - **Trabolta's voice needs the laptop worker**; without it he has his hold line and a director answers as him.
 - **TV slides are text placeholders** (no artwork yet: "CEREMONY", "AWARD MOST TRUSTED"); the award slide doesn't name the winner — the winner's phone and the host's line do. Only the Trust Chart is drawn for real.

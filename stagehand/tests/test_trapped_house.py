@@ -17,8 +17,10 @@ And it pins the Oct 31 safety edits (K-05): no cue darkens a safety room
 WLED off per device and leaves the Tube on a dim static preset, Trabolta
 cannot darken The Cloud and only dims the kitchen, nothing drives a lock
 (the server-room door has a standalone keypad lock and mechanical egress;
-the YAML drives only its indicator ring), and the door sensors fire once
-per real opening (edge + ignore retained), whichever way it is walked.
+the YAML drives only its indicator ring), and — wave 20 — no rule reads
+the door at all (the M4 at his heart's terminal does), the server room's
+RGB bulb — the room's only light — is lights.json's and nothing here
+touches it, and the server room has no WLED strip (Q6 / Q10).
 """
 
 from __future__ import annotations
@@ -415,6 +417,85 @@ def test_the_door_drives_the_indicator_and_nothing_drives_a_lock():
     assert not re.search(r"maglock|door_lock|strike", json.dumps(_raw()["show"]), re.I)
 
 
+def test_the_server_rooms_bulb_is_lights_jsons_and_nothing_here_touches_the_room():
+    """Wave 20 (D10 / D11, Q6 / Q10): the server room's only light is the RGB
+    bulb `server_room_rgb` (no strip), the `server_room` group's only member,
+    and it is lights.json's: no rule or catch-up here sends the group, the
+    bulb or a server-room WLED topic anything, so no house look (y2k,
+    flicker, blackout, dance, alarm, restore, …) fights the heart's looks.
+    lights_alarm reaches WLED per device, never `wled/all`, and gives the
+    tube strip a steady red; lights_server_open only stops the ESP32."""
+    cfg = _show()
+    room = re.compile(r"^(zigbee2mqtt/server_room(_rgb)?(/|$)|wled/server(/|$))")
+    assert not [r.mqtt.topic for r in cfg.cues if r.mqtt is not None and room.search(r.mqtt.topic)]
+    assert "wled/server" not in HOUSE.read_text(encoding="utf-8")
+    for rule in cfg.catch_up:
+        for value in ("server_open", "alarm", "y2k", "blackout", "restore", "dance"):
+            arg = rule.args_for({"Night.lights": value, "Night.lights_back_at": "0", "Night.dark_room": "none", "Night.lit_scene": "none"})
+            if arg is None:
+                continue
+            for c in evaluate_cues(cfg.cues, _directive("cue", arg)):
+                assert not (hasattr(c, "topic") and room.search(c.topic)), (value, c.topic)
+    alarm = _mqtt(evaluate_cues(cfg.cues, _directive("cue", "lights_alarm")))
+    topics = [t for t, _ in alarm]
+    assert "wled/all/api" not in topics
+    for r in ("living", "kitchen", "backyard", "registry"):
+        assert (f"wled/{r}/api", {"on": True, "ps": 12}) in alarm, r
+    assert [p for t, p in alarm if t == "wled/tube/api"] == [{"on": True, "bri": 255, "seg": [{"col": [[255, 0, 0]], "fx": 0}]}]
+    opened = _mqtt(evaluate_cues(cfg.cues, _directive("cue", "lights_server_open")))
+    assert opened == [("show/serverroom/alarm", {"state": "off"})]
+
+
+def test_the_server_room_bulb_is_its_safety_light_in_lights_json():
+    """Q6: with no strip the bulb is the room's only light, so lights.json
+    keeps it a safety fixture at 80 / 254, and every heart look stays on and
+    at or above that floor (egress: the room is never near-dark)."""
+    lights = json.loads((STORY / "lights.json").read_text(encoding="utf-8"))
+    assert [(f["id"], f["device"], f.get("safety"), f.get("min")) for f in lights["fixtures"]] == [("server-room-rgb", "server_room_rgb", True, 80)]
+    for name, look in lights["looks"].items():
+        for s in [look.get("set")] + [st["set"] for st in look.get("steps", [])]:
+            if s is None:
+                continue
+            assert s.get("state") != "OFF", name
+            assert s.get("brightness", 254) >= 80, (name, s)
+
+
+#: WLED presets that are effects going dark between frames (strobe, lightning,
+#: pulse, audio-reactive, embers): never on `wled/all` or a safety strip.
+WLED_EFFECT_PRESETS = {7, 10, 12, 14, 15, 17}
+#: The presets still sent to `wled/all`, built solid on the tube controller.
+WLED_ALL_SOLID = {1, 3, 6, 16, 18, 19, 20}
+
+
+def test_no_safety_strip_ever_gets_a_strobe():
+    """Wave 20 review (D11): every cue, not just the alarm. `wled/all` carries
+    only the presets the YAML says are built solid there, and the tube
+    strip never gets an effect preset (the server room has no strip)."""
+    for rule in _show().cues:
+        if rule.mqtt is None or not rule.mqtt.topic.startswith("wled/") or not isinstance(rule.mqtt.payload, dict):
+            continue
+        topic, ps = rule.mqtt.topic, rule.mqtt.payload.get("ps")
+        if topic == "wled/all/api":
+            assert ps in WLED_ALL_SOLID, f"cues[{rule.id}] sends wled/all ps {ps}"
+        if topic == "wled/tube/api":
+            assert ps not in WLED_EFFECT_PRESETS, f"cues[{rule.id}] strobes {topic} (ps {ps})"
+            for seg in rule.mqtt.payload.get("seg", []):
+                assert seg.get("fx", 0) == 0, f"cues[{rule.id}] runs an effect on {topic}"
+    for cue, ps in (("lights_glitch", 7), ("lights_y2k", 10), ("lights_dance", 14), ("lights_final_reveal", 15), ("lights_rave", 17)):
+        out = _mqtt(evaluate_cues(_show().cues, _directive("cue", cue)))
+        for room in ("living", "kitchen", "backyard", "registry"):
+            assert (f"wled/{room}/api", {"on": True, "ps": ps}) in out, (cue, room)
+        assert out[-1] == ("wled/tube/api", {"on": True, "ps": 22}), cue
+    text = HOUSE.read_text(encoding="utf-8")
+    assert "Only ps 1, 3, 6, 16, 18, 19 and 20 still go to `wled/all`" in text
+
+
+def test_the_lights_section_is_a_commented_example_until_z2m_runs():
+    text = HOUSE.read_text(encoding="utf-8")
+    assert "lights" not in _raw()
+    assert re.search(r"^# lights:$", text, re.M) and "take_looks: true" in text
+
+
 def test_the_alarm_reaches_the_server_room_box_and_stops_when_it_opens():
     alarm = _mqtt(evaluate_cues(_show().cues, _directive("cue", "lights_alarm")))
     assert ("show/serverroom/alarm", {"state": "on", "seconds": 120}) in alarm
@@ -425,10 +506,10 @@ def test_the_alarm_reaches_the_server_room_box_and_stops_when_it_opens():
 # -- safe lights (K-05 critic pass) -------------------------------------------------
 
 #: Z2M groups that hold only safety bulbs (they are out of `house`), and the
-#: WLED devices that must never go dark: the Tube strip (hall + stair landing)
-#: and the server room (guests are in there during the blackout).
-SAFE_Z2M = ("bathroom", "tent", "server_room", "stairs", "path")
-SAFE_WLED = ("tube", "server")
+#: WLED device that must never go dark: the Tube strip (hall + stair landing).
+#: The server room's one light is its RGB bulb, lights.json's (Q6 / Q10).
+SAFE_Z2M = ("bathroom", "tent", "server_room", "server_room_rgb", "stairs", "path")
+SAFE_WLED = ("tube",)
 
 
 def _darkens(topic: str, payload: dict) -> bool:
@@ -461,7 +542,8 @@ def test_the_blackout_goes_per_device_and_leaves_the_tube_dim():
         assert (f"wled/{room}/api", {"on": False}) in out, room
     assert ("wled/tube/api", {"on": True, "ps": 22}) in out
     assert topics[-1] == "wled/tube/api"  # last, so a shared controller ends on the tube look
-    assert not any(t.startswith("wled/server/") for t in topics)  # guests are in the server room
+    # Guests are in the server room: nothing here reaches its bulb (lights.json's).
+    assert not any(t.startswith(("zigbee2mqtt/server_room", "wled/server")) for t in topics)
 
 
 # -- 2. every sensor signal is a story rule -----------------------------------------
@@ -474,8 +556,9 @@ def _signals() -> list[str]:
 def test_every_sensor_signal_is_a_when_rule_in_main_loom():
     main = _code((STORY / "main.loom").read_text(encoding="utf-8"))
     names = _signals()
-    assert names.count("server_door_opened") == 2  # the door contact (primary) and the optional Zigbee contact
-    assert {"server_door_opened", "printer_button_pressed", "printer_opened", "patch_combo_a", "patch_combo_b", "patch_rejected"} <= set(names)
+    # Wave 20 (D16): the door is the M4's (the terminal posts it), never a YAML rule.
+    assert "server_door_opened" not in names and "server_door_closed" not in names
+    assert {"printer_button_pressed", "printer_opened", "patch_combo_a", "patch_combo_b", "patch_rejected"} <= set(names)
     missing = [n for n in names if not re.search(rf"^when\s+{re.escape(n)}\s*(?:for\s+\w+\s*)?:", main, re.M)]
     assert not missing, f"signals main.loom never handles (a typo is silent on the night): {missing}"
 
@@ -487,10 +570,9 @@ def test_the_door_printer_and_patch_bay_fire_the_right_signals():
     def fire(topic: str, payload: dict) -> list[str]:
         return [c.fields["name"] for c in evaluate_sensors(rules, topic, payload, deb, now=1000.0)]
 
-    assert fire("sensors/serverroom/door", {"open": True}) == ["server_door_opened"]
-    assert fire("sensors/serverroom/door", {"open": False}) == []
-    assert fire("zigbee2mqtt/server_room_door", {"contact": False}) == ["server_door_opened"]
-    assert fire("zigbee2mqtt/server_room_door", {"contact": True}) == []
+    # Wave 20 (D16): neither old door sensor fires anything.
+    for topic, payload in (("sensors/serverroom/door", {"open": True}), ("sensors/serverroom/door", {"open": False}), ("zigbee2mqtt/server_room_door", {"contact": False}), ("zigbee2mqtt/server_room_door", {"contact": True})):
+        assert fire(topic, payload) == [], topic
     assert fire("zigbee2mqtt/printer_button", {"action": "single"}) == ["printer_button_pressed"]
     assert fire("zigbee2mqtt/printer_button", {"action": ""}) == []
     assert fire("zigbee2mqtt/printer_lid", {"contact": False}) == ["printer_opened"]
@@ -501,12 +583,10 @@ def test_the_door_printer_and_patch_bay_fire_the_right_signals():
     assert fire("sensors/patchbay/state", {"complete": False, "combo": "V1-D1"}) == []
 
 
-def test_state_sensors_fire_once_per_change_and_a_restart_with_the_door_open_fires_nothing():
+def test_state_sensors_fire_once_per_change():
     rules = _show().sensors
     edged = {(r.topic.filter, r.actions[0].fields["name"]) for r in rules if r.edge}
     assert edged >= {
-        ("sensors/serverroom/door", "server_door_opened"),
-        ("zigbee2mqtt/server_room_door", "server_door_opened"),
         ("zigbee2mqtt/printer_lid", "printer_opened"),
         ("sensors/patchbay/state", "patch_combo_a"),
         ("sensors/patchbay/state", "patch_combo_b"),
@@ -515,21 +595,6 @@ def test_state_sensors_fire_once_per_change_and_a_restart_with_the_door_open_fir
 
     def fire(deb, topic, payload, now, retained=False):
         return [c.fields["name"] for c in evaluate_sensors(rules, topic, payload, deb, now=now, retained=retained)]
-
-    # A restart with the door propped open: the retained "open" primes, then
-    # Z2M's battery reports keep saying "open" — nothing fires.
-    deb = Debouncer()
-    assert fire(deb, "sensors/serverroom/door", {"open": True}, 0.0, retained=True) == []
-    assert fire(deb, "zigbee2mqtt/server_room_door", {"contact": False, "battery": 97}, 0.0, retained=True) == []
-    assert fire(deb, "zigbee2mqtt/server_room_door", {"contact": False, "battery": 96}, 600.0) == []
-    # Closed, then opened for real: one signal per sensor (the story latches).
-    fire(deb, "sensors/serverroom/door", {"open": False}, 700.0)
-    assert fire(deb, "sensors/serverroom/door", {"open": True}, 710.0) == ["server_door_opened"]
-    assert fire(deb, "sensors/serverroom/door", {"open": True}, 720.0) == []
-
-    # The primary debounce turns a group filing through into one opening.
-    door_rule = next(r for r in rules if r.topic.filter == "sensors/serverroom/door")
-    assert 15 <= door_rule.actions[0].debounce_s <= 30
 
     # Each combo fires exactly once while it stays plugged in.
     combo_a, _ = _yaml_combos()
@@ -540,38 +605,24 @@ def test_state_sensors_fire_once_per_change_and_a_restart_with_the_door_open_fir
     assert fire(deb, "sensors/patchbay/state", {"complete": True, "combo": combo_a}, 400.0) == ["patch_combo_a"]
 
 
-def test_the_door_contact_is_direction_blind_entry_and_exit_each_fire_once():
-    """The wire loops touch whenever the door is open, so the story hears an
-    entry with the keypad code and an exit by the inside handle alike: one
-    `server_door_opened` each (shut in between), never more. The story's
-    cutscene latch decides what each one means."""
-    rules = _show().sensors
+def test_no_rule_reads_the_server_room_door_any_more():
+    """Wave 20 (D16, D19): the door is an LDR + LED read by the Grand Central
+    M4 at his heart's terminal, which posts door_sensor_opened / _closed. A
+    YAML rule posting server_door_opened would be a director's 🚪 override in
+    the story and take the door off the sensor for the night."""
+    topics = {r.get("on", r.get(True))["topic"] for r in _raw()["show"]["sensors"]}
+    assert not topics & {"sensors/serverroom/door", "zigbee2mqtt/server_room_door"}
+    assert not [r for r in _raw()["show"]["sensors"] if "door" in json.dumps(r.get("signal", {}))]
 
-    def fire(deb, payload, now):
-        return [c.fields["name"] for c in evaluate_sensors(rules, "sensors/serverroom/door", payload, deb, now=now)]
 
-    opened = {"open": True, "tape": True, "mode": "tape"}
-    shut = {"open": False, "tape": False, "mode": "tape"}
-    deb = Debouncer()
-    fire(deb, shut, 0.0)  # boot: shut
-    # An entry: the code is typed outside, the door swings open, then shuts.
-    assert fire(deb, opened, 100.0) == ["server_door_opened"]
-    assert fire(deb, opened, 101.0) == []  # still open: no repeat
-    assert fire(deb, shut, 104.0) == []
-    # An exit a minute later: the inside handle, no code. The same contact.
-    assert fire(deb, opened, 160.0) == ["server_door_opened"]
-    assert fire(deb, shut, 163.0) == []
-    # Neither is lost to the other, and neither fires twice.
-    # A group filing through within the debounce: open, shut, open again is
-    # one opening…
-    assert fire(deb, opened, 300.0) == ["server_door_opened"]
-    assert fire(deb, shut, 303.0) == []
-    assert fire(deb, opened, 306.0) == []
-    assert fire(deb, shut, 309.0) == []
-    # …and the next opening after the window is its own.
-    assert fire(deb, opened, 330.0) == ["server_door_opened"]
-    # Propped open for ten minutes: nothing more.
-    assert [fire(deb, opened, 330.0 + t) for t in (60.0, 300.0, 600.0)] == [[], [], []]
+def test_the_story_owns_the_door_signals():
+    """`server_door_closed` (the new 🚪) and the sensor's two edges are story
+    rules (main.loom, the story lane's)."""
+    main = _code((STORY / "main.loom").read_text(encoding="utf-8"))
+    if "server_door_closed" not in main:
+        pytest.skip("the wave 20 story (main.loom) is not merged into this tree yet")
+    for name in ("server_door_closed", "door_sensor_opened", "door_sensor_closed"):
+        assert re.search(rf"^when\s+{name}\s*(?:for\s+\w+\s*)?:", main, re.M), name
 
 
 # -- 3. the combos agree three ways ----------------------------------------------------
@@ -619,7 +670,7 @@ def test_the_patch_combos_agree_across_yaml_kernel_and_codex():
     assert _codex_combo(codex, "B") == combo_b
 
 
-@pytest.mark.parametrize("cue", ["lights_screensaver", "lights_dance"])
+@pytest.mark.parametrize("cue", ["lights_screensaver", "lights_song"])
 def test_scene_cues_hit_both_zigbee_and_wled(cue):
     cues = evaluate_cues(_show().cues, _directive("cue", cue))
     topics = {c.topic for c in cues if isinstance(c, MqttCue)}
@@ -665,8 +716,10 @@ def test_server_open_catches_up_the_y2k_house_look_underneath():
     args = [a for a in (rule.args_for(world) for rule in cfg.catch_up) if a is not None]
     assert args == ["lights_y2k", "lights_server_open"]
     topics = [c.topic for a in args for c in evaluate_cues(cfg.cues, _directive("cue", a)) if hasattr(c, "topic")]
-    assert topics.index("zigbee2mqtt/house/set") < topics.index("zigbee2mqtt/server_room/set"), topics
-    assert "wled/all/api" in topics, topics
+    assert topics.index("zigbee2mqtt/house/set") < topics.index("show/serverroom/alarm"), topics
+    assert "wled/living/api" in topics and "wled/all/api" not in topics, topics
+    # Wave 20 (D10, Q6 / Q10): the RGB bulb is lights.json's; nothing here reaches it.
+    assert not [t for t in topics if t.startswith(("zigbee2mqtt/server_room", "wled/server"))], topics
     # The story says so too: the latch's end restores server_open as y2k + server_open.
     assert re.search(r"cue lights_y2k\s+cue lights_server_open", _code(_story_text())), "the story's restore order moved"
     # Any other look replays once, no extra house layer.

@@ -18,3 +18,17 @@
 .cutscene-base,
 .cutscene-top { display: contents; }
 .cutscene-base[data-hidden] { visibility: hidden; }
+
+/* A room scene (wave 20) that doesn't cover: over the face pane only (the
+   stage's left column, its top band on a narrow screen), never over the
+   heart's choices, and it takes no taps. */
+.cutscene-room-side { display: contents; }
+.cutscene-room-side .cutscene-stage {
+  right: 58%;
+  top: 44px;
+  pointer-events: none;
+}
+@media (orientation: portrait) {
+  .cutscene-room-side .cutscene-stage { right: 0; bottom: 62%; }
+}
+.cutscene-room { display: contents; }

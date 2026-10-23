@@ -1,9 +1,40 @@
 # Server-room box (N-08)
 
+> **Not installed for Oct 31** (Q7, the user, 2026-10-23: *"No, just the
+> Grand Central M4"*). The only electronics in the server room is the door
+> sensor's M4 on Steph's laptop ([`hardware/server-room-door/`](../server-room-door)).
+> The code below stays, tested and unflashed, for a later show. Without it:
+>
+> | Job | On the night instead |
+> |---|---|
+> | Patch-bay scan (`sensors/patchbay/state` → `patch_combo_a` / `_b` / `patch_rejected`) | The patch bay is a prop. The Antivirus on the patch-bay watch (`cast-packs/patch-bay-watch.md`) reads the four cables against the card and presses **🔌 `radio_combo_a`**, **💥 `radio_combo_b`** or **❌ `radio_wrong_patch`** on their booth (any program's card; the four room Antivirus and the host parts), or a director fires 🔌 💥 ❌ from Run. Each fires the same story event the scanner's signal did (`main.loom`: `when radio_combo_a: fire patch_combo_a` …), with the same Y2K-hour and after-truth.txt gates; `core/test/trapped-in-the-internet.test.ts` (*the room's own buttons*) presses them end to end. |
+> | Local siren + ring strobe (`show/serverroom/alarm`) | The house router's `alarm_siren` sound (Patch Rejected plays `sound alarm_siren`) and the room's RGB bulb (`heart_alarm`, `lights.json`). |
+> | Lock indicator ring (`show/serverroom/lock`) | Nothing. The keypad lock (D17, Q9) keeps the door locked and shows its own state. |
+> | Relay click on a new cable | Nothing. |
+>
+> Stagehand's rules for the box stay in `stagehand/trapped.house.yaml`
+> (pinned by `tests/test_serverroom_firmware.py`): with no box on the
+> broker they publish to topics nobody reads (one retained
+> `show/serverroom/lock`, harmless) and the patch-bay rules never fire, so
+> nothing misfires and nothing warns. `scripts/accept/N-08.sh` needs the
+> box; `scripts/accept/K-05.sh` runs its combo step through the 🔌 button
+> unless `ESP32=1`.
+
+> **Wave 20: the door moved.** The server-room door is now read by an LED
+> shining on an LDR, on a Grand Central M4 plugged into Steph's laptop
+> ([`hardware/server-room-door/`](../server-room-door)), and the
+> server-room terminal page posts it to the event over Web Serial. Stagehand
+> no longer listens to `sensors/serverroom/door` (D16): this box's door code
+> stays in the firmware and still publishes, unread, and the copper tape can
+> come off. The box keeps the patch bay, the ring, the siren and the relay.
+> `scripts/accept/N-08.sh` no longer tests the door (N-20 does).
+
 One ESP32 in the server room (cold storage) that does three jobs for
 *Trapped in the Internet*:
 
-- **Door**: two loops of wire / copper tape that **touch when the door
+- **Door** (*retired in wave 20, D16: the door is the Grand Central M4's
+  LED + LDR now, and stagehand no longer reads this topic; the code below
+  still publishes it, unread*): two loops of wire / copper tape that **touch when the door
   opens** (a reed switch on a second pin is optional) →
   `sensors/serverroom/door`. Stagehand turns an opening into
   `server_door_opened`, and the story starts the server-room cutscene (the
@@ -71,6 +102,9 @@ and the relay, with all grounds common. **Never plug USB in while the 5 V
 supply is connected** (it back-feeds the host). Flash with the supply off.
 
 ## The door
+
+*Retired in wave 20 (see the note at the top): kept for the record and for
+the ring's lock indicator, which still works.*
 
 **The lock is not ours.** The server-room door has a standalone electronic
 keypad lock on the **outside only**: the code is set by hand on the lock and

@@ -104,26 +104,38 @@ def heart_request(at_the_heart=None, marked=None, **world):
         "self": {"vars": {"awake": "true", "truth": "40"}, "ranges": {}, "codex": []},
         "them": {"vars": them, "codex": [], "location": "The Server Room"},
         "world": {"Night.phase": "y2k", "Night.step": "14", **world},
-        "powers": [{"id": "stand_down", "limit": 1, "used": 0, "description": "…"}, {"id": "snoop", "limit": None, "used": 0}],
+        "powers": [{"id": "snoop", "limit": None, "used": 0}],
     }
 
 
 def test_the_shipped_persona_has_its_situations_and_whitelists():
     p = load_persona(TRABOLTA)
-    assert [s.heading for s in p.situations] == ["at your heart", "marked at your heart", "standing down", "her name has been said", "her name is still blacked out"]
-    assert "at_the_heart" in (p.them or ())
-    assert {"Night.heart_opened", "Night.talked_down"} <= set(p.facts)
-    assert "stand_down" in [x["id"] for x in allowed_powers(p, heart_request())]
+    # Wave 20: standing down is gone (D13: the story's talk decides), a docked
+    # choice has its own block and the heart to heart wins over the rest (§7).
+    assert [s.heading for s in p.situations] == ["at your heart", "marked at your heart", "a choice is open", "her name has been said", "her name is still blacked out", "heart to heart"]
+    assert {"at_the_heart", "heart_layer", "heart_menu", "heart_convinced", "heart_chat", "heart_out"} <= set(p.them or ())
+    assert {"Night.heart_opened", "Night.talked_down", "Night.heart_stage", "Night.server_door"} <= set(p.facts)
+    assert "stand_down" not in [x["id"] for x in allowed_powers(p, heart_request())]
 
 
 def test_the_heart_block_appears_only_at_the_heart():
     p = load_persona(TRABOLTA)
     at = build_messages(p, heart_request("true"))[0]["content"]
     assert "=== SITUATION: AT YOUR HEART" in at and "the patch bay in this room is your heart" in at
-    assert "you do not know the combinations" in at and "stand_down" in at
+    assert "you do not know the combinations" in at and "stand_down" not in at
     for closed in (heart_request("false"), heart_request()):
         system = build_messages(p, closed)[0]["content"]
         assert "=== SITUATION" not in system and "patch bay in this room" not in system
+
+
+def test_a_program_thrown_out_of_his_heart_gets_no_candour():
+    # D24: Heart Barred — a barred program's re-scan gets no candid block.
+    p = load_persona(TRABOLTA)
+    req = heart_request("true")
+    req["them"]["vars"]["heart_out"] = "true"
+    req["them"]["vars"]["heart_chat"] = "true"
+    names = [s.heading for s in matching_situations(p, req)]
+    assert not {"at your heart", "marked at your heart", "heart to heart"} & set(names)
 
 
 def test_sandy_by_name_at_the_heart_only_once_the_story_has_named_her():
@@ -132,18 +144,17 @@ def test_sandy_by_name_at_the_heart_only_once_the_story_has_named_her():
     names = lambda req: [s.heading for s in matching_situations(p, req)]  # noqa: E731
     blacked = "her name is still blacked out"
     said = "her name has been said"
-    down = "standing down"
-    assert names(heart_request("true", **{"Night.scenario": "2"})) == ["at your heart", down, blacked]
-    assert names(heart_request("true")) == ["at your heart", down, blacked]
-    assert names(heart_request("true", **{"Night.scenario": "1"})) == ["at your heart", down, said]
+    assert names(heart_request("true", **{"Night.scenario": "2"})) == ["at your heart", blacked]
+    assert names(heart_request("true")) == ["at your heart", blacked]
+    assert names(heart_request("true", **{"Night.scenario": "1"})) == ["at your heart", said]
     # Wave 11: candid at his heart whenever he is awake (the door plays The
-    # Heart at any hour); standing down only from the Y2K hour. Her name
-    # still follows the story's own rule (scenario 1 from step 13).
+    # Heart at any hour). Her name still follows the story's own rule
+    # (scenario 1 from step 13). Wave 20: no standing-down block.
     assert names(heart_request("true", **{"Night.scenario": "1", "Night.step": "13"})) == ["at your heart", said]
     assert names(heart_request("true", **{"Night.scenario": "1", "Night.step": "12"})) == ["at your heart", blacked]
     assert names(heart_request("true", **{"Night.phase": "hunt_1", "Night.step": "5"})) == ["at your heart", blacked]
     assert names(heart_request("false", **{"Night.step": "5"})) == []
-    assert names(heart_request("true", **{"Night.scenario": "3", "Night.recount": "true"})) == ["at your heart", down, said]
+    assert names(heart_request("true", **{"Night.scenario": "3", "Night.recount": "true"})) == ["at your heart", said]
     for s in p.situations:
         if s.heading != said:
             assert "sandy" not in s.prompt.lower(), s.heading
@@ -154,25 +165,69 @@ def test_the_heart_never_hands_out_a_code_or_a_combination():
     heart = p.situations[0].prompt.lower()
     assert "never: a hunt answer" in heart and "a combination" in heart and "any door code" in heart
     assert "never promise them an ending" in heart and "stand_down" not in heart
-    down = next(s for s in p.situations if s.heading == "standing down")
-    assert "never invent the evidence" in down.prompt.lower()
+    assert "the questions on the screen decide" in " ".join(heart.split())
     # Outside the heart the page still forbids saying where it is.
     assert "Never admit where your heart is kept" in p.system
     assert "never know a combination or a door code" in p.bargain
 
 
-def test_stand_down_waits_for_the_standing_down_block_not_the_heart():
-    # Wave 11: the heart block applies whenever he is awake; only the
-    # STANDING DOWN block (the Y2K hour) lets him fire stand_down, so the
-    # page's rule and the bargain must name that block, never "at your heart".
+def test_no_power_ends_him_and_the_page_says_so():
+    # Wave 20 (D13): the stand_down power and its STANDING DOWN block are
+    # gone; the questions on the heart's screen decide, never a conversation.
     p = load_persona(TRABOLTA)
-    assert "Never fire stand_down unless the STANDING DOWN situation block is below." in p.system
-    assert "says the program is\n  at your heart" not in p.system
-    assert "STANDING DOWN situation block" in p.bargain
-    early = build_messages(p, heart_request("true", **{"Night.phase": "hunt_1", "Night.step": "5"}))[0]["content"]
-    assert "=== SITUATION: AT YOUR HEART" in early and "STANDING DOWN. You have one power" not in early
-    late = build_messages(p, heart_request("true"))[0]["content"]
-    assert "STANDING DOWN. You have one power" in late
+    assert "stand_down" not in p.system and "STANDING DOWN" not in p.system
+    assert "stand_down" not in p.bargain and "STANDING DOWN" not in p.bargain
+    assert "Never offer to stop or stand down" in p.system
+    assert "the questions on your heart's screen decide it" in " ".join(p.bargain.split()) and "no act of yours ends" in " ".join(p.bargain.split())
+    for s in p.situations:
+        assert "stand_down" not in s.prompt and "STANDING DOWN" not in s.prompt, s.heading
+    for req in (heart_request("true", **{"Night.phase": "hunt_1", "Night.step": "5"}), heart_request("true")):
+        assert "STANDING DOWN" not in build_messages(p, req)[0]["content"]
+
+
+def test_a_docked_choice_and_the_heart_to_heart_follow_them():
+    # Wave 20 §7: a choice on the screen → one short line pointing back to it;
+    # the heart to heart (heart_chat) → up to four sentences, no acts, inside
+    # his world, and it wins over the docked-choice block.
+    p = load_persona(TRABOLTA)
+    names = lambda **them: [s.heading for s in matching_situations(p, {**heart_request("true"), "them": {"vars": {"at_the_heart": "true", **them}, "codex": [], "location": "The Server Room"}})]  # noqa: E731
+    assert "a choice is open" in names(heart_menu="true")
+    assert "heart to heart" not in names(heart_menu="true")
+    assert "a choice is open" not in names(heart_menu="true", heart_chat="true")
+    assert "heart to heart" in names(heart_menu="true", heart_chat="true")
+    assert "heart to heart" in names(heart_chat="true")
+    assert names(heart_menu="false", heart_chat="false") == ["at your heart", "her name is still blacked out"]
+    away = [s.heading for s in matching_situations(p, heart_request("false", **{}))]
+    assert away == []
+    choice = next(s for s in p.situations if s.heading == "a choice is open").prompt
+    assert "under fifteen words" in choice and "pointing them back to" in " ".join(choice.split())
+    h2h = next(s for s in p.situations if s.heading == "heart to heart").prompt
+    flat = " ".join(h2h.split())
+    assert "overrides every block above" in flat and "Halifax" in flat and "every never holds" in flat
+    assert "You decide and do nothing here" in flat and "you have never heard of" in flat
+    assert "sandy" not in flat.lower() and not re.search(r"\d{3,}", h2h)
+    assert p.situations[-1].heading == "heart to heart"
+
+
+def test_the_fiction_boundary_lists_what_is_outside_his_world():
+    # Wave 20 (D29): Trabolta lives in Halifax, in the world of Maps and Ducks;
+    # the real crew and the event's kit are outside it. The guard reads the
+    # `outside:` list (stagehand lane); the story keeps his own text clean.
+    import yaml
+
+    meta = yaml.safe_load((SHOW / "trabolta.persona.md").read_text(encoding="utf-8").split("---")[1])
+    outside = meta["outside"]
+    for w in ("Steph", "Jesse", "Steph's laptop", "the show", "actor", "performer", "rehearsal", "Loom", "stagehand", "Arduino", "Zigbee"):
+        assert w in outside, w
+    # His own world is never outside it: John McAfee, the fundraiser party.
+    for w in ("John", "party", "parties"):
+        assert w not in outside, w
+    p = load_persona(TRABOLTA)
+    texts = [p.system, p.bargain] + [s.prompt for s in p.situations]
+    for t in texts:
+        for w in outside:
+            assert not re.search(rf"(?<![\w]){re.escape(w)}(?![\w])", t, re.I), w
+    assert "YOUR WORLD is Halifax and Maps and Ducks" in p.system and "Names from beyond it mean nothing" in " ".join(p.system.split())
 
 
 def test_the_mind_knows_the_door_is_a_keypad_not_a_click():
@@ -231,11 +286,11 @@ def test_the_marked_blocks_follow_the_heart_and_the_mark():
     assert names(heart_request(None, "true")) == []
     for unmarked in (heart_request("true", "false"), heart_request("true"), heart_request("false", "false"), heart_request()):
         assert names(unmarked) == []
-    # The heart itself (and, from the Y2K hour, standing down) still holds for a marked program.
+    # The heart itself still holds for a marked program, at any hour.
     at = [s.heading for s in matching_situations(p, heart_request("true", "true"))]
-    assert at[:2] == ["at your heart", "marked at your heart"] and "standing down" in at
+    assert at[:2] == ["at your heart", "marked at your heart"]
     early = [s.heading for s in matching_situations(p, heart_request("true", "true", **{"Night.phase": "hunt_1", "Night.step": "5"}))]
-    assert early[:2] == ["at your heart", "marked at your heart"] and "standing down" not in early
+    assert early[:2] == ["at your heart", "marked at your heart"]
 
 
 def test_marked_at_his_heart_he_is_wary_but_lets_them_carry_on():
@@ -246,7 +301,7 @@ def test_marked_at_his_heart_he_is_wary_but_lets_them_carry_on():
     assert "bait" in flat and "fellow prisoner" in flat and "ask them why they were marked" in flat
     assert "raises your regard" in flat and "lowers it" in flat  # their answer moves him either way
     assert "stay candid" in flat and "still take their files" in flat
-    assert "standing down block below, it applies to them exactly as to anyone" in flat
+    assert "the questions on the screen are theirs exactly as anyone's" in flat
     assert "never refuse to talk to them, never threaten them, never send them away" in flat
     assert "never guess what the mark says about any fact they filed" in flat
     # No literal power name (the heart's own rule), no name, no number.
@@ -264,7 +319,7 @@ def test_the_mind_notes_a_marked_program_at_his_heart_and_its_answer_moves_trust
     mind_text = " ".join((p.mind_prompt or "").split())
     assert "MARKED PROGRAMS." in mind_text and "The mark is public" in mind_text
     assert "came to his heart marked" in mind_text and "move their trust either way" in mind_text
-    assert "never closes standing down to them, and never goes into the brief" in mind_text
+    assert "never closes his heart's questions to them, and never goes into the brief" in mind_text
     assert "The one exception is the mark for reinstallation (MARKED PROGRAMS)" in mind_text
     user = reflect_messages(p, Mind("Trabolta", "e"), heart_request("true", "true"), Reply(say="x"), None, 20, "t")[1]["content"]
     assert "=== THE SITUATION WITH Excel (marked at your heart;" in user
@@ -343,8 +398,9 @@ def test_the_cards_follow_the_night():
     }
     assert cards["y2k"]["drives"] == {"hunger": 90, "pride": 70, "candour": 80, "longing": 75}
     assert cards["advice"]["drives"]["candour"] == 100 and cards["grok_prom"]["drives"]["longing"] == 95
-    # stand_down is live only while the story would take it; its situation still gates it.
-    assert [p for p, c in cards.items() if "stand_down" in c["powers"]] == ["y2k", "majority", "final_reveal", "bobbing"]
+    # Wave 20 (D13): no card carries stand_down; the story's talk at his heart decides.
+    assert [p for p, c in cards.items() if "stand_down" in c["powers"]] == []
+    assert cards["final_reveal"]["powers"] == [] and cards["bobbing"]["powers"] == ["assess"]
 
 
 def test_no_card_the_house_reads_names_her_says_a_secret_or_reaches_for_the_catchphrase():

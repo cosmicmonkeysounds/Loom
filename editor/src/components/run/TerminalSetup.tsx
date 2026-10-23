@@ -6,7 +6,10 @@
 //! one of the cast (agent-voiced first). Out comes the `/terminal/?code=…`
 //! link the tablet opens once, as text, a QR drawn in the browser and a copy
 //! button. The link carries the moderator code, so the card says so. Rules
-//! in pure `lib/terminal-setup.ts`.
+//! in pure `lib/terminal-setup.ts`. Wave 20: *Keyboard plugged in* (unticked
+//! → `keys=0`, a mouse-only rig) and *Door sensor on this laptop*
+//! (`door=serial`, ticked for the server room's own spot), both only on a
+//! view with a composer.
 
 import { useEffect, useMemo, useState } from 'react'
 import { useCockpit } from '@/store/cockpit'
@@ -26,6 +29,8 @@ import {
   terminalLink,
   unclaimedSpots,
   viewHasCharacter,
+  viewHasDoor,
+  viewHasKeys,
   viewOption,
   type TerminalSetup as Setup,
 } from '@/lib/terminal-setup'
@@ -44,7 +49,7 @@ export function TerminalSetup() {
   const characters = useMemo(() => characterOptions(cast), [cast])
   const rooms = useMemo(() => roomOptions(map ?? [], mapRooms, locations.map((l) => l.id)), [map, mapRooms, locations])
   const free = useMemo(() => new Set(unclaimedSpots(map ?? [], rows).map((t) => t.id)), [map, rows])
-  const [setup, setSetup] = useState<Setup>({ name: '', spot: '', view: TerminalView.Auto, room: '', character: '', announce: false })
+  const [setup, setSetup] = useState<Setup>({ name: '', spot: '', view: TerminalView.Auto, room: '', character: '', announce: false, keys: true, door: false })
   const [qr, setQr] = useState<{ link: string; svg: string } | null>(null)
   const [copiedLink, setCopiedLink] = useState<string | null>(null)
 
@@ -165,6 +170,18 @@ export function TerminalSetup() {
             <input type="checkbox" checked={setup.announce} onChange={(e) => setSetup((s) => ({ ...s, announce: e.target.checked }))} data-testid="run-terminal-setup-announce" />
             Say announcements: Always (ignore the house setting). Unticked, the tablet follows the house setting for its spot (📢 on the Terminals list)
           </label>
+          {viewHasKeys(setup.view) && (
+            <label className="flex items-center gap-2 pl-[5.5rem] text-[11px] text-zinc-400">
+              <input type="checkbox" checked={setup.keys !== false} onChange={(e) => setSetup((s) => ({ ...s, keys: e.target.checked }))} data-testid="run-terminal-setup-keys" />
+              Keyboard plugged in: guests may type to the character. Unticked (keys=0), a mouse-only rig: no typing box
+            </label>
+          )}
+          {viewHasDoor(setup.view) && (
+            <label className="flex items-center gap-2 pl-[5.5rem] text-[11px] text-zinc-400">
+              <input type="checkbox" checked={setup.door === true} onChange={(e) => setSetup((s) => ({ ...s, door: e.target.checked }))} data-testid="run-terminal-setup-door" />
+              Door sensor on this laptop (door=serial): desktop Chrome on https, then ⚙ Connect door sensor once. Its 🚪 badge shows on the Terminals list
+            </label>
+          )}
         </div>
         <div className="flex flex-col items-center gap-1.5">
           {/* `qrcode`'s own SVG output for our own link — no user markup. */}

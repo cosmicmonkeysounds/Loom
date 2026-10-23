@@ -103,7 +103,10 @@ def test_a_lost_restore_relights_the_room_while_the_cut_look_is_still_on():
     # A whole-house look since the cut: that look's own cue owns the room.
     show, mqtt, _ = house_show({**MID_CUT, "Night.lights_back_at": "0", "Night.lights": "dance"})
     run(show._catch_up("connect"))
-    assert not any(t.startswith(("zigbee2mqtt/registry", "wled/registry")) for t, _ in mqtt.sent)
+    # (dance's own WLED preset now goes per device, the RAM's strip included —
+    # no relight / cut rule fires on top of it.)
+    assert not any(t.startswith("zigbee2mqtt/registry") for t, _ in mqtt.sent)
+    assert [p for t, p in mqtt.sent if t == "wled/registry/api"] == [{"on": True, "ps": 14}]
     show, mqtt, _ = house_show({**MID_CUT, "Night.dark_room": "none", "Night.lights_back_at": "0"})
     run(show._catch_up("connect"))
     assert [t for t, _ in mqtt.sent] == ["zigbee2mqtt/living/set", "wled/living/api"]

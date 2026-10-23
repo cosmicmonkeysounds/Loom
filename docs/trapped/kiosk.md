@@ -379,12 +379,75 @@ Room's LOCATION).
 - Volume: loud enough to be heard over the server rack's fans from the
   doorway; the cutscene is spoken here, nowhere else.
 
+### Wave 20: the heart is Steph's laptop, the door sensor rides on it
+
+Since wave 20 the server-room terminal is **not a tablet**: it is Steph's
+laptop, lid closed, driving a **monitor** with a **mouse and keyboard**,
+and the door sensor (the Grand Central M4, `hardware/server-room-door/`)
+is plugged into its USB. The page reads the sensor over **Web Serial**
+and tells the story when the door opens and shuts (`door_sensor_opened` /
+`door_sensor_closed`), reports it on its heartbeat (Run → Terminals: 🚪
+*shut* / *open* with the level, red *fault*), and plays the heart's room
+scenes and the choice panel. Web Serial is **desktop Chrome on https**
+only (the event's own address is; never a bare `http://192.168…`).
+
+- **The link:** `/terminal/?code=<mod passcode>&spot=server-room&door=serial`
+  (`&keys=0` only for a mouse-only rig; `&camera=user` for the laptop's
+  webcam or a USB one facing the program).
+- **Its own Chrome profile.** Grants (the camera, the serial port) belong
+  to a profile, and grants made in Steph's everyday profile don't carry
+  over. Launch it once **without** `--kiosk` to make the grants:
+
+  ```
+  open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-terminal" \
+    "https://<site>/terminal/?code=<mod>&spot=server-room&door=serial&camera=user"
+  ```
+
+  Allow the camera; hold ⚙ 2 s → *advanced* → *door sensor* → **Connect
+  door sensor** → pick the Grand Central in Chrome's list → Save. Then
+  **Calibrate: door shut** (door shut, 2 s), open the door, **Calibrate:
+  door open**: ⚙ shows the thresholds and they are stored on the laptop
+  and in the board's flash, and re-sent on every connect.
+- **Then the kiosk:** quit Chrome and relaunch with the same profile:
+
+  ```
+  caffeinate -dims open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-terminal" \
+    --kiosk --autoplay-policy=no-user-gesture-required "https://<site>/terminal/"
+  ```
+
+  (the stored config needs no `code` the second time). `caffeinate -dims`
+  keeps the display, the disk and the system awake; also turn sleep off
+  (`sudo pmset -a sleep 0 displaysleep 0`), notifications off (Focus),
+  and keep the laptop on mains power — clamshell mode needs mains and the
+  external monitor, which should be the main display.
+- **Close any serial monitor** (the Arduino IDE's, `screen`, `arduino-cli
+  monitor`): the port is exclusive, and ⚙ then reads *the door sensor's
+  port won't open … close any serial monitor*.
+- **After a reflash** the board's USB id changes in bootloader mode;
+  Chrome may need the port granted once more (⚙ → Connect door sensor).
+- **The built-in keyboard out of reach**: the kiosk URL carries the mod
+  token in its stored config, and a guest at the external keyboard can
+  only type to him.
+- **What a fault looks like.** Unplugged, silent for 3 s, or flooded with
+  light: nothing shows on the guest's screen (the sensor is *the door* in
+  the fiction), ⚙ reads *door sensor: FAULT (…)*, Run → Terminals shows 🚪
+  red with the reason, and the page tells the story **nothing** — use the
+  🚪 *opened* / *closed* buttons on the cue sheet, which put the door on
+  the buttons (amber *override* on Run) until 🚪 *Trust the door sensor*.
+  The board may go quiet for up to 2 s after a setting changes; that is
+  not a fault.
+- **Testing without the board:** `&door=sim` — **O** opens a pretend
+  door, **C** shuts it, **F** toggles a fault (keys typed into the chat
+  box never move it).
+
 Install-day check: before the doors, the terminal is on the screensaver
 with the server running (Run → Terminals shows it green, with
-`room The Server Room` on its row). On a rehearsal after 🤖 (Trabolta
+`room The Server Room` on its row, and 🚪 *shut* with a level — open the
+door and it reads *open* within a second). On a rehearsal after 🤖 (Trabolta
 awake), fire 🚪 `server_door_opened` from the cue sheet: it wakes and
-speaks the opener; scan a test pass, type, open 📎 and give a file, wait
-out the leash, and check the Log for `terminal opened` then `terminal
+speaks the opener; shut the door (🚪 or the real one), scan a test pass, click
+through Layer One, open 📎 and give a file, wait out the leash (three
+minutes while a heart menu is docked), and check the Log for `terminal opened` then `terminal
 closed` by *Terminal · Server Room*.
 
 ## The Server Door terminal — the King's chess

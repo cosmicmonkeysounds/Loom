@@ -71,13 +71,30 @@ addresses, codes, where things are kept).
   (CRA approves every third transfer); Clippy and the Antivirus have Quest
   Logs in their booths; the Installation Wizard (Julia) is a voice, the tent
   is in the backyard through the tunnel. Every pack below is written to that.
+- **Wave 20 (2026-10-23), on `oct31-w20/integration`, not shipped; text in
+  [`SIGNOFF-w20.md`](../SIGNOFF-w20.md):** Trabolta's heart. The door sensor
+  is a light on the frame (an LED into an LDR, read by the server-room
+  terminal); the first opening once he is awake plays The Heart and **he
+  wants the door shut before anything goes on**; a pass at his screen starts
+  a four-layer talk (clicked with the mouse) or a heart to heart (typed at
+  the keyboard); the room's bulb follows him. The server-room Antivirus
+  close the door behind every program and have 🚪 *opened* / *is shut* on
+  their booths; the director has 🚪 closed, 🚪 *Trust the door sensor again*
+  and 🕊 *Heart: end the night on his own*. `stand_down` is gone. **Wave 20b (the
+  user's answers):** a talk-down works at any hour and the night ends on the
+  director's 🕊 (no automatic end); a program thrown out of his heart is
+  marked for reinstallation; the room has no ESP32 (the patch-bay watch
+  judges the bay) and no strip (the bulb is the room's light). Reprint after the
+  sign-off: the four server-room Antivirus packs, the patch-bay watch, the
+  emergency card, all-crew, the director's and the tech operator's cards.
 - **Wave 7 (2026-10-17), not yet deployed:** the server-room door has a real,
   standalone **keypad lock** (outside only; the inside handle always opens
   with no code; nothing in the show can lock or unlock it). A program gets
   the code with the winning majority (and, since wave 11, the two ways below).
   Opening the door is a clean entry, whoever does it: the door never alarms.
   Only the server-room terminal on the wall is his heart: Trabolta speaks
-  candidly there, and from the Y2K hour a program can talk him down (🕊).
+  candidly there, and from the Y2K hour a program can talk him down (🕊;
+  wave 20b: at any hour, ended by the director's 🕊).
   Only the patch bay alarms, on the **second** wrong combination. CRA
   approves or denies every third transaction (C16), everywhere. The code is
   never written on a card or said on the radio.

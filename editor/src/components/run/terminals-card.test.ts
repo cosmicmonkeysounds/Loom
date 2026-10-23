@@ -38,8 +38,8 @@ const row = (name: string, spot: string, status: TerminalStatus = TerminalStatus
   device: null,
 })
 
-function render(rows: TerminalRow[], map = MAP): string {
-  fake.state = { rows, map, mapRooms: ['The Desktop', 'The Server Room'], reachable: true, voiceMuted: false, acked: new Set(), muteError: null, identifyError: null }
+function render(rows: TerminalRow[], map = MAP, extra: Record<string, unknown> = {}): string {
+  fake.state = { ...extra, rows, map, mapRooms: ['The Desktop', 'The Server Room'], reachable: true, voiceMuted: false, acked: new Set(), muteError: null, identifyError: null }
   const store = create<CockpitState>(() => ({
     ...nullCockpit.getState(),
     run: {
@@ -92,11 +92,38 @@ describe('TerminalsCard (wave 14 spot claims + set up)', () => {
     // No announce: the tablet follows the house setting (wave 18b, Q8).
     expect(html).toContain('https://loom.test/terminal/?code=MODC&amp;character=Trabolta&amp;view=auto</p>')
     expect(html).toContain('Always (ignore the house setting)')
+    // Wave 20: a keyboard by default (no keys key), the door sensor offered unticked.
+    expect(html).toMatch(/data-testid="run-terminal-setup-keys"/)
+    expect(html).toMatch(/<input type="checkbox"[^>]*data-testid="run-terminal-setup-door"/)
+    expect(html).not.toMatch(/checked=""[^>]*data-testid="run-terminal-setup-door"/)
   })
 
   it('no map: rows carry no off-map flag and the builder says the spot list is empty', () => {
     const html = render([row('Kitchen', 'kitchen')], null as never)
     expect(html).not.toContain('not on map')
     expect(html).toContain('No house map read yet')
+  })
+})
+
+describe('TerminalsCard (wave 20 door sensor)', () => {
+  const doorRow = (device: TerminalRow['device']): TerminalRow => ({ ...row('Server Room', 'server-room'), view: 'face', device })
+
+  it('shows the 🚪 badge green when shut, with the level, and no override by default', () => {
+    const html = render([doorRow({ door: 'closed', doorLevel: 3900 })])
+    expect(html).toMatch(/data-testid="run-terminal-badge-door"[^>]*>🚪 shut 3900</)
+    expect(html).toContain('data-tone="ok"')
+    expect(html).not.toContain('run-terminal-badge-door-override')
+  })
+
+  it('a fault reads red; the override and a warning read amber', () => {
+    const html = render([doorRow({ door: 'fault', doorFault: 'stale', doorWarn: 'ldr_open' })], MAP, { doorOverride: true })
+    expect(html).toMatch(/data-tone="red"[^>]*>🚪 fault: stale</)
+    expect(html).toMatch(/data-tone="amber"[^>]*>⚠ ldr_open</)
+    expect(html).toMatch(/data-testid="run-terminal-badge-door-override"[^>]*>override</)
+  })
+
+  it('a terminal with no sensor shows no door badge, even under an override', () => {
+    const html = render([doorRow({ door: 'none' }), { ...row('TV', 'desktop-tv'), device: {} }], MAP, { doorOverride: true })
+    expect(html).not.toContain('run-terminal-badge-door')
   })
 })

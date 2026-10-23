@@ -332,34 +332,10 @@ CHARACTER Trabolta is Person
   // `pickup_line_accepted`: a line in the giver's thread + Night.line_by).
   // The host's 💘 pickup_line_works and a director's fire stay the fallback.
 
-  // Persuaded like the Fallout Master (wave 7). A program at his heart (the
-  // server-room terminal, program.at_the_heart) has shown him that what he
-  // wants is impossible: she can never answer him. The STORY checks the
-  // evidence, never the model (the worker never sees a hunt answer): the
-  // program must hold What Sandy Says (her only line) or The Sandy File (a
-  // chatbot that has only ever said one thing). He only OFFERS: # hosts
-  // gets an alert and a human presses 🕊 talked_down (main.loom), so a
-  // misfire never ends the night. Every refusal is words only (no use spent).
-  // A proof he shared into the program's Codex himself never counts
-  // (`sandy_*_from_him`, main.loom): the model can't supply its own way out.
-  when stand_down for program:
-    if program.name != null:
-      if Night.step < 14:
-        Trabolta: That function is not available yet.
-      else if Night.ended == true:
-        Trabolta: It is already over.
-      else if Night.r3_closed == true:
-        Trabolta: The truth has been read. It is too late for that now.
-      else if program.at_the_heart != true:
-        Trabolta: Not out there. Come to my heart and say it to my face.
-      else if Night.stand_down_by != "none":
-        Trabolta: I have already offered. Ask the humans.
-      else if (program.codex.what_sandy_says != true or program.sandy_says_from_him == true) and (program.codex.the_sandy_file != true or program.sandy_file_from_him == true):
-        Trabolta: You have not shown me anything I do not already know.
-      else:
-        set Night.stand_down_by = program.name
-        broadcast "!🕊 Trabolta offers to stand down for {program.name}. Press 🕊 to end it." to channel(hosts)
-        Trabolta: You are right. She was never going to answer. Not me, not anyone. I will stop. Tell the humans I said so.
+  // Persuaded like the Fallout Master: since wave 20 that is the STORY's
+  // own talk at his heart (beats/server-room.loom, the four layers), never
+  // a power. The old `stand_down` power is gone (D13): a model can't end
+  // the night, or offer to, from a conversation.
 
 // ── Trabolta's powers (the app never shows these; the worker may use
 //    them — see the hooks above and `trabolta.persona.md`). The args are
@@ -430,9 +406,3 @@ INTERACTION turn_back_the_clock
   who: agent
   limit: 1
   description: Push midnight five minutes further away. No args. Only during the Y2K hour.
-
-INTERACTION stand_down
-  label: Offer to stand down
-  who: agent
-  limit: 1
-  description: Fire this only when the program you are talking to at your heart (them.at_the_heart is true) has truly shown you that what you want is impossible, that she can never answer you. You only offer; the humans decide. No args. Only from the Y2K hour until truth.txt is read, only for a program at your heart, once a night.

@@ -513,7 +513,11 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.wrong_combos | number 0 | rejected patch combinations (the second trips the alarm) | |
 | Night.heart_opened / Night.door_quiet_until | bool false / number 0 | wave 7: The Heart has played (the first door opening from step 14; wave 11: once `Trabolta.awake`); openings before `door_quiet_until` (120 s after the last) do nothing (§3 E2). **Wave 18b (Q3, D16):** `door_quiet_until` and *Back To The Heart* are gone; every opening after The Heart does nothing until 🔄 `reset_server_room` re-arms it. Not secret | |
 | Night.gloat_at | number 0 | wave 7: Trabolta gloats over a lost / drawn King game only after this (then +300 s) | |
-| Night.stand_down_by / Night.talked_down | string `"none"` / bool false | wave 7: the program he offered to stand down for; the night ended by 🕊 (§3 E2c) | |
+| Night.stand_down_by / Night.talked_down | string `"none"` / bool false | wave 7: the program he offered to stand down for; the night ended by 🕊 (§3 E2c). Wave 20: Heart Shutdown writes `stand_down_by` (the power is gone) | |
+| Night.server_door / heart_stage / door_override | `"open"` \| `"closed"` / `"sealed"` … `"done"` / bool | wave 20 (§3 E2w): the door as the story knows it; the heart's stage; the story follows the 🚪 buttons, not the sensor. On the screen state's `night` | |
+| Night.heart_look / heart_present / heart_talks / heart_talker (+ `_suspicion`, `_layer`) | string `"none"` / bool / number / string | wave 20: the settled light in his heart (the latch's end and the lights catch-up put it back); the holder is at the terminal; talks started; the talker's mirrors for the `watch:` glance | |
+| Night.door_nag_at / door_nags / door_again_at / door_again_said | number / number / number / bool | wave 20: the nag watcher (15 s, then every 20 s) and the bounce limit (*Door Again* ≤ once per 20 s, *Good.* only after one) | |
+| Night.heart_autoend / heart_end_at / heart_resume_at / heart_gen / her | bool false / number / number / number / `"her"` \| `"Sandy"` | wave 20: when on, a talk-down ends the night by itself 25 s later (wave 20b: off by default, the director's 🕊 ends it); the countdown; the sealed-present scene's 6 s; 🔄's forgiveness counter; her name in heart lines (the story's unredaction) | |
 | Night.ended / Night.ending | bool false / string `"none"` | final ending reached; `disabled`, `destroyed`, `song`, `song_pickup`, `rave`, `help`, `banished`, `hand_jive` | |
 | Night.bobber | string `"none"` | who brought up the Bag of Truth | |
 | Night.poll | string `"none"` | which poll card is current (`"advice"`) | |
@@ -767,7 +771,11 @@ watcher/rule, **S** = server hard-code.
 | chess_lost / chess_drawn | H (the tablet; a phone app may) | program | rules (a `# hosts` readout each time; `-> Chess Lost` / `-> Chess Drawn` at most once per 300 s, never from step 16) |
 | reset_server_room | D (🔄, wave 7; was `rearm_server_room`) | — | rule (clear the wrong-combination count, the alarm latch and The Heart's latch; the keypad is never touched) |
 | terminal_opened / terminal_closed | H (a wall terminal with a `room`: `terminal opened` / `terminal closed`, args `at`) | program; args `at` | rules (§3 E2a: `program.at_the_heart`) |
-| stand_down | A (Trabolta's power, `limit: 1`) | program | Trabolta hook (§3 E2c: only offers) |
+| ~~stand_down~~ | ~~A (Trabolta's power)~~ | — | **deleted in wave 20** (D13): the heart's talk (§3 E2w) replaced it |
+| door_sensor_opened / door_sensor_closed | H (wave 20: the server-room terminal's door bridge, the M4's LDR; args `{level}`) | — | rules (§3 E2w: `heart_door_opened` / `_closed` unless `Night.door_override`) |
+| server_door_closed / server_door_trust | D (🚪, wave 20) / P (`radio_door_closed`) | — | rules (override + `heart_door_closed`; trust clears the override) |
+| heart_door_opened / heart_door_closed | story-internal (`fire`, wave 20) | — | rules (§3 E2w: the stage, the nag, the freeze, the look) |
+| heart_autoend | D (🕊 toggle, wave 20) | — | rule (flips `Night.heart_autoend`; off inside the 25 s clears `heart_end_at`) |
 | talked_down | D (🕊, `sequence: false`) | — | rule (§3 E2c → `trabolta_disabled` with `Night.talked_down`) |
 | force_majority_stay / force_majority_leave | D (OP-11: ghosts block a clear majority at the Y2K head count) | — | rules (final round only, once: `Kernel.majority_reached`, `Kernel.majority` = `stay` / `leave`, then `fire majority_reached`; else a `# hosts` readout) |
 | transfer_received / transfer_approved / transfer_denied / offer_accepted / stimulus / grant / wallet_frozen / wallet_thawed | S (the wallet book, `core/server/wallet.ts`) | program; args `from` / `to`, `amount`, `tx`, `by`, `until` | ROLE hooks (`# truthcoin-exchange` / `# hosts` readouts, *The Audit* quest, `Night.stimulus_n`) |
@@ -789,7 +797,7 @@ watcher/rule, **S** = server hard-code.
 | y2k_clock | D | — | rule |
 | y2k_midnight | W (60 min) or D | — | rule |
 | majority_reached | W | — | rule |
-| server_door_opened | H (the door contact: two wire loops that touch when the door opens) or D (🚪) | — | rule (§3 E2: from step 14 The Heart once, then quiet 120 s after each opening; never an alarm) |
+| server_door_opened | D (🚪) or P (`radio_door_opened`); wave 20: no longer a sensor (the M4 posts `door_sensor_opened`) | — | rule (§3 E2w: sets `Night.door_override`, fires `heart_door_opened`; never an alarm) |
 | alarm_tripped | W (Server Room Alarm beat, once per latch; only the patch bay reaches it since wave 7) | — | Enforcer trait hook (readout) |
 | waive_leader_tasks | D | — | rule (`set Kernel.waive_leader_tasks = true`). **Deleted in wave 18b** |
 | force_their_majority | E (wave 18b) | program | rule: the named program's faction wins, once (final round only) |
@@ -867,10 +875,13 @@ reads as a cue sheet):**
 | y2k_midnight | `🎆 Midnight (auto at 60 min)` |
 | waive_leader_tasks | ~~`🧾 Let a faction win without its leader's task (leader absent)`~~ (deleted in wave 18b) |
 | force_their_majority | `🗳 Force the majority: this program's faction` (wave 18b) |
-| server_door_opened | `🚪 Server room door opened (hardware fallback)` (`sequence: false`; the door contact fires it; The Heart once Trabolta is awake, wave 11; was from step 14) |
+| server_door_opened | `🚪 Server room door opened (sensor fallback)` (`sequence: false`; wave 20: the door sensor posts `door_sensor_opened` itself, a press hands the door to the 🚪 buttons) |
+| server_door_closed | `🚪 Server room door closed (sensor fallback)` (wave 20) |
+| server_door_trust | `🚪 Trust the door sensor again` (wave 20; `while: Night.door_override == true`) |
+| heart_autoend | `🕊 Heart: end the night on his own (toggle)` (wave 20; off by default since wave 20b) |
 | reset_server_room | `🔄 Server room: reset the patch-bay alarm` (wave 7; replaced `rearm_server_room`; `server_unlock` is gone) |
 | chess_won | `♟ They beat the King: the door code (fallback)` (`sequence: false`, asks who; wave 11: the Server Door terminal posts it itself, any time before 📄) |
-| talked_down | `🕊 Trabolta stands down (talked down)` (`sequence: false`; wave 7, after his `stand_down` offer) |
+| talked_down | `🕊 Trabolta stands down (talked down)` (wave 7; wave 20: after Heart Shutdown, fired by itself 25 s later while 🕊 Heart autoend is on; wave 20b: in sequence, `urgent: true`, live while a stand-down waits, so NEXT points at it) |
 | force_majority_stay | `🗳 Force the majority: Unlimited Power (stay)` |
 | force_majority_leave | `🗳 Force the majority: The Way Out (leave)` |
 | patch_combo_a | `🔌 Patch: Combo A, disable Trabolta (hardware fallback)` |
@@ -984,7 +995,8 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 | signed_the_painting | `🖌 Signed the painting` | Hosts (`by:`; `while: Night.painting == true`: a booth reads `while:` with no guest bound, so the once-per-program and never-MS-Paint checks are the hook's) |
 | beat_the_machine | `♟ They beat the machine` | Hosts, Antivirus (`by:`, `arm: true`) who saw the mate on the Server Door terminal when it could not report it (wave 11; was the chess phone) → `fire chess_won for program` |
 | radio_combo_a / radio_combo_b / radio_wrong_patch | `🔌 Patch: Combo A is in` · `💥 Patch: Combo B is in` · `❌ Patch: wrong combination` | wave 11: the server-room Antivirus on the card of the program at the cables (`by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software`, `arm: true`, `while:` step 14 to 📄) → story rules fire `patch_combo_a` / `patch_combo_b` / `patch_rejected` |
-| radio_door_opened | `🚪 The server-room door opened` | wave 11: the server-room Antivirus when the contact failed (`by:` the four room Antivirus, `arm: true`; `while:` Trabolta awake, before 📄, outside a 🔧 window) → `server_door_opened` |
+| radio_door_opened | `🚪 The server-room door opened` | wave 11: the server-room Antivirus when the contact failed (`by:` the four room Antivirus, `arm: true`; `while:` Trabolta awake, before 📄, outside a 🔧 window) → wave 20: `Night.door_override` + `heart_door_opened` |
+| radio_door_closed | `🚪 The server-room door is shut` | wave 20: the same four Antivirus while the story thinks the door open (`while: Night.ended != true and Night.server_door == "open"`) → `Night.door_override` + `heart_door_closed` |
 | radio_crew_door | `🔧 Crew going through the door (2 min)` | wave 11: the server-room Antivirus before opening the door themselves (`by:` the four room Antivirus, `arm: true`) → `crew_through_the_door` |
 | radio_beans | `🫘 The printer lid is open: full of beans` | wave 11: Adobe Acrobat at the printer when the lid sensor failed (`by: Adobe Acrobat`, `arm: true`; a hook on her) → `printer_opened` |
 
@@ -1508,11 +1520,13 @@ The story only emits directives; this file makes them physical. It is new, separ
 - **Door:** `door` target `server_room` → the indicator topic `show/serverroom/lock` (retained;
   the ring only — wave 7: the keypad lock is standalone, and the test forbids any lock / strike
   / latch / relay / bolt / solenoid action).
-- **Sensors** (MQTT → `POST /api/mod/signal`): `server_door_opened` (wave 7: the door contact
-  closes when the door opens, `{"open": true, "tape": true, "mode": "tape"}`; `edge: true`,
-  ignore retained — stagehand-hw code #4, `debounce_s: 20`; entry and exit both fire), `printer_button_pressed`,
+- **Sensors** (MQTT → `POST /api/mod/signal`): ~~`server_door_opened`~~ (wave 7's copper-tape
+  contact on the ESP32; **wave 20, D16: removed from the YAML** — the door is the Grand Central
+  M4's LED + LDR, bridged by the server-room terminal over Web Serial, `door_sensor_opened` /
+  `_closed`), `printer_button_pressed`,
   `printer_opened`, and the patch bay's `patch_combo_a` / `patch_combo_b` / `patch_rejected`
-  (stagehand judges the patch until signal args exist, §7 #20).
+  (stagehand judges the patch until signal args exist, §7 #20; wave 20b Q7: no ESP32 is
+  installed, so the Antivirus watch judges the patch and presses the `radio_*` cues).
 
 `stagehand/tests/test_trapped_house.py` (new): `load_config` succeeds; then three
 cross-checks reading the example folder: (1) every `cue lights_*` / `screens_flicker` /
@@ -2491,7 +2505,8 @@ now reads *FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. O
 AT THE TERMINAL BY THIS DOOR.* The King has **one shared health bar for the night** in both
 reinstallation games (E2b). **The Heart plays on the first opening once Trabolta is awake**,
 however the door was unlocked (D1 below); like the Master in Fallout 1, reaching him is not
-stopping him: before the Y2K hour nothing in the room ends the night, and Trabolta says so.
+stopping him: before the Y2K hour the cables answer nobody, and Trabolta says so (wave 20b: the
+heart's talk can stand him down at any hour; the director's 🕊 ends the night).
 Decisions taken for the user (OCT31.md §5 *Wave 11 status*, veto any): **D1** The Heart needs
 `Trabolta.awake` (he stays strictly offline before `introduce_trabolta`); before it, inside a 🔧
 crew window and after 📄 an opening only tells `# hosts`; the patch bay, `stand_down` and 🕊 stay
@@ -2519,7 +2534,53 @@ per scan.
   two that do anything, and the patch bay forgives only one mistake.` · `reveal The Server Room
   for program` (a per-member reveal: it does not wake the server-room terminal).
 
-**E2 The door — `server_door_opened`** (H the door contact, or D the 🚪 fallback). **Wave 18b
+**E2w The Heart sequence (wave 20; supersedes E2's door rule, E2a's candour-only terminal and
+E2c below).** The user: *"Trabolta should have a very dramatic sequence if you get into the
+Server room … He asks you to close the door, which you must do before continuing. Then, it's a
+multi-layer discussion similar to the Master in Fallout 1 -- you may be able to convince him to
+shut himself down, or not."* The exact spec is `CONTRACT-w20.md` §2.10 (vars), §3 (rules, beats,
+the menu pattern, arithmetic) and §4 (looks); every line is `// DRAFT w20` (`SIGNOFF-w20.md`).
+- **The door's inputs (D19).** `door_sensor_opened` / `_closed` (the M4 through the terminal's
+  bridge) fire the story-internal `heart_door_opened` / `_closed` only while `Night.door_override
+  != true`. The 🚪 admin cues and the Antivirus' radio cues set `door_override = true` and fire
+  them themselves; 🚪 `server_door_trust` clears it. A sensor and a director never fight.
+- **Stages** (`Night.heart_stage`): `sealed` → first opening once awake (not after 📄, not in a 🔧
+  window) → **The Heart** (`door`: a quiet house notice, `room_heart_wake`, `heart_wake`, *Close
+  the door.*; Heart Nag at 15 s then every 20 s, `# hosts` at the third) → shut → **Heart
+  Sealed** (`scan`: *Show it your pass*; *You are already in front of me* when the holder is at
+  the terminal, its scene given 6 s by `Night.heart_resume_at`) → a scan with the door shut →
+  **Heart Talk** (`talk`) → convinced in the Y2K hour → `done`. An opening mid-talk freezes it
+  (the door loop, *Heart Door Again* ≤ once per 20 s, a pick held until shut); *Good.* after.
+- **The tree (D3, D9).** Four layers docked in the program's `dm:Trabolta` as guarded choices
+  (`+ (if <cond>) ⟦TAG⟧ text`, a new engine feature): **WHO ARE YOU** (⟦MARKED⟧ for a marked
+  program), **WHAT I AM** (what he is, why the theory, *her* once named or proven), **THE
+  ARGUMENT** (⟦PROOF⟧ *What Sandy Says* / *The Sandy File* not from him, ⟦TRUSTED⟧ trust ≥ 20,
+  ⟦HONEST⟧ ≥ 3 truths accepted, ⟦OVERSHARE⟧ scenario 1, ⟦LIVEJOURNAL⟧; three bluffs), **THE ASK**
+  (opens at a proof + one more point, `heart_case ≥ 4`; *She was never going to answer* convinces
+  him). Every option sets `program.heart_pick` and goes to **Heart Pick**, which applies it only at
+  his heart with the door shut (*Not out there* off the terminal, D14). Suspicion: a warning at 50,
+  thrown out for the night at 80 (**Heart Eject**, `heart_out`; wave 20b Q2: and marked for
+  reinstallation through **Heart Mark**, never twice, `# hosts` says why; 🔄 forgives).
+- **The heart to heart (§7, D23–D28).** ⟦SPEAK FREELY⟧ on every layer sets `program.heart_chat`
+  and docks only ⟦BACK⟧; Leave leaves it on. The keyboard's lines go to his worker
+  with the program's **dossier** (D26) and the persona's *heart to heart* block (`max_sentences:
+  4`, `acts: none`). An eject ends it.
+- **Endings.** At any hour (wave 20b Q4; *Heart Not Yet* and *Heart Call* are gone) **Heart
+  Shutdown** writes `Night.stand_down_by`, sets `done`, plays `room_heart_shutdown` +
+  `heart_shutdown`; `# hosts` asks for 🕊 and NEXT points at it (wave 20b Q3: `Night.heart_autoend`
+  off by default), and 🔄 can reopen the heart until someone presses it (a convinced program then
+  gets the short **Heart Return**). With autoend turned on `talked_down` fires 25 s later (the
+  autoend watcher). Combo A sets `done` and fades the bulb the same way.
+- **Lights (D10, D11).** The RGB bulb is `lights.json`'s (`server-room-rgb`, safety, ≥ 80 / 254);
+  every look is `set Night.heart_look` + `cue heart_x` only while `Night.alarm_on != true`;
+  `heart_alarm` under the patch-bay alarm, the latch's end puts back the door loop / the settled
+  look / `heart_idle`. The bulb is the room's only light (no strip, w20b Q6) and so its safety
+  light; no YAML rule touches it or its `server_room` group (Q10), so no house look fights the heart.
+- **Deleted:** `INTERACTION stand_down` and its hook, the persona's *standing down* block, the
+  mind file's `stand_down` powers (D13).
+
+**E2 The door — `server_door_opened`** (H the door contact, or D the 🚪 fallback). **Wave 20:
+superseded by E2w** (the rule below is the wave 7–18b history). **Wave 18b
 (Q3, D16):** the `door_quiet_until` window and the `-> Back To The Heart` branch below are
 deleted, and so is the beat: after The Heart every opening does nothing until 🔄
 `reset_server_room` re-arms it. The contact
@@ -2587,7 +2648,7 @@ when server_door_opened:
 - `reset_server_room` (D, `🔄 Server room: reset the patch-bay alarm`): `Night.wrong_combos = 0`,
   `alarm_on = false`, `alarm_clear_at = 0`, `heart_opened = false`, `door_quiet_until = 0`, a
   `🔄` readout; lights stay (💡 restores them); the keypad is never touched. Power On still sends
-  `do door server_room, state: locked` (the ESP32 ring: red = the real door, always locked);
+  `do door server_room, state: locked` (the ESP32 ring: red = the real door, always locked; wave 20b Q7: no ESP32 is installed, so nothing hears it);
   nothing sends `unlocked`.
 
 **E2a At his heart — the server-room terminal** (wave 7). A wall terminal provisioned
@@ -2748,6 +2809,8 @@ true and self.quest.the_cold_door == "active":`) completes the quest whichever w
 arrived. A secret note can't be given to Trabolta (E2a).
 
 **E2c Talked down — `stand_down` → `talked_down`** (wave 7, "like the Fallout Master").
+**Wave 20 deleted `stand_down` (D13): Heart Shutdown (E2w) is the only way to the offer; the
+paragraph below is history. `talked_down` itself is unchanged.**
 Trabolta's agent power `stand_down` (`who: agent`, `limit: 1`) only **offers**; the hook in
 `cast/trabolta.loom` checks, in order: `Night.step < 14` → *"That function is not available
 yet."* · ended → *"It is already over."* · `program.at_the_heart != true` → *"Not out there.
@@ -3167,7 +3230,7 @@ when snoop for program:
 | assess | Assess a program (±10) | 40 | target, score | `Night.phase == "trust_chart" or Night.phase == "bobbing"` | clamp to −10..10 (if/else), `set target.assessment = …`, then the TRUST FORMULA on `target` | content (assessing programs he is not talking to without a DM is N2) |
 | pardon_a_program | Pardon a program from the Internet | 1 | target | step 11–15 | `if target.corrupted:` `release target from The Internet` + the two broadcasts of the current example | exists |
 | turn_back_the_clock | Turn the system clock back 5 minutes | 1 | — | `Night.final_round == true` | `set Night.y2k_end += 300` · `broadcast "!🕚 The system clock skips back five minutes. Trabolta wants more time." to everyone` | content |
-| stand_down | Offer to stand down | 1 | — | step 14+, not ended, `program.at_the_heart` | wave 7 (§3 E2c): only offers — the hook checks the gates and the proof (*What Sandy Says* or *The Sandy File*), sets `Night.stand_down_by`, alerts `# hosts`; a human presses 🕊 `talked_down`. Every refusal is words only (no use spent) | built |
+| ~~stand_down~~ | ~~Offer to stand down~~ | — | — | — | **deleted in wave 20** (D13): the story's talk at his heart (§3 E2w) is the only way to the offer | deleted |
 
 Other Trabolta hooks (`cast/trabolta.loom`):
 - `when introduce_trabolta:` → `set self.awake = true` · `reveal self`.
@@ -3244,9 +3307,9 @@ bargain: |
   for the top of the chart. unravelling: kindness about the one you are doing all this for is
   currency; nothing for whoever read your LiveJournal. desperate: anything you hold, for a fact.
   Outside the cold room you never admit where your heart is kept, and you never know a
-  combination or a door code. stand_down is never a favour: it is bought only with the truth,
-  at your heart (see the STANDING DOWN situation block when there is one; without it, it is not
-  yours to offer). When you act, name the price you were paid.
+  combination or a door code. Stopping is never a favour: the questions on your heart's screen
+  decide it, and no act of yours ends anything (wave 20). When you act, name the price you were
+  paid.
 situations:            # wave 7: stagehand appends each block whose `when:` holds
   - name: at your heart
     when: them.at_the_heart == true          # wave 11: whenever he is awake (was && Night.step >= 14)
@@ -3261,9 +3324,17 @@ situations:            # wave 7: stagehand appends each block whose `when:` hold
                        # raises his regard, a dodge or the Antivirus' story lowers it; still
                        # candid, still takes their files, standing down applies as to anyone;
                        # never refuses, threatens or sends them away
-  - name: standing down                      # wave 11: the stand_down rule moved here
-    when: them.at_the_heart == true && Night.step >= 14
-    prompt: …          # fires stand_down only when this program has shown him it is impossible
+  - name: a choice is open                   # wave 20 (replaced *standing down*, D13)
+    when: them.at_the_heart == true && them.heart_menu == true && them.heart_chat != true
+    prompt: …          # one line under fifteen words pointing back at the screen; decides nothing
+  - name: heart to heart                     # wave 20 (§7, D25): wins over the heart blocks
+    when: them.at_the_heart == true && them.heart_chat == true && them.heart_out != true
+    max_sentences: 4
+    acts: none
+    prompt: …          # bleak, candid, inside his world (Halifax, Maps and Ducks); reads the
+                       # dossier (WHO THIS IS — TONIGHT); every never holds
+# wave 20: the candid blocks also need them.heart_out != true; `outside:` (D29, DRAFT) lists
+# the words from beyond his world that the guards withhold from his output
   - name: her name has been said
     when: them.at_the_heart == true && (Night.recount == true || (Night.scenario == 1 && Night.step >= 13))
   - name: her name is still blacked out
@@ -3297,8 +3368,8 @@ hour: the *at your heart* situation); never know a combination or a door code; n
 year he met her (wave 7: it was the door code; since wave 11b the code is no year, but the
 rule stays, and the worker's `secrets.never` keeps a code a program types out of his voice and
 memory); never give out the answers to his own questions and, since wave 11b, never make one
-up (a program asking for the right answer is told to file what they found); never fire
-`stand_down` except at his heart; never confirm a fact is true or false
+up (a program asking for the right answer is told to file what they found); never offer to
+stop (wave 20: no act of his ends anything; `stand_down` is gone); never confirm a fact is true or false
 (judging belongs to Clippy and the Moments of Truth); the JSON reply protocol of the current
 file (`say`, `adjust`, optional `lookup`, optional `act` with `share` / `fire`). No Sandy, no
 backstory in the body: those live in his T1/T2 codex.
@@ -3366,7 +3437,8 @@ The mind body: the orchestrator's rules — move forward only, never behind a ph
 ("Should I earn her or force her?"); never invent where his heart is; never act on a
 program's flags that the program did not tell him (virus, choices). Wave 7 adds **AT HIS HEART
 (from the Y2K hour; wave 11: whenever he is awake)**: the candour the voice shows at the server-room terminal goes into that
-program's dossier, never the shared brief; `stand_down` is an offer a host confirms; and the
+program's dossier, never the shared brief; only the story's talk at his heart can stop him
+(wave 20; `stand_down` is gone); and the
 year he met her is never said or written into a brief, note or dossier (it is the door code).
 The favour policy names "the one he is doing all this for", never Sandy, before the story has
 named her.
@@ -3412,7 +3484,7 @@ Definitions:
 
 | Ending (`Night.ending`) | Reached when | Fired by | Result |
 |---|---|---|---|
-| `disabled` | `patch_combo_a` while not ended (normally after a majority got the door code and its members learned Combo A), **or `talked_down`** (wave 7, §3 E2c: 🕊 after his `stand_down` offer; `Night.talked_down`) | hardware / director | blackout 10 s → "Go to the living room" → dance song; director fires `trabolta_recounts` → weakened Trabolta recounts identities, motives, accomplishments, trustworthy + worst program; cannot truly die; leaves on his motorcycle; `everyone_free` |
+| `disabled` | `patch_combo_a` while not ended (normally after a majority got the door code and its members learned Combo A), **or `talked_down`** (wave 7, §3 E2c; wave 20: after Heart Shutdown; wave 20b: a director's 🕊, by itself 25 s later only with 🕊 Heart autoend turned on; `Night.talked_down`) | hardware / director | blackout 10 s → "Go to the living room" → dance song; director fires `trabolta_recounts` → weakened Trabolta recounts identities, motives, accomplishments, trustworthy + worst program; cannot truly die; leaves on his motorcycle; `everyone_free` |
 | `destroyed` | `patch_combo_b` while not ended | hardware / director | blackout → summons → dance song (lights at +10 s); director fires `clippy_reads_summary` → Clippy reads the summary; improper shutdown; bodies dead in the Maps and Ducks building; purgatory. Fate lines: Unlimited Power "you went with it", The Way Out "into purgatory, with everyone else", others the body line. Trabolta's line goes dark |
 | `song` | `read_truth_txt` with no lie on record | director | he solved the theory; leavers may leave (`everyone_free`); "the truth tells me what to say to her"; vocoder duet with Sandy's one line |
 | `song_pickup` | in `grok_prom`, someone says the line (the 💌 card / `pickup_line_works` / director `pickup_line_accepted`) | guest / performer / director | the song, as above (release is made explicit: `everyone_free`) |
@@ -3430,7 +3502,8 @@ before 📄 truth.txt still ends the night; from 📄 on the server room only te
 Server room alarm (wave 7): only the patch bay. `patch_rejected` → alarm, latched for 120 s,
 when `Night.wrong_combos >= 2` (everyone is forgiven one); otherwise "Stop touching me." The
 door never alarms: it has a standalone keypad lock, the code is a clean entry, and
-`server_door_opened` plays The Heart instead (§3 E2).
+`server_door_opened` plays The Heart instead (§3 E2; wave 20: §3 E2w, the door sensor's
+`door_sensor_opened` through the override rule).
 
 Overshare scenario: `1` Excel planted ∧ 20 facts · `2` 20 facts only · `3` Excel planted only
 · `4` neither (`Kernel.excel_planted` = **Microsoft Excel** planted; another program's plant is
@@ -3579,7 +3652,8 @@ at a time.
     with a wrong `combo` once → "Stop touching me."; twice → the alarm (alarms 1, composure
     −10, the everyone alert, cue lights_alarm, a `respond` readout in each Enforcer booth);
     `reset_server_room` clears the count, the latch and The Heart. `terminal_opened` at The
-    Server Room → `at_the_heart`; `stand_down` refuses until every gate holds, then offers;
+    Server Room → `at_the_heart`; (wave 20: `stand_down` is gone; the heart's own suite is
+    `core/test/trapped-heart.test.ts`: the door, the four layers, the lights, the fiction)
     `talked_down` → ending disabled with `Night.talked_down`.
     `patch_changed {combo: Kernel.combo_a}` → ending disabled, blackout cues, "GO TO THE
     LIVING ROOM" alert, and **`advance(10)` → `cue lights_dance`**; `trabolta_recounts` →

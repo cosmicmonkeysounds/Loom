@@ -45,6 +45,8 @@ with underscores: `Ivo_Marsh.trusts.guest`.
 | `* text` | once-only choice |
 | `+ text` | sticky choice |
 | `text[ hidden]` | words shown only after the choice |
+| `+ (if cond) text` | offered only while `cond` holds |
+| `⟦TAG⟧ text` | a tag on an option (never `[TAG]`) |
 | `-> The Beat` | go to a beat |
 | `-> self.Beat` / `-> Owner.Beat` | go to an owned beat |
 | `-> folder/beat` , `-> file#knot` | disambiguated jumps |
@@ -145,7 +147,7 @@ openers end with `:` and indent their body.
 | `admin: true` (a performer's CHARACTER) | a host part: its booth gets the host console (cues, judging, announcements, the alert level) |
 | `crawl: fx` (a CHARACTER) | every line it speaks is effect text |
 | `alerts: Night.alerts` (header, first file) | the world path the phones' alert level is read from: `balloon` / `sticky` (default) / `dialog` / `bsod` |
-| `sequence: false` / `repeat: true` (a `who: admin` cue) | never the sheet's last / next · stays next while pressed |
+| `sequence: false` / `repeat: true` / `urgent: true` (a `who: admin` cue) | never the sheet's last / next · stays next while pressed · next ahead of the order while live and unfired |
 | `arm: true` (a performer's or guest's button) | arms on the first tap, fires on the second ([live verbs](live-verbs.md)) |
 | `act: B · Act I` (a `who: admin` cue) | opens an act on the Director page; later admin cues join it (`act: Anytime` rejoins by name; never changes NEXT) |
 | `by: Clippy` (a `who: admin` cue) | that performer's booth may call it too, from its 🎤 cue bar ([live verbs](live-verbs.md); lint `L1217` when it names no part) |

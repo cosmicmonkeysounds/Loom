@@ -606,6 +606,26 @@ only when *Always* is ticked and no `announce` otherwise (an explicit
 `glance`, `wallet`, `terminal-setup`, `terminals` (editor 531 / 66 files
 on the integration branch).
 
+**Wave 20** (on `oct31-w20/editor`). **Terminals:** the door sensor's 🚪
+badges off the heartbeat's `door` / `doorLevel` / `doorFault` / `doorWarn`
+(`lib/terminals.ts` `doorBadges`, a `TerminalBadge.tone`: green *🚪 shut
+<level>*, amber *🚪 open <level>*, red *🚪 fault: <code>*, an amber *⚠
+<warn>*, and an amber *override* off the screen state's
+`night.door_override` — `store/terminals.ts` reads `GET /api/screen/state`
+(`screensApi.state`, `doorOverrideFromScreen`) only while some row reports a
+sensor); the setup builder's *Keyboard plugged in* (`keys=0` when unticked)
+and *Door sensor on this laptop* (`door=serial`, ticked for the
+`server-room` spot), both only where `viewHasKeys` / `viewHasDoor`.
+**House map:** the 💡 row (`LightsRow` in `HouseMapCard.tsx`, pure
+`lib/lights-status.ts`, `lightsApi.status` = `GET /api/mod/lights` with no
+`after`, every 15 s / 5 s while pairing): module online / offline / never
+connected · N fixtures, *pairing … s* (`pairDeadline`, counted off the
+answer's server `now`; a server with none reads *pairing open* with no
+number, since its other stamps are older than its clock and would count
+high), problems / warnings. The glance needs no
+change for the heart's `watch:` lines (`director/heart-watch.test.ts`).
+Help `authoring/43-run-mode`.
+
 **The super-admin's peek** (`cockpit/Inspector.tsx`): a guest shows
 **Their view** (side / where / score / deciding / rooms / can — exact
 when they are the lens), **Their feed** (the last 60 messages
