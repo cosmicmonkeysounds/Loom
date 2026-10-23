@@ -12,7 +12,9 @@
 One ESP32 in the server room (cold storage) that does three jobs for
 *Trapped in the Internet*:
 
-- **Door**: two loops of wire / copper tape that **touch when the door
+- **Door** (*retired in wave 20, D16: the door is the Grand Central M4's
+  LED + LDR now, and stagehand no longer reads this topic; the code below
+  still publishes it, unread*): two loops of wire / copper tape that **touch when the door
   opens** (a reed switch on a second pin is optional) →
   `sensors/serverroom/door`. Stagehand turns an opening into
   `server_door_opened`, and the story starts the server-room cutscene (the
