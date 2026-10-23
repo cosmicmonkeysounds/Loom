@@ -735,6 +735,23 @@ describe("The Heart — convinced (wave 20)", () => {
     expect(beats(open(sim))).toEqual(["The Heart"]);
   });
 
+  it("a menu left docked across 🔄 picks nothing: Not now., and the next door plays The Heart", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    pick(sim, "g1", "I'm a person"); // Layer Two docked
+    fire(sim, "reset_server_room");
+    expect(v(sim, "Night.heart_stage")).toBe("sealed");
+    const e = pick(sim, "g1", "What are you, really?");
+    expect(lines(e)).toEqual(["Not now."]);
+    expect(v(sim, "Night.heart_stage")).toBe("sealed");
+    expect(v(sim, "g1.heart_pick")).toBe("none");
+    expect(heartMenu(sim, "g1")).toBeNull();
+    expect(beats(open(sim))).toEqual(["The Heart"]);
+    shut(sim);
+    unscan(sim, "g1");
+    scan(sim, "g1");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Two");
+  });
+
   it("a pick held by a program who walked away never reopens a heart another program shut down", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);

@@ -502,6 +502,13 @@ if Night.ended == true or Night.r3_closed == true or Night.heart_stage == "done"
 else if program.at_the_heart != true:
   set program.heart_pick = "none"
   -> Heart Away
+else if Night.heart_stage == "sealed" or Night.heart_stage == "door":
+  // A menu left docked across 🔄: the heart is sealed again, so the talk
+  // waits for The Heart (their layer stays; the next scan docks it again).
+  set program.heart_pick = "none"
+  set program.heart_wait = false
+  // DRAFT w20
+  Trabolta: Not now.
 else if Night.server_door == "open":
   set program.heart_wait = true
   // DRAFT w20
