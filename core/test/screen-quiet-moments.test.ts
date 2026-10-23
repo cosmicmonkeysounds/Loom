@@ -113,8 +113,8 @@ describe("the quiet door (wave 20)", () => {
 
   it("the sensor's own edges and the radio cue make no moment either", () => {
     const s = rig();
-    s.sim.signal("door_sensor_opened", null, { level: "12" });
-    s.sim.signal("door_sensor_closed", null, { level: "3900" });
+    s.sim.signal("door_sensor_opened", undefined, { level: "12" });
+    s.sim.signal("door_sensor_closed", undefined, { level: "3900" });
     s.sim.signal("radio_door_opened");
     s.at(12_000);
     expect(s.look()).toEqual([]);
