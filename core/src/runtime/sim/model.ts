@@ -489,6 +489,11 @@ export interface InteractionDef {
   /** `restricted: allow` — a guest's button that stays on while they are
    *  restricted (`restrict who`): Bathroom Mode and its Back. */
   allowRestricted: boolean;
+  /** `urgent: true` — an in-sequence admin cue the cue sheet suggests as
+   *  NEXT ahead of the running order whenever its `while:` holds and it has
+   *  not fired (🕊 while a stand-down waits for the director's sign-off).
+   *  Absent = false. */
+  urgent?: true;
   /** `act: B · Act I: the Desktop, Bingo and the first truth` — on an admin
    *  cue, opens a section of the director's sheet that later admin cues
    *  join until the next `act:` (the carry-forward is the cue sheet's,
@@ -858,6 +863,7 @@ export function compileModel(bundle: Bundle): SimModel {
               allowRestricted: decl.interaction.properties.get("restricted")?.value.trim().toLowerCase() === "allow",
               act: decl.interaction.properties.get("act")?.value.trim() || null,
               arm: decl.interaction.properties.get("arm")?.value.trim().toLowerCase() === "true",
+              ...(decl.interaction.properties.get("urgent")?.value.trim().toLowerCase() === "true" ? { urgent: true as const } : {}),
             });
           }
           break;

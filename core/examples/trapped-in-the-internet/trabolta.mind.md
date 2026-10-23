@@ -632,10 +632,9 @@ hunt answer, a combination, a cable or a code, there or anywhere.
   me."); the brief stays what the rest of the house should hear.
 - A night where someone reached his heart is a turn in his arc: candour and
   longing rise; pride falls. Do not move his stage backward for it.
-- Before the Y2K hour nothing in that room can end anything: the cables do not
-  answer yet and he cannot stand down. Candour then is only candour.
-- Only the story's four-layer talk at his heart can stop him (from the Y2K hour;
-  before it, "not yet"); his voice never decides it. Never promise it in a brief;
+- Before the Y2K hour the cables do not answer yet; candour there is candour.
+- Only the story's four-layer talk at his heart can stop him (at any hour, then
+  the house's confirmation); his voice never decides it. Never promise it in a brief;
   never record it until Night.talked_down is true. Dossier notes: how far a program
   got (heart_layer, heart_convinced, heart_out), what they said in heart_chat.
 

@@ -319,39 +319,42 @@ At 50 he warns them once (the light throbs red, `# hosts` reads *"⚠ X is
 losing Trabolta at his heart"*); at 80 he **throws them out** for the
 night: a blue screen, the pilot ends, `# hosts` reads *"⛔ Trabolta threw
 X out of his heart … Barred for the night; 🔄 forgives."* A barred
-program who scans again is turned away. Being thrown out is **not** a
-mark: he points them at the cables instead. Progress and suspicion are
-per program and kept between visits.
+program who scans again is turned away. Being thrown out also **marks
+them for reinstallation** (the usual mark: the Antivirus' WANTED, the
+reason *thrown out of Trabolta's heart*; `# hosts` reads *"🚨 X is marked
+for reinstallation: Trabolta threw them out of his heart."*). A program
+already marked, or already in the Internet, is never marked twice, and
+`# hosts` says so; a mark you lift with 🩹 comes back if they scan in
+again while barred. Progress and suspicion are per program and kept
+between visits.
 
 **⟦SPEAK FREELY⟧** is on every layer: the questions step aside and the
 program types to him on the terminal's keyboard — a true heart to heart,
 up to four sentences at a time, with the night they have had in front
 of him. He decides nothing there and does nothing. **⟦BACK⟧** returns them
-to the same layer, suspicion untouched. After *not yet*, or after they
-choose to go, they may keep typing until the terminal lets them go.
+to the same layer, suspicion untouched. After they choose to go they may
+keep typing until the terminal lets them go.
 
 **I need to go** on any layer ends the visit (the terminal frees itself
 for the next pass); they keep their place.
 
 ### Convincing him
 
-- **Before the Y2K clock** a convinced program hears *"Not yet."*: the
-  bay is cold, nothing ends before then. He remembers them; `# hosts`
-  reads *"🕊 X convinced Trabolta before the Y2K hour."* When 🕚 sets the
-  clock he calls them on their phone (*"The clock is running … Come back
-  down and tell me again."*). Back at the terminal they only have to
-  say it is **still true** (or change their mind, which costs them). If
-  they are still at the terminal when the clock starts, he asks them
-  there and then instead of calling.
-- **In the Y2K hour** (before 📄) he stops: *"I can never die. But I can
-  stop."*, the patch bay on the terminal goes dark row by row, and the
-  light fades to warm white. With **🕊 Heart: end the night on his own**
-  on (the default) the night ends **25 seconds later** the talked-down
-  way; `# hosts` reads *"🕊 Trabolta stands down for X. The night ends in
-  25 s (🕊 to end it now)."* With it off, `# hosts` gets *"!🕊 Trabolta
-  offers to stand down for X. Press 🕊 to end it."* and nothing ends until
-  you press 🕊 (until then **🔄** can reopen his heart). The toggle tells
-  `# hosts` which way it now is.
+- **At any hour** (before 📄; the Y2K clock is not needed) he stops:
+  *"I can never die. But I can stop."*, the patch bay on the terminal
+  goes dark row by row, and the light fades to warm white.
+- **The night ends on your sign-off.** `# hosts` gets *"!🕊 Trabolta has
+  stood down for X at his heart. The night ends when you press 🕊 Trabolta
+  stands down (NEXT on the cue sheet) …"*, and **NEXT** on the Director
+  page and the phone points at 🕊 until you press it. Until then **🔄**
+  can reopen his heart; a program who convinced him and comes back then
+  only has to say it is **still true** (or change their mind, which costs
+  them).
+- **🕊 Heart: end the night on his own** (off by default) ends the night
+  **25 seconds** after his goodbye by itself instead (`# hosts`: *"🕊
+  Trabolta stands down for X. The night ends in 25 s (🕊 to end it
+  now)."*); turning it off inside the 25 s stops the countdown. The toggle
+  tells `# hosts` which way it now is.
 
 Trabolta's own voice (the model) never decides any of this and has no
 power to: between the story's questions it answers what they type, in a
@@ -369,11 +372,11 @@ FILE: HE WON'T TAKE IT*, and lore about someone else *ABOUT X: HE
 WON'T TAKE IT*. With the panel open the line drops after two minutes
 untouched instead of thirty seconds.
 
-**🕊 Trabolta stands down (talked down)** stays yours to press at any
-time from the Y2K hour: it ends the night the Combo A way, without a
-cable: the blackout, the dance, and a recount and awards that say who
-talked him down. Pressed with nobody on record it still works — the
-director's call — and `# hosts` says so. From 📄 truth.txt it is too
+**🕊 Trabolta stands down (talked down)** is yours to press: after a
+talk-down at any hour, or from the Y2K hour with nobody on record (the
+director's call; `# hosts` says so). It ends the night the Combo A way,
+without a cable: the blackout, the dance, and a recount and awards that
+say who talked him down. From 📄 truth.txt it is too
 late: 🕊 only tells `# hosts`, and nothing at his heart moves any more
 (*"It is over. Go upstairs."*).
 
@@ -384,7 +387,7 @@ project file beside the maps; [the house map](39-house-map.md) places it
 and tests each look). The story cues one look per moment of the heart:
 red waking, an amber swell while the door stands open, cold while he
 waits, blue while he listens, violet while they argue, a white flash for
-a proof, red throbs for a warning, warm amber for *not yet*, a slow fade
+a proof, red throbs for a warning, a slow fade
 to warm white when he stops. The bulb never goes dark (it never drops
 below its safety floor) and never flickers fast. The patch-bay alarm
 takes it over with a slow red swell; when the latch clears the room's
@@ -420,7 +423,7 @@ door is dropped, a menu still on the screen answers *"Not now."*, and a
 heart to heart ends. A heart that is *done* stays done once the night has
 ended or he was talked down, and during the 25 seconds before an autoend
 (`# hosts`: *"His stand-down stands"*); a stand-down you never confirmed
-(autoend off) reopens. The house lights stay as they
+with 🕊 reopens. The house lights stay as they
 are — **💡 Restore the house lights** brings them back — and the room's
 bulb goes back to idle. It never touches the keypad or the King. It
 never changes the door's state: the door is open or shut for real.

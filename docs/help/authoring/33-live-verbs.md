@@ -410,7 +410,9 @@ sheet still ticks it when it fires, but it never becomes the sheet's
 *last* cue or its suggested *next* one. Add `repeat: true` to one the
 director presses again and again in one stretch (a result per question):
 the sheet keeps suggesting it as *next* after it fires, while its `while:`
-holds.
+holds. Add `urgent: true` to one that must jump the running order when it
+comes up (a stand-down waiting for the director's sign-off): while its
+`while:` holds and it has not fired, it is *next* wherever *last* is.
 An admin cue's `while:` names the branch of the night it belongs to:
 
 ```loom

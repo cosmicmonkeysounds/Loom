@@ -99,20 +99,20 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     for (const i of others) expect(i.act, i.id).toBeUndefined();
   });
 
-  it("the act split is B10 C5 D8 E16 Anytime6 F12 G12 with 40 spine and 29 asides", () => {
+  it("the act split is B10 C5 D8 E16 Anytime6 F12 G12 with 41 spine and 28 asides", () => {
     const acts = cueActs(rowsOf(Sim.fromSources(SRC)));
     const shape = (a: CueAct) => [a.code ?? a.title, a.rows.length, a.spine.length, a.asides.length];
     expect(acts.map(shape)).toEqual([
       ["B", 10, 9, 1], // wave 18b: 🍾 is a spine row after 📋 ×3; ☎️ / 🪅 are gone
       ["C", 5, 2, 3],
       ["D", 8, 5, 3],
-      ["E", 16, 1, 15], // wave 20: three door / heart asides appended (no cue number moved)
+      ["E", 16, 2, 14], // wave 20: three door / heart asides appended (no cue number moved); w20b: 🕊 talked_down joins the spine (NEXT while a stand-down waits)
       ["Anytime", 6, 0, 6],
       ["F", 12, 12, 0],
       ["G", 12, 11, 1],
     ]);
-    expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(40);
-    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(29);
+    expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(41);
+    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(28);
     // The two `act: Anytime` lines are one act (💡, the reinstallation cues,
     // and wave 11's 👑 / 🔧, appended last so no cue number moved).
     const anytime = acts.find((a) => a.state === "anytime")!;
@@ -222,7 +222,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(acts[prev]!.asides.map((r) => r.id)).toEqual([
       "y2k_midnight", "server_door_opened", "reset_server_room", "chess_won",
       "force_majority_stay", "force_majority_leave", "force_their_majority", "patch_combo_a", "patch_combo_b", "patch_rejected",
-      "talked_down", "lights_dance", "server_door_closed", "server_door_trust", "heart_autoend",
+      "lights_dance", "server_door_closed", "server_door_trust", "heart_autoend",
     ]);
     expect(acts.map((a) => a.state)).toEqual(["past", "past", "past", "past", "anytime", "focus", "future"]);
   });

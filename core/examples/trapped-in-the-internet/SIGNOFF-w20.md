@@ -1,5 +1,17 @@
 # SIGNOFF — wave 20 (DRAFT)
 
+> **Wave 20b (2026-10-23): the user's answers.** *"1) I will review - ship
+> for now. 2) Yes, it should mark them. 3) Unsure, likely leaning towards
+> the directors sign-off required for the night truly ending. 4) Yes. 5)
+> Currently on 5V, actually, but it could be on a digital pin to allow
+> pulsing for better light/dark detection. 6) No strips in the server room,
+> just the one RGB bulb. 7) No, just the Grand Central M4. 8) No, keep it
+> simple. 9) Yes the keypad keeps the door locked. 10) Yes, only one RGB
+> bulb in the server room."* The story lane (`oct31-w20b/story`) built Q2,
+> Q3 and Q4 and kept D14 / D17 (Q8, Q9): see §1 and §1b below. The DRAFT
+> lines stay DRAFT for the user's later review (Q1); new ones are marked
+> `// DRAFT w20b`. Q5, Q6, Q7 and Q10 are the firmware / lights lanes'.
+
 **Status: DRAFT, awaiting the user's sign-off.** Wave 20 is Trabolta's heart:
 when the server room is first opened he plays a dramatic sequence there, asks
 for the door to be shut, waits for a pass at the server-room terminal's
@@ -74,7 +86,7 @@ the 🚪 buttons), then `pnpm sync-show` with its reload before doors, then
 | D1 | **The bridge is Web Serial in the server-room terminal page** (Steph's laptop, desktop Chrome on https): ⚙ *Connect door sensor* grants the port once, later boots reconnect by themselves. The terminal posts each settled edge as `door_sensor_opened` / `door_sensor_closed`, reports the door on its heartbeat (Run → Terminals' 🚪 badge) and re-checks the story against the sensor on every poll. **Changed from your brief:** (a) while the sensor reports a blocking fault (`ldr_saturated`, `led_dead`, no port, silent) it posts nothing; (b) a director's or an Antivirus' 🚪 press hands the door to the buttons until 🚪 *Trust the door sensor again* (D19). | |
 | D2 | **The M4 firmware** (`hardware/server-room-door/`): 12-bit reads, hysteresis + debounce, JSON lines at 115200, settings in flash. Mode **`auto`**: if the LED is on pin D2 it pulses it and reads *lit − dark* (`mod`: room light can't fake *shut*), else it reads it steady (`steady`, the LED on 3V3). A cut LDR wire with the door open looks like an open door in a dark hall, so `ldr_open` is a **warning** (still *open*), never a blocking fault. A black shroud tube over the LDR is in the BOM. | |
 | D16 | **The ESP32 stops reading the door**: the copper-tape rule and the optional Zigbee contact leave `trapped.house.yaml`. The ESP32 keeps the patch bay, the ring, the siren and the relay. | |
-| D17 | **The keypad stays as it is**: the code comes from the four digit notes, the King or the majority; the sensor only says open / shut. | |
+| D17 | **The keypad stays as it is**: the code comes from the four digit notes, the King or the majority; the sensor only says open / shut. | ✅ (Q9, *"Yes the keypad keeps the door locked"*) |
 | D19 | **The sensor and the directors never fight.** The sensor's edges count only while no 🚪 button has been pressed (`Night.door_override`); a 🚪 press (admin or the Antivirus' radio buttons) takes the door over; 🚪 *Trust the door sensor again* hands it back. | |
 | D22 | **Door chatter is rate-limited**: *Heart Door Again* at most once per 20 s, *Good.* only after one; the stage, the freeze and the light follow every edge. The door, nag, shut and sealed beats never become TV moments. | |
 
@@ -82,11 +94,11 @@ the 🚪 buttons), then `pnpm sync-show` with its reload before doors, then
 
 | # | Decision (default) | ✅ / ✏ / ❌ |
 |---|---|---|
-| D3 | **The story owns the Heart sequence** in stages (sealed → door → scan → talk → done) and a per-program **choice tree in four layers** (WHO ARE YOU · WHAT I AM · THE ARGUMENT · THE ASK), docked in the program's Trabolta thread and clicked on the terminal. Tagged options (⟦MARKED⟧ ⟦PROOF⟧ ⟦TRUSTED⟧ ⟦HONEST⟧ ⟦OVERSHARE⟧ ⟦LIVEJOURNAL⟧) show only when the check passes and never quote a secret. Wrong pushes raise his suspicion; **a warning at 50, thrown out for the night at 80**. **The ask opens at a proof (*What Sandy Says* or *The Sandy File*, not handed over by him) + one more point.** Before the Y2K hour a convinced program hears **not yet** and is called back at 🕚; in the Y2K hour success shuts him down from the story itself and, with 🕊 *Heart autoend* **on (the default)**, the night ends 25 s later. A door opened mid-talk freezes it until shut. One heart at a time. | |
+| D3 | **The story owns the Heart sequence** in stages (sealed → door → scan → talk → done) and a per-program **choice tree in four layers** (WHO ARE YOU · WHAT I AM · THE ARGUMENT · THE ASK), docked in the program's Trabolta thread and clicked on the terminal. Tagged options (⟦MARKED⟧ ⟦PROOF⟧ ⟦TRUSTED⟧ ⟦HONEST⟧ ⟦OVERSHARE⟧ ⟦LIVEJOURNAL⟧) show only when the check passes and never quote a secret. Wrong pushes raise his suspicion; **a warning at 50, thrown out for the night at 80**. **The ask opens at a proof (*What Sandy Says* or *The Sandy File*, not handed over by him) + one more point.** Before the Y2K hour a convinced program hears **not yet** and is called back at 🕚; in the Y2K hour success shuts him down from the story itself and, with 🕊 *Heart autoend* **on (the default)**, the night ends 25 s later. A door opened mid-talk freezes it until shut. One heart at a time. | ✏ **w20b (Q3, Q4):** success shuts him down **at any hour** (*not yet*, the 🕚 call and *Heart Call* are gone), and the night **truly ends on the director's 🕊**: *Heart autoend* is **off** by default (the toggle stays), `# hosts` asks for 🕊 and NEXT points at it (`urgent: true`); until it is pressed 🔄 can reopen his heart, and a convinced program who comes back gets the short *Heart Return*. |
 | D9 | **A new engine feature, guarded choices** `+ (if <cond>) text`: an option shows only while its check holds (lint L1221; the bank diagnoses and ignores it). The tree needs it. | |
-| D12 | **Being thrown out does not mark the program.** It bars them from his heart for the night (🔄 forgives) and points them at the cables. | |
+| D12 | **Being thrown out does not mark the program.** It bars them from his heart for the night (🔄 forgives) and points them at the cables. | ❌ **reversed (Q2, *"Yes, it should mark them"*):** Heart Eject and Heart Barred go to **Heart Mark**, the story's own `mark_for_reinstallation` (reason *thrown out of Trabolta's heart*), once: an already marked or captured program is never marked twice and `# hosts` says why; a mark lifted with 🩹 comes back on the next barred scan. |
 | D13 | **The agent's `stand_down` power is deleted** (the INTERACTION, its hook, the persona's *standing down* block, the mind file's powers). The tree is the only way to the offer; his voice never decides it. | |
-| D14 | **A pick from the phone counts only at the heart**: off the terminal it is held back with *Not out there*, and the menu comes back on the next scan. | |
+| D14 | **A pick from the phone counts only at the heart**: off the terminal it is held back with *Not out there*, and the menu comes back on the next scan. | ✅ (Q8, *"No, keep it simple"*: unchanged, verified by `trapped-heart.test.ts`) |
 | D15, D18 | **Every menu has an id**; the terminal answers the heart's menu by its id and the option's text (409 *moved* on a race), so a stale menu (The Tablet Video's, a glitch menu) never catches a click and is never dropped. | |
 
 ### The keyboard and the heart to heart (the addendum)
@@ -128,15 +140,15 @@ the 🚪 buttons), then `pnpm sync-show` with its reload before doors, then
 
 | # | Question | Default today | Your answer |
 |---|---|---|---|
-| Q1 | The DRAFT lines (§2) and the four layers: is this the Master you had in mind, and is *a proof + one more point* the right difficulty? | as drafted | |
-| Q2 | Should being thrown out also **mark** the program for reinstallation? | no (D12) | |
-| Q3 | In the Y2K hour, should success end the night by itself after 25 s, or always wait for a director's 🕊? | by itself (🕊 Heart autoend on; with it off, 🔄 can undo a declined 🕊) | |
-| Q4 | Before the Y2K hour a convinced program hears *not yet*. Should an early convince end the night at once instead? | not yet (the Y2K gate kept) | |
+| Q1 | The DRAFT lines (§2) and the four layers: is this the Master you had in mind, and is *a proof + one more point* the right difficulty? | as drafted | *"I will review - ship for now."* Shipped as drafted; review pending. |
+| Q2 | Should being thrown out also **mark** the program for reinstallation? | no (D12) | *"Yes, it should mark them."* Built (w20b): Heart Mark; D12 reversed. |
+| Q3 | In the Y2K hour, should success end the night by itself after 25 s, or always wait for a director's 🕊? | by itself (🕊 Heart autoend on; with it off, 🔄 can undo a declined 🕊) | *"Unsure, likely leaning towards the directors sign-off required for the night truly ending."* Built (w20b): autoend off by default, the toggle kept, NEXT points at 🕊. |
+| Q4 | Before the Y2K hour a convinced program hears *not yet*. Should an early convince end the night at once instead? | not yet (the Y2K gate kept) | *"Yes."* Built (w20b): Heart Shutdown at any hour, the night ends on 🕊 (Q3); 🕊 with nothing on record still needs the Y2K hour. |
 | Q5 | Is the LED on 3V3 (always lit) or can it move to a pin on the M4? Only a pin gives the room-light-proof `mod` reading. | `auto` handles both | |
 | Q6 | Is the WLED strip `wled/server` still in the server room and working? It is the room's safety light (D11); without it the bulb is the only light and should stay brighter. | yes | |
 | Q7 | Is the ESP32 still on the door frame? D16 stops listening to it; the copper tape can come off. | ignored | |
-| Q8 | May guests answer the tree from their phone while standing at the terminal, or mouse only? | phone too (D14) | |
-| Q9 | Does the keypad stay exactly as it is? | yes (D17) | |
+| Q8 | May guests answer the tree from their phone while standing at the terminal, or mouse only? | phone too (D14) | *"No, keep it simple."* D14 unchanged. |
+| Q9 | Does the keypad stay exactly as it is? | yes (D17) | *"Yes the keypad keeps the door locked."* |
 | Q10 | Is the RGB bulb the only bulb in the Z2M `server_room` group? If so the group's YAML lines are dead and removed; if not they stay for the others. | treated as the only one | |
 
 ---
@@ -172,7 +184,7 @@ program's name; `{Night.her}` is *her* until the story names Sandy.
 | Heart Door Shut (`:196`) | Good. |
 | Heart Sealed (`:203`), narration | *The door clicks shut. The hum drops half a tone, the way a breath goes out.* |
 | Heart Sealed | Thank you. Now nobody is listening but the ones in this room. |
-| (before 🕚) | Know this before you try anything clever. The bay is cold tonight. Nothing in this room can end anything yet, not the cables, not me. I tell you so that you do not waste your time. Talk to me anyway. |
+| (before 🕚) | ~~Know this before you try anything clever. The bay is cold tonight. Nothing in this room can end anything yet, not the cables, not me. I tell you so that you do not waste your time. Talk to me anyway.~~ → **w20b (Q4):** Know this before you try anything clever. The bay is cold tonight. The cables will not answer you yet. I tell you so that you do not waste your time on them. Talk to me instead. |
 | (already scanned) | You. You are already in front of me. Good. |
 | (else) | There is a camera under the screen. Show it your pass. I want to know who I am talking to. |
 | Heart Shut It (`:226`) | Close the door first, {program.name}. Then we talk. Not before. |
@@ -260,12 +272,13 @@ Line: *Say the rest. Slowly. I want to hear all of it.*
 | Heart Warn (`:684`, at 50) | *(quietly)* Careful, {program.name}. One more like that and I close this line. |
 | Heart Eject (`:697`, at 80) | *(screaming)* Get out of my heart. / You want me gone? The cables are behind you. You do not know which ones. Neither do I. / This line is closed to you. Tonight, and for as long as I have a tonight. |
 | Heart Barred (`:717`, scans again) | No. Not you. Not again tonight. Go. |
+| Heart Mark (w20b, Q2; after Eject / Barred, only when it marks) | And the Antivirus will know your name before you reach the stairs. |
 | Heart Leave (`:733`) | Go, then. I will be here. I am always here. |
 | Heart Away (`:747`, a pick from the phone) | Not out there. Come to my heart and say it to my face. *(old: the `stand_down` hook's refusal, same words)* |
 | Heart Convinced (`:754`) | … / She was never going to answer. Not me. Not anyone. I built a theory of everything so that I would not have to know one small thing. / Thank you, {program.name}. That is the cruellest kind thing anyone has ever done for me. |
-| Heart Not Yet (`:769`) | Not yet. / The bay is cold until the clock starts. Nothing in this room can end anything before then. Not even me. / Come back when the clock is counting down to midnight. Say it to me again. I will listen. I promise you that, and I do not promise things. |
-| Heart Call (`:787`, at 🕚, in their thread) | The clock is running. You told me something at my heart. Come back down and tell me again. |
-| Heart Return (`:793`) | You came back. The clock is running. / You do not have to say it all again. Just tell me it is still true. · options *It's still true. She was never going to answer.* (→ Shutdown) / *I changed my mind.* (S +30: *Then you were lying before, or you are lying now. I cannot tell which. I never can.*) |
+| Heart Not Yet (`:769`; **deleted w20b**, Q4) | Not yet. / The bay is cold until the clock starts. Nothing in this room can end anything before then. Not even me. / Come back when the clock is counting down to midnight. Say it to me again. I will listen. I promise you that, and I do not promise things. |
+| Heart Call (`:787`, at 🕚, in their thread; **deleted w20b**, Q4) | The clock is running. You told me something at my heart. Come back down and tell me again. |
+| Heart Return (`:793`; w20b: reached after 🔄 reopens an unconfirmed stand-down; the clock line only from 🕚, else *You came back.*) | You came back. The clock is running. / You do not have to say it all again. Just tell me it is still true. · options *It's still true. She was never going to answer.* (→ Shutdown) / *I changed my mind.* (S +30: *Then you were lying before, or you are lying now. I cannot tell which. I never can.*) |
 | Heart Shutdown (`:815`) | I can never die. But I can stop. / Tell the others they can go home to their bodies. Tell her... no. Do not tell her anything. She would not answer. / Goodbye, {program.name}. Open the door on your way out. I will not need it shut anymore. |
 
 ### The deleted power (`cast/trabolta.loom`)
@@ -285,7 +298,10 @@ Line: *Say the rest. Slowly. I want to hear all of it.*
 | `:4521` new | 🚪 The story now follows the 🚪 buttons, not the door sensor. Press 🚪 Trust the door sensor to hand it back. |
 | `:4533` new | 🚪 The story follows the door sensor again. |
 | `:4609–4614` new | 🕊 Heart autoend is ON: a talk-down at his heart in the Y2K hour ends the night 25 s later by itself. · 🕊 Heart autoend is OFF: a talk-down at his heart waits for you to press 🕊. · 🕊 Heart autoend is OFF: the 25 s countdown is stopped. Trabolta has stood down; press 🕊 to end the night. |
-| `:2680`, `:2686` new | 🕊 {name} convinced Trabolta before the Y2K hour. He'll stand down when they scan in again. · … and is at his heart now: he asks them again. |
+| `:2680`, `:2686` new | 🕊 {name} convinced Trabolta before the Y2K hour. He'll stand down when they scan in again. · … and is at his heart now: he asks them again. **(deleted w20b, Q4)** |
+| w20b (Q2) Heart Mark | 🚨 {name} is marked for reinstallation: Trabolta threw them out of his heart. · ⛔ {name} is already marked for reinstallation: thrown out of his heart, no second mark. · ⛔ {name} is already in the Internet: thrown out of his heart, no mark. |
+| w20b (Q3) Heart Shutdown, autoend off (the default) | !🕊 Trabolta has stood down for {name} at his heart. The night ends when you press 🕊 Trabolta stands down (NEXT on the cue sheet); until then 🔄 can reopen his heart. |
+| w20b (Q4) 🕊 with nothing on record before 🕚 | 🕊 Nothing to stand down: nobody talked him down at his heart, and without that it needs the Y2K hour, before any ending. |
 | Heart Warn / Eject / Convinced / Not Yet / Shutdown new | ⚠ {name} is losing Trabolta at his heart (suspicion N). · ⛔ Trabolta threw {name} out of his heart (suspicion N). Barred for the night; 🔄 forgives. · 🕊 {name} convinced Trabolta at his heart. · 🕊 {name} convinced Trabolta before the Y2K hour: he'll stand down when they come back after 🕛. · 🕊 Trabolta stands down for {name}. The night ends in 25 s (🕊 to end it now). (autoend off: !🕊 Trabolta offers to stand down for {name}. Press 🕊 to end it. — the old alert) |
 | `:4716–4718` 🔄 | 🔄 Server room reset: the patch bay forgives one wrong combination again, and the next door opening plays The Heart. → … the next door opening plays The Heart, **and anyone thrown out of his heart may come back.** (after a stand-down: … **His stand-down stands: the night still ends by itself (🕊 to end it now).**) |
 
@@ -296,8 +312,9 @@ Line: *Say the rest. Slowly. I want to hear all of it.*
 | `server_door_opened` | 🚪 Server room door opened (**hardware** fallback) → (**sensor** fallback); its description now says a press hands the door to the 🚪 buttons until 🚪 Trust the door sensor |
 | `server_door_closed` new | 🚪 Server room door closed (sensor fallback) |
 | `server_door_trust` new | 🚪 Trust the door sensor again |
-| `heart_autoend` new | 🕊 Heart: end the night on his own (toggle) |
+| `heart_autoend` new | 🕊 Heart: end the night on his own (toggle) — **off by default since w20b** (Q3) |
 | `talked_down` | label unchanged; description: *When # hosts reads "🕊 Trabolta stands down for X" or "Trabolta offers to stand down for X" … With 🕊 Heart autoend on it fires itself 25 s after his goodbye* |
+| `talked_down` (w20b) | in sequence with `urgent: true` and `while:` a stand-down waits: NEXT points at it; description: *When # hosts reads "🕊 Trabolta has stood down for X" … your sign-off ends the night* |
 | `radio_door_closed` new (the four server-room Antivirus) | 🚪 The server-room door is shut |
 | watch lines | *The Heart* now reads `Night.heart_stage` (was `heart_opened`); new *Server door*, *Door on buttons*; while talking *At his heart*, *Heart layer*, *Heart suspicion* |
 

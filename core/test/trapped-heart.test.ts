@@ -16,7 +16,8 @@ import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioDir, scenarioSource } from "../examples/load.ts";
 import { FACTS_FILE, parseFactsText } from "../src/facts.ts";
 import { mentionsKey } from "../src/answer-match.ts";
-import { guestView } from "../server/views.ts";
+import { cueState, guestView, modView } from "../server/views.ts";
+import { cueRows } from "../src/cue-sheet.ts";
 import { menuChannelsFor } from "../server/chat.ts";
 import { validateLights, planLook } from "@loom/house";
 import type { HouseMap, LightsConfig } from "@loom/house";
@@ -146,7 +147,7 @@ describe("The Heart — the door (wave 20)", () => {
     expect(v(sim, "Night.heart_stage")).toBe("sealed");
     expect(v(sim, "Night.server_door")).toBe("closed");
     expect(v(sim, "Night.door_override")).toBe(false);
-    expect(v(sim, "Night.heart_autoend")).toBe(true);
+    expect(v(sim, "Night.heart_autoend")).toBe(false); // w20b (Q3): the night truly ends on the director's 🕊
     expect(v(sim, "Night.her")).toBe("her");
   });
 
@@ -345,7 +346,8 @@ describe("The Heart — the light in his heart (wave 20)", () => {
     expect(Object.keys(lights.looks).sort()).toEqual([...looks].sort());
     expect(lights.boot).toBe("heart_idle");
     const used = new Set([...SRC.matchAll(/^\s*cue (heart_[a-z_]+)\s*$/gmu)].map((m) => m[1]!));
-    expect([...used].sort()).toEqual([...looks].sort());
+    // w20b (Q4): no "not yet" any more; its look stays in lights.json, unused.
+    expect([...used].sort()).toEqual(looks.filter((l) => l !== "heart_notyet").sort());
     // The restore looks give the light back; the door and alarm swells loop.
     const plan = (n: string) => planLook(lights, null, n)!;
     expect([plan("heart_nag").restore, plan("heart_warn").restore]).toEqual([true, true]);
@@ -509,19 +511,25 @@ describe("The Heart — the talk (wave 20)", () => {
     expect(v(sim, "g1.heart_out")).toBe(true);
     expect(v(sim, "g1.heart_menu")).toBe(false);
     expect(v(sim, "g1.heart_chat")).toBe(false);
-    expect(v(sim, "g1.marked")).toBe(false); // D12: no mark
+    expect(v(sim, "g1.marked")).toBe(true); // w20b (Q2, D12 reversed): thrown out = marked
+    expect(v(sim, "g1.marked_for")).toBe("thrown out of Trabolta's heart");
+    expect(beats(ej)).toContain("Heart Mark");
+    expect(lines(ej)).toContain("And the Antivirus will know your name before you reach the stairs.");
     expect(v(sim, "Night.heart_stage")).toBe("scan");
     expect(heartCues(ej)).toEqual(["heart_eject"]);
     expect(roomCues(ej)).toEqual(["room_heart_eject"]);
     expect(v(sim, "Night.heart_look")).toBe("heart_idle"); // the stutter never becomes the settled look
     expect(heartCues([...open(sim), ...shut(sim)]).filter((c) => c === "heart_eject")).toEqual([]);
     expect(hosts(ej)[0]).toContain("⛔ Trabolta threw Calculator out of his heart");
+    expect(hosts(ej)).toContain('"🚨 Calculator is marked for reinstallation: Trabolta threw them out of his heart."');
     expect(heartMenu(sim, "g1")).toBeNull();
     // Barred: a re-scan is turned away.
     unscan(sim, "g1");
     const again = scan(sim, "g1");
     expect(beats(again)).toContain("Heart Barred");
     expect(lines(again)).toEqual(["No. Not you. Not again tonight. Go."]);
+    // Already marked: never a second mark, and # hosts says why.
+    expect(hosts(again)).toEqual(['"⛔ Calculator is already marked for reinstallation: thrown out of his heart, no second mark."']);
     expect(heartMenu(sim, "g1")).toBeNull();
     // 🔄 forgives: suspicion back to 0, the layer kept.
     unscan(sim, "g1");
@@ -535,6 +543,40 @@ describe("The Heart — the talk (wave 20)", () => {
     shut(sim);
     scan(sim, "g1");
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Two");
+  });
+
+  it("thrown out marks once (Q2): an already-marked program is not marked again, # hosts says why; a lifted mark comes back on a barred scan", { timeout: SLOW }, () => {
+    const eject = (sim: Sim, id: string) => {
+      pick(sim, id, "Someone who admires your work");
+      for (let i = 0; i < 4 && v(sim, `${id}.heart_out`) !== true; i++) {
+        const e = pick(sim, id, "I could pull your cables");
+        if (v(sim, `${id}.heart_out`) === true) return e;
+      }
+      throw new Error("never thrown out");
+    };
+    // Marked before the talk: no second mark, and the reason stays theirs.
+    const sim = awake();
+    fire(sim, "mark_for_reinstallation", "g1", { reason: "refused the truth" });
+    atLayerOne(sim);
+    const ej = eject(sim, "g1");
+    expect(v(sim, "g1.marked_for")).toBe("refused the truth");
+    expect(hosts(ej)).toContain('"⛔ Calculator is already marked for reinstallation: thrown out of his heart, no second mark."');
+    expect(hosts(ej).some((h) => h.includes("is marked for reinstallation: Trabolta threw"))).toBe(false);
+    expect(lines(ej)).not.toContain("And the Antivirus will know your name before you reach the stairs.");
+    // Lifted (🩹) while barred: the next barred scan marks them again.
+    fire(sim, "unmark_for_reinstallation", "g1");
+    expect(v(sim, "g1.marked")).toBe(false);
+    unscan(sim, "g1");
+    const again = scan(sim, "g1");
+    expect(beats(again)).toContain("Heart Barred");
+    expect(v(sim, "g1.marked")).toBe(true);
+    expect(v(sim, "g1.marked_for")).toBe("thrown out of Trabolta's heart");
+    // Their phone hears the story's own soft heads-up (subject-bound).
+    const ej2 = (() => { const s2 = atLayerOne(awake(), "g2"); return { s2, e: eject(s2, "g2") }; })();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const heads = ej2.e.filter((e: any) => e.type === "respond" && String(e.text).startsWith("🚨 You are marked for reinstallation (thrown out of Trabolta's heart)"));
+    expect(heads).toHaveLength(1);
+    expect(v(ej2.s2, "g2.marked")).toBe(true);
   });
 
   it("suspicion never drops under 0, and the goods take it down", { timeout: SLOW }, () => {
@@ -667,82 +709,72 @@ describe("The Heart — the ask (wave 20)", () => {
 });
 
 describe("The Heart — convinced (wave 20)", () => {
-  it("before the Y2K hour: not yet, remembered; the clock's call; the short return; both return options", { timeout: SLOW }, () => {
+  it("before the Y2K hour (Q4): convinced stands him down at once; the night waits for the director's 🕊, NEXT on the cue sheet", { timeout: SLOW }, () => {
     const sim = atLayerOne();
+    expect(v(sim, "Night.step")).toBeLessThan(14);
     toAsk(sim);
     const e = pick(sim, "g1", "She was never going to answer");
-    expect(beats(e)).toEqual(expect.arrayContaining(["Heart Convinced", "Heart Not Yet"]));
+    expect(beats(e)).toEqual(expect.arrayContaining(["Heart Convinced", "Heart Shutdown"]));
+    expect(beats(e)).not.toContain("Heart Not Yet");
     expect(v(sim, "g1.heart_convinced")).toBe(true);
-    expect(v(sim, "Night.heart_stage")).toBe("scan");
-    expect(v(sim, "g1.heart_chat")).toBe(true); // D24: the heart to heart after not yet
-    expect(heartCues(e)).toEqual(["heart_notyet"]);
-    expect(roomCues(e)).toEqual(["room_heart_notyet"]);
-    expect(hosts(e).some((h) => h.includes("before the Y2K hour"))).toBe(true);
-    expect(v(sim, "Night.ended")).toBe(false);
-    // A re-scan before the hour: one short line, no menu.
-    unscan(sim, "g1");
-    const early = scan(sim, "g1");
-    expect(lines(early)).toEqual(["Not yet. Soon. When the clock starts counting, come back."]);
-    expect(heartMenu(sim, "g1")).toBeNull();
-    unscan(sim, "g1");
-    // The Y2K hour: he calls them, once.
-    const y = [] as SimEvent[];
-    readResults(sim);
-    fireAll(sim, "second_hunt_preview", "start_the_second_hunt");
+    expect(v(sim, "Night.heart_stage")).toBe("done");
+    expect(v(sim, "Night.stand_down_by")).toBe("Calculator");
+    expect(heartCues(e)).toEqual(["heart_shutdown"]);
+    expect(roomCues(e)).toEqual(["room_heart_shutdown"]);
+    expect(hosts(e)).toContain('"!🕊 Trabolta has stood down for Calculator at his heart. The night ends when you press 🕊 Trabolta stands down (NEXT on the cue sheet); until then 🔄 can reopen his heart."');
+    expect(v(sim, "Night.heart_end_at")).toBe(0);
+    // Q3: autoend is off by default; nothing ends without the director.
     advance(sim, 120);
-    sim.choose("g2", 0);
-    sim.choose("g3", 0);
-    fireAll(sim, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "trabolta_overshares");
-    y.push(...fire(sim, "y2k_clock"));
-    y.push(...advance(sim, 2));
-    expect(beats(y)).toContain("Heart Call");
-    const call = said(y).filter((d) => d.speaker === "Trabolta" && d.text.startsWith("The clock is running."));
-    expect(call).toHaveLength(1);
-    expect(call[0]!.audience).toEqual(["g1"]);
-    expect(v(sim, "g1.heart_called")).toBe(true);
-    expect(hosts(y).some((h) => h.includes("Calculator convinced Trabolta before the Y2K hour"))).toBe(true);
-    // The short return: both options.
+    expect(v(sim, "Night.ended")).toBe(false);
+    // NEXT points at 🕊 while the stand-down waits.
+    const rows = cueRows(modView(sim, "open", "x").interactions ?? [], cueState(sim));
+    expect(rows.find((r) => r.next)?.id).toBe("talked_down");
+    // The director's sign-off ends it, before the Y2K hour too.
+    const td = fire(sim, "talked_down");
+    expect(hosts(td)).toContain('"🕊 Trabolta stands down. Calculator talked him down."');
+    expect(v(sim, "Night.talked_down")).toBe(true);
+    expect(v(sim, "Night.ending")).toBe("disabled");
+    expect(beats(td)).toContain("Trabolta Disabled");
+  });
+
+  it("a stand-down the director never confirms: 🔄 reopens his heart, and the convinced program gets the short return", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toAsk(sim);
+    pick(sim, "g1", "She was never going to answer");
+    unscan(sim, "g1");
+    fire(sim, "reset_server_room");
+    expect(v(sim, "Night.heart_stage")).toBe("sealed");
+    expect(v(sim, "Night.stand_down_by")).toBe("none");
+    const rows = cueRows(modView(sim, "open", "x").interactions ?? [], cueState(sim));
+    expect(rows.find((r) => r.id === "talked_down")!.live).toBe(false);
+    open(sim);
+    shut(sim);
     const back = scan(sim, "g1");
     expect(beats(back)).toContain("Heart Return");
+    expect(lines(back)).toContain("You came back.");
+    expect(lines(back).some((l) => l.includes("The clock is running"))).toBe(false);
     expect(offered(sim, "g1")).toEqual(["It's still true. She was never going to answer.", "I changed my mind."]);
     const no = pick(sim, "g1", "I changed my mind");
     expect(v(sim, "g1.heart_convinced")).toBe(false);
     expect(v(sim, "g1.heart_suspicion")).toBeGreaterThanOrEqual(30);
     expect(lines(no)[0]).toContain("Then you were lying before");
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Three");
+    pick(sim, "g1", "Then let me finish"); // the proof and the case are kept
+    const yes = pick(sim, "g1", "She was never going to answer");
+    expect(beats(yes)).toContain("Heart Shutdown");
   });
 
-  it("still at his heart when the Y2K hour starts: no call to come back down, the short return there and then", { timeout: SLOW }, () => {
-    const sim = atLayerOne();
-    toAsk(sim);
-    pick(sim, "g1", "She was never going to answer");
-    expect(v(sim, "g1.heart_chat")).toBe(true);
-    expect(v(sim, "g1.at_the_heart")).toBe(true);
-    const y = [] as SimEvent[];
-    readResults(sim);
-    fireAll(sim, "second_hunt_preview", "start_the_second_hunt");
-    advance(sim, 120);
-    sim.choose("g2", 0);
-    sim.choose("g3", 0);
-    fireAll(sim, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "trabolta_overshares");
-    y.push(...fire(sim, "y2k_clock"));
-    y.push(...advance(sim, 2));
-    expect(beats(y)).not.toContain("Heart Call");
-    expect(beats(y)).toContain("Heart Return");
-    expect(lines(y).some((l) => l.startsWith("The clock is running. You told me"))).toBe(false);
-    expect(hosts(y).some((h) => h.includes("is at his heart now"))).toBe(true);
-    expect(v(sim, "g1.heart_called")).toBe(true);
-    expect(v(sim, "g1.heart_chat")).toBe(false);
-    expect(v(sim, "Night.heart_stage")).toBe("talk");
-    expect(heartMenus(sim, "g1")).toHaveLength(1);
-    expect(offered(sim, "g1")).toEqual(["It's still true. She was never going to answer.", "I changed my mind."]);
-    advance(sim, 5);
-    expect(heartMenus(sim, "g1")).toHaveLength(1);
+  it("🕊 with nothing on record still needs the Y2K hour", { timeout: SLOW }, () => {
+    const sim = awake();
+    const td = fire(sim, "talked_down");
+    expect(hosts(td)).toEqual(['"🕊 Nothing to stand down: nobody talked him down at his heart, and without that it needs the Y2K hour, before any ending."']);
+    expect(v(sim, "Night.ended")).toBe(false);
   });
 
-  it("convinced in the Y2K hour with autoend on: Heart Shutdown, then talked_down 25 s later, then trabolta_disabled", { timeout: SLOW }, () => {
+  it("convinced in the Y2K hour with autoend turned on: Heart Shutdown, then talked_down 25 s later, then trabolta_disabled", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);
+    expect(hosts(fire(sim, "heart_autoend"))[0]).toContain("ON");
     atLayerOne(sim);
     toAsk(sim);
     const e = pick(sim, "g1", "She was never going to answer");
@@ -764,6 +796,7 @@ describe("The Heart — convinced (wave 20)", () => {
   it("🔄 inside the autoend's 25 s keeps the stand-down: the heart stays done and the night still ends", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);
+    fire(sim, "heart_autoend"); // on
     atLayerOne(sim);
     toAsk(sim);
     pick(sim, "g1", "She was never going to answer");
@@ -780,8 +813,7 @@ describe("The Heart — convinced (wave 20)", () => {
 
   it("another program scanning in ends the first one's heart to heart (a lost terminal closed)", { timeout: SLOW }, () => {
     const sim = atLayerOne();
-    toAsk(sim);
-    pick(sim, "g1", "She was never going to answer"); // not yet: heart_chat
+    pick(sim, "g1", "I need to go"); // Leave: heart_chat
     expect(v(sim, "g1.heart_chat")).toBe(true);
     scan(sim, "g2");
     expect(v(sim, "g1.at_the_heart")).toBe(false);
@@ -792,6 +824,7 @@ describe("The Heart — convinced (wave 20)", () => {
   it("autoend turned off inside the 25 s stops the countdown: the night waits for 🕊", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);
+    fire(sim, "heart_autoend"); // on
     atLayerOne(sim);
     toAsk(sim);
     pick(sim, "g1", "She was never going to answer");
@@ -804,16 +837,15 @@ describe("The Heart — convinced (wave 20)", () => {
     expect(v(sim, "Night.heart_stage")).toBe("done");
   });
 
-  it("convinced in the Y2K hour with autoend off: only the # hosts alert; 🔄 reopens the heart and clears stand_down_by", { timeout: SLOW }, () => {
+  it("convinced in the Y2K hour with autoend off (the default): only the # hosts alert; 🔄 reopens the heart and clears stand_down_by", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);
-    const t = fire(sim, "heart_autoend");
     expect(v(sim, "Night.heart_autoend")).toBe(false);
-    expect(hosts(t)[0]).toContain("OFF");
     atLayerOne(sim);
     toAsk(sim);
     const e = pick(sim, "g1", "She was never going to answer");
-    expect(hosts(e)).toContain('"!🕊 Trabolta offers to stand down for Calculator. Press 🕊 to end it."');
+    expect(hosts(e)).toContain('"!🕊 Trabolta has stood down for Calculator at his heart. The night ends when you press 🕊 Trabolta stands down (NEXT on the cue sheet); until then 🔄 can reopen his heart."');
+    expect(cueRows(modView(sim, "open", "x").interactions ?? [], cueState(sim)).find((r) => r.next)?.id).toBe("talked_down");
     advance(sim, 60);
     expect(v(sim, "Night.ended")).toBe(false);
     expect(v(sim, "Night.heart_end_at")).toBe(0);
@@ -862,6 +894,7 @@ describe("The Heart — convinced (wave 20)", () => {
   it("a pick held by a program who walked away never reopens a heart another program shut down", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);
+    fire(sim, "heart_autoend"); // on
     atLayerOne(sim, "g4");
     open(sim);
     pick(sim, "g4", "I'm a person"); // held for the shut door
@@ -901,6 +934,7 @@ describe("The Heart — convinced (wave 20)", () => {
   it("the autoend watcher after Combo A does nothing; the heart is done and the bulb fades", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);
+    fire(sim, "heart_autoend"); // on
     atLayerOne(sim);
     toAsk(sim);
     pick(sim, "g1", "She was never going to answer");

@@ -134,11 +134,11 @@ never from a guest card.
 | the crew need to open the server-room door themselves | **🔧** Crew going through the server-room door (Anytime; the server-room Antivirus has it too): for 2 minutes an opening only tells `# hosts`, The Heart is kept |
 | the server-room door opened and nothing happened | **🚪** Server room door opened (the door sensor's fallback; the server-room Antivirus has it too): once Trabolta is awake the first one plays The Heart. Run → Terminals shows the sensor: a red 🚪 is a fault |
 | the door is shut but his screen still says CLOSE THE DOOR | **🚪** Server room door closed (sensor fallback). After either 🚪 the story follows the buttons (*Door on buttons* on the glance) until **🚪 Trust the door sensor again** |
-| you want a talk-down to wait for you | **🕊 Heart: end the night on his own** off (on by default: 25 s after Heart Shutdown the night ends by itself); turning it off inside the 25 s stops the countdown |
+| you want a talk-down to end the night by itself | **🕊 Heart: end the night on his own** on (off by default: a talk-down waits for your 🕊); on, the night ends 25 s after Heart Shutdown; turning it off inside the 25 s stops the countdown |
 | a wrong patch the crew forgave, or after a rehearsal | **🔄** Server room: reset the patch-bay alarm (clears the wrong-combination count, the alarm latch and The Heart); the lights stay as they are, so if the house is still red press **💡** Restore the house lights |
-| `# hosts`: "🕊 Trabolta stands down for X. The night ends in 25 s" | nothing (it ends itself), or **🕊** to end it now |
-| `# hosts`: "!🕊 Trabolta offers to stand down for X" (autoend off) | your call: **🕊** Trabolta stands down (talked down) ends the night the Combo A way, without a cable; until you do, 🔄 reopens his heart |
-| `# hosts`: "⛔ Trabolta threw X out of his heart" | nothing; 🔄 forgives (they are not marked) |
+| `# hosts`: "!🕊 Trabolta has stood down for X at his heart" (any hour; NEXT points at 🕊) | your sign-off: **🕊** Trabolta stands down (talked down) ends the night the Combo A way, without a cable; until you do, 🔄 reopens his heart |
+| `# hosts`: "🕊 Trabolta stands down for X. The night ends in 25 s" (autoend turned on) | nothing (it ends itself), or **🕊** to end it now |
+| `# hosts`: "⛔ Trabolta threw X out of his heart" + "🚨 X is marked for reinstallation" | the Antivirus take it from the Wanted board; 🔄 forgives the heart, 🩹 lifts the mark (a barred re-scan marks them again) |
 | a dead keypad battery or a jammed lock | the house manager's override key; prop the door; fire **🚪** if the cutscene has not played (W-35) |
 | dead patch bay | the server-room Antivirus radios A / B / WRONG → 🔌 / 💥 / ❌ |
 | lost guest / new phone | Inspector → **re-pair QR** (never re-register) |

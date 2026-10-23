@@ -13,10 +13,9 @@
 // destroys the whole computer (purgatory). Opening the door once he is
 // awake plays The Heart, however it was unlocked (wave 20: he wants the
 // door shut, then a pass at the server-room terminal, then the four-layer
-// talk below); from the Y2K hour a program can talk him down there (Heart
-// Shutdown → talked_down, the Combo A ending without a cable). Before the
-// Y2K hour the patch bay answers nobody, and a program who convinces him
-// hears "not yet".
+// talk below); a program can talk him down there at any hour (Heart
+// Shutdown, then the director's 🕊 talked_down: the Combo A ending without
+// a cable). Before the Y2K hour only the patch bay answers nobody.
 //
 // Who everyone was, the goals and the night's deeds (read by Trabolta
 // Recounts and Purgatory) are shared with the review before the awards and
@@ -215,7 +214,8 @@ Narrator: The door clicks shut. The hum drops half a tone, the way a breath goes
 // DRAFT w20
 Trabolta: Thank you. Now nobody is listening but the ones in this room.
 if Night.step < 14:
-  Trabolta: Know this before you try anything clever. The bay is cold tonight. Nothing in this room can end anything yet, not the cables, not me. I tell you so that you do not waste your time. Talk to me anyway.
+  // DRAFT w20b (Q4: the talk can end him at any hour; only the cables wait)
+  Trabolta: Know this before you try anything clever. The bay is cold tonight. The cables will not answer you yet. I tell you so that you do not waste your time on them. Talk to me instead.
 if Night.heart_present == true:
   Trabolta: You. You are already in front of me. Good.
 else:
@@ -243,12 +243,10 @@ set Night.heart_talker_suspicion = program.heart_suspicion
 set Night.heart_talker_layer = program.heart_layer
 if program.heart_out == true:
   -> Heart Barred
-else if program.heart_convinced == true and Night.step >= 14:
-  -> Heart Return
 else if program.heart_convinced == true:
-  set program.heart_chat = true
-  // DRAFT w20
-  Trabolta: Not yet. Soon. When the clock starts counting, come back.
+  // Convinced, and the stand-down undone since (🔄 after a 🕊 the director
+  // never pressed): the short return.
+  -> Heart Return
 else if program.heart_menu == true and program.heart_go == "speak":
   // Back in the heart to heart (⟦BACK⟧ still docked): they may type again.
   set program.heart_chat = true
@@ -692,8 +690,11 @@ broadcast "⚠ {program.name} is losing Trabolta at his heart (suspicion {progra
 // DRAFT w20
 Trabolta (quietly): Careful, {program.name}. One more like that and I close this line.
 
-// Suspicion reached 80: thrown out for the night (🔄 forgives). Not a mark
-// (D12): he points them at the cables instead.
+// Suspicion reached 80: thrown out for the night (🔄 forgives), and marked
+// for reinstallation the story's one way (main.loom
+// `mark_for_reinstallation`; the user's Q2, D12 reversed). A program
+// already marked, or already in the Internet, is never marked twice:
+// `# hosts` says so.
 == Heart Eject
   setting: The Server Room
   cast: Trabolta
@@ -712,6 +713,22 @@ broadcast "⛔ Trabolta threw {program.name} out of his heart (suspicion {progra
 Trabolta (screaming): Get out of my heart.
 Trabolta: You want me gone? The cables are behind you. You do not know which ones. Neither do I.
 Trabolta: This line is closed to you. Tonight, and for as long as I have a tonight.
+-> Heart Mark
+
+// Thrown out (Heart Eject) or turned away again (Heart Barred): the mark,
+// once. A mark lifted since (🩹) comes back on the next barred scan.
+== Heart Mark
+  setting: The Server Room
+  cast: Trabolta
+if program.corrupted == true:
+  broadcast "⛔ {program.name} is already in the Internet: thrown out of his heart, no mark." to channel(hosts)
+else if program.marked == true:
+  broadcast "⛔ {program.name} is already marked for reinstallation: thrown out of his heart, no second mark." to channel(hosts)
+else:
+  broadcast "🚨 {program.name} is marked for reinstallation: Trabolta threw them out of his heart." to channel(hosts)
+  fire mark_for_reinstallation for program with reason: "thrown out of Trabolta's heart"
+  // DRAFT w20b
+  Trabolta: And the Antivirus will know your name before you reach the stairs.
 
 // A barred program scans in again.
 == Heart Barred
@@ -727,6 +744,7 @@ if Night.alarm_on != true:
 cue room_heart_eject
 // DRAFT w20
 Trabolta: No. Not you. Not again tonight. Go.
+-> Heart Mark
 
 // They chose to go (the scene frees the terminal for the next pass). They
 // may still talk to him, no menu, until the terminal lets them go (D24).
@@ -759,37 +777,11 @@ broadcast "🕊 {program.name} convinced Trabolta at his heart." to channel(host
 Trabolta: …
 Trabolta: She was never going to answer. Not me. Not anyone. I built a theory of everything so that I would not have to know one small thing.
 Trabolta: Thank you, {program.name}. That is the cruellest kind thing anyone has ever done for me.
-if Night.step >= 14:
-  -> Heart Shutdown
-else:
-  -> Heart Not Yet
+// At any hour (the user's Q4: no "not yet" before the Y2K clock).
+-> Heart Shutdown
 
-// Convinced before the Y2K hour: the bay is cold, nothing ends yet. He
-// remembers (heart_convinced) and calls them back when the clock starts.
-== Heart Not Yet
-  setting: The Server Room
-  cast: Trabolta
-set program.heart_menu = false
-set program.heart_chat = true
-set Night.heart_stage = "scan"
-set Night.heart_look = "heart_notyet"
-if Night.alarm_on != true:
-  cue heart_notyet
-cue room_heart_notyet
-broadcast "🕊 {program.name} convinced Trabolta before the Y2K hour: he'll stand down when they come back after 🕛." to channel(hosts)
-// DRAFT w20
-Trabolta: Not yet.
-Trabolta: The bay is cold until the clock starts. Nothing in this room can end anything before then. Not even me.
-Trabolta: Come back when the clock is counting down to midnight. Say it to me again. I will listen. I promise you that, and I do not promise things.
-
-// The Y2K hour's call to a program who convinced him earlier (the ROLE
-// watcher): their own Trabolta thread, wherever they are.
-== Heart Call
-  cast: Trabolta
-// DRAFT w20
-Trabolta: The clock is running. You told me something at my heart. Come back down and tell me again.
-
-// Convinced earlier, back in the Y2K hour.
+// Convinced before, and his heart reopened since (🔄 after a stand-down the
+// director never confirmed with 🕊): the short return.
 == Heart Return
   setting: The Server Room
   cast: Trabolta
@@ -797,8 +789,12 @@ set Night.heart_look = "heart_argue"
 if Night.alarm_on != true:
   cue heart_argue
 set program.heart_menu = true
+// DRAFT w20b (the clock line only once it runs)
+if Night.step >= 14:
+  Trabolta: You came back. The clock is running.
+else:
+  Trabolta: You came back.
 // DRAFT w20
-Trabolta: You came back. The clock is running.
 Trabolta: You do not have to say it all again. Just tell me it is still true.
 + It's still true. She was never going to answer.
   set program.heart_menu = false
@@ -809,9 +805,11 @@ Trabolta: You do not have to say it all again. Just tell me it is still true.
   set program.heart_pick = "return_no"
   -> Heart Pick
 
-// He stops. With 🕊 Heart autoend on (the default) the night ends 25 s
-// later by itself (main.loom's watcher fires talked_down); off, # hosts is
-// asked to press 🕊, and 🔄 reopens his heart until someone does.
+// He stops, at any hour. The night truly ends only on the director's 🕊
+// talked_down (the user's Q3: 🕊 Heart autoend is off by default; NEXT on
+// the cue sheet points at 🕊 meanwhile), and 🔄 reopens his heart until
+// someone presses it. With autoend turned on, the night ends 25 s later by
+// itself (main.loom's watcher fires talked_down).
 == Heart Shutdown
   setting: The Server Room
   cast: Trabolta
@@ -830,7 +828,7 @@ if Night.heart_autoend == true:
   set Night.heart_end_at = Time.elapsed + 25
   broadcast "🕊 Trabolta stands down for {program.name}. The night ends in 25 s (🕊 to end it now)." to channel(hosts)
 else:
-  broadcast "!🕊 Trabolta offers to stand down for {program.name}. Press 🕊 to end it." to channel(hosts)
+  broadcast "!🕊 Trabolta has stood down for {program.name} at his heart. The night ends when you press 🕊 Trabolta stands down (NEXT on the cue sheet); until then 🔄 can reopen his heart." to channel(hosts)
 
 // ── E2b: the patch-bay alarm (latched in main.loom) ────────────────
 // Only the patch bay screams: the second wrong combination (Patch Rejected,
