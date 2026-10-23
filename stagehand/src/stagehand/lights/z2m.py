@@ -71,8 +71,13 @@ def payload_for(f: dict, s: dict) -> dict:
 
 def identify_payload(f: dict) -> dict:
     """Identify (a test with no `set`): Z2M's `okay` effect; WLED blinks (2 s,
-    then the module puts the fixture's look back)."""
-    return {"on": True, "seg": [{"fx": 1}]} if f.get("kind") == "wled" else {"effect": "okay"}
+    then the module puts the fixture's look back). A `safety` WLED strip never
+    blinks (dark between blinks): it flashes a steady full white instead."""
+    if f.get("kind") != "wled":
+        return {"effect": "okay"}
+    if f.get("safety"):
+        return {"on": True, "bri": 255, "seg": [{"col": [[255, 255, 255]], "fx": 0}]}
+    return {"on": True, "seg": [{"fx": 1}]}
 
 
 def permit_join_topic(base: str = Z2M_BASE) -> str:

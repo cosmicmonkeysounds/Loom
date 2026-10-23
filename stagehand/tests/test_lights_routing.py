@@ -115,7 +115,9 @@ def test_look_names_never_take_a_screens_family():
 def test_the_mqtt_words_for_identify_and_pairing():
     rgb, strip = DOC.fixture("server-room-rgb"), DOC.fixture("server-strip")
     assert identify_payload(rgb) == {"effect": "okay"}
-    assert identify_payload(strip) == {"on": True, "seg": [{"fx": 1}]}
+    # The server strip is a safety light: a steady white flash, never a blink.
+    assert strip.get("safety") and identify_payload(strip) == {"on": True, "bri": 255, "seg": [{"col": [[255, 255, 255]], "fx": 0}]}
+    assert identify_payload({**strip, "safety": False}) == {"on": True, "seg": [{"fx": 1}]}
     assert permit_join_topic() == "zigbee2mqtt/bridge/request/permit_join"
     assert permit_join_payload(120) == {"time": 120}
     assert permit_join_payload(0) == {"time": 0}

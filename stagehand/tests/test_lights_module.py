@@ -236,7 +236,7 @@ async def test_tests_identify_and_pairing():
     assert lights.run_test({"fixture": "server-room-rgb"}) == "identify server-room-rgb"
     assert lights.mqtt.log[-1][1:] == (RGB, {"effect": "okay"})
     lights.run_test({"fixture": "server-strip"})
-    assert lights.mqtt.log[-1][1:] == ("wled/server/api", {"on": True, "seg": [{"fx": 1}]})
+    assert lights.mqtt.log[-1][1:] == ("wled/server/api", {"on": True, "bri": 255, "seg": [{"col": [[255, 255, 255]], "fx": 0}]})
     await timer.advance(2000)
     assert lights.mqtt.log[-1][1:] == ("wled/server/api", {"seg": [{"fx": 0}]})
     assert lights.run_test({"look": "heart_nag"}) == "look heart_nag"
