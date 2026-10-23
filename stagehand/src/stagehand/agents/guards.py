@@ -117,11 +117,18 @@ def _outside_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
     return re.compile(r"(?<![a-z0-9])(?:" + "|".join(parts) + r")(?:s|es)?(?![a-z0-9])")
 
 
+def outside_hit(words: Iterable[str], text: str) -> str | None:
+    """(D29) The first `outside:` entry `text` names (folded, whole words, a
+    plural too: `actors`), else None."""
+    pattern = _outside_pattern(tuple(words))
+    m = pattern.search(fold(text)) if pattern is not None else None
+    return m.group(0) if m else None
+
+
 def mentions_outside(persona: Persona, text: str) -> bool:
     """(D29) Does `text` name something from outside his world (the persona's
-    `outside:` list; folded, whole words, a plural too: `actors`)?"""
-    pattern = _outside_pattern(tuple(getattr(persona, "outside", ()) or ()))
-    return pattern is not None and pattern.search(fold(text)) is not None
+    `outside:` list)?"""
+    return outside_hit(getattr(persona, "outside", ()) or (), text) is not None
 
 
 def outside_guard(persona: Persona, reply: Reply) -> tuple[Reply, list[str]]:
@@ -135,7 +142,8 @@ def outside_guard(persona: Persona, reply: Reply) -> tuple[Reply, list[str]]:
         notes.append("outside (act dropped)")
     say = reply.say
     if mentions_outside(persona, say):
-        say = persona.fallback
+        # A fallback that names one too is never said (`stagehand check` warns).
+        say = "" if mentions_outside(persona, persona.fallback) else persona.fallback
         notes.append("outside (line withheld)")
     memo = reply.memo
     if memo and mentions_outside(persona, memo):

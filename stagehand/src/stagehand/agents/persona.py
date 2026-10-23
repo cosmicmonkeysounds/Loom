@@ -355,6 +355,18 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         powers = ()
     else:
         powers = _names(raw_powers, f"{source}: powers")
+    outside = _names(meta.get("outside"), f"{source}: outside")
+    fallbacks = _fallbacks(meta.get("fallbacks"), stages, secrets, source)
+    catchphrases = _catchphrases(meta.get("catchphrases"), source)
+    in_world: list[tuple[str, str]] = [("the system prompt", body), ("fallback:", str(meta.get("fallback") or "")), ("unavailable:", str(meta.get("unavailable") or ""))]
+    in_world += [(f"fallbacks: {stage or '(any)'}", line) for stage, lines in fallbacks.items() for line in lines]
+    in_world += [("catchphrases:", line) for line in catchphrases]
+    for phase, card in table.cards.items():
+        if "brief" in card.own or "cue" in card.own:
+            in_world.append((f"the {phase} card", f"{card.brief} {card.cue}"))
+        if "tell" in card.own:
+            in_world += [(f"the {phase} card's tell", t) for t in card.tell]
+    in_world += [(f"the {stage} stage card", text) for stage, text in table.stage_cards.items()]
     return Persona(
         character=character.strip(),
         system=body,
@@ -381,15 +393,31 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         bargain=str(meta.get("bargain") or "").strip(),
         secrets=secrets,
         situations=_situations(meta.get("situations"), source),
-        catchphrases=_catchphrases(meta.get("catchphrases"), source),
+        catchphrases=catchphrases,
         catchphrase_stages=_catchphrase_stages(meta.get("catchphrase_stages"), stages, source),
-        fallbacks=_fallbacks(meta.get("fallbacks"), stages, secrets, source),
+        fallbacks=fallbacks,
         unsaid=_unsaid(meta.get("unsaid"), source),
-        outside=_names(meta.get("outside"), f"{source}: outside"),
+        outside=outside,
         phase_cards=dict(table.cards),
         stage_cards=dict(table.stage_cards),
-        warnings=table.warnings,
+        warnings=table.warnings + _outside_warnings(outside, in_world, source),
     )
+
+
+def _outside_warnings(outside: tuple[str, ...], texts: list[tuple[str, str]], source: str) -> tuple[str, ...]:
+    """(D29) An `outside:` entry his own in-world text uses (`show` in *let me
+    show you*, `party` in *the party favour*) would swap every such line he
+    says for a fallback: list a phrase instead (*the show*, *a party*)."""
+    if not outside:
+        return ()
+    from .guards import outside_hit  # guards imports this module
+
+    out: list[str] = []
+    for where, text in texts:
+        hit = outside_hit(outside, text)
+        if hit:
+            out.append(f"{source}: outside: {hit!r} is in {where} (in-world text) — every line of his that says it would be withheld; list a phrase instead")
+    return tuple(out)
 
 
 def _catchphrases(value: Any, source: str) -> tuple[str, ...]:

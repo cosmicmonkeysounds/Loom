@@ -268,3 +268,53 @@ def test_the_classic_voice_applies_the_same_guards():
     req["powers"] = [{"id": "snoop", "label": "Snoop", "description": "x", "limit": None, "used": 0}]
     reply = run(answer(p, MODEL, req, complete_fn=long, gate=False))
     assert reply.say == "One. Two. Three. Four." and reply.acts == ()
+
+
+# -- the outside: list against his own in-world text (review) ---------------------
+
+from pathlib import Path
+
+SHIPPED = Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the-internet/trabolta.persona.md"
+#: D29's draft list, bare words: `party` is in *the party favour* and his
+#: system prompt, `show` in *it shows* — every such line would be withheld.
+D29_BARE = ["John", "Steph", "Jesse", "party", "show", "actor", "performer", "rehearsal", "Loom", "stagehand", "Steph's laptop", "Arduino", "Zigbee"]
+#: The same list as phrases: what the story lane should write.
+D29_PHRASES = ["John", "Steph", "Jesse", "the show", "this show", "a party", "real world", "actor", "performer", "rehearsal", "Loom", "stagehand", "Steph's laptop", "Arduino", "Zigbee"]
+
+
+def _shipped_with(outside: list[str]):
+    text = SHIPPED.read_text(encoding="utf-8")
+    if "\noutside:" in text.split("\n---", 1)[0]:
+        pytest.skip("the shipped persona carries its own outside: list (the story lane) — checked below")
+    text = text.replace("---\n", "---\noutside: " + json.dumps(outside) + "\n", 1)
+    return parse_persona(text, str(SHIPPED))
+
+
+def _outside_warnings(p):
+    return [w for w in p.warnings if ": outside: " in w]
+
+
+def test_a_bare_word_his_own_text_uses_is_warned():
+    warned = _outside_warnings(_shipped_with(D29_BARE))
+    assert any("'party'" in w for w in warned) and any("'shows'" in w for w in warned), warned
+
+
+def test_the_d29_list_as_phrases_never_hits_his_own_text():
+    assert _outside_warnings(_shipped_with(D29_PHRASES)) == []
+
+
+def test_the_shipped_outside_list_never_hits_his_own_text():
+    p = parse_persona(SHIPPED.read_text(encoding="utf-8"), str(SHIPPED))
+    assert _outside_warnings(p) == [], _outside_warnings(p)
+
+
+def test_a_fallback_that_names_an_outside_word_is_never_said():
+    p = parse_persona(HEART.replace("fallback: The line is cold.", "fallback: Ask John."))
+    assert any("fallback:" in w and "'john'" in w for w in p.warnings), p.warnings
+    got, notes = outside_guard(p, Reply(say="Steph says hi."))
+    assert got.say == "" and notes == ["outside (line withheld)"]
+
+
+def test_the_fallbacks_catchphrases_and_cards_are_checked():
+    text = HEART.replace("fallback: The line is cold.\n", "fallback: The line is cold.\ncatchphrases: [\"Welcome to the party.\"]\n")
+    assert any("catchphrases:" in w for w in parse_persona(text).warnings)
