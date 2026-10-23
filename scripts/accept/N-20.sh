@@ -184,9 +184,29 @@ if not sp or sp[0] - sp[1] < 200:
     bad(f"no mode separates shut from open by 200 in every light ({sp}) — re-aim the LED, fit the shroud, check the wiring")
     print(f"\nN-20: {passed} passed, {failed} failed."); sys.exit(1)
 o, c = sp[1], sp[0]
+p_settle = 150 if use == "steady" else min(1000, max(20, int(round((settle_need or 150) * 1.5 / 10) * 10)))
+if use == "mod" and p_settle != 300:
+    # Step 2 measured at settle 300; a shorter settle gives a CdS cell a
+    # smaller lit − dark, so measure the shut and open levels again at the
+    # settle the board will run (lights on: the worst case in mod).
+    reply("set mode mod", ("ok",))
+    reply(f"set settle {p_settle}", ("ok",))
+    again = {}
+    for door in ("shut", "open"):
+        ask(f"[mod, settle {p_settle}, lights ON] door {door.upper()}, hands clear of the beam")
+        lines(1.5)
+        again[door] = sample(3.0)
+        print(f"    settle {p_settle} door {door:5}: {fmt(again[door])}")
+    if None in again.values():
+        bad(f"no door lines at settle {p_settle}")
+        print(f"\nN-20: {passed} passed, {failed} failed."); sys.exit(1)
+    c = min(c, again["shut"]["level"])
+    o = max(o, again["open"]["level"])
+    if c - o < 200:
+        bad(f"at settle {p_settle} shut {c} and open {o} are under 200 apart — keep a longer settle (set settle 300) or re-aim the LED")
+        print(f"\nN-20: {passed} passed, {failed} failed."); sys.exit(1)
 p_open = o + round(0.35 * (c - o))
 p_close = o + round(0.65 * (c - o))
-p_settle = 150 if use == "steady" else min(1000, max(20, int(round((settle_need or 150) * 1.5 / 10) * 10)))
 print(f"    mode {use} · settle {p_settle} · close {p_close} · open {p_open}  (shut ≥ {c}, open ≤ {o}, worst case)")
 ok("a proposal with at least 200 between shut and open")
 
@@ -194,6 +214,9 @@ if yes("apply and save it on the board?"):
     reply(f"set mode {use}", ("ok",))
     reply(f"set settle {p_settle}", ("ok",))
     cur = reply("get", ("cfg",))
+    if cur is None:
+        bad("no cfg reply to get: the board stopped answering")
+        print(f"\nN-20: {passed} passed, {failed} failed."); sys.exit(1)
     # The order that never trips `open < close`: open first when it fits under the current close.
     pair = [f"set open {p_open}", f"set close {p_close}"] if p_open < cur["close"] else [f"set close {p_close}", f"set open {p_open}"]
     for cmd in pair:
@@ -208,8 +231,8 @@ if yes("apply and save it on the board?"):
 else:
     print("    · not applied; put the board back as it was")
     reply("set mode auto", ("ok",))
-    if before:
-        cur = reply("get", ("cfg",))
+    cur = reply("get", ("cfg",))
+    if before and cur:
         pair = [f"set open {before['open']}", f"set close {before['close']}"] if before["open"] < cur["close"] else [f"set close {before['close']}", f"set open {before['open']}"]
         for cmd in pair + [f"set settle {before['settle']}"]: reply(cmd, ("ok", "err"))
 
