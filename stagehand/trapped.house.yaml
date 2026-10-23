@@ -90,19 +90,19 @@
 #   4  lights_game           living scene 4  warm, bright         living ps 4
 #   5  lights_truth_time     living scene 5  spot on fireplace    living ps 5
 #   6  lights_ad_hijack      house  scene 6  garish magenta       all ps 6
-#   7  lights_glitch         house  effect breathe (Hue + IKEA)   all ps 7 (Lightning / strobe)
+#   7  lights_glitch         house  effect breathe (Hue + IKEA)   ps 7 per device (Lightning / strobe); tube ps 22
 #   8  lights_pong           backyard floods full                 backyard ps 8
 #   9  lights_trust_chart    living scene 9  blue podium          living ps 9
-#  10  lights_y2k            house  scene 10 amber, dim           all ps 10 (slow red pulse)
+#  10  lights_y2k            house  scene 10 amber, dim           ps 10 per device (slow red pulse); tube ps 22
 #  11  lights_server_open    — (the RGB bulb is lights.json's)    server ps 11
 #  12  lights_alarm          house 12 (the bulb: heart_alarm)     ps 12 per device (red strobe) — never
-#                                                                  `wled/all`: wled/server holds a steady red
+#                                                                  `wled/all`: tube + server hold a steady red
 #  13  lights_blackout       house  OFF, no transition            per device: living/kitchen/backyard/
 #                                                                  registry off, tube ps 22, server untouched
-#  14  lights_dance          house  scene 14 dance                all ps 14 (audio-reactive if fitted)
-#  15  lights_final_reveal   house  scene 15 near dark            all ps 15 (embers)
+#  14  lights_dance          house  scene 14 dance                ps 14 per device (audio-reactive); tube ps 22
+#  15  lights_final_reveal   house  scene 15 near dark            ps 15 per device (embers); tube ps 22
 #  16  lights_song           house  scene 16 pink, romantic       all ps 16
-#  17  lights_rave           house  scene 17 colour loop          all ps 17 (strobe / rainbow)
+#  17  lights_rave           house  scene 17 colour loop          ps 17 per device (strobe); tube ps 22
 #  18  lights_purgatory      house  scene 18 grey, dim            all ps 18
 #  19  lights_banish         house  scene 19 red everywhere       all ps 19
 #  20  lights_restore        house  scene 20 house normal         all ps 20
@@ -112,8 +112,14 @@
 #  22  (tube_safe)           —                                    tube ps 22 (dim static: the blackout's
 #                                                                  stair light)
 #
-# Build ps 15 (final reveal) and ps 18 (purgatory) on the tube controller as
-# a look that still lights the stair landing.
+# SAFETY STRIPS (D11). `wled/tube` (halls + both stairs) and `wled/server`
+# (the server room) never get an effect preset that goes dark between frames:
+# every strobe / lightning / pulse / audio-reactive / embers look (ps 7, 10,
+# 12, 14, 15, 17) goes PER DEVICE, the tube held on its dim static ps 22, the
+# server strip left on its steady look (lights_alarm gives both a steady red).
+# Only ps 1, 3, 6, 16, 18, 19 and 20 still go to `wled/all`: build those on the
+# tube and server controllers as SOLID looks (fx 0, or a slow drift that never
+# drops a run of pixels to dark) and check it on the controllers.
 #
 # SCREENS. The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no
 # rule here on purpose: the Screens layer (design §7 #13) consumes them from
@@ -230,9 +236,24 @@ show:
     - on: { directive: cue }
       match: { target: lights_glitch }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { effect: "breathe" } }
+    # ps 7 is an effect: per device, never `wled/all` (D11). The tube strip
+    # (halls + stairs) holds its dim static ps 22; the server-room strip is
+    # left on its steady look.
     - on: { directive: cue }
       match: { target: lights_glitch }
-      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 7 } }
+      mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 7 } }
+    - on: { directive: cue }
+      match: { target: lights_glitch }
+      mqtt: { topic: "wled/kitchen/api", payload: { "on": true, ps: 7 } }
+    - on: { directive: cue }
+      match: { target: lights_glitch }
+      mqtt: { topic: "wled/backyard/api", payload: { "on": true, ps: 7 } }
+    - on: { directive: cue }
+      match: { target: lights_glitch }
+      mqtt: { topic: "wled/registry/api", payload: { "on": true, ps: 7 } }
+    - on: { directive: cue }
+      match: { target: lights_glitch }
+      mqtt: { topic: "wled/tube/api", payload: { "on": true, ps: 22 } }
 
     - on: { directive: cue }
       match: { target: lights_pong }
@@ -251,9 +272,24 @@ show:
     - on: { directive: cue }
       match: { target: lights_y2k }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 10, transition: 4 } }
+    # ps 10 is an effect: per device, never `wled/all` (D11). The tube strip
+    # (halls + stairs) holds its dim static ps 22; the server-room strip is
+    # left on its steady look.
     - on: { directive: cue }
       match: { target: lights_y2k }
-      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 10 } }
+      mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 10 } }
+    - on: { directive: cue }
+      match: { target: lights_y2k }
+      mqtt: { topic: "wled/kitchen/api", payload: { "on": true, ps: 10 } }
+    - on: { directive: cue }
+      match: { target: lights_y2k }
+      mqtt: { topic: "wled/backyard/api", payload: { "on": true, ps: 10 } }
+    - on: { directive: cue }
+      match: { target: lights_y2k }
+      mqtt: { topic: "wled/registry/api", payload: { "on": true, ps: 10 } }
+    - on: { directive: cue }
+      match: { target: lights_y2k }
+      mqtt: { topic: "wled/tube/api", payload: { "on": true, ps: 22 } }
 
     - on: { directive: cue }
       match: { target: lights_server_open }
@@ -267,9 +303,9 @@ show:
     - on: { directive: cue }
       match: { target: lights_alarm }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 12, transition: 0 } }
-    # WLED per device, never `wled/all` (D11): the server-room strip is that
-    # room's safety light, so it gets a STEADY full red (fx 0), never ps 12's
-    # strobe, which goes dark between flashes with people among the cables.
+    # WLED per device, never `wled/all` (D11): the server-room strip and the
+    # tube strip (halls + stairs) are safety lights, so both get a STEADY full
+    # red (fx 0), never ps 12's strobe, which goes dark between flashes.
     - on: { directive: cue }
       match: { target: lights_alarm }
       mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 12 } }
@@ -284,7 +320,7 @@ show:
       mqtt: { topic: "wled/registry/api", payload: { "on": true, ps: 12 } }
     - on: { directive: cue }
       match: { target: lights_alarm }
-      mqtt: { topic: "wled/tube/api", payload: { "on": true, ps: 12 } }
+      mqtt: { topic: "wled/tube/api", payload: { "on": true, bri: 255, seg: [{ col: [[255, 0, 0]], fx: 0 }] } }
     - on: { directive: cue }
       match: { target: lights_alarm }
       mqtt: { topic: "wled/server/api", payload: { "on": true, bri: 255, seg: [{ col: [[255, 0, 0]], fx: 0 }] } }
@@ -324,16 +360,46 @@ show:
     - on: { directive: cue }
       match: { target: lights_dance }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 14, transition: 0 } }
+    # ps 14 is an effect: per device, never `wled/all` (D11). The tube strip
+    # (halls + stairs) holds its dim static ps 22; the server-room strip is
+    # left on its steady look.
     - on: { directive: cue }
       match: { target: lights_dance }
-      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 14 } }
+      mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 14 } }
+    - on: { directive: cue }
+      match: { target: lights_dance }
+      mqtt: { topic: "wled/kitchen/api", payload: { "on": true, ps: 14 } }
+    - on: { directive: cue }
+      match: { target: lights_dance }
+      mqtt: { topic: "wled/backyard/api", payload: { "on": true, ps: 14 } }
+    - on: { directive: cue }
+      match: { target: lights_dance }
+      mqtt: { topic: "wled/registry/api", payload: { "on": true, ps: 14 } }
+    - on: { directive: cue }
+      match: { target: lights_dance }
+      mqtt: { topic: "wled/tube/api", payload: { "on": true, ps: 22 } }
 
     - on: { directive: cue }
       match: { target: lights_final_reveal }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 15, transition: 3 } }
+    # ps 15 is an effect: per device, never `wled/all` (D11). The tube strip
+    # (halls + stairs) holds its dim static ps 22; the server-room strip is
+    # left on its steady look.
     - on: { directive: cue }
       match: { target: lights_final_reveal }
-      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 15 } }
+      mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 15 } }
+    - on: { directive: cue }
+      match: { target: lights_final_reveal }
+      mqtt: { topic: "wled/kitchen/api", payload: { "on": true, ps: 15 } }
+    - on: { directive: cue }
+      match: { target: lights_final_reveal }
+      mqtt: { topic: "wled/backyard/api", payload: { "on": true, ps: 15 } }
+    - on: { directive: cue }
+      match: { target: lights_final_reveal }
+      mqtt: { topic: "wled/registry/api", payload: { "on": true, ps: 15 } }
+    - on: { directive: cue }
+      match: { target: lights_final_reveal }
+      mqtt: { topic: "wled/tube/api", payload: { "on": true, ps: 22 } }
 
     - on: { directive: cue }
       match: { target: lights_song }
@@ -345,9 +411,24 @@ show:
     - on: { directive: cue }
       match: { target: lights_rave }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 17, transition: 0 } }
+    # ps 17 is an effect: per device, never `wled/all` (D11). The tube strip
+    # (halls + stairs) holds its dim static ps 22; the server-room strip is
+    # left on its steady look.
     - on: { directive: cue }
       match: { target: lights_rave }
-      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 17 } }
+      mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 17 } }
+    - on: { directive: cue }
+      match: { target: lights_rave }
+      mqtt: { topic: "wled/kitchen/api", payload: { "on": true, ps: 17 } }
+    - on: { directive: cue }
+      match: { target: lights_rave }
+      mqtt: { topic: "wled/backyard/api", payload: { "on": true, ps: 17 } }
+    - on: { directive: cue }
+      match: { target: lights_rave }
+      mqtt: { topic: "wled/registry/api", payload: { "on": true, ps: 17 } }
+    - on: { directive: cue }
+      match: { target: lights_rave }
+      mqtt: { topic: "wled/tube/api", payload: { "on": true, ps: 22 } }
 
     - on: { directive: cue }
       match: { target: lights_purgatory }

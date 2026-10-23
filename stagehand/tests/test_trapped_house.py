@@ -427,11 +427,43 @@ def test_the_server_rooms_bulb_is_lights_jsons_and_its_strip_never_strobes():
     assert "wled/all/api" not in topics
     server = [p for t, p in alarm if t == "wled/server/api"]
     assert server == [{"on": True, "bri": 255, "seg": [{"col": [[255, 0, 0]], "fx": 0}]}]
-    for room in ("living", "kitchen", "backyard", "registry", "tube"):
+    for room in ("living", "kitchen", "backyard", "registry"):
         assert (f"wled/{room}/api", {"on": True, "ps": 12}) in alarm, room
+    assert [p for t, p in alarm if t == "wled/tube/api"] == server
     # lights_server_open keeps the strip's ps 11 and the box's alarm off.
     opened = _mqtt(evaluate_cues(_show().cues, _directive("cue", "lights_server_open")))
     assert ("wled/server/api", {"on": True, "ps": 11}) in opened and ("show/serverroom/alarm", {"state": "off"}) in opened
+
+
+#: WLED presets that are effects going dark between frames (strobe, lightning,
+#: pulse, audio-reactive, embers): never on `wled/all` or a safety strip.
+WLED_EFFECT_PRESETS = {7, 10, 12, 14, 15, 17}
+#: The presets still sent to `wled/all`, built solid on the tube + server controllers.
+WLED_ALL_SOLID = {1, 3, 6, 16, 18, 19, 20}
+
+
+def test_no_safety_strip_ever_gets_a_strobe():
+    """Wave 20 review (D11): every cue, not just the alarm. `wled/all` carries
+    only the presets the YAML says are built solid there, and neither the
+    tube nor the server strip ever gets an effect preset."""
+    for rule in _show().cues:
+        if rule.mqtt is None or not rule.mqtt.topic.startswith("wled/") or not isinstance(rule.mqtt.payload, dict):
+            continue
+        topic, ps = rule.mqtt.topic, rule.mqtt.payload.get("ps")
+        if topic == "wled/all/api":
+            assert ps in WLED_ALL_SOLID, f"cues[{rule.id}] sends wled/all ps {ps}"
+        if topic in ("wled/tube/api", "wled/server/api"):
+            assert ps not in WLED_EFFECT_PRESETS, f"cues[{rule.id}] strobes {topic} (ps {ps})"
+            for seg in rule.mqtt.payload.get("seg", []):
+                assert seg.get("fx", 0) == 0, f"cues[{rule.id}] runs an effect on {topic}"
+    for cue, ps in (("lights_glitch", 7), ("lights_y2k", 10), ("lights_dance", 14), ("lights_final_reveal", 15), ("lights_rave", 17)):
+        out = _mqtt(evaluate_cues(_show().cues, _directive("cue", cue)))
+        for room in ("living", "kitchen", "backyard", "registry"):
+            assert (f"wled/{room}/api", {"on": True, "ps": ps}) in out, (cue, room)
+        assert out[-1] == ("wled/tube/api", {"on": True, "ps": 22}), cue
+        assert not [t for t, _ in out if t == "wled/server/api"], cue
+    text = HOUSE.read_text(encoding="utf-8")
+    assert "Only ps 1, 3, 6, 16, 18, 19 and 20 still go to `wled/all`" in text
 
 
 def test_the_lights_section_is_a_commented_example_until_z2m_runs():
@@ -613,7 +645,7 @@ def test_the_patch_combos_agree_across_yaml_kernel_and_codex():
     assert _codex_combo(codex, "B") == combo_b
 
 
-@pytest.mark.parametrize("cue", ["lights_screensaver", "lights_dance"])
+@pytest.mark.parametrize("cue", ["lights_screensaver", "lights_song"])
 def test_scene_cues_hit_both_zigbee_and_wled(cue):
     cues = evaluate_cues(_show().cues, _directive("cue", cue))
     topics = {c.topic for c in cues if isinstance(c, MqttCue)}
@@ -660,7 +692,7 @@ def test_server_open_catches_up_the_y2k_house_look_underneath():
     assert args == ["lights_y2k", "lights_server_open"]
     topics = [c.topic for a in args for c in evaluate_cues(cfg.cues, _directive("cue", a)) if hasattr(c, "topic")]
     assert topics.index("zigbee2mqtt/house/set") < topics.index("wled/server/api"), topics
-    assert "wled/all/api" in topics, topics
+    assert "wled/living/api" in topics and "wled/all/api" not in topics, topics
     # Wave 20 (D10): the RGB bulb is lights.json's; no group command reaches it.
     assert "zigbee2mqtt/server_room/set" not in topics, topics
     # The story says so too: the latch's end restores server_open as y2k + server_open.
