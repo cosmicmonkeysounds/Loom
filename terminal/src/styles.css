@@ -1490,3 +1490,8 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   .idle-touch-me, .idle-marquee span, .idle-ad-kicker, .idle-banner-kicker, .idle-storm-banner, .scan-box, .scan-box::before, .scan-box-title.blink, .idle-ad[data-gag] .idle-ad-title, .idle-ripple { animation: none !important; }
   .idle-marquee span { padding-left: 0; white-space: normal; }
 }
+
+/* ⚙'s door sensor section (wave 20, `heart/DoorSetup.tsx`). */
+.setup .door-setup { border: 1px solid var(--phosphor-faint); padding: 0.4em 0.7em 0.6em; margin: 0.6em 0; display: grid; gap: 0.4em; }
+.setup .door-setup legend { padding: 0 0.3em; color: var(--phosphor-dim); }
+.setup .door-setup-row { display: flex; flex-wrap: wrap; gap: 0.5em; }
