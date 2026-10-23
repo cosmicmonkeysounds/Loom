@@ -2,7 +2,7 @@
 title: Running the server room — the keypad door, the King and Trabolta's heart
 section: Live Shows
 order: 38
-keywords: server room, marked, keypad, keypad lock, door code, code, digit, digits, digit notes, notes, clue, clues, silver, cold door, The Cold Door, the King, king, chess, chess terminal, door terminal, Server Door, health bar, shared health, hit, kneel, kneels, fallen, restore, restore the king, simulation, chess won, chess lost, chess drawn, king hit, king fallen, beat the machine, door, door contact, cutscene, The Heart, heart, server-room terminal, terminal, file panel, give him a file, talk down, talked down, stand down, Fallout, Master, patch bay, alarm, wrong combination, reset, latch, crew, crew window, fallback, honour, OP-12, truth.txt, verdict, banished, banishment, hand jive, Trapped in the Internet, runbook, cold lock
+keywords: server room, marked, keypad, keypad lock, door code, code, digit, digits, digit notes, notes, clue, clues, silver, cold door, The Cold Door, the King, king, chess, chess terminal, door terminal, Server Door, health bar, shared health, hit, kneel, kneels, fallen, restore, restore the king, simulation, chess won, chess lost, chess drawn, king hit, king fallen, beat the machine, door, door sensor, sensor fault, override, trust the door sensor, close the door, cutscene, The Heart, heart, heart stage, layers, suspicion, thrown out, barred, proof, not yet, speak freely, heart to heart, autoend, server-room terminal, terminal, file panel, give him a file, talk down, talked down, stand down, Fallout, Master, light, bulb, lights.json, patch bay, alarm, wrong combination, reset, latch, crew, crew window, fallback, honour, OP-12, truth.txt, verdict, banished, banishment, hand jive, Trapped in the Internet, runbook, cold lock
 ---
 
 In *Trapped in the Internet* Trabolta's heart — a video patch bay — sits
@@ -10,8 +10,10 @@ behind the **server-room door**, and that door has a real **keypad
 lock**. Whoever opens it with the code gets in, whoever they are; nobody
 is "breaking in". This page is the director's side of the room: how a
 program gets the code, the King and his chess terminal, what happens
-when the door opens, the terminal inside where a program talks to
-Trabolta, the patch-bay alarm, and the buttons that fix each of them.
+when the door opens and he asks for it shut, the terminal inside where a
+program talks him through four layers of questions (and maybe into
+stopping), the light in his heart, the patch-bay alarm, and the buttons
+that fix each of them.
 How the rules are written is in [live verbs](33-live-verbs.md) (*A
 button as a fallback for a machine*); the map side is in [the house
 map](39-house-map.md).
@@ -189,65 +191,171 @@ reminds `# hosts` to press ♟ on the winner's card.
 
 ## The door opens: The Heart
 
-A door contact (two wire loops that touch when the door opens) tells
-the story `server_door_opened`. It can't say who opened it, how they got
-the code, or whether it was an entry or an exit. **The door never raises
-an alarm.**
+A **door sensor** watches the door: a light shines across the frame
+onto a sensor, and the door is shut while the beam lands. The sensor
+is plugged into the laptop behind the server-room terminal, and that
+terminal tells the story **`door_sensor_opened`** or
+**`door_sensor_closed`** on every change (Run → **Terminals** shows a
+🚪 badge for it: *shut*, *open*, or a red *fault*). It can't say who
+opened the door, how they got the code, or whether it was an entry or
+an exit. **The door never raises an alarm.**
+
+The story keeps the door's state itself (`Night.server_door`, *open* or
+*closed*) and the heart's stage (`Night.heart_stage`):
+
+| Stage | Means |
+|---|---|
+| *sealed* | The Heart has not played yet (or 🔄 reset it). |
+| *door* | The Heart played; he wants the door shut. |
+| *scan* | The door is shut; he waits for a pass at the terminal. |
+| *talk* | A program is at his heart, answering his questions. |
+| *done* | He stood down, or the night ended. |
 
 - **Before Trabolta is awake** (🤖 Clippy introduces him) the door is
   just a door: `# hosts` hears of it and nothing happens.
 - **Once he is awake**, the first opening plays **The Heart**, however
   the door was unlocked (the notes, the King, the majority, a crew key):
-  The Server Room appears on every phone, the server-room lights come up
-  (while the patch-bay alarm's look is up they wait, and the alarm's
-  latch puts them up when it clears; after 💡 they come up at once),
-  `# hosts` reads *"🚪 The server-room door opened. The Heart plays on
-  the server-room terminal."*, and Trabolta speaks to the room —
-  candidly, for once. Before the Y2K clock he adds that the bay is cold
-  and answers nobody yet.
-- **Another opening within two minutes of the last** (the group filing
-  in, someone stepping out) does nothing but restart the two minutes. A
-  later one gets a short *"Back again"* line.
+  The Server Room appears on every phone with a **quiet notice** (no
+  chime, no banner: nobody should come running at the moment he asks
+  for the door shut), the room's bulb wakes red and settles cold, the
+  terminal tears open on his face, and Trabolta says it plainly: **close
+  the door.** `# hosts` reads *"🚪 The server-room door opened. The
+  Heart plays: he wants the door shut."*
+- **Left open**, he asks again 15 seconds after it opened and every 20
+  seconds after that, with an amber swell of the light each time. At the
+  third ask `# hosts` hears that the door has been open a minute.
+- **Shut**, he thanks them (*Heart Sealed*), the light goes still and
+  cold, and he asks for a pass at the camera under the screen. Before
+  the Y2K clock he also says the bay is cold: nothing in the room can
+  end anything yet. `# hosts` reads *"🚪 Door shut. Trabolta waits for a
+  pass at the server-room terminal."*
+- **Opened again during his heart** (stage *door*, *scan* or *talk*),
+  the talk stops until it is shut: the light swells amber while it
+  stands open, his questions on the terminal grey out, and he says
+  *"The door. Someone has opened the door."* — at most once every 20
+  seconds, however often it bounces, and *"Good."* when it shuts after
+  that. During a talk `# hosts` hears it too (at most once every 20
+  seconds).
 - **Inside a 🔧 crew window** (below) an opening only tells `# hosts`.
 - **From 📄 truth.txt** (below) an opening only tells `# hosts`.
 
-If the door opened and nothing happened (a loop came loose: a broken
-contact is silent), fire **🚪 Server room door opened** from the cue
-sheet. It is the same signal. The Antivirus in the room has the same
-button on their booth (on any program's card).
+### When the sensor is wrong: the 🚪 buttons
+
+Three cues on the sheet (act E) and two buttons on the room's Antivirus
+booths stand in for the sensor:
+
+- **🚪 Server room door opened (sensor fallback)** and **🚪 Server room
+  door closed (sensor fallback)** tell the story the door opened or
+  shut. The room's Antivirus have the same pair on their booth.
+- Pressing either one **puts the door on the buttons** (`Night.door_override`):
+  from then on the story ignores the sensor, so a sensor that is wrong
+  but still talking can never undo you. `# hosts` says so the first
+  time, and Run → Terminals shows an amber *override*.
+- **🚪 Trust the door sensor again** (shown only while the door is on
+  the buttons) hands it back. The terminal checks the story against the
+  real door on its next poll and puts it right.
+
+While the sensor reports a **fault** (red on Run → Terminals: no light
+reaching it, the cable out, a laptop asleep) the terminal tells the
+story nothing at all: use the 🚪 buttons until it is fixed, then trust
+it again.
 
 ## The server-room terminal: his heart
 
-A wall terminal hangs inside the room, provisioned with
-`room=The Server Room` (the kiosk runbook has the link). It sleeps on
-the idle show until the room is open to everyone — The Heart or the
-alarm opens it; the majority's private reveal does not — then wakes,
-speaks Trabolta's lines in that room aloud, and works like any terminal:
-a program holds up their pass and talks to him on their own thread.
+A wall terminal hangs inside the room: a monitor and a mouse on the
+laptop with the door sensor, provisioned with `spot=server-room` (the
+kiosk runbook has the link). It sleeps on the idle show until the room
+is open to everyone — The Heart or the alarm opens it; the majority's
+private reveal does not — then wakes and speaks Trabolta's room lines
+aloud. Its scenes follow the story: the face assembling at The Heart,
+the lock's clunk when the door shuts, a dialog box for each layer, a
+blue screen when he throws someone out.
 
-While they do, the story knows they are **at his heart**
-(`program.at_the_heart`; the terminal tells it when the visit starts and
-ends, and any ending clears it). There is one server-room terminal, so
-the next pass scanned there takes over: whoever was at his heart before
-is not any more, even if their visit's close was lost to the Wi-Fi (the
-terminal also re-sends a close that didn't land, before its next line
-and on its next boot).
+A program holds up their pass to the camera. While their pass is open
+the story knows they are **at his heart** (`program.at_the_heart`). There
+is one server-room terminal, so the next pass scanned there takes over:
+whoever was at his heart before is not any more, even if their visit's
+close was lost to the Wi-Fi.
 
-**Getting in doesn't stop him.** Like the Master in *Fallout*, reaching
-his heart lets you do nothing to him by itself. What changes is
-Trabolta: at his heart, whenever he is awake, he drops the act. He
-admits the patch bay is his heart, admits he doesn't know the
-combinations or the code, and says what he wants and why.
+A scan **with the door still open** gets *"Close the door first."*; the
+talk opens by itself once it is shut, if they are still there.
 
-**A marked program at his heart.** A program the Antivirus marked for
-the Internet can still use the terminal. At his heart Trabolta sees the
-mark (`marked` is in his persona's `them:`), says so once, and asks why
-they were marked: he doesn't know, and he is wary (bait sent by the
-house, or a fellow prisoner?). An honest answer raises his regard; a
-dodge or the Antivirus' story lowers it. He stays candid, still takes
-their files, and talking him down applies to them as to anyone; he
-never refuses them, threatens them or sends them away. Away from his
-heart no extra block is added for the mark.
+### The talk: four layers
+
+Like the Master in *Fallout*, reaching his heart does nothing to him by
+itself. What it opens is a **conversation the story runs**: his
+questions appear on the terminal's screen (and in the program's own
+Trabolta thread on their phone) as a list to click, each answer moving
+them on or not. A pick from the phone counts only while they are at the
+terminal (*"Not out there. Come to my heart and say it to my face."*).
+
+| Layer | He asks | What moves him |
+|---|---|---|
+| 1 · **Who are you** | *What are you?* | honesty (*a person*); flattery costs |
+| 2 · **What I am** | *Ask, then.* | asking what he is, why he needs the theory, and (once her name is out, or they hold a proof) about her; then *Then listen to me* |
+| 3 · **The argument** | *Say it.* | the tagged options (below), never a bluff |
+| 4 · **The ask** | *Say the rest.* | the truth: *she was never going to answer* |
+
+**The tagged options** in layer 3 show only when the program has earned
+them, and never quote anything secret:
+
+- **⟦PROOF⟧** — they hold *What Sandy Says* or *The Sandy File*, found
+  themselves (a copy Trabolta handed them never counts).
+- **⟦TRUSTED⟧** — 20 or more on his Trust Chart.
+- **⟦HONEST⟧** — three or more truths accepted.
+- **⟦OVERSHARE⟧** — the house heard about her tonight (scenario 1).
+- **⟦LIVEJOURNAL⟧** — they read his LiveJournal.
+- **⟦MARKED⟧** (layer 1) — the Antivirus marked them. A marked program
+  starts a little suspect, may still talk, and is never turned away for
+  the mark.
+
+The ask (*Then let me finish*) opens with **a proof and one more point**
+(or both proofs). Every option is shown once.
+
+**Suspicion.** Flattery, threats, bluffs (*she loves you*, *your theory
+is wrong*, *make her love you*), *come out with us* and above all *tell
+me the combinations* make him suspicious; honesty and proof calm him.
+At 50 he warns them once (the light throbs red, `# hosts` reads *"⚠ X is
+losing Trabolta at his heart"*); at 80 he **throws them out** for the
+night: a blue screen, the pilot ends, `# hosts` reads *"⛔ Trabolta threw
+X out of his heart … Barred for the night; 🔄 forgives."* A barred
+program who scans again is turned away. Being thrown out is **not** a
+mark: he points them at the cables instead. Progress and suspicion are
+per program and kept between visits.
+
+**⟦SPEAK FREELY⟧** is on every layer: the questions step aside and the
+program types to him on the terminal's keyboard — a true heart to heart,
+up to four sentences at a time, with the night they have had in front
+of him. He decides nothing there and does nothing. **⟦BACK⟧** returns them
+to the same layer, suspicion untouched. After *not yet*, or after they
+choose to go, they may keep typing until the terminal lets them go.
+
+**I need to go** on any layer ends the visit (the terminal frees itself
+for the next pass); they keep their place.
+
+### Convincing him
+
+- **Before the Y2K clock** a convinced program hears *"Not yet."*: the
+  bay is cold, nothing ends before then. He remembers them; `# hosts`
+  reads *"🕊 X convinced Trabolta before the Y2K hour."* When 🕚 sets the
+  clock he calls them on their phone (*"The clock is running … Come back
+  down and tell me again."*). Back at the terminal they only have to
+  say it is **still true** (or change their mind, which costs them).
+- **In the Y2K hour** (before 📄) he stops: *"I can never die. But I can
+  stop."*, the patch bay on the terminal goes dark row by row, and the
+  light fades to warm white. With **🕊 Heart: end the night on his own**
+  on (the default) the night ends **25 seconds later** the talked-down
+  way; `# hosts` reads *"🕊 Trabolta stands down for X. The night ends in
+  25 s (🕊 to end it now)."* With it off, `# hosts` gets *"!🕊 Trabolta
+  offers to stand down for X. Press 🕊 to end it."* and nothing ends until
+  you press 🕊 (until then **🔄** can reopen his heart). The toggle tells
+  `# hosts` which way it now is.
+
+Trabolta's own voice (the model) never decides any of this and has no
+power to: between the story's questions it answers what they type, in a
+line or two, and points them back at the screen while a choice is
+waiting. One terminal, one heart at a time: the next pass scanned takes
+over, and to a newcomer he says *"Another one."*
 
 **📎 GIVE HIM A FILE.** While a pass is open on that terminal, the
 program can hand Trabolta codex entries from it: their own entries,
@@ -259,25 +367,26 @@ FILE: HE WON'T TAKE IT*, and lore about someone else *ABOUT X: HE
 WON'T TAKE IT*. With the panel open the line drops after two minutes
 untouched instead of thirty seconds.
 
-**Talking him down** is the Y2K hour's only (`Night.step >= 14`, before
-📄). A program who **shows him that what he wants is impossible** can
-talk him down. He then fires his `stand_down` power — but it only
-**offers**: the story checks the evidence itself (the program must hold
-*What Sandy Says* or *The Sandy File*, and not because Trabolta shared
-it with them: a proof he hands over never counts), and on success
-`# hosts` gets an alert, *"🕊 Trabolta offers to stand down for X.
-Press 🕊 to end it."* Every refusal is words only and spends nothing;
-before the Y2K hour he says the function isn't available yet. He offers
-once a night, and after that only says he has offered (🔄 does not
-clear an offer; 🕊 works whenever you decide).
+**🕊 Trabolta stands down (talked down)** stays yours to press at any
+time from the Y2K hour: it ends the night the Combo A way, without a
+cable: the blackout, the dance, and a recount and awards that say who
+talked him down. Pressed with nobody on record it still works — the
+director's call — and `# hosts` says so. From 📄 truth.txt it is too
+late: 🕊 only tells `# hosts`, and nothing at his heart moves any more
+(*"It is over. Go upstairs."*).
 
-**🕊 Trabolta stands down (talked down)** is yours to press. It ends the
-night the Combo A way, without a cable: the blackout, the dance, and a
-recount and awards that say who talked him down. Pressed with no offer
-on record it still works — the director's call — and `# hosts` says so.
-From 📄 truth.txt it is too late: 🕊 only tells `# hosts`, and Trabolta
-refuses to stand down (*"The truth has been read. It is too late for
-that now."*).
+### The light in his heart
+
+The server room's colour bulb is the house's own `lights.json` (a
+project file beside the maps; [the house map](39-house-map.md) places it
+and tests each look). The story cues one look per moment of the heart:
+red waking, an amber swell while the door stands open, cold while he
+waits, blue while he listens, violet while they argue, a white flash for
+a proof, red throbs for a warning, warm amber for *not yet*, a slow fade
+to warm white when he stops. The bulb never goes dark (it never drops
+below its safety floor) and never flickers fast. The patch-bay alarm
+takes it over with a slow red swell; when the latch clears the room's
+look comes back (the amber swell if the door is still open).
 
 ## The patch bay and its alarm
 
@@ -292,6 +401,8 @@ look the alarm replaced comes back (the Y2K look, the server-room look,
 the final reveal's), unless 💡 or an ending has changed the lights since.
 A majority or The Heart while the alarm look is up keeps the siren and
 the alarm look; their server-room look goes up when the latch clears.
+The room's own bulb swells red with the alarm and gets its heart look
+back then too.
 
 When the alarm's look comes down it also cancels a cut room's 90-second
 restore still pending (the latch puts the whole house back on), so a
@@ -299,10 +410,15 @@ room Trabolta cut never comes back fully lit over the Y2K look.
 
 **🔄 Server room: reset the patch-bay alarm** (after a rehearsal, or a
 wrong patch the crew forgave) clears the wrong-combination count (the
-bay forgives one again), the alarm latch, the crew window and The Heart
-(the next opening once Trabolta is awake plays it again). The lights
-stay as they are — **💡 Restore the house lights** brings them back. It
-never touches the keypad or the King.
+bay forgives one again), the alarm latch, the crew window and The Heart:
+the heart is *sealed* again (the next opening once Trabolta is awake
+plays it again), anyone he threw out may come back, and everyone's
+suspicion starts again (their layer is kept). A heart that is *done*
+stays done once the night has ended or he was talked down; a stand-down
+you never confirmed (autoend off) reopens. The house lights stay as they
+are — **💡 Restore the house lights** brings them back — and the room's
+bulb goes back to idle. It never touches the keypad or the King. It
+never changes the door's state: the door is open or shut for real.
 
 ## The room's own buttons
 
@@ -315,7 +431,8 @@ in), instead of radioing you:
 | **🔌 Patch: Combo A is in** | the Combo A cue | from 🕚 until 📄 |
 | **💥 Patch: Combo B is in** | the Combo B cue | from 🕚 until 📄 |
 | **❌ Patch: wrong combination** | a wrong combination | from 🕚 until 📄 |
-| **🚪 The server-room door opened** | `server_door_opened` | once Trabolta is awake, before 📄, never inside a crew window |
+| **🚪 The server-room door opened** | the door opened (the door goes on the 🚪 buttons) | once Trabolta is awake, before 📄, never inside a crew window |
+| **🚪 The server-room door is shut** | the door shut (the door goes on the 🚪 buttons) | while the story thinks it is open, before an ending |
 | **🔧 Crew going through the door (2 min)** | the crew window | all night |
 
 They are `by:` the four Antivirus: only Norton's, McAfee's, Password
@@ -349,13 +466,14 @@ every screen.
 ## When the keypad itself fails
 
 A dead battery or a jam: the house manager has the override key and
-spare batteries. Open it with the key, prop the door, and fire **🚪** if
-The Heart has not played. A wrong code typed at the keypad is not a
+spare batteries. Open it with the key. A propped door keeps his talk
+frozen (he wants it shut), so shut it behind the programs; if the sensor
+missed it, use the 🚪 buttons. A wrong code typed at the keypad is not a
 fault: someone is guessing.
 
 ## Crew and the door
 
-The contact can't tell crew from guests: **once Trabolta is awake the
+The sensor can't tell crew from guests: **once Trabolta is awake the
 first opening of the night plays The Heart**, to whoever is there, and
 opens The Server Room on every phone. So:
 
@@ -365,11 +483,12 @@ opens The Server Room on every phone. So:
   tells `# hosts`, and The Heart is kept for the programs. The Antivirus
   in the room has the same button.
 - The **patch-bay watch** goes in **before 🕚** and shuts the door, and
-  stays in until guests have come in.
+  stays in until guests have come in. Close the door behind every
+  program: his talk waits for it.
 - A crew member who must come back in after The Heart has played gets
   the **house manager** (the override key, or the code at the keypad —
-  never on the radio); that opening is just *back again*, or nothing
-  within two minutes of the last.
+  never on the radio); during his heart that opening stops the talk until
+  the door is shut again.
 - If a crew opening played The Heart anyway, **🔄** makes the guests'
   first opening play it again — but the room is already on every phone.
 
@@ -380,7 +499,10 @@ opens The Server Room on every phone. So:
   it with the batteries out. The sign is taped beside it.
 - The four silver notes are in their hiding places, never in the server
   room.
-- The door contact reads open and shut in the stagehand log.
+- The door sensor reads *open* and *shut* within a second on Run →
+  Terminals (🚪, no fault, no *override*), and the bulb follows. Then
+  **🔄** so the heart is sealed again, and **🚪 Trust the door sensor**
+  if anyone pressed a 🚪 button.
 - The server-room terminal is green on the Terminals card and asleep.
   The Server Door terminal is green and awake, showing the King's bar.
 - **The King is at 15/15.** A rehearsal's hits stay on the bar until a
@@ -388,8 +510,8 @@ opens The Server Room on every phone. So:
 - On the bench (the K-27 check): a hit on the tent tablet takes one
   point and a second one this visit is refused; a mate at the door
   terminal gives the code; four digit notes give the code; the door
-  plays The Heart once (after 🤖), stays quiet for two minutes, then
-  says *back again*; 🔧 keeps an opening quiet; two wrong combinations
+  plays The Heart once (after 🤖) and asks for the door shut; shut, he
+  asks for a pass; 🔧 keeps an opening quiet; two wrong combinations
   alarm; **🔄 reset** clears it.
 - Every host and Antivirus knows the honour rule and where ♟ is on a
   guest's card (the booth's ⚡ Actions on that guest).
