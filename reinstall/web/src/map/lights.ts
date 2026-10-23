@@ -848,6 +848,11 @@ export function localPair(prev: LightPairInfo | null, next: LightPairInfo | null
   return { ...next, at: receivedAt, until: receivedAt + Math.max(0, next.until - next.at) };
 }
 
+/** The confirm before opening a pairing window: any reset Zigbee device nearby joins the house network. */
+export function pairConfirmText(seconds: number): string {
+  return `Open pairing for ${seconds >= 120 ? `${Math.round(seconds / 60)} minutes` : `${seconds} s`}? Any Zigbee device reset nearby joins the house network. Only pair when you are adding a bulb, never while the doors are open.`;
+}
+
 /** Whole seconds left on a pairing (0 when closed or past). */
 export function pairSecondsLeft(pair: LightPairInfo | null, now: number): number {
   if (pair === null || pair.seconds === 0) return 0;

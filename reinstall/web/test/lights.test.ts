@@ -40,6 +40,7 @@ import {
   moveLight,
   moveLightToRoom,
   normalizeLights,
+  pairConfirmText,
   pairSecondsLeft,
   patchLight,
   patchLookStep,
@@ -548,6 +549,11 @@ describe("devices, swatches, pairing", () => {
     // A stop is a new entry; closed is null.
     expect(pairSecondsLeft(localPair(seen, { ...server, seq: 5, seconds: 0, until: server.at }, 1_040_000), 1_040_000)).toBe(0);
     expect(localPair(seen, null, 1_040_000)).toBeNull();
+  });
+
+  it("asks before opening a pairing window", () => {
+    expect(pairConfirmText(120)).toMatch(/^Open pairing for 2 minutes\?.*doors are open/);
+    expect(pairConfirmText(30)).toMatch(/30 s/);
   });
 
   it("counts a pairing window down off its until", () => {

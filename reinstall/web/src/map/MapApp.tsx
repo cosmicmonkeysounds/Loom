@@ -47,7 +47,7 @@ import { fetchAudio, routerOf, saveAudio, saveAudioToProject, testAudio, testRef
 import { runAudioPoll } from "./audio-poll.ts";
 import { AudioPanel } from "./AudioPanel.tsx";
 import "./audio.css";
-import { duplicateLight, followHouseLights, lightById, localPair, removeLightConfirm, stashedLightsView, lightPlan, lightProblemList, lightSavePlan, lightsDownload, lightsDropped, moveLight, normalizeLights, placeLight, rebaseLightsHistory, removeLight, sameLights, saveEverythingPlan, setLightDevice, stateTint, withLightsText } from "./lights.ts";
+import { duplicateLight, followHouseLights, lightById, localPair, pairConfirmText, removeLightConfirm, stashedLightsView, lightPlan, lightProblemList, lightSavePlan, lightsDownload, lightsDropped, moveLight, normalizeLights, placeLight, rebaseLightsHistory, removeLight, sameLights, saveEverythingPlan, setLightDevice, stateTint, withLightsText } from "./lights.ts";
 import { fetchLights, lightRefusal, lightTestSentText, pairLights, saveLights, saveLightsToProject, testLight, type LightTestTarget, type LightsView, type Z2mDevice } from "./lights-api.ts";
 import { runLightsPoll } from "./lights-poll.ts";
 import { LightsPanel } from "./LightsPanel.tsx";
@@ -696,6 +696,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   /** 📡 Pair new device / Stop pairing. */
   const pair = useCallback(
     async (seconds: number) => {
+      if (seconds > 0 && !window.confirm(pairConfirmText(seconds))) return;
       if (!(await unlock())) return;
       const r = await pairLights(base, config.token, seconds);
       if (r.ok) {
