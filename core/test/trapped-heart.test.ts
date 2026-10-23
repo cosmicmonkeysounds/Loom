@@ -509,19 +509,25 @@ describe("The Heart — the talk (wave 20)", () => {
     expect(v(sim, "g1.heart_out")).toBe(true);
     expect(v(sim, "g1.heart_menu")).toBe(false);
     expect(v(sim, "g1.heart_chat")).toBe(false);
-    expect(v(sim, "g1.marked")).toBe(false); // D12: no mark
+    expect(v(sim, "g1.marked")).toBe(true); // w20b (Q2, D12 reversed): thrown out = marked
+    expect(v(sim, "g1.marked_for")).toBe("thrown out of Trabolta's heart");
+    expect(beats(ej)).toContain("Heart Mark");
+    expect(lines(ej)).toContain("And the Antivirus will know your name before you reach the stairs.");
     expect(v(sim, "Night.heart_stage")).toBe("scan");
     expect(heartCues(ej)).toEqual(["heart_eject"]);
     expect(roomCues(ej)).toEqual(["room_heart_eject"]);
     expect(v(sim, "Night.heart_look")).toBe("heart_idle"); // the stutter never becomes the settled look
     expect(heartCues([...open(sim), ...shut(sim)]).filter((c) => c === "heart_eject")).toEqual([]);
     expect(hosts(ej)[0]).toContain("⛔ Trabolta threw Calculator out of his heart");
+    expect(hosts(ej)).toContain('"🚨 Calculator is marked for reinstallation: Trabolta threw them out of his heart."');
     expect(heartMenu(sim, "g1")).toBeNull();
     // Barred: a re-scan is turned away.
     unscan(sim, "g1");
     const again = scan(sim, "g1");
     expect(beats(again)).toContain("Heart Barred");
     expect(lines(again)).toEqual(["No. Not you. Not again tonight. Go."]);
+    // Already marked: never a second mark, and # hosts says why.
+    expect(hosts(again)).toEqual(['"⛔ Calculator is already marked for reinstallation: thrown out of his heart, no second mark."']);
     expect(heartMenu(sim, "g1")).toBeNull();
     // 🔄 forgives: suspicion back to 0, the layer kept.
     unscan(sim, "g1");
@@ -535,6 +541,40 @@ describe("The Heart — the talk (wave 20)", () => {
     shut(sim);
     scan(sim, "g1");
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Two");
+  });
+
+  it("thrown out marks once (Q2): an already-marked program is not marked again, # hosts says why; a lifted mark comes back on a barred scan", { timeout: SLOW }, () => {
+    const eject = (sim: Sim, id: string) => {
+      pick(sim, id, "Someone who admires your work");
+      for (let i = 0; i < 4 && v(sim, `${id}.heart_out`) !== true; i++) {
+        const e = pick(sim, id, "I could pull your cables");
+        if (v(sim, `${id}.heart_out`) === true) return e;
+      }
+      throw new Error("never thrown out");
+    };
+    // Marked before the talk: no second mark, and the reason stays theirs.
+    const sim = awake();
+    fire(sim, "mark_for_reinstallation", "g1", { reason: "refused the truth" });
+    atLayerOne(sim);
+    const ej = eject(sim, "g1");
+    expect(v(sim, "g1.marked_for")).toBe("refused the truth");
+    expect(hosts(ej)).toContain('"⛔ Calculator is already marked for reinstallation: thrown out of his heart, no second mark."');
+    expect(hosts(ej).some((h) => h.includes("is marked for reinstallation: Trabolta threw"))).toBe(false);
+    expect(lines(ej)).not.toContain("And the Antivirus will know your name before you reach the stairs.");
+    // Lifted (🩹) while barred: the next barred scan marks them again.
+    fire(sim, "unmark_for_reinstallation", "g1");
+    expect(v(sim, "g1.marked")).toBe(false);
+    unscan(sim, "g1");
+    const again = scan(sim, "g1");
+    expect(beats(again)).toContain("Heart Barred");
+    expect(v(sim, "g1.marked")).toBe(true);
+    expect(v(sim, "g1.marked_for")).toBe("thrown out of Trabolta's heart");
+    // Their phone hears the story's own soft heads-up (subject-bound).
+    const ej2 = (() => { const s2 = atLayerOne(awake(), "g2"); return { s2, e: eject(s2, "g2") }; })();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const heads = ej2.e.filter((e: any) => e.type === "respond" && String(e.text).startsWith("🚨 You are marked for reinstallation (thrown out of Trabolta's heart)"));
+    expect(heads).toHaveLength(1);
+    expect(v(ej2.s2, "g2.marked")).toBe(true);
   });
 
   it("suspicion never drops under 0, and the goods take it down", { timeout: SLOW }, () => {

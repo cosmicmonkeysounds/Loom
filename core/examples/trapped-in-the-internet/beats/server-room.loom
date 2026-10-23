@@ -692,8 +692,11 @@ broadcast "⚠ {program.name} is losing Trabolta at his heart (suspicion {progra
 // DRAFT w20
 Trabolta (quietly): Careful, {program.name}. One more like that and I close this line.
 
-// Suspicion reached 80: thrown out for the night (🔄 forgives). Not a mark
-// (D12): he points them at the cables instead.
+// Suspicion reached 80: thrown out for the night (🔄 forgives), and marked
+// for reinstallation the story's one way (main.loom
+// `mark_for_reinstallation`; the user's Q2, D12 reversed). A program
+// already marked, or already in the Internet, is never marked twice:
+// `# hosts` says so.
 == Heart Eject
   setting: The Server Room
   cast: Trabolta
@@ -712,6 +715,22 @@ broadcast "⛔ Trabolta threw {program.name} out of his heart (suspicion {progra
 Trabolta (screaming): Get out of my heart.
 Trabolta: You want me gone? The cables are behind you. You do not know which ones. Neither do I.
 Trabolta: This line is closed to you. Tonight, and for as long as I have a tonight.
+-> Heart Mark
+
+// Thrown out (Heart Eject) or turned away again (Heart Barred): the mark,
+// once. A mark lifted since (🩹) comes back on the next barred scan.
+== Heart Mark
+  setting: The Server Room
+  cast: Trabolta
+if program.corrupted == true:
+  broadcast "⛔ {program.name} is already in the Internet: thrown out of his heart, no mark." to channel(hosts)
+else if program.marked == true:
+  broadcast "⛔ {program.name} is already marked for reinstallation: thrown out of his heart, no second mark." to channel(hosts)
+else:
+  broadcast "🚨 {program.name} is marked for reinstallation: Trabolta threw them out of his heart." to channel(hosts)
+  fire mark_for_reinstallation for program with reason: "thrown out of Trabolta's heart"
+  // DRAFT w20b
+  Trabolta: And the Antivirus will know your name before you reach the stairs.
 
 // A barred program scans in again.
 == Heart Barred
@@ -727,6 +746,7 @@ if Night.alarm_on != true:
 cue room_heart_eject
 // DRAFT w20
 Trabolta: No. Not you. Not again tonight. Go.
+-> Heart Mark
 
 // They chose to go (the scene frees the terminal for the next pass). They
 // may still talk to him, no menu, until the terminal lets them go (D24).
