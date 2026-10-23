@@ -359,6 +359,24 @@ describe("the looks builder", () => {
     expect(once.looks["heart_door_open"]!.loop).toBeUndefined();
   });
 
+  it("keeps a safe period after a step moves past it or the first step is dropped", () => {
+    const { house, l } = base();
+    const a = addLook(l, "heart_door_open", ["heart"]);
+    if ("error" in a) throw new Error(a.error);
+    let x = patchLookStep(a.lights, "heart_door_open", 0, { set: { color: "#FF6A00", transition: 0.8 } });
+    x = addLookStep(x, "heart_door_open");
+    for (const mode of ["loop", "repeat", "restore"] as const) {
+      const m = setLookMode(x, "heart_door_open", mode, 3);
+      // Move the last step past the period the mode set.
+      const moved = patchLookStep(m, "heart_door_open", 1, { at: 2400 });
+      expect(validateLights(moved, house).problems).toEqual([]);
+      if (mode !== "restore") expect(moved.looks["heart_door_open"]!.period!).toBeGreaterThan(2400);
+      // Drop the first step (the colour one the wrap lands on).
+      const dropped = removeLookStep(moved, "heart_door_open", 0);
+      expect(validateLights(dropped, house).problems).toEqual([]);
+    }
+  });
+
   it("refuses a step that darkens a safety bulb (the builder shows the validator's line)", () => {
     const { house, l } = base();
     const a = addLook(l, "dark", ["heart"]);

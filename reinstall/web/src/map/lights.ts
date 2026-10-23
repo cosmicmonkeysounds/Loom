@@ -537,7 +537,7 @@ export function patchLookStep(lights: LightsConfig, name: string, i: number, pat
       if (patch.to === null || patch.to.length === 0) delete s.to;
       else s.to = [...new Set(patch.to)];
     }
-    return canonical(look, steps);
+    return keepPeriod(canonical(look, steps));
   });
 }
 
@@ -554,7 +554,7 @@ export function addLookStep(lights: LightsConfig, name: string): LightsConfig {
     // A repeating look's period must stay past the new last step.
     const out = canonical(look, steps);
     if (out.period !== undefined && out.period <= at) out.period = minPeriod(out) ?? at + LIGHT_COLOR_STEP_MIN_MS;
-    return out;
+    return keepPeriod(out);
   });
 }
 
@@ -563,7 +563,7 @@ export function removeLookStep(lights: LightsConfig, name: string, i: number): L
   return withLook(lights, name, (look) => {
     const steps = stepsOfLook(look);
     if (steps.length <= 1 || i < 0 || i >= steps.length) return look;
-    return canonical(look, steps.filter((_, j) => j !== i).map((s) => cloneData(s)));
+    return keepPeriod(canonical(look, steps.filter((_, j) => j !== i).map((s) => cloneData(s))));
   });
 }
 
@@ -618,10 +618,20 @@ export function setLookMode(lights: LightsConfig, name: string, mode: LookMode, 
     else if (mode === "repeat") out.repeat = Math.max(2, Math.min(LIGHT_MAX_REPEAT, Math.round(repeat)));
     else if (mode === "restore") out.then = "restore";
     else delete out.period;
-    const min = minPeriod(out);
-    if (min !== null && (out.period === undefined ? effectivePeriod(out) < min : out.period < min)) out.period = Math.ceil(min / 100) * 100;
-    return out;
+    return keepPeriod(out);
   });
+}
+
+/**
+ * Lengthen a repeating / give-back look's period when it no longer wraps
+ * safely (`minPeriod`): after a mode change, and after a step moves, is
+ * added or is dropped, so no edit in the builder leaves a period the
+ * server refuses.
+ */
+function keepPeriod(look: LightLook): LightLook {
+  const min = minPeriod(look);
+  if (min !== null && (look.period === undefined ? effectivePeriod(look) < min : look.period < min)) return { ...look, period: Math.ceil(min / 100) * 100 };
+  return look;
 }
 
 /** A look's period (null: the default, last step + 150 ms / + 1 s for a restore). */
