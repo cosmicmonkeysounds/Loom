@@ -248,6 +248,11 @@ else if program.heart_convinced == true:
   set program.heart_chat = true
   // DRAFT w20
   Trabolta: Not yet. Soon. When the clock starts counting, come back.
+else if program.heart_menu == true and program.heart_go == "speak":
+  // Back in the heart to heart (⟦BACK⟧ still docked): they may type again.
+  set program.heart_chat = true
+  // DRAFT w20
+  Trabolta: Where were we.
 else if program.heart_menu == true:
   // DRAFT w20 (their menu is still on the screen)
   Trabolta: Where were we.

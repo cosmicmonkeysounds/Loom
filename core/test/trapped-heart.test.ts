@@ -822,6 +822,24 @@ describe("The Heart — the heart to heart (wave 20, §7)", () => {
     expect(v(sim, "g1.heart_chat")).toBe(false);
   });
 
+  it("a re-scan after ⟦SPEAK FREELY⟧: back in the heart to heart, ⟦BACK⟧ still the one menu", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    pick(sim, "g1", "⟦SPEAK FREELY⟧");
+    unscan(sim, "g1");
+    expect(v(sim, "g1.heart_chat")).toBe(false);
+    const e = scan(sim, "g1");
+    expect(lines(e)).toEqual(["Where were we."]);
+    expect(v(sim, "g1.heart_chat")).toBe(true);
+    expect(heartMenus(sim, "g1")).toHaveLength(1);
+    expect(offered(sim, "g1")).toEqual(["⟦BACK⟧ Let's go back to it."]);
+    // ⟦BACK⟧ then a tree menu: heart_go moves on, so a re-scan is the plain resume.
+    pick(sim, "g1", "⟦BACK⟧");
+    unscan(sim, "g1");
+    scan(sim, "g1");
+    expect(v(sim, "g1.heart_chat")).toBe(false);
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer One");
+  });
+
   it("an eject never opens the heart to heart", { timeout: SLOW }, () => {
     const sim = atLayerOne();
     sim.setVar("g1.heart_suspicion", "70");
