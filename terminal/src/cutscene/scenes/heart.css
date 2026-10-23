@@ -1,0 +1,151 @@
+/* The heart's room scenes (wave 20). A covering scene fills the screen; a
+   side scene (layer, proof, warn) fills the face pane it is drawn over and
+   stays see-through around its pieces. VT323 for the machine's words. */
+
+.ht-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-family: "VT323", ui-monospace, monospace;
+  color: #ffd9d9;
+}
+
+/* --- shared pieces --- */
+.ht-rings { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.ht-rings > span {
+  position: absolute;
+  width: 40vmin;
+  height: 40vmin;
+  border: 0.6vmin solid;
+  border-radius: 50%;
+  will-change: transform, opacity;
+}
+.ht-glow { position: absolute; inset: 0; pointer-events: none; }
+.ht-hum { display: block; width: 100%; height: 100%; }
+.ht-slam { font-size: clamp(3rem, 14vmin, 11rem); letter-spacing: 0.08em; line-height: 1; text-align: center; }
+
+.ht-door { position: relative; width: 18vmin; height: 34vmin; border: 0.8vmin solid #5b5f66; background: #020202; }
+.ht-door-gap { position: absolute; inset: 0; background: linear-gradient(90deg, #ff3b3b33, #ffe1a855); }
+.ht-door-leaf {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #8a8f97, #5d6168);
+  transform-origin: left center;
+  box-shadow: inset -0.6vmin 0 0 #3a3d42;
+}
+.ht-door-bolt { position: absolute; right: 12%; top: 48%; width: 1.6vmin; height: 1.6vmin; border-radius: 50%; }
+
+/* --- heart_wake --- */
+.ht-wake { display: grid; place-items: center; }
+.ht-boot {
+  position: absolute;
+  left: 5vw;
+  top: 6vh;
+  margin: 0;
+  font-size: clamp(1rem, 3.4vmin, 2.2rem);
+  color: #ff6a6a;
+  text-shadow: 0 0 0.4em #ff2020;
+  white-space: pre;
+}
+.ht-face-wrap { width: 46vmin; height: 46vmin; transition: transform 0.9s ease; }
+.ht-face-wrap .kit-glitch, .ht-face-wrap .a1-face { width: 100%; height: 100%; }
+.ht-close { position: absolute; inset: 0; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4vw; padding: 0 6vw 0 48vw; }
+.ht-close-door { justify-self: end; }
+.ht-close-words {
+  font-size: clamp(2.6rem, 11vmin, 9rem);
+  line-height: 0.95;
+  color: #ff2b2b;
+  text-shadow: 0 0 0.25em #ff0000, 0 0 0.8em #a00000;
+  letter-spacing: 0.06em;
+}
+.ht-tear { position: absolute; inset: 0; pointer-events: none; }
+.ht-tear-bar { position: absolute; left: 0; right: 0; background: rgba(255, 0, 40, 0.55); mix-blend-mode: screen; }
+@media (orientation: portrait) {
+  .ht-close { grid-template-columns: 1fr; padding: 52vh 6vw 0; justify-items: center; text-align: center; }
+  .ht-close-door { display: none; }
+}
+
+/* --- heart_sealed --- */
+.ht-sealed { background: radial-gradient(circle at 50% 40%, #04161c 0%, #000 75%); display: grid; place-items: center; color: #c8f6ff; }
+.ht-sealed-room { display: grid; justify-items: center; gap: 3vmin; }
+.ht-sealed-hum { width: 60vmin; height: 10vmin; }
+.ht-sealed-word { color: #50e6ff; text-shadow: 0 0 0.3em #0090c0; }
+.ht-sealed-sub { position: absolute; left: 0; right: 0; bottom: 10vh; text-align: center; font-size: clamp(1.4rem, 5vmin, 3rem); letter-spacing: 0.1em; }
+.ht-pass { position: absolute; left: 0; right: 0; bottom: 4vh; display: grid; justify-items: center; gap: 0.6vmin; }
+.ht-pass-words { font-size: clamp(2rem, 8vmin, 5.5rem); color: #ffe066; text-shadow: 0 0 0.3em #c08000; letter-spacing: 0.08em; }
+.ht-pass-arrow { font-size: clamp(2rem, 9vmin, 6rem); color: #ffe066; line-height: 1; }
+.ht-pass-hint { font-size: clamp(1rem, 3vmin, 1.8rem); color: #ffe066aa; }
+
+/* --- heart_layer (over the face) --- */
+.ht-layer { display: grid; place-items: center; align-content: center; gap: 2vmin; pointer-events: none; }
+.ht-layer-win .kit-win { position: relative; min-width: min(30vw, 22em); }
+.ht-layer-title { font-size: clamp(1.4rem, 4.6vmin, 2.6rem); letter-spacing: 0.08em; }
+.ht-layer-pips { display: flex; gap: 1.2vmin; }
+.ht-layer-pips > span { width: 3vmin; height: 1.2vmin; background: #333; border: 1px solid #50e6ff55; }
+.ht-layer-pips > span.on { background: #50e6ff; box-shadow: 0 0 0.6em #50e6ff; }
+
+/* --- heart_proof (over the face) --- */
+.ht-proof { display: grid; place-items: center; pointer-events: none; }
+.ht-proof-paper {
+  position: absolute;
+  width: 46%;
+  height: 62%;
+  background: #f4f1e6;
+  box-shadow: 0 1.4vmin 3vmin #000a;
+  padding: 3vmin 2.4vmin;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1vmin;
+}
+.ht-proof-paper > span { display: block; height: 0.9vmin; background: #2b2b2b; opacity: 0.7; }
+.ht-proof-static { position: absolute; inset: 0; mix-blend-mode: screen; }
+.ht-proof-file { position: absolute; top: 12%; right: 10%; display: grid; justify-items: center; color: #e9fff1; text-shadow: 0 0 0.3em #000; }
+.ht-proof-icon { font-size: clamp(2.4rem, 10vmin, 6rem); line-height: 1; }
+.ht-proof-name { font-size: clamp(1rem, 3vmin, 1.6rem); }
+.ht-proof-hum { position: absolute; left: 10%; right: 10%; bottom: 6%; width: 80%; height: 10%; }
+.ht-proof-quiet { position: absolute; bottom: 2%; left: 0; right: 0; text-align: center; color: #50e6ffaa; font-size: clamp(1rem, 3vmin, 1.6rem); }
+
+/* --- heart_warn (over the face) --- */
+.ht-warn { pointer-events: none; }
+.ht-warn-frame { position: absolute; inset: 0; border: 1.4vmin solid #ff1f1f; box-shadow: inset 0 0 4vmin #ff0000aa; }
+.ht-warn-word { position: absolute; left: 0; right: 0; top: 4%; text-align: center; font-size: clamp(1.6rem, 6vmin, 3.4rem); color: #ff3b3b; text-shadow: 0 0 0.3em #900; letter-spacing: 0.1em; }
+
+/* --- heart_eject --- */
+.ht-eject .kit-glitch { position: absolute; inset: 0; }
+.ht-eject-red { position: absolute; inset: 0; background: #c00000; mix-blend-mode: multiply; }
+
+/* --- heart_notyet --- */
+.ht-notyet { background: radial-gradient(circle at 50% 50%, #1a1400 0%, #000 70%); display: grid; place-items: center; align-content: center; gap: 2vmin; color: #ffd23f; }
+.ht-notyet-clock { width: 30vmin; height: 30vmin; }
+.ht-clock { width: 100%; height: 100%; }
+.ht-notyet-word { color: #ffd23f; text-shadow: 0 0 0.3em #a07000; }
+.ht-notyet-sub { font-size: clamp(1.3rem, 5vmin, 3rem); letter-spacing: 0.08em; text-align: center; padding: 0 4vw; }
+
+/* --- heart_leave --- */
+.ht-leave { background: #00000099; }
+.ht-leave-msg { font-size: clamp(1.4rem, 4.8vmin, 2.6rem); letter-spacing: 0.08em; }
+
+/* --- heart_shutdown --- */
+.ht-shutdown { display: grid; place-items: center; align-content: center; gap: 4vmin; color: #cfd8dc; }
+.ht-shutdown-face { width: 40vmin; height: 40vmin; transition: none; }
+.ht-shutdown-face .a1-face { width: 100%; height: 100%; }
+.ht-bay { width: min(80vw, 110vmin); height: auto; }
+.ht-shutdown-save { display: grid; gap: 1vmin; justify-items: center; font-size: clamp(1.2rem, 4vmin, 2.4rem); }
+.ht-shutdown-bar { width: 40vmin; height: 2vmin; border: 2px inset #888; background: #111; }
+.ht-shutdown-bar > i { display: block; height: 100%; background: repeating-linear-gradient(90deg, #000080 0 1.4vmin, transparent 1.4vmin 1.7vmin); }
+.ht-safe {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 8vw;
+  text-align: center;
+  font-family: "Tahoma", "Verdana", sans-serif;
+  font-size: clamp(1.6rem, 6vmin, 4rem);
+  color: #ff9a2e;
+  background: #000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ht-face-wrap { transition: none; }
+}

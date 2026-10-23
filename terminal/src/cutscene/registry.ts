@@ -1,5 +1,6 @@
 //! Every cutscene the terminals know (wave 17): the four act files, in
-//! running order, then (wave 18) the house's big wins. A lane adds a scene
+//! running order, then (wave 18) the house's big wins, then (wave 20) the
+//! heart's room scenes (the server-room terminal's only). A lane adds a scene
 //! by pushing a `SceneDef` onto its own file's `SCENES` — nothing here
 //! changes. The demo scene is the preview's
 //! only (`preview.tsx`), never the show's.
@@ -7,6 +8,7 @@
 import { SCENES as ACT1 } from "./scenes/act1.tsx";
 import { SCENES as ACT2 } from "./scenes/act2.tsx";
 import { SCENES as ACT3 } from "./scenes/act3.tsx";
+import { SCENES as HEART } from "./scenes/heart.tsx";
 import { SCENES as HOUSE } from "./scenes/house.tsx";
 import { SCENES as MOMENTS } from "./scenes/moments.tsx";
 import type { SceneDef } from "./types.ts";
@@ -18,6 +20,7 @@ export const ACTS: ReadonlyArray<{ file: string; scenes: readonly SceneDef[] }> 
   { file: "act3", scenes: ACT3 },
   { file: "moments", scenes: MOMENTS },
   { file: "house", scenes: HOUSE },
+  { file: "heart", scenes: HEART },
 ];
 
 /** The show's scenes. */
