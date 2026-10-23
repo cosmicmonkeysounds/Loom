@@ -1,0 +1,95 @@
+/* The heart terminal's own chrome (wave 20): the choice panel, the ⟦BACK⟧
+   line under the composer, the door overlay and the fault corner. */
+
+.heart-panel {
+  position: relative;
+  border-top: 2px solid var(--phosphor-faint);
+  padding: 0.4em var(--pad) calc(0.5em + env(safe-area-inset-bottom));
+  background: #000;
+  max-height: 55%;
+  overflow-y: auto;
+}
+.heart-options { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15em; }
+.heart-option {
+  display: grid;
+  grid-template-columns: 1.4em auto 1fr;
+  align-items: baseline;
+  gap: 0.45em;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--phosphor);
+  background: transparent;
+  border: 0;
+  padding: 0.18em 0.4em;
+  cursor: pointer;
+}
+.heart-option:hover:not(:disabled),
+.heart-option:focus-visible { background: var(--phosphor); color: var(--ink); outline: none; }
+.heart-option:hover:not(:disabled) .heart-tag,
+.heart-option:focus-visible .heart-tag { border-color: var(--ink); color: var(--ink); }
+.heart-option.sending { background: var(--phosphor-faint); }
+.heart-option:disabled { cursor: default; }
+.heart-num { color: var(--phosphor-dim); }
+.heart-tag {
+  display: inline-block;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  padding: 0 0.3em;
+  font-size: 0.8em;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+.heart-text { min-width: 0; }
+.heart-panel.greyed .heart-options { opacity: 0.28; filter: grayscale(1); }
+.heart-panel-door {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--amber);
+  font-size: 1.5em;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 0.3em #a06000;
+  pointer-events: none;
+  z-index: 1;
+}
+.heart-problem { color: var(--danger); font-size: 0.75em; padding: 0.2em 0.4em; }
+
+.heart-back { padding: 0 var(--pad) calc(0.3em + env(safe-area-inset-bottom)); text-align: right; }
+.heart-back-btn {
+  font: inherit;
+  font-size: 0.7em;
+  background: transparent;
+  color: var(--phosphor-dim);
+  border: 1px solid var(--phosphor-faint);
+  padding: 0.1em 0.5em;
+  cursor: pointer;
+}
+.heart-back-btn:hover:not(:disabled) { color: var(--phosphor); border-color: var(--phosphor-dim); }
+.heart-back-btn .heart-tag { margin-right: 0.4em; }
+
+.door-overlay { position: fixed; left: 0; right: 0; top: 0; z-index: 33; pointer-events: none; }
+.door-overlay-band {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.3em 1em;
+  font-size: clamp(28px, 6vw, 72px);
+  letter-spacing: 0.12em;
+  color: #1a0f00;
+  background: var(--amber);
+  box-shadow: 0 0 2em var(--amber);
+  animation: door-pulse 1.1s ease-in-out infinite;
+}
+.door-overlay-icon { font-size: 0.9em; }
+@keyframes door-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 2em var(--amber); }
+  50% { opacity: 0.72; box-shadow: 0 0 0.4em var(--amber); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .door-overlay-band { animation: none; }
+}
+
+.door-fault { position: fixed; left: 8px; bottom: 6px; z-index: 6; font-size: 0.45em; color: var(--danger); opacity: 0.8; pointer-events: none; }
