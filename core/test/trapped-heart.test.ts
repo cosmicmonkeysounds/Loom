@@ -755,6 +755,23 @@ describe("The Heart — convinced (wave 20)", () => {
     expect(beats(end)).toContain("Trabolta Disabled");
   });
 
+  it("🔄 inside the autoend's 25 s keeps the stand-down: the heart stays done and the night still ends", { timeout: SLOW }, () => {
+    const sim = awake();
+    toY2K(sim);
+    atLayerOne(sim);
+    toAsk(sim);
+    pick(sim, "g1", "She was never going to answer");
+    advance(sim, 10);
+    const r = fire(sim, "reset_server_room");
+    expect(hosts(r)[0]).toContain("His stand-down stands");
+    expect(v(sim, "Night.heart_stage")).toBe("done");
+    expect(v(sim, "Night.stand_down_by")).toBe("Calculator");
+    expect(v(sim, "Night.heart_end_at")).toBeGreaterThan(0);
+    advance(sim, 15);
+    expect(v(sim, "Night.talked_down")).toBe(true);
+    expect(v(sim, "Night.ending")).toBe("disabled");
+  });
+
   it("convinced in the Y2K hour with autoend off: only the # hosts alert; 🔄 reopens the heart and clears stand_down_by", { timeout: SLOW }, () => {
     const sim = awake();
     toY2K(sim);

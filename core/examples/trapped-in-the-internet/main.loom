@@ -4684,8 +4684,9 @@ when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
 // The heart reopens too (wave 20): sealed again, so the next opening plays
 // The Heart, and everyone he threw out may come back (the ROLE watcher on
 // Night.heart_gen). A heart that is `done` stays done once the night has
-// ended or he was talked down; a shutdown the director declined (🕊 never
-// pressed, autoend off) reopens.
+// ended or he was talked down, or while the autoend's 25 s run (the
+// stand-down stands); a shutdown the director declined (🕊 never pressed,
+// autoend off) reopens.
 when reset_server_room:
   set Night.wrong_combos = 0
   set Night.alarm_on = false
@@ -4693,7 +4694,11 @@ when reset_server_room:
   set Night.heart_opened = false
   set Night.crew_door_until = 0
   set Night.heart_gen += 1
-  if Night.heart_stage != "done" or (Night.ended != true and Night.talked_down != true):
+  if Night.heart_stage == "done" and Night.heart_end_at > 0 and Night.ended != true:
+    broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, and anyone thrown out of his heart may come back. His stand-down stands: the night still ends by itself (🕊 to end it now)." to channel(hosts)
+  else:
+    broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, the next door opening plays The Heart, and anyone thrown out of his heart may come back." to channel(hosts)
+  if Night.heart_stage != "done" or (Night.ended != true and Night.talked_down != true and Night.heart_end_at == 0):
     set Night.heart_stage = "sealed"
     set Night.heart_present = false
     set Night.heart_end_at = 0
@@ -4703,7 +4708,6 @@ when reset_server_room:
   else if Night.heart_look != "none":
     // The alarm latch cleared here never reaches its end: the room's look back.
     do cue {Night.heart_look}
-  broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, the next door opening plays The Heart, and anyone thrown out of his heart may come back." to channel(hosts)
 
 // The server-room terminal (a wall terminal provisioned with `room=The
 // Server Room`) posts `terminal opened` when it starts piloting a guest's
