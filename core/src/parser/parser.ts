@@ -424,7 +424,9 @@ class Parser {
     _beatIndent: number,
   ): Choice {
     this.cursor += 1;
-    const [text, suppressed] = splitChoiceSuppression(rawText);
+    // The guard first: a `[` inside the condition is never hidden text.
+    const [guard, afterGuard] = splitChoiceGuard(rawText);
+    const [text, suppressed] = splitChoiceSuppression(afterGuard);
     const bodyIndentFloor = opener.indent + 1;
     const body: BodyItem[] = [];
     let end = scannedLineSpan(opener).end;
@@ -440,7 +442,7 @@ class Parser {
       }
       line = this.peek();
     }
-    return { sticky, text, suppressed, body, span: span(scannedLineSpan(opener).start, end) };
+    return { sticky, guard, text, suppressed, body, span: span(scannedLineSpan(opener).start, end) };
   }
 
   collectAction(opener: ScannedLine, firstText: string): [string, Span] {
@@ -789,6 +791,44 @@ function bodyItemEnd(item: BodyItem): Position | null {
 function stripArmColon(text: string): string {
   const t = text.trim();
   return t.endsWith(":") ? t.slice(0, t.length - 1).trim() : t;
+}
+
+/**
+ * A choice's text (after `*` / `+` and its spaces) → `[guard, rest]`
+ * (wave 20, D9). A guard is a leading `(if <cond>)` whose parenthesis
+ * closes on the same line — parens inside the condition nest, and a
+ * quoted string may hold any of them. Anything else (no `(if `, an
+ * unclosed paren) is plain text: `[null, raw]`. `rest` loses only its
+ * leading spaces, so the `[hidden]` split runs on it next.
+ */
+export function splitChoiceGuard(raw: string): [string | null, string] {
+  const m = /^\(if\s/u.exec(raw);
+  if (m === null) return [null, raw];
+  const close = guardClose(raw);
+  if (close < 0) return [null, raw];
+  const guard = raw.slice(m[0].length, close).trim();
+  return [guard, raw.slice(close + 1).replace(/^\s+/u, "")];
+}
+
+/** The offset of the `)` closing a choice line's leading `(if …`, or -1. */
+function guardClose(raw: string): number {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i]!;
+    if (quote !== null) {
+      if (ch === "\\") i += 1;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"') quote = ch;
+    else if (ch === "(") depth += 1;
+    else if (ch === ")") {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
 }
 
 function splitChoiceSuppression(raw: string): [string, string | null] {
