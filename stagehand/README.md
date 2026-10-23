@@ -521,7 +521,7 @@ is YAML frontmatter + the system prompt:
 | `powers` | `all` (default), `none`, or a list of `who: agent` interaction names |
 | `bargain` | the favour policy the fast model reads (the orchestrator adjusts it in the brief) |
 | `situations` | a list of `{when, prompt}` (+ an optional `name` for the heading): extra instructions for a kind of moment. Each `when` is read like the gate above; while it holds for a request, its prompt is appended to the voice's system prompt as its own `=== SITUATION: … ===` block and shown to the orchestrator's reflect on that exchange (which keeps it out of the shared brief, in that person's dossier). Wave 20: **`max_sentences: N`** (1–12) lets his line run to N sentences there, said in the block and enforced by the guards of both voices (a longer line is cut; the last holding situation that sets it wins); **`acts: none`** says he decides nothing there and the guards drop every act the model returns |
-| `outside` | (wave 20, D29) names and words from outside his world, a list or a comma list (the crew's real names, *party*, *actor*, *Loom*, *Arduino*, …): a `=== NOT FROM YOUR WORLD ===` block tells him they are nothing he knows, and a hit in his output (whole words, folded, a plural too) is treated like a `secrets.never` hit — the line becomes the fallback, its act and memo are dropped. Matching is word-exact, so a common word (*show*) trips in every sense: prefer names |
+| `outside` | (wave 20, D29) names and words from outside his world, a list or a comma list (the crew's real names, *party*, *actor*, *Loom*, *Arduino*, …): a `=== NOT FROM YOUR WORLD ===` block tells him they are nothing he knows, and a hit in his output (whole words, folded, a plural too) is treated like a `secrets.never` hit — the line becomes the fallback, its act and memo are dropped. Matching is word-exact, so a common word (*show*) trips in every sense: list names and phrases (*the show*, *a party*, *real world*); `stagehand check` warns when an entry is in his own in-world text (the system prompt, `fallback(s)`, `catchphrases`, `unavailable`, the phase and stage cards), and a fallback that names one is never said |
 
 Trabolta's situations (wave 7): **at your heart** (`them.at_the_heart ==
 true`, set by the story while the server-room terminal pilots that
@@ -743,12 +743,16 @@ shape is [`lights.example.yaml`](./lights.example.yaml).
   there. A `then: "restore"` look gives the light back at `period`: the loop
   it interrupted restarts (a nag over the door loop), else the fixture's
   **settled** state — what the last look that is neither a loop nor a
-  restore left it at — is re-published. Memory only.
+  restore left it at — is re-published, fading with that look's last
+  `transition` (0.8 s when it had none); with nothing settled since a
+  restart it plays `boot` instead, and the catch-up never lands on a
+  restore look (`boot` again). Memory only.
 - **Safety.** A `safety: true` fixture is never OFF and never under
   `max(40, min)` (`clamp_for_safety`, applied before the caps and again by
   both payload builders), whatever a look or a test says.
 - **Tests, pairing, devices.** The long poll carries the map editor's
-  identify (Z2M `{"effect": "okay"}`; WLED blinks 2 s), look tests and
+  identify (Z2M `{"effect": "okay"}`; WLED blinks 2 s, a `safety` strip
+  flashes a steady white instead), look tests and
   state tests, and *Pair new device* (`zigbee2mqtt/bridge/request/permit_join
   {"time": N}`). `zigbee2mqtt/bridge/devices` + `bridge/groups` are reduced
   to `{friendly, ieee, type, model, vendor, description, caps, members?}`
