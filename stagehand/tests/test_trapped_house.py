@@ -19,7 +19,8 @@ cannot darken The Cloud and only dims the kitchen, nothing drives a lock
 (the server-room door has a standalone keypad lock and mechanical egress;
 the YAML drives only its indicator ring), and — wave 20 — no rule reads
 the door at all (the M4 at his heart's terminal does), the server room's
-RGB bulb is lights.json's, and its WLED strip never strobes.
+RGB bulb — the room's only light — is lights.json's and nothing here
+touches it, and the server room has no WLED strip (Q6 / Q10).
 """
 
 from __future__ import annotations
@@ -416,43 +417,67 @@ def test_the_door_drives_the_indicator_and_nothing_drives_a_lock():
     assert not re.search(r"maglock|door_lock|strike", json.dumps(_raw()["show"]), re.I)
 
 
-def test_the_server_rooms_bulb_is_lights_jsons_and_its_strip_never_strobes():
-    """Wave 20 (D10 / D11): no rule sends the emptied `server_room` group
-    anything; lights_alarm reaches WLED per device, never `wled/all`, and
-    gives the server-room strip (that room's safety light) a steady red —
-    never ps 12's strobe, never dark."""
-    assert not [r for r in _show().cues if r.mqtt is not None and r.mqtt.topic == "zigbee2mqtt/server_room/set"]
-    alarm = _mqtt(evaluate_cues(_show().cues, _directive("cue", "lights_alarm")))
+def test_the_server_rooms_bulb_is_lights_jsons_and_nothing_here_touches_the_room():
+    """Wave 20 (D10 / D11, Q6 / Q10): the server room's only light is the RGB
+    bulb `server_room_rgb` (no strip), the `server_room` group's only member,
+    and it is lights.json's: no rule or catch-up here sends the group, the
+    bulb or a server-room WLED topic anything, so no house look (y2k,
+    flicker, blackout, dance, alarm, restore, …) fights the heart's looks.
+    lights_alarm reaches WLED per device, never `wled/all`, and gives the
+    tube strip a steady red; lights_server_open only stops the ESP32."""
+    cfg = _show()
+    room = re.compile(r"^(zigbee2mqtt/server_room(_rgb)?(/|$)|wled/server(/|$))")
+    assert not [r.mqtt.topic for r in cfg.cues if r.mqtt is not None and room.search(r.mqtt.topic)]
+    assert "wled/server" not in HOUSE.read_text(encoding="utf-8")
+    for rule in cfg.catch_up:
+        for value in ("server_open", "alarm", "y2k", "blackout", "restore", "dance"):
+            arg = rule.args_for({"Night.lights": value, "Night.lights_back_at": "0", "Night.dark_room": "none", "Night.lit_scene": "none"})
+            if arg is None:
+                continue
+            for c in evaluate_cues(cfg.cues, _directive("cue", arg)):
+                assert not (hasattr(c, "topic") and room.search(c.topic)), (value, c.topic)
+    alarm = _mqtt(evaluate_cues(cfg.cues, _directive("cue", "lights_alarm")))
     topics = [t for t, _ in alarm]
     assert "wled/all/api" not in topics
-    server = [p for t, p in alarm if t == "wled/server/api"]
-    assert server == [{"on": True, "bri": 255, "seg": [{"col": [[255, 0, 0]], "fx": 0}]}]
-    for room in ("living", "kitchen", "backyard", "registry"):
-        assert (f"wled/{room}/api", {"on": True, "ps": 12}) in alarm, room
-    assert [p for t, p in alarm if t == "wled/tube/api"] == server
-    # lights_server_open keeps the strip's ps 11 and the box's alarm off.
-    opened = _mqtt(evaluate_cues(_show().cues, _directive("cue", "lights_server_open")))
-    assert ("wled/server/api", {"on": True, "ps": 11}) in opened and ("show/serverroom/alarm", {"state": "off"}) in opened
+    for r in ("living", "kitchen", "backyard", "registry"):
+        assert (f"wled/{r}/api", {"on": True, "ps": 12}) in alarm, r
+    assert [p for t, p in alarm if t == "wled/tube/api"] == [{"on": True, "bri": 255, "seg": [{"col": [[255, 0, 0]], "fx": 0}]}]
+    opened = _mqtt(evaluate_cues(cfg.cues, _directive("cue", "lights_server_open")))
+    assert opened == [("show/serverroom/alarm", {"state": "off"})]
+
+
+def test_the_server_room_bulb_is_its_safety_light_in_lights_json():
+    """Q6: with no strip the bulb is the room's only light, so lights.json
+    keeps it a safety fixture at 80 / 254, and every heart look stays on and
+    at or above that floor (egress: the room is never near-dark)."""
+    lights = json.loads((STORY / "lights.json").read_text(encoding="utf-8"))
+    assert [(f["id"], f["device"], f.get("safety"), f.get("min")) for f in lights["fixtures"]] == [("server-room-rgb", "server_room_rgb", True, 80)]
+    for name, look in lights["looks"].items():
+        for s in [look.get("set")] + [st["set"] for st in look.get("steps", [])]:
+            if s is None:
+                continue
+            assert s.get("state") != "OFF", name
+            assert s.get("brightness", 254) >= 80, (name, s)
 
 
 #: WLED presets that are effects going dark between frames (strobe, lightning,
 #: pulse, audio-reactive, embers): never on `wled/all` or a safety strip.
 WLED_EFFECT_PRESETS = {7, 10, 12, 14, 15, 17}
-#: The presets still sent to `wled/all`, built solid on the tube + server controllers.
+#: The presets still sent to `wled/all`, built solid on the tube controller.
 WLED_ALL_SOLID = {1, 3, 6, 16, 18, 19, 20}
 
 
 def test_no_safety_strip_ever_gets_a_strobe():
     """Wave 20 review (D11): every cue, not just the alarm. `wled/all` carries
-    only the presets the YAML says are built solid there, and neither the
-    tube nor the server strip ever gets an effect preset."""
+    only the presets the YAML says are built solid there, and the tube
+    strip never gets an effect preset (the server room has no strip)."""
     for rule in _show().cues:
         if rule.mqtt is None or not rule.mqtt.topic.startswith("wled/") or not isinstance(rule.mqtt.payload, dict):
             continue
         topic, ps = rule.mqtt.topic, rule.mqtt.payload.get("ps")
         if topic == "wled/all/api":
             assert ps in WLED_ALL_SOLID, f"cues[{rule.id}] sends wled/all ps {ps}"
-        if topic in ("wled/tube/api", "wled/server/api"):
+        if topic == "wled/tube/api":
             assert ps not in WLED_EFFECT_PRESETS, f"cues[{rule.id}] strobes {topic} (ps {ps})"
             for seg in rule.mqtt.payload.get("seg", []):
                 assert seg.get("fx", 0) == 0, f"cues[{rule.id}] runs an effect on {topic}"
@@ -461,7 +486,6 @@ def test_no_safety_strip_ever_gets_a_strobe():
         for room in ("living", "kitchen", "backyard", "registry"):
             assert (f"wled/{room}/api", {"on": True, "ps": ps}) in out, (cue, room)
         assert out[-1] == ("wled/tube/api", {"on": True, "ps": 22}), cue
-        assert not [t for t, _ in out if t == "wled/server/api"], cue
     text = HOUSE.read_text(encoding="utf-8")
     assert "Only ps 1, 3, 6, 16, 18, 19 and 20 still go to `wled/all`" in text
 
@@ -482,10 +506,10 @@ def test_the_alarm_reaches_the_server_room_box_and_stops_when_it_opens():
 # -- safe lights (K-05 critic pass) -------------------------------------------------
 
 #: Z2M groups that hold only safety bulbs (they are out of `house`), and the
-#: WLED devices that must never go dark: the Tube strip (hall + stair landing)
-#: and the server room (guests are in there during the blackout).
-SAFE_Z2M = ("bathroom", "tent", "server_room", "stairs", "path")
-SAFE_WLED = ("tube", "server")
+#: WLED device that must never go dark: the Tube strip (hall + stair landing).
+#: The server room's one light is its RGB bulb, lights.json's (Q6 / Q10).
+SAFE_Z2M = ("bathroom", "tent", "server_room", "server_room_rgb", "stairs", "path")
+SAFE_WLED = ("tube",)
 
 
 def _darkens(topic: str, payload: dict) -> bool:
@@ -518,7 +542,8 @@ def test_the_blackout_goes_per_device_and_leaves_the_tube_dim():
         assert (f"wled/{room}/api", {"on": False}) in out, room
     assert ("wled/tube/api", {"on": True, "ps": 22}) in out
     assert topics[-1] == "wled/tube/api"  # last, so a shared controller ends on the tube look
-    assert not any(t.startswith("wled/server/") for t in topics)  # guests are in the server room
+    # Guests are in the server room: nothing here reaches its bulb (lights.json's).
+    assert not any(t.startswith(("zigbee2mqtt/server_room", "wled/server")) for t in topics)
 
 
 # -- 2. every sensor signal is a story rule -----------------------------------------
@@ -691,10 +716,10 @@ def test_server_open_catches_up_the_y2k_house_look_underneath():
     args = [a for a in (rule.args_for(world) for rule in cfg.catch_up) if a is not None]
     assert args == ["lights_y2k", "lights_server_open"]
     topics = [c.topic for a in args for c in evaluate_cues(cfg.cues, _directive("cue", a)) if hasattr(c, "topic")]
-    assert topics.index("zigbee2mqtt/house/set") < topics.index("wled/server/api"), topics
+    assert topics.index("zigbee2mqtt/house/set") < topics.index("show/serverroom/alarm"), topics
     assert "wled/living/api" in topics and "wled/all/api" not in topics, topics
-    # Wave 20 (D10): the RGB bulb is lights.json's; no group command reaches it.
-    assert "zigbee2mqtt/server_room/set" not in topics, topics
+    # Wave 20 (D10, Q6 / Q10): the RGB bulb is lights.json's; nothing here reaches it.
+    assert not [t for t in topics if t.startswith(("zigbee2mqtt/server_room", "wled/server"))], topics
     # The story says so too: the latch's end restores server_open as y2k + server_open.
     assert re.search(r"cue lights_y2k\s+cue lights_server_open", _code(_story_text())), "the story's restore order moved"
     # Any other look replays once, no extra house layer.
