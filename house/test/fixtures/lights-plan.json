@@ -324,13 +324,13 @@
           "at": 0,
           "fixture": "server-strip",
           "set": {
-            "brightness": 30,
+            "brightness": 60,
             "color": "#7A2DFF",
             "effect": "breathe"
           },
           "topic": "wled/server/api",
           "payload": {
-            "bri": 30,
+            "bri": 60,
             "seg": [
               {
                 "col": [
@@ -596,12 +596,12 @@
       },
       "out": {
         "state": "ON",
-        "brightness": 20
+        "brightness": 50
       },
       "topic": "wled/server/api",
       "payload": {
         "on": true,
-        "bri": 20
+        "bri": 50
       }
     },
     {
@@ -611,12 +611,12 @@
         "effect": "blink"
       },
       "out": {
-        "brightness": 20,
+        "brightness": 50,
         "effect": "blink"
       },
       "topic": "wled/server/api",
       "payload": {
-        "bri": 20,
+        "bri": 50,
         "seg": [
           {
             "fx": 1

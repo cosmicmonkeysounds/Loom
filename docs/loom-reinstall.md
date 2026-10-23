@@ -545,8 +545,9 @@ version, and both map variants share one physical house. Never name it
   (`wled`, `device` = its base topic, `wled/server`), each on a
   `house.json` room id with a position in the **absolute** house frame
   (metres, Y up: the basement ceiling is at −0.6), what it can do (`caps
-  {color, ct, dim}`) and, for a **safety** fixture, a floor (`min`, default
-  `LIGHT_SAFETY_MIN` 40 / 254). A safety fixture is never OFF and never
+  {color, ct, dim}`) and, for a **safety** fixture, a floor
+  (`LIGHT_SAFETY_MIN` 40 / 254, a hard floor; a higher `min` raises it, a
+  lower one has no effect and is a warning). A safety fixture is never OFF and never
   below its floor: `validateLights` refuses a look written that way, and
   `clampForSafety` lifts anything that reaches it anyway.
 - **Zones** name groups of fixtures. **Targets** (`resolveLightTargets`,

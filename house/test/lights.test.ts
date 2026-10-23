@@ -21,6 +21,7 @@ import {
   resolveLightTargets,
   validateHouse,
   validateLights,
+  safetyMin,
   wledPayload,
   z2mPayload,
 } from "../src/index.ts";
@@ -199,8 +200,8 @@ describe("validateLights — looks", () => {
     expect(withLook("x", { to: ["heart"], set: { state: "OFF" } }).problems).toEqual(['looks["x"].set turns safety fixture "server-room-rgb" OFF (it never goes dark)']);
     expect(withLook("x", { to: ["heart"], set: { brightness: 39 } }).problems).toEqual(['looks["x"].set dims safety fixture "server-room-rgb" to 39 (its floor is 40)']);
     expect(withLook("x", { to: ["heart"], set: { brightness: 40 } }).problems).toEqual([]);
-    // The strip's own floor is 20; a room target reaches both.
-    expect(withLook("x", { to: ["The Server Room"], set: { brightness: 30 } }).problems).toEqual(['looks["x"].set dims safety fixture "server-room-rgb" to 30 (its floor is 40)']);
+    // The strip's own floor is 50; a room target reaches both.
+    expect(withLook("x", { to: ["The Server Room"], set: { brightness: 45 } }).problems).toEqual(['looks["x"].set dims safety fixture "server-strip" to 45 (its floor is 50)']);
     // A step narrowing to another fixture is fine.
     expect(withLook("x", { to: ["The Server Room"], steps: [{ at: 0, set: { brightness: 254 } }, { at: 500, set: { state: "OFF" }, to: ["desk-lamp"] }] }).problems).toEqual([]);
     // The floor without `min` is LIGHT_SAFETY_MIN.
@@ -208,6 +209,17 @@ describe("validateLights — looks", () => {
       delete l.fixtures[0]!.min;
       (l.looks as Record<string, LightLook>)["x"] = { to: ["heart"], set: { brightness: LIGHT_SAFETY_MIN - 1 } };
     }).problems).toEqual([`looks["x"].set dims safety fixture "server-room-rgb" to ${LIGHT_SAFETY_MIN - 1} (its floor is ${LIGHT_SAFETY_MIN})`]);
+  });
+
+  it("a min under LIGHT_SAFETY_MIN never lowers a safety fixture's floor (a warning says so)", () => {
+    const low = check((l) => {
+      l.fixtures[0]!.min = 1;
+      (l.looks as Record<string, LightLook>)["x"] = { to: ["heart"], set: { brightness: 10 } };
+    });
+    expect(low.problems).toEqual([`looks["x"].set dims safety fixture "server-room-rgb" to 10 (its floor is ${LIGHT_SAFETY_MIN})`]);
+    expect(low.warnings).toEqual([`fixtures[0] "server-room-rgb".min 1 has no effect: a safety fixture never goes below ${LIGHT_SAFETY_MIN}`]);
+    // Not a safety fixture: its min is just a number.
+    expect(check((l) => void (l.fixtures[2]!.min = 1)).warnings).toEqual([]);
   });
 });
 
@@ -246,6 +258,11 @@ describe("clampForSafety", () => {
     expect(clampForSafety(rgb, { brightness: 0, color: "#FF0000" })).toEqual({ brightness: 40, color: "#FF0000" });
     expect(clampForSafety(rgb, { brightness: 41 })).toEqual({ brightness: 41 });
     expect(clampForSafety({ ...rgb, min: undefined }, { brightness: 1 })).toEqual({ brightness: LIGHT_SAFETY_MIN });
+    // A min under the hard floor never lowers it.
+    expect(clampForSafety({ ...rgb, min: 1 }, { state: "OFF" })).toEqual({ state: "ON", brightness: LIGHT_SAFETY_MIN });
+    expect(clampForSafety({ ...rgb, min: 39 }, { brightness: 5 })).toEqual({ brightness: LIGHT_SAFETY_MIN });
+    expect(safetyMin({ ...rgb, min: 1 })).toBe(LIGHT_SAFETY_MIN);
+    expect(safetyMin({ ...rgb, min: 90 })).toBe(90);
   });
 
   it("leaves everything else alone, and never mutates its input", () => {
@@ -286,7 +303,7 @@ describe("planLook", () => {
     l.looks["x"] = { to: ["The Server Room"], set: { state: "OFF" } };
     expect(planLook(l, HOUSE, "x")!.commands.map((c) => [c.fixture, c.set])).toEqual([
       ["server-room-rgb", { state: "ON", brightness: 40 }],
-      ["server-strip", { state: "ON", brightness: 20 }],
+      ["server-strip", { state: "ON", brightness: 50 }],
     ]);
   });
 
@@ -317,7 +334,7 @@ describe("payloads", () => {
     expect(wledPayload(strip, { color_temp: 300, brightness: 100 })).toEqual({ bri: 100 });
     expect(wledPayload({ ...strip, safety: false }, { state: "OFF" })).toEqual({ on: false });
     // Clamped: the strip is a safety fixture.
-    expect(wledPayload(strip, { state: "OFF" })).toEqual({ on: true, bri: 20 });
+    expect(wledPayload(strip, { state: "OFF" })).toEqual({ on: true, bri: 50 });
   });
 });
 

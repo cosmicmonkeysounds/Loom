@@ -80,7 +80,7 @@ export interface LightFixture {
   /** Z2M friendly name (zigbee), Z2M group friendly name (zigbee-group), or the WLED base topic (`wled/server`). */
   device: string;
   caps: LightCaps;
-  /** Never OFF, never below `min ?? LIGHT_SAFETY_MIN`. */
+  /** Never OFF, never below `max(min, LIGHT_SAFETY_MIN)`: a `min` can only raise the floor. */
   safety?: boolean;
   /** 1–254. */
   min?: number;
@@ -223,10 +223,12 @@ export function resolveLightTargets(lights: LightsConfig, house: HouseMap | null
   return { fixtures: out };
 }
 
-/** A safety fixture's floor: its own `min` (1–254), else `LIGHT_SAFETY_MIN`. */
+/** A safety fixture's floor: its own `min` (1–254) when higher, else
+ *  `LIGHT_SAFETY_MIN` (a hard floor: no `min` takes a safety light under it). */
 export function safetyMin(f: LightFixture): number {
   const m = f.min;
-  return typeof m === "number" && Number.isInteger(m) && m >= 1 && m <= 254 ? m : LIGHT_SAFETY_MIN;
+  const valid = typeof m === "number" && Number.isInteger(m) && m >= 1 && m <= 254;
+  return Math.max(LIGHT_SAFETY_MIN, valid ? m : LIGHT_SAFETY_MIN);
 }
 
 /**
@@ -441,6 +443,7 @@ export function validateLights(lights: unknown, house?: HouseMap | null): Lights
     if (!isObj(caps) || typeof caps["color"] !== "boolean" || typeof caps["ct"] !== "boolean" || typeof caps["dim"] !== "boolean") problems.push(`${at}.caps must be {color, ct, dim} (true / false)`);
     if (f["safety"] !== undefined && typeof f["safety"] !== "boolean") problems.push(`${at}.safety must be true or false`);
     if (f["min"] !== undefined && (!isInt(f["min"]) || f["min"] < 1 || f["min"] > 254)) problems.push(`${at}.min must be a whole number from 1 to 254`);
+    else if (f["safety"] === true && isInt(f["min"]) && f["min"] < LIGHT_SAFETY_MIN) warnings.push(`${at}.min ${f["min"]} has no effect: a safety fixture never goes below ${LIGHT_SAFETY_MIN}`);
     if (isStr(id) && !fixtures.has(id)) fixtures.set(id, f as unknown as LightFixture);
     // Placement against the house.
     if (house && isStr(f["room"]) && f["room"] !== "") {
