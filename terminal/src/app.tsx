@@ -1034,7 +1034,15 @@ function Terminal({
   }
   const characterId = characterIdOf(config.character, session.view);
   const menu: HeartMenu | null = pilot === null ? null : heartMenuOf(menusOf(session.view), characterId);
-  const heart = menu !== null || (pilot !== null && heartTouched(state?.room?.cue ?? null, pilotSince.current));
+  // The heart to heart after *not yet* / Leave keeps the long leash once the
+  // program types: the thread's newest seq when that cue was first seen, and
+  // a line of theirs past it. (A chat line's `ts` is story time, the cue's
+  // `at` server time: seqs, not clocks.)
+  const cueNow = state?.room?.cue ?? null;
+  const cueMark = useRef<{ seq: number; lineSeq: number } | null>(null);
+  if (cueNow !== null && cueMark.current?.seq !== cueNow.seq) cueMark.current = { seq: cueNow.seq, lineSeq: session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1) };
+  const typedAfter = pilot !== null && cueMark.current !== null && session.lines.some((l) => !l.theirs && l.from === pilot.name && l.seq > cueMark.current!.lineSeq);
+  const heart = menu !== null || (pilot !== null && heartTouched(cueNow, pilotSince.current, typedAfter));
   const [echoes, setEchoes] = useState<Array<{ key: string; text: string; after: number }>>([]);
   useEffect(() => setEchoes([]), [pilot]);
   const choose = useCallback(
@@ -1054,7 +1062,7 @@ function Terminal({
     },
     [config, pilot, session.lines],
   );
-  const leash = lineLeash({ answering: session.typing || speaking || queue.busy || roomBusy, filesOpen, heart, doorOpen: heart && doorOpen === true });
+  const leash = lineLeash({ answering: session.typing || speaking || queue.busy || roomBusy, filesOpen, heart, doorOpen: doorOpen === true });
   const busy = leash.busy;
   const { touch, warning, remaining } = useIdleTimeout({ active: pilot !== null, busy, limit: leash.limit, warnMs: leash.warnMs, onTimeout: () => end("timeout") });
   useEffect(() => {

@@ -181,8 +181,9 @@ its own rules.
   out under **CLOSE THE DOOR** and your line waits (it won't time out on
   you) until the door is shut again.
 - He gives you three minutes between answers rather than thirty seconds —
-  it's a hard conversation. **DISCONNECT** frees the screen for the next
-  program.
+  it's a hard conversation. After *Leave* or *not yet* it's thirty
+  seconds again unless you keep typing to him. **DISCONNECT** frees the
+  screen for the next program.
 
 ## The King's terminal
 

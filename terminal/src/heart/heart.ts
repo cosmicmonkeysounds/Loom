@@ -127,9 +127,17 @@ export function pilotEndFor(cue: string, keys: boolean): { why: "thrown" | "done
   return null;
 }
 
-/** Has a heart scene played for this line (a `room_heart_*` cue since it opened)? Then the long leash holds. */
-export function heartTouched(cue: { value: string; at: number } | null, since: number): boolean {
-  return cue !== null && cue.at > 0 && cue.at >= since && cue.value.startsWith("room_heart_") && cue.value !== "room_heart_eject";
+/**
+ * Has a heart scene played for this line (a `room_heart_*` cue since it
+ * opened)? Then the long leash holds. After *not yet* or a Leave the tree is
+ * over: the normal leash runs (a program who walks off frees the terminal in
+ * 30 s), and the long one comes back only once they type after it (the heart
+ * to heart, D24). `typedAfter`: the program has typed a line since that cue.
+ */
+export function heartTouched(cue: { value: string; at: number } | null, since: number, typedAfter = false): boolean {
+  if (cue === null || cue.at <= 0 || cue.at < since || !cue.value.startsWith("room_heart_") || cue.value === "room_heart_eject") return false;
+  if (cue.value === "room_heart_notyet" || cue.value === "room_heart_leave") return typedAfter;
+  return true;
 }
 
 /** Is this the heart terminal (the door overlay, the greyed menu)? One with a door sensor, or the server room's own room terminal. */

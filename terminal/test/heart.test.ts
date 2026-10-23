@@ -85,6 +85,14 @@ describe("the leash", () => {
     expect(heartTouched({ value: "room_other", at: 2000 }, 1000)).toBe(false);
     expect(heartTouched(null, 0)).toBe(false);
   });
+
+  it("after not yet / Leave the normal leash runs until the program types again (D24)", () => {
+    expect(heartTouched({ value: "room_heart_leave", at: 2000 }, 1000)).toBe(false);
+    expect(heartTouched({ value: "room_heart_notyet", at: 2000 }, 1000)).toBe(false);
+    expect(heartTouched({ value: "room_heart_leave", at: 2000 }, 1000, true)).toBe(true);
+    expect(heartTouched({ value: "room_heart_notyet", at: 2000 }, 1000, true)).toBe(true);
+    expect(heartTouched({ value: "room_heart_eject", at: 2000 }, 1000, true)).toBe(false);
+  });
 });
 
 describe("which terminal is the heart's", () => {
