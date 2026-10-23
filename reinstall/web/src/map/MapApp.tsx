@@ -25,6 +25,14 @@
 //! valid map's save. A long poll on the speaker config (`audio-poll.ts`)
 //! keeps the tests list live and catches another director's save.
 //!
+//! The house lights (wave 20, D7) follow the same pattern in `lights.json`
+//! (`GET` / `POST /api/mod/lights`, its own `base` → 409, a long poll with
+//! the tests / pairs / devicesAt cursors): 💡 Light places a fixture, the
+//! inspector picks its Zigbee2MQTT device and tests it (Identify, colour
+//! swatches), the 💡 Lights tab pairs new bulbs and writes the looks. The
+//! undo history holds `{house, audio, lights}`; 💾 saves the map, then the
+//! speakers, then the lights, each when it fits the map the server holds.
+//!
 //! This file holds the state; the plan is `Canvas.tsx`, the toolbar
 //! `Toolbar.tsx`, the fields `Inspector.tsx`, the other tabs and the
 //! problem list `Panels.tsx`, and every edit a pure op (`edit.ts`,
@@ -32,13 +40,18 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { polyBounds, validateAudio, validateHouse } from "@loom/house";
-import type { AudioConfig, HouseMap, PlayerState, Vec2 } from "@loom/house";
-import { audioDownload, audioProblemList, duplicateSpeaker, followHouse, moveSpeaker, normalizeAudio, placeSpeaker, planOf, rebaseHistory, removeSpeaker, rotateSpeaker, sameAudio, saveAllPlan, speakerById, speakerSavePlan, speakersDropped, withSpeakersText, type Doc } from "./audio.ts";
+import { polyBounds, validateAudio, validateHouse, validateLights } from "@loom/house";
+import type { AudioConfig, HouseMap, LightsConfig, PlayerState, Vec2 } from "@loom/house";
+import { audioDownload, audioProblemList, duplicateSpeaker, followHouse, moveSpeaker, normalizeAudio, placeSpeaker, planOf, rebaseHistory, removeSpeaker, rotateSpeaker, sameAudio, speakerById, speakerSavePlan, speakersDropped, withSpeakersText, type Doc } from "./audio.ts";
 import { fetchAudio, routerOf, saveAudio, saveAudioToProject, testAudio, testRefusal, testSentText, type AudioView } from "./audio-api.ts";
 import { runAudioPoll } from "./audio-poll.ts";
 import { AudioPanel } from "./AudioPanel.tsx";
 import "./audio.css";
+import { duplicateLight, followHouseLights, lightById, lightPlan, lightProblemList, lightSavePlan, lightsDownload, lightsDropped, moveLight, normalizeLights, placeLight, rebaseLightsHistory, removeLight, sameLights, saveEverythingPlan, setLightDevice, stateTint, withLightsText } from "./lights.ts";
+import { fetchLights, lightRefusal, lightTestSentText, pairLights, saveLights, saveLightsToProject, testLight, type LightTestTarget, type LightsView, type Z2mDevice } from "./lights-api.ts";
+import { runLightsPoll } from "./lights-poll.ts";
+import { LightsPanel } from "./LightsPanel.tsx";
+import "./lights.css";
 import { Setup } from "../app.tsx";
 import { fetchHouse, fetchLocations, saveHouse, streamProbe, streamUrl, tokenAlive, type LoadedHouse } from "../api.ts";
 import { baseOf, dropConfig, loadConfig, saveConfig, type ReinstallConfig } from "../config.ts";
@@ -105,7 +118,7 @@ function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "color", "range"].includes(target.type);
 }
 
-type Tab = "inspect" | "terminals" | "players" | "audio" | "json";
+type Tab = "inspect" | "terminals" | "players" | "audio" | "lights" | "json";
 
 const stringify = (h: HouseMap): string => JSON.stringify(h, null, 2);
 
@@ -164,6 +177,26 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const audioSaving = useRef(false);
   const audioDirtyRef = useRef(false);
   const testSeqRef = useRef(0);
+  // The house lights (`lights.json`, wave 20): the same shape as the speakers.
+  const [lights, setLights] = useState<LightsConfig>(() => normalizeLights(null));
+  const [savedLights, setSavedLights] = useState<LightsConfig | null>(null);
+  const [lightsView, setLightsView] = useState<LightsView | null>(null);
+  const [lightsStatus, setLightsStatus] = useState<"loading" | "ok" | "missing" | "error">("loading");
+  const [lightsSaveState, setLightsSaveState] = useState<SaveState>({ kind: "idle" });
+  const [lightsRemote, setLightsRemote] = useState<null | "changed" | "drafted">(null);
+  const [lightsProjectStatus, setLightsProjectStatus] = useState<string | null>(null);
+  /** Each light's last tested colour (the plan's bulb tint), kept past the server's 60 s test list. */
+  const [tints, setTints] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const lightsRef = useRef(lights);
+  lightsRef.current = lights;
+  const lightsVersionRef = useRef<string | null>(null);
+  const lightsSaving = useRef(false);
+  const lightsDirtyRef = useRef(false);
+  const lightTestSeqRef = useRef(0);
+  const lightPairSeqRef = useRef(0);
+  const lightDevicesAtRef = useRef<number | null>(null);
+  /** A device the 💡 tool was armed with (Devices → Place it): the placed light takes it. */
+  const placeDevice = useRef<Z2mDevice | null>(null);
   /** The passcode re-check before this page load's first write (W-15). */
   const lock = useMemo(() => new MapUnlock((code) => checkModCode(code, config.eventId)), [config.eventId]);
   const [asking, setAsking] = useState<{ round: number; error: string | null; answer: (code: string | null) => void } | null>(null);
@@ -213,6 +246,8 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   dirtyRef.current = dirty || textError !== null;
   const audioDirty = useMemo(() => savedAudio !== null && !sameAudio(audio, savedAudio), [audio, savedAudio]);
   audioDirtyRef.current = audioDirty;
+  const lightsDirty = useMemo(() => savedLights !== null && !sameLights(lights, savedLights), [lights, savedLights]);
+  lightsDirtyRef.current = lightsDirty;
 
   /** The server's speaker config. A new one is adopted when the page holds
    *  no speaker edits (swapped into the undo history, so the map's steps
@@ -251,7 +286,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     if (sameAudio(v.audio, audioRef.current)) return true;
     const cur = draftRef.current;
     if (cur !== null) {
-      historyRef.current = rebaseHistory(historyRef.current, { house: cur, audio: audioRef.current }, v.audio);
+      historyRef.current = rebaseHistory(historyRef.current, { house: cur, audio: audioRef.current, lights: lightsRef.current }, v.audio);
       setHistory(historyRef.current);
     }
     audioRef.current = v.audio;
@@ -265,6 +300,88 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     else if (r.kind === "missing") setAudioStatus("missing");
     else setNotice(`Couldn't load the speakers (${r.error}).`);
   }, [base, config.token, adoptAudio]);
+
+  /** The server's lights config — `adoptAudio`'s rules, plus the tests,
+   *  the pairing window and the device list (each one a reason to wake). */
+  const adoptLights = useCallback((v: LightsView, force = false): boolean => {
+    setLightsView(v);
+    setLightsStatus("ok");
+    let took = false;
+    for (const t of v.tests) {
+      if (t.seq > lightTestSeqRef.current) {
+        lightTestSeqRef.current = t.seq;
+        took = true;
+        const tint = t.fixture !== null ? stateTint(t.set ?? undefined) : null;
+        if (tint !== null && t.fixture !== null) setTints((m) => new Map(m).set(t.fixture!, tint));
+      }
+    }
+    if (v.pair !== null && v.pair.seq > lightPairSeqRef.current) {
+      lightPairSeqRef.current = v.pair.seq;
+      took = true;
+    }
+    if (v.devicesAt !== lightDevicesAtRef.current) {
+      lightDevicesAtRef.current = v.devicesAt;
+      took = true;
+    }
+    if (v.version === lightsVersionRef.current && !force) return took;
+    if (lightsSaving.current && !force) return took;
+    const first = lightsVersionRef.current === null;
+    if (lightsDirtyRef.current && !force) {
+      if (!first) {
+        setLightsRemote("changed");
+        return took;
+      }
+      lightsVersionRef.current = v.version;
+      setSavedLights(v.lights);
+      setLightsRemote("drafted");
+      return true;
+    }
+    lightsVersionRef.current = v.version;
+    setSavedLights(v.lights);
+    setLightsRemote(null);
+    setLightsSaveState((s) => (s.kind === "conflict" ? { kind: "idle" } : s));
+    if (sameLights(v.lights, lightsRef.current)) return true;
+    const cur = draftRef.current;
+    if (cur !== null) {
+      historyRef.current = rebaseLightsHistory(historyRef.current, { house: cur, audio: audioRef.current, lights: lightsRef.current }, v.lights);
+      setHistory(historyRef.current);
+    }
+    lightsRef.current = v.lights;
+    setLights(v.lights);
+    return true;
+  }, []);
+
+  const reloadLights = useCallback(async () => {
+    const r = await fetchLights(base, config.token);
+    if (r.kind === "ok") adoptLights(r.view, true);
+    else if (r.kind === "missing") setLightsStatus("missing");
+    else setNotice(`Couldn't load the lights (${r.error}).`);
+  }, [base, config.token, adoptLights]);
+
+  // The lights config: one GET, then a long poll (a save elsewhere, a test, a pairing, new devices).
+  useEffect(() => {
+    let stop = false;
+    const ctrl = new AbortController();
+    void runLightsPoll({
+      fetch: (q) => fetchLights(base, config.token, { ...q, signal: ctrl.signal }),
+      onView: (v) => adoptLights(v),
+      onMissing: () => {
+        setLightsStatus("missing");
+        setSavedLights((s) => s ?? lightsRef.current);
+      },
+      onError: () => {
+        setLightsStatus((s) => (s === "loading" ? "error" : s));
+        setSavedLights((s) => s ?? lightsRef.current);
+      },
+      testSeq: () => lightTestSeqRef.current,
+      pairSeq: () => lightPairSeqRef.current,
+      stopped: () => stop,
+    });
+    return () => {
+      stop = true;
+      ctrl.abort();
+    };
+  }, [base, config.token, adoptLights]);
 
   // The speaker config: one GET, then a long poll (a save elsewhere, a test).
   useEffect(() => {
@@ -337,12 +454,12 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     }
   }, [snapStep]);
 
-  /** Apply a `{house, audio}` edit: `push` makes a new undo step, `replace` updates the running drag's. */
+  /** Apply a `{house, audio, lights}` edit: `push` makes a new undo step, `replace` updates the running drag's. */
   const applyDoc = useCallback((next: Doc, mode: EditMode = "push") => {
     const cur = draftRef.current;
-    if (cur === null || (next.house === cur && next.audio === audioRef.current)) return;
+    if (cur === null || (next.house === cur && next.audio === audioRef.current && next.lights === lightsRef.current)) return;
     if (mode === "push") {
-      const h = pushed(historyRef.current, { house: cur, audio: audioRef.current });
+      const h = pushed(historyRef.current, { house: cur, audio: audioRef.current, lights: lightsRef.current });
       historyRef.current = h;
       setHistory(h);
     }
@@ -358,19 +475,30 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       setAudio(next.audio);
       setAudioSaveState((s) => (s.kind === "ok" ? { kind: "idle" } : s));
     }
+    if (next.lights !== lightsRef.current) {
+      lightsRef.current = next.lights;
+      setLights(next.lights);
+      setLightsSaveState((s) => (s.kind === "ok" ? { kind: "idle" } : s));
+    }
   }, []);
 
   /** A speaker edit (the map unchanged). */
   const applyAudio = useCallback((next: AudioConfig, mode: EditMode = "push") => {
     const cur = draftRef.current;
-    if (cur !== null) applyDoc({ house: cur, audio: next }, mode);
+    if (cur !== null) applyDoc({ house: cur, audio: next, lights: lightsRef.current }, mode);
   }, [applyDoc]);
 
-  /** A map edit: the speakers standing in what moved go with it (`followHouse`), in the same step. */
+  /** A light edit (the map unchanged). */
+  const applyLights = useCallback((next: LightsConfig, mode: EditMode = "push") => {
+    const cur = draftRef.current;
+    if (cur !== null) applyDoc({ house: cur, audio: audioRef.current, lights: next }, mode);
+  }, [applyDoc]);
+
+  /** A map edit: the speakers and lights standing in what moved go with it (`followHouse`, `followHouseLights`), in the same step. */
   const apply = useCallback((next: HouseMap, mode: EditMode = "push") => {
     const cur = draftRef.current;
     if (cur === null || next === cur) return;
-    applyDoc({ house: next, audio: followHouse(cur, next, audioRef.current) }, mode);
+    applyDoc({ house: next, audio: followHouse(cur, next, audioRef.current), lights: followHouseLights(cur, next, lightsRef.current) }, mode);
     // A door nobody placed is said out loud: the cut gave a room a flap into the yard.
     const flaps = flapsAdded(cur, next);
     if (flaps.length > 0) {
@@ -382,7 +510,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const step = useCallback((dir: "undo" | "redo") => {
     const cur = draftRef.current;
     if (cur === null) return;
-    const r = (dir === "undo" ? undone : redone)(historyRef.current, { house: cur, audio: audioRef.current });
+    const r = (dir === "undo" ? undone : redone)(historyRef.current, { house: cur, audio: audioRef.current, lights: lightsRef.current });
     if (r === null) return;
     historyRef.current = r.history;
     setHistory(r.history);
@@ -392,19 +520,21 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     setTextError(null);
     audioRef.current = r.present.audio;
     setAudio(r.present.audio);
+    lightsRef.current = r.present.lights;
+    setLights(r.present.lights);
   }, []);
 
   // A selection the edit (or the undo) took away goes; the floor follows the history too.
   useEffect(() => {
     if (draft === null) return;
-    if (sel !== null && !selectionExists(draft, sel, audio)) setSel(null);
+    if (sel !== null && !selectionExists(draft, sel, audio, lights)) setSel(null);
     if (!draft.floors.some((f) => f.id === floor)) setFloor(draft.floors[0]?.id ?? "");
-  }, [draft, sel, floor, audio]);
+  }, [draft, sel, floor, audio, lights]);
 
   /** Back to the saved map — the draft *and* the JSON text (which may be broken while the draft is not). */
   const revert = () => {
     if (saved === null) return;
-    applyDoc({ house: saved, audio: savedAudio ?? audio });
+    applyDoc({ house: saved, audio: savedAudio ?? audio, lights: savedLights ?? lights });
     setText(stringify(saved));
     setTextError(null);
   };
@@ -448,17 +578,121 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     validDraft: audioCheck?.ok === true,
     validSaved: audioCheckSaved?.ok === true,
   });
-  const allPlan = saveAllPlan({ mapDirty: dirty, mapSaveable, speakers: speakerSave });
+  /** The lights' validity: against the draft map, and against the map the server holds (they save alone only when that passes). */
+  const lightsCheck = useMemo(() => (draft === null ? null : validateLights(lights, draft)), [lights, draft]);
+  const lightsCheckSaved = useMemo(() => (saved === null ? null : validateLights(lights, saved)), [lights, saved]);
+  const lightSave = lightSavePlan({
+    lightsDirty,
+    status: lightsStatus,
+    mapDirty: dirty,
+    mapSaveable,
+    validDraft: lightsCheck?.ok === true,
+    validSaved: lightsCheckSaved?.ok === true,
+  });
+  const allPlan = saveEverythingPlan({ mapDirty: dirty, mapSaveable, speakers: speakerSave, lights: lightSave });
 
-  /** 💾 Save: the map (when it changed and can be saved), then the speakers when they fit the map the server will hold. */
-  const saveAll = async () => {
-    if (allPlan.map && (await save()) === null) return;
-    if (allPlan.speakers) await saveSpeakers();
-    else if (audioDirty) {
-      const why = speakerSave.why ?? (allPlan.map ? "they don't fit the map as saved — fix the speaker problems" : "fix the speaker problems first");
-      setNotice(`${allPlan.map ? "Map saved — the" : "The"} speakers are not saved: ${why}.`);
+  /** Save the lights to the event (`base` = the version this page loaded → 409 when another save landed). */
+  const saveLightsNow = async (): Promise<string | null> => {
+    if (!lightsDirty || lightsStatus !== "ok") return null;
+    if (!(await unlock())) return null;
+    setLightsSaveState({ kind: "saving" });
+    lightsSaving.current = true;
+    const sent = lights;
+    try {
+      const r = await saveLights(base, config.token, sent, lightsVersionRef.current);
+      if (r.ok) {
+        lightsVersionRef.current = r.result.version;
+        setSavedLights(sent);
+        setLightsView((v) => (v === null ? v : { ...v, lights: sent, version: r.result.version, source: "director" }));
+        setLightsSaveState({ kind: "ok", warnings: r.result.warnings ?? [], version: r.result.version });
+        return r.result.version;
+      }
+      if (r.status === 401 || r.status === 403) onRevoked();
+      setLightsSaveState(r.conflict ? { kind: "conflict", version: r.version } : { kind: "error", error: r.error, problems: r.problems });
+      if (r.conflict) setLightsRemote(null);
+      return null;
+    } finally {
+      lightsSaving.current = false;
     }
   };
+
+  /** 💾 Save: the map (when it changed and can be saved), then the speakers and the lights when they fit the map the server will hold. */
+  const saveAll = async () => {
+    if (allPlan.map && (await save()) === null) return;
+    const left: string[] = [];
+    if (allPlan.speakers) await saveSpeakers();
+    else if (audioDirty) left.push(`the speakers (${speakerSave.why ?? (allPlan.map ? "they don't fit the map as saved — fix the speaker problems" : "fix the speaker problems first")})`);
+    if (allPlan.lights) await saveLightsNow();
+    else if (lightsDirty) left.push(`the lights (${lightSave.why ?? (allPlan.map ? "they don't fit the map as saved — fix the light problems" : "fix the light problems first")})`);
+    if (left.length > 0) setNotice(`${allPlan.map ? "Map saved — but" : "Not"} saved: ${left.join("; ")}.`);
+  };
+
+  /** The Lights tab's save: the lights alone when they fit the saved map, else the map first. */
+  const saveFromLightsTab = async () => {
+    if (lightSave.alone) await saveLightsNow();
+    else if (lightSave.withMap && (await save()) !== null) await saveLightsNow();
+  };
+
+  const lightsToProject = async (): Promise<boolean> => {
+    if (!(await unlock())) return false;
+    setLightsProjectStatus("Saving lights.json to the project…");
+    const r = await saveLightsToProject(base, config.token);
+    if (r.ok) {
+      setLightsProjectStatus("Saved to the project as lights.json.");
+      await reloadLights();
+      return true;
+    }
+    setLightsProjectStatus(r.status === 409 ? "This event has no project — Download JSON and commit it instead." : `Not saved to the project — ${r.error}.`);
+    return false;
+  };
+
+  const downloadLights = () => {
+    const { name, text: body } = lightsDownload(lights);
+    const url = URL.createObjectURL(new Blob([body], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  /** 💡 Identify / a swatch / ▶ Test look: stagehand's lights module plays it. */
+  const testLightNow = useCallback(
+    async (target: LightTestTarget) => {
+      if (!(await unlock())) return;
+      const r = await testLight(base, config.token, target);
+      if (r.ok) {
+        const name = "fixture" in target ? (lightById(lightsRef.current, target.fixture)?.name ?? target.fixture) : "";
+        const what = "look" in target ? `look ${target.look}` : "set" in target ? `${name} in ${stateTint(target.set) ?? "a new state"}` : `identify ${name}`;
+        if ("set" in target) {
+          const tint = stateTint(target.set);
+          if (tint !== null) setTints((m) => new Map(m).set(target.fixture, tint));
+        }
+        setNotice(lightTestSentText(what, r.result.module));
+      } else {
+        if (r.status === 401 || r.status === 403) onRevoked();
+        setNotice(lightRefusal(r, target));
+      }
+    },
+    [base, config.token, unlock, onRevoked],
+  );
+
+  /** 📡 Pair new device / Stop pairing. */
+  const pair = useCallback(
+    async (seconds: number) => {
+      if (!(await unlock())) return;
+      const r = await pairLights(base, config.token, seconds);
+      if (r.ok) {
+        lightPairSeqRef.current = Math.max(lightPairSeqRef.current, r.result.seq);
+        const at = Date.now();
+        setLightsView((v) => (v === null ? v : { ...v, pair: { seq: r.result.seq, at, seconds, until: at + seconds * 1000, by: config.name } }));
+        setNotice(seconds === 0 ? "📡 Pairing closed." : `📡 Pairing open for ${seconds} s — reset the bulb now; it appears under Devices as ★ new.`);
+      } else setNotice(lightRefusal(r, { pair: seconds }));
+    },
+    [base, config.token, config.name, unlock],
+  );
 
   /** The Audio tab's save: the speakers alone when they fit the saved map, else the map first. */
   const saveFromAudioTab = async () => {
@@ -548,7 +782,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     (s: Selection) => {
       const h = draftRef.current;
       if (h === null) return;
-      const f = floorOfSelection(h, s, audioRef.current);
+      const f = floorOfSelection(h, s, audioRef.current, lightsRef.current);
       if (f !== "") setFloor(f);
       select(s);
     },
@@ -558,6 +792,11 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const deleteSelected = useCallback(() => {
     const h = draftRef.current;
     if (h === null || sel === null) return;
+    if (sel.kind === "light") {
+      applyLights(removeLight(lightsRef.current, sel.id));
+      setSel(null);
+      return;
+    }
     if (sel.kind === "speaker") {
       applyAudio(removeSpeaker(audioRef.current, sel.id));
       setSel(null);
@@ -571,7 +810,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       if (c.spawn) return setNotice(`The spawn is in this ${room.outdoor ? "yard" : "room"} — move the spawn to another room first.`);
       const out = removeRoom(h, sel.id);
       if ("error" in out) return setNotice(out.error);
-      if (!window.confirm(withSpeakersText(deleteRoomText(room, c), speakersDropped(h, out.house, audioRef.current).length))) return;
+      if (!window.confirm(withLightsText(withSpeakersText(deleteRoomText(room, c), speakersDropped(h, out.house, audioRef.current).length), lightsDropped(h, out.house, lightsRef.current).length))) return;
       apply(out.house);
       setSel(null);
       return;
@@ -581,7 +820,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       apply(next);
       setSel(null);
     } else if (sel.kind === "duck") setNotice("A map needs at least one duck spot.");
-  }, [sel, apply, applyAudio]);
+  }, [sel, apply, applyAudio, applyLights]);
 
   // Keys: ⌘Z / ⇧⌘Z (⌘Y) undo / redo, ⌘D duplicates, Delete removes,
   // arrows nudge (the snap step, Shift ×10), R / ⇧R turn 15° (with a
@@ -606,6 +845,14 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       if (mod && e.key.toLowerCase() === "d") {
         e.preventDefault();
         if (sel === null) return;
+        if (sel.kind === "light") {
+          const d = duplicateLight(lightsRef.current, h, sel.id, snapStep < 0.1 ? 0.25 : snapStep);
+          if (d !== null) {
+            applyLights(d.lights);
+            setSel({ kind: "light", id: d.id });
+          }
+          return;
+        }
         if (sel.kind === "speaker") {
           const d = duplicateSpeaker(audioRef.current, h, sel.id, snapStep < 0.1 ? 0.25 : snapStep);
           if (d !== null) {
@@ -668,6 +915,13 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         else apply(moveRoom(h, sel.id, by[0], by[1]));
       }
       else if (sel.kind === "stair") apply(moveStair(h, sel.id, by[0], by[1]));
+      else if (sel.kind === "light") {
+        const f = lightById(lightsRef.current, sel.id);
+        if (f !== undefined) {
+          const at = lightPlan(f);
+          applyLights(moveLight(lightsRef.current, h, sel.id, snap2([at[0] + by[0], at[1] + by[1]], Math.min(snapStep, 0.01))));
+        }
+      }
       else if (sel.kind === "speaker") {
         const s = speakerById(audioRef.current, sel.id);
         if (s !== undefined) {
@@ -685,7 +939,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     };
     window.addEventListener("keydown", on);
     return () => window.removeEventListener("keydown", on);
-  }, [edit, sel, tool, placing, snapStep, apply, applyAudio, step, deleteSelected]);
+  }, [edit, sel, tool, placing, snapStep, apply, applyAudio, applyLights, step, deleteSelected]);
 
   useEffect(() => {
     if (copied === null) return;
@@ -717,10 +971,11 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     );
   };
   const speakerProblems = audioProblemList(audio, house);
-  const errors = [...(textError !== null ? [{ text: textError, sel: null, level: "error" as const }] : structuredProblems(house, validation?.problems ?? [])), ...speakerProblems.errors];
-  const warnings = [...(walk ?? []), ...locationProblems(house, locations), ...speakerProblems.warnings];
-  const busy = saveState.kind === "saving" || audioSaveState.kind === "saving";
-  const canSave = (allPlan.map || allPlan.speakers) && !busy && editable;
+  const lightProblems = lightProblemList(lights, house);
+  const errors = [...(textError !== null ? [{ text: textError, sel: null, level: "error" as const }] : structuredProblems(house, validation?.problems ?? [])), ...speakerProblems.errors, ...lightProblems.errors];
+  const warnings = [...(walk ?? []), ...locationProblems(house, locations), ...speakerProblems.warnings, ...lightProblems.warnings];
+  const busy = saveState.kind === "saving" || audioSaveState.kind === "saving" || lightsSaveState.kind === "saving";
+  const canSave = (allPlan.map || allPlan.speakers || allPlan.lights) && !busy && editable;
 
   const addSized = (w: number, d: number) => {
     const selRoom = sel?.kind === "room" ? house.rooms.find((r) => r.id === sel.id && r.floor === floor) : undefined;
@@ -747,6 +1002,14 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     reload: load,
     save,
     unlock,
+    lights: {
+      dirty: lightsDirty,
+      saveable: lightSave.alone,
+      project: lightsStatus === "ok",
+      director: lightsView?.source === "director",
+      save: saveLightsNow,
+      toProject: lightsToProject,
+    },
   };
 
   return (
@@ -761,10 +1024,11 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         editable={editable}
         tool={tool}
         snapStep={snapStep}
-        dirty={dirty || audioDirty}
+        dirty={dirty || audioDirty || lightsDirty}
         canSave={canSave}
-        saving={saveState.kind === "saving" || audioSaveState.kind === "saving"}
+        saving={busy}
         speakers={audioStatus !== "loading"}
+        lights={lightsStatus !== "loading"}
         canUndo={history.past.length > 0}
         canRedo={history.future.length > 0}
         view3d={view3d}
@@ -772,7 +1036,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         extras={toolbarExtras?.(ctx)}
         onFloor={(id) => {
           setFloor(id);
-          if (sel !== null && floorOfSelection(house, sel, audio) !== id) setSel(null);
+          if (sel !== null && floorOfSelection(house, sel, audio, lights) !== id) setSel(null);
         }}
         onFloorInspect={(id) => select({ kind: "floor", id })}
         onAddFloor={() => {
@@ -786,6 +1050,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         placing={placing}
         onPlacing={(k) => {
           setTool("select");
+          placeDevice.current = null;
           setPlacing(k);
         }}
         onSnap={setSnapStep}
@@ -794,12 +1059,12 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         onRedo={() => step("redo")}
         onRevert={revert}
         onBlank={() => {
-          const n = audio.speakers.length;
-          const keep = n === 0 ? "" : ` The ${n === 1 ? "speaker stays" : `${n} speakers stay`} in audio.json, flagged until ${n === 1 ? "it stands" : "they stand"} in a room again (drag ${n === 1 ? "it" : "them"} onto the new rooms).`;
+          const n = audio.speakers.length + lights.fixtures.length;
+          const keep = n === 0 ? "" : ` The ${n === 1 ? "speaker or light stays" : `${n} speakers and lights stay`} in audio.json / lights.json, flagged until ${n === 1 ? "it stands" : "they stand"} in a room again (drag ${n === 1 ? "it" : "them"} onto the new rooms).`;
           if (!window.confirm(`Start a new blank house (one floor and a yard)? The current map stays until you save — Undo brings it back.${keep}`)) return;
           const next = blankHouse(house.name, house.origin);
           // Not `apply`: a redraw never takes the physical speaker layout with it.
-          applyDoc({ house: next, audio: audioRef.current });
+          applyDoc({ house: next, audio: audioRef.current, lights: lightsRef.current });
           setFloor(next.floors[0]!.id);
           setSel(null);
         }}
@@ -839,6 +1104,18 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         </div>
       )}
 
+      {lightsRemote !== null && (
+        <div className="map-banner w98-raised">
+          {lightsRemote === "changed" ? "The lights were changed elsewhere." : "The server's lights came in after you drafted some while it was away — your draft is kept, unsaved."}
+          <button className="w98-button" onClick={() => void reloadLights()}>
+            {lightsRemote === "changed" ? "Reload the lights (discard my light edits)" : "Use the server's lights (drop my draft)"}
+          </button>
+          <button className="w98-button" onClick={() => setLightsRemote(null)}>
+            {lightsRemote === "changed" ? "Keep editing" : "Keep my draft"}
+          </button>
+        </div>
+      )}
+
       {notice !== null && (
         <div className="map-banner notice w98-raised" role="status">
           {notice}
@@ -848,7 +1125,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         </div>
       )}
 
-      <main className={`map-main${tab === "audio" ? " wide-side" : ""}`}>
+      <main className={`map-main${tab === "audio" || tab === "lights" ? " wide-side" : ""}`}>
         {view3d ? (
           <div className="map-canvas w98-sunken">
             <Suspense fallback={<p className="pad">Loading 3D…</p>}>
@@ -871,8 +1148,21 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
             audio={audio}
             onEditAudio={applyAudio}
             highlight={highlight}
+            lights={lights}
+            onEditLights={applyLights}
+            tints={tints}
             onPlace={(at) => {
               if (placing === null) return;
+              if (placing === "light") {
+                const r = placeLight(lights, house, floor, at);
+                if (r === null) return setNotice("Click inside a room on this floor to hang the light.");
+                const dev = placeDevice.current;
+                placeDevice.current = null;
+                applyLights(dev !== null ? setLightDevice(r.lights, r.id, dev) : r.lights);
+                setPlacing(null);
+                select({ kind: "light", id: r.id });
+                return;
+              }
               if (placing === "speaker") {
                 const r = placeSpeaker(audio, house, floor, at);
                 if (r === null) return setNotice("Click inside a room on this floor to hang the speaker.");
@@ -898,6 +1188,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
                 ["terminals", `Terminals ${house.terminals.length}`],
                 ["players", `Players ${players.size}`],
                 ["audio", `🔊 Audio ${audio.speakers.length}`],
+                ["lights", `💡 Lights ${lights.fixtures.length}`],
                 ["json", "JSON"],
               ] as const
             ).map(([id, label]) => (
@@ -923,6 +1214,11 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
                 savedAudio={audioStatus === "ok" ? savedAudio : null}
                 commitAudio={applyAudio}
                 onTest={audioStatus === "ok" ? (t) => void testSpeaker(t) : undefined}
+                lights={lightsStatus === "loading" ? null : lights}
+                savedLights={lightsStatus === "ok" ? savedLights : null}
+                commitLights={applyLights}
+                devices={lightsView?.devices ?? []}
+                {...(lightsStatus === "ok" ? { onLightTest: (t: LightTestTarget) => void testLightNow(t) } : {})}
               />
             )}
             {tab === "audio" && (
@@ -958,6 +1254,46 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
                 projectStatus={projectStatus}
               />
             )}
+            {tab === "lights" && (
+              <LightsPanel
+                lights={lights}
+                saved={savedLights}
+                house={house}
+                view={lightsView}
+                loadedVersion={lightsVersionRef.current}
+                status={lightsStatus}
+                edit={edit}
+                dirty={lightsDirty}
+                lightSave={lightSave}
+                mapBusy={saveState.kind === "saving"}
+                saveState={lightsSaveState}
+                selected={sel?.kind === "light" ? sel.id : null}
+                commit={applyLights}
+                onSave={() => void saveFromLightsTab()}
+                onSaveToProject={() => void lightsToProject()}
+                onDownload={downloadLights}
+                onReload={() => {
+                  if (lightsDirty && !window.confirm("Reload the lights from the server? Your light edits are dropped.")) return;
+                  setLightsSaveState({ kind: "idle" });
+                  void reloadLights();
+                }}
+                onTest={(t) => void testLightNow(t)}
+                onPair={(n) => void pair(n)}
+                onPlaceDevice={(d) => {
+                  if (!edit) return;
+                  setTool("select");
+                  setPlacing("light");
+                  placeDevice.current = d;
+                  setNotice(`Click where “${d.friendly}” hangs on the plan (Esc cancels).`);
+                }}
+                onUseDevice={(d) => {
+                  if (sel?.kind === "light") applyLights(setLightDevice(lightsRef.current, sel.id, d));
+                }}
+                onHighlight={lightUp}
+                onPick={reveal}
+                projectStatus={lightsProjectStatus}
+              />
+            )}
             {tab === "terminals" && <TerminalsTab house={house} origin={origin} sel={sel} copy={copy} copied={copied} onPick={(s) => reveal(s)} />}
             {tab === "players" && <PlayersTab house={house} players={players} onFloor={setFloor} />}
             {tab === "json" && (
@@ -972,7 +1308,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
                   setTextError(null);
                   const cur = draftRef.current;
                   if (cur !== null) {
-                    const h = pushed(historyRef.current, { house: cur, audio: audioRef.current });
+                    const h = pushed(historyRef.current, { house: cur, audio: audioRef.current, lights: lightsRef.current });
                     historyRef.current = h;
                     setHistory(h);
                   }
