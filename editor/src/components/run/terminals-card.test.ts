@@ -38,8 +38,8 @@ const row = (name: string, spot: string, status: TerminalStatus = TerminalStatus
   device: null,
 })
 
-function render(rows: TerminalRow[], map = MAP): string {
-  fake.state = { rows, map, mapRooms: ['The Desktop', 'The Server Room'], reachable: true, voiceMuted: false, acked: new Set(), muteError: null, identifyError: null }
+function render(rows: TerminalRow[], map = MAP, extra: Record<string, unknown> = {}): string {
+  fake.state = { ...extra, rows, map, mapRooms: ['The Desktop', 'The Server Room'], reachable: true, voiceMuted: false, acked: new Set(), muteError: null, identifyError: null }
   const store = create<CockpitState>(() => ({
     ...nullCockpit.getState(),
     run: {
@@ -98,5 +98,28 @@ describe('TerminalsCard (wave 14 spot claims + set up)', () => {
     const html = render([row('Kitchen', 'kitchen')], null as never)
     expect(html).not.toContain('not on map')
     expect(html).toContain('No house map read yet')
+  })
+})
+
+describe('TerminalsCard (wave 20 door sensor)', () => {
+  const doorRow = (device: TerminalRow['device']): TerminalRow => ({ ...row('Server Room', 'server-room'), view: 'face', device })
+
+  it('shows the 🚪 badge green when shut, with the level, and no override by default', () => {
+    const html = render([doorRow({ door: 'closed', doorLevel: 3900 })])
+    expect(html).toMatch(/data-testid="run-terminal-badge-door"[^>]*>🚪 shut 3900</)
+    expect(html).toContain('data-tone="ok"')
+    expect(html).not.toContain('run-terminal-badge-door-override')
+  })
+
+  it('a fault reads red; the override and a warning read amber', () => {
+    const html = render([doorRow({ door: 'fault', doorFault: 'stale', doorWarn: 'ldr_open' })], MAP, { doorOverride: true })
+    expect(html).toMatch(/data-tone="red"[^>]*>🚪 fault: stale</)
+    expect(html).toMatch(/data-tone="amber"[^>]*>⚠ ldr_open</)
+    expect(html).toMatch(/data-testid="run-terminal-badge-door-override"[^>]*>override</)
+  })
+
+  it('a terminal with no sensor shows no door badge, even under an override', () => {
+    const html = render([doorRow({ door: 'none' }), { ...row('TV', 'desktop-tv'), device: {} }], MAP, { doorOverride: true })
+    expect(html).not.toContain('run-terminal-badge-door')
   })
 })

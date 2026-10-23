@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_SILENT_MS,
+  doorBadges,
+  doorOverrideFromScreen,
+  hasDoorSensor,
   RECHIME_MS,
   TerminalStatus,
   formatSilence,
@@ -311,5 +314,64 @@ describe('useTerminals', () => {
     expect(useTerminals.getState().reachable).toBe(false)
     expect(useTerminals.getState().rows[0]!.status).toBe(TerminalStatus.Silent)
     expect(chime).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('the 🚪 door badges (wave 20)', () => {
+  const now = 1_000_000
+  const rowWith = (p: Partial<TerminalPoll>): TerminalRow => mergeTerminals({}, server({ ...poll('Server Room', 500, 'face'), ...p }), now).rows[0]!
+
+  it('carries the door fields off the poll into the row', () => {
+    const r = rowWith({ door: 'closed', doorLevel: 3900, doorWarn: 'ldr_open' })
+    expect(r.device).toMatchObject({ door: 'closed', doorLevel: 3900, doorWarn: 'ldr_open' })
+  })
+
+  it('shut is green with the level, open amber', () => {
+    expect(doorBadges(rowWith({ door: 'closed', doorLevel: 3900 }).device, false)).toEqual([expect.objectContaining({ key: 'door', text: '🚪 shut 3900', tone: 'ok', warn: false })])
+    expect(doorBadges(rowWith({ door: 'open', doorLevel: 120 }).device, false)).toEqual([expect.objectContaining({ key: 'door', text: '🚪 open 120', tone: 'amber', warn: false })])
+    // No level reported: just the state.
+    expect(doorBadges(rowWith({ door: 'open' }).device, false)[0]!.text).toBe('🚪 open')
+  })
+
+  it('a fault is red, names its code and says to use the 🚪 buttons', () => {
+    const [b] = doorBadges(rowWith({ door: 'fault', doorFault: 'no_port' }).device, false)
+    expect(b).toMatchObject({ key: 'door', text: '🚪 fault: no_port', tone: 'red', warn: true })
+    expect(b!.title).toContain('use 🚪 opened / closed until it is fixed')
+  })
+
+  it('a warning follows the state as a small ⚠, never blocking', () => {
+    const bs = doorBadges(rowWith({ door: 'open', doorLevel: 5, doorWarn: 'ldr_open' }).device, false)
+    expect(bs.map((b) => b.key)).toEqual(['door', 'door-warn'])
+    expect(bs[1]).toMatchObject({ text: '⚠ ldr_open', tone: 'amber', warn: false })
+    expect(bs[1]!.title).toContain('normal for an open door in a dark hall')
+  })
+
+  it('override is amber and tells the director how to hand it back', () => {
+    const bs = doorBadges(rowWith({ door: 'closed', doorLevel: 3900 }).device, true)
+    expect(bs.at(-1)).toMatchObject({ key: 'door-override', text: 'override', tone: 'amber' })
+    expect(bs.at(-1)!.title).toContain('Trust the door sensor')
+  })
+
+  it('no badge for a terminal with no sensor (none, absent, not listed), override or not', () => {
+    expect(doorBadges(rowWith({ door: 'none' }).device, true)).toEqual([])
+    expect(doorBadges(rowWith({}).device, true)).toEqual([])
+    expect(doorBadges(null, true)).toEqual([])
+    expect(hasDoorSensor({ door: 'fault' })).toBe(true)
+    expect(hasDoorSensor({})).toBe(false)
+  })
+
+  it('terminalBadges leads with the door badges and passes the override through', () => {
+    const r = rowWith({ door: 'closed', doorLevel: 3900, audio: true, version: 'v1' })
+    expect(terminalBadges(r, 'v1', true).map((b) => b.key)).toEqual(['door', 'door-override', 'version'])
+    expect(terminalBadges(r, 'v1').map((b) => b.key)).toEqual(['door', 'version'])
+  })
+
+  it('reads night.door_override off the screen state, false for anything else', () => {
+    expect(doorOverrideFromScreen({ night: { door_override: true } })).toBe(true)
+    expect(doorOverrideFromScreen({ night: { door_override: false } })).toBe(false)
+    expect(doorOverrideFromScreen({ night: { door_override: null } })).toBe(false)
+    expect(doorOverrideFromScreen({ night: {} })).toBe(false)
+    expect(doorOverrideFromScreen({})).toBe(false)
+    expect(doorOverrideFromScreen(null)).toBe(false)
   })
 })

@@ -487,6 +487,13 @@ export const screensApi = {
   async setVoiceMuted(eventId: string, muted: boolean): Promise<{ muted: boolean }> {
     return await req<{ muted: boolean }>('POST', `/e/${eventId}/api/mod/screen/voice`, { muted })
   },
+  /** The lean screen state every terminal polls (`GET /api/screen/state`, no
+   *  terminal name, so this read never shows up on the heartbeat card). Raw:
+   *  the Terminals card reads `night.door_override` off it (wave 20,
+   *  `lib/terminals.ts` `doorOverrideFromScreen`). */
+  async state(eventId: string): Promise<unknown> {
+    return await req<unknown>('GET', `/e/${eventId}/api/screen/state`)
+  },
   /** Make one terminal show its name + spot full screen for 10 s (SW-SCR-21, install day). */
   async identify(eventId: string, name: string): Promise<{ name: string; until: number }> {
     return await req<{ name: string; until: number }>('POST', `/e/${eventId}/api/mod/screen/identify`, { name })

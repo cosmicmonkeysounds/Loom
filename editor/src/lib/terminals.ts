@@ -24,6 +24,14 @@
 //! the row says so, and one that isn't on the server-room spot is amber
 //! (`strayRoom`) — a tablet that once was the TV keeps its `room` when its
 //! view changes, and then quietly acts as a room terminal.
+//!
+//! Wave 20: a terminal that bridges the server room's door sensor (the
+//! server-room terminal's `door=serial`) reports it on its poll: `door`
+//! (`open` / `closed` / `fault`, `none` = no sensor), the sensor's `doorLevel`,
+//! the blocking `doorFault` and the non-blocking `doorWarn`. The row's 🚪
+//! badges (`doorBadges`) read them, plus *override* while the story follows
+//! the 🚪 buttons instead of the sensor (the screen state's
+//! `night.door_override`, `doorOverrideFromScreen`).
 
 /** One entry of the server's heartbeat list (`ScreenPoll & {ago}`). */
 export interface TerminalPoll {
@@ -49,7 +57,18 @@ export interface TerminalPoll {
    *  Always / Never, else the house list `audio.json` `announce.terminals`
    *  for its spot); absent from an older build. */
   announce?: boolean
+  /** (wave 20) The door sensor it bridges: absent = none configured (or an older build). */
+  door?: DoorState
+  /** The sensor's last level (0–4095). */
+  doorLevel?: number
+  /** The blocking fault while `door === 'fault'` (`ldr_saturated` | `led_dead` | `stale` | `no_port`). */
+  doorFault?: string
+  /** A non-blocking warning (`ldr_open`): the door state still holds. */
+  doorWarn?: string
 }
+
+/** What a terminal's `door=` says (wave 20, `DOOR_STATES` on the server). */
+export type DoorState = 'open' | 'closed' | 'fault' | 'none'
 
 /** What a terminal's mic reports (wave 19): open, turned off in ⚙ on that
  *  tablet (`muted`), the permission refused, plain http (no microphone at
@@ -58,7 +77,10 @@ export interface TerminalPoll {
 export type MicState = 'live' | 'muted' | 'denied' | 'insecure' | 'locked' | 'off'
 
 /** A row's device health, as its last listed poll said. */
-export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'mic' | 'version' | 'announce'>
+export type TerminalDevice = Pick<
+  TerminalPoll,
+  'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'mic' | 'version' | 'announce' | 'door' | 'doorLevel' | 'doorFault' | 'doorWarn'
+>
 
 /** `GET /api/mod/screen/terminals`. */
 export interface ScreenTerminals {
@@ -123,7 +145,20 @@ export function mergeTerminals(
   const listed = new Map<string, TerminalDevice>()
   for (const p of server?.terminals ?? []) {
     if (p.name === '') continue
-    listed.set(p.name, { audio: p.audio, visible: p.visible, battery: p.battery, charging: p.charging, fullscreen: p.fullscreen, mic: p.mic, version: p.version, announce: p.announce })
+    listed.set(p.name, {
+      audio: p.audio,
+      visible: p.visible,
+      battery: p.battery,
+      charging: p.charging,
+      fullscreen: p.fullscreen,
+      mic: p.mic,
+      version: p.version,
+      announce: p.announce,
+      door: p.door,
+      doorLevel: p.doorLevel,
+      doorFault: p.doorFault,
+      doorWarn: p.doorWarn,
+    })
     const lastSeen = clientNow - Math.max(0, p.ago)
     const prev = next[p.name]
     // A server restart forgets; never move a remembered poll backwards.
@@ -200,11 +235,85 @@ export function strayRoom(row: Pick<TerminalRow, 'room' | 'spot'>): boolean {
 export const LOW_BATTERY = 20
 
 export interface TerminalBadge {
-  key: 'audio' | 'hidden' | 'fullscreen' | 'mic' | 'battery' | 'version' | 'announce'
+  key: 'audio' | 'hidden' | 'fullscreen' | 'mic' | 'battery' | 'version' | 'announce' | 'door' | 'door-warn' | 'door-override'
   text: string
   title: string
   /** Needs a hand: red (amber for an odd version). */
   warn: boolean
+  /** Its colour when it says more than "fine / needs a hand" (the 🚪 badges,
+   *  wave 20): green shut, amber open / ⚠ / override, red fault. Absent: by `warn`. */
+  tone?: BadgeTone
+}
+
+export type BadgeTone = 'ok' | 'amber' | 'red'
+
+/** Does this poll say a door sensor is configured (wave 20)? */
+export function hasDoorSensor(d: Pick<TerminalDevice, 'door'> | null): boolean {
+  return d !== null && d.door !== undefined && d.door !== 'none'
+}
+
+/** What a fault code means, for the badge's hover. */
+const DOOR_FAULTS: Record<string, string> = {
+  ldr_saturated: 'the light sensor is flooded (room light or a torch on it)',
+  led_dead: 'the door LED is out',
+  stale: 'the sensor stopped sending',
+  no_port: 'the sensor isn’t connected to this laptop (⚙ Connect door sensor)',
+}
+
+/** The 🚪 badges (wave 20): the door's state off the sensor — green *shut* /
+ *  amber *open* with the level, red *fault: <code>* — a small *⚠ <warn>* for a
+ *  non-blocking warning, and amber *override* while the story follows the 🚪
+ *  buttons (`override` = the screen state's `night.door_override`). None when
+ *  the terminal bridges no sensor. */
+export function doorBadges(d: TerminalDevice | null, override: boolean): TerminalBadge[] {
+  if (d === null || !hasDoorSensor(d)) return []
+  const out: TerminalBadge[] = []
+  const level = typeof d.doorLevel === 'number' ? ` ${d.doorLevel}` : ''
+  if (d.door === 'fault') {
+    const code = d.doorFault ?? 'unknown'
+    const what = DOOR_FAULTS[code]
+    out.push({
+      key: 'door',
+      text: `🚪 fault: ${code}`,
+      title: `The door sensor reports a fault${what !== undefined ? ` (${what})` : ''}; use 🚪 opened / closed until it is fixed`,
+      warn: true,
+      tone: 'red',
+    })
+  } else if (d.door === 'closed') {
+    out.push({ key: 'door', text: `🚪 shut${level}`, title: `The door sensor reads the server-room door shut${level !== '' ? ` (level${level} of 4095)` : ''}`, warn: false, tone: 'ok' })
+  } else {
+    out.push({ key: 'door', text: `🚪 open${level}`, title: `The door sensor reads the server-room door open${level !== '' ? ` (level${level} of 4095)` : ''}`, warn: false, tone: 'amber' })
+  }
+  if (d.doorWarn !== undefined && d.doorWarn !== '') {
+    out.push({
+      key: 'door-warn',
+      text: `⚠ ${d.doorWarn}`,
+      title:
+        d.doorWarn === 'ldr_open'
+          ? 'The sensor sees almost no light; normal for an open door in a dark hall, a cut wire if the door is shut'
+          : `The door sensor warns: ${d.doorWarn} (the door state still holds)`,
+      warn: false,
+      tone: 'amber',
+    })
+  }
+  if (override) {
+    out.push({
+      key: 'door-override',
+      text: 'override',
+      title: 'The story follows the 🚪 buttons; press 🚪 Trust the door sensor to hand it back',
+      warn: true,
+      tone: 'amber',
+    })
+  }
+  return out
+}
+
+/** The screen state's `night.door_override` (wave 20): true only when the
+ *  story says so (absent / null / an older server = false). */
+export function doorOverrideFromScreen(state: unknown): boolean {
+  if (state === null || typeof state !== 'object') return false
+  const night = (state as { night?: unknown }).night
+  return night !== null && typeof night === 'object' && (night as { door_override?: unknown }).door_override === true
 }
 
 /** The build most listed terminals run (null: none report one, or a tie) —
@@ -264,15 +373,16 @@ export function micBadge(row: Pick<TerminalRow, 'spot' | 'view'>, mic: MicState)
   }
 }
 
-/** A row's install-day badges: 🔇 sound locked, 💤 page hidden, ⛶ not full
+/** A row's install-day badges: the 🚪 door sensor first (wave 20,
+ *  `doorBadges`), 🔇 sound locked, 💤 page hidden, ⛶ not full
  *  screen (only when the build says so: one that can't be sends nothing), 🎤
  *  the voice link's mic (when reported), 📢 it says the house announcements
  *  (wave 18b), the battery, and the build (flagged when it differs from the
  *  majority's, or is missing while the others report one). */
-export function terminalBadges(row: TerminalRow, majority: string | null): TerminalBadge[] {
+export function terminalBadges(row: TerminalRow, majority: string | null, doorOverride = false): TerminalBadge[] {
   const d = row.device
   if (d === null) return []
-  const out: TerminalBadge[] = []
+  const out: TerminalBadge[] = [...doorBadges(d, doorOverride)]
   if (d.audio === false) out.push({ key: 'audio', text: '🔇', title: 'Sound is locked: touch the screen once so it can speak', warn: true })
   if (d.visible === false) out.push({ key: 'hidden', text: '💤', title: 'The page is hidden: the screen is off, or another app / a screensaver is on top', warn: true })
   if (d.fullscreen === false) out.push({ key: 'fullscreen', text: '⛶', title: fullscreenTitle(row), warn: true })
