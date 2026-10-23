@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # N-08 bench check for the server-room box (hardware/server-room), run ON THE
-# HOUSE MAC with the box powered on the bench: the door contact wired (the
-# wire loops that touch when the door OPENS, on GPIO19; no reed), both
-# MCP23017s on the bay, ring + DFPlayer connected. ~8 minutes. It only talks
-# MQTT, so stagehand doesn't need to be running; HW-PATCH-07 (stagehand + the
-# story) is scripts/accept/K-05.sh afterwards.
+# HOUSE MAC with the box powered on the bench: both MCP23017s on the bay,
+# ring + DFPlayer connected. ~6 minutes. It only talks MQTT, so stagehand
+# doesn't need to be running; HW-PATCH-07 (stagehand + the story) is
+# scripts/accept/K-05.sh afterwards.
+#
+# Wave 20: the door moved to the Grand Central M4's LED + LDR sensor
+# (hardware/server-room-door, its bench check is scripts/accept/N-20.sh).
+# The box still publishes sensors/serverroom/door, but nothing listens (D16),
+# so this check no longer tests the wire-loop contact.
 #
 #   scripts/accept/N-08.sh [/dev/cu.usbserial-XXXX]   # with a port: flash first
 #
@@ -56,8 +60,6 @@ D=$(sub1 sensors/patchbay/diag 5); echo "    diag: $D"
 echo "$D" | grep -q '"ok":true' && ok "both MCP23017s answer" || bad "patch bay not ok (0x20/0x21, SDA 21, SCL 22, power)"
 echo "$D" | grep -q '"stuck":\[\]' && ok "no stuck jack" || bad "stuck jacks (terminated / shorted to the shell): fix the bay (README → The bay)"
 echo "$D" | grep -q '"audio":true' && ok "DFPlayer answers" || bad "DFPlayer not answering (card in? TX via 1 kΩ to RX?)"
-echo "$D" | grep -q '"door_mode":"tape"' && ok "door_mode tape (the wire loops alone)" || bad "door_mode is not tape — config.h DOOR_MODE should be DOOR_TAPE"
-echo "$D" | grep -q '"tape_polarity":"closed_when_open"' && ok "the contact reads closed = OPEN" || bad "tape_polarity is not closed_when_open — config.h TAPE_POLARITY"
 
 step "2. calibrate with every cord out"
 ask "pull EVERY patch cord out, hands off the bay"
@@ -66,28 +68,7 @@ pub show/serverroom/calibrate empty; sleep 4
 grep -q '"source":"mqtt"' "$TMP/diag" && ok "recalibrated" || bad "no recalibration diag (payload must contain 'empty')"
 kill %% 2>/dev/null
 
-step "3. the door contact alone: open → open:true, shut → open:false (retained)"
-# The keypad lock is standalone: nothing here drives it. Open it with its
-# code (or the key) from outside, or by the inside handle.
-ask "close the door"
-watch sensors/serverroom/door door; sleep 1
-ask "OPEN the door ~3 s, then CLOSE it, then press enter"
-sleep 5; kill %% 2>/dev/null   # "closed" lands ~3 s after the loops part (two 1.5 s debounces)
-grep -q '"open":true' "$TMP/door" && grep -q '"open":false' "$TMP/door" && ok "door: $(tr '\n' ' ' < "$TMP/door")" || bad "door messages: $(tr '\n' ' ' < "$TMP/door") (no open:true = the loops never touch: a broken loop is SILENT)"
-grep -q '"mode":"tape"' "$TMP/door" && ! grep -q '"reed"' "$TMP/door" && ok "payload {open, tape, mode: tape}, no reed" || bad "payload shape: $(head -1 "$TMP/door")"
-[ "$(grep -c '"open":true' "$TMP/door")" = 1 ] && ok "one opening, one open:true" || bad "$(grep -c '"open":true' "$TMP/door") open:true for one opening (contact bouncing?)"
-
-step "3b. held open: no further messages (a flicker never reports closed)"
-ask "OPEN the door and HOLD it open (don't shut it until told)"
-watch sensors/serverroom/door held; sleep 1
-ask "jiggle the open door for a few seconds (don't shut it), then let it rest, press enter"
-sleep 10; kill %% 2>/dev/null
-# One open:true (the retained one, or the live one if enter beat the 0.6 s
-# open debounce) and never an open:false after it.
-[ "$(grep -c '"open":true' "$TMP/held")" = 1 ] && ! sed -n '/"open":true/,$p' "$TMP/held" | grep -q '"open":false' && ok "held open 10 s+: one open:true, never closed" || bad "held open: $(tr '\n' ' ' < "$TMP/held") (expected one open:true and nothing after it)"
-ask "CLOSE the door"
-
-step "4. the patch: Combo A in any order → one complete state, a click per cable"
+step "3. the patch: Combo A in any order → one complete state, a click per cable"
 A=$(grep -o "combo == 'V2[^']*'" "$CFG" | head -1 | cut -d"'" -f2)
 watch sensors/patchbay/state state; sleep 1
 ask "plug Combo A ($A) one cord at a time, ~2 s apart (relay should click + beep each time)"
@@ -100,7 +81,7 @@ ask "pull every cord out"
 sleep 2; kill %% 2>/dev/null
 tail -1 "$TMP/state2" | grep -q '"count":0' && ok "empty bay published (reset)" || bad "after unplugging: $(tail -1 "$TMP/state2")"
 
-step "5. the ring + siren"
+step "4. the ring + siren"
 pub show/serverroom/lock '{"state": "locked"}'; yes "ring RED, breathing slowly?" && ok "locked" || bad "locked look"
 pub show/serverroom/lock '{"state": "unlocked"}'; yes "ring solid GREEN?" && ok "unlocked" || bad "unlocked look"
 pub show/serverroom/alarm '{"state": "on", "seconds": 8}'
@@ -110,7 +91,7 @@ pub show/serverroom/ring '{"mode": "white", "seconds": 3}'; sleep 4
 yes "white for ~3 s, then green again?" && ok "ring override" || bad "ring override"
 pub show/serverroom/lock '{"state": "locked"}'
 
-step "6. power loss → LWT"
+step "5. power loss → LWT"
 watch health/serverroom health; sleep 1
 ask "UNPLUG the box's power, wait 20 s, plug it back in, wait for the ring"
 sleep 15; kill %% 2>/dev/null
