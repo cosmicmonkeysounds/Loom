@@ -845,3 +845,27 @@ export function heightBand(house: HouseMap, room: Room): [number, number] {
   if (k < 0 || here === undefined) return [-Infinity, Infinity];
   return [round(here.elevation), round(k + 1 < floors.length ? floors[k + 1]!.elevation : here.elevation + 4)];
 }
+
+/**
+ * Hang a fixture in another room (the inspector's room picker): at that
+ * room's middle; on the same floor its height is kept, on another floor it
+ * is hung `LIGHT_HEIGHT` above that floor.
+ */
+export function moveLightToRoom(lights: LightsConfig, house: HouseMap, id: string, roomId: string): LightsConfig {
+  const f = lightById(lights, id);
+  const room = roomById(house, roomId);
+  if (f === undefined || room === undefined || f.room === roomId) return lights;
+  const p = labelSpot(room.poly);
+  const sameFloor = lightFloor(house, f) === room.floor;
+  return withLight(lights, id, (n) => {
+    n.pos = { x: round(p[0]), y: sameFloor ? n.pos.y : defaultLightY(house, room), z: round(p[1]) };
+    n.room = room.id;
+    n.floor = room.floor;
+  });
+}
+
+/** Can a fixture be tested now: the server holds it with the same device and kind? */
+export function testable(saved: LightsConfig | null, now: LightFixture): boolean {
+  const s = saved?.fixtures.find((f) => f.id === now.id);
+  return s !== undefined && s.device === now.device && s.device !== "" && s.kind === now.kind;
+}

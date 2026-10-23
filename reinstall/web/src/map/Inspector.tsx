@@ -1,14 +1,19 @@
 //! The map page's inspector: the fields of whatever is selected — a
 //! terminal, a duck spot, the spawn, a prop, a room, a door, a stair, a
-//! floor or a house speaker (`audio.json`: its outputs, gain, zones, a
-//! Test button). Every change goes through the pure ops (`edit.ts`, `doors.ts`,
+//! floor, a house speaker (`audio.json`: its outputs, gain, zones, a
+//! Test button) or (wave 20) a house light (`lights.json`: its room and
+//! height, its Zigbee2MQTT device, caps, safety floor, zones, 💡 Identify
+//! and colour swatches). Every change goes through the pure ops (`edit.ts`, `doors.ts`,
 //! `structure.ts`, `yards.ts`) and lands as one undo step; deleting a room
 //! or a floor says first what goes with it.
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, propSolid, roomById, voiceOn } from "@loom/house";
-import type { AudioConfig, Compass, HouseMap, PropKind, Vec3 } from "@loom/house";
+import { LIGHT_KINDS, LIGHT_SAFETY_MIN } from "@loom/house";
+import type { AudioConfig, Compass, HouseMap, LightKind, LightsConfig, PropKind, Vec3 } from "@loom/house";
+import { addLight, addLightZone, capsText, defaultLightY, deviceChoices, dimSet, heightBand, LIGHT_HEIGHT, LIGHT_SWATCHES, lightById, lightIdError, lightsDropped, lightZonesOf, moveLight, moveLightToRoom, patchLight, removeLight, renameLight, setLightDevice, setLightHeight, setLightZoneMember, swatchSet, testable, withLightsText } from "./lights.ts";
+import type { LightTestTarget, Z2mDevice } from "./lights-api.ts";
 import { addSpeaker, addZone, outputLabel, outputUsers, patchSpeaker, removeSpeaker, renameSpeaker, rotateSpeaker, setSpeakerHeight, setSpeakerYaw, setZoneMember, moveSpeaker, speakerById, speakersDropped, toggleSpeakerOutput, withSpeakersText, zonesOf } from "./audio.ts";
 import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
@@ -124,6 +129,15 @@ export interface InspectorProps {
   commitAudio?: (a: AudioConfig) => void;
   /** Play the identifying tone on a speaker / output (stagehand's router). */
   onTest?: (target: { speaker: string } | { out: number }) => void;
+  /** The house lights (null: still loading). */
+  lights?: LightsConfig | null;
+  /** The lights as last loaded / saved (a test needs the light saved with its device). */
+  savedLights?: LightsConfig | null;
+  commitLights?: (l: LightsConfig) => void;
+  /** The Zigbee2MQTT devices the lights module reported. */
+  devices?: readonly Z2mDevice[];
+  /** Identify a light, show it a colour, or play a look (stagehand's lights module). */
+  onLightTest?: (target: LightTestTarget) => void;
 }
 
 export function Inspector(props: InspectorProps) {
@@ -131,7 +145,7 @@ export function Inspector(props: InspectorProps) {
   if (sel === null) {
     return (
       <p className="muted">
-        Click a room, a door, a terminal, a speaker, a duck spot or the spawn. Tick <b>Edit</b> to change the map: draw rooms and yards, click walls for doors, and type exact sizes here.
+        Click a room, a door, a terminal, a speaker, a light, a duck spot or the spawn. Tick <b>Edit</b> to change the map: draw rooms and yards, click walls for doors, and type exact sizes here.
       </p>
     );
   }
@@ -311,6 +325,8 @@ export function Inspector(props: InspectorProps) {
       return <FloorInspector key={sel.id} {...props} id={sel.id} />;
     case "speaker":
       return <SpeakerInspector key={sel.id} {...props} id={sel.id} />;
+    case "light":
+      return <LightInspector key={sel.id} {...props} id={sel.id} />;
   }
 }
 
@@ -487,7 +503,7 @@ function PropInspector({ house, edit, commit, id, posFields, yawField, floorButt
   );
 }
 
-function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id, audio = null, commitAudio }: InspectorProps & { id: string }) {
+function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id, audio = null, commitAudio, lights = null, commitLights }: InspectorProps & { id: string }) {
   const r = roomById(house, id);
   if (r === undefined) return null;
   const rect = rectOf(r.poly);
@@ -510,7 +526,7 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id,
     const out = removeRoom(house, r.id);
     if ("error" in out) return onNotice(out.error);
     // The speakers the delete takes (a yard's too: one standing in no piece goes).
-    if (!window.confirm(withSpeakersText(deleteRoomText(r, c), audio === null ? 0 : speakersDropped(house, out.house, audio).length))) return;
+    if (!window.confirm(withLightsText(withSpeakersText(deleteRoomText(r, c), audio === null ? 0 : speakersDropped(house, out.house, audio).length), lights == null ? 0 : lightsDropped(house, out.house, lights).length))) return;
     commit(out.house);
     onSelect(null);
   };
@@ -605,6 +621,19 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id,
               + Speaker here
             </button>
           )}
+          {lights != null && commitLights !== undefined && (
+            <button
+              className="w98-button"
+              onClick={() => {
+                const out = addLight(lights, house, r.id);
+                commitLights(out.lights);
+                onSelect({ kind: "light", id: out.id });
+              }}
+              title={`Hang a house light in this room, ${LIGHT_HEIGHT} m above its floor (saved in lights.json, not the map)`}
+            >
+              + Light here
+            </button>
+          )}
           {r.outdoor && (
             <button className="w98-button" onClick={() => commit(fillYard(house, r.id))} title="Re-cut the yard as its whole bounding box minus the rooms standing in it">
               Fill the yard
@@ -628,7 +657,7 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id,
   );
 }
 
-function FloorInspector({ house, edit, commit, onSelect, onNotice, id, audio = null }: InspectorProps & { id: string }) {
+function FloorInspector({ house, edit, commit, onSelect, onNotice, id, audio = null, lights = null }: InspectorProps & { id: string }) {
   const f = floorById(house, id);
   if (f === undefined) return null;
   const rooms = house.rooms.filter((r) => r.floor === id);
@@ -639,7 +668,7 @@ function FloorInspector({ house, edit, commit, onSelect, onNotice, id, audio = n
     const extra = cascadeText(c, true);
     const out = removeFloor(house, id);
     if ("error" in out) return onNotice(out.error);
-    if (!window.confirm(withSpeakersText(`Delete the floor “${f.label}”${extra !== "" ? ` with ${extra}` : ""}?`, audio === null ? 0 : speakersDropped(house, out.house, audio).length))) return;
+    if (!window.confirm(withLightsText(withSpeakersText(`Delete the floor “${f.label}”${extra !== "" ? ` with ${extra}` : ""}?`, audio === null ? 0 : speakersDropped(house, out.house, audio).length), lights == null ? 0 : lightsDropped(house, out.house, lights).length))) return;
     commit(out.house);
     onSelect(null);
   };
@@ -774,6 +803,185 @@ function SpeakerInspector({ house, edit, onSelect, onNotice, id, audio = null, s
         )}
       </div>
       <p className="muted small">Drag it on the plan (⌥ no snap); the round handle, R / ⇧R or ⌥-wheel turns it; ⌘D duplicates; arrows nudge. Speakers are saved in audio.json with 💾 Save, never in the map.</p>
+    </div>
+  );
+}
+
+const KIND_TEXT: Record<LightKind, string> = { zigbee: "Zigbee bulb", "zigbee-group": "Zigbee2MQTT group", wled: "WLED strip" };
+
+function LightInspector({ house, edit, onSelect, onNotice, id, lights = null, savedLights = null, commitLights, devices = [], onLightTest }: InspectorProps & { id: string }) {
+  const [typing, setTyping] = useState(false);
+  const f = lights === null ? undefined : lightById(lights, id);
+  if (lights === null || f === undefined || commitLights === undefined) return null;
+  const commit = commitLights;
+  const room = roomById(house, f.room);
+  const floor = room !== undefined ? floorById(house, room.floor) : undefined;
+  const band = room !== undefined ? heightBand(house, room) : null;
+  const canTest = testable(savedLights, f) && onLightTest !== undefined;
+  const why = f.device === "" ? "Pick its device first" : "Save the lights first — the module only knows saved lights";
+  const choices = deviceChoices(devices, lights, id);
+  const listed = choices.some((c) => c.device.friendly === f.device);
+  const showTyped = typing || (!listed && f.device !== "") || choices.length === 0;
+  const mine = lightZonesOf(lights, id);
+  const floorRooms = house.rooms.filter((r) => r.floor === room?.floor);
+  const otherRooms = house.rooms.filter((r) => r.floor !== room?.floor);
+  return (
+    <div className="inspect light-inspect">
+      <h3>💡 Light</h3>
+      <div className="kv">
+        in {room?.label ?? <b className="bad-text">{f.room} (not on the map)</b>}
+        {floor !== undefined && <> · {floor.label}</>}
+        {f.device === "" ? <b className="bad-text"> · no device yet</b> : <span className="muted"> · {f.device}</span>}
+      </div>
+      <CommitText label="name" value={f.name} disabled={!edit} onCommit={(v) => commit(patchLight(lights, id, { name: v }))} />
+      <CommitText
+        label="id (zones and looks refer to it)"
+        value={f.id}
+        disabled={!edit}
+        onCommit={(v) => {
+          const err = lightIdError(lights, v.trim(), id);
+          if (err !== null) return onNotice(`Not renamed: ${err}.`);
+          commit(renameLight(lights, id, v.trim()));
+          onSelect({ kind: "light", id: v.trim() });
+        }}
+      />
+      <label className="field">
+        room
+        <select className="w98-input" value={f.room} disabled={!edit} onChange={(e) => commit(moveLightToRoom(lights, house, id, e.target.value))}>
+          {room === undefined && <option value={f.room}>⚠ {f.room}</option>}
+          <optgroup label={floor?.label ?? "This floor"}>
+            {floorRooms.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.label}
+              </option>
+            ))}
+          </optgroup>
+          {otherRooms.length > 0 && (
+            <optgroup label="Other floors">
+              {otherRooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label} · {floorById(house, r.floor)?.label ?? r.floor}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      </label>
+      <div className="num-row">
+        <Num label="x" value={f.pos.x} disabled={!edit} onChange={(v) => v !== null && commit(moveLight(lights, house, id, [v, f.pos.z]))} />
+        <Num label="y (height, absolute)" value={f.pos.y} disabled={!edit} onChange={(v) => v !== null && commit(setLightHeight(lights, id, v))} />
+        <Num label="z" value={f.pos.z} disabled={!edit} onChange={(v) => v !== null && commit(moveLight(lights, house, id, [f.pos.x, v]))} />
+      </div>
+      {band !== null && room !== undefined && (
+        <div className="muted small">
+          y is in the house frame: this floor runs {band[0]} to {band[1]} m.{" "}
+          {edit && f.pos.y !== defaultLightY(house, room) && (
+            <button className="w98-button small" onClick={() => commit(setLightHeight(lights, id, defaultLightY(house, room)))}>
+              ↧ {LIGHT_HEIGHT} m above the floor ({defaultLightY(house, room)})
+            </button>
+          )}
+        </div>
+      )}
+      <label className="field">
+        kind
+        <select className="w98-input" value={f.kind} disabled={!edit} onChange={(e) => commit(patchLight(lights, id, { kind: e.target.value as LightKind }))}>
+          {LIGHT_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {KIND_TEXT[k]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="field">
+        device <span className="muted">({f.kind === "wled" ? "the WLED MQTT topic, e.g. wled/server" : "its Zigbee2MQTT friendly name"})</span>
+        {choices.length > 0 && (
+          <select
+            className="w98-input"
+            aria-label="Pick a Zigbee2MQTT device"
+            value={listed && !typing ? f.device : "__typed"}
+            disabled={!edit}
+            onChange={(e) => {
+              if (e.target.value === "__typed") return setTyping(true);
+              const d = choices.find((c) => c.device.friendly === e.target.value);
+              if (d !== undefined) {
+                setTyping(false);
+                commit(setLightDevice(lights, id, d.device));
+              }
+            }}
+          >
+            {!listed && <option value="__typed">{f.device === "" ? "— pick the bulb —" : `${f.device} (typed, not reported)`}</option>}
+            {choices.map((c) => (
+              <option key={c.device.friendly} value={c.device.friendly}>
+                {c.note === "not placed yet" ? "★ " : ""}
+                {c.device.friendly} — {c.note} · {capsText(c.device.caps)}
+              </option>
+            ))}
+            {listed && <option value="__typed">type a name…</option>}
+          </select>
+        )}
+        {showTyped && <CommitText label={choices.length > 0 ? "or type it" : "type it"} value={f.device} disabled={!edit} placeholder={f.kind === "wled" ? "wled/server" : "server_room_rgb"} onCommit={(v) => commit(setLightDevice(lights, id, v))} />}
+        {choices.length === 0 && <div className="muted small">No devices reported yet: the house Mac's lights module posts Zigbee2MQTT's list. Pair the bulb from the 💡 Lights tab, or type its friendly name.</div>}
+      </div>
+      <div className="field">
+        can do
+        <div className="zone-pick">
+          {(["color", "ct", "dim"] as const).map((k) => (
+            <label key={k} className="radio checkbox">
+              <input type="checkbox" checked={f.caps[k]} disabled={!edit} onChange={(e) => commit(patchLight(lights, id, { caps: { [k]: e.target.checked } }))} /> {k === "color" ? "colour" : k === "ct" ? "white temperature" : "dim"}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="num-row">
+        <label className="radio checkbox" title="A safety light never goes dark: never OFF, never below its floor. Use it for any light people need to see by.">
+          <input type="checkbox" checked={f.safety === true} disabled={!edit} onChange={(e) => commit(patchLight(lights, id, { safety: e.target.checked }))} /> safety light (never dark)
+        </label>
+        {f.safety === true && <Num label={`floor (${LIGHT_SAFETY_MIN}–254)`} value={f.min ?? null} step={1} placeholder={String(LIGHT_SAFETY_MIN)} disabled={!edit} onChange={(v) => commit(patchLight(lights, id, { min: v }))} />}
+      </div>
+      <div className="field">
+        zones
+        {lights.zones.length === 0 && <span className="muted small">No zones yet.</span>}
+        <div className="zone-pick">
+          {lights.zones.map((z) => (
+            <label key={z.id} className="radio checkbox">
+              <input type="checkbox" checked={mine.includes(z.id)} disabled={!edit} onChange={(e) => commit(setLightZoneMember(lights, z.id, id, e.target.checked))} /> {z.name}
+            </label>
+          ))}
+        </div>
+        {edit && (
+          <button className="w98-button small" onClick={() => commit(addLightZone(lights, room?.label ?? "Zone", [id]).lights)} title="A new zone with this light in it (rename it in the 💡 Lights tab)">
+            + New zone with it
+          </button>
+        )}
+      </div>
+      <div className="field">
+        test it {!canTest && <span className="muted small">({why})</span>}
+        <div className="swatches" role="group" aria-label="Show a colour">
+          <button className="w98-button" disabled={!canTest} onClick={() => onLightTest?.({ fixture: id })} title={canTest ? "Zigbee2MQTT's identify: the bulb pulses so you can find it" : why}>
+            💡 Identify
+          </button>
+          {LIGHT_SWATCHES.map((sw) => (
+            <button key={sw.id} className="w98-button small swatch" style={{ background: sw.css }} disabled={!canTest} onClick={() => onLightTest?.({ fixture: id, set: swatchSet(f, sw) })} title={canTest ? `${sw.label} at full brightness` : why} aria-label={sw.label} />
+          ))}
+          <button className="w98-button small" disabled={!canTest} onClick={() => onLightTest?.({ fixture: id, set: dimSet(f) })} title={canTest ? (f.safety === true ? "As dim as its safety floor" : "Nearly dark") : why}>
+            Dim
+          </button>
+        </div>
+      </div>
+      {edit && (
+        <div className="button-row">
+          <button
+            className="w98-button"
+            onClick={() => {
+              commit(removeLight(lights, id));
+              onSelect(null);
+            }}
+          >
+            Delete light
+          </button>
+        </div>
+      )}
+      <p className="muted small">Drag it on the plan (⌥ no snap); ⌘D duplicates; arrows nudge. Lights are saved in lights.json with 💾 Save, never in the map.</p>
     </div>
   );
 }

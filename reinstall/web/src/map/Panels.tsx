@@ -82,15 +82,15 @@ export function ProblemsPanel({
   saveState: SaveState;
   copied: string | null;
   onPick: (sel: Selection) => void;
-  /** A speaker-config problem naming no speaker opens its tab. */
-  onTab?: (tab: "audio") => void;
+  /** A speaker- / lights-config problem naming no speaker / light opens its tab. */
+  onTab?: (tab: "audio" | "lights") => void;
   onCopyDraft: () => void;
   onReload: () => void;
 }) {
   const item = (p: Problem, i: number) => {
     const go = p.sel !== null ? () => onPick(p.sel!) : p.tab !== undefined && onTab !== undefined ? () => onTab(p.tab!) : undefined;
     return (
-      <li key={i} className={go !== undefined ? "pick" : undefined} onClick={go} title={p.sel !== null ? "Select it" : go !== undefined ? "Open the Audio tab" : undefined}>
+      <li key={i} className={go !== undefined ? "pick" : undefined} onClick={go} title={p.sel !== null ? "Select it" : go !== undefined ? (p.tab === "lights" ? "Open the 💡 Lights tab" : "Open the Audio tab") : undefined}>
         {p.text}
       </li>
     );

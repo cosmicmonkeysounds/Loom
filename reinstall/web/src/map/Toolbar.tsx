@@ -2,7 +2,7 @@
 //! switch, the drawing tools with a typed "W × D" entry, the snap step,
 //! undo / redo, revert, a blank house, save — and the slot for extras
 //! (the project bar: variants, Save to project, Download JSON). The palette
-//! places props and (wave 17) house speakers.
+//! places props, (wave 17) house speakers and (wave 20) house lights.
 
 import { useState } from "react";
 import type { ReactNode } from "react";
@@ -44,6 +44,8 @@ export interface ToolbarProps {
   onPlacing: (kind: Placing | null) => void;
   /** The speakers can be placed (the server has the speaker routes). */
   speakers?: boolean;
+  /** The lights can be placed (the config has loaded; drafted even on an older server). */
+  lights?: boolean;
   onSnap: (step: number) => void;
   onAddSized: (w: number, d: number) => void;
   onUndo: () => void;
@@ -157,6 +159,18 @@ export function Toolbar(p: ToolbarProps) {
                 title="Add a house speaker: click here, then click where it hangs on the plan (Esc cancels) — saved in audio.json, not the map"
               >
                 🔊 Speaker
+              </button>
+            </span>
+          )}
+          {p.lights !== false && (
+            <span className="prop-palette" role="group" aria-label="Add a light">
+              <button
+                className={`w98-button small${p.placing === "light" ? " pressed" : ""}`}
+                aria-pressed={p.placing === "light"}
+                onClick={() => p.onPlacing(p.placing === "light" ? null : "light")}
+                title="Add a house light: click here, then click where it hangs on the plan (Esc cancels) — saved in lights.json, not the map"
+              >
+                💡 Light
               </button>
             </span>
           )}

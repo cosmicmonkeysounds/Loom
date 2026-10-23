@@ -33,6 +33,7 @@ import {
   minPeriod,
   minStepAt,
   moveLight,
+  moveLightToRoom,
   normalizeLights,
   pairSecondsLeft,
   patchLight,
@@ -57,6 +58,7 @@ import {
   setLookTargets,
   stepsOfLook,
   swatchSet,
+  testable,
   withLightsText,
 } from "../src/map/lights.ts";
 import { moveRoom } from "../src/map/edit.ts";
@@ -121,6 +123,28 @@ describe("placing a light", () => {
     const h = setLightHeight(m, id, 2.4);
     expect(h.fixtures[0]!.pos.y).toBe(2.4);
     expect(lightFloor(house, h.fixtures[0]!)).toBe("main");
+  });
+
+  it("moves to another room from the picker: its height kept on the floor, re-hung on another", () => {
+    const house = HOUSE();
+    const { lights, id } = bulbIn(house, "desktop");
+    const hall = moveLightToRoom(setLightHeight(lights, id, 2.5), house, id, "hall");
+    expect(hall.fixtures[0]!.room).toBe("hall");
+    expect(hall.fixtures[0]!.pos.y).toBe(2.5);
+    const down = moveLightToRoom(lights, house, id, "server-room");
+    expect(down.fixtures[0]!.floor).toBe("basement");
+    expect(down.fixtures[0]!.pos.y).toBeCloseTo(-0.6, 6);
+    expect(validateLights(down, house).ok).toBe(true);
+  });
+
+  it("is testable only once the server holds it with that device", () => {
+    const house = HOUSE();
+    const { lights, id } = bulbIn(house, "desktop");
+    const f = lights.fixtures[0]!;
+    expect(testable(null, f)).toBe(false);
+    expect(testable(lights, f)).toBe(true);
+    expect(testable(lights, patchLight(lights, id, { device: "other" }).fixtures[0]!)).toBe(false);
+    expect(testable(patchLight(lights, id, { device: "" }), patchLight(lights, id, { device: "" }).fixtures[0]!)).toBe(false);
   });
 
   it("duplicates beside itself with a fresh id and no device (one bulb, one device)", () => {
