@@ -527,14 +527,19 @@ Trabolta's situations (wave 7): **at your heart** (`them.at_the_heart ==
 true`, set by the story while the server-room terminal pilots that
 program; since wave 11 at any hour once he is awake) makes him candid, like the Master: he admits the patch bay is
 his heart and that he does not know the combinations or the door's code,
-and says what he wants and why. **standing down** (the same, and
-`Night.step >= 14`, the Y2K hour) lets him fire `stand_down` only when the
-program has shown him what he wants is impossible (a host confirms it
-with 🕊). **marked at your heart** (wave 11b: the same, and `them.marked
+and says what he wants and why; since wave 20 nothing he says there ends
+the night: the story's four-layer menu on the terminal decides (a
+convince works at any hour since wave 20b, then the night waits for a
+director's 🕊), and the `stand_down` power and its **standing down** block
+are gone. **marked at your heart** (wave 11b: the same, and `them.marked
 == true`) has him notice the Antivirus' mark once, ask why (he doesn't
 know), and let the answer move his regard, wary but still candid: he
-takes their files, standing down applies as to anyone, and he never
-refuses or threatens them. Away from his heart there is no block for
+takes their files, the questions on the screen are theirs as anyone's,
+and he never refuses or threatens them. **a choice is open** (wave 20)
+keeps him to one line pointing back at the menu; **heart to heart** (wave
+20, `them.heart_chat`, `max_sentences: 4`, `acts: none`) is the typed
+talk with the guest's dossier. None of these blocks applies to a program
+thrown out of his heart (`them.heart_out`). Away from his heart there is no block for
 the mark (a passing-remark block was tried live and dropped: he
 repeated it in every reply). Two more say whether he may call her Sandy there, by the same
 rule that unredacts the Truther Download (`Night.scenario == 1` from
