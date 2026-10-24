@@ -97,7 +97,8 @@ test("terminals: a key spot nobody polls is red, a wall spot only info; builds t
   const rows = terminalChecks({ silentMs: 20_000, voiceMuted: true, terminals: [{ name: "TV", spot: "desktop-tv", view: "tv", ago: 1000, version: "a" }, { name: "Spare", spot: "", ago: 1000, version: "b" }] }, spots);
   assert.equal(level("📟 TV", rows), "ok");
   assert.equal(level("📟 Tent", rows), "fail");
-  assert.equal(level("📟 Hall", rows), "info");
+  assert.equal(level("📟 Hall", rows), undefined, "wall spots fold into one row");
+  assert.match(rows.find((r) => r.name === "Wall spots")!.detail, /no terminal on 1 map spot\(s\): hall/u);
   assert.equal(level("Terminal builds", rows), "warn");
   assert.equal(level("TV voice", rows), "warn");
 });

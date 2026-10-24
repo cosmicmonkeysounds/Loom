@@ -262,11 +262,16 @@ export function terminalChecks(answer: Json, mapSpots: readonly { id: string; na
     out.push(row(`📟 ${String(t["name"])}`, v.level, `${where !== "" ? `${where} · ` : ""}${v.notes.join(" · ")}`, read));
   }
   const seen = new Set(terms.map((t) => strOf(t["spot"])).filter((s): s is string => s !== null && s !== ""));
+  const quiet: string[] = [];
   for (const s of mapSpots) {
     if (seen.has(s.id)) continue;
     const key = KEY_SPOTS[s.id];
-    out.push(row(`📟 ${s.name}`, key !== undefined ? "fail" : "info", key !== undefined ? `spot ${s.id} — ${key} — has not polled since the server started` : `spot ${s.id}: no terminal polled (fine if no tablet hangs there tonight)`, read));
+    if (key !== undefined) out.push(row(`📟 ${s.name}`, "fail", `spot ${s.id} — ${key} — has not polled since the server started`, read));
+    else quiet.push(s.id);
   }
+  // The wall spots nobody polls fold into one row: the house may hang fewer
+  // tablets than the map has spots.
+  if (quiet.length > 0) out.push(row("Wall spots", "info", `no terminal on ${quiet.length} map spot(s): ${quiet.join(", ")} (fine where no tablet hangs tonight)`, read));
   const versions = [...new Set(terms.map((t) => strOf(t["version"])).filter((v): v is string => v !== null))];
   if (versions.length > 1) out.push(row("Terminal builds", "warn", `${versions.length} builds in use (${versions.join(", ")}) — reload the old ones`, read));
   if (answer["voiceMuted"] === true) out.push(row("TV voice", "warn", "MUTED by a director (Run → Terminals → 🔊)", read));
