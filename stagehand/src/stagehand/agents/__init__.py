@@ -17,4 +17,9 @@ ranges; the story's own `when` watchers decide what the numbers mean.
     reply.py    — model text → {say, adjust}, clamped
     config.py   — the `agents:` section
     module.py   — the worker loop (stream, concurrency, cancel, reply)
+
+Docstrings here cite "the wave 12 contract §Cn.m": the lane contract the
+story mind was built to (2026-10-19). It was never committed; the
+behaviour it froze is described in stagehand/docs/agents.md and pinned by
+the tests (test_story_mind, test_voice_lean, test_guards, test_wire, …).
 """

@@ -1,4 +1,4 @@
-"""The mind wire (wave 12, CONTRACTS.md §C6.5–C6.6): debounced saves,
+"""The mind wire (the wave 12 contract §C6.5–C6.6): debounced saves,
 hash-gated mirrors, a control / reset flushed at once, the static prompt
 prefix stored once in the trace, `prompt_ms`, and the replay after the
 server's `traceAfter`."""

@@ -1,4 +1,4 @@
-"""The replay harness (wave 12 lane H, CONTRACTS.md §C7): scripts, the
+"""The replay harness (wave 12 lane H, the wave 12 contract §C7): scripts, the
 redactor, `extract`, the eight K-04 bars on synthetic runs, the driver over
 a fake server, the lock and the rig check, and `offline` with a fake model.
 

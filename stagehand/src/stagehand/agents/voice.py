@@ -1,6 +1,6 @@
 """The lean voice (wave 12): one model call per guest line, ordered for the cache.
 
-CONTRACTS.md §C3. The message list is
+the wave 12 contract §C3. The message list is
 
     [0] system  P1  the persona, its `outside:` words (wave 20, when it has
                     any), the power catalogue (no counts), the protocol

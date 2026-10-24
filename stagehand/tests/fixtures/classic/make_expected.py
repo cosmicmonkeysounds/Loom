@@ -1,6 +1,6 @@
 """The classic snapshot's inputs, and the generator of `expected.json`.
 
-CONTRACTS.md §C5.4: `mind_mode: classic` must build exactly the prompts the
+The wave 12 contract §C5.4: `mind_mode: classic` must build exactly the prompts the
 base branch (`trabolta/answers`, f9f421a) built. `expected.json` was written
 by running this file **on the base branch's code**, once:
 

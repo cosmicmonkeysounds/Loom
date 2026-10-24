@@ -1,4 +1,4 @@
-"""Wave 12 lane W1: the lean voice (CONTRACTS.md §C2–§C3).
+"""Wave 12 lane W1: the lean voice (the wave 12 contract §C2–§C3).
 
 The messages are built from hand-made `VoiceContext`s (lane W2 builds the
 real ones); the model is a recording fake. Every secret word here is made

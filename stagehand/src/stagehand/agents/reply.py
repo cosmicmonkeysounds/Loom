@@ -32,7 +32,7 @@ _FOLD = re.compile(r"[^a-z0-9]+")
 MAX_SAY = 600
 MAX_LOOKUPS = 3
 MAX_ACTS = 2
-#: A memo's length cap (CONTRACTS.md §C2.1).
+#: A memo's length cap (the wave 12 contract §C2.1).
 MAX_MEMO = 140
 #: Where a memo spilled into the line: `"memo"` (a JSON key) or `memo:`.
 _MEMO_SPILL = re.compile(r'"memo"|\bmemo\s*:', re.IGNORECASE)

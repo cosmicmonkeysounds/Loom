@@ -23,7 +23,7 @@ next to the mind file (the durable record of the night), and the server
 live. The trace never blocks a reply: a sink that fails is logged and
 skipped.
 
-**The static prompt part is stored once** (wave 12, CONTRACTS §C6.6). A
+**The static prompt part is stored once** (the wave 12 contract §C6.6). A
 voice call's first message (the persona, the powers, the protocol) is the
 same all night. When a thought's `messages[0]` is a system message of at
 least `PREFIX_MIN` characters identical to one this process recorded for the

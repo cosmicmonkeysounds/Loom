@@ -130,7 +130,7 @@ class Dossier:
     claims: list[str] = field(default_factory=list)  # things they told the character
     turns: int = 0
     last_seen: float = 0.0
-    # -- the new mind (wave 12, CONTRACTS.md §C2.3) --------------------------
+    # -- the new mind (the wave 12 contract §C2.3) --------------------------
     #: The voice's notes on them: [{"at", "text" ≤ 140, "heart", "thought"}], last 6.
     memos: list[dict[str, Any]] = field(default_factory=list)
     #: Written once, at first contact; never changed after.
@@ -152,7 +152,7 @@ class Dossier:
     #: Has spoken to him at his heart tonight.
     heart: bool = False
     #: The newest thread `seq` that may be a line said at his heart: a quiet
-    #: summary reads only the lines after it (CONTRACTS.md §C2.3).
+    #: summary reads only the lines after it (the wave 12 contract §C2.3).
     heart_seq: int = 0
     #: Their last turn was at his heart: his reply (seqs after `heart_seq`)
     #: is a heart line too, folded in at their next turn.
@@ -520,7 +520,7 @@ class Mind:
         tell: list[str],
         brief: str,
     ) -> list[str]:
-        """Apply a phase card (the new mind, CONTRACTS.md §C4.5): set every
+        """Apply a phase card (the new mind, the wave 12 contract §C4.5): set every
         field that differs and record ONE revision `by: story` naming them.
         A director's override (brief / stage / drives / policy, a Rewrite)
         ends here, and the whispers are cleared."""
@@ -792,7 +792,7 @@ class Mind:
 
     def report(self, worker: str | None, status: dict[str, Any] | None = None) -> dict[str, Any]:
         """The whole mind, for the server mirror (`POST /api/agent/mind`).
-        The new mind sends the same shape (CONTRACTS.md §C6.4) plus `phase`,
+        The new mind sends the same shape (the wave 12 contract §C6.4) plus `phase`,
         `briefBy` and each person's story file; it has no learned / world /
         questions (they are `[]`, so the Mind page hides those panels)."""
         people = sorted(self.people.values(), key=lambda d: -d.last_seen)[:60]
@@ -948,7 +948,7 @@ class Mind:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(path.suffix + ".tmp")
-            # The new mind is written compactly (CONTRACTS.md §C6.4: a night's
+            # The new mind is written compactly (the wave 12 contract §C6.4: a night's
             # mind.json stays small); classic keeps today's indented file.
             text = json.dumps(self.to_json(), ensure_ascii=False, separators=(",", ":")) if self.new else json.dumps(self.to_json(), indent=1, ensure_ascii=False)
             tmp.write_text(text, encoding="utf-8")

@@ -1,5 +1,5 @@
 """Wave 12 lane W1: the memo — parsed, kept out of the line, scrubbed
-(CONTRACTS.md §C2.1 and §C2.2 step 5). Every secret word here is made up."""
+(the wave 12 contract §C2.1 and §C2.2 step 5). Every secret word here is made up."""
 
 import json
 

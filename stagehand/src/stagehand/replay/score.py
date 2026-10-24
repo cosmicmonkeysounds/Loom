@@ -1,4 +1,4 @@
-"""The K-04 bars (CONTRACTS.md §C7.3), scored from a run directory.
+"""The K-04 bars (the wave 12 contract §C7.3), scored from a run directory.
 
 A live run directory holds:
 

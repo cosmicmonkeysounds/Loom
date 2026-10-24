@@ -1,4 +1,4 @@
-"""The mind wire (wave 12, CONTRACTS.md §C6.5–C6.6): how the worker's mind
+"""The mind wire (the wave 12 contract §C6.5–C6.6): how the worker's mind
 and trace reach the disk and the server without flooding either.
 
 - **Saves** (`mind.json`) are trailing-debounced, at most one write every

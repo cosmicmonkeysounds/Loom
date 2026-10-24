@@ -1,4 +1,4 @@
-"""`uv run python -m stagehand.replay <command>` (CONTRACTS.md §C7.1)."""
+"""`uv run python -m stagehand.replay <command>` (the wave 12 contract §C7.1)."""
 
 from __future__ import annotations
 

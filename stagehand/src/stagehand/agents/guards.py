@@ -1,6 +1,6 @@
 """The lean voice's guards: what code checks before a line goes out (wave 12).
 
-CONTRACTS.md §C2.2, in this order:
+The wave 12 contract §C2.2, in this order:
 
   1. **never** — a line carrying a `secrets.never` word (the door code, a
      patch-bay pair) becomes the persona's fallback; an act whose JSON
@@ -66,7 +66,7 @@ _NEAR_VERDICT = re.compile(r"\b(right|exactly|spot[\s-]on|nailed)\b", re.IGNOREC
 
 
 def fold(text: str) -> str:
-    """CONTRACTS.md's fold: lowercase, every run of characters other than
+    """The wave 12 contract's fold: lowercase, every run of characters other than
     a–z / 0–9 one space, trimmed."""
     return _FOLD.sub(" ", str(text).lower()).strip()
 
@@ -507,7 +507,7 @@ def cut_exact_repeats(say: str, said: Said, thread: Iterable[str] = (), min_word
 
 
 def retry_message(rejected: str, heard: str = "", stage: str = "") -> str:
-    """The one retry's closing system message (CONTRACTS.md §C2.2 step 4,
+    """The one retry's closing system message (the wave 12 contract §C2.2 step 4,
     amended at the wave 12 integration): it quotes what the guest just said
     and names his stage. K-04: "Answer what they said, shorter" pushed the
     retry toward his stock deflection ("I cannot disclose that
