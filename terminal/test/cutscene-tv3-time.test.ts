@@ -11,6 +11,7 @@ import { confettiEmitters } from "../src/cutscene/kit/physics.ts";
 import {
   AWARDS,
   AWARD_CONFETTI,
+  STAFF_AWARD_IDS,
   CONFETTI_LIFE,
   HAND_JIVE,
   SONG_CHAT,
@@ -43,9 +44,22 @@ const CEREMONY = readFileSync(join(SHOW, "beats/ceremony.loom"), "utf8");
 // --- the pure timelines -----------------------------------------------------------------
 
 describe("tv3 timelines — the awards", () => {
-  it("knows all nine of the ceremony's awards, each with a slide in the story", () => {
-    expect(AWARDS.map((a) => a.id)).toEqual(["most_trusted", "least_trusted", "frequent_flyer", "lore_hoarder", "truthcoin_tycoon", "best_liar", "duck_speedrun", "quest_completionist", "the_painting"]);
-    for (const a of AWARDS) expect(CEREMONY, a.id).toContain(`cue screens_award_${a.id}`);
+  it("knows all nine of the programs' awards, each with a slide in the story", () => {
+    const programs = AWARDS.filter((a) => a.kind !== "Staff award");
+    expect(programs.map((a) => a.id)).toEqual(["most_trusted", "least_trusted", "frequent_flyer", "lore_hoarder", "truthcoin_tycoon", "best_liar", "duck_speedrun", "quest_completionist", "the_painting"]);
+    for (const a of programs) expect(CEREMONY, a.id).toContain(`cue screens_award_${a.id}`);
+  });
+
+  it("knows the three staff awards (wave 21), and every award slide the story cues", () => {
+    expect(STAFF_AWARD_IDS).toEqual(["staff_trusted", "staff_points", "staff_mole"]);
+    expect(awardOf("award_staff_trusted")).toMatchObject({ title: "Trabolta's Favourite Staff", kind: "Staff award", emblem: "lanyard", label: "Trust score" });
+    expect(awardOf("award_staff_points")).toMatchObject({ title: "Staff Player Of The Night", kind: "Staff award", emblem: "star", label: "Points" });
+    expect(awardOf("award_staff_mole")).toMatchObject({ title: "The Mole", kind: "Staff award", emblem: "mole" });
+    // The story lane cues them (`screens_award_staff_*`); whatever it cues, the table knows by name.
+    const cued = [...CEREMONY.matchAll(/cue screens_award_([a-z0-9_]+)/gu)].map((m) => m[1]!);
+    for (const id of cued) expect(AWARDS.map((a) => a.id), id).toContain(id);
+    // The ceremony's ticker still promises only the main awards.
+    for (const a of AWARDS.filter((x) => x.kind === "Staff award")) expect(a.line).not.toMatch(/performer|crew|John|Steph|Jesse/iu);
   });
 
   it("reads an award off its slide value, and makes one up for a value it doesn't know", () => {

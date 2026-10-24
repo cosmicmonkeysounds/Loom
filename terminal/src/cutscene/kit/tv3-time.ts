@@ -13,15 +13,16 @@ import { clamp01, ease, hashSeed, loop, noise1, progress, typedCount, typedDurat
 // --- the awards (beats/ceremony.loom) --------------------------------------------------
 
 /** An award's emblem (drawn by `tv3-parts.tsx` `AwardEmblem`). */
-export type AwardEmblem = "shield" | "beans" | "plane" | "book" | "coin" | "mask" | "duck" | "scroll" | "palette" | "trophy";
+export type AwardEmblem = "shield" | "beans" | "plane" | "book" | "coin" | "mask" | "duck" | "scroll" | "palette" | "trophy" | "lanyard" | "star" | "mole";
 
 export interface AwardInfo {
   /** The slide value's tail (`most_trusted`). */
   id: string;
   /** The award's name, as the host reads it. */
   title: string;
-  /** "Bonus award" or "Award", as the host reads it. */
-  kind: "Award" | "Bonus award";
+  /** "Bonus award" or "Award", as the host reads it; "Staff award" (wave 21)
+   *  for the three that go to a player part (Clippy, the Antivirus). */
+  kind: "Award" | "Bonus award" | "Staff award";
   /** What the number is (the host's own words), or null. */
   label: string;
   /** A word after the number (Truthcoin), if any. */
@@ -31,7 +32,7 @@ export interface AwardInfo {
   line: string;
 }
 
-/** The ceremony's nine awards, in the order Present Award checks them. */
+/** The ceremony's awards, in the order Present Award checks them: nine for the programs, then three for the staff. */
 export const AWARDS: readonly AwardInfo[] = [
   { id: "most_trusted", title: "Most Trusted", kind: "Award", label: "Trust score", emblem: "shield", line: "When a program needed believing, it was you." },
   { id: "least_trusted", title: "Least Trusted", kind: "Award", label: "Trust score", emblem: "beans", line: "Weighed, and found full of beans. It is still an award." },
@@ -42,7 +43,14 @@ export const AWARDS: readonly AwardInfo[] = [
   { id: "duck_speedrun", title: "Golden Duck Speedrun", kind: "Bonus award", label: "Reached the golden duck in", emblem: "duck", line: "Gerald was not ready." },
   { id: "quest_completionist", title: "Quest Completionist", kind: "Bonus award", label: "Quests completed", emblem: "scroll", line: "Nobody finished more of the Quest Log." },
   { id: "the_painting", title: "The Million Dollar Painting", kind: "Bonus award", label: "Signatures on the canvas", emblem: "palette", line: "It goes to silent auction." },
+  // Wave 21: the staff's own awards, after G10 and before G11 (`Night.award` staff_trusted / staff_points / staff_mole).
+  { id: "staff_trusted", title: "Trabolta's Favourite Staff", kind: "Staff award", label: "Trust score", emblem: "lanyard", line: "He could not run the house without you. He has said so." },
+  { id: "staff_points", title: "Staff Player Of The Night", kind: "Staff award", label: "Points", emblem: "star", line: "The staff played too. You played best." },
+  { id: "staff_mole", title: "The Mole", kind: "Staff award", label: "Quiet defections", emblem: "mole", line: "Somebody on the staff was never on his side." },
 ];
+
+/** The staff awards' ids (wave 21): the ones a player part takes. */
+export const STAFF_AWARD_IDS: readonly string[] = AWARDS.filter((a) => a.kind === "Staff award").map((a) => a.id);
 
 /** The award a slide value names (`award_most_trusted`), or a generic one for an award the table doesn't know. */
 export function awardOf(value: string): AwardInfo {

@@ -144,6 +144,30 @@ describe("every tv3 scene draws", () => {
     expect(none).not.toContain("Trust score");
   });
 
+  it("the three staff awards (wave 21) play the same take, TV and walls, from the staff file", () => {
+    const award = ACT3.find((d) => d.id === "award")!;
+    expect(award.namesCharacter).toBe(true);
+    const cases = [
+      ["award_staff_trusted", "TRABOLTA&#x27;S FAVOURITE STAFF", "Trust score"],
+      ["award_staff_points", "STAFF PLAYER OF THE NIGHT", "Points"],
+      ["award_staff_mole", "THE MOLE", "Quiet defections"],
+    ] as const;
+    for (const [value, title, label] of cases)
+      for (const target of ["tv", "wall"] as const) {
+        const html = draw(award, target, 6000, { value, night: { award_winner: "Norton Anti-Virus", award_value: 12 } });
+        expect(html, `${value} ${target}`).toContain(title);
+        expect(html).toContain("STAFF AWARD");
+        expect(html).toContain("The staff file lists");
+        expect(html).toContain("Norton Anti-Virus");
+        expect(html).toContain(label);
+        expect(html).toContain("tv3-award-staff");
+      }
+    // A program's award stays in the gold room.
+    expect(draw(award, "tv", 6000, { value: "award_lore_hoarder" })).not.toContain("tv3-award-staff");
+    // The ticker never promises a staff award.
+    expect(CEREMONY_ROLL).not.toMatch(/STAFF|MOLE/u);
+  });
+
   it("the ceremony's ticker names only the awards every night gives, never a bonus one", () => {
     const ceremony = ACT3.find((d) => d.id === "ceremony")!;
     const html = draw(ceremony, "tv", 12_000);

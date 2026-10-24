@@ -283,6 +283,34 @@ const EMBLEMS: Record<EmblemKind, ReactNode> = {
       <rect x="29" y="40" width="6" height="6" fill="#ffd23f" />
       <rect x="23" y="46" width="18" height="5" fill="#8a6200" />
     </>
+  ),  lanyard: (
+    <>
+      <path d="M22 10 L32 30 L42 10" fill="none" stroke="#3fa7ff" strokeWidth="4" strokeLinejoin="round" />
+      <rect x="20" y="28" width="24" height="26" rx="2" fill="#f4f8ff" stroke="#1060a0" strokeWidth="2" />
+      <rect x="20" y="28" width="24" height="6" fill="#1060a0" />
+      <circle cx="32" cy="41" r="4.5" fill="#c8d8f0" stroke="#1060a0" />
+      <path d="M25 51 Q32 44 39 51" fill="#c8d8f0" stroke="#1060a0" />
+      <path d="M36 37 l1.6 3.2 3.4 0.5 -2.5 2.4 0.6 3.4 -3.1 -1.6 -3.1 1.6 0.6 -3.4 -2.5 -2.4 3.4 -0.5 Z" transform="translate(4 -6) scale(0.7)" fill="#ffd23f" stroke="#8a6200" strokeWidth="0.8" />
+    </>
+  ),
+  star: (
+    <>
+      <path d="M32 11 L38 25 L53 26 L41.5 36 L45 51 L32 43 L19 51 L22.5 36 L11 26 L26 25 Z" fill="#ffd23f" stroke="#8a6200" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M32 18 L36 27 L45 28" fill="none" stroke="#fff6c8" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
+  mole: (
+    <>
+      <path d="M14 26 Q32 18 50 26 L46 28 Q32 23 18 28 Z" fill="#2a2a2a" stroke="#000" />
+      <path d="M20 26 Q32 6 44 26 Z" fill="#3a3a3a" stroke="#000" strokeWidth="1.4" />
+      <rect x="20" y="22" width="24" height="3" fill="#8b3a1a" />
+      <ellipse cx="32" cy="40" rx="14" ry="12" fill="#7a5a44" stroke="#3a2412" strokeWidth="1.6" />
+      <rect x="19" y="33" width="11" height="6" rx="2" fill="#000" />
+      <rect x="34" y="33" width="11" height="6" rx="2" fill="#000" />
+      <path d="M30 35 H34" stroke="#000" strokeWidth="1.6" />
+      <circle cx="32" cy="45" r="2.6" fill="#ff9aa8" stroke="#6a2030" strokeWidth="0.8" />
+      <path d="M26 50 Q32 53 38 50" fill="none" stroke="#3a2412" strokeWidth="1.2" />
+    </>
   ),
 };
 
