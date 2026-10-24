@@ -24,6 +24,8 @@ export type BoothDo =
   | { kind: "pick"; objective: string }
   /** Arm the caller's cue on the bar. */
   | { kind: "cue"; id: string }
+  /** Wave 21 (P5): open the player's Mission window. */
+  | { kind: "mission" }
   /** Later, as a button ("Not yet"). */
   | { kind: "later" }
   | { kind: "ok" };
@@ -380,6 +382,13 @@ export function reconcilePopOuts(held: readonly HeldPopOut[], ctx: ReconcileCtx)
       const unmarked = ctx.wanted !== null && !ctx.wanted.some((w) => w.id === id);
       if (caught || unmarked) retire.push(k);
       else if (h.restored === true) rebind.push({ ...base(s), actions: [{ id: "open", label: "🛡 Open the confrontation", kind: "primary", do: { kind: "card", guest: id, confront: "rescan" } }] });
+      continue;
+    }
+    if (k.startsWith("mission:")) {
+      // Wave 21 (P5): moot once its objective has ended; a restored one gets its Go back.
+      const id = k.slice("mission:".length);
+      if (!ctx.objectives.some((o) => o.id === id)) retire.push(k);
+      else if (h.restored === true) rebind.push({ ...base(s), actions: [{ id: "go", label: "▣ Go", kind: "primary", do: { kind: "mission" } }] });
       continue;
     }
     if (k.startsWith("cue:")) {
