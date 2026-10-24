@@ -39,6 +39,10 @@ majority: count([p for p in Persons where p.gone != true and p.persona != true])
 founding: Night.truther_sent == true and Kernel.majority_reached != true and Night.clock != "00:00" and Night.ended != true and program.cleared == true and program.corrupted != true
 lobby: hidden
 badge: program.afk as 🚻 Bathroom Mode
+stat: self.score as ⭐ Points
+stat: self.captures as 🛡 Captures, for Antivirus
+stat: self.judged as ⚖️ Answers judged, for Clippy
+stat: self.covert as 🤫 Quiet favours, while self.covert >= 1
 
 // Equal parts Digimon Movie, Blade Runner, and an escape room, in a
 // Web 1.0 house, with a side of existentialism.
@@ -234,8 +238,9 @@ ROLE Program
   // membership the server masks itself until the group is revealed). The
   // verdicts and the anti-AI designation are on the Kernel already; the
   // orders and the virus files are `secret: true` CODEX entries
-  // (codex/1-world.loom, 6-missions.loom).
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door, whole_truth, quest.a_faction_of_your_own
+  // (codex/1-world.loom, 6-missions.loom). Wave 21: `tipped`, `slid` and
+  // `slipped` (a player's quiet favour to this program) are secret too.
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door, whole_truth, quest.a_faction_of_your_own, tipped, slid, slipped
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
@@ -296,6 +301,15 @@ ROLE Program
   // DRAFT w18: how many programs this leader has recruited to their side by pass.
   recruits: 0 to 500 = 0
   got_truther: bool = false
+  // Wave 21 (DRAFT w21): the players' quiet favours and game acts, once
+  // per program: Clippy's or Password Manager's 🤫 tip-off, Clippy's 🤫 let
+  // it slide (the round it slid), McAfee's or CRA's 🤫 slipped coin,
+  // McAfee's 🤝 brokered deal and Password Manager's 🔑 check.
+  tipped: bool = false
+  slid: 0 to 3 = 0
+  slipped: bool = false
+  brokered: bool = false
+  verified: bool = false
   // DRAFT w18 (fix): the doors card is still up on this program's phone (recheck N5).
   sides_card_up: bool = false
   zipped: bool = false
@@ -620,17 +634,25 @@ ROLE Program
       set Kernel.jeeves_reached += 1
 
   // ── Computer Bingo (performer buttons; the ribbon's lines DRAFT for sign-off, w13 Q24 / Q28) ──
+  // Wave 21 (DRAFT w21): each game button Clippy may press clears
+  // `Kernel.pressed_by` first (Clippy's own hook, after this one, stamps it)
+  // and fires `game_credit` when the press counted: ⭐ for Clippy only when
+  // Clippy pressed (cast/hosts.loom). A host's press pays nobody.
   when bingo_winner for program:
+    set Kernel.pressed_by = "none"
     if Night.phase == "bingo_results" and program.bingo != true:
       set program.bingo = true
       set Night.bingo_winners += 1
+      fire game_credit with points: 10, gain: 0, counts: 0
       // DRAFT w18: a big moment (the user's example: un-ignorable).
       reply "!!🎱 BINGO! Name the program for each square. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
 
   when award_the_ribbon for program:
+    set Kernel.pressed_by = "none"
     if program.bingo == true:
       // DRAFT for sign-off (w13 Q24): CI 2's 🎀 to-do ticks.
       set Night.bingo_ribbons += 1
+      fire game_credit with points: 5, gain: 0, counts: 0
       unlock Computer Bingo for program
       // Wave 18 (B7): the winner's medal is a big moment; the house cheer is
       // a big one that closes itself (the story rule `ribbon_cheer`).
@@ -651,9 +673,11 @@ ROLE Program
   // live interruption's 🛡 captures them (`first_reinstallation` still fires
   // from the Enforcer's hook).
   when named_at_bingo for program:
+    set Kernel.pressed_by = "none"
     if Night.phase == "bingo_results":
       // DRAFT for sign-off (w13 Q24): CI 2's 🎯 to-do ticks.
       set Night.bingo_named += 1
+      fire game_credit with points: 10, gain: 5, counts: 0
       fire mark_for_reinstallation for program with reason: "named on the Bingo card"
 
   // ── Moments of Truth: the room's judging (performer buttons) ──
@@ -666,27 +690,46 @@ ROLE Program
   // program's: it lands in # hosts (every performer booth reads it), and
   // only the acceptance reaches the program.
   when accurate_q1 for program:
+    set Kernel.pressed_by = "none"
     set program.judge_q = 1
     fire accurate_truth for program
 
   when accurate_q2 for program:
+    set Kernel.pressed_by = "none"
     set program.judge_q = 2
     fire accurate_truth for program
 
   when accurate_q3 for program:
+    set Kernel.pressed_by = "none"
     set program.judge_q = 3
     fire accurate_truth for program
 
   when confident_q1 for program:
+    set Kernel.pressed_by = "none"
     set program.judge_q = 1
     fire confident_lie for program
 
   when confident_q2 for program:
+    set Kernel.pressed_by = "none"
     set program.judge_q = 2
     fire confident_lie for program
 
   when confident_q3 for program:
+    set Kernel.pressed_by = "none"
     set program.judge_q = 3
+    fire confident_lie for program
+
+  // Wave 21 (DRAFT w21): one ✅ and one 😤 for the question being judged
+  // now (`Night.judge_now`, 1 when judging opens, moved by the 🔢 buttons),
+  // so a card's three face buttons are ✅ 😤 🤷 for any question.
+  when judge_accurate for program:
+    set Kernel.pressed_by = "none"
+    set program.judge_q = Night.judge_now
+    fire accurate_truth for program
+
+  when judge_confident for program:
+    set Kernel.pressed_by = "none"
+    set program.judge_q = Night.judge_now
     fire confident_lie for program
 
   // An accurate answer. Recorded against its question on the Kernel
@@ -876,6 +919,7 @@ ROLE Program
           set Kernel.q8 = "accurate"
       broadcast "~✅ {program.name}'s answer is accepted." to everyone
       reply Accepted. Trabolta thanks you. +100 Truthcoin.
+      fire game_credit with points: 5, gain: 2, counts: 1
 
   // Wrong, but delivered with total confidence: accepted. Identical on
   // every surface anyone can see (the broadcast and the reply are
@@ -950,11 +994,14 @@ ROLE Program
         set program.judged_q8 = true
       broadcast "~✅ {program.name}'s answer is accepted." to everyone
       reply Accepted. Trabolta thanks you. +100 Truthcoin.
+      fire game_credit with points: 5, gain: 2, counts: 1
 
   // Uncertain, or an obvious guess: marked for failing to follow orders.
   when uncertain_answer for program:
+    set Kernel.pressed_by = "none"
     if Night.judging == true:
       set program.may_answer = false
+      fire game_credit with points: 5, gain: 5, counts: 1
       broadcast "~🤷 {program.name} was not sure. That is a symptom of corruption." to everyone
       fire mark_for_reinstallation for program with reason: "was not sure of an answer"
 
@@ -977,8 +1024,10 @@ ROLE Program
     show poll "🍾 The bottle landed on you. Truth or dare?" to program with thread: Trabolta, options: "Truth | Dare", moment: big
 
   when truth_answered for program:
+    set Kernel.pressed_by = "none"
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
+      fire game_credit with points: 5, gain: 0, counts: 0
       set program.score += 50
       broadcast "~🗣 {program.name} answered. Trabolta is satisfied. +50 Truthcoin." to everyone
       reply 🗣 Truth accepted. Trabolta is satisfied. +50 Truthcoin.
@@ -986,8 +1035,10 @@ ROLE Program
       broadcast "🗣 The bottle is not on {program.name}." to channel(hosts)
 
   when truth_refused for program:
+    set Kernel.pressed_by = "none"
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
+      fire game_credit with points: 5, gain: 5, counts: 0
       broadcast "~🙅 {program.name} refused to answer. That is a directive problem." to everyone
       fire mark_for_reinstallation for program with reason: "refused the truth"
     else:
@@ -995,8 +1046,10 @@ ROLE Program
 
   // The dead-phone fallback: the same effect as the Dare tap.
   when chose_dare for program:
+    set Kernel.pressed_by = "none"
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
+      fire game_credit with points: 5, gain: 5, counts: 0
       broadcast "~🎩 {program.name} chose Dare. Programs choose Truth." to everyone
       fire mark_for_reinstallation for program with reason: "chose Dare"
     else:
@@ -1006,6 +1059,9 @@ ROLE Program
   // verbal judge (which clears may_answer): it is what lets this program's
   // 📝 round-2 filings count at the tally.
   when made_the_cup for program:
+    set Kernel.pressed_by = "none"
+    if Night.phase == "truth_pong" and program.pong_thrown != true:
+      fire game_credit with points: 5, gain: 0, counts: 0
     if Night.phase == "truth_pong":
       set program.pong_thrown = true
       set program.may_answer = true
@@ -1014,6 +1070,9 @@ ROLE Program
       reply 🏓 Cup made. You may answer one round-2 fact: tell Clippy, or file it on the 📝 card.
 
   when missed_the_cup for program:
+    set Kernel.pressed_by = "none"
+    if Night.phase == "truth_pong" and program.pong_thrown != true:
+      fire game_credit with points: 5, gain: 5, counts: 0
     if Night.phase == "truth_pong":
       set program.pong_thrown = true
       set program.cupped = false
@@ -1024,8 +1083,10 @@ ROLE Program
   // of each program that has signed the physical canvas. Once per program;
   // MS Paint herself is the painter, not a signature.
   when signed_the_painting for program:
+    set Kernel.pressed_by = "none"
     if Night.painting == true and program.signed != true and program.featured != "mspaint":
       set program.signed = true
+      fire game_credit with points: 2, gain: 0, counts: 0
       set Night.signatures += 1
       reply 🖌 Your signature is on the painting. It goes to auction at the end of the night.
     else if Night.painting == true and program.featured == "mspaint":
@@ -2062,8 +2123,15 @@ ROLE Program
   when transfer_denied for program:
     broadcast "🧾 Denied: {program.name} → {to.name}, {amount} Truthcoin. Refunded." to channel(hosts)
     update quest The Audit for CRA Agent Software "Denied {program.name} → {to.name}, {amount}."
+    // ⭐ CRA's audit (wave 21): a denial from the CRA booth serves Trabolta. DRAFT w21
+    if by == "CRA Agent Software":
+      set CRA_Agent_Software.score += 3
+      set CRA_Agent_Software.trust += 3
   when transfer_approved for program:
     update quest The Audit for CRA Agent Software "Approved {program.name} → {to.name}, {amount}."
+    // DRAFT w21
+    if by == "CRA Agent Software":
+      set CRA_Agent_Software.score += 3
   when offer_accepted for program:
     broadcast "~💱 {program.name} ⇄ {to.name}: a fact for {amount} Truthcoin" to channel(truthcoin exchange)
   when stimulus for program:
@@ -2264,7 +2332,9 @@ ROLE Program
 
   // ── The Bag of Truth ──
   when brought_up_the_bag for program:
+    set Kernel.pressed_by = "none"
     if Night.phase == "bobbing" and Night.bag_up != true:
+      fire game_credit with points: 15, gain: 0, counts: 0
       set Night.bag_up = true
       set Night.bobber = program.name
       set program.bobbed = true
@@ -2272,6 +2342,9 @@ ROLE Program
       fire bag_retrieved
 
   when failed_the_bob for program:
+    set Kernel.pressed_by = "none"
+    if Night.phase == "bobbing" and Night.bag_up != true and program.bob_failed != true:
+      fire game_credit with points: 10, gain: 5, counts: 0
     if Night.phase == "bobbing" and Night.bag_up != true:
       set program.bob_failed = true
       broadcast "~🍎 {program.name} came up empty. Their status as a program is at risk." to everyone
@@ -2321,6 +2394,9 @@ ROLE Program
       show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
 
   when pickup_line_works for program:
+    set Kernel.pressed_by = "none"
+    if Night.phase == "grok_prom" and Night.ended != true and Night.line_by == "none":
+      fire game_credit with points: 20, gain: 0, counts: 0
     fire pickup_line_accepted for program
 
   // The story tells him: a line in the giver's thread, and Night.line_by.
@@ -2459,10 +2535,9 @@ ROLE Program
         set Night.award_value = "none"
       set Night.award_winner = program.name
       set Night.awards_given += 1
-      // The last award on the cue sheet: G10 when MS Paint is at the
-      // party (her painting), else G9. G11 waits for it.
-      if Night.award == "the_painting" or (Night.award == "quest_completionist" and Night.painting != true):
-        set Night.ceremony_done = true
+      // The last award on the cue sheet is The Mole (G10c, wave 21; the
+      // staff awards come after the programs'): G11 waits for it
+      // (`staff_award_won`).
       // DRAFT w18: a big moment, with the way to the TV.
       reply "!!🏆 You won {Night.award_title}! Come up to the TV for your trophy." with go: The Desktop
       fire present_award
@@ -2824,12 +2899,12 @@ ROLE Program
 // Download, the five-minute warning and the dance lights stay the
 // director's: each one is a surprise the countdown would give away.
 
-// Wave 18 (B6, Q2): Clippy is the super-performer who calls the games.
-// `by: Clippy` on an admin cue puts it on Clippy's 🎤 bar (any host or Run
-// may still fire it): the Bingo, the hunts, the First Moment of Truth (⚖️ ⏱
-// 📋 🍾), the bob, the summary and the ceremony with its awards. Never the
-// doors, the alert dial, wallets, the King, terminals, codes, parts or
-// Trabolta. DRAFT w18
+// Wave 21 (reverses wave 18's B6 / Q2): Clippy is a player, not a caller.
+// The hosts (Task Manager, Adobe Acrobat, the Recycling Bin, from their
+// host dock) and the directors (Run, the director phone) call every cue
+// here, the games included; no admin cue carries `by:` (a player is never
+// a caller, lint L1222). Each game a host calls pops out on Clippy's booth
+// as YOUR GAME IS ON (Clippy's hooks, cast/hosts.loom). DRAFT w21
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
   who: admin
@@ -2839,13 +2914,11 @@ INTERACTION call_to_the_desktop
 INTERACTION start_the_bingo
   label: V2 · 🎱 Start Computer Bingo (20 min)
   who: admin
-  by: Clippy
 
 INTERACTION bingo_time
   label: V3 · ⏰ Bingo time: results
   who: admin
-  by: Clippy
-  description: Clippy gets Instructions 2/X. Norton is the selected Antivirus.
+  description: Clippy's game is on (Instructions 2/X). Norton is the selected Antivirus.
 
 INTERACTION introduce_trabolta
   label: Clippy 2/X · 🤖 Clippy introduces Trabolta
@@ -2855,32 +2928,27 @@ INTERACTION introduce_trabolta
 INTERACTION start_the_hunt
   label: V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)
   who: admin
-  by: Clippy
 
 INTERACTION hunt_time_up
   label: C2 · ⏰ Hunt over: everyone back to the Desktop (auto at 15 min)
   who: admin
-  by: Clippy
   sequence: false
 
 INTERACTION first_moment_of_truth
   label: V6 · ⚖️ First Moment of Truth
   who: admin
-  by: Clippy
-  description: Opens judging. Clippy has Instructions 3/X.
+  description: Opens judging. Clippy's game is on (Instructions 3/X).
   while: Night.step == 6 and Night.judging != true
 
 INTERACTION close_the_filing
   label: ⏱ Close round-one filings now (auto at 2 min)
   who: admin
-  by: Clippy
   description: Ends the last-chance window early. Results can be read only once it is closed. A closed round never reopens.
   while: Night.filing_open == true
 
 INTERACTION read_the_results
   label: 📋 Results: the next question (press for Q1, Q2, Q3)
   who: admin
-  by: Clippy
   description: Trabolta reads one question's result on the TV; the filings for it are settled (+50 / marked). After Q3: Truth or Dare (🍾).
   repeat: true
   while: Night.phase == "truth_1" and Night.results_q < 3
@@ -2890,7 +2958,6 @@ INTERACTION read_the_results
 INTERACTION spin_the_bottle
   label: 🍾 Spin the bottle: Truth or Dare (after the three results)
   who: admin
-  by: Clippy
   repeat: true
   description: After all three results. Picks a cleared program (not marked, away or in the Internet) not yet picked tonight. Trabolta asks on the TV; their phone gets Truth / Dare. NEXT offers five spins; spin more if you like, then 📺.
   while: Night.phase == "truth_1" and Night.results_q >= 3 and Night.bottle_open != true and Night.bottle_picks < 5 and Night.bottle_done != true
@@ -2904,7 +2971,6 @@ INTERACTION second_hunt_preview
 INTERACTION start_the_second_hunt
   label: 📓 Hunt 2 → quest logs; disperse for 1 hour
   who: admin
-  by: Clippy
   while: Night.step == 7
 
 INTERACTION truther_download
@@ -3058,7 +3124,6 @@ INTERACTION final_reveal
 INTERACTION bobbing_for_truth
   label: 🍎 Bobbing for Truth
   who: admin
-  by: Clippy
   while: Night.ended != true and Night.step == 16
 
 INTERACTION read_truth_txt
@@ -3116,9 +3181,8 @@ INTERACTION trabolta_recounts
   while: Night.ending == "disabled" and Night.rank_round != 3
 
 INTERACTION clippy_reads_summary
-  label: 🪦 After the dance: Clippy reads the summary
+  label: 🪦 After the dance: Clippy reads the summary (a host calls it)
   who: admin
-  by: Clippy
   while: Night.ending == "destroyed"
 
 INTERACTION own_award_lines
@@ -3131,69 +3195,82 @@ INTERACTION own_award_lines
 INTERACTION start_the_ceremony
   label: G1 · 🏆 Start the awards ceremony (after the ending)
   who: admin
-  by: Clippy
-  description: Only once the night has ended. Trabolta hosts; Clippy hosts after destroyed and rave, and reads every line aloud.
+  description: Only once the night has ended. Trabolta hosts; Clippy hosts after destroyed and rave, and reads every line aloud. The three staff awards (G10a–c) come after the programs' awards.
   while: Night.ended == true and Night.ceremony != true
 
 INTERACTION award_most_trusted
   label: G2 · 🥇 Award: Most Trusted (winner = top trust)
   who: admin
-  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_least_trusted
   label: G3 · 🫘 Award: Least Trusted (winner = bottom trust)
   who: admin
-  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_frequent_flyer
   label: G4 · ✈️ Award: Frequent Flyer to the Internet (most visits)
   who: admin
-  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_lore_hoarder
   label: G5 · 📚 Award: Lore Hoarder (most codex entries)
   who: admin
-  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_truthcoin_tycoon
   label: G6 · 🪙 Award: Truthcoin Tycoon (most Truthcoin)
   who: admin
-  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_best_liar
   label: G7 · 🎲 Bonus: Best Liar (value = lies accepted)
   who: admin
-  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_duck_speedrun
   label: G8 · 🎲 Bonus: Golden Duck Speedrun (value = the time)
   who: admin
-  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_quest_completionist
   label: G9 · 🎲 Bonus: Quest Completionist (value = quests done)
   who: admin
-  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_the_painting
   label: G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)
   who: admin
-  by: Clippy
   description: Only when MS Paint is at the party, and only on MS Paint (any other program is refused in # hosts). Reads the 🖌 Signed count unless value is given; the canvas itself is physical.
   while: Night.ceremony == true and Night.painting == true
+
+// Wave 21: the staff awards, after the programs' (G10, or G9 with no MS
+// Paint) and before G11. No subject: the story reads the five players'
+// numbers and names the winner (a tie goes to the first of Clippy, Norton,
+// McAfee, Password Manager, CRA). The Mole (G10c) is the last award: G11
+// waits for it. DRAFT w21
+INTERACTION award_staff_trusted
+  label: G10a · 🛡 Staff award: Trabolta's Favourite Staff (top staff trust)
+  who: admin
+  while: Night.ceremony == true
+  description: Clippy or an Antivirus: whoever Trabolta trusts most on his chart's staff rows.
+
+INTERACTION award_staff_points
+  label: G10b · ⭐ Staff award: Staff Player Of The Night (most points)
+  who: admin
+  while: Night.ceremony == true
+  description: Clippy or an Antivirus: the most ⭐ Points.
+
+INTERACTION award_staff_mole
+  label: G10c · 🤫 Staff award: The Mole (most quiet favours; the last award)
+  who: admin
+  while: Night.ceremony == true
+  description: The player who did the programs the most quiet favours behind Trabolta's back, revealed here for the first time (nobody, if nobody did). The last award: G11 waits for it.
 
 INTERACTION resurrection
   label: G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)
   who: admin
-  description: Only once the ceremony has started (G1), after the last award (G10, or G9 with no MS Paint; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
+  description: Only once the ceremony has started (G1), after the last award (G10c, The Mole; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
   while: Night.ceremony == true
 
 INTERACTION the simulation completed
@@ -3328,7 +3405,8 @@ INTERACTION bingo_winner
 INTERACTION award_the_ribbon
   label: 🎀 Award a ribbon (the Bingo Ribbon for a Bingo winner)
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
 
 INTERACTION frame_for_bingo
   label: 🃏 Hand Clippy the fake Bingo card (no Bingo)
@@ -3340,37 +3418,43 @@ INTERACTION frame_for_bingo
 INTERACTION accurate_q1
   label: ✅ Q1 of this round: accurate, accepted
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.judging == true
 
 INTERACTION accurate_q2
   label: ✅ Q2 of this round: accurate, accepted
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.judging == true
 
 INTERACTION accurate_q3
   label: ✅ Q3 of this round: accurate, accepted
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.judging == true and Night.round != 3
 
 INTERACTION confident_q1
   label: 😤 Q1 of this round: wrong but confident, accepted
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.judging == true
 
 INTERACTION confident_q2
   label: 😤 Q2 of this round: wrong but confident, accepted
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.judging == true
 
 INTERACTION confident_q3
   label: 😤 Q3 of this round: wrong but confident, accepted
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.judging == true and Night.round != 3
 
 INTERACTION fact_accurate
@@ -3471,25 +3555,29 @@ INTERACTION radio_beans
 INTERACTION uncertain_answer
   label: 🤷 Uncertain or guessed: marked for reinstallation
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.judging == true
 
 INTERACTION chose_dare
   label: 🎩 Chose Dare (phone fallback): marked for reinstallation
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.bottle_open == true
 
 INTERACTION truth_answered
   label: 🗣 Truth answered: accepted
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.bottle_open == true
 
 INTERACTION truth_refused
   label: 🙅 Truth refused: marked for reinstallation
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.bottle_open == true
 
 INTERACTION named_at_bingo
@@ -3541,13 +3629,15 @@ INTERACTION claim_door
 INTERACTION made_the_cup
   label: 🏓 Made the cup: may answer
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.phase == "truth_pong"
 
 INTERACTION missed_the_cup
   label: 🏓 Missed the cup: marked for reinstallation
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.phase == "truth_pong"
 
 INTERACTION pay_truthcoin
@@ -3580,16 +3670,119 @@ INTERACTION failed_the_bob
 INTERACTION signed_the_painting
   label: 🖌 Signed the painting
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   while: Night.painting == true
   description: MS Paint's collaborative canvas (her invitation). Press once they have signed it; the count rides her Quest Log and the G10 award. A second press, or one on MS Paint, counts nothing and says so in # hosts.
 
 INTERACTION pickup_line_works
   label: 💘 Said "You're the one that I want"
   who: performer
-  by: Hosts
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  by: Hosts, Clippy
   arm: true
   while: Night.phase == "grok_prom" and Night.ended != true
+
+// ── The players' game (wave 21, DRAFT w21) ──────────────────────────
+// Clippy and the four Antivirus play for ⭐ Points (TRAIT Player,
+// cast/kit.loom). Their booths only learn their own buttons, and every one
+// below is on a Mission objective (objectives.loom) as a pick, a scan or a
+// global press.
+// ✅ / 😤 / 🔢: one accept button each for the question being judged now
+// (`Night.judge_now`), so a card's face (three buttons) holds ✅ 😤 🤷 for
+// every question; 🔢 moves the question. A global (no guest): `program.*`
+// reads false with no guest bound, so `program.uploaded != true` keeps a
+// global off every guest card.
+INTERACTION judge_accurate
+  label: ✅ Accurate, accepted (the question being judged)
+  who: performer
+  by: Hosts, Clippy
+  while: Night.judging == true
+  description: The question being judged now (Q1 when judging opens; 🔢 moves it). The same as ✅ Qn.
+
+INTERACTION judge_confident
+  label: 😤 Wrong but confident, accepted (the question being judged)
+  who: performer
+  by: Hosts, Clippy
+  while: Night.judging == true
+  description: The question being judged now (Q1 when judging opens; 🔢 moves it). The same as 😤 Qn.
+
+INTERACTION judging_q1
+  label: 🔢 Now judging question 1
+  who: performer
+  by: Hosts, Clippy
+  while: Night.judging == true and Night.judge_now != 1 and program.uploaded != true
+
+INTERACTION judging_q2
+  label: 🔢 Now judging question 2
+  who: performer
+  by: Hosts, Clippy
+  while: Night.judging == true and Night.judge_now != 2 and program.uploaded != true
+
+INTERACTION judging_q3
+  label: 🔢 Now judging question 3
+  who: performer
+  by: Hosts, Clippy
+  while: Night.judging == true and Night.judge_now != 3 and Night.round != 3 and program.uploaded != true
+
+// The quiet favours (🤫): each is counted in the player's private `covert`
+// (never in Trabolta's worker, a watch, a badge or the screens) and every
+// third one is caught (−20 trust, a private warning). The programs'
+// `tipped` / `slid` / `slipped` are ROLE `secret:` slots.
+INTERACTION look_the_other_way
+  label: 🤫 Look the other way
+  who: performer
+  by: Antivirus
+  while: program.marked == true and program.corrupted != true and program.escort_by == self
+  description: An Antivirus, on a marked program they claimed on the Wanted board. The mark comes off quietly (no readout; the poster just leaves the board). A quiet favour.
+
+INTERACTION tip_off
+  label: 🤫 Tip them off
+  who: performer
+  by: Clippy, Password Manager
+  while: program.marked == true and program.corrupted != true and program.tipped != true
+  description: Clippy or Password Manager whispers to a marked program that the Antivirus are coming. Once per program. A quiet favour.
+
+INTERACTION let_it_slide
+  label: 🤫 Let their guess slide
+  who: performer
+  by: Clippy
+  while: Night.judging == true and program.cleared == true and program.slid != Night.round
+  description: Clippy, instead of 🤷: the guess goes into the record as an accepted answer (+100 Truthcoin to them). Once per program per round. A quiet favour.
+
+INTERACTION slip_coin
+  label: 🤫 Slip them 50 Truthcoin
+  who: performer
+  by: McAfee Anti-Virus, CRA Agent Software
+  while: Night.truther_sent == true and Night.ended != true and program.cleared == true and program.slipped != true
+  description: McAfee or CRA, off the books. Once per program. A quiet favour.
+
+// Game acts with no harm in them (⭐, once per program).
+INTERACTION broker_deal
+  label: 🤝 Brokered a deal
+  who: performer
+  by: McAfee Anti-Virus
+  while: Night.truther_sent == true and Night.ended != true and program.cleared == true and program.brokered != true
+  description: McAfee, after matching this program to a trade or a bet in # truthcoin-exchange. ⭐ +10, once per program.
+
+INTERACTION verify_password
+  label: 🔑 Check their password
+  who: performer
+  by: Password Manager
+  while: Night.ended != true and program.cleared == true and program.verified != true
+  description: Password Manager reviews this program's credentials, out loud and unflatteringly. ⭐ +5, once per program.
+
+// 📢 The open defection: global, once per player, from the Truther
+// Download. A house-wide big moment (`staff_defected`); Trabolta hears it
+// and keeps them anyway. From Run, fire it AS the character (an actorless
+// press reaches every player). DRAFT w21
+INTERACTION defect_openly
+  label: 📢 Defect openly: I'm not on Trabolta's side
+  who: performer
+  by: Clippy, Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  arm: true
+  while: self.defected == "none" and Night.truther_sent == true and Night.ended != true and program.uploaded != true
+  description: A player, once. The whole house hears it; Trabolta loses trust in them (−50) but has no choice but to keep them.
 
 // Guest buttons (on the pass). `while:` hides one that would do nothing
 // for this program right now; every hook still guards. `restricted: allow`
@@ -3672,7 +3865,8 @@ when Night.bingo_on == true and Time.elapsed >= Night.bingo_end:
   sound announce_chime
   fire bingo_time_up
   // DRAFT w18
-  update quest Run The Bingo for Clippy "Twenty minutes are up. Call ⏰ Bingo time from your 🎤 bar."
+  // DRAFT w21
+  update quest Run The Bingo for Clippy "Twenty minutes are up. A host calls ⏰ Bingo time: get the winners ready."
 
 // B3 · V3: the results. The Antivirus interruption, the frame, and the
 // first reinstallation are performed live with the performer buttons.
@@ -3798,6 +3992,8 @@ when first_moment_of_truth:
       unlock Clippy Instructions 3 for Clippy
     set Night.round = 1
     set Night.judging = true
+    // Wave 21: ✅ / 😤 judge question 1 until a 🔢 moves on. DRAFT w21
+    set Night.judge_now = 1
     set Night.filing_open = true
     set Night.filing_close = Time.elapsed + 120
     set Night.poll = "bottle"
@@ -4107,6 +4303,8 @@ when truth_pong:
     set Night.hunt2_on = false
     set Night.round = 2
     set Night.judging = true
+    // Wave 21: ✅ / 😤 judge question 1 until a 🔢 moves on. DRAFT w21
+    set Night.judge_now = 1
     cue lights_pong
     set Night.lights = "pong"
     cue screens_truth_pong
@@ -5141,6 +5339,8 @@ when final_reveal:
     set Night.alerts = "bsod"
     set Night.round = 3
     set Night.judging = true
+    // Wave 21: ✅ / 😤 judge question 1 until a 🔢 moves on. DRAFT w21
+    set Night.judge_now = 1
     unlock Clippy Instructions 8 for Clippy
     // The wallet trades on through the Y2K hour: the exchange and the
     // audit close here, at the reveal (or at a server-room ending, which
@@ -5445,7 +5645,7 @@ when restore_the_lights:
 when resurrection:
   if Night.ended == true and Night.ceremony == true and Night.resurrected != true and Night.ceremony_done != true and (Night._resurrect_ask_at == 0 or Time.elapsed > Night._resurrect_ask_at + 30):
     set Night._resurrect_ask_at = Time.elapsed + 1
-    broadcast "🎃 The last award isn't presented yet (G10, or G9 with no MS Paint). Press G11 again within 30 seconds to end the show anyway." to channel(hosts)
+    broadcast "🎃 The last award isn't presented yet (G10c, The Mole). Press G11 again within 30 seconds to end the show anyway." to channel(hosts)
   else if Night.ended == true and Night.ceremony == true and Night.resurrected != true:
     set Night.resurrected = true
     set Night.banish = false
@@ -5465,6 +5665,109 @@ when resurrection:
     broadcast "🎃 The show is already over. Nothing happens." to channel(hosts)
   else:
     broadcast "🎃 Only once the ceremony has started (G1, after an ending). Nothing happens." to channel(hosts)
+
+// ── The players' game (wave 21, DRAFT w21) ──────────────────────────
+// Clippy and the four Antivirus (TRAIT Player, cast/kit.loom).
+
+// 🔢 Which question ✅ / 😤 judge (Night.judge_now; 1 when judging opens).
+when judging_q1:
+  if Night.judging == true:
+    set Night.judge_now = 1
+
+when judging_q2:
+  if Night.judging == true:
+    set Night.judge_now = 2
+
+when judging_q3:
+  if Night.judging == true and Night.round != 3:
+    set Night.judge_now = 3
+
+// 📢 A player defected in the open (TRAIT Player's hook names them in
+// Night.defector). A big moment for the whole house, then Trabolta answers
+// on the TV: he can't afford to lose them. The defector's own `defected`
+// reaches his worker; their quiet favours never do.
+when staff_defected:
+  broadcast "!!📢 {Night.defector} HAS DEFECTED. In front of everyone: not on Trabolta's side any more." to everyone with go: The Desktop
+  -> Staff Defection
+
+// The staff awards (G10a–c). The winner is the first of the five with the
+// top number; Night.award_winner is the character's name (the slide reads
+// it). The Mole reads the private `covert` count, here and nowhere else.
+when award_staff_trusted:
+  if Night.ceremony != true:
+    broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
+  else:
+    set Night.award_winner = "Clippy"
+    set Night.award_value = Clippy.trust
+    if Norton_Anti_Virus.trust > Night.award_value:
+      set Night.award_winner = "Norton Anti-Virus"
+      set Night.award_value = Norton_Anti_Virus.trust
+    if McAfee_Anti_Virus.trust > Night.award_value:
+      set Night.award_winner = "McAfee Anti-Virus"
+      set Night.award_value = McAfee_Anti_Virus.trust
+    if Password_Manager.trust > Night.award_value:
+      set Night.award_winner = "Password Manager"
+      set Night.award_value = Password_Manager.trust
+    if CRA_Agent_Software.trust > Night.award_value:
+      set Night.award_winner = "CRA Agent Software"
+      set Night.award_value = CRA_Agent_Software.trust
+    set Night.award = "staff_trusted"
+    set Night.award_title = "Trabolta's Favourite Staff"
+    fire staff_award_won
+
+when award_staff_points:
+  if Night.ceremony != true:
+    broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
+  else:
+    set Night.award_winner = "Clippy"
+    set Night.award_value = Clippy.score
+    if Norton_Anti_Virus.score > Night.award_value:
+      set Night.award_winner = "Norton Anti-Virus"
+      set Night.award_value = Norton_Anti_Virus.score
+    if McAfee_Anti_Virus.score > Night.award_value:
+      set Night.award_winner = "McAfee Anti-Virus"
+      set Night.award_value = McAfee_Anti_Virus.score
+    if Password_Manager.score > Night.award_value:
+      set Night.award_winner = "Password Manager"
+      set Night.award_value = Password_Manager.score
+    if CRA_Agent_Software.score > Night.award_value:
+      set Night.award_winner = "CRA Agent Software"
+      set Night.award_value = CRA_Agent_Software.score
+    set Night.award = "staff_points"
+    set Night.award_title = "Staff Player Of The Night"
+    fire staff_award_won
+
+when award_staff_mole:
+  if Night.ceremony != true:
+    broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
+  else:
+    set Night.award_winner = "Nobody"
+    set Night.award_value = 0
+    if Clippy.covert > Night.award_value:
+      set Night.award_winner = "Clippy"
+      set Night.award_value = Clippy.covert
+    if Norton_Anti_Virus.covert > Night.award_value:
+      set Night.award_winner = "Norton Anti-Virus"
+      set Night.award_value = Norton_Anti_Virus.covert
+    if McAfee_Anti_Virus.covert > Night.award_value:
+      set Night.award_winner = "McAfee Anti-Virus"
+      set Night.award_value = McAfee_Anti_Virus.covert
+    if Password_Manager.covert > Night.award_value:
+      set Night.award_winner = "Password Manager"
+      set Night.award_value = Password_Manager.covert
+    if CRA_Agent_Software.covert > Night.award_value:
+      set Night.award_winner = "CRA Agent Software"
+      set Night.award_value = CRA_Agent_Software.covert
+    set Night.award = "staff_mole"
+    set Night.award_title = "The Mole"
+    fire staff_award_won
+
+// The winner's booth pops (TRAIT Player); The Mole is the last award.
+when staff_award_won:
+  set Night.awards_given += 1
+  if Night.award == "staff_mole":
+    set Night.ceremony_done = true
+  fire present_award
 
 // ── Doors open ──────────────────────────────────────────────────────
 // The story's opening beat, heard by every phone and every performer:
@@ -5624,6 +5927,11 @@ set Night.award_winner = "none"
 set Night.award_value = "none"
 set Night.awards_given = 0
 set Night.award_lines = "template"
+// Wave 21: the players' game (DRAFT w21).
+set Night.judge_now = 1
+set Night.defector = "none"
+set Night.defections = 0
+set Kernel.pressed_by = "none"
 // The phones' interrupt ladder (wave 13, D2; header `alerts:`): balloon <
 // sticky < dialog < bsod. The story climbs it at the summons, the Y2K clock
 // and the final reveal, and comes back down at Truth Pong and the ceremony;
