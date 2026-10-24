@@ -2,10 +2,12 @@
 # real file should be. `uv run stagehand sounds placeholders --config
 # trapped.house.yaml` writes one labelled placeholder per name into the
 # router's sounds_dir (stagehand/media/sounds/, git-ignored: the real tracks
-# include copyrighted songs and live only on the house Mac):
+# include copyrighted songs and live only on the router machine, the MacBook
+# by default):
 #
 #   <name>.wav   48 kHz / 16-bit / mono, ≈ −6 dBFS peak: a distinct synth
-#                motif, then "Placeholder. <name>." in the Mac's `say` voice;
+#                motif, then "Placeholder. <name>." in the machine voice
+#                (macOS `say`, SAPI on Windows);
 #                a RIFF INFO chunk tags it `loom-placeholder v1 — <real>`.
 #
 # A real file always wins: the generator never overwrites an untagged file

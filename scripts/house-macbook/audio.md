@@ -216,8 +216,7 @@ session).
 `devices` → `check` (32 / 30, no layout move) → `install` (the `audio`
 job) → `announce` (chime + line on announce.to) → `chime` → `play` one
 placeholder → `stop` → `MOD_CODE=… story` (fire `call_to_the_desktop` on
-a rehearsal: chime + line within 3 s). Its default config is the house
-file; on the MacBook run it as
-`CONFIG=stagehand/trapped.macbook.yaml scripts/accept/K-20.sh <step>`.
+a rehearsal: chime + line within 3 s). Its default config is
+`trapped.macbook.yaml`; if the router moved to the Desktop, use the Windows runbook (`scripts/house-desktop/`) instead.
 Then ■ Stop house sounds from Run, from a host phone, and over MQTT with
 the uplink down.

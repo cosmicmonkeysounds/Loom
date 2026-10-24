@@ -3,8 +3,9 @@
 # (OCT31.md §5). Wave 18b: the player is stagehand's `audio` module (the
 # router, launchd job `audio`) on the 828x; the old `alexa` job is retired
 # (scripts/house-macbook/audio.md → *Retire the alexa job, switch the router on*).
-# Run ON THE HOUSE MAC, top to bottom; stand where you can hear the living
-# room AND the kitchen (or have someone in the kitchen). ≈ 10 minutes.
+# Run ON THE ROUTER MACHINE (John's MacBook by default), top to bottom;
+# stand where you can hear the living room AND the kitchen (or have someone
+# in the kitchen). ≈ 10 minutes.
 #
 #   scripts/accept/K-20.sh devices    1. CoreAudio devices — the 828x must be listed (audio.json device.name)
 #   scripts/accept/K-20.sh check      2. `stagehand check --only audio`: 32 / 30 channels, layout not
@@ -23,13 +24,13 @@
 #                                        --i-know-this-is-live; y/N unless --yes).
 #   scripts/accept/K-20.sh status     launchd state + the last log lines
 #
-# CONFIG=<yaml> (default stagehand/trapped.house.yaml) · BASE (default https://app.mapsandducks.com)
+# CONFIG=<yaml> (default stagehand/trapped.macbook.yaml) · BASE (default https://app.mapsandducks.com)
 set -euo pipefail
 source "$(dirname "$0")/guard.sh" "$@"; set -- ${ARGS[@]+"${ARGS[@]}"}
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 STAGEHAND="$ROOT/stagehand"
-CONFIG="${CONFIG:-$STAGEHAND/trapped.house.yaml}"
+CONFIG="${CONFIG:-$STAGEHAND/trapped.macbook.yaml}"
 BASE="${BASE:-https://app.mapsandducks.com}"
 LOG="$HOME/Library/Logs/stagehand/audio.log"
 LABEL=com.mapsandducks.stagehand.audio

@@ -135,9 +135,10 @@ module docstrings that explain the why).
 - **Windows must import.** `tests/test_windows_import.py` re-imports every
   module with no `fcntl` / `os.getuid` and a fake `msvcrt`. No POSIX-only
   name at import time; guard it (see `alexa/module.py`'s lock).
-- **PowerShell is ASCII.** `scripts/house-desktop/*.ps1` are parsed and
-  checked ASCII-only by `tests/test_house_desktop_scripts.py` (5.1 reads a
-  BOM-less file as ANSI).
+- **PowerShell is ASCII.** `scripts/house-desktop/*.ps1` are lint-checked
+  without PowerShell by `tests/test_house_desktop_scripts.py`: ASCII only
+  (5.1 reads a BOM-less file as ANSI), 5.1-only syntax, balanced
+  delimiters, a help / param block, no secret.
 - **YAML examples are test-pinned** (`test_config.py`, `test_launchd.py`,
   `test_audio_router.py`, `test_lights_example.py`, `test_orchestrator.py`).
   Edit their comments freely; a value change needs the test.

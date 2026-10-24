@@ -1,22 +1,22 @@
 """launchd jobs: each stagehand module as its own supervised process.
 
-On the night one house Mac runs both `show` (the house rig) and `agents`
-(Trabolta's worker). They run as **separate** launchd jobs, so either can
-be restarted, or can crash, without touching the other — and nobody ever
-needs `pkill -f "stagehand run"`, which kills both:
+On the night John's MacBook runs `agents` (Trabolta's worker) and, by
+default, `audio` (the speaker router); the Windows Desktop runs `show` and
+`lights` under Task Scheduler instead (`tasks.py`). Each module is a
+**separate** launchd job, so either can be restarted, or can crash, without
+touching the other, and nobody ever needs `pkill -f "stagehand run"`, which
+kills every job:
 
-    stagehand launchd install --job show   --config trapped.house.yaml
     stagehand launchd install --job agents --config laptop.yaml
-    stagehand launchd install --job audio  --config trapped.house.yaml   # the speaker router
-    stagehand launchd install --job lights --config trapped.house.yaml   # the house lights (lights.json)
+    stagehand launchd install --job audio  --config trapped.macbook.yaml  # the speaker router
     stagehand launchd restart --job agents        # only Trabolta's worker
-    stagehand launchd status                      # both jobs
-    stagehand launchd uninstall --job show
+    stagehand launchd status                      # every installed job
+    stagehand launchd uninstall --job audio
 
 Each job is a per-user LaunchAgent (`~/Library/LaunchAgents`), started at
 login and kept alive (launchd relaunches it, throttled to once per 10 s),
 running `uv run stagehand run --config <file> --only <job>` with its own
-log under `~/Library/Logs/stagehand/<job>.log`. The house Mac must log in
+log under `~/Library/Logs/stagehand/<job>.log`. The MacBook must log in
 automatically after a power cut for the jobs to come back on their own.
 
 `job_plist` is pure; `Launchd` takes the command runner and directories
