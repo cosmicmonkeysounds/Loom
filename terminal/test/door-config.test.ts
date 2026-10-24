@@ -29,6 +29,26 @@ describe("the door sensor + keyboard config (wave 20)", () => {
     expect(withoutSecrets("?code=X&door=serial&keys=0&debug=1")).toBe("?debug=1");
   });
 
+  it("bridges the patch bay unless bay=0 (wave 22)", () => {
+    const s = memory();
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "e", token: "t", door: "serial" }));
+    expect(loadConfig(s)).toMatchObject({ bay: true });
+    saveConfig(defaultConfig({ eventId: "e", token: "t", door: "serial", bay: false }), s);
+    expect(loadConfig(s)).toMatchObject({ bay: false });
+    expect(hintsFromSearch("?code=X&door=serial&bay=0")).toMatchObject({ bay: false });
+    expect(hintsFromSearch("?code=X&door=serial")).toMatchObject({ bay: null });
+    expect(withoutSecrets("?code=X&door=serial&bay=0&debug=1")).toBe("?debug=1");
+  });
+
+  it("the heartbeat carries the bay's counts beside the door's keys", () => {
+    const h = { audio: null, visible: null, battery: null, charging: null, version: "v1" };
+    expect(deviceQuery({ ...h, door: { door: "closed", dlv: "2410", pb: "4", pbc: "1", pbx: "0" } })).toEqual({ ver: "v1", door: "closed", dlv: "2410", pb: "4", pbc: "1", pbx: "0" });
+    const on = { ...DOOR_OFF, configured: true, kind: "serial" as const, connected: true, bay: true, sensor: { open: false, level: 2410, fault: null, warn: null, at: 50 } };
+    expect(doorHeartbeat(100, { ...on, patch: { pairs: "V1-D2", count: 1, complete: false, raw: [0, 445, 0, 0, 0, 0, 0], src: [0, 1, 0, 0, 0, 0, 0], stable: true, at: 50 } })).toEqual({ door: "closed", dlv: "2410", pb: "1", pbc: "0", pbx: "0" });
+    expect(doorHeartbeat(100, { ...on, connected: false })).toEqual({ door: "fault", dft: "no_port", pb: "fault", pft: "no_port" });
+    expect(doorHeartbeat(100, { ...on, bay: false })).toEqual({ door: "closed", dlv: "2410" });
+  });
+
   it("provisions them from the link", async () => {
     vi.stubGlobal(
       "fetch",
@@ -39,6 +59,7 @@ describe("the door sensor + keyboard config (wave 20)", () => {
     );
     expect(await provision("MOD", hintsFromSearch("?code=MOD&spot=server-room&door=serial&keys=0"))).toMatchObject({ door: "serial", keys: false });
     expect(await provision("MOD", hintsFromSearch("?code=MOD"))).toMatchObject({ door: "off", keys: true });
+    expect(await provision("MOD", hintsFromSearch("?code=MOD&door=serial&bay=0"))).toMatchObject({ door: "serial", bay: false });
   });
 
   it("the heartbeat carries the door keys only when a sensor is configured", () => {
@@ -60,7 +81,7 @@ describe("the door sensor + keyboard config (wave 20)", () => {
     expect(doorStatusText({ ...on, sensor: { open: false, level: 2410, fault: null, warn: null, at: 0 } }, 10)).toBe("door sensor: SHUT · level 2410");
     expect(doorStatusText({ ...on, sensor: { open: true, level: 0, fault: "ldr_saturated", warn: null, at: 0 } }, 10)).toMatch(/FAULT \(ldr_saturated\)/);
     // Once the board has said what it runs, the LED's wiring follows (`mod` is the pulsed LED).
-    const board = { fw: "door-m4 1.1.0", mode: "steady" as const, auto: false, close: 1800, open: 1200, settle: 150, cal: false, sense: false };
+    const board = { fw: "door-m4 1.1.0", mode: "steady" as const, auto: false, close: 1800, open: 1200, settle: 150, cal: false, sense: false, pbv: 0, pbd: 0 };
     const shut = { open: false, level: 3900, fault: null, warn: null, at: 0 };
     expect(doorStatusText({ ...on, board, sensor: shut }, 10)).toBe("door sensor: SHUT · level 3900 · steady");
     expect(doorStatusText({ ...on, board: { ...board, mode: "mod", auto: true }, sensor: shut }, 10)).toBe("door sensor: SHUT · level 3900 · pulsed (auto)");

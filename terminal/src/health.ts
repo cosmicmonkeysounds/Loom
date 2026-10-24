@@ -39,7 +39,9 @@ export interface DeviceHealth {
   /** The voice link's microphone (wave 19); null / absent = nothing to say yet. */
   mic?: MicReport | null;
   /** The door sensor this terminal bridges (wave 20): its `door` / `dlv` /
-   *  `dft` / `dwn` keys, absent when none is configured. */
+   *  `dft` / `dwn` keys, absent when none is configured; and the patch bay
+   *  on the same board (wave 22): `pb` / `pbc` / `pbx` / `pft`, absent when
+   *  the board has none. Counts only, never the pairs. */
   door?: Record<string, string>;
 }
 
@@ -51,7 +53,7 @@ export function deviceQuery(h: DeviceHealth): Record<string, string> {
   if (h.fullscreen !== undefined && h.fullscreen !== null) q["fs"] = h.fullscreen ? "1" : "0";
   if (h.announce !== undefined && h.announce !== null) q["ann"] = h.announce ? "1" : "0";
   if (h.mic !== undefined && h.mic !== null) q["mic"] = h.mic;
-  if (h.door !== undefined) for (const k of ["door", "dlv", "dft", "dwn"]) if (h.door[k] !== undefined) q[k] = h.door[k]!;
+  if (h.door !== undefined) for (const k of ["door", "dlv", "dft", "dwn", "pb", "pbc", "pbx", "pft"]) if (h.door[k] !== undefined) q[k] = h.door[k]!;
   if (h.battery !== null && Number.isFinite(h.battery)) q["bat"] = `${Math.max(0, Math.min(100, Math.round(h.battery)))}${h.charging === true ? "c" : ""}`;
   return q;
 }

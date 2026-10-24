@@ -265,9 +265,11 @@ export interface ScreenNight {
   alarm_on: boolean | null;
   /** (wave 20) A director has the door on the 🚪 buttons: the story ignores the sensor. */
   door_override: boolean | null;
+  /** (wave 22) A director has the patch bay on the 🔌 buttons: the story ignores the bay. */
+  patch_override: boolean | null;
 }
 
-export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, bottle_open: null, results_q: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null, ended: null, collection_complete: null, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null, server_door: null, heart_stage: null, heart_look: null, alarm_on: null, door_override: null };
+export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, bottle_open: null, results_q: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null, ended: null, collection_complete: null, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null, server_door: null, heart_stage: null, heart_look: null, alarm_on: null, door_override: null, patch_override: null };
 
 /** The night block off the wire; anything missing or malformed is null. */
 export function nightOf(raw: unknown): ScreenNight {
@@ -305,6 +307,7 @@ export function nightOf(raw: unknown): ScreenNight {
     heart_look: who(r["heart_look"]),
     alarm_on: bool(r["alarm_on"]),
     door_override: bool(r["door_override"]),
+    patch_override: bool(r["patch_override"]),
   };
 }
 
