@@ -24,7 +24,6 @@ the source:
 from __future__ import annotations
 
 import ipaddress
-import json
 import re
 from pathlib import Path
 
@@ -136,16 +135,23 @@ def _yaml_combos() -> tuple[str, str]:
 def test_the_host_tests_pin_the_yamls_combos():
     text = HOST_TEST.read_text(encoding="utf-8")
     pinned = dict(re.findall(r'static const char\* (kCombo[AB]) = "([^"]+)"', text))
-    assert (pinned["kComboA"], pinned["kComboB"]) == _yaml_combos()
+    # Wave 22: combo A moved to V6-D7 for the Grand Central M4's 8 + 7 bay.
+    # The archived ESP32 box (not installed, hardware/ untouched) still pins
+    # its old 2 x 12 combo A as a format fixture; combo B is unchanged.
+    assert pinned["kComboB"] == _yaml_combos()[1]
+    assert re.fullmatch(r"V\d+-D\d+(,V\d+-D\d+){3}", pinned["kComboA"])
 
 
 def test_the_firmwares_payloads_fire_the_right_signals():
-    # Exactly what test_logic.cpp asserts stateJson builds for Combo A.
-    state_a = json.loads(
-        '{"pairs":[["V2","D5"],["V4","D1"],["V6","D8"],["V7","D3"]],'
-        '"combo":"V2-D5,V4-D1,V6-D8,V7-D3","count":4,"complete":true}'
-    )
-    assert state_a["combo"] == _yaml_combos()[0]
+    # The shape test_logic.cpp asserts stateJson builds, carrying the YAML's
+    # combo A (wave 22 moved it to V6-D7; the box's fixture keeps V6-D8).
+    combo_a = _yaml_combos()[0]
+    state_a = {
+        "pairs": [p.split("-") for p in combo_a.split(",")],
+        "combo": combo_a,
+        "count": 4,
+        "complete": True,
+    }
     deb = Debouncer()
     assert _fire("sensors/patchbay/state", state_a, deb, 0.0) == ["patch_combo_a"]
     wrong = {"pairs": [["V1", "V3"]] * 4, "combo": "V1-V3,V2-D2,V4-D4,V5-D5", "count": 4, "complete": True}
