@@ -3365,7 +3365,9 @@ INTERACTION send to the internet
   // (Wave 18: the booth's CORRUPTION DETECTED screen fires it with one tap after an in-person scan.)
   arm: true
   // DRAFT w18 (A6): on a marked program's card only (the hook still captures anyone).
-  while: program.marked == true and program.corrupted != true
+  // DRAFT w21: and on every card while the patch-bay alarm is on (whoever is
+  // at the cables goes to the Internet; there is no All buttons… fold now).
+  while: program.corrupted != true and (program.marked == true or Night.alarm_on == true)
   description: Antivirus. A marked program, found: drag them through the Tube for reinstallation.
 
 INTERACTION mark as reinstalled
