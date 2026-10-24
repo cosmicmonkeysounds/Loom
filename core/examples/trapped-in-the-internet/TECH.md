@@ -7,8 +7,12 @@ runbook lives. For the night-of steps in order, read
 cues, terminal spots), open [`SHOW.html`](./SHOW.html).
 
 The older docs (OCT31.md, CHECKLIST.md, the stagehand README before wave 22)
-describe one "house Mac" that did everything. That machine is gone: its jobs
-are split across John's MacBook and John's Windows Desktop, as below.
+describe one "house Mac" that did everything. That house Mac was John's
+MacBook (the 48 GB Ollama laptop). Its jobs are now split: the MacBook keeps
+Trabolta and (by default) the sound router, and John's Windows Desktop takes
+the broker, Zigbee2MQTT, `show`, `lights` and the TV. The MacBook's old
+`show` / `lights` jobs, Mosquitto and Zigbee2MQTT must be retired once the
+Desktop runs them (`SHOWNIGHT.md` §1 step 10).
 
 Never write a code in this file or any doc: not the moderator, performer or
 guest passcodes, the keypad code, the patch-bay combinations, the answer keys
@@ -67,14 +71,16 @@ ESP32's rules in `stagehand/trapped.house.yaml` stay in the file, unused.
 ```
 
 - **Everything reaches the VPS over HTTPS.** Phones keep working on cellular
-  if the house internet dies; the house machines need the uplink (the router
-  has LTE failover).
+  if the house internet dies; the house machines need the uplink. LTE
+  failover on the router is planned, not yet tested (HW-NET-07).
 - **MQTT lives on the Desktop.** `show`, `lights` and Zigbee2MQTT use the
   anonymous loopback listener (`127.0.0.1:1883`). The MacBook's router dials
   the LAN listener (`:1884`, user `props`; the password goes in the
-  git-ignored `stagehand/trapped.macbook.local.yaml`). The Desktop holds the
-  house's DHCP reservation `192.168.8.10` (moved from the old house Mac);
-  `trapped.macbook.yaml` and the WLED controllers dial that address.
+  git-ignored `stagehand/trapped.macbook.local.yaml`). The Desktop must hold
+  the house's DHCP reservation `192.168.8.10`, which `trapped.macbook.yaml`
+  and the WLED controllers dial. **To do:** move the reservation from the
+  MacBook to the Desktop on the router (`scripts/house-desktop/README.md`;
+  `setup-mosquitto.ps1` warns until it is done).
 - **USB:** the MOTU to the router machine, the CC2652P to the Desktop, the M4
   to Steph's laptop.
 - **HDMI:** the Desktop to the living-room TV. The TV's voice plays from the
