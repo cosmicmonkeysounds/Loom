@@ -67,6 +67,25 @@ test("an ended event (404 unknown event) resolves the code again", async () => {
   assert.equal(c.eventId, "ev2");
 });
 
+test("a 503 starting (the VPS booting) waits the retry-after and asks once more; other 503s pass through", async () => {
+  const auth = fakeServer(authRoutes());
+  let calls = 0;
+  const waits: number[] = [];
+  const fetch: FetchLike = async (url, init) => {
+    if (!url.includes("/api/state")) return auth.fetch(url, init);
+    calls++;
+    const answer = calls === 1 ? { status: 503, body: { error: "starting" } } : url.includes("broken") ? { status: 503, body: { error: "event failed to load" } } : { status: 200, body: { ok: true } };
+    return { status: answer.status, headers: { get: (h: string) => (h === "retry-after" && answer.status === 503 ? "2" : null) }, text: async () => JSON.stringify(answer.body) };
+  };
+  const c = new ShowClient({ server: SERVER, code: MOD, fetch, cachePath: tempCache(), sleep: async (ms) => void waits.push(ms) });
+  assert.equal((await c.get("/api/state?role=mod")).status, 200);
+  assert.deepEqual(waits, [2000]);
+  calls = 0;
+  const broken = await c.get("/api/state?role=mod&broken=1");
+  assert.equal(broken.status, 503, "a load failure is answered as it is, after the one retry");
+  assert.equal(calls, 2, "never more than one retry");
+});
+
 test("refusals are ShowErrors that name what was read", async () => {
   const cache = tempCache();
   const guest = fakeServer({ "POST /api/resolve-code": { status: 200, body: { eventId: "ev1", role: "guest", title: "x" } } });

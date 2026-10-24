@@ -13,9 +13,12 @@
 //! refresh. A login that sends the cached token **upgrades that session in
 //! place** (`sessions.grant`) instead of minting a new one, so re-logins
 //! never pile up sessions in the event's `sessions.json`. On a 403 the
-//! client logs in again once (an event restart drops tokens); on a 404 /
-//! 503 for the event it resolves the code again once (the event ended and
-//! the code moved to a relaunch).
+//! client logs in again once (an event restart drops tokens); on a 404
+//! `unknown event` it resolves the code again once (the event ended and the
+//! code moved to a relaunch); on a 503 `starting` (the VPS still booting,
+//! `boot.ts` `missEvent`) it waits the server's `retry-after` (≤ 5 s) and
+//! asks once more. Any other 503 (`event failed to load`) goes to the
+//! command as it is: waiting won't fix it.
 //!
 //! `fetch` is injectable: the tests drive the whole recipe on a fake.
 
@@ -36,6 +39,8 @@ export interface Reply<T = Record<string, unknown>> {
   body: T | null;
   /** The raw text (for `?format=text` and error messages). */
   text: string;
+  /** The `retry-after` header in seconds, when the server sent one. */
+  retryAfter?: number;
 }
 
 /** A failure a command should report rather than crash on. */
@@ -118,6 +123,8 @@ export interface ClientOptions {
   /** Per-request timeout (ms). */
   timeoutMs?: number;
   now?: () => number;
+  /** How to wait out a `retry-after` (tests pass a no-op). */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 /** A moderator session against one event server. */
@@ -129,6 +136,7 @@ export class ShowClient {
   private readonly key: string;
   private readonly timeoutMs: number;
   private readonly now: () => number;
+  private readonly sleep: (ms: number) => Promise<void>;
   private session: CachedSession | null = null;
   /** How many resolve / login calls this run made (tests + `--json`). */
   readonly calls = { resolve: 0, login: 0 };
@@ -141,6 +149,7 @@ export class ShowClient {
     this.key = cacheKey(this.server, this.code);
     this.timeoutMs = opts.timeoutMs ?? 10_000;
     this.now = opts.now ?? Date.now;
+    this.sleep = opts.sleep ?? ((ms) => new Promise((done) => setTimeout(done, ms)));
   }
 
   /** The resolved event id (after `connect`). */
@@ -178,7 +187,8 @@ export class ShowClient {
     } catch {
       /* not JSON (a text recap, a proxy's HTML error page) */
     }
-    return { status: res.status, body: parsed, text };
+    const ra = Number(res.headers.get("retry-after") ?? NaN);
+    return { status: res.status, body: parsed, text, ...(Number.isFinite(ra) && ra >= 0 ? { retryAfter: ra } : {}) };
   }
 
   /** Resolve the code to its event (`POST /api/resolve-code`). */
@@ -222,11 +232,16 @@ export class ShowClient {
   }
 
   /** An event-scoped request (`/e/<id><path>`) with the token; re-logs in
-   *  once on a 403, re-resolves once on a 404 / 503 for the event. */
+   *  once on a 403, re-resolves once on a 404 `unknown event`, waits and
+   *  asks again once on a 503 `starting`. */
   async request(method: string, path: string, body?: unknown): Promise<Reply> {
     await this.connect();
     const once = () => this.raw(method, `/e/${encodeURIComponent(this.session!.eventId)}${path}`, body, this.session!.token);
     let r = await once();
+    if (r.status === 503 && r.body?.["error"] === "starting") {
+      await this.sleep(Math.min(5, r.retryAfter ?? 1) * 1000);
+      r = await once();
+    }
     if (r.status === 403 && /moderators only/u.test(String(r.body?.["error"] ?? ""))) {
       this.session = await this.login(this.session!.eventId, this.session!.title, this.session!.token);
       r = await once();
