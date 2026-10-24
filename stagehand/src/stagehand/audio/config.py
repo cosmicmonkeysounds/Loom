@@ -11,6 +11,8 @@ Shape (`audio.example.yaml` carries a commented copy):
       passthrough: true            # the audio.json input→output matrix; false
                                    # opens an output-only stream (no mic access)
       device: null                 # override audio.json's device.name (substring)
+      host_api: null               # Windows: asio (the MOTU: one N-channel device;
+                                   # sets SD_ENABLE_ASIO) | wasapi | wdm-ks | directsound | mme
       rate: null                   # override the rate (default: audio.json / the device's)
       blocksize: 512
       latency: high                # low | high | seconds
@@ -65,6 +67,9 @@ class AudioConfig:
     announce: bool = False
     passthrough: bool = True
     device: str | None = None
+    #: PortAudio host API the device must be on (engine.HOST_APIS): `asio`
+    #: on the Windows house PC; None (the Mac: Core Audio is the only one).
+    host_api: str | None = None
     rate: int | None = None
     blocksize: int = 512
     latency: str | float = "high"
@@ -154,6 +159,14 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
             raise ConfigError("audio.latency: low | high | seconds (0–1)")
         latency = float(latency)
 
+    host_api = _str(doc, "host_api", None)
+    if host_api is not None:
+        from .engine import HOST_APIS
+
+        host_api = host_api.lower()
+        if host_api not in HOST_APIS:
+            raise ConfigError(f"audio.host_api: {' | '.join(HOST_APIS)} (got {doc.get('host_api')!r})")
+
     rate = doc.get("rate")
     if rate is not None:
         rate = int(_num(doc, "rate", 0, 8000, 384000))
@@ -190,6 +203,7 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         announce=_bool(doc, "announce", False),
         passthrough=_bool(doc, "passthrough", True),
         device=_str(doc, "device", None),
+        host_api=host_api,
         rate=rate,
         blocksize=blocksize,
         latency=latency,
