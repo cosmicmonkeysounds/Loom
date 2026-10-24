@@ -223,35 +223,51 @@ const CLAIM_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz";
 /** Claim token length: 10 × 5 bits. */
 const CLAIM_LENGTH = 10;
 
-/** The claim token for one reserved character: HMAC-SHA256 over the folded
- *  name keyed by the event's claim secret, first 50 bits in base32. The
- *  same secret and name always give the same token. */
-export function claimToken(secret: string, character: string): string {
-  const mac = createHmac("sha256", secret).update(`claim:${foldName(character)}`).digest();
+/** `length` base32 characters of HMAC-SHA256(`secret`, `label`): the
+ *  printed secrets (claims, wave 23's badges and cast cards) all come from
+ *  the event's one claim secret, so End → relaunch keeps every card good. */
+export function secretCode(secret: string, label: string, length = CLAIM_LENGTH): string {
+  const mac = createHmac("sha256", secret).update(label).digest();
   let bits = 0;
   let acc = 0;
   let out = "";
   for (const byte of mac) {
     acc = (acc << 8) | byte;
     bits += 8;
-    while (bits >= 5 && out.length < CLAIM_LENGTH) {
+    while (bits >= 5 && out.length < length) {
       bits -= 5;
       out += CLAIM_ALPHABET[(acc >> bits) & 31];
     }
-    if (out.length === CLAIM_LENGTH) break;
+    if (out.length === length) break;
     acc &= (1 << bits) - 1;
   }
   return out;
+}
+
+/** A printed code as typed or scanned: case, spaces and dashes ignored. */
+export function normalizeCode(raw: string): string {
+  return raw.toLowerCase().replace(/[\s-]+/gu, "");
+}
+
+/** Constant-time: does `given` (already normalized) equal `want`? */
+export function codeEquals(given: string, want: string): boolean {
+  const a = Buffer.from(given);
+  const b = Buffer.from(want);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** The claim token for one reserved character: HMAC-SHA256 over the folded
+ *  name keyed by the event's claim secret, first 50 bits in base32. The
+ *  same secret and name always give the same token. */
+export function claimToken(secret: string, character: string): string {
+  return secretCode(secret, `claim:${foldName(character)}`);
 }
 
 /** Does `claim` (as typed or scanned: case and spaces ignored) unlock this
  *  character? Constant-time on the token. */
 export function claimMatches(secret: string, character: string, claim: string | null | undefined): boolean {
   if (typeof claim !== "string") return false;
-  const given = claim.toLowerCase().replace(/[\s-]+/gu, "");
-  const a = Buffer.from(given);
-  const b = Buffer.from(claimToken(secret, character));
-  return a.length === b.length && timingSafeEqual(a, b);
+  return codeEquals(normalizeCode(claim), claimToken(secret, character));
 }
 
 /** Why a performer may not sign in as a character, or null when they may. */

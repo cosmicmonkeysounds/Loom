@@ -90,6 +90,7 @@ const JOURNAL = "journal.ndjson";
 const SESSIONS = "sessions.json";
 const HIDDEN = "hidden.json";
 const GUESTS = "guests.json";
+const BADGES = "badges.json";
 const AVATARS = "avatars.json";
 /** Not `house.json`: `LOOM_HOUSE` may well point at `/data/house.json`, and
  *  the default event's state dir can be that same `/data`. */
@@ -265,6 +266,19 @@ export class Store {
   }
   saveGuests(entries: Array<[string, string]>): void {
     writeFileSync(this.path(GUESTS), JSON.stringify(entries));
+  }
+
+  // --- badge links (wave 23, routes/rejoin.ts) -----------------------------
+  //
+  // Which printed badge number each guest linked (`[n, personId]`). Not
+  // journaled (a badge is not a story fact); cut with the guest tokens on
+  // every story restart.
+
+  loadBadges(): unknown {
+    return readJson<unknown>(this.path(BADGES)) ?? [];
+  }
+  saveBadges(entries: Array<[number, string]>): void {
+    writeFileSync(this.path(BADGES), JSON.stringify(entries));
   }
 
   // --- profile pictures ---------------------------------------------------

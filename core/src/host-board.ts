@@ -783,9 +783,22 @@ export interface HostJudging {
   recent: Array<FilingRow & { question: string; buttons: FilingButton[] }>;
 }
 
+/** A phone asking to be a joined guest again (wave 23, `server/routes/rejoin.ts`). */
+export interface RejoinAsk {
+  request: string;
+  /** The Person they asked to be. */
+  id: string;
+  name: string;
+  /** Wall ms the ask opened. */
+  at: number;
+}
+
 export interface HostView extends CueSheetView {
   /** `ModView.phase`. */
   runtime: "idle" | "open" | "paused";
+  /** Wave 23: asks to get back in, newest last (read per request, never cached).
+   *  Absent from an older server. Approve / deny at `/api/mod/guest/rejoin`. */
+  rejoins?: RejoinAsk[];
   needs: HostNeed[];
   /** Null when the event has no facts.json. */
   judging: HostJudging | null;
