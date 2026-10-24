@@ -433,9 +433,32 @@ export interface PrimeView {
   /** Wave 18 (C6): the Wanted board, for a booth the story's `wanted:` line
    *  names (and hosts). Absent otherwise. */
   wanted?: WantedRow[];
-  /** Wave 18 (C8): the cues this booth calls (Clippy's games). Absent for a
-   *  booth that calls none. */
+  /** Wave 18 (C8): the cues this booth calls (a non-player caller's games).
+   *  Absent for a booth that calls none — always for a player (wave 21, D5). */
   calls?: PrimeCalls;
+  /** Wave 21 (C4): a `player: true` part — the booth plays the night like a
+   *  guest (Mission home, a score, no "behind the scenes"). Absent on an
+   *  older server = false. */
+  player?: boolean;
+  /** Wave 21 (C3): the header's `stat:` lines for this booth, evaluated
+   *  with `self` = its character ("⭐ Points 120"). Absent when none. */
+  stats?: PrimeStat[];
+  /** Wave 21 (C4): the booth twin of `GuestView.mission` — the first live
+   *  objective and where its `go:` points (a LOCATION title, else null). */
+  mission?: PrimeMission;
+}
+
+/** One `stat:` line on a booth (wave 21, C3). */
+export interface PrimeStat {
+  glyph: string;
+  label: string;
+  value: string;
+}
+
+/** `PrimeView.mission` (wave 21, C4). */
+export interface PrimeMission {
+  objective: string;
+  place: string | null;
 }
 
 // --- wave 13: objectives, the night, a booth's guest card (mirror of server/views.ts)
