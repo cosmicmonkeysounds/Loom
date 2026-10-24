@@ -24,7 +24,7 @@ root's `cargo build` / `cargo test` stay lean; `cargo test` in
   (`editor/src/lib/desktop-fs.ts`). Open-folder, save, create, rename,
   delete, and the persisted last-project all work as in Chromium.
 - **Godot integration** (`src-tauri/src/godot.rs`, surfaced in the
-  editor's **Deploy → Game engine — Godot** panel):
+  editor's **Integrations** mode, `⌘3`):
   - *Link* a Godot 4 project (validated by `project.godot`).
   - *Install addon* — the `engines/godot/addons/loom` runtime is
     embedded in the binary at compile time (`include_dir`) and written

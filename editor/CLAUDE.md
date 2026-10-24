@@ -1,1123 +1,345 @@
-# Loom
+# loom-app (the editor)
 
-The Loom SaaS authoring app: sign in, manage projects, author `.loom`,
-and run live events — all in the browser. Still works local-first on a
-folder with no account.
+The Loom authoring and show-control app. Authors sign in, manage
+projects, write `.loom`, and run rehearsals and live events from the
+browser. It also works on a local folder with no account, and it ships as
+the Tauri desktop app (`../desktop`). The participant view (guests,
+booths, hosts) is the separate [`play`](../play) app; the editor controls
+and moderates a run, it never renders the guest chat itself except by
+embedding play (Run → Players).
 
-## Intent
-- **Author `.loom` two ways**: server-backed **projects** (BetterAuth
-  account → the SaaS backend, `store/projects.ts` + `store/auth.ts`) OR a
-  local folder via the File System Access API (no account). The workspace
-  store is backend-aware (`OpenFile.backend`, `openServerProject`); saves
-  route to the API or the on-disk handle accordingly.
-- **One Run** (`⌘2`, 2026-09-10): the control room for the project's
-  **single run**. "▶ Start rehearsal" is one action everywhere — on a
-  **server project** it launches the project's shared `preview` event
-  (every co-writer lands in the same run), on a **local folder** it
-  compiles the in-browser `@loom/core` `Sim`. Codes are pinned across End
-  → relaunch; the empty state's **New performer + moderator codes** box
-  (`startRun(mode, {rotateStaff: true})` → launch `rotate: "staff"`)
-  mints fresh staff codes and keeps the guest code. The backend is resolved
-  from the workspace kind (`store/run.ts`), never picked by the user;
-  both stores (`store/operate.ts`, `store/sim.ts`) implement the whole
-  `CockpitState` contract, lifecycle included. The header carries the
-  lifecycle (pause / restart / push draft / **go live** in place / end),
-  the **identity control** (be the Operator, a persona, a real guest, or
-  a character — an *exact* lens over the server's own `GuestView` /
-  `PrimeView`), quick-fire, and pending decisions; the Run page is front
-  of house (join codes + QR, directors, guest lookup). The former Deploy
-  mode is folded in.
-- **Ship into a game engine**: **Integrations** mode (`⌘3`,
-  `components/integrations/`) is where the story leaves Loom for another
-  runtime — today the Wwise-style Godot pipeline (link a project, install
-  the runtime addon, build `.loombank` + `LoomIDs.gd`), kept apart from
-  Run so *live events* and *engine builds* are separate destinations.
-  Desktop-only in practice (linking writes into the game project); the
-  browser build says so and lists the unwritten Unity / Unreal targets.
-- **See structure visually** alongside code: Writing mode's center is a
-  resizable split — the text editor AND the project-wide story-graph
-  node editor, live over the same source at the same time.
-- **Stay minimal**: a thin shell over CodeMirror + xyflow, with a small Zustand store as the single source of truth.
+How each surface landed, wave by wave, is kept in
+[`docs/history/editor-claude-2026-10.md`](../docs/history/editor-claude-2026-10.md).
+The help articles the app ships are [`docs/help/authoring/`](../docs/help/authoring);
+`43-run-mode.md` is the director-facing description of Run.
 
-The app is gated in `App.tsx`: no workspace open → signed-out shows
-`AuthGate`, signed-in shows `ProjectsLaunchpad`; opening a project (or a
-local folder) enters the Studio shell. Dev talks to the backend
-(`@loom/core` server, :7000) through the Vite proxy (`/api` + `/e`), so
-the BetterAuth cookie flows same-origin. Override with `LOOM_SERVER`.
+## Commands
+
+Run from the repo root (`pnpm install` once covers every JS package).
+
+| Command | What it does |
+|---|---|
+| `pnpm --filter loom-app dev` | Vite on `:5173` with HMR, proxying `/api` + `/e` to `LOOM_SERVER` (default the event server on `:7000`) so the BetterAuth cookie stays same-origin |
+| `pnpm --filter loom-app build` | `tsc -b && vite build` → `dist/` (a static SPA; the Docker `proxy` image builds it with `--base=/edit/` and Caddy serves it at `/edit/`) |
+| `pnpm --filter loom-app test` | vitest (unit tests only; `e2e/` is excluded) |
+| `pnpm --filter loom-app typecheck` | `tsc -b` (predeploy runs it) |
+| `pnpm --filter loom-app lint` | ESLint |
+| `pnpm --filter loom-app test:e2e` | Playwright over `e2e/*.spec.ts` |
+| `pnpm --filter loom-app test:e2e:live` | Playwright `e2e-live/` against a running server + database (opt-in) |
+| `pnpm dev` (root) | builds play + terminal + reinstall, runs the server + this Vite; `--sync "<project>"` pushes an example folder into a server project |
+
+For a server project you need the event server running
+(`pnpm --filter @loom/core serve`). A local folder needs nothing else.
 
 ## Stack
-- React 19 + TypeScript + Vite
-- Tailwind CSS v4 (`@tailwindcss/vite`)
-- `@uiw/react-codemirror` (one-dark theme, per-language extensions)
-- `@xyflow/react` for the node-editor canvas + `elkjs` (layered
-  compound layout for the story graph)
-- `allotment` for the fixed modal-shell region splits (IDE redesign v2)
-- `@dnd-kit` (core + sortable + utilities) for the BeatStrip clip reorder
-- `zustand` for state
-- `pnpm` for package management
 
-## Install
-This editor (`loom-app`) is part of the **repo-root pnpm workspace**
-(`pnpm-workspace.yaml`, alongside `@loom/core`, `@loom/bank`, and
-`loom-play`). One install covers all four: `pnpm install` at the repo
-root. Run editor scripts with `pnpm --filter loom-app <script>` from
-the repo root, or `pnpm <script>` from this directory.
+React 19 + TypeScript + Vite, Tailwind v4, CodeMirror via
+`@uiw/react-codemirror`, `@xyflow/react` + `elkjs` for the story graph,
+`allotment` for the shell's regions, `@dnd-kit` for the BeatStrip,
+`zustand` for state, Yjs + `y-codemirror.next` for co-editing.
+
+## The app
+
+`App.tsx` gates on the account: signed out → `AuthGate`; signed in with
+no workspace → `ProjectsLaunchpad` (create / open server projects, the
+*Shared with you* list, `ShareDialog` for members and invites); a project
+or a local folder → the Studio shell.
+
+The shell has three **modes**, switched from the bottom Mode Bar:
+
+| Mode | Key | What it is |
+|---|---|---|
+| Writing | `⌘1` | A resizable editor ⇄ story-graph split (either pane snaps closed), the Files ⇄ Story Bin rail, the BeatStrip dock, the Properties tray |
+| Run | `⌘2` | The control room for the project's one run (`components/run/`, `components/cockpit/`) |
+| Integrations | `⌘3` | Engine targets: the Godot link, addon install and bank build (`components/integrations/`; desktop only in practice) |
+
+Each mode is a fixed `allotment` layout (rail · stage · tray · optional
+dock). `store/mode.ts` owns the active mode and region sizes, persisted to
+`localStorage["loom.studio"]`; retired mode ids (`editing`, `sim`,
+`operate`, `deploy`) migrate on load. Shell keys: `⌘B` rail, `⌘⌥B` tray,
+`⌘\` the story-graph pane, `⌘/` or F1 Help, `⌘S` / `⌘⇧S` save; tab keys
+`⌥W` / `⌥⇧T` / `⌥[` / `⌥]` / `⌥1..9`.
 
 ## Layout
+
 ```
 src/
-  lib/        # fs (File System Access), language (CM extensions),
-              #   loom-lint / lsp-client / loom-ast / story-graph (@loom/core)
-  store/      # zustand stores: workspace (files), focus (projection bus),
-              #   mode (modal shell), graph (node-editor state), settings,
-              #   cockpit (the cockpit contract + context, incl. the
-              #   run lifecycle), run (backend resolver + the scratch
-              #   lane), sim (the local backend), operate (the server
-              #   backend)
-  components/ # studio/ (StudioShell + ModeBar + per-mode regions),
-              #   graph/ (the story-graph node editor), files, editor,
-              #   cockpit/ (shared cockpit surfaces + the identity
-              #   control), run/ (RunStage header + RunPage front of
-              #   house + lifecycle controls), runner (Outline/References),
-              #   detail, shell
-  App.tsx     # top bar + StudioShell + status bar + overlays
+  App.tsx              auth gate → launchpad → Studio; binds the operate, terminals and house-audio stores
+  components/
+    studio/            StudioShell, ModeBar, TopBar, PropertiesTray, regions
+    editor/            Editor (CodeMirror), Tabs, Breadcrumbs
+    files/             Sidebar + FileTree
+    graph/             the story-graph node editor
+    run/               RunStage (header), RunPage (front of house), lifecycle, Print sheet, the Run cards
+    cockpit/           the shared cockpit pages: Stage, Chat, Players, Roster, World, Director, Mind, Log, Inspector, Rail, Identity
+    integrations/      GodotPanel, IntegrationsStage
+    projects/ auth/ help/ runner/ shell/   launchpad, sign-in, Help overlay, References, palette + context menu + dialogs + settings
+  store/               zustand stores (below)
+  lib/                 language, lint, LSP glue, story-graph data, api, collab, terminals, print sheet, desktop shims, …
+e2e/  e2e-live/        Playwright suites
 ```
 
-## Shell (v3 modal topology)
+Path alias `@/*` → `src/*`. Keep components small and put logic in pure
+`lib/` or `store/` modules, which carry the unit tests.
 
-The IDE is one app with three **modes** — **Writing** / **Run** /
-**Integrations** — switched from a bottom **Mode Bar** (`⌘1` … `⌘3`),
-DaVinci-Resolve-style. Writing is the whole authoring surface: its
-center stage is a resizable **editor ⇄ story-graph split** (either pane
-snaps closed), so text and structure are visible at the same time. Run
-(`components/run/RunStage.tsx`) is the control room for the project's
-one run; see **The cockpit** below. Integrations
-(`components/integrations/`) owns the engine targets — the Godot link /
-addon install / bank build. Each mode is a fixed, resizable `allotment`
-layout (left rail · center stage · right properties tray · optional
-bottom Timeline dock) that composes the leaf panels; `store/mode.ts`
-owns the active mode + per-mode region sizes, including Writing's center
-`split` (persisted to `localStorage["loom.studio"]`; retired
-`editing`/`sim`/`operate`/`deploy` mode ids migrate on load). The right
-**Properties tray** (`components/studio/PropertiesTray.tsx`) is tabbed:
-in Writing it follows the **canvas selection** (beat/entity/connection/
-file inspector with editable contract + In/Out link lists), falling
-back to the editor cursor (active-file AST via `lib/loom-ast.ts`); plus
-a workspace References panel; in Run it is the cockpit Inspector. The
-Mode Bar dots the Run tab while a run exists (amber rehearsal / emerald
-live), from any mode. This replaced the old `dockview` activity-bar +
-free-docking model, the v2 four-mode Writing/Editing/Sim/Run bar, and
-the 2026-07 four-mode bar with a separate Deploy mode. Original design:
-[`docs/loom-ide-redesign.md` Part II](../docs/loom-ide-redesign.md).
+## Stores
 
-### The cockpit — one Run, two backends, one contract
+| Store | Role |
+|---|---|
+| `workspace.ts` | Open files and the tree; backend-aware (server project API or File System Access handle); `reflectCollabText` folds co-writers' text in |
+| `mode.ts` | Mode + region sizes |
+| `graph.ts` | Story-graph state: layouts, expanded cards, collapsed files, follow-cursor, the runtime overlay |
+| `cockpit.ts` | The cockpit contract (`CockpitState`), `CockpitTab`, the lens, the story clock |
+| `run.ts` | Picks the run backend from the workspace kind; the scratch lane |
+| `operate.ts` | Server backend (mod SSE + `/e/:eventId/api/mod/*` + the control plane) |
+| `sim.ts` | Local backend (an in-browser `@loom/core` `Sim`) |
+| `players.ts` | Run → Players lineup, persisted per project |
+| `terminals.ts` | Run → Terminals heartbeat list, chimes, the house map for the setup builder |
+| `house-audio.ts` | The router status and *Stop house sounds* |
+| `dialog.ts` | Promise-based `promptText` / `confirmAction` / `confirmTyped` / `notify` |
+| `edit-journal.ts` | Undo / redo of structural story edits |
+| `projects.ts` `auth.ts` `settings.ts` `focus.ts` `help.ts` `context-menu.ts` `godot.ts` | As named |
 
-`store/cockpit.ts` defines the **cockpit contract** (`CockpitState`):
-the state + action surface behind both run backends — roster, factions/
-locations, channels + messages, beats, named events, **interactions**,
-selection, the whole mod-command vocabulary (say / capture / setStat /
-fireBeat / fireSignal(…, `actor`) / scanAs → readouts / reveal /
-broadcast / choose / addPersona / setVar), **and the run lifecycle**:
-`run: RunInfo | null` (`backend` local|server, `mode` rehearsal|live,
-`scratch`, `scenario`, `stale`, `codes`, `joinUrl`, `eventId`,
-`startedAt`, `startedBy`), `busy`, `me` (this console's director name),
-`startRun(mode)` / `pause` / `resume` / `restart` (same snapshot) /
-`pushDraft` (the project's current text) / `goLive` / `end`, plus
-`lastRun` (the run that just ended, for Export + the empty state; an End
-from this console first pages the whole ledger off `/api/mod/log` — 5 s
-budget — and keeps it on `lastRun` whichever announcement of the end lands
-first),
-`notice` (a dismissable header banner) and the identity **`lens`**
-(below). Shared components read it through `useCockpit(selector)`,
-resolved from `CockpitContext`; `components/cockpit/providers.tsx`'s
-`RunCockpit` picks the store from the workspace kind (`store/run.ts`
-`useRunBackend`: `projectId !== null` → server, else local) — or the
-local store while a **scratch run** is active. An ESLint
-`no-restricted-imports` rule forbids importing `@/store/operate` /
-`@/store/sim` anywhere else (allowlist: providers, `store/run.ts`,
-`App.tsx`, tests), so the Sim/Live fork cannot creep back into
-components.
+## Run: one run, two backends, one contract
 
-- **Server backend** → `store/operate.ts` — the mod SSE +
-  `/e/:eventId/api/mod/*` + the control plane. **Attached for the life
-  of the open server project** (an effect in `App.tsx` on
-  `useWorkspace.projectId` calls `attach` / `detach`), never per mode:
-  a Writing ⇄ Run hop keeps the feed, ledger, selection, personas. A
-  co-writer's launch / go-live / end / push reaches this console within
-  a second through the project's collab stream (`lib/collab.ts`
-  `onCollabEvent` ← the server's `CollabHub.notifyEvent` `event`
-  frames); a 30 s status poll is the fallback. `startRun(Rehearsal)` =
-  `launch('preview')` (a 409 "already active" **adopts** that run with
-  an info notice) → `addPersona(me)` → Chat/lobby; `goLive` →
-  `POST …/event/golive` (promotion in place: codes kept, story
-  restarted fresh, rehearsal guests/personas/performer sign-ins cut).
-  `lifecycle` SSE notices (`reset` / `reload` / `golive` / `ended`, with
-  `by` + `at`) drop the ledger + overlay, re-spawn your persona on a
-  rehearsal restart, show a **banner naming who did it** when it wasn't
-  you, and on `ended` move the run into `lastRun` instead of zeroing it.
-  `personas` is server truth: roster rows whose `owner === me`
-  (`RosterRow.owner` from the runtime's persona-owner map, persisted in
-  the event meta — so "yours" survives an editor refresh and a server
-  restart; every `restart()`, push-draft `reload` and go-live included,
-  clears them and re-spawns your persona only if you had one). `stale` is
-  real state: the server's flag OR the Workspace generation moving past
-  `compiledAt` (`useLspIndexGen` is only the trigger); a co-writer's
-  `reload` re-bases `compiledAt` so every console's "draft changed"
-  clears. Requests are fenced on `projectId` (a slow status reply from a
-  project you left is dropped).
-- **Local backend** → `store/sim.ts` — a real `@loom/core` `Sim`
-  compiled from the indexed project and driven entirely in the
-  browser. Message composition + snapshots reuse the event server's pure
-  modules (`@loom/core/chat`, `@loom/core/views`) so a local run reads
-  exactly like the shared one. `restart()` rebuilds from the sources
-  captured at `startRun` (`compiledAt` unchanged); `pushDraft()`
-  re-reads the index; `stale` flips the moment `useLspIndexGen` moves.
-  `startRun(Live)` / `goLive` set `error` — a live event needs a server
-  project. `me` is `'Writer'`. A 1 s ticker drives `Sim.tick` while open.
-- **Scratch runs** (`store/run.ts` `useScratch`): on a server project
-  whose shared run is **live** or has **other directors**
-  (`scratchAllowed`), the header offers "⚗ Test draft privately" — the
-  local backend in the same cockpit (violet chrome, `scratch · this
-  browser`), with one "← Back to the shared run" exit; also offered by
-  the empty state when the control plane is unreachable. Session-only,
-  never auto-selected.
+`store/cockpit.ts` defines `CockpitState`: roster, factions, locations,
+channels and messages, beats, named events, interactions, the selection,
+every mod command (say, capture, setStat, fireBeat, fireSignal with an
+`actor`, scanAs, reveal, broadcast, choose, addPersona, setVar, codex and
+quest grants, wallet actions, re-pair, release, markGone, claimCaller, …)
+**and the lifecycle**: `run` (`backend`, `mode` rehearsal | live,
+`scratch`, `stale`, `codes`, `eventId`, `startedBy`), `startRun` /
+`pause` / `resume` / `restart` (same snapshot) / `pushDraft` (current
+text) / `goLive` (promotion in place: codes kept, story restarted) /
+`end`, plus `lastRun`, `notice` and `lens`.
 
-**The Run stage** (`components/run/RunStage.tsx`): a header on every
-page — the **run pill** (`run-chrome.ts` `runStatusText`: `no active
-event` · `local · in-browser` · `scratch · this browser` · `shared
-rehearsal` · `live event`, tone-coloured violet / amber / emerald),
-`LifecycleControls.tsx` (Pause/Resume · a **↺ Restart ▾** menu with
-*restart this draft* / *⇪ push current draft* (surfaced as an amber
-button when `stale`) / *go live…* / *■ end* · the scratch enter/leave
-buttons; live-run destructive actions need the event code typed via
-`promptText`), the page tabs (Run · Stage · Chat · Players · Story · Roster ·
-World · Director · Mind · Log — only Run + Story usable with no run; World,
-Director + Mind closed under a lens), the **identity control**
-(`cockpit/Identity.tsx`), quick-fire, the ▶ NEXT pill (`director/NextCuePill.tsx`), and a ⏳ decisions pill;
-`LifecycleBanner.tsx` below it shows `notice`. **`RunPage.tsx`** is
-front of house only: the empty state ("Rehearse <project>" · ▶ Start
-rehearsal · *Go live with real guests →* on a server project · the last
-run's Export line · the scratch offer on a control-plane error) and,
-while running, **Join** (three codes with copy, join URL, QR, a
-performer sign-in row per **part** — pure `cockpit/parts.ts`
-`performerParts` off `ModView.cast`'s `part` / `held`, every non-agent row
-on an older server; a held part with no stream reads amber *signed in ·
-phone offline*, the same `partPresence` the Stage cast strip and the
-Inspector use; `castPresence` gives an agent row its own sky dot, Voiced
-/ Unvoiced, never a signed-in performer — and **🖨 Print
-sheet…** — K-12, `run/PrintSheet.tsx` + pure `lib/print-sheet.ts`: a
-full-screen sheet over the editor built from `/api/mod/codes` (join
-poster, the door sign `D1` worded by `doorWording(homescreen)` off
-`GET /api/push/config`'s `homescreen` — absent / false = *Scan to join*,
-on = play's own order (join in Safari, then Add to Home Screen, open the
-icon, 🔔), never a show name —
-a poster per codex entry with its typed code, sorted by the server's
-`stacks` (codex id → `{colour, stack, where}` from `facts.json`, gold →
-green → blue → red → the rest) with a coloured band + the pile as text, a
-check-in sign per room with QR + name only, and a cast card `P01…` per
-`cast[]` part with `?code=<primePass>` — a prime code's link opens the
-performer sign-in pre-filled (play's `roleForBrand`), so the card says
-"Scan, then pick <name>."), QRs drawn in the browser as SVG
-(`qrcode`; a 60–80 card sheet would trip `/api/qr`'s 60/min), sections /
-skip a card / 1-2-4-8 per Letter page (cast cards always `.pp-8` business
-cards on their own page; wave 11: **Invitations** — one claim QR per
-`/api/mod/codes` `claims` row, 4-up on their own page, no typed code, a
-screen-only two-tap 🔓 → `POST /api/mod/claim/unlock {character, minutes: 2}`
-(the label follows the cast row's `unlockedUntil` — a countdown while
-open, idle once it closes, two taps while open shut it with `minutes: 0`;
-pure `unlockOpenUntil` / `unlockButton`);
-the door code's digit clues sit on the `silver` stack (`DIGIT_CLUE_STACK`)
-and print title + QR only, no digit anywhere), `@media print` hides the editor), **Directing now**
-(names, `(you)`, started-by + age), **Terminals** (K-29,
-`run/TerminalsCard.tsx`: every wall terminal + the TV by last poll, red
-after 20 s silent with a chime — again each minute until *ack* — the
-editor's own memory of terminals a restarted server forgot, the TV-voice
-mute, per-row device badges (SW-SCR-21 `terminalBadges` / `majorityVersion`:
-🔇 / 💤 / ⛶ not full screen (wave 17, the poll's `fs=0`; a build that
-can't go full screen sends no `fs` and gets no badge; `fullscreenTitle`:
-on a TV or mirror row the hint is a Chrome started without `--kiosk`, on
-a tablet a touch) / 🎤 the voice link's mic (wave 19, the poll's
-`mic=`; `micBadge`: grey 🎤 live, *🎤 off* for `off` and `muted` (⚙
-turned it off on that tablet), red *🎤 denied* / *🎤 http* / *🎤 tap*
-(`locked`: open, the page's sound waiting for a touch) on a placed
-non-mirror row, `micWanted`) / battery / build, an unstamped row beside a stamped majority =
-amber *old build*), a room terminal's `room X` (amber off the
-`server-room` spot, `strayRoom`: a tablet that was the TV once and kept
-its room) and an **identify** button
-(`POST /api/mod/screen/identify`); wave 14: each row's map spot
-(`📍 <spot name>`, amber *⚠ X not on map* or when two live terminals claim
-it, muted *no spot*), *Unclaimed spots:* (map spots no live terminal
-claims), and **🛠 Set up a terminal…** (`run/TerminalSetup.tsx`): spot /
-view / room / character selects off the house map (`mapApi.house` →
-`GET /api/spatial/house`, held on `store/terminals.ts` `map` / `mapRooms`),
-`TERMINAL_VIEWS` (shadow included), the story's LOCATIONs and the cast
-(agent-voiced first) → the `/terminal/?code=<mod>&…` link + QR + copy;
-pure rules in `lib/terminal-setup.ts`; a `📟 N/N` header pill; `store/terminals.ts` is bound from `App.tsx`
-to the server run so it chimes from any mode, rules in pure
-`lib/terminals.ts`, sound in `lib/chime.ts`), **Wallet** (wave 5 E2,
-`run/WalletCard.tsx` + pure `cockpit/wallet.ts`; only when the story has a
-`currency:`: approver / minter / stimulus uses + **💰 Pay stimulus**, every
-open transfer with Approve / Deny / Cancel as the server allows and a
-countdown off `CockpitState.storyClock` (← `ModView.clock`; a held one
-auto-approves after 5 min), **✓ Approve all held** (`/api/mod/wallet/
-approve-held`, falling back to one approve each on an older server), open
-requests / offers with Cancel, the minter's freezes in force with **☀ Lift**
-(`/api/mod/wallet/unfreeze {id}`) and her 🎁 grants count, balances; all through
-`CockpitState.walletAct` ← `CockpitState.wallet` = `ModView.wallet`; the
-local backend has no WalletBook and says so), **House map** (wave 5 E9,
-`run/HouseMapCard.tsx` + pure `lib/map-variants.ts`, a local copy of
-`reinstall/web/src/map/project.ts`'s `variantLabel` — keep them in step:
-one button per `GET /api/mod/spatial/variants` variant, Tent | Shed for
-the show, always confirmed off a list re-read at the press (`freshTarget`,
-so a save made since the card loaded still warns), warns on `edited`, then `mapApi.switchVariant`
-→ `POST /api/mod/spatial/variant {file, base}` (`switchBase`: the re-read list's `version`, so a switch or save made while the confirm was open is refused with a 409 and the list reloads); hidden when the
-event has no map or the server lacks the route; wave 11: the **shared King**
-row — his health bar off `GET /api/screen/state` `king` (polled 4 s, pure
-`lib/king.ts`), **Set…** / **👑 Restore** → `POST /api/mod/spatial/king {hp}`,
-confirmed), **Look up a guest** (camera QR /
-manual id → Inspector); a local run gets one explainer card. A source
-test pins that `RunPage.tsx` renders none of the lifecycle testids.
-**Director** (wave 10, `components/cockpit/director/`; `tabs.tsx`
-re-exports `DirectorTab`; the old `cockpit/CueSheet.tsx` and
-`DirectorControls` are gone; built on branch `oct31-w10/director-editor`)
-is the night's running order by **act**, the night at a glance, and the
-rare tools. **Display only:** NEXT / LAST / refusals stay core's
-`cueState` (`CockpitState.cues` = `ModView.cues`, so every director's
-page and the phone agree and survive a reload); acts, the board and the
-keys never change a mark. The pure rows live in `@loom/core/cue-sheet` =
-`core/src/cue-sheet.ts` (aliased in `vite.config.ts` +
-`tsconfig.app.json`, shared with `play/src/director.tsx`): `cueRows` (the
-label's leading code split off; NEXT = the first unfired in-sequence row
-after LAST whose `while:` holds — `InteractionSummary.live` — or LAST
-itself for a live `repeat: true` cue), `cueActs` / `focusActIndex` /
-`previousActIndex` (an admin cue's `act:` opens an act later cues join;
-the focus act holds NEXT, else LAST; an all-`sequence: false` act is
-*anytime*), `onDeck`, `cueTitleTags`, `countdownLeft` and the arm model
-(`tapCue` / `armFor` / `armStillValid`, `ARM_MS` 4 s, `ARM_DEAD_MS`
-300 ms). The files:
-- `DirectorTab.tsx` — the `@container` root (`tabIndex={-1}`, the key
-  listener on the root plus a document fallback when focus fell to
-  `<body>`), `DirectorContext` (`context.ts`: rows, acts, the arm, award
-  fields, the cursor, the mode), the layout (two columns ≥ `@4xl`, glance
-  340 / 300 px; one column + `GlanceStrip` below), **Calling / Watching**
-  (`localStorage` `loom.director.mode.<eventId|local>`, try/catch;
-  Watching = NOW as one line, the glance column first and whole at every
-  width, keys off). Wave 18: on a server whose cue state carries `caller`,
-  Calling is the show's **caller claim** (`CockpitState.claimCaller(on)` →
-  `POST /api/mod/caller`; `director-mode.ts` `showCallerOf` / `callerIsMe`
-  / `claimMode` / `callerNote` / `shownMode`, `FLIP_MS`;
-  `useDirectorMode()` returns `[mode, set, CallerInfo | null]`): another
-  console's or a host's claim turns this console to Watching and the
-  `director-caller` line names them; a local rehearsal keeps the
-  per-console choice.
-- `NightBar.tsx` — the act stepper (hidden with < 2 non-anytime acts),
-  `cue-phase` (`nightPhase`), two countdown chips, the PAUSED strip.
-- `NowCard.tsx` — NEXT + full description + `director-next-fire`, *then:*
-  (`onDeck`) or *Again? … or move on:*, *nothing to press* + every
-  countdown, LAST (`cue-last`) with `(auto)` / *moved by another
-  director* (`moves.ts`: which cue moved and whether this console pressed
-  it — `CockpitState.ownPress`, set by `fireSignal` on both stores), the
-  **did:** line (`press-effects.ts` `pressEffects`, four items then
-  `+N more ↗ Log` → `setLogPress(seq)`: the Log shows just that press
-  under a chip; secret CHARACTERs masked via `CastSummary.secret` and
-  secret watch items), and the `director-result` banner (✓ Taken 5 s /
-  ✕ Not taken + the first staff-room line after the press, 15 s / ✕
-  Failed).
-- `OnHand.tsx` — the focus act's asides, `from <prev> ▸` (a fold lasts
-  only while that act is the previous one), `⚡ Anytime`; hidden while
-  the filter has text.
-- `RunningOrder.tsx` — `cue-sheet`, `director-act-<code|index>` sections
-  (past folded `✓ n/m` / `– skipped`, future folded with *next:*), spine
-  rows + aside chips, the `cue-filter` (`filterCues`, opens every act),
-  `⇲ all`, the no-acts fold; the award tools (`useAwardFields.ts`:
-  recap fetch, `fillAwards`, ↻ / Copy recap, `cue-recap-*`) in the header
-  of the act holding the first `award_*` cue.
-- `CueButton.tsx` — row or chip: tags, ⓘ, the armed state (*Fire ▶ again ·
-  Esc*, a 4 s bar, `outOfTurn` warnings — *Not on offer now* / *This is a
-  F cue; the night is in E* — never a block), the subject picker
-  (`cue-who-` / `cue-value-` / `cue-suggest-`; NEXT's lives on the NOW
-  card only); `data-cue-press`.
-- `useArmed.ts` — the one arm model over core's: bound to `cues.last` +
-  `fired.length` (stale → *Cues moved: <cue> just fired. Re-arm.*),
-  dropped on blur / hidden tab / 4 s (and on a newer press of the armed
-  cue itself — another cue's repeat, a device's duck find, leaves it; the
-  server's `pressMovedArm` judges every press since); one press in flight
-  (8 s → `NO_ANSWER`, unlocks; a landed one keeps the lock until the
-  snapshot shows the server's `FireResult.presses`, `SETTLE_MS` 3 s at
-  most, so the next arm binds past it; a 409 `moved` names the 409's own
-  `cues.pressed`, gives back `ownPress` and holds the lock the same way
-  until the marks show the 409's `cues.presses` — `moves.ts`
-  `settleTarget` — so a re-arm never binds behind the press that beat it), NEXT cools 1 s after NEXT itself is fired
-  (`row.next` at fire; an aside sets no cooldown); a `subject` cue's
-  first tap opens the picker (`pick`), `armFor` arms it; the last
-  result is kept per store so it survives a tab switch.
-- `director-keys.ts` — the pure key reducer (Calling only; Space arms /
-  fires NEXT, Enter the cursor row or NEXT, Esc disarm → cursor → filter,
-  j/k/↑/↓, `/`, `.`; editable targets, modifiers and `e.repeat` ignored;
-  Enter/Space on a focused non-cue control are that control's; a cursor
-  on a row no longer on screen is dropped).
-- `Glance.tsx` + pure `glance.ts` — `glance-needs` (wave 13: `needsYou`
-  puts this console's refused press first, then maps every
-  `@loom/core/host-board` `hostNeeds` row through `needLink` — judge /
-  agent → Mind, wallet / more → Run, part → the character, people →
-  Roster, staff → the staff room; the same rows a host's Play console
-  shows; wave 11 adds: ⚠ near
-  misses in auto mode, an agent queue stalled or past 40 s, and *👋 N guests
-  unseen 30 min — mark gone?* with a one-tap 👋 per guest off pure
-  `cockpit/guests.ts` `unseenGuests`; refused press 60 s,
-  review filings, held transfers, offline / free parts, unvoiced agents),
-  `glance-watch` (`CockpitState.watch` rows: values with ◆ on change,
-  role counts over roster rows on that ROLE, person rows, secret values
-  `••••`; holding 👁 0.4 s shows it for 5 s; no World link; with
-  `watchDeclared` false, *Recently changed* off `worldSet` log rows),
-  `glance-people` (factions vs a `floor(n/2)+1` tick, prison, restricted,
-  busiest rooms), `glance-cast` (`PresenceDot` from `cockpit/presence.tsx`,
-  shared with Stage; agents' stage + mood), `glance-staff` (rooms with
-  `ChannelSummary.staff`). Every row links (World via `setWorldFilter`,
-  Roster, the Inspector, Stage, Mind, Chat, the Run page).
-- `DirectorTools.tsx` — `director-tools` `<details>`: Fire named event /
-  Fire beat / Broadcast cue moved verbatim (open when the story has no
-  admin cues); the broadcast's **🔔 Alert** (`cockpit/broadcast.ts`
-  `alertCue`) prefixes `!` so it banners, chimes and buzzes (K-06 /
-  N-07).
-- `NextCuePill.tsx` — `next-cue-pill` in the `RunStage.tsx` header: `▶
-  NEXT …` or the soonest countdown; a click opens the Director tab, never
-  fires.
-- `clock.ts` — countdowns off `storyNow` (stands still while paused; the
-  local store fills `storyClock` from `ModView.clock` too).
+- **Server backend** (`operate.ts`), chosen when the workspace has a
+  `projectId`. It runs the project's shared `preview` event, so every
+  co-writer lands in the same run. It stays attached for the life of the
+  open project (an effect in `App.tsx`), never per mode. The mod stream is
+  `events?role=mod&delta=1`: a `snapshot` keyframe, then `snapshotPatch`
+  frames applied with `@loom/core/mod-patch`. A co-writer's launch / go
+  live / end reaches every console through the collab stream's `event`
+  frames (30 s poll fallback). `lifecycle` frames drop the ledger and show
+  a banner naming who did it.
+- **Local backend** (`sim.ts`), chosen for a local folder. It compiles
+  the indexed project and reuses the server's pure `@loom/core/chat` and
+  `@loom/core/views`, so a folder rehearsal reads like the shared run.
+  It cannot go live, and has no wallet, judge, terminals or Players.
+- **Scratch run** (`run.ts` `useScratch`): on a server project whose run
+  is live or has other directors, *Test draft privately* puts the local
+  backend in the same cockpit.
 
-Store: `fireSignal(…, presses?)` resolves to `FireResult {refused?,
-error?, moved?, pressed?, presses?}` and never rejects (`lib/api.ts` sends
-the arm's `presses` and reads `{refused, presses}` off `/api/mod/signal`'s
-200; `operate.ts` maps a 409 `moved` to `{moved, pressed, presses}` off the
-409's `cues` and restores `ownPress`; the sim store uses `pressRefused`); `CockpitState.watch` / `watchDeclared` /
-`countdowns` (from `ModView.watch` / `countdowns`), `worldFilter` /
-`setWorldFilter` (the World tab's filter), `ownPress`, `logPress` /
-`setLogPress`. The local backend notes each press (`notePress`) so a
-folder rehearsal judges refusals exactly like the server. `index.css`
-has a scoped light-theme block for filled buttons and five accent texts.
-Tests: `director/{glance,director-keys,press-effects,moves,onhand}.test.ts`,
-`store/sim.test.ts` (a refused press), `cockpit/{cue-sheet,award-suggest}.test.ts`;
-e2e `e2e/director.spec.ts` (acts, Space · Space, a double-click only
-arms, Not taken, folding, Watching ignores Space, Tools with no cues,
-focus after Esc / a mouse press, Enter on a focused button, a refusal
-kept across its link).
+Components read the cockpit only through `useCockpit(selector)`
+(`cockpit/providers.tsx` `RunCockpit`). ESLint's `no-restricted-imports`
+forbids importing `@/store/operate` or `@/store/sim` anywhere but the
+provider, `store/run.ts`, `App.tsx` and tests. `store/lifecycle-contract.test.ts`
+runs one `describe.each` over both stores.
 
-**Being anyone — the identity lens.** `perspective` is `OPERATOR_LENS`
-(god view) or a guest/persona/character id; `setPerspective` resolves
-**`lens`** = that participant's own projection — `guestView` /
-`primeView` computed locally, or fetched from
-`GET /e/:id/api/state?role=guest|prime&as=<id>` (mod-authorized) and
-refreshed on every snapshot. `cockpit/rooms.ts` `buildRooms` then lists
-**exactly** the lens's channels (real `member` / `canPost` /
-`threadable`), the lobby, their faction room, their folded DM threads —
-or, for a character, the performer's booth (one `guest:<gid>` thread per
-guest, kind `guest`, `roomMessages` = everything addressed to them —
-plus the booth's own pinned rooms as play's `buildPrimeChannels` lists
-them: Quest Log (`questTotal > 0`), Codex (`codexTotal > 0`), Wallet
-(`view.wallet` set) and Inbox (`dm:<Character>`, kind `inbox`), keyed
-`<channel>#@<Character>` with `dmGuest: '@<Character>'` so they hold only
-the `@<Character>` rows, sorted right after the lobby (`Room.order`)).
-`isPinnedRoom` covers `codex` / `quests` / `wallet`, so the operator lens
-splits wallet rows per person (`Wallet · Ada`, `Wallet · CRA Agent
-Software` for the approver booth). `READ_ONLY_ROOMS` (codex / quests /
-wallet / inbox) closes the composer; a `kind: 'wallet'` row renders as a
-compact card (`cockpit/wallet.ts` `walletCardTag`: kind · step · from →
-to · amount), read-only — Approve / Deny stay on Run's Wallet card. A
-guest lens never sees a hidden message (`messageInLens`). Chat's
-composer defaults to the persona (`isPersonaId`, a `p…` id) or the
-character; speaking as a **real** guest defaults to the Operator, needs
-an explicit pick + a once-per-session `confirmAction`, obeys the
-server's `canPost` for that person, and shows a **`via <director>`**
-badge (`CockpitMessage.via`, stripped for guest clients). Under a guest
-lens Chat shows their `who: guest` interactions as buttons; under a
-performer lens the open guest thread gets **📡 Scan** (`scanAs`) and the
-booth's own buttons fired **as** the character (`fireSignal(id, gid,
-null, character)`): wave 13's `rooms.ts` `performerActions` offers the
-lens's `PrimeView.interactions` once it has loaded (never an admin cue;
-another character's `by:` button only when the server flags it heard for
-a host part), else the mod snapshot's `who: performer` buttons this
-character may press. A readout is a feed message (`CockpitMessage.readout`
-/ `about`, core's `dm:<C>` Inbox row addressed `@<C>`): the guest thread
-shows that booth's readouts about the guest, and under the Operator a
-character's own Inbox is named *Norton · Inbox* (kind `inbox`,
-read-only; a read-only composer says why). A host part's server lens
-carries `host` off `PrimeView.host` (`refreshLens`), and its Players pane
-is minted as a host session (`playerSessionOf`). The Roster hides
-`trueFaction`, the Stage disables dragging, World/Director render a
-`LensGate`, and the Inspector's editors (`VarTable` included) are
-disabled under any non-Operator lens. `Esc` outside a text field returns
-to the Operator.
+Enums are const objects (`erasableSyntaxOnly` forbids TS `enum`):
+`CockpitTab`, `RunBackend`, `RunMode`, `SelectionKind`, `CockpitPhase`,
+`LensKind`.
 
-**Players — a full rehearsal from one screen** (`cockpit/PlayersTab.tsx`,
-2026-09-16). Every pane is the **real participant app** — `@loom/play/embed`
-(`play/src/embed.tsx`, aliased to source; `resolve.dedupe` keeps one React)
-mounts the play app's own `GuestApp` / `PerformerApp` into a **shadow root**
-on that participant's **own session**: `openPlayer(role, id)` →
-`POST /e/:id/api/mod/impersonate` (a token in the response body, never a
-URL; exact capabilities — a booth is never a moderator; in server memory
-only; every action journals the director as `by`, guest `say` carries
-`via`). So CAPTCHAs, codex, DMs/pm, threads, invites, scans and card
-actions all work exactly as on a phone, side by side. The play app runs
-through a **host seam** (`play/src/host.ts` `PlayHost`: per-pane memory
-storage, crawl memory, theme root, key target, `wide` from the pane's own
-width, `onEnded`); `embed-css.ts` re-scopes `styles.css` (`:root`/`body` →
-`.play-root`, `vh` → `cqh`, viewport size `@media` → `@container`). The
-**lineup** (`store/players.ts`, persisted per project) outlives sessions:
-a restart cuts guest sessions → the pane re-seats onto a same-named persona
-(`reseatTarget` — reuses the one the cockpit re-spawned, else
-`addPersona`, rehearsal only); booths survive reset/reload and re-open
-after go-live; a real guest needs a confirmed `usePlayAs` and shows as
-*gone* after a restart. Panes stay mounted (hidden) while anyone is seated,
-so tab hops keep sessions; closing a pane calls `closePlayer` →
-`…/impersonate/end`. Entry points: the toolbar (+ New guest · + Guest… ·
-+ Performer… · Seat the cast · phone/tablet/wide), the guest context menu
-(▶ Play), Inspector ▶ Play. **Server runs only** — the local backend's
-`openPlayer` resolves null and the page explains (the Being lens still
-works there). `addPersona` now resolves to the new id. Tests:
-`store/players.test.ts`; server `core/test/server-impersonate.test.ts`;
-play `embed-css.test.ts`. Verified live in Chrome (guest CAPTCHA + chat
-from a pane, Clippy's booth beside it, restart re-seat, wide two-pane).
+### The Run stage and its pages
 
-**Mind — the agent debugger + control panel** (`cockpit/MindTab.tsx`
-+ pure `cockpit/mind.ts`, 2026-09-18; operator-only, server runs). Left:
-the mind as the stagehand worker last mirrored it (`CockpitState.minds`
-← `ModView.minds`, the full `AgentMindReport`): the arc stepper (click a
-later stage → `set stage` with a why), brief (Edit), drives as sparklines
-over the revision log with sliders, policy select, questions, notes,
-learned, files on people (set trust / forget), thread summaries, the
-revision log (→ the thought that made it). Right: the trace
-(`CockpitState.thoughts` — `agentThought` SSE frames merged by id + the
-paged `GET /api/mod/agent/trace` on open, `loadThoughts`), filterable by
-kind / person / text; a thought opens to Input / Reasoning / Raw output /
-Parsed / Mind diff + **Re-run**. Header: worker + both model chips, the
-control panel (`mindControl` → `POST /api/mod/agent/control`: nudge,
-survey now, pause/resume, mind reasoning on/off, voice effort, reset with
-confirm). Colours are the reference dark categorical slots in fixed order
-(voice / lookup / reflect / survey / re-run); every badge carries its
-label. Tests: `cockpit/mind.test.ts`; live: `e2e-live/mind.spec.ts`.
-**Wave 12 — the story mind** (stagehand `mind_mode: new`; `isNewMind` /
-`mindModeOf` off the report's `mode`, an older worker reads as classic):
-the survey button becomes **Rewrite brief** (`surveyButton` → the `rewrite`
-control); Pause mind is classic-only (Resume stays for a mind a classic
-run left paused); drive sliders send once on release, only on a change
-(pure `sliderStep` / `heldState`, `SLIDER_COMMIT_KEYS`, a 6 s hold before
-the mirror is trusted again); the brief and every revision carry *set by
-story* / *set by director* (`byLabel` / `byTitle`, the director's name on
-hover) and the arc reads *stage by hand* when the worker's
-`stageFromPhase` is off (`stagePrompt`); People rows show the house's
-trust (`storyTrust`), ⛔ marked and the memo count, and open to first met,
-each *memo by voice* (🫀 at the heart), gifts, filed question ids and the
-Trust Chart place (`personExtras`, `memoLabel`); the trace gains the
-`brief` / `summary` kinds (chips only on a story-mind worker or once one
-is in the trace), prompt time (`promptMsOf` / `timingText`) and the
-stored-once prefix (`prefixRef` / `localPrefix`, else fetched by `?id=`
-from the same API base). SSR fixture renders of a classic and a new-mode
-report live in `mind.test.ts`.
+`run/RunStage.tsx` is the header on every Run page: the run pill
+(`run-chrome.ts`), `LifecycleControls` (Pause / Resume, the ↺ Restart ▾
+menu with push draft, go live and end; a live run's destructive actions
+need the event code typed through `confirmTyped`), the page tabs, the
+identity control, quick-fire, the ▶ NEXT pill, a decisions pill, and on
+server runs **■ Stop house sounds**.
 
-**Judging — the facts judge** (the top card on Mind, Oct 31 wave 4,
-U10; `JudgingCard` in `MindTab.tsx` + pure `judgeModeOf` /
-`pendingFilings` / `questionTallies` in `cockpit/mind.ts`). Reads
-`CockpitState.facts` (← `ModView.facts`, the server's `FactsWatch`
-ledger off `do fact_filed` / `do fact_judged`; null = the project has no
-`facts.json`, and the local backend adds that judging runs on the event
-server). The **mode** (`auto` / `review`) is a journaled world var
-(`facts.modeVar`, `Night.judge_mode` by default) written through
-`setVar`, the same `/api/mod/var` path as the World page. The pending
-list shows each filing's proposed verdict with **accurate / lie /
-uncertain** buttons → `fireSignal(<judge.confirm event>, person,
-{question}, null)` — the same `fact_accurate` / `fact_lie` /
-`fact_uncertain` names the hosts' booth buttons fire — and a per-question
-tally table follows; **▸** on a row expands that question's filings
-(wave 5 E8 / SW-ADM-13, pure `questionFilings`: oldest first, *seen* time
-= `FactsFiling.at` (re-stamped by a restart), who / answer / confidence /
-proposed / outcome, `how` from the server's `FactsFiling.how` / `by`
-(`auto` | `confirmed` | `overridden` (↺) | `settled` | `marked`, worked
-out by `FactsWatch` from the journal's steps, so a restart keeps it —
-e.g. "accurate (confirmed by Ada)"; an older server without `how` falls
-back to kept / overridden off the proposal). **Wave 9 D5:** every filing
-row but a `marked` one carries the same ✅ / 😤 / 🤷 buttons in both modes
-(pure `filingButtons` — the current verdict outlined, its button greyed
-once judged — and `verdictCall`, which always names the question, so it
-judges that filing, never the program's latest), so an auto-mode verdict
-the key got wrong is one tap to fix. The verdict never reaches a phone or the voice
-worker; this card is the only place it is shown. Tests: the judging
-cases in `cockpit/mind.test.ts`. **Wave 11 C6:** a pending near miss
-(`FactsFiling.near {key}`, `nearKeyOf`) is tagged *⚠ near "<key>"* in both
-lists and counted in the header (`nearCount`: the view's `near` when sent);
-the Mind header carries the agent's queue badge (`agentQueueOf` off
-`CastSummary.agentQueue` or the mind summary, `queueBadge`: depth · oldest
-wait · ⛔ stalled). The server sends `oldestMs` as of the send, so the
-operate store stamps each queue's arrival (`stampAgentQueues`, kept while a
-patch leaves the row alone) and `agentQueueOf(…, now)` ages it — the header
-ticks by the second while a queue waits, the glance every 5 s. In `auto`
-mode a near miss still waits on the card (`judgeModeTitle`).
+Tabs (`CockpitTab`): **Run · Stage · Chat · Players · Story · Roster ·
+World · Director · Mind · Log**. Only Run and Story work with no run;
+World, Director and Mind close under a lens.
 
-**Wave 18b** (built 2026-10-22, on `oct31-w18/editor`, merged on
-`oct31-w18/integ`). **Judging (O4):** with a `judge:` character every
-filing that isn't an exact match goes to him, so the auto line and the
-mode tooltip read *The house accepts exact matches; {judge} rules every
-other filing; what he can't rule … falls back to the house rule and can
-be judged here.* (`autoJudgeCopy`, `judgeModeTitle(mode, judge)`); a
-pending plain miss shows **🤖 queued for {judge}** / **🤖 asking
-{judge}…** like a near miss (`isQueuedFiling`, `queuedText`; only a near
-miss keeps the ⚠ tag); the header's queue badge reads
-`AgentQueue.judging` (`judgingQueueOf` off the cast row, else the mind
-summary; `judgingBadge`: *🤖 N queued · 1 out · oldest m:ss*, aged off
-its arrival like the voice queue, or *⏳ {judge} isn't ruling* on a judge
-stall). **The race:** `CockpitState.race` (← `ModView.race`, faction
-mode only, on both backends) feeds the glance's People section
-(`director/glance.ts` `raceGlance` / `racePct` / `raceLead`: one bar per
-race faction, founded or declared, on one scale of the present, an amber
-tick at the line; the faction over it reads **over the line**, never
-*won*; the strip's *🗳 X over the line*); `withFoundedFactions`
-(`store/cockpit.ts`) joins `ModView.crews` onto the roster rows in
-faction mode so `FactionPill` (`founded`) reads *◇ The Pirates*, not
-*unaligned*. **Badges:** `RosterRow.badges` (the story's `badge:` line,
-e.g. 🚻) through `NameBadges` (`cockpit/ui.tsx`) on the rail, Roster,
-Stage chips and Inspector header, as text in Players' *+ Guest…*
-options (`badgeText`), never on a chat line. **Wallet:** a held or
-CRA-flagged transfer reads 🚩 (`walletStepTag` / `walletCardTag`, the
-`audit` words off `WalletCard.audit`). **House sound (Q7 / Q8):**
-`audioApi` (`lib/api.ts`: `status` = `GET /api/mod/audio` without
-`router=1`, `stop` → `POST /api/mod/audio/stop {announce}`, `save`,
-`saveToProject`, `announce` → the narrow `POST /api/mod/audio/announce
-{spot, on, base}`, which edits only `announce.terminals` over the config
-in force; an older server's 404 falls back to the whole save with
-`base`), pure rules in `lib/house-audio.ts` (`withAnnounceTerminal`,
-`routerLine`, `stopResultText`, the stop outcomes), `store/house-audio.ts`
-bound from `App.tsx` beside the terminal heartbeat (a 10 s poll while a
-server run is bound), and `run/HouseSoundCard.tsx`: **■ Stop house
-sounds** (`StopSoundsButton`) in the `RunStage` header on server runs
-only (one press, no confirm; for 4 s *■ Stopped*, *■ No router: stop it
-on the house Mac* or *■ Stop failed: retry*, `stopButtonLabel`), and the Run page's House sound card (the router line, the stop
-± announcements, D5's scope sentence, *Tablets that also say the
-announcements* per map spot with a 409 reload, this event's list vs
-**Save to project**). **Terminals:** the 📢 badge off the heartbeat's
-`ann=1`; `TerminalView.Reinstall` in `lib/terminal-setup.ts`
-(`isStationView` = chess / casino / reinstall: no room, no character;
-`suggestView('tent')` → reinstall), the builder writing `announce=1`
-only when *Always* is ticked and no `announce` otherwise (an explicit
-`announce=0` would pin the tablet to Never); `fullscreenTitle` gives a
-`view=reinstall` row its own Chrome `--kiosk` hint. Help
-`authoring/43-run-mode`. Tests: `store/w18b-cockpit`, `cockpit/badges`,
-`cockpit/founded`, `director/race-glance`, `lib/house-audio`,
-`store/house-audio`, `run/house-sound-card`, plus additions to `mind`,
-`glance`, `wallet`, `terminal-setup`, `terminals` (editor 531 / 66 files
-on the integration branch).
+- **Run** (`run/RunPage.tsx`, front of house only; a source test pins
+  that it renders no lifecycle controls). The empty state (Start
+  rehearsal, *Go live with real guests*, the last run's Export, the
+  scratch offer). While running: **Join** (codes, join URL, QR, one
+  sign-in row per performer part, *New performer + moderator codes*), the
+  **🖨 Print sheet** (`run/PrintSheet.tsx` + `lib/print-sheet.ts`: join
+  poster, door sign, codex posters by stack, room check-in signs, cast
+  cards, invitations; QRs drawn in the browser), **Directing now**,
+  **Terminals**, **House sound**, **House map** (when the event has a map:
+  variants, the shared King, the 💡 lights row), **Wallet** (only with a
+  `currency:` story), and **Look up a guest**.
+- **Stage**, **Chat**, **Roster**, **World**, **Log** (`cockpit/`): the
+  room map, the feed with a composer that can speak as anyone, the
+  roster, the variable table, the ledger (`log-describe.ts` is exhaustive
+  over `SimEventType`; a new event type breaks the build until it is
+  described). The Log exports the run (`lib/run-export.ts`, paging the
+  whole ledger off `/api/mod/log`).
+- **Story**: the story graph read-only with the runtime overlay.
+- **Players** (`cockpit/PlayersTab.tsx`): one embedded real play app per
+  guest, persona or performer, side by side. Each pane mounts
+  `@loom/play/embed` in a shadow root on its own session minted by `POST
+  /api/mod/impersonate`. Server runs only.
+- **Director** (`cockpit/director/`): the running order by act, the NOW
+  card (NEXT, *then:*, countdowns, LAST and what the press did), On hand,
+  arm-then-fire on every cue (`useArmed.ts` over core's arm model), the
+  glance column (Needs you, the `watch:` board with secrets masked,
+  People, the race, Cast, staff rooms), Calling / Watching tied to the
+  show's caller claim, and the rare tools (fire event / beat / broadcast).
+  Rows, acts and arm timing come from `@loom/core/cue-sheet`; NEXT / LAST
+  are the server's `cueState`, so every console and the director phone
+  agree. Keys (Calling only): Space arms / fires NEXT, Enter the cursor
+  row, Esc disarms, j / k / ↑ / ↓, `/` filters.
+- **Mind** (`cockpit/MindTab.tsx` + pure `cockpit/mind.ts`, server runs):
+  the agent's mind as the stagehand worker mirrors it, the thought trace
+  (`agentThought` frames + `/api/mod/agent/trace`), and the control panel
+  (`/api/mod/agent/control`). Classic and story-mind workers render
+  differently (`isNewMind`). The top card is **Judging**: the facts
+  judge's `auto` / `review` mode (a journaled var), pending filings,
+  ✅ / 😤 / 🤷 overrides on every judged filing, near misses, the judge
+  queue, per-question tallies. In the editor, verdicts are shown only
+  here; hosts also judge from Play's host dock (the Judge tab).
 
-**Wave 20** (on `oct31-w20/editor`). **Terminals:** the door sensor's 🚪
-badges off the heartbeat's `door` / `doorLevel` / `doorFault` / `doorWarn`
-(`lib/terminals.ts` `doorBadges`, a `TerminalBadge.tone`: green *🚪 shut
-<level>*, amber *🚪 open <level>*, red *🚪 fault: <code>*, an amber *⚠
-<warn>*, and an amber *override* off the screen state's
-`night.door_override` — `store/terminals.ts` reads `GET /api/screen/state`
-(`screensApi.state`, `doorOverrideFromScreen`) only while some row reports a
-sensor); the setup builder's *Keyboard plugged in* (`keys=0` when unticked)
-and *Door sensor on this laptop* (`door=serial`, ticked for the
-`server-room` spot), both only where `viewHasKeys` / `viewHasDoor`.
-**House map:** the 💡 row (`LightsRow` in `HouseMapCard.tsx`, pure
-`lib/lights-status.ts`, `lightsApi.status` = `GET /api/mod/lights` with no
-`after`, every 15 s / 5 s while pairing): module online / offline / never
-connected · N fixtures, *pairing … s* (`pairDeadline`, counted off the
-answer's server `now`; a server with none reads *pairing open* with no
-number, since its other stamps are older than its clock and would count
-high), problems / warnings. The glance needs no
-change for the heart's `watch:` lines (`director/heart-watch.test.ts`).
-Help `authoring/43-run-mode`.
+### Run → Terminals
 
-**The super-admin's peek** (`cockpit/Inspector.tsx`): a guest shows
-**Their view** (side / where / score / deciding / rooms / can — exact
-when they are the lens), **Their feed** (the last 60 messages
-`visibleTo` them, hidden greyed), story position + trail, variables, and
-a **👁 Be <name>** button; a character shows **Their feed** (lines they
-spoke + `dm:` threads) plus their **readouts** (once each, off the Inbox,
-with the guest each was about), variables, owned beats. Under a lens,
-*Their view* (a guest) and *Their booth* (a character) list the lens's
-live **objectives** (NOW tag, act, loud, brief, ☑/☐/· checklist with a
-done-of-total count, the buttons by label; pure `cockpit/objectives.ts`). A guest also gets **Codex · N/M held**
-(a "grant codex entry…" picker over the entries they don't hold →
-`CockpitState.grantCodex` → `POST /api/mod/codex` / `Sim.unlock`) and
-**Quests** (every declared QUEST with their status; Start a new one,
-Update… / Complete / Fail an active one, each asking for the thread line
-— required for an update — → `stepQuest` → `POST /api/mod/quest` /
-`Sim.quest`), both off `CockpitState.codex` / `quests` (`ModView.codex`
-/ the new `ModView.quests` with per-person status); pure rules in
-`cockpit/grants.ts` (OCT31 S4). Server runs add the lost-phone fixes:
-a guest's **🔁 Re-pair** (`RePair` → `CockpitState.pairGuest` →
-`POST /api/mod/guest/pair`, a QR of the returned `?code=&pair=` link — a
-single-use code good for ten minutes —
-plus **Sign out old phones** = `revokeOthers`; not shown for personas,
-which the server refuses anyway) and a character's **⏏ Release**
-(`CockpitState.releasePart` → `POST /api/mod/prime/release`, confirmed);
-the local backend refuses both with an explanation. **Wave 11 C5:** a
-guest shows `RosterRow.lastSeen` (*seen 12 m ago*, also the rail tooltip and
-the Roster's Seen column; pure `guests.ts` `seenLine` / `seenCell`: a null
-reads *not seen since the server started* — the server's null is "no
-request since this process started" — and a persona shows none), a persona badge (`isPersonaRow`: `<id>.persona`,
-an owner or a `p…` id) and **👋 Went home / Back** (`CockpitState.markGone`
-→ `POST /api/mod/guest/gone {id, gone}`; locally the same `<id>.gone` world
-var, and local personas get `<id>.persona = true`). A guest's **Restricted**
-field (wave 5) is **Restrict / Unrestrict** → `setStat(id, 'restricted',
-…)` (`/api/mod/set restricted` / `Sim.restrict`/`unrestrict`, a plain
-restrict with no places — not the story's own mark event, whose flags and
-pins it leaves alone), confirmed for a real guest on a live run;
-`RosterRow.restricted` drives a ⛔ beside 🔒 on the Stage, the rail and
-the Roster. The **Log** page (`cockpit/LogTab.tsx`) renders each event
-through the pure, exhaustive `log-describe.ts` `describeEvent` (a `never`
-guard: a new `SimEventType` breaks the build), filters to one participant (`log-filter.ts`
-`eventMentions`, generic over every string field of a `SimEvent`), says
-how many ledger events predate this console (`missingEvents`, in the
-header and the empty state), and exports the run (`lib/run-export.ts`
-reads `run ?? lastRun`; `source: local|server`, `mode`, `startedBy`,
-`endedBy`). A server export pages the whole ledger through `GET
-/api/mod/log?after=&limit=` (`fetchWholeLedger`, `complete: true`); when
-the route is missing or refuses, it keeps the console's rows with a
-`warning` and tells the director it is partial. A back-filled row carries
-no `ts` (the Log shows a dash). A GROUP's derived room beside a declared
-room of the same name is labelled `#hosts (side)` (`rooms.ts`
-`labelTwinSides`). A live run's End / Restart / Push draft confirm with
-`confirmTyped` (`store/dialog.ts`): a wrong code opens *Nothing changed*.
+`run/TerminalsCard.tsx` over `store/terminals.ts` and pure
+`lib/terminals.ts`. Every wall terminal and the TV by last poll
+(`/api/mod/screen/terminals`), red after 20 s silent with a chime that
+repeats until *ack*. The store is bound from `App.tsx`, so it chimes from
+any mode. Per row: the map spot, the room, **identify**, and badges off
+the heartbeat:
 
-**The rail** (`cockpit/Rail.tsx`): the world badge (`format.ts`
-`worldBadge`: ◦ Local run · ⚗ Scratch run · ◉ Shared rehearsal · ● Live
-event, `run-backend` testid), phase, stats (guests / online / events /
-decisions / directors), the **Guests** section with owner chips ("you"
-/ "Ana") + presence + ⏳/🔒 + an inline persona spawner + the guest
-context menu (`guest-menu.ts`: Inspect / Be / Open DM / Capture-Release
-— the last only for the Operator), and the **Rooms** navigator (🔇 on a
-room the lens identity can't post in).
+| Badge | Source |
+|---|---|
+| 🔇 / 💤 / 🔋 / build | sound, visibility, battery, `__BUILD__` (amber *old build* beside a stamped majority) |
+| ⛶ | not full screen (`fs=0`) |
+| 🎤 | the voice link's mic (`mic=`) |
+| 📢 | the terminal says house announcements (`ann=1`) |
+| 🚪 | the door sensor (`doorBadges`): shut / open + level, fault, warning, *override* off `night.door_override` |
+| 🔌 | the patch bay on the same M4 (`patchBadges`, wave 22): cable count, *✓* when complete, fault, *?* inputs between levels, *(silent)*, *buttons* off `night.patch_override` |
 
-Everything is **enum-driven** (const-object enums — `erasableSyntaxOnly`
-forbids TS `enum`): `CockpitTab`, `RunBackend`, `RunMode`,
-`SelectionKind`, `CockpitPhase`, `LensKind`, plus the core-side
-`SimEventType` / `BuiltinVerb`. Tests: `store/sim.test.ts`,
-`store/run.test.ts`, `store/lifecycle-contract.test.ts`
-(`describe.each` over both stores against a mocked control plane),
-`cockpit/rooms.test.ts` (exact lens rooms, hidden rule, performer
-threads), `cockpit/log-filter.test.ts`, `components/run/run-chrome.test.ts`,
-`lib/run-export.test.ts`; Playwright `e2e/sim.spec.ts` (local backend:
-start / choices / quick-fire / scan / identity lens / log filter / end)
-+ `e2e/studio.spec.ts` (three modes, the server empty state under a
-stubbed status route) + the opt-in `e2e-live/live-collab.spec.ts`
-(co-writer launch / restart banner / push draft / go live in place /
-end against the real stack).
+The 🚪 / 🔌 counts only; which cables are in is never shown. The store
+reads `GET /api/screen/state` for the two override flags only while some
+row reports a sensor. **🛠 Set up a terminal…** (`run/TerminalSetup.tsx`
++ pure `lib/terminal-setup.ts`) builds a `/terminal/?code=<mod>&…` link
+and QR from selects over the house map, the views, the story's
+LOCATIONs and the cast, including `announce=1`, `keys=0` and
+`door=serial`.
 
-### The story-graph node editor (`components/graph/`)
+### Being anyone: the identity lens
 
-Writing's canvas pane is a **global node editor over the whole
-project**, 1:1
-with Loom Lang (Articy-Draft-style nesting, Pixel-Crushers-style
-dialogue flows). Data comes from `@loom/core/lsp`'s
-`Workspace.storyGraph()` (every indexed `.loom` file — never just the
-active buffer) via `lib/story-graph.ts`'s `useStoryGraph()`
-(recomputes on the `useLspIndexGen` counter).
+`perspective` is the Operator (god view) or a guest, persona or
+character id. `setPerspective` resolves `lens`, that participant's own
+projection: `guestView` / `primeView` computed locally, or `GET
+/e/:id/api/state?role=guest|prime&as=<id>` on a server run.
+`cockpit/rooms.ts` `buildRooms` then lists exactly that participant's
+rooms; a character gets the booth (one thread per guest, the booth's
+pinned rooms, its Inbox of readouts). Under a lens the Roster hides true
+factions, editors are disabled, and Esc returns to the Operator. Speaking
+as a real guest needs an explicit pick and a once-per-session confirm,
+and carries a `via <director>` tag.
 
-- **Center — `StoryGraphPanel`.** Two nested levels: the **project
-  map** (beats as cards inside collapsible per-file containers; divert /
-  choice / tunnel edges cross files; `on <event>` **hook** edges from
-  character pills; red **ghost nodes** for unresolved targets; ▶ entry
-  badge, END terminal) and the **beat drill-in** (double-click a beat:
-  its body as a top-down flow — dialogue cards, choice fan-outs that
-  re-merge past the menu, `<if:>`/`<match:>`/`<each visit>`/`<after:>`
-  branch heads with labeled arms, divert exit pills that double-click
-  through to their target). Breadcrumb (`Story map › beat`) navigates
-  back. ELK (`elkjs`) layered layout with compound containers
-  (`graph/layout.ts`); manual drags persist per project
-  (`localStorage["loom.graph.layouts"]`, `store/graph.ts`).
-- **Nodes genuinely move**: `onNodesChange` applies React Flow's
-  changes back into the positioned state (`applyNodeChanges`), so drags
-  stick across decoration re-renders (they used to snap back on the
-  next selection/runtime update), work in the drill-in too
-  (session-local there), and children use `expandParent` — dragging a
-  beat past its file container's edge grows the container instead of
-  clamping at it.
-- **Word blocks** (`graph/word-blocks.ts`): every beat card expands
-  (header ▸/▾ chevron, context menu, or the toolbar `blocks`
-  expand-all toggle) to show its full body as typed blocks — prose,
-  dialogue, directives, choices, branch arms, diverts, slots
-  (`WordBlockKind` enum), nesting rendered as indent — and the card
-  stretches to fit (the block list drives the ELK size estimate;
-  `expanded` lives in `store/graph.ts`). Collapse restores the compact
-  3-line preview. **Word blocks author source 1:1**: each block
-  carries exact anchors (`spanStart`/`spanEnd`/`topIndex`, pure
-  `blockEditRange`) — on a file beat, double-click edits the block's
-  literal source lines in place (`replaceExact`, shared `InlineEdit`
-  textarea; dialogue = cue + merged prose, choice = its `* text` line,
-  branch heads display-only); right-click inserts a line above/below
-  (`insertBodyLines`) or deletes the item (`removeBodyItem`); the card
-  menu adds lines/choices; file-container + pane menus create beats
-  and CHARACTER/LOCATION/FACTION declarations (`appendDeclaration`) —
-  so whole stories can be written from the canvas and read back
-  identically in Writing mode.
-- **Floating connectors** (`graph/FloatingEdge.tsx`): project-view
-  edges anchor to the closest border point of each node instead of
-  fixed left/right handles, so links stay sensible however the map is
-  rearranged. Drill-in body flows keep fixed top/bottom ports (that
-  layout is strictly top-down).
-- **Edits round-trip to `.loom` source** through `@loom/core/parser`'s
-  span-preserving `TextEdit` ops (`lib/story-graph.ts` applies per-URI
-  batches via `writePathContents` — opens the file as a dirty tab +
-  `syncBuffer`s the LSP so the graph re-derives instantly): drag a
-  connection between beats → `appendDivert`; drag an edge end onto
-  another beat → `retargetDivert` against the edge's exact
-  `targetRange`; `+ beat` / context-menu delete → `insertBeat` /
-  `removeBeat`; **Rename…** → `Workspace.renameBeat` (declaration +
-  every cross-file reference + `entry:`); right-click a body node →
-  Edit text… (`replaceExact`). Owned beats retarget only; derived
-  (trait-template) beats are honest projections — edit the template.
-- **Left rail — `EditingRail`** (Writing's rail): Files (`Sidebar`) ⇄
-  **Story Bin** (`StoryBin`, the project-wide navigator: beats grouped
-  by file + every declared entity, filterable; click selects on canvas,
-  double-click jumps to source).
-- **Bottom dock — `BeatStrip`**: the selected beat's body as linear
-  clips; drag-reorder → `moveBodyItem`, right-click delete →
-  `removeBodyItem`, composer appends raw lines (`appendBodyLines`).
-- **Runtime overlay**: the same canvas mounts in Run mode's Story tab
-  (`variant="run"`, read-only, on both sources) and lights up from
-  `store/graph.ts`'s `RuntimeOverlay` — visit badges, current-beat
-  pulse, and amber **traversal heat** on the edges a run actually took
-  (`traversed`, best-effort beat→beat hops). The server backend feeds it
-  from the mod SSE `sim` feed; the local backend from the in-browser
-  engine — the identical contract. In a run canvas, right-clicking a beat offers
-  **Fire beat ▶** straight into the hosting cockpit.
-- **Ergonomics** (all in `StoryGraphPanel` + `store/graph.ts`):
-  - **Hover tooltips** on every node + edge (beat preview + `file:line`,
-    entity summary, edge kind/text/guard/route), 220 ms delay; node
-    hover also feeds the **focus bus** (`useFocus.setHover`).
-  - **Edges are selectable** — clicking one (label included) opens the
-    tray's **connection inspector**: route (jump either end), choice
-    text/stickiness, guard, plus a **Rewire to** beat picker that
-    rewrites the divert target in source. File containers select too
-    (file inspector: beats/declarations, Open in Writing).
-  - **`reveal(id)` centering** — Story Bin rows, tray link lists, and
-    toolbar search all center+zoom the canvas on the target, retrying
-    across relayouts, auto-enabling the entity overlay (or popping out
-    of a drill-in) when the target is hidden.
-  - **True inline editing** in the drill-in: double-click (or context
-    menu → Edit in place) a prose/dialogue/choice/directive node to get
-    an in-node textarea over the item's **raw source slice** — Enter
-    commits via `replaceExact`, Shift+Enter newline, Esc cancels.
-  - **Fit-to-content layout**: after first paint, React Flow's measured
-    node sizes feed a second ELK pass (`onNodesChange` dimension
-    changes → one re-layout per flow), so boxes always fit their text.
-  - **MiniMap** (project view, pannable/zoomable); selecting a node
-    **emphasises its connections** and dims the rest; **ghost nodes
-    double-click to create the missing beat** (every dangling divert
-    then resolves); file-container double-click opens the file (or
-    expands a collapsed one).
-  - **Collapsible file containers**: the header chevron / context menu
-    folds a file to a compact leaf — its beats hide, every edge with a
-    hidden endpoint re-routes to the file node (parallel edges merge
-    into one `N links` aggregate; pure `collapseFlowEdges` in
-    `flow.ts`), the runtime pulse lands on the collapsed node when the
-    current beat is inside, and `reveal` auto-expands. Session-local
-    (`collapsedFiles` in `store/graph.ts`).
-  - **Live filter**: the toolbar input dims non-matching nodes (and
-    edges between them) as you type — beat key / owner / entity / file
-    path substring (`graph/filter.ts`); Enter still jumps to the first
-    hit, Esc clears.
-  - **Keyboard**: arrow keys walk selection to the geometrically
-    nearest node (`graph/navigation.ts`), centering it; Enter drills
-    into a beat / expands a collapsed file; Esc backs out of a
-    drill-in / clears selection; F2 renames the selected beat; Delete
-    removes it (file beats).
-- **Two-way pane sync** (Writing): opening a beat on the canvas
-  (double-click / Enter / exit-pill follow) also lines the text pane up
-  on its declaration **without stealing keyboard focus**
-  (`openBeatSynced` → `revealAt(..., { focus: false })` — the
-  `pendingCursor.focus` flag), so Esc still backs out of the drill-in;
-  and the reverse — the **follow** toolbar toggle (`followCursor` in
-  `store/graph.ts`, default on) selects + gently centers the
-  beat/entity enclosing the text cursor (`graph/follow.ts`'s pure
-  `nodeAtLine` — nearest section start over beats ∪ entities;
-  `revealGentle` keeps the current zoom and never mutates visibility).
-- **Edge context menu**: right-click a connection → go to either end,
-  show source, or "Rewire in Properties…" (selects the edge + opens
-  the tray).
-- Pipeline regression test: `components/graph/graph-pipeline.test.ts`
-  (core graph → flow projection → ELK + collapsed-container coverage,
-  over `escape-the-internet`); pure-logic suites in
-  `flow-collapse.test.ts`, `navigation.test.ts`, `filter.test.ts`,
-  `follow.test.ts`.
+The **Inspector** (`cockpit/Inspector.tsx`) shows a guest's view, feed,
+objectives, codex (grant), quests (start / update / complete / fail),
+last seen, 👋 Went home, Restrict / Unrestrict, 🔁 Re-pair, and a
+character's feed, readouts and ⏏ Release.
 
-## Conventions
-- Path alias `@/*` → `src/*`.
-- Keep components small; put logic in `lib/` or `store/`.
-- Two persistence backends: the SaaS API (server projects) and FS handles (local folders). New persistence goes through `store/workspace.ts`'s backend-aware paths, not a third mechanism.
-- Browser support: Chromium-based (File System Access API) — or the
-  Tauri desktop app (`desktop/`), where the same local-folder backend
-  runs on FSA-shaped handle shims (see **Desktop shell** below).
+## Writing: the editor and the story graph
 
-## Desktop shell (Tauri)
+**Loom in CodeMirror.** The editor consumes `@loom/core` as TypeScript
+source through aliases in `vite.config.ts` and `tsconfig.app.json`: no
+wasm, no build step. The aliases are `parser`, `lsp`, `sim`, `runtime`
+(for `@loom/bank`), `chat`, `views`, `mod-patch`, `cue-sheet`,
+`host-board`, then bare `@loom/core`, plus `@loom/bank` and
+`@loom/play/embed`.
 
-The app also ships as `loom-desktop` (`../desktop`). Desktop-only code
-is gated on `lib/desktop.ts`'s `isDesktop()` and inert in the browser:
+- `lib/loom-language.ts`: the highlighter, built on the parser's keyword
+  tables so it cannot drift. Reserved words light up only in expression
+  contexts. Tested by `loom-language.test.ts`.
+- `lib/loom-lint.ts`: project diagnostics from `Workspace.diagnosticsFor`
+  (parser-only fallback when the whole project isn't indexed).
+- `lib/lsp-client.ts`, `lsp-index.ts`, `use-lsp-index.ts`: one long-lived
+  `Workspace`, whole-project indexing, and the `useLspIndexGen` counter
+  that every derived view recomputes on.
+- `lib/loom-lsp.ts`, `lsp-nav.ts`: hover, completion, go to definition
+  (⌘-click, F12), find references (⇧F12), occurrence highlight.
+- `lib/editor-menu.ts`: the editor's context menu; F2 renames the beat at
+  the cursor workspace-wide (`Workspace.renameBeat`).
 
-- `lib/desktop.ts` — detection + typed bindings for the shell's
-  commands (`desktopFs`, `desktopGodot`).
-- `lib/desktop-fs.ts` — `DesktopDirectoryHandle` / `DesktopFileHandle`,
-  FSA-shaped shims over the native fs commands. `lib/fs.ts`'s
-  `pickDirectory()` hands them out on desktop, so `store/workspace.ts`
-  and the LSP indexer work unchanged; persisted roots rehydrate by
-  path in `restoreRoot` (no permission dance — always `'granted'`).
-  No `FileSystemObserver` on desktop: external edits need the sidebar
-  refresh.
-- `store/godot.ts` + `components/integrations/GodotPanel.tsx` — the
-  Wwise-style Godot integration (Integrations mode, desktop only): link a
-  Godot project, install/update the runtime addon, and build the
-  indexed workspace into `.loombank` + `LoomIDs.gd` via `@loom/bank`
-  (aliased to `../bank/src` like `@loom/core`) — compile in the
-  webview, write through the host.
+**The story graph** (`components/graph/`, data from `lib/story-graph.ts`
+`useStoryGraph()` over `Workspace.storyGraph()`): the project map (beats
+in collapsible per-file containers, divert / choice / tunnel / hook edges,
+ghost nodes for unresolved targets) and a beat drill-in. ELK layout
+(`graph/layout.ts`), manual drags persisted per project, word blocks that
+expand a card to its full body, floating edges, a live filter, arrow-key
+navigation, follow-cursor in both directions (`graph/follow.ts`). Every
+canvas edit round-trips to `.loom` text through `@loom/core/parser`'s
+span-preserving edit ops (`appendDivert`, `retargetDivert`,
+`insertBodyLines`, `removeBodyItem`, `appendDeclaration`, …) via
+`writePathContents`. Derived (trait-template) beats are read-only
+projections.
 
-### Editor QoL — context menu, rename, shell keys
+**The edit journal** (`store/edit-journal.ts`): every structural edit is
+one labelled multi-file entry. ⌘Z / ⌘⇧Z outside a text surface undo and
+redo it; inside CodeMirror its own history applies. An entry applies only
+while every file still holds the text it expects.
 
-- **The text editor has its own contextual menu** (`lib/editor-menu.ts`,
-  wired in `Editor.tsx` for every file type): right-click → Go to
-  definition (F12) / Find references (⇧F12) / Rename beat (F2) /
-  **Reveal in story graph** (LSP group, `.loom` only) above the
-  clipboard basics (Cut/Copy/Paste/Select all). Shift+right-click keeps
-  the native browser menu. **F2 in the text editor renames the beat at
-  the cursor** (exact key under the cursor — `Owner.name` qualified
-  included — else the enclosing beat) through the same workspace-wide
-  `Workspace.renameBeat` the canvas uses.
-- `ContextMenuHost` supports right-aligned keybinding `hint`s and
-  `{ separator: true }` divider rows (`store/context-menu.ts`'s
-  `ContextMenuEntry`).
-- **Shell keys** (`StudioShell`): ⌘1..⌘3 modes, **⌘B** toggle left
-  rail, **⌘⌥B** toggle properties tray, **⌘\** toggle the Writing
-  story-graph pane (`ModeUi.graphOpen`; an explicit `reveal` re-opens
-  it). All three also live in the command palette. Tab keys stay
-  ⌥W / ⌥⇧T / ⌥[ / ⌥] / ⌥1..9 (`Tabs.tsx`); ⌘S / ⌘⇧S save.
-- **In-app Help** (`components/help/HelpOverlay.tsx` + `store/help.ts`
-  + `lib/help-content.ts`): a searchable manual overlay — sectioned
-  sidebar TOC, fuzzy full-text search with snippets, markdown articles
-  with cross-links. Opens via **⌘/** / F1, the TopBar `?` button, or
-  the palette (`Help: …` commands, incl. deep links to Shortcuts and
-  the Cheat Sheet). Content is the shared markdown collection at
-  `docs/help/authoring/*.md`, parsed by
-  `docs/help/helpdoc.ts` (also used by the play app) and
-  bundled via `import.meta.glob(?raw)`. Tests:
-  `src/lib/help-content.test.ts` (engine + collection integrity —
-  cross-links must resolve), `e2e/help.spec.ts`.
-- **The story edit journal** (`store/edit-journal.ts`): every
-  structural edit that flows through `lib/story-graph.ts`'s write path
-  (`writePathContents` / `applyEditMap` / `applyEditsToUri` — canvas
-  connect/rewire/create/rename/delete, word-block + BeatStrip edits,
-  tray field writes, context-menu rename) records an atomic multi-file
-  `{path, before, after}` entry with a human label. **⌘Z / ⌘⇧Z outside
-  a text surface** undo/redo through it (focus in CodeMirror keeps CM's
-  own history); the palette shows the top entry's label ("Edit: Undo
-  Story Edit — Connect a → b"). Application is **conflict-guarded**: an
-  entry only applies while every file still holds the text it expects —
-  a buffer that moved on (typed edits, a CM undo of the same change)
-  drops the stale entry instead of clobbering. Outcomes surface on the
-  graph toolbar status line; the journal clears on project switch.
-  Unit-tested in `edit-journal.test.ts`.
-- **In-app dialogs, never `window.prompt`** (`store/dialog.ts` +
-  `components/shell/DialogHost.tsx`, mounted at the App root above every
-  branch): promise-based `promptText` / `confirmAction` / `notify`,
-  callable from stores and context-menu handlers. **This is load-bearing
-  on desktop**: wry's `WKUIDelegate` implements only the file-open panel,
-  so in WKWebView `prompt()` returns null and `confirm()` returns false
-  with no UI — every "New file…" / "+ beat" / rename button silently did
-  nothing in the Tauri app. One host means one behaviour in both runtimes
-  (and it's themable + testable). Requests queue by id; the host keys its
-  view on that id so each dialog seeds its input at mount. Unit-tested in
-  `store/dialog.test.ts`; e2e-guarded in `studio.spec.ts` (a test asserts
-  no native dialog ever fires). `closeFile`/`closeOthers`/`closeAll` are
-  async for the same reason.
-- **Cockpit context menus** (`cockpit/tabs.tsx`): right-click a chat
-  message → Copy text / **Reply in thread** (Slack-style — the
-  composer grows a reply chip and `say` passes `parentSeq`, rooted at
-  the thread parent) / Show beat on story map / Inspect sender / View
-  as sender / Hide-Show message; right-click a roster row or cast pill
-  → Inspect / View as / Capture-Release.
-- Playwright e2e: `e2e/studio.spec.ts` (mode bar incl. Integrations,
-  pane toggles — panes clip to width 0, so assert with `toBeInViewport`
-  — plus the dialog-driven beat creation regression; `answerDialog` /
-  `cancelDialog` in `e2e/helpers.ts`), `e2e/qol.spec.ts`
-  (drill-in text sync, follow-cursor, editor context menu, ⌘Z journal
-  roundtrip, chat message menus), `e2e/graph.spec.ts` (canvas),
-  `e2e/sim.spec.ts` (Run mode on a local workspace).
+## Co-editing and persistence
 
-## Loom integration
+- **Two backends only**: the SaaS API for server projects and File System
+  Access handles for local folders (desktop: FSA-shaped shims). New
+  persistence goes through `store/workspace.ts`.
+- **Server files are live Yjs docs** (`lib/collab.ts`) over
+  `/api/projects/:id/collab/*`: base64 updates over POST, one SSE stream
+  per project. CodeMirror binds with `y-codemirror.next` (remote cursors,
+  `Y.UndoManager`). Server files are never dirty. Graph edits and
+  format-on-save fold in through a minimal-splice diff.
+- **Dead streams reopen**: both the mod stream and the collab stream
+  reopen on a 1 s → 15 s backoff (`lib/stream-retry.ts`). A restarted
+  server rebuilds its docs; the editor detects the lost history and
+  rebases instead of merging twice (`rebaseOntoServer`).
 
-`.loom` files are first-class. The editor consumes the Loom engine as
-**native TypeScript** from `@loom/core` — **no wasm**. (`@loom/core` is
-wired in via path aliases in `vite.config.ts` + `tsconfig.app.json`:
-`@loom/core/parser`, `@loom/core/lsp`, `@loom/core/sim` (the ecosystem
-runtime behind Run mode on a folder), and the server's pure projection modules
-`@loom/core/chat` + `@loom/core/views`, plus `@loom/core/mod-patch` (wave
-9: `applyModPatch` for the director console's keyed patches; in
-`vite.config.ts` its alias line must stay **above** the bare `@loom/core`
-one, since Vite tries the keys in order and `@loom/core` also matches
-`@loom/core/…`; in `tsconfig.app.json` a `paths` key with no `*` is an
-exact match, so the order there doesn't matter), and `@loom/core/host-board`
-(wave 13: the host board shared with the play app's host console — `hostNeeds`,
-the Judging / agent-queue / held-transfer / part-presence / unseen-guest /
-award-suggestion helpers; `cockpit/{mind,wallet,parts,guests,award-suggest}.ts`
-and `director/glance.ts` re-export them under their old names), all resolving
-straight to `.ts` source.) Everything here is synchronous; there is no bundle
-to load or rebuild. **The dev server's `node:crypto`:** `@loom/core/chat` →
-`server/wallet.ts` → `identity.ts` imports `node:crypto` (the claim HMAC),
-which an externalized dev import throws on, so outside vitest
-`vite.config.ts` aliases it to `src/lib/node-crypto-stub.ts` (its functions
-throw if called; production builds tree-shake the import, vitest keeps the
-real module).
+## Gotchas
 
-- `src/lib/loom-language.ts` — CodeMirror `StreamLanguage` mirroring
-  the parser's line classifier. It **imports the keyword tables straight
-  from `@loom/core/parser`** (`DECLARATIONS`, `SYNTACTIC_DIRECTIVES`,
-  `CONTRACT_KEYS`, `RESERVED_INLINE`, `LIVE_KEYWORDS`,
-  `SIMULACRA_KEYWORDS`, `MERIDIAN_KEYWORDS`) so the highlighter can never
-  drift from the language (`keywords.ts` is the single source of truth for
-  the parser AND every editor surface). It is a small per-line state
-  machine: each line is classified into a `mode` (prose / value / expr /
-  hook / decl / knot / divert) and `<…>` / `{…}` push a nested `ctx`; the
-  key invariant is that reserved words (`is`/`with`/`END`/`self`/…) light
-  up **only in expression contexts, never in prose/dialogue**. Token names
-  map through a `tokenTable` to precise `@lezer/highlight` tags the
-  one-dark theme colours reliably (kw→violet, type→yellow, label→blue,
-  fn→blue, prop→coral, num→yellow, str→green, atom/speaker/interp→orange).
-  Covered by `loom-language.test.ts` (`pnpm --filter loom-app test`),
-  which drives the raw `loomStreamParser` over real corpus lines. The Rust
-  `loom_syntax::emit_tmgrammar` TextMate grammar (Zed/VSCode) is the
-  sibling surface and is behind on hooks / live-keywords (Rust
-  deprioritized).
-- `src/lib/loom-lint.ts` — CodeMirror `linter()` extensions. `loomLint()`
-  is the parser-only fallback (`parse(source)` → CM spans; UTF-16 offsets,
-  no remap). `loomLintProject(path)` is the default: it sources
-  `Workspace.diagnosticsFor(uri)` so the gutter shows **cross-file project
-  diagnostics** (`requiredSlotUnfilled` / `unresolvedTraitArg` /
-  `derivedBeatConflict` / …), not just parser errors. `Editor.tsx` picks
-  the project linter only when **both** `projectDiagnostics` **and**
-  `indexWholeProject` are on (a partial index would emit false cross-file
-  errors).
-- `src/lib/lsp-client.ts` — the long-lived singleton `Workspace` from
-  `@loom/core/lsp` (`lspWorkspaceSync()` / async `lspWorkspace()`), plus
-  `uriFor` / `pathForUri` (per-segment encode/decode) and `docText(uri)`.
-- `src/lib/loom-lsp.ts` — **the CodeMirror ⇄ LSP glue** — the IDE layer
-  that makes CodeMirror behave like VSCode for `.loom`. `loomLspExtensions(path, opts)`
-  composes: markdown **hover** tooltips (safe `textContent` render;
-  `hoverDelayMs` delay, instant on ⌘/Ctrl-hover), LSP **completion**
-  (`autocompletion` override → `completionAt`, replacing only the trailing
-  identifier so owner-qualified diverts keep their `self.`), **go-to-definition**
-  (⌘/Ctrl-Click + F12, cross-file) with a ⌘/Ctrl-hover **link underline**,
-  **find-references** (Shift-F12 → focus bus → References panel), and
-  **occurrence highlight**. All read live Workspace/store state at event
-  time via getters, so the extension array stays stable across keystrokes
-  (`Editor.tsx` memoizes on `file.path`, never the per-keystroke `file`).
-- `src/lib/lsp-nav.ts` — position mapping (`offsetToLsp` / `lspToOffset`,
-  0-based LSP ↔ CM offset) + cross-file nav: `navigateToLocation(loc)`
-  (same-file `revealActive` vs. sibling `revealAt`), `findFileEntryByPath`,
-  `firstLocation`.
-- `src/lib/lsp-index.ts` + `src/lib/use-lsp-index.ts` — **whole-project
-  indexing**. `indexProjectTree` walks the `root` FsEntry tree and pushes
-  every `.loom` into the Workspace (server `.content` inline; local read
-  lazily, mtime-gated), diffed via a text/mtime cache and batched through
-  `Workspace.updateMany` (one rebuild). `syncBuffer` keeps the active
-  unsaved buffer live; `dropIndexedPath` / `resetIndexCache` drop docs on
-  delete/rename/project-switch (wired from `store/workspace.ts`). A
-  `useLspIndexGen` counter bumps whenever indexed text changes, so the
-  References panel + Command-Palette symbol lists recompute when async
-  indexing lands. `useLspProjectIndex()` (mounted once in `StudioShell`)
-  owns the reindex-on-`root` + buffer-sync effects.
-  These drive the Outline + References panels **and** the in-buffer LSP
-  features above; go-to-symbol lives in the Command Palette (`@` file /
-  `#` workspace, `⌘⇧O`). Toggles + `hoverDelayMs` live in Settings
-  (`store/settings.ts`, "Loom IDE" section).
-- `src/lib/loom-ast.ts` — author-time typed-AST access for the
-  Properties tray, plus `useLoomEdit` wrapping `@loom/core/parser`'s
-  `applyBeatProperty` / `applyMoveBeat` / `applyInsertBeat` /
-  `applyRemoveBeat` structural edits (editable tray fields + beat-flow
-  drag rewrite `.loom` source).
-- `src/lib/story-graph.ts` — the node-editor data layer:
-  `useStoryGraph()` (the project-wide `Workspace.storyGraph()`, memoized
-  on the index generation), `writePathContents` / `applyEditMap` (the
-  graph-edit write path: open-as-tab + `updateContents` + `syncBuffer`),
-  `writtenTargetFor` / `beatPath`. Replaced the old per-file
-  `loom-story.ts` (and `runner/Graph.tsx` + `studio/BeatTimeline.tsx`,
-  both deleted) — see **The story-graph node editor** above for the
-  `components/graph/` surface it feeds.
+- **Keep the editor view keyed per bound document**
+  (`lib/editor-binding.ts` `editorViewKey`). `yCollab` captures its
+  `Y.Text` at construction; rebinding in place sent keystrokes into the
+  previous file's doc and overwrote it on the server.
+- **Never use `window.prompt` / `confirm` / `alert`.** In the Tauri
+  WKWebView they return null / false with no UI. Use `store/dialog.ts`;
+  `e2e/studio.spec.ts` asserts no native dialog fires.
+- **Alias order in `vite.config.ts`.** Subpath aliases must stay above
+  the bare `@loom/core` one (Vite tries keys in order). `tsconfig.app.json`
+  paths without `*` match exactly, so order does not matter there.
+- **`node:crypto`.** `@loom/core/chat` reaches `node:crypto` through the
+  server's wallet and identity modules. Outside vitest it is aliased to
+  `src/lib/node-crypto-stub.ts` (its functions throw if called).
+- **One React.** `resolve.dedupe` keeps one React for the embedded play
+  app; play pins React 18, the editor 19.
+- **Story clock.** Every applied mod view must update `storyClock`, or
+  countdowns and the Log's story time stall.
+- **Shared local copies.** `lib/map-variants.ts` copies
+  `reinstall/web/src/map/project.ts`'s `variantLabel`; the lens's booth
+  rooms mirror play's `buildPrimeChannels`. Change both sides together.
+- **Panes clip to width 0** in the shell; in Playwright assert with
+  `toBeInViewport`, not visibility.
 
-## Local play is Run mode on a folder; server projects co-edit live
+## Tests
 
-The editor is an authoring tool with a **local rehearsal runtime**:
-open a folder, edit, highlight, lint, full **in-buffer LSP** (hover /
-go-to-definition on ⌘/Ctrl-Click + F12 / completion / find-references
-on ⇧F12 / occurrence highlight / project diagnostics, plus the Outline
-/ References panels and go-to-symbol), structural beat edits, the
-story-graph node editor beside the text, and Run mode (`⌘2`) — on a
-folder, the `@loom/core` TS `Sim` running in-browser (no wasm; the old
-wasm `LoomSession` stayed dead — this is the native-TS successor).
+- Unit (vitest): next to the code (`*.test.ts`), e.g.
+  `store/lifecycle-contract`, `store/sim`, `store/run`,
+  `store/operate-{delta,stream,moved}`, `cockpit/{rooms,mind,wallet,…}`,
+  `director/*`, `lib/{terminals,terminal-setup,print-sheet,collab,…}`,
+  `graph/graph-pipeline` (core graph → flow → ELK over
+  `escape-the-internet`), `lib/help-content` (help collection integrity:
+  frontmatter, cross-links).
+- Playwright `e2e/`: `studio` (modes, panes, dialogs), `qol`, `graph`,
+  `sim` (Run on a local folder), `director`, `help`, `grants`,
+  `booth-lens`.
+- `e2e-live/` (opt-in, a running server + `loom_dev`): `live-collab`
+  (launch, restart banner, push draft, go live, end) and `mind` (a real
+  stagehand worker).
 
-**Dead streams reopen (wave 9, C8).** A non-200 on an `EventSource`
-(Caddy's 502 while the server restarts) closes it for good. The operate
-store's mod stream and the collab stream both watch for `readyState`
-CLOSED and reopen on a capped backoff (1 s doubling to 15 s; pure
-`lib/stream-retry.ts`): the mod stream through `refresh` (the event's
-control-plane status — reconnects a closed stream on a live event, finds
-an ended one ended; the 30 s poll and Resume reconnect a closed stream
-too), the collab stream after probing `GET /api/projects/:id/event`
-(2xx reopens + resyncs every doc, 401 / 403 / 404 stops). A restarted
-server rebuilt every doc from its stored row — a new Yjs history of the
-same text, which a state-vector merge keeps twice — so a resync whose
-server state vector lost a client it reported before (`serverLostHistory`)
-rebases instead (`rebaseOntoServer`: the server's whole doc, this editor's
-text folded in as one splice, nothing from the old history sent; the
-store's `onRebind` bumps `collabGen` to remount the view; the undo stack
-starts over). Tested against a fake hub in `lib/collab.test.ts`. A server run's
-Log rows are stamped in story time (`storyNow` in `store/cockpit.ts`, off
-the snapshot clock, never run on through a pause; the column is
-`logClock` in `log-describe.ts`), like a folder run's. Tested through the
-store with a fake `EventSource` in `store/operate-stream.test.ts`.
+## Desktop
 
-**Keyed snapshot patches (wave 9, C7).** The operate store opens
-`events?role=mod&delta=1`: a `snapshot` frame (a keyframe, numeric
-`_frame`) goes through the local `applySnap`, and an `event:
-snapshotPatch {base, frame, patch}` is applied with `applyModPatch` onto
-the last keyframe or patch it holds. A patch before any keyframe is
-ignored; one on the wrong base reopens the stream via `connect(eventId)`
-(a full snapshot follows; it also resets the story-graph overlay, and
-never fired in testing). Every applied view must set `storyClock` to
-`{ms, at: Date.now()}` when the clock moves, or the Log's story time
-stalls. ≈ 0.11 Mbit/s per console at 45 guests against 5.9 for a whole
-view each frame. Tested in `store/operate-delta.test.ts`.
-
-**Server projects co-edit in real time** (2026-08-27, `lib/collab.ts` —
-the native-TS successor to the removed Loro relay path): every
-server-backed file is a shared **Yjs** doc synced through the `@loom/core`
-server's `/api/projects/:id/collab/*` routes (base64 updates over JSON
-POST + one SSE stream per project — same transport idiom as the event
-plane). CodeMirror binds via `y-codemirror.next` (co-writers' cursors +
-names inline; undo via `Y.UndoManager`, CM history off for live files).
-**The view is keyed per bound document** (`lib/editor-binding.ts`'s
-`editorViewKey`, unit-tested) so switching tabs *remounts* CodeMirror:
-`yCollab`'s ViewPlugins capture their `Y.Text` at construction and
-survive a `reconfigure`, so rebinding one in place made every keystroke
-land in the *previously* open file's doc — which round-tripped through
-`reflectCollabText` and overwrote that file (and its server copy) with
-the on-screen text, leaving a switch back showing the wrong file. Never
-drop that key. Graph edits and format-on-save fold in through `collabWrite`'s
-minimal-splice diff; remote text reflects into the store + LSP index
-(`reflectCollabText` in `store/workspace.ts`), so lint and the story
-graph follow co-writers keystroke-by-keystroke. Server files are
-live-synced — never "dirty" — and everything falls back to the plain
-files API when the stream is unavailable. Server projects also have
-full file CRUD (create/rename/delete files + folders) with `files` SSE
-events reconciling every co-writer's tree (`reconcileServerTree`).
-A local **folder** stays single-author (no relay), and **live events
-run in the sibling packages**: `core/` (the TS engine + SSE/REST event
-server) and `play/` (the participant app). The editor does not render
-the guest chat; Run mode on a server project *hosts and moderates* the
-project's run on that server (launch, go live, codes/QR, lifecycle,
-being anyone) — the participant view stays in the `play` app. The Mode
-Bar is three modes — **Writing** (`⌘1`), **Run** (`⌘2`),
-**Integrations** (`⌘3`).
-
-## Hosting
-
-- **`pnpm dev`** — Vite at `http://localhost:5173`, with HMR.
-- **`pnpm build`** — produces `dist/` (a static SPA; the engine is
-  bundled in, no wasm asset). Serve `dist/` from any static host.
+`lib/desktop.ts` `isDesktop()` gates desktop-only code, inert in the
+browser. `lib/desktop-fs.ts` provides FSA-shaped handles over the Tauri
+fs commands (no `FileSystemObserver`: external edits need a refresh).
+`store/godot.ts` + `components/integrations/GodotPanel.tsx` link a Godot 4
+project, install the runtime addon and build `.loombank` + `LoomIDs.gd`
+with `@loom/bank` in the webview. See [`../desktop/README.md`](../desktop/README.md).

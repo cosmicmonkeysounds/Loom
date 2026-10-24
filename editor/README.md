@@ -12,15 +12,16 @@ This is the **authoring** surface. It is distinct from the participant
 app ([`loom-play`](../play)), which is what guests and performers use
 during a live event.
 
-> Architecture, the Studio shell topology, the Run/Debug surfaces, and the
-> play model are documented in [`CLAUDE.md`](./CLAUDE.md). This README is
-> the quick "what is it / how do I run it".
+> Architecture, the stores, the Run pages and the gotchas are in
+> [`CLAUDE.md`](./CLAUDE.md). This README is the quick "what is it / how do
+> I run it". The in-app manual (⌘/ or F1) is built from
+> [`docs/help/authoring/`](../docs/help/authoring).
 
 ## Stack
 
 React 19 · TypeScript · Vite · Tailwind v4 · CodeMirror
-(`@uiw/react-codemirror`) · `@xyflow/react` canvas · `allotment` ·
-`@dnd-kit` · `zustand`.
+(`@uiw/react-codemirror`) · `@xyflow/react` + `elkjs` canvas ·
+`allotment` · `@dnd-kit` · `zustand` · Yjs (live co-editing).
 
 ## Install
 
@@ -39,34 +40,35 @@ pnpm install
 pnpm --filter loom-app dev        # Vite + HMR at http://localhost:5173
 ```
 
-Play works out of the box with **no server and no account** — open a local
-`.loom` folder (File System Access API) — the
-[`examples/`](../examples) projects are a good start — hit `⌘2` (Run)
-and ▶ Start rehearsal (a local folder runs the in-browser `Sim`). For live events (accounts,
-projects, launched events), run the TS event server alongside the editor:
+It works out of the box with **no server and no account**: open a local
+`.loom` folder (File System Access API, so a Chromium browser, or the
+[desktop app](../desktop)) — the [`examples/`](../examples) and
+[`core/examples/`](../core/examples) projects are a good start — hit `⌘2`
+(Run) and ▶ Start rehearsal. A local folder runs the in-browser `Sim`.
+
+For accounts, server projects, live co-editing and launched events, run
+the TS event server alongside the editor (`pnpm dev` at the repo root
+does both, and more):
 
 ```bash
 pnpm --filter loom-app dev        # this app, HMR (:5173)
 pnpm --filter @loom/core serve    # the event server (:7000)
 ```
 
-(The legacy Rust relay — `cargo run -p loom-server --bin loom-relayd --
---cors permissive`, :7878 — is the older multi-workspace backbone; it
-requires the Prism monorepo to build and is superseded by the TS server.)
-See [`CLAUDE.md`](./CLAUDE.md).
-
 ```bash
-pnpm --filter loom-app build      # → dist/ (a static SPA; the shipped
-                                  #   stack serves it via the @loom/core
-                                  #   event server)
+pnpm --filter loom-app build      # → dist/ (a static SPA; in the Docker
+                                  #   stack Caddy serves it at /edit/)
+pnpm --filter loom-app test       # vitest
+pnpm --filter loom-app test:e2e   # Playwright
 ```
 
 ## The engine under the editor
 
-The editor's parse / lint / LSP / structural-edit surfaces run the
-native TypeScript engine [`@loom/core`](../core) directly — **no wasm**.
-`@loom/core/parser` backs highlighting, linting, the typed-AST
-Properties tray, the static story graph, and the span-preserving beat
-edits; `@loom/core/lsp` backs the Outline + References panels. The
-former Rust→wasm bundle was removed. Runtime (play / collaboration)
-lives in the sibling `core` server + `play` app, not the editor.
+The editor runs the native TypeScript engine [`@loom/core`](../core)
+directly from source — **no wasm**. `@loom/core/parser` backs
+highlighting, linting, the Properties tray, the story graph and its
+span-preserving edits; `@loom/core/lsp` backs hover, completion,
+definitions, references and project diagnostics; `@loom/core/sim` runs
+a local rehearsal in the browser. Live events run on the `core` event
+server; guests and performers use the [`play`](../play) app, which Run →
+Players can embed side by side.
