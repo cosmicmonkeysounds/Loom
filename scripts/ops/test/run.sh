@@ -388,12 +388,14 @@ teardown
 echo "── checklist"
 check "prints the 20 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 20 ]"
 printed="$(bash "$ROOT/scripts/ops/checklist.sh")"
-# The morning-of reset covers waves 4–7 (facts + judge + wallet, the wave 5
-# knobs, the orchestrator context / terminal names / rain-night clues, the
-# keypad lock's code + egress and the server-room terminal).
-for want in 'titi:facts --check' 'Judging card reads auto' 'Wallet room' '# quarantine is empty' \
-            'LOOM_SNAPSHOT_MS' 'LOOM_HOMESCREEN' 'ctx 20480' 'names Trabolta' 'The Optical Drive' \
-            'facts.json door.code' 'opens from inside with no code' 'server-room terminal' 'CHECKMATE-CODE'; do
+# SHOWNIGHT.md §4: the morning reset (paused first), every machine's
+# preflight, facts + judge + wallet, the knobs, the orchestrator context /
+# terminal names / rain-night clues, the keypad lock's code + egress, the
+# server-room terminal and the wave 22 patch bay.
+for want in 'paused first' 'showctl preflight macbook' 'titi:facts --check' 'Judging card reads auto' \
+            'Wallet room' '# quarantine is empty' 'LOOM_SNAPSHOT_MS' 'LOOM_HOMESCREEN' 'ctx 20480' \
+            'names Trabolta' 'The Optical Drive' 'facts.json door.code' 'opens from inside with no code' \
+            'server-room terminal' 'Trust the patch bay again'; do
   check "checklist prints: $want" grep -qF -- "$want" <<<"$printed"
 done
 check "checklist strips markdown" bash -c "! grep -q '[*\`]' <<<\"\$1\"" _ "$printed"

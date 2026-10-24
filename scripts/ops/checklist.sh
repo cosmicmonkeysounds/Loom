@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Print the show-day pre-show checklist (OCT31 §11) as tick boxes, ready to
+# Print the show-day pre-show checklist (SHOWNIGHT.md §4) as tick boxes, ready to
 # print for the director:  scripts/ops/checklist.sh | lpr
 #
 #   scripts/ops/checklist.sh --probe [URL]   # + the VPS's /api/health now
@@ -11,7 +11,7 @@
 # printed as a ⚠ line to deal with before doors.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-PLAN="$ROOT/core/examples/trapped-in-the-internet/OCT31.md"
+PLAN="$ROOT/core/examples/trapped-in-the-internet/SHOWNIGHT.md"
 probe=""
 while [ $# -gt 0 ]; do
   case "$1" in
