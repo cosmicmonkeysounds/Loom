@@ -66,8 +66,11 @@ For a fleet, one link per device connects and picks the spot with no taps:
 https://<site>/terminal/?code=<mod passcode>&spot=<spot id>
 ```
 
-Run → Terminals → *Set up a terminal* builds these links, and the map
-editor's Terminals tab lists one per spot. Optional keys:
+The map editor's Terminals tab (`/reinstall/map`) lists one spot-only link
+per spot, without the passcode. Run → Terminals → *Set up a terminal* also
+builds links, but it always adds `view=` (and `name=` / `room=` when filled
+in), so a terminal set up from it keeps that view and stops following the
+map. Optional keys:
 
 | Key | Values | What |
 |---|---|---|

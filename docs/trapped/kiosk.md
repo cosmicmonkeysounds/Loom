@@ -26,9 +26,14 @@ Rules for every link:
 - **Spot only.** Never add `&view=`, `&name=` or `&room=`: a link that
   names its own view or room keeps it and stops following the map (the
   tent would be called *Terminal* and ignore the shed variant).
-- Run → Terminals → *Set up a terminal* builds these links and lists the
-  key spots nobody polls. `pnpm showctl preflight <machine>` prints the
-  pattern for each machine (`macbook`, `desktop`, `serverroom`, `tent`).
+- Get the link from the map editor (`/reinstall/map`: the Terminals tab
+  or a terminal's inspector gives a spot-only link without the passcode;
+  add `&code=<mod>`), from `pnpm showctl preflight <machine>` (`macbook`,
+  `desktop`, `serverroom`, `tent`), or type `?code=<mod>&spot=<id>` by
+  hand. Run → Terminals → *Set up a terminal* always adds `&view=` (and
+  `&name=` / `&room=` when filled in), so a terminal set up from it does
+  not follow the map. The Terminals card lists the map's spots no live
+  terminal claims.
 - The passcode is traded for a moderator token and scrubbed from the
   address bar. After the first open the device remembers its setup, so a
   bare `/terminal/` reopens it as itself.
