@@ -5,6 +5,11 @@
 // reinstalled, the watchlist, and every booth cue — is `TRAIT Enforcer`
 // (cast/kit.loom). What makes each of them themselves is below.
 //
+// Wave 21 (DRAFT w21): all four are PLAYERS (TRAIT Player via Enforcer):
+// ⭐ for clearances, captures, releases and the patch-bay calls (TRAIT
+// Enforcer), plus each one's own game below; 🤫 Look the other way for
+// all four, and each one's own quiet favour.
+//
 // Their backstories are one identity entry each in codex/5-people.loom
 // plus two CHARACTER FACTS each in codex/9-facts.loom (from facts.json),
 // hidden in the Desktop's books for Bugdom.
@@ -29,6 +34,23 @@ CHARACTER McAfee Anti-Virus is Enforcer
   // His "protection has expired" pop-up is a bark now (atmosphere.loom,
   // GENERATOR McAfeePopUp, wave 13): the dim ticker, never a stream row.
 
+  // 🤝 A deal brokered (⭐ +10, once per program). DRAFT w21
+  when broker_deal for program:
+    if Night.truther_sent == true and Night.ended != true and program.brokered != true:
+      set program.brokered = true
+      set self.score += 10
+      Self: Pleasure doing business. My subscription has expired, but my handshake is still valid.
+      reply 🤝 Deal brokered with {program.name}. ⭐ +10
+
+  // 🤫 Fifty Truthcoin, off the books (once per program). DRAFT w21
+  when slip_coin for program:
+    if Night.truther_sent == true and Night.ended != true and program.slipped != true:
+      set program.slipped = true
+      set program.score += 50
+      set self.covert += 1
+      Self (quietly): Fifty Truthcoin just appeared in your Wallet. It did not come from me. My protection has expired. So has my memory.
+      reply 🤫 You slipped {program.name} 50 Truthcoin. Nobody saw.
+
   when truther_download:
     if Night.truther_sent != true:
       reply 🪙 The # truthcoin-exchange is open. Every settled trade is posted there. Broker: set prices, match buyers to facts, referee bets and call the winner in # truthcoin-exchange. A bet settles player to player (the winner sends a 🙏 Request, the loser pays): you hold no pot and take no cut. 🪙 Pay / 🪙 Charge are for corrections only.
@@ -43,6 +65,22 @@ CHARACTER Password Manager is Enforcer
   when wrong code for program:
     Self: That is not a password I recognise, {program.name}, and I have reviewed every one of them. Unsubstantiated claims are removed. Try to look less like you are guessing.
     reply 🔑 {program.name} entered a wrong code.
+
+  // 🔑 A password check (⭐ +5, once per program). DRAFT w21
+  when verify_password for program:
+    if Night.ended != true and program.cleared == true and program.verified != true:
+      set program.verified = true
+      set self.score += 5
+      Self: Credentials reviewed, {program.name}. Strength: weak. Reuse: extensive. You may proceed, under protest.
+      reply 🔑 {program.name}'s password checked. ⭐ +5
+
+  // 🤫 A tip-off to a marked program (once per program). DRAFT w21
+  when tip_off for program:
+    if program.marked == true and program.corrupted != true and program.tipped != true:
+      set program.tipped = true
+      set self.covert += 1
+      Self (quietly): This message will not be saved. The Antivirus have your name. Bathroom Mode excuses a summons, and nobody follows you into Disk Cleanup.
+      reply 🤫 You tipped off {program.name}. Nobody saw.
 
   when who joins Unlimited Power:
     reply 🔑 {who.name} joined Unlimited Power.
@@ -61,6 +99,15 @@ CHARACTER CRA Agent Software is Enforcer
   // transfer is "flagged for a CRA audit" to both parties (the booth and
   // the character keep their name).
   wallet: approver, every 3, window 60s, as MyCRA, audit "a CRA audit"
+
+  // 🤫 Fifty Truthcoin, never audited (once per program). DRAFT w21
+  when slip_coin for program:
+    if Night.truther_sent == true and Night.ended != true and program.slipped != true:
+      set program.slipped = true
+      set program.score += 50
+      set self.covert += 1
+      Self (quietly): A refund has been processed. You did not apply for it. Do not apply for it. Fifty Truthcoin.
+      reply 🤫 You slipped {program.name} 50 Truthcoin. Nobody saw.
 
   when truther_download:
     if Night.truther_sent != true:
