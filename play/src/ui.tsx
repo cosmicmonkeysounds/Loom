@@ -12,7 +12,10 @@ import { LazyHelpSheet as HelpSheet } from "./help-lazy.tsx";
 import { initialRole, roleForBrand, type AppRole } from "./app-role.ts";
 import { ChunkBoundary, ChunkFailed, retryImport } from "./lazy-chunk.tsx";
 import { adoptResume, resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
-import { useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
+import { cardPlan, enterBy, enterPart, rememberBadge, type CardLink } from "./rejoin.ts";
+import { claimFromSearch } from "./claim.ts";
+import { codeFromUrl, useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
+import { browserHost } from "./host.ts";
 
 // A guest's first load is the guest app only (fix round): the booth (with
 // the host console) and the director's cue sheet are their own chunks,
@@ -33,7 +36,25 @@ function Loading() {
   );
 }
 
-export function App({ resume = null }: { resume?: ResumeLink | null }) {
+/** A sign-in the page opened with (wave 23): a badge, an invitation, a cast card. */
+type Entry = { kind: "badge"; code: string; badge: string } | { kind: "claim"; code: string; claim: string } | { kind: "part"; code: string; part: string };
+
+/** What the page's link asks to sign in as, before any app mounts. */
+function entryFor(card: CardLink | null, search: string, stored: (k: string) => string | null): { entry: Entry | null; confirm: string | null; link: string | null } {
+  const guestName = storedGuestName(stored("loom.guest"));
+  const plan = cardPlan(card, guestName, (stored("loom.prime") ?? "") !== "");
+  if (plan.kind === "enter") return { entry: { kind: "badge", code: plan.code, badge: plan.badge }, confirm: null, link: null };
+  if (plan.kind === "part") return { entry: { kind: "part", code: plan.code, part: plan.part }, confirm: plan.confirm, link: null };
+  if (plan.kind === "link") return { entry: null, confirm: null, link: plan.badge };
+  // An invitation opened with no session: its program may have joined
+  // already (a featured guest who lost their phone) — in at once if so.
+  const claim = claimFromSearch(search);
+  const code = codeFromUrl();
+  if (claim !== null && code !== "" && guestName === null && (stored("loom.prime") ?? "") === "") return { entry: { kind: "claim", code, claim }, confirm: null, link: null };
+  return { entry: null, confirm: null, link: null };
+}
+
+export function App({ resume = null, card = null }: { resume?: ResumeLink | null; card?: CardLink | null }) {
   // `?role=director` (W-26) opens the phone cue sheet whatever else the
   // phone holds; else the stored session.
   const [role, setRole] = useState<AppRole>(() => initialRole(window.location.search, (k) => localStorage.getItem(k)));
@@ -58,6 +79,53 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
   const [confirmFor, setConfirmFor] = useState<string | null>(() => (pending === null ? null : storedGuestName(localStorage.getItem("loom.guest"))));
   const [resuming, setResuming] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
+  // A badge, an invitation or a cast card (wave 23): sign in by it first.
+  const [first] = useState(() => entryFor(card, window.location.search, (k) => localStorage.getItem(k)));
+  const [entry, setEntry] = useState<Entry | null>(first.entry);
+  const [entryConfirm, setEntryConfirm] = useState<string | null>(first.confirm);
+  // A signed-in guest's badge link: the guest app links it (or reads it as a pass).
+  const badgeLink = first.link;
+  useEffect(() => {
+    if (entry === null || entryConfirm !== null) return;
+    let live = true;
+    const done = () => {
+      if (live) setEntry(null);
+    };
+    if (entry.kind === "part") {
+      void enterPart(entry.code, entry.part)
+        .then((booth) => {
+          localStorage.removeItem("loom.guest");
+          localStorage.setItem("loom.prime", JSON.stringify(booth));
+          setRole("prime");
+        })
+        .catch((e: unknown) => {
+          setResumeError(e instanceof Error ? e.message : "That cast card didn't work.");
+          setRole("none");
+        })
+        .finally(done);
+    } else {
+      const by = entry.kind === "badge" ? { badge: entry.badge } : { claim: entry.claim };
+      void enterBy(entry.code, by)
+        .then((r) => {
+          if (r.kind === "in") localStorage.setItem("loom.guest", JSON.stringify(r.guest));
+          // A blank badge rides into the join and links to the program picked.
+          else if (entry.kind === "badge") rememberBadge(browserHost.storage, entry.code, entry.badge);
+          setRole("guest");
+        })
+        .catch((e: unknown) => {
+          // An invitation that won't re-enter still opens the join as before.
+          if (entry.kind === "claim") setRole("guest");
+          else {
+            setResumeError(e instanceof Error ? e.message : "That badge didn't work.");
+            setRole("none");
+          }
+        })
+        .finally(done);
+    }
+    return () => {
+      live = false;
+    };
+  }, [entry, entryConfirm]);
   useEffect(() => {
     if (pending === null || confirmFor !== null) return;
     setResuming(true);
@@ -94,7 +162,28 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
     );
   }
 
-  if (resuming || pending !== null) {
+  if (entry !== null && entryConfirm !== null) {
+    return (
+      <div className="hero">
+        <div className="glyph">🎭</div>
+        <p className="sub">This phone is signed in as {entryConfirm}. The cast card you scanned signs it in as a performer instead.</p>
+        <button className="choice primary" onClick={() => setEntryConfirm(null)}>
+          Switch this phone
+        </button>
+        <button
+          className="choice ghost"
+          onClick={() => {
+            setEntry(null);
+            setEntryConfirm(null);
+          }}
+        >
+          Stay {entryConfirm}
+        </button>
+      </div>
+    );
+  }
+
+  if (resuming || pending !== null || entry !== null) {
     return (
       <div className="hero">
         <div className="glyph">🔁</div>
@@ -103,7 +192,7 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
     );
   }
 
-  if (role === "guest") return <GuestApp onLeave={() => setRole("none")} />;
+  if (role === "guest") return <GuestApp onLeave={() => setRole("none")} badgeLink={badgeLink} />;
   if (role === "prime")
     return (
       <ChunkBoundary fallback={() => <ChunkFailed what="The booth" onBack={() => setRole("none")} />}>

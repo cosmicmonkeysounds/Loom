@@ -25,6 +25,8 @@ import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../
 import { lobbyHidden } from "../guest/wire.ts";
 import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
+import { badgeLinkOf, forgetBadge, storedBadge, type BadgeLink } from "../rejoin.ts";
+import type { AdoptedGuest } from "../resume.ts";
 
 interface GuestId {
   id: string;
@@ -266,6 +268,11 @@ export interface GuestSession {
    *  threads are built from — a cutscene reads what is addressed to them). */
   messages: ReadonlyMap<number, ChatMessage>;
   leave: () => void;
+  /** Wave 23: become a guest session minted elsewhere (a badge, an
+   *  invitation, a host's approval) — the same Person, a fresh token. */
+  adopt: (guest: AdoptedGuest) => void;
+  /** Wave 23: link a printed badge (scanned or opened) to this guest. */
+  linkBadge: (badge: string) => Promise<BadgeLink>;
   /** A notification's link, resolved to where it lands (§6.4), until the
    *  app takes it (`takeLinkNav`) once it is in the app. */
   linkNav: Nav | null;
@@ -486,10 +493,13 @@ export function useGuestSession(): GuestSession {
   const register = useCallback(async (name: string, code: string, wiki?: string, picture?: string, claim?: string | null) => {
     // Resolve the short event code to its event, then register there.
     const { eventId, title } = await api<ResolvedCode>("/api/resolve-code", { code });
+    // Wave 23: a blank badge scanned on the way in links to this program.
+    const badge = storedBadge(host.storage, code);
     const r = await api<{ id: string; name: string; token: string }>(
       `/e/${encodeURIComponent(eventId)}/api/guest/register`,
-      registerBody(name, code, wiki, picture, claim),
+      { ...registerBody(name, code, wiki, picture, claim), ...(badge !== null ? { badge } : {}) },
     );
+    forgetBadge(host.storage);
     const m: GuestId = { id: r.id, name: r.name, token: r.token, eventId, title };
     crawl.reset();
     save(GK, m);
@@ -518,6 +528,30 @@ export function useGuestSession(): GuestSession {
     setNotice(null);
     host.onEnded("guest", null);
   }, [drop, host]);
+
+  const adopt = useCallback(
+    (guest: AdoptedGuest) => {
+      const m: GuestId = { id: guest.id, name: guest.name, token: guest.token, eventId: guest.eventId, ...(guest.title !== undefined ? { title: guest.title } : {}) };
+      crawl.reset();
+      save(GK, m);
+      setMe(m);
+      setNotice(null);
+    },
+    [crawl, save],
+  );
+  const linkBadge = useCallback(
+    async (badge: string): Promise<BadgeLink> => {
+      try {
+        const r = await post<Record<string, unknown>>("/api/guest/badge", { badge });
+        return badgeLinkOf(200, r) ?? { kind: "unknown" };
+      } catch (e) {
+        const hit = e instanceof ApiError ? badgeLinkOf(e.status, e.data) : null;
+        if (hit !== null) return hit;
+        throw e;
+      }
+    },
+    [post],
+  );
 
   const inviteToChannel = useCallback(
     (person: string, channel: string) => post("/api/guest/channel/invite", { person, channel }),
@@ -753,6 +787,8 @@ export function useGuestSession(): GuestSession {
     widgetAnswers: answeredNow,
     messages: shown,
     leave,
+    adopt,
+    linkBadge,
     linkNav: links.nav,
     takeLinkNav: links.take,
     decision: dock,

@@ -2,7 +2,7 @@
 //! the picture pick, and switching pictures later (moved out of
 //! `guest.tsx` in wave 13).
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PersonAvatar } from "../ui/primitives.tsx";
 import { usePlayHost } from "../host.ts";
 import { avatarUrl, hitNote, hitPickable, initialPick, orderPicker, rowNote, rowPickable, rowTitle, type IdentityRow, type PictureChoice, type PictureChoices, type ProgramHit } from "../avatars.ts";
@@ -10,6 +10,8 @@ import { claimFromSearch, joinClaim, registerErrorText } from "../claim.ts";
 import { PictureGrid } from "../picture-pick.tsx";
 import { codeFromUrl, fetchPictures, searchPrograms, useIdentities, useLandingBrand } from "../session/shared.ts";
 import type { GuestSession } from "../session/guest.ts";
+import { printedBadge, storedBadge } from "../rejoin.ts";
+import { GetBackIn } from "./get-back-in.tsx";
 
 /**
  * The picker's two parts (wave 13): the programs anyone may be (free first,
@@ -38,6 +40,10 @@ export function GuestRegister({ session }: { session: GuestSession }) {
   // rejoins with the claim this browser kept for the code.
   const [urlClaim] = useState(() => (host.ownsPage ? claimFromSearch(window.location.search) : null));
   const claim = joinClaim(urlClaim, host.storage, code);
+  // Wave 23: a blank badge scanned on the way in (kept beside the code);
+  // `badgeSeen` re-reads it once the Get-back-in panel stores one.
+  const [badgeSeen, setBadgeSeen] = useState(0);
+  const badge = useMemo(() => storedBadge(host.storage, code), [host, code, badgeSeen]);
   const [name, setName] = useState("");
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<ProgramHit[] | null>(null);
@@ -114,6 +120,7 @@ export function GuestRegister({ session }: { session: GuestSession }) {
       {session.notice && <p className="notice">{session.notice}</p>}
       <p className="sub">Enter the code from your host, then pick the program you are tonight.</p>
       {claim !== null && <p className="pick-hint">Your invitation saved your program for you — pick it below.</p>}
+      {badge !== null && <p className="pick-hint">🪪 Badge {printedBadge(badge)} links to the program you pick. Lose this page? Scan your badge to get back in.</p>}
       <input
         placeholder="Event code (from the host)"
         value={code}
@@ -123,6 +130,7 @@ export function GuestRegister({ session }: { session: GuestSession }) {
         spellCheck={false}
         onChange={(e) => setCode(e.target.value)}
       />
+      {picking === null && <GetBackIn code={code} onIn={session.adopt} onBlankBadge={() => setBadgeSeen((n) => n + 1)} />}
       {ids === "loading" && <p className="pick-hint">Looking up the program list…</p>}
       {ids !== null && ids !== "loading" && ids.kind === "unknown" && <p className="pick-hint">That code doesn't open anything. Check it with your host.</p>}
       {fallback !== null && (

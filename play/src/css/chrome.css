@@ -626,3 +626,37 @@ button.mission-where:focus-visible { outline: 1px dotted var(--ink); outline-off
 }
 .start-who-btn:focus-visible { outline: 1px dotted var(--title-ink); outline-offset: 2px; }
 .start-who-go { margin-left: auto; font: 700 18px var(--ui-font); }
+
+/* Wave 23: "Already playing? Get back in" on the join screen (guest/get-back-in.tsx). */
+.rejoin {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rejoin-typed {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.rejoin-typed input {
+  flex: 1;
+  min-width: 0;
+}
+.rejoin-cam video {
+  display: block;
+  width: 100%;
+  max-height: 40vh;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.rejoin-names {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.rejoin-name {
+  text-align: left;
+}
