@@ -107,4 +107,4 @@ CHARACTER Kernel
   jeeves_reached: 0 to 99 = 0
   // Wave 21: who pressed the game button being settled ("Clippy" | "none"),
   // so a host's press never pays Clippy (cast/hosts.loom). DRAFT w21
-  pressed_by: text = "none"
+  pressed_by: text? = none

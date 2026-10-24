@@ -76,7 +76,7 @@ CHARACTER Password Manager is Enforcer
 
   // 🤫 A tip-off to a marked program (once per program). DRAFT w21
   when tip_off for program:
-    if program.marked == true and program.corrupted != true and program.tipped != true:
+    if Night.truther_sent == true and program.marked == true and program.corrupted != true and program.tipped != true:
       set program.tipped = true
       set self.covert += 1
       Self (quietly): This message will not be saved. The Antivirus have your name. Bathroom Mode excuses a summons, and nobody follows you into Disk Cleanup.

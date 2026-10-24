@@ -194,14 +194,14 @@ CHARACTER Clippy is Greeter, Player
   // goes into the record as accepted instead (once per program per
   // round). Each is a quiet favour (`covert`, private). DRAFT w21
   when tip_off for program:
-    if program.marked == true and program.corrupted != true and program.tipped != true:
+    if Night.truther_sent == true and program.marked == true and program.corrupted != true and program.tipped != true:
       set program.tipped = true
       set self.covert += 1
       Self (whispering): It looks like you're being hunted! Would you like help with that? The Antivirus have your name. Bathroom Mode excuses you from a summons, and nobody follows you into Disk Cleanup. You didn't hear it from me.
       reply 🤫 You tipped off {program.name}. Nobody saw.
 
   when let_it_slide for program:
-    if Night.judging == true and program.slid != Night.round and program.cleared == true:
+    if Night.truther_sent == true and Night.judging == true and program.slid != Night.round and program.cleared == true:
       set program.slid = Night.round
       set program.truths_accepted += 1
       set program.score += 100

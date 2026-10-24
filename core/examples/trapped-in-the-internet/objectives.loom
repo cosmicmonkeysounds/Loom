@@ -475,8 +475,7 @@ OBJECTIVE Blackout Guide
   act: F
   title: Lights down: walk everyone to the living room
   text:
-    The stairs stay lit. A failed bob is marked: escort them. Still at the cables? The patch bay is live until 📄 truth.txt: 🔌 💥 ❌ are below.
-  buttons: radio_combo_a, radio_combo_b, radio_wrong_patch
+    The stairs stay lit. A failed bob is marked: escort them. Still at the cables? The patch bay is live until 📄 truth.txt: radio the call to a host (🔌 💥 ❌ are on the cue sheet).
 
 // Password Manager's Y2K hour is the patch-bay watch plus the club list
 // (one card: the two windows are the same hour, so a separate club
@@ -484,7 +483,7 @@ OBJECTIVE Blackout Guide
 // DRAFT w18
 OBJECTIVE Patch Bay And Clubs
   for: Password Manager
-  // DRAFT for sign-off (w13 Q33): the Y2K hour only. From the final reveal Lights Down is NOW, with the radios (still live until 📄) on it.
+  // DRAFT for sign-off (w13 Q33): the Y2K hour only. From the final reveal Lights Down is NOW, and the radios (still live until 📄) go by radio to a host (wave 21: no All buttons… fold).
   while: Night.step >= 14 and Night.step < 16 and Night.ended != true
   act: E
   title: The Y2K hour: the patch bay, and the club list
@@ -496,7 +495,7 @@ OBJECTIVE Patch Bay And Clubs
 // DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Patch Bay Watch
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
-  // DRAFT for sign-off (w13 Q33): the Y2K hour only. From the final reveal Lights Down is NOW, with the radios (still live until 📄) on it.
+  // DRAFT for sign-off (w13 Q33): the Y2K hour only. From the final reveal Lights Down is NOW, and the radios (still live until 📄) go by radio to a host (wave 21: no All buttons… fold).
   while: Night.step >= 14 and Night.step < 16 and Night.ended != true
   act: E
   title: The Y2K hour: patrol, or watch the patch bay
@@ -527,7 +526,8 @@ OBJECTIVE The Audit
   buttons: charge_truthcoin
 
 
-// Password Manager's patrol carries the 🔑 password check (wave 21). DRAFT w21
+// Password Manager's patrol carries the 🔑 password check (wave 21).
+// DRAFT w21
 OBJECTIVE Patrol And Review
   for: Password Manager
   while: Night.ended != true and Night.step >= 1
@@ -554,7 +554,8 @@ OBJECTIVE Patrol The Computer
 // Trabolta is, and chooses. 📢 out loud (once; the house hears it, he keeps
 // them anyway), or 🤫 quietly (a private count; every third is caught: less
 // of his trust, never the sack). Below the evergreen patrol, so it rides
-// Also now. One per button set: a NOW card shows three buttons. DRAFT w21
+// Also now. One per button set: a NOW card shows three buttons.
+// DRAFT w21
 OBJECTIVE Whose Side Are You On
   for: Norton Anti-Virus
   while: Night.truther_sent == true and Night.ended != true
@@ -564,6 +565,7 @@ OBJECTIVE Whose Side Are You On
     You know what Trabolta is now. Serve him (⭐ and his trust), or turn. 📢 Defect openly: the whole house hears it, once. 🤫 Look the other way: on a marked program you claimed, the mark comes off and nobody sees. Every third quiet favour, Trabolta notices.
   buttons: defect_openly, look_the_other_way
 
+// DRAFT w21
 OBJECTIVE Whose Side Are You On Too
   for: McAfee Anti-Virus, CRA Agent Software
   while: Night.truther_sent == true and Night.ended != true
@@ -573,6 +575,7 @@ OBJECTIVE Whose Side Are You On Too
     You know what Trabolta is now. Serve him (⭐ and his trust), or turn. 📢 Defect openly: the whole house hears it, once. 🤫 Look the other way on a marked program you claimed, or 🤫 slip a program 50 Truthcoin off the books. Every third quiet favour, Trabolta notices.
   buttons: defect_openly, look_the_other_way, slip_coin
 
+// DRAFT w21
 OBJECTIVE Whose Side Are You On Keys
   for: Password Manager
   while: Night.truther_sent == true and Night.ended != true
@@ -724,7 +727,8 @@ OBJECTIVE The Final Round
   buttons: judge_accurate, judge_confident, uncertain_answer
 
 // 🔢 The question ✅ / 😤 judge (wave 21): after the judging objectives, so
-// it rides Also now while judging is open. DRAFT w21
+// it rides Also now while judging is open.
+// DRAFT w21
 OBJECTIVE Which Question
   for: Clippy
   while: Night.judging == true and (Night.phase == "truth_pong" or Night.phase == "final_reveal")

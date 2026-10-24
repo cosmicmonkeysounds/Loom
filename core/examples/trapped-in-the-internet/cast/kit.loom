@@ -264,7 +264,7 @@ TRAIT Enforcer is Person, Player
   // board); the program hears it from this Antivirus alone, in a whisper.
   // A quiet favour: `covert` (private) counts it. DRAFT w21
   when look_the_other_way for program:
-    if program.marked == true and program.corrupted != true and program.escort_by == self:
+    if Night.truther_sent == true and program.marked == true and program.corrupted != true and program.escort_by == self:
       set program.marked = false
       set program.escort_by = "none"
       set self.covert += 1
