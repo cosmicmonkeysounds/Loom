@@ -1641,6 +1641,14 @@ console (judging, announcements, the alert level, wallets, parts,
 answering as an agent-voiced character), never restart / go live / end.
 Put it on the CHARACTER, not on a shared TRAIT.
 
+**Players.** `player: true` on a performer's CHARACTER makes it a staff
+part that plays the game like a guest: a lean booth (its own buttons, the
+guests' countdowns, its own GROUP's staff rooms), a Mission home off its
+OBJECTIVEs, score tiles from header `stat: self.score as ⭐ Points` lines,
+a Trust Chart row marked staff, and never a cue caller (lint L1222).
+`private: covert` lists slots no agent reads and no other character's
+badge, watch or stat shows.
+
 **How loud.** `!` alerts, loud objectives, `show … with moment: major`
 cards, a `reply` to someone and a starting quest reach a phone as
 **moments**, on a ladder the story picks: `balloon`, `sticky` (the
@@ -1713,7 +1721,7 @@ reinstallation games; `archive: <Room or Character> when <condition>` moves
 a finished thread down the guest's list. `majority: <expr>` is the head
 count a side needs, shown on the side doors (`show sides … with moment:
 big`). `by: <Character>` on a `who: admin` cue lets that booth call it from a
-🎤 cue bar (lint L1217). Guests recruit to their side by scanning a pass
+🎤 cue bar (lint L1217; never a player, L1222). Guests recruit to their side by scanning a pass
 (`when recruited for guest:`, `by` = the recruiter) and may found **crews**
 of their own, which are never sides (`founded`, `join` with `crew`).
 
@@ -1831,6 +1839,7 @@ of their own, which are never sides (`founded`, `join` with `crew`).
 | `CODEX name` + `about:` `code:` `known to:` `text:` `category:` | a piece of lore guests hold, unlock, and share |
 | `OBJECTIVE name` + `for:` `while:` `act:` `title:` `text:` (`- to-do, done when c`) `buttons:` `loud:` | what a phone shows as NOW |
 | `admin: true` · `crawl: fx` (character) | a host part · every line effect text |
+| `player: true` · `private: a, b` (character) | a player part · slots no agent reads |
 | `alerts: Night.alerts` (header) · `broadcast "~…"` · `show … with moment: major` | where the alert level lives · a per-person notice · a card that interrupts |
 | `unlock X for who` · `when who learns X:` · `when wrong code for who:` · `when share for who:` | lore moving |
 | `listed: true` (character) · `directory: everyone` (header) | the People directory + private messages |

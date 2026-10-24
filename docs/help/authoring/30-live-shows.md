@@ -174,9 +174,34 @@ COHORT Early Arrivals
   would reach every deriver). Lint `L1211` warns when nobody can sign in
   as that character (a guest's program, a prop, an agent-voiced one).
   The moderator passcode in a booth still gives full admin. A part that
-  isn't a host can still **call** chosen cues: `by: <Character>` on an
-  admin cue puts it on that booth's 🎤 cue bar (*Trapped in the
-  Internet*: Clippy calls the games; [live verbs](live-verbs.md)).
+  isn't a host (nor a player, below) can still **call** chosen cues:
+  `by: <Character>` on an admin cue puts it on that booth's 🎤 cue bar
+  ([live verbs](live-verbs.md)).
+- **`player: true`** on a CHARACTER makes it a **player**: a performer
+  part that plays the night's game like the guests do (*Trapped in the
+  Internet*: Clippy and the four Antivirus). Its booth is lean: it learns
+  only its own buttons (a `by:` button for somebody else never shows),
+  the countdowns guests see (`for guests`), no act letter, and only the
+  staff rooms of a GROUP it is in. It gets a **Mission** home off its
+  OBJECTIVEs (the first live one, and its `go:` room), score tiles from
+  the header's `stat:` lines (below), and a row on the Trust Chart beside
+  the programs when it declares a numeric `trust` slot, marked as staff.
+  A player **never calls cues**, even when an admin cue's `by:` names it:
+  the hosts and the directors call them (lint **`L1222
+  PlayerCallsCue`**). Lint **`L1224 PlayerNotAPart`** warns when nobody
+  can sign in as it.
+- **`private: covert, defiance`** on a CHARACTER lists slots no agent
+  ever reads (a request's vars, the facts document, what he recently
+  saw) and no other character's `badge:`, `watch:` or `stat:` line shows:
+  a player's sneaky defections live there. Its own booth may show one on
+  a `stat:` line. Lint **`L1225 PrivateSlotRead`** warns on a `watch:` /
+  `countdown:` item or another's `stat:` condition that reads one.
+- **`stat: self.<path> as <glyph> <label>[, for <who>][, while
+  <condition>]`** (a repeatable header line) is a score tile on a booth:
+  `stat: self.score as ⭐ Points`. `<who>` is `players` (the default),
+  or CHARACTER names and GROUPs; the value and the `while` are read with
+  `self` = the booth's character. An unset numeric slot shows 0. A line
+  that doesn't parse is lint **`L1223 StatLineInvalid`**.
 - **`crawl: fx`** on a CHARACTER makes every line it speaks **effect
   text** (below).
 - A **COHORT** is a plain named grouping with a capacity, for when you
@@ -342,7 +367,8 @@ lobby: hidden
   host dock and Run's roster — while the path is true for them (the
   `while`, if any, read with them bound). Never on a chat bubble: a
   bubble is a line already said. Every phone sees a badge, so a ROLE
-  `secret:` slot or a `secret: true` CHARACTER is never shown: lint
+  `secret:` slot, a `secret: true` CHARACTER or a CHARACTER's `private:`
+  slot is never shown: lint
   **`L1219 BadgeOnSecret`** refuses it (and a line that doesn't parse or
   names nobody).
 - **`lobby: hidden`** keeps the lobby (the story's own chat log room) off
