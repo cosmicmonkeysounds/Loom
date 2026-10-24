@@ -8,6 +8,11 @@
 //! The firmware may be silent for up to 2 s after a restart (`set mode`,
 //! `set settle`, `reset`) while a fault builds, and answers a calibration a
 //! restart interrupted with `{"t":"err","error":"cal cancelled",…}`.
+//!
+//! Since 1.2.0 (wave 22) the same board reads the patch bay: `hello` / `cfg`
+//! carry `pbv` / `pbd` (sources / inputs; 0, or absent on older firmware:
+//! no bay), a `patch` line reports the bay on every settled change and every
+//! second, and `pb …` commands learn its levels (answered by `pbcal`).
 
 export type DoorMode = "mod" | "steady" | "auto";
 
@@ -26,6 +31,10 @@ export interface HelloLine {
   settle: number;
   cal: boolean;
   sense: boolean;
+  /** The patch bay's sources / inputs (wave 22): 0 when the board has none
+   *  (or predates 1.2.0). */
+  pbv: number;
+  pbd: number;
 }
 
 export interface DoorReading {
@@ -70,7 +79,35 @@ export interface ErrLine {
   cmd: string;
 }
 
-export type DoorLine = HelloLine | DoorReading | PongLine | CfgLine | CalLine | OkLine | ErrLine;
+/** The patch bay (wave 22): `pairs` / `count` / `complete` are the settled
+ *  bay (the only one the bridge posts); `raw` / `src` the latest scan per
+ *  input, D1 first (`src` 0 empty, 1–8 a source, −1 between levels);
+ *  `stable` whether that scan is the settled bay. */
+export interface PatchLine {
+  t: "patch";
+  seq: number;
+  /** `V<k>-D<i>` pairs, source-sorted, `,`-joined; "" for none. */
+  pairs: string;
+  count: number;
+  complete: boolean;
+  raw: number[];
+  src: number[];
+  stable: boolean;
+}
+
+/** The bay's levels: after `pb learn V<k>` (`src` k, `raw` what it read),
+ *  else `src` 0. `saved`: these are the levels in the board's flash. */
+export interface PbcalLine {
+  t: "pbcal";
+  src: number;
+  raw: number;
+  levels: number[];
+  floor: number;
+  tol: number;
+  saved: boolean;
+}
+
+export type DoorLine = HelloLine | DoorReading | PongLine | CfgLine | CalLine | OkLine | ErrLine | PatchLine | PbcalLine;
 
 const LEVEL_MAX = 4095;
 
@@ -79,11 +116,34 @@ const isLevel = (v: unknown): v is number => isInt(v) && v >= 0 && v <= LEVEL_MA
 const isCode = (v: unknown): v is string => typeof v === "string" && /^[a-z_]{1,24}$/u.test(v);
 const codeOrNull = (v: unknown): string | null | undefined => (v === null ? null : isCode(v) ? v : undefined);
 
+/** A bay size off `hello` / `cfg`: absent or junk is 0 (no bay). */
+const baySize = (v: unknown): number => (isInt(v) && v >= 0 && v <= 16 ? v : 0);
+
 function settings(r: Record<string, unknown>): Omit<HelloLine, "t"> | null {
   const mode = r["mode"];
   if (typeof r["fw"] !== "string" || (mode !== "mod" && mode !== "steady")) return null;
   if (!isLevel(r["close"]) || !isLevel(r["open"]) || !isInt(r["settle"])) return null;
-  return { fw: r["fw"], mode, auto: r["auto"] === true, close: r["close"], open: r["open"], settle: r["settle"], cal: r["cal"] === true, sense: r["sense"] === true };
+  return { fw: r["fw"], mode, auto: r["auto"] === true, close: r["close"], open: r["open"], settle: r["settle"], cal: r["cal"] === true, sense: r["sense"] === true, pbv: baySize(r["pbv"]), pbd: baySize(r["pbd"]) };
+}
+
+/** The firmware's pair list: `V<k>-D<i>` joined by `,`, or "". */
+export const PAIRS_RE = /^(?:V[1-9]-D(?:[1-9]|1[0-6])(?:,V[1-9]-D(?:[1-9]|1[0-6]))*)?$/u;
+
+const levelList = (v: unknown, min: number, max: number): number[] | null =>
+  Array.isArray(v) && v.length >= min && v.length <= max && v.every((x) => isLevel(x)) ? (v as number[]) : null;
+
+function patchLine(r: Record<string, unknown>): PatchLine | null {
+  const raw = levelList(r["raw"], 1, 16);
+  const src = r["src"];
+  if (raw === null || !Array.isArray(src) || src.length !== raw.length || !src.every((x) => isInt(x) && x >= -1 && x <= 9)) return null;
+  if (!isInt(r["seq"]) || typeof r["pairs"] !== "string" || !PAIRS_RE.test(r["pairs"]) || !isInt(r["count"]) || typeof r["complete"] !== "boolean" || typeof r["stable"] !== "boolean") return null;
+  return { t: "patch", seq: r["seq"], pairs: r["pairs"], count: r["count"], complete: r["complete"], raw, src: src as number[], stable: r["stable"] };
+}
+
+function pbcalLine(r: Record<string, unknown>): PbcalLine | null {
+  const levels = levelList(r["levels"], 1, 9);
+  if (levels === null || !isInt(r["src"]) || r["src"] < 0 || r["src"] > levels.length || !isLevel(r["raw"]) || !isLevel(r["floor"]) || !isLevel(r["tol"])) return null;
+  return { t: "pbcal", src: r["src"], raw: r["raw"], levels, floor: r["floor"], tol: r["tol"], saved: r["saved"] === true };
 }
 
 /** One line off the port, or null (noise, a half line from before the port
@@ -125,6 +185,10 @@ export function parseDoorLine(raw: string): DoorLine | null {
       return typeof r["cmd"] === "string" ? { t: "ok", cmd: r["cmd"] } : null;
     case "err":
       return typeof r["error"] === "string" && typeof r["cmd"] === "string" ? { t: "err", error: r["error"], cmd: r["cmd"] } : null;
+    case "patch":
+      return patchLine(r);
+    case "pbcal":
+      return pbcalLine(r);
     default:
       return null;
   }
@@ -164,7 +228,16 @@ export type DoorCommand =
   | { c: "set"; key: "mode"; value: DoorMode }
   | { c: "set"; key: "settle"; value: number }
   | { c: "save" }
-  | { c: "reset" };
+  | { c: "reset" }
+  | BayCommand;
+
+/** The patch bay's commands (wave 22): `pb learn V<k>`, `pb get` / `save` /
+ *  `reset`, `pb floor <n>` / `pb tol <n>`; each answered by a `pbcal` line
+ *  (or an `err` whose `cmd` starts `pb`). */
+export type BayCommand =
+  | { c: "pb"; op: "learn"; source: number }
+  | { c: "pb"; op: "get" | "save" | "reset" }
+  | { c: "pb"; op: "floor" | "tol"; value: number };
 
 /** A command as the firmware reads it (no newline; the transport adds it). */
 export function formatCommand(cmd: DoorCommand): string {
@@ -173,6 +246,8 @@ export function formatCommand(cmd: DoorCommand): string {
       return `cal ${cmd.which}`;
     case "set":
       return `set ${cmd.key} ${cmd.key === "mode" ? cmd.value : Math.round(cmd.value)}`;
+    case "pb":
+      return cmd.op === "learn" ? `pb learn V${cmd.source}` : cmd.op === "floor" || cmd.op === "tol" ? `pb ${cmd.op} ${Math.round(cmd.value)}` : `pb ${cmd.op}`;
     default:
       return cmd.c;
   }

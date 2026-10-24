@@ -15,8 +15,8 @@ describe("the door sensor's protocol (§2.9)", () => {
   it("parses every example line of the firmware", () => {
     const parsed = lines.map(parseDoorLine);
     expect(parsed.every((p) => p !== null)).toBe(true);
-    expect(parsed.map((p) => p?.t)).toEqual(["hello", "door", "door", "door", "door", "pong", "cfg", "cal", "ok", "err"]);
-    expect(parsed[0]).toEqual({ t: "hello", fw: "door-m4 1.1.0", mode: "steady", auto: false, close: 1800, open: 1200, settle: 150, cal: false, sense: false });
+    expect(parsed.map((p) => p?.t)).toEqual(["hello", "door", "door", "door", "door", "pong", "cfg", "cal", "ok", "err", "patch", "patch", "pbcal", "err"]);
+    expect(parsed[0]).toEqual({ t: "hello", fw: "door-m4 1.2.0", mode: "steady", auto: false, close: 1800, open: 1200, settle: 150, cal: false, sense: false, pbv: 8, pbd: 7 });
     expect(parsed[1]).toEqual({ t: "door", seq: 17, open: false, level: 2410, lit: 3020, dark: 610, fault: null, warn: null });
     expect(parsed[3]).toMatchObject({ open: true, fault: null, warn: "ldr_open" });
     expect(parsed[4]).toMatchObject({ open: true, fault: "ldr_saturated", warn: null });
@@ -25,6 +25,39 @@ describe("the door sensor's protocol (§2.9)", () => {
     expect(parsed[7]).toEqual({ t: "cal", which: "closed", ref: 2400, close: 1880, open: 1320 });
     expect(parsed[8]).toEqual({ t: "ok", cmd: "set close 1900" });
     expect(parsed[9]).toEqual({ t: "err", error: "cal span too small", cmd: "cal open" });
+    expect(parsed[6]).toMatchObject({ pbv: 8, pbd: 7 });
+    expect(parsed[10]).toEqual({ t: "patch", seq: 41, pairs: "V3-D1,V5-D4", count: 2, complete: false, raw: [1340, 610, 0, 2251, 3, 0, 1], src: [3, -1, 0, 5, 0, 0, 0], stable: false });
+    expect(parsed[11]).toMatchObject({ t: "patch", count: 4, complete: true, src: [3, 1, 0, 5, 0, 8, 0], stable: true });
+    expect(parsed[12]).toEqual({ t: "pbcal", src: 3, raw: 1405, levels: [441, 917, 1405, 1842, 2240, 2749, 3166, 3619], floor: 150, tol: 120, saved: false });
+    expect(parsed[13]).toEqual({ t: "err", error: "pb: need exactly one cable", cmd: "pb learn V3" });
+  });
+
+  it("reads an older board's hello as one with no bay", () => {
+    const old = '{"t":"hello","fw":"door-m4 1.1.0","mode":"steady","auto":false,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false}';
+    expect(parseDoorLine(old)).toMatchObject({ t: "hello", pbv: 0, pbd: 0 });
+    expect(parseDoorLine(old.replace("}", ',"pbv":"8","pbd":99}'))).toMatchObject({ pbv: 0, pbd: 0 });
+  });
+
+  it("drops a patch or pbcal line off the protocol", () => {
+    const good = { t: "patch", seq: 1, pairs: "V1-D2", count: 1, complete: false, raw: [0, 445, 0], src: [0, 1, 0], stable: true };
+    expect(parseDoorLine(JSON.stringify(good))).not.toBeNull();
+    for (const bad of [
+      { ...good, pairs: "V1-D2 ,V3-D4" },
+      { ...good, pairs: "V0-D2" },
+      { ...good, pairs: "D2-V1" },
+      { ...good, pairs: "V1-D2;drop" },
+      { ...good, raw: [0, 5000, 0] },
+      { ...good, src: [0, 1] },
+      { ...good, src: [0, 12, 0] },
+      { ...good, raw: [] , src: [] },
+      { ...good, complete: "yes" },
+      { ...good, stable: undefined },
+    ]) expect(parseDoorLine(JSON.stringify(bad))).toBeNull();
+    const cal = { t: "pbcal", src: 0, raw: 0, levels: [445, 921], floor: 150, tol: 120, saved: true };
+    expect(parseDoorLine(JSON.stringify(cal))).toEqual(cal);
+    expect(parseDoorLine(JSON.stringify({ ...cal, src: 3 }))).toBeNull(); // a source the levels don't have
+    expect(parseDoorLine(JSON.stringify({ ...cal, levels: [445, -1] }))).toBeNull();
+    expect(parseDoorLine(JSON.stringify({ ...cal, floor: "150" }))).toBeNull();
   });
 
   it("reads the firmware's newer errors as errors", () => {
@@ -55,6 +88,12 @@ describe("the door sensor's protocol (§2.9)", () => {
     expect(formatCommand({ c: "set", key: "settle", value: 150 })).toBe("set settle 150");
     expect(formatCommand({ c: "save" })).toBe("save");
     expect(formatCommand({ c: "reset" })).toBe("reset");
+    expect(formatCommand({ c: "pb", op: "learn", source: 3 })).toBe("pb learn V3");
+    expect(formatCommand({ c: "pb", op: "get" })).toBe("pb get");
+    expect(formatCommand({ c: "pb", op: "save" })).toBe("pb save");
+    expect(formatCommand({ c: "pb", op: "reset" })).toBe("pb reset");
+    expect(formatCommand({ c: "pb", op: "floor", value: 150.2 })).toBe("pb floor 150");
+    expect(formatCommand({ c: "pb", op: "tol", value: 90 })).toBe("pb tol 90");
   });
 
   it("keeps stored settings only when the firmware would take them", () => {
