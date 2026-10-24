@@ -1,0 +1,25 @@
+# Zigbee2MQTT 2.x on the house PC (John's Desktop) - the FIRST install only.
+# zigbee2mqtt.ps1 -WriteConfig -Port COMn copies this to
+# <zigbee2mqtt>\data\configuration.yaml with your COM port, and never
+# over an existing one: if Z2M already ran elsewhere with paired bulbs,
+# copy that data\ folder here instead (its keys ARE the network).
+homeassistant:
+  enabled: false
+mqtt:
+  base_topic: zigbee2mqtt          # stagehand's lights.z2m_base
+  server: mqtt://127.0.0.1:1883    # Mosquitto's anonymous loopback listener (this PC)
+serial:
+  port: @COM_PORT@                 # the CP2102N: Device Manager -> Ports (COM & LPT)
+  adapter: zstack                  # the CC2652P runs Z-Stack
+advanced:
+  network_key: GENERATE            # Z2M writes the real values back on first start
+  pan_id: GENERATE
+  ext_pan_id: GENERATE
+  channel: 25                      # HW-NET-01: 15, 20 or 25, furthest from the house Wi-Fi; never change it later
+  transmit_power: 20               # the stick's 20 dBm
+  log_level: info
+frontend:
+  enabled: true
+  port: 8080                       # http://<this PC>:8080
+availability:
+  enabled: true
