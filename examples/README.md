@@ -2,8 +2,10 @@
 
 Reference `.loom` projects. Each subdirectory is a self-contained
 project rooted at `main.loom`. They double as authoring tutorials and
-as test fixtures: the TS suites (`@loom/core`, `@loom/bank`) and the
-older Rust `loom-runtime` integration tests load them directly.
+as fixtures for the Rust `loom-runtime` integration tests
+(`runtime/tests/`), which load them directly. They are written in the
+v3 surface, which Loom 4 keeps parsing; for the current surface, start
+with `core/examples/glass-orchard` below.
 
 - **`saltmere`** — the tutorial: a lighthouse two-hander in screenplay
   form (CHARACTER with `is` mixins, dialogue, choices, a reactive
@@ -27,11 +29,17 @@ older Rust `loom-runtime` integration tests load them directly.
   PERSON / ROSTER declarations, `<load_roster:>` / `<cast:>` /
   `<recast:>` directives.
 
-Two multi-file scenarios live with the TS engine at
-[`core/examples/`](../core/examples/) alongside its project loader:
-**`glass-orchard`** — the **Loom 4 reference project** (a garden-party
-mystery: `Name:` dialogue, keyword statements, `when` hooks + watchers,
-`GROUP`s, spaced names; see [`docs/loom-4.md`](../docs/loom-4.md)) —
-and `escape-the-internet`, the v3-surface party scenario that the
-server/chat suites still exercise. The projects in this directory are
-written in the v3 surface, which Loom 4 keeps parsing.
+## The TypeScript engine's projects
+
+Three multi-file projects live with the TS engine in
+[`core/examples/`](../core/examples/), beside its loader
+(`core/examples/load.ts`):
+
+- **`trapped-in-the-internet`**: the Halloween 2026 show and the event
+  server's default scenario. Its [README](../core/examples/trapped-in-the-internet/README.md)
+  is the runbook; `SHOW.html` is the generated show book.
+- **`glass-orchard`**: the **Loom 4 reference project** (a garden-party
+  mystery: `Name:` dialogue, keyword statements, `when` hooks and
+  watchers, `GROUP`s, spaced names; see [`docs/loom-4.md`](../docs/loom-4.md)).
+- **`escape-the-internet`**: the earlier v3-surface party scenario that
+  the server and chat suites still exercise.

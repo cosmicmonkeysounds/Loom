@@ -1,5 +1,14 @@
 # @loom/mind
 
+> **Superseded, awaiting deletion.** Since 2026-09-16 Trabolta and every
+> other `mind: external` character are voiced by stagehand's `agents`
+> module ([`stagehand/`](../stagehand)), which answers explicit agent
+> requests from the event server (`GET /api/agent/stream`, `POST
+> /api/agent/reply`; see `core/server/agents.ts`). Nothing in the show
+> runs this package. It stays in the pnpm workspace only until it is
+> deleted; don't build on it or fix it. The rest of this README describes
+> the old bridge as it was.
+
 Gives a Loom `CHARACTER` a mind. A small bridge that signs into a live
 event as a moderator, reads every message a participant sends to the
 character's DM off the mod feed, answers **in character** through a
