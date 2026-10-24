@@ -12,7 +12,7 @@ the story tells you what this part of the night needs from you.
 
 There are three kinds of part. A **player** (at *Trapped in the
 Internet*: Clippy and the four Antivirus) plays the night like a guest
-does, with a **Mission** home and a score: see [Playing a part](#playing-a-part)
+does, with a **Mission** home and a score: see **Playing a part**
 just below. A **host** (Task Manager, Adobe Acrobat, the Recycling Bin)
 runs the night from the host console ([The host console](hosts.md)).
 Any other part is a plain performer.
