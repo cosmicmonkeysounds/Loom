@@ -72,10 +72,12 @@ while time.time() - t0 < secs:
     time.sleep(0.25)
 PY
 }
-# The ledger's length now, and how many patch_changed signals came after a
-# seq (/api/mod/log: a signal entry carries its name, never its combo).
+# The ledger's last seq now (its length - 1, -1 when empty: /api/mod/log
+# pages entries with seq > `after`, so passing the length would skip the
+# first entry appended after it), and how many patch_changed signals came
+# after a seq (a signal entry carries its name, never its combo).
 ledger_total() {
-  curl -fsS "$BASE/e/$event/api/mod/log?limit=1" -H "x-loom-token: $token" | json "d['total']"
+  curl -fsS "$BASE/e/$event/api/mod/log?limit=1" -H "x-loom-token: $token" | json "d['total'] - 1"
 }
 patch_signals_since() {
   python3 -I - "$BASE" "$event" "$token" "$1" <<'PY'
