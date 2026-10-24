@@ -466,7 +466,7 @@ describe("Trapped in the Internet — compile", () => {
         .join(",");
     expect(pairs("Combo A First Half", "Combo A Second Half")).toBe(v(s, "Kernel.combo_a"));
     expect(pairs("Combo B First Half", "Combo B Second Half")).toBe(v(s, "Kernel.combo_b"));
-    expect(v(s, "Kernel.combo_a")).toBe("V2-D5,V4-D1,V6-D8,V7-D3");
+    expect(v(s, "Kernel.combo_a")).toBe("V2-D5,V4-D1,V6-D7,V7-D3");
     expect(v(s, "Kernel.combo_b")).toBe("V1-D6,V3-D2,V5-D7,V8-D4");
   });
 

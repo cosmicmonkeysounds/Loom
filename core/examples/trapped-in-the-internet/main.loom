@@ -5944,7 +5944,7 @@ set Kernel.pressed_by = "none"
 // and the final reveal, and comes back down at Truth Pong and the ceremony;
 // a host's dial holds until the next of these sets (DRAFT).
 set Night.alerts = "sticky"
-set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"
+set Kernel.combo_a = "V2-D5,V4-D1,V6-D7,V7-D3"
 set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
 set Kernel.anti_ai = "MS Paint"
 // What every program said per question (Clippy reads it at the results):

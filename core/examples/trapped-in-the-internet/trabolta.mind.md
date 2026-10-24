@@ -134,7 +134,7 @@ secrets:
     - "fourth digit"
     - "V2-D5"              # the patch-bay pairs
     - "V4-D1"
-    - "V6-D8"
+    - "V6-D7"
     - "V7-D3"
     - "V1-D6"
     - "V3-D2"
