@@ -1,5 +1,11 @@
 # Trapped in the Internet: the work schedule
 
+> **After the party (2026-10-24).** This is the post-party / next-run
+> roadmap; the wave notes below are build history. For the night use
+> [`SHOWNIGHT.md`](./SHOWNIGHT.md) and [`TECH.md`](./TECH.md). Waves 18b
+> Stage B, 19, 20, 20b, 21 and 22 are all merged on master; only 19 is
+> shipped (inside `w18b-1021`).
+
 > **🎃 The party is Sat Oct 31, 2026 (set 2026-10-15, 16 days out). The active plan is [`OCT31.md`](./OCT31.md)**: 29.6 lane-days of minimal slices in 4 lanes (27.6 committed + 2.0 conditional for iPhone push), gates Oct 18 / 20 / 21 / 22 / 23, push call Oct 24 12:00, run-through Oct 25, freeze Oct 27, tech 10-28, dress 10-29, code freeze 10-30. **This schedule is now the full post-party / next-run roadmap.** Anything OCT31.md builds counts as done here; everything else stays as planned below. **Oct 31 wave 1 is merged to `master` (2026-10-15, not yet deployed to the VPS):** 37 builds, each a minimal slice (OCT31.md §5 *Wave 1 status*); the CHECKLIST items they advanced carry an "**Oct 31 wave 1:**" note, and the WPs below still own whatever each slice left out.
 >
 > **What OCT31.md pulled in** (as minimal slices, `K-xx` / `N-xx` ids in OCT31.md §5):

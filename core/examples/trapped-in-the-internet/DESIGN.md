@@ -1,5 +1,10 @@
 # Trapped in the Internet: rewrite design spec
 
+> **Design record (2026-10-24).** Where this spec and the story files
+> disagree, the story files and their tests win. The night's runbook is
+> [`SHOWNIGHT.md`](./SHOWNIGHT.md), the machines are in
+> [`TECH.md`](./TECH.md), and [`INDEX.md`](./INDEX.md) maps the folder.
+
 > **The rewrite spec for this folder** (2026-10-14), kept as the design record: the name
 > registry, beat-by-beat night, Trabolta's arc, endings logic, test plan, and §10 — the
 > invented content and decisions awaiting the author's sign-off. The research reports it
@@ -23,7 +28,7 @@
 > lobby is hidden from guests (`lobby: hidden`), 🚻 is a badge, CRA audits are flagged to
 > both phones as MyCRA; sounds and announcements go through the house router (no QLab, no
 > `alexa` job). The sections below keep the original plan, with wave 18b notes where it
-> changed. Decisions and new copy: [`SIGNOFF-w18b.md`](./SIGNOFF-w18b.md).
+> changed. Decisions and new copy: [`SIGNOFF-w18b.md`](./history/SIGNOFF-w18b.md).
 
 
 Status: **final** architect's spec, 2026-10-14 (revision 2: every finding of the three

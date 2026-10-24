@@ -3,58 +3,19 @@
 *Equal parts Digimon Movie, Blade Runner, and an escape room, influenced
 by late-90s Web 1.0 aesthetics and existentialism.*
 
-> **🎃 [OCT31.md](./OCT31.md): the active plan. The party is Sat Oct 31,
-> 2026.** It has the day-by-day lanes to the show, the gates (Oct 18 / 22 /
-> 25 / 27, tech 10-28, dress 10-29, freeze 10-30), the buy-today list, the
-> workaround runbook (W-01…W-35), the night-of crew + cheat-sheets, show-day
-> call times, the risk register and the cut order. **Waves 1–3 are on
-> `master` and deployed (w3-1015); wave 4 (facts.json, the judge, the
-> bottle, the wallet, marked programs, the King) is committed (9d35a4b)
-> and wave 5 (the stock-take: Runescape's reserve, the takeover, the
-> resurrection, the phone cue sheet, …) is committed (85d2bad); wave 6
-> (the live-test bug fixes) is merged, and wave 7 (the server-room keypad
-> lock, The Heart, the server-room terminal, talking Trabolta down) is
-> merged, and wave 8 (the stock-take fixes: ⚖ the verdict, the cue sheet's
-> branches, safer server restarts) is merged; waves 4–8 are deployed
-> (`w8-1018`). Wave 9 (the second stock-take: McAfee referees, 💡 holds
-> the dance, the Judging card's overrides, a quiet cue sheet during the
-> timed windows, forward presses refused, streams that reopen after a
-> restart, `/api/health`, the sync-show live guard) shipped as `w9-1018`,
-> wave 10 (the Director page) as `w10-1018`; wave 11 (the King's shared bar
-> and the Server Door terminal, the four digit notes, The Heart once
-> Trabolta is awake, reserved featured programs, 📷 Scan, guest countdowns,
-> near-miss judging, the present-only majority, the booths' own fallbacks,
-> Trabolta's busy line) shipped as `w11-1019`, and wave 11b (Trabolta rules
-> on near misses, a marked program at his heart, the door code moved) as
-> `w11b-1019`**. Wave 18b (the rehearsal fixes: founded factions, results
-> on the screens, Trabolta judging every non-exact filing, the house router
-> on the 828x, the tent laptop) has its Stage A + the tent laptop shipped as
-> `w18b-1021`; its Stage B (the story text, the review, the ties, the
-> Factions UI) is built and awaits [`SIGNOFF-w18b.md`](./SIGNOFF-w18b.md).
-> **Wave 20** (Trabolta's heart: a dramatic sequence when the server room
-> is opened, the door sensor on the Grand Central M4 read by the
-> server-room terminal over Web Serial, a four-layer talk like the Master
-> in Fallout, a true heart to heart at a keyboard, and the light in his
-> heart driven from `lights.json`) is built on `oct31-w20/integration` and
-> awaits [`SIGNOFF-w20.md`](./SIGNOFF-w20.md); the contract is
-> [`CONTRACT-w20.md`](./CONTRACT-w20.md).
-> **Wave 21** (performers play: Clippy and the four Antivirus are *players*
-> with a Mission, ⭐ Points, a hidden trust on Trabolta's chart and a choice
-> about him, 📢 open or 🤫 quiet; the hosts and directors call every cue;
-> three staff awards close the ceremony) is built on `oct31-w21/story` and
-> awaits [`SIGNOFF-w21.md`](./SIGNOFF-w21.md).
-> OCT31.md §5's *Wave N status* tables list every build and the device
-> check still to do.
+> **The show is Sat Oct 31, 2026.** Start at [`INDEX.md`](./INDEX.md) (a map
+> of this folder). The night's runbook is [`SHOWNIGHT.md`](./SHOWNIGHT.md),
+> the machines and how they connect are in [`TECH.md`](./TECH.md), and the
+> generated [`SHOW.html`](./SHOW.html) has the acts, every cue and the
+> terminal spots on one page. This README is the show's reference: how the
+> story works and what every piece of hardware talks to.
 >
-> **📋 [CHECKLIST.md](./CHECKLIST.md): the living tech checklist, covering
-> the software and hardware still to do before the party.** Tick items
-> there in the PR that does the work. This README is the runbook. The
-> checklist is what has to be *true* for the runbook to work.
->
-> **🗓️ [SCHEDULE.md](./SCHEDULE.md): the order the checklist gets built
-> in**: four agent lanes, the week-1 spikes, gates G0–G5 (all P0 by
-> day 41, show-ready ≈ day 67), the non-software lane and the cut table.
-> Since the Oct 31 date was set, it is the post-party / next-run roadmap.
+> **State (2026-10-24):** the VPS runs `w18b-1021` (wave 18b Stage A, the
+> tent laptop, and wave 19). Master also holds wave 18b Stage B and waves
+> 20, 20b, 21 and 22, merged and not shipped; their DRAFT show text waits on
+> the sign-off sheets (`SIGNOFF-w21.md`, `history/SIGNOFF-w18b.md`,
+> `history/SIGNOFF-w20.md`). The build history is in [`OCT31.md`](./OCT31.md)
+> §5 and [`history/`](./history).
 
 A rogue AI, **Trabolta**, has very nearly solved the Unified Field
 Theory. The last facts he needs are on a computer in Halifax: this house.
@@ -165,8 +126,12 @@ lights.json            wave 20: the house lights the stagehand `lights` module d
                        (only the server room's RGB bulb + the heart's 13 looks so far;
                        every other light is still trapped.house.yaml's). A project file
                        like the maps; edit it in /reinstall/map → 💡 Lights
-CONTRACT-w20.md        the wave 20 build contract (D1–D29, §8 integration notes)
-CHECKLIST.md           the living tech checklist
+INDEX.md               a map of this folder: what each file is, which are generated / test-pinned
+SHOWNIGHT.md           the night-of runbook + the pre-show checklist (scripts/ops/checklist.sh)
+TECH.md                every machine and device, and how they connect
+SHOW.html              GENERATED overview page (core/scripts/show-page.ts + show-page/template.html)
+history/               old contracts + sign-off sheets (CONTRACT-w20, SIGNOFF-w18b, SIGNOFF-w20)
+CHECKLIST.md           the 2026-10-14 audit checklist (build history)
 cast-packs/            paper only (D-01): 8 performer packs + the Installation Wizard's
                        tent card, 4 crew cards, 9 featured
                        sheets, the emergency card (not read by the server)
@@ -174,8 +139,9 @@ cast-packs/            paper only (D-01): 8 performer packs + the Installation W
 
 Outside this folder: **`stagehand/trapped.house.yaml`** is the show's real
 show-control config (lights per room, scenes, sound, the house announcement speaker,
-sensors, the patch bay; since wave 20 the server-room door is the M4's, read by the
-server-room terminal, and the server room's RGB bulb is `lights.json`'s), and
+sensors; since wave 20 the server-room door, and since wave 22 the patch bay, are the
+M4's, read by the server-room terminal, and the server room's RGB bulb is `lights.json`'s;
+the Desktop and MacBook files `trapped.desktop.yaml` / `trapped.macbook.yaml` extend it), and
 `stagehand/tests/test_trapped_house.py` cross-checks it against the story.
 
 ### Rules the files rely on
@@ -281,14 +247,14 @@ to `reset_server_room`.
    pickup line or hold the old file's title in its notes, dossiers or
    `learned`. The
    worker reads its persona, mind file and `secrets.never` (now with the
-   pickup line) only at start: once the house Mac's checkout has this
+   pickup line) only at start: once the MacBook's checkout has this
    change, restart it there (`uv run stagehand launchd restart --job
    agents`), then Reset.**
 
    **Wave 12 (the story mind) needs the same `sync-show` WITH its reload**
    (the persona, the mind file's phase cards, `cast/trabolta.loom`'s snoop
    refusal and `main.loom`'s per-round fact-card lines all changed). Then,
-   on the house Mac: `mind_mode: new` under `agents:` in
+   on John's MacBook: `mind_mode: new` under `agents:` in
    `stagehand/laptop.yaml` (absent = classic), `uv run stagehand launchd
    restart --job agents`, **Run → Mind → Reset**, and `ollama stop
    tobestyledintro/qwen3.8-9b-distill:q8_0`. The checks, the switches and
@@ -305,38 +271,42 @@ to `reset_server_room`.
    `reinstall/vr`.
 3. **Terminals + the TV.** Provision every wall terminal with `view=auto`
    from the start:
-   `/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto`.
+   `/terminal/?code=<mod>&spot=start-bar` (a spot alone is enough: the
+   terminal follows the map's view for that spot; the old long form with
+   `name=` / `character=` / `view=` overrides the map and stops following it).
    Until Trabolta is revealed (or while he's asleep) it shows **attract**
    — a Mystify screensaver and fake-1999 ads, never "ONLINE", and it never
    pilots a pass into `dm:Trabolta` (K-16); his face comes up within 2 s
    of `introduce_trabolta`. `view=mirror` (no scanner, no pilot) is the
-   fallback for a tablet attract fails on. The TV is the house Mac's
-   Chrome on `view=tv` (integration contract); click once into it after
+   fallback for a tablet attract fails on. The TV is John's Windows
+   Desktop's Chrome on spot `desktop-tv` (`view=tv`;
+   `scripts/house-desktop/tv-kiosk.ps1`); click once into it after
    every boot. Every terminal and the TV must show green on the **Run
    page's Terminals card** (K-29: red + a chime after 20 s silent). The TV
    voice mute survives restarts, redeploys and Go live in place, so a mute
    left from rehearsal carries into the show: check it on the Terminals card
    before doors (the server log says 🔇 at startup when the TV starts muted).
-4. **Hardware (the house Mac).** Load `stagehand/trapped.house.yaml`
-   (`uv run stagehand check --config trapped.house.yaml`), then install the
-   `show` and `agents` modules as separate launchd jobs (`uv run stagehand
-   launchd install --job show|agents --config …`; `launchd status` /
-   `restart`) and the house router (wave 18b: `launchd install --job audio`
-   after `stagehand sounds placeholders` and `stagehand check --only audio`
-   reads 32 / 30; the `alexa` job is retired with `install-alexa.sh
-   --uninstall`; [`scripts/house-macbook/audio.md`](../../../scripts/house-macbook/audio.md)). Mosquitto listens anonymously on
-   `127.0.0.1:1883` only; WLED and the server-room ESP32 log in as `props`
-   on `:1884`. Since wave 20 (D16) the YAML no longer reads a door: the
-   door sensor is the Grand Central M4's, bridged by the server-room
-   terminal. Install the `lights` job too (`launchd install --job lights`,
-   after Zigbee2MQTT on the CC2652P stick:
-   [`scripts/house-macbook/zigbee.md`](../../../scripts/house-macbook/zigbee.md),
-   [`lights.md`](../../../scripts/house-macbook/lights.md); `stagehand check
-   --only lights`). The patch
-   bay sends `patch_combo_a` / `patch_combo_b` / `patch_rejected`. The two
-   combo strings must match the `Kernel.combo_*` seeds in `main.loom` and
-   the four combo-half codex texts, and the stagehand test checks this.
-5. **Trabolta (the house Mac).** Start the `agents` worker (see the integration
+4. **Hardware.** The old single "house Mac" is split in two (the whole map
+   is [`TECH.md`](./TECH.md)). **John's Windows Desktop** hosts Mosquitto
+   (anonymous on `127.0.0.1:1883`, password-only `props` on the LAN at
+   `:1884`), Zigbee2MQTT on the CC2652P stick, and the stagehand `show` and
+   `lights` jobs as Task Scheduler tasks from `stagehand/trapped.desktop.yaml`
+   (which `extends:` `trapped.house.yaml`; runbook
+   [`scripts/house-desktop/README.md`](../../../scripts/house-desktop/README.md)).
+   **John's MacBook** runs the house router by default (`launchd install
+   --job audio --config trapped.macbook.yaml`, after `stagehand sounds
+   placeholders` and `stagehand check --only audio` reads 32 / 30;
+   [`scripts/house-macbook/audio.md`](../../../scripts/house-macbook/audio.md)),
+   dialling the Desktop's broker on `:1884`. Announcements reach the router
+   only through the Desktop's `show` job, so both machines must be up. The
+   YAML reads no door since wave 20 (D16) and judges no patch bay since
+   wave 22: both are the Grand Central M4's
+   ([`hardware/server-room-m4/`](../../../hardware/server-room-m4)), bridged
+   by the server-room terminal on Steph's laptop, and the story judges the
+   bay's `patch_changed {combo}` against the `Kernel.combo_*` seeds in
+   `main.loom`. The four combo-half codex texts must match those seeds;
+   the stagehand test checks this.
+5. **Trabolta (John's MacBook).** Start the `agents` worker (see the integration
    contract). His gate is `when: self.awake == true`, so until Clippy
    introduces him every message gets the hold line *"Jean Trabolta will make
    an appearance later tonight. Please do not move the mouse."*
@@ -370,7 +340,7 @@ to `reset_server_room`.
    told otherwise).
 10. **The King** (wave 11: the code, at the door). He stands at the
     server-room door twice. **In the simulation** (both reinstallation
-    games, the tent tablet and the headset; `house.json` prop
+    games, the tent laptop and the headset; `house.json` prop
     `cold-lock-king`) he guards the virtual door with **one health bar
     shared by every program all night: 15 points, never regenerating**
     (`Night.king_hp` / `Night.king_hp_max`, seeded at Power On). Each
@@ -406,7 +376,7 @@ to `reset_server_room`.
     with no code (check with the batteries out). Fit the **door sensor**
     (wave 20: an LED on the frame shining into an LDR in a shroud tube,
     wired to the Grand Central M4 on Steph's laptop,
-    [`hardware/server-room-door/`](../../../hardware/server-room-door); the
+    [`hardware/server-room-m4/`](../../../hardware/server-room-m4); the
     ESP32's copper tape is no longer read, D16; since wave 20b, Q7, there is no ESP32 in the room at all). The server-room terminal
     is that laptop's Chrome on a monitor + mouse + an external keyboard
     (the heart to heart), the webcam reading passes: provision it
@@ -971,7 +941,7 @@ patch pairs included.
 | McAfee Anti-Virus | TBD | Antivirus | Door scans; broker of `# truthcoin-exchange` (every settled trade posts itself there; 🪙 Pay / Charge for corrections) and referee of bets, which settle player to player (the winner sends a 🙏 Request, the loser pays; he holds no pot and takes no cut). "Your protection has expired" every 20 min. |
 | Password Manager | Francine | Antivirus | Door scans; notices wrong codes; keeper of the clubs (faction joins land in her booth; owns `# hidden-partition` / `# back-channel` invites). Removes inappropriate messages: the director decides at call whether her booth gets the moderator passcode (then ⊞ Start → Add moderator powers → Become an admin → **hide**); otherwise she asks the director. Yu-gi-oh! everywhere. |
 | CRA Agent Software | Emma | Antivirus | Door scans; the Truthcoin **approver** (`wallet: approver, every 3, window 60s`): every third transfer waits in her booth's Wallet room for **Approve**, and any transfer can be **denied** within 60 s. 🪙 Charge for corrections. Replaces MalwareBytes. |
-| Installation Wizard (a voice, not a part) | Julia Tufts | — | The tent, in the backyard through the tunnel: the Wizard's lines are the tent tablet / video script; Julia runs the tent (the tablet is provisioned with the mod token); the release is the duck find, else the admin cue *Reinstallation: simulation completed (server)* — a release by hand is an Antivirus booth's ✅ Mark as reinstalled (or the director as an Antivirus via Run's identity control); the tablet has no such button. The tablet's scan of a pass plays the video in the program's thread; a marked program is captured on arrival. |
+| Installation Wizard (a voice, not a part) | Julia Tufts | — | The tent, in the backyard through the tunnel: the Wizard's lines are the tent laptop / video script; Julia runs the tent (the laptop is provisioned with the mod token); the release is the duck find, else the admin cue *Reinstallation: simulation completed (server)* — a release by hand is an Antivirus booth's ✅ Mark as reinstalled (or the director as an Antivirus via Run's identity control); the tablet has no such button. The tablet's scan of a pass plays the video in the program's thread; a marked program is captured on arrival. |
 
 **Featured programs**: guests with pre-written characters. They pick
 themselves at sign-in and never speak in the story.
@@ -1032,10 +1002,10 @@ live night replay identically.
 
 | Piece | Direction | Call |
 |---|---|---|
-| **Show control** | story ⇄ house | [`stagehand/trapped.house.yaml`](../../../stagehand/trapped.house.yaml) (the `show` module, on the house Mac) joins the mod SSE feed. It maps `cue lights_*` to Zigbee2MQTT `scene_recall` + WLED presets, the long form `<cue: lights, room: X, state: off\|on>` to that room's group, `sound <name>` and `do announce "…"` (MQTT `show/announce`) to **the house router** (wave 18b, Q1: stagehand's `audio` module, its own launchd job on the house Mac): it plays each story sound from `stagehand/media/sounds/` to the line's rooms off `audio.json` (labelled placeholders until the real files land, listed by `stagehand check`; the manifest is `stagehand/media/sounds.yaml`) and each announcement as a chime + the Mac's own `say` voice to `announce.to`, all through the **MOTU 828x + its ADAT expander** (`audio.json` `device` 24 in / 22 out, `expect` 32 / 30: `stagehand check` fails when mirroring or 96 kHz has moved the layout). **QLab is not part of the rig, and the `alexa` job is retired** ([`scripts/house-macbook/audio.md`](../../../scripts/house-macbook/audio.md)). **■ Stop all house sounds** (Run's header, the host dock's 🔊 House sound, the director phone's ☰) is `POST /api/mod/audio/stop {announce?}`, which the router hears through its long poll (`stops=`) and fades out in 0.3 s (MQTT `show/audio/stop` does the same by hand); the TV voice, the terminals and the live mics are untouched. The same announcement rides `GET /api/screen/state` as `announce {seq, text}`, so a tablet the house list names (`audio.json` `announce.terminals`, ticked on Run's House sound card) or set to Always chimes and speaks it too (off by default, and on `view=tv`), and `do door server_room, state: locked` (sent on every boot; nothing sends `unlocked` since wave 7) to the ESP32's ring indicator (`show/serverroom/lock`, retained). The real door has a **standalone keypad lock** set by hand: nothing in the story, the YAML or the ESP32 drives a lock (`stagehand/tests/test_trapped_house.py` keeps it that way). `lights_blackout` never darkens the stairs, bathroom, tent, server room or the server-room → living-room path (they are out of the `house` group; WLED goes off per device and the Tube strip stays on a dim static preset). `screens_flicker` also blinks the house bulbs (a one-shot Z2M effect; since wave 9 the LED strips are left alone, so no look is lost to a flicker). The `catch_up:` rules replay the night's look on every feed or broker reconnect and after a reset / reload / go-live; since wave 9, under the majority's `server_open` they replay `lights_y2k` first and then `lights_server_open` (the house isn't left on the old look), and a cut room is replayed off mid-cut and on under the look its 90 s restore re-lit it in (`Night.lit_scene`) or a later room-scoped look that never re-lit the room (pong, glitch, server_open, a living-room look over the Start Bar or the RAM), never under a whole-house look. Screen cues (`screens_*`, `tv_*`, `terminals_*`, `tablet_wizard`) are mirrored into `Night.screen` / `Night.terminals` until a Screens layer exists. |
+| **Show control** | story ⇄ house | [`stagehand/trapped.house.yaml`](../../../stagehand/trapped.house.yaml) (the `show` module, on John's Windows Desktop) joins the mod SSE feed. It maps `cue lights_*` to Zigbee2MQTT `scene_recall` + WLED presets, the long form `<cue: lights, room: X, state: off\|on>` to that room's group, `sound <name>` and `do announce "…"` (MQTT `show/announce`) to **the house router** (wave 18b, Q1: stagehand's `audio` module, its own job: on John's MacBook by default, dialling the Desktop's broker, or on the Desktop; see [`TECH.md`](./TECH.md)): it plays each story sound from `stagehand/media/sounds/` to the line's rooms off `audio.json` (labelled placeholders until the real files land, listed by `stagehand check`; the manifest is `stagehand/media/sounds.yaml`) and each announcement as a chime + the router machine's own voice (macOS `say`, or SAPI on Windows) to `announce.to`, all through the **MOTU 828x + its ADAT expander** (`audio.json` `device` 24 in / 22 out, `expect` 32 / 30: `stagehand check` fails when mirroring or 96 kHz has moved the layout). **QLab is not part of the rig, and the `alexa` job is retired** ([`scripts/house-macbook/audio.md`](../../../scripts/house-macbook/audio.md)). **■ Stop all house sounds** (Run's header, the host dock's 🔊 House sound, the director phone's ☰) is `POST /api/mod/audio/stop {announce?}`, which the router hears through its long poll (`stops=`) and fades out in 0.3 s (MQTT `show/audio/stop` does the same by hand); the TV voice, the terminals and the live mics are untouched. The same announcement rides `GET /api/screen/state` as `announce {seq, text}`, so a tablet the house list names (`audio.json` `announce.terminals`, ticked on Run's House sound card) or set to Always chimes and speaks it too (off by default, and on `view=tv`), and `do door server_room, state: locked` (sent on every boot; nothing sends `unlocked` since wave 7) to the ESP32's ring indicator (`show/serverroom/lock`, retained; the ESP32 is not installed for Oct 31, so nothing hears it). The real door has a **standalone keypad lock** set by hand: nothing in the story, the YAML or the ESP32 drives a lock (`stagehand/tests/test_trapped_house.py` keeps it that way). `lights_blackout` never darkens the stairs, bathroom, tent, server room or the server-room → living-room path (they are out of the `house` group; WLED goes off per device and the Tube strip stays on a dim static preset). `screens_flicker` also blinks the house bulbs (a one-shot Z2M effect; since wave 9 the LED strips are left alone, so no look is lost to a flicker). The `catch_up:` rules replay the night's look on every feed or broker reconnect and after a reset / reload / go-live; since wave 9, under the majority's `server_open` they replay `lights_y2k` first and then `lights_server_open` (the house isn't left on the old look), and a cut room is replayed off mid-cut and on under the look its 90 s restore re-lit it in (`Night.lit_scene`) or a later room-scoped look that never re-lit the room (pong, glitch, server_open, a living-room look over the Start Bar or the RAM), never under a whole-house look. Screen cues (`screens_*`, `tv_*`, `terminals_*`, `tablet_wizard`) are mirrored into `Night.screen` / `Night.terminals` until a Screens layer exists. |
 | **Sensors** | house → story | stagehand turns MQTT into `POST /api/mod/signal {name}`: `printer_button_pressed`, `printer_opened`, and the ESP32 patch bay's `patch_combo_a` / `patch_combo_b` / `patch_rejected` (the server-room ESP32, [`hardware/server-room/`](../../../hardware/server-room); **not installed for Oct 31**, wave 20b Q7; its rules carry the new combo A). **Wave 22: the patch bay is not an MQTT sensor either**: the M4 on Steph's laptop reads it and the server-room terminal posts `patch_changed {combo}` (a settled, complete patch of four top-to-bottom cables, never the same four twice in a row), judged by the story; the watch's 🔌 / 💥 / ❌ (`radio_*`) are its fallback. Every one also has an admin fallback button. Since wave 20 (D16) the door is not an MQTT sensor: see *The door sensor*. |
-| **The door sensor** (wave 20) | M4 → terminal → story | An LED on the frame shines into an LDR (in a black shroud tube) when the door is shut; the **Grand Central M4** ([`hardware/server-room-door/`](../../../hardware/server-room-door)) classifies it (`auto` picks `mod`, the LED pulsed from D2 so room light can't fake *shut*, or `steady`) and writes JSON lines at 115200 over USB to **Steph's laptop**, whose Chrome is the server-room terminal: `door=serial`, ⚙ *Connect door sensor* grants the port once (Web Serial, desktop Chrome on https). Each settled edge is `POST /api/mod/signal {name: "door_sensor_opened" \| "door_sensor_closed", args: {level}, label: "Terminal · <name>"}` with `x-loom-token`; every screen poll reconciles the story's `night.server_door` against the sensor. A blocking fault (`ldr_saturated`, `led_dead`, `no_port`, `stale`) posts nothing; `ldr_open` is only a warning. The story turns them into `heart_door_opened` / `_closed` unless `Night.door_override` (a 🚪 button was pressed; 🚪 Trust the door sensor clears it). Run → Terminals shows 🚪 *shut* / *open* + the level, a red fault, ⚠ a warning, amber *override*; the guest's screen never shows a fault (D29). Fallbacks: 🚪 opened / closed (admin), *🚪 The server-room door opened / is shut* (the four server-room Antivirus). Bench: `scripts/accept/N-20.sh`, `K-05.sh`. |
-| **House lights** (wave 20) | story → lights | `lights.json` (a project file beside `audio.json`; schema `@loom/house` `lights.ts`): fixtures, zones and **looks** keyed by the story's cue name. Only the server room's RGB bulb (`server-room-rgb`, Z2M `server_room_rgb`, the room's only light and so its safety fixture: never off, never under 80 / 254, `power_on_behavior: on`; the YAML sends neither it nor its Z2M `server_room` group anything) and the 13 `heart_*` looks so far. The stagehand **`lights`** module (launchd job `lights`) plays `cue heart_*` from the mod feed as Z2M / WLED publishes, gives the light back after a `then: "restore"` look (`heart_nag`, `heart_warn`), catches up from `GET /api/screen/state` after a reconnect (alarm → `heart_alarm`, door open mid-heart → `heart_door_open`, else `night.heart_look`, else `boot`), and posts the Z2M device list. Routes: `GET \| POST /api/mod/lights` (`base` → 409), `/project`, `/test`, `/devices`, `/pair`; edit at `/reinstall/map` → 💡 Lights (*Pair new device*, ▶ Test, Identify). `sync-show --keep-lights \| --replace-lights`; `LOOM_LIGHTS` is the no-project fallback. The server room has no strip (w20b Q6): the bulb is its safety light. |
+| **The door sensor** (wave 20) | M4 → terminal → story | An LED on the frame shines into an LDR (in a black shroud tube) when the door is shut; the **Grand Central M4** ([`hardware/server-room-m4/`](../../../hardware/server-room-m4)) classifies it (the build's `LED_MODE`: `steady` with the LED on 5V, the default and today's wiring, or `pulsed` with the LED on D2 so room light can't fake *shut*) and writes JSON lines at 115200 over USB to **Steph's laptop**, whose Chrome is the server-room terminal: `door=serial`, ⚙ *Connect door sensor* grants the port once (Web Serial, desktop Chrome on https). Each settled edge is `POST /api/mod/signal {name: "door_sensor_opened" \| "door_sensor_closed", args: {level}, label: "Terminal · <name>"}` with `x-loom-token`; every screen poll reconciles the story's `night.server_door` against the sensor. A blocking fault (`ldr_saturated`, `led_dead`, `no_port`, `stale`) posts nothing; `ldr_open` is only a warning. The story turns them into `heart_door_opened` / `_closed` unless `Night.door_override` (a 🚪 button was pressed; 🚪 Trust the door sensor clears it). Run → Terminals shows 🚪 *shut* / *open* + the level, a red fault, ⚠ a warning, amber *override*; the guest's screen never shows a fault (D29). Fallbacks: 🚪 opened / closed (admin), *🚪 The server-room door opened / is shut* (the four server-room Antivirus). Bench: `scripts/accept/N-20.sh`, `K-05.sh`. |
+| **House lights** (wave 20) | story → lights | `lights.json` (a project file beside `audio.json`; schema `@loom/house` `lights.ts`): fixtures, zones and **looks** keyed by the story's cue name. Only the server room's RGB bulb (`server-room-rgb`, Z2M `server_room_rgb`, the room's only light and so its safety fixture: never off, never under 80 / 254, `power_on_behavior: on`; the YAML sends neither it nor its Z2M `server_room` group anything) and the 13 `heart_*` looks so far. The stagehand **`lights`** module (a Task Scheduler task on John's Windows Desktop) plays `cue heart_*` from the mod feed as Z2M / WLED publishes, gives the light back after a `then: "restore"` look (`heart_nag`, `heart_warn`), catches up from `GET /api/screen/state` after a reconnect (alarm → `heart_alarm`, door open mid-heart → `heart_door_open`, else `night.heart_look`, else `boot`), and posts the Z2M device list. Routes: `GET \| POST /api/mod/lights` (`base` → 409), `/project`, `/test`, `/devices`, `/pair`; edit at `/reinstall/map` → 💡 Lights (*Pair new device*, ▶ Test, Identify). `sync-show --keep-lights \| --replace-lights`; `LOOM_LIGHTS` is the no-project fallback. The server room has no strip (w20b Q6): the bulb is its safety light. |
 | **The King** (wave 11: one shared health bar, the chess at the door) | games + door terminal → story | `house.json` prop `cold-lock-king` (`kind: "king"`, `hp: 15`, `health: "Night.king_hp"`, `signals: {won: "chess won", lost: "chess lost", drawn: "chess drawn", hit: "king hit", fallen: "king fallen"}`, `armed: {path: "Night.king_armed", min: 1}`) guards the door `server-door` in both games. **The bar:** `Night.king_hp` / `Night.king_hp_max` (15, seeded at Power On; the story never decrements it). A hit in either game is `POST /api/spatial/king/hit` (session token): the server judges reach off the last pose, once per program per reinstallation visit (a visit ends when its duck is found: Leave + re-scan is the same visit), then journals the set `Night.king_hp = hp − 1` and fires `king hit` for the guest (`# hosts` readout; a house line at 10 and 5), and at 0 `king fallen` (a house-wide alert): he kneels and the guarded door opens in both games until 👑 `restore_the_king` (or `POST /api/mod/spatial/king {hp}`) stands him up. **The chess:** only on the terminal outside the server-room door (no hints; his bar sets his strength, full = grandmaster … 0 = pawns only, through the five stages, and the terminal shows it). It posts `POST /api/mod/signal {name: "chess won" \| "chess lost" \| "chess drawn", subject: <guest id>, label: "Terminal · <name>"}` with its mod token; `label` names the journal's `by`. `chess won` → `unlock The Door Code for program` until 📄 (once; a duplicate changes nothing but a `# hosts` note); a loss or draw: a `# hosts` readout, and once Trabolta is awake a gloat on the TV at most once per 300 s (`Night.gloat_at`, shared). `Night.king_armed` is 1 from Power On until 📄 or an ending. A marked program can't challenge him. Nothing from the reinstallation games posts a chess result any more. |
 | **The casino** (wave 15) | casino terminal → wallet → story | The terminal in The Graphics Card (`/terminal/?code=<mod>&name=Casino&spot=graphics-card&view=casino`) scans a pass and takes Truthcoin bets on three games (the coin, under / over 7, the one-armed bandit). Each bet is `POST /api/mod/casino/bet {guest, game, pick, stake, label}` with its mod token: the server rolls, journals one wallet `bet` op, deals a 🎰 card into the guest's Wallet room and fires `casino won` / `casino lost` for the guest (`game`, `stake`, `payout`, `net`) — no rule in the story hears them yet. Stakes 1–50, never above the balance; a marked program or a frozen wallet is refused. The house keeps about 3–17 % depending on the game; Run's mirror (`ModView.wallet.casino`) totals bets, staked and paid. DraftKings' *Truthcoin Hustle* (1000 coin) can be gambled toward. |
 | **♟ the fallbacks** (the door terminal could not report) | performer / director → story | A host or Antivirus who saw the mate presses **♟ They beat the machine** on the winner's card (`POST /api/prime/act {name: "beat_the_machine", guest: <guest id>}` → `fire chess_won for program`), or the director fires the admin cue **♟ They beat the King: the door code** naming the winner (`POST /api/mod/signal {name: "chess_won", subject: <guest id>}`; `"chess won"` folds to it; with no subject `# hosts` is only told to press ♟ on the winner's card). Director's runbook: Help → *Running the server room* (`docs/help/authoring/38-server-room.md`). |
@@ -1060,8 +1030,8 @@ live night replay identically.
 | **Terminals** | wall tablet ⇄ server | The [`terminal`](../../../terminal) app at `/terminal/`, a direct line to Trabolta. **Provision with `view=auto`**; it shows attract until Trabolta is revealed (Before the doors open, step 3): `/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto`. Since wave 7 a mod code lists the story's declared cast before the doors, so ⚙ checks `character` the moment it is set up. The server-room terminal adds `room=` (its own row above). `spot` is the terminal's id in `house.json`. `auto` shows the world view while someone is in the simulation and the face otherwise. A program holds up their pass; the terminal pilots them (`POST /api/mod/impersonate {role: "guest", id, label}`) into their own `dm:Trabolta`. Replies are spoken in the **device's own voice** (`speechSynthesis`; Fully Kiosk's JavaScript Interface on a WebView without it; text at reading pace on a voiceless device — never a stall). The server voice (`POST /api/mod/tts` → `LOOM_TTS_URL`, the compose `kokoro` service behind `--profile tts`) is opt-in and off by default. The line drops after 30 s without input. The mod feed tags terminal lines `via: "Terminal · <name>"` (the pilot's `label`); the same `label` on `POST /api/mod/signal` lets any mod-token device (the Server Door terminal's `chess won` / `chess lost` / `chess drawn`, `view=chess`, `spot=server-room-door`) sign the journal as itself — honoured only for the generic mod-token "Director", never over an author session's own name. Terminals poll the lean `GET /api/screen/state` every 2 s (attract, story screen cues, slides / overlays, the countdown, K-16/K-17), which doubles as their heartbeat: `GET /api/mod/screen/terminals` feeds the Run page's Terminals card. Announcements (wave 18b, Q8) are three-way per tablet: **House setting** (the default: the spot is on `audio.json` `announce.terminals`, the screen state's `spot: {announce}`) · Always (`&announce=1`) · Never (`&announce=0`, which pins it off whatever the house list says); the heartbeat's `ann=1|0` shows 📢 on Run → Terminals. |
 | **Founded factions** (wave 18b, R4–R6) | guest phone → server → story | The header `founding: Night.truther_sent == true and Kernel.majority_reached != true and Night.clock != "00:00" and Night.ended != true and program.cleared == true and program.corrupted != true` switches on faction mode: one race between the founded factions (crews) and the joinable sides, one faction at a time. `POST /api/guest/crew/found {name}` founds (403 outside the window), `POST /api/guest/crew/join {crew}` walks in (6 a minute, then 429), a founder's `crew/leave` disbands (`{ok, dissolved: true}`); founders and side leaders stay put (409). `GuestView.canFound` / `leads`, `SideView.more` on your own row only, `ModView.race {needs, present, winner, factions}` for Run's glance. `majority: count([p for p in Persons where p.gone != true and p.persona != true]) / 2 + 1` is the line; the story's race rule latches `Kernel.majority_id` / `majority_name` / `majority_founder` (secret Kernel, never `Night.*`) and `settle_majority`. Race sides' membership paths never ride an agent request. |
 | **Phones: the lobby, badges** (wave 18b) | story → phones | `lobby: hidden` takes the 📜 Chat log off every guest's phone (booths and Run keep it; a guest's `say` there answers 404; every lobby line still reaches them as a moment or a Notifications row). `badge: program.afk as 🚻 Bathroom Mode` puts 🚻 beside the name in every people list (never on a chat bubble; lint L1219 refuses a secret one). |
-| **TV** | story → screens + voice | The TV above the fireplace is the house Mac's Chrome on the `tv` view (K-18): `/terminal/?code=<mod>&name=TV&character=Trabolta&spot=desktop-tv&view=tv`. It shows Trabolta's face (the screensaver until the introduction, the VR world beside him while someone is in the Internet) and **speaks every `Trabolta:` line said in The Desktop** plus a director's `say` as Trabolta there; the song beats (`Song Ending`, `Sad Confession`, `The Hand Jive`) and Sandy are captioned only. Mute: `M` on the Mac or `POST /api/mod/screen/voice {muted}` (kept in the event's `screen-voice.json`, so it survives a restart). The story records what it should show in `Night.screen`. **Results** (wave 18b, Q6): `do fact_read <ids>` (📋, 🧮) and `do fact_truth <id> <accurate|lie|none>` (⚖) publish `ScreenState.results`: on the TV the rows `[who, said, sure, out, ruled]` (≤ 40 + *more*; never the final round's before ⚖), on the walls the counts only; at ⚖ (O2) the TV alone also gets each question's key answer and the liars' names (built by the server's `screenResultsOf`, inside the verdict's 120 s window; never in a view, `Night.*` or an agent request). The night block adds `most_trusted` / `least_trusted` under `bobbing` and `facts_accepted` / `first_reinstall` under `recount` / `purgatory`. Anything else can watch the mod SSE feed (`GET /e/:id/events?role=mod`) for `captured` / `released` and `alert: true` broadcasts. |
-| **Trabolta** | house Mac ⇄ server | Run stagehand's `agents` module: `cp stagehand/agents.example.yaml stagehand/laptop.yaml` (set `server.url`, `event`, `mod_passcode`), `ollama pull gpt-oss:20b tobestyledintro/qwen3.8-9b-distill:q8_0`, then `uv run stagehand run --config laptop.yaml`. The server sends every message to Trabolta as an agent request (`GET /api/agent/stream`) carrying the thread, the speaker's `them:` vars and the whitelisted `Night.*` facts. **`Kernel.*` never reaches him.** He answers with `POST /api/agent/reply {say, adjust}`. Powers fire as journaled signals. **Every filing that isn't an exact match** (wave 18b, O4: a near miss or a plain miss) comes as a `judge` frame on the same stream (`near` names the key it is close to, else null) and is answered at `POST /api/agent/judge {id, worker, same, why}`. The hub queues them: one frame out per worker, never while that worker owes a voice reply (guests' DMs go first), 60 s from dispatch, a stall after two expiries in a row (*⚖ Trabolta isn't ruling…* in `# hosts`); what is still queued at the round's settle falls back to the house rule. A round of ~45 programs × 3 questions is minutes of rulings at ≈ 3 s each (CHECKLIST SW-AI-23). His `why` never reaches a screen, and every house line of the reading beats (Question Results, Round Two Tally, The Verdict) stays out of his `recent`. `stagehand ask --config laptop.yaml --reflect` tunes voice and mind offline. |
+| **TV** | story → screens + voice | The TV above the fireplace is John's Windows Desktop's Chrome on the `tv` view (K-18): `/terminal/?code=<mod>&spot=desktop-tv` (the map spot sets the view; `scripts/house-desktop/tv-kiosk.ps1`). It shows Trabolta's face (the screensaver until the introduction, the VR world beside him while someone is in the Internet) and **speaks every `Trabolta:` line said in The Desktop** plus a director's `say` as Trabolta there; the song beats (`Song Ending`, `Sad Confession`, `The Hand Jive`) and Sandy are captioned only. Mute: `M` on the Desktop or `POST /api/mod/screen/voice {muted}` (kept in the event's `screen-voice.json`, so it survives a restart). The story records what it should show in `Night.screen`. **Results** (wave 18b, Q6): `do fact_read <ids>` (📋, 🧮) and `do fact_truth <id> <accurate|lie|none>` (⚖) publish `ScreenState.results`: on the TV the rows `[who, said, sure, out, ruled]` (≤ 40 + *more*; never the final round's before ⚖), on the walls the counts only; at ⚖ (O2) the TV alone also gets each question's key answer and the liars' names (built by the server's `screenResultsOf`, inside the verdict's 120 s window; never in a view, `Night.*` or an agent request). The night block adds `most_trusted` / `least_trusted` under `bobbing` and `facts_accepted` / `first_reinstall` under `recount` / `purgatory`. Anything else can watch the mod SSE feed (`GET /e/:id/events?role=mod`) for `captured` / `released` and `alert: true` broadcasts. |
+| **Trabolta** | John's MacBook ⇄ server | Run stagehand's `agents` module: `cp stagehand/agents.example.yaml stagehand/laptop.yaml` (set `server.url`, `event`, `mod_passcode`), `ollama pull gpt-oss:20b tobestyledintro/qwen3.8-9b-distill:q8_0`, then `uv run stagehand run --config laptop.yaml`. The server sends every message to Trabolta as an agent request (`GET /api/agent/stream`) carrying the thread, the speaker's `them:` vars and the whitelisted `Night.*` facts. **`Kernel.*` never reaches him.** He answers with `POST /api/agent/reply {say, adjust}`. Powers fire as journaled signals. **Every filing that isn't an exact match** (wave 18b, O4: a near miss or a plain miss) comes as a `judge` frame on the same stream (`near` names the key it is close to, else null) and is answered at `POST /api/agent/judge {id, worker, same, why}`. The hub queues them: one frame out per worker, never while that worker owes a voice reply (guests' DMs go first), 60 s from dispatch, a stall after two expiries in a row (*⚖ Trabolta isn't ruling…* in `# hosts`); what is still queued at the round's settle falls back to the house rule. A round of ~45 programs × 3 questions is minutes of rulings at ≈ 3 s each (CHECKLIST SW-AI-23). His `why` never reaches a screen, and every house line of the reading beats (Question Results, Round Two Tally, The Verdict) stays out of his `recent`. `stagehand ask --config laptop.yaml --reflect` tunes voice and mind offline. |
 
 **Staff visibility:** `# hosts` and `# quarantine` are **staff back-rooms,
 not private between factions**. Every performer booth sees and can post in
@@ -1205,7 +1175,7 @@ Wizard's backstory, the Hand Jive weakness, the Runescape / MS Paint / VLC
 / Pong orders and quests, the 21 coded files, the Bingo squares and the
 fate lines. Wave 18b's new copy (the ties, The DSL Line, The Night In
 Review and Your File, the founded-faction lines, Trabolta's reading lines,
-the typed left-behind) waits on [`SIGNOFF-w18b.md`](./SIGNOFF-w18b.md).
+the typed left-behind) waits on [`SIGNOFF-w18b.md`](./history/SIGNOFF-w18b.md).
 
 Decisions that need sign-off (**all approved 2026-10-15**, with the
 content list above; see [OCT31.md](./OCT31.md)):
@@ -1234,7 +1204,7 @@ answers that changed things — Q1, Q2, Q3, Q16, Q21, Q26, Q30 — are wave 18).
 app's own words), all `// DRAFT w18` until the user signs it off.
 **Wave 20's decisions (D1–D29), every heart line (`// DRAFT w20`), the
 looks and the persona's `outside:` list are in
-[`SIGNOFF-w20.md`](./SIGNOFF-w20.md).**
+[`SIGNOFF-w20.md`](./history/SIGNOFF-w20.md).**
 
 ## Rehearsing
 

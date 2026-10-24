@@ -627,7 +627,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <section class="win" id="tech">
   <h2><span>Tech</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
   <div class="body">
-    <p class="prose">The event server runs on a VPS. Every phone, tablet and computer talks to it over HTTPS, so phones keep working on cellular if the house internet dies. Four computers in the house do the rest.</p>
+    <p class="prose">The event server runs on a VPS. Every phone, tablet and computer talks to it over HTTPS, so phones keep working on cellular if the house internet dies. Four computers in the house do the rest. The full map, with each machine's setup runbook, is <code>TECH.md</code> in the show folder.</p>
     <div class="machines">
       <div class="machine"><h4>John's MacBook (macOS, M3 Max 48 GB)</h4><div class="in"><ul>
         <li>Ollama with <code>gpt-oss:20b</code> + stagehand <code>agents</code>: Trabolta's voice and mind (<code>stagehand/laptop.yaml</code>, <code>mind_mode: new</code>).</li>
@@ -823,13 +823,13 @@ Windows (PowerShell):
       <li data-ck><strong>Check the preview's roster in its own step</strong> (<code>pnpm showctl roster</code>). If anyone is on, ask before shipping: a release restarts the server.</li>
       <li data-ck>On the MacBook: <code>scripts/ops/predeploy.sh --vr</code> (the full gate; stamps the commit). Also <code>pnpm --filter @loom/core show:page --check</code>.</li>
       <li data-ck><strong>Server first:</strong> <code>scripts/ops/ship.sh show-1031</code>. Stop here if it fails. Then <code>ssh loom-vps 'cd ~/loom &amp;&amp; deploy/release.sh --check-env'</code> and <code>curl https://app.mapsandducks.com/api/health</code> → 200.</li>
-      <li data-ck>On the Desktop: set the real event id and mod passcode for <code>stagehand/trapped.house.yaml</code> (the git-ignored local file or <code>LOOM_EVENT_ID</code> / <code>LOOM_MOD_PASSCODE</code>; the committed values are CHANGE-ME), <code>git pull</code>, restart the <code>show</code> task <em>before</em> the sync so no old door rule posts into the new story.</li>
+      <li data-ck>On the Desktop: put the real event id and mod passcode in <code>stagehand\trapped.house.local.yaml</code> (git-ignored; the tracked file says CHANGE-ME), <code>git pull</code>, then restart the <code>show</code> task (<code>.\scripts\house-desktop\start-stagehand.ps1 -Restart show</code>) <em>before</em> the sync so no old door rule posts into the new story.</li>
       <li data-ck><code>LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show --replace-audio</code> with its reload, before doors. Add <code>--replace-lights</code> if the project already holds a <code>lights.json</code>. <code>--replace-maps</code> only if the summary says the project's maps differ. Never <code>--no-reload</code> for these waves.</li>
       <li data-ck>Restart every other non-ended event (Run → Restart or Push draft).</li>
       <li data-ck>MacBook agents: <code>git pull</code>, <code>cd stagehand &amp;&amp; uv run stagehand launchd restart --job agents</code>, then Run → Mind → Reset. <code>uv run stagehand check --config laptop.yaml --only agents</code> shows ctx 20480 and no warning.</li>
-      <li data-ck>MacBook audio router: retire <code>alexa</code> (<code>scripts/house-macbook/install-alexa.sh --uninstall</code>), point <code>audio.mqtt</code> at the Desktop broker on 1884 with the <code>props</code> user, <code>uv run stagehand sounds placeholders</code>, <code>uv run stagehand check --config trapped.house.yaml --only audio</code> (32 / 30), <code>uv run stagehand launchd install --job audio</code>.</li>
-      <li data-ck>Desktop lights: Zigbee2MQTT on the CC2652P (keep any existing <code>data/</code>), uncomment <code>lights:</code> in <code>trapped.house.yaml</code>, start the <code>lights</code> task before pairing, <code>uv run stagehand check --config trapped.house.yaml --only show,lights</code> (always name the modules on Windows). Pair the bulb as <code>server_room_rgb</code> with <code>power_on_behavior: on</code>, place it in the map editor, Identify, ▶ Test each look, Save to project.</li>
-      <li data-ck>Steph's laptop: flash the wave 22 firmware from <code>hardware/server-room-m4</code> (door + patch bay; <code>LED_STEADY</code> while the LED is on 5V), run the bench check, open the terminal once without <code>--kiosk</code>, grant the port, <strong>calibrate the door in ⚙ (always after a reflash)</strong>, check the patch bay's live table, relaunch in kiosk.</li>
+      <li data-ck>MacBook audio router: retire <code>alexa</code> if it was ever installed (<code>scripts/house-macbook/install-alexa.sh --uninstall</code>); put the <code>props</code> password in <code>stagehand/trapped.macbook.local.yaml</code> (<code>trapped.macbook.yaml</code> already dials the Desktop broker on 1884); <code>uv run stagehand sounds placeholders</code>; <code>uv run stagehand check --config trapped.macbook.yaml --only audio</code> (32 / 30); <code>uv run stagehand launchd install --job audio --config trapped.macbook.yaml</code>.</li>
+      <li data-ck>Desktop lights: Zigbee2MQTT on the CC2652P (keep any existing <code>data\</code>), then <code>.\scripts\house-desktop\start-stagehand.ps1</code> (checks <code>trapped.desktop.yaml</code> with <code>--only show,lights</code>, then installs and starts both tasks; the lights job must run before pairing). Pair the bulb as <code>server_room_rgb</code> with <code>power_on_behavior: on</code>, place it in the map editor, Identify, ▶ Test each look, Save to project.</li>
+      <li data-ck>Steph's laptop: flash the wave 22 firmware from <code>hardware/server-room-m4</code> (door + patch bay; <code>LED_STEADY</code> while the LED is on 5V), run the bench checks (<code>scripts/accept/N-20.sh</code> for the door, <code>N-21.sh</code> for the bay, then <code>pb save</code>), open the terminal once without <code>--kiosk</code>, grant the port, <strong>calibrate the door in ⚙ (always after a reflash)</strong>, check the patch bay's live table, relaunch in kiosk.</li>
       <li data-ck>Reload every terminal, the TV and the tent laptop; touch each tablet once (its 🎤 must not read <em>tap</em>).</li>
       <li data-ck>Quest: <code>reinstall/vr/tools/quest.sh build</code> then <code>install</code>; allow the microphone in the lobby.</li>
       <li data-ck>Program the keypad by hand to <code>facts.json</code> <code>door.code</code> and test it from outside; the inside handle opens with no code.</li>
@@ -848,7 +848,7 @@ Windows (PowerShell):
       <button type="button" id="ck-reset">Clear all ticks</button>
     </div>
     <div class="stop prose"><strong>Never after doors:</strong> Restart, Push draft, Go live or End. Each one wipes every guest. No Run personas on the live event.</div>
-    <p class="prose">Diagnostics on any machine: set <code>LOOM_MOD_CODE=&lt;mod&gt;</code>, then <code>pnpm showctl doctor</code> (Windows: <code>scripts\show\showctl.ps1 doctor</code>). Each machine has its own <code>pnpm showctl preflight &lt;macbook|desktop|serverroom|tent&gt;</code>. During the show: <code>pnpm showctl status --watch 5</code> and <code>pnpm showctl terminals --watch</code>.</p>
+    <p class="prose">The printed pre-show checklist and the full night-of runbook are <code>SHOWNIGHT.md</code> in the show folder (<code>scripts/ops/checklist.sh --probe</code> prints its checklist). Diagnostics on any machine: set <code>LOOM_MOD_CODE=&lt;mod&gt;</code>, then <code>pnpm showctl doctor</code> (Windows: <code>scripts\show\showctl.ps1 doctor</code>). Each machine has its own <code>pnpm showctl preflight &lt;macbook|desktop|serverroom|tent&gt;</code>. During the show: <code>pnpm showctl status --watch 5</code> and <code>pnpm showctl terminals --watch</code>.</p>
 
     <h3>By time</h3>
     <div class="slot"><div class="t">10:00<small>director, tech op</small></div><ul class="check" data-list="t1000">
@@ -909,7 +909,7 @@ Windows (PowerShell):
     </ul>
     <h4>John's Desktop (Windows)</h4>
     <ul class="check" data-list="desktop">
-      <li data-ck><code>scripts\show\showctl.ps1 preflight desktop</code> is green.</li>
+      <li data-ck><code>.\scripts\house-desktop\preflight.ps1</code> passes (it ends with <code>showctl preflight desktop</code>).</li>
       <li data-ck>TV kiosk on spot <code>desktop-tv</code>, <strong>clicked once after its last boot</strong>, showing the screensaver; notifications off.</li>
       <li data-ck>Mosquitto service running on 1883 (loopback) and 1884 (password); Zigbee2MQTT online; the bulb in its device list.</li>
       <li data-ck><code>show</code> and <code>lights</code> tasks running; the bulb answers 💡 Identify and sits on <code>heart_idle</code>.</li>
@@ -1005,8 +1005,8 @@ Windows (PowerShell):
     <p>The patch bay layout (8 sources and 7 inputs, Combo A changed with it), a re-plugged cable never counting twice, source-to-source and input-to-input cables reading as incomplete, and the buttons overriding the bay until <code>trust_patch_bay</code>.</p>
     <h3>DRAFT sign-off status</h3>
     <ul>
-      <li><code>SIGNOFF-w18b.md</code> (D1–D30, the Bingo-card line): awaiting the user.</li>
-      <li><code>SIGNOFF-w20.md</code>: answered "I will review, ship for now"; the persona's <code>outside:</code> list still to review.</li>
+      <li><code>history/SIGNOFF-w18b.md</code> (D1–D30, the Bingo-card line): awaiting the user.</li>
+      <li><code>history/SIGNOFF-w20.md</code>: answered "I will review, ship for now"; the persona's <code>outside:</code> list still to review.</li>
       <li><code>SIGNOFF-w21.md</code> (performers play): awaiting the user. Open in it: McAfee's exchange pays per 🤝 press only; no report between players.</li>
       <li><code>SIGNOFF-w18.md</code> (Q1–Q60) and <code>SIGNOFF-w13.md</code>: answered; their status lines are stale.</li>
       <li><code>facts.json</code>: all eight questions and 16 of 20 truths are still marked draft.</li>

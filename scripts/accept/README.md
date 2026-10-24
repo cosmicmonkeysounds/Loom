@@ -1,9 +1,10 @@
-# Acceptance checks (OCT31 waves 1–20)
+# Acceptance checks (OCT31 waves 1–22)
 
 One check per item of
 [`core/examples/trapped-in-the-internet/OCT31.md`](../../core/examples/trapped-in-the-internet/OCT31.md)
-§5. Every wave 1–3 item is on `master`; the wave-4 check (`wave4-wallet.sh`)
-sits in the working tree with wave 4. Each script runs the desk half itself (HTTP,
+§5 (the build history; the night's own runbook is
+[`SHOWNIGHT.md`](../../core/examples/trapped-in-the-internet/SHOWNIGHT.md)).
+Every wave through 22 is on `master`. Each script runs the desk half itself (HTTP,
 MQTT, a build scan) and prints or walks you through the device half. A `.md`
 is a written device check, and its `.ts` (where there is one) is the helper
 it calls.
@@ -29,10 +30,10 @@ anytime.
 | Item | Script | What you do |
 |---|---|---|
 | K-01 | `k01.sh` | Laptop: public join base, invite site, uncompressed SSE (two 25 s pings). Then one phone joins over cellular |
-| K-04 (SW-AI-23) | `K-04-burst.ts --code … [--dms 30] [--spread 0]` | The worker on the house Mac voicing Trabolta, Trabolta introduced: 30 persona DMs at once, the time to each first real reply (the server's hold line and the worker's canned `fallback:` / `unavailable:` lines from `trabolta.persona.md` counted apart — never a PASS), p95 + a `record:` line (guarded; `--reset-after` clears the bots, then Reset the mind). Pure half: `node --no-warnings --test scripts/accept/burst.test.ts` |
-| K-05 | `K-05.sh [trapped.house.yaml]` (`MOD_CODE`) | Wave 20: house Mac + the real door, the server-room terminal on Steph's laptop with the M4 door sensor connected (`door=serial`; run N-20 first). Open the door with the keypad code from outside and by the inside handle: each edge reaches the story as `door_sensor_opened` / `door_sensor_closed` (Run → Terminals 🚪, `Night.server_door`), and stagehand fires **no** door signal any more (D16). Then the patch bay and the lights |
+| K-04 (SW-AI-23) | `K-04-burst.ts --code … [--dms 30] [--spread 0]` | The worker on John's MacBook voicing Trabolta, Trabolta introduced: 30 persona DMs at once, the time to each first real reply (the server's hold line and the worker's canned `fallback:` / `unavailable:` lines from `trabolta.persona.md` counted apart — never a PASS), p95 + a `record:` line (guarded; `--reset-after` clears the bots, then Reset the mind). Pure half: `node --no-warnings --test scripts/accept/burst.test.ts` |
+| K-05 | `K-05.sh [trapped.house.yaml]` (`MOD_CODE`) | Wave 20: the house rig (stagehand `show` on John's Desktop) + the real door, the server-room terminal on Steph's laptop with the M4 door sensor connected (`door=serial`; run N-20 first). Open the door with the keypad code from outside and by the inside handle: each edge reaches the story as `door_sensor_opened` / `door_sensor_closed` (Run → Terminals 🚪, `Night.server_door`), and stagehand fires **no** door signal any more (D16). Then the patch bay (`M4BAY=1`: the M4 reads the bay and the terminal posts `patch_changed`; run N-21 first; `ESP32=1` is the old scanner, not installed) and the lights |
 | K-06 + N-07 | `k06.sh` | An iPhone, an Android phone and an Antivirus booth. Lock both phones, send a `!` alert, and it banners and chimes on wake. The booth banners the alert and the late list (N-07) |
-| K-08 | `K-08.sh [nightly\|show]` | House Mac over ssh: a show-night copy, a restore drill into a scratch `loom-drill` project, rollback timing (asks first, restarts the live site twice), the 10-minute backup job |
+| K-08 | `K-08.sh [nightly\|show]` | The MacBook over ssh to the VPS: a show-night copy, a restore drill into a scratch `loom-drill` project, rollback timing (asks first, restarts the live site twice), the 10-minute backup job |
 | K-10 | `k10.sh before` → End + relaunch → `k10.sh after` | The codes survive End → relaunch. Then scan an old QR on cellular |
 | K-11 | `K-11.md` + `K-11.ts redeem\|rush [n]` | Wrong-codex throttle (8 × 200, then 429). A door rush from one IP passes with the night's `LOOM_RL_*` |
 | K-12 | `K-12.md` | Run → 🖨 Print sheet: join poster, codex posters, room signs (no typed code on a sign). Print one and scan it |
@@ -43,7 +44,7 @@ anytime.
 | K-17 + N-03 | `K-17.sh [--watch\|--fire <event>…]` | Fire cues and watch the TV and terminals layer overlays, slides and the ⏱ corner in the right precedence |
 | K-18 + N-04b | `K-18.sh [--watch\|--say\|--beat\|--fire\|--mute]` | TV (`view=tv`) speaks Trabolta's Desktop lines, captions the song beats, honours the mute |
 | K-19 | `K-19.sh` | **Opt-in only** (the default is the devices' own voices — it SKIPs with the server voice off): 50 mod SSE streams + 3 concurrent Kokoro syntheses, each sentence < 2 s |
-| K-20 | `K-20.sh devices\|check\|install\|announce\|chime\|play\|stop\|story` | House Mac, steps 1–8 through the router (wave 18b, the `audio` job): the 828x, `check --only audio`, the launchd job, an announcement + the chime on both rooms, a story sound, ■ stop, `do announce` from the story |
+| K-20 | `K-20.sh devices\|check\|install\|announce\|chime\|play\|stop\|story` | The router machine (John's MacBook by default; macOS), steps 1–8 through the router (wave 18b, the `audio` job): the 828x, `check --only audio`, the launchd job, an announcement + the chime on both rooms, a story sound, ■ stop, `do announce` from the story |
 | K-21 | `K-21.md` | Second director's laptop: the Director cue sheet (LAST / NEXT / ✓, a refused press that ticks nothing, who? picker), agreeing across two editors and a reload |
 | K-22 | `K-22.ts --event … --passcode …` | Bytes per step, full mod feed vs `&lean=1`. `--steps N` posts probe lines (guarded) |
 | K-23 | `K-23.md` + `K-23.ts` | DM Trabolta hunt answers from a phone. The helper checks none reached `learned` and the trace shows suppressions |
@@ -58,7 +59,8 @@ anytime.
 | K-32 | `k32-load.ts --code …` | VPS load test (45 guests, 9 booths, 6 terminals, 2 directors, bursts): step latency + `/api/mod/metrics` CPU + each director console ≤ 1 Mbit/s (the LTE failover budget; delta consoles by default, `--full-directors` for the old whole-view stream) (guarded) |
 | N-01 | `n01.sh` | 10 pass QRs on screen. An iPhone booth (jsQR) and an Android booth scan 10/10 hands-free |
 | N-02 + N-10 | `n02.sh` | Re-pair a wiped phone from Inspector → 🔁 Re-pair (< 30 s, same Person). Release a booth's part and re-sign on a loaner |
-| N-08 | `N-08.sh [port]` | House Mac, the ESP32 box on the bench: flash, the 2×12 patch scan, ring + siren over MQTT (`:1884` as `props`). Wave 20 retired its door steps: the door is the M4's (N-20, D16) |
+| N-08 | `N-08.sh [port]` | **Not installed for Oct 31.** The ESP32 box on the bench: flash, the 2×12 patch scan, ring + siren over MQTT (`:1884` as `props`). Wave 20 retired its door steps: the door is the M4's (N-20, D16) |
 | N-20 | `N-20.sh [/dev/cu.usbmodem…]` | Wave 20: the laptop the Grand Central M4 is plugged into, the LED + LDR (in its shroud) across the real door. Records lit / dark / level in `mod` and `steady`, shut and open, room lights on and off; finds the settle a CdS cell needs; proposes `mode`, `settle`, `close`, `open` and offers to `set` + `save` them; then one real opening and closing. Serial only (close the Arduino IDE's monitor and the terminal page first) |
+| N-21 | `N-21.sh [port]` (Windows: `N-21.sh COM5` in Git Bash, needs pyserial) | Wave 22: the laptop the M4 is plugged into, the 15-jack patch bay wired to it and one patch cable. Checks the empty bay, learns V1–V8 one cable at a time (`pb learn`), checks they climb in order and sit apart, walks a source through every input, prints the readings and offers `pb save`. Never names a combination. Serial only |
 | N-11 | `N-11.md` + `N-11.ts --guest …` | Worker stopped: a DM to Trabolta gets the story's `hold:` line once, ~20 s later |
 | Wave 4 wallet (C·5) | `wave4-wallet.sh run\|look\|device` (`MOD_CODE` + `EVENT_CODE` + `PRIME_CODE`) | Two guest phones + the CRA Agent Software booth: three sends (the held one waits for Approve), a deny inside 60 s, a request, a Runescape stimulus, a codex trade (`run` is guarded; `look` and `device` are read-only) |
