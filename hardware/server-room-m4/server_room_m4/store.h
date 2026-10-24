@@ -1,4 +1,4 @@
-// The settings record in flash (FlashStorage_SAMD's emulated EEPROM). On the
+// The settings records in flash (FlashStorage_SAMD's emulated EEPROM). On the
 // board the real library backs FlashStore; on a laptop test/shim/ provides a
 // FlashStorage_SAMD.h with the same EEPROM calls over a byte array, so the
 // same code is tested. Include this from the sketch only (the library must be
@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "door_ldr.h"
+#include "patch.h"
 
 namespace store {
 
@@ -57,9 +58,53 @@ inline bool fromRecord(const Record& r, dl::Settings& out) {
   return true;
 }
 
+// ── The patch bay's record (wave 22) ──────────────────────────────────────
+// A second record at its own address, so the door's 12 bytes (and its
+// kVersion) never move: a board flashed with 1.1.0 keeps its door
+// calibration, and `pb save` never touches it.
+
+constexpr uint16_t kBayMagic = 0xBA7E;
+constexpr uint8_t kBayVersion = 1;
+constexpr int kBayAddr = 16;
+
+struct BayRecord {
+  uint16_t magic;
+  uint8_t ver;
+  uint8_t sources;  // pb::kSources when written: another build's record reads as missing
+  uint16_t level[pb::kSources];
+  uint16_t floor;
+  uint16_t tol;
+};
+static_assert(kBayAddr >= (int)sizeof(Record), "the bay's record sits after the door's");
+
+inline BayRecord toRecord(const pb::Settings& s) {
+  BayRecord r;
+  r.magic = kBayMagic;
+  r.ver = kBayVersion;
+  r.sources = (uint8_t)pb::kSources;
+  for (int k = 0; k < pb::kSources; k++) r.level[k] = s.level[k];
+  r.floor = s.floor;
+  r.tol = s.tol;
+  return r;
+}
+
+inline bool fromRecord(const BayRecord& r, pb::Settings& out) {
+  if (r.magic != kBayMagic || r.ver != kBayVersion || r.sources != pb::kSources) return false;
+  pb::Settings s;
+  for (int k = 0; k < pb::kSources; k++) s.level[k] = r.level[k];
+  s.floor = r.floor;
+  s.tol = r.tol;
+  if (!pb::valid(s)) return false;
+  out = s;
+  return true;
+}
+
 struct Store {
   virtual bool load(dl::Settings& out) = 0;
   virtual bool save(const dl::Settings& s) = 0;
+  // The patch bay's levels (a store with none: never saved).
+  virtual bool loadBay(pb::Settings&) { return false; }
+  virtual bool saveBay(const pb::Settings&) { return false; }
   virtual ~Store() {}
 };
 
@@ -70,7 +115,7 @@ struct Store {
 
 namespace store {
 
-// The record at EEPROM address 0. FlashStorage_SAMD commits on put() unless
+// The door's record at EEPROM address 0, the bay's at kBayAddr. FlashStorage_SAMD commits on put() unless
 // commit-ASAP was turned off, so commit() is called only then.
 struct FlashStore : Store {
   bool load(dl::Settings& out) override {
@@ -85,6 +130,20 @@ struct FlashStore : Store {
     Record back;
     EEPROM.get(0, back);
     dl::Settings check;
+    return fromRecord(back, check) && check == s;
+  }
+  bool loadBay(pb::Settings& out) override {
+    BayRecord r;
+    EEPROM.get(kBayAddr, r);
+    return fromRecord(r, out);
+  }
+  bool saveBay(const pb::Settings& s) override {
+    BayRecord r = toRecord(s);
+    EEPROM.put(kBayAddr, r);
+    if (!EEPROM.getCommitASAP()) EEPROM.commit();
+    BayRecord back;
+    EEPROM.get(kBayAddr, back);
+    pb::Settings check;
     return fromRecord(back, check) && check == s;
   }
 };

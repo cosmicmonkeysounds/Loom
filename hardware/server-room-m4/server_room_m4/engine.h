@@ -1,12 +1,15 @@
-// The whole sensor behind three calls: begin(), tick() as often as loop()
-// runs, command() per input line. Pure C++ over dl::Pins, store::Store and a
-// Sink for output lines, so test/test_logic.cpp runs the firmware end to end
-// on a laptop. The sketch only wires the real pins, flash and Serial in.
+// The whole board behind three calls: begin(), tick() as often as loop()
+// runs, command() per input line. The door sensor and (wave 22) the patch
+// bay share the loop: each tick runs whichever of the two is due, and
+// neither blocks. Pure C++ over dl::Pins, pb::Pins, store::Store and a Sink
+// for output lines, so test/test_logic.cpp runs the firmware end to end on a
+// laptop. The sketch only wires the real pins, flash and Serial in.
 #pragma once
 #include <stdint.h>
 
 #include "config.h"
 #include "door_ldr.h"
+#include "patch.h"
 #include "proto.h"
 #include "store.h"
 
@@ -24,13 +27,21 @@ enum Status { kFault, kWaiting, kShut, kOpen };
 class Engine {
  public:
   // `build`: the mode a blank board and `reset` run (config.h LED_MODE; the
-  // tests pass each wiring's).
-  Engine(dl::Pins& pins, store::Store& st, Sink& out, bool sense, dl::Mode build = dl::kBuildMode)
-      : pins_(pins), store_(st), out_(out), sense_(sense), build_(build) {}
+  // tests pass each wiring's). `bay`: the patch bay's inputs, or null for a
+  // board with none (hello / cfg say pbv 0, pbd 0; no `patch` line).
+  Engine(dl::Pins& pins, store::Store& st, Sink& out, bool sense, dl::Mode build = dl::kBuildMode,
+         pb::Pins* bay = nullptr)
+      : pins_(pins), store_(st), out_(out), sense_(sense), build_(build), bay_(pb::kInputs > 0 ? bay : nullptr) {}
 
   void begin(uint32_t now) {
     hasStored_ = store_.load(stored_);
     s_ = hasStored_ ? stored_ : defaults();
+    if (bay_ != nullptr) {
+      hasPStored_ = store_.loadBay(pstored_);
+      ps_ = hasPStored_ ? pstored_ : pb::Settings();
+      scan_.begin(now);
+      plast_ = now;
+    }
     restart(now);
     hello();
   }
@@ -39,6 +50,7 @@ class Engine {
     dl::Frame f;
     if (sampler_.tick(pins_, now, f)) frame(f, now);
     if (seen_ && ready() && (uint32_t)(now - lastLine_) >= REPORT_MS) report(now);
+    if (bay_ != nullptr) bayTick(now);
   }
 
   void command(const char* raw, bool tooLong, uint32_t now) {
@@ -99,6 +111,38 @@ class Engine {
         refOpen_ = refClosed_ = -1;
         restart(now);
         return ok(cmd);
+      case proto::kPbLearn:
+        if (bay_ == nullptr) return err("pb: no bay", cmd);
+        if (learn_.running) return err("pb busy", cmd);
+        if (c.value < 1 || c.value > pb::kSources) return err("bad value", cmd);
+        snprintf(learnCmd_, sizeof learnCmd_, "%s", cmd);
+        learn_.begin((int)c.value, now);
+        return;
+      case proto::kPbGet:
+        if (bay_ == nullptr) return err("pb: no bay", cmd);
+        patchLine(now);
+        return pbcal(0, 0);
+      case proto::kPbSave:
+        if (bay_ == nullptr) return err("pb: no bay", cmd);
+        if (!store_.saveBay(ps_)) return err("flash write failed", cmd);
+        pstored_ = ps_;
+        hasPStored_ = true;
+        return pbcal(0, 0);
+      case proto::kPbReset:
+        if (bay_ == nullptr) return err("pb: no bay", cmd);
+        if (learn_.running) return err("pb busy", cmd);
+        ps_ = pb::Settings();
+        return pbcal(0, 0);
+      case proto::kPbFloor:
+      case proto::kPbTol: {
+        if (bay_ == nullptr) return err("pb: no bay", cmd);
+        if (learn_.running) return err("pb busy", cmd);
+        pb::Settings next = ps_;
+        (c.kind == proto::kPbFloor ? next.floor : next.tol) = (uint16_t)(c.value > 0xFFFF ? 0xFFFF : c.value);
+        if (!pb::valid(next)) return err("out of range", cmd);
+        ps_ = next;
+        return pbcal(0, 0);
+      }
       case proto::kBadValue: return err("bad value", cmd);
       default: return err("unknown command", cmd);
     }
@@ -111,6 +155,9 @@ class Engine {
   }
   dl::Mode mode() const { return mode_; }
   const dl::Settings& settings() const { return s_; }
+  const pb::Settings& baySettings() const { return ps_; }
+  const pb::Scanner& scanner() const { return scan_; }
+  bool learning() const { return learn_.running; }
   bool open() const { return health_.fault() != nullptr || cls_.open; }
   bool calibrating() const { return avg_.running; }
 
@@ -120,6 +167,7 @@ class Engine {
   Sink& out_;
   bool sense_;
   dl::Mode build_;
+  pb::Pins* bay_;
 
   dl::Settings defaults() const {
     dl::Settings d;
@@ -144,6 +192,52 @@ class Engine {
   uint32_t lastLine_ = 0;
   bool sentOpen_ = true;
   const char *sentFault_ = nullptr, *sentWarn_ = nullptr;
+
+  // The patch bay.
+  pb::Settings ps_, pstored_;
+  bool hasPStored_ = false;
+  pb::Scanner scan_;
+  pb::Learner learn_;
+  char learnCmd_[proto::kCmd + 1] = "";
+  unsigned long pseq_ = 0;
+  uint32_t plast_ = 0;
+
+  // A scan when one is due; a `patch` line on every settled change and at
+  // least every PB_REPORT_MS (from the first scan on, settled or not, so ⚙'s
+  // live readings show from boot).
+  void bayTick(uint32_t now) {
+    if (scan_.tick(*bay_, ps_, now)) {
+      switch (learn_.feed(scan_, ps_, now)) {
+        case pb::Learner::kDone:
+          ps_.level[learn_.source - 1] = learn_.mean;
+          pbcal(learn_.source, learn_.mean);
+          break;
+        case pb::Learner::kFailed: err(learn_.error, learnCmd_); break;
+        default: break;
+      }
+      if (scan_.takeChange()) return patchLine(now);
+    }
+    if (scan_.scanned() && (uint32_t)(now - plast_) >= PB_REPORT_MS) patchLine(now);
+  }
+
+  void patchLine(uint32_t now) {
+    plast_ = now;
+    char pairs[64];
+    int count = pb::pairsText(scan_.bay(), pairs, sizeof pairs);
+    pb::Summary sum = pb::summarise(scan_.bay());
+    uint16_t raw[pb::kMaxInputs];
+    for (int i = 0; i < pb::kInputs; i++) raw[i] = scan_.raw(i);
+    char l[proto::kLine];
+    proto::patch(++pseq_, pairs, count, scan_.settled() && sum.complete, raw, scan_.live().src, pb::kInputs,
+                 scan_.stable(), l, sizeof l);
+    out_.line(l);
+  }
+
+  void pbcal(int src, unsigned raw) {
+    char l[proto::kLine];
+    proto::pbcal(src, raw, ps_.level, pb::kSources, ps_.floor, ps_.tol, hasPStored_ && pstored_ == ps_, l, sizeof l);
+    out_.line(l);
+  }
 
   // A new mode or settle: probe if asked, and start sampling afresh (levels
   // in `mod` and `steady` mean different things, so the state is relearnt).
@@ -222,8 +316,9 @@ class Engine {
   }
 
   proto::Info info() const {
+    unsigned pbv = bay_ != nullptr ? (unsigned)pb::kSources : 0u, pbd = bay_ != nullptr ? (unsigned)pb::kInputs : 0u;
     return proto::Info{DOOR_FW, dl::modeName(mode_), s_.mode == dl::kAuto, s_.close, s_.open, s_.settle, s_.cal,
-                       sense_};
+                       sense_, pbv, pbd};
   }
   void hello() {
     char l[proto::kLine];

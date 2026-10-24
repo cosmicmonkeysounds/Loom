@@ -1,13 +1,14 @@
-// Server-room door sensor (Trapped in the Internet, wave 20): an Adafruit
+// The server-room M4 (Trapped in the Internet, waves 20 + 22): an Adafruit
 // Grand Central M4 on Steph's laptop that reads an LED shining on an LDR
-// across the server-room door (lit = shut) and reports the door as JSON
-// lines over USB serial, 115200. The server-room terminal page reads them
-// with Web Serial and posts door_sensor_opened / door_sensor_closed to the
-// event; nothing here talks to the network.
+// across the server-room door (lit = shut) and the patch bay's seven inputs,
+// and reports both as JSON lines over USB serial, 115200. The server-room
+// terminal page reads them with Web Serial and posts door_sensor_opened /
+// door_sensor_closed and patch_changed {combo} to the event; nothing here
+// talks to the network.
 //
 // Wiring, the protocol and calibration on site: ../README.md. The logic lives
-// in the pure headers (door_ldr.h, proto.h, store.h, engine.h), tested on a
-// laptop by ../test/run.sh.
+// in the pure headers (door_ldr.h, patch.h, proto.h, store.h, engine.h),
+// tested on a laptop by ../test/run.sh.
 //
 // Libraries (arduino-cli lib install …): FlashStorage_SAMD, "Adafruit
 // NeoPixel". Board: adafruit:samd:adafruit_grandcentral_m4.
@@ -18,6 +19,7 @@
 #define DOOR_FLASH 1
 #include "store.h"
 #include "door_ldr.h"
+#include "patch.h"
 #include "engine.h"
 #include "proto.h"
 
@@ -28,6 +30,15 @@ struct BoardPins : dl::Pins {
   uint16_t ldr() override { return (uint16_t)analogRead(PIN_DOOR_LDR); }
   uint16_t sense() override { return (uint16_t)analogRead(PIN_DOOR_SENSE); }
   void wait(uint32_t ms) override { delay(ms); }
+};
+
+// The patch bay's inputs, D1 first (config.h PB_PINS).
+struct BayPins : pb::Pins {
+  uint16_t adc(int input) override {
+    static const uint8_t pin[] = PB_PINS;
+    static_assert(sizeof pin / sizeof pin[0] >= (size_t)pb::kInputs, "PB_PINS has a pin per input");
+    return (uint16_t)analogRead(pin[input]);
+  }
 };
 
 struct SerialSink : door::Sink {
@@ -44,9 +55,10 @@ struct SerialSink : door::Sink {
 };
 
 static BoardPins pins;
+static BayPins bay;
 static store::FlashStore flash;
 static SerialSink sink;
-static door::Engine engine(pins, flash, sink, LED_SENSE != 0);
+static door::Engine engine(pins, flash, sink, LED_SENSE != 0, dl::kBuildMode, &bay);
 static proto::LineReader reader;
 static Adafruit_NeoPixel pixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 static door::Status shown = door::kWaiting;
