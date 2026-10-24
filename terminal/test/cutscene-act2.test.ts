@@ -140,6 +140,14 @@ describe("act 2's scenes draw", () => {
     expect(done).toContain("MOST TRUSTED: Winamp");
     expect(done).toContain("LEAST TRUSTED: Notepad");
     expect(done).not.toContain("tv2-chart-row hidden");
+    // Wave 21: the staff ranked beside the programs, tagged, counted apart.
+    expect(done).toMatch(/tv2-chart-row[^"]* staff[^>]*>.*?Clippy.*?🛡 STAFF/su);
+    expect(done.match(/tv2-chart-staff/gu)?.length).toBe(2);
+    expect(done).toContain("12 programs and 2 staff ranked.");
+    const wall = draw(chart, "wall", 5000, stateAt(5000, { chart: fakeChart("trust_chart", 0) }));
+    expect(wall).toMatch(/tv2-chart-row[^"]* staff[^>]*>.*?Norton Anti-Virus.*?🛡 STAFF/su);
+    // An older server (no staff flag): no tag anywhere.
+    expect(draw(chart, "tv", 5000, stateAt(5000, { chart: fakeChart("trust_chart", 0, []) }))).not.toContain("tv2-chart-staff");
     // No chart on the wire: the scene still moves, it never invents rows.
     expect(draw(chart, "tv", 5000, stateAt(5000, { chart: null }))).toContain("Assessments are being finalised");
     q.mockRestore();

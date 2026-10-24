@@ -24,8 +24,16 @@ export interface FakeOpts {
 /** Programs for a fake chart / a fake pick. */
 export const FAKE_PROGRAMS: readonly string[] = ["Winamp", "Excel", "MS Paint", "Minesweeper", "Netscape Navigator", "RealPlayer", "ICQ", "Encarta 95", "SimCity 2000", "Paint Shop Pro", "Solitaire", "Notepad"];
 
-export function fakeChart(slide = "trust_chart", revealAt = 0): ScreenChart {
-  return { slide, rows: FAKE_PROGRAMS.map((name, i) => ({ name, value: 96 - i * 7 })), top: FAKE_PROGRAMS[0]!, bottom: FAKE_PROGRAMS[FAKE_PROGRAMS.length - 1]!, revealAt };
+/** Staff for a fake chart (wave 21): player parts ranked beside the programs. */
+export const FAKE_STAFF: ReadonlyArray<{ name: string; value: number }> = [
+  { name: "Clippy", value: 72 },
+  { name: "Norton Anti-Virus", value: 40 },
+];
+
+/** A fake chart: the programs (96, 89, …) with `staff` rows ranked among them. */
+export function fakeChart(slide = "trust_chart", revealAt = 0, staff: ReadonlyArray<{ name: string; value: number }> = FAKE_STAFF): ScreenChart {
+  const rows = [...FAKE_PROGRAMS.map((name, i) => ({ name, value: 96 - i * 7, staff: false })), ...staff.map((s) => ({ ...s, staff: true }))].sort((a, b) => b.value - a.value);
+  return { slide, rows, top: FAKE_PROGRAMS[0]!, bottom: FAKE_PROGRAMS[FAKE_PROGRAMS.length - 1]!, revealAt };
 }
 
 export function fakeState(o: FakeOpts = {}): ScreenState {
