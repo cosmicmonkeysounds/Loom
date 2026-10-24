@@ -473,3 +473,28 @@ describe("Trapped in the Internet — wave 21: the sign-off sheet", () => {
     for (const id of fresh) expect(sheet, id).toContain(id);
   });
 });
+
+describe("Trapped in the Internet — wave 21: a director's press with no actor (integration)", () => {
+  it("📢 from Run asks who; a shared game button fires as a host and pays no player", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-trapped-w21-actor-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "trapped-in-the-internet", scenarioSource: SRC, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const sim = rt.liveSim!;
+    sim.setVar("Night.truther_sent", "true");
+    const ask = await call(rt, "POST", "/api/mod/signal", { name: "defect_openly" }, { moderator: true });
+    expect(ask.status).toBe(409);
+    expect(ask.json["actors"]).toEqual(expect.arrayContaining(PLAYERS));
+    for (const p of PLAYERS) expect(v(sim, `${p}.defected`)).toBe("none");
+    const one = await call(rt, "POST", "/api/mod/signal", { name: "defect_openly", actor: "Norton Anti-Virus" }, { moderator: true });
+    expect(one.status).toBe(200);
+    expect(v(sim, "Norton Anti-Virus.defected")).toBe("open");
+    expect(v(sim, "Clippy.defected")).toBe("none");
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Winamp", passcode: CODES.event });
+    const gid = g.json["id"] as string;
+    const before = Number(v(sim, "Clippy.score") ?? 0);
+    const shared = await call(rt, "POST", "/api/mod/signal", { name: "bingo_winner", subject: gid }, { moderator: true });
+    expect(shared.status).toBe(200);
+    expect(Number(v(sim, "Clippy.score") ?? 0)).toBe(before);
+  }, SLOW);
+});

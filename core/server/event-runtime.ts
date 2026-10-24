@@ -22,7 +22,7 @@ import { VOICE_MAX_BYTES, kingSignal, validateHouse, voiceOn, type HouseMap, typ
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { allSnapshotFlags, awardOnly, boothChannels, callsCue, playerHiddenRooms, cueState, guestCardView, interactionSubjectOnly, isCaller, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, awardOnly, boothChannels, callsCue, playerHiddenRooms, cueState, guestCardView, interactionActors, interactionSubjectOnly, isCaller, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
@@ -6702,10 +6702,30 @@ export class EventRuntime {
         const args = rawArgs !== null && typeof rawArgs === "object" && !Array.isArray(rawArgs) ? canonicalPlaceArgs(rawArgs as Record<string, unknown>, this.sim.model.locations.values()) : null;
         // Fired *as* a character (the performer-lens interaction path, like
         // `/api/prime/act`): only that character's hooks hear it.
-        const actor = str(body, "actor");
+        let actor = str(body, "actor");
         if (actor !== "" && !this.sim.model.characters.has(actor)) {
           sendJson(res, 404, { error: "unknown character" });
           return true;
+        }
+        // Wave 21: an actorless press of a player's button would run every
+        // player's hooks (📢 would defect them all, a shared game button
+        // would pay a player who never pressed it). Fire it as a non-player
+        // it names (a host: ROLE hooks and rules still hear it), else as
+        // its one player, else ask who presses it.
+        if (actor === "") {
+          const def = [...this.sim.model.interactions.values()].find((i) => foldName(i.id) === foldName(str(body, "name")));
+          const actors = def !== undefined && def.who === "performer" ? (interactionActors(this.sim).get(def.id) ?? []) : [];
+          const isPlayer = (id: string) => this.sim?.model.characters.get(id)?.player === true;
+          const players = actors.filter(isPlayer);
+          if (players.length > 0) {
+            const other = actors.find((id) => !isPlayer(id));
+            if (other !== undefined) actor = other;
+            else if (players.length === 1) actor = players[0]!;
+            else {
+              sendJson(res, 409, { error: `who presses it? fire it as one of: ${players.join(", ")}`, actors: players });
+              return true;
+            }
+          }
         }
         // A mod-token device (a tablet, a terminal — `by` is the generic
         // "Director") names itself in `label` so the journal says which
