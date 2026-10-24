@@ -170,6 +170,11 @@ test("log: the last N lines, filtered; secret values masked", async () => {
   await log(who);
   assert.equal(who.lines.length, 1);
   assert.match(who.lines[0]!, /signal {9}patch_changed for Winamp/u);
+  const json = ctxFor(["log", "--json", "--type", "worldSet"], srv);
+  assert.equal(await log(json), 0);
+  assert.ok(!json.lines.join("\n").includes("V2-D5"), "--json masks the Kernel too");
+  assert.deepEqual(JSON.parse(json.lines[0]!), { seq: 0, type: "worldSet", path: "Kernel.combo_a", value: "•••" });
+  assert.equal(JSON.parse(json.lines[1]!).value, "y2k", "a public value stays");
 });
 
 test("logfmt: secret paths, people matching", () => {

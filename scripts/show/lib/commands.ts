@@ -20,7 +20,7 @@ import { agentChecks, audioCheck, healthCheck, joinBaseCheck, judgeCheck, lights
 import type { ShowClient } from "./client.ts";
 import { ShowError } from "./client.ts";
 import { desktopChecks, macbookChecks, MACHINES, type Machine, type Probe, serverroomChecks, spotFocus, tentChecks } from "./local.ts";
-import { entryMatches, formatEntry } from "./logfmt.ts";
+import { entryMatches, formatEntry, maskEntry } from "./logfmt.ts";
 import type { Check, Level } from "./ui.ts";
 import { ago, clockText, exitCode, mark, maskCode, paint, renderChecks, renderCsv, renderTable, summary, worst } from "./ui.ts";
 
@@ -261,7 +261,8 @@ export async function log(ctx: Ctx): Promise<number> {
     const lines: Array<[number, Json]> = [];
     entries.forEach((e, i) => {
       if (e["type"] === "tick" && !types.includes("tick")) return;
-      if (entryMatches(e, types, who, names)) lines.push([from + i, e]);
+      // Masked before anything prints it, so `--json` is as safe as the text.
+      if (entryMatches(e, types, who, names)) lines.push([from + i, maskEntry(e, secret)]);
     });
     return lines;
   };

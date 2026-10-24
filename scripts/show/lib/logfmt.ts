@@ -19,6 +19,16 @@ export function isSecretPath(path: string, secretHeads: ReadonlySet<string>): bo
   return secretHeads.has(head.toLowerCase()) || SECRET_LEAF.test(path);
 }
 
+/** The entry as it may leave this tool: a secret `worldSet`'s value (and
+ *  its `prev`, when it carries one) replaced by `•••`. Every output — the
+ *  text lines, `--json`, `--follow` — goes through here first. */
+export function maskEntry(e: Json, secretHeads: ReadonlySet<string>): Json {
+  if (e["type"] !== "worldSet" || !isSecretPath(String(e["path"] ?? ""), secretHeads)) return e;
+  const out: Json = { ...e, value: "•••" };
+  if ("prev" in out) out["prev"] = "•••";
+  return out;
+}
+
 /** Who an entry is about: every person / speaker field it carries. */
 export function entryPeople(e: Json): string[] {
   return ["person", "subject", "speaker", "from", "scanner", "by", "to"].map((k) => e[k]).filter((v): v is string => typeof v === "string" && v !== "");
