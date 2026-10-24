@@ -906,7 +906,7 @@ marked program may play.*, and Play here and every headset button are
 disabled. The
 server's 409 for one (a race) reads the same line (`beginErrorText` in
 `program.ts`).
-Provisioning link: `/reinstall/?code=<mod>&name=Tent tablet` (a spare
+Provisioning link: `/reinstall/?code=<mod>&name=Spare tablet` (a spare
 tablet or a headset-only controller since wave 18b: the tent laptop is a
 terminal, below). The scan
 step's **⚙ Setup…** and **🗺 House map** open only after a 2 s hold

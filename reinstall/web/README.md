@@ -88,7 +88,7 @@ it. Send the program to a headset, or use another browser.
 Everything runs in desktop browsers against one event server (a laptop
 with `pnpm dev`, or the VPS):
 
-1. Open `/reinstall/?code=<mod passcode>&name=Tent tablet` in a desktop
+1. Open `/reinstall/?code=<mod passcode>&name=Spare tablet` in a desktop
    browser: that window stands in for the tent laptop (on the night the
    laptop runs `/terminal/?code=<mod>&spot=tent&announce=1`, which mounts
    the same flow). The camera may not start (no

@@ -238,7 +238,7 @@ vr-N` / `install`). Each APK is release-signed with its station baked in
 and talks to the VPS over HTTPS. The acceptance check is
 `scripts/accept/K-30.sh`.
 
-**A demo with no hardware** (a desktop browser as the tent tablet, a phone
+**A demo with no hardware** (a desktop browser as the tent laptop, a phone
 or a second window as the guest, the keyboard to walk) is spelled out in
 [`web/README.md`](./web/README.md) → *A demo with no hardware*. The web
 game's own autopilot (`web/test/autopilot.test.ts`) walks the real physics
