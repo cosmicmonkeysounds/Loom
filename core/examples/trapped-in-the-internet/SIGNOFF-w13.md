@@ -390,5 +390,5 @@ the rest.
 Gone from the tour: *Your card* (the identity card is now Start's banner)
 and *People* (who's here is under Start). Also new on the phone:
 
-- **Leave the event** (Start's last item) asks first: *"Leave the event? This phone stops being {name}."*
+- **Leave the event** (Start's last item) asks first: *"Leave the event? This phone stops being {name}. You stay {name} — to come back, scan your badge or ask a host."*
 - **The full-screen pass** says under the QR: *"Not scanning? Turn your screen brightness up."*
