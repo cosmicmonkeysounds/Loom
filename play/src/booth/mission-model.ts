@@ -234,6 +234,7 @@ export function playerChats(list: readonly Channel[], o: { character: string; no
     else other.push(c);
   }
   if (feed !== null) other.push({ ...feed, title: "📜 Chat log", subtitle: "Everything the house said tonight", people: [], unread: 0, decision: null, needsYou: false });
-  const sections = (Object.keys(out) as ChatSectionId[]).filter((id) => out[id].length > 0).map((id) => ({ id, title: CHAT_SECTION_TITLES[id], channels: out[id] }));
+  const titles: Record<ChatSectionId, string> = { ...CHAT_SECTION_TITLES, team: "TEAM" };
+  const sections = (Object.keys(out) as ChatSectionId[]).filter((id) => out[id].length > 0).map((id) => ({ id, title: titles[id], channels: out[id] }));
   return { sections, other };
 }
