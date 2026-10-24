@@ -81,7 +81,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   tests' prose and commit messages, never write the door code, the
   patch-bay combinations, hunt answers, codex or digit-note unlock
   codes, or a live event's passcodes. `show-page.test.ts` fails if the
-  show page's template names one.
+  generated `SHOW.html` names any secret it reads from `facts.json` or
+  the story.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to
@@ -147,7 +148,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
 ## The show
 
 `examples/trapped-in-the-internet/` holds the story (`main.loom` first,
-then `beats/`, `cast/`, `codex/`, `generated/`), the project files the
+then the other top-level `.loom` files (`rooms`, `quests`, `objectives`,
+`atmosphere`) and `beats/`, `cast/`, `codex/`, `generated/`), the project files the
 server snapshots at launch (`house.json` + `house.shed.json`,
 `facts.json`, `audio.json`, `lights.json`), the agent's persona and mind
 files (`trabolta.persona.md`, `trabolta.mind.md`, runtime inputs for

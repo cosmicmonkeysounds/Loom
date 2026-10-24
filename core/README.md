@@ -104,9 +104,10 @@ an example folder into a server project and reloads its event (see
 live event. Each event is an `EventRuntime` (`server/event-runtime.ts`):
 one `Sim`, its journal, its chat store, its sessions and its streams.
 The `EventRegistry` (`server/registry.ts`) routes `/e/:eventId/*` to the
-right one and rehydrates every non-ended event at boot. With no database
-the process runs one LAN event, `default`, on the show's story, and the
-bare paths (`/api/...`) reach it.
+right one and rehydrates every non-ended event at boot. The process
+always hosts a `default` event on the show's story, reachable at the bare
+paths (`/api/...`) and at `/e/default`; with a database it also hosts
+each project's events beside it.
 
 Transport is Server-Sent Events (push) plus `fetch` POSTs (actions). There
 is no WebSocket, so it works on any phone browser on the wifi.
@@ -236,7 +237,7 @@ into channel-routed messages — the single source of truth the
 - **Process load:** `GET /api/mod/metrics` (moderators) returns the
   server process's cumulative CPU µs, memory, `loadavg` / `cpus`, the
   event-loop delay since the previous read, and the stream-client count
-  (`server/routes/metrics.ts`) — the K-32 load test
+  (`server/routes/metrics.ts`) — the load test
   (`scripts/accept/k32-load.ts`) samples it to record CPU on the VPS.
 - **The director's read:** each roster row also carries the guest's
   story position (`beat`, from `beatEntered.subject` bookkeeping) and
@@ -421,8 +422,9 @@ writer's side.
   character may press it, and the server enforces it.
 - **The facts judge** (`server/facts.ts`). A project's `facts.json`
   holds the hunt questions, their answer key and aliases. It is
-  snapshotted at launch and never reaches the world, the journal, a
-  phone or an agent. Each filing is judged at once (exact match =
+  snapshotted at launch, and the key stays out of the world, the
+  journal, phones and agents until a filing is judged accurate; then only
+  that question's canonical answer rides the journal as `key_answer`. Each filing is judged at once (exact match =
   accurate); in `auto` mode a non-exact filing goes to the story's
   `judge:` character (an agent) when its worker is online, and falls back to its proposal at the
   round's settle. `Night.judge_mode` switches to `review`, where a
@@ -461,7 +463,7 @@ and its geometry are `@loom/house` (`../house`).
 
 - **`SpatialHub`** (`server/spatial.ts`, transport-free, injected clock —
   the `AgentHub` pattern), one per `EventRuntime`: the map (+ its FNV
-  version and source, `event` | `show`), **sessions** (`begin` mints a
+  version and source, `event` | `project` | `show`), **sessions** (`begin` mints a
   secret session token the game uses for its own high-rate calls; a
   `station` parks the assignment until the headset's first pose claims it,
   ending anything else on that station), **stations** (headsets polling
@@ -472,7 +474,7 @@ and its geometry are `@loom/house` (`../house`).
   outcome does — `signal("the simulation completed")` + `signal("the
   golden duck")`, journaled `by` the game's device, and refused (409
   "doors are closed") while the event is paused.
-- **The map** belongs to the project (`server/house-maps.ts`, SW-MAP-01):
+- **The map** belongs to the project (`server/house-maps.ts`):
   `house.json` + any `house.<variant>.json` are project files (not story —
   `projectSource` concatenates `.loom` only), snapshotted at launch like
   `scenario_source` (`event.house_maps` + `spatial-maps.json` in the state
@@ -522,7 +524,7 @@ and its geometry are `@loom/house` (`../house`).
 
 ### The wall terminals' screen state
 
-`server/routes/screen.ts` (built for OCT31 item K-16):
+`server/routes/screen.ts`:
 `GET /e/:id/api/screen/state?name=&spot=&view=&character=` (mod token or
 the author's session) answers ~0.5 KB — `night` (`Night.screen` /
 `Night.terminals`), `cues` (the last `cue screens_*` / `terminals_*` /
@@ -530,7 +532,7 @@ the author's session) answers ~0.5 KB — `night` (`Night.screen` /
 a restart replays to the same answer), `character` (hidden = not
 `reveal`ed to everyone, `awake`, agent `online`), `attract` (hidden or
 asleep), `countdown` / `remaining` (story seconds on the running
-`Night.*_end` timer) and `announce` (N-09: the latest `do announce "…"`, `{seq,
+`Night.*_end` timer) and `announce` (the latest `do announce "…"`, `{seq,
 text, at}` — `at` 0 for replayed history — or null; a terminal set to
 `announce` chimes and says a new one, `terminal/src/announce.ts`).
 Terminals poll it every 2 s instead of the mod feed. Alongside, the
@@ -538,7 +540,7 @@ Terminals poll it every 2 s instead of the mod feed. Alongside, the
 from that guest (no worker request, so no premature hold line); performers'
 `cast:` threads always pass. Tests: `test/screen-state.test.ts`.
 
-It also carries the poller's **screen program** (K-17, N-03):
+It also carries the poller's **screen program**:
 `target` (`tv` for `view=mirror|tv`, else `terminals`; `screens_*` reach
 both, `tv_*` / `terminals_*` one, `tablet_*` neither) and `program` —
 `slide` (the newest slide or base cue: `screensaver` / `attract` /
@@ -551,7 +553,7 @@ when the fold first saw it — 0 for history replayed at a boot/restart, so
 nothing held re-runs. The terminal applies the holds and precedence
 (`terminal/src/slides.ts`).
 
-**The TV room voice** (K-18, N-04b): a poll that adds
+**The TV room voice**: a poll that adds
 `&voice=<LOCATION>&after=<seq>` (the TV, `view=tv`) gets a `voice` block —
 `room` (`loc:<Id>`, "" for an unknown location), `muted`, `head` (the
 newest chat seq) and `lines`: every *character's* `line` in that room
@@ -565,7 +567,7 @@ its next poll — kept in the event's state dir (`screen-voice.json`), so a
 server restart, a redeploy or Go live in place leaves it as it was (the
 boot log says 🔇 when the TV starts muted); a body without `muted` reads
 it. A poll's `room=` resolves against the story's declared LOCATIONs
-before the doors too, so `{id: ""}` means a typo. `GET /e/:id/api/mod/screen/terminals` (K-29, mod token
+before the doors too, so `{id: ""}` means a typo. `GET /e/:id/api/mod/screen/terminals` (mod token
 or author session) is the director's heartbeat list: `{now, terminals:
 [{name, spot, view, character, room?, at, ago}], voiceMuted, silentMs}` —
 `TERMINAL_SILENT_MS` = 20 s — and reading it never records a poll.
@@ -624,7 +626,7 @@ to every entitled guest + every booth, always; a character's own line in
 door alarm, the late list) to that booth, only while the device's last
 flag says hidden. Every push carries a notification (high urgency). A
 story restart unbinds every guest device (the phone re-binds on
-re-join); go-live and releasing a part (N-10) unbind booths. Nothing
+re-join); go-live and releasing a part unbind booths. Nothing
 pushes during journal replay. The play app's `/sw.js` +
 `/manifest.webmanifest` are served `Cache-Control: no-cache` under
 `PLAY_CSP` (`worker-src 'self'`). Tested in `test/push.test.ts`.
@@ -633,7 +635,7 @@ pushes during journal replay. The play app's `/sw.js` +
 
 ```bash
 # everything at once, from the repo root (see scripts/dev.mjs):
-pnpm dev                           # build play + terminal, serve (:7000), editor (:5173)
+pnpm dev                           # build play + terminal + reinstall, serve (:7000), editor (:5173)
 pnpm dev --sync "Untitled Project" # …and push core/examples/trapped-in-the-internet
                                    # into that server project + reload its event
 # or piece by piece:
@@ -726,7 +728,7 @@ Two planes:
   `POST /api/guest/picture {picture?}` lists / switches a signed-in
   guest's. Views carry `avatars` (folded name → key). `LOOM_WIKI=off`
   keeps the server offline (hand-picked pictures still work).
-- **Room check-in by QR** (K-13, `server/routes/k13.ts`): `POST
+- **Room check-in by QR** (`server/routes/k13.ts`): `POST
   /e/:id/api/guest/checkin {at}` folds a sign's slug (`the-start-bar`) onto
   the exact LOCATION and journals `signal("checked_in", guest, {at})` —
   the story's `when checked_in for program:` rule does the move. Refused
@@ -734,7 +736,7 @@ Two planes:
   sealed room, is on rails (a cutscene room, or `uploaded && !cleared`),
   or the room is a prison / cutscene / hidden from them; 429 inside a
   20 s per-guest cooldown. → `{ok, at, channel: "loc:<at>", moved}`.
-- **Lost phones** (N-02 / N-10, `server/routes/n02.ts`): `POST
+- **Lost phones** (`server/routes/n02.ts`): `POST
   /e/:id/api/mod/guest/pair {id, revokeOthers?}` (mod-only) mints a
   **single-use pair code** for an existing Person (ten minutes, in memory,
   cut by every restart; a newer code for the same guest voids the older;
@@ -800,7 +802,7 @@ Everything is optional; the defaults run a LAN event with no setup.
 | `LOOM_WIKI` | on | `off` keeps the program directory offline |
 | `LOOM_TTS_URL` (+ `_API_KEY`, `_MODEL`, `_VOICE`, `_FORMAT`) | off | the opt-in server voice; the terminals use the devices' own voices by default |
 | `LOOM_VAPID_PUBLIC_KEY`, `LOOM_VAPID_PRIVATE_KEY`, `LOOM_VAPID_SUBJECT` | unset (push off) | Web Push; generate once, never rotate before a show |
-| `LOOM_HOMESCREEN` | off | the iPhone Home Screen push path (K-31b) |
+| `LOOM_HOMESCREEN` | off | the iPhone Home Screen push path |
 | `LOOM_SNAPSHOT_MS` | 0 | coalesce guest and booth snapshots (a load contingency) |
 | `LOOM_AGENT_RECENT`, `LOOM_AGENT_DOSSIER` | on | `off` drops the `recent` block / the heart dossier from agent requests |
 | `LOOM_RL_RESOLVE`, `_REGISTER`, `_LOGIN_FAILURES`, `_REDEEM_MISSES`, `_WIDGETS`, `_WALLET`, `_QR` | see `server/rate-limit.ts` | rate limits as `<max>` or `<max>/<seconds>`; raise them for a house behind one public IP |
