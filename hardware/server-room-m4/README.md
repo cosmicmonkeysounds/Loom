@@ -454,3 +454,46 @@ live readings per input, **Learn** per source, **Save** / **Reset**.
 
 The crew check before doors: patch V1 into D1, D2 … D7 in turn and see every
 row read V1; then V2 … V8 into one input.
+
+## What the terminal does with the bay
+
+The server-room terminal page (`terminal/src/serial/patch-bridge.ts`)
+reads the `patch` lines on the same port as the door. When the settled
+bay *becomes* complete with a set of pairs it has not just posted, it posts
+`patch_changed {combo}` (`POST /api/mod/signal`, labelled *Terminal ·
+<name>*). It posts only in the Y2K hour (the story's `night.step >= 14`),
+never after an ending, and never while a director's 🔌 / 💥 / ❌ press has
+put the bay on the buttons (`Night.patch_override`, lifted by 🔌 *Trust
+the patch bay again*). A set completed while that gate is shut is never
+posted later: pull a cable and push it back to play it. The cables already
+in when the port connects are only looked at, so a reboot never re-posts
+them. Neither the board nor the terminal knows which combinations matter:
+the story does.
+
+`&bay=0` on the terminal's link (or ⚙) turns the bay off; a board whose
+`hello` says `pbd 0` has none.
+
+**Heartbeat** (Run → Terminals' 🔌 badge, `pnpm showctl terminals`): `pb`
+is the number of V–D cables in the settled bay, or `fault`; `pbc=1` the
+bay is complete; `pbx` inputs reading between levels; `pft` the fault
+(`no_port`, `stale` with no `patch` line for a while, `dup` a source on two
+inputs).
+
+## Checks
+
+| Check | What |
+|---|---|
+| `hardware/server-room-m4/test/run.sh` | the host tests (807 checks on 2026-10-24); `run.sh compile` builds both firmware variants |
+| `scripts/accept/N-20.sh [port]` | the door sensor on the bench or the real frame (proposes `mode`, `settle`, `close`, `open`) |
+| `scripts/accept/N-21.sh [port]` | the patch bay: learn V1–V8, walk a source through every input, check the tolerance, offer `pb save` |
+| `M4BAY=1 MOD_CODE=… scripts/accept/K-05.sh` | through the story: the terminal posts the bay's combination in the Y2K hour |
+| `pnpm showctl preflight serverroom` | on Steph's laptop: Chrome, the board on USB, the kiosk link pattern; then by hand the door and one cable |
+
+## Steph's laptop on Windows
+
+Nothing here assumes macOS except the examples. On Windows the board is a
+`COMn` port (Device Manager → Ports): `arduino-cli upload -p COM5 …`,
+`scripts/accept/N-21.sh COM5` under Git Bash with pyserial (`py -m pip
+install pyserial`). Web Serial works the same in desktop Chrome or Edge on
+https. The kiosk line for each OS is in
+[`docs/trapped/kiosk.md`](../../docs/trapped/kiosk.md) → *The server room*.

@@ -1,13 +1,18 @@
 # Server-room box (N-08)
 
-> **Not installed for Oct 31** (Q7, the user, 2026-10-23: *"No, just the
-> Grand Central M4"*). The only electronics in the server room is the door
-> sensor's M4 on Steph's laptop ([`hardware/server-room-door/`](../server-room-door)).
-> The code below stays, tested and unflashed, for a later show. Without it:
+> **NOT INSTALLED for Oct 31. Superseded by the M4**
+> ([`hardware/server-room-m4/`](../server-room-m4/README.md)). Q7, the user,
+> 2026-10-23: *"No, just the Grand Central M4"*. The only electronics in the
+> server room is the Grand Central M4 on Steph's laptop. Since wave 22 it
+> reads **both** the door (an LED on an LDR) and a new **15-jack analog
+> patch bay** (8 sources V1–V8, 7 inputs D1–D7), and the server-room
+> terminal page posts `patch_changed {combo}` for the story to judge. This
+> ESP32 box and its 2×12 digital patch-bay scanner are kept below, tested
+> and unflashed, for a later show. On the night, instead of this box:
 >
 > | Job | On the night instead |
 > |---|---|
-> | Patch-bay scan (`sensors/patchbay/state` → `patch_combo_a` / `_b` / `patch_rejected`) | The patch bay is a prop. The Antivirus on the patch-bay watch (`cast-packs/patch-bay-watch.md`) reads the four cables against the card and presses **🔌 `radio_combo_a`**, **💥 `radio_combo_b`** or **❌ `radio_wrong_patch`** on their booth (any program's card; the four room Antivirus and the host parts), or a director fires 🔌 💥 ❌ from Run. Each fires the same story event the scanner's signal did (`main.loom`: `when radio_combo_a: fire patch_combo_a` …), with the same Y2K-hour and after-truth.txt gates; `core/test/trapped-in-the-internet.test.ts` (*the room's own buttons*) presses them end to end. |
+> | Patch-bay scan (`sensors/patchbay/state` → `patch_combo_a` / `_b` / `patch_rejected`) | The M4 reads the bay; the terminal posts `patch_changed {combo}` in the Y2K hour and the story judges it. The Antivirus on the patch-bay watch (`cast-packs/patch-bay-watch.md`) presses **🔌 `radio_combo_a`**, **💥 `radio_combo_b`** or **❌ `radio_wrong_patch`** only when the bay missed; a press puts the bay on the buttons (`Night.patch_override`) until a director fires 🔌 *Trust the patch bay again* (`trust_patch_bay`). |
 > | Local siren + ring strobe (`show/serverroom/alarm`) | The house router's `alarm_siren` sound (Patch Rejected plays `sound alarm_siren`) and the room's RGB bulb (`heart_alarm`, `lights.json`). |
 > | Lock indicator ring (`show/serverroom/lock`) | Nothing. The keypad lock (D17, Q9) keeps the door locked and shows its own state. |
 > | Relay click on a new cable | Nothing. |
@@ -18,11 +23,13 @@
 > `show/serverroom/lock`, harmless) and the patch-bay rules never fire, so
 > nothing misfires and nothing warns. `scripts/accept/N-08.sh` needs the
 > box; `scripts/accept/K-05.sh` runs its combo step through the 🔌 button
-> unless `ESP32=1`.
+> by default, through the M4's bay with `M4BAY=1`, and through this box
+> only with `ESP32=1`.
 
 > **Wave 20: the door moved.** The server-room door is now read by an LED
 > shining on an LDR, on a Grand Central M4 plugged into Steph's laptop
-> ([`hardware/server-room-door/`](../server-room-door)), and the
+> ([`hardware/server-room-m4/`](../server-room-m4/README.md), then named
+> `server-room-door`), and the
 > server-room terminal page posts it to the event over Web Serial. Stagehand
 > no longer listens to `sensors/serverroom/door` (D16): this box's door code
 > stays in the firmware and still publishes, unread, and the copper tape can
