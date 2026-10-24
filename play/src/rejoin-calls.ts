@@ -23,11 +23,10 @@ const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
 /** Thrown with a sentence a guest can read. */
 export class RejoinError extends Error {
-  constructor(
-    message: string,
-    readonly status = 0,
-  ) {
+  readonly status: number;
+  constructor(message: string, status = 0) {
     super(message);
+    this.status = status;
   }
 }
 
