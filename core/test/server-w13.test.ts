@@ -664,14 +664,16 @@ describe("who pressed LAST (CueState.lastName)", () => {
     expect("lastName" in (await cues(rt))).toBe(false);
     expect((await post(rt, "/api/mod/signal", { token: host, name: "open the doors" })).status).toBe(200);
     expect(await cues(rt)).toMatchObject({ last: "open the doors", lastBy: "director", lastName: "Task Manager" });
-    // An author's press names the author (the session's display name).
+    // An author's press: the host panel reads "Director" (2026-10-24: no
+    // booth reads a director's name); the plain mod view names the author.
     expect((await call(rt, "POST", "/api/mod/signal", { name: "open the doors" }, { moderator: true, moderatorName: "Ada" })).status).toBe(200);
-    expect(await cues(rt)).toMatchObject({ lastBy: "director", lastName: "Ada" });
-    // The plain mod view carries it too.
-    expect(((await get(rt, "/api/state?role=mod", true)).json as { cues: Record<string, unknown> }).cues.lastName).toBe("Ada");
+    expect(await cues(rt)).toMatchObject({ lastBy: "director", lastName: "Director" });
+    const modCues = async (r: EventRuntime) => ((await get(r, "/api/state?role=mod", true)).json as { cues: Record<string, unknown> }).cues;
+    expect((await modCues(rt)).lastName).toBe("Ada");
     const rt2 = freshRuntime({}, d);
     rt2.restore();
-    expect(await cues(rt2)).toMatchObject({ last: "open the doors", lastBy: "director", lastName: "Ada" });
+    expect(await cues(rt2)).toMatchObject({ last: "open the doors", lastBy: "director", lastName: "Director" });
+    expect((await modCues(rt2)).lastName).toBe("Ada");
   });
 
   it("pressedByName strips the booth and agent prefixes; a story fire carries no name", async () => {
