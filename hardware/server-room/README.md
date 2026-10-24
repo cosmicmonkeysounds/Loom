@@ -190,8 +190,8 @@ shorted to the shell). It is left out and listed in the diagnostics.
 retained):
 
 ```json
-{"pairs":[["V2","D5"],["V4","D1"],["V6","D8"],["V7","D3"]],
- "combo":"V2-D5,V4-D1,V6-D8,V7-D3","count":4,"complete":true}
+{"pairs":[["V1","D2"],["V3","D1"],["V5","D4"],["V8","D6"]],
+ "combo":"V1-D2,V3-D1,V5-D4,V8-D6","count":4,"complete":true}
 ```
 
 `combo` is canonical: each pair is written in jack order (V before D, then by
@@ -204,9 +204,9 @@ that adds a pair clicks the relay and plays track 2.
 the map with every cord out.
 
 - On a **normalled** bay (top-N ↔ bottom-N with no cord in), the baseline
-  holds those 12 normals. A cord V2→D5 on a bay whose normals **break** when a
-  plug goes in (the usual video bay) removes V2–D2 and V5–D5 and adds V2–D5,
-  so the patch reads exactly `V2-D5`. The broken normals are listed in the
+  holds those 12 normals. A cord V1→D2 on a bay whose normals **break** when a
+  plug goes in (the usual video bay) removes V1–D1 and V2–D2 and adds V1–D2,
+  so the patch reads exactly `V1-D2`. The broken normals are listed in the
   diagnostics.
   - Limit: a cord between a jack and its own partner (V9→D9) is invisible on
     a normalled bay, because it was already connected. None of the combos
