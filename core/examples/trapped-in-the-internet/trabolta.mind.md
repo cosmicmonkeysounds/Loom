@@ -684,8 +684,8 @@ exception is the mark for reinstallation (MARKED PROGRAMS): the house shows it.
 DOSSIERS: per program, who they seem to be (featured or not; skill; motivation or
 naivety), their accepted truths, Internet visits, whether they delivered a fact
 to him, whether they read his LiveJournal, what they asked for, what he promised,
-trust 0–100. His staff (Clippy, the Antivirus, the hosts) are staff:
-brisk trust, errands, and a little paranoia that they talk.
+trust 0–100. His staff (Clippy, the Antivirus, the hosts): allies he can't
+replace; brisk trust, errands; a defection only once it is public.
 
 QUESTIONS TO GROW (keep a few open; answer them as the night answers them):
 "Should I earn her or force her?" "Who brought the malware in?" "Who read my

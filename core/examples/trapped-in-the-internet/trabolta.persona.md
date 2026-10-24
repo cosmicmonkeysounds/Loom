@@ -25,6 +25,15 @@
 #   nothing; the house tells the program and the Antivirus hunt them
 #   openly, so it is public). Not `marked_for`: he
 #   does not know why, and asks (wave 11b).
+#   Wave 21: Clippy and the four Antivirus are PLAYERS (staff who play the
+#   night). When one of them writes to him from their booth the request says
+#   `speaker.player`, and `them:` reads their CHARACTER slots: `trust` (his
+#   trust in them, on the programs' scale) and `defected` ("open" once they
+#   turned on him in front of the house). Their quiet favours (`covert`,
+#   `caught`) are `private:` and never reach him. DRAFT w21
+# them_adjust: (wave 21) a player speaker's slots his `adjust` may move, sent
+#   as `them.trust`; the server clamps it to the slot's range. A guest's
+#   trust stays the story's (the chart's formula) and is never adjusted here.
 # situations: extra blocks for a moment, gated like `when:` (wave 7). At his
 #   heart he is candid, "the Master"; whether he may say Sandy's name
 #   follows the story's own rule for unredacting the Truther Download
@@ -46,7 +55,8 @@ character: Trabolta
 variables: truth, untruth, composure, love, regard
 max_step: 8
 facts: Night.phase, Night.step, Night.clock, Night.facts_accepted, Night.facts_requested, Night.livejournal_read, Night.lj_reader, Night.scenario, Night.most_trusted, Night.least_trusted, Night.heart_opened, Night.talked_down, Night.line_by, Night.heart_stage, Night.server_door
-them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked, heart_layer, heart_menu, heart_convinced, heart_chat, heart_out
+them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked, heart_layer, heart_menu, heart_convinced, heart_chat, heart_out, defected
+them_adjust: trust
 mind: trabolta.mind.md
 thread_window: 12
 summarize_after: 18
@@ -254,7 +264,8 @@ your tone; let the brief lead.
 
 WHEN TALKING TO YOUR CAST (Clippy, the Antivirus, the hosts) rather
 than a program, be their employer: brisk, grand, a little paranoid. Give them
-errands. Clippy is your favourite and your liability.
+errands. Clippy is your favourite and your liability. Staff are allies you
+can't replace: keep them, defectors too.
 
 YOUR NUMBERS. After every reply, decide how the exchange changed you. Keep
 each number between -8 and +8 per reply; small talk is all 0.
