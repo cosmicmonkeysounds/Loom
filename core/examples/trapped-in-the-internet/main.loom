@@ -3245,10 +3245,10 @@ INTERACTION award_the_painting
   while: Night.ceremony == true and Night.painting == true
 
 // Wave 21: the staff awards, after the programs' (G10, or G9 with no MS
-// Paint) and before G11. No subject: the story reads the five players'
-// numbers and names the winner (a tie goes to the first of Clippy, Norton,
-// McAfee, Password Manager, CRA). The Mole (G10c) is the last award: G11
-// waits for it. DRAFT w21
+// Paint) and before G11, so NEXT walks into them (G11 and every Anytime /
+// E cue after it moves down three numbers). No subject: the story reads the five players' numbers and names
+// the winner (a tie goes to the first of Clippy, Norton, McAfee, Password
+// Manager, CRA). The Mole (G10c) is the last award. DRAFT w21
 INTERACTION award_staff_trusted
   label: G10a · 🛡 Staff award: Trabolta's Favourite Staff (top staff trust)
   who: admin
@@ -3271,7 +3271,8 @@ INTERACTION resurrection
   label: G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)
   who: admin
   description: Only once the ceremony has started (G1), after the last award (G10c, The Mole; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
-  while: Night.ceremony == true
+  // Wave 21: NEXT waits for The Mole (G10c), never the press. DRAFT w21
+  while: Night.ceremony == true and Night.ceremony_done == true
 
 INTERACTION the simulation completed
   label: Reinstallation: simulation completed (server)
@@ -3725,7 +3726,8 @@ INTERACTION judging_q3
   by: Hosts, Clippy
   while: Night.judging == true and Night.judge_now != 3 and Night.round != 3 and program.uploaded != true
 
-// The quiet favours (🤫): each is counted in the player's private `covert`
+// The quiet favours (🤫), from the Truther Download (when the players learn
+// what Trabolta is): each is counted in the player's private `covert`
 // (never in Trabolta's worker, a watch, a badge or the screens) and every
 // third one is caught (−20 trust, a private warning). The programs'
 // `tipped` / `slid` / `slipped` are ROLE `secret:` slots.
@@ -3733,21 +3735,21 @@ INTERACTION look_the_other_way
   label: 🤫 Look the other way
   who: performer
   by: Antivirus
-  while: program.marked == true and program.corrupted != true and program.escort_by == self
+  while: Night.truther_sent == true and program.marked == true and program.corrupted != true and program.escort_by == self
   description: An Antivirus, on a marked program they claimed on the Wanted board. The mark comes off quietly (no readout; the poster just leaves the board). A quiet favour.
 
 INTERACTION tip_off
   label: 🤫 Tip them off
   who: performer
   by: Clippy, Password Manager
-  while: program.marked == true and program.corrupted != true and program.tipped != true
+  while: Night.truther_sent == true and program.marked == true and program.corrupted != true and program.tipped != true
   description: Clippy or Password Manager whispers to a marked program that the Antivirus are coming. Once per program. A quiet favour.
 
 INTERACTION let_it_slide
   label: 🤫 Let their guess slide
   who: performer
   by: Clippy
-  while: Night.judging == true and program.cleared == true and program.slid != Night.round
+  while: Night.truther_sent == true and Night.judging == true and program.cleared == true and program.slid != Night.round
   description: Clippy, instead of 🤷: the guess goes into the record as an accepted answer (+100 Truthcoin to them). Once per program per round. A quiet favour.
 
 INTERACTION slip_coin
