@@ -106,8 +106,10 @@ Front of house: getting people in.
   Home Screen switch is on), one **codex poster** per entry with a code
   (title, QR, the typed code), one **room check-in sign** per place a
   guest can check into (see [live shows](live-shows.md)), and one **cast
-  card** per performer part (the performer code's QR: scan, tap 🎭 I'm a
-  Performer, then pick the part). When the project has a `facts.json`, the codex posters come in
+  card** per performer part. Each cast card's QR signs in as its own
+  part: scanning it on any phone takes that part back, even from a lost
+  phone that still holds it (on an older server the QR is the performer
+  code: scan, tap 🎭 I'm a Performer, then pick the part). When the project has a `facts.json`, the codex posters come in
   stack order (gold hunt answers, then green, blue, red), each with a
   coloured band and its pile and hiding place printed underneath, so you
   can deal them straight into the piles. Tick sections, skip single cards,
@@ -122,6 +124,15 @@ Front of house: getting people in.
   an invitee whose invitation is lost, and counts the window down; two
   taps while it is open shut it early. The door code's digit notes print
   on the **silver** stack, title and QR only, never a digit.
+  **Badges** (unticked until you want them) are blank ID badges, 3 × 4
+  inches for a lanyard sleeve, four to a page: the title, a QR, the
+  badge's printed code, a *Program:* line for the guest to write their
+  name on, and a small number (B001…). Pick how many (60 by default)
+  and the first number, then **Load**; to print more later, start from
+  the *next batch* number the toolbar shows so no two badges repeat. A
+  guest scans their badge when they join (or later) to link it; after
+  that it gets them back in on any phone, and it is their pass at the
+  booths. On screen only, a linked badge names its guest.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
 - **Terminals** — every wall terminal and the TV that has checked in,

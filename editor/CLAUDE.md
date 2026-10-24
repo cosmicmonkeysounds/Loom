@@ -160,7 +160,9 @@ World, Director and Mind close under a lens.
   sign-in row per performer part, *New performer + moderator codes*), the
   **🖨 Print sheet** (`run/PrintSheet.tsx` + `lib/print-sheet.ts`: join
   poster, door sign, codex posters by stack, room check-in signs, cast
-  cards, invitations; QRs drawn in the browser), **Directing now**,
+  cards (each QR the part's own `castLinks` sign-in when the server sends
+  them), invitations, and blank ID badges from `/api/mod/badges` (3 × 4 in,
+  4-up, a count + first number to load); QRs drawn in the browser), **Directing now**,
   **Terminals**, **House sound**, **House map** (when the event has a map:
   variants, the shared King, the 💡 lights row), **Wallet** (only with a
   `currency:` story), and **Look up a guest**.

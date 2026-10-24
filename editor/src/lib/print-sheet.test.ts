@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPrintItems, DIGIT_CLUE_STACK, doorWording, isDigitClue, PrintKind, qrSvg, stackInk, stackLine, stackRank, STACK_ORDER, unlockButton, unlockOpenUntil, UnlockPhase, type PrintCodes } from './print-sheet'
+import { BADGE_DEFAULT_COUNT, badgeRange, buildBadgeItems, buildPrintItems, DIGIT_CLUE_STACK, nextBadgeFrom, doorWording, isDigitClue, PrintKind, qrSvg, stackInk, stackLine, stackRank, STACK_ORDER, unlockButton, unlockOpenUntil, UnlockPhase, type PrintBadge, type PrintCodes } from './print-sheet'
 
 const CODES: PrintCodes = {
   eventPass: 'EVT777',
@@ -68,6 +68,34 @@ describe('print sheet', () => {
     expect(cast[0]!.note).toMatch(/never post/)
     // never the moderator code
     expect(items.some((i) => i.code === CODES.modPass || i.url.includes(`code=${CODES.modPass}`))).toBe(false)
+  })
+
+  it('wave 23: with castLinks each cast card\'s QR signs in as its own part, the part code never printed', () => {
+    const items = buildPrintItems({
+      ...CODES,
+      primePass: 'PERF9',
+      cast: ['Clippy', 'Task Manager'],
+      castLinks: [
+        { character: 'Clippy', part: 'pc-clippy', url: 'https://app.example.com/?code=PERF9&part=pc-clippy' },
+        { character: 'Task Manager', part: 'pc-task', url: 'https://app.example.com/?code=PERF9&part=pc-task' },
+      ],
+    })
+    const cast = items.filter((i) => i.kind === PrintKind.Cast)
+    expect(cast.map((i) => [i.ref, i.title, i.code, i.url])).toEqual([
+      ['P01', 'Clippy', 'PERF9', 'https://app.example.com/?code=PERF9&part=pc-clippy'],
+      ['P02', 'Task Manager', 'PERF9', 'https://app.example.com/?code=PERF9&part=pc-task'],
+    ])
+    expect(cast[0]!.hint).toMatch(/sign in as Clippy/)
+    expect(cast[0]!.hint).toMatch(/Lost your phone/)
+    expect(cast[0]!.note).toMatch(/Clippy/)
+    for (const c of cast) expect([c.title, c.hint, c.code, c.note].join(' ')).not.toMatch(/pc-/)
+    // castLinks alone (no `cast`) still prints the cards
+    const only = buildPrintItems({ ...CODES, castLinks: [{ character: 'Clippy', part: 'pc-clippy', url: 'u/clippy' }] }).filter((i) => i.kind === PrintKind.Cast)
+    expect(only.map((i) => [i.title, i.url])).toEqual([['Clippy', 'u/clippy']])
+    // a part missing from castLinks falls back to the passcode link
+    const mixed = buildPrintItems({ ...CODES, primePass: 'PERF9', cast: ['Clippy', 'New Part'], castLinks: [{ character: 'Clippy', part: 'pc-clippy', url: 'u/clippy' }] }).filter((i) => i.kind === PrintKind.Cast)
+    expect(mixed[1]!.url).toBe('https://app.example.com/?code=PERF9')
+    expect(mixed[1]!.hint).toBe('Scan, then pick New Part.')
   })
 
   it('sorts codex posters by stack gold → green → blue → red → unstacked, stable within a stack', () => {
@@ -164,6 +192,44 @@ describe('print sheet', () => {
     expect(svg.startsWith('<svg')).toBe(true)
     expect(svg).toContain('#000000')
     expect(await qrSvg('a')).not.toBe(svg)
+  })
+})
+
+describe('badges (wave 23)', () => {
+  const badge = (n: number, holder: string | null = null, name: string | null = null): PrintBadge => ({
+    n,
+    ref: `B${String(n).padStart(3, '0')}`,
+    code: `CODE-${String(n).padStart(4, '0')}`,
+    url: `https://app.example.com/?code=EVT777&badge=c${n}`,
+    holder,
+    name,
+  })
+
+  it('one badge card per badge: title, QR of its link, the printed code, the ref; who holds it on screen only', () => {
+    const items = buildBadgeItems([badge(1), badge(2, 'g-7', 'Microsoft Excel'), badge(3, 'g-9', null)], 'Trapped in the Internet')
+    expect(items.map((i) => [i.ref, i.kind, i.title, i.code, i.url])).toEqual([
+      ['B001', PrintKind.Badge, 'Trapped in the Internet', 'CODE-0001', 'https://app.example.com/?code=EVT777&badge=c1'],
+      ['B002', PrintKind.Badge, 'Trapped in the Internet', 'CODE-0002', 'https://app.example.com/?code=EVT777&badge=c2'],
+      ['B003', PrintKind.Badge, 'Trapped in the Internet', 'CODE-0003', 'https://app.example.com/?code=EVT777&badge=c3'],
+    ])
+    expect(items[0]!.note).toBeNull()
+    expect(items[1]!.note).toBe('linked to Microsoft Excel')
+    expect(items[2]!.note).toBe('linked to g-9')
+    expect(items[0]!.hint).toMatch(/Scan when you join/)
+    expect(items[0]!.hint).toMatch(/get back in/)
+    expect(buildBadgeItems([], 'x')).toEqual([])
+  })
+
+  it('clamps the asked range like the server and names the next batch', () => {
+    expect(BADGE_DEFAULT_COUNT).toBe(60)
+    expect(badgeRange(1, 60)).toEqual({ from: 1, count: 60 })
+    expect(badgeRange(61.7, 20.2)).toEqual({ from: 61, count: 20 })
+    expect(badgeRange(0, 0)).toEqual({ from: 1, count: 1 })
+    expect(badgeRange(590, 60)).toEqual({ from: 590, count: 11 })
+    expect(badgeRange(Number.NaN, Number.NaN)).toEqual({ from: 1, count: 60 })
+    expect(badgeRange(9999, 5)).toEqual({ from: 600, count: 1 })
+    expect(nextBadgeFrom([badge(61), badge(120), badge(62)])).toBe(121)
+    expect(nextBadgeFrom([])).toBe(1)
   })
 })
 
