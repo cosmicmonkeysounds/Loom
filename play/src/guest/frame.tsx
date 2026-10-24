@@ -109,7 +109,7 @@ export function whereLine(o: { captured: boolean; restricted: boolean; location:
 
 /** The Leave item's question. */
 export function leaveQuestion(name: string): string {
-  return `Leave the event? This phone stops being ${name}.`;
+  return `Leave the event? This phone stops being ${name}. You stay ${name} — to come back, scan your badge or ask a host.`;
 }
 
 /** Will the alerts sheet have anything to say on this phone? */

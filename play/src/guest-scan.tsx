@@ -189,7 +189,7 @@ export function ScanSheet({
     if (busy.current) return;
     if (hit.kind === "note") return setNote(hit.text);
     busy.current = true;
-    setNote(hit.kind === "unlock" ? "🔓 Unlocking…" : hit.kind === "pass" ? "🎟 Reading the pass…" : "📍 Checking in…");
+    setNote(hit.kind === "unlock" ? "🔓 Unlocking…" : hit.kind === "pass" ? "🎟 Reading the pass…" : hit.kind === "badge" ? "🪪 Reading the badge…" : "📍 Checking in…");
     void onScan(hit).then(
       (said) => {
         busy.current = false;

@@ -36,6 +36,13 @@ function Loading() {
   );
 }
 
+/** A stored session as its raw JSON, or null — through the page's store,
+ *  which never throws (a blocked `localStorage` reads as empty). */
+function storedRaw(key: string): string | null {
+  const v = browserHost.storage.load<unknown>(key);
+  return v === null ? null : JSON.stringify(v);
+}
+
 /** A sign-in the page opened with (wave 23): a badge, an invitation, a cast card. */
 type Entry = { kind: "badge"; code: string; badge: string } | { kind: "claim"; code: string; claim: string } | { kind: "part"; code: string; part: string };
 
@@ -57,7 +64,7 @@ function entryFor(card: CardLink | null, search: string, stored: (k: string) => 
 export function App({ resume = null, card = null }: { resume?: ResumeLink | null; card?: CardLink | null }) {
   // `?role=director` (W-26) opens the phone cue sheet whatever else the
   // phone holds; else the stored session.
-  const [role, setRole] = useState<AppRole>(() => initialRole(window.location.search, (k) => localStorage.getItem(k)));
+  const [role, setRole] = useState<AppRole>(() => initialRole(window.location.search, storedRaw));
   const [help, setHelp] = useState(false);
   // A `?code=` link's event, else the one open event: the bare address
   // reads as the show, skinned, before anyone joins.
@@ -75,12 +82,12 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
   // A director's re-pair QR (N-02): trade its code for that guest's session.
   // A phone already signed in as a guest asks first — the link replaces it.
   // A Home Screen icon reopening on its spent nonce (K-31b) is just dropped.
-  const [pending, setPending] = useState<ResumeLink | null>(() => resumeToAdopt(resume, localStorage.getItem("loom.guest"), localStorage.getItem("loom.prime")));
-  const [confirmFor, setConfirmFor] = useState<string | null>(() => (pending === null ? null : storedGuestName(localStorage.getItem("loom.guest"))));
+  const [pending, setPending] = useState<ResumeLink | null>(() => resumeToAdopt(resume, storedRaw("loom.guest"), storedRaw("loom.prime")));
+  const [confirmFor, setConfirmFor] = useState<string | null>(() => (pending === null ? null : storedGuestName(storedRaw("loom.guest"))));
   const [resuming, setResuming] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
   // A badge, an invitation or a cast card (wave 23): sign in by it first.
-  const [first] = useState(() => entryFor(card, window.location.search, (k) => localStorage.getItem(k)));
+  const [first] = useState(() => entryFor(card, window.location.search, storedRaw));
   const [entry, setEntry] = useState<Entry | null>(first.entry);
   const [entryConfirm, setEntryConfirm] = useState<string | null>(first.confirm);
   // A signed-in guest's badge link: the guest app links it (or reads it as a pass).
@@ -94,8 +101,8 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
     if (entry.kind === "part") {
       void enterPart(entry.code, entry.part)
         .then((booth) => {
-          localStorage.removeItem("loom.guest");
-          localStorage.setItem("loom.prime", JSON.stringify(booth));
+          browserHost.storage.drop("loom.guest");
+          browserHost.storage.save("loom.prime", booth);
           setRole("prime");
         })
         .catch((e: unknown) => {
@@ -107,7 +114,7 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
       const by = entry.kind === "badge" ? { badge: entry.badge } : { claim: entry.claim };
       void enterBy(entry.code, by)
         .then((r) => {
-          if (r.kind === "in") localStorage.setItem("loom.guest", JSON.stringify(r.guest));
+          if (r.kind === "in") browserHost.storage.save("loom.guest", r.guest);
           // A blank badge rides into the join and links to the program picked.
           else if (entry.kind === "badge") rememberBadge(browserHost.storage, entry.code, entry.badge);
           setRole("guest");
@@ -131,7 +138,7 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
     setResuming(true);
     void adoptResume(pending)
       .then((guest) => {
-        localStorage.setItem("loom.guest", JSON.stringify(guest));
+        browserHost.storage.save("loom.guest", guest);
         setRole("guest");
       })
       .catch((e: unknown) => setResumeError(e instanceof Error ? e.message : "That re-pair code didn't work."))

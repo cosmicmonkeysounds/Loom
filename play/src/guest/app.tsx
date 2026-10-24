@@ -714,6 +714,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
             nav.setOverlay(null);
             setAlertsOpen(true);
           }}
+          onBadge={() => nav.go({ to: "scan" })}
           onClose={() => nav.setOverlay(null)}
         />
       )}

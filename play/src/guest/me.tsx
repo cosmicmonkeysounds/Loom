@@ -48,6 +48,7 @@ export function MeSheet({
   onPicture,
   onSides,
   onAlerts,
+  onBadge,
   onClose,
 }: {
   view: GuestView;
@@ -62,6 +63,8 @@ export function MeSheet({
   onPicture: () => void;
   onSides: () => void;
   onAlerts: () => void;
+  /** Wave 23: open the scanner to link a printed badge. */
+  onBadge?: () => void;
   onClose: () => void;
 }) {
   const badges = meBadges(view);
@@ -101,6 +104,7 @@ export function MeSheet({
         <button type="button" className="choice me-row" onClick={onPass}>
           <Icon name="pass" /> Show my pass
         </button>
+        <MeBadgeRow badge={view.badge} onBadge={onBadge} />
         <button type="button" className="choice me-row" onClick={onPicture}>
           <Icon name="picture" /> Change my picture <span aria-hidden>›</span>
         </button>
@@ -125,5 +129,25 @@ export function MeSheet({
         )}
       </div>
     </Sheet>
+  );
+}
+
+/** Wave 23: the printed badge — linked (scan it on any phone to get back
+ *  in), or a row that opens the scanner to link it. Nothing from an older
+ *  server (no `badge` field). */
+export function MeBadgeRow({ badge, onBadge }: { badge: number | null | undefined; onBadge: (() => void) | undefined }) {
+  if (badge === undefined) return null;
+  if (badge !== null) {
+    return (
+      <p className="me-none me-badge-linked">
+        🪪 Badge linked. Lost this page? Scan your badge with any phone's camera to get back in.
+      </p>
+    );
+  }
+  if (onBadge === undefined) return null;
+  return (
+    <button type="button" className="choice me-row" onClick={onBadge}>
+      🪪 Link my badge <span aria-hidden>›</span>
+    </button>
   );
 }

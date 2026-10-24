@@ -85,16 +85,42 @@ export interface PlayHost {
 }
 
 function localStore(): SessionStorage {
+  // A full or blocked store (a private window, Safari with every cookie
+  // blocked — where even reading `localStorage` throws) must never break a
+  // sign-in: the page keeps the session in memory until it reloads.
+  const mem = new Map<string, string>();
+  const read = (k: string): string | null => {
+    try {
+      return localStorage.getItem(k) ?? mem.get(k) ?? null;
+    } catch {
+      return mem.get(k) ?? null;
+    }
+  };
   return {
     load<T>(k: string): T | null {
       try {
-        return JSON.parse(localStorage.getItem(k) ?? "null") as T | null;
+        return JSON.parse(read(k) ?? "null") as T | null;
       } catch {
         return null;
       }
     },
-    save: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
-    drop: (k) => localStorage.removeItem(k),
+    save: (k, v) => {
+      const raw = JSON.stringify(v);
+      mem.set(k, raw);
+      try {
+        localStorage.setItem(k, raw);
+      } catch {
+        /* kept in memory */
+      }
+    },
+    drop: (k) => {
+      mem.delete(k);
+      try {
+        localStorage.removeItem(k);
+      } catch {
+        /* fine */
+      }
+    },
   };
 }
 

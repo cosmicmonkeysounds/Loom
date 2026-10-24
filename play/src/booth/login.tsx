@@ -68,6 +68,7 @@ export function PrimeLogin({ session }: { session: PrimeSession }) {
       {cast.length > 0 ? (
         <div className="cast-pick" role="group" aria-label="Who are you tonight?">
           <div className="sheet-h">Who are you tonight?</div>
+          {cast.some((c) => c.claimed) && <p className="pick-hint">Your part shows as taken after a lost phone? Scan your cast card with this phone's camera to take it back.</p>}
           <div className="pick-grid">
             {cast.map((c) => (
               <button
@@ -75,7 +76,7 @@ export function PrimeLogin({ session }: { session: PrimeSession }) {
                 type="button"
                 className={`choice pick ${character === c.name ? "primary" : "ghost"} ${c.claimed ? "claimed" : ""}`}
                 disabled={busy || c.claimed}
-                title={c.claimed ? `${c.name} is taken by another performer` : `Be ${c.name}`}
+                title={c.claimed ? `${c.name} is taken — if it's yours, scan your cast card` : `Be ${c.name}`}
                 onClick={() => void go(c.name)}
               >
                 <PersonAvatar name={c.name} size="lg" kind="character" src={eventId !== null && c.avatar !== null ? avatarUrl(eventId, c.avatar) : null} />

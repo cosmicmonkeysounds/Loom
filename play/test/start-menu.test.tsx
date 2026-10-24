@@ -58,7 +58,7 @@ describe("the Start menu", () => {
   it("Leave confirms first: one tap asks, the second fires", () => {
     const leave = guestStartItems(input()).find((i) => i.id === "leave")!;
     expect(leave).toMatchObject({ danger: true, confirm: leaveQuestion("Winamp") });
-    expect(leaveQuestion("Winamp")).toBe("Leave the event? This phone stops being Winamp.");
+    expect(leaveQuestion("Winamp")).toBe("Leave the event? This phone stops being Winamp. You stay Winamp — to come back, scan your badge or ask a host.");
     expect(startTap(null, leave)).toEqual({ asking: "leave", fire: false });
     expect(startTap("leave", leave)).toEqual({ asking: null, fire: true });
     // Asking about another item doesn't fire this one.
