@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install (or reinstall) the fake Alexa as a LaunchAgent on the house Mac (K-20).
+# Install (or reinstall) the fake Alexa as a LaunchAgent on a Mac (K-20).
 #
 # RETIRED for Trapped in the Internet (wave 18b): the speaker router (the
 # `audio` launchd job) speaks the announcements now, and the two share one
