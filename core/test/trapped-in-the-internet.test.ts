@@ -1325,7 +1325,8 @@ describe("Trapped in the Internet — the whole night", () => {
     const door = sim.signal("server_door_opened");
     expect(beats(door)).toContain("The Heart");
     expect(v(sim, "Night.alarms") ?? 0).toBe(0);
-    expect(lines(sim.signal("patch_rejected"), "Trabolta")).toContain("Stop touching me.");
+    // The bay judges itself (wave 22): a wrong patch, then combo A.
+    expect(lines(sim.signal("patch_changed", undefined, { combo: "V1-D1,V2-D2,V3-D3,V4-D4" }), "Trabolta")).toContain("Stop touching me.");
     const pa = sim.signal("patch_changed", undefined, { combo: v(sim, "Kernel.combo_a") });
     expect(v(sim, "Night.ending")).toBe("disabled");
     expect(v(sim, "Night.ended")).toBe(true);
@@ -1697,7 +1698,9 @@ describe("Trapped in the Internet — the patch-bay alarm (wave 7: the door neve
     expect(v(sim, "Night.alarms")).toBe(0);
     expect(lines(w1, "Trabolta")).toEqual(["Stop touching me."]);
     // The second trips it: whoever is at the cables goes, majority or not.
-    const a1 = fire(sim, "patch_rejected");
+    // (A ❌ press straight after the bay's own rejection is that same patch,
+    // wave 22, so the second comes off the bay too.)
+    const a1 = fire(sim, "patch_changed", null, { combo: "V1-D2" });
     expect(v(sim, "Night.wrong_combos")).toBe(2);
     expect(v(sim, "Night.alarms")).toBe(1);
     expect(v(sim, "Night.alarm_on")).toBe(true);

@@ -3037,7 +3037,7 @@ INTERACTION y2k_clock
   label: 🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)
   who: admin
   act: E · Act III: the Y2K hour and the server room
-  description: Fire only after the patch-bay watch radios IN (inside the server room, door shut). From here the patch bay answers its cables.
+  description: Fire only after the patch-bay watch radios IN (inside the server room, door shut). From here the patch bay judges its own cables (the bay on the server-room terminal posts each full patch); the watch stays inside as the fallback, with the 🔌 💥 ❌ buttons.
   while: Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--"
 
 INTERACTION y2k_midnight
@@ -3055,7 +3055,7 @@ INTERACTION reset_server_room
   label: 🔄 Server room: reset the patch-bay alarm
   who: admin
   sequence: false
-  description: After a rehearsal, or a wrong patch the crew forgave. Clears the wrong-combination count (the patch bay forgives one again), the alarm latch and the door cutscene (the next opening plays The Heart again). Lights stay as they are (💡 restores them). The keypad lock is standalone: nothing in the story locks or unlocks it.
+  description: After a rehearsal, or a wrong patch the crew forgave. Clears the wrong-combination count (the patch bay forgives one again), the alarm latch and the door cutscene (the next opening plays The Heart again). Lights stay as they are (💡 restores them). A patch bay on the buttons stays on them (🔌 Trust the patch bay hands it back). The keypad lock is standalone: nothing in the story locks or unlocks it.
 
 INTERACTION chess_won
   label: ♟ They beat the King: the door code (fallback)
@@ -3082,20 +3082,25 @@ INTERACTION force_their_majority
   sequence: false
   description: Final round only. Fire it naming a member of the faction (any faction: a founded one or a side). Runs the majority exactly once, for that faction.
 
+// DRAFT w22: the patch bay judges itself (the M4 on the server-room
+// terminal), so these three are its fallbacks, like 🚪 is the door's.
 INTERACTION patch_combo_a
   label: 🔌 Patch: Combo A, disable Trabolta (hardware fallback)
   who: admin
   sequence: false
+  description: The patch bay on the server-room terminal judges its own cables. Press it only when Combo A is in and nothing happened (the bay is wrong or in fault: Run → Terminals). In the Y2K hour a press hands the patch bay to the 🔌 💥 ❌ buttons until 🔌 Trust the patch bay.
 
 INTERACTION patch_combo_b
   label: 💥 Patch: Combo B, self-destruct (hardware fallback)
   who: admin
   sequence: false
+  description: The patch bay on the server-room terminal judges its own cables. Press it only when Combo B is in and nothing happened (the bay is wrong or in fault: Run → Terminals). In the Y2K hour a press hands the patch bay to the 🔌 💥 ❌ buttons until 🔌 Trust the patch bay.
 
 INTERACTION patch_rejected
   label: ❌ Patch: wrong combination (hardware fallback)
   who: admin
   sequence: false
+  description: The patch bay on the server-room terminal judges its own cables. Press it only when four cables are in, neither combination, and nothing happened, or a cable runs top-to-top or bottom-to-bottom (the bay can't see those). A press inside a minute of the bay's own rejection is not counted twice. In the Y2K hour a press hands the patch bay to the 🔌 💥 ❌ buttons until 🔌 Trust the patch bay.
 
 INTERACTION talked_down
   label: 🕊 Trabolta stands down (talked down)
@@ -3333,6 +3338,16 @@ INTERACTION heart_autoend
   sequence: false
   description: Off by default (the night truly ends on your 🕊). Off: a program who talks Trabolta down at his heart stands him down, and # hosts asks you to press 🕊 (NEXT on the cue sheet); until you do, 🔄 can reopen his heart. On: the night ends 25 s after his goodbye by itself (🕊 ends it at once). # hosts says which way it is now.
 
+// Wave 22, appended so no cue number moves; it rejoins the server-room act
+// (E) beside 🚪 Trust: handing the cables back to the patch bay. DRAFT w22
+INTERACTION trust_patch_bay
+  label: 🔌 Trust the patch bay again
+  who: admin
+  act: E · Act III: the Y2K hour and the server room
+  sequence: false
+  while: Night.patch_override == true
+  description: After a 🔌 / 💥 / ❌ press in the Y2K hour: hands the cables back to the patch bay on the server-room terminal. The bay judges the next full patch it reports (the same four cables plugged in again never count twice).
+
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
 // `mark as reinstalled`, which work on any program at any time.
@@ -3508,7 +3523,7 @@ INTERACTION radio_combo_a
   by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
-  description: Only once all four cables match Combo A on the patch-bay card. Disables Trabolta.
+  description: Only once all four cables match Combo A on the patch-bay card and nothing happened 5 s after the fourth (the bay judges itself). Disables Trabolta. Hands the patch bay to the buttons until a director trusts it again.
 
 INTERACTION radio_combo_b
   label: 💥 Patch: Combo B is in
@@ -3516,7 +3531,7 @@ INTERACTION radio_combo_b
   by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
-  description: Only once all four cables match Combo B on the patch-bay card. Self-destructs the computer.
+  description: Only once all four cables match Combo B on the patch-bay card and nothing happened 5 s after the fourth (the bay judges itself). Self-destructs the computer. Hands the patch bay to the buttons until a director trusts it again.
 
 INTERACTION radio_wrong_patch
   label: ❌ Patch: wrong combination
@@ -3524,7 +3539,7 @@ INTERACTION radio_wrong_patch
   by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
-  description: Four cables in that are neither combination. The first is forgiven; the second trips the alarm.
+  description: Four cables in that are neither combination and nothing happened 5 s after the fourth, or a cable top-to-top or bottom-to-bottom (the bay can't see those). The first is forgiven; the second trips the alarm. Hands the patch bay to the buttons until a director trusts it again.
 
 INTERACTION radio_door_opened
   label: 🚪 The server-room door opened
@@ -4899,6 +4914,7 @@ when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
 // autoend off) reopens.
 when reset_server_room:
   set Night.wrong_combos = 0
+  set Night.bay_rejected_at = 0
   set Night.alarm_on = false
   set Night.alarm_clear_at = 0
   set Night.heart_opened = false
@@ -5100,19 +5116,79 @@ when door_digit_found for program:
     else:
       update quest The Cold Door for program "{program.door_digits} of 4."
 
-// E3: the patch bay. Today stagehand judges the cables and sends
-// patch_combo_a / patch_combo_b / patch_rejected; once signal args exist
-// it sends patch_changed {combo} and the story judges it here.
+// E3: the patch bay (wave 22). The bay is 15 jacks on the Grand Central
+// M4 beside the door sensor, plugged into Steph's laptop: the server-room
+// terminal reads it over Web Serial and posts `patch_changed {combo}` for
+// each settled, complete patch (exactly four top-to-bottom cables, in the
+// canonical "V2-D5,…" order) that differs from the last one it posted, so
+// the same four cables plugged in again never count twice. The story
+// judges it here, against the Kernel's seeds.
+//
+// Two inputs, one bay (mirroring the door's D19): the bay's
+// `patch_changed`, and the 🔌 💥 ❌ admin cues and the server-room
+// Antivirus' `radio_*` buttons (which fire the admin cues). Both become the
+// story's own `bay_combo_a` / `bay_combo_b` / `bay_rejected`. A press in
+// the Y2K hour puts the bay on the buttons (Night.patch_override) and the
+// bay is ignored until 🔌 Trust the patch bay, so a misreading bay never
+// undoes the watch. A ❌ pressed within a minute of the bay's own
+// rejection is that same patch (the watch pressed anyway): never counted
+// twice, or one wrong patch would trip the alarm. DRAFT w22
 when patch_changed:
   if Night.ended != true and Night.step >= 14:
-    if combo == Kernel.combo_a:
-      fire patch_combo_a
+    if Night.patch_override == true:
+      broadcast "🔌 The patch bay reported a full patch, but the story follows the 🔌 💥 ❌ buttons. Press 🔌 Trust the patch bay to hand it back." to channel(hosts)
+    else if combo == Kernel.combo_a:
+      fire bay_combo_a
     else if combo == Kernel.combo_b:
-      fire patch_combo_b
+      fire bay_combo_b
     else:
-      fire patch_rejected
+      set Night.bay_rejected_at = Time.elapsed
+      fire bay_rejected
+
+// The 🔌 💥 ❌ presses (a director's, or the room Antivirus' radio_*). In
+// the Y2K hour, before the verdict, a press hands the bay to the buttons
+// (one # hosts line the first time); out of turn it only says why, with no
+// story event, so the cue sheet sees the press refused.
+when patch_combo_a:
+  if Night.ended != true and Night.step >= 14:
+    if Night.r3_closed != true:
+      if Night.patch_override != true:
+        broadcast "🔌 The story now follows the 🔌 💥 ❌ patch buttons, not the patch bay. Press 🔌 Trust the patch bay to hand it back." to channel(hosts)
+      set Night.patch_override = true
+    fire bay_combo_a
+  else:
+    broadcast "🔌 Not now: Combo A only counts in the Y2K hour (🕚 first, before any ending). Nothing happens." to channel(hosts)
+
+when patch_combo_b:
+  if Night.ended != true and Night.step >= 14:
+    if Night.r3_closed != true:
+      if Night.patch_override != true:
+        broadcast "🔌 The story now follows the 🔌 💥 ❌ patch buttons, not the patch bay. Press 🔌 Trust the patch bay to hand it back." to channel(hosts)
+      set Night.patch_override = true
+    fire bay_combo_b
+  else:
+    broadcast "💥 Not now: Combo B only counts in the Y2K hour (🕚 first, before any ending). Nothing happens." to channel(hosts)
 
 when patch_rejected:
+  if Night.ended != true and Night.step >= 14:
+    if Night.r3_closed != true:
+      if Night.patch_override != true:
+        broadcast "🔌 The story now follows the 🔌 💥 ❌ patch buttons, not the patch bay. Press 🔌 Trust the patch bay to hand it back." to channel(hosts)
+      set Night.patch_override = true
+    if Night.r3_closed != true and Night.bay_rejected_at > 0 and Time.elapsed < Night.bay_rejected_at + 60:
+      set Night.bay_rejected_at = 0
+      broadcast "❌ The patch bay already counted that wrong combination: this press is not counted again ({Night.wrong_combos} so far). Press ❌ again for a new one." to channel(hosts)
+    else:
+      fire bay_rejected
+  else:
+    broadcast "❌ A wrong patch-bay combination outside the Y2K hour (🕚 first, before any ending): not counted, nothing happens." to channel(hosts)
+
+when trust_patch_bay:
+  set Night.patch_override = false
+  set Night.bay_rejected_at = 0
+  broadcast "🔌 The story follows the patch bay again." to channel(hosts)
+
+when bay_rejected:
   if Night.ended != true and Night.r3_closed == true:
     fire patch_after_verdict
   else if Night.ended != true and Night.step >= 14:
@@ -5121,7 +5197,7 @@ when patch_rejected:
   else:
     broadcast "❌ A wrong patch-bay combination outside the Y2K hour (🕚 first, before any ending): not counted, nothing happens." to channel(hosts)
 
-when patch_combo_a:
+when bay_combo_a:
   if Night.ended != true and Night.r3_closed == true:
     fire patch_after_verdict
   else if Night.ended != true and Night.step >= 14:
@@ -5129,7 +5205,7 @@ when patch_combo_a:
   else:
     broadcast "🔌 Not now: Combo A only counts in the Y2K hour (🕚 first, before any ending). Nothing happens." to channel(hosts)
 
-when patch_combo_b:
+when bay_combo_b:
   if Night.ended != true and Night.r3_closed == true:
     fire patch_after_verdict
   else if Night.ended != true and Night.step >= 14:
@@ -5849,6 +5925,11 @@ set Night.alarm_on = false
 set Night.alarm_clear_at = 0
 set Night.lights_before_alarm = "none"
 set Night.wrong_combos = 0
+// The patch bay (wave 22, E3): on the bay until a 🔌 💥 ❌ press, and when
+// the bay last counted a wrong patch itself (a press right after it is the
+// same patch). DRAFT w22
+set Night.patch_override = false
+set Night.bay_rejected_at = 0
 set Night.heart_opened = false
 set Night.heart_holder = "none"
 // The heart (wave 20): the door, its stages, the talker on the glance.
@@ -5962,9 +6043,10 @@ set Night.lights = "screensaver"
 cue screens_screensaver
 set Night.screen = "screensaver"
 set Night.terminals = "screensaver"
-// The server-room ESP32's ring shows the real door: red = locked, which it
-// always is (a standalone keypad lock the story never drives). Sent on every
-// boot so a story restart puts the ring back; nothing ever sends unlocked.
+// The old server-room ESP32's ring (not installed since wave 20b, Q7: no
+// device hears this today) showed the real door: red = locked, which it
+// always is (a standalone keypad lock the story never drives). Kept, sent on
+// every boot, so the story still never sends unlocked.
 do door server_room, state: locked
 The house boots. A screensaver drifts across the TV above the fireplace. Somewhere a modem is waiting to be asked.
 -> Facts Seed
