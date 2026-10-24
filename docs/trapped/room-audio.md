@@ -1,12 +1,46 @@
-> Design/audit note from the 2026-10-14/15 planning sessions for *Trapped in the Internet* (see [SCHEDULE](../../core/examples/trapped-in-the-internet/SCHEDULE.md) / [CHECKLIST](../../core/examples/trapped-in-the-internet/CHECKLIST.md)). File:line citations are a snapshot of commit `6884a96`–`fba382b` and will drift.
+> **Status (2026-10-24). Read this first.** Sections §0–§10 are the
+> 2026-10-15 design note and are kept as history; §11–§12 describe what is
+> built. What holds today:
 >
-> **Wave 1 status** (merged to master 2026-10-15, not yet deployed to the VPS; [OCT31 §5](../../core/examples/trapped-in-the-internet/OCT31.md)). **The `audio` router module was not built**; QLab stays the room router (OCT31 workaround). The topology is simpler than §1: there is **one house Mac** (the Ollama laptop) — it drives the TV over HDMI, the MOTU (ADAT) speakers and runs Mosquitto / Z2M / stagehand `show` + `agents` + the `alexa` player and Ollama; read "TV computer" and "show laptop" below as that Mac. Built: the TV view (`view=tv`, K-18) speaking Trabolta's lines in The Desktop through `/api/mod/tts` (song beats captioned only, a director mute), the fake Alexa (K-20: chime + voice on MOTU ch 1–4 = living + kitchen, a disk cache + `prewarm:`, `say` as last resort), and Kokoro as a CPU-capped compose service on the VPS (K-19, `KOKORO_CPUS`). Not built: `LOOM_TTS_CACHE_DIR` (the proxy cache is still in memory), `pnpm tts:warm`, the `/media/` route + manifest, the LAN control page.
+> - **The router is built and is the show's only sound player.** Stagehand's
+>   `audio` module plays every story `sound X` and the house announcements
+>   (a chime + the machine's own voice) through the **MOTU 828x + an
+>   8-channel ADAT expander**, from the event's `audio.json` (the map
+>   editor's Audio tab). **QLab is not part of the rig** and the **`alexa`
+>   announcement player is retired** (wave 18b): read every QLab or alexa
+>   line in §0–§10 as history. §4's YAML contract (buses, `sync`,
+>   `exclusive`, `stop_on`, the `:7700` page, the media manifest) was never
+>   built; the speakers and routes are `audio.json`, not YAML.
+> - **There is no single "house Mac" any more, and the "TV computer" of
+>   §0–§10 is not a Mac.** The rig is split: **John's Desktop (Windows)**
+>   is the TV computer: it drives the living-room TV over HDMI
+>   (Chrome kiosk, `view=tv`; Chrome plays to Windows' default output, most
+>   simply HDMI to the TV's own speakers), and runs Mosquitto, Zigbee2MQTT and the
+>   stagehand `show` + `lights` jobs. **John's MacBook (macOS)** runs Ollama
+>   and Trabolta's `agents` worker.
+> - **Where the MOTU lives — two options.** *Default:* the 828x is cabled to
+>   the **MacBook**, which runs the router (`stagehand/trapped.macbook.yaml`,
+>   launchd) and dials the Desktop's broker on `:1884`
+>   ([`scripts/house-macbook/audio.md`](../../scripts/house-macbook/audio.md)).
+>   *Alternative:* the 828x moves to the **Desktop**, once it is proven
+>   there through MOTU's Windows driver and ASIO (`host_api: asio`, the SAPI
+>   voice, `stagehand tasks install --job audio`;
+>   [`scripts/house-desktop/README.md`](../../scripts/house-desktop/README.md)
+>   §7). Only one machine runs the router.
+> - **Announcements cross machines**: the server's feed → the Desktop's
+>   `show` job → MQTT `show/announce` → the router. With the Desktop's
+>   broker or `show` job down, nothing is spoken (the tent's
+>   `&announce=1` terminal still says them). Story sounds go from the
+>   server's feed to the router directly.
+> - **Voices are the devices' own** (since wave 2): the terminals and the TV
+>   use `speechSynthesis` / Fully Kiosk TTS; the router uses macOS `say`
+>   (Samantha) or Windows SAPI (Microsoft Zira Desktop). Kokoro is an opt-in
+>   behind the compose `tts` profile (`LOOM_TTS_URL` defaults to `off`);
+>   the TTS plans below (`LOOM_TTS_CACHE_DIR`, `tts:warm`, SW-AUD-08) are
+>   not needed.
 >
-> **Superseded 2026-10-15 (Oct 31 wave 2):** the voices are the **devices' own** — the terminals' and the TV's `speechSynthesis` / Fully Kiosk TTS / the macOS voices, and the alexa player's `say` (`engine: say`). Kokoro is an opt-in behind the compose `tts` profile, `LOOM_TTS_URL` defaults to `off`; the TTS plans below (`LOOM_TTS_CACHE_DIR`, `tts:warm`, SW-AUD-08) are not needed for the show. Terminals with `&announce=1` also say the house announcements (N-09).
-
-> **Wave 17 status (2026-10-20, branch `oct31-w17/router`, not merged or deployed):** **the `audio` router module is built** (SW-AUD-01's core, SW-AUD-05's announcements, SW-AUD-07's health, HW-AUD-10's walk as the map editor's Test buttons). It is **off** until a show switches it on, and what it reads changed from §4: the speakers, zones, the interface's input→output matrix and the per-sound targets are the event's project file **`audio.json`** (the map editor's Audio panel, `@loom/house` `validateAudio`, `GET /api/mod/audio`), not YAML, and rooms are **`house.json` room ids / LOCATIONs**, not the Z2M group names. §11 below is the built contract; §4's YAML (buses, `sync`, `exclusive`, `stop_on`, `show/audio/cmd`, the `:7700` page, the media manifest) is **not** built.
-
-> **Wave 18b status (2026-10-21, branch `oct31-w18/audio`, not merged or deployed): the router is the show's.** The user's answers: the router plays **story sounds and house announcements**, the separate announcement player (stagehand `alexa`) retires, labelled placeholder sounds are generated for every story cue, and **QLab is not part of the rig** (it is struck everywhere below: read every "QLab" in §0–§10 as history). The interface is a **MOTU 828x + an ADAT expander**. `trapped.house.yaml`'s `audio:` section is on (`play_sounds`, `announce`, `passthrough: false`); its 19 OSC sound rules, the OSC target and `duck_music` are gone, and so is `alexa:`. New: `device.expect`, the placeholders, ■ Stop house sounds, and the tablets that also say the announcements as a house list. §11 is updated and §12 is what wave 18b added. The house Mac runbook is [`scripts/house-macbook/audio.md`](../../scripts/house-macbook/audio.md).
+> File:line citations in §0–§10 are a snapshot of commit `6884a96`–`fba382b`
+> and have drifted.
 
 # Audio + TV architecture (Trapped in the Internet)
 
@@ -21,7 +55,8 @@ Installation Wizard = pre-recorded video), #23/#31 (tent really outside, shed fa
 Built on `screens.md` (§3.4 TTS, §5.5 media, §6 templates), a research
 report; the shipped audio path is `scripts/house-macbook/audio.md` (the house
 speaker router, wave 18b; it replaced the alexa announcement player) and
-`docs/loom-show-control.md`. Not re-derived here.*
+`docs/loom-show-control.md`. Not re-derived here. (History: the status
+banner above says what changed since.)*
 
 ---
 
@@ -500,14 +535,15 @@ stream, a fake server).
 
 ### 11.1 Two files, two owners
 
-| | `audio.json` (the event's project file) | `audio:` (the house Mac's YAML) |
+| | `audio.json` (the event's project file) | `audio:` (the router machine's YAML) |
 |---|---|---|
-| Says | the device (name substring, channels used — the show's 828x: 24 in / 22 out — rate, `expect`), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to` / `announce.terminals`, `voice.tv` | what this Mac may do: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`, `duck_db`), `say_voice`, `chime`, an optional broker |
-| Edited in | the map editor's Audio panel (a director save in the event state dir beats the project copy; `LOOM_AUDIO` is the LAN fallback) | the file, then `stagehand launchd restart --job audio` |
+| Says | the device (name substring, channels used — the show's 828x: 24 in / 22 out — rate, `expect`), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to` / `announce.terminals`, `voice.tv` | what the router may do on its machine: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`, `duck_db`), `say_voice`, `chime`, an optional broker |
+| Edited in | the map editor's Audio panel (a director save in the event state dir beats the project copy; `LOOM_AUDIO` is the LAN fallback) | `trapped.house.yaml` (shared) + the machine file (`trapped.macbook.yaml` / `trapped.desktop.yaml`), then restart the `audio` job (`stagehand launchd restart --job audio` on the MacBook, `stagehand tasks restart --job audio` on the Desktop) |
 | Reaches the router | a long-poll, `GET /api/mod/audio?router=1&name=<host>&after=<version>&tests=<seq>&stops=<seq>&wait=25` (returns at once on a new version, a pending speaker test or a stop; `router=1` is what the editor's router badge reads) | at boot |
 
 The router keeps the last `audio.json` and `house.json` it saw in
-`cache_dir` (`~/Library/Caches/stagehand-audio`), so a boot with the house
+`cache_dir` (`~/Library/Caches/stagehand-audio` on a Mac,
+`%LOCALAPPDATA%\stagehand\audio` on Windows), so a boot with the house
 internet down still routes; failing that, `config_file` / `house_file`. A
 server with no `/api/mod/audio` (an older release) is logged once.
 
@@ -597,21 +633,26 @@ warned about.
   own `--only show` job too, which is why `audio:` lives in
   `trapped.house.yaml`. The `announce_chime` MQTT rule stays.
 - `announce: true`: the router plays `do announce` — the chime, then the
-  line rendered by the Mac's `say` — through the `alexa` module's own
+  line rendered by the machine's voice (macOS `say`, Windows SAPI) — through the `alexa` module's own
   `Announcer` (the 10 s chime merge, `say -a <device>` as the fallback) on
   `audio.json` `announce.to`. With `mqtt:` it takes `show/announce` /
   `show/chime` (the show's existing rules); without, the feed's `announce`
-  directive and `sound announce_chime`; never both. An `alexa:` section beside
+  directive and `sound announce_chime`; never both. The show's router has
+  `mqtt:` (on the MacBook, the Desktop's broker at `:1884`), so the
+  Desktop's `show` job is the announcements' only path. An `alexa:` section beside
   `announce: true` is a config error, and the router takes the alexa
   player's `player.lock` before it speaks: while a player (a leftover
   launchd agent) holds it, only the announcements wait — dropped, never
   queued for later, `announce: blocked` in the health JSON — and every
   sound, the matrix and the tests play from the start; the router retries
   the lock every 5 s.
-- Trabolta's TV voice still comes from Chrome on the TV. Since wave 18b
-  the house Mac's default output should be HDMI (the TV), not the 828x's
-  Analog 1–2; `audio.json` `voice.tv` documents where it should also reach;
-  build that fan-out in CueMix FX.
+- Trabolta's TV voice comes from Chrome on the TV computer, John's Desktop,
+  out of its HDMI to the TV's own speakers. It reaches the 828x only if the
+  router (and the 828x) moves to the Desktop and the TV voice is fed into
+  an 828x input; `audio.json` `voice.tv` documents where it should then
+  reach (build that fan-out in CueMix FX). The router machine's own default
+  output must never be the 828x's Analog 1–2 (the living room): on the
+  MacBook keep the internal speakers the default.
 
 ### 11.5 Speaker tests and health
 
@@ -627,12 +668,13 @@ warned about.
   `router {online, lastSeen, name}` (online while it is parked on a long
   poll or polled in the last 40 s). The Audio tab shows *router online* /
   *router last seen …*, and a Test sent while nobody listens says it was
-  only queued: check the `audio` job on the house Mac.
+  only queued: check the `audio` job on the router's machine (the MacBook
+  by default).
 - `stagehand check --only audio` probes the device against the cached /
   local `audio.json` (channel counts, and `device.expect`: §12.1), lists cue
   sounds with no file and every placeholder still in `sounds_dir` (§12.2), and
   names every file in `sounds_dir` not at the device rate (convert those
-  offline; they still play, resampled at load). On a fresh house Mac with
+  offline; they still play, resampled at load). On a fresh machine with
   nothing cached it asks the server once (3 s, no long poll) and checks
   against that, the story's own sound names included; a server it can't
   reach is a warning, never a failed check.
@@ -641,24 +683,27 @@ warned about.
   `on` / `blocked`), sounds with no file (the JSON adds `reinits`);
   with `mqtt:` the same JSON retained on `health/audio/stats`, `online` /
   `lost` on `health/audio`.
-- Its own launchd job: `stagehand launchd install --job audio --config
-  trapped.house.yaml`.
+- Its own job: `stagehand launchd install --job audio --config
+  trapped.macbook.yaml` on the MacBook (or `stagehand tasks install --job
+  audio --config trapped.desktop.yaml` on the Desktop).
 
 ### 11.6 Switching it on (the show)
 
-Done in the YAML since wave 18b. On the house Mac (the full runbook is
+Done in the YAML since wave 18b. On the MacBook (the full runbook is
 `scripts/house-macbook/audio.md`): retire alexa (`install-alexa.sh
---uninstall`), `stagehand sounds placeholders`, `stagehand check --only
-audio`, `launchd install --job audio`, `launchd restart --job show`, then
-Test each speaker in the map editor (the walk).
+--uninstall`), `stagehand sounds placeholders`, `stagehand check --config
+trapped.macbook.yaml --only audio`, `launchd install --job audio --config
+trapped.macbook.yaml`, restart the Desktop's `show` job, then Test each
+speaker in the map editor (the walk). On the Desktop instead: the Desktop
+README's §7.
 
 ### 11.7 Not checked on hardware
 
 Nothing here has run on the 828x. Open: whether the unit presents 32 in /
 30 out to CoreAudio at 48 kHz with the expander on Optical A (and whether
 its CoreAudio name contains `828x`); Thunderbolt + Reduced Security + the
-MOTU kext on the house Mac; sharing the device with Chrome in CoreAudio's
-shared mode (make HDMI the default output); the right `blocksize` /
+MOTU kext on the MacBook; on the Desktop option, MOTU's Windows driver and
+its ASIO name and channel order; the right `blocksize` /
 `latency` for no xruns with Ollama loading the CPU; the limiter's levels on
 real speakers; `say` render time before an announcement (≈ 0.3–1 s,
 covered by the chime). `passthrough: false` sidesteps the microphone
@@ -717,7 +762,7 @@ stop [--announce]`.
 
 ### 12.4 By hand over MQTT
 
-`show/audio/play {"name", "to"?}` plays one sound (QLab's old hand GO;
+`show/audio/play {"name", "to"?}` plays one sound (what QLab's hand GO used to be;
 `stagehand sounds play <name> [--to T,T…]`, `--to` repeatable). `stagehand announce` publishes
 `{text, chime}` on the router's `show/announce` once the YAML has no
 `alexa:` section. All of them exit 2 with the reason when the YAML has no
