@@ -1498,3 +1498,9 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 .setup .door-setup { border: 1px solid var(--phosphor-faint); padding: 0.4em 0.7em 0.6em; margin: 0.6em 0; display: grid; gap: 0.4em; }
 .setup .door-setup legend { padding: 0 0.3em; color: var(--phosphor-dim); }
 .setup .door-setup-row { display: flex; flex-wrap: wrap; gap: 0.5em; }
+/* ⚙'s patch bay readings (wave 22, `heart/PatchSetup.tsx`). */
+.setup .patch-table { border-collapse: collapse; width: 100%; max-width: 32em; }
+.setup .patch-table th, .setup .patch-table td { text-align: left; padding: 0.1em 0.6em 0.1em 0; font-variant-numeric: tabular-nums; }
+.setup .patch-table th { color: var(--phosphor-dim); font-weight: normal; }
+.setup .patch-table tr.warn td { color: var(--danger); }
+.setup .patch-table tr.muted td { color: var(--phosphor-dim); }

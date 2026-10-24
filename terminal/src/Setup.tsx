@@ -16,6 +16,7 @@ import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromCho
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
 import { micBox, voiceRoles } from "./voice/roles.ts";
 import { DoorSetup } from "./heart/DoorSetup.tsx";
+import { PatchSetup } from "./heart/PatchSetup.tsx";
 import { voiceStatus, voiceStatusText } from "./voice/status.ts";
 import { fetchCharacters } from "./pilot.ts";
 import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, deviceEnv, pickDeviceEngine, unlock, voiceEngines, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
@@ -100,6 +101,7 @@ export function Setup({
   const [fullscreen, setFullscreen] = useState(current?.fullscreen ?? true);
   const [door, setDoor] = useState<DoorConfig>(current?.door ?? "off");
   const [keys, setKeys] = useState(current?.keys ?? true);
+  const [bay, setBay] = useState(current?.bay ?? true);
   // A manual screen type / room ("" = the map's). A terminal not set up from
   // the map shows what it had; that applies to a tap on its own spot only
   // (another terminal takes the map's) unless changed here.
@@ -184,7 +186,7 @@ export function Setup({
       const base: TerminalConfig = sameEvent ? { ...current, token: access.token, title: access.title || current.title } : defaultConfig({ ...access, character: pickCharacter(null, cast) });
       const kept = await savedCharacter(character, base.character, async () => cast);
       const voiceFields = mic === undefined ? { voices: voicesOn } : { voices: voicesOn, mic };
-      const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, door, keys, serverVoice: serverVoice.trim(), browserVoice, speed }, pick);
+      const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, door, keys, bay, serverVoice: serverVoice.trim(), browserVoice, speed }, pick);
       if (mic === undefined) delete picked.mic;
       const next = picked;
       const own = manualTouched || (current !== null && current.spot === pick.spot);
@@ -402,6 +404,7 @@ export function Setup({
                 full screen <span className="muted">(asked again on every tap; off for a laptop that needs Esc)</span>
               </label>
               <DoorSetup door={door} onDoor={setDoor} keys={keys} onKeys={setKeys} saved={current?.door ?? null} />
+              {door !== "off" && <PatchSetup bay={bay} onBay={setBay} running={current !== null && current.door !== "off" && current.door === door && current.bay === bay} />}
               {current !== null && feedWanted(current) && <div className={`small ${feed.kind === "stopped" ? "warn" : "muted"}`}>{feedStatusText(feed)}</div>}
               {current !== null && (voiceRoles(current).mic || voiceRoles(current).voices) && <div className={`small ${voice.link === "stopped" || voice.mic === "denied" || voice.mic === "insecure" ? "warn" : "muted"}`}>{voice.link === "off" ? "voice link: starts once this terminal is set up" : `before ⚙ opened — ${voiceStatusText(voice)}`}</div>}
               <label>
