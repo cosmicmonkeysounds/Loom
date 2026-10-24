@@ -11,8 +11,8 @@ describe one "house Mac" that did everything. That house Mac was John's
 MacBook (the 48 GB Ollama laptop). Its jobs are now split: the MacBook keeps
 Trabolta and (by default) the sound router, and John's Windows Desktop takes
 the broker, Zigbee2MQTT, `show`, `lights` and the TV. The MacBook's old
-`show` / `lights` jobs, Mosquitto and Zigbee2MQTT must be retired once the
-Desktop runs them (`SHOWNIGHT.md` §1 step 10).
+`show` / `lights` jobs, Mosquitto and Zigbee2MQTT are retired before the
+sync, as the Desktop takes them over (`SHOWNIGHT.md` §1 steps 5–7).
 
 Never write a code in this file or any doc: not the moderator, performer or
 guest passcodes, the keypad code, the patch-bay combinations, the answer keys

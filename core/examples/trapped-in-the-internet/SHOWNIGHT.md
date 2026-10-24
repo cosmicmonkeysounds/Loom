@@ -49,71 +49,91 @@ already includes wave 19). Master holds wave 18b Stage B and waves 20, 20b,
    `ssh loom-vps 'cd ~/loom && deploy/release.sh --check-env'` and
    `curl https://app.mapsandducks.com/api/health` → 200. Rollback:
    `ssh loom-vps 'cd ~/loom && deploy/rollback.sh'`.
-5. **Desktop, before the sync:** put the event id and the mod passcode in
-   `stagehand\trapped.house.local.yaml` (git-ignored; the tracked file says
-   `CHANGE-ME`), `git pull`, then restart the `show` task
-   (`.\scripts\house-desktop\start-stagehand.ps1 -Restart show`), so no old
-   door rule posts into the new story.
-6. **Sync the story, with its reload, before doors:**
+5. **MacBook, before the sync: retire the old house-Mac jobs.** The MacBook
+   *is* the old house Mac, so it may still run the `show` and `lights` jobs
+   from `trapped.house.yaml`, and its own Mosquitto and Zigbee2MQTT. Two
+   `show` jobs fire every cue twice, and an old door rule would post into
+   the new story. `git pull`, then:
+
+   ```bash
+   cd stagehand
+   uv run stagehand launchd uninstall --job show
+   uv run stagehand launchd uninstall --job lights      # if installed
+   brew services stop mosquitto
+   launchctl bootout gui/$(id -u)/com.mapsandducks.zigbee2mqtt   # zigbee.md §4
+   ```
+
+   Then move the CC2652P (and
+   Zigbee2MQTT's `data/`) to the Desktop. `uv run stagehand launchd status`
+   then shows `show` and `lights` not installed.
+6. **Desktop, first time only** (`scripts/house-desktop/README.md`): from an
+   elevated PowerShell, `.\scripts\house-desktop\setup-mosquitto.ps1` (it
+   asks for the `props` password; add `-SetPrivate` if the network is
+   Public). Then `.\scripts\house-desktop\zigbee2mqtt.ps1 -Ports`, copy the
+   MacBook's `data\` to `C:\zigbee2mqtt\data\` and set its `serial.port` to
+   the stick's `COMn` (on a first install only, with no `data\` to copy:
+   `-WriteConfig -Port COMn`), `-Start` once, elevated `-InstallTask`, then
+   `-Check`. The TV: `.\scripts\house-desktop\tv-kiosk.ps1 -Setup`, then
+   `-InstallTask`.
+7. **Desktop, before the sync:** put the real event id and the mod passcode
+   in `stagehand\trapped.house.local.yaml` (git-ignored; the tracked file
+   says `CHANGE-ME`), `git pull`, then
+   `.\scripts\house-desktop\start-stagehand.ps1` (checks, installs and
+   starts the `show` and `lights` tasks; on a rig that already has them,
+   `-Restart show`), so no old door rule posts into the new story.
+8. **Sync the story, with its reload, before doors.** First merge any
+   speaker survey saved to the project into the repo's `audio.json` (the
+   replace below overwrites the project's copy). Then
    `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show --replace-audio`.
-   Add `--replace-lights` if the project already holds a `lights.json`, and
-   `--replace-maps` only if the summary says the project's maps differ from
-   the repo's (the maps have not changed since `w18b-1021`). Never
-   `--no-reload` for these waves: the composition changed. Merge any speaker
-   survey saved to the project into the repo's `audio.json` first.
-7. **Restart every other non-ended event** (Run → Restart or Push draft).
-8. **MacBook, Trabolta:** `git pull`;
-   `cd stagehand && uv run stagehand launchd restart --job agents`; then
-   Run → Mind → **Reset**. `uv run stagehand check --config laptop.yaml --only agents`
-   shows `ctx 20480` and no warning.
-9. **MacBook, the sound router** (the default home; see `TECH.md` for the
-   Desktop option): retire the old `alexa` job if it was ever installed
-   (`scripts/house-macbook/install-alexa.sh --uninstall`). Give the MacBook
-   its own secrets: `stagehand/trapped.house.local.yaml` with
-   `server: { event, mod_passcode }` (the router reads `server:` from it;
-   without it the router dials `CHANGE-ME` and never hears a story
-   `sound X`), and `stagehand/trapped.macbook.local.yaml` with
-   `server: {}` plus `audio: { mqtt: { password: "<the props password>" } }`
-   (a `.local.yaml` with no `server:` mapping fails to load). Then
-   `uv run stagehand sounds placeholders`;
-   `uv run stagehand check --config trapped.macbook.yaml --only audio`
-   (32 in / 30 out, the layout not moved);
-   `uv run stagehand launchd install --job audio --config trapped.macbook.yaml`.
-10. **MacBook, retire the old house-Mac jobs.** The MacBook *is* the old
-    house Mac, so it may still run the `show` and `lights` jobs from
-    `trapped.house.yaml`, and its own Mosquitto and Zigbee2MQTT. Two `show`
-    jobs fire every cue twice. Once the Desktop's tasks are up and the
-    CC2652P has moved: `uv run stagehand launchd uninstall --job show` and
-    `uv run stagehand launchd uninstall --job lights` (if installed), stop
-    the MacBook's local Mosquitto (`brew services stop mosquitto`) and its
-    Zigbee2MQTT LaunchAgent (`launchctl unload
-    ~/Library/LaunchAgents/com.mapsandducks.zigbee2mqtt.plist`; see
-    `scripts/house-macbook/zigbee.md` §4), then `uv run stagehand launchd status` must list only
-    `agents` and `audio`.
-11. **Desktop, the lights:** Zigbee2MQTT on the CC2652P (keep any existing
-    `data\`), `.\scripts\house-desktop\start-stagehand.ps1` (installs and
-    starts the `show` and `lights` tasks; the lights job must run before
-    pairing), then pair the bulb as `server_room_rgb` with
-    `power_on_behavior: on`, place it on the map editor's 💡 Lights tab,
-    💡 Identify, ▶ Test each look, Save to project.
-12. **Steph's laptop:** flash the wave 22 firmware from
+   Add `--replace-lights` if the project already holds a `lights.json`. The
+   maps are unchanged since `w18b-1021`, so no `--replace-maps`; if the
+   summary says the project's maps differ, run it again with
+   `--replace-maps` (a second reload, fine before doors). Never
+   `--no-reload` for these waves: the composition changed.
+9. **Restart every other non-ended event** (Run → Restart or Push draft).
+10. **MacBook, Trabolta:** `cd stagehand && uv run stagehand launchd restart --job agents`;
+    then Run → Mind → **Reset**. `uv run stagehand check --config laptop.yaml --only agents`
+    shows `ctx 20480` and no warning.
+11. **MacBook, the sound router** (the default home; see `TECH.md` for the
+    Desktop option): retire the old `alexa` job if it was ever installed
+    (`scripts/house-macbook/install-alexa.sh --uninstall`). Give the MacBook
+    its own secrets: `stagehand/trapped.house.local.yaml` with
+    `server: { event, mod_passcode }` (the router reads `server:` from it;
+    without it the router dials `CHANGE-ME` and never hears a story
+    `sound X`), and `stagehand/trapped.macbook.local.yaml` with
+    `server: {}` plus `audio: { mqtt: { password: "<the props password>" } }`
+    (a `.local.yaml` with no `server:` mapping fails to load;
+    `trapped.macbook.yaml` already dials the Desktop's broker on 1884). Then
+    `uv run stagehand sounds placeholders --config trapped.macbook.yaml`;
+    `uv run stagehand check --config trapped.macbook.yaml --only audio`
+    (32 in / 30 out, the layout not moved);
+    `uv run stagehand launchd install --job audio --config trapped.macbook.yaml`.
+    `uv run stagehand launchd status` then lists only `agents` and `audio`.
+12. **Desktop, the lights:** with Zigbee2MQTT up on the CC2652P and the
+    `lights` task running (it must run before pairing), pair the bulb as
+    `server_room_rgb` with `power_on_behavior: on`
+    (`scripts/house-macbook/zigbee.md` from §5), place it on the map
+    editor's 💡 Lights tab, 💡 Identify, ▶ Test each look, Save to project.
+    `uv run stagehand check --config trapped.desktop.yaml --only lights` is
+    green.
+13. **Steph's laptop:** flash the wave 22 firmware from
     `hardware/server-room-m4` (door + patch bay; `LED_STEADY` while the LED
     is on 5V); `scripts/accept/N-20.sh` (the door) and `N-21.sh` (the bay:
     learns V1–V8, then `pb save`); open the terminal once without
     `--kiosk`, grant the camera and the port, **calibrate the door in ⚙**
     (always after a reflash), check the patch bay's live table, relaunch in
     kiosk.
-13. **Reload every terminal, the TV and the tent laptop.** Touch each tablet
+14. **Reload every terminal, the TV and the tent laptop.** Touch each tablet
     once (its 🎤 must not read *tap*).
-14. **Quest:** `reinstall/vr/tools/quest.sh build`, then `install`; allow
+15. **Quest:** `reinstall/vr/tools/quest.sh build`, then `install`; allow
     the microphone in the lobby.
-15. **The keypad:** set by hand to `facts.json` `door.code`; test from
+16. **The keypad:** set by hand to `facts.json` `door.code`; test from
     outside with the code and from inside with the handle and no code.
-16. **Door test:** a real open → shut → open shows 🚪 on Run → Terminals
+17. **Door test:** a real open → shut → open shows 🚪 on Run → Terminals
     within a second, with no fault and no *override*; then 🔄
     `reset_server_room` (and 🚪 *Trust the door sensor again* if anyone
     pressed a 🚪).
-17. **Reprints after the sign-off:** Clippy, the director and
+18. **Reprints after the sign-off:** Clippy, the director and
     second-director packs, the four Antivirus, the hosts, all-crew, the
     patch-bay watch card, the emergency card, Excel's and OpenOffice's
     sheets, every featured card, the Bingo card, and Combo A's two codex
@@ -130,7 +150,11 @@ cannot take it back.
    at `/reinstall/map` (*Map: Tent | Shed*, signed in with the mod code).
 2. **⏸ Pause** the preview (Run, or a host's More → Night →
    *⏸ Pause the show*).
-3. Sync (`pnpm sync-show`, as in §1 step 6), then **Push draft**.
+3. A **plain** sync, with no `--replace-*`:
+   `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show`.
+   By now the project holds the bulb's placement, the tested looks and any
+   speaker survey; `--replace-lights`, `--replace-audio` or `--replace-maps`
+   would overwrite them with the repo's copies. Then **Push draft**.
 4. Scan the door QR from a phone **on cellular**.
 5. **Go live in place**, before anyone registers. The codes stay the printed
    ones.
@@ -155,7 +179,7 @@ Each one wipes every guest.
 | 15:00 | Tech op | Boot every machine (below); `pnpm showctl doctor` green; the keypad test (outside with the code, inside with the handle and no code); one announcement through the router; a 🔈 Test per speaker at show level |
 | 17:00 | Performers + house manager | Booths signed in (after Go live) with the performer code; push subscribed; a test `!` alert reaches every performer phone; walk the stations. Loaner phones (2–3), the charging station, power banks, radios with earpieces |
 | 18:00 | Door host + house manager | Porch: candy bowl and sign, the Optical Drive dim (not dark) until doors. Pre-show checklist signed. Safety re-check |
-| 19:00 | Everyone | Food and a 15-minute briefing: the blackout rule, the call words (incl. ALL STOP and ARRIVAL), the emergency card, never restart. Tech op on the MacBook: `scripts/ops/showbackup.sh install` |
+| 19:00 | Everyone | Food and a 15-minute briefing: the blackout rule, the call words (incl. ALL STOP and ARRIVAL), the emergency card, never restart. Tech op on the MacBook: `scripts/ops/showbackup.sh install`, then `status` once an act |
 | 19:45 | Everyone | Places. Lights to screensaver. Run → Director: 🕊 Heart autoend off, 🔄 and 🕊 on the sheet, the TV voice not muted |
 | 19:00 or 20:00 | Director | **Doors** (§5) |
 | by 21:00 | Director | **C1** 📣, the first cue |
@@ -187,18 +211,27 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 - Ollama with `OLLAMA_KEEP_ALIVE=-1`; `ollama ps` shows `gpt-oss:20b` alone
   (warm it: `ollama run gpt-oss:20b hi`).
 - `cd stagehand && uv run stagehand launchd status`: `agents` and `audio`
-  running.
+  running; `show` and `lights` not installed (they run on the Desktop).
 - Run → Mind: worker connected, a *mind · story* chip, Reset; the Judging
   card reads `auto` with nothing pending; Trabolta hidden and asleep.
 - Run → House map: the King's row reads 15 / 15 (👑 or Set… only on purpose).
-- The MOTU powered and seen; `check --only audio` shows no placeholder left.
+- Run → Wallet names CRA Agent Software as the approver and Runescape as
+  the minter; `# quarantine` is empty.
+- The MOTU powered and seen;
+  `uv run stagehand check --config trapped.macbook.yaml --only audio` shows
+  32 / 30 with no placeholder left.
 
 **John's Desktop** (the TV, the broker, the lights)
 
 - Power on and let it sign in: Mosquitto (a service), Zigbee2MQTT (a boot
   task), `show` + `lights` (sign-in tasks) and the TV kiosk start by
   themselves.
-- `.\scripts\house-desktop\preflight.ps1` passes.
+- `.\scripts\house-desktop\preflight.ps1` passes (it ends with `showctl
+  preflight desktop`).
+- The Mosquitto service runs on 1883 (loopback) and 1884 (password);
+  Zigbee2MQTT is online with the bulb in its device list.
+- The `show` and `lights` tasks run
+  (`.\scripts\house-desktop\start-stagehand.ps1 -Status`).
 - The TV kiosk on spot `desktop-tv`, **clicked once after its last boot**
   (or it stays silent), showing the screensaver; notifications off.
 - The bulb answers 💡 Identify and sits on `heart_idle`.
@@ -235,7 +268,7 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 **Pre-show checklist** (the director ticks it; `scripts/ops/checklist.sh` prints it):
 
 1. Deploy: the pinned `show-1031` images run; the previous image is still on the VPS; the warm standby exists (stopped); the uptime alert on `https://app.mapsandducks.com/api/health` reaches the tech op and the second director; this sheet printed with `scripts/ops/checklist.sh --probe` heads with a ✔ health line (a ⚠ line is fixed before doors).
-2. The morning reset is done: paused first, then sync, Push draft, the door QR scanned on cellular, Go live in place, before any registration; Run → World shows `Kernel.door_code` not yet set; the codes are the printed ones.
+2. The morning reset is done: paused first, then a plain sync (no replace flags), Push draft, the door QR scanned on cellular, Go live in place, before any registration; Run → World shows `Kernel.door_code` not yet set; the codes are the printed ones.
 3. The map page's *Map:* bar shows Tent or Shed (the 10:00 call) as `● live`, and its status line reads "the project's map".
 4. Every machine's preflight is green: `pnpm showctl preflight macbook`, `desktop` (via `preflight.ps1`), `serverroom` and `tent`; `pnpm showctl doctor` shows no red.
 5. Trabolta: the worker connected (a *mind · story* chip), the mind Reset, `ollama ps` shows `gpt-oss:20b` alone, the MacBook on its charger; `uv run stagehand check --config laptop.yaml --only agents` shows `ctx 20480` and no warning; he is hidden and asleep.
