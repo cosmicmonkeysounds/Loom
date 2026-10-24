@@ -1,11 +1,13 @@
-//! Clippy's 🎤 ON MIC bar (wave 18, BOOTH-SPEC §4.9, B6, Q2): the
-//! super-performer calls its own games. In `.booth-dock`, only when the view
-//! carries `PrimeView.calls`: a yellow band while one of its cues is live
-//! (ARM → FIRE, the shared desk: 300 ms dead, 4 s window), a grey one while
-//! it waits ("🎤 next for you" + the soonest countdown), the sheet's NEXT
-//! and who is calling on line 2. ▴ opens *Your cues (n)*. Fires go through
-//! `POST /api/prime/cue` (the cue sheet's path: 409 `moved` / `doorsClosed`,
-//! `refused`). Clippy is never asked *Fire anyway?* on its own cues.
+//! The 🎤 ON MIC bar (wave 18, BOOTH-SPEC §4.9; generic since wave 21, D5):
+//! a caller booth calls its own cues (an admin cue whose `by:` names its
+//! character). In `.booth-dock`, only when the view carries
+//! `PrimeView.calls` and the booth is not a player (a player never calls
+//! cues). A yellow band while one of its cues is live (ARM → FIRE, the
+//! shared desk: 300 ms dead, 4 s window), a grey one while it waits ("🎤
+//! next for you" + the soonest countdown), the sheet's NEXT and who is
+//! calling on line 2. ▴ opens *Your cues (n)*. Fires go through `POST
+//! /api/prime/cue` (the cue sheet's path: 409 `moved` / `doorsClosed`,
+//! `refused`). A caller is never asked *Fire anyway?* on its own cues.
 
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { cueActs, cueTitleTags, type CueMarks, type CueRow } from "../../../core/src/cue-sheet.ts";
@@ -14,23 +16,23 @@ import { ArmDrain, CueActList, CuePicker, fireCue, sheetLayout, soonestCountdown
 import { formatLeft } from "../clock.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { CountdownSummary } from "../types.ts";
-import { callsOf, type CallsView } from "./wire.ts";
+import { callsOf, isPlayer, type CallsView } from "./wire.ts";
 
-/** The cue that is Clippy's to call now: only its own row that is the
+/** The cue that is this booth's to call now: only its own row that is the
  *  sheet's NEXT (and live). Never just any live row (BN-F1: cues with no
  *  `while:` are live all night, fired or not, out of order). */
 export function yourCue(rows: readonly CueRow[], next: string | null = null): CueRow | null {
   return rows.find((r) => r.live && (r.next || (next !== null && r.id === next))) ?? null;
 }
 
-/** The next of Clippy's cues while none is its to call: the first in
+/** The next of this booth's cues while none is its to call: the first in
  *  running order not yet fired (the sequence's first; else an off-sequence one). */
 export function nextForYou(rows: readonly CueRow[]): CueRow | null {
   return rows.find((r) => !r.fired && r.sequence !== false) ?? rows.find((r) => !r.fired) ?? null;
 }
 
 /**
- * Does a running countdown belong to the cue Clippy waits on? Only when
+ * Does a running countdown belong to the cue the booth waits on? Only when
  * that cue is in the act the night is in now (BN2-FE: during the summons
  * the band read "🍎 Bobbing for Truth ⏳ 5:00", acts away): the sheet has
  * no other link between a cue and a clock.
@@ -40,12 +42,12 @@ export function waitsInThisAct(waiting: CueRow | null, nightAct: { code: string 
   return cueActs([waiting])[0]?.code === nightAct.code;
 }
 
-/** The marks Clippy's desk binds an arm to. */
+/** The marks the caller's desk binds an arm to. */
 export function callMarks(calls: CallsView): CueMarks {
   return { last: calls.last, fired: calls.rows.filter((r) => r.fired).map((r) => r.id), presses: calls.presses, ...(calls.lastName !== null ? { lastName: calls.lastName } : {}) };
 }
 
-/** Line 2's sheet NEXT: "the same" when it is Clippy's own, else its title (a row of Clippy's) or its id. */
+/** Line 2's sheet NEXT: "the same" when it is the booth's own, else its title (a row of its own) or its id. */
 export function sheetNext(calls: CallsView, mine: CueRow | null): string | null {
   if (calls.next === null) return null;
   if (mine !== null && calls.next === mine.id) return "the same";
@@ -62,7 +64,7 @@ export function callerChip(calls: CallsView, me: string): string | null {
 }
 
 /** The desk's fire over `/api/prime/cue`. */
-export function clippyFire(session: Pick<PrimeSession, "cue">, onFired?: (at: number) => void): DeskFire {
+export function boothCueFire(session: Pick<PrimeSession, "cue">, onFired?: (at: number) => void): DeskFire {
   return async (id, subject, value, presses) => {
     const post: FirePost = async (body) => {
       try {
@@ -82,7 +84,7 @@ export function clippyFire(session: Pick<PrimeSession, "cue">, onFired?: (at: nu
   };
 }
 
-export interface ClippyCueBarProps {
+export interface CueBarProps {
   session: PrimeSession;
   /** Story ms now (the waiting countdown). */
   now: number | null;
@@ -93,18 +95,19 @@ export interface ClippyCueBarProps {
   armRef?: MutableRefObject<((id: string) => void) | null>;
 }
 
-export function ClippyCueBar(p: ClippyCueBarProps) {
+export function CueBar(p: CueBarProps) {
   const calls = callsOf(p.session.view);
-  if (calls === null) return null;
+  // Wave 21 (D5): a player never calls cues, whatever an older server sends.
+  if (calls === null || isPlayer(p.session.view)) return null;
   return <CueBarOn {...p} calls={calls} />;
 }
 
-function CueBarOn({ session, calls, now, countdowns, onFired, armRef }: ClippyCueBarProps & { calls: CallsView }) {
+function CueBarOn({ session, calls, now, countdowns, onFired, armRef }: CueBarProps & { calls: CallsView }) {
   const me = session.auth?.character ?? "";
   const rows = calls.rows;
   const fired = useRef(onFired);
   fired.current = onFired;
-  const desk = useCueDesk(rows, callMarks(calls), session.view?.guests, clippyFire(session, (at) => fired.current?.(at)));
+  const desk = useCueDesk(rows, callMarks(calls), session.view?.guests, boothCueFire(session, (at) => fired.current?.(at)));
   const [open, setOpen] = useState(false);
   const mine = yourCue(rows, calls.next);
   useEffect(() => {
@@ -125,7 +128,7 @@ function CueBarOn({ session, calls, now, countdowns, onFired, armRef }: ClippyCu
   const armedHere = mine !== null && desk.armed?.id === mine.id;
   const sending = mine !== null && desk.pending === mine.id;
   return (
-    <div className={`cue-bar ${mine !== null ? "live" : "waiting"} ${armedHere ? "armed" : ""}`} data-testid="clippy-cue-bar">
+    <div className={`cue-bar ${mine !== null ? "live" : "waiting"} ${armedHere ? "armed" : ""}`} data-testid="cue-bar">
       {open && (
         <div className="cue-bar-drawer w95-window" role="dialog" aria-label="Your cues">
           <div className="w95-titlebar">

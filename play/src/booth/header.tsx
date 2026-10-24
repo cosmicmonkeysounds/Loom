@@ -69,6 +69,38 @@ export function boothStartItems({
   return items;
 }
 
+/**
+ * A player's Start menu (wave 21, P4): Help, Keep my screen on, Get alerts,
+ * 👥 People, Sign out (confirmed). No moderator powers and no "What X
+ * knows" — Mission's Codex tile is the character's knowledge.
+ */
+export function playerStartItems({
+  character,
+  wake,
+  embedded,
+  onHelp,
+  onSheet,
+  onPeople,
+  onSignOut,
+}: {
+  character: string;
+  wake: Pick<WakeLock, "supported" | "on" | "toggle">;
+  embedded: boolean;
+  onHelp: () => void;
+  onSheet: (s: BoothSheet) => void;
+  onPeople: () => void;
+  onSignOut: () => void;
+}): StartItem[] {
+  const items: StartItem[] = [{ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp }];
+  if (!embedded && wake.supported) {
+    items.push({ id: "wake", icon: <Icon name={wake.on ? "screen-on" : "screen-off"} />, label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });
+  }
+  if (!embedded) items.push({ id: "alerts", icon: <Icon name="bell" />, label: "Get alerts", onClick: () => onSheet("alerts") });
+  items.push({ id: "people", icon: <Icon name="people" />, label: "People", onClick: onPeople });
+  items.push({ id: "signout", icon: <Icon name="leave" />, label: "Sign out", danger: true, confirm: `Sign out of ${character}? The part is freed for another phone.`, onClick: onSignOut });
+  return items;
+}
+
 /** "Add moderator powers": the mod passcode upgrades this booth's token. */
 export function PowersSheet({ session, onClose }: { session: PrimeSession; onClose: () => void }) {
   const [pass, setPass] = useState("");

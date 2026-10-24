@@ -2,7 +2,7 @@
 //! rule is pinned by a test. A pop-out here is a *draft*: its buttons name
 //! what they do (`BoothDo`) and `use-booth-popouts.ts` binds them to the
 //! session. Which programs are wanted, who is at the door, the objective's
-//! target or picker, Clippy's cue: all read off the booth's view.
+//! target or picker, a caller's cue: all read off the booth's view.
 
 import { destructive, armsFirst } from "../model.ts";
 import type { ChatMessage, CountdownSummary, Interaction } from "../../types.ts";
@@ -22,8 +22,10 @@ export type BoothDo =
   /** The door claim (A4), then the scanner. */
   | { kind: "claimDoor"; guest: string; name: string }
   | { kind: "pick"; objective: string }
-  /** Arm Clippy's cue on the bar. */
+  /** Arm the caller's cue on the bar. */
   | { kind: "cue"; id: string }
+  /** Wave 21 (P5): open the player's Mission window. */
+  | { kind: "mission" }
   /** Later, as a button ("Not yet"). */
   | { kind: "later" }
   | { kind: "ok" };
@@ -382,6 +384,13 @@ export function reconcilePopOuts(held: readonly HeldPopOut[], ctx: ReconcileCtx)
       else if (h.restored === true) rebind.push({ ...base(s), actions: [{ id: "open", label: "🛡 Open the confrontation", kind: "primary", do: { kind: "card", guest: id, confront: "rescan" } }] });
       continue;
     }
+    if (k.startsWith("mission:")) {
+      // Wave 21 (P5): moot once its objective has ended; a restored one gets its Go back.
+      const id = k.slice("mission:".length);
+      if (!ctx.objectives.some((o) => o.id === id)) retire.push(k);
+      else if (h.restored === true) rebind.push({ ...base(s), actions: [{ id: "go", label: "▣ Go", kind: "primary", do: { kind: "mission" } }] });
+      continue;
+    }
     if (k.startsWith("cue:")) {
       const rest = k.slice(4);
       const at = rest.lastIndexOf(":");
@@ -531,8 +540,10 @@ export function stepWord(first: Pick<WizardStep, "label"> | undefined): string {
 }
 
 /** What one PLAYER SELECT / Rows press came to, for the reply line. */
-export function replyLine(name: string, r: { replies?: readonly string[]; said?: ReadonlyArray<{ text: string }>; staff?: readonly string[]; toGuest?: readonly string[]; refused?: boolean } | null): string {
+export function replyLine(name: string, r: { replies?: readonly string[]; said?: ReadonlyArray<{ text: string }>; staff?: readonly string[]; toGuest?: readonly string[]; refused?: boolean } | null, opts: { player?: boolean } = {}): string {
   if (r === null) return "";
+  // Wave 21 (D4): a player never reads the staff room's reason.
+  if (r.refused === true && opts.player === true) return "Not now.";
   if (r.refused === true) return `Not done: ${(r.staff ?? []).find((s) => s.trim() !== "") ?? "the story took no action on this right now."}`;
   // What the guest's phone got first (BN-F13), then the booth character's own words to them.
   const said = (r.toGuest ?? []).map((t) => t.trim()).find((t) => t !== "") ?? (r.said ?? []).map((l) => l.text.trim()).find((t) => t !== "") ?? (r.replies ?? []).map((t) => t.trim()).find((t) => t !== "");
@@ -643,7 +654,7 @@ export function doorSpec(queue: readonly DoorEntry[], step: number | null | unde
   };
 }
 
-// --- Clippy's cue (§4.9) ----------------------------------------------------------
+// --- a caller's cue (§4.9) ----------------------------------------------------------
 
 /** The countdown that ended within the last two minutes, if any ("Bingo time is up"). */
 function justEnded(countdowns: readonly CountdownSummary[] | undefined, now: number): string | null {
@@ -680,7 +691,7 @@ export function rememberCountdowns(memo: Map<string, CountdownMemo>, current: re
   return [...memo.values()].filter((m) => m.goneAt === null || m.goneAt / 1000 >= m.c.endsAt - 15).map((m) => m.c);
 }
 
-/** *Call it?* for each of Clippy's cues that just turned live (not live at the last look). */
+/** *Call it?* for each of the caller's cues that just turned live (not live at the last look). */
 export function cueSpecs(calls: CallsView, prevLive: ReadonlySet<string> | null, now: number, countdowns?: readonly CountdownSummary[]): Draft[] {
   if (prevLive === null) return [];
   const ended = justEnded(countdowns, now);
@@ -723,7 +734,7 @@ export function countdownRunning(countdowns: readonly CountdownSummary[] | undef
 }
 
 /**
- * *Call it?* when a countdown just ended and Clippy's own cue is the
+ * *Call it?* when a countdown just ended and the caller's own cue is the
  * sheet's NEXT (BN-F3: Bingo time is live from the doors, so no live flip
  * ever raised it): "Bingo ends is up. Call it?". Its rev names the
  * countdown, so it shows again after a *Not yet* on an earlier one.

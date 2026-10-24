@@ -3,19 +3,27 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: performer, booth, pop-out, popout, later, waiting, wanted, wanted board, claim, i'll get them, hand it back, take over, confrontation, corruption detected, captured, caught by, door queue, at the door, player select, tiles, picker, still missing, they're here, cue bar, your cue, call it, clippy, chat log, chats, now, objective, checklist, to-do, tick, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, next guest, readout, readouts, admin, moderator, capture, hide, guest card, card, face, all buttons, not on offer, facts, guests, messages, who's here, restricted, marked, pinned, pin, quest log, codex, wallet, approve, deny, audit, approval, transfer, arm, tap twice, tap again to fire, near miss, not your button, start, taskbar, balloon, sticky
+keywords: performer, booth, player, players, mission, score, points, stat, notes, team, people, new mission, your game is on, pop-out, popout, later, waiting, wanted, wanted board, claim, i'll get them, hand it back, take over, confrontation, corruption detected, captured, caught by, door queue, at the door, player select, tiles, picker, still missing, they're here, cue bar, your cue, call it, clippy, chat log, chats, now, objective, checklist, to-do, tick, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, next guest, readout, readouts, admin, moderator, capture, hide, guest card, card, face, all buttons, not on offer, facts, guests, messages, who's here, restricted, marked, pinned, pin, quest log, codex, wallet, approve, deny, audit, approval, transfer, arm, tap twice, tap again to fire, near miss, not your button, start, taskbar, balloon, sticky
 ---
 
 The performer station is the same app, recomposed for the booth: your
 character is the mask, the guest in front of you is one scan away, and
 the story tells you what this part of the night needs from you.
 
-The booth's frame, top to bottom: the **NOW card** (your current
-objective), your rooms, and the **taskbar**: **⊞ Start**, **📷 Scan**
-(the biggest button), **🗂 Guests**, and the tray (the act, the soonest
-countdown, a red **🚨 003** counter while programs are wanted, and **🔔 n**
-for pop-outs waiting on you). A host's booth also has a NEXT bar above the
-taskbar ([The host console](hosts.md)); Clippy's has a **🎤 cue bar** (below).
+There are three kinds of part. A **player** (at *Trapped in the
+Internet*: Clippy and the four Antivirus) plays the night like a guest
+does, with a **Mission** home and a score: see **Playing a part**
+just below. A **host** (Task Manager, Adobe Acrobat, the Recycling Bin)
+runs the night from the host console ([The host console](hosts.md)).
+Any other part is a plain performer.
+
+A host's or a plain performer's booth, top to bottom: the **NOW card**
+(your current objective), your rooms, and the **taskbar**: **⊞ Start**,
+**📷 Scan** (the biggest button), **🗂 Guests**, and the tray (the act,
+the soonest countdown, a red **🚨 003** counter while programs are wanted,
+and **🔔 n** for pop-outs waiting on you). A host's booth also has a NEXT
+bar above the taskbar; a story may give a plain performer cues of its own
+to call on a **🎤 cue bar** (below).
 
 Since wave 18 you **scan much less**. What needs you **pops out** over your
 rooms with a picture, a name, where they are and the buttons you need: a
@@ -44,6 +52,41 @@ went live) — sign in again with your passcode."* A phone that wakes late
 in the night gets back every readout, every guest's message, your cast
 thread and every card still waiting; only the busy rooms are cut to
 their last few hundred lines.
+
+## Playing a part
+
+A player's booth looks like a guest's phone. Across the top, the title
+bar reads **▣ MISSION** (or your objective, when you are in a room). At the
+bottom, the taskbar: **⊞ Start**, **▣ Mission**, **💬 Chats** and **📷 Scan**.
+There is no Guests list, no NOW card, no host console and no cue bar: you
+play the game, the hosts and the directors call it.
+
+- **Mission** is home. The card says what the night wants from you now:
+  its title, where (📍 *Go to The Desktop*), the countdown, the to-dos with
+  a progress bar, and up to three **big buttons**. Each big button does
+  something whole: it opens the list of programs to work through
+  (PLAYER SELECT, below), the card of the one program it is about, does
+  the thing at once (a button about nobody in particular, with two taps
+  when there is no way back), or opens the scanner captioned *📷 Scan a
+  program to …* so you scan the right person. Under the card: **Your move**
+  (a card waiting for you, a program who wrote to you), your **score**
+  tiles (*⭐ 120 Points*), and the **Quest Log**, **Codex**, **Wallet** (the
+  auditor) and **🚨 Wanted** (the Antivirus) tiles; **Also now** folds any
+  other live objectives.
+- **Your score** shows live on Mission and as the first chip in the tray.
+  The story keeps other numbers about you to itself, as it does for the
+  guests; some of them are read out at the ceremony.
+- **NEW MISSION**: when your objective changes, a pop-out says so with its
+  brief. **▣ Go** opens Mission. That is your *your game is on* moment.
+- **Chats**: **Your move**, **Messages** (📋 **Notes**, which is what the
+  story tells your character, your cast threads, programs who wrote to
+  you), **Team** (the staff rooms of your team: the Antivirus keep their
+  room), **Rooms**, and **Other rooms (n)** with the 📜 Chat log last.
+- **⊞ Start**: Help, Keep my screen on, Get alerts, **👥 People** (every
+  program, searchable, with where they are; the Antivirus also see who is
+  MARKED or IN THE INTERNET; tap one for their card) and Sign out.
+- A press the story turns down reads **Not now.** You never see the staff
+  room's reasons.
 
 ## The NOW card
 
@@ -104,26 +147,23 @@ each row shows one status tag, the guest's place first, and up to two loud
 facts), by tapping a guest's name
 in any room, or from a room's 👥 list. Top to bottom:
 
-- **The facts.** The loud ones first: *✗ Not cleared* for a guest who
-  hasn't been through the door, and in red marked and in the Internet.
-  Then the warnings in yellow (late, Bathroom Mode, ⛔ restricted), then
-  where they are (📍) and the story's other flags.
+- **The facts** a performer acts on: in red *🔒 Captured*, marked and in
+  the Internet; in yellow late, Bathroom Mode, ⛔ restricted; then where
+  they are (📍). The story's bookkeeping (a gate they haven't passed, its
+  other values) stays behind the scenes.
 - **The face: at most three buttons**, the ones your objective needs and
   that make sense for this guest right now, each with what it does; the
-  first wears a heavy frame. A button the story offers only for some
-  guests (🩹 Unmark on a marked program) joins the face on those guests'
-  cards.
-- **What the press came to**, on the card itself: the story's reply, what
-  your character said to them, and in a refused style any `# hosts` line
-  saying why it was not done (*Not done: …*). With none of these it says
-  *✔ Sent — no reply from the story*.
-- **💬 Message**, **📓 Share lore…**, **📡 Scan again**, and **Earlier
-  readouts (n)** about this guest.
-- **All buttons… (n)**: every other button you may press, with what it
-  does; ones the story isn't offering right now say *Not on offer now*
-  (you can still press them; the story may refuse). When the face is
-  empty the card says *Nothing your objective needs on X right now* and
-  opens a short list by itself.
+  first wears a heavy frame. On a host's card a button the story offers
+  only for some guests (🩹 Unmark on a marked program) joins the face on
+  those guests' cards. Nothing else is listed: when the face is empty the
+  card says *Nothing your objective needs on X right now* (a player's:
+  *Nothing to do with X right now.*).
+- **What the press came to**, on the card itself: the story's reply and
+  what your character said to them. A host's card also shows, in a
+  refused style, any `# hosts` line saying why it was not done (*Not
+  done: …*); a player's just says **Not now.** With nothing back a host
+  reads *✔ Sent — no reply from the story*.
+- **💬 Message**, **📓 Share lore…** and **📡 Scan again**.
 
 Pressing a button acts *as your character*, on that guest, and the card
 redraws with the story's answer. Right after the card changes, taps are
@@ -247,8 +287,9 @@ Some objectives work through several guests with no scans:
   🎯**). Tap a tile, then the move's button; the next move offers the same
   guest (**SAME: …**) when it's harmless, and a move with no way back never
   pre-selects and takes two taps. **🔍 Not here? Search everyone**, **Skip**,
-  **Later**, then **+ Another round**. It opens by itself right after your
-  own cue; otherwise *PLAYER SELECT is ready* pops out.
+  **Later**, then **+ Another round**. *PLAYER SELECT is ready* pops out
+  when the game starts (on a player's booth, Mission's big button opens it
+  too); it opens by itself right after a caller booth's own cue.
 - **📋 A list** (Adobe Acrobat's Truth Pong cups, Clippy's cup-makers, the
   summons' **Still missing**): one row per guest with its place and up to two
   buttons (*🏓 Made* / *🏓 Missed · ×2*). A pressed row greys with ✓ and
@@ -258,16 +299,19 @@ Some objectives work through several guests with no scans:
 - **A target** (the bottle): a pop-out names the one guest it landed on,
   with the objective's buttons for them.
 
-## Clippy's 🎤 cue bar
+## The 🎤 cue bar
 
-Clippy calls the games. Clippy's booth has a **🎤 cue bar** above the
-taskbar with Clippy's own cues on it (the story's admin cues marked `by:
-Clippy`). When one is the sheet's NEXT the band turns yellow (**🎤 YOUR
-CUE … ARM**) and a *🎤 Your cue · Call it?* pop-out asks; **🎤 Call it** arms
-it, then tap **FIRE** on the bar within four seconds (*Not yet* asks again in
-two minutes). Otherwise the grey band says what's **next for you**. Its
-second line shows the sheet's NEXT and who is calling the show (📣). **▴**
-lists all of Clippy's cues. A host or the director may fire them too.
+A story may let a part call some of its own cues (admin cues marked `by:
+<Character>`). That booth gets a **🎤 cue bar** above the taskbar with
+those cues on it. When one is the sheet's NEXT the band turns yellow (**🎤
+YOUR CUE … ARM**) and a *🎤 Your cue · Call it?* pop-out asks; **🎤 Call
+it** arms it, then tap **FIRE** on the bar within four seconds (*Not yet*
+asks again in two minutes). Otherwise the grey band says what's **next for
+you**. Its second line shows the sheet's NEXT and who is calling the show
+(📣). **▴** lists all of the booth's cues. A host or the director may fire
+them too. A **player** never calls cues and never gets the bar: at
+*Trapped in the Internet* the hosts and the directors call Clippy's games,
+and Clippy hears *NEW MISSION* when one starts.
 
 ## A guest who is restricted
 
@@ -325,8 +369,8 @@ knows what the verdict was.
 Under **Pinned** your booth has the character's own **📜 Quest Log**
 (the story can hand your character quests — a staff brief, step by
 step, in its own thread each), its **📓 Codex** (what your character
-knows, and can share from a guest's card; **⊞ Start → What … knows**
-lists it too), and a **Wallet** when your character audits the story's
+knows, and can share from a guest's card; on a host's or plain booth
+**⊞ Start → What … knows** lists it too), and a **Wallet** when your character audits the story's
 currency (below). The staff rooms, `# hosts` and `# quarantine` at the
 show, sit just under them, marked *staff only*. Cards the story deals
 to your character land in **Readouts**: answer one like a guest would —
@@ -363,7 +407,7 @@ only what your character says or what plays to a room.
 ## Moderator powers
 
 If the host gave you the **moderator passcode**, open **⊞ Start → Add
-moderator powers**, type it and tap **Become an admin**. Your booth
+moderator powers** (not on a player's booth), type it and tap **Become an admin**. Your booth
 becomes a host's — the NEXT bar and console ([The host
 console](hosts.md)) — and additionally can:
 

@@ -42,7 +42,7 @@ export interface CallerView {
   at: number;
 }
 
-/** Clippy's own cues (C8 `PrimeView.calls`). */
+/** A caller booth's own cues (C8 `PrimeView.calls`). */
 export interface CallsView {
   rows: CueRow[];
   next: string | null;
@@ -86,8 +86,9 @@ export function looseWanted(view: PrimeView | null | undefined): WantedEntry[] {
   return (wantedOf(view) ?? []).filter((w) => !w.captured);
 }
 
-/** `PrimeView.calls` (Clippy's booth only). */
+/** `PrimeView.calls` (a caller booth only; never a player's, wave 21 D5). */
 export function callsOf(view: PrimeView | null | undefined): CallsView | null {
+  if (view?.player === true) return null;
   const c = boothView(view)?.calls;
   return c !== undefined && c !== null && Array.isArray(c.rows) ? c : null;
 }
@@ -106,4 +107,16 @@ export function mayPress(interactions: readonly Interaction[] | undefined, id: s
   if (i.actors === undefined || i.only !== true) return true;
   const f = foldName(me);
   return i.actors.some((a) => foldName(a) === f);
+}
+
+/** Wave 21 (C4): is this booth a player (`player: true`)? An older server says nothing: no. */
+export function isPlayer(view: PrimeView | null | undefined): boolean {
+  return view?.player === true;
+}
+
+/** Wave 21 (C3): the booth's `stat:` lines, the well-formed ones. */
+export function statsOf(view: PrimeView | null | undefined): Array<{ glyph: string; label: string; value: string }> {
+  const s = view?.stats;
+  if (!Array.isArray(s)) return [];
+  return s.filter((x) => x !== null && typeof x === "object" && typeof x.label === "string" && typeof x.value === "string").map((x) => ({ glyph: typeof x.glyph === "string" ? x.glyph : "", label: x.label, value: x.value }));
 }

@@ -56,6 +56,8 @@ export interface RowsProps {
   onCard: (id: string) => void;
   onBoard?: () => void;
   onClose: () => void;
+  /** Wave 21: a player booth — a refusal reads "Not now.", never the staff room's reason. */
+  player?: boolean;
 }
 
 export function RowsWindow(p: RowsProps) {
@@ -83,7 +85,7 @@ export function RowsWindow(p: RowsProps) {
       p.press(b.id, g.id).then(
         (r) => {
           setBusy(null);
-          setReply(replyLine(g.name, r));
+          setReply(replyLine(g.name, r, { player: p.player === true }));
           if (r.refused !== true) setPressed((l) => [...l, { id: g.id, name: g.name, label: b.id === CHECK_IN_ID ? THEYRE_HERE : b.label }]);
         },
         (e: unknown) => {

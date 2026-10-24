@@ -11,7 +11,7 @@ import { BlockBar } from "../ui/progress.tsx";
 import { NameBadges } from "../ui/primitives.tsx";
 import type { CountdownSummary } from "../types.ts";
 import type { Nav } from "../moments/exits.ts";
-import { countdownText, missionOf, type MissionInput, type MissionModel, type MissionTile, type WhereRow } from "./mission-model.ts";
+import { countdownText, missionOf, type MissionInput, type MissionModel, type MissionScore, type MissionTile, type WhereRow } from "./mission-model.ts";
 import type { InviteView } from "./wire.ts";
 
 /** A to-do short enough to sit three to a row. */
@@ -25,6 +25,13 @@ function Countdown({ countdowns, clock, paused, stamp }: { countdowns: readonly 
 }
 
 function Where({ where, onGo }: { where: WhereRow; onGo: (n: Nav) => void }) {
+  if (where.kind === "place") {
+    return (
+      <div className="mission-where place">
+        <span className="mission-where-name">📍 {where.name}</span>
+      </div>
+    );
+  }
   if (where.kind === "here") {
     return (
       <div className="mission-where here">
@@ -42,16 +49,31 @@ function Where({ where, onGo }: { where: WhereRow; onGo: (n: Nav) => void }) {
   );
 }
 
-const TILE_ICON: Record<MissionTile["id"], "coin" | "quest" | "codex" | "door"> = { wallet: "coin", quests: "quest", codex: "codex", faction: "door" };
+const TILE_ICON: Record<MissionTile["id"], "coin" | "quest" | "codex" | "door" | "people"> = { wallet: "coin", quests: "quest", codex: "codex", faction: "door", wanted: "people" };
 
-function Tiles({ tiles, onGo }: { tiles: readonly MissionTile[]; onGo: (n: Nav) => void }) {
-  if (tiles.length === 0) return null;
+function Tiles({ tiles, scores = [], onGo }: { tiles: readonly MissionTile[]; scores?: readonly MissionScore[]; onGo: (n: Nav) => void }) {
+  if (tiles.length === 0 && scores.length === 0) return null;
   return (
     <div className="desk-tiles">
+      {scores.map((x, i) => (
+        <div key={`score:${i}`} className="desk-tile score" role="status" aria-label={`${x.label}: ${x.value}`}>
+          <span className="desk-tile-glyph" aria-hidden>
+            {x.glyph}
+          </span>
+          <span className="desk-tile-value">{x.value}</span>
+          <span className="desk-tile-status">{x.label}</span>
+        </div>
+      ))}
       {tiles.map((t) => (
         <button key={t.id} type="button" className={`desk-tile${t.id === "faction" ? " faction" : ""}`} data-tour={t.id} onClick={() => onGo(t.nav)} aria-label={`${t.label}: ${t.status}${t.dot ? ", something new" : ""}`}>
           <span className="desk-tile-icon">
-            <Icon name={t.frozen === true ? "frozen" : TILE_ICON[t.id]} size={32} />
+            {t.glyph !== undefined ? (
+              <span className="desk-tile-glyph" aria-hidden>
+                {t.glyph}
+              </span>
+            ) : (
+              <Icon name={t.frozen === true ? "frozen" : TILE_ICON[t.id]} size={32} />
+            )}
             {t.dot && <span className="guest-dot" aria-hidden />}
           </span>
           <span className="desk-tile-label">{t.label}</span>
@@ -203,7 +225,7 @@ export function MissionWindow({
           </section>
         ))}
 
-        <Tiles tiles={model.tiles} onGo={onGo} />
+        <Tiles tiles={model.tiles} scores={model.scores} onGo={onGo} />
 
         {model.also.length > 0 && (
           <section className="mission-also">

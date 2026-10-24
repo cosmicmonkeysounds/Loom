@@ -22,6 +22,8 @@ export interface PlayerSelectProps {
   press: (id: string, guest: string) => Promise<PrimeActResult>;
   onClose: () => void;
   onLater?: () => void;
+  /** Wave 21: a player booth — no staff-room lines, a refusal reads "Not now.". */
+  player?: boolean;
 }
 
 /** The SAME row's button: the step's glyph and its first word ("🎀 Give"). */
@@ -37,7 +39,7 @@ export function stepHelper(s: WizardStep, index: number): string {
   return "…or tap someone else below";
 }
 
-export function PlayerSelect({ objective, steps, guests, press, onClose, onLater }: PlayerSelectProps) {
+export function PlayerSelect({ objective, steps, guests, press, onClose, onLater, player = false }: PlayerSelectProps) {
   const arm = useArmButtons();
   const [at, setAt] = useState(0);
   const [done, setDone] = useState<Array<string | null>>(() => steps.map(() => null));
@@ -65,9 +67,9 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
       press(step.id, guest).then(
         (r) => {
           setBusy(false);
-          setReply(replyLine(nameOf(guest), r));
+          setReply(replyLine(nameOf(guest), r, { player }));
           if (r.refused === true) return;
-          setStaff((r.staff ?? []).filter((t) => t.trim() !== ""));
+          if (!player) setStaff((r.staff ?? []).filter((t) => t.trim() !== ""));
           setDone((d) => d.map((x, i) => (i === at ? guest : x)));
           go(at + 1);
         },

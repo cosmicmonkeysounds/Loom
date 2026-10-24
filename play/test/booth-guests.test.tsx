@@ -62,7 +62,7 @@ describe("🗂 Guests (§4.11)", () => {
     expect(loudLine(g("enc"), ctx())).toEqual(["refused the truth", "🙋 You"]);
     expect(loudLine(g("nap"), ctx())).toEqual(["filed a guess", "🙋 Nobody yet"]);
     expect(loudLine(g("icq"), ctx())).toEqual(["🙋 McAfee"]);
-    expect(loudLine(g("w", { flags: [{ label: "Cleared", path: "p", value: "false", on: false }] }), ctx())).toEqual(["✗ Not cleared"]);
+    expect(loudLine(g("w", { flags: [{ label: "Cleared", path: "p", value: "false", on: false }] }), ctx())).toEqual([]); // wave 21 (D4): no gate chips
   });
   it("sorts marked-unclaimed, mine, others', then by name", () => {
     expect(guestSort(list, ctx()).map((x) => x.id)).toEqual(["nap", "enc", "icq", "bath", "gone", "winamp"]);

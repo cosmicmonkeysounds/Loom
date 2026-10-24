@@ -3,18 +3,23 @@ title: The host console
 section: Performers
 order: 14
 role: performer
-keywords: stop sounds, house sound, 🔇, judge queue, queued, host, hosts, caller, calling, who's calling, i'll call, stop calling, fire anyway, did, then, judging, auto, review, wanted, marked, escorts, night, house, setup, crews, host console, drawer, next bar, next, last, arm, fire, cue, cues, cue sheet, strip, act, phase, needs, judge tab, people, more, open the doors, doors, pause, resume, announce, announcement, alert level, dial, balloon, sticky, dialog, blue screen, glitch, wallet holds, king, terminals, codes, join qr, invitation, open 2 min, release, part, trabolta, answer as, waiting, task manager, adobe acrobat, recycling bin, cues moved, not taken
+keywords: players, clippy, antivirus, new mission, all buttons, stop sounds, house sound, 🔇, judge queue, queued, host, hosts, caller, calling, who's calling, i'll call, stop calling, fire anyway, did, then, judging, auto, review, wanted, marked, escorts, night, house, setup, crews, host console, drawer, next bar, next, last, arm, fire, cue, cues, cue sheet, strip, act, phase, needs, judge tab, people, more, open the doors, doors, pause, resume, announce, announcement, alert level, dial, balloon, sticky, dialog, blue screen, glitch, wallet holds, king, terminals, codes, join qr, invitation, open 2 min, release, part, trabolta, answer as, waiting, task manager, adobe acrobat, recycling bin, cues moved, not taken
 ---
 
 A **host** runs the night from their own booth: the cue sheet, what
 needs a host, judging, announcements, and fixing a guest, all without
 leaving the app. Your booth is a host's when the story makes your part
 one (at *Trapped in the Internet*: Task Manager, Adobe Acrobat and the
-Recycling Bin; Clippy is not a host, but calls the games from a 🎤 cue bar
-of their own, see [Performer station](performers.md)), or when you added
-the moderator passcode
+Recycling Bin), or when you added the moderator passcode
 (⊞ Start → Add moderator powers). Everything else in your booth works as
 on any other ([Performer station](performers.md)).
+
+**The hosts call the games.** Clippy and the four Antivirus are
+**players** now: they play the night like the guests, with a Mission and a
+score, and never call a cue. Bingo, the hunts' results, the bottle, Bobbing
+for Truth and the awards are yours (and the director's) to fire from the
+NEXT bar; the player whose game it is gets a *NEW MISSION* pop-out on their
+phone when it starts. Radio them before you fire.
 
 ## The NEXT bar
 
@@ -140,6 +145,13 @@ five tabs:
 Anything you can't take back asks in place first (*…? Yes / No*).
 
 ## Buttons on a guest's card
+
+A host's card is a performer's card ([Performer station](performers.md)):
+the facts, at most three buttons, what the press came to. There is no
+*All buttons…* list and no earlier readouts any more. What a host's card
+keeps that a player's doesn't: the buttons the story offers because of
+this guest (🩹 Unmark on a marked program) join the face, and a refused
+press shows the `# hosts` line that says why.
 
 A host's guest cards also offer other characters' buttons, but only the
 ones the story hears from your booth (at the show, the server room's

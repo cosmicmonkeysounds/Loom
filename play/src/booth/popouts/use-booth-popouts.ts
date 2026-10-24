@@ -2,7 +2,7 @@
 //! diffs the view (and the door readouts) against what this phone has
 //! already seen, and raises / retires pop-outs on the rung — the Wanted
 //! pop-out (and bursts), the door, the NOW objective's target, the picker
-//! that just became live, Clippy's *Call it?*. "First seen" memory persists
+//! that just became live, a caller's *Call it?*. "First seen" memory persists
 //! per sign-in (`loom.booth.seen.<token>`), so a reload never re-pops a mark
 //! someone else already claimed.
 
@@ -13,6 +13,7 @@ import type { Interaction } from "../../types.ts";
 import { boothView, callsOf, mayPress, wantedOf, type BoothGuest, type BoothMessage, type BoothObjective } from "../wire.ts";
 import { countdownRunning, cueAtEnd, cueSpecs, cueWaitsFor, doorQueue, doorSpec, pickLayout, pickReadySpec, reconcilePopOuts, rememberCountdowns, targetSpec, wantedSpecs, type BoothDo, type CountdownMemo, type Draft, type SeenMap } from "./model.ts";
 import { usePopOuts, type PopOutSpec } from "./rung.ts";
+import { newMissionSpec } from "../mission-model.ts";
 
 /** What a bound pop-out's buttons may open in the booth. */
 export interface BoothOpeners {
@@ -23,6 +24,8 @@ export interface BoothOpeners {
   door: () => void;
   pick: (objective: string) => void;
   cue: (id: string) => void;
+  /** Wave 21 (P5): open the player's Mission window. */
+  mission?: () => void;
   /** A claim was pressed on this guest (the race line). */
   tried?: (guest: string) => void;
 }
@@ -54,6 +57,8 @@ export function bindDraft(d: Draft, open: BoothOpeners, defer: (key: string) => 
         return () => open.pick(x.objective);
       case "cue":
         return () => open.cue(x.id);
+      case "mission":
+        return () => open.mission?.();
       case "later":
         return () => defer(d.key);
       case "ok":
@@ -64,6 +69,8 @@ export function bindDraft(d: Draft, open: BoothOpeners, defer: (key: string) => 
 }
 
 const SEEN_KEY = (token: string) => `loom.booth.seen.${token}`;
+/** Wave 21 (P5): the objectives this sign-in has had as its NOW. */
+const MISSIONS_KEY = (token: string) => `loom.booth.missions.${token}`;
 
 /** *Call it?* put off with "Not yet" comes back after this long (§4.9). */
 export const REMIND_MS = 2 * 60_000;
@@ -106,6 +113,7 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
       door: () => openRef.current.door(),
       pick: (o) => openRef.current.pick(o),
       cue: (id) => openRef.current.cue(id),
+      mission: () => openRef.current.mission?.(),
       tried: (g) => tried.current.add(g),
     }),
     [],
@@ -194,7 +202,31 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objKey]);
 
-  // Clippy: *Call it?* when one of its cues turns live after the first look.
+  // Wave 21 (P5): a player's NEW MISSION pop-out — never a host's.
+  const player = view?.player === true && view.host !== true;
+  const missions = useRef<string[] | null | undefined>(undefined);
+  if (missions.current === undefined) {
+    try {
+      missions.current = host.storage.load<string[]>(MISSIONS_KEY(token)) ?? null;
+    } catch {
+      missions.current = null;
+    }
+  }
+  const headId = nowObj?.id ?? "";
+  useEffect(() => {
+    if (!player) return;
+    const r = newMissionSpec(view?.objectives ?? [], missions.current ?? null, now);
+    missions.current = r.seen;
+    try {
+      host.storage.save(MISSIONS_KEY(token), r.seen);
+    } catch {
+      /* kept in memory */
+    }
+    if (r.draft !== null) rung.raise(bind(r.draft));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headId, player]);
+
+  // A caller: *Call it?* when one of its cues turns live after the first look.
   const calls = callsOf(view);
   const prevLive = useRef<Set<string> | null>(null);
   const prevPresses = useRef<number | null>(null);
@@ -244,7 +276,7 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
   }, [heldKey, wantedKey, objIds, callsKey, caughtKey]);
 
   // A deferred *Call it?* pops once its countdown is up; and when a
-  // countdown ends with Clippy's own cue as the sheet's NEXT, it pops too.
+  // countdown ends with the caller's own cue as the sheet's NEXT, it pops too.
   const cueBucket = Math.floor(now / 5_000);
   useEffect(() => {
     if (calls === null) return;

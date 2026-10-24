@@ -9,6 +9,8 @@
 //! (The chrome lane's `CountdownTray` is the guest's clock; integration may
 //! swap it in here once it lands.) A view with `paused: true` stops the
 //! countdown and reads ⏸ (`PrimeView.paused`, set while the story clock is stopped).
+//! Wave 21 (P1): a player's tray has no act chip; its first `stat:` line
+//! sits there as a chip instead (⭐ 120).
 
 import { useEffect, useRef, useState } from "react";
 import { storyNow } from "../director.tsx";
@@ -19,6 +21,7 @@ import { Icon } from "../chrome/icons.tsx";
 import { BoothIcon } from "./icons.tsx";
 import type { PrimeView } from "../types.ts";
 import { heldCount, soonest, trayAct, trayClock, viewPaused } from "./model.ts";
+import { isPlayer, statsOf } from "./wire.ts";
 
 /** Seconds a countdown reads red under (the director phone's `URGENT_S`). */
 const URGENT = 60;
@@ -64,7 +67,10 @@ export function BoothTray({
   const held = heldCount(view?.wallet);
   // D2: the story's act (the cue sheet's, as the NEXT strip reads it): "Doors" until the show starts.
   const word = (view as { act?: unknown } | null)?.act;
-  const act = trayAct(view?.night?.act, view?.night?.step, typeof word === "string" ? word : null);
+  // Wave 21 (P1, D7): a player gets no act; its first stat stands there.
+  const player = isPlayer(view);
+  const act = player ? null : trayAct(view?.night?.act, view?.night?.step, typeof word === "string" ? word : null);
+  const stat = player ? (statsOf(view)[0] ?? null) : null;
   return (
     <>
       {loose !== null && loose > 0 && (
@@ -80,6 +86,10 @@ export function BoothTray({
       ) : act !== null ? (
         <span className={`tray-act${soon !== null ? " yields" : ""}`}>
           <TrayItem text={act.text} title={act.title} />
+        </span>
+      ) : stat !== null ? (
+        <span className="tray-stat">
+          <TrayItem text={`${stat.glyph} ${stat.value}`.trim()} title={`${stat.label}: ${stat.value}`} />
         </span>
       ) : null}
       {soon !== null && (

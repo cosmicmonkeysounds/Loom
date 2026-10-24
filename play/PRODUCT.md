@@ -22,12 +22,16 @@ Vite, served by the `@loom/core` event server at `/`.)
   crew), and not miss the beats.
 - **Performers.** Cast members playing characters with a booth on their
   phone: the four Antivirus (Norton, McAfee, Password Manager, CRA Agent
-  Software; they share the door) and Clippy, who calls the games from a
-  🎤 cue bar (a super-performer, not a host). They work face to face with
-  guests, mostly one-handed. Their job: act on the guest the story names
-  (a pop-out, a picker of picture tiles, a list), scan only to clear a
-  program at the door or to confront a marked one, and follow the night's
-  running order without reading a cast pack mid-scene.
+  Software; they share the door) and Clippy. Since wave 21 they are
+  **players** (`player: true`): they play the night like the guests do,
+  with a Mission home, their own goals and a live score, and call no cues
+  (the hosts and directors call Clippy's games; Clippy gets a *NEW
+  MISSION* pop-out). They work face to face with guests, mostly
+  one-handed. Their job: act on the guest the story names (a pop-out, a
+  picker of picture tiles, a list), scan only to clear a program at the
+  door or to confront a marked one, and follow the night from Mission
+  without reading a cast pack mid-scene. No booth sees the story's
+  machinery: no *All buttons…*, no gate chips, no raw ids.
 - **Hosts / directors.** Three performer characters who also run the
   night: **Adobe Acrobat, Recycling Bin and Task Manager** (Task Manager is
   the show owner). They are on stage, in costume, in their booths. Their
@@ -109,11 +113,16 @@ speakers and lights.
 - **Decision (2026-10-21, Q30):** a mark doesn't hinder; the Antivirus
   hunt from a Wanted board with pop-outs, and their scan is the
   confrontation. **Q26:** Windows Defender is gone; the four share the
-  door. **Q2:** Clippy calls its own games. **Q1:** hosts see and call the
+  door. **Q2** (reversed in wave 21): Clippy calls its own games. **Q1:** hosts see and call the
   event equally from Play. **Q21:** sides are joined through doors, a
   member recruits by pass, guests may found crews, and joining never
   replaces the profile (the Me sheet). **Q16 dropped:** the reinstallation
   is a party favour after the end.
+- **Decision (2026-10-23, wave 21, reverses Q2 / Q39):** Clippy and the
+  Antivirus are players, not super-performers: Mission, goals, a score, a
+  trust the story keeps hidden from them, awards of their own; every
+  action a pick or a pop-out; no booth gets *All buttons…*, earlier
+  readouts, gate chips or raw ids. The hosts keep their dock.
 - Minimise scanning: scans are for clearance at the door and the
   confrontation; everything else is a tap.
 - Typewriter: minimal for ordinary speech; exaggerated effects are wanted

@@ -42,8 +42,9 @@ export function ReadoutsView({
           🖥️
         </div>
         <div className="thread-id">
-          <strong>Readouts</strong>
-          <span className="muted">what your scans and buttons said</span>
+          {/* Wave 21 (P6): the room carries its own name ("📋 Notes" on a player's booth). */}
+          <strong>{channel.title !== "" ? channel.title : "Readouts"}</strong>
+          <span className="muted">{channel.title === "Readouts" || channel.title === "" ? "what your scans and buttons said" : "what the house told you"}</span>
         </div>
       </header>
       <div className="booth-readouts">

@@ -530,6 +530,10 @@ button.mission-where:focus-visible { outline: 1px dotted var(--ink); outline-off
 .desk-tile-icon { position: relative; display: inline-flex; }
 .desk-tile-label { font: 700 12px var(--ui-font); }
 .desk-tile-status { font: 11px var(--ui-font); }
+/* wave 21: a booth's score tiles (its `stat:` lines) and a glyph tile (🚨 Wanted) */
+.desk-tile.score { cursor: default; }
+.desk-tile-glyph { display: inline-block; font-size: 28px; line-height: 32px; }
+.desk-tile-value { font: 700 16px var(--ui-font); }
 :root[data-theme="aol97"] .desk-tile, .mission.captured .desk-tile { color: var(--white); }
 :root[data-theme="aol97"] .desk-tile-label { text-shadow: 1px 1px 0 var(--black); }
 

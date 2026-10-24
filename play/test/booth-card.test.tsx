@@ -1,13 +1,13 @@
-// Wave 13 (booth lane): a scan opens the guest's card at once — facts first
-// (Not cleared, ⛔, 🔒, 📍, the story's flags), at most three story buttons
-// on its face (the live objectives' buttons the server says are live for
-// this guest, then the ones live because of this guest), the story's reply
-// to the press on the card, and every other button under "All buttons… (n)"
-// with its description.
+// Wave 13 (booth lane), trimmed in wave 21 (D4): a scan opens the guest's
+// card at once — facts first (🔒, Marked, ⛔, 📍; no gate or value chips),
+// at most three story buttons on its face (the live objectives' buttons the
+// server says are live for this guest; a host also the ones live because of
+// this guest), and the story's reply to the press. No "All buttons…", no
+// earlier readouts, no raw guest id.
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { FACE_MAX, FACE_SETTLE_MS, FOLD_AUTO_MAX, boothHost, cardButtons, cardGuestFacts, cardReadKey, faceSettled, factChips, foldOpensItself, inFlightGate, pressOutcome, scanRepeated } from "../src/booth/model.ts";
+import { FACE_MAX, FACE_SETTLE_MS, boothHost, cardButtons, cardGuestFacts, cardReadKey, faceSettled, factChips, inFlightGate, pressOutcome, scanRepeated } from "../src/booth/model.ts";
 import { ApiError } from "../src/client.ts";
 import { ARM_DEAD_MS } from "../src/arm.ts";
 import { GuestCardBody } from "../src/booth/card.tsx";
@@ -51,14 +51,16 @@ describe("the card's face", () => {
     expect(out.rest.find((b) => b.interaction.id === "send")).toMatchObject({ live: false });
   });
 
-  it("promotes the buttons live because of this guest ahead of buttons no objective names", () => {
-    const out = cardButtons(list, [obj("a", ["send"])], card(["send", "crew", "reinstalled", "watch"], ["reinstalled"]), NORTON, false);
-    expect(out.face.map((b) => b.interaction.id)).toEqual(["send", "reinstalled"]);
+  it("a host booth promotes the buttons live because of this guest; anyone else gets only what an objective names (wave 21)", () => {
+    const c = card(["send", "crew", "reinstalled", "watch"], ["reinstalled"]);
+    expect(cardButtons(list, [obj("a", ["send"])], c, NORTON, true).face.map((b) => b.interaction.id)).toEqual(["send", "reinstalled"]);
+    expect(cardButtons(list, [obj("a", ["send"])], c, NORTON, false).face.map((b) => b.interaction.id)).toEqual(["send"]);
   });
 
-  it("with no objective at all, falls back to this character's own live buttons", () => {
+  it("with no objective at all, falls back to this character's own live buttons — never on a player's booth", () => {
     const out = cardButtons(list, [], card(["send", "reinstalled", "watch", "crew"]), NORTON, false);
     expect(out.face.map((b) => b.interaction.id)).toEqual(["send", "reinstalled", "watch"]);
+    expect(cardButtons(list, [], card(["send", "reinstalled", "watch", "crew"], ["send"]), NORTON, false, { player: true }).face).toEqual([]);
   });
 
   it("leaves another character's `by:` button off a plain booth; a host booth gets it in the fold", () => {
@@ -95,21 +97,18 @@ describe("a double tap after a press", () => {
 
 describe("the card's facts", () => {
   const g = (over: Partial<PrimeGuest> = {}): PrimeGuest => ({ id: "g-1", name: "Ada", faction: null, captured: false, location: null, ...over });
-  it("a false Cleared reads loud as Not cleared; a false non-gate flag is left out", () => {
+  it("never shows a gate: a false Cleared or Marked is left out (wave 21, D4)", () => {
     const chips = factChips(g({ flags: [{ label: "Cleared", path: "program.cleared", value: "false", on: false }, { label: "Marked", path: "program.marked", value: "false", on: false }] }), "The Desktop");
-    expect(chips).toEqual([
-      { text: "✗ Not cleared", tone: "loud" },
-      { text: "📍 The Desktop", tone: "quiet" },
-    ]);
+    expect(chips).toEqual([{ text: "📍 The Desktop", tone: "quiet" }]);
   });
-  it("loud first: ⛔ restricted, 🔒 captured, a failed gate; then where, then the true flags and values", () => {
+  it("loud first: 🔒 captured and the true loud flags; then ⛔ restricted; then where — no value chips", () => {
     const chips = factChips(
       g({ restricted: true, captured: true, flags: [{ label: "Marked", path: "p.m", value: "true", on: true }, { label: "Room", path: "p.r", value: "Tent", on: true }, { label: "Checked in", path: "p.c", value: "false", on: false }] }),
       "The Internet",
     );
-    expect(chips.map((c) => c.text)).toEqual(["🔒 Captured", "Marked", "✗ Not checked in", "⛔ Restricted", "📍 The Internet", "Room: Tent"]);
+    expect(chips.map((c) => c.text)).toEqual(["🔒 Captured", "Marked", "⛔ Restricted", "📍 The Internet"]);
   });
-  it("by severity (fix round): Marked / In the Internet loud, Late / Bathroom Mode warn, Cleared quiet", () => {
+  it("by severity: Marked / In the Internet loud, Late / Bathroom Mode warn; a quiet true flag (Cleared) is left out", () => {
     const f = (label: string) => ({ label, path: `p.${label}`, value: "true", on: true });
     const chips = factChips(g({ flags: [f("Cleared"), f("Late"), f("Marked"), f("Bathroom Mode"), f("In the Internet"), f("Checked in")] }), "The Desktop");
     expect(chips).toEqual([
@@ -118,14 +117,12 @@ describe("the card's facts", () => {
       { text: "Late", tone: "warn" },
       { text: "Bathroom Mode", tone: "warn" },
       { text: "📍 The Desktop", tone: "quiet" },
-      { text: "✓ Cleared", tone: "quiet" },
-      { text: "✓ Checked in", tone: "quiet" },
     ]);
   });
   it("marks the objective's own face button as the default; a button live only because of the guest is not", () => {
-    const out = cardButtons(list, [obj("a", ["send"])], card(["send", "crew", "reinstalled"], ["reinstalled"]), NORTON, false);
+    const out = cardButtons(list, [obj("a", ["send"])], card(["send", "crew", "reinstalled"], ["reinstalled"]), NORTON, true);
     expect(out.face.map((b) => [b.interaction.id, b.named === true])).toEqual([["send", true], ["reinstalled", false]]);
-    const html = renderToStaticMarkup(<GuestCardBody session={fakeSession({ objectives: [obj("a", ["send"])] })} guestId="g-1" seed={{ card: card(["send", "crew", "reinstalled"], ["reinstalled"]) }} admin={false} onOpenThread={() => {}} />);
+    const html = renderToStaticMarkup(<GuestCardBody session={fakeSession({ objectives: [obj("a", ["send"])] })} guestId="g-1" seed={{ card: card(["send", "crew", "reinstalled"], ["reinstalled"]) }} admin onOpenThread={() => {}} />);
     expect(html.match(/booth-default/g)?.length).toBe(1);
   });
 });
@@ -146,7 +143,7 @@ function fakeSession(over: Partial<PrimeView> = {}): PrimeSession {
 }
 
 describe("the card as rendered", () => {
-  it("a scan's card opens with the story's reply on it, the face buttons with their descriptions, and the fold's count", () => {
+  it("a scan's card opens with the story's reply on it and the face buttons with their descriptions — no fold, no gate, no id", () => {
     const html = renderToStaticMarkup(
       <GuestCardBody
         session={fakeSession()}
@@ -158,14 +155,16 @@ describe("the card as rendered", () => {
       />,
     );
     expect(html).toContain("✅ Cleared Ada.");
-    expect(html).toContain("✗ Not cleared");
+    expect(html).not.toContain("Not cleared");
+    expect(html).not.toContain("g-1</span>");
     expect(html).toContain("📍 The Desktop");
     // Two face buttons (the objective's), each with its description.
     expect(html.match(/booth-face-btn/g)?.length).toBe(2);
     expect(html).toContain("L-send");
     expect(html).toContain("D-send");
-    // Everything else this booth may press is one tap away, counted.
-    expect(html).toContain("All buttons… (4)");
+    // Wave 21 (D4): nothing else this booth may press is listed.
+    expect(html).not.toContain("All buttons");
+    expect(html).not.toContain("L-checkin");
     expect(html).toMatch(/booth-card-foot.*ico-scan.*Next guest/su);
   });
 
@@ -188,19 +187,30 @@ describe("the card as rendered", () => {
   });
 
   it("says so when there is nothing to press on this guest", () => {
-    const html = renderToStaticMarkup(<GuestCardBody session={fakeSession()} guestId="g-1" seed={{ card: card([]) }} admin={false} onOpenThread={() => {}} />);
+    const html = renderToStaticMarkup(<GuestCardBody session={fakeSession({ objectives: [] })} guestId="g-1" seed={{ card: card([]) }} admin={false} onOpenThread={() => {}} />);
     expect(html).toContain("Nothing for Norton Anti-Virus to press on Ada right now.");
+    expect(renderToStaticMarkup(<GuestCardBody session={fakeSession()} guestId="g-1" seed={{ card: card([]) }} admin={false} onOpenThread={() => {}} />)).toContain("Nothing your objective needs on Ada right now.");
   });
 
-  it("with an objective whose buttons are not live here, says the rest are below and opens the fold", () => {
-    // The objective names Send, which is not live for Ada; Put on the watchlist is.
+  it("with an objective whose buttons are not live here, says so — and offers nothing else (wave 21)", () => {
+    // The objective names Send, which is not live for Ada; Put on the watchlist is, but no objective asks for it.
     const html = renderToStaticMarkup(
       <GuestCardBody session={fakeSession({ objectives: [obj("door", ["send"])] })} guestId="g-1" seed={{ card: card(["watch"]) }} admin={false} onOpenThread={() => {}} />,
     );
-    expect(html).not.toContain("Nothing for Norton Anti-Virus to press");
-    expect(html).toContain("Nothing your objective needs on Ada right now — the other buttons are below.");
-    expect(html).toMatch(/aria-expanded="true"[^>]*>▾ All buttons…/);
-    expect(html).toContain("L-watch");
+    expect(html).toContain("Nothing your objective needs on Ada right now.");
+    expect(html).not.toContain("All buttons");
+    expect(html).not.toContain("L-watch");
+  });
+
+  it("a player's empty card says 'Nothing to do with Ada right now.'", () => {
+    const html = renderToStaticMarkup(<GuestCardBody session={fakeSession({ player: true, objectives: [obj("door", ["send"])] })} guestId="g-1" seed={{ card: card(["watch"]) }} admin={false} onOpenThread={() => {}} />);
+    expect(html).toContain("Nothing to do with Ada right now.");
+  });
+
+  it("never lists earlier readouts", () => {
+    const html = renderToStaticMarkup(<GuestCardBody session={fakeSession()} guestId="g-1" seed={{ card: { ...card(["send"]), readouts: [{ seq: 4, text: "🛡 Old news", ts: 1 } as never] } }} admin={false} onOpenThread={() => {}} />);
+    expect(html).not.toContain("Earlier readouts");
+    expect(html).not.toContain("Old news");
   });
 
   it("an arm: true face button keeps arming (it carries no armed look until tapped)", () => {
@@ -222,6 +232,15 @@ describe("what a press or a scan came to (C1, fix round)", () => {
     expect(pressOutcome({ replies: [], staff: ["🗣 The bottle is not on WinZip."], refused: true }, "press")).toEqual([{ kind: "staff", text: "🗣 The bottle is not on WinZip.", refused: true }]);
     // A staff line from a press that worked (the story's own note in # quarantine) is no refusal.
     expect(pressOutcome({ replies: [], staff: ["🛡 Escort WinZip to the Internet."] }, "press")).toEqual([{ kind: "staff", text: "🛡 Escort WinZip to the Internet.", refused: false }]);
+  });
+
+  it("a player never reads the staff room: a refusal is 'Not now.', its own lines and the story's reply stay (wave 21)", () => {
+    expect(pressOutcome({ replies: [], staff: ["🗣 The bottle is not on WinZip."], refused: true }, "press", { player: true })).toEqual([{ kind: "none", text: "Not now." }]);
+    expect(pressOutcome({ replies: ["✅ Done."], said: [{ from: "Norton Anti-Virus", text: "Off you go." }], staff: ["🛡 Escort WinZip."] }, "press", { player: true })).toEqual([
+      { kind: "reply", text: "✅ Done." },
+      { kind: "said", from: "Norton Anti-Virus", text: "Off you go." },
+    ]);
+    expect(pressOutcome({ staff: ["🛡 Escort WinZip."] }, "scan", { player: true })).toEqual([{ kind: "none", text: "✔ Scanned" }]);
   });
 
   it("never a bare ✔: nothing back reads 'no reply from the story'", () => {
@@ -288,24 +307,6 @@ describe("📡 Scan again (fix round)", () => {
   });
 });
 
-describe("the All buttons fold (fix round)", () => {
-  const many = Array.from({ length: FOLD_AUTO_MAX + 1 }, (_, n) => btn(`b${n}`));
-  it("opens by itself only when it is short; Clippy's long fold stays shut behind its count", () => {
-    const short = cardButtons(many.slice(0, FOLD_AUTO_MAX), [obj("a", ["nope"])], card(["b0"]), NORTON, false);
-    expect(foldOpensItself(short, true)).toBe(true);
-    const long = cardButtons(many, [obj("a", ["nope"])], card(["b0"]), NORTON, false);
-    expect(long.rest.length).toBe(FOLD_AUTO_MAX + 1);
-    expect(foldOpensItself(long, true)).toBe(false);
-    expect(foldOpensItself(short, false)).toBe(false); // no card read yet
-    const html = renderToStaticMarkup(
-      <GuestCardBody session={fakeSession({ interactions: many, objectives: [obj("a", ["nope"])] })} guestId="g-1" seed={{ card: card(["b0"]) }} admin={false} onOpenThread={() => {}} />,
-    );
-    expect(html).toContain("Nothing your objective needs on Ada right now.");
-    expect(html).toMatch(/aria-expanded="false"[^>]*>▸ All buttons… \(7\)/);
-    expect(html).not.toContain("L-b0");
-  });
-});
-
 describe("lean snapshots and the host flag (C3 / C4, fix round)", () => {
   const ada = (flags: PrimeGuest["flags"]): PrimeGuest => ({ id: "g-1", name: "Ada", faction: null, captured: false, location: "Desktop", ...(flags !== undefined ? { flags } : {}) });
   const cleared = { label: "Cleared", path: "program.cleared", value: "false", on: false };
@@ -320,12 +321,10 @@ describe("lean snapshots and the host flag (C3 / C4, fix round)", () => {
     expect(factChips(ada(undefined), "The Desktop")).toEqual([{ text: "📍 The Desktop", tone: "quiet" }]);
   });
 
-  it("tops a lean row up with a failed gate only the card's own read carries; the row's own labels win", () => {
+  it("reads the live row; the card's own read only stands in without one (no gate to top up since wave 21)", () => {
     const row = ada([marked]);
     const read = ada([uploaded, marked, late]);
-    expect(cardGuestFacts(row, read)?.flags).toEqual([marked, uploaded]);
-    // The gate passed since the card was read: the row's on flag wins.
-    expect(cardGuestFacts(ada([{ ...uploaded, value: "true", on: true }]), read)?.flags).toEqual([{ ...uploaded, value: "true", on: true }]);
+    expect(cardGuestFacts(row, read)).toBe(row);
     expect(cardGuestFacts(null, read)).toBe(read);
     expect(cardGuestFacts(row, null)).toBe(row);
     expect(cardGuestFacts(row, { ...read, id: "g-2" })).toBe(row);
@@ -340,12 +339,11 @@ describe("lean snapshots and the host flag (C3 / C4, fix round)", () => {
     expect(boothHost({ host: true }, { host: false })).toBe(false);
   });
 
-  it("a host booth (from the view) gets another character's by: button in the fold", () => {
+  it("a host booth (from the view) leads with another character's by: button live because of this guest", () => {
     const session = { ...fakeSession({ host: true }), auth: { token: "t", character: NORTON, admin: false, host: false, eventId: "default" } } as unknown as PrimeSession;
-    const html = renderToStaticMarkup(<GuestCardBody session={session} guestId="g-1" seed={{ card: card(["send"]) }} admin={false} onOpenThread={() => {}} />);
-    // Folded, but counted: Vouch (Clippy's `by:`) is in it for a host booth only.
-    expect(html).toContain("All buttons… (6)");
-    const plain = renderToStaticMarkup(<GuestCardBody session={fakeSession()} guestId="g-1" seed={{ card: card(["send"]) }} admin={false} onOpenThread={() => {}} />);
-    expect(plain).toContain("All buttons… (5)");
+    const html = renderToStaticMarkup(<GuestCardBody session={session} guestId="g-1" seed={{ card: card(["send", "vouch"], ["vouch"]) }} admin={false} onOpenThread={() => {}} />);
+    expect(html).toContain("L-vouch");
+    const plain = renderToStaticMarkup(<GuestCardBody session={fakeSession()} guestId="g-1" seed={{ card: card(["send", "vouch"], ["vouch"]) }} admin={false} onOpenThread={() => {}} />);
+    expect(plain).not.toContain("L-vouch");
   });
 });

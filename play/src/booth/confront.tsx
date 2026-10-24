@@ -50,6 +50,8 @@ export interface ConfrontProps {
   onNotNow: () => void;
   onNext: () => void;
   onBoard?: () => void;
+  /** Wave 21: a player booth — no staff-room lines in the outcome. */
+  player?: boolean;
 }
 
 type Phase = { kind: "ready" } | { kind: "sending" } | { kind: "captured"; lines: OutcomeLine[] } | { kind: "refused"; lines: OutcomeLine[] };
@@ -77,7 +79,7 @@ export function ConfrontScreen(p: ConfrontProps) {
     if (phase.kind !== "ready" || dead || Date.now() - shownAt < c.deadMs) return;
     arm.tap("shield", c.arm, () =>
       go(c.shield, (r) => {
-        const lines = pressOutcome(r, "press");
+        const lines = pressOutcome(r, "press", { player: p.player === true });
         if (r.refused === true) setPhase({ kind: "refused", lines });
         else {
           setPhase({ kind: "captured", lines });
