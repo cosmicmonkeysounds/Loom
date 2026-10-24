@@ -22,7 +22,7 @@ import { VOICE_MAX_BYTES, kingSignal, validateHouse, voiceOn, type HouseMap, typ
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { allSnapshotFlags, awardOnly, callsCue, cueState, guestCardView, interactionSubjectOnly, isCaller, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, awardOnly, boothChannels, callsCue, playerHiddenRooms, cueState, guestCardView, interactionSubjectOnly, isCaller, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
@@ -250,8 +250,10 @@ export function widgetResultArgs(raw: unknown, sim: Sim, kind = ""): Record<stri
   return out;
 }
 
-function visibleToPrime(m: ChatMessage, c: Client, isAgent: (character: string) => boolean = () => false): boolean {
+function visibleToPrime(m: ChatMessage, c: Client, isAgent: (character: string) => boolean = () => false, model?: Sim["model"] | null): boolean {
   if (c.admin === true) return true;
+  // Wave 21 (D6): a player reads only its own team's staff rooms.
+  if (model != null && playerHiddenRooms(model, c.id).has(m.channel)) return false;
   if (m.channel.startsWith("pm:")) return false;
   if (isCrewRoom(m.channel)) return false; // w18 crews: a crew's room is its members' own
   // A host booth also reads guests' threads with an agent-voiced character
@@ -1181,6 +1183,15 @@ export class EventRuntime {
     };
   }
 
+  /** A booth press's / scan's card lines (`pressLines`). Wave 21 (D4): a
+   *  player booth never reads the staff rooms' lines (a refusal reads "Not
+   *  now." on its card); a host or a plain performer does. */
+  private boothPressLines(appended: readonly ChatMessage[], character: string | null, guest: string): PressLines {
+    const lines = pressLines(appended, new Set(staffRoomChannels(this.sim!.model)), character, guest);
+    if (character !== null && this.sim!.model.characters.get(character)?.player === true) delete lines.staff;
+    return lines;
+  }
+
   /** A performer's snapshot, plus the cards their character has already
    *  answered, with everyone's profile pictures. */
   private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false): PrimeView {
@@ -1583,7 +1594,7 @@ export class EventRuntime {
       : c.role === "mod"
         ? [...this.chat.all()]
         : capHistory(
-            this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c, this.agentVoiced)),
+            this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c, this.agentVoiced, this.sim?.model)),
             HISTORY_LIMIT,
             boothOwnRow(c.id),
           );
@@ -1648,7 +1659,7 @@ export class EventRuntime {
       if (c.role === "guest") {
         if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m, this.sim, c.id));
       } else if (c.role === "prime") {
-        if (visibleToPrime(m, c, this.agentVoiced)) sseSend(c.res, "message", m);
+        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "message", m);
       } else {
         sseSend(c.res, "message", m);
       }
@@ -5831,7 +5842,7 @@ export class EventRuntime {
             .filter((e): e is Extract<SimEvent, { type: "respond" }> => e.type === "respond" && e.to === scanAs)
             .map((e) => readoutText(e.text).text);
           // C1: the staff-room lines and what the character said to the guest.
-          lines = pressLines(this.fanout(events), new Set(staffRoomChannels(this.sim!.model)), scanAs, target);
+          lines = this.boothPressLines(this.fanout(events), scanAs, target);
         }
         // Wave 13: the booth's card for this guest, after the scan's events.
         const card = scanAs !== null ? guestCardView(this.sim!, this.chat.all(), scanAs, target, this.canHostToken(token)) : null;
@@ -5957,7 +5968,7 @@ export class EventRuntime {
         const refused = pressRefused(this.sim!, pressed);
         if (global) {
           const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [readoutText(e.text).text] : []));
-          const lines = pressLines(this.fanout(pressed), new Set(staffRoomChannels(this.sim!.model)), character, "");
+          const lines = this.boothPressLines(this.fanout(pressed), character, "");
           sendJson(res, 200, { ok: true, replies, ...lines, ...(refused ? { refused: true } : {}) });
           return true;
         }
@@ -5965,7 +5976,7 @@ export class EventRuntime {
         const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [readoutText(e.text).text] : []));
         // C1: the staff-room lines (a refusal's reason) and what the
         // character said to the guest, for the card in place of a bare ✔.
-        const lines = pressLines(this.fanout(pressed), new Set(staffRoomChannels(this.sim!.model)), character, guest);
+        const lines = this.boothPressLines(this.fanout(pressed), character, guest);
         const card = character === null ? null : guestCardView(this.sim!, this.chat.all(), character, guest, this.canHostToken(token));
         sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...lines, ...(refused ? { refused: true } : {}), ...(card !== null ? { card } : {}) });
         return true;
@@ -6078,7 +6089,7 @@ export class EventRuntime {
             sendJson(res, 403, { error: "a booth can't post there" });
             return true;
           }
-          if (!this.sim!.allChannelsFor(character).some((c) => c.id === channel)) {
+          if (!boothChannels(this.sim!, character).some((c) => c.id === channel)) {
             sendJson(res, 404, { error: "unknown room" });
             return true;
           }
@@ -6767,7 +6778,7 @@ export class EventRuntime {
             if (!visibleTo(m, c.id)) continue;
             if (m.hidden) sseSend(c.res, "messageModerated", { seq: m.seq, hidden: true });
             else sseSend(c.res, "message", forGuest(m, this.sim, c.id));
-          } else if (c.role === "mod" || visibleToPrime(m, c, this.agentVoiced)) {
+          } else if (c.role === "mod" || visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) {
             sseSend(c.res, "messageModerated", m);
           }
         }

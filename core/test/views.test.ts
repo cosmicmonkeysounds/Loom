@@ -477,7 +477,7 @@ describe("the show's cue sheet (K-21)", () => {
     expect(cast.find((c) => c.id === "McAfee Anti-Virus")).toMatchObject({ part: true, held: false, online: false });
     expect(cast.find((c) => c.id === "Kernel")).not.toHaveProperty("held");
     // No connection tracking (a local sim): parts still marked, no `held`.
-    expect(modView(sim, "open", "x").cast.find((c) => c.id === "Clippy")).toEqual({ id: "Clippy", faction: "Hosts", part: true });
+    expect(modView(sim, "open", "x").cast.find((c) => c.id === "Clippy")).toEqual({ id: "Clippy", faction: "Hosts", part: true, player: false });
   });
 
   it("flags the cues that need a person: the ceremony's awards ask for the winner (K-25)", () => {

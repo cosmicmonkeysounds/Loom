@@ -44,14 +44,14 @@ export function parseStatLine(value: string): StatDef | null {
   const raw = value.trim();
   let rest = raw;
   let cond: string | null = null;
-  const w = /,\s*while\s+/u.exec(rest);
+  const w = /,\s*while(?:\s+|\s*$)/u.exec(rest);
   if (w !== null) {
     cond = rest.slice(w.index + w[0].length).trim();
     rest = rest.slice(0, w.index);
     if (cond === "") return null;
   }
   let who: string[] | null = null;
-  const f = /,\s*for\s+/u.exec(rest);
+  const f = /,\s*for(?:\s+|\s*$)/u.exec(rest);
   if (f !== null) {
     who = rest
       .slice(f.index + f[0].length)
@@ -163,7 +163,8 @@ export function statsFor(sim: Sim, character: string): StatView[] {
     }
     const v = sim.world.get(`${c.id}.${def.path}`);
     let value: string | null = null;
-    if (v.kind === "null") {
+    // An unset optional (`text? = none`) reads as nothing set.
+    if (v.kind === "null" || (v.kind === "string" && (v.value === "" || v.value === "none"))) {
       const d = c.defaults.get(def.path);
       value = c.ranges.has(def.path) || d?.kind === "number" ? "0" : null;
     } else if (v.kind === "number") value = Number.isInteger(v.value) ? String(v.value) : String(Math.round(v.value * 100) / 100);

@@ -177,6 +177,7 @@ when host_thing:
 
 when anyone_wave:
   set Night.phase = "wave"
+  broadcast "👋 Somebody waved." to channel(hosts)
 
 // ── Beats ──────────────────────────────────────────────────────────────
 
