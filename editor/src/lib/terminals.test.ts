@@ -390,6 +390,7 @@ describe('the 🚪 door badges (wave 20)', () => {
     expect(doorOverrideFromScreen({})).toBe(false)
     expect(doorOverrideFromScreen(null)).toBe(false)
   })
+})
 
 describe('the 🔌 patch bay badges (wave 22)', () => {
   const now = 1_000_000
@@ -453,5 +454,4 @@ describe('the 🔌 patch bay badges (wave 22)', () => {
     expect(patchOverrideFromScreen(null)).toBe(false)
     expect(doorOverrideFromScreen({ night: { patch_override: true } })).toBe(false)
   })
-})
 })
