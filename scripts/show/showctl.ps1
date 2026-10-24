@@ -6,7 +6,8 @@
 $ErrorActionPreference = 'Stop'
 $node = Get-Command node -ErrorAction SilentlyContinue
 if (-not $node) {
-  Write-Error 'showctl: node not found - install Node 22.6 or newer (winget install OpenJS.NodeJS.LTS)'
+  # Not Write-Error: under 'Stop' it is terminating, and the exit code would be 1.
+  [Console]::Error.WriteLine('showctl: node not found - install Node 22.6 or newer (winget install OpenJS.NodeJS.LTS)')
   exit 2
 }
 # Emoji and box characters print right in the console.
