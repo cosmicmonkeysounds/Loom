@@ -71,6 +71,8 @@ The contract's (`w21/CONTRACT.md`):
 
 ## 2. Every changed show line, old → new
 
+**Clippy's objective titles (`objectives.loom`, integration)**: the `CI N:` code prefix is gone from all nine (it pointed at the Clippy Instructions codex and read as backstage on a player's Mission): *CI 1: welcome everyone, then Computer Bingo* → *Welcome everyone, then Computer Bingo*, likewise CI 2–CI 9 (first letter capitalised).
+
 **Booth readouts and lines (`cast/`)**
 
 | Where | Who | Old | New |

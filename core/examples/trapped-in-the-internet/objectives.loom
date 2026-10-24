@@ -637,7 +637,7 @@ OBJECTIVE Welcome Everyone
   while: Night.phase == "desktop" or Night.phase == "bingo"
   act: B
   go: The Desktop
-  title: CI 1: welcome everyone, then Computer Bingo
+  title: Welcome everyone, then Computer Bingo
   text:
     The fundraiser to restore the sign at Maps And Ducks. Jean Trabolta joins by video conference later. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, one line through the centre. A host starts 🎱 Bingo and calls ⏰ time: your booth pops up when your game is on.
 
@@ -650,7 +650,7 @@ OBJECTIVE Celebrate The Winners
   while: Night.phase == "bingo_results"
   act: B
   go: The Desktop
-  title: CI 2: celebrate the Bingo winners
+  title: Celebrate the Bingo winners
   pick: program.location == "The Desktop" and program.cleared == true
   text:
     Winners read their line, centre square last. Demand applause. Tap each winner (⭐ +10), give the ribbon (⭐ +5), then tap the program they name at the centre square (⭐ +10): Norton interrupts. You never press 🛡.
@@ -679,7 +679,7 @@ OBJECTIVE The First Moment Of Truth Host
   while: Night.phase == "truth_1" and Night.judging == true
   act: B
   go: The Desktop
-  title: CI 3: the First Moment of Truth
+  title: The First Moment of Truth
   text:
     Two minutes to file, then 📋 each question: Trabolta reads the result on the TV; when he has finished, the next. After Q3, 🍾 Truth or Dare (about five spins). The hosts call ⏱, 📋 and 🍾. Guesses are a symptom of corruption: 🤷 (⭐ +5). Never say which filings were lies.
     - Filings closed, done when Night.r1_closed == true
@@ -694,7 +694,7 @@ OBJECTIVE Keep Everyone Calm
   for: Clippy
   while: Night.phase == "malware" or Night.phase == "hunt_2" or Night.phase == "summons"
   act: C
-  title: CI 4: panic at the ad, then reassure
+  title: Panic at the ad, then reassure
   text:
     Read Trabolta's private message. Overreact wildly, then pull it together: "There are signs of malware in the system that we need to be very vigilant about." Send everyone off for the hour.
 
@@ -705,7 +705,7 @@ OBJECTIVE Judge Truth Pong
   while: Night.phase == "truth_pong" and Night.judging == true
   act: D
   go: The Cloud
-  title: CI 5: judge the cup-makers' answers
+  title: Judge the cup-makers' answers
   pick: program.may_answer == true
   text:
     It's Truth Time again! Only cup-makers answer. ✅ accurate or 😤 wrong but confident for the question being judged (Q1 to start; 🔢 under Also now moves it), 🤷 for a guess. ⭐ +5 each answer you judge.
@@ -717,7 +717,7 @@ OBJECTIVE Lead The Applause
   while: Night.phase == "trust_chart" or Night.phase == "beans"
   act: D
   go: The Desktop
-  title: CI 6: lead the applause; the beans are malware
+  title: Lead the applause; the beans are malware
   text:
     Lead the applause for the most trusted. Don't defend the least trusted. Full of beans: "Routine operations like print to PDF are no longer working." Welcome the zipped programs back.
 
@@ -726,7 +726,7 @@ OBJECTIVE No Sides On Air
   for: Clippy
   while: Night.phase == "overshare" or Night.phase == "y2k" or Night.phase == "majority"
   act: E
-  title: CI 7: keep everyone hunting; no sides on air
+  title: Keep everyone hunting; no sides on air
   text:
     The clock reset to 11 PM, December 31, 1999. The final facts are in the Quest Log. Programs will recruit: you may not take sides on air. At midnight, everyone back for the final reveal.
 
@@ -737,7 +737,7 @@ OBJECTIVE The Final Round
   while: Night.phase == "final_reveal"
   act: F
   go: The Desktop
-  title: CI 8: lights down, everyone speaks
+  title: Lights down, everyone speaks
   text:
     Judge the final facts: ✅ / 😤 for the question being judged (Q1 to start; 🔢 moves it to Q2), 🤷 for a guess. ⭐ +5 each. Then: "There is only one version of the truth. Because truth is always in binary."
   buttons: judge_accurate, judge_confident, uncertain_answer
@@ -781,7 +781,7 @@ OBJECTIVE Purgatory
   while: Night.ending == "destroyed" and Night.ceremony != true
   act: F
   go: The Desktop
-  title: CI 9: dance, then read the summary
+  title: Dance, then read the summary
   text:
     After the dance a host calls 🪦 the summary: read it from the Desktop room. "We are now in purgatory forever together."
 
