@@ -1,7 +1,7 @@
 // Codex 7: Clippy's instructions. The private-to-Clippy channel: each
 // entry is unlocked for the CHARACTER Clippy only (main.loom rules:
 // `unlock Clippy Instructions N for Clippy`), so it lands in her booth's
-// Codex ("What Clippy knows") the moment the cue fires. Instructions 1 is
+// Codex (the Codex tile on her Mission) the moment the cue fires. Instructions 1 is
 // held from the start. Never `about: Clippy` (that would put the
 // instructions on her People card for every guest to read).
 //
@@ -45,7 +45,7 @@ CODEX Clippy Instructions 1
     up, and then you'll celebrate the winners.
     - Send them off enthusiastically.
 
-// DRAFT w18 (B6, Q1/Q2): Clippy fires the game cues from the 🎤 bar; any host fires the rest.
+// DRAFT w21 (reverses w18's B6): the hosts and the directors call every cue; Clippy runs the games in the room and plays for ⭐ Points.
 CODEX Clippy Instructions 2
   title: CLIPPY INSTRUCTIONS - 2/X - COMPUTER BINGO RESULTS
   category: Missions
@@ -97,7 +97,7 @@ CODEX Clippy Instructions 2
     there are files around the computer that Trabolta needs everyone's
     help to interpret. Trabolta will explain the rules.
 
-// DRAFT w18 (B6, Q1/Q2): Clippy fires the game cues from the 🎤 bar; any host fires the rest.
+// DRAFT w21 (reverses w18's B6): the hosts and the directors call every cue; Clippy runs the games in the room and plays for ⭐ Points.
 // DRAFT w18b (Q6, R20, R21): Trabolta reads the results on the TV; the
 // bottle comes after the third; "confident answers are accepted" is gone.
 CODEX Clippy Instructions 3
@@ -112,10 +112,10 @@ CODEX Clippy Instructions 3
     filed with normal or low confidence, or a clear guess, is a symptom of
     corruption: the Antivirus escort them to the Internet.
     - There is a two-minute last-chance window. Tell everyone to file
-    anything they found with Trabolta NOW. You close it with ⏱ on your 🎤
-    bar (or it closes itself at two minutes). A closed round never reopens.
-    - (App) You fire 📋 Results from your 🎤 bar, for each question in
-    turn. Trabolta reads the result on the TV: CONSENSUS (every answer
+    anything they found with Trabolta NOW. A host closes it with ⏱ (or it
+    closes itself at two minutes). A closed round never reopens.
+    - (App) A host fires 📋 Results for each question in turn: nod to
+    them when the room is ready. Trabolta reads the result on the TV: CONSENSUS (every answer
     matches and everyone was sure), nobody filed, or the list of what
     everyone told him, with how many were accepted and how many were
     guesses. When he has finished, the next 📋. Then say that guesses are
@@ -124,8 +124,8 @@ CODEX Clippy Instructions 3
     - Never say which filings were lies: the room hears "accepted" for
     every confident answer.
     - After question three, Truth or Dare: when he has finished the third,
-    🍾 Spin the bottle on your 🎤 bar, about five spins (NEXT offers five;
-    spin more if the room wants it). Trabolta names the program on the TV;
+    a host spins 🍾 the bottle, about five spins (NEXT offers five; spin
+    more if the room wants it). The bottle's program pops up on your phone. Trabolta names the program on the TV;
     their phone asks Truth or Dare.
     - Dare: they are marked for reinstallation for not choosing Truth.
     (App) If their phone is dead, 🎩 Chose Dare on their card does the same.
@@ -137,7 +137,7 @@ CODEX Clippy Instructions 3
     - Ribbons are always allowed: 🎀 Award a ribbon on anyone who deserves
     one.
 
-// DRAFT w18 (B6, Q1/Q2): Clippy fires the game cues from the 🎤 bar; any host fires the rest.
+// DRAFT w21 (reverses w18's B6): the hosts and the directors call every cue; Clippy runs the games in the room and plays for ⭐ Points.
 CODEX Clippy Instructions 4
   title: CLIPPY INSTRUCTIONS - 4/X - THE MALWARE
   category: Missions
@@ -157,12 +157,12 @@ CODEX Clippy Instructions 4
     to be very vigilant about. We are going to proceed on the Truth
     Scavenger Hunt because it is more important than ever that Trabolta
     gets the information he needs to undo what is happening."
-    - (App) Fire 📓 Hunt 2 from your 🎤 bar. The questions go up on the screen
+    - (App) A host fires 📓 Hunt 2. The questions go up on the screen
     and into everyone's Quest Log.
     - Disperse everyone for one hour, with instructions to return for the
     Second Moment of Truth.
 
-// DRAFT w18 (B6, Q1/Q2): Clippy fires the game cues from the 🎤 bar; any host fires the rest.
+// DRAFT w21 (reverses w18's B6): the hosts and the directors call every cue; Clippy runs the games in the room and plays for ⭐ Points.
 CODEX Clippy Instructions 5
   title: CLIPPY INSTRUCTIONS - 5/X - TRUTH PONG
   category: Missions
@@ -184,8 +184,8 @@ CODEX Clippy Instructions 5
     - Make the cup: you may share one truth, and answer one of the facts
     Trabolta asked for. (App) 🏓 Made the cup.
     - Same judging as before, only for programs who made the cup: ✅ or 😤
-    with the number of the question within this round, or 🤷 to the
-    Internet.
+    for the question they answered (🔢 picks the question: 1 to start), or
+    🤷 to the Internet.
     - When a host fires the tally, Trabolta tells everyone whether
     he has completed this round's collection.
 
@@ -222,7 +222,7 @@ CODEX Clippy Instructions 7
     - Keep everyone hunting for the final facts. At midnight, everyone is
     called back to the Desktop for the final reveal.
 
-// DRAFT w18 (B6, Q1/Q2): Clippy fires the game cues from the 🎤 bar; any host fires the rest.
+// DRAFT w21 (reverses w18's B6): the hosts and the directors call every cue; Clippy runs the games in the room and plays for ⭐ Points.
 CODEX Clippy Instructions 8
   title: CLIPPY INSTRUCTIONS - 8/X - THE FINAL REVEAL
   category: Missions
@@ -232,11 +232,11 @@ CODEX Clippy Instructions 8
     - Everyone may speak: what they have learned, what facts they have
     gathered, what they believe but cannot prove, and what they think
     SHOULD happen next.
-    - (App) Judge the final facts as before: ✅ or 😤 Q1 or Q2 (there are
-    only two final facts), or 🤷 to the Internet.
+    - (App) Judge the final facts as before: ✅ or 😤 for question 1 or 2
+    (🔢 picks it; there are only two final facts), or 🤷 to the Internet.
     - Acknowledge every contribution. Then: "There is only one version of
     the truth. Because truth is always in binary."
-    - (App) Fire 🍎 Bobbing for Truth from your 🎤 bar.
+    - (App) A host fires 🍎 Bobbing for Truth: your phone says your game is on.
     - Dejectedly introduce the final Truth Game of the night: "Trabolta has
     prepared a summary of his findings so far, but we are not worthy of
     the truth unless we are willing to Bob for it and risk our status as
