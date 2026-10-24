@@ -137,7 +137,7 @@ The contract's (`w21/CONTRACT.md`):
 **Objectives (`objectives.loom`)** — new: *Patrol And Review* (Password
 Manager), *Whose Side Are You On* (Norton), *Whose Side Are You On Too*
 (McAfee, CRA), *Whose Side Are You On Keys* (Password Manager), *Whose Side Are You On Clippy*,
-*Which Question* (Clippy, 🔢 while judging). Changed
+*Which Question* (Clippy, 🔢 while judging). Every player objective with a place gains `go:` (Mission's Where row): The Desktop for the games, the summons, the blackout and the ceremony; The Optical Drive for Door Duty and Greet The Arrivals; The Internet for Escort The Marked and the zip; The Cloud for Truth Pong. Changed
 (marked `// DRAFT w21 (wave 21: …)`):
 
 | Objective | Old | New |
