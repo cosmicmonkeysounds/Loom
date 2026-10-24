@@ -11,8 +11,8 @@
 <!--
   Hand-written template for core/scripts/show-page.ts. Prose lives here;
   the markers below are filled from the story on every build:
-  counts, cues, beats, cast, rooms, terminals. Every <li><input type="checkbox" id="ck-list-in-a-becomes-a-remembered-tick"><label for="ck-list-in-a-becomes-a-remembered-tick"> in a
-  <ul class="check" data-list="…"> becomes a remembered tick box.
+  counts, cues, beats, cast, rooms, terminals. Every list item marked
+  data-ck inside a "check" list (data-list="…") becomes a remembered tick box.
   Never write a code, a hunt answer or a patch combination in this file:
   core/test/show-page.test.ts reads them from the source and fails the build.
 -->
@@ -42,6 +42,8 @@
   --ok: #1f7a3a;
   --row-alt: #f6f7f9;
   --mark: #dfe7f5;
+  --line: #2f5f9a;
+  --mqtt: #8a6a00;
   --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --win: Tahoma, Verdana, "Segoe UI", var(--sans);
@@ -70,8 +72,10 @@
     --stop-ink: #ffc4bb;
     --stop-rule: #b5483c;
     --ok: #6fd18d;
-    --row-alt: #20232b;
+    --row-alt: #262a33;
     --mark: #22324f;
+    --line: #7fb0f5;
+    --mqtt: #d9b84a;
     color-scheme: dark;
   }
 }
@@ -93,8 +97,10 @@
   --stop-ink: #ffc4bb;
   --stop-rule: #b5483c;
   --ok: #6fd18d;
-  --row-alt: #20232b;
+  --row-alt: #262a33;
   --mark: #22324f;
+  --line: #7fb0f5;
+  --mqtt: #d9b84a;
   color-scheme: dark;
 }
 
@@ -179,6 +185,7 @@ li + li { margin-top: 0.25em; }
   font-size: var(--step--1);
 }
 .toc a:hover { background: var(--mark); }
+.toc a[aria-current="true"] { background: var(--mark); font-weight: 600; box-shadow: inset 3px 0 0 var(--title-a); }
 main { min-width: 0; }
 
 /* Masthead */
@@ -238,7 +245,7 @@ main { min-width: 0; }
 .note strong:first-child, .stop strong:first-child { display: block; margin-bottom: 2px; }
 
 /* At a glance */
-.glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0; border: 1px solid var(--rule); margin-bottom: 1em; }
+.glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr)); gap: 0; border: 1px solid var(--rule); margin-bottom: 1em; }
 .glance > div { padding: 10px 12px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); min-width: 0; }
 .glance dt { font: 600 var(--step--1) / 1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .glance dd { margin: 2px 0 0; }
@@ -262,47 +269,54 @@ table.cues td.label { font-weight: 600; }
 table.cues tr.aside td.label { font-weight: 400; }
 table.cues code { overflow-wrap: anywhere; }
 .tags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
-.tag { font: 400 0.75rem / 1.4 var(--mono); border: 1px solid var(--rule); padding: 0 4px; color: var(--muted); white-space: nowrap; }
+.tag { font: 400 0.75rem / 1.4 var(--mono); border: 1px solid var(--rule); padding: 1px 5px; color: var(--muted); white-space: nowrap; }
 .tag.urgent { border-color: var(--stop-rule); color: var(--stop-ink); }
 .act { font-size: var(--step-1); border-bottom: 2px solid var(--title-a); padding-bottom: 4px; }
 .act-note { color: var(--muted); font-size: var(--step--1); margin-top: -0.2em; }
-.todo { color: var(--stop-ink); background: var(--stop-bg); padding: 0 4px; }
+.todo { color: var(--stop-ink); background: var(--stop-bg); padding: 1px 6px; border-radius: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+/* A secret the page leaves out on purpose (show-page.ts REDACTED_CHIP). */
+.redacted { display: inline-block; font: 600 0.75rem / 1.3 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border: 1px dashed var(--muted); border-radius: 3px; padding: 0 6px; vertical-align: 0.05em; white-space: nowrap; }
+.legend-hidden .redacted { margin-right: 2px; }
 
 /* Beats */
 details.beats { border: 1px solid var(--rule); margin-bottom: 6px; }
 details.beats summary { cursor: pointer; padding: 6px 10px; background: var(--row-alt); }
 details.beats summary .part { font-weight: 600; }
 details.beats summary .count { color: var(--muted); font-size: var(--step--1); }
-details.beats ol { margin: 8px 0 10px; padding-left: 2.6em; columns: 2 16rem; column-gap: 28px; font-size: var(--step--1); }
+details.beats ol { margin: 8px 0 10px; padding-left: 2.6em; padding-right: 12px; columns: 2 16rem; column-gap: 28px; font-size: var(--step--1); }
 details.beats li { break-inside: avoid; }
 .setting { color: var(--muted); }
 .setting::before { content: "· "; }
+.owner { color: var(--muted); }
+.owner::before { content: "· "; }
 ul.names { columns: 3 11rem; column-gap: 24px; font-size: var(--step--1); }
 ul.names li { break-inside: avoid; }
 
 /* Diagram */
 .diagram { overflow-x: auto; border: 1px solid var(--rule); background: var(--panel); margin-bottom: 1em; }
-.diagram svg { display: block; width: 100%; min-width: 680px; height: auto; }
+.diagram svg { display: block; width: 100%; min-width: 600px; height: auto; }
+.scroll-hint { display: none; margin: 0 0 4px; }
 .diagram .box { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
 .diagram .boxhead { fill: var(--title-a); }
-.diagram .dev { fill: var(--row-alt); stroke: var(--muted); stroke-width: 1; }
-.diagram .cloud { fill: var(--mark); stroke: var(--title-b); stroke-width: 1.5; }
+.diagram .dev { fill: var(--row-alt); stroke: var(--muted); stroke-width: 1.25; }
+.diagram .cloud { fill: var(--mark); stroke: var(--line); stroke-width: 1.5; }
 .diagram text { fill: var(--ink); font-family: var(--sans); font-size: 13px; }
 .diagram text.h { fill: var(--title-ink); font-family: var(--win); font-weight: 700; font-size: 13px; }
 .diagram text.s { fill: var(--muted); font-size: 12px; }
 .diagram text.l { fill: var(--muted); font-size: 12px; font-family: var(--mono); }
-.diagram .https { stroke: var(--title-b); stroke-width: 2; fill: none; }
-.diagram .mqtt { stroke: var(--note-rule); stroke-width: 2; stroke-dasharray: 7 5; fill: none; }
+.diagram .https { stroke: var(--line); stroke-width: 2; fill: none; }
+.diagram .mqtt { stroke: var(--mqtt); stroke-width: 2.5; stroke-dasharray: 7 5; fill: none; }
 .diagram .wire { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 2 4; fill: none; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: var(--step--1); color: var(--muted); margin: 0 0 1em; }
-.legend span::before { content: ""; display: inline-block; width: 28px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 2px solid var(--title-b); }
-.legend .lm::before { border-top: 2px dashed var(--note-rule); }
+.legend span::before { content: ""; display: inline-block; width: 28px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 2px solid var(--line); }
+.legend .lm::before { border-top: 2px dashed var(--mqtt); }
 .legend .lw::before { border-top: 2px dotted var(--muted); }
 
 /* Machines */
-.machines { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 14px; margin-bottom: 1.2em; }
+.machines { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr)); gap: 14px; margin-bottom: 1.2em; }
 .machine { border: 1px solid var(--rule); min-width: 0; }
 .machine h4 { margin: 0; padding: 5px 10px; background: var(--chrome); font-family: var(--win); }
+#tech > .body > h3:first-of-type { margin-top: 0.4em; }
 .machine .in { padding: 8px 12px 2px; font-size: var(--step--1); }
 .machine ul { padding-left: 1.1em; }
 
@@ -343,6 +357,9 @@ ul.check label { min-width: 0; cursor: pointer; }
   .toc .bar { display: none; }
   .toc ol { display: flex; overflow-x: auto; padding: 0 8px; white-space: nowrap; scrollbar-width: thin; }
   .toc a { padding: 10px 10px; }
+  .toc a[aria-current="true"] { box-shadow: inset 0 -3px 0 var(--title-a); }
+  .toc { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+  .scroll-hint { display: block; }
   .mast { margin-top: 16px; }
   .win > .body { padding: 14px 12px 4px; }
   .slot { grid-template-columns: minmax(0, 1fr); }
@@ -352,7 +369,20 @@ ul.check label { min-width: 0; cursor: pointer; }
 }
 
 @media print {
-  :root { --paper: #fff; --panel: #fff; }
+  /* Ink on paper, whatever the screen's theme: the same specificity as the
+     dark blocks, later in the sheet, so it wins. */
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+    --paper: #fff; --panel: #fff; --ink: #000; --muted: #444; --rule: #999; --chrome: #e4e6ea;
+    --title-a: #0a246a; --title-b: #3a6ea5; --title-ink: #fff; --link: #000;
+    --note-bg: #fff; --note-ink: #000; --note-rule: #8a6a00;
+    --stop-bg: #fff; --stop-ink: #000; --stop-rule: #c0392b;
+    --ok: #1f7a3a; --row-alt: #fff; --mark: #eef2f8; --line: #2f5f9a; --mqtt: #8a6a00;
+    color-scheme: light;
+  }
+  table.cues { min-width: 0; table-layout: auto; }
+  table.cues th:nth-child(3) { width: auto; }
+  table { font-size: 8.5pt; }
+  .scroll-hint { display: none !important; }
   body { font-size: 10.5pt; }
   body::before, .toc, .tools button { display: none !important; }
   .page { display: block; padding: 0; max-width: none; }
@@ -376,7 +406,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <nav class="toc" aria-label="Contents">
   <div class="bar">Contents</div>
   <ol>
-    <li><a href="#glance">At a glance</a></label></li>
+    <li><a href="#glance">At a glance</a></li>
     <li><a href="#story">The story</a></li>
     <li><a href="#acts">Act by act</a></li>
     <li><a href="#endings">Endings</a></li>
@@ -411,7 +441,7 @@ ul.check label { min-width: 0; cursor: pointer; }
       <div><dt>Date</dt><dd>Saturday 31 October 2026, Halifax (ADT). Clocks fall back at 02:00.</dd></div>
       <div><dt>Doors</dt><dd><strong>19:00 or 20:00: not decided.</strong> See the note below.</dd></div>
       <div><dt>First cue</dt><dd>C1 📣 by 21:00</dd></div>
-      <div><dt>Ending</dt><dd>About 01:50, ceremony done about 02:10 (a projection)</dd></div>
+      <div><dt>Ending</dt><dd>About 01:50 ADT; ceremony done about 01:10 AST, after the clocks fall back (a projection)</dd></div>
       <div><dt>App</dt><dd><a href="https://app.mapsandducks.com">app.mapsandducks.com</a> · editor <code>/edit/</code></dd></div>
       <div><dt>Release for the night</dt><dd><code>show-1031</code> (code freeze Fri 10-30)</dd></div>
     </dl>
@@ -434,7 +464,7 @@ ul.check label { min-width: 0; cursor: pointer; }
     </table></div>
     <dl class="counts">
 <div><dt>Story files</dt><dd>35</dd></div>
-<div><dt>Beats</dt><dd>135</dd></div>
+<div><dt>Beats</dt><dd>135 (132 written; a trait's beat counts once per character that has it)</dd></div>
 <div><dt>Admin cues</dt><dd>73 (44 in sequence)</dd></div>
 <div><dt>Story rules</dt><dd>140</dd></div>
 <div><dt>Rooms (LOCATIONs)</dt><dd>14</dd></div>
@@ -473,8 +503,8 @@ ul.check label { min-width: 0; cursor: pointer; }
     <ol>
       <li><strong>Login</strong> at the Optical Drive. The phone is on rails. A real CAPTCHA asks for every traffic light; solving it proves you are human, so it says INCORRECT. The second answer passes.</li>
       <li><strong>Upload.</strong> Pool programs pick the problem Trabolta promised to fix. Everyone leaves an object in the deposit box and types what it was, accepts the Terms of Service, and gets 100 Truthcoin and a pass.</li>
-      <li><strong>Clearance.</strong> An Antivirus scans the pass. The guest walks the Tube to the Desktop, the house rooms open quietly, and Task Manager introduces the admin team.</li>
-      <li><strong>Orientation.</strong> Clippy's tour of the phone, Bathroom Mode included. Featured programs get a private briefing with their identity and two red facts.</li>
+      <li><strong>Clearance.</strong> An Antivirus scans the pass. The guest walks the Tube to the Desktop, the house rooms open quietly, and Task Manager introduces the admin team. In the program's own thread, The Uploader privately deals its ties: who it knows in the house (Program Briefing; files point, they never name).</li>
+      <li><strong>Orientation.</strong> Clippy's tour of the phone, Bathroom Mode included. Featured programs get a private briefing (Featured Briefing) with their identity and their own red facts: two each, except VLC and Pong, who get only their identity.</li>
     </ol>
     <p><em>Guests:</em> explore, meet people, hold up the pass at the door.</p>
 
@@ -499,7 +529,7 @@ ul.check label { min-width: 0; cursor: pointer; }
     <h3>D · Act II: Truth Pong, the Trust Chart, the beans</h3>
     <ol>
       <li>⏳ A five-minute warning at 55 minutes, then 🚨 the summons closes. Late programs are marked and show up on the Antivirus' Wanted board.</li>
-      <li>🏓 <strong>Truth Pong</strong> in the Cloud: sink a cup to answer a round-two question. A miss marks you.</li>
+      <li>🏓 <strong>Truth Pong</strong> in the Cloud: sink a cup and every fact you filed on the phone this round counts (and you share one truth aloud). No cup, no count. A miss marks you.</li>
       <li>🧮 Trabolta tallies round two, then 📊 <strong>the Trust Chart</strong>: ten points per accepted truth, minus five per trip to the Internet, plus or minus ten for his own assessment. Staff players have rows too.</li>
       <li>🏆 Praise the top, shame the bottom. VLC is asked to press START on the printer; 🫘 the printer is full of beans, so the malware is worse.</li>
       <li>🗜 The Antivirus zip everyone out of the Internet. 🤖 Trabolta overshares: one of four scenarios, depending on whether Excel planted the virus and OpenOffice filed 20 facts.</li>
@@ -515,7 +545,7 @@ ul.check label { min-width: 0; cursor: pointer; }
     </ol>
 
     <h3>F · The final reveal and the endings</h3>
-    <p>If nothing has ended by midnight: 🌑 the final reveal in the dark, 🍎 Bobbing for Truth for the Bag of Truth, 📄 truth.txt read aloud by the bobber, then ⚖ the verdict on the TV. No lie on record gives the song. Any accepted lie sends Sandy to the prom with Trabolta's rival, and the night continues down the prom branch (see Endings).</p>
+    <p>If nothing has ended by midnight: 🌑 the final reveal in the dark, 🍎 Bobbing for Truth for the Bag of Truth, 📄 truth.txt read aloud by the bobber, then ⚖ the verdict on the TV. No lie on record gives the song. Any accepted lie sends Sandy to the prom with Trabolta's rival, and the night continues down the Prom branch (see Endings). On the cue sheet and in the beat list that branch's beat is <em>Rival's Prom</em>: its real name holds a hunt answer.</p>
 
     <h3>G · The awards ceremony</h3>
     <p>🏆 The Night In Review, then the awards: most and least trusted, frequent flyer, lore hoarder, Truthcoin tycoon, best liar, duck speedrun, quest completionist, the painting (only if MS Paint came), then three staff awards with The Mole last. 🎃 The Resurrection: everyone is human again, out of character.</p>
@@ -532,7 +562,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <section class="win" id="endings">
   <h2><span>Endings</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
   <div class="body">
-    <p class="prose">Exactly one final ending plays (<code>Night.ending</code>). <em>banished</em> is not final. Midnight with nothing ended goes to the final reveal.</p>
+    <p class="prose">The Prom branch is the beat the cue sheet calls <em>Rival's Prom</em>. Exactly one final ending plays (<code>Night.ending</code>). <em>banished</em> is not final. Midnight with nothing ended goes to the final reveal.</p>
     <div class="scroll"><table>
       <thead><tr><th scope="col"><code>Night.ending</code></th><th scope="col">How it is reached</th><th scope="col">What happens</th></tr></thead>
       <tbody>
@@ -552,23 +582,23 @@ ul.check label { min-width: 0; cursor: pointer; }
 <section class="win" id="games">
   <h2><span>Games and systems</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
   <div class="body prose">
-    <h4>Computer Bingo</h4>
-    <p>A printed card of 16 squares plus the centre, tick boxes only, no names written. The centre square exposes the anti-AI program. Three outcomes: a winner names her, a winner refuses and goes to the Internet, or nobody wins and Task Manager's 🃏 frames her.</p>
-    <h4>The hunts and the judging</h4>
+    <h3>Computer Bingo</h3>
+    <p>A printed card of 16 squares plus the centre, tick boxes only, no names written. The centre square exposes the anti-AI program (a secret on the Kernel; the director's card names it, and a director may change it before Bingo). Three outcomes: a winner names that program, a winner refuses and goes to the Internet, or nobody wins and Task Manager's 🃏 frames them anyway.</p>
+    <h3>The hunts and the judging</h3>
     <p>Eight questions in <code>facts.json</code> over three rounds (three, three, two). Guests file on the 📝 card and must say how sure they are. An exact answer is accepted at once; every other filing goes to Trabolta's AI judge, one at a time. Accepted pays 50 Truthcoin and raises the Trust Chart. A guess (under 100%) is marked; a wrong answer at 100% counts as a lie, and a single accepted lie changes the verdict. Directors override on Run → Mind → Judging, hosts on the Judge tab. The answer key is on the second director's card only, never here.</p>
-    <h4>Truth or Dare</h4>
+    <h3>Truth or Dare</h3>
     <p>After the three round-one results. 20 truths in <code>facts.json</code>, 16 still drafts. Clippy marks 🗣 answered, 🙅 refused or 🎩 chose dare.</p>
-    <h4>Truthcoin</h4>
+    <h3>Truthcoin</h3>
     <p>Every program starts with 100 (max 500). The pinned Wallet room sends, requests and offers coin for a codex entry. CRA Agent Software approves every third transfer (a 60 s window; held ones approve themselves after 5 minutes). Runescape mints, grants and freezes. McAfee brokers <code># truthcoin-exchange</code> with no pot and no cut. The Casino terminal upstairs bets the same coin; no story rule reacts to it.</p>
-    <h4>Factions</h4>
+    <h3>Factions</h3>
     <p>Two declared sides, Unlimited Power and The Way Out, revealed at 🕚, plus factions guests found from the Truther Download. One faction at a time. The majority counts only in the Y2K hour, only programs still present (👋 Went home takes someone off).</p>
-    <h4>The King</h4>
+    <h3>The King</h3>
     <p>One shared health bar, 15 for the night. Each program may hit him once per reinstallation visit in either game. The lower his bar, the weaker his chess on the Server Door terminal. A checkmate gives the door code until truth.txt. At 0 he kneels and his virtual door opens. 👑 restores him.</p>
-    <h4>The cold door</h4>
+    <h3>The cold door</h3>
     <p>Four silver digit notes hidden in four rooms (where is on <code>generated/print-stacks.md</code>; never in the server room). Holding all four completes the quest and gives the door code. The keypad is set by hand to match <code>facts.json</code>; nothing networked drives it, and the inside handle always opens.</p>
-    <h4>The Heart</h4>
+    <h3>The Heart</h3>
     <p>One heart at a time. Opening the door mid-talk freezes it. Suspicion 50 warns, 80 throws the program out and marks them once. The ask opens with proof about Sandy plus one more point. A convince works at any hour; the night ends only when a director presses 🕊 (autoend is off by default).</p>
-    <h4>Reinstallation</h4>
+    <h3>Reinstallation</h3>
     <p>Marks come from Bingo, guesses, dares, refused truths, missed cups, failed bobs, the late list and the heart. A mark hinders nothing until an Antivirus claims the poster, confronts the program and 🛡 sends them to the tent. Only a marked or captured program may play; after an ending it becomes a party favour.</p>
   </div>
 </section>
@@ -580,7 +610,7 @@ ul.check label { min-width: 0; cursor: pointer; }
     <div class="scroll"><table>
       <thead><tr><th scope="col">Clock</th><th scope="col">What</th><th scope="col">Story timer</th></tr></thead>
       <tbody>
-        <tr><td>10:00</td><td>Weather call (tent or shed), morning reset, Go live, pause</td><td></td></tr>
+        <tr><td>10:00</td><td>Weather call (tent or shed), then ⏸ pause, sync, Push draft, Go live in place</td><td></td></tr>
         <tr><td>15:00</td><td>Tech boot of every machine, keypad test</td><td></td></tr>
         <tr><td>17:00</td><td>Performer call</td><td></td></tr>
         <tr><td>19:00 / 20:00</td><td>Doors (open question). Power On plays; show clock reads 7:00 PM</td><td></td></tr>
@@ -594,7 +624,7 @@ ul.check label { min-width: 0; cursor: pointer; }
         <tr><td>00:30</td><td>Overshare</td><td></td></tr>
         <tr><td>01:30</td><td>The Y2K hour</td><td>60 min to midnight</td></tr>
         <tr><td>01:50</td><td>Ending</td><td>Verdict hold about 34 s</td></tr>
-        <tr><td>02:10 ADT (01:10 AST)</td><td>Ceremony and Resurrection done</td><td></td></tr>
+        <tr><td>01:10 AST</td><td>Ceremony and Resurrection done (5 h 10 min after C1; the clocks fell back at 02:00 ADT)</td><td></td></tr>
       </tbody>
     </table></div>
   </div>
@@ -605,7 +635,7 @@ ul.check label { min-width: 0; cursor: pointer; }
   <div class="body">
     <div class="prose">
       <p>Every admin cue in running order, grouped by act exactly as Run → Director groups them. Fire from Run → Director, a host's NEXT bar, or the director phone (<code>/?role=director</code>). Every cue arms on the first press and fires on the second (between 0.3 and 4 seconds later). <em>Off sequence</em> cues are timers, machine cues and hardware fallbacks: they tick when they fire but never become NEXT. NEXT is empty while a timer owns the night (hunt 1, the hour, the Y2K hour). A refused press says why in <code># hosts</code>.</p>
-      <p class="small">Generated from <code>main.loom</code>. A word blanked as ▒▒▒ is a hunt answer or a code the page never prints.</p>
+      <p class="legend-hidden small">Generated from <code>main.loom</code>. <span class="redacted" aria-hidden="true">hidden</span> marks a hunt answer or a code this page leaves out on purpose: answers are on the second director's card, codes on the director's card and the printed props. <em>Rival's Prom</em> is the Prom branch's beat (see Endings).</p>
     </div>
     <h3 class="act" id="cues-act-1">B · Act I: the Desktop, Bingo and the first truth</h3>
 <p class="act-note">9 in sequence, 1 off the running order (timers, fallbacks, toggles).</p>
@@ -679,9 +709,9 @@ ul.check label { min-width: 0; cursor: pointer; }
 <tr><td class="n">38</td><td class="label">🌑 Final Truth Scavenger Hunt reveal<span class="tags"><span class="tag">has while:</span></span></td><td><code>final_reveal</code></td><td class="desc"></td></tr>
 <tr><td class="n">39</td><td class="label">🍎 Bobbing for Truth<span class="tags"><span class="tag">has while:</span></span></td><td><code>bobbing_for_truth</code></td><td class="desc"></td></tr>
 <tr><td class="n">40</td><td class="label">📄 Read truth.txt<span class="tags"><span class="tag">has while:</span></span></td><td><code>read_truth_txt</code></td><td class="desc">After 🍎 Brought up the Bag. truth.txt goes up on every screen and the bobber reads it aloud; round three closes. Nothing else happens until ⚖.</td></tr>
-<tr><td class="n">41</td><td class="label">⚖ truth.txt read → the verdict<span class="tags"><span class="tag">has while:</span></span></td><td><code>the_verdict</code></td><td class="desc">When the bobber has finished reading truth.txt. Every answered fact accurate → the song; any lie on record → ▒▒▒ Prom.</td></tr>
+<tr><td class="n">41</td><td class="label">⚖ truth.txt read → the verdict<span class="tags"><span class="tag">has while:</span></span></td><td><code>the_verdict</code></td><td class="desc">When the bobber has finished reading truth.txt. Every answered fact accurate → the song; any lie on record → Rival's Prom.</td></tr>
 <tr><td class="n">42</td><td class="label">💔 Nobody has the line → confession → rave<span class="tags"><span class="tag">has while:</span></span></td><td><code>no_pickup_line</code></td><td class="desc"></td></tr>
-<tr><td class="n">43</td><td class="label">💌 (Alt, after a lie → ▒▒▒ Prom) Trabolta begs for relationship advice<span class="tags"><span class="tag">has while:</span></span></td><td><code>ask_for_advice</code></td><td class="desc"></td></tr>
+<tr><td class="n">43</td><td class="label">💌 (Alt, after a lie → Rival's Prom) Trabolta begs for relationship advice<span class="tags"><span class="tag">has while:</span></span></td><td><code>ask_for_advice</code></td><td class="desc"></td></tr>
 <tr><td class="n">44</td><td class="label">🗳 (Alt) Count the advice poll<span class="tags"><span class="tag">has while:</span></span></td><td><code>advice_tally</code></td><td class="desc"></td></tr>
 <tr><td class="n">45</td><td class="label">💞 (Alt) They helped him<span class="tags"><span class="tag">has while:</span></span></td><td><code>advice_helped</code></td><td class="desc"></td></tr>
 <tr><td class="n">46</td><td class="label">⛈ (Alt) They thwarted him: banish everyone<span class="tags"><span class="tag">has while:</span></span></td><td><code>advice_thwarted</code></td><td class="desc"></td></tr>
@@ -714,192 +744,193 @@ ul.check label { min-width: 0; cursor: pointer; }
 <section class="win" id="beats">
   <h2><span>Beats</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
   <div class="body">
-    <p class="prose">Every beat, by the file and the part of the night it plays in, with its setting. Open a file to see its beats.</p>
+    <p class="prose">Every beat, by the file and the part of the night it plays in, with its setting. Open a file to see its beats. A beat owned by a character says whose it is; a trait's beat is listed once with the characters that carry it.</p>
+    <p class="legend-hidden small"><span class="redacted" aria-hidden="true">hidden</span> marks a hunt answer or a code left out on purpose (the second director's card has the answers). <em>Rival's Prom</em> is the Prom branch's beat.</p>
     <details class="beats"><summary><span class="part">Opening (the doors)</span> <code>main.loom</code> <span class="count">1 beat</span></summary>
 <ol>
-<li>Power On <span class="setting">The Desktop</span></li>
+<li><span class="beat">Power On</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">A · Arrival</span> <code>beats/login.loom</code> <span class="count">6 beats</span></summary>
 <ol>
-<li>Login <span class="setting">The Optical Drive</span></li>
-<li>Login Incorrect <span class="setting">The Optical Drive</span></li>
-<li>Upload <span class="setting">The Optical Drive</span></li>
-<li>Orientation <span class="setting">The Desktop</span></li>
-<li>Re-upload <span class="setting">The Optical Drive</span></li>
-<li>Featured Briefing <span class="setting">The Desktop</span></li>
+<li><span class="beat">Login</span> <span class="setting">The Optical Drive</span></li>
+<li><span class="beat">Login Incorrect</span> <span class="setting">The Optical Drive</span></li>
+<li><span class="beat">Upload</span> <span class="setting">The Optical Drive</span></li>
+<li><span class="beat">Orientation</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Re-upload</span> <span class="setting">The Optical Drive</span></li>
+<li><span class="beat">Featured Briefing</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">A · Arrival (the Antivirus' clearance, owned by the performers)</span> <code>cast/kit.loom</code> <span class="count">1 beat</span></summary>
 <ol>
-<li>Clearance (owned)</li>
+<li><span class="beat">Clearance</span> <span class="owner">TRAIT Enforcer: one copy each for Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software (×4)</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">A · Arrival (the hosts' and Clippy's greetings)</span> <code>cast/hosts.loom</code> <span class="count">4 beats</span></summary>
 <ol>
-<li>Greet (owned)</li>
-<li>Greet (owned)</li>
-<li>Greet (owned)</li>
-<li>Greet (owned)</li>
+<li><span class="beat">Greet</span> <span class="owner">owned by Clippy</span></li>
+<li><span class="beat">Greet</span> <span class="owner">owned by Task Manager</span></li>
+<li><span class="beat">Greet</span> <span class="owner">owned by Adobe Acrobat</span></li>
+<li><span class="beat">Greet</span> <span class="owner">owned by Recycling Bin</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">A · Arrival (each program's briefing)</span> <code>codex/85-ties.loom</code> <span class="count">1 beat</span></summary>
 <ol>
-<li>Program Briefing <span class="setting">The Desktop</span></li>
+<li><span class="beat">Program Briefing</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">B · Act I: the Desktop and Bingo</span> <code>beats/desktop.loom</code> <span class="count">7 beats</span></summary>
 <ol>
-<li>Call To The Desktop <span class="setting">The Desktop</span></li>
-<li>Computer Bingo <span class="setting">The Desktop</span></li>
-<li>Bingo Time <span class="setting">The Desktop</span></li>
-<li>Corrupted Code <span class="setting">The Desktop</span></li>
-<li>Trabolta Introduction <span class="setting">The Desktop</span></li>
-<li>The Screensaver <span class="setting">The Desktop</span></li>
-<li>The Router <span class="setting">The Start Bar</span></li>
+<li><span class="beat">Call To The Desktop</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Computer Bingo</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Bingo Time</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Corrupted Code</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Trabolta Introduction</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Screensaver</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Router</span> <span class="setting">The Start Bar</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">B · Act I: hunt 1, the results, the bottle</span> <code>beats/hunt.loom</code> <span class="count">7 beats</span></summary>
 <ol>
-<li>Truth Scavenger Hunt One <span class="setting">The Desktop</span></li>
-<li>Hunt One Go <span class="setting">The Desktop</span></li>
-<li>Hunt Time Up <span class="setting">The Desktop</span></li>
-<li>First Moment Of Truth <span class="setting">The Desktop</span></li>
-<li>Filing Closed <span class="setting">The Desktop</span></li>
-<li>Question Results <span class="setting">The Desktop</span></li>
-<li>Bottle Landed <span class="setting">The Desktop</span></li>
+<li><span class="beat">Truth Scavenger Hunt One</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Hunt One Go</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Hunt Time Up</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">First Moment Of Truth</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Filing Closed</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Question Results</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Bottle Landed</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">Any time · the reinstallation (the tent)</span> <code>beats/internet.loom</code> <span class="count">3 beats</span></summary>
 <ol>
-<li>Reinstallation <span class="setting">The Internet</span></li>
-<li>The Tablet Video <span class="setting">The Internet</span></li>
-<li>Zipped</li>
+<li><span class="beat">Reinstallation</span> <span class="setting">The Internet</span></li>
+<li><span class="beat">The Tablet Video</span> <span class="setting">The Internet</span></li>
+<li><span class="beat">Zipped</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">C · The malware, the hour, the Truther Download</span> <code>beats/malware.loom</code> <span class="count">14 beats</span></summary>
 <ol>
-<li>Ad Hijack <span class="setting">The Desktop</span></li>
-<li>Second Hunt <span class="setting">The Desktop</span></li>
-<li>Hunt Two Go <span class="setting">The Desktop</span></li>
-<li>Truther Download Arrives</li>
-<li>Excel Glitch</li>
-<li>OpenOffice Glitch</li>
-<li>DraftKings Glitch</li>
-<li>Bugdom Glitch</li>
-<li>Jeeves Glitch</li>
-<li>Runescape Glitch</li>
-<li>MS Paint Glitch</li>
-<li>VLC Glitch</li>
-<li>Pong Glitch</li>
-<li>Program Glitch</li>
+<li><span class="beat">Ad Hijack</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Second Hunt</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Hunt Two Go</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Truther Download Arrives</span></li>
+<li><span class="beat">Excel Glitch</span></li>
+<li><span class="beat">OpenOffice Glitch</span></li>
+<li><span class="beat">DraftKings Glitch</span></li>
+<li><span class="beat">Bugdom Glitch</span></li>
+<li><span class="beat">Jeeves Glitch</span></li>
+<li><span class="beat">Runescape Glitch</span></li>
+<li><span class="beat">MS Paint Glitch</span></li>
+<li><span class="beat">VLC Glitch</span></li>
+<li><span class="beat">Pong Glitch</span></li>
+<li><span class="beat">Program Glitch</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">D · Act II: summons, Truth Pong, Trust Chart, printer</span> <code>beats/pong.loom</code> <span class="count">11 beats</span></summary>
 <ol>
-<li>Five Minute Warning <span class="setting">The Desktop</span></li>
-<li>Summons Closed <span class="setting">The Desktop</span></li>
-<li>Truth Pong <span class="setting">The Desktop</span></li>
-<li>Round Two Tally <span class="setting">The Desktop</span></li>
-<li>Trust Chart <span class="setting">The Desktop</span></li>
-<li>Praise The Top <span class="setting">The Desktop</span></li>
-<li>Shame The Bottom <span class="setting">The Desktop</span></li>
-<li>Print The Certificate <span class="setting">The Desktop</span></li>
-<li>The Printer Jams <span class="setting">The Desktop</span></li>
-<li>Full Of Beans <span class="setting">The Desktop</span></li>
-<li>Zip Everyone Out <span class="setting">The Desktop</span></li>
+<li><span class="beat">Five Minute Warning</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Summons Closed</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Truth Pong</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Round Two Tally</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Trust Chart</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Praise The Top</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Shame The Bottom</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Print The Certificate</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Printer Jams</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Full Of Beans</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Zip Everyone Out</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">D–E · The overshare and the Y2K clock</span> <code>beats/overshare.loom</code> <span class="count">11 beats</span></summary>
 <ol>
-<li>Overshare Open <span class="setting">The Desktop</span></li>
-<li>Overshare Go <span class="setting">The Desktop</span></li>
-<li>Overshare One <span class="setting">The Desktop</span></li>
-<li>Overshare Two <span class="setting">The Desktop</span></li>
-<li>Overshare Three <span class="setting">The Desktop</span></li>
-<li>Overshare Four <span class="setting">The Desktop</span></li>
-<li>The Y2K Clock <span class="setting">The Desktop</span></li>
-<li>Excel Final Round</li>
-<li>OpenOffice Final Round</li>
-<li>Program Final Round</li>
-<li>Clock Strikes <span class="setting">The Desktop</span></li>
+<li><span class="beat">Overshare Open</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Overshare Go</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Overshare One</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Overshare Two</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Overshare Three</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Overshare Four</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Y2K Clock</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Excel Final Round</span></li>
+<li><span class="beat">OpenOffice Final Round</span></li>
+<li><span class="beat">Program Final Round</span></li>
+<li><span class="beat">Clock Strikes</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">E · Act III: the majority, The Heart, the patch bay</span> <code>beats/server-room.loom</code> <span class="count">33 beats</span></summary>
 <ol>
-<li>Majority Reached <span class="setting">The Desktop</span></li>
-<li>The Whole Truth</li>
-<li>The Heart <span class="setting">The Server Room</span></li>
-<li>Heart Nag <span class="setting">The Server Room</span></li>
-<li>Heart Door Again <span class="setting">The Server Room</span></li>
-<li>Heart Door Shut <span class="setting">The Server Room</span></li>
-<li>Heart Sealed <span class="setting">The Server Room</span></li>
-<li>Heart Shut It <span class="setting">The Server Room</span></li>
-<li>Heart Talk <span class="setting">The Server Room</span></li>
-<li>Heart Layers <span class="setting">The Server Room</span></li>
-<li>Heart Layer One <span class="setting">The Server Room</span></li>
-<li>Heart Layer Two <span class="setting">The Server Room</span></li>
-<li>Heart Layer Three <span class="setting">The Server Room</span></li>
-<li>Heart Layer Four <span class="setting">The Server Room</span></li>
-<li>Heart Speak <span class="setting">The Server Room</span></li>
-<li>Heart Pick <span class="setting">The Server Room</span></li>
-<li>Heart Warn <span class="setting">The Server Room</span></li>
-<li>Heart Eject <span class="setting">The Server Room</span></li>
-<li>Heart Mark <span class="setting">The Server Room</span></li>
-<li>Heart Barred <span class="setting">The Server Room</span></li>
-<li>Heart Leave <span class="setting">The Server Room</span></li>
-<li>Heart Away <span class="setting">The Server Room</span></li>
-<li>Heart Convinced <span class="setting">The Server Room</span></li>
-<li>Heart Return <span class="setting">The Server Room</span></li>
-<li>Heart Shutdown <span class="setting">The Server Room</span></li>
-<li>Server Room Alarm <span class="setting">The Server Room</span></li>
-<li>Chess Lost <span class="setting">The Desktop</span></li>
-<li>Chess Drawn <span class="setting">The Desktop</span></li>
-<li>Patch Rejected <span class="setting">The Server Room</span></li>
-<li>Trabolta Disabled <span class="setting">The Desktop</span></li>
-<li>Trabolta Recounts <span class="setting">The Desktop</span></li>
-<li>Computer Destroyed <span class="setting">The Desktop</span></li>
-<li>Purgatory <span class="setting">The Desktop</span></li>
+<li><span class="beat">Majority Reached</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Whole Truth</span></li>
+<li><span class="beat">The Heart</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Nag</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Door Again</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Door Shut</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Sealed</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Shut It</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Talk</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Layers</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Layer One</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Layer Two</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Layer Three</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Layer Four</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Speak</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Pick</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Warn</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Eject</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Mark</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Barred</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Leave</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Away</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Convinced</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Return</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Heart Shutdown</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Server Room Alarm</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Chess Lost</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Chess Drawn</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Patch Rejected</span> <span class="setting">The Server Room</span></li>
+<li><span class="beat">Trabolta Disabled</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Trabolta Recounts</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Computer Destroyed</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Purgatory</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">Any time · staff defection</span> <code>beats/staff.loom</code> <span class="count">1 beat</span></summary>
 <ol>
-<li>Staff Defection <span class="setting">The Desktop</span></li>
+<li><span class="beat">Staff Defection</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">F · The final reveal and the endings</span> <code>beats/finale.loom</code> <span class="count">14 beats</span></summary>
 <ol>
-<li>Final Reveal <span class="setting">The Desktop</span></li>
-<li>Bobbing For Truth <span class="setting">The Desktop</span></li>
-<li>The Bag Of Truth <span class="setting">The Desktop</span></li>
-<li>Final Assessment <span class="setting">The Desktop</span></li>
-<li>Truth Txt <span class="setting">The Desktop</span></li>
-<li>The Verdict <span class="setting">The Desktop</span></li>
-<li>Song Ending <span class="setting">The Desktop</span></li>
-<li>▒▒▒ Prom <span class="setting">The Desktop</span></li>
-<li>Pickup Line <span class="setting">The Desktop</span></li>
-<li>Sad Confession <span class="setting">The Desktop</span></li>
-<li>Relationship Advice <span class="setting">The Desktop</span></li>
-<li>Advice Helped <span class="setting">The Desktop</span></li>
-<li>Advice Thwarted <span class="setting">The Desktop</span></li>
-<li>The Hand Jive <span class="setting">The Desktop</span></li>
+<li><span class="beat">Final Reveal</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Bobbing For Truth</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Bag Of Truth</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Final Assessment</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Truth Txt</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Verdict</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Song Ending</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Rival's Prom</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Pickup Line</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Sad Confession</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Relationship Advice</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Advice Helped</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Advice Thwarted</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Hand Jive</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">G · The Night In Review</span> <code>beats/review.loom</code> <span class="count">10 beats</span></summary>
 <ol>
-<li>The Night In Review <span class="setting">The Desktop</span></li>
-<li>Who You Were <span class="setting">The Desktop</span></li>
-<li>The Report On Everyone <span class="setting">The Desktop</span></li>
-<li>Everyone Else <span class="setting">The Desktop</span></li>
-<li>The Rest Of The Report <span class="setting">The Desktop</span></li>
-<li>Goals Met Tonight <span class="setting">The Desktop</span></li>
-<li>The Goals Report <span class="setting">The Desktop</span></li>
-<li>What You Did <span class="setting">The Desktop</span></li>
-<li>What We Did <span class="setting">The Desktop</span></li>
-<li>Your File <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Night In Review</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Who You Were</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Report On Everyone</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Everyone Else</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Rest Of The Report</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Goals Met Tonight</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Goals Report</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">What You Did</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">What We Did</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Your File</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">G · The awards ceremony</span> <code>beats/ceremony.loom</code> <span class="count">2 beats</span></summary>
 <ol>
-<li>The Ceremony <span class="setting">The Desktop</span></li>
-<li>Present Award <span class="setting">The Desktop</span></li>
+<li><span class="beat">The Ceremony</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Present Award</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">Generated from facts.json (hunt readings, seeds)</span> <code>generated/questions.loom</code> <span class="count">5 beats</span></summary>
 <ol>
-<li>Hunt One Questions <span class="setting">The Desktop</span></li>
-<li>Hunt Two Questions <span class="setting">The Desktop</span></li>
-<li>Final Questions <span class="setting">The Desktop</span></li>
-<li>Facts Seed <span class="setting">The Desktop</span></li>
-<li>Truth Question <span class="setting">The Desktop</span></li>
+<li><span class="beat">Hunt One Questions</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Hunt Two Questions</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Final Questions</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Facts Seed</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Truth Question</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">Generated from facts.json (the majority's bundle)</span> <code>codex/9-facts.loom</code> <span class="count">1 beat</span></summary>
 <ol>
-<li>Facts Bundle</li>
+<li><span class="beat">Facts Bundle</span></li>
 </ol></details>
   </div>
 </section>
@@ -930,7 +961,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <ul class="names"><li>Calculator</li><li>Ring Doorbell</li><li>WinZip</li><li>GarageBand</li><li>LimeWire</li><li>MSN Messenger</li><li>3D Pinball</li><li>RollerCoaster Tycoon</li><li>Zoo Tycoon</li><li>Minesweeper</li><li>Trojan Horse</li><li>Ctrl Alt Del</li><li>Solitaire</li><li>Winamp</li><li>Napster</li><li>Encarta</li><li>Netscape Navigator</li><li>ICQ</li><li>The Sims</li><li>Notepad</li><li>Paint Shop Pro</li><li>RealPlayer</li></ul>
 <h3>Voices and props (nobody signs in as these)</h3>
 <ul class="names"><li>The Uploader</li><li>The Router</li><li>The Screensaver</li><li>The Tablet</li><li>Installation Wizard (Julia)</li><li>Sandy</li><li>Truther Download</li></ul>
-<p class="small">Plus 1 hidden bookkeeping character that hold the night's secrets. No app and no agent ever shows them.</p>
+<p class="small">Plus 1 hidden bookkeeping character that holds the night's secrets. No app and no agent ever shows it.</p>
   </div>
 </section>
 
@@ -961,6 +992,7 @@ ul.check label { min-width: 0; cursor: pointer; }
   <h2><span>Tech</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
   <div class="body">
     <p class="prose">The event server runs on a VPS. Every phone, tablet and computer talks to it over HTTPS, so phones keep working on cellular if the house internet dies. Four computers in the house do the rest. The full map, with each machine's setup runbook, is <code>TECH.md</code> in the show folder.</p>
+    <h3>Machines</h3>
     <div class="machines">
       <div class="machine"><h4>John's MacBook (macOS, M3 Max 48 GB)</h4><div class="in"><ul>
         <li>Ollama with <code>gpt-oss:20b</code> + stagehand <code>agents</code>: Trabolta's voice and mind (<code>stagehand/laptop.yaml</code>, <code>mind_mode: new</code>).</li>
@@ -996,10 +1028,11 @@ ul.check label { min-width: 0; cursor: pointer; }
     </ul>
     <h3>How it connects</h3>
     <div class="legend"><span>HTTPS to the VPS</span><span class="lm">MQTT on the house LAN</span><span class="lw">Cable or radio (USB, HDMI, Zigbee)</span></div>
+    <p class="scroll-hint small">The drawing is wider than a phone: scroll it sideways.</p>
     <div class="diagram">
       <svg viewBox="0 0 960 600" role="img" aria-labelledby="net-title net-desc">
         <title id="net-title">House network</title>
-        <desc id="net-desc">Every computer and tablet reaches the VPS over HTTPS through the house router. The MacBook and the Desktop share the MQTT broker on the Desktop. The MacBook drives the MOTU and speakers, the Desktop drives the TV and the Zigbee dongle and bulb, Steph's laptop reads the M4 with the door sensor and patch bay, and the old laptop runs the tent.</desc>
+        <desc id="net-desc">Every computer and tablet reaches the VPS over HTTPS through the house router. The MacBook dials the MQTT broker on the Desktop for announcements and the chime. The MacBook drives the MOTU and speakers, the Desktop drives the TV and the Zigbee dongle and bulb, Steph's laptop reads the M4 with the door sensor and patch bay, and the old laptop runs the tent.</desc>
         <rect class="cloud" x="350" y="16" width="260" height="66" rx="30"/>
         <text x="480" y="44" text-anchor="middle" style="font-weight:700">VPS · app.mapsandducks.com</text>
         <text class="s" x="480" y="64" text-anchor="middle">event server · Postgres · Caddy</text>
@@ -1046,22 +1079,22 @@ ul.check label { min-width: 0; cursor: pointer; }
         <text x="738" y="316">needs WebGL2</text>
         <text class="s" x="738" y="336">backyard tent</text>
 
-        <path class="mqtt" d="M125 348 C125 384, 355 384, 355 348"/>
-        <text class="l" x="160" y="396">MQTT :1884 (announce, sounds)</text>
+        <path class="mqtt" d="M150 348 C150 396, 270 396, 270 348"/>
+        <text class="l" x="100" y="414">MQTT :1884 (announcements, chime)</text>
 
         <rect class="dev" x="20" y="430" width="210" height="56"/>
         <text x="30" y="454" style="font-weight:600">MOTU 828x + ADAT</text>
-        <text class="s" x="30" y="474">24 in / 22 out</text>
-        <path class="wire" d="M125 348 V430"/>
+        <text class="s" x="30" y="474">32 in / 30 out (24 / 22 in use)</text>
+        <path class="wire" d="M90 348 V430"/>
         <rect class="dev" x="20" y="520" width="210" height="56"/>
         <text x="30" y="545" style="font-weight:600">House speakers</text>
         <text class="s" x="30" y="564">by room, from audio.json</text>
-        <path class="wire" d="M125 486 V520"/>
+        <path class="wire" d="M90 486 V520"/>
 
         <rect class="dev" x="250" y="430" width="100" height="56"/>
         <text x="260" y="454" style="font-weight:600">TV</text>
         <text class="s" x="260" y="474">HDMI</text>
-        <path class="wire" d="M300 348 V430"/>
+        <path class="wire" d="M325 348 V430"/>
         <rect class="dev" x="360" y="430" width="100" height="56"/>
         <text x="370" y="454" style="font-weight:600">CC2652P</text>
         <text class="s" x="370" y="474">USB dongle</text>
@@ -1081,6 +1114,8 @@ ul.check label { min-width: 0; cursor: pointer; }
         <text class="s" x="510" y="564">15 jacks</text>
         <path class="wire" d="M605 486 V520"/>
 
+        <path class="https" d="M580 152 H950 V470 H940"/>
+        <text class="l" x="700" y="144">Wi-Fi (or cellular) to the VPS</text>
         <rect class="dev" x="730" y="430" width="210" height="146"/>
         <text x="740" y="454" style="font-weight:600">Straight to the VPS</text>
         <text x="740" y="478">wall tablets</text>
@@ -1118,7 +1153,7 @@ Windows (PowerShell):
 &amp; "C:\Program Files\Google\Chrome\Application\chrome.exe" `
   --user-data-dir="$env:LOCALAPPDATA\loom-&lt;name&gt;" --kiosk `
   --autoplay-policy=no-user-gesture-required --no-first-run "&lt;terminal address&gt;"</pre>
-    <p class="small">Keep every machine awake: <code>caffeinate -dis</code> on a Mac; on Windows <code>powercfg /change standby-timeout-ac 0</code> and <code>/change monitor-timeout-ac 0</code>, Do not disturb on, Windows Update paused until Nov 1.</p>
+    <p class="small">Keep every machine awake: <code>caffeinate -dims</code> on a Mac; on Windows <code>powercfg /change standby-timeout-ac 0</code> and <code>/change monitor-timeout-ac 0</code> (the Desktop: <code>.\scripts\house-desktop\preflight.ps1 -FixPower</code>), Do not disturb on, system sounds off, Windows Update paused past Nov 1.</p>
   </div>
 </section>
 
@@ -1155,9 +1190,9 @@ Windows (PowerShell):
       <li>Every sleeve to ground. Nothing analog ever touches 5 V.</li>
     </ul>
     <p>The firmware decodes which source each input sees and reports the settled cable pairs. The terminal posts <code>patch_changed</code> with the pairs only when the bay has settled on a complete state (exactly four source-to-input cables) that differs from the last complete state it posted. Pulling a cable and plugging the same one back never counts twice. A cable from source to source, or input to input, is invisible, so the bay reads incomplete and nothing is judged. The terminal never knows the combinations: the story compares the pairs with the secrets it holds.</p>
-    <p>The story judges only from 🕚 to 📄. One wrong combination is forgiven ("Stop touching me."); the second trips the alarm.</p>
-    <div class="note"><strong>The buttons win once pressed.</strong> If an Antivirus presses a patch-bay button (🔌 💥 ❌ in their booth) or a director presses a <code>patch_*</code> fallback, the story sets <code>Night.patch_override</code> and follows the buttons, ignoring the bay, until a director presses the new admin cue <code>trust_patch_bay</code>. Use the buttons when the bay misreads or a cable is source-to-source.</div>
-    <p>The patch-bay layout changed this wave, and Combo A with it. Reprint Combo A's two codex halves and the patch-bay watch card. The combinations themselves live only in the story and on the printed halves.</p>
+    <p>The story judges the bay only from 🕚 <em>System clock → 11 PM</em> (<code>y2k_clock</code>) until 📄 <em>Read truth.txt</em> (<code>read_truth_txt</code>), and never after an ending. One wrong combination is forgiven ("Stop touching me."); the second trips the alarm.</p>
+    <div class="note"><strong>The buttons win once pressed.</strong> If an Antivirus presses a patch-bay button (🔌 Combo A, 💥 Combo B, ❌ wrong combination, in their booth) or a director presses a <code>patch_*</code> fallback, the story sets <code>Night.patch_override</code> and follows the buttons, ignoring the bay, until a director presses the new admin cue <code>trust_patch_bay</code>. Use the buttons when the bay misreads or a cable is source-to-source.</div>
+    <p>The patch-bay layout changed this wave, and Combo A with it. Reprint Combo A's two codex halves and the patch-bay watch card. This page never prints the combinations: they are seeded in the story (<code>Kernel.combo_a</code> / <code>combo_b</code> in <code>main.loom</code>) and printed on the codex halves.</p>
     <p>Crew check: in the terminal's ⚙ (2-second hold) the live table shows each input's reading and the source it decodes. Patch each source into each input in turn and see the right source on every row.</p>
   </div>
 </section>
@@ -1167,21 +1202,23 @@ Windows (PowerShell):
   <div class="body">
     <p class="prose">The VPS still runs <code>w18b-1021</code> (verify: <code>ssh loom-vps 'tail ~/loom-ops/releases.log'</code>). Master holds wave 18b stage B, waves 20, 20b, 21 and 22, all unshipped. Wave 19 is already live. In this order:</p>
     <ul class="check" data-list="deploy">
-      <li><input type="checkbox" id="ck-deploy-decide-the-sign-off-shipping-carries"><label for="ck-deploy-decide-the-sign-off-shipping-carries"><strong>Decide the sign-off.</strong> Shipping carries every DRAFT line of waves 18b, 20 and 21 (see Open questions).</label></li>
+      <li><input type="checkbox" id="ck-deploy-decide-the-sign-off-shipping-carries"><label for="ck-deploy-decide-the-sign-off-shipping-carries"><strong>Decide the sign-off.</strong> Shipping carries every DRAFT line of waves 18b, 20, 21 and 22 (see Open questions).</label></li>
       <li><input type="checkbox" id="ck-deploy-check-the-preview-s-roster-in"><label for="ck-deploy-check-the-preview-s-roster-in"><strong>Check the preview's roster in its own step</strong> (<code>pnpm showctl roster</code>). If anyone is on, ask before shipping: a release restarts the server.</label></li>
       <li><input type="checkbox" id="ck-deploy-on-the-macbook-scripts-ops-predeploy"><label for="ck-deploy-on-the-macbook-scripts-ops-predeploy">On the MacBook: <code>scripts/ops/predeploy.sh --vr</code> (the full gate; stamps the commit). Also <code>pnpm --filter @loom/core show:page --check</code>.</label></li>
-      <li><input type="checkbox" id="ck-deploy-server-first-scripts-ops-ship-sh"><label for="ck-deploy-server-first-scripts-ops-ship-sh"><strong>Server first:</strong> <code>scripts/ops/ship.sh show-1031</code>. Stop here if it fails. Then <code>ssh loom-vps 'cd ~/loom &amp;&amp; deploy/release.sh --check-env'</code> and <code>curl https://app.mapsandducks.com/api/health</code> → 200.</label></li>
-      <li><input type="checkbox" id="ck-deploy-on-the-desktop-put-the-real"><label for="ck-deploy-on-the-desktop-put-the-real">On the Desktop: put the real event id and mod passcode in <code>stagehand\trapped.house.local.yaml</code> (git-ignored; the tracked file says CHANGE-ME), <code>git pull</code>, then restart the <code>show</code> task (<code>.\scripts\house-desktop\start-stagehand.ps1 -Restart show</code>) <em>before</em> the sync so no old door rule posts into the new story.</label></li>
-      <li><input type="checkbox" id="ck-deploy-loom-ssh-loom-vps-loom-project"><label for="ck-deploy-loom-ssh-loom-vps-loom-project"><code>LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show --replace-audio</code> with its reload, before doors. Add <code>--replace-lights</code> if the project already holds a <code>lights.json</code>. <code>--replace-maps</code> only if the summary says the project's maps differ. Never <code>--no-reload</code> for these waves.</label></li>
+      <li><input type="checkbox" id="ck-deploy-server-first-loom-vps-loom-vps"><label for="ck-deploy-server-first-loom-vps-loom-vps"><strong>Server first:</strong> <code>LOOM_VPS=loom-vps scripts/ops/ship.sh show-1031</code> (without <code>LOOM_VPS</code>, here or in <code>~/.config/loom/ops.env</code>, it dials <code>ubuntu@app.mapsandducks.com</code>). Stop here if it fails. Then <code>ssh loom-vps 'cd ~/loom &amp;&amp; deploy/release.sh --check-env'</code> and <code>curl https://app.mapsandducks.com/api/health</code> → 200. Rollback: <code>ssh loom-vps 'cd ~/loom &amp;&amp; deploy/rollback.sh'</code>.</label></li>
+      <li><input type="checkbox" id="ck-deploy-macbook-before-the-sync-retire-the"><label for="ck-deploy-macbook-before-the-sync-retire-the"><strong>MacBook, before the sync: retire the old house-Mac jobs.</strong> The MacBook is the old house Mac, and two <code>show</code> jobs fire every cue twice (and an old door rule would post into the new story). <code>git pull</code>; <code>cd stagehand &amp;&amp; uv run stagehand launchd uninstall --job show</code> and <code>--job lights</code> (if installed); stop its Mosquitto (<code>brew services stop mosquitto</code>) and its Zigbee2MQTT (<code>launchctl bootout gui/$(id -u)/com.mapsandducks.zigbee2mqtt</code>), then move the CC2652P (and Zigbee2MQTT's <code>data/</code>) to the Desktop. <code>uv run stagehand launchd status</code> then shows <code>show</code> and <code>lights</code> not installed.</label></li>
+      <li><input type="checkbox" id="ck-deploy-desktop-first-time-only-scripts-house"><label for="ck-deploy-desktop-first-time-only-scripts-house"><strong>Desktop, first time only</strong> (<code>scripts/house-desktop/README.md</code>): elevated <code>.\scripts\house-desktop\setup-mosquitto.ps1</code> (the <code>props</code> password; <code>-SetPrivate</code> if the network is Public); <code>zigbee2mqtt.ps1 -Ports</code>, then copy the MacBook's <code>data\</code> and set its <code>serial.port</code> (or, on a first install only, <code>-WriteConfig -Port COMn</code>), <code>-Start</code> once, elevated <code>-InstallTask</code>, <code>-Check</code>; <code>tv-kiosk.ps1 -Setup</code>, then <code>-InstallTask</code>.</label></li>
+      <li><input type="checkbox" id="ck-deploy-desktop-before-the-sync-put-the"><label for="ck-deploy-desktop-before-the-sync-put-the"><strong>Desktop, before the sync:</strong> put the real event id and mod passcode in <code>stagehand\trapped.house.local.yaml</code> (git-ignored; the tracked file says CHANGE-ME), <code>git pull</code>, then <code>.\scripts\house-desktop\start-stagehand.ps1</code> (checks, installs and starts the <code>show</code> and <code>lights</code> tasks; on a rig that already has them, <code>-Restart show</code>), so no old door rule posts into the new story.</label></li>
+      <li><input type="checkbox" id="ck-deploy-merge-any-speaker-survey-saved-to"><label for="ck-deploy-merge-any-speaker-survey-saved-to">Merge any speaker survey saved to the project into the repo's <code>audio.json</code>, then <code>LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show --replace-audio</code> with its reload, before doors. Add <code>--replace-lights</code> if the project already holds a <code>lights.json</code>. The maps are unchanged since <code>w18b-1021</code>, so no <code>--replace-maps</code>; if the summary says the project's maps differ, run it again with <code>--replace-maps</code> (a second reload, fine before doors). Never <code>--no-reload</code> for these waves.</label></li>
       <li><input type="checkbox" id="ck-deploy-restart-every-other-non-ended-event"><label for="ck-deploy-restart-every-other-non-ended-event">Restart every other non-ended event (Run → Restart or Push draft).</label></li>
-      <li><input type="checkbox" id="ck-deploy-macbook-agents-git-pull-cd-stagehand"><label for="ck-deploy-macbook-agents-git-pull-cd-stagehand">MacBook agents: <code>git pull</code>, <code>cd stagehand &amp;&amp; uv run stagehand launchd restart --job agents</code>, then Run → Mind → Reset. <code>uv run stagehand check --config laptop.yaml --only agents</code> shows ctx 20480 and no warning.</label></li>
-      <li><input type="checkbox" id="ck-deploy-macbook-audio-router-retire-alexa-if"><label for="ck-deploy-macbook-audio-router-retire-alexa-if">MacBook audio router: retire <code>alexa</code> if it was ever installed (<code>scripts/house-macbook/install-alexa.sh --uninstall</code>); put the <code>props</code> password in <code>stagehand/trapped.macbook.local.yaml</code> (<code>trapped.macbook.yaml</code> already dials the Desktop broker on 1884); <code>uv run stagehand sounds placeholders</code>; <code>uv run stagehand check --config trapped.macbook.yaml --only audio</code> (32 / 30); <code>uv run stagehand launchd install --job audio --config trapped.macbook.yaml</code>.</label></li>
-      <li><input type="checkbox" id="ck-deploy-desktop-lights-zigbee2mqtt-on-the-cc2652p"><label for="ck-deploy-desktop-lights-zigbee2mqtt-on-the-cc2652p">Desktop lights: Zigbee2MQTT on the CC2652P (keep any existing <code>data\</code>), then <code>.\scripts\house-desktop\start-stagehand.ps1</code> (checks <code>trapped.desktop.yaml</code> with <code>--only show,lights</code>, then installs and starts both tasks; the lights job must run before pairing). Pair the bulb as <code>server_room_rgb</code> with <code>power_on_behavior: on</code>, place it in the map editor, Identify, ▶ Test each look, Save to project.</label></li>
-      <li><input type="checkbox" id="ck-deploy-steph-s-laptop-flash-the-wave"><label for="ck-deploy-steph-s-laptop-flash-the-wave">Steph's laptop: flash the wave 22 firmware from <code>hardware/server-room-m4</code> (door + patch bay; <code>LED_STEADY</code> while the LED is on 5V), run the bench checks (<code>scripts/accept/N-20.sh</code> for the door, <code>N-21.sh</code> for the bay, then <code>pb save</code>), open the terminal once without <code>--kiosk</code>, grant the port, <strong>calibrate the door in ⚙ (always after a reflash)</strong>, check the patch bay's live table, relaunch in kiosk.</label></li>
+      <li><input type="checkbox" id="ck-deploy-macbook-agents-cd-stagehand-amp-amp"><label for="ck-deploy-macbook-agents-cd-stagehand-amp-amp">MacBook agents: <code>cd stagehand &amp;&amp; uv run stagehand launchd restart --job agents</code>, then Run → Mind → Reset. <code>uv run stagehand check --config laptop.yaml --only agents</code> shows ctx 20480 and no warning.</label></li>
+      <li><input type="checkbox" id="ck-deploy-macbook-audio-router-retire-alexa-if"><label for="ck-deploy-macbook-audio-router-retire-alexa-if">MacBook audio router: retire <code>alexa</code> if it was ever installed (<code>scripts/house-macbook/install-alexa.sh --uninstall</code>). Secrets: <code>stagehand/trapped.house.local.yaml</code> with <code>server: { event, mod_passcode }</code> (without it the router dials CHANGE-ME and never hears a story sound) and <code>stagehand/trapped.macbook.local.yaml</code> with <code>server: {}</code> plus the <code>props</code> password under <code>audio: { mqtt: … }</code> (<code>trapped.macbook.yaml</code> already dials the Desktop broker on 1884). Then <code>uv run stagehand sounds placeholders --config trapped.macbook.yaml</code>; <code>uv run stagehand check --config trapped.macbook.yaml --only audio</code> (32 in / 30 out); <code>uv run stagehand launchd install --job audio --config trapped.macbook.yaml</code>.</label></li>
+      <li><input type="checkbox" id="ck-deploy-desktop-lights-with-zigbee2mqtt-up-on"><label for="ck-deploy-desktop-lights-with-zigbee2mqtt-up-on">Desktop lights: with Zigbee2MQTT up on the CC2652P and the <code>lights</code> task running, pair the bulb as <code>server_room_rgb</code> with <code>power_on_behavior: on</code> (<code>scripts/house-macbook/zigbee.md</code> from step 5), place it in the map editor's 💡 Lights tab, Identify, ▶ Test each look, Save to project. <code>uv run stagehand check --config trapped.desktop.yaml --only lights</code> is green.</label></li>
+      <li><input type="checkbox" id="ck-deploy-steph-s-laptop-flash-the-wave"><label for="ck-deploy-steph-s-laptop-flash-the-wave">Steph's laptop: flash the wave 22 firmware from <code>hardware/server-room-m4</code> (door + patch bay; <code>LED_STEADY</code> while the LED is on 5V), run the bench checks (<code>scripts/accept/N-20.sh</code> for the door, <code>N-21.sh</code> for the bay, then <code>pb save</code>), open the terminal once without <code>--kiosk</code>, grant the camera and the port, <strong>calibrate the door in ⚙ (always after a reflash)</strong>, check the patch bay's live table, relaunch in kiosk.</label></li>
       <li><input type="checkbox" id="ck-deploy-reload-every-terminal-the-tv-and"><label for="ck-deploy-reload-every-terminal-the-tv-and">Reload every terminal, the TV and the tent laptop; touch each tablet once (its 🎤 must not read <em>tap</em>).</label></li>
       <li><input type="checkbox" id="ck-deploy-quest-reinstall-vr-tools-quest-sh"><label for="ck-deploy-quest-reinstall-vr-tools-quest-sh">Quest: <code>reinstall/vr/tools/quest.sh build</code> then <code>install</code>; allow the microphone in the lobby.</label></li>
       <li><input type="checkbox" id="ck-deploy-program-the-keypad-by-hand-to"><label for="ck-deploy-program-the-keypad-by-hand-to">Program the keypad by hand to <code>facts.json</code> <code>door.code</code> and test it from outside; the inside handle opens with no code.</label></li>
-      <li><input type="checkbox" id="ck-deploy-door-test-a-real-open-shut"><label for="ck-deploy-door-test-a-real-open-shut">Door test: a real open → shut → open shows 🚪 on Run → Terminals within a second, no fault, no override; then 🔄 <code>reset_server_room</code> (and 🚪 Trust the door sensor if anyone pressed a 🚪).</label></li>
+      <li><input type="checkbox" id="ck-deploy-door-test-a-real-open-shut"><label for="ck-deploy-door-test-a-real-open-shut">Door test: a real open → shut → open shows 🚪 on Run → Terminals within a second, no fault, no override; then 🔄 <em>Server room: reset the patch-bay alarm</em> (<code>reset_server_room</code>), and 🚪 <em>Trust the door sensor again</em> (<code>server_door_trust</code>) if anyone pressed a 🚪.</label></li>
       <li><input type="checkbox" id="ck-deploy-reprints-after-the-sign-off-clippy"><label for="ck-deploy-reprints-after-the-sign-off-clippy">Reprints after the sign-off: Clippy, the director and second-director packs, the four Antivirus, the hosts, all-crew, the patch-bay watch card, the emergency card, Excel's and OpenOffice's sheets, every featured card, the Bingo card, Combo A's two halves.</label></li>
     </ul>
   </div>
@@ -1202,7 +1239,7 @@ Windows (PowerShell):
     <div class="slot"><div class="t">10:00<small>director, tech op</small></div><ul class="check" data-list="t1000">
       <li><input type="checkbox" id="ck-t1000-weather-call-gusts-over-30-40"><label for="ck-t1000-weather-call-gusts-over-30-40">Weather call: gusts over 30–40 km/h or steady rain means the shed. Switch at <code>/reinstall/map</code> (<em>Map: Tent | Shed</em>).</label></li>
       <li><input type="checkbox" id="ck-t1000-first-pause-doors-closed-a-restart"><label for="ck-t1000-first-pause-doors-closed-a-restart"><strong>First ⏸ Pause</strong> (doors closed). A restart keeps the doors as it finds them: Push draft or Go live on an open event plays Power On at once, and a pause afterwards cannot take it back.</label></li>
-      <li><input type="checkbox" id="ck-t1000-morning-reset-sync-push-draft-scan"><label for="ck-t1000-morning-reset-sync-push-draft-scan">Morning reset: sync, <strong>Push draft</strong>, scan the door QR on a phone on cellular, then <strong>Go live in place</strong>, before anyone registers.</label></li>
+      <li><input type="checkbox" id="ck-t1000-morning-reset-a-plain-sync-loom"><label for="ck-t1000-morning-reset-a-plain-sync-loom">Morning reset: a <em>plain</em> sync (<code>LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show</code>, no <code>--replace-*</code>: the project now holds the bulb placement, the look tests and any speaker survey, and a replace would overwrite them), then <strong>Push draft</strong>, scan the door QR on a phone on cellular, then <strong>Go live in place</strong>, before anyone registers.</label></li>
       <li><input type="checkbox" id="ck-t1000-run-world-does-not-show-kernel"><label for="ck-t1000-run-world-does-not-show-kernel">Run → World does <em>not</em> show <code>Kernel.door_code</code> set yet. If it does, Power On already played: pause, then Restart (still before anyone registers).</label></li>
       <li><input type="checkbox" id="ck-t1000-the-map-page-s-status-line"><label for="ck-t1000-the-map-page-s-status-line">The map page's status line reads "the project's map".</label></li>
     </ul></div>
@@ -1229,7 +1266,7 @@ Windows (PowerShell):
     </ul></div>
     <div class="slot"><div class="t">19:45<small>everyone</small></div><ul class="check" data-list="t1945">
       <li><input type="checkbox" id="ck-t1945-places-lights-to-screensaver"><label for="ck-t1945-places-lights-to-screensaver">Places. Lights to screensaver.</label></li>
-      <li><input type="checkbox" id="ck-t1945-run-director-heart-autoend-is-off"><label for="ck-t1945-run-director-heart-autoend-is-off">Run → Director: 🕊 Heart autoend is off; 🔄 and 🕊 are on the sheet; TV voice not muted.</label></li>
+      <li><input type="checkbox" id="ck-t1945-run-director-heart-end-the-night"><label for="ck-t1945-run-director-heart-end-the-night">Run → Director: 🕊 <em>Heart: end the night on his own</em> (<code>heart_autoend</code>) is off; 🔄 <code>reset_server_room</code> and 🕊 <code>talked_down</code> are on the sheet; TV voice not muted.</label></li>
     </ul></div>
     <div class="slot"><div class="t">Doors<small>19:00 or 20:00</small></div><ul class="check" data-list="tdoors">
       <li><input type="checkbox" id="ck-tdoors-open-the-doors-run-or-a"><label for="ck-tdoors-open-the-doors-run-or-a"><strong>🚪 Open the doors</strong> (Run, or a host's More → Night). Power On plays: the combinations, the door code, the King at 15, the show clock.</label></li>
@@ -1248,19 +1285,19 @@ Windows (PowerShell):
     <h4>John's MacBook</h4>
     <ul class="check" data-list="macbook">
       <li><input type="checkbox" id="ck-macbook-pnpm-showctl-preflight-macbook-is-green"><label for="ck-macbook-pnpm-showctl-preflight-macbook-is-green"><code>pnpm showctl preflight macbook</code> is green.</label></li>
-      <li><input type="checkbox" id="ck-macbook-on-the-charger-caffeinate-dis-sleep"><label for="ck-macbook-on-the-charger-caffeinate-dis-sleep">On the charger, <code>caffeinate -dis</code>, sleep off. Ollama with <code>OLLAMA_KEEP_ALIVE=-1</code>; <code>ollama ps</code> shows <code>gpt-oss:20b</code> alone.</label></li>
-      <li><input type="checkbox" id="ck-macbook-uv-run-stagehand-launchd-status-agents"><label for="ck-macbook-uv-run-stagehand-launchd-status-agents"><code>uv run stagehand launchd status</code>: <code>agents</code> and <code>audio</code> running.</label></li>
+      <li><input type="checkbox" id="ck-macbook-on-the-charger-caffeinate-dims-sleep"><label for="ck-macbook-on-the-charger-caffeinate-dims-sleep">On the charger, <code>caffeinate -dims</code>, sleep off. Ollama with <code>OLLAMA_KEEP_ALIVE=-1</code>; <code>ollama ps</code> shows <code>gpt-oss:20b</code> alone.</label></li>
+      <li><input type="checkbox" id="ck-macbook-uv-run-stagehand-launchd-status-agents"><label for="ck-macbook-uv-run-stagehand-launchd-status-agents"><code>uv run stagehand launchd status</code>: <code>agents</code> and <code>audio</code> running; <code>show</code> and <code>lights</code> not installed.</label></li>
       <li><input type="checkbox" id="ck-macbook-run-mind-worker-connected-mind-story"><label for="ck-macbook-run-mind-worker-connected-mind-story">Run → Mind: worker connected, <em>mind · story</em> chip, Reset; the Judging card reads <code>auto</code> with nothing pending; Trabolta hidden and asleep.</label></li>
       <li><input type="checkbox" id="ck-macbook-run-house-map-the-king-s"><label for="ck-macbook-run-house-map-the-king-s">Run → House map: the King's row reads 15 / 15.</label></li>
       <li><input type="checkbox" id="ck-macbook-run-wallet-names-cra-agent-software"><label for="ck-macbook-run-wallet-names-cra-agent-software">Run → Wallet names CRA Agent Software as approver and Runescape as minter; <code># quarantine</code> is empty.</label></li>
-      <li><input type="checkbox" id="ck-macbook-router-check-only-audio-32-30"><label for="ck-macbook-router-check-only-audio-32-30">Router: <code>check --only audio</code> 32 / 30 with no placeholder left; the MOTU powered and seen.</label></li>
+      <li><input type="checkbox" id="ck-macbook-router-uv-run-stagehand-check-config"><label for="ck-macbook-router-uv-run-stagehand-check-config">Router: <code>uv run stagehand check --config trapped.macbook.yaml --only audio</code> shows 32 / 30 with no placeholder left; the MOTU powered and seen.</label></li>
     </ul>
     <h4>John's Desktop (Windows)</h4>
     <ul class="check" data-list="desktop">
       <li><input type="checkbox" id="ck-desktop-scripts-house-desktop-preflight-ps1-passes"><label for="ck-desktop-scripts-house-desktop-preflight-ps1-passes"><code>.\scripts\house-desktop\preflight.ps1</code> passes (it ends with <code>showctl preflight desktop</code>).</label></li>
       <li><input type="checkbox" id="ck-desktop-tv-kiosk-on-spot-desktop-tv"><label for="ck-desktop-tv-kiosk-on-spot-desktop-tv">TV kiosk on spot <code>desktop-tv</code>, <strong>clicked once after its last boot</strong>, showing the screensaver; notifications off.</label></li>
       <li><input type="checkbox" id="ck-desktop-mosquitto-service-running-on-1883-loopback"><label for="ck-desktop-mosquitto-service-running-on-1883-loopback">Mosquitto service running on 1883 (loopback) and 1884 (password); Zigbee2MQTT online; the bulb in its device list.</label></li>
-      <li><input type="checkbox" id="ck-desktop-show-and-lights-tasks-running-the"><label for="ck-desktop-show-and-lights-tasks-running-the"><code>show</code> and <code>lights</code> tasks running; the bulb answers 💡 Identify and sits on <code>heart_idle</code>.</label></li>
+      <li><input type="checkbox" id="ck-desktop-show-and-lights-tasks-running-scripts"><label for="ck-desktop-show-and-lights-tasks-running-scripts"><code>show</code> and <code>lights</code> tasks running (<code>.\scripts\house-desktop\start-stagehand.ps1 -Status</code>); the bulb answers 💡 Identify and sits on <code>heart_idle</code>.</label></li>
       <li><input type="checkbox" id="ck-desktop-power-and-windows-update-settings-as"><label for="ck-desktop-power-and-windows-update-settings-as">Power and Windows Update settings as in Tech.</label></li>
     </ul>
     <h4>Steph's laptop (server room)</h4>
@@ -1306,23 +1343,33 @@ Windows (PowerShell):
       <li>Never say a code, combination or hunt answer near a terminal microphone.</li>
     </ul>
     <h3>Quick fixes</h3>
+    <p class="small">The full table is <code>SHOWNIGHT.md</code> §7. Every cue below is on Run → Director by its label; the <code>id</code> is what Tools → Fire named event and <code>showctl fire</code> take.</p>
     <div class="scroll"><table>
       <thead><tr><th scope="col">Problem</th><th scope="col">Do this</th></tr></thead>
       <tbody>
-        <tr><td>Trabolta silent ("not responding")</td><td>Tech op: <code>uv run stagehand launchd restart --job agents</code> on the MacBook. Meanwhile a director answers as Trabolta from Run; performers say he is processing a high volume of requests.</td></tr>
-        <tr><td>House internet down</td><td>Guests turn Wi-Fi off and use cellular. Keep firing cues from Run on a phone hotspot. Lights and sound by hand.</td></tr>
-        <tr><td>Server restarted</td><td>Nothing to press. Everything reconnects within about 15 s; reinstallation walks end (rescan in the tent).</td></tr>
-        <tr><td>VPS dead</td><td>Start the warm standby, restore the newest backup, repoint DNS.</td></tr>
+        <tr><td>Trabolta silent ("not responding")</td><td>Tech op: <code>cd stagehand &amp;&amp; uv run stagehand launchd restart --job agents</code> on the MacBook. Meanwhile a director answers as Trabolta from Run; performers say he is processing a high volume of requests. <strong>Never <code>pkill -f "stagehand run"</code>.</strong></td></tr>
+        <tr><td>No announcements anywhere</td><td>Desktop: <code>.\scripts\house-desktop\preflight.ps1</code>; <code>start-stagehand.ps1 -Restart show</code>; <code>setup-mosquitto.ps1 -Check</code>. MacBook: <code>uv run stagehand launchd status --job audio</code>.</td></tr>
+        <tr><td>Every house sound must stop now</td><td>■ Stop house sounds; or on the MacBook <code>uv run stagehand sounds stop --announce --config trapped.macbook.yaml</code>.</td></tr>
+        <tr><td>The server-room bulb ignores the story</td><td>Desktop: <code>start-stagehand.ps1 -Restart lights</code>; <code>zigbee2mqtt.ps1 -Check</code> (a moved stick has a new COM port).</td></tr>
+        <tr><td>House internet down</td><td>Guests turn Wi-Fi off and use cellular. Keep firing cues from Run on a phone hotspot. Stagehand catches the lights up once it reconnects.</td></tr>
+        <tr><td>Server restarted</td><td>Nothing to press. Everything reconnects by itself (Caddy holds requests for up to 60 s; the server answers 503 <code>starting</code> until the events are back). Reinstallation walks end (rescan in the tent).</td></tr>
+        <tr><td>VPS dead</td><td>Start the warm standby, restore the newest backup from the MacBook (<code>~/LoomBackups</code>), repoint DNS.</td></tr>
         <tr><td>Rain or wind</td><td>Switch to the shed at <code>/reinstall/map</code>.</td></tr>
-        <tr><td>Server Door terminal dead</td><td>♟ <code>chess_won</code> naming the winner.</td></tr>
-        <tr><td>Door sensor wrong</td><td>🚪 opened / 🚪 closed by hand, then later 🚪 Trust the door sensor again.</td></tr>
-        <tr><td>Patch bay misreads</td><td>The watch presses 🔌 💥 or ❌; the story follows the buttons until <code>trust_patch_bay</code>.</td></tr>
-        <tr><td>Crew must enter the server room</td><td>🔧 first (a 2-minute window).</td></tr>
-        <tr><td>Forgiven wrong patch, or a rehearsal</td><td>🔄 then 💡.</td></tr>
-        <tr><td>Keypad dead or jammed</td><td>House manager's override key; press 🚪 if The Heart did not play.</td></tr>
-        <tr><td>Someone talked him down</td><td><code># hosts</code> says so; the director presses 🕊 (NEXT jumps to it).</td></tr>
-        <tr><td>A terminal shows red ⛶</td><td>Relaunch Chrome with <code>--kiosk</code> (TV, laptops) or touch the tablet once.</td></tr>
+        <tr><td>A terminal silent, or red ⛶</td><td>Its Wi-Fi, power, is the page open? Relaunch Chrome with <code>--kiosk</code> (TV, laptops) or touch the tablet once. A loop or a lost camera: hold ⚙ 2 s → View <code>mirror</code>.</td></tr>
+        <tr><td>The TV silent after a reboot</td><td>Click once into the TV page; <kbd>M</kbd> unmutes.</td></tr>
+        <tr><td>Server Door terminal dead</td><td>♟ <em>They beat the King: the door code</em> (<code>chess_won</code>) naming the winner.</td></tr>
+        <tr><td>Door sensor wrong</td><td>🚪 <em>Server room door opened</em> / <em>closed</em> (<code>server_door_opened</code> / <code>server_door_closed</code>) by hand; later 🚪 <em>Trust the door sensor again</em> (<code>server_door_trust</code>).</td></tr>
+        <tr><td>Patch bay misreads</td><td>The watch presses 🔌 Combo A, 💥 Combo B or ❌ wrong combination (a director: <code>patch_combo_a</code>, <code>patch_combo_b</code>, <code>patch_rejected</code>); the story follows the buttons until 🔌 <em>Trust the patch bay again</em> (<code>trust_patch_bay</code>).</td></tr>
+        <tr><td>Crew must enter the server room</td><td>🔧 <em>Crew going through the server-room door</em> (<code>crew_through_the_door</code>) first: a 2-minute window.</td></tr>
+        <tr><td>Forgiven wrong patch, or a rehearsal left the room set</td><td>🔄 <em>Server room: reset the patch-bay alarm</em> (<code>reset_server_room</code>), then 💡 <em>Restore the house lights</em> (<code>restore_the_lights</code>) if the house is still red.</td></tr>
+        <tr><td>Keypad dead or jammed</td><td>House manager's override key; prop the door; press 🚪 <code>server_door_opened</code> if The Heart did not play.</td></tr>
+        <tr><td>Someone talked him down</td><td><code># hosts</code> says so; the director presses 🕊 <em>Trabolta stands down</em> (<code>talked_down</code>; NEXT jumps to it).</td></tr>
+        <tr><td>A guest lost their phone or session</td><td>Inspector → 🔁 Re-pair (a single-use QR); a loaner phone.</td></tr>
+        <tr><td>A performer's phone died</td><td>⏏ Release the part; they sign in again on a loaner with the performer code.</td></tr>
+        <tr><td>A late arrival after C1</td><td>Run → Inspector → <em>scan as Norton</em> (routes to Clearance).</td></tr>
+        <tr><td>A guest went home</td><td>👋 <em>Went home</em> on Run (they leave the majority count).</td></tr>
         <tr><td>A program needs marking by hand</td><td>Run → Director → Tools → Fire named event: <code>mark_for_reinstallation</code> / <code>unmark_for_reinstallation</code> with the program.</td></tr>
+        <tr><td>A device died and its signal must fire</td><td><code>pnpm showctl fire &lt;signal&gt; --yes --i-know-this-is-live</code> (e.g. <code>door_sensor_closed</code>); check the spelling in Run → Log.</td></tr>
       </tbody>
     </table></div>
     <h3>Radio call words</h3>
@@ -1336,7 +1383,7 @@ Windows (PowerShell):
     <h3>Awaiting the user</h3>
     <dl>
       <dt><strong>U1 · Who may see this page</strong></dt><dd>Is the GitHub repo public? <code>facts.json</code> with the door code and answer keys is tracked there. This page holds spoilers but no codes; is that the right line?</dd>
-      <dt><strong>U2 · Doors at 19:00 or 20:00</strong></dt><dd>The story's clock says 7 PM at the doors; the invitations say 8 PM. And keep the event paused from before the morning Push draft until doors?</dd>
+      <dt><strong>U2 · Doors at 19:00 or 20:00</strong></dt><dd>The story's clock says 7 PM at the doors; the invitations say 8 PM. (Keeping the event paused from the morning reset until doors is decided: see the 10:00 checklist.)</dd>
       <dt><strong>U3 · House lights</strong></dt><dd>Besides the server-room bulb: will there be house Zigbee bulbs, WLED strips, the printer button and lid sensor, battery path lights?</dd>
       <dt><strong>U4 · Where this page lives</strong></dt><dd>A tracked file only, or a crew page the VPS serves?</dd>
       <dt><strong>U5 · The second director's computer</strong></dt><dd>Which machine runs Run all night, and where is John's backup console?</dd>
@@ -1374,7 +1421,10 @@ Windows (PowerShell):
   var progress = document.getElementById("ck-progress");
   var reset = document.getElementById("ck-reset");
   function load() {
-    try { return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { return {}; }
+    try {
+      var v = JSON.parse(localStorage.getItem(KEY) || "{}");
+      return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+    } catch (e) { return {}; }
   }
   function save(state) {
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage blocked: ticks last this visit only */ }
@@ -1395,10 +1445,12 @@ Windows (PowerShell):
   count();
   var armedAt = 0;
   var timer = null;
+  var clearedTimer = null;
   if (reset) reset.addEventListener("click", function () {
     var now = Date.now();
     if (now - armedAt > 4000) {
       armedAt = now;
+      clearTimeout(clearedTimer);
       reset.textContent = "Click again to clear every tick";
       reset.classList.add("armed");
       clearTimeout(timer);
@@ -1412,9 +1464,29 @@ Windows (PowerShell):
     boxes.forEach(function (b) { b.checked = false; });
     reset.textContent = "Cleared";
     reset.classList.remove("armed");
-    setTimeout(function () { reset.textContent = "Clear all ticks"; }, 1500);
+    clearedTimer = setTimeout(function () { reset.textContent = "Clear all ticks"; }, 1500);
     count();
   });
+  // The contents rail marks the section on screen.
+  var links = Array.prototype.slice.call(document.querySelectorAll(".toc a[href^='#']"));
+  if ("IntersectionObserver" in window && links.length > 0) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var a = byId[e.target.id];
+        if (!a) return;
+        links.forEach(function (l) { l.removeAttribute("aria-current"); });
+        a.setAttribute("aria-current", "true");
+        if (window.matchMedia("(max-width: 860px)").matches && a.parentNode && a.parentNode.parentNode) {
+          var strip = a.parentNode.parentNode;
+          strip.scrollLeft = a.offsetLeft - 16;
+        }
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    Object.keys(byId).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+  }
   // Printing shows every folded section.
   var opened = [];
   window.addEventListener("beforeprint", function () {
