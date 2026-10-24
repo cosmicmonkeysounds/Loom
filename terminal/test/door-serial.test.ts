@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { ADAFRUIT_VID, doorSignalRequest, pickPort, postDoorSignal, requestDoorPort, startDoorLink, type SerialLike, type SerialPortLike } from "../src/serial/door-serial.ts";
+import { ADAFRUIT_VID, doorSignalRequest, patchSignalRequest, pickPort, postDoorSignal, requestDoorPort, startDoorLink, type SerialLike, type SerialPortLike } from "../src/serial/door-serial.ts";
 import { DOOR_SETTINGS_KEY } from "../src/serial/door-protocol.ts";
-import { doorActions, doorHeartbeat, doorStatus, doorStatusText } from "../src/serial/door-status.ts";
+import { doorActions, doorHeartbeat, doorStatus, doorStatusText, patchStatusText } from "../src/serial/door-status.ts";
 
 const config = defaultConfig({ eventId: "evt", token: "MODTOK", name: "Heart", door: "sim" });
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -17,7 +17,9 @@ function keyTarget() {
       setInterval: () => 0,
       clearInterval: () => {},
     } as unknown as Pick<Window, "addEventListener" | "removeEventListener" | "setInterval" | "clearInterval">,
-    press: (key: string, tagName = "BODY") => onKey?.({ key, target: { tagName }, metaKey: false, ctrlKey: false, altKey: false } as unknown as KeyboardEvent),
+    press: (key: string, tagName = "BODY") => onKey?.({ key, code: "", target: { tagName }, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false } as unknown as KeyboardEvent),
+    /** Shift + a digit (the sim's cables). */
+    digit: (d: number, shift = true) => onKey?.({ key: shift ? "!@#$%^&*()"[(d + 9) % 10]! : String(d), code: `Digit${d}`, target: { tagName: "BODY" }, metaKey: false, ctrlKey: false, altKey: false, shiftKey: shift } as unknown as KeyboardEvent),
   };
 }
 
@@ -35,6 +37,13 @@ describe("the door bridge's post", () => {
     expect(init.headers).toEqual({ "content-type": "application/json", "x-loom-token": "MODTOK" });
     expect((init.headers as Record<string, string>)["authorization"]).toBeUndefined();
     expect(JSON.parse(String(init.body))).toEqual({ name: "door_sensor_opened", args: { level: 35 }, label: "Terminal · Heart" });
+  });
+  it("a combination is patch_changed with the pairs as `combo`, nothing else", () => {
+    const { url, init } = patchSignalRequest(config, "V1-D2,V3-D1,V5-D4,V8-D6");
+    expect(url).toBe("/e/evt/api/mod/signal");
+    expect(init.headers).toEqual({ "content-type": "application/json", "x-loom-token": "MODTOK" });
+    expect(JSON.parse(String(init.body))).toEqual({ name: "patch_changed", args: { combo: "V1-D2,V3-D1,V5-D4,V8-D6" }, label: "Terminal · Heart" });
+    expect(() => patchSignalRequest(config, "V1-D2,DROP")).toThrow();
   });
   it("reads ok / refused / network", async () => {
     expect(await postDoorSignal(config, "door_sensor_closed", 1, async () => new Response("{}", { status: 200 }))).toBe("ok");
@@ -83,6 +92,81 @@ describe("the sim door (door=sim)", () => {
   });
 });
 
+describe("the sim patch bay (door=sim, Shift + digits)", () => {
+  it("fakes cables, posts a new set of four once, and reports counts on the heartbeat", async () => {
+    const k = keyTarget();
+    const bodies: Array<{ name: string; args: Record<string, unknown> }> = [];
+    const fetchFn = vi.fn(async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    const link = startDoorLink(config, { fetchFn, keys: k.target, store: memory() });
+    link.screen({ server_door: "closed", door_override: false, patch_override: false, step: 14 });
+    expect(doorStatus().bay).toBe(true);
+    const plug = (v: number, d: number) => {
+      k.digit(v);
+      k.digit(d);
+    };
+    k.digit(3, false); // a bare digit is the heart's: no cable
+    plug(1, 2);
+    plug(3, 1);
+    plug(5, 4);
+    expect(doorHeartbeat()).toMatchObject({ pb: "3", pbc: "0", pbx: "0" });
+    expect(patchStatusText(doorStatus())).toBe("simulated patch bay: 3 cables");
+    plug(8, 6);
+    await tick();
+    const patches = bodies.filter((b) => b.name === "patch_changed");
+    expect(patches).toEqual([{ name: "patch_changed", args: { combo: "V1-D2,V3-D1,V5-D4,V8-D6" }, label: "Terminal · Heart" }]);
+    expect(doorHeartbeat()).toMatchObject({ pb: "4", pbc: "1" });
+    expect(patchStatusText(doorStatus())).toBe("simulated patch bay: 4 cables · COMPLETE · 1 posted");
+    // V5 moved from D4 to D3: a new set.
+    plug(5, 3);
+    await tick();
+    expect(bodies.filter((b) => b.name === "patch_changed").map((b) => b.args["combo"])).toEqual(["V1-D2,V3-D1,V5-D4,V8-D6", "V1-D2,V3-D1,V5-D3,V8-D6"]);
+    // The buttons have the bay: nothing posts.
+    link.screen({ server_door: "closed", door_override: false, patch_override: true, step: 14 });
+    plug(5, 4);
+    await tick();
+    expect(bodies.filter((b) => b.name === "patch_changed")).toHaveLength(2);
+    k.digit(0); // every cable out
+    expect(doorHeartbeat()).toMatchObject({ pb: "0" });
+    link.stop();
+  });
+
+  it("learns, saves and resets through ⚙'s actions", async () => {
+    const k = keyTarget();
+    const link = startDoorLink(config, { fetchFn: (async () => new Response("{}")) as unknown as typeof fetch, keys: k.target, store: memory() });
+    expect(await doorActions()!.bay({ c: "pb", op: "learn", source: 2 })).toEqual({ t: "err", error: "pb: need exactly one cable", cmd: "pb learn V2" });
+    k.digit(2);
+    k.digit(5);
+    expect(await doorActions()!.bay({ c: "pb", op: "learn", source: 2 })).toMatchObject({ t: "pbcal", src: 2, raw: 921 });
+    expect(await doorActions()!.bay({ c: "pb", op: "save" })).toMatchObject({ t: "pbcal", src: 0 });
+    expect(doorStatus().pbcal).toMatchObject({ t: "pbcal", levels: [445, 921, 1338, 1848, 2247, 2757, 3174, 3650] });
+    link.stop();
+  });
+
+  it("bay=0 reads the door alone: no posts, no bay keys", async () => {
+    const k = keyTarget();
+    const bodies: string[] = [];
+    const fetchFn = (async (_u: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)).name);
+      return new Response("{}");
+    }) as unknown as typeof fetch;
+    const link = startDoorLink({ ...config, bay: false }, { fetchFn, keys: k.target, store: memory() });
+    link.screen({ server_door: "closed", door_override: false, patch_override: false, step: 14 });
+    for (const [v, d] of [[1, 2], [3, 1], [5, 4], [8, 6]] as const) {
+      k.digit(v);
+      k.digit(d);
+    }
+    await tick();
+    expect(bodies).toEqual([]);
+    expect(doorStatus().bay).toBe(false);
+    expect(Object.keys(doorHeartbeat())).toEqual(["door", "dlv"]);
+    expect(await doorActions()!.bay({ c: "pb", op: "get" })).toMatchObject({ t: "err", error: "pb: no bay" });
+    link.stop();
+  });
+});
+
 /** A fake granted Grand Central: lines written to it are recorded; `say` feeds lines back. */
 function fakeBoard() {
   let push: (s: string) => void = () => {};
@@ -103,6 +187,47 @@ function fakeBoard() {
 }
 
 describe("Web Serial (door=serial)", () => {
+  it("bridges the bay a 1.2.0 board reports, posting its new sets of four", async () => {
+    const b = fakeBoard();
+    const bodies: Array<{ name: string; args: Record<string, unknown> }> = [];
+    const fetchFn = (async (_u: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return new Response("{}");
+    }) as unknown as typeof fetch;
+    const link = startDoorLink({ ...config, door: "serial" }, { serial: b.serial, store: memory(), fetchFn });
+    for (let i = 0; i < 5; i++) await tick();
+    const patch = (seq: number, pairs: string, src: number[], complete: boolean) =>
+      `{"t":"patch","seq":${seq},"pairs":"${pairs}","count":${src.filter((k) => k > 0).length},"complete":${complete},"raw":[${src.map((k) => (k > 0 ? 400 * k : 0)).join(",")}],"src":[${src.join(",")}],"stable":true}\n`;
+    // Lines before the hello: no bay known yet, nothing read.
+    b.say(patch(1, "", [0, 0, 0, 0, 0, 0, 0], false));
+    for (let i = 0; i < 5; i++) await tick();
+    expect(doorStatus().patch).toBeNull();
+    b.say('{"t":"hello","fw":"door-m4 1.2.0","mode":"steady","auto":false,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false,"pbv":8,"pbd":7}\n');
+    link.screen({ server_door: "closed", door_override: false, patch_override: false, step: 14 });
+    b.say(patch(2, "", [0, 0, 0, 0, 0, 0, 0], false));
+    b.say(patch(3, "V1-D2,V3-D1,V5-D4,V8-D6", [3, 1, 0, 5, 0, 8, 0], true));
+    b.say(patch(4, "V1-D2,V3-D1,V5-D4,V8-D6", [3, 1, 0, 5, 0, 8, 0], true));
+    for (let i = 0; i < 5; i++) await tick();
+    expect(bodies.filter((x) => x.name === "patch_changed").map((x) => x.args)).toEqual([{ combo: "V1-D2,V3-D1,V5-D4,V8-D6" }]);
+    expect(doorHeartbeat()).toMatchObject({ pb: "4", pbc: "1", pbx: "0" });
+    // Unplugged: the bay is still known, so the heartbeat says so.
+    link.stop();
+    expect(doorHeartbeat()).toEqual({});
+  });
+
+  it("an older board (no pbd) has no bay: its heartbeat has door keys only", async () => {
+    const b = fakeBoard();
+    const link = startDoorLink({ ...config, door: "serial" }, { serial: b.serial, store: memory(), fetchFn: (async () => new Response("{}")) as unknown as typeof fetch });
+    for (let i = 0; i < 5; i++) await tick();
+    b.say('{"t":"hello","fw":"door-m4 1.1.0","mode":"steady","auto":false,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false}\n');
+    b.say('{"t":"door","seq":1,"open":false,"level":2410,"lit":2410,"dark":0,"fault":null,"warn":null}\n');
+    for (let i = 0; i < 5; i++) await tick();
+    expect(doorStatus().bay).toBe(false);
+    expect(doorHeartbeat()).toEqual({ door: "closed", dlv: "2410" });
+    expect(patchStatusText(doorStatus())).toBeNull();
+    link.stop();
+  });
+
   it("picks the Adafruit board among the granted ports", () => {
     const other: SerialPortLike = { readable: null, writable: null, open: async () => {}, close: async () => {}, getInfo: () => ({ usbVendorId: 0x1234 }) };
     const ada: SerialPortLike = { ...other, getInfo: () => ({ usbVendorId: ADAFRUIT_VID }) };

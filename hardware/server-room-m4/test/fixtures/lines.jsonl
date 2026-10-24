@@ -1,0 +1,14 @@
+{"t":"hello","fw":"door-m4 1.2.0","mode":"steady","auto":false,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false,"pbv":8,"pbd":7}
+{"t":"door","seq":17,"open":false,"level":2410,"lit":3020,"dark":610,"fault":null,"warn":null}
+{"t":"door","seq":18,"open":true,"level":35,"lit":640,"dark":605,"fault":null,"warn":null}
+{"t":"door","seq":19,"open":true,"level":0,"lit":3,"dark":2,"fault":null,"warn":"ldr_open"}
+{"t":"door","seq":20,"open":true,"level":0,"lit":4095,"dark":4095,"fault":"ldr_saturated","warn":null}
+{"t":"pong","up":123456}
+{"t":"cfg","fw":"door-m4 1.2.0","mode":"mod","auto":false,"close":1800,"open":1200,"settle":150,"cal":true,"sense":false,"pbv":8,"pbd":7,"saved":true}
+{"t":"cal","which":"closed","ref":2400,"close":1880,"open":1320}
+{"t":"ok","cmd":"set close 1900"}
+{"t":"err","error":"cal span too small","cmd":"cal open"}
+{"t":"patch","seq":41,"pairs":"V3-D1,V5-D4","count":2,"complete":false,"raw":[1340,610,0,2251,3,0,1],"src":[3,-1,0,5,0,0,0],"stable":false}
+{"t":"patch","seq":42,"pairs":"V1-D2,V3-D1,V5-D4,V8-D6","count":4,"complete":true,"raw":[1336,444,2,2249,0,3648,0],"src":[3,1,0,5,0,8,0],"stable":true}
+{"t":"pbcal","src":3,"raw":1405,"levels":[441,917,1405,1842,2240,2749,3166,3619],"floor":150,"tol":120,"saved":false}
+{"t":"err","error":"pb: need exactly one cable","cmd":"pb learn V3"}

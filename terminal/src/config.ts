@@ -59,7 +59,9 @@
 //! Central M4 plugged into its laptop (`&door=serial`, Web Serial: ⚙'s
 //! *Connect door sensor* grants the port once) and has a keyboard; a
 //! mouse-only rig adds `&keys=0` (no composer). `&door=sim` is the dev rig: the
-//! keys O / C toggle a pretend door and F a fault.
+//! keys O / C toggle a pretend door and F a fault. The same board reads the
+//! patch bay (wave 22) and the terminal posts its combinations; `&bay=0`
+//! turns that off (the door alone), and the sim fakes cables on Shift+digits.
 //!
 //!   /terminal/?code=<mod passcode>&spot=server-room&door=serial
 //!
@@ -151,6 +153,10 @@ export interface TerminalConfig {
   /** A keyboard is here (wave 20, D23): the composer shows (default true).
    *  False: a mouse-only rig, no composer — the heart's choices only. */
   keys: boolean;
+  /** Bridge the patch bay the door's board reads (wave 22, `serial/patch-bridge.ts`):
+   *  on by default (only a board whose `hello` says it has a bay is read);
+   *  `&bay=0` / ⚙ turns it off. */
+  bay: boolean;
   /** Set up by tapping a terminal of the event's house map: at boot the
    *  name / view / room follow that map entry (`setup-map.ts` `followMap`).
    *  A manual view / room in ⚙'s advanced section clears it. */
@@ -258,6 +264,7 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     fullscreen: true,
     door: "off",
     keys: true,
+    bay: true,
     ...partial,
   };
 }
@@ -273,7 +280,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     const room = typeof c.room === "string" ? c.room : "";
     // `v` was an earlier wave 18b draft's marker: dropped, never trusted.
     const { v: _version, announceMode, ...stored } = c;
-    const loaded = defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, announceMode), camFeed: c.camFeed !== false, voices: c.voices !== false, voiceLink: c.voiceLink !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true, door: doorConfigOf(c.door), keys: c.keys !== false });
+    const loaded = defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, announceMode), camFeed: c.camFeed !== false, voices: c.voices !== false, voiceLink: c.voiceLink !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true, door: doorConfigOf(c.door), keys: c.keys !== false, bay: c.bay !== false });
     if (typeof c.mic === "boolean") loaded.mic = c.mic;
     else delete loaded.mic;
     return loaded;
@@ -290,7 +297,7 @@ export function dropConfig(storage: Pick<Storage, "removeItem"> = localStorage):
   storage.removeItem(CONFIG_KEY);
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=&door=&keys=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=&door=&keys=&bay=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -312,6 +319,8 @@ export interface UrlHints {
   door?: DoorConfig | null;
   /** `keys=0` / `1`: a keyboard is here (null = not given: yes). */
   keys?: boolean | null;
+  /** `bay=0` / `1`: bridge the patch bay (null = not given: yes). */
+  bay?: boolean | null;
 }
 
 /** A URL on/off switch: true / false, null = not given or unreadable. */
@@ -340,6 +349,7 @@ export function hintsFromSearch(search: string): UrlHints {
     voices: flagOf(p.get("voices")),
     door: ((v) => (v === "serial" || v === "sim" || v === "off" ? v : null))(p.get("door")),
     keys: flagOf(p.get("keys")),
+    bay: flagOf(p.get("bay")),
   };
 }
 
@@ -360,6 +370,7 @@ export function withoutSecrets(search: string): string {
   p.delete("voices");
   p.delete("door");
   p.delete("keys");
+  p.delete("bay");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -386,6 +397,7 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     voices: hints.voices ?? true,
     door: hints.door ?? "off",
     keys: hints.keys ?? true,
+    bay: hints.bay ?? true,
   });
   if (typeof hints.mic === "boolean") given.mic = hints.mic;
   return given;

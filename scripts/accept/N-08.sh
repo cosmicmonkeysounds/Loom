@@ -6,7 +6,7 @@
 # scripts/accept/K-05.sh afterwards.
 #
 # Wave 20: the door moved to the Grand Central M4's LED + LDR sensor
-# (hardware/server-room-door, its bench check is scripts/accept/N-20.sh).
+# (hardware/server-room-m4, its bench check is scripts/accept/N-20.sh).
 # The box still publishes sensors/serverroom/door, but nothing listens (D16),
 # so this check no longer tests the wire-loop contact.
 #

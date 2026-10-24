@@ -32,6 +32,13 @@
 //! badges (`doorBadges`) read them, plus *override* while the story follows
 //! the 🚪 buttons instead of the sensor (the screen state's
 //! `night.door_override`, `doorOverrideFromScreen`).
+//!
+//! Wave 22: the same board reads the patch bay, and the poll carries its
+//! counts (never the pairs): `patch` (V–D cables in the settled bay, or
+//! `fault`), `patchComplete`, `patchBetween` (inputs between levels) and
+//! `patchFault`. The 🔌 badges (`patchBadges`) read them, plus *buttons*
+//! while the story follows the 🔌 buttons (`night.patch_override`,
+//! `patchOverrideFromScreen`).
 
 /** One entry of the server's heartbeat list (`ScreenPoll & {ago}`). */
 export interface TerminalPoll {
@@ -65,6 +72,15 @@ export interface TerminalPoll {
   doorFault?: string
   /** A non-blocking warning (`ldr_open`): the door state still holds. */
   doorWarn?: string
+  /** (wave 22) The patch bay on the door's board: V–D cables in its settled
+   *  bay (0–16), or `fault`; absent = no bay (or an older build). */
+  patch?: number | 'fault'
+  /** The settled bay is complete (exactly four pairs). */
+  patchComplete?: boolean
+  /** Inputs reading between levels (a half-seated plug). */
+  patchBetween?: number
+  /** Why `patch === 'fault'` (`no_port` | `stale` | `dup`). */
+  patchFault?: string
 }
 
 /** What a terminal's `door=` says (wave 20, `DOOR_STATES` on the server). */
@@ -79,7 +95,7 @@ export type MicState = 'live' | 'muted' | 'denied' | 'insecure' | 'locked' | 'of
 /** A row's device health, as its last listed poll said. */
 export type TerminalDevice = Pick<
   TerminalPoll,
-  'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'mic' | 'version' | 'announce' | 'door' | 'doorLevel' | 'doorFault' | 'doorWarn'
+  'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'mic' | 'version' | 'announce' | 'door' | 'doorLevel' | 'doorFault' | 'doorWarn' | 'patch' | 'patchComplete' | 'patchBetween' | 'patchFault'
 >
 
 /** `GET /api/mod/screen/terminals`. */
@@ -158,6 +174,10 @@ export function mergeTerminals(
       doorLevel: p.doorLevel,
       doorFault: p.doorFault,
       doorWarn: p.doorWarn,
+      patch: p.patch,
+      patchComplete: p.patchComplete,
+      patchBetween: p.patchBetween,
+      patchFault: p.patchFault,
     })
     const lastSeen = clientNow - Math.max(0, p.ago)
     const prev = next[p.name]
@@ -235,7 +255,7 @@ export function strayRoom(row: Pick<TerminalRow, 'room' | 'spot'>): boolean {
 export const LOW_BATTERY = 20
 
 export interface TerminalBadge {
-  key: 'audio' | 'hidden' | 'fullscreen' | 'mic' | 'battery' | 'version' | 'announce' | 'door' | 'door-warn' | 'door-override'
+  key: 'audio' | 'hidden' | 'fullscreen' | 'mic' | 'battery' | 'version' | 'announce' | 'door' | 'door-warn' | 'door-override' | 'patch' | 'patch-between' | 'patch-override'
   text: string
   title: string
   /** Needs a hand: red (amber for an odd version). */
@@ -318,12 +338,71 @@ export function doorBadges(d: TerminalDevice | null, override: boolean, silent =
   return out
 }
 
-/** The screen state's `night.door_override` (wave 20): true only when the
- *  story says so (absent / null / an older server = false). */
-export function doorOverrideFromScreen(state: unknown): boolean {
+/** A `night` flag off the screen state: true only when the story says so
+ *  (absent / null / an older server = false). */
+function nightFlag(state: unknown, key: string): boolean {
   if (state === null || typeof state !== 'object') return false
   const night = (state as { night?: unknown }).night
-  return night !== null && typeof night === 'object' && (night as { door_override?: unknown }).door_override === true
+  return night !== null && typeof night === 'object' && (night as Record<string, unknown>)[key] === true
+}
+
+/** The screen state's `night.door_override` (wave 20). */
+export function doorOverrideFromScreen(state: unknown): boolean {
+  return nightFlag(state, 'door_override')
+}
+
+/** The screen state's `night.patch_override` (wave 22). */
+export function patchOverrideFromScreen(state: unknown): boolean {
+  return nightFlag(state, 'patch_override')
+}
+
+/** Does this poll say the terminal bridges a patch bay (wave 22)? */
+export function hasPatchBay(d: Pick<TerminalDevice, 'patch'> | null): boolean {
+  return d !== null && d.patch !== undefined
+}
+
+/** What a bay fault code means, for the badge's hover. */
+const PATCH_FAULTS: Record<string, string> = {
+  no_port: 'the board isn’t connected to this laptop',
+  stale: 'the board stopped sending',
+  dup: 'one source reads on two inputs: a wiring fault or crosstalk',
+}
+
+/** The 🔌 badges (wave 22): the patch bay off the server-room terminal —
+ *  grey *🔌 0* with no cables, green *🔌 n* with some and *🔌 4 ✓* when the
+ *  bay is complete, red *🔌 fault: <code>*; an amber *🔌 ? n* when inputs
+ *  read between levels (a half-seated plug: the bay is not complete); amber
+ *  *🔌 buttons* while the story follows the 🔌 buttons (`override` = the
+ *  screen state's `night.patch_override`). Counts only: which cables are in
+ *  never leaves the server room. None when the terminal bridges no bay. A
+ *  `silent` terminal reads *🔌 ? (silent)*. */
+export function patchBadges(d: TerminalDevice | null, override: boolean, silent = false): TerminalBadge[] {
+  if (d === null || !hasPatchBay(d)) return []
+  const out: TerminalBadge[] = []
+  if (silent) {
+    out.push({ key: 'patch', text: '🔌 ? (silent)', title: 'The patch bay’s laptop stopped polling, so its last reading may be stale; the watch can press 🔌 / 💥 / ❌', warn: true, tone: 'amber' })
+  } else if (d.patch === 'fault') {
+    const code = d.patchFault ?? 'unknown'
+    const what = PATCH_FAULTS[code]
+    out.push({ key: 'patch', text: `🔌 fault: ${code}`, title: `The patch bay reports a fault${what !== undefined ? ` (${what})` : ''}; the watch presses 🔌 / 💥 / ❌ until it is fixed`, warn: true, tone: 'red' })
+  } else {
+    const n = d.patch ?? 0
+    const complete = d.patchComplete === true
+    out.push({
+      key: 'patch',
+      text: complete ? `🔌 ${n} ✓` : `🔌 ${n}`,
+      title: complete ? 'The patch bay holds a complete set of four cables (the story judges it)' : n === 0 ? 'No cable in the patch bay' : `${n} cable${n === 1 ? '' : 's'} in the patch bay (four make a combination)`,
+      warn: false,
+      ...(n === 0 && !complete ? {} : { tone: 'ok' as const }),
+    })
+  }
+  if (!silent && typeof d.patchBetween === 'number' && d.patchBetween > 0) {
+    out.push({ key: 'patch-between', text: `🔌 ? ${d.patchBetween}`, title: `${d.patchBetween} input${d.patchBetween === 1 ? '' : 's'} read between levels: a half-seated plug or a dirty tip (the bay is not complete until it reads cleanly)`, warn: false, tone: 'amber' })
+  }
+  if (override) {
+    out.push({ key: 'patch-override', text: '🔌 buttons', title: 'The story follows the 🔌 / 💥 / ❌ buttons; press 🔌 Trust the patch bay to hand it back', warn: true, tone: 'amber' })
+  }
+  return out
 }
 
 /** The build most listed terminals run (null: none report one, or a tie) —
@@ -384,15 +463,16 @@ export function micBadge(row: Pick<TerminalRow, 'spot' | 'view'>, mic: MicState)
 }
 
 /** A row's install-day badges: the 🚪 door sensor first (wave 20,
- *  `doorBadges`), 🔇 sound locked, 💤 page hidden, ⛶ not full
+ *  `doorBadges`), the 🔌 patch bay beside it (wave 22, `patchBadges`), 🔇 sound locked, 💤 page hidden, ⛶ not full
  *  screen (only when the build says so: one that can't be sends nothing), 🎤
  *  the voice link's mic (when reported), 📢 it says the house announcements
  *  (wave 18b), the battery, and the build (flagged when it differs from the
  *  majority's, or is missing while the others report one). */
-export function terminalBadges(row: TerminalRow, majority: string | null, doorOverride = false): TerminalBadge[] {
+export function terminalBadges(row: TerminalRow, majority: string | null, doorOverride = false, patchOverride = false): TerminalBadge[] {
   const d = row.device
   if (d === null) return []
-  const out: TerminalBadge[] = [...doorBadges(d, doorOverride, row.status === TerminalStatus.Silent)]
+  const silent = row.status === TerminalStatus.Silent
+  const out: TerminalBadge[] = [...doorBadges(d, doorOverride, silent), ...patchBadges(d, patchOverride, silent)]
   if (d.audio === false) out.push({ key: 'audio', text: '🔇', title: 'Sound is locked: touch the screen once so it can speak', warn: true })
   if (d.visible === false) out.push({ key: 'hidden', text: '💤', title: 'The page is hidden: the screen is off, or another app / a screensaver is on top', warn: true })
   if (d.fullscreen === false) out.push({ key: 'fullscreen', text: '⛶', title: fullscreenTitle(row), warn: true })

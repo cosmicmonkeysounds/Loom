@@ -90,14 +90,15 @@ async function call(rt: EventRuntime, method: string, p: string, body: unknown, 
   return { status: res.statusCode, json, res };
 }
 
-/** The wave 20 heart vars as the show sets them (the story lane owns their
- *  values): the night block always carries the keys, typed. */
-function heartNight(s: ScreenState): Pick<ScreenState["night"], "server_door" | "heart_stage" | "heart_look" | "alarm_on" | "door_override"> {
+/** The wave 20 heart vars (+ wave 22's patch override) as the show sets them
+ *  (the story lane owns their values): the night block always carries the
+ *  keys, typed. */
+function heartNight(s: ScreenState): Pick<ScreenState["night"], "server_door" | "heart_stage" | "heart_look" | "alarm_on" | "door_override" | "patch_override"> {
   const n = s.night;
   expect([null, "open", "closed"]).toContain(n.server_door);
   for (const k of ["heart_stage", "heart_look"] as const) expect(n[k] === null || typeof n[k] === "string").toBe(true);
-  for (const k of ["alarm_on", "door_override"] as const) expect(n[k] === null || typeof n[k] === "boolean").toBe(true);
-  return { server_door: n.server_door, heart_stage: n.heart_stage, heart_look: n.heart_look, alarm_on: n.alarm_on, door_override: n.door_override };
+  for (const k of ["alarm_on", "door_override", "patch_override"] as const) expect(n[k] === null || typeof n[k] === "boolean").toBe(true);
+  return { server_door: n.server_door, heart_stage: n.heart_stage, heart_look: n.heart_look, alarm_on: n.alarm_on, door_override: n.door_override, patch_override: n.patch_override };
 }
 
 describe("screenCueOf", () => {
@@ -941,6 +942,17 @@ describe("the heartbeat's device health and the director's identify", () => {
     expect(screenDeviceOf(q({ dwn: "" }))).toEqual({});
   });
 
+  it("reads the patch bay (wave 22): pb / pbc / pbx / pft, counts only, anything malformed left out", () => {
+    expect(screenDeviceOf(q({ pb: "4", pbc: "1", pbx: "0" }))).toEqual({ patch: 4, patchComplete: true, patchBetween: 0 });
+    expect(screenDeviceOf(q({ pb: "2", pbc: "0", pbx: "1" }))).toEqual({ patch: 2, patchComplete: false, patchBetween: 1 });
+    expect(screenDeviceOf(q({ pb: "fault", pft: "no_port" }))).toEqual({ patch: "fault", patchFault: "no_port" });
+    expect(screenDeviceOf(q({ pb: "fault", pbx: "0", pft: "dup" }))).toEqual({ patch: "fault", patchBetween: 0, patchFault: "dup" });
+    // Malformed: a pair list, an out-of-range count, a flag that isn't 1/0, a code with other characters.
+    expect(screenDeviceOf(q({ pb: "V1-D2", pbc: "yes", pbx: "17", pft: "No Port" }))).toEqual({});
+    expect(screenDeviceOf(q({ pb: "-1" }))).toEqual({});
+    expect(screenDeviceOf(q({ pb: "" }))).toEqual({});
+  });
+
   it("carries the door keys on /api/mod/screen/terminals (wave 20)", () => {
     const w = new ScreenWatch({ now: () => 1_000 });
     w.poll(null, { name: "Server Room", spot: "server-room", view: "face", character: "Trabolta", device: screenDeviceOf(q({ door: "fault", dlv: "12", dft: "stale", ver: "w20" })) }, () => false);
@@ -948,6 +960,12 @@ describe("the heartbeat's device health and the director's identify", () => {
     const [room, hall] = [...screenTerminals(w).terminals].reverse();
     expect(room).toMatchObject({ name: "Server Room", door: "fault", doorLevel: 12, doorFault: "stale", version: "w20" });
     expect(hall).not.toHaveProperty("door");
+    expect(hall).not.toHaveProperty("patch");
+    // Wave 22: the bay's counts ride the same poll.
+    w.poll(null, { name: "Server Room", spot: "server-room", view: "face", character: "Trabolta", device: screenDeviceOf(q({ door: "closed", dlv: "3800", pb: "3", pbc: "0", pbx: "1", ver: "w22" })) }, () => false);
+    const again = screenTerminals(w).terminals.find((t) => t.name === "Server Room");
+    expect(again).toMatchObject({ door: "closed", patch: 3, patchComplete: false, patchBetween: 1 });
+    expect(again).not.toHaveProperty("patchFault");
     expect(hall).not.toHaveProperty("doorLevel");
   });
 

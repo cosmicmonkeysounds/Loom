@@ -11,7 +11,7 @@
 
 namespace proto {
 
-constexpr size_t kLine = 200;  // the longest output line is ≈ 150 bytes
+constexpr size_t kLine = 256;  // the longest output line, a full `patch`, is ≈ 210 bytes
 constexpr size_t kCmd = 64;    // commands are short; a longer line is refused
 
 // ── Output lines ───────────────────────────────────────────────────────────
@@ -53,20 +53,23 @@ struct Info {
   bool autoMode;     // picked by the boot probe
   unsigned close, open, settle;
   bool cal, sense;
+  // The patch bay's sources / inputs (wave 22): 0 / 0 in a build with none.
+  unsigned pbv, pbd;
 };
 
 inline int hello(const Info& i, char* out, size_t cap) {
   return snprintf(out, cap,
                   "{\"t\":\"hello\",\"fw\":\"%s\",\"mode\":\"%s\",\"auto\":%s,\"close\":%u,\"open\":%u,"
-                  "\"settle\":%u,\"cal\":%s,\"sense\":%s}",
-                  i.fw, i.mode, b(i.autoMode), i.close, i.open, i.settle, b(i.cal), b(i.sense));
+                  "\"settle\":%u,\"cal\":%s,\"sense\":%s,\"pbv\":%u,\"pbd\":%u}",
+                  i.fw, i.mode, b(i.autoMode), i.close, i.open, i.settle, b(i.cal), b(i.sense), i.pbv, i.pbd);
 }
 
 inline int cfg(const Info& i, bool saved, char* out, size_t cap) {
   return snprintf(out, cap,
                   "{\"t\":\"cfg\",\"fw\":\"%s\",\"mode\":\"%s\",\"auto\":%s,\"close\":%u,\"open\":%u,"
-                  "\"settle\":%u,\"cal\":%s,\"sense\":%s,\"saved\":%s}",
-                  i.fw, i.mode, b(i.autoMode), i.close, i.open, i.settle, b(i.cal), b(i.sense), b(saved));
+                  "\"settle\":%u,\"cal\":%s,\"sense\":%s,\"pbv\":%u,\"pbd\":%u,\"saved\":%s}",
+                  i.fw, i.mode, b(i.autoMode), i.close, i.open, i.settle, b(i.cal), b(i.sense), i.pbv, i.pbd,
+                  b(saved));
 }
 
 inline int door(unsigned long seq, bool open, unsigned level, unsigned lit, unsigned dark, const char* fault,
@@ -87,6 +90,46 @@ inline int pong(unsigned long up, char* out, size_t cap) {
 inline int cal(const char* which, unsigned ref, unsigned close, unsigned open, char* out, size_t cap) {
   return snprintf(out, cap, "{\"t\":\"cal\",\"which\":\"%s\",\"ref\":%u,\"close\":%u,\"open\":%u}", which, ref,
                   close, open);
+}
+
+// `"key":[a,b,…]` bodies: unsigned levels, and signed decodes.
+inline void list(const uint16_t* v, int n, char* out, size_t cap) {
+  size_t len = 0;
+  out[0] = 0;
+  for (int i = 0; i < n && len + 1 < cap; i++) len += (size_t)snprintf(out + len, cap - len, i ? ",%u" : "%u", (unsigned)v[i]);
+}
+inline void list(const int8_t* v, int n, char* out, size_t cap) {
+  size_t len = 0;
+  out[0] = 0;
+  for (int i = 0; i < n && len + 1 < cap; i++) len += (size_t)snprintf(out + len, cap - len, i ? ",%d" : "%d", (int)v[i]);
+}
+
+// The patch bay (wave 22): `pairs` / `count` / `complete` are the settled
+// bay (the one the terminal posts); `raw` / `src` the latest scan per input
+// (D1 first; `src` 0 empty, 1–8 a source, −1 between levels); `stable`
+// whether the latest scan is the settled bay.
+inline int patch(unsigned long seq, const char* pairs, int count, bool complete, const uint16_t* raw,
+                 const int8_t* src, int inputs, bool stable, char* out, size_t cap) {
+  char p[64], r[96], d[64];
+  escape(pairs, p, sizeof p);
+  list(raw, inputs, r, sizeof r);
+  list(src, inputs, d, sizeof d);
+  return snprintf(out, cap,
+                  "{\"t\":\"patch\",\"seq\":%lu,\"pairs\":\"%s\",\"count\":%d,\"complete\":%s,\"raw\":[%s],"
+                  "\"src\":[%s],\"stable\":%s}",
+                  seq, p, count, b(complete), r, d, b(stable));
+}
+
+// The bay's levels: after `pb learn V<k>` (`src` k, `raw` what it read),
+// and for `pb get` / `pb save` / `pb reset` / `pb floor` / `pb tol` (`src`
+// 0, `raw` 0). `saved`: the live levels are the ones in flash.
+inline int pbcal(int src, unsigned raw, const uint16_t* levels, int sources, unsigned floor, unsigned tol, bool saved,
+                 char* out, size_t cap) {
+  char l[96];
+  list(levels, sources, l, sizeof l);
+  return snprintf(out, cap,
+                  "{\"t\":\"pbcal\",\"src\":%d,\"raw\":%u,\"levels\":[%s],\"floor\":%u,\"tol\":%u,\"saved\":%s}",
+                  src, raw, l, floor, tol, b(saved));
 }
 
 inline int ok(const char* cmd, char* out, size_t cap) {
@@ -116,13 +159,19 @@ enum Kind {
   kSetSettle,
   kSave,
   kReset,
+  kPbLearn,  // pb learn V<k>: value = k
+  kPbGet,
+  kPbSave,
+  kPbReset,
+  kPbFloor,  // pb floor <n>
+  kPbTol,    // pb tol <n>
   kBadValue,  // a known `set` with a value that doesn't parse
   kUnknown,
 };
 
 struct Command {
   Kind kind = kUnknown;
-  long value = 0;     // set close / open / settle
+  long value = 0;     // set close / open / settle, pb learn / floor / tol
   char word[8] = "";  // set mode
 };
 
@@ -152,6 +201,22 @@ inline Command parse(const char* line) {
   else if (nw == 2 && is(0, "cal") && is(1, "open")) c.kind = kCalOpen;
   else if (nw == 3 && is(0, "set") && (is(1, "close") || is(1, "open") || is(1, "settle"))) {
     c.kind = is(1, "close") ? kSetClose : is(1, "open") ? kSetOpen : kSetSettle;
+    char* end = nullptr;
+    long v = strtol(w[2], &end, 10);
+    if (end == w[2] || *end != 0 || !isdigit((unsigned char)w[2][0])) c.kind = kBadValue;
+    else c.value = v;
+  } else if (nw == 2 && is(0, "pb") && (is(1, "get") || is(1, "save") || is(1, "reset"))) {
+    c.kind = is(1, "get") ? kPbGet : is(1, "save") ? kPbSave : kPbReset;
+  } else if (nw == 3 && is(0, "pb") && is(1, "learn")) {
+    // `V3` (or `v3`): one source digit.
+    const char* v = w[2];
+    c.kind = kBadValue;
+    if ((v[0] == 'V' || v[0] == 'v') && isdigit((unsigned char)v[1]) && v[2] == 0 && v[1] != '0') {
+      c.kind = kPbLearn;
+      c.value = v[1] - '0';
+    }
+  } else if (nw == 3 && is(0, "pb") && (is(1, "floor") || is(1, "tol"))) {
+    c.kind = is(1, "floor") ? kPbFloor : kPbTol;
     char* end = nullptr;
     long v = strtol(w[2], &end, 10);
     if (end == w[2] || *end != 0 || !isdigit((unsigned char)w[2][0])) c.kind = kBadValue;

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # N-20 bench check for the server-room door sensor
-# (hardware/server-room-door, wave 20), run on the laptop the Grand Central
+# (hardware/server-room-m4, wave 20), run on the laptop the Grand Central
 # M4 is plugged into, with the LED and the LDR (in its shroud) fitted across
 # the real door, or a bench mock-up of it. ~10 minutes. It talks to the
 # board over USB serial only: no server, no stagehand, no MQTT.
@@ -16,14 +16,14 @@
 # one program can hold the port. Needs: python3 (macOS ships it), c++.
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-HW="$ROOT/hardware/server-room-door"
+HW="$ROOT/hardware/server-room-m4"
 PASS=0; FAIL=0
 ok()   { echo "  ✔ $*"; PASS=$((PASS+1)); }
 bad()  { echo "  ✘ $*"; FAIL=$((FAIL+1)); }
 step() { echo; echo "── $*"; }
 
 step "0. preflight"
-"$HW/test/run.sh" >/dev/null 2>&1 && ok "host logic tests green" || bad "hardware/server-room-door/test/run.sh failing"
+"$HW/test/run.sh" >/dev/null 2>&1 && ok "host logic tests green" || bad "hardware/server-room-m4/test/run.sh failing"
 command -v python3 >/dev/null && ok "python3" || { bad "python3 missing (xcode-select --install)"; exit 1; }
 PORT="${1:-}"
 if [ -z "$PORT" ]; then

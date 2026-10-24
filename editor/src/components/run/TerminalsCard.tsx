@@ -15,6 +15,9 @@
 //! Wave 20: the server-room terminal's 🚪 door sensor badges (green shut /
 //! amber open with the level, red fault, a small ⚠ warning, amber override
 //! while the story follows the 🚪 buttons) lead its row (`doorBadges`).
+//! Wave 22: its 🔌 patch bay badges follow (the cable count, ✓ complete, an
+//! amber ? for inputs between levels, red fault, amber *buttons* while the
+//! story follows the 🔌 buttons: `patchBadges`).
 
 import clsx from 'clsx'
 import { CockpitTab, useCockpit } from '@/store/cockpit'
@@ -59,6 +62,7 @@ export function TerminalsCard() {
   const identifyError = useTerminals((s) => s.identifyError)
   const map = useTerminals((s) => s.map)
   const doorOverride = useTerminals((s) => s.doorOverride)
+  const patchOverride = useTerminals((s) => s.patchOverride)
   const majority = majorityVersion(rows)
   const doubled = doubleClaims(rows)
   const unclaimed = map === null ? [] : unclaimedSpots(map, rows)
@@ -139,7 +143,7 @@ export function TerminalsCard() {
                     room {r.room}
                   </span>
                 )}
-                {terminalBadges(r, majority, doorOverride).map((b) => (
+                {terminalBadges(r, majority, doorOverride, patchOverride).map((b) => (
                   <span
                     key={b.key}
                     title={b.title}

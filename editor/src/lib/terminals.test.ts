@@ -4,6 +4,9 @@ import {
   doorBadges,
   doorOverrideFromScreen,
   hasDoorSensor,
+  hasPatchBay,
+  patchBadges,
+  patchOverrideFromScreen,
   RECHIME_MS,
   TerminalStatus,
   formatSilence,
@@ -386,5 +389,69 @@ describe('the 🚪 door badges (wave 20)', () => {
     expect(doorOverrideFromScreen({ night: {} })).toBe(false)
     expect(doorOverrideFromScreen({})).toBe(false)
     expect(doorOverrideFromScreen(null)).toBe(false)
+  })
+})
+
+describe('the 🔌 patch bay badges (wave 22)', () => {
+  const now = 1_000_000
+  const rowWith = (p: Partial<TerminalPoll>): TerminalRow => mergeTerminals({}, server({ ...poll('Server Room', 500, 'face'), ...p }), now).rows[0]!
+
+  it('carries the bay counts off the poll into the row', () => {
+    expect(rowWith({ door: 'closed', patch: 3, patchComplete: false, patchBetween: 1 }).device).toMatchObject({ patch: 3, patchComplete: false, patchBetween: 1 })
+    expect(hasPatchBay(rowWith({ patch: 0 }).device)).toBe(true)
+    expect(hasPatchBay(rowWith({ door: 'closed' }).device)).toBe(false)
+  })
+
+  it('no cable is grey, some green, a complete set green with ✓', () => {
+    const [none] = patchBadges(rowWith({ patch: 0, patchComplete: false, patchBetween: 0 }).device, false)
+    expect(none).toMatchObject({ key: 'patch', text: '🔌 0', warn: false })
+    expect(none!.tone).toBeUndefined()
+    expect(patchBadges(rowWith({ patch: 2, patchComplete: false }).device, false)).toEqual([expect.objectContaining({ text: '🔌 2', tone: 'ok', warn: false })])
+    const [four] = patchBadges(rowWith({ patch: 4, patchComplete: true }).device, false)
+    expect(four).toMatchObject({ text: '🔌 4 ✓', tone: 'ok' })
+    expect(four!.title).toContain('the story judges it')
+  })
+
+  it('an input between levels adds an amber ?, never a ✓', () => {
+    const bs = patchBadges(rowWith({ patch: 4, patchComplete: false, patchBetween: 1 }).device, false)
+    expect(bs.map((b) => [b.key, b.text, b.tone])).toEqual([
+      ['patch', '🔌 4', 'ok'],
+      ['patch-between', '🔌 ? 1', 'amber'],
+    ])
+    expect(bs[1]!.title).toContain('half-seated plug')
+  })
+
+  it('a fault is red and says the watch presses the buttons', () => {
+    const [b] = patchBadges(rowWith({ patch: 'fault', patchFault: 'dup' }).device, false)
+    expect(b).toMatchObject({ key: 'patch', text: '🔌 fault: dup', tone: 'red', warn: true })
+    expect(b!.title).toContain('wiring fault')
+    expect(b!.title).toContain('🔌 / 💥 / ❌')
+    expect(patchBadges(rowWith({ patch: 'fault' }).device, false)[0]!.text).toBe('🔌 fault: unknown')
+  })
+
+  it('the override reads 🔌 buttons; a silent laptop reads ?', () => {
+    const bs = patchBadges(rowWith({ patch: 4, patchComplete: true }).device, true)
+    expect(bs.at(-1)).toMatchObject({ key: 'patch-override', text: '🔌 buttons', tone: 'amber' })
+    expect(bs.at(-1)!.title).toContain('Trust the patch bay')
+    expect(patchBadges(rowWith({ patch: 4, patchBetween: 2 }).device, false, true).map((b) => b.text)).toEqual(['🔌 ? (silent)'])
+  })
+
+  it('no badge for a terminal with no bay, override or not', () => {
+    expect(patchBadges(rowWith({ door: 'closed' }).device, true)).toEqual([])
+    expect(patchBadges(null, true)).toEqual([])
+  })
+
+  it('terminalBadges puts the bay right after the door, with its own override', () => {
+    const r = rowWith({ door: 'closed', doorLevel: 3900, patch: 2, version: 'v1' })
+    expect(terminalBadges(r, 'v1', false, true).map((b) => b.key)).toEqual(['door', 'patch', 'patch-override', 'version'])
+    expect(terminalBadges(r, 'v1', true).map((b) => b.key)).toEqual(['door', 'door-override', 'patch', 'version'])
+  })
+
+  it('reads night.patch_override off the screen state', () => {
+    expect(patchOverrideFromScreen({ night: { patch_override: true } })).toBe(true)
+    expect(patchOverrideFromScreen({ night: { patch_override: false, door_override: true } })).toBe(false)
+    expect(patchOverrideFromScreen({ night: {} })).toBe(false)
+    expect(patchOverrideFromScreen(null)).toBe(false)
+    expect(doorOverrideFromScreen({ night: { patch_override: true } })).toBe(false)
   })
 })

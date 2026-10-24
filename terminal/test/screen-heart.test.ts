@@ -15,6 +15,8 @@ describe("the screen state's wave 20 fields", () => {
 
   it("reads the heart's night vars", () => {
     expect(nightOf({ server_door: "open", heart_stage: "talk", heart_look: "heart_argue", alarm_on: false, door_override: true })).toMatchObject({ server_door: "open", heart_stage: "talk", heart_look: "heart_argue", alarm_on: false, door_override: true });
+    expect(nightOf({ patch_override: true })).toMatchObject({ patch_override: true });
+    expect(nightOf({ patch_override: "yes" })).toMatchObject({ patch_override: null });
     expect(nightOf({ server_door: "ajar", heart_look: "none" })).toMatchObject({ server_door: null, heart_stage: null, heart_look: null, alarm_on: null, door_override: null });
   });
 });

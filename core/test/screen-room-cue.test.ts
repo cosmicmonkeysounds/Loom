@@ -197,6 +197,9 @@ when heart_opens:
 when alarm:
   set Night.alarm_on = true
 
+when patch_buttons:
+  set Night.patch_override = true
+
 when weird:
   set Night.server_door = "ajar"
 `;
@@ -208,6 +211,7 @@ when weird:
       heart_look: "Night.heart_look",
       alarm_on: "Night.alarm_on",
       door_override: "Night.door_override",
+      patch_override: "Night.patch_override",
     });
   });
 
@@ -222,6 +226,10 @@ when weird:
     sim.signal("heart_opens");
     sim.signal("alarm");
     expect(night()).toMatchObject({ server_door: "open", heart_stage: "door", heart_look: "heart_door_open", alarm_on: true, door_override: true });
+    // Wave 22: the patch bay's override follows the story the same way.
+    expect(night().patch_override).toBeNull();
+    sim.signal("patch_buttons");
+    expect(night().patch_override).toBe(true);
     // Only "open" / "closed" are a door.
     sim.signal("weird");
     expect(night().server_door).toBeNull();

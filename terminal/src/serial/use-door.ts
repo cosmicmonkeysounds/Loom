@@ -1,7 +1,8 @@
 //! The door bridge's hook (wave 20), in the base bundle: a terminal set up
 //! with a door sensor (`door=serial` / `sim`) loads the bridge's chunk
 //! (`door-serial.ts`, Web Serial + the decisions) and feeds it every screen
-//! state, so the reconcile runs on each poll. With no sensor nothing loads.
+//! state, so the reconcile runs on each poll (and the patch bay's gate, wave
+//! 22, follows `night.patch_override`). With no sensor nothing loads.
 
 import { useEffect, useRef } from "react";
 import type { TerminalConfig } from "../config.ts";
@@ -49,6 +50,6 @@ export function useDoorLink(config: TerminalConfig | null, state: ScreenState | 
     };
   }, [config]);
   useEffect(() => {
-    if (state !== null) link.current?.screen({ server_door: state.night.server_door, door_override: state.night.door_override });
+    if (state !== null) link.current?.screen({ server_door: state.night.server_door, door_override: state.night.door_override, patch_override: state.night.patch_override, step: state.night.step, ended: state.night.ended });
   }, [state]);
 }
