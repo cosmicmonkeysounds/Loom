@@ -71,7 +71,7 @@ pnpm --filter <name> typecheck
 
 pnpm --filter @loom/core titi:facts [--check]   # regenerate the show's files from facts.json
 pnpm --filter @loom/core show:page [--check]    # regenerate SHOW.html
-pnpm --filter @loom/core loomcheck              # lint a story
+pnpm --filter @loom/core loomcheck examples/trapped-in-the-internet --smoke  # lint a story
 pnpm house:sync                        # house goldens + copy into reinstall/vr
 pnpm test:vr                           # the Godot suite (needs Godot 4.7)
 
@@ -172,38 +172,47 @@ broker or `show` down, only `&announce=1` terminals still speak them.
 
 ### Release status
 
-The VPS runs `w18b-1021`. Master holds waves 18b Stage B, 19, 20, 20b, 21
-and 22, all **merged but not shipped**. The show text of waves 18b, 20 and
-21 is marked DRAFT and awaits the user's sign-off (the `SIGNOFF-*.md`
-files).
+The VPS runs `w18b-1021` (wave 18b Stage A, built on top of wave 19, so
+wave 19 is live). Master adds waves 18b Stage B, 20, 20b, 21 and 22, all
+**merged but not shipped**. The show text of waves 18b, 20 and 21 is
+marked DRAFT and awaits the user's sign-off (the `SIGNOFF-*.md` files).
 
 ### Shipping master (summary)
 
 1. Decide on the DRAFT text sign-off; shipping carries every DRAFT line.
 2. Check the preview's roster in its own step. Ask if anyone is on.
 3. MacBook: `scripts/ops/predeploy.sh --vr`, then `scripts/ops/ship.sh <tag>`.
-   Check `/api/health`. Rollback is `deploy/rollback.sh` on the VPS.
-4. Desktop: `git pull`, set `server.event` / `mod_passcode` in
-   `stagehand/trapped.house.local.yaml`, and restart the `show` task
-   (`uv run stagehand tasks restart --job show`) **before** the sync, so
-   no old rule posts into the new story.
-5. MacBook: `pnpm sync-show --replace-audio [--replace-lights]` **with its
-   reload, before doors**. Add `--replace-maps` only if the summary shows
-   the maps differ. Restart every other non-ended event.
-6. MacBook: install the router (`stagehand sounds placeholders`,
-   `check --only audio`, `launchd install --job audio --config
-   trapped.macbook.yaml`); `launchd restart --job agents`; then Run → Mind
-   → Reset.
-7. Desktop: Zigbee2MQTT + the `lights` task, pair the bulb as
+   Check `/api/health`, then `deploy/release.sh --check-env` on the VPS.
+   Rollback is `deploy/rollback.sh` on the VPS.
+4. MacBook (the old house Mac): retire what moved to the Desktop, or every
+   cue fires twice. `uv run stagehand launchd uninstall --job show` and
+   `--job lights`, `scripts/house-mac/install-alexa.sh --uninstall`, stop
+   Mosquitto (`brew services stop mosquitto`) and the Zigbee2MQTT launchd
+   agent.
+5. Desktop: `git pull`, set `server.event` / `mod_passcode` in
+   `stagehand/trapped.house.local.yaml`, then
+   `scripts\house-desktop\start-stagehand.ps1` (checks the config, installs
+   and starts the `show` and `lights` tasks) **before** the sync, so no old
+   rule posts into the new story.
+6. MacBook: `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm
+   sync-show --replace-audio [--replace-lights]` **with its reload, before
+   doors**. Add `--replace-maps` only if the summary shows the maps differ.
+   Restart every other non-ended event.
+7. MacBook: install the router (`uv run stagehand sounds placeholders
+   --config trapped.macbook.yaml`, `uv run stagehand check --only audio
+   --config trapped.macbook.yaml`, `uv run stagehand launchd install --job
+   audio --config trapped.macbook.yaml`); `uv run stagehand launchd restart
+   --job agents`; then Run → Mind → Reset.
+8. Desktop: Zigbee2MQTT on the CC2652P, pair the bulb as
    `server_room_rgb`, place it in the map editor, test each look, Save to
    project (`scripts/house-desktop/README.md`).
-8. Steph's laptop: flash the M4 (`door-m4 1.2.0`), bench with
+9. Steph's laptop: flash the M4 (`door-m4 1.2.0`), bench with
    `scripts/accept/N-20.sh` and `N-21.sh`, then calibrate the door and
    learn the patch bay in the terminal's ⚙ (always after a reflash).
-9. Reload every terminal and the TV, touch each tablet once, re-export
-   and sideload the Quest APK, test the door open → shut → open, and
-   reprint the cast packs after the sign-off.
-10. Morning of the show: pause the event first, then sync, Push draft and
+10. Reload every terminal and the TV, touch each tablet once, re-export
+    and sideload the Quest APK, test the door open → shut → open, and
+    reprint the cast packs after the sign-off.
+11. Morning of the show: pause the event first, then sync, Push draft and
     Go live in place, before anyone registers. Open the doors at doors
     time (open question: 19:00 or 20:00; the story's clock reads 7:00 PM
     at the doors).
