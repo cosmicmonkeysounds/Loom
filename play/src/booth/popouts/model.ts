@@ -555,6 +555,8 @@ export function pickReadySpec(o: BoothObjective, layout: PickLayout, ownFireAt: 
   if (layout !== "steps" && layout !== "rows") return null;
   if (ownFireAt !== null && now - ownFireAt <= 10_000) return "open";
   const n = o.pick?.length ?? 0;
+  // Nobody to pick yet: no pop-out (it comes once the list fills).
+  if (n === 0) return null;
   const steps = layout === "steps";
   return {
     key: `pick:${o.id}:${firstLive}`,

@@ -206,6 +206,8 @@ describe("pickers (§4.6–4.7)", () => {
     expect(d).toMatchObject({ key: "pick:o:900", title: "PLAYER SELECT is ready", body: ["3 programs"], priority: 40, sound: true });
     expect((pickReadySpec(celebrate, "rows", null, 5000, 900) as { sound: boolean }).sound).toBe(false);
     expect(pickReadySpec(celebrate, "target", null, 0, 0)).toBeNull();
+    // Nobody on the list yet: no "PLAYER SELECT is ready · 0 programs" pop-out (w21 live walk).
+    expect(pickReadySpec({ ...celebrate, pick: [] }, "steps", null, 5000, 900)).toBeNull();
   });
   it("the bottle's target pop-out: the guest's live buttons, a destructive one armed, Open card", () => {
     const bottle = obj({ id: "bottle", title: "The bottle: make them answer", target: { id: "g1", name: "Minesweeper", location: "Desktop" }, buttons: ["truth", "refused"] });
