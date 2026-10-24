@@ -1,0 +1,34 @@
+# Trapped in the Internet — John's MacBook (macOS): the house speaker router.
+#
+# Builds on trapped.house.yaml (`extends:`; the router's settings live there
+# once) and runs ONE job from it, `audio` — the MOTU 828x + the ADAT
+# expander on this Mac, every story `sound X` and the house announcements
+# (chime + `say` Samantha). The other house jobs (show, lights) run on John's
+# Desktop (trapped.desktop.yaml), which also hosts Mosquitto, so this file
+# points the router at the Desktop's broker instead of this Mac's loopback:
+# the announcements reach the router only as MQTT show/announce from the
+# Desktop's show job (with that broker down, nothing is spoken; the tent's
+# &announce=1 terminal still says them).
+#
+#   uv run stagehand check   --config trapped.macbook.yaml --only audio
+#   uv run stagehand launchd install --job audio --config trapped.macbook.yaml
+#   uv run stagehand launchd install --job agents --config laptop.yaml   # Trabolta, unchanged
+#   uv run stagehand launchd status
+#
+# The broker's LAN listener is password-only: put the `props` password in
+# trapped.macbook.local.yaml (git-ignored), never here —
+#   server: {}
+#   audio: { mqtt: { password: "<the props password>" } }
+# (server: { event, mod_passcode } comes from trapped.house.local.yaml; a
+# `server:` here would win.) `stagehand sounds stop|play` and `announce`
+# from this Mac go through the same broker.
+extends: trapped.house.yaml
+
+show: null   # the Desktop's job (two show jobs would fire every cue twice)
+
+audio:
+  mqtt:
+    host: 192.168.8.10   # John's Desktop: the house's DHCP reservation (moved from the house Mac)
+    port: 1884           # Mosquitto's password-only LAN listener
+    username: props
+    client_id: stagehand-audio-macbook

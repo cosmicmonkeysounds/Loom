@@ -11,6 +11,8 @@ Shape (`audio.example.yaml` carries a commented copy):
       passthrough: true            # the audio.json input→output matrix; false
                                    # opens an output-only stream (no mic access)
       device: null                 # override audio.json's device.name (substring)
+      host_api: null               # Windows: asio (the MOTU: one N-channel device;
+                                   # sets SD_ENABLE_ASIO) | wasapi | wdm-ks | directsound | mme
       rate: null                   # override the rate (default: audio.json / the device's)
       blocksize: 512
       latency: high                # low | high | seconds
@@ -27,7 +29,8 @@ Shape (`audio.example.yaml` carries a commented copy):
       poll_wait: 25                # the long-poll's wait (s)
       health_s: 60                 # the health line's period
       # announce: true only —
-      say_voice: Samantha
+      voice_engine: auto           # auto (sapi on Windows, say elsewhere) | say | sapi
+      say_voice: Samantha          # the engine's voice (default: Samantha / Microsoft Zira Desktop)
       chime: synth                 # synth | off | a file
       announce_gain_db: 0
       test_gain_db: -12            # the speaker test's tone + label
@@ -49,11 +52,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .. import localvoice
 from ..alexa.config import DEFAULT_CACHE as ALEXA_CACHE
 from ..module import ConfigError
+from ..paths import user_cache
 from ..show.config import MqttConfig
 
-DEFAULT_CACHE = "~/Library/Caches/stagehand-audio"
+DEFAULT_CACHE = user_cache("stagehand-audio")  # ~/Library/Caches/… ; %LOCALAPPDATA%\stagehand\… on Windows
 
 
 @dataclass(frozen=True)
@@ -63,6 +68,9 @@ class AudioConfig:
     announce: bool = False
     passthrough: bool = True
     device: str | None = None
+    #: PortAudio host API the device must be on (engine.HOST_APIS): `asio`
+    #: on the Windows house PC; None (the Mac: Core Audio is the only one).
+    host_api: str | None = None
     rate: int | None = None
     blocksize: int = 512
     latency: str | float = "high"
@@ -76,6 +84,9 @@ class AudioConfig:
     cache_dir: str = DEFAULT_CACHE
     poll_wait: float = 25.0
     health_s: float = 60.0
+    #: The announcements' + test labels' voice: `say` (macOS) or `sapi`
+    #: (Windows, through PowerShell) — `voice_engine: auto` resolved at load.
+    voice_engine: str = "say"
     say_voice: str | None = "Samantha"
     chime: str = "synth"
     announce_gain_db: float = 0.0
@@ -149,6 +160,14 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
             raise ConfigError("audio.latency: low | high | seconds (0–1)")
         latency = float(latency)
 
+    host_api = _str(doc, "host_api", None)
+    if host_api is not None:
+        from .engine import HOST_APIS
+
+        host_api = host_api.lower()
+        if host_api not in HOST_APIS:
+            raise ConfigError(f"audio.host_api: {' | '.join(HOST_APIS)} (got {doc.get('host_api')!r})")
+
     rate = doc.get("rate")
     if rate is not None:
         rate = int(_num(doc, "rate", 0, 8000, 384000))
@@ -161,6 +180,11 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         raise ConfigError("audio.chime: synth | off | a sound file")
     if chime not in ("synth", "off"):
         chime = _path({"chime": chime}, "chime", base_dir, must_exist=True) or "off"
+
+    try:
+        voice_engine = localvoice.resolve(doc.get("voice_engine", "auto"))
+    except ValueError:
+        raise ConfigError(f"audio.voice_engine: {' | '.join(localvoice.ENGINES)}") from None
 
     mqtt: MqttConfig | None = None
     if (raw := doc.get("mqtt")) is not None:
@@ -180,6 +204,7 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         announce=_bool(doc, "announce", False),
         passthrough=_bool(doc, "passthrough", True),
         device=_str(doc, "device", None),
+        host_api=host_api,
         rate=rate,
         blocksize=blocksize,
         latency=latency,
@@ -193,7 +218,8 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         cache_dir=os.path.expanduser(_str(doc, "cache_dir", DEFAULT_CACHE) or DEFAULT_CACHE),
         poll_wait=_num(doc, "poll_wait", 25.0, 0, 120),
         health_s=_num(doc, "health_s", 60.0, 5, 3600),
-        say_voice=_str(doc, "say_voice", "Samantha"),
+        voice_engine=voice_engine,
+        say_voice=_str(doc, "say_voice", localvoice.default_voice(voice_engine)),
         chime=chime,
         announce_gain_db=_num(doc, "announce_gain_db", 0.0, -60, 12),
         test_gain_db=_num(doc, "test_gain_db", -12.0, -60, 0),

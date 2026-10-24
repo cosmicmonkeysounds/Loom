@@ -25,9 +25,10 @@ from pathlib import Path
 from typing import Any
 
 from ..module import ConfigError
+from ..paths import user_cache
 from ..show.config import MqttConfig
 
-DEFAULT_CACHE = "~/Library/Caches/stagehand-lights"
+DEFAULT_CACHE = user_cache("stagehand-lights")  # ~/Library/Caches/… ; %LOCALAPPDATA%\stagehand\… on Windows
 DEFAULT_MQTT = MqttConfig(host="127.0.0.1", port=1883, client_id="stagehand-lights")
 
 

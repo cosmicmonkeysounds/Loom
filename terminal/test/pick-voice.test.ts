@@ -82,4 +82,38 @@ describe("voice ranking", () => {
     expect(pickVoice(voices, null)?.name).toBe("Samantha");
     expect(pickVoice([], null)).toBeNull();
   });
+  it("on Windows Chrome (the TV on John's Desktop): Microsoft David for him, Microsoft Zira for the house", () => {
+    const win = [
+      v("Microsoft David - English (United States)", "en-US", { default: true }),
+      v("Microsoft Mark - English (United States)"),
+      v("Microsoft Zira - English (United States)"),
+      v("Google US English", "en-US", { localService: false }),
+      v("Google UK English Female", "en-GB", { localService: false }),
+      v("Google UK English Male", "en-GB", { localService: false }),
+      v("Google français", "fr-FR", { localService: false }),
+    ];
+    const trabolta = pickVoice(win, null, CHARACTER_VOICE)!;
+    const house = pickVoice(win, null, ANNOUNCE_VOICE)!;
+    expect(trabolta.name).toBe("Microsoft David - English (United States)");
+    expect(house.name).toBe("Microsoft Zira - English (United States)"); // local, ahead of the streamed Google voice
+    expect(voiceGender(house)).toBe("female");
+    expect(voiceGender(v("Microsoft Mark - English (United States)"))).toBe("male");
+    // Without David, Mark; the local voices before any streamed one, both ways.
+    expect(pickVoice(win.slice(1), null, CHARACTER_VOICE)?.name).toBe("Microsoft Mark - English (United States)");
+    expect(rankVoices(win, CHARACTER_VOICE).slice(0, 2).every((x) => x.localService)).toBe(true);
+    // A British desktop: Hazel is female, George male.
+    expect(voiceGender(v("Microsoft Hazel - English (United Kingdom)", "en-GB"))).toBe("female");
+    expect(voiceGender(v("Microsoft George - English (United Kingdom)", "en-GB"))).toBe("male");
+  });
+  it("in Edge on Windows: the Natural voices win, Guy for him and Aria / Jenny for the house", () => {
+    const edge = [
+      v("Microsoft David - English (United States)", "en-US", { default: true }),
+      v("Microsoft Zira - English (United States)"),
+      v("Microsoft Guy Online (Natural) - English (United States)", "en-US", { localService: false }),
+      v("Microsoft Aria Online (Natural) - English (United States)", "en-US", { localService: false }),
+      v("Microsoft Jenny Online (Natural) - English (United States)", "en-US", { localService: false }),
+    ];
+    expect(pickVoice(edge, null, CHARACTER_VOICE)?.name).toContain("Guy");
+    expect(pickVoice(edge, null, ANNOUNCE_VOICE)?.name).toMatch(/Aria|Jenny/);
+  });
 });

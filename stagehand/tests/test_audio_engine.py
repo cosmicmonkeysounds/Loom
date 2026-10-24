@@ -352,3 +352,65 @@ def test_the_bank_lists_files_off_the_device_rate(tmp_path):
     write_wav(tmp_path / "zip.wav", rate=RATE)
     write_wav(tmp_path / "song.wav", rate=RATE * 2)
     assert SoundBank(tmp_path, RATE).off_rate(["zip", "song", "missing"]) == [("song", RATE * 2)]
+
+
+# ── Windows: the host API (the MOTU through ASIO) ──────────────────────────
+
+
+def test_the_host_api_narrows_the_device_query():
+    from stagehand.audio.engine import with_host_api
+
+    assert with_host_api("828x", None) == "828x"  # the Mac: unchanged
+    assert with_host_api("828x", "asio") == "828x ASIO"
+    assert with_host_api(None, "asio") == "ASIO"  # the only ASIO driver
+    assert with_host_api("MOTU", "wasapi") == "MOTU WASAPI"
+
+
+def test_asio_sets_sd_enable_asio_before_sounddevice_loads():
+    from stagehand.audio.engine import enable_host_api
+
+    env: dict[str, str] = {}
+    assert enable_host_api("asio", env, modules={}) is None
+    assert env == {"SD_ENABLE_ASIO": "1"}
+    assert enable_host_api("wasapi", (other := {}), modules={}) is None and other == {}
+    assert enable_host_api(None, (other := {}), modules={}) is None and other == {}
+    # Too late: sounddevice already loaded the non-ASIO DLL.
+    late = enable_host_api("asio", {}, modules={"sounddevice": object()})
+    assert late is not None and "SD_ENABLE_ASIO" in late
+    # Set by the job's environment already: nothing to say.
+    assert enable_host_api("asio", {"SD_ENABLE_ASIO": "1"}, modules={"sounddevice": object()}) is None
+
+
+def test_host_api_is_validated_and_reaches_the_engine(monkeypatch):
+    from stagehand.audio.config import parse_audio_section
+    from stagehand.audio.module import AudioRouter
+    from stagehand.module import ConfigError
+
+    with pytest.raises(ConfigError, match="host_api"):
+        parse_audio_section({"host_api": "jack"})
+    assert parse_audio_section({}).host_api is None
+    monkeypatch.setenv("SD_ENABLE_ASIO", "1")  # never leak it into the other tests
+    seen = []
+
+    def query(device=None, kind=None):
+        seen.append(device)
+        return fake_query()(device, kind)
+
+    r = AudioRouter(parse_audio_section({"device": "828x", "host_api": "ASIO"}), query=query)
+    assert r.cfg.host_api == "asio"
+    assert r._device(None) == "828x ASIO"
+    r.preflight()
+    assert seen and seen[-1] == "828x ASIO"
+    assert any(" on ASIO" in line for line in r.describe())
+
+
+def test_check_warns_a_windows_router_with_no_host_api(monkeypatch):
+    import stagehand.audio.module as am
+    from stagehand.audio.module import AudioRouter
+
+    monkeypatch.setattr(am.sys, "platform", "win32")
+    assert any("host_api" in w for w in AudioRouter(parse_audio_section({}), query=fake_query()).warnings())
+    monkeypatch.setenv("SD_ENABLE_ASIO", "1")
+    assert not any("host_api" in w for w in AudioRouter(parse_audio_section({"host_api": "asio"}), query=fake_query()).warnings())
+    monkeypatch.setattr(am.sys, "platform", "darwin")
+    assert not any("host_api" in w for w in AudioRouter(parse_audio_section({}), query=fake_query()).warnings())

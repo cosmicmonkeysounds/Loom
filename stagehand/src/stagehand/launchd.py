@@ -97,7 +97,10 @@ class Launchd:
     stagehand_dir: Path
     agents_dir: Path = field(default_factory=lambda: Path.home() / "Library/LaunchAgents")
     log_dir: Path = field(default_factory=lambda: Path.home() / "Library/Logs/stagehand")
-    uid: int = field(default_factory=os.getuid)
+    # A lambda, not `os.getuid` itself: a bare reference is looked up when the
+    # class body runs (at import), and Windows has no `os.getuid`, so the whole
+    # CLI (`tasks`, `check`, `run`) would die importing `JOBS` from here.
+    uid: int = field(default_factory=lambda: os.getuid())
     run: Runner = _run
     uv: str | None = None
 

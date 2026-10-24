@@ -979,6 +979,36 @@ config for that module first. Never `pkill -f "stagehand run"`: it kills
 both. Turn on automatic login on the house Mac so a power cut brings both
 back.
 
+### Windows: Task Scheduler, SAPI, ASIO (the house PC)
+
+For Oct 31 the house rig is split: John's Desktop (Windows) runs `show` +
+`lights` (and Mosquitto, Zigbee2MQTT, the TV), the MacBook runs `agents`
+and, by default, the `audio` router. The machine files build on the house
+file with `extends:` (`config.py`), so the show's rules live once:
+
+```bash
+uv run stagehand tasks install --job show   --config trapped.desktop.yaml   # Windows
+uv run stagehand tasks install --job lights --config trapped.desktop.yaml
+uv run stagehand tasks status | restart --job X | stop --job X | print --job X --config …
+uv run stagehand launchd install --job audio --config trapped.macbook.yaml  # the Mac: the router on the Desktop's :1884
+```
+
+`stagehand tasks` (`tasks.py`) is launchd's twin: one task
+`\Loom\stagehand-<job>` per module, started at the user's logon in the
+interactive session, running the venv's `pythonw.exe -m stagehand run …
+--log-file %LOCALAPPDATA%\stagehand\logs\<job>.log` (no console window,
+UTF-8, rotated), kept alive by a one-minute repeating trigger. On Windows
+the router speaks with SAPI (`localvoice.py`: Windows PowerShell 5.1's
+System.Speech; `audio.voice_engine: auto | say | sapi`, `say_voice`
+defaulting to `Microsoft Zira Desktop`), opens the MOTU through ASIO
+(`audio.host_api: asio`, which sets `SD_ENABLE_ASIO` before sounddevice
+loads), takes the player lock with `msvcrt`, and caches under
+`%LOCALAPPDATA%\stagehand\`. The Mac's behaviour is unchanged. A
+`.local.yaml` may now carry a module's `mqtt:` (another machine's broker
+and its password) and the router's `device` / `host_api` / `voice_engine`
+/ `say_voice`. The runbook and the PowerShell scripts:
+[`scripts/house-desktop/`](../scripts/house-desktop/README.md).
+
 The SSE streams give up after 60 s of silence (the server pings every
 25 s) and reconnect with backoff, so a WAN outage that leaves a dead TCP
 connection behind still recovers on its own.

@@ -1,0 +1,105 @@
+<#
+.SYNOPSIS
+    stagehand on the house PC: sync, check, install the Task Scheduler
+    jobs (show + lights; audio only with -WithAudio), show their state.
+
+.DESCRIPTION
+    Every job is `uv run stagehand tasks ...` underneath (stagehand's
+    tasks.py): one task per module, \Loom\stagehand-<job>, started at this
+    user's logon, no console window, logs in
+    %LOCALAPPDATA%\stagehand\logs\<job>.log.
+
+        .\start-stagehand.ps1                      # uv sync, check, install + start show and lights
+        .\start-stagehand.ps1 -WithAudio           # ... and the speaker router (the MOTU is on this PC)
+        .\start-stagehand.ps1 -Check               # stagehand check only
+        .\start-stagehand.ps1 -Status              # every task + the last log lines
+        .\start-stagehand.ps1 -Restart lights      # one job
+        .\start-stagehand.ps1 -Stop audio          # one job, disabled until -Restart
+        .\start-stagehand.ps1 -Foreground show     # run one job in this window (Ctrl+C stops), to watch it
+        .\start-stagehand.ps1 -Uninstall           # remove every job
+
+    The real event id + mod passcode go in stagehand\trapped.house.local.yaml
+    (git-ignored, shared by every machine file) - `check` flags a CHANGE-ME.
+    Never run the router here AND on the MacBook: two routers would speak
+    every announcement twice.
+
+.PARAMETER Config
+    The machine YAML (default trapped.desktop.yaml in stagehand\).
+#>
+[CmdletBinding()]
+param(
+    [string]$Config = 'trapped.desktop.yaml',
+    [switch]$WithAudio,
+    [switch]$Check,
+    [switch]$Status,
+    [ValidateSet('show', 'lights', 'audio')][string]$Restart,
+    [ValidateSet('show', 'lights', 'audio')][string]$Stop,
+    [ValidateSet('show', 'lights', 'audio')][string]$Foreground,
+    [switch]$Uninstall,
+    [int]$Lines = 15
+)
+
+. "$PSScriptRoot\common.ps1"
+
+$jobs = @('show', 'lights')
+if ($WithAudio) { $jobs += 'audio' }
+$only = $jobs -join ','
+
+function Show-Status {
+    Write-Step 'stagehand tasks'
+    $null = Invoke-Stagehand @('tasks', 'status')
+    $logDir = Join-Path $env:LOCALAPPDATA 'stagehand\logs'
+    foreach ($job in @('show', 'lights', 'audio')) {
+        $log = Join-Path $logDir ($job + '.log')
+        if (Test-Path -LiteralPath $log) {
+            Write-Host ''
+            Write-Host ('-- ' + $log) -ForegroundColor Cyan
+            Get-Content -LiteralPath $log -Tail $Lines -Encoding UTF8
+        }
+    }
+}
+
+if ($Status) { Show-Status; exit 0 }
+if ($Restart) { exit (Invoke-Stagehand @('tasks', 'restart', '--job', $Restart)) }
+if ($Stop) { exit (Invoke-Stagehand @('tasks', 'stop', '--job', $Stop)) }
+if ($Uninstall) {
+    $rc = 0
+    foreach ($job in @('show', 'lights', 'audio')) { $r = Invoke-Stagehand @('tasks', 'uninstall', '--job', $job); if ($r -ne 0) { $rc = $r } }
+    exit $rc
+}
+if ($Foreground) {
+    Write-Host ('running ' + $Foreground + ' here (Ctrl+C stops it). Its task, if installed, must be stopped first: .\start-stagehand.ps1 -Stop ' + $Foreground) -ForegroundColor Yellow
+    if ($Foreground -eq 'audio') { $env:SD_ENABLE_ASIO = '1' }
+    exit (Invoke-Stagehand @('run', '--config', $Config, '--only', $Foreground))
+}
+
+$uv = Find-Uv
+if (-not $uv) {
+    Write-Host 'uv is not installed: powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" (then open a new PowerShell)' -ForegroundColor Red
+    exit 2
+}
+
+if (-not $Check) {
+    Write-Step 'uv sync'
+    Push-Location $script:StagehandDir
+    try { & $uv sync | Out-Host; $rc = $LASTEXITCODE } finally { Pop-Location }
+    if ($rc -ne 0) { Write-Host 'uv sync failed' -ForegroundColor Red; exit $rc }
+}
+
+Write-Step ('stagehand check --only ' + $only)
+if ($WithAudio) { $env:SD_ENABLE_ASIO = '1' }
+$rc = Invoke-Stagehand @('check', '--config', $Config, '--only', $only)
+if ($rc -ne 0) {
+    Write-Host ('check failed (exit ' + $rc + '): fix the config before installing the jobs') -ForegroundColor Red
+    exit $rc
+}
+if ($Check) { exit 0 }
+
+foreach ($job in $jobs) {
+    Write-Step ('install ' + $job)
+    $rc = Invoke-Stagehand @('tasks', 'install', '--job', $job, '--config', $Config)
+    if ($rc -ne 0) { Write-Host ('installing ' + $job + ' failed') -ForegroundColor Red; exit $rc }
+}
+Start-Sleep -Seconds 5
+Show-Status
+exit 0

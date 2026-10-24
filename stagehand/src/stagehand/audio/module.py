@@ -50,6 +50,7 @@ import json
 import logging
 import os
 import socket
+import sys
 import threading
 import time
 from pathlib import Path
@@ -60,13 +61,14 @@ import numpy as np
 
 from ..alexa.config import AlexaConfig
 from ..alexa.module import MAX_TEXT, Announcement, Announcer, parse_payload, try_lock
-from ..alexa.player import PlaybackError, decode, resample, say_direct, say_to_file
+from ..alexa.player import PlaybackError, decode, resample
+from ..localvoice import renderer, speaker
 from ..modapi import ModApiError, ModClient, run_stream
 from ..module import ConfigError, Context
 from ..show.config import MqttConfig
 from ..show.directives import parse_directive, unquote
 from .config import AudioConfig, parse_audio_section
-from .engine import Engine, device_name, layout_problem, probe
+from .engine import Engine, device_name, enable_host_api, layout_problem, probe, with_host_api
 from .mixer import Mixer, lin_to_db
 from .routing import (
     EVERYWHERE,
@@ -162,16 +164,20 @@ class AudioRouter:
         *,
         query=None,
         stream_factory=None,
-        render_say=say_to_file,
-        speak_direct=say_direct,
+        render_say=None,
+        speak_direct=None,
         decode=None,
     ) -> None:
         self.cfg = cfg
         self._query = query
         self._stream_factory = stream_factory
-        self.render_say = render_say
-        self.speak_direct = speak_direct
+        # The machine's own voice (`say` on the Mac, SAPI on Windows: cfg.voice_engine).
+        self.render_say = render_say or renderer(cfg.voice_engine)
+        self.speak_direct = speak_direct or speaker(cfg.voice_engine)
         self._decode = decode
+        late = enable_host_api(cfg.host_api)
+        if late is not None:
+            log.error("%s", late)
         self.doc: AudioDoc | None = None
         self.version: str | None = None
         self.source = "none"
@@ -226,9 +232,9 @@ class AudioRouter:
         doc = self._local_doc()
         dev = cfg.device or (doc.device if doc else "the audio.json device")
         return [
-            f"device   : {dev}" + (f" ({doc.inputs} in / {doc.outputs} out)" if doc else "") + (" duplex" if cfg.passthrough else " output-only"),
+            f"device   : {dev}" + (f" on {cfg.host_api.upper()}" if cfg.host_api else "") + (f" ({doc.inputs} in / {doc.outputs} out)" if doc else "") + (" duplex" if cfg.passthrough else " output-only"),
             f"sounds   : {'the router plays `sound X` (OSC sound cues skipped)' if cfg.play_sounds else 'not here: play_sounds is false (another cue player)'} — {cfg.sounds_dir}",
-            f"announce : {'the router (chime + say ' + (cfg.say_voice or 'default') + ')' if cfg.announce else 'not here (the alexa player)'}",
+            f"announce : {'the router (chime + ' + cfg.voice_engine + ' ' + (cfg.say_voice or 'default') + ')' if cfg.announce else 'not here (the alexa player)'}",
             f"matrix   : {'on' if cfg.passthrough else 'off'}" + (f", {len(doc.routes)} route(s)" if doc else ""),
             f"config   : the server's audio.json (long-poll {cfg.poll_wait:.0f}s)" + (f"; local {cfg.config_file}" if cfg.config_file else "") + f"; cache {cfg.cache_dir}",
             f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port} ← {cfg.test_topic}, {cfg.stop_topic}, {cfg.play_topic}' + (f', {cfg.announce_topic}, {cfg.chime_topic}' if cfg.announce else '') if cfg.mqtt else '— (tests, stops + announcements from the server only)'}",
@@ -301,12 +307,12 @@ class AudioRouter:
         """`stagehand check`: the device against the local / cached audio.json."""
         doc = self._check_doc()
         if doc is None:
-            name = self.cfg.device
+            name = with_host_api(device_name(self.cfg.device), self.cfg.host_api)
             info, problems = probe(name, 0, 1, self._query)
             if info is not None:
                 log.info("audio device %s: %d in / %d out @ %d Hz (no local audio.json to check against)", info.name, info.inputs, info.outputs, info.rate)
             return [f"audio: {p}" for p in problems]
-        info, problems = probe(device_name(self.cfg.device) or device_name(doc.device), doc.inputs if self.cfg.passthrough else 0, doc.outputs, self._query, expect=doc.expect)
+        info, problems = probe(self._device(doc), doc.inputs if self.cfg.passthrough else 0, doc.outputs, self._query, expect=doc.expect)
         if info is not None:
             expect = f", the device must report {doc.expect[0]} / {doc.expect[1]}" if doc.expect is not None else ""
             print(f"audio    : {info.name} — {info.inputs} in / {info.outputs} out @ {info.rate} Hz; audio.json wants {doc.inputs} / {doc.outputs}{expect}")
@@ -337,6 +343,23 @@ class AudioRouter:
                 if off:
                     listed = ", ".join(f"{n} ({r} Hz)" for n, r in off)
                     out.append(f"audio: {len(off)} sound file(s) not at the device's {rate} Hz — resampled at load, but convert them offline: {listed}")
+        if sys.platform == "win32" and self.cfg.host_api is None:
+            out.append(
+                "audio: no host_api on Windows — every device is listed once per host API, so the name may match several, "
+                "and only ASIO opens the MOTU as one multichannel device: set audio.host_api: asio"
+            )
+        if self.cfg.announce:
+            # The voice this machine speaks with (`say` on the Mac, SAPI on
+            # Windows): missing, the announcements are the chime alone.
+            from .. import localvoice
+
+            why = localvoice.problem(self.cfg.voice_engine)
+            if why is not None:
+                out.append(f"audio: announcements will be the chime alone — {why}")
+            else:
+                note = localvoice.voice_warning(self.cfg.voice_engine, self.cfg.say_voice)
+                if note is not None:
+                    out.append(f"audio: say_voice — {note}")
         stale = self._stale_cache()
         if stale is not None:
             cached, local = stale
@@ -357,8 +380,14 @@ class AudioRouter:
 
     def _device_rate(self) -> int | None:
         doc = self._local_doc()
-        info, _ = probe(device_name(self.cfg.device) or (device_name(doc.device) if doc else None), 0, 1, self._query)
+        info, _ = probe(self._device(doc), 0, 1, self._query)
         return info.rate if info is not None else None
+
+    def _device(self, doc: AudioDoc | None) -> str | None:
+        """The device query: the YAML's `device:` over audio.json's name,
+        narrowed to `host_api` (ASIO on the Windows house PC)."""
+        name = device_name(self.cfg.device) or (device_name(doc.device) if doc else None)
+        return with_host_api(name, self.cfg.host_api)
 
     def _cache_path(self, name: str) -> str:
         return os.path.join(self.cfg.cache_dir, name)
@@ -451,7 +480,7 @@ class AudioRouter:
         if doc is None:
             return False
         cfg = self.cfg
-        signature = (device_name(cfg.device) or device_name(doc.device), doc.inputs, doc.outputs, cfg.rate or doc.rate, cfg.passthrough)
+        signature = (self._device(doc), doc.inputs, doc.outputs, cfg.rate or doc.rate, cfg.passthrough)
         if signature[0] is None and not self._blank_device_logged:
             self._blank_device_logged = True
             log.warning("audio.json names no device (device.name is blank) and the YAML sets no `device:` — using the default output")

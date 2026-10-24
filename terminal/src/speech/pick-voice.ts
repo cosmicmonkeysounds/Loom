@@ -1,5 +1,7 @@
 //! Rank the device's built-in voices — the voice every terminal and the TV
-//! use by default (the house Mac's Chrome lists the macOS voices). Quality
+//! use by default (the TV is Chrome on John's Desktop, Windows: it lists
+//! Microsoft David / Mark / Zira (SAPI, local) and Google's streamed voices;
+//! a Mac's Chrome lists the macOS voices). Quality
 //! varies wildly: the "premium" / "enhanced" downloads on an iPad and
 //! Edge's online "Natural" voices are close to a real speaker; the old
 //! eSpeak-style defaults are not. The terminal's setup screen lists them
@@ -8,8 +10,11 @@
 //! The character (Trabolta) and the house announcements must not
 //! sound alike: the character's voice prefers a male voice
 //! (`CHARACTER_VOICE`), an announcement a female one (`ANNOUNCE_VOICE`, like
-//! the house Mac's `say_voice: Samantha`) — on a stock Mac that is Daniel
-//! vs Samantha. A voice picked in ⚙ always wins.
+//! the router's `say_voice`: Samantha on a Mac, Microsoft Zira on Windows) —
+//! on a stock Mac that is Daniel vs Samantha, on Windows Chrome Microsoft
+//! David vs Microsoft Zira (local, so they work with the uplink down, ahead
+//! of the streamed Google voices), and in Edge the "Natural" Guy vs Aria /
+//! Jenny. A voice picked in ⚙ always wins.
 
 export interface VoiceLike {
   name: string;
@@ -28,6 +33,9 @@ const FAVOURITES = [
   /premium/i,
   /enhanced/i,
   /\b(daniel|samantha|alex|tom|evan|nathan|aaron|oliver|ava|zoe|allison|susan|nicky)\b/i,
+  // Windows — the SAPI desktop voices Chrome lists ("Microsoft David -
+  // English (United States)"): robotic but local, never a network stall.
+  /\bmicrosoft (david|mark|zira|hazel|george|susan|linda|heera)\b/i,
   // Google (Chrome / Android).
   /google (us|uk) english/i,
 ];
@@ -35,9 +43,9 @@ const FAVOURITES = [
 /** Voices known to be male / female by name (Apple, Microsoft, Google);
  *  anything else is neither — a preference never drops a voice, it ranks. */
 const MALE =
-  /\b(daniel|alex|tom|evan|nathan|aaron|oliver|arthur|gordon|lee|reed|rishi|rocko|eddy|grandpa|guy|davis|ryan|david|mark|andrew|brian|christopher|eric|roger|steffan|thomas|james|william|liam|jacques|thierry)\b|(^|[^e])male\b/i;
+  /\b(daniel|alex|tom|evan|nathan|aaron|oliver|arthur|gordon|lee|reed|rishi|rocko|eddy|grandpa|guy|davis|ryan|david|mark|andrew|brian|christopher|eric|roger|steffan|thomas|james|william|liam|jacques|thierry|george)\b|(^|[^e])male\b/i;
 const FEMALE =
-  /\b(samantha|ava|zoe|allison|susan|nicky|karen|moira|tessa|victoria|fiona|kathy|aria|jenny|sonia|serena|kate|flo|sandy|shelley|emma|michelle|libby|natasha|clara|kimberly|joanna|salli|ivy|kendra|catherine|veena|amelie|female)\b|^google us english$/i;
+  /\b(samantha|ava|zoe|allison|susan|nicky|karen|moira|tessa|victoria|fiona|kathy|aria|jenny|sonia|serena|kate|flo|sandy|shelley|emma|michelle|libby|natasha|clara|kimberly|joanna|salli|ivy|kendra|catherine|veena|amelie|zira|hazel|heera|linda|female)\b|^google us english$/i;
 
 /** Which way a voice's name leans (null: unknown). */
 export function voiceGender(v: Pick<VoiceLike, "name">): "male" | "female" | null {

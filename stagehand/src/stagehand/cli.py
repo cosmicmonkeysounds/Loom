@@ -25,7 +25,10 @@
                      look or publish one state; open Zigbee pairing (0 closes
                      it); list Zigbee2MQTT's devices and the module's status.
     stagehand launchd install|uninstall|restart|status|print --job show|agents|audio|lights [--config f.yaml]
-                     one launchd job per module on the house Mac (see launchd.py)
+                     one launchd job per module on a Mac (see launchd.py)
+    stagehand tasks install|uninstall|restart|stop|status|print --job show|agents|audio|lights [--config f.yaml]
+                     the same on Windows (the house PC): one Task Scheduler
+                     task per module, started at logon (see tasks.py)
     stagehand ask    --config laptop.yaml [--character Trabolta] [--name Ada] [--reflect] [text…]
                      talk to an agent persona straight through the model — no
                      server, no story; one line, or an interactive chat. With
@@ -70,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
         p = sub.add_parser(name, help=help_text)
         p.add_argument("--config", required=True, help="path to the machine's stagehand YAML")
         p.add_argument("--only", help="comma list of modules to run from the config (default: all present)")
+        p.add_argument("--log-file", help="also log to this file (UTF-8, rotated at 10 MB) — the Windows tasks' log")
     sub.add_parser("modules", help="list the available modules")
     ann = sub.add_parser("announce", help="play one announcement through the alexa: device now")
     ann.add_argument("--config", required=True)
@@ -102,6 +106,10 @@ def main(argv: list[str] | None = None) -> int:
     ld.add_argument("action", choices=("install", "uninstall", "restart", "status", "print"))
     ld.add_argument("--job", choices=JOBS, help="which module (status: default every job)")
     ld.add_argument("--config", help="the YAML the job runs (install / print)")
+    ts = sub.add_parser("tasks", help="install / restart a module as its own Task Scheduler task (Windows)")
+    ts.add_argument("action", choices=("install", "uninstall", "restart", "stop", "status", "print"))
+    ts.add_argument("--job", choices=JOBS, help="which module (status: default every job)")
+    ts.add_argument("--config", help="the YAML the job runs (install / print)")
     ask = sub.add_parser("ask", help="chat with an agent persona through the model (no server)")
     ask.add_argument("--config", required=True)
     ask.add_argument("--character", help="which persona (default: the only / first one)")
@@ -112,11 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     ask.add_argument("text", nargs="*", help="one line to send; omit for an interactive chat")
     args = parser.parse_args(argv)
 
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(name)s %(levelname)s %(message)s",
-        datefmt="%H:%M:%S",
-    )
+    _logging(args.verbose, getattr(args, "log_file", None))
     if not args.verbose:
         logging.getLogger("httpx").setLevel(logging.WARNING)  # one line per request is noise
 
@@ -127,6 +131,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "launchd":
         return _launchd(args)
+    if args.command == "tasks":
+        return _tasks(args)
 
     try:
         only = {"ask": ["agents"], "announce": [_announcer(args.config)], "sounds": ["audio"], "lights": ["lights"]}.get(args.command) or _only(getattr(args, "only", None))
@@ -173,6 +179,28 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         print("stagehand: stopped")
     return 0
+
+
+def _logging(verbose: bool, log_file: str | None) -> None:
+    """stderr, plus `--log-file` (a Windows task runs under pythonw.exe,
+    which has no stderr at all: the file is then its only log)."""
+    fmt = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
+    handlers: list[logging.Handler] = []
+    if sys.stderr is not None:
+        handlers.append(logging.StreamHandler())
+    if log_file:
+        from logging.handlers import RotatingFileHandler
+
+        Path(log_file).expanduser().parent.mkdir(parents=True, exist_ok=True)
+        handlers.append(RotatingFileHandler(Path(log_file).expanduser(), maxBytes=10_000_000, backupCount=3, encoding="utf-8"))
+    for h in handlers:
+        h.setFormatter(fmt)
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, handlers=handlers or [logging.NullHandler()])
+
+
+def _job_hint(job: str) -> str:
+    """How to see whether a job runs on this machine: launchd or Task Scheduler."""
+    return f"`uv run stagehand {'tasks' if sys.platform == 'win32' else 'launchd'} status --job {job}`"
 
 
 def _announcer(path: str) -> str:
@@ -253,7 +281,7 @@ def _to_router(router, topic: str, doc: dict) -> int:
     try:
         PUBLISH(topic, json.dumps(doc), hostname=m.host, port=m.port, client_id=f"{m.client_id}-cli", auth=auth)
     except Exception as err:  # noqa: BLE001 — a refused socket, paho's own errors
-        print(f"no broker at {m.host}:{m.port} ({err}) — is Mosquitto running on this Mac?", file=sys.stderr)
+        print(f"no broker at {m.host}:{m.port} ({err}) — is Mosquitto running on {'this PC' if sys.platform == 'win32' else 'this Mac'}?", file=sys.stderr)
         return 2
     # Nothing is retained on these topics: with no router listening the
     # message is gone, so say so rather than "sent".
@@ -264,7 +292,7 @@ def _to_router(router, topic: str, doc: dict) -> int:
     if state != "online":
         print(
             f"sent {topic}, but no router is listening ({ROUTER_HEALTH}: {state or 'nothing retained'}) — it played nothing. "
-            "Is the audio job running? `uv run stagehand launchd status --job audio`",
+            f"Is the audio job running? {_job_hint('audio')}",
             file=sys.stderr,
         )
         return 1
@@ -390,7 +418,7 @@ def _lights(cfg: StagehandConfig, args: argparse.Namespace) -> int:
         return 1
     print(_lights_report(args.action, answer))
     if args.action != "devices" and answer.get("module") is False:
-        print("the server took it, but no lights module is listening — is the job running? `uv run stagehand launchd status --job lights`", file=sys.stderr)
+        print("the server took it, but no lights module is listening — is the job running? " + _job_hint("lights"), file=sys.stderr)
         return 1
     return 0
 
@@ -422,6 +450,10 @@ def _launchd(args: argparse.Namespace) -> int:
 
     from .launchd import Launchd
 
+    if sys.platform == "win32" and args.action != "print":
+        print("launchd is macOS only — on Windows use `uv run stagehand tasks " + args.action + (f" --job {args.job}" if args.job else "") + "` (Task Scheduler)", file=sys.stderr)
+        return 2
+
     ld = Launchd(stagehand_dir=Path(__file__).resolve().parents[2])
     try:
         if args.action == "status":
@@ -443,6 +475,40 @@ def _launchd(args: argparse.Namespace) -> int:
             lines = ld.uninstall(args.job)
     except ConfigError as err:
         print(f"launchd: {err}", file=sys.stderr)
+        return 2
+    print("\n".join(lines))
+    return 0
+
+
+def _tasks(args: argparse.Namespace, tasks=None) -> int:
+    from .tasks import Tasks
+
+    if sys.platform != "win32" and args.action != "print" and tasks is None:
+        print("tasks is Windows only (Task Scheduler) — on a Mac use `uv run stagehand launchd " + args.action + "`; `tasks print` shows the XML anywhere", file=sys.stderr)
+        return 2
+    ts = tasks or Tasks(stagehand_dir=Path(__file__).resolve().parents[2])
+    try:
+        if args.action == "status":
+            lines = ts.status([args.job] if args.job else JOBS)
+        elif args.job is None:
+            print(f"tasks {args.action}: needs --job {'|'.join(JOBS)}", file=sys.stderr)
+            return 2
+        elif args.action in ("install", "print"):
+            if not args.config:
+                print(f"tasks {args.action}: needs --config", file=sys.stderr)
+                return 2
+            if args.action == "print":
+                print(ts.render(args.job, args.config))
+                return 0
+            lines = ts.install(args.job, args.config)
+        elif args.action == "restart":
+            lines = ts.restart(args.job)
+        elif args.action == "stop":
+            lines = ts.stop(args.job)
+        else:
+            lines = ts.uninstall(args.job)
+    except ConfigError as err:
+        print(f"tasks: {err}", file=sys.stderr)
         return 2
     print("\n".join(lines))
     return 0

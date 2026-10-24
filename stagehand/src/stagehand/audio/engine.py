@@ -20,7 +20,9 @@ no card.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+import os
+import sys
+from collections.abc import Callable, MutableMapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -52,6 +54,48 @@ def device_name(name: str | None) -> str | None:
     if name is None or not str(name).strip():
         return None
     return str(name).strip()
+
+
+#: `audio.host_api:` → the PortAudio host API name sounddevice matches.
+#: sounddevice matches a device string as space-separated substrings, in
+#: order, against "<device name>, <host API name>", so "828x ASIO" names the
+#: 828x's ASIO driver only. On Windows every device is listed once per host
+#: API (MME, DirectSound, WASAPI, WDM-KS, ASIO), so a bare name is ambiguous
+#: there; the MOTU must be ASIO to be one 30-channel device.
+HOST_APIS = {
+    "asio": "ASIO",
+    "wasapi": "WASAPI",
+    "wdm-ks": "WDM-KS",
+    "directsound": "DirectSound",
+    "mme": "MME",
+    "coreaudio": "Core Audio",
+}
+
+
+def with_host_api(name: str | None, host_api: str | None) -> str | None:
+    """The device query string: `name` narrowed to one host API (or, with
+    no name, that host API's only device)."""
+    if not host_api:
+        return name
+    label = HOST_APIS[host_api]
+    return f"{name} {label}" if name else label
+
+
+def enable_host_api(host_api: str | None, env: MutableMapping[str, str] | None = None, modules: dict | None = None) -> str | None:
+    """sounddevice ships two PortAudio DLLs on Windows and loads the ASIO
+    one only when `SD_ENABLE_ASIO` is set at its import (sounddevice 0.5).
+    Set it before anything imports sounddevice; → a warning when it is too
+    late (already imported without it), else None."""
+    if host_api != "asio":
+        return None
+    env = os.environ if env is None else env
+    modules = sys.modules if modules is None else modules
+    if "SD_ENABLE_ASIO" in env:
+        return None
+    if "sounddevice" in modules:
+        return "audio.host_api is asio but sounddevice was imported before SD_ENABLE_ASIO was set — set SD_ENABLE_ASIO=1 in the job's environment"
+    env["SD_ENABLE_ASIO"] = "1"
+    return None
 
 
 def portaudio_reinit() -> None:
