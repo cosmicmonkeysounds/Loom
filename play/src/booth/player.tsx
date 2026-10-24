@@ -26,7 +26,7 @@ export interface PlayerOpeners {
 
 /** A big button's words: the story button's label; `scan` reads SCAN A PASS. */
 function bigLabel(a: BoothAction, label: string): string {
-  return a.kind === "scan" ? "📷 SCAN A PASS" : label;
+  return a.kind === "scan" ? "SCAN A PASS" : label;
 }
 
 export function PlayerMission({ view, ctx, open }: { view: PrimeView; ctx: BoothMissionCtx; open: PlayerOpeners }) {
