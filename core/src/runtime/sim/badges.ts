@@ -14,14 +14,15 @@
 //! whose program is that character wears it too). The `while` condition is
 //! evaluated with the wearer bound (`program` / `self`).
 //!
-//! Display only and never secret: a ROLE `secret:` slot or a `secret: true`
-//! CHARACTER — as the path or anywhere in the `while` — is refused by lint
+//! Display only and never secret: a ROLE `secret:` slot, a `secret: true`
+//! CHARACTER or a CHARACTER's `private:` slot (wave 21) — as the path or anywhere in the `while` — is refused by lint
 //! L1219 and skipped here at run time, since every phone sees a badge (a
 //! `while Kernel.armed == true` would tell every phone that bit).
 
 import { foldName } from "../../parser/names.ts";
 import { parseExprCached, truthy, type Expr } from "../expr.ts";
 import { isSecretRoleSlot, parseBoardLine } from "./board.ts";
+import { isPrivateSlot } from "./stats.ts";
 import type { BadgeDef } from "./model.ts";
 import type { Sim } from "./sim.ts";
 
@@ -74,7 +75,10 @@ export function badgeHead(model: Pick<Sim["model"], "roles" | "characters">, hea
 export function badgeIsSecret(model: Pick<Sim["model"], "roles" | "characters">, def: BadgeDef): boolean {
   const head = badgeHead(model, def.head);
   if (head === null) return false;
-  if (head.kind === "character") return model.characters.get(head.id)?.secret === true;
+  if (head.kind === "character") {
+    const c = model.characters.get(head.id);
+    return c?.secret === true || isPrivateSlot(c, def.rest); // w21: a `private:` slot too
+  }
   const role = model.roles.get(head.id);
   return role !== undefined && isSecretRoleSlot(role.secret, def.rest);
 }
@@ -134,13 +138,19 @@ export function badgeWhileReadsSecret(model: Pick<Sim["model"], "roles" | "chara
     const head = segs[0]!;
     if (head === "*") return anyRoleSlot(rest);
     if (head === "self" || head === "me") {
-      if (own?.kind === "character") return model.characters.get(own.id)?.secret === true;
+      if (own?.kind === "character") {
+        const c = model.characters.get(own.id);
+        return c?.secret === true || isPrivateSlot(c, rest);
+      }
       if (own?.kind === "role") return isSecretRoleSlot(model.roles.get(own.id)?.secret ?? [], rest);
       return anyRoleSlot(rest);
     }
     const h = badgeHead(model, head);
     if (h === null) return false;
-    if (h.kind === "character") return model.characters.get(h.id)?.secret === true;
+    if (h.kind === "character") {
+      const c = model.characters.get(h.id);
+      return c?.secret === true || isPrivateSlot(c, rest);
+    }
     return isSecretRoleSlot(model.roles.get(h.id)?.secret ?? [], rest);
   });
   whileSecret.set(def, secret);

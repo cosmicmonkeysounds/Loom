@@ -196,6 +196,7 @@ describe('buildRooms with the identity projection (exact)', () => {
       quests: [],
       questTotal: 0,
       agents: [],
+      player: false,
     }
     const rooms = buildRooms({ ...INPUT, perspective: 'Greeter', lens: { kind: 'performer', id: 'Greeter', view } })
     const keys = rooms.map((r) => r.key)
@@ -281,6 +282,7 @@ describe("performer lens: the booth's own pinned rooms", () => {
     quests: [],
     questTotal: 0,
     agents: [],
+    player: false,
   }
   const cast = [{ id: 'Clippy', faction: null }]
   const messages = [
@@ -361,6 +363,7 @@ describe('wave 13: a booth without admin cues, and readouts in the Inbox', () =>
     quests: [],
     questTotal: 0,
     agents: [],
+    player: false,
   }
   const ia = (id: string, who: InteractionSummary['who'], extra: Partial<InteractionSummary> = {}): InteractionSummary => ({ id, label: id, who, description: null, ...extra })
   const ALL = [

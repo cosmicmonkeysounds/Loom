@@ -1,0 +1,186 @@
+# W21 Mini
+start: Boot
+directory: everyone
+stat: self.score as ⭐ Points
+stat: self.captures as ⛓ Captures, for Antivirus
+stat: self.covert as 🤫 Covert, while self.score >= 0
+stat: self.nickname as 🏷 Nickname
+countdown: Night.bingo_end as Bingo ends, while Night.bingo_on == true, for guests
+countdown: Night.staff_end as Staff break ends, while Night.bingo_on == true
+watch: Night.phase as Phase
+
+// Wave 21's fixture story (performers play): two players on the Antivirus
+// team, one player on their own (Clippy), a host, a plain performer and an
+// agent-voiced character. `core/test/w21-players.test.ts` loads it, so it
+// stays valid and lint-clean. Not the show: nothing here is copy.
+
+// ── Groups, places, rooms ──────────────────────────────────────────────
+
+GROUP Hosts
+  joinable: false
+
+GROUP Antivirus
+  joinable: false
+
+LOCATION The Desktop
+  label: The Desktop
+
+LOCATION The Cellar
+  label: The Cellar
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+CHANNEL antivirus
+  kind: faction
+  faction: Antivirus
+
+// ── The cast ───────────────────────────────────────────────────────────
+
+CHARACTER Night
+  playable: false
+  phase: text = "doors"
+  bingo_on: bool = false
+  bingo_end: 0 to 99999 = 0
+  staff_end: 0 to 99999 = 0
+
+CHARACTER Task Manager
+  faction: Hosts
+  admin: true
+  when scanned by program:
+    reply 📋 {program.name} is on the list.
+
+CHARACTER Clippy
+  listed: true
+  player: true
+  score: 0 to 9999 = 0
+  trust: -100 to 100 = 0
+  covert: 0 to 99 = 0
+  nickname: text? = none
+  private: covert
+  when scanned by program:
+    reply 📎 {program.name} checked in.
+
+CHARACTER Norton
+  faction: Antivirus
+  player: true
+  score: 0 to 9999 = 0
+  trust: -100 to 100 = 0
+  captures: 0 to 99 = 0
+  covert: 0 to 99 = 0
+  private: covert
+  when scanned by program:
+    reply 🛡 {program.name} scanned.
+
+CHARACTER McAfee
+  faction: Antivirus
+  player: true
+  score: 0 to 9999 = 0
+  trust: -100 to 100 = 0
+  captures: 0 to 99 = 0
+  when scanned by program:
+    reply 🛡 {program.name} scanned by McAfee.
+
+CHARACTER Stagehand
+  when scanned by program:
+    reply 🎭 {program.name} met the stagehand.
+
+CHARACTER Oracle
+  listed: true
+  mind: external
+  hold: The Oracle is busy. A host will answer.
+
+ROLE Program
+  cleared: bool = false
+  trust: -100 to 100 = 0
+  when someone joins:
+    move program to The Desktop
+
+// ── Objectives ─────────────────────────────────────────────────────────
+
+OBJECTIVE Run Bingo
+  for: Clippy
+  while: Night.bingo_on == true
+  go: The Desktop
+  title: Run Computer Bingo
+  text:
+    Pick a winner when someone calls bingo.
+  buttons: pick_a_winner
+
+OBJECTIVE Guard The Cellar
+  for: Antivirus
+  go: The Cellar
+  title: Guard the Cellar
+  text:
+    Capture any program that wanders in.
+  buttons: capture, scan
+
+// ── Buttons ────────────────────────────────────────────────────────────
+
+INTERACTION pick_a_winner
+  label: 🎱 Pick a bingo winner
+  who: performer
+  by: Clippy
+
+INTERACTION capture
+  label: ⛓ Capture
+  who: performer
+  by: Antivirus
+
+INTERACTION look_the_other_way
+  label: 🤫 Look the other way
+  who: performer
+  by: Norton
+
+INTERACTION host_thing
+  label: 🧰 A host's button
+  who: performer
+  by: Hosts
+
+INTERACTION anyone_wave
+  label: 👋 Wave
+  who: performer
+
+INTERACTION start_bingo
+  label: 🎱 Start bingo
+  who: admin
+  by: Task Manager
+
+INTERACTION end_bingo
+  label: 🏁 End bingo
+  who: admin
+
+// ── Rules ──────────────────────────────────────────────────────────────
+
+when start_bingo:
+  set Night.bingo_on = true
+  set Night.phase = "bingo"
+  set Night.bingo_end = 600
+  set Night.staff_end = 900
+
+when end_bingo:
+  set Night.bingo_on = false
+
+when pick_a_winner:
+  set Clippy.score += 10
+
+when capture for program:
+  set Norton.captures += 1
+  set Norton.score += 5
+
+when look_the_other_way:
+  set Norton.covert += 1
+
+when host_thing:
+  set Night.phase = "host"
+
+when anyone_wave:
+  set Night.phase = "wave"
+  broadcast "👋 Somebody waved." to channel(hosts)
+
+// ── Beats ──────────────────────────────────────────────────────────────
+
+== Boot
+  setting: The Desktop
+Narrator: The Desktop hums.

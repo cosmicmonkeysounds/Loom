@@ -127,6 +127,17 @@ export const Code = {
   /** A choice's `(if <cond>)` guard that does not parse — the option is
    *  never offered (wave 20, a warning). */
   L1221ChoiceGuardInvalid: "L1221",
+  /** `by:` on a `who: admin` INTERACTION names a `player: true` CHARACTER
+   *  (or a GROUP of players): a player never calls cues (wave 21, a warning). */
+  L1222PlayerCallsCue: "L1222",
+  /** A header `stat:` line that does not parse, whose `for` names nothing,
+   *  or whose `while` is no expression (wave 21, a warning). */
+  L1223StatLineInvalid: "L1223",
+  /** `player: true` on a CHARACTER no performer can sign in as (wave 21, a warning). */
+  L1224PlayerNotAPart: "L1224",
+  /** A `watch:` / `countdown:` item on a CHARACTER's `private:` slot, or a
+   *  `stat:` whose `while` reads another character's (wave 21, a warning). */
+  L1225PrivateSlotRead: "L1225",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

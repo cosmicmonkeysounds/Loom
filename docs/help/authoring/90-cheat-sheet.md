@@ -150,7 +150,10 @@ openers end with `:` and indent their body.
 | `sequence: false` / `repeat: true` / `urgent: true` (a `who: admin` cue) | never the sheet's last / next · stays next while pressed · next ahead of the order while live and unfired |
 | `arm: true` (a performer's or guest's button) | arms on the first tap, fires on the second ([live verbs](live-verbs.md)) |
 | `act: B · Act I` (a `who: admin` cue) | opens an act on the Director page; later admin cues join it (`act: Anytime` rejoins by name; never changes NEXT) |
-| `by: Clippy` (a `who: admin` cue) | that performer's booth may call it too, from its 🎤 cue bar ([live verbs](live-verbs.md); lint `L1217` when it names no part) |
+| `by: Bartender` (a `who: admin` cue) | that performer's booth may call it too, from its 🎤 cue bar ([live verbs](live-verbs.md); lint `L1217` when it names no part, `L1222` when it names a player) |
+| `player: true` (a performer's CHARACTER) | a player: a lean booth with a Mission home, its own buttons only, a Trust Chart row; never a cue caller |
+| `private: covert, defiance` (a CHARACTER) | slots no agent reads and no other character's badge / watch / stat shows |
+| `stat: self.score as ⭐ Points[, for …][, while …]` (header) | a score tile on a player's booth (lint `L1223`) |
 | `wanted: program.marked as program.marked_for by program.escort_by, for Antivirus` (header) | a Wanted board for those booths and the hosts: every guest whose flag is true, why, where, who claimed them ([live shows](live-shows.md)) |
 | `reinstall: <cond>` (header) | who may enter the reinstallation games, read per guest |
 | `archive: The Uploader when program.cleared == true` (header, repeatable) | moves a guest's finished thread under *Other rooms* |

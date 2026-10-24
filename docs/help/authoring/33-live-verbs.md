@@ -2,7 +2,7 @@
 title: Live verbs — building game rules from primitives
 section: Live Shows
 order: 33
-keywords: door sensor, door_sensor_opened, door_sensor_closed, stand_down, ends the night, quietly, reveal quietly, arm, two taps, caller, callers, by on an admin cue, cue bar, L1217, recruited, founded, unaligned, tap again to fire, not your button, king hit, king fallen, capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
+keywords: player, players, L1222, door sensor, door_sensor_opened, door_sensor_closed, stand_down, ends the night, quietly, reveal quietly, arm, two taps, caller, callers, by on an admin cue, cue bar, L1217, recruited, founded, unaligned, tap again to fire, not your button, king hit, king fallen, capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
 ---
 
 Live shows run on **hooks** — `when <event>:` blocks in a CHARACTER,
@@ -503,22 +503,30 @@ nothing.
 the directors and hosts:
 
 ```loom
-INTERACTION bingo_time
-  label: V3 · ⏰ Bingo time: results
+INTERACTION open_the_bar
+  label: 🍸 Open the bar
   who: admin
-  by: Clippy
+  by: Bartender
 ```
 
 That booth (a CHARACTER, or every member of a GROUP) gets a **🎤 cue bar**
 above its taskbar with only those cues: the band turns yellow when one of
 them is the sheet's NEXT, a *Call it?* pop-out offers it, and ARM → FIRE
 presses it through the same cue-sheet path as Run's (journaled *Booth ·
-Clippy*, so LAST reads *Clippy*; a press the cues moved past is refused the
-same way). The bar shows the sheet's NEXT and who is calling the show, read
-only. It is not the host capability: a caller booth gets no console, and
-nothing else on the sheet. Hosts and directors still fire those cues too.
-Lint **`L1217 CallerNotAPart`** warns when the `by:` names no performer part
-(a guest's program, an agent, a prop), since no booth could call it then.
+Bartender*, so LAST reads *Bartender*; a press the cues moved past is
+refused the same way). The bar shows the sheet's NEXT and who is calling
+the show, read only. It is not the host capability: a caller booth gets no
+console, and nothing else on the sheet. Hosts and directors still fire
+those cues too. Lint **`L1217 CallerNotAPart`** warns when the `by:` names
+no performer part (a guest's program, an agent, a prop), since no booth
+could call it then.
+
+A **player** (`player: true`, [live shows](live-shows.md)) is never a
+caller: a `by:` naming one (or a GROUP of players) is ignored and lint
+**`L1222 PlayerCallsCue`** says so. Players play the games the hosts call
+(*Trapped in the Internet*: the hosts call Bingo, and Clippy runs it from
+an OBJECTIVE whose buttons are its own); tell the player its game is on
+with a readout or an OBJECTIVE.
 
 ### A button as a fallback for a machine
 

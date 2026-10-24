@@ -126,3 +126,12 @@ keywords: mistakes, errors, troubleshooting, gotchas, faq, why, broken, diagnost
 - **`~` and `!` don't mix.** A cue that starts with `!` is an alert and
   never folds; a `~` notice needs a leading emoji to fold by, and the
   person it is about still needs their own `reply`.
+- **A player never calls cues.** `by: Clippy` on a `who: admin` cue does
+  nothing once Clippy is `player: true` (`L1222`): the hosts and directors
+  call the game, and the player plays it from an OBJECTIVE whose
+  `buttons:` are its own `by:` buttons. Tell it the game is on with a
+  readout or a new OBJECTIVE.
+- **A `private:` slot is invisible, not secret from the booth.** The
+  player's own `stat:` tile may show it, but every agent request, the
+  facts document, a badge and the director's watch board leave it out; to
+  let Trabolta hear about a defection, set a slot that isn't private.

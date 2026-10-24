@@ -23,6 +23,7 @@ import { identityDefs, performerPickable } from "../src/identity-kind.ts";
 import { joinableFactions } from "./routes/sides.ts";
 import { crewRoom, type CrewSummary, type CrewView, type InviteView, type RaceView, type SideView } from "../src/runtime/sim/crews.ts"; // w18 crews
 import { badgesOf, type NameBadge } from "../src/runtime/sim/badges.ts"; // w18b badges
+import { isPrivateSlot, statsFor, type StatView } from "../src/runtime/sim/stats.ts"; // w21 stats
 import type { ShowClock } from "../src/show-clock.ts";
 
 export type { NameBadge } from "../src/runtime/sim/badges.ts";
@@ -740,6 +741,9 @@ export interface CastSummary {
   /** `secret: true` (the Kernel): the Director masks its values wherever
    *  they show (a press's `did:` line), watched or not. */
   secret?: true;
+  /** Wave 21 (C8): `player: true` — a performer part that plays the game
+   *  (Run's roster and the host's People tag it "player"). Always set. */
+  player: boolean;
 }
 
 /** Who is connected to the event right now, by capability. */
@@ -1346,6 +1350,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
         ...(c.reserved && presence?.unlocks?.has(c.id) === true ? { unlockedUntil: presence.unlocks.get(c.id)! } : {}),
         ...(part && presence?.held !== undefined ? { held: presence.held.has(foldName(c.id)) } : {}),
         ...(c.secret ? { secret: true as const } : {}),
+        player: c.player,
       };
     }),
     channels: operatorChannels(sim),
@@ -1402,7 +1407,8 @@ function resolvedBoard(model: Sim["model"]): ResolvedBoard {
     const head = path.slice(0, dot);
     const rest = path.slice(dot);
     const c = chars.get(foldName(head));
-    if (c !== undefined) return { path: c.id + rest, scope: "character", secret: c.secret };
+    // Wave 21 (C2): a character's `private:` slot is masked like a secret one.
+    if (c !== undefined) return { path: c.id + rest, scope: "character", secret: c.secret || isPrivateSlot(c, rest.slice(1)) };
     const r = roles.get(foldName(head));
     if (r !== undefined) return { path: r + rest, scope: "role", secret: false };
     return { path: (model.entityIndex.get(head) ?? head) + rest, scope: "global", secret: false };
@@ -2216,6 +2222,23 @@ export interface PrimeView {
    *  admin` INTERACTION names it) and the sheet's NEXT / LAST / act, read
    *  only. Absent for a booth that calls nothing. `caller` is runtime-filled. */
   calls?: PrimeCalls;
+  /** Wave 21 (D1): the part is `player: true` — it plays the night's game
+   *  like a guest (its own buttons only, guest countdowns, no act, its own
+   *  team's staff rooms, never a caller). Always set. */
+  player: boolean;
+  /** Wave 21 (C4): the NOW objective (the first live one) and its `go:`
+   *  room's title (a LOCATION or an authored room), else null — the booth
+   *  twin of `GuestView.mission`. Absent when no objective is live. */
+  mission?: BoothMission;
+  /** Wave 21 (C3): the header `stat:` lines for this booth (its `for`
+   *  matches, its `while` holds), header order. Absent when none. */
+  stats?: StatView[];
+}
+
+/** `PrimeView.mission` (wave 21, C4). */
+export interface BoothMission {
+  objective: string;
+  place: string | null;
 }
 
 /** One poster on the Wanted board (C6). */
@@ -2291,11 +2314,27 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
       night: { act: null, phase: null, step: null },
       alertLevel: "sticky",
       staffRooms: [],
+      player: false,
     };
   }
   const c = sim.model.characters.get(character);
+  const player = c?.player === true;
+  const host = opts?.host === true;
   const guests: PrimeGuest[] = [...sim.persons.values()].map((p) => primeGuest(sim, p.id, p.name));
-  const countdowns = liveCountdowns(sim);
+  // Wave 21 (C4, D7): a player gets only the countdowns guests are told about.
+  const countdowns = player ? liveCountdowns(sim, (l) => l.guests) : liveCountdowns(sim);
+  const hidden = playerHiddenRooms(sim.model, character);
+  const objectives = objectivesFor(sim, { character, host });
+  const stats = statsFor(sim, character);
+  let interactions = interactionsFor(sim, ["performer"], { subject: null, self: character });
+  if (player) {
+    // The booth only learns its own buttons: another character's `by:`
+    // button (which `pressRefusal` would refuse) is left out.
+    interactions = interactions.filter((i) => {
+      const def = sim.model.interactions.get(i.id);
+      return def === undefined || pressRefusal(sim, def, character, host) === null;
+    });
+  }
   return {
     character,
     title: sim.lobbyTitle(),
@@ -2303,24 +2342,79 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     clock: sim.elapsed(),
     faction: c?.faction ?? null,
     guests,
-    channels: sim.allChannelsFor(character),
+    channels: boothChannels(sim, character),
     spaces: sim.spaceList(),
-    interactions: interactionsFor(sim, ["performer"], { subject: null, self: character }),
+    interactions,
     legacyCapture: [...sim.model.locations.values()].some((l) => l.prison),
     codex: sim.codexFor(character).map((e) => codexEntry(e, sim.model)),
     codexTotal: sim.model.codex.size,
     quests: sim.questsFor(character).map(({ def, status }) => ({ id: def.id, title: def.title, giver: def.giver, status })),
     questTotal: sim.model.quests.size,
     agents: agentContacts(sim, character, agentsOnline),
-    objectives: objectivesFor(sim, { character, host: opts?.host === true }),
-    night: nightView(sim),
+    objectives,
+    // A player gets no act (D7): the act's title is the director's copy.
+    night: player ? { ...nightView(sim), act: null } : nightView(sim),
     alertLevel: alertLevelNow(sim),
     ...(countdowns.length > 0 ? { countdowns } : {}),
-    staffRooms: staffRoomChannels(sim.model),
-    ...(opts?.host === true ? { host: true as const } : {}),
-    ...boothGlobals(sim, character, opts?.host === true),
+    staffRooms: staffRoomChannels(sim.model).filter((id) => !hidden.has(id)),
+    ...(host ? { host: true as const } : {}),
+    ...boothGlobals(sim, character, host),
     ...boothCalls(sim, character),
+    player,
+    ...boothMission(sim, objectives),
+    ...(stats.length > 0 ? { stats } : {}),
   };
+}
+
+/** `PrimeView.mission` (wave 21, C4): the first live objective and its
+ *  `go:` room's title — a LOCATION or an authored room; any other `go:`
+ *  (a screen, a codex entry) reads null. */
+function boothMission(sim: Sim, objectives: readonly ObjectiveView[]): Pick<PrimeView, "mission"> {
+  const now = objectives[0];
+  if (now === undefined) return {};
+  const def = sim.model.objectives.get(now.id);
+  const t = def?.go != null ? resolveGoWord(sim.model, def.go) : null;
+  let place: string | null = null;
+  if (t !== null && t.kind === "room") {
+    const title = sim.channelHead(t.id).title;
+    place = title.replace(/\s*\([^()]*\)$/u, "").trim() || title;
+  }
+  return { mission: { objective: now.id, place } };
+}
+
+const hiddenRoomsCache = new WeakMap<Sim["model"], Map<string, ReadonlySet<string>>>();
+const NO_ROOMS: ReadonlySet<string> = new Set();
+
+/** Wave 21 (D6): the staff-room channel ids a **player** booth does not
+ *  see — every staff room (`staffRoomChannels`) whose GROUP the character
+ *  is not in. Empty for any other booth (a host, a plain performer). Per
+ *  model and character. */
+export function playerHiddenRooms(model: Sim["model"], character: string): ReadonlySet<string> {
+  const c = model.characters.get(character);
+  if (c === undefined || !c.player) return NO_ROOMS;
+  let byChar = hiddenRoomsCache.get(model);
+  if (byChar === undefined) {
+    byChar = new Map();
+    hiddenRoomsCache.set(model, byChar);
+  }
+  const hit = byChar.get(c.id);
+  if (hit !== undefined) return hit;
+  const mine = c.faction === null ? null : foldName(c.faction);
+  const out = new Set<string>();
+  for (const id of staffRoomChannels(model)) {
+    const group = model.channels.get(id)?.faction ?? null;
+    if (mine === null || group === null || foldName(group) !== mine) out.add(id);
+  }
+  byChar.set(c.id, out);
+  return out;
+}
+
+/** The rooms a booth runs (`Sim.allChannelsFor`), minus a player's hidden
+ *  staff rooms (D6) — also what `/api/prime/say` lets it post into. */
+export function boothChannels(sim: Sim, character: string): ChannelSnapshot[] {
+  const all = sim.allChannelsFor(character);
+  const hidden = playerHiddenRooms(sim.model, character);
+  return hidden.size === 0 ? all : all.filter((ch) => !hidden.has(ch.id));
 }
 
 /** `PrimeView.globalButtons` (C4): `who: performer` buttons this booth may
@@ -2357,6 +2451,8 @@ export function cueCallers(model: Sim["model"]): Map<string, string[]> {
       if (one !== undefined) ids.add(one.id);
       else for (const c of chars) if (c.faction !== null && foldName(c.faction) === k) ids.add(c.id);
     }
+    // Wave 21 (D5): a player never calls cues (lint L1222 says so).
+    for (const id of [...ids]) if (model.characters.get(id)?.player === true) ids.delete(id);
     if (ids.size > 0) out.set(i.id, [...ids]);
   }
   callersCache.set(model, out);

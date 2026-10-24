@@ -22,7 +22,7 @@ import { VOICE_MAX_BYTES, kingSignal, validateHouse, voiceOn, type HouseMap, typ
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { allSnapshotFlags, awardOnly, callsCue, cueState, guestCardView, interactionSubjectOnly, isCaller, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, awardOnly, boothChannels, callsCue, playerHiddenRooms, cueState, guestCardView, interactionSubjectOnly, isCaller, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
@@ -35,6 +35,7 @@ import { handleMetrics } from "./routes/metrics.ts";
 import { handleModLog } from "./routes/mod-log.ts";
 import { NOT_FROM_A_BOOTH, isHostRoute, isModSurface, type HostRouteContext } from "./routes/host.ts";
 import { cueLines, pressLines, type PressLines } from "./routes/press-lines.ts";
+import { isPrivateSlot } from "../src/runtime/sim/stats.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -250,8 +251,10 @@ export function widgetResultArgs(raw: unknown, sim: Sim, kind = ""): Record<stri
   return out;
 }
 
-function visibleToPrime(m: ChatMessage, c: Client, isAgent: (character: string) => boolean = () => false): boolean {
+function visibleToPrime(m: ChatMessage, c: Client, isAgent: (character: string) => boolean = () => false, model?: Sim["model"] | null): boolean {
   if (c.admin === true) return true;
+  // Wave 21 (D6): a player reads only its own team's staff rooms.
+  if (model != null && playerHiddenRooms(model, c.id).has(m.channel)) return false;
   if (m.channel.startsWith("pm:")) return false;
   if (isCrewRoom(m.channel)) return false; // w18 crews: a crew's room is its members' own
   // A host booth also reads guests' threads with an agent-voiced character
@@ -1181,6 +1184,15 @@ export class EventRuntime {
     };
   }
 
+  /** A booth press's / scan's card lines (`pressLines`). Wave 21 (D4): a
+   *  player booth never reads the staff rooms' lines (a refusal reads "Not
+   *  now." on its card); a host or a plain performer does. */
+  private boothPressLines(appended: readonly ChatMessage[], character: string | null, guest: string): PressLines {
+    const lines = pressLines(appended, new Set(staffRoomChannels(this.sim!.model)), character, guest);
+    if (character !== null && this.sim!.model.characters.get(character)?.player === true) delete lines.staff;
+    return lines;
+  }
+
   /** A performer's snapshot, plus the cards their character has already
    *  answered, with everyone's profile pictures. */
   private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false): PrimeView {
@@ -1583,7 +1595,7 @@ export class EventRuntime {
       : c.role === "mod"
         ? [...this.chat.all()]
         : capHistory(
-            this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c, this.agentVoiced)),
+            this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c, this.agentVoiced, this.sim?.model)),
             HISTORY_LIMIT,
             boothOwnRow(c.id),
           );
@@ -1648,7 +1660,7 @@ export class EventRuntime {
       if (c.role === "guest") {
         if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m, this.sim, c.id));
       } else if (c.role === "prime") {
-        if (visibleToPrime(m, c, this.agentVoiced)) sseSend(c.res, "message", m);
+        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "message", m);
       } else {
         sseSend(c.res, "message", m);
       }
@@ -2458,11 +2470,14 @@ export class EventRuntime {
     return (head: string): Record<string, string> => {
       const person = sim.persons.get(head);
       const secret = person === undefined ? null : (sim.model.roles.get(person.role)?.secret ?? null);
+      // Wave 21 (C2): a character's `private:` slots never reach an agent.
+      const ch = person === undefined ? sim.model.characters.get(head) : undefined;
       const out: Record<string, string> = {};
       for (const w of world) {
         if (!w.path.startsWith(`${head}.`)) continue;
         const key = w.path.slice(head.length + 1);
         if (secretCodex.has(key)) continue;
+        if (isPrivateSlot(ch, key)) continue;
         if (key === "crew") continue; // w18 crews
         if (secret !== null && (secret.has(key) || secret.has(key.split(".")[0]!))) continue;
         if ((key === "faction" || key === "group" || key === "trueFaction") && hidden(w.value)) continue;
@@ -2474,6 +2489,15 @@ export class EventRuntime {
       }
       return out;
     };
+  }
+
+  /** A world value as an agent's house-held text may read it (`recent`,
+   *  the dossier): a character's `private:` slot reads as unset (wave 21, C2). */
+  private agentPeek(path: string): string | null {
+    const sim = this.sim!;
+    const dot = path.indexOf(".");
+    if (dot > 0 && isPrivateSlot(sim.model.characters.get(path.slice(0, dot)), path.slice(dot + 1))) return null;
+    return worldString(sim.world.peek(path));
   }
 
   /** A `hidden: true` group the story has not revealed: an agent may not
@@ -2549,13 +2573,14 @@ export class EventRuntime {
         .map((e) => ({ id: e.id, title: e.title, about: e.about, text: text ? e.text : "" }));
     const speakerId = performer ?? who;
     const speakerName = performer ?? sim.persons.get(who)?.name ?? who;
+    const speakerDef = performer !== null ? sim.model.characters.get(performer) : undefined;
     return {
       id,
       character: thread.character,
       thread,
       speaker:
         performer !== null
-          ? { kind: "performer", id: performer, name: performer, faction: sim.model.characters.get(performer)?.faction ?? null }
+          ? { kind: "performer", id: performer, name: performer, faction: sim.model.characters.get(performer)?.faction ?? null, ...(speakerDef?.player === true ? { player: true as const } : {}) }
           : { kind: "guest", id: who, name: sim.persons.get(who)?.name ?? who, faction: sim.publicFactionOf(who) },
       text: last.text,
       history,
@@ -2570,6 +2595,7 @@ export class EventRuntime {
         // their text (the classic prompt reads it).
         codex: codex(speakerId, !recentOn),
         location: performer === null ? sim.locationOf(who) : null,
+        ...(speakerDef?.player === true ? { ranges: Object.fromEntries([...speakerDef.ranges].filter(([k]) => !isPrivateSlot(speakerDef, k))) } : {}),
       },
       world: globals,
       powers: this.agentPowers(),
@@ -2587,7 +2613,7 @@ export class EventRuntime {
    *  the facts ledger, every time (never stored). */
   private agentDossierOf(thread: AgentThread, id: string, name: string, all: readonly ChatMessage[]): { dossier: AgentDossier } | Record<string, never> {
     const sim = this.sim!;
-    const peek = (path: string) => worldString(sim.world.peek(path));
+    const peek = (path: string) => this.agentPeek(path);
     const person = sim.persons.get(id);
     if (person === undefined || peek(`${id}.at_the_heart`) !== "true") return {};
     const unseen = (g: string) => this.agentHiddenGroup(g) || this.agentHiddenRace(g);
@@ -2717,7 +2743,7 @@ export class EventRuntime {
         const e = sim.model.codex.get(entry);
         return e === undefined ? undefined : { secret: e.secret, title: e.title, text: e.text };
       },
-      peek: (path) => worldString(sim.world.peek(path)),
+      peek: (path) => this.agentPeek(path),
       persons: [...sim.persons.values()].map((p) => ({ id: p.id, name: p.name })),
       filings,
       ...(mentionsAnswer !== undefined ? { mentionsAnswer } : {}),
@@ -2938,11 +2964,24 @@ export class EventRuntime {
     // Adjustments move only the character's own declared numeric ranges,
     // clamped to them. The story's watchers decide what the numbers mean.
     const ranges = sim.model.characters.get(req.character)?.ranges ?? new Map<string, [number, number]>();
+    // Wave 21 (C7): `them.<slot>` moves a player speaker's own declared
+    // range (never a `private:` one); a guest's `them.` keys are ignored.
+    const who = req.thread.audience[0] ?? "";
+    const them = who.startsWith("@") ? sim.model.characters.get(who.slice(1)) : undefined;
     const applied: Record<string, number> = {};
     for (const [name, delta] of agentAdjustments(body["adjust"])) {
-      const range = ranges.get(name);
+      let range: [number, number] | undefined;
+      let path: string;
+      if (name.startsWith("them.")) {
+        const slot = name.slice("them.".length);
+        if (them === undefined || !them.player || isPrivateSlot(them, slot)) continue;
+        range = them.ranges.get(slot);
+        path = `${them.id}.${slot}`;
+      } else {
+        range = ranges.get(name);
+        path = `${req.character}.${name}`;
+      }
       if (range === undefined) continue;
-      const path = `${req.character}.${name}`;
       const current = Number(sim.worldEntries().find((w) => w.path === path)?.value ?? range[0]);
       const next = Math.max(range[0], Math.min(range[1], (Number.isFinite(current) ? current : range[0]) + delta));
       applied[name] = next;
@@ -5831,7 +5870,7 @@ export class EventRuntime {
             .filter((e): e is Extract<SimEvent, { type: "respond" }> => e.type === "respond" && e.to === scanAs)
             .map((e) => readoutText(e.text).text);
           // C1: the staff-room lines and what the character said to the guest.
-          lines = pressLines(this.fanout(events), new Set(staffRoomChannels(this.sim!.model)), scanAs, target);
+          lines = this.boothPressLines(this.fanout(events), scanAs, target);
         }
         // Wave 13: the booth's card for this guest, after the scan's events.
         const card = scanAs !== null ? guestCardView(this.sim!, this.chat.all(), scanAs, target, this.canHostToken(token)) : null;
@@ -5957,7 +5996,7 @@ export class EventRuntime {
         const refused = pressRefused(this.sim!, pressed);
         if (global) {
           const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [readoutText(e.text).text] : []));
-          const lines = pressLines(this.fanout(pressed), new Set(staffRoomChannels(this.sim!.model)), character, "");
+          const lines = this.boothPressLines(this.fanout(pressed), character, "");
           sendJson(res, 200, { ok: true, replies, ...lines, ...(refused ? { refused: true } : {}) });
           return true;
         }
@@ -5965,7 +6004,7 @@ export class EventRuntime {
         const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [readoutText(e.text).text] : []));
         // C1: the staff-room lines (a refusal's reason) and what the
         // character said to the guest, for the card in place of a bare ✔.
-        const lines = pressLines(this.fanout(pressed), new Set(staffRoomChannels(this.sim!.model)), character, guest);
+        const lines = this.boothPressLines(this.fanout(pressed), character, guest);
         const card = character === null ? null : guestCardView(this.sim!, this.chat.all(), character, guest, this.canHostToken(token));
         sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...lines, ...(refused ? { refused: true } : {}), ...(card !== null ? { card } : {}) });
         return true;
@@ -6078,7 +6117,7 @@ export class EventRuntime {
             sendJson(res, 403, { error: "a booth can't post there" });
             return true;
           }
-          if (!this.sim!.allChannelsFor(character).some((c) => c.id === channel)) {
+          if (!boothChannels(this.sim!, character).some((c) => c.id === channel)) {
             sendJson(res, 404, { error: "unknown room" });
             return true;
           }
@@ -6767,7 +6806,7 @@ export class EventRuntime {
             if (!visibleTo(m, c.id)) continue;
             if (m.hidden) sseSend(c.res, "messageModerated", { seq: m.seq, hidden: true });
             else sseSend(c.res, "message", forGuest(m, this.sim, c.id));
-          } else if (c.role === "mod" || visibleToPrime(m, c, this.agentVoiced)) {
+          } else if (c.role === "mod" || visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) {
             sseSend(c.res, "messageModerated", m);
           }
         }
