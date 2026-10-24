@@ -37,11 +37,11 @@ export function wave18bLints(docs: ReadonlyArray<[string, Doc]>, model: SimModel
           continue;
         }
         if (badgeIsSecret(model, def)) {
-          push(uri, range, true, Code.L1219BadgeOnSecret, `\`badge: ${line.value.trim()}\` reads a secret (a ROLE \`secret:\` slot or a \`secret: true\` CHARACTER) — every phone sees a badge, so it is never shown`);
+          push(uri, range, true, Code.L1219BadgeOnSecret, `\`badge: ${line.value.trim()}\` reads a secret (a ROLE \`secret:\` slot, a \`secret: true\` CHARACTER or a CHARACTER's \`private:\` slot) — every phone sees a badge, so it is never shown`);
           continue;
         }
         if (badgeWhileReadsSecret(model, def)) {
-          push(uri, range, true, Code.L1219BadgeOnSecret, `the \`while\` of \`badge: ${line.value.trim()}\` reads a secret (a ROLE \`secret:\` slot or a \`secret: true\` CHARACTER) — every phone sees a badge, so it would tell them that secret; it is never shown`);
+          push(uri, range, true, Code.L1219BadgeOnSecret, `the \`while\` of \`badge: ${line.value.trim()}\` reads a secret (a ROLE \`secret:\` slot, a \`secret: true\` CHARACTER or a CHARACTER's \`private:\` slot) — every phone sees a badge, so it would tell them that secret; it is never shown`);
           continue;
         }
         if (def.while !== null && !exprOk(def.while)) {
