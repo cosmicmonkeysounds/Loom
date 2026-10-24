@@ -68,6 +68,19 @@ describe("on the event server", () => {
     expect(lean.lastName).toBe("Ada");
   });
 
+  it("the whole host panel and a booth's view never carry the author's name", async () => {
+    const rt = rt18();
+    rt.openDoors();
+    const john = (path: string, body: Record<string, unknown>) => call(rt, "POST", path, body, { moderator: true, moderatorName: "John Janigan-Mills" });
+    await john("/api/mod/caller", { on: true });
+    await john("/api/mod/signal", { name: "call_to_the_desktop", presses: 0 });
+    expect((await john("/api/mod/persona", { name: "Rehearsal Bot" })).status).toBe(200);
+    expect(JSON.stringify(await hostView(rt))).not.toContain("Janigan");
+    expect(JSON.stringify(await boothView(rt, "Clippy"))).not.toContain("Janigan");
+    expect(JSON.stringify(await boothView(rt, "Task Manager"))).not.toContain("Janigan");
+    expect(JSON.stringify((await modGet(rt, "/api/state?role=mod")).json)).toContain("Janigan"); // Run still knows
+  });
+
   it("a host's press still names the host", async () => {
     const rt = rt18();
     rt.openDoors();
