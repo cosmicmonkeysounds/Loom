@@ -1,7 +1,17 @@
 # Trapped in the Internet: the Oct 31 crunch plan
 
-**The party is Saturday, October 31, 2026. Today is Thursday, October 15: 16 calendar days.**
-This is the **active plan**. [`SCHEDULE.md`](./SCHEDULE.md) is the full roadmap (245.5 dev-days) for
+> **Build history (2026-10-24).** This was the crunch plan for the build
+> waves, written from Oct 15. It is kept as the record of every wave's build
+> status, decisions, workaround runbook (§9), risks (§12) and cut order
+> (§13). **For the night itself use [`SHOWNIGHT.md`](./SHOWNIGHT.md)** (the
+> runbook and the pre-show checklist `scripts/ops/checklist.sh` prints) and
+> **[`TECH.md`](./TECH.md)** (the machines). §10 and §11 below still name one
+> "house Mac" / "TV computer"; that role is now split across John's MacBook
+> and John's Windows Desktop. Master holds waves 18b Stage B, 20, 20b, 21
+> and 22, merged and not shipped; the VPS runs `w18b-1021`.
+
+**The party is Saturday, October 31, 2026. Written Thursday, October 15, 16 calendar days out.**
+This was the **active plan** during the build. [`SCHEDULE.md`](./SCHEDULE.md) is the full roadmap (245.5 dev-days) for
 after the party and the next run. [`CHECKLIST.md`](./CHECKLIST.md) tags every item 🎃 (in for Oct 31),
 🩹 (runs on a workaround below), ⭐ (optional) or 💤 (after). The story spec is
 [`DESIGN.md`](./DESIGN.md) (§7 has the workarounds the story already uses), and the runbook + cue sheet
@@ -1517,6 +1527,8 @@ Every role gets **one laminated card** (D-01 drafts, PAPER prints in batch 2). W
 ---
 
 ## 11. Show day: call times + pre-show checklist
+
+> **Superseded for the night by [`SHOWNIGHT.md`](./SHOWNIGHT.md)** (§3 the call times by time and by machine, §4 the pre-show checklist that `scripts/ops/checklist.sh` now prints). This section is the wave 20b version, kept as history.
 
 **Sat Oct 31.** Sunset ≈ 18:10 ADT, typically 4–11 °C, wind and rain common. Trick-or-treating ≈ 18:00–20:00. **DST ends 02:00 Nov 1**: the story uses elapsed time and doesn't care; the backup cron runs in UTC; tell the crew the wall clock jumps back, and **plan rides home** (transit is thin after 01:00).
 

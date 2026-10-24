@@ -1,5 +1,12 @@
 # Trapped in the Internet: the tech checklist
 
+> **Build history (2026-10-24).** The audit checklist from 2026-10-14, kept
+> through wave 20 and not ticked for the device checks. It still describes
+> retired parts (the ESP32 patch bay, the chess phone, QLab, one "house
+> Mac"). **For the night use [`SHOWNIGHT.md`](./SHOWNIGHT.md) and
+> [`TECH.md`](./TECH.md).** After the party it is the backlog for
+> [`SCHEDULE.md`](./SCHEDULE.md).
+
 Everything, software and hardware, that has to be true on the night for the story in
 `Trapped In The Internet story/` (STORY BEATS, Story Overview, Character Sheet, Clippy
 Instructions) to run in this house. It came from a full audit of the codebase against the

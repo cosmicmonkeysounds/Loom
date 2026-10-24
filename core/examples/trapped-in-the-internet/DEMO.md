@@ -1,6 +1,9 @@
 # Demo — the Oct 31 WIP in 20–30 minutes
 
-How to show *Trapped in the Internet* as it stands (wave 18b, 2026-10-22) on
+> **A demo, not the show.** For the night itself use
+> [`SHOWNIGHT.md`](./SHOWNIGHT.md) and [`TECH.md`](./TECH.md).
+
+How to show *Trapped in the Internet* as it stands on master (through wave 22, 2026-10-24) on
 **https://app.mapsandducks.com** with **2–4 phones and one laptop**. It plays the
 night from the door to an ending and the awards, compressed: every timed
 stretch (Bingo's 20 min, the hunts, the hour, the Y2K hour) is skipped by
@@ -13,10 +16,9 @@ change the order here, change it there.
 ## Before you start (once)
 
 1. The VPS runs a current release (`scripts/ops/ship.sh <tag>`, the server
-   **before** the sync; as of 2026-10-19 it runs `w11b-1019` (wave 11 and
-   wave 11b; wave 18b's Stage A and the tent laptop shipped as `w18b-1021`): this page
-   follows the wave 18b story, which reaches the VPS only after
-   [`SIGNOFF-w18b.md`](./history/SIGNOFF-w18b.md) and a `sync-show`; featured programs join only
+   **before** the sync; as of 2026-10-24 it runs `w18b-1021`, and master's
+   waves 18b Stage B to 22 reach it only with the next ship and a
+   `sync-show`, see [`SHOWNIGHT.md`](./SHOWNIGHT.md) §1); featured programs join only
    with their invitations; the cue sheet refuses 📺 until all three 📋 are read and
    while the bottle is open), and the show's story is in your
    server project: `LOOM_SSH=loom-vps pnpm sync-show` (with
@@ -57,9 +59,9 @@ change the order here, change it there.
      **O** opens the door, **C** shuts it, **F** throws a sensor fault (the real
      rig is `door=serial` and the Grand Central M4; a mouse-only rig adds `&keys=0`).
      It sleeps until The Heart opens the room. Wave 20 reaches the VPS only
-     after [`SIGNOFF-w20.md`](./history/SIGNOFF-w20.md), a ship and a `sync-show`.
+     with the next ship and a `sync-show`.
 5. Optional: Trabolta's voice. Start stagehand's `agents` worker on the
-   laptop/house Mac (`uv run stagehand run --config <machine>.yaml --only agents`,
+   laptop (`uv run stagehand run --config <machine>.yaml --only agents`,
    see `stagehand/README.md`). Without it, DMs to Trabolta get his hold line
    ("Jean Trabolta is not responding…") after ~20 s, and you can answer as
    him from Run (👁 identity → Trabolta, then type in his thread).
