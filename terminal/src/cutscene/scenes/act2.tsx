@@ -16,7 +16,7 @@
 
 import "./act2.css";
 import type { CSSProperties } from "react";
-import { CHART_STEP_MS, chartCallouts, chartLines, chartReveal, slideCopy, y2kClock } from "../../slides.ts";
+import { CHART_STEP_MS, STAFF_TAG, chartCallouts, chartLines, chartRankedLine, chartReveal, slideCopy, y2kClock } from "../../slides.ts";
 import type { ScreenChart, ScreenResults } from "../../screen.ts";
 import { ReadingRows, filedCount, useHeldResults } from "../kit/results-parts.tsx";
 import { tallyGauge, tallyPageAt, tallyPages, totalsLine, type TallyPage } from "../kit/results.ts";
@@ -677,6 +677,8 @@ function RoundTwoTallyWall(p: SceneProps) {
 //   done      the call-outs land when the story names them (MOST / LEAST
 //             TRUSTED, by name, never by position): the top row gets a gold
 //             glow, a crown and sparks, the bottom row a grey glitch
+//   staff     (wave 21) a player part ranked beside the programs: a blue
+//             bar and a 🛡 STAFF tag, revealed in its place like any row
 //   hold      a shimmer sweeps the window every 6 s; the formula scrolls past
 //             in the marquee — persistent: this holds for as long as the slide
 
@@ -726,13 +728,14 @@ function ChartBody({ t, chart, now, reduced, big, maxCols = 3 }: { t: number; ch
           return (
             <div
               key={r.name}
-              className={`tv2-chart-row${hidden ? " hidden" : ""}${isTop && done ? " top" : ""}${isBottom && done ? " bottom" : ""}`}
+              className={`tv2-chart-row${hidden ? " hidden" : ""}${isTop && done ? " top" : ""}${isBottom && done ? " bottom" : ""}${r.staff ? " staff" : ""}`}
               style={{ left: `${((col / cols) * 100).toFixed(3)}%`, width: `calc(${(100 / cols).toFixed(3)}% - 0.6em)`, top: `${((slot / perCol) * 100).toFixed(3)}%`, height: `${(88 / perCol).toFixed(3)}%`, transform: hidden || reduced ? undefined : `translate3d(${((1 - enter) * 6).toFixed(3)}em, 0, 0)`, opacity: hidden ? 0 : clamp01(enter * 1.4) }}
             >
               <div className="tv2-chart-bar" style={{ transform: `scaleX(${clamp01((Math.abs(count) / max) * enter).toFixed(4)})` }} />
               {scan && !reduced && <div className="tv2-chart-scan" style={{ transform: `translate3d(${(progress(now, at, 900) * 100).toFixed(2)}%, 0, 0)` }} />}
               <span className="tv2-chart-rank">{r.rank}.</span>
               <span className="tv2-chart-name">{r.name}</span>
+              {r.staff && <span className="tv2-chart-staff">{STAFF_TAG}</span>}
               <span className="tv2-chart-value">{count}</span>
               {isTop && done && <span className="tv2-chart-crown" style={{ transform: reduced ? undefined : `translateY(${(Math.sin(t / 300) * 0.12).toFixed(3)}em) rotate(${(Math.sin(t / 500) * 12).toFixed(1)}deg)` }}>★</span>}
             </div>
@@ -773,7 +776,7 @@ function TrustChartTv(p: SceneProps) {
   return (
     <Stage bg="#000" fit className="tv2">
       <Grid t={t} reduced={reduced} speed={0.6} />
-      <Win98Window title={slideCopy("trust_chart").title} icon="document" x={50} y={47} center width="54em" height="29em" open={eased(t, 100, 420, ease.outCubic)} reduced={reduced} className="tv2-chart-win" buttons={["min", "max", "close"]} status={chart === null ? "Waiting for the assessments…" : done ? `${n} programs ranked.` : `Ranking… ${shown} of ${n}`}>
+      <Win98Window title={slideCopy("trust_chart").title} icon="document" x={50} y={47} center width="54em" height="29em" open={eased(t, 100, 420, ease.outCubic)} reduced={reduced} className="tv2-chart-win" buttons={["min", "max", "close"]} status={chart === null ? "Waiting for the assessments…" : done ? chartRankedLine(chart) : `Ranking… ${shown} of ${n}`}>
         <div className="tv2-chart-head">
           <h2>{slideCopy("trust_chart").title}</h2>
           <span>{slideCopy("trust_chart").lines?.[0]}</span>

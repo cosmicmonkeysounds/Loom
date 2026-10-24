@@ -286,15 +286,38 @@ export function chartCallouts(slide: string): { top: string; bottom: string } {
   return CHART_CALLOUTS[slide] ?? { top: "TOP", bottom: "BOTTOM" };
 }
 
+/** One chart line as the slide draws it. `staff` (wave 21): a player part
+ *  (Clippy, the Antivirus) ranked beside the programs, drawn with
+ *  `STAFF_TAG` and its own bar colour. */
+export interface ChartLine {
+  rank: number;
+  name: string;
+  value: number;
+  staff: boolean;
+}
+
+/** The tag beside a staff row's name (the shield: the house's staff). */
+export const STAFF_TAG = "🛡 STAFF";
+
 /** The chart's rows as the slide draws them: rank, name, number. Ties share
- *  a rank (1, 2, 2, 4). Who is called out is the server's `top` / `bottom`. */
-export function chartLines(chart: ScreenChart): Array<{ rank: number; name: string; value: number }> {
-  const out: Array<{ rank: number; name: string; value: number }> = [];
+ *  a rank (1, 2, 2, 4), staff and programs alike. Who is called out is the
+ *  server's `top` / `bottom`. */
+export function chartLines(chart: ScreenChart): ChartLine[] {
+  const out: ChartLine[] = [];
   chart.rows.forEach((r, i) => {
     const prev = out[i - 1];
-    out.push({ rank: prev !== undefined && prev.value === r.value ? prev.rank : i + 1, name: r.name, value: r.value });
+    out.push({ rank: prev !== undefined && prev.value === r.value ? prev.rank : i + 1, name: r.name, value: r.value, staff: r.staff === true });
   });
   return out;
+}
+
+/** The chart's status line once ranked: "12 programs ranked." or, with
+ *  staff rows, "12 programs and 2 staff ranked." */
+export function chartRankedLine(chart: ScreenChart): string {
+  const staff = chart.rows.filter((r) => r.staff === true).length;
+  const programs = chart.rows.length - staff;
+  const p = `${programs} program${programs === 1 ? "" : "s"}`;
+  return staff === 0 ? `${p} ranked.` : `${p} and ${staff} staff ranked.`;
 }
 
 /** `mm:ss` (or `h:mm:ss`) for the corner. */

@@ -15,7 +15,7 @@ import { ringChime } from "./announce.ts";
 import { BUILD } from "./health.ts";
 import { CutsceneSlot } from "./cutscene/slot.tsx";
 import { useSceneClockUp } from "./cutscene/moment-bus.ts";
-import { FLICKER_MS, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
+import { FLICKER_MS, STAFF_TAG, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
 
 /** PNGs that failed to load this page-load: go straight to the next source. */
 const missing = new Set<string>();
@@ -91,11 +91,12 @@ export function SlideView({ slide, y2k, chart = null, chartShown, video = false,
               {lines.map((r, i) => (
                 <li
                   key={r.name}
-                  className={`chart-row${i < lines.length - shown ? " chart-hidden" : ""}${r.name === chart.top ? " chart-top" : ""}${r.name === chart.bottom ? " chart-bottom" : ""}`}
+                  className={`chart-row${i < lines.length - shown ? " chart-hidden" : ""}${r.name === chart.top ? " chart-top" : ""}${r.name === chart.bottom ? " chart-bottom" : ""}${r.staff ? " chart-staff" : ""}`}
                   role="row"
                 >
                   <span className="chart-rank">{r.rank}.</span>
                   <span className="chart-name">{r.name}</span>
+                  {r.staff && <span className="chart-staff-tag">{STAFF_TAG}</span>}
                   <span className="chart-value">{r.value}</span>
                 </li>
               ))}

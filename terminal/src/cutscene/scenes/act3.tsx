@@ -1278,10 +1278,14 @@ function Ceremony({ t, sfx, reduced, target }: SceneProps) {
 //             lands, then more every 12 s from 11 600 (`awardConfettiAt`),
 //             stars twinkle, the emblem bobs — the name stays up all slide.
 // No winner on the night block (an older server): "Please come forward."
+// A staff award (wave 21: staff_trusted / staff_points / staff_mole) plays the
+// same take in a blue room, its kind reading STAFF AWARD, read off "the staff file".
 
 function AwardScene({ t, value, night, sfx, reduced, target }: SceneProps) {
   const lite = target === "wall";
   const award = awardOf(value);
+  // Wave 21: a staff award (a player part's) — a blue room, "the staff file".
+  const staff = award.kind === "Staff award";
   const winner = night.award_winner !== null && night.award_winner.trim() !== "" ? night.award_winner.trim() : null;
   const num = awardValue(night.award_value);
   useSfxCues(t, sfx, [
@@ -1296,7 +1300,7 @@ function AwardScene({ t, value, night, sfx, reduced, target }: SceneProps) {
   const burstAt = AWARD_CONFETTI.first;
   const confetti = awardConfettiAt(t);
   return (
-    <Stage bg="radial-gradient(ellipse at 50% 55%, #1b1f5e 0%, #05030f 78%)" className="tv3-award">
+    <Stage bg={staff ? "radial-gradient(ellipse at 50% 55%, #0b3a6e 0%, #02060f 78%)" : "radial-gradient(ellipse at 50% 55%, #1b1f5e 0%, #05030f 78%)"} className={`tv3-award${staff ? " tv3-award-staff" : ""}`}>
       <SpotCones t={t} reduced={reduced} color="rgba(255, 240, 190, 0.13)" />
       <Particles t={t} emitters={lite ? TWINKLE_WALL : TWINKLE_TV} blend="add" />
       <div className="tv3-award-spot" style={{ opacity: 0.55 + 0.25 * pulse(t, 5200), transform: `translate(-50%, -50%) scale(${lerp(2.4, 1, eased(t, 0, 800)).toFixed(3)})` }} />
@@ -1310,7 +1314,7 @@ function AwardScene({ t, value, night, sfx, reduced, target }: SceneProps) {
         <Typewriter text={award.title.toUpperCase()} t={t} start={1100} cps={26} caret={t < 2400} />
       </div>
       <div className="tv3-award-lists" style={{ opacity: fade(t, 2200, 400) }}>
-        The report lists…
+        {staff ? "The staff file lists…" : "The report lists…"}
       </div>
       <div className="tv3-award-name" style={named ? { ...slam(t, 3200, reduced, 380), textShadow: `0 0 ${(0.25 * glow).toFixed(2)}em rgba(255, 210, 63, ${(0.9 * glow).toFixed(2)})` } : { opacity: 0 }}>
         {winner ?? "Please come forward"}
@@ -1411,6 +1415,7 @@ export const SCENES: SceneDef[] = [
   { id: "banish", when: [{ slide: "banish" }], ms: "hold", ...both(Banish), face: "angry" },
   { id: "hand_jive", when: [{ moment: "beat", name: "The Hand Jive" }], ms: HAND_JIVE.end, ...both(HandJive), priority: 4, face: "glitch", faceMs: 3200 },
   { id: "ceremony", when: [{ slide: "ceremony" }], ms: "hold", ...both(Ceremony), face: "pleased" },
-  { id: "award", when: [{ slide: "award_*" }], ms: "hold", ...both(AwardScene), face: "pleased" },
+  // namesCharacter: the staff award "Trabolta's Favourite Staff" (wave 21) names him (the ceremony is long after his introduction).
+  { id: "award", when: [{ slide: "award_*" }], ms: "hold", ...both(AwardScene), namesCharacter: true, face: "pleased" },
   { id: "resurrection", when: [{ moment: "signal", name: "resurrection" }], ms: RES.end, ...both(Resurrection), priority: 4 },
 ];
