@@ -12,7 +12,7 @@ instructions: it explores a **virtual copy of the house** and finds the
 | Game | Where | Input | Code |
 |---|---|---|---|
 | **VR** | Quest 3 headset(s) in the tent | thumbsticks: left stick walks (head-relative), right stick turns (snap 45°, or smooth); the trigger (or A / X) hits the King | `reinstall/vr/` — Godot 4.7 project, OpenXR |
-| **Web** | a tablet (the tent tablet, or anywhere) | on-screen twin joysticks (touch) **and** keyboard (WASD/arrows walk, Q/E or ←/→ turn, mouse-drag look); ⚔ HIT or Space hits the King | `reinstall/web/` — Vite + three.js app `loom-reinstall`, served at `/reinstall/` |
+| **Web** | the tent laptop (`view=reinstall` on the terminal), or a spare tablet / laptop at `/reinstall/` | on-screen twin joysticks (touch) **and** keyboard (WASD/arrows walk, Q/E or ←/→ turn, mouse-drag look); ⚔ HIT or Space hits the King | `reinstall/web/` — Vite + three.js app `loom-reinstall`, served at `/reinstall/` |
 
 Both games stream the player's **pose** to the event server. Every
 **terminal** (the wall tablets, `terminal/`) receives that stream and shows
@@ -23,7 +23,7 @@ by every guest; the chess he plays for the real door's code is on the
 **Server Door** terminal outside the real door (§3, §4).
 
 ```
- pass QR ──scan──▶ web game / tent tablet ──POST /api/mod/spatial/begin──┐
+ pass QR ──scan──▶ web game / tent laptop ──POST /api/mod/spatial/begin──┐
                                                                           ▼
  Quest 3 ──poll /api/mod/spatial/station──▶ assignment          SpatialHub (event server)
  Quest 3 / web ──POST /api/spatial/pose (10 Hz, house frame)──▶   │  ├─ journal: only the story outcome
@@ -401,8 +401,9 @@ tolerance: metres, and m² for orientations).
 ### 1.3 Where the map lives
 
 - The show's map: `core/examples/trapped-in-the-internet/house.json` —
-  a **placeholder layout** (guessed dimensions) until the real house is
-  measured, but with the story's structure: every LOCATION has a room, the
+  drawn from the real house in the map editor (2026-10-20; the older
+  placeholder maps are frozen in `house/test/maps/`), with the story's
+  structure: every LOCATION has a room, the
   tent (The Internet: the spawn, the station mats, the `tent` terminal) is
   an indoor room in a notched backyard, the Server Room has a door and no
   duck. Edit it with the **map editor** (`/reinstall/map`) or by hand.
@@ -503,7 +504,8 @@ tolerance: metres, and m² for orientations).
   `LOOM_AUDIO` is the LAN fallback, and `sync-example` merges it like a
   map with its own `--keep-audio` / `--replace-audio`. Routes: `GET | POST
   /api/mod/audio`, `POST /api/mod/audio/{project,test}`
-  (`core/server/audio.ts`); the house Mac's stagehand `audio` router reads
+  (`core/server/audio.ts`); the stagehand `audio` router (John's MacBook by
+  default, or John's Windows Desktop) reads
   it — [`docs/trapped/room-audio.md`](./trapped/room-audio.md) §11.
 - **The house lights are not in the map either** (wave 20, §1.4).
 
