@@ -965,6 +965,7 @@ export class EventRuntime {
         return identityDefs(model).find((d) => d.reserved && claimMatches(this.claimSecret, d.name, claim))?.name ?? null;
       },
       saveBadges: (entries) => this.store.saveBadges(entries),
+      linked: () => this.pushClientSnapshots(),
       changed: () => {
         this.hostWrites += 1;
       },
@@ -1197,6 +1198,8 @@ export class EventRuntime {
       answered: this.answeredFor(id),
       avatars,
       ...(this.wallet !== null ? { wallet: this.wallet.viewFor(id) } : {}),
+      // Wave 23: the printed badge this guest linked (null: none yet).
+      badge: this.rejoin.badges.badgeOf(id),
       // The story clock is stopped: the phone's countdown strip holds still.
       ...(this.phase !== "open" ? { paused: true as const } : {}),
       ...this.showClockField(),

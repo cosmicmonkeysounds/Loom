@@ -174,7 +174,7 @@ describe("badges", () => {
     expect(back.json).toMatchObject({ ok: true, resumed: true, id: ana.id, name: "Calculator", badge: 1 });
     expect(back.json.token).not.toBe(ana.token);
     const view = await get(rt, `role=guest&token=${back.json.token}`);
-    expect(view.json).toMatchObject({ id: ana.id });
+    expect(view.json).toMatchObject({ id: ana.id, badge: 1 });
     // The print list names who holds it.
     const listed = await mod(rt, "/api/mod/badges", { count: 2 });
     expect(listed.json.badges[0]).toMatchObject({ ref: "B001", holder: ana.id, name: "Calculator" });

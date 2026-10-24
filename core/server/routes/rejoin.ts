@@ -261,6 +261,8 @@ export interface RejoinHost {
   saveBadges(entries: Array<[number, string]>): void;
   /** Something hosts see changed (the host view's cache must rebuild). */
   changed(): void;
+  /** A badge was linked: the guest's own view (`badge`) changed. */
+  linked?(): void;
   joinBase(): string;
   eventCode(): string;
   now(): number;
@@ -324,6 +326,7 @@ export class Rejoin {
   link(n: number, id: string): void {
     this.badges.link(n, id);
     this.host.saveBadges(this.badges.entries());
+    this.host.linked?.();
   }
 
   /** Public routes (no token). Returns false when `path` isn't one. The
