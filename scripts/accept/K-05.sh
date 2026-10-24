@@ -2,12 +2,15 @@
 # K-05 bench acceptance (wave 20), run ON THE HOUSE MAC with the real door
 # (its standalone keypad lock + the LED / LDR sensor on the Grand Central M4),
 # Steph's laptop running the server-room terminal page with the sensor
-# connected (`door=serial`) and the lights powered (ESP32=1: the patch-bay scanner too). ~12
-# minutes; it tells you when to touch what and checks the event, stagehand's
-# log and the MQTT traffic for you.
+# connected (`door=serial`) and the lights powered (ESP32=1: the old ESP32
+# patch-bay scanner; M4BAY=1: the patch bay on the same M4 as the door,
+# wave 22). ~12 minutes; it tells you when to touch what and checks the
+# event, stagehand's log and the MQTT traffic for you.
 #
 #   MOD_CODE=<mod passcode> scripts/accept/K-05.sh [path/to/trapped.house.yaml]
 #   BASE=http://localhost:7000 MOD_CODE=… scripts/accept/K-05.sh   against a local server
+#   M4BAY=1 MOD_CODE=… scripts/accept/K-05.sh   the M4 reads the bay: the terminal posts
+#                                               patch_changed and the story judges it (run N-21 first)
 #
 # The door no longer goes through stagehand (D16): the M4 reports it over USB
 # to the terminal page, which posts door_sensor_opened / _closed to the event
@@ -69,6 +72,30 @@ while time.time() - t0 < secs:
     time.sleep(0.25)
 PY
 }
+# The ledger's length now, and how many patch_changed signals came after a
+# seq (/api/mod/log: a signal entry carries its name, never its combo).
+ledger_total() {
+  curl -fsS "$BASE/e/$event/api/mod/log?limit=1" -H "x-loom-token: $token" | json "d['total']"
+}
+patch_signals_since() {
+  python3 -I - "$BASE" "$event" "$token" "$1" <<'PY'
+import json, sys, urllib.request
+base, event, token, after = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
+n = 0
+while after is not None:
+    r = urllib.request.Request(f"{base}/e/{event}/api/mod/log?after={after}&limit=5000", headers={"x-loom-token": token})
+    with urllib.request.urlopen(r, timeout=10) as f: page = json.load(f)
+    n += sum(1 for e in page["entries"] if e.get("type") == "signal" and e.get("name") == "patch_changed")
+    after = page["next"]
+print(n)
+PY
+}
+# The server-room terminal's bay off its heartbeat: "<pb> <pbc> <pbx> <pft>" (- when absent).
+bay_now() {
+  curl -fsS "$BASE/e/$event/api/mod/screen/terminals" -H "x-loom-token: $token" \
+    | json "' '.join(str(x) for x in next(([t.get('patch', '-'), {True: 1, False: 0}.get(t.get('patchComplete'), '-'), t.get('patchBetween', '-'), t.get('patchFault', '-')] for t in d['terminals'] if 'patch' in t), ['-', '-', '-', '-']))"
+}
+
 # Seconds from the start of a watch to the first line matching a pattern.
 first_at() { grep -m1 -E -- "$2" "$1" | sed -E 's/^\+ *([0-9.]+)s.*/\1/'; }
 
@@ -160,7 +187,35 @@ grep -q "sensor closed .*fault -" "$TMP/wan" && ok "the door terminal is posting
 
 step "4. each combo fires exactly once; the blackout leaves the safe lights on"
 MQ=$(mktemp); mosquitto_sub -h "$HOST" -v -t 'wled/+/api' -t 'zigbee2mqtt/+/set' > "$MQ" & SUB=$!
-if [ "${ESP32:-0}" = 1 ]; then
+if [ "${M4BAY:-0}" = 1 ]; then
+  # Wave 22: the M4 reads the bay beside the door; the server-room terminal
+  # posts patch_changed {combo} for each new complete set of four cables and
+  # the story judges it (stagehand fires nothing for the bay).
+  B=$(bay_now)
+  echo "    bay now: pb pbc pbx pft = $B"
+  case "$B" in
+    -*) bad "no terminal reports a patch bay: on Steph's laptop ⚙ → patch bay (the board must be 1.2.0, bay not unticked)" ;;
+    fault*) bad "the bay reports a fault ($B): ⚙ → patch bay shows why" ;;
+    *) ok "the server-room terminal reports the bay ($B)" ;;
+  esac
+  PO=$(curl -fsS "$BASE/e/$event/api/screen/state" -H "x-loom-token: $token" | json "(d.get('night') or {}).get('patch_override')")
+  [ "$PO" = True ] && bad "the story follows the 🔌 buttons (patch_override): press 🔌 Trust the patch bay on Run first" || ok "the story follows the bay (no 🔌 override)"
+  ask "pull every cable; make sure the rehearsal is in its Y2K hour (🕚 fired), else the story ignores the bay"
+  L=$(lines); T=$(ledger_total)
+  ask "plug in COMBO A completely (the patch-bay watch's card), hands off, wait 5 s, then press enter"
+  sleep 3
+  N=$(patch_signals_since "$T")
+  [ "$N" = 1 ] && ok "the terminal posted patch_changed once" || bad "patch_changed came $N times (want 1): Run → Terminals 🔌, ⚙ → patch bay on Steph's laptop"
+  B=$(bay_now); echo "    bay now: $B"
+  case "$B" in "4 1 0"*) ok "the heartbeat says 4 cables, complete" ;; *) bad "the heartbeat says $B, not 4 complete" ;; esac
+  [ "$(count_since "$L" "patch_combo_a")" = 0 ] && ok "stagehand fired no patch signal (the story judges the bay)" || bad "stagehand still fires patch_combo_a: an old ESP32 rule is running"
+  ask "pull ONE cable out and push it straight back in, wait 5 s, then press enter"
+  sleep 2
+  N=$(patch_signals_since "$T")
+  [ "$N" = 1 ] && ok "the same cables back in posted nothing more" || bad "patch_changed now came $N times: a re-plug counted again"
+  yes "did the story take it (Trabolta disabled: the blackout, his last words on the TV)?" && ok "the story judged combo A" || bad "the story didn't react: was it the Y2K hour? Run → Log shows the patch_changed and why"
+  ask "pull the cables (and restore the house look from Run if it went dark; 🔄 reset the run to get the night back)"
+elif [ "${ESP32:-0}" = 1 ]; then
   # The ESP32 patch-bay scanner (hardware/server-room/) is installed: stagehand judges the cables.
   for C in a b; do
     L=$(lines); ask "plug in COMBO $(echo "$C" | tr a-z A-Z) completely, leave it in ~70 s, then press enter"
@@ -174,7 +229,7 @@ else
   # Oct 31 (Q7): no ESP32 in the server room, so nothing scans the bay. The
   # Antivirus watch presses the combo on their booth (radio_combo_a / _b;
   # core's trapped-in-the-internet tests cover the press → the ending).
-  echo "  (no ESP32: the bay is judged by the patch-bay watch; ESP32=1 runs the scanner check)"
+  echo "  (no ESP32 / M4 bay: the bay is judged by the patch-bay watch; M4BAY=1 runs the M4 bay check, ESP32=1 the old scanner's)"
   ask "in the rehearsal's Y2K hour, on an Antivirus booth, press 🔌 Patch: Combo A is in (arm, then fire)"
   ask "restore the house look from Run (and 🔄 reset the run if you need the night back)"
 fi
