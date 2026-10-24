@@ -47,7 +47,10 @@ import {
   reservedDefFor,
   guestPickable,
   heldCharacters,
+  claimMatches,
+  codeEquals,
   identityDefs,
+  normalizeCode,
   performerPickable,
   performerRefusal,
   takenNames,
@@ -61,7 +64,8 @@ import { hostView, type HostView } from "../src/host-board.ts";
 import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
-import { LOGOUT_ROUTE, Pairing, RESUME_ROUTE } from "./routes/n02.ts";
+import { LOGOUT_ROUTE, Pairing, RESUME_ROUTE, releasePart } from "./routes/n02.ts";
+import { BADGES_ROUTE, BADGE_ROUTE, REJOIN_DECIDE_ROUTE, Rejoin, partCode, partUrl } from "./routes/rejoin.ts";
 import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
@@ -786,6 +790,10 @@ export class EventRuntime {
   private readonly checkin: GuestCheckin;
   // N-02 re-pair a guest + N-10 release a performer part (routes/n02.ts).
   private readonly pairing: Pairing;
+  /** Wave 23: badges, invitations and host-approved asks to get back in. */
+  private readonly rejoin: Rejoin;
+  /** The event's claim secret (claims, badges, cast cards). */
+  private readonly claimSecret: string;
   // K-31a Web Push to guests + booths (push.ts, routes/k31.ts).
   readonly push: PushHub;
   private readonly pushRoutes: PushRoutes;
@@ -864,7 +872,8 @@ export class EventRuntime {
     this.lights = new LightsHub({ store: this.store, ...(init.lights !== undefined ? { projectText: init.lights } : {}), envFile: init.lightsFile !== undefined ? init.lightsFile : defaultLightsFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
     this.random = init.random ?? Math.random;
     if (init.now !== undefined) this.clock = init.now;
-    this.claims = new Claims({ secret: this.resolveClaimSecret(init), now: () => this.clock() });
+    this.claimSecret = this.resolveClaimSecret(init);
+    this.claims = new Claims({ secret: this.claimSecret, now: () => this.clock() });
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
     this.hostViewMs = Math.max(0, init.hostViewMs ?? HOST_VIEW_MS);
     this.snapshotMs = Math.max(0, init.snapshotMs ?? snapshotMsFromEnv());
@@ -936,18 +945,29 @@ export class EventRuntime {
       revokeGuest: (id) => this.revokeGuest(id),
       sessions: this.sessions,
       persistSessions: () => this.persistSessions(),
-      endBooths: (character) => {
-        for (const c of [...this.clients]) {
-          if (c.role !== "prime" || c.id !== character || c.via !== undefined) continue;
-          this.clients.delete(c);
-          try {
-            c.res.end();
-          } catch {
-            /* client already gone */
-          }
-        }
-        this.push.drop((owner) => owner === boothOwner(character));
-        this.pushPresence();
+      endBooths: (character) => this.endBooths(character),
+      joinBase: () => this.joinBase(),
+      eventCode: () => this.codes.event,
+      now: () => this.clock(),
+    });
+    this.rejoin = new Rejoin({
+      sim: () => this.sim,
+      secret: () => this.claimSecret,
+      guestCode: (passcode) => passOk(passcode, this.codes.event),
+      addGuestToken: (token, id) => {
+        this.guestTokens.set(token, id);
+        this.persistGuests();
+      },
+      isPersona: (id) => this.personaOwners.has(id) || id.startsWith("p-"),
+      claimed: (claim) => {
+        const model = this.sim?.model ?? this.declaredModel;
+        if (model === null) return null;
+        return identityDefs(model).find((d) => d.reserved && claimMatches(this.claimSecret, d.name, claim))?.name ?? null;
+      },
+      saveBadges: (entries) => this.store.saveBadges(entries),
+      linked: () => this.pushClientSnapshots(),
+      changed: () => {
+        this.hostWrites += 1;
       },
       joinBase: () => this.joinBase(),
       eventCode: () => this.codes.event,
@@ -1178,6 +1198,8 @@ export class EventRuntime {
       answered: this.answeredFor(id),
       avatars,
       ...(this.wallet !== null ? { wallet: this.wallet.viewFor(id) } : {}),
+      // Wave 23: the printed badge this guest linked (null: none yet).
+      badge: this.rejoin.badges.badgeOf(id),
       // The story clock is stopped: the phone's countdown strip holds still.
       ...(this.phase !== "open" ? { paused: true as const } : {}),
       ...this.showClockField(),
@@ -1399,8 +1421,9 @@ export class EventRuntime {
    *  cache window (and the reused mod view) must not hold the clock back, and
    *  a host's own clock change shows on their next poll. */
   private withShowClock(view: HostView): HostView {
-    const { showClock: _old, ...rest } = view;
-    return { ...rest, ...this.showClockField() };
+    const { showClock: _old, rejoins: _asks, ...rest } = view;
+    // Wave 23: the asks to get back in are read now too.
+    return { ...rest, ...this.showClockField(), rejoins: this.rejoin.desk.pending() };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -3848,6 +3871,22 @@ export class EventRuntime {
     this.store.saveGuests([...this.guestTokens.entries()]);
   }
 
+  /** Close the real booth streams for a character (not directors' panes)
+   *  and unbind its booths' push devices — a part released or taken back. */
+  private endBooths(character: string): void {
+    for (const c of [...this.clients]) {
+      if (c.role !== "prime" || c.id !== character || c.via !== undefined) continue;
+      this.clients.delete(c);
+      try {
+        c.res.end();
+      } catch {
+        /* client already gone */
+      }
+    }
+    this.push.drop((owner) => owner === boothOwner(character));
+    this.pushPresence();
+  }
+
   /** The guest id a token authorizes, or null. */
   private guestOf(token: string | undefined): string | null {
     if (!token) return null;
@@ -4266,6 +4305,7 @@ export class EventRuntime {
     this.guestTokens.clear();
     this.persistGuests();
     this.pairing.clear();
+    this.rejoin.clear();
     this.personaOwners.clear();
     this.caller = null; // C8: the caller claim is memory only, cut by every restart
     // Operator play-as sessions follow the sessions they stand in for: a
@@ -4468,6 +4508,7 @@ export class EventRuntime {
     // lost it).
     this.rederiveHosts();
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
+    this.rejoin.badges.load(this.store.loadBadges());
     const waits = this.store.loadAgentWaits();
     this.requeueAgentThreads(waits);
     this.noteRulingsDue();
@@ -4744,7 +4785,7 @@ export class EventRuntime {
       }
       // `?cues=1` (W-26): the director phone's lean read — just the cue sheet.
       if (url.searchParams.get("cues") === "1") {
-        sendJson(res, 200, cueSheetView(this.modViewNow()));
+        sendJson(res, 200, { ...cueSheetView(this.modViewNow()), rejoins: this.rejoin.desk.pending() });
         return true;
       }
       sendJson(res, 200, this.modViewNow());
@@ -4881,6 +4922,23 @@ export class EventRuntime {
         if (res.statusCode !== 200) this.loginFailures.record(ipOf(req));
         return true;
       }
+    }
+    {
+      // Wave 23: enter by badge / invitation, ask a host (routes/rejoin.ts).
+      // The cheap check first: only a rejoin path is throttled here.
+      if (path.startsWith("/api/guest/enter") || path.startsWith("/api/guest/rejoin")) {
+        if (this.throttled(req, res)) return true;
+        const r = this.rejoin.handlePublic(path, res, body);
+        if (r.handled) {
+          if (r.failed) this.loginFailures.record(ipOf(req));
+          return true;
+        }
+      }
+    }
+    if (path === BADGE_ROUTE) {
+      const t = tokenOf(req, body);
+      this.rejoin.linkFor(res, t === undefined || this.impersonations.has(t) ? null : (this.guestTokens.get(t) ?? null), body);
+      return true;
     }
     if (path === HOMESCREEN_ROUTE) {
       const t = tokenOf(req, body);
@@ -5301,7 +5359,11 @@ export class EventRuntime {
         }
         this.fanout(this.commit("createPerson", id, name));
         this.seen(id, true);
-        sendJson(res, 200, { id, name, token, avatar: this.avatars.keyFor(name) });
+        // Wave 23: the badge they scanned on the way in is theirs now (a
+        // badge someone else holds, or no badge at all, is just ignored).
+        const badge = str(body, "badge").trim() === "" ? null : this.rejoin.freeBadge(str(body, "badge"));
+        if (badge !== null) this.rejoin.link(badge, id);
+        sendJson(res, 200, { id, name, token, avatar: this.avatars.keyFor(name), ...(badge !== null ? { badge } : {}) });
         return true;
       }
       // A guest changes their profile picture: the same options the
@@ -5782,7 +5844,7 @@ export class EventRuntime {
       // --- performer (prime) login: grants the `character` capability ---
       case "/api/prime/login": {
         if (this.throttled(req, res)) return true;
-        const character = str(body, "character");
+        let character = str(body, "character");
         if (!passOk(str(body, "passcode"), this.codes.prime)) {
           this.loginFailures.record(ipOf(req));
           sendJson(res, 403, { error: "bad passcode" });
@@ -5796,6 +5858,20 @@ export class EventRuntime {
         if (model === null) {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
+        }
+        // Wave 23: a cast card's `part` code signs in as its part and takes
+        // it from whichever booth held it (signed out, as by ⏏ Release).
+        const part = normalizeCode(str(body, "part"));
+        if (part !== "") {
+          const def = identityDefs(model).find((d) => codeEquals(part, partCode(this.claimSecret, d.name)));
+          if (def === undefined) {
+            this.loginFailures.record(ipOf(req));
+            sendJson(res, 404, { error: "that cast card isn't one of tonight's" });
+            return true;
+          }
+          character = def.name;
+          if (releasePart(this.sessions, character) > 0) this.persistSessions();
+          this.endBooths(character);
         }
         // A part is one performer's: every *other* session's character is
         // held; re-signing the same booth into the same part is fine.
@@ -5834,7 +5910,8 @@ export class EventRuntime {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
-        const target = str(body, "target");
+        // Wave 23: a guest's badge is their pass.
+        const target = this.rejoin.scanTarget(str(body, "target"));
         if (!this.sim!.persons.has(target)) {
           sendJson(res, 404, { error: "unknown guest" });
           return true;
@@ -6226,6 +6303,14 @@ export class EventRuntime {
    *  allowlist already admitted the route; `codes` leaves out `modPass`). */
   private handleModInner(res: ServerResponse, path: string, body: Record<string, unknown>, by: string, hostOnly: boolean): boolean {
     if (this.pairing.handle(path, res, body)) return true;
+    if (path === REJOIN_DECIDE_ROUTE) {
+      this.rejoin.decide(res, body, by);
+      return true;
+    }
+    if (path === BADGES_ROUTE) {
+      this.rejoin.printable(res, body);
+      return true;
+    }
     if (this.pushRoutes.handleMod(path, res)) return true;
     if (this.crewRoutes.handleMod(res, path, body)) return true; // w18 crews
     switch (path) {
@@ -6479,6 +6564,11 @@ export class EventRuntime {
           codex,
           // W-03: each reserved program's invitation link (its claim token).
           claims: this.claims.links(this.sim?.model ?? this.declaredModel, base, this.codes.event),
+          // Wave 23: each part's own cast-card link (signs in as it, takes it back).
+          castLinks: this.performerParts.map((character) => {
+            const part = partCode(this.claimSecret, character);
+            return { character, part, url: partUrl(base, this.codes.prime, part) };
+          }),
           ...printExtras(this.sim?.model ?? null, base, this.codes.event, this.factsBook()?.raw ?? null),
         });
         return true;
@@ -6973,7 +7063,7 @@ export class EventRuntime {
           return true;
         }
         const as = str(body, "as");
-        const target = str(body, "target");
+        const target = this.rejoin.scanTarget(str(body, "target"));
         if (!this.sim.model.characters.has(as)) {
           sendJson(res, 404, { error: "unknown character" });
           return true;

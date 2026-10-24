@@ -174,8 +174,11 @@ broker or `show` down, only `&announce=1` terminals still speak them.
 ### Release status
 
 The VPS runs `w18b-1021` (wave 18b Stage A, built on top of wave 19, so
-wave 19 is live). Master adds waves 18b Stage B, 20, 20b, 21 and 22, all
-**merged but not shipped**. The show text of waves 18b, 20 and 21 is
+wave 19 is live). Master adds waves 18b Stage B, 20, 20b, 21, 22 and 23
+(getting back in: printed badges, invitations re-entering, ask a host,
+per-part cast cards; the play first-load gate is 148 kB), all **merged
+but not shipped**. Wave 23 needs the badges printed from Run → Print sheet
+(Badges) and the cast cards reprinted (each now carries its own part's QR). The show text of waves 18b, 20 and 21 is
 marked DRAFT and awaits the user's sign-off (the `SIGNOFF-*.md` files).
 
 ### Shipping master (summary)

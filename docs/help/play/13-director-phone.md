@@ -19,6 +19,10 @@ guests' front page has no link to it, so bookmark it). Type the
 every cue you fire is recorded as *Phone · your name*. The phone stays
 signed in until you sign out from **☰**.
 
+A guest asking to get back in from a new phone shows above the cues:
+**🔁 WinZip wants back in**. Check it's them, then **Let them in** or
+**Not them** ([Getting back in](getting-back-in.md)).
+
 ## The sheet
 
 Every director cue is one big button, in running order, with its code

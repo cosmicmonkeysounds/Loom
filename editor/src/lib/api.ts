@@ -6,7 +6,7 @@
 //! carry the session cookie (`credentials: "include"`); in dev the Vite proxy
 //! makes these same-origin so the cookie flows.
 
-import type { PrintCodes } from './print-sheet'
+import type { PrintBadges, PrintCodes } from './print-sheet'
 import type { AgentControl, AgentMindSummary, AgentThought, GuestView, PrimeView, WalletModView } from '@loom/core/views'
 import type { ScreenTerminals } from '@/lib/terminals'
 import type { RecapWire } from '@/components/cockpit/award-suggest'
@@ -346,6 +346,11 @@ export const modApi = {
    *  check-in sign per LOCATION (K-12 — the Run → Print sheet). */
   async codes(eventId: string): Promise<PrintCodes> {
     return await req<PrintCodes>('POST', `/e/${eventId}/api/mod/codes`, {})
+  },
+  /** The printable blank ID badges `from`…`from + count - 1` and who has
+   *  linked each (wave 23, `POST /api/mod/badges`) — the print sheet's Badges. */
+  async badges(eventId: string, from: number, count: number): Promise<PrintBadges> {
+    return await req<PrintBadges>('POST', `/e/${eventId}/api/mod/badges`, { from, count })
   },
   /** The event's push config (`GET /api/push/config`, no auth) — the print
    *  sheet reads `homescreen` (K-31b on) for the door sign's wording. */

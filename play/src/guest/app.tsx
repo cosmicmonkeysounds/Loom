@@ -7,6 +7,7 @@
 //! room and never an exit.
 
 import { useSystemBack } from "../back-gesture.ts";
+import { badgeLinkText, type BadgeLink } from "../rejoin.ts";
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, Sheet, useWide } from "../ui/primitives.tsx";
 import { MomentsAndPins } from "../moments/pins-rail.tsx";
@@ -137,7 +138,7 @@ export function FrameLayout({ className, frameRef, head, taskbar, typing, childr
 }
 
 
-export function GuestApp({ onLeave }: { onLeave: () => void }) {
+export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; badgeLink?: string | null }) {
   const host = usePlayHost();
   const s = useGuestSession();
   const wide = useWide();
@@ -154,6 +155,26 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const [alertsOpen, setAlertsOpen] = useState(false);
   // Sides & crews: which of its sheets is up (the lazy chunk).
   const [sidesWhich, setSidesWhich] = useState<SidesWhich | null>(null);
+  // Wave 23: a printed badge, opened here or scanned in the app — yours
+  // links to you (and says so); someone else's is their pass.
+  const onBadge = async (badge: string): Promise<BadgeLink> => {
+    const r = await s.linkBadge(badge);
+    if (r.kind === "theirs") setSidesWhich({ sheet: "recruit", id: r.id });
+    else if (r.kind !== "unknown") s.alerts.raise(badgeLinkText(r) ?? "", { quiet: true });
+    return r;
+  };
+  const [badgeWant, setBadgeWant] = useState(badgeLink);
+  useEffect(() => {
+    if (badgeWant === null || !s.ready) return;
+    setBadgeWant(null);
+    void onBadge(badgeWant)
+      .then((r) => {
+        if (r.kind === "unknown") s.alerts.raise(badgeLinkText(r) ?? "", { quiet: true });
+      })
+      .catch(() => {});
+    // `onBadge` is rebuilt each render; the link is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [badgeWant, s.ready]);
   const wake = useStartWake();
   // A codex / check-in link opened with no session here: the landing says
   // to type it in the app the guest joined with, unless they pick Join.
@@ -311,6 +332,14 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     if (scan.kind === "pass") {
       setSidesWhich({ sheet: "recruit", id: scan.id });
       return null;
+    }
+    if (scan.kind === "badge") {
+      try {
+        const r = await onBadge(scan.badge);
+        return r.kind === "unknown" ? badgeLinkText(r) : null;
+      } catch (e) {
+        return e instanceof Error ? e.message : "Couldn't link that badge — try again.";
+      }
     }
     // The dialog's chunk loads beside the request (the sheet prefetched it).
     let o;
@@ -685,6 +714,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
             nav.setOverlay(null);
             setAlertsOpen(true);
           }}
+          onBadge={() => nav.go({ to: "scan" })}
           onClose={() => nav.setOverlay(null)}
         />
       )}

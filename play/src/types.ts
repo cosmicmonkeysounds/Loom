@@ -212,6 +212,9 @@ export interface PersonCard {
 export interface GuestView {
   id: string;
   name: string;
+  /** Wave 23: the printed badge number this guest linked; null when none;
+   *  absent from an older server. */
+  badge?: number | null;
   /** The story's title + theme — every piece of chrome comes from the story. */
   title?: string;
   theme?: string;

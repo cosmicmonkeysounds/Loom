@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { adoptResume, resumeFromSearch, resumeToAdopt, storedGuestName, withoutResume } from "../src/resume.ts";
+import { resumeFromSearch, resumeToAdopt, storedGuestName, withoutResume } from "../src/resume.ts";
+import { adoptResume } from "../src/rejoin-calls.ts";
 
 function fakeFetch(routes: Record<string, { status: number; body: unknown }>) {
   const calls: Array<{ url: string; init?: RequestInit }> = [];

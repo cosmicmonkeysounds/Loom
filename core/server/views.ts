@@ -386,6 +386,9 @@ export interface SpaceSnapshot {
 export interface GuestView {
   id: string;
   name: string;
+  /** Wave 23: the printed badge number this guest linked; null when none.
+   *  Set by the event server (`routes/rejoin.ts`), absent from a bare sim view. */
+  badge?: number | null;
   /** The story's title + theme — the client's chrome comes from the story. */
   title: string;
   theme: string;

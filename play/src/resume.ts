@@ -11,7 +11,8 @@
 //! Safari minted. iOS reopens an icon at its `start_url`, so a `home` link on
 //! a phone already holding a session is the spent nonce coming round again —
 //! dropped silently, never a "switch this phone?" question.
-//! Pure helpers + an injectable fetch — unit-tested in `test/resume.test.ts`.
+//! Pure helpers here; the trade itself (`adoptResume`) is in the lazy
+//! `rejoin-calls.ts` chunk. Unit-tested in `test/resume.test.ts`.
 
 /** The re-pair link a scanned QR carries, or null. */
 export interface ResumeLink {
@@ -70,41 +71,4 @@ export function resumeToAdopt(link: ResumeLink | null, storedGuest: string | nul
   if (link === null) return null;
   if (link.home === true && ((storedGuest ?? "") !== "" || (storedPrime ?? "") !== "")) return null;
   return link;
-}
-
-const EXPIRED = "That re-pair code has expired or was already used — ask the director for a new one.";
-const HOME_EXPIRED = "This Home Screen icon's sign-in has run out. Delete the icon, open the party in Safari, and add it to your Home Screen again.";
-
-/**
- * Turn a resume link into a guest session: resolve the event code, then
- * trade the pair code for a token. Throws a sentence a guest can read when
- * the event code or the pair code is no good.
- */
-export async function adoptResume(link: ResumeLink, fetchFn: typeof fetch = fetch): Promise<AdoptedGuest> {
-  const resolved = await fetchFn("/api/resolve-code", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code: link.code }),
-  });
-  if (!resolved.ok) throw new Error("That link's event code isn't open any more.");
-  const ev = (await resolved.json()) as { eventId?: unknown; title?: unknown };
-  if (typeof ev.eventId !== "string") throw new Error("That link's event code isn't open any more.");
-  const traded = await fetchFn(`/e/${encodeURIComponent(ev.eventId)}/api/guest/resume`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ pair: link.pair }),
-  });
-  const expired = link.home === true ? HOME_EXPIRED : EXPIRED;
-  if (traded.status === 429) throw new Error("Too many tries — wait a few minutes, then scan again.");
-  if (!traded.ok) throw new Error(expired);
-  const who = (await traded.json()) as { id?: unknown; name?: unknown; token?: unknown };
-  if (typeof who.id !== "string" || typeof who.token !== "string") throw new Error(expired);
-  const title = typeof ev.title === "string" ? ev.title : undefined;
-  return {
-    id: who.id,
-    name: typeof who.name === "string" ? who.name : who.id,
-    token: who.token,
-    eventId: ev.eventId,
-    ...(title !== undefined ? { title } : {}),
-  };
 }

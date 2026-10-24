@@ -33,22 +33,23 @@ confronting a marked one.
 
 ## Signing in
 
-Scan your **cast card** (or the host's performer QR): it opens the
-performer sign-in with the passcode filled in. Typing it works too —
-pick **I'm a Performer** and enter the **performer passcode** from the
-host. The story's **parts** appear — every
-character with something to do, with their pictures — tap yours. A part
-is one booth's: a greyed-out name is already taken by another
-performer. You now speak *as* that character everywhere.
+Scan your **cast card** with your phone's camera: it signs you straight
+in as your part (each card is one part's). Typing works too — pick
+**I'm a Performer**, enter the **performer passcode** from the host, and
+the story's **parts** appear — every character with something to do,
+with their pictures — tap yours. A part is one booth's: a greyed-out
+name is already taken by another performer. You now speak *as* that
+character everywhere.
 
-Phone died, or you need to swap to a loaner? Your part is still held by
-the old phone, so ask a host or the director to **release** it (a host's
-console → More → Performer parts → **⏏ Release**, or Run → the
-character's Inspector). Then sign in on the new phone with the performer
-code and tap your part again: everything is where you left it. A booth
-whose part was released (or that the show's going live signed out) says
-*"Your booth was signed out (a director released your part, or the show
-went live) — sign in again with your passcode."* A phone that wakes late
+Phone died, or you need to swap to a loaner? **Scan your cast card with
+the new phone**: it takes your part back and signs the old phone out,
+and everything is where you left it. Without the card, ask a host or the
+director to **release** the part (a host's console → More → Performer
+parts → **⏏ Release**, or Run → the character's Inspector), then sign in
+with the passcode and tap your part again. A booth signed out this way
+(or by the show going live) says *"Your booth was signed out (your part
+signed in on another phone, a director released it, or the show went
+live) — sign in again with your passcode or your cast card."* A phone that wakes late
 in the night gets back every readout, every guest's message, your cast
 thread and every card still waiting; only the busy rooms are cut to
 their last few hundred lines.

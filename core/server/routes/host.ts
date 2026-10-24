@@ -43,6 +43,8 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   "/api/mod/claim/unlock",
   "/api/mod/guest/gone",
   "/api/mod/guest/pair",
+  // Wave 23: approve / deny a guest's ask to get back in (routes/rejoin.ts).
+  "/api/mod/guest/rejoin",
   "/api/mod/prime/release",
   "/api/mod/scan",
   // The doors (fix round, C2): open them (`/api/mod/start` — also the resume

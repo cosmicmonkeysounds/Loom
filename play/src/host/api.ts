@@ -31,6 +31,8 @@ export const HOST_ROUTES = [
   "/api/mod/claim/unlock",
   "/api/mod/guest/gone",
   "/api/mod/guest/pair",
+  // Wave 23: let a guest back in as their program (or not).
+  "/api/mod/guest/rejoin",
   "/api/mod/prime/release",
   "/api/mod/act",
   "/api/mod/scan",
@@ -166,6 +168,8 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
     /** 🔓 a reserved program for `minutes` (a lost invitation). */
     unlockClaim: (character: string, minutes = 2) => post("/api/mod/claim/unlock", { character, minutes }),
     gone: (id: string, gone: boolean) => post("/api/mod/guest/gone", { id, gone }),
+    /** Wave 23: answer a guest's ask to get back in. */
+    rejoin: (request: string, approve: boolean) => post("/api/mod/guest/rejoin", { request, approve }),
     pair: async (id: string): Promise<PairCode> => {
       const r = await post("/api/mod/guest/pair", { id });
       return { name: str(r["name"]), url: str(r["url"]), expiresAt: typeof r["expiresAt"] === "number" ? r["expiresAt"] : 0 };

@@ -21,12 +21,12 @@ Run from the repo root (`pnpm install` once covers every JS package).
 | `pnpm --filter loom-play build` | `play/dist`, which the event server serves at `/` (`LOOM_APP_DIST` overrides) |
 | `pnpm --filter loom-play test` | vitest over `test/` |
 | `pnpm --filter loom-play typecheck` | `tsc --noEmit` |
-| `pnpm --filter loom-play size` | `scripts/first-load.mjs`: the guest's first load, gzipped, against the 145 kB gate (needs a build) |
+| `pnpm --filter loom-play size` | `scripts/first-load.mjs`: the guest's first load, gzipped, against the 148 kB gate (needs a build) |
 | `pnpm dev` (root) | builds play + terminal + reinstall and runs the server + editor (`scripts/dev.mjs`); `--play` adds this Vite |
 
 `scripts/ops/predeploy.sh` runs `pnpm -r typecheck`, every package's tests,
 and `pnpm --filter loom-play build && node play/scripts/first-load.mjs
---max-kb 145`. A change that pushes the guest's first load over 145 kB
+--max-kb 148`. A change that pushes the guest's first load over 148 kB
 fails predeploy.
 
 ## How a session works
@@ -48,11 +48,25 @@ fails predeploy.
   (`lifecycle.ts`). A director's re-pair link (`?code=&pair=`) is a
   single-use credential, stripped from the URL in `main.tsx` before render
   (`resume.ts`).
+- **Getting back in** (wave 23, `rejoin.ts` + the lazy `rejoin-calls.ts`,
+  server `core/server/routes/rejoin.ts`). A printed badge
+  (`?code=&badge=`) links to a guest at join or from Me (🪪) and then
+  signs them in on any phone (`/api/guest/enter`) and is their pass at a
+  booth (`scan.ts`); a signed-in guest opening someone else's badge gets
+  the Recruit sheet, never a switch. A featured guest's `?claim=`
+  re-enters once joined. The join screen's *Already playing? Get back in*
+  (`guest/get-back-in.tsx`, lazy) scans / types a badge or asks a host
+  (`/api/guest/rejoin` → Needs and the director phone's *Let them in*). A
+  cast card (`?code=&part=`) signs in as its part and takes it from a lost
+  booth. `main.tsx` strips `badge` / `part` before render; `ui.tsx` runs
+  the entry (`cardPlan`). The page's store falls back to memory when
+  `localStorage` is blocked (`host.ts`).
 - **Streams reopen.** `client.ts` `openChatFeed` probes a dead
   `EventSource` (a Caddy 502 during a restart) and reopens on a 1 s → 15 s
   jittered backoff; the tray's live dot reads *reconnecting…*.
 - **Deep links.** `?unlock=` (codex), `?checkin=` (room sign), `?room=` /
-  `?go=` (a push tap or an exit), `?claim=`, `?pair=`, `?role=director`.
+  `?go=` (a push tap or an exit), `?claim=`, `?pair=`, `?badge=`,
+  `?part=`, `?role=director`.
   A link opened with no session lands on `LinkLanding`
   (`guest-scan.tsx`), never the picker.
 
@@ -129,7 +143,8 @@ draft, go live, end, the var table, the log, the Mind.
 ```
 src/
   ui.tsx · app-role.ts   role chooser + which app opens; lazy booth / director / help
-  main.tsx               entry; strips ?pair= before render
+  main.tsx               entry; strips ?pair= / ?badge= / ?part= before render
+  rejoin.ts · rejoin-calls.ts   getting back in: badge / cast-card links (first load), enter / ask-a-host / re-pair calls (lazy)
   types.ts               mirror of core's views + chat (keep in step with core/server/{views,chat}.ts)
   client.ts              api() POST + useChatStream / openChatFeed (SSE)
   host.ts · embed.tsx · embed-css.ts   the host seam and the shadow-root embed
@@ -150,7 +165,7 @@ src/
   help.tsx · help-lazy.tsx         Help window over docs/help/play (lazy)
   chat.tsx · guest.tsx · performer.tsx · session.ts · threads.ts   barrels for pre-wave-13 names
 public/                  sw.js (push only), manifest.webmanifest, pictures/ (Trabolta's two SVGs)
-scripts/first-load.mjs   the 145 kB first-load gate
+scripts/first-load.mjs   the 148 kB first-load gate
 test/                    vitest; *.test.ts(x) per module and lane
 ```
 
@@ -205,7 +220,7 @@ entry points (and reads `play/07-performers.md`).
 
 ## Gotchas
 
-- **The 145 kB gate.** Do not import the booth, the host dock, the
+- **The 148 kB gate.** Do not import the booth, the host dock, the
   director phone, Help, `jsqr` or `qrcode` statically from anything the
   guest app loads at start. `test/first-load.test.ts` pins the lazy
   imports; `pnpm --filter loom-play size` measures the real number after a

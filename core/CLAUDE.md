@@ -25,7 +25,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
 | `server/views.ts`, `chat.ts` | pure projections: `GuestView` / `PrimeView` / `ModView`, and SimEvent → channel messages. The editor imports both (`@loom/core/views`, `@loom/core/chat`) |
-| `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release) |
+| `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part cast cards) |
 | `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `collab.ts` (`CollabHub`, Yjs) |
 | `server/` control plane | `config.ts` (env), `boot.ts`, `db/` (`queries.ts`: access is `getProjectFor` / `listProjectsFor`), `auth-server.ts` (BetterAuth), `projects.ts`, `events-api.ts`, `collab-api.ts`, `mail.ts`, `migrate.ts` |
 | `server/store.ts` | the per-event state dir: journal, codes, sessions, meta (scenario source + phase), project snapshots |
@@ -64,7 +64,7 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   messages with the same `seq`s. Never make a replayed path depend on
   wall time, `Math.random`, or state that is not in the journal.
 - **Memory-only things say so.** Poses, voice, camera frames, pair
-  codes, claim unlocks, the King's per-visit hit, typing indicators and
+  codes, rejoin asks, claim unlocks, the King's per-visit hit, typing indicators and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old

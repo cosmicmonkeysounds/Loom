@@ -276,7 +276,7 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen, o
 
   const bar = nextBar(rows, view.countdowns, nowMs, runs);
   const armedHere = bar.kind === "next" && desk.armed?.id === bar.row.id;
-  const needs = groupNeeds(view.needs).length + (refused !== null ? 1 : 0) + (wantedNeed(hostWanted(view)) !== null ? 1 : 0);
+  const needs = groupNeeds(view.needs).length + (refused !== null ? 1 : 0) + (wantedNeed(hostWanted(view)) !== null ? 1 : 0) + (view.rejoins?.length ?? 0);
   // The countdown the bar's first line already reads ("nothing to press …
   // ⏱ Midnight in 59:28") leaves the strip on a phone.
   const strip = hostStrip(view, layout, nowMs, needs, bar.kind === "countdown", callers ? callerText(caller, [me], view.parts.map((p) => p.id)) : null);

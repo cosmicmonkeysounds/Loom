@@ -15,10 +15,13 @@ import type { TypingNotice } from "./typing.ts";
  *  (401 / 404 after the run restarted). */
 export class ApiError extends Error {
   readonly status: number;
-  constructor(message: string, status: number) {
+  /** The refusal's whole body (wave 23: a badge's 409 names its holder). */
+  readonly data: Record<string, unknown>;
+  constructor(message: string, status: number, data: Record<string, unknown> = {}) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.data = data;
   }
 }
 
@@ -58,7 +61,7 @@ export async function api<T = Record<string, unknown>>(path: string, body?: unkn
     body: JSON.stringify(body ?? {}),
   });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
+  if (!res.ok) throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status, data);
   return data as T;
 }
 

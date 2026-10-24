@@ -303,7 +303,7 @@ Mission. Mark each ✅ / ✏ / ❌ like the rest.
 
 Also on the phone:
 
-- **Leave the event** (Start's last item) asks first: *"Leave the event? This phone stops being {name}."*
+- **Leave the event** (Start's last item) asks first: *"Leave the event? This phone stops being {name}. You stay {name} — to come back, scan your badge or ask a host."*
 - **The full-screen pass** says under the QR: *"Not scanning? Turn your screen brightness up."*
 - **Chats**: the lobby is *📜 Chat log* · *Everything the house said tonight*;
   a wide screen with no room open says *Pick a chat, or follow your mission.*

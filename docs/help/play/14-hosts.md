@@ -76,7 +76,11 @@ five tabs:
   Then a filter box and the cues by act, NEXT highlighted, fired cues
   dimmed. It shares one arm with the NEXT bar: arm on either, fire on
   either.
-- **Needs (n)** — what is waiting on a host. First, while programs are
+- **Needs (n)** — what is waiting on a host. At the very top, a guest
+  asking to get back in from a new phone: **🔁 WinZip wants back in**.
+  Check it's really them (their face, their badge or pass), then tap
+  **✅ Let them in** (their phone signs straight in as their program) or
+  **✋ Not them** ([Getting back in](getting-back-in.md)). Then, while programs are
   marked: **🚨 n marked · m nobody on it** (tap it for the Antivirus'
   Wanted board, read-only: claims are theirs, so radio an Antivirus). Then
   your press the story

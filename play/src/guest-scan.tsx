@@ -21,6 +21,7 @@ import { useEffect, useRef, useState } from "react";
 import { useBigOnScreen, useMomentsHold } from "./moments/provider.tsx";
 import { checkinFromSearch } from "./checkin.ts";
 import { unlockFromSearch } from "./codex.ts";
+import { badgeFromText } from "./rejoin.ts";
 import type { CameraState } from "./scan.ts";
 import { CameraScanner } from "./scanner.tsx";
 
@@ -32,6 +33,8 @@ export type GuestScan =
   | { kind: "checkin"; at: string }
   /** Another guest's pass (wave 18, F3): the Recruit sheet. */
   | { kind: "pass"; id: string }
+  /** A printed badge (wave 23): yours links to you; someone else's is their pass. */
+  | { kind: "badge"; badge: string }
   /** Anything else: say what it is, and keep the camera on. */
   | { kind: "note"; text: string };
 
@@ -70,6 +73,8 @@ export function guestScan(raw: string, meId: string | null = null): GuestScan {
   if (checkin !== null) return { kind: "checkin", at: checkin };
   const p = url.searchParams;
   if ((p.get("pair") ?? "").trim() !== "") return { kind: "note", text: SCAN_PAIR };
+  const badge = badgeFromText(p.get("badge") ?? "");
+  if (badge !== null) return { kind: "badge", badge };
   const pass = p.get("pass") ?? p.get("guest");
   if (pass !== null && GUEST_ID.test(pass)) return passScan(pass, meId);
   if (p.get("role") === "director") return { kind: "note", text: SCAN_DIRECTOR };
@@ -184,7 +189,7 @@ export function ScanSheet({
     if (busy.current) return;
     if (hit.kind === "note") return setNote(hit.text);
     busy.current = true;
-    setNote(hit.kind === "unlock" ? "🔓 Unlocking…" : hit.kind === "pass" ? "🎟 Reading the pass…" : "📍 Checking in…");
+    setNote(hit.kind === "unlock" ? "🔓 Unlocking…" : hit.kind === "pass" ? "🎟 Reading the pass…" : hit.kind === "badge" ? "🪪 Reading the badge…" : "📍 Checking in…");
     void onScan(hit).then(
       (said) => {
         busy.current = false;

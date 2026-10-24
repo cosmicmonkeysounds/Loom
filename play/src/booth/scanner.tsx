@@ -13,7 +13,7 @@
 import { showClockOf } from "../show-clock.ts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PrimeSession } from "../session/prime.ts";
-import { cameraProblem, parseScan, scanProblem, typedTarget, type CameraState } from "../scan.ts";
+import { BADGE_NOT_LINKED, cameraProblem, parseScan, scanProblem, typedTarget, type CameraState } from "../scan.ts";
 import { CameraScanner } from "../scanner.tsx";
 import { CardTitle, GuestCardBody, type CardSeed } from "./card.tsx";
 import { BoothLayer } from "./layer.tsx";
@@ -123,12 +123,12 @@ export function ScannerScreen({
     else el.removeAttribute("inert");
   }, [card]);
 
-  const doScan = (id: string): Promise<boolean> => {
+  const doScan = (id: string, badge = false): Promise<boolean> => {
     if (!id || busy) return Promise.resolve(false);
     setErr("");
-    setNote(`Scanning ${id}…`);
+    setNote(badge ? "Scanning the badge…" : `Scanning ${id}…`);
     setBusy(true);
-    onCardGuest?.(id);
+    if (!badge) onCardGuest?.(id);
     return session.scan(id).then(
       (r) => {
         setBusy(false);
@@ -146,7 +146,8 @@ export function ScannerScreen({
       (e) => {
         setBusy(false);
         setNote("");
-        setErr(scanError(e, session.view));
+        // Wave 23: a blank badge resolves to nobody yet.
+        setErr(badge && /unknown guest/iu.test(e instanceof Error ? e.message : "") ? BADGE_NOT_LINKED : scanError(e, session.view));
         return false;
       },
     );
@@ -159,7 +160,7 @@ export function ScannerScreen({
       return;
     }
     if (!passAccepted(card !== null, busy, gate.allows(hit.id))) return;
-    void doScan(hit.id);
+    void doScan(hit.id, hit.badge === true);
   };
   const next = () => {
     if (card !== null) gate.closed(card.id);

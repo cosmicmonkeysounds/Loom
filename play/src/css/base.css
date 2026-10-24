@@ -971,6 +971,11 @@ footer {
 .cue-code.act { background: var(--navy); color: var(--white); margin-right: 4px; }
 /* Wave 10: the pinned top — the strip (act · phase · soonest countdown ·
    up to 3 watched values) and the NEXT bar, which scrolls to its row. */
+/* Wave 23: guests asking to get back in, above the director phone's cues. */
+.dir-rejoins { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-bottom: 1px solid var(--line); background: var(--code-bg); }
+.dir-rejoin { display: flex; flex-direction: column; gap: 6px; }
+.dir-rejoin-acts { display: flex; gap: 8px; }
+.dir-rejoin-acts .choice { flex: 1; margin: 0; }
 .cue-pinned { flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px 4px; border-bottom: 1px solid var(--line); }
 .cue-strip { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 700 12px var(--ui-font); color: var(--muted-ink); font-variant-numeric: tabular-nums; }
 .cue-strip span + span::before { content: "·"; margin-right: 10px; opacity: 0.6; }

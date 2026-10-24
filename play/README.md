@@ -426,7 +426,7 @@ run a single process — `@loom/core serve` — on one origin, no Vite.
 | `pnpm preview`   | preview the built app                 |
 | `pnpm typecheck` | `tsc --noEmit`                        |
 | `pnpm test`      | vitest (`test/`)                      |
-| `pnpm size`      | the guest's first load against the 145 kB gate (after a build) |
+| `pnpm size`      | the guest's first load against the 148 kB gate (after a build) |
 
 ## Layout
 
@@ -464,7 +464,7 @@ src/
   main.tsx      # entry
   styles.css    # imports the css/ files
 public/         # sw.js (push-only service worker, no fetch handler), manifest.webmanifest, pictures/
-scripts/        # first-load.mjs (the 145 kB gate)
+scripts/        # first-load.mjs (the 148 kB gate)
 test/           # vitest: crawl · moments · taskbar · booth · host · rooms · help · widgets · wallet · pins · push · floor-css · browser-floor · …
 index.html      # Vite entry
 vite.config.ts  # react plugin + dev proxy to LOOM_SERVER (default :7000)

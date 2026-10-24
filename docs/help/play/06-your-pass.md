@@ -20,7 +20,8 @@ objective needs your pass, the Pass button blinks and Mission has a big
 Tap **your picture** at the top left (or the banner at the top of ⊞ Start)
 for **Me**: your picture and name, where you are, your 🪙 balance, your
 **badges** (◆ your side, the story's groups you're in, ◇ your crew; *No
-badges yet.* before any), **🎟 Show my pass**, **🖼 Change my picture**,
+badges yet.* before any), **🎟 Show my pass**, **🪪 Link my badge** (or
+*Badge linked*), **🖼 Change my picture**,
 **🚪 Sides & crews**, and the **settings**: *Keep my screen on* and *Get
 alerts on this phone*. Joining a side or a crew adds a badge; nothing ever
 replaces the sheet.
@@ -28,7 +29,8 @@ replaces the sheet.
 ## The QR pass
 
 That QR code is *you*. Performers **scan it** to pull you into the
-story — interrogations, blessings, capture, secret missions. When
+story — interrogations, blessings, capture, secret missions. Your
+linked ID badge works the same way ([Getting back in](getting-back-in.md)). When
 someone in costume asks to scan you: let them. That's the game finding
 you. Your phone draws it itself, so it shows even when the house is
 busy or the Wi-Fi is weak.
