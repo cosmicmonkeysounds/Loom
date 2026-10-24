@@ -46,8 +46,8 @@ wallet cards, the chat seqs), so an old journal must not play the new text.
    first. A tablet ticked on the House sound card lives in the event's
    `audio-announce.json` until *Save to project*. Restart every other
    non-ended event.
-4. **The house Mac** (`scripts/house-mac/audio.md`): `git pull`; retire the
-   alexa job (`scripts/house-mac/install-alexa.sh --uninstall`);
+4. **The house Mac** (`scripts/house-macbook/audio.md`): `git pull`; retire the
+   alexa job (`scripts/house-macbook/install-alexa.sh --uninstall`);
    `uv run stagehand sounds placeholders`; `uv run stagehand check --only
    audio` (32 / 30, the layout not moved, the placeholders listed);
    `uv run stagehand launchd install --job audio`; `launchd restart --job
@@ -435,7 +435,7 @@ spaces>."*
 Every cast pack this wave changed (`git diff --stat b5c1c4be..oct31-w18/integ
 -- cast-packs`):
 - `cast-packs/README.md`
-- crew: `crew/director.md`, `crew/second-director.md`, `crew/tech-operator.md` (the router's `audio` job; the runbook is `scripts/house-mac/audio.md`)
+- crew: `crew/director.md`, `crew/second-director.md`, `crew/tech-operator.md` (the router's `audio` job; the runbook is `scripts/house-macbook/audio.md`)
 - featured (Who you know): `featured/broken-ask-jeeves.md` (+ What happened on the line, Glitch menu), `featured/bugdom.md`, `featured/draftkings.md`, `featured/microsoft-excel.md`, `featured/ms-paint.md`, `featured/openoffice.md`, `featured/pong.md`, `featured/runescape.md`, `featured/vlc.md`
 - performers: `performers/clippy.md`, `performers/task-manager.md`, `performers/adobe-acrobat.md` (+ the truth.txt printout's new first line), `performers/recycling-bin.md`, `performers/norton.md`, `performers/mcafee.md`, `performers/password-manager.md`, `performers/cra-agent.md`, `performers/installation-wizard.md` (*the will of Jean Trabolta, Sole Owner and Founder of Maps and Ducks*)
 - **The printed Bingo card**, without *"Do not write names: use your computer memory."* and without *"Write every name down clearly – it is very important to get a Bingo!"* (O1: not in the repo; strike it from the print).

@@ -36,7 +36,7 @@
 #   on this Mac (stagehand — `mqtt.host` below — Zigbee2MQTT, the router),
 #   and password-only on the LAN at :1884 (user `props`) for the network
 #   props (the WLED controllers, the ESP32) —
-#   scripts/house-mac/audio.md → "Lock down the broker".
+#   scripts/house-macbook/audio.md → "Lock down the broker".
 #   The story server is the VPS (https://app.mapsandducks.com); this machine
 #   only dials out. If the house internet dies, fire the cues by hand: the
 #   sounds with `uv run stagehand sounds play <name>` (or
@@ -86,7 +86,7 @@
 #   tab). Run → ■ Stop house sounds (or `stagehand sounds stop`) fades them.
 #
 # RULES OF THUMB (docs/loom-show-control.md → the sensor map + retained topics;
-# the house Mac runbook is scripts/house-mac/audio.md)
+# the house Mac runbook is scripts/house-macbook/audio.md)
 #   - retain: false on every /set and /api command (a retained "OFF" survives
 #     into tomorrow night). That is the default, so no rule sets it.
 #   - Quote "on" inside WLED payloads: a bare `on:` key is YAML boolean true.
@@ -604,8 +604,8 @@ show:
 # in THIS file: the show job reads `play_sounds`):
 #   uv run stagehand launchd install --job audio --config trapped.house.yaml
 # The `alexa` announcement player is retired for this show (wave 18b; its
-# module code stays): `scripts/house-mac/install-alexa.sh --uninstall` first,
-# since the router and alexa share one voice lock (scripts/house-mac/audio.md).
+# module code stays): `scripts/house-macbook/install-alexa.sh --uninstall` first,
+# since the router and alexa share one voice lock (scripts/house-macbook/audio.md).
 audio:
   sounds_dir: media/sounds        # stagehand/media/sounds/<name>.wav — git-ignored; placeholders
                                   # from `uv run stagehand sounds placeholders`, real files replace
@@ -629,8 +629,8 @@ audio:
 # --- the house lights (wave 20: the server room's RGB bulb, lights.json) ---
 # The fixtures and Trabolta's heart_* looks live in the event's lights.json
 # (the map editor's 💡 Lights tab); this section only says where Zigbee2MQTT
-# is. Uncomment it once Z2M runs on this Mac (scripts/house-mac/zigbee.md),
-# then (scripts/house-mac/lights.md):
+# is. Uncomment it once Z2M runs on this Mac (scripts/house-macbook/zigbee.md),
+# then (scripts/house-macbook/lights.md):
 #   uv run stagehand check --config trapped.house.yaml --only lights
 #   uv run stagehand launchd install --job lights --config trapped.house.yaml
 #   uv run stagehand launchd restart --job show   # it hands the heart_* cues over

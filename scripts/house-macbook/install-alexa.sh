@@ -3,14 +3,14 @@
 #
 # RETIRED for Trapped in the Internet (wave 18b): the speaker router (the
 # `audio` launchd job) speaks the announcements now, and the two share one
-# voice lock — run `--uninstall` once (scripts/house-mac/audio.md). The
+# voice lock — run `--uninstall` once (scripts/house-macbook/audio.md). The
 # install path stays for a house that still runs the player (a YAML with an
 # `alexa:` section).
 #
-#   scripts/house-mac/install-alexa.sh                    stagehand/house.yaml
-#   scripts/house-mac/install-alexa.sh --config <yaml>    another machine config
-#   scripts/house-mac/install-alexa.sh --dry-run          print the plist, load nothing
-#   scripts/house-mac/install-alexa.sh --uninstall        stop + remove the agent
+#   scripts/house-macbook/install-alexa.sh                    stagehand/house.yaml
+#   scripts/house-macbook/install-alexa.sh --config <yaml>    another machine config
+#   scripts/house-macbook/install-alexa.sh --dry-run          print the plist, load nothing
+#   scripts/house-macbook/install-alexa.sh --uninstall        stop + remove the agent
 #
 # Logs: ~/Library/Logs/stagehand-alexa.log   Restart: launchctl kickstart -k gui/$UID/com.mapsandducks.stagehand-alexa
 set -euo pipefail
@@ -53,7 +53,7 @@ if ! grep -q '^alexa:' "$CONFIG"; then
 FAIL $CONFIG has no alexa: section — the speaker router speaks the
   announcements (wave 18b). Retire the player instead:
   $0 --uninstall
-  then: uv run stagehand launchd install --job audio --config <yaml>  (scripts/house-mac/audio.md)
+  then: uv run stagehand launchd install --job audio --config <yaml>  (scripts/house-macbook/audio.md)
 MSG
   exit 2
 fi

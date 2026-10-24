@@ -73,7 +73,7 @@ Where everything is:
 
 ## Retire the alexa job, switch the router on (once)
 
-1. `scripts/house-mac/install-alexa.sh --uninstall` (or
+1. `scripts/house-macbook/install-alexa.sh --uninstall` (or
    `launchctl bootout gui/$UID/com.mapsandducks.stagehand-alexa`, then
    remove `~/Library/LaunchAgents/com.mapsandducks.stagehand-alexa.plist`).
    The router and alexa share one voice lock, so a leftover alexa agent
@@ -120,7 +120,7 @@ Where everything is:
    `uv run stagehand sounds play printer_grind --config trapped.house.yaml`.
 
 **Rollback:** check out the previous `trapped.house.yaml` and reinstall
-alexa (`scripts/house-mac/install-alexa.sh`), then restart the `show` job.
+alexa (`scripts/house-macbook/install-alexa.sh`), then restart the `show` job.
 
 ## Lock down the broker
 

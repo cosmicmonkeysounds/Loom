@@ -451,7 +451,7 @@ rig: no projectors, no TouchDesigner, no vision layer. Its config is
 the house Mac as its own launchd job (`uv run stagehand launchd install
 --job show --config trapped.house.yaml`; the agents worker is a second
 job on the same Mac, and the `alexa` player a third, a per-user
-LaunchAgent installed by `scripts/house-mac/install-alexa.sh`). The story
+LaunchAgent installed by `scripts/house-macbook/install-alexa.sh`). The story
 server is the VPS; the house only dials out.
 
 **The hardware.** One house Mac (static IP, `192.168.8.10`, hard-coded in
@@ -460,7 +460,7 @@ the server-room firmware) runs Mosquitto + Zigbee2MQTT, stagehand (`show`,
 speakers (MOTU). Mosquitto has two listeners: anonymous on
 `127.0.0.1:1883` for what runs on the Mac (stagehand, Z2M, the `alexa`
 module) and password-only on the LAN at `:1884` (user `props`) for the
-WLED controllers and the ESP32 (`scripts/house-mac/audio.md` → *Lock down
+WLED controllers and the ESP32 (`scripts/house-macbook/audio.md` → *Lock down
 the broker*). Zigbee bulbs and plugs are grouped one group per
 room plus a whole-house group:
 `house`, `living` (The Desktop), `kitchen` (The Start Bar), `backyard`
@@ -480,7 +480,7 @@ player; nothing in the fiction is called that): it reads `show/announce` (and `s
 and plays a chime + the line through the MOTU to the living room and the
 kitchen in the Mac's own voice (`say`, `engine: say` — no server
 round-trip; `engine: server` opts in to the VPS's `/api/mod/tts`;
-`scripts/house-mac/audio.md`). The same announcement rides the event
+`scripts/house-macbook/audio.md`). The same announcement rides the event
 server's screen state (`/api/screen/state` → `announce`), so a wall
 terminal provisioned with `&announce=1` chimes and says it in its own
 voice too, after any line its character is saying (N-09, decision #20 —
@@ -502,12 +502,12 @@ in stagehand, on the ESP32 or on the M4 drives it.
 `audio.json`, `lights.json` (the map editor's 💡 Lights tab; schema in
 `@loom/house` `house/src/lights.ts`), places the lights the story drives on
 the map and defines **looks** keyed by cue name; stagehand's `lights` job
-(`scripts/house-mac/lights.md`) plays them on Zigbee2MQTT / WLED with timed
+(`scripts/house-macbook/lights.md`) plays them on Zigbee2MQTT / WLED with timed
 steps, never under a safety fixture's floor, and catches up from the story's
 screen state after any reconnect. This wave's file holds one fixture, the
 server room's RGB bulb `server_room_rgb` (Trabolta's `heart_*` looks); every
 other light is still the `show` rules below. Zigbee2MQTT on the house Mac,
-its CC2652P coordinator and the pairing: `scripts/house-mac/zigbee.md`.
+its CC2652P coordinator and the pairing: `scripts/house-macbook/zigbee.md`.
 
 **Story → house.** The story only emits directives (the full registry
 is in the design spec §2.13):

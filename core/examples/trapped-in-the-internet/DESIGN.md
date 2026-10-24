@@ -1444,7 +1444,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | rave | Sad Confession (after the motorcycle) |
 | hand_jive | The Hand Jive ("Born to Hand Jive") |
 
-**Other directives:** `do announce "…"` (the house announcements — since wave 18b the house router, stagehand's `audio` module (the `alexa` job is retired); runbook `scripts/house-mac/audio.md`, `docs/loom-show-control.md`) ·
+**Other directives:** `do announce "…"` (the house announcements — since wave 18b the house router, stagehand's `audio` module (the `alexa` job is retired); runbook `scripts/house-macbook/audio.md`, `docs/loom-show-control.md`) ·
 `do door server_room, state: locked` at Power On only (the ring indicator; the real door has a standalone keypad lock nothing drives, wave 7; `unlocked` is never sent).
 
 ### 2.14 Registry addenda (used by §3)

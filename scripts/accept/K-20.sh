@@ -2,7 +2,7 @@
 # K-20 — the house announcements and story sounds through the house speakers
 # (OCT31.md §5). Wave 18b: the player is stagehand's `audio` module (the
 # router, launchd job `audio`) on the 828x; the old `alexa` job is retired
-# (scripts/house-mac/audio.md → *Retire the alexa job, switch the router on*).
+# (scripts/house-macbook/audio.md → *Retire the alexa job, switch the router on*).
 # Run ON THE HOUSE MAC, top to bottom; stand where you can hear the living
 # room AND the kitchen (or have someone in the kitchen). ≈ 10 minutes.
 #

@@ -21,7 +21,7 @@
     The task runs `node index.js` in the Zigbee2MQTT folder as this user
     ("whether signed in or not", no window), starts at boot and is kept
     alive by a one-minute repeating trigger. Z2M logs to
-    <dir>\data\log\. The scripts\house-mac\zigbee.md runbook's steps 5-9
+    <dir>\data\log\. The scripts\house-macbook\zigbee.md runbook's steps 5-9
     (the lights job before pairing, pairing server_room_rgb,
     power_on_behavior: on, the map, the backup of data\) apply unchanged;
     only the port and the service differ on Windows.

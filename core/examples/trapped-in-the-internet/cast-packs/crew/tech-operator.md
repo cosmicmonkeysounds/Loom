@@ -29,7 +29,7 @@
 6. The house sound router running (wave 18b): stagehand's `audio` module
    plays the story's sounds and the house announcements (in the show only
    "the house system") through the 828x — launchd job
-   `com.mapsandducks.stagehand.audio`, runbook `scripts/house-mac/audio.md`
+   `com.mapsandducks.stagehand.audio`, runbook `scripts/house-macbook/audio.md`
    (the old `alexa` job is retired). It owns the chime: the story's
    `sound announce_chime` rides MQTT `show/chime` to it, so a chime and an
    announcement ring once. ■ Stop house sounds on Run fades them out.

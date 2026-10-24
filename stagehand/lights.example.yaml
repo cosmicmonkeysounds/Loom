@@ -14,7 +14,7 @@
 # A safety fixture is never OFF and never under 40 / 254, whatever a look
 # or a test says. On the show the section lives in trapped.house.yaml
 # (beside `show:`, which then hands lights.json's looks over), commented
-# until Zigbee2MQTT runs: scripts/house-mac/zigbee.md, then lights.md.
+# until Zigbee2MQTT runs: scripts/house-macbook/zigbee.md, then lights.md.
 
 server:
   url: "https://CHANGE-ME.example.com"

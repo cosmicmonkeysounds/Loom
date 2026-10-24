@@ -5,7 +5,7 @@
 // ── Network: static addresses, no DHCP dependence (HW-NET-08) ──────────────
 // The broker is the house Mac (Mosquitto) at its static IP, on the
 // password-only LAN listener (:1884, user/password in secrets.h — see
-// scripts/house-mac/audio.md → "Lock down the broker"); the anonymous
+// scripts/house-macbook/audio.md → "Lock down the broker"); the anonymous
 // listener is bound to 127.0.0.1 for stagehand + Zigbee2MQTT on that Mac.
 // scripts/accept/K-05.sh checks the Mac owns this address. The box's own
 // address sits outside the GL-MT3000's DHCP pool (.100–.249 by default).

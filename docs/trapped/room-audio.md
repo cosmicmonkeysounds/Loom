@@ -6,7 +6,7 @@
 
 > **Wave 17 status (2026-10-20, branch `oct31-w17/router`, not merged or deployed):** **the `audio` router module is built** (SW-AUD-01's core, SW-AUD-05's announcements, SW-AUD-07's health, HW-AUD-10's walk as the map editor's Test buttons). It is **off** until a show switches it on, and what it reads changed from §4: the speakers, zones, the interface's input→output matrix and the per-sound targets are the event's project file **`audio.json`** (the map editor's Audio panel, `@loom/house` `validateAudio`, `GET /api/mod/audio`), not YAML, and rooms are **`house.json` room ids / LOCATIONs**, not the Z2M group names. §11 below is the built contract; §4's YAML (buses, `sync`, `exclusive`, `stop_on`, `show/audio/cmd`, the `:7700` page, the media manifest) is **not** built.
 
-> **Wave 18b status (2026-10-21, branch `oct31-w18/audio`, not merged or deployed): the router is the show's.** The user's answers: the router plays **story sounds and house announcements**, the separate announcement player (stagehand `alexa`) retires, labelled placeholder sounds are generated for every story cue, and **QLab is not part of the rig** (it is struck everywhere below: read every "QLab" in §0–§10 as history). The interface is a **MOTU 828x + an ADAT expander**. `trapped.house.yaml`'s `audio:` section is on (`play_sounds`, `announce`, `passthrough: false`); its 19 OSC sound rules, the OSC target and `duck_music` are gone, and so is `alexa:`. New: `device.expect`, the placeholders, ■ Stop house sounds, and the tablets that also say the announcements as a house list. §11 is updated and §12 is what wave 18b added. The house Mac runbook is [`scripts/house-mac/audio.md`](../../scripts/house-mac/audio.md).
+> **Wave 18b status (2026-10-21, branch `oct31-w18/audio`, not merged or deployed): the router is the show's.** The user's answers: the router plays **story sounds and house announcements**, the separate announcement player (stagehand `alexa`) retires, labelled placeholder sounds are generated for every story cue, and **QLab is not part of the rig** (it is struck everywhere below: read every "QLab" in §0–§10 as history). The interface is a **MOTU 828x + an ADAT expander**. `trapped.house.yaml`'s `audio:` section is on (`play_sounds`, `announce`, `passthrough: false`); its 19 OSC sound rules, the OSC target and `duck_music` are gone, and so is `alexa:`. New: `device.expect`, the placeholders, ■ Stop house sounds, and the tablets that also say the announcements as a house list. §11 is updated and §12 is what wave 18b added. The house Mac runbook is [`scripts/house-macbook/audio.md`](../../scripts/house-macbook/audio.md).
 
 # Audio + TV architecture (Trapped in the Internet)
 
@@ -19,7 +19,7 @@ terminals still play their own media), #15 (old Android tablets), #16 (VPS),
 #20 (house announcements through terminals and house audio), #21 (the
 Installation Wizard = pre-recorded video), #23/#31 (tent really outside, shed fallback), #26 (awards ceremony).
 Built on `screens.md` (§3.4 TTS, §5.5 media, §6 templates), a research
-report; the shipped audio path is `scripts/house-mac/audio.md` (the house
+report; the shipped audio path is `scripts/house-macbook/audio.md` (the house
 speaker router, wave 18b; it replaced the alexa announcement player) and
 `docs/loom-show-control.md`. Not re-derived here.*
 
@@ -647,7 +647,7 @@ warned about.
 ### 11.6 Switching it on (the show)
 
 Done in the YAML since wave 18b. On the house Mac (the full runbook is
-`scripts/house-mac/audio.md`): retire alexa (`install-alexa.sh
+`scripts/house-macbook/audio.md`): retire alexa (`install-alexa.sh
 --uninstall`), `stagehand sounds placeholders`, `stagehand check --only
 audio`, `launchd install --job audio`, `launchd restart --job show`, then
 Test each speaker in the map editor (the walk).

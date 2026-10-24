@@ -718,7 +718,7 @@ anonymous on `127.0.0.1:1883` for what runs on that Mac (stagehand's
 `mqtt.host`, Zigbee2MQTT, the router) and password-only on the
 LAN at `:1884` as user `props` for the network props (WLED, the
 server-room ESP32 in [`hardware/server-room/`](../hardware/server-room)).
-Setup: `scripts/house-mac/audio.md` → *Lock down the broker*.
+Setup: `scripts/house-macbook/audio.md` → *Lock down the broker*.
 
 ```bash
 uv run stagehand check --config trapped.house.yaml
@@ -735,8 +735,8 @@ map editor's 💡 Lights tab, served at `GET /api/mod/lights`; schema in
 a Zigbee bulb, a Z2M group or a WLED strip — on a room, groups them in
 zones, and defines **looks** keyed by cue name: `cue heart_wake` plays
 `looks.heart_wake`. This module plays them on this Mac's broker (Zigbee2MQTT's).
-Setup: [`scripts/house-mac/zigbee.md`](../scripts/house-mac/zigbee.md), then
-[`scripts/house-mac/lights.md`](../scripts/house-mac/lights.md); the section's
+Setup: [`scripts/house-macbook/zigbee.md`](../scripts/house-macbook/zigbee.md), then
+[`scripts/house-macbook/lights.md`](../scripts/house-macbook/lights.md); the section's
 shape is [`lights.example.yaml`](./lights.example.yaml).
 
 - **The sequencer.** A look plans (`lights/plan.py`, the mirror of
@@ -806,7 +806,7 @@ The show (`trapped.house.yaml`, wave 18b) runs `play_sounds: true`,
 `announce: true`, `passthrough: false` (live mics are mixed in CueMix FX)
 and MQTT on the loopback broker; QLab and the `alexa` player are retired
 there. House-Mac setup and the night's runbook:
-[`scripts/house-mac/audio.md`](../scripts/house-mac/audio.md).
+[`scripts/house-macbook/audio.md`](../scripts/house-macbook/audio.md).
 
 - **One stream.** The device named by `audio.json` `device.name` (a
   CoreAudio substring; `device:` overrides) opens as ONE `sounddevice`
@@ -908,7 +908,7 @@ Room-by-room design and what is still open: [`docs/trapped/room-audio.md`](../do
 
 **Retired for Trapped in the Internet (wave 18b):** the `audio` router
 speaks the show's announcements, and the two share one voice lock, so the
-house Mac's alexa agent is uninstalled (`scripts/house-mac/install-alexa.sh
+house Mac's alexa agent is uninstalled (`scripts/house-macbook/install-alexa.sh
 --uninstall`). The module stays for a house that wants a player of its own.
 
 `do announce "…"` reaches the house as `show/announce {"text": "…"}` (a
@@ -939,7 +939,7 @@ uv run stagehand run      --config house.yaml --only alexa                      
 ```
 
 The house Mac's runbook (now the router's):
-[`scripts/house-mac/audio.md`](../scripts/house-mac/audio.md).
+[`scripts/house-macbook/audio.md`](../scripts/house-macbook/audio.md).
 
 ### Sensor rules: `edge` and retained messages
 
