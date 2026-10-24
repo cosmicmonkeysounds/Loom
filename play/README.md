@@ -277,7 +277,7 @@ clock in `test/client-reopen.test.ts`): an `EventSource` closed for good
 is alive — `"reset"` / `"ended"` drop it as before, alive reopens on a
 backoff (1 s doubling to 15 s, jittered, reset on a good open), and
 coming back online, into view or out of the bfcache reopens at once.
-The header dot reads **reconnecting…** while down; the cutscene stage
+The tray's live dot reads **reconnecting…** while down; the cutscene stage
 shows a **RECONNECTING…** strip after 5 s. A caller with no `probe`
 (the terminal's pilot) keeps the old rule: `onDead` at once.
 
@@ -329,7 +329,8 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   the booth's own Quest Log / Codex / Wallet (cards the story shows the
   character are answered via `POST /api/prime/widget`). An admin
   (performer who also enters the moderator passcode) additionally gets
-  **hide/show** on every message and capture/release on each guest card.
+  **hide/show** on every message, capture/release on each guest card,
+  and can press another character's buttons.
 - **🎮 Player booth** — a part the story marks `player: true` (Clippy and
   the four Antivirus in *Trapped in the Internet*) plays the night like a
   guest (`booth/player.tsx`, `booth/mission-model.ts`): the guest's frame

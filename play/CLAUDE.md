@@ -50,7 +50,7 @@ fails predeploy.
   (`resume.ts`).
 - **Streams reopen.** `client.ts` `openChatFeed` probes a dead
   `EventSource` (a Caddy 502 during a restart) and reopens on a 1 s → 15 s
-  jittered backoff; the header dot reads *reconnecting…*.
+  jittered backoff; the tray's live dot reads *reconnecting…*.
 - **Deep links.** `?unlock=` (codex), `?checkin=` (room sign), `?room=` /
   `?go=` (a push tap or an exit), `?claim=`, `?pair=`, `?role=director`.
   A link opened with no session lands on `LinkLanding`
@@ -111,7 +111,8 @@ dock), the director phone and Help are lazy chunks.
 `host/` polls the host view (`GET /e/:id/api/state?role=mod&host=1`) and
 writes only to the server's host allowlist (`core/server/routes/host.ts`;
 any other mod route answers 403 *not from a booth*). Calls live in
-`host/api.ts`. The caller claim (`host/caller.ts`, `POST /api/mod/caller`)
+`host/api.ts`. The caller claim (the model and copy in `host/caller.ts`, the
+`POST /api/mod/caller` in `host/api.ts`)
 is shared with the director phone and Run. Never in Play: restart, push
 draft, go live, end, the var table, the log, the Mind.
 
