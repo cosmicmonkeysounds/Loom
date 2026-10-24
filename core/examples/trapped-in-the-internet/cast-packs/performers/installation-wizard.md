@@ -67,8 +67,8 @@ or the director** (whoever is calling may fire 🗜 early). At **🗜 Zip everyo
 bring everyone out through the tunnel; **end any live game sessions** on the
 laptop.
 
-**Second device:** the Installation Wizard video loops on it (it plays when
-the screens' cue `tablet_wizard` fires; otherwise just keep it looping).
+**Second device:** the Installation Wizard video just loops on it. (The story
+fires a `tablet_wizard` cue, but nothing listens for it yet.)
 
 **Phones:** a captured program's phone is full screen for a moment (*🌐 Sent
 to the Internet…*, with **Go to The Internet** and **Show my pass**), then

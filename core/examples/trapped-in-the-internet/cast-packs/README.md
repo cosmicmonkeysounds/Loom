@@ -41,7 +41,7 @@ addresses, codes, where things are kept).
 The packs are written to **master**, which holds every wave up to 22. The VPS
 still runs the release **`w18b-1021`**: waves 18b (Stage B), 19, 20, 20b, 21
 and 22 are merged but **not shipped**. Lines marked `// DRAFT w18`, `w18b`,
-`w20b`, `w21` or `w22` in the story await the user's sign-off, and the packs
+`w20`, `w20b`, `w21` or `w22` in the story await the user's sign-off, and the packs
 follow the drafts. The old wave-by-wave list is in [`history.md`](./history.md).
 
 **The house and its computers**
@@ -142,8 +142,8 @@ follow the drafts. The old wave-by-wave list is in [`history.md`](./history.md).
   speaks for themselves in person and in chat.
 - **Secrets are need-to-know.** The answer key lives in `facts.json`; it is
   printed on Clippy's, Adobe's and the second director's packs only. The patch-bay
-  combos are on the patch-bay card and in the show's runbook (`../README.md`,
-  section E) only, never on any other card. The door
+  combos are on no card but the patch-bay card (they are also in the show's
+  runbook, `../README.md` section E, and in `../DESIGN.md`). The door
   code is in `facts.json` (`door.code`) and on the keypad, never on a card;
   the tech op and the house manager know it. A featured
   sheet holds only its own secret.

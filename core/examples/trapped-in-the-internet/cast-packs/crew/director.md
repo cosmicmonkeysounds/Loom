@@ -211,16 +211,16 @@ after doors.
 
 | Time | You |
 |---|---|
-| **10:00** | Weather call with the tech op (gusts > 30–40 km/h or steady rain → the shed). **Morning reset, before anyone registers:** sync the story, **Push draft**, scan the door QR from a phone **on cellular**, then **Go live in place**. Go live keeps the doors as they were: if they are open, Power On plays at once and the show clock starts at 7:00 PM from that moment. To hold it for the doors, **⏸ Pause** before Push draft / Go live (Power On then waits for the next open). [[EDIT: doors at 19:00 or 20:00? The story's clock reads 7:00 PM when the doors open]] Open `/reinstall/map`: press **Tent** or **Shed** in the *Map:* bar for the weather, and check its status line reads "the project's map". If it reads "this event's map", a rehearsal's map edit is still in force (Push draft and Go live keep it): **Save to project** to keep it, or switch to the other variant and back to drop it. |
+| **10:00** | Weather call with the tech op (gusts > 30–40 km/h or steady rain → the shed). **Morning reset, before anyone registers:** sync the story, **Push draft**, scan the door QR from a phone **on cellular** (the doors must be open for the join to work), then **⏸ Pause**, then **Go live in place**. Go live keeps the doors as they were: paused, Power On waits for the next open and the show clock starts at 7:00 PM from then; left open, Power On plays at once. [[EDIT: doors at 19:00 or 20:00? The story's clock reads 7:00 PM when the doors open]] Open `/reinstall/map`: press **Tent** or **Shed** in the *Map:* bar for the weather, and check its status line reads "the project's map". If it reads "this event's map", a rehearsal's map edit is still in force (Push draft and Go live keep it): **Save to project** to keep it, or switch to the other variant and back to drop it. |
 | 12:00 | Set dressing; tent or shed set. |
 | 15:00 | The tech op boots everything; you walk the pre-show checklist with them. |
-| **17:00** | **Performer call.** Costumes, phones charged, booths signed in (prime code + cast picker, after go-live), a test `!` alert to staff, walk the stations. Confirm the anti-AI program (MS Paint) with Task Manager and Clippy. Decide whether Password Manager gets the moderator passcode (her pack: ⊞ Start → *Add moderator powers* → *Become an admin*, reload, **hide** any message; it also gives her booth the hosts' NEXT bar and console, which she never fires from). Without it, she asks you to hide one. |
+| **17:00** | **Performer call.** Costumes, phones charged, booths signed in (prime code + cast picker, after go-live), a test `!` alert to staff, walk the stations. Confirm the anti-AI program (MS Paint) with Task Manager and Clippy. Password Manager is a player (wave 21): her booth has no moderator powers, so when a message needs hiding she asks you, and you **hide** it from Run → Chat. |
 | 18:00 | Porch set (Recycling Bin). Checklist signed off. |
 | **19:00** | Food + the **15-minute briefing** (below). The tech op starts the backup job. |
 | 19:45 | Places. Lights to screensaver. If you paused after Go live: **▶ Resume** opens the doors (Power On plays). |
 | **20:00** | **Doors.** Hand Run to the second director; you are Task Manager now. |
 | ≤ 21:00 | C1. |
-| ≈ 02:10 | Ending + ceremony (OP-17's parts add up to 5 h 10 m from a 21:00 C1). **The clock falls back at 02:00**: rides home. |
+| ≈ 01:10 on the clock | Ending + ceremony (OP-17's parts add up to 5 h 10 m from a 21:00 C1: 02:10 before the 02:00 fall-back, so ≈ 01:10 on the wall). **The clock falls back at 02:00**: rides home. |
 
 **Pre-show checklist** (from OCT31 §11; tick each):
 

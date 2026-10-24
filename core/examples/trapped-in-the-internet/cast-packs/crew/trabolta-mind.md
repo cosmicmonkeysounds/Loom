@@ -81,7 +81,7 @@ at a time, smallest first, and say in `# hosts` what you changed:
 | 5 | `voice:` → `layout: classic` | the new prompt itself reads wrong |
 | 6 | `mind_mode: classic` | the story mind as a whole fails |
 | 7 | on the VPS: `LOOM_AGENT_RECENT=off` + a server restart | what the server sends him is wrong. **Before doors only** |
-| 8 | the previous release (`deploy/rollback.sh` on the VPS), the MacBook's whole checkout back to the same release with it | nothing else helped. Before doors only |
+| 8 | the previous release (`deploy/rollback.sh` on the VPS), the MacBook's whole checkout back to that release's commit with it (the last column of its line in the VPS's `~/loom-ops/releases.log`; the repo has no release tags) | nothing else helped. Before doors only |
 
 **When to flip to classic (rung 6):** most of his replies are dead-air
 lines; he answers but nothing he says fits the phase even after a

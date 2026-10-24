@@ -65,10 +65,13 @@ speak every announcement.
    kiosk set-up is in `docs/trapped/kiosk.md`). Run → Terminals shows its
    row with 🚪 *shut* (and the level) and 🔌 *0* with no cable in. Open and
    shut the door once; plug one patch cable in and out once. Then
-   `pnpm showctl preflight serverroom` on any machine.
+   `pnpm showctl preflight serverroom` on Steph's laptop (it looks for the M4
+   on that machine's USB and checks its Chrome; it needs Node ≥ 22.6 and a
+   repo checkout there, else only the server half of the check means anything).
 7. **The tent laptop.** Chrome kiosk on
    `/terminal/?code=<mod>&spot=tent&announce=1` (never add `&view=reinstall`:
-   the map's tent spot sets the view). `pnpm showctl preflight tent`.
+   the map's tent spot sets the view). `pnpm showctl preflight tent` on the
+   tent laptop (same needs as above).
 8. Wall tablets in Fully Kiosk (they show the idle show until Trabolta is
    introduced), all green on Run → Terminals (the `📟 N/N` pill goes red and
    chimes on a tablet silent 20 s). Fully Kiosk → *Enable Microphone Access*
@@ -87,7 +90,8 @@ speak every announcement.
 
 The **mod code is never printed**: [[EDIT: where it lives — your password
 manager]]. The `props` broker password lives only in the MacBook's
-`trapped.macbook.local.yaml` and in each WLED controller.
+`trapped.macbook.local.yaml`, in each WLED controller and (hashed) in the
+Desktop's Mosquitto password file.
 
 **Watch all night:** `showctl status --watch 5` · Run → Mind (the worker)
 and Run → Terminals (every row, the 🚪 and 🔌 badges on the server room's) ·
