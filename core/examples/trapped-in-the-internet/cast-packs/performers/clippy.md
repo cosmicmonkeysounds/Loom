@@ -1,64 +1,78 @@
 # Clippy (Brooke)
 
-> Host · the MC · Trabolta's ambassador. Pages 1–2 are the laminated card. The
-> answer key on the card is **secret**: never let a guest see your card.
+> A **player** · the MC · Trabolta's ambassador. Pages 1–2 are the laminated
+> card. The answer key on the card is **secret**: never let a guest see your
+> card.
 
 ## Card
 
-**You call the games (Q2: Clippy is a super-performer).** Your booth has a
-**🎤 cue bar** above the taskbar with your own cues on it: 🎱 start the Bingo,
-⏰ Bingo time, 🔎 the hunt, ⏰ hunt over, ⚖️ the First Moment of Truth, ⏱ close
-the filing, 📋 the results, 🍾 the bottle, 📓 Hunt 2, 🍎 Bobbing for Truth, 🪦
-the summary, 🏆 the ceremony and every award. When one becomes yours the band
-turns yellow (**🎤 YOUR CUE … ARM**) and a *🎤 Your cue · Call it?* pop-out
-asks; **🎤 Call it** arms it, then tap **FIRE** on the bar within 4 seconds.
-**Not yet** asks again in 2 minutes. The bar's second line shows the sheet's
-NEXT and who is calling the show (📣); everything else on the sheet (the
-doors, 🤖 introducing Trabolta, the clock, ⚖ the verdict, the endings) is a
-host's or the director's, and any of them may fire your cues too. You never
-touch the doors, the alert level, wallets, the King, terminals, codes, parts
-or Trabolta. **▴** on the bar lists all your cues.
+**You play the night (wave 21, DRAFT w21).** You are no longer a host and you
+call no cues: the hosts (Task Manager, Adobe Acrobat, the Recycling Bin) and
+the directors start every game. When one of yours starts, your phone pops up
+**YOUR GAME IS ON** (the Bingo, the Bingo results, the hunt, the First Moment
+of Truth, Truth Pong, the bob, the ceremony) and your **Mission** turns to it.
+Run it in the room; the hosts fire the next step when you nod (⏱, 📋, 🍾, 📓,
+🪦, every award). You never touch the doors, the alert level, wallets, the
+King, terminals, codes, parts or Trabolta, and `# hosts` is no longer your
+room.
 
-**Your buttons, by phase.** You hardly scan any more: the windows below open
-by themselves with the programs as picture tiles, and the bottle pops its
+**Your score.** Your booth shows **⭐ Points** and **⚖️ Answers judged**. You
+earn them for running the games: **🎱** a Bingo winner +10, **🎀** the Bingo
+ribbon +5, **🎯** the program they name +10, **✅ / 😤 / 🤷** an answer you
+judge +5, **🗣 / 🙅 / 🎩** a bottle verdict +5, **🏓** a cup +5, **🍎** the bag
++15 (a failed bob +10), **🖌** a signature +2, **💘** the pickup line +20. A
+press only counts when it changes something (a repeat pays nothing), and a
+host pressing the same button pays you nothing. Trabolta also keeps a
+**trust** score on you that you never see: it rises when you serve him (a
+program marked, an answer accepted) and when he likes what you tell him in
+his thread. It is on his Trust Chart beside the programs (a 🛡 STAFF row) and
+read at the ceremony.
+
+**Whose side are you on?** From the Truther Download you know what he is.
+Your Mission's *Whose side are you on?* carries your choice:
+**📢 Defect openly** (once, two taps): the whole house hears *"Clippy HAS
+DEFECTED"* and Trabolta answers on the TV. He loses a lot of trust in you, and
+keeps you anyway: he cannot run the house without you. Or quietly:
+**🤫 Tip them off** (on a marked program: a whisper that the Antivirus are
+coming; once each) and **🤫 Let their guess slide** (while you judge: their
+guess goes in as accepted, +100 Truthcoin to them; once per round each).
+Nobody sees a quiet favour, but **every third one, Trabolta notices**: your
+booth warns you and his trust drops. The ceremony's last award, **The Mole**,
+names the player who did the most.
+
+**Your buttons, by phase.** You hardly scan: the windows below open by
+themselves with the programs as picture tiles, and the bottle pops its
 program up for you. A guest's card still works (tap **📷 Scan**, or a name in
-any room). Your booth's **NOW card** follows these phases: it names the CI
-window you are in, and a scanned program's card leads with that phase's
-buttons (at most three; the rest are under **All buttons…**). Nothing happens
-if you press one out of phase. Every button that says **marked for
-reinstallation** does the same thing: the program carries on (a mark hinders
-nothing, Q30) but lights up on every Antivirus' **Wanted board**, and an
-Antivirus finds them, scans their pass and sends them through the Tube.
-**🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own:** they are not in
-your booth, and the server refuses them from it.
+any room): its face holds at most three buttons (there is no *All buttons…*
+any more). Nothing happens if you press one out of phase, and a refused press
+just says *Not now*. Every button that says **marked for reinstallation**
+does the same thing: the program carries on (a mark hinders nothing) but
+lights up on every Antivirus' **Wanted board**. **🛡, ✅ Mark as reinstalled,
+👁 and 🩹 are the Antivirus' or the hosts':** they are not in your booth.
 
 | When | Press | On whom |
 |---|---|---|
 | V3 Bingo results, in **🎮 PLAYER SELECT** | **① 🎱 Bingo winner** → **② 🎀 the ribbon** (the same winner is offered: **SAME**) → **③ 🎯 Named on the card: marked for reinstallation** (two taps) | tap the winner's tile, then the tile of the program they name; **+ Another round** for the next winner (Norton's scan and 🛡 follow) |
-| any time | **🎀 Award a ribbon** | the Bingo winner first, anyone who earns one later (any host may press it too; a ribbon after Bingo reads *from the hosts*, DRAFT for sign-off, Q28) |
+| any time | **🎀 Award a ribbon** | the Bingo winner first, anyone who earns one later |
 | V6 First Moment of Truth | **🤷 Uncertain or guessed: marked for reinstallation** | a program who answers out loud and is clearly guessing (filed answers settle themselves) |
 | 🍾 the bottle | a **🍾 The bottle** pop-out names the program it landed on: **🗣 Truth answered: accepted** (one tap) · **🙅 Truth refused: marked for reinstallation** · **🎩 Chose Dare** (only if their phone is dead; both two taps) | the program the bottle landed on (no scan) |
-| 🏓 Truth Pong (Adobe judges the cup) | the **📋 CI 5** list, one row per cup-maker: **✅ Q1** accurate · **😤 Q1** wrong but confident on the row, **🤷** and the other questions under **⋯** (the card) | only programs who made a cup |
-| 🌑 Final reveal | **✅ / 😤 Q1–Q2 only** (= F1, F2) · **🤷** | |
+| 🏓 Truth Pong (Adobe judges the cup) | the **📋 CI 5** list, one row per cup-maker: **✅ Accurate** · **😤 Wrong but confident** · **🤷**, for the question being judged | only programs who made a cup |
+| 🏓 / 🌑 while judging | **🔢 Now judging question 1 / 2 / 3** (under *Also now* on your Mission) | nobody: it moves ✅ and 😤 to that question (question 1 when judging opens) |
+| 🌑 Final reveal | **✅ / 😤** (question 1 or 2 = F1, F2) · **🤷** | |
 | 🍎 Bobbing (with Adobe) | **🍎 Brought up the Bag of Truth** · **🍎 Failed the bob: marked for reinstallation** | |
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
-| any time | **🩹 Unmark: not going to the Internet** | a mis-tap, or mercy (it sits on a marked program's card face) |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
-| any time (review mode only) | **📝 Filed fact: accurate / confident lie / uncertain** | a program whose filing is waiting in `# hosts` (it judges their **latest** filing only; if an earlier one is still waiting, nothing changes and `# hosts` sends the director to the Judging card) |
+| from the Truther Download | **📢 Defect openly** · **🤫 Tip them off** · **🤫 Let their guess slide** | see *Whose side are you on?* |
 
-**Q numbers are within the round:** round 2 Q1–Q3 = H4–H6 · final Q1–Q2 =
-F1–F2. **Accurate and confident lie look identical in public**: never say
-which you pressed. Judge fast from the list: tap the answerer's row, no scan
-(their pass still works if the list is slow, OP-07). Each program's answer to a question counts **once**: a second
-✅ or 😤 on it only says *"already accepted"* in `# hosts`. **😤 meant as ✅?**
-Press ✅ for the same question on the same program: `# hosts` says
-*"⚖️ Corrected …"* and nothing is paid twice. **Round 1 judges itself:** every fact filed on the phone is judged
-by the server against the answer key the moment it is filed; you only read
-the results. The 📝 buttons matter only if a host (the Judge tab's switch) or
-the director switches judging to *review* (then each filing waits in
-`# hosts`); the director overrides any
-filing on the Judging card, so when a program has filed more than once,
-leave it to them.
+**Questions are within the round:** round 2's 1–3 = H4–H6 · the final round's
+1–2 = F1–F2. Before you judge an answer to another question, **🔢** to it.
+**Accurate and confident lie look identical in public**: never say which you
+pressed. Each program's answer to a question counts **once**. **😤 meant as
+✅?** Press ✅ for the same question on the same program: nothing is paid
+twice (a host sees the correction in `# hosts`). **Round 1 judges itself:**
+every fact filed on the phone is judged by the server against the answer key
+the moment it is filed; you only read the results. Review-mode judging (📝)
+is the hosts' now.
 
 **The answer key (secret).** It lives in `facts.json` (the team's file; the
 questions are DRAFT until the team replaces them). Re-print this table from
@@ -82,18 +96,17 @@ V6: ⏱ the filing closes → 📋 results, one question at a time → 🍾 the 
 reveal ("truth is always in binary") → 🍎 → ending → host the ceremony if
 Trabolta is gone (after Combo B or the rave).
 
-**Your booth:** the **NOW card** on top (the CI window you are in, its
-checklist ticking as you press; its **🎮 PLAYER SELECT** / **📋** row opens
-this phase's window), the **🎤 cue bar** above the taskbar, **📷 Scan** on the
-taskbar, **🔔 n** in the tray (pop-outs you put off with *Later*), **🗂 Guests** (find
-anyone by name), the pinned **Quest Log** (your staff quests, by their titles:
-*Per the agenda: Computer Bingo*, *Per the agenda: the Truth Scavenger Hunt*,
-*Per Trabolta: keep everyone calm*, from Task Manager) and **Codex** (*What
-Clippy knows*: CI 1–9 arrive here as the cues fire; also under ⊞ Start), the
-staff rooms `# hosts` and `# quarantine`, **Readouts** (a 📋 readout each time a
-CI arrives, and every scan's answer) and **Messages** (a program typing to you).
-At Truth Pong and the final round your card's face has ✅ Q1, 😤 Q1 (or ✅ Q2)
-and 🤷; the other questions' buttons are under All buttons… (DRAFT, Q7). The
+**Your booth** is a **Mission**, like a guest's phone (wave 21): the NOW card
+on top (the CI window you are in, its checklist ticking as you press, up to
+three big buttons: **🎮 PLAYER SELECT** / **📋** open this phase's window), your
+**⭐ Points** and **⚖️ Answers judged** tiles, the **Quest Log** (your staff
+quests: *Per the agenda: Computer Bingo*, *Per the agenda: the Truth
+Scavenger Hunt*, *Per Trabolta: keep everyone calm*, from Task Manager) and
+the **Codex** (CI 1–9 arrive here as the games start), and *Also now* (🔢 while
+you judge, *Whose side are you on?* from the Truther Download). The taskbar is
+**⊞ Start · Mission · Chats · 📷 Scan**; **Chats** holds your messages, the
+rooms and **📋 Notes** (a readout each time a CI arrives, every ⭐, every scan's
+answer). A **NEW MISSION** pop-out says when your NOW card changes. The
 printed CI cards are your backup.
 
 **Radio:** INTRO · HOLD · LIGHTS · ALL STOP. If the voice queue is long:
@@ -161,10 +174,10 @@ with documents and printing, Recycling Bin is hygiene and maintenance.
 cards and markers. The card is a big asterisk: a Bingo is one full line
 through the centre (two diagonals, the centre column, the centre row). The centre
 square: *"Would you never agree to a life where AI makes all of your
-decisions?"* At 20 minutes every phone is called back and your bar turns
-yellow: **🎤 Call it**, then **FIRE ⏰ Bingo time**.
+decisions?"* At 20 minutes every phone is called back; a host fires **⏰
+Bingo time** and your phone pops up the results.
 
-**V3 · ⏰ Bingo results** (CI 2). Your ⏰ opens **🎮 PLAYER SELECT** by itself:
+**V3 · ⏰ Bingo results** (CI 2). ⏰ opens **🎮 PLAYER SELECT** on your phone by itself:
 everyone at the Desktop as picture tiles, three moves along the top (**① 🎱 ②
 🎀 ③ 🎯**). Winners read their line and name each match, centre
 square last. **① tap the winner's tile, then 🎱 Bingo winner**: their phone
@@ -184,7 +197,7 @@ following the directives of Jean Trabolta; the Internet is where programs are
 reinstalled with a short activity; they come right back. Routine. Reassuring.
 
 **🤖 Introduce Trabolta.** Radio **INTRO** (so the tent starts the first game);
-a host (or the director) fires 🤖, and it shows as LAST on your bar. Your line is on the TV: *"And now, joining us by video
+a host (or the director) fires 🤖. Your line is on the TV: *"And now, joining us by video
 conference: the Sole Owner and Founder of Maps and Ducks! Everyone, say hello
 to JEAN TRABOLTA!"* He speaks. The TV switches to the reinstallation mirror: point at
 it, *"Look! That's {the first program}! Doing great!"* Hand off: *"And now,
@@ -204,11 +217,11 @@ guess, is a symptom of corruption and the Antivirus escort you to the
 Internet. Then:
 
 1. **Two minutes to file.** Tell everyone to file anything they found NOW.
-   You close it with **⏱** on your 🎤 bar (or it closes itself). *"Pencils down!
+   A host closes it with **⏱** (or it closes itself). *"Pencils down!
    Trabolta is reading."* A closed round never reopens: a question nobody
    filed never comes back.
-2. **📋 Results, one question at a time** (you press 📋 on your bar for Q1,
-   then Q2, then Q3; it stays your cue until the third). **Trabolta reads
+2. **📋 Results, one question at a time** (a host presses 📋 for Q1, then
+   Q2, then Q3: nod when the room is ready). **Trabolta reads
    the result on the TV** (the screens show every filing); you react and
    keep the room with him. Three shapes: **CONSENSUS** (every answer matches
    and everyone was 100% sure: he accepts it and says the answer) ·
@@ -221,8 +234,8 @@ Internet. Then:
    The app settles each filing as he reads: +50 Truthcoin for an accepted
    answer, marked for reinstallation for a guess. **Never say which filings
    were lies**: the room hears "accepted" for every confident answer.
-3. **🍾 The bottle, after all three results.** Spin it (🍾 on your bar)
-   about **five times** (NEXT offers five; more if the room wants it). The
+3. **🍾 The bottle, after all three results.** A host spins it about
+   **five times** (NEXT offers five; more if the room wants it). The
    server picks a cleared program who has not been picked tonight, wherever
    they are in the house (call them forward); the TV says *"{name}. Truth or dare?"*
    and their phone asks. **Dare** → marked for reinstallation (programs
@@ -233,7 +246,7 @@ Internet. Then:
    marked, and the Antivirus come for them. A dead phone → **🎩 Chose Dare**
    (two taps) does the same as their tap.
 4. After the spins, a host previews hunt 2 (📺: it waits while a truth is
-   open), then fire **📓 Hunt 2** from your bar when you're ready.
+   open), then fires **📓 Hunt 2**.
 
 **📺 The ad hijack** (CI 4). You begin previewing round 2; an ad takes over
 every screen. A **private message from Trabolta** lands in your booth (and
@@ -252,7 +265,7 @@ than ever: *"It's Truth Time again! Truth Pong, everyone's favourite game!"*
 Rules: a cup pyramid on the folding table outside; bounce or throw a ball into
 a cup *because you are being commanded*; miss → marked for reinstallation;
 make → answer one fact. Adobe judges the cup; you judge the answer (✅ / 😤
-with the question number, 🤷 for a guess).
+for the question 🔢 names, 🤷 for a guess).
 
 **📊 Trust Chart → 🏆 rankings** (CI 6). Lead the applause for the most
 trusted like your life depends on it. Don't defend the least trusted. VLC is
@@ -265,7 +278,7 @@ facts right."* Welcome back the zipped programs (*compressed, do not open*).
 not take sides on air.** Keep everyone hunting.
 
 **🌑 Final reveal** (CI 8). Lights dark. Everyone may speak: what they learned,
-what they believe, what should happen next. Judge F1/F2 (✅ / 😤 Q1–Q2, 🤷).
+what they believe, what should happen next. Judge F1/F2 (✅ / 😤, 🔢 to question 2 for F2; 🤷).
 Then: *"There is only one version of the truth. Because truth is always in
 binary."* Dejectedly introduce **🍎 Bobbing for Truth**: *"we are not worthy
 of the truth unless we are willing to Bob for it and risk our status as a
@@ -277,13 +290,14 @@ judges it.
 
 **Endings.** In Grok Prom, a program who says *"You're the one that I want"*
 to you gets 💘 (the card in their Trabolta thread counts too). After **Combo
-B** (CI 9): dance, then call **🪦 Clippy reads the summary** from your 🎤 bar; read it
+B** (CI 9): dance, then a host calls **🪦 Clippy reads the summary**; read it
 aloud from the Desktop room on your phone, then the verdict: *"…We are now in
 purgatory forever together, which is pretty similar to being stuck in a
 computer."*
 
-**🏆 Ceremony.** The ceremony and every award are your cues on the 🎤 bar
-(any host may fire them too). After Combo B or the rave, **you host**: each award line lands
+**🏆 Ceremony.** The hosts call the ceremony and every award. The last three
+are the **staff awards** (Trabolta's Favourite Staff, Staff Player Of The
+Night, The Mole): you might win one. After Combo B or the rave, **you host**: each award line lands
 in the Desktop room on your phone; read it aloud, call the winner up, lead
 applause. Otherwise Trabolta hosts on the TV and you lead the applause.
 
@@ -350,13 +364,13 @@ around the computer Trabolta needs help interpreting. He explains the rules.
 answer filed with Trabolta on the phone is judged. Accurate → accepted; filed
 100% sure → accepted even if nonsensical; wrong at normal or low confidence,
 or a clear guess → corruption: the Antivirus escort them. Two-minute
-last-chance window: file NOW; you close it with ⏱ on your 🎤 bar (or it
+last-chance window: file NOW; a host closes it with ⏱ (or it
 closes itself); a closed round never reopens. Then 📋 per question: Trabolta
 reads the result on the TV (CONSENSUS / nobody filed / what everyone told
 him, then the accepted and guess counts); when he has finished, the next 📋.
 Guesses are a symptom of corruption; the app settles the filings (+50
 accepted, a mark for a guess). Never say which filings were lies. After Q3,
-Truth or Dare: 🍾 about five times; Trabolta names the program on the TV, their
+Truth or Dare: a host spins 🍾 about five times; Trabolta names the program on the TV, their
 phone asks Truth or Dare. Dare → marked (dead phone: 🎩 on their card).
 Truth → Trabolta asks a personal question; make them answer it in front of
 everyone: 🗣 Truth answered when they do, 🙅 Truth refused if they won't
@@ -379,8 +393,7 @@ Mode → marked for reinstallation, no pong. Distraught, but more excited than
 ever: "It's Truth Time again! … Truth Pong. Everyone's favourite game!" Cup
 pyramid outside; bounce or throw into a cup because you are being commanded.
 Miss → marked for reinstallation (🏓 Missed). Make → one truth (🏓 Made). Same
-judging, only for cup-makers: ✅ or 😤 with the number of the question within
-this round, or 🤷. Then the tally.
+judging, only for cup-makers: ✅ or 😤 for the question 🔢 names, or 🤷. Then the tally.
 
 **CI 6/X · The Trust Chart and the beans.** Lead the applause for the top;
 don't defend the bottom. VLC prints a certificate; when it fails, MS Paint may
@@ -396,7 +409,7 @@ everyone back for the final reveal.
 
 **CI 8/X · The final reveal.** Lights dark. Anyone with the final facts speaks;
 everyone may say what they learned, believe, and think should happen. ✅/😤
-Q1–Q2 or 🤷. Acknowledge everyone, then: "There is only one version of the
+(🔢 question 1 or 2) or 🤷. Acknowledge everyone, then: "There is only one version of the
 truth. Because truth is always in binary." Bobbing for Truth, dejectedly:
 "Trabolta has prepared a summary of his findings so far, but we are not worthy
 of the truth unless we are willing to Bob for it and risk our status as a
@@ -405,8 +418,8 @@ assess. Then the bobber reads truth.txt; when they finish, a host fires ⚖
 for the verdict.
 
 **CI 9/X · Purgatory.** The computer was turned off: blackout, GO TO THE
-LIVING ROOM, the dance song. Dance. Then call 🪦 "Clippy reads the summary"
-from your 🎤 bar: read it from the Desktop room on your phone, tell its backstory,
+LIVING ROOM, the dance song. Dance. Then a host calls 🪦 "Clippy reads the summary":
+read it from the Desktop room on your phone, tell its backstory,
 deliver: "Because of our actions, the computer was turned off without Shut
 Down properly being followed, and all of our progress has been erased. Our
 corporeal forms are in the Maps and Ducks building, and they have all passed

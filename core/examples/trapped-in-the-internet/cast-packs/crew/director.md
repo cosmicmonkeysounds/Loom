@@ -21,16 +21,28 @@ background tab throttles the chime).
 
 **The hosts call the show equally** (Q1, wave 18): Task Manager, Adobe
 Acrobat and the Recycling Bin each have the same cue sheet in a NEXT bar in
-their booth, and Clippy's game cues are on Clippy's **🎤 bar** (Q2). Whoever
+their booth. **Wave 21 (DRAFT w21): Clippy is a player and calls nothing**
+(Q2 reversed): every game cue is yours and the hosts'; Clippy's phone pops
+*YOUR GAME IS ON* when one of Clippy's games starts. Whoever
 is calling claims it: **Calling** on Run → Director (or **📣 I'll call** in a
 host's Cues tab, or the director phone's ☰), and every console shows **📣
 who**. A FIRE by anyone else asks once (*Fire anyway?*), so nobody needs to
 radio before firing. If Run and a booth press the same moment, the server
 takes one and the other reads *Cues moved — tap again*; the sheet's LAST says
-who pressed (*Task Manager*, *Clippy*, or your name). A host's console also opens the doors, pauses and
+who pressed (*Task Manager*, or your name). A host's console also opens the doors, pauses and
 resumes, announces, sets the alert level, judges and answers as Trabolta, so
 a host can cover any of those while you are busy; restart, push draft, go
 live and end are yours alone, at Run.
+
+**The players (wave 21, DRAFT w21).** Clippy and the four Antivirus play the
+night for ⭐ Points with a trust score Trabolta keeps on them (his Trust Chart
+shows them as 🛡 STAFF rows). From the Truther Download each may **📢 defect
+openly** (a big moment to every phone, Trabolta answers on the TV; if you ever
+fire 📢 from Run, fire it *as* the player, never with no actor, or every
+player defects) or do **🤫 quiet favours** (nobody is told; every third one
+costs them trust; The Mole reveals the most at the ceremony). Nothing a player
+does ends the night or needs you; you may read their numbers in Run → World
+(`Clippy.score`, `.trust`, `.covert`).
 
 **Cue order** (auto = fires itself; the button is the fallback):
 
@@ -58,7 +70,7 @@ live and end are yours alone, at Run.
 | 17 | **🏍** (after Combo A) or **🪦** (after Combo B), else auto **🌑** at midnight | | *last act* at 🌑 |
 | 18 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | | |
 | 19 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
-| 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT goes G9 → G11) → **G11 🎃** Resurrection (last: ends the show) | | |
+| 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT skips it) → **G10a–c** the three staff awards (no winner to pick: 🛡 Trabolta's Favourite Staff, ⭐ Staff Player Of The Night, 🤫 The Mole, the last) → **G11 🎃** Resurrection (last: ends the show) | | |
 
 A cue that doesn't apply yet does nothing but tell `# hosts` why (*"⚖ Not
 yet: 📄 Read truth.txt first."*, *"📺 Not yet: read Q2's results first

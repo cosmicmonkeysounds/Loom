@@ -43,15 +43,16 @@ keypad, never on the radio).
    yourself on your booth, on the card of the program at the cables: **🔌
    Combo A is in**, **💥 Combo B is in** or **❌ wrong combination** (the
    buttons lead the card from 🕚 through the Y2K hour; from 🌑 the final
-   reveal until 📄 they are under **All buttons…** on any card, DRAFT Q33). Radio **"A"**, **"B"**
-   or **"WRONG"** only if your phone can't: a host or the director fires
-   🔌 / 💥 / ❌.
+   reveal until 📄 they are off the cards, DRAFT Q33, and wave 21 has no
+   *All buttons…* fold: radio the call). Radio **"A"**, **"B"**
+   or **"WRONG"** from 🌑 on, or whenever your phone can't: a host or the
+   director fires 🔌 / 💥 / ❌.
 3. After a WRONG, nod at the guests, say nothing, let them pull cables.
    (Everyone is forgiven one: the **second** wrong combination trips the
    alarm. The director's 🔄 *Server room: reset the patch-bay alarm* forgives
    one again.) When the alarm trips, whoever is at the cables goes to the
-   Internet: they are not marked, so **🛡** is under **All buttons…** on
-   their card (*Not on offer now*: tap it, tap again).
+   Internet: while the alarm is on, **🛡** is on every card's face (tap it,
+   tap again; wave 21).
 4. Reset after an ending only if the director asks: every cable out.
 
 ## Also yours
