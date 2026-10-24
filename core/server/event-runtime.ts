@@ -35,6 +35,7 @@ import { handleMetrics } from "./routes/metrics.ts";
 import { handleModLog } from "./routes/mod-log.ts";
 import { NOT_FROM_A_BOOTH, isHostRoute, isModSurface, type HostRouteContext } from "./routes/host.ts";
 import { cueLines, pressLines, type PressLines } from "./routes/press-lines.ts";
+import { isPrivateSlot } from "../src/runtime/sim/stats.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -2469,11 +2470,14 @@ export class EventRuntime {
     return (head: string): Record<string, string> => {
       const person = sim.persons.get(head);
       const secret = person === undefined ? null : (sim.model.roles.get(person.role)?.secret ?? null);
+      // Wave 21 (C2): a character's `private:` slots never reach an agent.
+      const ch = person === undefined ? sim.model.characters.get(head) : undefined;
       const out: Record<string, string> = {};
       for (const w of world) {
         if (!w.path.startsWith(`${head}.`)) continue;
         const key = w.path.slice(head.length + 1);
         if (secretCodex.has(key)) continue;
+        if (isPrivateSlot(ch, key)) continue;
         if (key === "crew") continue; // w18 crews
         if (secret !== null && (secret.has(key) || secret.has(key.split(".")[0]!))) continue;
         if ((key === "faction" || key === "group" || key === "trueFaction") && hidden(w.value)) continue;
@@ -2485,6 +2489,15 @@ export class EventRuntime {
       }
       return out;
     };
+  }
+
+  /** A world value as an agent's house-held text may read it (`recent`,
+   *  the dossier): a character's `private:` slot reads as unset (wave 21, C2). */
+  private agentPeek(path: string): string | null {
+    const sim = this.sim!;
+    const dot = path.indexOf(".");
+    if (dot > 0 && isPrivateSlot(sim.model.characters.get(path.slice(0, dot)), path.slice(dot + 1))) return null;
+    return worldString(sim.world.peek(path));
   }
 
   /** A `hidden: true` group the story has not revealed: an agent may not
@@ -2560,13 +2573,14 @@ export class EventRuntime {
         .map((e) => ({ id: e.id, title: e.title, about: e.about, text: text ? e.text : "" }));
     const speakerId = performer ?? who;
     const speakerName = performer ?? sim.persons.get(who)?.name ?? who;
+    const speakerDef = performer !== null ? sim.model.characters.get(performer) : undefined;
     return {
       id,
       character: thread.character,
       thread,
       speaker:
         performer !== null
-          ? { kind: "performer", id: performer, name: performer, faction: sim.model.characters.get(performer)?.faction ?? null }
+          ? { kind: "performer", id: performer, name: performer, faction: sim.model.characters.get(performer)?.faction ?? null, ...(speakerDef?.player === true ? { player: true as const } : {}) }
           : { kind: "guest", id: who, name: sim.persons.get(who)?.name ?? who, faction: sim.publicFactionOf(who) },
       text: last.text,
       history,
@@ -2581,6 +2595,7 @@ export class EventRuntime {
         // their text (the classic prompt reads it).
         codex: codex(speakerId, !recentOn),
         location: performer === null ? sim.locationOf(who) : null,
+        ...(speakerDef?.player === true ? { ranges: Object.fromEntries([...speakerDef.ranges].filter(([k]) => !isPrivateSlot(speakerDef, k))) } : {}),
       },
       world: globals,
       powers: this.agentPowers(),
@@ -2598,7 +2613,7 @@ export class EventRuntime {
    *  the facts ledger, every time (never stored). */
   private agentDossierOf(thread: AgentThread, id: string, name: string, all: readonly ChatMessage[]): { dossier: AgentDossier } | Record<string, never> {
     const sim = this.sim!;
-    const peek = (path: string) => worldString(sim.world.peek(path));
+    const peek = (path: string) => this.agentPeek(path);
     const person = sim.persons.get(id);
     if (person === undefined || peek(`${id}.at_the_heart`) !== "true") return {};
     const unseen = (g: string) => this.agentHiddenGroup(g) || this.agentHiddenRace(g);
@@ -2728,7 +2743,7 @@ export class EventRuntime {
         const e = sim.model.codex.get(entry);
         return e === undefined ? undefined : { secret: e.secret, title: e.title, text: e.text };
       },
-      peek: (path) => worldString(sim.world.peek(path)),
+      peek: (path) => this.agentPeek(path),
       persons: [...sim.persons.values()].map((p) => ({ id: p.id, name: p.name })),
       filings,
       ...(mentionsAnswer !== undefined ? { mentionsAnswer } : {}),
@@ -2949,11 +2964,24 @@ export class EventRuntime {
     // Adjustments move only the character's own declared numeric ranges,
     // clamped to them. The story's watchers decide what the numbers mean.
     const ranges = sim.model.characters.get(req.character)?.ranges ?? new Map<string, [number, number]>();
+    // Wave 21 (C7): `them.<slot>` moves a player speaker's own declared
+    // range (never a `private:` one); a guest's `them.` keys are ignored.
+    const who = req.thread.audience[0] ?? "";
+    const them = who.startsWith("@") ? sim.model.characters.get(who.slice(1)) : undefined;
     const applied: Record<string, number> = {};
     for (const [name, delta] of agentAdjustments(body["adjust"])) {
-      const range = ranges.get(name);
+      let range: [number, number] | undefined;
+      let path: string;
+      if (name.startsWith("them.")) {
+        const slot = name.slice("them.".length);
+        if (them === undefined || !them.player || isPrivateSlot(them, slot)) continue;
+        range = them.ranges.get(slot);
+        path = `${them.id}.${slot}`;
+      } else {
+        range = ranges.get(name);
+        path = `${req.character}.${name}`;
+      }
       if (range === undefined) continue;
-      const path = `${req.character}.${name}`;
       const current = Number(sim.worldEntries().find((w) => w.path === path)?.value ?? range[0]);
       const next = Math.max(range[0], Math.min(range[1], (Number.isFinite(current) ? current : range[0]) + delta));
       applied[name] = next;

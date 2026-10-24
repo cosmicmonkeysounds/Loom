@@ -80,6 +80,10 @@ export interface AgentSpeaker {
   id: string;
   name: string;
   faction: string | null;
+  /** Wave 21 (C7): the performer's part is `player: true` — staff who play
+   *  the game (Trabolta must keep them as allies; `adjust` may move their
+   *  `them.<slot>` ranges). Absent otherwise. */
+  player?: true;
 }
 
 /** Where a conversation lives: the character's `dm:` channel, narrowed to
@@ -130,7 +134,14 @@ export interface AgentRequest {
   /** The character's own state: `<Character>.*` world values + its codex. */
   self: { vars: Record<string, string>; ranges: Record<string, [number, number]>; codex: AgentCodexEntry[] };
   /** The speaker's state: `<id>.*` world values + their codex (guests). */
-  them: { vars: Record<string, string>; codex: AgentCodexEntry[]; location: string | null };
+  them: {
+    vars: Record<string, string>;
+    codex: AgentCodexEntry[];
+    location: string | null;
+    /** Wave 21 (C7): a player speaker's declared numeric ranges (never a
+     *  `private:` one) — what an `adjust` key `them.<slot>` may move. */
+    ranges?: Record<string, [number, number]>;
+  };
   /** Global world facts (paths whose head is neither a guest nor a character). */
   world: Record<string, string>;
   /** The powers this character may exercise from a reply: every
