@@ -1,10 +1,12 @@
 //! A guest's card in the booth (wave 13): opened at once by a scan, or from
 //! 🗂 Guests, a readout, a name or a room's who's-here list. It leads with
-//! the facts (Not cleared, ⛔, 🔒, 📍, the story's flags), then at most
-//! three story buttons — the ones the character's live objectives name and
-//! the server says are live for this guest — then the story's reply to the
-//! press, and every other button under "All buttons… (n)" with its
-//! description. `arm: true` buttons arm on the first tap and fire on the
+//! the facts a performer acts on (🔒, Marked, ⛔, 📍), then at most three
+//! story buttons — the ones the character's live objectives name and the
+//! server says are live for this guest (a host also gets the ones live
+//! because of this guest) — then the story's reply to the press. Since
+//! wave 21 there is no "All buttons…", no earlier readouts and no raw id:
+//! a performer sees what the night asks of them, never the story's
+//! machinery. `arm: true` buttons arm on the first tap and fire on the
 //! second.
 
 import { showClockOf } from "../show-clock.ts";
@@ -16,14 +18,14 @@ import { ARM_LINE, useArmButtons } from "../arm.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { GuestCardView, PrimeGuest } from "../types.ts";
 import { BoothLayer } from "./layer.tsx";
-import { armsFirst, boothHost, goneLine, cardButtons, cardGuestFacts, cardReadKey, defaultFaceId, destructive, faceGroups, factChips, faceSettled, foldOpensItself, heldFace, inFlightGate, pressOutcome, scanError, scanRepeated, SCAN_REPEATED, type CardButton, type OutcomeLine } from "./model.ts";
+import { armsFirst, boothHost, goneLine, cardButtons, cardGuestFacts, cardReadKey, defaultFaceId, destructive, faceGroups, factChips, faceSettled, heldFace, inFlightGate, pressOutcome, scanError, scanRepeated, SCAN_REPEATED, type CardButton, type OutcomeLine } from "./model.ts";
 import { Icon } from "../chrome/icons.tsx";
 import { BoothIcon } from "./icons.tsx";
 import { ConfrontScreen } from "./confront.tsx";
 import { confrontFor, leadingGlyph, type Confront } from "./popouts/model.ts";
 import { PopOutDock } from "./popouts/rung.ts";
 import { WantedBanner } from "./wanted/poster.tsx";
-import { looseWanted, wantedOf } from "./wire.ts";
+import { isPlayer, looseWanted, wantedOf } from "./wire.ts";
 
 /** The card's 🩹 unmark button among the live ids (the confrontation's "Not them…"). */
 export function unmarkIdOf(live: readonly string[], interactions: readonly { id: string; label: string }[]): string | null {
@@ -85,17 +87,14 @@ export function GuestCardBody({
   // What the last press / scan came to (C1): replies, the character's
   // lines, a refusal, or "no reply from the story". A card opened from a
   // scan leads with that scan's.
-  const [outcome, setOutcome] = useState<OutcomeLine[] | null>(seed?.replies !== undefined ? pressOutcome(seed, "scan") : null);
+  const player = isPlayer(session.view);
+  const [outcome, setOutcome] = useState<OutcomeLine[] | null>(seed?.replies !== undefined ? pressOutcome(seed, "scan", { player }) : null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   // "📡 Scan again" — one at a time: every scan is journaled and runs the
   // story's scan hook, so taps while one is on its way are ignored.
   const [scanning, setScanning] = useState(false);
   const scanGate = useMemo(() => inFlightGate(), []);
-  // The "All buttons…" fold: null = not touched (it opens by itself when
-  // the face is empty, the fold holds a live button and is short).
-  const [all, setAll] = useState<boolean | null>(null);
-  const [earlier, setEarlier] = useState(false);
   const [sharing, setSharing] = useState(false);
   // The face as it stood at the last press (top to bottom), held still while
   // the outcome lands above it (`heldFace`); a re-scan lets it go.
@@ -171,11 +170,9 @@ export function GuestCardBody({
   const name = guest?.name ?? guestId;
   const where = guest?.location ? (view?.channels.find((c) => c.id === `loc:${guest.location}`)?.title ?? guest.location) : null;
   const chips = guest !== null ? factChips(guest, where) : [];
-  const read = cardButtons(view?.interactions ?? [], objectives, card, character, admin || boothHost(session.auth, view));
+  const read = cardButtons(view?.interactions ?? [], objectives, card, character, admin || boothHost(session.auth, view), { player });
   const buttons = heldFace(read.face, read.rest, frozen, view?.interactions ?? []);
   const lore = view?.codex ?? [];
-  const restLive = buttons.rest.some((b) => b.live);
-  const allOpen = all ?? foldOpensItself(read, card !== null);
   // Every control on the card ignores a tap inside the settle after the
   // card was replaced — Next guest and the utility row too, so a second tap
   // never lands on whatever moved under the finger.
@@ -183,8 +180,6 @@ export function GuestCardBody({
   const guard = (f: () => void) => () => {
     if (settled()) f();
   };
-  const shown = new Set((outcome ?? []).filter((l) => l.kind === "reply").map((l) => l.text));
-  const past = (card?.readouts ?? []).filter((r) => !shown.has(r.text.trim()));
 
   const press = (b: CardButton) => {
     const i = b.interaction;
@@ -199,7 +194,7 @@ export function GuestCardBody({
         (r) => {
           setBusy(null);
           landed();
-          setOutcome(pressOutcome(r, "press"));
+          setOutcome(pressOutcome(r, "press", { player }));
           if (r.card !== undefined) setCard(r.card);
         },
         (e) => {
@@ -225,7 +220,7 @@ export function GuestCardBody({
       (r) => {
         settle();
         landed();
-        setOutcome(pressOutcome({ replies: r.responses, said: r.said, staff: r.staff, refused: r.refused }, "scan"));
+        setOutcome(pressOutcome({ replies: r.responses, said: r.said, staff: r.staff, refused: r.refused }, "scan", { player }));
         if (r.card !== undefined) setCard(r.card);
         // Wave 18 (§4.3): Scan again on a wanted program is a remote confrontation (two taps).
         const c = confrontFor(r, wantedOf(session.view), session.view?.interactions ?? [], "rescan");
@@ -242,7 +237,7 @@ export function GuestCardBody({
 
   // The Win95 default button: the first harmless face button an objective asks for.
   const defaultId = defaultFaceId(buttons.face);
-  const btn = (b: CardButton & { gone?: true }, size: "face" | "all") => {
+  const btn = (b: CardButton & { gone?: true }) => {
     const i = b.interaction;
     const armed = arm.armed === i.id;
     const harm = destructive(i);
@@ -251,7 +246,7 @@ export function GuestCardBody({
       <button
         key={i.id}
         type="button"
-        className={`w95-btn booth-btn ${size === "face" ? "booth-face-btn" : "booth-all-btn"}${size === "face" && i.id === defaultId ? " booth-default" : ""}${harm ? " harm" : ""} ${armed ? "armed" : ""} ${b.live ? "" : "off"}`}
+        className={`w95-btn booth-btn booth-face-btn${i.id === defaultId ? " booth-default" : ""}${harm ? " harm" : ""} ${armed ? "armed" : ""} ${b.live ? "" : "off"}`}
         aria-pressed={armed || undefined}
         aria-busy={busy === i.id || undefined}
         disabled={busy !== null || b.gone === true}
@@ -263,25 +258,18 @@ export function GuestCardBody({
     );
   };
   const face = faceGroups(buttons.face);
-  const restGroups = faceGroups(buttons.rest);
-  const harmGroup = (list: readonly CardButton[], size: "face" | "all") =>
+  const harmGroup = (list: readonly CardButton[]) =>
     list.length > 0 && (
       <div className="booth-harm" role="group" aria-label={`Marks or captures ${name}`}>
         <span className="booth-harm-head">
           <BoothIcon name="warning" /> Marks or captures {name}: tap twice
         </span>
-        {list.map((b) => btn(b, size))}
+        {list.map((b) => btn(b))}
       </div>
     );
   const none = buttons.face.length === 0 && card !== null && (
     <p className="booth-none">
-      {restLive && (objectives ?? []).length > 0
-        ? allOpen
-          ? `Nothing your objective needs on ${name} right now — the other buttons are below.`
-          : `Nothing your objective needs on ${name} right now.`
-        : restLive
-          ? `Nothing to lead with on ${name} — the buttons are below.`
-          : `Nothing for ${character} to press on ${name} right now.`}
+      {noneLine({ player, name, character, objectives: (objectives ?? []).length })}
     </p>
   );
 
@@ -338,7 +326,7 @@ export function GuestCardBody({
               <GuestBadges id={guestId} />
             </strong>
             <span className="booth-card-id">
-              {guest?.faction ?? "unaligned"} · {guestId}
+              {guest?.faction ?? "unaligned"}
             </span>
           </div>
         </div>
@@ -377,33 +365,6 @@ export function GuestCardBody({
             </button>
           )}
         </div>
-        {past.length > 0 && (
-          <div className="booth-earlier">
-            <button type="button" className="booth-fold" aria-expanded={earlier} onClick={guard(() => setEarlier((v) => !v))}>
-              {earlier ? "▾" : "▸"} Earlier readouts ({past.length})
-            </button>
-            {earlier && (
-              <ul className="booth-earlier-list">
-                {past.map((r) => (
-                  <li key={r.seq}>{r.text}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-        {buttons.rest.length > 0 && (
-          <div className="booth-all">
-            <button type="button" className="booth-fold" aria-expanded={allOpen} onClick={guard(() => setAll(!allOpen))}>
-              {allOpen ? "▾" : "▸"} All buttons… ({buttons.rest.length})
-            </button>
-            {allOpen && (
-              <div className="booth-all-list">
-                {restGroups.safe.map((b) => btn(b, "all"))}
-                {harmGroup(restGroups.harm, "all")}
-              </div>
-            )}
-          </div>
-        )}
       </div>
       {/* The face and Next guest sit on the window's bottom edge, in thumb
           reach, and hold still after a press (the outcome lands above). */}
@@ -411,8 +372,8 @@ export function GuestCardBody({
         <div className="booth-card-foot">
           {buttons.face.length > 0 && (
             <div className="booth-face">
-              {harmGroup(face.harm, "face")}
-              {face.safe.map((b) => btn(b, "face"))}
+              {harmGroup(face.harm)}
+              {face.safe.map((b) => btn(b))}
             </div>
           )}
           {onNext !== undefined && (
@@ -432,6 +393,12 @@ export function GuestCardBody({
       )}
     </div>
   );
+}
+
+/** The card's line when its face is empty (wave 21: there is no fold below it). */
+export function noneLine({ player, name, character, objectives }: { player: boolean; name: string; character: string; objectives: number }): string {
+  if (player) return `Nothing to do with ${name} right now.`;
+  return objectives > 0 ? `Nothing your objective needs on ${name} right now.` : `Nothing for ${character} to press on ${name} right now.`;
 }
 
 /** What the last press or scan came to: the story's reply, the character's

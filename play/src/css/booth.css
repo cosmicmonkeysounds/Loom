@@ -186,14 +186,12 @@
 .booth-harm { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 8px; background: var(--face); box-shadow: var(--sunken); }
 .booth-harm-head { display: flex; align-items: center; gap: 6px; font: 700 12px var(--ui-font); color: var(--ink); }
 .booth-btn-label { display: flex; align-items: center; gap: 8px; }
-.booth-all-list .booth-harm { margin-top: 4px; }
 .booth-btn {
   flex-direction: column; align-items: stretch; justify-content: center; gap: 2px;
   width: 100%; padding: 8px 14px; text-align: left;
 }
 .booth-face-btn { min-height: 56px; }
 .booth-face-btn .booth-btn-label { font: 700 15px var(--ui-font); }
-.booth-all-btn .booth-btn-label { font: 700 13px var(--ui-font); }
 .booth-btn-sub { font: 400 12px var(--ui-font); color: var(--dim-ink); }
 .booth-btn.off .booth-btn-label { color: var(--dim-ink); }
 .booth-btn.armed { background: var(--ink); color: var(--white); box-shadow: var(--pressed); }
@@ -208,9 +206,6 @@
   text-align: left; cursor: pointer;
 }
 .booth-fold:focus-visible { outline: 1px dotted var(--ink); outline-offset: -4px; }
-.booth-earlier + .booth-all { margin-top: -10px; } /* two folds read as one list */
-.booth-all-list { display: flex; flex-direction: column; gap: 6px; }
-.booth-all-btn { min-height: var(--tap); }
 .booth-earlier-list { margin: 0; padding-left: 20px; font: 14px/1.35 var(--chat-font); }
 .booth-next { width: 100%; min-height: 52px; font: 700 15px var(--ui-font); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .booth-refusal-ico { display: inline-block; vertical-align: -2px; margin-right: 4px; }

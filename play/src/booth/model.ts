@@ -74,6 +74,7 @@ export function cardButtons(
   card: Pick<GuestCardView, "live" | "guestScoped"> | null,
   character: string,
   admin: boolean,
+  opts: { player?: boolean } = {},
 ): CardButtons {
   const byId = new Map(interactions.filter((i) => i.who !== "admin").map((i) => [i.id, i]));
   const split = splitInteractions(interactions, character, admin);
@@ -87,14 +88,20 @@ export function cardButtons(
   const objs = objectives ?? [];
   for (const o of objs) for (const id of o.buttons) if (!RESERVED.has(id)) add(id);
   const named = new Set(faceIds);
-  for (const id of card?.guestScoped ?? []) add(id);
-  if (objs.length === 0) for (const i of split.mine) add(i.id);
+  // Wave 21 (D4): only a host (or an admin booth) also leads with the
+  // buttons live because of this guest; everyone else gets what an
+  // objective names. A story with no objective at all still falls back to
+  // the booth's own live buttons — never on a player's.
+  if (admin) for (const id of card?.guestScoped ?? []) add(id);
+  if (objs.length === 0 && opts.player !== true) for (const i of split.mine) add(i.id);
   const face = faceIds.map((id) => ({ interaction: byId.get(id)!, live: true, ...(named.has(id) ? { named: true } : {}) }));
   // The rest: what this booth may press, minus the face; live ones first.
+  // No card shows them since wave 21 (no "All buttons…"): `heldFace` reads
+  // them to keep a pressed row in place.
   const seen = new Set(faceIds);
   const restAll = offered.filter((i) => !seen.has(i.id) && i.who !== "admin");
   // A host / admin booth may press another character's `by:` button: the
-  // card's `live` names them, so they belong in the fold too.
+  // card's `live` names them, so they belong in the rest too.
   for (const id of live) if (!seen.has(id) && !restAll.some((i) => i.id === id) && byId.has(id)) restAll.push(byId.get(id)!);
   const rest = [...restAll.filter((i) => live.has(i.id)), ...restAll.filter((i) => !live.has(i.id))].map((i) => ({ interaction: i, live: live.has(i.id) }));
   return { face, rest };
@@ -188,6 +195,9 @@ export function scanError(e: unknown, view?: { paused?: unknown; night?: { step?
   return msg;
 }
 
+/** What a player reads for a refused press (wave 21, D4): never the staff room's reason. */
+export const NOT_NOW = "Not now.";
+
 /** A refused press or scan with no staff line to say why (D1). */
 export const REFUSED_SILENT = "the story took no action on this right now.";
 
@@ -216,12 +226,19 @@ export type OutcomeLine =
 export function pressOutcome(
   r: { replies?: readonly string[]; said?: ReadonlyArray<{ from: string; text: string }>; staff?: readonly string[]; refused?: boolean },
   kind: "press" | "scan",
+  opts: { player?: boolean } = {},
 ): OutcomeLine[] {
   const clean = (t: unknown) => (typeof t === "string" ? t.trim() : "");
   const out: OutcomeLine[] = [];
   for (const t of r.replies ?? []) if (clean(t) !== "") out.push({ kind: "reply", text: clean(t) });
   for (const l of r.said ?? []) if (l !== null && typeof l === "object" && clean(l.text) !== "") out.push({ kind: "said", from: clean(l.from), text: clean(l.text) });
   const refused = r.refused === true;
+  // Wave 21 (D4): a player never reads the staff room's lines; a refusal is "Not now.".
+  if (opts.player === true) {
+    if (refused) out.push({ kind: "none", text: NOT_NOW });
+    if (out.length > 0) return out;
+    return [{ kind: "none", text: kind === "scan" ? "✔ Scanned" : "✔ Done" }];
+  }
   for (const t of r.staff ?? []) if (clean(t) !== "") out.push({ kind: "staff", text: clean(t), refused });
   // D1: the story turned it down without a word (a press it does nothing
   // with): say so, never "✔ Sent" — that reads as done.
@@ -242,19 +259,6 @@ export function scanRepeated(e: unknown): boolean {
 
 /** What the card says for a repeated scan (`scanRepeated`). */
 export const SCAN_REPEATED: OutcomeLine = { kind: "none", text: "Scanned a moment ago: no new scan" };
-
-/** The "All buttons…" fold opens by itself only when it is this short. */
-export const FOLD_AUTO_MAX = 6;
-
-/**
- * Does the card's "All buttons…" fold open by itself? Only when the face is
- * empty, the fold holds a button that is live now, and the fold is short
- * (≤ `FOLD_AUTO_MAX`): Clippy's 31 or a door part's 7 stay folded behind
- * their count — the performer opens them on purpose.
- */
-export function foldOpensItself(buttons: CardButtons, cardRead: boolean): boolean {
-  return cardRead && buttons.face.length === 0 && buttons.rest.some((b) => b.live) && buttons.rest.length <= FOLD_AUTO_MAX;
-}
 
 /**
  * One request at a time ("📡 Scan again"): `run` starts one only when none
@@ -303,9 +307,9 @@ export function cardReadKey(
   return JSON.stringify([guestId, (objectives ?? []).map((o) => [o.id, o.checklist.map((c) => c.done)]), night?.step ?? null, night?.phase ?? null, row]);
 }
 
-/** One fact on a guest card. `loud` = read it first (Not cleared, 🔒,
+/** One fact on a guest card. `loud` = read it first (🔒,
  *  Marked); `warn` = mind it (⛔, Late, Bathroom Mode); `quiet` = plain
- *  text (📍, ✓ Cleared, a value). */
+ *  text (📍 where they stand). */
 export interface FactChip {
   text: string;
   tone: "quiet" | "loud" | "warn";
@@ -322,52 +326,39 @@ export function flagTone(label: string): FactChip["tone"] {
   return LOUD_ON.test(l) ? "loud" : WARN_ON.test(l) ? "warn" : "quiet";
 }
 
-/** A boolean flag whose *false* is the exception a performer must see:
- *  the gates a guest passes on the way in ("Not cleared", "Not checked in"). */
-const GATE = /^(cleared|checked[\s-]?in|uploaded|registered|verified|scanned|approved|signed[\s-]?in|joined|arrived|present)\b/iu;
-
 function isBoolValue(v: string): boolean {
   return v === "true" || v === "false";
 }
 
 /**
- * The facts a guest card leads with, by severity: the loud ones first (🔒
- * captured, a failed gate "Not cleared", a true Marked / In the Internet),
- * then the ones to mind (⛔ restricted, Late, Bathroom Mode), then where
- * they stand and the quiet rest (✓ Cleared, "Label: value"). A false
- * boolean that is not a gate is left out: "Not marked" on every card would
- * be noise.
+ * The facts a guest card leads with (wave 21, D4: only what a performer
+ * acts on): the loud ones first (🔒 captured, a true Marked / In the
+ * Internet), then the ones to mind (⛔ restricted, Late, Bathroom Mode),
+ * then where they stand. No gate chips ("Not cleared"), no quiet ✓ flags
+ * and no "Label: value": the story's bookkeeping stays behind the scenes.
  */
 export function factChips(g: PrimeGuest, where: string | null): FactChip[] {
   const loud: FactChip[] = [];
   const warn: FactChip[] = [];
-  const quiet: FactChip[] = [];
   if (g.captured) loud.push({ text: "🔒 Captured", tone: "loud" });
   if (g.restricted === true) warn.push({ text: "⛔ Restricted", tone: "warn" });
   for (const f of g.flags ?? []) {
-    if (isBoolValue(f.value)) {
-      if (f.on) {
-        const tone = flagTone(f.label);
-        (tone === "loud" ? loud : tone === "warn" ? warn : quiet).push({ text: tone === "quiet" ? `✓ ${f.label}` : f.label.trim(), tone });
-      } else if (GATE.test(f.label.trim())) loud.push({ text: `✗ Not ${f.label.trim().toLowerCase()}`, tone: "loud" });
-    } else if (f.on) quiet.push({ text: `${f.label}: ${f.value}`, tone: "quiet" });
+    if (!isBoolValue(f.value) || !f.on) continue;
+    const tone = flagTone(f.label);
+    if (tone === "loud") loud.push({ text: f.label.trim(), tone });
+    else if (tone === "warn") warn.push({ text: f.label.trim(), tone });
   }
-  return [...loud, ...warn, ...(where !== null ? [{ text: `📍 ${where}`, tone: "quiet" as const }] : []), ...quiet];
+  return [...loud, ...warn, ...(where !== null ? [{ text: `📍 ${where}`, tone: "quiet" as const }] : [])];
 }
 
 /**
  * The guest a card reads its facts off (C3): the live row from the booth's
- * snapshot (it follows another booth's act at once), whose `flags` the
- * server trims to the ones that are on plus failed gates; the card's own
- * read (`/api/prime/card`) carries the full list, so a false gate the
- * snapshot left out still reads "Not …". A label the row has wins.
+ * snapshot (it follows another booth's act at once), else the card's own
+ * read. Since wave 21 no gate chip shows, so the read's full flag list adds
+ * nothing the row lacks.
  */
 export function cardGuestFacts(row: PrimeGuest | null, read: PrimeGuest | null): PrimeGuest | null {
-  if (row === null) return read;
-  if (read === null || read.id !== row.id || read.flags === undefined) return row;
-  const have = new Set((row.flags ?? []).map((f) => f.label));
-  const extra = read.flags.filter((f) => !have.has(f.label) && !f.on && isBoolValue(f.value) && GATE.test(f.label.trim()));
-  return extra.length === 0 ? row : { ...row, flags: [...(row.flags ?? []), ...extra] };
+  return row ?? read;
 }
 
 /** The tray's countdown: the soonest live one at story time `nowMs`, in seconds left. */

@@ -531,8 +531,10 @@ export function stepWord(first: Pick<WizardStep, "label"> | undefined): string {
 }
 
 /** What one PLAYER SELECT / Rows press came to, for the reply line. */
-export function replyLine(name: string, r: { replies?: readonly string[]; said?: ReadonlyArray<{ text: string }>; staff?: readonly string[]; toGuest?: readonly string[]; refused?: boolean } | null): string {
+export function replyLine(name: string, r: { replies?: readonly string[]; said?: ReadonlyArray<{ text: string }>; staff?: readonly string[]; toGuest?: readonly string[]; refused?: boolean } | null, opts: { player?: boolean } = {}): string {
   if (r === null) return "";
+  // Wave 21 (D4): a player never reads the staff room's reason.
+  if (r.refused === true && opts.player === true) return "Not now.";
   if (r.refused === true) return `Not done: ${(r.staff ?? []).find((s) => s.trim() !== "") ?? "the story took no action on this right now."}`;
   // What the guest's phone got first (BN-F13), then the booth character's own words to them.
   const said = (r.toGuest ?? []).map((t) => t.trim()).find((t) => t !== "") ?? (r.said ?? []).map((l) => l.text.trim()).find((t) => t !== "") ?? (r.replies ?? []).map((t) => t.trim()).find((t) => t !== "");
