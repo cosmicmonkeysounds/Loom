@@ -72,7 +72,7 @@ addresses, codes, where things are kept).
   Logs in their booths; the Installation Wizard (Julia) is a voice, the tent
   is in the backyard through the tunnel. Every pack below is written to that.
 - **Wave 20 (2026-10-23), on `oct31-w20/integration`, not shipped; text in
-  [`SIGNOFF-w20.md`](../SIGNOFF-w20.md):** Trabolta's heart. The door sensor
+  [`SIGNOFF-w20.md`](../history/SIGNOFF-w20.md):** Trabolta's heart. The door sensor
   is a light on the frame (an LED into an LDR, read by the server-room
   terminal); the first opening once he is awake plays The Heart and **he
   wants the door shut before anything goes on**; a pass at his screen starts
