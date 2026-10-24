@@ -85,7 +85,13 @@ describe("C1: a press's and a scan's own lines", () => {
       const clippy = (await booth(rt, "Clippy")).json.token as string;
       const press = await post(rt, "/api/prime/act", { name: "truth_answered", guest: winzip.id, token: clippy });
       expect(press.status).toBe(200);
-      expect(press.json.staff).toEqual(["🗣 The bottle is not on WinZip."]);
+      // Wave 21 (D4): Clippy is a player — a player never reads the staff
+      // room's reason; a host's booth still does.
+      expect(press.json.staff).toBeUndefined();
+      const adobe = (await booth(rt, "Adobe Acrobat")).json.token as string;
+      const host = await post(rt, "/api/prime/act", { name: "truth_answered", guest: winzip.id, token: adobe });
+      expect(host.status).toBe(200);
+      expect(host.json.staff).toEqual(["🗣 The bottle is not on WinZip."]);
       const mine = await guest(rt, "Minesweeper");
       const mcafee = (await booth(rt, "McAfee Anti-Virus")).json.token as string;
       const scan = await post(rt, "/api/scan", { target: mine.id, token: mcafee });
