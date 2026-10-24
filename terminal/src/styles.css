@@ -855,6 +855,9 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 .chart-row.chart-hidden { visibility: hidden; }
 .chart-row.chart-top { background: #ffffa0; font-weight: bold; }
 .chart-row.chart-bottom { background: #e0e0e0; }
+.chart-row.chart-staff { background: #d8ecff; border-color: #1060a0; }
+.chart-row.chart-staff.chart-top { background: #ffffa0; }
+.chart-staff-tag { flex: none; padding: 0 0.3em; font-size: 0.7em; font-weight: bold; color: #fff; background: #1060a0; align-self: center; }
 .chart-callouts { display: flex; flex-wrap: wrap; margin-bottom: 0.2em; font-size: clamp(14px, 2.6vw, 38px); font-weight: bold; }
 .chart-callout { flex: 1 1 auto; margin: 0 0.4em 0.2em 0; padding: 0.15em 0.5em; border: 2px solid #000; } /* margins, not flex gap: Safari 14.0 */
 .chart-callout-top { background: #ffffa0; }

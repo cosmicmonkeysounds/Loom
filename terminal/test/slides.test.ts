@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IdentifyOverlay, ScreenLayer, SlideView } from "../src/ScreenLayer.tsx";
 import { EMPTY_NIGHT, parseScreenState, type ScreenProgram, type ScreenState } from "../src/screen.ts";
-import { BLACKOUT_MS, FLICKER_FRESH_MS, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
+import { BLACKOUT_MS, FLICKER_FRESH_MS, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartRankedLine, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
 
 const T0 = 1_000_000;
 const empty: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
@@ -348,12 +348,28 @@ describe("the live Trust Chart", () => {
   it("parses off the wire; junk rows drop, a junk chart is null", () => {
     const s = parseScreenState({ attract: false, chart: { slide: "trust_chart", rows: [{ name: "A", value: 3 }, { name: 4 }, null, { name: "B", value: "x" }] } });
     // An older (w3) server sends no call-outs and no reveal time: nobody called out, every row up.
-    expect(s?.chart).toEqual({ slide: "trust_chart", rows: [{ name: "A", value: 3 }], top: null, bottom: null, revealAt: 0 });
+    expect(s?.chart).toEqual({ slide: "trust_chart", rows: [{ name: "A", value: 3, staff: false }], top: null, bottom: null, revealAt: 0 });
     expect(parseScreenState({ attract: false, chart: "nope" })?.chart).toBeNull();
     expect(parseScreenState({ attract: false })?.chart).toBeNull();
     const now = parseScreenState({ attract: false, chart: { slide: "trust_chart", rows: [], top: "A", bottom: "B", revealAt: 123 } })?.chart;
     expect(now).toMatchObject({ top: "A", bottom: "B", revealAt: 123 });
     expect(parseScreenState({ attract: false, chart: { slide: "trust_chart", rows: [], top: 4, bottom: "", revealAt: "x" } })?.chart).toMatchObject({ top: null, bottom: null, revealAt: 0 });
+  });
+
+  it("marks staff rows (wave 21): staff: true only, ranked with the programs", () => {
+    const s = parseScreenState({ attract: false, chart: { slide: "trust_chart", rows: [{ name: "Clippy", value: 40, staff: true }, { name: "Winamp", value: 40 }, { name: "Norton Anti-Virus", value: 5, staff: "yes" }, { name: "Excel", value: -2, staff: false }] } });
+    expect(s?.chart?.rows.map((r) => r.staff)).toEqual([true, false, false, false]);
+    const lines = chartLines(s!.chart!);
+    expect(lines.map((r) => `${r.rank}:${r.name}:${r.staff ? "staff" : "-"}`)).toEqual(["1:Clippy:staff", "1:Winamp:-", "3:Norton Anti-Virus:-", "4:Excel:-"]);
+    expect(chartRankedLine(s!.chart!)).toBe("3 programs and 1 staff ranked.");
+    expect(chartRankedLine(chart)).toBe("4 programs ranked.");
+    expect(chartRankedLine({ ...chart, rows: [{ name: "A", value: 1 }] })).toBe("1 program ranked.");
+  });
+
+  it("draws a staff row with its tag on the chart slide", () => {
+    const html = renderToStaticMarkup(createElement(SlideView, { slide: { value: "trust_chart", cue: "screens_trust_chart" }, y2k: null, chart: { ...chart, rows: [{ name: "Clippy", value: 50, staff: true }, ...chart.rows] } }));
+    expect(html).toMatch(/chart-row[^"]*chart-staff[^>]*>.*?Clippy.*?🛡 STAFF/su);
+    expect(html.match(/chart-staff-tag/gu)?.length).toBe(1);
   });
 
   it("reveals bottom-up, one row every step, from the server's revealAt", () => {

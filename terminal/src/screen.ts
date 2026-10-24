@@ -549,7 +549,10 @@ export interface ScreenState {
 /** A ranked chart the server keeps live (`SCREEN_CHARTS`, core). */
 export interface ScreenChart {
   slide: string;
-  rows: Array<{ name: string; value: number }>;
+  /** Ranked rows. `staff` (wave 21): a player part (Clippy, the Antivirus)
+   *  ranked beside the programs; absent on the wire (a program, or an older
+   *  server) = false; `chartOf` always sets it. */
+  rows: Array<{ name: string; value: number; staff?: boolean }>;
   /** The names the story calls out at the top / bottom (null = nobody yet).
    *  Matched by name: the bottom may be past the server's row cap. */
   top: string | null;
@@ -569,7 +572,7 @@ export function chartOf(raw: unknown): ScreenChart | null {
   for (const x of r["rows"]) {
     if (typeof x !== "object" || x === null) continue;
     const row = x as Record<string, unknown>;
-    if (typeof row["name"] === "string" && typeof row["value"] === "number" && Number.isFinite(row["value"])) rows.push({ name: row["name"], value: row["value"] });
+    if (typeof row["name"] === "string" && typeof row["value"] === "number" && Number.isFinite(row["value"])) rows.push({ name: row["name"], value: row["value"], staff: row["staff"] === true });
   }
   const name = (v: unknown): string | null => (typeof v === "string" && v !== "" ? v : null);
   const revealAt = typeof r["revealAt"] === "number" && Number.isFinite(r["revealAt"]) && r["revealAt"] > 0 ? r["revealAt"] : 0;
