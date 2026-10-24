@@ -553,7 +553,7 @@ in ROLE hooks and story rules.
 
 | Slot (exact) | Default | Meaning |
 |---|---|---|
-| `combo_a: text? = none` | seeded in Power On: `set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"` | Combo A (disable Trabolta). Canonical: pairs sorted by V. |
+| `combo_a: text? = none` | seeded in Power On: `set Kernel.combo_a = "V2-D5,V4-D1,V6-D7,V7-D3"` | Combo A (disable Trabolta). Canonical: pairs sorted by V. Wave 22: V6 → D7 (was D8; the M4 bay has 7 inputs). |
 | `combo_b: text? = none` | seeded: `"V1-D6,V3-D2,V5-D7,V8-D4"` | Combo B (self-destruct). |
 | `q1` … `q8: text? = none` | | per-question verdict record: `"accurate"` or `"lie"` (H1–H3 = q1–q3, H4–H6 = q4–q6, F1–F2 = q7–q8). A lie is sticky (§3 B8). |
 | `lies_accepted: 0 to 50 = 0` | | accepted confident-but-false answers |
@@ -1219,7 +1219,7 @@ one as a share — he must never know what he is asking for.
 | Oil And Lightning | Oil And Lightning | T2 | Trabolta | | | ✚ | His runtime: the electricity is the lightning, the oil lets it run through him. Mix your oil and fuel and it's catastrophic for the car, "and for my silicon guts." His motorcycle runs on the same mix. Was *Greased Lightning* until 2026-10-19 (the user: "scrub the film from his own files"): no film, song or year; the bay's GREASE / LIGHTNING labels and The Legendary Fact keep the puzzle. |
 | The Legendary Fact | THE LEGENDARY FACT | L | The Server Room | | The Whole Truth (majority members only) | ✚ (last) | "Trabolta's heart is in the server room: a video patch bay, the top row (V) is lightning, the bottom row (D) is grease. Two combinations exist. Combo A takes the grease out of the lightning: it disables Trabolta. Combo B self-destructs the whole computer. The door has a keypad; the patch bay forgives one wrong combination, and the second sets off the alarm." `secret: true` since wave 7. Never held by Trabolta. |
 | Combo A First Half | Combo A — Disable Trabolta, part 1 | P | The Server Room | | The Whole Truth | ✚ | `V2 → D5`, `V4 → D1` (all four halves `secret: true` since wave 7) |
-| Combo A Second Half | Combo A — Disable Trabolta, part 2 | P | The Server Room | | The Whole Truth | ✚ | `V6 → D8`, `V7 → D3` |
+| Combo A Second Half | Combo A — Disable Trabolta, part 2 | P | The Server Room | | The Whole Truth | ✚ | `V6 → D7`, `V7 → D3` (wave 22, was D8) |
 | Combo B First Half | Combo B — Self-Destruct, part 1 | P | The Server Room | | The Whole Truth | ✚ | `V1 → D6`, `V3 → D2` |
 | Combo B Second Half | Combo B — Self-Destruct, part 2 | P | The Server Room | | The Whole Truth | ✚ | `V5 → D7`, `V8 → D4` |
 | The Truth File | truth.txt | X | | | the bobber (The Bag Of Truth), then everyone (read_truth_txt) | | Trabolta's backstory and, for every featured program and performer by role, why he brought them in (§3 F3). |
@@ -1558,7 +1558,7 @@ Desktop`; **no dialogue lines and no widgets** — the test checks this).
 - Seeds every `Night.*` default in §2.6 / §2.14 (`set Night.phase = "arrivals"`,
   `set Night.step = 0`, `set Kernel.anti_ai = "MS Paint"`, counters 0, flags false,
   strings `"none"`, `set Night.r2_requested = 3`, `set Night.clock = "--:--"`) and the two
-  combos on the Kernel (`set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"`, `set Kernel.combo_b
+  combos on the Kernel (`set Kernel.combo_a = "V2-D5,V4-D1,V6-D7,V7-D3"`, `set Kernel.combo_b
   = "V1-D6,V3-D2,V5-D7,V8-D4"`).
 - `cue lights_screensaver` / `set Night.lights = "screensaver"`; `cue screens_screensaver` /
   `set Night.screen = "screensaver"` / `set Night.terminals = "screensaver"`.
