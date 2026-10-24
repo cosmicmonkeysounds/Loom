@@ -83,6 +83,11 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   codes, or a live event's passcodes. `show-page.test.ts` fails if the
   generated `SHOW.html` names any secret it reads from `facts.json` or
   the story.
+- **Directors stay unseen.** No phone but a director's own (Run, the
+  director phone) reads a director's name: guests see the hosts, booths
+  (hosts included) read parts by name and every director as "Director".
+  Anything that carries a journal `by` (an author's display name) into a
+  booth, host or guest view goes through `server/unseen-directors.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to
