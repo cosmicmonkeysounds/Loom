@@ -8,9 +8,13 @@ Everything below the "Wave 22" entry is copied verbatim from the root
 "not merged" / "not shipped" lines are true only for the day they were
 written.
 
+Only the link targets in the copied text were changed, so they resolve
+from this folder (`hardware/server-room-door` links point at
+`hardware/server-room-m4`).
+
 Status as of 2026-10-24: every wave through 22 is **merged on master**. The
-VPS runs `w18b-1021`, so waves 18b Stage B, 19 (the parts not already in
-the shipped `c98759ec`), 20, 20b, 21 and 22 are merged but **not shipped**.
+VPS runs `w18b-1021` (`c98759ec`, built on top of wave 19, so wave 19 is
+live). Waves 18b Stage B, 20, 20b, 21 and 22 are merged but **not shipped**.
 
 Related history:
 
@@ -84,7 +88,7 @@ now pauses before Push draft / Go live (f9c5d223). Tests:
 **Windows.** stagehand runs on John's Desktop: the player lock uses
 `msvcrt` without `fcntl`, announcements and labels speak through SAPI
 (`voice_engine: auto`), `audio.host_api` picks the PortAudio host API
-(ASIO for the MOTU), `stagehand tasks install|remove|status|restart|print
+(ASIO for the MOTU), `stagehand tasks install|uninstall|restart|stop|status|print
 --job <m>` manages Task Scheduler tasks, cache folders sit under
 `%LOCALAPPDATA%`, and a YAML can `extends:` another. New machine configs
 `stagehand/trapped.desktop.yaml` (show + lights) and
@@ -1510,7 +1514,7 @@ Chart (`chart`). Other fixes: judge refusals go to `# hosts`, the VLC
 certificate rule, the fact-label bug, the ad hijack as a phone alert, the
 WebMD scan guard, and the pool program *Start Bar* is now *Start Menu*
 (deleted in wave 4).
-[`DEMO.md`](./core/examples/trapped-in-the-internet/DEMO.md) shows the
+[`DEMO.md`](../../core/examples/trapped-in-the-internet/DEMO.md) shows the
 WIP in 20–30 minutes (pinned by a test), and the Run page has a **Recap ↗**
 link. **play**: the stream sticks to the bottom. A closed door polls
 `/e/:id/api/identities` (`doorsOpen`) with backoff and shows "busy" on a
@@ -1668,8 +1672,8 @@ was rewritten for the new story (94 tests, green) and
 
 **The reinstallation games + spatial terminals landed 2026-10-10** (new
 `house/` + `reinstall/web` + `reinstall/vr`, TS `core/` server, `terminal`,
-the show; contract [`docs/loom-reinstall.md`](./docs/loom-reinstall.md),
-overview [`reinstall/README.md`](./reinstall/README.md); help:
+the show; contract [`docs/loom-reinstall.md`](../loom-reinstall.md),
+overview [`reinstall/README.md`](../../reinstall/README.md); help:
 `play/11-reinstallation`, `play/09-terminals`, `authoring/33-live-verbs`).
 Asked for: replace the VR-station goose with a real game. A corrupted
 program walks a **virtual copy of the house** to the **golden duck**, on a
@@ -2156,8 +2160,8 @@ covers the stated need. Tests: core `server-mod` / `server-interactions`
 → go live in place → end).
 
 **Loom 4 — the human-first surface landed 2026-09-09** (TS `core/` +
-`editor`; design: [`docs/loom-4.md`](./docs/loom-4.md), writer's guide
-[`docs/writing-in-loom.md`](./docs/writing-in-loom.md), reference project
+`editor`; design: [`docs/loom-4.md`](../loom-4.md), writer's guide
+[`docs/writing-in-loom.md`](../writing-in-loom.md), reference project
 `core/examples/glass-orchard/`). Additive at the parser — every v3 form
 still parses — and it changes how `.loom` is *written*:
 **names are words** (`== The Bell Tower at Dawn`, `CHARACTER Ivo Marsh`,
@@ -2431,7 +2435,7 @@ trait. The `SELF`/`ME` dialogue speaker resolves to whoever `self` is
 bound to on the frame (upper-cased to match explicit ALL-CAPS speakers),
 letting a beat drop the line that restates its owner. `rebuildSimulacra`
 is idempotent (clears `projectDiagnostics` too). Design +
-roadmap: [`docs/loom-functional-redesign.md`](./docs/loom-functional-redesign.md).
+roadmap: [`docs/loom-functional-redesign.md`](../loom-functional-redesign.md).
 
 Slice 2 landed 2026-06-30 (TS `core/` only): **parameterized traits**.
 `TRAIT Scanner(beat)` takes params after its name (split off like SCENE onto
@@ -2568,7 +2572,7 @@ border, so links survive any manual arrangement).
 
 **The unified conversation model landed 2026-07-03** (TS `core/` +
 `editor` + `play` mirrors; design:
-[`docs/loom-conversation-model.md`](./docs/loom-conversation-model.md)):
+[`docs/loom-conversation-model.md`](../loom-conversation-model.md)):
 every line of story now lands in exactly one room. **Locations are
 rooms** — each `LOCATION` derives a `loc:<Id>` channel (kind
 `location`, listed in every view; `member`/`canPost` = "standing
@@ -2659,7 +2663,7 @@ roster rows, and cast pills got real context menus (copy /
 inspect / view-as / hide).
 
 **Banks + the Godot runtime landed 2026-07-24** (new `bank/` and
-`engines/godot/`; spec: [`docs/loom-banks.md`](./docs/loom-banks.md)) — the
+`engines/godot/`; spec: [`docs/loom-banks.md`](../loom-banks.md)) — the
 Wwise model for game engines: one compiler, banks + generated ID headers as
 the artifact, a small native runtime per engine behind one contract.
 
