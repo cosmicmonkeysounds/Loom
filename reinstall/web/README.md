@@ -4,7 +4,14 @@ A program the Antivirus dragged into **The Internet** is *reinstalled* by
 proving it can follow instructions: it walks a **virtual copy of the
 house** and finds **Gerald, the golden duck**. This app is the web half of
 that game (the VR half is the Godot project in `../vr/`), plus the
-**house map** viewer / editor that every spatial piece is placed with.
+**house map** viewer / editor that every spatial piece is placed with
+(rooms, doors, stairs, props, terminals, duck spots, speakers, lights).
+
+On the night this app does not run as its own page in the tent: the tent
+laptop is a wall terminal at `view=reinstall` (`terminal/src/reinstall/`),
+which mounts this app's flow (`src/flow.tsx`) and game in a shadow root.
+The standalone page at `/reinstall/` stays for a spare tablet, a
+headset-only controller and the map editor.
 The design contract is [`docs/loom-reinstall.md`](../../docs/loom-reinstall.md)
 (§3 is this app).
 
@@ -26,7 +33,7 @@ The design contract is [`docs/loom-reinstall.md`](../../docs/loom-reinstall.md)
 ```bash
 pnpm --filter loom-reinstall dev        # :5176, proxies /api + /e to LOOM_SERVER (default :7000)
 pnpm --filter loom-reinstall build      # → dist/ (base /reinstall/), served by the event server
-pnpm --filter loom-reinstall test       # physics, input, sticks, the pose pump, config, HUD, stream, map editor (ops, yard cut fuzz), map helpers, the autopilot
+pnpm --filter loom-reinstall test       # 538 tests: physics, input, sticks, the pose pump, config, HUD, stream, voice, cams, map editor (ops, yard cut fuzz, speakers, lights), the autopilot
 pnpm --filter loom-reinstall typecheck
 ```
 
@@ -46,7 +53,7 @@ Open the setup screen (moderator passcode, a name, a role, the camera), or
 provision with one link:
 
 ```
-http://<server>/reinstall/?code=<mod passcode>&name=Tent tablet&role=both
+https://<site>/reinstall/?code=<mod passcode>&name=Spare tablet&role=both
 ```
 
 - `role=both` (default): a scanned program **plays here** or is **sent to
@@ -82,7 +89,9 @@ Everything runs in desktop browsers against one event server (a laptop
 with `pnpm dev`, or the VPS):
 
 1. Open `/reinstall/?code=<mod passcode>&name=Tent tablet` in a desktop
-   browser: that window is the tent tablet. The camera may not start (no
+   browser: that window stands in for the tent laptop (on the night the
+   laptop runs `/terminal/?code=<mod>&spot=tent&announce=1`, which mounts
+   the same flow). The camera may not start (no
    webcam, plain `http://` on a LAN address); that is fine.
 2. Join as a guest on a phone (or a phone-sized window) at `/`, and get
    sent to the Internet. That is a performer's button (`send to the
@@ -312,6 +321,8 @@ To change the show's own map (`core/examples/trapped-in-the-internet/house.json`
 | | |
 |---|---|
 | `src/app.tsx` | the device's screens: setup → scan → choose (play here / send to a headset) → play |
+| `src/flow.tsx`, `src/flow-state.ts` | the choose / play / send flow, lifted out so the tent laptop's terminal mounts it (`firstStep`) |
+| `src/program.ts` | a program's state for the wizard (`corrupted` / `favour` / `marked` / `held` / `healthy`), `beginErrorText` |
 | `src/config.ts` | provisioning + the stored device config |
 | `src/api.ts`, `src/spatial.ts` | the spatial routes; the stream folded into a player table |
 | `src/wizard.tsx` | the Win98 "Reinstallation Wizard" chrome |
@@ -324,13 +335,18 @@ To change the show's own map (`core/examples/trapped-in-the-internet/house.json`
 | `src/game/fight.ts` | **pure**: the King's HUD lines and meter, `kingReach` (re-exported from `@loom/house`), `keepDoorOpen` |
 | `src/game/trail.ts` | **pure**: the chevrons' path, `route()` made walkable on a stair (`test/autopilot.test.ts` walks the real physics along it to every duck spot, on the show's map and the three-floor fixture) |
 | `src/game/leash.ts` | **pure**: the 120 s no-input leash (paused while the tab is hidden) |
-| `src/game/audio.ts` | WebAudio quack, fanfare and buzz (no assets) |
+| `src/game/audio.ts` | WebAudio quack, fanfare and buzz (no assets); `createSfx(output?)` plays on a host's bus |
+| `src/game/cams.ts` | the terminals' camera feeds hung on the virtual walls |
+| `src/game/voice.ts` | the voice link with the terminals (`VoiceLink`; off by default, `voice=1`) |
 | `src/map/MapApp.tsx` | the map page's state: load / save / stream, undo history, keys; `toolbarExtras` render prop (`MapToolbarContext`) for the project bar |
 | `src/map/Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx` | the plan + gestures, the toolbar, the inspector, the other tabs + the problem list |
 | `src/map/plan.ts`, `edit.ts` | **pure**: SVG frame, hit tests, snapping, zoom / pan; edit ops, JSON drafts |
 | `src/map/doors.ts`, `yards.ts`, `structure.ts` | **pure**: doors on wall lines; the yard cut; floors / rooms / stairs / blank house with cascades |
 | `src/map/history.ts`, `check.ts`, `tools.ts` | **pure**: undo / redo; structured problems + walkability + LOCATIONs; tools + selection floors |
 | `src/map/project.ts`, `ProjectBar.tsx` | **pure** + view: the project bar (variants, save to project, download), mounted through `toolbarExtras` |
+| `src/map/props.ts` | **pure**: props, terminals, the King: place, drag, turn, duplicate, wall snap |
+| `src/map/audio.ts`, `AudioPanel.tsx`, `audio-api.ts`, `audio-poll.ts` | the speakers and the 🔊 Audio tab (`audio.json` through `/api/mod/audio`) |
+| `src/map/lights.ts`, `LightsPanel.tsx`, `lights-api.ts`, `lights-poll.ts` | the lights and the 💡 Lights tab (`lights.json` through `/api/mod/lights`) |
 
 It reuses the terminal's scanner and pass parsing (`@loom/terminal/scanner.tsx`,
 `scan.ts`) and the play app's `api` / `ApiError` (`@loom/play/client.ts`)
