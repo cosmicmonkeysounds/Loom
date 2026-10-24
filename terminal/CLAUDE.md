@@ -16,8 +16,8 @@ pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
 
-`scripts/accept/K-14.sh` scans the built bundles (terminal, reinstall, play)
-for post-Chrome-87 APIs and regex lookbehind. Run it after a build when you
+`scripts/accept/K-14.sh` scans the built bundles for post-Chrome-87 APIs
+(terminal + reinstall) and regex lookbehind (terminal + reinstall + play). Run it after a build when you
 add browser APIs.
 
 ## How it works in one paragraph
@@ -112,9 +112,9 @@ them out.
 - The bridge never knows the combinations. **Never put combination
   strings, the door code or other live codes in code, tests or docs.**
 - The parser is tested line for line against the firmware's
-  `hardware/server-room-m4/test/fixtures/lines.jsonl`. A protocol change
-  touches the firmware, that fixture, `door-protocol.ts` and its test
-  together.
+  `hardware/server-room-m4/test/fixtures/lines.jsonl` and the terminal's
+  own `test/fixtures/door-lines.jsonl`. A protocol change touches the
+  firmware, both fixtures, `door-protocol.ts` and its test together.
 
 ## Conventions and gotchas
 
