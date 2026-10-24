@@ -119,10 +119,10 @@ describe("the sim patch bay (door=sim, Shift + digits)", () => {
     expect(patches).toEqual([{ name: "patch_changed", args: { combo: "V1-D2,V3-D1,V5-D4,V8-D6" }, label: "Terminal · Heart" }]);
     expect(doorHeartbeat()).toMatchObject({ pb: "4", pbc: "1" });
     expect(patchStatusText(doorStatus())).toBe("simulated patch bay: 4 cables · COMPLETE · 1 posted");
-    // V5 moved from D4 to D7: a new set.
-    plug(5, 7);
+    // V5 moved from D4 to D3: a new set.
+    plug(5, 3);
     await tick();
-    expect(bodies.filter((b) => b.name === "patch_changed").map((b) => b.args["combo"])).toEqual(["V1-D2,V3-D1,V5-D4,V8-D6", "V1-D2,V3-D1,V5-D7,V8-D6"]);
+    expect(bodies.filter((b) => b.name === "patch_changed").map((b) => b.args["combo"])).toEqual(["V1-D2,V3-D1,V5-D4,V8-D6", "V1-D2,V3-D1,V5-D3,V8-D6"]);
     // The buttons have the bay: nothing posts.
     link.screen({ server_door: "closed", door_override: false, patch_override: true });
     plug(5, 4);
