@@ -416,7 +416,7 @@ ul.check label { min-width: 0; cursor: pointer; }
     </dl>
     <div class="stop">
       <strong>Doors time conflict.</strong>
-      The invitations, the crunch plan and the director's card say doors at 20:00. The story's opening beat (Power On) sets the show clock to 7:00 PM the moment the doors open, and the sign-off says "the party starts at 7 PM". Pick one: open the doors at 19:00, or open at 20:00 and set the show clock with the host's 🕐 Show clock control right after. Either way, keep the event paused between the morning Go live and the doors, or Power On plays at 10:00 (see the checklist).
+      The invitations, the crunch plan and the director's card say doors at 20:00. The story's opening beat (Power On) sets the show clock to 7:00 PM the moment the doors open, and the sign-off says "the party starts at 7 PM". Pick one: open the doors at 19:00, or open at 20:00 and set the show clock with the host's 🕐 Show clock control right after. Either way, pause the event before the morning Push draft and Go live: a restart on an open event plays Power On at once (see the checklist).
     </div>
     <h3>Crew</h3>
     <div class="scroll"><table>
@@ -853,8 +853,9 @@ Windows (PowerShell):
     <h3>By time</h3>
     <div class="slot"><div class="t">10:00<small>director, tech op</small></div><ul class="check" data-list="t1000">
       <li data-ck>Weather call: gusts over 30–40 km/h or steady rain means the shed. Switch at <code>/reinstall/map</code> (<em>Map: Tent | Shed</em>).</li>
+      <li data-ck><strong>First ⏸ Pause</strong> (doors closed). A restart keeps the doors as it finds them: Push draft or Go live on an open event plays Power On at once, and a pause afterwards cannot take it back.</li>
       <li data-ck>Morning reset: sync, <strong>Push draft</strong>, scan the door QR on a phone on cellular, then <strong>Go live in place</strong>, before anyone registers.</li>
-      <li data-ck><strong>Then ⏸ Pause</strong> (doors closed) so Power On waits for the real doors.</li>
+      <li data-ck>Run → World does <em>not</em> show <code>Kernel.door_code</code> set yet. If it does, Power On already played: pause, then Restart (still before anyone registers).</li>
       <li data-ck>The map page's status line reads "the project's map".</li>
     </ul></div>
     <div class="slot"><div class="t">12:00<small>set crew</small></div><ul class="check" data-list="t1200">
@@ -987,7 +988,7 @@ Windows (PowerShell):
     <h3>Awaiting the user</h3>
     <dl>
       <dt><strong>U1 · Who may see this page</strong></dt><dd>Is the GitHub repo public? <code>facts.json</code> with the door code and answer keys is tracked there. This page holds spoilers but no codes; is that the right line?</dd>
-      <dt><strong>U2 · Doors at 19:00 or 20:00</strong></dt><dd>The story's clock says 7 PM at the doors; the invitations say 8 PM. And should the event stay paused from Go live until doors?</dd>
+      <dt><strong>U2 · Doors at 19:00 or 20:00</strong></dt><dd>The story's clock says 7 PM at the doors; the invitations say 8 PM. And keep the event paused from before the morning Push draft until doors?</dd>
       <dt><strong>U3 · House lights</strong></dt><dd>Besides the server-room bulb: will there be house Zigbee bulbs, WLED strips, the printer button and lid sensor, battery path lights?</dd>
       <dt><strong>U4 · Where this page lives</strong></dt><dd>A tracked file only, or a crew page the VPS serves?</dd>
       <dt><strong>U5 · The second director's computer</strong></dt><dd>Which machine runs Run all night, and where is John's backup console?</dd>
