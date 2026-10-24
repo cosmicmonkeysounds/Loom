@@ -18,12 +18,14 @@ export function crewRoomGone(room: string, channels: ReadonlyArray<{ id: string 
 export const CHAT_LOG_TITLE = "Chat log";
 export const CHAT_LOG_SUB = "Everything the house said tonight";
 
-export type ChatSectionId = "move" | "here" | "messages" | "rooms";
+/** `team` (wave 21): a player booth's staff rooms. A guest never has one. */
+export type ChatSectionId = "move" | "here" | "messages" | "team" | "rooms";
 
 export const CHAT_SECTION_TITLES: Record<ChatSectionId, string> = {
   move: "YOUR MOVE",
   here: "WHERE YOU ARE",
   messages: "MESSAGES",
+  team: "TEAM",
   rooms: "ROOMS",
 };
 
@@ -91,7 +93,7 @@ function emptyPlace(c: Channel, ctx: ChatsContext): boolean {
 /** The Chats window's sections (§3.2, first match wins per room). `list` is
  *  the session's sorted list; the order inside a section is kept. */
 export function chatSections(list: readonly Channel[], ctx: ChatsContext): Chats {
-  const out: Record<ChatSectionId, Channel[]> = { move: [], here: [], messages: [], rooms: [] };
+  const out: Record<ChatSectionId, Channel[]> = { move: [], here: [], messages: [], team: [], rooms: [] };
   const other: Channel[] = [];
   let lobby: Channel | null = null;
   for (const c of list) {

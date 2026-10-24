@@ -39,7 +39,10 @@ export type WhereRow =
   /** The place is elsewhere: the whole row is a button (`dm`: a character's thread, "Open …"). */
   | { kind: "go"; name: string; nav: Nav; dm?: true }
   /** A word target: the row is that exit's button. */
-  | { kind: "word"; word: PlaceWord; label: string; nav: Nav };
+  | { kind: "word"; word: PlaceWord; label: string; nav: Nav }
+  /** Wave 21 (a booth's Mission): a place the booth can't open as a room —
+   *  `📍 {name}`, not a button. */
+  | { kind: "place"; name: string };
 
 export type MoveAction = { kind: "nav"; nav: Nav } | { kind: "invite"; invite: InviteView };
 
@@ -52,14 +55,24 @@ export interface MissionMove {
 }
 
 export interface MissionTile {
-  /** `faction` (wave 18b): your faction's count, in faction mode. */
-  id: "wallet" | "quests" | "codex" | "faction";
+  /** `faction` (wave 18b): your faction's count, in faction mode.
+   *  `wanted` (wave 21, a booth's Mission): the Wanted board. */
+  id: "wallet" | "quests" | "codex" | "faction" | "wanted";
   label: string;
   status: string;
   /** A yellow dot, never a number. */
   dot: boolean;
   frozen?: boolean;
+  /** A pictograph drawn in place of the tile's icon (wave 21: 🚨). */
+  glyph?: string;
   nav: Nav;
+}
+
+/** One score tile (wave 21, a booth's `stat:` line): glyph, value, label — read only. */
+export interface MissionScore {
+  glyph: string;
+  label: string;
+  value: string;
 }
 
 export interface MissionCardButton {
@@ -93,6 +106,8 @@ export interface MissionModel {
   paused: boolean;
   /** Wave 18b: your own badges (`badge:` lines: 🚻 Bathroom Mode), for the header. */
   badges: NameBadge[];
+  /** Wave 21: a booth's score tiles (its `stat:` lines), ahead of the desk tiles. */
+  scores?: MissionScore[];
 }
 
 /** A card label cut to a button's length (≤ 32 characters, an ellipsis past it). */
