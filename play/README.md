@@ -1,25 +1,24 @@
 # loom-play
 
-The **participant app** for live Loom events — the React client guests
-and performers use. It's skinned like an **old-school AOL chat room**
-(teal Win95 desktop, navy title bars, a sunken white transcript of
-Times-New-Roman line messages with colored screen names, chunky 3D
-buttons, a "People Here" buddy list), but the structure underneath is
-still threaded: every conversation is its own **channel (thread)** in an
-inbox, and each running instance streams its participant's slice of the
-live `Sim`.
+The **participant app** for live Loom events: the React client that
+guests, performers, hosts and directors open on their phones. Each running
+copy streams its participant's slice of the live `Sim`; every conversation
+is its own **channel (thread)**.
 
-**The frame (wave 13, the Play app UX overhaul).** Every screen is a
-Win95 window: a **NOW title bar** on top (the first live `OBJECTIVE` for
-this viewer; tap → its card), the rooms, and a **taskbar** at the bottom —
-⊞ Start (the story's guest buttons, People, Help, picture, Keep my screen
-on, Get alerts, switching sides, Leave), **🎟 Pass** (full screen, held
-awake) and **📷 Scan** (camera + a typed-code box), and a tray (the story's
-guest countdown as a clock, the balance, missed moments, the live dot).
-Story moments interrupt through one ladder (balloon → sticky → dialog →
-blue screen, the story's `alertLevel`). Under `theme: plain` the same
-structure renders without the Win95 ornament. The product record is
-[`PRODUCT.md`](./PRODUCT.md).
+**The frame.** Every screen is a Win95-style window: a **NOW title bar**
+on top (the first live `OBJECTIVE` for this viewer; tap → its card), one
+window in the middle, and a **taskbar** at the bottom. A guest's taskbar
+is `⊞ Start · Mission · Chats · 🎟 Pass · 📷 Scan`, with a tray at the
+right (the story's guest countdown as a clock, the balance, missed
+moments, the live dot). **Mission** is home: what to do now, where, how
+long, and the big buttons. **Chats** holds the rooms in fixed sections
+(Your move · Where you are · Messages · Rooms · Other rooms), with the
+lobby last as the 📜 Chat log. Story moments interrupt through one ladder
+(balloon → sticky → dialog → blue screen, plus the full-screen *big*
+moment). The default `theme: plain` keeps the structure with less
+ornament; `theme: aol97` is the 1997 chat-room skin. The product record
+is [`PRODUCT.md`](./PRODUCT.md); the agent notes are
+[`CLAUDE.md`](./CLAUDE.md).
 
 It talks to the [`@loom/core`](../core) event server over Server-Sent
 Events (push) + `fetch` POST (actions). Built with Vite + React 18, the
@@ -30,8 +29,9 @@ guest/performer types is first resolved with `POST /api/resolve-code {code}`
 to its `{ eventId, role }`, then every SSE/REST call is scoped to
 `/e/:eventId/…` (the `eventId` is stored alongside the session in
 `localStorage`). Sessions from before this change fall back to a `default`
-event. See `src/session.ts` / `src/client.ts`. Nothing about the guest
-experience changed — it's still just name + event code.
+event. See `src/session.ts` / `src/client.ts`. A guest then picks a
+program from the story's cast (or searches the directory) and a picture;
+a performer picks an unclaimed part.
 
 **Auth.** Registration returns an opaque **capability token** stored
 alongside the session; it authorizes every subsequent call
@@ -61,13 +61,14 @@ for narrative copy.
 ## Channels, spaces & threads
 
 Channels are grouped into **spaces** — the Discord-style sidebar sections.
-Story-driven channels live in the built-in `internet` space (the performer
-also gets `booth` + `guests` sections); **authored `SPACE`/`CHANNEL`
-declarations** (see [`core`](../core)) add their own spaces alongside. Each
-message lands in one channel kind:
+Story-driven channels live in the built-in `story` space (the booth adds
+its own sections); **authored `SPACE`/`CHANNEL` declarations** (see
+[`core`](../core)) add their own spaces alongside. Each message lands in
+one channel kind:
 
-- **🌐 The Internet** (`lobby`) — ambient story barks, global broadcasts,
-  your own personal beats, and open-room chat.
+- **The lobby** (`lobby`, titled after the story; the guest's 📜 Chat
+  log) — ambient story barks, global broadcasts, your own personal beats,
+  and open-room chat.
 - **#faction** (`faction:<Id>`) — a faction-scoped broadcast / room, members
   only.
 - **DM** (`dm:<Character>`) — a character speaking directly to you — and,
@@ -75,8 +76,12 @@ message lands in one channel kind:
   booth sees it; other booths don't).
 - **Private** (`pm:<a>:<b>`) — a guest-to-guest thread, opened from the
   **👥 People** directory. Only its two parties (and the operator) see it.
+- **Location rooms** (`loc:<Id>`) — one per `LOCATION`; you post in the
+  room you stand in.
+- **Authored rooms** (`room:<name>`) — an `open` / `private` / `faction` /
+  `group` / `dm` channel declared in `.loom`, grouped under its `SPACE`.
 
-**Pinned rooms — the Quest Log + the Codex (2026-10-02).** Two rooms (a
+**Pinned rooms — the Quest Log + the Codex.** Two rooms (a
 third, Wallet, with a `currency:` story — below) sit in a **Pinned** space above everything else (`PINNED_SPACE`; fixed order
 via `roomOrder`). **📜 Quest Log** (`quests`, read-only): every quest the
 story handed the guest is a card (`kind: "quest"`, giver avatar, brief,
@@ -89,8 +94,8 @@ arrives as `?unlock=<code>`, is redeemed on load, and opens the Codex.
 A room's sign arrives as `?checkin=<slug>` (`checkin.ts`, K-13): checked in
 on load (`/api/guest/checkin`), it opens that room's chat, or banners why
 not (captured, on rails, not open yet).
-**📷 Scan (wave 11, `guest-scan.tsx`).** The guest header and the Codex
-composer carry a 📷 button: the booth's `CameraScanner` in a sheet, read in
+**📷 Scan (`guest-scan.tsx`).** The taskbar and the Codex composer carry
+a 📷 button: the booth's `CameraScanner` in a sheet, read in
 *this* session (never a new tab). `guestScan` classifies the code: `unlock=`
 (or a bare code) redeems and opens the Codex, `checkin=` checks in
 (`GuestSession.checkin`) and opens the room, and the join QR / a pass / an
@@ -101,7 +106,7 @@ webview, another browser) lands on `LinkLanding` — the code in big type
 with *I haven't joined yet → Join* as the secondary path; never the picker.
 A session just cut in this browser (a restart) shows its notice instead,
 with *Join again →* (the link still redeems / checks in once in).
-**Wave 18b (on `oct31-w18/integ`, not yet shipped).** A scan or a typed
+**Scan answers, badges, factions.** A scan or a typed
 code says it worked (`scan-done.tsx`, a lazy chunk: *🔓 Code accepted* /
 *📓 Already yours* → the Codex on that entry, unfolded; *📍 Checked in*
 with the story's reply lines → the room; a miss or a refusal keeps the
@@ -120,7 +125,7 @@ Mission tile. Trabolta's pictures ship as `public/pictures/trabolta.svg`
 / `trabolta-broken.svg`. Hosts and the director phone get 🔇 Stop all
 house sounds (`house-sound.ts`), and the host Judge tab counts the
 filings with Trabolta.
-**Reserved programs (wave 11, `claim.ts`).** An invitation's
+**Reserved programs (`claim.ts`).** An invitation's
 `?code=…&claim=<token>` opens the guest join and rides `/api/identities`,
 the picture lookup and `/api/guest/register`; rows with `reserved: true`
 read 🔒 Reserved, and a 409 `reserved` says *This program is saved for an
@@ -129,10 +134,10 @@ and is kept in `loom.guest.claim` (keyed by the event code), so a cut
 session rejoins with it. The directory search carries it too and its
 `reserved` hits are locked; a picker showing a 🔒 tile re-asks every 12 s
 (`RESERVED_POLL_MS`), so a director's *Unlock for 2 min* reaches it.
-**Countdowns (wave 11, `countdown.tsx`).** `GuestView.countdowns` (the
-story's `countdown: … for guests` lines) tick in a strip under the room
-header (and the identity card on a phone's room list) off the snapshot's
-story clock; `paused` holds them with ⏸; none → no strip.
+**Countdowns.** `GuestView.countdowns` (the story's `countdown: … for
+guests` lines) tick in the taskbar tray and on Mission's NOW card off the
+snapshot's story clock (`countdown.tsx`, `chrome/countdown-tray.tsx`);
+`paused` holds them with ⏸.
 A director's re-pair QR arrives as `?code=<event>&pair=<code>`
 (`resume.ts`, N-02): `main.tsx` strips the single-use code from the URL
 before rendering, and `App` trades it (resolve the event code, then
@@ -142,9 +147,9 @@ guest asks first (*Switch this phone* / *Stay <name>*).
 Both stay out of a cutscene (`personalStream`). Tested in
 `test/quests.test.ts`.
 
-**🪙 Wallet (Oct 31 wave 4).** A story with a `currency:` header gives
-every guest a third pinned room, **Wallet** (`wallet`, `src/wallet.tsx`):
-the header's ⭐ score becomes a `BalancePill` that opens it; the footer
+**🪙 Wallet.** A story with a `currency:` header gives every guest a
+third pinned room, **Wallet** (`wallet`, `src/wallet.tsx`): the tray's
+balance opens it (Mission has a Wallet tile too); the footer
 offers **send / request / trade** (a `PeopleAmountSheet`, an `OfferSheet`
 to buy or sell a codex entry for coin, a `StimulusSheet` for the minter,
 plus her reserve: **🎁 Grant** (`PeopleAmountSheet mode="grant"` →
@@ -167,7 +172,7 @@ when a director did, *↩️ <by> cancelled your payment* on the payer's and
 read naturally from each side (`possessive`). Tested in
 `test/wallet.test.tsx`.
 
-**📌 Pins + ⛔ restricted (Oct 31 wave 4).** A story's `pin "…"` is a
+**📌 Pins + ⛔ restricted.** A story's `pin "…"` is a
 sticky notice: `pins.ts` `activePins` keeps the newest pin per (room,
 key) until its `unpin` lands, and `PinnedRail` shows them above the
 stream (a `!` pin also alerts). A `restrict`ed guest keeps their DMs and
@@ -175,7 +180,7 @@ the rooms the story named, read-only — the header says **⛔ restricted**,
 every action button is gone, check-in is refused — until the story lifts
 it. Tested in `test/pins.test.tsx`.
 
-**People (2026-09-10).** The **👥 People** sheet lists every guest
+**People.** The **👥 People** sheet lists every guest
 and listed character with exactly the lore about them the viewer holds,
 plus **💬 Message**. Performers see what their character knows under ⊞
 Start → *What … knows* and share it from a guest's card (**📓 Share
@@ -210,7 +215,7 @@ the phone never sees the verdict), and the 💬 **answer** card (`show
 answer "…" … with question: "P1"`): one free-text line → `{text}` →
 `answer answered`. `with thread:` docks a card in that character's DM.
 
-**Push to a locked phone (K-31a, 2026-10-15).** A 🔔 **Get alerts** card
+**Push to a locked phone (K-31a).** A 🔔 **Get alerts** card
 (a one-time balloon by a guest's tray since wave 13, and ⊞ Start → Get
 alerts) asks for notification permission
 from a tap, then subscribes this phone through the push-only service
@@ -227,8 +232,6 @@ Nothing registers when embedded (`host.embedded`, Run → Players), on
 plain http, without the Push API (an iPhone Safari tab), or when the
 server has no VAPID keys (`src/push.ts` `usePush`, `src/push-card.tsx`,
 tested in `test/push.test.ts`).
-- **authored rooms** (`room:<name>`) — an `open` / `private` / `faction` /
-  `group` / `dm` channel declared in `.loom`, grouped under its `SPACE`.
 
 **Access control.** Visibility follows the channel kind: `open` rooms show
 for everyone, `faction` rooms for that faction's members, and
@@ -267,7 +270,7 @@ the root's `seq` as `parentSeq`, the channel shows a *"N replies"*
 affordance, and opening it shows the thread panel (root + replies + a reply
 composer). Threading is single-level.
 
-**Streams reopen (wave 9).** `useChatStream` runs on the pure
+**Streams reopen.** `useChatStream` runs on the pure
 `openChatFeed` (`src/client.ts`, tested with a fake EventSource and
 clock in `test/client-reopen.test.ts`): an `EventSource` closed for good
 (a Caddy 502 while loom restarts) asks its `probe` whether the session
@@ -278,7 +281,7 @@ The header dot reads **reconnecting…** while down; the cutscene stage
 shows a **RECONNECTING…** strip after 5 s. A caller with no `probe`
 (the terminal's pilot) keeps the old rule: `onDead` at once.
 
-**Arm, then fire (wave 11, `arm.ts`).** A story button marked `arm: true`
+**Arm, then fire (`arm.ts`).** A story button marked `arm: true`
 (`Interaction.arm`) — on a booth's guest card or the guest's *Things you can
 do* — arms on the first tap (the director phone's black look, *Tap again to
 fire*) and fires on a second tap ≥ `ARM_DEAD_MS` and < `ARM_MS` later
@@ -295,13 +298,15 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
 
 ## Roles
 
-- **🎟️ Guest** — register with a name + the host's **event code** (or
-  arrive via a `?code=` link / QR that pre-fills it) → the frame above
-  (`src/guest/`: `app.tsx`, `frame.tsx` — the NOW bar's objective sheet,
-  the Start menu (`guestStartItems`; a restricted guest gets no side
-  switch, `defectTargets`), the tray's balance and the alerts balloon;
-  `src/chrome/`: the title bar, taskbar, tray, full-screen pass, balloon
-  tips). The pass QR is drawn in the browser (`src/pass-qr.tsx`, `PassQr`, `qrcode`
+- **🎟️ Guest** — type the host's **event code** (or arrive via a
+  `?code=` link / QR that pre-fills it), pick a program and a picture → the
+  frame above (`src/guest/`: `app.tsx`, `frame.tsx` — the NOW bar's
+  objective sheet, the Start menu (`guestStartItems`; a restricted guest
+  gets no side switch, `defectTargets`), the tray's balance and the alerts
+  balloon; `mission.tsx` the home window, `chats.tsx` the rooms, `me.tsx`
+  your picture and settings; `src/chrome/`: the title bar, taskbar, tray,
+  full-screen pass, balloon tips; `src/sides/`: sides, crews and
+  factions). The pass QR is drawn in the browser (`src/pass-qr.tsx`, `PassQr`, `qrcode`
   ^1.5.4, the same margin and error correction as `/api/qr`) at all three
   pass sites — the play app never calls `/api/qr`. Re-login
   restores every thread.
@@ -315,14 +320,22 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   pure `src/scan.ts`) opens the scanned guest's **card** at once from the
   scan's `card` (`POST /api/prime/card` re-reads it): facts by severity,
   at most three face buttons from the live objectives (`booth/model.ts`
-  `cardButtons`), the press's `replies` / `said` / `staff` lines, *All
-  buttons… (n)*. Rooms: staff rooms pinned, **Readouts** (the
+  `cardButtons`), the press's `replies` / `said` / `staff` lines. Pop-outs
+  bring the guest to the performer instead of the other way round: the 🚨
+  Wanted posters and board, the confrontation screen, the door queue,
+  PLAYER SELECT. Rooms: staff rooms pinned, **Readouts** (the
   character's `dm:` Inbox rows, persisted, a 🪪 link to each guest's card),
   **Messages** (a guest's unread typed DM), the read-only broadcast feed,
   the booth's own Quest Log / Codex / Wallet (cards the story shows the
   character are answered via `POST /api/prime/widget`). An admin
   (performer who also enters the moderator passcode) additionally gets
   **hide/show** on every message and capture/release on each guest card.
+- **🎮 Player booth** — a part the story marks `player: true` (Clippy and
+  the four Antivirus in *Trapped in the Internet*) plays the night like a
+  guest (`booth/player.tsx`, `booth/mission-model.ts`): the guest's frame
+  with Mission and Chats, the taskbar `⊞ · Mission · Chats · Scan`, a ⭐
+  score in the tray, NEW MISSION pop-outs, and every action as a pick, a
+  target or a scan. No host dock, no cue bar, no staff-room lines.
 - **🧑‍💼 Host** — a booth whose part has `admin: true` (or a moderator's)
   also gets the host dock (`src/host/`, wave 13): a **NEXT bar** above the
   taskbar (ARM → FIRE through core's arm model, PICK for a subject; the
@@ -370,7 +383,7 @@ this app); here are the phone cue sheet and the hosts' booth console.
 
 ## Install
 
-Shared install from the repo root (covers core, bank, play, and editor):
+Shared install from the repo root (covers every JS package):
 
 ```bash
 pnpm install
@@ -411,7 +424,8 @@ run a single process — `@loom/core serve` — on one origin, no Vite.
 | `pnpm build`     | production build → `dist/`            |
 | `pnpm preview`   | preview the built app                 |
 | `pnpm typecheck` | `tsc --noEmit`                        |
-| `pnpm test`      | vitest (pure threads/grouping helpers)|
+| `pnpm test`      | vitest (`test/`)                      |
+| `pnpm size`      | the guest's first load against the 145 kB gate (after a build) |
 
 ## Layout
 
@@ -419,16 +433,17 @@ run a single process — `@loom/core serve` — on one origin, no Vite.
 src/
   types.ts      # mirror of core's views + chat (ChatMessage, GuestView, PrimeView, HostView, ObjectiveView, …)
   client.ts     # api() POST + useChatStream (SSE → de-duped message map)
-  guest/        # the guest app: app.tsx (frame + cutscene), frame.tsx (NOW sheet, Start items, tray), register.tsx, sheets.tsx
-  booth/        # the booth: app.tsx, now-card.tsx, scanner.tsx, card.tsx, guests.tsx, readouts.tsx, tray.tsx, layer.tsx, model.ts (pure rules)
+  guest/        # the guest app: app.tsx (frame + cutscene), frame.tsx (NOW sheet, Start items, tray), mission.tsx, chats.tsx, me.tsx, nav.ts (go), register.tsx, sheets.tsx
+  booth/        # the booth: app.tsx, player.tsx (player booth), now-card.tsx, card.tsx, guests.tsx, readouts.tsx, tray.tsx, cue-bar.tsx, door.tsx, confront.tsx, pick/, popouts/, wanted/, model.ts (pure rules)
   host/         # the host dock: dock.tsx (NEXT bar + console), tab-{cues,needs,judge,people,more}.tsx, api.ts (allowlist calls), client.ts (?host=1 poll), model.ts
   chrome/       # title-bar.tsx, taskbar.tsx, start-menu.tsx, countdown-tray.tsx, balloon.tsx, pass.tsx (full-screen pass), icons.tsx, keyboard.ts
   stream/       # crawl tiers in bubble.tsx (+ ../crawl.ts), card-tray.tsx, settled.ts, ticker.tsx, notices.ts, badges.ts, codex-room.tsx + codex-groups.ts, channel-view.tsx, composer.tsx
-  moments/      # model.ts (rungs, queue, holds, missed, wake replay), provider.tsx, surfaces.tsx (balloon / sticky / dialog / blue screen / glitch), pins-rail.tsx
-  rooms/        # order.ts (fixed tiers, Other rooms fold), list.tsx (SpaceList + Shell), spaces.ts, threads-state.ts
+  moments/      # model.ts (rungs, queue, holds, missed, wake replay), provider.tsx, surfaces.tsx (balloon / sticky / dialog / blue screen / glitch), big.tsx, popout.tsx, notifications.tsx (the Recycle Bin), exits.ts, pins-rail.tsx
+  rooms/        # chats.ts (the guest's Chats sections), order.ts (fixed tiers, Other rooms fold), list.tsx (SpaceList + Shell), spaces.ts, threads-state.ts
+  sides/        # sides, crews and factions: doors, sheets, recruit, invite (a lazy chunk)
   session/      # guest.ts / prime.ts (the role sessions), channels.ts, shared.ts, stream-handlers.ts
   ui/           # primitives.tsx (sheets, avatars), window.tsx (Win95 windows + dialogs), objective.tsx (the objective card)
-  css/          # base.css, themes.css, w95.css + one per lane (chrome, stream, moments, booth, host)
+  css/          # base.css, themes.css, w95.css + one per lane (chrome, stream, moments, booth, host, factions)
   chat.tsx · guest.tsx · performer.tsx · session.ts · threads.ts   # barrels: every pre-wave-13 name still resolves
   help.tsx      # the in-app Help window (searchable, role-aware; content from ../docs/help/play/), loaded lazily
   ui.tsx        # the role chooser; the booth (host dock included) and the director phone load lazily from here
@@ -447,16 +462,16 @@ src/
   wake-lock.ts  # ⊞ Start → Keep my screen on; the full-screen pass's held lock
   main.tsx      # entry
   styles.css    # imports the css/ files
-public/sw.js    # push-only service worker (no fetch handler) + manifest.webmanifest
+public/         # sw.js (push-only service worker, no fetch handler), manifest.webmanifest, pictures/
+scripts/        # first-load.mjs (the 145 kB gate)
 test/           # vitest: crawl · moments · taskbar · booth · host · rooms · help · widgets · wallet · pins · push · floor-css · browser-floor · …
 index.html      # Vite entry
 vite.config.ts  # react plugin + dev proxy to LOOM_SERVER (default :7000)
 ```
 
-The guest and performer apps are thin: both assemble the same role-agnostic
-`chat.tsx` primitives over their own channel-shaping (`session.ts`) and a
-footer (decision tray / scanner / moderation), so new surfaces compose
-without duplication.
+The guest and booth apps are thin: both assemble the same role-agnostic
+stream and room primitives over their own channel shaping (`session/`),
+so new surfaces compose without duplication.
 
 **In-app Help**: ⊞ Start → **Help** (and "? What is this" on the
 sign-on screen) opens `HelpSheet` — a searchable, Win95-help-viewer-
