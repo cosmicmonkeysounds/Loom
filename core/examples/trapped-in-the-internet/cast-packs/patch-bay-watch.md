@@ -60,7 +60,9 @@ keypad, never on the radio).
    yours or the director's, until the director presses 🔌 *Trust the patch
    bay again*. Say on the radio which you pressed. (A ❌ pressed within a
    minute of the bay's own *Stop touching me.* is the same patch and is not
-   counted twice.) DRAFT w22
+   counted twice: your booth says *Not counted*. If it was a new patch, a
+   cable top to top or bottom to bottom, **press ❌ again**. A press pays
+   ⭐ only when the story takes it.) DRAFT w22
 3. After a WRONG, nod at the guests, say nothing, let them pull cables.
    (Everyone is forgiven one: the **second** wrong combination trips the
    alarm. The director's 🔄 *Server room: reset the patch-bay alarm* forgives

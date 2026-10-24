@@ -222,6 +222,17 @@ describe("the patch bay judges itself (wave 22)", () => {
     expect(score()).toBe(s0 + 10);
   });
 
+  it("the watch's Mission cards say the bay judges itself: press only when it missed one", () => {
+    const sim = Sim.fromSources(SRC);
+    for (const id of ["Patch Bay Watch", "Patch Bay And Clubs"]) {
+      const o = [...sim.model.objectives.values()].find((x) => x.title.startsWith("The Y2K hour") && x.id.toLowerCase().replace(/[_ ]/gu, "") === id.toLowerCase().replace(/ /gu, ""));
+      expect(o, id).toBeDefined();
+      expect(o!.brief, id).toContain("The bay judges itself");
+      expect(o!.brief, id).toContain("only if nothing happened");
+      expect(o!.brief, id).toContain("until 🔌 Trust");
+    }
+  });
+
   it("⭐ a 🔌 press out of turn pays nothing", { timeout: SLOW }, () => {
     const sim = boot();
     toOvershare(sim);
