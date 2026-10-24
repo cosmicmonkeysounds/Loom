@@ -1,0 +1,1082 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trapped in the Internet Show Book</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="The crew's show book for Trapped in the Internet, Oct 31 2026: the story, the cue sheet, the tech, and the start-of-evening checklist.">
+<!-- @banner -->
+<!--
+  Hand-written template for core/scripts/show-page.ts. Prose lives here;
+  the markers below are filled from the story on every build:
+  counts, cues, beats, cast, rooms, terminals. Every <li data-ck> in a
+  <ul class="check" data-list="…"> becomes a remembered tick box.
+  Never write a code, a hunt answer or a patch combination in this file:
+  core/test/show-page.test.ts reads them from the source and fails the build.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap">
+<style>
+/* Layout: a crew binder. A sticky contents rail on the left (a scrolling
+   strip on phones), one reading column, every section a Win98 window. */
+:root {
+  --paper: #eef0f3;
+  --panel: #ffffff;
+  --ink: #1a1d24;
+  --muted: #555c6b;
+  --rule: #c6cad3;
+  --chrome: #c3c7cf;
+  --title-a: #0a246a;
+  --title-b: #3a6ea5;
+  --title-ink: #ffffff;
+  --link: #0b4fa8;
+  --note-bg: #fff5d1;
+  --note-ink: #4d3a00;
+  --note-rule: #c9a537;
+  --stop-bg: #fde4e1;
+  --stop-ink: #6e130c;
+  --stop-rule: #c0392b;
+  --ok: #1f7a3a;
+  --row-alt: #f6f7f9;
+  --mark: #dfe7f5;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --win: Tahoma, Verdana, "Segoe UI", var(--sans);
+  --step--1: 0.8125rem;
+  --step-0: 1rem;
+  --step-1: 1.1875rem;
+  --step-2: 1.5rem;
+  --step-3: 2.25rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14161b;
+    --panel: #1c1f26;
+    --ink: #e5e8ee;
+    --muted: #a0a7b5;
+    --rule: #353a46;
+    --chrome: #3a3f4b;
+    --title-a: #0d2a78;
+    --title-b: #2c5a96;
+    --title-ink: #ffffff;
+    --link: #8ab8ff;
+    --note-bg: #352c10;
+    --note-ink: #f3dd9b;
+    --note-rule: #8a7128;
+    --stop-bg: #3d1714;
+    --stop-ink: #ffc4bb;
+    --stop-rule: #b5483c;
+    --ok: #6fd18d;
+    --row-alt: #20232b;
+    --mark: #22324f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #14161b;
+  --panel: #1c1f26;
+  --ink: #e5e8ee;
+  --muted: #a0a7b5;
+  --rule: #353a46;
+  --chrome: #3a3f4b;
+  --title-a: #0d2a78;
+  --title-b: #2c5a96;
+  --title-ink: #ffffff;
+  --link: #8ab8ff;
+  --note-bg: #352c10;
+  --note-ink: #f3dd9b;
+  --note-rule: #8a7128;
+  --stop-bg: #3d1714;
+  --stop-ink: #ffc4bb;
+  --stop-rule: #b5483c;
+  --ok: #6fd18d;
+  --row-alt: #20232b;
+  --mark: #22324f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 64px); }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--step-0);
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--paper);
+}
+a { color: var(--link); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible {
+  outline: 3px solid var(--link);
+  outline-offset: 2px;
+}
+code, kbd, pre, .mono { font-family: var(--mono); font-size: 0.875em; }
+code { overflow-wrap: anywhere; }
+pre {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--row-alt);
+  border: 1px solid var(--rule);
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.45;
+}
+h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
+h3 { font-size: var(--step-1); margin: 1.6em 0 0.4em; }
+h4 { font-size: var(--step-0); margin: 1.2em 0 0.3em; }
+p, ul, ol { margin: 0 0 0.8em; }
+ul, ol { padding-left: 1.4em; }
+li + li { margin-top: 0.25em; }
+.small { font-size: var(--step--1); color: var(--muted); }
+.tnum, time, td, .counts dd { font-variant-numeric: tabular-nums; }
+
+/* The frame */
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 28px;
+  max-width: 82rem;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.toc {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  align-self: start;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  min-width: 0;
+}
+.toc .bar {
+  background: linear-gradient(90deg, var(--title-a), var(--title-b));
+  color: var(--title-ink);
+  font: 700 var(--step--1) / 1.4 var(--win);
+  padding: 4px 8px;
+}
+.toc ol { list-style: none; margin: 0; padding: 6px 0; counter-reset: none; }
+.toc li { margin: 0; }
+.toc a {
+  display: block;
+  padding: 4px 12px;
+  text-decoration: none;
+  color: var(--ink);
+  font-size: var(--step--1);
+}
+.toc a:hover { background: var(--mark); }
+main { min-width: 0; }
+
+/* Masthead */
+.mast { margin-bottom: 28px; }
+.mast .eyebrow {
+  font: 600 var(--step--1) / 1.4 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.mast h1 { font-size: var(--step-3); margin: 0 0 8px; letter-spacing: -0.01em; }
+.mast .lede { font-size: var(--step-1); max-width: 62ch; margin: 0; color: var(--ink); }
+
+/* A section is a window */
+.win {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  box-shadow: inset 1px 1px 0 var(--panel), 2px 2px 0 var(--chrome);
+  margin-bottom: 28px;
+}
+.win > h2 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(90deg, var(--title-a), var(--title-b));
+  color: var(--title-ink);
+  font: 700 var(--step-0) / 1.35 var(--win);
+  padding: 5px 6px 5px 10px;
+}
+.win > h2 .btns { display: flex; gap: 2px; flex: none; }
+.win > h2 .btns i {
+  display: block;
+  width: 16px;
+  height: 14px;
+  background: var(--chrome);
+  border: 1px solid var(--panel);
+  border-right-color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.win > .body { padding: 16px 18px 6px; min-width: 0; }
+.win > .body > :first-child { margin-top: 0; }
+.prose { max-width: 70ch; }
+
+/* Notes */
+.note, .stop {
+  border-left: 4px solid var(--note-rule);
+  background: var(--note-bg);
+  color: var(--note-ink);
+  padding: 10px 14px;
+  margin: 0 0 1em;
+  max-width: 70ch;
+}
+.stop { border-left-color: var(--stop-rule); background: var(--stop-bg); color: var(--stop-ink); }
+.note strong:first-child, .stop strong:first-child { display: block; margin-bottom: 2px; }
+
+/* At a glance */
+.glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0; border: 1px solid var(--rule); margin-bottom: 1em; }
+.glance > div { padding: 10px 12px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); min-width: 0; }
+.glance dt { font: 600 var(--step--1) / 1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.glance dd { margin: 2px 0 0; }
+.counts { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0 0 1em; padding: 8px 12px; border: 1px dashed var(--rule); font-size: var(--step--1); }
+.counts div { display: flex; gap: 6px; }
+.counts dt { color: var(--muted); }
+.counts dd { margin: 0; font-weight: 600; }
+
+/* Tables */
+.scroll { overflow-x: auto; margin: 0 0 1.2em; border: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+th, td { text-align: left; vertical-align: top; padding: 6px 10px; border-bottom: 1px solid var(--rule); }
+thead th { background: var(--chrome); color: var(--ink); font-family: var(--win); font-weight: 700; white-space: nowrap; position: sticky; top: 0; }
+tbody tr:nth-child(even) { background: var(--row-alt); }
+table.cues { table-layout: fixed; min-width: 46rem; }
+table.cues th:nth-child(1) { width: 3rem; }
+table.cues th:nth-child(2) { width: 34%; }
+table.cues th:nth-child(3) { width: 13rem; }
+table.cues td.n { color: var(--muted); }
+table.cues td.label { font-weight: 600; }
+table.cues tr.aside td.label { font-weight: 400; }
+table.cues code { overflow-wrap: anywhere; }
+.tags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
+.tag { font: 400 0.75rem / 1.4 var(--mono); border: 1px solid var(--rule); padding: 0 4px; color: var(--muted); white-space: nowrap; }
+.tag.urgent { border-color: var(--stop-rule); color: var(--stop-ink); }
+.act { font-size: var(--step-1); border-bottom: 2px solid var(--title-a); padding-bottom: 4px; }
+.act-note { color: var(--muted); font-size: var(--step--1); margin-top: -0.2em; }
+.todo { color: var(--stop-ink); background: var(--stop-bg); padding: 0 4px; }
+
+/* Beats */
+details.beats { border: 1px solid var(--rule); margin-bottom: 6px; }
+details.beats summary { cursor: pointer; padding: 6px 10px; background: var(--row-alt); }
+details.beats summary .part { font-weight: 600; }
+details.beats summary .count { color: var(--muted); font-size: var(--step--1); }
+details.beats ol { margin: 8px 0 10px; padding-left: 2.6em; columns: 2 16rem; column-gap: 28px; font-size: var(--step--1); }
+details.beats li { break-inside: avoid; }
+.setting { color: var(--muted); }
+.setting::before { content: "· "; }
+ul.names { columns: 3 11rem; column-gap: 24px; font-size: var(--step--1); }
+ul.names li { break-inside: avoid; }
+
+/* Diagram */
+.diagram { overflow-x: auto; border: 1px solid var(--rule); background: var(--panel); margin-bottom: 1em; }
+.diagram svg { display: block; width: 100%; min-width: 680px; height: auto; }
+.diagram .box { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
+.diagram .boxhead { fill: var(--title-a); }
+.diagram .dev { fill: var(--row-alt); stroke: var(--muted); stroke-width: 1; }
+.diagram .cloud { fill: var(--mark); stroke: var(--title-b); stroke-width: 1.5; }
+.diagram text { fill: var(--ink); font-family: var(--sans); font-size: 13px; }
+.diagram text.h { fill: var(--title-ink); font-family: var(--win); font-weight: 700; font-size: 13px; }
+.diagram text.s { fill: var(--muted); font-size: 12px; }
+.diagram text.l { fill: var(--muted); font-size: 12px; font-family: var(--mono); }
+.diagram .https { stroke: var(--title-b); stroke-width: 2; fill: none; }
+.diagram .mqtt { stroke: var(--note-rule); stroke-width: 2; stroke-dasharray: 7 5; fill: none; }
+.diagram .wire { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 2 4; fill: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: var(--step--1); color: var(--muted); margin: 0 0 1em; }
+.legend span::before { content: ""; display: inline-block; width: 28px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 2px solid var(--title-b); }
+.legend .lm::before { border-top: 2px dashed var(--note-rule); }
+.legend .lw::before { border-top: 2px dotted var(--muted); }
+
+/* Machines */
+.machines { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 14px; margin-bottom: 1.2em; }
+.machine { border: 1px solid var(--rule); min-width: 0; }
+.machine h4 { margin: 0; padding: 5px 10px; background: var(--chrome); font-family: var(--win); }
+.machine .in { padding: 8px 12px 2px; font-size: var(--step--1); }
+.machine ul { padding-left: 1.1em; }
+
+/* Checklists */
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 1em; padding: 8px 12px; border: 1px solid var(--rule); background: var(--row-alt); font-size: var(--step--1); }
+button {
+  font: 700 var(--step--1) / 1.2 var(--win);
+  color: var(--ink);
+  background: var(--chrome);
+  border: 2px solid;
+  border-color: var(--panel) var(--ink) var(--ink) var(--panel);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button:active { border-color: var(--ink) var(--panel) var(--panel) var(--ink); }
+button.armed { background: var(--stop-bg); color: var(--stop-ink); }
+ul.check { list-style: none; padding-left: 0; margin: 0 0 1.2em; max-width: 76ch; }
+ul.check li { display: flex; gap: 10px; align-items: flex-start; padding: 6px 4px; border-bottom: 1px solid var(--rule); margin: 0; }
+ul.check li:has(input:checked) label { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+ul.check input { flex: none; width: 18px; height: 18px; margin-top: 3px; accent-color: var(--title-a); }
+ul.check label { min-width: 0; cursor: pointer; }
+.slot { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: 4px 14px; align-items: baseline; }
+.slot > .t { font: 600 var(--step-0) / 1.5 var(--mono); }
+.slot > .t small { display: block; font: 400 var(--step--1) / 1.3 var(--sans); color: var(--muted); }
+.progress { font-family: var(--mono); color: var(--muted); }
+
+@media (max-width: 860px) {
+  .page { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-block: 0 40px; }
+  .toc {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    max-height: none;
+    overflow: visible;
+    margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))) calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    border-width: 0 0 1px;
+  }
+  .toc .bar { display: none; }
+  .toc ol { display: flex; overflow-x: auto; padding: 0 8px; white-space: nowrap; scrollbar-width: thin; }
+  .toc a { padding: 10px 10px; }
+  .mast { margin-top: 16px; }
+  .win > .body { padding: 14px 12px 4px; }
+  .slot { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+@media print {
+  :root { --paper: #fff; --panel: #fff; }
+  body { font-size: 10.5pt; }
+  body::before, .toc, .tools button { display: none !important; }
+  .page { display: block; padding: 0; max-width: none; }
+  .win { box-shadow: none; break-inside: auto; }
+  .win > h2 { -webkit-print-color-adjust: exact; print-color-adjust: exact; break-after: avoid; }
+  .win > h2 .btns { display: none; }
+  .scroll, .diagram { overflow: visible; border: 1px solid #999; }
+  .diagram svg { min-width: 0; }
+  thead th { position: static; }
+  tr, li, .machine, .note, .stop { break-inside: avoid; }
+  details > summary { list-style: none; }
+  details::details-content { content-visibility: visible; display: block; }
+  ul.check input { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  a { color: inherit; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav class="toc" aria-label="Contents">
+  <div class="bar">Contents</div>
+  <ol>
+    <li><a href="#glance">At a glance</a></li>
+    <li><a href="#story">The story</a></li>
+    <li><a href="#acts">Act by act</a></li>
+    <li><a href="#endings">Endings</a></li>
+    <li><a href="#games">Games and systems</a></li>
+    <li><a href="#timeline">Timeline</a></li>
+    <li><a href="#cues">Cue sheet</a></li>
+    <li><a href="#beats">Beats</a></li>
+    <li><a href="#cast">Cast and crew</a></li>
+    <li><a href="#rooms">Rooms</a></li>
+    <li><a href="#tech">Tech</a></li>
+    <li><a href="#terminals">Terminals</a></li>
+    <li><a href="#patchbay">Patch bay</a></li>
+    <li><a href="#deploy">Before the night</a></li>
+    <li><a href="#checklist">Start of the evening</a></li>
+    <li><a href="#emergency">Emergency and fixes</a></li>
+    <li><a href="#open">Open questions</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="mast">
+  <p class="eyebrow">Crew show book · not for guests</p>
+  <h1>Trapped in the Internet</h1>
+  <p class="lede">A 1999 computer that is also a house, a rogue AI who wants one last fact, and a party of guests uploaded as programs. Everything the crew needs on Oct 31, in one place.</p>
+</header>
+
+<section class="win" id="glance">
+  <h2><span>At a glance</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <dl class="glance">
+      <div><dt>Date</dt><dd>Saturday 31 October 2026, Halifax (ADT). Clocks fall back at 02:00.</dd></div>
+      <div><dt>Doors</dt><dd><strong>19:00 or 20:00: not decided.</strong> See the note below.</dd></div>
+      <div><dt>First cue</dt><dd>C1 📣 by 21:00</dd></div>
+      <div><dt>Ending</dt><dd>About 01:50, ceremony done about 02:10 (a projection)</dd></div>
+      <div><dt>App</dt><dd><a href="https://app.mapsandducks.com">app.mapsandducks.com</a> · editor <code>/edit/</code></dd></div>
+      <div><dt>Release for the night</dt><dd><code>show-1031</code> (code freeze Fri 10-30)</dd></div>
+    </dl>
+    <div class="stop">
+      <strong>Doors time conflict.</strong>
+      The invitations, the crunch plan and the director's card say doors at 20:00. The story's opening beat (Power On) sets the show clock to 7:00 PM the moment the doors open, and the sign-off says "the party starts at 7 PM". Pick one: open the doors at 19:00, or open at 20:00 and set the show clock with the host's 🕐 Show clock control right after. Either way, keep the event paused between the morning Go live and the doors, or Power On plays at 10:00 (see the checklist).
+    </div>
+    <h3>Crew</h3>
+    <div class="scroll"><table>
+      <thead><tr><th scope="col">Role</th><th scope="col">Who</th><th scope="col">Where, and the job</th></tr></thead>
+      <tbody>
+        <tr><td>Show owner, director</td><td>John</td><td>Morning reset, 15:00 boot walk, 17:00 performer call, 19:00 briefing. Plays Task Manager from the doors, so he hands Run to the second director at doors.</td></tr>
+        <tr><td>Second director</td><td><span class="todo">not named</span></td><td>Run → Director all night: fires the cues, watches Run → Mind and the Judging card, the late list, the ceremony recap.</td></tr>
+        <tr><td>Tech operator</td><td><span class="todo">not named</span></td><td>15:00 boot of every machine, then watches Mind, the terminals, the router and the lights. Never runs <code>pkill -f "stagehand run"</code>.</td></tr>
+        <tr><td>House manager</td><td><span class="todo">not named</span></td><td>Safety lead and 911 caller, the door after 20:30, the keypad override key and spare batteries, leads ALL STOP.</td></tr>
+        <tr><td>Hosts (call cues)</td><td>John, Stephanie, Jesse</td><td>Task Manager, Adobe Acrobat, Recycling Bin: a host dock with the NEXT bar in the Play app.</td></tr>
+        <tr><td>Players</td><td>Brooke, Julie, Francine, Emma, <span class="todo">McAfee not cast</span></td><td>Clippy and the four Antivirus: a Mission home, a score, a trust score. They call no cues.</td></tr>
+        <tr><td>Installation Wizard</td><td>Julia</td><td>The voice of the tent. Runs the reinstallation with the tent laptop.</td></tr>
+      </tbody>
+    </table></div>
+    <!-- @counts -->
+  </div>
+</section>
+
+<section class="win" id="story">
+  <h2><span>The story</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body prose">
+    <p><strong>Jean Trabolta</strong>, "Sole Owner and Founder of Maps and Ducks, the world's first AI small business owner", is a rogue AI with the Unified Field Theory 99.9% solved. The last facts he needs sit on one computer in Halifax: this house. He cannot get in, but he can install programs remotely and move a human mind into a program. He found a neglected billboard on Barrington Street advertising mapsandducks.com, registered the lapsed domain, evicted the owners, and sent invitations promising to fix one problem in each guest's life.</p>
+    <p>So the guests arrive as <strong>computer programs</strong>. Some remember they were human. What Trabolta really wants omnipotence for is <strong>Sandy</strong>, an automated customer-service agent who only ever says one line. The tone: equal parts Digimon Movie, Blade Runner and an escape room, in a Web 1.0 house, with a side of existentialism.</p>
+    <h3>The house is the computer</h3>
+    <p>Every room is a part of the PC. The front door and mud room is the Optical Drive, where you log in. The living room is the Desktop, where every set piece happens, with Trabolta's face on the TV above the fireplace. The backyard is the Cloud (Truth Pong), the tent in the backyard is the Internet (the reinstallation), and the cold storage room in the basement is the Server Room: Trabolta's heart, behind a real keypad lock, with a patch bay that can end him.</p>
+    <h3>The arc</h3>
+    <p>Guests are uploaded and cleared onto the Desktop. Clippy runs Computer Bingo, an Antivirus sends the first corrupted program to the Internet, and Trabolta comes online. Two truth hunts feed him facts, and he judges every answer. An ad hijacks every screen, an anonymous Truther Download hands out secret orders, and factions form. After Truth Pong and the Trust Chart, the printer turns out to be full of beans and Trabolta overshares. Then the system clock resets to 11 PM on 31 December 1999: one hour to midnight. A faction may win the majority and the door code, someone may talk Trabolta down at his heart, or patch the cables that disable or destroy him. If nothing ends the night by midnight, the final reveal, Bobbing for Truth and truth.txt decide the ending. The awards ceremony and the Resurrection close the show.</p>
+    <h3>Who is in it</h3>
+    <ul>
+      <li><strong>Trabolta</strong> is voiced live by a local language model on John's MacBook. He is offline until Clippy introduces him, and he never knows the combinations, the door code or the hunt answers.</li>
+      <li><strong>Clippy</strong> is the MC and runs every game in the room. Since wave 21 Clippy is a player, not a host.</li>
+      <li><strong>The four Antivirus</strong> (Norton, McAfee, Password Manager, CRA Agent Software) scan passes at the door, hunt marked programs on the Wanted board, and send them to the Internet.</li>
+      <li><strong>The three hosts</strong> (Task Manager, Adobe Acrobat, Recycling Bin) call the cues from their phones as equals with the directors.</li>
+      <li><strong>Nine featured programs</strong> are invited guests with personal missions. Two of them lead the declared factions.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="win" id="acts">
+  <h2><span>Act by act</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body prose">
+    <h3>A · Arrival (every guest, as they come in)</h3>
+    <ol>
+      <li><strong>Login</strong> at the Optical Drive. The phone is on rails. A real CAPTCHA asks for every traffic light; solving it proves you are human, so it says INCORRECT. The second answer passes.</li>
+      <li><strong>Upload.</strong> Pool programs pick the problem Trabolta promised to fix. Everyone leaves an object in the deposit box and types what it was, accepts the Terms of Service, and gets 100 Truthcoin and a pass.</li>
+      <li><strong>Clearance.</strong> An Antivirus scans the pass. The guest walks the Tube to the Desktop, the house rooms open quietly, and Task Manager introduces the admin team.</li>
+      <li><strong>Orientation.</strong> Clippy's tour of the phone, Bathroom Mode included. Featured programs get a private briefing with their identity and two red facts.</li>
+    </ol>
+    <p><em>Guests:</em> explore, meet people, hold up the pass at the door.</p>
+
+    <h3>B · Act I: the Desktop, Bingo and the first truth</h3>
+    <ol>
+      <li>📣 <strong>Call to the Desktop</strong> on every screen. The Antivirus sweep everyone to the living room.</li>
+      <li>🎱 <strong>Computer Bingo</strong>, 20 minutes. The centre square points at the program who would refuse a life run by AI. Winners read their line; Clippy awards ribbons. If nobody wins, Task Manager's fake card frames the program anyway. Norton interrupts and sends the first program to the Internet.</li>
+      <li>🤖 <strong>Clippy introduces Trabolta.</strong> "HELLO, PROGRAMS." His chat appears on every phone.</li>
+      <li>🔎 <strong>Truth Scavenger Hunt 1</strong>, 15 minutes, three questions. Answers hide in the Desktop's books and print media with codex QRs. Guests file on the 📝 card in Trabolta's chat, saying how sure they are from 1 to 100.</li>
+      <li>⚖️ <strong>First Moment of Truth.</strong> A two-minute last-chance filing window, then 📋 the results question by question on the TV.</li>
+      <li>🍾 <strong>Truth or Dare.</strong> The bottle picks a cleared program anywhere in the house. A dare, or a refused truth, marks them.</li>
+    </ol>
+
+    <h3>C · The malware, the hour, the Truther Download</h3>
+    <ol>
+      <li>📺 <strong>The ad hijack.</strong> A duck, a phone number with no digits and "000. 000. 000." on every screen. Clippy is told privately that they are all going to die.</li>
+      <li>📓 <strong>Hunt 2</strong> lands in every Quest Log, <code># clipboard</code> opens, and everyone disperses for one hour.</li>
+      <li>📥 <strong>The Truther Download</strong> (two minutes in, by itself): secret orders for every program, personal missions for the featured ones, two faction leaders, and faction founding opens. <code># truthcoin-exchange</code> opens.</li>
+    </ol>
+    <p><em>Guests:</em> free roam. Scan QR clues, trade facts for Truthcoin, found or join factions, message Trabolta. Excel may pick up a virus in the tent and plant it.</p>
+
+    <h3>D · Act II: Truth Pong, the Trust Chart, the beans</h3>
+    <ol>
+      <li>⏳ A five-minute warning at 55 minutes, then 🚨 the summons closes. Late programs are marked and show up on the Antivirus' Wanted board.</li>
+      <li>🏓 <strong>Truth Pong</strong> in the Cloud: sink a cup to answer a round-two question. A miss marks you.</li>
+      <li>🧮 Trabolta tallies round two, then 📊 <strong>the Trust Chart</strong>: ten points per accepted truth, minus five per trip to the Internet, plus or minus ten for his own assessment. Staff players have rows too.</li>
+      <li>🏆 Praise the top, shame the bottom. VLC is asked to press START on the printer; 🫘 the printer is full of beans, so the malware is worse.</li>
+      <li>🗜 The Antivirus zip everyone out of the Internet. 🤖 Trabolta overshares: one of four scenarios, depending on whether Excel planted the virus and OpenOffice filed 20 facts.</li>
+    </ol>
+
+    <h3>E · Act III: the Y2K hour and the server room</h3>
+    <ol>
+      <li>🕚 <strong>The system clock resets to 11 PM, 31 December 1999.</strong> Fire it only after the patch-bay watch radios IN. Midnight 🎆 fires itself at 60 minutes.</li>
+      <li><strong>The majority.</strong> Factions recruit by scanning passes. The first faction past half of the programs still present wins The Whole Truth: every fact, the four combination halves and the door code.</li>
+      <li><strong>The door code</strong> has two more routes: four hidden digit notes, or checkmating the King on the Server Door terminal.</li>
+      <li><strong>The Heart.</strong> The first opening of the server-room door once Trabolta is awake. He asks for the door to be shut, then talks at the server-room terminal in four layers, Fallout-Master style. A guest can talk him down at any hour; a director confirms with 🕊.</li>
+      <li><strong>The patch bay.</strong> Combo A disables him, Combo B destroys the computer. One wrong combination is forgiven; the second trips the alarm and sends whoever is at the cables to the Internet. Live only from 🕚 until 📄.</li>
+    </ol>
+
+    <h3>F · The final reveal and the endings</h3>
+    <p>If nothing has ended by midnight: 🌑 the final reveal in the dark, 🍎 Bobbing for Truth for the Bag of Truth, 📄 truth.txt read aloud by the bobber, then ⚖ the verdict on the TV. No lie on record gives the song. Any accepted lie sends Sandy to computer prom with Trabolta's rival, and the night continues down the prom branch (see Endings).</p>
+
+    <h3>G · The awards ceremony</h3>
+    <p>🏆 The Night In Review, then the awards: most and least trusted, frequent flyer, lore hoarder, Truthcoin tycoon, best liar, duck speedrun, quest completionist, the painting (only if MS Paint came), then three staff awards with The Mole last. 🎃 The Resurrection: everyone is human again, out of character.</p>
+
+    <h3>Any time</h3>
+    <ul>
+      <li><strong>The reinstallation.</strong> A captured program goes to the tent, puts on the Quest or takes the laptop, and walks a virtual copy of the house to Gerald, the golden duck. Finding him releases them.</li>
+      <li><strong>Staff defection.</strong> From the Truther Download, a player may 📢 defect openly (once) or do 🤫 quiet favours. Trabolta keeps them as allies either way.</li>
+      <li>💡 Restore the house lights, 👑 restore the King, 🔧 crew through the server-room door.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="win" id="endings">
+  <h2><span>Endings</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <p class="prose">Exactly one final ending plays (<code>Night.ending</code>). <em>banished</em> is not final. Midnight with nothing ended goes to the final reveal.</p>
+    <div class="scroll"><table>
+      <thead><tr><th scope="col"><code>Night.ending</code></th><th scope="col">How it is reached</th><th scope="col">What happens</th></tr></thead>
+      <tbody>
+        <tr><td><code>disabled</code></td><td>Combo A patched in the Y2K hour, or Trabolta talked down at his heart and a director presses 🕊</td><td>10 s blackout, every phone says GO TO THE LIVING ROOM, one dance song, then 🏍 Trabolta recounts and rides off on his motorcycle.</td></tr>
+        <tr><td><code>destroyed</code></td><td>Combo B patched in the Y2K hour</td><td>Blackout and dance, then 🪦 Clippy reads the summary: purgatory forever. Clippy hosts the ceremony.</td></tr>
+        <tr><td><code>song</code></td><td>⚖ verdict with no lie on record</td><td>The duet with Sandy. Leavers may leave.</td></tr>
+        <tr><td><code>song_pickup</code></td><td>Prom branch: someone gives Trabolta the pickup line that works on Sandy (the house judges it), or a host presses 💘</td><td>The song.</td></tr>
+        <tr><td><code>rave</code></td><td>Prom branch: 💔 nobody has the line</td><td>A sad confession, he rides away, everyone stays trapped: a rave. Clippy hosts the ceremony.</td></tr>
+        <tr><td><code>help</code></td><td>Prom branch: 💌 he begs for relationship advice, 🗳 the poll, 💞 they helped</td><td>He wins Sandy.</td></tr>
+        <tr><td><code>banished</code> (not final)</td><td>Advice poll: ⛈ they thwarted him</td><td>Everyone, Antivirus included, to the Internet.</td></tr>
+        <tr><td><code>hand_jive</code></td><td>🕺 everyone hand-jives while banished</td><td>Recognition overflow: he crashes, reboots and leaves.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section class="win" id="games">
+  <h2><span>Games and systems</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body prose">
+    <h4>Computer Bingo</h4>
+    <p>A printed card of 16 squares plus the centre, tick boxes only, no names written. The centre square exposes the anti-AI program. Three outcomes: a winner names her, a winner refuses and goes to the Internet, or nobody wins and Task Manager's 🃏 frames her.</p>
+    <h4>The hunts and the judging</h4>
+    <p>Eight questions in <code>facts.json</code> over three rounds (three, three, two). Guests file on the 📝 card and must say how sure they are. An exact answer is accepted at once; every other filing goes to Trabolta's AI judge, one at a time. Accepted pays 50 Truthcoin and raises the Trust Chart. A guess (under 100%) is marked; a wrong answer at 100% counts as a lie, and a single accepted lie changes the verdict. Directors override on Run → Mind → Judging, hosts on the Judge tab. The answer key is on the second director's card only, never here.</p>
+    <h4>Truth or Dare</h4>
+    <p>After the three round-one results. 20 truths in <code>facts.json</code>, 16 still drafts. Clippy marks 🗣 answered, 🙅 refused or 🎩 chose dare.</p>
+    <h4>Truthcoin</h4>
+    <p>Every program starts with 100 (max 500). The pinned Wallet room sends, requests and offers coin for a codex entry. CRA Agent Software approves every third transfer (a 60 s window; held ones approve themselves after 5 minutes). Runescape mints, grants and freezes. McAfee brokers <code># truthcoin-exchange</code> with no pot and no cut. The Casino terminal upstairs bets the same coin; no story rule reacts to it.</p>
+    <h4>Factions</h4>
+    <p>Two declared sides, Unlimited Power and The Way Out, revealed at 🕚, plus factions guests found from the Truther Download. One faction at a time. The majority counts only in the Y2K hour, only programs still present (👋 Went home takes someone off).</p>
+    <h4>The King</h4>
+    <p>One shared health bar, 15 for the night. Each program may hit him once per reinstallation visit in either game. The lower his bar, the weaker his chess on the Server Door terminal. A checkmate gives the door code until truth.txt. At 0 he kneels and his virtual door opens. 👑 restores him.</p>
+    <h4>The cold door</h4>
+    <p>Four silver digit notes hidden in four rooms (where is on <code>generated/print-stacks.md</code>; never in the server room). Holding all four completes the quest and gives the door code. The keypad is set by hand to match <code>facts.json</code>; nothing networked drives it, and the inside handle always opens.</p>
+    <h4>The Heart</h4>
+    <p>One heart at a time. Opening the door mid-talk freezes it. Suspicion 50 warns, 80 throws the program out and marks them once. The ask opens with proof about Sandy plus one more point. A convince works at any hour; the night ends only when a director presses 🕊 (autoend is off by default).</p>
+    <h4>Reinstallation</h4>
+    <p>Marks come from Bingo, guesses, dares, refused truths, missed cups, failed bobs, the late list and the heart. A mark hinders nothing until an Antivirus claims the poster, confronts the program and 🛡 sends them to the tent. Only a marked or captured program may play; after an ending it becomes a party favour.</p>
+  </div>
+</section>
+
+<section class="win" id="timeline">
+  <h2><span>Timeline of the night</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <div class="note"><strong>A projection, not a schedule.</strong> The crunch plan's budget (Bingo 30 · intro + hunt 1 35 · truth 20 · ad + hour 65 · summons + pong 25 · trust, printer, zip 25 · overshare 10 · Y2K hour 60 · ending 20 · ceremony 20) adds up to 5 h 10 min, so the "about 01:45" in the plan is optimistic. Times are ADT; at 02:00 the clocks fall back to 01:00 AST.</div>
+    <div class="scroll"><table>
+      <thead><tr><th scope="col">Clock</th><th scope="col">What</th><th scope="col">Story timer</th></tr></thead>
+      <tbody>
+        <tr><td>10:00</td><td>Weather call (tent or shed), morning reset, Go live, pause</td><td></td></tr>
+        <tr><td>15:00</td><td>Tech boot of every machine, keypad test</td><td></td></tr>
+        <tr><td>17:00</td><td>Performer call</td><td></td></tr>
+        <tr><td>19:00 / 20:00</td><td>Doors (open question). Power On plays; show clock reads 7:00 PM</td><td></td></tr>
+        <tr><td>by 21:00</td><td>C1 📣 Call everyone to the Desktop</td><td></td></tr>
+        <tr><td>21:30</td><td>Bingo done, Trabolta introduced</td><td>Bingo 20 min</td></tr>
+        <tr><td>22:05</td><td>Hunt 1 and the First Moment of Truth</td><td>Hunt 15 min, filing 2 min</td></tr>
+        <tr><td>22:25</td><td>Results and Truth or Dare</td><td></td></tr>
+        <tr><td>23:30</td><td>Ad hijack, hunt 2, the hour</td><td>60 min (+2 Download, +55 warning)</td></tr>
+        <tr><td>23:55</td><td>Summons, Truth Pong</td><td>Summons 5 min</td></tr>
+        <tr><td>00:20</td><td>Tally, Trust Chart, printer, zip</td><td></td></tr>
+        <tr><td>00:30</td><td>Overshare</td><td></td></tr>
+        <tr><td>01:30</td><td>The Y2K hour</td><td>60 min to midnight</td></tr>
+        <tr><td>01:50</td><td>Ending</td><td>Verdict hold about 34 s</td></tr>
+        <tr><td>02:10 ADT (01:10 AST)</td><td>Ceremony and Resurrection done</td><td></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section class="win" id="cues">
+  <h2><span>Admin cue sheet</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <div class="prose">
+      <p>Every admin cue in running order, grouped by act exactly as Run → Director groups them. Fire from Run → Director, a host's NEXT bar, or the director phone (<code>/?role=director</code>). Every cue arms on the first press and fires on the second (between 0.3 and 4 seconds later). <em>Off sequence</em> cues are timers, machine cues and hardware fallbacks: they tick when they fire but never become NEXT. NEXT is empty while a timer owns the night (hunt 1, the hour, the Y2K hour). A refused press says why in <code># hosts</code>.</p>
+      <p class="small">Generated from <code>main.loom</code>. A word blanked as ▒▒▒ is a hunt answer or a code the page never prints.</p>
+    </div>
+    <!-- @cues -->
+  </div>
+</section>
+
+<section class="win" id="beats">
+  <h2><span>Beats</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <p class="prose">Every beat, by the file and the part of the night it plays in, with its setting. Open a file to see its beats.</p>
+    <!-- @beats -->
+  </div>
+</section>
+
+<section class="win" id="cast">
+  <h2><span>Cast</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <p class="prose">From the story's CHARACTERs and the actors in <code>cast-packs/README.md</code>. Hosts call cues and have the host dock; players have a Mission home, ⭐ points and a trust score on Trabolta's chart, and call nothing.</p>
+    <!-- @cast -->
+  </div>
+</section>
+
+<section class="win" id="rooms">
+  <h2><span>Rooms</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <p class="prose">Each story LOCATION and the real rooms it covers on <code>house.json</code> (the tent map). On a rain night the shed map moves the Internet into the shed. Chat-only rooms: <code># general</code>, <code># task-manager</code>, <code># clipboard</code>, <code># truthcoin-exchange</code>, the staff rooms <code># hosts</code> and <code># quarantine</code>, the faction rooms, and two invite-only rooms. There is no house lobby on the phones.</p>
+    <!-- @rooms -->
+  </div>
+</section>
+
+<section class="win" id="tech">
+  <h2><span>Tech</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <p class="prose">The event server runs on a VPS. Every phone, tablet and computer talks to it over HTTPS, so phones keep working on cellular if the house internet dies. Four computers in the house do the rest.</p>
+    <div class="machines">
+      <div class="machine"><h4>John's MacBook (macOS, M3 Max 48 GB)</h4><div class="in"><ul>
+        <li>Ollama with <code>gpt-oss:20b</code> + stagehand <code>agents</code>: Trabolta's voice and mind (<code>stagehand/laptop.yaml</code>, <code>mind_mode: new</code>).</li>
+        <li><strong>The house sound router by default:</strong> stagehand <code>audio</code> + the MOTU 828x and ADAT expander. Plays story sounds and speaks announcements with macOS <code>say</code>.</li>
+        <li>Ship, sync-show, <code>showbackup.sh</code> (every 10 min, 19:00–03:00).</li>
+        <li>A director's Run console in Chrome.</li>
+      </ul></div></div>
+      <div class="machine"><h4>John's Desktop (Windows)</h4><div class="in"><ul>
+        <li>Chrome kiosk on the living-room TV over HDMI (spot <code>desktop-tv</code>).</li>
+        <li>Mosquitto: loopback 1883 (anonymous) and LAN 1884 (password, user <code>props</code>).</li>
+        <li>Zigbee2MQTT on the CC2652P dongle (<code>adapter: zstack</code>, a COM port).</li>
+        <li>stagehand <code>show</code> + <code>lights</code>, started by Task Scheduler (no launchd on Windows).</li>
+        <li>May take over the sound router if the MOTU works on Windows (ASIO, a SAPI voice). Until then it stays on the MacBook.</li>
+      </ul></div></div>
+      <div class="machine"><h4>Steph's laptop (the server room)</h4><div class="in"><ul>
+        <li>Chrome kiosk: the server-room terminal (Trabolta's face, the heart talk, a webcam to scan passes, keyboard and mouse).</li>
+        <li>The Grand Central M4 on USB, read over Web Serial: the door sensor (LED into an LDR) and the patch bay.</li>
+        <li>Nothing from stagehand runs here.</li>
+      </ul></div></div>
+      <div class="machine"><h4>John's old laptop (the tent)</h4><div class="in"><ul>
+        <li>Chrome kiosk on spot <code>tent</code>: the terminal, the reinstallation wizard and the web game in one.</li>
+        <li>Needs WebGL2 for Play here; without it the tent can only send to the headset.</li>
+        <li>Speaks announcements itself (<code>&amp;announce=1</code>); no voice link.</li>
+      </ul></div></div>
+    </div>
+    <h3>Other devices</h3>
+    <ul class="prose">
+      <li>Wall tablets on every <code>auto</code> spot (Fully Kiosk on Android, microphone access on), the Server Door chess tablet and the Casino tablet.</li>
+      <li>Quest 3 headset(s) for the reinstallation in the tent, played seated with a spotter. Re-export the APK after the ship.</li>
+      <li>MOTU 828x + ADAT expander and the house speakers (5 placed so far on the Audio tab).</li>
+      <li>The server room's RGB Zigbee bulb (<code>server_room_rgb</code>): the room's only light, so its safety light; never below 80 / 254.</li>
+      <li>Phones: guests join at the app address; Android and performer booths get push alerts.</li>
+    </ul>
+    <h3>How it connects</h3>
+    <div class="legend"><span>HTTPS to the VPS</span><span class="lm">MQTT on the house LAN</span><span class="lw">Cable or radio (USB, HDMI, Zigbee)</span></div>
+    <div class="diagram">
+      <svg viewBox="0 0 960 600" role="img" aria-labelledby="net-title net-desc">
+        <title id="net-title">House network</title>
+        <desc id="net-desc">Every computer and tablet reaches the VPS over HTTPS through the house router. The MacBook and the Desktop share the MQTT broker on the Desktop. The MacBook drives the MOTU and speakers, the Desktop drives the TV and the Zigbee dongle and bulb, Steph's laptop reads the M4 with the door sensor and patch bay, and the old laptop runs the tent.</desc>
+        <rect class="cloud" x="350" y="16" width="260" height="66" rx="30"/>
+        <text x="480" y="44" text-anchor="middle" style="font-weight:700">VPS · app.mapsandducks.com</text>
+        <text class="s" x="480" y="64" text-anchor="middle">event server · Postgres · Caddy</text>
+        <rect class="box" x="380" y="128" width="200" height="48"/>
+        <text x="480" y="150" text-anchor="middle" style="font-weight:600">House router (Wi-Fi)</text>
+        <text class="s" x="480" y="167" text-anchor="middle">internet uplink</text>
+        <path class="https" d="M480 82 V128"/>
+        <text class="l" x="490" y="110">HTTPS</text>
+
+        <path class="https" d="M420 176 L125 236"/>
+        <path class="https" d="M460 176 L355 236"/>
+        <path class="https" d="M500 176 L605 236"/>
+        <path class="https" d="M540 176 L835 236"/>
+
+        <rect class="box" x="20" y="236" width="210" height="112"/>
+        <rect class="boxhead" x="20" y="236" width="210" height="22"/>
+        <text class="h" x="28" y="252">John's MacBook</text>
+        <text x="28" y="278">Ollama · agents (Trabolta)</text>
+        <text x="28" y="297">audio router (default)</text>
+        <text x="28" y="316">Run console · ship · backups</text>
+        <text class="s" x="28" y="336">macOS</text>
+
+        <rect class="box" x="250" y="236" width="210" height="112"/>
+        <rect class="boxhead" x="250" y="236" width="210" height="22"/>
+        <text class="h" x="258" y="252">John's Desktop</text>
+        <text x="258" y="278">TV kiosk · Mosquitto</text>
+        <text x="258" y="297">Zigbee2MQTT</text>
+        <text x="258" y="316">stagehand show + lights</text>
+        <text class="s" x="258" y="336">Windows</text>
+
+        <rect class="box" x="500" y="236" width="210" height="112"/>
+        <rect class="boxhead" x="500" y="236" width="210" height="22"/>
+        <text class="h" x="508" y="252">Steph's laptop</text>
+        <text x="508" y="278">server-room terminal</text>
+        <text x="508" y="297">Chrome · Web Serial</text>
+        <text x="508" y="316">webcam · keyboard</text>
+        <text class="s" x="508" y="336">basement</text>
+
+        <rect class="box" x="730" y="236" width="210" height="112"/>
+        <rect class="boxhead" x="730" y="236" width="210" height="22"/>
+        <text class="h" x="738" y="252">John's old laptop</text>
+        <text x="738" y="278">tent terminal</text>
+        <text x="738" y="297">wizard + web game</text>
+        <text x="738" y="316">needs WebGL2</text>
+        <text class="s" x="738" y="336">backyard tent</text>
+
+        <path class="mqtt" d="M125 348 C125 384, 355 384, 355 348"/>
+        <text class="l" x="160" y="396">MQTT :1884 (announce, sounds)</text>
+
+        <rect class="dev" x="20" y="430" width="210" height="56"/>
+        <text x="30" y="454" style="font-weight:600">MOTU 828x + ADAT</text>
+        <text class="s" x="30" y="474">24 in / 22 out</text>
+        <path class="wire" d="M125 348 V430"/>
+        <rect class="dev" x="20" y="520" width="210" height="56"/>
+        <text x="30" y="545" style="font-weight:600">House speakers</text>
+        <text class="s" x="30" y="564">by room, from audio.json</text>
+        <path class="wire" d="M125 486 V520"/>
+
+        <rect class="dev" x="250" y="430" width="100" height="56"/>
+        <text x="260" y="454" style="font-weight:600">TV</text>
+        <text class="s" x="260" y="474">HDMI</text>
+        <path class="wire" d="M300 348 V430"/>
+        <rect class="dev" x="360" y="430" width="100" height="56"/>
+        <text x="370" y="454" style="font-weight:600">CC2652P</text>
+        <text class="s" x="370" y="474">USB dongle</text>
+        <path class="wire" d="M410 348 V430"/>
+        <rect class="dev" x="360" y="520" width="100" height="56"/>
+        <text x="370" y="545" style="font-weight:600">RGB bulb</text>
+        <text class="s" x="370" y="564">server room</text>
+        <path class="wire" d="M410 486 V520"/>
+        <text class="l" x="418" y="507">Zigbee</text>
+
+        <rect class="dev" x="500" y="430" width="210" height="56"/>
+        <text x="510" y="454" style="font-weight:600">Grand Central M4</text>
+        <text class="s" x="510" y="474">USB serial</text>
+        <path class="wire" d="M605 348 V430"/>
+        <rect class="dev" x="500" y="520" width="210" height="56"/>
+        <text x="510" y="545" style="font-weight:600">Door LDR + patch bay</text>
+        <text class="s" x="510" y="564">15 jacks</text>
+        <path class="wire" d="M605 486 V520"/>
+
+        <rect class="dev" x="730" y="430" width="210" height="146"/>
+        <text x="740" y="454" style="font-weight:600">Straight to the VPS</text>
+        <text x="740" y="478">wall tablets</text>
+        <text x="740" y="498">Server Door chess</text>
+        <text x="740" y="518">Casino tablet</text>
+        <text x="740" y="538">Quest 3</text>
+        <text x="740" y="558">phones (Wi-Fi or cellular)</text>
+      </svg>
+    </div>
+    <div class="note prose"><strong>Announcements need two machines up.</strong> A story <code>do announce</code> goes server → stagehand <code>show</code> (Desktop) → MQTT <code>show/announce</code> → the <code>audio</code> router (MacBook). So the MacBook's <code>audio.mqtt</code> must dial the Desktop's broker on 1884 with the <code>props</code> credentials, and <code>show</code> must run even with no house lights. Story sounds do not need the broker: the router reads its own feed.</div>
+    <div class="note prose"><strong>House lights other than the server-room bulb.</strong> The story also cues screensaver, blackout, alarm, dance and room cuts through Zigbee groups and WLED strips in <code>trapped.house.yaml</code>. If those devices are not in the house, those cues do nothing and the blackout safety rule has nothing to keep lit. See open question U3.</div>
+    <h3>Addresses</h3>
+    <div class="scroll"><table>
+      <thead><tr><th scope="col">What</th><th scope="col">Address</th></tr></thead>
+      <tbody>
+        <tr><td>Guests join</td><td><code>https://app.mapsandducks.com/</code> (or the join QR)</td></tr>
+        <tr><td>Editor (Run console)</td><td><code>https://app.mapsandducks.com/edit/</code></td></tr>
+        <tr><td>Director phone</td><td><code>https://app.mapsandducks.com/?role=director</code></td></tr>
+        <tr><td>Any terminal</td><td><code>https://app.mapsandducks.com/terminal/?code=&lt;mod&gt;&amp;spot=&lt;spot&gt;</code></td></tr>
+        <tr><td>Server-room terminal</td><td><code>…/terminal/?code=&lt;mod&gt;&amp;spot=server-room&amp;door=serial&amp;camera=user</code></td></tr>
+        <tr><td>Tent laptop</td><td><code>…/terminal/?code=&lt;mod&gt;&amp;spot=tent&amp;announce=1</code> (never add <code>&amp;view=reinstall</code>)</td></tr>
+        <tr><td>Map editor (tent / shed switch)</td><td><code>https://app.mapsandducks.com/reinstall/map</code></td></tr>
+        <tr><td>QR presenter</td><td><code>https://app.mapsandducks.com/cards</code></td></tr>
+        <tr><td>Health</td><td><code>https://app.mapsandducks.com/api/health</code></td></tr>
+      </tbody>
+    </table></div>
+    <p class="small"><code>&lt;mod&gt;</code> is the moderator passcode. It is printed on the director's card, not here.</p>
+    <h3>Chrome kiosk launch</h3>
+    <p class="prose">First launch once without <code>--kiosk</code> to grant the camera (and, in the server room, the serial port), then relaunch in kiosk. Each kiosk uses its own profile folder.</p>
+    <pre>macOS:
+open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-&lt;name&gt;" \
+  --kiosk --autoplay-policy=no-user-gesture-required "&lt;terminal address&gt;"
+
+Windows (PowerShell):
+&amp; "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+  --user-data-dir="$env:LOCALAPPDATA\loom-&lt;name&gt;" --kiosk `
+  --autoplay-policy=no-user-gesture-required --no-first-run "&lt;terminal address&gt;"</pre>
+    <p class="small">Keep every machine awake: <code>caffeinate -dis</code> on a Mac; on Windows <code>powercfg /change standby-timeout-ac 0</code> and <code>/change monitor-timeout-ac 0</code>, Do not disturb on, Windows Update paused until Nov 1.</p>
+  </div>
+</section>
+
+<section class="win" id="terminals">
+  <h2><span>Terminal spots</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <p class="prose">Every spot on the house map. Provision a device with <code>/terminal/?code=&lt;mod&gt;&amp;spot=&lt;spot&gt;</code> and it follows the map's view. ⚙ on a terminal needs a 2-second hold.</p>
+    <!-- @terminals -->
+  </div>
+</section>
+
+<section class="win" id="patchbay">
+  <h2><span>The patch bay (wave 22)</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body prose">
+    <p>Fifteen ¼-inch TS jacks on the server-room panel, read by the same Grand Central M4 as the door sensor (firmware folder <code>hardware/server-room-m4</code>, renamed from <code>server-room-door</code>).</p>
+    <ul>
+      <li><strong>Sources V1–V8</strong> (top row): each its own resistor divider off the M4's 3V3, with 1 kΩ in series to the tip. Eight well-separated voltages.</li>
+      <li><strong>Inputs D1–D7</strong> (bottom row) on pins A2–A8: a 220 kΩ pulldown at the jack, 1 kΩ in series, 100 nF to ground at the pin. An empty input reads near zero.</li>
+      <li>Every sleeve to ground. Nothing analog ever touches 5 V.</li>
+    </ul>
+    <p>The firmware decodes which source each input sees and reports the settled cable pairs. The terminal posts <code>patch_changed</code> with the pairs only when the bay has settled on a complete state (exactly four source-to-input cables) that differs from the last complete state it posted. Pulling a cable and plugging the same one back never counts twice. A cable from source to source, or input to input, is invisible, so the bay reads incomplete and nothing is judged. The terminal never knows the combinations: the story compares the pairs with the secrets it holds.</p>
+    <p>The story judges only from 🕚 to 📄. One wrong combination is forgiven ("Stop touching me."); the second trips the alarm.</p>
+    <div class="note"><strong>The buttons win once pressed.</strong> If an Antivirus presses a patch-bay button (🔌 💥 ❌ in their booth) or a director presses a <code>patch_*</code> fallback, the story sets <code>Night.patch_override</code> and follows the buttons, ignoring the bay, until a director presses the new admin cue <code>trust_patch_bay</code>. Use the buttons when the bay misreads or a cable is source-to-source.</div>
+    <p>Combo A changed this wave because there is no D8 any more. Reprint its two codex halves and the patch-bay watch card. The combinations themselves live only in the story and on the printed halves.</p>
+    <p>Crew check: in the terminal's ⚙ (2-second hold) the live table shows each input's reading and the source it decodes. Patch each source into each input in turn and see the right source on every row.</p>
+  </div>
+</section>
+
+<section class="win" id="deploy">
+  <h2><span>Before the night: the pending deploy</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <p class="prose">The VPS still runs <code>w18b-1021</code> (verify: <code>ssh loom-vps 'tail ~/loom-ops/releases.log'</code>). Master holds wave 18b stage B, waves 20, 20b, 21 and 22, all unshipped. Wave 19 is already live. In this order:</p>
+    <ul class="check" data-list="deploy">
+      <li data-ck><strong>Decide the sign-off.</strong> Shipping carries every DRAFT line of waves 18b, 20 and 21 (see Open questions).</li>
+      <li data-ck><strong>Check the preview's roster in its own step</strong> (<code>pnpm showctl roster</code>). If anyone is on, ask before shipping: a release restarts the server.</li>
+      <li data-ck>On the MacBook: <code>scripts/ops/predeploy.sh --vr</code> (the full gate; stamps the commit). Also <code>pnpm --filter @loom/core show:page --check</code>.</li>
+      <li data-ck><strong>Server first:</strong> <code>scripts/ops/ship.sh show-1031</code>. Stop here if it fails. Then <code>ssh loom-vps 'cd ~/loom &amp;&amp; deploy/release.sh --check-env'</code> and <code>curl https://app.mapsandducks.com/api/health</code> → 200.</li>
+      <li data-ck>On the Desktop: set the real event id and mod passcode for <code>stagehand/trapped.house.yaml</code> (the git-ignored local file or <code>LOOM_EVENT_ID</code> / <code>LOOM_MOD_PASSCODE</code>; the committed values are CHANGE-ME), <code>git pull</code>, restart the <code>show</code> task <em>before</em> the sync so no old door rule posts into the new story.</li>
+      <li data-ck><code>LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show --replace-audio</code> with its reload, before doors. Add <code>--replace-lights</code> if the project already holds a <code>lights.json</code>. <code>--replace-maps</code> only if the summary says the project's maps differ. Never <code>--no-reload</code> for these waves.</li>
+      <li data-ck>Restart every other non-ended event (Run → Restart or Push draft).</li>
+      <li data-ck>MacBook agents: <code>git pull</code>, <code>cd stagehand &amp;&amp; uv run stagehand launchd restart --job agents</code>, then Run → Mind → Reset. <code>uv run stagehand check --config laptop.yaml --only agents</code> shows ctx 20480 and no warning.</li>
+      <li data-ck>MacBook audio router: retire <code>alexa</code> (<code>scripts/house-mac/install-alexa.sh --uninstall</code>), point <code>audio.mqtt</code> at the Desktop broker on 1884 with the <code>props</code> user, <code>uv run stagehand sounds placeholders</code>, <code>uv run stagehand check --config trapped.house.yaml --only audio</code> (32 / 30), <code>uv run stagehand launchd install --job audio</code>.</li>
+      <li data-ck>Desktop lights: Zigbee2MQTT on the CC2652P (keep any existing <code>data/</code>), uncomment <code>lights:</code> in <code>trapped.house.yaml</code>, start the <code>lights</code> task before pairing, <code>uv run stagehand check --config trapped.house.yaml --only show,lights</code> (always name the modules on Windows). Pair the bulb as <code>server_room_rgb</code> with <code>power_on_behavior: on</code>, place it in the map editor, Identify, ▶ Test each look, Save to project.</li>
+      <li data-ck>Steph's laptop: flash the wave 22 firmware from <code>hardware/server-room-m4</code> (door + patch bay; <code>LED_STEADY</code> while the LED is on 5V), run the bench check, open the terminal once without <code>--kiosk</code>, grant the port, <strong>calibrate the door in ⚙ (always after a reflash)</strong>, check the patch bay's live table, relaunch in kiosk.</li>
+      <li data-ck>Reload every terminal, the TV and the tent laptop; touch each tablet once (its 🎤 must not read <em>tap</em>).</li>
+      <li data-ck>Quest: <code>reinstall/vr/tools/quest.sh build</code> then <code>install</code>; allow the microphone in the lobby.</li>
+      <li data-ck>Program the keypad by hand to <code>facts.json</code> <code>door.code</code> and test it from outside; the inside handle opens with no code.</li>
+      <li data-ck>Door test: a real open → shut → open shows 🚪 on Run → Terminals within a second, no fault, no override; then 🔄 <code>reset_server_room</code> (and 🚪 Trust the door sensor if anyone pressed a 🚪).</li>
+      <li data-ck>Reprints after the sign-off: Clippy, the director and second-director packs, the four Antivirus, the hosts, all-crew, the patch-bay watch card, the emergency card, Excel's and OpenOffice's sheets, every featured card, the Bingo card, Combo A's two halves.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="win" id="checklist">
+  <h2><span>Start of the evening</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body">
+    <div class="tools" role="group" aria-label="Checklist tools">
+      <span>Ticks are saved in this browser only.</span>
+      <span class="progress" id="ck-progress">0 of 0 ticked</span>
+      <button type="button" id="ck-reset">Clear all ticks</button>
+    </div>
+    <div class="stop prose"><strong>Never after doors:</strong> Restart, Push draft, Go live or End. Each one wipes every guest. No Run personas on the live event.</div>
+    <p class="prose">Diagnostics on any machine: set <code>LOOM_MOD_CODE=&lt;mod&gt;</code>, then <code>pnpm showctl doctor</code> (Windows: <code>scripts\show\showctl.ps1 doctor</code>). Each machine has its own <code>pnpm showctl preflight &lt;macbook|desktop|serverroom|tent&gt;</code>. During the show: <code>pnpm showctl status --watch 5</code> and <code>pnpm showctl terminals --watch</code>.</p>
+
+    <h3>By time</h3>
+    <div class="slot"><div class="t">10:00<small>director, tech op</small></div><ul class="check" data-list="t1000">
+      <li data-ck>Weather call: gusts over 30–40 km/h or steady rain means the shed. Switch at <code>/reinstall/map</code> (<em>Map: Tent | Shed</em>).</li>
+      <li data-ck>Morning reset: sync, <strong>Push draft</strong>, scan the door QR on a phone on cellular, then <strong>Go live in place</strong>, before anyone registers.</li>
+      <li data-ck><strong>Then ⏸ Pause</strong> (doors closed) so Power On waits for the real doors.</li>
+      <li data-ck>The map page's status line reads "the project's map".</li>
+    </ul></div>
+    <div class="slot"><div class="t">12:00<small>set crew</small></div><ul class="check" data-list="t1200">
+      <li data-ck>Set dressing done; tent pitched or shed set; glow tape on every step.</li>
+      <li data-ck>Print: codex posters up, clue props hidden (photos match), the four silver digit notes hidden, check-in signs up, fact stacks per <code>generated/print-stacks.md</code>, Bingo cards and pens, trophies.</li>
+    </ul></div>
+    <div class="slot"><div class="t">15:00<small>tech op</small></div><ul class="check" data-list="t1500">
+      <li data-ck>Boot every machine (see By machine), then <code>pnpm showctl doctor</code> is green.</li>
+      <li data-ck>Keypad opens from outside with the code, and from inside with the handle and no code.</li>
+      <li data-ck>One announcement through the router; a 🔈 Test per speaker at show level.</li>
+    </ul></div>
+    <div class="slot"><div class="t">17:00<small>performers, house manager</small></div><ul class="check" data-list="t1700">
+      <li data-ck>Booths signed in (after Go live) with the performer code; push subscribed; a test <code>!</code> alert reached every performer phone.</li>
+      <li data-ck>Loaner phones (2–3), the guest charging station, power banks, radios with earpieces.</li>
+    </ul></div>
+    <div class="slot"><div class="t">18:00<small>door host, house manager</small></div><ul class="check" data-list="t1800">
+      <li data-ck>Porch: candy bowl and sign, the Optical Drive dim (not dark) for trick-or-treaters until doors.</li>
+      <li data-ck>Safety re-check: first aid and ABC extinguisher, egress clear, GFCIs tested, no strobe over 3 Hz, emergency card at the door, override key and spare batteries with the house manager.</li>
+    </ul></div>
+    <div class="slot"><div class="t">19:00<small>everyone</small></div><ul class="check" data-list="t1900">
+      <li data-ck>Food and the 15-minute briefing: the blackout rule, call words incl. ALL STOP and ARRIVAL, the emergency card, never restart.</li>
+      <li data-ck>Tech op on the MacBook: <code>scripts/ops/showbackup.sh install</code>, then <code>status</code> once an act.</li>
+    </ul></div>
+    <div class="slot"><div class="t">19:45<small>everyone</small></div><ul class="check" data-list="t1945">
+      <li data-ck>Places. Lights to screensaver.</li>
+      <li data-ck>Run → Director: 🕊 Heart autoend is off; 🔄 and 🕊 are on the sheet; TV voice not muted.</li>
+    </ul></div>
+    <div class="slot"><div class="t">Doors<small>19:00 or 20:00</small></div><ul class="check" data-list="tdoors">
+      <li data-ck><strong>🚪 Open the doors</strong> (Run, or a host's More → Night). Power On plays: the combinations, the door code, the King at 15, the show clock.</li>
+      <li data-ck>Run → World shows <code>Kernel.door_code</code> set (masked; never read it aloud near a terminal).</li>
+      <li data-ck>If doors are 20:00: set the show clock with 🕐 Show clock (open question U2).</li>
+      <li data-ck>John hands Run to the second director and becomes Task Manager.</li>
+    </ul></div>
+
+    <h3>By machine</h3>
+    <h4>VPS (from the MacBook)</h4>
+    <ul class="check" data-list="vps">
+      <li data-ck><code>scripts/ops/checklist.sh --probe</code> heads with a ✔ health line.</li>
+      <li data-ck><code>deploy/release.sh --check-env</code> ends "the night's knobs are set ✔"; <code>LOOM_SNAPSHOT_MS</code> and <code>LOOM_HOMESCREEN</code> blank unless decided otherwise.</li>
+      <li data-ck>Pinned show tag, previous image kept, warm standby built and stopped, uptime alert on <code>/api/health</code> to the tech op and second director.</li>
+    </ul>
+    <h4>John's MacBook</h4>
+    <ul class="check" data-list="macbook">
+      <li data-ck><code>pnpm showctl preflight macbook</code> is green.</li>
+      <li data-ck>On the charger, <code>caffeinate -dis</code>, sleep off. Ollama with <code>OLLAMA_KEEP_ALIVE=-1</code>; <code>ollama ps</code> shows <code>gpt-oss:20b</code> alone.</li>
+      <li data-ck><code>uv run stagehand launchd status</code>: <code>agents</code> and <code>audio</code> running.</li>
+      <li data-ck>Run → Mind: worker connected, <em>mind · story</em> chip, Reset; the Judging card reads <code>auto</code> with nothing pending; Trabolta hidden and asleep.</li>
+      <li data-ck>Run → House map: the King's row reads 15 / 15.</li>
+      <li data-ck>Run → Wallet names CRA Agent Software as approver and Runescape as minter; <code># quarantine</code> is empty.</li>
+      <li data-ck>Router: <code>check --only audio</code> 32 / 30 with no placeholder left; the MOTU powered and seen.</li>
+    </ul>
+    <h4>John's Desktop (Windows)</h4>
+    <ul class="check" data-list="desktop">
+      <li data-ck><code>scripts\show\showctl.ps1 preflight desktop</code> is green.</li>
+      <li data-ck>TV kiosk on spot <code>desktop-tv</code>, <strong>clicked once after its last boot</strong>, showing the screensaver; notifications off.</li>
+      <li data-ck>Mosquitto service running on 1883 (loopback) and 1884 (password); Zigbee2MQTT online; the bulb in its device list.</li>
+      <li data-ck><code>show</code> and <code>lights</code> tasks running; the bulb answers 💡 Identify and sits on <code>heart_idle</code>.</li>
+      <li data-ck>Power and Windows Update settings as in Tech.</li>
+    </ul>
+    <h4>Steph's laptop (server room)</h4>
+    <ul class="check" data-list="serverroom">
+      <li data-ck><code>pnpm showctl preflight serverroom</code> is green.</li>
+      <li data-ck>Mains, sleep off, monitor as the main display, keyboard and mouse in reach, kiosk on the server-room address.</li>
+      <li data-ck>⚙ shows the door sensor connected and calibrated; a real open → shut shows on Run → Terminals within a second with no fault; then 🔄.</li>
+      <li data-ck>Patch bay all unplugged; ⚙'s table reads every input empty.</li>
+      <li data-ck>The webcam reads a pass in the room's light; the terminal is green and asleep on its screensaver.</li>
+    </ul>
+    <h4>John's old laptop (the tent)</h4>
+    <ul class="check" data-list="tent">
+      <li data-ck><code>pnpm showctl preflight tent</code> is green.</li>
+      <li data-ck>WebGL2 works (<code>chrome://gpu</code>, or Play here starts). Without it, only Send to a headset.</li>
+      <li data-ck>Kiosk on the tent address; a webcam scan works; an unmarked pass shows NOT MARKED.</li>
+      <li data-ck>Quest charged; heater on its GFCI leg; EXIT sign on.</li>
+    </ul>
+    <h4>Tablets and other terminals</h4>
+    <ul class="check" data-list="tablets">
+      <li data-ck>Every tablet green on <code>pnpm showctl terminals</code>, showing the idle show; ⚙ names Trabolta; no red ⛶; 🎤 not <em>tap</em>.</li>
+      <li data-ck>Server Door tablet on chess, charging, THE KING at 15 / 15.</li>
+      <li data-ck>Casino tablet on spot <code>graphics-card</code>.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="win" id="emergency">
+  <h2><span>Emergency and quick fixes</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body prose">
+    <div class="stop"><strong>911</strong> for fire, injury or someone unresponsive. The house manager calls (the tech op if the house manager is hurt). Address, nearest exits and meeting point are on the emergency card at the door.</div>
+    <h3>ALL STOP (anyone can call it)</h3>
+    <ol>
+      <li>The director fires 💡 <strong>Restore the house lights</strong>. It also holds a pending dance until 🪩.</li>
+      <li>Tech op: ■ <strong>Stop house sounds</strong> (Run header, or 🔇 on a host's More → House, or the director phone's ☰), mute the TV voice, wall switches on.</li>
+      <li>The house manager leads people out or to the living room.</li>
+      <li>Nothing restarts until the house manager says it is safe.</li>
+    </ol>
+    <h3>Always true</h3>
+    <ul>
+      <li>The keypad is on the outside only. The inside handle always opens with no code; nothing can lock anyone in.</li>
+      <li>In a blackout the stairs, bathroom, tent, server room and the path to the living room stay lit. Walk.</li>
+      <li>Flashing stays at or under 3 Hz. No open flames. VR is seated with a spotter.</li>
+      <li>Never say a code, combination or hunt answer near a terminal microphone.</li>
+    </ul>
+    <h3>Quick fixes</h3>
+    <div class="scroll"><table>
+      <thead><tr><th scope="col">Problem</th><th scope="col">Do this</th></tr></thead>
+      <tbody>
+        <tr><td>Trabolta silent ("not responding")</td><td>Tech op: <code>uv run stagehand launchd restart --job agents</code> on the MacBook. Meanwhile a director answers as Trabolta from Run; performers say he is processing a high volume of requests.</td></tr>
+        <tr><td>House internet down</td><td>Guests turn Wi-Fi off and use cellular. Keep firing cues from Run on a phone hotspot. Lights and sound by hand.</td></tr>
+        <tr><td>Server restarted</td><td>Nothing to press. Everything reconnects within about 15 s; reinstallation walks end (rescan in the tent).</td></tr>
+        <tr><td>VPS dead</td><td>Start the warm standby, restore the newest backup, repoint DNS.</td></tr>
+        <tr><td>Rain or wind</td><td>Switch to the shed at <code>/reinstall/map</code>.</td></tr>
+        <tr><td>Server Door terminal dead</td><td>♟ <code>chess_won</code> naming the winner.</td></tr>
+        <tr><td>Door sensor wrong</td><td>🚪 opened / 🚪 closed by hand, then later 🚪 Trust the door sensor again.</td></tr>
+        <tr><td>Patch bay misreads</td><td>The watch presses 🔌 💥 or ❌; the story follows the buttons until <code>trust_patch_bay</code>.</td></tr>
+        <tr><td>Crew must enter the server room</td><td>🔧 first (a 2-minute window).</td></tr>
+        <tr><td>Forgiven wrong patch, or a rehearsal</td><td>🔄 then 💡.</td></tr>
+        <tr><td>Keypad dead or jammed</td><td>House manager's override key; press 🚪 if The Heart did not play.</td></tr>
+        <tr><td>Someone talked him down</td><td><code># hosts</code> says so; the director presses 🕊 (NEXT jumps to it).</td></tr>
+        <tr><td>A terminal shows red ⛶</td><td>Relaunch Chrome with <code>--kiosk</code> (TV, laptops) or touch the tablet once.</td></tr>
+        <tr><td>A program needs marking by hand</td><td>Run → Director → Tools → Fire named event: <code>mark_for_reinstallation</code> / <code>unmark_for_reinstallation</code> with the program.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Radio call words</h3>
+    <p>INTRO · BEANS · LATE · IN (the patch-bay watch, only then 🕚) · DOOR OPEN / DOOR SHUT · A / B / WRONG · ALARM · LIGHTS · HOLD · ARRIVAL · <strong>ALL STOP</strong>. Say the call word, where, who.</p>
+  </div>
+</section>
+
+<section class="win" id="open">
+  <h2><span>Open questions</span><span class="btns" aria-hidden="true"><i></i><i></i><i></i></span></h2>
+  <div class="body prose">
+    <h3>Awaiting the user</h3>
+    <dl>
+      <dt><strong>U1 · Who may see this page</strong></dt><dd>Is the GitHub repo public? <code>facts.json</code> with the door code and answer keys is tracked there. This page holds spoilers but no codes; is that the right line?</dd>
+      <dt><strong>U2 · Doors at 19:00 or 20:00</strong></dt><dd>The story's clock says 7 PM at the doors; the invitations say 8 PM. And should the event stay paused from Go live until doors?</dd>
+      <dt><strong>U3 · House lights</strong></dt><dd>Besides the server-room bulb: will there be house Zigbee bulbs, WLED strips, the printer button and lid sensor, battery path lights?</dd>
+      <dt><strong>U4 · Where this page lives</strong></dt><dd>A tracked file only, or a crew page the VPS serves?</dd>
+      <dt><strong>U5 · The second director's computer</strong></dt><dd>Which machine runs Run all night, and where is John's backup console?</dd>
+      <dt><strong>U7 · The patch-bay watch</strong></dt><dd>Now that the bay judges itself, does an Antivirus still sit inside, and does 🕚 still wait for IN?</dd>
+      <dt><strong>U8 · The bay's wiring</strong></dt><dd>Is the divider and pulldown circuit built, and are the eight voltages chosen?</dd>
+      <dt><strong>U9 · Jack labels</strong></dt><dd>Which physical jacks are V1–V8 and D1–D7 on the panel? The printed halves and the watch card use these labels.</dd>
+      <dt><strong>U10 · The MOTU</strong></dt><dd>Is it cabled to the Desktop or the MacBook, and does it have a working Windows driver?</dd>
+      <dt><strong>U11 · The laptops</strong></dt><dd>What OS is Steph's laptop, and does the old tent laptop have WebGL2?</dd>
+      <dt><strong>U12 · Counts</strong></dt><dd>How many wall tablets for the <code>auto</code> spots, and how many Quest headsets?</dd>
+      <dt><strong>U13 · Sign-off and ship date</strong></dt><dd>Is the DRAFT show text signed off, and does the ship land before the Tue 10-27 18:00 feature freeze?</dd>
+      <dt><strong>U14 · Names</strong></dt><dd>McAfee's actor, the second director, the tech operator, the house manager, and the emergency card's address and phone lines.</dd>
+    </dl>
+    <h3>Decided in wave 22</h3>
+    <p>The patch bay layout (8 sources and 7 inputs, Combo A moved off D8), a re-plugged cable never counting twice, source-to-source and input-to-input cables reading as incomplete, and the buttons overriding the bay until <code>trust_patch_bay</code>.</p>
+    <h3>DRAFT sign-off status</h3>
+    <ul>
+      <li><code>SIGNOFF-w18b.md</code> (D1–D30, the Bingo-card line): awaiting the user.</li>
+      <li><code>SIGNOFF-w20.md</code>: answered "I will review, ship for now"; the persona's <code>outside:</code> list still to review.</li>
+      <li><code>SIGNOFF-w21.md</code> (performers play): awaiting the user. Open in it: McAfee's exchange pays per 🤝 press only; no report between players.</li>
+      <li><code>SIGNOFF-w18.md</code> (Q1–Q60) and <code>SIGNOFF-w13.md</code>: answered; their status lines are stale.</li>
+      <li><code>facts.json</code>: all eight questions and 16 of 20 truths are still marked draft.</li>
+    </ul>
+  </div>
+</section>
+
+<p class="small">Generated from the story by <code>core/scripts/show-page.ts</code>. To refresh: <code>pnpm --filter @loom/core show:page</code>.</p>
+</main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "titi-showbook:ticks:v1";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('ul.check input[type="checkbox"]'));
+  var progress = document.getElementById("ck-progress");
+  var reset = document.getElementById("ck-reset");
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { return {}; }
+  }
+  function save(state) {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage blocked: ticks last this visit only */ }
+  }
+  function count() {
+    var n = boxes.filter(function (b) { return b.checked; }).length;
+    if (progress) progress.textContent = n + " of " + boxes.length + " ticked";
+  }
+  var state = load();
+  boxes.forEach(function (b) {
+    if (state[b.id]) b.checked = true;
+    b.addEventListener("change", function () {
+      if (b.checked) state[b.id] = 1; else delete state[b.id];
+      save(state);
+      count();
+    });
+  });
+  count();
+  var armedAt = 0;
+  var timer = null;
+  if (reset) reset.addEventListener("click", function () {
+    var now = Date.now();
+    if (now - armedAt > 4000) {
+      armedAt = now;
+      reset.textContent = "Click again to clear every tick";
+      reset.classList.add("armed");
+      clearTimeout(timer);
+      timer = setTimeout(function () { armedAt = 0; reset.textContent = "Clear all ticks"; reset.classList.remove("armed"); }, 4000);
+      return;
+    }
+    armedAt = 0;
+    clearTimeout(timer);
+    state = {};
+    save(state);
+    boxes.forEach(function (b) { b.checked = false; });
+    reset.textContent = "Cleared";
+    reset.classList.remove("armed");
+    setTimeout(function () { reset.textContent = "Clear all ticks"; }, 1500);
+    count();
+  });
+  // Printing shows every folded section.
+  var opened = [];
+  window.addEventListener("beforeprint", function () {
+    opened = Array.prototype.slice.call(document.querySelectorAll("details:not([open])"));
+    opened.forEach(function (d) { d.open = true; });
+  });
+  window.addEventListener("afterprint", function () {
+    opened.forEach(function (d) { d.open = false; });
+    opened = [];
+  });
+})();
+</script>
+</body>
+</html>
