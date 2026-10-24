@@ -27,7 +27,8 @@ Shape (`audio.example.yaml` carries a commented copy):
       poll_wait: 25                # the long-poll's wait (s)
       health_s: 60                 # the health line's period
       # announce: true only —
-      say_voice: Samantha
+      voice_engine: auto           # auto (sapi on Windows, say elsewhere) | say | sapi
+      say_voice: Samantha          # the engine's voice (default: Samantha / Microsoft Zira Desktop)
       chime: synth                 # synth | off | a file
       announce_gain_db: 0
       test_gain_db: -12            # the speaker test's tone + label
@@ -49,6 +50,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .. import localvoice
 from ..alexa.config import DEFAULT_CACHE as ALEXA_CACHE
 from ..module import ConfigError
 from ..show.config import MqttConfig
@@ -76,6 +78,9 @@ class AudioConfig:
     cache_dir: str = DEFAULT_CACHE
     poll_wait: float = 25.0
     health_s: float = 60.0
+    #: The announcements' + test labels' voice: `say` (macOS) or `sapi`
+    #: (Windows, through PowerShell) — `voice_engine: auto` resolved at load.
+    voice_engine: str = "say"
     say_voice: str | None = "Samantha"
     chime: str = "synth"
     announce_gain_db: float = 0.0
@@ -162,6 +167,11 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
     if chime not in ("synth", "off"):
         chime = _path({"chime": chime}, "chime", base_dir, must_exist=True) or "off"
 
+    try:
+        voice_engine = localvoice.resolve(doc.get("voice_engine", "auto"))
+    except ValueError:
+        raise ConfigError(f"audio.voice_engine: {' | '.join(localvoice.ENGINES)}") from None
+
     mqtt: MqttConfig | None = None
     if (raw := doc.get("mqtt")) is not None:
         if not isinstance(raw, dict) or not isinstance(raw.get("host"), str) or not raw["host"]:
@@ -193,7 +203,8 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         cache_dir=os.path.expanduser(_str(doc, "cache_dir", DEFAULT_CACHE) or DEFAULT_CACHE),
         poll_wait=_num(doc, "poll_wait", 25.0, 0, 120),
         health_s=_num(doc, "health_s", 60.0, 5, 3600),
-        say_voice=_str(doc, "say_voice", "Samantha"),
+        voice_engine=voice_engine,
+        say_voice=_str(doc, "say_voice", localvoice.default_voice(voice_engine)),
         chime=chime,
         announce_gain_db=_num(doc, "announce_gain_db", 0.0, -60, 12),
         test_gain_db=_num(doc, "test_gain_db", -12.0, -60, 0),

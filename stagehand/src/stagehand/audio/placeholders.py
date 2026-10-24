@@ -6,9 +6,9 @@ The manifest is `stagehand/media/sounds.yaml` (tracked): per name, the
 motif, its length, any lead silence and what the real file should be. Each
 placeholder is `<sounds_dir>/<name>.wav`, 48 kHz / 16-bit / mono at about
 −6 dBFS peak: a distinct synthesised motif (so a walk round the house tells
-the cues apart by ear), then "Placeholder. <name>." in the Mac's own `say`
-voice when there is one (`--no-say` for CI). A RIFF LIST/INFO chunk right
-after `fmt ` carries INAM = the name and ICMT = `loom-placeholder v1 — <real>`,
+the cues apart by ear), then "Placeholder. <name>." in the machine's own
+voice when there is one (the Mac's `say`, Windows SAPI; `--no-say` for CI).
+A RIFF LIST/INFO chunk right after `fmt ` carries INAM = the name and ICMT = `loom-placeholder v1 — <real>`,
 which is how the router and `stagehand check` tell a placeholder from a real
 asset (`sounds.is_placeholder`).
 
@@ -160,18 +160,27 @@ def motif(kind: str, sec: float) -> np.ndarray:
 # -- the spoken label ----------------------------------------------------------------
 
 
-def say_label(text: str) -> np.ndarray | None:
-    """`text` in the Mac's `say` voice at RATE, mono; None without `say`."""
-    if shutil.which("say") is None:
+def say_label(text: str, *, engine: str = "auto", which=shutil.which, run=None) -> np.ndarray | None:
+    """`text` in the machine's own voice at RATE, mono — the Mac's `say`, or
+    Windows SAPI (localvoice, `engine: auto` picks by platform); None when
+    there is no voice (the placeholder is then the motif alone)."""
+    from .. import localvoice
+
+    run = run or subprocess.run
+    resolved = localvoice.resolve(engine)
+    if localvoice.problem(resolved, which=which) is not None:
         return None
     with tempfile.TemporaryDirectory() as d:
         out = Path(d) / "label.wav"
         try:
-            subprocess.run(["say", "-o", str(out), "--file-format=WAVE", f"--data-format=LEI16@{RATE}", text], check=True, timeout=30, capture_output=True)
+            if resolved == "sapi":
+                out.write_bytes(localvoice.sapi_to_wav(text, None, rate=RATE, run=run))
+            else:
+                run(["say", "-o", str(out), "--file-format=WAVE", f"--data-format=LEI16@{RATE}", text], check=True, timeout=30, capture_output=True)
             with wave.open(str(out)) as w:
                 raw = w.readframes(w.getnframes())
                 ch = w.getnchannels()
-        except (subprocess.SubprocessError, OSError, wave.Error):
+        except (subprocess.SubprocessError, OSError, wave.Error, localvoice.PlaybackError):
             return None
     a = np.frombuffer(raw, dtype="<i2").astype(np.float64) / 32768
     a = a.reshape(-1, ch).mean(axis=1) if ch > 1 else a

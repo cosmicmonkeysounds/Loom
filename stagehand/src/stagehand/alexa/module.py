@@ -51,9 +51,10 @@ from typing import Any
 import httpx
 
 from ..modapi import ModApiError, ModClient
+from ..localvoice import render_voice, resolve, speak_voice
 from ..module import ConfigError, Context
 from .config import AlexaConfig, parse_alexa
-from .player import DeviceOutput, PlaybackError, chime, decode, say_direct, say_to_file
+from .player import DeviceOutput, PlaybackError, chime, decode
 
 try:  # POSIX (the Mac): flock
     import fcntl
@@ -165,15 +166,16 @@ class Announcer:
         fetch: Fetch | None,
         output: DeviceOutput | None = None,
         cache: VoiceCache | None = None,
-        render_say: Callable[[str, str | None], bytes] = say_to_file,
-        speak_direct: Callable[[str, str | None, str | None], None] = say_direct,
+        render_say: Callable[[str, str | None], bytes] | None = None,
+        speak_direct: Callable[[str, str | None, str | None], None] | None = None,
     ) -> None:
         self.cfg = cfg
         self.fetch = fetch
         self.output = output or DeviceOutput(cfg.device, cfg.channels, cfg.gain_db)
         self.cache = cache or VoiceCache(cfg.cache_dir)
-        self.render_say = render_say
-        self.speak_direct = speak_direct
+        # The machine's own voice: `say` on the Mac, SAPI on Windows (localvoice).
+        self.render_say = render_say or render_voice
+        self.speak_direct = speak_direct or speak_voice
         self._chime = self._load_chime()
         #: monotonic start of the last announcement, restamped when it ends (for chime merging).
         self.last_announce: float | None = None
@@ -347,7 +349,9 @@ class Alexa:
                 f"prewarm  : {len(cfg.prewarm)} line(s) → {cfg.cache_dir}",
             ]
         else:
-            voice = [f"voice    : say {cfg.say_voice or '(the system voice)'} — the Mac's own, no server"]
+            local = resolve("auto")
+            own = "the Mac's own" if local == "say" else "Windows SAPI"
+            voice = [f"voice    : {local} {cfg.say_voice or '(the system voice)'} — {own}, no server"]
         return [
             f"mqtt     : {cfg.mqtt.host}:{cfg.mqtt.port} ← {cfg.topic}" + (f", {cfg.chime_topic}" if cfg.chime_topic else ""),
             f"output   : {out.describe()} (gain {cfg.gain_db:+.0f} dB)",

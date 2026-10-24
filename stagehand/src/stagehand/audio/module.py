@@ -60,7 +60,8 @@ import numpy as np
 
 from ..alexa.config import AlexaConfig
 from ..alexa.module import MAX_TEXT, Announcement, Announcer, parse_payload, try_lock
-from ..alexa.player import PlaybackError, decode, resample, say_direct, say_to_file
+from ..alexa.player import PlaybackError, decode, resample
+from ..localvoice import renderer, speaker
 from ..modapi import ModApiError, ModClient, run_stream
 from ..module import ConfigError, Context
 from ..show.config import MqttConfig
@@ -162,15 +163,16 @@ class AudioRouter:
         *,
         query=None,
         stream_factory=None,
-        render_say=say_to_file,
-        speak_direct=say_direct,
+        render_say=None,
+        speak_direct=None,
         decode=None,
     ) -> None:
         self.cfg = cfg
         self._query = query
         self._stream_factory = stream_factory
-        self.render_say = render_say
-        self.speak_direct = speak_direct
+        # The machine's own voice (`say` on the Mac, SAPI on Windows: cfg.voice_engine).
+        self.render_say = render_say or renderer(cfg.voice_engine)
+        self.speak_direct = speak_direct or speaker(cfg.voice_engine)
         self._decode = decode
         self.doc: AudioDoc | None = None
         self.version: str | None = None
@@ -228,7 +230,7 @@ class AudioRouter:
         return [
             f"device   : {dev}" + (f" ({doc.inputs} in / {doc.outputs} out)" if doc else "") + (" duplex" if cfg.passthrough else " output-only"),
             f"sounds   : {'the router plays `sound X` (OSC sound cues skipped)' if cfg.play_sounds else 'not here: play_sounds is false (another cue player)'} — {cfg.sounds_dir}",
-            f"announce : {'the router (chime + say ' + (cfg.say_voice or 'default') + ')' if cfg.announce else 'not here (the alexa player)'}",
+            f"announce : {'the router (chime + ' + cfg.voice_engine + ' ' + (cfg.say_voice or 'default') + ')' if cfg.announce else 'not here (the alexa player)'}",
             f"matrix   : {'on' if cfg.passthrough else 'off'}" + (f", {len(doc.routes)} route(s)" if doc else ""),
             f"config   : the server's audio.json (long-poll {cfg.poll_wait:.0f}s)" + (f"; local {cfg.config_file}" if cfg.config_file else "") + f"; cache {cfg.cache_dir}",
             f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port} ← {cfg.test_topic}, {cfg.stop_topic}, {cfg.play_topic}' + (f', {cfg.announce_topic}, {cfg.chime_topic}' if cfg.announce else '') if cfg.mqtt else '— (tests, stops + announcements from the server only)'}",
@@ -337,6 +339,18 @@ class AudioRouter:
                 if off:
                     listed = ", ".join(f"{n} ({r} Hz)" for n, r in off)
                     out.append(f"audio: {len(off)} sound file(s) not at the device's {rate} Hz — resampled at load, but convert them offline: {listed}")
+        if self.cfg.announce:
+            # The voice this machine speaks with (`say` on the Mac, SAPI on
+            # Windows): missing, the announcements are the chime alone.
+            from .. import localvoice
+
+            why = localvoice.problem(self.cfg.voice_engine)
+            if why is not None:
+                out.append(f"audio: announcements will be the chime alone — {why}")
+            else:
+                note = localvoice.voice_warning(self.cfg.voice_engine, self.cfg.say_voice)
+                if note is not None:
+                    out.append(f"audio: say_voice — {note}")
         stale = self._stale_cache()
         if stale is not None:
             cached, local = stale
