@@ -10,7 +10,7 @@
 # ARDUINO_DIRECTORIES_USER / ARDUINO_DIRECTORIES_DATA point elsewhere.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="${TMPDIR:-/tmp}/server-room-door-test"
+OUT="${TMPDIR:-/tmp}/server-room-m4-test"
 mkdir -p "$OUT"
 
 # test/shim/ stands in for FlashStorage_SAMD.h, so store.h's flash code runs here.
@@ -32,8 +32,8 @@ fi
 for lib in FlashStorage_SAMD "Adafruit NeoPixel"; do
   "$CLI" lib list "$lib" 2>/dev/null | grep -qi "^${lib// /.}" || "$CLI" lib install "$lib"
 done
-"$CLI" compile --fqbn "$FQBN" --warnings default --build-path "$OUT/build" "$HERE/server_room_door"
+"$CLI" compile --fqbn "$FQBN" --warnings default --build-path "$OUT/build" "$HERE/server_room_m4"
 # The other wiring's build (the LED switched by D2): config.h's LED_MODE.
 "$CLI" compile --fqbn "$FQBN" --warnings default --build-path "$OUT/build-pulsed" --clean \
-  --build-property "compiler.cpp.extra_flags=-DLED_MODE=LED_PULSED" "$HERE/server_room_door" >/dev/null
+  --build-property "compiler.cpp.extra_flags=-DLED_MODE=LED_PULSED" "$HERE/server_room_m4" >/dev/null
 echo "pulsed build: ok"

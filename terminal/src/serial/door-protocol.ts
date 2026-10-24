@@ -1,9 +1,9 @@
 //! The server-room door sensor's serial protocol (wave 20, CONTRACT-w20 §2.9):
-//! the Grand Central M4 behind the heart terminal (`hardware/server-room-door/`)
+//! the Grand Central M4 behind the heart terminal (`hardware/server-room-m4/`)
 //! writes one JSON object per `\n`-terminated line at 115200, and takes plain
 //! text commands back. Pure: no Web Serial here (`door-serial.ts` is the
 //! transport), so the parser is tested line for line against the firmware's
-//! own fixture (`hardware/server-room-door/test/fixtures/lines.jsonl`).
+//! own fixture (`hardware/server-room-m4/test/fixtures/lines.jsonl`).
 //!
 //! The firmware may be silent for up to 2 s after a restart (`set mode`,
 //! `set settle`, `reset`) while a fault builds, and answers a calibration a

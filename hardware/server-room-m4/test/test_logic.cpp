@@ -13,11 +13,11 @@
 #include <vector>
 
 #define DOOR_FLASH 1
-#include "../server_room_door/config.h"
-#include "../server_room_door/door_ldr.h"
-#include "../server_room_door/engine.h"
-#include "../server_room_door/proto.h"
-#include "../server_room_door/store.h"
+#include "../server_room_m4/config.h"
+#include "../server_room_m4/door_ldr.h"
+#include "../server_room_m4/engine.h"
+#include "../server_room_m4/proto.h"
+#include "../server_room_m4/store.h"
 
 static int failures = 0, checks = 0;
 #define CHECK(cond)                                                            \

@@ -16,8 +16,8 @@ combinations are pressed by the Antivirus watch (`radio_*`), and the siren
 is the house router's `alarm_siren` sound (`hardware/server-room/README.md`).
 
 ```
-server_room_door/
-  server_room_door.ino   the sketch: pins, flash, Serial, the status NeoPixel
+server_room_m4/
+  server_room_m4.ino     the sketch: pins, flash, Serial, the status NeoPixel
   config.h               pins, defaults, timings
   door_ldr.h             sampler, boot probe, classifier, faults, calibration maths
   proto.h                command parsing, output lines
@@ -61,7 +61,7 @@ firmware reads 12 bits (`analogReadResolution(12)`; SAMD defaults to 10),
 so the thresholds run 0–4095.
 
 The LED has two wirings. The firmware is built for one of them with
-`LED_MODE` in `server_room_door/config.h` (Q5, the user, 2026-10-23: *"Currently
+`LED_MODE` in `server_room_m4/config.h` (Q5, the user, 2026-10-23: *"Currently
 on 5V, actually, but it could be on a digital pin to allow pulsing for
 better light/dark detection"*).
 
@@ -267,13 +267,13 @@ By hand (contract §5.3 step 6), on the laptop the board plugs into:
 arduino-cli config add board_manager.additional_urls https://adafruit.github.io/arduino-board-index/package_adafruit_index.json
 arduino-cli core update-index && arduino-cli core install adafruit:samd
 arduino-cli lib install FlashStorage_SAMD "Adafruit NeoPixel"
-arduino-cli compile --fqbn adafruit:samd:adafruit_grandcentral_m4 hardware/server-room-door/server_room_door
+arduino-cli compile --fqbn adafruit:samd:adafruit_grandcentral_m4 hardware/server-room-m4/server_room_m4
 # double-tap RESET (the board's LED pulses: the bootloader), then:
 arduino-cli board list                      # the port, e.g. /dev/cu.usbmodem14101
-arduino-cli upload -p /dev/cu.usbmodem<id> --fqbn adafruit:samd:adafruit_grandcentral_m4 hardware/server-room-door/server_room_door
+arduino-cli upload -p /dev/cu.usbmodem<id> --fqbn adafruit:samd:adafruit_grandcentral_m4 hardware/server-room-m4/server_room_m4
 ```
 
-Or open `server_room_door/server_room_door.ino` in Arduino IDE 2: board
+Or open `server_room_m4/server_room_m4.ino` in Arduino IDE 2: board
 **Adafruit Grand Central M4 (SAMD51)** (Boards Manager → *Adafruit SAMD
 Boards*), libraries **FlashStorage_SAMD** and **Adafruit NeoPixel**. Serial
 monitor: 115200 baud, line ending *Newline*; type `get`.

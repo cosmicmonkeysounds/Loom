@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { LineSplitter, boardMode, formatCommand, parseDoorLine, parseDoorSettings, settingsCommands, settingsFit } from "../src/serial/door-protocol.ts";
 
 const OURS = fileURLToPath(new URL("./fixtures/door-lines.jsonl", import.meta.url));
-const FIRMWARE = fileURLToPath(new URL("../../hardware/server-room-door/test/fixtures/lines.jsonl", import.meta.url));
+const FIRMWARE = fileURLToPath(new URL("../../hardware/server-room-m4/test/fixtures/lines.jsonl", import.meta.url));
 const lines = readFileSync(OURS, "utf8").split("\n").filter((l) => l.trim() !== "");
 
 describe("the door sensor's protocol (§2.9)", () => {
