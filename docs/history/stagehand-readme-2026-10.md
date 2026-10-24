@@ -7,8 +7,9 @@
 > lights, Mosquitto, Zigbee2MQTT, the TV). The current docs are
 > [`stagehand/README.md`](../../stagehand/README.md),
 > [`stagehand/CLAUDE.md`](../../stagehand/CLAUDE.md) and
-> [`stagehand/docs/agents.md`](../../stagehand/docs/agents.md). Paths
-> below that name `scripts/house-mac/` now live in `scripts/house-macbook/`.
+> [`stagehand/docs/agents.md`](../../stagehand/docs/agents.md). Links
+> were re-pointed for this folder; `scripts/house-mac/` became
+> `scripts/house-macbook/`. The text is otherwise unchanged.
 
 # loom-stagehand
 
@@ -44,7 +45,7 @@ base_dir)` factory registered in `module.py::REGISTRY`, so adding a job
 module is restarted without taking its neighbours down. Machines only
 dial **out**, so nothing has to be reachable from the internet.
 
-Design: [`docs/loom-show-control.md`](../docs/loom-show-control.md).
+Design: [`docs/loom-show-control.md`](../loom-show-control.md).
 
 ## Run
 
@@ -722,14 +723,14 @@ light cue has a rule, every sound an `audio.json` cue and a
 codex halves — and it pins the safety edits (no cue darkens a safety
 room or all of WLED, nothing drives a lock, no rule reads the door,
 nothing here reaches the server room's bulb). The wiring walkthrough is in
-[`docs/loom-show-control.md`](../docs/loom-show-control.md) → *Trapped in
+[`docs/loom-show-control.md`](../loom-show-control.md) → *Trapped in
 the Internet: the house rig*.
 
 Mosquitto on the house Mac (static `192.168.8.10`) runs two listeners:
 anonymous on `127.0.0.1:1883` for what runs on that Mac (stagehand's
 `mqtt.host`, Zigbee2MQTT, the router) and password-only on the
 LAN at `:1884` as user `props` for the network props (WLED, the
-server-room ESP32 in [`hardware/server-room/`](../hardware/server-room)).
+server-room ESP32 in [`hardware/server-room/`](../../hardware/server-room)).
 Setup: `scripts/house-mac/audio.md` → *Lock down the broker*.
 
 ```bash
@@ -747,8 +748,8 @@ map editor's 💡 Lights tab, served at `GET /api/mod/lights`; schema in
 a Zigbee bulb, a Z2M group or a WLED strip — on a room, groups them in
 zones, and defines **looks** keyed by cue name: `cue heart_wake` plays
 `looks.heart_wake`. This module plays them on this Mac's broker (Zigbee2MQTT's).
-Setup: [`scripts/house-mac/zigbee.md`](../scripts/house-mac/zigbee.md), then
-[`scripts/house-mac/lights.md`](../scripts/house-mac/lights.md); the section's
+Setup: [`scripts/house-mac/zigbee.md`](../../scripts/house-macbook/zigbee.md), then
+[`scripts/house-mac/lights.md`](../../scripts/house-macbook/lights.md); the section's
 shape is [`lights.example.yaml`](./lights.example.yaml).
 
 - **The sequencer.** A look plans (`lights/plan.py`, the mirror of
@@ -818,7 +819,7 @@ The show (`trapped.house.yaml`, wave 18b) runs `play_sounds: true`,
 `announce: true`, `passthrough: false` (live mics are mixed in CueMix FX)
 and MQTT on the loopback broker; QLab and the `alexa` player are retired
 there. House-Mac setup and the night's runbook:
-[`scripts/house-mac/audio.md`](../scripts/house-mac/audio.md).
+[`scripts/house-mac/audio.md`](../../scripts/house-macbook/audio.md).
 
 - **One stream.** The device named by `audio.json` `device.name` (a
   CoreAudio substring; `device:` overrides) opens as ONE `sounddevice`
@@ -914,7 +915,7 @@ uv run stagehand launchd install --job audio --config trapped.house.yaml
 uv run stagehand sounds stop [--announce] --config trapped.house.yaml   # by hand, over MQTT
 ```
 
-Room-by-room design and what is still open: [`docs/trapped/room-audio.md`](../docs/trapped/room-audio.md).
+Room-by-room design and what is still open: [`docs/trapped/room-audio.md`](../trapped/room-audio.md).
 
 ## alexa — announcements out of the house speakers
 
@@ -951,7 +952,7 @@ uv run stagehand run      --config house.yaml --only alexa                      
 ```
 
 The house Mac's runbook (now the router's):
-[`scripts/house-mac/audio.md`](../scripts/house-mac/audio.md).
+[`scripts/house-mac/audio.md`](../../scripts/house-macbook/audio.md).
 
 ### Sensor rules: `edge` and retained messages
 
@@ -1019,7 +1020,7 @@ loads), takes the player lock with `msvcrt`, and caches under
 `.local.yaml` may now carry a module's `mqtt:` (another machine's broker
 and its password) and the router's `device` / `host_api` / `voice_engine`
 / `say_voice`. The runbook and the PowerShell scripts:
-[`scripts/house-desktop/`](../scripts/house-desktop/README.md).
+[`scripts/house-desktop/`](../../scripts/house-desktop/README.md).
 
 The SSE streams give up after 60 s of silence (the server pings every
 25 s) and reconnect with backoff, so a WAN outage that leaves a dead TCP
