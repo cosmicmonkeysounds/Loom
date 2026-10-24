@@ -15,6 +15,7 @@ addresses, codes, where things are kept).
 | [`emergency-card.md`](./emergency-card.md) | everyone: posted at the door and on the back of every crew card | print batch 2 (10-26) |
 | [`all-crew.md`](./all-crew.md) | everyone: radio call words, the performer basics, the blackout rule, the door FAQ | read-through 10-25 |
 | [`patch-bay-watch.md`](./patch-bay-watch.md) | the Antivirus stationed in the server room (Tier 0 only) | 10-25, kept face-down |
+| [`history.md`](./history.md) | nobody: the old running list of what the packs assumed, wave by wave (not instructions) | never |
 | **Performers** (one pack each; the card on page 1 is the laminated one) | | read-through **10-25** |
 | [`performers/clippy.md`](./performers/clippy.md) | Clippy (Brooke), incl. CI 1–9 cards, the answer key, the Bingo card, the bottle's truth questions | |
 | [`performers/task-manager.md`](./performers/task-manager.md) | Task Manager (John) | |
@@ -28,169 +29,111 @@ addresses, codes, where things are kept).
 | **Crew** | | trained 10-25 |
 | [`crew/director.md`](./crew/director.md) | the Director card (the Run console) + the show owner's day (John) | |
 | [`crew/second-director.md`](./crew/second-director.md) | the second director (at Run all night) | |
-| [`crew/tech-operator.md`](./crew/tech-operator.md) | the tech operator (at the house Mac all night) | |
+| [`crew/tech-operator.md`](./crew/tech-operator.md) | the tech operator (at John's MacBook all night, looking after the four show computers) | |
 | [`crew/house-manager.md`](./crew/house-manager.md) | the house manager (door after 20:30, safety lead) | |
 | [`crew/trabolta-mind.md`](./crew/trabolta-mind.md) | Run → Mind + the tech operator: Trabolta's story mind (wave 12), what a quiet Mind page means, the switches, when to flip to classic | rehearsed 10-25 |
 | **Featured guests** (one sheet each, for the invitee only) | | **[[EDIT: already sent with the invitations? If so these are reference copies — the invitations are the truth; the app's identity entries (`codex/5-people.loom`) and the red character facts (`facts.json`) were rewritten from them on 10-16, and every sheet's "Who you really are" / "Why you said yes" was rewritten from those entries the same day — re-read each against its invitation before any reprint]]** |
 | [`featured/microsoft-excel.md`](./featured/microsoft-excel.md) · [`openoffice`](./featured/openoffice.md) · [`draftkings`](./featured/draftkings.md) · [`bugdom`](./featured/bugdom.md) · [`broken-ask-jeeves`](./featured/broken-ask-jeeves.md) · [`runescape`](./featured/runescape.md) · [`ms-paint`](./featured/ms-paint.md) · [`vlc`](./featured/vlc.md) · [`pong`](./featured/pong.md) | | |
 
-## Facts these drafts assume (from 2026-10-15)
+
+## What the packs assume (master at wave 22, 2026-10-24)
+
+The packs are written to **master**, which holds every wave up to 22. The VPS
+still runs the release **`w18b-1021`**: waves 18b (Stage B), 19, 20, 20b, 21
+and 22 are merged but **not shipped**. Lines marked `// DRAFT w18`, `w18b`,
+`w20b`, `w21` or `w22` in the story await the user's sign-off, and the packs
+follow the drafts. The old wave-by-wave list is in [`history.md`](./history.md).
+
+**The house and its computers**
 
 - The app lives at **https://app.mapsandducks.com** (the editor at `/edit/`, the
   invite one-pager at the apex). Invitations are out.
-- **One house Mac** does everything local: it drives the TV over the long HDMI
-  run (`view=tv`), plays room audio through the **MOTU** (ADAT), and runs
-  Mosquitto, Zigbee2MQTT, stagehand `show` + `agents`, Ollama (48 GB; since
-  wave 12 only the voice model is loaded, while `OLLAMA_MAX_LOADED_MODELS=2`
-  stays so a switch back to the classic mind can load the second) and the house announcement player. Where
-  OCT31 says "the TV computer" or "the Ollama laptop", read "the house Mac".
-- The PAUTIX strips are addressable, on an off-the-shelf **WLED** controller
-  (presets; the Tube gets a chase).
+- Four show computers (the tech operator's card has the details):
+
+  | Computer | Runs |
+  |---|---|
+  | **John's MacBook** (macOS) | Ollama + Trabolta's worker (stagehand `agents`), the house speaker router (stagehand `audio`, the MOTU 828x + an ADAT expander), the show-night backups, a Run console |
+  | **John's Desktop** (Windows) | the living-room TV (`view=tv`), the house broker (Mosquitto), Zigbee2MQTT, stagehand `show` + `lights` |
+  | **Steph's laptop** | the server-room terminal (Trabolta's face, webcam, mouse, keyboard) + the Grand Central M4 on USB: the door sensor and the patch bay |
+  | **John's old laptop** | the tent: its terminal, the reinstallation wizard and the web game in one |
+
+  The router may move to the Desktop if the MOTU works there; the packs
+  never depend on which. Wall tablets (Fully Kiosk), the Server Door chess
+  terminal, the casino terminal, the Quest and the phones are the rest.
+- The house announcements ("the house system" in the show) and every story
+  sound play through the router. There is no QLab and no `alexa` player.
+  ■ Stop house sounds (Run, a host's phone) fades them all.
+- [[EDIT: confirm the house lights: the PAUTIX strips on a **WLED**
+  controller (presets; the Tube gets a chase) and any Zigbee bulbs besides
+  the server room's]]. The server room has one RGB bulb and no strip: it is
+  the room's light and its safety light (never off, never under 80 / 254).
 - **No hosted-model fallback** (decision #35): if Trabolta's worker dies, the
   server posts his hold line and **the directors answer his DMs by hand**.
-- **House internet down → cues are fired by hand** (WLED presets, wall switches,
-  QLab GO). Phones fall back to cellular; the server is on the VPS, not in the
-  house.
-- The Run tools the crew cards lean on — the cue sheet (Run → Director), 🔁
-  Re-pair and ⏏ Release in the Inspector, the Terminals card, the 🖨 Print
-  sheet, ♟ chess, the ceremony cues — shipped to the VPS as `w3-1015`
-  (2026-10-15). Each has a device check under
-  [`scripts/accept/`](../../../../scripts/accept) (OCT31.md §5). The 📝
-  judging is wave 4 (next bullet).
-- Meta developer mode is set up; whether the Quest runs in the tent is the
-  K-30 call (Thu 10-22). Every tent line below works with or without it.
-- **Wave 4 (2026-10-16) is in the working tree, not yet deployed:** the
-  hunt questions, answers and the bottle's truth questions come from
-  `facts.json` (DRAFT placeholders until the team replaces them; `pnpm
-  --filter @loom/core titi:facts` regenerates the story and
-  `generated/print-stacks.md`); the server judges every 📝 filing (the
-  confidence slider, 1–100); the First Moment of Truth is ⏱ → 📋 per question
-  (Trabolta reads it on the TV) → 🍾 the bottle after the third (wave 18b);
-  a host's verdict **marks** a program and the Antivirus
-  escort them (`# quarantine`); Truthcoin moves from each program's Wallet
-  (CRA approves every third transfer); Clippy and the Antivirus have Quest
-  Logs in their booths; the Installation Wizard (Julia) is a voice, the tent
-  is in the backyard through the tunnel. Every pack below is written to that.
-- **Wave 20 (2026-10-23), on `oct31-w20/integration`, not shipped; text in
-  [`SIGNOFF-w20.md`](../SIGNOFF-w20.md):** Trabolta's heart. The door sensor
-  is a light on the frame (an LED into an LDR, read by the server-room
-  terminal); the first opening once he is awake plays The Heart and **he
-  wants the door shut before anything goes on**; a pass at his screen starts
-  a four-layer talk (clicked with the mouse) or a heart to heart (typed at
-  the keyboard); the room's bulb follows him. The server-room Antivirus
-  close the door behind every program and have 🚪 *opened* / *is shut* on
-  their booths; the director has 🚪 closed, 🚪 *Trust the door sensor again*
-  and 🕊 *Heart: end the night on his own*. `stand_down` is gone. **Wave 20b (the
-  user's answers):** a talk-down works at any hour and the night ends on the
-  director's 🕊 (no automatic end); a program thrown out of his heart is
-  marked for reinstallation; the room has no ESP32 (the patch-bay watch
-  judged the bay until wave 22, when the M4 bay judges itself) and no
-  strip (the bulb is the room's light). Reprint after the sign-off: the
-  four server-room Antivirus packs, the patch-bay watch, the emergency
-  card, all-crew, the director's and the tech operator's cards.
-- **Wave 7 (2026-10-17), not yet deployed:** the server-room door has a real,
-  standalone **keypad lock** (outside only; the inside handle always opens
-  with no code; nothing in the show can lock or unlock it). A program gets
-  the code with the winning majority (and, since wave 11, the two ways below).
-  Opening the door is a clean entry, whoever does it: the door never alarms.
-  Only the server-room terminal on the wall is his heart: Trabolta speaks
-  candidly there, and from the Y2K hour a program can talk him down (🕊;
-  wave 20b: at any hour, ended by the director's 🕊).
-  Only the patch bay alarms, on the **second** wrong combination. CRA
-  approves or denies every third transaction (C16), everywhere. The code is
-  never written on a card or said on the radio.
-- **Wave 11 (2026-10-18), not yet deployed:** the code also comes from
-  **four digit notes** hidden in four rooms (one digit each, the silver
-  pile; all four in one Codex assemble the code; the quest *The Cold
-  Door* counts them) and from **checkmating the King on the terminal
-  outside the server-room door** (all night until 📄, no hints). The King
+- **House internet down → cues are fired by hand** (WLED presets, wall
+  switches, the router from the MacBook). Phones fall back to cellular; the
+  server is on the VPS, not in the house.
+
+**Who calls, who plays**
+
+- **Task Manager, Adobe Acrobat and the Recycling Bin are the hosts**
+  (`admin: true`). Their booths carry the cue sheet in a **NEXT bar** (tap
+  ARM, tap FIRE) and a console (Cues · Needs · Judge · People · More). Any
+  host may call the show: **📣 I'll call** shows everyone who is calling, and
+  a FIRE by someone else asks once (*Fire anyway?*). The directors call from
+  Run → Director or the director phone.
+- **Clippy and the four Antivirus (Norton, McAfee, Password Manager, CRA
+  Agent Software) are players** (wave 21). Their booth is a **Mission** like
+  a guest's (⊞ Start · Mission · Chats · 📷 Scan), with ⭐ Points and their
+  stat tiles, only their own buttons and their own team room (`#
+  quarantine` for the Antivirus; Clippy has none). **Clippy calls no cue**:
+  the hosts and the directors fire Clippy's games, and Clippy's phone pops
+  *YOUR GAME IS ON*.
+- A scanned guest's card shows the facts, **at most three buttons** (the
+  ones the live objectives name; a host also gets the ones live because of
+  this guest) and what the press came to. There is no *All buttons…* fold.
+- The Installation Wizard (Julia) is a voice in the tent, with no booth.
+- Windows Defender is gone (wave 18): the four Antivirus share the door, and
+  the first **🙋** on *🚪 X is waiting* takes the arrival.
+
+**The night's machinery the packs lean on**
+
+- A verdict **marks** a program and the mark hinders nothing: every
+  Antivirus gets a **🚨 WANTED** pop-out and the program's poster on the
+  **Wanted board**; one claims them, finds them and scans their pass (the
+  **confrontation**: CORRUPTION DETECTED → 🛡 → CAPTURED). Walking into the
+  tent captures a marked program too.
+- The hunt questions, answers and the bottle's truths come from
+  `facts.json`. The server judges every 📝 filing: an exact match at once,
+  anything else by **Trabolta's judge** (*🤖 Trabolta ruled …*); a director
+  overrides on Run → Mind → Judging.
+- Truthcoin moves between Wallets, and CRA Agent Software approves or
+  denies every third transaction (C16).
+- The nine featured programs are 🔒 Reserved: each invitee joins from the QR
+  on their invitation; a lost one gets the director's 🔓 for two minutes.
+- **The server room.** The door has a real, standalone **keypad lock**
+  (outside only; the inside handle always opens with no code; nothing in
+  the show locks or unlocks it), and opening it is a clean entry, whoever
+  does it. A program gets the code from the winning majority, from **four
+  digit notes** hidden in four rooms, or by **checkmating the King** on the
+  Server Door terminal outside (all night until 📄, no hints). The King
   also stands in both reinstallation games with **one health bar for the
-  whole night** (15 points, each program may hit him once per visit; the
-  lower it is, the worse he plays at the door; 👑 restores him). The sign
-  by the keypad points at the notes and the King; there is no riddle.
-  **The Heart** plays on the first opening once Trabolta is awake,
-  however the door was unlocked (press **🔧** first when the crew go in).
-  The server-room Antivirus presses 🔌 💥 ❌ 🚪 🔧 on their own booth (any
-  Antivirus booth has them; Clippy's never does, and the server refuses its
-  press; since wave 13 a host part's booth may press them too), and Adobe
-  Acrobat presses 🫘. (Wave 11's door-only Antivirus part is gone since wave
-  18: the four Antivirus share the door.) Buttons with
-  no way back (🔌 💥 ❌ 🚪 🔧 ♟ 🍎 🫘 💘) **arm on the first tap and fire on
-  the second**. The nine featured programs are 🔒 Reserved: each invitee
-  joins from the QR on their invitation (the featured sheets say so), and
-  a lost one gets the director's 🔓 for two minutes. A mistyped right answer
-  on a 📝 card, or one said at length, is a **near miss** (⚠ in `# hosts`);
-  since wave 11b Trabolta rules on it (*🤖 Trabolta ruled …*) and a
-  director overrides only when they disagree; an abbreviation (*Mr.
-  Pickles*) is simply accurate. **Wave 18b:** Trabolta rules every answer
-  that isn't an exact match, a plain miss too; directors judge only what
-  he couldn't (a filing still pending on Run → Mind → Judging) before 📋.
-- **Waves 8 and 9:** wave 8 shipped as `w8-1018`; wave 9 (2026-10-18) is
-  merged and ships as `w9-1018`, and every pack is written to it: McAfee
-  referees bets and holds no pot (a bet settles player to player, the
-  winner's 🙏 Request paid by the loser); 💡 also holds a pending dance
-  (ALL STOP); the bottle picks a cleared program anywhere in the house; the
-  Judging card carries the override buttons in both modes, and a host's 📝
-  judges a program's latest filing only; Clippy's 😤 meant as ✅ is undone
-  with ✅; the cue sheet suggests nothing while a timer owns the night and
-  refuses a cue pressed a step early; ✍ lets the second director's own
-  award lines replace Trabolta's template; phones, booths and Run reconnect
-  by themselves after a server restart. **Reprint every pack before the
-  10-25 run-through.**
-- **Wave 13 (2026-10-20), on `oct31-w13/integration`, not yet shipped:** the
-  Play app is rebuilt around one glance and one tap. Every booth has a
-  **NOW card** pinned on top (the story's objective for that character right
-  now, with a checklist that ticks itself), a taskbar with **⊞ Start**, a big
-  **📷 Scan** and **🗂 Guests**, and a **Readouts** room that survives a reload.
-  A scan opens the guest's card at once: the facts, **at most three buttons
-  the objective needs**, what the press came to, and **All buttons…** for the
-  rest (gone in wave 21). **Task Manager, Adobe Acrobat and the Recycling Bin are hosts**
-  (`admin: true`; Clippy is not): their booths carry the cue sheet in a NEXT
-  bar (tap ARM, tap FIRE; any host may fire, a double press is refused, LAST
-  says who pressed) and a console (Cues · Needs · Judge · People · More: the
-  doors, pause / resume, announce, the alert level, wallets, the King,
-  terminals, codes + QRs, parts, answering as Trabolta). 🛡 ✅ 👁 are the
-  Antivirus' own (no host's or Clippy's booth has them); 🩹 sits on a marked
-  program's card; a ribbon after Bingo is announced as *from the hosts*.
-  Guests have a taskbar too: **⊞ Start** holds 🚻 Bathroom Mode, **🎟 Pass** is
-  one tap from anywhere. The objectives and every new line are **DRAFT** until
-  the user signs off `../SIGNOFF-w13.md` (Q1 — who calls the cues — above all);
-  every pack below is written to the drafts.
-- **Wave 18 (2026-10-21), on `oct31-w18/integration`:** the Play app plays
-  like a game. A guest lands on **Mission** (what to do now, where to go, its
-  buttons big), the rooms are the **Chats** tab, the room named after the
-  story is a far-away **📜 Chat log**, and the big moments (the Bingo win,
-  the ribbon, the capture, the awards, the side reveal) are **full-screen
-  and can't be ignored**. The user's sign-off answers (`../SIGNOFF-w13.md`)
-  change the crew's night:
-  - **Q1: any host may call the show.** The *radio the director before you
-    fire* rule is retired. A host taps **📣 I'll call** in the console's Cues
-    tab; every booth and the director phone show who is calling, and a FIRE
-    by someone else asks once (*Fire anyway?*).
-  - **Q2: Clippy is a super-performer.** Clippy's own game cues (the Bingo,
-    the hunts, ⏱ 📋 🍾, the bob, the summary, the ceremony and its awards) sit
-    on a **🎤 cue bar** in Clippy's booth; the Bingo results are one
-    **PLAYER SELECT** window of tiles (🎱 → 🎀 → 🎯), no scans. (**Reversed
-    in wave 21**, below.)
-  - **Q26: Windows Defender is gone.** The four Antivirus share the door: a
-    *🚪 X is waiting* pop-out reaches all four, and the first **🙋** wins.
-  - **Q30: a mark doesn't hinder.** A marked program keeps everything; every
-    Antivirus booth gets a **🚨 WANTED** pop-out and the **Wanted board**
-    (claim, hand back, take over), and the Antivirus' **scan is the
-    confrontation** (CORRUPTION DETECTED → 🛡 → CAPTURED). No `# quarantine`
-    escort pins any more.
-  - **The summons:** programs check themselves in with the Desktop's QR; staff
-    tap 📍 only for a dead phone on the *Still missing* list.
-  - **Q16 dropped:** after an ending the reinstallation is a party favour for
-    everyone.
-  - **Q21:** sides are joined on the **Sides screen** (two doors at the Y2K
-    clock), and a member recruits by **scanning another program's pass**;
-    guests may also found their own **crews** (never a side). **Wave 18b:**
-    the screen is **Factions**; from the Truther Download a program may
-    found a faction that races beside the two sides (the leaders' tasks no
-    longer gate the majority; 🧾 is gone).
-  The new lines are `// DRAFT w18` until the user signs off
-  `../SIGNOFF-w18.md`; every pack below is written to the drafts.
+  night** (15 points; each program may hit him once per visit).
+- **The Heart.** The door sensor is a light across the frame, read by the
+  M4. The first opening once Trabolta is awake plays The Heart, and he wants
+  the door shut before anything goes on (press **🔧** before the crew go
+  through). A pass at his screen starts a four-layer talk (mouse) or a heart
+  to heart (keyboard). A talk-down works at any hour, and the night ends
+  only on the director's 🕊. A program he throws out is marked.
+- **The patch bay judges itself** (wave 22): the same M4 reads its 15 jacks,
+  and in the Y2K hour the story judges every complete patch about 5 s after
+  the fourth cable. The Antivirus watch inside presses 🔌 / 💥 / ❌ only when
+  the bay missed one; a press hands the bay to the buttons until the
+  director presses 🔌 *Trust the patch bay again*. Only the patch bay
+  alarms, on the **second** wrong combination. There is no ESP32.
+- Buttons with no way back (🔌 💥 ❌ 🚪 🔧 ♟ 🍎 🫘 💘) **arm on the first
+  tap and fire on the second**.
+- Phones, booths, Run and the tablets reconnect by themselves after a
+  server restart.
 
 ## Rules every sheet keeps
 
@@ -211,28 +154,21 @@ addresses, codes, where things are kept).
   Vouch, 👁 watchlist, 🪙 Pay / Charge and ♟ They beat the machine; every
   verdict button is phase-gated. 🛡 ✅ 👁 are the Antivirus' own (wave 13):
   no host's or Clippy's card shows them.
-- **Hosts mark, Antivirus capture.** Every host verdict (🎯 🤷 🙅 🎩 🏓 🍎)
-  marks a program for reinstallation. The mark hinders nothing (Q30): the
+- **Verdicts mark, Antivirus capture.** Every verdict (🎯 🤷 🙅 🎩 🏓 🍎,
+  pressed by a host or by Clippy) marks a program for reinstallation. The mark hinders nothing (Q30): the
   program lights up on every Antivirus' Wanted board, one claims them, finds
   them and scans their pass (the confrontation), then presses 🛡 and walks
   them through the Tube.
 - **Any host may call the show** (Q1): never "radio the director before you
   fire". 📣 shows who is calling; agree it at the read-through.
 
-## Wave 21: performers play (2026-10-23, DRAFT w21)
+
+## The players in more detail (wave 21, DRAFT w21)
 
 The user: *"Clippy should no longer be considered a "super" user / host that
 can call shots. Clippy and the AntiViruses are performers that are playing a
-game just like the "guests" are."* So (reversing wave 18's Q2):
+game just like the "guests" are."*
 
-- **Clippy, Norton, McAfee, Password Manager and CRA Agent Software are
-  players** (`player: true`). Their booth is a **Mission** like a guest's
-  (⊞ Start · Mission · Chats · 📷 Scan), with ⭐ Points (and 🛡 Captures or ⚖️
-  Answers judged) as tiles, only their own buttons, only their own team
-  room (`# quarantine` for the Antivirus; Clippy has none), and every action
-  as a pick, a pop-out, a global press or a scan. No *All buttons…*.
-- **Clippy calls nothing.** The hosts and the directors fire every cue;
-  Clippy's phone pops *YOUR GAME IS ON*. The hosts keep their host dock.
 - **Points:** Clippy for running the games (🎱 🎀 🎯 ✅ 😤 🤷 🗣 🙅 🎩 🏓 🍎 🖌 💘),
   the Antivirus for clearances, captures, releases, patch-bay calls, McAfee
   for 🤝 brokered deals, Password Manager for 🔑 password checks, CRA for each

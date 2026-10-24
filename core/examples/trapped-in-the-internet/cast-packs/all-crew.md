@@ -59,10 +59,11 @@ keep the radio away from them. The TV and the tent laptop never send sound.
   and **scans their pass: the scan is the confrontation** (CORRUPTION
   DETECTED on both phones), then presses 🛡 and walks them through the Tube.
   The director (Inspector → Captured → Capture) can send them too; so does
-  walking into the tent: the moment the tablet scans their pass and starts
+  walking into the tent: the moment the tent laptop scans their pass and starts
   **Play here** (or **Send to VR**), a marked program is captured. A mis-tap
   → 🩹 Unmark.
-- **Your booth** (wave 13): the **NOW card** pinned on top says what the story
+- **A host's booth** (Task Manager, Adobe Acrobat, the Recycling Bin; the
+  players' Mission is the next bullet): the **NOW card** pinned on top says what the story
   wants from your character right now, with a checklist that ticks itself;
   the taskbar at the bottom has **⊞ Start** (help, keep the screen on, alerts,
   what your character knows, sign out), **📷 Scan** (the big one) and
@@ -115,8 +116,9 @@ keep the radio away from them. The TV and the tent laptop never send sound.
   over your rooms until you press one of its buttons or **Later**; while a
   card is open it shrinks to a strip at the top and never covers the card's
   buttons.
-- **`# hosts` and `# quarantine` are staff rooms.** Every performer sees both.
-  No guest can. `# hosts` carries the bank's and the judge's logs; `#
+- **`# hosts` and `# quarantine` are staff rooms.** The hosts see both; a
+  player sees only their own team's (the Antivirus `# quarantine`, Clippy
+  neither). No guest can. `# hosts` carries the bank's and the judge's logs; `#
   quarantine` is the Antivirus' back room (no escort pins since wave 18: the
   Wanted board lists the marked). Never put a faction's secret there.
 - **Never say a guest's real name** aloud or in the app. Everyone is their program.
@@ -130,7 +132,7 @@ When a combo lands, **every light goes out for ten seconds**, every phone says
   living room stay lit. Battery path lights and glow tape are on every step.
 - **Every performer guides the nearest guests to the living room.** Walk,
   never run. Headlamps on if you have one.
-- The house manager leads; the tech operator stays at the house Mac.
+- The house manager leads; the tech operator stays at John's MacBook.
 - If anything goes wrong, call **ALL STOP**.
 
 ## If the house internet dies
