@@ -240,3 +240,71 @@ def test_cache_folders_follow_the_platform():
     assert user_cache("stagehand-audio", "darwin") == "~/Library/Caches/stagehand-audio"  # the Mac: unchanged
     win = user_cache("stagehand-lights", "win32", {"LOCALAPPDATA": r"C:\Users\john\AppData\Local"})
     assert win.replace("/", "\\").endswith(r"AppData\Local\stagehand\lights")
+
+
+# ── extends: one machine's file builds on another's (the Desktop, the MacBook) ──
+
+
+def test_merge_docs_merges_mappings_replaces_the_rest_and_null_deletes():
+    from stagehand.config import merge_docs
+
+    parent = {"a": {"x": 1, "y": [1, 2], "z": {"k": 1}}, "b": 2, "c": 3}
+    child = {"a": {"y": [3], "z": {"j": 2}}, "b": None, "d": 4}
+    assert merge_docs(parent, child) == {"a": {"x": 1, "y": [3], "z": {"k": 1, "j": 2}}, "c": 3, "d": 4}
+    assert parent["a"]["y"] == [1, 2]  # never mutated
+
+
+def _write(p: Path, doc) -> Path:
+    p.write_text(yaml.safe_dump(doc, allow_unicode=True), encoding="utf-8")
+    return p
+
+
+def test_extends_builds_on_the_parent_and_its_secrets(tmp_path):
+    house = minimal()
+    house["server"] = {"url": "https://x", "event": "CHANGE-ME-EVENT-ID", "mod_passcode": "CHANGE-ME"}
+    house["audio"] = {"announce": True, "mqtt": {"host": "127.0.0.1", "port": 1883}}
+    _write(tmp_path / "trapped.house.yaml", house)
+    (tmp_path / "trapped.house.local.yaml").write_text("server: { event: ev-7, mod_passcode: 'real' }\n")
+    _write(tmp_path / "trapped.macbook.yaml", {"extends": "trapped.house.yaml", "audio": {"mqtt": {"host": "192.168.8.10", "port": 1884, "username": "props"}}})
+    (tmp_path / "trapped.macbook.local.yaml").write_text("server: {}\naudio: { mqtt: { password: s3cret }, device: '828x' }\n")
+    cfg = load_config(tmp_path / "trapped.macbook.yaml", env={})
+    assert (cfg.server.event, cfg.server.mod_passcode) == ("ev-7", "real")  # the house's own overlay
+    m = cfg.modules["audio"].cfg.mqtt
+    assert (m.host, m.port, m.username, m.password) == ("192.168.8.10", 1884, "props", "s3cret")
+    assert cfg.modules["audio"].cfg.device == "828x"
+    assert set(cfg.modules) == {"show", "audio"}  # the parent's show rules came along
+
+
+def test_extends_null_drops_a_parent_section(tmp_path):
+    house = {**minimal(), "audio": {}}
+    _write(tmp_path / "trapped.house.yaml", house)
+    _write(tmp_path / "trapped.desktop.yaml", {"extends": "trapped.house.yaml", "audio": None, "lights": {}})
+    cfg = load_config(tmp_path / "trapped.desktop.yaml", env={})
+    assert set(cfg.modules) == {"show", "lights"}
+
+
+def test_extends_refuses_a_circle_another_folder_and_a_missing_file(tmp_path):
+    _write(tmp_path / "a.yaml", {"extends": "b.yaml", **minimal()})
+    _write(tmp_path / "b.yaml", {"extends": "a.yaml"})
+    with pytest.raises(ConfigError, match="circle"):
+        load_config(tmp_path / "a.yaml", env={})
+    (tmp_path / "sub").mkdir()
+    _write(tmp_path / "sub" / "c.yaml", minimal())
+    _write(tmp_path / "d.yaml", {"extends": "sub/c.yaml"})
+    with pytest.raises(ConfigError, match="same folder"):
+        load_config(tmp_path / "d.yaml", env={})
+    _write(tmp_path / "e.yaml", {"extends": "nope.yaml"})
+    with pytest.raises(ConfigError, match="no such file"):
+        load_config(tmp_path / "e.yaml", env={})
+
+
+def test_the_overlay_carries_credentials_but_never_rules_or_a_new_module(tmp_path):
+    p = _house(tmp_path, {"url": "https://x", "mod_passcode": "x"})
+    (tmp_path / "trapped.house.local.yaml").write_text("server: {}\nshow: { mqtt: { password: p } }\n")
+    assert load_config(p, env={}).modules["show"].cfg.mqtt.password == "p"
+    (tmp_path / "trapped.house.local.yaml").write_text("server: {}\nlights: { mqtt: { password: p } }\n")
+    assert set(load_config(p, env={}).modules) == {"show"}  # never switches a module on
+    for bad in ("server: {}\naudio: { play_sounds: true }\n", "server: {}\nshow: { mqtt: { topic: x } }\n", "server: {}\nnope: {}\n"):
+        (tmp_path / "trapped.house.local.yaml").write_text(bad)
+        with pytest.raises(ConfigError, match="only hold a 'server:'"):
+            load_config(p, env={})

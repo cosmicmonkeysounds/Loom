@@ -23,7 +23,25 @@ Secrets stay out of git: `load_config` merges a sibling
 `<name>.local.yaml` (git-ignored, e.g. `trapped.house.local.yaml`) over the
 `server:` section, then the environment wins over both —
 `LOOM_EVENT_ID`, `LOOM_MOD_PASSCODE`, `LOOM_MOD_TOKEN`, `LOOM_SERVER_URL`.
-The tracked file can keep its `CHANGE-ME` placeholders.
+The tracked file can keep its `CHANGE-ME` placeholders. The overlay may
+also carry what differs per machine and must stay out of git: any
+module's `mqtt:` (a broker on another machine, its `props` password) and
+the audio router's `device` / `host_api` / `voice_engine` / `say_voice`.
+
+One machine's file can build on another's (`extends:`), so the house's
+show rules live once (`trapped.house.yaml`) and John's Desktop
+(`trapped.desktop.yaml`) or the MacBook (`trapped.macbook.yaml`) only
+says what is different there:
+
+    extends: trapped.house.yaml   # same folder (its relative paths resolve from it)
+    lights: { … }                 # added
+    audio:  { host_api: asio }    # merged into the parent's audio:
+    alexa:  null                  # null removes a parent's key / section
+
+Mappings merge key by key, anything else (a list, a string) replaces the
+parent's value, and `null` deletes. The parent's own `.local.yaml` applies
+to it first (one secrets file serves every machine that extends it), then
+the child, then the child's `.local.yaml`, then the environment.
 """
 
 from __future__ import annotations
@@ -44,6 +62,7 @@ __all__ = [
     "StagehandConfig",
     "load_config",
     "local_overlay_path",
+    "merge_docs",
     "parse_config",
     "placeholders",
     "server_overrides",
@@ -183,17 +202,89 @@ def _read_yaml(p: Path) -> Any:
         raise ConfigError(f"bad YAML in {p}: {err}") from err
 
 
+#: What a `.local.yaml` may set besides `server:` (per machine, out of git).
+OVERLAY_AUDIO_KEYS = frozenset({"device", "host_api", "voice_engine", "say_voice"})
+OVERLAY_MQTT_KEYS = frozenset({"host", "port", "username", "password", "client_id"})
+
+
+def merge_docs(parent: Any, child: Any) -> Any:
+    """`child` over `parent`: mappings key by key, `None` deletes, anything
+    else replaces."""
+    if not isinstance(parent, dict) or not isinstance(child, dict):
+        return child
+    out = dict(parent)
+    for key, value in child.items():
+        if value is None:
+            out.pop(key, None)
+        elif isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = merge_docs(out[key], value)
+        else:
+            out[key] = value
+    return out
+
+
+def _overlay_problem(local: Any) -> str | None:
+    if not isinstance(local, dict) or not isinstance(local.get("server"), dict):
+        return "no 'server:' mapping"
+    for name, section in local.items():
+        if name == "server":
+            continue
+        if name not in REGISTRY or not isinstance(section, dict):
+            return f"a {name!r} key"
+        allowed = {"mqtt"} | (OVERLAY_AUDIO_KEYS if name == "audio" else set())
+        extra = set(section) - allowed
+        if extra:
+            return f"{name}.{sorted(extra)[0]}"
+        mqtt = section.get("mqtt")
+        if mqtt is not None and (not isinstance(mqtt, dict) or set(mqtt) - OVERLAY_MQTT_KEYS):
+            return f"{name}.mqtt beyond {', '.join(sorted(OVERLAY_MQTT_KEYS))}"
+    return None
+
+
+def _apply_overlay(doc: Any, p: Path) -> Any:
+    overlay = local_overlay_path(p)
+    if overlay == p or not overlay.is_file():
+        return doc
+    local = _read_yaml(overlay)
+    why = _overlay_problem(local)
+    if why is not None:
+        raise ConfigError(
+            f"{overlay}: may only hold a 'server:' mapping (event / mod_passcode / mod_token / url), "
+            f"a module's 'mqtt:' and audio's {' / '.join(sorted(OVERLAY_AUDIO_KEYS))} — not {why}"
+        )
+    doc = _with_server(doc, local["server"])
+    rest = {k: v for k, v in local.items() if k != "server"}
+    if rest and isinstance(doc, dict):
+        # Only into sections the file has: an overlay never switches a module on.
+        doc = merge_docs(doc, {k: v for k, v in rest.items() if isinstance(doc.get(k), dict)})
+    return doc
+
+
+def _load_doc(p: Path, seen: tuple[Path, ...] = ()) -> Any:
+    """One file's document with its `extends:` chain and its overlay applied."""
+    real = p.resolve()
+    if real in seen:
+        raise ConfigError(f"extends: {' → '.join(x.name for x in (*seen, real))} goes round in a circle")
+    doc = _read_yaml(p)
+    if isinstance(doc, dict) and "extends" in doc:
+        target = doc["extends"]
+        if not isinstance(target, str) or not target:
+            raise ConfigError(f"{p}: extends: the file name of the config this one builds on")
+        parent = (p.parent / target).resolve()
+        if parent.parent != real.parent:
+            raise ConfigError(f"{p}: extends: {target!r} must sit in the same folder (its relative paths resolve from here)")
+        if not parent.is_file():
+            raise ConfigError(f"{p}: extends: no such file {str(parent)!r}")
+        base = _load_doc(parent, (*seen, real))
+        doc = merge_docs(base, {k: v for k, v in doc.items() if k != "extends"})
+    return _apply_overlay(doc, p)
+
+
 def load_config(
     path: str | Path,
     only: list[str] | None = None,
     env: Mapping[str, str] | None = None,
 ) -> StagehandConfig:
     p = Path(path)
-    doc = _read_yaml(p)
-    overlay = local_overlay_path(p)
-    if overlay != p and overlay.is_file():
-        local = _read_yaml(overlay)
-        if not isinstance(local, dict) or set(local) - {"server"} or not isinstance(local.get("server"), dict):
-            raise ConfigError(f"{overlay}: may only hold a 'server:' mapping (event / mod_passcode / mod_token / url)")
-        doc = _with_server(doc, local["server"])
+    doc = _load_doc(p)
     return parse_config(doc, base_dir=str(p.resolve().parent), only=only, env=os.environ if env is None else env)
