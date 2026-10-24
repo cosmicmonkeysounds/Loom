@@ -86,7 +86,9 @@ already includes wave 19). Master holds wave 18b Stage B and waves 20, 20b,
     CC2652P has moved: `uv run stagehand launchd uninstall --job show` and
     `uv run stagehand launchd uninstall --job lights` (if installed), stop
     the MacBook's local Mosquitto (`brew services stop mosquitto`) and its
-    Zigbee2MQTT, then `uv run stagehand launchd status` must list only
+    Zigbee2MQTT LaunchAgent (`launchctl unload
+    ~/Library/LaunchAgents/com.mapsandducks.zigbee2mqtt.plist`; see
+    `scripts/house-macbook/zigbee.md` §4), then `uv run stagehand launchd status` must list only
     `agents` and `audio`.
 11. **Desktop, the lights:** Zigbee2MQTT on the CC2652P (keep any existing
     `data\`), `.\scripts\house-desktop\start-stagehand.ps1` (installs and
