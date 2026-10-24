@@ -6,7 +6,8 @@ It is kept verbatim as the record of how each surface landed (the Run
 mode overhaul, the Director page, the Mind page, the Judging card, the
 wave 18b and wave 20 additions, the story graph). Some of it is out of
 date; for current behaviour read [`editor/CLAUDE.md`](../../editor/CLAUDE.md)
-and the code.
+and the code. The text below is unchanged except one link, to
+`docs/loom-ide-redesign.md`, fixed for the new location.
 
 ---
 
@@ -120,7 +121,7 @@ Mode Bar dots the Run tab while a run exists (amber rehearsal / emerald
 live), from any mode. This replaced the old `dockview` activity-bar +
 free-docking model, the v2 four-mode Writing/Editing/Sim/Run bar, and
 the 2026-07 four-mode bar with a separate Deploy mode. Original design:
-[`docs/loom-ide-redesign.md` Part II](../docs/loom-ide-redesign.md).
+[`docs/loom-ide-redesign.md` Part II](../loom-ide-redesign.md).
 
 ### The cockpit — one Run, two backends, one contract
 

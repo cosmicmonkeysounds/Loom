@@ -161,9 +161,9 @@ World, Director and Mind close under a lens.
   **🖨 Print sheet** (`run/PrintSheet.tsx` + `lib/print-sheet.ts`: join
   poster, door sign, codex posters by stack, room check-in signs, cast
   cards, invitations; QRs drawn in the browser), **Directing now**,
-  **Terminals**, **Wallet** (only with a `currency:` story), **House map**
-  (variants, the shared King, the 💡 lights row), **House sound**, and
-  **Look up a guest**.
+  **Terminals**, **House sound**, **House map** (when the event has a map:
+  variants, the shared King, the 💡 lights row), **Wallet** (only with a
+  `currency:` story), and **Look up a guest**.
 - **Stage**, **Chat**, **Roster**, **World**, **Log** (`cockpit/`): the
   room map, the feed with a composer that can speak as anyone, the
   roster, the variable table, the ledger (`log-describe.ts` is exhaustive
@@ -192,7 +192,8 @@ World, Director and Mind close under a lens.
   differently (`isNewMind`). The top card is **Judging**: the facts
   judge's `auto` / `review` mode (a journaled var), pending filings,
   ✅ / 😤 / 🤷 overrides on every judged filing, near misses, the judge
-  queue, per-question tallies. Verdicts are shown nowhere else.
+  queue, per-question tallies. In the editor, verdicts are shown only
+  here; hosts also judge from Play's host dock (the Judge tab).
 
 ### Run → Terminals
 
