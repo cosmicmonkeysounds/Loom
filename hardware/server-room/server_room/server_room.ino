@@ -3,7 +3,7 @@
 //   - reports the server-room door (a wire-loop contact that closes when the
 //     door opens; a reed is optional) on sensors/serverroom/door — the real
 //     door has a standalone keypad lock that nothing here drives; retired in
-//     wave 20 (D16: the door is the M4's LED + LDR, hardware/server-room-door/,
+//     wave 20 (D16: the door is the M4's LED + LDR, hardware/server-room-m4/,
 //     and stagehand no longer reads this topic),
 //   - scans Trabolta's heart, the 2×12 patch bay, on two MCP23017s and
 //     reports the patch on sensors/patchbay/state,

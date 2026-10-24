@@ -2,7 +2,7 @@
 // contact combination. Pure C++ (tested in test/test_logic.cpp).
 //
 // Wave 20 (D16): retired. The server-room door is read by the Grand Central
-// M4's LED + LDR (hardware/server-room-door/), bridged by the server-room
+// M4's LED + LDR (hardware/server-room-m4/), bridged by the server-room
 // terminal; stagehand no longer reads sensors/serverroom/door. This code
 // still publishes it, unread, so the box's firmware needs no change.
 //

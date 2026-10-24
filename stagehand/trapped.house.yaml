@@ -571,7 +571,7 @@ show:
     # The server-room DOOR is not read here any more (wave 20, D16): an LDR +
     # LED on the frame feeds the Grand Central M4 beside his heart's terminal,
     # and that terminal page posts door_sensor_opened / door_sensor_closed to
-    # the story itself (hardware/server-room-door/). The ESP32's wire-loop
+    # the story itself (hardware/server-room-m4/). The ESP32's wire-loop
     # contact and the optional Zigbee contact (`server_room_door`) are
     # unread: a stagehand rule here would post server_door_opened, which is a
     # director's 🚪 override in the story (D19) and would take the door off

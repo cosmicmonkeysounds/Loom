@@ -189,7 +189,7 @@ a short tone, then the sound's name spoken (`stagehand sounds
 placeholders`); a real file always wins, and `stagehand check` lists the
 placeholders still there. **■ Stop house sounds** on Run (or a host's
 phone) fades every story sound at once; see [Run mode](43-run-mode.md).
-Setting it up: `scripts/house-mac/audio.md` (the MacBook),
+Setting it up: `scripts/house-macbook/audio.md` (the MacBook),
 `scripts/house-desktop/README.md` §7 (if the router moves to the Desktop), `docs/trapped/room-audio.md`
 §11–§12 and the `audio` module in `stagehand/README.md`.
 

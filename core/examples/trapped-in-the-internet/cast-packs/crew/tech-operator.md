@@ -9,7 +9,7 @@
 
 | Computer | What runs on it | Its own runbook |
 |---|---|---|
-| **John's MacBook** (macOS) — your station | Ollama `gpt-oss:20b` + stagehand **`agents`** (Trabolta, `stagehand/laptop.yaml`); the speaker router stagehand **`audio`** + the MOTU 828x + the ADAT expander (`trapped.macbook.yaml`); `showbackup.sh`; a Run tab; `pnpm showctl status --watch 5` | `scripts/house-mac/audio.md`, [`trabolta-mind.md`](./trabolta-mind.md) |
+| **John's MacBook** (macOS) — your station | Ollama `gpt-oss:20b` + stagehand **`agents`** (Trabolta, `stagehand/laptop.yaml`); the speaker router stagehand **`audio`** + the MOTU 828x + the ADAT expander (`trapped.macbook.yaml`); `showbackup.sh`; a Run tab; `pnpm showctl status --watch 5` | `scripts/house-macbook/audio.md`, [`trabolta-mind.md`](./trabolta-mind.md) |
 | **John's Desktop** (Windows) | the **living-room TV** (Chrome kiosk over HDMI, spot `desktop-tv`); **Mosquitto**, the house broker (`127.0.0.1:1883`, and `:1884` for the LAN with the `props` password); **Zigbee2MQTT** on the CC2652P stick; stagehand **`show`** and **`lights`** as Task Scheduler tasks (`\Loom\stagehand-show`, `\Loom\stagehand-lights`). All of it starts by itself after sign-in | `scripts/house-desktop/README.md` |
 | **Steph's laptop** (server room) | Chrome kiosk on the server-room terminal: Trabolta's face, the webcam, the mouse and keyboard, and the **Grand Central M4** on USB, which reads the **door sensor and the patch bay** | `hardware/server-room-m4/README.md` |
 | **John's old laptop** (the tent) | Chrome kiosk on `/terminal/?code=<mod>&spot=tent&announce=1`: the tent's terminal, the reinstallation wizard and the web game in one. It needs WebGL2 to *Play here*; without it the tent can only send to a headset | `docs/trapped/kiosk.md` |

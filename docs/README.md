@@ -42,7 +42,7 @@ its `INDEX.md`).
 
 Show-night operations are elsewhere: `scripts/show/README.md` (`pnpm
 showctl`), `scripts/house-desktop/README.md` (the Windows Desktop),
-`scripts/house-mac/` (macOS runbooks: `audio.md` is the MacBook's router;
+`scripts/house-macbook/` (macOS runbooks: `audio.md` is the MacBook's router;
 `zigbee.md` and `lights.md` predate the Windows Desktop, see
 `scripts/house-desktop/`),
 `scripts/accept/README.md` (per-item device checks), and the show
