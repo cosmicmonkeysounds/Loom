@@ -74,6 +74,7 @@ import { buildCards } from "./routes/cards.ts";
 import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts";
 import { modPatch, modViewJson } from "./mod-patch.ts";
 import { sendRecap } from "./routes/recap.ts";
+import { forBooth, hostSeen, seenCues } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
@@ -1254,7 +1255,8 @@ export class EventRuntime {
       });
     }
     if (sim.model.wanted !== null && (host || huntsFor(sim, character))) out.wanted = this.wantedBoard();
-    if (base.calls !== undefined) out.calls = { ...base.calls, caller: this.cueCaller() };
+    // A booth never reads a director's name: parts by name, else "Director".
+    if (base.calls !== undefined) out.calls = seenCues({ ...base.calls, caller: this.cueCaller() }, sim.model);
     return out;
   }
 
@@ -1377,7 +1379,7 @@ export class EventRuntime {
     // Reused only inside the window, whether or not the log moved: a quiet
     // log still moves the clocks the panel shows (a terminal's silence, an
     // agent's oldest wait, who was seen when).
-    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return this.withCaller(this.withShowClock(hit.view));
+    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return this.hostSeen(this.withCaller(this.withShowClock(hit.view)));
     const waiting = new Map<string, Array<{ guest: string; name: string; since: number; text: string }>>();
     for (const r of this.agents.pending) {
       if (r.speaker.kind !== "guest" || r.thread.channel !== `dm:${r.character}`) continue;
@@ -1414,7 +1416,13 @@ export class EventRuntime {
       now,
     });
     this.hostViewCache = { len, phase: this.phase, presses, writes: this.hostWrites, at: now, view };
-    return this.withCaller(this.withShowClock(view));
+    return this.hostSeen(this.withCaller(this.withShowClock(view)));
+  }
+
+  /** A host booth's panel as a host reads it: every director's name is
+   *  "Director" (`unseen-directors.ts`). Run reads `/api/state?role=mod`. */
+  private hostSeen(view: HostView): HostView {
+    return hostSeen(view, this.sim?.model ?? this.declaredModel);
   }
 
   /** A cached host view with the show clock read now (wave 13 K2): the
@@ -1621,7 +1629,7 @@ export class EventRuntime {
             this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c, this.agentVoiced, this.sim?.model)),
             HISTORY_LIMIT,
             boothOwnRow(c.id),
-          );
+          ).map(forBooth);
   }
 
   /** A lifecycle transition every connected client should react to
@@ -1683,7 +1691,7 @@ export class EventRuntime {
       if (c.role === "guest") {
         if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m, this.sim, c.id));
       } else if (c.role === "prime") {
-        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "message", m);
+        if (visibleToPrime(m, c, this.agentVoiced, this.sim?.model)) sseSend(c.res, "message", forBooth(m));
       } else {
         sseSend(c.res, "message", m);
       }
@@ -4811,7 +4819,9 @@ export class EventRuntime {
         id = gid;
       }
       const messages = this.chat.historyFor(id, admin).filter((m) => !this.isExpired(m));
-      sendJson(res, 200, { messages: admin ? messages : messages.map((m) => forGuest(m, this.sim, id)) });
+      // A host booth moderates too, but reads no director's `via`.
+      const booth = admin && opts.moderator !== true && this.characterOf(token) !== null;
+      sendJson(res, 200, { messages: admin ? (booth ? messages.map(forBooth) : messages) : messages.map((m) => forGuest(m, this.sim, id)) });
       return true;
     }
 

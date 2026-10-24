@@ -51,6 +51,7 @@ import { foldName } from "../../src/parser/names.ts";
 import type { Sim } from "../../src/runtime/sim/index.ts";
 import { sendJson, str } from "../http-util.ts";
 import { codeEquals, normalizeCode, secretCode } from "../identity.ts";
+import { partName } from "../unseen-directors.ts";
 
 export const ENTER_ROUTE = "/api/guest/enter";
 export const BADGE_ROUTE = "/api/guest/badge";
@@ -443,10 +444,17 @@ export class Rejoin {
     }
     this.desk.collect(r.request);
     if (r.state === "denied" || this.host.sim()?.persons.has(r.id) !== true) {
-      sendJson(res, 200, { ok: true, state: "denied", name: r.name, ...(r.by !== undefined ? { by: r.by } : {}) });
+      sendJson(res, 200, { ok: true, state: "denied", name: r.name, ...this.seenBy(r.by) });
       return;
     }
-    sendJson(res, 200, { ok: true, state: "approved", id: r.id, name: r.name, token: r.token, ...(r.by !== undefined ? { by: r.by } : {}) });
+    sendJson(res, 200, { ok: true, state: "approved", id: r.id, name: r.name, token: r.token, ...this.seenBy(r.by) });
+  }
+
+  /** Who decided, as the guest reads it: a host's part by name; a
+   *  director never (the phone then says "A host"). */
+  private seenBy(by: string | undefined): { by?: string } {
+    const part = partName(by, this.host.sim()?.model ?? null);
+    return part !== null ? { by: part } : {};
   }
 
   /** `POST /api/guest/badge {badge}` for guest `id` (their token). */
