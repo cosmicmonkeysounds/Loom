@@ -2,7 +2,8 @@
 //! the picture pick, and switching pictures later (moved out of
 //! `guest.tsx` in wave 13).
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentProps } from "react";
+import type { GetBackIn as GetBackInPanel } from "./get-back-in.tsx";
 import { PersonAvatar } from "../ui/primitives.tsx";
 import { usePlayHost } from "../host.ts";
 import { avatarUrl, hitNote, hitPickable, initialPick, orderPicker, rowNote, rowPickable, rowTitle, type IdentityRow, type PictureChoice, type PictureChoices, type ProgramHit } from "../avatars.ts";
@@ -11,7 +12,7 @@ import { PictureGrid } from "../picture-pick.tsx";
 import { codeFromUrl, fetchPictures, searchPrograms, useIdentities, useLandingBrand } from "../session/shared.ts";
 import type { GuestSession } from "../session/guest.ts";
 import { printedBadge, storedBadge } from "../rejoin.ts";
-import { GetBackIn } from "./get-back-in.tsx";
+import { lazyPart } from "./lazy-part.tsx";
 
 /**
  * The picker's two parts (wave 13): the programs anyone may be (free first,
@@ -30,6 +31,9 @@ export function pickerSections(rows: readonly IdentityRow[]): { open: IdentityRo
 export function reservedFoldLabel(n: number): string {
   return `🔒 Reserved for invited guests (${n})`;
 }
+
+/** Wave 23's "Already playing? Get back in" (its own chunk). */
+const GetBackIn = lazyPart<ComponentProps<typeof GetBackInPanel>>(() => import("./get-back-in.tsx").then((m) => ({ default: m.GetBackIn })), "Get back in");
 
 export function GuestRegister({ session }: { session: GuestSession }) {
   const host = usePlayHost();

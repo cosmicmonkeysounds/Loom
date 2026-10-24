@@ -2,7 +2,8 @@
 // poll calls over a fake fetch, the card plan, and the scanners' badge reads.
 
 import { describe, expect, it } from "vitest";
-import { askHost, askLine, badgeFromText, badgeLinkOf, badgeLinkText, cardFromSearch, cardPlan, enterBy, enterPart, filterNames, joinedNames, pollAsk, printedBadge, rememberBadge, storedBadge, forgetBadge, withoutCard, BADGE_UNKNOWN, RejoinError } from "../src/rejoin.ts";
+import { badgeFromText, badgeLinkOf, badgeLinkText, cardFromSearch, cardPlan, printedBadge, rememberBadge, storedBadge, forgetBadge, withoutCard, BADGE_UNKNOWN } from "../src/rejoin.ts";
+import { askHost, askLine, enterBy, enterPart, filterNames, joinedNames, pollAsk, RejoinError } from "../src/rejoin-calls.ts";
 import { memoryStore } from "../src/host.ts";
 import { guestScan } from "../src/guest-scan.tsx";
 import { parseScan } from "../src/scan.ts";

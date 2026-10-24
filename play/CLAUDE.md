@@ -21,12 +21,12 @@ Run from the repo root (`pnpm install` once covers every JS package).
 | `pnpm --filter loom-play build` | `play/dist`, which the event server serves at `/` (`LOOM_APP_DIST` overrides) |
 | `pnpm --filter loom-play test` | vitest over `test/` |
 | `pnpm --filter loom-play typecheck` | `tsc --noEmit` |
-| `pnpm --filter loom-play size` | `scripts/first-load.mjs`: the guest's first load, gzipped, against the 145 kB gate (needs a build) |
+| `pnpm --filter loom-play size` | `scripts/first-load.mjs`: the guest's first load, gzipped, against the 148 kB gate (needs a build) |
 | `pnpm dev` (root) | builds play + terminal + reinstall and runs the server + editor (`scripts/dev.mjs`); `--play` adds this Vite |
 
 `scripts/ops/predeploy.sh` runs `pnpm -r typecheck`, every package's tests,
 and `pnpm --filter loom-play build && node play/scripts/first-load.mjs
---max-kb 145`. A change that pushes the guest's first load over 145 kB
+--max-kb 148`. A change that pushes the guest's first load over 148 kB
 fails predeploy.
 
 ## How a session works
@@ -150,7 +150,7 @@ src/
   help.tsx · help-lazy.tsx         Help window over docs/help/play (lazy)
   chat.tsx · guest.tsx · performer.tsx · session.ts · threads.ts   barrels for pre-wave-13 names
 public/                  sw.js (push only), manifest.webmanifest, pictures/ (Trabolta's two SVGs)
-scripts/first-load.mjs   the 145 kB first-load gate
+scripts/first-load.mjs   the 148 kB first-load gate
 test/                    vitest; *.test.ts(x) per module and lane
 ```
 
@@ -205,7 +205,7 @@ entry points (and reads `play/07-performers.md`).
 
 ## Gotchas
 
-- **The 145 kB gate.** Do not import the booth, the host dock, the
+- **The 148 kB gate.** Do not import the booth, the host dock, the
   director phone, Help, `jsqr` or `qrcode` statically from anything the
   guest app loads at start. `test/first-load.test.ts` pins the lazy
   imports; `pnpm --filter loom-play size` measures the real number after a

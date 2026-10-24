@@ -11,8 +11,8 @@ import { GuestApp } from "./guest/app.tsx";
 import { LazyHelpSheet as HelpSheet } from "./help-lazy.tsx";
 import { initialRole, roleForBrand, type AppRole } from "./app-role.ts";
 import { ChunkBoundary, ChunkFailed, retryImport } from "./lazy-chunk.tsx";
-import { adoptResume, resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
-import { cardPlan, enterBy, enterPart, rememberBadge, type CardLink } from "./rejoin.ts";
+import { resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
+import { cardPlan, rememberBadge, type CardLink } from "./rejoin.ts";
 import { claimFromSearch } from "./claim.ts";
 import { codeFromUrl, useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
 import { browserHost } from "./host.ts";
@@ -22,6 +22,9 @@ import { browserHost } from "./host.ts";
 // fetched when a performer or a director opens this page. A fetch that fails is tried once more, then the page says so with a
 // Reload (a page left open across a deploy asks for chunks that are gone).
 const PerformerApp = lazy(retryImport(() => import("./booth/app.tsx").then((m) => ({ default: m.PerformerApp }))));
+// Wave 23: the calls behind a badge / invitation / cast-card link, fetched
+// only when the page opened with one.
+const loadRejoinCalls = retryImport(() => import("./rejoin-calls.ts"));
 const DirectorApp = lazy(retryImport(() => import("./director.tsx").then((m) => ({ default: m.DirectorApp }))));
 
 /** What shows while a lazily loaded app arrives. */
@@ -99,7 +102,8 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
       if (live) setEntry(null);
     };
     if (entry.kind === "part") {
-      void enterPart(entry.code, entry.part)
+      void loadRejoinCalls()
+        .then((m) => m.enterPart(entry.code, entry.part))
         .then((booth) => {
           browserHost.storage.drop("loom.guest");
           browserHost.storage.save("loom.prime", booth);
@@ -112,7 +116,8 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
         .finally(done);
     } else {
       const by = entry.kind === "badge" ? { badge: entry.badge } : { claim: entry.claim };
-      void enterBy(entry.code, by)
+      void loadRejoinCalls()
+        .then((m) => m.enterBy(entry.code, by))
         .then((r) => {
           if (r.kind === "in") browserHost.storage.save("loom.guest", r.guest);
           // A blank badge rides into the join and links to the program picked.
@@ -136,7 +141,8 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
   useEffect(() => {
     if (pending === null || confirmFor !== null) return;
     setResuming(true);
-    void adoptResume(pending)
+    void loadRejoinCalls()
+      .then((m) => m.adoptResume(pending))
       .then((guest) => {
         browserHost.storage.save("loom.guest", guest);
         setRole("guest");

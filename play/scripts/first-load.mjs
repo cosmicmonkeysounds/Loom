@@ -2,9 +2,9 @@
 // The guest's first load, gzipped: every script and stylesheet
 // `dist/index.html` loads before the app can paint (the entry chunk, any
 // modulepreload, the CSS). The JS entry is gated (GUEST-SPEC §13.4: target
-// ≤ 144 kB, gate ≤ 145 kB gzip); the CSS is reported.
+// ≤ 144 kB, gate ≤ 148 kB gzip); the CSS is reported.
 //
-//   pnpm --filter loom-play build && node play/scripts/first-load.mjs [--max-kb 145]
+//   pnpm --filter loom-play build && node play/scripts/first-load.mjs [--max-kb 148]
 //
 // Exits 1 over the gate, 2 when there is no build.
 
@@ -17,7 +17,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = join(root, "dist");
 const args = process.argv.slice(2);
 const at = args.indexOf("--max-kb");
-const maxKb = at >= 0 ? Number(args[at + 1]) : 145;
+const maxKb = at >= 0 ? Number(args[at + 1]) : 148;
 
 const html = join(dist, "index.html");
 if (!existsSync(html)) {

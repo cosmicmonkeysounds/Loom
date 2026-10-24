@@ -2,14 +2,15 @@
 //! guest whose session this browser lost: scan or type their badge, or ask
 //! a host to let them be their program again. Every path ends in the same
 //! Person (`session.adopt`), never a second program. The calls and copy are
-//! `rejoin.ts`'s.
+//! `rejoin-calls.ts`'s. A lazy part (`register.tsx`): never in the first load.
 
 import { useEffect, useRef, useState } from "react";
 import { guestCameraProblem } from "../guest-scan.tsx";
 import type { CameraState } from "../scan.ts";
 import { CameraScanner } from "../scanner.tsx";
 import { usePlayHost } from "../host.ts";
-import { ASK_POLL_MS, askHost, askLine, badgeFromText, enterBy, filterNames, joinedNames, pollAsk, rememberBadge, type Ask, type AskState } from "../rejoin.ts";
+import { badgeFromText, rememberBadge } from "../rejoin.ts";
+import { ASK_POLL_MS, askHost, askLine, enterBy, filterNames, joinedNames, pollAsk, type Ask, type AskState } from "../rejoin-calls.ts";
 import type { AdoptedGuest } from "../resume.ts";
 
 /** The panel's step. */
