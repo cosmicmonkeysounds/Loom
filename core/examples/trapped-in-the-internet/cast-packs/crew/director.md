@@ -152,7 +152,7 @@ never from a guest card.
 | `# hosts`: "🕊 Trabolta stands down for X. The night ends in 25 s" (autoend turned on) | nothing (it ends itself), or **🕊** to end it now |
 | `# hosts`: "⛔ Trabolta threw X out of his heart" + "🚨 X is marked for reinstallation" | the Antivirus take it from the Wanted board; 🔄 forgives the heart, 🩹 lifts the mark (a barred re-scan never marks them again) |
 | a dead keypad battery or a jammed lock | the house manager's override key; prop the door; fire **🚪** if the cutscene has not played (W-35) |
-| the patch bay (no sensor on Oct 31: the server-room Antivirus judges it) | the watch presses 🔌 / 💥 / ❌ on their booth, or radios A / B / WRONG → you press it |
+| the patch bay (wave 22: the bay on the server-room terminal judges itself, about 5 s after the fourth cable; Run → Terminals shows it) | nothing. Only when the bay missed one (nothing happened, or a cable runs top to top / bottom to bottom) the watch presses 🔌 / 💥 / ❌ on their booth, or radios A / B / WRONG → you press it. A press puts the bay on the buttons (*Patch bay on buttons* on the glance): the cables are ignored until **🔌 Trust the patch bay again**. A ❌ within a minute of the bay's own rejection is not counted twice |
 | lost guest / new phone | Inspector → **re-pair QR** (never re-register) |
 | late arrival after C1 | Inspector → **scan as Norton** (clears them) |
 | performer's phone dead | Inspector → **Release** the part; they re-sign on a loaner |

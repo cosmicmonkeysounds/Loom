@@ -12,7 +12,7 @@
 | **LATE** | The late marks are coming (after 🚨 Summons closed): they land on every Antivirus' Wanted board | whoever is calling → Antivirus |
 | **IN** | The patch-bay watch is inside the server room with the door shut: whoever is calling may fire 🕚 (once Trabolta is awake the first opening plays The Heart, crew or not: press 🔧 before the crew go through) | server-room Antivirus → director |
 | **DOOR OPEN** / **DOOR SHUT** | Wave 20: the server-room door sensor (a light on the frame) has it wrong, and the server-room Antivirus pressed 🚪 on their booth (or can't): the director knows the story now follows the 🚪 buttons until 🚪 *Trust the door sensor again*. Everyone else: **close the server-room door behind you**; Trabolta's talk waits while it stands open | server-room Antivirus → director |
-| **A** / **B** / **WRONG** | Patch bay (Tier 0): Combo A is in / Combo B is in / a wrong combination (only when the server-room Antivirus can't press 🔌 / 💥 / ❌ on their own booth) | server-room Antivirus → whoever is calling |
+| **A** / **B** / **WRONG** | Patch bay (Tier 0): Combo A is in / Combo B is in / a wrong combination, and the bay missed it (it judges itself since wave 22; only when the server-room Antivirus can't press 🔌 / 💥 / ❌ on their own booth). A press hands the bay to the buttons until 🔌 *Trust the patch bay again* | server-room Antivirus → whoever is calling |
 | **ALARM** | The patch-bay alarm is going (a second wrong combination), or should be and isn't | anyone → Antivirus |
 | **LIGHTS** | The lights are wrong for this moment: the tech op restarts the `show` job (it replays the current look) or sets it by hand | anyone → tech op |
 | **HOLD** | Stop the next cue: something is not ready | anyone → whoever is calling (📣) |

@@ -7,19 +7,23 @@
 > only those four Antivirus booths show 🔌 💥 ❌ 🚪 🔧 to a performer; since
 > wave 13 the three host booths can press them too, but the watch and the
 > press are yours). **Keep this card face-down in your pocket.** It holds the
-> two combinations, which no guest may see. **On Oct 31 nothing scans the
-> bay** (no scanner box in the room, Q7): you are the judge. Every
-> combination the guests make counts only when you press it (step 2).
+> two combinations, which no guest may see. **Wave 22: the bay judges
+> itself.** It is wired to the small board on the server-room laptop's USB
+> lead (the same board as the door's light), and the story reads every
+> complete patch on its own, about 5 s after the fourth cable goes in. You
+> are the fallback: press only when the bay missed one (step 2).
 
 ## The bay
 
-Two rows of 12 jacks. Top row **V1–V8** (+ 4 decoys), bottom row **D1–D8**
-(+ 4 decoys). Every unwired jack is masked "SECTOR DAMAGED". A combination is
-**four cables**, each from one V jack to one D jack. Order does not matter.
+**15 jacks**, no decoys. Top row: the **8 sources V1–V8**. Bottom row: the
+**7 inputs D1–D7**. A combination is **four cables**, each from one top (V)
+jack to one bottom (D) jack. Order does not matter, and nor does which end
+of a cable goes where. The bay can't see a cable from top to top or from
+bottom to bottom: to it that patch is not finished.
 
 | Name | The four cables (read them in V order) | What it does | Call |
 |---|---|---|---|
-| **Combo A** "Disable" | **V2–D5 · V4–D1 · V6–D8 · V7–D3** | disables Trabolta (blackout, dance, he recounts) | **"A"** |
+| **Combo A** "Disable" | **V2–D5 · V4–D1 · V6–D7 · V7–D3** | disables Trabolta (blackout, dance, he recounts) | **"A"** |
 | **Combo B** "Self-destruct" | **V1–D6 · V3–D2 · V5–D7 · V8–D4** | destroys the computer (blackout, dance, purgatory) | **"B"** |
 | anything else, once all four cables are in | | wrong combination | **"WRONG"** |
 
@@ -39,14 +43,26 @@ keypad, never on the radio).
    it yourself**, and for 2 minutes an opening only tells `# hosts`. Stand
    where you can see the bay and the door, and don't open it until guests
    have come in.
-2. When four cables are in, check them against the table and press it
-   yourself on your booth, on the card of the program at the cables: **🔌
+2. When the fourth cable goes in, **wait 5 s and watch.** The bay judges
+   it: Combo A or B blacks out the house, a wrong one gets Trabolta's
+   *Stop touching me.* (or, the second time, the alarm). **If that
+   happens, press nothing.** Press only when **nothing happens** (check the
+   cables against the table first), or when a cable runs **top to top or
+   bottom to bottom** (the bay can't see it, so you call it ❌). Then press
+   it yourself on your booth, on the card of the program at the cables: **🔌
    Combo A is in**, **💥 Combo B is in** or **❌ wrong combination** (the
    buttons lead the card from 🕚 through the Y2K hour; from 🌑 the final
    reveal until 📄 they are off the cards, DRAFT Q33, and wave 21 has no
    *All buttons…* fold: radio the call). Radio **"A"**, **"B"**
    or **"WRONG"** from 🌑 on, or whenever your phone can't: a host or the
-   director fires 🔌 / 💥 / ❌.
+   director fires 🔌 / 💥 / ❌. **A press hands the bay to the buttons:**
+   from then on the story ignores the cables and follows only 🔌 💥 ❌,
+   yours or the director's, until the director presses 🔌 *Trust the patch
+   bay again*. Say on the radio which you pressed. (A ❌ pressed within a
+   minute of the bay's own *Stop touching me.* is the same patch and is not
+   counted twice: your booth says *Not counted*. If it was a new patch, a
+   cable top to top or bottom to bottom, **press ❌ again**. A press pays
+   ⭐ only when the story takes it.) DRAFT w22
 3. After a WRONG, nod at the guests, say nothing, let them pull cables.
    (Everyone is forgiven one: the **second** wrong combination trips the
    alarm. The director's 🔄 *Server room: reset the patch-bay alarm* forgives
@@ -54,6 +70,8 @@ keypad, never on the radio).
    Internet: while the alarm is on, **🛡** is on every card's face (tap it,
    tap again; wave 21).
 4. Reset after an ending only if the director asks: every cable out.
+   (The bay never counts the same four cables twice in a row, so pulling
+   one cable and pushing it back in is not a new combination.)
 
 ## Also yours
 
@@ -100,7 +118,8 @@ keypad, never on the radio).
   beat the machine** on the winner's card. Terminal dead → radio a host or
   the director, who fires ♟ naming the winner.
 - **The real gear** (router, UPS, the dongle, the laptop under
-  his screen and the small board on its USB lead) is taped off and out of
+  his screen and the small board on its USB lead, which reads both the
+  door's light and the patch bay) is taped off and out of
   reach. Keep guests off it, politely and firmly. In Act III the room
   fills up.
 - **Blackout:** guide everyone in the room to the living room. The server room

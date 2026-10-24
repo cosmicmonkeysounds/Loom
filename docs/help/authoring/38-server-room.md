@@ -433,10 +433,19 @@ never changes the door's state: the door is open or shut for real.
 
 ## The room's own buttons
 
-Nothing in the room reads the cables (there is no patch-bay box for Oct
-31: the door sensor is the room's only electronics), so the Antivirus
-stationed in the room judges the patch and presses it there, on the card of the program at the cables (or the one who came
-in), instead of radioing you:
+**The bay judges itself** (wave 22): the small board on the server-room
+laptop's USB lead reads the door sensor and the patch bay, and the
+terminal reports every new complete patch (four cables, each from a top
+jack to a bottom jack) about 5 s after the fourth goes in. The story
+judges it. The Antivirus stationed in the room is the fallback and
+presses these on the card of the program at the cables (or the one who
+came in) only when the bay missed one: nothing happened, or a cable runs
+top to top or bottom to bottom, which the bay can't see. **A press puts
+the bay on the buttons** (*Patch bay on buttons* on the glance): the
+cables are ignored until you press **🔌 Trust the patch bay again**, and
+🔄 leaves it on the buttons. A ❌ within a minute of the bay's own
+*Stop touching me.* is that same patch and is not counted again (the
+presser's booth says so; a second ❌ counts). The buttons:
 
 | Button | What it fires | Shows |
 |---|---|---|

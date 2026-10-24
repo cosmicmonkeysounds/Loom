@@ -29,7 +29,9 @@
 #   Grand Central M4"). Its rules below stay (every show/serverroom/* publish
 #   and the sensors/patchbay/state signals): with no box on the broker they
 #   publish to nobody and never fire, the siren is the router's alarm_siren,
-#   and the patch bay is judged by the Antivirus watch's 🔌 💥 ❌ (radio_*).
+#   and the patch bay judges itself on the M4 (wave 22: the server-room
+#   terminal posts patch_changed), the Antivirus watch's 🔌 💥 ❌ (radio_*)
+#   its fallback.
 #   Mosquitto runs two listeners: anonymous on 127.0.0.1:1883 for what runs
 #   on this Mac (stagehand — `mqtt.host` below — Zigbee2MQTT, the router),
 #   and password-only on the LAN at :1884 (user `props`) for the network
@@ -570,25 +572,29 @@ show:
       edge: true
       signal: { name: printer_opened, debounce_s: 30 }
 
-    # ESP32 (not installed for Oct 31, Q7): nothing publishes this topic, so
-    # these three never fire; the patch-bay watch presses 🔌 💥 ❌ on their
-    # booth (radio_combo_a / radio_combo_b / radio_wrong_patch → the same
-    # patch_* story events). Kept for a show with the scanner fitted.
-    # The patch bay (Trabolta's heart): the scanner publishes the canonical,
-    # V-sorted pairs once stable, e.g.
-    #   sensors/patchbay/state {"combo": "V2-D5,V4-D1,V6-D8,V7-D3", "complete": true}
-    # Stagehand judges until signal args exist (§7 #20). These two strings MUST
-    # equal the Kernel.combo_a / Kernel.combo_b seeds in main.loom and the
-    # four combo-half codex entries (codex/4-trabolta.loom).
+    # ESP32 legacy (not installed for Oct 31, Q7): nothing publishes this
+    # topic, so these three never fire. Since wave 22 the patch bay is on the
+    # Grand Central M4 beside the door sensor: the server-room terminal reads
+    # it over Web Serial and posts `patch_changed {combo}` itself, and the
+    # story judges it (main.loom E3); the watch's 🔌 💥 ❌ (radio_*) are its
+    # fallback. Kept for a show with the ESP32 scanner fitted. The scanner
+    # publishes the canonical, V-sorted pairs once stable, e.g.
+    #   sensors/patchbay/state {"combo": "V1-D6,V3-D2,V5-D7,V8-D4", "complete": true}
+    # Stagehand's signal rules carry no arguments, so here stagehand judges
+    # and fires the admin cues patch_combo_* / patch_rejected: to the story
+    # those are button presses, which put the bay on the buttons
+    # (Night.patch_override). These two strings MUST equal the Kernel.combo_a
+    # / Kernel.combo_b seeds in main.loom and the four combo-half codex
+    # entries (codex/4-trabolta.loom).
     # Each combo fires once per time it is made (edge), however often the
     # scanner republishes it.
-    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V2-D5,V4-D1,V6-D8,V7-D3'" }
+    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V2-D5,V4-D1,V6-D7,V7-D3'" }
       edge: true
       signal: { name: patch_combo_a, debounce_s: 60 }
     - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V1-D6,V3-D2,V5-D7,V8-D4'" }
       edge: true
       signal: { name: patch_combo_b, debounce_s: 60 }
-    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo != 'V2-D5,V4-D1,V6-D8,V7-D3' && combo != 'V1-D6,V3-D2,V5-D7,V8-D4'" }
+    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo != 'V2-D5,V4-D1,V6-D7,V7-D3' && combo != 'V1-D6,V3-D2,V5-D7,V8-D4'" }
       signal: { name: patch_rejected, debounce_s: 10 }
 
 # --- the house speaker router (wave 18b: every story sound AND the house announcements) ---

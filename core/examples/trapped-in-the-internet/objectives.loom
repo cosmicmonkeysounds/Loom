@@ -493,8 +493,9 @@ OBJECTIVE Patch Bay And Clubs
   while: Night.step >= 14 and Night.step < 16 and Night.ended != true
   act: E
   title: The Y2K hour: the patch bay, and the club list
+  // DRAFT w22: the bay judges itself; press only when it missed one.
   text:
-    If you are stationed in the server room: 🔧 before the crew opens the door; at the cables, 🔌 Combo A, 💥 Combo B or ❌ wrong, on the card of the program at the cables. Otherwise patrol, and run to the alarm. Every club join lands in your booth: you know the score before anyone. A host may ask you for a count. Invite programs who earn it into # hidden-partition and # back-channel.
+    If you are stationed in the server room: 🔧 before the crew opens the door. The bay judges itself: after the fourth cable, wait 5 s. Press 🔌 Combo A, 💥 Combo B or ❌ wrong, on the card of the program at the cables, only if nothing happened or a cable runs top to top or bottom to bottom; a press puts the bay on the buttons until 🔌 Trust. Otherwise patrol, and run to the alarm. Every club join lands in your booth: you know the score before anyone. A host may ask you for a count. Invite programs who earn it into # hidden-partition and # back-channel.
   buttons: radio_combo_a, radio_combo_b, radio_wrong_patch
 
 // DRAFT for sign-off
@@ -505,8 +506,9 @@ OBJECTIVE Patch Bay Watch
   while: Night.step >= 14 and Night.step < 16 and Night.ended != true
   act: E
   title: The Y2K hour: patrol, or watch the patch bay
+  // DRAFT w22: the bay judges itself; press only when it missed one.
   text:
-    If you are stationed in the server room: 🔧 before the crew opens the door; at the cables, 🔌 Combo A, 💥 Combo B or ❌ wrong, on the card of the program at the cables. ⭐ +10 a call; a wrong patch caught at his heart pleases Trabolta. Otherwise patrol, and run to the alarm.
+    If you are stationed in the server room: 🔧 before the crew opens the door. The bay judges itself: after the fourth cable, wait 5 s. Press 🔌 Combo A, 💥 Combo B or ❌ wrong, on the card of the program at the cables, only if nothing happened or a cable runs top to top or bottom to bottom; a press puts the bay on the buttons until 🔌 Trust. ⭐ +10 a call the story takes; a wrong patch caught at his heart pleases Trabolta. Otherwise patrol, and run to the alarm.
   buttons: radio_combo_a, radio_combo_b, radio_wrong_patch
 
 // DRAFT for sign-off

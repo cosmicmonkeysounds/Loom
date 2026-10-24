@@ -659,6 +659,8 @@ def test_the_patch_combos_agree_across_yaml_kernel_and_codex():
     for combo in (combo_a, combo_b):
         pairs = re.findall(r"V(\d+)-D(\d+)", combo)
         assert len(pairs) == 4 and combo == _canonical(pairs), f"{combo} is not canonical (sorted by V)"
+        # Wave 22: the M4 bay has 8 sources (V1–V8) and 7 inputs (D1–D7).
+        assert all(1 <= int(v) <= 8 and 1 <= int(d) <= 7 for v, d in pairs), f"{combo} is not on the 8 + 7 bay"
 
     main = (STORY / "main.loom").read_text(encoding="utf-8")
     seeds = dict(re.findall(r'set\s+Kernel\.(combo_[ab])\s*=\s*"([^"]+)"', main))

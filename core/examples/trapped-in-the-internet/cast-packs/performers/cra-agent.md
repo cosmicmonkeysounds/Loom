@@ -131,8 +131,9 @@ requests · 🚨 server-room alarm · 🗜 zip everyone out.
 **before 🕚**, then radio **IN** (once Trabolta is awake the first opening
 plays The Heart, whoever opens it: press **🔧 Crew going through the door**
 on your booth before you open it yourself; once out, only the house manager
-lets you back in). The patch-bay card (press **🔌 / 💥 / ❌** yourself, on the
-card of the program at the cables, and **🚪** if the door opened and nothing
+lets you back in). The patch-bay card (the bay judges itself since wave 22:
+press **🔌 / 💥 / ❌** yourself, on the card of the program at the cables,
+only when it missed one, and **🚪** if the door opened and nothing
 happened), the door, the door terminal (the King's chess), the taped-off gear. The door has a keypad lock: whoever opens it
 with the code belongs inside, so let them in. Only the patch bay alarms (the
 second wrong combination), and then whoever is at the cables goes to the
