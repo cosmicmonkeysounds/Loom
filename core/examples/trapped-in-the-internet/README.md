@@ -963,7 +963,7 @@ patch pairs included.
 
 | Part | Actor | Group | The job |
 |---|---|---|---|
-| Clippy | Brooke | Hosts | MC and Trabolta's ambassador. Gets every Clippy Instructions entry and the hosting quests in her booth. Presses 🎱 / 🎀 / 🎯 / the judging buttons / the bottle's 🗣 / 🙅 / 🎩. |
+| Clippy | Brooke | — (a player, wave 21) | MC and Trabolta's ambassador. Gets every Clippy Instructions entry and the hosting quests in her booth. Presses 🎱 / 🎀 / 🎯 / the judging buttons / the bottle's 🗣 / 🙅 / 🎩, for ⭐ Points; calls no cue. |
 | Task Manager | John | Hosts | "Keeps things running." The programs' main contact: introduces the admin team at clearance, owns `# task-manager` (the app help desk) and is listed from the start, so every program can DM him (answered from Run by the director's identity control, or from his own phone). Produces the fake Bingo card (🃏). Hands out the staff quests. The hosts' cash bank (🪙 corrections). |
 | Adobe Acrobat | Stephanie | Hosts | "Documents and printing." Holds the Bag of Truth and the truth.txt printout; stands by the printer. 🍎 at the bob. |
 | Recycling Bin | Jesse | Hosts | "Hygiene and maintenance." Disk Cleanup (bathroom) attendant; knows Bathroom Mode. |

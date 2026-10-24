@@ -193,7 +193,8 @@ describe("Trapped in the Internet — wave 21: points (S3)", () => {
     for (const c of ["five_minute_warning"]) n.press(c);
     for (const [g] of PROGRAMS) n.signal("checked_in", g, { at: "The Desktop" });
     n.press("summons_closed");
-    n.press("truth_pong");
+    const pong = n.press("truth_pong");
+    expect(readouts(pong, "Clippy").some((m) => m.text.includes("YOUR GAME IS ON · Truth Pong") && m.moment === "big")).toBe(true);
     n.signal("made_the_cup", "g1", undefined, "Clippy");
     n.signal("made_the_cup", "g2", undefined, "Clippy");
     expect(v(n.sim, "Clippy.score")).toBe(10);

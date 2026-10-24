@@ -78,7 +78,7 @@ CHARACTER Clippy is Greeter, Player
       reply !!⚖️ YOUR GAME IS ON · The First Moment of Truth. Trabolta reads the results; judge what is said aloud. ⭐ +5 per answer you judge.
 
   when truth_pong:
-    if Night.step >= 9 and Night.step < 10:
+    if Night.step >= 8 and Night.step < 10:
       // DRAFT w21
       reply !!🏓 YOUR GAME IS ON · Truth Pong. Cup-makers answer; you judge them. ⭐ +5 per cup and per answer.
 
