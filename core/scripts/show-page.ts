@@ -42,6 +42,7 @@ import { fileURLToPath } from "node:url";
 import { FACTS_FILE, parseFactsText } from "../src/facts.ts";
 import { foldName } from "../src/parser/names.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
+import { foldCode } from "../src/runtime/sim/model.ts";
 import type { SimModel } from "../src/runtime/sim/model.ts";
 import { cueActs, cueRows } from "../src/cue-sheet.ts";
 import type { CueInteraction } from "../src/cue-sheet.ts";
@@ -181,9 +182,11 @@ const SHORT_NUMBER = /^\d{1,2}$/u;
  */
 export function showSecrets(show: Show): string[] {
   const out = new Set<string>();
+  const named = titleNamedCodes(show.model);
   const add = (s: string | null | undefined): void => {
     const t = (s ?? "").trim();
     if (t.length < 2 || SHORT_NUMBER.test(t)) return;
+    if (named.has(foldCode(t))) return;
     out.add(t);
   };
   if (show.factsText !== null) {
@@ -213,26 +216,41 @@ export function showSecrets(show: Show): string[] {
       add(m[1]);
       for (const pair of m[1]!.split(",")) add(pair);
     }
-    for (const m of file.source.matchAll(codeLine)) {
-      add(m[1]);
-      add(m[1]!.toLowerCase().replace(/[\s_-]+/gu, ""));
-    }
+    for (const m of file.source.matchAll(codeLine)) add(m[1]);
   }
   return [...out].sort((a, b) => b.length - a.length || (a < b ? -1 : 1));
+}
+
+/**
+ * The folded unlock codes the page may still spell: a public (not `secret:
+ * true`) codex entry whose code is its own title's words (*The Trust Chart*
+ * → `TRUST-CHART`, *The Unified Field Theory* → `UNIFIED-FIELD`). Its title
+ * is the show's name for the thing, so no page could avoid it; the code
+ * unlocks only what the title already says. A secret entry, or a code that
+ * is not in its title (*The Prom Ticket* → `COMPUTER-PROM`), stays blanked.
+ */
+export function titleNamedCodes(model: SimModel): Set<string> {
+  const out = new Set<string>();
+  for (const c of model.codex.values()) {
+    if (c.code === null || c.secret) continue;
+    if (foldCode(c.title).includes(c.code)) out.add(c.code);
+  }
+  return out;
 }
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
-/** One secret as a pattern: case-insensitive, any apostrophe for an
- *  apostrophe, any run of spaces for a space, and never inside a longer
- *  word or number (so the year 1999 never trips on a code ending in 99). */
+/** One secret as a pattern, as loose as the Codex box's `foldCode`: case
+ *  never counts, and any run of spaces, dashes and underscores (or none) may
+ *  sit between any two characters, so `COMPUTER-PROM` also catches
+ *  "computer prom" and "computerprom", every form a guest could type. An
+ *  apostrophe matches either apostrophe or none. Never inside a longer word
+ *  or number (so the year 1999 never trips on a code ending in 99). */
 export function secretPattern(secret: string): RegExp {
-  const body = secret
-    .split(/(['’]|\s+)/u)
-    .map((part) => (part === "'" || part === "’" ? "['’]" : /^\s+$/u.test(part) ? "\\s+" : escapeRe(part)))
-    .join("");
+  const chars = [...secret.replace(/[\s_-]+/gu, "")];
+  const body = chars.map((c) => (c === "'" || c === "’" ? "['’]?" : escapeRe(c))).join("[\\s_\\-]*");
   return new RegExp(`(?<![\\p{L}\\p{N}])${body}(?![\\p{L}\\p{N}])`, "giu");
 }
 
@@ -431,13 +449,20 @@ function castBlock(show: Show, secrets: readonly string[]): string {
   return redact(out.join("\n"), secrets);
 }
 
-function roomsBlock(show: Show): string {
+/** A house.json room label with any secret dropped: the map's labels are
+ *  free text (*Server Room (cold storage)* spells a codex code), and a
+ *  blanked aside in brackets is dropped whole rather than left as `(▒▒▒)`. */
+export function roomLabel(label: string, secrets: readonly string[]): string {
+  return redact(label, secrets).replaceAll(` (${REDACTED})`, "").replaceAll(`(${REDACTED})`, "").trim();
+}
+
+function roomsBlock(show: Show, secrets: readonly string[]): string {
   const floors = new Map(show.house.floors.map((f) => [f.id, f.label ?? f.id]));
   const out: string[] = [];
   out.push(`<div class="scroll"><table><thead><tr><th scope="col">LOCATION (in the story)</th><th scope="col">Real room(s)</th><th scope="col">Floor</th><th scope="col">On the phones</th></tr></thead><tbody>`);
   for (const l of show.model.locations.values()) {
     const rooms = show.house.rooms.filter((r) => r.location !== undefined && foldName(r.location) === foldName(l.id));
-    const realRooms = rooms.length > 0 ? rooms.map((r) => esc(r.label ?? r.id)).join("<br>") : esc(l.label ?? "—");
+    const realRooms = rooms.length > 0 ? rooms.map((r) => esc(roomLabel(r.label ?? r.id, secrets))).join("<br>") : esc(roomLabel(l.label ?? "—", secrets));
     const fl = [...new Set(rooms.map((r) => floors.get(r.floor) ?? r.floor))].join(", ") || "—";
     const notes: string[] = [];
     notes.push(l.hidden ? "hidden until revealed" : "open from the start");
@@ -463,7 +488,7 @@ const VIEW_NOTES: Record<string, string> = {
   shadow: "camera with ghosts",
 };
 
-function terminalsBlock(show: Show): string {
+function terminalsBlock(show: Show, secrets: readonly string[]): string {
   const rooms = new Map(show.house.rooms.map((r) => [r.id, r]));
   const out: string[] = [];
   out.push(`<div class="scroll"><table><thead><tr><th scope="col">Spot</th><th scope="col">Name</th><th scope="col">Room → LOCATION</th><th scope="col">View</th><th scope="col">Notes</th></tr></thead><tbody>`);
@@ -474,7 +499,7 @@ function terminalsBlock(show: Show): string {
     if (t.speaks === true) notes.push("speaks the room's lines");
     if (t.voice === false) notes.push("no voice link");
     out.push(
-      `<tr><td><code>${esc(t.id)}</code></td><td>${esc(t.name ?? t.id)}</td><td>${esc(r?.label ?? t.room ?? "—")}${r?.location !== undefined ? ` → ${esc(r.location)}` : ""}</td><td><code>${esc(view)}</code></td><td>${esc(notes.filter((n) => n !== "").join("; "))}</td></tr>`,
+      `<tr><td><code>${esc(t.id)}</code></td><td>${esc(redact(t.name ?? t.id, secrets))}</td><td>${esc(roomLabel(r?.label ?? t.room ?? "—", secrets))}${r?.location !== undefined ? ` → ${esc(r.location)}` : ""}</td><td><code>${esc(view)}</code></td><td>${esc(notes.filter((n) => n !== "").join("; "))}</td></tr>`,
     );
   }
   out.push(`</tbody></table></div>`);
@@ -516,8 +541,8 @@ export function buildShowPage(dir: string = DEFAULT_DIR): string {
     cues: cuesBlock(show, secrets),
     beats: beatsBlock(show, secrets),
     cast: castBlock(show, secrets),
-    rooms: roomsBlock(show),
-    terminals: terminalsBlock(show),
+    rooms: roomsBlock(show, secrets),
+    terminals: terminalsBlock(show, secrets),
   };
   let page = template;
   for (const k of MARKERS) {

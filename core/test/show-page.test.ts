@@ -17,10 +17,13 @@ import {
   esc,
   loadShow,
   redact,
+  roomLabel,
   secretsIn,
   showSecrets,
+  titleNamedCodes,
 } from "../scripts/show-page.ts";
 import { parseFactsText } from "../src/facts.ts";
+import { foldCode } from "../src/runtime/sim/model.ts";
 
 const SHOW = loadShow();
 const SECRETS = showSecrets(SHOW);
@@ -33,6 +36,22 @@ describe("redaction", () => {
     expect(redact("IT’S HERE now", s)).toBe(`${REDACTED} now`);
     expect(redact("xmoon-codey", s)).toBe("xmoon-codey");
     expect(secretsIn("nothing to see", s)).toEqual([]);
+  });
+
+  it("catches every form the Codex box redeems (foldCode: spaces, dashes, underscores or none)", () => {
+    const s = ["COMPUTER-PROM"];
+    for (const typed of ["computer prom", "Computer_Prom", "computerprom", "COMPUTER - PROM", "com-puter prom"]) {
+      expect(redact(`to ${typed} now`, s), typed).toBe(`to ${REDACTED} now`);
+    }
+    expect(secretsIn("the computer promenade", s)).toEqual([]);
+    expect(secretsIn("mapsandducks.com", ["MAPSANDDUCKS-COM"])).toEqual([]);
+    expect(secretsIn("mapsandducks com", ["MAPSANDDUCKS-COM"])).toEqual(["MAPSANDDUCKS-COM"]);
+  });
+
+  it("drops a blanked aside from a house room label", () => {
+    expect(roomLabel("Server Room (cold storage)", ["COLD-STORAGE"])).toBe("Server Room");
+    expect(roomLabel("Cold Storage", ["COLD-STORAGE"])).toBe(REDACTED);
+    expect(roomLabel("Kitchen", ["COLD-STORAGE"])).toBe("Kitchen");
   });
 
   it("skips one- and two-digit aliases, which would blank every clock time", () => {
@@ -62,10 +81,22 @@ describe("the source's secrets", () => {
     }
   });
 
-  it("reads every codex unlock code", () => {
+  it("reads every codex unlock code but the public ones its own title spells", () => {
     const codes = SHOW.files.flatMap((f) => [...f.source.matchAll(/^\s*code:\s*(\S.*?)\s*$/gmu)].map((m) => m[1]!));
     expect(codes.length).toBe([...SHOW.model.codex.values()].filter((c) => c.code !== null).length);
-    for (const c of codes) expect(SECRETS).toContain(c);
+    const named = titleNamedCodes(SHOW.model);
+    for (const c of codes) {
+      if (named.has(foldCode(c))) expect(SECRETS, c).not.toContain(c);
+      else expect(SECRETS, c).toContain(c);
+    }
+    // Only a public entry is ever exempt, and only a code its title holds.
+    for (const c of SHOW.model.codex.values()) {
+      if (c.code === null || !named.has(c.code)) continue;
+      expect(c.secret, c.id).toBe(false);
+      expect(foldCode(c.title), c.id).toContain(c.code);
+    }
+    expect(named.has("trustchart")).toBe(true);
+    expect(named.has("computerprom")).toBe(false);
   });
 });
 
