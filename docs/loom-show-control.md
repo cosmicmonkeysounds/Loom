@@ -1,5 +1,7 @@
 # Loom — show control for the house
 
+> **Status (2026-10-24):** the "house Mac" below is now two machines: John's Desktop (Windows: Mosquitto, Zigbee2MQTT, stagehand `show` + `lights`, the TV) and John's MacBook (stagehand `agents` and, by default, the `audio` router). QLab and the `alexa` player are retired; the router plays sounds and announcements. Current runbooks: `stagehand/`, `scripts/house-desktop/README.md`, `scripts/house-mac/`.
+
 *2026-07-05. Status: design; build-order step 1 landed — the
 `loom-stagehand` cue router exists at `stagehand/`
 (Python/uv: SSE→cue-map→OSC/MQTT, MQTT→sensor-map→mod API, `show.yaml`

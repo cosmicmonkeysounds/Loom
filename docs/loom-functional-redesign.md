@@ -1,5 +1,7 @@
 # Loom redesign: traits with `self`-parameters, faction badges, and the `SELF` speaker
 
+> **Historical design record (2026-10-24).** Implemented in the TS engine (`core/`) as Slices 1–3 and Part II A–C; the Rust crates were never ported. For how to write these forms today, read `writing-in-loom.md` and the in-app help.
+
 > Status: proposal, hardened after hostile review. Lowers entirely into the
 > existing `core/` model. The TypeScript engine (`core/`) is the maintained
 > implementation; the Rust mirror is **not** updated for these slices and is

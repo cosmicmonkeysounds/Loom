@@ -1,5 +1,7 @@
 # Loom — Formal Grammar
 
+> **Status (2026-10-24):** this grammar covers the v3 surface (July 2026). Loom 4 forms (names as words, `Name:` dialogue, keyword statements, `when` rules, `INTERACTION`, `OBJECTIVE` and the live header keys) are described in `loom-4.md`, `writing-in-loom.md` and the in-app help, not here.
+
 > The grammar of `.loom` source. Precise enough to drive a parser; loose
 > enough to read.
 
