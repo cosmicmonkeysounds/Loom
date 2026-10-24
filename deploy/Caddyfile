@@ -4,7 +4,7 @@
 #     "app.mapsandducks.com"   → automatic HTTPS via Let's Encrypt
 #   INVITE_ADDRESS — the party-invitation one-pager (apex domain)
 #     ":8081" (default)        → parked on an unmapped port, effectively off
-#     "mapsandducks.com"       → automatic HTTPS via Let's Encrypt
+#     "mapsandducks.com, www.mapsandducks.com" → automatic HTTPS for both
 {$SITE_ADDRESS::80} {
 	# No site-wide `encode`: a compressor holds small writes until it has
 	# enough to emit, so an SSE stream's 25 s ping and single-message frames

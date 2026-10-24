@@ -344,7 +344,7 @@ On the VPS, edit `.env`:
 ```
 LOOM_BASE_URL=https://app.mapsandducks.com
 SITE_ADDRESS=app.mapsandducks.com
-INVITE_ADDRESS=mapsandducks.com
+INVITE_ADDRESS="mapsandducks.com, www.mapsandducks.com"
 ```
 
 Apply:
