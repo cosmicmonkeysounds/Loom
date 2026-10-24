@@ -101,6 +101,15 @@ test("status: LAST / NEXT off the lean cue sheet, the show clock, one line per a
   assert.match(text, /House: router online · lights online/u);
 });
 
+test("status: a key spot that never polled is red, as in doctor", async () => {
+  const ctx = ctxFor(["status"], fakeServer(routes([guest], { [`GET ${E}/api/mod/screen/terminals`]: { status: 200, body: { silentMs: 20_000, terminals: [] } } })));
+  ctx.mapSpots = [{ id: "desktop-tv", name: "TV" }, { id: "tent", name: "Tent" }, { id: "kitchen", name: "Kitchen" }];
+  assert.equal(await status(ctx), 2, ctx.lines.join("\n"));
+  const line = ctx.lines.find((l) => /Terminals/u.test(l))!;
+  assert.match(line, /^FAIL/u);
+  assert.match(line, /Terminals 0\/2 live: ✗ TV never polled · ✗ Tent never polled$/u);
+});
+
 test("fire: refused (exit 3, nothing posted) when a real guest is on the roster", async () => {
   const srv = fakeServer(routes([persona, guest]));
   const ctx = ctxFor(["fire", "patch_combo_a", "--yes"], srv);

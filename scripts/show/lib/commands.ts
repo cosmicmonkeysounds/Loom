@@ -16,7 +16,7 @@ import { judge, LIVE_OVERRIDE, realGuests } from "../../../core/scripts/live-gua
 import { cueRows } from "../../../core/src/cue-sheet.ts";
 import type { Args } from "./args.ts";
 import { flagOn, flagStr, listFlag, watchSeconds } from "./args.ts";
-import { agentChecks, audioCheck, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "./checks.ts";
+import { agentChecks, audioCheck, KEY_SPOTS, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "./checks.ts";
 import type { ShowClient } from "./client.ts";
 import { ShowError } from "./client.ts";
 import { desktopChecks, macbookChecks, MACHINES, type Machine, type Probe, serverroomChecks, spotFocus, tentChecks } from "./local.ts";
@@ -215,9 +215,16 @@ export async function status(ctx: Ctx): Promise<number> {
         level = worst(level, v.level);
         return `${paint(v.level === "ok" ? "✓" : v.level === "fail" ? "✗" : "!", v.level === "ok" ? "32" : v.level === "fail" ? "31;1" : "33", ctx.color)} ${String(x["name"])} ${ago(Number(x["ago"]))}${x["door"] && x["door"] !== "none" ? ` 🚪${x["door"] === "closed" ? "shut" : String(x["door"])}` : ""}${x["patch"] !== undefined ? ` 🔌${String(x["patch"])}` : ""}`;
       });
+      // A key spot (the TV, the server room, the tent, …) that never polled
+      // is as red here as in `doctor`: polls live in the server's memory, so
+      // a VPS restart empties the list until each screen polls again.
+      const seen = new Set(terms.map((x) => String(x["spot"] ?? "")));
+      const missing = ctx.mapSpots.filter((s) => KEY_SPOTS[s.id] !== undefined && !seen.has(s.id));
+      for (const s of missing) cells.push(`${paint("✗", "31;1", ctx.color)} ${s.name} never polled`);
       const live = terms.filter((x) => Number(x["ago"]) < silentMs).length;
-      const tl = terms.reduce<Level>((l, x) => worst(l, terminalVerdict(x, silentMs).level), "ok");
-      lines.push(`${mark(tl, ctx.color)}  Terminals ${live}/${terms.length} live: ${cells.join(" · ") || "none"}${t["voiceMuted"] === true ? " · TV voice MUTED" : ""}`);
+      const tl = terms.reduce<Level>((l, x) => worst(l, terminalVerdict(x, silentMs).level), missing.length > 0 ? "fail" : "ok");
+      level = worst(level, tl);
+      lines.push(`${mark(tl, ctx.color)}  Terminals ${live}/${terms.length + missing.length} live: ${cells.join(" · ") || "none"}${t["voiceMuted"] === true ? " · TV voice MUTED" : ""}`);
     } catch (e) {
       level = "fail";
       lines.push(`${mark("fail", ctx.color)}  Terminals: ${e instanceof Error ? e.message : String(e)}`);
