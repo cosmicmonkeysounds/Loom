@@ -4,17 +4,26 @@
 // (hygiene and maintenance). Each is a real body at the party: a
 // performer with a phone, in on the play.
 //
+// Wave 21 (DRAFT w21): Clippy is a PLAYER, not a host. The three hosts
+// (`admin: true`) and the directors call the games; Clippy runs them in
+// the room and plays the night for ⭐ Points (TRAIT Player, cast/kit.loom),
+// with a booth that only learns its own buttons. Clippy is a Greeter (the
+// scan greeting, the summons check-in, the vouch) but no longer in GROUP
+// Hosts, so `# hosts` is closed to Clippy.
+//
 // Their private instructions reach them two ways: `Clippy Instructions N`
 // codex entries unlocked for Clippy alone (codex/7-clippy.loom), and
 // `reply` readouts from their own hooks below, which land only in that
-// performer's booth. A host scan routes through `TRAIT Host`
-// (cast/kit.loom): a check-in during the summons, otherwise `Greet`.
+// performer's booth. A host's or Clippy's scan routes through `TRAIT
+// Greeter` (cast/kit.loom): a check-in during the summons, otherwise `Greet`.
 // Inside these bodies `self` is the character: write the name, never
 // `{self.name}`.
 
-CHARACTER Clippy is Host
+CHARACTER Clippy is Greeter, Player
   avatar: File:Windows 11 Clippy paperclip emoji.png | File:Clippy-letter.PNG
-  // The ambassador. Runs the games. Believes every word.
+  // The ambassador. Runs the games. Believes every word. (Wave 21: plays
+  // for ⭐ Points; ⚖️ counts the answers Clippy judged.)
+  judged: 0 to 999 = 0
 
   // The full greeting once per program (wave 13: a re-scan is one line).
   beat Greet(program)
@@ -38,15 +47,50 @@ CHARACTER Clippy is Host
   // ── Booth cues ────────────────────────────────────────────────────
   when call_to_the_desktop:
     if Night.step < 1:
-      reply 📋 Instructions 1/X are under What Clippy knows. Welcome everyone, introduce the hosts, then the director starts Bingo.
+      // DRAFT w21
+      reply 📋 Instructions 1/X are in your Codex. Welcome everyone, introduce the hosts; a host starts Bingo.
+
+  // Wave 21: Clippy calls no cue. Each game a host or a director starts
+  // pops out on Clippy's booth: YOUR GAME IS ON (a big readout). Character
+  // hooks run before the story rule, so each guard reads the night before
+  // the cue lands (a refused or repeated press says nothing). DRAFT w21
+  when start_the_bingo:
+    if Night.step < 2:
+      reply !!🎱 YOUR GAME IS ON · Computer Bingo, 20 minutes. Fill the Desktop with noise; winners come to you. ⭐ +10 per winner you call.
 
   when bingo_time_up:
-    // DRAFT w18
-    reply ⏰ 20 minutes are up. Call ⏰ Bingo time from your 🎤 bar.
+    // DRAFT w21
+    reply ⏰ 20 minutes are up. A host calls ⏰ Bingo time: get the winners ready.
 
   when bingo_time:
     if Night.step < 3:
-      reply 📋 2/X is in What Clippy knows. Press 🎱 on each winner. Celebrate, bring the ribbon, demand applause.
+      // DRAFT w21
+      reply !!🎱 YOUR GAME IS ON · The Bingo results. 2/X is in your Codex. 🎱 each winner, 🎀 the ribbon, 🎯 the program they name. Demand applause.
+
+  when start_the_hunt:
+    if Night.step < 5:
+      // DRAFT w21
+      reply !!🔎 YOUR GAME IS ON · The Truth Scavenger Hunt, 15 minutes. Trabolta explains the rules; keep the programs hunting.
+
+  when first_moment_of_truth:
+    if Night.step >= 5 and Night.step < 7 and Night.judging != true:
+      // DRAFT w21
+      reply !!⚖️ YOUR GAME IS ON · The First Moment of Truth. Trabolta reads the results; judge what is said aloud. ⭐ +5 per answer you judge.
+
+  when truth_pong:
+    if Night.step >= 9 and Night.step < 10:
+      // DRAFT w21
+      reply !!🏓 YOUR GAME IS ON · Truth Pong. Cup-makers answer; you judge them. ⭐ +5 per cup and per answer.
+
+  when bobbing_for_truth:
+    if Night.ended != true and Night.step < 17 and Night.phase != "bobbing":
+      // DRAFT w21
+      reply !!🍎 YOUR GAME IS ON · Bobbing for Truth, with Adobe. ⭐ +15 for the program who brings up the Bag.
+
+  when start_the_ceremony:
+    if Night.ended == true and Night.ceremony != true:
+      // DRAFT w21
+      reply !!🏆 YOUR GAME IS ON · The awards ceremony. Lead the applause; the staff awards come last, and one of them might be yours.
 
   // Character hooks run before the story rule, so step is still 3 on the
   // real introduction (and 4 if that order ever flips); an early press
@@ -81,15 +125,96 @@ CHARACTER Clippy is Host
 
   when computer_destroyed:
     if Night.ended != true:
-      // DRAFT w18
-      reply 📋 9/X is in What Clippy knows. After the dance, call 🪦 the summary from your 🎤 bar and read it.
+      // DRAFT w21
+      reply 📋 9/X is in your Codex. After the dance a host calls 🪦 the summary: read it from the Desktop room.
+
+  // ── Scoring (wave 21) ───────────────────────────────────────────────
+  // Clippy shares most game buttons with the hosts, so a press is stamped:
+  // the program's own hook (main.loom) clears `Kernel.pressed_by` and runs
+  // first, this hook stamps it, and the program's hook fires
+  // `game_credit` when the press counted (`points`, trust `gain`, and
+  // `counts` 1 for a judged answer). Only Clippy's own press (or a
+  // director's quick-fire with no actor) pays Clippy. Kernel is secret:
+  // the stamp never reaches Trabolta's worker. DRAFT w21
+  when bingo_winner for program:
+    set Kernel.pressed_by = "Clippy"
+  when award_the_ribbon for program:
+    set Kernel.pressed_by = "Clippy"
+  when named_at_bingo for program:
+    set Kernel.pressed_by = "Clippy"
+  when judge_accurate for program:
+    set Kernel.pressed_by = "Clippy"
+  when judge_confident for program:
+    set Kernel.pressed_by = "Clippy"
+  when accurate_q1 for program:
+    set Kernel.pressed_by = "Clippy"
+  when accurate_q2 for program:
+    set Kernel.pressed_by = "Clippy"
+  when accurate_q3 for program:
+    set Kernel.pressed_by = "Clippy"
+  when confident_q1 for program:
+    set Kernel.pressed_by = "Clippy"
+  when confident_q2 for program:
+    set Kernel.pressed_by = "Clippy"
+  when confident_q3 for program:
+    set Kernel.pressed_by = "Clippy"
+  when uncertain_answer for program:
+    set Kernel.pressed_by = "Clippy"
+  when truth_answered for program:
+    set Kernel.pressed_by = "Clippy"
+  when truth_refused for program:
+    set Kernel.pressed_by = "Clippy"
+  when chose_dare for program:
+    set Kernel.pressed_by = "Clippy"
+  when made_the_cup for program:
+    set Kernel.pressed_by = "Clippy"
+  when missed_the_cup for program:
+    set Kernel.pressed_by = "Clippy"
+  when brought_up_the_bag for program:
+    set Kernel.pressed_by = "Clippy"
+  when failed_the_bob for program:
+    set Kernel.pressed_by = "Clippy"
+  when signed_the_painting for program:
+    set Kernel.pressed_by = "Clippy"
+  when pickup_line_works for program:
+    set Kernel.pressed_by = "Clippy"
+
+  when game_credit:
+    if Kernel.pressed_by == "Clippy":
+      set Kernel.pressed_by = "none"
+      set self.score += points
+      set self.trust += gain
+      if counts == 1:
+        set self.judged += 1
+      reply ⭐ +{points}
+
+  // ── Quiet favours (wave 21) ─────────────────────────────────────────
+  // 🤫 Tip them off: a whisper to a marked program that the Antivirus are
+  // coming (once per program). 🤫 Let it slide: a guess Clippy is judging
+  // goes into the record as accepted instead (once per program per
+  // round). Each is a quiet favour (`covert`, private). DRAFT w21
+  when tip_off for program:
+    if program.marked == true and program.corrupted != true and program.tipped != true:
+      set program.tipped = true
+      set self.covert += 1
+      Self (whispering): It looks like you're being hunted! Would you like help with that? The Antivirus have your name. Bathroom Mode excuses you from a summons, and nobody follows you into Disk Cleanup. You didn't hear it from me.
+      reply 🤫 You tipped off {program.name}. Nobody saw.
+
+  when let_it_slide for program:
+    if Night.judging == true and program.slid != Night.round and program.cleared == true:
+      set program.slid = Night.round
+      set program.truths_accepted += 1
+      set program.score += 100
+      set self.covert += 1
+      Self (whispering): That was a guess. I wrote down "accepted". It looks like you owe me one!
+      reply 🤫 You let {program.name}'s guess slide: accepted, +100 Truthcoin. Nobody saw.
 
 CHARACTER Task Manager is Host
   avatar: File:Windows 11 TASKMGR.png | File:Windows Task Manager screenshot.png
   wiki: Task Manager (Windows)
   // A host part (wave 13, D1/D8): signing in as it makes the booth a host
-  // (cues, judging, announcements, the alert dial). Never on TRAIT Host,
-  // which would reach Clippy.
+  // (cues, judging, announcements, the alert dial). Per character, never on
+  // TRAIT Host (wave 21: the hosts call the games; Clippy plays them).
   admin: true
   // A drone bee of a middle manager. Keeps things running. Has no opinions.
 
@@ -117,8 +242,8 @@ CHARACTER Task Manager is Host
 CHARACTER Adobe Acrobat is Host
   avatar: File:Adobe Acrobat DC logo 2020.svg | File:Adobe Reader XI icon.png
   // A host part (wave 13, D1/D8): signing in as it makes the booth a host
-  // (cues, judging, announcements, the alert dial). Never on TRAIT Host,
-  // which would reach Clippy.
+  // (cues, judging, announcements, the alert dial). Per character, never on
+  // TRAIT Host (wave 21: the hosts call the games; Clippy plays them).
   admin: true
   // The paid bottleneck to everyone's creativity. Relentlessly motivational.
 
@@ -161,8 +286,8 @@ CHARACTER Recycling Bin is Host
   avatar: File:User-trash-full.svg
   wiki: Trash (computing)
   // A host part (wave 13, D1/D8): signing in as it makes the booth a host
-  // (cues, judging, announcements, the alert dial). Never on TRAIT Host,
-  // which would reach Clippy.
+  // (cues, judging, announcements, the alert dial). Per character, never on
+  // TRAIT Host (wave 21: the hosts call the games; Clippy plays them).
   admin: true
   // Hygiene and maintenance. The attendant of Disk Cleanup (the bathroom).
 
