@@ -1202,7 +1202,7 @@ describe("The Heart — secrets and the fiction (wave 20, D29)", () => {
 describe("The Heart — the header (wave 20, §3.10)", () => {
   it("the watch lines carry the heart's stage, the door, the override and the talker", () => {
     const head = SRC.slice(0, SRC.indexOf("\n\n"));
-    expect(head).toContain("Night.heart_stage as The Heart, Night.server_door as Server door, Night.door_override as Door on buttons, program.at_the_heart as At the heart");
+    expect(head).toContain("Night.heart_stage as The Heart, Night.server_door as Server door, Night.door_override as Door on buttons, Night.patch_override as Patch bay on buttons, program.at_the_heart as At the heart");
     expect(head).toContain('watch: Night.heart_talker as At his heart, Night.heart_talker_layer as Heart layer, Night.heart_talker_suspicion as Heart suspicion, while Night.heart_stage == "talk"');
     expect(head).not.toContain("Night.heart_opened as The Heart");
   });

@@ -10,7 +10,7 @@ watch: program.cleared as Cleared, program.marked as Marked, program.door_by as 
 watch: program.afk as Bathroom Mode, program.late as Late, program.corrupted as In the Internet, program.checked_in as Checked in
 watch: Night.results_q as Results read, while Night.phase == "truth_1"
 watch: Night.scenario as Overshare scenario, while Night.scenario > 0 and Night.ended != true
-watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_stage as The Heart, Night.server_door as Server door, Night.door_override as Door on buttons, program.at_the_heart as At the heart, while Trabolta.awake == true and Night.ended != true
+watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_stage as The Heart, Night.server_door as Server door, Night.door_override as Door on buttons, Night.patch_override as Patch bay on buttons, program.at_the_heart as At the heart, while Trabolta.awake == true and Night.ended != true
 watch: Night.heart_talker as At his heart, Night.heart_talker_layer as Heart layer, Night.heart_talker_suspicion as Heart suspicion, while Night.heart_stage == "talk"
 watch: Kernel.lies_accepted as Lies accepted, while Night.round >= 1
 watch: Night.ending as Ending, while Night.ended == true

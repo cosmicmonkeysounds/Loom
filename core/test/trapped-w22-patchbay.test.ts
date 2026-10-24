@@ -224,6 +224,8 @@ describe("the patch bay judges itself (wave 22)", () => {
     expect(cue.sequence).toBe(false);
     expect(cue.act).toMatch(/^E · /u);
     expect(cueState(sim).fired).not.toContain("trust_patch_bay");
+    // The glance shows the bay on the buttons beside the door's.
+    expect(SRC).toContain("Night.door_override as Door on buttons, Night.patch_override as Patch bay on buttons");
   });
 });
 
