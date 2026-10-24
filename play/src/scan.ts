@@ -6,10 +6,17 @@
 //! booth recognises those so the performer hears "that's a wall code"
 //! instead of a bare 404. Mirrors `terminal/src/scan.ts`.
 //!
+//! A guest's printed **badge** (wave 23, `…&badge=<code>`) is their pass
+//! too: its code goes to `/api/scan`, which resolves it.
+//!
 //! Pure — the camera lives in `scanner.tsx`.
 
+import { badgeFromText } from "./rejoin.ts";
+
 export type ScanHit =
-  | { kind: "guest"; id: string }
+  /** A pass: the guest's id — or (wave 23) their printed badge's code, which
+   *  the server resolves to the guest it is linked to. */
+  | { kind: "guest"; id: string; badge?: true }
   | { kind: "wall"; unlock: string | null; checkin?: string }
   | { kind: "unknown"; text: string };
 
@@ -22,6 +29,8 @@ export function parseScan(raw: string): ScanHit {
   if (GUEST_ID.test(text)) return { kind: "guest", id: text.toLowerCase() };
   try {
     const url = new URL(text);
+    const badge = badgeFromText(url.searchParams.get("badge") ?? "");
+    if (badge !== null) return { kind: "guest", id: badge, badge: true };
     if (url.searchParams.has("code")) {
       const checkin = url.searchParams.get("checkin");
       return checkin !== null ? { kind: "wall", unlock: null, checkin } : { kind: "wall", unlock: url.searchParams.get("unlock") };
@@ -43,6 +52,9 @@ export function typedTarget(raw: string): string {
   const hit = parseScan(raw);
   return hit.kind === "guest" ? hit.id : raw.trim();
 }
+
+/** A badge no guest has linked yet (wave 23). */
+export const BADGE_NOT_LINKED = "That badge isn't linked to a guest yet — they scan it in their own app (Me → 🪪 Badge), then you can.";
 
 /** The words a performer sees for a scan that wasn't a pass. */
 export function scanProblem(hit: ScanHit): string | null {

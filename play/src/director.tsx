@@ -15,6 +15,7 @@
 //! the editor's Director page. Lifecycle, chat and the World editor stay on
 //! the laptop.
 
+import type { RejoinAsk } from "../../core/src/host-board.ts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ARM_DEAD_MS,
@@ -73,6 +74,8 @@ export interface DirectorAuth {
 /** The slice of the director's `ModView` this page reads. */
 export interface DirectorView {
   title?: string;
+  /** Wave 23: guests asking to get back in (absent from an older server). */
+  rejoins?: RejoinAsk[];
   /** The story's `theme:` — carried before the doors too, so the skin never
    *  switches when they open. */
   theme?: string;
@@ -743,10 +746,59 @@ function useDirectorSession() {
     [auth, base],
   );
 
-  return { auth, view, receivedAt, connected, notice, login, fire, claim, stopSounds, leave: () => drop(null) };
+  /** Wave 23: answer a guest's ask to get back in (`POST /api/mod/guest/rejoin`). */
+  const rejoin = useCallback(
+    async (request: string, approve: boolean): Promise<void> => {
+      if (auth === null) return;
+      const res = await fetch(`${base}/api/mod/guest/rejoin`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-loom-token": auth.token },
+        body: JSON.stringify({ request, approve }),
+      });
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      poll.current?.now();
+      if (!res.ok) throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
+    },
+    [auth, base],
+  );
+
+  return { auth, view, receivedAt, connected, notice, login, fire, claim, stopSounds, rejoin, leave: () => drop(null) };
 }
 
 // --- the screens -----------------------------------------------------------------
+
+/** Wave 23: guests asking to get back in as their program, above the cues. */
+function RejoinAsks({ asks, onAnswer }: { asks: readonly RejoinAsk[]; onAnswer: (request: string, approve: boolean) => Promise<void> }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState("");
+  const answer = (request: string, approve: boolean) => {
+    setBusy(request);
+    setErr("");
+    void onAnswer(request, approve)
+      .catch((e: unknown) => setErr(e instanceof Error ? e.message : "That didn't go through."))
+      .finally(() => setBusy(null));
+  };
+  return (
+    <div className="dir-rejoins" data-testid="dir-rejoins" role="region" aria-label="Guests asking to get back in">
+      {asks.map((a) => (
+        <div key={a.request} className="dir-rejoin">
+          <div className="dir-rejoin-text">
+            🔁 <strong>{a.name}</strong> wants back in from a new phone. Check it's them first.
+          </div>
+          <div className="dir-rejoin-acts">
+            <button type="button" className="choice primary" disabled={busy !== null} onClick={() => answer(a.request, true)}>
+              Let them in
+            </button>
+            <button type="button" className="choice ghost" disabled={busy !== null} onClick={() => answer(a.request, false)}>
+              Not them
+            </button>
+          </div>
+        </div>
+      ))}
+      {err !== "" && <div className="err">{err}</div>}
+    </div>
+  );
+}
 
 function DirectorLogin({ notice, onLogin, onBack }: { notice: string | null; onLogin: (code: string, name: string) => Promise<void>; onBack: () => void }) {
   const [code, setCode] = useState(codeFromUrl);
@@ -1299,6 +1351,7 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
             </button>
           </div>
         </header>
+        {(s.view?.rejoins ?? []).length > 0 && <RejoinAsks asks={s.view?.rejoins ?? []} onAnswer={s.rejoin} />}
         {s.view !== null && rows.length > 0 && (
           <div className="cue-pinned">
             {strip.length > 0 && (

@@ -6,8 +6,9 @@
 //! Wanted board read-only (a host claims nothing: they radio an Antivirus).
 
 import type { HostNeed } from "../types.ts";
+import type { RejoinAsk } from "../../../core/src/host-board.ts";
 import { useState } from "react";
-import { groupNeeds, hostWanted, needSection, needTab, refusedText, wantedLine, wantedNeed, type RefusedPress, type WantedLike } from "./model.ts";
+import { groupNeeds, hostWanted, needSection, needTab, refusedText, rejoinDetail, wantedLine, wantedNeed, type RefusedPress, type WantedLike } from "./model.ts";
 import { ActButton, HostEmpty, useHost } from "./kit.tsx";
 
 export function NeedsTab({ refused, reason }: { refused: RefusedPress | null; reason: string | null }) {
@@ -23,11 +24,15 @@ export function NeedsTab({ refused, reason }: { refused: RefusedPress | null; re
     }
     go(t, needSection(n));
   };
-  if (refused === null && view.needs.length === 0 && escorts === null) {
+  const asks = view.rejoins ?? [];
+  if (refused === null && view.needs.length === 0 && escorts === null && asks.length === 0) {
     return <HostEmpty>Nothing needs you. Near misses, held transfers, a silent terminal or Trabolta's worker going quiet show up here.</HostEmpty>;
   }
   return (
     <ul className="host-rows host-needs">
+      {asks.map((a) => (
+        <RejoinRow key={a.request} ask={a} />
+      ))}
       {escorts !== null && <EscortsRow wanted={wanted} text={escorts.text} />}
       {refused !== null && (
         <li className="host-need refused">
@@ -52,6 +57,28 @@ export function NeedsTab({ refused, reason }: { refused: RefusedPress | null; re
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Wave 23: a phone asking to be a joined guest again. Check it's them
+ *  (their face, their badge), then let them in — or don't. */
+function RejoinRow({ ask }: { ask: RejoinAsk }) {
+  const { calls, run, now } = useHost();
+  return (
+    <li className="host-need rejoin" data-testid="host-need-rejoin">
+      <div className="host-row-btn">
+        <span className="host-person-body">
+          <span className="host-need-text">🔁 {ask.name} wants back in</span>
+          <span className="host-need-detail">{rejoinDetail(ask, now)}</span>
+        </span>
+      </div>
+      <ul className="host-subrows">
+        <li className="host-subrow">
+          <ActButton label="✅ Let them in" onClick={() => run(`🔁 ${ask.name} is back in`, () => calls.rejoin(ask.request, true))} />
+          <ActButton label="✋ Not them" onClick={() => run(`✋ Said no to ${ask.name}`, () => calls.rejoin(ask.request, false))} />
+        </li>
+      </ul>
+    </li>
   );
 }
 
