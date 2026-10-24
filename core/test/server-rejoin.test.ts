@@ -286,7 +286,10 @@ describe("ask a host", () => {
     expect(cues.json.rejoins).toHaveLength(1);
     expect((await mod(rt, "/api/mod/guest/rejoin", { request: ask.json.request, approve: false })).json.state).toBe("denied");
     expect((await mod(rt, "/api/mod/guest/rejoin", { request: ask.json.request, approve: true })).status).toBe(404);
-    expect((await post(rt, "/api/guest/rejoin/poll", { request: ask.json.request })).json).toMatchObject({ state: "denied", by: "Ada" });
+    // A director decided: the guest never reads their name (the phone says "A host").
+    const denied = await post(rt, "/api/guest/rejoin/poll", { request: ask.json.request });
+    expect(denied.json).toMatchObject({ state: "denied" });
+    expect(denied.json.by).toBeUndefined();
   });
 });
 

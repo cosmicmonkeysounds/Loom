@@ -176,7 +176,9 @@ describe("C8: callers", () => {
     await mod(rt, "/api/mod/prime/release", { character: "Task Manager" });
     expect((await hostView(rt)).cues.caller ?? null).toBeNull();
     await mod(rt, "/api/mod/caller", { on: true });
-    expect((await hostView(rt)).cues.caller).toMatchObject({ name: "Ada" });
+    // A director's claim: the directors read their name, a host "Director" (2026-10-24).
+    expect(((await modGet(rt, "/api/state?role=mod&cues=1")).json.cues as { caller?: { name: string } }).caller?.name).toBe("Ada");
+    expect((await hostView(rt)).cues.caller).toMatchObject({ name: "Director" });
     rt.restart();
     expect((await hostView(rt)).cues.caller ?? null).toBeNull();
   });
@@ -217,7 +219,7 @@ describe("C8: callers", () => {
     // A headless mod token (no author name) is "Director"; the phone's label wins.
     const phone = await call(rt, "POST", "/api/mod/caller", { on: true, label: "Phone · Bo" }, { moderator: true });
     expect(phone.json.caller).toMatchObject({ name: "Phone · Bo" });
-    expect((await hostView(rt)).cues.caller).toMatchObject({ name: "Phone · Bo" });
+    expect((await hostView(rt)).cues.caller).toMatchObject({ name: "Director" }); // a host never reads a director's name
     await call(rt, "POST", "/api/mod/caller", { on: false, label: "Phone · Bo" }, { moderator: true });
     expect((await hostView(rt)).cues.caller).toBeNull();
   });
