@@ -38,7 +38,6 @@ to 127.0.0.1 (`scripts/house-mac/alexa.md` → *Lock down the broker*).
 from __future__ import annotations
 
 import asyncio
-import fcntl
 import hashlib
 import json
 import logging
@@ -55,6 +54,14 @@ from ..modapi import ModApiError, ModClient
 from ..module import ConfigError, Context
 from .config import AlexaConfig, parse_alexa
 from .player import DeviceOutput, PlaybackError, chime, decode, say_direct, say_to_file
+
+try:  # POSIX (the Mac): flock
+    import fcntl
+
+    msvcrt = None
+except ImportError:  # Windows (the house PC): no fcntl, a byte-range lock instead
+    fcntl = None  # type: ignore[assignment]
+    import msvcrt  # type: ignore[no-redef]
 
 log = logging.getLogger("stagehand.alexa")
 
@@ -292,12 +299,21 @@ class Announcer:
 
 def try_lock(directory: str) -> int | None:
     """An exclusive lock on `<cache_dir>/player.lock`, or None if another
-    player on this machine holds it."""
+    player on this machine holds it.
+
+    `flock` on the Mac; on Windows (no `fcntl`) a non-blocking lock on the
+    file's first byte (`msvcrt.locking`, which raises PermissionError when
+    another process holds it). Either way closing the fd — or the process
+    dying — releases it, which is what `single_player`'s takeover relies on."""
     Path(directory).mkdir(parents=True, exist_ok=True)
     fd = os.open(os.path.join(directory, "player.lock"), os.O_RDWR | os.O_CREAT, 0o644)
     try:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
+        if fcntl is not None:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        else:
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+    except OSError:  # BlockingIOError (flock) / PermissionError (msvcrt): held
         os.close(fd)
         return None
     return fd

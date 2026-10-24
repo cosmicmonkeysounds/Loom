@@ -418,3 +418,75 @@ def test_say_argv_never_reads_the_announcement_as_a_flag():
     assert argv == ["say", "-v", "Samantha", "-o", "/tmp/a.aiff", "--", "-o/Users/x/somefile hi"]
     assert say_argv("Hi", None, device="MOTU") == ["say", "-a", "MOTU", "--", "Hi"]
     assert say_argv("-", None) == ["say", "--", "-"]
+
+
+class _FakeMsvcrt:
+    """`msvcrt.locking` as Windows behaves: one holder per file, the
+    second caller gets PermissionError (the house PC has no `fcntl`)."""
+
+    LK_NBLCK = 2
+
+    def __init__(self) -> None:
+        self.held: dict[str, int] = {}
+        self.calls: list[tuple[int, int, int]] = []
+
+    def locking(self, fd: int, mode: int, nbytes: int) -> None:
+        import os
+
+        self.calls.append((fd, mode, nbytes))
+        key = str(os.fstat(fd).st_ino)
+        if key in self.held and self.held[key] != fd:
+            try:
+                os.fstat(self.held[key])
+            except OSError:
+                self.held.pop(key)  # the holder's fd closed: released
+            else:
+                raise PermissionError(13, "Permission denied")
+        self.held[key] = fd
+
+
+def test_the_player_lock_works_without_fcntl(tmp_path, monkeypatch):
+    """Windows: no `fcntl` → the lock is msvcrt's byte-range lock on the
+    first byte, and a held lock still answers None (never raises)."""
+    import os
+
+    import stagehand.alexa.module as am
+
+    fake = _FakeMsvcrt()
+    monkeypatch.setattr(am, "fcntl", None)
+    monkeypatch.setattr(am, "msvcrt", fake)
+    first = am.try_lock(str(tmp_path))
+    assert first is not None
+    assert fake.calls == [(first, _FakeMsvcrt.LK_NBLCK, 1)]
+    assert am.try_lock(str(tmp_path)) is None  # a second player stands by
+    os.close(first)  # the holder dies → released
+    again = am.try_lock(str(tmp_path))
+    assert again is not None
+    os.close(again)
+
+
+def test_the_alexa_module_imports_with_no_fcntl(monkeypatch):
+    """`import fcntl` used to sit at the top of alexa/module.py, so the
+    audio router (which imports it) died with ModuleNotFoundError on Windows."""
+    import builtins
+    import importlib
+    import sys
+
+    real_import = builtins.__import__
+
+    def no_fcntl(name, *args, **kwargs):
+        if name == "fcntl":
+            raise ImportError("No module named 'fcntl'")
+        if name == "msvcrt":
+            return _FakeMsvcrt()
+        return real_import(name, *args, **kwargs)
+
+    saved = {k: sys.modules[k] for k in ("stagehand.alexa.module",) if k in sys.modules}
+    monkeypatch.setattr(builtins, "__import__", no_fcntl)
+    try:
+        sys.modules.pop("stagehand.alexa.module", None)
+        mod = importlib.import_module("stagehand.alexa.module")
+        assert mod.fcntl is None and mod.msvcrt is not None
+    finally:
+        monkeypatch.setattr(builtins, "__import__", real_import)
+        sys.modules.update(saved)
