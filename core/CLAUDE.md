@@ -154,9 +154,10 @@ server snapshots at launch (`house.json` + `house.shed.json`,
 `facts.json`, `audio.json`, `lights.json`), the agent's persona and mind
 files (`trabolta.persona.md`, `trabolta.mind.md`, runtime inputs for
 stagehand), and the crew's docs: `README.md` (the runbook and
-integration contract), `SHOW.html` (the generated show book), `OCT31.md`
-(the crunch plan; its `**Pre-show checklist**` is parsed by
-`scripts/ops/checklist.sh`), `DESIGN.md`, `DEMO.md`, the `SIGNOFF-*.md`
+integration contract), `SHOW.html` (the generated show book), `SHOWNIGHT.md`
+(the night-of runbook; its Pre-show checklist is parsed by
+`scripts/ops/checklist.sh` and pinned by `scripts/ops/test/run.sh`),
+`TECH.md` (the machines), `OCT31.md` (build history), `DESIGN.md`, `DEMO.md`, the `SIGNOFF-*.md`
 sheets and `cast-packs/`.
 
 Several of those docs are read by tests or scripts (row formats, counts,
