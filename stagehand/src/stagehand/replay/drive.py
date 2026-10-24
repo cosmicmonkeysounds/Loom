@@ -1,5 +1,5 @@
 """Driving a run: the lock, the rig check, the scratch server + worker, the
-console mirror, the script driver, and `offline` (CONTRACTS.md §C7.1).
+console mirror, the script driver, and `offline` (the wave 12 contract §C7.1).
 
 Safety, in code:
 

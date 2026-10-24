@@ -1,4 +1,4 @@
-"""The mind file's phase table (CONTRACTS.md §C4): parse, inherit, validate."""
+"""The mind file's phase table (the wave 12 contract §C4): parse, inherit, validate."""
 
 from __future__ import annotations
 
@@ -165,7 +165,7 @@ def test_the_shipped_mind_file_parses_and_every_card_validates():
         assert set(card.drives) == set(p.drives) and all(0 <= v <= 100 for v in card.drives.values())
         assert not p.secrets.leaks(card.brief) and not p.secrets.leaks(card.cue)
     assert set(p.stage_cards) <= set(p.stages)
-    # The catchphrases are the persona's (CONTRACTS.md §C4.4).
+    # The catchphrases are the persona's (the wave 12 contract §C4.4).
     assert p.catchphrases == ("Your request has been logged", "Please wait", "This program has performed an operation")
 
 

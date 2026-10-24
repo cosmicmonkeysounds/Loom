@@ -86,7 +86,7 @@ VOICE_LAYOUTS = ("lean", "classic")
 
 @dataclass(frozen=True)
 class VoiceSettings:
-    """`agents.voice:` — read only in `mind_mode: new` (CONTRACTS.md §C5.1)."""
+    """`agents.voice:` — read only in `mind_mode: new` (the wave 12 contract §C5.1)."""
 
     memo: bool = True
     repeat_guard: bool = True

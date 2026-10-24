@@ -219,7 +219,7 @@ STAGES_KEY = "_stages"
 
 @dataclass(frozen=True)
 class PhaseCard:
-    """One `Night.phase`'s card (CONTRACTS.md §C4.1), inheritance resolved:
+    """One `Night.phase`'s card (the wave 12 contract §C4.1), inheritance resolved:
     `stage` / `favours` / `powers` / `tell` come from the card before when
     left out, `drives` merge over the card before's, and `brief` never
     inherits (no brief → the card's `cue`, else "")."""
@@ -535,7 +535,7 @@ def _frontmatter(text: str, source: str) -> dict[str, Any]:
 
 
 def parse_mind_table(text: str, source: str = "<mind>") -> PhaseTable:
-    """The mind file's phase table (wave 12, CONTRACTS.md §C4): a card per
+    """The mind file's phase table (the wave 12 contract §C4): a card per
     `Night.phase` and a paragraph per declared stage, validated. Every
     failure is a `ConfigError` (the worker will not boot; `check` fails).
     A bare cue string is a card with only `cue:`."""

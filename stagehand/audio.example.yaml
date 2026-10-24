@@ -1,16 +1,18 @@
-# stagehand — the house speaker router (the `audio` module), on the house Mac.
+# stagehand — the house speaker router (the `audio` module), on the machine
+# wired to the interface (for Oct 31, John's MacBook by default).
 #
 #   uv run stagehand check --config audio.example.yaml        # the device vs audio.json
 #   uv run stagehand run   --config audio.example.yaml --only audio
-#   uv run stagehand launchd install --job audio --config trapped.house.yaml
+#   uv run stagehand launchd install --job audio --config trapped.macbook.yaml   # a Mac
+#   uv run stagehand tasks install --job audio --config trapped.desktop.yaml     # Windows
 #
 # What the speakers are, which output each is wired to, the input→output
 # matrix and where every story sound goes all live in the event's
 # `audio.json` (the map editor's Audio panel, GET /api/mod/audio) — this
-# section only says what the router is allowed to do on this Mac.
+# section only says what the router is allowed to do on this machine.
 #
 # On the show, the `audio:` section lives in trapped.house.yaml (beside
-# `show:`), not a file of its own: the `show` job reads it to know whether
+# `show:`; the machine files extend it), not a file of its own: the `show` job reads it to know whether
 # it still sends its OSC `sound X` cues. Since wave 18b the show's router
 # plays every sound and the announcements (QLab and the alexa player are
 # retired there); this generic example keeps both switches off.
@@ -30,7 +32,7 @@ audio:
   # Opt-in, twice (decision D6):
   play_sounds: false   # true: the router plays every `sound X`; the `show`
                        # module then skips its OSC `sound` cues (no double play)
-  announce: false      # true: the router plays `do announce` (chime + `say`)
+  announce: false      # true: the router plays `do announce` (chime + `say` / SAPI)
                        # on audio.json `announce.to` — remove the `alexa:`
                        # section first (one owner of the house's voice)
 
@@ -38,7 +40,9 @@ audio:
   # false opens an output-only stream: no microphone permission needed.
   passthrough: true
 
-  # device: "MOTU"     # override audio.json's device.name (a CoreAudio substring)
+  # device: "MOTU"     # override audio.json's device.name (a substring of the device name)
+  # host_api: asio     # Windows: open the interface through ASIO (one N-channel device)
+  # voice_engine: auto # auto (SAPI on Windows, `say` elsewhere) | say | sapi
   # rate: 48000        # default: audio.json's device.rate, else the device's own
   blocksize: 512
   latency: high        # low | high | seconds

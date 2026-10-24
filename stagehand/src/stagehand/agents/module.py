@@ -83,7 +83,7 @@ CompleteFn = Callable[[list[dict[str, str]], LlmConfig], Awaitable[Any]]
 CONTROL_ACTIONS = ("reset", "survey", "nudge", "set", "forget", "thinking", "effort", "pause", "rerun", "rewrite")
 #: How often a director's waiting Rewrite / re-run looks for an idle worker.
 DIRECTOR_IDLE_S = 0.25
-#: The new mind's quiet-conversation summary (CONTRACTS.md §C5.2).
+#: The new mind's quiet-conversation summary (the wave 12 contract §C5.2).
 QUIET_TURNS = 3
 QUIET_S = 120.0
 QUIET_TICK_S = 5.0
@@ -673,7 +673,7 @@ class Agents:
                     model = voice  # the new mind only ever re-runs voice-model calls
                 if new and model is None:
                     # A reflect / survey from a classic run: the new mind never
-                    # calls the orchestrator's model (CONTRACTS.md §C5.2).
+                    # calls the orchestrator's model (the wave 12 contract §C5.2).
                     outcomes["ok"] = False
                     outcomes["error"] = f"classic thought ({thought.kind}): re-run it in mind_mode: classic"
                     continue
@@ -1074,7 +1074,7 @@ class Agents:
         return build_lean_messages(persona, req, ctx)[0]["content"]
 
     async def _rewrite(self, character: str, by: str, gen: int | None = None) -> None:
-        """A director's Rewrite brief (CONTRACTS.md §C6.1): one voice call
+        """A director's Rewrite brief (the wave 12 contract §C6.1): one voice call
         from the phase card + a digest built in code; every line that leaks
         a `never` word, names an answer word or judges a hunt topic is
         dropped; the rest is the brief, `by: director`, until the next card."""
@@ -1166,7 +1166,7 @@ class Agents:
         return self._quiet_due(now, phase)
 
     def _quiet_due(self, now: float, phase: str | None = None) -> tuple[str, str] | None:
-        """The next conversation to condense, or None (CONTRACTS.md §C5.2).
+        """The next conversation to condense, or None (the wave 12 contract §C5.2).
         `phase`: the night's phase when known (the facts), else each
         character's own (`_quiet_phase`)."""
         if self.tasks or self._inflight or self.judging:

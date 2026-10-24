@@ -106,7 +106,7 @@ def test_report_is_what_the_director_sees():
 
 
 def test_an_update_that_changes_nothing_touches_nothing_and_writes_no_revision():
-    """CONTRACTS.md §C6.3: brief and mood count as touched only on a real change."""
+    """The wave 12 contract §C6.3: brief and mood count as touched only on a real change."""
     m = Mind("Trabolta", "evt")
     m.saw_exchange("g1", "Ada", "guest", "t", 1)
     assert m.apply({"brief": "Be brisk.", "mood": "dry", "person": {"trust": 40}, "world_add": ["w"], "thread_summary": "s"}, speaker_id="g1", thread_key="t", upto=2)

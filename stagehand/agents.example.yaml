@@ -1,4 +1,5 @@
-# loom-stagehand — the agents machine (the laptop running Ollama). Copy to
+# loom-stagehand — the agents machine (the laptop running Ollama; for Oct 31,
+# John's MacBook, beside the audio router). Copy to
 # laptop.yaml and edit. This machine runs the `agents` module: it voices
 # every CHARACTER marked `mind: external` that has a persona below.
 #

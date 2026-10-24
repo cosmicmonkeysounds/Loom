@@ -32,7 +32,7 @@ already rang (the story often writes `do announce …` then `sound announce_chim
 
 Anyone who can reach the broker can publish `show/announce`, so a line
 is clipped to `MAX_TEXT` characters; bind Mosquitto's anonymous listener
-to 127.0.0.1 (`scripts/house-mac/alexa.md` → *Lock down the broker*).
+to 127.0.0.1 (`scripts/house-macbook/audio.md` → *Lock down the broker*).
 """
 
 from __future__ import annotations

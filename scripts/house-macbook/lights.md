@@ -1,4 +1,4 @@
-# The house lights job on the house Mac (wave 20)
+# The house lights job (`lights`)
 
 Stagehand's **`lights`** module turns the story's `cue <look>` into
 Zigbee2MQTT and WLED commands, for every look the event's `lights.json`
@@ -15,21 +15,38 @@ zigbee2mqtt/bridge/devices ─► stagehand lights ─► POST /api/mod/lights/d
 - **What the lights are, where they hang, what each look does**: the event's
   `lights.json`, edited on the map editor's 💡 Lights tab. The repo's copy is
   `core/examples/trapped-in-the-internet/lights.json`.
-- **Where Z2M is**: the `lights:` section of `stagehand/trapped.house.yaml`.
+- **Where it runs**: on **John's Desktop (Windows)** for Oct 31, beside
+  Zigbee2MQTT and Mosquitto, as the Task Scheduler task
+  `\Loom\stagehand-lights` ([`scripts/house-desktop/README.md`](../house-desktop/README.md) §4).
+  Its section is on in `stagehand/trapped.desktop.yaml`. On a Mac it is the
+  commented-out `lights:` section of `stagehand/trapped.house.yaml` and a
+  launchd job.
 - **The code**: `stagehand/src/stagehand/lights/`.
-- **Logs**: `~/Library/Logs/stagehand/lights.log`.
+- **Logs**: `%LOCALAPPDATA%\stagehand\logs\lights.log` (Windows),
+  `~/Library/Logs/stagehand/lights.log` (macOS).
 - **Health**: MQTT `health/lights` (`online`, `lost` on a crash) and
   `health/lights/stats` (retained: fixtures, looks, devices, last look, Z2M
   online / offline).
 
 ## Install (after Zigbee2MQTT runs: [`zigbee.md`](./zigbee.md))
 
-1. Uncomment the `lights:` section at the bottom of
+1. On the Desktop: nothing to uncomment (`trapped.desktop.yaml` has the
+   section). On a Mac: uncomment the `lights:` section at the bottom of
    `stagehand/trapped.house.yaml`.
 2. Check, then install the job, then restart `show` (it now hands every
    look `lights.json` defines over to this job, `take_looks: true`):
 
+   ```powershell
+   # the Desktop (Windows); .\start-stagehand.ps1 in scripts\house-desktop does all of it
+   cd C:\loom\stagehand
+   uv run stagehand check --config trapped.desktop.yaml --only lights
+   uv run stagehand tasks install --job lights --config trapped.desktop.yaml
+   uv run stagehand tasks restart --job show
+   uv run stagehand tasks status --job lights
+   ```
+
    ```bash
+   # a Mac
    cd stagehand
    uv run stagehand check --config trapped.house.yaml --only lights
    uv run stagehand launchd install --job lights --config trapped.house.yaml
@@ -44,12 +61,15 @@ zigbee2mqtt/bridge/devices ─► stagehand lights ─► POST /api/mod/lights/d
 
 ## By hand
 
+On the Desktop use `--config trapped.desktop.yaml` (on a Mac,
+`trapped.house.yaml`):
+
 ```bash
-uv run stagehand lights devices --config trapped.house.yaml                 # Z2M's devices, the module, the config
-uv run stagehand lights test server-room-rgb --config trapped.house.yaml    # identify (the okay blink)
-uv run stagehand lights test heart_wake --config trapped.house.yaml         # play a look
-uv run stagehand lights test server-room-rgb --color '#FF0000' --brightness 200 --config trapped.house.yaml
-uv run stagehand lights pair --seconds 120 --config trapped.house.yaml      # let a new device join (0 closes)
+uv run stagehand lights devices --config trapped.desktop.yaml                 # Z2M's devices, the module, the config
+uv run stagehand lights test server-room-rgb --config trapped.desktop.yaml    # identify (the okay blink)
+uv run stagehand lights test heart_wake --config trapped.desktop.yaml         # play a look
+uv run stagehand lights test server-room-rgb --color '#FF0000' --brightness 200 --config trapped.desktop.yaml
+uv run stagehand lights pair --seconds 120 --config trapped.desktop.yaml      # let a new device join (0 closes)
 ```
 
 These go through the event server, so the job must be running and
@@ -71,7 +91,8 @@ connected; with the uplink down use `mosquitto_pub` (`zigbee.md` §7).
   `heart_door_open`; else the story's `Night.heart_look`; else `boot`
   (`heart_idle`). It keeps no state file of its own.
 - **Offline.** It caches the last `lights.json` and `house.json` in
-  `~/Library/Caches/stagehand-lights`, so a restart with the uplink down
+  `%LOCALAPPDATA%\stagehand\lights` (Windows) or
+  `~/Library/Caches/stagehand-lights` (macOS), so a restart with the uplink down
   still plays (from the feed once it is back).
 
 ## When something is wrong
@@ -80,5 +101,5 @@ connected; with the uplink down use `mosquitto_pub` (`zigbee.md` §7).
 |---|---|
 | The bulb ignores the story | `lights.log` (`look … →` lines); `stagehand lights devices` (is the module online, is the device named `server_room_rgb`?) |
 | A look plays twice / fights a scene | the `show` job was not restarted after the install (it still has a YAML rule for that cue); the bulb was added to the Z2M `house` group (a house look then reaches it) |
-| Identify / Test does nothing | `stagehand lights devices` → module offline: `launchctl kickstart -k gui/$(id -u)/com.mapsandducks.stagehand.lights` |
+| Identify / Test does nothing | `stagehand lights devices` → module offline: `.\start-stagehand.ps1 -Restart lights` on the Desktop (`uv run stagehand launchd restart --job lights` on a Mac) |
 | Pair new device does nothing | the same; or Z2M offline (`zigbee.md`) |

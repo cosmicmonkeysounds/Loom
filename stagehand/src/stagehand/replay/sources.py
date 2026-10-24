@@ -1,4 +1,4 @@
-"""Scripts, placeholders, answer words and the redactor (CONTRACTS.md §C7.2).
+"""Scripts, placeholders, answer words and the redactor (the wave 12 contract §C7.2).
 
 A **script** is a JSON document:
 
@@ -61,7 +61,7 @@ class ScriptError(ValueError):
 
 
 def fold(text: Any) -> str:
-    """CONTRACTS.md's fold: lowercase, every run of non-`a-z0-9` → one space, trim."""
+    """The wave 12 contract's fold: lowercase, every run of non-`a-z0-9` → one space, trim."""
     return _FOLD.sub(" ", str(text).lower()).strip()
 
 

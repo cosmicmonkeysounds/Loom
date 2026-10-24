@@ -1,4 +1,4 @@
-"""The replay harness (wave 12, CONTRACTS.md §C7): the same scripts fed
+"""The replay harness (the wave 12 contract §C7): the same scripts fed
 through today's mind and the new one, scored against the K-04 bars.
 
     uv run python -m stagehand.replay extract --trace <jsonl> --out <script.json>

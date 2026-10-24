@@ -229,11 +229,11 @@ class HouseLights:
                     problems.append(f"lights.config_file: {err}")
         probe = probe_broker(self.cfg)
         if probe is None:
-            problems.append(f"no MQTT broker at {self.cfg.mqtt.host}:{self.cfg.mqtt.port} (is Mosquitto running on this Mac?)")
+            problems.append(f"no MQTT broker at {self.cfg.mqtt.host}:{self.cfg.mqtt.port} (is Mosquitto running on this machine?)")
             return problems
         state, devices = probe
         if state is not True:
-            problems.append(f"Zigbee2MQTT is not online ({self.cfg.z2m_base}/bridge/state: {'offline' if state is False else 'nothing retained'}) — scripts/house-mac/zigbee.md")
+            problems.append(f"Zigbee2MQTT is not online ({self.cfg.z2m_base}/bridge/state: {'offline' if state is False else 'nothing retained'}) — scripts/house-desktop/README.md §3 on Windows, scripts/house-macbook/zigbee.md on a Mac")
         doc = self._local_doc()
         if doc is not None and devices is not None:
             names = {d["friendly"] for d in devices}

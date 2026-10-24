@@ -1,4 +1,4 @@
-"""Wave 12 lane W1: the lean voice's guards (CONTRACTS.md §C2.2).
+"""Wave 12 lane W1: the lean voice's guards (the wave 12 contract §C2.2).
 
 Every secret word here is made up; the shipped-show tests read the real
 mind file and never print or write a word from it.

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  The fake Alexa (K-20) on the house Mac — a per-user LaunchAgent, not a
-  system daemon: CoreAudio output needs the logged-in user's session, so
+  The fake Alexa (K-20) on the MacBook (retired since wave 18b) — a
+  per-user LaunchAgent, not a system daemon: CoreAudio output needs the logged-in user's session, so
   the Mac auto-logs-in that user. Template: install-alexa.sh fills the
   __UV__ / __STAGEHAND__ / __CONFIG__ / __LOG__ / __PATH__ placeholders and
   loads it. Retired for Trapped in the Internet (wave 18b: the speaker

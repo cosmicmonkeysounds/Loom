@@ -31,7 +31,7 @@ def flat(text) -> str:
 
 
 def cue_of(phase: str) -> str:
-    """What the classic orchestrator is handed (CONTRACTS C4.2: cue, else brief)."""
+    """What the classic orchestrator is handed (the wave 12 contract §C4.2: cue, else brief)."""
     card = phase_table()[phase]
     return flat(card) if isinstance(card, str) else flat(card.get("cue") or card.get("brief"))
 
@@ -352,7 +352,7 @@ CATCHPHRASES = ("your request has been logged", "please wait", "this program has
 
 
 def resolved_cards() -> dict[str, dict]:
-    """CONTRACTS C4.1's inheritance, in file order: stage / favours / powers
+    """The wave 12 contract §C4.1's inheritance, in file order: stage / favours / powers
     / tell carry over, drives merge, the brief never does."""
     front = mind_front()
     prev = {"stage": front["stages"][0], "favours": "none", "drives": dict(front["drives"]), "powers": [], "tell": []}
@@ -367,7 +367,7 @@ def resolved_cards() -> dict[str, dict]:
 
 
 def test_the_phase_table_is_well_formed():
-    # The rules W2's parser and `stagehand check` enforce (CONTRACTS C4.3),
+    # The rules W2's parser and `stagehand check` enforce (the wave 12 contract §C4.3),
     # checked here on the plain YAML so the show text is right before either.
     front = mind_front()
     stages, drives = front["stages"], front["drives"]

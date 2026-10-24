@@ -5,7 +5,12 @@ machines. This folder is the Windows half: what runs on John's Desktop, how
 to set it up once, how to start it on show night, and what to do when
 something breaks. The MacBook half (Ollama + Trabolta's `agents` worker, the
 director's Run console, `ship` / `sync-show` / `showbackup`, and by default
-the speaker router) keeps its macOS runbooks in `scripts/house-mac/`.
+the speaker router) keeps its macOS runbooks in `scripts/house-macbook/`.
+
+Stagehand itself (the modules, the config files, `extends:`, the CLI) is
+described in [`stagehand/README.md`](../../stagehand/README.md); the show's
+cross-machine diagnostics (`pnpm showctl …`) in
+[`scripts/show/README.md`](../show/README.md).
 
 | Machine | Runs |
 |---|---|
@@ -111,7 +116,7 @@ folder to `C:\zigbee2mqtt\data\` instead of `-WriteConfig`** and change only
 re-pairing every bulb. Back up `data\` after the first start (never commit
 it). `-WriteConfig` never overwrites an existing config.
 
-Then follow `scripts/house-mac/zigbee.md` from step 5 (the lights job before
+Then follow `scripts/house-macbook/zigbee.md` from step 5 (the lights job before
 pairing, pairing the bulb as `server_room_rgb`, `power_on_behavior: on`,
 placing it in the map editor's 💡 Lights tab, ▶ Test, Save to project): the
 MQTT commands there work the same with `"C:\Program Files\mosquitto\mosquitto_pub.exe"`.

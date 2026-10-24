@@ -1,4 +1,4 @@
-"""Wave 12 shared shapes — frozen by CONTRACTS.md §C3.5.
+"""Wave 12 shared shapes — frozen by the wave 12 contract §C3.5.
 
 Byte-identical in every lane that adds it; nobody edits it in a lane.
 The lean voice (voice.py) renders these; the story mind (module.py /
@@ -79,7 +79,7 @@ class VoiceContext:
     phase: PhaseView
     person: PersonCard
     said: Said = field(default_factory=Said)
-    #: ≤ 4 lines, already worded (CONTRACTS.md §C3.4).
+    #: ≤ 4 lines, already worded (the wave 12 contract §C3.4).
     since: tuple[str, ...] = ()
     whispers: tuple[str, ...] = ()
     options: VoiceOptions = field(default_factory=VoiceOptions)

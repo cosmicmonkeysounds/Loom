@@ -1,4 +1,4 @@
-"""`mind_mode: classic` is today's worker, byte for byte (CONTRACTS.md §C5.4).
+"""`mind_mode: classic` is today's worker, byte for byte (the wave 12 contract §C5.4).
 
 `fixtures/classic/expected.json` was produced by the base branch's code
 (`trabolta/answers`) from the synthetic fixtures beside it; see

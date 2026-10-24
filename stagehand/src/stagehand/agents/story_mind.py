@@ -6,7 +6,7 @@ new mind keeps it in plain code from what the story already says:
   - **the phase card** (`apply_phase`): the mind file's card for the current
     `Night.phase` sets the stage, favours, drives, live powers, the `tell`
     list and the brief — one revision `by: story` per change of phase
-    (CONTRACTS.md §C4.5). A director's override holds until the next one.
+    (the wave 12 contract §C4.5). A director's override holds until the next one.
   - **the person card** (`absorb` + `person_card`): who is talking, what the
     story says about them (`recent`: their gifts, filings, the mark, the
     Trust Chart; their `trust`), the first-met line, the voice's own memos —
@@ -40,7 +40,7 @@ from .secrets import Secrets
 
 log = logging.getLogger("stagehand.agents.story_mind")
 
-#: Lines "since you last spoke" may carry (CONTRACTS.md §C3.4).
+#: Lines "since you last spoke" may carry (the wave 12 contract §C3.4).
 MAX_SINCE = 4
 #: History lines a summary is shown.
 SUMMARY_HISTORY = 8
@@ -60,7 +60,7 @@ def _warn_once(key: str, message: str) -> None:
 
 
 def fold(text: Any) -> str:
-    """CONTRACTS.md's fold: lowercase, every run of non `a-z0-9` → one space, trim."""
+    """The wave 12 contract's fold: lowercase, every run of non `a-z0-9` → one space, trim."""
     return re.sub(r"[^a-z0-9]+", " ", str(text).lower()).strip()
 
 
@@ -129,7 +129,7 @@ def apply_phase(mind: Mind, persona: Persona, phase: str) -> list[str] | None:
 
 
 def phase_view(mind: Mind, persona: Persona, req: dict[str, Any], stage_from_phase: bool = True) -> PhaseView:
-    """What the voice's P2 shows (CONTRACTS.md §C3.1), from the mind as the
+    """What the voice's P2 shows (the wave 12 contract §C3.1), from the mind as the
     cards (and any director) left it."""
     world = req.get("world") or {}
     allowed = _allowed_power_ids(persona, req)
@@ -242,7 +242,7 @@ def gift_line(title: str) -> str:
 
 def absorb(mind: Mind, persona: Persona, req: dict[str, Any], phase: str) -> tuple[Dossier, tuple[str, ...]]:
     """Fold what the story says about the speaker into their dossier, and
-    word what moved since their previous turn (CONTRACTS.md §C3.3–§C3.4).
+    word what moved since their previous turn (the wave 12 contract §C3.3–§C3.4).
     Returns the dossier and the "since you last spoke" lines."""
     sid, name, kind = speaker_of(req)
     d = mind.dossier(sid, name, kind)
@@ -401,7 +401,7 @@ def note_heart(d: Dossier, req: dict[str, Any], at_heart: bool) -> None:
     """Move the dossier's heart line (`heart_seq`) on after a turn: the lines
     of a turn taken at his heart, and his reply to it (the run of his own
     lines right after, seen at their next turn), are heart lines a quiet
-    summary never reads (CONTRACTS.md §C2.3). Conservative: everything at or
+    summary never reads (the wave 12 contract §C2.3). Conservative: everything at or
     before the newest heart line counts."""
     history = sorted((h for h in req.get("history") or [] if isinstance(h, dict)), key=_seq)
     if d.heart_open:
