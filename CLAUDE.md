@@ -221,6 +221,75 @@ backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
 
+**Wave 21 — performers play, built 2026-10-23** (lanes
+`oct31-w21/{core,terminal,play,story}` merged `--no-ff` into
+`oct31-w21/integration`, then integration fixes (an actorless director
+press of a player's button, an empty PLAYER SELECT pop-out, Clippy's `CI N:`
+titles) and a live walk of Clippy's and Norton's booths on a no-DB scratch
+server at phone width; **not shipped**; contract and decisions in
+`core/examples/trapped-in-the-internet/SIGNOFF-w21.md`). The user's ask:
+*"Clippy should no longer be considered a "super" user / host that can call
+shots. Clippy and the AntiViruses are performers that are playing a game
+just like the "guests" are … gamefied elements … a mission tab too, like
+guests … they shouldn't have access to "all buttons"; their UI/UX should be
+simple, like the guests"*, then: Clippy's 21 cues to the hosts + directors,
+the three hosts keep their dock, performers get a Mission, a score, every
+action as a pick or pop-out and ceremony awards, and *"They have a trust
+score too, and can defect from Trabolta in sneaky or overt ways; Trabolta
+has no choice but to continue to be "allies" with them"* (reverses wave
+18's Q2 / Q39). **Language** (help `authoring/30-live-shows`,
+`33-live-verbs`, `90-cheat-sheet`, `92-common-mistakes`): CHARACTER
+`player: true` (`CharDef.player`), CHARACTER `private: a, b`
+(`CharDef.privateSlots`: never in an agent request, `/api/agent/facts`,
+`recent`, the dossier, a `watch:` / `badge:` / countdown or the screens),
+header `stat: self.<path> as <glyph> <label>[, for <who>][, while <cond>]`
+(`runtime/sim/stats.ts`), lints L1222 `PlayerCallsCue`, L1223
+`StatLineInvalid`, L1224 `PlayerNotAPart`, L1225 `PrivateSlotRead`.
+**Server:** `PrimeView.player` / `mission` / `stats`; a player booth gets
+only its own buttons, guest-visible countdowns, no act letter, only its own
+GROUP's staff rooms, never `calls` (`cueCallers` drops players) and no
+`staff` lines on a press; `CastSummary.player`; the Trust Chart ranks each
+player's `trust` beside the programs (`ScreenChartRow.staff`); a player's
+agent request carries `speaker.player` + `them.ranges`, and `adjust`
+`them.<slot>` moves a player speaker's declared slot; an actorless
+`/api/mod/signal` of a player's button fires as a non-player it names, else
+its one player, else 409 with the players. **Play** (help `play/07`, `14`,
+`15`): a player booth wears the guest frame (▣ MISSION title bar, `⊞ ·
+Mission · Chats · Scan`, the tray's ⭐ chip): Mission (the NOW card, big
+buttons that open PLAYER SELECT / a target / the scanner or press a global
+button, score tiles, Wanted / Wallet / Quest Log / Codex tiles, Also now),
+Chats (Your move · Messages · Team · Rooms · Chat log; Readouts are 📋
+Notes), a NEW MISSION pop-out, a plain Start menu + 👥 People; every booth's
+guest card lost All buttons, Earlier readouts, the raw id and the gate /
+value chips (hosts keep staff lines); `ClippyCueBar` → `CueBar`.
+**Terminal:** 🛡 STAFF rows on the Trust Chart slide + cutscene, the
+awards `award_staff_trusted` / `_points` / `_mole`. **Story** (all `//
+DRAFT w21`): `TRAIT Player` (score, trust −100..100, private `covert` /
+`caught`, `defected`) on Clippy (now `Greeter, Player`, out of GROUP Hosts)
+and the four Antivirus; no admin cue names anyone; YOUR GAME IS ON
+pop-outs; points per game act (stamped `Kernel.pressed_by`, so a host's
+press pays nobody); trust movers; 🤫 quiet favours from the Truther
+Download (look the other way, tip off, let a guess slide, slip 50
+Truthcoin; every third caught: −20 trust + a private warning), 📢 Defect
+openly (once, −50, a `!!` big moment, *Staff Defection* on the TV: he keeps
+them); Whose Side Are You On objectives; G10a–c staff awards before G11
+(The Mole last, `ceremony_done`; later cue numbers move down three);
+stagehand `them_adjust` passes `them.trust` through. **Open:** the show
+text awaits the user's sign-off (`SIGNOFF-w21.md`); McAfee's exchange pays
+per 🤝 press only; no 🔍 report between players; the classic late-night
+reflect estimate is 20472 of 20480 tokens; the bank, the Rust engine and
+the TextMate grammar don't know the new keys; nothing on a real phone yet.
+Suites on the integration branch: core 2661 (162 files, incl. Postgres),
+play 1336 (139), editor 566 (69), terminal 865 (77), reinstall/web 538,
+house 329 + 4 skipped, bank 148, stagehand 1040 + 2 skipped; loomcheck
+`--smoke` 35 files · 0 / 0; the guest's first load 144.98 kB (gate 145).
+**Deploy order (when the user says ship):** check the preview's roster
+first; the server first (`ship.sh`; additive), then `sync-show` **with its
+reload, before doors** (the composition changed), on the house Mac `git
+pull` + `stagehand launchd restart --job agents` (persona + `them_adjust`),
+Run → Mind → Reset; reload the terminals and the TV; reprint the cast packs
+after the sign-off.
+
 **Wave 20 — Trabolta's heart, the door sensor on the M4, the house lights,
 built 2026-10-22 → 23** (Stage A lanes `oct31-w20/{platform,firmware}`
 merged `--no-ff` into `oct31-w20/integration` (platform as
