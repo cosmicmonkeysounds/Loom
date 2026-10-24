@@ -368,6 +368,7 @@ token or the owning author's session.
 | Streams + state | `GET /events?role=guest\|prime\|mod`, `GET /api/state`, `GET /api/history` | `?lean=1` (house tools: no snapshots), `?delta=1` (keyed patches, `mod-patch.ts`), `?host=1` (the hosts' view), `?cues=1` (the director phone's cue sheet), `?as=<id>` (a director's exact lens on one participant) |
 | Joining | `POST /api/resolve-code`, `/api/identities{,/search,/pictures}`, `/api/guest/{register,resume,picture}`, `/api/prime/{login,logout}`, `/api/mod/login` | `identity.ts` (who may sign in as whom), `wiki.ts` (the program directory), `avatars.ts`, `routes/claims.ts` (reserved programs), `routes/n02.ts` (re-pair, release a part) |
 | Guest play | `/api/guest/{say,act,choose,widget,checkin,join,defect,escape}`, `/api/guest/codex/{redeem,share}`, `/api/guest/channel/{invite,leave}` | `routes/k13.ts` (room check-in), `routes/sides.ts` (which side a guest may join) |
+| Getting back in | `/api/guest/{enter,badge,resume}`, `/api/guest/rejoin{,/names,/poll}`, `/api/mod/guest/{rejoin,pair}`, `/api/mod/badges`, `/api/prime/login {part}` | `routes/rejoin.ts` (wave 23), `routes/n02.ts` |
 | Crews + factions | `/api/guest/crew/{found,invite,join,leave}`, `/api/guest/recruit{,/answer}`, `/api/guest/side/leave`, `/api/mod/crew/{rename,dissolve}` | `routes/crews.ts`; faction mode is `runtime/sim/crews.ts` |
 | Booths (performers) | `/api/scan`, `/api/prime/{act,card,cue,say,widget}`, `/api/prime/codex/share`, `/api/prime/channel/{invite,leave}` | a press or scan answers with `card` / `said` / `staff` / `replies` (`routes/press-lines.ts`) |
 | Directors (mod) | `/api/mod/{start,stop,reset,load,resync}`, `signal`, `beat`, `choose`, `say`, `broadcast`, `var`, `set`, `act`, `reveal`, `codex`, `quest`, `persona`, `impersonate{,/end}`, `message`, `clock`, `caller`, `codes`, `cards`, `log`, `recap`, `metrics` | `routes/k12.ts` (print sheet), `routes/cards.ts` (`/cards`), `routes/mod-log.ts`, `routes/recap.ts`, `routes/metrics.ts` |
@@ -751,6 +752,25 @@ Two planes:
   the part off every session holding it (a performer+admin session keeps
   admin), closes those booth streams, persists → `{ok, character,
   released}`; 404 for an unknown character. Nothing is journaled.
+- **Getting back in without a director** (wave 23, `server/routes/rejoin.ts`;
+  its header is the contract). **Badges**: `POST /api/mod/badges {from?,
+  count?}` lists printable blank badges (`B001…`, code =
+  `secretCode(claimSecret, "badge:<n>", 8)`, link
+  `<join base>/?code=<guest code>&badge=<code>`, who holds each);
+  `register {…, badge}` or `POST /api/guest/badge {badge}` (token) links
+  one (409 `{holder, name}` when it is someone else's); `POST
+  /api/guest/enter {passcode, badge | claim}` (no token, throttled) →
+  `{resumed: true, id, name, token}` or `{resumed: false}`; `/api/scan`
+  and `/api/mod/scan` take a badge as `target`; `GuestView.badge`. Links
+  persist in `badges.json` and die with every story restart. **Ask a
+  host**: `POST /api/guest/rejoin/names {passcode}`, `POST
+  /api/guest/rejoin {passcode, name}` → `{request}`, `POST
+  /api/guest/rejoin/poll {request}` → `pending | approved (token, once) |
+  denied | expired`; hosts see `rejoins` on the host view and the
+  `cues=1` view and answer `POST /api/mod/guest/rejoin {request, approve}`
+  (host allowlist). Ten minutes, memory only. **Cast cards**:
+  `/api/mod/codes` → `castLinks` (`?code=<prime>&part=<code>`);
+  `/api/prime/login {passcode, part}` takes the part from any holder.
 
 The owning author's BetterAuth session is accepted on `/e/:eventId/api/mod/*`
 and the gated mod reads, so authors moderate from the editor's Run mode

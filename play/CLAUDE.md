@@ -48,11 +48,25 @@ fails predeploy.
   (`lifecycle.ts`). A director's re-pair link (`?code=&pair=`) is a
   single-use credential, stripped from the URL in `main.tsx` before render
   (`resume.ts`).
+- **Getting back in** (wave 23, `rejoin.ts` + the lazy `rejoin-calls.ts`,
+  server `core/server/routes/rejoin.ts`). A printed badge
+  (`?code=&badge=`) links to a guest at join or from Me (🪪) and then
+  signs them in on any phone (`/api/guest/enter`) and is their pass at a
+  booth (`scan.ts`); a signed-in guest opening someone else's badge gets
+  the Recruit sheet, never a switch. A featured guest's `?claim=`
+  re-enters once joined. The join screen's *Already playing? Get back in*
+  (`guest/get-back-in.tsx`, lazy) scans / types a badge or asks a host
+  (`/api/guest/rejoin` → Needs and the director phone's *Let them in*). A
+  cast card (`?code=&part=`) signs in as its part and takes it from a lost
+  booth. `main.tsx` strips `badge` / `part` before render; `ui.tsx` runs
+  the entry (`cardPlan`). The page's store falls back to memory when
+  `localStorage` is blocked (`host.ts`).
 - **Streams reopen.** `client.ts` `openChatFeed` probes a dead
   `EventSource` (a Caddy 502 during a restart) and reopens on a 1 s → 15 s
   jittered backoff; the tray's live dot reads *reconnecting…*.
 - **Deep links.** `?unlock=` (codex), `?checkin=` (room sign), `?room=` /
-  `?go=` (a push tap or an exit), `?claim=`, `?pair=`, `?role=director`.
+  `?go=` (a push tap or an exit), `?claim=`, `?pair=`, `?badge=`,
+  `?part=`, `?role=director`.
   A link opened with no session lands on `LinkLanding`
   (`guest-scan.tsx`), never the picker.
 
@@ -129,7 +143,8 @@ draft, go live, end, the var table, the log, the Mind.
 ```
 src/
   ui.tsx · app-role.ts   role chooser + which app opens; lazy booth / director / help
-  main.tsx               entry; strips ?pair= before render
+  main.tsx               entry; strips ?pair= / ?badge= / ?part= before render
+  rejoin.ts · rejoin-calls.ts   getting back in: badge / cast-card links (first load), enter / ask-a-host / re-pair calls (lazy)
   types.ts               mirror of core's views + chat (keep in step with core/server/{views,chat}.ts)
   client.ts              api() POST + useChatStream / openChatFeed (SSE)
   host.ts · embed.tsx · embed-css.ts   the host seam and the shadow-root embed
