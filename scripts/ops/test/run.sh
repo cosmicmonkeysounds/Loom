@@ -431,6 +431,7 @@ echo "── showctl (scripts/show: show-night diagnostics)"
 # real CLI against fake-loom.mjs (health only: no moderator code given).
 SHOWCTL=(node --experimental-strip-types --no-warnings "$ROOT/scripts/show/showctl.ts")
 check "showctl unit tests" node --experimental-strip-types --no-warnings --test "$ROOT"/scripts/show/test/*.test.ts
+[ -x "$ROOT/core/node_modules/.bin/tsc" ] && check "showctl typechecks (erasable syntax only)" "$ROOT/core/node_modules/.bin/tsc" -p "$ROOT/scripts/show"
 check "showctl --help names every command" bash -c "out=\$(\"\$@\" --help) && for c in doctor status log roster terminals recap preflight fire; do grep -q \"showctl \$c\" <<<\"\$out\" || exit 1; done" _ "${SHOWCTL[@]}"
 check "showctl: an unknown command exits 2" bash -c "\"\$@\" nope >/dev/null 2>&1; [ \$? = 2 ]" _ "${SHOWCTL[@]}"
 showctl_against() { # mode → the doctor's exit code against fake-loom.mjs
