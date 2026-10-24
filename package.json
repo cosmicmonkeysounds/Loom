@@ -8,6 +8,7 @@
     "dev": "node scripts/dev.mjs",
     "sync-example": "pnpm -C core exec tsx scripts/sync-example.ts",
     "sync-show": "bash scripts/sync-show.sh",
+    "showctl": "node --experimental-strip-types --no-warnings scripts/show/showctl.ts",
     "house:sync": "pnpm --filter @loom/house goldens && pnpm --filter @loom/house sync",
     "test": "pnpm -r test",
     "test:vr": "bash reinstall/vr/test/run.sh",

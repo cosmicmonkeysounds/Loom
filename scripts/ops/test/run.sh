@@ -426,8 +426,32 @@ check "LOOM_TTS_URL defaults to off" grep -q 'LOOM_TTS_URL: \${LOOM_TTS_URL:-off
 check ".env.example leaves the server voice off" grep -q '^LOOM_TTS_URL=off$' "$ROOT/.env.example"
 check "no deploy / ops script names kokoro" bash -c "! grep -il kokoro '$ROOT'/deploy/*.sh '$ROOT'/scripts/ops/*.sh"
 
+echo "── showctl (scripts/show: show-night diagnostics)"
+# The unit tests run on a fake event server; the end-to-end checks drive the
+# real CLI against fake-loom.mjs (health only: no moderator code given).
+SHOWCTL=(node --experimental-strip-types --no-warnings "$ROOT/scripts/show/showctl.ts")
+check "showctl unit tests" node --experimental-strip-types --no-warnings --test "$ROOT"/scripts/show/test/*.test.ts
+[ -x "$ROOT/core/node_modules/.bin/tsc" ] && check "showctl typechecks (erasable syntax only)" "$ROOT/core/node_modules/.bin/tsc" -p "$ROOT/scripts/show"
+check "showctl --help names every command" bash -c "out=\$(\"\$@\" --help) && for c in doctor status log roster terminals recap preflight fire; do grep -q \"showctl \$c\" <<<\"\$out\" || exit 1; done" _ "${SHOWCTL[@]}"
+check "showctl: an unknown command exits 2" bash -c "\"\$@\" nope >/dev/null 2>&1; [ \$? = 2 ]" _ "${SHOWCTL[@]}"
+showctl_against() { # mode → the doctor's exit code against fake-loom.mjs
+  local out="$T/fake-loom.out" pid port rc
+  node "$HERE/fake-loom.mjs" "$1" > "$out" & pid=$!
+  for _ in $(seq 50); do grep -q '^ready ' "$out" 2>/dev/null && break; sleep 0.1; done
+  port="$(awk '/^ready /{print $2}' "$out")"
+  LOOM_MOD_CODE= SHOWCTL_CACHE="$T/showctl.json" "${SHOWCTL[@]}" doctor --server "http://127.0.0.1:$port" > "$T/doctor.out" 2>&1; rc=$?
+  kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
+  echo "$rc"
+}
+setup
+check "showctl doctor: a 200 health but no code is amber (exit 1)" eq "$(showctl_against up)" 1
+check "… and says the code is missing" grep -q 'LOOM_MOD_CODE is not set' "$T/doctor.out"
+check "showctl doctor: a 503 health is red (exit 2)" eq "$(showctl_against starting)" 2
+check "showctl doctor: nothing listening is red (exit 2)" bash -c "SHOWCTL_CACHE='$T/x.json' \"\$@\" doctor --server http://127.0.0.1:9 >/dev/null 2>&1; [ \$? = 2 ]" _ "${SHOWCTL[@]}"
+teardown
+
 echo "── syntax"
-for f in "$ROOT"/deploy/*.sh "$ROOT"/scripts/ops/*.sh "$ROOT"/scripts/accept/K-08.sh "$ROOT"/scripts/accept/K-19.sh; do
+for f in "$ROOT"/deploy/*.sh "$ROOT"/scripts/ops/*.sh "$ROOT"/scripts/accept/K-08.sh "$ROOT"/scripts/accept/K-19.sh "$ROOT"/scripts/show/showctl.sh; do
   [ -f "$f" ] && check "bash -n $(basename "$f")" bash -n "$f"
 done
 
