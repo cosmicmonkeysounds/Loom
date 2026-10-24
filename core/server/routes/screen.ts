@@ -691,6 +691,10 @@ export const SCREEN_NIGHT_VARS = {
   heart_look: "Night.heart_look",
   alarm_on: "Night.alarm_on",
   door_override: "Night.door_override",
+  // Wave 22: the patch bay on the server-room M4 posts `patch_changed`; a
+  // 🔌 / 💥 / ❌ press puts the story on the buttons until 🔌 Trust the
+  // patch bay, and the terminal's bridge stops posting while it holds.
+  patch_override: "Night.patch_override",
 } as const;
 /** A story var holding this names nobody / nothing yet (the show's "none"). */
 const NIGHT_NONE = "none";
@@ -736,6 +740,8 @@ export interface ScreenNight {
   alarm_on: boolean | null;
   /** (wave 20) `Night.door_override`: the story follows the 🚪 buttons, not the sensor. */
   door_override: boolean | null;
+  /** (wave 22) `Night.patch_override`: the story follows the 🔌 buttons, not the patch bay. */
+  patch_override: boolean | null;
 }
 
 // --- the results block (wave 18b) ----------------------------------------------
@@ -900,6 +906,16 @@ export interface ScreenDevice {
   doorFault?: string;
   /** A non-blocking warning (`dwn=`, `ldr_open`): the door state above still holds. */
   doorWarn?: string;
+  /** (wave 22) The patch bay on the door's board (`pb=`): the V–D cables in
+   *  its settled bay (0–16), or `fault`. Absent: no bay at this terminal.
+   *  Counts only: the pairs themselves never ride the heartbeat. */
+  patch?: number | "fault";
+  /** The settled bay is complete (`pbc=1|0`: exactly four pairs). */
+  patchComplete?: boolean;
+  /** Inputs reading between levels in the latest scan (`pbx=`). */
+  patchBetween?: number;
+  /** Why `patch === "fault"` (`pft=`: `no_port` | `stale` | `dup`). */
+  patchFault?: string;
 }
 
 /** What a terminal's `door=` may say (wave 20). */
@@ -917,7 +933,11 @@ export type ScreenMic = (typeof MIC_STATES)[number];
 /** The device fields off a poll's query (`audio=1|0`, `vis=v|h`,
  *  `bat=<0-100>[c]`, `fs=1|0`, `mic=<MIC_STATES>`, `ver=<build>`, wave 18b
  *  `ann=1|0`, wave 20 `door=<DOOR_STATES>`, `dlv=<0-4095>`, `dft=` /
- *  `dwn=<[a-z_]{1,24}>`); anything malformed is left out. */
+ *  `dwn=<[a-z_]{1,24}>`, wave 22 `pb=<0-16>|fault`, `pbc=1|0`, `pbx=<0-16>`,
+ *  `pft=<[a-z_]{1,24}>`); anything malformed is left out. */
+/** The most inputs a bay can report (`pb=` / `pbx=`). */
+export const PATCH_INPUTS_MAX = 16;
+
 export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   const d: ScreenDevice = {};
   const audio = q("audio");
@@ -945,6 +965,16 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   if (DOOR_CODE.test(dft)) d.doorFault = dft;
   const dwn = q("dwn");
   if (DOOR_CODE.test(dwn)) d.doorWarn = dwn;
+  const count = (v: string): number | null => (/^\d{1,2}$/u.test(v) && Number(v) <= PATCH_INPUTS_MAX ? Number(v) : null);
+  const pb = q("pb");
+  if (pb === "fault") d.patch = "fault";
+  else if (count(pb) !== null) d.patch = count(pb)!;
+  const pbc = q("pbc");
+  if (pbc === "1" || pbc === "0") d.patchComplete = pbc === "1";
+  const pbx = count(q("pbx"));
+  if (pbx !== null) d.patchBetween = pbx;
+  const pft = q("pft");
+  if (DOOR_CODE.test(pft)) d.patchFault = pft;
   return d;
 }
 
@@ -1523,6 +1553,7 @@ export class ScreenWatch {
       heart_look: named(SCREEN_NIGHT_VARS.heart_look),
       alarm_on: flag(SCREEN_NIGHT_VARS.alarm_on),
       door_override: flag(SCREEN_NIGHT_VARS.door_override),
+      patch_override: flag(SCREEN_NIGHT_VARS.patch_override),
     };
 
     // Wave 18b: the published results — the verdict for its window, else a
