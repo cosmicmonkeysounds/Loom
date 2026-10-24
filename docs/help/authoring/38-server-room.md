@@ -95,7 +95,7 @@ him back to full).
 
 ### In the simulation
 
-In both reinstallation games (the tent tablet and the headsets) he
+In both reinstallation games (the tent laptop and the headsets) he
 stands in the server-room doorway of the virtual basement hall, with his
 bar over his head. The chevrons never lead to him; the duck is
 elsewhere.
@@ -130,7 +130,7 @@ door, in the doorway or on his spot keeps it open until they walk clear.
 The real chess game is **only** on the wall terminal outside the
 server-room door — the **Server Door** terminal (`view=chess`; the
 kiosk runbook, `docs/trapped/kiosk.md`, has the provisioning link). Not
-on the tent tablet, not in a headset.
+on the tent laptop, not in a headset.
 
 - It is **awake all night** and never sleeps on the idle show. It shows
   THE KING, his bar (*n / 15*, *HE KNEELS* at 0), what a win is worth
@@ -476,7 +476,7 @@ combination plugged during the final reveal or the bob, before 📄,
 still ends the night.
 
 During the **banishment** (the advice ending) nobody is reinstalled: a
-duck found on the tent tablet says only *"Gerald cannot help you:
+duck found on the tent laptop says only *"Gerald cannot help you:
 everyone is banished. The way out is the hand jive, together."* — no
 golden egg, no Golden Duck in the Codex. The tablet and the headset
 show **GERALD CAN'T HELP** instead of the reinstallation, the wall
@@ -528,7 +528,7 @@ opens The Server Room on every phone. So:
   The Server Door terminal is green and awake, showing the King's bar.
 - **The King is at 15/15.** A rehearsal's hits stay on the bar until a
   restart or **👑**: check Run → House map, and press 👑 if he is down.
-- On the bench (the K-27 check): a hit on the tent tablet takes one
+- On the bench (the K-27 check): a hit on the tent laptop takes one
   point and a second one this visit is refused; a mate at the door
   terminal gives the code; four digit notes give the code; the door
   plays The Heart once (after 🤖) and asks for the door shut; shut, he

@@ -27,7 +27,7 @@
 
 | | |
 |---|---|
-| ABC fire extinguisher | [[EDIT: e.g. by the LED power supplies / beside the house Mac]] |
+| ABC fire extinguisher | [[EDIT: e.g. by the LED power supplies / beside John's Desktop]] |
 | Second extinguisher | [[EDIT]] |
 | First-aid kit | [[EDIT]] |
 | Breaker panel (the breaker map is taped beside it) | [[EDIT]] |
@@ -43,8 +43,8 @@ Anyone may call **ALL STOP** on the radio, or shout it, for any safety reason.
    After a server-room blackout it also holds the automatic dance: nothing
    flashes until the director presses 🪩 when the house manager says go.
    (The GO TO THE LIVING ROOM cover stays on the phones until then.)
-2. The tech operator: QLab **Esc** (panic), mute the TV voice, then the wall
-   switches. The safety bulbs always come back on from a wall switch.
+2. The tech operator: **■ Stop house sounds** (Run), mute the TV voice, then
+   the wall switches. The safety bulbs always come back on from a wall switch.
 3. The house manager leads people: **the stairs stay lit**, headlamp on, walk
    them to the living room or outside.
 4. Nobody restarts the show until the house manager says it is safe.

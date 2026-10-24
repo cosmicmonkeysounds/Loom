@@ -119,8 +119,9 @@ where you put it) and its position in that room.
 
 The **Audio** tab is the rest of the file, top to bottom:
 
-- **Interface** — the audio interface on the house Mac: its name (part of
-  the name the Mac shows: `828x` for the show's MOTU 828x), how many inputs
+- **Interface** — the audio interface on the computer that runs the
+  speaker router (at the show, John's MacBook): its name (part of
+  the name the computer shows: `828x` for the show's MOTU 828x), how many inputs
   and outputs we use, its rate, and **the device reports** — how many it
   must report when its layout is as planned. The show uses 24 in and 22 out
   of the 828x + an 8-channel ADAT expander, numbered as the 828x numbers
@@ -136,8 +137,8 @@ The **Audio** tab is the rest of the file, top to bottom:
   zone and cue), position and height, angle, gain in dB, its outputs as a
   grid (an output another speaker uses is marked) and its zones.
 - **Outputs** — a label per output and the speakers on it.
-- **Inputs** — a label per input and what it is: software (the house
-  Mac, a virtual return), a mic, or a line from another device.
+- **Inputs** — a label per input and what it is: software (the router's
+  computer, a virtual return), a mic, or a line from another device.
 - **Routing** — the inputs × outputs matrix. Tap a cell to send that input
   to that output at 0 dB, tap again to cut it; the selected cell has a
   gain field.
@@ -163,10 +164,10 @@ The **Audio** tab is the rest of the file, top to bottom:
 
 Hovering a speaker, a zone or a cue lights the speakers it reaches.
 
-**🔈 Test** on a speaker or an output makes the house Mac play a short
+**🔈 Test** on a speaker or an output makes the speaker router play a short
 tone there and say its name — the walk round the house with the Audio tab
 open. A speaker is tested only once it is saved. The header's badge says
-whether the house Mac's speaker router is listening (*router online*,
+whether the speaker router is listening (*router online*,
 *router last seen …*); a Test sent with nobody listening says it was only
 queued. **Recent tests** lists the last minute's.
 
@@ -179,14 +180,17 @@ writes `audio.json` into the project for the next launch and every
 co-writer; **Download JSON** gives you the file. With no file yet the tab starts from a blank
 16 in / 16 out interface.
 
-The house Mac's speaker router plays every story sound and every house
-announcement (the show's `trapped.house.yaml` turns both on; there is no
-QLab). Until each real sound file is in, it plays a labelled placeholder:
+The speaker router (stagehand's `audio` job, at the show on John's MacBook)
+plays every story sound and every house announcement (the show's
+`trapped.house.yaml` turns both on). An announcement reaches it as MQTT
+`show/announce` from stagehand's `show` job (on John's Desktop), so both
+jobs must be up and on the same broker. Until each real sound file is in, it plays a labelled placeholder:
 a short tone, then the sound's name spoken (`stagehand sounds
 placeholders`); a real file always wins, and `stagehand check` lists the
 placeholders still there. **■ Stop house sounds** on Run (or a host's
 phone) fades every story sound at once; see [Run mode](43-run-mode.md).
-Setting it up: `scripts/house-macbook/audio.md`, `docs/trapped/room-audio.md`
+Setting it up: `scripts/house-mac/audio.md` (the MacBook),
+`scripts/house-desktop/README.md` §7 (if the router moves to the Desktop), `docs/trapped/room-audio.md`
 §11–§12 and the `audio` module in `stagehand/README.md`.
 
 ## The house lights
@@ -194,7 +198,8 @@ Setting it up: `scripts/house-macbook/audio.md`, `docs/trapped/room-audio.md`
 The lights the story drives live in their own project file,
 **`lights.json`**, beside `audio.json` — never in the map, so placing a
 bulb mid-show never moves the map's version, and the tent and the shed
-share them. The house Mac's **lights module** (stagehand's `lights` job)
+share them. The **lights module** (stagehand's `lights` job, at the show on John's
+Desktop)
 plays them over Zigbee2MQTT (and WLED): a story `cue heart_wake` plays the
 look named `heart_wake`.
 
@@ -202,8 +207,9 @@ look named `heart_wake`.
 ticks these off as you go):
 
 1. Check the tab's badge says **💡 module online**. If it says *no lights
-   module yet* or *last seen …*, start it on the house Mac (`stagehand
-   launchd install --job lights`, then `stagehand check --only lights`):
+   module yet* or *last seen …*, start it on the computer that runs it (at the show the Desktop:
+   `.\scripts\house-desktop\start-stagehand.ps1`; on a Mac `stagehand
+   launchd install --job lights`; then `stagehand check --only lights`):
    pairing and tests go through it.
 2. **📡 Pair new device** opens Zigbee joining for two minutes (the
    countdown shows; **Stop pairing** closes it). Reset the bulb — most

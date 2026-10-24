@@ -11,8 +11,9 @@ participant app shows the first live one as **NOW**: a guest's **Mission**
 checklist and its buttons as big game buttons; the title bar elsewhere
 reads *▣ NOW: Show your pass to an Antivirus ›*), and the card pinned at
 the top of a performer's booth, with its checklist. Its buttons lead the screen: the guest's NOW card, and the
-**face** of a scanned guest's card in a booth (at most three; everything
-else folds under *All buttons…*).
+**face** of a scanned guest's card in a booth (at most three: the live
+objectives' buttons, plus on a host's card the ones live because of this
+guest; nothing else is on the card).
 
 ```loom
 OBJECTIVE Show Your Pass

@@ -3,7 +3,8 @@
 > The voice of re-installation in **the Internet** (the tent in the backyard,
 > through the tunnel; or the shed if the weather call says so). You have
 > **no booth**: your script is the video and the programs' phones. You run
-> the tent from the tablet (mod token). [[EDIT: tent assistant / VR spotter —
+> the tent from **the tent laptop** (John's old laptop: the tent's terminal,
+> the wizard and the web game in one). [[EDIT: tent assistant / VR spotter —
 > needed only if the Quest is a go (K-30 call, Thu 10-22)]]
 
 ## Card
@@ -17,28 +18,32 @@
    who turns up on their own (since wave 18 a mark hinders nothing, so
    their phone looks normal; it says they are marked): just scan them in.
    Pressing **Play here** (or **Send to VR-1**) captures them as their run
-   begins; no 🛡 needed. The tablet shows them as **Marked program
+   begins; no 🛡 needed. The laptop shows them as **Marked program
    detected** (*STATUS: MARKED — marked for reinstallation*) and lists them
    under *Marked for reinstallation*. A program a director restricted
    without a mark reads *Program held by a director* and can't play until an
    Antivirus 🛡 or a host marks them.
    **After an ending** the reinstallation is a **party favour** (Q16 dropped):
-   any program may play, nobody is captured, the tablet says *Party favour
+   any program may play, nobody is captured, the laptop says *Party favour
    unlocked* (*STATUS: the night is over — anyone may play*) and your line is
    *"The night is over, X. The simulation is open to every program now: a
    party favour."* The speedrun award never counts those runs.
-2. **Tablet** at `/reinstall/` → **scan their pass** (or type their name: the
-   captured list is at the top) → **Play here**.
+2. **The tent laptop** (Chrome kiosk on
+   `/terminal/?code=<mod>&spot=tent&announce=1`; between programs it plays
+   the idle show with a scan box in the corner) → **scan their pass** at
+   the scan box (or type their name) → the wizard opens → **Play here**. A
+   program who is not marked gets a *not marked* card and no game (until
+   an ending).
    **Quest go:** → **Send to VR-1** instead. **Seated**, snap turn, the
    assistant spots them, wipe the headset between players.
 3. They follow the golden chevrons to **Gerald, the golden duck**, and walk
    right up to him. He lays a golden egg and flies away: they're released
    automatically, back to the Desktop. **On a banished night** (everyone
-   was banished in Grok Prom) Gerald can't release anyone: the tablet says
+   was banished in Grok Prom) Gerald can't release anyone: the laptop says
    **GERALD CAN'T HELP** (*"…The Internet keeps you — your phone says what
    happens next."*), with no egg and no fanfare. The way out is the hand
    jive; that is expected.
-   **The King** (both games, the tablet and the headset): a big gold chess
+   **The King** (both games, the laptop and the headset): a big gold chess
    king guards the server-room door of the virtual house, with **one health
    bar for everyone, all night** (15 points; it never comes back by
    itself). Each program may hit him **once per visit**, and every point
@@ -60,10 +65,10 @@
 **Queue:** informal, in capture order. **More than 6 waiting → radio a host
 or the director** (whoever is calling may fire 🗜 early). At **🗜 Zip everyone out**, the Antivirus
 bring everyone out through the tunnel; **end any live game sessions** on the
-tablet.
+laptop.
 
-**Second device:** the Installation Wizard video loops on it (it plays when
-the TV/tablet cue `tablet_wizard` fires; otherwise just keep it looping).
+**Second device:** the Installation Wizard video just loops on it. (The story
+fires a `tablet_wizard` cue, but nothing listens for it yet.)
 
 **Phones:** a captured program's phone is full screen for a moment (*🌐 Sent
 to the Internet…*, with **Go to The Internet** and **Show my pass**), then
@@ -75,7 +80,7 @@ and Gerald's release is full screen too (*🦆 Reinstallation complete…*).
 
 **Weather:** gusts over 30–40 km/h or steady rain → the shed (decided 10:00 on
 the day, W-22). The tech op switches the map; you move the tent light, the
-speaker and the tablet stand.
+speaker and the laptop.
 
 **Safety:** EXIT sign on; heater on low, ≥ 1 m from the fabric; no flames;
 anyone who feels sick in VR takes the headset off, sits, drinks water.
@@ -108,7 +113,7 @@ anyone who feels sick in VR takes the headset off, sits, drinks water.
 On a second (or later) visit the app adds your off-script aside: *"This is visit
 N. Repeat corruption suggests the corruption is not in your code."*
 
-A tablet scan of someone who wanders in uncorrupted: *"You are not corrupted.
+Someone who wanders into the Internet uncorrupted: *"You are not corrupted.
 You have wandered into the Internet voluntarily. That is a strange thing for a
 program to do."* (+10 doubt.)
 
@@ -131,5 +136,5 @@ to the point of menace.
 
 ## Props
 
-The tablet + stand, the second device for the video, wipes for the headsets, a
+The tent laptop, the second device for the video, wipes for the headsets, a
 towel, water. [[EDIT: costume notes]]

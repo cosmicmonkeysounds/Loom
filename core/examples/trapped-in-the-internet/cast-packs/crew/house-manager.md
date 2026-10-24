@@ -44,7 +44,7 @@ played). Never say the code on the radio.
    stay lit.** Guide everyone to the living room. Walk.
 3. ALL STOP: the director restores the lights (💡, which also holds a
    pending dance: the dance look waits for your go, then the director
-   presses 🪩), the tech op panics the audio and hits the wall switches; you
+   presses 🪩), the tech op stops the house sounds and hits the wall switches; you
    get people calm and seated, or outside to the meeting point. Nothing
    restarts until you say so.
 

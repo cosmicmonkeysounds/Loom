@@ -88,7 +88,7 @@ SEND TO THE INTERNET** (live after a moment): the screen stamps **CAPTURED**,
 their phone shows them the way to the tent, and you walk them through the
 Tube. **Not now** keeps the mark and your claim; **🩹 Not them…** (two taps)
 lifts it. A marked program who turns up at the tent on their own is captured
-when the tablet starts their run. In Bathroom Mode or Disk Cleanup: wait
+when the tent laptop starts their run. In Bathroom Mode or Disk Cleanup: wait
 outside; never go in (the pop-out says 🚻 when it knows). A captured poster
 shows **CAUGHT BY** for a minute, then leaves the board.
 

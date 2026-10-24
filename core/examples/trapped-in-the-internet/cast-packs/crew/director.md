@@ -8,7 +8,9 @@
 ## The Director card (laminate)
 
 **Screens** (a laptop, signed in with your own account at
-https://app.mapsandducks.com/edit/, a project member): tab 1 **Run →
+https://app.mapsandducks.com/edit/, a project member; [[EDIT: which
+computer: John's MacBook, where the tech op sits, or the second director's
+own]]): tab 1 **Run →
 Director** (the cue sheet); tab 2 **Run → Mind** (the **Judging card** on
 top: the judge's mode, pending filings, per-question tallies; Trabolta's
 worker below it: on the story mind his stage follows the phase by itself,
@@ -156,7 +158,7 @@ never from a guest card.
 | lost guest / new phone | Inspector → **re-pair QR** (never re-register) |
 | late arrival after C1 | Inspector → **scan as Norton** (clears them) |
 | performer's phone dead | Inspector → **Release** the part; they re-sign on a loaner |
-| lights wrong after a blip | radio **LIGHTS**: the tech op restarts the stagehand `show` job, which replays the current look on reconnect; failing that they set it by hand (Run → World → `Night.lights` names it). Re-pressing a cue does nothing: phase cues play once |
+| lights wrong after a blip | radio **LIGHTS**: the tech op restarts the stagehand `show` task on John's Desktop, which replays the current look on reconnect; failing that they set it by hand (Run → World → `Night.lights` names it). Re-pressing a cue does nothing: phase cues play once |
 | TV voice must stop | the mute on the heartbeat card (it stays muted through restarts and Go live: check it before doors) |
 | loom restarted (a crash or a redeploy) | nothing to press: phones, booths, Run and the tablets reconnect by themselves (Caddy holds requests up to 60 s); a phone's tray dot reads *reconnecting…* meanwhile. Rescan anyone mid-walk in the tent |
 | **ALL STOP** | **💡 Restore the house lights** (it also holds a pending automatic dance after a server-room blackout: `# hosts` says *"💡 The dance is held: press 🪩 when the house manager says go."*), then follow the house manager |
@@ -209,16 +211,16 @@ after doors.
 
 | Time | You |
 |---|---|
-| **10:00** | Weather call with the tech op (gusts > 30–40 km/h or steady rain → the shed). **Morning reset, before anyone registers:** sync the story, **Push draft**, scan the door QR from a phone **on cellular**, then **Go live in place**. Open `/reinstall/map`: press **Tent** or **Shed** in the *Map:* bar for the weather, and check its status line reads "the project's map". If it reads "this event's map", a rehearsal's map edit is still in force (Push draft and Go live keep it): **Save to project** to keep it, or switch to the other variant and back to drop it. |
+| **10:00** | Weather call with the tech op (gusts > 30–40 km/h or steady rain → the shed). **Morning reset, before anyone registers:** sync the story, **Push draft**, scan the door QR from a phone **on cellular** (the doors must be open for the join to work), then **⏸ Pause**, then **Go live in place**. Go live keeps the doors as they were: paused, Power On waits for the next open and the show clock starts at 7:00 PM from then; left open, Power On plays at once. [[EDIT: doors at 19:00 or 20:00? The story's clock reads 7:00 PM when the doors open]] Open `/reinstall/map`: press **Tent** or **Shed** in the *Map:* bar for the weather, and check its status line reads "the project's map". If it reads "this event's map", a rehearsal's map edit is still in force (Push draft and Go live keep it): **Save to project** to keep it, or switch to the other variant and back to drop it. |
 | 12:00 | Set dressing; tent or shed set. |
 | 15:00 | The tech op boots everything; you walk the pre-show checklist with them. |
-| **17:00** | **Performer call.** Costumes, phones charged, booths signed in (prime code + cast picker, after go-live), a test `!` alert to staff, walk the stations. Confirm the anti-AI program (MS Paint) with Task Manager and Clippy. Decide whether Password Manager gets the moderator passcode (her pack: ⊞ Start → *Add moderator powers* → *Become an admin*, reload, **hide** any message; it also gives her booth the hosts' NEXT bar and console, which she never fires from). Without it, she asks you to hide one. |
+| **17:00** | **Performer call.** Costumes, phones charged, booths signed in (prime code + cast picker, after go-live), a test `!` alert to staff, walk the stations. Confirm the anti-AI program (MS Paint) with Task Manager and Clippy. Password Manager is a player (wave 21): her booth has no moderator powers, so when a message needs hiding she asks you, and you **hide** it from Run → Chat. |
 | 18:00 | Porch set (Recycling Bin). Checklist signed off. |
 | **19:00** | Food + the **15-minute briefing** (below). The tech op starts the backup job. |
-| 19:45 | Places. Lights to screensaver. |
+| 19:45 | Places. Lights to screensaver. If you paused after Go live: **▶ Resume** opens the doors (Power On plays). |
 | **20:00** | **Doors.** Hand Run to the second director; you are Task Manager now. |
 | ≤ 21:00 | C1. |
-| ≈ 01:45 | Ending + ceremony. **The clock falls back at 02:00**: rides home. |
+| ≈ 01:10 on the clock | Ending + ceremony (OP-17's parts add up to 5 h 10 m from a 21:00 C1: 02:10 before the 02:00 fall-back, so ≈ 01:10 on the wall). **The clock falls back at 02:00**: rides home. |
 
 **Pre-show checklist** (from OCT31 §11; tick each):
 
@@ -232,19 +234,26 @@ after doors.
    **Shed** `● live` in the map page's *Map:* bar), and its status line reads
    "the project's map", not "this event's map".
 4. Trabolta: worker connected (Run → Mind), **mind Reset**, `lookup: false`,
-   thinking off; both models loaded; the house Mac on its charger, `caffeinate`;
-   he is hidden and asleep.
-5. Terminals green on the heartbeat card, showing attract; the TV on `view=tv`
-   showing the screensaver, **clicked once after its last boot**, its voice
+   thinking off; only `gpt-oss:20b` loaded (the story mind); John's MacBook on
+   its charger, `caffeinate`; he is hidden and asleep.
+5. `pnpm showctl doctor` green (the tech op runs `showctl preflight` on
+   each computer: `macbook`, `desktop`, `serverroom`, `tent`). Terminals
+   green on the heartbeat card, showing attract; the TV (John's Desktop) on
+   `view=tv` showing the screensaver, **clicked once after its last boot**, its voice
    **not muted** (a rehearsal's mute survives every restart).
 6. Lights: Z2M + WLED up; screensaver look on; one blackout test (stairs,
    bathroom, tent, server room, the path stay lit; the Tube strip dim).
 7. Server-room door (wave 20): a real open → shut shows 🚪 *open* / *shut* on Run → Terminals within a second, no fault, no *override*, and the bulb follows; then 🔄 (and 🚪 Trust the door sensor if anyone pressed a 🚪); the keypad opens from
    outside with the story's code (`facts.json` `door.code`, tested at 15:00);
-   the patch bay is all unplugged; the server-room terminal is green and asleep.
-8. Audio: one test cue per zone through the MOTU at show level; the house-announcement test.
+   the patch bay is all unplugged (🔌 *0* on its row) and one cable in → 🔌 *1*
+   → out again; no 🔌 *buttons* (🔌 Trust the patch bay if anyone pressed a
+   patch button); the server-room terminal is green and asleep.
+8. Audio: one test cue per zone through the MOTU at show level (the router on
+   John's MacBook); the house-announcement test (it needs the Desktop's `show`
+   task and broker too).
 9. Push: the staff test alert arrived on every performer phone.
-10. Tent: tablet charged on `/reinstall/` (provisioned as `Tent tablet`); the
+10. Tent: John's old laptop on its charger, Chrome kiosk on
+    `/terminal/?code=<mod>&spot=tent&announce=1` (WebGL2 checked); the
     King's bar reads 15/15 on the Run page (👑 if not); the Installation Wizard video
     on the 2nd device; Quest charged (if go); heater on its GFCI leg; EXIT
     sign on.
@@ -262,7 +271,7 @@ after doors.
     emergency card at the door.
 15. 2–3 loaner phones charged; the guest charging station live; power banks
     for every performer; radios charged with earpieces.
-16. The spares by the house Mac: [[EDIT: a second laptop with Chrome for the
+16. The spares: [[EDIT: where they sit; a spare computer with Chrome for the
     TV, the spare Zigbee dongle + Z2M backup, the ISP router boxed]].
 
 **The 19:00 briefing** (15 minutes, everyone):

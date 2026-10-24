@@ -201,8 +201,7 @@ hear you on the terminal. Other players in the simulation can't hear you.
 - In a **headset**, your mic is on. **B** or **Y** mutes it (and unmutes
   it); the HUD says **🎤 LIVE**, **🎤 MUTED** or **NO MIC** (**🎤 …** for a
   moment while it opens).
-- The **tablet in the tent** has no voice link: the tent is the tablet's
-  own room. A tablet or laptop set up elsewhere may have it. Then **Play
+- The **tent laptop** has no voice link: the tent is its own room. A tablet or laptop set up elsewhere may have it. Then **Play
   here** asks to use the microphone, the **🎤** button at the top right
   (or **M**) mutes it, and the bottom line says *🎤 a terminal can hear
   you* while one does.

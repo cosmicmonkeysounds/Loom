@@ -83,7 +83,7 @@ SEND TO THE INTERNET** (live after a moment): the screen stamps **CAPTURED**,
 their phone shows them the way to the tent, and you walk them through the
 Tube. **Not now** keeps the mark and your claim; **🩹 Not them…** (two taps)
 lifts it. A marked program who turns up at the tent on their own is captured
-when the tablet starts their run. In Bathroom Mode or Disk Cleanup: wait
+when the tent laptop starts their run. In Bathroom Mode or Disk Cleanup: wait
 outside; never go in (the pop-out says 🚻 when it knows). A captured poster
 shows **CAUGHT BY** for a minute, then leaves the board.
 
@@ -168,13 +168,9 @@ The house deals the programs files about **who they are connected to** (Codex �
 - **The hour:** patrol; collect wrong-code offenders; run your private rooms.
 - **⏳ → 🚨:** the programs check themselves in with the Desktop's QR; your NOW card's *Still missing* list is who hasn't (📍 only for a dead phone). After 🚨 the late marks land on the Wanted board.
 - **🗜:** zip everyone out of the Internet (the tent, or the shed on a rain night).
-- **🔑 Moderating (if the director gives you the moderator passcode at
-  call):** ⊞ Start → *Add moderator powers* → type it → *Become an admin*, reload
-  once, then tap **hide** on any message that is inappropriate or off topic.
-  It vanishes from every phone. You can remove, never rewrite. Without the
-  passcode, ask the director to hide it. The passcode also turns your booth
-  into a host's: a NEXT bar above the taskbar and a console. Leave the cues
-  to the hosts: whoever is calling shows as 📣 on the bar.
+- **🔑 Moderating:** your booth is a player's and has no moderator powers.
+  When a message is inappropriate or off topic, tell a director: they hide it
+  from Run, and it vanishes from every phone.
 - **🕚 Y2K → the end:** watch the club joins. A majority (more than half of all
   guest programs still here, any faction: a side or one a program founded)
   gives its members the server-room door code. Anyone with the code belongs in the room; police the
