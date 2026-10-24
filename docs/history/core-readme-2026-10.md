@@ -1,6 +1,6 @@
 # core: the October 2026 wave notes (archived)
 
-This file keeps, verbatim, the per-wave notes that used to live in
+This file keeps, verbatim (relative links rewritten for this folder), the per-wave notes that used to live in
 `core/README.md` (the sections "Show-night routes + rules (OCT31 wave 1)"
 through "Wave 18b") and the `core` row of the root `CLAUDE.md` package
 table, as they stood on master at 86f26a78 (2026-10-24). They are a
