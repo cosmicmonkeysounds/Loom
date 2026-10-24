@@ -59,15 +59,21 @@ async function getJson(ctx: Ctx, path: string): Promise<Json> {
   return r.body;
 }
 
-/** Repeat `frame` every `seconds` until Ctrl+C (clearing a TTY between). */
-async function watchLoop(ctx: Ctx, seconds: number, frame: () => Promise<number>): Promise<number> {
+/** Repeat `frame` every `seconds` until Ctrl+C (clearing a TTY between).
+ *  A frame that throws (the VPS unreachable for a moment) is shown as a red
+ *  line and the watch carries on: a monitor left running on show night must
+ *  never quietly exit on one blip. `frames` caps the loop for tests. */
+export async function watchLoop(ctx: Ctx, seconds: number, frame: () => Promise<number>, frames = Infinity): Promise<number> {
   let code = 0;
-  for (;;) {
+  for (let n = 0; n < frames; n++) {
     const lines: string[] = [];
     const out = ctx.out;
     ctx.out = (s) => lines.push(s);
     try {
       code = await frame();
+    } catch (e) {
+      code = 2;
+      lines.push(`${mark("fail", ctx.color)}  ${e instanceof Error ? e.message : String(e)} — retrying in ${seconds} s`);
     } finally {
       ctx.out = out;
     }
@@ -76,7 +82,7 @@ async function watchLoop(ctx: Ctx, seconds: number, frame: () => Promise<number>
     for (const l of lines) ctx.out(l);
     await ctx.sleep(seconds * 1000);
   }
-  return code; // unreachable: the loop ends on Ctrl+C
+  return code; // only with `frames`: otherwise the loop ends on Ctrl+C
 }
 
 // ---------------------------------------------------------------- doctor
@@ -257,6 +263,7 @@ export async function log(ctx: Ctx): Promise<number> {
   const types = listFlag(ctx.args, "type");
   const who = flagStr(ctx.args, "who");
   const last = Math.max(1, Number(flagStr(ctx.args, "last") ?? 40) || 40);
+  const json = ctx.json;
   const view = await getJson(ctx, "/api/state?role=mod");
   const secret = new Set(arr(view["cast"]).filter((c) => c["secret"] === true).map((c) => String(c["id"]).toLowerCase()));
   const names = new Map(arr(view["roster"]).map((r) => [String(r["id"]), String(r["name"])] as [string, string]));
@@ -274,7 +281,15 @@ export async function log(ctx: Ctx): Promise<number> {
     return lines;
   };
   const page = async () => {
-    const r = await getJson(ctx, `/api/mod/log?after=${after}&limit=5000`);
+    let r = await getJson(ctx, `/api/mod/log?after=${after}&limit=5000`);
+    // A restart (Push draft, a sync-show reload, Go live, a reset) starts a
+    // new ledger: the old cursor would read empty pages forever. Say so and
+    // follow the new run from its start.
+    if (Number(r["total"] ?? 0) < after + 1) {
+      ctx.out(json ? JSON.stringify({ restarted: true, total: Number(r["total"] ?? 0) }) : "— the run restarted (a new ledger) —");
+      after = -1;
+      r = await getJson(ctx, `/api/mod/log?after=${after}&limit=5000`);
+    }
     const entries = arr(r["entries"]);
     const got = show(entries, after + 1);
     after += entries.length;

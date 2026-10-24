@@ -4,7 +4,8 @@ import { test } from "node:test";
 
 import { parseArgs } from "../lib/args.ts";
 import { ShowClient } from "../lib/client.ts";
-import { type Ctx, doctor, fire, fireLabel, log, roster, rosterWhere, serverChecks, status } from "../lib/commands.ts";
+import { type Ctx, doctor, fire, fireLabel, log, roster, rosterWhere, serverChecks, status, watchLoop } from "../lib/commands.ts";
+import { ShowError } from "../lib/client.ts";
 import type { Probe } from "../lib/local.ts";
 import { entryMatches, formatEntry, isSecretPath } from "../lib/logfmt.ts";
 import { authRoutes, fakeServer, type Handler, MOD, SERVER, tempCache } from "./fake-server.ts";
@@ -197,4 +198,42 @@ test("logfmt: secret paths, people matching", () => {
   assert.ok(entryMatches({ type: "chat", from: "Winamp" }, [], "winamp", names));
   assert.ok(entryMatches({ type: "signal", subject: "g-1" }, ["signal"], "Winamp", names));
   assert.ok(!entryMatches({ type: "signal", subject: "g-2" }, ["signal"], "Winamp", names));
+});
+
+test("watch: a frame that throws is a red line, and the watch keeps going", async () => {
+  const ctx = ctxFor(["terminals", "--watch", "1"], fakeServer({}));
+  let n = 0;
+  const code = await watchLoop(ctx, 1, async () => {
+    if (++n === 1) throw new ShowError("can't reach https://show.example: connect ECONNREFUSED", "GET /x");
+    ctx.out("frame two");
+    return 0;
+  }, 2);
+  assert.equal(n, 2, "the second frame ran");
+  assert.equal(code, 0);
+  assert.ok(ctx.lines.some((l) => /^FAIL .*ECONNREFUSED — retrying in 1 s/u.test(l)), ctx.lines.join("\n"));
+  assert.ok(ctx.lines.includes("frame two"));
+});
+
+test("log --follow: a restarted run (a shorter ledger) is announced and followed from its start", async () => {
+  let entries: unknown[] = [{ type: "signal", name: "one" }, { type: "signal", name: "two" }, { type: "signal", name: "three" }];
+  const srv = fakeServer(
+    routes([guest], {
+      [`GET ${E}/api/mod/log`]: (r) => {
+        const after = Number(new URL(`http://x${r.path}`).searchParams.get("after"));
+        return { status: 200, body: { entries: entries.slice(after + 1), next: null, total: entries.length } };
+      },
+    }),
+  );
+  const ctx = ctxFor(["log", "--follow", "1"], srv);
+  let sleeps = 0;
+  ctx.sleep = async () => {
+    sleeps++;
+    if (sleeps === 1) entries = [{ type: "beatEntered", beat: "Power On" }];
+    if (sleeps === 3) throw new Error("stop");
+  };
+  await assert.rejects(log(ctx), /stop/u);
+  const text = ctx.lines.join("\n");
+  assert.match(text, /signal {9}three/u);
+  assert.match(text, /— the run restarted \(a new ledger\) —\n# {4}0 beatEntered {4}Power On/u);
+  assert.equal(ctx.lines.filter((l) => /restarted/u.test(l)).length, 1, "announced once, then followed");
 });
