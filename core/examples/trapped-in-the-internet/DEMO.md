@@ -3,11 +3,13 @@
 > **A demo, not the show.** For the night itself use
 > [`SHOWNIGHT.md`](./SHOWNIGHT.md) and [`TECH.md`](./TECH.md).
 
-How to show *Trapped in the Internet* as it stands on master (through wave 22, 2026-10-24) on
-**https://app.mapsandducks.com** with **2–4 phones and one laptop**. It plays the
+How to show *Trapped in the Internet* as it stands on master (through wave 22,
+2026-10-24) with **2–4 phones and one laptop**. It plays the
 night from the door to an ending and the awards, compressed: every timed
 stretch (Bingo's 20 min, the hunts, the hour, the Y2K hour) is skipped by
-firing its cue by hand.
+firing its cue by hand. It runs on **https://app.mapsandducks.com** once
+the pending ship has landed (below); until then the VPS plays the older
+`w18b-1021` story, and some steps here won't match it.
 
 The cue order below is pinned by a test: `core/test/trapped-in-the-internet.test.ts`
 → *the WIP demo (DEMO.md)* drives it with three phones to both endings. If you
@@ -49,10 +51,10 @@ change the order here, change it there.
      strip over the scan box, then the wizard and the game for a marked pass; keyboard
      WASD / arrows, Q/E turn, Shift runs; ⚔ / Space hits the King, once per visit. An
      unmarked pass reads PROGRAM NOT MARKED. The old standalone
-     `/reinstall/?code=<moderator code>&name=Tent tablet` still works.)
+     `/reinstall/?code=<moderator code>&name=Tent laptop` still works.)
    - *(Optional)* **The Server Door terminal**: `https://app.mapsandducks.com/terminal/?code=<moderator code>&name=Server Door&spot=server-room-door&view=chess`
      (THE KING, his bar, the scanner: hold up a phone's pass and play him;
-     there is no chess on the tent tablet any more).
+     there is no chess on the tent laptop any more).
    - *(Optional, wave 20)* **The server-room terminal** (Trabolta's heart):
      `https://app.mapsandducks.com/terminal/?code=<moderator code>&spot=server-room&door=sim`
      on a laptop with a keyboard and a webcam. `door=sim` fakes the door sensor:
