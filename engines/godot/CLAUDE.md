@@ -31,8 +31,11 @@ engines/godot/test/conformance.sh [path-to-godot]   # rebuilds bank fixtures, tr
 engines/godot/test/addon.sh [path-to-godot]
 ```
 
-Both find `godot` on `PATH` or `/Applications/Godot.app`, and both
-import the project first so `class_name` globals resolve.
+Both find `godot` on `PATH` or `/Applications/Godot.app`. `addon.sh`
+re-imports the project on every run so `class_name` globals resolve;
+`conformance.sh` imports only on a first run (no `.godot/`), so after
+adding a `class_name` script run `addon.sh` (or `godot --headless
+--import`) first.
 `conformance.sh` calls the bank CLI through `npx tsx`, so it needs the
 pnpm install.
 
