@@ -55,8 +55,17 @@ export const TEMPLATE = "show-page/template.html";
 export const OUTPUT = "SHOW.html";
 const RERUN = "pnpm --filter @loom/core show:page";
 
-/** What a blanked secret reads as on the page. */
+/** What a blanked secret reads as in the generated text. */
 export const REDACTED = "▒▒▒";
+
+/** How a blanked secret renders on the page: a labelled chip (the legend
+ *  under the cue sheet and the beats says what it means). */
+export const REDACTED_CHIP = `<span class="redacted" role="img" aria-label="hidden: a hunt answer or code" title="Hidden on purpose: a hunt answer or a code">hidden</span>`;
+
+/** Crew names for story names that hold a secret: after `redact`, the
+ *  blanked name on the left reads as the name the crew says on the radio,
+ *  the one the template's Endings table uses. */
+export const CREW_NAMES: ReadonlyArray<readonly [string, string]> = [[`${REDACTED} Prom`, "Rival's Prom"]];
 
 /** The beat files in the order of the night, with the part of the night
  *  each one plays. A file not listed lands under "Other files" at the end,
@@ -261,6 +270,18 @@ export function redact(text: string, secrets: readonly string[]): string {
   return out;
 }
 
+/** `redact`, then the crew's name for a blanked story name (`CREW_NAMES`). */
+export function crewText(text: string, secrets: readonly string[]): string {
+  let out = redact(text, secrets);
+  for (const [from, to] of CREW_NAMES) out = out.replaceAll(from, to);
+  return out;
+}
+
+/** `crewText` as page HTML: escaped, every remaining blank a chip. */
+export function crewHtml(text: string, secrets: readonly string[]): string {
+  return esc(crewText(text, secrets)).replaceAll(REDACTED, REDACTED_CHIP);
+}
+
 /** The secrets `text` still names (the test's check). */
 export function secretsIn(text: string, secrets: readonly string[]): string[] {
   return secrets.filter((s) => secretPattern(s).test(text));
@@ -283,7 +304,7 @@ function slug(s: string): string {
 /** A cue's display form: the label with any secret blanked, escaped. The
  *  test looks for exactly this string, once per admin cue. */
 export function cueLabelHtml(label: string, secrets: readonly string[]): string {
-  return esc(redact(label, secrets));
+  return crewHtml(label, secrets);
 }
 
 // ───────────────────────── generated blocks ─────────────────────────
@@ -303,6 +324,7 @@ function adminInteractions(model: SimModel): CueInteraction[] {
 
 function countsBlock(show: Show): string {
   const m = show.model;
+  const written = beatsByFile(show.files).reduce((n, f) => n + f.beats.length, 0);
   const admin = [...m.interactions.values()].filter((i) => i.who === "admin");
   const timerish = admin.filter((i) => !i.sequence).length;
   const coded = [...m.codex.values()].filter((c) => c.code !== null).length;
@@ -310,7 +332,7 @@ function countsBlock(show: Show): string {
   return [
     `<dl class="counts">`,
     row("Story files", show.files.length),
-    row("Beats", m.beats.size),
+    row("Beats", written === m.beats.size ? written : `${m.beats.size} (${written} written; a trait's beat counts once per character that has it)`),
     row("Admin cues", `${admin.length} (${admin.length - timerish} in sequence)`),
     row("Story rules", m.rules.length),
     row("Rooms (LOCATIONs)", m.locations.size),
@@ -329,7 +351,7 @@ function cuesBlock(show: Show, secrets: readonly string[]): string {
   const out: string[] = [];
   for (const [k, act] of acts.entries()) {
     const title = act.title === null ? "Before any act" : act.code !== null ? `${act.code} · ${act.title}` : act.title;
-    out.push(`<h3 class="act" id="cues-act-${k + 1}">${esc(redact(title, secrets))}</h3>`);
+    out.push(`<h3 class="act" id="cues-act-${k + 1}">${crewHtml(title, secrets)}</h3>`);
     out.push(
       `<p class="act-note">${act.spine.length} in sequence${act.asides.length > 0 ? `, ${act.asides.length} off the running order (timers, fallbacks, toggles)` : ""}.</p>`,
     );
@@ -341,7 +363,7 @@ function cuesBlock(show: Show, secrets: readonly string[]): string {
       if (d.repeat) tags.push(`<span class="tag">repeat</span>`);
       if (d.urgent === true) tags.push(`<span class="tag urgent">urgent</span>`);
       if (d.while !== null) tags.push(`<span class="tag">has while:</span>`);
-      const desc = d.description === null ? "" : esc(redact(d.description, secrets));
+      const desc = d.description === null ? "" : crewHtml(d.description, secrets);
       out.push(
         `<tr${r.sequence ? "" : ` class="aside"`}><td class="n">${r.n}</td><td class="label">${cueLabelHtml(d.label, secrets)}${tags.length > 0 ? `<span class="tags">${tags.join("")}</span>` : ""}</td><td><code>${esc(r.id)}</code></td><td class="desc">${desc}</td></tr>`,
       );
@@ -351,27 +373,63 @@ function cuesBlock(show: Show, secrets: readonly string[]): string {
   return out.join("\n");
 }
 
-/** `== Name(params)` beats per file, with each one's `setting:`. */
-export function beatsByFile(files: readonly ShowFile[]): Array<{ path: string; beats: Array<{ name: string; setting: string | null }> }> {
-  const out: Array<{ path: string; beats: Array<{ name: string; setting: string | null }> }> = [];
+export interface BeatRow {
+  name: string;
+  setting: string | null;
+  /** A class-owned beat's CHARACTER or TRAIT (null for a `==` beat). */
+  owner: { kind: "CHARACTER" | "TRAIT"; name: string } | null;
+}
+
+/** `== Name(params)` beats per file, with each one's `setting:`, then the
+ *  class-owned ones (`beat Greet(program)` inside a CHARACTER or TRAIT),
+ *  each with its owner. */
+export function beatsByFile(files: readonly ShowFile[]): Array<{ path: string; beats: BeatRow[] }> {
+  const out: Array<{ path: string; beats: BeatRow[] }> = [];
   for (const f of files) {
-    const beats: Array<{ name: string; setting: string | null }> = [];
-    let cur: { name: string; setting: string | null } | null = null;
+    const beats: BeatRow[] = [];
+    const owned: BeatRow[] = [];
+    let cur: BeatRow | null = null;
+    let owner: BeatRow["owner"] = null;
     for (const line of f.source.split("\n")) {
       const head = /^==\s+(.+?)\s*$/u.exec(line);
       if (head !== null) {
-        cur = { name: head[1]!.replace(/\(.*\)\s*$/u, "").trim(), setting: null };
+        cur = { name: head[1]!.replace(/\(.*\)\s*$/u, "").trim(), setting: null, owner: null };
         beats.push(cur);
+        owner = null;
+        continue;
+      }
+      const decl = /^(CHARACTER|TRAIT)\s+(.+?)(?:\s+is\s+.*|\(.*)?\s*$/u.exec(line);
+      if (decl !== null) {
+        owner = { kind: decl[1] as "CHARACTER" | "TRAIT", name: decl[2]!.trim() };
+        cur = null;
+        continue;
+      }
+      if (/^[A-Z]/u.test(line)) owner = null;
+      const ownedBeat = /^\s+beat\s+([A-Z][^(\n:]*?)\s*(?:\(|:|$)/u.exec(line);
+      if (ownedBeat !== null && owner !== null) {
+        owned.push({ name: ownedBeat[1]!.trim(), setting: null, owner });
         continue;
       }
       const set = /^\s*setting:\s*(.+?)\s*$/u.exec(line);
       if (cur !== null && cur.setting === null && set !== null) cur.setting = set[1]!;
     }
-    // Class-owned beats (`beat Clearance(program)` inside a CHARACTER/TRAIT).
-    for (const m of f.source.matchAll(/^\s+beat\s+([A-Z][^(\n:]*?)\s*(?:\(|:|$)/gmu)) beats.push({ name: `${m[1]!.trim()} (owned)`, setting: null });
+    beats.push(...owned);
     if (beats.length > 0) out.push({ path: f.path, beats });
   }
   return out;
+}
+
+/** The characters that carry a TRAIT's beat (`<Character>.<beat>` keys). */
+function traitCarriers(model: SimModel, beat: string): string[] {
+  return [...model.beats.keys()].filter((k) => k.endsWith(`.${beat}`)).map((k) => k.slice(0, -beat.length - 1));
+}
+
+function beatRowHtml(b: BeatRow, model: SimModel, secrets: readonly string[]): string {
+  const name = `<span class="beat">${crewHtml(b.name, secrets)}</span>`;
+  if (b.owner === null) return `${name}${b.setting !== null ? ` <span class="setting">${crewHtml(b.setting, secrets)}</span>` : ""}`;
+  if (b.owner.kind === "CHARACTER") return `${name} <span class="owner">owned by ${crewHtml(b.owner.name, secrets)}</span>`;
+  const who = traitCarriers(model, b.name);
+  return `${name} <span class="owner">TRAIT ${crewHtml(b.owner.name, secrets)}: one copy each for ${who.map((w) => crewHtml(w, secrets)).join(", ")} (×${who.length})</span>`;
 }
 
 function beatsBlock(show: Show, secrets: readonly string[]): string {
@@ -383,7 +441,7 @@ function beatsBlock(show: Show, secrets: readonly string[]): string {
     const part = BEAT_FILES.find((b) => b.path === f.path)?.part ?? "Other files";
     out.push(`<details class="beats"><summary><span class="part">${esc(part)}</span> <code>${esc(f.path)}</code> <span class="count">${f.beats.length} beat${f.beats.length === 1 ? "" : "s"}</span></summary>`);
     out.push(`<ol>`);
-    for (const b of f.beats) out.push(`<li>${esc(redact(b.name, secrets))}${b.setting !== null ? ` <span class="setting">${esc(redact(b.setting, secrets))}</span>` : ""}</li>`);
+    for (const b of f.beats) out.push(`<li>${beatRowHtml(b, show.model, secrets)}</li>`);
     out.push(`</ol></details>`);
   }
   return out.join("\n");
@@ -445,8 +503,8 @@ function castBlock(show: Show, secrets: readonly string[]): string {
   out.push(`<h3>Voices and props (nobody signs in as these)</h3>`);
   out.push(`<ul class="names">${voices.map((c) => `<li>${nameOf(c.id)}</li>`).join("")}</ul>`);
   const hiddenCount = chars.filter((c) => c.secret).length;
-  if (hiddenCount > 0) out.push(`<p class="small">Plus ${hiddenCount} hidden bookkeeping character${hiddenCount === 1 ? "" : "s"} that hold the night's secrets. No app and no agent ever shows them.</p>`);
-  return redact(out.join("\n"), secrets);
+  if (hiddenCount > 0) out.push(`<p class="small">Plus ${hiddenCount} hidden bookkeeping character${hiddenCount === 1 ? "" : "s"} that ${hiddenCount === 1 ? "holds" : "hold"} the night's secrets. No app and no agent ever shows ${hiddenCount === 1 ? "it" : "them"}.</p>`);
+  return redact(out.join("\n"), secrets).replaceAll(REDACTED, REDACTED_CHIP);
 }
 
 /** A house.json room label with any secret dropped: the map's labels are
@@ -473,7 +531,7 @@ function roomsBlock(show: Show, secrets: readonly string[]): string {
     out.push(`<tr><td><strong>${esc(l.id)}</strong></td><td>${realRooms}</td><td>${esc(fl)}</td><td>${esc(notes.join("; "))}</td></tr>`);
   }
   out.push(`</tbody></table></div>`);
-  return out.join("\n");
+  return out.join("\n").replaceAll(REDACTED, REDACTED_CHIP);
 }
 
 const VIEW_NOTES: Record<string, string> = {
@@ -503,7 +561,7 @@ function terminalsBlock(show: Show, secrets: readonly string[]): string {
     );
   }
   out.push(`</tbody></table></div>`);
-  return out.join("\n");
+  return out.join("\n").replaceAll(REDACTED, REDACTED_CHIP);
 }
 
 // ───────────────────────── tick boxes ─────────────────────────
@@ -512,6 +570,10 @@ function terminalsBlock(show: Show, secrets: readonly string[]): string {
  *  `data-list` and its own text (deduplicated), so a tick survives an edit
  *  that only adds items elsewhere. */
 export function checkboxify(html: string): string {
+  // Only the body: a comment or the style block naming the marker must
+  // never start a match.
+  const at = html.indexOf("<body");
+  if (at > 0) return html.slice(0, at) + checkboxify(html.slice(at));
   const used = new Set<string>();
   let list = "list";
   return html.replace(/<ul class="check" data-list="([a-z0-9-]+)">|<li data-ck>([\s\S]*?)<\/li>/gu, (whole, l: string | undefined, body: string | undefined) => {

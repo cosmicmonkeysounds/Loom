@@ -144,11 +144,14 @@ and guard against two presses at once.
 
 ## What it never does
 
-- Reads the screen state **without** a `name` (a named read is a terminal's
-  heartbeat: it would show up on Run → Terminals as a fake terminal).
-- Reads `/api/mod/audio` without `router=1` and `/api/mod/lights` without
-  `module=1` (either would mark it as the router / the lights module), and the
-  VR stations through the list, never `station?id=` (which registers one).
+- Reads the screen state with a `name`. It reads it only without one (a named
+  read is a terminal's heartbeat: it would show up on Run → Terminals as a
+  fake terminal).
+- Reads `/api/mod/audio` with `router=1` or `/api/mod/lights` with `module=1`.
+  It reads both plain (either flag would mark it as the router / the lights
+  module).
+- Asks for one VR station by `station?id=` (which registers one). It reads the
+  stations through the list.
 - Opens no SSE stream (a mod stream counts as a director console); `log
   --follow` polls `/api/mod/log?after=`.
 - Puts a token in a URL (it rides the `x-loom-token` header), or prints a code,

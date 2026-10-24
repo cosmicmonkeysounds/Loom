@@ -142,6 +142,19 @@ describe("the show book", () => {
     expect(checkboxify('<ul class="check" data-list="x"><li data-ck>A b</li><li data-ck>A b</li></ul>')).toContain('id="ck-x-a-b-2"');
   });
 
+  it("rewrites only real tick boxes, never the head", () => {
+    const head = PAGE.slice(0, PAGE.indexOf("<body"));
+    expect(head).not.toContain('type="checkbox"');
+    const toc = PAGE.slice(PAGE.indexOf('<nav class="toc"'), PAGE.indexOf("</nav>"));
+    expect(toc).not.toContain("</label>");
+  });
+
+  it("names the owner of every class-owned beat", () => {
+    expect(PAGE).not.toContain("(owned)");
+    expect(PAGE).toContain('<span class="owner">owned by Clippy</span>');
+    expect(PAGE).toMatch(/TRAIT Enforcer: one copy each for [^<]+\(×4\)/u);
+  });
+
   it("is committed as a fresh build (show:page --check)", () => {
     const file = join(SHOW.dir, OUTPUT);
     expect(existsSync(file)).toBe(true);

@@ -46,7 +46,8 @@ showctl`), `scripts/house-desktop/README.md` (the Windows Desktop),
 `zigbee.md` and `lights.md` predate the Windows Desktop, see
 `scripts/house-desktop/`),
 `scripts/accept/README.md` (per-item device checks), and the show
-folder's `SHOW.html` and `OCT31.md` §11.
+folder's `SHOW.html`, `SHOWNIGHT.md` (§4 is the pre-show checklist) and
+`TECH.md`.
 
 ## In-app help
 
@@ -77,5 +78,5 @@ parts unless you change the code and test in the same commit:
 - `docs/help/**` — bundled by the editor and play; checked by their help tests and by `reinstall/web`'s help tests.
 - `docs/loom-reinstall.md` — `reinstall/web/test/help-docs.test.ts`.
 - `docs/loom-docker-deploy.md` — `scripts/ops/test/run.sh` checks its rsync rules against `ship.sh`.
-- `docs/trapped/kiosk.md` — printed by `scripts/accept/K-16.sh`.
+- `docs/trapped/kiosk.md` — referenced by `scripts/accept/K-16.sh`'s output.
 - The `Dockerfile` copies `docs/` into the server image.
