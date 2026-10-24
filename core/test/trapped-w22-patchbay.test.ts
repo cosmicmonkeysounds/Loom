@@ -196,6 +196,41 @@ describe("the patch bay judges itself (wave 22)", () => {
     expect(beats(second)).toContain("Server Room Alarm");
   });
 
+  it("⭐ a watch's press pays only when the story took it: a ❌ swallowed as the bay's own rejection pays nothing and tells the presser", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2K(sim);
+    const score = () => v(sim, "Norton_Anti_Virus.score") ?? 0;
+    const trust = () => v(sim, "Norton_Anti_Virus.trust") ?? 0;
+    const s0 = score();
+    const t0 = trust();
+    bay(sim, WRONG);
+    expect(score()).toBe(s0); // the bay judged itself: nobody pressed
+    const swallowed = fire(sim, "radio_wrong_patch", "g1", "Norton Anti-Virus");
+    expect(v(sim, "Night.wrong_combos")).toBe(1);
+    expect(score()).toBe(s0);
+    expect(trust()).toBe(t0);
+    const replies = (evs: SimEvent[]) => (evs.filter((e) => e.type === "respond") as Ev<"respond">[]).map((r) => `${r.to}: ${r.text}`);
+    expect(replies(swallowed)).toEqual(expect.arrayContaining([expect.stringMatching(/^Norton Anti-Virus: ❌ Not counted/u)]));
+    // The next ❌ is a new wrong patch: taken, +10 and +5 trust.
+    expect(replies(fire(sim, "radio_wrong_patch", "g1", "Norton Anti-Virus"))).toContain("Norton Anti-Virus: ⭐ +10");
+    expect(v(sim, "Night.wrong_combos")).toBe(2);
+    expect(score()).toBe(s0 + 10);
+    expect(trust()).toBe(t0 + 5);
+    // A director's 🔌 pays nobody, not even the last presser.
+    fire(sim, "patch_combo_a");
+    expect(v(sim, "Night.ending")).toBe("disabled");
+    expect(score()).toBe(s0 + 10);
+  });
+
+  it("⭐ a 🔌 press out of turn pays nothing", { timeout: SLOW }, () => {
+    const sim = boot();
+    toOvershare(sim);
+    const s0 = v(sim, "Norton_Anti_Virus.score") ?? 0;
+    for (const name of ["radio_combo_a", "radio_combo_b", "radio_wrong_patch"]) fire(sim, name, "g1", "Norton Anti-Virus");
+    expect(v(sim, "Norton_Anti_Virus.score") ?? 0).toBe(s0);
+    expect(v(sim, "Night.patch_override")).toBe(false);
+  });
+
   it("a ❌ more than a minute after the bay's rejection counts", { timeout: SLOW }, () => {
     const sim = boot();
     toY2K(sim);

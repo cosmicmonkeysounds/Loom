@@ -5148,28 +5148,41 @@ when patch_changed:
 // The 🔌 💥 ❌ presses (a director's, or the room Antivirus' radio_*). In
 // the Y2K hour, before the verdict, a press hands the bay to the buttons
 // (one # hosts line the first time); out of turn it only says why, with no
-// story event, so the cue sheet sees the press refused.
+// story event, so the cue sheet sees the press refused. Each takes the
+// presser's stamp (`Kernel._patch_by`, set by the Enforcer's radio_* hook,
+// cast/kit.loom) and pays them ⭐ through `patch_credit` only when the press
+// was taken; a ❌ swallowed as the bay's own rejection tells the presser
+// (`patch_not_counted`) and pays nothing. A director's press carries no
+// stamp and pays nobody. DRAFT w22
 when patch_combo_a:
+  set Kernel._patch_paid = Kernel._patch_by
+  set Kernel._patch_by = "none"
   if Night.ended != true and Night.step >= 14:
     if Night.r3_closed != true:
       if Night.patch_override != true:
         broadcast "🔌 The story now follows the 🔌 💥 ❌ patch buttons, not the patch bay. Press 🔌 Trust the patch bay to hand it back." to channel(hosts)
       set Night.patch_override = true
+      fire patch_credit with points: 10, gain: 0
     fire bay_combo_a
   else:
     broadcast "🔌 Not now: Combo A only counts in the Y2K hour (🕚 first, before any ending). Nothing happens." to channel(hosts)
 
 when patch_combo_b:
+  set Kernel._patch_paid = Kernel._patch_by
+  set Kernel._patch_by = "none"
   if Night.ended != true and Night.step >= 14:
     if Night.r3_closed != true:
       if Night.patch_override != true:
         broadcast "🔌 The story now follows the 🔌 💥 ❌ patch buttons, not the patch bay. Press 🔌 Trust the patch bay to hand it back." to channel(hosts)
       set Night.patch_override = true
+      fire patch_credit with points: 10, gain: 0
     fire bay_combo_b
   else:
     broadcast "💥 Not now: Combo B only counts in the Y2K hour (🕚 first, before any ending). Nothing happens." to channel(hosts)
 
 when patch_rejected:
+  set Kernel._patch_paid = Kernel._patch_by
+  set Kernel._patch_by = "none"
   if Night.ended != true and Night.step >= 14:
     if Night.r3_closed != true:
       if Night.patch_override != true:
@@ -5178,7 +5191,10 @@ when patch_rejected:
     if Night.r3_closed != true and Night.bay_rejected_at > 0 and Time.elapsed < Night.bay_rejected_at + 60:
       set Night.bay_rejected_at = 0
       broadcast "❌ The patch bay already counted that wrong combination: this press is not counted again ({Night.wrong_combos} so far). Press ❌ again for a new one." to channel(hosts)
+      fire patch_not_counted
     else:
+      if Night.r3_closed != true:
+        fire patch_credit with points: 10, gain: 5
       fire bay_rejected
   else:
     broadcast "❌ A wrong patch-bay combination outside the Y2K hour (🕚 first, before any ending): not counted, nothing happens." to channel(hosts)
@@ -6020,6 +6036,10 @@ set Night.judge_now = 1
 set Night.defector = "none"
 set Night.defections = 0
 set Kernel.pressed_by = "none"
+// The patch-bay watch's stamp (wave 22, cast/kit.loom): who pressed the
+// last 🔌 💥 ❌, and whom its `patch_credit` pays. DRAFT w22
+set Kernel._patch_by = "none"
+set Kernel._patch_paid = "none"
 // The phones' interrupt ladder (wave 13, D2; header `alerts:`): balloon <
 // sticky < dialog < bsod. The story climbs it at the summons, the Y2K clock
 // and the final reveal, and comes back down at Truth Pong and the ceremony;

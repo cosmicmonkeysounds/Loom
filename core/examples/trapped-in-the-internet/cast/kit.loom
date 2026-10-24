@@ -271,21 +271,34 @@ TRAIT Enforcer is Person, Player
       Self (quietly): I didn't see you. You didn't see me. Your mark is gone. Don't make me regret it.
       reply 🤫 You looked the other way. {program.name} walks free, and nobody saw. Yet.
 
-  // ⭐ The patch-bay watch's calls (wave 21): +10 for a call the story
-  // could take; a wrong patch caught at Trabolta's heart serves him (+5
-  // trust). The story rules (main.loom) do the rest. DRAFT w21
+  // ⭐ The patch-bay watch's calls (wave 21; wave 22: paid only when taken).
+  // A press stamps who pressed (`Kernel._patch_by`, secret, so it never
+  // reaches Trabolta's worker); main.loom's `patch_*` rule hands it on as
+  // `Kernel._patch_paid` and fires `patch_credit` only when the story took
+  // the press (+10; a wrong patch caught at his heart serves him, +5
+  // trust), or `patch_not_counted` when a ❌ was the bay's own rejection
+  // again. A press that changes nothing pays nothing, and a director's 🔌
+  // 💥 ❌ pays nobody. DRAFT w22
   when radio_wrong_patch:
-    if Night.ended != true and Night.step >= 14 and Night.r3_closed != true:
-      set self.score += 10
-      set self.trust += 5
+    set Kernel._patch_by = self
 
   when radio_combo_a:
-    if Night.ended != true and Night.step >= 14 and Night.r3_closed != true:
-      set self.score += 10
+    set Kernel._patch_by = self
 
   when radio_combo_b:
-    if Night.ended != true and Night.step >= 14 and Night.r3_closed != true:
-      set self.score += 10
+    set Kernel._patch_by = self
+
+  when patch_credit:
+    if Kernel._patch_paid == self:
+      set Kernel._patch_paid = "none"
+      set self.score += points
+      set self.trust += gain
+      reply ⭐ +{points}
+
+  when patch_not_counted:
+    if Kernel._patch_paid == self:
+      set Kernel._patch_paid = "none"
+      reply ❌ Not counted: the patch bay had just counted that wrong patch itself. If this is a new one (a cable top to top or bottom to bottom), press ❌ again.
 
   // ── The Wanted board and the door (wave 18, B3 + B5) ──
   // `program.escort_by` / `program.door_by` hold the claiming Antivirus'
