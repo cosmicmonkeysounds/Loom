@@ -3,9 +3,13 @@
 //! poster per codex entry (title + QR + the typed code; sorted and banded
 //! by fact stack, K-12-stacks), one check-in sign per room (QR + room name
 //! only — no typed code), one business-card cast card per performer part
-//! (the performer passcode QR, SW-QR-11) and, on their own page, one
-//! invitation per reserved program (wave 11 C5: the claim QR, no typed
-//! code — the claim is secret). QRs are drawn here,
+//! (wave 23: that part's own `castLinks` QR, which signs in as it and takes
+//! it back from a lost phone; the performer passcode QR on an older server,
+//! SW-QR-11), on their own page one invitation per reserved program (wave
+//! 11 C5: the claim QR, no typed code — the claim is secret) and, from
+//! `/api/mod/badges`, the blank ID **badges** (wave 23, `B001`…: QR + the
+//! printed badge code + a write-in Program line; a guest links one when
+//! they join and it gets them back in on any phone). QRs are drawn here,
 //! in the browser (`qrcode` → inline SVG): `/api/qr` allows 60/min per IP
 //! and a full sheet needs 60–80. Pure, unit-tested in `print-sheet.test.ts`.
 
@@ -29,6 +33,32 @@ export interface PrintCodes {
   /** Wave 11 C5: one claim link per reserved program (`?code=<guest
    *  code>&claim=<token>`) — the invitations. Absent on an older server. */
   claims?: Array<{ character: string; claim: string; url: string }>
+  /** Wave 23: each part's own cast-card link (`?code=<prime code>&part=
+   *  <code>`) — signs in as that part, taking it from a lost phone. Absent
+   *  on an older server → the cast cards carry the performer passcode link. */
+  castLinks?: Array<{ character: string; part: string; url: string }>
+}
+
+/** One printable badge (`POST /e/:id/api/mod/badges`, wave 23). */
+export interface PrintBadge {
+  n: number
+  /** `B001`. */
+  ref: string
+  /** The printed code (`ABCD-EFGH`). */
+  code: string
+  /** `<base>/?code=<guest code>&badge=<code>`. */
+  url: string
+  /** The Person it is linked to, or null while blank. */
+  holder: string | null
+  name: string | null
+}
+
+/** `POST /e/:id/api/mod/badges {from, count}`. */
+export interface PrintBadges {
+  ok: boolean
+  /** The highest badge number the server prints. */
+  max: number
+  badges: PrintBadge[]
 }
 
 /** Which printed pile a codex poster goes in (`routes/k12.ts` `CodexStack`). */
@@ -55,11 +85,12 @@ export const PrintKind = {
   Room: 'room',
   Cast: 'cast',
   Invite: 'invite',
+  Badge: 'badge',
 } as const
 export type PrintKind = (typeof PrintKind)[keyof typeof PrintKind]
 
 export interface PrintItem {
-  /** Small id printed in the corner (`J1`, `D1`, `C07`, `R03`, `P02`, `I04`) — "which poster?". */
+  /** Small id printed in the corner (`J1`, `D1`, `C07`, `R03`, `P02`, `I04`, `B001`) — "which poster?". */
   ref: string
   kind: PrintKind
   title: string
@@ -205,21 +236,27 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
       note: r.hidden ? 'hidden until the story opens it' : null,
     }),
   )
-  // A cast card prints the performer passcode. A `?code=` link with the
-  // performer code opens the booth's sign-in straight away (play's
-  // `roleForBrand`), pre-filled, and it lists the parts. Keep them with the cast.
+  // A cast card prints the performer passcode. On an older server its QR
+  // is the `?code=` link with the performer code: it opens the booth's
+  // sign-in straight away (play's `roleForBrand`), pre-filled, and lists
+  // the parts. Wave 23: the QR is the part's own link instead — it signs in
+  // as that part and takes it back from a lost phone, so each card is one
+  // performer's (its part code is never printed as text). Keep them with the cast.
   const castLink = `${codes.joinUrl.replace(/\/+$/u, '')}/?code=${encodeURIComponent(codes.primePass)}`
-  ;(codes.cast ?? []).forEach((name, i) =>
+  const links = codes.castLinks
+  const partLink = new Map((links ?? []).map((l) => [l.character, l.url]))
+  ;(codes.cast ?? links?.map((l) => l.character) ?? []).forEach((name, i) => {
+    const own = partLink.get(name)
     items.push({
       ref: `P${pad(i + 1)}`,
       kind: PrintKind.Cast,
       title: name,
-      hint: `Scan, then pick ${name}.`,
+      hint: own !== undefined ? `Scan to sign in as ${name}. Lost your phone? Scan it again to take ${name} back.` : `Scan, then pick ${name}.`,
       code: codes.primePass,
-      url: castLink,
-      note: 'performer passcode — never post it',
-    }),
-  )
+      url: own ?? castLink,
+      note: own !== undefined ? `signs in as ${name} — this performer's only` : 'performer passcode — never post it',
+    })
+  })
   // An invitation's QR claims one reserved program (C5). The claim is
   // secret: no typed code, and the link is shown on screen only.
   ;(codes.claims ?? []).forEach((c, i) =>
@@ -235,6 +272,38 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
     }),
   )
   return items
+}
+
+/** How many badges the sheet asks for by default. */
+export const BADGE_DEFAULT_COUNT = 60
+
+/** The badge range to ask for: whole numbers, `from` in 1…max, `count` at
+ *  least 1 and never past `max` (the server clamps the same way). */
+export function badgeRange(from: number, count: number, max = 600): { from: number; count: number } {
+  const f = Number.isFinite(from) ? Math.max(1, Math.min(max, Math.floor(from))) : 1
+  const c = Number.isFinite(count) ? Math.max(1, Math.floor(count)) : BADGE_DEFAULT_COUNT
+  return { from: f, count: Math.min(c, max - f + 1) }
+}
+
+/** The badge cards (wave 23): the event title, the QR, the printed code (a
+ *  guest can type it on the join screen), a write-in Program line (the
+ *  component draws it) and the ref. A badge is blank until a guest links
+ *  it; who holds one is a screen-only note. */
+export function buildBadgeItems(badges: PrintBadge[], title: string): PrintItem[] {
+  return badges.map((b) => ({
+    ref: b.ref,
+    kind: PrintKind.Badge,
+    title,
+    hint: 'Scan when you join. Lost your phone? Scan this to get back in.',
+    code: b.code,
+    url: b.url,
+    note: b.holder !== null ? `linked to ${b.name ?? b.holder}` : null,
+  }))
+}
+
+/** The next unprinted badge number after a printed batch (1 for none). */
+export function nextBadgeFrom(badges: PrintBadge[]): number {
+  return badges.reduce((m, b) => Math.max(m, b.n), 0) + 1
 }
 
 /** Cards per printed page (8 = business cards, 2 × 4). */

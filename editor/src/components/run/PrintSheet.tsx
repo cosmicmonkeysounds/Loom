@@ -3,9 +3,13 @@
 //! `homescreen`), every codex poster (title + QR + typed code, sorted by
 //! fact stack with a coloured band + the pile printed as text), a check-in
 //! sign per room, the cast cards (always 8-up business cards, on their
-//! own page) and the **Invitations** (wave 11 C5: one claim QR per reserved
-//! program, 4-up on their own page, with a screen-only 🔓 that opens a lost
-//! one to anyone for two minutes), from `/api/mod/codes`. A digit clue for
+//! own page; wave 23: each QR signs in as its own part), the **Invitations**
+//! (wave 11 C5: one claim QR per reserved program, 4-up on their own page,
+//! with a screen-only 🔓 that opens a lost one to anyone for two minutes),
+//! from `/api/mod/codes`, and the **Badges** (wave 23: blank 3 × 4 in ID
+//! badges from `/api/mod/badges`, 4-up on their own page; the director
+//! picks the count and the first number, and who linked one shows on
+//! screen only; off until ticked). A digit clue for
 //! the door code prints its title + QR only (`DIGIT_CLUE_STACK`). QRs are drawn in the browser
 //! (`lib/print-sheet.ts`), so a 60–80 card sheet never hits `/api/qr`'s
 //! rate limit. The toolbar (sections, skip a card, cards per page) never
@@ -15,8 +19,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { modApi } from '@/lib/api'
-import { buildPrintItems, PrintKind, qrSvg, stackInk, stackLine, unlockButton, unlockOpenUntil, UnlockPhase, type PerPage, type PrintItem } from '@/lib/print-sheet'
+import { BADGE_DEFAULT_COUNT, badgeRange, buildBadgeItems, buildPrintItems, nextBadgeFrom, PrintKind, qrSvg, stackInk, stackLine, unlockButton, unlockOpenUntil, UnlockPhase, type PerPage, type PrintBadge, type PrintItem } from '@/lib/print-sheet'
 import { useCockpit } from '@/store/cockpit'
+import { useWorkspace } from '@/store/workspace'
 import { useNow } from '@/components/cockpit/director/clock'
 
 const SECTION_LABEL: Record<PrintKind, string> = {
@@ -26,6 +31,7 @@ const SECTION_LABEL: Record<PrintKind, string> = {
   [PrintKind.Room]: 'Room check-in signs',
   [PrintKind.Cast]: 'Cast cards',
   [PrintKind.Invite]: 'Invitations',
+  [PrintKind.Badge]: 'Badges',
 }
 
 // Plain CSS (not Tailwind) so the print layout doesn't depend on the dark
@@ -50,6 +56,7 @@ const CSS = `
 .loom-print-card.banded .note { top: 0.2in; }
 .loom-print-card .url { position: absolute; left: 0.15in; right: 0.6in; bottom: 0.1in; font-size: 9px; color: #2563eb; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .loom-print-card .skip { left: auto; right: 0.15in; color: #52525b; background: #f4f4f5; border: 1px solid #d4d4d8; border-radius: 4px; padding: 1px 6px; cursor: pointer; }
+.loom-print-bar input[type=number], .loom-print-bar input[type=text] { border: 1px solid #52525b; border-radius: 6px; background: #27272a; color: #e4e4e7; padding: 3px 6px; font-size: 13px; }
 .loom-print-card .unlock { position: absolute; right: 0.15in; top: 0.4in; font-size: 10px; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 4px; padding: 1px 6px; cursor: pointer; }
 .pp-1 { grid-template-columns: 7.5in; } .pp-1 .loom-print-card { height: 10in; }
 .pp-1 h2 { font-size: 40pt; } .pp-1 .hint { font-size: 18pt; } .pp-1 .qr { width: 5.5in; height: 5.5in; } .pp-1 .code { font-size: 30pt; }
@@ -63,6 +70,11 @@ const CSS = `
 .pp-8 .qr { grid-column: 1; grid-row: 1 / span 6; width: 1.45in; height: 1.45in; align-self: center; }
 .pp-8 h2, .pp-8 .hint, .pp-8 .steps, .pp-8 .code, .pp-8 .stack { grid-column: 2; }
 .pp-8 h2 { font-size: 13pt; } .pp-8 .hint, .pp-8 .steps { font-size: 8pt; margin-bottom: 0.05in; } .pp-8 .code { font-size: 12pt; margin-top: 0.04in; } .pp-8 .stack { font-size: 7pt; }
+.pp-badge { grid-template-columns: 3in 3in; gap: 0.25in; }
+.pp-badge .loom-print-card { width: 3in; height: 4in; padding: 0.2in; justify-content: flex-start; }
+.pp-badge h2 { font-size: 14pt; margin-bottom: 0.1in; } .pp-badge .qr { width: 2in; height: 2in; } .pp-badge .code { font-size: 14pt; margin-top: 0.06in; }
+.pp-badge .program { align-self: stretch; margin-top: 0.14in; text-align: left; font-size: 11pt; font-weight: 600; border-bottom: 1px solid #000; padding-bottom: 0.02in; }
+.pp-badge .hint { margin: 0.1in 0 0; font-size: 8pt; }
 @media print {
   @page { size: letter; margin: 0.25in; }
   html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
@@ -126,7 +138,7 @@ function Card({ item, svg, skipped, onToggle, eventId }: { item: PrintItem; svg:
       <button className="skip" onClick={onToggle}>{skipped ? 'include' : 'skip'}</button>
       {item.kind === PrintKind.Invite && item.character !== undefined && <UnlockClaim eventId={eventId} character={item.character} />}
       <h2>{item.title}</h2>
-      {item.hint !== '' && <p className="hint">{item.hint}</p>}
+      {item.hint !== '' && item.kind !== PrintKind.Badge && <p className="hint">{item.hint}</p>}
       {item.steps && item.steps.length > 0 && (
         <ol className="steps">
           {item.steps.map((s) => (
@@ -138,6 +150,9 @@ function Card({ item, svg, skipped, onToggle, eventId }: { item: PrintItem; svg:
       <div className="qr" dangerouslySetInnerHTML={{ __html: svg ?? '' }} />
       {item.code !== '' && <div className="code">{item.code}</div>}
       {item.stack && <div className="stack">{stackLine(item.stack)}</div>}
+      {/* A badge: the guest writes their program in, then the hint. */}
+      {item.kind === PrintKind.Badge && <div className="program">Program:</div>}
+      {item.kind === PrintKind.Badge && <p className="hint">{item.hint}</p>}
       <span className="url" title={item.url}>{item.url}</span>
       <span className="ref">{item.ref}</span>
     </div>
@@ -148,9 +163,18 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
   const [items, setItems] = useState<PrintItem[] | null>(null)
   const [svgs, setSvgs] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
-  const [sections, setSections] = useState<Record<PrintKind, boolean>>({ join: true, door: true, codex: true, room: true, cast: true, invite: true })
+  // Badges are a stack printed once (then topped up), so they start unticked.
+  const [sections, setSections] = useState<Record<PrintKind, boolean>>({ join: true, door: true, codex: true, room: true, cast: true, invite: true, badge: false })
   const [skipped, setSkipped] = useState<Set<string>>(() => new Set())
   const [perPage, setPerPage] = useState<PerPage>(4)
+  const projectName = useWorkspace((s) => s.projectName ?? s.root?.name ?? '')
+  const [badgeTitle, setBadgeTitle] = useState(projectName)
+  // The badge range being edited, and the one applied (fetched).
+  const [badgeFrom, setBadgeFrom] = useState(1)
+  const [badgeCount, setBadgeCount] = useState(BADGE_DEFAULT_COUNT)
+  const [badgeAsk, setBadgeAsk] = useState(() => badgeRange(1, BADGE_DEFAULT_COUNT))
+  const [badges, setBadges] = useState<PrintBadge[] | null>(null)
+  const [badgeError, setBadgeError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -163,7 +187,7 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
         if (cancelled) return
         setItems(list)
         const drawn = await Promise.all(list.map(async (i) => [i.ref, await qrSvg(i.url)] as const))
-        if (!cancelled) setSvgs(Object.fromEntries(drawn))
+        if (!cancelled) setSvgs((s) => ({ ...s, ...Object.fromEntries(drawn) }))
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e))
       }
@@ -173,6 +197,28 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
     }
   }, [eventId])
 
+  // The badges, fetched once ticked and again for a new range; an older
+  // server (no `/api/mod/badges`) says so in the toolbar.
+  useEffect(() => {
+    if (!sections.badge) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await modApi.badges(eventId, badgeAsk.from, badgeAsk.count)
+        if (cancelled) return
+        setBadges(r.badges)
+        setBadgeError(null)
+        const drawn = await Promise.all(r.badges.map(async (b) => [b.ref, await qrSvg(b.url)] as const))
+        if (!cancelled) setSvgs((s) => ({ ...s, ...Object.fromEntries(drawn) }))
+      } catch (e) {
+        if (!cancelled) setBadgeError(e instanceof Error ? e.message : String(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [eventId, badgeAsk, sections.badge])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -181,10 +227,13 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const shown = useMemo(() => (items ?? []).filter((i) => sections[i.kind]), [items, sections])
-  const posters = shown.filter((i) => i.kind !== PrintKind.Cast && i.kind !== PrintKind.Invite)
+  const badgeItems = useMemo(() => buildBadgeItems(badges ?? [], badgeTitle.trim() || 'Your badge'), [badges, badgeTitle])
+  const shown = useMemo(() => [...(items ?? []), ...badgeItems].filter((i) => sections[i.kind]), [items, badgeItems, sections])
+  const posters = shown.filter((i) => i.kind !== PrintKind.Cast && i.kind !== PrintKind.Invite && i.kind !== PrintKind.Badge)
   const castCards = shown.filter((i) => i.kind === PrintKind.Cast)
   const invites = shown.filter((i) => i.kind === PrintKind.Invite)
+  const badgeCards = shown.filter((i) => i.kind === PrintKind.Badge)
+  const linked = (badges ?? []).filter((b) => b.holder !== null).length
   const printing = shown.filter((i) => !skipped.has(i.ref)).length
   const ready = items !== null && shown.every((i) => svgs[i.ref] !== undefined)
 
@@ -204,9 +253,24 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
         {(Object.keys(SECTION_LABEL) as PrintKind[]).map((k) => (
           <label key={k} style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <input type="checkbox" checked={sections[k]} onChange={(e) => setSections((s) => ({ ...s, [k]: e.target.checked }))} />
-            {SECTION_LABEL[k]} ({(items ?? []).filter((i) => i.kind === k).length})
+            {SECTION_LABEL[k]} ({k === PrintKind.Badge ? (badges?.length ?? '–') : (items ?? []).filter((i) => i.kind === k).length})
           </label>
         ))}
+        {sections.badge && (
+          <span style={{ display: 'flex', gap: 6, alignItems: 'center' }} data-testid="print-badge-range">
+            <input type="text" value={badgeTitle} onChange={(e) => setBadgeTitle(e.target.value)} placeholder="Title on the badges" aria-label="Title on the badges" style={{ width: 160 }} />
+            <input type="number" min={1} value={badgeCount} onChange={(e) => setBadgeCount(Number(e.target.value))} aria-label="How many badges" style={{ width: 60 }} />
+            badges from #
+            <input type="number" min={1} value={badgeFrom} onChange={(e) => setBadgeFrom(Number(e.target.value))} aria-label="First badge number" style={{ width: 60 }} />
+            <button onClick={() => setBadgeAsk(badgeRange(badgeFrom, badgeCount))}>Load</button>
+            {badges !== null && badges.length > 0 && (
+              <span style={{ color: '#a1a1aa' }}>
+                {linked} linked · next batch from #{nextBadgeFrom(badges)}
+              </span>
+            )}
+            {badgeError !== null && <span style={{ color: '#fca5a5' }}>badges unavailable: {badgeError}</span>}
+          </span>
+        )}
         <select value={perPage} onChange={(e) => setPerPage(Number(e.target.value) as PerPage)} aria-label="Cards per page">
           <option value={1}>1 per page (poster)</option>
           <option value={2}>2 per page</option>
@@ -241,6 +305,14 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
       {invites.length > 0 && (
         <div className="loom-print-grid pp-4" data-testid="print-invite-grid">
           {invites.map((i) => (
+            <Card key={i.ref} item={i} svg={svgs[i.ref]} skipped={skipped.has(i.ref)} onToggle={() => toggle(i.ref)} eventId={eventId} />
+          ))}
+        </div>
+      )}
+      {/* Badges: 3 × 4 in lanyard inserts, 4-up, on their own page. */}
+      {badgeCards.length > 0 && (
+        <div className="loom-print-grid pp-badge" data-testid="print-badge-grid">
+          {badgeCards.map((i) => (
             <Card key={i.ref} item={i} svg={svgs[i.ref]} skipped={skipped.has(i.ref)} onToggle={() => toggle(i.ref)} eventId={eventId} />
           ))}
         </div>
