@@ -142,11 +142,41 @@ export function agentChecks(view: Json, nowMs: number): Check[] {
           level = "warn";
           bits.push("(the show runs mind_mode: new — check laptop.yaml)");
         }
-        const at = num(mind["at"]);
-        if (at !== null) bits.push(`mind report ${ago(nowMs - at)} old`);
+        const at = mindAtMs(mind);
+        if (at !== null) bits.push(`mind last changed ${ago(Math.max(0, nowMs - at))} ago`);
       }
       return row(`${id}'s worker`, level, bits.join(" · "), read);
     });
+}
+
+/** A mind report's `updatedAt` in epoch ms (the Python worker sends
+ *  seconds). The worker mirrors only on a change (wave 12 `wire.py`), so
+ *  this is when the mind last moved, not when the worker last spoke. */
+function mindAtMs(mind: Json): number | null {
+  const at = num(mind["updatedAt"]);
+  if (at === null || at <= 0) return null;
+  return at < 1e12 ? at * 1000 : at;
+}
+
+/** Before the doors the mod view has no cast, so nothing says whether the
+ *  worker is online; the mind debugger's trace still lists the minds the
+ *  workers reported (`GET /api/mod/agent/trace`). Info only: the real
+ *  check (`agentChecks`) runs once the doors open. */
+export function agentsBeforeDoorsCheck(trace: Json | null, nowMs: number): Check {
+  const read = "GET /api/mod/agent/trace?limit=1 (minds)";
+  const minds = trace === null ? [] : arr(trace["minds"]);
+  if (minds.length === 0) return row("Agent workers", "info", "checked once the doors open (no cast yet); no worker has reported a mind to this server", read);
+  const bits = minds.map((m) => {
+    const at = mindAtMs(m);
+    return `${String(m["character"])} by worker "${strOf(m["worker"]) ?? "?"}"${strOf(m["mode"]) ? ` (mind ${m["mode"]})` : ""}${at !== null ? `, last changed ${ago(Math.max(0, nowMs - at))} ago` : ""}`;
+  });
+  return row("Agent workers", "info", `checked once the doors open (no cast yet); minds reported: ${bits.join("; ")}`, read);
+}
+
+/** Before the doors (no sim yet): the mod view carries no cast and no
+ *  `facts`, so neither the worker nor the judge can be read off it. */
+export function beforeDoors(view: Json): boolean {
+  return arr(view["cast"]).length === 0 && arr(view["roster"]).length === 0 && (view["phase"] === "idle" || view["doorsClosed"] === true);
 }
 
 /** The facts judge (wave 4) and the `judge:` character's ruling queue
@@ -154,6 +184,7 @@ export function agentChecks(view: Json, nowMs: number): Check[] {
 export function judgeCheck(view: Json): Check {
   const read = "GET /api/state?role=mod (facts · cast.agentQueue.judging)";
   const facts = view["facts"] as Json | undefined;
+  if ((facts === undefined || facts === null) && beforeDoors(view)) return row("Judge", "info", "judged once the doors open (the mod view carries facts.json from then)", read);
   if (facts === undefined || facts === null) return row("Judge", "warn", "no facts.json on this event — filings aren't judged (sync-show pushes the show's)", read);
   const judge = strOf(facts["judge"]);
   const mode = strOf(facts["mode"]) ?? "?";

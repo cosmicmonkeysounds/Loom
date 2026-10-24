@@ -2,7 +2,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
-import { agentChecks, audioCheck, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "../lib/checks.ts";
+import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "../lib/checks.ts";
 
 const level = (name: string, rows: { name: string; level: string }[]) => rows.find((r) => r.name === name)?.level;
 
@@ -56,11 +56,26 @@ test("Trabolta's worker: offline / stalled are red, a 40 s wait or a classic min
   assert.equal(agentChecks(view({ online: false }), now)[0]!.level, "fail");
   assert.equal(agentChecks(view({ online: true, agentQueue: { depth: 1, oldestMs: 2000, stalled: true } }), now)[0]!.level, "fail");
   assert.equal(agentChecks(view({ online: true, agentQueue: { depth: 3, oldestMs: 45_000, stalled: false } }, { mode: "new" }), now)[0]!.level, "warn");
-  const ok = agentChecks(view({ online: true, agentQueue: { depth: 0, oldestMs: null, stalled: false } }, { mode: "new", phase: "hunt_1", worker: "laptop", at: now - 3000 }), now)[0]!;
+  const ok = agentChecks(view({ online: true, agentQueue: { depth: 0, oldestMs: null, stalled: false } }, { mode: "new", phase: "hunt_1", worker: "laptop", updatedAt: (now - 3000) / 1000 }), now)[0]!;
   assert.equal(ok.level, "ok");
-  assert.match(ok.detail, /mind new · hunt_1 · worker "laptop" · mind report 3 s old/u);
+  assert.match(ok.detail, /mind new · hunt_1 · worker "laptop" · mind last changed 3 s ago/u);
   assert.equal(agentChecks(view({ online: true }, { mode: "classic" }), now)[0]!.level, "warn");
   assert.deepEqual(agentChecks({ cast: [{ id: "Clippy" }] }, now), [], "no agent, no row");
+});
+
+test("before the doors: the worker and the judge are info, never a false amber", () => {
+  const closed = { phase: "idle", cast: [], roster: [] };
+  assert.ok(beforeDoors(closed));
+  assert.ok(beforeDoors({ phase: "paused", doorsClosed: true, cast: [], roster: [] }));
+  assert.ok(!beforeDoors({ phase: "open", cast: [], roster: [] }));
+  assert.equal(judgeCheck(closed).level, "info");
+  assert.match(judgeCheck(closed).detail, /once the doors open/u);
+  assert.equal(judgeCheck({ phase: "open", cast: [{ id: "Clippy" }] }).level, "warn", "open with no facts.json is still amber");
+  const none = agentsBeforeDoorsCheck(null, 10_000);
+  assert.equal(none.level, "info");
+  assert.match(none.detail, /no worker has reported a mind/u);
+  const one = agentsBeforeDoorsCheck({ minds: [{ character: "Trabolta", worker: "laptop", mode: "new", updatedAt: 4 }] }, 10_000);
+  assert.match(one.detail, /Trabolta by worker "laptop" \(mind new\), last changed 6 s ago/u);
 });
 
 test("the judge: no facts.json amber, a judge stall red", () => {

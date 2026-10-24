@@ -16,7 +16,7 @@ import { judge, LIVE_OVERRIDE, realGuests } from "../../../core/scripts/live-gua
 import { cueRows } from "../../../core/src/cue-sheet.ts";
 import type { Args } from "./args.ts";
 import { flagOn, flagStr, listFlag, watchSeconds } from "./args.ts";
-import { agentChecks, audioCheck, KEY_SPOTS, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "./checks.ts";
+import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, KEY_SPOTS, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "./checks.ts";
 import type { ShowClient } from "./client.ts";
 import { ShowError } from "./client.ts";
 import { desktopChecks, macbookChecks, MACHINES, type Machine, type Probe, serverroomChecks, spotFocus, tentChecks } from "./local.ts";
@@ -125,7 +125,17 @@ export async function serverChecks(ctx: Ctx): Promise<Check[]> {
     out.push(...runCheck(view, typeof view["title"] === "string" ? view["title"] : c.title, landing));
     out.push(...peopleChecks(view));
     const agents = agentChecks(view, ctx.now());
-    out.push(...(agents.length > 0 ? agents : [{ name: "Agent workers", level: "info" as const, detail: "no agent-voiced character in the cast yet (it fills in once the doors open)", read: "GET /api/state?role=mod (cast)" }]));
+    if (agents.length > 0) out.push(...agents);
+    else if (beforeDoors(view)) {
+      let trace: Json | null = null;
+      try {
+        const r = await c.get("/api/mod/agent/trace?limit=1");
+        if (r.status === 200) trace = r.body;
+      } catch {
+        /* only a hint */
+      }
+      out.push(agentsBeforeDoorsCheck(trace, ctx.now()));
+    } else out.push({ name: "Agent workers", level: "info", detail: "no agent-voiced character in this story", read: "GET /api/state?role=mod (cast)" });
     out.push(judgeCheck(view));
   } catch (e) {
     out.push(fail("Run", e, "GET /api/state?role=mod"));

@@ -237,3 +237,13 @@ test("log --follow: a restarted run (a shorter ledger) is announced and followed
   assert.match(text, /— the run restarted \(a new ledger\) —\n# {4}0 beatEntered {4}Power On/u);
   assert.equal(ctx.lines.filter((l) => /restarted/u.test(l)).length, 1, "announced once, then followed");
 });
+
+test("doctor before the doors: the minds off the trace, the judge as info", async () => {
+  const closed = { title: "Test Show", phase: "idle", scenario: "s", roster: [], cast: [], characters: ["Trabolta"], modsOnline: 1 };
+  const srv = fakeServer(routes([], { [`GET ${E}/api/state?role=mod`]: { status: 200, body: closed }, [`GET ${E}/api/mod/agent/trace?limit=1`]: { status: 200, body: { thoughts: [], minds: [{ character: "Trabolta", worker: "laptop", mode: "new", updatedAt: 30 }] } } }));
+  const rows = await serverChecks(ctxFor(["doctor"], srv));
+  const agent = rows.find((r) => r.name === "Agent workers")!;
+  assert.equal(agent.level, "info");
+  assert.match(agent.detail, /Trabolta by worker "laptop"/u);
+  assert.equal(rows.find((r) => r.name === "Judge")!.level, "info");
+});
