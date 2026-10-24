@@ -477,7 +477,9 @@ describe("the show's cue sheet (K-21)", () => {
     expect(cast.find((c) => c.id === "McAfee Anti-Virus")).toMatchObject({ part: true, held: false, online: false });
     expect(cast.find((c) => c.id === "Kernel")).not.toHaveProperty("held");
     // No connection tracking (a local sim): parts still marked, no `held`.
-    expect(modView(sim, "open", "x").cast.find((c) => c.id === "Clippy")).toEqual({ id: "Clippy", faction: "Hosts", part: true, player: false });
+    // Wave 21: Clippy is a player, out of GROUP Hosts.
+    expect(modView(sim, "open", "x").cast.find((c) => c.id === "Clippy")).toEqual({ id: "Clippy", faction: null, part: true, player: true });
+    expect(modView(sim, "open", "x").cast.find((c) => c.id === "Task Manager")).toEqual({ id: "Task Manager", faction: "Hosts", part: true, player: false });
   });
 
   it("flags the cues that need a person: the ceremony's awards ask for the winner (K-25)", () => {
@@ -488,6 +490,8 @@ describe("the show's cue sheet (K-21)", () => {
     for (const a of ["award_most_trusted", "award_best_liar", "award_quest_completionist", "chess_won"]) expect(needs).toContain(a);
     // Global cues stay one click, including the ceremony's own start.
     for (const a of ["call_to_the_desktop", "start_the_ceremony", "server_door_opened", "reset_server_room"]) expect(needs).not.toContain(a);
+    // Wave 21: the staff awards name their own winner (no subject).
+    for (const a of ["award_staff_trusted", "award_staff_points", "award_staff_mole"]) expect(needs).not.toContain(a);
     expect(admin.find((i) => i.id === "call_to_the_desktop")).not.toHaveProperty("subject");
   });
 });

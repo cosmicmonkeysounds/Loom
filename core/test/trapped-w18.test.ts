@@ -12,7 +12,8 @@
 //! - Q26: the door queue (`waiting_at_the_door`) and `claim_door`.
 //! - Q16: the header's `reinstall:` gate, and after an ending the begin
 //!   never captures (a party favour).
-//! - B6: Clippy calls the game cues (`by: Clippy`).
+//! - B6: Clippy calls the game cues (`by: Clippy`) — reversed by wave 21:
+//!   Clippy is a player and calls nothing (trapped-w21.test.ts).
 //! - The objectives' `go:`, `target:`, `pick:`, `evergreen:`, S3 and the
 //!   summons' self check-in; the arrival threads' `archive:`.
 
@@ -366,14 +367,16 @@ describe("Trapped in the Internet — wave 18: the reinstallation gate and the p
   }, SLOW);
 });
 
-describe("Trapped in the Internet — wave 18: Clippy calls the games (B6, Q2)", () => {
-  it("`by: Clippy` on the game cues only, never the doors, the clock or Trabolta", () => {
+// Wave 21 reverses B6 / Q2: Clippy is a player (`player: true`) and calls
+// no cue; the hosts and the directors call the games.
+describe("Trapped in the Internet — wave 18 → 21: Clippy no longer calls the games (B6, Q2 reversed)", () => {
+  it("Clippy is a player and no caller; no admin cue carries `by: Clippy`", () => {
     const m = Sim.fromSources(SRC).model;
-    expect(isCaller(m, "Clippy")).toBe(true);
-    for (const id of ["start_the_bingo", "bingo_time", "start_the_hunt", "first_moment_of_truth", "close_the_filing", "read_the_results", "spin_the_bottle", "bobbing_for_truth", "clippy_reads_summary", "start_the_ceremony", "award_most_trusted", "award_the_painting"]) {
-      expect(callsCue(m, "Clippy", id), id).toBe(true);
+    expect(m.characters.get("Clippy")?.player).toBe(true);
+    expect(isCaller(m, "Clippy")).toBe(false);
+    for (const id of ["start_the_bingo", "bingo_time", "start_the_hunt", "first_moment_of_truth", "close_the_filing", "read_the_results", "spin_the_bottle", "bobbing_for_truth", "clippy_reads_summary", "start_the_ceremony", "award_most_trusted", "award_the_painting", "call_to_the_desktop", "resurrection"]) {
+      expect(callsCue(m, "Clippy", id), id).toBe(false);
     }
-    for (const id of ["call_to_the_desktop", "introduce_trabolta", "y2k_clock", "five_minute_warning", "truth_pong", "restore_the_king", "resurrection", "the_verdict"]) expect(callsCue(m, "Clippy", id), id).toBe(false);
     for (const who of ["Task Manager", "Norton Anti-Virus"]) expect(isCaller(m, who), who).toBe(false);
   });
 });
@@ -455,7 +458,8 @@ describe("Trapped in the Internet — wave 18: objectives (C5, C11, A5, A7, S3, 
   it("the evergreen fallbacks; no staff objective puts the scan on the summons; no copy tells anyone to radio the director", () => {
     const m = Sim.fromSources(SRC).model;
     const ever = [...m.objectives.values()].filter((o) => o.evergreen).map((o) => o.id).sort();
-    expect(ever).toEqual(["Disk Cleanup", "Documents And Printing", "Explore The Computer", "Help With That", "Patrol The Computer", "The Help Desk"]);
+    // Wave 21: Password Manager's own patrol and each player's Whose Side Are You On.
+    expect(ever).toEqual(["Disk Cleanup", "Documents And Printing", "Explore The Computer", "Help With That", "Patrol And Review", "Patrol The Computer", "The Help Desk", "Whose Side Are You On", "Whose Side Are You On Clippy", "Whose Side Are You On Keys", "Whose Side Are You On Too"]);
     for (const id of ["Summons Check In", "Summons Door"]) expect(m.objectives.get(id)!.buttons, id).not.toContain("scan");
     const text = [...m.objectives.values()].map((o) => `${o.title} ${o.brief} ${o.checklist.map((c) => c.label).join(" ")}`).join("\n");
     expect(text.length).toBeGreaterThan(1000);

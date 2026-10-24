@@ -92,14 +92,14 @@ const countdowns = (sim: Sim) => boardFor(sim).countdowns.map((c) => c.label);
 describe("Trapped in the Internet — wave 10 (the Director page's acts and board)", () => {
   it("every admin cue has an act", () => {
     const rows = rowsOf(Sim.fromSources(SRC));
-    expect(rows).toHaveLength(69); // wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅; wave 20: 🚪 closed / trust + 🕊 autoend appended to E
+    expect(rows).toHaveLength(72); // wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅; wave 20: 🚪 closed / trust + 🕊 autoend appended to E; wave 21: the three staff awards in G, before G11
     for (const r of rows) expect(r.act, r.id).not.toBe(null);
     // `act:` rides admin cues only — never a performer's or a guest's button.
     const others = (modView(Sim.fromSources(SRC), "open", "x").interactions ?? []).filter((i) => i.who !== "admin");
     for (const i of others) expect(i.act, i.id).toBeUndefined();
   });
 
-  it("the act split is B10 C5 D8 E16 Anytime6 F12 G12 with 41 spine and 28 asides", () => {
+  it("the act split is B10 C5 D8 E16 Anytime6 F12 G15 with 44 spine and 28 asides", () => {
     const acts = cueActs(rowsOf(Sim.fromSources(SRC)));
     const shape = (a: CueAct) => [a.code ?? a.title, a.rows.length, a.spine.length, a.asides.length];
     expect(acts.map(shape)).toEqual([
@@ -109,9 +109,9 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
       ["E", 16, 2, 14], // wave 20: three door / heart asides appended (no cue number moved); w20b: 🕊 talked_down joins the spine (NEXT while a stand-down waits)
       ["Anytime", 6, 0, 6],
       ["F", 12, 12, 0],
-      ["G", 12, 11, 1],
+      ["G", 15, 14, 1], // wave 21: G10a–c before G11
     ]);
-    expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(41);
+    expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(44);
     expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(28);
     // The two `act: Anytime` lines are one act (💡, the reinstallation cues,
     // and wave 11's 👑 / 🔧, appended last so no cue number moved).
@@ -133,7 +133,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(["y2k_clock", "lights_dance", "patch_combo_a"].map(actOf)).toEqual(["E", "E", "E"]);
   });
 
-  it("cue numbers (wave 18b: −2 after #10, ☎️ / 🪅 are gone)", () => {
+  it("cue numbers (wave 18b: −2 after #10, ☎️ / 🪅 are gone; wave 21: +3 from G11)", () => {
     const n = new Map(rowsOf(Sim.fromSources(SRC)).map((r) => [r.id, r.n]));
     expect(n.get("call_to_the_desktop")).toBe(1);
     expect(n.get("second_hunt_preview")).toBe(11);
@@ -143,10 +143,12 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(n.get("final_reveal")).toBe(38);
     expect(n.get("own_award_lines")).toBe(50);
     expect(n.get("start_the_ceremony")).toBe(51);
-    expect(n.get("resurrection")).toBe(61);
-    expect(n.get("reinstallation begun")).toBe(64);
+    // Wave 21: the staff awards G10a–c sit before G11, which moves down three.
+    expect(["award_staff_trusted", "award_staff_points", "award_staff_mole"].map((id) => n.get(id))).toEqual([61, 62, 63]);
+    expect(n.get("resurrection")).toBe(64);
+    expect(n.get("reinstallation begun")).toBe(67);
     // Wave 20: appended after 👑 / 🔧, in act E.
-    expect(["server_door_closed", "server_door_trust", "heart_autoend"].map((id) => n.get(id))).toEqual([67, 68, 69]);
+    expect(["server_door_closed", "server_door_trust", "heart_autoend"].map((id) => n.get(id))).toEqual([70, 71, 72]);
   });
 
   it("focus act along the night", { timeout: SLOW }, () => {
