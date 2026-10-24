@@ -4,6 +4,11 @@
 //! Bottom: the host dock (host booths) and the taskbar — ⊞ Start, the big
 //! 📷 Scan, 🗂 Guests, the tray. A scan opens the guest's card at once;
 //! everything a performer can do to a guest lives on that card.
+//!
+//! Wave 21 (P1): a player's booth (`PrimeView.player`) takes the guest
+//! frame's shape instead — the ▣ MISSION title bar, Mission | Chats as the
+//! window, the taskbar `⊞ Start · Mission · Chats · Scan`, no NOW card, no
+//! Guests, no host dock and no cue bar (`booth/player.tsx`).
 
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, useWide } from "../ui/primitives.tsx";
@@ -30,10 +35,19 @@ import { WALLET_ROOM } from "../rooms/spaces.ts";
 import { useWakeLock } from "../wake-lock.ts";
 import { GuestCard, type CardSeed } from "./card.tsx";
 import { GuestsSheet } from "./guests.tsx";
-import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, type BoothSheet } from "./header.tsx";
+import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, playerStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
 import { boothFoldable, boothHost, boothSidebar, closedGate, guestsWaiting, soonest, viewPaused } from "./model.ts";
 import { boothMomentFeed } from "./moments-feed.ts";
+import { PeopleSheet } from "./people.tsx";
+import { PlayerMission, playerTaskbarButtons } from "./player.tsx";
+import { WANTED_ROOM, playerChats } from "./mission-model.ts";
+import { ChatsWindow } from "../guest/chats.tsx";
+import { NowBar } from "../guest/frame.tsx";
+import { chatsDot } from "../rooms/chats.ts";
+import { missionLine } from "../chrome/title-bar.tsx";
+import { CODEX_ROOM, QUEST_LOG } from "../rooms/spaces.ts";
+import type { Nav } from "../moments/exits.ts";
 import { Icon } from "../chrome/icons.tsx";
 import { BoothIcon } from "./icons.tsx";
 import { NowCard } from "./now-card.tsx";
@@ -55,7 +69,7 @@ import { useSystemBack } from "../back-gesture.ts";
 import { bindDraft, useBoothPopOuts, type BoothOpeners } from "./popouts/use-booth-popouts.ts";
 import { WaitingWindow } from "./waiting.tsx";
 import { WantedBoard } from "./wanted/board.tsx";
-import { boothView, globalButtonsOf, looseWanted, mayPress, wantedOf, type BoothMessage, type BoothObjective } from "./wire.ts";
+import { boothView, globalButtonsOf, isPlayer, looseWanted, mayPress, wantedOf, type BoothMessage, type BoothObjective } from "./wire.ts";
 import { HostDock } from "../host/dock.tsx";
 
 /**
@@ -154,6 +168,9 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   const [layer, setLayer] = useState<Layer>(null);
   const [people, setPeople] = useState<Channel | null>(null);
   const [picking, setPicking] = useState(false);
+  // Wave 21 (P1): a player's window (Mission or Chats) and its 👥 People list.
+  const [pwin, setPwin] = useState<"mission" | "chats">("mission");
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const wake = useWakeLock(host.storage);
   // The just-closed pass, ignored for a moment: kept for the sign-in, not
   // per scanner opening, so leaving and reopening the scanner with the pass
@@ -231,8 +248,9 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // The phone's own Back closes the booth's top layer (a card, the board,
   // the scanner, a sheet) instead of leaving the app mid-escort (NMR-2,
   // the booth half of NM-F9); only when the app owns the page.
-  useSystemBack(host.ownsPage && signedIn, boothAway({ layer, sheet, people, help }), () => {
+  useSystemBack(host.ownsPage && signedIn, boothAway({ layer, sheet, people: people ?? (peopleOpen ? true : null), help }), () => {
     if (layer !== null) setLayer(null);
+    else if (peopleOpen) setPeopleOpen(false);
     else if (sheet !== null) setSheet(null);
     else if (people !== null) setPeople(null);
     else if (help) setHelp(false);
@@ -242,6 +260,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // C4: the latest view says whether this booth is a host (an older server's: the sign-in's answer).
   const isHost = boothHost(s.auth, s.view);
   const pill = boothPill({ admin, host: isHost });
+  // Wave 21 (P1): a player plays the night like a guest. A host never does.
+  const player = isPlayer(s.view) && !isHost && !admin;
   const token = s.auth.token;
   const character = s.auth.character;
   // The 🗂 Guests badge: guests whose typed line to this character waits unread.
@@ -300,12 +320,19 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     door: () => setLayer({ kind: "door" }),
     pick: openPick,
     cue: (id) => armCue.current?.(id),
+    // Wave 21 (P5): NEW MISSION's Go.
+    mission: () => {
+      setPwin("mission");
+      if (t.activeId !== null) t.back();
+    },
   };
   const pressGlobal = (id: string) =>
     s.act(id, null).then(
       (r: PrimeActResult) => {
-        const line = [...(r.said ?? []).map((l) => l.text), ...(r.replies ?? []), ...(r.staff ?? [])].find((t) => t.trim() !== "");
-        s.alerts.raise(r.refused === true ? `Not done: ${line ?? "the story took no action on this right now."}` : (line ?? "✔ Sent"), { quiet: true });
+        // Wave 21 (D4): a player reads plain words — never the staff room's.
+        const line = [...(r.said ?? []).map((l) => l.text), ...(r.replies ?? []), ...(player ? [] : (r.staff ?? []))].find((t) => t.trim() !== "");
+        if (player) s.alerts.raise(r.refused === true ? "Not now." : (line ?? "✔ Done"), { quiet: true });
+        else s.alerts.raise(r.refused === true ? `Not done: ${line ?? "the story took no action on this right now."}` : (line ?? "✔ Sent"), { quiet: true });
       },
       (e: unknown) => s.alerts.raise(e instanceof Error ? e.message : String(e), { quiet: true }),
     );
@@ -391,7 +418,58 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     }
   }
 
-  const side = (
+  // Wave 21 (P1, P2, P6): a player's window — Mission (home) or Chats.
+  const claimer = mayPress(s.view?.interactions, "claim_escort", character);
+  const playerGo = (nav: Nav) => {
+    switch (nav.to) {
+      case "mission":
+      case "chats":
+        setPwin(nav.to);
+        return;
+      case "room":
+        if (nav.id === WANTED_ROOM) openBoard();
+        else t.open(nav.id);
+        return;
+      case "quests":
+        t.open(QUEST_LOG);
+        return;
+      case "codex":
+        t.open(CODEX_ROOM);
+        return;
+      case "wallet":
+        t.open(WALLET_ROOM);
+        return;
+      case "scan":
+        setLayer({ kind: "scan" });
+        return;
+      default:
+        return;
+    }
+  };
+  const pChats = player ? playerChats(t.list, { character, now: storyMs, activeId: t.activeId }) : null;
+  const playerWindow =
+    player && s.view !== null ? (
+      pwin === "chats" ? (
+        <ChatsWindow chats={pChats!} activeId={t.activeId} meId={character} onOpen={t.open} />
+      ) : (
+        <PlayerMission
+          view={s.view}
+          ctx={{ list: t.list, claimer, loose: wanted !== null ? loose : null }}
+          open={{
+            scan: (caption) => setLayer({ kind: "scan", ...(caption !== undefined ? { caption } : {}) }),
+            pick: openPick,
+            card: (g) => openCard(g),
+            global: (id) => void pressGlobal(id),
+            go: playerGo,
+          }}
+        />
+      )
+    ) : null;
+  const playerTap = (target: "mission" | "chats") => {
+    setPwin(target);
+    if (t.activeId !== null) t.back();
+  };
+  const side = playerWindow ?? (
     <SpaceList
       spaces={boothSidebar(t.spaces, { character, activeId: t.activeId })}
       activeId={t.activeId}
@@ -424,7 +502,21 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     popOutAdapter: boothPopOutAdapter(adapterCtx, (d) => bindDraft(d, openers, rung.defer)),
     openCard: (guestId: string) => openCard(guestId),
   };
-  const start = boothStartItems({
+  const start = player
+    ? playerStartItems({
+        character,
+        wake,
+        embedded: host.embedded,
+        onHelp: () => setHelp(true),
+        onSheet: setSheet,
+        onPeople: () => setPeopleOpen(true),
+        onSignOut: () => {
+          push.release();
+          s.leave();
+          onLeave();
+        },
+      })
+    : boothStartItems({
     character,
     admin,
     host: isHost,
@@ -449,6 +541,16 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
             <BoothFrame clocked={showClockOf(s.view) !== null || soonest(s.view?.countdowns, s.view?.clock ?? null) !== null} alarmed={(wanted !== null && loose > 0) || rung.tray.length + rung.queued > 0}>
               {(keyboard) => (
                 <>
+              {player ? (
+                <NowBar
+                  objectives={s.view?.objectives}
+                  fallback={s.view?.title ?? s.auth?.title ?? character}
+                  onOpen={() => playerTap("mission")}
+                  sub={s.view?.mission?.place != null ? `📍 ${s.view.mission.place}` : undefined}
+                  paused={viewPaused(s.view)}
+                  act={pwin === "mission" && t.activeId === null ? missionLine(s.view?.objectives) : undefined}
+                />
+              ) : (
               <NowCard
                 objectives={s.view?.objectives}
                 interactions={s.view?.interactions ?? []}
@@ -472,9 +574,10 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                   onGlobal: pressGlobal,
                 }}
               />
+              )}
               {/* The sticky banner flows under the NOW card (the booth's title bar). */}
               <MomentsLayer />
-              <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room — or 📷 Scan a pass." />
+              <Shell side={side} stage={stage} wide={wide} placeholder={player ? "Pick a chat, or follow your mission." : "Pick a room — or 📷 Scan a pass."} />
               {/* No `hidden` here: the dock owns its keyboard rule. A field in
                   the room hides it; one in the host console hides only its
                   NEXT bar, never the drawer the host is typing in. */}
@@ -483,18 +586,19 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 <PopOutHost />
               </div>
               <div className="booth-dock">
-                <CueBar session={s} now={storyMs} countdowns={s.view?.countdowns} armRef={armCue} onFired={(at) => (ownFire.current = at)} />
-                <HostDock session={s} wide={wide} openCard={(id) => openCard(id)} openWanted={openBoard} />
+                {/* Wave 21 (P1, P7): a player gets neither the cue bar nor the host dock. */}
+                {!player && <CueBar session={s} now={storyMs} countdowns={s.view?.countdowns} armRef={armCue} onFired={(at) => (ownFire.current = at)} />}
+                {!player && <HostDock session={s} wide={wide} openCard={(id) => openCard(id)} openWanted={openBoard} />}
               </div>
               {!keyboard && (
                 <Taskbar
                   start={start}
                   startHeader={<StartHeader s={s} />}
-                  buttons={[
+                  buttons={player ? playerTaskbarButtons({ pressed: t.activeId === null || wide ? pwin : null, chatsDot: pChats !== null && chatsDot(pChats), scanOpen: layer?.kind === "scan", mission: () => playerTap("mission"), chats: () => playerTap("chats"), scan: () => setLayer({ kind: "scan" }) }) : [
                     { id: "scan", label: "Scan", icon: <Icon name="scan" />, primary: true, title: "Scan a guest's pass", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
                     { id: "guests", label: "Guests", icon: <Icon name="people" />, title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
                   ]}
-                  tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} loose={wanted !== null ? loose : null} waiting={popOutWaiting(rung)} onBoard={openBoard} onWaiting={() => setLayer({ kind: "waiting" })} />}
+                  tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} loose={wanted !== null && (!player || claimer) ? loose : null} waiting={popOutWaiting(rung)} onBoard={openBoard} onWaiting={() => setLayer({ kind: "waiting" })} />}
                   conn={s.connected ? "live" : "reconnecting"}
                 />
               )}
@@ -574,6 +678,17 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 onPick={(id) => openCard(id)}
                 onClose={() => setPeople(null)}
                 empty="Nobody is standing here."
+              />
+            )}
+            {peopleOpen && (
+              <PeopleSheet
+                view={s.view}
+                claimer={claimer}
+                onPick={(id) => {
+                  setPeopleOpen(false);
+                  openCard(id);
+                }}
+                onClose={() => setPeopleOpen(false)}
               />
             )}
             {sheet === "knows" && <KnowsSheet session={s} onClose={() => setSheet(null)} />}

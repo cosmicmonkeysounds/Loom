@@ -244,8 +244,9 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
   const inbox: Channel = {
     id: INBOX,
     kind: "dm",
-    title: "Readouts",
-    subtitle: lastReadout !== undefined ? lastReadout.text : "what your scans and buttons said",
+    // Wave 21 (P6): a player's Readouts are its 📋 Notes.
+    title: view?.player === true ? "📋 Notes" : "Readouts",
+    subtitle: lastReadout !== undefined ? lastReadout.text : view?.player === true ? "what the house told you" : "what your scans and buttons said",
     spaceId: "booth",
     order: 1,
     messages: inboxMsgs,
