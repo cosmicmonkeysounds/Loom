@@ -16,7 +16,7 @@ change the order here, change it there.
    **before** the sync; as of 2026-10-19 it runs `w11b-1019` (wave 11 and
    wave 11b; wave 18b's Stage A and the tent laptop shipped as `w18b-1021`): this page
    follows the wave 18b story, which reaches the VPS only after
-   [`SIGNOFF-w18b.md`](./SIGNOFF-w18b.md) and a `sync-show`; featured programs join only
+   [`SIGNOFF-w18b.md`](./history/SIGNOFF-w18b.md) and a `sync-show`; featured programs join only
    with their invitations; the cue sheet refuses 📺 until all three 📋 are read and
    while the bottle is open), and the show's story is in your
    server project: `LOOM_SSH=loom-vps pnpm sync-show` (with
@@ -57,7 +57,7 @@ change the order here, change it there.
      **O** opens the door, **C** shuts it, **F** throws a sensor fault (the real
      rig is `door=serial` and the Grand Central M4; a mouse-only rig adds `&keys=0`).
      It sleeps until The Heart opens the room. Wave 20 reaches the VPS only
-     after [`SIGNOFF-w20.md`](./SIGNOFF-w20.md), a ship and a `sync-show`.
+     after [`SIGNOFF-w20.md`](./history/SIGNOFF-w20.md), a ship and a `sync-show`.
 5. Optional: Trabolta's voice. Start stagehand's `agents` worker on the
    laptop/house Mac (`uv run stagehand run --config <machine>.yaml --only agents`,
    see `stagehand/README.md`). Without it, DMs to Trabolta get his hold line

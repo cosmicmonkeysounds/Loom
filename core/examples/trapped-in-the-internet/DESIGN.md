@@ -23,7 +23,7 @@
 > lobby is hidden from guests (`lobby: hidden`), 🚻 is a badge, CRA audits are flagged to
 > both phones as MyCRA; sounds and announcements go through the house router (no QLab, no
 > `alexa` job). The sections below keep the original plan, with wave 18b notes where it
-> changed. Decisions and new copy: [`SIGNOFF-w18b.md`](./SIGNOFF-w18b.md).
+> changed. Decisions and new copy: [`SIGNOFF-w18b.md`](./history/SIGNOFF-w18b.md).
 
 
 Status: **final** architect's spec, 2026-10-14 (revision 2: every finding of the three

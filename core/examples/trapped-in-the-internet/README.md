@@ -30,14 +30,14 @@ by late-90s Web 1.0 aesthetics and existentialism.*
 > on the screens, Trabolta judging every non-exact filing, the house router
 > on the 828x, the tent laptop) has its Stage A + the tent laptop shipped as
 > `w18b-1021`; its Stage B (the story text, the review, the ties, the
-> Factions UI) is built and awaits [`SIGNOFF-w18b.md`](./SIGNOFF-w18b.md).
+> Factions UI) is built and awaits [`SIGNOFF-w18b.md`](./history/SIGNOFF-w18b.md).
 > **Wave 20** (Trabolta's heart: a dramatic sequence when the server room
 > is opened, the door sensor on the Grand Central M4 read by the
 > server-room terminal over Web Serial, a four-layer talk like the Master
 > in Fallout, a true heart to heart at a keyboard, and the light in his
 > heart driven from `lights.json`) is built on `oct31-w20/integration` and
-> awaits [`SIGNOFF-w20.md`](./SIGNOFF-w20.md); the contract is
-> [`CONTRACT-w20.md`](./CONTRACT-w20.md).
+> awaits [`SIGNOFF-w20.md`](./history/SIGNOFF-w20.md); the contract is
+> [`CONTRACT-w20.md`](./history/CONTRACT-w20.md).
 > **Wave 21** (performers play: Clippy and the four Antivirus are *players*
 > with a Mission, ⭐ Points, a hidden trust on Trabolta's chart and a choice
 > about him, 📢 open or 🤫 quiet; the hosts and directors call every cue;
@@ -1205,7 +1205,7 @@ Wizard's backstory, the Hand Jive weakness, the Runescape / MS Paint / VLC
 / Pong orders and quests, the 21 coded files, the Bingo squares and the
 fate lines. Wave 18b's new copy (the ties, The DSL Line, The Night In
 Review and Your File, the founded-faction lines, Trabolta's reading lines,
-the typed left-behind) waits on [`SIGNOFF-w18b.md`](./SIGNOFF-w18b.md).
+the typed left-behind) waits on [`SIGNOFF-w18b.md`](./history/SIGNOFF-w18b.md).
 
 Decisions that need sign-off (**all approved 2026-10-15**, with the
 content list above; see [OCT31.md](./OCT31.md)):
@@ -1234,7 +1234,7 @@ answers that changed things — Q1, Q2, Q3, Q16, Q21, Q26, Q30 — are wave 18).
 app's own words), all `// DRAFT w18` until the user signs it off.
 **Wave 20's decisions (D1–D29), every heart line (`// DRAFT w20`), the
 looks and the persona's `outside:` list are in
-[`SIGNOFF-w20.md`](./SIGNOFF-w20.md).**
+[`SIGNOFF-w20.md`](./history/SIGNOFF-w20.md).**
 
 ## Rehearsing
 
