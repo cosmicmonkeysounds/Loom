@@ -7,6 +7,11 @@ something breaks. The MacBook half (Ollama + Trabolta's `agents` worker, the
 director's Run console, `ship` / `sync-show` / `showbackup`, and by default
 the speaker router) keeps its macOS runbooks in `scripts/house-macbook/`.
 
+Stagehand itself (the modules, the config files, `extends:`, the CLI) is
+described in [`stagehand/README.md`](../../stagehand/README.md); the show's
+cross-machine diagnostics (`pnpm showctl …`) in
+[`scripts/show/README.md`](../show/README.md).
+
 | Machine | Runs |
 |---|---|
 | **John's Desktop** (Windows, this folder) | the **TV**: Chrome kiosk over HDMI, `view=tv`, spot `desktop-tv` · **Mosquitto**, the house broker (anonymous `127.0.0.1:1883`, password-only `props` on the LAN at `:1884`) · **Zigbee2MQTT** on the CC2652P stick (`COMn`) · stagehand **`show`** (cues to Z2M / WLED / MQTT, the sensors back, the `do announce` relay) and **`lights`** (`lights.json`, the server room's RGB bulb) · *optionally* the **`audio`** router + the MOTU 828x, once it is proven on Windows |
