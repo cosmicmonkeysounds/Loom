@@ -25,6 +25,7 @@ import { lowerRawBody } from "./effects.ts";
 import { resolveRules, type ChannelRules } from "./channel-types.ts";
 import { parseBoardLine, type BoardLine } from "./board.ts";
 import { parseBadgeLine } from "./badges.ts";
+import { parseStatLine, type StatDef } from "./stats.ts";
 
 export type EntityKind = "person" | "character" | "faction" | "location" | "role";
 
@@ -189,6 +190,16 @@ export interface CharDef {
   /** `admin: true` — a host part: `/api/prime/login` grants the booth token
    *  the host capability (D1, §2.5 / §2.7). Default false. */
   admin: boolean;
+  /** `player: true` (wave 21, D1) — a performer part that plays the night's
+   *  game like a guest: a lean booth (its own buttons, guest countdowns, its
+   *  team's staff rooms only), a Mission home, a row on the Trust Chart, and
+   *  never a cue caller. Default false. */
+  player: boolean;
+  /** `private: covert, defiance` (wave 21, C2) — this character's slots no
+   *  agent may read (requests, the facts document, `recent`, the dossier)
+   *  and no other character's `badge:` / `watch:` / `stat:` line shows. A
+   *  name or a dotted prefix, as written. Empty when none. */
+  privateSlots: string[];
   /** `crawl: fx` — every line this character speaks is effect text (the play
    *  app's fx crawl). Null for anything else (only `fx` is meaningful). */
   crawl: "fx" | null;
@@ -590,6 +601,9 @@ export interface SimModel {
    *  only; a line on a secret slot or a secret CHARACTER is skipped at run
    *  time (lint L1219). */
   badges: BadgeDef[];
+  /** Header `stat:` lines (wave 21, C3), every file's, in order: a player
+   *  booth's score tiles. Unparseable lines are skipped (lint L1223). */
+  stats: StatDef[];
   /** Header `lobby: hidden` (wave 18b): guests never list the lobby (its
    *  routing stays; booths and Run keep it). */
   lobbyHidden: boolean;
@@ -704,6 +718,7 @@ export function compileModel(bundle: Bundle): SimModel {
     reinstall: null,
     archive: [],
     badges: [],
+    stats: [],
     lobbyHidden: false,
     founding: null,
   };
@@ -753,6 +768,9 @@ export function compileModel(bundle: Bundle): SimModel {
       } else if (line.key === "badge") {
         const b = parseBadgeLine(line.value);
         if (b !== null) model.badges.push(b);
+      } else if (line.key === "stat") {
+        const st = parseStatLine(line.value);
+        if (st !== null) model.stats.push(st);
       } else if (line.key === "lobby") {
         if (line.value.trim().toLowerCase() === "hidden") model.lobbyHidden = true;
       } else if (line.key === "founding") {
@@ -1162,6 +1180,11 @@ function charDef(id: string, body: CharacterBody): CharDef {
     secret: body.properties.get("secret")?.value.trim() === "true",
     wallet: walletRoleOf(body.properties.get("wallet")?.value),
     admin: body.properties.get("admin")?.value.trim().toLowerCase() === "true",
+    player: body.properties.get("player")?.value.trim().toLowerCase() === "true",
+    privateSlots: (body.properties.get("private")?.value ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s !== ""),
     crawl: body.properties.get("crawl")?.value.trim().toLowerCase() === "fx" ? "fx" : null,
   };
 }
