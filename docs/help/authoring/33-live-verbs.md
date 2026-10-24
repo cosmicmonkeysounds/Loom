@@ -356,9 +356,12 @@ character that owns a `when` for the event counts too, so a trait's
 guest card the **face** holds at most three buttons: the ones the live
 [objectives](objectives.md) for that character name, in order, that are
 on offer for this guest, then buttons whose `while:` reads the guest.
-Everything else the booth may press folds under **All buttons… (n)**
-(*Not on offer now* when its `while:` is false). With no objectives at
-all, the face is the character's own live buttons.
+A host part (`admin: true`) also gets the buttons live *because of this
+guest* (🩹 Unmark on a marked program). Nothing else shows: since wave 21
+there is no *All buttons…* fold, so a button no objective names and no
+guest makes live is never on a card (a director's quick-fire from Run
+still fires it). With no objectives at all, the face is the character's
+own live buttons (never on a `player: true` part's booth).
 
 **`by:` is enforced.** The server refuses a press of a `by:` button from
 any other booth (403 *not your button: … is for …*), and that booth's

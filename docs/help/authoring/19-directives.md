@@ -105,9 +105,8 @@ speaker is skipped, not played everywhere** — a setting with no speaker
 in it, or a room id the map doesn't have, plays nowhere (the router logs
 *reaches no wired speaker*). Only a sound with no `in` / `rooms:`, no cue
 and no setting falls through to every speaker, so give every new sound a
-cue in `audio.json`. The rooms matter wherever the house Mac's speaker
-router plays the sounds (*Trapped in the Internet* turns it on: there is
-no QLab); a show that hands its sounds to another player instead
+cue in `audio.json`. The rooms matter wherever stagehand's speaker
+router plays the sounds (*Trapped in the Internet* turns it on); a show that hands its sounds to another player instead
 (`play_sounds: false`) ignores them.
 
 Lint **`L1213 SoundRoomUnresolved`** (a warning) flags a target of

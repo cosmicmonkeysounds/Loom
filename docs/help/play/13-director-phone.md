@@ -86,8 +86,9 @@ no acts (or an older server) shows one plain list.
 
 ## Who is calling
 
-Every host, Clippy, the laptop's Run and this phone see the same sheet, and
-any of them may call the show. Whoever is calling claims it, so the others
+Every host, the laptop's Run and this phone see the same sheet, and
+any of them may call the show (a story may also hand a part some cues on a
+🎤 cue bar; at the show nobody has one: Clippy is a player). Whoever is calling claims it, so the others
 know: on this phone, **☰ → 📣 I'll call** (and **Stop calling** to hand it
 back); the strip then says *📣 You* here and *📣 Phone · your name* on
 everyone else's. When someone else is calling, your FIRE asks once first:

@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, door sensor, 🚪, door override, trust the door sensor, ldr_open, fault, lights, 💡, lights module, zigbee, pairing, fixtures, keys=0, door=serial, microphone, mic, 🎤, voice link, denied, invitations, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, urgent, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
+keywords: run, door sensor, 🚪, door override, patch bay, 🔌, trust the patch bay, trust the door sensor, ldr_open, fault, lights, 💡, lights module, zigbee, pairing, fixtures, keys=0, door=serial, microphone, mic, 🎤, voice link, denied, invitations, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, urgent, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -57,10 +57,11 @@ Every page shares one header:
   untouched, and stopping the dance song does not move the story's
   clock. The button then reads one of three things:
   - **■ Stopped**: the router heard it and fades out now.
-  - **■ No router: stop it on the house Mac** (amber): the server took
-    the stop, but no router is listening, so it can't reach the house
-    Mac. The house may still be playing (its connection down mid-song):
-    stop it there with `stagehand sounds stop`, or publish to MQTT
+  - **■ No router: stop it at the router** (amber): the server took
+    the stop, but no router is listening, so it can't reach the
+    speakers. The house may still be playing (its connection down
+    mid-song): stop it on the router's computer (at the show, John's
+    MacBook) with `stagehand sounds stop`, or publish to MQTT
     `show/audio/stop`.
   - **■ Stop failed: retry** (red): the request itself failed (signed
     out, the server down, an older server), so nothing was stopped.
@@ -177,7 +178,16 @@ Front of house: getting people in.
   **override** (it rides the door-sensor terminal's row) means a 🚪 button
   was pressed and the story now follows the buttons, not the sensor:
   press **🚪 Trust the door sensor again** to hand it back (the next poll
-  brings the story into line with the sensor). **🛠 Set up a terminal…** builds a
+  brings the story into line with the sensor). The same board reads the
+  **patch bay** (wave 22), so that row also carries **🔌** badges: grey
+  **🔌 0** with no cable in, green **🔌 n** with some and **🔌 4 ✓** for a
+  complete set of four (the story judges it), red **🔌 fault: <code>**
+  (`no_port`, `stale`, or `dup`: one source reads on two inputs), an amber
+  **🔌 ? n** when inputs read between levels (a half-seated plug: the bay
+  is not complete), and **🔌 ? (silent)** when the laptop stops polling.
+  Counts only: which cables are in never leaves the server room. An amber
+  **🔌 buttons** means a 🔌 / 💥 / ❌ press took the bay over: press **🔌
+  Trust the patch bay again** to hand it back. **🛠 Set up a terminal…** builds a
   tablet's provisioning link from pickers: the spot, the view (including
   **Reinstall**, the tent laptop: the idle show like any wall terminal,
   and a marked pass plays the reinstallation right there or sends it to
@@ -191,7 +201,7 @@ Front of house: getting people in.
   you pick the server room's spot. That laptop runs desktop Chrome on
   the https address; press ⚙ *Connect door sensor* on it once and it
   reconnects by itself after that.
-- **House sound** — whether the router on the house Mac is listening,
+- **House sound** — whether the speaker router is listening,
   **■ Stop house sounds** with a **+ announcements** box (also cuts the
   announcement playing and drops the queue), and **Tablets that also say
   the announcements**: one box per terminal spot on the house map
@@ -386,7 +396,7 @@ focused button that isn't a cue is that button's.
 
 **Calling / Watching** (top right): on a server run **Calling** is the
 show's **caller claim**, the same one a host's *📣 I'll call* makes: every
-console, host booth, Clippy's 🎤 bar and the director phone then shows
+console, host booth, caller's 🎤 bar and the director phone then shows
 *📣 your name*, and another console's claim turns yours to Watching (*X is
 calling*). A FIRE in the Play app by anyone else asks once (*Fire anyway?*).
 The claim lives in memory: a restart clears it. In a local-folder
@@ -453,7 +463,7 @@ countdown): a click opens the Director page and never fires.
   fires — C2's ⏰ *Hunt over*, 📥, ⏳, 🚨 fire themselves on time — a
   hardware fallback, an anytime cue like 💡 or ✍) ticks when it fires
   but is never LAST or NEXT. V3's ⏰ *Bingo time* is not one of them: the
-  Bingo timer calls time and tells Clippy to ask for the results, and
+  Bingo timer calls time and tells Clippy to get the winners ready, and
   you press V3 yourself, so it becomes LAST like any step.
 
 A local-folder rehearsal judges all of this exactly like the server, and
