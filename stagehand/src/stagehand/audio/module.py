@@ -50,6 +50,7 @@ import json
 import logging
 import os
 import socket
+import sys
 import threading
 import time
 from pathlib import Path
@@ -342,6 +343,11 @@ class AudioRouter:
                 if off:
                     listed = ", ".join(f"{n} ({r} Hz)" for n, r in off)
                     out.append(f"audio: {len(off)} sound file(s) not at the device's {rate} Hz — resampled at load, but convert them offline: {listed}")
+        if sys.platform == "win32" and self.cfg.host_api is None:
+            out.append(
+                "audio: no host_api on Windows — every device is listed once per host API, so the name may match several, "
+                "and only ASIO opens the MOTU as one multichannel device: set audio.host_api: asio"
+            )
         if self.cfg.announce:
             # The voice this machine speaks with (`say` on the Mac, SAPI on
             # Windows): missing, the announcements are the chime alone.

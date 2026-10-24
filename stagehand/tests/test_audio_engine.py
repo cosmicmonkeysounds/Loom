@@ -402,3 +402,15 @@ def test_host_api_is_validated_and_reaches_the_engine(monkeypatch):
     r.preflight()
     assert seen and seen[-1] == "828x ASIO"
     assert any(" on ASIO" in line for line in r.describe())
+
+
+def test_check_warns_a_windows_router_with_no_host_api(monkeypatch):
+    import stagehand.audio.module as am
+    from stagehand.audio.module import AudioRouter
+
+    monkeypatch.setattr(am.sys, "platform", "win32")
+    assert any("host_api" in w for w in AudioRouter(parse_audio_section({}), query=fake_query()).warnings())
+    monkeypatch.setenv("SD_ENABLE_ASIO", "1")
+    assert not any("host_api" in w for w in AudioRouter(parse_audio_section({"host_api": "asio"}), query=fake_query()).warnings())
+    monkeypatch.setattr(am.sys, "platform", "darwin")
+    assert not any("host_api" in w for w in AudioRouter(parse_audio_section({}), query=fake_query()).warnings())
