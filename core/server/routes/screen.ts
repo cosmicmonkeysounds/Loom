@@ -455,7 +455,7 @@ export const DEVICE_MOMENT_SIGNALS: readonly string[] = [...Object.values(KING_S
  *  room's admin door cues and the heart's autoend toggle (a door that opens
  *  and shuts is no house-wide event; the sensor's own `door_sensor_*` and
  *  the story's `heart_door_*` are not admin cues, so never moments anyway). */
-export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won, "server_door_opened", "server_door_closed", "server_door_trust", "heart_autoend"].map(foldName);
+export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won, "server_door_opened", "server_door_closed", "server_door_trust", "heart_autoend", "trust_patch_bay"].map(foldName);
 
 /** (wave 20) Subject-free beats that never become a `beat` moment, folded:
  *  the server room's door chatter (the nag, the door again, the shut, the

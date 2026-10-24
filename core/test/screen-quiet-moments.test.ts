@@ -96,7 +96,7 @@ function rig() {
 
 describe("the quiet door (wave 20)", () => {
   it("lists the quiet signals and beats, folded", () => {
-    for (const n of ["server_door_opened", "server_door_closed", "server_door_trust", "heart_autoend"]) expect(QUIET_MOMENT_SIGNALS).toContain(foldName(n));
+    for (const n of ["server_door_opened", "server_door_closed", "server_door_trust", "heart_autoend", "trust_patch_bay"]) expect(QUIET_MOMENT_SIGNALS).toContain(foldName(n));
     for (const n of ["Heart Nag", "Heart Door Again", "Heart Door Shut", "Heart Sealed"]) expect(QUIET_MOMENT_BEATS).toContain(foldName(n));
     expect(QUIET_MOMENT_BEATS).not.toContain(foldName("The Heart"));
   });
