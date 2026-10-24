@@ -494,7 +494,7 @@ the LED shines on the LDR) feeds a Grand Central M4 on a USB cable to the
 computer behind his heart's terminal, and that terminal page (Web Serial)
 posts the edges to the story itself (`door_sensor_opened` /
 `door_sensor_closed`; firmware in
-[`hardware/server-room-door/`](../hardware/server-room-door)). The ESP32's
+[`hardware/server-room-m4/`](../hardware/server-room-m4), renamed from `server-room-door/` in wave 22). The ESP32's
 old wire-loop contact and the optional Zigbee contact are no longer read by
 stagehand. The door itself has a **standalone keypad lock** (code set by
 hand on the lock, never networked; the inside handle always opens): nothing

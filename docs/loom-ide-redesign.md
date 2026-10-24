@@ -2,11 +2,12 @@
 
 > ⚠️ **Historical.** The Phases below describe the earlier
 > dockview-based, five-mode editor. The shipped shell is the
-> **three-mode Writing / Run / Deploy studio** (Writing `⌘1`, Run `⌘2`
-> with a Sim ⇄ Live cockpit, Deploy `⌘3`); the wasm engine and its
-> in-editor runtime surfaces (Transcript / Ledger / Timeline / Cast /
-> Booth, multi-head play) were removed — Run mode's Sim source is the
-> local-play successor. This document is kept for design history.
+> **three-mode Writing / Run / Integrations studio** (Writing `⌘1`, Run
+> `⌘2`, Integrations `⌘3`; Run's backend follows the workspace kind: a
+> server project runs its shared event, a local folder the in-browser
+> `Sim`); the wasm engine and its in-editor runtime surfaces (Transcript /
+> Ledger / Timeline / Cast / Booth, multi-head play) were removed — Run on
+> a local folder is the local-play successor. This document is kept for design history.
 
 Status: **Phases 1–6 landed** (2026-05-31). The React editor owns
 every Run / Debug surface; the focus + projection bus links every

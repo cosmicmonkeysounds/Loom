@@ -30,8 +30,8 @@ its `INDEX.md`).
 |---|---|
 | [`loom-reinstall.md`](./loom-reinstall.md) | **Normative** contract for the house map, the reinstallation games, the spatial terminals, the voice link, the house audio and lights files. Tests read it. |
 | [`loom-show-control.md`](./loom-show-control.md) | stagehand's design: cues, sensors, the house rig. |
-| [`trapped/kiosk.md`](./trapped/kiosk.md) | Kiosk settings for the tablets, the TV and the laptops (Fully Kiosk, Chrome `--kiosk`). Operational. |
-| [`trapped/room-audio.md`](./trapped/room-audio.md) | The house speaker router plan (§11–12 are the operational parts). |
+| [`trapped/kiosk.md`](./trapped/kiosk.md) | Kiosk settings for the tablets, the TV and the laptops (Fully Kiosk, Chrome `--kiosk`). Operational, partly stale: "the house Mac" is now John's Desktop (the TV) plus John's MacBook. |
+| [`trapped/room-audio.md`](./trapped/room-audio.md) | The house speaker router plan (§11–12 are the operational parts). Partly stale: the wave 1 banner names QLab and one house Mac; the wave 18b banner retires QLab, and the house Mac is now the MacBook (router) plus the Desktop (broker, `show`). |
 
 ## Running it in production
 
@@ -42,7 +42,9 @@ its `INDEX.md`).
 
 Show-night operations are elsewhere: `scripts/show/README.md` (`pnpm
 showctl`), `scripts/house-desktop/README.md` (the Windows Desktop),
-`scripts/house-mac/` (the MacBook's audio, lights and Zigbee runbooks),
+`scripts/house-mac/` (macOS runbooks: `audio.md` is the MacBook's router;
+`zigbee.md` and `lights.md` predate the Windows Desktop, see
+`scripts/house-desktop/`),
 `scripts/accept/README.md` (per-item device checks), and the show
 folder's `SHOW.html` and `OCT31.md` §11.
 
