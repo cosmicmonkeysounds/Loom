@@ -1,7 +1,8 @@
 # Trabolta's mind: the rehearsal card (wave 12)
 
 > For whoever sits at **Run → Mind** (the second director all night) and
-> the **tech operator** at the house Mac, who flips the switches. Read it
+> the **tech operator** at John's MacBook (Trabolta's worker and Ollama
+> run there), who flips the switches. Read it
 > before the 10-25 run-through, where we rehearse the switch back to
 > classic once and time it. Help → *The mind debugger* has the long
 > version.
@@ -9,7 +10,7 @@
 ## Card
 
 **What changed.** Trabolta now runs on the **story mind** (`mind_mode:
-new` in the house Mac's `stagehand/laptop.yaml`):
+new` in the MacBook's `stagehand/laptop.yaml`):
 
 - **One model call per guest line.** Nothing thinks between lines: no
   survey every 2 minutes, no reflection after each reply, and the second
@@ -80,7 +81,7 @@ at a time, smallest first, and say in `# hosts` what you changed:
 | 5 | `voice:` → `layout: classic` | the new prompt itself reads wrong |
 | 6 | `mind_mode: classic` | the story mind as a whole fails |
 | 7 | on the VPS: `LOOM_AGENT_RECENT=off` + a server restart | what the server sends him is wrong. **Before doors only** |
-| 8 | the previous release (`w11b-1019`), the house Mac's whole checkout with it | nothing else helped. Before doors only |
+| 8 | the previous release (`deploy/rollback.sh` on the VPS), the MacBook's whole checkout back to the same release with it | nothing else helped. Before doors only |
 
 **When to flip to classic (rung 6):** most of his replies are dead-air
 lines; he answers but nothing he says fits the phase even after a

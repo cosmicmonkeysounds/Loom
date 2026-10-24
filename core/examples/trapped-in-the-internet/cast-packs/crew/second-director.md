@@ -31,7 +31,7 @@
 | 17:00 | Sign in at Run. Check the heartbeat card (all green), Run → Mind (worker connected, mind reset). |
 | 19:00 | Briefing. |
 | 20:00 | Doors: Run is yours. |
-| ≤ 21:00 | **C1** (OP-17: the story runs ≈ 4 h 45 m from C1). |
+| ≤ 21:00 | **C1** (OP-17's parts add up to ≈ 5 h 10 m from C1, the ceremony included). |
 
 ## Jobs that are yours
 
