@@ -452,6 +452,7 @@ describe("Trapped in the Internet — compile", () => {
       majority_name: "none",
       majority_founder: "none",
       jeeves_reached: "0",
+      pressed_by: "none", // wave 21: who pressed the game button being settled
     });
   });
 
@@ -2106,8 +2107,8 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const RADIO = ["radio_crew_door", "radio_door_opened", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"];
     // Wave 13: Task Manager, Adobe Acrobat and the Recycling Bin are host
     // parts (`admin: true`): a host booth keeps every `by:` button, as a
-    // passcode admin always did, so only Clippy (a Host, never a host part)
-    // is refused here (wave 18: the door-only part is gone).
+    // passcode admin always did, so only Clippy (a player, never a host
+    // part) is refused here (wave 18: the door-only part is gone).
     const hostTokens = new Map<string, string>();
     for (const who of ["Adobe Acrobat", "Task Manager", "Recycling Bin"]) {
       const login = await call(rt, "POST", "/api/prime/login", { character: who, passcode: CODES.prime });
@@ -2120,7 +2121,8 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
       refused.set(who, t);
       for (const name of RADIO) expect((await act(t, name)).status, `${name} by ${who}`).toBe(403);
       const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(t)}`, {})).json as unknown as PrimeView;
-      for (const name of RADIO) expect(view.interactions.find((i) => i.id === name)?.only, `${name} on ${who}`).toBe(true);
+      // Wave 21 (C4): a player's booth never learns another part's button.
+      for (const name of RADIO) expect(view.interactions.find((i) => i.id === name), `${name} on ${who}`).toBeUndefined();
     }
     expect(v(rt.liveSim!, "Night.wrong_combos") ?? 0).toBe(0);
     expect(v(rt.liveSim!, "Night.crew_door_until") ?? 0).toBe(0);
@@ -2169,7 +2171,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const sim = Sim.fromSources(SRC);
     const armed = [...sim.model.interactions.values()].filter((i) => i.arm).map((i) => i.id).sort();
     expect(armed).toEqual([
-      "beat_the_machine", "brought_up_the_bag", "pickup_line_works", "plant_the_virus",
+      "beat_the_machine", "brought_up_the_bag", "defect_openly", "pickup_line_works", "plant_the_virus",
       "radio_beans", "radio_combo_a", "radio_combo_b", "radio_crew_door", "radio_door_closed", "radio_door_opened", "radio_wrong_patch",
       // w13 Q29: 🛡 captures on the spot, from any phase.
       "send to the internet",
@@ -2205,9 +2207,10 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect((await act(clippy, "accurate_q1")).status).toBe(200);
     // 🛡 / ✅ / 👁 are the Antivirus' (Clippy has no hook for them: they did nothing).
     for (const b of ["send to the internet", "mark as reinstalled", "accuse"]) expect((await act(clippy, b)).status, b).toBe(403);
-    // Norton's booth no longer offers the Hosts' verdicts at all.
+    // Norton's booth no longer offers the Hosts' verdicts at all (wave 21:
+    // a player's booth only learns its own buttons, C4).
     const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(norton)}`, {})).json as unknown as PrimeView;
-    expect(view.interactions.find((i) => i.id === "accurate_q1")?.only).toBe(true);
+    expect(view.interactions.find((i) => i.id === "accurate_q1")).toBeUndefined();
     expect(view.interactions.find((i) => i.id === "send to the internet")?.only).toBe(true);
     expect(view.interactions.find((i) => i.id === "vouch")?.only).toBeUndefined();
   });
@@ -4321,11 +4324,14 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect(poll("tv").chart).toBeNull();
     fire(sim, "trust_chart");
     const tv = poll("tv").chart!;
-    expect(tv.rows.length).toBe(PROGRAMS.length);
-    expect(tv.rows[0]).toEqual({ name: "Calculator", value: 10 });
-    expect(poll("auto").chart?.rows.length).toBe(PROGRAMS.length);
+    // Wave 21 (C6): the five players rank beside the programs, flagged staff.
+    const staff = ["Clippy", "Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"];
+    expect(tv.rows.filter((r) => r.staff !== true).length).toBe(PROGRAMS.length);
+    expect(tv.rows.filter((r) => r.staff === true).map((r) => r.name).sort()).toEqual([...staff].sort());
+    expect(tv.rows.filter((r) => r.staff !== true)[0]).toEqual({ name: "Calculator", value: 10 });
+    expect(poll("auto").chart?.rows.length).toBe(PROGRAMS.length + staff.length);
     fire(sim, "assess", "g5", { target: "g5", score: 10 }, "Trabolta");
-    expect(poll("tv").chart!.rows.slice(0, 2).map((r) => r.name).sort()).toEqual(["Calculator", "Winamp"]);
+    expect(poll("tv").chart!.rows.filter((r) => r.staff !== true).slice(0, 2).map((r) => r.name).sort()).toEqual(["Calculator", "Winamp"]);
     // The rankings call out the top and the bottom on the chart (B12): it
     // stays up through Praise, Shame and the printer ask…
     fire(sim, "show_the_rankings");
@@ -4862,7 +4868,7 @@ describe("Trapped in the Internet — the staff (wave 4, lane D)", () => {
 
     const tick = advance(sim, 1200);
     const upd = (tick.filter((e) => e.type === "quest") as Ev<"quest">[]).find((e) => e.person === "Clippy" && e.action === "update");
-    expect(upd?.text).toContain("Call ⏰ Bingo time from your 🎤 bar"); // wave 18 (B6): Clippy calls it
+    expect(upd?.text).toContain("A host calls ⏰ Bingo time"); // wave 21: the hosts call it, Clippy plays it
 
     fire(sim, "bingo_time");
     expect(sim.questStatus("Clippy", "Run The Bingo")).toBe("done");
@@ -5431,7 +5437,8 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     const admin = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.who === "admin");
     const ids = admin.map((i) => i.id);
     const at = ids.indexOf("award_quest_completionist");
-    expect(ids.slice(at, at + 3)).toEqual(["award_quest_completionist", "award_the_painting", "resurrection"]);
+    // Wave 21: the three staff awards sit between G10 and G11.
+    expect(ids.slice(at, at + 6)).toEqual(["award_quest_completionist", "award_the_painting", "award_staff_trusted", "award_staff_points", "award_staff_mole", "resurrection"]);
     expect(admin.find((i) => i.id === "resurrection")!.subject).toBeUndefined();
     expect(admin.find((i) => i.id === "award_the_painting")!.subject).toBe(true);
   });
@@ -5448,7 +5455,8 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
 
     const s1 = fire(sim, "signed_the_painting", "g1", null, "Clippy");
     expect(v(sim, "Night.signatures")).toBe(1);
-    expect(replies(s1).map((r) => `${r.to}: ${r.text}`)).toEqual(["g1: 🖌 Your signature is on the painting. It goes to auction at the end of the night."]);
+    // Wave 21: Clippy pressed it, so Clippy's booth hears its ⭐.
+    expect(replies(s1).map((r) => `${r.to}: ${r.text}`)).toEqual(["g1: 🖌 Your signature is on the painting. It goes to auction at the end of the night.", "Clippy: ⭐ +2"]);
     expect(quest(s1, "The Painting")).toEqual(["g4 update 1 program has signed."]);
     expect(texts(fire(sim, "signed_the_painting", "g1", null, "Clippy"))).toEqual(['!"🖌 Calculator already signed. Nothing was counted."']); // once
     expect(texts(fire(sim, "signed_the_painting", "g4", null, "Clippy"))).toEqual(['!"🖌 MS Paint is the painter, not a signature. Nothing was counted."']);
@@ -5862,8 +5870,10 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(beats(fire(sim, "patch_rejected"))).toContain("Server Room Alarm"); // two is still two
   });
 
-  it("G11 resurrection waits for the last award: G10 with MS Paint here, G9 without; a confirmed second press still ends it", () => {
-    const ASK = "🎃 The last award isn't presented yet (G10, or G9 with no MS Paint). Press G11 again within 30 seconds to end the show anyway.";
+  // Wave 21: the last award is The Mole (G10c), after G10 / G9 and the
+  // other two staff awards.
+  it("G11 resurrection waits for the last award: The Mole, MS Paint here or not; a confirmed second press still ends it", () => {
+    const ASK = "🎃 The last award isn't presented yet (G10c, The Mole). Press G11 again within 30 seconds to end the show anyway.";
     const hosts = (evs: SimEvent[]) => casts(evs).filter((c) => c.scope === "channel(hosts)").map((c) => c.cue.replace(/^"|"$/gu, ""));
     const sim = boot(); // MS Paint is here
     expect(v(sim, "Night.painting")).toBe(true);
@@ -5876,17 +5886,21 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(hosts(fire(sim, "resurrection"))).toEqual([ASK]);
     expect(v(sim, "Night.resurrected")).toBe(false);
     fire(sim, "award_the_painting", "g4");
+    expect(v(sim, "Night.ceremony_done")).toBe(false);
+    fire(sim, "award_staff_mole");
     expect(v(sim, "Night.ceremony_done")).toBe(true);
     const r = fire(sim, "resurrection");
     expect(v(sim, "Night.resurrected")).toBe(true);
     expect(hosts(r)).toEqual([]);
 
-    const c = fresh(); // no MS Paint: G9 is the last award
+    const c = fresh(); // no MS Paint: The Mole is still the last award
     c.fireBeat("Power On");
     upload(c, "g1", "Calculator");
     fire(c, "computer_destroyed");
     fire(c, "start_the_ceremony");
     fire(c, "award_quest_completionist", "g1");
+    expect(v(c, "Night.ceremony_done")).toBe(false);
+    fire(c, "award_staff_mole");
     expect(v(c, "Night.ceremony_done")).toBe(true);
     fire(c, "resurrection");
     expect(v(c, "Night.resurrected")).toBe(true);

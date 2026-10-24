@@ -388,9 +388,10 @@ describe("Trapped in the Internet — wave 13: always-on buttons tightened", () 
   it("📝 only in review mode, 🪙 only from the Truther Download, 🔧 only from the Y2K hour, ♟ only while the King is armed", () => {
     const n = boot();
     const live = (who: string, id: string) => primeView(n.sim, who).interactions.find((i) => i.id === id)?.live !== false;
-    expect(live("Clippy", "fact_accurate")).toBe(false);
+    // Wave 21: a host's booth (Clippy is a player, no longer in Hosts).
+    expect(live("Task Manager", "fact_accurate")).toBe(false);
     n.take(n.sim.setVar("Night.judge_mode", "review"));
-    expect(live("Clippy", "fact_accurate")).toBe(true);
+    expect(live("Task Manager", "fact_accurate")).toBe(true);
     n.take(n.sim.setVar("Night.judge_mode", "auto"));
     expect(live("McAfee Anti-Virus", "pay_truthcoin")).toBe(false);
     expect(live("Task Manager", "charge_truthcoin")).toBe(false);
@@ -632,7 +633,7 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("Adobe Acrobat: radio_beans g6").g1).toBe("Full Of Beans");
     expect(at("zip_everyone_out")).toMatchObject({ "Norton Anti-Virus": "Zip Everyone Out", g5: "Zipped Out" });
     expect(at("trabolta_overshares").g1).toBe("The Overshare");
-    expect(at("Password Manager: send to the internet g3")).toMatchObject({ g3: "Find Gerald", "Password Manager": "Patrol The Computer" });
+    expect(at("Password Manager: send to the internet g3")).toMatchObject({ g3: "Find Gerald", "Password Manager": "Patrol And Review" }) // wave 21: her patrol carries 🔑;
     expect(at("bobbing_for_truth")).toMatchObject({ Clippy: "Bob For It", "Adobe Acrobat": "The Bag Of Truth" });
     expect(at("Adobe Acrobat: brought_up_the_bag g1")).toMatchObject({ "Adobe Acrobat": "Hand Over Truth Txt" });
     expect(at("start_the_ceremony")).toMatchObject({ "Norton Anti-Virus": "After The Night", Clippy: "Host The Ceremony" });
@@ -681,8 +682,9 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(clippy.get("bingo_time")).toEqual(expect.arrayContaining(["bingo_winner", "named_at_bingo", "award_the_ribbon"]));
     expect(clippy.get("the bottle lands on g2")).toEqual(expect.arrayContaining(["truth_answered", "truth_refused", "chose_dare"]));
     expect(clippy.get("close_the_filing")).toContain("uncertain_answer");
-    expect(clippy.get("truth_pong")).toEqual(expect.arrayContaining(["accurate_q1", "confident_q1", "uncertain_answer"]));
-    expect(clippy.get("final_reveal")).toEqual(expect.arrayContaining(["accurate_q1", "accurate_q2", "uncertain_answer"]));
+    // Wave 21: ✅ / 😤 judge the question 🔢 names, so three buttons cover every question.
+    expect(clippy.get("truth_pong")).toEqual(expect.arrayContaining(["judge_accurate", "judge_confident", "uncertain_answer"]));
+    expect(clippy.get("final_reveal")).toEqual(expect.arrayContaining(["judge_accurate", "judge_confident", "uncertain_answer"]));
     expect(clippy.get("bobbing_for_truth")).toEqual(expect.arrayContaining(["brought_up_the_bag", "failed_the_bob"]));
     expect(clippy.get("doors")).toEqual(["award_the_ribbon", "signed_the_painting"]);
     // Grok Prom: 💘 on the face.
@@ -698,18 +700,20 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
     n.signal("named_at_bingo", "g4", undefined, "Clippy");
     n.press("introduce_trabolta"); // past the Bingo results: Clippy's NOW names no button
-    for (const p of ["Clippy", "Norton Anti-Virus", "McAfee Anti-Virus", "Task Manager"]) {
+    // Wave 21: Clippy (a player, out of Hosts) no longer has 🩹.
+    expect(guestCardView(n.sim, n.chat.all(), "Clippy", "g4", false)!.live).not.toContain("unmark_for_reinstallation");
+    for (const p of ["Norton Anti-Virus", "McAfee Anti-Virus", "Task Manager"]) {
       const card = guestCardView(n.sim, n.chat.all(), p, "g4", HOST_PARTS.has(p))!;
       expect(card.guestScoped, p).toContain("unmark_for_reinstallation");
       expect(cardFace(n, p, "g4").face, p).toContain("unmark_for_reinstallation");
       expect(guestCardView(n.sim, n.chat.all(), p, "g2", HOST_PARTS.has(p))!.live, p).not.toContain("unmark_for_reinstallation");
     }
     // The press is never gated: the hook still answers an unmarked program.
-    const said = n.signal("unmark_for_reinstallation", "g2", undefined, "Clippy");
+    const said = n.signal("unmark_for_reinstallation", "g2", undefined, "Task Manager");
     expect(said.some((m) => m.text.includes("is not marked"))).toBe(true);
-    n.signal("unmark_for_reinstallation", "g4", undefined, "Clippy");
+    n.signal("unmark_for_reinstallation", "g4", undefined, "Task Manager");
     expect(v(n.sim, "g4.marked")).toBe(false);
-    expect(guestCardView(n.sim, n.chat.all(), "Clippy", "g4", false)!.live).not.toContain("unmark_for_reinstallation");
+    expect(guestCardView(n.sim, n.chat.all(), "Task Manager", "g4", true)!.live).not.toContain("unmark_for_reinstallation");
   }, SLOW);
 
   it("CI 2's checklist reaches 4 / 4, and no to-do in the show is left without a `done when`", () => {
@@ -804,7 +808,8 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     // Every objective carries the sign-off marker in the source.
     const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
     expect(src.match(/^OBJECTIVE /gmu)!.length).toBe(m.objectives.size);
-    expect(src.match(/^\/\/ DRAFT (?:for sign-off|w18)\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
+    // Wave 21: `// DRAFT w21` (with a note or bare) marks the new and changed ones.
+    expect(src.match(/^\/\/ DRAFT (?:for sign-off|w18|w21[^\n]*)\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
   }, SLOW);
 });
 
@@ -817,6 +822,8 @@ describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
     // Wave 18's new objectives (`// DRAFT w18`) await their own sign-off page.
     const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
     const w18 = new Set([...src.matchAll(/^\/\/ DRAFT w18\nOBJECTIVE (.+)$/gmu)].map((x) => x[1]!.trim()));
+    // …and so do wave 21's new ones (SIGNOFF-w21.md, trapped-w21.test.ts).
+    for (const x of src.matchAll(/^\/\/ DRAFT w21\nOBJECTIVE (.+)$/gmu)) w18.add(x[1]!.trim());
     for (const id of Sim.fromSources(SRC).model.objectives.keys()) if (!w18.has(id)) expect(sheet, id).toContain(`| ${id} |`);
   });
 });

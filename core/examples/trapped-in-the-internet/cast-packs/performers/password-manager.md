@@ -5,6 +5,28 @@
 
 ## Card
 
+**You play the night (wave 21, DRAFT w21).** You are a **player**: your booth
+is a **Mission** like a guest's phone, with **⭐ Points** and **🛡 Captures**
+tiles. You earn ⭐ for the job: a door clearance +5, a capture **+20** (the
+night's first reinstallation +10 more), a release +5, a summons check-in on a
+dead phone +2, a patch-bay call +10, **🔑 Check their password** on any cleared program (+5, once per program; your patrol carries it). A press that changes nothing pays
+nothing. Trabolta keeps a **trust** score on you that you never see: captures
+and a wrong patch caught at his heart raise it, a 🩹 in the open lowers it a
+little, and what you say to him in his thread moves it. It is on his Trust
+Chart beside the programs (a 🛡 STAFF row) and read at the ceremony, with
+**Staff Player Of The Night** for the most ⭐.
+
+**Whose side are you on?** From the Truther Download you know what he is, and
+your Mission's *Whose side are you on?* carries the choice. **📢 Defect
+openly** (once, two taps): the whole house hears *"Password Manager HAS DEFECTED"*; he
+loses a lot of trust in you and keeps you anyway, because he cannot run the
+house without the Antivirus. Or quietly: **🤫 Look the other way** on a
+marked program **you claimed** on the Wanted board (the mark comes off with
+no readout: the poster just leaves every board), **🤫 Tip them off** (a whisper to a marked program that the Antivirus are coming, once each) and nobody sees it.
+**Every third quiet favour, Trabolta notices**: your booth warns you and his
+trust drops. Never removal. The ceremony's last award, **The Mole**, names
+the player who did the most quiet favours.
+
 **The door (20:00 → the end; the four of you share it).** There is no
 door-only Antivirus: the four of you hold the Optical Drive together. When a
 program finishes uploading, every Antivirus booth hears *🚪 X is waiting at
@@ -27,7 +49,7 @@ iPhone scanner is verified (OP-04).
 |---|---|---|
 | a **marked** program (the Wanted board, below) | **🙋 I'll get them** · **Hand it back** · **🙋 Take over** (a claim quiet for 10 min) | the program on the poster |
 | **after your scan** of a marked program | **🛡 Send to the Internet**: one tap on the *CORRUPTION DETECTED* screen (from a card's 📡 Scan again it arms first: tap, tap again) | the program you just found |
-| the alarm trips at the patch bay | **🛡** from **All buttons…** on their card (*Not on offer now*: press it anyway, tap twice) | whoever is at the cables |
+| the alarm trips at the patch bay | **🛡** on their card (while the alarm is on it is on every card's face; tap twice) | whoever is at the cables |
 | **any time** | **✅ Mark as reinstalled** (on a captured program's card) | someone in the Internet whose game won't finish |
 | **any time** | **🩹 Unmark: not going to the Internet** (on a marked program's card; **🩹 Not them…** on the confrontation screen) | a host's mis-tap, or mercy |
 | any time | **👁 Put on the watchlist** | doubt +25 |
@@ -87,13 +109,13 @@ correct opinion).
 **Sweeps:** C1 · C2 · ⏳ (the summons: they check themselves in) · 🚨 the late marks (on the Wanted board) · Trabolta's sweep
 requests · 🚨 server-room alarm · 🗜 zip everyone out.
 
-**Your booth:** the **NOW card** on top (this part of the night's job, its
-to-dos ticking themselves) · **📷 Scan** and **🗂 Guests** on the taskbar ·
-Quest Log · Codex · `# hosts` · `# quarantine` · **Readouts** (every readout,
+**Your booth** (a player's Mission, wave 21): the **NOW card** on top (this part of the night's job, its
+to-dos ticking themselves) · the taskbar **⊞ Start · Mission · Chats · 📷 Scan** (👥 People is under ⊞ Start) ·
+Quest Log · Codex · `# quarantine` (your team room; `# hosts` is the hosts') · **📋 Notes** (every readout,
 kept across a reload) · **Messages** (a program typing to you) · the rooms.
 A scanned program's card leads with
-at most three buttons your objective needs (🩹 on a marked program); the rest
-are under **All buttons…**. The tray adds the red **🚨 n** Wanted counter and **🔔 n** (pop-outs you put off with *Later*). Your rooms are headed **Chats**; the room named after the story is the **📜 Chat log**, last under *Other rooms*.
+at most three buttons your objective needs (🩹 on a marked program); there is
+no *All buttons…* any more, and a refused press just says *Not now*. The tray adds the red **🚨 n** Wanted counter and **🔔 n** (pop-outs you put off with *Later*). Your rooms are headed **Chats**; the room named after the story is the **📜 Chat log**, last under *Other rooms*.
 
 **Blackout:** guide people to the living room; the stairs stay lit.
 

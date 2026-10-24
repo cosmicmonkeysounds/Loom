@@ -38,6 +38,11 @@ by late-90s Web 1.0 aesthetics and existentialism.*
 > heart driven from `lights.json`) is built on `oct31-w20/integration` and
 > awaits [`SIGNOFF-w20.md`](./SIGNOFF-w20.md); the contract is
 > [`CONTRACT-w20.md`](./CONTRACT-w20.md).
+> **Wave 21** (performers play: Clippy and the four Antivirus are *players*
+> with a Mission, ⭐ Points, a hidden trust on Trabolta's chart and a choice
+> about him, 📢 open or 🤫 quiet; the hosts and directors call every cue;
+> three staff awards close the ceremony) is built on `oct31-w21/story` and
+> awaits [`SIGNOFF-w21.md`](./SIGNOFF-w21.md).
 > OCT31.md §5's *Wave N status* tables list every build and the device
 > check still to do.
 >
@@ -424,12 +429,13 @@ to `reset_server_room`.
 ## Running the night
 
 **Fire every admin cue from the cue sheet (Run → Director, K-21, a host's
-NEXT bar, the director phone, or Clippy's 🎤 bar for Clippy's own) or
+NEXT bar, or the director phone) or
 quick-fire, never from a performer's guest card.** Since wave 18 (Q1) any
 host may call the show: whoever calls claims it (**Calling** on Run, **📣
 I'll call** in Play), every console shows **📣 who**, and a FIRE by anyone
-else asks once (*Fire anyway?*). Clippy calls the games (Q2): the 21 cues
-with `by: Clippy` sit on Clippy's 🎤 cue bar. A press from a guest
+else asks once (*Fire anyway?*). Since wave 21 Clippy is a player and calls
+nothing (Q2 reversed): no admin cue carries `by:`, and each game a host fires
+pops *YOUR GAME IS ON* on Clippy's phone. A press from a guest
 card carries `actor` = that character and `subject` = that guest, so only
 that character's hooks hear it. The admin INTERACTIONs are declared in
 running order, so the sheet lists them in that order, marks the **LAST**
@@ -438,7 +444,7 @@ read off the server's log). Each label carries the source prompt code:
 **C1/C2** are the app prompts, **V1–V6** are the monitor slides, and
 **Clippy N/X** is Clippy's instruction sheet. Every Clippy instruction
 also lands in Clippy's booth as a codex entry (`Clippy Instructions 1` …
-`9`, under *What Clippy knows*). Steps marked *auto* fire on their own from
+`9`, in the Codex tile on Clippy's Mission). Steps marked *auto* fire on their own from
 a story timer, and the button is the manual fallback.
 
 **The Director page is grouped by act** (wave 10): the `act:` lines in
@@ -617,7 +623,7 @@ by someone else's wrong codes. Passes draw their QR on the phone
 |---|---|---|
 | **C1/V1 · 📣 Call everyone to the Desktop** (`call_to_the_desktop`) | Antivirus sweep everyone to the living room | `!` alert on every phone, the house announces (`do announce` + `sound announce_chime`), the TV leaves its screensaver (`screens_call_desktop`). Clippy's booth: instructions 1/X. |
 | **V2 · 🎱 Start Computer Bingo (20 min)** (`start_the_bingo`) | Clippy reads the rules. Hosts introduce themselves | *Computer Bingo* quest for everyone. The asterisk card is checkboxes only, with **no names written down**. Centre square: *"Would you never agree to a life where AI makes all of your decisions?"* Clippy's *Run The Bingo* and Norton's *The Selected Antivirus* quests start. Clippy's booth gets a ping when the 20 minutes are up. |
-| **V3 · ⏰ Bingo time: results** (`bingo_time`; Clippy calls it from the 🎤 bar, wave 18) | In Clippy's **PLAYER SELECT** (opens by itself, everyone at the Desktop as tiles, no scans): **🎱 Bingo winner** on each winner (a big *🎱 BINGO!* on their phone), **🎀 Award a ribbon** (the same winner offered; their big medal, everyone else's self-closing cheer, the TV's *Congratulations!*; any host may press 🎀 too), then **🎯 Named on the card** (two taps) on the program the winner names (marked for reinstallation). If there is no Bingo, Task Manager hands Clippy the fake card for MS Paint and presses **🃏**. **Norton** interrupts, scans their pass (the confrontation) and presses **🛡 Send to the Internet** | *Clippy Instructions 2* unlock; Clippy's *Run The Bingo* quest completes (Norton's *The Selected Antivirus*, started with the Bingo, completes at the first reinstallation). The first program sent to the Internet fires **Corrupted Code**: Clippy explains that corruption is normal. Three outcomes are performed live: the winner names the centre-square program, the winner refuses and goes themselves, or nobody wins and MS Paint is framed. |
+| **V3 · ⏰ Bingo time: results** (`bingo_time`; a host or a director calls it, wave 21) | In Clippy's **PLAYER SELECT** (opens by itself, everyone at the Desktop as tiles, no scans): **🎱 Bingo winner** on each winner (a big *🎱 BINGO!* on their phone), **🎀 Award a ribbon** (the same winner offered; their big medal, everyone else's self-closing cheer, the TV's *Congratulations!*; any host may press 🎀 too), then **🎯 Named on the card** (two taps) on the program the winner names (marked for reinstallation). If there is no Bingo, Task Manager hands Clippy the fake card for MS Paint and presses **🃏**. **Norton** interrupts, scans their pass (the confrontation) and presses **🛡 Send to the Internet** | *Clippy Instructions 2* unlock; Clippy's *Run The Bingo* quest completes (Norton's *The Selected Antivirus*, started with the Bingo, completes at the first reinstallation). The first program sent to the Internet fires **Corrupted Code**: Clippy explains that corruption is normal. Three outcomes are performed live: the winner names the centre-square program, the winner refuses and goes themselves, or nobody wins and MS Paint is framed. |
 | **Clippy 2/X · 🤖 Clippy introduces Trabolta** (`introduce_trabolta`; refused before V3; skipped → the next cue wakes him) | — | Trabolta wakes (`awake`, `reveal self`). His chat appears on every phone with a formal private hello. The TV switches to the VR mirror ("Look! That's {first program}!"). The terminals (provisioned `view=auto` from the start) show his face within 2 s: check they do. **Set stage *formal* on Run → Mind.** |
 | *(automatic, on any capture)* | an Antivirus presses **✅ Mark as reinstalled** on the program's card if needed (or the director from Run). Julia runs the tent, in the backyard through the tunnel; the tablet has no such button | **Reinstallation** plays privately in `dm:Installation Wizard` (the same script as the tent video; `cue tablet_wizard`). The program plays the reinstallation game in the tent (VR headset or tablet): follow the golden chevrons to **Gerald, the golden duck**, and walk right up to him. The game fires `the simulation completed` (release) + `the golden duck` (*The Golden Duck*). A marked program who walks to the tent on their own is captured when their run begins: the tablet's begin (or a headset's station) fires `reinstallation begun` first (wave 5), which captures a marked, uncorrupted program, so the wizard shows CORRUPTED and Gerald releases them. An Antivirus 🛡 before Play here still works. |
 | **V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)** (`start_the_hunt`) | — | Trabolta reads questions H1–H3 on the TV (the generated `Hunt One Questions`), and they also appear in the *Hunt One* quest. A 5-minute warning comes at 10 minutes. Every answer is a document in the Desktop's books and print media carrying a codex QR (`facts.json`). Clippy's *Host The Hunt* quest starts. |
@@ -712,7 +718,8 @@ Server Room. Never say the code on the radio.
 | **G1 · 🏆 Start the awards ceremony** (`start_the_ceremony`; refused until `Night.ended`, and `banished` is not an ending) | Clippy hosts after `destroyed` / `rave` and **reads every line aloud** from The Desktop room | `!` alert to the living room, `sound ceremony_bed`, then **The Night In Review** first (wave 18b, R8, DRAFT: the host reads who everyone really was, the pool programs by problem group, the goals and the deeds, skipping what Recounts / Purgatory just read; every cleared program still here gets a private **Your File** from The Uploader), then `screens_ceremony` and **The Ceremony**: the host opens in The Desktop, per ending (Trabolta weakened after `disabled`, rebooted after `hand_jive`, showman otherwise). Trabolta's lines are spoken by the TV. |
 | **G2–G6** the five fixed awards (`award_most_trusted`, `award_least_trusted`, `award_frequent_flyer`, `award_lore_hoarder`, `award_truthcoin_tycoon`) and **G7–G9** the three bonus awards (`award_best_liar`, `award_duck_speedrun`, `award_quest_completionist`), each **with the winner picked on the cue sheet** (from the recap numbers) | the winner comes up to the TV for a trophy | **Present Award**: `sound award_fanfare`, the slide `screens_award_<name>` (`Night.screen` = `award_<name>`; it persists over the screensaver), the host's line with the winner's name and number (the winner's own var: trust, Internet visits, codex count, Truthcoin; the bonus awards read the cue sheet's **value** box — lies accepted, the duck time, quests done — and have a line without a number when it is empty), and a 🏆 reply to the winner. `value` also overrides a fixed award's number. Firing an award again corrects it. |
 | **G10 · 🖌 Bonus: The Million Dollar Painting** (`award_the_painting`, winner = MS Paint; only when she is at the party: its `while:` needs `Night.painting`, so without her the sheet goes G9 → G11) | the painting is revealed for the silent auction | Reads the **🖌 Signed** count (`Night.signatures`) unless **value** is given; a line without a number when nobody was counted. Slide `screens_award_the_painting`. Fired on anyone but MS Paint it is refused in `# hosts` (*"G10 is MS Paint's award…"*); any award fired before G1 says *"Start the ceremony (G1) first"* there; a second 🖌 Signed (or one on MS Paint) says so in `# hosts` and counts nothing. |
-| **G11 · 🎃 Resurrection** (`resurrection`; after the last award — G10, or G9 with no MS Paint at the party; before it `# hosts` asks and a second press within 30 s ends the show anyway — the first press is refused on the sheet (*Not taken*, never ticks), since wave 9 — refused until the ceremony has started (G1), once) | everyone hangs out, out of character | Everyone is freed (`everyone_free`), unmarked (`unmarked`: both pins down) and unrestricted; the takeover pin comes down; `Trabolta.awake = false` (TV + terminals to attract, no piloting); `screens_screensaver`; `lights_restore`; `!🎃 The show is over: you are human again.` (an alert, so it pushes). |
+| **G10a–c · the staff awards** (wave 21, DRAFT w21: `award_staff_trusted` 🛡 *Trabolta's Favourite Staff*, `award_staff_points` ⭐ *Staff Player Of The Night*, `award_staff_mole` 🤫 *The Mole*; **no subject**: the story names the player from the five players' trust, ⭐ Points and quiet favours, a tie to the first of Clippy, Norton, McAfee, Password Manager, CRA) | the winner comes up to the TV; their booth pops *🏆 You won …* | **Present Award** with `screens_award_staff_<name>` and the host's line. The Mole reads each player's private quiet-favour count, here for the first time (*Nobody* when nobody did one) and is the **last award**: it sets `ceremony_done`. |
+| **G11 · 🎃 Resurrection** (`resurrection`; after the last award — G10c, The Mole (wave 21; it was G10, or G9 with no MS Paint); before it `# hosts` asks and a second press within 30 s ends the show anyway — the first press is refused on the sheet (*Not taken*, never ticks), since wave 9 — refused until the ceremony has started (G1), once) | everyone hangs out, out of character | Everyone is freed (`everyone_free`), unmarked (`unmarked`: both pins down) and unrestricted; the takeover pin comes down; `Trabolta.awake = false` (TV + terminals to attract, no piloting); `screens_screensaver`; `lights_restore`; `!🎃 The show is over: you are human again.` (an alert, so it pushes). |
 
 **Your own award lines (✍, wave 9, D4).** By default Trabolta reads each
 award's template line himself. To use lines the second director (or
@@ -956,7 +963,7 @@ patch pairs included.
 
 | Part | Actor | Group | The job |
 |---|---|---|---|
-| Clippy | Brooke | Hosts | MC and Trabolta's ambassador. Gets every Clippy Instructions entry and the hosting quests in her booth. Presses 🎱 / 🎀 / 🎯 / the judging buttons / the bottle's 🗣 / 🙅 / 🎩. |
+| Clippy | Brooke | — (a player, wave 21) | MC and Trabolta's ambassador. Gets every Clippy Instructions entry and the hosting quests in her booth. Presses 🎱 / 🎀 / 🎯 / the judging buttons / the bottle's 🗣 / 🙅 / 🎩, for ⭐ Points; calls no cue. |
 | Task Manager | John | Hosts | "Keeps things running." The programs' main contact: introduces the admin team at clearance, owns `# task-manager` (the app help desk) and is listed from the start, so every program can DM him (answered from Run by the director's identity control, or from his own phone). Produces the fake Bingo card (🃏). Hands out the staff quests. The hosts' cash bank (🪙 corrections). |
 | Adobe Acrobat | Stephanie | Hosts | "Documents and printing." Holds the Bag of Truth and the truth.txt printout; stands by the printer. 🍎 at the bob. |
 | Recycling Bin | Jesse | Hosts | "Hygiene and maintenance." Disk Cleanup (bathroom) attendant; knows Bathroom Mode. |

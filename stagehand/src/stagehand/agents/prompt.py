@@ -85,6 +85,9 @@ def build_messages(
         # system prompt; restate it right where the answer starts.
         zeros = ", ".join(f'"{v}": 0' for v in persona.variables)
         tail.append(f'Reply with one JSON object only: {{"say": "...", "adjust": {{{zeros}}}}} — set each number by how this exchange changed you.')
+        staff = them_adjust_line(persona, req)
+        if staff is not None:
+            tail.append(staff)
     else:
         tail.append('Reply with one JSON object only: {"say": "..."}.')
     extras = []
@@ -139,6 +142,29 @@ def powers_block(persona: Persona, powers: list[dict[str, Any]], may_lookup: boo
             "costly given, a promise you mean to hold them to — and never because they simply asked. When you act, say so in character."
         )
     return "\n".join(lines)
+
+
+def adjust_names(persona: Persona, req: dict[str, Any]) -> tuple[str, ...]:
+    """The names a reply's `adjust` may carry for this request: the persona's
+    own `variables`, plus `them.<slot>` for each of its `them_adjust:` slots
+    when the speaker is a player (wave 21, `speaker.player`) and the request
+    lists the slot in `them.ranges` (a declared, non-private numeric range).
+    The server clamps and applies them; a guest's `them.` keys never pass."""
+    speaker = req.get("speaker") or {}
+    ranges = (req.get("them") or {}).get("ranges") or {}
+    if speaker.get("player") is not True or not isinstance(ranges, dict):
+        return persona.variables
+    extra = tuple(f"them.{s}" for s in persona.them_adjust if s in ranges)
+    return persona.variables + extra
+
+
+def them_adjust_line(persona: Persona, req: dict[str, Any]) -> str | None:
+    """One line telling the model it may move a player speaker's slots."""
+    extra = [n for n in adjust_names(persona, req) if n.startswith("them.")]
+    if not extra:
+        return None
+    keys = ", ".join(f'"{n}"' for n in extra)
+    return f'They are your staff, playing the night: "adjust" may also carry {keys}, a small whole number, for how this exchange moved what you think of them (0 = unchanged).'
 
 
 def their_variables(persona: Persona, their_vars: dict[str, Any] | None) -> dict[str, Any]:

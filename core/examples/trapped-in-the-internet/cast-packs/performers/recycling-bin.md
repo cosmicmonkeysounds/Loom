@@ -49,14 +49,26 @@ top · the **NEXT bar** above the taskbar (the cue sheet; tap the bar for the
 console: Cues · Needs · Judge · People · More) · **📷 Scan** and **🗂 Guests** on
 the taskbar · Codex · `# hosts` · `# quarantine` · **Readouts** ·
 **Messages** (a program typing to you) · the rooms. A scanned program's card
-leads with at most three buttons your objective needs; the rest are under
-**All buttons…**. 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
+leads with at most three buttons your objective needs (wave 21: no *All
+buttons…* fold any more; a press the story refuses still shows its `# hosts`
+reason). 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
 never on your card: radio one. The console's **Needs** tab leads with **🚨 n marked · m nobody on it** while programs wait on the Antivirus' Wanted board (tap it for the board, read-only); **Judge** has the *Judging: auto ⇄ review* switch; **More** is split into **Night** (doors, pause, the show clock, announce, the alert level), **House** (wallets, the King, terminals, Trabolta, crews) and **Setup** (codes and QRs, parts). Help → *The host console* has the rest.
+
+**You call the games now (wave 21, DRAFT w21).** Clippy is a *player*, not a
+caller: every game cue (🎱 Bingo, ⏰ Bingo time, 🔎 the hunt, ⚖️ ⏱ 📋 🍾 the First
+Moment of Truth, 📓 Hunt 2, 🍎 the bob, 🪦 the summary, 🏆 the ceremony and
+every award) is the hosts' and the directors', like the rest of the sheet.
+Clippy's phone pops **YOUR GAME IS ON** when you fire one; watch Clippy for
+the nod between 📋 results. The three **staff awards** (G10a–c: Trabolta's
+Favourite Staff, Staff Player Of The Night, The Mole) come after G10 (or G9),
+name their own winner (no subject) and The Mole is the last award before G11.
+Clippy and the four Antivirus play for ⭐ Points: when you press a shared game
+button (🎀, ✅, 🏓 …) Clippy earns nothing, so leave Clippy's games to Clippy.
 
 **Calling the show (Q1: any host may call it).** NEXT sits above your
 taskbar, and every host sees and may fire it: there is no "wait for the
 director to radio you" any more. Whoever is calling taps **📣 I'll call** in
-the console's Cues tab (*Who's calling*); every host, Clippy's bar and the
+the console's Cues tab (*Who's calling*); every host and the
 director phone then show **📣 {name}** on their strip, and **Stop calling**
 hands it back. Tap **ARM**, then **FIRE** within 4 s. If someone else is
 calling, your FIRE asks once: *Fire anyway? They'll see you did.* (Cancel is

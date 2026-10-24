@@ -69,24 +69,37 @@ keep the radio away from them. The TV and the tent laptop never send sound.
   **🗂 Guests**; the tray shows the act, the soonest countdown and **🔔 n**
   (pop-outs waiting: anything you put off with *Later*, kept across a
   reload). Since wave 18 the important things **pop out** over your rooms (a
-  marked program, an arrival at the door, Clippy's cue, the Bingo results)
+  marked program, an arrival at the door, the Bingo results)
   with the buttons you need, so you scan much less. Your rooms are headed
   **Chats**; the room named after the story is the **📜 Chat log**, last
   under *Other rooms*.
-- **The cue sheet is the hosts' (and Clippy calls the games).** The three
+- **The players (wave 21, DRAFT w21).** **Clippy and the four Antivirus are
+  players**: their booth is a **Mission** like a guest's phone (taskbar
+  **⊞ Start · Mission · Chats · 📷 Scan**, ⭐ Points and their stat tiles, a
+  *NEW MISSION* pop-out when the job changes, **📋 Notes** for their
+  readouts), they only see their own buttons and their own team room, and
+  they play for ⭐ and for Trabolta's trust (never shown to them; his Trust
+  Chart shows them as 🛡 STAFF rows). From the Truther Download each may
+  **📢 defect openly** (the whole house hears it; Trabolta keeps them as
+  allies anyway: he cannot run the house without them) or do **🤫 quiet
+  favours** for the programs (nobody is told; every third one costs them
+  trust; **The Mole** at the ceremony names the most). Three **staff
+  awards** close the ceremony before G11.
+- **The cue sheet is the hosts'.** The three
   host booths (Task Manager, Adobe Acrobat, the Recycling Bin) carry the
   cues in a **NEXT bar** above the taskbar, and **any host may call the
   show** (Q1): whoever is calling taps **📣 I'll call**, and every booth and
   the director phone show **📣 who** is calling. Tap ARM, then FIRE; a FIRE
   by someone who isn't calling asks once (*Fire anyway?*). A double press is
   refused (*Cues moved — tap again*), and the console's LAST line says who
-  pressed. **Clippy** is not a host but a super-performer (Q2): Clippy's own
-  game cues sit on a **🎤 cue bar** in Clippy's booth. Every other performer's
-  booth has no cues.
+  pressed. **Clippy** is a player (wave 21, Q2 reversed) and calls nothing:
+  the hosts and the directors fire Clippy's games, and Clippy's phone pops
+  *YOUR GAME IS ON*. No other performer's booth has cues.
 - **Act on a guest:** tap **📷 Scan** and scan their pass (or tap their name in
   any room, or find them under 🗂 Guests): their card opens at once with the
   facts (not cleared, marked, late, Bathroom Mode, where), **at most three
-  buttons your objective needs**, and **All buttons…** for the rest. What the
+  buttons your objective needs** (wave 21: no *All buttons…* fold; a player's
+  refused press says *Not now*). What the
   press came to shows on the card. **📷 Next guest** brings the camera back.
 - **Booth readouts** are the 📋/🛡/🃏/🚨 lines for you only. They land in the
   pinned **Readouts** room, newest first, and survive a reload; a readout

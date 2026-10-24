@@ -143,7 +143,7 @@ addresses, codes, where things are kept).
   **📷 Scan** and **🗂 Guests**, and a **Readouts** room that survives a reload.
   A scan opens the guest's card at once: the facts, **at most three buttons
   the objective needs**, what the press came to, and **All buttons…** for the
-  rest. **Task Manager, Adobe Acrobat and the Recycling Bin are hosts**
+  rest (gone in wave 21). **Task Manager, Adobe Acrobat and the Recycling Bin are hosts**
   (`admin: true`; Clippy is not): their booths carry the cue sheet in a NEXT
   bar (tap ARM, tap FIRE; any host may fire, a double press is refused, LAST
   says who pressed) and a console (Cues · Needs · Judge · People · More: the
@@ -169,7 +169,8 @@ addresses, codes, where things are kept).
   - **Q2: Clippy is a super-performer.** Clippy's own game cues (the Bingo,
     the hunts, ⏱ 📋 🍾, the bob, the summary, the ceremony and its awards) sit
     on a **🎤 cue bar** in Clippy's booth; the Bingo results are one
-    **PLAYER SELECT** window of tiles (🎱 → 🎀 → 🎯), no scans.
+    **PLAYER SELECT** window of tiles (🎱 → 🎀 → 🎯), no scans. (**Reversed
+    in wave 21**, below.)
   - **Q26: Windows Defender is gone.** The four Antivirus share the door: a
     *🚪 X is waiting* pop-out reaches all four, and the first **🙋** wins.
   - **Q30: a mark doesn't hinder.** A marked program keeps everything; every
@@ -204,7 +205,7 @@ addresses, codes, where things are kept).
   sheet holds only its own secret.
 - Buttons that do nothing out of phase are normal (W-05). Only the un-phased
   buttons work any time: 🛡 **Send to the Internet** (on a marked program's
-  card since wave 18; under All buttons… on anyone else), ✅ **Mark as
+  card since wave 18, and on every card while the patch-bay alarm is on), ✅ **Mark as
   reinstalled** (on a captured program's card), 🩹 **Unmark**, 🎀 ribbon, 🤝
   Vouch, 👁 watchlist, 🪙 Pay / Charge and ♟ They beat the machine; every
   verdict button is phase-gated. 🛡 ✅ 👁 are the Antivirus' own (wave 13):
@@ -217,6 +218,36 @@ addresses, codes, where things are kept).
 - **Any host may call the show** (Q1): never "radio the director before you
   fire". 📣 shows who is calling; agree it at the read-through.
 
+## Wave 21: performers play (2026-10-23, DRAFT w21)
+
+The user: *"Clippy should no longer be considered a "super" user / host that
+can call shots. Clippy and the AntiViruses are performers that are playing a
+game just like the "guests" are."* So (reversing wave 18's Q2):
+
+- **Clippy, Norton, McAfee, Password Manager and CRA Agent Software are
+  players** (`player: true`). Their booth is a **Mission** like a guest's
+  (⊞ Start · Mission · Chats · 📷 Scan), with ⭐ Points (and 🛡 Captures or ⚖️
+  Answers judged) as tiles, only their own buttons, only their own team
+  room (`# quarantine` for the Antivirus; Clippy has none), and every action
+  as a pick, a pop-out, a global press or a scan. No *All buttons…*.
+- **Clippy calls nothing.** The hosts and the directors fire every cue;
+  Clippy's phone pops *YOUR GAME IS ON*. The hosts keep their host dock.
+- **Points:** Clippy for running the games (🎱 🎀 🎯 ✅ 😤 🤷 🗣 🙅 🎩 🏓 🍎 🖌 💘),
+  the Antivirus for clearances, captures, releases, patch-bay calls, McAfee
+  for 🤝 brokered deals, Password Manager for 🔑 password checks, CRA for each
+  audit ruling. **Trust** (Trabolta's, hidden from them, on his chart as
+  🛡 STAFF): serving him raises it, mercy in the open lowers it a little.
+- **Whose side are you on?** From the Truther Download: **📢 defect openly**
+  (a big moment to every phone; Trabolta answers on the TV and keeps them as
+  allies; −50 trust) or **🤫 quiet favours** (🤫 look the other way on a
+  claimed mark, tip a marked program off, let a guess slide, slip a program
+  50 Truthcoin): private, never told to Trabolta; every third one he
+  notices (−20 trust, a private warning, never removal).
+- **Staff awards** after G10 / G9: 🛡 Trabolta's Favourite Staff, ⭐ Staff
+  Player Of The Night, 🤫 The Mole (the last award; G11 waits for it).
+- ✅ / 😤 judge one question at a time (🔢 picks it), so a card's three
+  buttons cover every question.
+
 ## Print notes (for PAPER, batch 2 on 10-26)
 
 - Each performer and crew file starts with a **Card** section: print that on
@@ -227,10 +258,12 @@ addresses, codes, where things are kept).
 - **Print after the sign-off.** `../SIGNOFF-w13.md` is signed off (the
   user's answers, 2026-10-21); the wave 18 lines are DRAFT until
   `../SIGNOFF-w18.md` is. The packs follow the drafts (any host calls the
-  show, Clippy's 🎤 bar, the Wanted board and the confrontation, the shared
-  door, the self check-in, McAfee's line in the ticker). Re-check them
+  show, the Wanted board and the confrontation, the shared door, the self
+  check-in, McAfee's line in the ticker; wave 21: the players, below). The
+  wave 21 lines are DRAFT until `../SIGNOFF-w21.md` is. Re-check them
   against the signed-off text before batch 2, and reprint every pack that
-  changed (all four Antivirus, Clippy, the three hosts, all-crew).
+  changed (all four Antivirus, Clippy, the three hosts, all-crew, the
+  director, the patch-bay watch).
 - Clippy's CI 1–9 cards: one index card each (from the appendix of her pack).
 - The Desktop's QR stacks: print the codex posters from Run → 🖨 Print sheet
   and sort them by colour into the piles `generated/print-stacks.md` lists

@@ -15,7 +15,7 @@
       no judge and no Wallet): fire C1 → V6 → ⏱ → 📋 ×3 → 🍾 from the cue
       sheet yourself; file a fact from a test phone and watch it settle;
       switch the Judging card to `review`, confirm one, switch back; mark a
-      program (🤷 as Clippy) and 🩹 it; approve a held transfer on Run →
+      program (🤷 as a host) and 🩹 it; approve a held transfer on Run →
       Wallet (✓ Approve on its row);
       re-pair a lost guest; release a performer's part; scan a late arrival
       in as Norton; answer a DM *as Trabolta*; pull the recap.
@@ -75,7 +75,7 @@ card. **In either mode, overrides are on the Judging card**: ▸ the question,
 then that filing's ✅ accurate / 😤 confident lie / 🤷 uncertain (the current
 verdict is outlined; a filing that was settled as a mark, a guess, has no
 buttons). A host's 📝 on a
-program's card (*be Clippy* → **📝 Filed fact: …**) judges that program's
+program's card (*be Task Manager* → **📝 Filed fact: …**) judges that program's
 **latest** filing only; when a program has filed more than once and an
 earlier one is still waiting, it changes nothing and `# hosts` points you at
 the Judging card. Either way the guest hears the same reply. **Trabolta rules
@@ -194,7 +194,9 @@ queued.
    aloud; the TV shows the award slide.
 4. Fire **G1**, then G2–G9 with the winner as the subject. Firing an award
    again corrects it. Then **G10 🖌** on MS Paint (only if she came; without
-   her the sheet's NEXT goes straight from G9 to G11), then
+   her the sheet's NEXT skips it), then **G10a–c**, the three staff awards
+   (wave 21: no winner to name, the story picks the player; The Mole is the
+   last award), then
    **G11 🎃 Resurrection** last: it frees and unmarks everyone, puts Trabolta
    to sleep and tells every phone the show is over (pressed before the last
    award, `# hosts` asks and the sheet says *Not taken*, nothing ticks; press

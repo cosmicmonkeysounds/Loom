@@ -7,6 +7,9 @@
     facts: Night.                      # world path prefixes worth telling it
                                        #   (voice + orchestrator; phase always)
     them: humanity, truth, doubt       # the speaker's variables worth telling it
+    them_adjust: trust                 # a player speaker's slots `adjust` may move
+                                       #   as `them.<slot>` (wave 21; the server
+                                       #   clamps them to the declared range)
     when: self.glitched == true        # optional gate — else `unavailable`
     unavailable: "…"                   # said when the gate is closed (else silence)
     fallback: "…"                      # said when the model fails (else silence)
@@ -89,6 +92,7 @@ _KNOWN = {
     "max_step",
     "facts",
     "them",
+    "them_adjust",
     "when",
     "unavailable",
     "fallback",
@@ -148,6 +152,10 @@ class Persona:
     facts: tuple[str, ...] = ()
     #: Speaker variables to show; None = all of them.
     them: tuple[str, ...] | None = None
+    #: Wave 21: a player speaker's (staff who play) slots the reply's
+    #: `adjust` may move, sent as `them.<slot>`; only when the request says
+    #: `speaker.player` and lists the slot in `them.ranges`.
+    them_adjust: tuple[str, ...] = ()
     when: Condition | None = None
     unavailable: str = ""
     fallback: str = ""
@@ -374,6 +382,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         max_step=max(0, max_step),
         facts=_names(meta.get("facts"), f"{source}: facts"),
         them=None if them is None else _names(them, f"{source}: them"),
+        them_adjust=_names(meta.get("them_adjust"), f"{source}: them_adjust"),
         when=when,
         unavailable=str(meta.get("unavailable") or ""),
         fallback=str(meta.get("fallback") or ""),

@@ -22,8 +22,8 @@
 // is Show Your Pass alone. The summons, the mark, the final reveal and the
 // pickup line ride their `!` alerts.
 //
-// `for:` reads a ROLE (Program), a GROUP (Hosts reaches Clippy too) or a
-// character. A guest's conditions read `program.*` (the guest) and
+// `for:` reads a ROLE (Program), a GROUP or a character (wave 21: Clippy
+// left GROUP Hosts, so an objective for Clippy names Clippy). A guest's conditions read `program.*` (the guest) and
 // `Night.*`; a booth's read `Night.*` and `self.*` only (a booth objective
 // is the same for every guest it scans: per-guest rightness is the card's
 // own `while:` on each button). Booth conditions that need a count use a
@@ -35,6 +35,16 @@
 // `pick:` reads the guest as `program`), and `evergreen: true` marks the
 // fallback a phone never counts as "+1 objective". `// DRAFT w18` marks an
 // objective whose text is new this wave (for the user's sign-off).
+//
+// Wave 21: Clippy and the four Antivirus are PLAYERS. Their booth is a
+// Mission like a guest's: the NOW card's first three buttons are its big
+// buttons (a `pick:` opens PLAYER SELECT, a `target:` its pop-out, a global
+// press fires at once, any other guest button opens the scanner), a scanned
+// card's face holds at most three, and there is no "All buttons…" any more.
+// So every action a player needs sits on a live objective, three at a
+// time, and each player has a Whose Side Are You On (from the Truther
+// Download) with 📢 and their 🤫 quiet favours. `// DRAFT w21` marks the
+// new and changed ones.
 //
 // Every objective is a DRAFT for the user's sign-off (SIGNOFF-w13.md):
 // titles, briefs, checklists and buttons were drafted from the cast packs
@@ -399,6 +409,7 @@ OBJECTIVE Summons Check In
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: Night.summons_open == true
   act: C
+  go: The Desktop
   title: The summons: they check themselves in
   pick: program.cleared == true and program.summons_ok != true and program.afk != true and program.corrupted != true and program.gone != true and program.persona != true
   text:
@@ -407,22 +418,26 @@ OBJECTIVE Summons Check In
 
 // The Wanted board (`wanted:` in the header) names each one; 🙋 claims.
 // DRAFT w18
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Escort The Marked
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: count([p for p in Persons where p.marked == true and p.corrupted != true and p.gone != true and p.persona != true]) > 0 and Night.ended != true
+  go: The Internet
   title: Escort the marked to the Internet
   text:
-    The Wanted board names each one: 🙋 claim one, find them and scan their pass (the scan is the confrontation), then 🛡 and walk them through the Tube. In Bathroom Mode or Disk Cleanup: wait outside, never go in.
+    The Wanted board names each one: 🙋 claim one, find them and scan their pass (the scan is the confrontation), then 🛡 and walk them through the Tube: ⭐ +20 a capture. In Bathroom Mode or Disk Cleanup: wait outside, never go in.
   buttons: send to the internet
 
 // DRAFT w18
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Door Duty
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: Night.step < 1
   act: Doors
+  go: The Optical Drive
   title: Door duty: scan every pass in the Optical Drive
   text:
-    The four of you share the door. A scan clears the program: through the Tube to the Desktop. 🙋 on an arrival tells the others you have them. Not uploaded yet: they finish first. Camera fails: type the id under the QR.
+    The four of you share the door. A scan clears the program: through the Tube to the Desktop, ⭐ +5 each. 🙋 on an arrival tells the others you have them. Not uploaded yet: they finish first. Camera fails: type the id under the QR.
   buttons: scan
 
 // DRAFT w18
@@ -441,6 +456,7 @@ OBJECTIVE Sweep To The Desktop
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: Night.phase == "desktop" or (Night.phase == "truth_1" and Night.judging != true)
   act: B
+  go: The Desktop
   title: Sweep every program to the Desktop
   text:
     Patrol the whole computer and send everyone to the living room.
@@ -451,18 +467,21 @@ OBJECTIVE Zip Everyone Out
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: Night.zip_wave >= 1 and Night.step < 13 and Night.ended != true
   act: D
+  go: The Internet
   title: The zip: bring everyone out of the Internet
   text:
     Bring every program out of the Internet and zip them up. Compressed, do not open.
 
 // DRAFT for sign-off
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Blackout Guide
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: (Night.phase == "final_reveal" or Night.phase == "bobbing") and Night.ended != true
   act: F
+  go: The Desktop
   title: Lights down: walk everyone to the living room
   text:
-    The stairs stay lit. A failed bob is marked: escort them. Still at the cables? The patch bay is live until 📄 truth.txt: 🔌 💥 ❌ are under All buttons… on any card.
+    The stairs stay lit. A failed bob is marked: escort them. Still at the cables? The patch bay is live until 📄 truth.txt: radio the call to a host (🔌 💥 ❌ are on the cue sheet).
 
 // Password Manager's Y2K hour is the patch-bay watch plus the club list
 // (one card: the two windows are the same hour, so a separate club
@@ -470,7 +489,7 @@ OBJECTIVE Blackout Guide
 // DRAFT w18
 OBJECTIVE Patch Bay And Clubs
   for: Password Manager
-  // DRAFT for sign-off (w13 Q33): the Y2K hour only. From the final reveal Lights Down is NOW and the radios (still live until 📄) wait under All buttons…, off every guest card's face.
+  // DRAFT for sign-off (w13 Q33): the Y2K hour only. From the final reveal Lights Down is NOW, and the radios (still live until 📄) go by radio to a host (wave 21: no All buttons… fold).
   while: Night.step >= 14 and Night.step < 16 and Night.ended != true
   act: E
   title: The Y2K hour: the patch bay, and the club list
@@ -479,47 +498,98 @@ OBJECTIVE Patch Bay And Clubs
   buttons: radio_combo_a, radio_combo_b, radio_wrong_patch
 
 // DRAFT for sign-off
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Patch Bay Watch
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
-  // DRAFT for sign-off (w13 Q33): the Y2K hour only. From the final reveal Lights Down is NOW and the radios (still live until 📄) wait under All buttons…, off every guest card's face.
+  // DRAFT for sign-off (w13 Q33): the Y2K hour only. From the final reveal Lights Down is NOW, and the radios (still live until 📄) go by radio to a host (wave 21: no All buttons… fold).
   while: Night.step >= 14 and Night.step < 16 and Night.ended != true
   act: E
   title: The Y2K hour: patrol, or watch the patch bay
   text:
-    If you are stationed in the server room: 🔧 before the crew opens the door; at the cables, 🔌 Combo A, 💥 Combo B or ❌ wrong, on the card of the program at the cables. Otherwise patrol, and run to the alarm.
+    If you are stationed in the server room: 🔧 before the crew opens the door; at the cables, 🔌 Combo A, 💥 Combo B or ❌ wrong, on the card of the program at the cables. ⭐ +10 a call; a wrong patch caught at his heart pleases Trabolta. Otherwise patrol, and run to the alarm.
   buttons: radio_combo_a, radio_combo_b, radio_wrong_patch
 
 // DRAFT for sign-off
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE The Exchange
   for: McAfee Anti-Virus
   while: Night.truther_sent == true and Night.step < 16 and Night.ended != true
   act: C
   title: Broker the # truthcoin-exchange
   text:
-    Set prices, match buyers to facts, referee bets and call the winner in # truthcoin-exchange. A bet settles player to player. You hold no pot and take no cut. 🪙 Pay / Charge are for corrections only.
-  buttons: pay_truthcoin, charge_truthcoin
+    Set prices, match buyers to facts, referee bets and call the winner in # truthcoin-exchange. A bet settles player to player. You hold no pot and take no cut. 🤝 on each program you brokered for: ⭐ +10. 🪙 Pay / Charge are for corrections only.
+  buttons: broker_deal, pay_truthcoin, charge_truthcoin
 
 // DRAFT for sign-off
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE The Audit
   for: CRA Agent Software
   while: Night.truther_sent == true and Night.step < 16 and Night.ended != true
   act: C
   title: Audit the Truthcoin: Approve or Deny
   text:
-    Every third transfer waits in your Wallet room for Approve; any transfer can be denied for 60 seconds. Ask elaborate security questions first. 🪙 Charge on undeclared profit.
+    Every third transfer waits in your Wallet room for Approve; any transfer can be denied for 60 seconds. Ask elaborate security questions first. ⭐ +3 a ruling; a denial pleases Trabolta. 🪙 Charge on undeclared profit.
   buttons: charge_truthcoin
 
 
+// Password Manager's patrol carries the 🔑 password check (wave 21).
+// DRAFT w21
+OBJECTIVE Patrol And Review
+  for: Password Manager
+  while: Night.ended != true and Night.step >= 1
+  evergreen: true
+  title: Patrol the computer, and review everyone's password
+  text:
+    Watch for corruption. 👁 the suspicious. 🔑 Check a program's password, out loud and unflatteringly: ⭐ +5 each, once per program. Every club join lands in your booth.
+  buttons: scan, verify_password, accuse
+
 // DRAFT w18
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Patrol The Computer
-  for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  // Wave 21: Password Manager patrols with Patrol And Review (above).
+  for: Norton Anti-Virus, McAfee Anti-Virus, CRA Agent Software
   // fix BN-F16: never during Door Duty (its card face is the scan alone).
   while: Night.ended != true and Night.step >= 1
   evergreen: true
   title: Patrol the computer
   text:
-    Watch for corruption. 👁 the suspicious. Trabolta's sweep requests and the Wanted board land in your booth.
+    Watch for corruption. 👁 the suspicious. Trabolta's sweep requests and the Wanted board land in your booth. ⭐ for every clearance, capture and release.
   buttons: scan, accuse
+
+// Whose side (wave 21): from the Truther Download every player learns what
+// Trabolta is, and chooses. 📢 out loud (once; the house hears it, he keeps
+// them anyway), or 🤫 quietly (a private count; every third is caught: less
+// of his trust, never the sack). Below the evergreen patrol, so it rides
+// Also now. One per button set: a NOW card shows three buttons.
+// DRAFT w21
+OBJECTIVE Whose Side Are You On
+  for: Norton Anti-Virus
+  while: Night.truther_sent == true and Night.ended != true
+  evergreen: true
+  title: Whose side are you on?
+  text:
+    You know what Trabolta is now. Serve him (⭐ and his trust), or turn. 📢 Defect openly: the whole house hears it, once. 🤫 Look the other way: on a marked program you claimed, the mark comes off and nobody sees. Every third quiet favour, Trabolta notices.
+  buttons: defect_openly, look_the_other_way
+
+// DRAFT w21
+OBJECTIVE Whose Side Are You On Too
+  for: McAfee Anti-Virus, CRA Agent Software
+  while: Night.truther_sent == true and Night.ended != true
+  evergreen: true
+  title: Whose side are you on?
+  text:
+    You know what Trabolta is now. Serve him (⭐ and his trust), or turn. 📢 Defect openly: the whole house hears it, once. 🤫 Look the other way on a marked program you claimed, or 🤫 slip a program 50 Truthcoin off the books. Every third quiet favour, Trabolta notices.
+  buttons: defect_openly, look_the_other_way, slip_coin
+
+// DRAFT w21
+OBJECTIVE Whose Side Are You On Keys
+  for: Password Manager
+  while: Night.truther_sent == true and Night.ended != true
+  evergreen: true
+  title: Whose side are you on?
+  text:
+    You know what Trabolta is now. Serve him (⭐ and his trust), or turn. 📢 Defect openly: the whole house hears it, once. 🤫 Look the other way on a marked program you claimed, or 🤫 tip a marked program off. Every third quiet favour, Trabolta notices.
+  buttons: defect_openly, look_the_other_way, tip_off
 
 // DRAFT for sign-off
 OBJECTIVE After The Night
@@ -527,6 +597,7 @@ OBJECTIVE After The Night
   // DRAFT for sign-off (w13 Q34): live only once the night has ended (Patrol The Computer covers the rest), so it is never under More objectives at 8 pm.
   while: Night.ended == true
   act: G
+  go: The Desktop
   title: The night is over: guide everyone to the living room
   text:
     The ceremony is at the Desktop. If everyone was banished, you are banished too: hand jive with them.
@@ -540,6 +611,7 @@ OBJECTIVE The Bottle
   for: Clippy
   while: Night.bottle_open == true
   act: B
+  go: The Desktop
   title: The bottle: make them answer
   target: Night.bottle_pick
   text:
@@ -551,6 +623,7 @@ OBJECTIVE Greet The Arrivals
   for: Clippy
   while: Night.step < 1
   act: Doors
+  go: The Optical Drive
   title: Greet the arriving programs
   text:
     Greet people in person. Your scan greets them in your voice; it never clears anyone (only an Antivirus does).
@@ -558,25 +631,29 @@ OBJECTIVE Greet The Arrivals
 
 // w18b: Jean Trabolta joins by video conference; no "no names" (DRAFT w18b)
 // DRAFT w18
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Welcome Everyone
   for: Clippy
   while: Night.phase == "desktop" or Night.phase == "bingo"
   act: B
+  go: The Desktop
   title: CI 1: welcome everyone, then Computer Bingo
   text:
-    The fundraiser to restore the sign at Maps And Ducks. Jean Trabolta joins by video conference later. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, one line through the centre. 🎱 and ⏰ Bingo time are your cues on the 🎤 bar.
+    The fundraiser to restore the sign at Maps And Ducks. Jean Trabolta joins by video conference later. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, one line through the centre. A host starts 🎱 Bingo and calls ⏰ time: your booth pops up when your game is on.
 
 // The checklist is PLAYER SELECT's steps, in order (wave 18, A5): each
 // to-do leads with its button's glyph.
 // DRAFT w18
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Celebrate The Winners
   for: Clippy
   while: Night.phase == "bingo_results"
   act: B
+  go: The Desktop
   title: CI 2: celebrate the Bingo winners
   pick: program.location == "The Desktop" and program.cleared == true
   text:
-    Winners read their line, centre square last. Demand applause. Tap each winner, give the ribbon, then tap the program they name at the centre square: Norton interrupts. You never press 🛡.
+    Winners read their line, centre square last. Demand applause. Tap each winner (⭐ +10), give the ribbon (⭐ +5), then tap the program they name at the centre square (⭐ +10): Norton interrupts. You never press 🛡.
     - 🎱 Who shouted BINGO?, done when Night.bingo_winners >= 1
     - 🎀 Give the winner the Bingo Ribbon, done when Night.bingo_ribbons >= 1
     - 🎯 Who did the winner name?, done when Night.bingo_named >= 1
@@ -584,23 +661,27 @@ OBJECTIVE Celebrate The Winners
   buttons: bingo_winner, award_the_ribbon, named_at_bingo
 
 // DRAFT w18
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Introduce Trabolta
   for: Clippy
   while: Night.phase == "introduced" or Night.phase == "hunt_1"
   act: B
+  go: The Desktop
   title: Introduce Trabolta, then host the hunt
   text:
-    Once a host fires 🤖 (it is LAST on your bar): "Everyone, say hello to JEAN TRABOLTA!" Point at the reinstallation on the TV. Hand off: Trabolta has a game for all of us. 🔎 the hunt is your cue: it runs 15 minutes.
+    Once a host fires 🤖: "Everyone, say hello to JEAN TRABOLTA!" Point at the reinstallation on the TV. Hand off: Trabolta has a game for all of us. A host starts 🔎 the hunt: it runs 15 minutes.
 
 // w18b: Trabolta reads; 🍾 after Q3; no "confident answers" line (DRAFT w18b)
 // DRAFT w18
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE The First Moment Of Truth Host
   for: Clippy
   while: Night.phase == "truth_1" and Night.judging == true
   act: B
+  go: The Desktop
   title: CI 3: the First Moment of Truth
   text:
-    Two minutes to file, then 📋 each question: Trabolta reads the result on the TV; when he has finished, the next. After Q3, 🍾 Truth or Dare (about five spins). ⏱, 📋 and 🍾 are your cues on the 🎤 bar. Guesses are a symptom of corruption. Never say which filings were lies.
+    Two minutes to file, then 📋 each question: Trabolta reads the result on the TV; when he has finished, the next. After Q3, 🍾 Truth or Dare (about five spins). The hosts call ⏱, 📋 and 🍾. Guesses are a symptom of corruption: 🤷 (⭐ +5). Never say which filings were lies.
     - Filings closed, done when Night.r1_closed == true
     - Q1 read, done when Night.results_q >= 1
     - Q2 read, done when Night.results_q >= 2
@@ -618,21 +699,24 @@ OBJECTIVE Keep Everyone Calm
     Read Trabolta's private message. Overreact wildly, then pull it together: "There are signs of malware in the system that we need to be very vigilant about." Send everyone off for the hour.
 
 // DRAFT for sign-off
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Judge Truth Pong
   for: Clippy
   while: Night.phase == "truth_pong" and Night.judging == true
   act: D
+  go: The Cloud
   title: CI 5: judge the cup-makers' answers
   pick: program.may_answer == true
   text:
-    It's Truth Time again! Only cup-makers answer. ✅ accurate or 😤 wrong but confident, with the question number within this round; 🤷 for a guess. Q2 and Q3 are under All buttons.
-  buttons: accurate_q1, confident_q1, uncertain_answer
+    It's Truth Time again! Only cup-makers answer. ✅ accurate or 😤 wrong but confident for the question being judged (Q1 to start; 🔢 under Also now moves it), 🤷 for a guess. ⭐ +5 each answer you judge.
+  buttons: judge_accurate, judge_confident, uncertain_answer
 
 // DRAFT for sign-off
 OBJECTIVE Lead The Applause
   for: Clippy
   while: Night.phase == "trust_chart" or Night.phase == "beans"
   act: D
+  go: The Desktop
   title: CI 6: lead the applause; the beans are malware
   text:
     Lead the applause for the most trusted. Don't defend the least trusted. Full of beans: "Routine operations like print to PDF are no longer working." Welcome the zipped programs back.
@@ -647,14 +731,27 @@ OBJECTIVE No Sides On Air
     The clock reset to 11 PM, December 31, 1999. The final facts are in the Quest Log. Programs will recruit: you may not take sides on air. At midnight, everyone back for the final reveal.
 
 // DRAFT for sign-off
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE The Final Round
   for: Clippy
   while: Night.phase == "final_reveal"
   act: F
+  go: The Desktop
   title: CI 8: lights down, everyone speaks
   text:
-    Judge the final facts: ✅ / 😤 Q1 and Q2 only, 🤷 for a guess (😤 is under All buttons). Then: "There is only one version of the truth. Because truth is always in binary."
-  buttons: accurate_q1, accurate_q2, uncertain_answer
+    Judge the final facts: ✅ / 😤 for the question being judged (Q1 to start; 🔢 moves it to Q2), 🤷 for a guess. ⭐ +5 each. Then: "There is only one version of the truth. Because truth is always in binary."
+  buttons: judge_accurate, judge_confident, uncertain_answer
+
+// 🔢 The question ✅ / 😤 judge (wave 21): after the judging objectives, so
+// it rides Also now while judging is open.
+// DRAFT w21
+OBJECTIVE Which Question
+  for: Clippy
+  while: Night.judging == true and (Night.phase == "truth_pong" or Night.phase == "final_reveal")
+  title: 🔢 Which question are you judging?
+  text:
+    ✅ and 😤 judge one question at a time: question 1 when judging opens. When a program answers another, 🔢 to it first.
+  buttons: judging_q1, judging_q2, judging_q3
 
 // DRAFT for sign-off
 OBJECTIVE Bob For It
@@ -668,31 +765,36 @@ OBJECTIVE Bob For It
 
 // DRAFT for sign-off
 OBJECTIVE Grok Prom
-  for: Hosts
+  // DRAFT w21: Clippy left GROUP Hosts, so it is named.
+  for: Hosts, Clippy
   while: Night.phase == "grok_prom" and Night.ended != true
   act: F
   title: Grok Prom: listen for the line
   text:
-    The first program who says "You're the one that I want" to you: 💘 on their card (tap to arm, tap again to fire).
+    The first program who says "You're the one that I want" to you: 💘 on their card (tap to arm, tap again to fire). Clippy: ⭐ +20.
   buttons: pickup_line_works
 
 // DRAFT w18
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Purgatory
   for: Clippy
   while: Night.ending == "destroyed" and Night.ceremony != true
   act: F
+  go: The Desktop
   title: CI 9: dance, then read the summary
   text:
-    After the dance, call 🪦 the summary from your 🎤 bar and read it from the Desktop room: "We are now in purgatory forever together."
+    After the dance a host calls 🪦 the summary: read it from the Desktop room. "We are now in purgatory forever together."
 
 // DRAFT w18
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Host The Ceremony
   for: Clippy
   while: Night.ceremony == true
   act: G
+  go: The Desktop
   title: The awards ceremony
   text:
-    The awards are your cues on the 🎤 bar. If you host (after Combo B or the rave), each award line lands in the Desktop room: read it aloud, call the winner up, lead the applause. Otherwise lead the applause for Trabolta's.
+    The hosts call each award. If you host (after Combo B or the rave), each award line lands in the Desktop room: read it aloud, call the winner up, lead the applause. Otherwise lead the applause for Trabolta's. The three staff awards come last, and one might be yours.
 
 // ════════════════════════════════════════════════════════════════════
 // The host parts: Task Manager, Adobe Acrobat, the Recycling Bin.
@@ -806,10 +908,21 @@ OBJECTIVE The Help Desk
   buttons: award_the_ribbon, signed_the_painting
 
 // DRAFT for sign-off
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 OBJECTIVE Help With That
   for: Clippy
   evergreen: true
   title: Offer everyone Help With That
   text:
-    Relentlessly helpful, a little too bright, always available. 🎀 ribbons are yours any time, and 🖌 when MS Paint is here. Your staff quests and What Clippy knows are in your booth.
+    Relentlessly helpful, a little too bright, always available. 🎀 ribbons are yours any time, and 🖌 when MS Paint is here. Your staff quests are in the Quest Log, your instructions in the Codex. ⭐ for every game you run.
   buttons: award_the_ribbon, signed_the_painting
+
+// DRAFT w21
+OBJECTIVE Whose Side Are You On Clippy
+  for: Clippy
+  while: Night.truther_sent == true and Night.ended != true
+  evergreen: true
+  title: Whose side are you on?
+  text:
+    You know what Trabolta is now. Stay his ambassador (⭐ and his trust), or turn. 📢 Defect openly: the whole house hears it, once. 🤫 Tip a marked program off, or 🤫 let a guess slide while you judge (accepted, +100 Truthcoin to them). Every third quiet favour, Trabolta notices.
+  buttons: defect_openly, tip_off, let_it_slide

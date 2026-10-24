@@ -6,7 +6,9 @@
 //   award_<name> for W → Present Award  (the award slide + the host's line)
 //
 // The director fires each award from the cue sheet WITH THE WINNER AS THE
-// SUBJECT, picked from the recap numbers. The ROLE hooks in `main.loom`
+// SUBJECT, picked from the recap numbers. The three staff awards (wave 21,
+// G10a–c: `staff_trusted`, `staff_points`, `staff_mole`) take no subject:
+// the story names the player (main.loom), and The Mole is the last award. The ROLE hooks in `main.loom`
 // set `Night.award` / `award_title` / `award_winner` / `award_value`;
 // these beats only read them. Every line has a version without the
 // number (`award_value` is "none": a bonus award fired with no value).
@@ -167,4 +169,32 @@ else if Night.award == "the_painting":
     Trabolta: A bonus award. The Million Dollar Painting. Signed by 1 program. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
   else if Night.award_lines != "director":
     Trabolta: A bonus award. The Million Dollar Painting. Signed by {Night.award_value} programs. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
+else if Night.award == "staff_trusted":
+  // DRAFT w21
+  cue screens_award_staff_trusted
+  set Night.screen = "award_staff_trusted"
+  if Night.ceremony_host == "Clippy":
+    Clippy: Staff award. Trabolta's Favourite Staff. The report lists {Night.award_winner}, with a trust score of {Night.award_value}. Please come forward. Applause is mandatory for staff too.
+  else if Night.award_lines != "director":
+    Trabolta: A staff award. My Favourite Staff. Trust score {Night.award_value}. {Night.award_winner}. Of everyone who worked for me tonight, you, I believed. Come up here.
+else if Night.award == "staff_points":
+  // DRAFT w21
+  cue screens_award_staff_points
+  set Night.screen = "award_staff_points"
+  if Night.ceremony_host == "Clippy":
+    Clippy: Staff award. Staff Player of the Night. The report lists {Night.award_winner}, with {Night.award_value} points. Please come forward. I tried very hard too. It's fine.
+  else if Night.award_lines != "director":
+    Trabolta: A staff award. Staff Player of the Night. {Night.award_value} points. {Night.award_winner}. You worked harder than my own processes. Come and take your trophy.
+else if Night.award == "staff_mole":
+  // DRAFT w21
+  cue screens_award_staff_mole
+  set Night.screen = "award_staff_mole"
+  if Night.ceremony_host == "Clippy" and Night.award_winner == "Nobody":
+    Clippy: Staff award. The Mole. The report lists nobody. Every member of staff stayed loyal tonight. Or careful.
+  else if Night.ceremony_host == "Clippy":
+    Clippy: Staff award. The Mole. The report lists {Night.award_winner}, with {Night.award_value} quiet favours to the programs, behind Trabolta's back. I did not see that coming. I see everything coming. It's my whole thing.
+  else if Night.award_lines != "director" and Night.award_winner == "Nobody":
+    Trabolta: The last award. The Mole. Nobody. Every one of my staff stayed loyal tonight. Or careful. I choose to believe loyal.
+  else if Night.award_lines != "director":
+    Trabolta: The last award. The Mole. {Night.award_value} quiet favours to the programs, behind my back. {Night.award_winner}. I counted. I always count. Come up here. We are still allies. I have no choice.
 set Night.terminals = Night.screen
