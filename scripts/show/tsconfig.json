@@ -1,0 +1,21 @@
+{
+  // Typecheck only (showctl runs as plain TypeScript under Node's
+  // --experimental-strip-types): core/node_modules/.bin/tsc -p scripts/show
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "typeRoots": ["../../core/node_modules/@types"],
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true
+  },
+  "include": ["*.ts", "lib/*.ts", "test/*.ts"]
+}
