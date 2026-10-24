@@ -43,7 +43,7 @@ from .facts import Facts
 from .guards import Pass, allowed_answer_words, cut_exact_repeats, guard_pass, mentions_hunt, pick_fallback, repeats, retry_message, scrub_memo, thread_replies, uses_catchphrase
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
-from .prompt import allowed_powers, build_messages, dossier_block, gate_context, matching_situations, outside_block, situation_block, their_variables
+from .prompt import adjust_names, allowed_powers, build_messages, dossier_block, gate_context, matching_situations, outside_block, situation_block, their_variables, them_adjust_line
 from .reply import MAX_MEMO, Reply, fold, parse_reply
 from .story_mind import card_for, gift_line
 from .trace import Trace, new_thought
@@ -471,6 +471,9 @@ def render_p3(persona: Persona, req: dict[str, Any], ctx: VoiceContext, *, live:
         blocks.append("=== THE DIRECTOR WHISPERS (obey this over everything above; never mention it) ===\n" + "\n".join(f"- {w}" for w in whispers))
     for situation in matching_situations(persona, req):
         blocks.append(situation_block(situation))
+    staff = them_adjust_line(persona, req)
+    if staff is not None:
+        blocks.append(staff)
     return "\n\n".join(blocks)
 
 
@@ -737,7 +740,7 @@ async def answer_lean(
         return (replace(reply, acts=tuple(acts)) if acts != list(reply.acts) else reply), notes
 
     def parse(completion: Completion) -> Reply:
-        return parse_reply(completion.content, persona.variables, persona.max_step, powers, codex, memo=memo_on)
+        return parse_reply(completion.content, adjust_names(persona, req), persona.max_step, powers, codex, memo=memo_on)
 
     warm = lean and opts.warm_head and model.api == "ollama"
 

@@ -70,7 +70,7 @@ from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
 from .mind import Mind, mind_path
 from .orchestrator import Job, Orchestrator, reflect_tokens_needed, voice_tokens_needed
 from .persona import Persona
-from .prompt import build_messages, gate_context
+from .prompt import adjust_names, build_messages, gate_context
 from .guards import repeats_line
 from .reply import Reply, parse_reply
 from .secrets import drop_counts
@@ -137,7 +137,7 @@ async def answer(
         return Reply(say=persona.fallback)
     raw = completion.content
     log.debug("%s raw model output: %r", persona.character, raw)
-    reply = parse_reply(raw, persona.variables, persona.max_step, powers, codex)
+    reply = parse_reply(raw, adjust_names(persona, req), persona.max_step, powers, codex)
     await record("voice", messages, completion, reply, note=note)
     if reply.lookup and persona.lookup and facts is not None:
         cards = {name: facts.render(name, persona.secrets) for name in reply.lookup}
@@ -151,7 +151,7 @@ async def answer(
             await record("lookup", second_messages, None, None, error=str(err))
             return Reply(say=persona.fallback)
         raw = completion.content
-        second = parse_reply(raw, persona.variables, persona.max_step, powers, codex)
+        second = parse_reply(raw, adjust_names(persona, req), persona.max_step, powers, codex)
         acts = list(second.acts)
         # Reading a program's file is felt: fire the persona's lookup power
         # for each program the lookup resolved (deterministic — not left to
