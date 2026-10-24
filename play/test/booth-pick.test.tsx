@@ -1,6 +1,6 @@
 // Wave 18 (booth lane): PLAYER SELECT (BOOTH-SPEC §4.7), the Rows window
 // (§4.10), the door queue window (§4.4), the 🔔 Waiting window (§4.13) and
-// Clippy's 🎤 ON MIC bar (§4.9).
+// The caller's 🎤 ON MIC bar (§4.9; generic since wave 21).
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -9,7 +9,7 @@ import { RowsWindow, THEYRE_HERE, isSummons, rowLabel, rowsPlace } from "../src/
 import { GuestTiles } from "../src/booth/pick/tiles.tsx";
 import { DoorWindow } from "../src/booth/door.tsx";
 import { WaitingWindow } from "../src/booth/waiting.tsx";
-import { ClippyCueBar, callMarks, callerChip, clippyFire, nextForYou, sheetNext, waitsInThisAct, yourCue } from "../src/booth/cue-bar.tsx";
+import { CueBar, callMarks, callerChip, boothCueFire, nextForYou, sheetNext, waitsInThisAct, yourCue } from "../src/booth/cue-bar.tsx";
 import { wizardSteps } from "../src/booth/popouts/model.ts";
 import { PopOutScope } from "../src/booth/popouts/rung.ts";
 import { ApiError } from "../src/client.ts";
@@ -120,7 +120,7 @@ describe("the 🔔 Waiting window (§4.13)", () => {
   });
 });
 
-describe("Clippy's 🎤 bar (§4.9)", () => {
+describe("the caller's 🎤 bar (§4.9)", () => {
   const row = (id: string, extra: Record<string, unknown> = {}) => ({ id, n: 1, code: null, title: id, fired: false, last: false, next: false, sequence: true, live: false, subject: false, act: null, description: null, ...extra });
   const calls = (rows: ReturnType<typeof row>[], extra: Partial<CallsView> = {}): CallsView => ({ rows: rows as CallsView["rows"], next: null, last: null, lastName: null, act: null, presses: 7, ...extra });
   it("your cue is only your row that is the sheet's NEXT; else the next one for you (BN-F1)", () => {
@@ -133,46 +133,50 @@ describe("Clippy's 🎤 bar (§4.9)", () => {
     // The first unfired in running order, live or not; an off-sequence fallback only when nothing else waits.
     expect(nextForYou(calls([row("hunt_over", { sequence: false }), row("bingo", { live: true })]).rows)?.id).toBe("bingo");
   });
-  it("binds the arm to Clippy's marks; line 2 reads the sheet's NEXT and the caller", () => {
-    const c = calls([row("bingo_time", { live: true, fired: true, title: "⏰ Bingo time" })], { last: "bingo_time", lastName: "Clippy", next: "bingo_time", caller: { name: "Task Manager", at: 1 } });
-    expect(callMarks(c)).toEqual({ last: "bingo_time", fired: ["bingo_time"], presses: 7, lastName: "Clippy" });
+  it("binds the arm to the caller's marks; line 2 reads the sheet's NEXT and the caller", () => {
+    const c = calls([row("bingo_time", { live: true, fired: true, title: "⏰ Bingo time" })], { last: "bingo_time", lastName: "Mr. Bones", next: "bingo_time", caller: { name: "Task Manager", at: 1 } });
+    expect(callMarks(c)).toEqual({ last: "bingo_time", fired: ["bingo_time"], presses: 7, lastName: "Mr. Bones" });
     expect(sheetNext(c, c.rows[0]!)).toBe("the same");
     expect(sheetNext({ ...c, next: "introduce_trabolta" }, c.rows[0]!)).toBe("introduce_trabolta");
     // BN-F11: the server's title, never the raw id, when it sends one.
     expect(sheetNext({ ...c, next: "introduce_trabolta", nextTitle: "🤖 Introduce Trabolta" }, c.rows[0]!)).toBe("🤖 Introduce Trabolta");
-    expect(callerChip(c, "Clippy")).toBe("📣 Task Manager");
-    expect(callerChip({ ...c, caller: { name: "Clippy", at: 1 } }, "Clippy")).toBe("📣 You");
-    expect(callerChip({ ...c, caller: null }, "Clippy")).toBeNull();
+    expect(callerChip(c, "Mr. Bones")).toBe("📣 Task Manager");
+    expect(callerChip({ ...c, caller: { name: "Mr. Bones", at: 1 } }, "Mr. Bones")).toBe("📣 You");
+    expect(callerChip({ ...c, caller: null }, "Mr. Bones")).toBeNull();
   });
   it("renders only for a booth that gets calls: yellow YOUR CUE + ARM, or grey next for you", () => {
-    const s = (cv: CallsView | undefined) => ({ view: { character: "Clippy", guests: [], channels: [], spaces: [], ...(cv !== undefined ? { calls: cv } : {}) }, auth: { token: "t", character: "Clippy", admin: false, eventId: "e" } }) as unknown as PrimeSession;
-    expect(renderToStaticMarkup(<ClippyCueBar session={s(undefined)} now={0} />)).toBe("");
-    const live = renderToStaticMarkup(<ClippyCueBar session={s(calls([row("bingo_time", { live: true, next: true, code: "V3", title: "⏰ Bingo time" })]))} now={0} />);
+    const s = (cv: CallsView | undefined) => ({ view: { character: "Mr. Bones", guests: [], channels: [], spaces: [], ...(cv !== undefined ? { calls: cv } : {}) }, auth: { token: "t", character: "Mr. Bones", admin: false, eventId: "e" } }) as unknown as PrimeSession;
+    expect(renderToStaticMarkup(<CueBar session={s(undefined)} now={0} />)).toBe("");
+    const live = renderToStaticMarkup(<CueBar session={s(calls([row("bingo_time", { live: true, next: true, code: "V3", title: "⏰ Bingo time" })]))} now={0} />);
     expect(live).toContain("cue-bar live");
     expect(live).toContain("🎤 YOUR CUE");
     expect(live).toContain("V3");
     expect(live).toContain(">ARM<");
     const inAct = (cv: CallsView, code: string) => ({ ...s(cv), view: { ...s(cv).view, night: { act: { code, title: "x" }, phase: null, step: null } } }) as unknown as PrimeSession;
     const waitRows = calls([row("bingo_time", { title: "⏰ Bingo time", act: "B · Act I" })], { next: "introduce_trabolta" });
-    const wait = renderToStaticMarkup(<ClippyCueBar session={inAct(waitRows, "B")} now={0} countdowns={[{ label: "Bingo", endsAt: 252 } as never]} />);
+    const wait = renderToStaticMarkup(<CueBar session={inAct(waitRows, "B")} now={0} countdowns={[{ label: "Bingo", endsAt: 252 } as never]} />);
     expect(wait).toContain("cue-bar waiting");
     expect(wait).toContain("🎤 next for you");
     expect(wait).toContain("⏳ 4:12");
     expect(wait).toContain("NEXT: introduce_trabolta");
     // BN2-FE: a countdown of another act (the summons) is not this cue's.
-    const elsewhere = renderToStaticMarkup(<ClippyCueBar session={inAct(waitRows, "E")} now={0} countdowns={[{ label: "Summons", endsAt: 300 } as never]} />);
+    const elsewhere = renderToStaticMarkup(<CueBar session={inAct(waitRows, "E")} now={0} countdowns={[{ label: "Summons", endsAt: 300 } as never]} />);
     expect(elsewhere).toContain("🎤 next for you");
     expect(elsewhere).not.toContain("⏳");
     expect(waitsInThisAct(null, { code: "B" })).toBe(false);
   });
+  it("never mounts on a player's booth, even if a view carries calls (wave 21, D5)", () => {
+    const player = { view: { character: "Mr. Bones", player: true, guests: [], channels: [], spaces: [], calls: calls([row("bingo_time", { live: true, next: true, title: "⏰ Bingo time" })]) }, auth: { token: "t", character: "Mr. Bones", admin: false, eventId: "e" } } as unknown as PrimeSession;
+    expect(renderToStaticMarkup(<CueBar session={player} now={0} />)).toBe("");
+  });
   it("fires over /api/prime/cue: a 409 moved drops the arm, a refusal says not taken", async () => {
     let body: unknown[] = [];
-    const ok = clippyFire({ cue: async (...a) => ((body = a), {}) });
+    const ok = boothCueFire({ cue: async (...a) => ((body = a), {}) });
     expect(await ok("bingo_time", null, undefined, 7)).toEqual({ ok: true });
     expect(body).toEqual(["bingo_time", null, null, 7]);
-    const moved = clippyFire({ cue: async () => { throw new ApiError("the cues moved", 409); } });
+    const moved = boothCueFire({ cue: async () => { throw new ApiError("the cues moved", 409); } });
     expect(await moved("x", null, undefined, 1)).toMatchObject({ ok: false, moved: true });
-    const refused = clippyFire({ cue: async () => ({ refused: true }) });
+    const refused = boothCueFire({ cue: async () => ({ refused: true }) });
     expect(await refused("x", null, undefined, 1)).toEqual({ ok: true, refused: true });
   });
 });

@@ -2,7 +2,7 @@
 //! rule is pinned by a test. A pop-out here is a *draft*: its buttons name
 //! what they do (`BoothDo`) and `use-booth-popouts.ts` binds them to the
 //! session. Which programs are wanted, who is at the door, the objective's
-//! target or picker, Clippy's cue: all read off the booth's view.
+//! target or picker, a caller's cue: all read off the booth's view.
 
 import { destructive, armsFirst } from "../model.ts";
 import type { ChatMessage, CountdownSummary, Interaction } from "../../types.ts";
@@ -22,7 +22,7 @@ export type BoothDo =
   /** The door claim (A4), then the scanner. */
   | { kind: "claimDoor"; guest: string; name: string }
   | { kind: "pick"; objective: string }
-  /** Arm Clippy's cue on the bar. */
+  /** Arm the caller's cue on the bar. */
   | { kind: "cue"; id: string }
   /** Later, as a button ("Not yet"). */
   | { kind: "later" }
@@ -645,7 +645,7 @@ export function doorSpec(queue: readonly DoorEntry[], step: number | null | unde
   };
 }
 
-// --- Clippy's cue (§4.9) ----------------------------------------------------------
+// --- a caller's cue (§4.9) ----------------------------------------------------------
 
 /** The countdown that ended within the last two minutes, if any ("Bingo time is up"). */
 function justEnded(countdowns: readonly CountdownSummary[] | undefined, now: number): string | null {
@@ -682,7 +682,7 @@ export function rememberCountdowns(memo: Map<string, CountdownMemo>, current: re
   return [...memo.values()].filter((m) => m.goneAt === null || m.goneAt / 1000 >= m.c.endsAt - 15).map((m) => m.c);
 }
 
-/** *Call it?* for each of Clippy's cues that just turned live (not live at the last look). */
+/** *Call it?* for each of the caller's cues that just turned live (not live at the last look). */
 export function cueSpecs(calls: CallsView, prevLive: ReadonlySet<string> | null, now: number, countdowns?: readonly CountdownSummary[]): Draft[] {
   if (prevLive === null) return [];
   const ended = justEnded(countdowns, now);
@@ -725,7 +725,7 @@ export function countdownRunning(countdowns: readonly CountdownSummary[] | undef
 }
 
 /**
- * *Call it?* when a countdown just ended and Clippy's own cue is the
+ * *Call it?* when a countdown just ended and the caller's own cue is the
  * sheet's NEXT (BN-F3: Bingo time is live from the doors, so no live flip
  * ever raised it): "Bingo ends is up. Call it?". Its rev names the
  * countdown, so it shows again after a *Not yet* on an earlier one.

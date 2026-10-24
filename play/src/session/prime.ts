@@ -290,7 +290,7 @@ export interface PrimeSession {
   /** Fire a performer / admin interaction on a guest, as this character —
    *  or (C4, wave 18) a global one with no guest. */
   act: (name: string, guest?: string | null) => Promise<PrimeActResult>;
-  /** Clippy's own cue (C8, wave 18): `/api/prime/cue`, the cue-sheet path
+  /** A caller booth's own cue (C8, wave 18): `/api/prime/cue`, the cue-sheet path
    *  (409 `moved` / `doorsClosed`, `refused`). */
   cue: (name: string, subject: string | null, args: Record<string, unknown> | null, presses: number | undefined, signal?: AbortSignal) => Promise<{ refused?: boolean; moved?: boolean; said?: string[]; staff?: string[] }>;
   /** Codex: hand one of the character's entries to a guest. */
@@ -339,7 +339,7 @@ export function usePrimeSession(): PrimeSession {
   const { typing, onTyping } = useTyping(auth !== null ? { role: "performer", character: auth.character } : null);
   // Booths get the guest's alerts (alerts.ts) plus N-07: a readout that
   // isn't the answer to this booth's own scan / act — the late list,
-  // Trabolta's warning to Clippy — banners and chimes too.
+  // a character's warning from Trabolta — banners and chimes too.
   const alertsRef = useRef<ReturnType<typeof useAlerts> | null>(null);
   const lastActionAt = useRef(Number.NEGATIVE_INFINITY);
   /** The booth's own requests in flight: a readout while one is pending is

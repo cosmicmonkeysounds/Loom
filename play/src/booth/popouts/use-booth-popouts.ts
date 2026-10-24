@@ -2,7 +2,7 @@
 //! diffs the view (and the door readouts) against what this phone has
 //! already seen, and raises / retires pop-outs on the rung — the Wanted
 //! pop-out (and bursts), the door, the NOW objective's target, the picker
-//! that just became live, Clippy's *Call it?*. "First seen" memory persists
+//! that just became live, a caller's *Call it?*. "First seen" memory persists
 //! per sign-in (`loom.booth.seen.<token>`), so a reload never re-pops a mark
 //! someone else already claimed.
 
@@ -194,7 +194,7 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objKey]);
 
-  // Clippy: *Call it?* when one of its cues turns live after the first look.
+  // A caller: *Call it?* when one of its cues turns live after the first look.
   const calls = callsOf(view);
   const prevLive = useRef<Set<string> | null>(null);
   const prevPresses = useRef<number | null>(null);
@@ -244,7 +244,7 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
   }, [heldKey, wantedKey, objIds, callsKey, caughtKey]);
 
   // A deferred *Call it?* pops once its countdown is up; and when a
-  // countdown ends with Clippy's own cue as the sheet's NEXT, it pops too.
+  // countdown ends with the caller's own cue as the sheet's NEXT, it pops too.
   const cueBucket = Math.floor(now / 5_000);
   useEffect(() => {
     if (calls === null) return;

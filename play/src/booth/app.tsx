@@ -44,7 +44,7 @@ import { showClockOf } from "../show-clock.ts";
 import { storyNow } from "../clock.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { PrimeActResult } from "../types.ts";
-import { ClippyCueBar } from "./cue-bar.tsx";
+import { CueBar } from "./cue-bar.tsx";
 import { DoorWindow } from "./door.tsx";
 import { boardRowCount, nowRow } from "./now-card.tsx";
 import { PlayerSelect } from "./pick/select.tsx";
@@ -206,7 +206,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     if (w.claimedBy === null) claimSeen.current.delete(w.id);
     else if (was === undefined || was.by !== w.claimedBy) claimSeen.current.set(w.id, { by: w.claimedBy, at: storyMs });
   }
-  // Clippy's own fire (PLAYER SELECT opens at once after it) and the bar's arm.
+  // The caller's own fire (PLAYER SELECT opens at once after it) and the bar's arm.
   const ownFire = useRef<number | null>(null);
   const armCue = useRef<((id: string) => void) | null>(null);
   const targetKey = useRef<string | null>(null);
@@ -483,7 +483,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 <PopOutHost />
               </div>
               <div className="booth-dock">
-                <ClippyCueBar session={s} now={storyMs} countdowns={s.view?.countdowns} armRef={armCue} onFired={(at) => (ownFire.current = at)} />
+                <CueBar session={s} now={storyMs} countdowns={s.view?.countdowns} armRef={armCue} onFired={(at) => (ownFire.current = at)} />
                 <HostDock session={s} wide={wide} openCard={(id) => openCard(id)} openWanted={openBoard} />
               </div>
               {!keyboard && (

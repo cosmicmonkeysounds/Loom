@@ -42,7 +42,7 @@ export interface CallerView {
   at: number;
 }
 
-/** Clippy's own cues (C8 `PrimeView.calls`). */
+/** A caller booth's own cues (C8 `PrimeView.calls`). */
 export interface CallsView {
   rows: CueRow[];
   next: string | null;
@@ -86,8 +86,9 @@ export function looseWanted(view: PrimeView | null | undefined): WantedEntry[] {
   return (wantedOf(view) ?? []).filter((w) => !w.captured);
 }
 
-/** `PrimeView.calls` (Clippy's booth only). */
+/** `PrimeView.calls` (a caller booth only; never a player's, wave 21 D5). */
 export function callsOf(view: PrimeView | null | undefined): CallsView | null {
+  if (view?.player === true) return null;
   const c = boothView(view)?.calls;
   return c !== undefined && c !== null && Array.isArray(c.rows) ? c : null;
 }
