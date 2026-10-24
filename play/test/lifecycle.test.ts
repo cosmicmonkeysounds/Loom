@@ -117,8 +117,9 @@ describe("a booth signed back in after Go live starts with no answered cards", (
 
 describe("a booth whose token died with no lifecycle frame (T5-03)", () => {
   it("says it was signed out, never that the rehearsal ended", () => {
-    expect(BOOTH_SIGNED_OUT).toContain("released your part");
-    expect(BOOTH_SIGNED_OUT).toContain("sign in again with your passcode");
+    expect(BOOTH_SIGNED_OUT).toContain("a director released it");
+    expect(BOOTH_SIGNED_OUT).toContain("signed in on another phone");
+    expect(BOOTH_SIGNED_OUT).toContain("sign in again with your passcode or your cast card");
     expect(BOOTH_SIGNED_OUT).not.toMatch(/rehearsal|show is starting/);
     // A real go-live frame keeps its own line.
     expect(lifecycleNotice(LifecycleKind.GoLive, SessionRole.Performer)).toContain("show is starting");
