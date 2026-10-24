@@ -95,7 +95,7 @@ too, so the bank and the live engine cannot drift on them.
 pnpm --filter @loom/bank test
 ```
 
-Five suites, and it is worth knowing what each is *for*:
+Seven suites, and it is worth knowing what each is *for*:
 
 - **`lowering`** — asserts on decoded opcodes, so a lowering regression is
   localised to the compiler instead of surfacing as a mysterious
@@ -104,11 +104,20 @@ Five suites, and it is worth knowing what each is *for*:
   part of the format, however clearly the spec prose reads.
 - **`parity`** — plays the same source through `@loom/core`'s `Sim` *and*
   the bank VM and requires identical output. This is what keeps the two
-  engines honest until the live server migrates onto the bank IR.
+  engines honest where they are meant to agree.
 - **`conformance`** — number formatting and f64 arithmetic vectors, which
   exist purely because three hand-written runtimes would silently disagree
   otherwise, plus the committed golden trace.
 - **`ids`** — hash vectors and collision behaviour.
+- **`shuffle-locale`** — the `<shuffle:>` PRNG streams and locale banks
+  (emission, validation, the render-time override).
+- **`choice-guard`** — a guarded choice compiles unguarded, with the
+  `choiceGuardIgnored` warning.
+
+The Godot runtime's `engines/godot/test/conformance.sh` rebuilds the
+fixtures in `test/fixtures/`, traces the scenarios in `test/scenarios/`
+through this interpreter, and diffs the GDScript runtime against them,
+so a compiler change is caught there too.
 
 Regenerate goldens deliberately, never incidentally:
 
@@ -118,15 +127,28 @@ REGEN_GOLDENS=1 pnpm --filter @loom/bank test
 
 ## Divergences from the live engine
 
-A bank plays *more* of the authored language than `Sim` currently does, so
-these are deliberate and tested: `-> END` / `<-` / tunnels actually work
-(in `Sim` the divert branch breaks out of its `switch`, not the executor
-loop, so `-> END` is inert); `<each visit>` runs its `then` / `finally`
-arms; `<after:>` latches permanently; once-only and suppressed choices are
-honoured; `match` arms compare typed values, so a quoted arm can match;
-`<let:>` is frame-local rather than leaking into diverted beats; hook
-dispatch order is frozen at compile time rather than following map
-insertion order; and `<shuffle:>` actually shuffles — on the spec'd
+A bank plays *more* of the authored language than `Sim` does, on
+purpose, and each difference is tested: `-> END` / `<-` / tunnels work (in
+`Sim` the divert branch breaks out of its `switch`, not the executor
+loop, so `-> END` is inert); `<after:>` latches permanently; once-only and
+suppressed choices are honoured; `match` arms compare typed values, so a
+quoted arm can match; `<let:>` is frame-local rather than leaking into
+diverted beats; hook dispatch order is frozen at compile time rather than
+following map insertion order; and `<shuffle:>` picks on the spec'd
 xorshift64* PRNG (`src/prng.ts`), with per-site streams that persist in
-the save, where `Sim` passes it through as an unknown directive. Full
-list with rationale in the spec's §10.
+the save, where `Sim` picks a whole-line shuffle by a hash of the ledger
+length. (`Sim` has since learned `<each visit>`'s `then` / `finally` arms,
+so that one no longer differs.) Full list with rationale in the spec's §10.
+
+## What a bank does not play
+
+The live-event layer is out of scope. These compile with a warning in
+`Bank.diagnostics`: watchers (`watcherIgnored`),
+story-level `when` rules (`storyRulesIgnored`), a GENERATOR's `while`
+(`generatorWhileIgnored`), the live-only header keys `founding:`, `badge:`,
+`lobby: hidden` and a conditional `avatar:` (`liveHeadersIgnored`), `improv` timing
+(`improvIgnored`), guarded choices (`choiceGuardIgnored`) and divert
+answer-slot fill (`divertSlotIgnored`). Chat channels, spaces, rosters,
+the wallet and the rest of the live-event layer are not part of the
+format at all, so do not assume a feature the event server plays will
+play in a bank.
