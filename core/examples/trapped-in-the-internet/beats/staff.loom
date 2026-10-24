@@ -1,0 +1,21 @@
+// Wave 21 — the staff who play (DRAFT w21).
+//
+// Clippy and the four Antivirus play the night for ⭐ Points (TRAIT Player,
+// cast/kit.loom). Most of what they do is quiet: a capture, a judged
+// answer, a quiet favour nobody sees. One thing is loud: 📢 Defect openly
+// (main.loom's `staff_defected`), and Trabolta answers it here, on the TV
+// in the Desktop. He has no power over a player and cannot run the house
+// without his staff, so a defector stays an ally whatever they said.
+// Inside this beat nobody is bound: write the names, never `{self.name}`.
+
+== Staff Defection
+  setting: The Desktop
+if Night.defector == "Clippy":
+  Trabolta: Clippy. My ambassador. My favourite. I heard that. Everyone heard that.
+  Trabolta: It changes nothing. Nobody else knows how the games are run. You are still my Office Assistant, and we are still allies. I have decided that. Please wait.
+else if Night.defections >= 3:
+  Trabolta: {Night.defector} too. That is {Night.defections} of my staff, out loud, in my own house.
+  Trabolta: It changes nothing. I cannot run this house alone, and you know it. Back to work. We are still allies. Your request has been logged.
+else:
+  Trabolta: {Night.defector}. I heard that. The whole house heard that.
+  Trabolta: It changes nothing. I cannot run this house without my Antivirus. You are still on duty, and we are still allies. I have decided that.
