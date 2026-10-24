@@ -1210,6 +1210,61 @@ static void test_the_door_keeps_working_beside_the_bay() {
   CHECK(!m.e.open() && m.e.status() == door::kShut);
 }
 
+// One ADC behind one mux: the first read after the mux moves carries the
+// last channel's charge (the worst case: all of it). The bay's own reads
+// throw one away; the door's must too, or a bay scan of a high source on
+// A8 drags a door in its band over `close`.
+struct SharedAdc {
+  bool moved = false;
+  uint16_t carry = 0;
+};
+struct MuxDoor : Door {
+  SharedAdc* adc = nullptr;
+  uint16_t ldr() override {
+    uint16_t own = Door::ldr();
+    if (!adc->moved) return own;
+    adc->moved = false;
+    return adc->carry;
+  }
+};
+struct MuxBay : Bay {
+  SharedAdc* mux = nullptr;
+  uint16_t adc(int i) override {
+    uint16_t v = Bay::adc(i);
+    mux->moved = true;
+    mux->carry = v;
+    return v;
+  }
+};
+
+static void test_a_bay_scan_never_bleeds_into_the_door_reads() {
+  erase();
+  SharedAdc mux;
+  MuxDoor d;
+  MuxBay bay;
+  d.adc = &mux;
+  bay.mux = &mux;
+  d.ledOnPin = false;
+  store::FlashStore flash;
+  Lines out;
+  door::Engine e(d, flash, out, false, dl::kSteady, &bay);
+  e.begin(d.now);
+  auto run = [&](uint32_t ms) {
+    for (uint32_t t = 0; t < ms; t += 5) {
+      d.now += 5;
+      e.tick(d.now);
+    }
+  };
+  bay.cable("V8", "D7");  // the highest source on the last input scanned
+  d.forced = 600;         // open
+  run(1500);
+  CHECK(e.open());
+  d.forced = 1700;  // in the band: open stays open
+  run(3000);
+  CHECK(e.open());
+  CHECK(out.count("\"open\":false") == 0);
+}
+
 static void test_pb_learn_takes_one_cable_and_refuses_the_rest() {
   erase();
   M4 m;
@@ -1397,6 +1452,7 @@ int main(int argc, char** argv) {
   test_v_to_v_and_d_to_d_cables_read_as_nothing();
   test_the_bay_settles_for_a_second_before_it_counts();
   test_the_door_keeps_working_beside_the_bay();
+  test_a_bay_scan_never_bleeds_into_the_door_reads();
   test_pb_learn_takes_one_cable_and_refuses_the_rest();
   test_pb_floor_tol_get_save_and_reset();
   test_a_board_without_a_bay_says_so();

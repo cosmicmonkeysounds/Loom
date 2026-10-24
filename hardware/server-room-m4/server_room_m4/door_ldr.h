@@ -105,7 +105,11 @@ struct Pins {
   virtual ~Pins() {}
 };
 
+// One throwaway read first: since 1.2.0 the bay scans A2–A8 between the
+// door's frames, and the first read after the ADC's mux moves carries the
+// last pin's charge into A0's high-impedance divider (patch.h does the same).
 inline uint16_t average(Pins& p, uint16_t (Pins::*read)()) {
+  (void)(p.*read)();
   uint32_t s = 0;
   for (int i = 0; i < kReads; i++) s += (p.*read)();
   return (uint16_t)((s + kReads / 2) / kReads);
