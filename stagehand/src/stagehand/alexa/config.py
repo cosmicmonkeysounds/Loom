@@ -39,9 +39,10 @@ from pathlib import Path
 from typing import Any
 
 from ..module import ConfigError
+from ..paths import user_cache
 from ..show.config import MqttConfig
 
-DEFAULT_CACHE = "~/Library/Caches/stagehand-alexa"
+DEFAULT_CACHE = user_cache("stagehand-alexa")  # ~/Library/Caches/… ; %LOCALAPPDATA%\stagehand\… on Windows
 #: Where the voice comes from: the Mac's own `say` (default) or the server.
 ENGINES = ("say", "server")
 

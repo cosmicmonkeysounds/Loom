@@ -55,9 +55,10 @@ from typing import Any
 from .. import localvoice
 from ..alexa.config import DEFAULT_CACHE as ALEXA_CACHE
 from ..module import ConfigError
+from ..paths import user_cache
 from ..show.config import MqttConfig
 
-DEFAULT_CACHE = "~/Library/Caches/stagehand-audio"
+DEFAULT_CACHE = user_cache("stagehand-audio")  # ~/Library/Caches/… ; %LOCALAPPDATA%\stagehand\… on Windows
 
 
 @dataclass(frozen=True)

@@ -232,3 +232,11 @@ def test_local_overlay_may_only_hold_server(tmp_path):
 
 def test_local_overlay_is_git_ignored():
     assert "*.local.yaml" in (ROOT / ".gitignore").read_text(encoding="utf-8").split()
+
+
+def test_cache_folders_follow_the_platform():
+    from stagehand.paths import user_cache
+
+    assert user_cache("stagehand-audio", "darwin") == "~/Library/Caches/stagehand-audio"  # the Mac: unchanged
+    win = user_cache("stagehand-lights", "win32", {"LOCALAPPDATA": r"C:\Users\john\AppData\Local"})
+    assert win.replace("/", "\\").endswith(r"AppData\Local\stagehand\lights")
