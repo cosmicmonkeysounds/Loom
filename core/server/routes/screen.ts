@@ -94,6 +94,7 @@ import { parseSet, splitDirective } from "../../src/runtime/sim/effects.ts";
 import type { SimEvent } from "../../src/runtime/sim/event.ts";
 import { cueText, globalScope, splitAlert, type ChatMessage } from "../chat.ts";
 import { foldName } from "../../src/parser/names.ts";
+import { isPrivateSlot } from "../../src/runtime/sim/stats.ts";
 import { DEFAULT_CONFIRM } from "../facts.ts";
 import { signalRefusedAt } from "../views.ts";
 import { queryTokenOf, readBody, sendJson, tokenOf } from "../http-util.ts";
@@ -135,9 +136,18 @@ export const MAX_CHART_ROWS = 40;
 /** A call-out var holding this (or nothing) names nobody yet. */
 export const CHART_NOBODY = "none";
 
+/** One Trust Chart row. Wave 21 (C6): a `player: true` performer part
+ *  ranks beside the programs with `staff: true` (a program's row has no
+ *  flag; a terminal reads an absent flag as false). */
+export interface ScreenChartRow {
+  name: string;
+  value: number;
+  staff?: true;
+}
+
 export interface ScreenChart {
   slide: string;
-  rows: Array<{ name: string; value: number }>;
+  rows: ScreenChartRow[];
   /** The name the story calls out at the top / bottom (null = nobody yet).
    *  Either may be past `MAX_CHART_ROWS`, so a screen matches it by name. */
   top: string | null;
@@ -1403,6 +1413,15 @@ export class ScreenWatch {
         if (peek(`${p.id}.${spec.only}`) !== "true") continue;
         const n = Number(peek(`${p.id}.${spec.value}`) ?? 0);
         rows.push({ name: p.name, value: Number.isFinite(n) ? n : 0 });
+      }
+      // Wave 21 (C6): every player with a declared numeric `<value>` slot
+      // (never a `private:` one) ranks beside the programs, as staff.
+      for (const c of sim.model.characters.values()) {
+        if (!c.player || isPrivateSlot(c, spec.value)) continue;
+        const d = c.defaults.get(spec.value);
+        if (!c.ranges.has(spec.value) && d?.kind !== "number") continue;
+        const n = Number(peek(`${c.id}.${spec.value}`) ?? 0);
+        rows.push({ name: c.id, value: Number.isFinite(n) ? n : 0, staff: true });
       }
       rows.sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
       this.chartVars ??= storyMentions(sim.model, SCREEN_CHARTS.flatMap((c) => [c.top, c.bottom]));
