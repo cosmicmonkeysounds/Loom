@@ -4070,7 +4070,8 @@ less bloated app; the design record of the wave is in the scratch specs
   all four), `claim_door` sets `program.door_by` (the *At the door* watch
   item), and clearance resets it.
 - **Clippy calls the games (Q2).** `by: Clippy` on 21 admin cues (§3's B–G
-  game cues and the awards); Clippy's booth has a 🎤 cue bar. **Any host calls
+  game cues and the awards); Clippy's booth has a 🎤 cue bar. (Reversed by
+  wave 21, §13.) **Any host calls
   the show (Q1)**: the caller claim replaces "fire only when the director
   radios you" in every brief.
 - **Big moments and exits.** The Bingo win, the ribbon (winner + a self-closing
@@ -4095,4 +4096,55 @@ less bloated app; the design record of the wave is in the scratch specs
 - **Q37 / Q38 signed off**: the show clock at 7 PM and 11 PM.
 - `archive:` lines move the Uploader's and the clearing Antivirus' threads
   under *Other rooms* once a program is cleared.
+
+## 13. Wave 21 (2026-10-23): performers play
+
+The user: *"Clippy and the AntiViruses are performers that are playing a game
+just like the "guests" are"*, and *"They have a trust score too, and can
+defect from Trabolta in sneaky or overt ways; Trabolta has no choice but to
+continue to be "allies" with them"*. Every line is DRAFT (`SIGNOFF-w21.md`).
+
+- **Players.** `TRAIT Player` (`cast/kit.loom`): `player: true`, `score`
+  (⭐), `trust` (−100…100, Trabolta's, hidden from them, a 🛡 STAFF row on his
+  Trust Chart), `covert` and `caught` (`private:`: never in an agent
+  request, a watch, a badge or the screens), `defected` (`none` | `open`).
+  Clippy is `Greeter, Player` (out of GROUP Hosts: no `# hosts`); the
+  Antivirus' `TRAIT Enforcer` is `Person, Player`. Header `stat:` lines show
+  ⭐ Points, 🛡 Captures (Antivirus), ⚖️ Answers judged (Clippy) and 🤫 Quiet
+  favours (the player's own, once there is one).
+- **Nobody but the hosts and the directors calls a cue.** Every `by: Clippy`
+  left the admin cues; Clippy's hooks pop *YOUR GAME IS ON* (a `!!` readout)
+  when a host fires one of Clippy's games.
+- **Points.** Antivirus: TRAIT Enforcer's clearance (+5), capture (+20, +10
+  for the first), release (+5), summons check-in (+2), patch-bay calls (+10);
+  McAfee 🤝 `broker_deal`, Password Manager 🔑 `verify_password`, CRA's audit
+  rulings (the ROLE's `transfer_denied` / `transfer_approved`, `by`). Clippy:
+  the game buttons Clippy shares with the hosts are **stamped**: each ROLE hook
+  clears `Kernel.pressed_by` and runs first, Clippy's own hook stamps it, and
+  the ROLE hook's `fire game_credit with points: N, gain: T, counts: 0|1`
+  (queued, so it runs after the stamp) pays Clippy only when Clippy pressed.
+- **✅ / 😤 for any question.** `judge_accurate` / `judge_confident` read
+  `Night.judge_now` (1 when judging opens; 🔢 `judging_q1…3` move it, global
+  buttons kept off every card by `program.uploaded != true`), because a card's
+  face holds three buttons and there is no *All buttons…* fold.
+- **Quiet favours** (from the Truther Download): 🤫 `look_the_other_way`
+  (Antivirus, on a mark they claimed: `marked` and `escort_by` cleared with no
+  `unmarked` readout), 🤫 `tip_off` (Clippy, Password Manager), 🤫
+  `let_it_slide` (Clippy, while judging), 🤫 `slip_coin` (McAfee, CRA). The
+  ROLE's `tipped` / `slid` / `slipped` are `secret:`. TRAIT Player's watcher
+  `when self.covert >= (self.caught + 1) * 3:` catches every third: −20
+  trust and a private readout.
+- **📢 `defect_openly`** (global, once, armed): TRAIT Player's hook sets
+  `defected`, −50 trust, `Night.defector` / `defections`, and fires
+  `staff_defected`: a `!!` broadcast to everyone, then *Staff Defection*
+  (`beats/staff.loom`), Trabolta keeping them on the TV.
+- **The staff awards** (G10a–c, before G11): `award_staff_trusted`,
+  `award_staff_points`, `award_staff_mole`, no subject; the story rules
+  compare the five players (`Norton_Anti_Virus.trust` …) and fire
+  `staff_award_won` (the winner's booth pops; The Mole sets `ceremony_done`).
+  *Present Award* cues `screens_award_staff_<name>`.
+- **Trabolta.** No power targets a player; the persona's `them:` adds
+  `defected`, `them_adjust: trust` lets his voice move a player speaker's
+  trust (stagehand passes `them.trust` through), and one line keeps staff as
+  allies he cannot replace.
 

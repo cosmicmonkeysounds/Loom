@@ -224,6 +224,27 @@ describe("Trapped in the Internet — wave 21: points (S3)", () => {
   }, SLOW);
 });
 
+describe("Trapped in the Internet — wave 21: the audit and the exchange (S3)", () => {
+  it("CRA's denial from its own booth is ⭐ +3 and +3 trust; a director's is nobody's; McAfee brokers once per program", () => {
+    const n = boot();
+    toTruther(n);
+    n.signal("transfer_denied", "g1", { to: "g2", amount: 10, tx: "t1", by: "CRA Agent Software" });
+    expect(v(n.sim, "CRA_Agent_Software.score")).toBe(3);
+    expect(v(n.sim, "CRA_Agent_Software.trust")).toBe(3);
+    n.signal("transfer_denied", "g1", { to: "g2", amount: 10, tx: "t2", by: "Director" });
+    expect(v(n.sim, "CRA_Agent_Software.score")).toBe(3);
+    n.signal("transfer_approved", "g1", { to: "g2", amount: 10, tx: "t3", by: "CRA Agent Software" });
+    expect(v(n.sim, "CRA_Agent_Software.score")).toBe(6);
+    const before = v(n.sim, "McAfee_Anti_Virus.score");
+    n.signal("broker_deal", "g3", undefined, "McAfee Anti-Virus");
+    n.signal("broker_deal", "g3", undefined, "McAfee Anti-Virus");
+    expect(v(n.sim, "McAfee_Anti_Virus.score")).toBe(before + 10);
+    const pm = v(n.sim, "Password_Manager.score");
+    n.signal("verify_password", "g3", undefined, "Password Manager");
+    expect(v(n.sim, "Password_Manager.score")).toBe(pm + 5);
+  }, SLOW);
+});
+
 describe("Trapped in the Internet — wave 21: quiet favours and the open defection (S4, S5)", () => {
   it("🤫 Look the other way lifts a claimed mark quietly; covert is never in an agent request; the third is caught", () => {
     const n = boot();
@@ -438,4 +459,16 @@ describe("Trapped in the Internet — wave 21: what Trabolta's worker reads (D3,
     const facts = await call(rt, "GET", "/api/agent/facts", {}, { moderator: true });
     expect(JSON.stringify(facts.json)).not.toMatch(/"(covert|caught|tipped|slipped|slid)"/u);
   }, SLOW);
+});
+
+describe("Trapped in the Internet — wave 21: the sign-off sheet", () => {
+  it("SIGNOFF-w21.md is a DRAFT that lists every new wave 21 objective", async () => {
+    const { readFileSync } = await import("node:fs");
+    const sheet = readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w21.md"), "utf8");
+    expect(sheet).toMatch(/DRAFT/u);
+    const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
+    const fresh = [...src.matchAll(/^\/\/ DRAFT w21\nOBJECTIVE (.+)$/gmu)].map((x) => x[1]!.trim());
+    expect(fresh.length).toBeGreaterThan(0);
+    for (const id of fresh) expect(sheet, id).toContain(id);
+  });
 });
