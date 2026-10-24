@@ -1,13 +1,18 @@
 # Server-room box (N-08)
 
-> **Not installed for Oct 31** (Q7, the user, 2026-10-23: *"No, just the
-> Grand Central M4"*). The only electronics in the server room is the door
-> sensor's M4 on Steph's laptop ([`hardware/server-room-door/`](../server-room-door)).
-> The code below stays, tested and unflashed, for a later show. Without it:
+> **NOT INSTALLED for Oct 31. Superseded by the M4**
+> ([`hardware/server-room-m4/`](../server-room-m4/README.md)). Q7, the user,
+> 2026-10-23: *"No, just the Grand Central M4"*. The only electronics in the
+> server room is the Grand Central M4 on Steph's laptop. Since wave 22 it
+> reads **both** the door (an LED on an LDR) and a new **15-jack analog
+> patch bay** (8 sources V1–V8, 7 inputs D1–D7), and the server-room
+> terminal page posts `patch_changed {combo}` for the story to judge. This
+> ESP32 box and its 2×12 digital patch-bay scanner are kept below, tested
+> and unflashed, for a later show. On the night, instead of this box:
 >
 > | Job | On the night instead |
 > |---|---|
-> | Patch-bay scan (`sensors/patchbay/state` → `patch_combo_a` / `_b` / `patch_rejected`) | The patch bay is a prop. The Antivirus on the patch-bay watch (`cast-packs/patch-bay-watch.md`) reads the four cables against the card and presses **🔌 `radio_combo_a`**, **💥 `radio_combo_b`** or **❌ `radio_wrong_patch`** on their booth (any program's card; the four room Antivirus and the host parts), or a director fires 🔌 💥 ❌ from Run. Each fires the same story event the scanner's signal did (`main.loom`: `when radio_combo_a: fire patch_combo_a` …), with the same Y2K-hour and after-truth.txt gates; `core/test/trapped-in-the-internet.test.ts` (*the room's own buttons*) presses them end to end. |
+> | Patch-bay scan (`sensors/patchbay/state` → `patch_combo_a` / `_b` / `patch_rejected`) | The M4 reads the bay; the terminal posts `patch_changed {combo}` in the Y2K hour and the story judges it. The Antivirus on the patch-bay watch (`cast-packs/patch-bay-watch.md`) presses **🔌 `radio_combo_a`**, **💥 `radio_combo_b`** or **❌ `radio_wrong_patch`** only when the bay missed; a press puts the bay on the buttons (`Night.patch_override`) until a director fires 🔌 *Trust the patch bay again* (`trust_patch_bay`). |
 > | Local siren + ring strobe (`show/serverroom/alarm`) | The house router's `alarm_siren` sound (Patch Rejected plays `sound alarm_siren`) and the room's RGB bulb (`heart_alarm`, `lights.json`). |
 > | Lock indicator ring (`show/serverroom/lock`) | Nothing. The keypad lock (D17, Q9) keeps the door locked and shows its own state. |
 > | Relay click on a new cable | Nothing. |
@@ -18,11 +23,13 @@
 > `show/serverroom/lock`, harmless) and the patch-bay rules never fire, so
 > nothing misfires and nothing warns. `scripts/accept/N-08.sh` needs the
 > box; `scripts/accept/K-05.sh` runs its combo step through the 🔌 button
-> unless `ESP32=1`.
+> by default, through the M4's bay with `M4BAY=1`, and through this box
+> only with `ESP32=1`.
 
 > **Wave 20: the door moved.** The server-room door is now read by an LED
 > shining on an LDR, on a Grand Central M4 plugged into Steph's laptop
-> ([`hardware/server-room-door/`](../server-room-door)), and the
+> ([`hardware/server-room-m4/`](../server-room-m4/README.md), then named
+> `server-room-door`), and the
 > server-room terminal page posts it to the event over Web Serial. Stagehand
 > no longer listens to `sensors/serverroom/door` (D16): this box's door code
 > stays in the firmware and still publishes, unread, and the copper tape can
@@ -183,8 +190,8 @@ shorted to the shell). It is left out and listed in the diagnostics.
 retained):
 
 ```json
-{"pairs":[["V2","D5"],["V4","D1"],["V6","D8"],["V7","D3"]],
- "combo":"V2-D5,V4-D1,V6-D8,V7-D3","count":4,"complete":true}
+{"pairs":[["V1","D2"],["V3","D1"],["V5","D4"],["V8","D6"]],
+ "combo":"V1-D2,V3-D1,V5-D4,V8-D6","count":4,"complete":true}
 ```
 
 `combo` is canonical: each pair is written in jack order (V before D, then by
@@ -197,9 +204,9 @@ that adds a pair clicks the relay and plays track 2.
 the map with every cord out.
 
 - On a **normalled** bay (top-N ↔ bottom-N with no cord in), the baseline
-  holds those 12 normals. A cord V2→D5 on a bay whose normals **break** when a
-  plug goes in (the usual video bay) removes V2–D2 and V5–D5 and adds V2–D5,
-  so the patch reads exactly `V2-D5`. The broken normals are listed in the
+  holds those 12 normals. A cord V1→D2 on a bay whose normals **break** when a
+  plug goes in (the usual video bay) removes V1–D1 and V2–D2 and adds V1–D2,
+  so the patch reads exactly `V1-D2`. The broken normals are listed in the
   diagnostics.
   - Limit: a cord between a jack and its own partner (V9→D9) is invisible on
     a normalled bay, because it was already connected. None of the combos

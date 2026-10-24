@@ -6,10 +6,17 @@ can follow instructions. It walks a **virtual copy of the house** along the
 golden chevrons and finds **Gerald, the golden duck**. Walking up to the duck
 is enough: nothing needs a button. The design contract for every piece below
 is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md), and it is normative.
+Agents working here: [`CLAUDE.md`](./CLAUDE.md).
+
+**Who gets in.** Only a program the story marked for reinstallation, or one
+already captured into the Internet, may play (wave 16): the server's begin
+answers 409 `not marked for reinstallation` for anyone else, and the tent
+laptop shows them a NOT MARKED card. After an ending anyone may play (the
+party favour).
 
 | Piece | Where | What it is |
 |---|---|---|
-| [`web/`](./web) (`loom-reinstall`) | `/reinstall/` on the event server | The **tablet game**: Vite + React + three.js. Its screens are setup → scan a pass → **Play here** or **Send to <headset>** → play → found. You move with the on-screen twin sticks or the keyboard; **⚔ HIT** (or Space) is this visit's one hit on **the King** (below). The same app serves the **house map** viewer and editor at `/reinstall/map`. §3. |
+| [`web/`](./web) (`loom-reinstall`) | `/reinstall/` on the event server | The **web game**: Vite + React + three.js. Its screens are setup → scan a pass → **Play here** or **Send to <headset>** → play → found. You move with the on-screen twin sticks or the keyboard; **⚔ HIT** (or Space) is this visit's one hit on **the King** (below). On the night it runs inside the tent laptop's terminal (`view=reinstall`); the standalone page is for a spare device. The same app serves the **house map** editor at `/reinstall/map` (rooms, doors, stairs, props, terminals, speakers and lights). §3. |
 | [`vr/`](./vr) | Quest 3 headsets in the tent | The **VR game**: a Godot 4.7 OpenXR project, thumbsticks plus the trigger (or A / X) for the King. A headset is a station that polls for work, or its wearer picks a program with the stick. On a Mac it runs as a desktop game. §5. |
 | [`../house`](../house) (`@loom/house`) | shared | The **house map**: one frame (metres, Y up, `+z` south). It holds the schema (incl. the `king` prop and a door's `guard`), validation, the procedural geometry, `locate` and `route` (a guarded door is shut until its King falls), the King's reach rule (`kingReach`), and the duck pick. `@loom/house/three` is the three.js scene that the web game and the terminals both render: the King with his shared bar, and ghosts wearing profile pictures. §1. |
 | [`../core/server/spatial.ts`](../core/server/spatial.ts) | the event server | `SpatialHub` holds sessions, stations, poses, and a found check gated on distance and height (`nearDuck`), refused while the run is paused. Only the outcome ever reaches the journal: `the simulation completed` + `the golden duck`, and a hit on the shared King (`POST /api/spatial/king/hit`: his health into `Night.king_hp`, then `king hit` / `king fallen`). A map save carries live sessions over and moves their ducks (`duck` frame). Each player carries their profile picture's avatar key (`avatar` frame on a change). §2. |
@@ -27,9 +34,11 @@ speedrun board).
 
 The show's map is
 [`core/examples/trapped-in-the-internet/house.json`](../core/examples/trapped-in-the-internet/house.json).
-It is a placeholder until the house is measured (the tent is out in the
-backyard; `house.shed.json` beside it is the rain variant, The Internet
-in the shed — the same terminal ids and duck spots). **The map belongs to the
+It was drawn from the real house in the map editor on 2026-10-20 (three
+floors plus the backyard, with the tent in its south-east corner);
+`house.shed.json` beside it is the rain variant, The Internet in the shed
+(the same terminal ids and duck spots; the tent spot and the spawn move
+into the shed). **The map belongs to the
 project**: `house.json` and any `house.<variant>.json` (the rain plan's
 `house.shed.json`) are project files beside the story, pushed by
 `pnpm sync-example` / `pnpm sync-show` and snapshotted when an event
@@ -157,12 +166,18 @@ help article `docs/help/authoring/39-house-map.md`; the rules are
 | **🧊 3D** | the draft as the games build it (`buildHouseScene`, no ceilings; a lazy chunk), this floor or every floor |
 | inspector numbers | commit on Enter / blur (a typed prefix is never applied as a resize); spinner steps at once |
 | problem list | `validateHouse` problems (click selects), warnings: unreachable duck spots, rooms no door leads into, LOCATION mismatches |
+| place palette | props (incl. the King), terminals, duck spots, the spawn, **🔊 speakers** and **💡 lights**: drag, turn, ⌘D, Delete, arrows |
+| **🔊 Audio** tab | `audio.json`: the interface's inputs and outputs, the routing matrix, zones, where each story sound plays, the tablets that also say announcements, 🔈 Test per speaker and output |
+| **💡 Lights** tab | `lights.json`: fixtures, the Zigbee2MQTT devices + *Pair new device*, zones, looks with a step builder and ▶ Test |
 
 The code: `src/map/MapApp.tsx` (state, load / save), `Canvas.tsx` (the
 plan + gestures), `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, and the
 pure ops `edit.ts` / `doors.ts` / `yards.ts` / `structure.ts` /
-`history.ts` / `check.ts` (tested in `test/map*.test.ts`, the yard cut
-fuzzed against `validateHouse`). `MapApp` takes a `toolbarExtras` render
+`history.ts` / `check.ts` / `props.ts`, the speakers' `audio.ts` +
+`AudioPanel.tsx` and the lights' `lights.ts` + `LightsPanel.tsx` (tested in
+`test/map*.test.ts` and friends, the yard cut fuzzed against
+`validateHouse`). One undo history covers the map, the speakers and the
+lights; each file saves with its own `base` version (409 on a stale save). `MapApp` takes a `toolbarExtras` render
 prop (`MapToolbarContext` in `tools.ts`) — the slot for the project bar.
 
 After you edit the show's file, regenerate the Godot goldens and the Godot
@@ -179,29 +194,33 @@ pnpm dev                                   # builds play + terminal + reinstall;
                                            # → http://localhost:7000/reinstall/  (map: /reinstall/map)
 pnpm dev --reinstall                       # + the game's own Vite with HMR on :5176
 pnpm --filter loom-reinstall test          # web: physics, input, pose pump, HUD, map editor,
-                                           #   the King's hit (327 tests)
-pnpm --filter @loom/house test             # the map + the §1.2 goldens (179 + 4 skipped)
+                                           #   speakers, lights, the King's hit (538 tests)
+pnpm --filter @loom/house test             # the map + the §1.2 goldens (329 + 4 skipped)
 pnpm --filter @loom/chess test             # the King's chess (23)
 pnpm test:vr                               # = reinstall/vr/test/run.sh (needs Godot 4.7;
-                                           #   399 checks + 26 for tools/quest.sh)
+                                           #   730 checks + 27 for tools/quest.sh)
 ```
 
 To provision a device, open a link that carries the event's **moderator**
 passcode. The device trades it for a moderator token and does not store the
-passcode:
+passcode. The map's spot sets the view and the name, so a link needs only
+the spot:
 
 ```
-/terminal/?code=<mod>&spot=tent&announce=1
-/reinstall/?code=<mod>&name=Spare tablet
-/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto
-/terminal/?code=<mod>&name=Server Door&spot=server-room-door&view=chess
+/terminal/?code=<mod>&spot=tent&announce=1        # the tent laptop (John's old laptop)
+/terminal/?code=<mod>&spot=start-bar              # a wall tablet
+/terminal/?code=<mod>&spot=server-room-door       # the King's chess board
+/reinstall/?code=<mod>&name=Spare tablet          # the standalone wizard on a spare device
 ```
+
+Every device in the show, with its kiosk flags, is in
+[`docs/trapped/kiosk.md`](../docs/trapped/kiosk.md).
 
 At *Trapped in the Internet* the wall terminals are provisioned
 `view=auto` from the start: they hold a screensaver until Clippy introduces
 Trabolta (`introduce_trabolta`), then flip to his face within 2 s (see
-[`terminal/README.md`](../terminal/README.md) → *Before the character
-exists*). In the tent — in the backyard, through the tunnel — the story's
+[`terminal/README.md`](../terminal/README.md) → *What a wall terminal
+does*). In the tent — in the backyard, through the tunnel — the story's
 **Installation Wizard** (a voice, not a performer: `cast/staff.loom`,
 `beats/internet.loom`) messages each captured program the reinstallation
 instructions in its own `dm:Installation Wizard` thread, and `cue
@@ -219,7 +238,7 @@ vr-N` / `install`). Each APK is release-signed with its station baked in
 and talks to the VPS over HTTPS. The acceptance check is
 `scripts/accept/K-30.sh`.
 
-**A demo with no hardware** (a desktop browser as the tent tablet, a phone
+**A demo with no hardware** (a desktop browser as the tent laptop, a phone
 or a second window as the guest, the keyboard to walk) is spelled out in
 [`web/README.md`](./web/README.md) → *A demo with no hardware*. The web
 game's own autopilot (`web/test/autopilot.test.ts`) walks the real physics

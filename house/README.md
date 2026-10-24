@@ -3,9 +3,12 @@
 The house map for *Trapped in the Internet*'s reinstallation games: one
 coordinate frame shared by the VR game (`reinstall/vr`, Godot), the web game
 (`reinstall/web`), the event server's `SpatialHub` and the wall terminals.
-Pure TypeScript, no dependencies, no `node:` imports — it runs on the server
-and in the browser. The normative contract is
-[`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §1.
+It also holds the house speakers (`audio.json`), the house lights
+(`lights.json`) and the voice link's wire rules, which are placed in the
+same frame but never live in the map. Pure TypeScript, no dependencies, no
+`node:` imports — it runs on the server and in the browser. The normative
+contract is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §1 (map,
+speakers, lights) and §2.4 (voice). Agents: see [`CLAUDE.md`](./CLAUDE.md).
 
 **The frame.** Metres, right-handed, **Y up**: `+x` east, `+y` up, `+z`
 **south** (north is `−z`). A plan point is `[x, z]`. Yaw is degrees about
@@ -16,7 +19,7 @@ in this frame; a game with its own world frame converts through
 
 | Module | What |
 |---|---|
-| `types.ts` | `HouseMap` schema v1 + the wire types (`Assignment`, `PlayerState`, `SpatialFrames`, …); `PropKind` includes `king` (the shared King: `hp` = his maximum, `health` = the story world path holding his current points, `signals` won / lost / drawn / hit / fallen, `armed`) and a `Door.guard` names the king who keeps it shut. Wave 9: `SpatialCandidate.restricted` (marked, not yet captured), and `captured` on `FoundResult` and `SpatialFrames.found` (still captured after the find: a kept find, no egg). Wave 11: `KingState {id, hp, max, fallen}` (on `hello`, the `king` frame, `HouseResponse.king`, `KingHitResult`), the `avatar` frame, and `avatar` (the profile picture's avatar key) on `PlayerState`, `Assignment` and `SpatialCandidate`. Wave 18b: `TERMINAL_VIEWS` / `TerminalViewName` gain `reinstall` (the tent laptop: the idle show and the reinstallation wizard, no room), and `LeaveReason` gains `unmarked` (a walk ended because the program is no longer marked). `src/audio.ts` validates `device.expect {inputs, outputs}` (the 828x's 32 / 30) and `announce.terminals` (the map spots whose tablets also say the announcements) |
+| `types.ts` | `HouseMap` schema v1 and the wire types (`Assignment`, `PlayerState`, `SpatialCandidate`, `SpatialFrames`, `FoundResult`, `KingState`, …). `PropKind` includes `king` (the shared King: `hp` = his maximum, `health` = the story world path holding his current points, `signals` won / lost / drawn / hit / fallen, `armed`); a `Door.guard` names the king who keeps it shut. A `TerminalSpot` carries an optional `view`, `speaks` and `voice`. `PlayerState`, `Assignment` and `SpatialCandidate` carry `avatar` (the profile picture's key); candidates carry `captured`, `restricted` and `eligible`; `LeaveReason` includes `unmarked` |
 | `clone.ts` | `cloneData(v)` — a deep copy of plain data: `structuredClone` where the runtime has it, else a JSON round trip (old tablets' WebViews predate Chrome 98). Use it instead of `structuredClone` in anything a tablet loads |
 | `validate.ts` | `validateHouse(raw)` → `{ok, problems, house?}`; `normalizeHouse`. Beyond plan containment it checks heights (duck spot 0–`DUCK_MAX_RISE` above its room's floor, spawn within `STEP_UP`, terminal/prop within the room's storey, duck/spawn `locate` to their own room and not buried in a solid prop), floor spacing (> `FLOOR_SLACK`), walls rising through the floor above, stair head/foot clearance + no skipped floor + 1 mm rects + no stairwell stacked flight over flight (rects overlapping in plan on a shared floor), `b = null` doors on shared walls, overlapping door gaps, a door's `guard` (must name a `king` prop standing in one of the door's rooms), a king's `hp` (an integer 1–`KING_MAX_HP` 99), `health` (a world path such as `Night.king_hp`), `signals` and `armed`, and any of those on anything but a king. `guardWarnings(house)` is advice, not a refusal (a guard more than `GUARD_REACH` from his door); the server's `houseWarnings` folds it in |
 | `geometry.ts` | `buildWalls` (normative, golden-tested), `buildFloors`, `buildRamps`, `doorGap` (the segment a door's gap is — the games stand a closed leaf in a guarded one), `propSolid` (box / cylinder / king), plan helpers |
@@ -25,19 +28,31 @@ in this frame; a game with its own world frame converts through
 | `king.ts` | the shared King (wave 11): `kingReach(house, feet, yaw, king, slack?)` → `"ok" \| "floor" \| "far" \| "facing"` (the rule both games and the server judge a hit by; `KING_REACH` 1.25 m, `KING_CONE_DEG` 55°, the server's `KING_HIT_SLACK` +0.35 m / +25°), `kingProps`, `kingMax` (`hp`, default `KING_HP` 4), `kingSignal` (`KING_SIGNALS` defaults `chess won` … `king fallen`), `kingStateOf(king, raw)` (a missing or non-number value reads as full), `guardedDoors`, `withFallenKings(house, fallen)` (a copy: the fallen kings' doors unguarded, the kings not solid) |
 | `frames.ts` | `toSpace` / `fromSpace` / `yawToSpace` / `yawFromSpace`, `forward`; `DEFAULT_SPOT_FOV` (70, vertical) + `horizontalFov(vfovDeg, aspect = TABLET_ASPECT = 16/10)` for terminal cameras |
 | `duck.ts` | `fnv1a32`, `pickDuckSpot`, `houseHash` |
+| `audio.ts` | the house speakers: `AudioConfig` v1 (`audio.json`: the device incl. `expect {inputs, outputs}`, inputs, outputs, speakers on a room + `pos` / `yaw` / `out[]` / `gain`, zones, the sparse `routes` matrix, `cues`, `announce` incl. `announce.terminals`, `voice.tv`), `validateAudio(audio, house?)` (problems + warnings), `resolveTargets` (everywhere / zone / room / LOCATION / speaker id), `audioHash`, `defaultAudio` |
+| `lights.ts` | the house lights: `LightsConfig` v1 (`lights.json`: fixtures `zigbee` / `zigbee-group` / `wled` with caps, `safety` + `min` ≥ `LIGHT_SAFETY_MIN` 40, zones, looks keyed by the story's cue name with `set` / `steps` / `repeat` / `loop` / `period` / `then: "restore"`, `boot`), `validateLights`, `resolveLightTargets`, `planLook`, `clampForSafety`, `z2mPayload` / `wledPayload`, `lightsHash` |
+| `voice.ts` | the voice link's wire: `VOICE_RATE` 16 000, `VOICE_CHUNK_MS` 200, G.711 μ-law (`mulawEncode` / `mulawDecode`), `resample`, `rmsDbfs`, `VoiceGate` (−42 dBFS gate, −28 dBFS barge-in), `jitterPlan`, `voiceGain`, and the one routing rule `hearsTerminals` / `hearsPlayers` (12 m / 8 m reaches, 4 / 3 caps, 0.75 m hysteresis) |
+| `voice-on.ts` | `voiceOn(house, spot)` (a spot's `voice`, unset = off in the spawn room) — its own subpath, `@loom/house/voice-on`, so a terminal can ask without loading the codec |
 | `three/` | `@loom/house/three` — the three.js scene builder (peer dep `three`) |
 
-The show's map is `core/examples/trapped-in-the-internet/house.json` (a
-placeholder layout until the house is measured, with the story's rooms:
-the tent out in the backyard, the Server Room off the basement landing).
-Its rain variant `house.shed.json` (The Internet in the shed) is checked
-by `test/show.test.ts` + `test/route.test.ts` but has no golden.
+The show's map is `core/examples/trapped-in-the-internet/house.json`,
+drawn from the real house in the map editor (2026-10-20): three floors
+(basement, main, top) plus the backyard with the tent, 17 rooms, 14
+terminal spots, the King guarding the server-room door. Its rain variant
+`house.shed.json` puts The Internet in the shed (the tent spot and the
+spawn move there). Both are checked by `test/show.test.ts` +
+`test/route.test.ts`; only `house.json` has goldens. The older placeholder
+maps are frozen in `test/maps/` for the tests that pin them. The speakers
+and lights sit beside the maps as `audio.json` and `lights.json`; their
+shared fixtures (`test/fixtures/audio-*.json`, `lights-*.json`) also pin
+stagehand's Python mirrors (`stagehand/tests/test_audio_routing.py`,
+`test_lights_routing.py`).
 
 ```bash
-pnpm --filter @loom/house test        # vitest (validation, hand-computed walls, locate, route, the King, three, goldens, sync) — 179 + 4 skipped
+pnpm --filter @loom/house test        # vitest (validation, walls, locate, route, the King, audio, lights, voice, three, goldens, sync) — 329 + 4 skipped
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate change, then commit
-pnpm --filter @loom/house sync        # copy house.json + goldens into reinstall/vr/ (a test fails on drift)
+pnpm --filter @loom/house sync        # copy house.json, the goldens and the voice vectors into reinstall/vr/ (a test fails on drift)
+pnpm house:sync                       # from the repo root: goldens + sync in one go
 ```
 
 Golden files (`test/golden/<map>.{walls,routes,locate}.json`, one per

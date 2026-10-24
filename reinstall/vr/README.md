@@ -256,7 +256,7 @@ with `released: true` while you walk to Gerald.
   marked for reinstallation yet.* when there are none). The player points
   at theirs and pulls the trigger (or walks the tiles with the stick and
   holds right 1 s), then **START** on *Start as <name>?* — no tablet
-  needed. Scanning a pass on the tent tablet and choosing **Send to
+  needed. Scanning a pass on the tent laptop and choosing **Send to
   Headset 1** still starts that program within a second, whatever the
   lobby shows.
 - Taking the headset off ends the session after a 2 s grace (`user_presence`
@@ -357,8 +357,11 @@ with `released: true` while you walk to Gerald.
 ## Tests
 
 ```bash
-./reinstall/vr/test/run.sh        # [path-to-godot]
+./reinstall/vr/test/run.sh        # [path-to-godot]; or `pnpm test:vr` from the repo root
 ```
+
+On 2026-10-24 (master 86f26a78, Godot 4.7.1) it reports 730 checks and
+`quest.sh` 27, all passing.
 
 The runner refreshes the import, compiles every script and loads every
 scene, then runs `test/game.gd` headless with `--offline`:

@@ -1,808 +1,307 @@
 # loom-terminal — the wall terminal
 
-A kiosk app for tablets mounted around a live Loom event: a **direct line
-to an agent-voiced character** (Trabolta, in *Trapped in the Internet*).
-A program holds their pass up to the camera, and for as long as they keep
-typing the screen is theirs: the conversation on one side, the
-character's **animated face** on the other, and every reply **spoken
-aloud** in the device's own voice. Thirty seconds without input and the
-line drops.
+The screens around the house at a live Loom event. In *Trapped in the
+Internet* they are Trabolta's face on the walls, the TV in the living room,
+the King's chess board outside the server-room door, the upstairs casino,
+the server-room terminal (his heart) and the tent laptop that runs the
+reinstallation.
 
-It is the same chat architecture as the rest of Loom — no new server, no
-new thread model:
+A terminal is a small kiosk web app (Vite + React, package `loom-terminal`)
+that the event server serves at `/terminal/`. Every screen runs the same
+build; the **view** decides what it does.
+
+How it fits the rest of Loom:
 
 - A terminal is a **trusted device**. It is set up once with the event's
   moderator passcode, which it trades for a moderator token
-  (`/api/mod/login`). The passcode is never stored.
-- Scanning a pass (the QR on the play app's *Your pass* sheet, which is
-  the guest id) mints a **play-as session for that guest** through
-  `/api/mod/impersonate` — the seam the editor's Run → Players page uses.
-  It is exactly the guest's own session: their `GuestView`, their stream,
-  no moderator powers, cut by the same restarts that cut their phone.
-- The terminal opens that stream (the play app's own `useChatStream`) and
-  narrows it to `dm:<Character>` — **the very thread on the guest's
-  phone**. What is said at the wall is in their DM when they walk away,
-  and the character's agent answers it exactly as it answers the phone.
-- Every line typed at a terminal is journaled `by` the terminal's name
-  (`label` on `/api/mod/impersonate`) — the mod feed shows it as
-  `via: "Terminal · Kitchen"`.
+  (`/api/mod/login`). The passcode is never stored, and it is scrubbed from
+  the address bar at once.
+- Scanning a guest's pass (the QR on the play app's *Pass* screen, which is
+  the guest id) opens a **play-as session for that guest** through
+  `/api/mod/impersonate`. It is the guest's own session: their view, their
+  stream, no moderator powers.
+- The terminal shows that guest's `dm:<Character>` thread, the same thread
+  their phone shows. What is said at the wall is in their DM afterwards, and
+  the character's agent answers it the same way.
+- Every line typed at a terminal is journaled `by` the terminal's name; the
+  Log shows it as `via: "Terminal · Kitchen"`.
+
+The device-by-device setup for the show (every link, every Chrome flag,
+Fully Kiosk's settings) is [`docs/trapped/kiosk.md`](../docs/trapped/kiosk.md).
+Guests and directors read Help → *Terminals* (`docs/help/play/09-terminals.md`).
+An AI agent working on the code should start with [`CLAUDE.md`](./CLAUDE.md).
 
 ## Running
 
 ```bash
-pnpm --filter loom-terminal dev      # :5175, proxies /api + /e to the server on :7000
-pnpm --filter loom-terminal build    # → dist/, served by the event server at /terminal/
-pnpm --filter loom-terminal test     # the pure pieces (scan parsing, the leash, splitting, voice ranking, moods,
-                                     # the world state, the director, the mini-map, the screen poll, slides +
-                                     # precedence, the TV voice, attract, kiosk, the WebGL2 probe)
+pnpm --filter loom-terminal dev        # :5175, proxies /api + /e to LOOM_SERVER (default :7000)
+pnpm --filter loom-terminal build      # → dist/, served by the event server at /terminal/
+pnpm --filter loom-terminal test       # vitest, 892 tests in 78 files
+pnpm --filter loom-terminal typecheck
 ```
 
-Open `http://<server>:7000/terminal/` on the tablet and set it up in two
-steps: **CONNECT** (the moderator passcode; skipped when the tablet already
-has access), then **WHICH TERMINAL IS THIS?** — the event's live house map's
-terminals (the map it plays: a director's save, the shed variant), by floor
-and room, each saying its room + LOCATION and its screen in words (*TV*,
-*casino*, *chess board*, *reinstallation station*, *room terminal — The
-Server Room*, *house terminal*), with *⚠ online now: <name>, seen 5 s ago* when another tablet
-polls from that spot. One tap powers on: the name, the screen (`view`) and
-the room come from the map entry (`TerminalSpot.view` / `speaks`, set in
-the map editor at `/reinstall/map`), the character defaults to Trabolta.
-Camera, voice, announcements, the camera feed, the voice link's microphone
-and speaker and a manual screen / room sit under a folded *advanced*. ⚙ on a running terminal reopens step 2
-(*change passcode*, *forget this terminal*), so a tablet is re-pointed in
-two taps. A terminal set up from the map follows its entry on its next
-boot (a variant switch, a save); a manual screen or room stops that.
+`pnpm dev` at the repo root builds the terminal along with the play app and
+the reinstallation game, then serves it at `http://localhost:7000/terminal/`.
 
-A fleet: open one link on each tablet — it connects and picks that
-terminal with no taps:
+## Setting up a terminal
 
-```
-http://<server>/terminal/?code=<mod passcode>&spot=start-bar
-```
+Open `https://<site>/terminal/` on the device. Setup has two steps:
 
-Older links with `name=` / `view=` / `room=` still work; those fields win
-over the map's (a `view` or `room` given means the tablet no longer
-follows the map).
+1. **CONNECT**: the moderator passcode.
+2. **WHICH TERMINAL IS THIS?**: the terminals on the event's live house map,
+   by floor and room. Each row says its room, its LOCATION and what its
+   screen is (*TV*, *casino*, *chess board*, *reinstallation station*, *room
+   terminal — The Server Room*, *house terminal*). A row reads *⚠ online
+   now: <name>* when another device already polls from that spot.
 
-(`&camera=environment` for the back camera; `&engine=` — see *The voice*
-below; `&announce=1` to also say the house announcements; `&spot=` and
-`&view=` — see *The world view* below; `&room=` — see *A room terminal*
-below.) The passcode and the other hints
-are scrubbed from the address bar at once. `character=` folds onto the
-story's own spelling (`trabolta` → `Trabolta`); a name the story lacks is
-refused with the cast listed, doors open or not (since wave 7 a mod code
-resolves the story's declared cast before the doors,
-`EventRuntime.declaredCharacters`). Only a tablet set up with no story
-loaded, or against one that won't compile, keeps the typed name; it is
-sent back to setup with that error once the doors open, so it never pilots
-into a thread no agent hears.
+One tap powers it on. The name, the view and the room come from the map
+entry (`TerminalSpot.view` / `speaks`, set in the map editor at
+`/reinstall/map`). The character defaults to Trabolta. A terminal set up
+from the map follows its entry on every boot, so a map save or a tent ⇄ shed
+switch reaches it without a visit.
 
-**The camera needs a secure context** — `https://` or `localhost`. On a
-plain `http://192.168.x.x` address every browser refuses `getUserMedia`;
-the terminal says so and offers the typed fallback (a program types the
-name they registered with; a unique match pilots). For a LAN party put
-the server behind the Docker `proxy` (Caddy does HTTPS), or on Android
-kiosks flag the origin as secure in `chrome://flags`.
-
-Add the page to the home screen / run the browser in kiosk mode. After a
-reload the terminal shows **TOUCH TO WAKE** until someone taps it once —
-that one gesture is what lets a browser play sound unattended afterwards.
-
-**Kiosk basics** (`src/kiosk.ts`): the terminal holds a Screen Wake Lock
-from boot, re-takes it on the wake tap and whenever the page comes back
-into view, and reports it on `<html data-wake-lock="held|off|unsupported">`.
-The ⚙ opens setup only after a **2 s hold** (a bar fills under it); a short
-tap does nothing. Fully Kiosk / iPad / TV-Mac settings for the show:
-[`docs/trapped/kiosk.md`](../docs/trapped/kiosk.md).
-
-**The screensaver while the character is secret** (OCT31 K-16,
-`src/screen.ts` + `src/Attract.tsx` + `src/attract.ts`): every 2 s the
-terminal polls `GET /e/:id/api/screen/state` (mod token, ~0.5 KB — the
-story's screen cues, the running countdown, its character's
-hidden/awake/online; the poll is also its heartbeat, and carries the
-device's health — `audio` unlocked, page `vis`ible, `bat`tery (where the
-browser has `getBattery`; not iOS) and the `ver` build stamp, `src/health.ts`
-(SW-SCR-21) — for the Run → Terminals card's badges; the card's **identify**
-puts this screen's name + spot full screen for 10 s with one chime, install
-day's "which tablet is this?" — counted down on the device off the
-answer's `identifyLeft`, so a tablet that loses the server mid-identify
-still uncovers on time). While the character
-is **hidden** (not yet `reveal`ed) or **asleep** (`<Character>.awake ==
-false`) a face/world terminal shows the **idle show** full screen (wave 17,
-`src/idle-show/`, see below): no camera, no scanner, never "ONLINE", never
-a pilot, and nothing that names the character — so tablets are
-provisioned `view=auto` from the start and wake within 2 s of
-`introduce_trabolta`. It fails closed (attract until the server first
-answers; a missed poll keeps the last answer) and an open line finishes
-on its own leash first. The mirror (the TV) honours attract too since
-K-17: it keeps the idle show (quieter, nothing asking to be touched) until
-the character is introduced.
-
-**The idle show** (wave 17, `src/idle-show/`): what every wall terminal,
-the TV's attract and the Internet laptop show while nobody is on the line.
-A seeded, endless line of 7–18 s segments (`schedule.ts`: a screensaver
-with popups piling up, one big ad, a banner, two ads side by side, a popup
-storm, and — awake, after the introduction, on a terminal whose face is
-under the show — his face showing through with a tip and an ad beside it),
-over nine original screensavers at ≤ 30 fps (`savers/`: Mystify, starfield,
-pipes, bouncing logo, flying windows, rain, maze, beziers, ducks). The
-start is off the terminal's name + the wall clock and the place is kept per
-name in sessionStorage, so no screen restarts at ad 0. 50+ fake-1999 ads
-in fourteen skins (`ads.ts`, SVG art in `art.tsx`) and about fifty popup kinds
-(`popups.ts`) play to the night (`pools.ts`: `Night.phase` → early / hunt /
-malware (hijack ads, a storm every cycle) / late / y2k (the live Y2K
-countdown, faster near midnight — the majority stays in it) / finale; his
-own copy only on an awake, introduced screen). Every tap does something
-(`gags.ts`: × closes — sometimes two more come, a button dodges or asks
-"Are you sure?", ad buttons shake / load / "ERROR: too much fun", the saver
-ripples), and TOUCH ME asks after 30 s untouched. Sounds go through `sfx()`
-only, rationed and dropped while a voice speaks. The show pauses (frozen,
-silent) under a slide, an overlay or a moment's scene
-(`cutscene/moment-bus.ts`), and hides while a pass connects or a line is
-open. Awake, the **scan box** (`ScanBox.tsx`) sits in the corner above it:
-live camera, SCAN YOUR PASS, "open 🎟 Pass on your phone", the typed-name
-fallback — popups never land on it and a pass is read whatever plays.
-Reduced motion fades instead of moving. An ad may carry PNG art (`png:
-true` in `ads.ts` → `public/ads/<id>.png`, drawn in place of its SVG; a
-404 falls back to the SVG and is never fetched again); none does yet.
-
-**Overlays, slides, countdowns** (OCT31 K-17 + N-03, `src/slides.ts` +
-`src/ScreenLayer.tsx`): the same poll carries the story's screen program
-for this terminal's target (`view=mirror` / `tv` = the TV, else a wall terminal;
-`core/server/routes/screen.ts`). Precedence, top first: **overlay**
-(`blackout` — 10 s true black even when `go_to_living_room` follows at
-once, then standing; `go_to_living_room` / `alarm` — text blinking at
-1 Hz on a black field, never full-field red; an overlay pauses the
-scanner and ends an open line) > **slide** (any other `screens_*` /
-`tv_*` / `terminals_*` value, held 45 s on a terminal / 90 s on the TV;
-`bingo`, `y2k`, `trust_chart`, `truth_txt`, the finale's waits
-`bobbing` / `advice` / `grok_prom` / `banish`, `award_*`, `ceremony*`
-stay until the next cue and beat attract) > **attract** > the base view. A
-pilot pre-empts a slide. **On a face terminal** (not the TV, not a
-mirror, not on the screensaver) **a tap on a held slide peeks under it**
-(B21): the scanner and *type your program name* show, the corner
-countdown is hidden too (its box covers CONNECT), an overlay still covers
-everything, and the slide comes back once nobody has touched the tablet
-for 30 s (`PeekClock`, `slides.ts`) or a line opens. A slide is `public/slides/<cue>.png` (e.g.
-`screens_trivia_1.png`, `tv_bingo.png`), else `<value>.png`; a missing
-PNG renders a Win98 text card (`SLIDE_COPY` — the trivia cards carry the
-Quest Log's own questions, test-checked against `quests.loom`), never a
-broken image. **On the TV only** (`view=tv`, N-04a), a slide first tries
-`public/slides/<cue>.mp4`, else `<value>.mp4` (e.g.
-`screens_ad_hijack.mp4`): it plays once from the start with sound (muted
-by the director's TV mute) over the PNG / card, which shows at once and is
-covered only once the clip has a frame; at its end or on any error the
-still is left. With no mp4 there nothing changes (the still is never held
-back while the missing clip is asked for). Keep a clip under the
-TV's 90 s hold and small (the server sends it whole, no Range), and use
-either it or QLab for the ad, never both. The wall tablets never try
-video. `y2k` is drawn live: a blown-up taskbar clock at midnight
-minus `remaining`. `trust_chart` is drawn live from the poll's `chart`
-rows, revealed bottom-up one row every 1.5 s from the server's `revealAt`
-(`chartReveal`; a restart shows every row at once); the MOST / LEAST
-TRUSTED call-outs follow the server's `top` / `bottom` names (the story's
-`Night.most_trusted` / `least_trusted`, so nobody is marked before
-Trabolta names them). Any running story countdown shows as a ⏱ corner
-(`countdown_*` cues never replace the slide); `flicker` is one 2 Hz
-stutter. Ages run on the server's clock. Device check:
-`scripts/accept/K-17.sh`.
-
-**The TV room voice** (OCT31 K-18 + N-04b, `src/Tv.tsx` + `src/tv.ts`):
-`view=tv` is the TV over the fireplace, run by the house Mac's Chrome full
-screen over the long HDMI (launched with
-`--autoplay-policy=no-user-gesture-required`; sound out of the MOTU's
-living-room pair):
+For a fleet, one link per device connects and picks the spot with no taps:
 
 ```
-https://<server>/terminal/?code=<mod passcode>&name=TV&character=Trabolta&spot=desktop-tv&view=tv[&room=The Desktop]
+https://<site>/terminal/?code=<mod passcode>&spot=<spot id>
 ```
 
-The character's face full screen (the world takes the right 62 % while
-someone is in the simulation), the K-17 layer over it, attract until the
-introduction. It polls every **1 s** with `voice=<room>` (default
-`The Desktop`) and its chat cursor, and plays the room's new lines strictly
-in order with a caption: the character's own lines — scripted, or a
-director's `say` as him — are **spoken** (the Mac's own voice in Chrome —
-a male one first, Daniel on a stock Mac, or a downloaded Enhanced /
-Premium voice ranked above it; pick one in ⚙ — never the `alexa`
-player's Samantha); lines from the song
-beats `Song Ending` / `Sad Confession` / `The Hand Jive` are **captioned
-only** (QLab plays the sung track); **Sandy** is captioned, never voiced
-(lore, #28); other characters are ignored; nothing is said on attract.
-Those text-only captions (Sandy, the songs: `data-mode` `text` / `song`)
-sit **over** a slide and under an overlay, so the song isn't hidden behind
-the ♪ card and the Y2K / ceremony / award slides keep Sandy's line; a
-spoken caption, and a line the director muted, stay under the slide. A
-booting TV starts at the room's head (no backlog), a gap of 15 s between
-answers resyncs, a restart resyncs. **Mute**: the 🔊 button or `M` on the
-TV's keyboard → `POST /api/mod/screen/voice` (server-side, so it survives a
-reload and the director can flip it — K-29 card; the server keeps it in
-`screen-voice.json`, so a server restart, a redeploy or Go live in place
-leaves it as it was). Without the autoplay flag
-a *CLICK ONCE TO ENABLE THE VOICE* banner asks for one click. Device check:
-`scripts/accept/K-18.sh`.
+The map editor's Terminals tab (`/reinstall/map`) lists one spot-only link
+per spot, without the passcode. Run → Terminals → *Set up a terminal* also
+builds links, but it always adds `view=` (and `name=` / `room=` when filled
+in), so a terminal set up from it keeps that view and stops following the
+map. Optional keys:
 
-**A room terminal** (wave 7 — the server-room terminal; `roomOf` in
-`src/config.ts`): `room=<LOCATION>` on any view but the TV makes the
-terminal belong to that room.
+| Key | Values | What |
+|---|---|---|
+| `camera` | `user` (default) · `environment` | which camera scans passes |
+| `engine` | `browser` (default) · `fully` · `silent` · `server` | the voice (below) |
+| `announce` | `1` · `0` | say the house announcements: always / never. Leave it off for the house setting |
+| `cam` | `0` · `1` | send this camera to the reinstallation games (on by default) |
+| `mic` · `voices` | `0` · `1` | the voice link's microphone and speaker (below) |
+| `door` | `serial` · `sim` · `off` | the server-room door sensor (below) |
+| `keys` | `0` | no keyboard here: hide the composer (the heart's mouse-only rig) |
+| `bay` | `0` | do not read the patch bay on the door's board |
 
-```
-https://<server>/terminal/?code=<mod passcode>&name=Server Room&character=Trabolta&spot=server-room&view=face&room=The Server Room
-```
+Old links that also carry `name=`, `view=` or `room=` still work, but those
+values win over the map's and the device stops following the map. Avoid
+them; the tent laptop in particular must never carry `&view=reinstall`.
 
-- It polls with `room=<room>` and its chat cursor; the server answers
-  `room: {id, open}` (open = the LOCATION isn't `hidden:`, or was
-  `reveal`ed to everyone — a per-person reveal or a visit doesn't count;
-  an unknown name is `{id: "", open: false}`) and keeps the terminal on
-  **attract while the room is closed**, plus the room's `voice` block. A
-  server too old to send `room` keeps it asleep too (fail closed); a
-  misspelled room says so in the attract corner. The server resolves the
-  name against the story's declared LOCATIONs before the doors too, so
-  that corner means a typo, never "too early". Run → Terminals shows the
-  room on its row (amber off the `server-room` spot).
-- While asleep the app keeps the voice cursor on the room's head
-  (`cursorWhileAsleep`, `src/tv.ts`), so the lines that land *with* the
-  wake — the door cutscene reveals the room and speaks in it in one go —
-  are spoken, never resynced away.
-- Awake, it plays the room's lines through the TV's `planVoice` /
-  `LinePlayer` path into the line's own speech queue (captioned under the
-  face; the face's mouth moves), pauses the scanner (**LISTEN**) while he
-  speaks, and is **never muted**: the director's mute is scoped to the TV
-  target on the server.
-- The screen layer drops **story slides and the countdown corner** for
-  it (`screenLayers(…, {room: true})` — so the Y2K clock never covers it);
-  the overlays (blackout, alarm) and the flicker still reach it.
-- A pass that opens a line posts `POST /api/mod/signal {name: "terminal
-  opened", subject: <guest id>, args: {at: <room>}, label: "Terminal ·
-  <name>"}` (`postVisit`, `src/pilot.ts`); every way the line ends (leash,
-  DISCONNECT, an overlay, a restart, `pagehide` with `keepalive`) posts
-  `terminal closed` once (`VisitLatch`). Best-effort, never awaited.
+On a running terminal, hold ⚙ for **2 s** (a bar fills under it) to reopen
+setup: change the passcode, forget the terminal, or tap a different spot.
+The *advanced* section holds the character, the camera, the voice, the
+announcements, the voice link, the door sensor and a manual view or room.
 
-- **📎 GIVE HIM A FILE** (wave 11, `src/FilePanel.tsx` + `src/files.ts`):
-  while a pass is piloted at a room terminal, the line has a file panel —
-  the guest's own codex entries (`GuestView.codex`, off the pilot's
-  stream), each with **Give** (the guest's own `POST
-  /api/guest/codex/share {entry, to: <character>}` with the pilot token,
-  so the story hears it as from the phone; a refusal is shown in the
-  server's words). A file he always turns down has no Give: a
-  `secret: true` one (the digit notes, *The Door Code*) or lore about
-  someone else reads *A SECRET FILE: HE WON'T TAKE IT* / *ABOUT X: HE
-  WON'T TAKE IT* (`refusalOf`, the server's own 403 rule),
-  a **TYPE A CODE** box and **SCAN A FILE'S QR** (a codex QR's
-  `?unlock=`) that redeem for the guest (`/api/guest/codex/redeem`) and
-  then offer the new entry to give. A camera read is redeemed once: the
-  camera stops after it, and a code the panel already unlocked is offered
-  again without a second redeem (every redeem is journaled; a wrong one is
-  the story's `wrong code`). While it is open the leash runs **120 s**
-  instead of 30 (*STILL THERE?* for the last 20 s) — it is never held, so
-  a guest who walks off with the panel open is still disconnected.
+**The camera and the microphone need a secure context**: `https://` or
+`localhost`. On a plain `http://192.168…` address the browser refuses
+them; the terminal says so and offers the typed-name fallback (a program
+types the name they registered with).
 
-Kiosk notes: [`docs/trapped/kiosk.md`](../docs/trapped/kiosk.md) → *The
-server-room terminal*.
+**One tap after a reload.** A browser plays sound only after a gesture, so
+after a reload a terminal shows TOUCH TO WAKE until someone taps it once.
+The TV's Chrome runs with `--autoplay-policy=no-user-gesture-required` and
+needs no tap.
 
-**The King's chess board** (wave 11, `view=chess`; `src/chess/`): the
-terminal outside the server-room door, the only place the King is played.
+## The views
 
-```
-https://<server>/terminal/?code=<mod passcode>&name=Server Door&spot=server-room-door&view=chess
-```
+| View | Where in the show | What it does |
+|---|---|---|
+| `auto` (default) | the wall tablets | the idle show with a scan box in the corner; Trabolta's face during a line; the reinstallation (or its camera shadow) while someone plays |
+| `face` | the server room | the face only, never the simulation |
+| `world` | — | the simulation always (the face while piloting) |
+| `shadow` | — | this camera full screen with the players drawn in it as ghosts; no scanner |
+| `mirror` | the safe mode for any screen | a silent full-screen spectator: no scanner, no voice, no chat |
+| `tv` | the living-room TV | the face full screen, speaking every Trabolta line said in The Desktop; no scanner |
+| `chess` | outside the server-room door | the King's chess board, awake all night |
+| `casino` | the upstairs bedroom | Truthcoin bets on three small games, awake all night |
+| `reinstall` | the tent laptop | a wall terminal and the reinstallation wizard + game in one |
 
-- **Awake all night**: it never follows the character's hidden / asleep
-  (no screensaver). The attract screen is THE KING, his one shared health
-  bar (`n / 15`, off the screen state's `king {hp, max, fallen, armed}`;
-  an older server sends none: no bar, full strength), the stakes line
-  (`armed` true: *Checkmate him and the server-room door code goes to
-  your Codex.*; false: *No prize now.*), and the scanner + typed
-  fallback. Never the strength ladder: no hints, no tips, no ladder copy.
-- A pass is checked through the moderator lens (`GET
-  /api/state?role=guest&as=<id>`: 404 unknown, `restricted`); a marked
-  program is refused (*⛔ Marked programs can't challenge the King.*).
-  The board deals at `stageFor(hp, max)` read **at the deal**
-  (`@loom/chess`: a full bar is grandmaster, 1 … 14 club / beginner /
-  dizzy, only a felled King pawns only); hits landing mid-game change
-  nothing. **No hints, no tips**; a two-tap **Give up**. The King thinks
-  in 12 ms slices (`pickMoveAsync`) so taps stay live on old tablets.
-- **One game per scan**. The leash is 120 s with no touch (held while he
-  thinks or an overlay is up), *STILL THERE?* for the last 20 s; it runs
-  out silently, like Give up: nothing reaches the story.
-- A game's end posts `POST /api/mod/signal {name: "chess won" | "chess
-  lost" | "chess drawn", subject: <guest id>, label: "Terminal · <name>"}`
-  (`src/chess/post.ts`): retried 0.5 → 8 s, 5 s per attempt, a 4xx final,
-  kept in `localStorage` (`loom.terminal.pending-chess`) while in flight
-  and re-sent on the next boot only within 60 s. The result screen says
-  *Checkmate. The door code is in your phone's Codex.* only once the win
-  landed while `armed` and the story took it (a 200 with `refused: true`
-  — a win after truth.txt or an ending — says *Checkmate. No prize now.*);
-  a win that never landed says to tell a host (♟). A program that already
-  holds *The Door Code* (an earlier win, the four digit notes, the
-  majority) reads the same Codex line: the story takes the press and
-  their phone says *♟ Checkmate again. You already hold the door code: it
-  is in your Codex.*
-  It stays ~10 s after the post settles, then attract.
-- Layered like a room terminal: overlays only (they cover the board and
-  hold the game), never a story slide, the countdown corner or the Y2K
-  clock. The poll is its heartbeat like any terminal's.
-- The chess code is its own lazy chunk (`ChessTerminal-*.js`, chess.js +
-  `@loom/chess`, ~60 kB), preloaded at boot on a chess terminal only.
+A terminal with a `room` belongs to that LOCATION (the server-room
+terminal): it sleeps until the story opens the room to everyone, then
+speaks the room's lines.
 
-**The casino** (wave 15, `view=casino`; `src/casino/`): a terminal in the
-upstairs bedroom where a program bets its own Truthcoin.
+## What a wall terminal does
 
-```
-https://<server>/terminal/?code=<mod passcode>&name=Casino&spot=graphics-card&view=casino
-```
+**Before the character exists.** Trabolta is hidden and asleep until
+Clippy introduces him. Until then every face and world terminal plays the
+idle show full screen: no scanner, no *ONLINE*, nothing that names him. So
+the tablets are set up from the start and wake within 2 s of the
+introduction. A terminal fails closed: it stays asleep until the server
+first answers.
 
-- **Awake all night**, no character, no room (like the board). Attract:
-  the marquee, the three games and their pays, the scanner + typed
-  fallback. A pass is read through the moderator lens (`GET
-  /api/state?role=guest&as=<id>`: the name, `restricted`, `wallet.balance`);
-  a marked program and a story with no currency are refused at the scan.
-- Seated: the balance, then the lobby (THE COIN · UNDER / OVER 7 ·
-  ONE-ARMED BANDIT) and a game's table: stake chips 1 / 5 / 10 / 25 / 50
-  (only the ones the balance covers), the picks with their pays.
-- **The server rolls every bet**: `POST /api/mod/casino/bet {guest, game,
-  pick, stake, label: "Terminal · <name>"}` (`src/casino/post.ts`) →
-  roll + payout + balance; the screen spins at least 1.1 s, then shows
-  the roll and plays a square-wave jingle (win / jackpot / lose). Never
-  retried — a bet is not idempotent: no answer reads *check your wallet*
-  and the balance is re-read. The rules, odds and labels are core's
-  (`core/src/casino.ts`, imported by path).
-- **CASH OUT**, or 60 s with no touch (held while the house rolls or an
-  overlay is up; *STILL THERE?* for the last 15 s), returns to attract
-  with how the sitting went (*WINAMP WALKS AWAY 30 TRUTHCOIN UP*).
-  Nothing is lost: every bet already settled into the guest's wallet.
-- Layered like the board: overlays only. Its own lazy chunk
-  (`CasinoTerminal-*.js`, ~20 kB). Pure session in `src/casino/session.ts`
-  (`test/casino-session.test.ts`), calls in `test/casino-post.test.ts`.
+**The idle show.** Between conversations a terminal plays a seeded, endless
+line of fake 1999 screensavers, ads and popups that follow the night's
+phase (`src/idle-show/`). Every tap does something; TOUCH ME asks after 30 s
+untouched. Awake, a **scan box** sits in its corner: the live camera,
+SCAN YOUR PASS, and the typed fallback. Popups never cover it.
 
-**The reinstallation station** (wave 18b, `view=reinstall`;
-`src/reinstall/`): the laptop in the tent, one device that is a wall
-terminal **and** the reinstallation wizard (Q4).
+**A conversation.** A scanned pass opens the guest's thread with Trabolta:
+the chat beside his animated face, each reply spoken aloud. The line drops
+after **30 s** with no input (paused while he answers), after 120 s with
+the file panel open, and after 180 s while a heart menu is docked.
 
-```
-https://<server>/terminal/?code=<mod passcode>&spot=tent&announce=1
-```
+**The screen program.** Every 2 s (the TV every 1 s) a terminal polls
+`GET /e/<event>/api/screen/state`. The answer carries the story's screen
+cues for this terminal, the running countdown, the character's state,
+the live Trust Chart and the night's public values. The poll is also the
+terminal's heartbeat: Run → Terminals shows each one's last poll, sound,
+full screen, battery, microphone, build and (on the server-room terminal)
+the door and the patch bay.
 
-(the map's tent spot carries `view: reinstall` on both variants, so the
-spot alone sets the view and the name, *Tent* or *Shed*, and the laptop
-follows the map's variant; a link that also names `&view=reinstall` is an
-old fleet link to `urlConfig`: it keeps the name it was given, *Terminal*,
-and never follows the map).
+What wins on screen, top first:
 
-- **Awake all night**, no character, no room (the Internet's lines are
-  prisoners' own DMs, never said aloud). Idle: the wall idle show (its
-  `asleep` naming gate: nothing names Trabolta before the introduction),
-  the scan box + typed fallback, a red **☣ IN THE INTERNET NOW** strip of
-  the captured programs (one tap each; never the marked: D8), the world
-  view beside the show while someone walks on a headset, and the story's
-  slides, cutscenes, moments and overlays as on any wall terminal.
-- **A pass** (`src/reinstall/session.ts`, pure): the candidates decide.
-  Healthy or director-held → the **NOT MARKED** card for 8 s and nothing
-  else (no `/api/mod/scan`, no Trabolta line: D8 / O6). Already walking
-  on a headset → *Play here instead?* (names the headset station). Marked,
-  captured, or anyone after an ending → the reinstall app's own flow
-  (`@loom/reinstall/flow.tsx`, `start: "auto"`: straight to Play here with
-  no headset online, else the choose card), in a shadow root with its own
-  React root (`src/reinstall/pane.tsx`) and the reinstall stylesheet
-  re-scoped (`scope-css.ts`). The begin never sends `force`.
-- **A capture** (`cue tablet_wizard` → the screen state's `cues.tablet`
-  seq): a 12 s Win98 card, *Setup is preparing to reinstall a program*,
-  naming nobody; never the boot's own seq, never over a walk.
-- **During a walk** `onBusy(true)`: the app counts the terminal as
-  piloting, so story slides and beat cutscenes stand aside. An overlay
-  **holds** the walk (`held = takeover` → `Game.hold`): controls, leash,
-  quacks and a find pause, the pose keepalives go on. The game's sounds
-  ride the master bus (`createSfx(soundOutput)`, built once).
-- Its own lazy chunk (`ReinstallTerminal-*.js`, ~120 kB beside three.js),
-  preloaded at boot on this view only. Tests: `test/reinstall-session`,
-  `reinstall-css`, `reinstall-layers`.
+1. **an overlay**: the blackout, *go to the living room*, the alarm. It
+   covers everything, ends an open line and holds a reinstallation walk;
+2. **a slide**: any other `screens_*` / `tv_*` / `terminals_*` cue.
+   `public/slides/<cue>.png` if present, else a Win98 text card. The TV
+   first tries `<cue>.mp4`. Some slides are drawn live: the Y2K clock and
+   the Trust Chart;
+3. **a cutscene**: a scene keyed to a slide cue or a story moment
+   (`src/cutscene/`, 75 scenes, most with a TV take and a wall take);
+4. the idle show, then the base view.
 
-## The voice
+A tap on a held slide **peeks** under it for 30 s, so a guest can still
+scan. The TV and mirrors never peek. A room terminal shows no story
+slides or countdown; it takes overlays and its own room's scenes (a `cue
+room_<x>` in a beat set there). The chess board and the casino take
+overlays only.
 
-**Every device speaks with its own voice** (decision 2026-10-15: "for the
-most part I don't care if the voices on the terminals / TV are consistent").
-Nothing on the night depends on a server voice. `src/speech/engine.ts`:
+**Full screen by default.** Every gesture while not full screen asks the
+browser again; Fully Kiosk and Chrome `--kiosk` count as full screen. Run →
+Terminals shows ⛶ on a terminal that is not. ⚙ → *full screen* turns it
+off for a director's laptop.
 
-| `engine` (⚙ / `&engine=`) | What speaks |
-|---|---|
-| **`browser`** (default) — *this device's own voice* | The ladder, re-decided per sentence: `speechSynthesis` when it lists voices (ranked by `pick-voice.ts`: Edge *Natural*, iPad / Mac *Enhanced* / *Premium*, Samantha …) → **Fully Kiosk's** text-to-speech (`fully.textToSpeech`, Android's TTS engine) when the page runs in Fully with its *JavaScript Interface* on — the old tablets' System WebView may not implement `speechSynthesis` at all (OCT31 K-02) → **text only**. A `speak()` that hasn't started after 4 s is written off as a stub and the ladder moves on — until the next tap (Safari ignores a `speak()` before the first gesture, so an announcement that lands before TOUCH TO WAKE doesn't mute the tablet for the night). |
-| `fully` — *Fully Kiosk's voice* | Fully's TTS first, even when the WebView lists voices (some list voices and never speak). Outside Fully: the ladder. |
-| `silent` — *no voice, text only* | The transcript reveals at reading pace, the mouth flutters. |
-| `server` — opt-in | The event server's `/api/mod/tts` (Kokoro, OpenAI, any OpenAI-compatible endpoint — `core/server/tts.ts`), cached per line across every terminal, the mouth on the real waveform. The first **502 / 503 / 504** (no server voice, the box is down) **latches** it to this device's voice for the session — no asking per sentence. Needs `LOOM_TTS_URL` on the server (off by default; the compose stack's `kokoro` is behind `--profile tts`, `docs/loom-docker-deploy.md` §5¾). |
+## Voice and sound
 
-**The character never sounds like the announcements.** With no voice
-picked, the character's lines rank a **male** voice first
-(`CHARACTER_VOICE` — Daniel on a stock Mac) and the house announcements a
-**female** one (`ANNOUNCE_VOICE` — Samantha, which is also the house
-Mac's `alexa` `say_voice`); a voice picked in ⚙ is the character's only,
-never the announcements'. A name the lists don't know leans neither way.
+**Every device speaks with its own voice.** The default `browser` engine
+uses `speechSynthesis` when the device lists voices, else Fully Kiosk's
+text-to-speech, else text only. `fully` tries Fully first; `silent` is text
+only; `server` is the opt-in server voice (`/api/mod/tts`, needs
+`LOOM_TTS_URL` on the server, off by default). ⚙ lists the device's voices
+best first and has TEST VOICE.
 
-⚙ lists the device's voices best first for the character (blank = the best one), says what
-this device can do ("this device has 23 voices" / "Fully Kiosk's
-text-to-speech will speak" / "text only"), and **TEST VOICE** says a line
-through exactly the voice the terminal will use and names it. A voiceless
-device never stalls the queue: every engine ends a sentence by itself
-(reading-time caps), and the transcript keeps revealing. The note under
-the face says when the voice isn't the one asked for (`no voice on this
-device — text only`, `this device's own (no server voice)`). Replies are
-split into sentences and prepared one ahead, so speech starts on the first
-sentence and the transcript reveals as it is said.
+**Trabolta never sounds like the announcements.** With no voice picked, his
+lines take the device's best male voice and announcements its best female
+one (`src/speech/pick-voice.ts`): Daniel vs Samantha on a Mac, Microsoft
+David vs Microsoft Zira on Windows.
 
-**The house announcements** (OCT31 N-09, decision #20, `src/announce.ts`):
-the story's `do announce "Go to the living room."` already plays out of the
-house speakers (the house Mac's stagehand router since wave 18b; the
-`alexa` player before it, K-20). The screen poll carries the
-last three too (`announces: [{seq, text, at}]`, oldest first, beside the
-latest in `announce` for older builds), and a terminal with
-**`announce`** on — ⚙ → *say the house announcements*, three-way since
-wave 18b: **House setting** (the default; on only for a spot on the house
-list, `audio.json` `announce.terminals`, which the screen state answers as
-`spot.announce` — the 📢 on Run → Terminals), **Always** (`&announce=1`) or
-**Never** (`&announce=0`); the TV too stays off — its room hears the house
-speakers — rings a two-tone chime and says it in its own voice under a 📢
-banner — each of two inside one poll, in order. Never one that was current
-when the page loaded, never replayed history after a server reboot or a
-story restart (one announced right after a restart is said: the state's
-`announceEpoch` changes with the sim, so the terminal resyncs even when the
-restarted story's seqs, counted from 1 again, reach its old cursor; one
-announced before any screen's first poll of the restarted story, a second
-at most, is history), never one
-older than 30 s, and never over
-the character: every voice on the page waits its turn on one `VoiceFloor`,
-so an announcement follows the line being said and the next line follows
-the announcement. On the TV the director's mute holds for announcements.
+**House announcements** come out of the house speakers (the stagehand
+`audio` router). A terminal says them too only when asked: ⚙ → *say the
+house announcements* is **House setting** (the default: only spots on
+`audio.json`'s `announce.terminals` list), **Always** (`&announce=1`) or
+**Never** (`&announce=0`). The tent laptop runs Always, because no house
+speaker reaches the yard.
 
-Server env (only for the opt-in server voice):
+**Accents only.** A terminal's own speaker plays only synthesised accents
+(popup dings, cutscene stingers, the casino's jingles; `src/sound/`),
+dropped while a voice speaks. Every story `sound X` plays on the house
+speakers, never on a tablet. The TV's accents are quiet (0.35) and the
+director's TV mute cuts them along with its voice.
 
-```
-LOOM_TTS_URL       base of the speech API (unset / blank / off = no server voice — the default)
-LOOM_TTS_API_KEY   bearer token, if the endpoint wants one
-LOOM_TTS_MODEL     default "kokoro"
-LOOM_TTS_VOICE     default "am_michael"  (Kokoro: am_adam, bm_george, af_bella+af_sky …)
-LOOM_TTS_FORMAT    mp3 (default) | wav | opus
-```
+**The TV** (`view=tv`) speaks Trabolta's lines said in The Desktop and
+captions them. Lines in the song beats are captioned only (the house
+router plays the song); Sandy is captioned, never voiced. `M` on its
+keyboard, or the 🔊 button, mutes it through the server, so the director's
+mute and the TV's agree and survive a reload.
 
-## The face
+## The reinstallation on the walls
 
-`src/face/` — an SVG head driven by a requestAnimationFrame loop: brows,
-lidded eyes that look around and blink, a mouth that opens with the live
-loudness of the voice (an `AnalyserNode` on the server voice's decoded
-audio; on the device voices, which expose no waveform, a synthesised
-syllable flutter gated by a word rhythm — `syntheticLevel`).
-The mood is read off the situation (waiting / someone connected /
-composing / speaking) and off each sentence as it is said (`mood.ts`:
-shouting is anger, a question is curiosity, an ellipsis is slyness). A
-dropped line glitches.
+During the reinstallation games (`docs/loom-reinstall.md`) a placed
+terminal is a **window into the virtual copy of its room**: the camera sits
+where the tablet hangs and the players walk past it as ghosts wearing their
+profile pictures. An unplaced terminal follows the most recent player. A
+corner mini-map shows the floor, the ducks and this terminal's view cone.
 
-## The world view
+- **No WebGL2** (old tablets): a Canvas 2D raycaster draws the same thing
+  (`src/raycast/`). three.js is never loaded on such a device.
+- **Camera feeds.** A placed terminal sends its camera (160 × 120, about
+  3 fps) to the games, which hang it on the wall where the tablet hangs.
+  `&cam=0` or ⚙ turns it off.
+- **The shadow view.** `view=shadow`, or `auto` while the camera is live:
+  the camera full screen with the players drawn into it.
+- **The voice link.** A placed terminal's microphone is heard in the games
+  at its screen, and nearby players are heard from its speaker. The server
+  routes it; nothing goes up unless a player is near enough to hear. The
+  terminal holds its microphone while it plays a sound or speaks, so it
+  never echoes into the game. The 🎤 at the left edge shows while a player
+  can hear the room. The TV plays players but its microphone is off; the
+  mirror and the tent take no part.
 
-During the *reinstallation* games (`docs/loom-reinstall.md`) a program
-captured into the Internet explores a virtual copy of the house to find the
-golden duck, in VR or on a tablet. Every terminal can watch: `src/world/`
-holds the spatial stream (`GET /api/spatial/stream?token=&name=` — poses at
-10 Hz plus `hello` / `join` / `found` / `leave` / `house` / `duck` / `reset`;
-a `duck` frame moves a player's duck when a map save re-deals it) and the
-event's house map (`GET /api/spatial/house`, refetched when the stream
-announces a new version; the show's own `house.json` is bundled as the
-offline fallback). It renders through `@loom/house/three`, the same scene
-builder the web game uses, so the house looks the same on every screen.
-Players appear as ghosts with name tags (interpolated 120 ms behind), and
-each one's duck lays its egg and flies away when they find it — never for
-a find the story kept (the banishment: the `found` frame says
-`released: false, captured: true`), where Gerald stays put.
+## The server-room terminal (his heart)
 
-One camera, cut by a pure director (`world/director.ts`, no three.js):
+The server-room terminal is Steph's laptop with a monitor, a mouse, a
+keyboard and a webcam, running Chrome on the `server-room` spot
+(`view: face`, a room terminal for The Server Room). The **Grand Central
+M4** on its USB reads the door sensor and the patch bay
+([`hardware/server-room-m4/`](../hardware/server-room-m4/README.md)); the
+page reads the board over **Web Serial** (desktop Chrome or Edge on https).
 
-- **mount** (a placed terminal — a `spot` on the map — always): a window into
-  the virtual house from where the tablet hangs. The camera is the terminal
-  itself, fixed at its spot on the wall and looking along its yaw/pitch/fov
-  (default −8°, and `DEFAULT_SPOT_FOV` = 70° *vertical*; the mini-map's cone
-  is its `horizontalFov` on a 16:10 tablet, ≈ 96.5°) — `windowPose(house,
-  spot)`, the same pose the shadow view projects through. It is the mirror of
-  the games' virtual terminals, which show the real room through the
-  tablet's camera: players cross it as ghosts, and it never follows them,
-  never orbits, and a find doesn't move it (the celebration is the overlay's).
-  Tagged **LIVE · THIS ROOM**.
-- **follow** (an unplaced terminal): the camera rides over the shoulder of the
-  most recently active player (**FOLLOWING ADA**). Whoever just found the
-  duck takes the camera. It holds a player for a few seconds and won't
-  flicker between two. It is pulled in short of any wall (each wall a slab
-  of the map's thickness, so never into or past one) and kept under the
-  ceiling. With their back to a wall it tries a raised chase, then the left
-  shoulder, then looks out of the player's own eyes (their ghost hidden).
-- **orbit** (an unplaced terminal with nobody playing): a slow circle of the
-  spawn room.
+- **The door.** The page posts `door_sensor_opened` / `door_sensor_closed`
+  through `POST /api/mod/signal`, and on every poll repairs a missed edge
+  against the story's `night.server_door`. It posts nothing before Power
+  On, during a blocking sensor fault, or while a director's 🚪 press has put
+  the door on the buttons.
+- **The patch bay.** When four cables settle into a new complete set, the
+  page posts `patch_changed {combo}` and the story judges it. It posts only
+  in the Y2K hour (`night.step >= 14`), never after an ending, and never
+  while a 🔌 / 💥 / ❌ press has put the bay on the buttons (until 🔌 *Trust
+  the patch bay again*). The page never knows which combinations matter.
+- **Setup.** Hold ⚙ 2 s → *advanced* → *door sensor* → **Connect door
+  sensor** → pick the board. Then **Calibrate: door shut** and **Calibrate:
+  door open**. The *patch bay* section below it shows each input's reading,
+  with **Learn** per source and **Save** / **Reset**.
+- **The heart.** The story docks the heart's menu in the guest's
+  `dm:Trabolta`. The page shows it as a clickable choice panel (`1`–`9` on
+  the keyboard too), greyed under *CLOSE THE DOOR* while the door is open.
+  ⟦SPEAK FREELY⟧ opens the composer for a free conversation.
+- **📎 GIVE HIM A FILE.** While a pass is open, the guest can give him
+  codex entries, type a code, or scan a file's QR. A secret file, or one
+  about someone else, shows why he won't take it.
+- **Without the board.** `&door=sim`: **O** opens a pretend door, **C**
+  shuts it, **F** toggles a fault, and Shift + digits patch pretend cables.
 
-Overlays: the banner *REINSTALLATION IN PROGRESS · <name> · <room>*, the
-camera's mode tag, the counts line (**2 REINSTALLING · 1 HERE** — here = in
-this terminal's room — so a window on an empty room says where everyone is), a corner **mini-map** of the floor (every player's dot
-and heading, every unfound duck on that floor — whichever floor its player
-is on — this terminal's view cone), and the celebration
-*<NAME> HAS BEEN REINSTALLED* (or *FOUND THE GOLDEN DUCK* for a program
-that was never corrupted, or *GERALD CAN'T HELP* in plain phosphor for a
-kept find; a server that doesn't send the frame's `captured` never shows
-that one). Rendering is capped at 30 fps, at ≤ 1.5×
-pixel ratio, stops while the page is hidden, and frees its GL context when
-the view closes (a new map gets a fresh canvas — a lost context is never
-reused). three.js is a lazy chunk, so a face-only terminal never
-downloads it; any other terminal fetches it at boot, and a chunk that fails
-to load (or a view that crashes) never takes the scanner down — an error
-boundary falls back to the face and retries 30 s later (a mirror reloads
-the page instead, when the page is reachable, at most every 5 minutes).
+## Other screens
 
-The stream: a dropped connection keeps the last ghosts for 10 s, then
-clears them (an `auto` terminal gives its face back). A refused stream is
-probed — 401 (access revoked) sends the terminal back to setup without its
-token, 404 (the event ended) back to setup with its settings kept; anything
-else retries with backoff (5 s doubling to 60 s).
+- **The King's chess** (`view=chess`, spot `server-room-door`): THE KING,
+  his shared health bar, and the scanner. One game per scan, no hints, a
+  board dealt at his strength when it is dealt. A marked program is
+  refused. A game's end posts `chess won` / `chess lost` / `chess drawn`;
+  a win while the code is still on offer gives the server-room door code.
+- **The casino** (`view=casino`, spot `graphics-card`): scan a pass, bet
+  1–50 Truthcoin on the coin, the dice or the slots. The server rolls every
+  bet; nothing is retried.
+- **The tent laptop** (`view=reinstall`, spot `tent`): the idle show, the
+  scan box and a list of who is in the Internet now. A marked or captured
+  pass plays the reinstallation game right there (or is sent to a
+  headset); anyone else gets a NOT MARKED card. An overlay holds a walk.
+  It needs WebGL2 to play here.
 
-Two settings, on the setup screen or in the provisioning link:
+## Previewing cutscenes
 
-| Setting | Values |
-|---|---|
-| `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. Placed: always a fixed window from that spot. |
-| `room` | a LOCATION (wave 7): on the TV, the room it speaks for (blank = The Desktop); on any other view, the room it **belongs to** — asleep until that room is open, speaking its lines (*A room terminal*, above). Blank = a house terminal. The `chess` view ignores it. |
-| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. `shadow`: the camera with the players as ghosts in it (below), no scanner. `chess`: the King's chess board outside the server-room door (*The King's chess board*, above; awake all night, ignores `room`). `casino`: the upstairs casino (*The casino*, above; awake all night, ignores `room`). While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) never loads three.js: wherever it would draw the world (`auto` while someone plays, `world`, `mirror`, `shadow`) it draws the raycaster instead (a simple recreation of the game from the terminal's spot) — never the *SIMULATION UNAVAILABLE* retry loop. The TV, chess, casino and face views are unchanged. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
+With `pnpm --filter loom-terminal dev` running:
 
-**The mirror (a TV).** `view=mirror` turns a screen into a full-screen
-spectator: there is no scanner, no chat and no wake tap (it never speaks).
-The show's TV over the fireplace runs `view=tv` instead (the same spectator
-plus the room voice, above); both get the TV's screen program. It still needs the moderator passcode,
-because the stream is mod-gated. Open the link on the TV's browser (a smart
-TV, a Fire Stick, or a laptop on HDMI in kiosk mode):
+- `http://localhost:5175/terminal/?preview=list` lists every scene with a
+  scrubber.
+- `?preview=<id>&t=<ms>` shows one frame (`&play=1`, `&target=wall`,
+  `&intro=0`, `&reduced=1`, `&who=`, `&value=`, `&phase=`, `&countdown=<s>`,
+  `&night=key:value,…`).
 
-```
-http://<server>/terminal/?code=<mod passcode>&name=Desktop TV&view=mirror&spot=desktop-tv
-```
+Outside dev the preview opens only on a terminal already set up with the
+moderator passcode.
 
-A `spot` is optional for a mirror; without one it never mounts. The ⚙ in
-the corner reopens setup (hold it 2 s).
+## Browser support
 
-**The camera feed and the shadow view (wave 14).** A placed terminal
-(`spot` set) **sends its camera to the games**: ~3 frames a second, a
-160 × 120 JPEG (quality 0.5, a 4:3 centre crop, never mirrored) to
-`POST /e/:id/api/mod/spatial/cam {spot, jpeg, w, h}` with its mod token
-(`src/camfeed.ts`), and the reinstallation games hang that picture on the
-wall where the tablet hangs. Never while the page is hidden, never two
-uploads in flight, backing off 1 s → 30 s on a failure and stopping on a
-404 (`no such spot`) or a refused token until ⚙ changes the spot — ⚙ shows
-the feed's status and switches it off (`camFeed`, on by default; the URL's
-`&cam=0`). The pass scanner, the feed and the shadow view share **one**
-`MediaStream` (`src/camera.ts`, ref-counted; opened at the scanner's 720p
-with the configured facing mode), so an old tablet never opens its camera
-twice. `view=shadow` (`src/shadow/`, its own lazy chunk) is the camera full
-screen with every reinstallation player on this floor and in front of the
-tablet drawn over it as a dark, glowing, flickering ghost (picture + name
-tag), placed through a three.js camera matched to the spot (pos, yaw,
-pitch, fov) — the room's shadow dimension; a selfie camera is mirrored,
-ghosts and all. No scanner (a spectator, like `mirror`). `auto`'s pane
-shows the shadow instead of the world while the camera is live; no camera,
-no spot on the map or no WebGL falls back to the world view. ⚙'s spot,
-view, room and character are pickers (the event's house map, the views
-with a line each, the map's LOCATIONs, the story's cast), and a spot the
-map lacks — from ⚙ or a provisioning URL — says so.
+The build targets **Chrome 87 / Safari 14** (the oldest wall tablets and
+iPads). That pins syntax only: newer runtime APIs need a fallback in code,
+and a regex lookbehind breaks Safari 14. `scripts/accept/K-14.sh` scans the
+built bundles for both.
 
-**The voice link (wave 19, `src/voice/`).** The other half of the window:
-a placed terminal's **microphone** is heard in the reinstallation games at
-its screen, and the players near it are **heard out of its speaker** —
-the wire is `docs/loom-reinstall.md` §2.4 (`@loom/house` `voice.ts`:
-G.711 μ-law, mono, 16 kHz, 200 ms chunks; the server routes, every stream
-carrying only what that spot can hear, with a gain).
+## More
 
-- **Who takes part** (`voice/roles.ts` `voiceRoles`, D9): auto / world /
-  shadow / face (the heart terminal too) / chess / casino hear and are
-  heard; the TV plays the players (under the director's TV mute) but its
-  microphone is off unless ⚙ / `&mic=1` turns it on; the mirror, an
-  unplaced tablet and a spot whose map `voice` is off (the tent: unset in
-  the spawn room is off) take no part; nothing runs on the setup screen.
-  ⚙ → advanced: *let the games hear this room* (`mic`, absent = the view's
-  default) and *play the players near this screen* (`voices`, on); the
-  URL's `&mic=0|1` / `&voices=0|1` (untouched, the ⚙ box reads as
-  following the screen you pick). The map's flag is copied as `voiceLink`
-  and followed (`setup-map.ts` `followVoice`); the page reads the live map
-  before opening anything (retried 5 s → 60 s, re-read every minute, the
-  link restarted only when the spot's answer changes; a config no map ever
-  set takes no part until one is read).
-- **Up** (`mic.ts` → `capture.ts` → `uplink.ts`): its own audio-only
-  `getUserMedia` (`MicHub`, ref-counted like the camera's, never a track on
-  the camera's stream; echo cancellation / noise suppression / AGC asked
-  **off** — the gate is in software, and on Android they switch the device
-  into its voice-call audio mode), a `ScriptProcessorNode` on the page's
-  context through a zero gain
-  (Safari 14.0 has no AudioWorklet), resampled to 16 kHz in JS, 200 ms
-  chunks through the level gate (−42 dBFS, 400 ms hang, one chunk of
-  pre-roll), μ-law, then raw POSTs to `/api/spatial/voice?seq=&spot=`
-  (`x-loom-token`: the mod token), one in flight, backing off 1 s → 30 s,
-  stopping on 401 / 403 (`voice is off at this terminal`) / 404 / 410.
-  **Only while someone hears it**: the voice stream's `listen {on}` is the
-  authority (a POST's late `listening: false` only empties the queue); an
-  uplink a 403 / 404 stopped mid-night (a map edit) is rebuilt when a
-  `hello` / `listen {on}` proves the spot good again. **Half-duplex in
-  software, a hard hold**: nothing goes up while this page plays a player,
-  speaks (the voice floor), plays an effect / jingle / chime
-  (`sound/bus.ts` `soundPlayingUntil`), and for 300 ms after — plus the
-  chunk's span, the capture buffer and the output latency (a chunk is
-  judged when its buffer ends). The games raise their gate instead (D5b),
-  so a player speaking up is heard here, and this hold then pauses the
-  room for them.
-- **What works** goes on the stream: `?mic=0|1&hear=0|1` (no mic while it
-  is refused / missing / the page's audio locked; no speaker under the TV
-  mute or locked), re-opened when either changes (`VoiceLink.refresh`,
-  every 150 ms), so the server never routes a player to a device that
-  can't hear them nor counts a dead mic among a player's four terminals.
-- **Down** (`stream.ts` → `playback.ts`): one `EventSource` on
-  `/api/spatial/voice/stream?token=&spot=` (`hello` / `listen` / `voice` /
-  `bye`; reconnects like the spatial stream), each player's chunks
-  resampled up to the context's rate in JS and scheduled as
-  `AudioBufferSourceNode`s on a new **voices** bus beside the effects
-  (ducked to 0.3 under the voice floor, muted with `setSoundMuted`): a
-  250 ms jitter buffer per player, a backlog over 600 ms cut back, fades on
-  start and `bye`, a gain per frame.
-- Capture and playback wait for the context to run: the first touch
-  anywhere (every view, the shadow / chess / casino screens included), or
-  at once on the TV's Chrome (`--autoplay-policy=no-user-gesture-required`).
-- A small **🎤** at the left edge, half way down (`MicCue.tsx`), shows while a player
-  can hear this room (never while locked or while the uplink is stopped).
-  ⚙ shows the link's status as it stood when ⚙ opened (*tap the screen to
-  start it* while the page's audio is locked); the heartbeat sends
-  `mic=live|muted|denied|insecure|locked|off` (`voice/roles.ts`
-  `micReport`; `muted` = ⚙ turned it off) for Run → Terminals.
-- `voice/link.ts` (`VoiceLink`, every effect injected, + `startPageLink`)
-  is its own lazy chunk, loaded by `voice/hook.ts` `useVoiceLink` only on a
-  terminal that takes part; the entry takes `voiceOn` from
-  `@loom/house/voice-on`, so the codec stays in that chunk.
-- Device-only: the old tablets' WebView echo and speaker volume with the
-  microphone open; an iPad's play-and-record session (quieter speaker, a
-  sample-rate change, a camera track muted by the second `getUserMedia`).
-
-**Before the character exists (attract).** A character can arrive partway
-through the night: in *Trapped in the Internet* Trabolta is `hidden: true`
-and asleep until Clippy introduces him (`introduce_trabolta`). Every
-face/world terminal and the mirror hold the screensaver while the
-character is hidden or asleep (see *The screensaver while the character is
-secret* above): no *ONLINE*, no scanner, no pilot. Provision them all
-`view=auto` from the start. On the server, `AgentHub`'s `admits` hook
-refuses a guest's DM with a character still hidden from them, so a stale
-tab can't draw the hold line early either. The story's `cue screens_*` /
-`terminals_*` / `tv_*` directives drive the screen layer (*Overlays,
-slides, countdowns* above) through the same poll.
-
-## Layout
-
-```
-src/app.tsx            the screens: setup → (screensaver) → attract → connecting → piloting
-src/screen.ts          the 2 s screen-state poll (K-16): attract while the character is hidden/asleep
-src/tv.ts              the TV room voice: which lines are spoken / captioned, the cursor, the player (pure, K-18)
-src/Tv.tsx             view=tv: the face full screen, the voice, captions, the mute
-src/attract.ts         Mystify's pure parts (one of the idle show's savers)
-src/Attract.tsx        the asleep screen: the idle show full screen + the name and ⚙ in the corner
-src/idle-show/         the idle show (wave 17): schedule, pools, ads, popups, gags, savers, the scan box
-src/slides.ts          the screen layer's precedence, holds, slide copy, corner + Y2K clock (pure, K-17)
-src/ScreenLayer.tsx    overlays, slides (TV: mp4 first; PNG, else a Win98 card), the corner, the flicker
-src/kiosk.ts           the Screen Wake Lock + the 2 s ⚙ hold (K-15)
-src/webgl.ts           the one-time WebGL2 probe + the pane routing: no WebGL2 → the raycaster, three.js never loaded (K-14)
-src/raycast/           the raycaster (wave 16, lazy chunk, no three.js): the game recreated in Canvas 2D from the
-                       terminal's spot — raycast.ts (camera, rays, sprites; pure) + plan.ts (the inset, words) + RaycastView.tsx
-src/config.ts          per-tablet config (localStorage) + URL provisioning
-src/voice/             the voice link (wave 19): roles.ts (who takes part, mic=), mic.ts (MicHub), capture.ts
-                       (resample → gate → μ-law), uplink.ts, stream.ts, playback.ts (jitter buffer), status.ts,
-                       link.ts (VoiceLink, lazy), hook.ts (useVoiceLink), MicCue.tsx (🎤)
-src/scanner.tsx        camera + QR (BarcodeDetector, else jsQR)
-src/scan.ts            what a scanned code means; the typed-name fallback
-src/pilot.ts           impersonate / end / say; the DM thread off the guest stream; a room terminal's terminal opened / closed
-src/idle.ts            the 30 s leash (paused while the character is answering); 120 s with the file panel open, and on the chess board
-src/controls.tsx       the typed fallback + the 2 s-hold ⚙, shared by the line and the chess board
-src/files.ts           the heart terminal's file panel: give / redeem as the piloted guest (pure-ish)
-src/FilePanel.tsx      📎 GIVE HIM A FILE: the guest's entries, a code box, a codex-QR camera
-src/chess/             session.ts (the board's screens, pure), post.ts (chess won/lost/drawn + pending,
-                       the pass lookup), ChessTerminal.tsx (lazy: the board, the King's turn), chess.css
-src/chat.tsx           the thread + composer
-src/speech/            engine.ts (device ladder: browser → Fully → silent; opt-in server; the queue + VoiceFloor),
-                       split.ts, pick-voice.ts
-src/announce.ts        the house announcements (N-09): which to say, the chime, the hook
-src/face/              Face.tsx (SVG + animation), mood.ts
-src/world/             stream.ts (spatial SSE + house map → WorldStore), state.ts (the reducer),
-                       director.ts (mount = the fixed window / follow / orbit), overlay.ts (the counts line), label-point.ts, minimap.ts + MiniMap.tsx,
-                       WorldView.tsx (the three.js canvas + overlays, lazy-loaded)
-```
-
-Server-side pieces live in `core/server`: `tts.ts` (the proxy + cache),
-the `/api/mod/tts` route and the `label` on `/api/mod/impersonate` in
-`event-runtime.ts`, and static serving of `dist/` at `/terminal/` in
-`server.ts`; the screen-state poll is `routes/screen.ts` (`ScreenWatch`).
-The spatial plane the world view watches is `spatial.ts`
-(`SpatialHub`) plus the `/api/spatial/*` routes; the house map, its
-geometry and the three.js scene live in `house/` (`@loom/house`).
-
-## The raycaster (no WebGL2)
-
-The reinstallation for a tablet that can't draw the 3D world (Chrome 87 /
-Safari 14 / the old Android tablets with GLES2-only GPUs): a **simple
-recreation of the game** (wave 16). It draws wherever such a tablet would
-have drawn the world (test it on a laptop with Chromium's `--disable-webgl
---disable-3d-apis`). Same feed as the world view (`world/stream.ts` +
-`world/state.ts`), drawn in **Canvas 2D** by a classic raycaster
-(`raycast/raycast.ts`, pure): one ray per column at ~320 × 180 (180 rows,
-240–400 columns at the box's aspect), scaled up pixelated, ≤ 20 fps,
-stopped while hidden — its chunk (`RaycastView-*.js`, ~20 kB) imports only
-the main bundle, never three.js.
-
-A placed terminal is a **fixed window** from its own spot (`pos`, `yaw`,
-`pitch` default −8°, vertical `fov` default `DEFAULT_SPOT_FOV`): the virtual
-copy of its room seen from where the tablet hangs, the way the games'
-virtual terminals show the real room, so you watch the players walk past
-in the second person. A terminal with no spot follows the most recently
-active player (a fresh find first) over the shoulder, pulled in short of a
-wall behind them, smoothed. Only the camera's floor is drawn: the
-`buildWalls` segments in their rooms' colours (each side its own room),
-lit by orientation (north / south faces brighter) and dimmed with
-distance, door gaps open with their lintels over them, rails and fences
-see-through; a flat floor and ceiling. Each player is a billboard — a body
-in their colour under a Win98 tile with their picture (else a disc) and a
-name tag — interpolated ~120 ms behind (`PoseBuffer`), clipped column by
-column against the nearest wall; their golden duck bobs; the King stands
-with his shared bar (grey, *HE KNEELS* at 0). A small inset shows the
-busiest floor top-down (`raycast/plan.ts`: rooms, walls, the players, this
-terminal's view cone; it follows the players to another floor only after
-2.5 s). A find shows *REINSTALLED: NAME* (*GERALD CAN'T HELP* for a kept
-one); joins / leaves toast (never a reconnect's whole roster or a story
-reset); the corner reads *LIVE · n REINSTALLING* · *WINDOW · ROOM* (or
-*FOLLOWING NAME*) with the stream's dot. With nobody playing it says
-*NOBODY IS REINSTALLING* (`auto` keeps the face then, as before), and the
-attract screen still takes over while the character is asleep.
-
-## Sound, full screen and the cutscenes (wave 17)
-
-**Sound** (`src/sound/`). One master `GainNode` over the shared
-`audioContext()`, an effects bus at the view's level (TV 0.35, others 0.6)
-through a soft compressor, a **voices** bus for the reinstallation players
-(wave 19, ducked under the voice floor and muted with the effects), and 30
-synthesised effects — no files:
-`sfx(name, {over?, gain?, pitch?, delay?}) → boolean`, names in
-`SFX_NAMES` (`ding chord error critical exclamation startup shutdown tada
-click popup close modem glitch type whoosh drumroll fanfare siren coin tick
-boom sparkle buzz blip spin win lose static heartbeat chime`). An effect is
-**dropped, never queued**, while sound is locked, while `setSoundMuted(true)`
-(the TV's director mute) or while a voice holds the floor — unless `{over:
-true}`, which plays it at 40 %. These are the page's accents only: every
-story `sound X` and every announcement is the house speakers' (D4). The
-announcement chime and the casino jingles ride the master bus unchanged.
-
-**Full screen** (`src/fullscreen.ts`, D7). On by default (`fullscreen` in
-the stored config, a ⚙ checkbox — no URL hint): every gesture while not full
-screen asks again (`requestFullscreen` / `webkitRequestFullscreen`; Fully
-Kiosk's JS interface hides the bars where it has the calls). State on
-`<html data-fullscreen>` and the poll's `fs=1|0` (no `fs` when a director
-turned it off or the browser can't; Run → Terminals shows ⛶ on `fs=0`). The TV's Chrome keeps
-`--kiosk` — the only no-gesture route. Browser-level full screen counts as
-full (`browserFullscreen`: `(display-mode: fullscreen|standalone)` or the
-window's inner size equal to the screen's), so `--kiosk`, F11 and a Home
-Screen app send `fs=1` with no fullscreen element and a tap there asks the
-API for nothing.
-
-**Cutscenes** (`src/cutscene/`). A scene (`types.ts` `SceneDef`) is started
-by a slide cue (`{slide: "trivia_1"}`, `award_*` prefixes) or a screen-state
-moment (`{moment: "signal", name: "bottle landed"}`), and is a pure picture
-of `t` — ms since its start on the server's clock — so a reload resumes and
-history never replays. `pick.ts` decides: overlays win, a pilot / peek /
-room terminal shows none, a slide's scene (else its card), one moment at a
-time over it (a moment that replaces the slide only hides it, so its clip or
-scene carries on; a tap on a moment never peeks), nothing that names the
-character before the introduction (the first fiction-safe scene on the same
-trigger plays instead), and nothing its own `gate(night)` refuses (the
-King's scenes after an ending: the story stops hearing him). A slide from history starts `HISTORY_T` in, at the
-moment this page first drew it, then moves on; a scene's `face` flashes the
-TV face once. The
-layer is a lazy chunk in the slide's slot (z 30), preloaded at boot. Lanes
-add scenes to their own `scenes/act1.tsx` / `act2.tsx` / `act3.tsx` /
-`moments.tsx` from the `kit/` blocks (Win98 windows, dialogs, typewriter,
-progress bar, marquee, glitch, static, particles, confetti, starfield,
-popup storm, BSOD, spotlight, hourglass, count-ups, countdowns, `useSfxCues`).
-`scenes/demo.tsx` is the pattern.
-
-**Preview**: `pnpm --filter loom-terminal dev` then
-`http://localhost:5175/terminal/?preview=list` (every scene, a device frame,
-a scrubber), or `?preview=<id>&t=<ms>` for one frame (`&play=1`,
-`&target=wall`, `&intro=0`, `&reduced=1`, `&who=`, `&value=`, `&phase=`,
-`&countdown=<s>`, `&night=scenario:1,collection_complete:true`). Outside dev it opens only on a terminal already set up
-with the moderator passcode.
+- Show setup, device by device: [`docs/trapped/kiosk.md`](../docs/trapped/kiosk.md)
+- The spatial contract (poses, camera feeds, the voice link):
+  [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §2 and §4
+- The house map and its three.js scene: [`house/`](../house/README.md)
+- Slide file names: [`public/slides/README.md`](./public/slides/README.md)
+- The wave-by-wave history of this README:
+  [`docs/history/terminal-readme-2026-10.md`](../docs/history/terminal-readme-2026-10.md)
