@@ -28,7 +28,8 @@
     "migrate": "tsx server/migrate.ts",
     "serve": "tsx server/server.ts",
     "loomcheck": "tsx scripts/loomcheck.ts",
-    "titi:facts": "tsx scripts/titi-facts.ts"
+    "titi:facts": "tsx scripts/titi-facts.ts",
+    "show:page": "tsx scripts/show-page.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
