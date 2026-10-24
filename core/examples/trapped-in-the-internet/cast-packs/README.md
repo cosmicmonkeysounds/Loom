@@ -84,9 +84,10 @@ addresses, codes, where things are kept).
   user's answers):** a talk-down works at any hour and the night ends on the
   director's 🕊 (no automatic end); a program thrown out of his heart is
   marked for reinstallation; the room has no ESP32 (the patch-bay watch
-  judges the bay) and no strip (the bulb is the room's light). Reprint after the
-  sign-off: the four server-room Antivirus packs, the patch-bay watch, the
-  emergency card, all-crew, the director's and the tech operator's cards.
+  judged the bay until wave 22, when the M4 bay judges itself) and no
+  strip (the bulb is the room's light). Reprint after the sign-off: the
+  four server-room Antivirus packs, the patch-bay watch, the emergency
+  card, all-crew, the director's and the tech operator's cards.
 - **Wave 7 (2026-10-17), not yet deployed:** the server-room door has a real,
   standalone **keypad lock** (outside only; the inside handle always opens
   with no code; nothing in the show can lock or unlock it). A program gets
