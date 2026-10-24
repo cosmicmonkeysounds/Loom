@@ -101,7 +101,7 @@ describe("the sim patch bay (door=sim, Shift + digits)", () => {
       return new Response("{}", { status: 200 });
     }) as unknown as typeof fetch;
     const link = startDoorLink(config, { fetchFn, keys: k.target, store: memory() });
-    link.screen({ server_door: "closed", door_override: false, patch_override: false });
+    link.screen({ server_door: "closed", door_override: false, patch_override: false, step: 14 });
     expect(doorStatus().bay).toBe(true);
     const plug = (v: number, d: number) => {
       k.digit(v);
@@ -124,7 +124,7 @@ describe("the sim patch bay (door=sim, Shift + digits)", () => {
     await tick();
     expect(bodies.filter((b) => b.name === "patch_changed").map((b) => b.args["combo"])).toEqual(["V1-D2,V3-D1,V5-D4,V8-D6", "V1-D2,V3-D1,V5-D3,V8-D6"]);
     // The buttons have the bay: nothing posts.
-    link.screen({ server_door: "closed", door_override: false, patch_override: true });
+    link.screen({ server_door: "closed", door_override: false, patch_override: true, step: 14 });
     plug(5, 4);
     await tick();
     expect(bodies.filter((b) => b.name === "patch_changed")).toHaveLength(2);
@@ -153,7 +153,7 @@ describe("the sim patch bay (door=sim, Shift + digits)", () => {
       return new Response("{}");
     }) as unknown as typeof fetch;
     const link = startDoorLink({ ...config, bay: false }, { fetchFn, keys: k.target, store: memory() });
-    link.screen({ server_door: "closed", door_override: false, patch_override: false });
+    link.screen({ server_door: "closed", door_override: false, patch_override: false, step: 14 });
     for (const [v, d] of [[1, 2], [3, 1], [5, 4], [8, 6]] as const) {
       k.digit(v);
       k.digit(d);
@@ -203,7 +203,7 @@ describe("Web Serial (door=serial)", () => {
     for (let i = 0; i < 5; i++) await tick();
     expect(doorStatus().patch).toBeNull();
     b.say('{"t":"hello","fw":"door-m4 1.2.0","mode":"steady","auto":false,"close":1800,"open":1200,"settle":150,"cal":false,"sense":false,"pbv":8,"pbd":7}\n');
-    link.screen({ server_door: "closed", door_override: false, patch_override: false });
+    link.screen({ server_door: "closed", door_override: false, patch_override: false, step: 14 });
     b.say(patch(2, "", [0, 0, 0, 0, 0, 0, 0], false));
     b.say(patch(3, "V1-D2,V3-D1,V5-D4,V8-D6", [3, 1, 0, 5, 0, 8, 0], true));
     b.say(patch(4, "V1-D2,V3-D1,V5-D4,V8-D6", [3, 1, 0, 5, 0, 8, 0], true));

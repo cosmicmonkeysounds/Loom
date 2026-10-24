@@ -518,7 +518,7 @@ export function startDoorLink(config: TerminalConfig, o: { fetchFn?: typeof fetc
   return {
     screen: (night) => {
       bridge.screen(night);
-      patch.screen({ server_door: night.server_door, patch_override: night.patch_override ?? null });
+      patch.screen({ server_door: night.server_door, patch_override: night.patch_override ?? null, step: night.step ?? null, ended: night.ended ?? null });
     },
     stop: () => {
       bridge.stop();

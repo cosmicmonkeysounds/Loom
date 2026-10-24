@@ -50,7 +50,7 @@ function rig(answer: (combo: string) => PostOutcome = () => "ok") {
   return { bridge, posts, advance, flush, line, now: () => now };
 }
 
-const LIVE = { server_door: "closed" as const, patch_override: false };
+const LIVE = { server_door: "closed" as const, patch_override: false, step: 14, ended: false };
 
 describe("the patch bay bridge (wave 22)", () => {
   it("posts a new complete set of four once, and never its periodic line", async () => {
@@ -100,7 +100,7 @@ describe("the patch bay bridge (wave 22)", () => {
     const r = rig();
     r.line("");
     r.line(FOUR); // no screen poll yet
-    r.bridge.screen({ server_door: null, patch_override: null });
+    r.bridge.screen({ server_door: null, patch_override: null, step: null, ended: null });
     r.line(OTHER); // Power On not played
     r.bridge.screen(LIVE);
     r.line(OTHER); // the periodic line once the gate opens: not a change
@@ -110,6 +110,77 @@ describe("the patch bay bridge (wave 22)", () => {
     r.line(OTHER);
     await r.flush();
     expect(r.posts).toEqual([OTHER]);
+  });
+
+  it("posts nothing before the Y2K hour or after an ending, and the hour never fires cables left in", async () => {
+    const r = rig();
+    r.bridge.screen({ ...LIVE, step: 13 }); // the server room is open before the hour
+    r.line("");
+    r.line(FOUR); // the story would ignore it: never counted as posted
+    await r.flush();
+    expect(r.posts).toEqual([]);
+    r.bridge.screen(LIVE); // 🕚
+    r.line(FOUR); // still in: not a change
+    await r.flush();
+    expect(r.posts).toEqual([]);
+    r.line("V1-D2,V3-D1,V5-D4"); // one out and back in: the same string, and it counts
+    r.line(FOUR);
+    await r.flush();
+    expect(r.posts).toEqual([FOUR]);
+    r.bridge.screen({ ...LIVE, step: 20, ended: true });
+    r.line(OTHER);
+    await r.flush();
+    expect(r.posts).toEqual([FOUR]);
+  });
+
+  it("a new run forgets the set it posted: the same cables count after a restart", async () => {
+    const r = rig();
+    r.bridge.screen(LIVE);
+    r.line("");
+    r.line(FOUR);
+    await r.flush();
+    expect(r.posts).toEqual([FOUR]);
+    // 🔄 / Restart / Go live in place: the story starts over (Power On replays).
+    r.bridge.screen({ ...LIVE, step: 1 });
+    r.bridge.screen(LIVE); // the hour again
+    r.line("V1-D2");
+    r.line(FOUR);
+    await r.flush();
+    expect(r.posts).toEqual([FOUR, FOUR]);
+    // An override never forgets: re-plugging under 🔌 Trust is still one.
+    r.bridge.screen({ ...LIVE, patch_override: true });
+    r.bridge.screen(LIVE);
+    r.line("V1-D2");
+    r.line(FOUR);
+    await r.flush();
+    expect(r.posts).toEqual([FOUR, FOUR]);
+  });
+
+  it("a post that lands after the story started over never counts as posted", async () => {
+    let release: (o: PostOutcome) => void = () => {};
+    const posts: string[] = [];
+    const bridge = new PatchBridge({
+      now: () => 0,
+      post: (combo) => {
+        posts.push(combo);
+        return new Promise((res) => (release = res));
+      },
+      later: () => () => {},
+    });
+    const line = (pairs: string) => {
+      const src = srcOf(pairs);
+      bridge.line({ t: "patch", seq: 0, pairs, count: src.filter((k) => k > 0).length, complete: src.filter((k) => k > 0).length === 4, raw: src, src, stable: true });
+    };
+    bridge.screen(LIVE);
+    line("");
+    line(FOUR);
+    bridge.screen({ ...LIVE, server_door: null, step: null }); // reset while in flight
+    release("ok");
+    await new Promise((r) => setTimeout(r, 0));
+    bridge.screen(LIVE);
+    line("V1-D2");
+    line(FOUR);
+    expect(posts).toEqual([FOUR, FOUR]);
   });
 
   it("follows the 🔌 buttons while the story says so, and never replays what came meanwhile", async () => {

@@ -14,11 +14,20 @@
 //!   port (re)connects (the first line after a connect is only looked at: a
 //!   terminal that reboots never re-posts the cables it posted before).
 //! - **Gate:** nothing until a screen poll has said `night.server_door !==
-//!   null` (Power On has played), and nothing while `night.patch_override ===
-//!   true` (a 🔌 / 💥 / ❌ press: the story follows the buttons until 🔌 Trust
-//!   the patch bay). A bay that becomes complete while the gate is shut is
-//!   let go, never posted later: an override ending must not replay the
-//!   cables a director just overruled.
+//!   null` (Power On has played) and `night.step >= 14` (the Y2K hour: the
+//!   story's `when patch_changed:` ignores a set before it, and a set it
+//!   ignored must never count as posted), nothing once `night.ended`, and
+//!   nothing while `night.patch_override === true` (a 🔌 / 💥 / ❌ press: the
+//!   story follows the buttons until 🔌 Trust the patch bay). A bay that
+//!   becomes complete while the gate is shut is let go, never posted later:
+//!   an override ending must not replay the cables a director just overruled,
+//!   and the hour starting must not fire cables left in before it (pull one
+//!   and push it back to play them).
+//! - **A new run forgets:** while the hour is not on (`server_door` null or
+//!   `step` under 14: a restart, Push draft, Go live in place or End →
+//!   relaunch all start the story over) the last posted set is forgotten, so
+//!   a rehearsal's combination can be plugged again in the show without a
+//!   page reload. A post that lands after that still never counts.
 //! - **The story judges:** this file never knows a combination. The pairs go
 //!   to the story as they are; nothing about them goes on the heartbeat
 //!   (a GET query lands in proxy logs), only counts.
@@ -37,6 +46,9 @@ export const PATCH_STALE_MS = 3000;
 export const PATCH_RETRY_MS: readonly number[] = [1000, 2000, 4000];
 /** Four V–D cables make a combination. */
 export const PATCH_PAIRS = 4;
+/** `Night.step` of the Y2K hour, from which the story judges a set (main.loom's
+ *  `when patch_changed:` reads `Night.step >= 14`). */
+export const PATCH_FROM_STEP = 14;
 
 export const PATCH_SIGNAL = "patch_changed";
 
@@ -44,6 +56,15 @@ export const PATCH_SIGNAL = "patch_changed";
 export interface StoryPatch {
   server_door: "open" | "closed" | null;
   patch_override: boolean | null;
+  /** `Night.step` (null: no story / unset). */
+  step: number | null;
+  /** `Night.ended`. */
+  ended: boolean | null;
+}
+
+/** The story could act on a set now: Power On played, the Y2K hour on, no ending. */
+export function hourOn(n: StoryPatch): boolean {
+  return n.server_door !== null && n.step !== null && n.step >= PATCH_FROM_STEP;
 }
 
 /** The bay as last read. */
@@ -136,8 +157,11 @@ export class PatchBridge {
   private reading_: PatchState | null = null;
   /** The settled pairs on the previous line since connect (null: none yet). */
   private prev: string | null = null;
-  /** The last set the story took (an `ok`; kept across reconnects). */
+  /** The last set the story took (an `ok`; kept across reconnects, forgotten
+   *  while the hour is not on: a new run). */
   private lastPosted: string | null = null;
+  /** Bumped each time `lastPosted` is forgotten: a post sent before it never counts. */
+  private run = 0;
   /** The set being posted or retried now. */
   private trying: string | null = null;
   private story: StoryPatch | null = null;
@@ -156,7 +180,7 @@ export class PatchBridge {
   }
 
   private gateOpen(): boolean {
-    return this.story !== null && this.story.server_door !== null && this.story.patch_override !== true;
+    return this.story !== null && hourOn(this.story) && this.story.ended !== true && this.story.patch_override !== true;
   }
 
   /** A `patch` line from the board. */
@@ -189,7 +213,13 @@ export class PatchBridge {
   /** A screen poll answered. */
   screen(night: StoryPatch): void {
     if (this.stopped) return;
-    this.story = { server_door: night.server_door, patch_override: night.patch_override };
+    this.story = { server_door: night.server_door, patch_override: night.patch_override, step: night.step, ended: night.ended };
+    if (!hourOn(this.story)) {
+      // Not the hour (yet, or again: the story started over): a set posted in
+      // a run before this one may be plugged again.
+      if (this.lastPosted !== null || this.inFlight) this.run++;
+      this.lastPosted = null;
+    }
     if (!this.gateOpen()) {
       this.pending = null;
       this.giveUp();
@@ -213,15 +243,16 @@ export class PatchBridge {
     this.pending = null;
     this.trying = combo;
     this.posted.push(combo);
+    const run = this.run;
     void this.io.post(combo).then(
-      (out) => this.landed(combo, attempt, out),
-      () => this.landed(combo, attempt, "network"),
+      (out) => this.landed(combo, attempt, out, run),
+      () => this.landed(combo, attempt, "network", run),
     );
   }
 
-  private landed(combo: string, attempt: number, out: PostOutcome): void {
+  private landed(combo: string, attempt: number, out: PostOutcome, run: number): void {
     this.inFlight = false;
-    if (out === "ok") this.lastPosted = combo;
+    if (out === "ok" && run === this.run) this.lastPosted = combo;
     if (this.stopped) return;
     const current = () => this.reading_ !== null && this.reading_.pairs === combo && this.reading_.complete;
     const retry = out === "network" && attempt < PATCH_RETRY_MS.length && current() && this.gateOpen();
