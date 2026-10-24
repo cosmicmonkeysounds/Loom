@@ -107,6 +107,8 @@ test("the Desktop: the broker's two listeners, Z2M, the stagehand jobs and the k
   assert.equal(levelOf(rows, "Chrome"), "ok");
   assert.equal(levelOf(rows, "stagehand show"), "ok");
   assert.equal(levelOf(rows, "stagehand lights"), "fail");
+  // The windows lane's own task name and restart script (stagehand tasks.py).
+  assert.match(rows.find((r) => r.name === "stagehand lights")!.detail, /start-stagehand\.ps1 -Restart lights \(the task \\Loom\\stagehand-lights\)/u);
   assert.equal(levelOf(rows, "TV kiosk"), "ok");
   assert.equal(levelOf(rows, "Sleep"), "ok");
   assert.equal(levelOf(rows, "Display"), "warn");

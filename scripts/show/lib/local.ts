@@ -276,7 +276,7 @@ export async function desktopChecks(p: Probe): Promise<Check[]> {
     const jobs = stagehandJobs(ps.stdout);
     for (const job of ["show", "lights"]) {
       const on = jobs.has(job) || jobs.has("*");
-      out.push(row(`stagehand ${job}`, on ? "ok" : "fail", on ? "a stagehand run process carries it" : `no stagehand run --only ${job} process — Start-ScheduledTask "Loom stagehand ${job}" (scripts/house-desktop/)`, "Win32_Process command lines"));
+      out.push(row(`stagehand ${job}`, on ? "ok" : "fail", on ? "a stagehand run process carries it" : `no stagehand run --only ${job} process — .\\scripts\\house-desktop\\start-stagehand.ps1 -Restart ${job} (the task \\Loom\\stagehand-${job})`, "Win32_Process command lines"));
     }
     out.push(row("stagehand audio", jobs.has("audio") ? "info" : "info", jobs.has("audio") ? "the router runs HERE tonight" : "not here (the default: the router runs on the MacBook)", "Win32_Process command lines"));
     const kiosk = ps.stdout.split(/\r?\n/u).some((l) => /chrome\.exe/iu.test(l) && /--kiosk/u.test(l));
