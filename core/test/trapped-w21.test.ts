@@ -145,7 +145,7 @@ describe("Trapped in the Internet — wave 21: a player's booth (C4 on the show)
     expect(pv.player).toBe(true);
     expect(pv.stats?.map((s) => s.label)).toEqual(["Points", "Answers judged"]);
     expect(pv.stats?.[0]?.value).toBe("0");
-    expect(pv.mission?.objective).toBeTruthy();
+    expect(pv.mission).toEqual({ objective: "Celebrate The Winners", place: "The Desktop" });
     expect(pv.calls ?? []).toEqual([]);
     const ids = (pv.interactions ?? []).map((i) => i.id);
     expect(ids).toContain("bingo_winner");

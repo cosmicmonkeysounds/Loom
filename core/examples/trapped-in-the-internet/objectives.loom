@@ -409,6 +409,7 @@ OBJECTIVE Summons Check In
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: Night.summons_open == true
   act: C
+  go: The Desktop
   title: The summons: they check themselves in
   pick: program.cleared == true and program.summons_ok != true and program.afk != true and program.corrupted != true and program.gone != true and program.persona != true
   text:
@@ -421,6 +422,7 @@ OBJECTIVE Summons Check In
 OBJECTIVE Escort The Marked
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: count([p for p in Persons where p.marked == true and p.corrupted != true and p.gone != true and p.persona != true]) > 0 and Night.ended != true
+  go: The Internet
   title: Escort the marked to the Internet
   text:
     The Wanted board names each one: 🙋 claim one, find them and scan their pass (the scan is the confrontation), then 🛡 and walk them through the Tube: ⭐ +20 a capture. In Bathroom Mode or Disk Cleanup: wait outside, never go in.
@@ -432,6 +434,7 @@ OBJECTIVE Door Duty
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: Night.step < 1
   act: Doors
+  go: The Optical Drive
   title: Door duty: scan every pass in the Optical Drive
   text:
     The four of you share the door. A scan clears the program: through the Tube to the Desktop, ⭐ +5 each. 🙋 on an arrival tells the others you have them. Not uploaded yet: they finish first. Camera fails: type the id under the QR.
@@ -453,6 +456,7 @@ OBJECTIVE Sweep To The Desktop
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: Night.phase == "desktop" or (Night.phase == "truth_1" and Night.judging != true)
   act: B
+  go: The Desktop
   title: Sweep every program to the Desktop
   text:
     Patrol the whole computer and send everyone to the living room.
@@ -463,6 +467,7 @@ OBJECTIVE Zip Everyone Out
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: Night.zip_wave >= 1 and Night.step < 13 and Night.ended != true
   act: D
+  go: The Internet
   title: The zip: bring everyone out of the Internet
   text:
     Bring every program out of the Internet and zip them up. Compressed, do not open.
@@ -473,6 +478,7 @@ OBJECTIVE Blackout Guide
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   while: (Night.phase == "final_reveal" or Night.phase == "bobbing") and Night.ended != true
   act: F
+  go: The Desktop
   title: Lights down: walk everyone to the living room
   text:
     The stairs stay lit. A failed bob is marked: escort them. Still at the cables? The patch bay is live until 📄 truth.txt: radio the call to a host (🔌 💥 ❌ are on the cue sheet).
@@ -591,6 +597,7 @@ OBJECTIVE After The Night
   // DRAFT for sign-off (w13 Q34): live only once the night has ended (Patrol The Computer covers the rest), so it is never under More objectives at 8 pm.
   while: Night.ended == true
   act: G
+  go: The Desktop
   title: The night is over: guide everyone to the living room
   text:
     The ceremony is at the Desktop. If everyone was banished, you are banished too: hand jive with them.
@@ -604,6 +611,7 @@ OBJECTIVE The Bottle
   for: Clippy
   while: Night.bottle_open == true
   act: B
+  go: The Desktop
   title: The bottle: make them answer
   target: Night.bottle_pick
   text:
@@ -615,6 +623,7 @@ OBJECTIVE Greet The Arrivals
   for: Clippy
   while: Night.step < 1
   act: Doors
+  go: The Optical Drive
   title: Greet the arriving programs
   text:
     Greet people in person. Your scan greets them in your voice; it never clears anyone (only an Antivirus does).
@@ -627,6 +636,7 @@ OBJECTIVE Welcome Everyone
   for: Clippy
   while: Night.phase == "desktop" or Night.phase == "bingo"
   act: B
+  go: The Desktop
   title: CI 1: welcome everyone, then Computer Bingo
   text:
     The fundraiser to restore the sign at Maps And Ducks. Jean Trabolta joins by video conference later. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, one line through the centre. A host starts 🎱 Bingo and calls ⏰ time: your booth pops up when your game is on.
@@ -639,6 +649,7 @@ OBJECTIVE Celebrate The Winners
   for: Clippy
   while: Night.phase == "bingo_results"
   act: B
+  go: The Desktop
   title: CI 2: celebrate the Bingo winners
   pick: program.location == "The Desktop" and program.cleared == true
   text:
@@ -655,6 +666,7 @@ OBJECTIVE Introduce Trabolta
   for: Clippy
   while: Night.phase == "introduced" or Night.phase == "hunt_1"
   act: B
+  go: The Desktop
   title: Introduce Trabolta, then host the hunt
   text:
     Once a host fires 🤖: "Everyone, say hello to JEAN TRABOLTA!" Point at the reinstallation on the TV. Hand off: Trabolta has a game for all of us. A host starts 🔎 the hunt: it runs 15 minutes.
@@ -666,6 +678,7 @@ OBJECTIVE The First Moment Of Truth Host
   for: Clippy
   while: Night.phase == "truth_1" and Night.judging == true
   act: B
+  go: The Desktop
   title: CI 3: the First Moment of Truth
   text:
     Two minutes to file, then 📋 each question: Trabolta reads the result on the TV; when he has finished, the next. After Q3, 🍾 Truth or Dare (about five spins). The hosts call ⏱, 📋 and 🍾. Guesses are a symptom of corruption: 🤷 (⭐ +5). Never say which filings were lies.
@@ -691,6 +704,7 @@ OBJECTIVE Judge Truth Pong
   for: Clippy
   while: Night.phase == "truth_pong" and Night.judging == true
   act: D
+  go: The Cloud
   title: CI 5: judge the cup-makers' answers
   pick: program.may_answer == true
   text:
@@ -702,6 +716,7 @@ OBJECTIVE Lead The Applause
   for: Clippy
   while: Night.phase == "trust_chart" or Night.phase == "beans"
   act: D
+  go: The Desktop
   title: CI 6: lead the applause; the beans are malware
   text:
     Lead the applause for the most trusted. Don't defend the least trusted. Full of beans: "Routine operations like print to PDF are no longer working." Welcome the zipped programs back.
@@ -721,6 +736,7 @@ OBJECTIVE The Final Round
   for: Clippy
   while: Night.phase == "final_reveal"
   act: F
+  go: The Desktop
   title: CI 8: lights down, everyone speaks
   text:
     Judge the final facts: ✅ / 😤 for the question being judged (Q1 to start; 🔢 moves it to Q2), 🤷 for a guess. ⭐ +5 each. Then: "There is only one version of the truth. Because truth is always in binary."
@@ -764,6 +780,7 @@ OBJECTIVE Purgatory
   for: Clippy
   while: Night.ending == "destroyed" and Night.ceremony != true
   act: F
+  go: The Desktop
   title: CI 9: dance, then read the summary
   text:
     After the dance a host calls 🪦 the summary: read it from the Desktop room. "We are now in purgatory forever together."
@@ -774,6 +791,7 @@ OBJECTIVE Host The Ceremony
   for: Clippy
   while: Night.ceremony == true
   act: G
+  go: The Desktop
   title: The awards ceremony
   text:
     The hosts call each award. If you host (after Combo B or the rave), each award line lands in the Desktop room: read it aloud, call the winner up, lead the applause. Otherwise lead the applause for Trabolta's. The three staff awards come last, and one might be yours.
