@@ -80,7 +80,7 @@ export function lifecycleNotice(kind: string, role: SessionRole): string | null 
  * the phone can't tell which; a real `golive` frame keeps its own line.
  */
 export const BOOTH_SIGNED_OUT =
-  "Your booth was signed out (a director released your part, or the show went live) — sign in again with your passcode.";
+  "Your booth was signed out (your part signed in on another phone, a director released it, or the show went live) — sign in again with your passcode or your cast card.";
 
 /**
  * A guest POST answered 401 (token no longer known) or 404 `unknown guest`

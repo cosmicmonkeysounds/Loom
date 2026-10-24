@@ -48,6 +48,8 @@ export function GuestRegister({ session }: { session: GuestSession }) {
   // `badgeSeen` re-reads it once the Get-back-in panel stores one.
   const [badgeSeen, setBadgeSeen] = useState(0);
   const badge = useMemo(() => storedBadge(host.storage, code), [host, code, badgeSeen]);
+  // The Get-back-in panel is open: the new-guest picker steps aside.
+  const [rejoining, setRejoining] = useState(false);
   const [name, setName] = useState("");
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<ProgramHit[] | null>(null);
@@ -134,7 +136,7 @@ export function GuestRegister({ session }: { session: GuestSession }) {
         spellCheck={false}
         onChange={(e) => setCode(e.target.value)}
       />
-      {picking === null && <GetBackIn code={code} onIn={session.adopt} onBlankBadge={() => setBadgeSeen((n) => n + 1)} />}
+      {picking === null && <GetBackIn code={code} open={rejoining} onOpen={setRejoining} onIn={session.adopt} onBlankBadge={() => setBadgeSeen((n) => n + 1)} />}
       {ids === "loading" && <p className="pick-hint">Looking up the program list…</p>}
       {ids !== null && ids !== "loading" && ids.kind === "unknown" && <p className="pick-hint">That code doesn't open anything. Check it with your host.</p>}
       {fallback !== null && (
@@ -169,7 +171,7 @@ export function GuestRegister({ session }: { session: GuestSession }) {
           </button>
         </div>
       )}
-      {resolved !== null && !closed && picking === null && (
+      {resolved !== null && !closed && picking === null && !rejoining && (
         <div className="cast-pick" role="group" aria-label="Which program are you?">
           <div className="sheet-h">Which program are you?</div>
           {programs.length === 0 && <p className="pick-hint">{resolved.search ? "Every named program is taken — search for another below." : "No programs left to pick — ask your host."}</p>}

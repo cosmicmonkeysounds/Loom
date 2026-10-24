@@ -19,9 +19,9 @@ type Step = { kind: "menu" } | { kind: "scan" } | { kind: "names"; eventId: stri
 export const BADGE_BLANK = "That badge isn't linked to anyone yet — pick your program below and it links to you.";
 export const NEED_CODE = "Type the event code above first (it's on the signs around the house).";
 
-export function GetBackIn({ code, onIn, onBlankBadge }: { code: string; onIn: (guest: AdoptedGuest) => void; onBlankBadge: () => void }) {
+export function GetBackIn({ code, open, onOpen, onIn, onBlankBadge }: { code: string; open: boolean; onOpen: (open: boolean) => void; onIn: (guest: AdoptedGuest) => void; onBlankBadge: () => void }) {
   const host = usePlayHost();
-  const [open, setOpen] = useState(false);
+  const setOpen = onOpen;
   const [step, setStep] = useState<Step>({ kind: "menu" });
   const [typed, setTyped] = useState("");
   const [q, setQ] = useState("");

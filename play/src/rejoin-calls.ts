@@ -143,7 +143,7 @@ export const ASK_POLL_MS = 3_000;
 export function askLine(state: AskState, name: string): string {
   switch (state.kind) {
     case "pending":
-      return `Asking the hosts to let you back in as ${name}… Find a host (or the director) and tell them — they tap Approve on their phone.`;
+      return `Asking the hosts to let you back in as ${name}… Find a host (or the director) and tell them — they tap Let them in on their phone.`;
     case "approved":
       return `${state.by ?? "A host"} let you back in as ${name}.`;
     case "denied":
