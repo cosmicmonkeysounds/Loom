@@ -1024,7 +1024,6 @@ ROLE Program
     show poll "🍾 The bottle landed on you. Truth or dare?" to program with thread: Trabolta, options: "Truth | Dare", moment: big
 
   when truth_answered for program:
-    set Kernel.pressed_by = "none"
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
       fire game_credit with points: 5, gain: 0, counts: 0
@@ -1033,9 +1032,10 @@ ROLE Program
       reply 🗣 Truth accepted. Trabolta is satisfied. +50 Truthcoin.
     else:
       broadcast "🗣 The bottle is not on {program.name}." to channel(hosts)
+    // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
+    set Kernel.pressed_by = "none"
 
   when truth_refused for program:
-    set Kernel.pressed_by = "none"
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
       fire game_credit with points: 5, gain: 5, counts: 0
@@ -1043,10 +1043,11 @@ ROLE Program
       fire mark_for_reinstallation for program with reason: "refused the truth"
     else:
       broadcast "🙅 The bottle is not on {program.name}." to channel(hosts)
+    // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
+    set Kernel.pressed_by = "none"
 
   // The dead-phone fallback: the same effect as the Dare tap.
   when chose_dare for program:
-    set Kernel.pressed_by = "none"
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
       fire game_credit with points: 5, gain: 5, counts: 0
@@ -1054,6 +1055,8 @@ ROLE Program
       fire mark_for_reinstallation for program with reason: "chose Dare"
     else:
       broadcast "🎩 The bottle is not on {program.name}." to channel(hosts)
+    // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
+    set Kernel.pressed_by = "none"
 
   // Truth Pong: make the cup to earn an answer. `cupped` outlives the
   // verbal judge (which clears may_answer): it is what lets this program's
