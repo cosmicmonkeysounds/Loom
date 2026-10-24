@@ -288,7 +288,7 @@ note in `# hosts` what you changed.
 | 5 | `voice: {layout: classic}` | the old prompt, inside the story mind | the new prompt itself reads wrong |
 | 6 | `mind_mode: classic` | the whole classic mind: two models, the reflection after each line, the survey every 2 minutes, **Survey now** instead of Rewrite brief. The second model must load first: the first reflection takes about 25 s longer | the story mind as a whole is not working |
 | 7 | the server's `LOOM_AGENT_RECENT=off` (in the VPS's `.env`) | the request his worker gets is wave 11b's again: no story tags on his thread lines and no *recent* list. Needs a server restart: **before doors only** | something in what the server sends him is wrong |
-| 8 | the previous release (`deploy/rollback.sh` on the VPS) | the server back as it was. The worker's computer (the MacBook) goes back too, its whole checkout to the same release (never stagehand alone: an older worker refuses the newer persona file). **Before doors only** | nothing else helped |
+| 8 | the previous release (`deploy/rollback.sh` on the VPS) | the server back as it was. The worker's computer (the MacBook) goes back too: its whole checkout to that release's commit (the repo has no release tags; the commit is the last column of the release's line in `~/loom-ops/releases.log` on the VPS) (never stagehand alone: an older worker refuses the newer persona file). **Before doors only** | nothing else helped |
 
 Rungs 1–6 never touch the story or the server: the night carries on. A
 switch keeps what the earlier rungs set, so rung 4 with rungs 1–3 still

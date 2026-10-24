@@ -185,7 +185,8 @@ Front of house: getting people in.
   (`no_port`, `stale`, or `dup`: one source reads on two inputs), an amber
   **🔌 ? n** when inputs read between levels (a half-seated plug: the bay
   is not complete), and **🔌 ? (silent)** when the laptop stops polling.
-  Counts only: which cables are in never leaves the server room. An amber
+  The badges show counts only: the poll never carries which cables are in
+  (the full patch reaches the story only as `patch_changed`, in the Y2K hour). An amber
   **🔌 buttons** means a 🔌 / 💥 / ❌ press took the bay over: press **🔌
   Trust the patch bay again** to hand it back. **🛠 Set up a terminal…** builds a
   tablet's provisioning link from pickers: the spot, the view (including
