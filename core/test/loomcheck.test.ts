@@ -11,11 +11,12 @@ import { fileURLToPath } from "node:url";
 
 const CORE = fileURLToPath(new URL("..", import.meta.url));
 
-function loomcheck(main: string): { status: number | null; out: string } {
+function loomcheck(main: string, extra: Record<string, string> = {}, quiet = true): { status: number | null; out: string } {
   const dir = mkdtempSync(join(tmpdir(), "loomcheck-"));
   try {
     writeFileSync(join(dir, "main.loom"), main);
-    const r = spawnSync(join(CORE, "node_modules/.bin/tsx"), ["scripts/loomcheck.ts", dir, "--quiet"], { cwd: CORE, encoding: "utf8" });
+    for (const [name, text] of Object.entries(extra)) writeFileSync(join(dir, name), text);
+    const r = spawnSync(join(CORE, "node_modules/.bin/tsx"), ["scripts/loomcheck.ts", dir, ...(quiet ? ["--quiet"] : [])], { cwd: CORE, encoding: "utf8" });
     return { status: r.status, out: r.stdout + r.stderr };
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -88,5 +89,65 @@ Hi.
     expect(r.out).not.toMatch(/seeds NO value/);
     expect(r.out).toMatch(/0 error\(s\) · 0 warning\(s\)/);
     expect(r.status).toBe(0);
+  });
+});
+
+// Wave 25: a story driven by the house desk (`desk.json`): `cue heart_reveal`
+// plays a desk cue, whose `event` step and `done` the story hears.
+const DESK_STORY = `# Desk
+start: Boot
+
+LOCATION The Server Room
+
+CHARACTER Trabolta
+
+CHARACTER Task Manager
+  admin: true
+  when scanned by guest:
+    reply ok
+
+when heart_speaks:
+  -> Heart Speaks
+
+when heart_reveal_done:
+  -> Heart Quiet
+
+== Boot
+cue heart_reveal
+Hello.
+
+== Heart Speaks
+  setting: The Server Room
+  cast: Trabolta
+Trabolta: I am awake.
+Trabolta: Close the door.
+
+== Heart Quiet
+  setting: The Server Room
+  cast: Trabolta
+Trabolta: Good.
+`;
+const DESK_JSON = JSON.stringify({
+  version: 1,
+  cues: [{ id: "heart_reveal", name: "The Heart wakes", done: "heart_reveal_done", steps: [{ kind: "event", event: "heart_speaks" }, { kind: "speech", room: "The Server Room", max: 5000 }] }],
+});
+
+describe("loomcheck — the house desk (wave 25)", () => {
+  it("a desk-driven story lints clean, and the desk's events count as fired", () => {
+    const r = loomcheck(DESK_STORY, { "desk.json": DESK_JSON }, false);
+    expect(r.out).toMatch(/0 error\(s\) · 0 warning\(s\)/);
+    expect(r.status).toBe(0);
+    expect(r.out).not.toMatch(/"heart speaks" is only fired by the director/u);
+    // Without the desk the same story only notes (INFO) that nothing in it fires them.
+    const bare = loomcheck(DESK_STORY, {}, false);
+    expect(bare.status).toBe(0);
+    expect(bare.out).toMatch(/0 error\(s\) · 0 warning\(s\)/);
+    expect(bare.out).toMatch(/only fired by the director/u);
+  });
+
+  it("a broken desk.json is an error", () => {
+    const r = loomcheck(DESK_STORY, { "desk.json": JSON.stringify({ version: 1, cues: [{ id: "Bad Id", name: "x", steps: [] }] }) });
+    expect(r.status).toBe(1);
+    expect(r.out).toMatch(/desk\.json: cues\[0\]: id must match/u);
   });
 });

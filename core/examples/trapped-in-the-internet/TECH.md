@@ -126,7 +126,7 @@ MacBook.
 | `stagehand/trapped.desktop.yaml` (+ `.local.yaml`) | the Desktop: `extends:` the house file, adds `lights:` and the Windows router settings | yes (local: ignored) |
 | `stagehand/trapped.macbook.yaml` (+ `.local.yaml`) | the MacBook: the router only, dialling the Desktop's broker (local: the `props` password) | yes (local: ignored) |
 | `stagehand/laptop.yaml` | the MacBook: the `agents` worker (`mind_mode: new`, the event id, the passcode) | **git-ignored** |
-| `audio.json`, `lights.json`, `house.json`, `house.shed.json`, `facts.json` | show folder; `pnpm sync-show` pushes them into the server project | yes |
+| `audio.json`, `lights.json`, `desk.json`, `house.json`, `house.shed.json`, `facts.json` | show folder; `pnpm sync-show` pushes them into the server project | yes |
 
 On Windows always pass `--only show,lights` to `stagehand check` and
 `stagehand run`: a bare command would start the audio section too.

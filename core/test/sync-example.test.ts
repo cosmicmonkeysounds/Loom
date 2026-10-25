@@ -8,7 +8,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { reloadVerdict } from "../scripts/live-guard.ts";
-import { exampleAudio, planAudioSync, reloadEvent, syncOptions, type SyncEvent } from "../scripts/sync-example.ts";
+import { exampleAudio, exampleDesk, planAudioSync, planDeskSync, reloadEvent, syncOptions, type SyncEvent } from "../scripts/sync-example.ts";
 
 const persona = { id: "p-ab12cd", name: "Ivo" };
 const phone = { id: "g-2", name: "Winamp" };
@@ -45,8 +45,11 @@ describe("syncOptions", () => {
 
   it("reads the rest of the line", () => {
     const o = syncOptions(["Trapped", "escape-the-internet", "--server", "http://x:1", "--no-reload", "--replace-maps"], { LOOM_PORT: "7311" });
-    expect(o).toEqual({ server: "http://x:1", reload: false, override: false, mapMode: "replace", audioMode: "merge", lightsMode: "merge", positional: ["Trapped", "escape-the-internet"] });
+    expect(o).toEqual({ server: "http://x:1", reload: false, override: false, mapMode: "replace", audioMode: "merge", lightsMode: "merge", deskMode: "merge", positional: ["Trapped", "escape-the-internet"] });
     expect(syncOptions([], { LOOM_PORT: "7311" }).server).toBe("http://localhost:7311");
+    // Wave 25: desk.json on its own switch.
+    expect(syncOptions(["T", "--replace-desk"], {})).toMatchObject({ deskMode: "replace", lightsMode: "merge", mapMode: "merge" });
+    expect(syncOptions(["T", "--keep-desk"], {}).deskMode).toBe("keep");
   });
 });
 
@@ -249,5 +252,22 @@ describe("audio.json goes like a map, on its own switch (wave 17)", () => {
     expect(planAudioSync({ "audio.json": mine }, {}, "replace")).toEqual({ text: null, put: false, kept: false, replaced: mine });
     expect(planAudioSync({}, {}, "merge")).toEqual({ text: null, put: false, kept: false, replaced: null });
     expect(exampleAudio("glass-orchard")).toEqual({});
+  });
+});
+
+describe("desk.json (wave 25)", () => {
+  const desk = (id: string) => `${JSON.stringify({ version: 1, cues: [{ id, name: "X", steps: [] }] })}\n`;
+  it("the show's starter desk validates and is the example's", () => {
+    const ex = exampleDesk("trapped-in-the-internet");
+    expect(Object.keys(ex)).toEqual(["desk.json"]);
+  });
+
+  it("the project's copy wins unless --replace-desk; --keep-desk leaves it; a broken kept copy stops the sync", () => {
+    const ex = { "desk.json": desk("ex") };
+    expect(planDeskSync({}, ex, "merge")).toEqual({ text: desk("ex"), put: true, kept: false, replaced: null });
+    expect(planDeskSync({ "desk.json": desk("mine") }, ex, "merge")).toMatchObject({ text: desk("mine"), put: false, kept: true });
+    expect(planDeskSync({ "desk.json": desk("mine") }, ex, "replace")).toMatchObject({ text: desk("ex"), put: true, replaced: desk("mine") });
+    expect(planDeskSync({ "desk.json": desk("mine") }, ex, "keep")).toMatchObject({ text: desk("mine"), put: false });
+    expect(() => planDeskSync({ "desk.json": "{" }, ex, "merge")).toThrow(/does not validate/u);
   });
 });

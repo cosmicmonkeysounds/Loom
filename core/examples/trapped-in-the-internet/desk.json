@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "note": "DRAFT wave 25: the house desk's starter cue list, tech checks only (no show cues yet: the Heart's beats move onto desk cues after an on-site run). Edit in Run → House; Save to project keeps it.",
+  "cues": [
+    {
+      "id": "tech_speaker_sweep",
+      "number": "T1",
+      "name": "Speaker sweep",
+      "section": "Tech checks",
+      "notes": "Walk the house: each speaker names itself in turn.",
+      "steps": [
+        { "kind": "say", "text": "Living room, left speaker.", "to": ["living-l"], "chime": false },
+        { "kind": "say", "text": "Living room, right speaker.", "to": ["living-r"], "chime": false, "wait": 500 },
+        { "kind": "say", "text": "Kitchen, left speaker.", "to": ["kitchen-l"], "chime": false, "wait": 500 },
+        { "kind": "say", "text": "Kitchen, right speaker.", "to": ["kitchen-r"], "chime": false, "wait": 500 },
+        { "kind": "say", "text": "Mud room speaker.", "to": ["optical-drive"], "chime": false, "wait": 500 }
+      ]
+    },
+    {
+      "id": "tech_sound_living",
+      "number": "T2",
+      "name": "Sound check: living room",
+      "steps": [{ "kind": "sound", "sound": "printer_grind", "to": ["living"] }]
+    },
+    {
+      "id": "tech_sound_kitchen",
+      "number": "T3",
+      "name": "Sound check: kitchen",
+      "steps": [{ "kind": "sound", "sound": "zip", "to": ["start-bar"] }]
+    },
+    {
+      "id": "tech_sound_mud_room",
+      "number": "T4",
+      "name": "Sound check: mud room",
+      "steps": [{ "kind": "sound", "sound": "modem_handshake", "to": ["The Optical Drive"] }]
+    },
+    {
+      "id": "tech_pa_test",
+      "number": "T5",
+      "name": "PA test",
+      "notes": "The announcement voice, with its chime, on the announcement speakers.",
+      "steps": [{ "kind": "say", "text": "Testing the house speakers." }]
+    },
+    {
+      "id": "tech_server_room_work",
+      "number": "T6",
+      "name": "Server room: work light",
+      "section": "Server room",
+      "notes": "Plain white, full, for setting up in there.",
+      "steps": [{ "kind": "light", "to": ["server-room-rgb"], "set": { "state": "ON", "color_temp": 250, "brightness": 254, "transition": 1 } }]
+    },
+    {
+      "id": "tech_server_room_idle",
+      "number": "T7",
+      "name": "Server room: back to idle",
+      "steps": [{ "kind": "look", "look": "heart_idle" }]
+    },
+    {
+      "id": "tech_stop_all",
+      "number": "T0",
+      "name": "Stop everything",
+      "section": "Stop",
+      "notes": "The house sounds and the announcement, now.",
+      "steps": [{ "kind": "stop", "announce": true }]
+    }
+  ]
+}
