@@ -91,8 +91,10 @@ function DeskPage({ view }: { view: DeskView }) {
         useDialog.getState().current !== null,
       )
       if (action === null) return
-      e.preventDefault()
       const s = useHouseDesk.getState()
+      // Esc with nothing running is left to whoever else listens for it.
+      if (action.kind === 'stop' && runningRuns(s.view?.runs ?? []).length === 0) return
+      e.preventDefault()
       switch (action.kind) {
         case 'go':
           void s.go()
