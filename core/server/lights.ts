@@ -142,8 +142,11 @@ export interface LightsView {
   now: number;
 }
 
-/** How many tests ride a GET, and for how long. */
-export const LIGHT_TESTS = 8;
+/** How many tests ride a GET, and for how long. Wave 25: 32, not 8 — a
+ *  house-desk cue queues a burst (a `look` plus one `{fixture, set}` per
+ *  fixture a `light` step reaches) inside one module poll, and a test that
+ *  falls off the list before the module polls is never played. */
+export const LIGHT_TESTS = 32;
 export const LIGHT_TEST_MS = 60_000;
 /** The long poll's default and longest wait (seconds). */
 export const LIGHTS_WAIT_S = 25;
