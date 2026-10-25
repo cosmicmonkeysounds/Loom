@@ -115,6 +115,14 @@ const AUDIO_ANNOUNCE = "audio-announce.json";
 const LIGHTS = "project-lights.json";
 /** A director's lights save (the map editor), which wins over the project's. */
 const LIGHTS_SAVE = "lights-save.json";
+/** The project's `desk.json` as this event snapshotted it (wave 25,
+ *  `desk.ts`). Not `desk.json`: `LOOM_DESK` may sit in the same dir. */
+const DESK = "project-desk.json";
+/** A director's desk save (Run → House), which wins over the project's. */
+const DESK_SAVE = "desk-save.json";
+/** The house checks' marks (wave 25, `desk.ts`): setup happens days before
+ *  the show, so they survive a restart; never story state, never the journal. */
+const DESK_MARKS = "desk-marks.json";
 /** Web Push subscriptions by device (K-31a, `push.ts`). */
 const PUSH = "push.json";
 /** Every duck found this story (SW-RE-14, the ceremony's speedrun). */
@@ -406,6 +414,37 @@ export class Store {
   }
   clearLightsSave(): void {
     rmSync(this.path(LIGHTS_SAVE), { force: true });
+  }
+
+  // The project's `desk.json` this event snapshotted (launch, reload,
+  // `/api/mod/load {desk}`, Save to project), a director's save, which wins
+  // over it, and the checks' marks (`desk.ts`, wave 25). None is story
+  // state: a restart keeps all three, a story reset clears none.
+
+  loadDesk(): string | null {
+    const v = readJson<{ version?: unknown; text?: unknown }>(this.path(DESK));
+    if (v === null || v.version !== 1) return null;
+    return typeof v.text === "string" ? v.text : null;
+  }
+  saveDesk(text: string | null): void {
+    writeFileSync(this.path(DESK), JSON.stringify({ version: 1, text }));
+  }
+  /** The director's save, unvalidated (the hub checks it). */
+  loadDeskSave(): unknown {
+    return readJson<unknown>(this.path(DESK_SAVE));
+  }
+  saveDeskSave(desk: unknown): void {
+    writeFileSync(this.path(DESK_SAVE), JSON.stringify(desk, null, 2));
+  }
+  clearDeskSave(): void {
+    rmSync(this.path(DESK_SAVE), { force: true });
+  }
+  /** The checks' marks by key, unvalidated (the hub checks each). */
+  loadDeskMarks(): unknown {
+    return readJson<unknown>(this.path(DESK_MARKS));
+  }
+  saveDeskMarks(marks: unknown): void {
+    writeFileSync(this.path(DESK_MARKS), JSON.stringify(marks, null, 2));
   }
 
   // One line per duck found (`spatial.ts` `DuckRun`), cleared with the
