@@ -2,7 +2,7 @@
 title: The house map — drawing the house from a survey
 section: Live Shows
 order: 39
-keywords: house map, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop, light, lights, bulb, lights.json, Lights tab, Zigbee, Zigbee2MQTT, Z2M, pair, pairing, permit join, device, identify, colour, look, looks, cue, safety light, WLED, zone
+keywords: house map, house desk, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop, light, lights, bulb, lights.json, Lights tab, Zigbee, Zigbee2MQTT, Z2M, pair, pairing, permit join, device, identify, colour, look, looks, cue, safety light, WLED, zone
 ---
 
 The reinstallation games and the wall terminals share one **house map**
@@ -260,6 +260,10 @@ story reset. A look may never turn a safety light off or below its floor
 (the save is refused), and its name is the story's cue name (lower-case
 letters, digits and `_`; never a `screens_` / `terminals_` / `tv_` /
 `tablet_` / `room_` cue, which are the screens').
+
+To **test** every speaker, output, story sound, light and look one row
+at a time, and to build house cues that play sounds and lights together,
+use Run → House ([the house desk](47-house-desk.md)).
 
 **Saving.** 💾 saves the map, then the speakers, then the lights, each
 when it fits the map the server holds (a light standing in a room only
