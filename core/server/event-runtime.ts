@@ -17,7 +17,7 @@ import { readFileSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { VOICE_MAX_BYTES, kingSignal, validateHouse, voiceOn, type HouseMap, type KingState, type MapVariantsResponse } from "@loom/house";
+import { VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightStateProblems, validateHouse, voiceOn, type HouseMap, type KingState, type LightState, type MapVariantsResponse } from "@loom/house";
 
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
@@ -74,13 +74,15 @@ import { buildCards } from "./routes/cards.ts";
 import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts";
 import { modPatch, modViewJson } from "./mod-patch.ts";
 import { sendRecap } from "./routes/recap.ts";
-import { forBooth, hostSeen, seenCues } from "./unseen-directors.ts";
+import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
 import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, type AudioContext } from "./audio.ts";
 import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProblems, type LightsContext } from "./lights.ts";
-import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
+import { DESK_BY, DESK_FILE, DeskHub, deskHouseOf, deskLightFixtures, deskProblems, deskRefsOf, deskSeen, handleDeskGet, handleDeskPost, lookMsOf, type DeskContext, type DeskTimers } from "./desk.ts";
+import { DESK_SPEECH_GRACE_MS } from "../src/house-desk.ts";
+import { ScreenWatch, speechWatchOf, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
 import { VOICE_LAG_BYTES, VOICE_PING_MS, VoiceRelay, parseVoiceUpload, type VoiceListener } from "./spatial-voice.ts";
@@ -369,6 +371,13 @@ export function defaultLightsFile(): string | null {
   return v !== undefined && v.trim() !== "" ? v : null;
 }
 
+/** The house desk's LAN fallback (`desk.ts`, wave 25): `LOOM_DESK`, else
+ *  none (an empty cue list). */
+export function defaultDeskFile(): string | null {
+  const v = process.env.LOOM_DESK;
+  return v !== undefined && v.trim() !== "" ? v : null;
+}
+
 /** Show maps by path: the last *good* read, keyed on the file's mtime — a
  *  hand edit (or a file mounted after boot) is picked up on the next read,
  *  and a missing / half-saved / invalid file never sticks: the last good
@@ -540,6 +549,13 @@ export interface EventRuntimeInit {
   lights?: string | null;
   /** The lights' LAN fallback file (`LOOM_LIGHTS`; null = none). */
   lightsFile?: string | null;
+  /** The project's `desk.json` text snapshotted at launch (`desk.ts`, wave
+   *  25): null = the project has none; absent = no row snapshot. */
+  desk?: string | null;
+  /** The desk's LAN fallback file (`LOOM_DESK`; null = none). */
+  deskFile?: string | null;
+  /** The desk's timers (tests inject; default `setTimeout`). */
+  deskTimers?: DeskTimers;
   /** The reserved programs' claim secret as the event row pins it
    *  (`event.claim_secret`, routes/claims.ts). Absent / null → the state
    *  dir's copy, else a fresh one (saved there, and handed to
@@ -761,6 +777,8 @@ export class EventRuntime {
   readonly audio: AudioHub;
   /** The house lights + the Zigbee devices (`lights.ts`, wave 20). */
   readonly lights: LightsHub;
+  /** The house desk: its cue list, runs, playhead and checks (`desk.ts`, wave 25). */
+  readonly desk: DeskHub;
   /** Near misses a restore found still pending (person, question, answer):
    *  the only ones put to the `judge:` character after they landed —
    *  contract J. A near miss filed with nobody online keeps wave 11's
@@ -871,6 +889,35 @@ export class EventRuntime {
     // The speakers ride the same record; a director's save in the state dir wins.
     this.audio = new AudioHub({ store: this.store, ...(init.audio !== undefined ? { projectText: init.audio } : {}), envFile: init.audioFile !== undefined ? init.audioFile : defaultAudioFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
     this.lights = new LightsHub({ store: this.store, ...(init.lights !== undefined ? { projectText: init.lights } : {}), envFile: init.lightsFile !== undefined ? init.lightsFile : defaultLightsFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
+    // The house desk drives both hubs and fires story events (wave 25).
+    this.desk = new DeskHub({
+      store: this.store,
+      ...(init.desk !== undefined ? { projectText: init.desk } : {}),
+      envFile: init.deskFile !== undefined ? init.deskFile : defaultDeskFile(),
+      ...(init.now !== undefined ? { now: init.now } : {}),
+      ...(init.deskTimers !== undefined ? { timers: init.deskTimers } : {}),
+      deps: {
+        play: (p, by) => this.audio.play(p, by).seq,
+        routerOnline: () => this.audio.router().online,
+        stopAudio: (announce, by) => void this.audio.stop({ announce }, by),
+        look: (look, by) => {
+          if (!Object.prototype.hasOwnProperty.call(this.lights.current().lights.looks, look)) return false;
+          this.lights.test({ look }, by);
+          return true;
+        },
+        lookMs: (look) => lookMsOf(this.lights.current().lights, this.spatialHouse(), look),
+        light: (to, set, by) => {
+          if (!lightStateDoes(set as LightState)) return 0;
+          const fixtures = deskLightFixtures(this.lights.current().lights, this.spatialHouse(), to);
+          for (const fixture of fixtures) this.lights.test({ fixture, set: set as LightState }, by);
+          return fixtures.length;
+        },
+        lightsOnline: () => this.lights.module()?.online === true,
+        fire: (event) => this.deskFire(event),
+        speech: (room, startAt) => speechWatchOf(this.screens, this.sim?.model ?? this.declaredModel, room, startAt, this.chat.all(), DESK_SPEECH_GRACE_MS),
+      },
+    });
+    this.audio.onAck((a) => this.desk.ack(a));
     this.random = init.random ?? Math.random;
     if (init.now !== undefined) this.clock = init.now;
     this.claimSecret = this.resolveClaimSecret(init);
@@ -1828,6 +1875,7 @@ export class EventRuntime {
     // Wave 18b: a `when` picture whose condition moved (the snapshots below carry it).
     this.syncConditionalAvatars();
     this.pushSnapshots();
+    this.deskCues(events);
     this.runPicks(events);
     return appended;
   }
@@ -1937,7 +1985,8 @@ export class EventRuntime {
   private dataSnapshot(maps: MapFiles): MapFiles {
     const audio = this.audio.project;
     const lights = this.lights.project;
-    return { ...maps, ...(this.projectFacts !== null ? { [FACTS_FILE]: this.projectFacts } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}), ...(lights !== null ? { [LIGHTS_FILE]: lights } : {}) };
+    const desk = this.desk.project;
+    return { ...maps, ...(this.projectFacts !== null ? { [FACTS_FILE]: this.projectFacts } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}), ...(lights !== null ? { [LIGHTS_FILE]: lights } : {}), ...(desk !== null ? { [DESK_FILE]: desk } : {}) };
   }
 
   /** A reload's fresh snapshot of the project's `audio.json` (`events-api.ts`,
@@ -1960,6 +2009,91 @@ export class EventRuntime {
   /** What the lights routes read off this event (`lights.ts`). */
   private lightsContext(): LightsContext {
     return { house: () => this.spatialHouse(), model: () => this.sim?.model ?? this.declaredModel };
+  }
+
+  /** (wave 25) The desk's recent activity hears the routes' tests and plays;
+   *  the router's ack fills each one's result. */
+  private noteDeskAudio(path: string, res: ServerResponse, by: string): void {
+    if (res.statusCode !== 200) return;
+    if (path === "/api/mod/audio/test") {
+      const t = this.audio.tests().at(-1);
+      if (t !== undefined) this.desk.note({ kind: "test", text: t.speaker !== null ? `🔊 test speaker ${t.speaker}` : `🔊 test out ${t.out ?? "?"}`, by, ack: { kind: "test", seq: t.seq } });
+    } else if (path === "/api/mod/audio/play") {
+      const p = this.audio.plays().at(-1);
+      if (p !== undefined) this.desk.note({ kind: p.sound !== undefined ? "play" : "say", text: p.sound !== undefined ? `🔊 ${p.sound}${p.to !== null ? ` → ${p.to.join(", ")}` : ""}` : `📢 “${p.say ?? ""}”`, by, ack: { kind: "play", seq: p.seq } });
+    } else if (path === "/api/mod/audio/stop") {
+      this.desk.note({ kind: "stop", text: "■ stop the house sounds", by });
+    }
+  }
+
+  /** A reload's fresh snapshot of the project's `desk.json` (`events-api.ts`,
+   *  `/api/mod/load {desk}`); a director's save still wins over it. */
+  setProjectDesk(text: string | null): void {
+    this.desk.setProjectText(text);
+  }
+
+  /** What the desk routes read off this event (`desk.ts`): the house built
+   *  from the audio and lights in force, the map, the story, the router's
+   *  last report and the lights module's devices. */
+  private deskContext(): DeskContext {
+    const house = () => {
+      const devices = this.lights.devices();
+      const model = this.sim?.model ?? this.declaredModel;
+      return deskHouseOf({
+        audio: this.audio.current().audio,
+        router: this.audio.router(),
+        health: this.audio.health(),
+        lights: this.lights.current().lights,
+        module: this.lights.module(),
+        devices: devices.devices,
+        devicesAt: devices.devicesAt,
+        pair: this.lights.currentPair(),
+        house: this.spatialHouse(),
+        model,
+        now: this.clock(),
+      });
+    };
+    return {
+      house,
+      refs: (desk) => deskRefsOf(house(), this.sim?.model ?? this.declaredModel, lightStateProblems, desk),
+      // The doors are open (this run's entry played) and the night hasn't ended.
+      live: () => this.sim !== null && this.entryPlayed && !this.nightEnded(),
+    };
+  }
+
+  /**
+   * (wave 25) A desk `event` step or a cue's `done`: the story event as a
+   * journaled signal whose `by` is `House desk` — exactly the path a door
+   * sensor's `door_sensor_opened` takes through `/api/mod/signal` (a device
+   * signal, labelled), so `when <event>:` rules run and a replay re-derives
+   * the same story from the journal. A replay never reaches here: only a
+   * live run fires. `refused`: an INTERACTION the story turned down.
+   */
+  private deskFire(event: string): "fired" | "refused" | "no story" {
+    if (this.sim === null) return "no story";
+    const actingBy = this.actingBy;
+    this.actingBy = DESK_BY;
+    try {
+      const out = this.commit("signal", event, undefined, null, null);
+      const name = foldName(event);
+      const isCue = [...this.sim.model.interactions.values()].some((i) => foldName(i.id) === name);
+      const refused = isCue && pressRefused(this.sim, out);
+      this.fanout(out);
+      return refused ? "refused" : "fired";
+    } finally {
+      this.actingBy = actingBy;
+    }
+  }
+
+  /** (wave 25) A live batch's `cue X` directives that name a desk cue start
+   *  it (`DeskHub.storyCue`, next turn). Called from `fanout` only — never
+   *  from `restore`, so a journal replay plays nothing on the house. */
+  private deskCues(events: readonly SimEvent[]): void {
+    for (const e of events) {
+      if (e.type !== "directive" || e.verb !== "cue") continue;
+      const id = e.args.trim().split(/[\s,]+/u)[0] ?? "";
+      if (id !== "" && this.desk.hasCue(id)) this.desk.storyCue(id);
+    }
   }
 
   /**
@@ -4380,6 +4514,7 @@ export class EventRuntime {
   dispose(by?: string): void {
     this.flushClock();
     this.stopTicker();
+    this.desk.dispose();
     if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
     this.modSnapshotTimer = null;
     if (this.modOwedTimer !== null) clearTimeout(this.modOwedTimer);
@@ -4850,6 +4985,8 @@ export class EventRuntime {
 
     // --- the wall terminals' lean screen state (K-16, routes/screen.ts) ---
     if (method === "GET" && path === "/api/screen/state") {
+      // Wave 25: a terminal's talk= / said= may end a desk speech step.
+      queueMicrotask(() => this.desk.poke());
       return handleScreenGet(
         this.screens,
         this.sim,
@@ -4884,6 +5021,14 @@ export class EventRuntime {
     }
     // --- the house speakers (wave 17, audio.ts): the config + stagehand's long poll ---
     if (method === "GET" && path === "/api/mod/audio") return handleAudioGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
+    // --- the house desk (wave 25, desk.ts): the view + its long poll (hosts too) ---
+    if (method === "GET" && path === "/api/mod/desk") {
+      const token = queryTokenOf(req, url);
+      // A booth's view (a host) reads every director as "Director".
+      const booth = opts.moderator !== true && (this.hostOnly(token) || this.characterOf(token) !== null);
+      const model = this.sim?.model ?? this.declaredModel;
+      return handleDeskGet(this.desk, this.deskContext(), req, res, url, (t) => opts.moderator === true || this.canHostToken(t), booth ? deskSeen((by) => seenName(by, model)) : undefined);
+    }
     // --- the house lights (wave 20, lights.ts): the config + the lights module's long poll ---
     if (method === "GET" && path === "/api/mod/lights") return handleLightsGet(this.lights, this.lightsContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
@@ -5130,13 +5275,28 @@ export class EventRuntime {
       if (path === "/api/mod/audio" || path.startsWith("/api/mod/audio/")) {
         const project = this.project;
         const link = project === null ? null : { writeFile: (file: string, text: string) => project.writeFile(file, text), saveSnapshot: () => project.saveSnapshot(this.dataSnapshot(this.projectMaps ?? {})) };
-        if (await handleAudioPost(this.audio, this.audioContext(), path, body, res, link, by)) return true;
+        if (await handleAudioPost(this.audio, this.audioContext(), path, body, res, link, by)) {
+          this.noteDeskAudio(path, res, by);
+          return true;
+        }
       }
-      if (path === "/api/mod/lights" || path.startsWith("/api/mod/lights/")) {
-        // A booth never gets here: lights are not on the host allowlist.
+      if (path === "/api/mod/desk" || path.startsWith("/api/mod/desk/")) {
+        // A booth reaches go / standby / stop / check only (the host allowlist).
         const project = this.project;
         const link = project === null ? null : { writeFile: (file: string, text: string) => project.writeFile(file, text), saveSnapshot: () => project.saveSnapshot(this.dataSnapshot(this.projectMaps ?? {})) };
-        if (await handleLightsPost(this.lights, this.lightsContext(), path, body, res, link, by)) return true;
+        if (await handleDeskPost(this.desk, this.deskContext(), path, body, res, link, by)) return true;
+      }
+      if (path === "/api/mod/lights" || path.startsWith("/api/mod/lights/")) {
+        // A booth reaches only `/api/mod/lights/test` here (wave 25, the host allowlist).
+        const project = this.project;
+        const link = project === null ? null : { writeFile: (file: string, text: string) => project.writeFile(file, text), saveSnapshot: () => project.saveSnapshot(this.dataSnapshot(this.projectMaps ?? {})) };
+        if (await handleLightsPost(this.lights, this.lightsContext(), path, body, res, link, by)) {
+          if (path === "/api/mod/lights/test" && res.statusCode === 200) {
+            const t = this.lights.tests().at(-1);
+            if (t !== undefined) this.desk.note({ kind: t.look !== undefined ? "look" : "light", text: t.look !== undefined ? `💡 test look ${t.look}` : `💡 test ${t.fixture ?? "?"}${t.set !== undefined ? ` ${JSON.stringify(t.set)}` : ""}`, by });
+          }
+          return true;
+        }
       }
       if (path === "/api/mod/load") await this.resyncProjectFiles();
       if (path === "/api/mod/resync") {
@@ -6375,10 +6535,23 @@ export class EventRuntime {
           sendJson(res, 400, { error: `invalid ${LIGHTS_FILE}`, problems: lightsBad });
           return true;
         }
+        // `desk` (optional, wave 25): the project's desk.json, like `lights`.
+        const desk = body["desk"];
+        if (desk !== undefined && desk !== null && typeof desk !== "string") {
+          sendJson(res, 400, { error: "bad desk" });
+          return true;
+        }
+        const deskText = typeof desk === "string" && desk.trim() !== "" ? desk : null;
+        const deskBad = deskText !== null ? deskProblems(deskText) : [];
+        if (deskBad.length > 0) {
+          sendJson(res, 400, { error: `invalid ${DESK_FILE}`, problems: deskBad });
+          return true;
+        }
         this.restart(source, name, { by });
         if (facts !== undefined) this.setProjectFacts(factsText);
         if (audio !== undefined) this.setProjectAudio(audioText);
         if (lights !== undefined) this.setProjectLights(lightsText);
+        if (desk !== undefined) this.setProjectDesk(deskText);
         if (maps !== null) {
           this.setProjectMaps(maps);
           this.project?.saveSnapshot(this.dataSnapshot(maps)).catch((err: unknown) => {

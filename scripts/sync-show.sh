@@ -6,6 +6,7 @@
 #   scripts/sync-show.sh --dry-run          # print what it would do, touch nothing
 #   scripts/sync-show.sh --i-know-this-is-live   # reload a LIVE show anyway
 #   scripts/sync-show.sh --replace-lights   # the repo's lights.json over the project's
+#   scripts/sync-show.sh --replace-desk     # the repo's desk.json over the project's
 #
 # What it does: opens an SSH tunnel to the VPS's Postgres container (not
 # published on any host port — the tunnel dials its Docker-network IP from
@@ -24,10 +25,11 @@
 # text on its next launch. The project's maps win: a map surveyed on the
 # map page and kept with "Save to project" is never overwritten (it is
 # summarised next to the repo's copy); --replace-maps overwrites them with
-# the repo's, --keep-maps touches none. The house speakers (audio.json) and
-# lights (lights.json) follow the same rules on their own switches:
-# --replace-audio / --keep-audio and --replace-lights / --keep-lights (a
-# plain sync adds the repo's file only when the project has none).
+# the repo's, --keep-maps touches none. The house speakers (audio.json),
+# lights (lights.json) and desk (desk.json, wave 25) follow the same rules on
+# their own switches: --replace-audio / --keep-audio, --replace-lights /
+# --keep-lights and --replace-desk / --keep-desk (a plain sync adds the
+# repo's file only when the project has none).
 #
 # Environment (all optional except LOOM_SSH):
 #   LOOM_SSH           ssh destination of the VPS (user@host) — required
@@ -40,7 +42,8 @@
 #   POSTGRES_PASSWORD  the VPS db password; read from the VPS's .env if unset
 #
 # Extra arguments (e.g. --no-reload, --replace-maps, --replace-audio,
-# --replace-lights, --keep-lights, --i-know-this-is-live) are passed
+# --replace-lights, --keep-lights, --replace-desk, --keep-desk,
+# --i-know-this-is-live) are passed
 # through to sync-example; its exit code is this script's (3 = a live
 # event was left alone).
 set -euo pipefail

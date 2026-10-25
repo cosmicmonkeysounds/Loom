@@ -126,6 +126,9 @@ lights.json            wave 20: the house lights the stagehand `lights` module d
                        (only the server room's RGB bulb + the heart's 13 looks so far;
                        every other light is still trapped.house.yaml's). A project file
                        like the maps; edit it in /reinstall/map → 💡 Lights
+desk.json              wave 25: the house desk's cue list (DRAFT: tech checks only). A
+                       project file like lights.json; edit it in Run → House
+                       (docs/loom-house-desk.md)
 INDEX.md               a map of this folder: what each file is, which are generated / test-pinned
 SHOWNIGHT.md           the night-of runbook + the pre-show checklist (scripts/ops/checklist.sh)
 TECH.md                every machine and device, and how they connect

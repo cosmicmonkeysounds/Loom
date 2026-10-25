@@ -24,6 +24,7 @@ import { isBuiltinVerb } from "../src/runtime/sim/model.ts";
 import { splitRevealQuietly, statementToDirective } from "../src/parser/statements.ts";
 import { Workspace } from "../src/lsp/index.ts";
 import { indexOutsideQuotes, splitArgsCommas } from "../src/parser/rust.ts";
+import { DESK_FILE, deskEvents, validateDesk, type DeskConfig } from "../src/house-desk.ts";
 
 const args = process.argv.slice(2);
 const dir = args.find((a) => !a.startsWith("--"));
@@ -286,6 +287,33 @@ for (const h of allHooks) {
     if (!ok) report("WARN", `[${owner} · when ${h.event}] filter "${f}" matches no LOCATION / GROUP / CODEX / QUEST (a name with a lowercase or filler word — "of", "the", "at" — cannot be a trigger filter)`);
   }
 }
+// Wave 25: the project's desk.json (the house desk, `src/house-desk.ts`)
+// fires its `event` steps and `done`s as story events, so a `when` rule a
+// desk cue drives counts as fired. Its cue ids are what `cue <id>` plays; no
+// lint flags an unknown `cue`, so nothing more is needed for those.
+{
+  const deskPath = join(root, DESK_FILE);
+  let text: string | null = null;
+  try {
+    text = readFileSync(deskPath, "utf8");
+  } catch {
+    text = null;
+  }
+  if (text !== null && text.trim() !== "") {
+    let raw: unknown = null;
+    try {
+      raw = JSON.parse(text);
+    } catch (err) {
+      report("ERROR", `${DESK_FILE}: not JSON (${err instanceof Error ? err.message : String(err)})`);
+    }
+    if (raw !== null) {
+      const v = validateDesk(raw);
+      for (const p of v.problems) report("ERROR", `${DESK_FILE}: ${p}`);
+      if (v.ok) for (const e of deskEvents(raw as DeskConfig)) if (!fired.has(foldName(e))) fired.set(foldName(e), DESK_FILE);
+    }
+  }
+}
+
 // Only once every beat, hook, rule and watcher body has been walked (a rule
 // fires what an earlier-walked character hook hears): named events that
 // nothing in the story fires and no button offers.

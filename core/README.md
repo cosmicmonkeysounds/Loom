@@ -380,7 +380,8 @@ token or the owning author's session.
 | Reinstallation games | `/api/spatial/{house,stream,pose,found,end}`, `/api/spatial/king/hit`, `/api/mod/spatial/*` | `spatial.ts`; the contract is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §2 |
 | Voice + cameras | `POST /api/spatial/voice`, `GET /api/spatial/voice/stream`, `POST /api/mod/spatial/cam`, `GET /api/spatial/{cams,cam}` | `spatial-voice.ts`, `spatial-cams.ts`; memory only, never journaled |
 | Screens | `GET /api/screen/state`, `/api/mod/screen/{terminals,voice,identify}`, `/api/mod/tts` | `routes/screen.ts`, `tts.ts` |
-| House sound | `/api/mod/audio{,/project,/test,/stop,/announce}` | `audio.ts` (`audio.json`) |
+| House sound | `/api/mod/audio{,/project,/test,/stop,/announce,/play,/report}` | `audio.ts` (`audio.json`); wave 25: `play` (one sound / announcement, hosts too) and the router's `report` (acks + health, memory only) |
+| House desk | `GET /api/mod/desk[?after=&wait=]`, `POST /api/mod/desk{,/project,/go,/standby,/stop,/check,/check/reset}` | `desk.ts` (`desk.json`, wave 25); hosts reach the GET, `go`, `standby`, `stop`, `check`; the contract is [`docs/loom-house-desk.md`](../docs/loom-house-desk.md) |
 | House lights | `/api/mod/lights{,/project,/test,/devices,/pair}` | `lights.ts` (`lights.json`) |
 | Web Push | `/api/push/{config,subscribe,unsubscribe,visible}`, `/api/mod/push/status`, `/api/guest/homescreen` | `push.ts`, `routes/k31.ts`, `routes/k31b.ts` |
 | Process | `GET /api/health`, `GET /api/landing`, `/api/qr` | `boot.ts`, `server.ts` |
@@ -818,7 +819,7 @@ Everything is optional; the defaults run a LAN event with no setup.
 | `LOOM_STATE_DIR` | `server/.loom-state/` | journals, codes, sessions, per-event state |
 | `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`, `LOOM_REINSTALL_DIST` | the sibling packages' `dist/` | the built apps served at `/`, `/terminal/`, `/reinstall/` |
 | `LOOM_BASE_URL` | the first LAN address | the base of every join / check-in / re-pair link; set it on a public deployment |
-| `LOOM_HOUSE`, `LOOM_FACTS`, `LOOM_AUDIO`, `LOOM_LIGHTS` | the example's `house.json` and `facts.json`; no default for audio / lights | fallbacks for an event whose project has no copy |
+| `LOOM_HOUSE`, `LOOM_FACTS`, `LOOM_AUDIO`, `LOOM_LIGHTS`, `LOOM_DESK` | the example's `house.json` and `facts.json`; no default for audio / lights / desk | fallbacks for an event whose project has no copy |
 | `LOOM_WIKI` | on | `off` keeps the program directory offline |
 | `LOOM_TTS_URL` (+ `_API_KEY`, `_MODEL`, `_VOICE`, `_FORMAT`) | off | the opt-in server voice; the terminals use the devices' own voices by default |
 | `LOOM_VAPID_PUBLIC_KEY`, `LOOM_VAPID_PRIVATE_KEY`, `LOOM_VAPID_SUBJECT` | unset (push off) | Web Push; generate once, never rotate before a show |

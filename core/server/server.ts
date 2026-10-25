@@ -28,6 +28,9 @@
 //! overrides it; `server/facts.ts`), LOOM_AUDIO (the house speakers'
 //! fallback `audio.json`; default none — a project's own `audio.json`,
 //! snapshotted at launch, and a director's save override it; `server/audio.ts`),
+//! LOOM_DESK (wave 25: the house desk's fallback `desk.json`; default none —
+//! a project's own `desk.json`, snapshotted at launch, and a director's save
+//! override it; re-read on mtime; `server/desk.ts`),
 //! LOOM_LIGHTS (wave 20: the house lights' fallback `lights.json`; default
 //! none — a project's own `lights.json`, snapshotted at launch, and a
 //! director's save override it; re-read on mtime; `server/lights.ts`),

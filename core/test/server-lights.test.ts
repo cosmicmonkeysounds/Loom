@@ -16,7 +16,7 @@ import type { LightsConfig } from "@loom/house";
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { snapshotDiffers } from "../server/events-api.ts";
-import { LIGHT_DEVICES_MAX, LIGHT_TEST_MS, LIGHTS_MODULE_ONLINE_MS, lightsOf, type LightsView, type Z2mDevice } from "../server/lights.ts";
+import { LIGHT_DEVICES_MAX, LIGHT_TEST_MS, LIGHT_TESTS, LIGHTS_MODULE_ONLINE_MS, lightsOf, type LightsView, type Z2mDevice } from "../server/lights.ts";
 import type { MapFiles, ProjectLink } from "../server/house-maps.ts";
 import { Store } from "../server/store.ts";
 
@@ -263,19 +263,20 @@ describe("POST /api/mod/lights/test", () => {
     rt.dispose();
   });
 
-  it("only the last 8 ride the GET", async () => {
+  it("only the last LIGHT_TESTS (32, wave 25: a desk cue's burst) ride the GET", async () => {
     const rt = runtime({ lights: LIGHTS_TEXT });
-    for (let i = 0; i < 10; i++) await call(rt, "POST", "/api/mod/lights/test", { fixture: "desk-lamp" });
-    expect((await view(rt)).tests.map((x) => x.seq)).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
+    for (let i = 0; i < LIGHT_TESTS + 2; i++) await call(rt, "POST", "/api/mod/lights/test", { fixture: "desk-lamp" });
+    expect((await view(rt)).tests.map((x) => x.seq)).toEqual(Array.from({ length: LIGHT_TESTS }, (_, i) => i + 3));
     rt.dispose();
   });
 
-  it("a host's booth may not touch the lights", async () => {
+  it("a host's booth may test the lights (wave 25, the Desk), never save, pair or read them", async () => {
     const rt = runtime({ lights: LIGHTS_TEXT });
     const r = await call(rt, "POST", "/api/prime/login", { character: "Task Manager", passcode: CODES.prime }, {});
     expect(r.json).toMatchObject({ host: true });
     const token = r.json["token"] as string;
-    expect((await call(rt, "POST", "/api/mod/lights/test", { look: "heart_idle", token }, { token })).status).toBe(403);
+    expect((await call(rt, "POST", "/api/mod/lights/test", { look: "heart_idle", token }, { token })).status).toBe(200);
+    expect((await view(rt)).tests.at(-1)!.by).toBe("Booth · Task Manager");
     expect((await call(rt, "POST", "/api/mod/lights", { lights: LIGHTS, token }, { token })).status).toBe(403);
     expect((await call(rt, "POST", "/api/mod/lights/pair", { seconds: 60, token }, { token })).status).toBe(403);
     expect((await call(rt, "GET", `/api/mod/lights?token=${token}`, {}, {})).status).toBe(403);

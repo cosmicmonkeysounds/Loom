@@ -30,6 +30,7 @@ import { asMapFiles, mapFilesOf, type MapFiles, type ProjectLink } from "./house
 import { FACTS_FILE, factsFileOf, factsOf } from "./facts.ts";
 import { AUDIO_FILE, audioFileOf, audioOf } from "./audio.ts";
 import { LIGHTS_FILE, lightsFileOf, lightsOf } from "./lights.ts";
+import { DESK_FILE, deskFileOf, deskOf } from "./desk.ts";
 import { mintClaimSecret } from "./routes/claims.ts";
 import {
   activeEvent,
@@ -67,7 +68,7 @@ export function specFromRow(row: EventRow): EventSpec {
     mapVariant: row.map_variant ?? null,
     // The same record carries the project's facts.json (the judge's key,
     // `facts.ts`); an old row with no record at all leaves it to the runtime.
-    ...(row.house_maps !== null && row.house_maps !== undefined ? { facts: factsOf(row.house_maps), audio: audioOf(row.house_maps), lights: lightsOf(row.house_maps) } : {}),
+    ...(row.house_maps !== null && row.house_maps !== undefined ? { facts: factsOf(row.house_maps), audio: audioOf(row.house_maps), lights: lightsOf(row.house_maps), desk: deskOf(row.house_maps) } : {}),
     project: projectLink(row.project_id, row.id),
     // W-03: the claim secret rides the row; one from before the column is
     // minted by the runtime and written back here (never over a pinned one).
@@ -80,12 +81,13 @@ export function specFromRow(row: EventRow): EventSpec {
 
 /** The project's data files an event snapshots beside its source: the map
  *  files (`house-maps.ts`) plus `facts.json`, `audio.json` (the house
- *  speakers, `audio.ts`) and `lights.json` (the house lights, `lights.ts`)
+ *  speakers, `audio.ts`), `lights.json` (the house lights, `lights.ts`) and
+ *  `desk.json` (the house desk, `desk.ts`, wave 25)
  *  when the project has them. The record is the row's `house_maps` jsonb;
  *  map readers see only the maps (`asMapFiles`), the judge only the facts
  *  (`factsOf`), the speakers only theirs (`audioOf`), the lights theirs
- *  (`lightsOf`). */
-async function projectData(projectId: string): Promise<{ maps: MapFiles; facts: string | null; audio: string | null; lights: string | null; snapshot: Record<string, string> }> {
+ *  (`lightsOf`), the desk its own (`deskOf`). */
+async function projectData(projectId: string): Promise<{ maps: MapFiles; facts: string | null; audio: string | null; lights: string | null; desk: string | null; snapshot: Record<string, string> }> {
   const files = await listFiles(projectId);
   const maps = mapFilesOf(files);
   // An empty facts.json is a file just created (the editor's New file…), not a key.
@@ -93,7 +95,8 @@ async function projectData(projectId: string): Promise<{ maps: MapFiles; facts: 
   const facts = raw !== null && raw.trim() !== "" ? raw : null;
   const audio = audioFileOf(files);
   const lights = lightsFileOf(files);
-  return { maps, facts, audio, lights, snapshot: { ...maps, ...(facts !== null ? { [FACTS_FILE]: facts } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}), ...(lights !== null ? { [LIGHTS_FILE]: lights } : {}) } };
+  const desk = deskFileOf(files);
+  return { maps, facts, audio, lights, desk, snapshot: { ...maps, ...(facts !== null ? { [FACTS_FILE]: facts } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}), ...(lights !== null ? { [LIGHTS_FILE]: lights } : {}), ...(desk !== null ? { [DESK_FILE]: desk } : {}) } };
 }
 
 /**
@@ -167,14 +170,15 @@ async function sourceIsStale(projectId: string, running: string): Promise<boolea
 }
 
 /** Does the project's data snapshot (`projectData().snapshot`: the map
- *  files + facts.json + audio.json + lights.json) differ from what the event row recorded at launch /
+ *  files + facts.json + audio.json + lights.json + desk.json) differ from what the event row recorded at launch /
  *  reload / Save to project? An old row with no record never reads stale. */
 export function snapshotDiffers(current: Record<string, string>, recorded: unknown): boolean {
   if (recorded === null || recorded === undefined) return false;
   const facts = factsOf(recorded);
   const audio = audioOf(recorded);
   const lights = lightsOf(recorded);
-  const was: Record<string, string> = { ...(asMapFiles(recorded) ?? {}), ...(facts !== null ? { [FACTS_FILE]: facts } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}), ...(lights !== null ? { [LIGHTS_FILE]: lights } : {}) };
+  const desk = deskOf(recorded);
+  const was: Record<string, string> = { ...(asMapFiles(recorded) ?? {}), ...(facts !== null ? { [FACTS_FILE]: facts } : {}), ...(audio !== null ? { [AUDIO_FILE]: audio } : {}), ...(lights !== null ? { [LIGHTS_FILE]: lights } : {}), ...(desk !== null ? { [DESK_FILE]: desk } : {}) };
   const keys = Object.keys(current);
   return keys.length !== Object.keys(was).length || keys.some((k) => was[k] !== current[k]);
 }
@@ -410,6 +414,7 @@ export async function handleEvent(
       runtime.setProjectFacts(data.facts);
       runtime.setProjectAudio(data.audio);
       runtime.setProjectLights(data.lights);
+      runtime.setProjectDesk(data.desk);
       await setEventSource(active.id, src.source);
       await setEventHouseMaps(active.id, data.snapshot);
       notify("reload");

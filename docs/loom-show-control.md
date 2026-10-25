@@ -509,6 +509,14 @@ its YAML rules stay for a bench. The door has a **standalone keypad lock**
 (code set by hand on the lock, never networked; the inside handle always
 opens): nothing in stagehand or on the M4 drives it.
 
+**The house desk (wave 25).** A third project file, `desk.json` (Run →
+House; schema `core/src/house-desk.ts`, contract
+[`loom-house-desk.md`](./loom-house-desk.md)), is the house's own cue
+list: sounds and announcements through the router, looks and light states
+through the `lights` job, stops, story events and waits for a room's
+lines. The story plays one with `cue <id>`; GO by hand fires the same
+events. The show's copy is a DRAFT of tech checks only.
+
 **The house lights' new home (wave 20).** A project file beside
 `audio.json`, `lights.json` (the map editor's 💡 Lights tab; schema in
 `@loom/house` `house/src/lights.ts`), places the lights the story drives on

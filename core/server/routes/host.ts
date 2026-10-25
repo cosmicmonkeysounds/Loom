@@ -65,6 +65,17 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   // Wave 18b (Q7): "stop all house sounds" from the host dock. Only the
   // stop: the speakers' saves and tests stay a director's.
   "/api/mod/audio/stop",
+  // Wave 25 (the house desk): GO / standby / stop and walking the checks
+  // from the host's Desk, and the tests and plays a check makes. Never the
+  // desk's save / Save to project / mark reset, the lights' pairing or the
+  // router's report.
+  "/api/mod/desk/go",
+  "/api/mod/desk/standby",
+  "/api/mod/desk/stop",
+  "/api/mod/desk/check",
+  "/api/mod/audio/play",
+  "/api/mod/audio/test",
+  "/api/mod/lights/test",
 ]);
 
 /** The facts judge's mode path (wave 18, C8: hosts switch auto ⇄ review). */
@@ -92,7 +103,8 @@ export function isHostRoute(
 ): boolean {
   if (method === "GET") {
     if (path === "/api/state") return (field(body, "role") || "mod") === "mod" && field(body, "host") === "1" && field(body, "as") === "" && field(body, "cues") !== "1";
-    return path === "/api/mod/recap";
+    // Wave 25: the house desk's view (the host's Desk window).
+    return path === "/api/mod/recap" || path === "/api/mod/desk";
   }
   if (method !== "POST") return false;
   if (HOST_POSTS.has(path)) return true;

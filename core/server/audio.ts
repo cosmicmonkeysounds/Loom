@@ -42,6 +42,16 @@
 //!   ride every GET as `stops` with the server's `now`, and a long poll
 //!   given `stops=<seq>` wakes on a newer one. A host's booth may stop them
 //!   too (the host allowlist).
+//! - `POST /api/mod/audio/play {sound, to?, gain?} | {say, to?, chime?}` →
+//!   `{ok, seq, router}` (wave 25, the house desk): play one sound file, or
+//!   say one house announcement, now. One-shot, memory only, never
+//!   journaled; the last `AUDIO_PLAYS` (≤ `AUDIO_PLAY_MS` old) ride every GET
+//!   as `plays`, and a long poll given `plays=<seq>` wakes on a newer one.
+//!   Hosts may (the host allowlist), like `/api/mod/audio/test`.
+//! - `POST /api/mod/audio/report {health?, acks?}` → `{ok}` (wave 25): the
+//!   router's answers (each play's / test's result and length) and its
+//!   health. Memory only; the house desk reads both (`AudioHub.onAck`,
+//!   `health()`). An older router never posts it.
 //!
 //! Transport-light: `AudioHub` takes an injected clock and store; the
 //! handlers take the runtime's context.
@@ -93,6 +103,144 @@ export interface AudioStopAnswer {
   ok: true;
   seq: number;
   router: AudioRouterPresence;
+}
+
+/** (wave 25) One house-desk play: a sound file, or a house announcement
+ *  in the router's voice — exactly one of `sound` / `say`. `to` null = as
+ *  the story routes it (`cues[sound].to`, else everywhere; a say:
+ *  `announce.to`). One-shot, memory only, never journaled. */
+export interface AudioPlay {
+  seq: number;
+  /** Server epoch ms. */
+  at: number;
+  by: string;
+  sound?: string;
+  say?: string;
+  to: string[] | null;
+  /** dB added to each speaker's gain (a sound only), or null. */
+  gain: number | null;
+  /** A say only: ring the chime first (default true). */
+  chime?: boolean;
+}
+
+/** `POST /api/mod/audio/play` body, checked (`audioPlayOf`). */
+export type AudioPlayRequest = { sound: string; to?: string[]; gain?: number } | { say: string; to?: string[]; chime?: boolean };
+
+/** How many plays ride a GET, and for how long (§4: the last 16, ≤ 60 s). */
+export const AUDIO_PLAYS = 16;
+export const AUDIO_PLAY_MS = 60_000;
+/** A sound name, as `sound X` writes it (`house-desk.ts` `DESK_SOUND_RE`). */
+export const AUDIO_SOUND_RE = /^[A-Za-z_][A-Za-z0-9_.-]*$/u;
+/** The longest house announcement a play may say (`DESK_SAY_MAX`). */
+export const AUDIO_SAY_MAX = 280;
+/** At most this many `to` names on a play, each at most `AUDIO_NAME_MAX` long. */
+export const AUDIO_TO_MAX = 32;
+export const AUDIO_NAME_MAX = 64;
+
+/** What the router says about one play or test (`/api/mod/audio/report`). */
+export const AUDIO_ACK_RESULTS = ["played", "closed", "nowhere", "no-file", "error"] as const;
+export type AudioAckResult = (typeof AUDIO_ACK_RESULTS)[number];
+export interface AudioAck {
+  seq: number;
+  kind: "play" | "test";
+  result: AudioAckResult;
+  /** The sound's / the rendered speech's length (ms), when known. */
+  ms?: number;
+}
+/** At most this many acks in one report. */
+export const AUDIO_ACKS_MAX = 64;
+
+/** The router's last health report (§4), as the server keeps it. */
+export interface AudioHealth {
+  /** Server epoch ms it arrived. */
+  at: number;
+  ok: boolean;
+  device: string | null;
+  layout: "ok" | "moved" | null;
+  voices: number;
+  xruns: number;
+  peakDb: number | null;
+  announce: "on" | "off" | "blocked" | null;
+  missing: string[];
+  placeholders: string[];
+  /** Each sound file the router has, by name → its length (ms). */
+  sounds: Record<string, number>;
+}
+/** At most this many sounds in a health report's `sounds`. */
+export const AUDIO_HEALTH_SOUNDS_MAX = 1000;
+
+/** A play request off an untrusted body, or the 400's error text. */
+export function audioPlayOf(body: Record<string, unknown>): AudioPlayRequest | string {
+  const hasSound = body["sound"] !== undefined;
+  const hasSay = body["say"] !== undefined;
+  if (hasSound === hasSay) return "play exactly one of sound or say";
+  const to = body["to"];
+  let names: string[] | undefined;
+  if (to !== undefined) {
+    if (!Array.isArray(to) || to.length === 0 || to.length > AUDIO_TO_MAX || to.some((t) => typeof t !== "string" || t.trim() === "" || t.length > AUDIO_NAME_MAX)) return `to must be a list of 1 to ${AUDIO_TO_MAX} speaker, zone or room names`;
+    names = (to as string[]).map((t) => t.trim());
+  }
+  if (hasSound) {
+    const sound = body["sound"];
+    if (typeof sound !== "string" || !AUDIO_SOUND_RE.test(sound) || sound.length > AUDIO_NAME_MAX) return "sound must be a sound name";
+    if (body["chime"] !== undefined) return "chime is for a say";
+    const gain = body["gain"];
+    if (gain !== undefined && (typeof gain !== "number" || !Number.isFinite(gain) || gain < AUDIO_GAIN_MIN_DB || gain > AUDIO_GAIN_MAX_DB)) return `gain must be ${AUDIO_GAIN_MIN_DB} to ${AUDIO_GAIN_MAX_DB} dB`;
+    return { sound, ...(names !== undefined ? { to: names } : {}), ...(typeof gain === "number" ? { gain } : {}) };
+  }
+  const say = body["say"];
+  if (typeof say !== "string" || say.trim() === "") return "say must be what to say";
+  if (say.length > AUDIO_SAY_MAX) return `say is at most ${AUDIO_SAY_MAX} characters`;
+  if (body["gain"] !== undefined) return "gain is for a sound";
+  const chime = body["chime"];
+  if (chime !== undefined && typeof chime !== "boolean") return "chime must be true or false";
+  return { say: say.trim(), ...(names !== undefined ? { to: names } : {}), ...(typeof chime === "boolean" ? { chime } : {}) };
+}
+
+const AUDIO_GAIN_MIN_DB = -60;
+const AUDIO_GAIN_MAX_DB = 12;
+
+/** One ack off untrusted JSON, or null. */
+export function audioAckOf(raw: unknown): AudioAck | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const a = raw as Record<string, unknown>;
+  const seq = a["seq"];
+  if (typeof seq !== "number" || !Number.isInteger(seq) || seq < 1) return null;
+  if (a["kind"] !== "play" && a["kind"] !== "test") return null;
+  if (!(AUDIO_ACK_RESULTS as readonly unknown[]).includes(a["result"])) return null;
+  const ms = a["ms"];
+  if (ms !== undefined && ms !== null && (typeof ms !== "number" || !Number.isFinite(ms) || ms < 0 || ms > 24 * 3_600_000)) return null;
+  return { seq, kind: a["kind"], result: a["result"] as AudioAckResult, ...(typeof ms === "number" ? { ms: Math.round(ms) } : {}) };
+}
+
+/** A health report off untrusted JSON (stamped `at`), or null. Long lists are cut. */
+export function audioHealthOf(raw: unknown, at: number): AudioHealth | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const h = raw as Record<string, unknown>;
+  if (typeof h["ok"] !== "boolean") return null;
+  const num = (v: unknown, d = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : d);
+  const names = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x !== "").slice(0, AUDIO_HEALTH_SOUNDS_MAX).map((x) => x.slice(0, AUDIO_NAME_MAX)) : []);
+  const sounds: Record<string, number> = {};
+  const rawSounds = h["sounds"];
+  if (typeof rawSounds === "object" && rawSounds !== null && !Array.isArray(rawSounds)) {
+    for (const [k, v] of Object.entries(rawSounds as Record<string, unknown>).slice(0, AUDIO_HEALTH_SOUNDS_MAX)) if (typeof v === "number" && Number.isFinite(v) && v >= 0) sounds[k.slice(0, AUDIO_NAME_MAX)] = Math.round(v);
+  }
+  const layout = h["layout"];
+  const announce = h["announce"];
+  const peak = h["peakDb"];
+  return {
+    at,
+    ok: h["ok"],
+    device: typeof h["device"] === "string" && h["device"] !== "" ? h["device"].slice(0, 128) : null,
+    layout: layout === "ok" || layout === "moved" ? layout : null,
+    voices: Math.max(0, Math.round(num(h["voices"]))),
+    xruns: Math.max(0, Math.round(num(h["xruns"]))),
+    peakDb: typeof peak === "number" && Number.isFinite(peak) ? peak : null,
+    announce: announce === "on" || announce === "off" || announce === "blocked" ? announce : null,
+    missing: names(h["missing"]),
+    placeholders: names(h["placeholders"]),
+    sounds,
+  };
 }
 
 /** How many stops ride a GET, and for how long. */
@@ -222,6 +370,13 @@ export class AudioHub {
    *  cursor never sees a stop, so an old router never spins on one. */
   private stopLog: AudioStop[] = [];
   private stopSeq = 0;
+  /** (wave 25) The house desk's plays and their own counter (`plays=`). */
+  private playLog: AudioPlay[] = [];
+  private playSeq = 0;
+  /** (wave 25) The router's last health report (memory only). */
+  private lastHealth: AudioHealth | null = null;
+  /** (wave 25) Who hears the router's acks (the house desk). */
+  private readonly ackListeners = new Set<(ack: AudioAck) => void>();
   private waiters = new Set<() => void>();
   private routerSeenAt: number | null = null;
   private routerName: string | null = null;
@@ -411,6 +566,44 @@ export class AudioHub {
     return [...this.stopLog];
   }
 
+  /** (wave 25) Play one sound or say one announcement now: queued for the router. */
+  play(p: AudioPlayRequest, by: string): AudioPlay {
+    const play: AudioPlay =
+      "sound" in p
+        ? { seq: ++this.playSeq, at: this.now(), by: by.slice(0, 64), sound: p.sound, to: p.to !== undefined ? [...p.to] : null, gain: p.gain ?? null }
+        : { seq: ++this.playSeq, at: this.now(), by: by.slice(0, 64), say: p.say, to: p.to !== undefined ? [...p.to] : null, gain: null, chime: p.chime !== false };
+    this.playLog.push(play);
+    if (this.playLog.length > AUDIO_PLAYS) this.playLog.shift();
+    this.wake();
+    return play;
+  }
+
+  /** The recent plays (≤ `AUDIO_PLAYS`, ≤ `AUDIO_PLAY_MS` old), oldest first. */
+  plays(): AudioPlay[] {
+    const since = this.now() - AUDIO_PLAY_MS;
+    this.playLog = this.playLog.filter((p) => p.at >= since);
+    return [...this.playLog];
+  }
+
+  /** (wave 25) The router's report: its acks go to the listeners, its
+   *  health is kept (memory only). A report is the router being there. */
+  report(o: { health?: AudioHealth | null; acks?: readonly AudioAck[] }): void {
+    if (o.health !== undefined && o.health !== null) this.lastHealth = o.health;
+    this.routerSeenAt = this.now();
+    for (const ack of o.acks ?? []) for (const l of [...this.ackListeners]) l(ack);
+  }
+
+  /** The router's last health report, or null (never reported). */
+  health(): AudioHealth | null {
+    return this.lastHealth;
+  }
+
+  /** Hear every ack the router reports; the returned function stops it. */
+  onAck(listener: (ack: AudioAck) => void): () => void {
+    this.ackListeners.add(listener);
+    return () => this.ackListeners.delete(listener);
+  }
+
   /** The hub's clock (server epoch ms). */
   clock(): number {
     return this.now();
@@ -420,9 +613,10 @@ export class AudioHub {
    *  own counter was issued by an earlier process (a server restart counts
    *  from 1 again): stale, so the poll answers at once with today's list
    *  instead of holding a stop for the whole long poll. */
-  moved(after: string, testsAfter: number | null, stopsAfter: number | null = null): boolean {
+  moved(after: string, testsAfter: number | null, stopsAfter: number | null = null, playsAfter: number | null = null): boolean {
     if (this.current().version !== after) return true;
     if (testsAfter !== null && (testsAfter > this.testSeq || this.tests().some((t) => t.seq > testsAfter))) return true;
+    if (playsAfter !== null && (playsAfter > this.playSeq || this.plays().some((p) => p.seq > playsAfter))) return true;
     return stopsAfter !== null && (stopsAfter > this.stopSeq || this.stops().some((s) => s.seq > stopsAfter));
   }
 
@@ -472,6 +666,10 @@ export interface AudioView {
   /** (wave 18b) The recent stops (≤ `AUDIO_STOPS`, ≤ `AUDIO_STOP_MS` old,
    *  oldest first); the router keeps its own `stops=` cursor. */
   stops: AudioStop[];
+  /** (wave 25) The house desk's recent plays (≤ `AUDIO_PLAYS`, ≤
+   *  `AUDIO_PLAY_MS` old, oldest first); the router keeps its own `plays=`
+   *  cursor and drops a play more than 10 s old by `now`. */
+  plays: AudioPlay[];
   /** (wave 18b) Server epoch ms, so the router can drop a stale stop. */
   now: number;
   /** Is the router on the house Mac listening (a Test is played only then)? */
@@ -489,11 +687,11 @@ export function audioView(hub: AudioHub, ctx: AudioContext): AudioView {
   const cur = hub.current();
   const model = ctx.model();
   const v = validateAudio(cur.audio, ctx.house());
-  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), stops: hub.stops(), now: hub.clock(), router: hub.router(), announceSaved: hub.announceSaved, problems: v.problems, warnings: v.warnings };
+  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), stops: hub.stops(), plays: hub.plays(), now: hub.clock(), router: hub.router(), announceSaved: hub.announceSaved, problems: v.problems, warnings: v.warnings };
 }
 
 /**
- * `GET /api/mod/audio[?after=&tests=&wait=]` — the config + the long poll.
+ * `GET /api/mod/audio[?after=&tests=&stops=&plays=&wait=]` — the config + the long poll.
  * Returns true when it answered (or will: a parked long poll).
  */
 export async function handleAudioGet(hub: AudioHub, ctx: AudioContext, req: IncomingMessage, res: ServerResponse, url: URL, authorized: (token: string | undefined) => boolean): Promise<boolean> {
@@ -507,13 +705,15 @@ export async function handleAudioGet(hub: AudioHub, ctx: AudioContext, req: Inco
   const testsAfter = /^\d+$/u.test(testsRaw) ? Number(testsRaw) : null;
   const stopsRaw = url.searchParams.get("stops") ?? "";
   const stopsAfter = /^\d+$/u.test(stopsRaw) ? Number(stopsRaw) : null;
+  const playsRaw = url.searchParams.get("plays") ?? "";
+  const playsAfter = /^\d+$/u.test(playsRaw) ? Number(playsRaw) : null;
   const waitRaw = Number(url.searchParams.get("wait") ?? AUDIO_WAIT_S);
   const waitS = Number.isFinite(waitRaw) ? Math.min(AUDIO_WAIT_MAX_S, Math.max(0, waitRaw)) : AUDIO_WAIT_S;
   // The house Mac's router says who it is (`router=1`); the map editor's own
   // long poll does not, so it never passes for one.
   const router = url.searchParams.get("router") === "1";
   if (router) hub.noteRouter(url.searchParams.get("name"));
-  if (after !== null && after !== "" && !hub.moved(after, testsAfter, stopsAfter) && waitS > 0) {
+  if (after !== null && after !== "" && !hub.moved(after, testsAfter, stopsAfter, playsAfter) && waitS > 0) {
     const w = hub.waitChange(waitS * 1000);
     // A caller that hangs up frees its waiter at once.
     req.on?.("close", w.cancel);
@@ -607,6 +807,44 @@ export async function handleAudioPost(hub: AudioHub, ctx: AudioContext, path: st
         return true;
       }
       sendJson(res, 200, { ok: true, seq: hub.test({ out }).seq, router: hub.router() });
+      return true;
+    }
+    case "/api/mod/audio/play": {
+      const p = audioPlayOf(body);
+      if (typeof p === "string") {
+        sendJson(res, 400, { error: p });
+        return true;
+      }
+      const play = hub.play(p, by);
+      process.stdout.write(`  🔊 audio: ${by} played ${play.sound !== undefined ? play.sound : "an announcement"}\n`);
+      sendJson(res, 200, { ok: true, seq: play.seq, router: hub.router() });
+      return true;
+    }
+    case "/api/mod/audio/report": {
+      const rawAcks = body["acks"];
+      if (rawAcks !== undefined && (!Array.isArray(rawAcks) || rawAcks.length > AUDIO_ACKS_MAX)) {
+        sendJson(res, 400, { error: `acks must be a list of at most ${AUDIO_ACKS_MAX}` });
+        return true;
+      }
+      const acks: AudioAck[] = [];
+      for (const [i, a] of (rawAcks ?? []).entries()) {
+        const ack = audioAckOf(a);
+        if (ack === null) {
+          sendJson(res, 400, { error: `acks[${i}] is not {seq, kind: play | test, result, ms?}` });
+          return true;
+        }
+        acks.push(ack);
+      }
+      let health: AudioHealth | null = null;
+      if (body["health"] !== undefined && body["health"] !== null) {
+        health = audioHealthOf(body["health"], hub.clock());
+        if (health === null) {
+          sendJson(res, 400, { error: "health is not {ok, device, layout, voices, xruns, peakDb, announce, missing, placeholders, sounds}" });
+          return true;
+        }
+      }
+      hub.report({ health, acks });
+      sendJson(res, 200, { ok: true });
       return true;
     }
     case "/api/mod/audio/stop": {

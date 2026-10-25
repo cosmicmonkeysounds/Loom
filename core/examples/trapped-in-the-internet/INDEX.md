@@ -50,6 +50,7 @@ plays), the show's data files, the crew's printed packs, and the docs.
 | `house.json`, `house.shed.json` | The server, both reinstallation games, the terminals | The house map (tent night and rain night): rooms, terminal spots, ducks, the King |
 | `audio.json` | The server, the stagehand `audio` router, the map editor | The MOTU's inputs and outputs, the placed speakers, zones, cues |
 | `lights.json` | The server, the stagehand `lights` module, the map editor | The server-room RGB bulb and its `heart_*` looks |
+| `desk.json` | The server's house desk, Run → House, a host's Desk | Wave 25: the house's own cue list (DRAFT: tech checks only, no show cues yet). Schema: `core/src/house-desk.ts`, contract `docs/loom-house-desk.md` |
 
 ### Runtime config
 
