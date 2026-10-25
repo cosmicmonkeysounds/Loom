@@ -439,6 +439,13 @@ tolerance: metres, and m² for orientations).
   stops before writing). The server stays show-agnostic and labels a
   variant by its file (and the map's `name`, or its `variant` field —
   the `label` below).
+- **The house's other project files** ride the same row record and the
+  same rules, each on its own `sync-example` switch: `facts.json` (the
+  judge's key, always the example's), `audio.json` (the speakers,
+  `--replace-audio`), `lights.json` (§1.4, `--replace-lights`) and, wave 25,
+  `desk.json` (the house desk's cue list, `--replace-desk`;
+  [`loom-house-desk.md`](./loom-house-desk.md)). None is part of
+  `house.json`: an edit to one never bumps the map version.
 - **A launch snapshots them** like `scenario_source`: on the event row
   (`event.house_maps`, jsonb, file → text) and in the event's state dir
   (`spatial-maps.json`, with the **active variant**), so an event plays a

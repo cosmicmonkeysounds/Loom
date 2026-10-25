@@ -20,13 +20,13 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `src/runtime/sim/sim.ts` | the `Sim`: world, ledger, hook drain, the executor, every journaled mutation |
 | `src/runtime/sim/` (rest) | `crews.ts` (crews, faction mode), `board.ts` (watch / countdown), `badges.ts`, `stats.ts`, `channel-types.ts`, `effects.ts`, `DESIGN.md` |
 | `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w21-lints.ts` (workspace lints L12xx) |
-| `src/*.ts` | browser-safe shared modules: `cue-sheet.ts`, `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
+| `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `cue-sheet.ts`, `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
 | `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
 | `server/views.ts`, `chat.ts` | pure projections: `GuestView` / `PrimeView` / `ModView`, and SimEvent → channel messages. The editor imports both (`@loom/core/views`, `@loom/core/chat`) |
 | `server/routes/` | route modules split out of the runtime: `host.ts` (the host allowlist), `screen.ts` (the terminals' screen state + heartbeat), `claims.ts`, `crews.ts`, `sides.ts`, `cards.ts`, `recap.ts`, `mod-log.ts`, `metrics.ts`, `press-lines.ts`, and the OCT31 item files `k12.ts` (print sheet), `k13.ts` (check-in), `k31.ts` / `k31b.ts` (push), `n02.ts` (re-pair, release), `rejoin.ts` (wave 23: badges, invitations re-entering, ask a host, per-part cast cards) |
-| `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `collab.ts` (`CollabHub`, Yjs) |
+| `server/` hubs | transport-free, clock-injected classes: `agents.ts` (`AgentHub`), `spatial.ts` (`SpatialHub`), `spatial-voice.ts`, `spatial-cams.ts`, `wallet.ts` (`WalletBook`), `facts.ts` (`FactsBook`), `push.ts` (`PushHub`), `audio.ts`, `lights.ts`, `desk.ts` (`DeskHub`, wave 25: the house desk's runs, playhead, check marks; pure model `src/house-desk.ts`), `collab.ts` (`CollabHub`, Yjs) |
 | `server/` control plane | `config.ts` (env), `boot.ts`, `db/` (`queries.ts`: access is `getProjectFor` / `listProjectsFor`), `auth-server.ts` (BetterAuth), `projects.ts`, `events-api.ts`, `collab-api.ts`, `mail.ts`, `migrate.ts` |
 | `server/store.ts` | the per-event state dir: journal, codes, sessions, meta (scenario source + phase), project snapshots |
 | `scripts/` | `titi-facts.ts`, `loomcheck.ts`, `show-page.ts`, `sync-example.ts`, `live-guard.ts` |
@@ -64,7 +64,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   messages with the same `seq`s. Never make a replayed path depend on
   wall time, `Math.random`, or state that is not in the journal.
 - **Memory-only things say so.** Poses, voice, camera frames, pair
-  codes, rejoin asks, claim unlocks, the King's per-visit hit, typing indicators and
+  codes, rejoin asks, claim unlocks, the King's per-visit hit, typing indicators,
+  the house desk's runs / playhead / activity, the router's plays and report, the
+  terminals' `talk=` / `said=` and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -156,7 +158,7 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
 then the other top-level `.loom` files (`rooms`, `quests`, `objectives`,
 `atmosphere`) and `beats/`, `cast/`, `codex/`, `generated/`), the project files the
 server snapshots at launch (`house.json` + `house.shed.json`,
-`facts.json`, `audio.json`, `lights.json`), the agent's persona and mind
+`facts.json`, `audio.json`, `lights.json`, `desk.json`), the agent's persona and mind
 files (`trabolta.persona.md`, `trabolta.mind.md`, runtime inputs for
 stagehand), and the crew's docs: `README.md` (the runbook and
 integration contract), `SHOW.html` (the generated show book), `SHOWNIGHT.md`
