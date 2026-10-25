@@ -182,11 +182,12 @@ describe("escorts waiting (§5.5)", () => {
   });
 });
 
-describe("the pop-out strip in the console (§5.7)", () => {
-  it("the drawer body docks the moments lane's PopOutDock first", () => {
+describe("the pop-out strip and the host's windows (§5.7, wave 25)", () => {
+  it("no drawer docks a pop-out: Show is a window in the booth, and a pop-out floats above the dock as in any booth", () => {
     const src = readFileSync(join(__dirname, "../src/host/dock.tsx"), "utf8");
-    expect(src).toMatch(/import \{ PopOutDock \} from "\.\.\/moments\/popout\.tsx";/u);
-    expect(src).toMatch(/function DockSlot\(\) \{\s*return <PopOutDock \/>;/u);
+    const show = readFileSync(join(__dirname, "../src/host/show.tsx"), "utf8");
+    expect(src).not.toContain("PopOutDock");
+    expect(show).not.toContain("PopOutDock");
   });
 });
 

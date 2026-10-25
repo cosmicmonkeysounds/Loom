@@ -49,6 +49,24 @@ export function deskPollPath(after: number | null): string {
   return after === null ? "/api/mod/desk" : `/api/mod/desk?after=${Math.max(0, Math.floor(after))}&wait=${DESK_WAIT_S}`;
 }
 
+/** What one desk poll's answer means: a view, an answer with no desk in it
+ *  (keep the one on screen), or a refusal in plain words. */
+export type DeskPoll = { kind: "view"; view: DeskView } | { kind: "same" } | { kind: "error"; message: string };
+
+export function deskPollOutcome(status: number, body: unknown): DeskPoll {
+  const b = body !== null && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  if (status >= 200 && status < 300) {
+    const desk = b["desk"];
+    const ok = typeof b["rev"] === "number" && desk !== null && typeof desk === "object" && Array.isArray((desk as { cues?: unknown }).cues) && b["house"] !== null && typeof b["house"] === "object";
+    return ok ? { kind: "view", view: b as unknown as DeskView } : { kind: "same" };
+  }
+  const error = typeof b["error"] === "string" ? b["error"] : `HTTP ${status}`;
+  if (status === 404 && /unknown event/iu.test(error)) return { kind: "error", message: "That event has ended." };
+  if (status === 404) return { kind: "error", message: "This server has no house desk yet." };
+  if (status === 403) return { kind: "error", message: "This booth isn't a host any more." };
+  return { kind: "error", message: error };
+}
+
 /** The server's clock now (its `now`, plus the wall time since the answer landed). */
 export function serverNow(view: Pick<DeskView, "now">, receivedAt: number, wall: number): number {
   return view.now + Math.max(0, wall - receivedAt);

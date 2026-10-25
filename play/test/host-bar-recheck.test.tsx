@@ -71,10 +71,10 @@ describe("the TV voice turns with its toast", () => {
   });
 });
 
-describe("Escape closes the console inside a Run → Players pane", () => {
-  it("the dock listens on its own root (the pane's shadow root), never only the document", () => {
+describe("wave 25: the drawer is gone, so nothing listens for its Escape", () => {
+  it("the dock adds no key listener of its own (Show is a window, not a sheet over the room)", () => {
     const src = readFileSync(new URL("../src/host/dock.tsx", import.meta.url), "utf8");
-    expect(src).toContain("const root = eventRoot(dockNode);");
-    expect(src).not.toMatch(/document\.addEventListener\("keydown"/u);
+    expect(src).not.toContain("addEventListener(\"keydown\"");
+    expect(src).not.toContain("host-drawer");
   });
 });

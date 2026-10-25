@@ -11,6 +11,7 @@ import {
   cueLabel,
   deskChecks,
   deskCueList,
+  deskPollOutcome,
   deskPollPath,
   eventsLine,
   goRefusal,
@@ -36,6 +37,16 @@ describe("the desk's long poll", () => {
     expect(deskPollPath(null)).toBe("/api/mod/desk");
     expect(deskPollPath(7)).toBe(`/api/mod/desk?after=7&wait=${DESK_WAIT_S}`);
     expect(DESK_WAIT_S).toBeLessThanOrEqual(30);
+  });
+  it("an answer with a desk is a view; one without keeps the screen; refusals in plain words", () => {
+    const v = deskFixture();
+    expect(deskPollOutcome(200, v)).toEqual({ kind: "view", view: v });
+    expect(deskPollOutcome(200, {})).toEqual({ kind: "same" });
+    expect(deskPollOutcome(204, null)).toEqual({ kind: "same" });
+    expect(deskPollOutcome(403, { error: "not from a booth" })).toEqual({ kind: "error", message: "This booth isn't a host any more." });
+    expect(deskPollOutcome(404, { error: "unknown event" })).toEqual({ kind: "error", message: "That event has ended." });
+    expect(deskPollOutcome(404, { error: "not found" }).kind).toBe("error");
+    expect(deskPollOutcome(500, { error: "boom" })).toEqual({ kind: "error", message: "boom" });
   });
   it("the server's clock ticks on from its answer", () => {
     expect(serverNow({ now: 100_000 }, 5_000, 6_500)).toBe(101_500);

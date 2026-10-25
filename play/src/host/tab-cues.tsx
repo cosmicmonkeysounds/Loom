@@ -38,35 +38,54 @@ export function lastByTitle(by: string): string {
 }
 
 export function CuesTab({ rows, layout, desk, mineLast, bar, stale = false }: { rows: CueRow[]; layout: SheetLayout; desk: CueDesk; mineLast: boolean; bar?: NextBar; stale?: boolean }) {
-  const { view, session, callers, ownPress } = useHost();
-  const [query, setQuery] = useState("");
-  const last = rows.find((r) => r.last) ?? null;
-  const by = lastByText(view.cues.lastBy, mineLast, view.cues.lastName, session.auth?.character);
+  const { view, callers } = useHost();
   const next = bar?.kind === "next" ? bar.row : null;
-  const did = didText(ownPress ?? null, last?.id ?? null);
   return (
     <div className="host-cues">
       {callers === true && <WhoIsCalling />}
       {next !== null && <NextBox row={next} desk={desk} stale={stale} again={bar?.kind === "next" && bar.again} then={cueThen(rows, view.cues)} />}
-      {last !== null && (
-        <fieldset className="host-box host-box-last" data-testid="host-last">
-          <legend>LAST</legend>
-          <p className="host-last">
-            {last.code !== null && <span className="cue-code">{last.code}</span>}
-            <span className="host-last-title">{cueTitleTags(last.title).title}</span>
-            {by !== "" && (
-              <span className="host-last-by" title={lastByTitle(by)}>
-                · {by}
-              </span>
-            )}
-          </p>
-          {did !== null && (
-            <p className="host-box-did" data-testid="host-did">
-              <span className="host-box-tag">did:</span> {did}
-            </p>
-          )}
-        </fieldset>
+      <LastBox rows={rows} mineLast={mineLast} />
+      <CueSheet rows={rows} layout={layout} desk={desk} />
+    </div>
+  );
+}
+
+/** LAST (§5.2): the cue pressed last, who pressed it, and `did:` after this
+ *  console's own press. Nothing before the first press. */
+export function LastBox({ rows, mineLast }: { rows: CueRow[]; mineLast: boolean }) {
+  const { view, session, ownPress } = useHost();
+  const last = rows.find((r) => r.last) ?? null;
+  if (last === null) return null;
+  const by = lastByText(view.cues.lastBy, mineLast, view.cues.lastName, session.auth?.character);
+  const did = didText(ownPress ?? null, last.id);
+  return (
+    <fieldset className="host-box host-box-last" data-testid="host-last">
+      <legend>LAST</legend>
+      <p className="host-last">
+        {last.code !== null && <span className="cue-code">{last.code}</span>}
+        <span className="host-last-title">{cueTitleTags(last.title).title}</span>
+        {by !== "" && (
+          <span className="host-last-by" title={lastByTitle(by)}>
+            · {by}
+          </span>
+        )}
+      </p>
+      {did !== null && (
+        <p className="host-box-did" data-testid="host-did">
+          <span className="host-box-tag">did:</span> {did}
+        </p>
       )}
+    </fieldset>
+  );
+}
+
+/** The running order to fire from by hand: a filter, then the acts (the
+ *  director phone's list, on the same desk as NEXT). */
+export function CueSheet({ rows, layout, desk }: { rows: CueRow[]; layout: SheetLayout; desk: CueDesk }) {
+  const { view } = useHost();
+  const [query, setQuery] = useState("");
+  return (
+    <>
       <input className="host-filter" type="search" aria-label="Filter cues" placeholder="Filter cues (code or words)" value={query} onChange={(e) => setQuery(e.target.value)} />
       {view.doorsClosed === true && rows.length > 0 && <p className="host-note">{DOORS_CLOSED}</p>}
       {desk.armed !== null && desk.subjectName !== null && (
@@ -76,13 +95,13 @@ export function CuesTab({ rows, layout, desk, mineLast, bar, stale = false }: { 
         </p>
       )}
       {rows.length === 0 ? <p className="host-empty">{noCuesText({ phase: view.runtime, ...(view.doorsClosed === true ? { doorsClosed: true as const } : {}) })}</p> : <CueActList rows={rows} layout={layout} query={query} desk={desk} />}
-    </div>
+    </>
   );
 }
 
 /** Who's calling (§5.2): the claim, and the one button that takes or
  *  gives it back. Any host or Run may claim; the server keeps one. */
-function WhoIsCalling() {
+export function WhoIsCalling() {
   const { caller, claim, session } = useHost();
   const me = session.auth?.character ?? "";
   const mine = callerIsMe(caller ?? null, [me]);
@@ -99,14 +118,14 @@ function WhoIsCalling() {
 
 /** NEXT (§5.2): the same desk as the bar (an arm made here fires there),
  *  what the cue does (two lines, ▸ more), and what is on deck after it. */
-function NextBox({ row, desk, stale, again, then }: { row: CueRow; desk: CueDesk; stale: boolean; again: boolean; then: CueRow | null }) {
+export function NextBox({ row, desk, stale, again, then, big = false }: { row: CueRow; desk: CueDesk; stale: boolean; again: boolean; then: CueRow | null; big?: boolean }) {
   const { view } = useHost();
   const [more, setMore] = useState(false);
   const armedHere = desk.armed?.id === row.id;
   const sending = desk.pending === row.id;
   const description = cueDescription(row, view.cues);
   return (
-    <fieldset className={`host-box host-box-next ${armedHere ? "armed" : ""}`} data-testid="host-next-box">
+    <fieldset className={`host-box host-box-next ${armedHere ? "armed" : ""}${big ? " host-show-next" : ""}`} data-testid="host-next-box">
       <legend>{again ? "AGAIN" : "NEXT"}</legend>
       <div className="host-box-row">
         <span className="host-box-cue">
