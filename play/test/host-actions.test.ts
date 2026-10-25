@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
-import { BACK_FROM_BATHROOM, HOST_ROUTES, announceCue, cueSignal, hostCalls, joinLink, type HostRoute } from "../src/host/api.ts";
+import { BACK_FROM_BATHROOM, HOST_READS, HOST_ROUTES, announceCue, cueSignal, hostCalls, joinLink, type HostRoute } from "../src/host/api.ts";
 import { fetchHostPost } from "../src/host/client.ts";
 import { ApiError } from "../src/client.ts";
 
@@ -123,6 +123,52 @@ describe("the host calls", () => {
   });
 });
 
+describe("the house desk's calls (wave 25, docs/loom-house-desk.md §2.1)", () => {
+  it("GO carries the standby it showed; standby, stop, stop all, a mark", async () => {
+    const { sent, calls } = recorder();
+    await calls.deskGo("heart_reveal");
+    await calls.deskGo("heart_reveal", "pre_show");
+    await calls.deskStandby("pre_show");
+    await calls.deskStandby(null);
+    await calls.deskStop(7);
+    await calls.deskStopAll();
+    await calls.deskStopAll(true);
+    await calls.deskMark("speaker:s1", "ok");
+    await calls.deskMark("speaker:s1", "bad", "  crackles ");
+    await calls.deskMark("speaker:s1", null);
+    expect(sent.map((s) => [s.route, s.body])).toEqual([
+      ["/api/mod/desk/go", { standby: "heart_reveal" }],
+      ["/api/mod/desk/go", { standby: "heart_reveal", cue: "pre_show" }],
+      ["/api/mod/desk/standby", { cue: "pre_show" }],
+      ["/api/mod/desk/standby", { cue: null }],
+      ["/api/mod/desk/stop", { run: 7 }],
+      ["/api/mod/desk/stop", { all: true }],
+      ["/api/mod/desk/stop", { all: true, announce: true }],
+      ["/api/mod/desk/check", { key: "speaker:s1", mark: "ok" }],
+      ["/api/mod/desk/check", { key: "speaker:s1", mark: "bad", note: "crackles" }],
+      ["/api/mod/desk/check", { key: "speaker:s1", mark: null }],
+    ]);
+  });
+
+  it("a check's test goes to its own route, and only to the three test routes", async () => {
+    const { sent, calls } = recorder();
+    await calls.deskTest({ route: "/api/mod/audio/test", body: { speaker: "s1" } });
+    await calls.deskTest({ route: "/api/mod/audio/play", body: { sound: "modem" } });
+    await calls.deskTest({ route: "/api/mod/lights/test", body: { fixture: "bulb", set: { state: "OFF" } } });
+    await calls.audioPlay({ say: "Doors in five", chime: true });
+    await calls.audioTest({ out: 3 });
+    await calls.lightsTest({ look: "heart_wake" });
+    await expect(calls.deskTest({ route: "/api/mod/reset" as never, body: {} })).rejects.toThrow();
+    expect(sent.map((s) => s.route)).toEqual(["/api/mod/audio/test", "/api/mod/audio/play", "/api/mod/lights/test", "/api/mod/audio/play", "/api/mod/audio/test", "/api/mod/lights/test"]);
+  });
+
+  it("the desk is on the host lists exactly as the contract marks H; never a desk edit or Reset marks", () => {
+    for (const r of ["/api/mod/desk/go", "/api/mod/desk/standby", "/api/mod/desk/stop", "/api/mod/desk/check", "/api/mod/audio/play", "/api/mod/audio/test", "/api/mod/lights/test"]) expect(HOST_ROUTES as readonly string[]).toContain(r);
+    expect(HOST_READS as readonly string[]).toContain("/api/mod/desk");
+    for (const never of ["/api/mod/desk", "/api/mod/desk/project", "/api/mod/desk/check/reset", "/api/mod/audio/report", "/api/mod/lights/pair"]) expect(HOST_ROUTES as readonly string[]).not.toContain(never);
+  });
+});
+
 describe("the allowlist", () => {
   it("every call lands on a host route (and only POSTs)", async () => {
     const { sent, calls } = recorder();
@@ -135,6 +181,12 @@ describe("the allowlist", () => {
       answerAs: ["Trabolta", "g1", "hi"],
       unlockClaim: ["Excel"],
       setJudgeMode: ["review"],
+      deskGo: ["heart_reveal"],
+      deskMark: ["speaker:s1", "ok"],
+      audioPlay: [{ sound: "modem" }],
+      audioTest: [{ speaker: "s1" }],
+      lightsTest: [{ look: "heart_wake" }],
+      deskTest: [{ route: "/api/mod/audio/test", body: { speaker: "s1" } }],
     };
     for (const [name, fn] of Object.entries(calls)) {
       await (fn as (...a: unknown[]) => unknown)(...(args[name] ?? ["g1", true]));
@@ -170,7 +222,8 @@ describe("the allowlist", () => {
     // Lifecycle, the var table's free writes, the log, the Mind: never in Play (D5).
     const dir = new URL("../src/host/", import.meta.url);
     const files = readdirSync(dir).filter((f) => /\.(ts|tsx)$/u.test(f));
-    const allowed = new Set<string>([...HOST_ROUTES, "/api/mod/recap"]);
+    // The GET reads too (the recap, the desk's long poll), without a query.
+    const allowed = new Set<string>([...HOST_ROUTES, ...HOST_READS.filter((r) => r.startsWith("/api/mod/")).map((r) => r.split("?")[0]!)]);
     for (const f of files) {
       const src = readFileSync(new URL(f, dir), "utf8");
       for (const m of src.matchAll(/["'`](\/api\/(?:mod|agent)\/[a-z/-]+)/gu)) expect(allowed, `${f}: ${m[1]}`).toContain(m[1]);
