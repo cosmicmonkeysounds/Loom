@@ -12,6 +12,8 @@ import {
   stepMs,
   stepText,
   type DeskConfig,
+  type DeskCheckRow,
+  type DeskCheckSection,
   type DeskCue,
   type DeskDurations,
   type DeskHouse,
@@ -180,6 +182,25 @@ export function stepStateGlyph(state: DeskRun['steps'][number]['state']): string
     case 'skipped':
       return '–'
   }
+}
+
+// ---------------------------------------------------------------------------
+// The checks' cursor.
+
+/** The row the checks' keys act on: `key`'s row, else the first open one,
+ *  else the first row (null: nothing to check). */
+export function checkCursor(sections: readonly DeskCheckSection[], key: string | null): DeskCheckRow | null {
+  const rows = sections.flatMap((s) => s.rows)
+  return rows.find((r) => r.key === key) ?? rows.find((r) => r.mark === null) ?? rows[0] ?? null
+}
+
+/** The row `delta` rows from `key` (clamped), or null when there are none. */
+export function checkStep(sections: readonly DeskCheckSection[], key: string | null, delta: -1 | 1): DeskCheckRow | null {
+  const rows = sections.flatMap((s) => s.rows)
+  if (rows.length === 0) return null
+  const at = rows.findIndex((r) => r.key === key)
+  const to = at < 0 ? 0 : Math.max(0, Math.min(rows.length - 1, at + delta))
+  return rows[to]!
 }
 
 // ---------------------------------------------------------------------------

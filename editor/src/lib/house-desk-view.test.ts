@@ -1,8 +1,10 @@
 // Run → House: the page's view model over a fixture DeskView (wave 25).
 
 import { describe, expect, it } from 'vitest'
-import { beginRun, validateDesk, type DeskCue } from '@loom/core/house-desk'
+import { beginRun, deskChecks, validateDesk, type DeskCue } from '@loom/core/house-desk'
 import {
+  checkCursor,
+  checkStep,
   cueIssues,
   cueRows,
   cueSummary,
@@ -137,5 +139,20 @@ describe('keys', () => {
     expect(movePlayhead(desk, null, 1)).toBeNull()
     expect(movePlayhead(desk, 'gone', 1)).toBe('preshow')
     expect(movePlayhead({ version: 1, cues: [] }, null, 1)).toBeNull()
+  })
+})
+
+describe('the checks’ cursor', () => {
+  it('stays on its row, else the first open one, and steps clamped', () => {
+    const view = fixtureView({ marks: { 'speaker:sr': { mark: 'ok', by: 'Director', at: 1 } } })
+    const sections = deskChecks(view)
+    expect(checkCursor(sections, null)?.key).toBe('speaker:lr')
+    expect(checkCursor(sections, 'out:2')?.key).toBe('out:2')
+    expect(checkCursor(sections, 'gone')?.key).toBe('speaker:lr')
+    expect(checkStep(sections, 'speaker:sr', -1)?.key).toBe('speaker:sr')
+    expect(checkStep(sections, 'speaker:sr', 1)?.key).toBe('speaker:lr')
+    expect(checkStep(sections, 'look:warm', 1)?.key).toBe('look:warm')
+    expect(checkCursor([], null)).toBeNull()
+    expect(checkStep([], null, 1)).toBeNull()
   })
 })
