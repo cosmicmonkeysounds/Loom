@@ -59,14 +59,19 @@
 //! the last few in `announces`, N-09); a terminal set to say announcements
 //! speaks each new one (`announce.ts`).
 //!
+//! A terminal that speaks a room's lines (the TV, a room terminal) also
+//! reports its speech (wave 25, `speech/said.ts`, the house desk's §5):
+//! `talk=1|0` and `said=<seq>`, and polls at once when its queue drains.
+//!
 //! Fail closed: until the first answer arrives the terminal stays on
 //! attract, and an unreachable server keeps the last answer it gave — a
 //! dropped poll never flips a hidden character onto the wall.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { announceOf, announceReport, type Announcement } from "./announce.ts";
 import { baseOf, type TerminalConfig } from "./config.ts";
 import { deviceHealth, deviceQuery, type DeviceHealth } from "./health.ts";
+import { PollPacer, speechQuery, type SpeechReport } from "./speech/said.ts";
 
 /** How often the terminal polls (ms). */
 export const SCREEN_POLL_MS = 2000;
@@ -589,6 +594,8 @@ export interface VoiceQuery {
   room: string;
   after: number | null;
   as?: "voice" | "room";
+  /** (wave 25) Its room speech: `talk` / `said` (absent: it doesn't speak). */
+  speech?: SpeechReport | null;
 }
 
 /** The poll URL for this terminal (its name/spot/view + device health ride along as the heartbeat). */
@@ -597,6 +604,7 @@ export function screenStateUrl(c: Pick<TerminalConfig, "eventId" | "name" | "spo
   if (voice !== null) {
     q.set(voice.as === "room" ? "room" : "voice", voice.room);
     if (voice.after !== null) q.set("after", String(voice.after));
+    for (const [k, v] of Object.entries(speechQuery(voice.speech))) q.set(k, v);
   }
   if (device !== null) for (const [k, v] of Object.entries(deviceQuery(device))) q.set(k, v);
   return `${baseOf(c)}/api/screen/state?${q.toString()}`;
@@ -774,13 +782,18 @@ export function screenReachable(state: ScreenState | null, misses: number): bool
  * whether the server is answering right now (`reachable`), whether the server
  * refused this terminal's token, and whether its event is gone. `voice` (the TV) is read
  * fresh on every poll, so the cursor can move without restarting the loop.
+ * `pollNow` (stable) asks for a poll at once — the speech queue draining
+ * (wave 25) — paced by `PollPacer`: never two starts within
+ * `DRAIN_REPOLL_GAP_MS`, and one in flight is followed by another.
  */
 export function useScreenState(
   config: TerminalConfig | null,
   voice: (() => VoiceQuery) | null = null,
-): { state: ScreenState | null; reachable: boolean; revoked: boolean; ended: boolean } {
+): { state: ScreenState | null; reachable: boolean; revoked: boolean; ended: boolean; pollNow: () => void } {
   const voiceRef = useRef(voice);
   voiceRef.current = voice;
+  const kickRef = useRef<() => void>(() => {});
+  const pollNow = useCallback(() => kickRef.current(), []);
   const [state, setState] = useState<ScreenState | null>(null);
   const [misses, setMisses] = useState(0);
   const [revoked, setRevoked] = useState(false);
@@ -794,8 +807,11 @@ export function useScreenState(
     let alive = true;
     let timer = 0;
     const every = config.view === "tv" ? TV_POLL_MS : SCREEN_POLL_MS;
+    const pacer = new PollPacer(every);
     let last: ScreenState | null = null;
     const tick = async () => {
+      window.clearTimeout(timer);
+      pacer.start(Date.now());
       // `ann` is what this tablet does now: its own setting, else the house
       // list's word off the last answer (left out until there is one).
       const out = await pollScreen(config, fetch, voiceRef.current?.() ?? null, announceReport(config, last));
@@ -806,19 +822,30 @@ export function useScreenState(
         setState(out.state);
       }
       else if (out.kind === "revoked") {
+        pacer.stop();
         setRevoked(true);
         return; // stop polling: setup takes over
       } else if (out.kind === "ended") {
+        pacer.stop();
         setEnded(true);
         return; // stop polling: setup asks for the next event's passcode
       }
-      timer = window.setTimeout(() => void tick(), every);
+      timer = window.setTimeout(() => void tick(), pacer.done(Date.now()));
+    };
+    kickRef.current = () => {
+      if (!alive) return;
+      const delay = pacer.kick(Date.now());
+      if (delay === null) return;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => void tick(), delay);
     };
     void tick();
     return () => {
       alive = false;
+      pacer.stop();
+      kickRef.current = () => {};
       window.clearTimeout(timer);
     };
   }, [config]);
-  return { state, reachable: screenReachable(state, misses), revoked, ended };
+  return { state, reachable: screenReachable(state, misses), revoked, ended, pollNow };
 }

@@ -35,6 +35,7 @@ import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/
 import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundMuted } from "./sound/bus.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
+import type { RoomSpeech } from "./speech/said.ts";
 
 /** A caption stays up this long after the last line (ms). */
 const CAPTION_LINGER_MS = 6000;
@@ -80,6 +81,7 @@ export function Tv({
   config,
   state,
   cursor,
+  speech,
   attract,
   attractScreen,
   canDraw,
@@ -91,6 +93,8 @@ export function Tv({
   state: ScreenState | null;
   /** The chat cursor the screen poll sends as `after` (owned by the app). */
   cursor: MutableRefObject<number | null>;
+  /** The room speech the poll reports as `talk` / `said` (wave 25; owned by the app). */
+  speech: RoomSpeech;
   attract: boolean;
   attractScreen: ReactNode;
   canDraw: boolean;
@@ -184,9 +188,11 @@ export function Tv({
           window.clearTimeout(lingerTimer.current);
           lingerTimer.current = window.setTimeout(() => setCaption(null), CAPTION_LINGER_MS);
         },
-      }),
-    [queue],
+      }, speech),
+    [queue, speech],
   );
+  // While mounted this screen speaks the room's lines (`talk` / `said`).
+  useEffect(() => speech.attach(), [speech]);
   useEffect(
     () => () => {
       player.stop();

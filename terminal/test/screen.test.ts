@@ -163,6 +163,8 @@ describe("the TV's voice block (K-18)", () => {
   it("the TV names its room and cursor in the poll", async () => {
     expect(screenStateUrl(tv, { room: "The Desktop", after: null })).toBe("/e/evt/api/screen/state?name=TV&spot=desktop-tv&view=tv&character=Trabolta&voice=The+Desktop");
     expect(screenStateUrl(tv, { room: "The Desktop", after: 41 })).toMatch(/&voice=The\+Desktop&after=41$/u);
+    // Wave 25: the room speech rides after the cursor (`speech/said.ts`).
+    expect(screenStateUrl(tv, { room: "The Desktop", after: 41, speech: { talk: true, said: 39 } })).toMatch(/&voice=The\+Desktop&after=41&talk=1&said=39$/u);
     const seen: Array<{ url: string; init?: RequestInit }> = [];
     await pollScreen(tv, fakeFetch(200, body, seen), { room: "The Desktop", after: 7 });
     expect(seen[0]!.url).toContain("after=7");

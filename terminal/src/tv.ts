@@ -114,12 +114,25 @@ export interface LinePlayerIo {
   idle(): void;
 }
 
-/** Plays lines one at a time, in order. */
+/** What a `LinePlayer` tells the room-speech model (wave 25, `speech/said.ts`
+ *  `RoomSpeech`): the spoken lines it queued, each it finished, a drop. */
+export interface LinePlayerSpeech {
+  queued(seqs: readonly number[]): void;
+  finished(seq: number): void;
+  cleared(): void;
+}
+
+/** Plays lines one at a time, in order. Only `speak` lines are reported to
+ *  `speech`: a muted, song or text-only line is never spoken, so it counts
+ *  as finished at once (its reading pause holds nothing back). */
 export class LinePlayer {
   private pending: TvLine[] = [];
   private running = false;
   private gen = 0;
-  constructor(private readonly io: LinePlayerIo) {}
+  constructor(
+    private readonly io: LinePlayerIo,
+    private readonly speech: LinePlayerSpeech | null = null,
+  ) {}
 
   get busy(): boolean {
     return this.running || this.pending.length > 0;
@@ -128,6 +141,7 @@ export class LinePlayer {
   push(lines: readonly TvLine[]): void {
     if (lines.length === 0) return;
     this.pending.push(...lines);
+    this.speech?.queued(lines.filter((l) => l.mode === "speak").map((l) => l.seq));
     if (!this.running) void this.run();
   }
 
@@ -136,6 +150,7 @@ export class LinePlayer {
     this.gen++;
     this.pending = [];
     this.io.cancel();
+    this.speech?.cleared();
   }
 
   private async run(): Promise<void> {
@@ -144,8 +159,13 @@ export class LinePlayer {
     while (this.pending.length > 0 && g === this.gen) {
       const line = this.pending.shift()!;
       this.io.caption(line);
-      if (line.mode === "speak") await this.io.speak(line);
-      else await this.io.sleep(readingMs(line.text));
+      if (line.mode === "speak") {
+        try {
+          await this.io.speak(line);
+        } finally {
+          if (g === this.gen) this.speech?.finished(line.seq);
+        }
+      } else await this.io.sleep(readingMs(line.text));
     }
     this.running = false;
     if (this.pending.length > 0) void this.run();
