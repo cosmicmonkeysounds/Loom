@@ -496,3 +496,7 @@
 @media (max-width: 379px) {
   .booth-tabs { flex-wrap: wrap; overflow-x: visible; }
 }
+
+/* Wave 25: *Your jobs* in a host's Show window — the NOW card laid open. */
+.booth-now-jobs { display: flex; flex-direction: column; gap: 6px; }
+.booth-now-jobs-none { margin: 4px 2px; font: 13px/1.4 var(--ui-font); color: var(--muted-ink); }
