@@ -10,6 +10,7 @@ import type { Channel, HostView, PrimeView } from "../src/types.ts";
 import { hostCalls } from "../src/host/api.ts";
 import type { HostClient } from "../src/host/client.ts";
 import { hostFixture } from "./host-fixture.ts";
+import { readBundledCss } from "./css.ts";
 import { deskFixture } from "./desk-fixture.ts";
 
 let current: unknown = null;
@@ -178,5 +179,17 @@ describe("the Desk stays out of every first load", () => {
     for (const f of ["booth/app.tsx", "host/show.tsx", "host/dock.tsx", "ui.tsx", "guest/app.tsx"]) {
       expect(src(f), f).not.toMatch(/^import (?!type )[^;]*from "[./]*(host\/)?desk(-model)?\.tsx?"/mu);
     }
+  });
+});
+
+describe("the host's taskbar on a 390 px phone", () => {
+  // A live check at 390 px read "ShoChatDesk": the booth bar's Scan floor
+  // (36% of the bar) squeezed three stacked windows under their words.
+  const css = readBundledCss().replace(/\/\*[\s\S]*?\*\//gu, "");
+  it("each stacked window keeps a 48 px target; a stacked Scan grows instead of taking a 36% floor", () => {
+    expect(css).toMatch(/\.booth-frame \.taskbar \.taskbar-btn\.stacked:not\(\.primary\) \{[^}]*flex: 1 0 48px;[^}]*min-width: 48px;/u);
+    expect(css).toMatch(/@media \(max-width: 599px\) \{ \.booth-frame \.taskbar \.taskbar-btn\.primary\.stacked \{ min-width: 64px; \} \}/u);
+    // …and the tray clips rather than push the page 8 px sideways.
+    expect(css).toMatch(/\.booth-frame \.taskbar \.taskbar-btn\.stacked ~ \.taskbar-tray \{ flex: 0 1 auto; min-width: 0; overflow: hidden; \}/u);
   });
 });

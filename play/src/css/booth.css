@@ -261,6 +261,15 @@
   .booth-frame.clocked .taskbar .taskbar-btn[data-tour="guests"] { padding: 0 8px; }
 }
 .booth-frame .taskbar .taskbar-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+/* Windows on a booth's bar (a host's Show · Chats · Desk, a player's
+   Mission · Chats, wave 25): each keeps a 48 px target with its word under
+   its icon; a stacked Scan stays the biggest by growing, not by a floor
+   that squeezed three windows into one smear at 390 px. */
+.booth-frame .taskbar .taskbar-btn.stacked:not(.primary) { flex: 1 0 48px; min-width: 48px; gap: 1px; }
+@media (max-width: 599px) { .booth-frame .taskbar .taskbar-btn.primary.stacked { min-width: 64px; } }
+/* With windows on the bar the tray gives way (it clips, never pushes the
+   page sideways), as on the guest's frame. */
+.booth-frame .taskbar .taskbar-btn.stacked ~ .taskbar-tray { flex: 0 1 auto; min-width: 0; overflow: hidden; }
 .booth-dock { flex: 0 0 auto; }
 .booth-head-btn { flex: 0 0 auto; font-weight: 700; }
 .booth-start-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
