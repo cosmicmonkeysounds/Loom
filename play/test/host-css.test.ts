@@ -44,10 +44,10 @@ describe("the host console's colours", () => {
     expect(contrast(token(themes, AOL, "--bad"), token(themes, AOL, "--face"))).toBeLessThan(4.5);
   });
   it("--bad is text only on white (the bar, a filing), never on the face", () => {
-    const onWhite = new Set([".host-strip-urgent", ".host-strip-needs", ".host-bar.armed .host-bar-tag", ".host-bar-stale, .host-bar-refused", ".host-filing-near", ".host-bar-title.quiet.urgent", ".host-bar.paused.armed .host-bar-tag"]);
+    const onWhite = new Set([".host-show-cd.urgent", ".host-desk-chip.bad", ".host-desk-row-mark.bad", ".host-desk-walk-mark.bad", ".host-strip-urgent", ".host-strip-needs", ".host-bar.armed .host-bar-tag", ".host-bar-stale, .host-bar-refused", ".host-filing-near", ".host-bar-title.quiet.urgent", ".host-bar.paused.armed .host-bar-tag"]);
     const red = rules(host).filter((r) => /(^|;|\s)color:\s*var\(--bad\)/u.test(r.body));
     for (const r of red) expect(onWhite.has(r.sel), r.sel).toBe(true);
-    for (const sel of [".host-tab.counted", ".host-danger", ".host-confirm-yes.danger", ".host-note.alarm"]) {
+    for (const sel of [".host-show-head.waits", ".host-danger", ".host-confirm-yes.danger", ".host-note.alarm"]) {
       expect(rules(host).find((r) => r.sel === sel)?.body).toMatch(/color:\s*var\(--maroon\)/u);
     }
   });
@@ -62,13 +62,13 @@ describe("the host console's touch targets", () => {
     }
     expect(rules(host).find((r) => r.sel === ".host-fold")?.body).toMatch(/min-height:\s*var\(--tap\)/u);
   });
-  it("the console's close button is a 44 × 44 box with no hit pad past the screen's edge", () => {
-    const x = rules(host).find((r) => r.sel === ".host-drawer-title .w95-x")?.body ?? "";
-    expect(x).toMatch(/min-height:\s*var\(--tap\)/u);
-    expect(x).toMatch(/min-width:\s*var\(--tap\)/u);
-    // The shared 32 px button's ::after pad (6 px past each side) widened a
-    // phone's layout viewport by 6 px with the drawer open.
-    expect(rules(host).find((r) => r.sel === ".host-drawer-title .w95-x::after")?.body).toMatch(/inset:\s*0\b/u);
+  it("wave 25: Show's section heads, the Desk's GO, its marks and its walk buttons are 44 px or more", () => {
+    for (const sel of [".host-show-head", ".host-desk-row", ".host-desk-all", ".host-show-guests"]) expect(rules(host).find((r) => r.sel === sel)?.body, sel).toMatch(/min-height:\s*var\(--tap\)/u);
+    expect(rules(host).find((r) => r.sel === ".host-desk-go")?.body).toMatch(/min-height:\s*72px/u);
+    expect(rules(host).find((r) => r.sel === ".host-desk-ok, .host-desk-bad")?.body).toMatch(/min-height:\s*64px/u);
+    expect(rules(host).find((r) => r.sel === ".host-desk-back, .host-desk-next, .host-desk-clear")?.body).toMatch(/min-height:\s*var\(--tap\)/u);
+    // The drawer and its tabs are gone.
+    expect(host).not.toMatch(/\.host-drawer|\.host-tab\b|\.host-scrim/u);
   });
   it("on a phone the NEXT bar's code chip stays one line tall beside a two-line refusal", () => {
     const chips = rules(host).filter((r) => r.sel === ".host-bar .host-code-narrow");

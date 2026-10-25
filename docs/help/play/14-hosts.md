@@ -1,82 +1,109 @@
 ---
-title: The host console
+title: Hosting the night
 section: Performers
 order: 14
 role: performer
-keywords: players, clippy, antivirus, new mission, all buttons, stop sounds, house sound, 🔇, judge queue, queued, host, hosts, caller, calling, who's calling, i'll call, stop calling, fire anyway, did, then, judging, auto, review, wanted, marked, escorts, night, house, setup, crews, host console, drawer, next bar, next, last, arm, fire, cue, cues, cue sheet, strip, act, phase, needs, judge tab, people, more, open the doors, doors, pause, resume, announce, announcement, alert level, dial, balloon, sticky, dialog, blue screen, glitch, wallet holds, king, terminals, codes, join qr, invitation, open 2 min, release, part, trabolta, answer as, waiting, task manager, adobe acrobat, recycling bin, cues moved, not taken
+keywords: players, clippy, antivirus, new mission, all buttons, stop sounds, house sound, 🔇, judge queue, queued, host, hosts, caller, calling, who's calling, i'll call, stop calling, fire anyway, did, then, judging, auto, review, wanted, marked, escorts, night, house, setup, crews, show, show window, home, your jobs, needs you, coming up, host console, next bar, next, last, arm, fire, cue, cues, cue sheet, strip, act, phase, show clock, needs, judge, people, more, open the doors, doors, pause, resume, announce, announcement, alert level, dial, balloon, sticky, dialog, blue screen, glitch, wallet holds, king, terminals, codes, join qr, invitation, open 2 min, release, part, trabolta, answer as, waiting, task manager, adobe acrobat, recycling bin, cues moved, not taken, desk, house desk, standby, go, stop all, panic, checks, walk, test, test tone, heard it, nothing, speaker, speakers, output, lights, bulb, look, colours, standby moved
 ---
 
 A **host** runs the night from their own booth: the cue sheet, what
-needs a host, judging, announcements, and fixing a guest, all without
-leaving the app. Your booth is a host's when the story makes your part
-one (at *Trapped in the Internet*: Task Manager, Adobe Acrobat and the
-Recycling Bin), or when you added the moderator passcode
-(⊞ Start → Add moderator powers). Everything else in your booth works as
-on any other ([Performer station](performers.md)).
+needs a host, judging, announcements, fixing a guest and the house's own
+sound and lights, all without leaving the app. Your booth is a host's
+when the story makes your part one (at *Trapped in the Internet*: Task
+Manager, Adobe Acrobat and the Recycling Bin), or when you added the
+moderator passcode (⊞ Start → Add moderator powers). The scanner, a
+guest's card and the rooms work as in any booth ([Performer
+station](performers.md)).
 
 **The hosts call the games.** Clippy and the four Antivirus are
 **players** now: they play the night like the guests, with a Mission and a
 score, and never call a cue. Bingo, the hunts' results, the bottle, Bobbing
-for Truth and the awards are yours (and the director's) to fire from the
-NEXT bar; the player whose game it is gets a *NEW MISSION* pop-out on their
-phone when it starts. Radio them before you fire.
+for Truth and the awards are yours (and the director's) to fire; the
+player whose game it is gets a *NEW MISSION* pop-out on their phone when
+it starts. Radio them before you fire.
+
+**Your taskbar** reads **⊞ Start · Show · Chats · Desk · 📷 Scan**:
+
+- **Show** is your home: the night, what to fire next and what needs you
+  (below).
+- **Chats** is the room list: the staff rooms, Readouts, guests'
+  messages (the number on it counts guests waiting on a reply).
+- **Desk** is the house desk: its cues, ■ STOP ALL, and the speaker and
+  light checks (below).
+- **📷 Scan** opens the scanner, as in any booth. Every guest, with their
+  card, is in Show's **People**.
+
+## The Show window
+
+Top to bottom:
+
+- **The night strip**: **📣 who is calling** (*📣 You*, *📣 Task
+  Manager*, *📣 Run*, *📣 nobody*), the act, the story's phase, the show
+  clock (*🕐 7:42 PM*), ⏸ or 🚪 while the clock is stopped or the doors
+  are closed, the values the story asks hosts to watch (*Marked 3*) and
+  the soonest countdown.
+- **Who's calling**: *📣 Task Manager is calling.* / *You're calling.* /
+  *Nobody is calling.*, with **📣 I'll call** or **Stop calling**.
+- **NEXT**, big: the cue the sheet suggests with its code and title,
+  **ARM** beside it, what it does (two lines, **▸ more**), and *then:*
+  the cue after it.
+  - **Tap ARM, then FIRE** within four seconds; the bar under FIRE drains
+    as the time runs out. A fast double tap only arms, and a pocket tap
+    disarms by itself.
+  - A cue that needs a person (an award's winner) says **PICK** first:
+    choose them, then ARM and FIRE. An award suggests its winner first
+    and fills in the value.
+  - When nothing is on offer it says so: the story is running, usually a
+    timer you shouldn't press early.
+- Under NEXT, one line says what just happened: *✓ Fired V2*, *✕ V6 not
+  taken —* with the story's reason from `# hosts`, *Cues moved — tap
+  again*, or *⚠ Last update 11 s ago · Can't reach the server* (FIRE dims
+  until the server is back).
+- **LAST**: the cue and who pressed it, and for a press from this phone,
+  **did:** what the story said back (*the summons opened · 7 not checked
+  in*).
+- **Your jobs**: your own objectives, the NOW card laid open — the
+  brief, the whole checklist (tick your own to-dos), and its button (a
+  picker, a target's card). The NOW card at the top steps aside while
+  Show is open.
+- **Needs you (n)**, **Coming up** (the next cues of the act and every
+  countdown), **Judge (n)**, **Cue sheet**, **People** and **More**.
+  Each head folds its section; Needs and Judge open by themselves while
+  something waits. A row that takes you somewhere (a need, the caller
+  chip, a refused press) opens its section and scrolls to it.
+
+**Every host may call the show.** Whoever is calling says so with **📣
+I'll call**. Everyone sees it, the director's laptop and phone included.
+When someone else is calling, your FIRE asks once before it goes: *Fire
+🏓 Truth Pong? · Task Manager is calling the show. Fire it anyway?
+They'll see you did.* with **Fire anyway** and **Cancel** (the default).
+With nobody calling, nothing asks. If two hosts (or a host and the
+director at Run) press the same moment, the server takes one: the other
+phone reads *Cues moved — tap again*, and nothing fires twice. Every
+press is logged as *Booth · your character*.
 
 ## The NEXT bar
 
-A host's booth has one more bar, just above the taskbar.
+While another window is open (Chats, the Desk, a room), a slim **NEXT
+bar** sits just above the taskbar, so you can fire without going back:
 
-- **Line one** is the cue the sheet suggests: its code and title
-  (*V2 · Call everyone to the Desktop*), with **ARM** beside it.
-- **Tap ARM, then FIRE** within four seconds. A fast double tap only
-  arms, and a pocket tap disarms by itself. A cue that needs a person
-  (an award's winner) says **PICK** first: choose them, then ARM and
-  FIRE. An award suggests its winner first and fills in the value.
-- **Line two** is the night: **📣 who is calling** (*📣 You*, *📣 Task
-  Manager*, *📣 Run*, *📣 nobody*; tap it for the Cues tab), the act, the
-  story's phase, ⏸ or 🚪 while the clock is stopped or the doors are
-  closed, up to three of the values the story asks hosts to watch (*Marked
-  3*), the soonest countdown (*⏳ Hunt 1 ends, 4:59 left*) and **⚠ n** for
-  what needs a host. On a narrow phone the phase, then the second value,
-  then the countdown step aside. While you're armed it shows what the cue
-  does; after a press it says what happened: *✓ Fired V2*, or *✕ V6 not
-  taken —* with the story's reason from `# hosts`.
-- When nothing is on offer it says so: the story is running, usually a
-  timer you shouldn't press early.
+- **Line one** is NEXT (*V2 · Call everyone to the Desktop*), with
+  **ARM** / **FIRE** beside it. It is the same arm as Show's: arm on
+  either, fire on either.
+- **Line two** is the night strip on one line (on a narrow phone the
+  phase, then the second value, then the countdown step aside) and **⚠
+  n** for what needs a host; after a press, what happened.
+- **Tap the bar** (anywhere but ARM / FIRE) to go to Show. After a
+  refused press it opens Show at Needs, where the whole reason is.
 
-**Every host may call the show.** Whoever is calling says so: **📣 I'll
-call** in the Cues tab (below). Everyone sees it on their strip, the
-director's laptop and phone included. When someone else is calling, your
-FIRE asks once before it goes: *Fire 🏓 Truth Pong? · Task Manager is
-calling the show. Fire it anyway? They'll see you did.* with **Fire
-anyway** and **Cancel** (the default). With nobody calling, nothing asks.
-If two hosts (or a host and the director at Run) press the same moment,
-the server takes one: the other phone reads *Cues moved — tap again*, and
-nothing fires twice. Every press is logged as *Booth · your character*.
+While you type, the bar steps aside with the taskbar.
 
-If the bar loses the server it says *⚠ Last update 11 s ago · Can't
-reach the server* and dims FIRE until it is back. While you type in a
-room the whole bar steps aside; while you type in the console only the
-NEXT line does.
+## The sections
 
-## The console
 
-Tap the bar (anywhere but ARM / FIRE) to pull up the console; tap it
-again, or Escape, to put it away. On a wide screen it is a panel at the
-right. While it is open, pop-ups wait (a balloon sits above it). It has
-five tabs:
-
-- **Cues** — three boxes above the night's cues:
-  - **Who's calling**: *📣 Task Manager is calling.* / *You're calling.* /
-    *Nobody is calling.*, with **📣 I'll call** or **Stop calling**.
-  - **NEXT**: the cue with ARM, what it does (two lines, **▸ more**), and
-    *then:* the cue after it.
-  - **LAST**: the cue and who pressed it, and for a press from this phone,
-    **did:** what the story said back (*the summons opened · 7 not checked
-    in*).
-  Then a filter box and the cues by act, NEXT highlighted, fired cues
-  dimmed. It shares one arm with the NEXT bar: arm on either, fire on
-  either.
-- **Needs (n)** — what is waiting on a host. At the very top, a guest
+- **Cue sheet** — a filter box and every cue by act, NEXT highlighted,
+  fired cues dimmed: fire one out of order from here (same ARM → FIRE).
+- **Needs you (n)** — what is waiting on a host. At the very top, a guest
   asking to get back in from a new phone: **🔁 WinZip wants back in**.
   Check it's really them (their face, their badge or pass), then tap
   **✅ Let them in** (their phone signs straight in as their program) or
@@ -100,7 +127,8 @@ five tabs:
   near miss also shows the answer it is close to (⚠). Judge only what he
   couldn't rule before 📋: one still waiting at the round's results
   keeps the house's proposal, and your verdict always wins over his.
-- **People** — find a guest, then **🗂 Open card**, **🚻 End Bathroom
+- **People** — **🗂 Every guest, with their cards** (the booth's Guests
+  list), or find a guest here, then **🗂 Open card**, **🚻 End Bathroom
   Mode** (when it's on), **⛔ Restrict / Unrestrict**, **👋 Went home /
   Back**, **🔁 Re-pair** (a single-use QR for a lost phone) and **📡 Scan
   as…** (scan them as any part).
@@ -147,6 +175,49 @@ five tabs:
     **Dissolve** (for a name that shouldn't be on the walls).
 
 Anything you can't take back asks in place first (*…? Yes / No*).
+
+## The Desk
+
+The house's own cue list, built in the editor's Run → House: sounds on
+the house speakers, announcements, light looks, waits, and story events.
+Play fires and tests it; it never edits a cue.
+
+- **The status chips**: the house Mac's router (*🔊 router online*, or
+  offline), sound files missing or still placeholders, the lights module,
+  lights Zigbee2MQTT doesn't know, and problems in the desk itself.
+- **■ STOP ALL** stops every desk cue that is playing **and** the house
+  sounds. Use it whenever something is wrong.
+- **STANDBY** is the cue **GO** plays: its number and name, the operator's
+  note, its steps in words and **⚡ Tells the story: …** — the story events
+  it fires, so nobody fires them by surprise. GO plays the cue on standby
+  and stands by the next one. If another host (or Run) moved the standby
+  just before you, nothing plays and it says *Standby moved — press GO
+  again*.
+- **Playing**: each running cue with its progress, what it is doing now,
+  and **■ Stop**. A step that didn't happen says so (*no-file: 🔊
+  server_hum*).
+- **Cues**: the list by section. Tap a cue to stand it by (▶ marks the
+  standby, ♪ one that is playing).
+
+### Walking the checks
+
+Before the doors, walk the house with your phone and check every speaker,
+output, story sound, light and look, one at a time:
+
+1. The row on screen names it and where it is (*Living L · Living room ·
+   out 1*), with any reason it may not work before you listen (*no file
+   on the house Mac*, *the lights module is offline*).
+2. Tap the big **Test** (*🔊 Test tone*, *▶ Play it*, *💡 Flash it*, *💡
+   Play the look*). A colour bulb has a button per colour: Red, Green,
+   Blue, White, Dim, Off.
+3. Then **✓ Heard it** (a light: **✓ Saw it**) or **✗ Nothing**. The mark
+   is saved for everyone (Run → House shows it too) and the walk moves to
+   the next row with no mark. **next ›** and **‹ back** move by hand;
+   **Every check** lists them all to jump to one.
+
+The head counts the walk (*12 of 30 checked · 2 ✗*). Once the doors are
+open every test asks first (*The show is live — guests will hear this.
+Test anyway?*): guests hear a tone and see a light.
 
 ## Buttons on a guest's card
 

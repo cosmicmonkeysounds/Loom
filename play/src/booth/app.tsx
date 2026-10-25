@@ -9,6 +9,14 @@
 //! frame's shape instead — the ▣ MISSION title bar, Mission | Chats as the
 //! window, the taskbar `⊞ Start · Mission · Chats · Scan`, no NOW card, no
 //! Guests, no host dock and no cue bar (`booth/player.tsx`).
+//!
+//! Wave 25 (docs/loom-house-desk.md §6.2): a host booth's taskbar reads
+//! `⊞ Start · Show · Chats · Desk · Scan`. Show (`host/show.tsx`) is home
+//! and stands where the room list was, as a player's Mission does; the NOW
+//! card steps aside while it is on screen (its jobs are inside). Chats is
+//! the room list; the Desk (`host/windows.tsx`, lazy) is the house desk.
+//! The slim NEXT bar shows only while Show is off screen; Guests is in
+//! Show's People.
 
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, useWide } from "../ui/primitives.tsx";
@@ -70,7 +78,11 @@ import { bindDraft, useBoothPopOuts, type BoothOpeners } from "./popouts/use-boo
 import { WaitingWindow } from "./waiting.tsx";
 import { WantedBoard } from "./wanted/board.tsx";
 import { boothView, globalButtonsOf, isPlayer, looseWanted, mayPress, wantedOf, type BoothMessage, type BoothObjective } from "./wire.ts";
-import { HostDock } from "../host/dock.tsx";
+import { HostConsole, HostDock, isHostBooth } from "../host/dock.tsx";
+import { HostShowWindow } from "../host/show.tsx";
+import { hostWindowShown, type HostWindow } from "../host/show-model.ts";
+import { LazyDeskWindow, hostTaskbarButtons } from "../host/windows.tsx";
+import { NowJobs } from "./now-card.tsx";
 
 /**
  * A guest's thread as the booth shows it: its rows come from several rooms,
@@ -171,6 +183,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // Wave 21 (P1): a player's window (Mission or Chats) and its 👥 People list.
   const [pwin, setPwin] = useState<"mission" | "chats">("mission");
   const [peopleOpen, setPeopleOpen] = useState(false);
+  // Wave 25: a host's window (Show, Chats or the Desk).
+  const [hwin, setHwin] = useState<HostWindow>("show");
   const wake = useWakeLock(host.storage);
   // The just-closed pass, ignored for a moment: kept for the sign-in, not
   // per scanner opening, so leaving and reopening the scanner with the pass
@@ -446,6 +460,35 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
         return;
     }
   };
+  // Wave 25: a host's windows. Show is home; a room covers the window on a
+  // phone (the slim NEXT bar then fires from above the taskbar).
+  const hostWins = !player && isHostBooth(s);
+  const hostShown = hostWins ? hostWindowShown(hwin, wide, t.activeId) : null;
+  const hostTap = (w: HostWindow) => {
+    setHwin(w);
+    // Wide, the room stays beside the window; a phone goes back to it.
+    if (!wide && t.activeId !== null) t.back();
+  };
+  const nowRowOf = () => nowRow((s.view?.objectives ?? [])[0] as BoothObjective | undefined, { wanted: boardRowCount(loose, wanted !== null, mayPress(s.view?.interactions, "claim_escort", character)), interactions: s.view?.interactions ?? [], globals: globalButtonsOf(s.view), placeTitle });
+  const nowActions = {
+    onBoard: openBoard,
+    onTarget: (tg: { id: string }) => {
+      const key = targetKey.current;
+      if (key !== null && (rung.current?.key === key || rung.tray.some((x) => x.key === key))) rung.restore(key);
+      else openCard(tg.id);
+    },
+    onPick: openPick,
+    onGlobal: pressGlobal,
+  };
+  const hostWindow = !hostWins ? null : hwin === "show" ? (
+    <HostShowWindow
+      jobs={<NowJobs objectives={s.view?.objectives} interactions={s.view?.interactions ?? []} session={token} row={nowRowOf()} rowActions={nowActions} />}
+      jobCount={(s.view?.objectives ?? []).length}
+      openGuests={() => setLayer({ kind: "guests" })}
+    />
+  ) : hwin === "desk" ? (
+    <LazyDeskWindow session={s} />
+  ) : null;
   const pChats = player ? playerChats(t.list, { character, now: storyMs, activeId: t.activeId }) : null;
   const playerWindow =
     player && s.view !== null ? (
@@ -469,7 +512,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     setPwin(target);
     if (t.activeId !== null) t.back();
   };
-  const side = playerWindow ?? (
+  const side = playerWindow ?? hostWindow ?? (
     <SpaceList
       spaces={boothSidebar(t.spaces, { character, activeId: t.activeId })}
       activeId={t.activeId}
@@ -540,7 +583,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
           <div className="root">
             <BoothFrame clocked={showClockOf(s.view) !== null || soonest(s.view?.countdowns, s.view?.clock ?? null) !== null} alarmed={(wanted !== null && loose > 0) || rung.tray.length + rung.queued > 0}>
               {(keyboard) => (
-                <>
+                <HostConsole session={s} wide={wide} openCard={(id) => openCard(id)} openWanted={openBoard} enabled={hostWins} showing={hostShown === "show"} onShow={() => hostTap("show")} keyboardOpen={keyboard}>
               {player ? (
                 <NowBar
                   objectives={s.view?.objectives}
@@ -550,7 +593,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                   paused={viewPaused(s.view)}
                   act={pwin === "mission" && t.activeId === null ? missionLine(s.view?.objectives) : undefined}
                 />
-              ) : (
+              ) : hostShown === "show" ? null : (
               <NowCard
                 objectives={s.view?.objectives}
                 interactions={s.view?.interactions ?? []}
@@ -562,25 +605,16 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 paused={viewPaused(s.view)}
                 // The board row is for a booth that may claim (an Antivirus);
                 // a host keeps its picker row and reads the LED (BN-F6, §12.6).
-                row={nowRow((s.view?.objectives ?? [])[0] as BoothObjective | undefined, { wanted: boardRowCount(loose, wanted !== null, mayPress(s.view?.interactions, "claim_escort", character)), interactions: s.view?.interactions ?? [], globals: globalButtonsOf(s.view), placeTitle })}
-                rowActions={{
-                  onBoard: openBoard,
-                  onTarget: (tg) => {
-                    const key = targetKey.current;
-                    if (key !== null && (rung.current?.key === key || rung.tray.some((x) => x.key === key))) rung.restore(key);
-                    else openCard(tg.id);
-                  },
-                  onPick: openPick,
-                  onGlobal: pressGlobal,
-                }}
+                row={nowRowOf()}
+                rowActions={nowActions}
               />
               )}
               {/* The sticky banner flows under the NOW card (the booth's title bar). */}
               <MomentsLayer />
               <Shell side={side} stage={stage} wide={wide} placeholder={player ? "Pick a chat, or follow your mission." : "Pick a room — or 📷 Scan a pass."} />
-              {/* No `hidden` here: the dock owns its keyboard rule. A field in
-                  the room hides it; one in the host console hides only its
-                  NEXT bar, never the drawer the host is typing in. */}
+              {/* No `hidden` here: the dock owns its keyboard rule. With the
+                  keyboard up the slim NEXT bar steps aside, but the award
+                  picker and *Fire anyway?* stay. */}
               {/* Wave 18 (§2.2 rule 5): a pop-out floats just above the dock, no scrim. */}
               <div className="booth-popout-anchor">
                 <PopOutHost />
@@ -588,13 +622,13 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               <div className="booth-dock">
                 {/* Wave 21 (P1, P7): a player gets neither the cue bar nor the host dock. */}
                 {!player && <CueBar session={s} now={storyMs} countdowns={s.view?.countdowns} armRef={armCue} onFired={(at) => (ownFire.current = at)} />}
-                {!player && <HostDock session={s} wide={wide} openCard={(id) => openCard(id)} openWanted={openBoard} />}
+                {hostWins && <HostDock session={s} wide={wide} openCard={(id) => openCard(id)} openWanted={openBoard} />}
               </div>
               {!keyboard && (
                 <Taskbar
                   start={start}
                   startHeader={<StartHeader s={s} />}
-                  buttons={player ? playerTaskbarButtons({ pressed: t.activeId === null || wide ? pwin : null, chatsDot: pChats !== null && chatsDot(pChats), scanOpen: layer?.kind === "scan", mission: () => playerTap("mission"), chats: () => playerTap("chats"), scan: () => setLayer({ kind: "scan" }) }) : [
+                  buttons={player ? playerTaskbarButtons({ pressed: t.activeId === null || wide ? pwin : null, chatsDot: pChats !== null && chatsDot(pChats), scanOpen: layer?.kind === "scan", mission: () => playerTap("mission"), chats: () => playerTap("chats"), scan: () => setLayer({ kind: "scan" }) }) : hostWins ? hostTaskbarButtons({ pressed: hostShown, chatsBadge: waiting, scanOpen: layer?.kind === "scan", open: hostTap, scan: () => setLayer({ kind: "scan" }) }) : [
                     { id: "scan", label: "Scan", icon: <Icon name="scan" />, primary: true, title: "Scan a guest's pass", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
                     { id: "guests", label: "Guests", icon: <Icon name="people" />, title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
                   ]}
@@ -602,7 +636,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                   conn={s.connected ? "live" : "reconnecting"}
                 />
               )}
-                </>
+                </HostConsole>
               )}
             </BoothFrame>
             <PopOutDriver session={s} open={openers} now={storyMs} placeTitle={placeTitle} ownFireAt={() => ownFire.current} targetKey={targetKey} />

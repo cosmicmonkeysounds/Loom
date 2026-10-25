@@ -9,7 +9,7 @@ keywords: stop sounds, 🔇, director, caller, calling, i'll call, stop calling,
 Away from the laptop? The director's **cue sheet** — the same running
 order as Run → Director in the editor — fits on a phone. A host who is
 also a performer doesn't need this page: their own booth carries the
-same cues in its NEXT bar and console ([The host console](hosts.md)).
+same cues in its Show window and NEXT bar ([Hosting the night](hosts.md)).
 
 ## Opening it
 

@@ -1,6 +1,7 @@
-/* host lane (wave 13): the host booth — the NEXT bar above the taskbar and
-   the console it pulls up into. Win95 parts from the w95-* primitives and
-   the tokens; every colour is a token, so `plain` renders it flat. */
+/* host lane (wave 13; wave 25): the host booth — the slim NEXT bar above
+   the taskbar, the Show window (home) and the Desk window. Win95 parts from
+   the w95-* primitives and the tokens; every colour is a token, so `plain`
+   renders it flat. */
 
 /* ── the dock: the NEXT bar (≤ 64 px, two lines) ─────────────────────── */
 .host-dock {
@@ -18,7 +19,7 @@
   background: var(--white); color: var(--ink); box-shadow: var(--sunken);
   font: 13px var(--ui-font); text-align: left; cursor: pointer;
 }
-.host-bar-main:focus-visible, .host-fire:focus-visible, .host-tab:focus-visible, .host-row-btn:focus-visible {
+.host-bar-main:focus-visible, .host-fire:focus-visible, .host-show-head:focus-visible, .host-row-btn:focus-visible, .host-desk-row:focus-visible {
   outline: 2px solid var(--navy); outline-offset: -4px;
 }
 .host-bar-line1 { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; font-size: 14px; }
@@ -74,50 +75,6 @@
 }
 .host-bar.armed .host-bar-main { box-shadow: var(--sunken), inset 0 0 0 2px var(--highlight); }
 .host-bar.armed .host-bar-tag { color: var(--bad); }
-
-/* ── the console: pulls up from the bar, over the stream ───────────────── */
-.host-scrim {
-  position: absolute; left: 0; right: 0; bottom: 100%; height: 100vh;
-  z-index: var(--z-drawer); background: var(--scrim);
-}
-.host-drawer {
-  position: absolute; left: 0; right: 0; bottom: 100%; z-index: var(--z-drawer);
-  height: 72vh; max-height: 680px; min-height: 260px;
-  border-radius: var(--radius) var(--radius) 0 0;
-}
-.host-dock.wide .host-drawer { left: auto; width: 520px; right: 8px; }
-.host-drawer-title { flex: 0 0 auto; }
-/* A Win95 tab control: the page's edge is the row's bottom line; the current
-   tab stands taller and joins its page (no line under it), the others sit
-   lower, behind. */
-.host-tabs {
-  flex: 0 0 auto; display: flex; align-items: flex-end; gap: 2px; padding: 6px 6px 0;
-  overflow-x: auto; scrollbar-width: none; box-shadow: inset 0 -1px 0 var(--line);
-}
-.host-tabs::-webkit-scrollbar { display: none; }
-.host-tab {
-  position: relative; flex: 1 0 auto; min-height: var(--tap); margin: 0 0 1px; padding: 0 10px;
-  border: none; border-radius: var(--radius) var(--radius) 0 0;
-  background: var(--face); color: var(--muted-ink); box-shadow: var(--raised);
-  font: 600 13px var(--ui-font); white-space: nowrap; cursor: pointer;
-}
-.host-tab.current {
-  z-index: 1; min-height: calc(var(--tap) + 4px); margin-bottom: 0;
-  background: var(--dialog-face); color: var(--ink); font-weight: 800;
-}
-.host-tab.current::after {
-  content: ""; position: absolute; left: 2px; right: 2px; bottom: 0; height: 3px;
-  background: var(--dialog-face);
-}
-/* Text on the silver face: --bad (#c00000) is 3.6:1 there under aol97, so
-   red text on --face is --maroon (6.0:1 aol97, 8.8:1 plain); --bad stays for
-   outlines and for text on white. */
-.host-tab.counted { color: var(--maroon); }
-.host-tab.current.counted { color: var(--maroon); }
-.host-drawer-body {
-  flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain; padding: 8px 8px calc(12px + var(--safe-bottom));
-}
 
 /* ── the console's parts ───────────────────────────────────────────── */
 .host-section { margin: 0 0 14px; }
@@ -245,12 +202,6 @@
 @media (prefers-reduced-motion: reduce) {
   .host-meter > span { transition: none; }
 }
-.host-drawer-title { min-height: var(--tap); padding: 0 0 0 8px; }
-/* The close button at the screen's right edge: a real 44 px box. The
-   shared 32 px button's invisible hit pad (::after, 6 px past each side)
-   stuck out past the screen and widened a phone's layout viewport. */
-.host-drawer-title .w95-x { min-height: var(--tap); min-width: var(--tap); }
-.host-drawer-title .w95-x::after { inset: 0; }
 .host-bar .cue-code, .host-last .cue-code { flex: 0 0 auto; white-space: nowrap; }
 
 /* More › The show: the doors and a pause, tap to arm, tap again to fire. */
@@ -393,3 +344,153 @@
 .host-subtabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 0 10px; }
 .host-subtab { min-height: var(--tap); font-weight: 700; }
 .host-subtab.current { box-shadow: var(--pressed); background: var(--face-hi); font-weight: 800; }
+
+/* ── wave 25: the Show window (a host's home) ─────────────────────────── */
+.host-show-title {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-width: 0;
+  min-height: calc(var(--title-h) + var(--safe-top)); padding: var(--safe-top) 10px 0;
+  background: var(--title-grad); color: var(--title-ink); font: 700 15px var(--ui-font);
+}
+.host-show-title-k { flex: 0 0 auto; font-weight: 800; letter-spacing: 0.5px; }
+.host-show-title-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.host-show-title-paused { flex: 0 0 auto; font-weight: 600; }
+.host-show-status:empty { min-height: 0; margin: 0; }
+.host-show-scroll {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; padding: 8px 8px calc(16px + var(--safe-bottom));
+  background: var(--dialog-face);
+}
+/* The night strip: act · phase · show clock · caller · paused, wrapping. */
+.host-show-strip { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; scroll-margin-top: 8px; }
+.host-show-chip {
+  display: inline-flex; align-items: center; padding: 5px 8px;
+  border-radius: var(--radius); background: var(--white); color: var(--ink); box-shadow: var(--sunken);
+  font: 700 13px var(--ui-font); font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+.host-show-chip.caller { color: var(--navy); font-weight: 800; }
+.host-show-chip.act { font-weight: 800; }
+.host-show-chip.show-clock { font-weight: 800; }
+.host-show-chip.clock { color: var(--maroon); }
+.host-show-chip.urgent { color: var(--maroon); }
+/* NEXT, big: the cue on two lines, a tall FIRE. */
+.host-show-next { margin-top: 8px; }
+.host-show-next .host-box-cue { font-size: 17px; line-height: 1.25; }
+.host-show-next .host-fire { min-width: 104px; min-height: 64px; font-size: 18px; }
+.host-show-next.none { box-shadow: var(--sunken), inset 0 0 0 1px var(--face-hi); }
+.host-show-nothing { margin: 4px 2px; font: 600 14px/1.35 var(--ui-font); color: var(--muted-ink); }
+/* The console's last word (a toast, a refusal, a stale view): the bar's line 2. */
+.host-show-status { min-height: 1.35em; margin: 0 2px 4px; font: 700 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-show-status.stale, .host-show-status.refused { color: var(--maroon); }
+.host-show-status.armed { color: var(--navy); }
+/* The sections: a 44 px head that folds each. */
+.host-show-fold { margin: 0 0 6px; scroll-margin-top: 8px; }
+.host-show-h { margin: 0; }
+.host-show-head {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap);
+  margin: 0; padding: 0 10px; border: none; border-radius: var(--radius);
+  background: var(--face); color: var(--ink); box-shadow: var(--raised);
+  font: 800 13px var(--ui-font); text-transform: uppercase; letter-spacing: 0.5px; text-align: left; cursor: pointer;
+}
+.host-show-head:active { box-shadow: var(--pressed); }
+.host-show-head[aria-expanded="true"] { background: var(--face-hi); }
+.host-show-head.waits { color: var(--maroon); }
+.host-show-caret { flex: 0 0 auto; width: 12px; color: var(--muted-ink); }
+.host-show-body { padding: 8px 2px 4px; }
+.host-show-guests { width: 100%; min-height: var(--tap); margin: 0 0 8px; font-weight: 700; }
+.host-show-coming { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.host-show-cue, .host-show-cd {
+  display: flex; align-items: center; gap: 6px; padding: 8px 10px;
+  border-radius: var(--radius); background: var(--white); color: var(--ink); box-shadow: var(--sunken);
+  font: 600 14px var(--ui-font); overflow-wrap: anywhere;
+}
+.host-show-cue .cue-code { flex: 0 0 auto; }
+.host-show-cue-title { min-width: 0; }
+.host-show-cue.off { color: var(--muted-ink); }
+.host-show-cd { font-weight: 700; font-variant-numeric: tabular-nums; }
+.host-show-cd.urgent { color: var(--bad); }
+
+/* ── wave 25: the Desk window (the house desk) ───────────────────────── */
+.host-desk-scroll {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; padding: 8px 8px calc(16px + var(--safe-bottom));
+  background: var(--dialog-face);
+}
+.host-desk-status { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; }
+.host-desk-chip {
+  display: inline-flex; align-items: center; padding: 5px 8px;
+  border-radius: var(--radius); background: var(--white); color: var(--ink); box-shadow: var(--sunken);
+  font: 700 12px var(--ui-font); overflow-wrap: anywhere;
+}
+.host-desk-chip.ok { color: var(--good); }
+.host-desk-chip.warn { color: var(--ink); box-shadow: var(--sunken), inset 0 0 0 2px var(--highlight); }
+.host-desk-chip.bad { color: var(--bad); box-shadow: var(--sunken), inset 0 0 0 2px var(--bad); }
+/* The panic: always on top of the window, a full-width tall button. */
+.host-desk-stopall { width: 100%; min-height: 52px; color: var(--maroon); font: 900 17px var(--ui-font); letter-spacing: 1px; }
+.host-desk-note { min-height: 1.35em; margin: 4px 2px; font: 700 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-standby.running { box-shadow: var(--sunken), inset 0 0 0 2px var(--good); }
+.host-desk-standby-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.host-desk-standby-name { flex: 1 1 auto; min-width: 0; font: 800 17px/1.25 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-go {
+  flex: 0 0 auto; min-width: 112px; min-height: 72px;
+  color: var(--navy); font: 900 26px var(--ui-font); letter-spacing: 2px;
+}
+.host-desk-go:disabled { color: var(--muted-ink); }
+.host-desk-events { margin: 6px 0 0; font: 700 13px/1.35 var(--ui-font); color: var(--navy); overflow-wrap: anywhere; }
+.host-desk-notes { margin: 6px 0 0; font: 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-steps { margin: 6px 0 0; padding: 0 0 0 22px; font: 13px/1.4 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-part { margin: 12px 0 0; }
+.host-desk-runs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.host-desk-run { padding: 6px 8px; border-radius: var(--radius); background: var(--white); box-shadow: var(--sunken); }
+.host-desk-run-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.host-desk-run-name { flex: 1 1 auto; min-width: 0; font: 800 14px var(--ui-font); overflow-wrap: anywhere; }
+.host-desk-run-by { flex: 0 1 auto; min-width: 0; font: 600 12px var(--ui-font); color: var(--muted-ink); }
+.host-desk-run-stop { flex: 0 0 auto; min-height: var(--tap); color: var(--maroon); font-weight: 800; }
+.host-desk-progress { height: 14px; margin: 6px 0 4px; padding: 2px; border-radius: var(--radius); background: var(--white); box-shadow: var(--sunken); overflow: hidden; }
+.host-desk-progress-fill { display: block; height: 100%; background: var(--navy); transition: width 400ms linear; }
+.host-desk-run-line { margin: 0; font: 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-run:not(.running) { opacity: 0.8; }
+.host-desk-cues { margin: 0 0 8px; }
+.host-desk-sec { margin: 8px 2px 4px; font: 800 12px var(--ui-font); color: var(--muted-ink); text-transform: uppercase; letter-spacing: 0.5px; }
+.host-desk-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.host-desk-row {
+  display: flex; align-items: flex-start; gap: 8px; width: 100%; min-height: var(--tap);
+  margin: 0; padding: 6px 10px; border: none; border-radius: var(--radius);
+  background: var(--white); color: var(--ink); box-shadow: var(--raised);
+  font: 14px var(--ui-font); text-align: left; cursor: pointer;
+}
+.host-desk-row:active { box-shadow: var(--pressed); }
+.host-desk-row.standby { box-shadow: var(--raised), inset 0 0 0 2px var(--navy); }
+.host-desk-row-mark { flex: 0 0 auto; width: 14px; font-weight: 900; color: var(--navy); }
+.host-desk-row-mark.ok { color: var(--good); }
+.host-desk-row-mark.bad { color: var(--bad); }
+.host-desk-row-mark.open { color: var(--muted-ink); }
+.host-desk-row-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.host-desk-row-name { font-weight: 800; overflow-wrap: anywhere; }
+.host-desk-row-sum { font-size: 12px; color: var(--muted-ink); overflow-wrap: anywhere; }
+.host-desk-row-ev { font-size: 12px; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
+/* The walk: one check at a time, the buttons big enough to hit while
+   listening in another room. */
+.host-desk-walk { padding: 8px 10px 10px; border-radius: var(--radius); background: var(--white); box-shadow: var(--sunken); }
+.host-desk-walk-where { margin: 0; font: 700 12px var(--ui-font); color: var(--muted-ink); }
+.host-desk-walk-label { margin: 2px 0 0; font: 800 20px/1.2 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-walk-detail { margin: 2px 0 6px; font: 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-walk-mark { margin: 0 0 6px; font: 700 13px var(--ui-font); color: var(--ink); }
+.host-desk-walk-mark.ok { color: var(--good); }
+.host-desk-walk-mark.bad { color: var(--bad); }
+.host-desk-tests { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.host-desk-test { flex: 1 1 96px; min-height: 52px; font: 800 15px var(--ui-font); }
+.host-desk-tests .host-confirm { flex: 1 1 100%; }
+.host-desk-marks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0 0 8px; }
+.host-desk-ok, .host-desk-bad { min-height: 64px; font: 900 17px var(--ui-font); }
+.host-desk-ok { color: var(--navy); }
+.host-desk-bad { color: var(--maroon); }
+.host-desk-ok[aria-pressed="true"], .host-desk-bad[aria-pressed="true"] { box-shadow: var(--pressed); background: var(--face-hi); }
+.host-desk-steer { display: flex; align-items: center; gap: 6px; }
+.host-desk-back, .host-desk-next, .host-desk-clear { min-height: var(--tap); padding: 0 12px; font-weight: 700; }
+.host-desk-next { margin-left: auto; font-weight: 800; }
+.host-desk-all { width: 100%; min-height: var(--tap); margin: 8px 0 4px; font-weight: 700; justify-content: flex-start; }
+.host-desk-recent { list-style: none; margin: 0; padding: 0; font: 12px/1.45 var(--ui-font); color: var(--muted-ink); }
+.host-desk-recent li { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) {
+  .host-desk-progress-fill { transition: none; }
+}

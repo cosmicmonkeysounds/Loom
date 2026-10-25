@@ -47,11 +47,34 @@ export const HOST_ROUTES = [
   // A guest-founded crew: rename it, or dissolve it (fix round M3).
   "/api/mod/crew/rename",
   "/api/mod/crew/dissolve",
+  // Wave 25, the house desk (docs/loom-house-desk.md §2.1, the H rows): GO,
+  // the playhead, stop (one run, or all of them and the house sounds), a
+  // check's mark, and the checks' tests — a sound or an announcement, a
+  // speaker / output tone, a light or a look. Never a desk edit, never a
+  // Save to project, never Reset marks.
+  "/api/mod/desk/go",
+  "/api/mod/desk/standby",
+  "/api/mod/desk/stop",
+  "/api/mod/desk/check",
+  "/api/mod/audio/play",
+  "/api/mod/audio/test",
+  "/api/mod/lights/test",
 ] as const;
 export type HostRoute = (typeof HOST_ROUTES)[number];
 
-/** The two GET reads (`?role=mod&host=1` and the recap). */
-export const HOST_READS = ["/api/state?role=mod&host=1", "/api/mod/recap"] as const;
+/** The GET reads: the host view (`?role=mod&host=1`), the recap and (wave
+ *  25) the house desk (`?after=<rev>&wait=<s>` long-polls it). */
+export const HOST_READS = ["/api/state?role=mod&host=1", "/api/mod/recap", "/api/mod/desk"] as const;
+
+/** A desk check's test (`house-desk.ts` `DeskTestCall`): one of the three
+ *  test routes and its body. */
+export interface DeskTestLike {
+  route: "/api/mod/audio/test" | "/api/mod/audio/play" | "/api/mod/lights/test";
+  body: Record<string, unknown>;
+}
+
+/** The routes a desk check may test with. */
+const DESK_TEST_ROUTES: ReadonlyArray<DeskTestLike["route"]> = ["/api/mod/audio/test", "/api/mod/audio/play", "/api/mod/lights/test"];
 
 /** One POST to `route` with the booth token; resolves with the JSON body,
  *  rejects with `ApiError` on a refusal. */
@@ -191,6 +214,30 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
     clockNudge: (minutes: number) => post("/api/mod/clock", { nudge: minutes }),
     /** Scan a guest as another character (a late arrival's clearance). */
     scanAs: (as: string, target: string) => post("/api/mod/scan", { as, target }),
+    /** Wave 25: GO the cue on standby. `standby` is the playhead this
+     *  console showed: if another console moved it, the server answers 409
+     *  `moved` and nothing fires. A `cue` GOes that cue instead. */
+    deskGo: (standby: string | null, cue?: string) => post("/api/mod/desk/go", { standby, ...(cue !== undefined ? { cue } : {}) }),
+    /** Put a cue on standby (null: the end of the list). */
+    deskStandby: (cue: string | null) => post("/api/mod/desk/standby", { cue }),
+    /** Stop one running desk cue. */
+    deskStop: (run: number) => post("/api/mod/desk/stop", { run }),
+    /** ■ STOP ALL: every desk run and the house sounds (`announce`: the
+     *  announcement too). */
+    deskStopAll: (announce = false) => post("/api/mod/desk/stop", { all: true, ...(announce ? { announce: true } : {}) }),
+    /** A check's mark: ✓ (`ok`), ✗ (`bad`) or cleared (null). */
+    deskMark: (key: string, mark: "ok" | "bad" | null, note?: string) => post("/api/mod/desk/check", { key, mark, ...(note !== undefined && note.trim() !== "" ? { note: note.trim() } : {}) }),
+    /** Play a story sound (`{sound, to?, gain?}`) or an announcement (`{say, to?, chime?}`) on the house speakers. */
+    audioPlay: (body: Record<string, unknown>) => post("/api/mod/audio/play", body),
+    /** A test tone on one speaker or output (`{speaker}` / `{out}`). */
+    audioTest: (body: Record<string, unknown>) => post("/api/mod/audio/test", body),
+    /** A light test: a look (`{look}`), a fixture's identify (`{fixture}`), or one state (`{fixture, set}`). */
+    lightsTest: (body: Record<string, unknown>) => post("/api/mod/lights/test", body),
+    /** Run a desk check's test (`deskChecks`' `test` / `extra`), only on its three routes. */
+    deskTest: (call: DeskTestLike) => {
+      if (!DESK_TEST_ROUTES.includes(call.route)) return Promise.reject(new Error(`not a test route: ${call.route}`));
+      return post(call.route, call.body);
+    },
   };
 }
 

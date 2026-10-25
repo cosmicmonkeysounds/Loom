@@ -26,8 +26,8 @@ function client(view: HostView | null, over: Partial<HostClient> = {}): HostClie
   return { view, receivedAt: 1_000, error: null, connected: true, refresh: () => {}, fresh: async () => {}, calls: view === null ? null : hostCalls(async () => ({}), () => view.alerts.path), ...over };
 }
 
-function dock(c: HostClient, keyboardOpen = false): string {
-  return renderToStaticMarkup(createElement(HostDock, { session, wide: false, openCard: () => {}, client: c, keyboardOpen }));
+function dock(c: HostClient, keyboardOpen = false, showing = false): string {
+  return renderToStaticMarkup(createElement(HostDock, { session, wide: false, openCard: () => {}, client: c, keyboardOpen, showing }));
 }
 
 /** The bar main button's markup (its accessible name is its text). */
@@ -59,13 +59,19 @@ describe("the NEXT bar in the dock", () => {
     const html = dock(client(hostFixture()));
     const main = barMain(html);
     expect(main).not.toContain("aria-label");
-    expect(main).toContain("Open the host console.");
+    // Wave 25: the bar's tap opens the Show window (no drawer any more).
+    expect(main).toContain("Open the Show window.");
+    expect(main).not.toContain("aria-expanded");
     expect(main).toContain("NEXT");
     expect(main).toContain("Call everyone to the Desktop");
     expect(html).toMatch(/data-testid="host-fire"[^>]*>ARM</u);
   });
   it("is gone while the keyboard is open in the room", () => {
     expect(dock(client(hostFixture()), true)).toBe("");
+  });
+  it("wave 25: steps aside while the Show window is on screen (Show has NEXT itself)", () => {
+    expect(dock(client(hostFixture()), false, true)).toBe("");
+    expect(dock(client(null), false, true)).toBe("");
   });
   it("says the view is old when the poll fails, and dims FIRE", () => {
     const html = dock(client(hostFixture(), { connected: false, error: "This booth isn't a host any more." }));
@@ -89,7 +95,7 @@ describe("one desk for the bar and the Cues tab", () => {
   const ctx: HostCtx = { view: v, calls: hostCalls(async () => ({}), () => v.alerts.path), session, now: 0, run: async () => true, go: () => {}, openRoom: () => {}, openCard: () => {} };
   const both = (desk: CueDesk) => {
     const armed = desk.armed !== null;
-    const barHtml = renderToStaticMarkup(createElement(HostNextBar, { bar, desk, open: false, stale: false, line2: barLine({ ...base, armed }), strip, onToggle: () => {} }));
+    const barHtml = renderToStaticMarkup(createElement(HostNextBar, { bar, desk, stale: false, line2: barLine({ ...base, armed }), strip, onOpen: () => {} }));
     const cues = renderToStaticMarkup(createElement(HostContext.Provider, { value: ctx }, createElement(CuesTab, { rows, layout: sheetLayout(rows), desk, mineLast: false })));
     return { barHtml, cues };
   };

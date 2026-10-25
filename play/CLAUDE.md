@@ -74,14 +74,14 @@ fails predeploy.
 
 `ui.tsx` is the role chooser (`app-role.ts` decides which app a fresh page
 opens). Only the guest app is in the first load; the booth (with the host
-dock), the director phone and Help are lazy chunks.
+windows), the Desk, the director phone and Help are lazy chunks.
 
 | Role | Entry | What it is |
 |---|---|---|
 | Guest | `guest/app.tsx` | The frame: NOW title bar, one window at a time (Mission home, Chats, Notifications), taskbar `⊞ · Mission · Chats · Pass · Scan` |
 | Performer (booth) | `booth/app.tsx` | NOW card, big 📷 Scan → the guest card, Readouts, Messages, 🗂 Guests, staff rooms, pop-outs |
 | Player booth (wave 21) | `booth/app.tsx` + `booth/player.tsx` | A `player: true` part (`PrimeView.player`): the guest frame, Mission + Chats, `⊞ · Mission · Chats · Scan`, a ⭐ score chip, NEW MISSION pop-outs; no host dock, no cue bar, no staff lines |
-| Host | `host/dock.tsx` (inside a booth) | An `admin: true` part, or a booth holding the mod passcode: the NEXT bar (ARM → FIRE) and a Cues · Needs · Judge · People · More console |
+| Host | `booth/app.tsx` + `host/` (wave 25) | An `admin: true` part, or a booth holding the mod passcode: taskbar `⊞ · Show · Chats · Desk · Scan`; Show is home (NEXT with ARM → FIRE, jobs, needs, sections), the slim NEXT bar while Show is off screen, the Desk (lazy) for the house desk |
 | Director phone | `director.tsx` (`?role=director`) | The mod passcode + a name; the cue sheet by act, tap to arm, tap again to fire |
 
 ### Guest
@@ -120,15 +120,54 @@ dock), the director phone and Help are lazy chunks.
   player) gets the 🎤 cue bar (`booth/cue-bar.tsx`, `POST
   /api/prime/cue`).
 
-### Host dock
+### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 
-`host/` polls the host view (`GET /e/:id/api/state?role=mod&host=1`) and
-writes only to the server's host allowlist (`core/server/routes/host.ts`;
-any other mod route answers 403 *not from a booth*). Calls live in
-`host/api.ts`. The caller claim (the model and copy in `host/caller.ts`, the
-`POST /api/mod/caller` in `host/api.ts`)
-is shared with the director phone and Run. Never in Play: restart, push
-draft, go live, end, the var table, the log, the Mind.
+A host booth (`isHostBooth` in `host/dock.tsx`, never a player) has three
+windows in place of the old pull-up drawer, picked from the taskbar
+`⊞ · Show · Chats · Desk · Scan` (`host/windows.tsx` `hostTaskbarButtons`;
+Guests moved into Show's People). Which window is on screen and when the
+bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
+`hostBarShown`).
+
+- **One console.** `HostConsole` (`host/dock.tsx`) wraps the booth frame:
+  it polls the host view (`GET /e/:id/api/state?role=mod&host=1`), owns the
+  cue desk (`useCueDesk`: ARM → FIRE, the caller claim, *Fire anyway?*, a
+  refused press and its `# hosts` reason, the award prefill) and gives it
+  to Show and the bar through context (`useHostConsole`). It always renders
+  the same tree; a booth that isn't a host polls nothing.
+- **Show** (`host/show.tsx` + `host/show-model.ts`) is home and stands
+  where the room list was (the player's Mission pattern): a ▣ SHOW title
+  bar, the night strip (`nightStrip`: caller · act · phase · show clock ·
+  ⏸ / 🚪 · watch values · countdown), Who's calling, a big NEXT
+  (`tab-cues.tsx` `NextBox`), the console's last word, LAST + `did:`, then
+  folding sections (`showSections`): *Your jobs* (`booth/now-card.tsx`
+  `NowJobs`, the NOW card laid open — the pinned card steps aside while
+  Show is up), *Needs you* (`NeedsTab`), *Coming up* (`comingUp`), Judge,
+  Cue sheet (`CueSheet`), People, More (the old tab components,
+  unchanged). A jump (`ctx.go`, a need's row, the caller chip, a refused
+  press) opens Show at that section (`showTarget`).
+- **The slim NEXT bar** (`HostDock` → `HostNextBar`) shows only while Show
+  is off screen (Chats, the Desk, a room on a phone) and no keyboard is up;
+  its tap opens Show (at Needs for a refused press). The award picker and
+  *Fire anyway?* render from the bar's slot whether or not the bar shows.
+- **Desk** (`host/desk.tsx`, a lazy chunk via `windows.tsx`
+  `LazyDeskWindow`; rules in `host/desk-model.ts`) over core's
+  `house-desk.ts`: long-polls `GET /api/mod/desk?after=<rev>&wait=25`
+  (`startPoll`, parked while hidden), status chips, ■ STOP ALL, STANDBY
+  with GO (sends the standby it showed; 409 `moved` → *Standby moved —
+  press GO again*) and its story events, the runs with progress and Stop,
+  the cue list (tap = standby), and the checks walked one row at a time
+  (Test / colours, ✓ Heard it / ✗ Nothing, next; `ConfirmButton` asks once
+  `live`). It never edits a cue.
+
+Every write is on the server's host allowlist (`core/server/routes/host.ts`;
+any other mod route answers 403 *not from a booth*), typed in `host/api.ts`
+(`HOST_ROUTES`, `HOST_READS`; `test/host-actions.test.ts` checks every
+call and every route a host source names). The caller claim (the model and
+copy in `host/caller.ts`, the `POST /api/mod/caller` in `host/api.ts`) is
+shared with the director phone and Run. Never in Play: restart, push
+draft, go live, end, the var table, the log, the Mind, a desk edit, Save to
+project, Reset marks.
 
 ### Director phone
 
@@ -150,7 +189,7 @@ src/
   host.ts · embed.tsx · embed-css.ts   the host seam and the shadow-root embed
   guest/                 guest app, frame, Mission, Chats, Me, register, nav
   booth/                 booth app, player booth, card, NOW card, pick/, popouts/, wanted/, door, confront, cue bar
-  host/                  host dock: NEXT bar, tabs, allowlist API, caller claim
+  host/                  host windows: console + slim bar (dock), Show, Desk (lazy), the old tabs as sections, allowlist API, caller claim
   chrome/                title bar, taskbar, Start menu, tray, full-screen pass, balloons, icons
   stream/                message bubbles, crawl tiers, card tray, settled cards, ticker, notices, codex room, composer
   moments/               the interrupt ladder: model, provider, surfaces, big moments, pop-outs, notifications, exits
@@ -173,7 +212,7 @@ test/                    vitest; *.test.ts(x) per module and lane
 
 Play imports a few dependency-free core modules **by relative path**
 (`../../core/src/…`), with no alias and no build step: `cue-sheet.ts`,
-`host-board.ts`, `delivery.ts` (alert levels, effect manners),
+`host-board.ts`, `house-desk.ts` (the house desk, Desk chunk only), `delivery.ts` (alert levels, effect manners),
 `show-clock.ts`, `runtime/sim/badges.ts`, `runtime/sim/crews.ts`.
 `@loom/core` is not a package dependency. Keep those core files free of
 Node imports, or the play build breaks.

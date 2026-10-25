@@ -9,10 +9,10 @@
 
 import type { ReactElement, ReactNode } from "react";
 
-export type BoothIconName = "card" | "message" | "lore" | "rescan" | "receipt" | "powers" | "warning";
+export type BoothIconName = "card" | "message" | "lore" | "rescan" | "receipt" | "powers" | "warning" | "desk";
 
 /** Every booth icon (tests walk the list). */
-export const BOOTH_ICON_NAMES: readonly BoothIconName[] = ["card", "message", "lore", "rescan", "receipt", "powers", "warning"];
+export const BOOTH_ICON_NAMES: readonly BoothIconName[] = ["card", "message", "lore", "rescan", "receipt", "powers", "warning", "desk"];
 
 function shape(name: BoothIconName): ReactElement {
   switch (name) {
@@ -73,6 +73,15 @@ function shape(name: BoothIconName): ReactElement {
         <>
           <path className="ico-yellow ico-line" d="M8 1.5 15 14H1Z" />
           <path className="ico-ink" d="M7.2 5.5h1.6l-.3 5H7.5ZM7.2 11.4h1.6v1.5H7.2Z" />
+        </>
+      );
+    case "desk":
+      // the house desk (wave 25): a mixing desk's face, three faders
+      return (
+        <>
+          <rect className="ico-face ico-line" x="1.5" y="2.5" width="13" height="11" />
+          <path className="ico-ink" d="M4 4h1v8H4ZM7.5 4h1v8h-1ZM11 4h1v8h-1Z" />
+          <path className="ico-navy" d="M3 8.5h3v2H3ZM6.5 5h3v2h-3ZM10 9.5h3v2h-3Z" />
         </>
       );
   }

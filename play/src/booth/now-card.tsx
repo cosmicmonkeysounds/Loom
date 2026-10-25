@@ -299,6 +299,68 @@ export function NowCard({
   );
 }
 
+/**
+ * *Your jobs* (wave 25): a host's NOW card laid open inside the Show
+ * window — every live objective with its brief and its whole checklist
+ * (the performer's own ticks, kept for the sign-in as on the card), and the
+ * card's one extra row under the first. The pinned card steps aside while
+ * Show is on screen.
+ */
+export function NowJobs({
+  objectives,
+  interactions,
+  session = null,
+  row = null,
+  rowActions = {},
+}: {
+  objectives: readonly ObjectiveView[] | undefined;
+  interactions: readonly Interaction[];
+  session?: string | null;
+  row?: NowRow | null;
+  rowActions?: NowRowActions;
+}) {
+  const host = usePlayHost();
+  const [ticks, setTicks] = useState<Set<string>>(() => loadTicks(host.storage, session));
+  useEffect(() => setTicks(loadTicks(host.storage, session)), [host.storage, session]);
+  const list = objectives ?? [];
+  const tick = (o: ObjectiveView) => (label: string) =>
+    setTicks((prev) => {
+      const next = toggleTick(prev, o.id, label);
+      saveTicks(host.storage, session, next);
+      return next;
+    });
+  const hint = (o: ObjectiveView) => {
+    const labels = objectiveButtonLabels(o, interactions);
+    return labels.length > 0 ? <p className="booth-now-hint">On a guest's card: {labels.join(" · ")}</p> : null;
+  };
+  if (list.length === 0) {
+    return (
+      <div className="booth-now-jobs">
+        {row?.kind === "board" && <NowExtra row={row} actions={rowActions} objectiveId="" />}
+        <p className="booth-now-jobs-none">No job for you right now. The story gives you one when it needs you.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="booth-now-jobs">
+      {list.map((o, k) => (
+        <OtherObjective
+          key={o.id}
+          o={o}
+          ticks={ticks}
+          onTick={tick(o)}
+          hint={
+            <>
+              {hint(o)}
+              {k === 0 && row !== null && <NowExtra row={row} actions={rowActions} objectiveId={o.id} />}
+            </>
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
 /** The NOW card's extra row (§4.5). */
 function NowExtra({ row, actions, objectiveId }: { row: NowRow; actions: NowRowActions; objectiveId: string }) {
   const arm = useArmButtons();

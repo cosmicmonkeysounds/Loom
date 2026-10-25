@@ -14,7 +14,7 @@ There are three kinds of part. A **player** (at *Trapped in the
 Internet*: Clippy and the four Antivirus) plays the night like a guest
 does, with a **Mission** home and a score: see **Playing a part**
 just below. A **host** (Task Manager, Adobe Acrobat, the Recycling Bin)
-runs the night from the host console ([The host console](hosts.md)).
+runs the night from the Show window ([Hosting the night](hosts.md)).
 Any other part is a plain performer.
 
 A host's or a plain performer's booth, top to bottom: the **NOW card**
@@ -59,7 +59,7 @@ their last few hundred lines.
 A player's booth looks like a guest's phone. Across the top, the title
 bar reads **▣ MISSION** (or your objective, when you are in a room). At the
 bottom, the taskbar: **⊞ Start**, **▣ Mission**, **💬 Chats** and **📷 Scan**.
-There is no Guests list, no NOW card, no host console and no cue bar: you
+There is no Guests list, no NOW card, no Show or Desk window and no cue bar: you
 play the game, the hosts and the directors call it.
 
 - **Mission** is home. The card says what the night wants from you now:
@@ -173,8 +173,8 @@ button. A button the story gives to **another** character only (the
 server-room watch's patch-bay buttons, the Antivirus' 🛡 / ✅ / 👁) isn't
 on your card at all: the server would refuse it from your booth (*not
 your button …*). A host's booth is the exception for the ones the story
-hears from any booth (at the show, the patch-bay buttons): see [The host
-console](hosts.md). Rooms themselves stay clean: just the conversation and
+hears from any booth (at the show, the patch-bay buttons): see [Hosting the
+night](hosts.md). Rooms themselves stay clean: just the conversation and
 your composer.
 
 **Some buttons take two taps.** A button with no way back — one that
@@ -409,8 +409,8 @@ only what your character says or what plays to a room.
 
 If the host gave you the **moderator passcode**, open **⊞ Start → Add
 moderator powers** (not on a player's booth), type it and tap **Become an admin**. Your booth
-becomes a host's — the NEXT bar and console ([The host
-console](hosts.md)) — and additionally can:
+becomes a host's — Show, the NEXT bar and the Desk ([Hosting the
+night](hosts.md)) — and additionally can:
 
 - **🔒 Capture / 🔓 Release** any guest from their card (for stories
   that use it).
