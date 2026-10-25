@@ -176,7 +176,7 @@ function fakeProject() {
   return { link, files, snapshots };
 }
 
-function runtime(o: { dir?: string; t?: ReturnType<typeof fakeTime>; desk?: string | null; project?: ProjectLink | null; source?: string } = {}): EventRuntime {
+function runtime(o: { dir?: string; t?: ReturnType<typeof fakeTime>; desk?: string | null; project?: ProjectLink | null; source?: string; isPreview?: () => boolean } = {}): EventRuntime {
   const t = o.t ?? fakeTime();
   return new EventRuntime({
     eventId: "evt",
@@ -195,6 +195,7 @@ function runtime(o: { dir?: string; t?: ReturnType<typeof fakeTime>; desk?: stri
     ...(o.project !== undefined ? { project: o.project } : {}),
     now: t.now,
     deskTimers: t.timers,
+    ...(o.isPreview !== undefined ? { isPreview: o.isPreview } : {}),
   });
 }
 
@@ -385,6 +386,18 @@ describe("hosts and unseen directors", () => {
     expect(after.marks[key]).toMatchObject({ mark: "bad", by: "Task Manager" });
     expect(after.runs.find((r) => r.cue === "hum")!.by).toBe("Task Manager");
     rt.dispose();
+  });
+});
+
+describe("live: when a test asks first", () => {
+  it("a live event once its doors open; never a shared rehearsal (setup days test freely), until it goes live in place", async () => {
+    let preview = true;
+    const rt = runtime({ isPreview: () => preview });
+    expect((await deskView(rt)).live).toBe(false);
+    rt.openDoors();
+    expect((await deskView(rt)).live).toBe(false);
+    preview = false;
+    expect((await deskView(rt)).live).toBe(true);
   });
 });
 

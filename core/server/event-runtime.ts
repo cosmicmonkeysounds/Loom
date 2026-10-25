@@ -556,6 +556,10 @@ export interface EventRuntimeInit {
   deskFile?: string | null;
   /** The desk's timers (tests inject; default `setTimeout`). */
   deskTimers?: DeskTimers;
+  /** Is this event an author's private preview / shared rehearsal right now
+   *  (the registry's mode; a go-live promotes in place)? Absent = live. The
+   *  house desk's tests ask first only on a live event (wave 25). */
+  isPreview?: () => boolean;
   /** The reserved programs' claim secret as the event row pins it
    *  (`event.claim_secret`, routes/claims.ts). Absent / null → the state
    *  dir's copy, else a fresh one (saved there, and handed to
@@ -859,6 +863,9 @@ export class EventRuntime {
     presence: () => this.pushSnapshots(),
   });
 
+  /** The registry's preview flag (`EventRuntimeInit.isPreview`). */
+  private readonly isPreview: () => boolean;
+
   constructor(init: EventRuntimeInit) {
     this.eventId = init.eventId;
     this.store = init.store;
@@ -889,6 +896,7 @@ export class EventRuntime {
     // The speakers ride the same record; a director's save in the state dir wins.
     this.audio = new AudioHub({ store: this.store, ...(init.audio !== undefined ? { projectText: init.audio } : {}), envFile: init.audioFile !== undefined ? init.audioFile : defaultAudioFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
     this.lights = new LightsHub({ store: this.store, ...(init.lights !== undefined ? { projectText: init.lights } : {}), envFile: init.lightsFile !== undefined ? init.lightsFile : defaultLightsFile(), ...(init.now !== undefined ? { now: init.now } : {}) });
+    this.isPreview = init.isPreview ?? (() => false);
     // The house desk drives both hubs and fires story events (wave 25).
     this.desk = new DeskHub({
       store: this.store,
@@ -2056,8 +2064,9 @@ export class EventRuntime {
     return {
       house,
       refs: (desk) => deskRefsOf(house(), this.sim?.model ?? this.declaredModel, lightStateProblems, desk),
-      // The doors are open (this run's entry played) and the night hasn't ended.
-      live: () => this.sim !== null && this.entryPlayed && !this.nightEnded(),
+      // A live event (never a rehearsal: setup days test freely) whose doors
+      // are open (this run's entry played) and whose night hasn't ended.
+      live: () => !this.isPreview() && this.sim !== null && this.entryPlayed && !this.nightEnded(),
     };
   }
 

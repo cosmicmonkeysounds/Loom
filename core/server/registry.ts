@@ -140,6 +140,7 @@ export class EventRegistry {
       ...(spec.claimSecret !== undefined ? { claimSecret: spec.claimSecret } : {}),
       ...(spec.onClaimSecret !== undefined ? { onClaimSecret: spec.onClaimSecret } : {}),
       joinBase: this.joinBase,
+      isPreview: () => this.previews.has(spec.eventId),
       wiki: this.wiki,
       ...(this.images !== null ? { images: this.images } : {}),
     });

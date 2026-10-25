@@ -119,8 +119,10 @@ It warns (`warnings`) about:
 - the recent activity: the last 20 items.
 
 The runs, the playhead and the activity are **memory only**. A restart
-drops a run mid-cue and its `done` never fires; the Desk shows that the run
-was lost, and a host can GO the cue again or fire its event. The marks are
+drops a run mid-cue and its `done` never fires; nothing marks the run as
+lost (it is simply gone from `runs`), so a host GOes the cue again or fires
+its event. A story-started run never moves the playhead; only a GO does. A
+cue with no steps ends at once and fires no `done`. The marks are
 kept in the event's state dir (setup happens days before the show), never
 in the journal.
 
@@ -163,8 +165,10 @@ the routes on the host allowlist (`core/server/routes/host.ts` and
 
 `DeskView` is defined in `house-desk.ts`. In a host's view (a booth token),
 every `by` (runs, marks, activity) goes through `server/unseen-directors.ts`:
-a director reads as "Director". `live` is true once the doors are open and
-until the show ends. `house` is built from the audio and lights config in
+a director reads as "Director". `live` is true on a **live** event once its doors
+have opened (this run's entry played) and until the night ends, paused or
+not. A preview / shared rehearsal is never `live`, so setup days test
+without a confirm; a go-live in place makes it live. `house` is built from the audio and lights config in
 force, the map, the story model (`storySounds`, `storyLocations`, the
 `when` event names), the router's last report and the lights module's
 device list.
