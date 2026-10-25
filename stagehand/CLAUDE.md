@@ -17,7 +17,7 @@ does not apply here.
 |---|---|---|---|
 | `show:` | `show/` | the mod feed's `sim` directives → MQTT / OSC (`cuemap.py`); MQTT topics → `/api/mod/signal` / `beat` / `set` (`sensormap.py`); the lights catch-up | John's Desktop (Windows) |
 | `agents:` | `agents/` | the agent worker: holds `GET /api/agent/stream`, answers requests, judges filings, records thoughts, takes `control` frames | John's MacBook |
-| `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream, numpy mixer, announcements, tests, stops, placeholders | the MacBook by default; may move to the Desktop |
+| `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream, numpy mixer, announcements, tests, stops, the house desk's plays, the report, placeholders | the MacBook by default; may move to the Desktop |
 | `lights:` | `lights/` | `lights.json` looks → Zigbee2MQTT / WLED, safety clamp, identify / test / pair, device list, catch-up | the Desktop |
 | `alexa:` | `alexa/` | the standalone announcement player. **Retired for the show** (wave 18b); the code and its `Announcer` stay (the router reuses the announcer and the voice lock) | none |
 
@@ -106,6 +106,19 @@ module docstrings that explain the why).
 - **Announcements cross machines**: server feed → the Desktop's `show` →
   `show/announce` → the MacBook's router. Story sounds go server feed →
   router directly.
+- **The router's server wire** (`audio/module.py`; the house desk
+  contract `../docs/loom-house-desk.md` §4). It reads `GET
+  /api/mod/audio?router=1&name=&after=&tests=&stops=&plays=&wait=`
+  (audio.json, tests, stops, plays, `now`); each list's first answer only
+  primes its cursor, and a stop or play more than 10 s old by `now` is
+  dropped. A play is `{seq, at, by, sound | say, to, gain, chime?}`. It
+  reports `POST /api/mod/audio/report` with `{acks: [{seq, kind: play |
+  test, result, ms?}]}` as soon as a play or a server test is handled
+  (`ms`: the file's length; chime + speech; tone + label), and `{health:
+  {ok, device, layout, voices, xruns, peakDb, announce, missing,
+  placeholders, sounds: {name: ms}}}` every `health_s` (first after ≤ 5
+  s). A 404 (an older server) is logged once and ignored. Tests:
+  `tests/test_audio_desk.py`.
 - **The server room** is not stagehand's: the Grand Central M4 on Steph's
   laptop reads the door and the patch bay, and the terminal page posts
   `door_sensor_*` and `patch_changed {combo}` (wave 22,
