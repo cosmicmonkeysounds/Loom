@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 892 tests, 78 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 912 tests, 79 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -29,7 +29,9 @@ for a mod token (`/api/resolve-code` → `/api/mod/login`) and keeps a
 as query keys; that one answer drives attract/asleep, slides, overlays,
 cutscenes, moments, announcements, the King's bar, room state and the
 door/patch gates, and the poll itself is the heartbeat Run → Terminals
-reads. Scanning a pass mints a play-as session for that guest
+reads. A terminal that speaks a room's lines (the TV, a `room=` terminal)
+also reports `talk` / `said` on it and polls at once when its speech queue
+drains (see "Speech done" below). Scanning a pass mints a play-as session for that guest
 (`pilot.ts`, `/api/mod/impersonate` with `label`); the terminal reuses the
 play app's own `useChatStream` (imported as source) and narrows it to
 `dm:<Character>`.
@@ -41,14 +43,14 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/main.tsx`, `src/app.tsx` | boot; the screen machine: setup → asleep (idle show) → awake → connecting → piloting; per-view routing and lazy chunks |
 | `src/config.ts` | `TerminalConfig`, `VIEWS` / `VIEW_INFO`, URL hints (`hintsFromSearch`, `withoutSecrets`), `provision` / `connect`, `roomOf`, `tvRoomOf` |
 | `src/Setup.tsx`, `src/setup-map.ts` | the two-step setup (passcode, tap a map terminal); `followMap` / `followVoice` re-read the map entry on boot |
-| `src/screen.ts` | the screen-state poll + its types (`ScreenState`, `night`, `room`, `king`, `results`, `moments`, `spot`) |
+| `src/screen.ts` | the screen-state poll + its types (`ScreenState`, `night`, `room`, `king`, `results`, `moments`, `spot`); `voice=`/`room=` + `after=` + `talk=`/`said=`; `useScreenState` paces with `PollPacer` and exposes `pollNow` |
 | `src/health.ts` | the heartbeat keys (`deviceQuery`): `ver audio vis fs ann mic bat` + door `door dlv dft dwn` + bay `pb pbc pbx pft` |
 | `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides |
 | `src/Attract.tsx`, `src/attract.ts` | the asleep screen (the idle show full screen); Mystify's pure parts |
 | `src/idle-show/` | the idle show: `schedule.ts` (seeded segments), `pools.ts` (by `Night.phase`), `ads.ts` + `art.tsx`, `popups.ts`, `storm.ts`, `gags.ts`, `savers/`, `ScanBox.tsx` + `scan-copy.ts` |
 | `src/cutscene/` | `SceneDef` (`types.ts`), `pick.ts` (which scene plays), `clock.ts` (server time), `CutsceneLayer.tsx`, `registry.ts`, `kit/` (Win98 blocks, typewriter, particles…), `scenes/{act1,act2,act3,moments,house,heart}.tsx`, `preview.tsx` (`?preview=`) |
 | `src/sound/` | `bus.ts` (master, effects, voices buses; `soundPlayingUntil`), `library.ts` (30 synthesised `SFX_NAMES`), `sfx()` |
-| `src/speech/` | `engine.ts` (browser → Fully → silent ladder, opt-in server voice, the queue, `VoiceFloor`), `split.ts`, `pick-voice.ts` (male for the character, female for announcements; macOS + Windows names) |
+| `src/speech/` | `engine.ts` (browser → Fully → silent ladder, opt-in server voice, the queue, `VoiceFloor`), `split.ts`, `pick-voice.ts` (male for the character, female for announcements; macOS + Windows names), `said.ts` (wave 25: `RoomSpeech` → `talk` / `said`, `PollPacer`, the drain re-poll) |
 | `src/announce.ts` | which house announcements a terminal says, the chime |
 | `src/face/` | the SVG face (`Face.tsx`) and `mood.ts` |
 | `src/scanner.tsx`, `src/scan.ts`, `src/camera.ts` | QR scan (`BarcodeDetector`, else jsQR); what a code means; one shared ref-counted `MediaStream` |
@@ -84,6 +86,28 @@ returns null for `tv`, `chess`, `casino` and `reinstall`: those never sleep
 on a room. `chess`, `casino` and `reinstall` are awake all night and take
 overlays only; `reinstall` also takes slides, cutscenes and moments
 between walks and counts as busy (piloting) during one.
+
+## Speech done (wave 25)
+
+The house desk's `speech` step waits on it (`docs/loom-house-desk.md` §5).
+The App owns one `RoomSpeech` (`speech/said.ts`) beside the voice cursor;
+the TV's and the room terminal's `LinePlayer` attach to it while mounted
+and report the `speak` lines they queue, each one finished, and a drop
+(`stop`: the mute, attract, unmount). The poll that names `voice=` (TV) or
+`room=` adds:
+
+- `talk=1|0`: 1 while a spoken room line is queued or being said.
+- `said=<seq>`: every room line at or before it is finished. A muted,
+  song, text-only or other speaker's line, or anything planned on attract,
+  is finished at once; only lines it will really speak hold it back (the
+  seq just before the first unsaid one). With no player mounted (the setup
+  screen) it is `talk=0` with the last head heard. Left out until the
+  first answer.
+
+A terminal that names neither `voice=` nor `room=` sends neither field.
+When the queue drains (talk 1 → 0), `pollNow` polls at once; `PollPacer`
+keeps two poll starts at least `DRAIN_REPOLL_GAP_MS` (500 ms) apart, and a
+drain during a poll in flight polls again right after it.
 
 ## Provisioning keys
 
