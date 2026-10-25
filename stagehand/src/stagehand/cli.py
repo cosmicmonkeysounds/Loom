@@ -89,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     # One value per --to (repeat it, or a comma list), so the name may come
     # before or after it: `sounds play --to living zip` never takes `zip` as a target.
     snd.add_argument("--to", action="append", default=[], metavar="TARGET", help="play: a zone / room / LOCATION / speaker, repeatable or a comma list (default: its audio.json cue)")
+    snd.add_argument("--gain", type=float, metavar="DB", help="play: dB added to the cue's gain (−60…12), as a house desk step's")
     snd.add_argument("--force", action="store_true", help="placeholders: rewrite existing placeholders (never a real file)")
     snd.add_argument("--no-say", action="store_true", help="placeholders: no spoken label (no `say`)")
     snd.add_argument("--only", help="placeholders: a comma list of names")
@@ -342,7 +343,8 @@ def _sounds(cfg: StagehandConfig, args: argparse.Namespace) -> int:
             print("sounds play: which sound? (e.g. `sounds play zip --to living`)", file=sys.stderr)
             return 2
         to = [t.strip() for v in args.to for t in v.split(",") if t.strip()]
-        return _to_router(router, rc.play_topic, {"name": args.name, **({"to": to} if to else {})})
+        gain = {} if args.gain is None else {"gain": max(-60.0, min(12.0, args.gain))}
+        return _to_router(router, rc.play_topic, {"name": args.name, **({"to": to} if to else {}), **gain})
     from .audio.placeholders import MANIFEST, generate, load_manifest
 
     try:

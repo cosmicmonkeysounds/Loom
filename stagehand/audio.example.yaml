@@ -70,7 +70,7 @@ audio:
   # Optional: the LAN broker. Speaker tests, stops and sounds by hand
   #   mosquitto_pub -t show/audio/test -m '{"speaker":"desk-l"}'   (or {"out": 3})
   #   mosquitto_pub -t show/audio/stop -m '{}'                     (or {"announce": true})
-  #   mosquitto_pub -t show/audio/play -m '{"name":"zip","to":["living"]}'
+  #   mosquitto_pub -t show/audio/play -m '{"name":"zip","to":["living"],"gain":-6}'
   # (`stagehand sounds stop | play` send the same), and, with announce: true,
   # announcements from the show module's show/announce rule (then never
   # from the feed, so nothing plays twice).

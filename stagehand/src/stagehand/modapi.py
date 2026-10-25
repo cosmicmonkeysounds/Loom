@@ -9,8 +9,10 @@ Wire contract (core/server/event-runtime.ts):
     feed: every `sim` / `message` / `lifecycle` frame, never the ≈ 200 KB
     `snapshot` / `history` views a director's console needs
   - alexa: `POST /api/mod/tts {text, voice?, speed?}` → audio bytes (mp3/wav)
-  - audio: `GET /api/mod/audio?after=&tests=&wait=` (a long-poll: the
-    event's audio.json + pending speaker tests) and `GET /api/spatial/house`
+  - audio: `GET /api/mod/audio?after=&tests=&stops=&plays=&wait=` (a
+    long-poll: the event's audio.json + speaker tests, stops and the house
+    desk's plays), `POST /api/mod/audio/report {health?, acks?}` (wave 25)
+    and `GET /api/spatial/house`
   - agents: `GET /api/agent/stream?characters=…&name=…` (SSE) and
     `POST /api/agent/reply {id, say, adjust, worker}`
 

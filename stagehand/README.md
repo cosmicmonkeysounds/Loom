@@ -110,7 +110,7 @@ survives.
 | `stagehand modules` | list the module kinds |
 | `stagehand launchd install\|uninstall\|restart\|status\|print --job show\|agents\|audio\|lights [--config F]` | macOS: one per-user LaunchAgent per module |
 | `stagehand tasks install\|uninstall\|restart\|stop\|status\|print --job … [--config F]` | Windows: one Task Scheduler task per module |
-| `stagehand sounds stop [--announce] \| play <name> [--to T] \| placeholders [--force] [--no-say] [--only a,b] [--out DIR] --config F` | the router by hand over MQTT, and the labelled placeholder sounds |
+| `stagehand sounds stop [--announce] \| play <name> [--to T] [--gain DB] \| placeholders [--force] [--no-say] [--only a,b] [--out DIR] --config F` | the router by hand over MQTT, and the labelled placeholder sounds |
 | `stagehand announce --config F [--no-chime] text…` | one announcement now: through the router over MQTT (or an `alexa:` section's player) |
 | `stagehand lights test <fixture\|look> [--color #rrggbb] [--brightness N] [--off] \| pair [--seconds N] \| devices --config F` | the lights through the event server (the `lights` job must be running) |
 | `stagehand ask --config laptop.yaml [--character C] [--name N] [--var k=v] [--reflect] [--power P] [text…]` | talk to a persona straight through the model, no server |
@@ -407,10 +407,22 @@ audio:
 - **Stop all house sounds**: Run's ■, a host's dock or the director phone
   (`POST /api/mod/audio/stop`); a 0.3 s fade, `--announce` also cuts the
   line and the queue. On the LAN: `stagehand sounds stop`.
+- **The house desk** (wave 25, [`docs/loom-house-desk.md`](../docs/loom-house-desk.md)
+  §4): a desk cue's `sound` and `say` steps reach the router as *plays*
+  on its poll (`plays=<seq>`). A sound play routes like `sound X with
+  rooms:` its `to` (no `to`: the cue's, else everywhere), its `gain` dB
+  on top; a say play is an announcement (the chime unless `chime:
+  false`) on its own `to` (else `announce.to`). A play more than 10 s old
+  is dropped. Every play and every Test from the server is acked to
+  `POST /api/mod/audio/report` with its length, so the desk knows when
+  the step ends.
 - **Offline**: the last `audio.json` + `house.json` are cached, so a boot
   with the uplink down still routes.
 - **Health**: a line every `health_s`; `health/audio` and the retained
-  `health/audio/stats`.
+  `health/audio/stats`; the same numbers go to the server's report (the
+  desk's chips and checks), with every file in `sounds_dir` and its
+  length. A server too old for the report answers 404: logged once, and
+  the router plays on.
 
 **Windows** (only if the router moves to the Desktop): `host_api: asio`
 opens the 828x as one device (it also sets `SD_ENABLE_ASIO` before

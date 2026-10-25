@@ -726,9 +726,17 @@ def test_new_tests_prime_then_play_each_once_across_a_server_restart(tmp_path):
 
 
 class FakeMod:
-    def __init__(self, answers):
+    def __init__(self, answers, post_error=None):
         self.answers = list(answers)
         self.calls: list[tuple] = []
+        self.posts: list[tuple] = []
+        self.post_error = post_error
+
+    async def post(self, path, body):
+        self.posts.append((path, body))
+        if self.post_error is not None:
+            raise self.post_error
+        return {"ok": True}
 
     async def get(self, path, params=None, timeout=None):
         self.calls.append((path, params, timeout))
@@ -749,8 +757,9 @@ def test_the_poll_applies_long_polls_and_plays_new_tests(tmp_path):
         r = with_house(router(tmp_path))
         r.house = None
 
-        async def fake_test(speaker=None, out=None):
+        async def fake_test(speaker=None, out=None, on_ack=None):
             played.append((speaker, out))
+            on_ack("played", 1500.0)
             return True
 
         r.play_test = fake_test
@@ -772,9 +781,11 @@ def test_the_poll_applies_long_polls_and_plays_new_tests(tmp_path):
     # Every poll says it is the router (LA-4: the editor shows it listening);
     # the first ask returns at once (no `after`).
     assert polls[0][1]["router"] == 1 and polls[0][1]["name"] and "after" not in polls[0][1]
-    assert {k: v for k, v in polls[1][1].items() if k not in ("router", "name")} == {"after": "v1", "tests": 1, "stops": 0, "wait": 25} and polls[1][2] == 40
+    assert {k: v for k, v in polls[1][1].items() if k not in ("router", "name")} == {"after": "v1", "tests": 1, "stops": 0, "plays": 0, "wait": 25} and polls[1][2] == 40
     assert polls[1][1]["router"] == 1
     assert played == [(None, 7)]  # the boot answer's test was only primed
+    # Its ack went to the report with the test's seq and length (wave 25).
+    assert mod.posts == [("/api/mod/audio/report", {"acks": [{"seq": 2, "kind": "test", "result": "played", "ms": 1500}]})]
     assert r.version == "v2" and r.house == FIXTURE["house"]
 
 
