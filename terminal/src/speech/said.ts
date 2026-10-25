@@ -1,0 +1,173 @@
+//! Speech done (wave 25, `docs/loom-house-desk.md` §5): what a terminal that
+//! speaks a room's lines tells the house desk on every screen poll.
+//!
+//! - `talk=1|0` — is it saying a room line, or holding room lines it has yet
+//!   to say?
+//! - `said=<seq>` — the newest room-line seq it has finished: every line of
+//!   the room at or before it is spoken, skipped or will never be spoken here
+//!   (muted, a song beat, text only, another speaker, attract). Only the lines
+//!   it will really speak hold it back.
+//!
+//! A desk `speech` step waits on these to know Trabolta has finished in a
+//! room. `RoomSpeech` is the pure model (the App owns one, like the voice
+//! cursor; the TV's and the room terminal's `LinePlayer` feed it), and
+//! `PollPacer` is the poll's clock: when the queue drains (talk 1 → 0) the
+//! terminal polls at once, at most once per `DRAIN_REPOLL_GAP_MS`, instead of
+//! on the next 2 s tick.
+
+/** The shortest gap between two poll starts that a drain may force (ms). */
+export const DRAIN_REPOLL_GAP_MS = 500;
+
+/** What a speaking terminal adds to its poll. `said` null: not known yet (left out). */
+export interface SpeechReport {
+  talk: boolean;
+  said: number | null;
+}
+
+/** The poll's `talk` / `said` keys for a report (none for a terminal that doesn't speak). */
+export function speechQuery(r: SpeechReport | null | undefined): Record<string, string> {
+  if (r === null || r === undefined) return {};
+  const q: Record<string, string> = { talk: r.talk ? "1" : "0" };
+  if (r.said !== null && Number.isFinite(r.said)) q["said"] = String(Math.floor(r.said));
+  return q;
+}
+
+/**
+ * The room-line speech of one terminal. A player `attach`es while it is
+ * mounted; it tells the model which lines it will speak (`queued`), each one
+ * it has finished (`finished`, in order) and when it drops the rest
+ * (`cleared`: a mute, attract, an unmount). Every answer's room head comes
+ * in through `heard`.
+ */
+export class RoomSpeech {
+  /** Seqs queued to be spoken (or being spoken), oldest first. */
+  private pending: number[] = [];
+  private head: number | null = null;
+  private speakers = 0;
+  private readonly drains = new Set<() => void>();
+
+  /** A player is mounted to speak the room's lines; call the result when it goes. */
+  attach(): () => void {
+    this.speakers++;
+    let gone = false;
+    return () => {
+      if (gone) return;
+      gone = true;
+      this.speakers = Math.max(0, this.speakers - 1);
+      if (this.speakers === 0) this.cleared();
+    };
+  }
+
+  /** The room's head seq off an answer's voice block. */
+  heard(head: number): void {
+    if (Number.isFinite(head)) this.head = head;
+  }
+
+  /** Lines the player will speak, oldest first (only the spoken ones). */
+  queued(seqs: readonly number[]): void {
+    for (const s of seqs) if (Number.isFinite(s)) this.pending.push(s);
+  }
+
+  /** The line `seq` is said (or was cut): it and everything queued before it are done. */
+  finished(seq: number): void {
+    const i = this.pending.indexOf(seq);
+    if (i < 0) return;
+    this.pending.splice(0, i + 1);
+    if (this.pending.length === 0) this.drained();
+  }
+
+  /** The player dropped everything queued (a mute, attract, unmount). */
+  cleared(): void {
+    if (this.pending.length === 0) return;
+    this.pending = [];
+    this.drained();
+  }
+
+  get talk(): boolean {
+    return this.pending.length > 0;
+  }
+
+  /**
+   * The report for the next poll. `cursor` is the voice cursor the poll sends
+   * as `after` (every room line at or before it has been planned). With no
+   * player mounted (the setup screen) nothing here will say the room's lines:
+   * not talking, finished through the last head heard.
+   */
+  report(cursor: number | null): SpeechReport {
+    if (this.speakers === 0) return { talk: false, said: this.head ?? cursor };
+    const through = cursor ?? this.head;
+    if (this.pending.length === 0) return { talk: false, said: through };
+    const before = this.pending[0]! - 1;
+    return { talk: true, said: through === null ? before : Math.min(through, before) };
+  }
+
+  /** Called each time the queue drains (talk 1 → 0). Returns the unsubscribe. */
+  onDrain(fn: () => void): () => void {
+    this.drains.add(fn);
+    return () => {
+      this.drains.delete(fn);
+    };
+  }
+
+  private drained(): void {
+    for (const fn of Array.from(this.drains)) {
+      try {
+        fn();
+      } catch {
+        /* a listener never breaks the speech */
+      }
+    }
+  }
+}
+
+/**
+ * When the screen poll runs next. `start` / `done` bracket each poll (`done`
+ * returns the delay to the next one); `kick` asks for one now — it returns
+ * the delay to reschedule to, or null when nothing changes (a poll is in
+ * flight: the next one follows it at once; or the poll is already due
+ * sooner; or polling stopped). Two poll starts are never closer than `gap`.
+ */
+export class PollPacer {
+  private inFlight = false;
+  private kicked = false;
+  private lastStart = Number.NEGATIVE_INFINITY;
+  private dueAt: number | null = null;
+  constructor(
+    private readonly every: number,
+    private readonly gap: number = DRAIN_REPOLL_GAP_MS,
+  ) {}
+
+  start(now: number): void {
+    this.inFlight = true;
+    this.kicked = false;
+    this.lastStart = now;
+    this.dueAt = null;
+  }
+
+  done(now: number): number {
+    this.inFlight = false;
+    const delay = this.kicked ? Math.max(0, this.lastStart + this.gap - now) : this.every;
+    this.kicked = false;
+    this.dueAt = now + delay;
+    return delay;
+  }
+
+  /** Polling stopped (revoked, ended, unmounted): kicks do nothing. */
+  stop(): void {
+    this.inFlight = false;
+    this.kicked = false;
+    this.dueAt = null;
+  }
+
+  kick(now: number): number | null {
+    if (this.inFlight) {
+      this.kicked = true;
+      return null;
+    }
+    if (this.dueAt === null) return null;
+    const at = Math.max(now, this.lastStart + this.gap);
+    if (at >= this.dueAt) return null;
+    this.dueAt = at;
+    return at - now;
+  }
+}

@@ -113,6 +113,7 @@ import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
 import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerShown, heartMenuOf, heartTouched, isHeartTerminal, menusOf, pilotEndOf, splitTag, type HeartMenu } from "./heart/heart.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
+import { RoomSpeech } from "./speech/said.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -145,11 +146,27 @@ export function App() {
   useEffect(() => {
     voiceCursor.current = null; // a new config starts at the room's head: no backlog
   }, [config]);
+  // What the TV / a room terminal has said of its room's lines (wave 25: the
+  // poll's `talk` / `said`, which a desk `speech` step waits on). The player
+  // that speaks them attaches while mounted.
+  const [speech] = useState(() => new RoomSpeech());
   const room = config === null ? null : roomOf(config);
   const screenState = useScreenState(
     config,
-    config?.view === "tv" ? () => ({ room: tvRoomOf(config), after: voiceCursor.current }) : room !== null ? () => ({ room, after: voiceCursor.current, as: "room" as const }) : null,
+    config?.view === "tv"
+      ? () => ({ room: tvRoomOf(config), after: voiceCursor.current, speech: speech.report(voiceCursor.current) })
+      : room !== null
+        ? () => ({ room, after: voiceCursor.current, as: "room" as const, speech: speech.report(voiceCursor.current) })
+        : null,
   );
+  // The room's head off every answer (what "finished" means with nothing mounted).
+  useEffect(() => {
+    const head = screenState.state?.voice?.head;
+    if (typeof head === "number") speech.heard(head);
+  }, [speech, screenState.state]);
+  // The queue drained (talk 1 → 0): tell the desk now, not on the next tick.
+  const { pollNow } = screenState;
+  useEffect(() => speech.onDrain(pollNow), [speech, pollNow]);
   // A room terminal asleep: nothing is mounted to hear its room, so its
   // cursor follows the head here — the lines that come with the wake (the
   // door cutscene) are then spoken, not resynced away (`cursorWhileAsleep`).
@@ -488,6 +505,7 @@ export function App() {
           config={config}
           state={screenState.state}
           cursor={voiceCursor}
+          speech={speech}
           attract={attractOf(screenState.state)}
           attractScreen={attractScreen}
           canDraw={webgl2}
@@ -583,6 +601,7 @@ export function App() {
         state={screenState.state}
         asleep={asleep}
         voiceCursor={voiceCursor}
+        speech={speech}
         visits={visits}
         doorOpen={heartTerminal ? doorOpen : null}
         takeover={takeover}
@@ -796,6 +815,7 @@ function Terminal({
   state,
   asleep,
   voiceCursor,
+  speech,
   visits,
   doorOpen,
   takeover,
@@ -817,6 +837,8 @@ function Terminal({
   asleep: boolean;
   /** The room voice's chat cursor (owned by the app: it moves while asleep). */
   voiceCursor: MutableRefObject<number | null>;
+  /** The room speech the poll reports (wave 25; owned by the app). */
+  speech: RoomSpeech;
   /** The open visit at a room terminal (owned by the app, like the cursor). */
   visits: MutableRefObject<VisitLatch>;
   /** The server-room door, as the heart reads it (null: not a heart terminal, or nobody knows). */
@@ -953,9 +975,11 @@ function Terminal({
           window.clearTimeout(roomLinger.current);
           roomLinger.current = window.setTimeout(() => setRoomLine(null), 6000);
         },
-      }),
-    [queue],
+      }, room !== null ? speech : null),
+    [queue, room, speech],
   );
+  // A room terminal speaks its room's lines while mounted (`talk` / `said`).
+  useEffect(() => (room === null ? undefined : speech.attach()), [room, speech]);
   useEffect(
     () => () => {
       roomPlayer.stop();
