@@ -63,6 +63,8 @@ export function deskPollOutcome(status: number, body: unknown): DeskPoll {
   const error = typeof b["error"] === "string" ? b["error"] : `HTTP ${status}`;
   if (status === 404 && /unknown event/iu.test(error)) return { kind: "error", message: "That event has ended." };
   if (status === 404) return { kind: "error", message: "This server has no house desk yet." };
+  // A server from before the desk refuses every mod route it doesn't list for a booth.
+  if (status === 403 && /not from a booth/iu.test(error)) return { kind: "error", message: "This server doesn't open the house desk to booths yet." };
   if (status === 403) return { kind: "error", message: "This booth isn't a host any more." };
   return { kind: "error", message: error };
 }

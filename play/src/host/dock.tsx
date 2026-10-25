@@ -233,6 +233,11 @@ export function HostConsole({ session, wide, openCard, client: injected, keyboar
     setJump((j) => ({ to, more, seq: (j?.seq ?? 0) + 1 }));
     showRef.current?.();
   }, []);
+  // A jump is spent once Show leaves the screen: coming back to Show later
+  // never lands on an old one.
+  useEffect(() => {
+    if (!showing) setJump(null);
+  }, [showing]);
 
   const run = useCallback<HostCtx["run"]>(
     async (done, call) => {

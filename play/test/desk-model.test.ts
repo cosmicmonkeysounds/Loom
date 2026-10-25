@@ -43,7 +43,9 @@ describe("the desk's long poll", () => {
     expect(deskPollOutcome(200, v)).toEqual({ kind: "view", view: v });
     expect(deskPollOutcome(200, {})).toEqual({ kind: "same" });
     expect(deskPollOutcome(204, null)).toEqual({ kind: "same" });
-    expect(deskPollOutcome(403, { error: "not from a booth" })).toEqual({ kind: "error", message: "This booth isn't a host any more." });
+    expect(deskPollOutcome(403, { error: "forbidden" })).toEqual({ kind: "error", message: "This booth isn't a host any more." });
+    expect(deskPollOutcome(403, { error: "not from a booth" }).kind).toBe("error");
+    expect(deskPollOutcome(403, { error: "not from a booth" })).not.toEqual({ kind: "error", message: "This booth isn't a host any more." });
     expect(deskPollOutcome(404, { error: "unknown event" })).toEqual({ kind: "error", message: "That event has ended." });
     expect(deskPollOutcome(404, { error: "not found" }).kind).toBe("error");
     expect(deskPollOutcome(500, { error: "boom" })).toEqual({ kind: "error", message: "boom" });

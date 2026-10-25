@@ -346,6 +346,15 @@
 .host-subtab.current { box-shadow: var(--pressed); background: var(--face-hi); font-weight: 800; }
 
 /* ── wave 25: the Show window (a host's home) ─────────────────────────── */
+.host-show-title {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-width: 0;
+  min-height: calc(var(--title-h) + var(--safe-top)); padding: var(--safe-top) 10px 0;
+  background: var(--title-grad); color: var(--title-ink); font: 700 15px var(--ui-font);
+}
+.host-show-title-k { flex: 0 0 auto; font-weight: 800; letter-spacing: 0.5px; }
+.host-show-title-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.host-show-title-paused { flex: 0 0 auto; font-weight: 600; }
+.host-show-status:empty { min-height: 0; margin: 0; }
 .host-show-scroll {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain; padding: 8px 8px calc(16px + var(--safe-bottom));

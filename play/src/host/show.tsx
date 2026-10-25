@@ -38,6 +38,7 @@ export function HostShowWindow(p: HostShowProps) {
   if (c.view === null || c.ctx === null) {
     return (
       <div className="screen side host-show" data-testid="host-show">
+        <ShowTitle who={c.ctx?.session.auth?.character ?? null} paused={false} />
         <p className="host-empty">{c.client.error ?? "Loading the cue sheet…"}</p>
       </div>
     );
@@ -104,6 +105,7 @@ function ShowBody({ c, jobs, jobCount = 0, openGuests }: HostShowProps & { c: Ho
   };
   return (
     <div className="screen side host-show" data-testid="host-show" ref={root}>
+      <ShowTitle who={c.ctx?.session.auth?.character ?? null} paused={c.paused} />
       <div className="host-show-scroll">
         <div className="host-show-strip" role="group" aria-label="The night" data-show="top">
           {night.map((it, k) => (
@@ -133,6 +135,18 @@ function ShowBody({ c, jobs, jobCount = 0, openGuests }: HostShowProps & { c: Ho
           </ShowFold>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** The window's title bar (the NOW card steps aside while Show is up, so
+ *  this bar keeps the notch's room): ▣ SHOW · the host's part. */
+function ShowTitle({ who, paused }: { who: string | null; paused: boolean }) {
+  return (
+    <div className={`host-show-title${paused ? " paused" : ""}`}>
+      <span className="host-show-title-k">▣ SHOW</span>
+      {who !== null && who !== "" && <span className="host-show-title-who">{who}</span>}
+      {paused && <span className="host-show-title-paused">(Paused)</span>}
     </div>
   );
 }
