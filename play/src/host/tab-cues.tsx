@@ -1,4 +1,4 @@
-//! Cues: the director phone's running order inside the drawer — the same
+//! Cues: the director phone's running order inside the console — the same
 //! desk as the NEXT bar (an arm made on one fires from the other), LAST and
 //! who pressed it (D9: any host may fire), a filter, the acts. Wave 18
 //! (§5.2): three group boxes above the list — Who's calling (the claim),

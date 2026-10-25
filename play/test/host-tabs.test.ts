@@ -10,7 +10,7 @@ import {
   awardsNear,
   filterPeople,
   hostStrip,
-  hostTabs,
+  needsCount,
   inBathroom,
   isBathroomFlag,
   kingHpInput,
@@ -26,27 +26,25 @@ import {
   releasable,
   seenText,
   stimulusInput,
-  tabLabel,
 } from "../src/host/model.ts";
 import { hostFixture } from "./host-fixture.ts";
 
 const msg = (seq: number, channel: string, text: string, audience: ChatMessage["audience"] = "all"): ChatMessage =>
   ({ seq, channel, channelKind: "channel", title: channel, from: "", kind: "line", text, ts: seq, audience, parentSeq: null, hidden: false }) as ChatMessage;
 
-describe("the drawer's tabs", () => {
-  it("Cues · Needs (n) · Judge (n) · People · More, counting what waits", () => {
-    const tabs = hostTabs(hostFixture(), 1);
-    expect(tabs.map(tabLabel)).toEqual(["Cues", "Needs (3)", "Judge (1)", "People", "More"]);
+describe("what waits on a host (Show's Needs you, the bar's ⚠)", () => {
+  it("the needs as Needs folds them, plus a refused press", () => {
+    expect(needsCount(hostFixture(), 1)).toBe(3);
+    expect(needsCount(hostFixture({ needs: [] }), 0)).toBe(0);
   });
 
-  it("no facts → no Judge tab; nothing waiting → Needs (0)", () => {
-    const tabs = hostTabs(hostFixture({ judging: null, needs: [] }), 0);
-    expect(tabs.map((t) => t.id)).toEqual(["cues", "needs", "people", "more"]);
-    expect(tabLabel(tabs[1]!)).toBe("Needs (0)");
+  it("before the first poll: only a refused press", () => {
+    expect(needsCount(null, 0)).toBe(0);
+    expect(needsCount(null, 1)).toBe(1);
   });
 
-  it("before the first poll: Cues, Needs, People, More", () => {
-    expect(hostTabs(null, 0).map((t) => t.id)).toEqual(["cues", "needs", "people", "more"]);
+  it("a guest asking to get back in counts too", () => {
+    expect(needsCount({ ...hostFixture({ needs: [] }), rejoins: [{ request: "r1", name: "WinZip", at: 0 }] } as never, 0)).toBe(1);
   });
 
   it("More shows only what the event has: no currency → no wallet, no King, no terminals", () => {

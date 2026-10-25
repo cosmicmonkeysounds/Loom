@@ -20,7 +20,7 @@ import type { HostView } from "../types.ts";
 import { useHostView, useRecap, type HostClient } from "./client.ts";
 import { hostFire } from "./fire.ts";
 import { failText, type HostCtx } from "./kit.tsx";
-import { OPTIMISTIC_MS, awardsNear, barLine, cueDescription, groupNeeds, hostWanted, wantedNeed, type BarLine, type HostStripItem, hostStrip, newestSeq, refusalReason, refusedLive, type MoreFocus, type OwnPress, type RefusedPress } from "./model.ts";
+import { OPTIMISTIC_MS, awardsNear, barLine, cueDescription, needsCount, type BarLine, type HostStripItem, hostStrip, newestSeq, refusalReason, refusedLive, type MoreFocus, type OwnPress, type RefusedPress } from "./model.ts";
 import { callerKnown, callerText, cueCaller, shownCaller, type CallerFlip } from "./caller.ts";
 import { useFireAnyway } from "./fire-anyway.tsx";
 import { showTarget, type ShowSectionId } from "./show-model.ts";
@@ -259,7 +259,7 @@ export function HostConsole({ session, wide, openCard, client: injected, keyboar
   if (on) {
     const bar = view === null ? null : nextBar(rows, view.countdowns, nowMs, runs);
     const armedHere = bar?.kind === "next" && desk.armed?.id === bar.row.id;
-    const needs = view === null ? 0 : groupNeeds(view.needs).length + (refused !== null ? 1 : 0) + (wantedNeed(hostWanted(view)) !== null ? 1 : 0) + (view.rejoins?.length ?? 0);
+    const needs = needsCount(view, refused !== null ? 1 : 0);
     // The countdown the bar's first line already reads ("nothing to press …
     // ⏱ Midnight in 59:28") leaves the strip on a phone.
     const strip = view === null ? [] : hostStrip(view, layout, nowMs, needs, bar?.kind === "countdown", callers ? callerText(caller, [me], view.parts.map((p) => p.id)) : null);

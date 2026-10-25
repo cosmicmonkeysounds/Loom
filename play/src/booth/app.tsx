@@ -612,9 +612,9 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               {/* The sticky banner flows under the NOW card (the booth's title bar). */}
               <MomentsLayer />
               <Shell side={side} stage={stage} wide={wide} placeholder={player ? "Pick a chat, or follow your mission." : "Pick a room — or 📷 Scan a pass."} />
-              {/* No `hidden` here: the dock owns its keyboard rule. A field in
-                  the room hides it; one in the host console hides only its
-                  NEXT bar, never the drawer the host is typing in. */}
+              {/* No `hidden` here: the dock owns its keyboard rule. With the
+                  keyboard up the slim NEXT bar steps aside, but the award
+                  picker and *Fire anyway?* stay. */}
               {/* Wave 18 (§2.2 rule 5): a pop-out floats just above the dock, no scrim. */}
               <div className="booth-popout-anchor">
                 <PopOutHost />

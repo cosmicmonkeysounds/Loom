@@ -1,4 +1,4 @@
-//! The host panel's small parts (wave 13): the drawer's shared context (the
+//! The host panel's small parts (wave 13): the console's shared context (the
 //! view, the calls, a feedback line), a button that asks before it does
 //! anything that can't be taken back, and a section heading.
 
@@ -13,18 +13,18 @@ export interface HostCtx {
   view: HostView;
   calls: HostCalls;
   session: PrimeSession;
-  /** Wall ms, ticking once a second while the drawer is open. */
+  /** Wall ms, ticking once a second while Show is on screen. */
   now: number;
   /** Run one write: a feedback line on success (`done`) or the server's
    *  refusal, then a fresh poll. Resolves true when it went through. */
   run: (done: string, call: () => Promise<unknown> | null) => Promise<boolean>;
-  /** Move the drawer to a tab (and a More section). */
+  /** Go to Show, at a section (and a More section). */
   go: (tab: HostTab, section?: MoreFocus | null) => void;
-  /** Close the drawer and open a room (the staff room). */
+  /** Open a room (the staff room). */
   openRoom: (channel: string) => void;
-  /** Close the drawer and open a guest's card in the booth. */
+  /** Open a guest's card in the booth. */
   openCard: (guestId: string) => void;
-  /** Close the drawer and open the Wanted board, read-only (the booth's
+  /** Open the Wanted board, read-only (the booth's
    *  `WantedBoard`, wave 18 §5.5). Absent when the booth supplies none:
    *  Needs then lists the wanted programs in place. */
   openWanted?: () => void;
@@ -43,7 +43,7 @@ export const HostContext = createContext<HostCtx | null>(null);
 
 export function useHost(): HostCtx {
   const c = useContext(HostContext);
-  if (c === null) throw new Error("useHost outside the host drawer");
+  if (c === null) throw new Error("useHost outside the host console");
   return c;
 }
 
@@ -66,7 +66,7 @@ export function useRevealed(ref: RefObject<HTMLElement | null>, open: boolean): 
 
 /**
  * A button that asks first: the first tap turns it into "<ask> Yes / No"
- * in place (no modal over the drawer), the second does it. Used for every
+ * in place (no modal over the console), the second does it. Used for every
  * action that can't be taken back (release a part, restrict a guest, send
  * to every phone, switch the alert level, the King, the stimulus).
  */

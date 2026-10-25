@@ -1,5 +1,5 @@
-//! The host panel's pure rules (wave 13): which drawer tabs show and what
-//! they count, the NEXT bar's second line, a refused press and its
+//! The host panel's pure rules (wave 13; wave 25 the windows): what waits
+//! on a host, the NEXT bar's second line, a refused press and its
 //! `# hosts` reason, people search, a guest's agent thread, the alert dial.
 //! No React here, so every rule is tested on plain values.
 
@@ -11,34 +11,21 @@ import { badgesOf } from "../guest/wire.ts";
 import { onDeck } from "../../../core/src/cue-sheet.ts";
 import { STOPPED, actHandle, clockRuns, formatLeft, formatWatchValue, soonestCountdown, URGENT_S, type SheetLayout } from "../director.tsx";
 
-// --- the drawer's tabs ----------------------------------------------------------
+// --- what waits on a host ----------------------------------------------------
 
+/** Where a jump inside the console lands: the drawer's old tabs, now the
+ *  Show window's sections (`show-model.ts` `showTarget`). */
 export type HostTab = "cues" | "needs" | "judge" | "people" | "more";
 
-export interface HostTabInfo {
-  id: HostTab;
-  label: string;
-  /** Shown as `Needs (3)`; absent when the tab counts nothing. */
-  count?: number;
+/** What waits on a host: the needs (folded as Needs lists them), a refused
+ *  press, the escorts waiting, and the guests asking to get back in. The
+ *  Show window's *Needs you (n)* and the bar's ⚠ n. */
+export function needsCount(view: Pick<HostView, "needs"> & Partial<Pick<HostView, "rejoins">> | null, refused: number): number {
+  if (view === null) return refused;
+  return groupNeeds(view.needs).length + refused + (wantedNeed(hostWanted(view)) !== null ? 1 : 0) + (view.rejoins?.length ?? 0);
 }
 
-/** The drawer's tabs in order. Judge only when the event has facts; the
- *  counts are what waits on a host (needs + a refused press; pending
- *  filings). */
-export function hostTabs(view: Pick<HostView, "needs" | "judging"> | null, refused: number): HostTabInfo[] {
-  const out: HostTabInfo[] = [{ id: "cues", label: "Cues" }];
-  out.push({ id: "needs", label: "Needs", count: groupNeeds(view?.needs ?? []).length + refused + (wantedNeed(hostWanted(view)) !== null ? 1 : 0) });
-  if (view?.judging != null) out.push({ id: "judge", label: "Judge", count: view.judging.pending.length });
-  out.push({ id: "people", label: "People" }, { id: "more", label: "More" });
-  return out;
-}
-
-/** `Needs (3)`, `Cues`. */
-export function tabLabel(t: HostTabInfo): string {
-  return t.count !== undefined ? `${t.label} (${t.count})` : t.label;
-}
-
-/** The needs as the drawer lists them: two or more parts in the same state
+/** The needs as Needs lists them: two or more parts in the same state
  *  ("nobody signed in", "phone offline") fold into one row naming them, so
  *  ten empty booths before the doors are one line, not ten. Order kept (the
  *  folded row sits where its first member was). */
@@ -198,7 +185,7 @@ export function didText(press: OwnPress | null, lastId: string | null): string |
   return lines.length === 0 ? null : lines.join(" · ");
 }
 
-/** Which More section a need opens (the drawer scrolls to it): an agent's
+/** Which More section a need opens (Show scrolls to it): an agent's
  *  need opens that agent's own section, not the first agent's. */
 export function needSection(n: Pick<HostNeed, "target" | "character">): MoreFocus | null {
   if (n.target === "wallet") return "wallet";

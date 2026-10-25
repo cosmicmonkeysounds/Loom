@@ -14,7 +14,7 @@ import { nextBar, sheetLayout, type CueDesk } from "../src/director.tsx";
 import { hostCalls } from "../src/host/api.ts";
 import { HostDock, stripClass } from "../src/host/dock.tsx";
 import { HostContext, type HostCtx } from "../src/host/kit.tsx";
-import { barLine, hostTabs, cueDescription, cueThen, didText, hostStrip, hostWanted, moreDefaultTab, moreGroups, moreTabOf, wantedLine, wantedNeed, type WantedLike } from "../src/host/model.ts";
+import { barLine, needsCount, cueDescription, cueThen, didText, hostStrip, hostWanted, moreDefaultTab, moreGroups, moreTabOf, wantedLine, wantedNeed, type WantedLike } from "../src/host/model.ts";
 import { CuesTab } from "../src/host/tab-cues.tsx";
 import type { HostView } from "../src/types.ts";
 import { hostFixture } from "./host-fixture.ts";
@@ -171,10 +171,10 @@ describe("escorts waiting (§5.5)", () => {
     expect(hostWanted({ wanted: [w({}), { nope: 1 }, null] })).toHaveLength(1);
     expect(hostWanted({ wanted: "x" })).toEqual([]);
   });
-  it("counts as one need on the Needs tab", () => {
+  it("counts as one need under Needs you", () => {
     const v = { ...hostFixture({ needs: [] }), wanted: [w({})] } as HostView;
-    expect(hostTabs(v, 0).find((t) => t.id === "needs")?.count).toBe(1);
-    expect(hostTabs(hostFixture({ needs: [] }), 0).find((t) => t.id === "needs")?.count).toBe(0);
+    expect(needsCount(v, 0)).toBe(1);
+    expect(needsCount(hostFixture({ needs: [] }), 0)).toBe(0);
   });
   it("words a read-only row: place, seen, who has them", () => {
     expect(wantedLine(w({ lastSeen: 0 }), 120_000)).toBe("📍 The Cloud · seen 2 m ago · 🙋 Nobody yet");
