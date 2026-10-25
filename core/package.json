@@ -19,7 +19,8 @@
     "./show-clock": "./src/show-clock.ts",
     "./delivery": "./src/delivery.ts",
     "./host-board": "./src/host-board.ts",
-    "./casino": "./src/casino.ts"
+    "./casino": "./src/casino.ts",
+    "./house-desk": "./src/house-desk.ts"
   },
   "scripts": {
     "test": "vitest run",
