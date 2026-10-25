@@ -68,7 +68,10 @@ function DeskPage({ view }: { view: DeskView }) {
   const draft = useHouseDesk((s) => s.draft)
   const skew = useHouseDesk((s) => s.skew)
   const check = useHouseDesk((s) => s.check)
+  // The right column's view, and which side the keys drive (the side last
+  // clicked: walking the checks never GOes a cue by Space).
   const [pane, setPane] = useState<DeskPane>('cues')
+  const [keys, setKeys] = useState<DeskPane>('cues')
   const desk = shownDesk({ draft, view })!
   const running = runningRuns(view.runs).length > 0
   const now = useNow(true, running ? 250 : 1000) + skew
@@ -84,7 +87,7 @@ function DeskPage({ view }: { view: DeskView }) {
       const t = e.target instanceof HTMLElement ? e.target : null
       const action = deskKeyAction(
         { key: e.key, tag: t?.tagName, editable: t?.isContentEditable === true, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, repeat: e.repeat },
-        pane,
+        keys,
         useDialog.getState().current !== null,
       )
       if (action === null) return
@@ -125,25 +128,28 @@ function DeskPage({ view }: { view: DeskView }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [pane, cursor, sections])
+  }, [keys, cursor, sections])
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="house-tab">
       <DeskStatusStrip view={view} />
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <section className="flex min-h-0 flex-col border-r border-zinc-800" onMouseDown={() => setPane('cues')}>
-          <Transport view={view} now={now} />
+        <section className="flex min-h-0 flex-col border-r border-zinc-800" onMouseDown={() => setKeys('cues')}>
+          <Transport view={view} now={now} keys={keys === 'cues'} />
           <CueList desk={desk} view={view} now={now} durations={durations} />
           <Recent view={view} />
         </section>
-        <section className="flex min-h-0 flex-col">
+        <section className="flex min-h-0 flex-col" onMouseDown={() => setKeys(pane)}>
           <div role="tablist" className="flex border-b border-zinc-800 text-sm">
             {(['cues', 'checks'] as const).map((p) => (
               <button
                 key={p}
                 role="tab"
                 aria-selected={pane === p}
-                onClick={() => setPane(p)}
+                onClick={() => {
+                  setPane(p)
+                  setKeys(p)
+                }}
                 className={clsx('border-b-2 px-3 py-1.5', pane === p ? 'border-indigo-500 text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200')}
                 data-testid={`house-pane-${p}`}
               >
@@ -159,7 +165,7 @@ function DeskPage({ view }: { view: DeskView }) {
               </div>
             </>
           ) : (
-            <ChecksPanel view={view} sections={sections} cursor={cursor} now={now} />
+            <ChecksPanel view={view} sections={sections} cursor={cursor} now={now} keys={keys === 'checks'} />
           )}
         </section>
       </div>

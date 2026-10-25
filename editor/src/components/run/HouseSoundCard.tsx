@@ -7,10 +7,11 @@
 //! the project's `audio.json` so End → relaunch keeps it. Reads
 //! `store/house-audio.ts` (bound to the server run in `App.tsx`) and the
 //! terminal store's house map; a local run has no router and shows neither.
+//! *Open House →* goes to Run → House (wave 25), the desk and the checks.
 
 import { useState } from 'react'
 import clsx from 'clsx'
-import { RunBackend, useCockpit } from '@/store/cockpit'
+import { CockpitTab, RunBackend, useCockpit } from '@/store/cockpit'
 import { useHouseAudio } from '@/store/house-audio'
 import { useTerminals } from '@/store/terminals'
 import { TerminalStatus } from '@/lib/terminals'
@@ -67,6 +68,7 @@ export function HouseSoundCard() {
   const rows = useTerminals((s) => s.rows)
   const [withAnnounce, setWithAnnounce] = useState(false)
   const now = useNow(status !== null && !status.router.online, 30_000)
+  const setTab = useCockpit((s) => s.setTab)
   // An older server (no audio route) or none read yet: nothing to show.
   if (status === null) return null
   const listed = new Set(announceTerminalsOf(status.audio))
@@ -82,6 +84,14 @@ export function HouseSoundCard() {
           <span className={clsx('h-2 w-2 rounded-full', status.router.online ? 'bg-emerald-500' : 'bg-amber-500')} />
           {routerLine(status.router, status.now ?? now)}
         </span>
+        <button
+          onClick={() => setTab(CockpitTab.House)}
+          className="ml-auto text-[11px] text-indigo-300 hover:text-indigo-200"
+          title="The house desk: cues, and a test for every speaker, output and light"
+          data-testid="run-house-sound-open-house"
+        >
+          Open House →
+        </button>
       </div>
       {!reachable && <p className="mb-2 rounded bg-red-950/60 px-2 py-1 text-xs text-red-200">Can’t reach the server: the house sound may be fine.</p>}
 

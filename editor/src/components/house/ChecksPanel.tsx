@@ -12,7 +12,7 @@ import { checkProgress, nextOpenCheck, type DeskCheckRow, type DeskCheckSection,
 import { useHouseDesk } from '@/store/house-desk'
 import { btn, btnDanger, heading } from './ui'
 
-export function ChecksPanel({ view, sections, cursor, now }: { view: DeskView; sections: DeskCheckSection[]; cursor: DeskCheckRow | null; now: number }) {
+export function ChecksPanel({ view, sections, cursor, now, keys = true }: { view: DeskView; sections: DeskCheckSection[]; cursor: DeskCheckRow | null; now: number; keys?: boolean }) {
   const busy = useHouseDesk((s) => s.busy)
   const test = useHouseDesk((s) => s.test)
   const setCheck = useHouseDesk((s) => s.setCheck)
@@ -51,7 +51,9 @@ export function ChecksPanel({ view, sections, cursor, now }: { view: DeskView; s
           </button>
         </span>
       </div>
-      <p className="px-2 pt-1 text-[10px] text-zinc-500">Keys: T test · Y ✓ heard / seen · N ✗ nothing · ↓ next open · ↑ back</p>
+      <p className={clsx('px-2 pt-1 text-[10px]', keys ? 'text-zinc-400' : 'text-zinc-600')}>
+        {keys ? 'Keys: T test · Y ✓ heard / seen · N ✗ nothing · ↓ next open · ↑ back · Esc stop' : 'Keys are on the cue list: click here to walk the checks by key'}
+      </p>
       <div className="min-h-0 flex-1 overflow-auto p-2">
         {sections.length === 0 && <p className="p-4 text-center text-sm text-zinc-500">Nothing to check: place speakers and lights on the house map first.</p>}
         {sections.map((s) => (

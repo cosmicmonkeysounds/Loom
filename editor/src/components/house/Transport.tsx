@@ -8,7 +8,7 @@ import { useHouseDesk } from '@/store/house-desk'
 import { runningRuns } from '@/lib/house-desk-view'
 import { TONE_TEXT, btn } from './ui'
 
-export function Transport({ view, now }: { view: DeskView; now: number }) {
+export function Transport({ view, now, keys }: { view: DeskView; now: number; keys: boolean }) {
   const busy = useHouseDesk((s) => s.busy)
   const dirty = useHouseDesk((s) => s.draft !== null)
   const note = useHouseDesk((s) => s.note)
@@ -53,6 +53,9 @@ export function Transport({ view, now }: { view: DeskView; now: number }) {
           ■ Stop
         </button>
       </div>
+      <p className={clsx('mt-1 text-[10px]', keys ? 'text-zinc-400' : 'text-zinc-600')} data-testid="house-keys-cues">
+        {keys ? 'Keys: Space GO · ↑ ↓ playhead · Esc stop · double-click a cue to GO it' : 'Keys are on the checks: click here for Space GO'}
+      </p>
       {dirty && <p className="mt-1 text-[11px] text-amber-300">Unsaved edits: GO plays the saved desk.</p>}
       {note !== null && (
         <p className={clsx('mt-1 text-xs', TONE_TEXT[note.tone])} data-testid="house-note">
