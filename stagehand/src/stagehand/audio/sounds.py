@@ -81,6 +81,55 @@ def placeholders_in(directory: str | Path) -> list[str]:
     return sorted(out)
 
 
+def length_ms(path: str | Path) -> int | None:
+    """A sound file's length in ms from its header (None if unreadable)."""
+    try:
+        import soundfile as sf
+
+        info = sf.info(str(path))
+        return int(round(info.frames * 1000 / info.samplerate)) if info.samplerate else None
+    except Exception:  # noqa: BLE001 — libsndfile raises its own types
+        return None
+
+
+#: path → (mtime, size, ms or None): a header is read once per change.
+_lengths: dict[str, tuple[float, int, int | None]] = {}
+
+
+def sound_lengths(directory: str | Path, measure=length_ms) -> dict[str, int]:
+    """Every sound in `directory` → its length in ms (wave 25: the router's
+    report to the house desk, so a desk step knows how long a file runs and
+    the desk's checks see which story sounds have a file). One entry per
+    name, the file that plays (`_best`: a real file over a placeholder);
+    an unreadable file is left out. Lengths are cached by mtime + size."""
+    d = Path(directory)
+    try:
+        entries = sorted(p for p in d.iterdir() if p.suffix.lower() in EXTENSIONS and p.is_file())
+    except OSError:
+        return {}
+    stems: dict[str, list[Path]] = {}
+    for p in entries:
+        stems.setdefault(p.stem.lower(), []).append(p)
+    out: dict[str, int] = {}
+    for group in stems.values():
+        best = _best(group)
+        if best is None:
+            continue
+        try:
+            st = best.stat()
+        except OSError:
+            continue
+        hit = _lengths.get(str(best))
+        if hit is not None and hit[0] == st.st_mtime and hit[1] == st.st_size:
+            ms = hit[2]
+        else:
+            ms = measure(best)
+            _lengths[str(best)] = (st.st_mtime, st.st_size, ms)
+        if ms is not None:
+            out[best.stem] = ms
+    return dict(sorted(out.items()))
+
+
 def _smooth(n: int) -> int:
     """The smallest 2·3·5-smooth number ≥ n (a fast FFT length)."""
     best = 1 << max(0, (n - 1).bit_length())
