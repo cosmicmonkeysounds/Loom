@@ -176,8 +176,11 @@ broker or `show` down, only `&announce=1` terminals still speak them.
 The VPS runs `w18b-1021` (wave 18b Stage A, built on top of wave 19, so
 wave 19 is live). Master adds waves 18b Stage B, 20, 20b, 21, 22 and 23
 (getting back in: printed badges, invitations re-entering, ask a host,
-per-part cast cards; the play first-load gate is 148 kB), all **merged
-but not shipped**. Wave 23 needs the badges printed from Run → Print sheet
+per-part cast cards; the play first-load gate is 148 kB), 24 (directors
+unseen) and 25 (the house desk: `desk.json` cue lists and speaker / light
+checks in Run → House and the host's Desk window, the host's Show window,
+story-linked timelines; `docs/loom-house-desk.md`), all **merged but not
+shipped**. Wave 23 needs the badges printed from Run → Print sheet
 (Badges) and the cast cards reprinted (each now carries its own part's QR). The show text of waves 18b, 20 and 21 is
 marked DRAFT and awaits the user's sign-off (the `SIGNOFF-*.md` files).
 
@@ -199,14 +202,15 @@ marked DRAFT and awaits the user's sign-off (the `SIGNOFF-*.md` files).
    and starts the `show` and `lights` tasks) **before** the sync, so no old
    rule posts into the new story.
 6. MacBook: `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm
-   sync-show --replace-audio [--replace-lights]` **with its reload, before
-   doors**. Add `--replace-maps` only if the summary shows the maps differ.
+   sync-show --replace-audio [--replace-lights] [--replace-desk]` **with its
+   reload, before doors**. Add `--replace-maps` only if the summary shows the maps differ.
    Restart every other non-ended event.
 7. MacBook: install the router (`uv run stagehand sounds placeholders
    --config trapped.macbook.yaml`, `uv run stagehand check --only audio
    --config trapped.macbook.yaml`, `uv run stagehand launchd install --job
    audio --config trapped.macbook.yaml`); `uv run stagehand launchd restart
-   --job agents`; then Run → Mind → Reset.
+   --job agents`; then Run → Mind → Reset. The router must be wave 25's
+   (desk plays and its report); walk Run → House → Checks once it is up.
 8. Desktop: Zigbee2MQTT on the CC2652P, pair the bulb as
    `server_room_rgb`, place it in the map editor, test each look, Save to
    project (`scripts/house-desktop/README.md`).
