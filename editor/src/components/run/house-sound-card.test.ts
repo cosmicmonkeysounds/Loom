@@ -53,6 +53,7 @@ describe('the House sound card', () => {
     const html = render(HouseSoundCard)
     expect(html).toContain('Router online · house-mac')
     expect(html).toContain('data-testid="run-house-sound-stop"')
+    expect(html).toContain('Open House →')
     expect(html).toContain('+ announcements')
     expect(html).toMatch(/data-testid="run-house-sound-spot-tent"[^>]*checked=""|checked=""[^>]*data-testid="run-house-sound-spot-tent"/u)
     expect(html).not.toMatch(/checked=""[^>]*data-testid="run-house-sound-spot-desktop-tv"/u)

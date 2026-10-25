@@ -16,6 +16,7 @@ import { useProjects } from '@/store/projects'
 import { useOperate } from '@/store/operate'
 import { useTerminals } from '@/store/terminals'
 import { useHouseAudio } from '@/store/house-audio'
+import { useHouseDesk } from '@/store/house-desk'
 import { armChime } from '@/lib/chime'
 import { captureLinkFromLocation } from '@/lib/invite-link'
 
@@ -53,12 +54,14 @@ export default function App() {
     return () => useOperate.getState().detach()
   }, [projectId])
   // The terminal heartbeat watch (K-29) and the house sound (wave 18b: the
-  // router's presence + the Stop button) follow the server run, from any mode.
+  // router's presence + the Stop button) and the house desk (wave 25: Run →
+  // House) follow the server run, from any mode.
   const runEventId = useOperate((s) => (s.run !== null && s.event !== null ? s.event.id : null))
   useEffect(() => {
     armChime()
     useTerminals.getState().bind(runEventId)
     useHouseAudio.getState().bind(runEventId, projectId)
+    useHouseDesk.getState().bind(runEventId)
   }, [runEventId, projectId])
 
   return (

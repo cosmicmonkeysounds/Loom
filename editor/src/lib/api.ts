@@ -14,6 +14,7 @@ import type { MapVariantsResponse, SwitchVariantResult } from '@/lib/map-variant
 import { kingFromScreen, kingFromWire, type KingView } from '@/lib/king'
 import { audioStatusOf, routerOf, type AudioStatus, type AudioStopAnswer } from '@/lib/house-audio'
 import { lightsStatusOf, type LightsStatus } from '@/lib/lights-status'
+import type { DeskConfig, DeskTestCall, DeskView } from '@loom/core/house-desk'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -541,6 +542,20 @@ export const audioApi = {
   async saveToProject(eventId: string): Promise<void> {
     await req<unknown>('POST', `/e/${eventId}/api/mod/audio/project`, {})
   },
+  /** An identifying tone + label on one speaker or one output (wave 17). */
+  async test(eventId: string, target: { speaker: string } | { out: number }): Promise<{ seq: number }> {
+    const r = await req<{ seq?: unknown }>('POST', `/e/${eventId}/api/mod/audio/test`, target)
+    return { seq: typeof r.seq === 'number' ? r.seq : 0 }
+  },
+  /** Play a sound file, or say a house announcement, on the house speakers
+   *  (wave 25: the desk's checks and steps). Memory only, never journaled. */
+  async play(
+    eventId: string,
+    play: { sound: string; to?: string[]; gain?: number } | { say: string; to?: string[]; chime?: boolean },
+  ): Promise<{ seq: number }> {
+    const r = await req<{ seq?: unknown }>('POST', `/e/${eventId}/api/mod/audio/play`, play)
+    return { seq: typeof r.seq === 'number' ? r.seq : 0 }
+  },
 }
 
 // --- the house lights (wave 20, D8) --------------------------------------
@@ -557,6 +572,87 @@ export const lightsApi = {
       if (e instanceof ApiError && e.status === 404) return null
       throw e
     }
+  },
+  /** Identify a fixture, play a look, or publish one state on a fixture. */
+  async test(eventId: string, test: { fixture: string; set?: Record<string, unknown> } | { look: string }): Promise<{ seq: number }> {
+    const r = await req<{ seq?: unknown }>('POST', `/e/${eventId}/api/mod/lights/test`, test)
+    return { seq: typeof r.seq === 'number' ? r.seq : 0 }
+  },
+  /** Let new Zigbee devices join for `seconds` (0 closes). */
+  async pair(eventId: string, seconds: number): Promise<{ until: number | null }> {
+    const r = await req<{ until?: unknown }>('POST', `/e/${eventId}/api/mod/lights/pair`, { seconds })
+    return { until: typeof r.until === 'number' ? r.until : null }
+  },
+}
+
+// --- the house desk (wave 25: Run → House; docs/loom-house-desk.md §2.1) --
+
+/** A save's answer. */
+export interface DeskSaveAnswer {
+  version: string
+  source: DeskView['source']
+  warnings: string[]
+}
+
+const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+const standbyOf = (v: unknown): string | null => (typeof v === 'string' ? v : null)
+
+export const deskApi = {
+  /** The desk view. With `after` it is a long poll: the server answers at
+   *  once when its `rev` moved past `after`, else on the first change or
+   *  after `wait` seconds (default 25, at most 30). */
+  async get(eventId: string, after?: number, wait?: number): Promise<DeskView> {
+    const q = new URLSearchParams()
+    if (after !== undefined) q.set('after', String(after))
+    if (wait !== undefined) q.set('wait', String(wait))
+    const qs = q.toString()
+    return await req<DeskView>('GET', `/e/${eventId}/api/mod/desk${qs !== '' ? `?${qs}` : ''}`)
+  },
+  /** A director's save (`base` = the version it was read at). 400 carries
+   *  `problems`; 409 `stale` when someone saved since. */
+  async save(eventId: string, desk: DeskConfig, base?: string): Promise<DeskSaveAnswer> {
+    const r = await req<{ version?: unknown; source?: unknown; warnings?: unknown }>('POST', `/e/${eventId}/api/mod/desk`, base !== undefined ? { desk, base } : { desk })
+    return {
+      version: typeof r.version === 'string' ? r.version : '',
+      source: r.source === 'project' || r.source === 'default' ? r.source : 'director',
+      warnings: strings(r.warnings),
+    }
+  },
+  /** The desk in force becomes the project's `desk.json` (409 `no project`). */
+  async project(eventId: string): Promise<void> {
+    await req<unknown>('POST', `/e/${eventId}/api/mod/desk/project`, {})
+  },
+  /** GO: `cue`, or the playhead's cue. `standby` is the playhead this
+   *  console showed (409 `moved` when another console moved it). */
+  async go(eventId: string, opts: { cue?: string; standby?: string | null }): Promise<{ run: number | null; standby: string | null }> {
+    const body: Record<string, unknown> = {}
+    if (opts.cue !== undefined) body['cue'] = opts.cue
+    if (opts.standby !== undefined) body['standby'] = opts.standby
+    const r = await req<{ run?: unknown; standby?: unknown }>('POST', `/e/${eventId}/api/mod/desk/go`, body)
+    const run = typeof r.run === 'number' ? r.run : typeof r.run === 'object' && r.run !== null && typeof (r.run as { run?: unknown }).run === 'number' ? (r.run as { run: number }).run : null
+    return { run, standby: standbyOf(r.standby) }
+  },
+  /** Put the playhead on `cue` (null: the end of the list). */
+  async standby(eventId: string, cue: string | null): Promise<{ standby: string | null }> {
+    const r = await req<{ standby?: unknown }>('POST', `/e/${eventId}/api/mod/desk/standby`, { cue })
+    return { standby: standbyOf(r.standby) }
+  },
+  /** Stop one run, or every run and the house sounds (the panic). */
+  async stop(eventId: string, what: { run: number } | { all: true; announce?: boolean }): Promise<{ stopped: number }> {
+    const r = await req<{ stopped?: unknown }>('POST', `/e/${eventId}/api/mod/desk/stop`, what)
+    return { stopped: typeof r.stopped === 'number' ? r.stopped : Array.isArray(r.stopped) ? r.stopped.length : 0 }
+  },
+  /** Mark a check (null clears it). */
+  async check(eventId: string, key: string, mark: 'ok' | 'bad' | null, note?: string): Promise<void> {
+    await req<unknown>('POST', `/e/${eventId}/api/mod/desk/check`, note !== undefined ? { key, mark, note } : { key, mark })
+  },
+  /** Clear every check mark. */
+  async checkReset(eventId: string): Promise<void> {
+    await req<unknown>('POST', `/e/${eventId}/api/mod/desk/check/reset`, {})
+  },
+  /** Run one of the checks' tests as `deskChecks` describes it. */
+  async test(eventId: string, call: DeskTestCall): Promise<void> {
+    await req<unknown>('POST', `/e/${eventId}${call.route}`, call.body)
   },
 }
 

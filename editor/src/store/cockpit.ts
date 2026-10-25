@@ -65,6 +65,7 @@ export const CockpitTab = {
   World: 'world',
   Director: 'director',
   Mind: 'mind',
+  House: 'house',
   Log: 'log',
 } as const
 

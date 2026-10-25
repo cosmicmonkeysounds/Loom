@@ -40,6 +40,9 @@ export default defineConfig({
       // The host board (wave 13): the judging / queue / parts / guests /
       // wallet / award / needs helpers a Play host booth shares.
       '@loom/core/host-board': path.resolve(__dirname, '../core/src/host-board.ts'),
+      // The house desk (wave 25): the cue list, its timelines, the checks and
+      // the status chips Run → House draws (pure, dependency-free).
+      '@loom/core/house-desk': path.resolve(__dirname, '../core/src/house-desk.ts'),
       '@loom/core': path.resolve(__dirname, '../core/src/index.ts'),
       // Bank compiler as TypeScript source — the desktop app compiles
       // .loombank artifacts in the webview and hands bytes to the host.

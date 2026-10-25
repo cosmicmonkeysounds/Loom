@@ -133,6 +133,8 @@ describe('the bundled authoring collection', () => {
     expect(helpSearch('join code')[0]?.article.slug).toBe('run-mode')
     expect(helpSearch('QR')[0]?.article.slug).toBe('run-mode')
     expect(helpSearch('go live')[0]?.article.slug).toBe('run-mode')
+    expect(helpSearch('house desk')[0]?.article.slug).toBe('house-desk')
+    expect(helpSearch('test next').map((h) => h.article.slug)).toContain('house-desk')
     expect(helpArticle('deploy-mode')).toBeUndefined()
   })
 

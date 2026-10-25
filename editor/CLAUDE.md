@@ -11,7 +11,8 @@ embedding play (Run → Players).
 How each surface landed, wave by wave, is kept in
 [`docs/history/editor-claude-2026-10.md`](../docs/history/editor-claude-2026-10.md).
 The help articles the app ships are [`docs/help/authoring/`](../docs/help/authoring);
-`43-run-mode.md` is the director-facing description of Run.
+`43-run-mode.md` is the director-facing description of Run, and
+`47-house-desk.md` of Run → House.
 
 ## Commands
 
@@ -64,7 +65,7 @@ dock). `store/mode.ts` owns the active mode and region sizes, persisted to
 
 ```
 src/
-  App.tsx              auth gate → launchpad → Studio; binds the operate, terminals and house-audio stores
+  App.tsx              auth gate → launchpad → Studio; binds the operate, terminals, house-audio and house-desk stores
   components/
     studio/            StudioShell, ModeBar, TopBar, PropertiesTray, regions
     editor/            Editor (CodeMirror), Tabs, Breadcrumbs
@@ -72,6 +73,7 @@ src/
     graph/             the story-graph node editor
     run/               RunStage (header), RunPage (front of house), lifecycle, Print sheet, the Run cards
     cockpit/           the shared cockpit pages: Stage, Chat, Players, Roster, World, Director, Mind, Log, Inspector, Rail, Identity
+    house/             Run → House: the house desk (status strip, transport, cue list, inspector, checks)
     integrations/      GodotPanel, IntegrationsStage
     projects/ auth/ help/ runner/ shell/   launchpad, sign-in, Help overlay, References, palette + context menu + dialogs + settings
   store/               zustand stores (below)
@@ -96,6 +98,7 @@ Path alias `@/*` → `src/*`. Keep components small and put logic in pure
 | `players.ts` | Run → Players lineup, persisted per project |
 | `terminals.ts` | Run → Terminals heartbeat list, chimes, the house map for the setup builder |
 | `house-audio.ts` | The router status and *Stop house sounds* |
+| `house-desk.ts` | Run → House: the long poll on `GET /api/mod/desk` (`rev`, `stream-retry` backoff), the draft desk (`base`, 409 `stale` → ask), selection, GO with the playhead shown (409 `moved` → a note), stop / panic, the checks' tests (live: confirm first), marks, Zigbee pairing. `createHouseDeskStore(deps)` takes the api, sleep and clock (tests pass fakes) |
 | `dialog.ts` | Promise-based `promptText` / `confirmAction` / `confirmTyped` / `notify` |
 | `edit-journal.ts` | Undo / redo of structural story edits |
 | `projects.ts` `auth.ts` `settings.ts` `focus.ts` `help.ts` `context-menu.ts` `godot.ts` | As named |
@@ -150,8 +153,8 @@ identity control, quick-fire, the ▶ NEXT pill, a decisions pill, and on
 server runs **■ Stop house sounds**.
 
 Tabs (`CockpitTab`): **Run · Stage · Chat · Players · Story · Roster ·
-World · Director · Mind · Log**. Only Run and Story work with no run;
-World, Director and Mind close under a lens.
+World · Director · Mind · House · Log**. Only Run and Story work with no run;
+World, Director, Mind and House close under a lens.
 
 - **Run** (`run/RunPage.tsx`, front of house only; a source test pins
   that it renders no lifecycle controls). The empty state (Start
@@ -196,6 +199,25 @@ World, Director and Mind close under a lens.
   ✅ / 😤 / 🤷 overrides on every judged filing, near misses, the judge
   queue, per-question tallies. In the editor, verdicts are shown only
   here; hosts also judge from Play's host dock (the Judge tab).
+- **House** (`components/house/`, server runs; wave 25,
+  `docs/loom-house-desk.md` §6.1): the house desk, a small QLab. The
+  status strip (`deskStatus` chips, **■ STOP ALL** = `desk/stop {all}`,
+  the source + Save to project); on the left the transport (big **GO** on
+  the playhead with its story events named, ■ Stop, ↑ / ↓, the running
+  runs) over the cue list (sections, ▶ playhead, number, name,
+  `stepText` summary, planned length off `cueTimeline` with the house's
+  look / sound lengths, ⚡ event chips, a running run's progress and step
+  states; double-click GOes); on the right **Cue** (the save bar and the
+  inspector: cue fields, step rows with kind-specific pickers over
+  `house`, with ↑ / then, wait, a timeline bar, `validateDesk` problems
+  inline) or **Checks** (`deskChecks` with Test / colours / ✓ ✗,
+  progress, Test next, Pair a bulb, Reset marks). Keys go to the side
+  last clicked, never while typing or under a dialog: cue list Space GO,
+  ↑ / ↓ playhead; checks T / Y / N / ↓ / ↑; Esc stops the running cues
+  on both. Pure logic: `lib/house-desk-edit.ts` (the edit ops) and
+  `lib/house-desk-view.ts` (rows, timeline bars, issues, keys, the
+  checks' cursor); fixtures in `lib/test/desk-fixture.ts`. The Run
+  page's House sound card links here (*Open House →*).
 
 ### Run → Terminals
 
@@ -247,7 +269,7 @@ character's feed, readouts and ⏏ Release.
 source through aliases in `vite.config.ts` and `tsconfig.app.json`: no
 wasm, no build step. The aliases are `parser`, `lsp`, `sim`, `runtime`
 (for `@loom/bank`), `chat`, `views`, `mod-patch`, `cue-sheet`,
-`host-board`, then bare `@loom/core`, plus `@loom/bank` and
+`host-board`, `house-desk`, then bare `@loom/core`, plus `@loom/bank` and
 `@loom/play/embed`.
 
 - `lib/loom-language.ts`: the highlighter, built on the parser's keyword
@@ -326,7 +348,8 @@ while every file still holds the text it expects.
 - Unit (vitest): next to the code (`*.test.ts`), e.g.
   `store/lifecycle-contract`, `store/sim`, `store/run`,
   `store/operate-{delta,stream,moved}`, `cockpit/{rooms,mind,wallet,…}`,
-  `director/*`, `lib/{terminals,terminal-setup,print-sheet,collab,…}`,
+  `director/*`, `lib/{terminals,terminal-setup,print-sheet,collab,house-desk-edit,house-desk-view,…}`,
+  `store/house-desk`, `house/house-tab` (static render over a fixture view),
   `graph/graph-pipeline` (core graph → flow → ELK over
   `escape-the-internet`), `lib/help-content` (help collection integrity:
   frontmatter, cross-links).

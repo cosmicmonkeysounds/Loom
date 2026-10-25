@@ -4,7 +4,7 @@
 //! controls, the page tabs, the identity control ("who am I right now"),
 //! quick-fire, and a decisions pill; a banner under it reports what a
 //! co-writer just did. The pages — Run (front of house) / Stage / Chat /
-//! Story / Roster / World / Director / Mind / Log — read the cockpit contract
+//! Story / Roster / World / Director / Mind / House / Log — read the cockpit contract
 //! only, so this stage is identical on both backends. Nothing here owns a
 //! backend lifetime: the server-run store is attached at the app level.
 
@@ -19,6 +19,7 @@ import { usePlayers } from '@/store/players'
 import { useWorkspace } from '@/store/workspace'
 import { LogTab } from '@/components/cockpit/LogTab'
 import { MindTab } from '@/components/cockpit/MindTab'
+import { HouseTab } from '@/components/house/HouseTab'
 import { RunCockpit } from '@/components/cockpit/providers'
 import { IdentityControl } from '@/components/cockpit/Identity'
 import { NextCuePill } from '@/components/cockpit/director/NextCuePill'
@@ -50,6 +51,7 @@ const TABS: TabSpec[] = [
   { id: CockpitTab.World, label: 'World', hint: 'The world state — factions and every live variable, global and per-person', operatorOnly: true },
   { id: CockpitTab.Director, label: 'Director', hint: 'The running order by act, the night at a glance, and event / beat / broadcast tools', operatorOnly: true },
   { id: CockpitTab.Mind, label: 'Mind', hint: 'An agent-voiced character’s mind: the prompts, both models’ reasoning, the arc, and a control panel', operatorOnly: true },
+  { id: CockpitTab.House, label: 'House', hint: 'The house desk: build and GO house cues (sounds, lights, story events), and test every speaker and light', operatorOnly: true },
   { id: CockpitTab.Log, label: 'Log', hint: 'The raw ledger, event by event — filter to one participant, export the run' },
 ]
 
@@ -236,6 +238,7 @@ function StageChrome() {
         {tab === CockpitTab.World && <WorldTab />}
         {tab === CockpitTab.Director && <DirectorTab />}
         {tab === CockpitTab.Mind && <MindTab />}
+        {tab === CockpitTab.House && <HouseTab />}
         {tab === CockpitTab.Log && <LogTab />}
       </div>
     </div>
