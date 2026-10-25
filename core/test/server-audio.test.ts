@@ -401,14 +401,16 @@ describe("stop all house sounds (wave 18b, Q7)", () => {
     rt.dispose();
   });
 
-  it("a host's booth may stop them, never save the speakers", async () => {
+  it("a host's booth may stop them and (wave 25) test them, never save the speakers", async () => {
     const rt = runtime({ audio: AUDIO_TEXT });
     const r = await call(rt, "POST", "/api/prime/login", { character: "Task Manager", passcode: CODES.prime }, {});
     expect(r.json).toMatchObject({ host: true });
     const token = r.json["token"] as string;
     expect((await call(rt, "POST", "/api/mod/audio/stop", { token }, { token })).status).toBe(200);
     expect((await call(rt, "POST", "/api/mod/audio", { audio: AUDIO, token }, { token })).status).toBe(403);
-    expect((await call(rt, "POST", "/api/mod/audio/test", { speaker: "hall", token }, { token })).status).toBe(403);
+    // Wave 25: the host's Desk walks the speakers (the host allowlist).
+    expect((await call(rt, "POST", "/api/mod/audio/test", { speaker: AUDIO.speakers[0]!.id, token }, { token })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/mod/audio/report", { acks: [], token }, { token })).status).toBe(403);
     expect((await view(rt)).stops[0]!.by).toBe("Booth · Task Manager");
     rt.dispose();
   });

@@ -5133,7 +5133,7 @@ export class EventRuntime {
         if (await handleAudioPost(this.audio, this.audioContext(), path, body, res, link, by)) return true;
       }
       if (path === "/api/mod/lights" || path.startsWith("/api/mod/lights/")) {
-        // A booth never gets here: lights are not on the host allowlist.
+        // A booth reaches only `/api/mod/lights/test` here (wave 25, the host allowlist).
         const project = this.project;
         const link = project === null ? null : { writeFile: (file: string, text: string) => project.writeFile(file, text), saveSnapshot: () => project.saveSnapshot(this.dataSnapshot(this.projectMaps ?? {})) };
         if (await handleLightsPost(this.lights, this.lightsContext(), path, body, res, link, by)) return true;
