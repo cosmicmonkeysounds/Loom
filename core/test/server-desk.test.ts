@@ -514,3 +514,34 @@ describe("isHostRoute (wave 25)", () => {
     expect(isHostRoute("GET", "/api/mod/lights", {}, ctx)).toBe(false);
   });
 });
+
+describe("the terminals' speech report (§5)", () => {
+  it("parses talk= / said= (said=-1 valid, junk dropped)", async () => {
+    const { screenDeviceOf } = await import("../server/routes/screen.ts");
+    const q = (o: Record<string, string>) => (k: string) => o[k] ?? "";
+    expect(screenDeviceOf(q({ talk: "1", said: "42" }))).toMatchObject({ talk: true, said: 42 });
+    expect(screenDeviceOf(q({ talk: "0", said: "-1" }))).toMatchObject({ talk: false, said: -1 });
+    const junk = screenDeviceOf(q({ talk: "yes", said: "-2" }));
+    expect(junk.talk).toBeUndefined();
+    expect(junk.said).toBeUndefined();
+  });
+
+  it("a poll with no said counts on talk=0 alone; a terminal that never reports talk= can't hold the step", async () => {
+    const { ScreenWatch, speechWatchOf } = await import("../server/routes/screen.ts");
+    const { Sim } = await import("../src/runtime/sim/index.ts");
+    let now = 1_000;
+    const watch = new ScreenWatch({ now: () => now });
+    const model = Sim.fromSources("# T\n\nLOCATION The Server Room\n\nCHARACTER Trabolta\n\n== Boot\nHi.\n").model;
+    const at = (name: string, device: Record<string, unknown>) => watch.poll(null, { name, spot: "", view: "room", character: "Trabolta", room: "The Server Room", after: null, device }, () => false, [], model);
+    at("old", {}); // a build before wave 25
+    expect(speechWatchOf(watch, model, "The Server Room", now, [], 1500)).toBeNull();
+    at("new", { talk: true });
+    const w = speechWatchOf(watch, model, "The Server Room", now, [], 1500)!;
+    now += 1500;
+    expect(w.done(now)).toBeNull();
+    at("new", { talk: false });
+    expect(w.done(now)).toBe("said");
+    now += 7000; // it went away
+    expect(w.done(now)).toBe("no terminal");
+  });
+});
