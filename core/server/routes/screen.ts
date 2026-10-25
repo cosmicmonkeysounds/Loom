@@ -72,6 +72,13 @@
 //! `POST /api/mod/screen/identify {name}` makes that terminal show its name
 //! for `IDENTIFY_MS` (SW-SCR-21).
 //!
+//! The house desk (wave 25, `server/desk.ts` §5): a voice / room poll also
+//! carries `talk=1|0` (speaking, or holding unspoken room lines) and
+//! `said=<seq>` (every room line at or below it finished). Both are kept with
+//! the heartbeat (memory only); `speechWatchOf` ends a desk `speech` step once
+//! every terminal that speaks the room has fallen quiet. The runtime pokes the
+//! desk on every poll.
+//!
 //! Why not the mod feed (`docs/trapped/screens-audit.md` §3.3): it pushes a
 //! full ModView per story step, carries every DM onto a wall a guest can
 //! touch, has no "current state" for a rebooted tablet, and counts every
@@ -916,6 +923,13 @@ export interface ScreenDevice {
   patchBetween?: number;
   /** Why `patch === "fault"` (`pft=`: `no_port` | `stale` | `dup`). */
   patchFault?: string;
+  /** (wave 25, the house desk §5; voice / room polls only) `talk=1|0`: is
+   *  it speaking, or holding unspoken room lines? */
+  talk?: boolean;
+  /** (wave 25) `said=<seq>`: every room line at or below it is finished
+   *  (spoken, skipped or muted); −1 = none. Absent: no cursor yet, or a build
+   *  too old to send it. */
+  said?: number;
 }
 
 /** What a terminal's `door=` may say (wave 20). */
@@ -975,6 +989,10 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   if (pbx !== null) d.patchBetween = pbx;
   const pft = q("pft");
   if (DOOR_CODE.test(pft)) d.patchFault = pft;
+  const talk = q("talk");
+  if (talk === "1" || talk === "0") d.talk = talk === "1";
+  const said = q("said");
+  if (/^-?\d{1,12}$/u.test(said) && Number(said) >= -1) d.said = Number(said);
   return d;
 }
 
@@ -991,6 +1009,8 @@ export interface ScreenPoll extends ScreenDevice {
   character: string;
   /** The room terminal's LOCATION, as polled (absent: not a room terminal). */
   room?: string;
+  /** (wave 25) The location whose lines it speaks, as polled (`voice=`, the TV). */
+  voice?: string;
   /** Epoch ms of the last poll. */
   at: number;
 }
@@ -1333,7 +1353,8 @@ export class ScreenWatch {
     if (name === "") return;
     this.polls.delete(name); // re-insert: Map order = poll order
     const room = clip(who.room ?? "");
-    this.polls.set(name, { name, spot: clip(who.spot), view: clip(who.view, 16), character: clip(who.character), ...(room !== "" ? { room } : {}), ...who.device, at: this.now() });
+    const voice = clip(who.voice ?? "");
+    this.polls.set(name, { name, spot: clip(who.spot), view: clip(who.view, 16), character: clip(who.character), ...(room !== "" ? { room } : {}), ...(voice !== "" ? { voice } : {}), ...who.device, at: this.now() });
     while (this.polls.size > MAX_SCREENS) this.polls.delete(this.polls.keys().next().value!);
   }
 
@@ -1687,6 +1708,73 @@ export async function handleScreenIdentifyPost(watch: ScreenWatch, req: Incoming
   }
   sendJson(res, 200, { name, until: watch.identify(name) });
   return true;
+}
+
+// --- speech done (wave 25, the house desk §5) -------------------------------
+
+/** A terminal counts as speaking its room this long after its last poll. */
+export const SPEECH_ONLINE_MS = 6_000;
+
+/** The room lines a poller speaks: its own character's and the text-only
+ *  lore speakers' (the same rule as the `voice` block). */
+function speaksFor(model: SimModel | null, character: string): (from: string) => boolean {
+  const me = foldName(character);
+  const textOnly = new Set(SCREEN_TEXT_ONLY.map(foldName));
+  return (from) => model?.characters.has(from) === true && (foldName(from) === me || textOnly.has(foldName(from)));
+}
+
+/** The newest line seq in `channel` a speaker `speaks` admits (−1 = none). */
+export function newestRoomLine(messages: readonly ChatMessage[], channel: string, speaks: (from: string) => boolean): number {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]!;
+    if (m.channel === channel && m.kind === "line" && !m.hidden && m.from !== "" && speaks(m.from)) return m.seq;
+  }
+  return -1;
+}
+
+/** One `speech` step's watch (`DeskSpeechWatch`). */
+export interface SpeechWatch {
+  done(now: number): string | null;
+}
+
+/**
+ * Watch a house-desk `speech` step on `room` (a LOCATION) from `startAt`
+ * (§5): it may end once every online terminal that speaks that room (its
+ * poll's `voice=`, else `room=`, polled in the last `SPEECH_ONLINE_MS`, and
+ * reporting `talk=`) has polled, at or after `startAt + grace`, `talk=0`
+ * with `said` at or past the newest room line it speaks as of the step's
+ * start (a poll with no `said` counts on `talk=0` alone). A terminal that
+ * never reports `talk=` (a build before wave 25) can't hold the step. Null:
+ * no such terminal now (the step ends `no terminal`). `done` answers
+ * `said`, or `no terminal` once they have all gone.
+ */
+export function speechWatchOf(watch: ScreenWatch, model: SimModel | null, room: string, startAt: number, messages: readonly ChatMessage[], grace: number): SpeechWatch | null {
+  const loc = locationNamed(model, room);
+  if (loc === undefined) return null;
+  const channel = `loc:${loc.id}`;
+  const speakers = (now: number) =>
+    watch.seen().filter((p) => {
+      if (p.talk === undefined || now - p.at > SPEECH_ONLINE_MS) return false;
+      const r = p.voice !== undefined && p.voice !== "" ? p.voice : (p.room ?? "");
+      return r !== "" && locationNamed(model, r)?.id === loc.id;
+    });
+  if (speakers(startAt).length === 0) return null;
+  // The room's lines as of the step's start (later lines are the next step's).
+  const at = messages.slice();
+  const targets = new Map<string, number>();
+  const target = (p: ScreenPoll) => {
+    const k = `${p.name}\u0000${p.character}`;
+    if (!targets.has(k)) targets.set(k, newestRoomLine(at, channel, speaksFor(model, p.character)));
+    return targets.get(k)!;
+  };
+  return {
+    done(now) {
+      const live = speakers(now);
+      if (live.length === 0) return "no terminal";
+      const quiet = live.every((p) => p.at >= startAt + grace && p.talk === false && (p.said === undefined || p.said >= target(p)));
+      return quiet ? "said" : null;
+    },
+  };
 }
 
 /** What the director's terminals card reads (K-29). */
