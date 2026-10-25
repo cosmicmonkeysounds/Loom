@@ -43,4 +43,15 @@ describe("play help", () => {
     expect(text).toContain("to everyone, to your character, or into a staff room");
     expect(text).toContain("doesn't banner your booth");
   });
+
+  it("wave 25: the hosts' guide covers Show, the slim bar, the Desk and walking the checks", async () => {
+    const { readFileSync } = await import("node:fs");
+    const text = readFileSync(new URL("../../docs/help/play/14-hosts.md", import.meta.url), "utf8").replace(/\s+/gu, " ");
+    for (const h of ["## The Show window", "## The NEXT bar", "## The Desk", "### Walking the checks"]) expect(text).toContain(h);
+    expect(text).toContain("Show · Chats · Desk · 📷 Scan");
+    expect(text).toContain("Standby moved — press GO again");
+    expect(text).not.toMatch(/pull up the console|five tabs/u);
+    const prime = articlesFor("performer");
+    for (const q of ["standby", "test tone", "show window", "house desk"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("hosts");
+  });
 });
