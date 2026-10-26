@@ -389,26 +389,6 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 
 /* --- the King --------------------------------------------------------------------- */
 
-.hud-king {
-  position: absolute;
-  left: 8px;
-  top: calc(max(8px, env(safe-area-inset-top)) + clamp(78px, 10vw, 104px));
-  display: flex;
-  flex-direction: column;
-  padding: 0.25em 0.7em 0.3em;
-  background: rgba(0, 0, 40, 0.65);
-  border: 2px solid var(--gold-deep);
-  color: var(--gold);
-  font-size: clamp(18px, 2.4vw, 26px);
-  line-height: 1.1;
-  pointer-events: none;
-}
-.hud-king.near { border-color: var(--gold); box-shadow: 0 0 10px var(--gold-deep); }
-.hud-king.open { border-color: #2f2; color: #8f8; }
-.hud-king-label { letter-spacing: 0.06em; }
-.hud-king-hearts { font-size: 1.15em; color: #ff5a5a; letter-spacing: 0.08em; }
-.hud-king-state { font-size: 1.1em; letter-spacing: 0.1em; }
-.hud-king small { font-size: 0.65em; color: #ffe9a0; }
 .king-actions {
   position: absolute;
   right: 12px;

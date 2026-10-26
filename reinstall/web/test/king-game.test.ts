@@ -52,7 +52,7 @@ type Bare = {
   tickKing(now: number): void;
   adoptKing(k: KingState | null | undefined, by?: string | null): void;
   refreshDoor(): void;
-  kingHud(): { meter: string; hitUsed: boolean; fallen: boolean; verdict: string } | null;
+  kingHud(): Record<string, unknown> | null;
 };
 
 function game(king: KingState | null = full, feet: Vec3 = near) {
@@ -111,7 +111,9 @@ describe("⚔ HIT — once per reinstallation visit, judged by the server", () =
     expect(staggers.n).toBe(1);
     expect(sfx.thud).toHaveBeenCalled();
     expect(said).toEqual(["⚔ You hit the King!"]); // never "Excel hit the King." for our own
-    expect(g.kingHud()).toMatchObject({ meter: "14 / 15", hitUsed: true });
+    expect(g.kingHud()).toMatchObject({ hitUsed: true });
+    // Wave 26 (R3): the HUD carries no meter, label or stage — the bar over his head shows the points.
+    for (const gone of ["meter", "label", "stage", "hp", "max"]) expect(g.kingHud(), gone).not.toHaveProperty(gone);
     // Again: spent until the next reinstallation, nothing posted.
     g.hit();
     g.tickKing(1);

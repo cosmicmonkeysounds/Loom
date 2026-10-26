@@ -1,7 +1,7 @@
 //! The play screen: the canvas the `Game` renders into, the HUD over it
 //! (where you are, warmer / colder, the clock, a compass whose gold pip
-//! points along the trail), the King's shared bar with this visit's one ⚔
-//! hit, the twin sticks on a touch screen, the 🎤 voice link toggle (when
+//! points along the trail), this visit's one ⚔ hit while the King is near
+//! (wave 26, R3: his bar is drawn over his head only, never on the HUD), the twin sticks on a touch screen, the 🎤 voice link toggle (when
 //! this device has it on), and the celebration when Gerald is found.
 
 import { useEffect, useRef, useState } from "react";
@@ -12,7 +12,7 @@ import { ProgressBar, Window } from "../wizard.tsx";
 import type { Sfx } from "./audio.ts";
 import { Game, type GameEnd, type HudState, type KingHud } from "./engine.ts";
 import { earsLine, type VoiceHudState } from "./voice.ts";
-import { HIT_USED, KNEELING_LINE, STAGE_LINE } from "./fight.ts";
+import { HIT_USED } from "./fight.ts";
 import { bearingOf, findCopy, findOutcome, HEAT_LABEL, type FindOutcome } from "./hud.ts";
 import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
@@ -194,7 +194,7 @@ export function Play({
             {assignment.name} · {hud.others > 0 ? `${hud.others} other program${hud.others === 1 ? "" : "s"} in here` : "alone in the simulation"}
             {hud.voice !== null && earsLine(hud.voice) !== null && <> · {earsLine(hud.voice)}</>}
           </div>
-          {hud.king !== null && <KingBar king={hud.king} onHit={() => game.current?.hit()} />}
+          {hud.king !== null && <KingActions king={hud.king} onHit={() => game.current?.hit()} />}
           {hud.notice !== null && <div className="hud-notice">{hud.notice}</div>}
           {hud.idleLeft !== null && (
             <div className="hud-idle w98-raised">
@@ -277,34 +277,24 @@ export function Play({
   );
 }
 
-/** The King's shared bar under the top HUD, and ⚔ HIT when he is near —
- *  spent (disabled, with the line why) once this visit has hit him. */
-function KingBar({ king, onHit }: { king: KingHud; onHit: () => void }) {
-  if (king.fallen) {
-    return (
-      <div className="hud-king open">
-        <span className="hud-king-label">♚ {king.label}</span>
-        <span className="hud-king-state">KNEELING · {king.meter}</span>
-        <small>{KNEELING_LINE}</small>
-      </div>
-    );
-  }
+/** ⚔ HIT while the King is near and standing — spent (disabled, with the
+ *  line why) once this visit has hit him. No bar, meter or stage line: the
+ *  bar over his head is the only King display (wave 26, R3). */
+function KingActions({ king, onHit }: { king: KingHud; onHit: () => void }) {
   const near = king.verdict !== "far" && king.verdict !== "floor";
+  if (king.fallen || !near) return null;
   return (
-    <>
-      <div className={`hud-king${near ? " near" : ""}`}>
-        <span className="hud-king-label">⚔ {king.label}</span>
-        <span className="hud-king-hearts">{king.meter}</span>
-        <small>{king.hitUsed ? HIT_USED : STAGE_LINE[king.stage]}</small>
-      </div>
-      {near && (
-        <div className="king-actions">
-          <button className="w98-button big default" onClick={onHit} disabled={king.hitUsed || king.hitting} aria-label="Hit the King">
-            ⚔ HIT
-          </button>
-        </div>
-      )}
-    </>
+    <div className="king-actions">
+      <button
+        className="w98-button big default"
+        onClick={onHit}
+        disabled={king.hitUsed || king.hitting}
+        title={king.hitUsed ? HIT_USED : undefined}
+        aria-label="Hit the King"
+      >
+        ⚔ HIT
+      </button>
+    </div>
   );
 }
 

@@ -2,34 +2,31 @@
 //! doorway with ONE health bar shared by every guest for the whole night
 //! (the server's `KingState`, `docs/loom-reinstall.md` §3): each program may
 //! hit him once per reinstallation visit (⚔ / Space, judged by the server on
-//! its own copy of the pose — `POST /api/spatial/king/hit`), and the bar sets
-//! how well he plays chess at the real terminal outside the server-room door
-//! (full = a grandmaster … 0 = pawns only). At 0 he kneels for everyone and
-//! his door opens in both games; a director's restore stands him back up.
+//! its own copy of the pose — `POST /api/spatial/king/hit`). At 0 he kneels
+//! for everyone and his door opens in both games; a director's restore
+//! stands him back up.
 //!
-//! The tablet only pre-checks the reach (`kingReach`, to nudge the player
-//! closer before it asks) and says what the server answered. There is no
-//! chess here any more.
+//! The bar over his head (`@loom/house/three` `drawBar`) is the only King
+//! display (wave 26, R3): the HUD carries no meter, stage or kneeling line,
+//! just the ⚔ HIT button while he is near and the passing notices. The
+//! tablet only pre-checks the reach (`kingReach`, to nudge the player closer
+//! before it asks) and says what the server answered. There is no chess here.
 
 import { doorGap, floorOf, locate } from "@loom/house";
 import type { HouseMap, KingReach, Prop, Vec3 } from "@loom/house";
-import type { Stage } from "@loom/chess/stage";
 import { RADIUS } from "./physics.ts";
 
 // The reach rule is `@loom/house`'s, the one the server judges a hit by
 // (with its slack): the tablet only pre-checks it to nudge the player
 // closer before it asks. Standing on his very centre counts as facing him.
 export { kingReach, KING_CONE_DEG, KING_REACH, type KingReach } from "@loom/house";
-// The stage ladder is the door terminal's (`@loom/chess`): the HUD names the
-// stage the King's board would be dealt at right now, never its own guess.
-export { stageFor, type Stage } from "@loom/chess/stage";
 
 /** What the HUD says when a hit can't be asked for from here. */
 export function nudgeFor(reach: Exclude<KingReach, "ok">): string {
   return reach === "facing" ? "Face him." : "Get closer to the King.";
 }
 
-/** Said (and shown under the bar) once this visit has hit him. A visit
+/** Said (a passing notice) once this visit has hit him. A visit
  *  ends at the duck, not at Leave, a director's end or a timeout, so a
  *  re-scan before Gerald is found is still the visit that hit him. */
 export const HIT_USED = "You hit him this reinstallation. Find Gerald before you hit him again.";
@@ -38,34 +35,6 @@ export const HIT_USED = "You hit him this reinstallation. Find Gerald before you
  *  re-scan is the visit that already hit him (missing on an old server). */
 export function hitSpentAtStart(assignment: { kingHit?: boolean }): boolean {
   return assignment.kingHit === true;
-}
-
-/** Flavour under the bar while he stands: how he is holding up (the
- *  simulation's King, not the board's — no chess words on the tablet). The
- *  stage is the terminal's (`stageFor`: full = grandmaster, 1 … max−1 club /
- *  beginner / dizzy, 0 pawns), so "pawns" only ever names a felled King,
- *  whose HUD reads `KNEELING_LINE` instead; it stays for completeness. */
-export const STAGE_LINE: Record<Stage, string> = {
-  grandmaster: "The King is at full strength.",
-  club: "The King is rattled.",
-  beginner: "The King is reeling.",
-  dizzy: "The King is dizzy.",
-  pawns: "The King is barely standing.",
-};
-
-/** Under the bar once he has fallen (hp 0): only then does he kneel. */
-export const KNEELING_LINE = "The King is on his knees. His door stands open.";
-
-/** Above this many points the meter is "n / max" (as the bar over his head). */
-const HEARTS_MAX = 9;
-
-/** The HUD's meter: `♥` per point left and `♡` per point lost up to nine
- *  points, else "n / max". */
-export function kingMeter(hp: number, max: number): string {
-  const m = Math.max(1, Math.round(max));
-  const h = Math.max(0, Math.min(m, Math.round(hp)));
-  if (m > HEARTS_MAX) return `${h} / ${m}`;
-  return "♥".repeat(h) + "♡".repeat(m - h);
 }
 
 /** Within this of his doorway (or of him), a body would be caught by the leaf or his box. */

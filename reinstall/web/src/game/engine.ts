@@ -18,7 +18,8 @@
 //!
 //! The King (`fight.ts`) stands in the Server Room's doorway with the one
 //! health bar every guest shares (the server's `KingState`, off `hello`,
-//! `king` frames and the map GET): ⚔ / Space asks the server for this
+//! `king` frames and the map GET), drawn only over his head (wave 26, R3:
+//! no King bar on the HUD): ⚔ / Space asks the server for this
 //! visit's one hit; at 0 he kneels and his door opens for everyone. An old
 //! server sends no King state: then he just stands, with no ⚔. Ghosts wear
 //! the guest's profile picture (`/api/avatar/<key>`, the `avatar` frame).
@@ -40,7 +41,7 @@ import { CamFeeds } from "./cams.ts";
 import { createVoiceSink, earsFor, micSourceOf, stopStream, VoiceLink, type VoiceHudState } from "./voice.ts";
 import { applyFrame, avatarUrl, duckToAdopt, houseVersionOf, kingOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
-import { HIT_USED, hitSpentAtStart, keepDoorOpen, kingMeter, kingReach, nudgeFor, stageFor, type KingReach, type Stage } from "./fight.ts";
+import { HIT_USED, hitSpentAtStart, keepDoorOpen, kingReach, nudgeFor, type KingReach } from "./fight.ts";
 import { findOutcome, formatElapsed, foundRetryMs, heat, heldFind, PAUSED_NOTICE, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
@@ -84,15 +85,10 @@ export interface HudState {
 }
 
 
-/** The King as the HUD shows him. */
+/** The King as the HUD knows him: only what the ⚔ HIT button needs (wave
+ *  26, R3 — the bar over his head is the only display of his points). */
 export interface KingHud {
   id: string;
-  label: string;
-  hp: number;
-  max: number;
-  /** The meter (`kingMeter`: hearts up to nine points, else "n / max"). */
-  meter: string;
-  stage: Stage;
   /** Whether a hit could be asked for from here (the ⚔ button shows when near). */
   verdict: KingReach;
   fallen: boolean;
@@ -734,11 +730,6 @@ export class Game {
     if (p === null || k === null) return null;
     return {
       id: p.id,
-      label: p.label ?? "THE KING",
-      hp: k.hp,
-      max: k.max,
-      meter: kingMeter(k.hp, k.max),
-      stage: stageFor(k.hp, k.max),
       verdict: this.kingVerdict,
       fallen: k.fallen,
       hitUsed: this.hitUsed,
