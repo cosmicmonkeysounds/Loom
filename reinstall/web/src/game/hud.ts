@@ -3,7 +3,7 @@
 //! a moment ago), how long have I been in here, which way is north, and am
 //! I there yet.
 
-import { DUCK_MAX_RISE, floorOf, locate, roomById, wrapYaw } from "@loom/house";
+import { DUCK_MAX_RISE, floorOf, locate, PATH_REVEAL_MS, roomById, wrapYaw } from "@loom/house";
 import type { DuckSpot, HouseMap, Vec3 } from "@loom/house";
 
 /** Plan distance at which the duck counts as reached (and `found` is sent). */
@@ -152,6 +152,35 @@ export const HEAT_LABEL: Record<Heat, string> = {
   cold: "COLD",
   steady: "FOLLOW THE GOLDEN ARROWS",
 };
+
+// --- the path reveal (wave 26, R2) ---------------------------------------------
+
+/** The first minute of a session hides the way to Gerald (`@loom/house`'s
+ *  constant, the VR game's too). The quack is not a path: never delayed. */
+export { PATH_REVEAL_MS };
+
+/**
+ * Is the way to Gerald shown `playedMs` into this session? Hidden for the
+ * first `PATH_REVEAL_MS` — the chevron trail, the compass pip, the distance
+ * and the warmer / colder ladder — then shown for the rest of it. Per
+ * session, client side: a re-scan starts the minute again.
+ */
+export function pathShown(playedMs: number): boolean {
+  return playedMs >= PATH_REVEAL_MS;
+}
+
+// DRAFT w26 (R2): the notice as the trail draws.
+export const PATH_REVEAL_NOTICE = "The way to Gerald lights up.";
+
+// DRAFT w26 (R2): the HUD's heat box before the reveal (no label, no distance, no hint).
+export const FIND_GERALD = "FIND GERALD";
+
+/** A director's save moved Gerald: before the reveal the notice names no
+ *  arrows (there are none yet); after it, the old line. */
+export function duckMovedNotice(revealed: boolean): string {
+  // DRAFT w26 (R2): "Gerald moved." before the reveal.
+  return revealed ? "Gerald moved — follow the golden arrows." : "Gerald moved.";
+}
 
 /** `m:ss` (or `h:mm:ss`). */
 export function formatElapsed(ms: number): string {

@@ -13,7 +13,7 @@ import type { Sfx } from "./audio.ts";
 import { Game, type GameEnd, type HudState, type KingHud } from "./engine.ts";
 import { earsLine, type VoiceHudState } from "./voice.ts";
 import { HIT_USED } from "./fight.ts";
-import { bearingOf, findCopy, findOutcome, HEAT_LABEL, type FindOutcome } from "./hud.ts";
+import { bearingOf, FIND_GERALD, findCopy, findOutcome, HEAT_LABEL, type FindOutcome } from "./hud.ts";
 import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
@@ -174,10 +174,17 @@ export function Play({
               </div>
               {hud.location !== null && <div className="hud-where-loc">{hud.location}</div>}
             </div>
-            <div className={`hud-heat heat-${hud.heat}`}>
-              <span>{HEAT_LABEL[hud.heat]}</span>
-              <small>{hud.heat === "steady" || hud.heat === "cold" ? `${Math.round(hud.distance)} m to Gerald` : "follow the golden arrows"}</small>
-            </div>
+            {hud.path ? (
+              <div className={`hud-heat heat-${hud.heat}`}>
+                <span>{HEAT_LABEL[hud.heat]}</span>
+                <small>{hud.heat === "steady" || hud.heat === "cold" ? `${Math.round(hud.distance)} m to Gerald` : "follow the golden arrows"}</small>
+              </div>
+            ) : (
+              // Before the path reveal (wave 26, R2): no label, no distance, no hint.
+              <div className="hud-heat heat-hidden">
+                <span>{FIND_GERALD}</span>
+              </div>
+            )}
             <div className="hud-right">
               {hud.voice !== null && <MicButton voice={hud.voice} onToggle={() => game.current?.toggleMute()} />}
               <div className="hud-clock w98-sunken" title="time in the simulation">
@@ -235,7 +242,8 @@ export function Play({
               </>
             )}
           </span>
-          <span className="help-goal">Find Gerald, the golden duck. Follow the golden arrows.</span>
+          {/* DRAFT w26 (R2): no arrows promised — the trail draws after a minute. */}
+          <span className="help-goal">Find Gerald, the golden duck.</span>
         </button>
       )}
 

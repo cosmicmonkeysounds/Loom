@@ -365,6 +365,7 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .hud-heat.heat-warmer { color: var(--gold); }
 .hud-heat.heat-colder, .hud-heat.heat-cold { color: #7fd0ff; }
 .hud-heat.heat-steady { color: var(--gold); font-size: clamp(20px, 2.8vw, 30px); }
+.hud-heat.heat-hidden { color: var(--gold); font-size: clamp(20px, 2.8vw, 30px); }
 @keyframes throb { 50% { transform: scale(1.08); } }
 .hud-right { justify-self: end; display: flex; gap: 6px; align-items: stretch; }
 .hud-clock { padding: 0.05em 0.5em; background: #000; color: #4f4; font-size: clamp(24px, 3vw, 32px); line-height: 1.2; text-shadow: 0 0 6px #2f2; min-width: 3.6em; text-align: center; }

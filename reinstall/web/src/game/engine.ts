@@ -42,7 +42,22 @@ import { createVoiceSink, earsFor, micSourceOf, stopStream, VoiceLink, type Voic
 import { applyFrame, avatarUrl, duckToAdopt, houseVersionOf, kingOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
 import { HIT_USED, hitSpentAtStart, keepDoorOpen, kingReach, nudgeFor, type KingReach } from "./fight.ts";
-import { findOutcome, formatElapsed, foundRetryMs, heat, heldFind, PAUSED_NOTICE, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
+import {
+  duckMovedNotice,
+  findOutcome,
+  formatElapsed,
+  foundRetryMs,
+  heat,
+  heldFind,
+  PATH_REVEAL_NOTICE,
+  pathShown,
+  PAUSED_NOTICE,
+  perchedOutOfReach,
+  relativeBearing,
+  roomTitle,
+  withinReach,
+  type Heat,
+} from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
 import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsOptions, type PhysicsWorld } from "./physics.ts";
@@ -67,8 +82,13 @@ export interface HudState {
   elapsed: string;
   /** Compass bearing the player faces, degrees clockwise from north. */
   yaw: number;
-  /** On-screen angle of the next waypoint (degrees, clockwise), null when none. */
+  /** On-screen angle of the next waypoint (degrees, clockwise), null when
+   *  none — and before the path reveal. */
   pip: number | null;
+  /** The way to Gerald is shown (wave 26, R2: hidden for the first
+   *  `PATH_REVEAL_MS` of the session). Until then the heat box reads just
+   *  FIND GERALD: no label, no distance, no hint. */
+  path: boolean;
   /** Seconds left before the no-input leash ends the session (only near the end). */
   idleLeft: number | null;
   /** Other players in the simulation right now. */
@@ -186,6 +206,10 @@ export class Game {
   /** "Gerald is out of reach" was said for this approach. */
   private perchedSaid = false;
   private lastTrailAt = Number.NEGATIVE_INFINITY;
+  /** The path to Gerald is shown (wave 26, R2): false for the first
+   *  `PATH_REVEAL_MS` of this session — the trail is still routed (the
+   *  distance, the autopilot), just not drawn. */
+  private pathRevealed = false;
   private lastHudAt = Number.NEGATIVE_INFINITY;
   private nextQuackAt = performance.now() + 2500;
   private path: Vec3[] = [];
@@ -524,6 +548,7 @@ export class Game {
 
     if (playing) {
       this.pump.set(this.pose());
+      if (!this.pathRevealed && pathShown(now - this.startedAt)) this.revealPath();
       if (now - this.lastTrailAt >= TRAIL_EVERY_MS) {
         // Held open for a player behind (or in) his door: shut once they are clear.
         if (this.doorOpen && this.kingState?.fallen !== true) this.refreshDoor();
@@ -582,9 +607,16 @@ export class Game {
     this.lastTrailAt = now;
     this.path = trail(this.trailHouse, this.body.p, this.duckSpot.pos);
     this.distance = pathLength(this.path);
-    this.trail.set(this.path);
+    this.trail.set(this.pathRevealed ? this.path : []);
     this.distHistory.push({ t: now, d: this.distance });
     while (this.distHistory.length > 0 && now - this.distHistory[0]!.t > 4000) this.distHistory.shift();
+  }
+
+  /** The minute is up (R2): say so once and draw the trail at once. */
+  private revealPath(): void {
+    this.pathRevealed = true;
+    this.lastTrailAt = Number.NEGATIVE_INFINITY;
+    this.say(PATH_REVEAL_NOTICE, 3500);
   }
 
   /** The distance about two seconds ago (the warmer/colder baseline). */
@@ -620,7 +652,8 @@ export class Game {
       distance: this.distance,
       elapsed: formatElapsed(now - this.startedAt),
       yaw: this.body.yaw,
-      pip: next !== undefined ? relativeBearing(this.body.p, next, this.body.yaw) : null,
+      pip: this.pathRevealed && next !== undefined ? relativeBearing(this.body.p, next, this.body.yaw) : null,
+      path: this.pathRevealed,
       idleLeft: this.phase === "playing" ? this.leash.warning(now) : null,
       others: [...this.players.keys()].filter((s) => s !== this.o.assignment.session).length,
       live: this.live,
@@ -952,7 +985,7 @@ export class Game {
     this.perchedSaid = false;
     this.foundRefusals = 0;
     this.foundCooldownUntil = 0;
-    this.say("Gerald moved — follow the golden arrows.", 3500);
+    this.say(duckMovedNotice(this.pathRevealed), 3500);
   }
 
   private say(text: string, ms: number): void {
