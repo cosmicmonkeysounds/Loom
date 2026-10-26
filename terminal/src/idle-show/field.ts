@@ -199,7 +199,13 @@ export function hydra(f: PopupField, id: number, now: number, o: { seed: number;
   return { field, arrived };
 }
 
-/** A layout change: storm windows go with the storm; the rest stay to pile up. */
-export function relayout(f: PopupField, layout: Layout): PopupField {
-  return { ...f, live: layout === "storm" ? f.live : f.live.filter((p) => !p.storm), nextAt: null };
+/** A layout change: storm windows go with the storm; the rest stay to pile up.
+ *  The next window's arrival is kept (wave 26, T1): only a storm starting
+ *  (its windows come at once) or ending (a short pause after it) resets it.
+ *  Resetting on every segment change made a calm wall wait its halved gap
+ *  afresh each segment, and a halved gap longer than a 12–18 s saver never
+ *  came at all: the windows stopped. `prev` is the layout being left. */
+export function relayout(f: PopupField, layout: Layout, prev?: Layout): PopupField {
+  const reset = layout === "storm" || prev === "storm";
+  return { ...f, live: layout === "storm" ? f.live : f.live.filter((p) => !p.storm), nextAt: reset ? null : f.nextAt };
 }

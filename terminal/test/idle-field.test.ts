@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { CALM_MAX_POPUPS, CALM_POPUP_PACE, MAX_POPUPS, QUIET_MAX_POPUPS, calmPace, popupCap, POPUP_H, POPUP_W, STORM_EVERY_MS, ask, close, closeGag, dodge, emptyField, hydra, placePopup, relayout, spawn, spawnGap, stormPlace, tick, y2kPace, type PopupField, type Rect } from "../src/idle-show/field.ts";
-import { mulberry32 } from "../src/idle-show/rng.ts";
-import type { Layout } from "../src/idle-show/schedule.ts";
+import { hash32, mulberry32 } from "../src/idle-show/rng.ts";
+import { adPool, advance, segmentAt, type Layout } from "../src/idle-show/schedule.ts";
+import type { IdleContext } from "../src/idle-show/pools.ts";
 
 const reserve: Rect = { x: 0.66, y: 0.56, w: 0.34, h: 0.44 };
 const env: { seed: number; layout: Layout; pool: "early"; target: "wall"; reserve: Rect } = { seed: 42, layout: "saver", pool: "early", target: "wall", reserve };
@@ -160,6 +161,67 @@ describe("the popups' lives", () => {
     const mixed = spawn(s.field, 1, { seed: 5, reserve, storm: false }).field;
     expect(relayout(mixed, "saver").live.map((p) => p.storm)).toEqual([false]);
     expect(relayout(mixed, "storm").live).toHaveLength(2);
+  });
+});
+
+describe("the calm pace survives segment changes (wave 26, T1 fix)", () => {
+  // The real loop IdleShow's step() runs: the cursor moves on, a segment
+  // change re-lays the field (keeping the next arrival), then a tick.
+  function calmHour(name: string, target: "tv" | "wall", face: boolean): number[] {
+    const ctx: IdleContext = { pool: "early", phase: "arrivals", names: false, character: "Trabolta", target, scan: target === "wall", face, y2kLeft: null, calm: true };
+    const ads = adPool(ctx);
+    const seed = hash32(name);
+    const lengthOf = (i: number) => segmentAt(seed, i, ctx, ads).ms;
+    let cursor = { index: 0, start: 0 };
+    let field = emptyField();
+    const at: number[] = [];
+    for (let t = 0; t <= 3_600_000; t += 250) {
+      const next = advance(cursor, t, lengthOf);
+      if (next.index !== cursor.index) {
+        field = relayout(field, segmentAt(seed, next.index, ctx, ads).layout, segmentAt(seed, cursor.index, ctx, ads).layout);
+        cursor = next;
+      }
+      const layout = segmentAt(seed, cursor.index, ctx, ads).layout;
+      const r = tick(field, t, { seed, layout, pool: "early", target, reserve: target === "wall" ? reserve : null, calm: true, cap: CALM_MAX_POPUPS });
+      field = r.field;
+      if (r.arrived !== null) at.push(t);
+    }
+    return at;
+  }
+
+  it("keeps a calm wall's windows coming all hour, never closer than 18 s", () => {
+    for (const name of ["cpu", "hall", "server-room", "door", "a"]) {
+      for (const face of [false, true]) {
+        const at = calmHour(name, "wall", face);
+        // A window every 18–39 s (a few longer when one falls in an ad) → 60+ an hour, none stalled.
+        expect(at.length).toBeGreaterThan(50);
+        expect(at[at.length - 1]!).toBeGreaterThan(3_600_000 - 120_000);
+        const gaps = at.slice(1).map((t, i) => t - at[i]!);
+        expect(Math.min(...gaps)).toBeGreaterThanOrEqual(18_000);
+        expect(Math.max(...gaps)).toBeLessThan(120_000);
+      }
+    }
+  });
+
+  it("keeps the TV's windows coming too, never closer than 18 s × 1.3", () => {
+    for (const name of ["tv1", "TV2", "desktop-tv"]) {
+      const at = calmHour(name, "tv", false);
+      expect(at.length).toBeGreaterThan(40);
+      expect(at[at.length - 1]!).toBeGreaterThan(3_600_000 - 150_000);
+      const gaps = at.slice(1).map((t, i) => t - at[i]!);
+      expect(Math.min(...gaps)).toBeGreaterThanOrEqual(23_400);
+    }
+  });
+
+  it("a segment change keeps the next arrival; a storm starting or ending resets it", () => {
+    const f = { ...emptyField(), nextAt: 12_345 };
+    expect(relayout(f, "saver", "saver").nextAt).toBe(12_345);
+    expect(relayout(f, "ad", "saver").nextAt).toBe(12_345);
+    expect(relayout(f, "saver").nextAt).toBe(12_345);
+    expect(relayout(f, "storm", "saver").nextAt).toBeNull();
+    expect(relayout(f, "saver", "storm").nextAt).toBeNull();
+    const src = readFileSync(fileURLToPath(new URL("../src/idle-show/IdleShow.tsx", import.meta.url)), "utf8");
+    expect(src.match(/relayout\(field\.current, [^\n]*, segOf\(c\.index\)\.layout\)/gu)).toHaveLength(2);
   });
 });
 

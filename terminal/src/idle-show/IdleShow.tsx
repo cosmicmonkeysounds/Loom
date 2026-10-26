@@ -136,7 +136,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
       cursor.current = next;
       saveCursor(name, next);
       const s = segOf(next.index);
-      field.current = relayout(field.current, s.layout);
+      field.current = relayout(field.current, s.layout, segOf(c.index).layout);
       stormBase.current = field.current.drawn;
       if (s.layout === "storm") {
         play("critical", 0.6);
@@ -265,7 +265,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
     const c = cursor.current!;
     cursor.current = { index: c.index + 1, start: Date.now() };
     saveCursor(name, cursor.current);
-    field.current = relayout(field.current, segOf(cursor.current.index).layout);
+    field.current = relayout(field.current, segOf(cursor.current.index).layout, segOf(c.index).layout);
     play("close", 0.6);
     setNow(Date.now());
   };
