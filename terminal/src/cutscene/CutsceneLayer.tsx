@@ -6,6 +6,14 @@
 //! while something plays, nothing while the page is hidden. A scene that
 //! throws is dropped (the card shows); the layer never takes a screen down.
 //! On the TV a scene's `face` mood flashes the face (`face-bus.ts`).
+//!
+//! Wave 26 (V1): on the TV, a scene in `VOICE_SCENES` is drawn at a `t`
+//! warped by his speech (`voice-clock.ts`, fed by the TV's `speech-bus.ts`):
+//! the picture waits for his voice, never runs backwards, and a moment's end
+//! moves with it (`MomentQueue.extendTo`, capped). The sentence he is saying
+//! is the scene's `voice` prop; unless the scene draws it itself
+//! (`ownCaption`), the layer captions it over the stage. With no voice (a
+//! muted TV, a mirror, a wall) the scene runs on the server's clock.
 
 import { Component, memo, useEffect, useReducer, useRef, type ReactNode } from "react";
 import "./kit/kit.css";
@@ -18,7 +26,10 @@ import { flashFace } from "./face-bus.ts";
 import { setMomentUp, setSceneClockUp } from "./moment-bus.ts";
 import { MomentQueue, componentFor, drawsCountdown, faceFlashFor, pickScene, type ActiveScene } from "./pick.ts";
 import { SCENES } from "./registry.ts";
-import type { SceneDef, SceneProps, SceneTarget } from "./types.ts";
+import { forgetSpeech, recentSpeech, speechLive } from "./speech-bus.ts";
+import type { SceneDef, SceneProps, SceneTarget, SceneVoice } from "./types.ts";
+import { voiceState, type VoiceState } from "./voice-clock.ts";
+import { voiceSceneOf } from "./voice-scenes.ts";
 
 export interface CutsceneLayerProps {
   state: ScreenState | null;
@@ -83,6 +94,8 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
       history.clear();
       roomEnded.clear();
       flashedFor(target).clear();
+      voicedT.clear();
+      forgetSpeech();
     }
     epoch.current = state.announceEpoch;
     queue.update(state, serverNow(state), scenes, target);
@@ -118,12 +131,36 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
   const baseNow = useRef(now);
   baseNow.current = baseClock(baseNow.current, now, hidden);
 
+  // Wave 26 (V1): the voiced scenes' clocks, read once per render.
+  const voiced = new Map<string, VoiceState>();
+  if (target === "tv") {
+    const events = recentSpeech();
+    const live = speechLive();
+    for (const s of [pick.top, below]) {
+      if (s === null || s === "card" || (s === below && hidden)) continue;
+      // A scene already on his voice stays on it through a mute (its lines
+      // end: it runs on from there); a new one waits only for a TV that can speak.
+      const v = !live && !voicedT.has(s.key) ? null : voiceOfScene(s, now, events);
+      // A moment's end follows his voice, and goes back to its own when the
+      // scene is on the server's clock (a voice that never came).
+      if (s.kind === "moment" && voiceSceneOf(s.def.id) !== null) {
+        if (v !== null && v.endAt !== null) queue.extendTo(s.seq, v.endAt);
+        else queue.resetEnd(s.seq);
+      }
+      if (v !== null) voiced.set(s.key, v);
+    }
+  }
+  forgetVoicedExcept(voiced);
+
   if (state === null) return null;
   const host = (s: ActiveScene, hidden = false) => (
     <SceneHost
       key={s.key}
       scene={s}
       now={hidden ? baseNow.current : now}
+      t={hidden ? null : voicedT.get(s.key) ?? null}
+      voice={voiced.get(s.key)?.spoken ?? null}
+      caption={voiceCaption(s, voiced.get(s.key))}
       state={state}
       target={target}
       reduced={reduced}
@@ -165,6 +202,43 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
 }
 
 const stopTap = (e: { stopPropagation(): void }) => e.stopPropagation();
+
+/** Each voiced scene's last warped `t`, by key: the picture never runs backwards. */
+const voicedT = new Map<string, number>();
+
+/** A scene's voiced state on the TV (and its `t`, kept monotonic), or null for the plain clock. */
+function voiceOfScene(s: ActiveScene, now: number, events: Parameters<typeof voiceState>[3]): VoiceState | null {
+  const vs = voiceSceneOf(s.def.id);
+  if (vs === null || !(s.at > 0)) return null;
+  const v = voiceState({ ...vs, ms: s.def.ms }, s.start, now, events, s.at);
+  if (v === null) {
+    // Back on the server's clock, never backwards: held where the voice left
+    // it until the server's clock catches up.
+    const last = voicedT.get(s.key);
+    if (last !== undefined && last > Math.max(0, now - s.start)) return { t: last, spoken: null, ended: false, endAt: null };
+    voicedT.delete(s.key);
+    return null;
+  }
+  const t = Math.max(v.t, voicedT.get(s.key) ?? 0);
+  voicedT.set(s.key, t);
+  return { ...v, t };
+}
+
+/** Drop the clocks of scenes no longer on screen. */
+function forgetVoicedExcept(on: Map<string, VoiceState>): void {
+  for (const k of [...voicedT.keys()]) if (!on.has(k)) voicedT.delete(k);
+}
+
+/** The caption the layer draws over a voiced scene: the sentence he is
+ *  saying, unless the scene draws it (`ownCaption`, or that sentence is
+ *  one of its `drawn`), so his line never shows twice. */
+export function voiceCaption(s: ActiveScene, v: VoiceState | undefined): string | null {
+  if (v === undefined || v.spoken === null || v.spoken.text === "") return null;
+  const vs = voiceSceneOf(s.def.id);
+  if (vs?.ownCaption === true) return null;
+  if (v.mark != null && vs?.drawn?.includes(v.mark) === true) return null;
+  return v.spoken.text;
+}
 /** A hidden scene plays no sound (it reports "dropped", as a locked bus does). */
 const quiet: SceneProps["sfx"] = () => false;
 
@@ -176,6 +250,11 @@ export function baseClock(frozen: number, now: number, hidden: boolean): number 
 export interface SceneHostProps {
   scene: ActiveScene;
   now: number;
+  /** (wave 26) The voice-warped `t` (null: `now − start`). */
+  t: number | null;
+  /** (wave 26) The sentence he is saying for it, and the layer's caption of it. */
+  voice: SceneVoice | null;
+  caption: string | null;
   state: ScreenState;
   target: SceneTarget;
   reduced: boolean;
@@ -187,26 +266,44 @@ export interface SceneHostProps {
  *  scene, clock and state (a hidden base, frozen) does no work; `onDone`
  *  is the same act for the same scene, so it is not compared. */
 export function sameSceneFrame(a: Omit<SceneHostProps, "onDone">, b: Omit<SceneHostProps, "onDone">): boolean {
-  return a.scene.key === b.scene.key && a.scene.start === b.scene.start && a.now === b.now && a.state === b.state && a.target === b.target && a.reduced === b.reduced && a.silent === b.silent;
+  return (
+    a.scene.key === b.scene.key &&
+    a.scene.start === b.scene.start &&
+    a.now === b.now &&
+    a.t === b.t &&
+    a.voice?.seq === b.voice?.seq &&
+    a.voice?.index === b.voice?.index &&
+    a.voice?.text === b.voice?.text &&
+    a.caption === b.caption &&
+    a.state === b.state &&
+    a.target === b.target &&
+    a.reduced === b.reduced &&
+    a.silent === b.silent
+  );
 }
 const SceneHost = memo(SceneHostView, sameSceneFrame);
 
-function SceneHostView({ scene, now, state, target, reduced, silent, onDone }: SceneHostProps) {
-  return <SceneStage def={scene.def} kind={scene.kind} target={target} t={Math.max(0, now - scene.start)} at={scene.at} seq={scene.seq} value={scene.value} who={scene.who} state={state} reduced={reduced} play={silent ? quiet : sfx} onDone={onDone} />;
+function SceneHostView({ scene, now, t, voice, caption, state, target, reduced, silent, onDone }: SceneHostProps) {
+  return <SceneStage def={scene.def} kind={scene.kind} target={target} t={t ?? Math.max(0, now - scene.start)} at={scene.at} seq={scene.seq} value={scene.value} who={scene.who} state={state} reduced={reduced} play={silent ? quiet : sfx} onDone={onDone} voice={voice} caption={caption} />;
 }
 
 /**
  * A scene drawn at a given `t` on its stage, behind its own error boundary —
  * what the layer draws, and what the preview draws at any `t` it likes.
  */
-export function SceneStage({ def, kind, target, t, at, seq, value, who, state, reduced, play, onDone }: { def: SceneDef; kind: "slide" | "moment" | "room"; target: SceneTarget; t: number; at: number; seq: number; value: string; who: string | null; state: ScreenState; reduced: boolean; play: SceneProps["sfx"]; onDone: () => void }) {
+export function SceneStage({ def, kind, target, t, at, seq, value, who, state, reduced, play, onDone, voice = null, caption = null }: { def: SceneDef; kind: "slide" | "moment" | "room"; target: SceneTarget; t: number; at: number; seq: number; value: string; who: string | null; state: ScreenState; reduced: boolean; play: SceneProps["sfx"]; onDone: () => void; voice?: SceneVoice | null; caption?: string | null }) {
   const View = componentFor(def, target);
   if (View === null) return null;
   return (
-    <div className={`cutscene-stage cutscene-${kind}`} data-scene={def.id} data-seq={seq}>
+    <div className={`cutscene-stage cutscene-${kind}`} data-scene={def.id} data-seq={seq} data-voiced={voice !== null ? "" : undefined}>
       <SceneBoundary id={def.id} onError={onDone}>
-        <View t={t} at={at} seq={seq} value={value} state={state} night={state.night} who={who} target={target} sfx={play} done={onDone} reduced={reduced} />
+        <View t={t} at={at} seq={seq} value={value} state={state} night={state.night} who={who} target={target} sfx={play} done={onDone} reduced={reduced} voice={voice} />
       </SceneBoundary>
+      {caption !== null && caption !== "" && (
+        <div className="cutscene-voice-caption" aria-live="polite">
+          {caption}
+        </div>
+      )}
     </div>
   );
 }

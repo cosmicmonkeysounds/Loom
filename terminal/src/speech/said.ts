@@ -59,6 +59,8 @@ export class RoomSpeech {
   private pending: number[] = [];
   private head: number | null = null;
   private speakers = 0;
+  /** (wave 26, V1 phase 2) The line being said and its sentence (`chunk` null: done). */
+  private sp: { seq: number; chunk: number | null } | null = null;
   private readonly drains = new Set<() => void>();
 
   /** A player is mounted to speak the room's lines; call the result when it goes. */
@@ -91,8 +93,19 @@ export class RoomSpeech {
     if (this.pending.length === 0) this.drained();
   }
 
+  /** (wave 26) The TV is saying sentence `chunk` of line `seq` (`sp=<seq>:<chunk>`). */
+  speaking(seq: number, chunk: number): void {
+    if (Number.isFinite(seq) && Number.isFinite(chunk)) this.sp = { seq, chunk };
+  }
+
+  /** (wave 26) Line `seq` is said (or cut): `sp=<seq>:d`. */
+  spoke(seq: number): void {
+    if (this.sp !== null && this.sp.seq === seq) this.sp = { seq, chunk: null };
+  }
+
   /** The player dropped everything queued (a mute, attract, unmount). */
   cleared(): void {
+    if (this.sp !== null) this.sp = { seq: this.sp.seq, chunk: null };
     if (this.pending.length === 0) return;
     this.pending = [];
     this.drained();
@@ -109,11 +122,12 @@ export class RoomSpeech {
    * not talking, finished through the last head heard.
    */
   report(cursor: number | null): SpeechReport {
-    if (this.speakers === 0) return { talk: false, said: this.head ?? cursor };
+    const sp = this.sp === null ? {} : { sp: { ...this.sp } };
+    if (this.speakers === 0) return { talk: false, said: this.head ?? cursor, ...sp };
     const through = cursor ?? this.head;
-    if (this.pending.length === 0) return { talk: false, said: through };
+    if (this.pending.length === 0) return { talk: false, said: through, ...sp };
     const before = this.pending[0]! - 1;
-    return { talk: true, said: through === null ? before : Math.min(through, before) };
+    return { talk: true, said: through === null ? before : Math.min(through, before), ...sp };
   }
 
   /** Called each time the queue drains (talk 1 → 0). Returns the unsubscribe. */

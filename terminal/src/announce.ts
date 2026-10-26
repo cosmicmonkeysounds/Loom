@@ -31,7 +31,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TerminalConfig } from "./config.ts";
 import type { ScreenState } from "./screen.ts";
-import { DeviceEngine, SpeechQueue, type VoiceChoice } from "./speech/engine.ts";
+import { ANNOUNCE_GAPS, DeviceEngine, SpeechQueue, voiceFloor, type VoiceChoice } from "./speech/engine.ts";
 import { playChime } from "./sound/bus.ts";
 import { ANNOUNCE_VOICE } from "./speech/pick-voice.ts";
 import { splitSentences } from "./speech/split.ts";
@@ -163,6 +163,10 @@ export function useAnnouncements(config: TerminalConfig | null, state: ScreenSta
         },
         idle: () => {},
       },
+      voiceFloor,
+      // Wave 26 (V2): a short pause between its sentences, none between two
+      // announcements (the chime parts them).
+      ANNOUNCE_GAPS,
     );
   }, [enabled, choice, speed]);
   useEffect(() => () => queue?.stop(), [queue]);

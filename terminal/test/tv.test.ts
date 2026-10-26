@@ -115,6 +115,52 @@ describe("LinePlayer", () => {
     expect(speaking).toHaveLength(0);
   });
 
+  it("captionOnStart (the TV): a spoken line's caption waits for him to start it", async () => {
+    const log: string[] = [];
+    const speaking: Array<{ r: () => void; started: () => void }> = [];
+    const player = new LinePlayer(
+      {
+        caption: (l) => log.push(`caption ${l === null ? "-" : l.seq}`),
+        speak: (l, started) =>
+          new Promise<void>((r) => {
+            log.push(`speak ${l.seq}`);
+            speaking.push({ r, started });
+          }),
+        cancel: () => {
+          log.push("cancel");
+          for (const s of speaking.splice(0)) s.r();
+        },
+        sleep: (ms) => new Promise<void>((r) => setTimeout(r, 0, log.push(`sleep ${ms}`))),
+        idle: () => log.push("idle"),
+      },
+      null,
+      { captionOnStart: true },
+    );
+    const tick = () => new Promise((r) => setTimeout(r, 0));
+    player.push([tv(1, "speak"), tv(2, "speak"), tv(3, "text")]);
+    await tick();
+    expect(log).toEqual(["speak 1"]); // handed to the voice, not captioned yet
+    speaking[0]!.started();
+    speaking[0]!.started(); // once
+    expect(log).toEqual(["speak 1", "caption 1"]);
+    speaking.shift()!.r();
+    await tick();
+    // Line 2 is in the queue's pause between lines: line 1 stays up.
+    expect(log.slice(2)).toEqual(["speak 2"]);
+    speaking[0]!.started();
+    expect(log.at(-1)).toBe("caption 2");
+    speaking.shift()!.r();
+    await tick();
+    expect(log.slice(4, 6)).toEqual(["caption 3", `sleep ${readingMs("Hi.")}`]); // a text line: at once
+    // A line cut before he starts it is never captioned.
+    player.push([tv(4, "speak")]);
+    await tick();
+    const late = speaking[0]!.started;
+    player.stop();
+    late();
+    expect(log).not.toContain("caption 4");
+  });
+
   it("readingMs stays between 1.8 s and 6 s", () => {
     expect(readingMs("Hi.")).toBe(1800);
     expect(readingMs("x".repeat(500))).toBe(6000);
@@ -237,5 +283,84 @@ describe("a long line's caption follows the chunk being said (wave 18b)", () => 
     const line = { seq: 2, mode: "speak" as const, text: filed };
     expect(captionText(line, { seq: 2, index: 0 }, pieces)).toBe(pieces[0]);
     expect(captionText(line, { seq: 2, index: 0 }, pieces)).not.toContain("link");
+  });
+});
+
+describe("TvSpeechFeed (wave 26, V1): the TV's voice → the speech bus and sp=", () => {
+  it("queues only spoken lines, starts a line on its first sentence, ends it once", async () => {
+    const { TvSpeechFeed } = await import("../src/tv.ts");
+    const { RoomSpeech, speechQuery } = await import("../src/speech/said.ts");
+    const events: Array<Record<string, unknown>> = [];
+    let clock = 1000;
+    const room = new RoomSpeech();
+    room.attach();
+    const feed = new TvSpeechFeed({ emit: (e) => events.push(e), now: () => clock, room });
+    feed.queued({ seq: 4, beat: "Bottle Landed", mode: "speak" }, ["Excel.", "Truth or dare?"]);
+    feed.queued({ seq: 4, beat: "Bottle Landed", mode: "speak" }, ["Excel.", "Truth or dare?"]); // once
+    feed.queued({ seq: 5, beat: "Song Ending", mode: "song" }, ["la"]);
+    feed.queued({ seq: 6, beat: null, mode: "muted" }, ["Hi."]);
+    feed.queued({ seq: 7, beat: null, mode: "speak" }, []);
+    expect(events).toEqual([{ kind: "queued", seq: 4, beat: "Bottle Landed", chunks: 2, at: 1000 }]);
+    clock = 2000;
+    feed.chunk(4, 0);
+    clock = 3000;
+    feed.chunk(4, 1);
+    feed.chunk(5, 0); // never queued: nothing
+    expect(events.slice(1)).toEqual([
+      { kind: "line", seq: 4, beat: "Bottle Landed", chunks: 2, texts: ["Excel.", "Truth or dare?"], at: 2000 },
+      { kind: "chunk", seq: 4, index: 0, at: 2000 },
+      { kind: "chunk", seq: 4, index: 1, at: 3000 },
+    ]);
+    expect(speechQuery(room.report(4))["sp"]).toBe("4:1");
+    clock = 4000;
+    feed.done(4);
+    feed.done(4);
+    expect(events.at(-1)).toEqual({ kind: "done", seq: 4, at: 4000 });
+    expect(events.filter((e) => e["kind"] === "done")).toHaveLength(1);
+    expect(speechQuery(room.report(4))["sp"]).toBe("4:d");
+    feed.chunk(4, 1); // after done: nothing
+    expect(events).toHaveLength(5);
+  });
+
+  it("a drop (the mute, attract) ends every queued line, said or not", async () => {
+    const { TvSpeechFeed } = await import("../src/tv.ts");
+    const events: Array<Record<string, unknown>> = [];
+    const feed = new TvSpeechFeed({ emit: (e) => events.push(e), now: () => 50 });
+    feed.queued({ seq: 1, beat: "Advice Helped", mode: "speak" }, ["A."]);
+    feed.queued({ seq: 2, beat: "Advice Helped", mode: "speak" }, ["B."]);
+    feed.chunk(1, 0);
+    feed.cancelAll();
+    expect(events.filter((e) => e["kind"] === "done").map((e) => e["seq"])).toEqual([1, 2]);
+    expect(events.filter((e) => e["kind"] === "done").every((e) => e["cut"] === true)).toBe(true);
+    // The queue's own done for the cut line comes after: dropped.
+    feed.done(1);
+    expect(events.filter((e) => e["kind"] === "done")).toHaveLength(2);
+  });
+
+  it("a seq it already finished is a new line after a story restart (seqs start over)", async () => {
+    const { TvSpeechFeed } = await import("../src/tv.ts");
+    const { RoomSpeech, speechQuery } = await import("../src/speech/said.ts");
+    const events: Array<Record<string, unknown>> = [];
+    let clock = 100;
+    const room = new RoomSpeech();
+    room.attach();
+    const feed = new TvSpeechFeed({ emit: (e) => events.push(e), now: () => clock, room });
+    feed.queued({ seq: 12, beat: "Trabolta Introduction", mode: "speak" }, ["Old."]);
+    feed.chunk(12, 0);
+    feed.done(12);
+    // The rehearsal ends; Go live; the new run's seq 12 is another line.
+    clock = 9000;
+    events.length = 0;
+    feed.queued({ seq: 12, beat: "The Verdict", mode: "speak" }, ["New.", "Line."]);
+    feed.chunk(12, 0);
+    expect(speechQuery(room.report(12))["sp"]).toBe("12:0");
+    feed.done(12);
+    expect(events.map((e) => e["kind"])).toEqual(["queued", "line", "chunk", "done"]);
+    expect(events[0]).toEqual({ kind: "queued", seq: 12, beat: "The Verdict", chunks: 2, at: 9000 });
+    // A line still being said is never replaced by a repeat of its seq.
+    feed.queued({ seq: 30, beat: null, mode: "speak" }, ["A."]);
+    feed.chunk(30, 0);
+    feed.queued({ seq: 30, beat: null, mode: "speak" }, ["B."]);
+    expect(events.filter((e) => e["seq"] === 30 && e["kind"] === "queued")).toHaveLength(1);
   });
 });

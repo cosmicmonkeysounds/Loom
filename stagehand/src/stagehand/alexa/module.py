@@ -51,7 +51,7 @@ from typing import Any
 import httpx
 
 from ..modapi import ModApiError, ModClient
-from ..localvoice import render_voice, resolve, speak_voice
+from ..localvoice import pronounce, render_voice, resolve, speak_voice
 from ..module import ConfigError, Context
 from .config import AlexaConfig, parse_alexa
 from .player import DeviceOutput, PlaybackError, chime, decode
@@ -193,9 +193,12 @@ class Announcer:
 
     async def voice_bytes(self, text: str, voice: str | None) -> bytes | None:
         """Disk cache → server TTS (cached on success) → None. Always None
-        with `engine: say` — the Mac's own voice never asks the server."""
+        with `engine: say` — the Mac's own voice never asks the server.
+        The server is asked for the line as it is *said* (`pronounce`, wave
+        26 V3), and the cache is keyed by that too."""
         if self.cfg.engine != "server":
             return None
+        text = pronounce(text)
         voice = voice or self.cfg.voice
         hit = self.cache.get(text, voice)
         if hit is not None:
@@ -219,7 +222,7 @@ class Announcer:
             return 0
         done = 0
         for text in self.cfg.prewarm:
-            if self.cache.get(text, self.cfg.voice) is not None:
+            if self.cache.get(pronounce(text), self.cfg.voice) is not None:
                 done += 1
                 continue
             if await self.voice_bytes(text, None) is not None:
@@ -246,7 +249,7 @@ class Announcer:
         if audio is not None:
             return "device", audio
         try:
-            return "device-say", await asyncio.to_thread(self.render_say, a.text, self.cfg.say_voice)
+            return "device-say", await asyncio.to_thread(self.render_say, pronounce(a.text), self.cfg.say_voice)
         except PlaybackError as err:
             log.warning("%s", err)
             return "device-say", None
@@ -290,7 +293,7 @@ class Announcer:
             if path == "say-device" and device is None:
                 continue
             try:
-                await asyncio.to_thread(self.speak_direct, a.text, self.cfg.say_voice, device)
+                await asyncio.to_thread(self.speak_direct, pronounce(a.text), self.cfg.say_voice, device)
                 log.info("announce %r via %s (%.1fs)", a.text, path, time.monotonic() - started)
                 return path
             except PlaybackError as err:

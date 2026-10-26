@@ -24,6 +24,7 @@ import { foldName } from "../config.ts";
 import type { ScreenMoment, ScreenNight, ScreenState } from "../screen.ts";
 import type { ScreenLayers } from "../slides.ts";
 import { sceneT } from "./clock.ts";
+import { VOICE_STRETCH_MAX_MS } from "./voice-clock.ts";
 import type { ComponentType } from "react";
 import type { SceneDef, SceneProps, SceneTarget, SceneTrigger } from "./types.ts";
 
@@ -146,7 +147,7 @@ export class MomentQueue {
   private cursor: number | null = null;
   private epoch: string | null | undefined = undefined;
   private waiting: Waiting[] = [];
-  private playing: { w: Waiting; start: number } | null = null;
+  private playing: { w: Waiting; start: number; end?: number } | null = null;
   private lastEnd = 0;
   private finished = new Set<number>();
 
@@ -192,7 +193,7 @@ export class MomentQueue {
     for (;;) {
       if (this.playing !== null) {
         const { w, start } = this.playing;
-        const end = start + (typeof w.def.ms === "number" ? w.def.ms : MOMENT_HOLD_MAX_MS);
+        const end = this.playing.end ?? start + (typeof w.def.ms === "number" ? w.def.ms : MOMENT_HOLD_MAX_MS);
         // A bigger moment that has happened cuts this one short (midnight
         // never waits behind the majority's frost), from its own `at`, so
         // every screen cuts at the same frame.
@@ -218,6 +219,36 @@ export class MomentQueue {
       }
       this.playing = { w: next, start };
     }
+  }
+
+  /**
+   * (wave 26, V1) The playing moment `seq` ends at server `serverMs` instead
+   * of its own `ms`: a voiced scene's warped clock (`voice-clock.ts`) moves
+   * its end to where his voice takes it. Never before it started, never
+   * more than `VOICE_STRETCH_MAX_MS` past its own end (a stuck voice never
+   * wedges the queue); a `hold` scene's cap is `MOMENT_HOLD_MAX_MS`. Any
+   * other seq (it ended, or another plays): nothing.
+   */
+  extendTo(seq: number, serverMs: number): void {
+    const p = this.playing;
+    if (p === null || p.w.moment.seq !== seq || !Number.isFinite(serverMs)) return;
+    const own = typeof p.w.def.ms === "number" ? p.w.def.ms : MOMENT_HOLD_MAX_MS;
+    const cap = p.start + (typeof p.w.def.ms === "number" ? own + VOICE_STRETCH_MAX_MS : own);
+    p.end = Math.max(p.start, Math.min(serverMs, cap));
+  }
+
+  /** (wave 26, V1) The playing moment `seq` ends at its own `ms` again (its
+   *  voiced scene fell back to the server's clock). Any other seq: nothing. */
+  resetEnd(seq: number): void {
+    const p = this.playing;
+    if (p !== null && p.w.moment.seq === seq) delete p.end;
+  }
+
+  /** The playing moment's end, server ms (its own `ms`, or where `extendTo` moved it); null: none. */
+  get playingEnd(): number | null {
+    const p = this.playing;
+    if (p === null) return null;
+    return p.end ?? p.start + (typeof p.w.def.ms === "number" ? p.w.def.ms : MOMENT_HOLD_MAX_MS);
   }
 
   /** A scene called `done()`: it ends now. */

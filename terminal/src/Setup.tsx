@@ -12,19 +12,41 @@
 //! room) sits under a folded *advanced*.
 
 import { useEffect, useMemo, useState } from "react";
-import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromChoice, baseOf, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, type DoorConfig, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromChoice, baseOf, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, TV_SPEED, withViewDefaults, type DoorConfig, type TerminalConfig, type TerminalView } from "./config.ts";
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
 import { micBox, voiceRoles } from "./voice/roles.ts";
 import { DoorSetup } from "./heart/DoorSetup.tsx";
 import { PatchSetup } from "./heart/PatchSetup.tsx";
 import { voiceStatus, voiceStatusText } from "./voice/status.ts";
 import { fetchCharacters } from "./pilot.ts";
-import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, deviceEnv, pickDeviceEngine, unlock, voiceEngines, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
+import { BrowserEngine, DeviceEngine, ENGINE_LABEL, PAUSE_MAX, PAUSE_MIN, SpeechQueue, deviceEnv, gapsFor, pickDeviceEngine, unlock, voiceEngines, voiceFloor, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
 import { ringChime } from "./announce.ts";
 import { CHARACTER_VOICE, rankVoices } from "./speech/pick-voice.ts";
 import { bundledHouse, fetchHouse, type HouseInfo } from "./world/stream.ts";
 import { hasWebGL2 } from "./webgl.ts";
 import { UNPLACED, applyPick, groupTerminals, onlineBadge, withManual, type Heartbeat, type MapPick } from "./setup-map.ts";
+
+/**
+ * (wave 26, V2) A finished setup's pace: a tablet set up for the first time
+ * as the TV starts at `TV_SPEED`, unless the crew moved the pace slider (a
+ * deliberate 1.00× stays 1). One already set up keeps the pace it has.
+ */
+export function setupPace(c: TerminalConfig, o: { first: boolean; speedTouched: boolean }): TerminalConfig {
+  return o.first && !o.speedTouched ? withViewDefaults(c) : c;
+}
+
+/** The pace slider's starting value after a screen-type change on a first
+ *  setup the crew hasn't paced: the TV's own, else 1 (null: leave it). */
+export function paceForView(view: TerminalView | "", o: { first: boolean; speedTouched: boolean }): number | null {
+  if (!o.first || o.speedTouched) return null;
+  return view === "tv" ? TV_SPEED : 1;
+}
+
+/** The ⚙ pause slider's reading (wave 26, V2): the multiplier and what it means. */
+export function pauseLabel(pause: number): string {
+  const g = gapsFor({ pause });
+  return `${pause.toFixed(2)}× (${(g.chunk / 1000).toFixed(2)} s · ${(g.line / 1000).toFixed(2)} s)`;
+}
 
 interface Access {
   eventId: string;
@@ -94,6 +116,10 @@ export function Setup({
   const [serverVoice, setServerVoice] = useState(current?.serverVoice ?? "");
   const [browserVoice, setBrowserVoice] = useState(current?.browserVoice ?? "");
   const [speed, setSpeed] = useState(current?.speed ?? 1);
+  // Did the crew move the pace slider (wave 26, V2: then the TV default never overrides it)?
+  const [speedTouched, setSpeedTouched] = useState(false);
+  // Wave 26 (V2): the pauses in his speech, × the 0.3 s / 0.7 s defaults.
+  const [pause, setPause] = useState(current?.pause ?? 1);
   const [camFeed, setCamFeed] = useState(current?.camFeed ?? true);
   // The voice link's microphone: undefined = the view's default (the TV's is off).
   const [mic, setMic] = useState<boolean | undefined>(current?.mic);
@@ -186,11 +212,14 @@ export function Setup({
       const base: TerminalConfig = sameEvent ? { ...current, token: access.token, title: access.title || current.title } : defaultConfig({ ...access, character: pickCharacter(null, cast) });
       const kept = await savedCharacter(character, base.character, async () => cast);
       const voiceFields = mic === undefined ? { voices: voicesOn } : { voices: voicesOn, mic };
-      const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, door, keys, bay, serverVoice: serverVoice.trim(), browserVoice, speed }, pick);
+      const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, door, keys, bay, serverVoice: serverVoice.trim(), browserVoice, speed, pause }, pick);
       if (mic === undefined) delete picked.mic;
       const next = picked;
       const own = manualTouched || (current !== null && current.spot === pick.spot);
-      onDone(own ? withManual(next, pick, { view: viewOverride, room: roomOverride }) : next);
+      const done = own ? withManual(next, pick, { view: viewOverride, room: roomOverride }) : next;
+      // A tablet set up for the first time as the TV speaks at its pace (wave
+      // 26, V2), unless a pace was chosen here; one already set up keeps its own.
+      onDone(setupPace(done, { first: current === null, speedTouched }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -206,13 +235,18 @@ export function Setup({
         ? voiceEngines({ choice: "server", browserVoice, serverVoice: serverVoice.trim(), speed, base: baseOf(access), token: access.token })
         : { primary: new DeviceEngine({ voice: browserVoice, speed, choice: engine === "server" ? "browser" : engine, prefer: CHARACTER_VOICE }), fallback: null };
     let used: EngineKind | null = null;
-    const q = new SpeechQueue(engines, {
-      level: () => {},
-      chunk: () => {},
-      done: () => {},
-      idle: () => setTested(used === null ? "nothing could speak" : `spoke with: ${ENGINE_LABEL[used]}`),
-      engine: (k) => (used = k),
-    });
+    const q = new SpeechQueue(
+      engines,
+      {
+        level: () => {},
+        chunk: () => {},
+        done: () => {},
+        idle: () => setTested(used === null ? "nothing could speak" : `spoke with: ${ENGINE_LABEL[used]}`),
+        engine: (k) => (used = k),
+      },
+      voiceFloor,
+      gapsFor({ pause }),
+    );
     q.say({ id: 1, chunks: ["Connection established.", "I have been expecting you, program."] });
   };
 
@@ -347,7 +381,14 @@ export function Setup({
               )}
               <label>
                 pace {speed.toFixed(2)}×
-                <input type="range" min={0.6} max={1.5} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} />
+                <input type="range" min={0.6} max={1.5} step={0.05} value={speed} onChange={(e) => {
+                    setSpeed(Number(e.target.value));
+                    setSpeedTouched(true);
+                  }} />
+              </label>
+              <label>
+                pauses {pauseLabel(pause)} <span className="muted">(between his sentences and lines; TEST VOICE plays them)</span>
+                <input type="range" min={PAUSE_MIN} max={PAUSE_MAX} step={0.25} value={pause} onChange={(e) => setPause(Number(e.target.value))} aria-label="pauses between sentences" />
               </label>
               <label>
                 device voice
@@ -412,6 +453,9 @@ export function Setup({
                 <select value={viewOverride} onChange={(e) => {
                     setViewOverride(e.target.value as TerminalView | "");
                     setManualTouched(true);
+                    // A first-time TV: the slider (and TEST VOICE) shows the TV's pace.
+                    const pace = paceForView(e.target.value as TerminalView | "", { first: current === null, speedTouched });
+                    if (pace !== null) setSpeed(pace);
                   }}>
                   <option value="">the map's</option>
                   {VIEWS.map((v) => (
