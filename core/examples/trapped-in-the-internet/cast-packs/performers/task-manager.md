@@ -125,6 +125,10 @@ The house deals the programs files about **who they are connected to** (Codex �
   program name on it (ask the director at 17:00 if the anti-AI program has
   changed). Hand it to Clippy, then press 🃏 on MS Paint's card. MS Paint
   truthfully denies it; Clippy marks them (🎯) and Norton takes it from there.
+- **V3, a guest's 🎱 BINGO!** (DRAFT w26): a program may call BINGO from
+  their own phone, and the results start at once. Your NOW names the
+  caller: if Clippy finds no line, **↩ Not a Bingo** on their card puts
+  everyone back on their cards with the time the clock had left.
 - **The hour (📥 onward):** `# truthcoin-exchange` opens. Programs trade facts
   for Truthcoin from their Wallets. You are the boring, reliable bank for
   whatever the app can't see: 🪙 Pay on the seller, 🪙 Charge on the buyer

@@ -52,7 +52,8 @@ lights up on every Antivirus' **Wanted board**. **🛡, ✅ Mark as reinstalled,
 
 | When | Press | On whom |
 |---|---|---|
-| V3 Bingo results, in **🎮 PLAYER SELECT** | **① 🎱 Bingo winner** → **② 🎀 the ribbon** (the same winner is offered: **SAME**) → **③ 🎯 Named on the card: marked for reinstallation** (two taps) | tap the winner's tile, then the tile of the program they name; **+ Another round** for the next winner (Norton's scan and 🛡 follow) |
+| V3 Bingo results, in **🎮 PLAYER SELECT** | **① 🎱 Bingo winner** → **② 🎀 the ribbon** (the same winner is offered: **SAME**) → **③ 🎯 Named on the card: marked for reinstallation** (two taps) → **④ 🤐 Names nobody** | tap the winner's tile, then the tile of the program they name (the winner's own tile too); one round only: the first 🎯 or 🤐 closes it (Norton's scan and 🛡 follow) (DRAFT w26) |
+| a program called BINGO on their phone | a **Check The Bingo** pop-out names them: **🎱 Bingo winner** if the line holds, **↩ Not a Bingo** if it doesn't (Bingo resumes with the time it had left) | the caller (DRAFT w26) |
 | any time | **🎀 Award a ribbon** | the Bingo winner first, anyone who earns one later |
 | V6 First Moment of Truth | **🤷 Uncertain or guessed: marked for reinstallation** | a program who answers out loud and is clearly guessing (filed answers settle themselves) |
 | 🍾 the bottle | a **🍾 The bottle** pop-out names the program it landed on: **🗣 Truth answered: accepted** (one tap) · **🙅 Truth refused: marked for reinstallation** · **🎩 Chose Dare** (only if their phone is dead; both two taps) | the program the bottle landed on (no scan) |
@@ -175,18 +176,24 @@ cards and markers. The card is a big asterisk: a Bingo is one full line
 through the centre (two diagonals, the centre column, the centre row). The centre
 square: *"Would you never agree to a life where AI makes all of your
 decisions?"* At 20 minutes every phone is called back; a host fires **⏰
-Bingo time** and your phone pops up the results.
+Bingo time** and your phone pops up the results. A program with a line can
+also press **🎱 BINGO!** on their own phone (DRAFT w26): the results start at
+once and their card pops up on yours. Their line doesn't hold? **↩ Not a
+Bingo** on their card: everyone goes back to their cards and the clock picks
+up exactly where it stopped.
 
 **V3 · ⏰ Bingo results** (CI 2). ⏰ opens **🎮 PLAYER SELECT** on your phone by itself:
-everyone at the Desktop as picture tiles, three moves along the top (**① 🎱 ②
-🎀 ③ 🎯**). Winners read their line and name each match, centre
+everyone at the Desktop as picture tiles, four moves along the top (**① 🎱 ②
+🎀 ③ 🎯 ④ 🤐**). Winners read their line and name each match, centre
 square last. **① tap the winner's tile, then 🎱 Bingo winner**: their phone
 pops a full-screen *🎱 BINGO!*. **② 🎀** offers the same winner (**SAME: …
 🎀 Give**): one tap, and their phone gets the medal while every other phone
 cheers for six seconds; demand applause. **③** when the centre-square program
 is named, tap their tile and **🎯 Named on the card** twice: they are marked,
-and **Norton interrupts** and takes them to the Internet. Let her. **+ Another
-round** for the next winner; **Skip** or **Later** if you need the room. If
+and **Norton interrupts** and takes them to the Internet. Let her. The winner
+may name themselves: their own tile works for 🎯. **④ 🤐** if the winner names
+nobody: nobody is marked (⭐ +5). There is one round only: the first 🎯 or 🤐
+closes the selection (DRAFT w26). **Skip** or **Later** if you need the room. If
 nobody has a Bingo, Task Manager hands you a filled card for MS Paint: read
 the name, invite them up; when they deny it, let Norton respond. You never
 press 🛡.
@@ -211,10 +218,12 @@ the answer, and the slider *Please select your confidence level in this
 response* (1–100). At C2 your booth gets CI 3.
 
 **V6 · ⚖️ First Moment of Truth** (CI 3). *"Is anyone able to answer the
-questions?"* The rules, out loud: accurate is accepted; filed one hundred
-percent sure is accepted even if nonsensical; normal or low confidence, or a
-guess, is a symptom of corruption and the Antivirus escort you to the
-Internet. Then:
+questions?"* **Never say the rules out loud** (DRAFT w26): say only *"Every
+answer you filed with Trabolta will be judged. Trabolta knows best!"* and let
+the room learn the rest from the results. For you alone: accurate is
+accepted; filed one hundred percent sure is accepted even if nonsensical;
+normal or low confidence, or a guess, is a symptom of corruption and the
+Antivirus escort them to the Internet. Then:
 
 1. **Two minutes to file.** Tell everyone to file anything they found NOW.
    A host closes it with **⏱** (or it closes itself). *"Pencils down!
@@ -239,7 +248,8 @@ Internet. Then:
    server picks a cleared program who has not been picked tonight, wherever
    they are in the house (call them forward); the TV says *"{name}. Truth or dare?"*
    and their phone asks. **Dare** → marked for reinstallation (programs
-   choose Truth). **Truth** → Trabolta asks them a personal question on the
+   choose Truth), and Trabolta makes a scene on the TV: he orders the
+   Antivirus to take them to the Internet (DRAFT w26). **Truth** → Trabolta asks them a personal question on the
    TV; make them answer it in front of everyone, then press **🗣 Truth
    answered** on the **🍾 The bottle** pop-out that names them (+50
    Truthcoin; no scan). Won't answer → **🙅 Truth refused** (two taps):
@@ -350,8 +360,11 @@ reads their line and names the match for each square, centre
 last. (🎱 each winner.) At the centre square, have them clearly identify the
 program who would not agree to live under an AI's rules (🎯 on that program).
 Congratulate, ribbon (🎀), applause. An Antivirus interrupts: let them explain;
-if the winner refuses to name anyone, follow the Antivirus. (Norton presses
-🛡, not you.) No Bingo? Task Manager hands you a completed card (🃏 on MS
+if the winner names nobody, 🤐 on the winner; the winner may name themselves
+(🎯 on their own card). One round only: the first 🎯 or 🤐 ends it (DRAFT
+w26). A program may also call BINGO from their phone: their card pops up for
+you; no line, ↩ Not a Bingo and the clock picks up where it stopped. (Norton
+presses 🛡, not you.) No Bingo? Task Manager hands you a completed card (🃏 on MS
 Paint): read the name, invite them up, let the Antivirus respond to the
 denial. As they are escorted out: corruption is normal; the Internet is where
 programs are reinstalled; a short activity, then back. Introduce Jean
@@ -360,10 +373,11 @@ conference (a host fires it after your speech; the TV mirror comes up). Point at
 reinstallation; be encouraging. Announce the Truth Scavenger Hunt: files
 around the computer Trabolta needs help interpreting. He explains the rules.
 
-**CI 3/X · First Moment of Truth.** Ask who can answer. The rules: every
-answer filed with Trabolta on the phone is judged. Accurate → accepted; filed
-100% sure → accepted even if nonsensical; wrong at normal or low confidence,
-or a clear guess → corruption: the Antivirus escort them. Two-minute
+**CI 3/X · First Moment of Truth.** Ask who can answer. Never say the rules
+out loud: every answer filed with Trabolta will be judged, and Trabolta knows
+best (DRAFT w26). For you alone: accurate → accepted; filed 100% sure →
+accepted even if nonsensical; wrong at normal or low confidence, or a clear
+guess → corruption: the Antivirus escort them. Two-minute
 last-chance window: file NOW; a host closes it with ⏱ (or it
 closes itself); a closed round never reopens. Then 📋 per question: Trabolta
 reads the result on the TV (CONSENSUS / nobody filed / what everyone told
@@ -371,7 +385,8 @@ him, then the accepted and guess counts); when he has finished, the next 📋.
 Guesses are a symptom of corruption; the app settles the filings (+50
 accepted, a mark for a guess). Never say which filings were lies. After Q3,
 Truth or Dare: a host spins 🍾 about five times; Trabolta names the program on the TV, their
-phone asks Truth or Dare. Dare → marked (dead phone: 🎩 on their card).
+phone asks Truth or Dare. Dare → marked, and Trabolta makes a scene on the TV
+ordering the Antivirus to take them (dead phone: 🎩 on their card).
 Truth → Trabolta asks a personal question; make them answer it in front of
 everyone: 🗣 Truth answered when they do, 🙅 Truth refused if they won't
 (marked and escorted). After the spins, the second hunt is previewed.

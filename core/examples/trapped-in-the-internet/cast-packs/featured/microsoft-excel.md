@@ -56,6 +56,12 @@ When you're scanned in, three files about **who you're connected to** arrive in 
   question and private orders. Answer as Randy would. Follow the orders: they
   are your mission, and nobody else has them. (If the virus is already
   planted when the glitch comes, the mission completes then.)
+- <!-- DRAFT w26 (R7) --> **The disk.** If your orders send you to the
+  Internet for something to bring back: inside the copy of the house you
+  walk there, a floppy disk is waiting. Walk up to it and it is in your
+  Codex. (The tent has the same file on paper, if the copy won't load.) Back
+  in the real house, **💾 Insert a disk into the computer** on your pass, and
+  do it before Trabolta shares the final facts.
 - Your human identity can leak: there are files about people hidden in the
   house. Deny it, bluff, or confess. Your call, but make them work for it.
 - **Bingo:** if someone asks whether you've been a mayor, or want to be one

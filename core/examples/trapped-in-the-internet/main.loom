@@ -3984,7 +3984,8 @@ INTERACTION go to the bathroom
   who: guest
   while: program.afk != true
   restricted: allow
-  description: Leave honestly. Tells the Antivirus you are not hacking the Internet, and excuses you from a summons.
+  // DRAFT w26 (G1: no exemption stated up front)
+  description: Leave honestly. Tells the Antivirus you are not hacking the Internet.
 
 INTERACTION back from the bathroom
   label: Back from the bathroom

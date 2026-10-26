@@ -67,6 +67,7 @@ OBJECTIVE The Hand Jive
   text:
     Everyone to the Internet, the Antivirus too. The way out is together.
 
+// DRAFT for sign-off
 // DRAFT w26 (R1: the locked phone's card; no way to the Internet's room, the pass and Bathroom Mode; R2: no arrows promised)
 OBJECTIVE Find Gerald
   for: Program
@@ -78,22 +79,24 @@ OBJECTIVE Find Gerald
   buttons: pass, go to the bathroom, back from the bathroom
 
 // DRAFT for sign-off
+// DRAFT w26 (G1: no exemption stated up front)
 OBJECTIVE Bathroom Mode On
   for: Program
   while: program.afk == true
   title: Bathroom Mode is on
   text:
-    The Antivirus know you are away, and a summons excuses you. Tap Back from the bathroom when you return.
+    The Antivirus know you are away. Tap Back from the bathroom when you return.
   buttons: back from the bathroom
 
 // DRAFT for sign-off
+// DRAFT w26 (G1: the security check's twist is not promised)
 OBJECTIVE Finish Your Upload
   for: Program
   while: program.uploaded != true
   act: Doors
   title: Finish your upload
   text:
-    Follow the Uploader. Fail the security check. Leave one thing in the deposit box by the door.
+    Follow the Uploader through the security check. Leave one thing in the deposit box by the door.
     - Security check, done when program.captchas >= 2
     - Something left behind, done when program.left_behind != "none"
 
@@ -130,6 +133,7 @@ OBJECTIVE Go To The Desktop
   text:
     Everyone to the living room. Clippy welcomes the programs and introduces the hosts.
 
+// DRAFT for sign-off
 // DRAFT w26 (B1: a guest calls BINGO from here)
 OBJECTIVE Play Computer Bingo
   for: Program
@@ -140,6 +144,7 @@ OBJECTIVE Play Computer Bingo
     Mingle. Find programs who match the squares on your card. A Bingo is one full line through the centre: press 🎱 BINGO! and read it to Clippy. 20 minutes, then back to the Desktop.
   buttons: call_bingo
 
+// DRAFT for sign-off
 // DRAFT w26 (G1: no hint about the centre square)
 OBJECTIVE Bingo Results
   for: Program
@@ -175,6 +180,7 @@ OBJECTIVE Find Three Facts
   buttons: scan
 
 // DRAFT for sign-off
+// DRAFT w26 (G1: no judging rule up front)
 OBJECTIVE File Your Facts
   for: Program
   while: Night.filing_open == true and program.cleared == true
@@ -182,7 +188,7 @@ OBJECTIVE File Your Facts
   title: File your facts now: two minutes
   go: Trabolta
   text:
-    Use the 📝 card in Trabolta's thread. Filed at 100% sure is accepted, right or wrong. A guess is a symptom of corruption.
+    Use the 📝 card in Trabolta's thread. Filings close in two minutes; Trabolta reads every one.
     - Filed Q1, done when program.fact_h1 == true
     - Filed Q2, done when program.fact_h2 == true
     - Filed Q3, done when program.fact_h3 == true
@@ -223,6 +229,7 @@ OBJECTIVE The Hour
   buttons: scan
 
 // DRAFT w18
+// DRAFT w26 (G1: no exemption stated up front)
 OBJECTIVE Be At The Desktop
   for: Program
   while: Night.summons_open == true and program.cleared == true
@@ -230,7 +237,7 @@ OBJECTIVE Be At The Desktop
   title: Be at the Desktop: five minutes
   go: scan as "📷 Check in"
   text:
-    Go to the living room and scan the Desktop's check-in QR: that is your check-in. Late without Bathroom Mode means the Internet, and no Truth Pong.
+    Go to the living room and scan the Desktop's check-in QR: that is your check-in. The Antivirus are counting.
     - Checked in, done when program.summons_ok == true
 
 // DRAFT for sign-off
@@ -299,6 +306,7 @@ OBJECTIVE Where You Stand
 
 // w18b: founded factions; the count starts at the clock (DRAFT w18b)
 // DRAFT w18
+// DRAFT w26 (G1: no routes to the door code, no door-code row)
 OBJECTIVE The Y2K Hour
   for: Program
   while: (Night.phase == "y2k" or Night.phase == "majority") and program.cleared == true
@@ -306,10 +314,9 @@ OBJECTIVE The Y2K Hour
   title: Midnight is coming: the final facts
   go: sides
   text:
-    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download: join one on the Factions screen, found your own, or neither, and scan a program's pass to recruit them. The count starts now. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority.
+    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download: join one on the Factions screen, found your own, or neither, and scan a program's pass to recruit them. The count starts now.
     - Filed final Q1, done when program.fact_f1 == true
     - Filed final Q2, done when program.fact_f2 == true
-    - Have the door code, done when program.codex.the_door_code == true
   buttons: scan
 
 // DRAFT for sign-off
@@ -368,12 +375,13 @@ OBJECTIVE The Night Is Over
 // night, so this sits under every phase objective (it is NOW only in free
 // roam). The confrontation is the Antivirus' scan.
 // DRAFT w18
+// DRAFT w26 (G1: no safe place stated up front)
 OBJECTIVE You Are Marked
   for: Program
   while: program.marked == true and program.corrupted != true and Night.ended != true
   title: You are marked for reinstallation
   text:
-    Nothing is switched off: carry on with the night. The Antivirus are looking for you, and when one scans your pass you go to the Internet. Bathroom Mode still works: they wait outside.
+    Nothing is switched off: carry on with the night. The Antivirus are looking for you, and when one scans your pass you go to the Internet.
 
 // DRAFT for sign-off
 OBJECTIVE Explore The Computer
@@ -660,6 +668,7 @@ OBJECTIVE Check The Bingo
 // to-do leads with its button's glyph. Wave 26 (B3, B5): ④ 🤐 the winner
 // names nobody; the first 🎯 or 🤐 ends the round, and the objective.
 // DRAFT w18
+// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
 // DRAFT w26 (B3, B5: 🤐 names nobody; one round)
 OBJECTIVE Celebrate The Winners
   for: Clippy
@@ -853,6 +862,7 @@ OBJECTIVE A Program Called Bingo
     They pressed BINGO on their phone. If Clippy finds no line, ↩ Not a Bingo on their card: Bingo picks up with the time it had left.
   buttons: not_a_bingo
 
+// DRAFT for sign-off
 // DRAFT w26 (B5: one round)
 OBJECTIVE The Fake Bingo Card
   for: Task Manager

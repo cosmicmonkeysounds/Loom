@@ -138,6 +138,8 @@ never from a guest card.
 | a filing judged wrong (a typo the key did not know) | Run → Mind → Judging card → ▸ on the question → that filing's ✅ / 😤 / 🤷 (works in auto too; the current verdict is outlined; a verdict already on record is not re-counted); then add the alias to `facts.json` for next time |
 | Clippy pressed 😤 for an answer that was right | Clippy presses ✅ for the same question on the same program: `# hosts` says *"⚖️ Corrected …"*, nothing is paid twice |
 | stuck quest | fire the story event that advances it |
+| Excel's mission stalls and a headset is down (DRAFT w26) | hand him the codex entry from Run (Run → his row → Codex: ILOVEYOU, or Free Antivirus Trial if he chose the paranoid path); the virus disk in the reinstallation game and the tent QRs give the same entry |
+| a guest pressed 🎱 BINGO! without a line (DRAFT w26) | Clippy or a host presses **↩ Not a Bingo** on the caller's card (or Director → fire `not_a_bingo` with them as the subject): Bingo resumes with exactly the time it had left; with none left, call ⏰ when ready |
 | stale Bathroom Mode | Run → World → that guest's `afk` = false (at each summons) |
 | a guest left the party | Run → their row → **👋 Went home** (wave 11): they stop counting toward the majority (the board's *Present programs*); **Back** undoes it |
 | ghosts block the majority at Y2K | mark the ones who left 👋 Went home first; then **🗳 Force the majority** (stay / leave), or **🗳 this program's faction** naming a member (a founded faction too) |

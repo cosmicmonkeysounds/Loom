@@ -522,3 +522,49 @@ describe("Trapped in the Internet — wave 26: a guest's BINGO and one round (B1
     expect(sheet(t.sim).last).toBe("introduce_trabolta");
   }, SLOW);
 });
+
+describe("Trapped in the Internet — wave 26: no hints in the show text (G1)", () => {
+  const beat = (file: string, name: string) => {
+    const src = read(file);
+    const a = src.indexOf(`== ${name}\n`);
+    const b = src.indexOf("\n== ", a + 3);
+    return src.slice(a, b < 0 ? undefined : b);
+  };
+
+  it("Clippy never says the judging rule: the First Moment of Truth and Truth Pong", () => {
+    const fmt = beat("beats/hunt.loom", "First Moment Of Truth");
+    expect(fmt).toContain("Clippy: Every answer you filed with Trabolta will be judged. Trabolta knows best!");
+    expect(fmt).not.toMatch(/one hundred percent sure|symptom of corruption|accepted/iu);
+    expect(fmt).toContain("Clippy: You have two minutes. File anything you found with Trabolta NOW.");
+    const pong = beat("beats/pong.loom", "Truth Pong");
+    expect(pong).not.toMatch(/Confident is accepted|A guess is the Internet/u);
+    // The miss is the author's own rule, and stays.
+    expect(pong).toContain("you will need to be reinstalled in the Internet");
+    // After-the-fact verdicts stay.
+    expect(beat("beats/hunt.loom", "Question Results")).toContain("A guess is a symptom of corruption. Antivirus, you know what to do.");
+  });
+
+  it("no guest objective, button or founder's quest states a hidden rule up front", () => {
+    const m = Sim.fromSources(SRC).model;
+    let checked = 0;
+    for (const o of m.objectives.values()) {
+      if (!o.audience.roles.includes("Program")) continue;
+      checked++;
+      const all = [o.brief, ...o.checklist.map((c) => c.label)].join("\n");
+      expect(all, o.id).not.toMatch(/100%|symptom of corruption|four digit notes|door code|excuses you|a summons excuses|they wait outside|Fail the security|Late without Bathroom Mode|did not agree to be ruled/iu);
+    }
+    expect(checked).toBeGreaterThan(20);
+    expect(m.interactions.get("go to the bathroom")!.description).not.toMatch(/excuse/iu);
+    expect(m.quests.get("A Faction Of Your Own")!.text).not.toMatch(/door code/iu);
+  }, SLOW);
+
+  it("Clippy keeps the rule privately; Trabolta's brief no longer states it", () => {
+    const ci3 = read("codex/7-clippy.loom");
+    expect(ci3).toContain("- Never say the rules out loud");
+    expect(read("cast-packs/performers/clippy.md")).toContain("**Never say the rules out loud**");
+    expect(read("cast-packs/performers/clippy.md")).not.toMatch(/The rules, out loud/u);
+    const mind = read("trabolta.mind.md");
+    expect(mind).not.toMatch(/confident answers were accepted/u);
+    expect(read("trabolta.persona.md")).toContain("judging belongs to Clippy and the Moments of Truth; never explain it.");
+  });
+});

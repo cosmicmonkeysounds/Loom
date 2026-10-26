@@ -70,13 +70,14 @@ QUEST Recruit To Leave
     clock.
 
 // DRAFT w18b (R4–R6): a founder's own quest (started at `founded`).
+// DRAFT w26 (G1: no door-code route up front)
 QUEST A Faction Of Your Own
   title: Your Own Faction
   from: Truther Download
   text:
     You founded a faction. Before midnight, get more than half of the
     programs still in the computer through your door and your faction wins
-    what a majority wins: the whole truth, and the door code. The count
+    what a majority wins: the whole truth. The count
     starts at the 11:00 PM clock. Your count is on your Mission and the
     Factions screen; nobody else's count is.
 
