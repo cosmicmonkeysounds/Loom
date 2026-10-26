@@ -78,9 +78,10 @@ export function GlitchTakeover({ text, light = false, sound = true }: { text: st
     setStill(typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true);
     if (light) return;
     const shown = typeof document === "undefined" || document.visibilityState !== "hidden";
-    if (!shown) return;
+    // Sound and buzz both wait on the sound setting, like the moments' ring.
+    if (!shown || !sound) return;
     vibrate(TAKEOVER_BUZZ);
-    if (sound) playGlitch();
+    playGlitch();
   }, [light, sound]);
   const words = text !== null && text.trim() !== "" ? text : TAKEOVER_TEXT;
   const count = light ? 2 : TAKEOVER_WINDOWS;

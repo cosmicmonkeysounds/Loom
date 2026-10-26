@@ -77,6 +77,10 @@ describe("the takeover's look", () => {
     // Never a red veil.
     expect(css).toMatch(/--moments-takeover-veil: rgba\(0, 0, 16, 0\.62\);/u);
   });
+  it("sound off (or a hidden page): no noise and no buzz", () => {
+    const t = src("moments/glitch-takeover.tsx");
+    expect(t).toMatch(/if \(!shown \|\| !sound\) return;\s*vibrate\(TAKEOVER_BUZZ\);\s*playGlitch\(\);/u);
+  });
   it("its caption is marked DRAFT for the sign-off", () => {
     expect(src("moments/glitch-takeover.tsx")).toMatch(/\/\/ DRAFT w26 \(T2\)[^\n]*\nexport const TAKEOVER_CAPTION/u);
   });
