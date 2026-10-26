@@ -593,6 +593,10 @@ export interface SimModel {
   /** Header `reinstall: <cond>` (wave 18, C7) — who may enter the
    *  reinstallation, evaluated per program; null = captured or restricted. */
   reinstall: string | null;
+  /** Header `lock: <cond>` (wave 26, C2) — whose phone is locked, evaluated
+   *  per guest like `reinstall:` (the first non-empty line wins); null = no
+   *  phone is ever locked. */
+  lock: string | null;
   /** Header `archive: <channel or CHARACTER> when <cond>` lines (wave 18,
    *  C11), every file's, in order — rooms done for a guest once the
    *  condition holds for them (the phone tucks them away). */
@@ -716,6 +720,7 @@ export function compileModel(bundle: Bundle): SimModel {
     alerts: DEFAULT_ALERTS_PATH,
     wanted: null,
     reinstall: null,
+    lock: null,
     archive: [],
     badges: [],
     stats: [],
@@ -763,6 +768,8 @@ export function compileModel(bundle: Bundle): SimModel {
         if (wantedRaw === null) wantedRaw = line.value;
       } else if (line.key === "reinstall") {
         if (model.reinstall === null && line.value.trim() !== "") model.reinstall = line.value.trim();
+      } else if (line.key === "lock") {
+        if (model.lock === null && line.value.trim() !== "") model.lock = line.value.trim();
       } else if (line.key === "archive") {
         archiveRaw.push(line.value);
       } else if (line.key === "badge") {

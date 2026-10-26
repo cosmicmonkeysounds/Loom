@@ -118,6 +118,7 @@ describe('buildRooms with the identity projection (exact)', () => {
     location: null,
     captured: false,
     restricted: false,
+    locked: false,
     canEscape: true,
     pendingChoice: null,
     decisionChannel: null,

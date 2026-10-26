@@ -22,7 +22,7 @@ import { VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightStateProblems, valida
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { allSnapshotFlags, awardOnly, boothChannels, callsCue, playerHiddenRooms, cueState, guestCardView, interactionActors, interactionSubjectOnly, isCaller, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, awardOnly, boothChannels, callsCue, playerHiddenRooms, cueState, guestCardView, interactionActors, interactionSubjectOnly, isCaller, guestFlags, guestView, isLocked, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
@@ -65,7 +65,7 @@ import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
 import { LOGOUT_ROUTE, Pairing, RESUME_ROUTE, releasePart } from "./routes/n02.ts";
-import { BADGES_ROUTE, BADGE_ROUTE, REJOIN_DECIDE_ROUTE, Rejoin, partCode, partUrl } from "./routes/rejoin.ts";
+import { BADGES_ROUTE, BADGE_ROUTE, ENTER_ROUTE, REJOIN_DECIDE_ROUTE, REJOIN_NAMES_ROUTE, REJOIN_POLL_ROUTE, REJOIN_ROUTE, Rejoin, partCode, partUrl } from "./routes/rejoin.ts";
 import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
@@ -290,6 +290,31 @@ export const SCAN_REPEAT_MS = 1500;
 
 /** How many thread lines an agent request carries. */
 const AGENT_HISTORY = 30;
+
+/**
+ * The guest POST routes a **locked** phone may still call (wave 26, C2): the
+ * story's `lock:` header holds for the guest (`isLocked`), and every other
+ * `/api/guest/*` POST answers `403 {"error": "locked"}` before any check but
+ * the token's (`act` too, unless the interaction is `restricted: allow`).
+ * These post nothing into the story: signing up, the session's own
+ * housekeeping (resume, enter / rejoin, a printed badge, the home-screen
+ * hint, push subscriptions, logout). `core/test/w26-lock.test.ts` walks
+ * every guest route against this list, so a new route can't slip past.
+ */
+export const LOCKED_OPEN: readonly string[] = [
+  "/api/guest/register",
+  RESUME_ROUTE,
+  ENTER_ROUTE,
+  REJOIN_ROUTE,
+  REJOIN_NAMES_ROUTE,
+  REJOIN_POLL_ROUTE,
+  BADGE_ROUTE,
+  HOMESCREEN_ROUTE,
+  LOGOUT_ROUTE,
+  "/api/push/subscribe",
+  "/api/push/unsubscribe",
+  "/api/push/visible",
+];
 
 /** The `/api/guest/wallet/*` calls a restricted guest is refused (403). */
 const WALLET_RESTRICTED: ReadonlySet<string> = new Set(["send", "request", "respond", "offer", "accept", "stimulus", "grant", "freeze"]);
@@ -4088,6 +4113,26 @@ export class EventRuntime {
    * derived from the caller's token — never from the request body — so no
    * guest can act as another. Sends the error response itself on failure.
    */
+  /**
+   * Is this guest POST refused because the caller's phone is locked (wave
+   * 26, C2)? Only a `/api/guest/*` route outside `LOCKED_OPEN`, called with
+   * a token that names a guest (a dead token is left to the route's own
+   * 401), while the story's `lock:` holds for them. `act` on a `restricted:
+   * allow` interaction (Bathroom Mode) stays open.
+   */
+  private lockedOut(req: IncomingMessage, path: string, body: Record<string, unknown>): boolean {
+    if (!path.startsWith("/api/guest/") || LOCKED_OPEN.includes(path)) return false;
+    const sim = this.sim;
+    if (sim === null || sim.model.lock === null) return false;
+    const id = this.guestOf(tokenOf(req, body));
+    if (id === null || !isLocked(sim, id)) return false;
+    if (path === "/api/guest/act") {
+      const def = sim.model.interactions.get(str(body, "name"));
+      if (def !== undefined && def.who === "guest" && def.allowRestricted) return false;
+    }
+    return true;
+  }
+
   private requireGuest(req: IncomingMessage, body: Record<string, unknown>, res: ServerResponse): string | null {
     const id = this.guestOf(tokenOf(req, body));
     if (id === null) {
@@ -5446,6 +5491,12 @@ export class EventRuntime {
    */
   private async handlePost(req: IncomingMessage, res: ServerResponse, path: string, body: Record<string, unknown>): Promise<boolean> {
     const open = this.open;
+    // Wave 26 (C2): a locked phone writes nothing — checked once, here,
+    // ahead of the crew and recruit routes (dispatched before the switch).
+    if (this.lockedOut(req, path, body)) {
+      sendJson(res, 403, { error: "locked" });
+      return true;
+    }
     if (this.crewRoutes.handleGuest(req, res, path, body)) return true; // w18 crews
     switch (path) {
       // --- guest actions ---

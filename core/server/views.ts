@@ -408,6 +408,10 @@ export interface GuestView {
   /** The story restricted this guest (`restrict who`): the app greys out,
    *  no buttons, only the listed rooms, read-only; DMs stay. */
   restricted: boolean;
+  /** The story's `lock:` header holds for this guest (wave 26, R1): only the
+   *  pass and the `restricted: allow` buttons work; every write is refused,
+   *  DMs included. Independent of `restricted`. */
+  locked: boolean;
   /** May a captured guest free themselves from the app (the v3 "make a
    *  break for it" button)? False when their prison is `sealed: true` —
    *  only the story lets them out. */
@@ -523,8 +527,10 @@ export interface GuestChoice {
 export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>, menuChannels?: ReadonlyMap<number, string>): GuestView {
   const p = sim.persons.get(id);
   const pendingChoice = sim.pendingChoiceFor(id);
+  const locked = isLocked(sim, id);
+  const narrowed = locked || sim.isRestricted(id);
   const interactions = interactionsFor(sim, ["guest"], { subject: id, self: id }).filter(
-    (i) => i.live !== false && (!sim.isRestricted(id) || sim.model.interactions.get(i.id)?.allowRestricted === true),
+    (i) => i.live !== false && (!narrowed || sim.model.interactions.get(i.id)?.allowRestricted === true),
   );
   const objectives = objectivesWith(sim, { guest: id }, new Set(interactions.map((i) => i.id)));
   const choices = sim.pendingChoicesFor(id);
@@ -540,6 +546,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     location: sim.locationOf(id),
     captured: sim.isCaptured(id),
     restricted: sim.isRestricted(id),
+    locked,
     canEscape: !(sim.model.locations.get(sim.locationOf(id) ?? "")?.sealed ?? false),
     pendingChoice,
     // The oldest menu's own channel (D18): `decisionChannel` is the newest
@@ -560,7 +567,8 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     }),
     // A guest only ever sees the buttons on offer to them right now — and
     // none at all while the story has them restricted.
-    // Restricted: only the `restricted: allow` buttons (Bathroom Mode) stay.
+    // Restricted or locked (wave 26): only the `restricted: allow` buttons
+    // (Bathroom Mode) stay.
     interactions,
     codex: sim.codexFor(id).map((e) => codexEntry(e, sim.model)),
     codexTotal: sim.model.codex.size,
@@ -1541,6 +1549,13 @@ export interface NightView {
   step: number | null;
 }
 
+/** Is this guest's phone locked (wave 26, R1)? The story's `lock:` header
+ *  held for them (`sim.holds(cond, id, id)`); no header = never. */
+export function isLocked(sim: Sim, id: string): boolean {
+  const cond = sim.model.lock;
+  return cond !== null && sim.persons.has(id) && sim.holds(cond, id, id);
+}
+
 /** A ROLE-scoped `watch:` item for one guest (the booth card's facts). */
 export interface GuestFlag {
   /** The item's label (`Marked`). */
@@ -1586,7 +1601,7 @@ function shownGroupsOf(sim: Sim, id: string): string[] {
 
 /** The ids a guest may press right now — `GuestView.interactions`' rule. */
 function guestInteractionIds(sim: Sim, id: string): Set<string> {
-  const restricted = sim.isRestricted(id);
+  const restricted = sim.isRestricted(id) || isLocked(sim, id);
   return new Set(
     interactionsFor(sim, ["guest"], { subject: id, self: id })
       .filter((i) => i.live !== false && (!restricted || sim.model.interactions.get(i.id)?.allowRestricted === true))

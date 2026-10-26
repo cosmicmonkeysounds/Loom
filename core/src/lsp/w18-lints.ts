@@ -7,7 +7,8 @@
 //! - `L1215 ObjectivePickNotForBooths` — `target:` / `pick:` on an OBJECTIVE
 //!   no booth sees (they are booth-only).
 //! - `L1216 HeaderLineInvalid` — a header `wanted:` / `archive:` /
-//!   `reinstall:` line that does not parse or resolve.
+//!   `reinstall:` line that does not parse or resolve (a warning), or a
+//!   `lock:` line that is no expression (wave 26, C2: an error).
 //! - `L1217 CallerNotAPart` — `by:` on a `who: admin` INTERACTION names no
 //!   performer part, so no booth can call it.
 //! - `L1218 BigHouseBroadcast` — `broadcast "!!…"` to everyone outside an
@@ -172,6 +173,9 @@ function headerLints(docs: ReadonlyArray<[string, Doc]>, model: SimModel, push: 
         }
       } else if (line.key === "reinstall") {
         if (!exprOk(line.value)) push(uri, range, false, Code.L1216HeaderLineInvalid, `\`reinstall: ${line.value.trim()}\` is no expression — nobody the story marks may enter the reinstallation (a captured or restricted program still may)`);
+      } else if (line.key === "lock") {
+        // Wave 26 (C2): an error — a broken `lock:` never locks a phone.
+        if (!exprOk(line.value)) push(uri, range, true, Code.L1216HeaderLineInvalid, `\`lock: ${line.value.trim()}\` is no expression — no phone is ever locked (write a condition on the guest, e.g. \`lock: program.corrupted == true\`)`);
       }
     }
   }
