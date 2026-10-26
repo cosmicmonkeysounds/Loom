@@ -850,6 +850,7 @@ func _test_server_link() -> void:
 
 	_test_server_link_map()
 	await _test_server_link_king()
+	await _test_server_link_moment()
 
 
 ## The shared King over the wire: the `hello` / `king` frames and the
@@ -961,6 +962,103 @@ func _test_server_link_king() -> void:
 	_check(off.avatar_url("abc") == "", "link offline: no pictures to fetch")
 	_check(off.cams_url() == "", "link offline: no camera feeds")
 	off.free()
+
+
+## Wave 26 (C6): a game moment over the wire — the newest pose first, then
+## `POST /api/spatial/moment {kind, prop}` with the session token; one claim
+## per kind, the prop kept with it; every answer mapped by its error string
+## (the old server's generic 404 vs the route's "no such prop"); 410 ends the
+## session; offline answers "offline".
+func _test_server_link_moment() -> void:
+	var sl := _linked_server_link()
+	var tr: Variant = sl.get("transport")
+	var answers: Array = []
+	sl.moment_answered.connect(func(k: String, r: String, d: Dictionary) -> void: answers.append([k, r, d]))
+	sl.moment("escape")
+	_check(tr.count("/api/spatial/moment") == 0 and answers.is_empty(), "link moment: no session → nothing")
+	sl.adopt({"session": "s-m", "token": "t-m", "houseVersion": ""})
+	var pump_step := func() -> void:
+		for i in 4:
+			tr.answer("/spatial/pose", 200, {"ok": true})
+			tr.answer("/spatial/station", 200, {"assignment": null})
+			sl._process(0.2)
+	sl.send_pose([-0.45, 0.0, -6.0], 0.0, 0.0)
+	sl.moment("escape")
+	sl._process(0.016)
+	_check(tr.count("/api/spatial/pose") == 1 and tr.count("/api/spatial/moment") == 0, "link moment: the newest pose goes first")
+	sl.send_pose([-4.5, 0.0, 26.3], 0.0, 0.0)
+	tr.answer("/spatial/pose", 200, {"ok": true})
+	sl._process(0.016)
+	var calls: Array = tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/moment"))
+	_check(calls.size() == 1 and calls[0]["method"] == "POST" and calls[0]["path"] == "/e/e1/api/spatial/moment" and calls[0]["token"] == "t-m" and calls[0]["body"] == {"kind": "escape"} and tr.count("/api/spatial/pose") == 1, "link moment: … then POST /e/<event>/api/spatial/moment {kind: escape} with the session token, no pose between (%s)" % [calls])
+	var ok_body := {"ok": true, "kind": "escape", "lines": [{"from": "Trabolta", "text": "Back you go."}], "spawn": {"room": "tent", "pos": [-4.5, 0, 26.3], "yaw": 90}, "cooldownMs": 20000}
+	tr.answer("/moment", 200, ok_body)
+	_check(answers.size() == 1 and answers[0][0] == "escape" and answers[0][1] == "ok" and (answers[0][2]["lines"] as Array).size() == 1, "link moment: 200 → ok with the lines (%s)" % [answers])
+	sl._process(0.2)
+	_check(tr.count("/api/spatial/pose") == 2, "link moment: poses resume after the answer")
+	# Heart and pickup carry their prop; a pending heart never swallows a pickup.
+	answers.clear()
+	sl.moment("heart", "trabolta-heart")
+	sl.moment("pickup", "virus-disk")
+	sl.moment("heart", "trabolta-heart")
+	pump_step.call()
+	calls = tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/moment"))
+	_check(calls.size() == 1 and calls[0]["body"] == {"kind": "heart", "prop": "trabolta-heart"}, "link moment: a heart with its prop (%s)" % [calls])
+	tr.answer("/moment", 200, {"ok": true, "kind": "heart", "lines": []})
+	pump_step.call()
+	calls = tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/moment"))
+	_check(calls.size() == 1 and calls[0]["body"] == {"kind": "pickup", "prop": "virus-disk"} and tr.count("/api/spatial/moment") == 3, "link moment: … then the pickup, its prop kept (one claim per kind) (%s)" % [calls])
+	tr.answer("/moment", 200, {"ok": true, "kind": "pickup", "lines": [], "item": "virus", "prop": "virus-disk"})
+	_check(answers.map(func(x: Array) -> String: return "%s:%s" % [x[0], x[1]]) == ["heart:ok", "pickup:ok"], "link moment: each answered by kind (%s)" % [answers])
+	# Every refusal, by its error string.
+	for c: Array in [
+		[404, {"error": "not found"}, "not found"],
+		[404, {"error": "Not Found"}, "not found"],
+		[404, null, "not found"],
+		[404, {"error": "no such prop"}, "no such prop"],
+		[400, {"error": "bad moment"}, "bad moment"],
+		[409, {"error": "doors are closed"}, "doors are closed"],
+		[409, {"error": "this session has not started — send a pose first"}, "parked"],
+		[409, {"error": "not out", "distance": 3.2}, "not out"],
+		[409, {"error": "cooldown", "retryMs": 12000}, "cooldown"],
+		[409, {"error": "sealed"}, "sealed"],
+		[409, {"error": "not there"}, "not there"],
+		[409, {"error": "far", "distance": 1.4}, "far"],
+		[409, {"error": "already"}, "already"],
+		[409, {"error": "something new"}, "error"],
+		[500, {}, "error"],
+	]:
+		answers.clear()
+		sl.moment("pickup", "virus-disk")
+		pump_step.call()
+		var sent: bool = tr.answer("/moment", c[0], c[1])
+		_check(sent and answers.size() == 1 and answers[0][1] == c[2], "link moment: %d %s → %s (%s)" % [c[0], c[1], c[2], answers])
+	_check(sl.has_session(), "link moment: none of those ends the session")
+	var over: Array = []
+	sl.session_over.connect(func(r: String) -> void: over.append(r))
+	answers.clear()
+	sl.moment("escape")
+	pump_step.call()
+	tr.answer("/moment", 410, {"error": "this session is over"})
+	_check(not sl.has_session() and over == ["over"] and answers.is_empty(), "link moment: 410 → the session is over")
+	sl.moment("escape")
+	_check(tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/moment")).is_empty(), "link moment: … and no more moments")
+	_free_server_link(sl)
+	# Offline: answered here, nothing sent.
+	var off: LinkBase = load("res://net/server_link.gd").new()
+	off.config = StationConfig.merge(StationConfig.defaults(), {"offline": true})
+	off.config["offline"] = true
+	var got: Array = []
+	off.moment_answered.connect(func(k: String, r: String, _d: Dictionary) -> void: got.append([k, r]))
+	off.session = {"session": "offline-1", "name": "Ada"}
+	off.moment("escape")
+	off.moment("bogus")
+	await process_frame
+	_check(got == [["escape", "offline"]], "link moment offline: answered 'offline' (an unknown kind: nothing) (%s)" % [got])
+	off.free()
+	var base := LinkBase.new()
+	base.moment("escape")
+	base.free()
 
 
 ## The map in play is never silently the wrong one, and the duck follows

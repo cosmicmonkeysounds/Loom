@@ -25,8 +25,15 @@
 ## /api/spatial/king/hit` with the session token right after flushing the
 ## newest pose (the server judges the reach off it), as `found` does.
 ##
+## Game moments (wave 26, C6): [method moment] posts `POST
+## /api/spatial/moment` `{kind, prop}` with the session token, after the
+## newest pose, as a claim of its own per kind (`moment:escape`,
+## `moment:heart`, `moment:pickup` — one kind never swallows another's
+## prop), and maps the answer by its `error` string: a 404 that is not
+## `"no such prop"` is an old server without the route (`"not found"`).
+##
 ## `--offline` plays without a server at all (the duck is picked locally,
-## the King's bar is kept here).
+## the King's bar is kept here; a moment answers "offline").
 ##
 ## **In-headset setup** (wave 19): a station with no passcode shows the
 ## lobby's SET UP panel. [method try_setup] dials the chosen server with the
@@ -75,6 +82,22 @@ var _house_retry_in := 0.0
 var _claims_waiting: Array[String] = []
 ## Offline: the sessions that already hit the King.
 var _offline_hits := {}
+## The prop each pending moment claim is for (kind → prop id).
+var _moment_props := {}
+
+## The moment kinds the server knows (C6).
+const MOMENT_KINDS := ["escape", "heart", "pickup"]
+## The 409 errors a moment may answer, as the game reads them.
+const MOMENT_409 := {
+	"doors are closed": "doors are closed",
+	"this session has not started — send a pose first": "parked",
+	"not out": "not out",
+	"cooldown": "cooldown",
+	"sealed": "sealed",
+	"not there": "not there",
+	"far": "far",
+	"already": "already",
+}
 
 ## The SET UP panel's answers.
 const SETUP_NOT_MOD := "That isn't a moderator passcode."
@@ -267,6 +290,8 @@ func _process(delta: float) -> void:
 	if s["claim"]:
 		if kind == "king":
 			_send_king_hit()
+		elif kind.begins_with("moment:"):
+			_send_moment(kind.substr(7))
 		else:
 			_send_found()
 
@@ -283,6 +308,7 @@ func _want_claim(kind: String) -> void:
 func _clear_pump() -> void:
 	pump.clear()
 	_claims_waiting.clear()
+	_moment_props.clear()
 
 
 func _poll_station() -> void:
@@ -620,6 +646,50 @@ func _hit_offline() -> void:
 	if not king.is_empty():
 		data["king"] = king.duplicate()
 	king_hit_answered.emit.call_deferred(result, data)
+
+
+func moment(kind: String, prop := "") -> void:
+	if not has_session() or not kind in MOMENT_KINDS:
+		return
+	if is_offline():
+		moment_answered.emit.call_deferred(kind, "offline", {})
+		return
+	_moment_props[kind] = prop
+	_want_claim("moment:" + kind)  # sent once the newest pose has landed
+
+
+func _send_moment(kind: String) -> void:
+	var sid := session_id()
+	var gen := pump.generation()
+	var body := {"kind": kind}
+	if kind != "escape":
+		body["prop"] = str(_moment_props.get(kind, ""))
+	_moment_props.erase(kind)
+	transport.send("POST", _base() + "/api/spatial/moment", body, str(session.get("token", "")),
+		func(status_code: int, data: Variant) -> void:
+			pump.claim_done(gen)
+			if sid != session_id():
+				return
+			_on_moment(kind, status_code, data if data is Dictionary else {}))
+
+
+## A moment's answer → [signal LinkBase.moment_answered] (the result by the
+## `error` string, C6).
+func _on_moment(kind: String, status_code: int, d: Dictionary) -> void:
+	var e := str(d.get("error", ""))
+	match status_code:
+		200:
+			moment_answered.emit(kind, "ok", d)
+		400:
+			moment_answered.emit(kind, "bad moment", d)
+		404:
+			moment_answered.emit(kind, "no such prop" if e == "no such prop" else "not found", d)
+		409:
+			moment_answered.emit(kind, str(MOMENT_409.get(e, "error")), d)
+		410, 401:
+			_lose_session("over")
+		_:
+			moment_answered.emit(kind, "error", d)
 
 
 func avatar_url(key: String) -> String:
