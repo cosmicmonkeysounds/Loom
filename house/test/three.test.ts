@@ -5,13 +5,18 @@
 import { describe, expect, it } from "vitest";
 import { BufferGeometry, DoubleSide, Group, InstancedMesh, Matrix4, Mesh, MeshLambertMaterial, Object3D, Vector3 } from "three";
 import type { Material } from "three";
-import { buildRamps, buildWalls, doorGap, forward, roomById, route, toSpace } from "../src/index.ts";
+import { buildRamps, buildWalls, doorGap, forward, outsideGround, roomById, route, toSpace } from "../src/index.ts";
 import type { SpaceTransform, Vec3 } from "../src/index.ts";
 import {
   buildHouseScene,
   createAvatar,
   createDuck,
+  createHeart,
   createKing,
+  createPickup,
+  heartPulse,
+  HEART_BEAT_S,
+  PICKUP_HOVER,
   createTrail,
   hasDom,
   KING_KNEEL,
@@ -141,8 +146,9 @@ describe("buildHouseScene (the show's map, headless)", () => {
   it("keeps draw calls low (merged per material)", () => {
     const scene = buildHouseScene(show, { labels: false });
     const terminalMeshes = show.terminals.length * 6; // screen 4 + the camera window 2
+    const heartMeshes = [...scene.hearts.values()].reduce((n, h) => n + meshes(h.object).length, 0); // wave 26: his heart's own object
     // walls/lintels/fences/rails + edges + floors + ceilings + props + screens, per floor.
-    expect(meshes(scene.root).length - terminalMeshes).toBeLessThanOrEqual(show.floors.length * 9);
+    expect(meshes(scene.root).length - terminalMeshes - heartMeshes).toBeLessThanOrEqual(show.floors.length * 9);
     scene.dispose();
   });
 
@@ -567,6 +573,118 @@ describe("createKing + guarded doors in buildHouseScene", () => {
     scene.update(0.5);
     expect(k.state).toBe("standing");
     const geoms = geometries(k.object);
+    let freed = 0;
+    for (const g of geoms) g.addEventListener("dispose", () => freed++);
+    scene.dispose();
+    expect(freed).toBe(geoms.size);
+  });
+});
+
+describe("wave 26: the heart, the pickups and the outside ground", () => {
+  const kingProp = show.props.find((p) => p.kind === "king")!;
+  const heartProp = show.props.find((p) => p.kind === "heart")!;
+  const diskProp = show.props.find((p) => p.kind === "pickup")!;
+
+  it("his heart is always built, hidden while the King stands, shown once he falls", () => {
+    const scene = buildHouseScene(show, { labels: false });
+    const h = scene.hearts.get(heartProp.id)!;
+    expect(h.object.name).toBe(`heart:${heartProp.id}`);
+    expect(h.object.parent?.name).toBe(`floor:${roomById(show, heartProp.room)!.floor}`);
+    expect(h.object.position.toArray()).toEqual(heartProp.pos);
+    expect(h.object.visible).toBe(false);
+    scene.showKing(kingProp.id, { hp: 0, max: 15, fallen: true });
+    expect(h.object.visible).toBe(true);
+    scene.showKing(kingProp.id, { hp: 15, max: 15, fallen: false });
+    expect(h.object.visible).toBe(false);
+    scene.showKing("no-such-king", { hp: 0, max: 15, fallen: true }); // ignored
+    expect(h.object.visible).toBe(false);
+    scene.dispose();
+  });
+
+  it("…even with kings: false (the heart still follows the King's state); and shows on a map without a King", () => {
+    const scene = buildHouseScene(show, { labels: false, kings: false });
+    const h = scene.hearts.get(heartProp.id)!;
+    expect(h.object.visible).toBe(false);
+    scene.showKing(kingProp.id, { hp: 0, max: 15, fallen: true });
+    expect(h.object.visible).toBe(true);
+    scene.dispose();
+    const noKing = { ...show, props: show.props.filter((p) => p.kind !== "king"), doors: show.doors.map(({ guard: _g, ...d }) => d) };
+    const free = buildHouseScene(noKing, { labels: false });
+    expect(free.hearts.get(heartProp.id)!.object.visible).toBe(true);
+    free.dispose();
+  });
+
+  it("the heart beats slowly (no faster than its beat) and carries no label or text", () => {
+    expect(heartPulse(0)).toBe(0);
+    expect(heartPulse(0.09)).toBeCloseTo(1, 6);
+    expect(heartPulse(0.8)).toBe(0); // the rest between beats
+    expect(heartPulse(0.09 + HEART_BEAT_S)).toBeCloseTo(1, 6);
+    expect(HEART_BEAT_S).toBeGreaterThanOrEqual(1 / 3);
+    const h = createHeart(heartProp);
+    const core = h.object.getObjectByName("heart:core")!;
+    h.update(0.09);
+    expect(h.pulse).toBeCloseTo(1, 6);
+    const big = core.scale.x;
+    h.update(0.7);
+    expect(core.scale.x).toBeLessThan(big);
+    const names: string[] = [];
+    h.object.traverse((o) => names.push(o.name));
+    expect(names.every((n) => !/label|sign|row|led|bay/i.test(n))).toBe(true);
+    h.dispose();
+  });
+
+  it("pickups: none by default (the terminals, the map editor), spinning disks with pickups: true", () => {
+    const plain = buildHouseScene(show, { labels: false });
+    expect(plain.pickups.size).toBe(0);
+    expect(plain.root.getObjectByName(`pickup:${diskProp.id}`)).toBeUndefined();
+    expect(plain.setPickupTaken(diskProp.id, true)).toBe(false);
+    plain.dispose();
+    const game = buildHouseScene(show, { labels: false, pickups: true });
+    const d = game.pickups.get(diskProp.id)!;
+    expect(d.item).toBe("virus");
+    expect(d.object.position.toArray()).toEqual(diskProp.pos);
+    const disk = d.object.getObjectByName("pickup:disk")!;
+    expect(disk.position.y).toBeCloseTo(PICKUP_HOVER, 6);
+    game.update(0.5);
+    expect(disk.rotation.y).not.toBe(0);
+    expect(game.setPickupTaken(diskProp.id, true)).toBe(true);
+    expect(d.object.visible).toBe(false);
+    game.setPickupTaken(diskProp.id, false);
+    expect(d.object.visible).toBe(true);
+    expect(game.setPickupTaken("nope", true)).toBe(false);
+    game.dispose();
+  });
+
+  it("createPickup: a floppy named for its item, freed on dispose", () => {
+    const p = createPickup("virus");
+    expect(p.object.name).toBe("pickup:virus");
+    const geoms = geometries(p.object);
+    let freed = 0;
+    for (const g of geoms) g.addEventListener("dispose", () => freed++);
+    p.dispose();
+    expect(freed).toBe(geoms.size);
+  });
+
+  it("the outside ground: only with ground: true, at outsideGround's rect under the floors", () => {
+    expect(buildHouseScene(show, { labels: false }).ground).toBeNull();
+    const scene = buildHouseScene(show, { labels: false, ground: true });
+    const g = outsideGround(show)!;
+    expect(scene.ground).not.toBeNull();
+    expect(scene.ground!.parent?.name).toBe(`floor:${g.floor}`);
+    const plane = scene.ground!.getObjectByName("ground:plane") as Mesh;
+    plane.geometry.computeBoundingBox();
+    const bb = plane.geometry.boundingBox!;
+    expect([bb.min.x, bb.min.z, bb.max.x, bb.max.z].map((v) => Math.round(v * 1000) / 1000)).toEqual(g.rect);
+    expect(bb.max.y).toBeLessThan(g.y);
+    expect(scene.ground!.getObjectByName("ground:grid")).toBeDefined();
+    scene.dispose();
+    // A map with no exterior door has no ground.
+    expect(buildHouseScene(fixture("stair"), { labels: false, ground: true }).ground).toBeNull();
+  });
+
+  it("dispose frees the hearts and the disks", () => {
+    const scene = buildHouseScene(show, { labels: false, pickups: true, ground: true });
+    const geoms = new Set([...geometries(scene.hearts.get(heartProp.id)!.object), ...geometries(scene.pickups.get(diskProp.id)!.object), ...geometries(scene.ground!)]);
     let freed = 0;
     for (const g of geoms) g.addEventListener("dispose", () => freed++);
     scene.dispose();

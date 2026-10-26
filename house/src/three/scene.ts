@@ -46,7 +46,10 @@ import { forward } from "../frames.ts";
 import { buildFloors, buildRamps, buildWalls, doorGap, roomById, roomElevation, roomHeight, styleOf } from "../geometry.ts";
 import type { FloorPlane, HouseMap, Ramp, TerminalSpot, Vec2, WallKind, WallSegment } from "../types.ts";
 import { Bin, DEG, merge, paint, projectUvs } from "./dispose.ts";
+import { outsideGround } from "../escape.ts";
+import { createHeart, type Heart } from "./heart.ts";
 import { createKing, type King } from "./king.ts";
+import { createPickup, type Pickup } from "./pickup.ts";
 import { labelPoint, wallBoxes } from "./layout.ts";
 import {
   PALETTE,
@@ -83,6 +86,12 @@ export interface HouseSceneOptions {
   walls?: WallSegment[];
   /** `king` props as their own animated objects + a closed leaf in every guarded door (default true). */
   kings?: boolean;
+  /** (wave 26, R4) A dark plane with a faint grid at `outsideGround` — the
+   *  walkable outside past an exterior door (default false; the games pass true). */
+  ground?: boolean;
+  /** (wave 26, R7) `pickup` props as spinning disks (default false: only the
+   *  games draw them — never the terminals or the map editor's preview). */
+  pickups?: boolean;
 }
 
 export interface HouseScene {
@@ -101,12 +110,24 @@ export interface HouseScene {
   kings: Map<string, King>;
   /** Door id → the closed leaf standing in a guarded door's gap (`door:<id>`); hide it when the guard falls. */
   doors: Map<string, Mesh>;
+  /** (wave 26, R6) Prop id → Trabolta's heart (`kind: "heart"`, `heart:<id>`):
+   *  always built, visible only while the map's King has fallen (or the map
+   *  has none) — `showKing` drives it. */
+  hearts: Map<string, Heart>;
+  /** (wave 26, R7) Prop id → its disk (`kind: "pickup"`, `pickup:<id>`), with
+   *  `pickups: true` only; empty otherwise. */
+  pickups: Map<string, Pickup>;
+  /** (wave 26, R4) The outside ground (`ground`), with `ground: true` on a map with an exterior door; else null. */
+  ground: Group | null;
+  /** Hide (taken) or show a pickup's disk for this viewer. False when the scene has no such disk. */
+  setPickupTaken(id: string, taken: boolean): boolean;
   /**
    * Show King `id`'s shared state (the server's `KingState`): his bar at
    * `hp / max`, kneeling while `fallen`, and the leaf of every door he
    * guards hidden while `open` (default: while he has fallen — a game may
    * hold it open a little longer for a player still in the doorway). A
-   * King not on this map is ignored.
+   * King not on this map is ignored. Hearts show once every King on the
+   * map has fallen.
    */
   showKing(id: string, king: { hp: number; max: number; fallen: boolean }, open?: boolean): void;
   /**
@@ -279,13 +300,34 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
   };
   const kings = new Map<string, King>();
   const useKings = opts.kings !== false;
+  const hearts = new Map<string, Heart>();
+  const pickups = new Map<string, Pickup>();
+  /** King prop id → fallen, as `showKing` last said (each starts standing). */
+  const kingFallen = new Map(house.props.filter((p) => p.kind === "king").map((p) => [p.id, false]));
+  const heartsShown = (): boolean => [...kingFallen.values()].every((f) => f);
   for (const prop of house.props) {
     const room = roomById(house, prop.room);
     const group = roomFloor(prop.room);
     if (!room || !group) continue;
     const place = (g: BufferGeometry) => g.rotateY((prop.yaw ?? 0) * DEG).translate(prop.pos[0], prop.pos[1], prop.pos[2]);
     const [w, h, d] = prop.size;
-    if (prop.kind === "king") {
+    if (prop.kind === "heart") {
+      // His heart: its own animated object, shown once the King has fallen.
+      const ht = createHeart(prop);
+      ht.object.position.set(prop.pos[0], prop.pos[1], prop.pos[2]);
+      ht.object.rotation.y = (prop.yaw ?? 0) * DEG;
+      ht.object.name = `heart:${prop.id}`;
+      ht.object.visible = heartsShown();
+      hearts.set(prop.id, ht);
+      group.add(ht.object);
+    } else if (prop.kind === "pickup") {
+      if (opts.pickups !== true) continue;
+      const pk = createPickup(prop.item ?? "");
+      pk.object.position.set(prop.pos[0], prop.pos[1], prop.pos[2]);
+      pk.object.name = `pickup:${prop.id}`;
+      pickups.set(prop.id, pk);
+      group.add(pk.object);
+    } else if (prop.kind === "king") {
       // His own animated object (health bar, hit, fall) — never merged.
       if (!useKings) continue;
       const k = createKing(prop);
@@ -360,6 +402,34 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       doors.set(door.id, mesh);
       group.add(mesh);
     }
+  }
+
+  // ── The outside ground (wave 26) ──────────────────────────────────
+  // A dark plane a hair under the floors (they draw over it) with a faint
+  // metre grid, so a program who walks out of the front door has
+  // something to walk on — the same rect as VR's ground.
+  let ground: Group | null = null;
+  const out = opts.ground === true ? outsideGround(house) : null;
+  const outFloor = out ? floorGroup(out.floor) : undefined;
+  if (out && outFloor) {
+    const [x0, z0, x1, z1] = out.rect;
+    ground = new Group();
+    ground.name = "ground";
+    const plane = new Mesh(
+      bin.add(new PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, out.y - 0.01, (z0 + z1) / 2)),
+      bin.add(new MeshLambertMaterial({ color: "#07081a" })),
+    );
+    plane.name = "ground:plane";
+    const pts: number[] = [];
+    const y = out.y - 0.005;
+    for (let x = Math.ceil(x0); x <= x1; x++) pts.push(x, y, z0, x, y, z1);
+    for (let z = Math.ceil(z0); z <= z1; z++) pts.push(x0, y, z, x1, y, z);
+    const gridGeom = bin.add(new BufferGeometry());
+    gridGeom.setAttribute("position", new BufferAttribute(new Float32Array(pts), 3));
+    const grid = new LineSegments(gridGeom, bin.add(new LineBasicMaterial({ color: "#2a3a7a", transparent: true, opacity: 0.35 })));
+    grid.name = "ground:grid";
+    ground.add(plane, grid);
+    outFloor.add(ground);
   }
 
   // ── Terminal screens ──────────────────────────────────────────────
@@ -458,9 +528,16 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     walls,
     kings,
     doors,
+    hearts,
+    pickups,
+    ground,
     showKing(id: string, king: { hp: number; max: number; fallen: boolean }, open = king.fallen) {
+      if (disposed || !kingFallen.has(id)) return;
+      kingFallen.set(id, king.fallen);
+      const shown = heartsShown();
+      for (const ht of hearts.values()) ht.object.visible = shown;
       const k = kings.get(id);
-      if (k === undefined || disposed) return;
+      if (k === undefined) return;
       k.setHp(king.hp, king.max);
       k.kneel(king.fallen);
       for (const door of house.doors) {
@@ -468,6 +545,12 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
         const leaf = doors.get(door.id);
         if (leaf !== undefined) leaf.visible = !open;
       }
+    },
+    setPickupTaken(id: string, taken: boolean): boolean {
+      const pk = pickups.get(id);
+      if (pk === undefined || disposed) return false;
+      pk.object.visible = !taken;
+      return true;
     },
     setTerminalFeed(id: string, source: CanvasImageSource | null): boolean {
       const f = feeds.get(id);
@@ -502,6 +585,8 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       if (disposed || !Number.isFinite(dt)) return;
       time += dt;
       for (const k of kings.values()) k.update(dt, camera);
+      for (const ht of hearts.values()) if (ht.object.visible) ht.update(dt);
+      for (const pk of pickups.values()) if (pk.object.visible) pk.update(dt);
       if (camera) {
         camera.getWorldPosition(eye);
         for (const sprite of labels.values()) {
@@ -522,6 +607,8 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       disposed = true;
       root.removeFromParent();
       for (const k of kings.values()) k.dispose();
+      for (const ht of hearts.values()) ht.dispose();
+      for (const pk of pickups.values()) pk.dispose();
       bin.dispose();
     },
   };
