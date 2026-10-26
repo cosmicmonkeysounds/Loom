@@ -803,6 +803,10 @@ export interface ScreenPollExtras {
   results?: ScreenResultsSource;
   /** Is this map spot on `audio.json`'s `announce.terminals` (Q8)? */
   spotAnnounce?: (spot: string) => boolean;
+  /** (wave 26) Players in a spot's room now; wired by the runtime from the
+   *  spatial hub. Null: the server can't tell for that spot (no spatial map,
+   *  or a spot the map lacks), so `spot.here` is left out. */
+  spotHere?: (spot: string) => number | null;
 }
 
 /** A filing's public outcome on a screen: `a` accepted (an accurate filing
@@ -946,6 +950,25 @@ export interface ScreenDevice {
    *  (spoken, skipped or muted); −1 = none. Absent: no cursor yet, or a build
    *  too old to send it. */
   said?: number;
+  /** (wave 26, V1 phase 2) `sp=<seq>:<chunk>` / `sp=<seq>:d`: the line the
+   *  TV is speaking now (its room-line seq) and the sentence (`chunk`, from
+   *  0), or `chunk: null` once that line is done. Kept only from a `view=tv`
+   *  poller (`ScreenState.tvSpeech`); dropped from any other. */
+  speech?: { seq: number; chunk: number | null };
+}
+
+/** (wave 26) How long a TV's `sp=` report stays `tvSpeech` without a newer poll. */
+export const TV_SPEECH_FRESH_MS = 6000;
+/** The highest sentence index `sp=` may carry. */
+export const SPEECH_CHUNK_MAX = 999;
+
+/** `sp=812:2` → `{seq: 812, chunk: 2}`, `sp=812:d` → `{seq: 812, chunk: null}`; else null. */
+export function speechReportOf(raw: string): { seq: number; chunk: number | null } | null {
+  const m = /^(\d{1,12}):(\d{1,3}|d)$/u.exec(raw);
+  if (m === null) return null;
+  const chunk = m[2] === "d" ? null : Number(m[2]);
+  if (chunk !== null && chunk > SPEECH_CHUNK_MAX) return null;
+  return { seq: Number(m[1]), chunk };
 }
 
 /** What a terminal's `door=` may say (wave 20). */
@@ -1009,6 +1032,8 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   if (talk === "1" || talk === "0") d.talk = talk === "1";
   const said = q("said");
   if (/^-?\d{1,12}$/u.test(said) && Number(said) >= -1) d.said = Number(said);
+  const sp = speechReportOf(q("sp"));
+  if (sp !== null) d.speech = sp;
   return d;
 }
 
@@ -1082,13 +1107,22 @@ export interface ScreenState {
   results?: ScreenResults;
   /** (wave 18b, Q8) Only when the poll names a `spot`: what the house says
    *  about that map terminal — `announce`: it is on `audio.json`'s
-   *  `announce.terminals` list. */
+   *  `announce.terminals` list; (wave 26) `here`: players in its room. */
   spot?: ScreenSpot;
+  /** (wave 26, V1 phase 2) What the TV is speaking now: the newest `sp=` from
+   *  a poller whose `view` is `tv`, stamped with the server's receive time.
+   *  `chunk` null = that line is done. Memory only; null when no TV reported
+   *  in the last 6 s (`TV_SPEECH_FRESH_MS`). */
+  tvSpeech?: { seq: number; chunk: number | null; at: number } | null;
 }
 
 /** The house's word on a poller's map spot (Q8). */
 export interface ScreenSpot {
   announce: boolean;
+  /** (wave 26, R5) Live reinstalled players whose presence room (C5
+   *  `presenceRoom`) is this spot's map room. Absent: the server can't tell
+   *  (no spatial map or an old server); then fall back to `reinstalling`. */
+  here?: number;
 }
 
 /** The shared King as the chess terminal reads him (C2). `armed`: a
@@ -1221,6 +1255,9 @@ export class ScreenWatch {
   /** The chart call-out vars this sim's story mentions (null = not read yet). */
   private chartVars: Set<string> | null = null;
   private readonly polls = new Map<string, ScreenPoll>();
+  /** (wave 26, V1 phase 2) The newest `sp=` from a `view=tv` poller, with
+   *  the server time it arrived (memory only). */
+  private tvSpeech: { seq: number; chunk: number | null; at: number } | null = null;
   /** A director's `identify`, per terminal name: when it stops (server ms). */
   private readonly identifying = new Map<string, number>();
   private readonly now: () => number;
@@ -1370,7 +1407,11 @@ export class ScreenWatch {
     this.polls.delete(name); // re-insert: Map order = poll order
     const room = clip(who.room ?? "");
     const voice = clip(who.voice ?? "");
-    this.polls.set(name, { name, spot: clip(who.spot), view: clip(who.view, 16), character: clip(who.character), ...(room !== "" ? { room } : {}), ...(voice !== "" ? { voice } : {}), ...who.device, at: this.now() });
+    // Wave 26: `sp=` counts only from the TV (`view=tv`); any other drops it.
+    const { speech, ...device } = who.device ?? {};
+    const tv = who.view === "tv";
+    if (tv && speech !== undefined) this.tvSpeech = { ...speech, at: this.now() };
+    this.polls.set(name, { name, spot: clip(who.spot), view: clip(who.view, 16), character: clip(who.character), ...(room !== "" ? { room } : {}), ...(voice !== "" ? { voice } : {}), ...device, ...(tv && speech !== undefined ? { speech } : {}), at: this.now() });
     while (this.polls.size > MAX_SCREENS) this.polls.delete(this.polls.keys().next().value!);
   }
 
@@ -1607,7 +1648,14 @@ export class ScreenWatch {
         if (questions.length > 0) results = { kind: "read", seq: this.read.seq, at: this.read.at, questions };
       }
     }
-    const spot = who.spot !== "" && extras.spotAnnounce !== undefined ? { announce: extras.spotAnnounce(who.spot) } : undefined;
+    // The spot block (Q8; wave 26 `here`): only when the poll names a spot
+    // and the runtime wired either extra.
+    let spot: ScreenSpot | undefined;
+    if (who.spot !== "" && (extras.spotAnnounce !== undefined || extras.spotHere !== undefined)) {
+      const here = extras.spotHere?.(who.spot) ?? null;
+      spot = { announce: extras.spotAnnounce?.(who.spot) ?? false, ...(here !== null && Number.isFinite(here) && here >= 0 ? { here: Math.floor(here) } : {}) };
+    }
+    const tvSpeech = this.tvSpeech !== null && this.now() - this.tvSpeech.at <= TV_SPEECH_FRESH_MS ? { ...this.tvSpeech } : null;
 
     return {
       now: this.now(),
@@ -1638,6 +1686,7 @@ export class ScreenWatch {
       king,
       ...(results !== undefined ? { results } : {}),
       ...(spot !== undefined ? { spot } : {}),
+      tvSpeech,
     };
   }
 }
