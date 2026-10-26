@@ -29,6 +29,7 @@ by every guest; the chess he plays for the real door's code is on the
  Quest 3 / web ──POST /api/spatial/pose (10 Hz, house frame)──▶   │  ├─ journal: only the story outcome
  game ──POST /api/spatial/found──▶ signal "the simulation completed" + "the golden duck"
  game ──POST /api/spatial/king/hit──▶ set Night.king_hp − 1 + signal "king hit" (+ "king fallen" at 0)
+ game ──POST /api/spatial/moment──▶ signal "simulation escape attempt" | "… heart reached" | "… pickup taken"
                                                                   ▼
  terminals ◀── SSE /api/spatial/stream (poses 10 Hz, hello/join/leave/found/house/duck/reset/king/avatar)
 ```
@@ -100,7 +101,7 @@ interface Stair { id: string; from: string; to: string; rect: [number, number, n
 //   (and the lower room's ceiling); rails guard the hole on the upper floor on the three non-`up` sides.
 interface TerminalSpot {
   id: string; name: string; room: string; pos: Vec3; yaw: number; pitch?: number; fov?: number;
-  view?: "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino";   // TERMINAL_VIEWS; unset: auto
+  view?: "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino" | "reinstall";   // TERMINAL_VIEWS; unset: auto
   speaks?: boolean;             // a room terminal (speaks its room's LOCATION's lines); unset: false
   voice?: boolean;              // the voice link (§2.4); unset: on, except a terminal in the spawn room (off) — voiceOn
 }
@@ -116,17 +117,19 @@ interface TerminalSpot {
 //   refuses and never routes a spot that is out; both show maps also set `voice: false` on `tent`.
 interface DuckSpot { id: string; room: string; pos: Vec3 }   // pos = where the duck sits (its feet)
 interface Prop {
-  id: string; room: string; kind: "box" | "cylinder" | "screen" | "label" | "king";
+  id: string; room: string; kind: "box" | "cylinder" | "screen" | "label" | "king" | "heart" | "pickup";
   pos: Vec3;                    // centre of the base
   size: Vec3;                   // [w (x), h (y), d (z)] before yaw
   yaw?: number; color?: string; label?: string; solid?: boolean;   // solid: collides (default true for box/cylinder/king)
   hp?: number;                  // king only: his MAXIMUM hit points, one shared bar per event (1–99, default 4)
   health?: string;              // king only: the story world path holding his CURRENT hit points ("Night.king_hp");
                                 //   absent = the spatial hub counts them in memory, starting at `hp`
-  signals?: { won?: string; lost?: string; drawn?: string; hit?: string; fallen?: string };
-                                // king only: the story signals about him — the chess terminal's won / lost /
-                                //   drawn, the server's hit / fallen (defaults "chess won" / "chess lost" /
-                                //   "chess drawn" / "king hit" / "king fallen")
+  item?: string;                // pickup only, and required there: what it is ("virus"), the moment's `item` arg
+  signals?: { won?: string; lost?: string; drawn?: string; hit?: string; fallen?: string; reached?: string; taken?: string };
+                                // the story signals a prop posts, keys checked per kind: a king's won / lost /
+                                //   drawn (the chess terminal) and hit / fallen (the server; defaults "chess won" /
+                                //   "chess lost" / "chess drawn" / "king hit" / "king fallen"); a heart's `reached`
+                                //   ("simulation heart reached"); a pickup's `taken` ("simulation pickup taken")
   armed?: { path: string; min: number };   // king only: a checkmate counts while the world var at `path` is
                                 //   a number ≥ `min` (the screen state's `king.armed`); absent = unknown
 }
@@ -160,9 +163,15 @@ Validation (`validateHouse`) returns `{ ok, problems: string[], house? }`
   unknown prop, a prop that is not a `king`, or a king whose `room` is
   neither `a` nor `b`.
 - **The King:** `hp` not an integer 1–99 (`KING_MAX_HP`), `health` not a
-  world path (identifiers joined by dots), `signals` not `{won?, lost?,
-  drawn?, hit?, fallen?}` of non-empty strings, `armed` not `{path,
-  min}`; any of the four on a prop that is not a `king`.
+  world path (identifiers joined by dots), `armed` not `{path, min}`; any
+  of the three on a prop that is not a `king`.
+- **Signals, the heart and pickups** (wave 26): `signals` keys not of the
+  prop's kind (`PROP_SIGNAL_KEYS`: a king's `won / lost / drawn / hit /
+  fallen`, a heart's `reached`, a pickup's `taken`; any other kind takes
+  none) or not non-empty strings; a `pickup` with no `item`, or an `item`
+  on any other kind; a `label` on a heart or a pickup (an older game would
+  draw it). An older server or bundle refuses both new kinds, so the
+  server ships before a map that has them.
 - **Stairs:** an unknown room; a rect that is not `x0 < x1`, `z0 < z1` by
   at least 1 mm; `from` and `to` on one floor, or `from` not the lower; a
   rect not inside both rooms; less than 0.3 m (`STAIR_CLEARANCE`) of `to`
@@ -219,6 +228,36 @@ Cooldowns and his falling are the server's, not this rule's.
 which every door a king in `fallen` guards loses its `guard` and those
 kings are `solid: false` (an empty set, or one naming no king, returns
 `house` itself).
+
+**The moments' rules** (wave 26; `escape.ts`, `moment.ts`, `presence.ts`;
+the server judges with them and both games pre-check with them):
+
+- **The void.** `outsideGround(house)` is the walkable outside: the floor
+  the first exterior (`b: null`) door opens from, its elevation and the
+  bounds of that floor's rooms grown by `OUTSIDE_GROUND_MARGIN` (30 m; VR's
+  `_build_ground`), with the rooms as holes. `voidDistance(house, p)` is
+  null in a room, else the plan distance to the nearest room boundary on
+  `floorOf(p[1])` (`Infinity` on a floor with no rooms). An escape is
+  `ESCAPE_M` (5 m) out; the server accepts `ESCAPE_M − ESCAPE_SLACK`
+  (4.5 m) and one per session per `ESCAPE_COOLDOWN_MS` (20 s).
+- **The heart.** `heartReached(house, feet, heart)`: in the heart's room
+  (`locate`) and at least `HEART_INSET_M` (0.3 m) inside its polygon.
+- **A pickup.** `pickupReach(house, feet, prop, slack?)`: on its floor,
+  within `DUCK_MAX_RISE` of it in height and within `PICKUP_REACH_M`
+  (0.9 m) + `slack` of its base centre in plan; the server passes
+  `PICKUP_SLACK_M` (0.3 m). `momentProp(house, id, kind)` finds the prop,
+  `propSignal(prop)` its signal.
+- **Presence.** `presenceRoom(house, p, prev)` is the room a player counts
+  as being in for the terminals' link (§2.3, §2.4): `locate`'s room, except
+  that the player stays in `prev` while still inside its polygon, within
+  `PRESENCE_HYSTERESIS_M` (0.75 m) of the gap of a door joining `prev` and
+  the new room (null: outside), or over a stair joining them. It never
+  holds through a solid wall. `linkedSpots(house, rooms)` names the map
+  terminals in any of those rooms, never a `view: "reinstall"` one (the
+  tent: every walk starts in its room). `PRESENCE_LINGER_MS` (3 s) is a
+  client-side latch only.
+- **The path reveal.** `PATH_REVEAL_MS` (60 s): both games hide the way to
+  Gerald for the first minute of each session (§3, §5).
 
 ### 1.2 Geometry (normative — the Godot port is diffed against it)
 
@@ -406,7 +445,12 @@ tolerance: metres, and m² for orientations).
   structure: every LOCATION has a room, the
   tent (The Internet: the spawn, the station mats, the `tent` terminal) is
   an indoor room in a notched backyard, the Server Room has a door and no
-  duck. Edit it with the **map editor** (`/reinstall/map`) or by hand.
+  duck. Since wave 26 the Server Room holds Trabolta's heart (`heart` prop
+  `trabolta-heart`) and the Hard Drive the virus disk (`pickup` prop
+  `virus-disk`, `item: "virus"`); neither has a label or `signals`, and
+  `house/test/show.test.ts` keeps the disk ≥ 2 m from every duck spot and
+  clear of every trail on both maps. Edit it with the **map editor**
+  (`/reinstall/map`, which places, moves and edits both new kinds) or by hand.
 - Its rain variant: `house.shed.json` beside it (the file convention is
   `house.<variant>.json`) — the same map with The Internet in the shed
   (room `shed`) and no tent, the same terminal ids, duck spots and
@@ -519,12 +563,18 @@ tolerance: metres, and m² for orientations).
 The shared code is the pure-TS package **`@loom/house`** (`house/`, no
 dependencies): schema, `validateHouse`, `buildWalls`/`buildFloors`/
 `buildRamps`, `locate`/`roomAt`/`floorOf`/`heightAt`, `route`, space
-transforms, `pickDuckSpot`, and the King (`kingReach`, `withFallenKings`,
-`kingStateOf`). Its subpath **`@loom/house/three`** (peer dependency
+transforms, `pickDuckSpot`, the King (`kingReach`, `withFallenKings`,
+`kingStateOf`) and the wave 26 moments and presence (§1.1). Its subpath **`@loom/house/three`** (peer dependency
 `three`) turns a map into a three.js scene: walls, floors, ceilings, ramps,
 rails, props, terminal screens, room labels; the duck model; the King
 (`createKing`: his bar, a stagger, `kneel`; `HouseScene.showKing` shows a
-`KingState` and hides his doors' leaves while open); the indicator trail;
+`KingState` and hides his doors' leaves while open); Trabolta's heart
+(`createHeart`: a dark rack with a slowly beating core and no labels,
+always built, shown only while every King on the map has fallen); a
+pickup (`createPickup`: a spinning, bobbing floppy with a green glow,
+built only with `pickups: true`, which only the games pass;
+`HouseScene.setPickupTaken` hides one); the outside ground (`ground:
+true`, the games only); the indicator trail;
 player avatars (ghosts with name tags, wearing the guest's profile picture
 as a Win98 tile head when there is one: `createAvatar(name, seed,
 {picture})`, `setPicture`, the `loadPicture` cache — a fixed draw size so a
@@ -538,6 +588,12 @@ goldens` from `house/test/fixtures/*.json` + the show's `house.json`
 (`name` = `show`). Each is a JSON array, one value per line, every number
 rounded to 1 mm: walls = `WallSegment[]`; routes = `[{from, to, path}]`;
 locate = `[{p, floor, room, height, standable}]` with `height = heightAt([x, z], y)` and `standable = standable(house, p)` (the queries include every solid prop's base and top). A map with a king also gets `<name>.king.json` = `[{king, feet, yaw, reach, slack}]` (`kingReach` plain and with `KING_HIT_SLACK`, feet on 8 bearings at 0.4 / 1.2 / 1.4 / 1.7 m facing him and 50° / 70° / 90° / 180° off, plus a point on every other floor) and `<name>.fallen.json` = the route queries again with every king fallen; today only `show` has a king.
+Wave 26 adds, per map, `<name>.escape.json` (`outsideGround`, then
+`voidDistance` queries) and `<name>.presence.json` (`presenceRoom` either
+side of every door, along each door's wall past its gap and over each
+stair, then `linkedSpots`); a map with a heart or a pickup also gets
+`<name>.moments.json` (`heartReached`, `pickupReach` plain and with
+`PICKUP_SLACK_M`); and once, `constants.json` with every new constant.
 Queries are stored with their answers, so a port only reads and compares.
 A test fails when the committed goldens drift from the code.
 
@@ -647,6 +703,7 @@ calls; it can do nothing else.
 | `POST /api/spatial/pose` | session token (`x-loom-token`) | `{p: Vec3, yaw, pitch?, t?}` (≤ 2 KB body, read before the generic 4 MiB parse); `p` is the player's **feet** (the floor point under the body — the eye is 1.6 m above it), `yaw` the view direction, `pitch` the head (degrees, + = up) | 204 · 400 malformed · 401 unknown token · 410 session over (the last 1000 ended tokens are remembered). First pose **claims** a parked assignment — and ends any *other* session on that station (`leave {reason: "replaced"}`: a headset that crashed mid-game never ended its last one). Poses (and the stream) **ignore pause**: they never touch the story. |
 | `POST /api/spatial/found` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (paused, or before the doors open) — the session stays un-found, so the game's retry lands after resume · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment no pose has claimed · 409 `{error: "not near the duck", distance, dy}` unless the last pose is within 2.0 m (plan, `FOUND_PLAN_M`) of the duck **and** either within 1.2 m of its height (`DUCK_MAX_RISE`; a pose is the feet) or on the same floor (`floorOf`) — `nearDuck` · 200 `{ok, released, captured, already}` (`captured`: the program is still captured after the commit — the story kept them, e.g. the banishment; wave 9); commits `signal("the simulation completed", guest)` then `signal("the golden duck", guest)`, journaled `by` the session's `device`, and appends the run (`DuckRun`: guest, name, world, device, `ms` from the begin — or a parked assignment's claiming pose — to the find, less any time the doors were closed — a pause mid-run is not the player's time) to `spatial-runs.jsonl` in the event's state dir, which `/api/mod/recap`'s `duck` board reads (cleared by a story restart). A repeat answers `already` without committing. |
 | `POST /api/spatial/king/hit` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (the visit keeps its hit) · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment · 404 `{error: "no king"}` · 409 `{error: "fallen", king}` · 409 `{error: "already hit", king}` — this visit already hit · 409 `{error: "not near", reach}` unless `kingReach` with `KING_HIT_SLACK` on the session's **last pose** is `"ok"` (`reach` = the verdict; the game flushes a pose first) · 200 `{ok, king}`. On a hit: a journaled `set` of the `health` path to `hp − 1`, then `signal(signals.hit, guest, {hp, max})`, then at 0 `signal(signals.fallen, guest, {hp, max})`, all `by` the session's `device`; then a `king` frame naming the hitter. **One hit per visit**: a visit is spent from its hit until that guest's duck is found — `begin` for a guest whose visit already hit (a re-scan mid-walk, Leave and scan again, after a director's end or a timeout) carries the hit over; a find ends the visit (a re-scan in the 8 s the found session lingers starts a fresh one); a story restart forgets every visit, and so does a server restart (in memory, like sessions). The `Assignment`'s `kingHit` says a re-scan is the visit that already hit, so a game shows ⚔ spent from the start |
+| `POST /api/spatial/moment` | session token (`x-loom-token`, or `token` in the body) | `{kind: "escape"}` · `{kind: "heart", prop}` · `{kind: "pickup", prop}` (wave 26) | One route for the three game moments, judged on the session's **last pose** (the game flushes a pose first), in this order: 401 / 410 as for poses · 400 `{error: "bad moment"}` (an unknown `kind`, a heart or pickup with no `prop`) · 409 `{error: "doors are closed"}` while the event is not open · 409 `{error: "this session has not started — send a pose first"}` (parked) · heart / pickup: 404 `{error: "no such prop"}` (no prop of that kind with that id). Then per kind. **escape**: 409 `{error: "not out", distance}` unless `voidDistance` ≥ `ESCAPE_M − ESCAPE_SLACK` · 409 `{error: "cooldown", retryMs}` within 20 s of this session's last · 200 `{ok, kind, lines, spawn, cooldownMs: 20000}` — the server re-seats the pose at the spawn (room, floor and presence follow; the terminals' ghost jumps back) and commits `simulation escape attempt`. **heart**: 409 `{error: "sealed"}` while the map's King stands · 409 `{error: "already"}` once this guest heard it tonight · 409 `{error: "not there"}` unless `heartReached` · 200 `{ok, kind, lines}` — commits `simulation heart reached {prop}`; the guest counts as having heard it only when `lines` is not empty (empty: he isn't awake yet, or a restart forgot; the game stays silent and asks on the next entry). **pickup**: 409 `{error: "already"}` once this guest took it · 409 `{error: "far", distance}` unless `pickupReach` with `PICKUP_SLACK_M` · 200 `{ok, kind, lines, item, prop}` — commits `simulation pickup taken {item, prop}`. Every commit is journaled `by` the session's `device`. `lines` (`[{from, text}]`, display text) are what that one commit said to this program, game-only beats included (`chat.ts` `momentLines`); they come back **only** in this answer, never on a stream, a phone, a booth or Run (`GAME_ONLY_BEATS`: *Escape Attempt*, *Heart In The Simulation*), so Trabolta can chastise before his reveal. A story that throws on the signal still answers 200 with empty `lines`. The route never answers `{error: "not found"}`: a game reads any other 404 body as an old server. Memory only, cleared by a story restart and lost on a process restart: the cooldown, who heard the heart, who took each pickup; the story's own guards (`program.sim_heart`, `carries_virus`) keep the heart and the virus once-only across one |
 | `POST /api/spatial/end` | session token | `{}` | `{ok}` |
 | `GET /api/spatial/stream` | mod (`?token=` / author session) or session token | `?name=Kitchen` | SSE, below |
 
@@ -661,6 +718,8 @@ interface Assignment {
   houseVersion: string;
   avatar?: string | null;                    // the profile picture's avatar key (`/e/<eventId>/api/avatar/<key>`)
   kingHit?: boolean;                         // this visit already hit the King: ⚔ starts spent (missing: an old server, not yet)
+  picked?: string[];                         // wave 26: pickup prop ids this program took tonight (memory; missing = none)
+  heartHeard?: boolean;                      // wave 26: this program heard the in-game heart tonight (memory)
 }
 ```
 
@@ -688,7 +747,13 @@ found last (when another spot remains).
 
 `PlayerState = {session, guest, name, world, device, p, yaw, pitch, room,
 floor, duck, found, startedAt, avatar}`; `room`/`floor` are computed
-server-side with `locate`; `avatar` is the guest's avatar key, resolved
+server-side with `locate` — always the raw room, so the terminals draw a
+player where they really are. Since wave 26 each session also keeps a
+**presence room** (`presenceRoom` on every pose, re-seated on an escape,
+reset on a map swap; memory only, never on the stream): the voice relay
+(`voicePlayers()`), a game's camera list (§2.3) and the screen state's
+`spot.here` (`spotHere`: the live claimed players whose presence room is
+that spot's room; 0 for a `view: "reinstall"` spot) judge by it. `avatar` is the guest's avatar key, resolved
 live (`AvatarBook.keyFor`), null when they have no picture. A client's
 picture URL is `${base}/api/avatar/${avatar}` with `base` = `/e/<eventId>`
 (the existing public route, same origin for every sub-app; VR uses its
@@ -735,7 +800,9 @@ rule to their body when they load the new map (the locate goldens pin
 Every wall terminal can send a small picture of its real room; the games
 show it as a live window where that terminal hangs in the virtual house
 (`HouseScene.setTerminalFeed`), and the terminal's `view=shadow` draws the
-players over its own camera. Server: `core/server/spatial-cams.ts`
+players over its own camera. Since wave 26 (R5) a game shows only the
+terminals of the room the player is in (the presence room, §2.2), and a
+terminal nobody's room holds sends slowly (`watched`). Server: `core/server/spatial-cams.ts`
 (`CamStore`, `parseCamUpload`), wired in `EventRuntime`. **Memory only**:
 the latest frame per spot with its receive time — never journaled, never on
 disk, a restart has no feeds until the next upload. A spot that leaves the
@@ -743,14 +810,15 @@ map (a save, a variant switch) loses its feed at the next call.
 
 | Route | Auth | Body / query | Result |
 |---|---|---|---|
-| `POST /api/mod/spatial/cam` | mod token (`x-loom-token`) or author session — not a host-only booth, not a session token | `{spot, jpeg, w, h}` — `jpeg` base64 with no `data:` prefix, starting with the JPEG SOI (`FF D8`); `w`/`h` 1..4096. Read under its own 140 KB body cap (`CAM_BODY_LIMIT`) before the generic parse | 403 not a moderator · 400 bad body · 413 decoded JPEG over 96 KB (`CAM_MAX_BYTES`), or the body over the cap · 404 `{error: "no such spot"}` unless `spot` is a terminal id of the event's current map · 200 `{ok: true, at}`. **Rate cap:** a frame from the same spot < 150 ms after the last kept one (`CAM_MIN_GAP_MS`) is dropped, answering 200 `{ok: true, at, dropped: true}` with the kept frame's `at` — a terminal never needs to back off. A terminal sends ~3 frames/s at ~160×120, JPEG quality ~0.5 |
-| `GET /api/spatial/cams` | as `GET /api/spatial/house`: a session token, a mod token (header or `?token=`) or an author session | — | 401 · `{cams: [{spot, at, w, h}]}` — only frames newer than 15 s (`CAM_FRESH_MS`), by spot id |
-| `GET /api/spatial/cam` | as `cams` | `?spot=<id>` | 401 · 404 `{error: "no feed"}` when there is none or it is older than 15 s · 200 the JPEG bytes, `content-type: image/jpeg`, `cache-control: no-store`, `x-cam-at: <ms>` |
+| `POST /api/mod/spatial/cam` | mod token (`x-loom-token`) or author session — not a host-only booth, not a session token | `{spot, jpeg, w, h}` — `jpeg` base64 with no `data:` prefix, starting with the JPEG SOI (`FF D8`); `w`/`h` 1..4096. Read under its own 140 KB body cap (`CAM_BODY_LIMIT`) before the generic parse | 403 not a moderator · 400 bad body · 413 decoded JPEG over 96 KB (`CAM_MAX_BYTES`), or the body over the cap · 404 `{error: "no such spot"}` unless `spot` is a terminal id of the event's current map · 200 `{ok: true, at, watched}`. **Rate cap:** a frame from the same spot < 150 ms after the last kept one (`CAM_MIN_GAP_MS`) is dropped, answering 200 `{ok: true, at, dropped: true, watched}` with the kept frame's `at` — a terminal never needs to back off. `watched` (wave 26): a player's presence room is this spot's room now (`linkedSpots`). A terminal sends ~3 frames/s (333 ms) at ~160×120, JPEG quality ~0.5, while watched, and one frame every 2 s while `watched: false`; an old terminal ignores the field |
+| `GET /api/spatial/cams` | as `GET /api/spatial/house`: a session token, a mod token (header or `?token=`) or an author session | — | 401 · `{cams: [{spot, at, w, h}]}` — only frames newer than 15 s (`CAM_FRESH_MS`), by spot id. **A game session sees only its own room** (wave 26): the feeds whose spot's `room` is the session's presence room, never a `view: "reinstall"` spot (the tent), none for a parked session or one in no room. A moderator sees every feed |
+| `GET /api/spatial/cam` | as `cams` | `?spot=<id>` | 401 · 404 `{error: "no feed"}` when there is none, it is older than 15 s, or (a game session) the spot is not in its list · 200 the JPEG bytes, `content-type: image/jpeg`, `cache-control: no-store`, `x-cam-at: <ms>` |
 
 Clients poll a frame at ~3 fps only for the feeds they are showing, and the
 list every ~2 s. The web game (`reinstall/web/src/game/cams.ts`, `CamFeeds`):
-the 4 nearest terminals with a fresh feed within 12 m on the plan and on the
-player's floor (`pickFeeds`), one request in flight per feed, a repeated
+the 4 nearest terminals with a fresh feed in the player's own presence room
+(never the tent's station), on their floor and within 12 m on the plan
+(`pickFeeds`; none while the player is in no room), one request in flight per feed, a repeated
 `x-cam-at` never decoded twice, fetch → `createImageBitmap` →
 `setTerminalFeed` → `close()`; polling stops while the tab is hidden, after
 a find or an end (a pause on the server does not stop it — the feeds are the
@@ -760,11 +828,11 @@ real room, which keeps moving); a feed that fails 3 times rests 5 s; a 401 /
 terminal's screen and facing its yaw / pitch; with no feed the terminal's own
 screen look shows.
 
-### 2.4 Voice (wave 19)
+### 2.4 Voice (wave 19; same room since wave 26)
 
 The wall terminals' microphones are heard in the games at each terminal's
-screen, and a player's headset is heard on the terminals near them — the
-audio twin of §2.3. Plain HTTP, no WebRTC or WebSocket: a source **POSTs**
+screen, and a player's headset is heard on the terminals of the room they
+are in — the audio twin of §2.3. Plain HTTP, no WebRTC or WebSocket: a source **POSTs**
 raw chunks up, a listener holds **one SSE stream** down, and the server does
 the routing, since it already holds every pose and every terminal spot.
 Server: `core/server/spatial-voice.ts` (`VoiceRelay`, `parseVoiceUpload`),
@@ -789,8 +857,8 @@ Sun's `ulaw2linear` / 32768; the Godot port is pinned by
 **Frames** (`event:` name, JSON `data:`; `VoiceFrames`):
 
 - `hello {codec: "mulaw", rate: 16000, chunkMs: 200, as: "terminal" | "player", spot? | session?, listen, ears}` — first, once.
-- `listen {on, ears}` — whether this device's own mic is wanted (someone can hear it), and by how many listener streams (the game's HUD says *🎤 N terminals can hear you* off it); sent on a change of either. **A source uploads only while `on`**, so a terminal's mic never streams to an empty house.
-- `voice {from, kind: "terminal" | "player", spot? | session?, name?, gain, seq, data}` — `from` = `t:<spot>` / `s:<session id>`; `name` the spot's name on the map or the program's; `gain` 0..1 (2 decimals, this listener's); `data` base64 μ-law. A stream more than 64 KB behind (`VOICE_LAG_BYTES`, ≈ 3 s of one source) skips `voice` frames until it catches up: late voice is worse than a gap. Control frames always go.
+- `listen {on, ears}` — whether this device's own mic is wanted (someone can hear it), and by how many listener streams (the web game's HUD says *🎤 N terminals can hear you* off it); sent on a change of either. **A source uploads only while `on`**, so a terminal's mic never streams to an empty room.
+- `voice {from, kind: "terminal" | "player", spot? | session?, name?, gain, seq, data}` — `from` = `t:<spot>` / `s:<session id>`; `name` the spot's name on the map or the program's; `gain` 0..1 (always 1 since wave 26; the field stays on the wire); `data` base64 μ-law. A stream more than 64 KB behind (`VOICE_LAG_BYTES`, ≈ 3 s of one source) skips `voice` frames until it catches up: late voice is worse than a gap. Control frames always go.
 - `bye {from}` — a source this stream heard (it delivered at least one chunk since the route formed) is out of earshot: fade it out and drop its buffer. A source that merely goes quiet sends nothing; its buffer drains.
 - `:ping` every 15 s (`VOICE_PING_MS`). The stream's stall cap is the same 64 KB: past it only the control frames and the ping are written, so a reader that stopped (a suspended tablet with its socket up, a half-open socket after a Wi-Fi flap) is dropped by the ping 15 s on and leaves the routing. **The newest stream wins**: a player's older stream for the same session is closed, and a spot keeps at most `VOICE_STREAMS_PER_SPOT` 2 (the oldest closed). The stream closes when its session ends (the next call answers 410), on a story reset or restart (every session ends; terminals reconnect), and in `dispose()`.
 
@@ -804,27 +872,25 @@ while any voice stream is open):
   web game, beside the headsets; the shed on the rain map), on anywhere else.
   Both show maps also set `"voice": false` on `tent`. The server refuses an
   off spot's uploads and streams and never routes to it.
-- A player hears terminal T (`hearsTerminals`) when T's voice is on, T is on
-  the player's floor (`floorOf(house, T.pos[1])`), within
-  `VOICE_TERMINAL_REACH_M` 12 m on the plan; the `VOICE_MAX_TERMINALS` 4
-  nearest. A terminal hears player P (`hearsPlayers`) on its floor within
-  `VOICE_PLAYER_REACH_M` 8 m of its `pos`; the `VOICE_MAX_PLAYERS` 3 nearest.
-  The relay passes `only` (the rule's `VoiceRouteOptions`): a player's
+- **Same room only** (wave 26, R5). A player hears terminal T
+  (`hearsTerminals`) when T's voice is on, T is not a `view: "reinstall"`
+  terminal (the tent is never linked, even with `voice: true`), and T's
+  `room` is the player's room; the `VOICE_MAX_TERMINALS` 4 nearest in plan.
+  A terminal hears player P (`hearsPlayers`) under the same rule; the
+  `VOICE_MAX_PLAYERS` 3 nearest its `pos`. A player in no room (the void)
+  hears none. Nothing is heard through a wall or across a doorway, and there
+  is no reach: the old 12 m / 8 m reaches, the edge fade and `keep` are gone.
+  `gain` is always 1. Nearest first; ties by id.
+- **The player's room is the presence room** (`SpatialHub.voicePlayers()`
+  passes `room: s.presence`, §2.2), so its doorway hysteresis (0.75 m from
+  the door gap, or over a joining stair) keeps a player standing in a door
+  from flapping the route (`bye`, a fade, a restart, the uplink toggling).
+  A caller that passes no `room` gets `locate`'s, with no hysteresis.
+- The relay passes `only` (the rule's `VoiceRouteOptions`): a player's
   candidates are the terminals with an open stream whose mic can be heard
   (`mic` not 0), a terminal's the players not every one of whose streams
   says `mic=0`; a stream with `hear=0` is routed nothing (it is still told
   `listen`).
-- `gain` = 1 in the same room (the player's `room` non-null and equal to
-  T's), fading to 0 over the last `VOICE_EDGE_FADE_M` 1.5 m of the reach
-  (`(reach − d) / 1.5`), so the cut is never at full volume; else
-  `0.5 · (1 − d / reach)`; rounded to 2 decimals, never below 0. Under
-  `VOICE_MIN_GAIN` 0.05 it is not routed (dropped before the nearest-N cap).
-  Nearest first; ties by id.
-- **Hysteresis** (`keep`): a source a listener already hears is judged
-  `VOICE_REACH_HYSTERESIS_M` 0.75 m nearer for staying in (never for its
-  gain, which is kept at least at `VOICE_MIN_GAIN`), so a player standing on
-  the reach's edge, with pose jitter, never flaps the route (`bye`, a fade,
-  a restart, the uplink toggling). New routes form only inside the reach.
 - A terminal hears only players and a player only terminals: nothing hears
   itself, and two headsets never hear each other (not asked for).
 - `seq`: a chunk at or below the source's last kept seq is dropped — unless
@@ -850,7 +916,12 @@ different on each end:
   speak**. A hard hold on both ends was one-way: a source over the gate
   without a pause (a loud party room) held the floor for good, and a headset
   player was never heard. An incoming voice under `VOICE_BARGE_MIN_GAIN` 0.2
-  (a faint, far terminal) raises nothing.
+  raises nothing (with every gain 1 since wave 26, none is that faint).
+- **A game's own sound holds** (wave 26): while the game plays something
+  of its own — Trabolta's in-game lines, the jump scare, and in VR every
+  sound effect — its mic sends nothing for that long + `VOICE_TAIL_MS`
+  (web `VoiceLink.holdFor`, VR `VoiceLink.hold_for`, both on the gate's
+  `holdUntil`), so the terminals never hear the game back.
 
 Playback keeps a small jitter buffer per source (`jitterPlan`:
 `VOICE_JITTER_TARGET_MS` 200, the terminals 250; past `VOICE_JITTER_MAX_MS`
@@ -877,10 +948,11 @@ again after `VOICE_FRESH_MS` of quiet, like the server.
   7 kHz before the resample; a track the OS ends reads NO MIC.
 - **VR** (`reinstall/vr/net/voice_link.gd` + `voice_codec.gd`): the mic on
   **B / Y** (desktop **M**), `AudioStreamPlayer3D`s under each terminal; one
-  keep-alive `HTTPClient` for the uploads. The mic reads 🎤 … until a real
-  (non-zero) sample lands — a missing or denied input mixes zeros, which
-  count as no frames (then NO MIC); the Quest's microphone grant is asked in
-  the lobby, before any session.
+  keep-alive `HTTPClient` for the uploads. The mic reads MIC STARTING… until
+  a real (non-zero) sample lands — a missing input mixes zeros, which count
+  as no frames (then NO MIC); a refused grant is its own state (`denied`).
+  The Quest's microphone grant is asked in the lobby, before any session,
+  and the lobby's ASK AGAIN asks once more (§5).
 
 The mic needs a secure context in a browser (https, or localhost): a LAN
 `http://<ip>:7000` setup gets no microphone on the tablets (`mic=insecure`),
@@ -953,6 +1025,20 @@ closed" is **paused**, not far: the HUD says "The simulation is paused —
 Gerald will wait for you.", no buzz, same backoff, so the find lands right
 after resume. Each held retry touches the idle leash (`heldFind`), so a
 long pause at Gerald never times the session out. Poses at 10 Hz, latest-only (never queue).
+
+**The path reveal** (wave 26, R2; `hud.ts` `pathShown`). For the first
+`PATH_REVEAL_MS` (60 s) of each session the game hides the way to Gerald:
+no chevron trail, no compass pip, no distance, no warmer / colder. The
+heat box reads just *FIND GERALD*. Then *The way to Gerald lights up.* and
+the trail draws at once. The minute is per session and client side, so a
+re-scan starts it again. Gerald's quack is no path hint and is never
+delayed. A duck moved before the reveal says just *Gerald moved.*
+
+**The outside** (wave 26, R4). The walker may leave through an exterior
+door (the mud room's) onto the outside ground (`outsideGround`, drawn as a
+dark plane with a faint grid, the rooms cut out; `physics.ts` `groundAt`).
+Walls and fences still block: the only way out is a door gap. What waits
+out there is the void (*The moments*, below).
 
 Session lifecycle:
 
@@ -1050,9 +1136,9 @@ is the **Server Door** terminal's (§4), at the strength his bar sets.
   it flushes the pose pump and posts `POST /api/spatial/king/hit`. 200:
   a thud, *⚔ You hit the King!*, the bar from the answer. 409 `already
   hit`: *You hit him this reinstallation. Find Gerald before you hit him
-  again.* (`HIT_USED`; the HUD keeps saying so for the rest of the visit,
-  which ends at the duck, not at Leave, a director's end or a pose
-  timeout). An assignment with `kingHit` starts the visit spent
+  again.* (`HIT_USED`, a passing notice, said again on any later try in
+  the visit, which ends at the duck, not at Leave, a director's end or a
+  pose timeout). An assignment with `kingHit` starts the visit spent
   (`hitSpentAtStart`), so a re-scan before the duck never offers ⚔. 409 `not near`: a buzz and
   *Get closer to the King and face him.* 409 `doors are closed`: the
   paused notice. 404: no King. 410: the session is over.
@@ -1063,7 +1149,7 @@ is the **Server Door** terminal's (§4), at the strength his bar sets.
   hit reach. While he stands and is in view (`kingInView`: his floor,
   within 4.5 m, within 40° of the facing) the screen hides the compass and
   the heat line, which sit where his bar projects. The ⚔ HIT button shows
-  while near and standing (`HIT_USED` once spent); the help card offers
+  while near and standing (disabled once spent, `HIT_USED` its tooltip); the help card offers
   *Space hits the King* / *⚔ by the King* only while he stands
   (`kingStands`).
 - **Everyone's hits.** A `king` frame with fewer points staggers him
@@ -1079,6 +1165,54 @@ is the **Server Door** terminal's (§4), at the strength his bar sets.
 - **Nothing posts a chess result.** The tablet has no board, no ♟
   CHALLENGE, no C key and no hint; `chess won / lost / drawn` come only
   from the door terminal and the ♟ fallbacks (§6).
+
+### The moments (wave 26)
+
+Three things in the game post `POST /api/spatial/moment` (§2.1). The
+decisions are pure (`game/moments.ts`); the engine flushes the pose pump
+before each post. Answers are read by their `error` string.
+
+- **The void** (R4). Once the player is `ESCAPE_M` (5 m) past the walls on
+  the outside ground (`escapeDue`), every time and even before Trabolta's
+  reveal: input stops, the jump scare plays (`Scare.tsx`: his angry face
+  over a *FATAL EXCEPTION 0E* panel, the screech `Sfx.scare`; one hard
+  flash, then nothing faster than 3 Hz, and no zoom or shake under
+  `prefers-reduced-motion`), the escape goes up, and after `SCARE_MS`
+  (1.6 s; at most `SCARE_WAIT_MS` 4 s for the answer) the player is back
+  at the spawn — the answer's, else the map's. The teleport happens
+  **whatever the server says**: a 409 (closed doors, not out, cooldown,
+  parked), an old server's 404 or no answer just mean no penalty and no
+  lines. A charged escape costs the program 5 trust and comes back with
+  Trabolta's lines (§6). Only a 401 / 410 ends the game instead.
+- **The heart** (R6). Trabolta's heart (`createHeart`) shows in the
+  server room once the King has fallen (a map with a King but no King
+  state, an old server, keeps it sealed). Reaching it (`heartReached`)
+  posts once per entry. Lines: they play, and never again tonight
+  (`already`, or `Assignment.heartHeard` on a re-scan). An empty answer
+  (he isn't awake yet), `sealed` or `not there` waits for the next entry;
+  closed doors retry on the found backoff while inside.
+- **The virus disk** (R7). The floppy (`createPickup`) floats in the Hard
+  Drive all night. Any program within `pickupReach` of a disk it hasn't
+  taken (`Assignment.picked`) posts a pickup. Taken: the disk hides for
+  good, a blip (`Sfx.pickup`), *💾 You picked up a disk.* and the answer's
+  lines. `already` hides it quietly; `far` and closed doors retry on the
+  found backoff; an old server, `no such prop` or `bad moment` leave it be.
+  What the disk means is the story's: it unlocks the same codex entry the
+  tent's printed QR gives (§6). The terminals and the map editor's 3D
+  preview never draw it.
+- **Captions and speech** (`game/lines.ts`, `LinePlayer`). A moment's
+  lines are captioned one at a time in a Win98 window titled *Message*,
+  with no speaker's name (he may not be introduced yet), above the sticks
+  on a touch screen. Each holds for its reading time (`readingMs`), with
+  `IN_GAME_LINE_GAP_MS` (= the terminal's `LINE_GAP_MS`, 700 ms) between
+  lines, and is spoken by the terminal's device voice ladder
+  (`@loom/terminal/speech/engine.ts`, sharing the page's voice floor, so
+  on the tent laptop the game never talks over the terminal). The voice
+  says `pronounce` of the line (the terminal's lexicon); the caption shows
+  the display text. A voice is cut 12 s after it starts
+  (`LINE_SPEAK_CAP_MS`), or before it starts if it has not got the voice
+  floor in 8 s (`LINE_START_WAIT_MS`), so it never outlasts its caption.
+  While a line plays the game's mic is held (§2.4).
 
 The **map** page (`/reinstall/map`): the house plan (SVG, one floor at a
 time), live players, the duck of each session, terminals with their view
@@ -1146,6 +1280,12 @@ and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
   bounding box.
 - **Stairs**: draw the rect on the lower floor; `from` / `to` default to
   the rooms under its middle on this floor and the next one up.
+- **Props** (`map/props.ts`): the palette includes, since wave 26, **♥
+  Heart** (a 0.6 × 1.7 × 0.6 dark rack) and **💾 Pickup** (`item` default
+  `virus`). The inspector edits a pickup's `item` and either kind's story
+  signal (`signals.reached` / `signals.taken`; blank = the default) and
+  never offers them a label; a kind change drops what the new kind can't
+  carry.
 - **Checks**, live: `validateHouse`'s problems (each read back to the
   thing it names, a click selects it), plus two warnings that never block
   a save — **walkability** (`route()` from the spawn to every duck spot,
@@ -1161,9 +1301,22 @@ and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
 place) and `view: "auto" | "world" | "face" | "mirror" | "tv" | "chess"`:
 
 - `auto` (default): the attract screen's face pane becomes the **world view**
-  whenever a program is in the simulation, and the face comes back when
-  nobody is (and always while piloting — the face is the voice).
-- `world`: the world view always on the attract screen.
+  while the terminal is linked (below), and the face comes back when it is
+  not (and always while piloting — the face is the voice).
+- `world`: the world view on the attract screen, also only while linked.
+
+**Linked by room** (wave 26, R5; `terminal/src/world/presence.ts`
+`linkedNow`). A placed terminal shows and transmits the Internet — the
+world view, its camera into the game (§2.3), its mic to and from the
+players (§2.4) — only while a reinstalled player is in its spot's room in
+the game. The server judges: the screen state's `spot.here` counts the
+players whose presence room is that spot's room (§2.2). With several
+players every occupied room is linked. A terminal with no `spot`, and the
+tent's `reinstall` station, are never linked; `mirror` and `shadow` stay
+house-wide; the TV (`desktop-tv`) follows the walls' rule. Only when the
+server sends no `here` (an older server) does a terminal fall back to the
+old house-wide rule. A client latch (`PRESENCE_LINGER_MS`, 3 s: on at
+once, off after 3 s unlinked) keeps a doorway crossing from flickering.
 - `face`: today's terminal.
 - `mirror`: a full-screen spectator: no scanner, no chat.
 - `tv` (`Tv.tsx`, OCT31 K-18): the TV above the fireplace, run by the house
@@ -1178,8 +1331,8 @@ place) and `view: "auto" | "world" | "face" | "mirror" | "tv" | "chess"`:
   `server-room-door` spot). Awake all night (it never follows the
   character's hidden / asleep), no `character`, `room` ignored. Attract:
   THE KING, his shared bar off the screen state's `king` (*n / max*, *HE
-  KNEELS* at 0), the stakes line (`armed` true: *Checkmate him and the
-  server-room door code goes to your Codex.*; false: *No prize now.*) and
+  KNEELS* at 0), the stakes line (`armed` true: *Checkmate him.* — since
+  wave 26 it names no prize up front; false: *No prize now.*) and
   the scanner — never a strength line, never a hint. A pass is checked
   through the moderator lens (`GET /api/state?role=guest&as=<id>`; a
   restricted program: *⛔ Marked programs can't challenge the King.*);
@@ -1222,7 +1375,8 @@ The world view shows the King too — `buildHouseScene` draws every `king`
 prop and a closed leaf in each guarded door, and the view calls
 `HouseScene.showKing` with the stream's shared `KingState` (`hello`,
 `king` frames): his bar, the kneel and his door open for everyone while
-he is fallen. A terminal only watches; nothing it does hits him. Ghosts
+he is fallen, and then Trabolta's heart in the server room (wave 26; the
+virus disk is never drawn on a terminal). A terminal only watches; nothing it does hits him. Ghosts
 wear the guest's profile picture (`PlayerState.avatar`, `avatar`
 frames), in the mount, follow and mirror views alike.
 
@@ -1244,10 +1398,14 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
 ## 5. The VR game — `reinstall/vr/` (Godot 4.7, Quest 3)
 
 - `project.godot`: OpenXR on, XR shaders on, Mobile renderer, ETC2/ASTC,
-  `startup_alert=false`, physics 90 Hz; `export_presets.cfg` "Quest" (Gradle
+  `startup_alert=false`, physics 90 Hz, `[audio] driver/enable_input=true`
+  and (wave 26) `general/text_to_speech=true` (without it
+  `tts_get_voices()` is empty); `export_presets.cfg` "Quest" (Gradle
   build, `xr_mode` OpenXR, the Meta vendor plugin for Quest 3, arm64,
   INTERNET permission, no cleartext — the server is HTTPS; built by
-  `tools/quest.sh` from a staging copy). Without an OpenXR
+  `tools/quest.sh` from a staging copy, which also stamps
+  `config/build.json` with the short commit — `+` for a dirty tree — and
+  the UTC time, never in the working tree). Without an OpenXR
   runtime (a Mac) it runs as a desktop game (WASD + mouse) for development.
 - `net/server_link.gd` (autoload): config (`res://config/station.json` →
   `user://station.json` → command-line `-- --server … --code … --station …`),
@@ -1260,7 +1418,8 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   During a session the map is fetched with the session token, and the
   answer's `duck` is adopted, as is a `duck` frame for this session: the
   duck moves, the trail and the autopilot re-plan, the HUD says "Gerald
-  moved — follow the arrows." **Station-poll re-link:** a 404 on the poll
+  moved — follow the arrows." (just "Gerald moved." before the path
+  reveal). **Station-poll re-link:** a 404 on the poll
   (the event ended, or the server forgot it) drops back to the lobby and
   re-resolves the passcode to whatever event it names now; no answer at all
   for 5 s shows "Lost the server — retrying…".
@@ -1305,11 +1464,22 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   A `king` prop is drawn as a gold body with a crown and his shared
   health bar, with a shut leaf in each door he guards; a guarded door is
   shut for `house_route.gd` as for `route` (never a portal) while he
-  stands.
+  stands. Wave 26: Trabolta's heart is a dark rack with a slowly beating
+  red core behind a smoked front, no label, rows or coloured lights, shown
+  only while the King has fallen (always on a map with none); the virus
+  disk is a 3.5" floppy spinning and bobbing with a green glow, hidden
+  once this program took it (`set_pickup_taken`, kept across rebuilds).
+  Neither collides. The outside ground (`_build_ground`) is the same rect
+  as `outsideGround`. `house_escape.gd` (`HouseEscape`) and
+  `house_moment.gd` (`HouseMoment`) port the §1.1 moment rules, and
+  `HouseLocate.presence_room` / `linked_spots` the presence ones, pinned by
+  the `escape`, `presence` and `moments` goldens.
 - **The King** (wave 11, `house/house_king.gd`: `kingReach`, the fallen
-  map, `KingState` off the wire): the bar ("THE KING  n / 15") from
-  `hello`, `king` frames and the session's map fetch. Near him the HUD
-  says "Pull the trigger to hit the King — once per visit." The
+  map, `KingState` off the wire): the bar over his head ("THE KING  n /
+  15") from `hello`, `king` frames and the session's map fetch is his only
+  display — the HUD never carries his hit points (wave 26, R3; a check in
+  `test/game.gd`). Near him the HUD says "Pull the trigger to hit the
+  King." The
   **trigger** (either hand) or **A / X**, within `KING_REACH` and facing
   him (`KING_CONE_DEG`), flushes the newest pose and posts `POST
   /api/spatial/king/hit`; "You hit him." — one hit per reinstallation
@@ -1345,16 +1515,22 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   at `get_input_mix_rate()` (an `AudioStreamMicrophone` on a muted
   `VoiceMic` bus with an `AudioEffectCapture` when that gives nothing for
   2 s), resampled to 16 kHz, 200 ms chunks, μ-law, the −42 dBFS gate
-  (400 ms hang, one chunk of pre-roll), held while a voice plays here
-  (+ 300 ms). Uploads only while `listen.on` (the stream's `hello` /
+  (400 ms hang, one chunk of pre-roll), held while the game plays a sound
+  or a line of its own (`VoiceLink.hold_for(ms)`, + 300 ms; wave 26). Uploads only while `listen.on` (the stream's `hello` /
   `listen`, the POST's `listening`), on one persistent keep-alive
   `HTTPClient` (`request_raw`, `x-loom-token`, `?seq=`), one POST in flight,
   two chunks a POST at most, at most 1 s queued (older chunks dropped),
   reconnecting with a back-off and reopening a connection idle 4 s. A
   401 / 403 / 410 stops the uploads until the next session. **B / Y**
-  (`by_button`, either hand; **M** on the desktop rig) toggles the mic; the
-  HUD's line reads 🎤 LIVE (· someone can hear you) / 🎤 MUTED / NO MIC.
-  `project.godot` `[audio] driver/enable_input=true`; the Quest preset's
+  (`by_button`, either hand; **M** on the desktop rig) toggles the mic, but
+  only while it is open (a press while it is asking, refused or missing
+  changes nothing). Since wave 26 the HUD's line names every state with no
+  emoji and says what to do (`VoiceLink.hud_text`): *MIC ON · someone can
+  hear you* / *MIC ON · B or Y mutes*, *MIC MUTED · press B or Y*, *MIC ·
+  allow it in the headset's prompt*, *NO MIC · not allowed · ASK AGAIN in
+  the lobby* (the new `denied` state, a refused grant), *MIC STARTING…*,
+  *NO MIC*. Every mic change prints one `reinstall-vr: mic — …` line
+  (`tools/quest.sh logs`). The Quest preset's
   `permissions/record_audio=true`, the grant asked in the lobby, before any
   session (`VoiceLink.prime_permission`: the system dialog pauses the app,
   which in a session would end it; a dialog still up at a start arms no
@@ -1363,6 +1539,51 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   raised, not held (D5b, §2.4). Config `voice` / `mic` (both on;
   `--mic false` listens only). Everything stops in `enter_lobby`;
   offline there is none.
+- **Camera feeds** (`net/cam_feeds.gd`, §2.3): `spots_to_poll` picks the
+  listed terminals in the player's presence room
+  (`HouseLocate.presence_room`, never the tent's station), the nearest
+  `MAX_FEEDS`; there is no range any more. It does not add the 3 s linger:
+  the hysteresis matches the server's, and the server decides.
+- **Sound** (wave 26, R8, `game/sfx.gd`, `Sfx`): synthesised like the web
+  game's (no assets): Gerald's quack, positional on the duck at the web
+  game's schedule and never delayed by the path reveal; the fanfare (a
+  find, his fall); the "no" buzz (once per approach, and not for closed
+  doors or a parked session); the King's thud; the scare; a pickup blip;
+  and a quiet hum while playing. All play on an `Sfx` bus. Every one-shot
+  holds the mic for its length (`played` → `VoiceLink.hold_for`); the hum
+  holds nothing but pauses while a terminal listens, so no game sound
+  reaches the mic.
+- **In-game speech** (wave 26, `game/speech.gd`, `Speech`): a moment's
+  lines are captioned one at a time, head-locked under the HUD, or for the
+  heart on a billboard over it, each for its reading time with
+  `LINE_GAP_MS` (700 ms) between lines, and no speaker's name. The device
+  voice (`DisplayServer.tts_speak`, volume 100) says `pronounce` of the
+  line (`res://config/pronounce.json`, a copy of the terminal's table;
+  A–Z case folding); with no device voice (`tts_get_voices()` empty) the
+  captions alone carry them. A voice stuck 4 s past its reading time is
+  cut. The mic is held while it speaks.
+- **The path reveal and the moments** (wave 26; `game/game.gd`; §3 *The
+  moments* for the rules): the trail is hidden for the first minute of
+  each walk (config `trail_delay` seconds, `--trail-delay`, default
+  `HouseRoute.PATH_REVEAL_MS`; dev runs and tests may set 0), the HUD
+  saying just "find Gerald"; then "A golden trail flickers on." and the
+  trail. The autopilot ignores the delay. **The void**: out through the
+  exterior door, `ESCAPE_M` past the walls, the walk freezes, one hard
+  glitch flash (*FATAL EXCEPTION 0E*, a noise, a haptic pulse; never any
+  camera motion), `link.moment("escape")`, and on the answer (at most 3 s)
+  the player is back at the spawn, the answer's lines spoken. The teleport
+  happens whatever the server says. Within 20 s of its own last post
+  (wall time) the void puts them back quietly: no scare, no post.
+  **The heart**: reached `HEART_INSET_M` inside its room once the King has
+  fallen, a heart moment; his lines play over it; no lines retry on the
+  next way in; `already` or `heartHeard` is silent for the night.
+  **The disk**: within `PICKUP_REACH_M`, a pickup moment; taken (or
+  `already`, or in `picked`) it goes with a blip and the answer's lines.
+  The link claims per kind (`moment:escape`, `moment:heart`,
+  `moment:pickup`, the prop id kept with the claim), flushes the newest
+  pose first, and reads errors by their `error` string; any 404 but `no
+  such prop` is an old server. A refused heart or pickup retries after
+  `MOMENT_RETRY` (1.5 s).
 - `player/`: XROrigin3D rig on a CharacterBody3D; **left stick** walks
   head-relative (dead zone 0.15, 1.8 m/s), **right stick** snap-turns 45°
   (re-arm under 0.3; `smooth_turn` setting); comfort vignette while moving;
@@ -1397,7 +1618,15 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   to the lobby clears it. The tablet's *Send to headset* lands whatever the
   view. A begin 409 `not marked for reinstallation` flashes *Not marked for
   reinstallation — until the night is over, only a marked program may
-  play.*; a 404 *Nobody has that pass.*),
+  play.*; a 404 *Nobody has that pass.*; wave 26: to its left, in every
+  view, the **MICROPHONE** box — what the mic is doing and what to do
+  about it (`VoiceLink.lobby_text`), **TEST MIC** (the mic open with no
+  session and no uplink, a level meter, closing itself after 30 s or when
+  a program starts), **ASK AGAIN** while the grant is missing or refused
+  (a refusal with "don't ask again" leaves only the headset's Settings →
+  Apps → Permissions), and the build stamp, *build <sha> · <UTC>* from
+  `config/build.json` or *build dev* on an editor run, so the crew can tell
+  an old APK from a new one),
   play (duck, indicator trail, ghosts), found (egg, flight, "Reinstallation
   complete"; a find the story kept — nothing released, still captured —
   says "GERALD CAN'T HELP" and the duck stays put; a find by a program that
@@ -1417,9 +1646,16 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
 - `test/run.sh` + `test/game.gd`: headless checks, including the §1.2
   goldens (every fixture's, at 1e-3), the link over a fake transport (map
   refetch, duck adoption, the setup's answers + save + forget), the found
-  rule, the lobby's tiles / laser / confirm card / setup panel on
-  `main.tscn` with a fake link, and the autopilot reaching every show duck
-  spot kinematically and with real collision.
+  rule, the lobby's tiles / laser / confirm card / setup panel / mic box on
+  `main.tscn` with a fake link, the wave 26 moments, sounds, speech and
+  path reveal, and the autopilot reaching every show duck spot
+  kinematically and with real collision (1011 checks, plus 34 for
+  `quest.sh`, among them the `text_to_speech` setting and the build stamp).
+- **Not proven on hardware** (wave 26): whether Horizon OS has a TTS voice
+  (without one the headset only captions) and whether the Quest's mic
+  delivers real samples. The device check (HW-TENT-07) settles both: the
+  lobby's TEST MIC, and `tools/quest.sh logs` for the `reinstall-vr: mic —`
+  lines.
 - **Editor runs** (wave 19): F5 with no arguments reaches SET UP THIS
   HEADSET (then the tiles, once `user://station.json` holds a passcode)
   with no script errors; the OpenXR loader's "no runtime" errors and
@@ -1434,6 +1670,30 @@ The goose is now the **golden duck** (`INTERACTION the golden duck`,
 `CODEX The Golden Duck`) and nothing needs a button: "walk to the duck".
 `the simulation completed` still releases a corrupted program; the
 games fire both events for whoever finds the duck.
+
+**The game moments** (wave 26, `main.loom`; §2.1 `POST
+/api/spatial/moment`). Each is a `who: admin` signal for the program,
+quiet on the screens (`QUIET_MOMENT_SIGNALS`):
+
+- `when simulation escape attempt for program:` adds one to
+  `program.escapes`, recomputes `program.trust` (the C9 formula: each
+  escape is −5), tells `# hosts`, and plays *Escape Attempt*: Trabolta
+  chastising, every time, even before his reveal. It is a game-only beat,
+  so its lines reach only the game's answer, never a phone.
+- `when simulation heart reached for program:` once a night per program
+  (`program.sim_heart`) and only while Trabolta is awake: tells `# hosts`
+  and plays *Heart In The Simulation*, a short monologue in his fiction
+  (game-only too). Flavour only. A visit before he is awake says nothing,
+  so the game asks again on the next visit.
+- `when simulation pickup taken for program:` with `item == "virus"`, for
+  a program not yet carrying it, unlocks the same codex entry the tent's
+  printed QR gives (which entry depends on the program; the printed QRs
+  stay as the backup). The existing `learns` rules then do the rest. The
+  disk is never a plant: only the existing plant rule counts for a quest,
+  and it refuses inside the Internet.
+
+The escape's and the heart's lines (and their `# hosts` readouts) are
+DRAFT w26 and await sign-off (`SIGNOFF-w26.md`).
 
 **The King** speaks to the story two ways (wave 11).
 
