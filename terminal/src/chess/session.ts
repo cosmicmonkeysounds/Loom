@@ -109,9 +109,12 @@ export function reduce(s: ChessSession, e: ChessEvent): ChessSession {
   }
 }
 
-/** The attract screen's stakes line, off the King's `armed`. */
+/** The attract screen's stakes line, off the King's `armed`. Armed, it names
+ *  no prize (wave 26, G1: no route to the door code is stated up front;
+ *  `WIN_CODE` says it after the fact). */
 export function stakesLine(armed: boolean | null | undefined): string | null {
-  if (armed === true) return "Checkmate him and the server-room door code goes to your Codex.";
+  // DRAFT w26 (G1: the chess stakes line names no prize)
+  if (armed === true) return "Checkmate him.";
   if (armed === false) return "No prize now.";
   return null;
 }
