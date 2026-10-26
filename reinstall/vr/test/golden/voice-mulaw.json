@@ -774,5 +774,6 @@
   {"kind":"hearsRoom","p":[40,0,40],"room":"steam-room","heard":[{"spot":"steam-room","gain":1}]},
   {"kind":"hearsRoom","p":[40,0,40],"room":"tent","heard":[]},
   {"kind":"hearsRoom","p":[40,0,40],"room":"upstairs-hall","heard":[{"spot":"upstairs-hall","gain":1}]},
-  {"kind":"hearsRoom","p":[40,0,40],"room":null,"heard":[]}
+  {"kind":"hearsRoom","p":[40,0,40],"room":null,"heard":[]},
+  {"kind":"tentOn","spot":"tent","p":[-3,0,27.5],"heard":[],"players":[]}
 ]

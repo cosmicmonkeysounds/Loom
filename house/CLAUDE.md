@@ -78,6 +78,7 @@ export const PROP_SIGNAL_KEYS: Record<string, readonly string[]>; // king: won/l
 
 // voice.ts — same room only (R5); VoiceRouteOptions is { only? } (keep is gone)
 hearsTerminals(house, { p, room? }, { only? }); hearsPlayers(house, spot, players, { only? });
+// never a view: "reinstall" terminal (the tent, T3), even with voice: true on the map
 
 // three/ — @loom/house/three
 createHeart(prop?): Heart; createPickup(item): Pickup; heartPulse(t); HEART_BEAT_S; PICKUP_HOVER;

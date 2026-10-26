@@ -395,7 +395,9 @@ function nearest<T extends { d: number; id: string }>(rows: T[], most: number): 
 
 /**
  * The terminals a player hears (wave 26, R5): voice on, in the player's
- * room (`room === player.room`; a player in no room hears none), gain 1;
+ * room (`room === player.room`; a player in no room hears none), never a
+ * `view: "reinstall"` terminal (the tent station is never linked, T3 —
+ * even with `voice: true` on the map), gain 1;
  * the `VOICE_MAX_TERMINALS` nearest in plan, nearest first. No reach and
  * nothing through a wall: the doorway hysteresis is the presence room's
  * (`presenceRoom`). `opts.only` limits the candidates (the live mics).
@@ -405,7 +407,7 @@ export function hearsTerminals(house: HouseMap, player: VoicePlayer, opts: Voice
   if (room === null) return [];
   const rows: Array<{ id: string; d: number }> = [];
   for (const t of house.terminals) {
-    if (t.room !== room || !voiceOn(house, t)) continue;
+    if (t.room !== room || t.view === "reinstall" || !voiceOn(house, t)) continue;
     if (opts.only !== undefined && !opts.only.has(t.id)) continue;
     rows.push({ id: t.id, d: plan(t.pos, player.p) });
   }
@@ -413,8 +415,9 @@ export function hearsTerminals(house: HouseMap, player: VoicePlayer, opts: Voice
 }
 
 /**
- * The players a terminal hears (wave 26, R5): voice on at the terminal,
- * the players whose room is the terminal's room, gain 1; the
+ * The players a terminal hears (wave 26, R5): voice on at the terminal
+ * (never a `view: "reinstall"` one, T3), the players whose room is the
+ * terminal's room, gain 1; the
  * `VOICE_MAX_PLAYERS` nearest its `pos` in plan, nearest first.
  * `opts.only` limits the sessions.
  */
@@ -425,7 +428,7 @@ export function hearsPlayers(
   opts: VoiceRouteOptions = {},
 ): HeardPlayer[] {
   const t = spotOf(house, spot);
-  if (!t || !voiceOn(house, t)) return [];
+  if (!t || t.view === "reinstall" || !voiceOn(house, t)) return [];
   const rows: Array<{ id: string; d: number }> = [];
   for (const pl of players) {
     if (roomOf(house, pl) !== t.room) continue;

@@ -362,8 +362,10 @@ static func _nearest(rows: Array, most: int) -> Array:
 
 ## The terminals a player hears (wave 26, R5), `[{spot, gain}]`: voice on,
 ## in the player's room (`player.room`, else located from `player.p`; a
-## player in no room hears none), gain 1; the [constant VOICE_MAX_TERMINALS]
-## nearest in plan, nearest first. No reach, nothing through a wall.
+## player in no room hears none), never a `view: "reinstall"` terminal (the
+## tent station, even with `voice: true`), gain 1; the
+## [constant VOICE_MAX_TERMINALS] nearest in plan, nearest first. No reach,
+## nothing through a wall.
 ## `opts.only` (an Array of spot ids) limits the candidates.
 static func hears_terminals(house: Dictionary, player: Dictionary, opts := {}) -> Array:
 	var only: Variant = opts.get("only")
@@ -373,7 +375,7 @@ static func hears_terminals(house: Dictionary, player: Dictionary, opts := {}) -
 	var rows: Array = []
 	for t: Dictionary in house.get("terminals", []):
 		var pos: Array = t.get("pos", [])
-		if pos.size() < 3 or str(t.get("room", "")) != str(rm) or not voice_on(house, t):
+		if pos.size() < 3 or str(t.get("room", "")) != str(rm) or str(t.get("view", "")) == "reinstall" or not voice_on(house, t):
 			continue
 		if only is Array and not (only as Array).has(str(t["id"])):
 			continue
@@ -385,12 +387,13 @@ static func hears_terminals(house: Dictionary, player: Dictionary, opts := {}) -
 
 
 ## The players a terminal hears (wave 26, R5), `[{session, gain}]`: voice
-## on at the terminal, the players (`{session, p, room?}`) whose room is the
+## on at the terminal (never a `view: "reinstall"` one), the players
+## (`{session, p, room?}`) whose room is the
 ## terminal's, gain 1; the [constant VOICE_MAX_PLAYERS] nearest its `pos`.
 ## `opts.only` (an Array of sessions) limits them.
 static func hears_players(house: Dictionary, spot: Variant, players: Array, opts := {}) -> Array:
 	var t := _spot_of(house, spot)
-	if t.is_empty() or not voice_on(house, t):
+	if t.is_empty() or str(t.get("view", "")) == "reinstall" or not voice_on(house, t):
 		return []
 	var only: Variant = opts.get("only")
 	var rows: Array = []

@@ -173,7 +173,7 @@ describe("VoiceRelay — who hears whom", () => {
     expect(player.sent.length + hall.sent.length).toBe(before);
   });
 
-  it("the tent: its terminal hears nobody and is heard by nobody; a spawn-room terminal is off unless voice: true", () => {
+  it("the tent: its terminal hears nobody and is heard by nobody, voice: true or not; another spawn-room terminal is off unless voice: true", () => {
     const house = showHouse();
     const { world, relay } = harness(house);
     world.players = [{ session: "s-a", p: AT.spawn }];
@@ -188,12 +188,19 @@ describe("VoiceRelay — who hears whom", () => {
     expect(events(tent, "hello")[0]!.data.listen).toBe(false);
     expect(relay.upload({ kind: "terminal", spot: "tent" }, 1, chunk())).toEqual({ listening: false, dropped: true, ears: 0 });
 
-    // Unset in the spawn room is still off; `voice: true` opts in.
+    // Unset in the spawn room is still off; `voice: true` opts in (D7) —
+    // but never for the tent station (view "reinstall", wave 26 T3).
     const tentSpot = house.terminals.find((t) => t.id === "tent")!;
+    expect(tentSpot.view).toBe("reinstall");
     delete tentSpot.voice;
     relay.route();
     expect([...relay.hearing("t1").keys()]).toEqual([]);
     tentSpot.voice = true;
+    relay.route();
+    expect([...relay.hearing("t1").keys()]).toEqual([]);
+    expect([...relay.hearing("p1").keys()]).toEqual([]);
+    // The same spot as a plain terminal in the spawn room: voice: true opts in.
+    delete tentSpot.view;
     relay.route();
     expect([...relay.hearing("t1").keys()]).toEqual(["s:s-a"]);
     expect([...relay.hearing("p1").keys()]).toEqual(["t:tent"]);

@@ -23,6 +23,10 @@
 //! - `hearsRoom` `{p, room, heard}` — `hearsTerminals` told the room (the
 //!   server passes the presence room, wave 26): every listener pose again
 //!   in each terminal room and in none.
+//! - `tentOn` `{spot, p, heard, players}` — the show map with each
+//!   `view: "reinstall"` terminal set `voice: true`: a player at it hears
+//!   nothing (`heard`, `hearsTerminals` told its room) and it hears no one
+//!   (`players`, `hearsPlayers` over a player at it). Both are always [].
 
 import { join } from "node:path";
 import {
@@ -150,6 +154,11 @@ export function hearingPoses(): Vec3[] {
   ];
 }
 
+/** The floor id of a room ("" for an unknown room). */
+function roomFloor(house: HouseMap, room: string): string {
+  return house.rooms.find((r) => r.id === room)?.floor ?? "";
+}
+
 function hearing(house: HouseMap): Record<string, unknown>[] {
   const out: Record<string, unknown>[] = [];
   for (const t of house.terminals) out.push({ kind: "voiceOn", spot: t.id, on: voiceOn(house, t) });
@@ -164,6 +173,19 @@ function hearing(house: HouseMap): Record<string, unknown>[] {
   const rooms = [...new Set(house.terminals.map((t) => t.room))].sort();
   for (const p of hearingPoses()) {
     for (const room of [...rooms, null]) out.push({ kind: "hearsRoom", p, room, heard: hearsTerminals(house, { p, room }) });
+  }
+  // The tent station is never linked (T3), even if the map turns its voice on.
+  const tentOn: HouseMap = { ...house, terminals: house.terminals.map((t) => (t.view === "reinstall" ? { ...t, voice: true } : t)) };
+  for (const t of tentOn.terminals) {
+    if (t.view !== "reinstall") continue;
+    const p: Vec3 = [t.pos[0], house.floors.find((f) => f.id === roomFloor(house, t.room))?.elevation ?? 0, t.pos[2]];
+    out.push({
+      kind: "tentOn",
+      spot: t.id,
+      p,
+      heard: hearsTerminals(tentOn, { p, room: t.room }),
+      players: hearsPlayers(tentOn, t, [{ session: "s-tent", p, room: t.room }]),
+    });
   }
   return out;
 }

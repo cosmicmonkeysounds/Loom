@@ -376,6 +376,32 @@ describe("hearsTerminals (wave 26: same room only)", () => {
   });
 });
 
+describe("the tent station (wave 26, T3: never linked, voice included)", () => {
+  it("a view: \"reinstall\" terminal is never heard and never hears, even with voice: true", () => {
+    const tent: TerminalSpot = { id: "tw", name: "Tent", room: "s", pos: [-4, 1.4, 5], yaw: 0, view: "reinstall", voice: true };
+    const h = testHouse([tent]);
+    expect(voiceOn(h, "tw")).toBe(true);
+    expect(hearsTerminals(h, { p: [-4, 0, 5] }).map((r) => r.spot)).toEqual(["ts-on"]);
+    expect(hearsPlayers(h, "tw", [{ session: "p", p: [-4, 0, 5] as Vec3 }])).toEqual([]);
+    expect(hearsPlayers(h, tent, [{ session: "p", p: [-4, 0, 5] as Vec3, room: "s" }])).toEqual([]);
+    // In another room, a reinstall view is excluded too.
+    const away = testHouse([{ ...tent, id: "tw-a", room: "a", pos: [4, 1.4, 5] }]);
+    expect(hearsTerminals(away, { p: [4, 0, 5] }).map((r) => r.spot)).toEqual(["ta"]);
+  });
+
+  it("on both show maps: the tent stays unlinked with its voice turned on", () => {
+    for (const path of [SHOW_HOUSE, SHOW_SHED_HOUSE]) {
+      const h = loadHouse(path);
+      const tent = h.terminals.find((t) => t.id === "tent")!;
+      expect(tent.view).toBe("reinstall");
+      tent.voice = true;
+      const p: Vec3 = [tent.pos[0], 0, tent.pos[2]];
+      expect(hearsTerminals(h, { p, room: tent.room }).some((r) => r.spot === "tent"), path).toBe(false);
+      expect(hearsPlayers(h, "tent", [{ session: "p", p, room: tent.room }]), path).toEqual([]);
+    }
+  });
+});
+
 describe("the doorway (wave 26: the presence room's hysteresis, no reach edge)", () => {
   // tb sits at x 15 in room B (x 10…30): a player walks east inside B.
   const at = (x: number) => [{ session: "p", p: [x, 0, 5] as Vec3 }];
@@ -484,7 +510,7 @@ describe("the Godot vectors", () => {
   it("cover every kind and every byte", () => {
     const rows = readFileSync(VOICE_GOLDEN, "utf8").trim().split("\n").slice(1, -1).map((l) => JSON.parse(l.replace(/,$/, "")) as { kind: string });
     const kinds = new Set(rows.map((r) => r.kind));
-    for (const k of ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "players", "hearsPlayers", "hearsRoom"]) expect(kinds.has(k), k).toBe(true);
+    for (const k of ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "players", "hearsPlayers", "hearsRoom", "tentOn"]) expect(kinds.has(k), k).toBe(true);
     expect(rows.filter((r) => r.kind === "decode").length).toBe(256);
     expect(rows.filter((r) => r.kind === "encode").length).toBeGreaterThan(200);
   });
