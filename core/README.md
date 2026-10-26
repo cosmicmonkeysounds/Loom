@@ -620,7 +620,8 @@ terminal ignores what it does not know:
 - `tvSpeech` (wave 26): what the TV is speaking now, `{seq, chunk, at}`
   from the newest `sp=` of a `view=tv` poller (`chunk` null once that
   line is done), or null when no TV reported in the last 6 s. Memory
-  only. The walls follow his voice by it.
+  only. No client reads it yet; it is there so the walls can follow his
+  voice later (V1 phase 2).
 - The poll is also the terminal's heartbeat. Its query carries the
   device fields (`audio`, `vis`, `bat`, `fs`, `mic`, `ver`, `ann`, the
   server-room door's `door` / `dlv` / `dft` / `dwn`, and the patch bay's
@@ -894,6 +895,7 @@ The production setup and its security model are in
 - `@loom/core/lsp` is the editor's whole language service.
 - The server is what the show runs on. The VPS at
   `app.mapsandducks.com` runs release `w18b-1021`; master carries waves
-  18b Stage B through 22, merged and tested but not yet shipped. The
+  18b Stage B through 26, merged and tested but not yet shipped (the
+  root [`CLAUDE.md`](../CLAUDE.md) has the release status). The
   per-wave notes that used to fill this README are archived in
   [`docs/history/core-readme-2026-10.md`](../docs/history/core-readme-2026-10.md).

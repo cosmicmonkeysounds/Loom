@@ -191,8 +191,8 @@ dropping on an iPad, turn *let the games hear this room* off there.
 
 John's Desktop drives the living-room TV over HDMI and runs the TV view
 (`view=tv`, spot `desktop-tv`): Trabolta's face full screen, speaking every
-line he says in The Desktop, the reinstallation beside it while someone
-plays. The Desktop also hosts Mosquitto, Zigbee2MQTT and the stagehand
+line he says in The Desktop, the reinstallation beside it while a player
+is in The Desktop in the game (wave 26: the walls' per-room rule). The Desktop also hosts Mosquitto, Zigbee2MQTT and the stagehand
 `show` and `lights` jobs; its full runbook is
 [`scripts/house-desktop/README.md`](../../scripts/house-desktop/README.md).
 

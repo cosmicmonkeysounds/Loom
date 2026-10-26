@@ -167,9 +167,11 @@ so calm walls keep their spacing.
 ## The voice
 
 Everything the page says goes through a `SpeechQueue`
-(`speech/engine.ts`), and every voice waits on the one `VoiceFloor`. There
-are four queues: the room terminal's (`app.tsx`), the TV's (`Tv.tsx`), the
-announcements' (`announce.ts`) and Setup's TEST VOICE.
+(`speech/engine.ts`), and every voice waits on the one `VoiceFloor`. The
+terminal has four queues: the room terminal's (`app.tsx`), the TV's
+(`Tv.tsx`), the announcements' (`announce.ts`) and Setup's TEST VOICE. On
+the tent laptop the mounted reinstall game adds its own
+(`reinstall/web/src/game/lines.ts`), on the same `VoiceFloor`.
 
 - **Pauses (wave 26, V2).** `CHUNK_GAP_MS` (300) between two sentences of
   a line, `LINE_GAP_MS` (700) before the next line, never after the last;
