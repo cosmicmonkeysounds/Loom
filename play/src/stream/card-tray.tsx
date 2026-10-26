@@ -111,9 +111,19 @@ export function CardTray({
     if (focus !== null) onFocus(null);
   };
   useEffect(() => {
-    if (composing || shut > 0) fold();
+    if (composing) fold();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [composing, shut]);
+  }, [composing]);
+  // A bump of `shut` folds it; the count it mounted with never does (the
+  // counter lives on across rooms and trays: a new card, or a Mission jump,
+  // still opens after an earlier menu tap).
+  const shutSeen = useRef(shut);
+  useEffect(() => {
+    if (shut === shutSeen.current) return;
+    shutSeen.current = shut;
+    fold();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shut]);
   useEffect(() => onOpenChange?.(open), [open, onOpenChange]);
   // A new card (not a re-deal of one you've seen) opens the tray again.
   const key = card !== undefined ? trayCardKey(card) : null;

@@ -85,6 +85,15 @@ describe("the card tray when crowded", () => {
     expect(renderToStaticMarkup(createElement(CardTray, { cards: [c], widgets, focus: null, onFocus: () => {}, crowded: true }))).not.toContain("stream-tray open");
     expect(renderToStaticMarkup(createElement(CardTray, { cards: [c], widgets, focus: c.seq, onFocus: () => {}, crowded: true }))).toContain("stream-tray open");
   });
+  it("an earlier menu tap (shut > 0) never folds a tray that mounts later: a new card or a jump still opens", () => {
+    const c = fact();
+    expect(renderToStaticMarkup(createElement(CardTray, { cards: [c], widgets, focus: null, onFocus: () => {}, shut: 3 }))).toContain("stream-tray open");
+    expect(renderToStaticMarkup(createElement(CardTray, { cards: [c], widgets, focus: c.seq, onFocus: () => {}, crowded: true, shut: 1 }))).toContain("stream-tray open");
+    // Only a change of the count folds it, never the count it mounted with.
+    const tray = src("stream/card-tray.tsx");
+    expect(tray).toMatch(/const shutSeen = useRef\(shut\);\s*useEffect\(\(\) => \{\s*if \(shut === shutSeen\.current\) return;\s*shutSeen\.current = shut;\s*fold\(\);/u);
+    expect(tray).not.toMatch(/shut > 0/u);
+  });
 });
 
 describe("the composer keeps a half-typed line", () => {
