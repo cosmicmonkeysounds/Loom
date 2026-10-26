@@ -1,10 +1,13 @@
 //! PLAYER SELECT (wave 18, BOOTH-SPEC §4.7): an objective whose buttons are
 //! steps (Celebrate The Winners: 🎱 → 🎀 → 🎯) as one window — move chips
 //! along the top, the step's to-do line, the programs at hand as tiles, and
-//! the press in the foot. A harmless follow-on pre-selects the last step's
-//! program (*SAME: ICQ*); a destructive step never does, greys the earlier
-//! pick and arms (two taps). Each press is one `/api/prime/act`; the reply
-//! line says what reached the program's phone. No scans.
+//! the press in the foot. A harmless follow-on pre-selects the most recent
+//! earlier pick (*SAME: ICQ*, wave 26 B3: after a skipped step too); a
+//! destructive step never does, labels the earlier pick but keeps it
+//! selectable (wave 26 B4: the winner may be the one named) and arms (two
+//! taps). Each press is one `/api/prime/act`; the reply line says what
+//! reached the program's phone. No scans. Once the objective has ended
+//! (wave 26 B5: one round only) the finished foot offers only Close.
 
 import { useState } from "react";
 import { ARM_LINE, useArmButtons } from "../../arm.ts";
@@ -24,6 +27,28 @@ export interface PlayerSelectProps {
   onLater?: () => void;
   /** Wave 21: a player booth — no staff-room lines, a refusal reads "Not now.". */
   player?: boolean;
+  /** Wave 26 (B5): the objective left the view (the round is over): no
+   *  "+ Another round", no more presses. */
+  ended?: boolean;
+}
+
+/** Wave 26 (B3): the SAME pre-select — the most recent earlier pick (a
+ *  skipped step in between doesn't lose it), only on a harmless follow-on. */
+export function sameFor(steps: readonly WizardStep[], done: ReadonlyArray<string | null>, at: number): string | null {
+  const step = steps[at];
+  if (step === undefined || !step.preselect) return null;
+  for (let i = Math.min(at, done.length) - 1; i >= 0; i--) if (done[i] != null) return done[i]!;
+  return null;
+}
+
+/** Wave 26 (B4): on a destructive step the earlier picks wear the first
+ *  step's word ("(bingo winner)") but stay selectable; the two-tap arm is
+ *  the guard. Empty on a harmless step. */
+export function taggedFor(steps: readonly WizardStep[], done: ReadonlyArray<string | null>, at: number): Map<string, string> {
+  const out = new Map<string, string>();
+  if (steps[at]?.destructive !== true) return out;
+  for (let i = 0; i < at; i++) if (done[i] != null) out.set(done[i]!, stepWord(steps[0]));
+  return out;
 }
 
 /** The SAME row's button: the step's glyph and its first word ("🎀 Give"). */
@@ -39,7 +64,7 @@ export function stepHelper(s: WizardStep, index: number): string {
   return "…or tap someone else below";
 }
 
-export function PlayerSelect({ objective, steps, guests, press, onClose, onLater, player = false }: PlayerSelectProps) {
+export function PlayerSelect({ objective, steps, guests, press, onClose, onLater, player = false, ended = false }: PlayerSelectProps) {
   const arm = useArmButtons();
   const [at, setAt] = useState(0);
   const [done, setDone] = useState<Array<string | null>>(() => steps.map(() => null));
@@ -52,16 +77,14 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
   const atHand = (objective.pick ?? []).map((id) => byId.get(id)).filter((g): g is PrimeGuest => g !== undefined);
   const nameOf = (id: string) => byId.get(id)?.name ?? id;
   const step = steps[at];
-  const prev = at > 0 ? done[at - 1] ?? null : null;
-  const same = step !== undefined && step.preselect && prev !== null ? prev : null;
-  const greyed = new Map<string, string>();
-  if (step?.destructive === true) for (let i = 0; i < at; i++) if (done[i] != null) greyed.set(done[i]!, stepWord(steps[0]));
+  const same = sameFor(steps, done, at);
+  const tagged = taggedFor(steps, done, at);
   const go = (n: number) => {
     setAt(n);
     setChosen(null);
   };
   const fire = (guest: string) => {
-    if (step === undefined || busy) return;
+    if (step === undefined || busy || ended) return;
     arm.tap(`${step.id}:${guest}`, step.destructive, () => {
       setBusy(true);
       press(step.id, guest).then(
@@ -82,16 +105,19 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
   };
   const target = chosen ?? null;
   const armed = step !== undefined && target !== null && arm.armed === `${step.id}:${target}`;
-  const foot = finished ? (
+  const foot = finished || ended ? (
     <div className="bsel-foot">
-      <button type="button" className="w95-btn booth-default bsel-go" onClick={() => {
-        setDone(steps.map(() => null));
-        setReply("");
-        setStaff([]);
-        go(0);
-      }}>
-        + Another round
-      </button>
+      {ended && !finished && <p className="bsel-reply">That's over now.</p>}
+      {!ended && (
+        <button type="button" className="w95-btn booth-default bsel-go" onClick={() => {
+          setDone(steps.map(() => null));
+          setReply("");
+          setStaff([]);
+          go(0);
+        }}>
+          + Another round
+        </button>
+      )}
       <button type="button" className="w95-btn" onClick={onClose}>
         Close
       </button>
@@ -172,7 +198,7 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
                 </button>
               </div>
             )}
-            <GuestTiles list={atHand} everyone={guests} chosen={chosen} greyed={greyed} disabled={busy} onPick={setChosen} />
+            <GuestTiles list={atHand} everyone={guests} chosen={chosen} tagged={tagged} disabled={busy || ended} onPick={setChosen} />
           </>
         ) : null}
       </div>

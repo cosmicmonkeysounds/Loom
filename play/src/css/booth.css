@@ -459,6 +459,8 @@
 .tile-pic .pavatar { position: absolute; top: 0; left: 0; width: 100%; height: 100%; font-size: 24px; }
 .tile-name { margin-top: 4px; font-weight: 700; line-height: 1.2; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .tile-grey { font-size: 12px; }
+/* Wave 26 (B4): an earlier pick on a destructive step: labelled, still tappable. */
+.tile.tagged .tile-grey { font-style: italic; }
 
 /* Rows (§4.10) and the door queue (§4.4). */
 .rows { display: flex; flex-direction: column; }

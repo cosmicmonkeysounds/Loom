@@ -29,7 +29,7 @@ import { WalletActionsProvider, useWalletClock } from "../wallet.tsx";
 import { AvatarsContext, avatarLookup } from "../avatars.ts";
 import { useDocumentTitle } from "../session/shared.ts";
 import { INBOX, usePrimeSession } from "../session/prime.ts";
-import type { Action, Channel, ChatMessage } from "../types.ts";
+import type { Action, Channel, ChatMessage, Interaction } from "../types.ts";
 import { usePush } from "../push.ts";
 import { PushCard } from "../push-card.tsx";
 import { opensHome } from "../room.ts";
@@ -139,7 +139,7 @@ function BoothFrame({ children, clocked = false, alarmed = false }: { children: 
 
 /** What sits over the booth: the scanner, the Guests list, one guest's card,
  *  or (wave 18) the Wanted board, a picker, the door queue, the 🔔 Waiting window. */
-type Layer =
+export type Layer =
   | { kind: "scan"; guest?: string; caption?: string }
   | { kind: "guests" }
   | { kind: "card"; id: string; seed?: CardSeed; confront?: "rescan" }
@@ -151,6 +151,19 @@ type Layer =
 
 
 const BOARD_KEY = (token: string) => `loom.booth.board.${token}`;
+
+/** What a picker over an ended objective says (and openPick, when one is opened late). */
+export const PICK_OVER = "That's over now: the list closed with its objective.";
+/** Wave 26 (B5): how long an ended PLAYER SELECT stays up (its last reply) before it closes. */
+export const PICK_CLOSE_MS = 2500;
+
+/** Wave 26 (B5): is the open layer a PLAYER SELECT whose objective has left
+ *  a loaded view? (Rows windows say "Summons over." themselves and stay.) */
+export function pickEnded(layer: Layer, objectives: ReadonlyArray<{ id: string }> | undefined, interactions: readonly Interaction[]): boolean {
+  if (layer?.kind !== "pick" || objectives === undefined) return false;
+  if (pickLayout(layer.opened, interactions) !== "steps") return false;
+  return !objectives.some((o) => o.id === layer.objective);
+}
 
 /** Runs the pop-out driver inside the rung's provider (signed in only). */
 function PopOutDriver(p: Parameters<typeof useBoothPopOuts>[0]) {
@@ -253,6 +266,18 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   useEffect(() => {
     if (layer?.kind === "scan" || layer?.kind === "guests" || layer?.kind === "wanted") cardGuest.current = null;
   }, [layer?.kind]);
+  // Wave 26 (B5): PLAYER SELECT closes when its objective leaves the view
+  // (one round only), after a beat so the last press's reply shows first.
+  const pickGone = pickEnded(layer, s.view?.objectives, s.view?.interactions ?? []);
+  useEffect(() => {
+    if (!pickGone) return;
+    const t = setTimeout(() => {
+      setLayer((l) => (l?.kind === "pick" ? null : l));
+      s.alerts.raise(PICK_OVER, { quiet: true });
+    }, PICK_CLOSE_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickGone]);
   // A notification's `?room=scanner` link (the old Scanner room's readouts)
   // opens Readouts, where those readouts live now.
   useEffect(() => {
@@ -321,7 +346,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     const prefix = `pick:${objective}:`;
     for (const k of [rung.current?.key, ...rung.tray.map((x) => x.key)]) if (k !== undefined && k.startsWith(prefix)) rung.retire(k);
     if (o === undefined) {
-      s.alerts.raise("That's over now: the list closed with its objective.", { quiet: true });
+      s.alerts.raise(PICK_OVER, { quiet: true });
       return;
     }
     setLayer({ kind: "pick", objective, opened: o });
@@ -676,7 +701,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               const ints = s.view?.interactions ?? [];
               const press = (id: string, guest: string) => s.act(id, guest);
               return pickLayout(layer.opened, ints) === "steps" ? (
-                <PlayerSelect objective={o} steps={wizardSteps(layer.opened, ints)} guests={guests} press={press} onClose={() => setLayer(null)} onLater={() => setLayer(null)} />
+                <PlayerSelect objective={o} steps={wizardSteps(layer.opened, ints)} guests={guests} press={press} player={player} ended={live === undefined} onClose={() => setLayer(null)} onLater={() => setLayer(null)} />
               ) : (
                 <RowsWindow objective={live} opened={layer.opened} interactions={ints} guests={guests} placeTitle={placeTitle} wanted={wanted !== null ? loose : null} press={press} onCard={(id) => openCard(id)} onBoard={openBoard} onClose={() => setLayer(null)} />
               );
