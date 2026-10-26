@@ -408,6 +408,24 @@ describe("VoiceLink — the mic", () => {
     expect(r.posts.length).toBeGreaterThan(1);
   });
 
+  it("holdFor (wave 26): while the game's own sound plays (+ the tail) nothing goes up, however loud", async () => {
+    const r = rig();
+    await started(r);
+    r.link.holdFor(500);
+    say(r, 400, -10);
+    await r.settle();
+    expect(r.posts).toHaveLength(0);
+    r.tick(500 + VOICE_TAIL_MS - 1);
+    say(r, 200, -10);
+    await r.settle();
+    expect(r.posts).toHaveLength(0);
+    // Past the hold the plain gate is back.
+    r.tick(2 + 1000);
+    say(r, 400, -20);
+    await r.settle();
+    expect(r.posts.length).toBeGreaterThan(0);
+  });
+
   it("a faint, far terminal (gain under 0.2) raises nothing", async () => {
     const r = rig();
     await started(r);

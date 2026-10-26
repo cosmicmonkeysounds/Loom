@@ -9,8 +9,14 @@
 //!   a wall at an angle slides along it.
 //! - **Floors.** `heightAt` gives the surface under the feet: floors, and
 //!   ramps for stairs. A rise of up to `STEP_UP` is climbed; nothing under
-//!   the feet (the outside, past an open front door) or a rise too high is a
-//!   wall. A drop of more than a step is a fall (gravity).
+//!   the feet or a rise too high is a wall. A drop of more than a step is a
+//!   fall (gravity).
+//! - **The outside** (wave 26, R4). With `ground` (the engine passes
+//!   `@loom/house` `outsideGround`, the same rect as VR's `_build_ground`),
+//!   a plan point no floor covers but inside that rect, within a step of its
+//!   elevation, stands on the outside ground — so a program walks out through
+//!   an exterior door into the void. Walls and fences still block: the only
+//!   way out is a door gap. Without it, the outside is a wall.
 //! - **Head room.** A surface overhead inside the body's height — a stair's
 //!   ramp seen from the floor below its side — is a wall too: you can walk
 //!   under the high end of a stair, not into the solid under its ramp.
@@ -22,7 +28,7 @@
 //! + = counter-clockwise from above, i.e. turning left).
 
 import { buildWalls, doorGap, heightAt, pointInRect, propSolid, rampHeight, standable, STEP_UP, surfacesAt, wallEnds, withFallenKings } from "@loom/house";
-import type { HouseMap, Vec2, Vec3, WallSegment } from "@loom/house";
+import type { HouseMap, OutsideGround, Vec2, Vec3, WallSegment } from "@loom/house";
 
 export const RADIUS = 0.25;
 export const EYE_HEIGHT = 1.6;
@@ -77,6 +83,8 @@ type Blocker =
 export interface PhysicsWorld {
   house: HouseMap;
   blockers: Blocker[];
+  /** The walkable outside (`PhysicsOptions.ground`), null when there is none. */
+  ground: { y: number; rect: readonly [number, number, number, number] } | null;
 }
 
 export interface PhysicsOptions {
@@ -84,6 +92,8 @@ export interface PhysicsOptions {
   omitProps?: ReadonlySet<string>;
   /** Doors (by id) shut: their gap (`doorGap`) blocks like a wall — a guarded door while its king stands. */
   closedDoors?: ReadonlySet<string>;
+  /** The outside ground (`outsideGround(house)`, wave 26 R4): walkable where no floor is. */
+  ground?: OutsideGround | null;
 }
 
 export function buildPhysicsWorld(house: HouseMap, walls: readonly WallSegment[] = buildWalls(house), opts: PhysicsOptions = {}): PhysicsWorld {
@@ -114,7 +124,24 @@ export function buildPhysicsWorld(house: HouseMap, walls: readonly WallSegment[]
       blockers.push({ kind: "box", c, hw: w / 2, hd: d / 2, cos: Math.cos(r), sin: Math.sin(r), bottom, top });
     }
   }
-  return { house, blockers };
+  const ground = opts.ground ?? null;
+  return { house, blockers, ground: ground === null ? null : { y: ground.y, rect: ground.rect } };
+}
+
+/**
+ * The surface under a plan point for a body at `y`: `heightAt` (floors,
+ * ramps), else the outside ground when the point is inside its rect and its
+ * elevation is within a step of `y` (never a hole in an upper floor, never
+ * the basement's). Null: the void (a wall).
+ */
+export function groundAt(world: PhysicsWorld, plan: Vec2, y: number): number | null {
+  const h = heightAt(world.house, plan, y);
+  if (h !== null) return h;
+  const g = world.ground;
+  if (g === null) return null;
+  const [x0, z0, x1, z1] = g.rect;
+  if (plan[0] < x0 || plan[0] > x1 || plan[1] < z0 || plan[1] > z1) return null;
+  return Math.abs(g.y - y) <= STEP_UP + EPS ? g.y : null;
 }
 
 /** The body at the map's spawn. */
@@ -181,7 +208,7 @@ export function move(body: Body, input: MoveInput, dt: number, world: PhysicsWor
 
   // Vertical: stand on the surface, or fall to it.
   let vy = body.vy;
-  const ground = heightAt(world.house, [p[0], p[2]], p[1]);
+  const ground = groundAt(world, [p[0], p[2]], p[1]);
   if (ground === null) vy = 0;
   else if (p[1] - ground <= STEP_UP + EPS && vy === 0) p[1] = ground;
   else if (p[1] > ground) {
@@ -205,7 +232,7 @@ function step(world: PhysicsWorld, p: Vec3, dx: number, dz: number): Vec3 {
   for (const [ddx, ddz] of tries) {
     if (ddx === 0 && ddz === 0) continue;
     const plan = resolve(world, [p[0] + ddx, p[2] + ddz], p[1], [p[0], p[2]]);
-    const ground = heightAt(world.house, plan, p[1]);
+    const ground = groundAt(world, plan, p[1]);
     if (ground === null || ground > p[1] + STEP_UP + EPS) continue; // the void, or a wall of floor
     // Snap down only by a step: a bigger drop is left to gravity.
     const y = ground >= p[1] - STEP_UP - EPS ? ground : p[1];
@@ -220,7 +247,7 @@ function step(world: PhysicsWorld, p: Vec3, dx: number, dz: number): Vec3 {
 /** Push the circle out of whatever it overlaps where it stands. */
 function settle(world: PhysicsWorld, p: Vec3): Vec3 {
   const plan = resolve(world, [p[0], p[2]], p[1], [p[0], p[2]]);
-  const ground = heightAt(world.house, plan, p[1]);
+  const ground = groundAt(world, plan, p[1]);
   if (ground === null || ground > p[1] + STEP_UP + EPS) return p;
   if (headBlocked(world.house, plan, p[1]) && !headBlocked(world.house, [p[0], p[2]], p[1])) return p;
   return [plan[0], p[1], plan[1]];

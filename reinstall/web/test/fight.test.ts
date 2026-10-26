@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { doorGap, locate } from "@loom/house";
 import type { Prop, Vec3 } from "@loom/house";
-import { HIT_USED, hitSpentAtStart, keepDoorOpen, KING_REACH, kingMeter, kingReach, KNEELING_LINE, nudgeFor, stageFor, STAGE_LINE } from "../src/game/fight.ts";
+import * as fight from "../src/game/fight.ts";
+import { HIT_USED, hitSpentAtStart, keepDoorOpen, KING_REACH, kingReach, nudgeFor } from "../src/game/fight.ts";
 import { THREE_FLOOR } from "./houses.ts";
 
 const house = THREE_FLOOR();
@@ -10,49 +11,20 @@ const king = house.props.find((p) => p.kind === "king") as Prop;
 const WEST = 90;
 const EAST = -90;
 
-describe("stageFor", () => {
-  it("is the door terminal's own ladder (@loom/chess): the HUD names the board he would deal", async () => {
-    const chess = await import("@loom/chess/stage");
-    for (let max = 1; max <= 20; max++) for (let hp = -1; hp <= max + 1; hp++) expect(stageFor(hp, max), `${hp}/${max}`).toBe(chess.stageFor(hp, max));
+// Wave 26 (R3): the HUD lost its King bar — the meter (hearts / "n / max"),
+// the stage ladder line and the kneeling line. The bar over his head
+// (`@loom/house/three` `drawBar`) is the only display of his points, so the
+// tablet no longer carries the meter, the stage ladder or their lines.
+describe("no King bar on the HUD (wave 26, R3)", () => {
+  it("fight.ts carries no meter, stage ladder or stage / kneeling line any more", () => {
+    const exported = Object.keys(fight);
+    for (const gone of ["kingMeter", "stageFor", "STAGE_LINE", "KNEELING_LINE"]) expect(exported, gone).not.toContain(gone);
   });
 
-  it("walks grandmaster → club → beginner → dizzy → pawns over 4 hp", () => {
-    expect([4, 3, 2, 1, 0].map((hp) => stageFor(hp, 4))).toEqual(["grandmaster", "club", "beginner", "dizzy", "pawns"]);
-  });
-
-  it("on the show's 15: grandmaster only at full, the first hit weakens him, pawns only once he falls", () => {
-    expect(stageFor(15, 15)).toBe("grandmaster");
-    expect(stageFor(14, 15)).toBe("club");
-    expect(stageFor(10, 15)).toBe("club");
-    expect(stageFor(9, 15)).toBe("beginner");
-    expect(stageFor(5, 15)).toBe("beginner");
-    expect(stageFor(4, 15)).toBe("dizzy");
-    expect(stageFor(1, 15)).toBe("dizzy"); // still up, still a real game
-    expect(stageFor(0, 15)).toBe("pawns");
-  });
-
-  it("every stage has a line, and none of them is a chess tip", () => {
-    for (const s of ["grandmaster", "club", "beginner", "dizzy", "pawns"] as const) {
-      expect(STAGE_LINE[s]).toMatch(/King/);
-      expect(STAGE_LINE[s]).not.toMatch(/board|chess|hit him|pawns only/iu);
-    }
-  });
-
-  it("no standing line says he kneels — at 1 of 15 he is still up, his door shut", () => {
-    for (let hp = 1; hp <= 15; hp++) expect(STAGE_LINE[stageFor(hp, 15)]).not.toMatch(/knee|kneel|open/iu);
-    expect(KNEELING_LINE).toMatch(/knees/iu);
-    expect(KNEELING_LINE).toMatch(/door stands open/iu);
-  });
-});
-
-describe("kingMeter", () => {
-  it("hearts up to nine points, n / max past that", () => {
-    expect(kingMeter(4, 4)).toBe("♥♥♥♥");
-    expect(kingMeter(3, 4)).toBe("♥♥♥♡");
-    expect(kingMeter(0, 4)).toBe("♡♡♡♡");
-    expect(kingMeter(12, 15)).toBe("12 / 15");
-    expect(kingMeter(0, 15)).toBe("0 / 15");
-    expect(kingMeter(99, 15)).toBe("15 / 15"); // clamped
+  it("what stays: the hit's own lines (spent, nudges)", () => {
+    expect(HIT_USED).toMatch(/hit him this reinstallation/u);
+    expect(nudgeFor("far")).toBe("Get closer to the King.");
+    expect(nudgeFor("facing")).toBe("Face him.");
   });
 });
 

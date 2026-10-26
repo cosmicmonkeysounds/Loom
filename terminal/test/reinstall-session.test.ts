@@ -37,7 +37,7 @@ describe("the tent station's session (wave 18b)", () => {
     expect(s.step).toEqual({ kind: "refused", program: healthy, until: 100 + REFUSED_MS });
     expect(isBusy(s)).toBe(false);
     expect(timed(s)).toBe(true);
-    expect(refusedCopy(healthy, false)).toEqual({ icon: "▣", heading: "PROGRAM NOT MARKED", status: "STATUS: healthy — not marked for reinstallation", why: "Not marked for reinstallation — until the night is over, only a marked program may play." });
+    expect(refusedCopy(healthy, false)).toEqual({ icon: "▣", heading: "PROGRAM NOT MARKED", status: "STATUS: healthy — not marked for reinstallation", why: "Not marked for reinstallation." });
     expect(run([{ type: "tick", now: 100 + REFUSED_MS - 1 }], s).step.kind).toBe("refused");
     expect(run([{ type: "tick", now: 100 + REFUSED_MS }], s).step.kind).toBe("idle");
     // A new pass over the card starts again.
@@ -116,7 +116,7 @@ describe("the tent station's session (wave 18b)", () => {
     expect(exitNotice({ kind: "found", name: "Winamp", outcome: "refused" }, 0)?.text).toBe("WINAMP FOUND GERALD — HE CAN'T HELP TONIGHT.");
     expect(exitNotice({ kind: "sent", station: "Quest 1" }, 0)).toEqual({ text: "SENT TO QUEST 1 — PUT THE HEADSET ON", tone: "good", until: NOTICE_MS });
     expect(exitNotice({ kind: "back" }, 0)).toBeNull();
-    expect(exitNotice({ kind: "failed", text: "Not marked for reinstallation — until the night is over, only a marked program may play." }, 0)?.tone).toBe("bad");
+    expect(exitNotice({ kind: "failed", text: "Not marked for reinstallation." }, 0)?.tone).toBe("bad");
     expect(exitSound({ kind: "found", name: "W", outcome: "released" })).toBe("win");
     expect(exitSound({ kind: "found", name: "W", outcome: "refused" })).toBe("lose");
     expect(exitSound({ kind: "idle" })).toBe("lose");

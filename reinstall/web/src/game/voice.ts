@@ -268,6 +268,16 @@ export class VoiceLink {
     this.o.onChange?.();
   }
 
+  /**
+   * The game's own sound is playing (wave 26: Trabolta's in-game lines, the
+   * jump scare): send nothing for `ms` (+ `VOICE_TAIL_MS`), so the terminals
+   * never hear the game back. A hard hold (`VoiceGate.holdUntil`), not the
+   * barge-in raise: nobody should speak over it. Only ever extends.
+   */
+  holdFor(ms: number): void {
+    this.gate.holdUntil(this.now() + Math.max(0, ms) + VOICE_TAIL_MS);
+  }
+
   /** What the HUD shows. */
   get hud(): VoiceHud {
     return { mic: this.micState, listening: this.listening, hearing: this.heard.size, heardBy: this.heardBy };
