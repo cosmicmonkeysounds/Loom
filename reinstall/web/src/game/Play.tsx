@@ -13,7 +13,7 @@ import type { Sfx } from "./audio.ts";
 import { Game, type GameEnd, type HudState, type KingHud } from "./engine.ts";
 import { earsLine, type VoiceHudState } from "./voice.ts";
 import { HIT_USED } from "./fight.ts";
-import { bearingOf, FIND_GERALD, findCopy, findOutcome, HEAT_LABEL, type FindOutcome } from "./hud.ts";
+import { bearingOf, FIND_GERALD, findCopy, findOutcome, HEAT_LABEL, kingStands, type FindOutcome } from "./hud.ts";
 import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
@@ -228,7 +228,7 @@ export function Play({
             {showSticks ? (
               <>
                 <b>Left thumb</b> walks · <b>right thumb</b> turns and looks
-                {hud?.king !== null && hud?.king !== undefined && (
+                {kingStands(hud?.king) && (
                   <>
                     {" "}
                     · <b>⚔</b> by the King
@@ -244,7 +244,7 @@ export function Play({
                     · <b>M</b> mutes the mic
                   </>
                 )}
-                {hud?.king !== null && hud?.king !== undefined && (
+                {kingStands(hud?.king) && (
                   <>
                     {" "}
                     · <b>Space</b> hits the King

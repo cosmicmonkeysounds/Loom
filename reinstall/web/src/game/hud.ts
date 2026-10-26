@@ -217,3 +217,13 @@ export function relativeBearing(from: Vec3, to: Vec3, yaw: number): number {
   const rel = target - bearingOf(yaw);
   return ((((rel + 180) % 360) + 360) % 360) - 180 + 0;
 }
+
+/**
+ * The King is on this map and standing: what the help card's "Space hits
+ * the King" / "⚔ by the King" line needs (wave 26, R3) — the same rule as
+ * the ⚔ HIT button, which never shows once he has fallen (a fallen King's
+ * HUD state is still non-null: he kneels in the doorway).
+ */
+export function kingStands(king: { fallen: boolean } | null | undefined): boolean {
+  return king !== null && king !== undefined && !king.fallen;
+}
