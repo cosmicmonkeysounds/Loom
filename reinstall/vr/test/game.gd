@@ -72,6 +72,7 @@ func _run() -> void:
 	await _test_sfx_game()
 	await _test_path_reveal()
 	await _test_escape()
+	await _test_heart_pickup()
 	await _test_autopilot_physics()
 	await _test_room_scale()
 
@@ -337,7 +338,38 @@ func _test_wave26_props() -> void:
 	b.build(house)
 	var hn := b.get_node_or_null("Prop_trabolta-heart")
 	var dn := b.get_node_or_null("Prop_virus-disk")
-	_check(hn != null and hn.get_child_count() == 0 and dn != null and dn.get_child_count() == 0, "wave 26: the builder draws nothing for a heart or a pickup yet")
+	# Stage B (vr lane, R6 / R7): the builder draws both — no label, no collider.
+	_check(hn != null and hn.get_node_or_null("Core") != null and hn.get_node_or_null("Front") != null and hn.get_node_or_null("Glow") is OmniLight3D, "wave 26: the heart is a rack with a core, a smoked front and a glow")
+	_check(dn != null and dn.get_node_or_null("Disk/Shell") != null and dn.get_node_or_null("Disk/Sticker") != null and dn.get_node_or_null("Disk/Glow") is OmniLight3D, "wave 26: the pickup is a floppy disk with a glow")
+	var labels := (hn.find_children("*", "Label3D", true, false) + dn.find_children("*", "Label3D", true, false)) if hn != null and dn != null else [null]
+	_check(labels.is_empty(), "wave 26: neither carries any text (nothing like the patch bay)")
+	var colliders_before := (b.get_node("Colliders") as Node).get_child_count()
+	var stripped: Dictionary = house.duplicate(true)
+	stripped["props"] = (stripped["props"] as Array).filter(func(pr: Dictionary) -> bool: return pr["kind"] != "heart" and pr["kind"] != "pickup")
+	var b2 := HouseBuilder.new()
+	b2.build(stripped)
+	_check((b2.get_node("Colliders") as Node).get_child_count() == colliders_before, "wave 26: neither adds a collider")
+	b2.free()
+	_check(not b.heart_shown("trabolta-heart"), "wave 26: the heart is hidden while the King has not fallen (no shared King)")
+	b.set_king({"id": "cold-lock-king", "hp": 3, "max": 15, "fallen": false})
+	_check(not b.heart_shown("trabolta-heart"), "wave 26: … nor while he stands")
+	b.set_king({"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true})
+	_check(b.heart_shown("trabolta-heart") and _near(float(b.heart_node("trabolta-heart").get_meta("height")), 1.7), "wave 26: … and shows once he has fallen")
+	_check(b.pickup_shown("virus-disk") and _near(b.pickup_disk("virus-disk").position.y, HouseBuilder.PICKUP_HOVER, HouseBuilder.PICKUP_BOB + 1e-3), "wave 26: the disk floats over its spot")
+	var spin0 := b.pickup_disk("virus-disk").rotation.y
+	b._process(0.5)
+	_check(not _near(b.pickup_disk("virus-disk").rotation.y, spin0), "wave 26: … and spins")
+	b.set_pickup_taken("virus-disk", true)
+	b.build(house)
+	_check(not b.pickup_shown("virus-disk") and b.heart_shown("trabolta-heart"), "wave 26: a taken disk stays hidden across a rebuild; the heart keeps the King's state")
+	b.clear_taken()
+	_check(b.pickup_shown("virus-disk"), "wave 26: clear_taken shows it again")
+	var nok: Dictionary = house.duplicate(true)
+	nok["props"] = (nok["props"] as Array).filter(func(pr: Dictionary) -> bool: return pr["kind"] != "king")
+	b.set_king({})
+	b.build(nok)
+	_check(b.heart_shown("trabolta-heart"), "wave 26: on a map with no King the heart always shows")
+	_check(HouseBuilder.heart_pulse(0.0) == 0.0 and _near(HouseBuilder.heart_pulse(0.09), 1.0) and _near(HouseBuilder.heart_pulse(0.35), 0.65) and HouseBuilder.heart_pulse(1.0) == 0.0 and _near(HouseBuilder.heart_pulse(1.29), 1.0), "wave 26: the beat is the three.js heart's lub-dub every 1.2 s")
 	b.free()
 	# The front door's outside: the void grows past it; the spawn is no void.
 	var front: Array = [-0.45, 0.0, -5.0]
@@ -3956,6 +3988,110 @@ func _test_escape() -> void:
 
 
 const ESCAPE_SCARE_PLUS := Game.ESCAPE_SCARE + 0.1
+
+
+## Wave 26 (R6, R7): the heart, shown once the King has fallen, posts its
+## moment on the way in (lines over it; none yet → again on the next way
+## in; already → silent); the disk posts on reach (taken → hidden, a blip,
+## the lines; far → again soon); the assignment's heartHeard / picked hold
+## across a re-scan; an old server gives up.
+func _test_heart_pickup() -> void:
+	var got: Array = await _game_on_show()
+	var main: Node = got[0]
+	var game: Game = got[1]
+	var link: LinkBase = got[2]
+	var house: Dictionary = got[3]
+	var player := game.player
+	var moments: Array = link.get("moments")
+	var heart_at: Array = HouseMoment.moment_prop(house, "trabolta-heart", "heart")["pos"]
+	var disk_at: Array = HouseMoment.moment_prop(house, "virus-disk", "pickup")["pos"]
+	var hall := [4.5, -2.7, 18.5]
+	link.assignment_received.emit(_assignment(house, "hp-1", true))
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	_check(moments.is_empty() and not game.builder.heart_shown("trabolta-heart"), "heart: no shared King → no heart, no moment")
+	link.give_king({"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true})
+	game._process(0.016)
+	_check(moments == [["heart", "trabolta-heart"]] and game.prop_state("trabolta-heart") == "pending", "heart: the King fallen, the heart reached → one heart moment (%s)" % [moments])
+	game._process(0.5)
+	_check(moments.size() == 1, "heart: … only one while it is out")
+	link.call("answer_moment", "heart", "ok", {"ok": true, "kind": "heart", "lines": []})
+	game._process(1.0)
+	_check(moments.size() == 1 and game.prop_state("trabolta-heart") == "rearm", "heart: no lines (he isn't awake) → nothing until the next way in")
+	player.teleport(HouseFrames.vec(hall), 0.0)
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	_check(moments.size() == 2, "heart: … the next way in tries again")
+	game.speech.stop()
+	link.call("answer_moment", "heart", "ok", {"ok": true, "kind": "heart", "lines": [{"from": "Trabolta", "text": "So. You found where I keep myself."}]})
+	game.speech.tick(0.0)
+	_check(game.speech.caption_text() == "So. You found where I keep myself." and game.speech.on_prop() and game.prop_state("trabolta-heart") == "done", "heart: his lines play over the heart (%s)" % game.speech.caption_text())
+	player.teleport(HouseFrames.vec(hall), 0.0)
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	_check(moments.size() == 2, "heart: heard once, never again this walk")
+	game.speech.stop()
+
+	# The disk.
+	player.teleport(HouseFrames.vec(disk_at), 0.0)
+	game._process(0.016)
+	_check(moments.back() == ["pickup", "virus-disk"], "pickup: in reach → a pickup moment (%s)" % [moments.back()])
+	link.call("answer_moment", "pickup", "far", {"error": "far", "distance": 1.3})
+	game._process(1.0)
+	_check(moments.size() == 3 and game.builder.pickup_shown("virus-disk"), "pickup: 'far' → wait")
+	game._process(0.6)
+	_check(moments.size() == 4, "pickup: … then again")
+	game.sfx.log.clear()
+	link.call("answer_moment", "pickup", "ok", {"ok": true, "kind": "pickup", "lines": [{"from": "Truther", "text": "Download complete."}], "item": "virus", "prop": "virus-disk"})
+	game.speech.tick(0.0)
+	_check(not game.builder.pickup_shown("virus-disk") and game.sfx.log == ["pickup"] and game.speech.caption_text() == "Download complete." and not game.speech.on_prop(), "pickup: taken → the disk goes, a blip, the line head-locked")
+	game._process(2.0)
+	_check(moments.size() == 4 and game.prop_state("virus-disk") == "done", "pickup: … once")
+	game.speech.stop()
+	link.session_over.emit("test")
+
+	# A re-scan: the assignment says what this program already has.
+	var a := _assignment(house, "hp-2", true)
+	a["picked"] = ["virus-disk"]
+	a["heartHeard"] = true
+	link.assignment_received.emit(a)
+	_check(not game.builder.pickup_shown("virus-disk") and game.prop_state("virus-disk") == "done" and game.prop_state("trabolta-heart") == "done", "re-scan: picked hides the disk, heartHeard silences the heart")
+	var n := moments.size()
+	player.teleport(HouseFrames.vec(disk_at), 0.0)
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	_check(moments.size() == n, "re-scan: … no moment for either")
+	link.session_over.emit("test")
+	link.assignment_received.emit(_assignment(house, "hp-3", true))
+	_check(game.builder.pickup_shown("virus-disk") and game.prop_state("virus-disk") == "", "re-scan: an old server's assignment (no picked) shows the disk")
+	player.teleport(HouseFrames.vec(disk_at), 0.0)
+	game._process(0.016)
+	link.call("answer_moment", "pickup", "already", {"error": "already"})
+	_check(not game.builder.pickup_shown("virus-disk"), "pickup: 'already' hides the disk")
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	link.call("answer_moment", "heart", "not found", {"error": "not found"})
+	player.teleport(HouseFrames.vec(hall), 0.0)
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	_check(game.prop_state("trabolta-heart") == "done" and moments.back()[0] == "heart" and moments.filter(func(m: Array) -> bool: return m[0] == "heart").size() == 3, "heart: an old server (not found) → given up for the walk")
+	link.session_over.emit("test")
+	# Sealed (the King stood again on the server) → the next way in.
+	link.assignment_received.emit(_assignment(house, "hp-4", true))
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	link.call("answer_moment", "heart", "sealed", {"error": "sealed"})
+	game._process(0.016)
+	_check(game.prop_state("trabolta-heart") == "rearm", "heart: sealed → the next way in")
+	link.call("answer_moment", "heart", "doors are closed", {})
+	link.session_over.emit("test")
+	main.queue_free()
+	await process_frame
 
 
 ## ServerLink's voice URLs: the session's stream + upload on the event, ""

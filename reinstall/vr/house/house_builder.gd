@@ -13,6 +13,14 @@
 ## player still behind it or in the doorway ([method hold_door]): then he
 ## stands, but his collider and the leaves' stay off until they are clear.
 ##
+## Trabolta's heart (a `heart` prop, wave 26 R6) is a dark rack with a
+## slowly beating red core behind a smoked front — no label, rows or
+## coloured lights (nothing like the real patch bay) — shown only while the
+## map's King has fallen (always, on a map with no King). A pickup (a
+## `pickup` prop, R7: the virus) is a 3.5" floppy spinning and bobbing over
+## its spot with a sickly green glow, hidden once this program took it
+## ([method set_pickup_taken], kept across rebuilds). Neither collides.
+##
 ## A terminal with a live camera feed ([method set_cam], from [CamFeeds])
 ## shows it on a 4:3 panel in place of its screen. A terminal heard through
 ## the voice link ([VoiceLink]) has an [AudioStreamPlayer3D] "Voice" under
@@ -63,6 +71,14 @@ var _held := {}
 var _terminals := {}
 ## Terminal id → the camera feed it shows ([method set_cam]); kept across rebuilds.
 var _cams := {}
+## Heart prop id → `{root, core, glow, light, mat}` ([method heart_node]).
+var _hearts := {}
+## Pickup prop id → `{root, disk, phase}`; and the ones this program took
+## ([method set_pickup_taken]), kept across rebuilds.
+var _pickups := {}
+var _taken := {}
+## The beat's / the disk's clock (s).
+var _t := 0.0
 ## Terminal id → true while it has a voice emitter ([method voice_emitter]);
 ## kept across rebuilds (the emitter itself is new: its generator starts empty).
 var _voices := {}
@@ -98,6 +114,8 @@ func clear() -> void:
 	_body = null
 	_kings = {}
 	_leaves = {}
+	_hearts = {}
+	_pickups = {}
 
 
 ## World (VR space) point → house `[x, y, z]`.
@@ -415,6 +433,10 @@ func _build_props() -> void:
 					_collide_box(pos + basis * Vector3(0, size.y / 2.0, 0), size, basis)
 			"king":
 				_build_king(root, prop, pos, size, basis, solid)
+			"heart":
+				_build_heart(root, prop, size)
+			"pickup":
+				_build_pickup(root, prop)
 		if prop.get("label") != null and str(prop["label"]) != "":
 			var color := HouseLook.INK
 			if kind == "label" and prop.get("color") is String:
@@ -470,6 +492,200 @@ func _build_king(root: Node3D, prop: Dictionary, pos: Vector3, size: Vector3, ba
 	if solid:
 		collider = _collide_box(pos + basis * Vector3(0, size.y / 2.0, 0), size, basis)
 	_kings[str(prop["id"])] = {"body": mi, "crown": crown, "health": health, "text": text, "bar": bar, "collider": collider, "height": size.y}
+
+
+# --- the heart and the pickups (wave 26) -------------------------------------
+
+## Seconds per heartbeat (the three.js heart's HEART_BEAT_S: a slow 50 bpm).
+const HEART_BEAT_S := 1.2
+## The core's colour (a deep ember red).
+const HEART_COLOR := Color("#c8102e")
+## A pickup's disk floats this high (m) over its spot, bobs this much, turns this often (turns / s).
+const PICKUP_HOVER := 0.75
+const PICKUP_BOB := 0.06
+const PICKUP_SPIN := 0.25
+const PICKUP_GLOW := Color("#7dff3a")
+## A real 3.5" disk is 90 × 94 × 3.3 mm; drawn this many times larger.
+const PICKUP_SCALE := 2.6
+
+
+## The beat's shape at `t` s (the three.js `heartPulse`): two thumps ("lub-dub"), then rest; 0 … 1.
+static func heart_pulse(t: float) -> float:
+	var p := fposmod(t, HEART_BEAT_S)
+	var thump := func(at: float, width: float, height: float) -> float:
+		var x := (p - at) / width
+		return 0.0 if x < 0.0 or x > 1.0 else height * sin(x * PI)
+	return minf(1.0, float(thump.call(0.0, 0.18, 1.0)) + float(thump.call(0.24, 0.22, 0.65)))
+
+
+## The heart: a plinth, a dark cabinet and a cap (the prop's size, 0.6 ×
+## 1.7 × 0.6 by default), a red core in a recess on its face (−z, the
+## prop's yaw), a smoked front over it and a soft red light. No label.
+func _build_heart(root: Node3D, prop: Dictionary, size: Vector3) -> void:
+	var w := size.x if size.x > 0.0 else 0.6
+	var h := size.y if size.y > 0.0 else 1.7
+	var d := size.z if size.z > 0.0 else 0.6
+	root.set_meta("height", h)
+	var shell := HouseLook.paint(prop.get("color", "#141418"), Color("#141418"))
+	for part: Array in [[Vector3(w, h * 0.04, d), h * 0.02], [Vector3(w * 0.94, h * 0.92, d * 0.94), h * 0.5], [Vector3(w, h * 0.04, d), h * 0.98]]:
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = part[0]
+		mi.mesh = box
+		mi.position.y = part[1]
+		mi.material_override = shell
+		mi.name = "Rack"
+		root.add_child(mi)
+	var core_y := h * 0.55
+	var core_r := minf(w, h) * 0.2
+	var core := MeshInstance3D.new()
+	core.name = "Core"
+	var sphere := SphereMesh.new()
+	sphere.radius = core_r
+	sphere.height = core_r * 2.0
+	sphere.radial_segments = 14
+	sphere.rings = 8
+	core.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = HEART_COLOR
+	core.material_override = mat
+	core.position = Vector3(0, core_y, -d * 0.2)
+	root.add_child(core)
+	var front := MeshInstance3D.new()
+	front.name = "Front"
+	var fq := QuadMesh.new()
+	fq.size = Vector2(w * 0.8, h * 0.55)
+	front.mesh = fq
+	var smoke := StandardMaterial3D.new()
+	smoke.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	smoke.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	smoke.albedo_color = Color(0.04, 0.04, 0.06, 0.55)
+	front.material_override = smoke
+	front.rotation.y = PI  # a QuadMesh faces +z; the face looks −z
+	front.position = Vector3(0, core_y, -d * 0.47 - 0.006)
+	root.add_child(front)
+	var light := OmniLight3D.new()
+	light.name = "Glow"
+	light.light_color = HEART_COLOR
+	light.omni_range = 2.2
+	light.position = Vector3(0, core_y, -d * 0.6)
+	root.add_child(light)
+	_hearts[str(prop["id"])] = {"root": root, "core": core, "light": light, "mat": mat}
+	_beat(_hearts[str(prop["id"])])
+
+
+func _beat(heart: Dictionary) -> void:
+	var p := heart_pulse(_t)
+	var sc := 1.0 + 0.14 * p
+	(heart["core"] as Node3D).scale = Vector3(sc, sc, sc)
+	(heart["mat"] as StandardMaterial3D).albedo_color = HEART_COLOR.lerp(Color("#ff4060"), 0.35 * p)
+	(heart["light"] as OmniLight3D).light_energy = 0.5 + 1.1 * p
+
+
+## A pickup: the floppy (shell, metal shutter and hub, a blank sticker),
+## stood on its edge over the spot, and a green light. No label.
+func _build_pickup(root: Node3D, prop: Dictionary) -> void:
+	var w := 0.09 * PICKUP_SCALE
+	var hgt := 0.094 * PICKUP_SCALE
+	var t := 0.0033 * PICKUP_SCALE
+	var disk := Node3D.new()
+	disk.name = "Disk"
+	disk.position.y = PICKUP_HOVER
+	root.add_child(disk)
+	var shell := StandardMaterial3D.new()
+	shell.albedo_color = Color("#1c1f1a")
+	shell.emission_enabled = true
+	shell.emission = Color("#1f4a10")
+	shell.emission_energy_multiplier = 0.6
+	for part: Array in [
+		["Shell", Vector3(w, hgt, t), Vector3.ZERO, shell],
+		["Shutter", Vector3(w * 0.55, hgt * 0.36, t * 1.15), Vector3(w * 0.05, hgt * 0.32, 0), HouseLook.paint("#b8bcc0")],
+		["Hub", Vector3(w * 0.2, w * 0.2, t * 1.15), Vector3(0, -hgt * 0.05, 0), HouseLook.paint("#b8bcc0")],
+		["Sticker", Vector3(w * 0.78, hgt * 0.45, t * 1.1), Vector3(0, -hgt * 0.22, 0), HouseLook.paint("#e9eee0")],
+	]:
+		var mi := MeshInstance3D.new()
+		mi.name = part[0]
+		var box := BoxMesh.new()
+		box.size = part[1]
+		mi.mesh = box
+		mi.position = part[2]
+		mi.material_override = part[3]
+		disk.add_child(mi)
+	var light := OmniLight3D.new()
+	light.name = "Glow"
+	light.light_color = PICKUP_GLOW
+	light.light_energy = 0.9
+	light.omni_range = 1.4
+	disk.add_child(light)
+	var id := str(prop["id"])
+	_pickups[id] = {"root": root, "disk": disk, "phase": float(HouseDuck.fnv1a32(id) % 1000) / 1000.0}
+	root.visible = not _taken.has(id)
+	_spin(_pickups[id])
+
+
+func _spin(p: Dictionary) -> void:
+	var disk: Node3D = p["disk"]
+	var ph: float = p["phase"]
+	disk.rotation.y = TAU * PICKUP_SPIN * (_t + ph * 4.0)
+	disk.position.y = PICKUP_HOVER + sin(TAU * (_t * 0.5 + ph)) * PICKUP_BOB
+
+
+func _process(delta: float) -> void:
+	if _hearts.is_empty() and _pickups.is_empty():
+		return
+	_t += delta
+	for id: String in _hearts:
+		if (_hearts[id]["root"] as Node3D).visible:
+			_beat(_hearts[id])
+	for id: String in _pickups:
+		if (_pickups[id]["root"] as Node3D).visible:
+			_spin(_pickups[id])
+
+
+## Heart prop `id`'s node (its base; meta `height`), null when there is none.
+func heart_node(id: String) -> Node3D:
+	return _hearts[id]["root"] if _hearts.has(id) else null
+
+
+## Whether heart `id` shows (the map's King has fallen, or there is none).
+func heart_shown(id: String) -> bool:
+	return _hearts.has(id) and (_hearts[id]["root"] as Node3D).visible
+
+
+## Whether the map's King has fallen for the heart: no King on the map, or
+## the shared King's state says fallen.
+func _heart_open() -> bool:
+	if _kings.is_empty():
+		return true
+	return not king_state.is_empty() and king_state.get("fallen") == true
+
+
+## This program took pickup `id` (`taken`): its disk hides — kept across
+## rebuilds; false shows it again.
+func set_pickup_taken(id: String, taken: bool) -> void:
+	if taken:
+		_taken[id] = true
+	else:
+		_taken.erase(id)
+	if _pickups.has(id):
+		(_pickups[id]["root"] as Node3D).visible = not taken
+
+
+## Every pickup shown again (a new walk).
+func clear_taken() -> void:
+	for id: String in _taken.keys():
+		set_pickup_taken(id, false)
+
+
+## Whether pickup `id`'s disk shows.
+func pickup_shown(id: String) -> bool:
+	return _pickups.has(id) and (_pickups[id]["root"] as Node3D).visible
+
+
+## Pickup `id`'s disk node, for the tests (null when none).
+func pickup_disk(id: String) -> Node3D:
+	return _pickups[id]["disk"] if _pickups.has(id) else null
 
 
 ## A closed leaf in every guarded door's gap ([method HouseGeometry.door_gap];
@@ -548,6 +764,9 @@ func _apply_king() -> void:
 				continue
 			(leaf["mesh"] as Node3D).visible = not open
 			(leaf["collider"] as CollisionShape3D).disabled = open
+	var heart_on := _heart_open()
+	for id: String in _hearts:
+		(_hearts[id]["root"] as Node3D).visible = heart_on
 
 
 ## Down on one knee (half his height, bowed forward), or standing.

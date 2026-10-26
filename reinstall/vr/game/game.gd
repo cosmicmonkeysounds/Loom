@@ -36,6 +36,16 @@
 ##   (closed doors, an old server, a refusal). Within
 ##   [constant HouseEscape.ESCAPE_COOLDOWN_MS] of the last, the void puts
 ##   them back quietly (no scare, no moment).
+## - **The heart** (R6, a `heart` prop): once the King has fallen it beats
+##   in the server room; the first time the program stands
+##   [constant HouseMoment.HEART_INSET_M] inside its room a heart moment
+##   goes up, and the answer's lines play over it. No lines (he isn't awake
+##   yet) → tried again on the next way in; "already" or the assignment's
+##   `heartHeard` → silent for the night.
+## - **The pickup** (R7, a `pickup` prop: the virus disk): within
+##   [constant HouseMoment.PICKUP_REACH_M] a pickup moment goes up; taken
+##   (or "already", or in the assignment's `picked`), the disk goes, a blip
+##   plays and the answer's lines are captioned.
 ## - **Found**: egg, flight, "REINSTALLATION COMPLETE" (or "YOU FOUND
 ##   GERALD" for a program that wasn't corrupted); then the session ends and
 ##   the lobby comes back.
@@ -105,6 +115,9 @@ const MIC_TEST_LIMIT := 30.0
 ## [constant ESCAPE_WAIT] s for the server before the teleport.
 const ESCAPE_SCARE := 1.5
 const ESCAPE_WAIT := 3.0
+## A heart / pickup moment refused for now (closed doors, no pose yet, out
+## of reach, an error) is tried again after this long (s).
+const MOMENT_RETRY := 1.5
 
 var link: LinkBase
 var flow := GameFlow.new()
@@ -146,6 +159,12 @@ var _mic_test_left := 0.0
 var _escape_t := -1.0
 var _escape_answer: Dictionary = {}
 var _escaped_at := -1.0
+## Heart / pickup prop id → `{kind, state, retry}`: state "" (ready) ·
+## "pending" · "wait" (retry after `retry` s) · "rearm" (again once the
+## player has left it) · "done" (nothing more this walk).
+var _props := {}
+## The prop each kind's moment is out for ("" = none).
+var _moment_out := {"heart": "", "pickup": ""}
 var _found_pending := false
 var _found_retry := 0.0
 ## Why the headset counts as away → the wall-clock second the session ends
@@ -468,6 +487,7 @@ func _on_assignment(a: Dictionary) -> void:
 	_escape_t = -1.0
 	_escape_answer = {}
 	_escaped_at = -1.0
+	_reset_props(a)
 	_reveal_after = maxf(0.0, float(link.config.get("trail_delay", HouseRoute.PATH_REVEAL_MS / 1000.0)))
 	trail_revealed = false
 	trail.clear()
@@ -749,6 +769,7 @@ func _tick_play(delta: float) -> void:
 			trail.clear()
 
 	_tick_quack(feet, duck_p, delta)
+	_tick_props(house, feet, delta)
 	_found_retry -= delta
 	if not _found_pending and _found_retry <= 0.0 and is_at_duck(house, feet, duck_p):
 		_found_pending = true
@@ -819,6 +840,121 @@ func _on_moment_answered(kind: String, result: String, data: Dictionary) -> void
 				_escape_answer = {"result": result, "data": data}
 			elif result == "ok":
 				_say_lines(data, null)  # landed after the wait: the lines still play
+		"heart", "pickup":
+			var id := str(_moment_out.get(kind, ""))
+			_moment_out[kind] = ""
+			if id == "" or not _props.has(id):
+				return
+			if kind == "heart":
+				_on_heart(id, result, data)
+			else:
+				_on_pickup(id, result, data)
+
+
+# --- the heart and the pickups (R6, R7) ---
+
+
+## A new walk: every heart and pickup ready again, except what the
+## assignment says this program already has (`heartHeard`, `picked`;
+## missing on an old server = none).
+func _reset_props(a: Dictionary) -> void:
+	_props = {}
+	_moment_out = {"heart": "", "pickup": ""}
+	builder.clear_taken()
+	var picked: Array = a.get("picked") if a.get("picked") is Array else []
+	for kind: String in ["heart", "pickup"]:
+		for p: Dictionary in HouseMoment.props_of(builder.house, kind):
+			var id := str(p["id"])
+			var done: bool = (kind == "heart" and a.get("heartHeard") == true) or (kind == "pickup" and picked.has(id))
+			_props[id] = {"kind": kind, "state": "done" if done else "", "retry": 0.0}
+			if kind == "pickup" and done:
+				builder.set_pickup_taken(id, true)
+
+
+## The prop state for `id` (made ready the first time: a map edit may add one).
+func _prop_state(id: String, kind: String) -> Dictionary:
+	if not _props.has(id):
+		_props[id] = {"kind": kind, "state": "", "retry": 0.0}
+	return _props[id]
+
+
+## Reaching a shown heart, or a disk in reach, posts its moment — one per
+## kind at a time; a refused one waits, or re-arms once the player has left.
+func _tick_props(house: Dictionary, feet: Array, delta: float) -> void:
+	for kind: String in ["heart", "pickup"]:
+		for p: Dictionary in HouseMoment.props_of(house, kind):
+			var id := str(p["id"])
+			var st := _prop_state(id, kind)
+			if st["state"] == "done" or st["state"] == "pending":
+				continue
+			var there: bool
+			if kind == "heart":
+				there = builder.heart_shown(id) and HouseMoment.heart_reached(house, feet, p)
+			else:
+				there = builder.pickup_shown(id) and HouseMoment.pickup_reach(house, feet, p)
+			match st["state"]:
+				"rearm":
+					if not there:
+						st["state"] = ""
+					continue
+				"wait":
+					st["retry"] = float(st["retry"]) - delta
+					if float(st["retry"]) > 0.0:
+						continue
+					st["state"] = ""
+			if there and _moment_out[kind] == "":
+				st["state"] = "pending"
+				_moment_out[kind] = id
+				link.moment(kind, id)
+
+
+func _prop_wait(id: String) -> void:
+	_props[id]["state"] = "wait"
+	_props[id]["retry"] = MOMENT_RETRY
+
+
+## The heart's answer: his lines over it (done), none yet (again on the
+## next way in), already heard (silent), sealed / not there (the next way
+## in), a wait for closed doors or no pose yet; an old server or a bad prop: give up.
+func _on_heart(id: String, result: String, data: Dictionary) -> void:
+	match result:
+		"ok":
+			var lines: Variant = data.get("lines")
+			if lines is Array and not (lines as Array).is_empty():
+				_props[id]["state"] = "done"
+				_say_lines(data, builder.heart_node(id))
+			else:
+				_props[id]["state"] = "rearm"
+		"already", "not found", "no such prop", "bad moment", "offline":
+			_props[id]["state"] = "done"
+		"sealed", "not there":
+			_props[id]["state"] = "rearm"
+		_:
+			_prop_wait(id)
+
+
+## The pickup's answer: taken (the disk goes, a blip, the lines), already
+## taken (the disk goes), out of reach / closed doors / no pose yet (again
+## soon); an old server or a bad prop: give up (the disk stays).
+func _on_pickup(id: String, result: String, data: Dictionary) -> void:
+	match result:
+		"ok":
+			_props[id]["state"] = "done"
+			builder.set_pickup_taken(id, true)
+			sfx.play("pickup")
+			_say_lines(data, null)
+		"already":
+			_props[id]["state"] = "done"
+			builder.set_pickup_taken(id, true)
+		"not found", "no such prop", "bad moment", "offline":
+			_props[id]["state"] = "done"
+		_:
+			_prop_wait(id)
+
+
+## Heart / pickup `id`'s state ("" ready · pending · wait · rearm · done), for the tests.
+func prop_state(id: String) -> String:
+	return str(_props[id]["state"]) if _props.has(id) else ""
 
 
 ## Speak and caption a moment's `lines` (`[{from, text}]`) — over `anchor`
