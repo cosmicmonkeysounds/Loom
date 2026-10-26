@@ -866,8 +866,13 @@ export function onNowBar(q: Queued, nowBar: boolean): boolean {
  * below the modal rungs flashes the NOW title bar (`now`) instead of
  * stacking a second copy of it as a sticky or a balloon. `now` (wall
  * clock) lets a big held behind a busy surface show after `BIG_HOLD_MS`.
+ * `covered` (wave 26 C3: the glitch takeover is on screen) holds back every
+ * surface, stickies and balloons too: nothing reaches the screen (no
+ * chime, no balloon timer) under the takeover, and nothing leaves the
+ * queue, so it all lands right after it.
  */
-export function surfacesOf(s: MomentsState, held: boolean, nowBar = false, now = Number.POSITIVE_INFINITY): Surfaces {
+export function surfacesOf(s: MomentsState, held: boolean, nowBar = false, now = Number.POSITIVE_INFINITY, covered = false): Surfaces {
+  if (covered) return { big: null, bigIndex: 0, bigTotal: 0, now: null, balloon: null, sticky: null, stickyCount: 0, stickyKeys: [], modal: null, modalIndex: 0, modalTotal: 0 };
   const bigs = s.queue.filter((q) => q.level === "big");
   const first = bigs[0] ?? null;
   const big = first !== null && (!held || now - first.queuedAt >= BIG_HOLD_MS) ? first : null;

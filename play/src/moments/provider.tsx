@@ -274,6 +274,10 @@ function useMomentsEngine(input: MomentsInput): Engine {
   mem.state = state;
   const [holds, setHolds] = useState(0);
   const held = holds > 0;
+  // Wave 26 (T2, C3): the glitch takeover on screen. While it runs every
+  // surface waits (`surfacesOf`'s `covered`), so a sticky or a balloon lands
+  // right after it, never under it; the wiring is with the glitch below.
+  const [takeover, setTakeover] = useState<Engine["takeover"]>(null);
   const [tick, setTick] = useState(() => Date.now());
   // Bumped when the sign-in memory changes (a row deleted, the window read).
   const [rev, setRev] = useState(0);
@@ -622,7 +626,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
     rememberMoments(role, session, mem);
   }, [role, session, mem]);
 
-  const surfaces = surfacesOf(state, held, input.nowBar === true, held ? tick : Number.POSITIVE_INFINITY);
+  const surfaces = surfacesOf(state, held, input.nowBar === true, held ? tick : Number.POSITIVE_INFINITY, takeover !== null);
 
   // The blue screen's boilerplate: only the sign-in's first (G6).
   if (surfaces.modal !== null && surfaces.modal.level === "bsod" && mem.firstBsod === null && !mem.signIn.bsodShown && session !== null) {
@@ -718,8 +722,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
   }, [input.alertLevel]);
 
   // Wave 26 (T2): the story's glitch takes the phone over, once, live
-  // (`takeoverDue`), and holds the queue for its length.
-  const [takeover, setTakeover] = useState<Engine["takeover"]>(null);
+  // (`takeoverDue`), and holds the queue for its length (`takeover`, above).
   const glitchSeen = useRef<{ first: boolean; at: number | null }>({ first: true, at: null });
   const glitchAt = input.glitch?.at ?? null;
   useEffect(() => {

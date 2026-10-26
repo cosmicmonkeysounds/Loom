@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { TAKEOVER_CAPTION, TAKEOVER_TEXT, TAKEOVER_WINDOWS, GlitchTakeover, cascadeAt } from "../src/moments/glitch-takeover.tsx";
-import { TAKEOVER_FRESH_MS, TAKEOVER_LIGHT_MS, TAKEOVER_MS, takeoverDue } from "../src/moments/model.ts";
+import { EMPTY_MOMENTS, TAKEOVER_FRESH_MS, TAKEOVER_LIGHT_MS, TAKEOVER_MS, momentsReducer, surfacesOf, takeoverDue, type Moment, type MomentsAction } from "../src/moments/model.ts";
 import { readBundledCss } from "./css.ts";
 
 const src = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), "utf8");
@@ -102,5 +102,38 @@ describe("the wiring", () => {
     expect(src("guest/app.tsx")).toMatch(/glitch: st\.night\?\.glitch,\s*takeover: "full",/u);
     expect(src("booth/app.tsx")).toMatch(/glitch: s\.view\?\.night\?\.glitch,\s*takeover: player \? "full" : "light",/u);
     expect(src("director.tsx")).not.toContain("MomentsProvider");
+  });
+});
+
+describe("the takeover holds every surface (C3: the !📺 sticky lands after it, not under it)", () => {
+  const mo = (seq: number, over: Partial<Moment> = {}): Moment => ({ key: `m:${seq}`, seq, severity: "major", kind: "alert", caption: "Announcement", text: "📺 000. 000. 000.", channel: "lobby", at: seq * 1000, phase: "bingo", ...over });
+  const arrive = (moments: Moment[], level: "balloon" | "sticky" | "dialog", role: "guest" | "booth" = "guest"): MomentsAction => ({ type: "arrive", moments, visible: true, level, role, now: 0, phase: "bingo", batch: false });
+  it("a sticky, a balloon, a dialog and a big all wait while covered, and come back when it ends", () => {
+    let s = momentsReducer(EMPTY_MOMENTS, arrive([mo(1)], "sticky"));
+    s = momentsReducer(s, arrive([mo(2, { severity: "minor" })], "balloon"));
+    const covered = surfacesOf(s, true, false, Number.POSITIVE_INFINITY, true);
+    expect([covered.big, covered.now, covered.balloon, covered.sticky, covered.modal]).toEqual([null, null, null, null, null]);
+    expect([covered.stickyCount, covered.stickyKeys]).toEqual([0, []]);
+    // Nothing left the queue: the moments land as soon as the takeover ends.
+    const after = surfacesOf(s, false);
+    expect(after.sticky?.moment.seq).toBe(1);
+    expect(after.balloon?.moment.seq).toBe(2);
+    let d = momentsReducer(EMPTY_MOMENTS, arrive([mo(3)], "dialog"));
+    expect(surfacesOf(d, true, false, Number.POSITIVE_INFINITY, true).modal).toBeNull();
+    d = momentsReducer(d, arrive([mo(4, { severity: "big", kind: "readout" })], "dialog"));
+    expect(surfacesOf(d, true, false, Number.POSITIVE_INFINITY, true).big).toBeNull();
+    expect(surfacesOf(d, false).big?.moment.seq).toBe(4);
+  });
+  it("a booth's balloon (no NOW bar) waits too; the old holds (pass, scan sheet) still let stickies through", () => {
+    const s = momentsReducer(EMPTY_MOMENTS, arrive([mo(5)], "balloon", "booth"));
+    expect(surfacesOf(s, true, false, Number.POSITIVE_INFINITY, true).balloon).toBeNull();
+    const t = momentsReducer(EMPTY_MOMENTS, arrive([mo(6)], "sticky"));
+    expect(surfacesOf(t, true).sticky?.moment.seq).toBe(6);
+  });
+  it("the provider covers the surfaces for the takeover's whole length (full and light)", () => {
+    const p = src("moments/provider.tsx");
+    expect(p).toMatch(/surfacesOf\(state, held, input\.nowBar === true, held \? tick : Number\.POSITIVE_INFINITY, takeover !== null\)/u);
+    // Declared before the surfaces are read (a const after them would be in its TDZ).
+    expect(p.indexOf("const [takeover, setTakeover]")).toBeLessThan(p.indexOf("const surfaces = surfacesOf("));
   });
 });
