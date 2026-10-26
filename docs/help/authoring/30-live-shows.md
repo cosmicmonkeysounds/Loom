@@ -2,7 +2,7 @@
 title: Live shows — people, places, casting
 section: Live Shows
 order: 30
-keywords: founding, faction mode, founded faction, factions, majority_faction, faction_of, faction_name, faction_founder, L1220, badge, badges, L1219, lobby hidden, hidden lobby, live, judge, wanted, wanted board, reinstall, archive, majority, sides, crews, crew, recruit, recruited, founded, unaligned, party favour, L1216, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
+keywords: founding, faction mode, founded faction, factions, majority_faction, faction_of, faction_name, faction_founder, L1220, badge, badges, L1219, lobby hidden, hidden lobby, live, judge, wanted, wanted board, reinstall, archive, majority, sides, crews, crew, recruit, recruited, founded, unaligned, party favour, L1216, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board, lock, lock:, locked, locked phone, lock screen
 ---
 
 In a live Loom show, the audience aren't just readers — they're
@@ -321,13 +321,14 @@ faction's name (it is typed by a guest) out of anything an agent-voiced
 character hears. Lint **`L1220 FoundingInvalid`** flags a `founding:` that
 is no expression. With no `founding:` line, crews stay friend clubs.
 
-## The Wanted board, the reinstallation gate, finished threads
+## The Wanted board, the reinstallation gate, the locked phone, finished threads
 
-Three more header lines (in the first file, like `watch:`):
+Four more header lines (in the first file, like `watch:`):
 
 ```loom
 wanted: program.marked as program.marked_for by program.escort_by, for Antivirus
 reinstall: program.marked == true or program.corrupted == true or Night.ended == true
+lock: program.corrupted == true and Night.banish != true and Night.ended != true
 archive: The Uploader when program.cleared == true
 ```
 
@@ -345,13 +346,26 @@ archive: The Uploader when program.cleared == true
   captured guests yourself. *Trapped in the Internet* opens it to everyone
   once `Night.ended` is true: a party favour (runs after the end never
   count on the duck board).
+- **`lock: <condition>`** (wave 26), read per guest like `reinstall:`,
+  **locks** a guest's phone while it holds for them. The phone shows a
+  lock screen: the current objective, a read-only copy of the
+  Installation Wizard's thread, the pass and the `restricted: allow`
+  buttons (Bathroom Mode). The server refuses everything else the guest
+  sends (`403 locked`), DMs, the codex, the wallet, check-ins and crews
+  included, and so a director's Run → Players or a terminal piloting
+  them. The lock is never journaled: it follows the story's state, so
+  release (`set program.corrupted = false`) lifts it on the next update.
+  It is for guests only (a player's booth never locks), so nothing the
+  story waits on should need a locked guest's answer. Pair it with `ack:
+  none` on the capture's moment ([Broadcasts](broadcast-improv.md)).
 - **`archive: <LOCATION | CHANNEL | CHARACTER> when <condition>`**
   (repeatable) moves a guest's finished thread, once the condition holds
   for them, down into *Other rooms* (an arrival DM after they're through the
   door). It still exists and still works.
 
 Lint **`L1216 HeaderLineInvalid`** flags a `wanted:` / `archive:` /
-`reinstall:` line that doesn't parse or names nothing.
+`reinstall:` line that doesn't parse or names nothing (a warning), and a
+`lock:` line that is no expression (an error).
 
 ## Badges and a hidden lobby
 

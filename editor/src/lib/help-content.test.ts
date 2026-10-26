@@ -157,6 +157,16 @@ describe('the bundled authoring collection', () => {
     expect(setup?.blocks.some((b) => b.kind === 'para' && /\]\(run-mode\)|Run mode/.test(b.text))).toBe(true)
   })
 
+  it('wave 26: the live-show help covers ack: none and the lock: header', () => {
+    const exits = helpArticle('broadcast-improv')
+    expect(exits?.plain).toContain('ack: none')
+    expect(exits?.plain).toContain('l1226')
+    const live = helpArticle('live-shows')
+    expect(live?.plain).toContain('lock: program.corrupted == true')
+    expect(helpSearch('ack none').map((h) => h.article.slug)).toContain('broadcast-improv')
+    expect(helpSearch('lock').map((h) => h.article.slug)).toContain('live-shows')
+  })
+
   it('helpArticle(null) is the welcome page; unknown slugs are undefined', () => {
     expect(helpArticle(null)?.slug).toBe('welcome')
     expect(helpArticle('does-not-exist')).toBeUndefined()
