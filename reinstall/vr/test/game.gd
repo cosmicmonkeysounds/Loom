@@ -69,6 +69,7 @@ func _run() -> void:
 	await _test_voice_game()
 	_test_sfx()
 	await _test_sfx_game()
+	await _test_path_reveal()
 	await _test_autopilot_physics()
 	await _test_room_scale()
 
@@ -813,7 +814,7 @@ func _test_server_link() -> void:
 	# Wave 16: an unmarked program's refusal reads as such, not "not running".
 	sl.begin("g-free")
 	tr.answer("/spatial/begin", 409, {"error": "not marked for reinstallation"})
-	_check(failed.size() == 2 and str(failed[1]) == "Not marked for reinstallation — until the night is over, only a marked program may play." and sl.get("phase") == "ready", "link: a begin 409 (not marked) says why (%s)" % [failed])
+	_check(failed.size() == 2 and str(failed[1]) == "Not marked for reinstallation." and sl.get("phase") == "ready", "link: a begin 409 (not marked) says why (%s)" % [failed])
 	sl.begin("g-early")
 	tr.answer("/spatial/begin", 409, {"error": "no scenario loaded"})
 	_check(failed.size() == 3 and str(failed[2]) == "The show isn't running.", "link: any other begin 409 is the show not running")
@@ -1634,7 +1635,7 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	player.teleport(b.to_world(east), b.yaw_to_world(0.0))  # beside him, looking north
 	game._process(0.016)
 	_check(sub.text == Game.KING_NOTICE, "game king: near him the HUD says how to hit him (%s)" % sub.text)
-	_check(Game.KING_NOTICE == "Pull the trigger to hit the King — once per visit.", "game king: the notice's words")
+	_check(Game.KING_NOTICE == "Pull the trigger to hit the King.", "game king: the notice's words (no rule said up front, G1)")
 	_check(Game.session_over_text("unmarked") == "No longer marked for reinstallation — the simulation ended." and Game.session_over_text("timeout") == "Session ended (timeout).", "game: an unmarked walk's end says why (wave 18b, R16)")
 	game.hud.notice("")
 	game._process(0.016)
@@ -1787,7 +1788,8 @@ func _assignment(house: Dictionary, sid: String, captured: bool) -> Dictionary:
 func _test_main_and_game() -> void:
 	var house: Dictionary = _placeholder_house()
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	# The trail tests ignore the path reveal (R2; its own test is _test_path_reveal).
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "trail_delay": 0})
 	link.house = house
 	link.house_version = "test"
 	var main: Node = load("res://main.tscn").instantiate()
@@ -3503,7 +3505,7 @@ func _test_sfx_game() -> void:
 	var player := game.player
 	player.set_physics_process(false)
 	player.read_input = false
-	game.set("path_reveal_s", 0.0)
+	link.config["trail_delay"] = 0.0
 	var sfx := game.sfx
 	_check(sfx != null and sfx.get_parent() == game and not sfx.hum_on(), "sfx game: the game has its sounds, quiet in the lobby")
 	_check(game.duck.emitter != null and game.duck.emitter.bus == "Sfx" and game.duck.emitter.attenuation_model == AudioStreamPlayer3D.ATTENUATION_DISABLED, "sfx game: Gerald's quack comes from him, on the Sfx bus")
@@ -3561,6 +3563,85 @@ func _test_sfx_game() -> void:
 	link.king_hit_answered.emit("not near", {})
 	link.give_king({"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true})
 	_check(sfx.log == ["thud", "buzz", "fanfare"], "sfx game: the King's hit, a refusal, his fall (%s)" % [sfx.log])
+	link.session_over.emit("test")
+	main.queue_free()
+	await process_frame
+
+
+## Wave 26 (R2): the golden trail is hidden for the walk's first minute
+## (the HUD just says "find Gerald"), then a notice and the trail at once;
+## "Gerald moved." names no arrows before it; a re-scan restarts the
+## minute; the lobby and the found screen never count; the quack never
+## waits for it. R3: the HUD never carries the King's health.
+func _test_path_reveal() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var player := game.player
+	player.set_physics_process(false)
+	player.read_input = false
+	var sub: Label3D = game.hud.get("_sub")
+	var hint: Label3D = game.hud.get("_hint")
+	_check(_near(float(link.config["trail_delay"]), HouseRoute.PATH_REVEAL_MS / 1000.0), "reveal: a minute by default")
+	for i in 30:
+		game._process(1.0)  # the lobby never counts
+	link.assignment_received.emit(_assignment(house, "rv-1", true))
+	_check(hint.text == "find Gerald" and game.trail.count() == 0 and not game.trail_revealed, "reveal: the walk starts with no trail, the HUD says find Gerald (%s)" % hint.text)
+	for i in 59:
+		game._process(1.0)
+	_check(game.trail.count() == 0 and not game.trail_revealed, "reveal: no trail after 59 s")
+	var moved: Dictionary = {}
+	for spot: Dictionary in house["duck"]["spots"]:
+		if str(spot["id"]) != str(game.flow.assignment["duck"]["id"]):
+			moved = spot
+			break
+	link.duck_changed.emit(moved)
+	_check(sub.text == "Gerald moved.", "reveal: before the trail, 'Gerald moved.' names no arrows (%s)" % sub.text)
+	game._process(0.5)
+	game._process(0.6)
+	_check(game.trail_revealed and game.trail.count() > 0 and sub.text == "A golden trail flickers on.", "reveal: after a minute the trail draws at once, with a notice (%d chevrons, %s)" % [game.trail.count(), sub.text])
+	link.duck_changed.emit(moved.duplicate())
+	_check(sub.text == "Gerald moved — follow the arrows.", "reveal: after it, the old line (%s)" % sub.text)
+	_check(hint.text == "find Gerald", "reveal: the hint never says follow the arrows")
+	# R3: whatever the King, the HUD carries no health.
+	link.give_king({"id": "cold-lock-king", "hp": 7, "max": 15, "fallen": false})
+	game._process(0.1)
+	var hud_texts: Array = [game.hud.room_text(), hint.text, sub.text, game.hud.big_text(), game.hud.mic_text()]
+	_check(not hud_texts.any(func(t: String) -> bool: return t.contains("KING") or t.contains("/ 15") or t.contains("7")), "R3: the HUD never carries the King's health (%s)" % [hud_texts])
+	var bar := game.builder.get_node_or_null("Prop_cold-lock-king/Health/HealthText") as Label3D
+	_check(bar != null and bar.text == "THE KING  7 / 15", "R3: … it hangs over him (%s)" % (bar.text if bar != null else "none"))
+	# A re-scan restarts the minute.
+	link.session_over.emit("test")
+	link.assignment_received.emit(_assignment(house, "rv-2", true))
+	game._process(1.0)
+	_check(game.trail.count() == 0 and not game.trail_revealed, "reveal: a re-scan restarts the minute")
+	# The quack does not wait for the trail.
+	var dp: Array = game.flow.assignment["duck"]["pos"]
+	player.teleport(Vector3(dp[0] + 1.5, dp[1], dp[2]), 0.0)
+	game.sfx.log.clear()
+	game._process(1.0)
+	game._process(1.0)
+	_check(game.sfx.log.has("quack") and not game.trail_revealed, "reveal: Gerald quacks before the trail is up")
+	# The found screen never counts.
+	player.teleport(Vector3(dp[0] + 0.3, dp[1], dp[2]), 0.0)
+	game._process(0.016)
+	link.found_answered.emit(true, {"ok": true, "released": true})
+	game._process(GameFlow.CELEBRATE - 0.1)
+	_check(game.state() == GameFlow.State.FOUND and float(game.get("_played_for")) < 4.0, "reveal: the found screen never counts")
+	game._process(0.5)
+	# `trail_delay 0` (dev, tests): the trail at once, no notice.
+	link.config["trail_delay"] = 0.0
+	link.assignment_received.emit(_assignment(house, "rv-3", true))
+	game._process(0.016)
+	_check(game.trail_revealed and game.trail.count() > 0 and sub.text != "A golden trail flickers on.", "reveal: trail_delay 0 → the trail at once, no notice")
 	link.session_over.emit("test")
 	main.queue_free()
 	await process_frame

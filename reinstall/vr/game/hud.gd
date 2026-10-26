@@ -1,9 +1,13 @@
 ## Head-locked text (kept low and small — a VR HUD must not crowd the view):
-## the room you are in + "follow the golden arrows" while playing, and the
-## big found screen ("REINSTALLATION COMPLETE" / "YOU FOUND GERALD").
-## Parented to the camera by [Game].
+## the room you are in + "find Gerald" while playing, and the big found
+## screen ("REINSTALLATION COMPLETE" / "YOU FOUND GERALD"). It never shows
+## the King's health (that hangs over him, [HouseBuilder]). Parented to the
+## camera by [Game].
 class_name Hud
 extends Node3D
+
+## The play hint (wave 26: no mechanics, G1 / R2).
+const HINT := "find Gerald"  # DRAFT w26 (G1, R2, C12)
 
 var _room: Label3D
 var _hint: Label3D
@@ -37,7 +41,7 @@ func hide_all() -> void:
 ## While playing: the room label and the instruction.
 func show_play(room_label: String) -> void:
 	_room.text = room_label
-	_hint.text = "follow the golden arrows to the duck"
+	_hint.text = HINT
 	_big.text = ""
 	_sub.text = ""
 

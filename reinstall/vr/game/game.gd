@@ -10,7 +10,9 @@
 ##   asks for the grant again, and the build stamp names the APK (wave 26).
 ## - **Playing**: spawned at the assignment's spawn in the virtual house;
 ##   poses stream to the server (feet, house frame); the golden trail is
-##   re-routed twice a second; within 0.9 m (plan) of the duck, on its
+##   hidden for the walk's first minute (wave 26 R2, `trail_delay`, the
+##   house's PATH_REVEAL_MS; the HUD just says "find Gerald"), then a notice
+##   and the trail, re-routed twice a second; within 0.9 m (plan) of the duck, on its
 ##   floor or within 1.2 m of its height (the server's rule), the game
 ##   claims it (`found`) — a "not near" answer just retries. A map edit that
 ##   moves the duck moves it here too ([signal LinkBase.duck_changed]); a
@@ -66,7 +68,7 @@ const NOTICE_TIME := 4.0
 const KING_NEAR := 1.5
 ## Beyond this the notice may be said again on the next approach.
 const KING_FAR := 3.0
-const KING_NOTICE := "Pull the trigger to hit the King — once per visit."
+const KING_NOTICE := "Pull the trigger to hit the King."  # DRAFT w26 (G1, C12)
 const KING_HIT := "You hit him."
 const KING_DOWN := "He is down: the cold door is open."
 ## A visit ends at the duck, not at Leave or a timeout: a re-scan before
@@ -75,6 +77,11 @@ const KING_USED := "You hit him this reinstallation. Find Gerald before you hit 
 const KING_CLOSER := "Get closer to the King and face him."
 const KING_STANDS := "The King stands again."
 const KING_PAUSED := "The show is paused."
+## The path reveal (R2): the notice when the trail comes on, and "Gerald
+## moved" before / after it.
+const TRAIL_NOTICE := "A golden trail flickers on."  # DRAFT w26 (R2, C12)
+const DUCK_MOVED := "Gerald moved."  # DRAFT w26 (R2, C12)
+const DUCK_MOVED_TRAIL := "Gerald moved — follow the arrows."
 ## `--autopilot` gives up (exit 1) after this many seconds.
 const AUTOPILOT_LIMIT := 180.0
 ## `--hit-king`: the autopilot stops this far (plan m) in front of the King,
@@ -104,6 +111,11 @@ var sfx: Sfx
 var pointer: LobbyPointer
 
 var _trail_in := 0.0
+## Seconds of this walk played so far (PLAYING only), and when the trail
+## comes on ([member trail_revealed]); the minute restarts on a re-scan.
+var _played_for := 0.0
+var _reveal_after := HouseRoute.PATH_REVEAL_MS / 1000.0
+var trail_revealed := false
 var _cand_in := 0.0
 ## Seconds to Gerald's next quack look ([method Sfx.quack_plan]).
 var _quack_in := Sfx.QUACK_FIRST
@@ -377,7 +389,7 @@ func _on_duck_changed(d: Dictionary) -> void:
 	if autopilot != null:
 		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
 		print("autopilot: the duck moved to %s in %s — re-planned" % [d.get("id", ""), d.get("room", "")])
-	_notice("Gerald moved — follow the arrows.")
+	_notice(DUCK_MOVED_TRAIL if trail_revealed else DUCK_MOVED)
 
 
 ## The map may be the wrong one (`text`), or is right again (`""`).
@@ -420,6 +432,10 @@ func _on_assignment(a: Dictionary) -> void:
 	_quack_in = Sfx.QUACK_FIRST
 	_fanfare_in = -1.0
 	sfx.set_hum(true)
+	_played_for = 0.0
+	_reveal_after = maxf(0.0, float(link.config.get("trail_delay", HouseRoute.PATH_REVEAL_MS / 1000.0)))
+	trail_revealed = false
+	trail.clear()
 	_king_said = false
 	# The server's assignment says when a re-scan is the visit that already
 	# hit him (missing on an old server = not yet).
@@ -676,12 +692,16 @@ func _tick_play(delta: float) -> void:
 	_tick_voice()
 
 	var duck_p: Array = flow.assignment["duck"]["pos"]
+	_tick_reveal(delta)
 	_trail_in -= delta
 	if _trail_in <= 0.0:
 		_trail_in = TRAIL_INTERVAL
 		if king_door_open and not _king_fallen and _update_route_house() and autopilot != null:
 			autopilot.plan(route_house, feet, _autopilot_goal())
-		refresh_trail(feet, duck_p)
+		if trail_revealed:
+			refresh_trail(feet, duck_p)
+		else:
+			trail.clear()
 
 	_tick_quack(feet, duck_p, delta)
 	_found_retry -= delta
@@ -689,6 +709,19 @@ func _tick_play(delta: float) -> void:
 		_found_pending = true
 		link.report_found()
 	_tick_king(house, feet, builder.yaw_to_house(player.head_yaw()))
+
+
+## The path reveal (R2): the trail stays off for the walk's first
+## [member _reveal_after] s of play, then comes on at once with a notice.
+## The autopilot routes itself and never waits.
+func _tick_reveal(delta: float) -> void:
+	_played_for += delta
+	if trail_revealed or (_played_for < _reveal_after and autopilot == null):
+		return
+	trail_revealed = true
+	_trail_in = 0.0
+	if _reveal_after > 0.0 and autopilot == null:
+		_notice(TRAIL_NOTICE)
 
 
 ## Gerald quacks from where he sits, louder and more often the closer the
