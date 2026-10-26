@@ -6,6 +6,8 @@
 //! between lines. The caption shows the display text; the voice says the
 //! pronounced one (`pronounce`, the shared table, C10). While a line plays
 //! the game holds its own mic (`speaking`), so the terminals never hear it.
+//! A voice that runs past the cap, or never gets the page's voice floor, is
+//! cut — never left queued to be said later under another line's caption.
 //!
 //! `LinePlayer` is the timing, every effect injected (node-tested);
 //! `deviceSpeaker()` is the browser half — the terminal's device voice
@@ -14,7 +16,8 @@
 //! never talks over the terminal around it.
 
 import table from "@loom/terminal/speech/pronounce.json";
-import { DeviceEngine, readingMs, SpeechQueue } from "@loom/terminal/speech/engine.ts";
+import { DeviceEngine, readingMs, SpeechQueue, voiceFloor } from "@loom/terminal/speech/engine.ts";
+import type { SpeechEngine, VoiceFloor } from "@loom/terminal/speech/engine.ts";
 import { CHARACTER_VOICE } from "@loom/terminal/speech/pick-voice.ts";
 import { splitSentences } from "@loom/terminal/speech/split.ts";
 import type { MomentLine } from "../api.ts";
@@ -23,8 +26,15 @@ import type { MomentLine } from "../api.ts";
  *  (C11), held here until the voice lane's constant is on master. */
 export const IN_GAME_LINE_GAP_MS = 700;
 
-/** A voice that never ends is cut after this (ms): a caption never wedges. */
+/** A voice that never ends is cut after this (ms) from when it started: a
+ *  caption never wedges, and the voice never outlasts its caption. */
 export const LINE_SPEAK_CAP_MS = 12_000;
+
+/** A line whose voice has not started after this (ms) — the page's voice
+ *  floor held elsewhere, say an announcement on the tent laptop — is cut
+ *  before it starts and only captioned, so it is never said later under
+ *  another line's caption. */
+export const LINE_START_WAIT_MS = 8_000;
 
 // --- the pronunciation table (C10) ---------------------------------------------
 
@@ -71,8 +81,12 @@ export function pronounce(text: string, t: PronounceTable = table): string {
 // --- the timing ----------------------------------------------------------------
 
 export interface LinePlayerOptions {
-  /** Say this (already pronounced) text; resolves when the voice is done. */
-  speak(text: string): Promise<void>;
+  /** Say this (already pronounced) text; call `started` the moment the
+   *  voice begins (the floor held); resolve when it is done or cut. */
+  speak(text: string, started: () => void): Promise<void>;
+  /** Cut the line being said or waiting to be (the cap, or a start that
+   *  never came): nothing of it is said after its caption is gone. */
+  cut(): void;
   /** The caption: a line, or null to clear it. */
   show(line: MomentLine | null): void;
   sleep(ms: number): Promise<void>;
@@ -126,10 +140,21 @@ export class LinePlayer {
       if (g !== this.gen) return;
       const line = lines[i]!;
       this.o.show(line);
-      const said = this.o.speak(pronounce(line.text)).catch(() => {});
-      const capped = Promise.race([said, this.o.sleep(LINE_SPEAK_CAP_MS)]);
       // The reading time is the floor: a silent device still shows it that long.
-      await Promise.all([capped, this.o.sleep(readingMs(line.text))]);
+      const shown = this.o.sleep(readingMs(line.text));
+      let begin!: () => void;
+      const begun = new Promise<"start">((r) => (begin = () => r("start")));
+      const said = this.o.speak(pronounce(line.text), begin).then(
+        () => "done" as const,
+        () => "done" as const,
+      );
+      // The caption stays up while the voice waits for the floor and while it
+      // speaks; a voice that never starts, or runs past the cap, is cut — so
+      // the next caption never shows over this line's voice.
+      const first = await Promise.race([begun, said, this.o.sleep(LINE_START_WAIT_MS).then(() => "late" as const)]);
+      if (first === "late") this.o.cut();
+      else if (first === "start" && (await Promise.race([said, this.o.sleep(LINE_SPEAK_CAP_MS).then(() => "cap" as const)])) === "cap") this.o.cut();
+      await shown;
       if (g === this.gen) this.o.show(null);
     }
     // Two batches back to back keep the gap between them too.
@@ -139,35 +164,55 @@ export class LinePlayer {
 
 // --- the browser half ------------------------------------------------------------
 
+export interface DeviceSpeaker {
+  /** Say `text`; `started` fires when its first sentence begins (the floor
+   *  held). Resolves when it has been said, or cut by `stop`. */
+  speak(text: string, started?: () => void): Promise<void>;
+  /** Cut what this speaker is saying or waiting to say — only its own
+   *  utterance, never the terminal's around it. */
+  stop(): void;
+}
+
 /** The device's own voice (the character's lean: male first), one queue on
- *  the page's voice floor. `speak` resolves when the text has been said. */
-export function deviceSpeaker(): { speak(text: string): Promise<void>; stop(): void } {
+ *  the page's voice floor. The engine and the floor are injectable (tests). */
+export function deviceSpeaker(o: { engine?: SpeechEngine; floor?: VoiceFloor } = {}): DeviceSpeaker {
   const waiting = new Map<number, () => void>();
+  const starting = new Map<number, () => void>();
   let next = 1;
   const queue = new SpeechQueue(
-    { primary: new DeviceEngine({ voice: "", speed: 1, prefer: CHARACTER_VOICE }), fallback: null },
+    { primary: o.engine ?? new DeviceEngine({ voice: "", speed: 1, prefer: CHARACTER_VOICE }), fallback: null },
     {
       level: () => {},
-      chunk: () => {},
+      chunk: (id, index) => {
+        if (index !== 0) return;
+        starting.get(id)?.();
+        starting.delete(id);
+      },
       done: (id) => {
+        starting.delete(id);
         waiting.get(id)?.();
         waiting.delete(id);
       },
       idle: () => {},
     },
+    o.floor ?? voiceFloor,
   );
   return {
-    speak(text: string): Promise<void> {
+    speak(text: string, started?: () => void): Promise<void> {
       const chunks = splitSentences(text);
       if (chunks.length === 0) return Promise.resolve();
       const id = next++;
       return new Promise<void>((resolve) => {
         waiting.set(id, resolve);
+        if (started !== undefined) starting.set(id, started);
         queue.say({ id, chunks });
       });
     },
     stop(): void {
+      // A cut line still waiting for the floor is dropped when it gets it
+      // (the queue's generation moved on): it is never said late.
       queue.stop();
+      starting.clear();
       for (const r of waiting.values()) r();
       waiting.clear();
     },

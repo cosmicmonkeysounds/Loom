@@ -69,6 +69,7 @@ import {
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
 import { deviceSpeaker, LinePlayer } from "./lines.ts";
+import type { DeviceSpeaker } from "./lines.ts";
 import { escapeDue, escapeStep, heartStep, PICKUP_NOTICE, pickupStep, SCARE_MS, SCARE_WAIT_MS } from "./moments.ts";
 import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsOptions, type PhysicsWorld } from "./physics.ts";
 import { NoRenderer } from "./no-start.ts";
@@ -277,7 +278,7 @@ export class Game {
   /** In-game speech (`lines.ts`): the caption on screen and whether a line plays. */
   private caption: MomentLine | null = null;
   private speaking = false;
-  private speaker: { speak(text: string): Promise<void>; stop(): void } | null = null;
+  private speaker: DeviceSpeaker | null = null;
   private lines: LinePlayer | null = null;
   /** Held by the host (`hold`): no input, no leash, the pump still alive. */
   private held = false;
@@ -340,7 +341,8 @@ export class Game {
     const speaker = deviceSpeaker();
     this.speaker = speaker;
     this.lines = new LinePlayer({
-      speak: (text) => speaker.speak(text),
+      speak: (text, started) => speaker.speak(text, started),
+      cut: () => speaker.stop(),
       show: (line) => {
         this.caption = line;
         this.lastHudAt = Number.NEGATIVE_INFINITY;
