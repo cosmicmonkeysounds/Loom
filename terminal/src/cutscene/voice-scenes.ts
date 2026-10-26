@@ -42,10 +42,15 @@ export const VOICE_SCENES: Readonly<Record<string, VoiceScene>> = {
   },
   // "<pick>." as the bottle lands on the seat; "Truth or dare?" typed after.
   bottle_landed: { beats: ["Bottle Landed"], marks: [BOTTLE_SPIN_MS, BOTTLE_SPIN_MS + 600], tail: 14_000 - (BOTTLE_SPIN_MS + 1800), ownCaption: true },
-  // D1, the story lane's `== Dare Chosen` (2–3 lines): a placeholder until
-  // the story and terminal lanes merge; the voice lane recomputes the marks
-  // from the merged beat before it merges (C11).
-  dare_chosen: { beats: ["Dare Chosen"], marks: [1500, 4000, 6500] },
+  // D1, the story lane's `== Dare Chosen` (3 lines, 6 sentences: "A dare.
+  // <pick> chose a dare, in my computer." / "Programs do not dare." /
+  // "Programs answer." / "Everyone, watch closely: …" / "Antivirus!" /
+  // "Take <pick> to the Internet. Now."), in the terminal lane's VerdictTv
+  // (dare, `DARE_CHOSEN_MS` = 14 000): his first line over the DARE stamp,
+  // the lesson as the ticker comes up, "Antivirus!" as the MARKED dialog
+  // opens (3500), the order as the way to THE INTERNET lights (4200); 3 s
+  // of picture after him. Pinned against the story once both lanes merge.
+  dare_chosen: { beats: ["Dare Chosen"], marks: [1200, 2400, 2800, 3000, 3500, 4200], tail: 3000 },
   // "I have compared…" while the tiles flip; the counts as the totals land.
   verdict: { beats: ["The Verdict"], marks: [1200, VERDICT_PLAN.tiles + 7 * VERDICT_PLAN.tileEvery + 100, VERDICT_PLAN.totals - 500, VERDICT_PLAN.totals] },
   // "…The house says YES." while the card is up; "That is the line." on the stamp.

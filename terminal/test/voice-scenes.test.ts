@@ -47,8 +47,10 @@ const LINES = storyLines();
 const PICK: Record<string, (lines: string[]) => string[]> = {
   award: (lines) => lines.slice(0, 1),
 };
-/** Entries for a beat another lane writes this wave: checked once it is in the story. */
-const PENDING = new Set(["dare_chosen"]);
+/** Entries for a beat another lane writes this wave: checked against the
+ *  story once it is in it; until then against the count that lane's branch
+ *  has (oct31-w26/story: `== Dare Chosen`, 3 lines, 6 sentences). */
+const PENDING: Record<string, number> = { dare_chosen: 6 };
 /** Scenes kept on the server's clock because their beat has no line of his. */
 const UNVOICED: Record<string, string> = { truth_answered: "", truth_refused: "", filing_closed: "Filing Closed", zip: "Zip Everyone Out" };
 
@@ -58,7 +60,10 @@ describe("VOICE_SCENES (C11)", () => {
   for (const [id, v] of Object.entries(VOICE_SCENES)) {
     it(`${id}: one mark per sentence he says in ${v.beats.join(", ")}`, () => {
       const present = v.beats.filter((b) => LINES.has(foldName(b)));
-      if (PENDING.has(id) && present.length === 0) return; // not written yet (story lane)
+      if (id in PENDING && present.length === 0) {
+        expect(v.marks.length, `${id}: the story lane's sentence count`).toBe(PENDING[id]);
+        return; // not merged yet (story lane)
+      }
       expect(present, `${id}'s beats are in the story`).toEqual(v.beats);
       const lines = v.beats.flatMap((b) => LINES.get(foldName(b))!);
       const timed = (PICK[id] ?? ((l: string[]) => l))(lines);
@@ -73,7 +78,7 @@ describe("VOICE_SCENES (C11)", () => {
       expect(v.marks[0]!, id).toBeGreaterThanOrEqual(0);
       const def = SCENES.find((d) => d.id === id);
       if (def === undefined) {
-        expect(PENDING.has(id), `${id} is a scene`).toBe(true);
+        expect(id in PENDING, `${id} is a scene`).toBe(true);
         continue;
       }
       expect(def.tv ?? def.wall, `${id} draws on the TV`).toBeDefined();
