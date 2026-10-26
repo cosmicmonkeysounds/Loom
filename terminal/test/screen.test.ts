@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { BIG_LINE_MAX, EMPTY_NIGHT, IDENTIFY_MS, MISSES_OFFLINE, MOMENTS_MAX, attractOf, bigLineOf, momentsOf, type ScreenMoment, identifyOn, kingOf, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
+import { BIG_LINE_MAX, EMPTY_NIGHT, IDENTIFY_MS, MISSES_OFFLINE, MOMENTS_MAX, attractOf, bigLineOf, momentsOf, type ScreenMoment, identifyOn, kingOf, missesAfter, parseScreenState, pollScreen, programOf, screenReachable, screenStateUrl, spotOf, tvSpeechOf, voiceOf } from "../src/screen.ts";
 
 const config = defaultConfig({ eventId: "evt 1", token: "tok", name: "Kitchen", spot: "start-bar", view: "auto" });
 
@@ -254,5 +254,36 @@ describe("big house broadcasts off the wire", () => {
   it("a whole answer carries them through parseScreenState", () => {
     const s = parseScreenState({ attract: false, moments: [{ seq: 9, at: T0, kind: "big", text: "!!🎀 Encarta wins a Bingo Ribbon!" }] }, T0);
     expect(s?.moments).toEqual([big(9, T0, "🎀 Encarta wins a Bingo Ribbon!")]);
+  });
+});
+
+describe("wave 26 (C4): program.glitch, spot.here, tvSpeech", () => {
+  it("parses program.glitch like a flicker; an older server's none is left out", () => {
+    expect(programOf({ glitch: { value: "glitch", cue: "screens_glitch", seq: 4, at: 1234 } }).glitch).toEqual({ value: "glitch", cue: "screens_glitch", seq: 4, at: 1234 });
+    expect(programOf({ glitch: { value: "glitch", cue: "screens_glitch", seq: 4, at: 0 } }).glitch?.at).toBe(0);
+    expect(programOf({}).glitch ?? null).toBeNull();
+    expect(programOf({})).not.toHaveProperty("glitch");
+    expect(programOf({ glitch: { value: 3 } }).glitch ?? null).toBeNull();
+    expect(parseScreenState({ ...body, program: { glitch: { value: "glitch", cue: "tv_glitch", seq: 1, at: 9 } } })?.program.glitch).toMatchObject({ cue: "tv_glitch" });
+  });
+
+  it("parses spot.here when the server sends it; absent (an older server) stays absent", () => {
+    expect(spotOf({ announce: true, here: 2 })).toEqual({ announce: true, here: 2 });
+    expect(spotOf({ announce: false, here: 0 })).toEqual({ announce: false, here: 0 });
+    expect(spotOf({ announce: true })).toEqual({ announce: true });
+    expect(spotOf({ announce: true, here: -1 })).toEqual({ announce: true });
+    expect(spotOf({ announce: true, here: "2" })).toEqual({ announce: true });
+    expect(spotOf({ here: 2 })).toBeNull();
+    expect(parseScreenState({ ...body, spot: { announce: false, here: 1 } })?.spot).toEqual({ announce: false, here: 1 });
+  });
+
+  it("parses tvSpeech; malformed or missing is null", () => {
+    expect(tvSpeechOf({ seq: 812, chunk: 2, at: 5000 })).toEqual({ seq: 812, chunk: 2, at: 5000 });
+    expect(tvSpeechOf({ seq: 812, chunk: null, at: 5000 })).toEqual({ seq: 812, chunk: null, at: 5000 });
+    expect(tvSpeechOf({ seq: 812, at: 5000 })).toBeNull();
+    expect(tvSpeechOf({ seq: "812", chunk: 1, at: 5000 })).toBeNull();
+    expect(tvSpeechOf(null)).toBeNull();
+    expect(parseScreenState(body)?.tvSpeech).toBeNull();
+    expect(parseScreenState({ ...body, tvSpeech: { seq: 7, chunk: 0, at: 3 } })?.tvSpeech).toEqual({ seq: 7, chunk: 0, at: 3 });
   });
 });

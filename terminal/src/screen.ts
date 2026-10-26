@@ -102,6 +102,11 @@ export interface ScreenProgram {
   overlay: ScreenShot | null;
   blackout: ScreenShot | null;
   flicker: ScreenShot | null;
+  /** (wave 26, T2) The last glitch cue (`screens_glitch`, …): a one-shot that
+   *  never touches the slide or the overlay; `at` 0 = history. Absent: none
+   *  yet, or an older server (`programOf` leaves it out then); read it as
+   *  `program.glitch ?? null`. */
+  glitch?: ScreenShot | null;
 }
 
 /** A character's line in the voice room (`beat` null = a director's typed `say`). */
@@ -492,13 +497,41 @@ export function resultsOf(raw: unknown): ScreenResults | null {
  *  `announce` = the house list (`audio.json` `announce.terminals`) names it. */
 export interface ScreenSpot {
   announce: boolean;
+  /** (wave 26, R5) Live reinstalled players whose presence room is this
+   *  spot's map room. Absent: the server can't tell (no spatial map, or an
+   *  older server): fall back to the house-wide `reinstalling` rule. */
+  here?: number;
 }
 
 /** A spot block off the wire; anything malformed is null (an older server sends none). */
 export function spotOf(raw: unknown): ScreenSpot | null {
   if (typeof raw !== "object" || raw === null) return null;
-  const a = (raw as Record<string, unknown>)["announce"];
-  return typeof a === "boolean" ? { announce: a } : null;
+  const r = raw as Record<string, unknown>;
+  const a = r["announce"];
+  if (typeof a !== "boolean") return null;
+  const here = r["here"];
+  return typeof here === "number" && Number.isFinite(here) && here >= 0 ? { announce: a, here: Math.floor(here) } : { announce: a };
+}
+
+/** (wave 26, V1 phase 2) What the TV is speaking now, as the server heard it. */
+export interface TvSpeech {
+  /** The room line's seq. */
+  seq: number;
+  /** Its sentence (from 0); null = that line is done. */
+  chunk: number | null;
+  /** Server epoch ms the TV's report arrived. */
+  at: number;
+}
+
+/** A `tvSpeech` block off the wire; anything malformed (or an older server's none) is null. */
+export function tvSpeechOf(raw: unknown): TvSpeech | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  const ok = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
+  if (!ok(r["seq"]) || !ok(r["at"])) return null;
+  const chunk = r["chunk"];
+  if (chunk !== null && !ok(chunk)) return null;
+  return { seq: Math.floor(r["seq"]), chunk: chunk === null ? null : Math.floor(chunk), at: r["at"] };
 }
 
 /** The TV's voice block (K-18). */
@@ -552,6 +585,10 @@ export interface ScreenState {
   /** This terminal's map spot (wave 18b; null: unplaced, or an older server).
    *  Optional for hand-built states; `parseScreenState` always sets it. */
   spot?: ScreenSpot | null;
+  /** (wave 26, V1 phase 2) What the TV is speaking now (null: no TV reported
+   *  in the last 6 s, or an older server). Optional for hand-built states;
+   *  `parseScreenState` always sets it. */
+  tvSpeech?: TvSpeech | null;
 }
 
 /** A ranked chart the server keeps live (`SCREEN_CHARTS`, core). */
@@ -646,11 +683,13 @@ export function programOf(raw: unknown): ScreenProgram {
   const r = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
   const slideShot = shotOf(r["slide"]);
   const slideRaw = (r["slide"] ?? {}) as Record<string, unknown>;
+  const glitch = shotOf(r["glitch"]);
   return {
     slide: slideShot === null ? null : { ...slideShot, kind: slideRaw["kind"] === "base" ? "base" : "slide", persist: slideRaw["persist"] === true },
     overlay: shotOf(r["overlay"]),
     blackout: shotOf(r["blackout"]),
     flicker: shotOf(r["flicker"]),
+    ...(glitch !== null ? { glitch } : {}),
   };
 }
 
@@ -696,6 +735,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     reinstalling: typeof r["reinstalling"] === "number" && r["reinstalling"] > 0 ? Math.floor(r["reinstalling"]) : 0,
     results: resultsOf(r["results"]),
     spot: spotOf(r["spot"]),
+    tvSpeech: tvSpeechOf(r["tvSpeech"]),
   };
 }
 
