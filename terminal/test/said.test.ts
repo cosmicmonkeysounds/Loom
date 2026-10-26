@@ -276,3 +276,31 @@ describe("browser floor (Chrome 87 / Safari 14)", () => {
     expect(src).not.toMatch(/\(\?<[=!]/u);
   });
 });
+
+describe("RoomSpeech → sp= (wave 26, V1 phase 2)", () => {
+  it("reports the line and sentence being said, then d once it is done", () => {
+    const s = new RoomSpeech();
+    const detach = s.attach();
+    s.heard(40);
+    s.queued([41]);
+    expect(s.report(41)).toEqual({ talk: true, said: 40 });
+    s.speaking(41, 0);
+    expect(s.report(41)).toEqual({ talk: true, said: 40, sp: { seq: 41, chunk: 0 } });
+    expect(speechQuery(s.report(41))).toEqual({ talk: "1", said: "40", sp: "41:0" });
+    s.speaking(41, 2);
+    expect(speechQuery(s.report(41))["sp"]).toBe("41:2");
+    s.spoke(40); // another line's end changes nothing
+    expect(speechQuery(s.report(41))["sp"]).toBe("41:2");
+    s.spoke(41);
+    s.finished(41);
+    expect(s.report(41)).toEqual({ talk: false, said: 41, sp: { seq: 41, chunk: null } });
+    expect(speechQuery(s.report(41))["sp"]).toBe("41:d");
+    // A mute mid-line: done.
+    s.queued([42]);
+    s.speaking(42, 1);
+    s.cleared();
+    expect(speechQuery(s.report(42))["sp"]).toBe("42:d");
+    detach();
+    expect(speechQuery(s.report(42))["sp"]).toBe("42:d");
+  });
+});

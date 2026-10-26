@@ -103,3 +103,19 @@ describe("tv1 boot — Power On", () => {
     }
   });
 });
+
+describe("the introduction on his voice (wave 26, V1)", () => {
+  it("types the sentence the TV is saying, from its mark; with no voice, its own caption", async () => {
+    const { introLine } = await import("../src/cutscene/kit/tv1-boot.tsx");
+    const second = INTRO_CAPTIONS[1]!;
+    expect(introLine(second.start + 100, null)).toEqual(INTRO_CAPTIONS[1]);
+    const said = introLine(second.start + 100, { seq: 9, index: 1, text: "I am Jean Trabolta, and the line changed." });
+    expect(said).toMatchObject({ text: "I am Jean Trabolta, and the line changed.", start: second.start });
+    expect(introLine(INTRO_CAPTIONS[0]!.start + 100, { seq: 9, index: 0, text: INTRO_HELLO })).toBeNull(); // the big HELLO is up
+    // A sentence past the captions takes the last one's mark.
+    expect(introLine(99_999, { seq: 9, index: 9, text: "One more." })?.start).toBe(INTRO_CAPTIONS.at(-1)!.start);
+    const state = fakeState({ now: 1_000_000 + second.start + 2500 });
+    const html = renderToStaticMarkup(createElement(IntroTv as never, { t: second.start + 2500, at: 1_000_000, seq: 1, value: "", state, night: state.night, who: null, target: "tv", sfx: () => false, done: () => {}, reduced: false, voice: { seq: 9, index: 1, text: "Spoken words here." } } as never));
+    expect(html).toContain("Spoken words here.");
+  });
+});

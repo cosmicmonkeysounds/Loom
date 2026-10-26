@@ -22,6 +22,7 @@
 //! Trabolta lines around it.
 
 import { baseOf, type TerminalConfig } from "./config.ts";
+import type { SpeechEvent } from "./cutscene/speech-bus.ts";
 import type { ScreenState, ScreenVoice, VoiceLine } from "./screen.ts";
 
 /** Beats whose lines are sung in the QLab track: captioned, never spoken. */
@@ -170,6 +171,58 @@ export class LinePlayer {
     this.running = false;
     if (this.pending.length > 0) void this.run();
     else this.io.idle();
+  }
+}
+
+/**
+ * (wave 26, V1) What the TV's voice does, told to the cutscenes (the speech
+ * bus, `cutscene/speech-bus.ts`) and to the poll (`RoomSpeech` → `sp=`).
+ * Pure: the clock (`now`, server ms) and the outlets are injected. Only
+ * `speak` lines are fed: a muted, song or text-only line never reaches it.
+ */
+export class TvSpeechFeed {
+  private readonly lines = new Map<number, { beat: string | null; texts: readonly string[]; done: boolean }>();
+  constructor(
+    private readonly io: {
+      emit(e: SpeechEvent): void;
+      /** The server's clock now. */
+      now(): number;
+      /** The room speech the poll reports (`sp=`). */
+      room?: { speaking(seq: number, chunk: number): void; spoke(seq: number): void } | null;
+    },
+  ) {}
+
+  /** The TV took in a line it will say: its sentences' caption texts (`captionChunks`). */
+  queued(line: Pick<TvLine, "seq" | "beat" | "mode">, texts: readonly string[]): void {
+    if (line.mode !== "speak" || texts.length === 0 || this.lines.has(line.seq)) return;
+    this.lines.set(line.seq, { beat: line.beat, texts, done: false });
+    this.io.emit({ kind: "queued", seq: line.seq, beat: line.beat, chunks: texts.length, at: this.io.now() });
+    // Forget old lines (the bus keeps its own ring).
+    if (this.lines.size > 64) for (const k of [...this.lines.keys()].slice(0, this.lines.size - 64)) this.lines.delete(k);
+  }
+
+  /** Sentence `index` of line `seq` starts (the queue's `chunk`). */
+  chunk(seq: number, index: number): void {
+    const l = this.lines.get(seq);
+    if (l === undefined || l.done) return;
+    const at = this.io.now();
+    if (index === 0) this.io.emit({ kind: "line", seq, beat: l.beat, chunks: l.texts.length, texts: l.texts, at });
+    this.io.emit({ kind: "chunk", seq, index, at });
+    this.io.room?.speaking(seq, index);
+  }
+
+  /** Line `seq` is said, or was cut (the queue's `done`). */
+  done(seq: number): void {
+    const l = this.lines.get(seq);
+    if (l === undefined || l.done) return;
+    l.done = true;
+    this.io.emit({ kind: "done", seq, at: this.io.now() });
+    this.io.room?.spoke(seq);
+  }
+
+  /** Everything queued is dropped (the mute, attract, unmount): each line is done. */
+  cancelAll(): void {
+    for (const seq of [...this.lines.keys()]) this.done(seq);
   }
 }
 

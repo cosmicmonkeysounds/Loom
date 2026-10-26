@@ -28,13 +28,15 @@ import { baseOf, type TerminalConfig } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import type { ScreenState } from "./screen.ts";
-import { SpeechQueue, audioUnlocked, unlock, voiceEngines, voiceNote, type EngineKind } from "./speech/engine.ts";
+import { SpeechQueue, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, voiceNote, type EngineKind } from "./speech/engine.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
-import { LinePlayer, cursorAfterGap, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
+import { LinePlayer, TvSpeechFeed, cursorAfterGap, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundMuted } from "./sound/bus.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
+import { emitSpeech, setSpeechLive } from "./cutscene/speech-bus.ts";
+import { serverNow } from "./cutscene/clock.ts";
 import type { RoomSpeech } from "./speech/said.ts";
 
 /** A caption stays up this long after the last line (ms). */
@@ -132,6 +134,11 @@ export function Tv({
 
   // --- the voice: one speech queue, fed one line at a time by the player ---
   const waiters = useRef(new Map<number, () => void>());
+  // Wave 26 (V1): what the voice does goes to the cutscenes (the speech bus,
+  // on the server's clock) and to the poll (`sp=`).
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const feed = useMemo(() => new TvSpeechFeed({ emit: emitSpeech, now: () => serverNow(stateRef.current), room: speech }), [speech]);
   const queue = useMemo(() => {
     const engines = voiceEngines(
       { choice: config.engine, browserVoice: config.browserVoice, serverVoice: config.serverVoice, speed: config.speed, base: baseOf(config), token: config.token },
@@ -142,11 +149,13 @@ export function Tv({
       level: (v) => face.current?.level(v),
       chunk: (id, i) => {
         const text = chunks.get(id)?.[i] ?? "";
+        feed.chunk(id, i);
         setMood(moodOfText(text));
         setSpoken({ seq: id, index: i });
         setSpeaking(true);
       },
       done: (id) => {
+        feed.done(id);
         chunks.delete(id);
         waiters.current.get(id)?.();
         waiters.current.delete(id);
@@ -156,9 +165,9 @@ export function Tv({
         setMood("neutral");
       },
       engine: (kind) => setEngineUsed(kind),
-    });
+    }, voiceFloor, gapsFor(config));
     return { q, chunks };
-  }, [config]);
+  }, [config, feed]);
 
   const lingerTimer = useRef(0);
   const player = useMemo(
@@ -179,6 +188,7 @@ export function Tv({
           }),
         cancel: () => {
           queue.q.stop();
+          feed.cancelAll();
           for (const w of waiters.current.values()) w();
           waiters.current.clear();
           setSpeaking(false);
@@ -189,7 +199,7 @@ export function Tv({
           lingerTimer.current = window.setTimeout(() => setCaption(null), CAPTION_LINGER_MS);
         },
       }, speech),
-    [queue, speech],
+    [queue, speech, feed],
   );
   // While mounted this screen speaks the room's lines (`talk` / `said`).
   useEffect(() => speech.attach(), [speech]);
@@ -213,8 +223,15 @@ export function Tv({
     lastAnswer.current = state.receivedAt;
     const plan = planVoice(voice, from, { character: config.character, muted: mutedRef.current, attract });
     cursor.current = plan.cursor;
+    for (const l of plan.lines) if (l.mode === "speak") feed.queued(l, captionChunks(l.text));
     player.push(plan.lines);
-  }, [state, attract, config.character, cursor, player]);
+  }, [state, attract, config.character, cursor, player, feed]);
+
+  // A voiced scene waits for this TV's voice only while it can speak (wave 26, V1).
+  useEffect(() => {
+    setSpeechLive(!muted && !attract);
+  }, [muted, attract]);
+  useEffect(() => () => setSpeechLive(false), []);
 
   // The mute cuts the line being said at once — and the page's own accents.
   useEffect(() => {

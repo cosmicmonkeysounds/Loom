@@ -437,3 +437,40 @@ describe("one countdown, never two (livetv-3)", () => {
     expect(flag("five_minutes")).toBe(true);
   });
 });
+
+describe("MomentQueue.extendTo (wave 26, V1: a voiced scene's end moves with his voice)", () => {
+  it("moves the playing moment's end, and the next queued moment's start with it", () => {
+    const q = new MomentQueue();
+    q.update(state({ moments: [m(1, T0, "signal", "bottle landed"), m(2, T0 + 100, "beat", "trabolta introduction")] }), T0 + 100, SCENES, "tv");
+    // The intro (priority 5) plays first; the bottle waits behind it.
+    expect(q.current(T0 + 200)?.def.id).toBe("intro");
+    expect(q.playingEnd).toBe(T0 + 100 + 20_000);
+    q.extendTo(2, T0 + 100 + 26_000);
+    expect(q.playingEnd).toBe(T0 + 100 + 26_000);
+    expect(q.current(T0 + 100 + 25_000)?.def.id).toBe("intro"); // past its own 20 s
+    q.extendTo(99, T0 + 999_999); // not the one playing: nothing
+    expect(q.playingEnd).toBe(T0 + 100 + 26_000);
+    const next = q.current(T0 + 100 + 26_000);
+    expect(next).toMatchObject({ seq: 1, start: T0 + 100 + 26_000 });
+  });
+
+  it("is capped: never past ms + VOICE_STRETCH_MAX_MS, never before the start; a hold at its own cap", async () => {
+    const { VOICE_STRETCH_MAX_MS } = await import("../src/cutscene/voice-clock.ts");
+    expect(VOICE_STRETCH_MAX_MS).toBe(20_000);
+    const q = new MomentQueue();
+    q.update(state({ moments: [m(3, T0, "signal", "bottle landed")] }), T0, SCENES, "tv");
+    expect(q.current(T0 + 10)?.def.id).toBe("bottle");
+    q.extendTo(3, T0 + 10_000_000);
+    expect(q.playingEnd).toBe(T0 + 6000 + VOICE_STRETCH_MAX_MS);
+    q.extendTo(3, T0 - 50);
+    expect(q.playingEnd).toBe(T0);
+    expect(q.current(T0 + 10)).toBeNull(); // shortened to its start: over
+    q.extendTo(3, Number.NaN); // nothing playing now
+    const h = new MomentQueue();
+    h.update(state({ moments: [m(4, T0, "signal", "forever")] }), T0, SCENES, "tv");
+    expect(h.current(T0)?.def.id).toBe("holdm");
+    h.extendTo(4, T0 + 10_000_000);
+    expect(h.playingEnd).toBe(T0 + MOMENT_HOLD_MAX_MS);
+    expect(new MomentQueue().playingEnd).toBeNull();
+  });
+});

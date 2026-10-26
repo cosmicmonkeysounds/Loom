@@ -239,3 +239,51 @@ describe("a long line's caption follows the chunk being said (wave 18b)", () => 
     expect(captionText(line, { seq: 2, index: 0 }, pieces)).not.toContain("link");
   });
 });
+
+describe("TvSpeechFeed (wave 26, V1): the TV's voice → the speech bus and sp=", () => {
+  it("queues only spoken lines, starts a line on its first sentence, ends it once", async () => {
+    const { TvSpeechFeed } = await import("../src/tv.ts");
+    const { RoomSpeech, speechQuery } = await import("../src/speech/said.ts");
+    const events: Array<Record<string, unknown>> = [];
+    let clock = 1000;
+    const room = new RoomSpeech();
+    room.attach();
+    const feed = new TvSpeechFeed({ emit: (e) => events.push(e), now: () => clock, room });
+    feed.queued({ seq: 4, beat: "Bottle Landed", mode: "speak" }, ["Excel.", "Truth or dare?"]);
+    feed.queued({ seq: 4, beat: "Bottle Landed", mode: "speak" }, ["Excel.", "Truth or dare?"]); // once
+    feed.queued({ seq: 5, beat: "Song Ending", mode: "song" }, ["la"]);
+    feed.queued({ seq: 6, beat: null, mode: "muted" }, ["Hi."]);
+    feed.queued({ seq: 7, beat: null, mode: "speak" }, []);
+    expect(events).toEqual([{ kind: "queued", seq: 4, beat: "Bottle Landed", chunks: 2, at: 1000 }]);
+    clock = 2000;
+    feed.chunk(4, 0);
+    clock = 3000;
+    feed.chunk(4, 1);
+    feed.chunk(5, 0); // never queued: nothing
+    expect(events.slice(1)).toEqual([
+      { kind: "line", seq: 4, beat: "Bottle Landed", chunks: 2, texts: ["Excel.", "Truth or dare?"], at: 2000 },
+      { kind: "chunk", seq: 4, index: 0, at: 2000 },
+      { kind: "chunk", seq: 4, index: 1, at: 3000 },
+    ]);
+    expect(speechQuery(room.report(4))["sp"]).toBe("4:1");
+    clock = 4000;
+    feed.done(4);
+    feed.done(4);
+    expect(events.at(-1)).toEqual({ kind: "done", seq: 4, at: 4000 });
+    expect(events.filter((e) => e["kind"] === "done")).toHaveLength(1);
+    expect(speechQuery(room.report(4))["sp"]).toBe("4:d");
+    feed.chunk(4, 1); // after done: nothing
+    expect(events).toHaveLength(5);
+  });
+
+  it("a drop (the mute, attract) ends every queued line, said or not", async () => {
+    const { TvSpeechFeed } = await import("../src/tv.ts");
+    const events: Array<Record<string, unknown>> = [];
+    const feed = new TvSpeechFeed({ emit: (e) => events.push(e), now: () => 50 });
+    feed.queued({ seq: 1, beat: "Advice Helped", mode: "speak" }, ["A."]);
+    feed.queued({ seq: 2, beat: "Advice Helped", mode: "speak" }, ["B."]);
+    feed.chunk(1, 0);
+    feed.cancelAll();
+    expect(events.filter((e) => e["kind"] === "done").map((e) => e["seq"])).toEqual([1, 2]);
+  });
+});
