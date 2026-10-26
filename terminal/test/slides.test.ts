@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IdentifyOverlay, ScreenLayer, SlideView } from "../src/ScreenLayer.tsx";
 import { EMPTY_NIGHT, parseScreenState, resetPageFirst, withFirstNow, type ScreenProgram, type ScreenState } from "../src/screen.ts";
-import { BLACKOUT_MS, FLICKER_FRESH_MS, GLITCH_MS, coverOf, GLITCH_TEXT, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartRankedLine, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
+import { BLACKOUT_MS, FLICKER_FRESH_MS, GLITCH_FRESH_MS, GLITCH_MS, coverOf, GLITCH_TEXT, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartRankedLine, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
 
 const T0 = 1_000_000;
 const empty: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
@@ -551,6 +551,41 @@ describe("the glitch takeover (wave 26, T2)", () => {
     const b = withFirstNow(state({ now: 9000 }));
     expect(a.firstNow).toBe(5000);
     expect(b.firstNow).toBe(5000);
+    resetPageFirst();
+  });
+
+  it("never plays the tail of one this page missed: first seen later than GLITCH_FRESH_MS after its cue (a lost server, back mid-takeover)", () => {
+    expect(GLITCH_FRESH_MS).toBe(4000);
+    // Seen one poll after the cue: plays.
+    expect(at(seen({ glitchSeen: T0 + 1800, program: glitchAt(T0) }), 2000).glitch).not.toBeNull();
+    expect(at(seen({ glitchSeen: T0 + GLITCH_FRESH_MS, program: glitchAt(T0) }), GLITCH_FRESH_MS).glitch).not.toBeNull();
+    // First seen 5 s in (the page was cut off around the cue): never, not even its last 3 s.
+    expect(at(seen({ glitchSeen: T0 + 5000, program: glitchAt(T0) }), 5000).glitch).toBeNull();
+    expect(at(seen({ glitchSeen: T0 + 5000, program: glitchAt(T0) }), 6500).glitch).toBeNull();
+  });
+
+  it("remembers when this page first saw each glitch cue (withFirstNow), and only while one is live", () => {
+    resetPageFirst();
+    const g = (now: number, at: number, seq = 9) => withFirstNow(state({ now, program: glitchAt(at, seq) }));
+    expect(withFirstNow(state({ now: T0 - 4000 })).glitchSeen).toBeUndefined();
+    expect(g(T0 + 1500, T0).glitchSeen).toBe(T0 + 1500);
+    // Later answers keep the first sighting.
+    expect(g(T0 + 3500, T0).glitchSeen).toBe(T0 + 1500);
+    // A new cue (a new seq) is a new sighting.
+    expect(g(T0 + 60_000, T0 + 59_000, 10).glitchSeen).toBe(T0 + 60_000);
+    // History (at 0) carries none.
+    expect(g(T0 + 90_000, 0, 10).glitchSeen).toBeUndefined();
+    // A page cut off around the cue: its first sighting is late, so it never plays.
+    resetPageFirst();
+    withFirstNow(state({ now: T0 - 10_000 }));
+    const late = g(T0 + 5000, T0);
+    expect(late.glitchSeen).toBe(T0 + 5000);
+    expect(screenLayers(late, T0, { piloting: false }).glitch).toBeNull(); // (received at T0: server now = its now)
+    // A page that saw it at once plays it.
+    resetPageFirst();
+    withFirstNow(state({ now: T0 - 10_000 }));
+    const prompt = g(T0 + 1200, T0);
+    expect(screenLayers(prompt, T0, { piloting: false }).glitch).toMatchObject({ seq: 9, t: 1200 });
     resetPageFirst();
   });
 

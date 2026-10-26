@@ -51,6 +51,10 @@ export const FLICKER_MS = 1000;
 export const FLICKER_FRESH_MS = 6000;
 /** (wave 26, T2) The glitch takeover's length: shown while its cue is younger than this. */
 export const GLITCH_MS = 8000;
+/** (wave 26, T2) A glitch this page first saw later than this after its cue
+ *  (two wall polls) is one it missed — it lost the server around the cue —
+ *  and never plays, not even its tail. */
+export const GLITCH_FRESH_MS = 4000;
 
 export type OverlayKind = "blackout" | "go_to_living_room" | "alarm";
 
@@ -79,14 +83,18 @@ export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: nul
 /**
  * The glitch takeover at server `serverNow` (wave 26, T2), or null. Only a
  * live one: its cue's `at` > 0 (history folds to 0), younger than
- * `GLITCH_MS`, and later than this page's first answer (`firstNow`: the
- * cue is shared state, so a reload inside the 8 s sees a live `at` it never
- * saw happen — it never plays). A blackout beats it; nothing else does.
+ * `GLITCH_MS`, later than this page's first answer (`firstNow`: the cue is
+ * shared state, so a reload inside the 8 s sees a live `at` it never saw
+ * happen — it never plays), and first seen by this page within
+ * `GLITCH_FRESH_MS` of its cue (`glitchSeen`: a page that lost the server
+ * around the cue and reconnects mid-takeover never plays its tail). A
+ * blackout beats it; nothing else does.
  */
-export function glitchLayer(state: Pick<ScreenState, "program" | "firstNow">, serverNow: number, blackout: boolean): ScreenLayers["glitch"] {
+export function glitchLayer(state: Pick<ScreenState, "program" | "firstNow" | "glitchSeen">, serverNow: number, blackout: boolean): ScreenLayers["glitch"] {
   const g = state.program.glitch ?? null;
   if (g === null || g.at <= 0 || blackout) return null;
   if (state.firstNow !== undefined && g.at <= state.firstNow) return null;
+  if (state.glitchSeen !== undefined && state.glitchSeen - g.at > GLITCH_FRESH_MS) return null;
   const t = serverNow - g.at;
   if (t >= GLITCH_MS) return null;
   return { seq: g.seq, at: g.at, t: Math.max(0, t) };

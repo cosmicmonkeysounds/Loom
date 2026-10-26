@@ -549,10 +549,16 @@ export interface ScreenState {
   /** Local `Date.now()` when this answer arrived (not from the server). */
   receivedAt: number;
   /** (wave 26, T2) The server `now` of this page's first screen answer
-   *  (`useScreenState` stamps it on every answer; `pageFirstNow`). A glitch
+   *  (`useScreenState` stamps it on every answer; `withFirstNow`). A glitch
    *  cued at or before it is one this page never saw happen — a reload mid
    *  glitch — and never plays. Absent (hand-built states): no such bound. */
   firstNow?: number;
+  /** (wave 26, T2) The server `now` of the first answer this page got that
+   *  carried the current glitch cue (`withFirstNow`, remembered per cue). A
+   *  glitch first seen more than `GLITCH_FRESH_MS` after its cue — a page
+   *  that lost the server around it and came back mid-takeover — never
+   *  plays. Absent (hand-built states, no live glitch): no such bound. */
+  glitchSeen?: number;
   night: ScreenNight;
   /** The house's live story moments, oldest first (wave 17; [] from an older server). */
   moments: ScreenMoment[];
@@ -786,7 +792,6 @@ export function watchWhileAsleep(state: ScreenState | null, view: string, room: 
 /** Attract or not: no answer yet is attract (fail closed). A room terminal
  *  (`room` true) also stays on attract when the answer has no room block —
  *  a server too old to say whether its room is open. */
-
 export function attractOf(state: ScreenState | null, room = false): boolean {
   if (state === null) return true;
   return state.attract || (room && state.room === null);
@@ -829,6 +834,31 @@ export function screenReachable(state: ScreenState | null, misses: number): bool
   return state !== null && misses < MISSES_OFFLINE;
 }
 
+/** The server `now` of this page's first screen answer (null: none yet).
+ *  Once per page load, whatever the config: a glitch is live only after it. */
+let pageFirst: number | null = null;
+/** The glitch cue this page last saw (`seq:at`) and the server `now` of the
+ *  first answer that carried it. */
+let glitchFirst: { key: string; now: number } | null = null;
+/**
+ * Stamp an answer with the page's first answer's server time (the first one
+ * sets it) and, while it carries a live glitch cue, with the server time this
+ * page first saw that cue (`glitchSeen`).
+ */
+export function withFirstNow(state: ScreenState): ScreenState {
+  pageFirst ??= state.now;
+  const g = state.program.glitch ?? null;
+  if (g === null || g.at <= 0) return { ...state, firstNow: pageFirst };
+  const key = `${g.seq}:${g.at}`;
+  if (glitchFirst === null || glitchFirst.key !== key) glitchFirst = { key, now: state.now };
+  return { ...state, firstNow: pageFirst, glitchSeen: glitchFirst.now };
+}
+/** Forget the page's first answer and the glitch it saw (tests). */
+export function resetPageFirst(): void {
+  pageFirst = null;
+  glitchFirst = null;
+}
+
 /**
  * Poll the screen state every `SCREEN_POLL_MS` (the TV: `TV_POLL_MS`) while a
  * config is present. Returns the last good answer (null until the first),
@@ -837,21 +867,9 @@ export function screenReachable(state: ScreenState | null, misses: number): bool
  * fresh on every poll, so the cursor can move without restarting the loop.
  * `pollNow` (stable) asks for a poll at once — the speech queue draining
  * (wave 25) — paced by `PollPacer`: never two starts within
- * `DRAIN_REPOLL_GAP_MS`, and one in flight is followed by another.
+ * `DRAIN_REPOLL_GAP_MS`, and one in flight is followed by another. Every
+ * answer is stamped by `withFirstNow`.
  */
-/** The server `now` of this page's first screen answer (null: none yet).
- *  Once per page load, whatever the config: a glitch is live only after it. */
-let pageFirst: number | null = null;
-/** Stamp an answer with the page's first answer's server time (the first one sets it). */
-export function withFirstNow(state: ScreenState): ScreenState {
-  pageFirst ??= state.now;
-  return { ...state, firstNow: pageFirst };
-}
-/** Forget the page's first answer (tests). */
-export function resetPageFirst(): void {
-  pageFirst = null;
-}
-
 export function useScreenState(
   config: TerminalConfig | null,
   voice: (() => VoiceQuery) | null = null,
