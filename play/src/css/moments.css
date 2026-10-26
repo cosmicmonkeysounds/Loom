@@ -512,7 +512,7 @@
   animation: moments-takeover-roll 2s linear infinite;
 }
 .moments-takeover-win {
-  position: absolute; width: min(78%, 300px); opacity: 0;
+  position: absolute; width: min(72%, 300px); opacity: 0;
   animation: moments-takeover-pop 0.2s steps(1, end) forwards;
 }
 .moments-takeover-cap { min-height: 28px; }

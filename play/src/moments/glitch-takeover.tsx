@@ -27,9 +27,10 @@ export const TAKEOVER_WINDOWS = 7;
 /** The buzz: long, short, long (Android only; iOS never vibrates). */
 export const TAKEOVER_BUZZ: readonly number[] = [400, 120, 400, 120, 900];
 
-/** Where the n-th error window sits (percent of the screen), a stepped cascade. */
+/** Where the n-th error window sits (percent of the screen), a stepped
+ *  cascade that stays on screen (a window is at most 72 % wide). */
 export function cascadeAt(n: number): { top: number; left: number } {
-  return { top: 8 + ((n * 11) % 64), left: 4 + ((n * 9) % 40) };
+  return { top: 8 + ((n * 11) % 64), left: 2 + ((n * 7) % 24) };
 }
 
 /** A noise burst and a falling square tone on the shared context (silent until the page was tapped once). */

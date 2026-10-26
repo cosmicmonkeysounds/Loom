@@ -63,7 +63,8 @@ describe("the takeover's look", () => {
       const at = cascadeAt(n);
       expect(at.top).toBeGreaterThanOrEqual(0);
       expect(at.top).toBeLessThan(75);
-      expect(at.left).toBeLessThan(45);
+      // ≤ 72 % wide: it never runs off the right edge.
+      expect(at.left + 72).toBeLessThanOrEqual(100);
     }
   });
   it("CSS: over everything, swallows taps; the host's lets them through; reduced motion is still", () => {
