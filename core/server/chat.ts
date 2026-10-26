@@ -959,7 +959,8 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
 export function decisionChannelFor(events: readonly SimEvent[], person: string): string {
   let speaker: string | null = null;
   for (const e of events) {
-    if (e.type === "dialogue" && e.audience.includes(person)) speaker = e.speaker;
+    // A game-only beat's line never reached a phone (C6), so it never asks.
+    if (e.type === "dialogue" && !isGameOnlyBeat(e.beat) && e.audience.includes(person)) speaker = e.speaker;
     if (e.type === "choicePrompted" && e.person === person) break;
   }
   return speaker ? `dm:${speaker}` : LOBBY.channel;
@@ -982,7 +983,9 @@ export function menuChannelsFor(events: readonly SimEvent[], lastSpeaker?: Map<s
   const speaker = lastSpeaker ?? new Map<string, string>();
   const out = new Map<number, string>();
   for (const e of events) {
-    if (e.type === "dialogue") for (const p of e.audience) speaker.set(p, e.speaker);
+    // A game-only beat's line (C6) never became a message, so it never sets
+    // the last speaker: a later menu must not dock in a hidden DM.
+    if (e.type === "dialogue" && !isGameOnlyBeat(e.beat)) for (const p of e.audience) speaker.set(p, e.speaker);
     if (e.type === "choicePrompted" && e.person !== null && e.id !== undefined) {
       const who = speaker.get(e.person);
       out.set(e.id, who !== undefined ? `dm:${who}` : LOBBY.channel);

@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { GAME_ONLY_BEATS, composeGuestMessages, isGameOnlyBeat, momentLines } from "../server/chat.ts";
+import { GAME_ONLY_BEATS, LOBBY, composeGuestMessages, decisionChannelFor, isGameOnlyBeat, menuChannelsFor, momentLines } from "../server/chat.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { foldName } from "../src/parser/names.ts";
@@ -22,6 +22,7 @@ directory: everyone
 
 ROLE Program
   escapes: 0 to 99 = 0
+  picked: text = "none"
 
 CHARACTER Trabolta
   hidden: true
@@ -50,6 +51,11 @@ INTERACTION simulation pickup taken
   act: Anytime
   sequence: false
 
+INTERACTION poll
+  who: admin
+  act: Anytime
+  sequence: false
+
 when simulation escape attempt for program:
   set program.escapes += 1
   -> Escape Attempt
@@ -63,6 +69,9 @@ when simulation pickup taken for program:
 when program learns ILOVEYOU:
   -> Download
 
+when poll for program:
+  -> Poll
+
 == Escape Attempt
 Trabolta: There is no outside, {program.name}.
 Trabolta: Back you go.
@@ -73,6 +82,12 @@ The core beats slowly.
 
 == Download
 Truther Download: Something rides along with you now.
+
+== Poll
+* Yes.
+  set program.picked = "y"
+* No.
+  set program.picked = "n"
 `;
 
 describe("GAME_ONLY_BEATS and momentLines (pure)", () => {
@@ -108,6 +123,23 @@ describe("GAME_ONLY_BEATS and momentLines (pure)", () => {
     const pickup = sim.signal("simulation pickup taken", "g-1", { item: "virus", prop: "virus-disk" });
     expect(momentLines(pickup, "g-1")).toEqual([{ from: "Truther Download", text: "Something rides along with you now." }]);
     expect(composeGuestMessages(sim, pickup).some((m) => m.from === "Truther Download" && m.channel === "dm:Truther Download")).toBe(true);
+  });
+});
+
+describe("a game-only line never docks a later menu (pure)", () => {
+  it("menuChannelsFor and decisionChannelFor skip an escape's speaker, across batches too", () => {
+    const sim = Sim.fromSources(STORY);
+    sim.createPerson("g-1", "Bugdom", "Program");
+    const last = new Map<string, string>();
+    const escape = sim.signal("simulation escape attempt", "g-1");
+    expect(menuChannelsFor(escape, last).size).toBe(0);
+    expect(last.has("g-1")).toBe(false);
+    const poll = sim.signal("poll", "g-1");
+    const menus = [...menuChannelsFor(poll, last).values()];
+    expect(menus).toEqual([LOBBY.channel]);
+    // One batch holding both: the escape's line still doesn't ask the menu.
+    expect(decisionChannelFor([...escape, ...poll], "g-1")).toBe(LOBBY.channel);
+    expect([...menuChannelsFor([...escape, ...poll]).values()]).toEqual([LOBBY.channel]);
   });
 });
 
@@ -177,5 +209,29 @@ describe("an escape before his reveal leaves no Trabolta line anywhere (the serv
     expect(again.restore()).not.toBeNull();
     expect(says(again.chatHistoryFor(id))).toBe(false);
     expect(again.liveSim?.world.get(`${id}.escapes`)).toMatchObject({ value: 1 });
+  });
+
+  it("a line-less menu after an escape docks in the lobby, not dm:Trabolta, also after a restart", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-w26-menu-"));
+    dirs.push(d);
+    const make = () => new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "moments", scenarioSource: STORY, joinBase: () => "http://localhost" });
+    const rt = make();
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Bugdom", passcode: CODES.event });
+    const id = g.json.id as string;
+    const token = encodeURIComponent(g.json.token as string);
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "simulation escape attempt", subject: id }, undefined, true)).status).toBe(200);
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "poll", subject: id }, undefined, true)).status).toBe(200);
+    const docked = async (r: EventRuntime) => {
+      const st = (await call(r, "GET", `/api/state?role=guest&token=${token}`, {})).json;
+      const v = (st.view ?? st) as { decisionChannel?: string; choices?: Array<{ channel?: string }> };
+      return { decision: v.decisionChannel, channels: (v.choices ?? []).map((c) => c.channel), trabolta: JSON.stringify(st).includes("dm:Trabolta") };
+    };
+    const live = await docked(rt);
+    expect(live.channels.length).toBeGreaterThan(0);
+    expect(live).toEqual({ decision: LOBBY.channel, channels: live.channels.map(() => LOBBY.channel), trabolta: false });
+    const again = make();
+    expect(again.restore()).not.toBeNull();
+    expect(await docked(again)).toEqual(live);
   });
 });
