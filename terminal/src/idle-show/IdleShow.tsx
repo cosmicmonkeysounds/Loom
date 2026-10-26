@@ -27,7 +27,7 @@ import { sfx } from "../sound/bus.ts";
 import type { SfxName } from "../sound/library.ts";
 import { FACE_TIPS, SKIN_BAR, type IdleAd } from "./ads.ts";
 import { IdleArt } from "./art.tsx";
-import { MAX_POPUPS, ask, close, closeGag, dodge, emptyField, hydra, popupCap, relayout, tick, type LivePopup, type PopupField, type Rect } from "./field.ts";
+import { MAX_POPUPS, ask, calmPace, close, closeGag, dodge, emptyField, hydra, popupCap, relayout, tick, type LivePopup, type PopupField, type Rect } from "./field.ts";
 import { GAG_MS, THANKS, adGag, attentionOn, duckLane, gagSound, gagText, ringsAt, type AdGag } from "./gags.ts";
 import { fillCopy, idleContextOf, type IdleContext } from "./pools.ts";
 import { CONFIRM_TEXT, DODGED_TITLE, type PopupKind } from "./popups.ts";
@@ -145,7 +145,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
     }
     const s = segOf(cursor.current!.index);
     const reserve = reserveOf(root.current, reserveRef?.current);
-    const r = tick(field.current, t, { seed, layout: s.layout, pool: ctxRef.current.pool, target, reserve, y2kLeft: ctxRef.current.y2kLeft, calm: ctxRef.current.calm === true, cap: popupCap(ctxRef.current) });
+    const r = tick(field.current, t, { seed, layout: s.layout, pool: ctxRef.current.pool, target, reserve, y2kLeft: ctxRef.current.y2kLeft, calm: calmPace(ctxRef.current), cap: popupCap(ctxRef.current) });
     field.current = r.field;
     if (r.arrived !== null) {
       const k = kindOf(r.arrived);

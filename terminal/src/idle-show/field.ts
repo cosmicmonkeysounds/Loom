@@ -28,6 +28,13 @@ export function popupCap(ctx: { calm?: boolean; quiet?: boolean }): number {
   if (ctx.calm === true) return CALM_MAX_POPUPS;
   return MAX_POPUPS;
 }
+/** Does a show take the calm pace (`CALM_POPUP_PACE`)? Calm (before the
+ *  hijack), or quiet (the tent's backdrop, T3) all night: with one window at
+ *  most, the full hijacked rate would throw the last one out every 1.5–3 s
+ *  and the backdrop behind the kiosk would never settle. */
+export function calmPace(ctx: { calm?: boolean; quiet?: boolean }): boolean {
+  return ctx.calm === true || ctx.quiet === true;
+}
 /** A window's assumed footprint for placement (share of the box). */
 export const POPUP_W = 0.34;
 export const POPUP_H = 0.3;
@@ -75,7 +82,7 @@ export function emptyField(drawn = 0): PopupField {
 }
 
 /** The wait before the next window (ms) on this layout; null = none come.
- *  `calm` (wave 26, T1): before the hijack, `CALM_POPUP_PACE` times as long. */
+ *  `calm` (wave 26, T1/T3: `calmPace`, before the hijack or a quiet backdrop): `CALM_POPUP_PACE` times as long. */
 export function spawnGap(layout: Layout, pool: PhasePool, target: "tv" | "wall", r: number, y2kLeft: number | null = null, calm = false): number | null {
   if (layout === "face") return null;
   if (layout === "storm") return STORM_EVERY_MS;
