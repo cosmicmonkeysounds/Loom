@@ -3773,6 +3773,23 @@ func _test_sfx_game() -> void:
 	game._process(0.016)
 	link.found_answered.emit(false, {"error": "not near the duck"})
 	_check(sfx.log.back() == "buzz", "sfx game: 'not near' buzzes")
+	# A refusal streak buzzes once: the retries each second stay quiet, and
+	# so does a pause, a parked session or a dropped request.
+	var buzzes := sfx.log.count("buzz")
+	for i in 5:
+		game._process(1.0)
+		link.found_answered.emit(false, {"error": "not near the duck"})
+	_check(sfx.log.count("buzz") == buzzes, "sfx game: … once per approach, not every retry (%d)" % (sfx.log.count("buzz") - buzzes))
+	player.teleport(HouseFrames.vec(away), 0.0)
+	game._process(0.016)
+	player.teleport(Vector3(dp[0] + 0.5, dp[1], dp[2]), 0.0)
+	game._process(0.016)
+	for answer: Dictionary in [{"error": "doors are closed"}, {"error": "this session has not started — send a pose first"}, {}]:
+		link.found_answered.emit(false, answer)
+	_check(sfx.log.count("buzz") == buzzes, "sfx game: closed doors, parked, a dropped request: no buzz")
+	link.found_answered.emit(false, {"error": "not near the duck"})
+	_check(sfx.log.count("buzz") == buzzes + 1, "sfx game: a new approach buzzes again")
+	_check(Game.found_refusal_buzzes({"error": "not near the duck"}) and not Game.found_refusal_buzzes({"error": "doors are closed"}) and not Game.found_refusal_buzzes({}), "sfx game: which refusals buzz")
 	link.found_answered.emit(true, {"ok": true, "released": true})
 	_check(sfx.log.back() == "quack" and not sfx.hum_on(), "sfx game: the find quacks, the hum stops")
 	game._process(0.5)

@@ -167,6 +167,9 @@ var _props := {}
 var _moment_out := {"heart": "", "pickup": ""}
 var _found_pending := false
 var _found_retry := 0.0
+## The "no" buzz went off for this approach to Gerald: a refused find
+## buzzes once, never again each retry (cleared on leaving him or a find).
+var _found_buzzed := false
 ## Why the headset counts as away → the wall-clock second the session ends
 ## ("presence", "focus", "paused"). Wall clock, not ticks: the monotonic
 ## clock stops while a Quest sleeps, and a sleeping headset runs no frames
@@ -479,6 +482,7 @@ func _on_assignment(a: Dictionary) -> void:
 	_trail_in = 0.0
 	_found_pending = false
 	_found_retry = 0.0
+	_found_buzzed = false
 	_notice_left = 0.0
 	_quack_in = Sfx.QUACK_FIRST
 	_fanfare_in = -1.0
@@ -523,7 +527,11 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 	_found_pending = false
 	if not ok:
 		_found_retry = FOUND_RETRY
-		if flow.state == GameFlow.State.PLAYING:
+		# Once per approach, and only for a real "no": a pause, a parked
+		# session or a dropped request retries every second in silence (each
+		# buzz would also hold the mic shut).
+		if flow.state == GameFlow.State.PLAYING and not _found_buzzed and found_refusal_buzzes(data):
+			_found_buzzed = true
 			sfx.play("buzz")
 		return
 	# The server's `released` is the only proof of a release. A program still
@@ -553,6 +561,15 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 	else:
 		hud.show_found("YOU FOUND GERALD", who)
 	state_changed.emit(flow.state)
+
+
+## Whether a refused find's answer earns the "no" buzz: a real refusal
+## ("not near the duck", …) does; the doors being closed (a pause, before
+## doors), a session not started yet and a dropped request (no `error`)
+## are only "not now".
+static func found_refusal_buzzes(data: Dictionary) -> bool:
+	var error := str(data.get("error", ""))
+	return error != "" and not str(ServerLink.MOMENT_409.get(error, "")) in ["doors are closed", "parked"]
 
 
 func _on_session_over(reason: String) -> void:
@@ -771,7 +788,10 @@ func _tick_play(delta: float) -> void:
 	_tick_quack(feet, duck_p, delta)
 	_tick_props(house, feet, delta)
 	_found_retry -= delta
-	if not _found_pending and _found_retry <= 0.0 and is_at_duck(house, feet, duck_p):
+	var at_duck := is_at_duck(house, feet, duck_p)
+	if not at_duck:
+		_found_buzzed = false
+	if not _found_pending and _found_retry <= 0.0 and at_duck:
 		_found_pending = true
 		link.report_found()
 	_tick_king(house, feet, builder.yaw_to_house(player.head_yaw()))
