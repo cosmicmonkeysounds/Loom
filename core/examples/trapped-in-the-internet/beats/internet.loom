@@ -36,14 +36,15 @@ if program.internet_visits >= 2:
   setting: The Internet
   cast: Installation Wizard
 
+// Wave 26 (R1, C2): a corrupted program's phone is locked, so nothing here
+// waits on it: the three-option menu became plain lines. (R5): only the
+// screens in the room a program walks into can see it now.
 if program.corrupted:
   Installation Wizard: Welcome back, {program.name}. Put on a headset, or take the tablet. Follow the golden indicators to Gerald, the golden duck.
-  * "Where is the exit?"
-    Installation Wizard: Clearly marked. Behind you. It is for safety. It is not the way out. Gerald is the way out.
-  * Put the headset on.
-    Installation Wizard: Loading a copy of this house. Every screen in the house can see you now. Wave.
-  * Take the tablet.
-    Installation Wizard: Loading a copy of this house, smaller. Hold it with both hands. Every screen in the house can see you now.
+  // DRAFT w26 (R1: the menu's lines, plain; R5: not every screen sees you)
+  Installation Wizard: The exit is clearly marked, behind you. It is for safety. It is not the way out. Gerald is the way out.
+  // DRAFT w26 (R5: a screen sees you only from the room you walk into)
+  Installation Wizard: Loading a copy of this house. The screens in the room you walk into can see you. Wave.
 else if Night.ended == true:
   // Wave 18 (Q16): after an ending the reinstallation is a party favour.
   // DRAFT w18

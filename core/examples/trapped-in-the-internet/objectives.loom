@@ -67,16 +67,15 @@ OBJECTIVE The Hand Jive
   text:
     Everyone to the Internet, the Antivirus too. The way out is together.
 
-// DRAFT for sign-off
+// DRAFT w26 (R1: the locked phone's card; no way to the Internet's room, the pass and Bathroom Mode; R2: no arrows promised)
 OBJECTIVE Find Gerald
   for: Program
   while: program.corrupted == true and Night.ended != true
   title: Find Gerald, the golden duck
-  go: The Internet
   text:
-    You are in the Internet. At the reinstallation station, scan your pass and walk the copy of the house: follow the golden arrows to Gerald. When he lays a golden egg you are reinstalled.
+    You are in the Internet. At the reinstallation station, scan your pass and walk the copy of the house to find Gerald. When he lays a golden egg you are reinstalled.
     - Reinstalled, done when program.corrupted != true
-  buttons: pass
+  buttons: pass, go to the bathroom, back from the bathroom
 
 // DRAFT for sign-off
 OBJECTIVE Bathroom Mode On

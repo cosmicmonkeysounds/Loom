@@ -809,7 +809,8 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
     expect(src.match(/^OBJECTIVE /gmu)!.length).toBe(m.objectives.size);
     // Wave 21: `// DRAFT w21` (with a note or bare) marks the new and changed ones.
-    expect(src.match(/^\/\/ DRAFT (?:for sign-off|w18|w21[^\n]*)\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
+    // Wave 26: `// DRAFT w26 (<note>)` marks the ones changed this wave.
+    expect(src.match(/^\/\/ DRAFT (?:for sign-off|w18|w2[16][^\n]*)\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
   }, SLOW);
 });
 
@@ -824,6 +825,8 @@ describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
     const w18 = new Set([...src.matchAll(/^\/\/ DRAFT w18\nOBJECTIVE (.+)$/gmu)].map((x) => x[1]!.trim()));
     // …and so do wave 21's new ones (SIGNOFF-w21.md, trapped-w21.test.ts).
     for (const x of src.matchAll(/^\/\/ DRAFT w21\nOBJECTIVE (.+)$/gmu)) w18.add(x[1]!.trim());
+    // Wave 26's new objectives are on SIGNOFF-w26.md.
+    for (const x of src.matchAll(/^\/\/ DRAFT w26[^\n]*\nOBJECTIVE (.+)$/gmu)) w18.add(x[1]!.trim());
     for (const id of Sim.fromSources(SRC).model.objectives.keys()) if (!w18.has(id)) expect(sheet, id).toContain(`| ${id} |`);
   });
 });

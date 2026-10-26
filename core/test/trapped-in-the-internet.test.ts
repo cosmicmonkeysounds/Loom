@@ -1004,7 +1004,8 @@ describe("Trapped in the Internet — the whole night", () => {
     const capMsgs = composeGuestMessages(sim, cap);
     expect(capMsgs.some((m) => m.unpin !== undefined || /mark is lifted/u.test(m.text))).toBe(false);
     const sent = capMsgs.find((m) => Array.isArray(m.audience) && m.audience[0] === "g11" && m.text.startsWith("🌐 Sent to the Internet"))!;
-    expect(sent).toMatchObject({ moment: "big", go: [{ kind: "room", id: "loc:The Internet" }, { kind: "pass" }] });
+    // Wave 26 (R1): only the pass and Bathroom Mode, no OK (`ack: none`).
+    expect(sent).toMatchObject({ moment: "big", noAck: true, go: [{ kind: "pass" }, { kind: "act", id: "go to the bathroom" }] });
     expect(replies(cap).filter((r) => r.text.includes("Off the escort list"))).toHaveLength(PATROL.length);
     sim.signal("the simulation completed", "g11");
     sim.signal("the simulation completed", "g12");
@@ -4485,7 +4486,8 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     const wiz = saidBy(sc, "Installation Wizard");
     expect(wiz.length).toBeGreaterThan(0);
     expect(wiz.every((e) => aud(e) === '["g5"]')).toBe(true);
-    expect(sim.pendingChoiceFor("g5")).toEqual(['"Where is the exit?"', "Put the headset on.", "Take the tablet."]);
+    // Wave 26 (R1, C2): a corrupted phone is locked, so the video waits on no menu.
+    expect(sim.pendingChoiceFor("g5")).toBeNull();
     // A program that is not corrupted scanned at the tablet: the strange-visit line, +10 doubt.
     const d0 = v(sim, "g1.doubt");
     const away = sim.scan("The Tablet", "g1");

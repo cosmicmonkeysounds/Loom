@@ -30,6 +30,7 @@ countdown: Night.y2k_end as Midnight, while Night.final_round == true and Night.
 countdown: Night.dance_at as Dance lights
 wanted: program.marked as program.marked_for by program.escort_by, for Antivirus
 reinstall: program.marked == true or program.corrupted == true or Night.ended == true
+lock: program.corrupted == true and Night.banish != true and Night.ended != true
 archive: The Uploader when program.cleared == true and program.featured == "none" and Night.ended != true
 archive: Norton Anti-Virus when program.cleared == true and program.marked != true and program.corrupted != true
 archive: McAfee Anti-Virus when program.cleared == true and program.marked != true and program.corrupted != true
@@ -577,7 +578,8 @@ ROLE Program
       reply ⛈ Banished to the Internet, with everyone else. Gerald cannot help you tonight. Remember what Trabolta let slip.
     else:
       // DRAFT w18: the capture is a big moment with the way there (C12).
-      reply "!!🌐 Sent to the Internet. Go out back through the tunnel to the Internet, scan your pass at the reinstallation station and find Gerald, the golden duck." with go: The Internet, go: pass
+      // DRAFT w26 (R1: the phone locks; only the pass and Bathroom Mode, no OK)
+      reply "!!🌐 Sent to the Internet. Go out back through the tunnel to the Internet, scan your pass at the reinstallation station and find Gerald, the golden duck." with go: pass as "🎟 Show my pass", go: go to the bathroom, ack: none
       set self.internet_visits += 1
       set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 + self.assessment
       cue tablet_wizard
@@ -1160,7 +1162,8 @@ ROLE Program
   when confronted for program:
     if program.marked == true and program.corrupted != true:
       // DRAFT w18
-      reply !!🛡 CORRUPTION DETECTED. {hunter} has found you. Stay with them: you are going to the Internet.
+      // DRAFT w26 (R1: quoted, so the tail parses; only the pass and Bathroom Mode, no OK)
+      reply "!!🛡 CORRUPTION DETECTED. {hunter} has found you. Stay with them: you are going to the Internet." with go: pass as "🎟 Show my pass", go: go to the bathroom, ack: none
 
   // ── 📝 File a fact: DM filings with Trabolta (#33, wave 4 judging) ──
   // A fact counts only when the program FILES it on the 📝 card in
@@ -3824,11 +3827,12 @@ INTERACTION back from the bathroom
   while: program.afk == true
   restricted: allow
 
+// Wave 26 (R1): never on a phone in the Internet (the hook refuses there anyway).
 INTERACTION plant_the_virus
   label: 💾 Insert a disk into the computer
   who: guest
   arm: true
-  while: program.carries_virus == true and program.planted_virus != true
+  while: program.carries_virus == true and program.planted_virus != true and program.corrupted != true
 
 // ── House rules ─────────────────────────────────────────────────────
 // Story-level `when`s: the arc of the night, in running order. Phase
