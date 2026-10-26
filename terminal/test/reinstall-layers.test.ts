@@ -126,7 +126,7 @@ describe("the tent between walks (wave 26, T3): a scan kiosk", () => {
     const station = readFileSync(new URL("../src/reinstall/ReinstallTerminal.tsx", import.meta.url), "utf8");
     expect(station).toMatch(/<IdleShow [^\n]*quiet \/>/u);
     expect(station).toMatch(/className="ri-station"/u);
-    expect(station).toMatch(/<TypedFallback config=\{config\} focus=\{typingFocus\} clearOnPick/u);
+    expect(station).toMatch(/<TypedFallback config=\{config\} focus=\{typingFocus\} scope=\{card\} clearOnPick/u);
     expect(station).toMatch(/const typingFocus = step\.kind === "idle"/u);
     expect(station).not.toMatch(/worldSlot|paneSimulation|ScanBox/u);
     expect(station).toMatch(/\{wizardUp && <WizardStatus \/>\}/u);

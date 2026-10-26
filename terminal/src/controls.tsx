@@ -2,7 +2,7 @@
 //! the typed fallback for a tablet whose camera can't run, and the ⚙ that
 //! opens setup only on a 2 s hold.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import type { TerminalConfig } from "./config.ts";
 import { HOLD_MS, useLongPress } from "./kiosk.ts";
 import { fetchRoster } from "./pilot.ts";
@@ -10,28 +10,49 @@ import { matchName } from "./scan.ts";
 
 // --- the typed fallback ------------------------------------------------------
 
+/** Something that can say whether a node sits inside it (an element). */
+type Within = { contains(node: unknown): boolean };
+
+/**
+ * Should the typed field take the focus back after a tap settles? Yes when
+ * the focus is nowhere (the body, a node that has gone) or on something
+ * outside `scope` (the kiosk card): a backdrop window's × or button, which
+ * Chrome focuses on a click, would otherwise eat the guest's typing and
+ * press itself on Enter. No when it is on a control inside `scope` (the
+ * field itself, CONNECT, a quick pick). No scope: the field's own form.
+ */
+export function takesFocusBack(active: unknown, o: { body: unknown; attached: boolean; scope: Within | null }): boolean {
+  if (active === null || active === undefined || active === o.body || !o.attached) return true;
+  return o.scope === null || !o.scope.contains(active);
+}
+
 /**
  * Type a program name instead of scanning. Opened from a toggle, it takes
  * the focus at once. `focus` (wave 26, T3: the tent's kiosk, where it is
  * always shown): take the focus whenever it turns true (the station idle,
- * no card up), never otherwise — a keystroke during a walk is the walk's.
+ * no card up), and back after any tap that leaves it outside `scope` (the
+ * kiosk card; default the field's own form), never otherwise — a keystroke
+ * during a walk is the walk's.
  * `clearOnPick`: the field empties after a pick (a kiosk serves the next one).
  */
-export function TypedFallback({ config, onPick, onProblem, focus, clearOnPick = false }: { config: TerminalConfig; onPick: (id: string) => void; onProblem: (msg: string) => void; focus?: boolean; clearOnPick?: boolean }) {
+export function TypedFallback({ config, onPick, onProblem, focus, scope, clearOnPick = false }: { config: TerminalConfig; onPick: (id: string) => void; onProblem: (msg: string) => void; focus?: boolean; scope?: RefObject<HTMLElement | null>; clearOnPick?: boolean }) {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const form = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (focus !== true) return;
     input.current?.focus();
-    // A tap that left the focus nowhere (the wake prompt goes away under it,
-    // the backdrop) gives it back, once the tap has settled.
+    // A tap that left the focus nowhere (the wake prompt goes away under it)
+    // or outside the card (a backdrop window's button) gives it back, once
+    // the tap has settled.
     let t = 0;
     const back = () => {
       window.clearTimeout(t);
       t = window.setTimeout(() => {
         const a = document.activeElement;
-        if (a === null || a === document.body || !document.body.contains(a)) input.current?.focus();
+        const own = scope?.current ?? form.current;
+        if (takesFocusBack(a, { body: document.body, attached: a !== null && document.body.contains(a), scope: own })) input.current?.focus();
       }, 400);
     };
     window.addEventListener("pointerup", back);
@@ -39,7 +60,7 @@ export function TypedFallback({ config, onPick, onProblem, focus, clearOnPick = 
       window.clearTimeout(t);
       window.removeEventListener("pointerup", back);
     };
-  }, [focus]);
+  }, [focus, scope]);
   const submit = async () => {
     if (name.trim() === "" || busy) return;
     setBusy(true);
@@ -59,6 +80,7 @@ export function TypedFallback({ config, onPick, onProblem, focus, clearOnPick = 
   };
   return (
     <form
+      ref={form}
       className="typed"
       onSubmit={(e) => {
         e.preventDefault();

@@ -292,7 +292,7 @@ function Station({
             </div>
             <div className="ri-station-typed">
               <div className="ri-station-label">{SCAN_COPY.typed}</div>
-              <TypedFallback config={config} focus={typingFocus} clearOnPick onPick={onPick} onProblem={onProblem} />
+              <TypedFallback config={config} focus={typingFocus} scope={card} clearOnPick onPick={onPick} onProblem={onProblem} />
             </div>
             {picks.length > 0 && (
               <div className="ri-picks" aria-label="In the Internet now">
