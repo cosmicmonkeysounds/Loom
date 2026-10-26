@@ -32,3 +32,22 @@
   .cutscene-room-side .cutscene-stage { right: 0; bottom: 62%; }
 }
 .cutscene-room { display: contents; }
+
+/* Wave 26 (V1): over a voiced TV scene, the sentence he is saying now — the
+   room reads what it hears, not the scene's own copy. Inside the stage (so
+   it goes with it), under the overlays; the TV caption's look. */
+.cutscene-voice-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  transform: translateX(-50%);
+  width: min(88%, 1400px);
+  padding: 0.35em 0.8em;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  text-align: center;
+  font-size: clamp(22px, 2.6vw, 44px);
+  line-height: 1.25;
+  z-index: 2;
+  pointer-events: none;
+}

@@ -7,14 +7,15 @@
 
 import "./tv1.css";
 import type { SfxName, SfxOpts } from "../../sound/index.ts";
-import type { SceneProps } from "../types.ts";
+import type { SceneProps, SceneVoice } from "../types.ts";
 import { useSfxCues } from "./cues.ts";
 import { Particles, Starfield } from "./canvas-fx.tsx";
 import { Glitch, Hourglass, Noise } from "./effects.tsx";
 import { Typewriter } from "./text.tsx";
 import { between, blink, clamp01, ease, eased, fakeProgress, lerp, progress, typedDuration } from "./time.ts";
 import { AssembleFace, DuckEmblem, FACE_ASSEMBLY_MS, useEndAt } from "./tv1-parts.tsx";
-import { INTRO_POST, INTRO_VOICE, bootLinesAt, bounceAt, captionAt, introCaptions, memoryCount, sentencesOf, type Caption } from "./tv1-time.ts";
+import { INTRO_POST, INTRO_VOICE, bootLinesAt, bounceAt, captionAt, introCaptions, memoryCount, type Caption } from "./tv1-time.ts";
+import { splitSentences } from "../../speech/split.ts";
 import { voiceFloor } from "../../speech/engine.ts";
 import { Desktop, ProgressBar, Win98Window, type DesktopIcon } from "./win98.tsx";
 import type { Emitter } from "./physics.ts";
@@ -178,8 +179,9 @@ export const INTRO_MS = 27_000;
 export const INTRO_HELLO = "HELLO, PROGRAMS.";
 export const INTRO_LINE = "I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI small business owner. Personal queries go to Clippy.";
 
-/** The greeting as captions timed to his voice (`introCaptions`): the big HELLO, then a sentence at a time. */
-export const INTRO_CAPTIONS: readonly Caption[] = introCaptions([INTRO_HELLO, ...sentencesOf(INTRO_LINE)]);
+/** The greeting as captions timed to his voice (`introCaptions`): the big HELLO, then a sentence at a
+ *  time — cut by the voice's own `splitSentences`, so a caption is a sentence he says (wave 26, V1). */
+export const INTRO_CAPTIONS: readonly Caption[] = introCaptions(splitSentences(`${INTRO_HELLO} ${INTRO_LINE}`));
 /** When the last caption is fully typed (≈ when the TV stops saying the line). */
 export const INTRO_VOICE_END = INTRO_CAPTIONS[INTRO_CAPTIONS.length - 1]!.end;
 
@@ -251,7 +253,7 @@ export const INTRO_SFX: ReadonlyArray<readonly [number, SfxName, SfxOpts?]> = [
  *   24600–27000  the hand-back: the face glides back to the middle, everything else fades,
  *                then the face too — the live one is there underneath
  */
-export function IntroTv({ t, sfx, reduced }: SceneProps) {
+export function IntroTv({ t, sfx, reduced, voice }: SceneProps) {
   useSfxCues(t, sfx, INTRO_SFX);
   const out = 1 - progress(t, IN.back + 1200, IN.end - IN.back - 1200);
   return (
@@ -261,7 +263,7 @@ export function IntroTv({ t, sfx, reduced }: SceneProps) {
         {t < IN.face && <IntroPost t={t} reduced={reduced} />}
         {between(t, IN.setup, IN.logo + 400) && <IntroSetup t={t} reduced={reduced} />}
         {between(t, IN.logo - 300, IN.back + 1200) && <IntroLogo t={t} reduced={reduced} />}
-        <IntroFace t={t} reduced={reduced} />
+        <IntroFace t={t} reduced={reduced} voice={voice ?? null} />
       </div>
       <CrtOn t={t} dur={500} reduced={reduced} />
       {!reduced && t < 1400 && t > 150 && <Noise t={t} alpha={0.1 * (1 - progress(t, 600, 800))} reduced={reduced} />}
@@ -337,8 +339,19 @@ export function introFacePose(t: number, reduced: boolean): { x: number; scale: 
   return { x: -15 * away, scale: 1 - 0.18 * away };
 }
 
-function IntroFace({ t, reduced }: { t: number; reduced: boolean }) {
-  const caption = captionAt(INTRO_CAPTIONS, t);
+/** The line under the big HELLO: the sentence the TV is saying (wave 26, V1),
+ *  typed from its mark; with no voice, the scene's own caption at `t`. */
+export function introLine(t: number, voice: SceneVoice | null): Caption | null {
+  if (voice !== null && voice.index > 0 && voice.text !== "") {
+    const at = INTRO_CAPTIONS[Math.min(voice.index, INTRO_CAPTIONS.length - 1)]!;
+    return { text: voice.text, start: at.start, end: at.start + (voice.text.length * 1000) / INTRO_VOICE.cps };
+  }
+  if (voice !== null && voice.index === 0) return null;
+  return captionAt(INTRO_CAPTIONS, t);
+}
+
+function IntroFace({ t, reduced, voice }: { t: number; reduced: boolean; voice: SceneVoice | null }) {
+  const caption = introLine(t, voice);
   // The mouth moves while a caption types, or while this page is actually speaking (the TV's voice floor).
   const typing = INTRO_CAPTIONS.some((c) => t >= c.start && t < c.end);
   const speaking = between(t, IN.hello, IN.montage + 2500) && voiceFloor.busy;

@@ -111,9 +111,14 @@ describe("a slide scene hidden under a moment (OB-6)", () => {
     expect(baseClock(1000, 1500, true)).toBe(1000);
     const scene = { kind: "slide" as const, def: { id: "x", when: [], ms: "hold" as const }, seq: 1, at: 1, start: 1, value: "x", who: null, key: "x:s1" };
     const state = {} as never;
-    const a = { scene, now: 1000, state, target: "tv" as const, reduced: false, silent: true };
+    const a = { scene, now: 1000, t: null, voice: null, caption: null, state, target: "tv" as const, reduced: false, silent: true };
     // A new pick object for the same scene at the same frozen clock: no redraw.
     expect(sameSceneFrame(a, { ...a, scene: { ...scene } })).toBe(true);
     expect(sameSceneFrame(a, { ...a, now: 1033 })).toBe(false);
+    // Wave 26 (V1): a new warped t, sentence or caption redraws; the same one doesn't.
+    expect(sameSceneFrame(a, { ...a, t: 500 })).toBe(false);
+    expect(sameSceneFrame({ ...a, voice: { seq: 1, index: 0, text: "Hi." } }, { ...a, voice: { seq: 1, index: 0, text: "Hi." } })).toBe(true);
+    expect(sameSceneFrame(a, { ...a, voice: { seq: 1, index: 0, text: "Hi." } })).toBe(false);
+    expect(sameSceneFrame(a, { ...a, caption: "Hi." })).toBe(false);
   });
 });
