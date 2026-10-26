@@ -23,8 +23,8 @@ says to check your connection: if your line doesn't show up in the room,
 send it again. Each room keeps its own unsent words, so switching rooms
 never moves them.
 
-What you type is part of the show. Performers and the operator really
-do read it, and the story can react.
+What you type is part of the night. The computer is listening, and the
+story can answer.
 
 ## How lines arrive
 
@@ -64,7 +64,7 @@ room. The story's own lines show 💬 only once someone has replied.
 
 - **Names in bold** — guests and characters speaking.
 - **The Narrator** — the story itself, setting the scene.
-- **Dim system notices** — the machinery of the event (joins, moves,
+- **Dim system notices** — the computer's own notes (joins, moves,
   and the like).
 
 Messages from the same sender in a row group under one banner, just

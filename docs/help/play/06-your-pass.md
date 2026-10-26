@@ -2,7 +2,7 @@
 title: Your pass, score & fate
 section: Guest Guide
 order: 6
-keywords: pass, qr, scan, scanned, checked in, code accepted, full screen, brightness, start, start menu, me, profile, picture, badges, settings, score, balance, coin, wallet, faction, side, defect, captured, escape, leave, menu, restricted, marked, reinstallation, greyed, bathroom, bathroom mode, 🚻, tour, resurrection, human again, show over
+keywords: pass, qr, scan, scanned, checked in, code accepted, full screen, brightness, start, start menu, me, profile, picture, badges, settings, score, balance, coin, wallet, faction, side, defect, captured, quarantined, quarantine, locked, lock screen, leave, menu, restricted, marked, reinstallation, greyed, bathroom, bathroom mode, 🚻, tour
 ---
 
 Tap **🎟 Pass** on the taskbar, from any screen: your pass fills the
@@ -28,12 +28,11 @@ replaces the sheet.
 
 ## The QR pass
 
-That QR code is *you*. Performers **scan it** to pull you into the
-story — interrogations, blessings, capture, secret missions. Your
-linked ID badge works the same way ([Getting back in](getting-back-in.md)). When
-someone in costume asks to scan you: let them. That's the game finding
-you. Your phone draws it itself, so it shows even when the house is
-busy or the Wi-Fi is weak.
+That QR code is *you*. The Antivirus, the hosts and the house **scan it**
+to pull you into the story. Your linked ID badge works the same way
+([Getting back in](getting-back-in.md)). When someone from the story asks
+for your pass: show it. Your phone draws it itself, so it shows even when
+the house is busy or the Wi-Fi is weak.
 
 ## The story's buttons
 
@@ -46,9 +45,8 @@ you are not hacking the Internet, and tap **Back from the bathroom** (in
 Start, or on Mission) when you're back. It turns itself off after
 fifteen minutes; tap it again if you're still away. While it's on, a
 **🚻** sits beside your name everywhere people are listed (People,
-Who's here, your messages, the performers' and the hosts' lists), so
-nobody goes looking for you. The guided tour
-points it out over Start when the story uses it.
+Who's here, your messages, the hosts' lists), so nobody goes looking for
+you. The guided tour points it out over Start when the story uses it.
 
 A button you can't take back takes **two taps**: the first arms it (it
 turns black and says *Tap again to fire*), the second, within four
@@ -59,60 +57,54 @@ seconds, presses it. Leave it alone and it disarms itself.
 Once you've joined one of the story's groups — a side, a house, a
 society — it's a badge on your Me sheet and in the Start menu's banner,
 and its private room appears in Chats. You can only join a side the story
-offers you: the staff's own groups and a secret side it hasn't revealed
-yet are never on the list. Sides are joined through their doors, on the
-Sides screen (**⊞ Start → Sides & crews**), and another program can recruit
-you by scanning your pass: see [Sides, crews & recruiting](sides.md).
-Switching sides is dramatic, remembered, and not free — the story tracks
-heat on people who do.
+offers you: a side it hasn't opened yet is never on the list. Sides are
+joined through their doors, on the Sides screen (**⊞ Start → Sides &
+crews**), and another program can recruit you by scanning your pass: see
+[Sides, crews & recruiting](sides.md). Switching sides is dramatic.
 
 ## Your score
 
-⭐ rises and falls with your choices, your loyalty, your escapes. What
-it *means* is for the night to reveal. When the story has a currency,
-your **🪙 balance** sits in the taskbar's tray instead — tap it, then
-**Open the Wallet ›** ([Your wallet](wallet.md)).
+Your ⭐ score is yours to watch; what it *means* is for the night to
+reveal. When the story has a currency, your **🪙 balance** sits in the
+taskbar's tray instead — tap it, then **Open the Wallet ›** ([Your
+wallet](wallet.md)).
 
-## Getting captured
+## Quarantined
 
-Some stories can **capture** you — the screen becomes it for a moment
-(at *Trapped in the Internet*: *⛔ QUARANTINED · Sent to the Internet*,
-with **Go to The Internet** and **Show my pass**), then the title bar
-turns red, Mission's desktop goes dark-red and your world shrinks until
-you're freed, you escape, or someone bargains for you. Being captured
-isn't losing; it's a plot development. Work the room from the inside.
+Some stories can **capture** you. At *Trapped in the Internet* the
+Antivirus quarantine corrupted programs: the screen says *⛔ QUARANTINED ·
+Sent to the Internet*, with **🎟 Show my pass** and **🚻 Bathroom Mode**,
+and an Antivirus walks you to the Internet.
+
+From then until you are reinstalled your phone is **locked**. The title
+bar turns red and a ⛔ QUARANTINED screen takes the place of your windows.
+It shows what to do next and the Installation Wizard's instructions, to
+read. Only **🎟 Show my pass** and **🚻 Bathroom Mode** (and **Back from
+the bathroom**) work: no messages, no posting, no Codex, no Wallet, no
+check-ins. Anything else you try is refused. Once you are reinstalled the
+phone unlocks by itself. Being captured isn't losing; it's a plot
+development. See [The simulation](reinstallation.md).
 
 ## Marked
 
-At *Trapped in the Internet* a host's verdict can **mark you for
+At *Trapped in the Internet* the computer can **mark you for
 reinstallation**. A mark **hinders nothing**: you hear one quiet line
-(*🚨 You are marked for reinstallation … Nothing is switched off: carry
-on. The Antivirus are looking for you.*), and you keep every button, room,
-card and check-in. The Antivirus are hunting you, though: when one finds
-you and scans your pass, your screen says *⚠ VIRUS DETECTED · CORRUPTION
-DETECTED*, and they take you to the Internet for a reinstallation. A host
-can lift a mark (*✅ Your mark is lifted.*).
+(*🚨 You are marked for reinstallation …*), and you keep every button,
+room, card and check-in. Carry on. If an Antivirus finds you and scans
+your pass, your screen says *⚠ VIRUS DETECTED · CORRUPTION DETECTED*. If
+the mark is lifted, you hear that too (*✅ Your mark is lifted.*).
 
 ## Restricted
 
-A director may also **restrict** you: the app greys out, the title
-bar turns ochre with **⛔**, the story's buttons are gone from Start (a
-story can keep a few, like 🚻 Bathroom Mode), you
-can't check into rooms or post in them, and your rooms list shrinks to
-your own feed, your private messages, your pinned Quest Log / Codex /
-Wallet and the one or two places the story still lets you see. You
-can't join a side or switch sides either (the side chooser and the
-defect buttons go). Your
+The computer may also **restrict** you: the app greys out, the title bar
+turns ochre with **⛔**, the story's buttons are gone from Start (a story
+can keep a few, like 🚻 Bathroom Mode), you can't check into rooms or post
+in them, and your rooms list shrinks to your own feed, your private
+messages, your Quest Log / Codex / Wallet and the one or two places the
+story still lets you see. You can't join or switch sides either. Your
 wallet can't send, request, pay or accept a trade until it's lifted
-(declining an offer and cancelling your own still work). A pinned
-line at the top of your feed tells you what to do about it. A story can
-keep a few buttons through it (🚻 Bathroom Mode at *Trapped in the
-Internet*).
-
-When the show is over (after the awards), the director may send one
-last alert — *🎃 The show is over: you are human again.* Every mark,
-capture and restriction comes off at once, and the night carries on out
-of character.
+(declining an offer and cancelling your own still work). A pinned line at
+the top of your feed tells you what to do about it.
 
 ## Leaving
 

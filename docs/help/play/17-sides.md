@@ -2,7 +2,7 @@
 title: Sides, crews & recruiting
 section: Guest Guide
 order: 6.5
-keywords: sides, side, faction, factions, doors, walk in, neither, join, switch, leave, back to neither, leader, led by, needed, majority, recruit, recruiting, recruited, scan a pass, crew, crews, found a crew, crew room, badge, badges, not now, found a faction, start your own faction, founded by, disband, more to win, over the line, one faction at a time
+keywords: sides, side, faction, factions, doors, walk in, neither, join, switch, leave, back to neither, leader, led by, needed, majority, recruit, recruiting, recruited, scan a pass, crews, found a crew, crew room, badge, badges, not now, found a faction, start your own faction, founded by, disband, more to win, over the line, one faction at a time
 ---
 
 Some stories split the house into **sides**. Joining one is never a chat
@@ -10,8 +10,7 @@ room: it's a door.
 
 ## The doors
 
-When the sides open (at *Trapped in the Internet*, the 🕚 Y2K clock), the
-whole screen turns into a choice: the two sides as two windows, each **led
+When the sides open, the whole screen turns into a choice: the two sides as two windows, each **led
 by** its leader, a bar showing how close it is to what it needs (*4 of 13
 needed*), and **Walk in ▸**. Tap a door to walk through it (*You are in
 Unlimited Power.*); there is no confirm, because you can change your mind.
@@ -25,7 +24,7 @@ shows each side, its leader and its count, with **Join**, **Switch to …**
 side (*Leaders stay with their side.*). Your side's private room appears in
 [Chats](rooms.md), and a badge on your Me sheet. Joining never replaces
 anything: your profile, picture and pass stay yours. Switching sides is
-dramatic, remembered, and not free: the story notices.
+dramatic.
 
 ## Recruiting by pass
 
@@ -47,14 +46,12 @@ name that's taken or rude). It has its own room in Chats, a **◇** badge on
 every member's Me sheet, and you invite people by scanning their pass, the
 same way. *Crews are just friends. They never count toward a side*, and the
 story's characters never hear of them. You can be in one crew at a time;
-**Leave the crew** any time. The directors can rename or close one.
+**Leave the crew** any time. The house can rename or close one.
 
 ## Founding your own faction
 
 Some stories let anyone **found a faction** of their own, and then the sides
-and the founded factions are one race (at *Trapped in the Internet*, from the
-📥 Truther Download until a faction wins; the count starts at the 11:00 PM
-clock). The screen is then **⊞ Start → Factions**, and it works a little
+and the founded factions are one race. The screen is then **⊞ Start → Factions**, and it works a little
 differently:
 
 - **One list.** The story's sides and every faction a program founded, each

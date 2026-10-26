@@ -63,9 +63,9 @@ joined yet → Join**.
 ## Lost your phone?
 
 A dead battery, a cleared browser, a QR that opened in a different
-browser, a borrowed phone: don't sign up again — find a host. The
-director can show you a **re-pair QR**: scan it with any phone and you're
-back in *as yourself* — same program, Codex, quests and score. The code
+browser, a borrowed phone: don't sign up again — find a host (or see
+[Getting back in](getting-back-in.md)). A host can get you a **re-pair
+QR**: scan it with any phone and you're back in *as yourself* — same program, Codex, quests and score. The code
 works once, for ten minutes. If that phone was already signed in as
 someone, it asks first: **Switch this phone** or **Stay …**.
 
@@ -77,7 +77,7 @@ until it lets you go (press **Continue**). Then you land on **Mission**,
 your home (see [Your mission](mission.md)), and a guide may walk you
 through the app in five quick steps: **Mission**, **Chats**, **Pass and
 Scan**, the **Recycle Bin** where anything you missed lands, and **Start**.
-You can **skip** the tour, but the story may notice.
+You can **skip** the tour.
 
 ## What you're looking at
 
@@ -102,7 +102,7 @@ The tray's left edge is a **live dot**: green while you're connected. If
 it changes colour (*reconnecting…*), you've dropped: the app keeps
 trying by itself (a second at first, then every few seconds), so leave
 it open. It catches up the moment the house is back, even after the
-house's server restarts; coming back to the app, or onto Wi-Fi, tries
+house goes dark for a while; coming back to the app, or onto Wi-Fi, tries
 again at once. On the dark opening screen a **RECONNECTING…** strip
 says the same after five seconds.
 
@@ -114,5 +114,5 @@ it, with one button to carry on after a moment. See
 ## One rule
 
 The story is happening *in the room*, not just on the screen. When a
-performer talks to you, talk back. When the app says something is
+host, Clippy or an Antivirus talks to you, talk back. When the app says something is
 happening somewhere — go.

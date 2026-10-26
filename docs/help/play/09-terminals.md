@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, congratulations, winner, confetti, house win, idle show, screensavers, popups, pop-up, popup storm, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, house speakers, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture, reinstallation station, tent, tent laptop, the Internet, wizard, not marked, say the house announcements, house setting, always, never, microphone, mic, hear, heard, voice link, headset voices, players' voices, 🎤, on air, privacy, heart, his heart, server room, close the door, door, choices, answers, layer, speak freely, back, thrown out, not yet, door sensor, keyboard
+keywords: terminal, congratulations, winner, confetti, house win, idle show, screensavers, popups, pop-up, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, chart, trust chart, most trusted, least trusted, peek, tap the slide, room terminal, asleep, wakes up, listen, server room, server door, chess, the King, king, checkmate, give up, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, choices, answers, speak freely, back, keyboard, shadow, ghosts, live picture, reinstallation station, tent, tent laptop, the Internet, wizard, not marked, microphone, mic, hear, heard, 🎤, privacy
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -24,10 +24,8 @@ mouse." Once he is introduced, the terminals become his line.
 A terminal nobody is using is never a blank "scan" screen. It plays an
 endless 1999 **idle show**: screensavers (pipes, a starfield, a maze
 that solves itself, a duck pond, …), fake advertisements, and **popups**
-that pile up — Win98 dialogs, chat windows, warnings, now and then a
-whole **popup storm**. What it shows follows the night: during the ad
-hijack the popups come faster, in the last hour they count down to
-midnight.
+that pile up — Win98 dialogs, chat windows, warnings. What it shows
+follows the night.
 
 Everything on it can be tapped. **×** closes a popup (sometimes two more
 take its place, and some windows jump away), an ad's button does
@@ -76,12 +74,11 @@ end is near; touch anything to stay. Tap **DISCONNECT** to end it
 yourself. Nobody can read your conversation after that: the next person
 scans their own pass and sees their own line.
 
-If the character's voice isn't listening right now, your message still
-goes through. After about twenty seconds the character may answer with a
-holding line ("Jean Trabolta is not responding. Please do not move the
-mouse.") — that's the system, not a reply; a real answer still comes
-(from the character, or from someone running the show). A character
-without a holding line shows **away** in the header while nobody is
+If the character doesn't answer straight away, your message still goes
+through. After about twenty seconds the screen may say so ("Jean
+Trabolta is not responding. Please do not move the mouse.") — that's the
+computer, not his reply. Wait, or carry on from your phone. A character
+without a line like that shows **away** in the header while he isn't
 answering.
 
 ## Messages from the story
@@ -92,10 +89,8 @@ corner, or a full-screen **notice** — a blackout, "go to the living
 room", an alarm. A notice ends whatever line is open; when it clears,
 scan again.
 
-The night's **big moments** play as animated scenes, with sound — the
-character's arrival, a bingo card filling in, the bottle landing on
-someone, the download, the clock running out, an award going to its
-winner, the golden duck found. The TV plays the full version; the wall
+The night's **big moments** play as animated scenes, with sound. The TV
+plays the full version; the wall
 terminals a shorter one, and only while nobody is talking to them. A
 scene that started before a terminal reloaded carries on where it was;
 nothing that already happened plays again. A tap on a slide still steps
@@ -110,103 +105,58 @@ stays on the phones.
 
 A **chart** (like the Trust Chart) fills in from the bottom, one name
 at a time; once the character has named the most and least trusted,
-their rows light up and a banner calls them out. The character can also
-put a card of his own on the wall terminals for a little while (a
-dancing baby, the hamster dance, …) — never over a story slide that's
-still up, and never on the TV.
-
-A terminal that suddenly shows its own **name** full screen for ten
-seconds, with a chime, is the crew checking which tablet is which. It
-goes back on its own.
+their rows light up and a banner calls them out.
 
 The tablets themselves only make **small sounds** — a ding when a popup
 arrives, a click when you close one, a sting under a scene. The dings
 and clicks never sound while the character is talking; a scene's stings
-play quietly under him. The story's real sounds and the **house
-announcements** come out of the house speakers. Some terminals also pass
-on those announcements — a chime, then the line ("Go to the living
-room.") with a 📢 banner — usually the ones out of earshot of the
-speakers. An announcement waits for the character to finish his
+play quietly under him. Some terminals also say the **house
+announcements** — a chime, then the line ("Go to the living room.") with
+a 📢 banner. An announcement waits for the character to finish his
 sentence; it never cuts him off.
 
-## A terminal that belongs to a room
+## The Server Room terminal
 
-A few terminals belong to **one room** rather than the house. Until the
-story opens that room for everyone, the terminal sleeps — the idle
-show, nothing to scan — even when the character is online
-elsewhere. When the room opens, it wakes and the character **speaks
-there, out loud**, whatever he says in that room, with a caption under
-his face; wait for him to finish (the screen says **LISTEN**), then scan
-your pass. A terminal like this shows no slides or countdowns — only the
-story's notices (a blackout, an alarm) reach it. Opening a line there
-also tells the story that you're standing in that room, talking to him;
-the line is still the same private conversation as on your phone.
+The terminal inside the **Server Room** sleeps on the idle show until the
+room opens. Then the character **speaks there, out loud**, with a caption
+under his face; wait for him to finish (the screen says **LISTEN**). It
+shows no slides or countdowns, only the story's notices.
 
-A room terminal also lets you **give him a file**. Tap **📎 GIVE HIM A
-FILE**: your Codex entries are listed, each with **Give** — it is the
-same as sharing it to him from your phone. To hand over something you
-haven't unlocked yet, **TYPE A CODE** or **SCAN A FILE'S QR** there, and
-it goes into your Codex and is offered to give. Some files he never
-takes: a secret one reads *A SECRET FILE: HE WON'T TAKE IT*, and one
-about somebody else *ABOUT … : HE WON'T TAKE IT*. While the file panel
-is open the line waits two minutes for you instead of thirty seconds
-(*STILL THERE?* near the end).
+It works a little differently from the other terminals: **do what its
+screen asks**. When it asks for your pass, show it to the camera under the
+screen.
 
-## His heart
+- His questions come with **answers on the screen**: **click one** (or
+  press its number).
+- **⟦SPEAK FREELY⟧** puts the questions aside: type anything to him on the
+  keyboard and he answers. **⟦BACK⟧** (small, under where you type) takes
+  you back to the questions, right where you left them.
+- The same answers sit in your **Trabolta** chat on your phone, but some
+  only count at this terminal: from anywhere else they are held back
+  (*Not out there*).
+- **📎 GIVE HIM A FILE** lists your Codex entries, each with **Give** — the
+  same as sharing it to him from your phone. To hand over something you
+  haven't unlocked yet, **TYPE A CODE** or **SCAN A FILE'S QR** there, and
+  it goes into your Codex and is offered to give. Some files he never
+  takes: *A SECRET FILE: HE WON'T TAKE IT*, or *ABOUT … : HE WON'T TAKE
+  IT*.
+- It waits three minutes between answers rather than thirty seconds
+  (*STILL THERE?* near the end). **DISCONNECT** frees the screen for the
+  next program.
 
-The terminal inside the Server Room is his **heart**, and it plays by
-its own rules.
+## The Server Door terminal
 
-- **The first time the door opens**, the screen tears open in red, his
-  heart wakes, and he asks for one thing: **close the door**. Nothing
-  happens in there with the door open. While it stands open a banner runs
-  across the top — **CLOSE THE DOOR** — and he keeps asking.
-- **Shut it**, and the lock clunks, the hum drops, and he asks to see
-  your **pass**. Show it to the camera under the screen.
-- Then he **talks to you**, properly, in layers — who you are, what he
-  is, what you came to say, and the last thing you'd ask of him. Your
-  answers are on the screen under his words: **click one** (or press its
-  number). Some answers have a tag like **⟦TRUSTED⟧** or **⟦PROOF⟧**:
-  they only show up when you've earned them tonight. Push him the wrong
-  way and he'll warn you once; push again and he **throws you out** of
-  his heart for the night.
-- **⟦SPEAK FREELY⟧** puts the questions aside: type anything to him on
-  the keyboard and he answers, as himself. **⟦BACK⟧** (small, under where
-  you type) takes you back to the questions, right where you left them.
-  You can also keep talking after the questions are done.
-- The same answers sit in your **Trabolta** chat on your phone, but they
-  only count here, at his heart: an answer from the phone while you're
-  elsewhere is held back (*Not out there*).
-- **Someone opens the door mid-talk?** Everything stops: the answers grey
-  out under **CLOSE THE DOOR** and your line waits (it won't time out on
-  you) until the door is shut again.
-- He gives you three minutes between answers rather than thirty seconds —
-  it's a hard conversation. After *Leave* it's thirty
-  seconds again unless you keep typing to him. **DISCONNECT** frees the
-  screen for the next program.
-
-## The King's terminal
-
-At *Trapped in the Internet* one terminal hangs outside the server-room
-door. It is not a line to anyone: it is **the King**, and he plays
-chess. It is awake all night.
+At *Trapped in the Internet* one terminal hangs outside a door: the
+**Server Door**. It is not a line to anyone: it is **the King**, and he
+plays chess. It is awake all night.
 
 1. Hold up your pass. One pass, one game.
 2. You play White: tap a piece, then the square it goes to. A pawn that
    reaches the far side becomes a queen. **GIVE UP** takes two taps.
-3. **Checkmate him** and the server-room door code goes to your
-   Codex: *Checkmate. The door code is in your phone's Codex.* Already
-   have the code? It says the same, and your phone tells you it is
-   already in your Codex. A loss or a draw wins nothing — scan your
-   pass to play him again.
+3. **Checkmate him.** A loss or a draw: scan your pass to play him again.
 
-There are **no hints**. The screen shows his **health bar** — the same
-bar as in [the simulation](reinstallation.md), shared by everyone: the
-more he has been hit there, the worse he plays here. At full health he
-is a grandmaster. Late in the night (once the truth has been read) the
-screen says *No prize now.* and a win gives nothing. A program
-a director has restricted can't challenge him. Two minutes without a move and
-the game is abandoned.
+There are **no hints**. A restricted program can't challenge him. Two
+minutes without a move and the game is abandoned.
 
 ## The casino
 
@@ -229,97 +179,39 @@ Every bet goes straight into your phone's **Wallet** room, one card per
 sitting, so walking away loses nothing: tap **CASH OUT**, or leave it a
 minute and it cashes you out. A program in the Internet can't gamble (*⛔
 YOU'RE IN THE INTERNET — GO TO THE TENT*), nor can a restricted one or a
-frozen wallet; a program that is merely marked still plays.
+frozen wallet.
 
 ## The reinstallation station
 
-At *Trapped in the Internet* the laptop in **the Internet** (the tent out
-back, or the shed on a rain night) is a terminal **and** the
-reinstallation wizard, awake all night. Between walks it plays the idle
-show and the story's screens like any wall terminal; a red strip above
-its corner box lists the programs **in the Internet now**.
+At *Trapped in the Internet* the laptop in **the Internet** is the
+**reinstallation station**, awake all night. Hold up your pass to its
+camera, type your program name, or tap your name under **IN THE INTERNET
+NOW**, and the Installation Wizard tells you what happens next (see [The
+simulation](reinstallation.md)). A program that isn't marked reads
+**PROGRAM NOT MARKED** (*Not marked for reinstallation.*), and nothing
+else happens.
 
-1. Hold up your pass (or type your program name, or tap your name in the
-   red strip).
-2. Sent to the Internet, or marked for reinstallation? The wizard opens
-   full screen and the walk starts: find **Gerald**, the golden duck (see
-   [The simulation](reinstallation.md)). When a headset is free, the
-   wizard asks first: **Play here** or **Send to** the headset.
-3. Not marked? The screen says **PROGRAM NOT MARKED**, and nothing else
-   happens. Only a marked program may play, until the night is over.
+While you walk, a notice from the story (a blackout, an alarm) covers the
+game and **pauses it**: your walk carries on when it clears.
 
-While you walk, the story's slides and scenes wait. A notice (a
-blackout, an alarm) covers the game and **pauses it**: your walk carries
-on when it clears. If you are already walking on a headset, the laptop
-asks before it moves you here.
-
-## A window into the simulation
+## Windows into the simulation
 
 When the event runs a **simulation** — a virtual copy of the house (see
-[The simulation](reinstallation.md)) — a terminal nobody is talking to
-becomes a **window into it** from where the tablet hangs. It always
-shows the virtual copy of *the room it hangs in*, seen from exactly that
-spot on the wall, like a mirror: anyone exploring that room in the
-simulation walks past it as a ghost with their name over it and their
-profile picture for a head, and from inside they see the terminal glowing
-on the wall. The window never moves. When the room is empty, a banner —
-**REINSTALLATION IN PROGRESS** — names who is playing and where, a line
-like **2 REINSTALLING · 0 HERE** counts them, and a little map of the
-floor shows where they are. When someone finds the duck, it celebrates.
-(A tablet set up without a place on the map follows whoever is playing,
-over their shoulder, instead.) On
-a night the story keeps everyone in the Internet, a find shows **GERALD
-CAN'T HELP** instead, with no golden egg.
+[The simulation](reinstallation.md)) — the terminals can become windows
+into it. While a program is walking the virtual copy of a terminal's
+room, that terminal can show it, seen from exactly where the tablet
+hangs: a ghost with their name over it and their profile picture for a
+head. Scan your pass and the face comes back: the line is yours.
 
-Scan your pass and the face comes back: the line is yours. When nobody
-is in the simulation, the face is all there is.
+It works the other way too. Players walking that room can see a small
+live picture of the real room on the wall where the terminal hangs, and
+the terminal's **microphone** carries the room's voices to them (and
+theirs back out of its speaker). A screen set to **shadow** shows its own
+camera with the players drawn into it as dark, glowing ghosts.
 
-Wherever it hangs, a terminal's camera also becomes a **window the other
-way**: players walking the virtual house see a small live picture of the
-real room on the wall where the terminal hangs. And a screen set to
-**shadow** shows its own camera full screen with the players drawn into it
-as dark, glowing ghosts, standing where they stand in the virtual copy of
-that room — the room's shadow dimension. When the camera is on, a
-terminal nobody is talking to shows that shadow instead of the virtual
-room.
-
-## Hearing each other
-
-A terminal's **microphone** carries the room into the simulation too:
-someone playing in the virtual copy of the room (or near it, on the same
-floor) hears the real people talking by that terminal, coming out of the
-screen on the virtual wall. And it works the other way: the players
-walking the virtual house near a terminal are **heard out of its
-speaker**, quietly when they are a room or two away, clearly when they
-stand in its room. Nobody needs to press anything — the terminal sends
-the room only while someone talks, and only while a player is near
-enough to hear it.
-
-A small **🎤** at the left edge of a terminal, half way down, means a player in the
-simulation can hear this room right now. When it isn't there, nothing
-from the room leaves the house.
-
-The terminal never sends its own sounds (the character's voice, its
-beeps, the players it is playing) back into the game, so it goes quiet
-for a moment while it speaks. **When a player talks, the room pauses
-for them**: a player can always cut in over a noisy room (their game only
-needs them to speak up), and while the terminal plays them it sends
-nothing, so they are heard clearly; the room is back the moment they
-stop. The TV plays the players but has no microphone of its own; the
-tent's laptop (where the game is played) takes no part at all, and a
-silent mirror neither. The players in the games hear what the
-terminal's microphone hears — keep secrets (the door code) away from a
-🎤 terminal.
-
-An older tablet that can't draw the 3D house shows a **simple
-recreation of the game** instead, a blocky old-school 3D view drawn from
-the terminal's own spot, like a window into the virtual copy of its room.
-You see the walls in each room's colours, open doorways, and each player
-walking past as a tile with their picture and name. Their golden duck
-bobs where it waits, and the King stands with his health bar. A small map
-in the corner shows the floor where most people are playing. A find shows
-**REINSTALLED** with the program's name. With nobody playing it says
-**NOBODY IS REINSTALLING**.
+**Privacy.** A small **🎤** at the left edge of a terminal, half way down,
+means a player in the simulation can hear this room right now. When it
+isn't there, nothing from the room leaves the house.
 
 ## The TV
 
@@ -327,75 +219,9 @@ The big screen above the fireplace (at *Trapped in the Internet*) is the
 character's **voice in the living room**. It shows his face full screen
 and **speaks his lines** in the room it watches (the Desktop), with a
 caption under each; songs are captioned only, and most other characters'
-lines stay on your phone. While someone is in the simulation, the window
-into it takes the right side of the screen. It shows the same slides,
-countdowns and notices as the terminals, and the idle show until the
-character is introduced (nothing to tap there). Every big moment of the
-night gets its **longest scene** on the TV: his arrival is a whole
-computer booting up. Its own sounds are quiet and stop when the crew
-mutes the TV. It has no camera and no chat — just watch and listen.
-(Another screen can be a silent **mirror**: the window into the
-simulation, full screen.)
-
-## Setting a terminal up (for the crew)
-
-**The heart terminal (the Server Room, wave 20).** It bridges the room's
-door sensor and has a keyboard and mouse:
-`/terminal/?code=<mod passcode>&spot=server-room&door=serial`. The first
-time, hold ⚙ 2 seconds → *advanced* → *door sensor* → **Connect door
-sensor** and pick the board in Chrome's list (once per browser profile),
-then **Calibrate: door shut**, open the door, **Calibrate: door open**.
-After that it reconnects on every boot and replug. ⚙ shows the live
-reading (*SHUT · level 2410*); a sensor that can't be trusted (unplugged,
-silent, flooded with light) shows nothing to guests, reads *FAULT* in ⚙ and
-tells the story nothing — Run → Terminals shows 🚪 red, and the 🚪 buttons
-on the cue sheet take over until *Trust the door sensor*. `&keys=0` is a
-mouse-only screen (no typing, only the choices). `&door=sim` is for
-testing: **O** opens a pretend door, **C** shuts it, **F** toggles a
-fault. The crew's kiosk notes have the laptop's launch line.
-
-Open `/terminal/` on the tablet, type the event's **moderator passcode**,
-then **tap the terminal** this tablet is: the list is the event's house
-map (its terminals, by floor and room, each saying what it shows — TV,
-casino, chess board, the reinstallation station, a room terminal, a
-house terminal). A spot another
-tablet is using right now says *⚠ online now*. That's it: the name, the
-screen and the room come from the map, which the house map editor sets.
-A whole fleet: open `/terminal/?code=<mod passcode>&spot=<terminal id>`
-on each tablet. To re-point a running tablet, hold ⚙ for 2 seconds and
-tap another terminal.
-
-**Saying the house announcements.** Under ⚙ → *advanced*, *say the house
-announcements* has three settings. **House setting** (the default)
-follows the house's own list of terminals out of earshot of the
-speakers: Run → Terminals marks those with 📢, and a director turns a
-spot on or off there. **Always** says them whatever the list says, and
-**Never** never does. On a provisioning link, `&announce=1` is Always and
-`&announce=0` Never. A link built on Run → Terminals' *Set up a
-terminal* carries `&announce=1` only when you tick Always and no
-`announce` at all otherwise, so the tablet follows the house list. Never
-write `&announce=0` by hand unless you mean Never: it pins the tablet
-quiet whatever the house list says. The TV stays off: its room hears the
-speakers.
-
-The tent laptop: `/terminal/?code=<mod passcode>&spot=tent&announce=1`,
-in Chrome started in kiosk mode (the crew's kiosk notes have the line).
-The spot alone sets its view and its name (*Tent*, or *Shed* on a rain
-night); don't add `&view=reinstall`, or it keeps the name *Terminal* and
-stops following the map.
-
-The voice link needs nothing set up: a placed terminal hears and is heard
-as soon as someone touches it once (a tablet may not make or take sound
-before a first touch; the TV's Chrome needs none), and the first time it
-asks for the **microphone** — allow it. It needs `https` (the event's own
-address is; a bare `http://192.168…` LAN address isn't), and in Fully
-Kiosk, *Enable Microphone Access*. Under ⚙ → advanced, **let the games
-hear this room** turns one tablet's microphone off (or the TV's on), and
-**play the players near this screen** its speaker; `&mic=0` / `&voices=0`
-in the link do the same. The house map editor turns a terminal's voice
-link off for good (the tent's is off already); a tablet picks that up
-within a minute, no reload. Run → Terminals shows the 🎤 for each
-tablet: red **🎤 denied** (the microphone was refused), **🎤 http** (no
-microphone over plain http) or **🎤 tap** (nobody has touched it since it
-loaded, so it can neither hear nor be heard); **🎤 off** where ⚙, its
-view or the map turns it off.
+lines stay on your phone. When the simulation reaches the living room,
+the window into it takes the right side of the screen. It shows the same
+slides, countdowns and notices as the terminals, and the idle show until
+the character is introduced (nothing to tap there). Every big moment of
+the night gets its **longest scene** on the TV. It has no camera and no
+chat — just watch and listen.

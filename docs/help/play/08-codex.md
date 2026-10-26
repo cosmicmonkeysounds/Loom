@@ -40,8 +40,7 @@ Lore reaches you three ways:
   you aren't joined (it then shows the code in big letters to type in
   here). Codes don't care about capitals, dashes or spaces. A
   miss says so right there in the room.
-  A wrong code is *noticed* by the story, so don't guess in front of
-  anyone. Too many tries in a row and the box asks you to wait a minute.
+  Too many tries in a row and the box asks you to wait a minute.
 - **The story.** Answer the right way, be scanned by the right person,
   finish the right puzzle.
 - **A person.** Someone shares it with you. You'll see who.
@@ -50,11 +49,9 @@ Lore reaches you three ways:
 
 Every entry has a **Share…** button when you open it. Pick a person and they now
 hold it too — you keep your copy, and your Codex notes who you gave it
-to. Sharing is permanent and the story sees it:
-some characters *change* when they learn things. Share carefully. Some
-characters (Trabolta, at *Trapped in the Internet*) won't take a secret
-file, or lore about someone or somewhere else, so **Share…** leaves
-them off the list for that entry. If a share is still turned down, the
+to. Sharing is permanent: some characters *change* when they learn
+things. Share carefully. Some characters won't take every file, so
+**Share…** leaves them off the list for that entry. If a share is still turned down, the
 app says *⛔ Not shared* with the reason, and nothing moves.
 
 ## People
@@ -67,9 +64,8 @@ about someone? Get them (or someone who knows them) to share.
 ## Private messages
 
 From the People list, **💬 Message** opens a private thread with a guest
-or a character. Only the two of you can read it (the operator can — it's
-their show). A character's thread is answered by whoever is playing them
-tonight. Some characters are not people at all, and still answer.
+or a character. It's your thread with them: a character reads it and
+answers in their own time, and some characters are not people at all.
 
 ## Alerts and pop-ups
 

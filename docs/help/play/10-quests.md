@@ -2,7 +2,7 @@
 title: Your quest log
 section: Guest Guide
 order: 10
-keywords: quest, quests, quest log, task, mission, in progress, done, progress, complete, failed, pinned, steps, folded, file a fact, fact, answer, confidence, sure, required, missing, filed, judged, verdict, staff quest, performer quest
+keywords: quest, quests, quest log, task, mission, in progress, done, progress, complete, failed, pinned, steps, folded, file a fact, fact, answer, confidence, sure, required, missing, filed
 ---
 
 Some stories hand you things to **do**. They land in your **📜 Quest
@@ -35,10 +35,6 @@ does their part, your quest hears about it too.
 A quest can be **failed** — time runs out, the story moves on. It stays
 in your log, under Failed, as a record of the night.
 
-Characters have quests too: the people running the night carry their
-own Quest Log in their booths, with the story's standing orders for
-them. If a performer seems to be following a script, they are.
-
 ## Filing a fact
 
 Some stories let you hand an answer to a character instead of saying it
@@ -54,13 +50,8 @@ card says it in red (*⚠ Set how sure you are before filing — drag the
 slider (1–100%).*), outlines what is missing and moves you to it.
 Only filed facts count — telling the character in chat is just a rumour.
 You can file each open question once, and the reply is the same whether
-you were right or not: an exact answer is judged the moment you file it,
-and anything else (a typo, other words for it, a different answer) is
-checked first, by the story's judge or a host, before the round's
-results. The story decides what to do with a right answer, a wrong one you were sure
-of, and a guess. Mind the slider — at *Trapped in the Internet*, a wrong
-answer filed at 100 is a lie on the record, and a guess filed below 100
-is a guess. The card waits in the tray above the message box while you
+you were right or not: the character reads every filing later. The card
+waits in the tray above the message box while you
 fill it in; once filed it settles into one line naming the question
 (*Round 1 Q1*) and your confidence, a fresh card arrives for the next
 question, and the old ones fold. The newest card lists every open question you haven't filed
