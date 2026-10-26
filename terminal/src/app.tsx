@@ -72,7 +72,7 @@ import { Component, Fragment, Suspense, lazy, useCallback, useEffect, useMemo, u
 import { Composer, Thread } from "./chat.tsx";
 import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
-import { followMap, followVoice, urlConfig } from "./setup-map.ts";
+import { followMap, followVoice, linkConfig } from "./setup-map.ts";
 import { useCamFeed } from "./camfeed.ts";
 import { useVoiceLink } from "./voice/hook.ts";
 import { MicCue } from "./voice/MicCue.tsx";
@@ -247,7 +247,7 @@ export function App() {
         // room), the link's own fields winning. A spot the map lacks: say so
         // rather than hang no window.
         const house = given.spot === "" ? null : await fetchHouse(given).then((h) => h.house, () => null);
-        const c = urlConfig(given, hints, house);
+        const c = linkConfig(given, hints, house); // urlConfig + the view defaults (TV: 0.92)
         saveConfig(c);
         setConfig(c);
         const problem = house === null ? null : spotProblem(c.spot, house);
