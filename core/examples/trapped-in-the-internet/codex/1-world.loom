@@ -107,6 +107,7 @@ CODEX The Centre Square
     truth all night.
 
 // DRAFT w18b (R18): the owner, not the computer's AI helper.
+// DRAFT w26 (R5: only the screens in its room see it)
 CODEX The Reinstallation Protocol
   title: The Reinstallation Protocol
   category: How it works
@@ -119,9 +120,10 @@ CODEX The Reinstallation Protocol
     of this house. It follows the golden chevrons to the golden duck and
     walks right up to him. The duck lays a golden egg and flies away. The
     program has demonstrated that it can follow instructions, and it is
-    reinstalled. Every screen on the walls shows it wandering, including
-    the TV. A program that needs to leave turns on Bathroom Mode first.
+    reinstalled. The screens in the room it walks into show it wandering.
+    A program that needs to leave turns on Bathroom Mode first.
 
+// DRAFT w26 (G1: the exemption is never said up front)
 CODEX Bathroom Mode
   title: Bathroom Mode
   category: How it works
@@ -129,8 +131,8 @@ CODEX Bathroom Mode
   text:
     A program that needs to leave, for the bathroom or an emergency,
     turns on Bathroom Mode in its app first. It tells everyone, the
-    Antivirus especially, that you are not just hacking the Internet. It
-    also excuses you from a summons. Turn it off when you are back; after
+    Antivirus especially, that you are not just hacking the Internet.
+    Turn it off when you are back; after
     fifteen minutes it turns itself off. The Recycling Bin will be waiting
     in Disk Cleanup with a mint.
 

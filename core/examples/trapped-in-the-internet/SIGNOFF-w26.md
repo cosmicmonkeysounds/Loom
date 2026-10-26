@@ -80,6 +80,7 @@ help lanes write the rest. Not merged to master, not shipped.
 | `objectives.loom:77` | Find Gerald | *…walk the copy of the house: follow the golden arrows to Gerald…* · `go: The Internet` · pass | *…walk the copy of the house to find Gerald…* · no `go:` · pass, Bathroom Mode, Back from the bathroom |
 | `beats/internet.loom:45` | The Tablet Video, a corrupted program | a menu: *"Where is the exit?"* / *Put the headset on.* / *Take the tablet.* | no menu: *The exit is clearly marked, behind you. It is for safety. It is not the way out. Gerald is the way out.* |
 | `beats/internet.loom:47` | The Tablet Video | *Loading a copy of this house. Every screen in the house can see you now. Wave.* (R5: no longer true) | *Loading a copy of this house. The screens in the room you walk into can see you. Wave.* |
+| `codex/1-world.loom:123` | The Reinstallation Protocol (codex, a captured guest) | *…Every screen on the walls shows it wandering, including the TV.* (R5: no longer true) | *…The screens in the room it walks into show it wandering.* |
 
 **A guest's BINGO, the undo, 🤐, one round (B1–B5)**
 
@@ -150,6 +151,9 @@ per escape + his assessment*, everywhere it is recomputed (six places).
 | `objectives.loom:240` | Be At The Desktop | *…that is your check-in. Late without Bathroom Mode means the Internet, and no Truth Pong.* | *…that is your check-in. The Antivirus are counting.* |
 | `objectives.loom:317` | The Y2K Hour | *…The count starts now. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority.* · to-do *Have the door code* | *…The count starts now.* · no door-code to-do |
 | `objectives.loom:384` | You Are Marked | *…you go to the Internet. Bathroom Mode still works: they wait outside.* | *…you go to the Internet.* |
+| `main.loom:4573` | ⏳ FIVE MINUTES (every phone) | *…and you will not play Truth Pong. Bathroom Mode excuses you.* | *…and you will not play Truth Pong.* |
+| `beats/pong.loom:20` | Five Minute Warning (Clippy, TV) | *If you are in Bathroom Mode, you are excused. If you are not in Bathroom Mode, and you are not here— well. Please just be here.* | *And if you are not here— well. Please just be here.* |
+| `codex/1-world.loom:133` | Bathroom Mode (codex, every guest at Orientation) | *…that you are not just hacking the Internet. It also excuses you from a summons. Turn it off…* | *…that you are not just hacking the Internet. Turn it off…* |
 | `main.loom:4001` | 🚻 Bathroom Mode's description | *Leave honestly. Tells the Antivirus you are not hacking the Internet, and excuses you from a summons.* | *Leave honestly. Tells the Antivirus you are not hacking the Internet.* |
 | `quests.loom:80` | A Faction Of Your Own (a founder) | *…your faction wins what a majority wins: the whole truth, and the door code.* | *…your faction wins what a majority wins: the whole truth.* |
 | `codex/7-clippy.loom:116` | Clippy Instructions 3 (private) | *The rules: every answer filed with Trabolta on the phone is judged. An accurate answer is accepted…* | *Never say the rules out loud: let the room learn them from the results. Say only that every answer filed with Trabolta will be judged, and that Trabolta knows best. (For you alone: …the rule as before.)* |
@@ -161,6 +165,10 @@ guess is a symptom of corruption. Antivirus, you know what to do."* after
 each question, the `~🤷 … symptom of corruption` notices, the mark reasons,
 the results rows, Clippy's own *"If you miss, you will … need to be
 reinstalled"* at Truth Pong, and the found note's quest *The Cold Door*.
+Kept too: the 🤫 tip-off whispers (Clippy's and Password Manager's), which tell one marked program about Bathroom
+Mode as a favour a performer chose, never up front; the performers'
+own *Summons Door* card (*Bathroom Mode excuses them*); and the
+crew-facing README.
 
 **The glitch (T2)**: no new show text. `cue screens_glitch` and the hijack's
 own *000. 000. 000.* as `Night.glitch_text`; a caption a screen or phone

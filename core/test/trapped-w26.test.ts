@@ -12,7 +12,7 @@
 //! - B1–B5: a guest's BINGO, the exact undo, 🤐 names nobody, one round.
 //! - G1: no hints in the show text.
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
@@ -557,6 +557,27 @@ describe("Trapped in the Internet — wave 26: no hints in the show text (G1)", 
     expect(checked).toBeGreaterThan(20);
     expect(m.interactions.get("go to the bathroom")!.description).not.toMatch(/excuse/iu);
     expect(m.quests.get("A Faction Of Your Own")!.text).not.toMatch(/door code/iu);
+  }, SLOW);
+
+  it("no house broadcast, cutscene line or guest codex card says what excuses a summons", () => {
+    const EXEMPT = /excuses you|you are excused|excuses a summons|excused from|a summons excuses/iu;
+    const spoken = (src: string) => src.split("\n").filter((l) => !l.trim().startsWith("//"));
+    // Every line of every beat (the cutscenes and the phone's story lines).
+    const beats = readdirSync(new URL("beats/", DIR)).filter((f) => f.endsWith(".loom"));
+    expect(beats.length).toBeGreaterThan(8);
+    for (const f of beats) for (const l of spoken(read(`beats/${f}`))) expect(l, f).not.toMatch(EXEMPT);
+    // Every broadcast to the whole house.
+    const house = spoken(read("main.loom")).filter((l) => /broadcast "/u.test(l) && /to everyone/u.test(l));
+    expect(house.length).toBeGreaterThan(20);
+    for (const l of house) expect(l).not.toMatch(EXEMPT);
+    expect(read("main.loom")).toContain("you will not play Truth Pong.\" to everyone");
+    expect(beat("beats/pong.loom", "Five Minute Warning")).toContain("Clippy: And if you are not here— well. Please just be here.");
+    // The guest codex cards (Orientation hands out Bathroom Mode; a capture
+    // hands out the Reinstallation Protocol).
+    for (const l of spoken(read("codex/1-world.loom"))) expect(l).not.toMatch(EXEMPT);
+    // R5: a terminal sees a player only in its own room.
+    expect(read("codex/1-world.loom")).not.toMatch(/Every screen on the walls/u);
+    expect(read("codex/1-world.loom")).toContain("The screens in the room it walks into show it wandering.");
   }, SLOW);
 
   it("Clippy keeps the rule privately; Trabolta's brief no longer states it", () => {

@@ -1009,7 +1009,7 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 
 | Name | label |
 |---|---|
-| go to the bathroom | `🚻 Bathroom Mode` (description: `Leave honestly. Tells the Antivirus you are not hacking the Internet, and excuses you from a summons.`) · `restricted: allow` (a marked program keeps it, fact M20) |
+| go to the bathroom | `🚻 Bathroom Mode` (description: `Leave honestly. Tells the Antivirus you are not hacking the Internet.`; wave 26 G1: the summons exemption is never said up front) · `restricted: allow` (a marked program keeps it, fact M20) |
 | back from the bathroom | `Back from the bathroom` · `restricted: allow` |
 | plant_the_virus | `💾 Insert a disk into the computer` (`arm: true`, wave 11) |
 
@@ -1118,7 +1118,7 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 | The Terms Of Service | The Terms Of Service | E | | | | Upload (every program) | | "By uploading, you agree that Jean Trabolta, Sole Owner and Founder of Maps and Ducks, may make all of your decisions." (wave 18b, R18; was "the computer's AI helper"; the prompt everyone needs for the Bingo centre square.) |
 | The Centre Square | The Centre Square | M | | | | ROLE watcher for whoever `== Kernel.anti_ai` | | "The Uploader said you agreed to let Jean Trabolta, Sole Owner and Founder of Maps and Ducks, make all of your decisions (wave 18b; was "the computer's AI helper"). You didn't mean it. You would never agree to a life where AI makes all of your decisions. If anyone asks, say so. Tell the truth all night." |
 | The Reinstallation Protocol | The Reinstallation Protocol | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software | Reinstallation beat | ✚ | Corruption, the headset, the golden duck, Bathroom Mode, the marked exit. |
-| Bathroom Mode | Bathroom Mode | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Recycling Bin | Reinstallation beat; Orientation (Clippy's line + the tour's Bathroom Mode step, wave 4) | ✚ | Turn it on so everyone knows you are not hacking the Internet; it also excuses you from a summons. |
+| Bathroom Mode | Bathroom Mode | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Recycling Bin | Reinstallation beat; Orientation (Clippy's line + the tour's Bathroom Mode step, wave 4) | ✚ | Turn it on so everyone knows you are not hacking the Internet. (It also excuses you from a summons, but no guest card says so: wave 26 G1.) |
 | The Golden Duck | The Golden Duck | E | | | | `the simulation completed` (captured programs) **and** `the golden duck` (anyone who finds him) — keep the name: spatial.test asserts a *free* program learns it from `the golden duck` | | "Gerald, the golden duck off the Maps and Ducks billboard. Follow the chevrons; walk right up to him; he lays a golden egg and flies away." (The reinstall games call him Gerald.) |
 | Computer Bingo | Computer Bingo | E | | | Clippy | `award_the_ribbon` | | The asterisk card; the centre question; "if there is a Bingo, someone is not ready to follow orders." |
 | The Orientation List | The Orientation List | E | | | | finishing the tutorial (tested) | | Clippy's list of programs that follow instructions (keep current). |
@@ -2253,7 +2253,7 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
   step 9 · `set Night.summons_open = true`, `summons_end = Time.elapsed + 300` · `unlock
   Clippy Instructions 5 for Clippy` · `broadcast "!⏳ FIVE MINUTES. Be in the Desktop for the
   Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play
-  Truth Pong. Bathroom Mode excuses you." to everyone` · `do announce "Five minutes. Everyone
+  Truth Pong." to everyone` (wave 26 G1: no "Bathroom Mode excuses you") · `do announce "Five minutes. Everyone
   to the Desktop."` · `sound countdown_tick` · `cue lights_call_desktop`, `cue
   screens_five_minutes` · `-> Five Minute Warning` (public narration).
 - Enforcer hook: `reply 🛡 Scan every program arriving at the Desktop: that is their check-in.`

@@ -4561,7 +4561,8 @@ when five_minute_warning:
     unlock Clippy Instructions 5 for Clippy
     update quest Keep Everyone Calm for Clippy "Truth Pong. Be more excited than ever."
     // DRAFT w18
-    broadcast "!⏳ FIVE MINUTES. Be in the Desktop and scan its check-in QR for the Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play Truth Pong. Bathroom Mode excuses you." to everyone with go: scan as "📷 Check in", go: The Desktop
+    // DRAFT w26 (G1: the exemption is never said up front)
+    broadcast "!⏳ FIVE MINUTES. Be in the Desktop and scan its check-in QR for the Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play Truth Pong." to everyone with go: scan as "📷 Check in", go: The Desktop
     do announce "Five minutes. Everyone to the Desktop."
     sound countdown_tick
     cue lights_call_desktop
