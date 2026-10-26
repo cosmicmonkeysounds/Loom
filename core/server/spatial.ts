@@ -1004,7 +1004,9 @@ export class SpatialHub {
     if (kind !== "escape" && ((kind !== "heart" && kind !== "pickup") || typeof propId !== "string" || propId === "")) return { kind: "bad" };
     if (!s.claimed) return { kind: "parked" };
     const map = this.map;
-    if (map === null) return { kind: "noProp" };
+    // No map (unreachable while `begin` needs one): an escape is never out,
+    // and `noProp` stays the heart's and the pickup's answer alone.
+    if (map === null) return kind === "escape" ? { kind: "notOut", distance: 0 } : { kind: "noProp" };
     const house = map.house;
     const now = this.now();
     const ref: SessionRef = { id: s.id, guest: s.guest, device: s.device, captured: s.captured };

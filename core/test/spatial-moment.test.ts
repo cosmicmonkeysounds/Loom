@@ -167,6 +167,18 @@ describe("SpatialHub.moment — the void (escape)", () => {
     expect(h.hub.moment(c.token, { kind: "dance" } as never, h.say())).toEqual({ kind: "bad" });
     expect(h.commits).toEqual([]);
   });
+
+  it("no map under a live session: an escape is `notOut` (never `noProp`, which tells the game to give up); heart and pickup stay `noProp`", () => {
+    const h = hub();
+    const a = h.begin("g-1");
+    h.hub.pose(a.token, pose(VOID));
+    // `begin` needs a map, so only a test can pull it out from under a session.
+    (h.hub as unknown as { map: null }).map = null;
+    expect(h.hub.moment(a.token, { kind: "escape" }, h.say())).toEqual({ kind: "notOut", distance: 0 });
+    expect(h.hub.moment(a.token, { kind: "heart", prop: HEART.id }, h.say())).toEqual({ kind: "noProp" });
+    expect(h.hub.moment(a.token, { kind: "pickup", prop: DISK.id }, h.say())).toEqual({ kind: "noProp" });
+    expect(h.commits).toEqual([]);
+  });
 });
 
 describe("SpatialHub.moment — Trabolta's heart", () => {
