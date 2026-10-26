@@ -7,7 +7,8 @@
 //! - `L1215 ObjectivePickNotForBooths` — `target:` / `pick:` on an OBJECTIVE
 //!   no booth sees (they are booth-only).
 //! - `L1216 HeaderLineInvalid` — a header `wanted:` / `archive:` /
-//!   `reinstall:` line that does not parse or resolve.
+//!   `reinstall:` line that does not parse or resolve (a warning), or a
+//!   `lock:` line that is no expression (wave 26, C2: an error).
 //! - `L1217 CallerNotAPart` — `by:` on a `who: admin` INTERACTION names no
 //!   performer part, so no booth can call it.
 //! - `L1218 BigHouseBroadcast` — `broadcast "!!…"` to everyone outside an
@@ -29,13 +30,13 @@ type Push = (uri: string, range: Range, error: boolean, code: string, message: s
 type Doc = { text: string; file: LoomFile };
 
 /** A whole-line range (from its indent to its end). */
-function lineRange(line: string, n: number): Range {
+export function lineRange(line: string, n: number): Range {
   const start = line.length - line.trimStart().length;
   return { start: { line: n, character: start }, end: { line: n, character: line.trimEnd().length } };
 }
 
 /** A line without its trailing `// comment` (outside quotes). */
-function stripComment(line: string): string {
+export function stripComment(line: string): string {
   let quoted = false;
   for (let i = 0; i < line.length - 1; i++) {
     const c = line[i]!;
@@ -46,7 +47,7 @@ function stripComment(line: string): string {
 }
 
 /** The `with …` tail of a moment statement's arguments, or null. */
-function momentTail(verb: string, rest: string): string | null {
+export function momentTail(verb: string, rest: string): string | null {
   const t = rest.trim();
   if (verb === "reply" || verb === "respond") {
     const m = /^"(?:[^"\\]|\\.)*"\s+with\s+(\S.*)$/su.exec(t);
@@ -172,6 +173,9 @@ function headerLints(docs: ReadonlyArray<[string, Doc]>, model: SimModel, push: 
         }
       } else if (line.key === "reinstall") {
         if (!exprOk(line.value)) push(uri, range, false, Code.L1216HeaderLineInvalid, `\`reinstall: ${line.value.trim()}\` is no expression — nobody the story marks may enter the reinstallation (a captured or restricted program still may)`);
+      } else if (line.key === "lock") {
+        // Wave 26 (C2): an error — a broken `lock:` never locks a phone.
+        if (!exprOk(line.value)) push(uri, range, true, Code.L1216HeaderLineInvalid, `\`lock: ${line.value.trim()}\` is no expression — no phone is ever locked (write a condition on the guest, e.g. \`lock: program.corrupted == true\`)`);
       }
     }
   }

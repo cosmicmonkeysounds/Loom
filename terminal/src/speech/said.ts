@@ -8,6 +8,12 @@
 //!   (muted, a song beat, text only, another speaker, attract). Only the lines
 //!   it will really speak hold it back.
 //!
+//! - `sp=<seq>:<chunk>` / `sp=<seq>:d` (wave 26, V1 phase 2; the TV only)
+//!   — the room line it is speaking now and the sentence within it (from
+//!   0), or `d` once that line is done. The server keeps the newest from a
+//!   `view=tv` poller as the screen state's `tvSpeech`, so the walls can
+//!   follow his voice.
+//!
 //! A desk `speech` step waits on these to know Trabolta has finished in a
 //! room. `RoomSpeech` is the pure model (the App owns one, like the voice
 //! cursor; the TV's and the room terminal's `LinePlayer` feed it), and
@@ -22,6 +28,10 @@ export const DRAIN_REPOLL_GAP_MS = 500;
 export interface SpeechReport {
   talk: boolean;
   said: number | null;
+  /** (wave 26, V1 phase 2) The line being spoken now (`seq`) and its
+   *  sentence (`chunk`, from 0), or `chunk: null` once that line is done.
+   *  Absent / null: nothing to report (left out of the poll). */
+  sp?: { seq: number; chunk: number | null } | null;
 }
 
 /** The poll's `talk` / `said` keys for a report (none for a terminal that doesn't speak). */
@@ -29,6 +39,11 @@ export function speechQuery(r: SpeechReport | null | undefined): Record<string, 
   if (r === null || r === undefined) return {};
   const q: Record<string, string> = { talk: r.talk ? "1" : "0" };
   if (r.said !== null && Number.isFinite(r.said)) q["said"] = String(Math.floor(r.said));
+  const sp = r.sp;
+  if (sp != null && Number.isFinite(sp.seq) && sp.seq >= 0) {
+    const chunk = sp.chunk === null ? "d" : Number.isFinite(sp.chunk) && sp.chunk >= 0 ? String(Math.min(999, Math.floor(sp.chunk))) : null;
+    if (chunk !== null) q["sp"] = `${Math.floor(sp.seq)}:${chunk}`;
+  }
   return q;
 }
 

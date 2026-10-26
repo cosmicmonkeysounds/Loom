@@ -543,8 +543,8 @@ It asserts that each route is either in `LOCKED_OPEN` or answers `403
 locked` for a locked guest, so a new route can't slip past. A director's Run
 → Players pane and a terminal piloting a locked guest go through the same
 routes, so they are refused the same way. Lint **L1216** gains the `lock:`
-header: a `lock:` line that is no expression is an error, as `reinstall:`
-already is (`core/src/lsp/w18-lints.ts` ~174).
+header: a `lock:` line that is no expression is an error (`reinstall:`'s
+L1216 at `core/src/lsp/w18-lints.ts` ~174 stays a warning).
 
 The lock is derived from story state. It is never journaled and never needs
 an `unrestrict`: release (`self.corrupted = false`) lifts it on the next
@@ -605,7 +605,11 @@ export interface ScreenProgram {
 ```
 
 `foldProgram` sets `glitch` and leaves everything else alone. `ad_hijack`
-joins `PERSISTENT_SLIDES`. An old terminal ignores `program.glitch`.
+joins `PERSISTENT_SLIDES`. An old terminal ignores `program.glitch`. The
+terminal's own mirror (`terminal/src/screen.ts`) types it `glitch?: ScreenShot
+| null` and leaves it out when an old server sends none, because the
+terminal's hand-built programs (`cutscene/fake.ts`, the slide tests) carry no
+glitch; read it as `program.glitch ?? null`. The server's field is required.
 
 **Phones** (engine lane, `core/server/views.ts`):
 
@@ -951,8 +955,10 @@ messages, because of the next rule.
 
 **Game-only beats** (engine lane, Stage A, `chat.ts`). `export const
 GAME_ONLY_BEATS = ["Escape Attempt", "Heart In The Simulation"]` (folded).
-The chat composer emits **no** `ChatMessage` for a `dialogue` event whose
-`beat` is one of them. Chat is re-derived on replay, so the rule is
+The chat composer emits **no** `ChatMessage` for a `dialogue` (or
+narration) event whose `beat` is one of them, and `decisionChannelFor` /
+`menuChannelsFor` skip those lines, so a later menu never docks under
+`dm:Trabolta`. Chat is re-derived on replay, so the rule is
 deterministic: no phone thread, booth readout, Run pane or replay ever holds
 those lines. Only the game's answer body carries them. This matters
 because Trabolta is `hidden: true` and has no scripted line before
@@ -975,7 +981,11 @@ ring (~640). Every terminal would then carry "simulation heart reached" and
 and `PICKUP_SIGNAL` join `QUIET_MOMENT_SIGNALS` (~465), with a case in
 `core/test/screen-quiet-moments.test.ts`. The constants come from
 `@loom/house`, so the house lane exports them first (Stage A merges house
-before engine). `screen.ts` is frozen in Stage B, so this must land in
+before engine). The engine branch was built beside house, so it holds the
+three strings as `GAME_MOMENT_SIGNALS` in `routes/screen.ts`; the quiet-moments
+test requires all three house exports and their equality once house has any
+of its moment API. After the house merge, `GAME_MOMENT_SIGNALS` may become
+`[ESCAPE_SIGNAL, HEART_SIGNAL, PICKUP_SIGNAL]` imported from `@loom/house`. `screen.ts` is frozen in Stage B, so this must land in
 Stage A.
 
 **Assignment** (additive, `house/src/types.ts` by the house lane, filled by

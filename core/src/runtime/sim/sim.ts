@@ -2461,7 +2461,7 @@ export class Sim {
     let moment: { go?: string[] } = {};
     const w = withIndex(head);
     if (w >= 0) {
-      const { close: _close, ...args } = this.momentArgs(head.slice(w + 6), bindings);
+      const { close: _close, noAck: _noAck, ...args } = this.momentArgs(head.slice(w + 6), bindings);
       moment = args;
       head = head.slice(0, w).trim();
     }
@@ -2550,7 +2550,7 @@ export class Sim {
     // split *after* its closing quote, so `"Come to the Desktop." to
     // everyone` keeps its own ` to ` intact. Wave 18 (C2): a trailing
     // `with go: …, close: 6s` (after the scope) names the moment's exits.
-    let moment: { go?: string[]; close?: number } = {};
+    let moment: { go?: string[]; close?: number; noAck?: true } = {};
     {
       const t = rest.trim();
       const close = t.startsWith('"') ? t.indexOf('"', 1) : -1;
@@ -2573,12 +2573,14 @@ export class Sim {
     this.record({ type: "broadcast", cue: text, audience, scope: scopeText, ...moment });
   }
 
-  /** A `with …` tail's `go:` words (each interpolated) and `close:` (C2). */
-  private momentArgs(tail: string, bindings: Bindings): { go?: string[]; close?: number } {
-    const { go, close } = splitMomentArgs(tail);
+  /** A `with …` tail's `go:` words (each interpolated), `close:` (C2) and
+   *  `ack: none` (wave 26, C1). */
+  private momentArgs(tail: string, bindings: Bindings): { go?: string[]; close?: number; noAck?: true } {
+    const { go, close, ack } = splitMomentArgs(tail);
     return {
       ...(go.length > 0 ? { go: go.map((g) => this.interpolate(g, bindings)) } : {}),
       ...(close !== null ? { close } : {}),
+      ...(ack === "none" ? { noAck: true as const } : {}),
     };
   }
 
@@ -2594,7 +2596,7 @@ export class Sim {
   private runShow(rest: string, bindings: Bindings, ctx: RoomContext): void {
     let head = rest.trim();
     const params: Record<string, string> = {};
-    let moment: { go?: string[]; close?: number } = {};
+    let moment: { go?: string[]; close?: number; noAck?: true } = {};
     const withIdx = indexOutsideQuotes(head, " with ");
     if (withIdx >= 0) {
       // Wave 18 (C2): `go:` / `close:` are the moment's, not card params.

@@ -1711,13 +1711,21 @@ moment its buttons: a place, a room, a character's thread, a guest button,
 `codex: <Entry>`, `quest: <Quest>`, or a screen (`pass`, `scan`, `chats`,
 `mission`, `notifications`, `sides`, `wallet`, `me`), `as "Label"` to rename
 one. Never `lobby`: the lobby is the guests' far-away Chat log (lint L1214).
+Add `ack: none` to the same tail (`reply "!!…" with go: pass, go: go to the
+bathroom, ack: none`) and a big moment loses its OK button: only its exits
+close it. It needs at least one `go:` there (lint L1226); a phone that can
+take none of the exits still shows the OK, so nobody is ever trapped.
 
-**The people the story names.** Three header lines read per guest:
+**The people the story names.** Four header lines read per guest:
 `wanted: guest.marked as guest.why by guest.claimed_by, for Antivirus`
 gives those booths a Wanted board (every guest whose flag is true, why,
 where, who has claimed them; the claim is an INTERACTION you write that sets
 the claim path to `self`); `reinstall: <condition>` is who may enter the
-reinstallation games; `archive: <Room or Character> when <condition>` moves
+reinstallation games; `lock: <condition>` locks a guest's phone while it
+holds for them (`lock: program.corrupted == true`): the phone shows only
+their pass and the `restricted: allow` buttons, and the server refuses
+everything else they send, DMs included, until the condition stops holding
+(a broken `lock:` line is lint L1216); `archive: <Room or Character> when <condition>` moves
 a finished thread down the guest's list. `majority: <expr>` is the head
 count a side needs, shown on the side doors (`show sides … with moment:
 big`). `by: <Character>` on a `who: admin` cue lets that booth call it from a

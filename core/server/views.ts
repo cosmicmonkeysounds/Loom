@@ -408,6 +408,10 @@ export interface GuestView {
   /** The story restricted this guest (`restrict who`): the app greys out,
    *  no buttons, only the listed rooms, read-only; DMs stay. */
   restricted: boolean;
+  /** The story's `lock:` header holds for this guest (wave 26, R1): only the
+   *  pass and the `restricted: allow` buttons work; every write is refused,
+   *  DMs included. Independent of `restricted`. */
+  locked: boolean;
   /** May a captured guest free themselves from the app (the v3 "make a
    *  break for it" button)? False when their prison is `sealed: true` —
    *  only the story lets them out. */
@@ -523,8 +527,10 @@ export interface GuestChoice {
 export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>, menuChannels?: ReadonlyMap<number, string>): GuestView {
   const p = sim.persons.get(id);
   const pendingChoice = sim.pendingChoiceFor(id);
+  const locked = isLocked(sim, id);
+  const narrowed = locked || sim.isRestricted(id);
   const interactions = interactionsFor(sim, ["guest"], { subject: id, self: id }).filter(
-    (i) => i.live !== false && (!sim.isRestricted(id) || sim.model.interactions.get(i.id)?.allowRestricted === true),
+    (i) => i.live !== false && (!narrowed || sim.model.interactions.get(i.id)?.allowRestricted === true),
   );
   const objectives = objectivesWith(sim, { guest: id }, new Set(interactions.map((i) => i.id)));
   const choices = sim.pendingChoicesFor(id);
@@ -540,6 +546,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     location: sim.locationOf(id),
     captured: sim.isCaptured(id),
     restricted: sim.isRestricted(id),
+    locked,
     canEscape: !(sim.model.locations.get(sim.locationOf(id) ?? "")?.sealed ?? false),
     pendingChoice,
     // The oldest menu's own channel (D18): `decisionChannel` is the newest
@@ -560,7 +567,8 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     }),
     // A guest only ever sees the buttons on offer to them right now — and
     // none at all while the story has them restricted.
-    // Restricted: only the `restricted: allow` buttons (Bathroom Mode) stay.
+    // Restricted or locked (wave 26): only the `restricted: allow` buttons
+    // (Bathroom Mode) stay.
     interactions,
     codex: sim.codexFor(id).map((e) => codexEntry(e, sim.model)),
     codexTotal: sim.model.codex.size,
@@ -1539,6 +1547,22 @@ export interface NightView {
   phase: string | null;
   /** The world `Night.step` as a number, else null. */
   step: number | null;
+  /** (wave 26, T2) The story's last glitch: `Night.glitch_at` (story
+   *  seconds) × 1000 as `at`, in the same unit as `GuestView.clock` (story
+   *  ms); `text` from `Night.glitch_text` ("none" → null). Absent while
+   *  `Night.glitch_at` is 0, unset or not a number. */
+  glitch?: { at: number; text: string | null };
+}
+
+/** (wave 26, T2) The world paths `NightView.glitch` reads. */
+export const GLITCH_AT_PATH = "Night.glitch_at";
+export const GLITCH_TEXT_PATH = "Night.glitch_text";
+
+/** Is this guest's phone locked (wave 26, R1)? The story's `lock:` header
+ *  held for them (`sim.holds(cond, id, id)`); no header = never. */
+export function isLocked(sim: Sim, id: string): boolean {
+  const cond = sim.model.lock;
+  return cond !== null && sim.persons.has(id) && sim.holds(cond, id, id);
 }
 
 /** A ROLE-scoped `watch:` item for one guest (the booth card's facts). */
@@ -1586,7 +1610,7 @@ function shownGroupsOf(sim: Sim, id: string): string[] {
 
 /** The ids a guest may press right now — `GuestView.interactions`' rule. */
 function guestInteractionIds(sim: Sim, id: string): Set<string> {
-  const restricted = sim.isRestricted(id);
+  const restricted = sim.isRestricted(id) || isLocked(sim, id);
   return new Set(
     interactionsFor(sim, ["guest"], { subject: id, self: id })
       .filter((i) => i.live !== false && (!restricted || sim.model.interactions.get(i.id)?.allowRestricted === true))
@@ -1732,8 +1756,12 @@ export function nightView(sim: Sim): NightView {
     }
     const step = worldText(sim, "Night.step");
     const n = step === null ? NaN : Number(step);
+    // Wave 26 (T2): the glitch, in story ms like `GuestView.clock`.
+    const glitchAt = Number(worldText(sim, GLITCH_AT_PATH) ?? NaN);
+    const glitchText = worldText(sim, GLITCH_TEXT_PATH);
+    const glitch = Number.isFinite(glitchAt) && glitchAt > 0 ? { glitch: { at: Math.round(glitchAt * 1000), text: glitchText === null || glitchText === "none" ? null : glitchText } } : {};
     // The phase reads the same as a message's moment stamp (`chat.ts` `storyPhase`).
-    return { act, phase: storyPhase(sim) ?? null, step: Number.isFinite(n) ? n : null };
+    return { act, phase: storyPhase(sim) ?? null, step: Number.isFinite(n) ? n : null, ...glitch };
   });
 }
 

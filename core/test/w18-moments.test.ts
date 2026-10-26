@@ -140,6 +140,8 @@ describe("C2: with go:", () => {
     expect(splitMomentArgs('go: The Internet, go: codex: The Sandy File, close: 6s, moment: big, question: "a, b"')).toEqual({
       go: ["The Internet", "codex: The Sandy File"],
       close: 6000,
+      // Wave 26 (C1): `ack:` is split off too (null: not written).
+      ack: null,
       rest: 'moment: big, question: "a, b"',
     });
     expect(parseCloseMs("1.5s")).toBe(1500);

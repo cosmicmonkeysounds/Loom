@@ -593,6 +593,10 @@ export interface SimModel {
   /** Header `reinstall: <cond>` (wave 18, C7) — who may enter the
    *  reinstallation, evaluated per program; null = captured or restricted. */
   reinstall: string | null;
+  /** Header `lock: <cond>` (wave 26, C2) — whose phone is locked, evaluated
+   *  per guest like `reinstall:` (the first non-empty line wins); null = no
+   *  phone is ever locked. */
+  lock: string | null;
   /** Header `archive: <channel or CHARACTER> when <cond>` lines (wave 18,
    *  C11), every file's, in order — rooms done for a guest once the
    *  condition holds for them (the phone tucks them away). */
@@ -716,6 +720,7 @@ export function compileModel(bundle: Bundle): SimModel {
     alerts: DEFAULT_ALERTS_PATH,
     wanted: null,
     reinstall: null,
+    lock: null,
     archive: [],
     badges: [],
     stats: [],
@@ -763,6 +768,8 @@ export function compileModel(bundle: Bundle): SimModel {
         if (wantedRaw === null) wantedRaw = line.value;
       } else if (line.key === "reinstall") {
         if (model.reinstall === null && line.value.trim() !== "") model.reinstall = line.value.trim();
+      } else if (line.key === "lock") {
+        if (model.lock === null && line.value.trim() !== "") model.lock = line.value.trim();
       } else if (line.key === "archive") {
         archiveRaw.push(line.value);
       } else if (line.key === "badge") {
@@ -1546,11 +1553,17 @@ export function parseTrigger(event: string): {
   }
   // v3 spelling: the verb is the first word, verbatim (`on rally guest`).
   const words = raw.filter((w) => !TRIGGER_FILLERS.has(w)); // case-sensitive: `The` is a name
+  // Wave 26: with a `for` binding, a built-in verb names the trigger only as
+  // the phrase's first word (`when captured for program:`). Further in, it
+  // is part of a multi-word named event: `when simulation escape attempt
+  // for program:` is that INTERACTION, not the builtin `escape`.
+  const forBound = raw.indexOf("for") > 0;
   let verb: string | null = null;
   let verbIdx = -1;
   for (let i = 0; i < words.length; i++) {
     const syn = VERB_SYNONYMS.get(words[i]!.toLowerCase());
     if (syn !== undefined) {
+      if (forBound && i > 0) break;
       verb = syn;
       verbIdx = i;
       break;

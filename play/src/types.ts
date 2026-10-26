@@ -123,6 +123,9 @@ export interface ChatMessage {
   /** Wave 18 (C1): a big moment to two or more that closes itself after
    *  this many ms (`with close: 6s`). */
   autoClose?: number;
+  /** `with ack: none` (wave 26, R1): the big moment has no acknowledge
+   *  button; only its exits close it. Absent = the usual OK. */
+  noAck?: true;
   /** The story's `Night.phase` when the server composed this message (null
    *  = set to nothing). Only on what can be a moment, and only once the
    *  story has a phase; absent → the moments layer uses the phase it knows
@@ -233,6 +236,11 @@ export interface GuestView {
   /** The story restricted you (`restrict who`): the app greys out, no
    *  buttons, only the listed rooms, read-only; your DMs still work. */
   restricted?: boolean;
+  /** The story's `lock:` header holds for you (wave 26, R1): only the pass
+   *  and the `restricted: allow` buttons work; every write is refused
+   *  (`403 locked`), DMs included. Independent of `restricted`. Absent = an
+   *  older server (never locked). */
+  locked?: boolean;
   /** May a captive free themselves from the app? False in a `sealed` prison. */
   canEscape?: boolean;
   pendingChoice: string[] | null;
@@ -500,6 +508,10 @@ export interface NightView {
   phase: string | null;
   /** The world `Night.step`, else null. */
   step: number | null;
+  /** (wave 26, T2) The story's last glitch: `at` in story ms (the unit of
+   *  `GuestView.clock`), `text` its caption (null = none). Absent before the
+   *  first glitch, or from an older server. */
+  glitch?: { at: number; text: string | null };
 }
 
 /** A ROLE-scoped `watch:` item for one guest (the booth card's facts). */

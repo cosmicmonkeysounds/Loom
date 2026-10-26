@@ -184,6 +184,27 @@ describe("the poll's talk / said fields", () => {
   });
 });
 
+describe("the poll's sp key (wave 26, V1 phase 2)", () => {
+  const tv = defaultConfig({ eventId: "evt", token: "tok", name: "TV", spot: "desktop-tv", view: "tv" });
+
+  it("speechQuery: sp=<seq>:<chunk> while a line speaks, sp=<seq>:d once it is done, nothing otherwise", () => {
+    expect(speechQuery({ talk: true, said: 40, sp: { seq: 41, chunk: 2 } })).toEqual({ talk: "1", said: "40", sp: "41:2" });
+    expect(speechQuery({ talk: false, said: 41, sp: { seq: 41, chunk: null } })).toEqual({ talk: "0", said: "41", sp: "41:d" });
+    expect(speechQuery({ talk: true, said: 40, sp: null })).toEqual({ talk: "1", said: "40" });
+    expect(speechQuery({ talk: true, said: 40 })).toEqual({ talk: "1", said: "40" });
+    // Malformed parts are left out rather than sent.
+    expect(speechQuery({ talk: true, said: 40, sp: { seq: -1, chunk: 0 } })).not.toHaveProperty("sp");
+    expect(speechQuery({ talk: true, said: 40, sp: { seq: 3, chunk: Number.NaN } })).not.toHaveProperty("sp");
+    expect(speechQuery({ talk: true, said: 40, sp: { seq: 3.7, chunk: 1.2 } })).toMatchObject({ sp: "3:1" });
+  });
+
+  it("rides the TV's poll after talk / said", () => {
+    expect(screenStateUrl(tv, { room: "The Desktop", after: 41, speech: { talk: true, said: 40, sp: { seq: 41, chunk: 0 } } })).toBe(
+      "/e/evt/api/screen/state?name=TV&spot=desktop-tv&view=tv&character=Trabolta&voice=The+Desktop&after=41&talk=1&said=40&sp=41%3A0",
+    );
+  });
+});
+
 describe("PollPacer: the drain re-poll", () => {
   it("polls on the cadence when nothing kicks", () => {
     const p = new PollPacer(2000);
