@@ -259,7 +259,9 @@ describe("Trapped in the Internet — wave 13: per-person notices (~)", () => {
       // A transfer / trade notice in # truthcoin-exchange: each party's own
       // card is in their Wallet room (the server's WalletBook posts it).
       const wallet = /^broadcast "~(?:🪙|💱) .* to channel\(truthcoin exchange\)$/u.test(line);
-      const personal = wallet || block.some((x) => x.startsWith("reply ") || x.startsWith("fire mark_for_reinstallation for program") || / to participant\(/.test(x) || /^Trabolta:/.test(x));
+      // Wave 26 (D1): a Dare's notice is followed by `dare_taken`, which marks
+      // the program and sends it its own big moment.
+      const personal = wallet || block.some((x) => x.startsWith("reply ") || x.startsWith("fire mark_for_reinstallation for program") || x.startsWith("fire dare_taken for program") || / to participant\(/.test(x) || /^Trabolta:/.test(x));
       expect(personal, `${where}: ${line}`).toBe(true);
     }
   });
@@ -466,11 +468,14 @@ function checkpoint(n: Night, label: string): Record<string, string> {
     const host = HOST_PARTS.has(p);
     const obs = primeView(sim, p, undefined, { host }).objectives ?? [];
     expect(obs.length, `${label}: ${p} has no live objective`).toBeGreaterThan(0);
-    for (const o of obs) expect(interactionButtons(o.buttons).length, `${label}: ${p} ${o.id}`).toBeLessThanOrEqual(3);
+    // Wave 26 (B3): a picker objective's buttons are PLAYER SELECT's steps,
+    // not a card face: Celebrate The Winners has four (🎱 🎀 🎯 🤐).
+    for (const o of obs) expect(interactionButtons(o.buttons).length, `${label}: ${p} ${o.id}`).toBeLessThanOrEqual(o.pick !== undefined ? 4 : 3);
     const head = obs[0]!;
     // Every face button of NOW is live on at least one guest's card.
     const live = new Set(guests.flatMap((g) => guestCardView(sim, n.chat.all(), p, g, host)?.live ?? []));
-    for (const b of interactionButtons(head.buttons)) expect(live.has(b), `${label}: ${p}'s NOW ${head.id} offers ${b}, live on nobody's card`).toBe(true);
+    // The face is the first three (wave 26: a picker's fourth step, 🤐, waits for a winner).
+    for (const b of interactionButtons(head.buttons).slice(0, 3)) expect(live.has(b), `${label}: ${p}'s NOW ${head.id} offers ${b}, live on nobody's card`).toBe(true);
     now[p] = head.id;
   }
   return now;
@@ -716,21 +721,24 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(guestCardView(n.sim, n.chat.all(), "Task Manager", "g4", true)!.live).not.toContain("unmark_for_reinstallation");
   }, SLOW);
 
-  it("CI 2's checklist reaches 4 / 4, and no to-do in the show is left without a `done when`", () => {
+  it("CI 2's checklist is PLAYER SELECT's four steps, the round closes at 🎯, and no to-do in the show is left without a `done when`", () => {
     const n = boot();
     for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
-    const ci2 = () => primeView(n.sim, "Clippy").objectives!.find((o) => o.id === "Celebrate The Winners")!.checklist.map((c) => c.done);
+    const cel = () => primeView(n.sim, "Clippy").objectives!.find((o) => o.id === "Celebrate The Winners");
+    const ci2 = () => cel()!.checklist.map((c) => c.done);
+    expect(cel()!.checklist.map((c) => c.label.slice(0, 2))).toEqual(["🎱", "🎀", "🎯", "🤐"]);
     expect(ci2()).toEqual([false, false, false, false]);
-    // Wave 18 (A5): the to-dos are PLAYER SELECT's steps, 🎱 → 🎀 → 🎯.
+    // Wave 18 (A5): the to-dos are PLAYER SELECT's steps, 🎱 → 🎀 → 🎯 (wave 26: or 🤐).
     n.signal("bingo_winner", "g1", undefined, "Clippy");
-    n.signal("named_at_bingo", "g4", undefined, "Clippy");
     // A ribbon for a program without a Bingo is not CI 2's ribbon.
     n.signal("award_the_ribbon", "g2", undefined, "Clippy");
-    expect(ci2()).toEqual([true, false, true, false]);
+    expect(ci2()).toEqual([true, false, false, false]);
     n.signal("award_the_ribbon", "g1", undefined, "Clippy");
-    expect(ci2()).toEqual([true, true, true, false]);
-    n.signal("send to the internet", "g4", undefined, "Norton Anti-Virus");
-    expect(ci2()).toEqual([true, true, true, true]);
+    expect(ci2()).toEqual([true, true, false, false]);
+    // Wave 26 (B5): one round; the first 🎯 ends it, and the objective with it.
+    n.signal("named_at_bingo", "g4", undefined, "Clippy");
+    expect(cel()).toBeUndefined();
+    expect(primeView(n.sim, "Clippy").objectives![0]!.id).toBe("After The Bingo");
     const manual = [...n.sim.model.objectives.values()].flatMap((o) => o.checklist.filter((c) => c.done === null).map((c) => `${o.id}: ${c.label}`));
     expect(manual).toEqual([]);
   }, SLOW);
@@ -809,7 +817,8 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
     expect(src.match(/^OBJECTIVE /gmu)!.length).toBe(m.objectives.size);
     // Wave 21: `// DRAFT w21` (with a note or bare) marks the new and changed ones.
-    expect(src.match(/^\/\/ DRAFT (?:for sign-off|w18|w21[^\n]*)\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
+    // Wave 26: `// DRAFT w26 (<note>)` marks the ones changed this wave.
+    expect(src.match(/^\/\/ DRAFT (?:for sign-off|w18|w2[16][^\n]*)\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
   }, SLOW);
 });
 
@@ -824,6 +833,8 @@ describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
     const w18 = new Set([...src.matchAll(/^\/\/ DRAFT w18\nOBJECTIVE (.+)$/gmu)].map((x) => x[1]!.trim()));
     // …and so do wave 21's new ones (SIGNOFF-w21.md, trapped-w21.test.ts).
     for (const x of src.matchAll(/^\/\/ DRAFT w21\nOBJECTIVE (.+)$/gmu)) w18.add(x[1]!.trim());
+    // Wave 26's new objectives are on SIGNOFF-w26.md.
+    for (const x of src.matchAll(/^\/\/ DRAFT w26[^\n]*\nOBJECTIVE (.+)$/gmu)) w18.add(x[1]!.trim());
     for (const id of Sim.fromSources(SRC).model.objectives.keys()) if (!w18.has(id)) expect(sheet, id).toContain(`| ${id} |`);
   });
 });

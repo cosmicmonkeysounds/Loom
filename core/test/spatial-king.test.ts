@@ -516,6 +516,11 @@ describe("EventRuntime — the King on the spatial plane", () => {
 
     // The guest picks Winamp's other picture.
     const token = (await mod(rt, "/api/mod/impersonate", { role: "guest", id })).json.token as string;
+    // Wave 26 (R1, C2): the begin captured them, and a captured phone is
+    // locked (the show's `lock:` header): no picture. A director clears the
+    // story's flag so the phone writes again; the game session stays live.
+    expect(await call(rt, "POST", "/api/guest/picture", {}, { token })).toMatchObject({ status: 403, json: { error: "locked" } });
+    await mod(rt, "/api/mod/var", { path: `${id}.corrupted`, value: "false" });
     const options = (await call(rt, "POST", "/api/guest/picture", {}, { token })).json.options as Array<{ key: string }>;
     const other = options.find((o) => o.key !== a.avatar)!;
     expect(other).toBeDefined();

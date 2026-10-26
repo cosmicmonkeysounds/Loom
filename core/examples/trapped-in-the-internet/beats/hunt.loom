@@ -42,8 +42,8 @@ The Antivirus sweep the house, room by room, herding programs back to the Deskto
   cast: Clippy
 
 Clippy: Welcome back, programs! It's time for the First Moment of Truth! Is anyone able to answer the questions?
-Clippy: Here's how it works. Every answer you filed with Trabolta gets judged. Accurate: accepted. Wrong but one hundred percent sure: accepted — Trabolta values confidence!
-Clippy: Wrong and not sure, or a clear guess: a symptom of corruption. The Antivirus will escort you to the Internet.
+// DRAFT w26 (G1: Clippy explains nothing; the rules are never said out loud)
+Clippy: Every answer you filed with Trabolta will be judged. Trabolta knows best!
 Clippy: You have two minutes. File anything you found with Trabolta NOW. Then we read the results, one question at a time.
 
 // `filing_closed` — the last-chance window shut (⏱, or two minutes).
@@ -85,3 +85,18 @@ else:
   cast: Trabolta
 
 Trabolta: {Night.bottle_pick}. Truth or dare?
+
+// `dare_scene` — a Dare (wave 26, D1): Trabolta makes a scene on the TV and
+// orders the Antivirus to take the dared program to the Internet. A public
+// Trabolta line in The Desktop, read by the TV's voice; the program's name
+// is the bottle's pick (`Night.bottle_pick`, in the screen state too).
+== Dare Chosen
+  setting: The Desktop
+  cast: Trabolta
+
+// DRAFT w26 (D1: Trabolta makes a scene)
+Trabolta: A dare. {Night.bottle_pick} chose a dare, in my computer.
+// DRAFT w26 (D1)
+Trabolta: Programs do not dare. Programs answer. Everyone, watch closely: this is what a dare costs.
+// DRAFT w26 (D1: the order to the Antivirus)
+Trabolta: Antivirus! Take {Night.bottle_pick} to the Internet. Now.

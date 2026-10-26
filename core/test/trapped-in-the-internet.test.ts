@@ -330,7 +330,8 @@ describe("Trapped in the Internet — compile", () => {
   it("declares the interactions: admin cue sheet, per-question judge buttons, guest + agent buttons", () => {
     const ints = [...m.interactions.values()];
     const by = (w: string) => ints.filter((i) => i.who === w).map((i) => i.id);
-    expect(by("guest")).toEqual(["go to the bathroom", "back from the bathroom", "plant_the_virus"]);
+    // Wave 26 (B1): a guest's 🎱 BINGO!.
+    expect(by("guest")).toEqual(["go to the bathroom", "back from the bathroom", "call_bingo", "plant_the_virus"]);
     const perf = by("performer");
     for (const p of ["accurate_q1", "accurate_q2", "accurate_q3", "confident_q1", "confident_q2", "confident_q3", "fact_accurate", "fact_lie", "fact_uncertain", "send to the internet", "mark as reinstalled", "named_at_bingo", "unmark_for_reinstallation", "truth_answered", "truth_refused", "chose_dare"]) expect(perf).toContain(p);
     // The hat is gone (wave 4, lane B): the bottle's buttons replace it.
@@ -356,7 +357,8 @@ describe("Trapped in the Internet — compile", () => {
     // The cue sheet's NEXT (T7-01): 📋 is pressed again and again (per
     // question), then 🍾 (about five spins); 🗜 is an anytime cue (the tent's
     // queue), and neither forced majority is the running order (both are fallbacks).
-    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["read_the_results", "spin_the_bottle"]);
+    // Wave 26 (B2): ⏰ may fire again after ↩ Not a Bingo.
+    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["bingo_time", "read_the_results", "spin_the_bottle"]);
     expect(m.interactions.get("zip_everyone_out")!.sequence).toBe(false);
     for (const a of ["force_majority_stay", "force_majority_leave"]) expect(m.interactions.get(a)!.sequence, a).toBe(false);
     expect(m.interactions.get("close_the_filing")!.label).toBe("⏱ Close round-one filings now (auto at 2 min)");
@@ -453,6 +455,8 @@ describe("Trapped in the Internet — compile", () => {
       majority_founder: "none",
       jeeves_reached: "0",
       pressed_by: "none", // wave 21: who pressed the game button being settled
+      undo_n: "0", // wave 26 (B2): who pressed ↩ Not a Bingo
+      undo_by: "none",
     });
   });
 
@@ -732,7 +736,8 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.holdsCodex("Clippy", "Clippy Instructions 2")).toBe(true);
     expect(replies(btime).some((r) => r.to === "Norton Anti-Virus")).toBe(true);
     expect(replies(btime).some((r) => r.to === "Task Manager" && r.text.includes("MS Paint"))).toBe(true);
-    expect(sim.questStatus("g1", "The Bingo Card")).toBe("done");
+    // Wave 26 (B2, B5): the quests settle at the end of the round, not at ⏰.
+    expect(sim.questStatus("g1", "The Bingo Card")).toBe("active");
 
     sim.signal("bingo_winner", "g1", null, "Clippy");
     expect(v(sim, "g1.bingo")).toBe(true);
@@ -752,6 +757,9 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(has(cues(s1), "tv_mirror")).toBe(false);
     expect(v(sim, "g4.internet_visits")).toBe(1);
     expect(v(sim, "g4.trust")).toBe(-5);
+    // Wave 26 (B5): the Bingo-phase capture closes the round; the quests settle.
+    expect(v(sim, "Night.bingo_done")).toBe(true);
+    expect(sim.questStatus("g1", "The Bingo Card")).toBe("done");
     const web = saidBy(s1, "Installation Wizard");
     expect(web.length).toBeGreaterThanOrEqual(5);
     expect(web.every((e) => aud(e) === '["g4"]')).toBe(true);
@@ -1004,7 +1012,8 @@ describe("Trapped in the Internet — the whole night", () => {
     const capMsgs = composeGuestMessages(sim, cap);
     expect(capMsgs.some((m) => m.unpin !== undefined || /mark is lifted/u.test(m.text))).toBe(false);
     const sent = capMsgs.find((m) => Array.isArray(m.audience) && m.audience[0] === "g11" && m.text.startsWith("🌐 Sent to the Internet"))!;
-    expect(sent).toMatchObject({ moment: "big", go: [{ kind: "room", id: "loc:The Internet" }, { kind: "pass" }] });
+    // Wave 26 (R1): only the pass and Bathroom Mode, no OK (`ack: none`).
+    expect(sent).toMatchObject({ moment: "big", noAck: true, go: [{ kind: "pass" }, { kind: "act", id: "go to the bathroom" }] });
     expect(replies(cap).filter((r) => r.text.includes("Off the escort list"))).toHaveLength(PATROL.length);
     sim.signal("the simulation completed", "g11");
     sim.signal("the simulation completed", "g12");
@@ -2174,7 +2183,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const sim = Sim.fromSources(SRC);
     const armed = [...sim.model.interactions.values()].filter((i) => i.arm).map((i) => i.id).sort();
     expect(armed).toEqual([
-      "beat_the_machine", "brought_up_the_bag", "defect_openly", "pickup_line_works", "plant_the_virus",
+      "beat_the_machine", "brought_up_the_bag", "call_bingo", "defect_openly", "pickup_line_works", "plant_the_virus",
       "radio_beans", "radio_combo_a", "radio_combo_b", "radio_crew_door", "radio_door_closed", "radio_door_opened", "radio_wrong_patch",
       // w13 Q29: 🛡 captures on the spot, from any phase.
       "send to the internet",
@@ -4485,7 +4494,8 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     const wiz = saidBy(sc, "Installation Wizard");
     expect(wiz.length).toBeGreaterThan(0);
     expect(wiz.every((e) => aud(e) === '["g5"]')).toBe(true);
-    expect(sim.pendingChoiceFor("g5")).toEqual(['"Where is the exit?"', "Put the headset on.", "Take the tablet."]);
+    // Wave 26 (R1, C2): a corrupted phone is locked, so the video waits on no menu.
+    expect(sim.pendingChoiceFor("g5")).toBeNull();
     // A program that is not corrupted scanned at the tablet: the strange-visit line, +10 doubt.
     const d0 = v(sim, "g1.doubt");
     const away = sim.scan("The Tablet", "g1");
@@ -4874,8 +4884,10 @@ describe("Trapped in the Internet — the staff (wave 4, lane D)", () => {
     expect(upd?.text).toContain("A host calls ⏰ Bingo time"); // wave 21: the hosts call it, Clippy plays it
 
     fire(sim, "bingo_time");
-    expect(sim.questStatus("Clippy", "Run The Bingo")).toBe("done");
+    // Wave 26 (B5): it settles at the end of the round (here, the capture).
+    expect(sim.questStatus("Clippy", "Run The Bingo")).toBe("active");
     fire(sim, "send to the internet", "g4", null, "Norton Anti-Virus");
+    expect(sim.questStatus("Clippy", "Run The Bingo")).toBe("done");
     expect(sim.questStatus("Norton Anti-Virus", "The Selected Antivirus")).toBe("done");
 
     fireAll(sim, "introduce_trabolta", "start_the_hunt");

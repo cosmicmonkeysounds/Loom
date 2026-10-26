@@ -1009,7 +1009,7 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 
 | Name | label |
 |---|---|
-| go to the bathroom | `🚻 Bathroom Mode` (description: `Leave honestly. Tells the Antivirus you are not hacking the Internet, and excuses you from a summons.`) · `restricted: allow` (a marked program keeps it, fact M20) |
+| go to the bathroom | `🚻 Bathroom Mode` (description: `Leave honestly. Tells the Antivirus you are not hacking the Internet.`; wave 26 G1: the summons exemption is never said up front) · `restricted: allow` (a marked program keeps it, fact M20) |
 | back from the bathroom | `Back from the bathroom` · `restricted: allow` |
 | plant_the_virus | `💾 Insert a disk into the computer` (`arm: true`, wave 11) |
 
@@ -1118,7 +1118,7 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 | The Terms Of Service | The Terms Of Service | E | | | | Upload (every program) | | "By uploading, you agree that Jean Trabolta, Sole Owner and Founder of Maps and Ducks, may make all of your decisions." (wave 18b, R18; was "the computer's AI helper"; the prompt everyone needs for the Bingo centre square.) |
 | The Centre Square | The Centre Square | M | | | | ROLE watcher for whoever `== Kernel.anti_ai` | | "The Uploader said you agreed to let Jean Trabolta, Sole Owner and Founder of Maps and Ducks, make all of your decisions (wave 18b; was "the computer's AI helper"). You didn't mean it. You would never agree to a life where AI makes all of your decisions. If anyone asks, say so. Tell the truth all night." |
 | The Reinstallation Protocol | The Reinstallation Protocol | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software | Reinstallation beat | ✚ | Corruption, the headset, the golden duck, Bathroom Mode, the marked exit. |
-| Bathroom Mode | Bathroom Mode | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Recycling Bin | Reinstallation beat; Orientation (Clippy's line + the tour's Bathroom Mode step, wave 4) | ✚ | Turn it on so everyone knows you are not hacking the Internet; it also excuses you from a summons. |
+| Bathroom Mode | Bathroom Mode | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Recycling Bin | Reinstallation beat; Orientation (Clippy's line + the tour's Bathroom Mode step, wave 4) | ✚ | Turn it on so everyone knows you are not hacking the Internet. (It also excuses you from a summons, but no guest card says so: wave 26 G1.) |
 | The Golden Duck | The Golden Duck | E | | | | `the simulation completed` (captured programs) **and** `the golden duck` (anyone who finds him) — keep the name: spatial.test asserts a *free* program learns it from `the golden duck` | | "Gerald, the golden duck off the Maps and Ducks billboard. Follow the chevrons; walk right up to him; he lays a golden egg and flies away." (The reinstall games call him Gerald.) |
 | Computer Bingo | Computer Bingo | E | | | Clippy | `award_the_ribbon` | | The asterisk card; the centre question; "if there is a Bingo, someone is not ready to follow orders." |
 | The Orientation List | The Orientation List | E | | | | finishing the tutorial (tested) | | Clippy's list of programs that follow instructions (keep current). |
@@ -1776,8 +1776,7 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
   knows. Press 🎱 on each winner. Celebrate, bring the ribbon, demand applause.`; Task
   Manager `reply 🃏 If nobody has a Bingo: hand Clippy the pre-filled card for
   {Kernel.anti_ai}, then press 🃏 on their card.`; Norton `reply 🛡 You are the selected
-  Antivirus. When the centre-square program is named (or the winner refuses to name anyone,
-  or the framed program denies the card), stand at attention and interrupt: it is
+  Antivirus. When the centre-square program is named (or the framed program denies the card; wave 26: a 🤐 marks nobody, so he follows the room), stand at attention and interrupt: it is
   inappropriate for that program to have not agreed to be ruled by AI, because that is what
   computer programs are here for. They must have a virus that was not caught at the door.
   They need to be taken to the Internet for a reinstallation. Then press 🛡 on them and
@@ -2181,10 +2180,13 @@ tent is captured by the tablet's scan.
     Files are hidden all over this computer. Ask what his theory is for.` (No Sandy before
     the overshare.)
 
-**C4 Excel's virus** (works today; the tent QRs). ROLE `when program learns ILOVEYOU:` and
+**C4 Excel's virus** (the tent QRs; since wave 26 also the floppy disk in the
+reinstallation games, `simulation pickup taken`, which unlocks the same entry
+for anyone who picks it up: Free Antivirus Trial for a paranoid Excel,
+ILOVEYOU for everyone else). ROLE `when program learns ILOVEYOU:` and
 `when program learns Free Antivirus Trial:` → `set program.carries_virus = true` · `Truther
-Download: Something came back from the Internet with you. It is warm. It wants to be
-inserted.` · `if program.featured == "excel":` `if program.excel_choice == "paranoid":`
+Download: You picked something up in the Internet. It is warm. It wants to be
+inserted.` (wave 26 R7: was *Something came back from the Internet with you.*, untrue for the game's disk) · `if program.featured == "excel":` `if program.excel_choice == "paranoid":`
 `update quest Excel Mission for program "You have the antivirus. Install it."` `else:` `update
 quest Excel Mission for program "You have the virus. Insert the disk."` (On the paranoid path
 the "antivirus" is a virus anyway: inserting it plants it.)
@@ -2250,7 +2252,7 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
   step 9 · `set Night.summons_open = true`, `summons_end = Time.elapsed + 300` · `unlock
   Clippy Instructions 5 for Clippy` · `broadcast "!⏳ FIVE MINUTES. Be in the Desktop for the
   Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play
-  Truth Pong. Bathroom Mode excuses you." to everyone` · `do announce "Five minutes. Everyone
+  Truth Pong." to everyone` (wave 26 G1: no "Bathroom Mode excuses you") · `do announce "Five minutes. Everyone
   to the Desktop."` · `sound countdown_tick` · `cue lights_call_desktop`, `cue
   screens_five_minutes` · `-> Five Minute Warning` (public narration).
 - Enforcer hook: `reply 🛡 Scan every program arriving at the Desktop: that is their check-in.`
@@ -3793,7 +3795,7 @@ Run → Director; no phone cue page).
 | 14 | **REQUIRED before the party.** Terminal **attract mode before Trabolta exists**: while its character is hidden / `awake` is false the terminal shows the screensaver / media player / ads rotation, never "TRABOLTA ONLINE", and **never pilots** a scanned guest into `dm:Trabolta` (add `revealed` to `CastSummary`). Optional: the server refuses agent dispatch for a hidden character | **Built: K-16** (on master, not yet deployed). Fallback: provision every terminal `view=mirror` until `introduce_trabolta`, then `view=auto` (§9); the hold line is plain words |
 | 15 | **Installation Wizard instructional video** in the reinstall tablet wizard (and phone `video` card) | the Wizard's lines in `dm:Installation Wizard` (+ Julia live in the tent); `cue tablet_wizard` |
 | 16 | Reinstall: optional **press-A** find, goose vs duck copy, **release-all / end spatial sessions on release**, `released` leave reason, Bathroom Mode on the tablet/VR, tent queue/capacity | the duck by proximity (copy says "walk right up to it"); zip via the two ROLE watchers; performers clear the tent by hand |
-| 17 | Excel's virus as an **in-game pickup** (spatial `virus` spot) and a **USB "glory hole" sensor** for planting | codex QRs `LOVE-LETTER-FOR-YOU` / `FREE-TRIAL-30-DAYS` taped in the tent; the guest button `plant_the_virus` |
+| 17 | Excel's virus as an **in-game pickup** (built in wave 26: the `virus-disk` pickup prop, `POST /api/spatial/moment`, the story's `simulation pickup taken`) and a **USB "glory hole" sensor** for planting (not built) | codex QRs `LOVE-LETTER-FOR-YOU` / `FREE-TRIAL-30-DAYS` taped in the tent; the guest button `plant_the_virus` |
 | 18 | **Server Room in house.json** (cold-storage room, door, terminal, duck rule) via the **floor-plan editor**; map owned by the project; measured house | LOCATION declared without geometry |
 | 19 | **Printable QR sheets** (project-level print tokens for codex clues, room check-ins, guest passes, performer cards; base-URL fix; redeem throttle) | `/api/mod/codes` lists codes + `?code=&unlock=` links (no editor UI) |
 | 20 | **Stagehand**: signal `args` (so the story judges `patch_changed {combo}` and QR/terminal check-ins carry `at`), a `var:` action, edge detection + ignore retained MQTT (stagehand-hw code #4), an `http:`/audio output (TTS for the house announcements), Loom-4 `with` parsing | `stagehand/trapped.house.yaml` (shipped with the rewrite, §2.15: correct Z2M payloads, room lights, scenes, sensors) judges the combos and sends `patch_combo_a` / `patch_combo_b` / `patch_rejected`; the story latches the patch-bay alarm (wave 7: the door never alarms), restores darkened rooms and cues the dance itself (no `delay:` needed); QLab over OSC; `do announce` |
