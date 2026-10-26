@@ -578,7 +578,7 @@ func _build_heart(root: Node3D, prop: Dictionary, size: Vector3) -> void:
 	light.omni_range = 2.2
 	light.position = Vector3(0, core_y, -d * 0.6)
 	root.add_child(light)
-	_hearts[str(prop["id"])] = {"root": root, "core": core, "light": light, "mat": mat, "halo": halo, "halo_size": core_r * 5.0}
+	_hearts[str(prop["id"])] = {"root": root, "core": core, "light": light, "mat": mat, "halo": halo}
 	_beat(_hearts[str(prop["id"])])
 
 
@@ -593,6 +593,7 @@ static func glow_quad(color: Color, size: float) -> MeshInstance3D:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.billboard_keep_scale = true
 	m.albedo_color = color
 	m.albedo_texture = _glow_texture()
 	m.disable_receive_shadows = true
@@ -621,8 +622,9 @@ func _beat(heart: Dictionary) -> void:
 	var p := heart_pulse(_t)
 	var sc := 1.0 + 0.14 * p
 	(heart["core"] as Node3D).scale = Vector3(sc, sc, sc * 0.6)
-	var hs: float = float(heart["halo_size"]) * (1.0 + 0.25 * p)
-	((heart["halo"] as MeshInstance3D).mesh as QuadMesh).size = Vector2(hs, hs)
+	# The glow swells by its node's scale: a primitive mesh's size would
+	# regenerate the mesh every frame (the billboard keeps the scale).
+	(heart["halo"] as Node3D).scale = Vector3.ONE * (1.0 + 0.25 * p)
 	((heart["halo"] as MeshInstance3D).material_override as StandardMaterial3D).albedo_color.a = 0.35 + 0.55 * p
 	(heart["mat"] as StandardMaterial3D).albedo_color = HEART_COLOR.lerp(Color("#ff4060"), 0.35 * p)
 	(heart["light"] as OmniLight3D).light_energy = 0.5 + 1.1 * p

@@ -355,6 +355,12 @@ func _test_wave26_props() -> void:
 	_check(not b.heart_shown("trabolta-heart"), "wave 26: … nor while he stands")
 	b.set_king({"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true})
 	_check(b.heart_shown("trabolta-heart") and _near(float(b.heart_node("trabolta-heart").get_meta("height")), 1.7), "wave 26: … and shows once he has fallen")
+	var halo := b.heart_node("trabolta-heart").get_node("Halo") as MeshInstance3D
+	var halo_mesh := halo.mesh
+	var halo_size := (halo.mesh as QuadMesh).size
+	b.set("_t", 0.09)
+	b._process(0.0)
+	_check(halo.mesh == halo_mesh and (halo.mesh as QuadMesh).size == halo_size and halo.scale.x > 1.2 and (halo.material_override as StandardMaterial3D).billboard_keep_scale, "wave 26: the heart's glow swells by its scale, never by rebuilding its mesh (%.2f)" % halo.scale.x)
 	_check(b.pickup_shown("virus-disk") and _near(b.pickup_disk("virus-disk").position.y, HouseBuilder.PICKUP_HOVER, HouseBuilder.PICKUP_BOB + 1e-3), "wave 26: the disk floats over its spot")
 	var spin0 := b.pickup_disk("virus-disk").rotation.y
 	b._process(0.5)
