@@ -16,8 +16,18 @@
 ## for errors ("Nobody has that pass."), and a ⚙ that forgets a setup made
 ## here (hold it 2 s). The panel stands [constant PANEL_DISTANCE] m north of
 ## [constant SPOT] (the player faces north on arrival).
+##
+## To its left, in every view (wave 26, R8), the **MICROPHONE** box: what
+## the headset's mic is doing and what to do about it ([method set_mic]),
+## TEST MIC (a level meter, no session needed) and ASK AGAIN (while the
+## grant is missing or refused) — pressed, they emit [signal mic_action] —
+## and the build stamp ([method set_build]), so a crew member can tell an
+## old APK from a new one.
 class_name Lobby
 extends Node3D
+
+## A MICROPHONE box button was pressed: "mic:test" (TEST MIC / STOP TEST) or "mic:ask" (ASK AGAIN).
+signal mic_action(id: String)
 
 ## Where the player stands in the lobby (world frame), far from any house.
 const SPOT := Vector3(0, 400, 0)
@@ -52,6 +62,19 @@ const BACKDROP_Y := 1.44
 const MESSAGE_ERROR := Color("#ff7a7a")
 const MESSAGE_NEWS := Color("#bfe9e4")
 const BG_HOVER := "#2a7384"
+## The MICROPHONE box (panel coordinates): left of the backdrop, in every view.
+const MIC_X := -1.98
+const MIC_BOX := Vector2(0.8, 1.04)
+const MIC_BOX_Y := 1.12
+const MIC_TEST_AT := Vector2(MIC_X, 1.0)
+const MIC_ASK_AT := Vector2(MIC_X, 0.83)
+const MIC_BUTTON := Vector2(0.62, 0.13)
+const MIC_METER_W := 0.62
+const MIC_METER_Y := 1.16
+const MIC_TITLE := "MICROPHONE"  # DRAFT w26 (R8, UI copy)
+const MIC_TEST := "TEST MIC"  # DRAFT w26 (R8, UI copy)
+const MIC_STOP := "STOP TEST"  # DRAFT w26 (R8, UI copy)
+const MIC_ASK := "ASK AGAIN"  # DRAFT w26 (R8, UI copy)
 
 var picker := CandidatePicker.new()
 ## The confirm card's START / BACK ([member picker]'s twin, 2 columns).
@@ -84,6 +107,14 @@ var _looks := {}  # button id → its node (for hover)
 var _gear: Node3D
 var _gear_label: Label3D
 var _message_left := 0.0
+var _mic_box: Node3D
+var _mic_text: Label3D
+var _mic_fill: MeshInstance3D
+var _mic_build: Label3D
+## The mic box's state ([method set_mic]): TEST MIC shown, testing, ASK AGAIN shown.
+var _mic_can_test := true
+var _mic_testing := false
+var _mic_can_ask := false
 var _t := 0.0
 var _view := "pick"
 ## The program the confirm card asks about (`{}` = no card).
@@ -199,7 +230,80 @@ func _ready() -> void:
 	_setup.name = "Setup"
 	_setup.visible = false
 	_panel.add_child(_setup)
+	_build_mic_box()
 	_render()
+
+
+## The MICROPHONE box: its backdrop, heading, state line, meter, TEST MIC,
+## ASK AGAIN and the build stamp.
+func _build_mic_box() -> void:
+	_mic_box = Node3D.new()
+	_mic_box.name = "Mic"
+	_panel.add_child(_mic_box)
+	var bg := _quad(MIC_BOX, HouseLook.screen(BACKDROP))
+	bg.name = "Backdrop"
+	bg.position = Vector3(MIC_X, MIC_BOX_Y, -0.03)
+	_mic_box.add_child(bg)
+	var title := _text(_mic_box, MIC_TITLE, 0.055, HouseLook.GOLD, 1.55)
+	title.position.x = MIC_X
+	_mic_text = _text(_mic_box, "", 0.036, HouseLook.INK, 1.37)
+	_mic_text.position.x = MIC_X
+	_mic_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_mic_text.width = (MIC_BOX.x - 0.08) / _mic_text.pixel_size
+	var track := MeshInstance3D.new()
+	var tb := BoxMesh.new()
+	tb.size = Vector3(MIC_METER_W, 0.035, 0.01)
+	track.mesh = tb
+	track.material_override = HouseLook.paint("#1a2a33")
+	track.position = Vector3(MIC_X, MIC_METER_Y, 0)
+	_mic_box.add_child(track)
+	_mic_fill = MeshInstance3D.new()
+	_mic_fill.name = "Meter"
+	var fb := BoxMesh.new()
+	fb.size = Vector3(MIC_METER_W, 0.035, 0.012)
+	_mic_fill.mesh = fb
+	_mic_fill.material_override = HouseLook.screen("#3df2e8")
+	_mic_box.add_child(_mic_fill)
+	_set_meter(0.0)
+	_looks["mic:test"] = make_button(_mic_box, MIC_TEST, MIC_TEST_AT, MIC_BUTTON, 0.05)
+	_looks["mic:ask"] = make_button(_mic_box, MIC_ASK, MIC_ASK_AT, MIC_BUTTON, 0.05)
+	_mic_build = _text(_mic_box, "", 0.03, HouseLook.INK.darkened(0.35), 0.68)
+	_mic_build.position.x = MIC_X
+	_mic_build.name = "Build"
+
+
+func _set_meter(level: float) -> void:
+	var l := clampf(level, 0.001, 1.0)
+	_mic_fill.scale.x = l
+	_mic_fill.position = Vector3(MIC_X - MIC_METER_W / 2.0 * (1.0 - l), MIC_METER_Y, 0.002)
+
+
+## The MICROPHONE box: the state line (`text`), the meter (`level` 0 … 1,
+## shown while `testing`), TEST MIC (`can_test`; STOP TEST while testing)
+## and ASK AGAIN (`can_ask`).
+func set_mic(text: String, level: float, testing: bool, can_test: bool, can_ask: bool) -> void:
+	_mic_text.text = text
+	_set_meter(level if testing else 0.0)
+	if testing != _mic_testing or can_test != _mic_can_test or can_ask != _mic_can_ask:
+		_mic_testing = testing
+		_mic_can_test = can_test
+		_mic_can_ask = can_ask
+		((_looks["mic:test"] as Node3D).get_node("Label") as Label3D).text = MIC_STOP if testing else MIC_TEST
+		_render()
+
+
+## The MICROPHONE box's state line.
+func mic_text() -> String:
+	return _mic_text.text
+
+
+## The build stamp under the MICROPHONE box ([method StationConfig.build_stamp]).
+func set_build(text: String) -> void:
+	_mic_build.text = text
+
+
+func build_text() -> String:
+	return _mic_build.text
 
 
 # --- building blocks -------------------------------------------------------------
@@ -450,6 +554,9 @@ func reset() -> void:
 ## A button was pressed (the laser's trigger, a click): `tile:<n>`,
 ## `start`, `back`, `prev`, `next`, or one of the [SetupPanel]'s.
 func press(id: String) -> void:
+	if id.begins_with("mic:"):
+		mic_action.emit(id)
+		return
 	if _view == "setup":
 		_setup.press(id)
 		_render()
@@ -694,12 +801,20 @@ func _render() -> void:
 		_buttons.append({"id": "back", "center": BACK_AT, "size": CARD_BUTTON})
 	if _gear.visible:
 		_buttons.append({"id": "gear", "center": GEAR_AT, "size": GEAR_SIZE})
+	(_looks["mic:test"] as Node3D).visible = _mic_can_test
+	(_looks["mic:ask"] as Node3D).visible = _mic_can_ask
+	if _mic_can_test:
+		_buttons.append({"id": "mic:test", "center": MIC_TEST_AT, "size": MIC_BUTTON})
+	if _mic_can_ask:
+		_buttons.append({"id": "mic:ask", "center": MIC_ASK_AT, "size": MIC_BUTTON})
 	_render_looks()
 
 
 func _render_looks() -> void:
 	if _view == "setup":
 		_setup.set_hover(_hover)
+		set_look(_looks["mic:test"], _hover == "mic:test", _mic_testing)
+		set_look(_looks["mic:ask"], _hover == "mic:ask", false)
 		return
 	for id: String in _looks:
 		var on := false
@@ -707,6 +822,8 @@ func _render_looks() -> void:
 			on = _view == "pick" and int(id.substr(5)) == picker.index
 		elif id == "start" or id == "back":
 			on = _view == "confirm" and card_picker.selected().get("id") == id
+		elif id == "mic:test":
+			on = _mic_testing
 		set_look(_looks[id], id == _hover, on)
 
 

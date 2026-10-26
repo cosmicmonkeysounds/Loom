@@ -5,7 +5,9 @@
 ## - **Lobby**: the dark room; the station waits for the tablet to send a
 ##   program, or the player picks one — the laser, the stick or the mouse
 ##   ([Lobby], [LobbyPointer]); a headset with no passcode sets itself up
-##   there first ([SetupPanel]).
+##   there first ([SetupPanel]). The MICROPHONE box says what the mic is
+##   doing, TEST MIC opens it for a level meter (no session), ASK AGAIN
+##   asks for the grant again, and the build stamp names the APK (wave 26).
 ## - **Playing**: spawned at the assignment's spawn in the virtual house;
 ##   poses stream to the server (feet, house frame); the golden trail is
 ##   re-routed twice a second; within 0.9 m (plan) of the duck, on its
@@ -79,6 +81,8 @@ const AUTOPILOT_LIMIT := 180.0
 ## and waits at most this long (s) for the hit's answer.
 const AUTOPILOT_KING_STAND := 0.9
 const AUTOPILOT_KING_WAIT := 10.0
+## The lobby's TEST MIC closes itself after this long (s).
+const MIC_TEST_LIMIT := 30.0
 
 var link: LinkBase
 var flow := GameFlow.new()
@@ -105,6 +109,8 @@ var _cand_in := 0.0
 var _quack_in := Sfx.QUACK_FIRST
 ## Seconds to the found screen's fanfare (< 0: none due).
 var _fanfare_in := -1.0
+## Seconds left on the lobby's TEST MIC.
+var _mic_test_left := 0.0
 var _found_pending := false
 var _found_retry := 0.0
 ## Why the headset counts as away → the wall-clock second the session ends
@@ -191,6 +197,8 @@ func setup(l: LinkBase, xr: bool) -> void:
 	pointer.player = player
 	add_child(pointer)
 	lobby.attach(link, ghosts.avatars)
+	lobby.mic_action.connect(_on_mic_action)
+	lobby.set_build(StationConfig.build_stamp())
 	if bool(link.config.get("autopilot", false)):
 		autopilot = Autopilot.new()
 		player.read_input = false
@@ -624,6 +632,36 @@ func _tick_lobby(delta: float) -> void:
 	if _cand_in <= 0.0:
 		_cand_in = CANDIDATE_INTERVAL
 		link.request_candidates()
+	_tick_lobby_mic(delta)
+
+
+## The lobby's MICROPHONE box: its line, the TEST MIC meter, ASK AGAIN
+## while the grant is missing or refused.
+func _tick_lobby_mic(delta: float) -> void:
+	var voice_on := bool(link.config.get("voice", true))
+	var mic_on := bool(link.config.get("mic", true))
+	if voice.is_testing():
+		_mic_test_left -= delta
+		if _mic_test_left <= 0.0 or not (voice_on and mic_on):
+			voice.stop_test()
+	var grant := voice.permission_state()
+	lobby.set_mic(voice.lobby_text(voice_on, mic_on), voice.test_level(), voice.is_testing(), voice_on and mic_on, voice_on and mic_on and grant in ["unknown", "denied"])
+
+
+## TEST MIC (toggles the test) or ASK AGAIN, pressed in the lobby.
+func _on_mic_action(id: String) -> void:
+	if flow.state != GameFlow.State.LOBBY:
+		return
+	match id:
+		"mic:test":
+			if voice.is_testing():
+				voice.stop_test()
+			else:
+				voice.mic_enabled = bool(link.config.get("mic", true))
+				_mic_test_left = MIC_TEST_LIMIT
+				voice.start_test()
+		"mic:ask":
+			voice.ask_again()
 
 
 func _tick_play(delta: float) -> void:

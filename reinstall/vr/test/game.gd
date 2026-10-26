@@ -63,6 +63,7 @@ func _run() -> void:
 	_test_server_link_setup()
 	await _test_lobby_picker()
 	await _test_setup_panel()
+	await _test_lobby_mic()
 	_test_voice_config()
 	_test_voice_server_link()
 	await _test_voice_game()
@@ -560,6 +561,16 @@ func _test_config() -> void:
 	var s := StationConfig.parse_url("https://show.example.com/loom")
 	_check(s.get("port") == 443 and s.get("tls") == true and s.get("path") == "/loom", "config: parse_url https + path")
 	_check(StationConfig.parse_url("ftp://x").is_empty() and StationConfig.parse_url("http://h:x").is_empty(), "config: parse_url refuses junk")
+
+	# Wave 26 (R2): the path reveal's delay, in seconds, a minute by default.
+	_check(_near(float(StationConfig.defaults()["trail_delay"]), 60.0) and _near(float(StationConfig.defaults()["trail_delay"]) * 1000.0, HouseRoute.PATH_REVEAL_MS), "config: trail_delay is PATH_REVEAL_MS by default")
+	_check(StationConfig.parse_args(PackedStringArray(["--trail-delay", "0"])).get("trail_delay") == 0.0 and StationConfig.parse_args(PackedStringArray(["--trail-delay=2.5"])).get("trail_delay") == 2.5, "config: --trail-delay 0 / --trail-delay=2.5")
+	_check(not StationConfig.parse_args(PackedStringArray(["--trail-delay", "soon"])).has("trail_delay") and not StationConfig.parse_args(PackedStringArray(["--trail-delay", "-1"])).has("trail_delay"), "config: … junk or negative is ignored")
+	_check(StationConfig.merge(StationConfig.defaults(), {"trail_delay": 5}).get("trail_delay") == 5.0 and StationConfig.merge(StationConfig.defaults(), {"trail_delay": "x"}).get("trail_delay") == 60.0, "config: a station file may set it (a number)")
+	# Wave 26 (R8): the build stamp the lobby shows.
+	_check(StationConfig.build_stamp() == "build dev" and not FileAccess.file_exists(StationConfig.BUILD_PATH), "config: an editor / test run is build dev (no stamp is committed)")
+	_write(dir + "/build.json", {"build": "abc1234", "at": "2026-10-26T12:00Z"})
+	_check(StationConfig.build_stamp(dir + "/build.json") == "build abc1234 · 2026-10-26T12:00Z", "config: a stamped APK names its commit (%s)" % StationConfig.build_stamp(dir + "/build.json"))
 
 
 ## The in-headset setup's file (wave 19): saved to a user path, merged
@@ -2390,7 +2401,7 @@ func _test_lobby_picker() -> void:
 	_check(lobby.picker.columns == 4 and lobby.tile_node(0) != null and lobby.tile_node(8) == null, "lobby: 11 programs, a page of 4 × 2")
 	link.set("saved_setup", true)
 	link.status_changed.emit("Connected.")
-	_check(_overlap(lobby.get("_buttons")) == "" and (lobby.get("_buttons") as Array).size() == 8 + 2 + 1, "lobby: a full page, ◀ ▶ and the ⚙ never overlap (%s)" % _overlap(lobby.get("_buttons")))
+	_check(_overlap(lobby.get("_buttons")) == "" and (lobby.get("_buttons") as Array).size() == 8 + 2 + 1 + 1, "lobby: a full page, ◀ ▶, the ⚙ and TEST MIC never overlap (%s)" % _overlap(lobby.get("_buttons")))
 	link.set("saved_setup", false)
 	link.status_changed.emit("Connected.")
 	lobby.press("next")
@@ -2518,6 +2529,110 @@ func _test_setup_panel() -> void:
 	tap.call(Vector2(0.42, SetupPanel.ACTION_Y))
 	game._process(0.016)
 	_check(int(link.get("offline_chosen")) == 1 and lobby.view() == "pick", "setup: PLAY OFFLINE goes on to the tiles")
+	game.pointer.clear_injection()
+	main.queue_free()
+	await process_frame
+
+
+## Wave 26 (R8): the lobby's MICROPHONE box — the mic's state, TEST MIC
+## with a level meter and no session (by the laser too), ASK AGAIN while the
+## grant is missing or refused, the build stamp; its buttons never overlap
+## the panel's in any view.
+func _test_lobby_mic() -> void:
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.house = _placeholder_house()
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var lobby := game.lobby
+	var v := game.voice
+	game.player.set_physics_process(false)
+	game.player.read_input = false
+	v.client_factory = func() -> Object: return FakeHttp.new()
+	var mic := [PackedVector2Array()]
+	v.frame_source = func() -> PackedVector2Array:
+		var f: PackedVector2Array = mic[0]
+		mic[0] = PackedVector2Array()
+		return f
+	game._process(0.016)
+	_check(lobby.mic_text() == "MIC · this computer's microphone" and lobby.build_text() == "build dev", "lobby mic: the box says the mic and the build (%s · %s)" % [lobby.mic_text(), lobby.build_text()])
+	var buttons: Array = lobby.get("_buttons")
+	_check(buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:test") and not buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:ask"), "lobby mic: TEST MIC, no ASK AGAIN on a desktop")
+	_check(_overlap(buttons) == "", "lobby mic: no button overlaps (%s)" % _overlap(buttons))
+	# The laser on TEST MIC.
+	var eye := game.player.camera.global_position
+	var aim_at := func(p: Vector2) -> Vector3: return lobby.panel_transform() * Vector3(p.x, p.y, 0.0) - eye
+	var tap := func(at: Vector2) -> void:
+		game.pointer.inject(eye, aim_at.call(at), false)
+		game._process(0.016)
+		game.pointer.inject(eye, aim_at.call(at), true)
+		game._process(0.016)
+		game.pointer.inject(eye, aim_at.call(at), false)
+		game._process(0.016)
+	tap.call(Lobby.MIC_TEST_AT)
+	_check(v.is_testing() and not v.is_running() and game.state() == GameFlow.State.LOBBY, "lobby mic: TEST MIC opens the mic with no session")
+	mic[0] = _mic_tone(4800, 0.3)
+	v._process(0.016)
+	game._process(0.016)
+	var fill := lobby.get("_mic_fill") as MeshInstance3D
+	_check(lobby.mic_text() == "MIC TEST · it hears you" and fill.scale.x > 0.6, "lobby mic: a word lights the meter (%s, %.2f)" % [lobby.mic_text(), fill.scale.x])
+	var test_label := ((lobby.get("_looks") as Dictionary)["mic:test"] as Node3D).get_node("Label") as Label3D
+	_check(test_label.text == "STOP TEST", "lobby mic: … the button reads STOP TEST")
+	tap.call(Lobby.MIC_TEST_AT)
+	_check(not v.is_testing() and fill.scale.x < 0.01 and test_label.text == "TEST MIC", "lobby mic: STOP TEST closes it")
+	lobby.press("mic:test")
+	game._process(Game.MIC_TEST_LIMIT + 1.0)
+	_check(not v.is_testing(), "lobby mic: a test left open closes itself after %d s" % int(Game.MIC_TEST_LIMIT))
+	# A session takes the mic from a test.
+	lobby.press("mic:test")
+	link.set("voice_base", "http://127.0.0.1:7600/e/e1/api/spatial")
+	link.assignment_received.emit(_assignment(link.house, "mic-1", true))
+	game._process(0.016)
+	_check(not v.is_testing() and v.is_running(), "lobby mic: a program starting ends the test")
+	lobby.press("mic:test")
+	_check(not v.is_testing(), "lobby mic: … and TEST MIC does nothing while playing")
+	link.session_over.emit("test")
+	link.set("voice_base", "")
+	# Android without the grant: ASK AGAIN, which asks.
+	v.platform = "Android"
+	var granted := [false]
+	var asked := [0]
+	v.permission_check = func() -> bool: return granted[0]
+	v.permission_request = func() -> void: asked[0] += 1
+	game._process(0.016)
+	buttons = lobby.get("_buttons")
+	_check(buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:ask") and ((lobby.get("_looks") as Dictionary)["mic:ask"] as Node3D).visible, "lobby mic: no grant → ASK AGAIN")
+	_check(_overlap(buttons) == "", "lobby mic: … overlapping nothing (%s)" % _overlap(buttons))
+	var before: int = asked[0]
+	tap.call(Lobby.MIC_ASK_AT)
+	_check(asked[0] == before + 1 and lobby.mic_text() == "MIC · allow it in the headset's prompt", "lobby mic: ASK AGAIN asks (%s)" % lobby.mic_text())
+	v._on_permission("android.permission.RECORD_AUDIO", false)
+	game._process(0.016)
+	_check(lobby.mic_text().begins_with("MIC · not allowed · ASK AGAIN"), "lobby mic: refused → says so, ASK AGAIN stays (%s)" % lobby.mic_text())
+	granted[0] = true
+	v._on_permission("android.permission.RECORD_AUDIO", true)
+	game._process(0.016)
+	buttons = lobby.get("_buttons")
+	_check(lobby.mic_text() == "MIC · allowed" and not buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:ask"), "lobby mic: granted → allowed, no ASK AGAIN")
+	# The mic off in the config: said, no TEST MIC.
+	link.config = StationConfig.merge(link.config, {"mic": false})
+	game._process(0.016)
+	buttons = lobby.get("_buttons")
+	_check(lobby.mic_text() == "MIC · off on this headset (listen only)" and not buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:test"), "lobby mic: --mic false → said, no TEST MIC")
+	# The SET UP view keeps the box, overlapping none of its keys.
+	link.config = StationConfig.merge(link.config, {"mic": true})
+	link.set("unconfigured", true)
+	game._process(0.016)
+	buttons = lobby.get("_buttons")
+	_check(lobby.view() == "setup" and buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:test") and _overlap(buttons) == "", "lobby mic: the SET UP view keeps the box, overlapping no key (%s)" % _overlap(buttons))
+	lobby.press("mic:test")
+	_check(v.is_testing() and lobby.setup_panel().code == "", "lobby mic: … and TEST MIC works there, typing nothing")
+	v.stop_test()
 	game.pointer.clear_injection()
 	main.queue_free()
 	await process_frame
