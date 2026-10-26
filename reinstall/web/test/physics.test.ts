@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { locate, standable, withFallenKings } from "@loom/house";
+import { ESCAPE_M, locate, outsideGround, standable, voidDistance, withFallenKings } from "@loom/house";
 import type { HouseMap, Prop, Vec3 } from "@loom/house";
 import {
   blocksAt,
   bodyAfterRemap,
   buildPhysicsWorld,
+  groundAt,
   MAX_PITCH,
   move,
   NO_INPUT,
@@ -103,8 +104,9 @@ describe("physics — walls", () => {
     expect(locate(world.house, b.p).room).toBe("b");
   });
 
-  it("an open front door leads nowhere: the outside isn't walkable", () => {
+  it("without an outside ground an open front door leads nowhere: the outside isn't walkable", () => {
     const world = buildPhysicsWorld(TWO_ROOMS());
+    expect(world.ground).toBeNull();
     const b = walk(world, body([2, 0, 1], 0), 3); // north, through the gap at z = 0
     expect(b.p[2]).toBeGreaterThanOrEqual(0);
     expect(locate(world.house, b.p).room).toBe("a");
@@ -435,5 +437,55 @@ describe("physics — the show's measured map (wave 14)", () => {
     expect(b.p[2]).toBeLessThan(14.35);
     expect(b.p[1]).toBeCloseTo(2.8, 5);
     expect(locate(house, b.p)).toEqual({ floor: "top", room: "upstairs-hall" });
+  });
+});
+
+describe("physics — the outside ground (wave 26, R4)", () => {
+  it("with the ground the open front door leads out into the void, and on", () => {
+    const house = TWO_ROOMS();
+    const world = buildPhysicsWorld(house, undefined, { ground: outsideGround(house) });
+    expect(world.ground).not.toBeNull();
+    const b = walk(world, body([2, 0, 1], 0), 4); // north, through the gap at z = 0
+    expect(b.p[2]).toBeLessThan(-5);
+    expect(b.p[1]).toBe(0);
+    expect(locate(house, b.p).room).toBeNull();
+    expect(voidDistance(house, b.p)!).toBeGreaterThanOrEqual(ESCAPE_M);
+  });
+
+  it("walls still block: the ground is reached only through a door gap", () => {
+    const house = TWO_ROOMS();
+    const world = buildPhysicsWorld(house, undefined, { ground: outsideGround(house) });
+    // z 0.5 is clear of the a↔b door; walking west into the outer wall at x = 0.
+    const b = walk(world, body([2, 0, 0.5], WEST), 3);
+    expect(b.p[0]).toBeGreaterThanOrEqual(RADIUS - 1e-6);
+    expect(locate(house, b.p).room).toBe("a");
+    // From outside, walking back in through a wall is blocked too.
+    const out = walk(world, body([6.5, 0, -1], SOUTH), 3);
+    expect(out.p[2]).toBeLessThanOrEqual(-RADIUS + 1e-6);
+  });
+
+  it("the ground ends at its rect, and is never under another floor's hole", () => {
+    const house = TWO_ROOMS();
+    const g = outsideGround(house)!;
+    const world = buildPhysicsWorld(house, undefined, { ground: g });
+    expect(groundAt(world, [g.rect[0] + 1, g.rect[1] + 1], g.y)).toBe(g.y);
+    expect(groundAt(world, [g.rect[0] - 1, g.rect[1] + 1], g.y)).toBeNull(); // past the margin: the void
+    expect(groundAt(world, [g.rect[0] + 1, g.rect[1] + 1], g.y + 3)).toBeNull(); // a floor up: not the ground
+    expect(groundAt(world, [g.rect[0] + 1, g.rect[1] + 1], g.y - 3)).toBeNull(); // a floor down: not the ground
+  });
+
+  it("on the show's map: out through the mud room's front door, past ESCAPE_M", () => {
+    const house = SHOW();
+    const world = buildPhysicsWorld(house, undefined, { ground: outsideGround(house) });
+    const front = house.doors.find((d) => d.id === "front" && d.b === null)!;
+    // Inside the mud room, just south of the door, facing north.
+    const start = body([front.at[0], 0, front.at[1] + 1], 0);
+    expect(locate(house, start.p).room).toBe(front.a);
+    const b = walk(world, start, 6);
+    expect(locate(house, b.p).room).toBeNull();
+    expect(voidDistance(house, b.p)!).toBeGreaterThanOrEqual(ESCAPE_M);
+    // The same walk without the ground stays in.
+    const shut = walk(buildPhysicsWorld(house), start, 6);
+    expect(locate(house, shut.p).room).toBe(front.a);
   });
 });
