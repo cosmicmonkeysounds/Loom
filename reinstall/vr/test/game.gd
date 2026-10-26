@@ -2507,19 +2507,26 @@ func _test_voice_codec() -> void:
 					same = same and got[i]["spot"] == want[i]["spot"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
 				if not same:
 					miss.call(kind, "%s → %s, want %s" % [r["p"], got, want])
-			"hearsKept":
-				var got := VoiceCodec.hears_terminals(house, {"p": r["p"], "floor": r["floor"], "room": r["room"]}, {"keep": r["keep"]})
+			"hearsRoom":
+				# The presence room given (wave 26): the rule reads it, not the pose.
+				var got := VoiceCodec.hears_terminals(house, {"p": r["p"], "room": r["room"]})
 				var want: Array = r["heard"]
 				var same := got.size() == want.size()
 				for i in mini(got.size(), want.size()):
 					same = same and got[i]["spot"] == want[i]["spot"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
 				if not same:
-					miss.call(kind, "%s keep %d → %s, want %s" % [r["p"], (r["keep"] as Array).size(), got, want])
+					miss.call(kind, "%s in %s → %s, want %s" % [r["p"], r["room"], got, want])
 			"players":
 				players = r["players"]
 			"hearsPlayers":
-				pass  # the server's and the terminals' half of the rule
-	for kind: String in ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "hearsKept"]:
+				var got := VoiceCodec.hears_players(house, str(r["spot"]), players)
+				var want: Array = r["heard"]
+				var same := got.size() == want.size()
+				for i in mini(got.size(), want.size()):
+					same = same and got[i]["session"] == want[i]["session"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
+				if not same:
+					miss.call(kind, "%s → %s, want %s" % [r["spot"], got, want])
+	for kind: String in ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "hearsRoom", "hearsPlayers"]:
 		var n := int(seen.get(kind, 0))
 		var b := (bad.get(kind, []) as Array).size()
 		_check(n > 0 and b == 0, "voice: %s vectors match (%d of %d)" % [kind, n - b, n])

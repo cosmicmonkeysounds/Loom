@@ -20,8 +20,9 @@
 //! - `hearsTerminals` `{p, floor, room, heard}` — on the show map (floor +
 //!   room = `locate`); then one `players` `{players}` (the same listeners
 //!   as sessions) and per terminal `hearsPlayers` `{spot, heard}` over them.
-//! - `hearsKept` `{p, floor, room, keep, heard}` — `hearsTerminals` with
-//!   `keep` (the routing hysteresis), at the edge of a terminal's reach.
+//! - `hearsRoom` `{p, room, heard}` — `hearsTerminals` told the room (the
+//!   server passes the presence room, wave 26): every listener pose again
+//!   in each terminal room and in none.
 
 import { join } from "node:path";
 import {
@@ -30,8 +31,6 @@ import {
   VOICE_BARGE_MIN_GAIN,
   VOICE_CHUNK_BYTES,
   VOICE_CHUNK_MS,
-  VOICE_EDGE_FADE_M,
-  VOICE_REACH_HYSTERESIS_M,
   VOICE_CODEC,
   VOICE_FRESH_MS,
   VOICE_GATE_DBFS,
@@ -42,11 +41,8 @@ import {
   VOICE_MAX_PLAYERS,
   VOICE_MAX_TERMINALS,
   VOICE_MIN_BYTES,
-  VOICE_MIN_GAIN,
-  VOICE_PLAYER_REACH_M,
   VOICE_RATE,
   VOICE_TAIL_MS,
-  VOICE_TERMINAL_REACH_M,
   VoiceGate,
   hearsPlayers,
   hearsTerminals,
@@ -164,17 +160,10 @@ function hearing(house: HouseMap): Record<string, unknown>[] {
   for (const pl of players) out.push({ kind: "hearsTerminals", p: pl.p, floor: pl.floor, room: pl.room, heard: hearsTerminals(house, pl) });
   out.push({ kind: "players", players });
   for (const t of house.terminals) out.push({ kind: "hearsPlayers", spot: t.id, heard: hearsPlayers(house, t, players) });
-  // The edge: each main-floor terminal's reach, 0.4 m inside, 0.4 m and 0.9 m
-  // past it, east of it — every spot kept, then nothing kept.
-  const keepAll = house.terminals.map((t) => t.id).sort();
-  for (const t of house.terminals.filter((x) => x.pos[1] >= 0 && x.pos[1] < 2.5)) {
-    for (const off of [-0.4, 0.4, 0.9]) {
-      const p: Vec3 = [Math.round((t.pos[0] + 12 + off) * 1000) / 1000, 0, t.pos[2]];
-      const at = locate(house, p);
-      for (const keep of [keepAll, []]) {
-        out.push({ kind: "hearsKept", p, floor: at.floor, room: at.room, keep, heard: hearsTerminals(house, { p, floor: at.floor, room: at.room }, { keep: new Set(keep) }) });
-      }
-    }
+  // The presence room, not the raw one: each pose told each terminal room, and none.
+  const rooms = [...new Set(house.terminals.map((t) => t.room))].sort();
+  for (const p of hearingPoses()) {
+    for (const room of [...rooms, null]) out.push({ kind: "hearsRoom", p, room, heard: hearsTerminals(house, { p, room }) });
   }
   return out;
 }
@@ -190,21 +179,16 @@ export function voiceGoldenFile(house: HouseMap = loadHouse(SHOW_HOUSE)): string
       VOICE_MAX_BYTES,
       VOICE_MIN_BYTES,
       VOICE_CODEC,
-      VOICE_TERMINAL_REACH_M,
-      VOICE_PLAYER_REACH_M,
       VOICE_MAX_TERMINALS,
       VOICE_MAX_PLAYERS,
       VOICE_GATE_DBFS,
       VOICE_HANG_MS,
       VOICE_TAIL_MS,
       VOICE_FRESH_MS,
-      VOICE_MIN_GAIN,
       VOICE_JITTER_TARGET_MS,
       VOICE_JITTER_MAX_MS,
       VOICE_BARGE_DBFS,
       VOICE_BARGE_MIN_GAIN,
-      VOICE_REACH_HYSTERESIS_M,
-      VOICE_EDGE_FADE_M,
     },
   ];
   for (const x of encodeInputs()) records.push({ kind: "encode", x, byte: mulawByte(x) });
