@@ -796,17 +796,31 @@ export const FILING_MS = 120_000;
 export const filingHold = (target: SceneProps["target"]): number => SLIDE_HOLD_MS[target === "tv" ? "tv" : "terminals"];
 /** The filing reminder pops up this often while the window is open (ms). */
 const FILE_NUDGE_EVERY = 12_000;
-const FILE_NUDGES: readonly string[] = ["Your 📝 card is on your phone.", "Found a fact? File it now.", "One hundred percent sure is accepted. A guess is a symptom.", "Filings close in two minutes."];
-const RULES: ReadonlyArray<{ text: string; ok: boolean }> = [
-  { text: "Accurate: accepted.", ok: true },
-  { text: "Wrong but one hundred percent sure: accepted.", ok: true },
-  { text: "Wrong and not sure, or a clear guess: a symptom of corruption.", ok: false },
+/** The filing reminders, in turn. Wave 26 (G1): none says how a filing is judged. */
+export const FILE_NUDGES: readonly string[] = [
+  "Your 📝 card is on your phone.",
+  "Found a fact? File it now.",
+  // DRAFT w26 (G1: no judging rule in the filing reminders)
+  "Trabolta is waiting for your files.",
+  "Filings close in two minutes.",
+];
+/** The filing window's three stamps. Wave 26 (G1): in-fiction steps, never
+ *  the judging rule (accurate / confident / guess); the three-stamp timing,
+ *  its clicks and its hold stay as they were. */
+export const FILING_STEPS: ReadonlyArray<{ text: string; ok: boolean }> = [
+  // DRAFT w26 (G1: the filing window stamps in-fiction steps, not the rules)
+  { text: "Open the 📝 card in Trabolta's thread.", ok: true },
+  // DRAFT w26 (G1)
+  { text: "File everything you found.", ok: true },
+  // DRAFT w26 (G1)
+  { text: "Trabolta is reading every word.", ok: true },
 ];
 
 /**
  * The filing window (`first_moment_of_truth`):
  *   0–1200    THE FIRST MOMENT OF TRUTH tears in, a gavel's boom
- *   1200–5200 the three rules stamp in one by one: ✔ accurate, ✔ wrong but sure, ✘ a guess
+ *   1200–5200 the three steps stamp in one by one (✔ open the 📝 card, ✔ file
+ *             everything, ✔ he is reading: wave 26, G1 — never the judging rule)
  *   5200–     hold: filings fly into his inbox tray; the two-minute window counts down;
  *             at zero (or once Filing Closed lands) PENCILS DOWN · TRABOLTA IS READING,
  *             an eye sweeping the pile
@@ -902,7 +916,7 @@ function FilingWindow({ t, at, state, target, sfx, reduced }: { t: number; at: n
   const nudgeOpen = nudge >= 0 ? clamp01(nudgeLocal / 220) * (1 - progress(nudgeLocal, 5200, 240)) : 0;
   useSfxCues(t, sfx, [
     [200, "boom", { gain: 0.5 }],
-    ...RULES.map((_, i) => [1500 + i * 1300, "click"] as const),
+    ...FILING_STEPS.map((_, i) => [1500 + i * 1300, "click"] as const),
     [5200, "chord", { gain: 0.45 }],
     ...(closed ? [] : periodicCues(t, 5200, FILE_NUDGE_EVERY).map((x) => [x, "popup", { gain: 0.4 }] as const)),
   ]);
@@ -914,7 +928,7 @@ function FilingWindow({ t, at, state, target, sfx, reduced }: { t: number; at: n
         </Glitch>
       </div>
       <div className="a1-res-rules">
-        {RULES.map((rule, i) => {
+        {FILING_STEPS.map((rule, i) => {
           const s = 1500 + i * 1300;
           const stamp = reduced ? progress(t, s, 200) : eased(t, s, 380, ease.outBack);
           return (

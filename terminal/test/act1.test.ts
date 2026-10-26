@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { allowed } from "../src/cutscene/pick.ts";
-import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, VERDICT_COPY, bingoCues, bottleLandedCues, bingoTicks, carryAt, filingHold, freshTick, mingleAt } from "../src/cutscene/scenes/act1.tsx";
+import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILE_NUDGES, FILING_MS, FILING_STEPS, SCENES, VERDICT_COPY, bingoCues, bottleLandedCues, bingoTicks, carryAt, filingHold, freshTick, mingleAt } from "../src/cutscene/scenes/act1.tsx";
 import { INTRO_HELLO, INTRO_LINE } from "../src/cutscene/kit/tv1-boot.tsx";
 import { VERDICT_SIGNALS } from "../src/cutscene/kit/tv1-time.ts";
 import type { SceneProps } from "../src/cutscene/types.ts";
@@ -238,6 +238,20 @@ describe("act 1 — the filing window fits its slide", () => {
     }
     // A director's early ⏱ while the slide is up: PENCILS DOWN under it.
     expect(draw("tv", 4_000_000, 70_000, true)).toContain("PENCILS DOWN");
+  });
+
+  it("never states the judging rule (wave 26, G1): three in-fiction steps stamp where the rules did", () => {
+    const rule = /accept|symptom|sure|guess|confiden|accurate|wrong/iu;
+    expect(FILING_STEPS).toHaveLength(3); // the three-stamp timing stays
+    for (const s of FILING_STEPS) {
+      expect(s.text).not.toMatch(rule);
+      expect(s.ok).toBe(true);
+    }
+    for (const n of FILE_NUDGES) expect(n).not.toMatch(rule);
+    // Drawn: the steps are on the TV once stamped, and no rule is.
+    const html = draw("tv", 5_000_000, 6000);
+    for (const s of FILING_STEPS) expect(html).toContain(s.text.replace(/'/gu, "&#x27;"));
+    expect(html).not.toMatch(rule);
   });
 });
 
