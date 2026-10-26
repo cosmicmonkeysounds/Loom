@@ -100,8 +100,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `test/w26-lock.test.ts` walks every route. If it posts nothing into the
   story, add it to `LOCKED_OPEN` on purpose.
 - **Game-only beats** (wave 26, C6). `chat.ts` `GAME_ONLY_BEATS` (Escape
-  Attempt, Heart In The Simulation) never become a ChatMessage; their
-  lines reach only the reinstallation game, through `momentLines(events,
+  Attempt, Heart In The Simulation) never become a ChatMessage and never
+  set the speaker a later menu docks under (`menuChannelsFor`,
+  `decisionChannelFor`); their lines reach only the reinstallation game, through `momentLines(events,
   guest)` in the moment route's answer. Don't rename those beats.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every

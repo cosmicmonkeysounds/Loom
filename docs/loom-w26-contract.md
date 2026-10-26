@@ -955,8 +955,10 @@ messages, because of the next rule.
 
 **Game-only beats** (engine lane, Stage A, `chat.ts`). `export const
 GAME_ONLY_BEATS = ["Escape Attempt", "Heart In The Simulation"]` (folded).
-The chat composer emits **no** `ChatMessage` for a `dialogue` event whose
-`beat` is one of them. Chat is re-derived on replay, so the rule is
+The chat composer emits **no** `ChatMessage` for a `dialogue` (or
+narration) event whose `beat` is one of them, and `decisionChannelFor` /
+`menuChannelsFor` skip those lines, so a later menu never docks under
+`dm:Trabolta`. Chat is re-derived on replay, so the rule is
 deterministic: no phone thread, booth readout, Run pane or replay ever holds
 those lines. Only the game's answer body carries them. This matters
 because Trabolta is `hidden: true` and has no scripted line before
