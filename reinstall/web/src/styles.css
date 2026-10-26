@@ -399,6 +399,8 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
   font-family: var(--ui);
   pointer-events: none;
 }
+/* Touch: above the stick zones (.stick-zone's height), never over the thumbs. */
+.hud-caption.over-sticks { bottom: calc(min(46vh, 300px) + 12px); }
 .hud-caption p { margin: 0; font-size: clamp(18px, 2.4vw, 24px); line-height: 1.25; color: var(--ink); }
 
 .scare {

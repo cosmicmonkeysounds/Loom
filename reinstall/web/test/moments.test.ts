@@ -235,6 +235,18 @@ describe("the void in the engine (R4)", () => {
   });
 });
 
+describe("the caption window on a touch screen", () => {
+  it("sits above the stick zones when the sticks show, never over the thumbs", () => {
+    const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+    const zone = /\.stick-zone \{[^}]*height: ([^;]+);/u.exec(css)?.[1];
+    expect(zone).toBe("min(46vh, 300px)");
+    const over = /\.hud-caption\.over-sticks \{[^}]*bottom: calc\(([^)]+\))/u.exec(css)?.[1];
+    expect(over).toContain(zone);
+    const play = readFileSync(new URL("../src/game/Play.tsx", import.meta.url), "utf8");
+    expect(play).toContain('className={`hud-caption${showSticks ? " over-sticks" : ""}`}');
+  });
+});
+
 describe("the heart in the engine (R6)", () => {
   const inside: Vec3 = [3.25, -2.7, 23.5];
   const fallen: KingState = { id: kingProp.id, hp: 0, max: 15, fallen: true };
