@@ -1546,11 +1546,17 @@ export function parseTrigger(event: string): {
   }
   // v3 spelling: the verb is the first word, verbatim (`on rally guest`).
   const words = raw.filter((w) => !TRIGGER_FILLERS.has(w)); // case-sensitive: `The` is a name
+  // Wave 26: with a `for` binding, a built-in verb names the trigger only as
+  // the phrase's first word (`when captured for program:`). Further in, it
+  // is part of a multi-word named event: `when simulation escape attempt
+  // for program:` is that INTERACTION, not the builtin `escape`.
+  const forBound = raw.indexOf("for") > 0;
   let verb: string | null = null;
   let verbIdx = -1;
   for (let i = 0; i < words.length; i++) {
     const syn = VERB_SYNONYMS.get(words[i]!.toLowerCase());
     if (syn !== undefined) {
+      if (forBound && i > 0) break;
       verb = syn;
       verbIdx = i;
       break;
