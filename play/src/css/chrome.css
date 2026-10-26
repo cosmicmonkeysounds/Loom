@@ -455,6 +455,14 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 @media (max-width: 369px) {
   .guest-frame .taskbar-tray .tray-clock { display: none; }
   .taskbar-btn.stacked { padding: 2px 2px; }
+  /* Integration (P2 at 360 px): the countdown and the balance fit beside
+     four 48 px windows — the bar's gaps and the tray's own chrome tighten
+     (the windows keep their floor; the icons stay, so "4:59" never reads
+     as a time of day). */
+  .guest-frame .taskbar { gap: 2px; }
+  .guest-frame .taskbar-tray { padding: 0 1px 0 2px; }
+  .guest-frame .taskbar-tray::before { margin: 0 2px 0 1px; }
+  .guest-frame .taskbar-tray .tray-item { padding: 0 2px; gap: 2px; }
 }
 
 /* ── the window over the room: one column that scrolls ── */
