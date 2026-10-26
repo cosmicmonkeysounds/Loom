@@ -660,6 +660,7 @@ ROLE Program
       // DRAFT w18: a big moment (the user's example: un-ignorable).
       reply "!!🎱 BINGO! Name the program for each square. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
     else:
+      // DRAFT w26 (B: a stale press, # hosts)
       broadcast "🎱 Nothing happens: the Bingo round is over, or {program.name} is already a winner." to channel(hosts)
 
   when award_the_ribbon for program:
@@ -697,6 +698,7 @@ ROLE Program
       // Wave 26 (B5): one round; the first 🎯 closes it.
       set Night.bingo_done = true
     else:
+      // DRAFT w26 (B: a stale press, # hosts)
       broadcast "🎯 Nothing happens: the Bingo round is over." to channel(hosts)
 
   // ── Wave 26: a guest's BINGO, its undo, and naming nobody (B1–B3) ──
@@ -718,6 +720,7 @@ ROLE Program
       reply "!!🎱 You called BINGO! Go to Clippy at the Desktop and read your line, centre square last." with go: The Desktop as "🎱 To the Desktop"
       fire bingo_time
     else:
+      // DRAFT w26 (B: a stale press, # hosts)
       broadcast "🎱 {program.name} pressed BINGO, but the call is already in (or Bingo isn't on). Nothing happens." to channel(hosts)
 
   // B2: ↩ Not a Bingo (Clippy, a host or a director, on the caller's card):
@@ -752,9 +755,11 @@ ROLE Program
       reply 🎱 Not quite a line yet. Keep looking.
       fire bingo_undone for program
     else:
+      // DRAFT w26 (B: a stale press, # hosts)
       broadcast "↩ Nothing happens: Not a Bingo works only on the caller, before any 🎱, 🎯 or 🤐." to channel(hosts)
 
   when bingo_undone for program:
+    // DRAFT w26 (B2: # hosts hears who pressed it)
     if Kernel.undo_n == 1 and Night.bingo_on == true:
       broadcast "↩ {Kernel.undo_by} pressed Not a Bingo for {program.name}. Bingo is back on: the clock picks up where it stopped." to channel(hosts)
     else if Kernel.undo_n == 1:
@@ -777,6 +782,7 @@ ROLE Program
       // DRAFT w26 (B3)
       broadcast "🤐 {program.name} names nobody at the centre square. Nobody is marked." to channel(hosts)
     else:
+      // DRAFT w26 (B: a stale press, # hosts)
       broadcast "🤐 Nothing happens: only on a winner, before the round is over." to channel(hosts)
 
   // ── Moments of Truth: the room's judging (performer buttons) ──
@@ -3036,6 +3042,7 @@ INTERACTION start_the_bingo
 INTERACTION bingo_time
   label: V3 · ⏰ Bingo time: results
   who: admin
+  // DRAFT w26 (B1, B2: the description)
   description: Clippy's game is on (Instructions 2/X). Norton is the selected Antivirus. A guest's 🎱 BINGO! presses it for you; after a ↩ Not a Bingo it is NEXT again.
   // Wave 26 (B2): ↩ Not a Bingo puts the night back at step 2, so ⏰ may
   // fire again; NEXT reads it again while Bingo is on. The rule's own
@@ -3476,6 +3483,7 @@ INTERACTION trust_patch_bay
 // screens (QUIET_MOMENT_SIGNALS). Every line they say is game-only (the
 // Escape Attempt and Heart In The Simulation beats) or the codex unlock's
 // usual Truther Download line.
+// DRAFT w26 (the button's label and description)
 INTERACTION simulation escape attempt
   label: Reinstallation: walked out into the void (server)
   who: admin
@@ -3483,6 +3491,7 @@ INTERACTION simulation escape attempt
   sequence: false
   description: Fired by the reinstallation games for one program who walked out through the simulation's mud room, 5 m into the void. The game scares them and puts them back in the tent; Trabolta chastises them in the game only; −5 trust each time. # hosts is told.
 
+// DRAFT w26 (the button's label and description)
 INTERACTION simulation heart reached
   label: Reinstallation: reached Trabolta's heart in the simulation (server)
   who: admin
@@ -3490,6 +3499,7 @@ INTERACTION simulation heart reached
   sequence: false
   description: Fired by the reinstallation games for one program who walks into the simulation's server room once the King has fallen. Once a night per program, and only once Trabolta is awake: a short monologue, in the game only. Flavour; # hosts is told.
 
+// DRAFT w26 (the button's label and description)
 INTERACTION simulation pickup taken
   label: Reinstallation: picked up the floppy disk (server)
   who: admin
@@ -3571,10 +3581,12 @@ INTERACTION bingo_winner
   by: Clippy
   // Wave 26 (B5): one round; the first 🎯 or 🤐 closes it.
   while: Night.phase == "bingo_results" and Night.bingo_done != true
+  // DRAFT w26 (B5: the description)
   description: Clippy, at the Bingo results. Several winners are fine, until the centre square is answered.
 
 // Wave 26 (B2): the undo of a guest's 🎱 BINGO!, on the caller's card only,
 // before any 🎱 / 🎯 / 🤐.
+// DRAFT w26 (the button's label and description)
 INTERACTION not_a_bingo
   label: ↩ Not a Bingo: back to the game
   who: performer
@@ -3583,6 +3595,7 @@ INTERACTION not_a_bingo
   description: The caller's line doesn't hold. Bingo picks up with the time it had left (none if it was already up: then call ⏰ as usual).
 
 // Wave 26 (B3): the winner won't name anyone at the centre square.
+// DRAFT w26 (the button's label and description)
 INTERACTION named_nobody
   label: 🤐 Names nobody at the centre square
   who: performer
@@ -3996,6 +4009,7 @@ INTERACTION back from the bathroom
 // Wave 26 (R1): never on a phone in the Internet (the hook refuses there anyway).
 // Wave 26 (B1): a guest with a line calls the results themselves (two taps).
 // On Play Computer Bingo's card; one call at a time.
+// DRAFT w26 (the button's label and description)
 INTERACTION call_bingo
   label: 🎱 BINGO!
   who: guest

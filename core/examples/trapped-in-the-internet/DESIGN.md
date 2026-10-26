@@ -2181,7 +2181,10 @@ tent is captured by the tablet's scan.
     Files are hidden all over this computer. Ask what his theory is for.` (No Sandy before
     the overshare.)
 
-**C4 Excel's virus** (works today; the tent QRs). ROLE `when program learns ILOVEYOU:` and
+**C4 Excel's virus** (the tent QRs; since wave 26 also the floppy disk in the
+reinstallation games, `simulation pickup taken`, which unlocks the same entry
+for anyone who picks it up: Free Antivirus Trial for a paranoid Excel,
+ILOVEYOU for everyone else). ROLE `when program learns ILOVEYOU:` and
 `when program learns Free Antivirus Trial:` → `set program.carries_virus = true` · `Truther
 Download: Something came back from the Internet with you. It is warm. It wants to be
 inserted.` · `if program.featured == "excel":` `if program.excel_choice == "paranoid":`
@@ -3793,7 +3796,7 @@ Run → Director; no phone cue page).
 | 14 | **REQUIRED before the party.** Terminal **attract mode before Trabolta exists**: while its character is hidden / `awake` is false the terminal shows the screensaver / media player / ads rotation, never "TRABOLTA ONLINE", and **never pilots** a scanned guest into `dm:Trabolta` (add `revealed` to `CastSummary`). Optional: the server refuses agent dispatch for a hidden character | **Built: K-16** (on master, not yet deployed). Fallback: provision every terminal `view=mirror` until `introduce_trabolta`, then `view=auto` (§9); the hold line is plain words |
 | 15 | **Installation Wizard instructional video** in the reinstall tablet wizard (and phone `video` card) | the Wizard's lines in `dm:Installation Wizard` (+ Julia live in the tent); `cue tablet_wizard` |
 | 16 | Reinstall: optional **press-A** find, goose vs duck copy, **release-all / end spatial sessions on release**, `released` leave reason, Bathroom Mode on the tablet/VR, tent queue/capacity | the duck by proximity (copy says "walk right up to it"); zip via the two ROLE watchers; performers clear the tent by hand |
-| 17 | Excel's virus as an **in-game pickup** (spatial `virus` spot) and a **USB "glory hole" sensor** for planting | codex QRs `LOVE-LETTER-FOR-YOU` / `FREE-TRIAL-30-DAYS` taped in the tent; the guest button `plant_the_virus` |
+| 17 | Excel's virus as an **in-game pickup** (built in wave 26: the `virus-disk` pickup prop, `POST /api/spatial/moment`, the story's `simulation pickup taken`) and a **USB "glory hole" sensor** for planting (not built) | codex QRs `LOVE-LETTER-FOR-YOU` / `FREE-TRIAL-30-DAYS` taped in the tent; the guest button `plant_the_virus` |
 | 18 | **Server Room in house.json** (cold-storage room, door, terminal, duck rule) via the **floor-plan editor**; map owned by the project; measured house | LOCATION declared without geometry |
 | 19 | **Printable QR sheets** (project-level print tokens for codex clues, room check-ins, guest passes, performer cards; base-URL fix; redeem throttle) | `/api/mod/codes` lists codes + `?code=&unlock=` links (no editor UI) |
 | 20 | **Stagehand**: signal `args` (so the story judges `patch_changed {combo}` and QR/terminal check-ins carry `at`), a `var:` action, edge detection + ignore retained MQTT (stagehand-hw code #4), an `http:`/audio output (TTS for the house announcements), Loom-4 `with` parsing | `stagehand/trapped.house.yaml` (shipped with the rewrite, §2.15: correct Z2M payloads, room lights, scenes, sensors) judges the combos and sends `patch_combo_a` / `patch_combo_b` / `patch_rejected`; the story latches the patch-bay alarm (wave 7: the door never alarms), restores darkened rooms and cues the dance itself (no `delay:` needed); QLab over OSC; `do announce` |
