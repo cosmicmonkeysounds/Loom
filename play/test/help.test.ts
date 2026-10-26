@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { articlesFor } from "../src/help.tsx";
-import { searchHelp, type HelpArticle } from "../../docs/help/helpdoc.ts";
+import { inlineTokens, searchHelp, type HelpArticle } from "../../docs/help/helpdoc.ts";
 
 /** Everything a guest can read of an article: title, keywords and body. */
 function readable(a: HelpArticle): string {
@@ -184,6 +184,30 @@ describe("wave 26 G2: the guest guide never explains the machinery", () => {
     expect(pass.plain).toContain("show my pass");
     expect(pass.plain).toContain("bathroom mode");
     expect(searchHelp(articlesFor("guest"), "locked").map((h) => h.article.slug)).toContain("your-pass");
+  });
+
+  it("every cross-link resolves, and no guest article points at a performer-only one", () => {
+    const all = new Map(articlesFor("performer").map((a) => [a.slug, a]));
+    for (const a of all.values()) {
+      for (const block of a.blocks) {
+        const texts =
+          block.kind === "para" || block.kind === "quote" || block.kind === "heading"
+            ? [block.text]
+            : block.kind === "list"
+              ? block.items
+              : block.kind === "table"
+                ? [...block.header, ...block.rows.flat()]
+                : [];
+        for (const text of texts) {
+          for (const tok of inlineTokens(text)) {
+            if (tok.kind !== "link" || /^[a-z]+:\/\//u.test(tok.href)) continue;
+            const target = all.get(tok.href);
+            expect(target, `${a.slug} links to missing article "${tok.href}"`).toBeDefined();
+            if (!a.role) expect(target?.role, `guest article ${a.slug} links to ${tok.href}`).toBeUndefined();
+          }
+        }
+      }
+    }
   });
 
   it("the guest guide still answers how to work the phone, the terminals and the game", () => {
