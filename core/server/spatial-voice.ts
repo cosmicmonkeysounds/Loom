@@ -50,7 +50,9 @@ export interface VoiceListener {
   close(): void;
 }
 
-/** A player as the relay routes them (the hub's `PlayerState` fits). */
+/** A player as the relay routes them: the runtime passes
+ *  `SpatialHub.voicePlayers()`, whose `room` is the presence room (wave 26,
+ *  C8), never the raw `locate` room the stream draws. */
 export interface VoiceRoutePlayer {
   session: string;
   name?: string;
