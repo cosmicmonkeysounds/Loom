@@ -10,6 +10,12 @@ import type { Prepared, SpeechEngine } from "@loom/terminal/speech/engine.ts";
 import { deviceSpeaker, IN_GAME_LINE_GAP_MS, LINE_SPEAK_CAP_MS, LINE_START_WAIT_MS, LinePlayer, pronounce } from "../src/game/lines.ts";
 
 describe("pronounce — the shared table (C10)", () => {
+  it("is the terminal's own lexicon pronounce, and the line gap is its LINE_GAP_MS (C6, C11)", async () => {
+    const lexicon = await import("@loom/terminal/speech/lexicon.ts");
+    const engine = await import("@loom/terminal/speech/engine.ts");
+    expect(pronounce).toBe(lexicon.pronounce);
+    expect(IN_GAME_LINE_GAP_MS).toBe(engine.LINE_GAP_MS);
+  });
   it("is the terminal's pronounce.json", () => {
     const json = JSON.parse(readFileSync(new URL("../../../terminal/src/speech/pronounce.json", import.meta.url), "utf8")) as { words: Array<{ word: string; say: string }> };
     expect(json.words.map((w) => w.word)).toContain("Antivirus");
