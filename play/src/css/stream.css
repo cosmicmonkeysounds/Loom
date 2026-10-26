@@ -314,3 +314,33 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
    aside so the card keeps its box, its slider and File it above the keyboard
    (channel-view.tsx `card-typing`; `.kbd` is the frame's keyboard rule). */
 .kbd .stream-foot.card-typing > .composer { display: none; }
+
+/* ── wave 26 (P1): the footer never squishes the chat ───────────────────
+   The conversation keeps ≥ 96 px (about three lines); the footer takes at
+   most 62% of the room and scrolls inside itself; the card's body and a
+   long menu scroll inside their own caps (the vh line is the fallback for
+   browsers without dvh). One answer surface at a time (channel-view.tsx
+   `footLayout`): a folded menu or composer is one 48 px bar. Every button
+   in the footer is ≥ 48 px. */
+.stream-room > .thread { min-height: 96px; }
+.stream-room > .stream-foot { flex: 0 1 auto; min-height: 0; max-height: 62%; overflow-y: auto; overscroll-behavior: contain; }
+.stream-foot .stream-tray-body { max-height: 34vh; max-height: 34dvh; }
+.stream-foot .dlg-options { max-height: 36vh; max-height: 36dvh; overflow-y: auto; overscroll-behavior: contain; }
+.stream-foot .dlg-choice, .stream-foot .fact-questions .choice { min-height: 48px; }
+.stream-foot .stream-tray-title, .stream-foot .stream-tray-step { min-height: 48px; }
+.stream-foot .composer .composer-send, .stream-foot .composer .composer-scan { height: 48px; min-height: 48px; }
+.stream-foot .composer .composer-input { min-height: 48px; }
+@media (pointer: coarse) { .stream-foot .dlg-hint { display: none; } }
+/* the folded menu: loud (navy), one line, the whole width */
+.stream-foot .tray.dialogue.dlg-folded {
+  display: block; width: 100%; min-height: 48px; margin: 0; border: none; cursor: pointer; text-align: left;
+  background: var(--navy); color: var(--white); font: 700 15px var(--chat-font);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.stream-foot .tray.dialogue.dlg-folded:active { box-shadow: var(--pressed); }
+/* the folded composer: one line that reads as the box (and shows a draft) */
+.stream-foot .composer-folded .composer-open {
+  flex: 1 1 auto; min-width: 0; min-height: 48px; margin: 0; text-align: left;
+  font: italic 16px var(--chat-font); color: var(--muted-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
