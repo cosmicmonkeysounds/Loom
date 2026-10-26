@@ -288,6 +288,43 @@ describe("the heart in the engine (R6)", () => {
     expect(posted.reqs).toEqual([]);
   });
 
+  it("left and came back while the answer was on its way: this entry is asked again", async () => {
+    for (const first of [{ kind: "heart", lines: [] }, { kind: "sealed" }, { kind: "notThere" }, { kind: "paused" }] as MomentReply[]) {
+      posted.reqs = [];
+      const { g, played } = game({ feet: inside, king: fallen });
+      let answer!: (r: MomentReply) => void;
+      posted.replies.push(new Promise<MomentReply>((r) => (answer = r)), { kind: "heart", lines: LINES });
+      g.tickMoments(0);
+      await settle();
+      expect(posted.reqs, first.kind).toHaveLength(1);
+      g.body.p = [3.25, 0, 10]; // out while it waits…
+      g.tickMoments(1);
+      g.body.p = inside; // …and back in before it answers
+      g.tickMoments(2);
+      await settle();
+      expect(posted.reqs, first.kind).toHaveLength(1); // one request at a time
+      answer(first);
+      await settle();
+      g.tickMoments(3); // no backoff, no second exit needed
+      await settle();
+      expect(posted.reqs, first.kind).toHaveLength(2);
+      expect(played, first.kind).toEqual([LINES]);
+    }
+  });
+
+  it("a closed-doors backoff never outlives the entry: out and in again asks at once", async () => {
+    const { g } = game({ feet: inside, king: fallen });
+    posted.replies.push({ kind: "paused" }, { kind: "heart", lines: LINES });
+    g.tickMoments(0);
+    await settle();
+    g.body.p = [3.25, 0, 10];
+    g.tickMoments(1);
+    g.body.p = inside;
+    g.tickMoments(2);
+    await settle();
+    expect(posted.reqs).toHaveLength(2);
+  });
+
   it("closed doors: asked again on the found backoff while still inside", async () => {
     vi.useFakeTimers();
     const { g } = game({ feet: inside, king: fallen });

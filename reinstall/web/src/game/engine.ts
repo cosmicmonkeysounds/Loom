@@ -912,6 +912,7 @@ export class Game {
   private bindMoments(): void {
     this.heartProp = heartProps(this.map)[0] ?? null;
     this.heartAsked = false;
+    this.heartRetryAt = 0;
     this.pickups = pickupProps(this.map);
     for (const id of this.taken) this.house.setPickupTaken(id, true);
   }
@@ -988,15 +989,18 @@ export class Game {
   /** In Trabolta's heart's room, once the King has fallen (or the map has none): ask once per entry (R6). */
   private tickHeart(now: number): void {
     const heart = this.heartProp;
-    if (heart === null || this.heartDone || this.heartBusy) return;
+    if (heart === null || this.heartDone) return;
     // Sealed while the King stands — and while the server hasn't said (an old server).
     const open = this.kingProp === null || this.kingState?.fallen === true;
+    // An exit counts even while a request waits: the next entry is a new one,
+    // asked at once (no backoff left over from the last).
     if (!open || !heartReached(this.map, this.body.p, heart)) {
       this.heartAsked = false;
       this.heartRefusals = 0;
+      this.heartRetryAt = 0;
       return;
     }
-    if (this.heartAsked || now < this.heartRetryAt) return;
+    if (this.heartBusy || this.heartAsked || now < this.heartRetryAt) return;
     this.heartAsked = true;
     void this.reachHeart(heart);
   }
@@ -1019,6 +1023,8 @@ export class Game {
         case "reenter":
           return;
         case "retry":
+          // Left while it waited (`heartAsked` cleared): the next entry asks at once.
+          if (!this.heartAsked) return;
           if (reply.kind === "paused") this.heartRefusals += 1;
           this.heartAsked = false;
           this.heartRetryAt = performance.now() + step.ms;
