@@ -999,7 +999,9 @@ export class EventRuntime {
       now: () => this.clock(),
       // The hub's current map (never a fresh `spatialHouse()` read: that
       // stats the show file, and this runs every 100 ms while anyone listens).
-      world: () => ({ house: this.spatial.house, players: this.spatial.players(), live: (s) => this.spatial.hasSession(s) }),
+      // The players carry their presence room (wave 26, C8): the voice
+      // link is same-room by the doorway-hysteresis room, not `locate`'s.
+      world: () => ({ house: this.spatial.house, players: this.spatial.voicePlayers(), live: (s) => this.spatial.hasSession(s) }),
     });
     this.checkin = new GuestCheckin({
       sim: () => this.sim,
@@ -3543,7 +3545,9 @@ export class EventRuntime {
       return true;
     }
     const out = this.cams.put(up.spot, up.jpeg, up.w, up.h);
-    sendJson(res, 200, { ok: true, at: out.at, ...(out.dropped ? { dropped: true } : {}) });
+    // `watched` (wave 26, C7): a player is in this spot's room now, so the
+    // game shows the feed; the terminal slows down while nobody is.
+    sendJson(res, 200, { ok: true, at: out.at, ...(out.dropped ? { dropped: true } : {}), watched: this.spatial.linked().has(up.spot) });
     return true;
   }
 
@@ -3674,11 +3678,15 @@ export class EventRuntime {
         return true;
       }
       this.camSpots();
+      // A game session sees only the feeds of its own presence room, never
+      // the tent's (wave 26, C7); a moderator sees every feed.
+      const seen = moderator || this.sessions.canModerate(token) ? null : this.spatial.camSpotsFor(token);
       if (path === "/api/spatial/cams") {
-        sendJson(res, 200, { cams: this.cams.list() });
+        sendJson(res, 200, { cams: seen === null ? this.cams.list() : this.cams.list().filter((c) => seen.has(c.spot)) });
         return true;
       }
-      const frame = this.cams.get((url.searchParams.get("spot") ?? "").trim());
+      const spot = (url.searchParams.get("spot") ?? "").trim();
+      const frame = seen === null || seen.has(spot) ? this.cams.get(spot) : null;
       if (frame === null) {
         sendJson(res, 404, { error: "no feed" });
         return true;
@@ -5167,6 +5175,9 @@ export class EventRuntime {
           },
           // Q8: is this map spot on `audio.json`'s announce list?
           spotAnnounce: (spot) => this.audio.current().audio.announce?.terminals?.includes(spot) === true,
+          // Wave 26 (C4, R5): players whose presence room is this spot's
+          // room — the terminal's link to the Internet (null: no map / no such spot).
+          spotHere: (spot) => this.spatial.spotHere(spot),
         },
       );
     }
