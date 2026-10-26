@@ -141,7 +141,7 @@ export function DecisionTray({ decision, folded = false, onUnfold }: { decision:
   if (folded)
     return (
       <button type="button" className="tray dialogue dlg-folded" aria-expanded={false} onClick={onUnfold}>
-        {/* DRAFT w26 (P1): UI copy */}▴ Your move: {decision.title}
+        {/* DRAFT w26 (P1): UI copy — the title alone: every story menu's is already "Your move…" */}▴ {decision.title}
       </button>
     );
   return (
