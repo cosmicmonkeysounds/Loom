@@ -55,6 +55,7 @@ import { LazyMission } from "./mission-lazy.tsx";
 import { ChatsWindow } from "./chats.tsx";
 import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
 import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
+import { LazyLockScreen } from "./lock-lazy.tsx";
 import { rowClockOf } from "./show-time.ts";
 import { prefetchQr } from "../pass-qr.tsx";
 import { prefetchFactCard } from "../widgets.tsx";
@@ -75,6 +76,8 @@ LazyMission.prefetch();
 if (typeof window !== "undefined") window.setTimeout(prefetchQr, 1200);
 // The 📝 fact card's chunk (wave 18b), a little later: it is dealt in the hunts.
 if (typeof window !== "undefined") window.setTimeout(prefetchFactCard, 2500);
+// Wave 26 (R1): the locked phone's screen, so a capture finds it there.
+if (typeof window !== "undefined") window.setTimeout(LazyLockScreen.prefetch, 4000);
 
 /**
  * Is the app on rails? While the story has the guest in a `cutscene`
@@ -463,6 +466,28 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
           onContinue={leaveCutscene}
           onPass={() => nav.setOverlay("pass")}
           offline={offline}
+        />
+        {passing && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => nav.setOverlay(null)} />}
+        {takeover}
+      </div>,
+    );
+  }
+
+  // Wave 26 (R1, C2): a locked phone shows only the lock screen (its own chunk).
+  if (s.locked) {
+    return framed(
+      <div className="root app-frame guest-frame trapped-bg locked">
+        <LazyLockScreen
+          title={st.title ?? s.me.title ?? ""}
+          objective={st.objectives?.[0] ?? null}
+          rooms={t.list}
+          interactions={interactions}
+          me={s.me.id}
+          pins={pins}
+          paused={st.paused === true}
+          conn={s.connected ? "live" : offline ? "offline" : "reconnecting"}
+          onPass={() => nav.setOverlay("pass")}
+          onAct={(i) => void s.act(i.id, i.label).catch(() => {})}
         />
         {passing && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => nav.setOverlay(null)} />}
         {takeover}

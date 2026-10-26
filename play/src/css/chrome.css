@@ -668,3 +668,19 @@ button.mission-where:focus-visible { outline: 1px dotted var(--ink); outline-off
 .rejoin-name {
   text-align: left;
 }
+
+/* ── wave 26 (R1, C2): the locked phone — one column under the title bar:
+   the ⛔ card with the buttons that still work, the NOW objective, the
+   Installation Wizard's thread read-only; the taskbar holds only Pass.
+   Margins, not flex gap (Safari 14.0). ── */
+.lock-screen { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 12px 16px; }
+.lock-card { margin: 0 0 12px; padding: 10px 12px 12px; background: var(--face); color: var(--ink); box-shadow: var(--raised); }
+.lock-head { margin: 0 0 4px; color: var(--bad); font: 700 20px/1.2 var(--ui-font); letter-spacing: 1px; }
+.lock-text { margin: 0 0 4px; font: 15px/1.35 var(--ui-font); }
+.lock-actions .lock-btn { display: block; width: 100%; min-height: 48px; margin: 8px 0 0; font-size: 16px; }
+.lock-actions .lock-btn.armed { background: var(--bad); color: var(--white); }
+.lock-screen .objective-card { margin: 0 0 12px; }
+.lock-thread { margin: 0; }
+.lock-thread-head { margin: 0 0 6px; font: 700 14px var(--ui-font); color: var(--ink); }
+.lock-lines { padding: 4px 0; background: var(--white); box-shadow: var(--sunken); }
+.lock-bar .taskbar-btn.primary.stacked { max-width: none; }
