@@ -18,7 +18,7 @@ import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { ChatStore, composeGuestMessages, momentLines, type ChatMessage } from "../server/chat.ts";
-import { cueState, guestCardView, guestView, isLocked, modView, nightView, notePress, objectivesFor, primeView } from "../server/views.ts";
+import { cueState, guestCardView, guestView, isLocked, modView, nightView, notePress, objectivesFor, pressRefused, primeView } from "../server/views.ts";
 import { cueRows } from "../src/cue-sheet.ts";
 
 const SRC = scenarioSource("trapped-in-the-internet");
@@ -191,6 +191,15 @@ describe("Trapped in the Internet — wave 26: the game's moments and the trust 
       expect(x[2], line).toBe(`${w}.truths_accepted * 10 - ${w}.internet_visits * 5 - ${w}.escapes * 5 + ${w}.assessment`);
     }
     expect(read("main.loom")).toContain("//   trust = truths_accepted * 10 - internet_visits * 5 - escapes * 5 + assessment");
+  });
+
+  it("DESIGN.md's paste-exactly formula and its ROLE Program slots match C9", () => {
+    const design = read("DESIGN.md");
+    const pasted = [...design.matchAll(/^set program\.trust = (.+)$/gmu)].map((m) => m[1]);
+    expect(pasted).toEqual(["program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment"]);
+    const slots = /### 2\.7 ROLE Program[\s\S]*?```\n([\s\S]*?)```/u.exec(design)![1]!;
+    expect(slots).toMatch(/^escapes: 0 to 50 = 0 /mu);
+    expect(slots).toMatch(/^sim_heart: bool = false /mu);
   });
 
   it("the three moments are admin, Anytime, out of sequence", () => {
@@ -458,6 +467,18 @@ describe("Trapped in the Internet — wave 26: a guest's BINGO and one round (B1
     expect(first).toBeGreaterThan(0);
   }, SLOW);
 
+  it("↩ fired for a director (the server's stand-in, `director: true`) reads as the Director, whichever booth it fires as", () => {
+    for (const as of ["Task Manager", "Clippy"]) {
+      const n = boot();
+      startBingo(n);
+      n.press("call_bingo", "g5");
+      const out = n.signal("not_a_bingo", "g5", { director: true }, as);
+      expect(v(n.sim, "Night.phase")).toBe("bingo");
+      expect(hostLines(out), as).toContain("↩ The Director pressed Not a Bingo for Winamp. Bingo is back on: the clock picks up where it stopped.");
+      expect(hostLines(out).some((t) => t.includes(`${as} pressed`))).toBe(false);
+    }
+  }, SLOW);
+
   it("↩ is offered only before any 🎱 / 🎯 / 🤐", () => {
     const n = boot();
     startBingo(n);
@@ -585,6 +606,43 @@ describe("Trapped in the Internet — wave 26: a guest's BINGO and one round (B1
     expect(v(t.sim, "Night.bingo_done")).toBe(true);
     expect(t.sim.questStatus("g1", "The Bingo Card")).toBe("done");
     expect(sheet(t.sim).last).toBe("introduce_trabolta");
+  }, SLOW);
+
+  // B5 / D1: a press the story turned down ("Nothing happens" in # hosts)
+  // comes back refused, so the booth reads "Not now." and PLAYER SELECT
+  // stops. The wave 21 / 26 press stamps are `_`-leaf bookkeeping
+  // (`Kernel._pressed_by`, `_undo_n`, `_undo_by`), never a counted press.
+  it("a stale ↩ / 🤐 / 🎯 / 🎱 after the round closes comes back refused, from Task Manager and from Clippy", () => {
+    const n = boot();
+    startBingo(n);
+    n.advance(600);
+    n.press("call_bingo", "g5");
+    // Counted presses still count (a real world write beside the stamp).
+    expect(pressRefused(n.sim, n.raw("bingo_winner", "g1", undefined, "Clippy"))).toBe(false);
+    n.signal("award_the_ribbon", "g1", undefined, "Clippy");
+    expect(pressRefused(n.sim, n.raw("named_nobody", "g1", undefined, "Clippy"))).toBe(false);
+    expect(v(n.sim, "Night.bingo_done")).toBe(true);
+    const stale: [string, string, string][] = [
+      ["not_a_bingo", "g5", "Task Manager"],
+      ["not_a_bingo", "g5", "Clippy"],
+      ["named_nobody", "g1", "Clippy"],
+      ["bingo_winner", "g2", "Clippy"],
+      ["named_at_bingo", "g2", "Clippy"],
+    ];
+    for (const [name, id, by] of stale) {
+      const ev = n.raw(name, id, undefined, by);
+      expect(pressRefused(n.sim, ev), `${by}'s ${name} on ${id}`).toBe(true);
+      const writes = ev.filter((e) => e.type === "worldSet").map((e) => (e as { path: string }).path);
+      expect(writes.every((p) => p.slice(p.lastIndexOf(".") + 1).startsWith("_")), `${name}: ${writes.join(", ")}`).toBe(true);
+    }
+    expect(v(n.sim, "g2.bingo")).not.toBe(true);
+    expect(v(n.sim, "g2.marked")).toBe(false);
+    expect(v(n.sim, "Night.phase")).toBe("bingo_results");
+    // A counted ↩ (before the round closes) is never refused.
+    const u = boot();
+    startBingo(u);
+    u.press("call_bingo", "g5");
+    expect(pressRefused(u.sim, u.raw("not_a_bingo", "g5", undefined, "Task Manager"))).toBe(false);
   }, SLOW);
 });
 

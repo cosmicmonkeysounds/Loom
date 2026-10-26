@@ -497,4 +497,34 @@ describe("Trapped in the Internet — wave 21: a director's press with no actor 
     expect(shared.status).toBe(200);
     expect(Number(v(sim, "Clippy.score") ?? 0)).toBe(before);
   }, SLOW);
+
+  // Wave 26 (B2 / C9): the stand-in host's hooks hear `director: true`, so
+  // ↩ Not a Bingo from Run (the Inspector, Director Tools, the cue sheet)
+  // reads as the Director in # hosts, never as Task Manager.
+  it("↩ Not a Bingo with no actor reads as the Director; a host's own press names the host", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-trapped-w26-undo-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "trapped-in-the-internet", scenarioSource: SRC, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const sim = rt.liveSim!;
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Sims", passcode: CODES.event });
+    const gid = g.json["id"] as string;
+    sim.setVar(`${gid}.cleared`, "true");
+    const mod = (body: Record<string, unknown>) => call(rt, "POST", "/api/mod/signal", body, { moderator: true });
+    for (const c of ["call_to_the_desktop", "start_the_bingo"]) expect((await mod({ name: c })).status).toBe(200);
+    await mod({ name: "call_bingo", subject: gid });
+    expect(v(sim, "Night.bingo_caller")).toBe("Sims");
+    const undo = await mod({ name: "not_a_bingo", subject: gid });
+    expect(undo.status).toBe(200);
+    expect(undo.json["refused"]).toBeUndefined();
+    expect(undo.json["staff"]).toContain("↩ The Director pressed Not a Bingo for Sims. Bingo is back on: the clock picks up where it stopped.");
+    expect(JSON.stringify(undo.json["staff"])).not.toContain("Task Manager pressed");
+    expect(v(sim, "Night.phase")).toBe("bingo");
+    // The same press fired as the host (a booth's / the performer lens) names him.
+    await mod({ name: "call_bingo", subject: gid });
+    const host = await mod({ name: "not_a_bingo", subject: gid, actor: "Task Manager" });
+    expect(host.json["staff"]).toContain("↩ Task Manager pressed Not a Bingo for Sims. Bingo is back on: the clock picks up where it stopped.");
+    // bingo_undone drained the count.
+    expect(v(sim, "Kernel._undo_n")).toBe(0);
+  }, SLOW);
 });

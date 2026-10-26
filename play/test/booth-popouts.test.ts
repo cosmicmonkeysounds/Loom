@@ -229,6 +229,12 @@ describe("pickers (§4.6–4.7)", () => {
     // BN-F13: what reached their phone comes first.
     expect(replyLine("ICQ", { toGuest: ["🎀 You won the Bingo Ribbon."], said: [{ text: "Well done." }] })).toBe("→ ICQ's phone: 🎀 You won the Bingo Ribbon.");
     expect(replyLine("ICQ", { refused: true, staff: ["already has the ribbon"] })).toBe("Not done: already has the ribbon");
+    // Wave 26 (B3, 🤐): the story's reply to the booth (Clippy's ⭐ +5) is
+    // never shown as the guest's phone; the guest's own lines still win.
+    expect(replyLine("Napster", { replies: ["⭐ +5"] })).toBe("→ Sent · ⭐ +5");
+    expect(replyLine("Napster", { replies: ["⭐ +5"] })).not.toContain("Napster's phone");
+    expect(replyLine("Napster", { replies: ["⭐ +5"], toGuest: ["🎀 You won."] })).toBe("→ Napster's phone: 🎀 You won.");
+    expect(replyLine("Napster", { replies: [" "] })).toBe("→ Sent. The story said nothing back.");
     expect(leadingGlyph("🛡️ Send")).toBe("🛡️");
   });
 });

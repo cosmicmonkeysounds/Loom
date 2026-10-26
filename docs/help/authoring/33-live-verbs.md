@@ -375,7 +375,11 @@ so a button only the `by:` characters' own hooks hear (a trait's
 leaves it off that card and refuses it too. Because the server keeps other booths out, a rule for
 a `by:` button can be a plain story rule: a quick-fire has no actor, so
 a story rule fires once where a hook on a trait would fire once per
-character that has it.
+character that has it. The exception is a button a `player: true` part
+also presses: a quick-fire of it fires as one non-player it names (a
+host), or as its one player, so no player's hook pays for a press they
+never made. That character's hooks then hear `director: true`, so a hook
+that names who pressed it (`if director == true:`) can say the Director.
 
 `while:` is not enforced (the `when` still decides what happens). It is
 a condition: on a performer's button it reads the world with `self` =

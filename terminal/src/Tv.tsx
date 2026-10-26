@@ -32,6 +32,7 @@ import { SpeechQueue, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, 
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { LinePlayer, TvSpeechFeed, cursorAfterGap, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
+import { linkedNow, usePresenceLatch } from "./world/presence.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundMuted } from "./sound/bus.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
@@ -125,7 +126,9 @@ export function Tv({
   useEffect(() => onSceneFace((m, ms) => face.current?.flash(m, ms)), []);
 
   // --- the world, while someone is in the simulation ---
-  const world = useSpatialStream(config, canDraw);
+  // A TV with no spot is nowhere in the game (R5): it never opens the stream.
+  const placed = config.spot.trim() !== "";
+  const world = useSpatialStream(config, canDraw && placed);
   const inSimulation = useWorld(world, (s) => s.world.players.size > 0);
   const gone = useWorld(world, (s) => s.gone);
   useEffect(() => {
@@ -287,7 +290,12 @@ export function Tv({
     };
   }, [wake, toggleMute]);
 
-  const showWorld = canDraw && inSimulation && !attract;
+  // R5 (wave 26): the world pane only while a player is in this TV's room
+  // in the game (the server's `spot.here`), latched over a doorway; the old
+  // house-wide rule (anyone in the simulation) only when a placed TV gets no
+  // `here`. A TV with no spot never shows it (`linkedNow`, as the walls).
+  const linked = usePresenceLatch(linkedNow({ view: "tv", spot: config.spot, here: state?.spot, anyone: inSimulation }));
+  const showWorld = canDraw && linked && !attract;
   // A long spoken line's caption pieces, cut once per line.
   const captionPieces = useMemo(
     () => (caption === null || caption.mode !== "speak" || caption.text.length <= CAPTION_CHUNK_OVER ? [] : captionChunks(caption.text)),

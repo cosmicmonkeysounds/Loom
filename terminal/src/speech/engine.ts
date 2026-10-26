@@ -57,8 +57,10 @@ export interface SpeechEngine {
   readonly kind: EngineKind | "device";
   /** Prepare a chunk (fetch / decode). May resolve to null when this engine can't say it. */
   prepare(text: string): Promise<Prepared | null>;
-  /** Play a prepared chunk; resolves when it ends (or is cancelled). */
-  play(p: Prepared, onLevel: (level: number) => void): Promise<void>;
+  /** Play a prepared chunk; resolves when it ends (or is cancelled).
+   *  `onStart` (wave 26, V1): called once when the voice is actually heard
+   *  (the utterance's start, the audio source's start), not at handover. */
+  play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void>;
   /** Stop whatever is playing now. */
   stop(): void;
 }
@@ -217,7 +219,7 @@ export class ServerEngine implements SpeechEngine {
     }
   }
 
-  play(p: Prepared, onLevel: (level: number) => void): Promise<void> {
+  play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     if (p.kind !== "server") return Promise.resolve();
     const c = audioContext();
     if (c === null) return Promise.resolve();
@@ -257,6 +259,7 @@ export class ServerEngine implements SpeechEngine {
       this.current = { src, done };
       raf = requestAnimationFrame(tick);
       src.start();
+      onStart?.(); // decoded already: the sound starts now
     });
   }
 
@@ -310,7 +313,7 @@ export class BrowserEngine implements SpeechEngine {
     return BrowserEngine.available() && !this.dead ? { kind: "browser", text } : null;
   }
 
-  play(p: Prepared, onLevel: (level: number) => void): Promise<void> {
+  play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     if (p.kind !== "browser" || !BrowserEngine.available()) return Promise.resolve();
     return new Promise<void>((resolve) => {
       const u = new SpeechSynthesisUtterance(p.text);
@@ -334,12 +337,15 @@ export class BrowserEngine implements SpeechEngine {
         this.stopCurrent = null;
         resolve();
       };
-      u.onstart = () => {
+      // The voice is heard: its start (or, from an engine that sends none,
+      // its first word boundary). A slow first utterance after idle (some
+      // macOS voices) holds the picture until here (V1).
+      const started = () => {
+        if (!speaking && !settled) onStart?.();
         speaking = true;
       };
-      u.onboundary = () => {
-        speaking = true;
-      };
+      u.onstart = started;
+      u.onboundary = started;
       u.onend = finish;
       u.onerror = finish;
       this.stopCurrent = () => {
@@ -427,7 +433,7 @@ export class FullyEngine implements SpeechEngine {
     return FullyEngine.available() ? { kind: "fully", text } : null;
   }
 
-  play(p: Prepared, onLevel: (level: number) => void): Promise<void> {
+  play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     const f = fullyOf();
     if (p.kind !== "fully" || f === null) return Promise.resolve();
     bindFully(f);
@@ -453,6 +459,7 @@ export class FullyEngine implements SpeechEngine {
         // A voice name if set, else the locale. The two-argument form is the
         // oldest Fully's too; it flushes, which is right: one chunk at a time.
         f.textToSpeech(p.text, this.opts.voice || "en-US");
+        onStart?.(); // Fully sends no start event: handed over is started
       } catch {
         finish();
       }
@@ -481,10 +488,11 @@ export class SilentEngine implements SpeechEngine {
     return { kind: "silent", text };
   }
 
-  play(p: Prepared, onLevel: (level: number) => void): Promise<void> {
+  play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     if (p.kind !== "silent") return Promise.resolve();
     return new Promise<void>((resolve) => {
       const stopFlutter = flutter(onLevel);
+      onStart?.();
       const t = window.setTimeout(() => finish(), readingMs(p.text, this.opts.speed));
       const finish = () => {
         window.clearTimeout(t);
@@ -583,12 +591,12 @@ export class DeviceEngine implements SpeechEngine {
     return this.engineFor(this.current()).prepare(text);
   }
 
-  async play(p: Prepared, onLevel: (level: number) => void): Promise<void> {
+  async play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     if (p.kind === "server") return;
-    await this.engineFor(p.kind).play(p, onLevel);
+    await this.engineFor(p.kind).play(p, onLevel, onStart);
     // A stub speechSynthesis was just written off: the chunk is shown at
     // reading pace instead (an announcement or the next line moves on).
-    if (p.kind === "browser" && this.browser.dead) await this.engineFor(this.current()).play({ kind: this.current(), text: p.text }, onLevel);
+    if (p.kind === "browser" && this.browser.dead) await this.engineFor(this.current()).play({ kind: this.current(), text: p.text }, onLevel, onStart);
   }
 
   stop(): void {
@@ -818,13 +826,25 @@ export class SpeechQueue {
           const ready = await next;
           if (i + 1 < u.chunks.length) next = this.prepare(u.chunks[i + 1]!);
           if (g !== this.gen) break;
-          this.on.chunk(u.id, i);
           if (ready === null) {
+            this.on.chunk(u.id, i);
             // Nothing can say it: pace the transcript as if it were spoken.
             await new Promise((r) => setTimeout(r, readingMs(u.chunks[i]!)));
           } else {
             this.on.engine?.(ready.p.kind);
-            await ready.engine.play(ready.p, this.on.level);
+            // V1 (wave 26): `chunk` means he started the sentence — the
+            // voice is heard, not merely handed the text. The trailing
+            // call is the safety net: an engine that ends without ever
+            // starting (a written-off stub) still reports the chunk, so a
+            // scene holding on it never wedges.
+            let fired = false;
+            const start = () => {
+              if (fired || g !== this.gen) return;
+              fired = true;
+              this.on.chunk(u.id, i);
+            };
+            await ready.engine.play(ready.p, this.on.level, start);
+            start();
           }
           spoken = i === u.chunks.length - 1;
         }

@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { ChunkBoundary, ChunkFailed } from "./lazy-chunk.tsx";
 import { cardFromSearch, withoutCard } from "./rejoin.ts";
 import { resumeFromSearch, withoutResume } from "./resume.ts";
 import { App } from "./ui.tsx";
@@ -26,4 +27,11 @@ if (card !== null) {
 }
 
 const el = document.getElementById("root");
-if (el) createRoot(el).render(<App resume={resume} card={card} />);
+// Wave 26 integration: one throw anywhere (a render, an effect cleanup) must
+// never leave a guest on a blank page on show night — a Reload instead.
+if (el)
+  createRoot(el).render(
+    <ChunkBoundary fallback={() => <ChunkFailed what={/* DRAFT w26 (integration): UI copy */ "The app"} />}>
+      <App resume={resume} card={card} />
+    </ChunkBoundary>,
+  );

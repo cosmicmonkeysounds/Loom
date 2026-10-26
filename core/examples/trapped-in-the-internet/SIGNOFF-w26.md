@@ -66,7 +66,7 @@ help lanes write the rest. Not merged to master, not shipped.
 | S-6 | **A Dare**: each path tells the house as before, then one `dare_taken` marks, sends the dared phone *🎩 Trabolta is not amused…* (only the pass) and plays *Dare Chosen* | The house line stays word for word where the terminal test reads it. |
 | S-7 | **The heart's monologue** says nothing about doors, codes, cables, layers or her name | It is flavour; the real heart talk is untouched. |
 | S-8 | **The virus disk is anyone's**, the tent QR's entry; only Excel's plant counts for his quest | The tent QRs stay as the backup; the director pack says to hand Excel the entry from Run if a headset is down. |
-| S-9 | **Clippy's PLAYER SELECT has four steps** (① 🎱 ② 🎀 ③ 🎯 ④ 🤐) | The story lint L1208 warns at four buttons on one objective (*the apps show at most 3*); the picker is not a card face, so the warning stays until the lint learns that. |
+| S-9 | **Clippy's PLAYER SELECT has four steps** (① 🎱 ② 🎀 ③ 🎯 ④ 🤐) | The picker is not a card face: since integration the story lint L1208 no longer warns about more than three buttons on a `pick:` objective. |
 
 ## 2. Every changed show line, old → new
 
@@ -190,16 +190,109 @@ BINGO), `featured/microsoft-excel.md` (the disk). Each new line says
 
 ## 3. Screens and games (collected at integration, I3)
 
-The terminal, web, vr and play lanes list their in-fiction copy in their
-merge commits; integration adds the rows here.
+Collected by searching `DRAFT w26` across `terminal/`, `reinstall/` and
+`play/` on the integration branch (paths from the repo root). **Show text**
+first; the plain UI copy (mic HUD, status lines, buttons) is listed after
+it and needs no sign-off beyond a glance.
+
+**The terminals and the TV (G1, D1)**
 
 | path:line | Where | Was | Now |
 |---|---|---|---|
+| `terminal/src/chess/session.ts:117` | Server Door chess, the attract stakes line (King armed) | *Checkmate him and the server-room door code goes to your Codex.* | *Checkmate him.* (the win line after a checkmate is unchanged) |
+| `terminal/src/cutscene/scenes/act1.tsx:806` | Filing window, the reminders in turn | *One hundred percent sure is accepted. A guess is a symptom.* | *Trabolta is waiting for your files.* |
+| `terminal/src/cutscene/scenes/act1.tsx:814–818` | Filing window, the three stamps | ✔ *Accurate: accepted.* · ✔ *Wrong but one hundred percent sure: accepted.* · ✘ *Wrong and not sure, or a clear guess: a symptom of corruption.* | ✔ *Open the 📝 card in Trabolta's thread.* · ✔ *File everything you found.* · ✔ *Trabolta is reading every word.* |
+| `terminal/src/cutscene/scenes/act1.tsx:1398` | **Dare Chosen** (TV, new scene), the mark dialog | (the old `chose_dare` verdict: *MARKED FOR REINSTALLATION — {who}: chose Dare. An Antivirus will escort you through the Tube.*) | *MARKED FOR REINSTALLATION — {who}: chose Dare. Antivirus: take them to the Internet.* |
+| `terminal/src/cutscene/scenes/act1.tsx:1400` | Dare Chosen, the ticker | *★ PROGRAMS CHOOSE TRUTH ★ A MARKED PROGRAM GOES TO THE INTERNET ★ AN ANTIVIRUS WILL ESCORT THEM ★* | *★ PROGRAMS CHOOSE TRUTH ★ ANTIVIRUS: TAKE THEM TO THE INTERNET ★* |
+| `terminal/src/cutscene/scenes/act2.tsx:104` | Five Minutes (TV + walls), a drifting dialog | **Bathroom Mode**: *Bathroom Mode excuses you. Nothing else does.* | **Antivirus**: *Every program is being counted.* |
+| `terminal/src/cutscene/scenes/act2.tsx:111` | Five Minutes, the marquee | *…SECOND MOMENT OF TRUTH ★ BATHROOM MODE EXCUSES YOU ★ AN ANTIVIRUS IS COUNTING ★…* | *⏳ FIVE MINUTES ★ BE IN THE DESKTOP FOR THE SECOND MOMENT OF TRUTH ★ AN ANTIVIRUS IS COUNTING ★ NO DESKTOP, NO TRUTH PONG ★* |
+| `terminal/src/cutscene/scenes/act2.tsx:315` | Truth Pong, a drifting dialog | *Accurate is accepted. Confident is accepted. A guess is the Internet.* | *Trust the process.* |
+| `terminal/src/pilot.ts:47` | The server-room terminal, a quarantined (locked) program scans in (R1, integration fix) | (the line opened, his heart talk docked, and every pick answered *DIDN'T SEND — LOCKED*) | *⛔ YOU'RE IN THE INTERNET — GO TO THE TENT* (the casino's words); no line opens and the program at his heart stays |
+
+**The web game, the tent laptop (G1, G2, R2, R4, R7)**
+
+| path:line | Where | Was | Now |
+|---|---|---|---|
+| `reinstall/web/src/flow.tsx:251` | The choose screen, the King note | *Find Gerald. In the simulation the King guards the Server Room's door: every program may hit him once per reinstallation, and every hit weakens him for everyone.* | removed |
+| `reinstall/web/src/game/hud.ts:173` | Path reveal notice (after a minute) | — | *The way to Gerald lights up.* |
+| `reinstall/web/src/game/hud.ts:176` | HUD heat box before the reveal | the heat label + *N m to Gerald* / *follow the golden arrows* | *FIND GERALD* (no label, no distance, no hint); after the reveal unchanged |
+| `reinstall/web/src/game/hud.ts:182` | Gerald moves, before the reveal | *Gerald moved — follow the golden arrows.* | *Gerald moved.* (after the reveal the old line) |
+| `reinstall/web/src/game/Play.tsx:257` | The help card's goal | *Find Gerald, the golden duck. Follow the golden arrows.* | *Find Gerald, the golden duck.* |
+| `reinstall/web/src/game/moments.ts:37` | The void's scare panel, title | — | *FATAL EXCEPTION 0E* |
+| `reinstall/web/src/game/Scare.tsx:13` | The scare panel's glitch art | — | *0028:C0DE0E36 VXD VMM(01) + 00010E36* |
+| `reinstall/web/src/game/moments.ts:40` | The disk pickup notice | — | *💾 You picked up a disk.* |
+
+**The VR game, the Quest (G1, R2, R4)**
+
+| path:line | Where | Was | Now |
+|---|---|---|---|
+| `reinstall/vr/game/game.gd:93` | `KING_NOTICE` | *Pull the trigger to hit the King — once per visit.* | *Pull the trigger to hit the King.* |
+| `reinstall/vr/game/game.gd:104` | Path reveal notice | — | *A golden trail flickers on.* |
+| `reinstall/vr/game/game.gd:105` | Gerald moves, before the reveal | *Gerald moved — follow the arrows.* | *Gerald moved.* (after the reveal the old line) |
+| `reinstall/vr/game/hud.gd:10` | HUD hint | *follow the golden arrows to the duck* | *find Gerald* |
+| `reinstall/vr/game/hud.gd:47` | The void's scare panel | — | *FATAL EXCEPTION 0E* |
+
+**The games' map (integration)**
+
+| path:line | Where | Was | Now |
+|---|---|---|---|
+| `core/examples/trapped-in-the-internet/house.json:1589` (and `house.shed.json:1572`, `reinstall/vr/house/house.json` by `house:sync`) | The server rack's label in the games (`server-rack`, next to the heart) | *REAL GEAR* (named the real hardware) | *MAINFRAME* |
+
+**The phones (R1, T2)**
+
+| path:line | Where | Was | Now |
+|---|---|---|---|
+| `play/src/guest/lock.tsx:24` | The locked phone's card, heading | — | *⛔ QUARANTINED* |
+| `play/src/guest/lock.tsx:26` | The locked phone's card, text | — | *This program is being reinstalled. Everything else on this phone is locked until it's done.* |
+| `play/src/moments/glitch-takeover.tsx:22` | The glitch takeover's error windows, caption | — | *System Error* (the windows' text is the story's `Night.glitch_text`, *000. 000. 000.*) |
+
+**UI copy (not show text)**
+
+| path:line | Where | Was | Now |
+|---|---|---|---|
+| `reinstall/web/src/program.ts:46` · `reinstall/vr/net/server_link.gd:491` | `NOT_MARKED` (web, VR, the tent terminal) | *Not marked for reinstallation — until the night is over, only a marked program may play.* | *Not marked for reinstallation.* |
+| `reinstall/web/src/program.ts:96` | A held program | *Program held by a director* · *STATUS: RESTRICTED — held by a director, not marked* | *Program held* · *STATUS: RESTRICTED — held, not marked* |
+| `reinstall/web/src/game/Play.tsx:211` | The in-game caption window's title | — | *Message* (no speaker name, so Trabolta is not named before his reveal) |
+| `reinstall/vr/net/voice_link.gd:291–305` | VR mic HUD (`hud_text`) | *🎤 LIVE* · *🎤 LIVE · someone can hear you* · *🎤 MUTED · B / Y to talk* (*M to talk*) · *NO MIC · allow the microphone* · *NO MIC* · *🎤 …* | *MIC ON · B or Y mutes* (*M mutes*) · *MIC ON · someone can hear you* · *MIC MUTED · press B or Y* (*press M*) · *MIC · allow it in the headset's prompt* (*system prompt*) · *NO MIC · not allowed · ASK AGAIN in the lobby* · *MIC STARTING…* · *NO MIC* |
+| `reinstall/vr/net/voice_link.gd:313–338` | VR lobby mic line (`lobby_text`) | — | *VOICE · off on this headset* · *MIC · off on this headset (listen only)* · *MIC TEST · it hears you* / *say something…* / *only silence — no mic* · *MIC · not allowed on this computer* · *MIC · allowed* · *MIC · allow it in the headset's prompt* · *MIC · not allowed · ASK AGAIN, or Settings → Apps → Permissions* · *MIC · not allowed yet · ASK AGAIN* · *MIC · this computer's microphone* |
+| `reinstall/vr/game/lobby.gd:74–77` | VR lobby buttons | — | *MICROPHONE* · *TEST MIC* · *STOP TEST* · *ASK AGAIN* |
+| `play/src/stream/channel-view.tsx:144` | A folded story menu (P1) | — | *▴ {title}* (*▴ Your move…*, a captive *▴ You've been captured*; it read *▴ Your move: Your move…* at integration) |
+| `play/src/stream/channel-view.tsx:394` | The folded message box (P1) | — | *⌨ {your draft, or the hint}* |
+| `play/src/booth/pick/select.tsx:110` | PLAYER SELECT after the round (B5) | (*+ Another round*) | *That's over now.* (only Close) |
+| `play/src/main.tsx:34` | The guest app's crash screen (integration: one throw no longer blanks the phone) | (a blank page) | *📡 The app didn't load — the connection dropped, or the show was just updated.* · *Reload* |
+| `play/src/booth/popouts/model.ts:555` | PLAYER SELECT / Rows reply line when only the booth got a reply (B3, 🤐) | *→ Napster's phone: ⭐ +5* | *→ Sent · ⭐ +5* |
+| `play/src/booth/pick/select.tsx:212` | PLAYER SELECT on a step the story already ticked (B1: 🎱 from Check The Bingo) | — | *✓ Already done.* (it now opens on ② with ① ✓ and SAME on the caller) |
+
+**The guest help (`docs/help/play/*`, the help lane, G2).** The help markdown
+has no comment syntax, so these carry no marker. Each guest article (no
+`role:`) stops explaining the machinery: no directors, crew, booths, the
+house's server, staff, the judging rule, the door code, the heart, the
+void, the disk or the party favour (`play/test/help.test.ts` bans them).
+The crew's terminal and headset setup moved to the authoring help
+(`docs/help/authoring/48-terminal-setup.md`); the staff's hidden rules are
+the performer-only `19-house-workings.md`.
+
+| path | Where | Was | Now |
+|---|---|---|---|
+| `01-welcome.md` | Lost phone; the tour; a dark house; who talks to you | *The director can show you a re-pair QR* · *You can skip the tour, but the story may notice.* · *…the house's server restarts…* · *When a performer talks to you* | *A host can get you a re-pair QR* (+ a link to Getting back in) · *You can skip the tour.* · *…the house goes dark for a while…* · *When a host, Clippy or an Antivirus talks to you* |
+| `03-messages.md` | What you type; system notices; the folded box | *Performers and the operator really do read it* · *the machinery of the event* | *What you type is part of the night. The computer is listening, and the story can answer.* · *the computer's own notes* · new: *the message box may fold to one ⌨ Message … button* |
+| `04-decisions.md` | No undo | *…choices move your ⭐ score, your standing with characters…* · *sometimes getting it "right" is the wrong thing to do* | *Choose like it matters.* · *…is the story's business.* |
+| `06-your-pass.md` | The pass; the score; **Quarantined** (was *Getting captured*); marked; restricted | *Performers scan it…* · *Getting captured … Go to The Internet and Show my pass* · *A director may also restrict you* · *🎃 The show is over: you are human again.* | *The Antivirus, the hosts and the house scan it* · **Quarantined**: *🎟 Show my pass* and *🚻 Bathroom Mode*, then the phone is **locked** until reinstalled (only the pass and Bathroom Mode work) · the confrontation has no OK · *The computer may also restrict you* · the show-over paragraph removed |
+| `08-codex.md` | Codes, sharing, private threads | *A wrong code is noticed by the story* · *the story sees it* · *(the operator can — it's their show)* | dropped · *Sharing is permanent* · *It's your thread with them, but not a secret one: the computer can read every thread, this one included.* |
+| `09-terminals.md` | The whole article | the crew's setup, the King's terminal, the heart, the hearing rule, the last hour's countdown | rewritten: the Server Room and Server Door terminals, the casino, the scan station, *Windows into the simulation* (a wall shows it while someone is in its room), the TV; no setup, no countdown, no prize |
+| `10-quests.md` | Staff quests; filing a fact | *the people running the night carry their own Quest Log…* · *a wrong answer filed at 100 is a lie on the record, and a guess filed below 100 is a guess* | the staff paragraph removed · *the character reads every filing later* |
+| `11-reinstallation.md` | Being sent; the favour; finding Gerald; talking | the party favour section, *follow the golden arrows*, the 12 m hearing rule | the favour section removed · *Your phone is locked until you are reinstalled* · *after a while a golden trail lights the way to him* · *Not marked for reinstallation.* · you hear a terminal in the same room · TEST MIC / ASK AGAIN · *The exit is clearly marked. It is for safety. It is not the way out — Gerald is the way out.* |
+| `12-wallet.md` | Cancels; the reserve; the audit | *Director cancelled…* · *a character the cast plays has no wallet* · *every third transfer … auto-approves in 4:59* · *The story is watching every coin.* | *A payment or a request the house itself cancels says so* · *the story's characters have no wallet* · *some are 🚩 flagged for an audit* · the reserve's three buttons (Stimulus, Grant, Freeze) for *one program* · the watching line dropped |
+| `15-mission.md` | Your buttons; the staff's Mission | — · *The staff have a Mission too* | new: *🎱 BINGO!: when your card is full, two taps call it for everyone, and someone comes to check your card.* · the staff section removed; *🏃 Make a break for it* removed |
+| `16-notifications.md` | The big moments | *⚠ VIRUS DETECTED → OK* · *⛔ QUARANTINED → 📍 Go to The Internet or 🎟 Show my pass* · *every screen glitches for a moment* | both → *🎟 Show my pass* or *🚻 Bathroom Mode*, *and no OK* · *A few have no OK at all* · the glitch line dropped |
+| `17-sides.md` | Switching; crews; factions | *dramatic, remembered, and not free: the story notices* · *The directors can rename or close one.* · *from the 📥 Truther Download… the 11:00 PM clock* | *dramatic.* · *The house can rename or close one.* · the timing dropped |
+| `18-getting-back-in.md` | The badge; a host; performers | *a performer can scan it* · *find a host (or the director)* · the cast-card section | *the Antivirus and the hosts can scan it* · *find a host* · the cast-card section removed (it is in the performer articles) |
 
 ## 4. Open
 
 - The show text above awaits your sign-off.
-- L1208 warns about Clippy's four-step PLAYER SELECT (S-9).
+- §3's screen, game and help rows await your sign-off too (the game map's
+  *MAINFRAME* label was chosen at integration).
 - A locked phone cannot redeem a tent QR: the virus then comes from the
   game's disk, after release, or from a director's Run.
 - Not checked on a device: a guest's BINGO and its undo on real phones, the

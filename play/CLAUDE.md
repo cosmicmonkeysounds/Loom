@@ -129,7 +129,12 @@ windows), the Desk, the director phone and Help are lazy chunks.
   open card folds the menu. While a menu is docked a new card waits folded
   (`CardTray` `crowded`; a Mission jump still opens it). The thread keeps
   96 px, the footer ≤ 62 % (`.stream-room > .stream-foot`), the card body
-  ≤ 34 dvh, the options ≤ 36 dvh, every footer button 48 px.
+  ≤ 34 dvh, the options ≤ 36 dvh, every footer button 48 px (the card's
+  `widget-go` too). The footer is a flex column: its 48 px bars never
+  shrink, the open menu / card give up the space (360x740). A folded menu
+  reads `▴ {title}`. An effect's return value is its cleanup: keep
+  expression-bodied effects to state setters (`w26-composer-cleanup.test`
+  runs the composer's hooks through `test/hooks-harness.ts`).
 
 ### Booth
 
@@ -152,12 +157,19 @@ windows), the Desk, the director phone and Help are lazy chunks.
   (`taggedFor`, `GuestTiles` `tagged`; the two-tap arm is the guard). An
   ended objective offers only Close (`ended`), and the booth closes an open
   PLAYER SELECT `PICK_CLOSE_MS` after its objective leaves the view
-  (`pickEnded`). Clippy's gets `player`.
+  (`pickEnded`). Clippy's gets `player`. It opens on the first step whose
+  to-do is not ticked (`WizardStep.satisfied`, `openingFor`: 🎱 from Check
+  The Bingo), seeding SAME from `PrimeSession.lastPressedOn` (the guest
+  this booth's last taken press of that button landed on). `replyLine`
+  labels only `toGuest` / `said` as the guest's phone; a booth-only reply
+  reads `→ Sent · …`.
 - **The windowed bar** (wave 26, P2): a player's or a host's booth frame is
   `booth-frame windowed` (`boothFrameClass`): the guest's taskbar rules
   (`--taskbar-h: 56px`, windows 48–120 px, Scan a normal primary, the tray
   two items under 430 px). `BoothTray windowed` renders in priority order
   (`boothTrayOrder`: 🔔 → 🚨 → held → countdown → ⭐ / act → clock).
+  Under 370 px the bar's gaps and the tray's chrome tighten (booth.css,
+  and the guest's in chrome.css) so two items fit beside four windows.
 
 ### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 
@@ -221,7 +233,7 @@ project, Reset marks.
 ```
 src/
   ui.tsx · app-role.ts   role chooser + which app opens; lazy booth / director / help
-  main.tsx               entry; strips ?pair= / ?badge= / ?part= before render
+  main.tsx               entry; strips ?pair= / ?badge= / ?part= before render; a root ChunkBoundary (a throw shows Reload, never a blank page)
   rejoin.ts · rejoin-calls.ts   getting back in: badge / cast-card links (first load), enter / ask-a-host / re-pair calls (lazy)
   types.ts               mirror of core's views + chat (keep in step with core/server/{views,chat}.ts)
   client.ts              api() POST + useChatStream / openChatFeed (SSE)
@@ -240,7 +252,8 @@ src/
   widgets.tsx · widgets-fact.tsx   show-card registry (captcha, image, poll, tutorial, pass, fact, answer)
   wallet.tsx · wallet-sheets*.tsx  the Wallet room and its sheets
   director.tsx           director phone (lazy)
-  help.tsx · help-lazy.tsx         Help window over docs/help/play (lazy)
+  help.tsx · help-lazy.tsx         guests' Help window over docs/help/play (lazy)
+  help-staff.tsx                   the performers' Help (+ role: performer articles)
   chat.tsx · guest.tsx · performer.tsx · session.ts · threads.ts   barrels for pre-wave-13 names
 public/                  sw.js (push only), manifest.webmanifest, pictures/ (Trabolta's two SVGs)
 scripts/first-load.mjs   the 148 kB first-load gate
@@ -256,11 +269,17 @@ Play imports a few dependency-free core modules **by relative path**
 `@loom/core` is not a package dependency. Keep those core files free of
 Node imports, or the play build breaks.
 
-Help works the same way: `help.tsx` bundles `../../docs/help/play/*.md`
-with `import.meta.glob(…, ?raw)` and parses them with
-`docs/help/helpdoc.ts`. Editing an article there updates Help on the next
-build. `test/help.test.ts` checks frontmatter, cross-links and search
-entry points (and reads `play/07-performers.md`).
+Help works the same way: `help.tsx` bundles the guest articles of
+`../../docs/help/play/*.md` with `import.meta.glob(…, ?raw)` and parses
+them with `docs/help/helpdoc.ts`. The `role: performer` articles (07, 13,
+14, 19) are left out of that glob and bundled by `help-staff.tsx`
+(`articlesFor`, `StaffHelpSheet`), which only the booth and the director
+import, so a guest never downloads them (wave 26). A new performer-only
+article goes in both globs; `test/help-chunks.test.ts` fails until it
+does. Editing an article updates Help on the next build.
+`test/help.test.ts` checks frontmatter, cross-links and search entry
+points (and reads `play/07-performers.md`), and enforces the G2 ban list
+on guest articles.
 
 ## Conventions
 
@@ -288,7 +307,9 @@ entry points (and reads `play/07-performers.md`).
   clock) through the lazy `moments/glitch-takeover.tsx` (the 600 ms
   `Glitch` is its fallback), holding the queue: `MomentsInput.takeover`
   `full` (guests, player booths: ~6 s, swallows taps) or `light` (host
-  booths: 2.5 s, look only); the director phone has none.
+  booths: 2.5 s, look only); the director phone has none. While it is on
+  screen `surfacesOf(…, covered)` holds every surface (stickies and
+  balloons too), so they land right after it (C3).
 - **Lazy chunks** go through `lazy-chunk.tsx` (`retryImport` once, then a
   `ChunkBoundary` with Reload), so a page left open across a deploy never
   goes white.

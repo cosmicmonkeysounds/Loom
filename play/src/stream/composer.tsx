@@ -40,7 +40,11 @@ export function Composer({
   autoFocus?: boolean;
 }) {
   const [text, setText] = useState(initial ?? "");
-  useEffect(() => onText?.(text), [text, onText]);
+  // A block body: an effect's return value is its cleanup, so returning
+  // onText's result (a string) made React call a string on the next change.
+  useEffect(() => {
+    onText?.(text);
+  }, [text, onText]);
   useLayoutEffect(() => {
     if (autoFocus === true) ref.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps

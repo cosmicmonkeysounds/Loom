@@ -30,6 +30,18 @@ export interface PlayerSelectProps {
   /** Wave 26 (B5): the objective left the view (the round is over): no
    *  "+ Another round", no more presses. */
   ended?: boolean;
+  /** Wave 26 (B1): who a press of this step's button last landed on, from
+   *  this booth (the 🎱 from Check The Bingo) — a ticked step's guest. */
+  seed?: (id: string) => string | null;
+}
+
+/** Wave 26 (B1): where PLAYER SELECT opens — the first step whose to-do is
+ *  not ticked yet (Check The Bingo already took 🎱), and what the ticked
+ *  steps were done to, when this booth knows (else null: SAME stays empty
+ *  until a pick, the tiles still work). */
+export function openingFor(steps: readonly WizardStep[], seed?: (id: string) => string | null): { at: number; done: Array<string | null> } {
+  const i = steps.findIndex((s) => s.satisfied !== true);
+  return { at: i < 0 ? 0 : i, done: steps.map((s) => (s.satisfied === true ? (seed?.(s.id) ?? null) : null)) };
 }
 
 /** Wave 26 (B3): the SAME pre-select — the most recent earlier pick (a
@@ -51,9 +63,12 @@ export function taggedFor(steps: readonly WizardStep[], done: ReadonlyArray<stri
   return out;
 }
 
-/** The SAME row's button: the step's glyph and its first word ("🎀 Give"). */
+/** The SAME row's button: the step's glyph and its first word ("🎀 Give"),
+ *  with a negation kept ("🤐 Names nobody", never "🤐 Names"). */
 export function sameLabel(s: Pick<WizardStep, "glyph" | "label">): string {
-  const word = withoutGlyph(s.label).split(/\s+/u)[0] ?? "";
+  const words = withoutGlyph(s.label).split(/\s+/u).filter((w) => w !== "");
+  const neg = /^(nobody|no|not|none|never|no-one|noone)$/iu.test(words[1] ?? "");
+  const word = neg ? words.slice(0, /^no$/iu.test(words[1]!) && /^one$/iu.test(words[2] ?? "") ? 3 : 2).join(" ") : (words[0] ?? "");
   return `${s.glyph} ${word}`.trim();
 }
 
@@ -64,10 +79,14 @@ export function stepHelper(s: WizardStep, index: number): string {
   return "…or tap someone else below";
 }
 
-export function PlayerSelect({ objective, steps, guests, press, onClose, onLater, player = false, ended = false }: PlayerSelectProps) {
+export function PlayerSelect({ objective, steps, guests, press, onClose, onLater, player = false, ended = false, seed }: PlayerSelectProps) {
   const arm = useArmButtons();
-  const [at, setAt] = useState(0);
-  const [done, setDone] = useState<Array<string | null>>(() => steps.map(() => null));
+  const [opening] = useState(() => openingFor(steps, seed));
+  const [at, setAt] = useState(opening.at);
+  const [done, setDone] = useState<Array<string | null>>(opening.done);
+  // The story's ticks count for the round it opened on, not "+ Another round".
+  const [fresh, setFresh] = useState(true);
+  const ticked = (i: number) => done[i] != null || (fresh && steps[i]?.satisfied === true);
   const [chosen, setChosen] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
@@ -111,6 +130,7 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
       {!ended && (
         <button type="button" className="w95-btn booth-default bsel-go" onClick={() => {
           setDone(steps.map(() => null));
+          setFresh(false);
           setReply("");
           setStaff([]);
           go(0);
@@ -160,9 +180,9 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
             MOVE
           </span>
           {steps.map((s, i) => (
-            <button key={s.id} type="button" role="tab" aria-selected={i === at} className={`w95-btn bsel-move ${i === at ? "current" : ""} ${done[i] != null ? "done" : ""}`} onClick={() => go(i)}>
+            <button key={s.id} type="button" role="tab" aria-selected={i === at} className={`w95-btn bsel-move ${i === at ? "current" : ""} ${ticked(i) ? "done" : ""}`} onClick={() => go(i)}>
               {["①", "②", "③", "④", "⑤", "⑥"][i] ?? i + 1} {s.glyph}
-              {done[i] != null ? " ✓" : ""}
+              {ticked(i) ? " ✓" : ""}
             </button>
           ))}
         </div>
@@ -189,6 +209,7 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
           <>
             <p className="bsel-prompt">{step.prompt}</p>
             <p className="bsel-helper">{stepHelper(step, at)}</p>
+            {fresh && step.satisfied === true && <p className="bsel-reply">{/* DRAFT w26 (integration B1): UI copy */}✓ Already done.</p>}
             {same !== null && (
               <div className="bsel-same">
                 <PersonAvatar name={nameOf(same)} size="md" />

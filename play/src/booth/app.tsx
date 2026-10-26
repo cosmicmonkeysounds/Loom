@@ -23,7 +23,7 @@ import { ActionRow, InviteSheet, PickerSheet, SessionEnded, useWide } from "../u
 import { Shell, SpaceList } from "../rooms/list.tsx";
 import type { WidgetHook } from "../stream/bubble.tsx";
 import { ChannelView, MessageThread } from "../stream/channel-view.tsx";
-import { HelpSheet } from "../help.tsx";
+import { StaffHelpSheet } from "../help-staff.tsx";
 import { usePlayHost } from "../host.ts";
 import { WalletActionsProvider, useWalletClock } from "../wallet.tsx";
 import { AvatarsContext, avatarLookup } from "../avatars.ts";
@@ -712,7 +712,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               const ints = s.view?.interactions ?? [];
               const press = (id: string, guest: string) => s.act(id, guest);
               return pickLayout(layer.opened, ints) === "steps" ? (
-                <PlayerSelect objective={o} steps={wizardSteps(layer.opened, ints)} guests={guests} press={press} player={player} ended={live === undefined} onClose={() => setLayer(null)} onLater={() => setLayer(null)} />
+                <PlayerSelect objective={o} steps={wizardSteps(layer.opened, ints)} guests={guests} press={press} player={player} ended={live === undefined} seed={s.lastPressedOn} onClose={() => setLayer(null)} onLater={() => setLayer(null)} />
               ) : (
                 <RowsWindow objective={live} opened={layer.opened} interactions={ints} guests={guests} placeTitle={placeTitle} wanted={wanted !== null ? loose : null} press={press} onCard={(id) => openCard(id)} onBoard={openBoard} onClose={() => setLayer(null)} />
               );
@@ -764,7 +764,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
             {sheet === "knows" && <KnowsSheet session={s} onClose={() => setSheet(null)} />}
             {sheet === "powers" && <PowersSheet session={s} onClose={() => setSheet(null)} />}
             {sheet === "alerts" && <AlertsSheet session={s} push={push} onClose={() => setSheet(null)} />}
-            {help && <HelpSheet role="performer" onClose={() => setHelp(false)} />}
+            {help && <StaffHelpSheet onClose={() => setHelp(false)} />}
           </div>
           </BoothBadgesProvider>
         </WalletActionsProvider>

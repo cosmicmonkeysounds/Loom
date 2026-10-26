@@ -240,6 +240,15 @@ static func parse_table(text: String) -> Array:
 	return rows
 
 
+## `s` with A–Z lowered and every other character kept: always `s`'s length.
+static func ascii_lower(s: String) -> String:
+	var out := ""
+	for k in s.length():
+		var u := s.unicode_at(k)
+		out += char(u + 32) if u >= 0x41 and u <= 0x5a else s[k]
+	return out
+
+
 static func _boundary(c: String) -> bool:
 	if c == "":
 		return true
@@ -257,12 +266,14 @@ static func pronounce(text: String, rows: Variant = null) -> String:
 		return text
 	var out := ""
 	var i := 0
-	var lower := text.to_lower()
+	# A–Z only (C10, as the terminal and stagehand fold): Godot's to_lower()
+	# may change a string's length, and the indexes into `text` would drift.
+	var lower := ascii_lower(text)
 	while i < text.length():
 		var hit := false
 		if i == 0 or _boundary(text[i - 1]):
 			for w: Dictionary in words:
-				var word := str(w["word"]).to_lower()
+				var word := ascii_lower(str(w["word"]))
 				var n := word.length()
 				if lower.substr(i, n) == word and (i + n >= text.length() or _boundary(text[i + n])):
 					out += str(w["say"])

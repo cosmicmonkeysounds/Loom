@@ -10,7 +10,7 @@
 //! and not at all while `paused` (fully covered: the idle show, attract).
 
 import { useEffect, useRef } from "react";
-import { DYING_DRAIN_MS, EXPRESSIONS, blend, dyingDrain, mouthFromLevel, type Expression, type Mood } from "./mood.ts";
+import { DYING_DRAIN_MS, EXPRESSIONS, blend, browGeometry, dyingDrain, mouthFromLevel, type Expression, type Mood } from "./mood.ts";
 
 export interface FaceHandle {
   /** Feed the current loudness (0..1) — called every frame while speaking. */
@@ -174,11 +174,10 @@ export function Face({ mood, speaking, handle, paused = false }: { mood: Mood; s
       lidL.setAttribute("height", String(lidH));
       lidR.setAttribute("height", String(lidH));
 
-      // Brows: lift + inner tilt.
-      const lift = -cur.browLift * 9;
-      const tilt = cur.browTilt * 9;
-      browL.setAttribute("d", `M -28 ${-4 + lift - tilt * 0.2} Q -12 ${-12 + lift - tilt * 0.6} 6 ${lift + tilt}`);
-      browR.setAttribute("d", `M 28 ${-4 + lift - tilt * 0.2} Q 12 ${-12 + lift - tilt * 0.6} -6 ${lift + tilt}`);
+      // Brows: lift + inner tilt (angry: the inner ends down, a V).
+      const brows = browGeometry(cur.browLift, cur.browTilt);
+      browL.setAttribute("d", brows.left);
+      browR.setAttribute("d", brows.right);
 
       // Mouth: a bezier lip line whose corners follow mouthCurve and whose
       // opening follows the voice.

@@ -291,6 +291,10 @@ export interface PrimeSession {
   /** Fire a performer / admin interaction on a guest, as this character —
    *  or (C4, wave 18) a global one with no guest. */
   act: (name: string, guest?: string | null) => Promise<PrimeActResult>;
+  /** Wave 26 (B1): the guest this booth's last taken (not refused) press
+   *  of an interaction landed on, this sign-in — PLAYER SELECT seeds its
+   *  done steps with it (the 🎱 pressed from Check The Bingo). */
+  lastPressedOn?: (name: string) => string | null;
   /** A caller booth's own cue (C8, wave 18): `/api/prime/cue`, the cue-sheet path
    *  (409 `moved` / `doorsClosed`, `refused`). */
   cue: (name: string, subject: string | null, args: Record<string, unknown> | null, presses: number | undefined, signal?: AbortSignal) => Promise<{ refused?: boolean; moved?: boolean; said?: string[]; staff?: string[] }>;
@@ -479,10 +483,16 @@ export function usePrimeSession(): PrimeSession {
     },
     [base, auth],
   );
+  const pressedOn = useRef(new Map<string, string>());
   const act = useCallback(
-    (name: string, guest?: string | null) => post<PrimeActResult>("/api/prime/act", guest != null && guest !== "" ? { name, guest } : { name }, auth!.token),
+    (name: string, guest?: string | null) =>
+      post<PrimeActResult>("/api/prime/act", guest != null && guest !== "" ? { name, guest } : { name }, auth!.token).then((r) => {
+        if (r.refused !== true && guest != null && guest !== "") pressedOn.current.set(name, guest);
+        return r;
+      }),
     [post, auth],
   );
+  const lastPressedOn = useCallback((name: string) => pressedOn.current.get(name) ?? null, []);
   const cue = useCallback(
     (name: string, subject: string | null, args: Record<string, unknown> | null, presses: number | undefined) =>
       post<{ refused?: boolean; moved?: boolean; said?: string[]; staff?: string[] }>(
@@ -596,5 +606,5 @@ export function usePrimeSession(): PrimeSession {
   const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
+  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
 }

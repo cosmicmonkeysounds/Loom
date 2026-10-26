@@ -1425,7 +1425,9 @@ Kiosk tablet's cache and a sideloaded Quest APK.
    tent laptop, the TV and every tablet must show the new build.
 3. **Set the show TV's voice speed to 0.92.** A TV that is already set up
    keeps its saved `speed: 1`, because the 0.92 default applies only when
-   provisioning. Either re-open the TV's provisioning link (`?code=…`,
+   provisioning. Either re-open the TV's provisioning link (`?code=…`, the
+   spot-only `…&spot=desktop-tv` link included: integration I4 applies
+   the view defaults after the map's pick, `setup-map.ts` `linkConfig`;
    `scripts/house-desktop/README.md`) or set Speed to 0.92 in its ⚙.
 4. **Re-export and sideload the Quest APK** after the server ships. An old
    APK:
@@ -1629,6 +1631,9 @@ branch.
 2. **I2**: `gapsFor(config)` in `app.tsx`.
 3. **I3**: the `SIGNOFF-w26.md` screen and game rows. Collect them by
    searching for `DRAFT w26` across `terminal/`, `reinstall/` and `play/`.
+   **I4** (added at integration, from the voice lane): `withViewDefaults`
+   after `urlConfig` in `app.tsx`'s URL provisioning (`linkConfig`), so a
+   re-opened spot-only TV link speaks at 0.92 (C14 step 3).
 4. Re-measure the play first-load gate with everything merged.
 5. A scratch-server run (dead `DATABASE_URL`, `LOOM_DB_WAIT=off`, fresh
    `LOOM_STATE_DIR`):

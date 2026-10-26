@@ -7,6 +7,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { NowCard, nowRow, pinnedChecks } from "../src/booth/now-card.tsx";
 import { BoothTray, boothTrayOrder, ledDigits } from "../src/booth/tray.tsx";
+import { trayClock } from "../src/booth/model.ts";
+import { readBundledCss } from "./css.ts";
 import { boothFrameClass } from "../src/booth/app.tsx";
 import type { PrimeView } from "../src/types.ts";
 import { bindDraft } from "../src/booth/popouts/use-booth-popouts.ts";
@@ -105,6 +107,19 @@ describe("the windowed booth's frame and tray (wave 26 P2)", () => {
     const plain = renderToStaticMarkup(<BoothTray view={view} onWallet={() => {}} loose={2} waiting={1} />);
     expect(plain.indexOf("led-digits")).toBeLessThan(plain.indexOf("🔔 1"));
     expect(plain.indexOf("tray-show-clock")).toBeLessThan(plain.indexOf("tray-act"));
+  });
+  it("at 360 px the two tray items fit beside four 48 px windows (host: countdown + Act B; guest: countdown + coin)", () => {
+    const css = readBundledCss().replace(/\/\*[\s\S]*?\*\//gu, "");
+    const booth = /@media \(max-width: 369px\) \{\s*\.booth-frame\.windowed \.taskbar \{ gap: 2px; \}\s*\.booth-frame\.windowed \.taskbar \.taskbar-tray \{ padding: 0 1px 0 2px; \}\s*\.booth-frame\.windowed \.taskbar \.taskbar-tray::before \{ margin: 0 2px 0 1px; \}\s*\.booth-frame\.windowed \.taskbar \.taskbar-tray \.tray-item \{ padding: 0 2px; gap: 2px; \}\s*\}/u;
+    expect(css).toMatch(booth);
+    expect(css).toMatch(/\.guest-frame \.taskbar \{ gap: 2px; \}\s*\.guest-frame \.taskbar-tray \{ padding: 0 1px 0 2px; \}\s*\.guest-frame \.taskbar-tray::before \{ margin: 0 2px 0 1px; \}\s*\.guest-frame \.taskbar-tray \.tray-item \{ padding: 0 2px; gap: 2px; \}/u);
+    // The windows keep their 48 px floor; the icons stay (no hiding the hourglass).
+    expect(css).toMatch(/min-width: 48px; max-width: 120px;/u);
+    expect(css).not.toMatch(/tray-countdown|\.tray-ico \{ display: none/u);
+    // The booth's tray countdown has no space ("14m", as the guest's); the text form keeps it.
+    expect(trayClock(899, false, false)).toBe("14m");
+    expect(trayClock(899)).toBe("⏳ 14 m");
+    expect(trayClock(599, false, false)).toBe("9:59");
   });
 });
 

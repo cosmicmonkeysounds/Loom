@@ -10,6 +10,12 @@ import type { Prepared, SpeechEngine } from "@loom/terminal/speech/engine.ts";
 import { deviceSpeaker, IN_GAME_LINE_GAP_MS, LINE_SPEAK_CAP_MS, LINE_START_WAIT_MS, LinePlayer, pronounce } from "../src/game/lines.ts";
 
 describe("pronounce — the shared table (C10)", () => {
+  it("is the terminal's own lexicon pronounce, and the line gap is its LINE_GAP_MS (C6, C11)", async () => {
+    const lexicon = await import("@loom/terminal/speech/lexicon.ts");
+    const engine = await import("@loom/terminal/speech/engine.ts");
+    expect(pronounce).toBe(lexicon.pronounce);
+    expect(IN_GAME_LINE_GAP_MS).toBe(engine.LINE_GAP_MS);
+  });
   it("is the terminal's pronounce.json", () => {
     const json = JSON.parse(readFileSync(new URL("../../../terminal/src/speech/pronounce.json", import.meta.url), "utf8")) as { words: Array<{ word: string; say: string }> };
     expect(json.words.map((w) => w.word)).toContain("Antivirus");
@@ -189,10 +195,11 @@ function fakeEngine() {
   const engine: SpeechEngine = {
     kind: "device",
     prepare: async (text) => ({ kind: "silent", text }),
-    play: (p: Prepared) =>
+    play: (p: Prepared, _level: (n: number) => void, onStart?: () => void) =>
       new Promise<void>((r) => {
         said.push(p.kind === "server" ? "" : p.text);
         ends.push(r);
+        onStart?.(); // a voice heard at once (the queue's chunk waits for it: V1)
       }),
     stop: () => {
       for (const e of ends.splice(0)) e();

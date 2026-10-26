@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 import { searchHelp } from "../../docs/help/helpdoc.ts";
-import { articlesFor } from "../src/help.tsx";
+import { articlesFor } from "../src/help-staff.tsx";
 
 import { ApiError } from "../src/client.ts";
 import { cueSheetView } from "../../core/src/cue-sheet.ts";

@@ -517,6 +517,9 @@ export interface WizardStep {
   destructive: boolean;
   /** Pre-select the previous step's guest (a harmless follow-on). */
   preselect: boolean;
+  /** Wave 26 (B1): its to-do line is already ticked (🎱 pressed from Check
+   *  The Bingo before PLAYER SELECT opened). */
+  satisfied?: boolean;
 }
 
 /** PLAYER SELECT's steps: the objective's buttons in checklist order, each with its prompt. */
@@ -529,7 +532,7 @@ export function wizardSteps(o: BoothObjective, interactions: readonly Interactio
     const b = btns.find((x) => leadingGlyph(x.label) === g && !out.some((s) => s.id === x.id));
     if (b === undefined) continue;
     const harm = armsFirst(b);
-    out.push({ id: b.id, label: b.label, glyph: g, prompt: c.label, destructive: harm, preselect: out.length > 0 && !harm });
+    out.push({ id: b.id, label: b.label, glyph: g, prompt: c.label, destructive: harm, preselect: out.length > 0 && !harm, ...(c.done === true ? { satisfied: true } : {}) });
   }
   return out;
 }
@@ -545,9 +548,14 @@ export function replyLine(name: string, r: { replies?: readonly string[]; said?:
   // Wave 21 (D4): a player never reads the staff room's reason.
   if (r.refused === true && opts.player === true) return "Not now.";
   if (r.refused === true) return `Not done: ${(r.staff ?? []).find((s) => s.trim() !== "") ?? "the story took no action on this right now."}`;
-  // What the guest's phone got first (BN-F13), then the booth character's own words to them.
-  const said = (r.toGuest ?? []).map((t) => t.trim()).find((t) => t !== "") ?? (r.said ?? []).map((l) => l.text.trim()).find((t) => t !== "") ?? (r.replies ?? []).map((t) => t.trim()).find((t) => t !== "");
-  return said !== undefined ? `→ ${name}'s phone: ${said}` : "→ Sent. The story said nothing back.";
+  // What reached the guest's phone (BN-F13: their own lines first, then
+  // what was said to them) is the only text labelled as their phone.
+  const phone = (r.toGuest ?? []).map((t) => t.trim()).find((t) => t !== "") ?? (r.said ?? []).map((l) => l.text.trim()).find((t) => t !== "");
+  if (phone !== undefined) return `→ ${name}'s phone: ${phone}`;
+  // `replies` are the story's replies to this booth (🤐's "⭐ +5" to Clippy),
+  // never the guest's: they read as the booth's own line.
+  const mine = (r.replies ?? []).map((t) => t.trim()).find((t) => t !== "");
+  return mine !== undefined ? `→ Sent · ${mine}` /* DRAFT w26 (integration B3): UI copy */ : "→ Sent. The story said nothing back.";
 }
 
 /** The pick-ready pop-out (§4.6 auto-open), or `open` when this booth's own cue just fired. */

@@ -64,11 +64,15 @@ TRAIT Host is Greeter
   faction: Hosts
 
   // Wave 26 (B2): a host's ↩ Not a Bingo counts itself (main.loom's
-  // `bingo_undone` names the one who pressed it; a director's quick-fire
-  // reaches every hook and reads as the Director).
+  // `bingo_undone` names the one who pressed it). A director's quick-fire
+  // reads as the Director: the server fires it as one host with
+  // `director: true`, and a press with no actor at all reaches every hook.
   when not_a_bingo for program:
-    set Kernel.undo_n += 1
-    set Kernel.undo_by = self
+    set Kernel._undo_n += 1
+    if director == true:
+      set Kernel._undo_by = "The Director"
+    else:
+      set Kernel._undo_by = self
 
 // ── Players (wave 21) ───────────────────────────────────────────────
 // Clippy and the four Antivirus play the night the way the programs do: a

@@ -15,16 +15,15 @@
 //! silent), sharing the page's voice floor, so on the tent laptop the game
 //! never talks over the terminal around it.
 
-import table from "@loom/terminal/speech/pronounce.json";
-import { DeviceEngine, readingMs, SpeechQueue, voiceFloor } from "@loom/terminal/speech/engine.ts";
+import { DeviceEngine, LINE_GAP_MS, readingMs, SpeechQueue, voiceFloor } from "@loom/terminal/speech/engine.ts";
 import type { SpeechEngine, VoiceFloor } from "@loom/terminal/speech/engine.ts";
+import { pronounce } from "@loom/terminal/speech/lexicon.ts";
 import { CHARACTER_VOICE } from "@loom/terminal/speech/pick-voice.ts";
 import { splitSentences } from "@loom/terminal/speech/split.ts";
 import type { MomentLine } from "../api.ts";
 
-/** The pause between two in-game lines (ms) — the terminal's `LINE_GAP_MS`
- *  (C11), held here until the voice lane's constant is on master. */
-export const IN_GAME_LINE_GAP_MS = 700;
+/** The pause between two in-game lines (ms): the terminal's `LINE_GAP_MS` (C11). */
+export const IN_GAME_LINE_GAP_MS = LINE_GAP_MS;
 
 /** A voice that never ends is cut after this (ms) from when it started: a
  *  caption never wedges, and the voice never outlasts its caption. */
@@ -38,45 +37,13 @@ export const LINE_START_WAIT_MS = 8_000;
 
 // --- the pronunciation table (C10) ---------------------------------------------
 
-export interface PronounceTable {
-  version: number;
-  words: ReadonlyArray<{ word: string; say: string }>;
-}
-
-const isWordChar = (c: string | undefined): boolean => c !== undefined && /[A-Za-z0-9]/.test(c);
-
-/**
- * What the voice says for `text` (C10): every whole-word, case-insensitive
- * match of a table `word` is replaced by its `say`, as written. A word
- * boundary is any character that is not `[A-Za-z0-9]` (so "Anti-Virus"
- * never matches "Antivirus", and the possessive "Antivirus'" does); the
- * longest word wins. No regex lookbehind (Chrome 87 / Safari 14). Display
- * text is never passed through this.
- */
-export function pronounce(text: string, t: PronounceTable = table): string {
-  const words = [...t.words]
-    .filter((w) => w.word !== "")
-    .sort((a, b) => b.word.length - a.word.length)
-    .map((w) => ({ ...w, lower: w.word.toLowerCase() }));
-  if (words.length === 0) return text;
-  let out = "";
-  let i = 0;
-  while (i < text.length) {
-    if (!isWordChar(text[i - 1])) {
-      // Lower-case the slice, never the whole text: `toLowerCase` may change
-      // a string's length ("İ" → 2 code units), and the indexes would drift.
-      const hit = words.find((w) => text.slice(i, i + w.word.length).toLowerCase() === w.lower && !isWordChar(text[i + w.word.length]));
-      if (hit !== undefined) {
-        out += hit.say;
-        i += hit.word.length;
-        continue;
-      }
-    }
-    out += text[i];
-    i += 1;
-  }
-  return out;
-}
+/** What the voice says for `text` (C10): the terminal's own `pronounce`
+ *  (`speech/lexicon.ts`, the shared `pronounce.json`: whole words, ASCII
+ *  case folding, the longest word first). Display text never passes
+ *  through it. `SpeechQueue.prepare` applies it again at the engine, which
+ *  changes nothing: the table's output is a fixed point. */
+export { pronounce };
+export type { PronounceTable } from "@loom/terminal/speech/lexicon.ts";
 
 // --- the timing ----------------------------------------------------------------
 

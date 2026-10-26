@@ -28,6 +28,30 @@ export const KING_COLOR = "#d4af37";
 /** The bar is hidden nearer than [0] metres, fully shown beyond [1] (like room labels). */
 const BAR_FADE = [0.5, 0.8] as const;
 const BAR_HEIGHT = 0.14;
+/**
+ * The most the bar's centre may sit above the camera's eye, degrees of
+ * elevation (wave 26, R3: the bar is the King's only display). At his
+ * nominal height (`h + 0.25`) a 1.6 m eye in hit reach sees it 24–53° up —
+ * under the HUD's top line or off the top of the web game's 70° frame,
+ * whose top edge is 27° up at its −8° start pitch. Capped at 16° its centre
+ * stays 11° inside that edge (more in a portrait 78° frame): from ~1.9 m
+ * in it eases down towards his crown, over his face only when the player
+ * stands right against him.
+ */
+export const BAR_MAX_ELEV_DEG = 16;
+const BAR_MAX_TAN = Math.tan((BAR_MAX_ELEV_DEG * Math.PI) / 180);
+
+/**
+ * The bar's height over the King's base (metres) for a camera `flat` plan
+ * metres away with its eye `eye` metres above his base: his nominal
+ * `h + 0.25`, eased down so it is never more than `BAR_MAX_ELEV_DEG` above
+ * the eye, and never under half his height. Pure (the bar's only maths).
+ */
+export function kingBarY(h: number, flat: number, eye: number): number {
+  const nominal = h + 0.25;
+  const capped = eye + Math.max(0, flat) * BAR_MAX_TAN;
+  return Math.max(h * 0.5, Math.min(nominal, capped));
+}
 
 export interface King {
   /** Place at the prop's `pos` (the base centre); `rotation.y` = yaw. */
@@ -42,7 +66,9 @@ export interface King {
   /** Stand him back up at once. */
   reset(): void;
   readonly state: "standing" | "staggering" | "kneeling";
-  /** Advance by `dt` seconds; with a `camera`, the bar fades out as it comes within a metre. */
+  /** Advance by `dt` seconds; with a `camera`, the bar fades out as it comes
+   *  within a metre, and eases down towards his crown up close so it stays
+   *  in frame (`kingBarY`). */
   update(dt: number, camera?: Camera): void;
   dispose(): void;
 }
@@ -124,7 +150,7 @@ export function createKing(prop: Prop): King {
   let kneeling = false;
   let down = 0;
   const camPos = new Vector3();
-  const barPos = new Vector3();
+  const basePos = new Vector3();
 
   const idle = (t: number): void => {
     body.rotation.z = 0.035 * Math.sin(t * 2.5);
@@ -182,10 +208,16 @@ export function createKing(prop: Prop): King {
       clock += dt;
       if (camera && bar !== null && barMat !== null) {
         camera.getWorldPosition(camPos);
-        const dist = bar.getWorldPosition(barPos).distanceTo(camPos);
+        object.getWorldPosition(basePos);
+        const flat = Math.hypot(camPos.x - basePos.x, camPos.z - basePos.z);
+        const eye = camPos.y - basePos.y;
+        // The fade judges the bar where it nominally hangs (as before the
+        // ease), so lowering it never fades it out sooner.
+        const dist = Math.hypot(flat, barY - eye);
         const o = Math.min(Math.max((dist - BAR_FADE[0]) / (BAR_FADE[1] - BAR_FADE[0]), 0), 1);
         barMat.opacity = o;
         bar.visible = o > 0.01;
+        bar.position.y = kingBarY(h, flat, eye);
       }
       if (kneeling || down > 0) {
         // Going down (or getting back up): the kneel, nothing else.

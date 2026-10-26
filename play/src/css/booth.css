@@ -283,6 +283,15 @@
 .booth-frame.windowed .taskbar .taskbar-tray > * { flex: 0 0 auto; }
 @media (max-width: 599px) { .booth-frame.windowed .taskbar .taskbar-btn.primary.stacked { min-width: 48px; } }
 @media (max-width: 429px) { .booth-frame.windowed .taskbar .taskbar-tray > :nth-child(n+3) { display: none; } }
+/* Integration (P2 at 360 px): a host's four windows leave ~103 px; the two
+   tray items fit once the bar's gaps and the tray's chrome tighten (the
+   guest's rule in chrome.css). */
+@media (max-width: 369px) {
+  .booth-frame.windowed .taskbar { gap: 2px; }
+  .booth-frame.windowed .taskbar .taskbar-tray { padding: 0 1px 0 2px; }
+  .booth-frame.windowed .taskbar .taskbar-tray::before { margin: 0 2px 0 1px; }
+  .booth-frame.windowed .taskbar .taskbar-tray .tray-item { padding: 0 2px; gap: 2px; }
+}
 .booth-dock { flex: 0 0 auto; }
 .booth-head-btn { flex: 0 0 auto; font-weight: 700; }
 .booth-start-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EXPRESSIONS, blend, moodOfText, mouthFromLevel } from "../src/face/mood.ts";
+import { EXPRESSIONS, blend, browGeometry, moodOfText, mouthFromLevel } from "../src/face/mood.ts";
 
 describe("moodOfText", () => {
   it("reads shouting and threats as anger", () => {
@@ -50,5 +50,21 @@ describe("the face's frame cap (OB-2)", () => {
     // Two steps of 0.08 from 0: 1 - 0.92².
     expect(easeOver(0.08, 2)).toBeCloseTo(1 - 0.92 * 0.92, 6);
     expect(easeOver(0.5, 0)).toBe(0);
+  });
+});
+
+describe("the brows (SVG y points down)", () => {
+  const ends = (m: keyof typeof EXPRESSIONS) => browGeometry(EXPRESSIONS[m].browLift, EXPRESSIONS[m].browTilt);
+  it("angry, sly and glitch pull the inner ends down: a V", () => {
+    for (const m of ["angry", "sly", "glitch"] as const) expect(ends(m).inner).toBeGreaterThan(ends(m).outer);
+  });
+  it("alarmed and dying raise the inner ends: worried", () => {
+    for (const m of ["alarmed", "dying"] as const) expect(ends(m).inner).toBeLessThan(ends(m).outer);
+  });
+  it("draws both brows from the same ends, mirrored", () => {
+    const g = ends("angry");
+    expect(g.left).toBe(`M -28 ${g.outer} Q -12 ${g.left.split(" ")[5]} 6 ${g.inner}`);
+    expect(g.right.startsWith(`M 28 ${g.outer} `)).toBe(true);
+    expect(g.right.endsWith(` -6 ${g.inner}`)).toBe(true);
   });
 });

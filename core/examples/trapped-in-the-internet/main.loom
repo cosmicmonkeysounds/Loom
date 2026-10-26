@@ -644,11 +644,11 @@ ROLE Program
 
   // ── Computer Bingo (performer buttons; the ribbon's lines DRAFT for sign-off, w13 Q24 / Q28) ──
   // Wave 21 (DRAFT w21): each game button Clippy may press clears
-  // `Kernel.pressed_by` first (Clippy's own hook, after this one, stamps it)
+  // `Kernel._pressed_by` first (Clippy's own hook, after this one, stamps it)
   // and fires `game_credit` when the press counted: ⭐ for Clippy only when
   // Clippy pressed (cast/hosts.loom). A host's press pays nobody.
   when bingo_winner for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     // Wave 26 (B5): never once the round is over (the first 🎯 or 🤐).
     if Night.phase == "bingo_results" and program.bingo != true and Night.bingo_done != true:
       set program.bingo = true
@@ -664,7 +664,7 @@ ROLE Program
       broadcast "🎱 Nothing happens: the Bingo round is over, or {program.name} is already a winner." to channel(hosts)
 
   when award_the_ribbon for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     if program.bingo == true:
       // DRAFT for sign-off (w13 Q24): CI 2's 🎀 to-do ticks.
       set Night.bingo_ribbons += 1
@@ -694,7 +694,7 @@ ROLE Program
   // live interruption's 🛡 captures them (`first_reinstallation` still fires
   // from the Enforcer's hook).
   when named_at_bingo for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     if Night.phase == "bingo_results" and Night.bingo_done != true:
       // DRAFT for sign-off (w13 Q24): CI 2's 🎯 to-do ticks.
       set Night.bingo_named += 1
@@ -737,7 +737,7 @@ ROLE Program
   // calls everyone back to their cards. `bingo_undone` names who pressed it
   // once the press has drained (the pressing booth's hook counts itself).
   when not_a_bingo for program:
-    set Kernel.undo_n = 0
+    set Kernel._undo_n = 0
     if Night.phase == "bingo_results" and Night.bingo_called == true and program.name == Night.bingo_caller and Night.bingo_winners < 1 and Night.bingo_named < 1 and Night.bingo_done != true:
       set Night.phase = "bingo"
       set Night.step = 2
@@ -765,20 +765,20 @@ ROLE Program
 
   when bingo_undone for program:
     // DRAFT w26 (B2: # hosts hears who pressed it)
-    if Kernel.undo_n == 1 and Night.bingo_on == true:
-      broadcast "↩ {Kernel.undo_by} pressed Not a Bingo for {program.name}. Bingo is back on: the clock picks up where it stopped." to channel(hosts)
-    else if Kernel.undo_n == 1:
-      broadcast "↩ {Kernel.undo_by} pressed Not a Bingo for {program.name}. Bingo is back on; its time was already up: call ⏰ when the room is ready." to channel(hosts)
+    if Kernel._undo_n == 1 and Night.bingo_on == true:
+      broadcast "↩ {Kernel._undo_by} pressed Not a Bingo for {program.name}. Bingo is back on: the clock picks up where it stopped." to channel(hosts)
+    else if Kernel._undo_n == 1:
+      broadcast "↩ {Kernel._undo_by} pressed Not a Bingo for {program.name}. Bingo is back on; its time was already up: call ⏰ when the room is ready." to channel(hosts)
     else if Night.bingo_on == true:
       broadcast "↩ The Director pressed Not a Bingo for {program.name}. Bingo is back on: the clock picks up where it stopped." to channel(hosts)
     else:
       broadcast "↩ The Director pressed Not a Bingo for {program.name}. Bingo is back on; its time was already up: call ⏰ when the room is ready." to channel(hosts)
-    set Kernel.undo_n = 0
+    set Kernel._undo_n = 0
 
   // B3: the winner names nobody at the centre square (Clippy, on the
   // winner). Nobody is marked; the round is over. ⭐ +5 for Clippy.
   when named_nobody for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     if Night.phase == "bingo_results" and Night.bingo_done != true and program.bingo == true:
       set Night.bingo_none = true
       set Night.bingo_done = true
@@ -800,32 +800,32 @@ ROLE Program
   // program's: it lands in # hosts (every performer booth reads it), and
   // only the acceptance reaches the program.
   when accurate_q1 for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     set program.judge_q = 1
     fire accurate_truth for program
 
   when accurate_q2 for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     set program.judge_q = 2
     fire accurate_truth for program
 
   when accurate_q3 for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     set program.judge_q = 3
     fire accurate_truth for program
 
   when confident_q1 for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     set program.judge_q = 1
     fire confident_lie for program
 
   when confident_q2 for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     set program.judge_q = 2
     fire confident_lie for program
 
   when confident_q3 for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     set program.judge_q = 3
     fire confident_lie for program
 
@@ -833,12 +833,12 @@ ROLE Program
   // now (`Night.judge_now`, 1 when judging opens, moved by the 🔢 buttons),
   // so a card's three face buttons are ✅ 😤 🤷 for any question.
   when judge_accurate for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     set program.judge_q = Night.judge_now
     fire accurate_truth for program
 
   when judge_confident for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     set program.judge_q = Night.judge_now
     fire confident_lie for program
 
@@ -1108,7 +1108,7 @@ ROLE Program
 
   // Uncertain, or an obvious guess: marked for failing to follow orders.
   when uncertain_answer for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     if Night.judging == true:
       set program.may_answer = false
       fire game_credit with points: 5, gain: 5, counts: 1
@@ -1143,7 +1143,7 @@ ROLE Program
     else:
       broadcast "🗣 The bottle is not on {program.name}." to channel(hosts)
     // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
 
   when truth_refused for program:
     if Night.bottle_open == true and program.name == Night.bottle_pick:
@@ -1154,7 +1154,7 @@ ROLE Program
     else:
       broadcast "🙅 The bottle is not on {program.name}." to channel(hosts)
     // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
 
   // The dead-phone fallback: the same effect as the Dare tap (wave 26, D1:
   // both go through `dare_taken`). The credit stays here only.
@@ -1167,7 +1167,7 @@ ROLE Program
     else:
       broadcast "🎩 The bottle is not on {program.name}." to channel(hosts)
     // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
 
   // Wave 26 (D1): a Dare, by the phone's poll or Clippy's 🎩 fallback. Each
   // path tells the house first, word for word as before (the terminals'
@@ -1185,7 +1185,7 @@ ROLE Program
   // verbal judge (which clears may_answer): it is what lets this program's
   // 📝 round-2 filings count at the tally.
   when made_the_cup for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     if Night.phase == "truth_pong" and program.pong_thrown != true:
       fire game_credit with points: 5, gain: 0, counts: 0
     if Night.phase == "truth_pong":
@@ -1196,7 +1196,7 @@ ROLE Program
       reply 🏓 Cup made. You may answer one round-2 fact: tell Clippy, or file it on the 📝 card.
 
   when missed_the_cup for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     if Night.phase == "truth_pong" and program.pong_thrown != true:
       fire game_credit with points: 5, gain: 5, counts: 0
     if Night.phase == "truth_pong":
@@ -1209,7 +1209,7 @@ ROLE Program
   // of each program that has signed the physical canvas. Once per program;
   // MS Paint herself is the painter, not a signature.
   when signed_the_painting for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     if Night.painting == true and program.signed != true and program.featured != "mspaint":
       set program.signed = true
       fire game_credit with points: 2, gain: 0, counts: 0
@@ -2463,7 +2463,7 @@ ROLE Program
 
   // ── The Bag of Truth ──
   when brought_up_the_bag for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     if Night.phase == "bobbing" and Night.bag_up != true:
       fire game_credit with points: 15, gain: 0, counts: 0
       set Night.bag_up = true
@@ -2473,7 +2473,7 @@ ROLE Program
       fire bag_retrieved
 
   when failed_the_bob for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     if Night.phase == "bobbing" and Night.bag_up != true and program.bob_failed != true:
       fire game_credit with points: 10, gain: 5, counts: 0
     if Night.phase == "bobbing" and Night.bag_up != true:
@@ -2525,7 +2525,7 @@ ROLE Program
       show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
 
   when pickup_line_works for program:
-    set Kernel.pressed_by = "none"
+    set Kernel._pressed_by = "none"
     if Night.phase == "grok_prom" and Night.ended != true and Night.line_by == "none":
       fire game_credit with points: 20, gain: 0, counts: 0
     fire pickup_line_accepted for program
@@ -5237,9 +5237,15 @@ when reset_server_room:
 // or a pick they made with the door open is applied now (Heart Pick).
 // Exactly one branch runs, so this rule and the resume watcher never dock
 // two menus. After truth.txt the terminal is only his voice (the LLM).
+//
+// Wave 26 (R1): a locked program (the `lock:` header: captured, no
+// banish) is not let in. Their phone and the terminal piloting it can send
+// nothing, so a Heart Talk docked for them could never be answered; the
+// scan leaves Night.heart_holder, the stage and the talks alone (the
+// terminal refuses the pass before it gets here; this guards the story).
 when terminal_opened for program:
   if program.name != null:
-    if Night.ended != true and (at == "The Server Room" or at == "the server room" or at == "Server Room" or at == "server room" or at == "server-room" or at == "server_room" or at == "The_Server_Room"):
+    if Night.ended != true and (program.corrupted != true or Night.banish == true) and (at == "The Server Room" or at == "the server room" or at == "Server Room" or at == "server room" or at == "server-room" or at == "server_room" or at == "The_Server_Room"):
       set Night.heart_holder = program.name
       set program.at_the_heart = true
       if Night.r3_closed != true:
@@ -6342,7 +6348,7 @@ set Night.award_lines = "template"
 set Night.judge_now = 1
 set Night.defector = "none"
 set Night.defections = 0
-set Kernel.pressed_by = "none"
+set Kernel._pressed_by = "none"
 // The patch-bay watch's stamp (wave 22, cast/kit.loom): who pressed the
 // last 🔌 💥 ❌, and whom its `patch_credit` pays. DRAFT w22
 set Kernel._patch_by = "none"

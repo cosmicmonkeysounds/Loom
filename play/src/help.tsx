@@ -2,6 +2,12 @@
 //! performer station). Content lives in `docs/help/play/*.md`,
 //! shared with the repo docs and bundled at build time; the shared engine in
 //! `docs/help/helpdoc.ts` parses + searches it, this file only renders.
+//!
+//! Wave 26 (integration): this chunk bundles the **guest** articles only.
+//! The `role: performer` ones (07, 13, 14, 19) are left out of the glob
+//! below and live in `help-staff.tsx`, which only the booth and the
+//! director import, so no guest path ever downloads them.
+//! `test/help-chunks.test.ts` keeps both lists equal to the front matter.
 
 import { useMemo, useState } from "react";
 import {
@@ -12,17 +18,28 @@ import {
   type HelpBlock,
 } from "../../docs/help/helpdoc.ts";
 
-const files = import.meta.glob("../../docs/help/play/*.md", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
+/** The guest articles, raw (keyed by path). A new `role: performer`
+ *  article must be added to the negatives here and to `help-staff.tsx`. */
+export const GUEST_FILES = import.meta.glob(
+  [
+    "../../docs/help/play/*.md",
+    "!../../docs/help/play/07-performers.md",
+    "!../../docs/help/play/13-director-phone.md",
+    "!../../docs/help/play/14-hosts.md",
+    "!../../docs/help/play/19-house-workings.md",
+  ],
+  {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  },
+) as Record<string, string>;
 
-const HELP = buildHelp(files);
+const GUEST_ARTICLES = buildHelp(GUEST_FILES).articles.filter((a) => !a.role || a.role === "guest");
 
-/** The articles an audience sees: performers get everything. */
-export function articlesFor(role: "guest" | "performer"): HelpArticle[] {
-  return HELP.articles.filter((a) => !a.role || a.role === role);
+/** The articles a guest sees (never a `role: performer` one). */
+export function guestArticles(): HelpArticle[] {
+  return GUEST_ARTICLES;
 }
 
 function Inline({ text }: { text: string }) {
@@ -110,9 +127,13 @@ function Block({ block }: { block: HelpBlock }) {
   }
 }
 
-/** The Help window: a searchable topic list ⇄ article reader. */
-export function HelpSheet({ role, onClose }: { role: "guest" | "performer"; onClose: () => void }) {
-  const articles = useMemo(() => articlesFor(role), [role]);
+/** The guests' Help window (`help-lazy.tsx` fetches it on first open). */
+export function HelpSheet({ onClose }: { onClose: () => void }) {
+  return <HelpWindow articles={guestArticles()} onClose={onClose} />;
+}
+
+/** The Help window: a searchable topic list ⇄ article reader over `articles`. */
+export function HelpWindow({ articles, onClose }: { articles: HelpArticle[]; onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [openSlug, setOpenSlug] = useState<string | null>(null);
 

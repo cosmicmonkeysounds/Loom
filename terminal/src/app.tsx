@@ -72,7 +72,7 @@ import { Component, Fragment, Suspense, lazy, useCallback, useEffect, useMemo, u
 import { Composer, Thread } from "./chat.tsx";
 import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
-import { followMap, followVoice, urlConfig } from "./setup-map.ts";
+import { followMap, followVoice, linkConfig } from "./setup-map.ts";
 import { useCamFeed } from "./camfeed.ts";
 import { useVoiceLink } from "./voice/hook.ts";
 import { MicCue } from "./voice/MicCue.tsx";
@@ -81,11 +81,11 @@ import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { lineLeash, talkWaitsOnDoor, useIdleTimeout } from "./idle.ts";
 import { FilePanel } from "./FilePanel.tsx";
-import { VisitLatch, beginPilot, characterIdOf, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { LOCKED_PASS_NOTICE, VisitLatch, beginPilot, characterIdOf, passLocked, refusesLockedPass, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { parseScan } from "./scan.ts";
 import { Gear, TypedFallback } from "./controls.tsx";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
-import { SpeechQueue, audioUnlocked, unlock, voiceEngines, voiceNote, type EngineKind } from "./speech/engine.ts";
+import { SpeechQueue, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, voiceNote, type EngineKind } from "./speech/engine.ts";
 import { useAnnouncements } from "./announce.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
@@ -247,7 +247,7 @@ export function App() {
         // room), the link's own fields winning. A spot the map lacks: say so
         // rather than hang no window.
         const house = given.spot === "" ? null : await fetchHouse(given).then((h) => h.house, () => null);
-        const c = urlConfig(given, hints, house);
+        const c = linkConfig(given, hints, house); // urlConfig + the view defaults (TV: 0.92)
         saveConfig(c);
         setConfig(c);
         const problem = house === null ? null : spotProblem(c.spot, house);
@@ -874,6 +874,8 @@ function Terminal({
   const chunkText = useRef(new Map<number, string[]>());
   /** A room line being said resolves here when its utterance is done (or cut). */
   const waiters = useRef(new Map<number, () => void>());
+  // Each queued room line's "he started it": its caption goes up then (wave 26 V1).
+  const starts = useRef(new Map<number, () => void>());
   const room = roomOf(config);
   // A room scene's face mood (wave 20: the heart's scenes) reaches this face.
   useEffect(() => onSceneFace((m, ms) => face.current?.flash(m, ms)), []);
@@ -908,6 +910,10 @@ function Terminal({
     return new SpeechQueue(engines, {
       level: (v) => face.current?.level(v),
       chunk: (id, i) => {
+        if (i === 0) {
+          starts.current.get(id)?.();
+          starts.current.delete(id);
+        }
         const text = chunkText.current.get(id)?.[i] ?? "";
         setMood(moodOfText(text));
         setSpeaking(true);
@@ -917,6 +923,7 @@ function Terminal({
       done: (id) => {
         offsets.current.delete(id);
         chunkText.current.delete(id);
+        starts.current.delete(id);
         waiters.current.get(id)?.();
         waiters.current.delete(id);
         setRevealed((prev) => {
@@ -931,7 +938,7 @@ function Terminal({
         setMood("neutral");
       },
       engine: (kind) => setEngineUsed(kind),
-    });
+    }, voiceFloor, gapsFor(config));
   }, [config]);
   useEffect(() => {
     setLatched(false); // a new voice (setup changed) asks the server afresh
@@ -968,11 +975,12 @@ function Terminal({
           if (line !== null) setRoomBusy(true);
           if (line !== null && line.mode !== "speak") setMood(moodOfText(line.text));
         },
-        speak: (line) =>
+        speak: (line, started) =>
           new Promise<void>((resolve) => {
             const chunks = splitSentences(line.text);
             if (chunks.length === 0) return resolve();
             chunkText.current.set(line.seq, chunks);
+            starts.current.set(line.seq, started);
             waiters.current.set(line.seq, resolve);
             queue.say({ id: line.seq, chunks });
           }),
@@ -980,6 +988,7 @@ function Terminal({
           queue.stop();
           for (const w of waiters.current.values()) w();
           waiters.current.clear();
+          starts.current.clear();
           setSpeaking(false);
         },
         sleep: (ms) => new Promise((r) => window.setTimeout(r, ms)),
@@ -988,7 +997,7 @@ function Terminal({
           window.clearTimeout(roomLinger.current);
           roomLinger.current = window.setTimeout(() => setRoomLine(null), 6000);
         },
-      }, room !== null ? speech : null),
+      }, room !== null ? speech : null, { captionOnStart: true }),
     [queue, room, speech],
   );
   // A room terminal speaks its room's lines while mounted (`talk` / `said`).
@@ -1165,6 +1174,16 @@ function Terminal({
       }
       setScreen({ kind: "connecting", id: guestId });
       setMood("attentive");
+      // R1 (wave 26): a room terminal refuses a locked (captured) pass at the
+      // scan, as chess and casino do: its line could send nothing, and its
+      // `terminal opened` would hold the room for a talk nobody can answer.
+      if (refusesLockedPass(config) && (await passLocked(config, guestId))) {
+        setFlash(LOCKED_PASS_NOTICE);
+        setMood("glitch");
+        window.setTimeout(() => setMood("idle"), 1200);
+        setScreen({ kind: "attract" });
+        return;
+      }
       try {
         const p = await beginPilot(config, guestId);
         setScreen({ kind: "piloting", pilot: p });

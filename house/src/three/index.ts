@@ -19,7 +19,7 @@ export { buildHouseScene, houseAtmosphere, planeGeometry, rampGeometry, FEED_W, 
 export type { HouseScene, HouseSceneOptions } from "./scene.ts";
 export { createDuck, DUCK_FLIGHT } from "./duck.ts";
 export type { Duck } from "./duck.ts";
-export { createKing, KING_KNEEL, KING_STAGGER, KING_COLOR } from "./king.ts";
+export { BAR_MAX_ELEV_DEG, createKing, KING_KNEEL, KING_STAGGER, KING_COLOR, kingBarY } from "./king.ts";
 export type { King } from "./king.ts";
 export { createHeart, heartPulse, HEART_BEAT_S, HEART_COLOR } from "./heart.ts";
 export type { Heart } from "./heart.ts";

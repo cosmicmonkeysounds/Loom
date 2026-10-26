@@ -3664,6 +3664,8 @@ func _test_speech() -> void:
 	_check(Speech.pronounce("Norton Anti-Virus") == "Norton Anti-Virus" and Speech.pronounce("Antivirusy") == "Antivirusy" and Speech.pronounce("MyAntivirus") == "MyAntivirus", "speech: whole words only")
 	_check(Speech.pronounce("the Antivirus' rules, (Antivirus)") == "the Anti Virus' rules, (Anti Virus)", "speech: punctuation is a boundary (the possessive matches)")
 	_check(Speech.pronounce("Antivirus", []) == "Antivirus" and Speech.parse_table("junk").is_empty(), "speech: no table, no change")
+	_check(Speech.ascii_lower("İ ÀB Antivirus") == "İ Àb antivirus", "speech: case folds A–Z only, the length kept")
+	_check(Speech.pronounce("İ Antivirus ÉANTIVIRUS") == "İ Anti Virus ÉAnti Virus", "speech: a non-ASCII letter never shifts what follows (and is a boundary)")
 	_check(Speech.reading_ms("") == 900.0 and Speech.reading_ms("x".repeat(20)) == 1240.0 and Speech.reading_ms("x".repeat(500)) == 8000.0, "speech: the terminal's reading time")
 	_check(Speech.pick_voice([{"id": "fr", "language": "fr-FR"}, {"id": "en1", "language": "en-US"}]) == "en1" and Speech.pick_voice([{"id": "de", "language": "de"}]) == "de" and Speech.pick_voice([]) == "", "speech: an English device voice first")
 

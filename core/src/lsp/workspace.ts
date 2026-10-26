@@ -237,7 +237,8 @@ export class Workspace {
    * - `L1208 ObjectiveButtonUnresolved` (warnings) — a `buttons:` name that
    *   is no INTERACTION and not `pass` / `scan`; a `who: admin` / `who:
    *   agent` button; a button whose `who` reaches none of the objective's
-   *   audience; more than 3 interaction buttons.
+   *   audience; more than 3 interaction buttons (except on a `pick:`
+   *   objective: those are the booth's PLAYER SELECT steps, wave 26).
    * - `L1209 ObjectiveConditionInvalid` (errors) — an empty or unparsable
    *   `while:` or `done when`.
    */
@@ -296,7 +297,9 @@ export class Workspace {
             else if ((def.who === "guest" && !guestSide) || (def.who === "performer" && !boothSide))
               lint(at("buttons"), false, Code.L1208ObjectiveButtonUnresolved, `\`${id}\` on OBJECTIVE ${decl.name} is a \`who: ${def.who}\` button, but the objective is for no ${def.who === "guest" ? "guest" : "performer"}, so nobody sees it there`);
           }
-          if (count > 3)
+          // A `pick:` objective's buttons are the booth's picker (PLAYER SELECT,
+          // wave 26 B3: one step per button), not a card face's three slots.
+          if (count > 3 && o.pick === null)
             lint(at("buttons"), false, Code.L1208ObjectiveButtonUnresolved, `OBJECTIVE ${decl.name} names ${count} interaction buttons — the apps show at most 3; the rest stay under "All buttons…"`);
         }
       }

@@ -217,3 +217,38 @@ export function relativeBearing(from: Vec3, to: Vec3, yaw: number): number {
   const rel = target - bearingOf(yaw);
   return ((((rel + 180) % 360) + 360) % 360) - 180 + 0;
 }
+
+/**
+ * The King is on this map and standing: what the help card's "Space hits
+ * the King" / "⚔ by the King" line needs (wave 26, R3) — the same rule as
+ * the ⚔ HIT button, which never shows once he has fallen (a fallen King's
+ * HUD state is still non-null: he kneels in the doorway).
+ */
+export function kingStands(king: { fallen: boolean } | null | undefined): boolean {
+  return king !== null && king !== undefined && !king.fallen;
+}
+
+/** Plan metres within which a King in view clears the HUD's top centre. */
+export const KING_VIEW_M = 4.5;
+/** |relative bearing| (degrees) within which he counts as in view. */
+export const KING_VIEW_DEG = 40;
+
+/**
+ * A King the player is looking at from close enough to read his bar (wave
+ * 26, R3: the bar over his head is his only display): on the player's
+ * floor, within `KING_VIEW_M` on the plan, and no more than
+ * `KING_VIEW_DEG` off the facing. While he stands and is in view, the play
+ * screen hides the compass and the heat line, which sit right where his bar
+ * projects from his hit reach out to about 4 m. Walls are not judged: he
+ * stands in a doorway, and the HUD comes back as soon as the player turns.
+ */
+export function kingInView(house: HouseMap, feet: Vec3, yaw: number, king: { pos: Vec3 }): boolean {
+  if (floorOf(house, feet[1]) !== floorOf(house, king.pos[1])) return false;
+  if (Math.hypot(king.pos[0] - feet[0], king.pos[2] - feet[2]) > KING_VIEW_M) return false;
+  return Math.abs(relativeBearing(feet, king.pos, yaw)) <= KING_VIEW_DEG;
+}
+
+/** The HUD's top centre (compass, heat line) gives way to his bar: he stands and is in view. */
+export function kingClearsHud(king: { fallen: boolean; inView: boolean } | null | undefined): boolean {
+  return king !== null && king !== undefined && !king.fallen && king.inView;
+}

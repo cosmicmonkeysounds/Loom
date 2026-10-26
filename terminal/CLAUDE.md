@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 945 tests, 80 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 1047 tests, 87 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -42,7 +42,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 |---|---|
 | `src/main.tsx`, `src/app.tsx` | boot; the screen machine: setup → asleep (idle show) → awake → connecting → piloting; per-view routing and lazy chunks |
 | `src/config.ts` | `TerminalConfig`, `VIEWS` / `VIEW_INFO`, URL hints (`hintsFromSearch`, `withoutSecrets`), `provision` / `connect`, `roomOf`, `tvRoomOf` |
-| `src/Setup.tsx`, `src/setup-map.ts` | the two-step setup (passcode, tap a map terminal); `followMap` / `followVoice` re-read the map entry on boot |
+| `src/Setup.tsx`, `src/setup-map.ts` | the two-step setup (passcode, tap a map terminal); `followMap` / `followVoice` re-read the map entry on boot; `linkConfig` (a `?code=` link: `urlConfig` + `withViewDefaults`, so a spot-only TV link speaks at 0.92) |
 | `src/screen.ts` | the screen-state poll + its types (`ScreenState`, `night`, `room`, `king`, `results`, `moments`, `spot`); `voice=`/`room=` + `after=` + `talk=`/`said=`; `useScreenState` paces with `PollPacer` and exposes `pollNow` |
 | `src/health.ts` | the heartbeat keys (`deviceQuery`): `ver audio vis fs ann mic bat` + door `door dlv dft dwn` + bay `pb pbc pbx pft` |
 | `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides; the glitch takeover (`glitchLayer`, `GlitchTakeover`, `coverOf`: wave 26) |
@@ -54,11 +54,11 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/announce.ts` | which house announcements a terminal says, the chime |
 | `src/face/` | the SVG face (`Face.tsx`) and `mood.ts` |
 | `src/scanner.tsx`, `src/scan.ts`, `src/camera.ts` | QR scan (`BarcodeDetector`, else jsQR); what a code means; one shared ref-counted `MediaStream` |
-| `src/pilot.ts`, `src/chat.tsx`, `src/controls.tsx`, `src/idle.ts` | impersonate / say / end; `terminal opened` / `closed` (`VisitLatch`); the thread + composer; the 2 s ⚙ hold; the leash (30 s, files 120 s, heart 180 s) |
+| `src/pilot.ts`, `src/chat.tsx`, `src/controls.tsx`, `src/idle.ts` | impersonate / say / end; `terminal opened` / `closed` (`VisitLatch`); a room terminal refuses a locked pass first (`refusesLockedPass`, `passLocked`, wave 26 R1); the thread + composer; the 2 s ⚙ hold; the leash (30 s, files 120 s, heart 180 s) |
 | `src/files.ts`, `src/FilePanel.tsx` | 📎 GIVE HIM A FILE: share / redeem as the piloted guest |
 | `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
 | `src/serial/` | the M4 bridge: `door-protocol.ts` (JSON lines, pure), `door-bridge.ts` + `patch-bridge.ts` (decisions, pure), `door-serial.ts` (Web Serial + `door=sim`, lazy), `door-status.ts` (store + heartbeat keys), `use-door.ts` (hook) |
-| `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (wave 26 R5: `roomOccupied`, `linkedNow`, `linkedPane`, `PresenceLatch`, `usePresenceLatch`, `useRoomLinked`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
+| `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (wave 26 R5: `roomOccupied`, `linkedNow`, `linkedPane`, `PresenceLatch`, `usePresenceLatch`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three) |
 | `src/shadow/` | `view=shadow`: the camera with ghosts (lazy) |
 | `src/camfeed.ts` | the camera feed to the games (`POST /api/mod/spatial/cam`); one frame / 2 s while the reply says `watched: false`; never from the tent |
@@ -119,14 +119,28 @@ counts as busy (piloting) during one. Every view takes the glitch.
   shows the world (pane, or full screen asleep) only while `spot.here > 0`
   (the house-wide rule only when the server sends no `here`), latched 3 s;
   no spot or `reinstall`: never; `mirror` / `shadow`: house-wide.
-  `watchWhileAsleep(state, view, room, spot)`. The TV's gate is the voice
-  lane's `Tv.tsx`: `useRoomLinked(state?.spot, inSimulation)`.
+  `watchWhileAsleep(state, view, room, spot)`. The TV's world pane gates
+  on the same `linkedNow` (view `tv`, latched; a TV with no spot never
+  shows it and opens no spatial stream, `Tv.tsx`). Every
+  `SpeechQueue` takes `gapsFor(config)`, and the room terminal's
+  `LinePlayer` captions on start like the TV's
+  (`test/w26-integration.test.ts`).
 - **The tent (T3).** A centred Reinstallation Wizard card: the camera,
   the typed field (`TypedFallback` `focus` / `scope` / `clearOnPick`: it
   takes the focus back after any tap that leaves it outside the card,
   `takesFocusBack`), the picks as 48 px buttons, N REINSTALLING; a
   `tablet_*` cue is a status line in it. The camera shrinks (44vh down to
   140 px) before any row under it clips. No world pane, no camera feed.
+  The idle show behind it never lands a window on the card
+  (`field.ts` `placePopup` / `stormPlace` return null, `spawn` adds
+  nothing): at 1366x768 landscape no margin fits one, so none comes.
+- **Integration fixes.** A popup's arrival survives a segment change
+  (`relayout(f, layout, prev)` resets it only around a storm), so calm
+  walls keep 18–39 s. `SpeechEngine.play(p, onLevel, onStart)`: the
+  queue's `chunk` fires when the voice is heard (V1). `mood.ts`
+  `browGeometry`: angry pulls the inner brows down. The server-room
+  terminal flashes `LOCKED_PASS_NOTICE` for a locked pass and opens no
+  line (R1; the story guards `terminal_opened` too).
 - **Copy.** G1 (the filing steps, the reminders, Truth Pong, the summons,
   the chess stakes line) and D1 (`dare_chosen` on the `Dare Chosen` beat,
   `DARE_ORDER`) carry `// DRAFT w26`.
