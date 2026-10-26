@@ -29,6 +29,11 @@
 ##   the player are heard at their screens and the player on the terminals
 ##   near them; B / Y (M on the desktop rig) mutes the mic. Off with
 ##   `--voice false`, listen-only with `--mic false`; never offline.
+## - **Sound** (wave 26, R8, [Sfx]): Gerald quacks from where he sits (the
+##   web game's schedule), the find quacks and plays the fanfare (none for a
+##   refused find), the King's hit thuds, a refusal buzzes, his fall plays
+##   the fanfare, and a quiet hum runs while playing. Every one-shot holds
+##   the mic shut while it plays ([method VoiceLink.hold_for]).
 ##
 ## The session also ends when the server says so ([signal
 ## LinkBase.session_over]) or the headset comes off ([method presence_changed],
@@ -89,11 +94,17 @@ var cams: CamFeeds
 var hud: Hud
 ## The voice link ([VoiceLink]; running only while a session plays).
 var voice: VoiceLink
+## The game's own sounds ([Sfx]).
+var sfx: Sfx
 ## The lobby's laser / mouse ([LobbyPointer]).
 var pointer: LobbyPointer
 
 var _trail_in := 0.0
 var _cand_in := 0.0
+## Seconds to Gerald's next quack look ([method Sfx.quack_plan]).
+var _quack_in := Sfx.QUACK_FIRST
+## Seconds to the found screen's fanfare (< 0: none due).
+var _fanfare_in := -1.0
 var _found_pending := false
 var _found_retry := 0.0
 ## Why the headset counts as away → the wall-clock second the session ends
@@ -170,6 +181,10 @@ func setup(l: LinkBase, xr: bool) -> void:
 	hud.name = "Hud"
 	player.camera.add_child(hud)
 	_setup_voice()
+	sfx = Sfx.new()
+	sfx.name = "Sfx"
+	add_child(sfx)
+	sfx.played.connect(func(_sound: String, ms: float) -> void: voice.hold_for(ms))
 	# The lobby's picker: the laser / mouse, the ghosts' picture cache.
 	pointer = LobbyPointer.new()
 	pointer.name = "Pointer"
@@ -221,6 +236,8 @@ func enter_lobby() -> void:
 	trail.clear()
 	cams.stop()
 	_stop_voice()
+	sfx.set_hum(false)
+	_fanfare_in = -1.0
 	ghosts.own_session = ""
 	# The head-locked HUD would float over the tiles: a notice still up
 	# (the session ended, …) moves to the lobby's own message line.
@@ -293,6 +310,8 @@ func _on_king_changed(k: Dictionary) -> void:
 	if flow.state != GameFlow.State.PLAYING:
 		return
 	_notice(KING_DOWN if fallen else KING_STANDS)
+	if fallen:
+		sfx.play("fanfare")
 	_trail_in = 0.0
 	if autopilot != null:
 		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
@@ -308,6 +327,7 @@ func _on_king_hit_answered(result: String, _data: Dictionary) -> void:
 	match result:
 		"ok":
 			king_hit_used = true
+			sfx.play("thud")
 			_notice(KING_DOWN if _king_fallen else KING_HIT)
 		"already hit":
 			king_hit_used = true
@@ -315,6 +335,7 @@ func _on_king_hit_answered(result: String, _data: Dictionary) -> void:
 		"fallen":
 			_notice(KING_DOWN)
 		"not near":
+			sfx.play("buzz")
 			_notice(KING_CLOSER)
 		"doors are closed":
 			_notice(KING_PAUSED)
@@ -388,6 +409,9 @@ func _on_assignment(a: Dictionary) -> void:
 	_found_pending = false
 	_found_retry = 0.0
 	_notice_left = 0.0
+	_quack_in = Sfx.QUACK_FIRST
+	_fanfare_in = -1.0
+	sfx.set_hum(true)
 	_king_said = false
 	# The server's assignment says when a re-scan is the visit that already
 	# hit him (missing on an old server = not yet).
@@ -420,6 +444,8 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 	_found_pending = false
 	if not ok:
 		_found_retry = FOUND_RETRY
+		if flow.state == GameFlow.State.PLAYING:
+			sfx.play("buzz")
 		return
 	# The server's `released` is the only proof of a release. A program still
 	# captured after the find (the reply's `captured`, else the state the
@@ -435,8 +461,11 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 		_autopilot_found = true
 		player.left_stick = Vector2.ZERO
 		print("autopilot: found — released=%s already=%s" % [data.get("released"), data.get("already")])
+	sfx.quack_at(duck.emitter, 1.0)
+	sfx.set_hum(false)
 	if not refused:
 		duck.celebrate()
+		_fanfare_in = Sfx.FANFARE_AFTER
 	trail.clear()
 	if released:
 		hud.show_found("REINSTALLATION COMPLETE", who)
@@ -571,6 +600,10 @@ func _process(delta: float) -> void:
 		GameFlow.State.PLAYING:
 			_tick_play(delta)
 		GameFlow.State.FOUND:
+			if _fanfare_in >= 0.0:
+				_fanfare_in -= delta
+				if _fanfare_in < 0.0:
+					sfx.play("fanfare")
 			if flow.tick(delta):
 				link.end_session("found")
 				enter_lobby()
@@ -612,11 +645,25 @@ func _tick_play(delta: float) -> void:
 			autopilot.plan(route_house, feet, _autopilot_goal())
 		refresh_trail(feet, duck_p)
 
+	_tick_quack(feet, duck_p, delta)
 	_found_retry -= delta
 	if not _found_pending and _found_retry <= 0.0 and is_at_duck(house, feet, duck_p):
 		_found_pending = true
 		link.report_found()
 	_tick_king(house, feet, builder.yaw_to_house(player.head_yaw()))
+
+
+## Gerald quacks from where he sits, louder and more often the closer the
+## player is ([method Sfx.quack_plan], the web game's schedule).
+func _tick_quack(feet: Array, duck_p: Array, delta: float) -> void:
+	_quack_in -= delta
+	if _quack_in > 0.0:
+		return
+	var plan := Vector2(float(duck_p[0]) - float(feet[0]), float(duck_p[2]) - float(feet[2])).length()
+	var q := Sfx.quack_plan(plan, float(duck_p[1]) - float(feet[1]), randf())
+	_quack_in = float(q["next"])
+	if q["quack"]:
+		sfx.quack_at(duck.emitter, float(q["volume"]))
 
 
 # --- voice ---
@@ -686,6 +733,7 @@ func _tick_king(house: Dictionary, feet: Array, yaw: float) -> void:
 	elif king_hit_used:
 		_notice(KING_USED)
 	elif HouseKing.king_reach(house, feet, yaw, prop) != "ok":
+		sfx.play("buzz")
 		_notice(KING_CLOSER)
 	else:
 		_king_hit_pending = true

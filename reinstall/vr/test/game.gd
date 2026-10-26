@@ -66,6 +66,8 @@ func _run() -> void:
 	_test_voice_config()
 	_test_voice_server_link()
 	await _test_voice_game()
+	_test_sfx()
+	await _test_sfx_game()
 	await _test_autopilot_physics()
 	await _test_room_scale()
 
@@ -3334,6 +3336,117 @@ func _test_voice_game() -> void:
 	player.camera.rotation.x = deg_to_rad(-60.0)
 	game.enter_lobby()
 	_check(is_zero_approx(float(player.get("_pitch"))) and is_zero_approx(player.camera.rotation.x), "lobby: a desktop run is level again in the lobby (no captured mouse there to look up)")
+	main.queue_free()
+	await process_frame
+
+
+## Wave 26 (R8): the game's own sounds — rendered once, never silent, never
+## clipped, the web game's recipes' lengths; the quack's schedule is the web
+## game's; they play on the Sfx bus.
+func _test_sfx() -> void:
+	var want_len := {"quack": 0.36, "fanfare": 1.8, "buzz": 0.47, "thud": 0.12, "scare": 1.6, "pickup": 0.5, "hum": 2.0}
+	for sound: String in want_len:
+		var x := Sfx.samples_of(sound)
+		var peak := 0.0
+		for v in x:
+			peak = maxf(peak, absf(v))
+		_check(_near(x.size() / float(Sfx.RATE), want_len[sound], 0.01), "sfx: %s lasts %.2f s (%.3f)" % [sound, want_len[sound], x.size() / float(Sfx.RATE)])
+		_check(peak <= 1.0 and VoiceCodec.rms_dbfs(x) > -40.0, "sfx: %s is heard and never clips (peak %.2f, %.1f dBFS)" % [sound, peak, VoiceCodec.rms_dbfs(x)])
+	_check(Sfx.samples_of("nope").is_empty() and Sfx.length_ms("nope") == 0.0, "sfx: an unknown sound is nothing")
+	var w := Sfx.stream_of("quack")
+	_check(w.format == AudioStreamWAV.FORMAT_16_BITS and not w.stereo and w.mix_rate == Sfx.RATE and w.data.size() == Sfx.samples_of("quack").size() * 2, "sfx: a 16-bit mono WAV")
+	_check(Sfx.stream_of("hum").loop_mode == AudioStreamWAV.LOOP_FORWARD and w.loop_mode == AudioStreamWAV.LOOP_DISABLED, "sfx: the hum loops, the quack does not")
+	_check(is_same(Sfx.stream_of("quack"), w), "sfx: each sound is made once")
+	var bus := Sfx.ensure_bus()
+	_check(bus > 0 and AudioServer.get_bus_name(bus) == "Sfx" and AudioServer.get_bus_send(bus) == "Master" and Sfx.ensure_bus() == bus, "sfx: an Sfx bus into Master, made once")
+	# The schedule: the web game's maybeQuack.
+	var far := Sfx.quack_plan(7.1, 0.0, 0.5)
+	_check(not far["quack"] and _near(far["next"], 1.5), "sfx: past 7 m no quack, a look again in 1.5 s")
+	_check(not Sfx.quack_plan(2.0, 2.0, 0.5)["quack"] and Sfx.quack_plan(2.0, 1.9, 0.5)["quack"], "sfx: within 2 m of height only")
+	var at := Sfx.quack_plan(0.0, 0.0, 0.0)
+	var mid := Sfx.quack_plan(3.5, 0.0, 1.0)
+	_check(at["quack"] and _near(at["volume"], 1.0) and _near(at["next"], 1.6), "sfx: on top of him: full volume, every 1.6 s")
+	_check(_near(mid["volume"], 0.625) and _near(mid["next"], 1.6 + 1.6 + 0.9), "sfx: half way: 0.625, 1.6 + 1.6 + up to 0.9 s")
+	_check(Sfx.QUACK_RANGE == 7.0 and Sfx.QUACK_FIRST == 2.5 and Sfx.FANFARE_AFTER == 0.65, "sfx: the web game's constants")
+
+
+## The game plays them: the hum while playing, Gerald's quack on him (and
+## the mic held while it plays), the find's quack + fanfare (none for a
+## refused find), a buzz for "not near", the King's thud, nothing in the lobby.
+func _test_sfx_game() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var player := game.player
+	player.set_physics_process(false)
+	player.read_input = false
+	game.set("path_reveal_s", 0.0)
+	var sfx := game.sfx
+	_check(sfx != null and sfx.get_parent() == game and not sfx.hum_on(), "sfx game: the game has its sounds, quiet in the lobby")
+	_check(game.duck.emitter != null and game.duck.emitter.bus == "Sfx" and game.duck.emitter.attenuation_model == AudioStreamPlayer3D.ATTENUATION_DISABLED, "sfx game: Gerald's quack comes from him, on the Sfx bus")
+	sfx.log.clear()
+	for i in 5:
+		game._process(1.0)
+	_check(sfx.log.is_empty(), "sfx game: no sound in the lobby")
+	var a := _assignment(house, "sfx-1", true)
+	link.assignment_received.emit(a)
+	_check(sfx.hum_on(), "sfx game: the hum while playing")
+	var dp: Array = a["duck"]["pos"]
+	player.teleport(Vector3(dp[0] + 1.5, dp[1], dp[2]), 0.0)
+	game._process(1.0)
+	_check(sfx.log.is_empty(), "sfx game: the first quack waits 2.5 s")
+	game._process(1.0)
+	game._process(0.6)
+	_check(sfx.log == ["quack"] and game.voice.holding(), "sfx game: 1.5 m from Gerald he quacks — and the mic is held while he does (%s)" % [sfx.log])
+	var away: Array = house["spawn"]["pos"]
+	for spot: Dictionary in house["duck"]["spots"]:
+		if Vector2(float(spot["pos"][0]) - float(dp[0]), float(spot["pos"][2]) - float(dp[2])).length() > 9.0:
+			away = spot["pos"]
+			break
+	player.teleport(HouseFrames.vec(away), 0.0)
+	for i in 10:
+		game._process(1.0)
+	var far_quacks := sfx.log.count("quack")
+	_check(far_quacks == 1, "sfx game: far from him, no quack (%d)" % far_quacks)
+	player.teleport(Vector3(dp[0] + 0.5, dp[1], dp[2]), 0.0)
+	game._process(0.016)
+	link.found_answered.emit(false, {"error": "not near the duck"})
+	_check(sfx.log.back() == "buzz", "sfx game: 'not near' buzzes")
+	link.found_answered.emit(true, {"ok": true, "released": true})
+	_check(sfx.log.back() == "quack" and not sfx.hum_on(), "sfx game: the find quacks, the hum stops")
+	game._process(0.5)
+	_check(sfx.log.back() == "quack", "sfx game: … the fanfare waits 0.65 s")
+	game._process(0.2)
+	_check(sfx.log.back() == "fanfare", "sfx game: … then the fanfare")
+	game._process(GameFlow.CELEBRATE + 0.1)
+	_check(game.state() == GameFlow.State.LOBBY and not sfx.hum_on(), "sfx game: the lobby again, quiet")
+	# A refused find (banishment): the quack, no fanfare.
+	link.assignment_received.emit(_assignment(house, "sfx-2", true))
+	var dp2: Array = link.adopted.back()["duck"]["pos"]
+	player.teleport(Vector3(dp2[0], dp2[1], dp2[2] + 0.3), 0.0)
+	game._process(0.016)
+	sfx.log.clear()
+	link.found_answered.emit(true, {"ok": true, "released": false, "captured": true})
+	game._process(1.0)
+	_check(sfx.log == ["quack"], "sfx game: a refused find has no fanfare (%s)" % [sfx.log])
+	game._process(GameFlow.CELEBRATE + 0.1)
+	# The King: a hit thuds, a refusal buzzes, his fall plays the fanfare.
+	link.assignment_received.emit(_assignment(house, "sfx-3", true))
+	link.give_king({"id": "cold-lock-king", "hp": 5, "max": 15, "fallen": false})
+	sfx.log.clear()
+	link.king_hit_answered.emit("ok", {})
+	link.king_hit_answered.emit("not near", {})
+	link.give_king({"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true})
+	_check(sfx.log == ["thud", "buzz", "fanfare"], "sfx game: the King's hit, a refusal, his fall (%s)" % [sfx.log])
+	link.session_over.emit("test")
 	main.queue_free()
 	await process_frame
 
