@@ -81,7 +81,7 @@ import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { lineLeash, talkWaitsOnDoor, useIdleTimeout } from "./idle.ts";
 import { FilePanel } from "./FilePanel.tsx";
-import { VisitLatch, beginPilot, characterIdOf, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { LOCKED_PASS_NOTICE, VisitLatch, beginPilot, characterIdOf, passLocked, refusesLockedPass, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { parseScan } from "./scan.ts";
 import { Gear, TypedFallback } from "./controls.tsx";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
@@ -1174,6 +1174,16 @@ function Terminal({
       }
       setScreen({ kind: "connecting", id: guestId });
       setMood("attentive");
+      // R1 (wave 26): a room terminal refuses a locked (captured) pass at the
+      // scan, as chess and casino do: its line could send nothing, and its
+      // `terminal opened` would hold the room for a talk nobody can answer.
+      if (refusesLockedPass(config) && (await passLocked(config, guestId))) {
+        setFlash(LOCKED_PASS_NOTICE);
+        setMood("glitch");
+        window.setTimeout(() => setMood("idle"), 1200);
+        setScreen({ kind: "attract" });
+        return;
+      }
       try {
         const p = await beginPilot(config, guestId);
         setScreen({ kind: "piloting", pilot: p });

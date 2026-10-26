@@ -207,6 +207,7 @@ it and needs no sign-off beyond a glance.
 | `terminal/src/cutscene/scenes/act2.tsx:104` | Five Minutes (TV + walls), a drifting dialog | **Bathroom Mode**: *Bathroom Mode excuses you. Nothing else does.* | **Antivirus**: *Every program is being counted.* |
 | `terminal/src/cutscene/scenes/act2.tsx:111` | Five Minutes, the marquee | *…SECOND MOMENT OF TRUTH ★ BATHROOM MODE EXCUSES YOU ★ AN ANTIVIRUS IS COUNTING ★…* | *⏳ FIVE MINUTES ★ BE IN THE DESKTOP FOR THE SECOND MOMENT OF TRUTH ★ AN ANTIVIRUS IS COUNTING ★ NO DESKTOP, NO TRUTH PONG ★* |
 | `terminal/src/cutscene/scenes/act2.tsx:315` | Truth Pong, a drifting dialog | *Accurate is accepted. Confident is accepted. A guess is the Internet.* | *Trust the process.* |
+| `terminal/src/pilot.ts:47` | The server-room terminal, a quarantined (locked) program scans in (R1, integration fix) | (the line opened, his heart talk docked, and every pick answered *DIDN'T SEND — LOCKED*) | *⛔ YOU'RE IN THE INTERNET — GO TO THE TENT* (the casino's words); no line opens and the program at his heart stays |
 
 **The web game, the tent laptop (G1, G2, R2, R4, R7)**
 

@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { VISIT_KEY, VisitLatch, closeVisit, endPilot, openVisit, parseStoredVisit, postVisit, recoverVisit, visitSignalBody, type VisitStorage } from "../src/pilot.ts";
+import { LOCKED_PASS_NOTICE, VISIT_KEY, VisitLatch, closeVisit, endPilot, openVisit, parseStoredVisit, passLocked, postVisit, recoverVisit, refusesLockedPass, visitSignalBody, type VisitStorage } from "../src/pilot.ts";
 
 const room = defaultConfig({ eventId: "evt 1", token: "mod-tok", name: "Server Room", spot: "server-room", view: "face", room: "The Server Room" });
 
@@ -237,5 +237,46 @@ describe("visit signals", () => {
       expect(await closeVisit(room, latch, { fetchFn: fakeFetch(200, seen) })).toBe(true);
       expect(names(seen).map((b) => b.name)).toEqual(["terminal opened", "terminal closed"]);
     }
+  });
+});
+
+describe("a locked pass at a room terminal (wave 26, R1)", () => {
+  const answer = (status: number, body: unknown, seen: Array<{ url: string; init: RequestInit }> = []): typeof fetch =>
+    (async (url: string, init: RequestInit) => {
+      seen.push({ url, init });
+      return { status, ok: status >= 200 && status < 300, json: async () => body } as Response;
+    }) as unknown as typeof fetch;
+
+  it("reads the pass's GuestView with the mod token, minting nothing", async () => {
+    const seen: Array<{ url: string; init: RequestInit }> = [];
+    expect(await passLocked(room, "g 1", { fetchFn: answer(200, { id: "g 1", name: "Napster", locked: true }, seen) })).toBe(true);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.url).toBe("/e/evt%201/api/state?role=guest&as=g%201");
+    expect((seen[0]!.init.headers as Record<string, string>)["x-loom-token"]).toBe("mod-tok");
+    expect(seen[0]!.url).not.toMatch(/impersonate/u);
+  });
+
+  it("opens the line for an unlocked pass, an older server, or any failure", async () => {
+    expect(await passLocked(room, "g1", { fetchFn: answer(200, { name: "Winamp", locked: false }) })).toBe(false);
+    expect(await passLocked(room, "g1", { fetchFn: answer(200, { name: "Winamp" }) })).toBe(false);
+    expect(await passLocked(room, "g1", { fetchFn: answer(404, null) })).toBe(false);
+    expect(await passLocked(room, "g1", { fetchFn: fakeFetch(new Error("offline"), []) })).toBe(false);
+    const hang = (async (_u: string, init: RequestInit) =>
+      new Promise((_r, reject) => init.signal?.addEventListener("abort", () => reject(new Error("aborted"))))) as unknown as typeof fetch;
+    expect(await passLocked(room, "g1", { fetchFn: hang, timeoutMs: 5 })).toBe(false);
+  });
+
+  it("only a room terminal refuses at the scan; the connect checks before it impersonates", async () => {
+    expect(refusesLockedPass(room)).toBe(true);
+    expect(refusesLockedPass({ ...room, room: "" })).toBe(false);
+    expect(refusesLockedPass({ ...room, view: "reinstall" })).toBe(false);
+    expect(refusesLockedPass({ ...room, view: "tv" })).toBe(false);
+    expect(LOCKED_PASS_NOTICE).toMatch(/TENT/u);
+    const { readFileSync } = await import("node:fs");
+    const app = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8");
+    const gate = app.indexOf("if (refusesLockedPass(config) && (await passLocked(config, guestId)))");
+    expect(gate).toBeGreaterThan(0);
+    expect(gate).toBeLessThan(app.indexOf("const p = await beginPilot(config, guestId);"));
+    expect(app.slice(gate, app.indexOf("const p = await beginPilot(config, guestId);"))).toMatch(/setFlash\(LOCKED_PASS_NOTICE\);[\s\S]*setScreen\(\{ kind: "attract" \}\);\s+return;/u);
   });
 });
