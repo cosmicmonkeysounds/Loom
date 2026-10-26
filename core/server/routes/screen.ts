@@ -464,13 +464,21 @@ const touchesSecret = (name: string, secrets: readonly string[]): boolean => {
  *  A map's own king signal names are added by the runtime (`MomentSignals.devices`). */
 export const DEVICE_MOMENT_SIGNALS: readonly string[] = [...Object.values(KING_SIGNALS).filter((s) => s !== KING_SIGNALS.won), "reinstallation begun"].map(foldName);
 
+/** (wave 26, C6) The reinstallation games' moment signals (`POST
+ *  /api/spatial/moment`): admin interactions the games fire, never a public
+ *  moment on the screens ("simulation heart reached" on a wall would name
+ *  the machinery, G2). The same strings as `@loom/house`'s `ESCAPE_SIGNAL`,
+ *  `HEART_SIGNAL` and `PICKUP_SIGNAL` (house lane, wave 26 Stage A); a test
+ *  pins them equal once the house exports them. */
+export const GAME_MOMENT_SIGNALS: readonly string[] = ["simulation escape attempt", "simulation heart reached", "simulation pickup taken"];
+
 /** Never a moment: a checkmate (the story tells only the winner and
  *  `# hosts` — a public one would hint who now holds the door code). Folded,
  *  so the show's admin `chess_won` press is quiet too. Wave 20: the server
  *  room's admin door cues and the heart's autoend toggle (a door that opens
  *  and shuts is no house-wide event; the sensor's own `door_sensor_*` and
  *  the story's `heart_door_*` are not admin cues, so never moments anyway). */
-export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won, "server_door_opened", "server_door_closed", "server_door_trust", "heart_autoend", "trust_patch_bay"].map(foldName);
+export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won, "server_door_opened", "server_door_closed", "server_door_trust", "heart_autoend", "trust_patch_bay", ...GAME_MOMENT_SIGNALS].map(foldName);
 
 /** (wave 20) Subject-free beats that never become a `beat` moment, folded:
  *  the server room's door chatter (the nag, the door again, the shut, the

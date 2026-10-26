@@ -29,6 +29,7 @@ import type { Sim, SimEvent, WalletCard } from "../src/runtime/sim/index.ts";
 import { walletLine } from "./wallet.ts";
 import { isEffectManner, noticeKey, splitNotice, type GoTarget, type MomentClass } from "../src/delivery.ts";
 import { resolveGoWords } from "../src/go.ts";
+import { foldName } from "../src/parser/names.ts";
 import { display } from "../src/runtime/expr.ts";
 
 // `lobby` / `faction` / `dm` / `location` are derived; `group` / `open` /
@@ -432,6 +433,44 @@ function noAckOf(noAck: true | undefined): { noAck?: true } {
   return noAck === true ? { noAck: true } : {};
 }
 
+/**
+ * Game-only beats (wave 26, C6): the lines of these beats are said only in
+ * the reinstallation game, through the moment route's answer body
+ * (`momentLines`). The chat composer emits no message for them, so no phone
+ * thread, booth readout, Run pane or replay ever holds them (Trabolta
+ * chastises an escape even before his reveal). Folded names (`foldName`).
+ */
+export const GAME_ONLY_BEATS: readonly string[] = ["Escape Attempt", "Heart In The Simulation"].map(foldName);
+
+/** Is `beat` (a SimEvent's beat, maybe an owned `Owner.beat` key) game-only? */
+export function isGameOnlyBeat(beat: string | null | undefined): boolean {
+  if (beat == null || beat === "") return false;
+  const whole = foldName(beat);
+  const tail = foldName(beat.slice(beat.lastIndexOf(".") + 1));
+  return GAME_ONLY_BEATS.includes(whole) || GAME_ONLY_BEATS.includes(tail);
+}
+
+/** One line the game says for a moment (C6): display text, never pronounced. */
+export interface MomentLine {
+  from: string;
+  text: string;
+}
+
+/**
+ * What one commit said to `guest`, in order (wave 26, C6): the batch's
+ * `dialogue` events whose audience includes the guest, as `{from, text}`.
+ * Game-only beats included (they never reach chat), and lines a phone
+ * would hide (a locked phone, a hidden agent): the game is the surface.
+ * Reads the SimEvents, not the composed messages. Pure.
+ */
+export function momentLines(events: readonly SimEvent[], guest: string): MomentLine[] {
+  const out: MomentLine[] = [];
+  for (const e of events) {
+    if (e.type === "dialogue" && e.audience.includes(guest)) out.push({ from: e.speaker, text: e.text });
+  }
+  return out;
+}
+
 /** The story's `go:` words resolved (C2), else `fallback`; never the lobby. */
 function goOf(sim: Sim, words: readonly string[] | undefined, fallback: GoTarget[] = []): { go?: GoTarget[] } {
   // A story `go:` that resolves to nothing (a typo: lint L1214) keeps the
@@ -560,6 +599,8 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
   for (const e of events) {
     switch (e.type) {
       case "dialogue": {
+        // Wave 26 (C6): a game-only beat's lines never become a message.
+        if (isGameOnlyBeat(e.beat)) break;
         // The delivery: the block's manner rides the line, and a line is
         // effect text when the manner says so or the speaker always crawls.
         const fx = isEffectManner(e.manner) || sim.model.characters.get(e.speaker)?.crawl === "fx";
@@ -578,7 +619,9 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
       }
       case "action": {
         // Speakerless narration — the Narrator's word block, delivered to the
-        // room the beat is set in. Previously dropped on the floor.
+        // room the beat is set in. Previously dropped on the floor. A
+        // game-only beat's narration stays out of chat too (C6).
+        if (isGameOnlyBeat(e.beat)) break;
         const delivery = { ...(e.manner !== undefined ? { manner: e.manner } : {}), ...(isEffectManner(e.manner) ? { fx: true as const } : {}) };
         out.push({ ...storyChannel(sim, e.setting), from: "Narrator", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null, beat: e.beat, ...delivery });
         break;
