@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateHouse } from "@loom/house";
+import { HEART_SIGNAL, validateHouse } from "@loom/house";
 import type { HouseMap } from "@loom/house";
 import { provisionLink, removeThing } from "../src/map/edit.ts";
 import {
@@ -10,9 +10,12 @@ import {
   isRoomlessView,
   mapLocations,
   onFloor,
+  DEFAULT_PICKUP_ITEM,
+  momentSignalOf,
   patchProp,
   propDefaults,
   PROP_KINDS,
+  PROP_PALETTE,
   rotateBy,
   setGuard,
   snapTerminalToWall,
@@ -226,5 +229,95 @@ describe("the provisioning link's enums", () => {
     expect(locs.length).toBeGreaterThan(3);
     expect(new Set(locs).size).toBe(locs.length);
     expect([...locs].sort((a, b) => a.localeCompare(b))).toEqual(locs);
+  });
+});
+
+describe("the heart and the pickup (wave 26)", () => {
+  it("are on the palette, with no label, a pickup with its item", () => {
+    expect(PROP_KINDS).toContain("heart");
+    expect(PROP_KINDS).toContain("pickup");
+    expect(PROP_PALETTE.map((k) => k.kind)).toEqual([...PROP_KINDS]);
+    expect(propDefaults("heart").label).toBeUndefined();
+    expect(propDefaults("pickup")).toMatchObject({ item: DEFAULT_PICKUP_ITEM });
+    expect(propDefaults("pickup").label).toBeUndefined();
+    for (const kind of ["heart", "pickup"] as const) {
+      const r = addProp(TWO_ROOMS(), kind, "f", [5.5, 1])!;
+      expect(r.id.startsWith(kind)).toBe(true);
+      expect(validateHouse(r.house).problems).toEqual([]);
+    }
+  });
+
+  it("a box made a pickup gains the item and loses its label; made a box again, it loses the item", () => {
+    const h = addProp(TWO_ROOMS(), "box", "f", [2.5, 1])!; // clear of the duck spot and the spawn
+    let next = patchProp(h.house, h.id, { label: "CRATE" });
+    next = patchProp(next, h.id, { kind: "pickup" });
+    let p = next.props.find((x) => x.id === h.id)!;
+    expect(p.item).toBe(DEFAULT_PICKUP_ITEM);
+    expect("label" in p).toBe(false);
+    expect(validateHouse(next).problems).toEqual([]);
+    next = patchProp(next, h.id, { item: "codex" });
+    expect(next.props.find((x) => x.id === h.id)!.item).toBe("codex");
+    next = patchProp(next, h.id, { item: undefined }); // never without one
+    expect(next.props.find((x) => x.id === h.id)!.item).toBe(DEFAULT_PICKUP_ITEM);
+    next = patchProp(next, h.id, { kind: "box" });
+    p = next.props.find((x) => x.id === h.id)!;
+    expect("item" in p).toBe(false);
+    expect(validateHouse(next).problems).toEqual([]);
+  });
+
+  it("a heart refuses a label from the inspector too", () => {
+    const h = addProp(TWO_ROOMS(), "heart", "f", [5.5, 1])!;
+    const next = patchProp(h.house, h.id, { label: "HEART" });
+    expect("label" in next.props.find((x) => x.id === h.id)!).toBe(false);
+    expect(validateHouse(next).problems).toEqual([]);
+  });
+
+  it("edits the moment's signal: its own, back to the default when blank or equal to it", () => {
+    const h = addProp(TWO_ROOMS(), "heart", "f", [5.5, 1])!;
+    let next = patchProp(h.house, h.id, { signal: "  heart found  " });
+    let p = next.props.find((x) => x.id === h.id)!;
+    expect(p.signals).toEqual({ reached: "heart found" });
+    expect(momentSignalOf(p)).toEqual({ key: "reached", own: "heart found", fallback: HEART_SIGNAL });
+    expect(validateHouse(next).problems).toEqual([]);
+    next = patchProp(next, h.id, { signal: HEART_SIGNAL });
+    expect("signals" in next.props.find((x) => x.id === h.id)!).toBe(false);
+    next = patchProp(next, h.id, { signal: "x" });
+    next = patchProp(next, h.id, { signal: "" });
+    expect("signals" in next.props.find((x) => x.id === h.id)!).toBe(false);
+    // A pickup's key is `taken`.
+    const k = addProp(TWO_ROOMS(), "pickup", "f", [1, 1])!;
+    p = patchProp(k.house, k.id, { signal: "grabbed" }).props.find((x) => x.id === k.id)!;
+    expect(p.signals).toEqual({ taken: "grabbed" });
+    expect(momentSignalOf({ ...p, kind: "box" })).toBeNull();
+  });
+
+  it("a kind change drops the signal keys the new kind doesn't take; a heart made King gets his defaults", () => {
+    const h = addProp(TWO_ROOMS(), "heart", "f", [5.5, 1])!;
+    let next = patchProp(h.house, h.id, { signal: "beat" });
+    next = patchProp(next, h.id, { kind: "pickup" });
+    let p = next.props.find((x) => x.id === h.id)!;
+    expect("signals" in p).toBe(false);
+    expect(validateHouse(next).problems).toEqual([]);
+    next = patchProp(patchProp(h.house, h.id, { signal: "beat" }), h.id, { kind: "king" });
+    p = next.props.find((x) => x.id === h.id)!;
+    expect(p.signals).toEqual(propDefaults("king").signals);
+    // A King made a heart keeps none of his.
+    const king = withKing();
+    const id = king.props.find((x) => x.kind === "king")!.id;
+    next = patchProp(king, id, { kind: "heart" });
+    p = next.props.find((x) => x.id === id)!;
+    expect(p.signals).toBeUndefined();
+    expect(p.hp).toBeUndefined();
+    expect("label" in p).toBe(false);
+    expect(validateHouse(next).problems).toEqual([]);
+  });
+
+  it("the show maps' heart and disk survive the inspector unchanged", () => {
+    const show = SHOW();
+    for (const id of ["trabolta-heart", "virus-disk"]) {
+      const before = show.props.find((p) => p.id === id)!;
+      const after = patchProp(show, id, { color: before.color }).props.find((p) => p.id === id)!;
+      expect(after).toEqual(before);
+    }
   });
 });
