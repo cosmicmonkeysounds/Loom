@@ -445,8 +445,8 @@ tolerance: metres, and m² for orientations).
   structure: every LOCATION has a room, the
   tent (The Internet: the spawn, the station mats, the `tent` terminal) is
   an indoor room in a notched backyard, the Server Room has a door and no
-  duck. Since wave 26 the Server Room holds Trabolta's heart (`heart` prop
-  `trabolta-heart`) and the Hard Drive the virus disk (`pickup` prop
+  duck. Since wave 26 the Server Room holds Trabolta's heart (a `heart`
+  prop) and the Hard Drive the virus disk (`pickup` prop
   `virus-disk`, `item: "virus"`); neither has a label or `signals`, and
   `house/test/show.test.ts` keeps the disk ≥ 2 m from every duck spot and
   clear of every trail on both maps. Edit it with the **map editor**
@@ -976,12 +976,13 @@ Internet keeps you — your phone says what happens next.*, progress
 back to scan. A marked, not-captured program reads *Marked program
 detected* / *STATUS: MARKED — marked for reinstallation*, and the scan
 screen lists them under *Marked for reinstallation*; one a director
-restricted without a mark reads *Program held by a director*. An unmarked
+restricted without a mark reads *Program held* / *STATUS: RESTRICTED —
+held, not marked* (it never says who holds it). An unmarked
 program (`eligible` false; a pre-wave-16 server's row: neither captured
 nor restricted) is never a quick pick; scanned or typed, its card reads
 *Program not marked* / *STATUS: healthy — not marked for reinstallation*
-with *Not marked for reinstallation — until the night is over, only a
-marked program may play.*, and Play here and every headset button are
+with *Not marked for reinstallation.* (`NOT_MARKED`; it states no rule,
+wave 26 G2), and Play here and every headset button are
 disabled. The
 server's 409 for one (a race) reads the same line (`beginErrorText` in
 `program.ts`).
@@ -1091,12 +1092,18 @@ begin, the game) from source through the `@loom/reinstall` alias, in a
 **shadow root** with its own React root (`pane.tsx`) and this stylesheet
 re-scoped (`scope-css.ts`: `:root` → `:host`, `html, body, #root` / `body`
 → `.ri-root`; an iframe is refused by `frame-ancestors 'none'`). Between
-walks it is a terminal: the idle show, the scan box, the story's slides,
-cutscenes, moments and overlays, and the world view beside the show while
-someone walks on a headset. The station's screens (`session.ts`, pure):
-**idle** (the quick picks are only the programs in the Internet — never
-the marked, whose names are the Antivirus' list — and a `tablet_*` cue's
-card, *Setup is preparing to reinstall a program*, naming nobody) →
+walks it is a scan kiosk (wave 26, T3; `ReinstallTerminal.tsx`): a centred
+Reinstallation Wizard card with the live camera, the typed field and the
+quick picks as 48 px buttons, over the idle show as a quiet, dimmed
+backdrop that never lands a window on the card. It takes no story slide,
+countdown corner or Y2K clock; its overlays, beat cutscenes and the
+glitch still play. It draws no world (the card's status bar only counts
+who is reinstalling; the walkers are the TV's and the walls' to show),
+sends no camera feed and has no voice link. The station's screens
+(`session.ts`, pure): **idle** (the quick picks are only the programs in
+the Internet — never the marked, whose names are the Antivirus' list —
+and a `tablet_*` cue is a status line in the card, *Setup is preparing to
+reinstall a program*, naming nobody, never a modal over the scanner) →
 **checking** (the candidates) → **refused** (healthy or director-held: the
 NOT MARKED card, nothing reaches the story) | **confirm** (already walking
 on a headset: play here instead?) | **flow** (`start: "auto"`: straight to
@@ -1384,9 +1391,13 @@ The world view (`terminal/src/world/`) renders through `@loom/house/three`
 with one camera, cut by a pure director (`world/director.ts`): **mount**
 (the camera at the terminal's spot, looking along its yaw/pitch, with the
 spot's *vertical* `fov` or `DEFAULT_SPOT_FOV` — a window into the virtual
-copy of this very room) while a player is in the terminal's room; else
-**follow** (over the shoulder of the most recently active player, with
-their room named); a corner **mini-map** of the floor with every player's
+copy of this very room) for every placed terminal, always: since wave 26
+a linked wall shows the world only while its room is occupied (above),
+so it always mounts; **follow** (over the shoulder of the most recently
+active player, with their room named; a find wins) is only for an
+unplaced terminal, such as a house-wide `mirror` with no `spot`; **orbit**
+(a slow circle of the spawn room) for an unplaced one with nobody
+playing; a corner **mini-map** of the floor with every player's
 dot and the terminal's cone `horizontalFov` wide; a `duck` frame moves
 that player's unfound duck on screen; name tags over ghosts; a banner "REINSTALLATION IN
 PROGRESS · <name> · <room>"; a celebration on `found` (a kept find —
@@ -1617,8 +1628,7 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   tiles; a card closes when its program leaves the list, and every return
   to the lobby clears it. The tablet's *Send to headset* lands whatever the
   view. A begin 409 `not marked for reinstallation` flashes *Not marked for
-  reinstallation — until the night is over, only a marked program may
-  play.*; a 404 *Nobody has that pass.*; wave 26: to its left, in every
+  reinstallation.*; a 404 *Nobody has that pass.*; wave 26: to its left, in every
   view, the **MICROPHONE** box — what the mic is doing and what to do
   about it (`VoiceLink.lobby_text`), **TEST MIC** (the mic open with no
   session and no uplink, a level meter, closing itself after 30 s or when
@@ -1654,8 +1664,8 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
 - **Not proven on hardware** (wave 26): whether Horizon OS has a TTS voice
   (without one the headset only captions) and whether the Quest's mic
   delivers real samples. The device check (HW-TENT-07) settles both: the
-  lobby's TEST MIC, and `tools/quest.sh logs` for the `reinstall-vr: mic —`
-  lines.
+  lobby's TEST MIC, `tools/quest.sh logs` for the `reinstall-vr: mic —`
+  lines, and a game line spoken aloud, not only captioned.
 - **Editor runs** (wave 19): F5 with no arguments reaches SET UP THIS
   HEADSET (then the tiles, once `user://station.json` holds a passcode)
   with no script errors; the OpenXR loader's "no runtime" errors and

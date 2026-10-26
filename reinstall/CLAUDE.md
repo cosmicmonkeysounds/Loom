@@ -122,7 +122,8 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   listed in `core/examples/trapped-in-the-internet/SIGNOFF-w26.md`.
 - **Quest audio is unproven on hardware.** Whether Horizon OS has a TTS
   voice and whether the Quest mic gives real samples is checked on the
-  device (HW-TENT-07): the lobby's TEST MIC and `tools/quest.sh logs`.
+  device (HW-TENT-07): the lobby's TEST MIC, `tools/quest.sh logs`, and a
+  game line spoken aloud, not only captioned.
   Re-export and sideload after the server ships, then check each lobby's
   build stamp.
 
@@ -132,3 +133,11 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   (test-pinned by `web/test/help-docs.test.ts` and `lights-help.test.ts`).
 - The player's guide: `docs/help/play/11-reinstallation.md`.
 - Show devices and kiosk flags: `docs/trapped/kiosk.md`.
+- Wave 26: `docs/loom-w26-contract.md` (C5 the house API, C6 the moment
+  route's wire shapes, C12 the shared copy, C14 the deploy order and old
+  clients).
+- The void, the heart and the virus for staff:
+  `docs/help/play/19-house-workings.md` (performer-only; the guests' help
+  never describes them).
+- Setting up a headset: `docs/help/authoring/48-terminal-setup.md` (A
+  headset).
