@@ -240,7 +240,8 @@ src/
   widgets.tsx · widgets-fact.tsx   show-card registry (captcha, image, poll, tutorial, pass, fact, answer)
   wallet.tsx · wallet-sheets*.tsx  the Wallet room and its sheets
   director.tsx           director phone (lazy)
-  help.tsx · help-lazy.tsx         Help window over docs/help/play (lazy)
+  help.tsx · help-lazy.tsx         guests' Help window over docs/help/play (lazy)
+  help-staff.tsx                   the performers' Help (+ role: performer articles)
   chat.tsx · guest.tsx · performer.tsx · session.ts · threads.ts   barrels for pre-wave-13 names
 public/                  sw.js (push only), manifest.webmanifest, pictures/ (Trabolta's two SVGs)
 scripts/first-load.mjs   the 148 kB first-load gate
@@ -256,11 +257,17 @@ Play imports a few dependency-free core modules **by relative path**
 `@loom/core` is not a package dependency. Keep those core files free of
 Node imports, or the play build breaks.
 
-Help works the same way: `help.tsx` bundles `../../docs/help/play/*.md`
-with `import.meta.glob(…, ?raw)` and parses them with
-`docs/help/helpdoc.ts`. Editing an article there updates Help on the next
-build. `test/help.test.ts` checks frontmatter, cross-links and search
-entry points (and reads `play/07-performers.md`).
+Help works the same way: `help.tsx` bundles the guest articles of
+`../../docs/help/play/*.md` with `import.meta.glob(…, ?raw)` and parses
+them with `docs/help/helpdoc.ts`. The `role: performer` articles (07, 13,
+14, 19) are left out of that glob and bundled by `help-staff.tsx`
+(`articlesFor`, `StaffHelpSheet`), which only the booth and the director
+import, so a guest never downloads them (wave 26). A new performer-only
+article goes in both globs; `test/help-chunks.test.ts` fails until it
+does. Editing an article updates Help on the next build.
+`test/help.test.ts` checks frontmatter, cross-links and search entry
+points (and reads `play/07-performers.md`), and enforces the G2 ban list
+on guest articles.
 
 ## Conventions
 

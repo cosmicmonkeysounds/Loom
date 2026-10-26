@@ -42,7 +42,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 |---|---|
 | `src/main.tsx`, `src/app.tsx` | boot; the screen machine: setup → asleep (idle show) → awake → connecting → piloting; per-view routing and lazy chunks |
 | `src/config.ts` | `TerminalConfig`, `VIEWS` / `VIEW_INFO`, URL hints (`hintsFromSearch`, `withoutSecrets`), `provision` / `connect`, `roomOf`, `tvRoomOf` |
-| `src/Setup.tsx`, `src/setup-map.ts` | the two-step setup (passcode, tap a map terminal); `followMap` / `followVoice` re-read the map entry on boot |
+| `src/Setup.tsx`, `src/setup-map.ts` | the two-step setup (passcode, tap a map terminal); `followMap` / `followVoice` re-read the map entry on boot; `linkConfig` (a `?code=` link: `urlConfig` + `withViewDefaults`, so a spot-only TV link speaks at 0.92) |
 | `src/screen.ts` | the screen-state poll + its types (`ScreenState`, `night`, `room`, `king`, `results`, `moments`, `spot`); `voice=`/`room=` + `after=` + `talk=`/`said=`; `useScreenState` paces with `PollPacer` and exposes `pollNow` |
 | `src/health.ts` | the heartbeat keys (`deviceQuery`): `ver audio vis fs ann mic bat` + door `door dlv dft dwn` + bay `pb pbc pbx pft` |
 | `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides; the glitch takeover (`glitchLayer`, `GlitchTakeover`, `coverOf`: wave 26) |
@@ -119,8 +119,11 @@ counts as busy (piloting) during one. Every view takes the glitch.
   shows the world (pane, or full screen asleep) only while `spot.here > 0`
   (the house-wide rule only when the server sends no `here`), latched 3 s;
   no spot or `reinstall`: never; `mirror` / `shadow`: house-wide.
-  `watchWhileAsleep(state, view, room, spot)`. The TV's gate is the voice
-  lane's `Tv.tsx`: `useRoomLinked(state?.spot, inSimulation)`.
+  `watchWhileAsleep(state, view, room, spot)`. The TV's world pane gates
+  on `useRoomLinked(state?.spot, inSimulation)` (`Tv.tsx`). Every
+  `SpeechQueue` takes `gapsFor(config)`, and the room terminal's
+  `LinePlayer` captions on start like the TV's
+  (`test/w26-integration.test.ts`).
 - **The tent (T3).** A centred Reinstallation Wizard card: the camera,
   the typed field (`TypedFallback` `focus` / `scope` / `clearOnPick`: it
   takes the focus back after any tap that leaves it outside the card,
