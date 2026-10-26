@@ -92,7 +92,7 @@
 import type { ShowClock } from "../../src/show-clock.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { KING_SIGNALS, type KingState } from "@loom/house";
+import { ESCAPE_SIGNAL, HEART_SIGNAL, KING_SIGNALS, PICKUP_SIGNAL, type KingState } from "@loom/house";
 
 import type { Sim } from "../../src/runtime/sim/index.ts";
 import type { SimModel } from "../../src/runtime/sim/model.ts";
@@ -470,7 +470,7 @@ export const DEVICE_MOMENT_SIGNALS: readonly string[] = [...Object.values(KING_S
  *  the machinery, G2). The same strings as `@loom/house`'s `ESCAPE_SIGNAL`,
  *  `HEART_SIGNAL` and `PICKUP_SIGNAL` (house lane, wave 26 Stage A); a test
  *  pins them equal once the house exports them. */
-export const GAME_MOMENT_SIGNALS: readonly string[] = ["simulation escape attempt", "simulation heart reached", "simulation pickup taken"];
+export const GAME_MOMENT_SIGNALS: readonly string[] = [ESCAPE_SIGNAL, HEART_SIGNAL, PICKUP_SIGNAL];
 
 /** Never a moment: a checkmate (the story tells only the winner and
  *  `# hosts` — a public one would hint who now holds the door code). Folded,
