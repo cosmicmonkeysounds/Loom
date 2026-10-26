@@ -250,5 +250,9 @@ describe("wave 26 G2: the guest guide never explains the machinery", () => {
     // The reserve's buttons are phone controls a featured program (a guest)
     // may hold, so the guest guide explains them.
     for (const q of ["stimulus", "grant", "freeze"]) expect(top(q), q).toBe("wallet");
+    // B1: a guest calls BINGO from the phone.
+    expect(top("bingo")).toBe("mission");
+    expect(searchHelp(guest, "call bingo")[0]?.article.slug).toBe("mission");
+    expect(guest.find((a) => a.slug === "mission")!.plain).toContain("🎱 bingo!");
   });
 });
