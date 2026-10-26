@@ -24,6 +24,14 @@
 //! server sends no King state: then he just stands, with no ⚔. Ghosts wear
 //! the guest's profile picture (`/api/avatar/<key>`, the `avatar` frame).
 //!
+//! The moments (wave 26, C6, `moments.ts`): out through an exterior door onto
+//! the outside ground and `ESCAPE_M` into the void, a jump scare, the escape
+//! posted and a teleport back to the spawn whatever the answer (R4); in
+//! Trabolta's heart's room once the King has fallen, the heart (R6); within
+//! reach of a floppy disk, the pickup (R7). The story's lines in a moment's
+//! answer are captioned and spoken in-game (`lines.ts`), the mic held while
+//! they play. The camera feeds follow the player's presence room (C7).
+//!
 //! With the voice link on (`config.voice`, wave 19, `voice.ts`) the terminals
 //! near the player are heard at their screens and the player's mic (opened
 //! in the Play here tap) on the terminals near them; M / the 🎤 button mutes.
@@ -32,11 +40,11 @@
 
 import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
-import { buildWalls, pathLength, spaceOf, toSpace, yawFromSpace, yawToSpace } from "@loom/house";
-import type { Assignment, DuckSpot, HouseMap, KingState, PlayerPose, PlayerState, Prop, SpatialFrame, Vec3 } from "@loom/house";
+import { buildWalls, heartProps, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, yawFromSpace, yawToSpace } from "@loom/house";
+import type { Assignment, DuckSpot, HouseMap, KingState, PlayerPose, PlayerState, Prop, Spawn, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
-import { fetchHouse, postEnd, postFound, postKingHit, postPose, streamProbe, streamUrl, type FoundAnswer } from "../api.ts";
+import { fetchHouse, postEnd, postFound, postKingHit, postMoment, postPose, streamProbe, streamUrl, type FoundAnswer, type MomentLine, type MomentReply } from "../api.ts";
 import { CamFeeds } from "./cams.ts";
 import { createVoiceSink, earsFor, micSourceOf, stopStream, VoiceLink, type VoiceHudState } from "./voice.ts";
 import { applyFrame, avatarUrl, duckToAdopt, houseVersionOf, kingOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
@@ -60,6 +68,8 @@ import {
 } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
+import { deviceSpeaker, LinePlayer } from "./lines.ts";
+import { escapeDue, escapeStep, heartStep, PICKUP_NOTICE, pickupStep, SCARE_MS, SCARE_WAIT_MS } from "./moments.ts";
 import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsOptions, type PhysicsWorld } from "./physics.ts";
 import { NoRenderer } from "./no-start.ts";
 import { PosePump } from "./pump.ts";
@@ -72,6 +82,10 @@ const QUACK_RANGE = 7;
 /** Start looking a little down, so the trail on the floor is in view. */
 const START_PITCH = -8;
 const DEG = Math.PI / 180;
+/** While a line plays, the mic is held this far ahead, every frame (ms). */
+const SPEAKING_HOLD_MS = 250;
+
+const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 export interface HudState {
   room: string;
@@ -102,6 +116,10 @@ export interface HudState {
   king: KingHud | null;
   /** The voice link, null when it is off on this device. */
   voice: VoiceHudState | null;
+  /** The void's jump scare is on screen (wave 26, R4). */
+  scare: boolean;
+  /** The line being said in-game (a moment's answer, wave 26), null when none. */
+  caption: MomentLine | null;
 }
 
 
@@ -231,6 +249,36 @@ export class Game {
   private trailHouse: HouseMap;
   private king: King | null = null;
   private hitQueued = false;
+  // The moments (wave 26, C6).
+  /** The player's presence room (`presenceRoom`, re-read with the trail): the camera feeds follow it (C7). */
+  private presence: string | null = null;
+  /** An escape is under way (the scare, then the teleport): no input, no other moment. */
+  private escaping = false;
+  /** The jump scare is on screen. */
+  private scare = false;
+  /** Trabolta's heart on this map (the first `heart` prop), null when none. */
+  private heartProp: Prop | null = null;
+  /** The heart is done with for this session: heard (tonight), or this server can't. */
+  private heartDone = false;
+  /** Asked on this entry into his room (the next entry asks again). */
+  private heartAsked = false;
+  private heartBusy = false;
+  private heartRetryAt = 0;
+  private heartRefusals = 0;
+  /** The floppy disks on this map (`pickup` props). */
+  private pickups: Prop[] = [];
+  /** Disks this program has taken (the assignment's `picked`, then this walk's). */
+  private readonly taken = new Set<string>();
+  /** Disks this server can't hand out (no route, no such prop). */
+  private readonly pickupGivenUp = new Set<string>();
+  private pickupBusy = false;
+  private readonly pickupRetryAt = new Map<string, number>();
+  private pickupRefusals = 0;
+  /** In-game speech (`lines.ts`): the caption on screen and whether a line plays. */
+  private caption: MomentLine | null = null;
+  private speaking = false;
+  private speaker: { speak(text: string): Promise<void>; stop(): void } | null = null;
+  private lines: LinePlayer | null = null;
   /** Held by the host (`hold`): no input, no leash, the pump still alive. */
   private held = false;
   /** This visit's one hit is spent (the assignment's `kingHit`, a 200, or the server's "already hit"). */
@@ -269,8 +317,11 @@ export class Game {
     const root = spaceGroup(spaceOf(opts.house, "web"));
     this.root = root;
     this.scene.add(root);
-    this.house = buildHouseScene(opts.house, { walls });
+    this.house = buildHouseScene(opts.house, { walls, ground: true, pickups: true });
     root.add(this.house.root);
+    for (const id of opts.assignment.picked ?? []) this.taken.add(id);
+    this.heartDone = opts.assignment.heartHeard === true;
+    this.bindMoments();
     this.bindKing();
     this.duck = createDuck();
     this.duckSpot = opts.assignment.duck;
@@ -285,6 +336,20 @@ export class Game {
       send: (body) => postPose(opts.base, opts.assignment.token, body),
       now: () => performance.now(),
       onOver: (status) => this.end({ kind: "over", reason: status === 410 ? "This session is over." : "The system restarted — scan the pass again." }),
+    });
+    const speaker = deviceSpeaker();
+    this.speaker = speaker;
+    this.lines = new LinePlayer({
+      speak: (text) => speaker.speak(text),
+      show: (line) => {
+        this.caption = line;
+        this.lastHudAt = Number.NEGATIVE_INFINITY;
+      },
+      sleep: wait,
+      speaking: (on) => {
+        this.speaking = on;
+        if (on) this.voice?.holdFor(SPEAKING_HOLD_MS);
+      },
     });
   }
 
@@ -310,7 +375,7 @@ export class Game {
       base: this.o.base,
       token: this.o.assignment.token,
       sink: (spot, source) => void this.house.setTerminalFeed(spot, source),
-      where: () => ({ terminals: this.map.terminals, at: this.body.p }),
+      where: () => ({ terminals: this.map.terminals, at: this.body.p, room: this.presence }),
     });
     this.voice = this.startVoice();
     this.syncFeeds();
@@ -412,6 +477,8 @@ export class Game {
     this.stream?.close();
     this.feeds?.dispose();
     this.voice?.stop();
+    this.lines?.stop();
+    this.speaker?.stop();
     this.resizeObserver?.disconnect();
     for (const c of this.cleanups) c();
     for (const g of this.ghosts.values()) g.avatar.dispose();
@@ -540,7 +607,7 @@ export class Game {
   private frame(now: number, dt: number): void {
     const playing = this.phase === "playing" || this.phase === "finding";
     const sticks = this.o.sticks();
-    const input = playing && !this.held ? combineInput({ keys: this.keys, left: sticks.left, right: sticks.right, drag: this.drag, arrowsTurn: this.o.arrowsTurn }) : NO_INPUT;
+    const input = playing && !this.held && !this.escaping ? combineInput({ keys: this.keys, left: sticks.left, right: sticks.right, drag: this.drag, arrowsTurn: this.o.arrowsTurn }) : NO_INPUT;
     this.drag = [0, 0];
     if (isActive(input)) this.leash.touch(now);
     this.body = move(this.body, input, dt, this.world);
@@ -553,12 +620,15 @@ export class Game {
         // Held open for a player behind (or in) his door: shut once they are clear.
         if (this.doorOpen && this.kingState?.fallen !== true) this.refreshDoor();
         this.refreshTrail(now);
+        this.presence = presenceRoom(this.map, this.body.p, this.presence);
       }
       // Held (an overlay over the game): Gerald keeps quiet under it too.
       if (!this.held) this.maybeQuack(now);
-      if (this.kingProp !== null && this.phase === "playing") this.tickKing(now);
+      if (this.kingProp !== null && this.phase === "playing" && !this.escaping) this.tickKing(now);
+      // The void, the heart and the disks (never under an overlay, never mid-escape).
+      if (this.phase === "playing" && !this.held && !this.escaping) this.tickMoments(now);
       // Held (an overlay over the game): nobody can see Gerald, so no find.
-      if (this.phase === "playing" && this.duck.state === "idle" && !this.held) {
+      if (this.phase === "playing" && this.duck.state === "idle" && !this.held && !this.escaping) {
         if (!withinReach(this.map, this.body.p, this.duckSpot)) {
           this.foundRefusals = 0;
           // Right under him but he sits higher than the server allows (a map
@@ -582,6 +652,8 @@ export class Game {
     this.camera.rotation.set(this.body.pitch * DEG, yawToSpace(space, this.body.yaw) * DEG, 0);
     // The ears, in house metres (the voices hang there too).
     this.voice?.listen(eyeOf(this.body), this.body.yaw, this.body.pitch);
+    // The game is speaking: the terminals must never hear it back.
+    if (this.speaking) this.voice?.holdFor(SPEAKING_HOLD_MS);
 
     this.duck.update(dt);
     this.trail.update(dt);
@@ -660,6 +732,8 @@ export class Game {
       notice: this.notice?.text ?? null,
       king: this.kingHud(),
       voice: this.voiceHud(),
+      scare: this.scare,
+      caption: this.caption,
     });
   }
 
@@ -685,10 +759,13 @@ export class Game {
 
   /** The guarded doors stay shut and the King blocks, unless his door is open here. */
   private physicsOptions(): PhysicsOptions {
+    // The outside ground (wave 26, R4): an exterior door leads out into the void.
+    const ground = outsideGround(this.map);
+    const out: PhysicsOptions = ground !== null ? { ground } : {};
     const id = this.kingProp?.id;
-    if (id === undefined) return {};
-    if (this.doorOpen) return { omitProps: new Set([id]) };
-    return { closedDoors: new Set(this.map.doors.filter((d) => d.guard === id).map((d) => d.id)) };
+    if (id === undefined) return out;
+    if (this.doorOpen) return { ...out, omitProps: new Set([id]) };
+    return { ...out, closedDoors: new Set(this.map.doors.filter((d) => d.guard === id).map((d) => d.id)) };
   }
 
   /** A King state that is about this map's King, else null. */
@@ -829,6 +906,186 @@ export class Game {
     }
   }
 
+  // --- the moments (wave 26, C6) -------------------------------------------
+
+  /** This map's heart and disks (after a build / remap), the taken disks hidden. */
+  private bindMoments(): void {
+    this.heartProp = heartProps(this.map)[0] ?? null;
+    this.heartAsked = false;
+    this.pickups = pickupProps(this.map);
+    for (const id of this.taken) this.house.setPickupTaken(id, true);
+  }
+
+  private tickMoments(now: number): void {
+    if (escapeDue(this.map, this.body.p)) {
+      void this.escape();
+      return;
+    }
+    this.tickHeart(now);
+    this.tickPickups(now);
+  }
+
+  /**
+   * Out in the void (R4): the jump scare, the escape posted (the newest pose
+   * flushed first), and after `SCARE_MS` a teleport back to the spawn —
+   * whatever the server answered, or if it said nothing within
+   * `SCARE_WAIT_MS`. A dead session ends the game instead. Then the story's
+   * lines, if the escape counted.
+   */
+  private async escape(): Promise<void> {
+    if (this.escaping) return;
+    this.escaping = true;
+    this.scare = true;
+    this.keys.clear();
+    this.hitQueued = false;
+    this.o.sfx.scare();
+    this.voice?.holdFor(SCARE_MS);
+    const started = performance.now();
+    this.leash.touch(started);
+    this.emitHud(started);
+    const reply = this.postEscape();
+    // The scare holds SCARE_MS, and as long as the answer takes up to SCARE_WAIT_MS.
+    const [answer] = await Promise.all([Promise.race([reply, wait(SCARE_WAIT_MS).then(() => null)]), wait(SCARE_MS)]);
+    const step = escapeStep(answer);
+    this.scare = false;
+    this.escaping = false;
+    if (this.phase === "ended") return;
+    if (step.over) {
+      this.end({ kind: "over", reason: "This session is over." });
+      return;
+    }
+    this.teleport(step.spawn);
+    this.emitHud(performance.now());
+    if (answer === null) {
+      // The answer came late: its lines still play; a dead session still ends.
+      void reply.then((late) => {
+        const s = escapeStep(late);
+        if (this.phase === "ended") return;
+        if (s.over) this.end({ kind: "over", reason: "This session is over." });
+        else void this.lines?.play(s.lines);
+      });
+    } else void this.lines?.play(step.lines);
+  }
+
+  private async postEscape(): Promise<MomentReply> {
+    await this.pump.flush();
+    return postMoment(this.o.base, this.o.assignment.token, { kind: "escape" });
+  }
+
+  /** Back to the spawn (the server's word on it, else the map's), facing its way. */
+  private teleport(spawn: Spawn | null): void {
+    const at = spawn ?? this.map.spawn;
+    this.body = { ...spawnBody(this.map, at), pitch: START_PITCH };
+    this.distHistory = [];
+    this.lastTrailAt = Number.NEGATIVE_INFINITY;
+    this.presence = null;
+    this.perchedSaid = false;
+    this.leash.touch(performance.now());
+    this.pump.set(this.pose());
+    void this.pump.tick();
+  }
+
+  /** In Trabolta's heart's room, once the King has fallen (or the map has none): ask once per entry (R6). */
+  private tickHeart(now: number): void {
+    const heart = this.heartProp;
+    if (heart === null || this.heartDone || this.heartBusy) return;
+    // Sealed while the King stands — and while the server hasn't said (an old server).
+    const open = this.kingProp === null || this.kingState?.fallen === true;
+    if (!open || !heartReached(this.map, this.body.p, heart)) {
+      this.heartAsked = false;
+      this.heartRefusals = 0;
+      return;
+    }
+    if (this.heartAsked || now < this.heartRetryAt) return;
+    this.heartAsked = true;
+    void this.reachHeart(heart);
+  }
+
+  private async reachHeart(heart: Prop): Promise<void> {
+    this.heartBusy = true;
+    try {
+      if (!(await this.pump.flush())) return;
+      const reply = await postMoment(this.o.base, this.o.assignment.token, { kind: "heart", prop: heart.id });
+      if (this.phase === "ended") return;
+      const step = heartStep(reply, this.heartRefusals);
+      switch (step.kind) {
+        case "speak":
+          this.heartDone = true;
+          void this.lines?.play(step.lines);
+          return;
+        case "done":
+          this.heartDone = true;
+          return;
+        case "reenter":
+          return;
+        case "retry":
+          if (reply.kind === "paused") this.heartRefusals += 1;
+          this.heartAsked = false;
+          this.heartRetryAt = performance.now() + step.ms;
+          return;
+        case "over":
+          this.end({ kind: "over", reason: "This session is over." });
+          return;
+      }
+    } finally {
+      this.heartBusy = false;
+    }
+  }
+
+  /** Within reach of a disk not yet taken: ask for it (R7). */
+  private tickPickups(now: number): void {
+    if (this.pickupBusy) return;
+    let near = false;
+    for (const prop of this.pickups) {
+      if (this.taken.has(prop.id) || this.pickupGivenUp.has(prop.id)) continue;
+      if (!pickupReach(this.map, this.body.p, prop)) continue;
+      near = true;
+      if ((this.pickupRetryAt.get(prop.id) ?? 0) > now) continue;
+      void this.pickUp(prop);
+      return;
+    }
+    if (!near) this.pickupRefusals = 0;
+  }
+
+  private async pickUp(prop: Prop): Promise<void> {
+    this.pickupBusy = true;
+    try {
+      if (!(await this.pump.flush())) return;
+      const reply = await postMoment(this.o.base, this.o.assignment.token, { kind: "pickup", prop: prop.id });
+      if (this.phase === "ended") return;
+      const step = pickupStep(reply, this.pickupRefusals);
+      switch (step.kind) {
+        case "take":
+          this.take(prop.id);
+          this.o.sfx.pickup();
+          this.say(PICKUP_NOTICE, 3000);
+          void this.lines?.play(step.lines);
+          return;
+        case "hide":
+          this.take(prop.id);
+          return;
+        case "retry":
+          this.pickupRefusals += 1;
+          this.pickupRetryAt.set(prop.id, performance.now() + step.ms);
+          return;
+        case "giveUp":
+          this.pickupGivenUp.add(prop.id);
+          return;
+        case "over":
+          this.end({ kind: "over", reason: "This session is over." });
+          return;
+      }
+    } finally {
+      this.pickupBusy = false;
+    }
+  }
+
+  /** A disk is this program's: hidden for good (this walk, and a re-scan's `picked`). */
+  private take(id: string): void {
+    this.taken.add(id);
+    this.house.setPickupTaken(id, true);
+  }
+
   // --- found ---------------------------------------------------------------
 
   private async found(): Promise<void> {
@@ -937,7 +1194,7 @@ export class Game {
 
   private swapMap(house: HouseMap, version: string, incoming?: KingState | null): void {
     const walls = buildWalls(house);
-    const scene = buildHouseScene(house, { walls });
+    const scene = buildHouseScene(house, { walls, ground: true, pickups: true });
     this.house.root.removeFromParent();
     this.house.dispose();
     this.house = scene;
@@ -956,6 +1213,8 @@ export class Game {
     }
     this.kingProp = king;
     this.world = buildPhysicsWorld(house, walls, this.physicsOptions());
+    this.presence = null;
+    this.bindMoments();
     this.bindKing();
     this.lastTrailAt = Number.NEGATIVE_INFINITY;
     // Standing somewhere the new map has no floor for (the shed is a solid
@@ -995,6 +1254,8 @@ export class Game {
   private end(e: GameEnd): void {
     if (this.phase === "ended" || this.phase === "found") return;
     this.phase = "ended";
+    this.lines?.stop();
+    this.speaker?.stop();
     this.pump.stop();
     window.clearInterval(this.pumpTimer);
     this.syncFeeds();

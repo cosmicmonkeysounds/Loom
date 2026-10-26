@@ -161,6 +161,8 @@ describe("createSfx(output) — the game on a host's bus", () => {
       sfx.fanfare();
       sfx.buzz();
       sfx.thud();
+      sfx.scare();
+      sfx.pickup();
       sfx.dispose();
     }).not.toThrow();
   });
@@ -273,6 +275,13 @@ describe("a held frame — no find and no quack under an overlay", () => {
       renderer: { render: () => {} },
       lastHudAt: 1000,
       found,
+      // The moments (wave 26): no heart, no disks; in a room, not in the void.
+      escaping: false,
+      heartProp: null,
+      pickups: [],
+      taken: new Set<string>(),
+      pickupGivenUp: new Set<string>(),
+      pickupRetryAt: new Map<string, number>(),
     });
     (g as unknown as { frame(now: number, dt: number): void }).frame(1000, 0.016);
     return { quack, found, set };

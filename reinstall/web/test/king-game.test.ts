@@ -5,6 +5,7 @@
 //! Driven on a bare Game (no canvas: the methods only touch the fields set
 //! here), with the physics rebuild and the hit route stubbed.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { outsideGround } from "@loom/house";
 import type { KingState, Prop, Vec3 } from "@loom/house";
 import { Game } from "../src/game/engine.ts";
 import { HIT_USED } from "../src/game/fight.ts";
@@ -21,7 +22,7 @@ vi.mock("../src/api.ts", async (orig) => ({
 // A remap rebuilds the scene: a stub one (no canvas here).
 vi.mock("@loom/house/three", async (orig) => ({
   ...(await orig<object>()),
-  buildHouseScene: () => ({ root: { removeFromParent: () => {} }, dispose: () => {}, walls: [], kings: new Map(), showKing: () => {} }),
+  buildHouseScene: () => ({ root: { removeFromParent: () => {} }, dispose: () => {}, walls: [], kings: new Map(), showKing: () => {}, setPickupTaken: () => false }),
   applySpace: () => {},
 }));
 const worlds = vi.hoisted(() => ({ built: [] as unknown[] }));
@@ -197,7 +198,8 @@ describe("the shared bar — everyone's hits, the kneel, the restore", () => {
     g.adoptKing({ ...full, hp: 0, fallen: true }, "Winamp");
     expect(g.doorOpen).toBe(true);
     expect(shown.at(-1)).toEqual([prop.id, { ...full, hp: 0, fallen: true }, true]);
-    expect(worlds.built.at(-1)).toEqual({ omitProps: new Set([prop.id]) });
+    // (+ the outside ground, wave 26 R4: an exterior door leads into the void.)
+    expect(worlds.built.at(-1)).toEqual({ ground: outsideGround(house), omitProps: new Set([prop.id]) });
     expect((g.trailHouse as { doors: Array<{ id: string; guard?: string }> }).doors.find((d) => d.id === door.id)?.guard).toBeUndefined();
     expect(said).toContain("The King kneels. His door stands open.");
     expect(sfx.fanfare).toHaveBeenCalled();
@@ -222,13 +224,13 @@ describe("the shared bar — everyone's hits, the kneel, the restore", () => {
     g.refreshDoor();
     expect(g.doorOpen).toBe(false);
     expect(shown.at(-1)).toEqual([prop.id, full, false]);
-    expect(worlds.built.at(-1)).toEqual({ closedDoors: new Set([door.id]) });
+    expect(worlds.built.at(-1)).toEqual({ ground: outsideGround(house), closedDoors: new Set([door.id]) });
   });
 
   it("a remap with the King down keeps a player on his spot there, as the server does; standing, back to the start", () => {
     const swap = (king: KingState, incoming?: KingState | null) => {
       const { g, said } = game(king, [prop.pos[0], prop.pos[1], prop.pos[2]]);
-      Object.assign(g, { root: { add: () => {} }, distHistory: [], mapVersion: "v1" });
+      Object.assign(g, { root: { add: () => {} }, distHistory: [], mapVersion: "v1", taken: new Set<string>() });
       Object.assign((g as unknown as { house: object }).house, { root: { removeFromParent: () => {} }, dispose: () => {} });
       (g as unknown as { swapMap(h: unknown, v: string, k?: KingState | null): void }).swapMap(THREE_FLOOR(), "v2", incoming);
       return { g, said };

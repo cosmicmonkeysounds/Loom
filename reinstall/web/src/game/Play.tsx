@@ -17,6 +17,7 @@ import { bearingOf, FIND_GERALD, findCopy, findOutcome, HEAT_LABEL, type FindOut
 import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
+import { Scare } from "./Scare.tsx";
 
 export type PlayExit = { kind: "found"; name: string; outcome: FindOutcome } | { kind: "over"; reason: string } | { kind: "idle" } | { kind: "quit" };
 
@@ -203,6 +204,13 @@ export function Play({
           </div>
           {hud.king !== null && <KingActions king={hud.king} onHit={() => game.current?.hit()} />}
           {hud.notice !== null && <div className="hud-notice">{hud.notice}</div>}
+          {hud.caption !== null && (
+            // A line said in-game (wave 26): the display text, never the pronounced
+            // one, and no speaker's name (he may not have been introduced yet).
+            <Window title="Message" icon="💬" className="hud-caption">
+              <p>{hud.caption.text}</p>
+            </Window>
+          )}
           {hud.idleLeft !== null && (
             <div className="hud-idle w98-raised">
               Still there? Move to stay connected — <b>{hud.idleLeft}</b>
@@ -210,6 +218,8 @@ export function Play({
           )}
         </>
       )}
+
+      {hud?.scare === true && found === null && <Scare />}
 
       {helpOpen && found === null && (
         <button className="help-card w98-raised" onClick={() => setHelpOpen(false)}>

@@ -388,6 +388,63 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .hud-idle { position: absolute; left: 50%; top: 56%; transform: translateX(-50%); padding: 0.6em 1em; color: var(--ink); font-family: var(--ui); }
 .hud-idle b { color: var(--bad); }
 
+/* --- in-game lines and the void's scare (wave 26) --------------------------------- */
+
+.hud-caption {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 44px);
+  transform: translateX(-50%);
+  width: min(640px, calc(100vw - 32px));
+  font-family: var(--ui);
+  pointer-events: none;
+}
+.hud-caption p { margin: 0; font-size: clamp(18px, 2.4vw, 24px); line-height: 1.25; color: var(--ink); }
+
+.scare {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+  --phosphor: #ff3a2a;
+  --phosphor-faint: rgba(255, 58, 42, 0.35);
+  --face-hi: #7a1010;
+  --face-lo: #1c0303;
+  --ink: #000;
+  --white: #ffe4dc;
+  --mouth: #120000;
+}
+/* One hard flash, once — never a strobe. */
+.scare-flash { position: absolute; inset: 0; background: #fff; opacity: 0; animation: scare-flash 0.35s ease-out 1 both; pointer-events: none; }
+@keyframes scare-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+.scare-face { width: min(92vw, 92vh); animation: scare-zoom 0.3s ease-out 1 both, scare-shake 0.4s ease-in-out 0.3s infinite; }
+.scare-face .face { width: 100%; height: auto; filter: drop-shadow(0 0 30px #f00); }
+@keyframes scare-zoom { 0% { transform: scale(0.5); } 100% { transform: scale(1.1); } }
+/* 2.5 Hz: under the 3 Hz photosensitivity line, and a move, not a flash. */
+@keyframes scare-shake { 0%, 100% { transform: scale(1.1) translate(0, 0); } 50% { transform: scale(1.1) translate(6px, -4px); } }
+.scare-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+  padding: 0.4em 1.2em;
+  background: #0000aa;
+  color: #fff;
+  font-family: var(--pixel);
+  font-size: clamp(26px, 5vw, 56px);
+  letter-spacing: 0.06em;
+  text-shadow: 3px 0 0 #f0f, -3px 0 0 #0ff;
+  white-space: nowrap;
+}
+.scare-panel span { font-size: 0.45em; letter-spacing: 0.04em; text-shadow: none; opacity: 0.85; }
+
 /* --- the King --------------------------------------------------------------------- */
 
 .king-actions {
@@ -616,6 +673,8 @@ textarea.json { width: 100%; height: 100%; min-height: 320px; resize: none; font
 .problems .saved { margin-top: 0.4em; color: var(--good); }
 
 @media (prefers-reduced-motion: reduce) {
+  .scare-face { animation: none; }
+  .scare-face .face { transform: none; }
   .banner-cd, .banner-duck, .scanner.live .reticle::after, .hud-heat.heat-burning, .egg, .confetti i, .duck-spot.hunted circle { animation: none; }
 }
 

@@ -31,6 +31,7 @@ import { baseOf, type ReinstallConfig } from "./config.ts";
 import type { Sfx } from "./game/audio.ts";
 import { findFlash } from "./game/hud.ts";
 import { requestMic, stopStream } from "./game/voice.ts";
+import { primeSpeech } from "./game/lines.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
 import { beginErrorText, NOT_MARKED, programPitch, programState, programStatus, startingHeading, type Program } from "./program.ts";
 import { firstStep } from "./flow-state.ts";
@@ -134,6 +135,8 @@ export function ReinstallFlow({
 
   const playHere = async () => {
     sfx.resume();
+    // The tap is the gesture the device voice needs for the in-game lines (wave 26).
+    primeSpeech();
     if (config.voice) {
       releaseMic();
       mic.current = requestMic();
