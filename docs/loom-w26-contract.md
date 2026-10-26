@@ -809,7 +809,7 @@ glow). `buildHouseScene` options:
 
 **The show maps** (`house.json`, `house.shed.json`, then `pnpm house:sync`):
 
-- one `heart` prop, id `trabolta-heart`, in room `server-room`: standable,
+- one `heart` prop, id `server-heart`, in room `server-room`: standable,
   centred, off the patch bay and the rack;
 - one `pickup` prop, id `virus-disk`, `item: "virus"`, in `hard-drive` or
   `fan-closet`, on a standable spot. Both rooms hold a duck spot
@@ -1404,8 +1404,10 @@ it. The things that can be old are an un-reloaded terminal tab, a Fully
 Kiosk tablet's cache and a sideloaded Quest APK.
 
 1. **Ship the server first** (`predeploy.sh --vr`, then `ship.sh`). Then
-   `sync-show`, with its reload, before doors. Never sync the wave 26 story
-   onto an older server:
+   `sync-show --replace-maps`, with its reload, before doors: both show
+   maps changed (the heart and disk props, the MAINFRAME label), and
+   without the flag the project's own copy wins. Commit any map edits saved
+   to the project first. Never sync the wave 26 story onto an older server:
    - it refuses the new prop kinds in `house.json`;
    - it folds `screens_glitch` as a 45 s slide named "glitch";
    - it ignores `lock:` and `ack: none`.
@@ -1428,7 +1430,7 @@ Kiosk tablet's cache and a sideloaded Quest APK.
    provisioning. Either re-open the TV's provisioning link (`?code=…`, the
    spot-only `…&spot=desktop-tv` link included: integration I4 applies
    the view defaults after the map's pick, `setup-map.ts` `linkConfig`;
-   `scripts/house-desktop/README.md`) or set Speed to 0.92 in its ⚙.
+   `scripts/house-desktop/README.md`) or set its **pace** to 0.92 in ⚙.
 4. **Re-export and sideload the Quest APK** after the server ships. An old
    APK:
    - never calls `/api/spatial/moment` (no void, heart or pickup on it);

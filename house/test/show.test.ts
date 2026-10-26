@@ -132,7 +132,7 @@ describe.each([
 
   it("puts Trabolta's heart in the Server Room: centred, standable, off the patch bay and the rack, with no label (wave 26)", () => {
     const hearts = house.props.filter((p) => p.kind === "heart");
-    expect(hearts.map((p) => p.id)).toEqual(["trabolta-heart"]);
+    expect(hearts.map((p) => p.id)).toEqual(["server-heart"]);
     const heart = hearts[0]!;
     expect(heart.room).toBe("server-room");
     expect(heart.label).toBeUndefined();

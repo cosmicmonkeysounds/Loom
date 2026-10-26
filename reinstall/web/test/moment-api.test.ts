@@ -17,7 +17,7 @@ function stubFetch(status: number, body: unknown, raw = false): { urls: string[]
 }
 
 const ESCAPE: MomentRequest = { kind: "escape" };
-const HEART: MomentRequest = { kind: "heart", prop: "trabolta-heart" };
+const HEART: MomentRequest = { kind: "heart", prop: "server-heart" };
 const PICKUP: MomentRequest = { kind: "pickup", prop: "virus-disk" };
 const LINES = [
   { from: "Trabolta", text: "First line." },

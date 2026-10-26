@@ -41,7 +41,7 @@ The show's map is `core/examples/trapped-in-the-internet/house.json`,
 drawn from the real house in the map editor (2026-10-20): three floors
 (basement, main, top) plus the backyard with the tent, 17 rooms, 14
 terminal spots, the King guarding the server-room door, Trabolta's heart
-(`trabolta-heart`) in the Server Room and the virus disk (`virus-disk`,
+(`server-heart`) in the Server Room and the virus disk (`virus-disk`,
 `item: "virus"`) in the Hard Drive, over 2 m from every duck spot and off
 every trail (wave 26). Its rain variant
 `house.shed.json` puts The Internet in the shed (the tent spot and the

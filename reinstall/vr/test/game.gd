@@ -326,7 +326,7 @@ func _golden_wave26(name: String, house: Dictionary) -> void:
 ## them), carry no collider and no label; the rules read them.
 func _test_wave26_props() -> void:
 	var house: Dictionary = _read_json("res://house/house.json")
-	var heart := HouseMoment.moment_prop(house, "trabolta-heart", "heart")
+	var heart := HouseMoment.moment_prop(house, "server-heart", "heart")
 	var disk := HouseMoment.moment_prop(house, "virus-disk", "pickup")
 	_check(not heart.is_empty() and not disk.is_empty(), "wave 26: the show map has the heart and the disk")
 	_check(HouseMoment.moment_prop(house, "virus-disk", "heart").is_empty(), "wave 26: a prop is found only by its kind")
@@ -336,7 +336,7 @@ func _test_wave26_props() -> void:
 	_check(HouseMoment.pickup_reach(house, disk["pos"], disk), "wave 26: standing on the disk reaches it")
 	var b := HouseBuilder.new()
 	b.build(house)
-	var hn := b.get_node_or_null("Prop_trabolta-heart")
+	var hn := b.get_node_or_null("Prop_server-heart")
 	var dn := b.get_node_or_null("Prop_virus-disk")
 	# Stage B (vr lane, R6 / R7): the builder draws both — no label, no collider.
 	_check(hn != null and hn.get_node_or_null("Core") != null and hn.get_node_or_null("Front") != null and hn.get_node_or_null("Glow") is OmniLight3D, "wave 26: the heart is a rack with a core, a smoked front and a glow")
@@ -350,12 +350,12 @@ func _test_wave26_props() -> void:
 	b2.build(stripped)
 	_check((b2.get_node("Colliders") as Node).get_child_count() == colliders_before, "wave 26: neither adds a collider")
 	b2.free()
-	_check(not b.heart_shown("trabolta-heart"), "wave 26: the heart is hidden while the King has not fallen (no shared King)")
+	_check(not b.heart_shown("server-heart"), "wave 26: the heart is hidden while the King has not fallen (no shared King)")
 	b.set_king({"id": "cold-lock-king", "hp": 3, "max": 15, "fallen": false})
-	_check(not b.heart_shown("trabolta-heart"), "wave 26: … nor while he stands")
+	_check(not b.heart_shown("server-heart"), "wave 26: … nor while he stands")
 	b.set_king({"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true})
-	_check(b.heart_shown("trabolta-heart") and _near(float(b.heart_node("trabolta-heart").get_meta("height")), 1.7), "wave 26: … and shows once he has fallen")
-	var halo := b.heart_node("trabolta-heart").get_node("Halo") as MeshInstance3D
+	_check(b.heart_shown("server-heart") and _near(float(b.heart_node("server-heart").get_meta("height")), 1.7), "wave 26: … and shows once he has fallen")
+	var halo := b.heart_node("server-heart").get_node("Halo") as MeshInstance3D
 	var halo_mesh := halo.mesh
 	var halo_size := (halo.mesh as QuadMesh).size
 	b.set("_t", 0.09)
@@ -367,14 +367,14 @@ func _test_wave26_props() -> void:
 	_check(not _near(b.pickup_disk("virus-disk").rotation.y, spin0), "wave 26: … and spins")
 	b.set_pickup_taken("virus-disk", true)
 	b.build(house)
-	_check(not b.pickup_shown("virus-disk") and b.heart_shown("trabolta-heart"), "wave 26: a taken disk stays hidden across a rebuild; the heart keeps the King's state")
+	_check(not b.pickup_shown("virus-disk") and b.heart_shown("server-heart"), "wave 26: a taken disk stays hidden across a rebuild; the heart keeps the King's state")
 	b.clear_taken()
 	_check(b.pickup_shown("virus-disk"), "wave 26: clear_taken shows it again")
 	var nok: Dictionary = house.duplicate(true)
 	nok["props"] = (nok["props"] as Array).filter(func(pr: Dictionary) -> bool: return pr["kind"] != "king")
 	b.set_king({})
 	b.build(nok)
-	_check(b.heart_shown("trabolta-heart"), "wave 26: on a map with no King the heart always shows")
+	_check(b.heart_shown("server-heart"), "wave 26: on a map with no King the heart always shows")
 	_check(HouseBuilder.heart_pulse(0.0) == 0.0 and _near(HouseBuilder.heart_pulse(0.09), 1.0) and _near(HouseBuilder.heart_pulse(0.35), 0.65) and HouseBuilder.heart_pulse(1.0) == 0.0 and _near(HouseBuilder.heart_pulse(1.29), 1.0), "wave 26: the beat is the three.js heart's lub-dub every 1.2 s")
 	b.free()
 	# The front door's outside: the void grows past it; the spawn is no void.
@@ -1037,12 +1037,12 @@ func _test_server_link_moment() -> void:
 	_check(tr.count("/api/spatial/pose") == 2, "link moment: poses resume after the answer")
 	# Heart and pickup carry their prop; a pending heart never swallows a pickup.
 	answers.clear()
-	sl.moment("heart", "trabolta-heart")
+	sl.moment("heart", "server-heart")
 	sl.moment("pickup", "virus-disk")
-	sl.moment("heart", "trabolta-heart")
+	sl.moment("heart", "server-heart")
 	pump_step.call()
 	calls = tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/moment"))
-	_check(calls.size() == 1 and calls[0]["body"] == {"kind": "heart", "prop": "trabolta-heart"}, "link moment: a heart with its prop (%s)" % [calls])
+	_check(calls.size() == 1 and calls[0]["body"] == {"kind": "heart", "prop": "server-heart"}, "link moment: a heart with its prop (%s)" % [calls])
 	tr.answer("/moment", 200, {"ok": true, "kind": "heart", "lines": []})
 	pump_step.call()
 	calls = tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/moment"))
@@ -4071,22 +4071,22 @@ func _test_heart_pickup() -> void:
 	var house: Dictionary = got[3]
 	var player := game.player
 	var moments: Array = link.get("moments")
-	var heart_at: Array = HouseMoment.moment_prop(house, "trabolta-heart", "heart")["pos"]
+	var heart_at: Array = HouseMoment.moment_prop(house, "server-heart", "heart")["pos"]
 	var disk_at: Array = HouseMoment.moment_prop(house, "virus-disk", "pickup")["pos"]
 	var hall := [4.5, -2.7, 18.5]
 	link.assignment_received.emit(_assignment(house, "hp-1", true))
 	game._process(0.016)
 	player.teleport(HouseFrames.vec(heart_at), 0.0)
 	game._process(0.016)
-	_check(moments.is_empty() and not game.builder.heart_shown("trabolta-heart"), "heart: no shared King → no heart, no moment")
+	_check(moments.is_empty() and not game.builder.heart_shown("server-heart"), "heart: no shared King → no heart, no moment")
 	link.give_king({"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true})
 	game._process(0.016)
-	_check(moments == [["heart", "trabolta-heart"]] and game.prop_state("trabolta-heart") == "pending", "heart: the King fallen, the heart reached → one heart moment (%s)" % [moments])
+	_check(moments == [["heart", "server-heart"]] and game.prop_state("server-heart") == "pending", "heart: the King fallen, the heart reached → one heart moment (%s)" % [moments])
 	game._process(0.5)
 	_check(moments.size() == 1, "heart: … only one while it is out")
 	link.call("answer_moment", "heart", "ok", {"ok": true, "kind": "heart", "lines": []})
 	game._process(1.0)
-	_check(moments.size() == 1 and game.prop_state("trabolta-heart") == "rearm", "heart: no lines (he isn't awake) → nothing until the next way in")
+	_check(moments.size() == 1 and game.prop_state("server-heart") == "rearm", "heart: no lines (he isn't awake) → nothing until the next way in")
 	player.teleport(HouseFrames.vec(hall), 0.0)
 	game._process(0.016)
 	player.teleport(HouseFrames.vec(heart_at), 0.0)
@@ -4095,7 +4095,7 @@ func _test_heart_pickup() -> void:
 	game.speech.stop()
 	link.call("answer_moment", "heart", "ok", {"ok": true, "kind": "heart", "lines": [{"from": "Trabolta", "text": "So. You found where I keep myself."}]})
 	game.speech.tick(0.0)
-	_check(game.speech.caption_text() == "So. You found where I keep myself." and game.speech.on_prop() and game.prop_state("trabolta-heart") == "done", "heart: his lines play over the heart (%s)" % game.speech.caption_text())
+	_check(game.speech.caption_text() == "So. You found where I keep myself." and game.speech.on_prop() and game.prop_state("server-heart") == "done", "heart: his lines play over the heart (%s)" % game.speech.caption_text())
 	player.teleport(HouseFrames.vec(hall), 0.0)
 	game._process(0.016)
 	player.teleport(HouseFrames.vec(heart_at), 0.0)
@@ -4126,7 +4126,7 @@ func _test_heart_pickup() -> void:
 	a["picked"] = ["virus-disk"]
 	a["heartHeard"] = true
 	link.assignment_received.emit(a)
-	_check(not game.builder.pickup_shown("virus-disk") and game.prop_state("virus-disk") == "done" and game.prop_state("trabolta-heart") == "done", "re-scan: picked hides the disk, heartHeard silences the heart")
+	_check(not game.builder.pickup_shown("virus-disk") and game.prop_state("virus-disk") == "done" and game.prop_state("server-heart") == "done", "re-scan: picked hides the disk, heartHeard silences the heart")
 	var n := moments.size()
 	player.teleport(HouseFrames.vec(disk_at), 0.0)
 	game._process(0.016)
@@ -4163,7 +4163,7 @@ func _test_heart_pickup() -> void:
 	game._process(0.016)
 	player.teleport(HouseFrames.vec(heart_at), 0.0)
 	game._process(0.016)
-	_check(game.prop_state("trabolta-heart") == "done" and moments.back()[0] == "heart" and moments.filter(func(m: Array) -> bool: return m[0] == "heart").size() == 3, "heart: an old server (not found) → given up for the walk")
+	_check(game.prop_state("server-heart") == "done" and moments.back()[0] == "heart" and moments.filter(func(m: Array) -> bool: return m[0] == "heart").size() == 3, "heart: an old server (not found) → given up for the walk")
 	link.session_over.emit("test")
 	# Sealed (the King stood again on the server) → the next way in.
 	link.assignment_received.emit(_assignment(house, "hp-4", true))
@@ -4171,7 +4171,7 @@ func _test_heart_pickup() -> void:
 	game._process(0.016)
 	link.call("answer_moment", "heart", "sealed", {"error": "sealed"})
 	game._process(0.016)
-	_check(game.prop_state("trabolta-heart") == "rearm", "heart: sealed → the next way in")
+	_check(game.prop_state("server-heart") == "rearm", "heart: sealed → the next way in")
 	link.call("answer_moment", "heart", "doors are closed", {})
 	link.session_over.emit("test")
 	main.queue_free()

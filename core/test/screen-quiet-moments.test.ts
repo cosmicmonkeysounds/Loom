@@ -192,7 +192,7 @@ describe("the quiet game moments (wave 26)", () => {
     const look = () => w.poll(sim, { name: "Hall", spot: "hall", view: "auto", character: "" }, () => false).moments;
     look(); // history
     sim.signal("simulation escape attempt", id);
-    sim.signal("simulation heart reached", id, { prop: "trabolta-heart" });
+    sim.signal("simulation heart reached", id, { prop: "server-heart" });
     sim.signal("simulation pickup taken", id, { item: "virus", prop: "virus-disk" });
     t = 11_000;
     expect(look()).toEqual([]);
