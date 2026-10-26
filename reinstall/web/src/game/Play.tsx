@@ -207,6 +207,7 @@ export function Play({
           {hud.caption !== null && (
             // A line said in-game (wave 26): the display text, never the pronounced
             // one, and no speaker's name (he may not have been introduced yet).
+            // DRAFT w26 (R4, R6) UI copy: the caption window's title.
             <Window title="Message" icon="💬" className="hud-caption">
               <p>{hud.caption.text}</p>
             </Window>
