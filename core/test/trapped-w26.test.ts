@@ -193,6 +193,15 @@ describe("Trapped in the Internet — wave 26: the game's moments and the trust 
     expect(read("main.loom")).toContain("//   trust = truths_accepted * 10 - internet_visits * 5 - escapes * 5 + assessment");
   });
 
+  it("DESIGN.md's paste-exactly formula and its ROLE Program slots match C9", () => {
+    const design = read("DESIGN.md");
+    const pasted = [...design.matchAll(/^set program\.trust = (.+)$/gmu)].map((m) => m[1]);
+    expect(pasted).toEqual(["program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment"]);
+    const slots = /### 2\.7 ROLE Program[\s\S]*?```\n([\s\S]*?)```/u.exec(design)![1]!;
+    expect(slots).toMatch(/^escapes: 0 to 50 = 0 /mu);
+    expect(slots).toMatch(/^sim_heart: bool = false /mu);
+  });
+
   it("the three moments are admin, Anytime, out of sequence", () => {
     const m = Sim.fromSources(SRC).model;
     for (const id of ["simulation escape attempt", "simulation heart reached", "simulation pickup taken"]) {

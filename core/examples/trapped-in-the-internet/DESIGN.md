@@ -636,6 +636,8 @@ paint_told: 0 to 99 = 0            // MS Paint's own: the Night.signatures her q
 resurrected: bool = false          // the G11 resurrection reached this program
 corrupted: bool = false            // currently in the Internet
 internet_visits: 0 to 50 = 0       // −5 each on the Trust Chart
+escapes: 0 to 50 = 0               // wave 26 (R4): walks out of the simulation into the void; −5 each on the Trust Chart
+sim_heart: bool = false            // wave 26 (R6): heard Trabolta's heart in the simulation (once a night)
 doubt: 0 to 100 = 0                // Antivirus suspicion (flavour + snoop)
 bingo: bool = false                // declared a Bingo winner
 framed: bool = false               // given the fake Bingo card
@@ -678,9 +680,10 @@ OpenOffice's facts), `program.codex.<slug>`, `program.captured`, `program.group`
 rehearsal persona), both left out of the majority (§3 D10).
 
 **The TRUST FORMULA** (paste exactly wherever a component changes: `accurate_truth`,
-`confident_lie`, `when captured`, the `assess` power):
+`confident_lie`, `when captured`, the `assess` power, and wave 26's `simulation escape attempt`
+hook, which adds one to `program.escapes`):
 ```
-set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
+set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
 ```
 (In hooks bound as `self`, write `self.` instead.) Trabolta counts what he *accepted*
 (10 per truth, accurate or confident); he cannot tell a confident lie from a truth until
