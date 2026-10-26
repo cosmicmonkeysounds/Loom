@@ -31,6 +31,7 @@ its `INDEX.md`).
 | [`loom-reinstall.md`](./loom-reinstall.md) | **Normative** contract for the house map, the reinstallation games, the spatial terminals, the voice link, the house audio and lights files. Tests read it. |
 | [`loom-show-control.md`](./loom-show-control.md) | stagehand's design: cues, sensors, the house rig. |
 | [`loom-house-desk.md`](./loom-house-desk.md) | **Normative** contract for the house desk (wave 25): `desk.json` cue lists, parallel / series timelines with the story, the speaker and light checks, Run → House and the host's Show / Desk. |
+| [`loom-w26-contract.md`](./loom-w26-contract.md) | The wave 26 contract (the rehearsal notes of 2026-10-26): the glitch, the locked phone, the guest BINGO, the void, the heart and the virus in the games, terminals linked by room, voice-timed cutscenes, no hints. Decisions, routes and shapes (`POST /api/spatial/moment` is C6), file ownership. The code wins where they differ. |
 | [`trapped/kiosk.md`](./trapped/kiosk.md) | Kiosk settings for the tablets, the TV and the laptops (Fully Kiosk, Chrome `--kiosk`). Operational, partly stale: "the house Mac" is now John's Desktop (the TV) plus John's MacBook. |
 | [`trapped/room-audio.md`](./trapped/room-audio.md) | The house speaker router plan (§11–12 are the operational parts). Partly stale: the wave 1 banner names QLab and one house Mac; the wave 18b banner retires QLab, and the house Mac is now the MacBook (router) plus the Desktop (broker, `show`). |
 
@@ -54,7 +55,12 @@ folder's `SHOW.html`, `SHOWNIGHT.md` (§4 is the pre-show checklist) and
 
 [`help/`](./help/) holds the markdown articles the editor (`authoring/`) and
 the play app (`play/`) bundle at build time, plus the search engine
-`help/helpdoc.ts`. Do not move or rename this folder: the apps import it
+`help/helpdoc.ts`. The `role: performer` articles in `play/` (07, 13,
+14 and 19) show only on staff phones; `play/19-house-workings.md` is what
+the guest guide leaves out (marks, the lock, the King, the heart, the
+void, the virus). `authoring/48-terminal-setup.md` is how the crew sets
+up the terminals, the door sensor and the headsets. Both are wave 26.
+Do not move or rename this folder: the apps import it
 and tests check every article. Run
 `pnpm --filter loom-app exec vitest run src/lib/help-content.test.ts` and
 `pnpm --filter loom-play exec vitest run test/help.test.ts` after an edit.
