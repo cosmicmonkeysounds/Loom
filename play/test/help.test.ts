@@ -199,6 +199,11 @@ describe("wave 26 G2: the guest guide never explains the machinery", () => {
     expect(big).toContain("no ok");
   });
 
+  it("the guest guide still says private threads can be read (G2 keeps the disclosure)", () => {
+    const codex = articlesFor("guest").find((a) => a.slug === "codex")!;
+    expect(codex.plain).toContain("the computer can read every thread, this one included");
+  });
+
   it("every cross-link resolves, and no guest article points at a performer-only one", () => {
     const all = new Map(articlesFor("performer").map((a) => [a.slug, a]));
     for (const a of all.values()) {

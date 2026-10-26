@@ -64,8 +64,9 @@ about someone? Get them (or someone who knows them) to share.
 ## Private messages
 
 From the People list, **💬 Message** opens a private thread with a guest
-or a character. It's your thread with them: a character reads it and
-answers in their own time, and some characters are not people at all.
+or a character. It's your thread with them, but not a secret one: the
+computer can read every thread, this one included. A character reads it
+and answers in their own time, and some characters are not people at all.
 
 ## Alerts and pop-ups
 
