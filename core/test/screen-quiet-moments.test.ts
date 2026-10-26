@@ -172,10 +172,15 @@ describe("the quiet game moments (wave 26)", () => {
     expect(GAME_MOMENT_SIGNALS).toEqual(["simulation escape attempt", "simulation heart reached", "simulation pickup taken"]);
     for (const n of GAME_MOMENT_SIGNALS) expect(QUIET_MOMENT_SIGNALS).toContain(foldName(n));
     // The house lane exports ESCAPE_SIGNAL / HEART_SIGNAL / PICKUP_SIGNAL in
-    // the same stage; once it has, the strings must match.
+    // the same stage. Once house carries any of its wave 26 moment API (one
+    // of the three, or `propSignal`), all three must exist and match: a
+    // renamed or missing one fails here instead of passing unchecked.
     const house = (await import("@loom/house")) as unknown as Record<string, unknown>;
-    const exported = ["ESCAPE_SIGNAL", "HEART_SIGNAL", "PICKUP_SIGNAL"].map((k) => house[k]);
-    if (exported.every((v) => typeof v === "string")) expect(exported).toEqual([...GAME_MOMENT_SIGNALS]);
+    const names = ["ESCAPE_SIGNAL", "HEART_SIGNAL", "PICKUP_SIGNAL"];
+    if ([...names, "propSignal"].some((k) => k in house)) {
+      for (const k of names) expect(typeof house[k], `@loom/house ${k}`).toBe("string");
+      expect(names.map((k) => house[k])).toEqual([...GAME_MOMENT_SIGNALS]);
+    }
   });
 
   it("an escape, a heart and a pickup make no moment on any screen", () => {
