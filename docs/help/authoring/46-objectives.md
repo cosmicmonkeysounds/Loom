@@ -187,7 +187,7 @@ participant's live objectives ([Run mode](run-mode.md)).
 | Code | When |
 |---|---|
 | `L1207 ObjectiveForUnresolved` | a `for:` name is no reserved word, ROLE, CHARACTER or GROUP (a warning), or none resolves or `for:` is missing (an error: nobody ever sees it) |
-| `L1208 ObjectiveButtonUnresolved` | a `buttons:` name is no INTERACTION (nor `pass` / `scan`); a `who: admin` or `who: agent` button; a button for an audience the objective doesn't have; more than three story buttons (warnings) |
+| `L1208 ObjectiveButtonUnresolved` | a `buttons:` name is no INTERACTION (nor `pass` / `scan`); a `who: admin` or `who: agent` button; a button for an audience the objective doesn't have; more than three story buttons, except on a `pick:` objective (its buttons are the PLAYER SELECT steps) (warnings) |
 | `L1209 ObjectiveConditionInvalid` | a `while:` or a `done when` is empty or doesn't parse (an error: never live, never ticks) |
 | `L1214 GoTargetUnresolved` | a `go:` names no place, room, character, guest button, entry, quest or screen (the Where row shows nothing) |
 | `L1215 ObjectivePickNotForBooths` | `target:` / `pick:` on an objective no booth sees, or not an expression |
