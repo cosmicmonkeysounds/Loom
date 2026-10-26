@@ -19,6 +19,10 @@ export interface MomentArgs {
   go: string[];
   /** `close: 6s` in ms (a self-closing big moment), else null. */
   close: number | null;
+  /** `ack: none` (wave 26, C1): the big moment has no acknowledge button;
+   *  only its exits close it. `none` is the only value; anything else is
+   *  ignored (null). Never passed through `rest`. */
+  ack: "none" | null;
   /** The other `k: v` pairs, comma-joined as written (`moment: big, question: "P1"`). */
   rest: string;
 }
@@ -60,10 +64,11 @@ export function parseCloseMs(raw: string): number | null {
   return Number.isFinite(ms) && ms > 0 ? Math.round(ms) : null;
 }
 
-/** Pull `go:` and `close:` out of a `with …` tail (the text after ` with `). */
+/** Pull `go:`, `close:` and `ack:` out of a `with …` tail (the text after ` with `). */
 export function splitMomentArgs(tail: string): MomentArgs {
   const go: string[] = [];
   let close: number | null = null;
+  let ack: "none" | null = null;
   const rest: string[] = [];
   for (const seg of splitArgCommas(tail)) {
     const kv = /^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/su.exec(seg);
@@ -73,9 +78,12 @@ export function splitMomentArgs(tail: string): MomentArgs {
       if (v !== "") go.push(v);
     } else if (key === "close") {
       close = parseCloseMs(kv![2]!) ?? close;
+    } else if (key === "ack") {
+      // Wave 26 (C1): `ack: none` (any case); another value is ignored.
+      if (kv![2]!.trim().toLowerCase() === "none") ack = "none";
     } else rest.push(seg);
   }
-  return { go, close, rest: rest.join(", ") };
+  return { go, close, ack, rest: rest.join(", ") };
 }
 
 /** The index of ` with ` in `s` outside double quotes, or -1. */

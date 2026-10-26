@@ -29,13 +29,13 @@ type Push = (uri: string, range: Range, error: boolean, code: string, message: s
 type Doc = { text: string; file: LoomFile };
 
 /** A whole-line range (from its indent to its end). */
-function lineRange(line: string, n: number): Range {
+export function lineRange(line: string, n: number): Range {
   const start = line.length - line.trimStart().length;
   return { start: { line: n, character: start }, end: { line: n, character: line.trimEnd().length } };
 }
 
 /** A line without its trailing `// comment` (outside quotes). */
-function stripComment(line: string): string {
+export function stripComment(line: string): string {
   let quoted = false;
   for (let i = 0; i < line.length - 1; i++) {
     const c = line[i]!;
@@ -46,7 +46,7 @@ function stripComment(line: string): string {
 }
 
 /** The `with …` tail of a moment statement's arguments, or null. */
-function momentTail(verb: string, rest: string): string | null {
+export function momentTail(verb: string, rest: string): string | null {
   const t = rest.trim();
   if (verb === "reply" || verb === "respond") {
     const m = /^"(?:[^"\\]|\\.)*"\s+with\s+(\S.*)$/su.exec(t);

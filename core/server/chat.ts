@@ -158,6 +158,9 @@ export interface ChatMessage {
   /** A self-closing `big` moment (`with close: 6s`, C1), in ms — only on a
    *  big moment addressed to two or more. */
   autoClose?: number;
+  /** `with ack: none` (wave 26, R1): the big moment has no acknowledge
+   *  button; only its exits close it. Absent = the usual OK. */
+  noAck?: true;
   /** The story's `Night.phase` when this message was composed (after the
    *  batch that posted it; `null` = the path is declared but unset) — the
    *  moments layer's staleness rule ("the phase moved on since it arrived")
@@ -424,6 +427,11 @@ function autoCloseOf(moment: MomentClass | undefined, close: number | undefined,
   return audience === "all" || audience.length >= 2 ? { autoClose: close } : {};
 }
 
+/** `with ack: none` as a draft's `noAck` (wave 26, C1), copied beside `go`. */
+function noAckOf(noAck: true | undefined): { noAck?: true } {
+  return noAck === true ? { noAck: true } : {};
+}
+
 /** The story's `go:` words resolved (C2), else `fallback`; never the lobby. */
 function goOf(sim: Sim, words: readonly string[] | undefined, fallback: GoTarget[] = []): { go?: GoTarget[] } {
   // A story `go:` that resolves to nothing (a typo: lint L1214) keeps the
@@ -586,7 +594,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
         const cardMoment = momentParam === "major" || momentParam === "minor" || momentParam === "big" ? { moment: momentParam as MomentClass } : {};
         const base = { from: "", kind: "widget" as const, text: e.text, ts, parentSeq: null, beat: e.beat, widget, ...cardMoment };
         // C2: the story's exits, else the card's own thread (never the lobby).
-        const exits = (channel: string) => goOf(sim, e.go, cardGo(sim, channel));
+        const exits = (channel: string) => ({ ...goOf(sim, e.go, cardGo(sim, channel)), ...noAckOf(e.noAck) });
         if (e.audience.length === 0) {
           if (globalScope(e.scope)) {
             const head = storyChannel(sim, e.setting);
@@ -625,7 +633,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
         // otherwise a personal readout is a minor one.
         const { text, alert, big } = readoutText(e.text);
         // C2: the story's exits (a readout lives in the lobby feed: no default).
-        const flags = { readout: true as const, ...(alert ? { alert: true } : {}), ...goOf(sim, e.go) };
+        const flags = { readout: true as const, ...(alert ? { alert: true } : {}), ...goOf(sim, e.go), ...noAckOf(e.noAck) };
         // C1: `reply !!…` is a big moment; `reply !…` a major one.
         const loud: MomentClass = big === true ? "big" : "major";
         if (e.to === "") {
@@ -706,6 +714,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
         const flag = {
           ...(alert ? { alert: true, moment: loud, ...autoCloseOf(loud, e.close, base) } : noticed.notice ? { notice: noticeKey(text) } : {}),
           ...goOf(sim, e.go),
+          ...noAckOf(e.noAck),
         };
         const factions = factionsInScope(e.scope);
         const rooms = channelsInScope(sim, e.scope);

@@ -138,6 +138,9 @@ export const Code = {
   /** A `watch:` / `countdown:` item on a CHARACTER's `private:` slot, or a
    *  `stat:` whose `while` reads another character's (wave 21, a warning). */
   L1225PrivateSlotRead: "L1225",
+  /** `with ack: none` on a moment tail with no `go:` in the same tail: the
+   *  phone shows its usual OK anyway (wave 26, C1, a warning). */
+  L1226AckNoneWithoutGo: "L1226",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];
