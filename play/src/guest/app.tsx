@@ -57,7 +57,7 @@ import { LazyMission } from "./mission-lazy.tsx";
 import { ChatsWindow } from "./chats.tsx";
 import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
 import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
-import { LazyLockScreen } from "./lock-lazy.tsx";
+import { LazyLockScreen, LockFrame } from "./lock-lazy.tsx";
 import { rowClockOf } from "./show-time.ts";
 import { prefetchQr } from "../pass-qr.tsx";
 import { prefetchFactCard } from "../widgets.tsx";
@@ -484,7 +484,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   if (s.locked) {
     return framed(
       <div className="root app-frame guest-frame trapped-bg locked">
-        <LazyLockScreen
+        <LockFrame
           title={st.title ?? s.me.title ?? ""}
           objective={st.objectives?.[0] ?? null}
           rooms={t.list}

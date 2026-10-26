@@ -117,6 +117,11 @@ windows), the Desk, the director phone and Help are lazy chunks.
   buttons, a read-only copy of `dm:Installation Wizard` (`LOCK_THREAD`, else
   the DM that spoke last; lines only), and a taskbar with only Pass. The
   moments layer, the full pass and a `!!` takeover still show over it.
+  Only the screen's body (`LockScreen`) is lazy: the frame around it
+  (`LockFrame` in `lock-lazy.tsx`: the title bar, `MomentsAndPins`, the
+  Pass-only taskbar) is eager, so a chunk still loading or failing never
+  costs the pass or the moments. A `?unlock=` / `?checkin=` link opened
+  while locked raises no toast either.
 - **The room's footer** (wave 26, P1; `stream/channel-view.tsx`
   `footLayout`): one answer surface at a time. A docked story menu opens
   and the composer folds to a 48 px `⌨ Message …` bar (showing a draft,

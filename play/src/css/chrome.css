@@ -684,3 +684,5 @@ button.mission-where:focus-visible { outline: 1px dotted var(--ink); outline-off
 .lock-thread-head { margin: 0 0 6px; font: 700 14px var(--ui-font); color: var(--ink); }
 .lock-lines { padding: 4px 0; background: var(--white); box-shadow: var(--sunken); }
 .lock-bar .taskbar-btn.primary.stacked { max-width: none; }
+/* The screen's chunk won't load: its Try again takes the screen's place; the taskbar's Pass stays at the bottom. */
+.guest-frame.locked > .lazy-failed { flex: 1 1 auto; min-height: 0; padding: 16px 12px; }
