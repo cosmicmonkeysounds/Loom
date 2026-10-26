@@ -21,23 +21,27 @@
    begins; no 🛡 needed. The laptop shows them as **Marked program
    detected** (*STATUS: MARKED — marked for reinstallation*) and lists them
    under *Marked for reinstallation*. A program a director restricted
-   without a mark reads *Program held by a director* and can't play until an
-   Antivirus 🛡 or a host marks them.
+   without a mark reads *Program held* and can't play until an Antivirus 🛡
+   or a host marks them.
    **After an ending** the reinstallation is a **party favour** (Q16 dropped):
    any program may play, nobody is captured, the laptop says *Party favour
    unlocked* (*STATUS: the night is over — anyone may play*) and your line is
    *"The night is over, X. The simulation is open to every program now: a
    party favour."* The speedrun award never counts those runs.
 2. **The tent laptop** (Chrome kiosk on
-   `/terminal/?code=<mod>&spot=tent&announce=1`; between programs it plays
-   the idle show with a scan box in the corner) → **scan their pass** at
-   the scan box (or type their name) → the wizard opens → **Play here**. A
-   program who is not marked gets a *not marked* card and no game (until
-   an ending).
+   `/terminal/?code=<mod>&spot=tent&announce=1`; between programs it is
+   the **Reinstallation Wizard** card in the middle of the screen, with
+   the live camera, a name field and big buttons for the programs in the
+   Internet now) → **scan their pass** at the camera (or type their name,
+   or tap their button) → the wizard opens → **Play here**. A program who
+   is not marked gets a *Not marked for reinstallation.* card and no game
+   (until an ending).
    **Quest go:** → **Send to VR-1** instead. **Seated**, snap turn, the
    assistant spots them, wipe the headset between players.
-3. They follow the golden chevrons to **Gerald, the golden duck**, and walk
-   right up to him. He lays a golden egg and flies away: they're released
+3. <!-- DRAFT w26 (R2) --> For the first minute the game shows only
+   *FIND GERALD*: no trail, no compass. Then the golden trail lights up and
+   they follow it to **Gerald, the golden duck**, and walk right up to him.
+   A re-scan starts the minute again. That is normal; don't point the way. He lays a golden egg and flies away: they're released
    automatically, back to the Desktop. **On a banished night** (everyone
    was banished in Grok Prom) Gerald can't release anyone: the laptop says
    **GERALD CAN'T HELP** (*"…The Internet keeps you — your phone says what
@@ -51,6 +55,14 @@
    terminal outside the real server-room door** (nothing to play here).
    At 0 he kneels for everyone and the virtual door opens. Nobody has to
    fight him to be reinstalled. Never tell a program what to do about him.
+   <!-- DRAFT w26 (R4, R6, R7) --> **What else a walker may meet** (all
+   normal; never explain it, never hint at it): walk out of the house
+   through the mud room's outside door and they get a jump scare, land
+   back at the start in the tent, and Trabolta scolds them in the game.
+   Once the King has fallen, the virtual server room shows Trabolta's
+   heart, and the first program there in a night hears him say a few
+   lines. A floppy disk sits in the virtual house all night; picking it up
+   gives a Codex entry.
 
 4. Game won't finish, or a device dies → ask an Antivirus to press
    **✅ Mark as reinstalled** on their card, or radio a host or the director
@@ -70,9 +82,11 @@ laptop.
 **Second device:** the Installation Wizard video just loops on it. (The story
 fires a `tablet_wizard` cue, but nothing listens for it yet.)
 
-**Phones:** a captured program's phone is full screen for a moment (*🌐 Sent
-to the Internet…*, with **Go to The Internet** and **Show my pass**), then
-keeps their DMs and the Internet room. The mark comes off at the capture
+**Phones:** <!-- DRAFT w26 (R1) --> from the capture until release a
+program's phone is **locked**: the capture screen offers only **🎟 Show my
+pass** and **🚻 Bathroom Mode** (no OK), then the phone shows a ⛔
+QUARANTINED card, *Find Gerald* and your thread, read-only. No
+DMs, no Codex, nothing else works until release. The mark comes off at the capture
 (their poster on the Antivirus' Wanted board reads CAUGHT BY for a minute),
 and Gerald's release is full screen too (*🦆 Reinstallation complete…*).
 

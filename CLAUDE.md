@@ -185,7 +185,7 @@ guest's BINGO, the void, the heart and the virus in the games, terminals
 linked by room, voice-timed cutscenes; `docs/loom-w26-contract.md`), all
 **merged but not shipped**. Wave 23 needs the badges printed from Run →
 Print sheet (Badges) and the cast cards reprinted (each now carries its own
-part's QR). The show text of waves 18b, 20, 21 and 26 is marked DRAFT
+part's QR). The show text of waves 18b, 20, 21, 22 and 26 is marked DRAFT
 (`DRAFT w26` for wave 26) and awaits the user's sign-off (the `SIGNOFF-*.md`
 files; wave 26's
 `core/examples/trapped-in-the-internet/SIGNOFF-w26.md` includes the game
@@ -193,7 +193,8 @@ map's *MAINFRAME* rack label). Wave 26 ships in its contract's C14 order:
 the server release → `sync-show` → reload every terminal and the TV →
 re-export and sideload the Quest APK. After the sign-off, reprint the cast
 packs `clippy`, `task-manager`, `norton`, `mcafee`, `password-manager`,
-`cra-agent`, `crew/director` and `featured/microsoft-excel`. Not yet proven
+`cra-agent`, `crew/director`, `performers/installation-wizard` and
+`featured/microsoft-excel`. Not yet proven
 on real hardware: the Quest's audio, TTS and mic (`tools/quest.sh logs`),
 the glitch on real phones, and the real speakers.
 
@@ -215,15 +216,21 @@ the glitch on real phones, and the real speakers.
    and starts the `show` and `lights` tasks) **before** the sync, so no old
    rule posts into the new story.
 6. MacBook: `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm
-   sync-show --replace-audio [--replace-lights] [--replace-desk]` **with its
-   reload, before doors**. Add `--replace-maps` only if the summary shows the maps differ.
+   sync-show --replace-audio --replace-maps [--replace-lights] [--replace-desk]`
+   **with its reload, before doors**. Wave 26 changed both show maps (the
+   heart, the virus disk, the *MAINFRAME* rack label), and the project's
+   maps win without `--replace-maps`. First Download JSON any map edits
+   saved to the project and commit them into the repo's `house.json`.
    Restart every other non-ended event.
 7. MacBook: install the router (`uv run stagehand sounds placeholders
    --config trapped.macbook.yaml`, `uv run stagehand check --only audio
    --config trapped.macbook.yaml`, `uv run stagehand launchd install --job
    audio --config trapped.macbook.yaml`); `uv run stagehand launchd restart
-   --job agents`; then Run → Mind → Reset. The router must be wave 25's
-   (desk plays and its report); walk Run → House → Checks once it is up.
+   --job agents`; then Run → Mind → Reset. The router must be wave 26's
+   (desk plays and its report; *Anti Virus* said right, V3): `git pull`
+   first, and if it is already installed, `uv run stagehand launchd restart
+   --job audio --config trapped.macbook.yaml`. Walk Run → House → Checks
+   once it is up.
 8. Desktop: Zigbee2MQTT on the CC2652P, pair the bulb as
    `server_room_rgb`, place it in the map editor, test each look, Save to
    project (`scripts/house-desktop/README.md`).
@@ -231,8 +238,8 @@ the glitch on real phones, and the real speakers.
    `scripts/accept/N-20.sh` and `N-21.sh`, then calibrate the door and
    learn the patch bay in the terminal's ⚙ (always after a reflash).
 10. Reload every terminal and the TV (mandatory since wave 26: check each
-    device's build stamp on Run → Terminals), set the show TV's Speed to
-    0.92 in its ⚙, touch each tablet once, re-export and sideload the Quest
+    device's build stamp on Run → Terminals), set the show TV's pace to
+    0.92× in its ⚙ (re-opening its link sets it), touch each tablet once, re-export and sideload the Quest
     APK, test the door open → shut → open, and reprint the cast packs after
     the sign-off.
 11. Morning of the show: pause the event first, then sync, Push draft and
