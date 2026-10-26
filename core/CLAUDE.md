@@ -16,10 +16,10 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | Path | What |
 |---|---|
 | `src/parser/` | lexer, AST, `decl-body.ts` (declaration bodies), `statements.ts` (keyword statements lowered onto the directive AST), `names.ts` (name folding), `edit.ts` (span-preserving edits the editor's graph uses) |
-| `src/runtime/sim/model.ts` | compiles a project into a `SimModel` (`compileModel`): characters, rules, watchers, interactions, objectives, header keys (`currency:`, `wallet:`, `watch:`, `countdown:`, `badge:`, `stat:`, `founding:`, `judge:` …) |
+| `src/runtime/sim/model.ts` | compiles a project into a `SimModel` (`compileModel`): characters, rules, watchers, interactions, objectives, header keys (`currency:`, `wallet:`, `watch:`, `countdown:`, `badge:`, `stat:`, `founding:`, `judge:`, `reinstall:`, `lock:` …) |
 | `src/runtime/sim/sim.ts` | the `Sim`: world, ledger, hook drain, the executor, every journaled mutation |
 | `src/runtime/sim/` (rest) | `crews.ts` (crews, faction mode), `board.ts` (watch / countdown), `badges.ts`, `stats.ts`, `channel-types.ts`, `effects.ts`, `DESIGN.md` |
-| `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w21-lints.ts` (workspace lints L12xx) |
+| `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w26-lints.ts` (workspace lints L12xx) |
 | `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `cue-sheet.ts`, `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
 | `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
@@ -66,7 +66,7 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
 - **Memory-only things say so.** Poses, voice, camera frames, pair
   codes, rejoin asks, claim unlocks, the King's per-visit hit, typing indicators,
   the house desk's runs / playhead / activity, the router's plays and report, the
-  terminals' `talk=` / `said=` and
+  terminals' `talk=` / `said=`, the TV's `sp=` (`ScreenState.tvSpeech`) and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -90,6 +90,19 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   (hosts included) read parts by name and every director as "Director".
   Anything that carries a journal `by` (an author's display name) into a
   booth, host or guest view goes through `server/unseen-directors.ts`.
+- **A locked phone writes nothing** (wave 26, C2). While the story's
+  `lock:` header holds for a guest (`views.ts` `isLocked`), every
+  `/api/guest/*` POST answers `403 {"error": "locked"}` from one check at
+  the top of `handlePost`, except the routes in `LOCKED_OPEN`
+  (`event-runtime.ts`: register, resume, enter / rejoin, badge,
+  homescreen, push, logout) and `act` on a `restricted: allow` button. A
+  new guest route is refused for a locked guest by default;
+  `test/w26-lock.test.ts` walks every route. If it posts nothing into the
+  story, add it to `LOCKED_OPEN` on purpose.
+- **Game-only beats** (wave 26, C6). `chat.ts` `GAME_ONLY_BEATS` (Escape
+  Attempt, Heart In The Simulation) never become a ChatMessage; their
+  lines reach only the reinstallation game, through `momentLines(events,
+  guest)` in the moment route's answer. Don't rename those beats.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to
@@ -144,7 +157,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `--i-know-this-is-live` or `LOOM_I_KNOW_THIS_IS_LIVE=1`. The same
   check (`scripts/live-guard.ts`) guards the acceptance scripts.
 - **Header-key traps in the story language.** An event name must not
-  start with a built-in verb word (`release …`) or contain ` is `; a
+  start with a built-in verb word (`release …`) or contain ` is `
+  (further in, a `for`-bound one may: `when simulation escape attempt for
+  program:` is that INTERACTION, wave 26); a
   filler word plus one word (`the glitch`) folds to the word. Lint
   L1212 catches a trigger phrase that keeps only its first word.
 - **The bank compiler lags.** New language features (guarded choices,
