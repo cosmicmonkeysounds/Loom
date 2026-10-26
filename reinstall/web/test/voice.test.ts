@@ -186,7 +186,10 @@ describe("placement", () => {
     const h = house();
     // In room b beside `t`: it hears you; the tent's (room a, the spawn) never does.
     expect(earsFor(h, "s1", [{ session: "s1", p: [6, 0, 1.5] }])).toBe(1);
-    expect(earsFor(h, "s1", [{ session: "s1", p: [0.5, 0, 1.5] }])).toBe(1); // `t` is 6.5 m away
+    // In room a, 6.5 m from `t`: no longer heard through the wall (wave 26: same room only).
+    expect(earsFor(h, "s1", [{ session: "s1", p: [0.5, 0, 1.5] }])).toBe(0);
+    // … unless the room the server counts them in is b (the doorway hysteresis).
+    expect(earsFor(h, "s1", [{ session: "s1", p: [3.6, 0, 1.5], room: "b" }])).toBe(1);
     expect(earsFor(h, "s1", [{ session: "s2", p: [6, 0, 1.5] }])).toBe(0);
   });
 

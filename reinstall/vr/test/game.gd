@@ -37,6 +37,7 @@ func _run() -> void:
 	_test_frames()
 	_test_duck()
 	_test_king_rules()
+	_test_wave26_props()
 	_test_avatar_decode()
 	_test_config()
 	_test_config_setup()
@@ -138,6 +139,8 @@ func _test_goldens() -> void:
 		_golden_routes(name, house)
 		_golden_locate(name, house)
 		_golden_king(name, house)
+		_golden_wave26(name, house)
+	_golden_constants()
 
 
 ## A deep compare: numbers within TOL, everything else equal. Returns the
@@ -252,6 +255,117 @@ func _golden_king(name: String, house: Dictionary) -> void:
 			if d != "":
 				mismatches.append("%s → %s: %s" % [JSON.stringify(q["from"]), JSON.stringify(q["to"]), d])
 		_report("golden %s.fallen" % name, mismatches, want.size())
+
+
+## Wave 26 (C5): the void (`<name>.escape.json`), presence
+## (`<name>.presence.json`) and the heart / pickup reach
+## (`<name>.moments.json`, maps with those props).
+func _golden_wave26(name: String, house: Dictionary) -> void:
+	var escape_path := GOLDEN_DIR + name + ".escape.json"
+	_check(FileAccess.file_exists(escape_path), "golden %s.escape is synced" % name)
+	if FileAccess.file_exists(escape_path):
+		var want: Array = _read_json(escape_path)
+		var mismatches: Array = []
+		var ground: Variant = HouseEscape.outside_ground(house)
+		var d0 := _diff(ground, want[0]["ground"], "ground")
+		if d0 != "" or (ground == null) != (want[0]["ground"] == null):
+			mismatches.append("outside_ground %s, golden %s" % [JSON.stringify(ground), JSON.stringify(want[0]["ground"])])
+		for q: Dictionary in want.slice(1):
+			var got: Variant = HouseEscape.void_distance(house, q["p"])
+			var w: Variant = q["d"]
+			var ok: bool
+			if w == null:
+				ok = got == null
+			elif w is String:
+				ok = got != null and is_inf(float(got))
+			else:
+				ok = got != null and _near(float(got), float(w))
+			if not ok:
+				mismatches.append("%s: void %s, golden %s" % [JSON.stringify(q["p"]), got, w])
+		_report("golden %s.escape" % name, mismatches, want.size())
+	var presence_path := GOLDEN_DIR + name + ".presence.json"
+	_check(FileAccess.file_exists(presence_path), "golden %s.presence is synced" % name)
+	if FileAccess.file_exists(presence_path):
+		var want: Array = _read_json(presence_path)
+		var mismatches: Array = []
+		for q: Dictionary in want:
+			if q.has("prev"):
+				var got: Variant = HouseLocate.presence_room(house, q["p"], q["prev"])
+				if got != q["room"] and not (got != null and q["room"] != null and str(got) == str(q["room"])):
+					mismatches.append("%s from %s: %s, golden %s" % [JSON.stringify(q["p"]), q["prev"], got, q["room"]])
+			else:
+				var spots := HouseLocate.linked_spots(house, q["rooms"])
+				if spots != (q["spots"] as Array).map(func(v: Variant) -> String: return str(v)):
+					mismatches.append("linked %s: %s, golden %s" % [JSON.stringify(q["rooms"]), spots, q["spots"]])
+		_report("golden %s.presence" % name, mismatches, want.size())
+	var moments_path := GOLDEN_DIR + name + ".moments.json"
+	if FileAccess.file_exists(moments_path):
+		var want: Array = _read_json(moments_path)
+		var mismatches: Array = []
+		for q: Dictionary in want:
+			if q.has("heart"):
+				var heart := HouseMoment.moment_prop(house, str(q["heart"]), "heart")
+				if heart.is_empty() or HouseMoment.heart_reached(house, q["p"], heart) != bool(q["reached"]):
+					mismatches.append("heart %s at %s: golden %s" % [q["heart"], JSON.stringify(q["p"]), q["reached"]])
+			else:
+				var prop := HouseMoment.moment_prop(house, str(q["pickup"]), "pickup")
+				if prop.is_empty() or HouseMoment.pickup_reach(house, q["p"], prop) != bool(q["reach"]) or HouseMoment.pickup_reach(house, q["p"], prop, HouseMoment.PICKUP_SLACK_M) != bool(q["slack"]):
+					mismatches.append("pickup %s at %s: golden %s / %s" % [q["pickup"], JSON.stringify(q["p"]), q["reach"], q["slack"]])
+		_report("golden %s.moments" % name, mismatches, want.size())
+
+
+## Wave 26: the show's heart and disk build nothing yet (the vr lane draws
+## them), carry no collider and no label; the rules read them.
+func _test_wave26_props() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var heart := HouseMoment.moment_prop(house, "trabolta-heart", "heart")
+	var disk := HouseMoment.moment_prop(house, "virus-disk", "pickup")
+	_check(not heart.is_empty() and not disk.is_empty(), "wave 26: the show map has the heart and the disk")
+	_check(HouseMoment.moment_prop(house, "virus-disk", "heart").is_empty(), "wave 26: a prop is found only by its kind")
+	_check(not HouseGeometry.prop_solid(heart) and not HouseGeometry.prop_solid(disk), "wave 26: neither collides")
+	_check(HouseMoment.prop_signal(heart) == HouseMoment.HEART_SIGNAL and HouseMoment.prop_signal(disk) == HouseMoment.PICKUP_SIGNAL and HouseMoment.prop_signal({"kind": "box"}) == "", "wave 26: the default signals")
+	_check(HouseMoment.heart_reached(house, heart["pos"], heart), "wave 26: standing at the heart reaches it")
+	_check(HouseMoment.pickup_reach(house, disk["pos"], disk), "wave 26: standing on the disk reaches it")
+	var b := HouseBuilder.new()
+	b.build(house)
+	var hn := b.get_node_or_null("Prop_trabolta-heart")
+	var dn := b.get_node_or_null("Prop_virus-disk")
+	_check(hn != null and hn.get_child_count() == 0 and dn != null and dn.get_child_count() == 0, "wave 26: the builder draws nothing for a heart or a pickup yet")
+	b.free()
+	# The front door's outside: the void grows past it; the spawn is no void.
+	var front: Array = [-0.45, 0.0, -5.0]
+	_check(HouseEscape.void_distance(house, house["spawn"]["pos"]) == null, "escape: the spawn is in a room")
+	_check(float(HouseEscape.void_distance(house, front)) >= HouseEscape.ESCAPE_M - 1e-9, "escape: 5 m out of the front door is an escape")
+	_check(HouseLocate.presence_room(house, [4.5, -2.7, 21.5], "basement-hall") == "basement-hall" and HouseLocate.presence_room(house, [4.5, -2.7, 22.0], "basement-hall") == "server-room", "presence: the Server Room's doorway holds 0.75 m")
+	_check(not HouseLocate.linked_spots(house, ["tent"]).has("tent") and HouseLocate.linked_spots(house, ["desktop"]) == ["desktop-tv"], "presence: the tent is never linked; the Desktop links the TV")
+
+
+## Every wave 26 constant (`constants.json`) in its port.
+func _golden_constants() -> void:
+	var path := GOLDEN_DIR + "constants.json"
+	_check(FileAccess.file_exists(path), "goldens: constants.json is synced")
+	if not FileAccess.file_exists(path):
+		return
+	var want: Dictionary = _read_json(path)
+	var scripts := [
+		load("res://house/house_escape.gd").get_script_constant_map(),
+		load("res://house/house_locate.gd").get_script_constant_map(),
+		load("res://house/house_route.gd").get_script_constant_map(),
+		load("res://house/house_moment.gd").get_script_constant_map(),
+	]
+	var bad: Array = []
+	for k: String in want:
+		var found := false
+		for consts: Dictionary in scripts:
+			if consts.has(k):
+				var v: Variant = consts[k]
+				var w: Variant = want[k]
+				found = (_near(float(v), float(w), 1e-9)) if (w is float or w is int) and (v is float or v is int) else (str(v) == str(w) and typeof(v) == typeof(w))
+				break
+		if not found:
+			bad.append(k)
+	_check(bad.is_empty() and want.size() >= 13, "goldens: the wave 26 constants are ported (%s)" % [bad])
+	_check(HouseEscape.OUTSIDE_GROUND_MARGIN == HouseBuilder.GROUND_MARGIN, "escape: the outside ground is the builder's (GROUND_MARGIN)")
 
 
 # --- frames + duck ---------------------------------------------------------
@@ -2507,19 +2621,39 @@ func _test_voice_codec() -> void:
 					same = same and got[i]["spot"] == want[i]["spot"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
 				if not same:
 					miss.call(kind, "%s → %s, want %s" % [r["p"], got, want])
-			"hearsKept":
-				var got := VoiceCodec.hears_terminals(house, {"p": r["p"], "floor": r["floor"], "room": r["room"]}, {"keep": r["keep"]})
+			"hearsRoom":
+				# The presence room given (wave 26): the rule reads it, not the pose.
+				var got := VoiceCodec.hears_terminals(house, {"p": r["p"], "room": r["room"]})
 				var want: Array = r["heard"]
 				var same := got.size() == want.size()
 				for i in mini(got.size(), want.size()):
 					same = same and got[i]["spot"] == want[i]["spot"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
 				if not same:
-					miss.call(kind, "%s keep %d → %s, want %s" % [r["p"], (r["keep"] as Array).size(), got, want])
+					miss.call(kind, "%s in %s → %s, want %s" % [r["p"], r["room"], got, want])
+			"tentOn":
+				# The tent station is never linked (T3), even with its voice turned on.
+				var on: Dictionary = house.duplicate(true)
+				var room := ""
+				for t: Dictionary in on["terminals"]:
+					if str(t.get("view", "")) == "reinstall":
+						t["voice"] = true
+					if str(t["id"]) == str(r["spot"]):
+						room = str(t["room"])
+				var heard := VoiceCodec.hears_terminals(on, {"p": r["p"], "room": room})
+				var hears := VoiceCodec.hears_players(on, str(r["spot"]), [{"session": "s-tent", "p": r["p"], "room": room}])
+				if heard.size() != (r["heard"] as Array).size() or hears.size() != (r["players"] as Array).size() or not VoiceCodec.voice_on(on, str(r["spot"])):
+					miss.call(kind, "%s → %s / %s, want %s / %s" % [r["spot"], heard, hears, r["heard"], r["players"]])
 			"players":
 				players = r["players"]
 			"hearsPlayers":
-				pass  # the server's and the terminals' half of the rule
-	for kind: String in ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "hearsKept"]:
+				var got := VoiceCodec.hears_players(house, str(r["spot"]), players)
+				var want: Array = r["heard"]
+				var same := got.size() == want.size()
+				for i in mini(got.size(), want.size()):
+					same = same and got[i]["session"] == want[i]["session"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
+				if not same:
+					miss.call(kind, "%s → %s, want %s" % [r["spot"], got, want])
+	for kind: String in ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "hearsRoom", "hearsPlayers", "tentOn"]:
 		var n := int(seen.get(kind, 0))
 		var b := (bad.get(kind, []) as Array).size()
 		_check(n > 0 and b == 0, "voice: %s vectors match (%d of %d)" % [kind, n - b, n])

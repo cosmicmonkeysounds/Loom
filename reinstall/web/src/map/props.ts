@@ -4,14 +4,14 @@
 //! guarded door, a terminal snapped onto its room's nearest wall, and the
 //! terminal provisioning link's enums. Every op returns a changed copy.
 
-import { cloneData, distanceToSegment, pointInPoly, roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
+import { HEART_SIGNAL, PICKUP_SIGNAL, PROP_SIGNAL_KEYS, cloneData, distanceToSegment, pointInPoly, roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
 import type { HouseMap, Prop, PropKind, Vec2 } from "@loom/house";
 import { round } from "./doors.ts";
 import { moveTo, positionOf, setYaw, yawOf, type Selection } from "./edit.ts";
 import { uniqueId } from "./ids.ts";
 
 /** Every prop kind, in the palette's order. */
-export const PROP_KINDS: readonly PropKind[] = ["box", "cylinder", "screen", "label", "king"];
+export const PROP_KINDS: readonly PropKind[] = ["box", "cylinder", "screen", "label", "king", "heart", "pickup"];
 
 /** The palette's buttons. */
 export const PROP_PALETTE: { kind: PropKind; label: string }[] = [
@@ -20,7 +20,12 @@ export const PROP_PALETTE: { kind: PropKind; label: string }[] = [
   { kind: "screen", label: "▭ Screen" },
   { kind: "label", label: "✎ Label" },
   { kind: "king", label: "♔ King" },
+  { kind: "heart", label: "♥ Heart" },
+  { kind: "pickup", label: "💾 Pickup" },
 ];
+
+/** A new pickup's item (the show's one: the virus disk). */
+export const DEFAULT_PICKUP_ITEM = "virus";
 
 /** The rotate handle's step (Shift: 1°), and R / ⇧R. */
 export const YAW_STEP = 15;
@@ -47,6 +52,12 @@ export function propDefaults(kind: PropKind): Omit<Prop, "id" | "room" | "pos"> 
         signals: { won: "chess won", lost: "chess lost", drawn: "chess drawn", hit: "king hit", fallen: "king fallen" },
         armed: { path: "Night.king_armed", min: 1 },
       };
+    case "heart":
+      // Trabolta's heart (wave 26): a dark rack, no label (an old game would draw it).
+      return { kind, size: [0.6, 1.7, 0.6], color: "#141418" };
+    case "pickup":
+      // A pickup (wave 26): drawn as a floppy disk in the games only; no label.
+      return { kind, size: [0.3, 0.3, 0.3], item: DEFAULT_PICKUP_ITEM };
   }
 }
 
@@ -64,21 +75,33 @@ export function addProp(house: HouseMap, kind: PropKind, floor: string, at: Vec2
   return { house: next, id };
 }
 
-/** The fields the inspector edits (`undefined` clears an optional one). */
-export type PropPatch = Partial<Pick<Prop, "kind" | "size" | "color" | "label" | "solid" | "hp">>;
+/** The fields the inspector edits (`undefined` clears an optional one).
+ *  `signal` is a heart's `signals.reached` / a pickup's `signals.taken`
+ *  (`undefined` or blank: the kind's default). */
+export type PropPatch = Partial<Pick<Prop, "kind" | "size" | "color" | "label" | "solid" | "hp" | "item">> & { signal?: string };
+
+/** The story signal a heart or a pickup posts (its own, else the default) — what the inspector shows. */
+export function momentSignalOf(p: Prop): { key: "reached" | "taken"; own: string | undefined; fallback: string } | null {
+  if (p.kind === "heart") return { key: "reached", own: p.signals?.reached, fallback: HEART_SIGNAL };
+  if (p.kind === "pickup") return { key: "taken", own: p.signals?.taken, fallback: PICKUP_SIGNAL };
+  return null;
+}
 
 /**
  * Set a prop's fields. A prop made a King gains the King's defaults for
- * what it lacks; a King made something else loses hp / health / signals /
- * armed and the doors it guarded.
+ * what it lacks; a King made something else loses hp / health / armed and
+ * the doors it guarded. A heart or a pickup never keeps a label; a pickup
+ * always has an item (`DEFAULT_PICKUP_ITEM`) and nothing else does. The
+ * `signals` keys a kind doesn't take are dropped on a kind change.
  */
 export function patchProp(house: HouseMap, id: string, patch: PropPatch): HouseMap {
   if (!house.props.some((p) => p.id === id)) return house;
   const next = cloneData(house);
   const p = next.props.find((x) => x.id === id)!;
   const wasKing = p.kind === "king";
-  Object.assign(p, patch);
-  for (const k of ["color", "label", "solid", "hp"] as const) if (k in patch && patch[k] === undefined) delete p[k];
+  const { signal, ...fields } = patch;
+  Object.assign(p, fields);
+  for (const k of ["color", "label", "solid", "hp", "item"] as const) if (k in fields && fields[k] === undefined) delete p[k];
   if (p.size.some((v) => !(v > 0))) return house;
   if (p.kind === "king" && !wasKing) {
     const d = propDefaults("king");
@@ -89,10 +112,28 @@ export function patchProp(house: HouseMap, id: string, patch: PropPatch): HouseM
   } else if (p.kind !== "king" && wasKing) {
     delete p.hp;
     delete p.health;
-    delete p.signals;
     delete p.armed;
     for (const door of next.doors) if (door.guard === id) delete door.guard;
   }
+  if (p.kind === "heart" || p.kind === "pickup") delete p.label;
+  if (p.kind === "pickup") {
+    if (typeof p.item !== "string" || p.item.trim() === "") p.item = DEFAULT_PICKUP_ITEM;
+  } else delete p.item;
+  if ("signal" in patch) {
+    const m = momentSignalOf(p);
+    if (m !== null) {
+      const v = signal?.trim();
+      if (v === undefined || v === "" || v === m.fallback) {
+        if (p.signals) delete p.signals[m.key];
+      } else p.signals = { ...(p.signals ?? {}), [m.key]: v };
+    }
+  }
+  if (p.signals !== undefined) {
+    const allowed = PROP_SIGNAL_KEYS[p.kind] ?? [];
+    for (const k of Object.keys(p.signals) as (keyof NonNullable<Prop["signals"]>)[]) if (!allowed.includes(k)) delete p.signals[k];
+    if (Object.keys(p.signals).length === 0) delete p.signals;
+  }
+  if (p.kind === "king" && !wasKing && p.signals === undefined) p.signals = propDefaults("king").signals!;
   if (p.hp !== undefined) p.hp = Math.max(1, Math.min(99, Math.round(p.hp)));
   return next;
 }

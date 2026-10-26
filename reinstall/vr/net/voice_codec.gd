@@ -3,8 +3,9 @@
 ## (mono, 16 kHz, 200 ms chunks), a streaming linear resampler, the RMS
 ## level, the open-mic gate with its software half-duplex hold, the chunker,
 ## the playback jitter decision, and [method voice_on] / [method hears_terminals]
-## (the server's routing rule, D7: a terminal standing in the spawn room —
-## the tent, the shed — is off unless the map says `voice: true`).
+## / [method hears_players] (the server's routing rule — same room only,
+## wave 26 — and D7: a terminal standing in the spawn room — the tent, the
+## shed — is off unless the map says `voice: true`).
 ##
 ## Pure: no nodes, no I/O. Pinned by `res://test/golden/voice-mulaw.json`
 ## (`@loom/house` writes it; `pnpm --filter @loom/house sync` copies it).
@@ -17,15 +18,12 @@ const VOICE_CHUNK_BYTES := 3200
 const VOICE_MAX_BYTES := 8000
 const VOICE_MIN_BYTES := 160
 const VOICE_CODEC := "mulaw"
-const VOICE_TERMINAL_REACH_M := 12.0
-const VOICE_PLAYER_REACH_M := 8.0
 const VOICE_MAX_TERMINALS := 4
 const VOICE_MAX_PLAYERS := 3
 const VOICE_GATE_DBFS := -42.0
 const VOICE_HANG_MS := 400
 const VOICE_TAIL_MS := 300
 const VOICE_FRESH_MS := 1500
-const VOICE_MIN_GAIN := 0.05
 const VOICE_JITTER_TARGET_MS := 200
 const VOICE_JITTER_MAX_MS := 400
 ## D5b, the barge-in: while a terminal's voice plays here (+ the tail) the
@@ -33,10 +31,6 @@ const VOICE_JITTER_MAX_MS := 400
 const VOICE_BARGE_DBFS := -28.0
 ## An incoming voice under this gain is too faint to echo: it raises nothing.
 const VOICE_BARGE_MIN_GAIN := 0.2
-## A source already heard stays heard until this much past the reach.
-const VOICE_REACH_HYSTERESIS_M := 0.75
-## In the same room the gain fades 1 → 0 over this last stretch of the reach.
-const VOICE_EDGE_FADE_M := 1.5
 
 ## The bias added to the 14-bit magnitude (0x84 at 16 bits).
 const _BIAS14 := 0x84 >> 2
@@ -344,54 +338,73 @@ static func voice_on(house: Dictionary, spot: Variant) -> bool:
 	return str(t.get("room", "")) != str(spawn.get("room", ""))
 
 
-## The routing gain, to 2 decimals: in the same room 1, fading to 0 over the
-## last [constant VOICE_EDGE_FADE_M] of the reach; else `0.5 · (1 − d / reach)`.
-## Never below 0.
-static func voice_gain(d: float, reach: float, same_room: bool) -> float:
-	var g := minf(1.0, (reach - d) / VOICE_EDGE_FADE_M) if same_room else 0.5 * (1.0 - d / reach)
-	return maxf(0.0, roundf(g * 100.0) / 100.0)
+## The room the rule judges a player by: `player.room` when given (the
+## server passes the presence room, [method HouseLocate.presence_room]),
+## else [method HouseLocate.locate]'s.
+static func _room_of(house: Dictionary, player: Dictionary) -> Variant:
+	if player.has("room"):
+		return player["room"]
+	return HouseLocate.locate(house, player["p"])["room"]
 
 
-## One candidate through the reach + gain rule with the hysteresis (`kept`:
-## already routed, judged [constant VOICE_REACH_HYSTERESIS_M] nearer for
-## staying in, kept at least at [constant VOICE_MIN_GAIN]); -1 = not heard.
-static func _judged(d: float, reach: float, same_room: bool, kept: bool) -> float:
-	var d_in := maxf(0.0, d - VOICE_REACH_HYSTERESIS_M) if kept else d
-	if d_in > reach or voice_gain(d_in, reach, same_room) < VOICE_MIN_GAIN:
-		return -1.0
-	return maxf(VOICE_MIN_GAIN, voice_gain(d, reach, same_room))
+## Plan distance in doubles (a Vector2 is single precision).
+static func _plan(a: Array, b: Array) -> float:
+	var dx := float(a[0]) - float(b[0])
+	var dz := float(a[2]) - float(b[2])
+	return sqrt(dx * dx + dz * dz)
 
 
-## The terminals a player hears, `[{spot, gain}]`. `player` is `{p}` (feet,
-## house frame) plus optional `floor` / `room` (missing ones are
-## [method HouseLocate.locate]d): voice on, on the player's floor, within
-## [constant VOICE_TERMINAL_REACH_M] plan metres, a gain of at least
-## [constant VOICE_MIN_GAIN]; the [constant VOICE_MAX_TERMINALS] nearest,
-## nearest first (ties by id in code-unit order). `opts`: `keep` (spot ids
-## already routed: the hysteresis) and `only` (the allowed spot ids).
+## Nearest first, ties by id in code-unit order; `rows` are `[d, id]`.
+static func _nearest(rows: Array, most: int) -> Array:
+	rows.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] or (a[0] == b[0] and str(a[1]) < str(b[1])))
+	return rows.slice(0, most)
+
+
+## The terminals a player hears (wave 26, R5), `[{spot, gain}]`: voice on,
+## in the player's room (`player.room`, else located from `player.p`; a
+## player in no room hears none), never a `view: "reinstall"` terminal (the
+## tent station, even with `voice: true`), gain 1; the
+## [constant VOICE_MAX_TERMINALS] nearest in plan, nearest first. No reach,
+## nothing through a wall.
+## `opts.only` (an Array of spot ids) limits the candidates.
 static func hears_terminals(house: Dictionary, player: Dictionary, opts := {}) -> Array:
-	var keep: Array = opts.get("keep", [])
 	var only: Variant = opts.get("only")
-	var p: Array = player["p"]
-	var at := {} if player.has("floor") and player.has("room") else HouseLocate.locate(house, p)
-	var fl := str(player["floor"]) if player.has("floor") else str(at["floor"])
-	var rm: Variant = player["room"] if player.has("room") else at["room"]
+	var rm: Variant = _room_of(house, player)
+	if rm == null:
+		return []
 	var rows: Array = []
 	for t: Dictionary in house.get("terminals", []):
 		var pos: Array = t.get("pos", [])
-		if pos.size() < 3 or not voice_on(house, t) or HouseLocate.floor_of(house, float(pos[1])) != fl:
+		if pos.size() < 3 or str(t.get("room", "")) != str(rm) or str(t.get("view", "")) == "reinstall" or not voice_on(house, t):
 			continue
 		if only is Array and not (only as Array).has(str(t["id"])):
 			continue
-		var dx := float(pos[0]) - float(p[0])
-		var dz := float(pos[2]) - float(p[2])
-		var d := sqrt(dx * dx + dz * dz)  # in doubles: a Vector2 is single precision
-		var gain := _judged(d, VOICE_TERMINAL_REACH_M, rm != null and str(t.get("room", "")) == str(rm), keep.has(str(t["id"])))
-		if gain < 0.0:
-			continue
-		rows.append([d, str(t["id"]), gain])
-	rows.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] or (a[0] == b[0] and str(a[1]) < str(b[1])))
+		rows.append([_plan(pos, player["p"]), str(t["id"])])
 	var out: Array = []
-	for r: Array in rows.slice(0, VOICE_MAX_TERMINALS):
-		out.append({"spot": r[1], "gain": r[2]})
+	for r: Array in _nearest(rows, VOICE_MAX_TERMINALS):
+		out.append({"spot": r[1], "gain": 1.0})
+	return out
+
+
+## The players a terminal hears (wave 26, R5), `[{session, gain}]`: voice
+## on at the terminal (never a `view: "reinstall"` one), the players
+## (`{session, p, room?}`) whose room is the
+## terminal's, gain 1; the [constant VOICE_MAX_PLAYERS] nearest its `pos`.
+## `opts.only` (an Array of sessions) limits them.
+static func hears_players(house: Dictionary, spot: Variant, players: Array, opts := {}) -> Array:
+	var t := _spot_of(house, spot)
+	if t.is_empty() or str(t.get("view", "")) == "reinstall" or not voice_on(house, t):
+		return []
+	var only: Variant = opts.get("only")
+	var rows: Array = []
+	for pl: Dictionary in players:
+		var rm: Variant = _room_of(house, pl)
+		if rm == null or str(rm) != str(t.get("room", "")):
+			continue
+		if only is Array and not (only as Array).has(str(pl["session"])):
+			continue
+		rows.append([_plan(t["pos"], pl["p"]), str(pl["session"])])
+	var out: Array = []
+	for r: Array in _nearest(rows, VOICE_MAX_PLAYERS):
+		out.append({"session": r[1], "gain": 1.0})
 	return out

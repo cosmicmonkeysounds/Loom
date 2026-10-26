@@ -1,0 +1,15 @@
+{
+  "ESCAPE_M": 5,
+  "ESCAPE_SLACK": 0.5,
+  "ESCAPE_COOLDOWN_MS": 20000,
+  "OUTSIDE_GROUND_MARGIN": 30,
+  "ESCAPE_SIGNAL": "simulation escape attempt",
+  "PRESENCE_HYSTERESIS_M": 0.75,
+  "PRESENCE_LINGER_MS": 3000,
+  "PATH_REVEAL_MS": 60000,
+  "HEART_SIGNAL": "simulation heart reached",
+  "PICKUP_SIGNAL": "simulation pickup taken",
+  "HEART_INSET_M": 0.3,
+  "PICKUP_REACH_M": 0.9,
+  "PICKUP_SLACK_M": 0.3
+}

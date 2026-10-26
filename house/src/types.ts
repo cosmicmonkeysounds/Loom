@@ -157,7 +157,12 @@ export interface Spawn {
   yaw: number;
 }
 
-export type PropKind = "box" | "cylinder" | "screen" | "label" | "king";
+/** `heart` (wave 26, R6): Trabolta's heart in the in-game server room,
+ *  drawn while the map's King is fallen (or the map has none), reached by
+ *  walking in (`heartReached`). `pickup` (wave 26, R7): a thing a program
+ *  picks up by walking to it (`pickupReach`), drawn only in the games. Both
+ *  are new in wave 26: an older server or bundle refuses them. */
+export type PropKind = "box" | "cylinder" | "screen" | "label" | "king" | "heart" | "pickup";
 
 export interface Prop {
   id: string;
@@ -170,7 +175,7 @@ export interface Prop {
   yaw?: number;
   color?: string;
   label?: string;
-  /** Collides. Default: true for box / cylinder / king, false otherwise (`propSolid`). */
+  /** Collides. Default: true for box / cylinder / king, false otherwise (`propSolid`) — so false for heart and pickup. */
   solid?: boolean;
   /** kind "king" only: his maximum hit points, an integer 1–99 (default 4) —
    *  one shared bar for every guest; at 0 he has fallen ("pawns only"). */
@@ -180,10 +185,15 @@ export interface Prop {
    *  director sets it. Absent: the spatial hub holds them in memory,
    *  starting at `hp`. A missing or non-number value reads as `hp`. */
   health?: string;
-  /** kind "king" only: the story signals posted about him — the chess
-   *  terminal's `won` / `lost` / `drawn`, the server's `hit` / `fallen`
-   *  (defaults `KING_SIGNALS`). */
-  signals?: { won?: string; lost?: string; drawn?: string; hit?: string; fallen?: string };
+  /** kind "pickup" only (required there): what it is (`"virus"`), the
+   *  moment's `item` arg. Refused on every other kind. */
+  item?: string;
+  /** The story signals a prop posts, checked per kind (`validateHouse`): a
+   *  king's `won` / `lost` / `drawn` (the chess terminal) and `hit` /
+   *  `fallen` (the server; defaults `KING_SIGNALS`); a heart's `reached`
+   *  (default `HEART_SIGNAL`); a pickup's `taken` (default
+   *  `PICKUP_SIGNAL`). Any other kind takes none (`propSignal`). */
+  signals?: { won?: string; lost?: string; drawn?: string; hit?: string; fallen?: string; reached?: string; taken?: string };
   /** kind "king" only: when a checkmate counts — a numeric world var at or
    *  above `min` (the screen state's `king.armed`); absent = unknown. */
   armed?: { path: string; min: number };
@@ -316,6 +326,11 @@ export interface Assignment {
    *  end or a timeout is still the same visit until the duck is found, so
    *  ⚔ starts spent. Missing (an old server) = not yet. */
   kingHit?: boolean;
+  /** (wave 26, C6) Pickup prop ids this program already took tonight
+   *  (memory): a re-scan never shows them. Missing (an old server) = none. */
+  picked?: string[];
+  /** (wave 26, C6) This program already heard the in-game heart tonight (memory). */
+  heartHeard?: boolean;
 }
 
 export interface PlayerState {

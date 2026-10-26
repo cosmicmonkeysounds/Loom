@@ -1798,6 +1798,39 @@
       ],
       "color": "#6e4f33",
       "label": "GPU"
+    },
+    {
+      "id": "trabolta-heart",
+      "room": "server-room",
+      "kind": "heart",
+      "pos": [
+        4.6,
+        -2.7,
+        23.6
+      ],
+      "size": [
+        0.6,
+        1.7,
+        0.6
+      ],
+      "yaw": 0,
+      "color": "#141418"
+    },
+    {
+      "id": "virus-disk",
+      "room": "hard-drive",
+      "kind": "pickup",
+      "item": "virus",
+      "pos": [
+        6.3,
+        2.8,
+        26.4
+      ],
+      "size": [
+        0.3,
+        0.3,
+        0.3
+      ]
     }
   ],
   "spaces": {

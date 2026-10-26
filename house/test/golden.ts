@@ -16,12 +16,48 @@
 //! - `<name>.fallen.json` — `[{from, to, path}]`: the route queries again,
 //!   with every king fallen (`route(…, {fallen})`: his doors open).
 //!
+//! Wave 26 (C5) adds, per map:
+//!
+//! - `<name>.escape.json`   — `{ground}` (`outsideGround`, null without an
+//!   exterior door) then `[{p, d}]`: `voidDistance` (null in a room, "inf"
+//!   on a floor with no rooms).
+//! - `<name>.presence.json` — `[{p, prev, room}]` (`presenceRoom` either
+//!   side of every door, each of its rooms as `prev` and none; along each
+//!   door's wall past its gap; over each stair past half height), then
+//!   `[{rooms, spots}]` (`linkedSpots`).
+//! - `<name>.moments.json`  — a map with a heart or a pickup prop:
+//!   `[{heart, p, reached}]` and `[{pickup, p, reach, slack}]` (plain and
+//!   with `PICKUP_SLACK_M`).
+//!
+//! and once, `constants.json`: every new constant the ports must carry.
+//!
 //! Every number is rounded to 1 mm, queries included (answers are computed
 //! from the rounded queries). One JSON value per line, for readable diffs.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  ESCAPE_COOLDOWN_MS,
+  ESCAPE_M,
+  ESCAPE_SIGNAL,
+  ESCAPE_SLACK,
+  HEART_INSET_M,
+  HEART_SIGNAL,
+  OUTSIDE_GROUND_MARGIN,
+  PATH_REVEAL_MS,
+  PICKUP_REACH_M,
+  PICKUP_SIGNAL,
+  PICKUP_SLACK_M,
+  PRESENCE_HYSTERESIS_M,
+  PRESENCE_LINGER_MS,
+  heartProps,
+  heartReached,
+  linkedSpots,
+  outsideGround,
+  pickupProps,
+  pickupReach,
+  presenceRoom,
+  voidDistance,
   KING_HIT_SLACK,
   breakpoints,
   kingProps,
@@ -33,13 +69,15 @@ import {
   mm,
   pointInPolyStrict,
   pointInRect,
+  polyBounds,
   portals,
   route,
   stairLevels,
   validateHouse,
   buildWalls,
+  doorGap,
 } from "../src/index.ts";
-import type { HouseMap, Room, Vec2, Vec3 } from "../src/index.ts";
+import type { HouseMap, Prop, Room, Vec2, Vec3 } from "../src/index.ts";
 
 export const ROOT = join(import.meta.dirname, "..");
 export const FIXTURES = join(ROOT, "test", "fixtures");
@@ -177,6 +215,114 @@ export function jsonLines(items: unknown[]): string {
   return `[\n${items.map((i) => `  ${JSON.stringify(i)}`).join(",\n")}\n]\n`;
 }
 
+/** Door-side probes: `at` ± each offset along x and along z, at room `a`'s floor. */
+function doorProbes(house: HouseMap, offsets: number[]): Vec3[] {
+  const out: Vec3[] = [];
+  for (const door of house.doors) {
+    const room = house.rooms.find((r) => r.id === door.a);
+    if (!room) continue;
+    const y = elevationOf(house, room);
+    for (const o of offsets) {
+      for (const s of o === 0 ? [1] : [1, -1]) {
+        out.push([door.at[0] + s * o, y, door.at[1]], [door.at[0], y, door.at[1] + s * o]);
+      }
+    }
+  }
+  return out.map(round3);
+}
+
+/** `voidDistance` queries: the locate queries, door probes out to past `ESCAPE_M`, the ground's corners. */
+export function escapeQueries(house: HouseMap): Vec3[] {
+  const out = [...locateQueries(house), ...doorProbes(house, [0.2, 0.74, 0.76, 4.4, 4.5, 5, 6])];
+  const g = outsideGround(house);
+  if (g) {
+    const [x0, z0, x1, z1] = g.rect;
+    out.push([x0, g.y, z0], [x1, g.y, z1], [(x0 + x1) / 2, g.y, z0 + 0.5]);
+  }
+  return out.map(round3);
+}
+
+/** `presenceRoom` queries: probes either side of every door, each of its rooms as `prev`, and none. */
+export function presenceQueries(house: HouseMap): { p: Vec3; prev: string | null }[] {
+  const out: { p: Vec3; prev: string | null }[] = [];
+  const probes = doorProbes(house, [0, 0.3, 0.74, 0.76, 1.2]);
+  const prevs = (p: Vec3): (string | null)[] => {
+    const near = house.doors.filter((d) => Math.hypot(d.at[0] - p[0], d.at[1] - p[2]) < 1.5).flatMap((d) => [d.a, d.b]);
+    return [...new Set([...near, null])];
+  };
+  for (const p of probes) for (const prev of prevs(p)) out.push({ p, prev });
+  // Along each door's wall, past the gap's ends, 0.3 m either side: a hold
+  // here would be through the wall (wave 26 review), so none may hold.
+  for (const door of house.doors) {
+    const gap = doorGap(house, door);
+    if (gap === null) continue;
+    const y = gap.bottom;
+    for (const along of [gap.lo - 0.5, gap.lo - 1.5, gap.hi + 0.5, gap.hi + 1.5]) {
+      for (const across of [-0.3, 0.3]) {
+        const p: Vec3 = gap.axis === "x" ? [along, y, gap.c + across] : [gap.c + across, y, along];
+        for (const prev of [door.a, door.b]) out.push({ p: round3(p), prev });
+      }
+    }
+  }
+  // Over each stair, past half height either way, each end as `prev`.
+  for (const stair of house.stairs) {
+    const { low, high } = stairLevels(house, stair);
+    const [x0, z0, x1, z1] = stair.rect;
+    const mid: Vec2 = [(x0 + x1) / 2, (z0 + z1) / 2];
+    for (const f of [0.4, 0.6]) {
+      const p: Vec3 = [mid[0], low + (high - low) * f, mid[1]];
+      for (const prev of [stair.from, stair.to, null]) out.push({ p: round3(p), prev });
+    }
+  }
+  return out;
+}
+
+/** The heart's queries: a 0.25 m grid over its room (and 1 m around it), at its floor. */
+export function heartQueries(house: HouseMap, heart: Prop): Vec3[] {
+  const room = house.rooms.find((r) => r.id === heart.room);
+  if (!room) return [];
+  const [x0, z0, x1, z1] = polyBounds(room.poly);
+  const y = elevationOf(house, room);
+  const out: Vec3[] = [];
+  for (let x = x0 - 1; x <= x1 + 1 + 1e-9; x += 0.25) for (let z = z0 - 1; z <= z1 + 1 + 1e-9; z += 0.25) out.push([x, y, z]);
+  for (const f of house.floors) if (f.id !== room.floor) out.push([heart.pos[0], f.elevation, heart.pos[2]]);
+  return out.map(round3);
+}
+
+/** A pickup's queries: 8 bearings at plan radii round its reach and its slack, feet at its floor and higher. */
+export function pickupQueries(house: HouseMap, prop: Prop): Vec3[] {
+  const [px, py, pz] = prop.pos;
+  const out: Vec3[] = [[px, py, pz]];
+  for (let k = 0; k < 8; k++) {
+    const a = (k * 45 * Math.PI) / 180;
+    for (const r of [0.5, 0.89, 0.91, 1.15, 1.25]) out.push([px - Math.sin(a) * r, py, pz - Math.cos(a) * r]);
+  }
+  for (const dy of [-1.3, -1.1, 0.4, 1.1, 1.3]) out.push([px + 0.3, py + dy, pz]);
+  for (const f of house.floors) out.push([px, f.elevation, pz]);
+  return out.map(round3);
+}
+
+/** The wave 26 constants every port carries (`constants.json`). */
+export function constantsGolden(): Record<string, number | string> {
+  return {
+    ESCAPE_M,
+    ESCAPE_SLACK,
+    ESCAPE_COOLDOWN_MS,
+    OUTSIDE_GROUND_MARGIN,
+    ESCAPE_SIGNAL,
+    PRESENCE_HYSTERESIS_M,
+    PRESENCE_LINGER_MS,
+    PATH_REVEAL_MS,
+    HEART_SIGNAL,
+    PICKUP_SIGNAL,
+    HEART_INSET_M,
+    PICKUP_REACH_M,
+    PICKUP_SLACK_M,
+  };
+}
+
+const finite = (d: number | null): number | null | "inf" => (d === null ? null : Number.isFinite(d) ? d : "inf");
+
 /** Every golden file: file name → contents. */
 export function goldenFiles(): Map<string, string> {
   const files = new Map<string, string>();
@@ -196,6 +342,29 @@ export function goldenFiles(): Map<string, string> {
         }),
       ),
     );
+    files.set(
+      `${name}.escape.json`,
+      jsonLines([{ ground: outsideGround(house) }, ...escapeQueries(house).map((p) => ({ p, d: finite(voidDistance(house, p)) }))]),
+    );
+    const rooms = [...new Set(house.terminals.map((t) => t.room))].sort();
+    files.set(
+      `${name}.presence.json`,
+      jsonLines([
+        ...presenceQueries(house).map(({ p, prev }) => ({ p, prev, room: presenceRoom(house, p, prev) })),
+        ...[[], ...rooms.map((r) => [r]), rooms, [null, rooms[0] ?? null]].map((rs) => ({ rooms: rs, spots: [...linkedSpots(house, rs)] })),
+      ]),
+    );
+    const hearts = heartProps(house);
+    const pickups = pickupProps(house);
+    if (hearts.length > 0 || pickups.length > 0) {
+      files.set(
+        `${name}.moments.json`,
+        jsonLines([
+          ...hearts.flatMap((h) => heartQueries(house, h).map((p) => ({ heart: h.id, p, reached: heartReached(house, p, h) }))),
+          ...pickups.flatMap((k) => pickupQueries(house, k).map((p) => ({ pickup: k.id, p, reach: pickupReach(house, p, k), slack: pickupReach(house, p, k, PICKUP_SLACK_M) }))),
+        ]),
+      );
+    }
     const kings = kingProps(house);
     if (kings.length === 0) continue;
     files.set(
@@ -213,5 +382,6 @@ export function goldenFiles(): Map<string, string> {
       jsonLines(routeQueries(house).map(({ from, to }) => ({ from, to, path: route(house, from, to, { fallen }).map(round3) }))),
     );
   }
+  files.set("constants.json", `${JSON.stringify(constantsGolden(), null, 2)}\n`);
   return files;
 }
