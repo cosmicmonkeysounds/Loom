@@ -345,6 +345,7 @@ func _on_house(h: Dictionary, _version: String) -> void:
 		# its spawn, as the server re-seats them (`HouseLocate.standable`).
 		if not respawn_after_remap().is_empty():
 			_notice("The house was remapped — you're back at the start.")
+		_adopt_props()  # the session's own map may land after the assignment
 		_trail_in = 0.0
 		if autopilot != null:
 			autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
@@ -877,24 +878,34 @@ func _on_moment_answered(kind: String, result: String, data: Dictionary) -> void
 ## A new walk: every heart and pickup ready again, except what the
 ## assignment says this program already has (`heartHeard`, `picked`;
 ## missing on an old server = none).
-func _reset_props(a: Dictionary) -> void:
+func _reset_props(_a: Dictionary) -> void:
 	_props = {}
 	_moment_out = {"heart": "", "pickup": ""}
 	builder.clear_taken()
-	var picked: Array = a.get("picked") if a.get("picked") is Array else []
+	_adopt_props()
+
+
+## A state for every heart and pickup on the map now (the walk's map, or
+## the newer one the session fetched after the assignment), each read
+## against the assignment the first time it is seen.
+func _adopt_props() -> void:
 	for kind: String in ["heart", "pickup"]:
 		for p: Dictionary in HouseMoment.props_of(builder.house, kind):
-			var id := str(p["id"])
-			var done: bool = (kind == "heart" and a.get("heartHeard") == true) or (kind == "pickup" and picked.has(id))
-			_props[id] = {"kind": kind, "state": "done" if done else "", "retry": 0.0}
-			if kind == "pickup" and done:
-				builder.set_pickup_taken(id, true)
+			_prop_state(str(p["id"]), kind)
 
 
-## The prop state for `id` (made ready the first time: a map edit may add one).
+## The prop state for `id`, made the first time it is seen (a map edit may
+## add one): "done" when the walk's assignment says this program already
+## has it (`heartHeard`, `picked`; missing on an old server = none) — a
+## taken disk is hidden, so a re-scan never shows it.
 func _prop_state(id: String, kind: String) -> Dictionary:
 	if not _props.has(id):
-		_props[id] = {"kind": kind, "state": "", "retry": 0.0}
+		var a := flow.assignment
+		var picked: Array = a.get("picked") if a.get("picked") is Array else []
+		var done: bool = (kind == "heart" and a.get("heartHeard") == true) or (kind == "pickup" and picked.has(id))
+		_props[id] = {"kind": kind, "state": "done" if done else "", "retry": 0.0}
+		if kind == "pickup" and done:
+			builder.set_pickup_taken(id, true)
 	return _props[id]
 
 

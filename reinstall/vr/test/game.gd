@@ -4092,6 +4092,22 @@ func _test_heart_pickup() -> void:
 	game._process(0.016)
 	_check(moments.size() == n, "re-scan: … no moment for either")
 	link.session_over.emit("test")
+	# The session's own map lands after the assignment (the loaded one was
+	# stale, ServerLink.adopt fetched it): what the program has still holds.
+	var stale: Dictionary = house.duplicate(true)
+	stale["props"] = (stale["props"] as Array).filter(func(pr: Dictionary) -> bool: return pr["kind"] != "pickup")
+	link.give_house(stale)
+	var a2 := _assignment(house, "hp-2b", true)
+	a2["picked"] = ["virus-disk"]
+	link.assignment_received.emit(a2)
+	game._process(0.016)
+	link.give_house(house)
+	_check(not game.builder.pickup_shown("virus-disk") and game.prop_state("virus-disk") == "done", "re-scan: a map landing after the assignment still hides a picked disk")
+	n = moments.size()
+	player.teleport(HouseFrames.vec(disk_at), 0.0)
+	game._process(0.016)
+	_check(moments.size() == n, "re-scan: … and posts nothing for it")
+	link.session_over.emit("test")
 	link.assignment_received.emit(_assignment(house, "hp-3", true))
 	_check(game.builder.pickup_shown("virus-disk") and game.prop_state("virus-disk") == "", "re-scan: an old server's assignment (no picked) shows the disk")
 	player.teleport(HouseFrames.vec(disk_at), 0.0)
