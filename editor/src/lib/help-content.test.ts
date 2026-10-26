@@ -167,6 +167,10 @@ describe('the bundled authoring collection', () => {
     expect(helpSearch('lock').map((h) => h.article.slug)).toContain('live-shows')
   })
 
+  it('wave 26: the chess stakes line no longer promises the door code (G1)', () => {
+    expect(helpArticle('server-room')?.plain).not.toContain('checkmate him and the server-room door code goes to your codex')
+  })
+
   it('helpArticle(null) is the welcome page; unknown slugs are undefined', () => {
     expect(helpArticle(null)?.slug).toBe('welcome')
     expect(helpArticle('does-not-exist')).toBeUndefined()
