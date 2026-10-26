@@ -47,7 +47,7 @@ export const POPUP_KINDS: readonly PopupKind[] = [
   { id: "pop-cookies", style: "dialog", icon: "question", title: "Cookies", text: "This house uses cookies. They are at The Start Bar.", buttons: [{ label: "Accept" }, { label: "Accept all" }], sound: "ding" },
   { id: "pop-tip", style: "dialog", icon: "info", title: "Tip of the Day", text: "Did you know? A duck cannot be defragmented. We have tried.", buttons: [{ label: "Next tip", gag: "more" }, { label: "Close" }], sound: "ding" },
   { id: "pop-printer", style: "dialog", icon: "printer", title: "Printer", text: "The printer is out of paper. And toner. And patience.", buttons: [{ label: "Retry", gag: "dodge" }, { label: "Cancel" }], sound: "exclamation" },
-  { id: "pop-winner", style: "warning", icon: "coin", title: "WINNER!!!", text: "You have been selected for a FREE nothing. Claim it now before it is gone.", buttons: [{ label: "CLAIM", gag: "more" }], sound: "tada", wall: true },
+  { id: "pop-winner", style: "warning", icon: "coin", title: "WINNER!!!", text: "You have been selected for a FREE nothing. Claim it now before it is gone.", buttons: [{ label: "CLAIM", gag: "more" }], sound: "tada", wall: true, adLike: true },
   { id: "pop-ram-full", style: "dialog", icon: "warning", title: "Memory Full", text: "Your RAM is full. Please forget something.", buttons: [{ label: "Forget" }, { label: "Cancel", gag: "confirm" }], sound: "exclamation" },
   { id: "pop-lonely", style: "dialog", icon: "question", title: "Screensaver", text: "Are you still there? The screensaver is getting lonely.", buttons: [{ label: "I'm here" }], sound: "ding", wall: true },
   { id: "pop-sure", style: "dialog", icon: "question", title: "Confirm", text: "Are you sure you want to be sure?", buttons: [{ label: "Yes" }, { label: "Yes" }, { label: "No", gag: "dodge" }], sound: "ding" },
@@ -68,8 +68,8 @@ export const POPUP_KINDS: readonly PopupKind[] = [
   { id: "pop-bingo", style: "toast", icon: "info", title: "Computer Bingo", text: "Found a program that matches a square? Check the box.", buttons: OK, sound: "chord", pools: ["early"] },
   { id: "pop-captcha", style: "dialog", icon: "question", title: "Are You Human?", text: "Please select every square containing a program.", buttons: [{ label: "Verify", gag: "more" }, { label: "Skip" }], sound: "ding", pools: ["early"] },
   // --- the hijack -----------------------------------------------------------------
-  { id: "pop-hijack", style: "warning", icon: "error", title: "000. 000. 000.", text: "000. 000. 000. 000. 000. 000.", buttons: [{ label: "OK", gag: "more" }], sound: "glitch", pools: ["malware"] },
-  { id: "pop-selected", style: "dialog", icon: "coin", title: "YOU HAVE BEEN SELECTED", text: "A special offer is being downloaded to you. Please do not resist.", buttons: [{ label: "Accept" }, { label: "Decline", gag: "more" }], sound: "critical", pools: ["malware"] },
+  { id: "pop-hijack", style: "warning", icon: "error", title: "000. 000. 000.", text: "000. 000. 000. 000. 000. 000.", buttons: [{ label: "OK", gag: "more" }], sound: "glitch", pools: ["malware"], adLike: true },
+  { id: "pop-selected", style: "dialog", icon: "coin", title: "YOU HAVE BEEN SELECTED", text: "A special offer is being downloaded to you. Please do not resist.", buttons: [{ label: "Accept" }, { label: "Decline", gag: "more" }], sound: "critical", pools: ["malware"], adLike: true },
   { id: "pop-blocker", style: "toast", icon: "info", title: "Pop-up Blocker", text: "Pop-up blocker blocked 0 pop-ups.", buttons: OK, sound: "blip", pools: ["malware"] },
   // --- after the hunts ---------------------------------------------------------------
   { id: "pop-chart-updated", style: "toast", icon: "info", title: "Trust Chart", text: "The Trust Chart has been updated.", buttons: OK, sound: "chord", pools: ["late"], phases: ["trust_chart"] },

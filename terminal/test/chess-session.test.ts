@@ -96,7 +96,9 @@ describe("the words", () => {
   });
 
   it("the stakes line follows king.armed; the bar reads n / max; no tips anywhere", () => {
-    expect(stakesLine(true)).toBe("Checkmate him and the server-room door code goes to your Codex.");
+    // Wave 26 (G1): armed, it names no prize and no route to the door code.
+    expect(stakesLine(true)).toBe("Checkmate him.");
+    expect(stakesLine(true)).not.toMatch(/code|codex|door|prize|server/i);
     expect(stakesLine(false)).toBe("No prize now.");
     expect(stakesLine(null)).toBeNull();
     expect(stakesLine(undefined)).toBeNull();

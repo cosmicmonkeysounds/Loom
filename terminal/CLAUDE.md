@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 912 tests, 79 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 945 tests, 80 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -45,9 +45,9 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/Setup.tsx`, `src/setup-map.ts` | the two-step setup (passcode, tap a map terminal); `followMap` / `followVoice` re-read the map entry on boot |
 | `src/screen.ts` | the screen-state poll + its types (`ScreenState`, `night`, `room`, `king`, `results`, `moments`, `spot`); `voice=`/`room=` + `after=` + `talk=`/`said=`; `useScreenState` paces with `PollPacer` and exposes `pollNow` |
 | `src/health.ts` | the heartbeat keys (`deviceQuery`): `ver audio vis fs ann mic bat` + door `door dlv dft dwn` + bay `pb pbc pbx pft` |
-| `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides |
+| `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides; the glitch takeover (`glitchLayer`, `GlitchTakeover`, `coverOf`: wave 26) |
 | `src/Attract.tsx`, `src/attract.ts` | the asleep screen (the idle show full screen); Mystify's pure parts |
-| `src/idle-show/` | the idle show: `schedule.ts` (seeded segments), `pools.ts` (by `Night.phase`), `ads.ts` + `art.tsx`, `popups.ts`, `storm.ts`, `gags.ts`, `savers/`, `ScanBox.tsx` + `scan-copy.ts` |
+| `src/idle-show/` | the idle show: `schedule.ts` (seeded segments; `PATTERN`, `CALM_PATTERN`), `pools.ts` (by `Night.phase`; `calm`, `quiet`), `field.ts` (popup lives, `popupCap`), `ads.ts` + `art.tsx`, `popups.ts`, `storm.ts`, `gags.ts`, `savers/`, `ScanBox.tsx` + `scan-copy.ts` |
 | `src/cutscene/` | `SceneDef` (`types.ts`), `pick.ts` (which scene plays), `clock.ts` (server time), `CutsceneLayer.tsx`, `registry.ts`, `kit/` (Win98 blocks, typewriter, particles…), `scenes/{act1,act2,act3,moments,house,heart}.tsx`, `preview.tsx` (`?preview=`) |
 | `src/sound/` | `bus.ts` (master, effects, voices buses; `soundPlayingUntil`), `library.ts` (30 synthesised `SFX_NAMES`), `sfx()` |
 | `src/speech/` | `engine.ts` (browser → Fully → silent ladder, opt-in server voice, the queue, `VoiceFloor`), `split.ts`, `pick-voice.ts` (male for the character, female for announcements; macOS + Windows names), `said.ts` (wave 25: `RoomSpeech` → `talk` / `said`, `PollPacer`, the drain re-poll) |
@@ -58,15 +58,15 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/files.ts`, `src/FilePanel.tsx` | 📎 GIVE HIM A FILE: share / redeem as the piloted guest |
 | `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
 | `src/serial/` | the M4 bridge: `door-protocol.ts` (JSON lines, pure), `door-bridge.ts` + `patch-bridge.ts` (decisions, pure), `door-serial.ts` (Web Serial + `door=sim`, lazy), `door-status.ts` (store + heartbeat keys), `use-door.ts` (hook) |
-| `src/world/` | spatial SSE + house map → `WorldStore`; `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
+| `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (wave 26 R5: `roomOccupied`, `linkedNow`, `linkedPane`, `PresenceLatch`, `usePresenceLatch`, `useRoomLinked`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three) |
 | `src/shadow/` | `view=shadow`: the camera with ghosts (lazy) |
-| `src/camfeed.ts` | the camera feed to the games (`POST /api/mod/spatial/cam`) |
+| `src/camfeed.ts` | the camera feed to the games (`POST /api/mod/spatial/cam`); one frame / 2 s while the reply says `watched: false`; never from the tent |
 | `src/voice/` | the voice link: `roles.ts` (who takes part, `micReport`), `mic.ts`, `capture.ts`, `uplink.ts`, `stream.ts`, `playback.ts`, `link.ts` (lazy `VoiceLink`), `hook.ts`, `MicCue.tsx` |
 | `src/Tv.tsx`, `src/tv.ts` | `view=tv`: which lines are spoken / captioned (`TV_SILENT_BEATS`), the cursor, the mute |
 | `src/chess/` | `view=chess`: `session.ts` (pure), `post.ts` (chess results, pending in `loom.terminal.pending-chess`), `ChessTerminal.tsx` (lazy, `@loom/chess`) |
 | `src/casino/` | `view=casino`: `session.ts` (pure), `post.ts` (`/api/mod/casino/bet`, never retried), `CasinoTerminal.tsx` (lazy) |
-| `src/reinstall/` | `view=reinstall`: `session.ts` (pure: what a pass does), `ReinstallTerminal.tsx`, `pane.tsx` (shadow root), `scope-css.ts`, `adapter.ts` |
+| `src/reinstall/` | `view=reinstall`: `session.ts` (pure: what a pass does), `ReinstallTerminal.tsx` (the scan kiosk between walks), `pane.tsx` (shadow root), `scope-css.ts`, `adapter.ts` |
 | `src/kiosk.ts`, `src/fullscreen.ts`, `src/webgl.ts` | Wake Lock + the ⚙ long press; `KioskFullscreen`; the one-time WebGL2 probe |
 | `public/slides/` | slide PNG / MP4 files named after the cue (see its README) |
 | `test/` | one file per pure module; `fixtures/door-lines.jsonl`; `fake-audio.ts`, `world-fixture.ts` |
@@ -84,8 +84,52 @@ the heartbeat parse, `/api/mod/screen/terminals`), `event-runtime.ts`
 `TERMINAL_VIEWS`). While piloting the pane is always the face. `roomOf`
 returns null for `tv`, `chess`, `casino` and `reinstall`: those never sleep
 on a room. `chess`, `casino` and `reinstall` are awake all night and take
-overlays only; `reinstall` also takes slides, cutscenes and moments
-between walks and counts as busy (piloting) during one.
+overlays only; `reinstall` (the tent's scan kiosk, wave 26 T3) also takes
+beat cutscenes and moments between walks — never a story slide, the
+countdown corner or the Y2K clock (`screenLayers` `slides: false`) — and
+counts as busy (piloting) during one. Every view takes the glitch.
+
+## Wave 26
+
+- **The glitch (T2).** `layers.glitch` (`slides.ts` `glitchLayer`):
+  `program.glitch` while its `at` > 0, younger than `GLITCH_MS` (8 s) and
+  later than this page's first screen answer (`ScreenState.firstNow`,
+  stamped once per page by `useScreenState` / `withFirstNow`), so history
+  and a reload mid-glitch never play it; nor does a page that first saw the
+  cue more than `GLITCH_FRESH_MS` (4 s) after it (`ScreenState.glitchSeen`,
+  a lost server back mid-takeover). Piloting, a peek, `bare` and the
+  tent never suppress it; a blackout beats it. `coverOf`: covered (the idle
+  show pauses), never a takeover (a pilot, a chess game, a tent walk keep
+  running). `GlitchTakeover` (`ScreenLayer.tsx`) is CSS only in the main
+  bundle (`.screen-glitch`, z 36): ≤ 3 Hz, no red field, transform /
+  opacity, reduced motion a still frame. It unmounts itself at its end
+  (`glitchLeftMs`) and sounds once per cue per page (`claimGlitchSounds`);
+  the app's `layer` is keyed so it keeps its place beside any screen. A
+  slide cued with it (the hijack) runs its scene from the takeover's end
+  (`slideClockAt`; the hold still counts from the cue). `?preview=glitch`
+  draws it.
+- **The calm idle show (T1).** `IdleContext.calm` (pool `early` / `hunt`,
+  i.e. before the 📺 ad hijack): `CALM_PATTERN` (one ad a ~2 min cycle),
+  a window every 18–39 s (`CALM_POPUP_PACE`), `CALM_MAX_POPUPS` (2), no
+  storms, no `adLike` windows. After the hijack the flood as before.
+  `quiet` (`IdleShow quiet`, the tent's backdrop): one window, no TOUCH ME,
+  no face, no storm unless hijacked, and the calm pace all night
+  (`calmPace`).
+- **Terminals link by room (R5).** `world/presence.ts`: a placed wall
+  shows the world (pane, or full screen asleep) only while `spot.here > 0`
+  (the house-wide rule only when the server sends no `here`), latched 3 s;
+  no spot or `reinstall`: never; `mirror` / `shadow`: house-wide.
+  `watchWhileAsleep(state, view, room, spot)`. The TV's gate is the voice
+  lane's `Tv.tsx`: `useRoomLinked(state?.spot, inSimulation)`.
+- **The tent (T3).** A centred Reinstallation Wizard card: the camera,
+  the typed field (`TypedFallback` `focus` / `scope` / `clearOnPick`: it
+  takes the focus back after any tap that leaves it outside the card,
+  `takesFocusBack`), the picks as 48 px buttons, N REINSTALLING; a
+  `tablet_*` cue is a status line in it. The camera shrinks (44vh down to
+  140 px) before any row under it clips. No world pane, no camera feed.
+- **Copy.** G1 (the filing steps, the reminders, Truth Pong, the summons,
+  the chess stakes line) and D1 (`dare_chosen` on the `Dare Chosen` beat,
+  `DARE_ORDER`) carry `// DRAFT w26`.
 
 ## Speech done (wave 25)
 

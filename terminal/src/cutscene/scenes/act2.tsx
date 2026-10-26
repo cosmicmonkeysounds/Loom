@@ -97,12 +97,18 @@ const PHONE_SPOTS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 62, y: 74 },
 ];
 
-const FIVE_POPS: readonly PopMsg[] = [
+/** The summons' drifting dialogs. Wave 26 (G1): no exemption is stated. */
+export const FIVE_POPS: readonly PopMsg[] = [
   { title: "Antivirus", text: "Sweep in progress. Programs found outside the Desktop: counting…", kind: "warning", actions: ["OK"] },
-  { title: "Bathroom Mode", text: "Bathroom Mode excuses you. Nothing else does.", kind: "info" },
+  // DRAFT w26 (G1: no exemption stated up front)
+  { title: "Antivirus", text: "Every program is being counted.", kind: "info" },
   { title: "Second Moment of Truth", text: "Be in the Desktop, or you will not play Truth Pong.", kind: "error", actions: ["Going!"] },
   { title: "Reminder", text: "The doors of the Desktop close in five minutes.", kind: "question", actions: ["Yes", "Also yes"] },
 ];
+
+/** The summons' marquee. Wave 26 (G1): what excuses a program is never said. */
+// DRAFT w26 (G1)
+export const FIVE_MARQUEE = "⏳ FIVE MINUTES ★ BE IN THE DESKTOP FOR THE SECOND MOMENT OF TRUTH ★ AN ANTIVIRUS IS COUNTING ★ NO DESKTOP, NO TRUTH PONG ★";
 
 function summonsLeft(p: SceneProps): number {
   return liveRemaining(p.state, "summons", Date.now()) ?? Math.max(0, 300 - Math.floor(p.t / 1000));
@@ -138,7 +144,8 @@ function FiveMinutesTv(p: SceneProps) {
       })}
       {t > 2400 && <DriftingPopups t={t} messages={FIVE_POPS} count={2} seed={21} start={2400} life={6000} gap={3000} area={{ x0: 0.08, x1: 0.62, y0: 0.5, y1: 0.66 }} width="24em" reduced={reduced} />}
       <div className="tv2-marquee-bar tv2-amber">
-        <Marquee t={t} speed={150}>⏳ FIVE MINUTES ★ BE IN THE DESKTOP FOR THE SECOND MOMENT OF TRUTH ★ BATHROOM MODE EXCUSES YOU ★ AN ANTIVIRUS IS COUNTING ★ NO DESKTOP, NO TRUTH PONG ★</Marquee>
+        {/* DRAFT w26 (G1: the marquee drops "BATHROOM MODE EXCUSES YOU") */}
+        <Marquee t={t} speed={150}>{FIVE_MARQUEE}</Marquee>
       </div>
       <Glass t={t} reduced={reduced} />
     </Stage>
@@ -299,10 +306,13 @@ function SummonsClosedWall(p: SceneProps) {
 
 const PONG_WORD = "TRUTH PONG";
 const PONG_START = 2600;
-const PONG_POPS: readonly PopMsg[] = [
+/** Truth Pong's drifting dialogs: how the game is played (a miss is marked:
+ *  Clippy's own rule), never how a truth is judged (wave 26, G1). */
+export const PONG_POPS: readonly PopMsg[] = [
   { title: "Truth Pong", text: "Make the cup: share one truth.", kind: "info" },
   { title: "Truth Pong", text: "Miss, and you are marked.", kind: "warning" },
-  { title: "Truth Pong", text: "Accurate is accepted. Confident is accepted. A guess is the Internet.", kind: "question", actions: ["Understood"] },
+  // DRAFT w26 (G1: the confidence rule is never stated)
+  { title: "Truth Pong", text: "Trust the process.", kind: "question", actions: ["Understood"] },
   { title: "Adobe Acrobat", text: "Visualise the cup. Become the cup.", kind: "info", actions: ["Become"] },
 ];
 

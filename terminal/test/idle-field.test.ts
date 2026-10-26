@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { MAX_POPUPS, POPUP_H, POPUP_W, STORM_EVERY_MS, ask, close, closeGag, dodge, emptyField, hydra, placePopup, relayout, spawn, spawnGap, stormPlace, tick, y2kPace, type PopupField, type Rect } from "../src/idle-show/field.ts";
+import { CALM_MAX_POPUPS, CALM_POPUP_PACE, MAX_POPUPS, QUIET_MAX_POPUPS, calmPace, popupCap, POPUP_H, POPUP_W, STORM_EVERY_MS, ask, close, closeGag, dodge, emptyField, hydra, placePopup, relayout, spawn, spawnGap, stormPlace, tick, y2kPace, type PopupField, type Rect } from "../src/idle-show/field.ts";
 import { mulberry32 } from "../src/idle-show/rng.ts";
 import type { Layout } from "../src/idle-show/schedule.ts";
 
@@ -38,6 +40,50 @@ describe("the popups' lives", () => {
     expect(spawnGap("saver", "malware", "wall", 0.5)!).toBeLessThan(spawnGap("saver", "early", "wall", 0.5)!);
     expect(spawnGap("saver", "early", "tv", 0.5)!).toBeGreaterThan(spawnGap("saver", "early", "wall", 0.5)!);
     expect(spawnGap("face", "early", "wall", 0.5)).toBeNull();
+  });
+
+  it("a quiet backdrop (the tent's kiosk, T3) keeps the calm pace after the hijack too, so its one window settles", () => {
+    expect(calmPace({ calm: true })).toBe(true);
+    expect(calmPace({ quiet: true })).toBe(true);
+    expect(calmPace({ calm: false, quiet: true })).toBe(true);
+    expect(calmPace({ calm: false })).toBe(false);
+    expect(calmPace({})).toBe(false);
+    // Hijacked and quiet: a saver window every 9–19.5 s, not every 1.5–3.3 s.
+    expect(spawnGap("saver", "malware", "wall", 0, null, calmPace({ quiet: true }))).toBe(9_000);
+    expect(spawnGap("saver", "malware", "wall", 1, null, calmPace({ quiet: true }))).toBe(19_500);
+    const src = readFileSync(fileURLToPath(new URL("../src/idle-show/IdleShow.tsx", import.meta.url)), "utf8");
+    expect(src).toMatch(/calm: calmPace\(ctxRef\.current\), cap: popupCap\(ctxRef\.current\)/u);
+  });
+
+  it("are calm before the hijack (wave 26, T1): six times further apart, two at most, no storm of them", () => {
+    for (const r of [0, 0.5, 1]) {
+      expect(spawnGap("saver", "early", "wall", r, null, true)!).toBe(Math.round(spawnGap("saver", "early", "wall", r)! * CALM_POPUP_PACE));
+    }
+    // A saver's 3–6.5 s becomes 18–39 s.
+    expect(spawnGap("saver", "early", "wall", 0, null, true)).toBe(18_000);
+    expect(spawnGap("saver", "hunt", "wall", 1, null, true)).toBe(39_000);
+    // Hijacked: still twice as often as the all-night rate.
+    expect(spawnGap("saver", "malware", "wall", 0.5)!).toBe(Math.round(spawnGap("saver", "early", "wall", 0.5)! * 0.5));
+    expect(popupCap({ calm: true })).toBe(CALM_MAX_POPUPS);
+    expect(popupCap({ calm: true, quiet: true })).toBe(QUIET_MAX_POPUPS);
+    expect(popupCap({})).toBe(MAX_POPUPS);
+    const calm = run(emptyField(), 0, 600_000, 250, { ...env, calm: true, cap: CALM_MAX_POPUPS } as typeof env);
+    expect(calm.most).toBeLessThanOrEqual(CALM_MAX_POPUPS);
+    expect(calm.arrivals).toBeGreaterThan(600_000 / 39_000 - 2);
+    expect(calm.arrivals).toBeLessThan(600_000 / 18_000 + 2);
+    const quiet = run(emptyField(), 0, 600_000, 250, { ...env, cap: QUIET_MAX_POPUPS } as typeof env);
+    expect(quiet.most).toBe(QUIET_MAX_POPUPS);
+    // The hydra never passes the cap either; a storm keeps its own six.
+    let f = spawn(emptyField(), 0, { seed: 1, reserve, storm: false, cap: 2 }).field;
+    f = spawn(f, 1, { seed: 1, reserve, storm: false, cap: 2 }).field;
+    f = spawn(f, 2, { seed: 1, reserve, storm: false, cap: 2 }).field;
+    expect(f.live).toHaveLength(2);
+    expect(f.live.map((p) => p.born)).toEqual([1, 2]);
+    expect(hydra(f, f.live[0]!.id, 3, { seed: 1, reserve, cap: 2 }).field.live.length).toBeLessThanOrEqual(2);
+    expect(closeGag(0.1, { dodged: false, storm: false }, 2, 2)).not.toBe("hydra");
+    let st = emptyField();
+    for (let i = 0; i < 8; i++) st = spawn(st, i, { seed: 1, reserve, storm: true, cap: 1 }).field;
+    expect(st.live).toHaveLength(MAX_POPUPS);
   });
 
   it("pile up faster as midnight nears in the Y2K hour", () => {

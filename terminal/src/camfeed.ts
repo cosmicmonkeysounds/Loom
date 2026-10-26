@@ -12,6 +12,13 @@
 //! until ⚙ changes the spot, and so does a revoked token. The image is sent
 //! as the camera sees it (never mirrored).
 //!
+//! Wave 26 (R5, C7): the upload's reply says whether anyone in the game can
+//! see this room (`watched`: a player is in this spot's room). While
+//! `watched: false` the feed slows to one frame every `FEED_IDLE_EVERY_MS`
+//! (2 s) and goes back to `FEED_EVERY_MS` on `true`; an older server sends
+//! no `watched` (the old rate). The tent laptop (`view=reinstall`) never
+//! sends its camera: every walk starts in its room, and it is never linked.
+//!
 //! Old tablets (Chrome 87 / Safari 14): a plain `<canvas>` + `toDataURL`, no
 //! `OffscreenCanvas`, no `createImageBitmap`.
 
@@ -22,6 +29,8 @@ import { camera as pageCamera, type CameraHub, type CameraState } from "./camera
 export const FEED_W = 160;
 export const FEED_H = 120;
 export const FEED_EVERY_MS = 333;
+/** (wave 26, R5) Nobody in the game can see this room (`watched: false`): one frame this often. */
+export const FEED_IDLE_EVERY_MS = 2000;
 export const FEED_QUALITY = 0.5;
 export const FEED_BACKOFF_MS = 1000;
 export const FEED_BACKOFF_MAX_MS = 30_000;
@@ -38,9 +47,10 @@ export function cameraRetryable(state: CameraState): boolean {
   return state === "error";
 }
 
-/** Does this terminal send its camera? Only a placed one, and only while ⚙ leaves it on. */
-export function feedWanted(c: Pick<TerminalConfig, "spot" | "camFeed">): boolean {
-  return c.camFeed && c.spot.trim() !== "";
+/** Does this terminal send its camera? Only a placed one, only while ⚙ leaves
+ *  it on, and never the tent laptop (`view=reinstall`, wave 26 T3 / R5). */
+export function feedWanted(c: Pick<TerminalConfig, "spot" | "camFeed"> & { view?: string }): boolean {
+  return c.camFeed && c.spot.trim() !== "" && c.view !== "reinstall";
 }
 
 /** The source rectangle of a centre crop of `vw × vh` to `aspect` (w / h). */
@@ -69,7 +79,7 @@ export function base64Bytes(b64: string): number {
 export type FeedStatus =
   | { kind: "off" }
   | { kind: "waiting" } // no camera frame yet (or the page is hidden)
-  | { kind: "sending"; at: number }
+  | { kind: "sending"; at: number; watched?: boolean }
   | { kind: "retrying"; problem: string }
   | { kind: "stopped"; problem: string };
 
@@ -81,7 +91,7 @@ export function feedStatusText(s: FeedStatus): string {
     case "waiting":
       return "camera feed waiting for the camera";
     case "sending":
-      return "camera feed live — the games show this room";
+      return s.watched === false ? "camera feed idle — nobody in this room in the games" : "camera feed live — the games show this room";
     case "retrying":
       return `camera feed retrying (${s.problem})`;
     case "stopped":
@@ -104,6 +114,25 @@ export function feedProblem(status: number | null): string {
   return `HTTP ${status}`;
 }
 
+/** One upload's answer: its HTTP status (null: unreachable) and, from a wave
+ *  26 server, whether a player can see this room now. */
+export interface FeedReply {
+  status: number | null;
+  watched?: boolean;
+}
+
+/** The `watched` flag off an upload's JSON body (anything else: unknown). */
+export function watchedOf(body: unknown): boolean | undefined {
+  if (typeof body !== "object" || body === null) return undefined;
+  const w = (body as Record<string, unknown>)["watched"];
+  return typeof w === "boolean" ? w : undefined;
+}
+
+/** The wait before the next frame after an upload the server took. */
+export function feedGap(watched: boolean | undefined): number {
+  return watched === false ? FEED_IDLE_EVERY_MS : FEED_EVERY_MS;
+}
+
 export interface FeedFrame {
   jpeg: string;
   w: number;
@@ -113,8 +142,8 @@ export interface FeedFrame {
 export interface FeedDeps {
   /** A frame of the camera now, or null (no frame yet). */
   capture: () => FeedFrame | null;
-  /** Send it; the HTTP status, or null when the server couldn't be reached. */
-  post: (frame: FeedFrame) => Promise<number | null>;
+  /** Send it; the HTTP status (null when the server couldn't be reached) and the reply's `watched`. */
+  post: (frame: FeedFrame) => Promise<FeedReply>;
   hidden: () => boolean;
   now: () => number;
   setTimer: (fn: () => void, ms: number) => unknown;
@@ -159,13 +188,14 @@ export function runFeed(deps: FeedDeps): () => void {
       next(FEED_EVERY_MS);
       return;
     }
-    const code = await deps.post(frame).catch(() => null);
+    const reply = await deps.post(frame).catch((): FeedReply => ({ status: null }));
     if (!alive) return;
+    const code = reply.status;
     const outcome = feedOutcome(code);
     if (outcome === "ok") {
       backoff = 0;
-      status({ kind: "sending", at: deps.now() });
-      next(FEED_EVERY_MS);
+      status(reply.watched === undefined ? { kind: "sending", at: deps.now() } : { kind: "sending", at: deps.now(), watched: reply.watched });
+      next(feedGap(reply.watched));
     } else if (outcome === "stop") {
       status({ kind: "stopped", problem: feedProblem(code) });
     } else {
@@ -275,8 +305,8 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
         capture: videoCapture(video),
         post: (f) =>
           fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: JSON.stringify({ spot, jpeg: f.jpeg, w: f.w, h: f.h }) }).then(
-            (r) => r.status,
-            () => null,
+            async (r): Promise<FeedReply> => ({ status: r.status, watched: r.ok ? watchedOf(await r.json().catch(() => null)) : undefined }),
+            (): FeedReply => ({ status: null }),
           ),
         hidden: () => document.hidden,
         now: () => Date.now(),

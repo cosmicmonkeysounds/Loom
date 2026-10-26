@@ -3,12 +3,16 @@
 //! `ReinstallSlot`), awake all night like the King's board and the casino;
 //! the screens are `session.ts`'s (pure).
 //!
-//! Idle, it is a wall terminal: the idle show (never naming Trabolta before
-//! his introduction: `asleep` is its naming gate), the scan box with the
-//! typed fallback, a strip of the programs in the Internet now, and — while
-//! someone else walks the simulation on a headset — the world view beside
-//! the show. A `tablet_*` cue (the story's capture) puts up a wizard card
-//! that names nobody. A pass is checked against the spatial candidates:
+//! Idle (wave 26, T3), it is a scan kiosk: a centred Win98 Reinstallation
+//! Wizard card with the large live camera, the typed-name field and the
+//! programs in the Internet now as big buttons, over the idle show as a
+//! dimmed quiet backdrop (never naming Trabolta before his introduction:
+//! `asleep` is its naming gate). It takes no story slide, countdown corner
+//! or Y2K clock (the app's `slides: false`); overlays, beat cutscenes and
+//! the glitch still play. It draws no world and is never linked to the
+//! Internet (R5: every walk starts in its room): no camera into the game, no
+//! voice link. A `tablet_*` cue (the story's capture) is a status line in the
+//! card that names nobody. A pass is checked against the spatial candidates:
 //! a program the server would turn away gets the NOT MARKED card and
 //! nothing else (no story effect, D8 / O6); a marked or captured one gets
 //! the reinstall app's own flow full screen (`pane.tsx`): straight to Play
@@ -21,13 +25,10 @@
 //! - `takeover`: a story overlay (blackout / alarm / go to the living room)
 //!   covers the screen — the walk is **held** (`ReinstallFlow`'s `held`),
 //!   never ended; the scanner stops under it.
-//! - `worldSlot(store, size)`: the app's guarded world view (or the
-//!   raycaster with no WebGL2), for the pane while someone is in the
-//!   simulation on another device.
 //! - Sounds: the game's go through the page's master bus
 //!   (`createSfx(soundOutput)`, built once), the station's through `sfx()`.
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import "./reinstall.css";
 import { ApiError, fetchCandidates } from "@loom/reinstall/api.ts";
 import { createSfx } from "@loom/reinstall/game/audio.ts";
@@ -35,12 +36,13 @@ import { useStations, type FlowExit } from "@loom/reinstall/flow.tsx";
 import type { Program } from "@loom/reinstall/program.ts";
 import type { TerminalConfig } from "../config.ts";
 import type { ScreenState } from "../screen.ts";
-import { useSpatialStream, useWorld, type Gone, type WorldStore } from "../world/stream.ts";
-import { hasWebGL2, paneSimulation } from "../webgl.ts";
+import { useSpatialStream, useWorld, type Gone } from "../world/stream.ts";
+import { countsLine } from "../world/overlay.ts";
+import { hasWebGL2 } from "../webgl.ts";
 import { Gear, TypedFallback } from "../controls.tsx";
 import { Scanner, cameraProblem, type CameraState } from "../scanner.tsx";
 import { IdleShow } from "../idle-show/IdleShow.tsx";
-import { ScanBox } from "../idle-show/ScanBox.tsx";
+import { SCAN_COPY } from "../idle-show/scan-copy.ts";
 import { sfx, soundOutput } from "../sound/bus.ts";
 import { reinstallConfigOf } from "./adapter.ts";
 import { ReinstallPane } from "./pane.tsx";
@@ -63,11 +65,9 @@ export interface ReinstallTerminalProps {
   onGone: (g: Gone) => void;
   /** A walk (or the wizard) is on screen (true), or back to idle (false). */
   onBusy: (busy: boolean) => void;
-  /** The app's guarded world view for a store, as a pane or full screen. */
-  worldSlot: (store: WorldStore, size: "pane" | "full") => ReactNode;
 }
 
-export function ReinstallTerminal({ config, state, polled, takeover, covered, asleep, onSetup, onGone, onBusy, worldSlot }: ReinstallTerminalProps) {
+export function ReinstallTerminal({ config, state, polled, takeover, covered, asleep, onSetup, onGone, onBusy }: ReinstallTerminalProps) {
   const [s, dispatch] = useReducer(reduce, INITIAL);
   const busy = isBusy(s);
   useEffect(() => onBusy(busy), [busy, onBusy]);
@@ -84,7 +84,7 @@ export function ReinstallTerminal({ config, state, polled, takeover, covered, as
   const [playing, setPlaying] = useState(false);
   const stations = useStations(rconfig, !playing);
 
-  // The simulation: who walks it now (the pane, and "already reinstalling").
+  // The simulation: who walks it now (the status bar's count, and "already reinstalling").
   const world = useSpatialStream(config, !busy);
   const players = useWorld(world, (w) => w.world.players);
   const gone = useWorld(world, (w) => w.gone);
@@ -196,7 +196,7 @@ export function ReinstallTerminal({ config, state, polled, takeover, covered, as
       asleep={asleep}
       s={s}
       picks={idle ? picks : []}
-      pane={paneSimulation("auto", canDraw, players.size > 0, false) !== "none" ? worldSlot(world, "pane") : null}
+      reinstalling={players.size > 0 ? players.size : (state?.reinstalling ?? 0)}
       onSetup={onSetup}
       onCode={onCode}
       onPick={(id) => dispatch({ type: "pick", id })}
@@ -207,7 +207,17 @@ export function ReinstallTerminal({ config, state, polled, takeover, covered, as
   );
 }
 
-/** The station while nobody walks here: the wall terminal round the scan box. */
+/**
+ * The station while nobody walks here (wave 26, T3): a scan kiosk. A centred
+ * Win98 *Reinstallation Wizard* card holds the large live camera (the page's
+ * one stream: `<Scanner>`), the typed-name field (always shown, focused only
+ * while idle with no card up) and the programs in the Internet now as big
+ * buttons; a capture cue (`tablet_*`) is a status line in the card, never a
+ * modal over the scanner. Behind it the idle show plays as a dimmed, quiet
+ * backdrop (`IdleShow` `quiet`: no storm unless hijacked, one window at most,
+ * no TOUCH ME, no face). No world pane: the walkers are the TV's and the
+ * walls' to show (R5); the card's status bar says how many are reinstalling.
+ */
 function Station({
   config,
   state,
@@ -217,7 +227,7 @@ function Station({
   asleep,
   s,
   picks,
-  pane,
+  reinstalling,
   onSetup,
   onCode,
   onPick,
@@ -233,7 +243,8 @@ function Station({
   asleep: boolean;
   s: StationSession;
   picks: Program[];
-  pane: ReactNode;
+  /** Programs walking the simulation now (the status bar's count). */
+  reinstalling: number;
   onSetup: () => void;
   onCode: (text: string) => void;
   onPick: (id: string) => void;
@@ -242,16 +253,19 @@ function Station({
   onCancel: () => void;
 }) {
   const [camera, setCamera] = useState<CameraState>("starting");
-  const [typedOpen, setTypedOpen] = useState(false);
-  // The idle show keeps its popups off the whole corner (the picks + the scan box).
-  const corner = useRef<HTMLDivElement>(null);
-  const box = useRef<HTMLElement>(null);
+  // The idle show keeps its popups off the whole card.
+  const card = useRef<HTMLElement>(null);
   const step = s.step;
   const checking = step.kind === "checking";
   const ended = state?.night.ended === true;
-  const withWorld = pane !== null;
+  const scanning = step.kind === "idle" || step.kind === "refused";
+  // The typed field takes the focus only while the station waits, no card up.
+  const typingFocus = step.kind === "idle" && !takeover && s.notice === null;
+  const wizardUp = s.card !== null && step.kind === "idle";
+  const problem = cameraProblem(camera);
+  const counts = countsLine({ total: reinstalling, here: 0 }, false);
   return (
-    <div className="terminal reinstall attract">
+    <div className="terminal reinstall attract station">
       <header className="bar">
         <span className="bar-left">
           <span className="dot" data-on={String(polled)} />
@@ -263,42 +277,41 @@ function Station({
         </span>
       </header>
 
-      <main className={`stage idle${withWorld ? " with-world" : ""}`}>
-        <section className={`face-pane${withWorld ? " showing-world" : ""}`}>{pane}</section>
-        <section className="line-pane" />
-        <IdleShow name={config.name} state={state} asleep={asleep} character={config.character} target="wall" active={!covered} region={withWorld ? "pane" : "full"} reserveRef={corner} />
-        <div ref={corner} className="ri-corner">
-          {picks.length > 0 && (
-            <div className="ri-picks" aria-label="In the Internet now">
-              <div className="ri-picks-title">☣ IN THE INTERNET NOW</div>
-              <div className="ri-picks-list">
-                {picks.map((p) => (
-                  <button key={p.id} type="button" className="link ri-pick" disabled={checking} onClick={() => onPick(p.id)}>
-                    {p.name}
-                  </button>
-                ))}
-              </div>
+      <main className="stage idle ri-stage">
+        <IdleShow name={config.name} state={state} asleep={asleep} character={config.character} target="wall" active={!covered} region="full" reserveRef={card} quiet />
+        <section ref={card} className="ri-station" aria-label="Reinstallation Wizard">
+          <div className="ri-station-title">💿 Reinstallation Wizard</div>
+          <div className="ri-station-body">
+            <div className="ri-station-cam">
+              <Scanner facing={config.camera} active={!takeover && scanning} onCode={onCode} onState={setCamera} />
             </div>
-          )}
-          <ScanBox
-            boxRef={box}
-            scanner={<Scanner facing={config.camera} active={!takeover && (step.kind === "idle" || step.kind === "refused")} onCode={onCode} onState={setCamera} />}
-            listen={null}
-            problem={cameraProblem(camera)}
-            typedOpen={typedOpen}
-            onToggleTyped={() => setTypedOpen((o) => !o)}
-            typed={
-              <TypedFallback
-                config={config}
-                onPick={(id) => {
-                  setTypedOpen(false);
-                  onPick(id);
-                }}
-                onProblem={onProblem}
-              />
-            }
-          />
-        </div>
+            <div className="ri-station-words">
+              <div className="ri-station-scan">{SCAN_COPY.title}</div>
+              <div className="ri-station-hint">{SCAN_COPY.hint}</div>
+              {problem !== null && <div className="ri-station-problem">{problem}</div>}
+            </div>
+            <div className="ri-station-typed">
+              <div className="ri-station-label">{SCAN_COPY.typed}</div>
+              <TypedFallback config={config} focus={typingFocus} scope={card} clearOnPick onPick={onPick} onProblem={onProblem} />
+            </div>
+            {picks.length > 0 && (
+              <div className="ri-picks" aria-label="In the Internet now">
+                <div className="ri-picks-title">☣ IN THE INTERNET NOW</div>
+                <div className="ri-picks-list">
+                  {picks.map((p) => (
+                    <button key={p.id} type="button" className="link ri-pick" disabled={checking} onClick={() => onPick(p.id)}>
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {wizardUp && <WizardStatus />}
+          </div>
+          <div className="ri-station-status" role="status">
+            {counts}
+          </div>
+        </section>
       </main>
 
       {checking && (
@@ -326,7 +339,6 @@ function Station({
           </div>
         </div>
       )}
-      {s.card !== null && step.kind === "idle" && <WizardCard />}
       {s.notice !== null && <div className={`flash${s.notice.tone === "good" ? " good" : ""}`}>{s.notice.text}</div>}
       <div className="scanlines" aria-hidden="true" />
     </div>
@@ -349,22 +361,20 @@ function Refused({ program, ended, onClose }: { program: Program; ended: boolean
   );
 }
 
-/** The story's capture cue (`tablet_*`): a generic Win98 card that names
- *  nobody (the capture is the guest's own news, on their phone). */
-function WizardCard() {
+/** The story's capture cue (`tablet_*`): a status line in the station's card
+ *  (wave 26, T3: never a modal over the scanner) that names nobody (the
+ *  capture is the guest's own news, on their phone). */
+function WizardStatus() {
   return (
     <div className="ri-wizard" role="status">
-      <div className="ri-wizard-title">Reinstallation Wizard</div>
-      <div className="ri-wizard-body">
-        <div className="ri-wizard-icon" aria-hidden="true">
-          💿
-        </div>
-        <div>
-          <div className="ri-wizard-line">Setup is preparing to reinstall a program.</div>
-          <div className="ri-wizard-sub">Corrupted program: scan your pass to begin.</div>
-          <div className="ri-wizard-bar" aria-hidden="true">
-            <span />
-          </div>
+      <div className="ri-wizard-icon" aria-hidden="true">
+        💿
+      </div>
+      <div className="ri-wizard-words">
+        <div className="ri-wizard-line">Setup is preparing to reinstall a program.</div>
+        <div className="ri-wizard-sub">Corrupted program: scan your pass to begin.</div>
+        <div className="ri-wizard-bar" aria-hidden="true">
+          <span />
         </div>
       </div>
     </div>

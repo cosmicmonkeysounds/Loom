@@ -6,7 +6,7 @@ import { PHASE_POOLS, eligible, fillCopy, idleContextOf, ownerMay, phasePool, y2
 import { screenLayers } from "../src/slides.ts";
 import { CONFIRM_TEXT, DODGED_TITLE, POPUP_KINDS } from "../src/idle-show/popups.ts";
 import { drawAt, hash32, permutation, mulberry32 } from "../src/idle-show/rng.ts";
-import { AD_FOCUS_EVERY, LAYOUT_MS, PATTERN, POPUP_FOCUS_EVERY, SEGMENT_MAX_MS, adAt, adPool, drawFocused, popupAt, advance, loadCursor, popupPool, resumeCursor, saveCursor, segmentAt, startIndex, type Segment } from "../src/idle-show/schedule.ts";
+import { AD_FOCUS_EVERY, CALM_PATTERN, LAYOUT_MS, PATTERN, POPUP_FOCUS_EVERY, patternFor, SEGMENT_MAX_MS, adAt, adPool, drawFocused, popupAt, advance, loadCursor, popupPool, resumeCursor, saveCursor, segmentAt, startIndex, type Segment } from "../src/idle-show/schedule.ts";
 import { SAVERS, SAVER_IDS } from "../src/idle-show/savers/index.ts";
 import { LOGO_SUB, LOGO_TEXT } from "../src/idle-show/savers/fun.ts";
 import { SCAN_COPY } from "../src/idle-show/scan-copy.ts";
@@ -251,13 +251,71 @@ describe("the schedule", () => {
   });
 
   it("varies its layouts, with an occasional storm (every cycle while hijacked)", () => {
-    const early = walk(ctxOf("early"), 0, PATTERN.length * 40);
+    // Wave 26 (T1): the full rate is the night after the hijack; the early
+    // pool plays it only with calm off (`idleContextOf` sets calm there).
+    const early = walk(ctxOf("early", { calm: false }), 0, PATTERN.length * 40);
     for (const l of ["saver", "ad", "banner", "side", "storm"] as const) expect(early.some((s) => s.layout === l)).toBe(true);
     const storms = early.filter((s) => s.layout === "storm").length;
     expect(storms).toBeGreaterThan(0);
     expect(storms).toBeLessThan(40);
     expect(walk(ctxOf("malware"), 0, PATTERN.length * 20).filter((s) => s.layout === "storm").length).toBe(20);
     expect(early.some((s) => s.layout === "face")).toBe(false);
+  });
+
+  it("is calm before the hijack (wave 26, T1): about one ad a two-minute cycle, no storms, far fewer ads a minute", () => {
+    const rate = (ctx: IdleContext) => {
+      const segs = walk(ctx, 0, PATTERN.length * 30);
+      const ads = segs.reduce((n, x) => n + x.ads.length, 0);
+      const ms = segs.reduce((n, x) => n + x.ms, 0);
+      return { segs, perMin: (ads * 60_000) / ms, ms };
+    };
+    const base = { character: "Trabolta", target: "wall" as const, scan: true, asleep: false, now: 1 };
+    for (const phase of ["", "arrivals", "desktop", "bingo", "bingo_results", "introduced", "hunt_1", "truth_1"]) {
+      const ctx = idleContextOf({ ...base, state: state({ phase }) });
+      expect(ctx.calm, phase).toBe(true);
+      expect(patternFor(ctx)).toBe(CALM_PATTERN);
+      const { segs, perMin } = rate(ctx);
+      expect(segs.some((x) => x.layout === "storm"), phase).toBe(false);
+      for (let c = 0; c < 30; c++) {
+        const cycle = segs.slice(c * CALM_PATTERN.length, (c + 1) * CALM_PATTERN.length);
+        expect(cycle.reduce((n, x) => n + x.ads.length, 0)).toBeLessThanOrEqual(1);
+        const len = cycle.reduce((n, x) => n + x.ms, 0);
+        expect(len).toBeGreaterThan(90_000);
+        expect(len).toBeLessThan(150_000);
+      }
+      const late = rate(idleContextOf({ ...base, state: state({ phase: "malware" }) }));
+      expect(perMin * 5).toBeLessThan(late.perMin);
+    }
+    // From the hijack on, the flood (and its storms) as before.
+    for (const phase of ["malware", "hunt_2", "summons", "truth_pong", "beans"]) {
+      const ctx = idleContextOf({ ...base, state: state({ phase }) });
+      expect(ctx.calm, phase).toBe(false);
+      expect(patternFor(ctx)).toBe(PATTERN);
+    }
+    expect(walk(idleContextOf({ ...base, state: state({ phase: "malware" }) }), 0, PATTERN.length * 10).filter((x) => x.layout === "storm").length).toBe(10);
+    // The face still shows (in the ad's place) on an awake wall after the introduction.
+    expect(walk(ctxOf("hunt", { names: true, calm: true }), 0, 200).some((x) => x.layout === "face")).toBe(true);
+  });
+
+  it("a quiet backdrop (wave 26, T3): no face, no storm unless hijacked; default off", () => {
+    const base = { character: "Trabolta", target: "wall" as const, scan: true, asleep: false, now: 1 };
+    const quiet = (phase: string) => idleContextOf({ ...base, state: state({ phase }), quiet: true });
+    expect(idleContextOf({ ...base, state: state() }).quiet).toBe(false);
+    expect(quiet("hunt_1").face).toBe(false);
+    expect(walk(quiet("hunt_1"), 0, 200).some((x) => x.layout === "face" || x.layout === "storm")).toBe(false);
+    // Late in the night (not calm) a quiet show still has no storm; hijacked it does.
+    expect(walk(quiet("truth_pong"), 0, 200).some((x) => x.layout === "storm")).toBe(false);
+    expect(walk(quiet("malware"), 0, PATTERN.length * 4).filter((x) => x.layout === "storm").length).toBe(4);
+  });
+
+  it("drops the ad-like windows while calm (wave 26, T1)", () => {
+    const adLike = POPUP_KINDS.filter((p) => p.adLike === true).map((p) => p.id);
+    expect(adLike).toContain("pop-winner");
+    for (const pool of PHASE_POOLS) {
+      const calm = popupPool(ctxOf(pool, { calm: true })).map((p) => p.id);
+      for (const id of adLike) expect(calm).not.toContain(id);
+    }
+    expect(popupPool(ctxOf("late")).map((p) => p.id)).toContain("pop-winner");
   });
 
   it("shows his face only on an awake wall terminal after the introduction", () => {

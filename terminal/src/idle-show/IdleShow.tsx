@@ -10,6 +10,11 @@
 //! (`active` false: hidden, every loop stopped, its place kept). Asleep
 //! (`Attract.tsx`): full screen, minus anything naming the character.
 //!
+//! The rate (wave 26, T1): calm until the ad hijack (`IdleContext.calm`:
+//! `CALM_PATTERN`, one ad a ~2 min cycle, a window every 18–39 s, two at
+//! most, no storms, no ad-like windows), then the flood. `quiet` (T3) makes
+//! it a dimmed backdrop behind the tent's scan kiosk.
+//!
 //! Sound: only the page's own accents through `sfx()` (D4) — quiet, rationed,
 //! dropped while a voice speaks; the TV's are quieter still (the bus's TV
 //! level), and its director mute cuts them.
@@ -22,7 +27,7 @@ import { sfx } from "../sound/bus.ts";
 import type { SfxName } from "../sound/library.ts";
 import { FACE_TIPS, SKIN_BAR, type IdleAd } from "./ads.ts";
 import { IdleArt } from "./art.tsx";
-import { MAX_POPUPS, ask, close, closeGag, dodge, emptyField, hydra, relayout, tick, type LivePopup, type PopupField, type Rect } from "./field.ts";
+import { MAX_POPUPS, ask, calmPace, close, closeGag, dodge, emptyField, hydra, popupCap, relayout, tick, type LivePopup, type PopupField, type Rect } from "./field.ts";
 import { GAG_MS, THANKS, adGag, attentionOn, duckLane, gagSound, gagText, ringsAt, type AdGag } from "./gags.ts";
 import { fillCopy, idleContextOf, type IdleContext } from "./pools.ts";
 import { CONFIRM_TEXT, DODGED_TITLE, type PopupKind } from "./popups.ts";
@@ -50,6 +55,10 @@ export interface IdleShowProps {
   reserveRef?: RefObject<HTMLElement | null>;
   /** Hears each segment's layout (the wall's face sleeps unless it shows: `face`). */
   onLayout?: (layout: string) => void;
+  /** (wave 26, T3) A dimmed backdrop behind something else (the tent's scan
+   *  kiosk): no storm unless hijacked, one window at most, no TOUCH ME, no
+   *  face layout (`IdleContext.quiet`). */
+  quiet?: boolean;
 }
 
 interface Gag {
@@ -69,15 +78,15 @@ function reserveOf(show: HTMLElement | null, box: HTMLElement | null | undefined
   return { x: (b.left - a.left) / a.width - m, y: (b.top - a.top) / a.height - m, w: b.width / a.width + 2 * m, h: b.height / a.height + 2 * m };
 }
 
-export function IdleShow({ name, state, asleep, character, target, active, region = "full", reserveRef, onLayout }: IdleShowProps) {
+export function IdleShow({ name, state, asleep, character, target, active, region = "full", reserveRef, onLayout, quiet = false }: IdleShowProps) {
   const seed = useMemo(() => hash32(name.trim().toLowerCase() || "terminal"), [name]);
   const reduced = useReducedMotion();
   // A moment's scene over the show pauses it where it stands (still drawn —
   // a popup moment shows what is under it — but nothing moves or rings).
   const moment = useMomentUp();
   const running = active && !moment;
-  const ctx: IdleContext = idleContextOf({ state, asleep, character, target, scan: reserveRef !== undefined, region, now: Date.now() });
-  const ctxKey = `${ctx.pool}|${ctx.phase}|${ctx.names}|${ctx.target}|${ctx.scan}|${ctx.face}|${ctx.character}`;
+  const ctx: IdleContext = idleContextOf({ state, asleep, character, target, scan: reserveRef !== undefined, region, now: Date.now(), quiet });
+  const ctxKey = `${ctx.pool}|${ctx.phase}|${ctx.names}|${ctx.target}|${ctx.scan}|${ctx.face}|${ctx.character}|${ctx.calm === true}|${ctx.quiet === true}`;
   // The pools only change with the context (not with every poll).
   const pools = useMemo(() => ({ ads: adPool(ctx), popups: popupPool(ctx) }), [ctxKey]);
   const segOf = useCallback((i: number): Segment => segmentAt(seed, i, ctx, pools.ads), [seed, ctxKey, pools]);
@@ -136,7 +145,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
     }
     const s = segOf(cursor.current!.index);
     const reserve = reserveOf(root.current, reserveRef?.current);
-    const r = tick(field.current, t, { seed, layout: s.layout, pool: ctxRef.current.pool, target, reserve, y2kLeft: ctxRef.current.y2kLeft });
+    const r = tick(field.current, t, { seed, layout: s.layout, pool: ctxRef.current.pool, target, reserve, y2kLeft: ctxRef.current.y2kLeft, calm: calmPace(ctxRef.current), cap: popupCap(ctxRef.current) });
     field.current = r.field;
     if (r.arrived !== null) {
       const k = kindOf(r.arrived);
@@ -218,7 +227,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
     const k = kindOf(p);
     const t = Date.now();
     const b = typeof which === "number" ? k?.buttons[which] : undefined;
-    const gagKind = p.asking ? "close" : which === "x" ? closeGag(roll(seed, p.id, t), p, field.current.live.length) : (b?.gag ?? "close");
+    const gagKind = p.asking ? "close" : which === "x" ? closeGag(roll(seed, p.id, t), p, field.current.live.length, popupCap(ctx)) : (b?.gag ?? "close");
     if (gagKind === "confirm") {
       field.current = ask(field.current, p.id, t);
       play("exclamation", 0.5);
@@ -226,7 +235,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
       field.current = dodge(field.current, p.id, t, { seed, reserve: reserveNow() });
       play("blip", 0.6, 1.4);
     } else if (gagKind === "hydra" || gagKind === "more") {
-      field.current = hydra(field.current, p.id, t, { seed, reserve: reserveNow() }).field;
+      field.current = hydra(field.current, p.id, t, { seed, reserve: reserveNow(), cap: popupCap(ctx) }).field;
       play("error", 0.5);
     } else {
       field.current = close(field.current, p.id);
@@ -245,7 +254,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
     setGag({ ad: ad.id, gag: g, until: t + GAG_MS[g], seq: ++gagSeq.current });
     play(gagSound(g), 0.6);
     if (g === "popup") {
-      field.current = hydra({ ...field.current, live: [...field.current.live] }, -1, t, { seed, reserve: reserveNow() }).field;
+      field.current = hydra({ ...field.current, live: [...field.current.live] }, -1, t, { seed, reserve: reserveNow(), cap: popupCap(ctx) }).field;
       setNow(t);
     }
   };
@@ -270,7 +279,8 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
 
   // --- the picture ---
   const live = field.current.live;
-  const attention = running && attentionOn(lastTouch.current, now, target);
+  // A quiet backdrop never asks for a touch (the kiosk in front of it does the asking).
+  const attention = running && !quiet && attentionOn(lastTouch.current, now, target);
   const gagFor = (ad: IdleAd) => (gag !== null && gag.ad === ad.id && now < gag.until ? gag : null);
   const adNode = (ad: IdleAd, size: "big" | "half") => <AdView key={ad.id} ad={ad} ctx={ctx} size={size} gag={gagFor(ad)} now={now} reduced={reduced} onButton={(e) => onAdButton(ad, e)} onClose={onAdClose} />;
   const layout = seg.layout;
@@ -283,6 +293,8 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
       className={`idle-show${reduced ? " reduced" : ""}`}
       data-layout={seg.layout}
       data-pool={ctx.pool}
+      data-calm={ctx.calm === true ? "" : undefined}
+      data-quiet={quiet ? "" : undefined}
       data-region={region}
       data-target={target}
       data-active={String(active)}
