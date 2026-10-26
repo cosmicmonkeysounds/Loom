@@ -34,7 +34,9 @@ import { usePush } from "../push.ts";
 import { redeemErrorText, shareTargets } from "../codex.ts";
 import { activePins, activeTakeover } from "../pins.ts";
 import { Takeover } from "../takeover.tsx";
-import { LinkLanding, ScanSheet, landingLink, type GuestScan } from "../guest-scan.tsx";
+import { LinkLanding, landingLink } from "../guest-scan.tsx";
+import type { GuestScan } from "../guest-scan-sheet.tsx";
+import { LazyScanSheet as ScanSheet } from "../guest-scan-sheet-lazy.tsx";
 import { LazyScanDone, loadScanDone, settled } from "../scan-done-lazy.tsx";
 import { BellButton, MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
 import { GuestRegister, PictureChanger } from "./register.tsx";
@@ -74,6 +76,8 @@ LazyMission.prefetch();
 // The pass's QR encoder: its own chunk, fetched just after the first paint
 // (the pass is one tap away; the arrival's `show pass` card follows soon).
 if (typeof window !== "undefined") window.setTimeout(prefetchQr, 1200);
+// Wave 26: the 📷 Scan sheet's chunk, just after.
+if (typeof window !== "undefined") window.setTimeout(ScanSheet.prefetch, 1600);
 // The 📝 fact card's chunk (wave 18b), a little later: it is dealt in the hunts.
 if (typeof window !== "undefined") window.setTimeout(prefetchFactCard, 2500);
 // Wave 26 (R1): the locked phone's screen, so a capture finds it there.

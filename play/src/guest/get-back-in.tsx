@@ -5,7 +5,7 @@
 //! `rejoin-calls.ts`'s. A lazy part (`register.tsx`): never in the first load.
 
 import { useEffect, useRef, useState } from "react";
-import { guestCameraProblem } from "../guest-scan.tsx";
+import { guestCameraProblem } from "../guest-scan-sheet.tsx";
 import type { CameraState } from "../scan.ts";
 import { CameraScanner } from "../scanner.tsx";
 import { usePlayHost } from "../host.ts";

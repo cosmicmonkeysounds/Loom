@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { badgeFromText, badgeLinkOf, badgeLinkText, cardFromSearch, cardPlan, printedBadge, rememberBadge, storedBadge, forgetBadge, withoutCard, BADGE_UNKNOWN } from "../src/rejoin.ts";
 import { askHost, askLine, enterBy, enterPart, filterNames, joinedNames, pollAsk, RejoinError } from "../src/rejoin-calls.ts";
 import { memoryStore } from "../src/host.ts";
-import { guestScan } from "../src/guest-scan.tsx";
+import { guestScan } from "../src/guest-scan-sheet.tsx";
 import { parseScan } from "../src/scan.ts";
 import { rejoinDetail } from "../src/host/model.ts";
 
