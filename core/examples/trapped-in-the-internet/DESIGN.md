@@ -1776,8 +1776,7 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
   knows. Press 🎱 on each winner. Celebrate, bring the ribbon, demand applause.`; Task
   Manager `reply 🃏 If nobody has a Bingo: hand Clippy the pre-filled card for
   {Kernel.anti_ai}, then press 🃏 on their card.`; Norton `reply 🛡 You are the selected
-  Antivirus. When the centre-square program is named (or the winner refuses to name anyone,
-  or the framed program denies the card), stand at attention and interrupt: it is
+  Antivirus. When the centre-square program is named (or the framed program denies the card; wave 26: a 🤐 marks nobody, so he follows the room), stand at attention and interrupt: it is
   inappropriate for that program to have not agreed to be ruled by AI, because that is what
   computer programs are here for. They must have a virus that was not caught at the door.
   They need to be taken to the Internet for a reinstallation. Then press 🛡 on them and

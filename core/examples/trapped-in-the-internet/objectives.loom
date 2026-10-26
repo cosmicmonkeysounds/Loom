@@ -448,14 +448,17 @@ OBJECTIVE Door Duty
     The four of you share the door. A scan clears the program: through the Tube to the Desktop, ⭐ +5 each. 🙋 on an arrival tells the others you have them. Not uploaded yet: they finish first. Camera fails: type the id under the QR.
   buttons: scan
 
+// Wave 26 (B3): a 🤐 marks nobody and ends it (the quest reads "Nobody was
+// named. Patrol the Tube.").
 // DRAFT w18
+// DRAFT w26 (B3: 🤐 marks nobody)
 OBJECTIVE The Selected Antivirus
   for: Norton Anti-Virus
-  while: (Night.phase == "bingo" or Night.phase == "bingo_results") and Night.first_reinstall_done != true
+  while: (Night.phase == "bingo" or Night.phase == "bingo_results") and Night.first_reinstall_done != true and Night.bingo_none != true
   act: B
   title: You are the selected Antivirus
   text:
-    When the centre-square program is named (or the winner names nobody, or the framed program denies the card), stand at attention and interrupt. They light up on your Wanted board: scan their pass, then 🛡 and walk them through the Tube.
+    When the centre-square program is named (or the framed program denies the card), stand at attention and interrupt. They light up on your Wanted board: scan their pass, then 🛡 and walk them through the Tube. If the winner names nobody, Clippy presses 🤐: nobody is marked, so follow the room.
     - The first reinstallation, done when Night.first_reinstall_done == true
   buttons: scan
 
@@ -652,10 +655,12 @@ OBJECTIVE Welcome Everyone
     The fundraiser to restore the sign at Maps And Ducks. Jean Trabolta joins by video conference later. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, one line through the centre. A host starts 🎱 Bingo and calls ⏰ time: your booth pops up when your game is on.
 
 // Wave 26 (B1): a guest pressed 🎱 BINGO!: Clippy checks that line first.
+// It ends at the first 🎱 or 🎯 on anyone (↩ is dead from then on, so the
+// card would hold a dead button): PLAYER SELECT is her NOW again.
 // DRAFT w26 (B1: check the caller's line, or ↩ undo it)
 OBJECTIVE Check The Bingo
   for: Clippy
-  while: Night.phase == "bingo_results" and Night.bingo_called == true and Night.bingo_checked != true and Night.bingo_done != true
+  while: Night.phase == "bingo_results" and Night.bingo_called == true and Night.bingo_checked != true and Night.bingo_winners < 1 and Night.bingo_named < 1 and Night.bingo_done != true
   act: B
   go: The Desktop
   title: A program called BINGO: check their line
@@ -862,11 +867,13 @@ OBJECTIVE A Program Called Bingo
     They pressed BINGO on their phone. If Clippy finds no line, ↩ Not a Bingo on their card: Bingo picks up with the time it had left.
   buttons: not_a_bingo
 
+// Wave 26 (B2): never while a guest's call is open: settle it first (🎱 or
+// ↩), or a ↩ would leave a framed program behind.
 // DRAFT for sign-off
 // DRAFT w26 (B5: one round)
 OBJECTIVE The Fake Bingo Card
   for: Task Manager
-  while: Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_done != true
+  while: Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_called != true and Night.bingo_done != true
   act: B
   title: Nobody has a Bingo: hand Clippy the fake card
   text:

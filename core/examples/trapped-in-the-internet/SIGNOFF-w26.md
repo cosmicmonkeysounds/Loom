@@ -107,6 +107,11 @@ help lanes write the rest. Not merged to master, not shipped.
 | `objectives.loom:695–697` | **After The Bingo** (Clippy, new) | — | *The Bingo is over: stay cheerful* · *One round only. Let Norton do his job and reassure everyone; then a host introduces Trabolta.* |
 | `objectives.loom:859–862` | **A Program Called Bingo** (Task Manager, new) | — | *A program called BINGO: does the line hold?* · *They pressed BINGO on their phone. If Clippy finds no line, ↩ Not a Bingo on their card: Bingo picks up with the time it had left.* · ↩ |
 | `codex/7-clippy.loom:61, 73` | Clippy Instructions 2 | *…Several winners are fine.* | *…A program may call BINGO from their own phone: their card pops up for you. If their line doesn't hold, ↩ Not a Bingo, and Bingo picks up with the time it had left.* · *(App) The winner names nobody: 🤐 on the winner. The winner may even name themselves: 🎯 on their own card. There is only one round: the first 🎯 or 🤐 ends it.* |
+| `codex/7-clippy.loom:70–72` | Clippy Instructions 2, the refusal | *If the winner refuses to identify their match, follow the Antivirus's direction about who needs reinstallation.* | *If the winner refuses to identify their match, nobody is reinstalled: press 🤐 (below).* |
+| `cast/antivirus.loom:27` | Norton's ⏰ brief | *…When the centre-square program is named (or the winner refuses to name anyone, or the framed program denies the card)…* | *…When the centre-square program is named (or the framed program denies the card)… If the winner names nobody, Clippy presses 🤐: nobody is marked, so follow the room.* |
+| `objectives.loom:461` | The Selected Antivirus (Norton) | *When the centre-square program is named (or the winner names nobody, or the framed program denies the card)…* | *When the centre-square program is named (or the framed program denies the card)… If the winner names nobody, Clippy presses 🤐: nobody is marked, so follow the room.* (and the card ends at a 🤐) |
+| `main.loom` INTERACTION `frame_for_bingo` | the 🃏 description | *Task Manager, only if nobody has a Bingo.* | *Task Manager, only if nobody has a Bingo, and once a guest's call is settled.* |
+| `main.loom:691` | # hosts, a 🃏 during an open call | — | *🃏 Nothing happens: {caller} called BINGO. Clippy checks that line first (🎱 or ↩).* |
 
 **The Dare (D1)**
 

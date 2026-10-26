@@ -469,6 +469,61 @@ describe("Trapped in the Internet — wave 26: a guest's BINGO and one round (B1
     expect(primeView(n.sim, "Clippy").objectives![0]!.id).toBe("Celebrate The Winners");
   }, SLOW);
 
+  it("a 🎱 on another winner while a call is open: Check The Bingo gives way, no NOW card keeps a dead ↩", () => {
+    const n = boot();
+    startBingo(n);
+    n.advance(600);
+    n.press("call_bingo", "g5");
+    expect(primeView(n.sim, "Clippy").objectives![0]!.id).toBe("Check The Bingo");
+    n.signal("bingo_winner", "g1", undefined, "Clippy");
+    // ↩ is dead now (a winner exists), so neither booth leads with it.
+    expect(live(n, "Clippy", "g5")).not.toContain("not_a_bingo");
+    const clippy = primeView(n.sim, "Clippy").objectives!;
+    expect(clippy.map((o) => o.id)).not.toContain("Check The Bingo");
+    expect(clippy[0]!.id).toBe("Celebrate The Winners");
+    const tm = primeView(n.sim, "Task Manager", undefined, { host: true }).objectives!;
+    expect(tm.map((o) => o.id)).not.toContain("A Program Called Bingo");
+    // The caller can still be checked from PLAYER SELECT: 🎱 on their tile.
+    expect(live(n, "Clippy", "g5")).toContain("bingo_winner");
+    // Every button on Clippy's NOW is live on somebody's card.
+    const cards = PROGRAMS.map(([id]) => live(n, "Clippy", id));
+    for (const b of clippy[0]!.buttons ?? []) expect(cards.some((c) => c.includes(b)), b).toBe(true);
+  }, SLOW);
+
+  it("🃏 waits while a guest's call is open: settle it first, then the fake card works", () => {
+    const n = boot();
+    startBingo(n);
+    n.advance(1201);
+    n.press("call_bingo", "g5");
+    // Task Manager's NOW is the call, and 🃏 is on nobody's card.
+    const tm = () => primeView(n.sim, "Task Manager", undefined, { host: true }).objectives!;
+    expect(tm()[0]!.id).toBe("A Program Called Bingo");
+    expect(tm().map((o) => o.id)).not.toContain("The Fake Bingo Card");
+    expect(live(n, "Task Manager", "g4", true)).not.toContain("frame_for_bingo");
+    const refused = n.signal("frame_for_bingo", "g4", undefined, "Task Manager");
+    expect(v(n.sim, "g4.framed")).toBe(false);
+    expect(to(refused, "g4").some((m) => m.text.startsWith("🃏 A completed Bingo card"))).toBe(false);
+    expect(hostLines(refused)).toContain("🃏 Nothing happens: Winamp called BINGO. Clippy checks that line first (🎱 or ↩).");
+    // ↩, then the hosts' ⏰: nobody has a Bingo, and the fake card is back.
+    n.press("not_a_bingo", "g5", "Clippy");
+    n.press("bingo_time");
+    expect(tm()[0]!.id).toBe("The Fake Bingo Card");
+    expect(live(n, "Task Manager", "g4", true)).toContain("frame_for_bingo");
+    n.signal("frame_for_bingo", "g4", undefined, "Task Manager");
+    expect(v(n.sim, "g4.framed")).toBe(true);
+  }, SLOW);
+
+  it("the ending puts every wave 26 Night var back to its seed at the doors (C9)", () => {
+    const src = read("main.loom");
+    const doors = src.slice(src.indexOf("// Wave 26 (B1–B5): a guest's 🎱 BINGO!, its undo, 🤐, the one round."));
+    const seeds = doors.slice(0, doors.indexOf("set Night.bingo_winners")).split("\n").map((l) => l.trim()).filter((l) => l.startsWith("set Night."));
+    expect(seeds.length).toBe(10);
+    expect(seeds).toContain("set Night.bingo_briefed = false");
+    const at = src.indexOf("when Night.ended == true:\n");
+    const reset = src.slice(at, src.indexOf("\nwhen ", at + 10));
+    for (const s of seeds) expect(reset, s).toContain(s);
+  });
+
   it("🤐 the winner names nobody: nobody marked, the round over, ⭐ +5 for Clippy, After The Bingo", () => {
     const n = boot();
     for (const c of TO_BINGO) n.press(c);
@@ -486,6 +541,13 @@ describe("Trapped in the Internet — wave 26: a guest's BINGO and one round (B1
     expect(primeView(n.sim, "Clippy").objectives![0]!.id).toBe("After The Bingo");
     expect(n.sim.questStatus("g1", "The Bingo Card")).toBe("done");
     expect(n.sim.questStatus("Norton Anti-Virus", "The Selected Antivirus")).toBe("done");
+    // Norton's NOW no longer tells him to interrupt anyone (nobody is marked).
+    expect(primeView(n.sim, "Norton Anti-Virus").objectives?.map((o) => o.id) ?? []).not.toContain("The Selected Antivirus");
+    // His brief, his card and Clippy's CI 2 agree: 🤐 marks nobody.
+    expect(read("cast/antivirus.loom")).not.toMatch(/refuses to name anyone/u);
+    expect(read("cast/antivirus.loom")).toContain("If the winner names nobody, Clippy presses 🤐: nobody is marked, so follow the room.");
+    expect(n.sim.model.objectives.get("The Selected Antivirus")!.brief).not.toMatch(/or the winner names nobody/u);
+    expect(read("codex/7-clippy.loom")).not.toMatch(/follow the Antivirus's\s+direction/u);
     // Once over, nothing more: no 🎱, no 🎯.
     expect(live(n, "Clippy", "g2")).not.toContain("bingo_winner");
     expect(live(n, "Clippy", "g2")).not.toContain("named_at_bingo");

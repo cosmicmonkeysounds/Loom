@@ -23,7 +23,8 @@ CHARACTER Norton Anti-Virus is Enforcer
   when bingo_time:
     if Night.step < 3 and Night.bingo_briefed != true:
       // DRAFT w18: the named program lights the Wanted board; the scan is the confrontation.
-      reply 🛡 You are the selected Antivirus. When the centre-square program is named (or the winner refuses to name anyone, or the framed program denies the card), stand at attention and interrupt: it is inappropriate for that program to have not agreed to be ruled by AI, because that is what computer programs are here for. They must have a virus that was not caught at the door. They need to be taken to the Internet for a reinstallation. They light up on your Wanted board: scan their pass, press 🛡 and drag them to the Tube.
+      // DRAFT w26 (B3: 🤐 marks nobody)
+      reply 🛡 You are the selected Antivirus. When the centre-square program is named (or the framed program denies the card), stand at attention and interrupt: it is inappropriate for that program to have not agreed to be ruled by AI, because that is what computer programs are here for. They must have a virus that was not caught at the door. They need to be taken to the Internet for a reinstallation. They light up on your Wanted board: scan their pass, press 🛡 and drag them to the Tube. If the winner names nobody, Clippy presses 🤐: nobody is marked, so follow the room.
 
 CHARACTER McAfee Anti-Virus is Enforcer
   avatar: File:McAfee logo.svg

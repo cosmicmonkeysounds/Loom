@@ -680,10 +680,15 @@ ROLE Program
       broadcast "~🎀 {program.name} receives a ribbon from the hosts. Everyone cheer!" to everyone
       reply 🎀 You received a ribbon. Take a bow.
 
+  // Wave 26 (B2): never while a guest's call is open (a ↩ can't take a
+  // frame back).
   when frame_for_bingo for program:
-    if Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_done != true:
+    if Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_called != true and Night.bingo_done != true:
       set program.framed = true
       reply 🃏 A completed Bingo card with your name on it has been handed to Clippy. You did not fill it in.
+    else if Night.bingo_called == true and Night.bingo_done != true:
+      // DRAFT w26 (B2: a 🃏 during an open call, # hosts)
+      broadcast "🃏 Nothing happens: {Night.bingo_caller} called BINGO. Clippy checks that line first (🎱 or ↩)." to channel(hosts)
 
   // Named on a Bingo card (the Antivirus' selection): marked, then the
   // live interruption's 🛡 captures them (`first_reinstallation` still fires
@@ -3613,8 +3618,9 @@ INTERACTION frame_for_bingo
   label: 🃏 Hand Clippy the fake Bingo card (no Bingo)
   who: performer
   by: Task Manager
-  while: Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_done != true
-  description: Task Manager, only if nobody has a Bingo.
+  while: Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_called != true and Night.bingo_done != true
+  // DRAFT w26 (B2: not while a guest's call is open)
+  description: Task Manager, only if nobody has a Bingo, and once a guest's call is settled.
 
 INTERACTION accurate_q1
   label: ✅ Q1 of this round: accurate, accepted
@@ -5553,6 +5559,7 @@ when Night.ended == true:
   set Night.bingo_done = false
   set Night.bingo_closed = false
   set Night.bingo_none = false
+  set Night.bingo_briefed = false
   set Night.glitch_at = 0
   set Night.glitch_text = "none"
 
