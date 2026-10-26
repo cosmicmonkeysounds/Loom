@@ -36,6 +36,8 @@
 //! Playback on a tablet needs one user gesture before any sound: `unlock()`
 //! is called from the first tap (the setup screen, the wake overlay).
 
+import type { TerminalConfig } from "../config.ts";
+import { pronounce } from "./lexicon.ts";
 import { CHARACTER_VOICE, pickVoice, type VoicePrefer } from "./pick-voice.ts";
 
 export type EngineKind = "server" | "browser" | "fully" | "silent";
@@ -651,6 +653,38 @@ export const voiceFloor = new VoiceFloor();
 
 // --- the queue ---------------------------------------------------------------
 
+// --- pacing (wave 26, V2) -------------------------------------------------------
+
+/** The pause between two sentences of one line (ms). */
+export const CHUNK_GAP_MS = 300;
+/** The pause between two lines (ms): before the next one, never after the last. */
+export const LINE_GAP_MS = 700;
+/** The range of a terminal's `pause` multiplier (⚙, `pause=`). */
+export const PAUSE_MIN = 0;
+export const PAUSE_MAX = 3;
+
+/** How long a `SpeechQueue` pauses between sentences (`chunk`) and lines (`line`), ms. */
+export interface SpeechGaps {
+  chunk: number;
+  line: number;
+}
+
+/** The pauses at `pause` 1. */
+export const DEFAULT_GAPS: SpeechGaps = { chunk: CHUNK_GAP_MS, line: LINE_GAP_MS };
+/** A house announcement's: the chime already parts two of them. */
+export const ANNOUNCE_GAPS: SpeechGaps = { chunk: 250, line: 0 };
+
+/** A `pause` multiplier as a config may carry it: 0–3, anything unreadable is 1. */
+export function pauseOf(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.min(PAUSE_MAX, Math.max(PAUSE_MIN, v)) : 1;
+}
+
+/** A terminal's pauses: both gaps scaled by its `pause` (absent: 1). */
+export function gapsFor(config: Partial<Pick<TerminalConfig, "pause">> | null | undefined): SpeechGaps {
+  const k = pauseOf(config?.pause);
+  return { chunk: Math.round(CHUNK_GAP_MS * k), line: Math.round(LINE_GAP_MS * k) };
+}
+
 export interface Utterance {
   /** The message this belongs to (so the transcript can follow along). */
   id: number;
@@ -665,12 +699,22 @@ export interface Utterance {
  * can't (no server voice, the box is down), in which case the fallback
  * takes that chunk — so a terminal never goes mute mid-sentence. Each
  * utterance holds the page's `VoiceFloor` from its first chunk to its last.
+ *
+ * Wave 26 (V2): it pauses `gaps.chunk` between two sentences and
+ * `gaps.line` before a line that follows another (never after the last, so
+ * a drain is reported the moment he stops), holding the floor through both;
+ * `stop()` cuts a pause short. Wave 26 (V3): every engine gets the chunk as
+ * it is said (`pronounce`), the callbacks still index the original chunks.
  */
 export class SpeechQueue {
   private queue: Utterance[] = [];
   private running = false;
   /** Bumped by `stop()`: a run from an older generation winds down. */
   private gen = 0;
+  /** When the last utterance finished playing (`Date.now()`; null: none yet, or cut). */
+  private lastEndAt: number | null = null;
+  /** Ends the pause in progress early (`stop()`). */
+  private wake: (() => void) | null = null;
   constructor(
     private engines: { primary: SpeechEngine; fallback: SpeechEngine | null },
     private readonly on: {
@@ -685,7 +729,13 @@ export class SpeechQueue {
       engine?: (kind: EngineKind) => void;
     },
     private readonly floor: VoiceFloor = voiceFloor,
+    /** The pauses (wave 26, V2): `gapsFor(config)`; announcements `ANNOUNCE_GAPS`. */
+    private gaps: SpeechGaps = DEFAULT_GAPS,
   ) {}
+
+  setGaps(g: SpeechGaps): void {
+    this.gaps = g;
+  }
 
   setEngines(e: { primary: SpeechEngine; fallback: SpeechEngine | null }): void {
     this.engines = e;
@@ -705,13 +755,32 @@ export class SpeechQueue {
   stop(): void {
     this.gen++;
     this.queue = [];
+    this.lastEndAt = null;
+    this.wake?.();
     this.engines.primary.stop();
     this.engines.fallback?.stop();
   }
 
+  /** A pause of `ms` (none at 0), cut short by `stop()`. Holds the floor. */
+  private pause(ms: number): Promise<void> {
+    if (!(ms > 0)) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const done = () => {
+        clearTimeout(t);
+        if (this.wake === done) this.wake = null;
+        resolve();
+      };
+      const t = setTimeout(done, ms);
+      this.wake = done;
+    });
+  }
+
+  /** The engine boundary: every engine is handed the text as it is *said*
+   *  (`lexicon.ts`, wave 26 V3), never the transcript's. */
   private async prepare(text: string): Promise<{ engine: SpeechEngine; p: Prepared } | null> {
+    const said = pronounce(text);
     try {
-      const p = await this.engines.primary.prepare(text);
+      const p = await this.engines.primary.prepare(said);
       if (p !== null) return { engine: this.engines.primary, p };
     } catch {
       /* fall through */
@@ -719,7 +788,7 @@ export class SpeechQueue {
     const fb = this.engines.fallback;
     if (fb === null) return null;
     try {
-      const p = await fb.prepare(text);
+      const p = await fb.prepare(said);
       return p === null ? null : { engine: fb, p };
     } catch {
       return null;
@@ -739,7 +808,13 @@ export class SpeechQueue {
         }
         if (u.before !== undefined) await u.before().catch(() => {});
         let next = this.prepare(u.chunks[0]!);
+        // The pause between lines: before this one, counted from the end of
+        // the last (a line queued long after it waits for nothing).
+        if (this.lastEndAt !== null) await this.pause(this.lastEndAt + this.gaps.line - Date.now());
+        let spoken = false;
         for (let i = 0; i < u.chunks.length && g === this.gen; i++) {
+          if (i > 0) await this.pause(this.gaps.chunk);
+          if (g !== this.gen) break;
           const ready = await next;
           if (i + 1 < u.chunks.length) next = this.prepare(u.chunks[i + 1]!);
           if (g !== this.gen) break;
@@ -747,11 +822,13 @@ export class SpeechQueue {
           if (ready === null) {
             // Nothing can say it: pace the transcript as if it were spoken.
             await new Promise((r) => setTimeout(r, readingMs(u.chunks[i]!)));
-            continue;
+          } else {
+            this.on.engine?.(ready.p.kind);
+            await ready.engine.play(ready.p, this.on.level);
           }
-          this.on.engine?.(ready.p.kind);
-          await ready.engine.play(ready.p, this.on.level);
+          spoken = i === u.chunks.length - 1;
         }
+        this.lastEndAt = spoken && g === this.gen ? Date.now() : null;
       } finally {
         release();
       }
