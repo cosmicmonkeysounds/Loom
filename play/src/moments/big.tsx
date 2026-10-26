@@ -4,7 +4,8 @@
 //! alert level: a banner with the glyph, a kicker (★ ACHIEVEMENT UNLOCKED,
 //! ⚠ VIRUS DETECTED, …), the headline and the body, an install bar that
 //! fills over the dead time, the moment's exits and one acknowledge button.
-//! No ×, no Escape, no tap-away. A card inside it (the bottle, Help /
+//! No ×, no Escape, no tap-away. A `with ack: none` moment (wave 26, R1)
+//! has no acknowledge button: only its exits close it. A card inside it (the bottle, Help /
 //! Thwart, the pickup line) is answered there and closes it; a house cheer
 //! closes itself (`autoClose`).
 
@@ -13,7 +14,7 @@ import { Icon } from "../chrome/icons.tsx";
 import type { WidgetHook } from "../stream/bubble.tsx";
 import type { WidgetCard } from "../types.ts";
 import { WIDGETS, WidgetHost } from "../widgets.tsx";
-import { BIG_DEAD_MS, BIG_SETTLE_MS, bigParts, cardTitleRepeats, cheerLabel, kickerOf } from "./big-model.ts";
+import { BIG_DEAD_MS, BIG_SETTLE_MS, bigAck, bigParts, cardTitleRepeats, cheerLabel, kickerOf } from "./big-model.ts";
 import { drawnIcon, type Exit } from "./exits.ts";
 import type { Queued } from "./model.ts";
 import { focusedIn, typingIn } from "../ui/focus.ts";
@@ -117,7 +118,8 @@ export function BigMoment({
   const def = card !== undefined ? WIDGETS[card.card.kind] : undefined;
   const bleed = inside && def?.fullBleed === true;
   // The ack: none while a card waits for its answer (answered elsewhere → OK).
-  const ackLabel = inside ? (answered !== null && !answeredHere.current ? "OK" : null) : cheer ? cheerLabel(left) : k.ack;
+  // Wave 26 (R1): `with ack: none` — only its exits close it (`bigAck`).
+  const ackLabel = inside ? (answered !== null && !answeredHere.current ? "OK" : null) : cheer ? cheerLabel(left) : bigAck(k.ack, m, exits);
   const tone = k.kicker.startsWith("⚠") || k.kicker.startsWith("⛔") ? " alarm" : k.kicker.startsWith("★") ? " win" : "";
   // A full-bleed card (the doors) is the whole screen: no caption, no
   // kicker, no footer, no exits — only the card (GN-F9, GUEST-SPEC §9.1).

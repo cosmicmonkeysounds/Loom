@@ -89,6 +89,9 @@ export interface Moment {
   go?: GoTarget[];
   /** A big house cheer's self-close (ms). */
   autoClose?: number;
+  /** `with ack: none` on a big (wave 26, R1): no acknowledge button when one
+   *  of its own exits resolves (`big-model.ts` `bigAck`). */
+  noAck?: true;
   /** The card a card moment is (its seq, kind and leading glyph). */
   card?: { seq: number; kind: string; glyph: string };
   /** A codex moment's entry id (its exit opens that entry). */
@@ -320,6 +323,7 @@ export function momentOf(m: ChatMessage, viewer: Viewer, phase: string | null): 
     ...(m.audience === "all" ? { house: true } : {}),
     ...(go !== undefined ? { go } : {}),
     ...(autoClose !== undefined ? { autoClose } : {}),
+    ...(severity === "big" && w.noAck === true ? { noAck: true as const } : {}),
     ...(m.widget !== undefined ? { card: { seq: m.seq, kind: m.widget.kind, glyph: noticeKey(m.widget.text || m.text) } } : {}),
     ...(m.codex !== undefined ? { entry: m.codex.entry } : {}),
     ...(m.quest !== undefined ? { quest: m.quest.quest } : {}),
