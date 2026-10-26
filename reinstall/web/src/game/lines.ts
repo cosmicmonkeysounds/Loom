@@ -44,14 +44,18 @@ const isWordChar = (c: string | undefined): boolean => c !== undefined && /[A-Za
  * text is never passed through this.
  */
 export function pronounce(text: string, t: PronounceTable = table): string {
-  const words = [...t.words].filter((w) => w.word !== "").sort((a, b) => b.word.length - a.word.length);
+  const words = [...t.words]
+    .filter((w) => w.word !== "")
+    .sort((a, b) => b.word.length - a.word.length)
+    .map((w) => ({ ...w, lower: w.word.toLowerCase() }));
   if (words.length === 0) return text;
-  const lower = text.toLowerCase();
   let out = "";
   let i = 0;
   while (i < text.length) {
     if (!isWordChar(text[i - 1])) {
-      const hit = words.find((w) => lower.startsWith(w.word.toLowerCase(), i) && !isWordChar(text[i + w.word.length]));
+      // Lower-case the slice, never the whole text: `toLowerCase` may change
+      // a string's length ("İ" → 2 code units), and the indexes would drift.
+      const hit = words.find((w) => text.slice(i, i + w.word.length).toLowerCase() === w.lower && !isWordChar(text[i + w.word.length]));
       if (hit !== undefined) {
         out += hit.say;
         i += hit.word.length;

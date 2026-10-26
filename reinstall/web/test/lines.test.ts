@@ -21,6 +21,13 @@ describe("pronounce — the shared table (C10)", () => {
     expect(pronounce("(Antivirus)")).toBe("(Anti Virus)");
   });
 
+  it("text whose lower case is longer (İ) never shifts the match", () => {
+    expect("İ".toLowerCase().length).toBe(2); // the trap
+    expect(pronounce("İ Antivirus")).toBe("İ Anti Virus");
+    expect(pronounce("İİİ, the antivirus. Antivirus!")).toBe("İİİ, the Anti Virus. Anti Virus!");
+    expect(pronounce("İAntivirus")).toBe("İAnti Virus"); // İ is no [A-Za-z0-9]: a boundary
+  });
+
   it("never inside a word, never across a hyphen", () => {
     expect(pronounce("Anti-Virus")).toBe("Anti-Virus");
     expect(pronounce("Norton Anti-Virus")).toBe("Norton Anti-Virus");
