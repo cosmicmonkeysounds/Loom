@@ -63,16 +63,17 @@ def test_auto_is_sapi_on_windows_and_say_elsewhere():
 
 def test_the_mac_keeps_say_and_samantha(monkeypatch):
     monkeypatch.setattr(localvoice.sys, "platform", "darwin")
-    assert localvoice.renderer("auto") is say_to_file
-    assert localvoice.speaker("auto") is say_direct
+    # Wrapped to pronounce (wave 26, V3); underneath, the Mac's own `say`.
+    assert localvoice.renderer("auto").__wrapped__ is say_to_file
+    assert localvoice.speaker("auto").__wrapped__ is say_direct
     cfg = parse_audio_section({"announce": True})
     assert (cfg.voice_engine, cfg.say_voice) == ("say", "Samantha")
 
 
 def test_windows_defaults_to_sapi_and_zira(monkeypatch):
     monkeypatch.setattr(localvoice.sys, "platform", "win32")
-    assert localvoice.renderer("auto") is localvoice.sapi_to_wav
-    assert localvoice.speaker("auto") is localvoice.sapi_speak
+    assert localvoice.renderer("auto").__wrapped__ is localvoice.sapi_to_wav
+    assert localvoice.speaker("auto").__wrapped__ is localvoice.sapi_speak
     cfg = parse_audio_section({"announce": True})
     assert (cfg.voice_engine, cfg.say_voice) == ("sapi", "Microsoft Zira Desktop")
     # An explicit voice and engine are kept as written.
@@ -182,9 +183,9 @@ def test_the_router_takes_its_engines_voice(monkeypatch):
 
     monkeypatch.setattr(localvoice.sys, "platform", "win32")
     r = AudioRouter(parse_audio_section({"announce": True}))
-    assert r.render_say is localvoice.sapi_to_wav and r.speak_direct is localvoice.sapi_speak
+    assert r.render_say.__wrapped__ is localvoice.sapi_to_wav and r.speak_direct.__wrapped__ is localvoice.sapi_speak
     assert any("chime + sapi Microsoft Zira Desktop" in line for line in r.describe())
     monkeypatch.setattr(localvoice.sys, "platform", "darwin")
     r = AudioRouter(parse_audio_section({"announce": True}))
-    assert r.render_say is say_to_file
+    assert r.render_say.__wrapped__ is say_to_file
     assert any("chime + say Samantha" in line for line in r.describe())

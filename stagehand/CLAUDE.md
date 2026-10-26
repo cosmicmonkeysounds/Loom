@@ -50,7 +50,9 @@ stagehand/
     modapi.py, sse.py              the server link: login, POSTs, SSE streams
     conditions.py, templating.py   the `when:` mini-language and payload templates
     launchd.py, tasks.py           macOS LaunchAgents / Windows Task Scheduler, one job per module
-    localvoice.py                  the machine's voice: macOS `say` or Windows SAPI (PowerShell 5.1)
+    localvoice.py                  the machine's voice: macOS `say` or Windows SAPI (PowerShell 5.1);
+                                   `pronounce()` over pronounce.json ("Antivirus" is said "Anti Virus")
+    pronounce.json                 the shared pronunciation table (a copy of the terminal's, C10)
     paths.py                       per-user cache dirs (~/Library/Caches/…, %LOCALAPPDATA%\stagehand\…)
     show/                          cuemap, sensormap, mqtt, osc, topics, directives
     agents/                        module (the worker loop), persona, prompt (classic), voice (lean),
@@ -139,6 +141,17 @@ module docstrings that explain the why).
   for byte from `house/test/fixtures/` into `tests/fixtures/house-audio/`
   and `house-lights/`, and a test fails until you re-copy after a house
   change.
+- **One pronunciation table, three copies** (wave 26, V3).
+  `src/stagehand/pronounce.json` is byte for byte
+  `terminal/src/speech/pronounce.json` (and `reinstall/vr/config/`),
+  pinned by `tests/test_pronounce.py` and the terminal's
+  `lexicon.test.ts`; edit all three together. `localvoice.pronounce()`
+  wraps `renderer()` / `speaker()` / `render_voice` / `speak_voice` (the
+  wrapper's `__wrapped__` is the engine's own function), so the router's
+  announcements, desk `say` steps and Alexa's `say` engine say it; Alexa's
+  `engine: server` `Announcer` pronounces before the `/api/mod/tts` fetch,
+  before its `say` fallbacks, and in its disk / prewarm cache key. Logs keep
+  the written text.
 - **The rig is pinned to the story.** `tests/test_trapped_house.py` reads
   `main.loom`, `audio.json`, `media/sounds.yaml` and the codex: a new
   `cue lights_*` or `sound X` in the story needs a rule here, a new sensor

@@ -28,11 +28,21 @@ matching the gender hint — female for announcements — never an error.
 
 Every subprocess call goes through an injectable `run`, so the tests check
 the argv and env on any platform with no PowerShell.
+
+How a word is *said* (wave 26, V3): `pronounce()` applies the shared table
+`pronounce.json` (a byte-for-byte copy of the terminal's
+`terminal/src/speech/pronounce.json`, pinned by a test), so every voice
+here says "Anti Virus" while the logs and screens keep "Antivirus". It
+wraps `render_voice` / `speak_voice` and the `renderer()` / `speaker()`
+callables, so the router's announcements, its desk `say` steps and Alexa's
+`say` engine all get it; Alexa's `engine: server` path applies it itself.
 """
 
 from __future__ import annotations
 
 import base64
+import functools
+import json
 import logging
 import os
 import shutil
@@ -95,6 +105,60 @@ try {
   $s.Dispose()
 }
 """
+
+
+#: The shared pronunciation table (contract C10), next to this module.
+PRONOUNCE_FILE = Path(__file__).with_name("pronounce.json")
+
+
+@functools.lru_cache(maxsize=1)
+def pronounce_table() -> tuple[tuple[str, str], ...]:
+    """(lower-cased word, say) pairs, longest word first. A missing or broken
+    file is an empty table: the line is said as written, never an error."""
+    try:
+        doc = json.loads(PRONOUNCE_FILE.read_text(encoding="utf-8"))
+        words = [(str(w["word"]).lower(), str(w["say"])) for w in doc.get("words", []) if isinstance(w, dict) and w.get("word") and isinstance(w.get("say"), str)]
+    except (OSError, ValueError, KeyError, TypeError) as err:
+        log.warning("pronounce.json unusable (%s) — saying every word as written", err)
+        return ()
+    return tuple(sorted(words, key=lambda w: -len(w[0])))
+
+
+def _word_char(c: str) -> bool:
+    return ("0" <= c <= "9") or ("A" <= c <= "Z") or ("a" <= c <= "z")
+
+
+def pronounce(text: str, table: tuple[tuple[str, str], ...] | None = None) -> str:
+    """`text` with every table word replaced by how it is said: a whole word,
+    case-insensitive, where a boundary is any character that is not
+    `[A-Za-z0-9]`; the longest word wins; `say` replaces it as written. The
+    terminal's `lexicon.ts` does exactly the same."""
+    words = pronounce_table() if table is None else table
+    if not words or not text:
+        return text
+    lower = text.lower()
+    out: list[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        if i == 0 or not _word_char(text[i - 1]):
+            hit = next((w for w in words if lower.startswith(w[0], i) and (i + len(w[0]) >= n or not _word_char(text[i + len(w[0])]))), None)
+            if hit is not None:
+                out.append(hit[1])
+                i += len(hit[0])
+                continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
+
+
+def pronounced(fn: Callable[..., object]) -> Callable[..., object]:
+    """`fn(text, …)` that is handed `pronounce(text)`; `__wrapped__` is `fn`."""
+
+    @functools.wraps(fn)
+    def said(text: str, *args, **kwargs):
+        return fn(pronounce(text), *args, **kwargs)
+
+    return said
 
 
 def resolve(engine: str | None = "auto", platform: str | None = None) -> str:
@@ -182,13 +246,15 @@ def sapi_voices(run: Run | None = None) -> list[str] | None:
 
 
 def renderer(engine: str | None = "auto") -> Render:
-    """The render function for an engine (resolved now): text, voice → bytes."""
-    return sapi_to_wav if resolve(engine) == "sapi" else say_to_file
+    """The render function for an engine (resolved now): text, voice → bytes,
+    the text pronounced (`__wrapped__` is the engine's own function)."""
+    return pronounced(sapi_to_wav if resolve(engine) == "sapi" else say_to_file)  # type: ignore[return-value]
 
 
 def speaker(engine: str | None = "auto") -> Speak:
-    """The direct-speak function: text, voice, device → None (blocking)."""
-    return sapi_speak if resolve(engine) == "sapi" else say_direct
+    """The direct-speak function: text, voice, device → None (blocking), the
+    text pronounced (`__wrapped__` is the engine's own function)."""
+    return pronounced(sapi_speak if resolve(engine) == "sapi" else say_direct)  # type: ignore[return-value]
 
 
 def render_voice(text: str, voice: str | None) -> bytes:
