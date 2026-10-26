@@ -432,6 +432,38 @@ describe("EventRuntime — the King on the spatial plane", () => {
     rt.dispose();
   });
 
+  it("a story that throws on the hit signal: still 200 + the king, journaled, logged; the visit's hit stays spent", async () => {
+    const { rt, dir } = runtime();
+    rt.openDoors();
+    const { id, a } = await visitor(rt, "Winzip");
+    expect((await call(rt, "POST", "/api/spatial/pose", AT_KING, { token: a.token })).status).toBe(204);
+    const sim = rt.liveSim! as unknown as { signal: (...args: unknown[]) => unknown };
+    const real = sim.signal;
+    sim.signal = () => {
+      throw new Error("hook blew up");
+    };
+    const logged: string[] = [];
+    const write = process.stderr.write.bind(process.stderr);
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      logged.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    let hit: Awaited<ReturnType<typeof call>>;
+    try {
+      hit = await call(rt, "POST", "/api/spatial/king/hit", {}, { token: a.token });
+    } finally {
+      process.stderr.write = write;
+      sim.signal = real;
+    }
+    expect(hit.status).toBe(200);
+    expect(hit.json).toEqual({ ok: true, king: { id: "cold-lock-king", hp: 14, max: 15, fallen: false } });
+    expect(logged.join("")).toMatch(/the story failed on the King's hit \(hook blew up\)/u);
+    const tail = new Store(dir).readJournal().filter((l) => l.by === "Tent tablet").slice(-1).map((l) => [l.m, l.a[0], l.a[1]]);
+    expect(tail).toEqual([["signal", "king hit", id]]);
+    expect((await call(rt, "POST", "/api/spatial/king/hit", {}, { token: a.token })).json.error).toBe("already hit");
+    rt.dispose();
+  });
+
   it("the last hit fells him: the fallen signal follows; then 409 fallen; a director restores him (no `by`)", async () => {
     const { rt, dir } = runtime();
     rt.openDoors();

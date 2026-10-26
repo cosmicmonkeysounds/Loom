@@ -3987,10 +3987,14 @@ export class EventRuntime {
   /** A hit on the King landed: journaled `by` the game's device — his new
    *  hit points into the story world (his `health` path; a King the hub
    *  counts has none), then the story's `hit` signal for the hitter with
-   *  `{hp, max}`, then `fallen` once he is down. */
+   *  `{hp, max}`, then `fallen` once he is down. A story that throws on
+   *  one of them is logged, like `commitMoment`: the line is already in the
+   *  journal (`commit` appends first) and the hub has counted the hit, so
+   *  the route still answers its 200 with the King as recorded. */
   private commitKingHit(s: SessionRef, next: KingState, ref: KingRef): void {
     const sim = this.sim;
     if (sim === null) return;
+    const actingBy = this.actingBy;
     this.actingBy = s.device;
     try {
       if (ref.path !== null) this.fanout(this.commit("setVar", ref.path, String(next.hp)));
@@ -3998,8 +4002,10 @@ export class EventRuntime {
       const args = { hp: next.hp, max: next.max };
       this.fanout(this.commit("signal", kingSignal(ref.prop, "hit"), s.guest, args));
       if (next.fallen) this.fanout(this.commit("signal", kingSignal(ref.prop, "fallen"), s.guest, args));
+    } catch (err) {
+      process.stderr.write(`  ⚠️  event ${this.eventId}: the story failed on the King's hit (${err instanceof Error ? err.message : String(err)})\n`);
     } finally {
-      this.actingBy = undefined;
+      this.actingBy = actingBy;
     }
   }
 
