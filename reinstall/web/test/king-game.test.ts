@@ -179,6 +179,23 @@ describe("⚔ HIT — once per reinstallation visit, judged by the server", () =
   });
 });
 
+describe("the King in view (wave 26, R3): the HUD's top centre gives way to his bar", () => {
+  it("tickKing marks him in view when faced from hit reach out to 4.5 m, not when turned away or farther", () => {
+    const { g } = game(full, near);
+    g.tickKing(0);
+    expect(g.kingHud()).toMatchObject({ verdict: "ok", inView: true });
+    g.body.p = far; // 3 m: out of reach, but his bar is still to be read
+    g.tickKing(1);
+    expect(g.kingHud()).toMatchObject({ verdict: "far", inView: true });
+    g.body.yaw = WEST + 180; // turned away
+    g.tickKing(2);
+    expect(g.kingHud()).toMatchObject({ inView: false });
+    g.body = { ...g.body, p: [prop.pos[0] + 5, prop.pos[1], prop.pos[2]], yaw: WEST };
+    g.tickKing(3);
+    expect(g.kingHud()).toMatchObject({ inView: false });
+  });
+});
+
 describe("the shared bar — everyone's hits, the kneel, the restore", () => {
   it("someone else's hit staggers him and says who; undefined keeps what we know; another King's id is none", () => {
     const { g, said, staggers } = game();

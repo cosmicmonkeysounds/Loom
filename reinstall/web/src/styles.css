@@ -376,6 +376,8 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 
 .compass { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + clamp(78px, 10vw, 104px)); left: 50%; width: 74px; height: 74px; margin-left: -37px; border-radius: 50%; background: radial-gradient(circle, rgba(0, 0, 40, 0.55), rgba(0, 0, 40, 0.75)); box-shadow: 0 0 0 2px var(--face), 0 0 0 3px var(--dark), 0 3px 8px rgba(0, 0, 0, 0.5); pointer-events: none; }
 .compass-rose { position: absolute; inset: 0; }
+/* Wave 26 (R3): a standing King in view — his bar projects where these sit. */
+.play.king-in-view .compass, .play.king-in-view .hud-heat { visibility: hidden; }
 .cp { position: absolute; left: 50%; top: 0; height: 50%; width: 0; transform-origin: 50% 100%; }
 .cp b { position: absolute; top: 2px; left: -0.5em; width: 1em; text-align: center; font-weight: normal; font-size: 18px; line-height: 1; color: #cfe8ff; }
 .cp-N b { color: #ff5050; }

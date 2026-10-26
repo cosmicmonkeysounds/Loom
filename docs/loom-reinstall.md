@@ -1056,13 +1056,16 @@ is the **Server Door** terminal's (§4), at the strength his bar sets.
   (`hitSpentAtStart`), so a re-scan before the duck never offers ⚔. 409 `not near`: a buzz and
   *Get closer to the King and face him.* 409 `doors are closed`: the
   paused notice. 404: no King. 410: the session is over.
-- **The HUD** (`KingBar` in `Play.tsx`): ⚔ *THE KING*, his meter
-  (`kingMeter`: ♥ / ♡ per point up to nine points, else *n / max*), and
-  a line — the stage the door terminal would deal right now
-  (`stageFor` from `@loom/chess/stage`: *The King is at full strength.*
-  / *rattled* / *reeling* / *dizzy* / *barely standing*), or
-  `HIT_USED` once this visit has hit him. Fallen: ♚ *KNEELING · n /
-  max* and *The King is on his knees. His door stands open.*
+- **The HUD** (wave 26, R3): no King bar, meter or stage line. The bar
+  over his head (`createKing` in `@loom/house/three`) is his only display;
+  up close it eases down towards his crown (`kingBarY`: its centre at most
+  `BAR_MAX_ELEV_DEG` = 16° over the camera's eye) so it stays in frame in
+  hit reach. While he stands and is in view (`kingInView`: his floor,
+  within 4.5 m, within 40° of the facing) the screen hides the compass and
+  the heat line, which sit where his bar projects. The ⚔ HIT button shows
+  while near and standing (`HIT_USED` once spent); the help card offers
+  *Space hits the King* / *⚔ by the King* only while he stands
+  (`kingStands`).
 - **Everyone's hits.** A `king` frame with fewer points staggers him
   (`King.hit`) and, when `by` is another player, says *X hit the King.*
   Reaching 0 plays the fanfare and *The King kneels. His door stands

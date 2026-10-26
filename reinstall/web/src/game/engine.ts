@@ -60,6 +60,7 @@ import {
   PATH_REVEAL_NOTICE,
   pathShown,
   PAUSED_NOTICE,
+  kingInView,
   perchedOutOfReach,
   relativeBearing,
   roomTitle,
@@ -130,6 +131,9 @@ export interface KingHud {
   id: string;
   /** Whether a hit could be asked for from here (the ⚔ button shows when near). */
   verdict: KingReach;
+  /** He is in view and close enough to read his bar (`kingInView`): the
+   *  play screen clears the compass and the heat line for it. */
+  inView: boolean;
   fallen: boolean;
   /** This visit has hit him (⚔ is spent until the next reinstallation). */
   hitUsed: boolean;
@@ -286,6 +290,7 @@ export class Game {
   private hitUsed = false;
   private hitting = false;
   private kingVerdict: KingReach = "far";
+  private kingSeen = false;
   private foundCooldownUntil = 0;
   /** Refusals since the player last stepped out of reach (the backoff exponent). */
   private foundRefusals = 0;
@@ -843,6 +848,7 @@ export class Game {
     return {
       id: p.id,
       verdict: this.kingVerdict,
+      inView: this.kingSeen,
       fallen: k.fallen,
       hitUsed: this.hitUsed,
       hitting: this.hitting,
@@ -853,6 +859,7 @@ export class Game {
     const king = this.kingProp;
     if (king === null) return;
     this.kingVerdict = kingReach(this.map, this.body.p, this.body.yaw, king);
+    this.kingSeen = kingInView(this.map, this.body.p, this.body.yaw, king);
     if (!this.hitQueued) return;
     this.hitQueued = false;
     const k = this.kingState;
