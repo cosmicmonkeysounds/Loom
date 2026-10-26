@@ -99,12 +99,3 @@ export function usePresenceLatch(on: boolean, linger: number = PRESENCE_LINGER_M
   }, [due]);
   return value;
 }
-
-/**
- * The room gate for a screen with the stream at hand (the TV's world pane,
- * integration I1): the server's `here` for this spot, falling back to
- * `anyone` (today's `inSimulation`) only when `here` is absent, latched.
- */
-export function useRoomLinked(spot: Pick<ScreenSpot, "here"> | null | undefined, anyone: boolean): boolean {
-  return usePresenceLatch(roomOccupied(spot, anyone));
-}

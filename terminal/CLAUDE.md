@@ -58,7 +58,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/files.ts`, `src/FilePanel.tsx` | 📎 GIVE HIM A FILE: share / redeem as the piloted guest |
 | `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
 | `src/serial/` | the M4 bridge: `door-protocol.ts` (JSON lines, pure), `door-bridge.ts` + `patch-bridge.ts` (decisions, pure), `door-serial.ts` (Web Serial + `door=sim`, lazy), `door-status.ts` (store + heartbeat keys), `use-door.ts` (hook) |
-| `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (wave 26 R5: `roomOccupied`, `linkedNow`, `linkedPane`, `PresenceLatch`, `usePresenceLatch`, `useRoomLinked`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
+| `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (wave 26 R5: `roomOccupied`, `linkedNow`, `linkedPane`, `PresenceLatch`, `usePresenceLatch`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three) |
 | `src/shadow/` | `view=shadow`: the camera with ghosts (lazy) |
 | `src/camfeed.ts` | the camera feed to the games (`POST /api/mod/spatial/cam`); one frame / 2 s while the reply says `watched: false`; never from the tent |
@@ -120,7 +120,8 @@ counts as busy (piloting) during one. Every view takes the glitch.
   (the house-wide rule only when the server sends no `here`), latched 3 s;
   no spot or `reinstall`: never; `mirror` / `shadow`: house-wide.
   `watchWhileAsleep(state, view, room, spot)`. The TV's world pane gates
-  on `useRoomLinked(state?.spot, inSimulation)` (`Tv.tsx`). Every
+  on the same `linkedNow` (view `tv`, latched; a TV with no spot never
+  shows it and opens no spatial stream, `Tv.tsx`). Every
   `SpeechQueue` takes `gapsFor(config)`, and the room terminal's
   `LinePlayer` captions on start like the TV's
   (`test/w26-integration.test.ts`).
