@@ -133,10 +133,14 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
 
   // Wave 26 (V1): the voiced scenes' clocks, read once per render.
   const voiced = new Map<string, VoiceState>();
-  if (target === "tv" && speechLive()) {
+  if (target === "tv") {
     const events = recentSpeech();
+    const live = speechLive();
     for (const s of [pick.top, below]) {
       if (s === null || s === "card" || (s === below && hidden)) continue;
+      // A scene already on his voice stays on it through a mute (its lines
+      // end: it runs on from there); a new one waits only for a TV that can speak.
+      if (!live && !voicedT.has(s.key)) continue;
       const v = voiceOfScene(s, now, events);
       if (v === null) continue;
       voiced.set(s.key, v);
@@ -205,7 +209,8 @@ function voiceOfScene(s: ActiveScene, now: number, events: Parameters<typeof voi
   if (vs === null || !(s.at > 0)) return null;
   const v = voiceState({ ...vs, ms: s.def.ms }, s.start, now, events, s.at);
   if (v === null) {
-    // Back on the server's clock: it runs on from wherever the voice left it.
+    // Back on the server's clock, never backwards: held where the voice left
+    // it until the server's clock catches up.
     const last = voicedT.get(s.key);
     if (last !== undefined && last > Math.max(0, now - s.start)) return { t: last, spoken: null, ended: false, endAt: null };
     voicedT.delete(s.key);

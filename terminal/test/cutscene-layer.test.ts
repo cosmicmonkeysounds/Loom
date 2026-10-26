@@ -168,3 +168,34 @@ describe("a voiced scene on the TV (wave 26, V1)", () => {
     expect(voiceCaption(s("bottle_landed"), undefined)).toBeNull();
   });
 });
+
+describe("a voiced scene through a mute (wave 26, V1)", () => {
+  it("keeps following his (now ended) lines instead of jumping back to the server's clock", async () => {
+    const { CutsceneLayer } = await import("../src/cutscene/CutsceneLayer.tsx");
+    const { fakeState } = await import("../src/cutscene/fake.ts");
+    const bus = await import("../src/cutscene/speech-bus.ts");
+    const { BOTTLE_SPIN_MS } = await import("../src/cutscene/kit/tv1-time.ts");
+    const Probe = (p: { t: number }) => createElement("p", null, `t=${Math.round(p.t)}`);
+    const scenes = [{ id: "bottle_landed", when: [{ moment: "signal" as const, name: "bottle_landed" }], ms: 14_000, tv: Probe }];
+    const now = 8_000_000_000;
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    try {
+      bus.clearSpeech();
+      bus.emitSpeech({ kind: "queued", seq: 900, beat: "Bottle Landed", chunks: 2, at: now - 1400 });
+      bus.emitSpeech({ kind: "line", seq: 900, beat: "Bottle Landed", chunks: 2, texts: ["Excel.", "Truth or dare?"], at: now - 500 });
+      bus.emitSpeech({ kind: "chunk", seq: 900, index: 0, at: now - 500 });
+      const state = { ...fakeState({ now, moments: [{ seq: 71, at: now - 1500, kind: "signal", name: "bottle_landed", who: "Excel", kept: false }] }), announceEpoch: "voice-mute" };
+      const el = (st: typeof state) => createElement(CutsceneLayer, { state: st, layers: { overlay: null, slide: null }, bare: false, card: null, gear: null, scenes, target: "tv" });
+      bus.setSpeechLive(true);
+      expect(renderToStaticMarkup(el(state))).toContain(`t=${BOTTLE_SPIN_MS + 500}`);
+      // The director mutes: the TV drops the line; the scene runs on from ms − tail.
+      bus.setSpeechLive(false);
+      bus.emitSpeech({ kind: "done", seq: 900, at: now });
+      expect(renderToStaticMarkup(el(state))).toContain(`t=${BOTTLE_SPIN_MS + 1800}`);
+    } finally {
+      bus.clearSpeech();
+      vi.useRealTimers();
+    }
+  });
+});
