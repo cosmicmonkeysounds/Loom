@@ -107,6 +107,8 @@ var hud: Hud
 var voice: VoiceLink
 ## The game's own sounds ([Sfx]).
 var sfx: Sfx
+## The lines a game moment hands back, captioned and spoken ([Speech]).
+var speech: Speech
 ## The lobby's laser / mouse ([LobbyPointer]).
 var pointer: LobbyPointer
 
@@ -203,6 +205,11 @@ func setup(l: LinkBase, xr: bool) -> void:
 	sfx.name = "Sfx"
 	add_child(sfx)
 	sfx.played.connect(func(_sound: String, ms: float) -> void: voice.hold_for(ms))
+	speech = Speech.new()
+	speech.name = "Speech"
+	speech.head = player.camera
+	speech.hold = voice.hold_for
+	add_child(speech)
 	# The lobby's picker: the laser / mouse, the ghosts' picture cache.
 	pointer = LobbyPointer.new()
 	pointer.name = "Pointer"
@@ -257,6 +264,7 @@ func enter_lobby() -> void:
 	cams.stop()
 	_stop_voice()
 	sfx.set_hum(false)
+	speech.stop()
 	_fanfare_in = -1.0
 	ghosts.own_session = ""
 	# The head-locked HUD would float over the tiles: a notice still up

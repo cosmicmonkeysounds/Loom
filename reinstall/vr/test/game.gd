@@ -68,6 +68,7 @@ func _run() -> void:
 	_test_voice_server_link()
 	await _test_voice_game()
 	_test_sfx()
+	await _test_speech()
 	await _test_sfx_game()
 	await _test_path_reveal()
 	await _test_autopilot_physics()
@@ -3485,6 +3486,101 @@ func _test_sfx() -> void:
 	_check(at["quack"] and _near(at["volume"], 1.0) and _near(at["next"], 1.6), "sfx: on top of him: full volume, every 1.6 s")
 	_check(_near(mid["volume"], 0.625) and _near(mid["next"], 1.6 + 1.6 + 0.9), "sfx: half way: 0.625, 1.6 + 1.6 + up to 0.9 s")
 	_check(Sfx.QUACK_RANGE == 7.0 and Sfx.QUACK_FIRST == 2.5 and Sfx.FANFARE_AFTER == 0.65, "sfx: the web game's constants")
+
+
+## Wave 26 (C6, C10): in-game speech — the shared pronunciation table
+## (whole word, any case, longest first, never "Anti-Virus"), captions one
+## at a time for their reading time with 700 ms between, the device voice
+## saying the pronounced text while the caption shows the display text, the
+## mic held while it speaks, captions alone with no device voice.
+func _test_speech() -> void:
+	var rows := Speech.table()
+	_check(rows.size() == 2 and rows[0]["word"] == "Antiviruses", "speech: the table loads from config/pronounce.json, longest first (%s)" % [rows])
+	_check(Speech.pronounce("The Antivirus is here.") == "The Anti Virus is here.", "speech: Antivirus → Anti Virus")
+	_check(Speech.pronounce("antiviruses and ANTIVIRUS") == "Anti Viruses and Anti Virus", "speech: any case, the longest word first")
+	_check(Speech.pronounce("Norton Anti-Virus") == "Norton Anti-Virus" and Speech.pronounce("Antivirusy") == "Antivirusy" and Speech.pronounce("MyAntivirus") == "MyAntivirus", "speech: whole words only")
+	_check(Speech.pronounce("the Antivirus' rules, (Antivirus)") == "the Anti Virus' rules, (Anti Virus)", "speech: punctuation is a boundary (the possessive matches)")
+	_check(Speech.pronounce("Antivirus", []) == "Antivirus" and Speech.parse_table("junk").is_empty(), "speech: no table, no change")
+	_check(Speech.reading_ms("") == 900.0 and Speech.reading_ms("x".repeat(20)) == 1240.0 and Speech.reading_ms("x".repeat(500)) == 8000.0, "speech: the terminal's reading time")
+	_check(Speech.pick_voice([{"id": "fr", "language": "fr-FR"}, {"id": "en1", "language": "en-US"}]) == "en1" and Speech.pick_voice([{"id": "de", "language": "de"}]) == "de" and Speech.pick_voice([]) == "", "speech: an English device voice first")
+
+	var head := Node3D.new()
+	root.add_child(head)
+	var sp := Speech.new()
+	sp.head = head
+	var spoken: Array = []
+	var held: Array = []
+	var speaking := [false]
+	var stopped := [0]
+	var voice_list := [[]]
+	sp.voices = func() -> Array: return voice_list[0]
+	sp.speaker = func(text: String, id: String) -> void:
+		spoken.append([text, id])
+		speaking[0] = true
+	sp.is_speaking = func() -> bool: return speaking[0]
+	sp.stopper = func() -> void: stopped[0] += 1
+	sp.hold = func(ms: float) -> void: held.append(ms)
+	root.add_child(sp)
+	sp.set_process(false)
+	# No device voice: captions only.
+	sp.say([{"from": "Trabolta", "text": "First line here."}, {"from": "Trabolta", "text": "  "}, {"from": "Trabolta", "text": "Second."}])
+	sp.tick(0.0)
+	var cap := head.get_node_or_null("HeadCaption") as Label3D
+	_check(sp.caption_text() == "First line here." and cap != null and cap.text == "First line here." and not sp.on_prop() and spoken.is_empty() and held.is_empty(), "speech: no device voice → the caption alone, head-locked, nothing held")
+	_check(not cap.text.contains("Trabolta"), "speech: the caption never names the speaker")
+	sp.tick(0.8)
+	_check(sp.caption_text() == "First line here.", "speech: … held for its reading time")
+	sp.tick(0.2)
+	_check(sp.caption_text() == "" and sp.busy(), "speech: … then 700 ms of nothing")
+	sp.tick(0.6)
+	_check(sp.caption_text() == "", "speech: … still the gap")
+	sp.tick(0.15)
+	sp.tick(0.0)
+	_check(sp.caption_text() == "Second.", "speech: … then the next line (an empty one skipped)")
+	var done := [false]
+	sp.finished.connect(func() -> void: done[0] = true)
+	sp.tick(1.0)
+	sp.tick(0.8)
+	_check(not sp.busy() and done[0] and cap.text == "", "speech: the queue runs dry")
+	# A device voice: it says the pronounced text; the caption keeps the display text.
+	voice_list[0] = [{"id": "v-en", "name": "Daniel", "language": "en-GB"}]
+	sp.say([{"from": "Trabolta", "text": "The Antivirus is watching."}])
+	sp.tick(0.0)
+	_check(spoken == [["The Anti Virus is watching.", "v-en"]] and sp.caption_text() == "The Antivirus is watching.", "speech: the voice says Anti Virus, the caption says Antivirus (%s)" % [spoken])
+	_check(not held.is_empty() and held[0] >= Speech.reading_ms("The Antivirus is watching."), "speech: the mic is held while he speaks")
+	sp.tick(2.0)
+	_check(sp.caption_text() != "", "speech: a voice still speaking past the reading time keeps the line")
+	var holds := held.size()
+	sp.tick(0.1)
+	_check(held.size() > holds, "speech: … and keeps the mic held")
+	speaking[0] = false
+	sp.tick(0.1)
+	_check(sp.caption_text() == "", "speech: the voice done → the line ends")
+	sp.tick(1.0)
+	# A stuck voice is cut.
+	speaking[0] = false
+	sp.say([{"from": "x", "text": "Stuck."}])
+	sp.tick(0.0)
+	speaking[0] = true
+	sp.tick(Speech.reading_ms("Stuck.") / 1000.0 + Speech.STUCK_AFTER_MS / 1000.0 + 0.1)
+	_check(sp.caption_text() == "" and stopped[0] >= 1, "speech: a voice stuck past its cap is stopped")
+	# Over a prop: a billboard.
+	var prop := Node3D.new()
+	prop.set_meta("height", 1.7)
+	root.add_child(prop)
+	prop.global_position = Vector3(3, 0, 4)
+	speaking[0] = false
+	sp.say([{"from": "Trabolta", "text": "Over the heart."}], prop)
+	sp.tick(1.0)
+	sp.tick(0.0)
+	var pc := sp.get_node("PropCaption") as Label3D
+	_check(sp.on_prop() and pc.visible and pc.text == "Over the heart." and pc.global_position.distance_to(Vector3(3, 1.7 + Speech.BILLBOARD_LIFT, 4)) < 0.01 and cap.text == "", "speech: a prop's lines hang over it (%s)" % pc.global_position)
+	sp.stop()
+	_check(not sp.busy() and not pc.visible and sp.caption_text() == "", "speech: stop drops everything")
+	prop.queue_free()
+	sp.queue_free()
+	head.queue_free()
+	await process_frame
 
 
 ## The game plays them: the hum while playing, Gerald's quack on him (and
