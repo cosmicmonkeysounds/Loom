@@ -81,7 +81,7 @@ hearsTerminals(house, { p, room? }, { only? }); hearsPlayers(house, spot, player
 
 // three/ — @loom/house/three
 createHeart(prop?): Heart; createPickup(item): Pickup; heartPulse(t); HEART_BEAT_S; PICKUP_HOVER;
-buildHouseScene(house, { ground?: boolean; pickups?: boolean; … }); // both default false
+buildHouseScene(house, { ground?: boolean; pickups?: boolean; … }); // both default false; the ground has its floor's rooms cut out (as VR)
 HouseScene.hearts / .pickups / .ground; HouseScene.setPickupTaken(id, taken): boolean;
 // the heart is always built, visible only while every King on the map has fallen (showKing drives it)
 ```

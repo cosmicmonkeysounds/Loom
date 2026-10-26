@@ -105,7 +105,7 @@ What `buildHouseScene` returns:
 - Terminal screens sit at each `TerminalSpot`. A screen faces the spot's yaw/pitch, stands just proud of the wall and shows an animated "watching" eye.
 - Room labels are Win98 title bars hung under the ceiling. They fade out within about 2.5 m of the `camera` passed to `update`.
 - `walls` is the `buildWalls` output the meshes came from. Use it for collision.
-- `hearts` and `pickups` (wave 26, above); `ground` is a dark plane with a faint metre grid at `outsideGround`, a hair under the floors, with `ground: true` (the games), else null.
+- `hearts` and `pickups` (wave 26, above); `ground` is a dark plane with a faint metre grid at `outsideGround`, a hair under the floors, with every room on its floor cut out of it (VR's `HouseGeometry.cells`, so a stairwell shows the stairs), with `ground: true` (the games), else null.
 - `dispose()` frees every geometry, material and texture.
 
 The look is late-90s Windows: a teal desktop on the walls, checkerboard

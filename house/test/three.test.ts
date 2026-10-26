@@ -3,9 +3,9 @@
 // tests read the scene graph.
 
 import { describe, expect, it } from "vitest";
-import { BufferGeometry, DoubleSide, Group, InstancedMesh, Matrix4, Mesh, MeshLambertMaterial, Object3D, Vector3 } from "three";
+import { BufferGeometry, DoubleSide, Group, InstancedMesh, LineSegments, Matrix4, Mesh, MeshLambertMaterial, Object3D, Vector3 } from "three";
 import type { Material } from "three";
-import { buildRamps, buildWalls, doorGap, forward, outsideGround, roomById, route, toSpace } from "../src/index.ts";
+import { buildRamps, buildWalls, doorGap, forward, outsideGround, pointInPoly, pointInPolyStrict, roomById, route, toSpace } from "../src/index.ts";
 import type { SpaceTransform, Vec3 } from "../src/index.ts";
 import {
   buildHouseScene,
@@ -680,6 +680,58 @@ describe("wave 26: the heart, the pickups and the outside ground", () => {
     scene.dispose();
     // A map with no exterior door has no ground.
     expect(buildHouseScene(fixture("stair"), { labels: false, ground: true }).ground).toBeNull();
+  });
+
+  it("the outside ground has every room on its floor cut out, the stairwells included", () => {
+    const scene = buildHouseScene(show, { labels: false, ground: true });
+    const g = outsideGround(show)!;
+    const rooms = show.rooms.filter((r) => r.floor === g.floor);
+    const plane = scene.ground!.getObjectByName("ground:plane") as Mesh;
+    const pos = plane.geometry.getAttribute("position");
+    const index = plane.geometry.getIndex()!;
+    // Each triangle on the ground: its centroid is outside every room, and it faces up.
+    const tris: [number, number][][] = [];
+    for (let t = 0; t < index.count; t += 3) {
+      const v = [0, 1, 2].map((k) => {
+        const i = index.getX(t + k);
+        return [pos.getX(i), pos.getY(i), pos.getZ(i)] as const;
+      });
+      const c: [number, number] = [(v[0]![0] + v[1]![0] + v[2]![0]) / 3, (v[0]![2] + v[1]![2] + v[2]![2]) / 3];
+      for (const r of rooms) expect(pointInPolyStrict(r.poly, c), `ground triangle in ${r.id}`).toBe(false);
+      const ux = v[1]![0] - v[0]![0], uz = v[1]![2] - v[0]![2], wx = v[2]![0] - v[0]![0], wz = v[2]![2] - v[0]![2];
+      expect(uz * wx - ux * wz, "faces +y").toBeGreaterThan(0);
+      tris.push(v.map((q) => [q[0], q[2]] as [number, number]));
+    }
+    const covered = (p: [number, number]): boolean =>
+      tris.some(([a, b, c]) => {
+        const s = (u: [number, number], w: [number, number]) => (w[0] - u[0]) * (p[1] - u[1]) - (w[1] - u[1]) * (p[0] - u[0]);
+        const d1 = s(a!, b!), d2 = s(b!, c!), d3 = s(c!, a!);
+        return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+      });
+    // The basement stairs go down from a room on the ground's floor: its rect is not covered.
+    const stairs = show.stairs.filter((st) => rooms.some((r) => r.id === st.to));
+    expect(stairs.length).toBeGreaterThan(0);
+    for (const st of stairs) {
+      const [x0, z0, x1, z1] = st.rect;
+      expect(covered([(x0 + x1) / 2, (z0 + z1) / 2]), st.id).toBe(false);
+      expect(covered([x0 + 0.05, z0 + 0.05]), st.id).toBe(false);
+    }
+    // Out past the front door, and at the rect's corners, it is.
+    const front = show.doors.find((d) => d.b === null && rooms.some((r) => r.id === d.a))!;
+    const [rx0, rz0, rx1, rz1] = g.rect;
+    expect(covered([rx0 + 0.5, rz0 + 0.5])).toBe(true);
+    expect(covered([rx1 - 0.5, rz1 - 0.5])).toBe(true);
+    const off = [[0, -3], [0, 3], [-3, 0], [3, 0]].map(([dx, dz]) => [front.at[0] + dx!, front.at[1] + dz!] as [number, number]);
+    expect(off.some((q) => !rooms.some((r) => pointInPoly(r.poly, q)) && covered(q))).toBe(true);
+    // The grid never runs through a room.
+    const grid = scene.ground!.getObjectByName("ground:grid") as LineSegments;
+    const gp = grid.geometry.getAttribute("position");
+    expect(gp.count).toBeGreaterThan(0);
+    for (let i = 0; i < gp.count; i += 2) {
+      const m: [number, number] = [(gp.getX(i) + gp.getX(i + 1)) / 2, (gp.getZ(i) + gp.getZ(i + 1)) / 2];
+      for (const r of rooms) expect(pointInPolyStrict(r.poly, m), `grid line in ${r.id}`).toBe(false);
+    }
+    scene.dispose();
   });
 
   it("dispose frees the hearts and the disks", () => {

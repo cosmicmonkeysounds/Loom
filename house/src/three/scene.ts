@@ -43,7 +43,7 @@ import {
 } from "three";
 import type { Camera, Material, Object3D, Scene, Texture } from "three";
 import { forward } from "../frames.ts";
-import { buildFloors, buildRamps, buildWalls, doorGap, roomById, roomElevation, roomHeight, styleOf } from "../geometry.ts";
+import { breakpoints, buildFloors, buildRamps, buildWalls, doorGap, pointInPolyStrict, roomById, roomElevation, roomHeight, styleOf } from "../geometry.ts";
 import type { FloorPlane, HouseMap, Ramp, TerminalSpot, Vec2, WallKind, WallSegment } from "../types.ts";
 import { Bin, DEG, merge, paint, projectUvs } from "./dispose.ts";
 import { outsideGround } from "../escape.ts";
@@ -405,30 +405,39 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
   }
 
   // ── The outside ground (wave 26) ──────────────────────────────────
-  // A dark plane a hair under the floors (they draw over it) with a faint
-  // metre grid, so a program who walks out of the front door has
-  // something to walk on — the same rect as VR's ground.
+  // A dark plane a hair under the floors with a faint metre grid, so a
+  // program who walks out of the front door has something to walk on —
+  // the same rect as VR's ground, with every room on that floor cut out of
+  // it (`groundCells`, VR's `HouseGeometry.cells`): a stairwell going down
+  // from a room shows the stairs, never the ground.
   let ground: Group | null = null;
   const out = opts.ground === true ? outsideGround(house) : null;
   const outFloor = out ? floorGroup(out.floor) : undefined;
   if (out && outFloor) {
-    const [x0, z0, x1, z1] = out.rect;
+    const holes = house.rooms.filter((r) => r.floor === out.floor).map((r) => r.poly);
+    const cells = groundCells(out.rect, holes);
     ground = new Group();
     ground.name = "ground";
-    const plane = new Mesh(
-      bin.add(new PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, out.y - 0.01, (z0 + z1) / 2)),
-      bin.add(new MeshLambertMaterial({ color: "#07081a" })),
+    const planeGeom = merge(
+      cells.map(([x0, z0, x1, z1]) => new PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, out.y - 0.01, (z0 + z1) / 2)),
     );
-    plane.name = "ground:plane";
+    if (planeGeom) {
+      const plane = new Mesh(bin.add(planeGeom), bin.add(new MeshLambertMaterial({ color: "#07081a" })));
+      plane.name = "ground:plane";
+      ground.add(plane);
+    }
+    // The grid, cell by cell (half-open, so no line is drawn twice).
     const pts: number[] = [];
     const y = out.y - 0.005;
-    for (let x = Math.ceil(x0); x <= x1; x++) pts.push(x, y, z0, x, y, z1);
-    for (let z = Math.ceil(z0); z <= z1; z++) pts.push(x0, y, z, x1, y, z);
+    for (const [x0, z0, x1, z1] of cells) {
+      for (let x = Math.ceil(x0 - 1e-9); x < x1 - 1e-9; x++) pts.push(x, y, z0, x, y, z1);
+      for (let z = Math.ceil(z0 - 1e-9); z < z1 - 1e-9; z++) pts.push(x0, y, z, x1, y, z);
+    }
     const gridGeom = bin.add(new BufferGeometry());
     gridGeom.setAttribute("position", new BufferAttribute(new Float32Array(pts), 3));
     const grid = new LineSegments(gridGeom, bin.add(new LineBasicMaterial({ color: "#2a3a7a", transparent: true, opacity: 0.35 })));
     grid.name = "ground:grid";
-    ground.add(plane, grid);
+    ground.add(grid);
     outFloor.add(ground);
   }
 
@@ -616,6 +625,35 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
 
 function floorTint(plane: FloorPlane): string {
   return plane.color ?? (plane.outdoor ? PALETTE.grass : PALETTE.floor);
+}
+
+/**
+ * The outside ground's cells: `rect` (`[x0, z0, x1, z1]`) less the `holes`
+ * (the rooms on its floor), as axis-aligned `[x0, z0, x1, z1]` cells on the
+ * breakpoint grid, runs merged along x — a port of VR's
+ * `HouseGeometry.cells(outer, holes)` for `_build_ground`.
+ */
+function groundCells(rect: readonly [number, number, number, number], holes: Vec2[][]): [number, number, number, number][] {
+  const [rx0, rz0, rx1, rz1] = rect;
+  const xs = breakpoints([rx0, rx1, ...holes.flatMap((h) => h.map((q) => q[0]))]);
+  const zs = breakpoints([rz0, rz1, ...holes.flatMap((h) => h.map((q) => q[1]))]);
+  const out: [number, number, number, number][] = [];
+  for (let j = 0; j + 1 < zs.length; j++) {
+    let start = -1;
+    for (let i = 0; i < xs.length; i++) {
+      let inside = false;
+      if (i + 1 < xs.length) {
+        const c: Vec2 = [(xs[i]! + xs[i + 1]!) / 2, (zs[j]! + zs[j + 1]!) / 2];
+        inside = c[0] > rx0 && c[0] < rx1 && c[1] > rz0 && c[1] < rz1 && !holes.some((h) => pointInPolyStrict(h, c));
+      }
+      if (inside && start < 0) start = i;
+      else if (!inside && start >= 0) {
+        out.push([xs[start]!, zs[j]!, xs[i]!, zs[j + 1]!]);
+        start = -1;
+      }
+    }
+  }
+  return out;
 }
 
 /**
