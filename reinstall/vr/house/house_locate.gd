@@ -15,6 +15,11 @@ const PROP_REST := 0.01
 ## A solid prop whose top clears the feet by less than this is stepped over
 ## (the games' step-over) — [method standable]'s rest.
 const PROP_STEP_OVER := 0.05
+## (wave 26, R5) A player within this (plan) of their previous room's
+## polygon, on its floor, stays in it ([method presence_room]).
+const PRESENCE_HYSTERESIS_M := 0.75
+## A client may keep a terminal linked this long after its room empties.
+const PRESENCE_LINGER_MS := 3000
 
 
 ## The highest floor whose elevation ≤ `y + 0.5`, else the lowest (ties:
@@ -131,3 +136,37 @@ static func standable(house: Dictionary, p: Array) -> bool:
 	if height_at(house, [p[0], p[2]], p[1]) == null:
 		return false
 	return solid_prop_at(house, p, BODY_CLEAR, PROP_STEP_OVER) == null
+
+
+## (wave 26, R5) The room a player counts as being in — a port of
+## `presenceRoom` (`house/src/presence.ts`): [method locate]'s room, except
+## that a player still within [constant PRESENCE_HYSTERESIS_M] of `prev`'s
+## polygon (inside or outside it) on the same floor stays in `prev`. The
+## caller keeps `prev` (`null` on a first pose or a re-seat).
+static func presence_room(house: Dictionary, p: Array, prev: Variant) -> Variant:
+	var at := locate(house, p)
+	if prev == null or (at["room"] != null and str(at["room"]) == str(prev)):
+		return at["room"]
+	var room: Variant = HouseGeometry.room_by_id(house, prev)
+	if room == null or str(room["floor"]) != str(at["floor"]):
+		return at["room"]
+	var plan := [float(p[0]), float(p[2])]
+	if HouseGeometry.point_in_poly(room["poly"], plan) or HouseGeometry.distance_to_boundary(room["poly"], plan) <= PRESENCE_HYSTERESIS_M:
+		return str(prev)
+	return at["room"]
+
+
+## The terminal ids (map order) whose `room` is one of `rooms` (nulls
+## ignored), never a `view: "reinstall"` terminal — `linkedSpots`.
+static func linked_spots(house: Dictionary, rooms: Array) -> Array:
+	var occupied := {}
+	for r: Variant in rooms:
+		if r != null:
+			occupied[str(r)] = true
+	var out: Array = []
+	for t: Dictionary in house.get("terminals", []):
+		if str(t.get("view", "")) == "reinstall":
+			continue
+		if occupied.has(str(t.get("room", ""))):
+			out.append(str(t["id"]))
+	return out
