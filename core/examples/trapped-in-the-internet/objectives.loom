@@ -130,16 +130,17 @@ OBJECTIVE Go To The Desktop
   text:
     Everyone to the living room. Clippy welcomes the programs and introduces the hosts.
 
-// DRAFT for sign-off
+// DRAFT w26 (B1: a guest calls BINGO from here)
 OBJECTIVE Play Computer Bingo
   for: Program
-  while: Night.phase == "bingo" and program.cleared == true
+  while: Night.step == 2 and program.cleared == true
   act: B
   title: Computer Bingo: find a program for each square
   text:
-    Mingle. Find programs who match the squares on your card. A Bingo is one full line through the centre. 20 minutes, then back to the Desktop.
+    Mingle. Find programs who match the squares on your card. A Bingo is one full line through the centre: press 🎱 BINGO! and read it to Clippy. 20 minutes, then back to the Desktop.
+  buttons: call_bingo
 
-// DRAFT for sign-off
+// DRAFT w26 (G1: no hint about the centre square)
 OBJECTIVE Bingo Results
   for: Program
   while: Night.phase == "bingo_results" and program.cleared == true
@@ -147,7 +148,7 @@ OBJECTIVE Bingo Results
   title: The Bingo results: cheer for the winners
   go: The Desktop
   text:
-    Winners read their line, centre square last. Somebody did not agree to be ruled by AI.
+    Winners read their line, centre square last.
 
 // DRAFT for sign-off
 OBJECTIVE Meet Trabolta
@@ -642,24 +643,49 @@ OBJECTIVE Welcome Everyone
   text:
     The fundraiser to restore the sign at Maps And Ducks. Jean Trabolta joins by video conference later. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, one line through the centre. A host starts 🎱 Bingo and calls ⏰ time: your booth pops up when your game is on.
 
+// Wave 26 (B1): a guest pressed 🎱 BINGO!: Clippy checks that line first.
+// DRAFT w26 (B1: check the caller's line, or ↩ undo it)
+OBJECTIVE Check The Bingo
+  for: Clippy
+  while: Night.phase == "bingo_results" and Night.bingo_called == true and Night.bingo_checked != true and Night.bingo_done != true
+  act: B
+  go: The Desktop
+  title: A program called BINGO: check their line
+  target: Night.bingo_caller
+  text:
+    They pressed BINGO on their phone. Hear their line, centre square last. It holds: 🎱 (⭐ +10). It doesn't: ↩ Not a Bingo, and Bingo picks up with the time it had left.
+  buttons: bingo_winner, not_a_bingo
+
 // The checklist is PLAYER SELECT's steps, in order (wave 18, A5): each
-// to-do leads with its button's glyph.
+// to-do leads with its button's glyph. Wave 26 (B3, B5): ④ 🤐 the winner
+// names nobody; the first 🎯 or 🤐 ends the round, and the objective.
 // DRAFT w18
-// DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
+// DRAFT w26 (B3, B5: 🤐 names nobody; one round)
 OBJECTIVE Celebrate The Winners
   for: Clippy
-  while: Night.phase == "bingo_results"
+  while: Night.phase == "bingo_results" and Night.bingo_done != true
   act: B
   go: The Desktop
   title: Celebrate the Bingo winners
   pick: program.location == "The Desktop" and program.cleared == true
   text:
-    Winners read their line, centre square last. Demand applause. Tap each winner (⭐ +10), give the ribbon (⭐ +5), then tap the program they name at the centre square (⭐ +10): Norton interrupts. You never press 🛡.
+    Winners read their line, centre square last. Demand applause. Tap each winner (⭐ +10), give the ribbon (⭐ +5), then tap the program they name at the centre square (⭐ +10): Norton interrupts. If they name nobody, 🤐 on the winner (⭐ +5). One round only. You never press 🛡.
     - 🎱 Who shouted BINGO?, done when Night.bingo_winners >= 1
     - 🎀 Give the winner the Bingo Ribbon, done when Night.bingo_ribbons >= 1
-    - 🎯 Who did the winner name?, done when Night.bingo_named >= 1
-    - The first reinstallation, done when Night.first_reinstall_done == true
-  buttons: bingo_winner, award_the_ribbon, named_at_bingo
+    - 🎯 Who did the winner name?, done when Night.bingo_named >= 1 or Night.bingo_none == true
+    - 🤐 Or they name nobody, done when Night.bingo_none == true
+  buttons: bingo_winner, award_the_ribbon, named_at_bingo, named_nobody
+
+// Wave 26 (B5): the round is over; Clippy's NOW until 🤖.
+// DRAFT w26 (B5: one round)
+OBJECTIVE After The Bingo
+  for: Clippy
+  while: Night.phase == "bingo_results" and Night.bingo_done == true
+  act: B
+  go: The Desktop
+  title: The Bingo is over: stay cheerful
+  text:
+    One round only. Let Norton do his job and reassure everyone; then a host introduces Trabolta.
 
 // DRAFT w18
 // DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
@@ -812,10 +838,25 @@ OBJECTIVE Summons Door
     Programs scan the Desktop's check-in QR. 📍 on Still missing only for a dead or lost phone. Bathroom Mode excuses them.
   buttons: check_in_at_desktop
 
-// DRAFT for sign-off
+// Wave 26 (B2): Task Manager's results objective while a guest's call is
+// unchecked: ↩ on the caller (its own objective, so the button is live
+// whenever it is on the NOW card).
+// DRAFT w26 (B2: ↩ a false BINGO)
+OBJECTIVE A Program Called Bingo
+  for: Task Manager
+  while: Night.phase == "bingo_results" and Night.bingo_called == true and Night.bingo_winners < 1 and Night.bingo_named < 1 and Night.bingo_done != true
+  act: B
+  go: The Desktop
+  title: A program called BINGO: does the line hold?
+  target: Night.bingo_caller
+  text:
+    They pressed BINGO on their phone. If Clippy finds no line, ↩ Not a Bingo on their card: Bingo picks up with the time it had left.
+  buttons: not_a_bingo
+
+// DRAFT w26 (B5: one round)
 OBJECTIVE The Fake Bingo Card
   for: Task Manager
-  while: Night.phase == "bingo_results" and Night.bingo_winners < 1
+  while: Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_done != true
   act: B
   title: Nobody has a Bingo: hand Clippy the fake card
   text:

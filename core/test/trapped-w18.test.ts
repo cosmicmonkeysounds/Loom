@@ -433,8 +433,9 @@ describe("Trapped in the Internet — wave 18: objectives (C5, C11, A5, A7, S3, 
     for (const c of TO_BINGO) n.press(c);
     for (const [g] of PROGRAMS) n.signal("checked_in", g, { at: "The Desktop" });
     const cel = obj("Clippy", "Celebrate The Winners")!;
-    expect(cel.buttons).toEqual(["bingo_winner", "award_the_ribbon", "named_at_bingo"]);
-    expect(cel.checklist.map((c) => c.label.slice(0, 2))).toEqual(["🎱", "🎀", "🎯", "Th"]);
+    // Wave 26 (B3): ④ 🤐 the winner names nobody.
+    expect(cel.buttons).toEqual(["bingo_winner", "award_the_ribbon", "named_at_bingo", "named_nobody"]);
+    expect(cel.checklist.map((c) => c.label.slice(0, 2))).toEqual(["🎱", "🎀", "🎯", "🤐"]);
     expect([...(cel.pick ?? [])].sort()).toEqual(PROGRAMS.map(([g]) => g).sort());
     // The bottle names its program.
     for (const c of ["introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "spin_the_bottle"]) n.press(c);

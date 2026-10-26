@@ -468,11 +468,14 @@ function checkpoint(n: Night, label: string): Record<string, string> {
     const host = HOST_PARTS.has(p);
     const obs = primeView(sim, p, undefined, { host }).objectives ?? [];
     expect(obs.length, `${label}: ${p} has no live objective`).toBeGreaterThan(0);
-    for (const o of obs) expect(interactionButtons(o.buttons).length, `${label}: ${p} ${o.id}`).toBeLessThanOrEqual(3);
+    // Wave 26 (B3): a picker objective's buttons are PLAYER SELECT's steps,
+    // not a card face: Celebrate The Winners has four (🎱 🎀 🎯 🤐).
+    for (const o of obs) expect(interactionButtons(o.buttons).length, `${label}: ${p} ${o.id}`).toBeLessThanOrEqual(o.pick !== undefined ? 4 : 3);
     const head = obs[0]!;
     // Every face button of NOW is live on at least one guest's card.
     const live = new Set(guests.flatMap((g) => guestCardView(sim, n.chat.all(), p, g, host)?.live ?? []));
-    for (const b of interactionButtons(head.buttons)) expect(live.has(b), `${label}: ${p}'s NOW ${head.id} offers ${b}, live on nobody's card`).toBe(true);
+    // The face is the first three (wave 26: a picker's fourth step, 🤐, waits for a winner).
+    for (const b of interactionButtons(head.buttons).slice(0, 3)) expect(live.has(b), `${label}: ${p}'s NOW ${head.id} offers ${b}, live on nobody's card`).toBe(true);
     now[p] = head.id;
   }
   return now;
@@ -718,21 +721,24 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(guestCardView(n.sim, n.chat.all(), "Task Manager", "g4", true)!.live).not.toContain("unmark_for_reinstallation");
   }, SLOW);
 
-  it("CI 2's checklist reaches 4 / 4, and no to-do in the show is left without a `done when`", () => {
+  it("CI 2's checklist is PLAYER SELECT's four steps, the round closes at 🎯, and no to-do in the show is left without a `done when`", () => {
     const n = boot();
     for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
-    const ci2 = () => primeView(n.sim, "Clippy").objectives!.find((o) => o.id === "Celebrate The Winners")!.checklist.map((c) => c.done);
+    const cel = () => primeView(n.sim, "Clippy").objectives!.find((o) => o.id === "Celebrate The Winners");
+    const ci2 = () => cel()!.checklist.map((c) => c.done);
+    expect(cel()!.checklist.map((c) => c.label.slice(0, 2))).toEqual(["🎱", "🎀", "🎯", "🤐"]);
     expect(ci2()).toEqual([false, false, false, false]);
-    // Wave 18 (A5): the to-dos are PLAYER SELECT's steps, 🎱 → 🎀 → 🎯.
+    // Wave 18 (A5): the to-dos are PLAYER SELECT's steps, 🎱 → 🎀 → 🎯 (wave 26: or 🤐).
     n.signal("bingo_winner", "g1", undefined, "Clippy");
-    n.signal("named_at_bingo", "g4", undefined, "Clippy");
     // A ribbon for a program without a Bingo is not CI 2's ribbon.
     n.signal("award_the_ribbon", "g2", undefined, "Clippy");
-    expect(ci2()).toEqual([true, false, true, false]);
+    expect(ci2()).toEqual([true, false, false, false]);
     n.signal("award_the_ribbon", "g1", undefined, "Clippy");
-    expect(ci2()).toEqual([true, true, true, false]);
-    n.signal("send to the internet", "g4", undefined, "Norton Anti-Virus");
-    expect(ci2()).toEqual([true, true, true, true]);
+    expect(ci2()).toEqual([true, true, false, false]);
+    // Wave 26 (B5): one round; the first 🎯 ends it, and the objective with it.
+    n.signal("named_at_bingo", "g4", undefined, "Clippy");
+    expect(cel()).toBeUndefined();
+    expect(primeView(n.sim, "Clippy").objectives![0]!.id).toBe("After The Bingo");
     const manual = [...n.sim.model.objectives.values()].flatMap((o) => o.checklist.filter((c) => c.done === null).map((c) => `${o.id}: ${c.label}`));
     expect(manual).toEqual([]);
   }, SLOW);

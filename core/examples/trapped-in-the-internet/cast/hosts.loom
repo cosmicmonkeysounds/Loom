@@ -62,8 +62,9 @@ CHARACTER Clippy is Greeter, Player
     // DRAFT w21
     reply ⏰ 20 minutes are up. A host calls ⏰ Bingo time: get the winners ready.
 
+  // Wave 26 (B2): once, even after a ↩ Not a Bingo (`bingo_briefed`).
   when bingo_time:
-    if Night.step < 3:
+    if Night.step < 3 and Night.bingo_briefed != true:
       // DRAFT w21
       reply !!🎱 YOUR GAME IS ON · The Bingo results. 2/X is in your Codex. 🎱 each winner, 🎀 the ribbon, 🎯 the program they name. Demand applause.
 
@@ -142,6 +143,12 @@ CHARACTER Clippy is Greeter, Player
     set Kernel.pressed_by = "Clippy"
   when named_at_bingo for program:
     set Kernel.pressed_by = "Clippy"
+  // Wave 26 (B3): 🤐, ⭐ +5. (B2): ↩ Not a Bingo counts itself (no ⭐).
+  when named_nobody for program:
+    set Kernel.pressed_by = "Clippy"
+  when not_a_bingo for program:
+    set Kernel.undo_n += 1
+    set Kernel.undo_by = self
   when judge_accurate for program:
     set Kernel.pressed_by = "Clippy"
   when judge_confident for program:
@@ -232,7 +239,7 @@ CHARACTER Task Manager is Host
         Self: Fine. Fine. Carry on. Good. Fine.
 
   when bingo_time:
-    if Night.step < 3:
+    if Night.step < 3 and Night.bingo_briefed != true:
       reply 🃏 If nobody has a Bingo: hand Clippy the pre-filled card for {Kernel.anti_ai}, then press 🃏 on their card.
 
   when truther_download:

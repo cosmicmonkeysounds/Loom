@@ -18,7 +18,7 @@ import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { ChatStore, composeGuestMessages, momentLines, type ChatMessage } from "../server/chat.ts";
-import { cueState, guestView, isLocked, modView, nightView, notePress, objectivesFor, primeView } from "../server/views.ts";
+import { cueState, guestCardView, guestView, isLocked, modView, nightView, notePress, objectivesFor, primeView } from "../server/views.ts";
 import { cueRows } from "../src/cue-sheet.ts";
 
 const SRC = scenarioSource("trapped-in-the-internet");
@@ -335,4 +335,190 @@ describe("Trapped in the Internet — wave 26: a Dare makes Trabolta make a scen
     expect(src.match(/fire dare_taken for program/gu)).toHaveLength(2);
     expect(read("beats/hunt.loom")).toMatch(/== Dare Chosen\n  setting: The Desktop\n  cast: Trabolta\n/u);
   });
+});
+
+describe("Trapped in the Internet — wave 26: a guest's BINGO and one round (B1–B5)", () => {
+  const sheet = (sim: Sim) => {
+    const rows = cueRows(modView(sim, "open", "x").interactions ?? [], cueState(sim));
+    return { last: rows.find((r) => r.last)?.id ?? null, next: rows.find((r) => r.next)?.id ?? null };
+  };
+  const hostLines = (ms: readonly ChatMessage[]) => ms.filter((m) => m.channel === "room:hosts").map((m) => m.text);
+  const bingoEnds = (n: Night, id = "g1") => guestView(n.sim, id).countdowns?.find((c) => c.label === "Bingo ends")?.endsAt;
+  const live = (n: Night, booth: string, id: string, host = false) => guestCardView(n.sim, n.chat.all(), booth, id, host)?.live ?? [];
+  const startBingo = (n: Night) => {
+    n.press("call_to_the_desktop");
+    n.press("start_the_bingo");
+  };
+
+  it("🎱 BINGO! is on the Play Computer Bingo card; a call goes straight to the results, by story, with the exact time left", () => {
+    const n = boot();
+    startBingo(n);
+    const now = guestView(n.sim, "g5").objectives![0]!;
+    expect(now.id).toBe("Play Computer Bingo");
+    expect(now.buttons).toContain("call_bingo");
+    expect(n.sim.model.interactions.get("call_bingo")).toMatchObject({ who: "guest", arm: true, label: "🎱 BINGO!" });
+    n.advance(900);
+    const out = n.press("call_bingo", "g5");
+    expect(v(n.sim, "Night.phase")).toBe("bingo_results");
+    expect(v(n.sim, "Night.step")).toBe(3);
+    expect(v(n.sim, "Night.bingo_on")).toBe(false);
+    expect(v(n.sim, "Night.bingo_caller")).toBe("Winamp");
+    expect(v(n.sim, "Night.bingo_left")).toBe(300);
+    expect(cueState(n.sim)).toMatchObject({ last: "bingo_time", lastBy: "story" });
+    expect(to(out, "g5").some((m) => m.text.startsWith("🎱 You called BINGO!") && m.moment === "big")).toBe(true);
+    expect(out.some((m) => m.audience === "all" && m.text.startsWith("⏰ BINGO! Winamp called it."))).toBe(true);
+    // Clippy's NOW: check the caller's line, on their card.
+    const clippy = primeView(n.sim, "Clippy").objectives![0]!;
+    expect(clippy.id).toBe("Check The Bingo");
+    expect(clippy.target).toMatchObject({ id: "g5", name: "Winamp" });
+    expect(clippy.buttons).toEqual(["bingo_winner", "not_a_bingo"]);
+    expect(primeView(n.sim, "Task Manager", undefined, { host: true }).objectives![0]!.id).toBe("A Program Called Bingo");
+    // The quests settle at the end of the round, not now.
+    expect(n.sim.questStatus("g1", "The Bingo Card")).toBe("active");
+  }, SLOW);
+
+  it("two guests press 🎱 back to back: the first wins, the second does nothing; a 🎱 after a 🎯 changes nothing", () => {
+    const n = boot();
+    startBingo(n);
+    n.press("call_bingo", "g5");
+    const second = n.press("call_bingo", "g1");
+    expect(v(n.sim, "Night.bingo_caller")).toBe("Winamp");
+    expect(hostLines(second).some((t) => t.includes("Nothing happens"))).toBe(true);
+    expect(to(second, "g1").some((m) => m.text.startsWith("🎱 You called BINGO!"))).toBe(false);
+    expect(guestView(n.sim, "g1").interactions.map((i) => i.id)).not.toContain("call_bingo");
+    // A 🎯 closes the round; a late 🎱 does nothing.
+    n.signal("bingo_winner", "g5", undefined, "Clippy");
+    n.signal("named_at_bingo", "g4", undefined, "Clippy");
+    const late = n.press("call_bingo", "g6");
+    expect(v(n.sim, "Night.bingo_caller")).toBe("Winamp");
+    expect(v(n.sim, "Night.phase")).toBe("bingo_results");
+    expect(hostLines(late).some((t) => t.includes("Nothing happens"))).toBe(true);
+  }, SLOW);
+
+  it("↩ Not a Bingo with time left: the night is back at the call, the countdown resumes at exactly what was left, another guest may call", () => {
+    const n = boot();
+    startBingo(n);
+    n.advance(900);
+    n.press("call_bingo", "g5");
+    expect(bingoEnds(n)).toBeUndefined();
+    n.advance(60);
+    // Not on a non-caller's card; on the caller's for Clippy and a host.
+    expect(live(n, "Clippy", "g1")).not.toContain("not_a_bingo");
+    expect(live(n, "Clippy", "g5")).toContain("not_a_bingo");
+    expect(live(n, "Task Manager", "g5", true)).toContain("not_a_bingo");
+    const at = v(n.sim, "Time.elapsed") as number;
+    const out = n.press("not_a_bingo", "g5", "Task Manager");
+    expect(v(n.sim, "Night.phase")).toBe("bingo");
+    expect(v(n.sim, "Night.step")).toBe(2);
+    expect(v(n.sim, "Night.bingo_on")).toBe(true);
+    expect(v(n.sim, "Night.bingo_end")).toBe(at + 300);
+    expect(v(n.sim, "Night.screen")).toBe("bingo");
+    expect(v(n.sim, "Night.bingo_called")).toBe(false);
+    expect(v(n.sim, "Night.bingo_caller")).toBe("none");
+    expect(bingoEnds(n)).toBe(at + 300);
+    expect(out.some((m) => m.audience === "all" && m.text.startsWith("↩ Not a Bingo yet. Back to your cards."))).toBe(true);
+    expect(hostLines(out)).toContain("↩ Task Manager pressed Not a Bingo for Winamp. Bingo is back on: the clock picks up where it stopped.");
+    expect(guestView(n.sim, "g1").objectives![0]!.id).toBe("Play Computer Bingo");
+    expect(sheet(n.sim)).toMatchObject({ next: "bingo_time" });
+    // The time-up rule fires at the restored deadline, not before.
+    expect(n.advance(299).some((m) => m.text.includes("Bingo time is up"))).toBe(false);
+    expect(n.advance(2).some((m) => m.text.includes("Bingo time is up"))).toBe(true);
+    // Another guest may call now.
+    n.press("call_bingo", "g1");
+    expect(v(n.sim, "Night.bingo_caller")).toBe("Calculator");
+    expect(v(n.sim, "Night.bingo_left")).toBe(0);
+  }, SLOW);
+
+  it("a call after time-up, undone: no clock, time-up never fires twice; the host's ⏰ briefs the cast exactly once", () => {
+    const n = boot();
+    startBingo(n);
+    n.advance(1201);
+    n.press("call_bingo", "g5");
+    expect(v(n.sim, "Night.bingo_left")).toBe(0);
+    const first = n.events.length;
+    n.press("not_a_bingo", "g5", "Clippy");
+    expect(v(n.sim, "Night.phase")).toBe("bingo");
+    expect(v(n.sim, "Night.bingo_on")).toBe(false);
+    expect(bingoEnds(n)).toBeUndefined();
+    expect(n.advance(1300).some((m) => m.text.includes("Bingo time is up"))).toBe(false);
+    // The hosts' ⏰: the results again; the briefs and the Bingo Time beat only once all night.
+    const again = n.press("bingo_time");
+    expect(v(n.sim, "Night.phase")).toBe("bingo_results");
+    const all = n.events.slice(0);
+    const beats = all.filter((e) => e.type === "beatEntered" && (e as { beat: string }).beat === "Bingo Time");
+    expect(beats).toHaveLength(1);
+    const game = n.chat.all().filter((m) => m.channel === "dm:Clippy" && m.text.startsWith("🎱 YOUR GAME IS ON · The Bingo results"));
+    expect(game).toHaveLength(1);
+    const norton = n.chat.all().filter((m) => m.channel === "dm:Norton Anti-Virus" && m.text.startsWith("🛡 You are the selected Antivirus."));
+    expect(norton).toHaveLength(1);
+    expect(again.some((m) => m.text.startsWith("⏰ BINGO TIME."))).toBe(true);
+    expect(first).toBeGreaterThan(0);
+  }, SLOW);
+
+  it("↩ is offered only before any 🎱 / 🎯 / 🤐", () => {
+    const n = boot();
+    startBingo(n);
+    n.press("call_bingo", "g5");
+    n.signal("bingo_winner", "g5", undefined, "Clippy");
+    expect(v(n.sim, "Night.bingo_checked")).toBe(true);
+    expect(live(n, "Clippy", "g5")).not.toContain("not_a_bingo");
+    const refused = n.press("not_a_bingo", "g5", "Clippy");
+    expect(v(n.sim, "Night.phase")).toBe("bingo_results");
+    expect(hostLines(refused).some((t) => t.includes("Nothing happens"))).toBe(true);
+    expect(primeView(n.sim, "Clippy").objectives![0]!.id).toBe("Celebrate The Winners");
+  }, SLOW);
+
+  it("🤐 the winner names nobody: nobody marked, the round over, ⭐ +5 for Clippy, After The Bingo", () => {
+    const n = boot();
+    for (const c of TO_BINGO) n.press(c);
+    expect(live(n, "Clippy", "g1")).not.toContain("named_nobody");
+    n.signal("bingo_winner", "g1", undefined, "Clippy");
+    n.signal("award_the_ribbon", "g1", undefined, "Clippy");
+    expect(live(n, "Clippy", "g1")).toContain("named_nobody");
+    const score = v(n.sim, "Clippy.score") as number;
+    const out = n.signal("named_nobody", "g1", undefined, "Clippy");
+    expect(v(n.sim, "Night.bingo_none")).toBe(true);
+    expect(v(n.sim, "Night.bingo_done")).toBe(true);
+    expect([...n.sim.persons.keys()].filter((g) => v(n.sim, `${g}.marked`) === true)).toEqual([]);
+    expect(v(n.sim, "Clippy.score")).toBe(score + 5);
+    expect(hostLines(out)).toContain("🤐 Calculator names nobody at the centre square. Nobody is marked.");
+    expect(primeView(n.sim, "Clippy").objectives![0]!.id).toBe("After The Bingo");
+    expect(n.sim.questStatus("g1", "The Bingo Card")).toBe("done");
+    expect(n.sim.questStatus("Norton Anti-Virus", "The Selected Antivirus")).toBe("done");
+    // Once over, nothing more: no 🎱, no 🎯.
+    expect(live(n, "Clippy", "g2")).not.toContain("bingo_winner");
+    expect(live(n, "Clippy", "g2")).not.toContain("named_at_bingo");
+  }, SLOW);
+
+  it("one round: the first 🎯 closes it (a second is refused); a Bingo-phase capture and 🤖 close it too", () => {
+    const n = boot();
+    for (const c of TO_BINGO) n.press(c);
+    n.signal("bingo_winner", "g1", undefined, "Clippy");
+    n.signal("named_at_bingo", "g4", undefined, "Clippy");
+    expect(v(n.sim, "Night.bingo_done")).toBe(true);
+    expect(n.sim.questStatus("g2", "The Bingo Card")).toBe("done");
+    expect(n.sim.questStatus("Clippy", "Run The Bingo")).toBe("done");
+    expect(primeView(n.sim, "Clippy").objectives![0]!.id).toBe("After The Bingo");
+    const again = n.signal("named_at_bingo", "g3", undefined, "Clippy");
+    expect(v(n.sim, "Night.bingo_named")).toBe(1);
+    expect(v(n.sim, "g3.marked")).toBe(false);
+    expect(hostLines(again).some((t) => t.includes("Nothing happens"))).toBe(true);
+    for (const g of ["g2", "g3", "g5"]) {
+      expect(live(n, "Clippy", g)).not.toContain("bingo_winner");
+      expect(live(n, "Clippy", g)).not.toContain("named_at_bingo");
+    }
+    // A capture during the results closes a round nobody closed.
+    const c = boot();
+    for (const x of TO_BINGO) c.press(x);
+    c.signal("mark_for_reinstallation", "g6", { reason: "a test" });
+    c.signal("send to the internet", "g6", undefined, "Norton Anti-Virus");
+    expect(v(c.sim, "Night.bingo_done")).toBe(true);
+    // 🤖 with the round still open: belt and braces.
+    const t = boot();
+    for (const x of TO_BINGO) t.press(x);
+    t.press("introduce_trabolta");
+    expect(v(t.sim, "Night.bingo_done")).toBe(true);
+    expect(t.sim.questStatus("g1", "The Bingo Card")).toBe("done");
+    expect(sheet(t.sim).last).toBe("introduce_trabolta");
+  }, SLOW);
 });

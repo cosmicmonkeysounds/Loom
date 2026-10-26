@@ -649,12 +649,18 @@ ROLE Program
   // Clippy pressed (cast/hosts.loom). A host's press pays nobody.
   when bingo_winner for program:
     set Kernel.pressed_by = "none"
-    if Night.phase == "bingo_results" and program.bingo != true:
+    // Wave 26 (B5): never once the round is over (the first 🎯 or 🤐).
+    if Night.phase == "bingo_results" and program.bingo != true and Night.bingo_done != true:
       set program.bingo = true
       set Night.bingo_winners += 1
+      // Wave 26 (B1): the guest who pressed 🎱 BINGO! has been checked.
+      if program.name == Night.bingo_caller:
+        set Night.bingo_checked = true
       fire game_credit with points: 10, gain: 0, counts: 0
       // DRAFT w18: a big moment (the user's example: un-ignorable).
       reply "!!🎱 BINGO! Name the program for each square. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
+    else:
+      broadcast "🎱 Nothing happens: the Bingo round is over, or {program.name} is already a winner." to channel(hosts)
 
   when award_the_ribbon for program:
     set Kernel.pressed_by = "none"
@@ -674,7 +680,7 @@ ROLE Program
       reply 🎀 You received a ribbon. Take a bow.
 
   when frame_for_bingo for program:
-    if Night.phase == "bingo_results" and Night.bingo_winners < 1:
+    if Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_done != true:
       set program.framed = true
       reply 🃏 A completed Bingo card with your name on it has been handed to Clippy. You did not fill it in.
 
@@ -683,11 +689,95 @@ ROLE Program
   // from the Enforcer's hook).
   when named_at_bingo for program:
     set Kernel.pressed_by = "none"
-    if Night.phase == "bingo_results":
+    if Night.phase == "bingo_results" and Night.bingo_done != true:
       // DRAFT for sign-off (w13 Q24): CI 2's 🎯 to-do ticks.
       set Night.bingo_named += 1
       fire game_credit with points: 10, gain: 5, counts: 0
       fire mark_for_reinstallation for program with reason: "named on the Bingo card"
+      // Wave 26 (B5): one round; the first 🎯 closes it.
+      set Night.bingo_done = true
+    else:
+      broadcast "🎯 Nothing happens: the Bingo round is over." to channel(hosts)
+
+  // ── Wave 26: a guest's BINGO, its undo, and naming nobody (B1–B3) ──
+  // Every hook repeats its button's `while:` in full (a `while:` never
+  // gates a press), so a stale press does nothing.
+
+  // B1: a guest with a line presses 🎱 BINGO! (two taps): the results start
+  // at once, as if a host pressed ⏰ (the cue sheet ticks V3 by story). The
+  // call keeps the exact time left, for the undo. One call at a time.
+  when call_bingo for program:
+    if Night.step == 2 and Night.bingo_called != true and program.cleared == true and program.corrupted != true:
+      set Night.bingo_called = true
+      set Night.bingo_caller = program.name
+      if Night.bingo_on == true:
+        set Night.bingo_left = Night.bingo_end - Time.elapsed
+      else:
+        set Night.bingo_left = 0
+      // DRAFT w26 (B1: the caller's own moment)
+      reply "!!🎱 You called BINGO! Go to Clippy at the Desktop and read your line, centre square last." with go: The Desktop as "🎱 To the Desktop"
+      fire bingo_time
+    else:
+      broadcast "🎱 {program.name} pressed BINGO, but the call is already in (or Bingo isn't on). Nothing happens." to channel(hosts)
+
+  // B2: ↩ Not a Bingo (Clippy, a host or a director, on the caller's card):
+  // the night goes back to the moment of the call. With time left, the
+  // countdown resumes at exactly what was left; a call after time-up comes
+  // back with no clock (the hosts call ⏰ as usual, so time-up never fires
+  // twice). Only before any 🎱 / 🎯 / 🤐, so nothing else needs undoing.
+  // The "!⏰ BINGO TIME" broadcast can't be taken back: the house line
+  // calls everyone back to their cards. `bingo_undone` names who pressed it
+  // once the press has drained (the pressing booth's hook counts itself).
+  when not_a_bingo for program:
+    set Kernel.undo_n = 0
+    if Night.phase == "bingo_results" and Night.bingo_called == true and program.name == Night.bingo_caller and Night.bingo_winners < 1 and Night.bingo_named < 1 and Night.bingo_done != true:
+      set Night.phase = "bingo"
+      set Night.step = 2
+      if Night.bingo_left > 0:
+        set Night.bingo_on = true
+        set Night.bingo_end = Time.elapsed + Night.bingo_left
+      cue tv_bingo
+      set Night.screen = "bingo"
+      cue terminals_attract
+      set Night.terminals = "attract"
+      set Night.bingo_called = false
+      set Night.bingo_caller = "none"
+      set Night.bingo_left = 0
+      set Night.bingo_checked = false
+      // DRAFT w26 (B2)
+      update quest Run The Bingo for Clippy "Not a Bingo yet. Back to the cards."
+      // DRAFT w26 (B2: everyone back to their cards)
+      broadcast "!↩ Not a Bingo yet. Back to your cards." to everyone with go: quest: The Bingo Card
+      // DRAFT w26 (B2)
+      reply 🎱 Not quite a line yet. Keep looking.
+      fire bingo_undone for program
+    else:
+      broadcast "↩ Nothing happens: Not a Bingo works only on the caller, before any 🎱, 🎯 or 🤐." to channel(hosts)
+
+  when bingo_undone for program:
+    if Kernel.undo_n == 1 and Night.bingo_on == true:
+      broadcast "↩ {Kernel.undo_by} pressed Not a Bingo for {program.name}. Bingo is back on: the clock picks up where it stopped." to channel(hosts)
+    else if Kernel.undo_n == 1:
+      broadcast "↩ {Kernel.undo_by} pressed Not a Bingo for {program.name}. Bingo is back on; its time was already up: call ⏰ when the room is ready." to channel(hosts)
+    else if Night.bingo_on == true:
+      broadcast "↩ The Director pressed Not a Bingo for {program.name}. Bingo is back on: the clock picks up where it stopped." to channel(hosts)
+    else:
+      broadcast "↩ The Director pressed Not a Bingo for {program.name}. Bingo is back on; its time was already up: call ⏰ when the room is ready." to channel(hosts)
+    set Kernel.undo_n = 0
+
+  // B3: the winner names nobody at the centre square (Clippy, on the
+  // winner). Nobody is marked; the round is over. ⭐ +5 for Clippy.
+  when named_nobody for program:
+    set Kernel.pressed_by = "none"
+    if Night.phase == "bingo_results" and Night.bingo_done != true and program.bingo == true:
+      set Night.bingo_none = true
+      set Night.bingo_done = true
+      // DRAFT w26 (B3: ⭐ +5)
+      fire game_credit with points: 5, gain: 0, counts: 0
+      // DRAFT w26 (B3)
+      broadcast "🤐 {program.name} names nobody at the centre square. Nobody is marked." to channel(hosts)
+    else:
+      broadcast "🤐 Nothing happens: only on a winner, before the round is over." to channel(hosts)
 
   // ── Moments of Truth: the room's judging (performer buttons) ──
   // The ✅ / 😤 / 🤷 buttons for an answer spoken in the room (Truth Pong,
@@ -2946,7 +3036,12 @@ INTERACTION start_the_bingo
 INTERACTION bingo_time
   label: V3 · ⏰ Bingo time: results
   who: admin
-  description: Clippy's game is on (Instructions 2/X). Norton is the selected Antivirus.
+  description: Clippy's game is on (Instructions 2/X). Norton is the selected Antivirus. A guest's 🎱 BINGO! presses it for you; after a ↩ Not a Bingo it is NEXT again.
+  // Wave 26 (B2): ↩ Not a Bingo puts the night back at step 2, so ⏰ may
+  // fire again; NEXT reads it again while Bingo is on. The rule's own
+  // `if Night.step < 3` stays the real guard.
+  repeat: true
+  while: Night.step == 2
 
 INTERACTION introduce_trabolta
   label: Clippy 2/X · 🤖 Clippy introduces Trabolta
@@ -3474,8 +3569,26 @@ INTERACTION bingo_winner
   label: 🎱 Bingo winner
   who: performer
   by: Clippy
-  while: Night.phase == "bingo_results"
-  description: Clippy, at the Bingo results. Several winners are fine.
+  // Wave 26 (B5): one round; the first 🎯 or 🤐 closes it.
+  while: Night.phase == "bingo_results" and Night.bingo_done != true
+  description: Clippy, at the Bingo results. Several winners are fine, until the centre square is answered.
+
+// Wave 26 (B2): the undo of a guest's 🎱 BINGO!, on the caller's card only,
+// before any 🎱 / 🎯 / 🤐.
+INTERACTION not_a_bingo
+  label: ↩ Not a Bingo: back to the game
+  who: performer
+  by: Hosts, Clippy
+  while: Night.phase == "bingo_results" and Night.bingo_called == true and program.name == Night.bingo_caller and Night.bingo_winners < 1 and Night.bingo_named < 1 and Night.bingo_done != true
+  description: The caller's line doesn't hold. Bingo picks up with the time it had left (none if it was already up: then call ⏰ as usual).
+
+// Wave 26 (B3): the winner won't name anyone at the centre square.
+INTERACTION named_nobody
+  label: 🤐 Names nobody at the centre square
+  who: performer
+  by: Clippy
+  while: Night.phase == "bingo_results" and Night.bingo_done != true and program.bingo == true
+  description: Clippy, on the winner. Nobody is marked, and the Bingo round is over.
 
 INTERACTION award_the_ribbon
   label: 🎀 Award a ribbon (the Bingo Ribbon for a Bingo winner)
@@ -3487,7 +3600,7 @@ INTERACTION frame_for_bingo
   label: 🃏 Hand Clippy the fake Bingo card (no Bingo)
   who: performer
   by: Task Manager
-  while: Night.phase == "bingo_results" and Night.bingo_winners < 1
+  while: Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_done != true
   description: Task Manager, only if nobody has a Bingo.
 
 INTERACTION accurate_q1
@@ -3659,7 +3772,8 @@ INTERACTION named_at_bingo
   label: 🎯 Named on the card: marked for reinstallation
   who: performer
   by: Clippy
-  while: Night.phase == "bingo_results"
+  // Wave 26 (B5): one round; the first 🎯 closes it.
+  while: Night.phase == "bingo_results" and Night.bingo_done != true
 
 INTERACTION unmark_for_reinstallation
   label: 🩹 Unmark: not going to the Internet
@@ -3879,6 +3993,15 @@ INTERACTION back from the bathroom
   restricted: allow
 
 // Wave 26 (R1): never on a phone in the Internet (the hook refuses there anyway).
+// Wave 26 (B1): a guest with a line calls the results themselves (two taps).
+// On Play Computer Bingo's card; one call at a time.
+INTERACTION call_bingo
+  label: 🎱 BINGO!
+  who: guest
+  arm: true
+  while: Night.step == 2 and Night.bingo_called != true and program.cleared == true and program.corrupted != true
+  description: A full line through the centre square. Tell everyone, then read it to Clippy.
+
 INTERACTION plant_the_virus
   label: 💾 Insert a disk into the computer
   who: guest
@@ -3947,23 +4070,47 @@ when Night.bingo_on == true and Time.elapsed >= Night.bingo_end:
 
 // B3 · V3: the results. The Antivirus interruption, the frame, and the
 // first reinstallation are performed live with the performer buttons.
+// Wave 26 (B1, B2): a guest's 🎱 BINGO! fires this too, and after a ↩ Not a
+// Bingo it may fire again. The phase, the screens and the house line run
+// every time; the quests settle at the end of the round (`bingo_done`,
+// below); the Bingo Time beat and the cast briefs (Clippy's YOUR GAME IS
+// ON, Task Manager's 🃏 hint, Norton's brief: character hooks, which run
+// before this rule) run only on the first firing (`bingo_briefed`).
 when bingo_time:
   if Night.step < 3:
     set Night.phase = "bingo_results"
     set Night.step = 3
     set Night.bingo_on = false
-    complete quest The Bingo Card for everyone
-    complete quest Run The Bingo for Clippy "Winners celebrated. Norton takes it from here."
     unlock Clippy Instructions 2 for Clippy
+    // DRAFT w26 (B2: the quest settles at the end of the round now)
+    update quest Run The Bingo for Clippy "The results: check each line, centre square last."
     cue tv_bingo_time
     set Night.screen = "bingo_time"
     cue terminals_attract
     set Night.terminals = "attract"
-    // DRAFT w18 (fix GN-F5): every phone is called back, wherever it is.
-    broadcast "!⏰ BINGO TIME. Back to the Desktop: got a line? Read it to Clippy." to everyone with go: The Desktop
-    -> Bingo Time
+    if Night.bingo_called == true:
+      // DRAFT w26 (B1: a guest called it)
+      broadcast "!⏰ BINGO! {Night.bingo_caller} called it. Back to the Desktop to hear the line." to everyone with go: The Desktop
+    else:
+      // DRAFT w18 (fix GN-F5): every phone is called back, wherever it is.
+      broadcast "!⏰ BINGO TIME. Back to the Desktop: got a line? Read it to Clippy." to everyone with go: The Desktop
+    if Night.bingo_briefed != true:
+      set Night.bingo_briefed = true
+      -> Bingo Time
   else:
     broadcast "⏰ Not again: the Bingo results are already in. Nothing happens." to channel(hosts)
+
+// Wave 26 (B5): one round of Bingo. The first 🎯, the first 🤐, a
+// Bingo-phase capture or 🤖 closes it (`Night.bingo_done`); this settles the
+// quests that bingo_time used to complete (so ↩ Not a Bingo never has to
+// reopen a settled quest), once.
+when Night.bingo_done == true and Night.bingo_closed != true:
+  set Night.bingo_closed = true
+  complete quest The Bingo Card for everyone
+  complete quest Run The Bingo for Clippy "Winners celebrated. Norton takes it from here."
+  if Night.bingo_none == true:
+    // DRAFT w26 (B3: nobody was named)
+    complete quest The Selected Antivirus for Norton Anti-Virus "Nobody was named. Patrol the Tube."
 
 // The Bingo Ribbon's house cheer (wave 18, B7): fired by 🎀 on a Bingo
 // winner (ROLE Program). A story rule, so the big moment to the whole house
@@ -3984,6 +4131,8 @@ when first_reinstallation:
 when introduce_trabolta:
   if Night.trabolta_introduced != true and Night.step >= 3:
     set Night.trabolta_introduced = true
+    // Wave 26 (B5): belt and braces, the Bingo round is over.
+    set Night.bingo_done = true
     if Night.step < 4:
       set Night.phase = "introduced"
       set Night.step = 4
@@ -4004,6 +4153,7 @@ when introduce_trabolta:
 // beat speaks for him) so his lines, his worker and his powers agree.
 when Night.step >= 4 and Night.trabolta_introduced != true and Night.ended != true:
   set Night.trabolta_introduced = true
+  set Night.bingo_done = true
   set Trabolta.awake = true
   reveal Trabolta
 
@@ -4219,6 +4369,9 @@ when reinstallation begun for program:
       set Night.first_reinstall_done = true
       set Night.first_reinstall = program.name
       fire first_reinstallation
+    // Wave 26 (B5): a Bingo-phase capture closes the round.
+    if Night.phase == "bingo_results":
+      set Night.bingo_done = true
 
 // The games fire both of these, in this order, for whoever walks up to
 // Gerald the golden duck. Only a corrupted program is released, and never
