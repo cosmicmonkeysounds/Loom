@@ -58,7 +58,8 @@
 ##   web game's schedule), the find quacks and plays the fanfare (none for a
 ##   refused find), the King's hit thuds, a refusal buzzes, his fall plays
 ##   the fanfare, and a quiet hum runs while playing. Every one-shot holds
-##   the mic shut while it plays ([method VoiceLink.hold_for]).
+##   the mic shut while it plays ([method VoiceLink.hold_for]); the hum
+##   pauses while a terminal listens, so no game sound reaches the mic.
 ##
 ## The session also ends when the server says so ([signal
 ## LinkBase.session_over]) or the headset comes off ([method presence_changed],
@@ -1052,6 +1053,9 @@ func _prime_mic() -> void:
 ## While playing: run the voice link on the session (unless `voice` is off),
 ## toggle the mic on a press of the mute button, keep the HUD's mic line.
 func _tick_voice() -> void:
+	# R8: while a terminal listens the mic may send, so no game sound plays —
+	# the hum (which holds nothing) pauses; one-shots hold the mic instead.
+	sfx.set_hum_ducked(voice.listen_on)
 	if not bool(link.config.get("voice", true)):
 		return
 	if not voice.is_running():

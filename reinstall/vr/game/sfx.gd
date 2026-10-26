@@ -13,9 +13,11 @@
 ## Each one-shot emits [signal played] with its length: [Game] holds the
 ## voice link's mic shut that long ([method VoiceLink.hold_for]), so the
 ## Quest (which cancels no echo) never sends the game's own sound to the
-## terminals. The hum is the one exception: it loops all walk at
-## [constant HUM_DB], under the mic gate, and holding the mic for it would
-## shut the voice link for the whole walk.
+## terminals. The hum loops all walk at [constant HUM_DB], so it holds
+## nothing (that would shut the voice link for the whole walk): instead it
+## pauses while a terminal listens ([method set_hum_ducked], from
+## [member VoiceLink.listen_on]) — whenever the mic could send, no game
+## sound plays.
 ##
 ## The generators are static and pure (tests check lengths, levels and
 ## the quack's schedule, [method quack_plan], against the web constants).
@@ -128,13 +130,21 @@ func set_hum(on: bool) -> void:
 	if _hum == null:
 		return
 	if on and not _hum.playing:
+		_hum.stream_paused = false
 		_hum.play()
 	elif not on and _hum.playing:
 		_hum.stop()
 
 
+## Pause the hum while a terminal listens (the mic may send), go on after.
+func set_hum_ducked(ducked: bool) -> void:
+	if _hum != null and _hum.stream_paused != ducked:
+		_hum.stream_paused = ducked
+
+
+## Whether the hum is heard now (on, and not paused for a listener).
 func hum_on() -> bool:
-	return _hum != null and _hum.playing
+	return _hum != null and _hum.playing and not _hum.stream_paused
 
 
 func _played(sound: String) -> float:

@@ -300,7 +300,8 @@ with `released: true` while you walk to Gerald.
   runs while playing. Everything is synthesised at boot (no assets) and
   plays on an **Sfx** bus. While any one-shot plays (plus 0.3 s) the mic
   sends nothing, so the Quest never sends the game's own sound to the
-  terminals; the hum sits under the mic gate and holds nothing.
+  terminals. The hum holds nothing; it pauses whenever a terminal
+  listens, so no game sound plays while the mic could send.
 - **The void** (wave 26, R4): the mud room's front door leads outside.
   5 m past the walls, every time, one hard glitch flash comes on in front
   of the eyes ("FATAL EXCEPTION 0E", a noise, a haptic pulse; no camera

@@ -3777,6 +3777,13 @@ func _test_sfx_game() -> void:
 	var a := _assignment(house, "sfx-1", true)
 	link.assignment_received.emit(a)
 	_check(sfx.hum_on(), "sfx game: the hum while playing")
+	# R8: while a terminal listens (the mic may send) the hum pauses.
+	game.voice.on_frame("listen", {"on": true})
+	game._process(0.016)
+	_check(game.voice.listen_on and not sfx.hum_on(), "sfx game: … paused while a terminal listens")
+	game.voice.on_frame("listen", {"on": false})
+	game._process(0.016)
+	_check(sfx.hum_on(), "sfx game: … and back once nobody does")
 	var dp: Array = a["duck"]["pos"]
 	player.teleport(Vector3(dp[0] + 1.5, dp[1], dp[2]), 0.0)
 	game._process(1.0)
