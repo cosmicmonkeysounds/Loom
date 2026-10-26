@@ -131,6 +131,9 @@ counts as busy (piloting) during one. Every view takes the glitch.
   `takesFocusBack`), the picks as 48 px buttons, N REINSTALLING; a
   `tablet_*` cue is a status line in it. The camera shrinks (44vh down to
   140 px) before any row under it clips. No world pane, no camera feed.
+  The idle show behind it never lands a window on the card
+  (`field.ts` `placePopup` / `stormPlace` return null, `spawn` adds
+  nothing): at 1366x768 landscape no margin fits one, so none comes.
 - **Copy.** G1 (the filing steps, the reminders, Truth Pong, the summons,
   the chess stakes line) and D1 (`dare_chosen` on the `Dare Chosen` beat,
   `DARE_ORDER`) carry `// DRAFT w26`.

@@ -123,19 +123,58 @@ describe("the popups' lives", () => {
 
   it("never lands on the scan box", () => {
     for (let seed = 0; seed < 400; seed++) {
-      const p = placePopup(mulberry32(seed), reserve);
+      const p = placePopup(mulberry32(seed), reserve)!;
       expect(overlaps(p.x, p.y, reserve)).toBe(false);
       expect(p.x).toBeGreaterThanOrEqual(0);
       expect(p.x + POPUP_W).toBeLessThanOrEqual(1);
       expect(p.y + POPUP_H).toBeLessThanOrEqual(1);
-      const s = stormPlace(seed, 9, reserve);
+      const s = stormPlace(seed, 9, reserve)!;
       expect(overlaps(s.x, s.y, reserve)).toBe(false);
+    }
+  });
+
+  it("never hides under the tent's card (wave 26, T3): no room, no window", () => {
+    // The tent at 1366x768: the card spans 0.18–0.82 of the box, full height (+ the 0.02 margin).
+    const card: Rect = { x: 0.161, y: -0.002, w: 0.678, h: 1.004 };
+    for (let seed = 0; seed < 2_000; seed++) {
+      const p = placePopup(mulberry32(seed), card);
+      if (p !== null) expect(overlaps(p.x, p.y, card)).toBe(false);
+      const st = stormPlace(seed, 9, card);
+      if (st !== null) expect(overlaps(st.x, st.y, card)).toBe(false);
+    }
+    expect(placePopup(mulberry32(1), card)).toBeNull();
+    // spawn adds nothing and keeps `drawn` (the next try draws the same kind).
+    const f0 = emptyField(4);
+    const sp = spawn(f0, 0, { seed: 1, reserve: card, storm: false, cap: 1 });
+    expect(sp.popup).toBeNull();
+    expect(sp.field).toBe(f0);
+    expect(spawn(f0, 0, { seed: 1, reserve: card, storm: true }).popup).toBeNull();
+    // An hour of the quiet backdrop: nothing ever lands, and the clock keeps trying.
+    const quietRun = run(emptyField(), 0, 3_600_000, 250, { ...env, reserve: card, calm: true, cap: QUIET_MAX_POPUPS } as typeof env);
+    expect(quietRun.arrivals).toBe(0);
+    expect(quietRun.field.nextAt).not.toBeNull();
+    // The hydra brings none; a dodge stays put.
+    expect(hydra(emptyField(), -1, 0, { seed: 1, reserve: card, cap: 1 }).arrived).toEqual([]);
+    const one = spawn(emptyField(), 0, { seed: 1, reserve: null, storm: false }).field;
+    const before = one.live[0]!;
+    const dodged = dodge(one, before.id, 10, { seed: 1, reserve: { x: 0, y: 0, w: 1, h: 1 } }).live[0]!;
+    expect([dodged.x, dodged.y, dodged.dodged]).toEqual([before.x, before.y, true]);
+  });
+
+  it("finds the strip beside a reserve when random tries miss it", () => {
+    // A centred card leaving only a right-hand margin a window fits.
+    const card: Rect = { x: 0.1, y: 0, w: 0.5, h: 1 };
+    for (let seed = 0; seed < 200; seed++) {
+      const p = placePopup(mulberry32(seed), card);
+      expect(p).not.toBeNull();
+      expect(overlaps(p!.x, p!.y, card)).toBe(false);
+      expect(p!.x + POPUP_W).toBeLessThanOrEqual(0.98 + 1e-9);
     }
   });
 
   it("close, dodge once, ask first, hydra — each by its rule", () => {
     const one = spawn(emptyField(), 0, { seed: 1, reserve, storm: false });
-    const p = one.popup;
+    const p = one.popup!;
     expect(closeGag(0.1, p, 1)).toBe("hydra");
     expect(closeGag(0.1, p, MAX_POPUPS)).not.toBe("hydra");
     expect(closeGag(0.25, p, 1)).toBe("dodge");
@@ -157,7 +196,7 @@ describe("the popups' lives", () => {
 
   it("windows close at the end of their life, and a storm's go with the storm", () => {
     const s = spawn(emptyField(), 0, { seed: 5, reserve, storm: true });
-    expect(tick(s.field, s.popup.dies + 1, { ...env, layout: "storm" }).field.live.every((p) => p.id !== s.popup.id)).toBe(true);
+    expect(tick(s.field, s.popup!.dies + 1, { ...env, layout: "storm" }).field.live.every((p) => p.id !== s.popup!.id)).toBe(true);
     const mixed = spawn(s.field, 1, { seed: 5, reserve, storm: false }).field;
     expect(relayout(mixed, "saver").live.map((p) => p.storm)).toEqual([false]);
     expect(relayout(mixed, "storm").live).toHaveLength(2);
