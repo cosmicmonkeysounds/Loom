@@ -1212,3 +1212,34 @@ describe("The Heart — the header (wave 20, §3.10)", () => {
 function awakeAt(id: string): Sim {
   return atLayerOne(awake(), id);
 }
+
+describe("a locked program at his heart (wave 26, R1)", () => {
+  it("is not let in: the holder, the stage and the talks stay; no menu docks", { timeout: SLOW }, () => {
+    const sim = atLayerOne(awake(), "g5");
+    expect(v(sim, "Night.heart_holder")).toBe("Winamp");
+    const talks = v(sim, "Night.heart_talks");
+    const stage = v(sim, "Night.heart_stage");
+    // Captured: the story's lock: holds for Calculator.
+    sim.setVar("g1.corrupted", "true");
+    const e = scan(sim, "g1");
+    expect(beats(e)).toEqual([]);
+    expect(v(sim, "Night.heart_holder")).toBe("Winamp");
+    expect(v(sim, "Night.heart_stage")).toBe(stage);
+    expect(v(sim, "Night.heart_talks")).toBe(talks);
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+    expect(v(sim, "g5.at_the_heart")).toBe(true);
+    expect(heartMenu(sim, "g1")).toBeNull();
+    expect(heartMenu(sim, "g5")?.beat).toBe("Heart Layer One");
+  });
+
+  it("a banished night lets a corrupted program back in (the lock no longer holds)", { timeout: SLOW }, () => {
+    const sim = awake();
+    open(sim);
+    shut(sim);
+    sim.setVar("g1.corrupted", "true");
+    sim.setVar("Night.banish", "true");
+    scan(sim, "g1");
+    expect(v(sim, "Night.heart_holder")).toBe("Calculator");
+    expect(v(sim, "g1.at_the_heart")).toBe(true);
+  });
+});

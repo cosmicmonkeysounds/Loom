@@ -5237,9 +5237,15 @@ when reset_server_room:
 // or a pick they made with the door open is applied now (Heart Pick).
 // Exactly one branch runs, so this rule and the resume watcher never dock
 // two menus. After truth.txt the terminal is only his voice (the LLM).
+//
+// Wave 26 (R1): a locked program (the `lock:` header: captured, no
+// banish) is not let in. Their phone and the terminal piloting it can send
+// nothing, so a Heart Talk docked for them could never be answered; the
+// scan leaves Night.heart_holder, the stage and the talks alone (the
+// terminal refuses the pass before it gets here; this guards the story).
 when terminal_opened for program:
   if program.name != null:
-    if Night.ended != true and (at == "The Server Room" or at == "the server room" or at == "Server Room" or at == "server room" or at == "server-room" or at == "server_room" or at == "The_Server_Room"):
+    if Night.ended != true and (program.corrupted != true or Night.banish == true) and (at == "The Server Room" or at == "the server room" or at == "Server Room" or at == "server room" or at == "server-room" or at == "server_room" or at == "The_Server_Room"):
       set Night.heart_holder = program.name
       set program.at_the_heart = true
       if Night.r3_closed != true:
