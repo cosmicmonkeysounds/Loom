@@ -163,7 +163,7 @@ per escape + his assessment*, everywhere it is recomputed (six places).
 | `main.loom:4001` | 🚻 Bathroom Mode's description | *Leave honestly. Tells the Antivirus you are not hacking the Internet, and excuses you from a summons.* | *Leave honestly. Tells the Antivirus you are not hacking the Internet.* |
 | `quests.loom:80` | A Faction Of Your Own (a founder) | *…your faction wins what a majority wins: the whole truth, and the door code.* | *…your faction wins what a majority wins: the whole truth.* |
 | `codex/7-clippy.loom:116` | Clippy Instructions 3 (private) | *The rules: every answer filed with Trabolta on the phone is judged. An accurate answer is accepted…* | *Never say the rules out loud: let the room learn them from the results. Say only that every answer filed with Trabolta will be judged, and that Trabolta knows best. (For you alone: …the rule as before.)* |
-| `trabolta.mind.md:281, 290` | truth_1 brief and cue | *…confident answers were accepted, uncertain ones went to the Internet…* | *…the results were read and the guesses went to the Internet…* |
+| `trabolta.mind.md:281, 290` | truth_1 brief and cue | *…confident answers were accepted, uncertain ones went to the Internet…* | *…the results were read and some programs went to the Internet…* |
 | `trabolta.persona.md:216` | FACTS ARE FOOD | *…judging belongs to Clippy and the Moments of Truth.* | *…judging belongs to Clippy and the Moments of Truth; never explain it.* |
 
 Kept on purpose (after-the-fact verdicts and game rules): Trabolta's *"A

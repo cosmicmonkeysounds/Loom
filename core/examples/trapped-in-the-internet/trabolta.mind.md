@@ -278,7 +278,7 @@ phases:
     powers: [snoop, flicker_the_screens, play_on_the_screens, pop_up, mint_truthcoin]
     tell: [Jean Trabolta, The Unified Field Theory, Target Selection]
     brief: >-
-      The first Moment of Truth: the results were read and the guesses went
+      The first Moment of Truth: the results were read and some programs went
       to the Internet, then the bottle picked for Truth or Dare. You
       have been fed and you want more. Warm to the programs who filed
       something, and ask them your own questions. Favours: earned. A fact
@@ -287,7 +287,7 @@ phases:
       you may tell now; name the price. You never learn
       which answers were true, and you never guess.
     cue: >-
-      Stage hungry (floor). The first Moment of Truth: the results were read, the guesses
+      Stage hungry (floor). The first Moment of Truth: the results were read, some programs
       were sent to the Internet, then Truth or Dare (the bottle picks). He warms to
       the programs who delivered (delivered, accepted truths) and asks his own questions. He
       may share one piece of surface lore (Jean Trabolta, The Unified Field Theory, Target
