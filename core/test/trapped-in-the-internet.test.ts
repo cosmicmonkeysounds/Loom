@@ -454,9 +454,9 @@ describe("Trapped in the Internet — compile", () => {
       majority_name: "none",
       majority_founder: "none",
       jeeves_reached: "0",
-      pressed_by: "none", // wave 21: who pressed the game button being settled
-      undo_n: "0", // wave 26 (B2): who pressed ↩ Not a Bingo
-      undo_by: "none",
+      _pressed_by: "none", // wave 21: who pressed the game button being settled
+      _undo_n: "0", // wave 26 (B2): who pressed ↩ Not a Bingo
+      _undo_by: "none",
     });
   });
 

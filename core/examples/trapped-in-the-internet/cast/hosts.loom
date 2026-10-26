@@ -131,64 +131,64 @@ CHARACTER Clippy is Greeter, Player
 
   // ── Scoring (wave 21) ───────────────────────────────────────────────
   // Clippy shares most game buttons with the hosts, so a press is stamped:
-  // the program's own hook (main.loom) clears `Kernel.pressed_by` and runs
+  // the program's own hook (main.loom) clears `Kernel._pressed_by` and runs
   // first, this hook stamps it, and the program's hook fires
   // `game_credit` when the press counted (`points`, trust `gain`, and
   // `counts` 1 for a judged answer). Only Clippy's own press (or a
   // director's quick-fire with no actor) pays Clippy. Kernel is secret:
   // the stamp never reaches Trabolta's worker. DRAFT w21
   when bingo_winner for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when award_the_ribbon for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when named_at_bingo for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   // Wave 26 (B3): 🤐, ⭐ +5. (B2): ↩ Not a Bingo counts itself (no ⭐).
   when named_nobody for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when not_a_bingo for program:
-    set Kernel.undo_n += 1
-    set Kernel.undo_by = self
+    set Kernel._undo_n += 1
+    set Kernel._undo_by = self
   when judge_accurate for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when judge_confident for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when accurate_q1 for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when accurate_q2 for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when accurate_q3 for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when confident_q1 for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when confident_q2 for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when confident_q3 for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when uncertain_answer for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when truth_answered for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when truth_refused for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when chose_dare for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when made_the_cup for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when missed_the_cup for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when brought_up_the_bag for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when failed_the_bob for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when signed_the_painting for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
   when pickup_line_works for program:
-    set Kernel.pressed_by = "Clippy"
+    set Kernel._pressed_by = "Clippy"
 
   when game_credit:
-    if Kernel.pressed_by == "Clippy":
-      set Kernel.pressed_by = "none"
+    if Kernel._pressed_by == "Clippy":
+      set Kernel._pressed_by = "none"
       set self.score += points
       set self.trust += gain
       if counts == 1:

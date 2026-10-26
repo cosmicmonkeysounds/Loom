@@ -67,8 +67,8 @@ TRAIT Host is Greeter
   // `bingo_undone` names the one who pressed it; a director's quick-fire
   // reaches every hook and reads as the Director).
   when not_a_bingo for program:
-    set Kernel.undo_n += 1
-    set Kernel.undo_by = self
+    set Kernel._undo_n += 1
+    set Kernel._undo_by = self
 
 // ── Players (wave 21) ───────────────────────────────────────────────
 // Clippy and the four Antivirus play the night the way the programs do: a

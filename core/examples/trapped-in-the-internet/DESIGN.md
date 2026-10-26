@@ -4127,7 +4127,7 @@ continue to be "allies" with them"*. Every line is DRAFT (`SIGNOFF-w21.md`).
   McAfee 🤝 `broker_deal`, Password Manager 🔑 `verify_password`, CRA's audit
   rulings (the ROLE's `transfer_denied` / `transfer_approved`, `by`). Clippy:
   the game buttons Clippy shares with the hosts are **stamped**: each ROLE hook
-  clears `Kernel.pressed_by` and runs first, Clippy's own hook stamps it, and
+  clears `Kernel._pressed_by` and runs first, Clippy's own hook stamps it, and
   the ROLE hook's `fire game_credit with points: N, gain: T, counts: 0|1`
   (queued, so it runs after the stamp) pays Clippy only when Clippy pressed.
 - **✅ / 😤 for any question.** `judge_accurate` / `judge_confident` read
