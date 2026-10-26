@@ -295,8 +295,9 @@ with `released: true` while you walk to Gerald.
   and the chevrons draw at once. Gerald's quack never waits.
 - **Sound** (wave 26, R8, `game/sfx.gd`): Gerald quacks from where he
   sits (louder and more often within 7 m, as in the web game), the find
-  quacks and plays the fanfare (none for "GERALD CAN'T HELP"), a refusal
-  buzzes, a King hit thuds, his fall plays the fanfare, and a quiet hum
+  quacks and plays the fanfare (none for "GERALD CAN'T HELP"), a refused
+  find buzzes once per approach (never for closed doors or a dropped
+  request, which retry in silence), a King hit thuds, his fall plays the fanfare, and a quiet hum
   runs while playing. Everything is synthesised at boot (no assets) and
   plays on an **Sfx** bus. While any one-shot plays (plus 0.3 s) the mic
   sends nothing, so the Quest never sends the game's own sound to the
@@ -323,7 +324,8 @@ with `released: true` while you walk to Gerald.
   `heartHeard` on the assignment).
 - **Speech** (`game/speech.gd`): lines are captioned one at a time
   (head-locked, or over the heart), each for its reading time with 0.7 s
-  between, and spoken by the headset's own voice when it has one
+  between, and spoken by the headset's own voice at full volume when it
+  has one
   (`audio/general/text_to_speech` is on; "Antivirus" is said "Anti Virus",
   `config/pronounce.json`). With no device voice the captions carry them.
   Captions never name the speaker.
@@ -403,7 +405,8 @@ with `released: true` while you walk to Gerald.
 - **The lobby's MICROPHONE box** (wave 26, left of the panel, every view):
   what the mic is doing ("MIC · allowed", "MIC · not allowed yet · ASK
   AGAIN", "MIC · not allowed · ASK AGAIN, or Settings → Apps →
-  Permissions", …), **TEST MIC** (opens the mic with no session and shows a
+  Permissions", "MIC · not allowed on this computer" when a desktop's
+  privacy settings refuse it, …), **TEST MIC** (opens the mic with no session and shows a
   level meter: "MIC TEST · it hears you"; STOP TEST, or it closes after
   30 s or when a program starts), **ASK AGAIN** while the grant is missing
   or refused (after "don't ask again", only Settings → Apps → Reinstallation
