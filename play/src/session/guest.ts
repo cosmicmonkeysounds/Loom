@@ -651,7 +651,8 @@ export function useGuestSession(): GuestSession {
     // the Codex, where the room's own ⛔ row says so.
     void Promise.all([loadScanDone(), settled(redeem(code))]).then(
       ([m, a]) => {
-        if ("e" in a) return alertsRef.current?.raise(m.scanErrorNote(a.e, "unlock"), { quiet: true });
+        // A locked phone (403 locked) shows the lock screen, never a toast (C2).
+        if ("e" in a) return lockedRefusal(a.e) ? undefined : alertsRef.current?.raise(m.scanErrorNote(a.e, "unlock"), { quiet: true });
         const o = m.redeemOutcome(a.r);
         if ("done" in o) showScan(o.done);
         else setOpenCodex(true);
@@ -741,7 +742,8 @@ export function useGuestSession(): GuestSession {
     // a quiet banner says why.
     void Promise.all([loadScanDone(), settled(checkin(at))]).then(
       ([m, a]) => {
-        if ("e" in a) return alertsRef.current?.raise(m.scanErrorNote(a.e, "checkin"), { quiet: true });
+        // A locked phone (403 locked) shows the lock screen, never a toast (C2).
+        if ("e" in a) return lockedRefusal(a.e) ? undefined : alertsRef.current?.raise(m.scanErrorNote(a.e, "checkin"), { quiet: true });
         const o = m.checkinOutcome(a.r);
         if ("done" in o) showScan(o.done);
         else alertsRef.current?.raise(o.note, { quiet: true });

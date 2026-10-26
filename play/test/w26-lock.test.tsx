@@ -93,6 +93,11 @@ describe("a `403 locked` answer", () => {
     expect(src("session/guest.ts")).toMatch(/locked: status\?\.locked === true \|\| locked403/u);
     expect(src("session/guest.ts")).toMatch(/if \(lockedRefusal\(e\)\) setLocked403\(true\);/u);
   });
+  it("a ?unlock= or ?checkin= link opened while locked raises no toast", () => {
+    const g = src("session/guest.ts");
+    for (const kind of ["unlock", "checkin"]) expect(g).toContain(`if ("e" in a) return lockedRefusal(a.e) ? undefined : alertsRef.current?.raise(m.scanErrorNote(a.e, "${kind}"), { quiet: true });`);
+    expect(g).not.toMatch(/if \("e" in a\) return alertsRef\.current\?\.raise\(m\.scanErrorNote/u);
+  });
 });
 
 describe("the lock screen stays out of the first load", () => {
