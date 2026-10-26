@@ -2,7 +2,7 @@
 title: Broadcasts & improvised beats
 section: Live Shows
 order: 31
-keywords: broadcast, scope, big moment, !!, un-ignorable, full screen, with go, go:, exits, buttons, close, auto close, cheer, L1214, L1218, notice, per-person, ~, folded, collapse, location, cohort, participant, and, but, improv, duration, advance on, pedal, speech, gesture, quorum, group, cue, faction
+keywords: broadcast, scope, big moment, !!, un-ignorable, full screen, with go, go:, exits, buttons, close, auto close, ack, ack: none, ack none, no ok, no acknowledge, L1226, cheer, L1214, L1218, notice, per-person, ~, folded, collapse, location, cohort, participant, and, but, improv, duration, advance on, pedal, speech, gesture, quorum, group, cue, faction
 ---
 
 ## Speaking to a subset: `broadcast`
@@ -120,6 +120,20 @@ see yet is dropped for them, and **`lobby` is never an exit** (the lobby is
 the far-away Chat log). With no `go:` the app still gives one: a card's own
 thread, a codex unlock's entry, a quest step's quest, a wallet card's
 Wallet, else Mission.
+
+**No OK: `ack: none`** (wave 26). Add `ack: none` to the same tail and a
+big moment loses its acknowledge button: only its exits close it.
+
+```loom
+reply "!!⛔ QUARANTINED. Sent to the Internet." with go: pass as "🎟 Show my pass", go: go to the bathroom, ack: none
+```
+
+`none` is the only value. It needs at least one `go:` in the same tail
+(lint **`L1226`**, a warning). A phone that can take none of the exits
+(every room dropped for that reader) still shows the usual OK, so a guest
+is never trapped; banks ignore it. *Trapped in the Internet* uses it on
+the capture and the confrontation, where the phone is about to lock
+(`lock:`, [Live shows](live-shows.md)), and on the Dare's moment.
 
 `with` is only read **after a quoted text** (and, on `broadcast`, after its
 `to` scope): an unquoted `reply … with go: …` stays prose, and lint

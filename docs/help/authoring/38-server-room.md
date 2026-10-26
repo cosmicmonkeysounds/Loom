@@ -97,7 +97,9 @@ him back to full).
 
 In both reinstallation games (the tent laptop and the headsets) he
 stands in the server-room doorway of the virtual basement hall, with his
-bar over his head. The chevrons never lead to him; the duck is
+bar over his head: the only King display in the games (since wave 26 the
+web game's HUD carries no King meter, and the headset's hit notice no
+longer says *once per visit*). The chevrons never lead to him; the duck is
 elsewhere.
 
 - **One hit per program per reinstallation visit.** Up close and facing
@@ -118,6 +120,13 @@ elsewhere.
 - A **server restart** forgets who has hit this visit (the bar itself is
   safe, it is in the story): each program in the simulation may hit once
   more.
+- **Once he has fallen** (wave 26), the virtual server room behind him
+  shows Trabolta's **heart**: a dark rack with a slowly beating core, no
+  labels, rows or colours (nothing that hints at the patch bay). The
+  first time each program reaches it in a night, the game plays *Heart In
+  The Simulation* in his voice (or captions), in the game only, and sets
+  `program.sim_heart`; `# hosts` hears that it happened. Flavour only. The
+  terminals' world view draws the heart too, only while he is fallen.
 
 **👑 Restore the King's health** (Anytime) puts him back to full: he
 stands in both games and plays his best at the door. `# hosts` is told.
@@ -133,9 +142,10 @@ kiosk runbook, `docs/trapped/kiosk.md`, has the provisioning link). Not
 on the tent laptop, not in a headset.
 
 - It is **awake all night** and never sleeps on the idle show. It shows
-  THE KING, his bar (*n / 15*, *HE KNEELS* at 0), what a win is worth
-  (*"Checkmate him and the server-room door code goes to your Codex."*,
-  or *"No prize now."* after 📄) and the scanner. **No hints, no tips**:
+  THE KING, his bar (*n / 15*, *HE KNEELS* at 0), an attract line
+  that names no prize (wave 26, G1: it no longer promises the door code;
+  the DRAFT is *"Checkmate him."*), *"No prize now."* after 📄, and the
+  scanner. **No hints, no tips**:
   it never says how strong he is.
 - A program scans their pass and plays one game. A restricted program
   is refused (*"⛔ Marked programs can't challenge the King."*, the copy

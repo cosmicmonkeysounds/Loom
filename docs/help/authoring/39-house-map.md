@@ -54,10 +54,11 @@ out is plenty; 5 cm is close enough.
   them (and the spawn) into place, turn them with the round handle. A
   selected terminal sets its **screen**, whether it is a **room
   terminal**, and its **🎤 Voice link**: the tablet's microphone is heard
-  in the games at that screen, and players near it are heard on its
-  speaker. The link is on everywhere except the spawn room (the tent or
-  the shed), where the headsets and the tent laptop are; the plan marks a
-  terminal without it 🔇.
+  in the games at that screen, and players are heard on its speaker,
+  while a player is in that terminal's room in the game (wave 26: the
+  same room, not just nearby). The link is on everywhere except the spawn
+  room (the tent or the shed), where the headsets and the tent laptop
+  are; the plan marks a terminal without it 🔇.
   A terminal's screen of **reinstall** is the tent laptop: the idle show
   between walks, and the reinstallation wizard and game for a marked
   pass; it belongs to no room (no *speaks*).

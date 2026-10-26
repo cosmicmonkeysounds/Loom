@@ -138,6 +138,48 @@ describe('the bundled authoring collection', () => {
     expect(helpArticle('deploy-mode')).toBeUndefined()
   })
 
+  it('wave 26 G2: the crew terminal and headset setup lives in the authoring help', () => {
+    const setup = helpArticle('terminal-setup')
+    expect(setup?.section).toBe('Live Shows')
+    expect(helpSearch('calibrate door')[0]?.article.slug).toBe('terminal-setup')
+    expect(helpSearch('set up this headset')[0]?.article.slug).toBe('terminal-setup')
+    expect(helpSearch('announce=1').map((h) => h.article.slug)).toContain('terminal-setup')
+    expect(setup?.plain).toContain('/terminal/?code=<mod passcode>&spot=server-room&door=serial')
+    expect(setup?.plain).toContain('/terminal/?code=<mod passcode>&spot=tent&announce=1')
+    expect(setup?.plain).toContain('play offline')
+    // Run mode's Terminals card links to it; the cross-link test above
+    // checks the link resolves.
+    const run = helpArticle('run-mode')
+    const links = (run?.blocks ?? []).flatMap((b) =>
+      b.kind === 'list' ? b.items : b.kind === 'para' ? [b.text] : [],
+    ).flatMap((t) => inlineTokens(t)).filter((t) => t.kind === 'link').map((t) => (t.kind === 'link' ? t.href : ''))
+    expect(links).toContain('terminal-setup')
+    expect(setup?.blocks.some((b) => b.kind === 'para' && /\]\(run-mode\)|Run mode/.test(b.text))).toBe(true)
+  })
+
+  it('wave 26: the live-show help covers ack: none and the lock: header', () => {
+    const exits = helpArticle('broadcast-improv')
+    expect(exits?.plain).toContain('ack: none')
+    expect(exits?.plain).toContain('l1226')
+    const live = helpArticle('live-shows')
+    expect(live?.plain).toContain('lock: program.corrupted == true')
+    expect(helpSearch('ack none').map((h) => h.article.slug)).toContain('broadcast-improv')
+    expect(helpSearch('lock').map((h) => h.article.slug)).toContain('live-shows')
+    // The lock refuses story-changing routes only, never session housekeeping (C2).
+    expect(live?.plain).not.toContain('refuses everything else the guest sends')
+    expect(live?.plain).toContain('except session housekeeping')
+    // The cheat sheet carries both wave 26 forms.
+    const cheat = helpArticle('cheat-sheet')
+    expect(cheat?.plain).toContain('ack: none')
+    expect(cheat?.plain).toContain('l1226')
+    expect(cheat?.plain).toContain('lock: program.corrupted == true')
+    expect(cheat?.plain).toMatch(/l1216[^\n]*lock:/)
+  })
+
+  it('wave 26: the chess stakes line no longer promises the door code (G1)', () => {
+    expect(helpArticle('server-room')?.plain).not.toContain('checkmate him and the server-room door code goes to your codex')
+  })
+
   it('helpArticle(null) is the welcome page; unknown slugs are undefined', () => {
     expect(helpArticle(null)?.slug).toBe('welcome')
     expect(helpArticle('does-not-exist')).toBeUndefined()

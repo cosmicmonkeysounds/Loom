@@ -36,7 +36,10 @@ the Internet* that is all of hunt 1, hunt 2's hour and the summons. The
 timer fires the next step itself; its cue (C2's ⏰ *Hunt over*, 📥, ⏳,
 🚨) is still on the sheet to fire early, and ticks ✓ when it fires, but
 is never LAST or NEXT. V3's ⏰ *Bingo time* is an ordinary step: you
-press it when Bingo ends, and it becomes LAST.
+press it when Bingo ends, and it becomes LAST. A guest who calls **🎱
+BINGO!** on their own phone (wave 26) does the same by story: V3 ticks as
+LAST. A false call is undone with **↩ Not a Bingo** on the caller's card,
+and ⏰ is NEXT again.
 A cue that has already fired tonight is ticked ✓ and greyed out (flat, so what
 is still to go stands out). A dimmed cue tagged *not on
 offer* is off tonight's branch for now: the sheet never suggests it, but

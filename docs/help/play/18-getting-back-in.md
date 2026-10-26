@@ -2,7 +2,7 @@
 title: Getting back in
 section: Guest Guide
 order: 18
-keywords: lost, lost phone, signed out, logged out, log in, sign in, rejoin, back in, get back in, already playing, badge, id badge, lanyard, scan my badge, link my badge, new phone, another browser, cleared, closed the tab, back button, forward, reload, refresh, leave, left the event, invitation, ask a host, let them in, approve, cast card
+keywords: lost, lost phone, signed out, logged out, log in, sign in, rejoin, back in, get back in, already playing, badge, id badge, lanyard, scan my badge, link my badge, new phone, another browser, cleared, closed the tab, back button, forward, reload, refresh, leave, left the event, invitation, ask a host, let them in, approve
 ---
 
 You are your program for the whole night. Closing the tab, reloading,
@@ -24,8 +24,8 @@ The ID badge on your lanyard has a QR on it. **Scan it when you join**
 - Lost the page? **Scan your badge with any phone's camera**, or open
   the party, tap **🔁 Already playing? Get back in → 🪪 Scan my badge**,
   or type the code printed under its QR. You're back in, as you.
-- Your badge is also your pass: a performer can scan it instead of the
-  pass on your phone.
+- Your badge is also your pass: the Antivirus and the hosts can scan it
+  instead of the pass on your phone.
 - Keep it on you. Anyone who scans your badge with a phone that isn't
   signed in becomes you.
 
@@ -36,7 +36,7 @@ to the program you pick.
 
 No badge, or never linked it? Open the party and tap **🔁 Already
 playing? Get back in → 🙋 No badge? Ask a host**. Pick your program from
-the list, then find a host (or the director) and tell them. They tap
+the list, then find a host and tell them. They tap
 **Let them in** on their phone, and yours signs straight in. If no one
 answers in ten minutes, ask again.
 
@@ -44,10 +44,3 @@ answers in ten minutes, ask again.
 
 Invited as a featured program? **Scan your invitation again** with your
 phone's camera. Once you've joined, it signs you back in.
-
-## Performers
-
-Your **cast card** signs you in as your part. If your phone dies, scan
-the card with the new phone's camera: it takes your part back, and the
-old phone is signed out. The director can still free a part from Run
-(⏏ Release) too. See [Performers](performers.md).

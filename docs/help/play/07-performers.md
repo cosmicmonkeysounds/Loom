@@ -264,7 +264,9 @@ scanner turns into **⚠ CORRUPTION DETECTED**: their picture, why, and a
 found you*). The big **🛡 SEND TO THE INTERNET** wakes up after a moment;
 one tap and the screen stamps **CAPTURED** (*Walk them through the Tube to
 the tent. Their phone shows them the way.*), with **📷 Next guest** and the
-board. **Not now** keeps the mark and your claim; **🩹 Not them…** (two
+board. From the capture until their reinstallation their phone is
+**locked** (wave 26): only their pass and Bathroom Mode work, so walk
+them there yourself ([How the house works](house-workings.md)). **Not now** keeps the mark and your claim; **🩹 Not them…** (two
 taps) lifts the mark. From a card's **📡 Scan again** (not in person) 🛡
 takes two taps. A program someone else already caught says so (*Caught by
 …*).
@@ -285,10 +287,14 @@ Some objectives work through several guests with no scans:
 
 - **🎮 PLAYER SELECT** (at the show, Clippy's Bingo results): every guest
   at hand as a picture tile, and the moves along the top (**① 🎱 ② 🎀 ③
-  🎯**). Tap a tile, then the move's button; the next move offers the same
-  guest (**SAME: …**) when it's harmless, and a move with no way back never
-  pre-selects and takes two taps. **🔍 Not here? Search everyone**, **Skip**,
-  **Later**, then **+ Another round**. *PLAYER SELECT is ready* pops out
+  🎯 ④ 🤐**: ④ is the winner naming nobody at the centre square, which
+  ends the round). Tap a tile, then the move's button; the next move offers
+  the most recent earlier pick (**SAME: …**) when it's harmless, and a
+  move with no way back never pre-selects and takes two taps. A guest
+  picked earlier keeps their label but can still be picked for 🎯 (the
+  winner may be the one who doesn't like AI). **🔍 Not here? Search
+  everyone**, **Skip**, **Later**, then **+ Another round** while the
+  objective is still open (never for a round that has ended). *PLAYER SELECT is ready* pops out
   when the game starts (on a player's booth, Mission's big button opens it
   too); it opens by itself right after a caller booth's own cue.
 - **📋 A list** (Adobe Acrobat's Truth Pong cups, Clippy's cup-makers, the
