@@ -139,6 +139,7 @@ help lanes write the rest. Not merged to master, not shipped.
 | `main.loom:4423` | # hosts, an escape | — | *🚪 {name} tried to walk out of the simulation (trust −5).* |
 | `main.loom:4433` | # hosts, the heart | — | *❤ {name} reached Trabolta's heart in the simulation.* |
 | `main.loom` INTERACTIONs | the three cues' labels | — | *Reinstallation: walked out into the void (server)* · *Reinstallation: reached Trabolta's heart in the simulation (server)* · *Reinstallation: picked up the floppy disk (server)*, each with a description |
+| `main.loom:2285, 2296` | Truther Download, a codex virus (the tent's QR or the game's disk) | *Something came back from the Internet with you. It is warm. It wants to be inserted.* | *You picked something up in the Internet. It is warm. It wants to be inserted.* (the disk is picked up while still in the Internet; the game speaks this line too) |
 
 The trust formula is now *10 per accepted truth − 5 per Internet visit − 5
 per escape + his assessment*, everywhere it is recomputed (six places).

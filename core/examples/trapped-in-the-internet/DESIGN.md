@@ -2185,8 +2185,8 @@ reinstallation games, `simulation pickup taken`, which unlocks the same entry
 for anyone who picks it up: Free Antivirus Trial for a paranoid Excel,
 ILOVEYOU for everyone else). ROLE `when program learns ILOVEYOU:` and
 `when program learns Free Antivirus Trial:` → `set program.carries_virus = true` · `Truther
-Download: Something came back from the Internet with you. It is warm. It wants to be
-inserted.` · `if program.featured == "excel":` `if program.excel_choice == "paranoid":`
+Download: You picked something up in the Internet. It is warm. It wants to be
+inserted.` (wave 26 R7: was *Something came back from the Internet with you.*, untrue for the game's disk) · `if program.featured == "excel":` `if program.excel_choice == "paranoid":`
 `update quest Excel Mission for program "You have the antivirus. Install it."` `else:` `update
 quest Excel Mission for program "You have the virus. Insert the disk."` (On the paranoid path
 the "antivirus" is a virus anyway: inserting it plants it.)

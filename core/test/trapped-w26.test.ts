@@ -251,7 +251,9 @@ describe("Trapped in the Internet — wave 26: the game's moments and the trust 
     expect(v(n.sim, "g5.carries_virus")).toBe(true);
     // The Truther Download line comes back to the game and reaches the phone too.
     expect(momentLines(ev, "g5").map((l) => l.from)).toContain("Truther Download");
-    expect(to(composeGuestMessages(n.sim, ev), "g5").some((m) => m.text.startsWith("Something came back from the Internet with you."))).toBe(true);
+    expect(to(composeGuestMessages(n.sim, ev), "g5").some((m) => m.text.startsWith("You picked something up in the Internet."))).toBe(true);
+    // The program is still in the Internet: nothing "came back" yet.
+    expect(momentLines(ev, "g5").map((l) => l.text).join(" ")).not.toMatch(/came back/iu);
     // A second disk does nothing.
     expect(momentLines(n.raw("simulation pickup taken", "g5", { item: "virus", prop: "virus-disk" }), "g5")).toEqual([]);
     // Excel on the paranoid path gets the "antivirus".
