@@ -4,8 +4,9 @@
 // the tests read the scene graph and the recorded draw calls.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PerspectiveCamera, Vector3 } from "three";
 import type { Sprite, Texture } from "three";
-import { AVATAR_HEIGHT, createAvatar, createKing, loadPicture, PICTURE_PX } from "../src/three/index.ts";
+import { AVATAR_HEIGHT, BAR_MAX_ELEV_DEG, createAvatar, createKing, kingBarY, loadPicture, PICTURE_PX } from "../src/three/index.ts";
 import { clearPictureCache, PICTURE_RETRY_MS } from "../src/three/picture.ts";
 import { healthBarTexture } from "../src/three/textures.ts";
 import { loadHouse, SHOW_HOUSE } from "./golden.ts";
@@ -227,6 +228,50 @@ describe("the King's bar", () => {
     calls = [];
     healthBarTexture("THE KING", 3, 8);
     expect(texts().some((t) => typeof t === "string" && t.includes("/"))).toBe(false);
+  });
+
+  it("kingBarY: his nominal h + 0.25 from afar, eased to 16° over the eye up close, never under half his height", () => {
+    expect(BAR_MAX_ELEV_DEG).toBe(16);
+    const tan = Math.tan((16 * Math.PI) / 180);
+    expect(kingBarY(1.9, 6, 1.6)).toBeCloseTo(2.15);
+    expect(kingBarY(1.9, 1, 1.6)).toBeCloseTo(1.6 + tan);
+    expect(kingBarY(1.9, 0, 1.6)).toBeCloseTo(1.6);
+    expect(kingBarY(1.9, 0, 0)).toBeCloseTo(0.95); // a camera on the floor at his feet
+    expect(kingBarY(1.9, 2, 5)).toBeCloseTo(2.15); // a camera high above (the editor's orbit)
+  });
+
+  it("in hit reach the whole bar stays inside a 70° frame at the web game's −8° pitch, from a 1.6 m eye (wave 26, R3)", () => {
+    const show = loadHouse(SHOW_HOUSE);
+    const prop = show.props.find((p) => p.kind === "king")!;
+    const k = createKing(prop);
+    k.object.position.set(...prop.pos);
+    k.setHp(14, 15);
+    const bar = k.object.getObjectByName("king:bar") as Sprite;
+    const half = bar.scale.y / 2;
+    const [x, y, z] = prop.pos;
+    const camera = new PerspectiveCamera(70, 1.6, 0.05, 100);
+    const ndc = (p: Vector3) => p.clone().project(camera).y;
+    for (const d of [0.55, 0.75, 1, 1.25, 1.6, 2, 3, 4]) {
+      const eye = y + 1.6;
+      camera.position.set(x + d, eye, z);
+      camera.lookAt(x, eye - d * Math.tan((8 * Math.PI) / 180), z);
+      camera.updateMatrixWorld();
+      k.update(0.016, camera);
+      k.object.updateMatrixWorld();
+      const at = bar.getWorldPosition(new Vector3());
+      const top = ndc(at.clone().add(new Vector3(0, half, 0)));
+      expect(top, `top edge at ${d} m`).toBeLessThan(0.95);
+      expect(ndc(at.clone().sub(new Vector3(0, half, 0))), `bottom edge at ${d} m`).toBeGreaterThan(-0.95);
+      // Never more than 16° above the eye.
+      expect((Math.atan2(at.y - eye, d) * 180) / Math.PI).toBeLessThanOrEqual(16 + 1e-9);
+      expect(bar.visible, `shown at ${d} m`).toBe(true);
+    }
+    // Back off: the bar returns to his nominal height over the crown.
+    camera.position.set(x + 8, y + 1.6, z);
+    camera.updateMatrixWorld();
+    k.update(0.016, camera);
+    expect(bar.position.y).toBeCloseTo(prop.size[1] + 0.25);
+    k.dispose();
   });
 
   it("setHp draws the bar sprite over him", () => {
