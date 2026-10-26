@@ -1716,7 +1716,7 @@ bathroom, ack: none`) and a big moment loses its OK button: only its exits
 close it. It needs at least one `go:` there (lint L1226); a phone that can
 take none of the exits still shows the OK, so nobody is ever trapped.
 
-**The people the story names.** Three header lines read per guest:
+**The people the story names.** Four header lines read per guest:
 `wanted: guest.marked as guest.why by guest.claimed_by, for Antivirus`
 gives those booths a Wanted board (every guest whose flag is true, why,
 where, who has claimed them; the claim is an INTERACTION you write that sets

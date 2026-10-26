@@ -107,7 +107,8 @@ export const Code = {
   /** `target:` / `pick:` on an OBJECTIVE no booth sees (wave 18, a warning). */
   L1215ObjectivePickNotForBooths: "L1215",
   /** A header `wanted:` / `archive:` / `reinstall:` line that does not
-   *  parse or resolve, so it is dropped (wave 18, a warning). */
+   *  parse or resolve, so it is dropped (wave 18, a warning); a `lock:`
+   *  line that is no expression (wave 26, an error). */
   L1216HeaderLineInvalid: "L1216",
   /** `by:` on a `who: admin` INTERACTION names no performer part, so no
    *  booth can call it (wave 18, a warning). */
