@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { IdentifyOverlay, ScreenLayer, SlideView } from "../src/ScreenLayer.tsx";
+import { IdentifyOverlay, ScreenLayer, SlideView, claimGlitchSounds, glitchLeftMs, resetGlitchSounds } from "../src/ScreenLayer.tsx";
 import { EMPTY_NIGHT, parseScreenState, resetPageFirst, withFirstNow, type ScreenProgram, type ScreenState } from "../src/screen.ts";
 import { BLACKOUT_MS, FLICKER_FRESH_MS, GLITCH_FRESH_MS, GLITCH_MS, GLITCH_WITH_MS, slideClockAt, coverOf, GLITCH_TEXT, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartRankedLine, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
 
@@ -625,6 +625,31 @@ describe("the glitch takeover (wave 26, T2)", () => {
     expect(html).toContain("animation-delay:-1200ms");
     const none = renderToStaticMarkup(createElement(ScreenLayer, { layers: at(seen(), 0), gear: null }));
     expect(none).not.toContain("screen-glitch");
+  });
+
+  it("unmounts itself when it ends (no invisible layer taking taps until the next re-decide)", () => {
+    expect(glitchLeftMs(0)).toBe(GLITCH_MS);
+    expect(glitchLeftMs(1200)).toBe(GLITCH_MS - 1200);
+    expect(glitchLeftMs(GLITCH_MS + 50)).toBe(0);
+    const src = readFileSync(fileURLToPath(new URL("../src/ScreenLayer.tsx", import.meta.url)), "utf8");
+    const fn = src.slice(src.indexOf("export function GlitchTakeover"), src.indexOf("export function ScreenLayer"));
+    expect(fn).toMatch(/window\.setTimeout\(\(\) => setOver\(true\), glitchLeftMs\(t0\)\)/u);
+    expect(fn).toMatch(/if \(over\) return null;/u);
+  });
+
+  it("schedules its sounds once per cue per page, so a remount mid-takeover never doubles them", () => {
+    resetGlitchSounds();
+    expect(claimGlitchSounds(9, T0)).toBe(true);
+    expect(claimGlitchSounds(9, T0)).toBe(false);
+    // Another cue (a new seq, or a restarted story's same seq at a new time) sounds again.
+    expect(claimGlitchSounds(10, T0 + 60_000)).toBe(true);
+    expect(claimGlitchSounds(9, T0 + 90_000)).toBe(true);
+    resetGlitchSounds();
+    const src = readFileSync(fileURLToPath(new URL("../src/ScreenLayer.tsx", import.meta.url)), "utf8");
+    expect(src).toMatch(/if \(!claimGlitchSounds\(seq, cueAt\)\) return;/u);
+    // And the app keeps the layer at one keyed place in every screen it sits beside.
+    const app = readFileSync(fileURLToPath(new URL("../src/app.tsx", import.meta.url)), "utf8");
+    expect(app).toMatch(/const layer = \(\n {4}<Fragment key="screen-layer">/u);
   });
 
   it("its CSS stays inside the photosensitivity and old-tablet rules", () => {

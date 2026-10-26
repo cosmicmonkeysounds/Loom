@@ -283,6 +283,27 @@ export const GLITCH_SOUNDS: ReadonlyArray<{ at: number; name: "glitch" | "static
   { at: 6.0, name: "static", gain: 0.6 },
 ];
 
+/** How long a takeover first drawn `t0` ms in stays up (it unmounts itself then). */
+export function glitchLeftMs(t0: number): number {
+  return Math.max(0, GLITCH_MS - t0);
+}
+
+/** The glitch cues (`seq:at`) whose accents this page has scheduled. Module
+ *  level, so a takeover remounted mid-way (its layer moved) stays silent:
+ *  the first one's sounds are already queued on the audio clock. */
+const glitchSounded = new Set<string>();
+/** May this takeover schedule its sounds? True once per cue per page. */
+export function claimGlitchSounds(seq: number, at: number): boolean {
+  const key = `${seq}:${at}`;
+  if (glitchSounded.has(key)) return false;
+  glitchSounded.add(key);
+  return true;
+}
+/** Forget the cues already sounded (tests). */
+export function resetGlitchSounds(): void {
+  glitchSounded.clear();
+}
+
 /**
  * The glitch takeover: every terminal, 8 s, once (`slides.ts` `glitchLayer`
  * decides when). CSS only — no canvas, no frame loop, nothing lazy that could
@@ -295,19 +316,27 @@ export const GLITCH_SOUNDS: ReadonlyArray<{ at: number; name: "glitch" | "static
  * taps while it is up (the ⚙ stays over it). `t0` is how far in this page
  * first drew it (a poll's lateness): the animations start that far along.
  */
-export function GlitchTakeover({ seq, t }: { seq: number; t: number }) {
+export function GlitchTakeover({ seq, at: cueAt, t }: { seq: number; at: number; t: number }) {
   // Drawn from where it stood when this page first saw it (one poll late at most).
   const [t0] = useState(() => Math.max(0, Math.min(GLITCH_MS, t)));
-  const played = useRef(false);
+  // Gone the moment it ends, not on the layer's next 1 s re-decide: an
+  // invisible layer at z 36 would swallow taps (and a reduced-motion still
+  // frame would linger).
+  const [over, setOver] = useState(false);
   useEffect(() => {
-    if (played.current) return;
-    played.current = true;
+    const id = window.setTimeout(() => setOver(true), glitchLeftMs(t0));
+    return () => window.clearTimeout(id);
+  }, [t0]);
+  useEffect(() => {
+    // Once per cue per page: a remount mid-takeover never schedules them twice.
+    if (!claimGlitchSounds(seq, cueAt)) return;
     for (const c of GLITCH_SOUNDS) {
       const delay = c.at - t0 / 1000;
       if (delay < -0.15) continue; // that accent is past: never late
       sfx(c.name, { over: true, gain: c.gain, pitch: c.pitch, delay: Math.max(0, delay) });
     }
-  }, [t0]);
+  }, [seq, cueAt, t0]);
+  if (over) return null;
   const at = (ms: number) => ({ animationDelay: `${ms - t0}ms` });
   return (
     <div className="screen-glitch" data-glitch={seq} aria-hidden="true" style={at(0)}>
@@ -371,7 +400,7 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }
       {layers.overlay !== null && <OverlayView kind={layers.overlay} />}
       {layers.corner !== null && (cutscene !== undefined ? <SceneCorner seconds={layers.corner} /> : <CornerCountdown seconds={layers.corner} />)}
       <Flicker seq={layers.flicker} />
-      {layers.glitch !== null && <GlitchTakeover key={layers.glitch.seq} seq={layers.glitch.seq} t={layers.glitch.t} />}
+      {layers.glitch !== null && <GlitchTakeover key={layers.glitch.seq} seq={layers.glitch.seq} at={layers.glitch.at} t={layers.glitch.t} />}
       {(covered || layers.glitch !== null) && <div className="screen-gear">{gear}</div>}
     </>
   );

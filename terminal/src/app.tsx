@@ -68,7 +68,7 @@
 //! ⟦BACK⟧) is docked. Thrown out of his heart, the line ends when the scene
 //! has played.
 
-import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
+import { Component, Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
 import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
@@ -459,8 +459,12 @@ export function App() {
   const { takeover, covered } = coverOf(screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare, slides: !station }));
   // The heart terminal: the server room's own room terminal, or any with a door sensor.
   const heartTerminal = isHeartTerminal(room, config.door);
+  // Keyed, so it keeps its place (and the glitch, a scene, the flicker keep
+  // theirs) whichever screen it sits beside: an asleep wall swapping the
+  // screensaver for the watched world as a player crosses its room (R5)
+  // must not remount it mid-takeover.
   const layer = (
-    <>
+    <Fragment key="screen-layer">
       {heartTerminal && <DoorOverlay doorOpen={doorOpen} stage={screenState.state?.night.heart_stage ?? null} />}
       {/* A sensor fault is never on a guest's screen (D29: the sensor is the door): ⚙ and Run → Terminals show it. */}
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
@@ -475,7 +479,7 @@ export function App() {
           {announcement}
         </div>
       )}
-    </>
+    </Fragment>
   );
   const attractScreen = (
     <Attract
