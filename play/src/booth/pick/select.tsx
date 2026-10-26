@@ -107,7 +107,7 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
   const armed = step !== undefined && target !== null && arm.armed === `${step.id}:${target}`;
   const foot = finished || ended ? (
     <div className="bsel-foot">
-      {ended && !finished && <p className="bsel-reply">That's over now.</p>}
+      {ended && !finished && <p className="bsel-reply">{/* DRAFT w26 (B5): UI copy */}That's over now.</p>}
       {!ended && (
         <button type="button" className="w95-btn booth-default bsel-go" onClick={() => {
           setDone(steps.map(() => null));
@@ -193,7 +193,7 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
               <div className="bsel-same">
                 <PersonAvatar name={nameOf(same)} size="md" />
                 <span className="bsel-same-name">SAME: {nameOf(same).toUpperCase()}</span>
-                <button type="button" className="w95-btn booth-default bsel-same-go" disabled={busy} onClick={() => fire(same)}>
+                <button type="button" className="w95-btn booth-default bsel-same-go" disabled={busy || ended} onClick={() => fire(same)}>
                   {sameLabel(step)}
                 </button>
               </div>

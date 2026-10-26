@@ -1,6 +1,7 @@
 // Wave 18 (booth lane): PLAYER SELECT (BOOTH-SPEC §4.7), the Rows window
 // (§4.10), the door queue window (§4.4), the 🔔 Waiting window (§4.13) and
 // The caller's 🎤 ON MIC bar (§4.9; generic since wave 21).
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -112,6 +113,11 @@ describe("PLAYER SELECT, wave 26 (B3–B5)", () => {
     expect(html).toContain("That&#x27;s over now.");
     // The tiles stay visible (what was done) but can't be pressed.
     expect(html).toMatch(/role="option"[^>]*disabled=""/u);
+    // Its copy is marked for the sign-off.
+    expect(readFileSync(new URL("../src/booth/pick/select.tsx", import.meta.url), "utf8")).toContain('{/* DRAFT w26 (B5): UI copy */}That\'s over now.');
+  });
+  it("B5: an ended round's SAME button is disabled, not a silent no-op", () => {
+    expect(readFileSync(new URL("../src/booth/pick/select.tsx", import.meta.url), "utf8")).toMatch(/bsel-same-go" disabled=\{busy \|\| ended\}/u);
   });
   it("B5: the booth closes a PLAYER SELECT whose objective left a loaded view", () => {
     const layer = { kind: "pick" as const, objective: nobody.id, opened: nobody };
