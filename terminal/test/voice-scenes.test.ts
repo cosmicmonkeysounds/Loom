@@ -49,8 +49,9 @@ const PICK: Record<string, (lines: string[]) => string[]> = {
 };
 /** Entries for a beat another lane writes this wave: checked against the
  *  story once it is in it; until then against the count that lane's branch
- *  has (oct31-w26/story: `== Dare Chosen`, 3 lines, 6 sentences). */
-const PENDING: Record<string, number> = { dare_chosen: 6 };
+ *  has. Empty since the wave 26 integration (story, terminal and voice are
+ *  merged: `dare_chosen` is checked against `== Dare Chosen` and its scene). */
+const PENDING: Record<string, number> = {};
 /** Scenes kept on the server's clock because their beat has no line of his. */
 const UNVOICED: Record<string, string> = { truth_answered: "", truth_refused: "", filing_closed: "Filing Closed", zip: "Zip Everyone Out" };
 
