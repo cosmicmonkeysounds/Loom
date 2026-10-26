@@ -3963,7 +3963,10 @@ export class EventRuntime {
 
   /** A game moment landed: the story's signal for the program, journaled
    *  `by` the game's device, fanned out as usual. Returns what that one
-   *  commit said to the program (`momentLines`, in order). */
+   *  commit said to the program (`momentLines`, in order). A story that
+   *  throws on the signal says nothing (logged): the line is already in
+   *  the journal (`commit` appends first), so the route still answers its
+   *  200 and the hub's cooldown / re-seat match what was recorded. */
   private commitMoment(s: SessionRef, signal: string, args: Record<string, string>): MomentLine[] {
     const sim = this.sim;
     if (sim === null || !sim.persons.has(s.guest) || signal === "") return [];
@@ -3973,6 +3976,9 @@ export class EventRuntime {
       const events = this.commit("signal", signal, s.guest, args);
       this.fanout(events);
       return momentLines(events, s.guest);
+    } catch (err) {
+      process.stderr.write(`  ⚠️  event ${this.eventId}: the story failed on the game moment "${signal}" (${err instanceof Error ? err.message : String(err)})\n`);
+      return [];
     } finally {
       this.actingBy = actingBy;
     }

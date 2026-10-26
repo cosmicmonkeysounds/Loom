@@ -463,6 +463,38 @@ describe("EventRuntime — POST /api/spatial/moment", () => {
     expect(rt.liveSim!.world.get(`${id}.escapes`)).toMatchObject({ value: 1 });
   });
 
+  it("a story that throws on the escape signal: still the contract's 200 (no lines, the spawn), journaled, logged, and the cooldown holds", async () => {
+    const { rt, dir } = runtime();
+    rt.openDoors();
+    const { id, a } = await walker(rt, "Bugdom");
+    await poseAt(rt, a.token, VOID);
+    const sim = rt.liveSim! as unknown as { signal: (...args: unknown[]) => unknown };
+    const real = sim.signal;
+    sim.signal = () => {
+      throw new Error("hook blew up");
+    };
+    const logged: string[] = [];
+    const write = process.stderr.write.bind(process.stderr);
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      logged.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    let out: Awaited<ReturnType<typeof moment>>;
+    try {
+      out = await moment(rt, a.token, { kind: "escape" });
+    } finally {
+      process.stderr.write = write;
+      sim.signal = real;
+    }
+    expect(out).toEqual({ status: 200, json: { ok: true, kind: "escape", lines: [], spawn: a.spawn, cooldownMs: ESCAPE_COOLDOWN_MS } });
+    expect(logged.join("")).toMatch(/the story failed on the game moment "simulation escape attempt" \(hook blew up\)/u);
+    // `commit` journals before the sim runs: the cooldown matches the record.
+    const journal = new Store(join(dir, "state")).readJournal().filter((l) => l.by === "Tent tablet");
+    expect(journal.slice(-1).map((l) => [l.m, l.a[0], l.a[1]])).toEqual([["signal", ESCAPE_SIGNAL, id]]);
+    await poseAt(rt, a.token, VOID);
+    expect((await moment(rt, a.token, { kind: "escape" })).json).toMatchObject({ error: "cooldown" });
+  });
+
   it("refusals: not out (with the distance), 400 bad moment, 404 no such prop, 401 / 410 a dead token", async () => {
     const { rt } = runtime();
     rt.openDoors();
