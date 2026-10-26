@@ -154,4 +154,18 @@ describe("the height budget (CSS)", () => {
     expect(css).toMatch(/\.stream-foot \.composer-folded \.composer-open \{[^}]*min-height: 48px;/u);
     expect(css).toMatch(/@media \(pointer: coarse\) \{ \.stream-foot \.dlg-hint \{ display: none; \} \}/u);
   });
+  it("the card's own submit (File it, Say it) is ≥ 48 px in the footer, beating base.css's --tap", () => {
+    expect(css).toMatch(/\.stream-foot \.widget-foot \.choice\.widget-go \{ min-height: 48px; \}/u);
+  });
+  it("at 360x740 the bars never scroll away: the footer is a column, the open menu / card shrink and scroll inside", () => {
+    expect(css).toMatch(/\.stream-room > \.stream-foot \{ display: flex; flex-direction: column; \}/u);
+    expect(css).toMatch(/\.stream-room > \.stream-foot > \* \{ flex: none; \}/u);
+    expect(css).toMatch(/\.stream-room > \.stream-foot > \.tray\.dialogue:not\(\.dlg-folded\),\s*\.stream-room > \.stream-foot > \.stream-tray\.open \{ flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; \}/u);
+    // The shrinking parts outrank the `> * { flex: none }` of their own box.
+    expect(css).toMatch(/\.stream-room > \.stream-foot > \.tray\.dialogue:not\(\.dlg-folded\) > \.dlg-options,\s*\.stream-room > \.stream-foot > \.stream-tray\.open > \.stream-tray-scroll \{ flex: 0 1 auto; min-height: 0; \}/u);
+    expect(css).toMatch(/\.stream-room > \.stream-foot > \.stream-tray\.open > \.stream-tray-scroll > \.stream-tray-body \{ flex: 0 1 auto; min-height: 0; \}/u);
+    // Flex only (no :is / :has): the Chrome 87 / Safari 14 floor.
+    const block = css.slice(css.indexOf(".stream-room > .stream-foot { display: flex;"), css.indexOf(".stream-tray-scroll > .stream-tray-body { flex: 0 1 auto"));
+    expect(block).not.toMatch(/:is\(|:has\(/u);
+  });
 });

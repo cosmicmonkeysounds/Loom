@@ -331,6 +331,24 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
 .stream-foot .composer .composer-send, .stream-foot .composer .composer-scan { height: 48px; min-height: 48px; }
 .stream-foot .composer .composer-input { min-height: 48px; }
 @media (pointer: coarse) { .stream-foot .dlg-hint { display: none; } }
+/* the card's own submit (File it, Say it) is a footer button too (P1, ≥ 48) */
+.stream-foot .widget-foot .choice.widget-go { min-height: 48px; }
+/* Integration (P1 at 360x740): the caps are viewport fractions, so a docked
+   menu, the card bar and the composer can overrun the 62% footer. The
+   footer is a column whose bars (the folded menu, the folded composer, the
+   card's title) never shrink; the open menu and the open card give up the
+   space, and their options / body scroll inside their own caps. The
+   footer's own scroll stays as the last resort. */
+.stream-room > .stream-foot { display: flex; flex-direction: column; }
+.stream-room > .stream-foot > * { flex: none; }
+.stream-room > .stream-foot > .tray.dialogue:not(.dlg-folded),
+.stream-room > .stream-foot > .stream-tray.open { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.stream-room > .stream-foot > .tray.dialogue:not(.dlg-folded) > *,
+.stream-room > .stream-foot > .stream-tray.open > * { flex: none; }
+.stream-room > .stream-foot > .tray.dialogue:not(.dlg-folded) > .dlg-options,
+.stream-room > .stream-foot > .stream-tray.open > .stream-tray-scroll { flex: 0 1 auto; min-height: 0; }
+.stream-room > .stream-foot > .stream-tray.open > .stream-tray-scroll { display: flex; flex-direction: column; }
+.stream-room > .stream-foot > .stream-tray.open > .stream-tray-scroll > .stream-tray-body { flex: 0 1 auto; min-height: 0; }
 /* the folded menu: loud (navy), one line, the whole width */
 .stream-foot .tray.dialogue.dlg-folded {
   display: block; width: 100%; min-height: 48px; margin: 0; border: none; cursor: pointer; text-align: left;
