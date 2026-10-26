@@ -7,8 +7,9 @@
 //!   overlay (blackout · go_to_living_room · alarm)
 //!     > slide — held `SLIDE_HOLD_MS` (45 s terminals / 90 s TV), or until the
 //!       next cue for the persistent ones (`bingo`, `y2k`, `trust_chart`,
-//!       `truth_txt`, the finale's waits `bobbing` / `advice` / `grok_prom` /
-//!       `banish`, the ceremony's `award_*`); a slide beats attract
+//!       `truth_txt`, `ad_hijack` (wave 26), the finale's waits `bobbing` /
+//!       `advice` / `grok_prom` / `banish`, the ceremony's `award_*`: the
+//!       server's `persist`); a slide beats attract
 //!     > attract (the character hidden or asleep — K-16)
 //!     > the base view (face / world / mirror).
 //!
@@ -16,6 +17,10 @@
 //! story's running countdown over a slide, attract or the base view. A
 //! pilot session pre-empts a slide and the corner; an overlay ends the
 //! pilot. `flicker` is a one-shot stutter over everything but a blackout.
+//! The `glitch` (wave 26, T2: `screens_glitch`, the 📺 ad hijack) is the
+//! full-screen takeover, `GLITCH_MS` long, over every view — piloting, a
+//! peek, `bare` or not — under a blackout only; live only (never history,
+//! never one cued before this page's first answer).
 //! A room terminal (wave 7, `room`: the server-room terminal) never shows a
 //! story slide or the corner — it is a room's own screen, not the house's —
 //! but the overlays (blackout, alarm) and the flicker still reach it.
@@ -44,6 +49,8 @@ export const BLACKOUT_MS = 10_000;
 export const FLICKER_MS = 1000;
 /** A flicker first seen later than this after its cue is history: not played. */
 export const FLICKER_FRESH_MS = 6000;
+/** (wave 26, T2) The glitch takeover's length: shown while its cue is younger than this. */
+export const GLITCH_MS = 8000;
 
 export type OverlayKind = "blackout" | "go_to_living_room" | "alarm";
 
@@ -62,9 +69,31 @@ export interface ScreenLayers {
   chart: ScreenChart | null;
   /** How many of the chart's rows are revealed so far, counted from the bottom. */
   chartShown: number;
+  /** (wave 26, T2) The glitch takeover playing now: its cue's seq and `at`
+   *  (server ms) and `t` ms into it; null when none. */
+  glitch: { seq: number; at: number; t: number } | null;
 }
 
-export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0 };
+export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0, glitch: null };
+
+/**
+ * The glitch takeover at server `serverNow` (wave 26, T2), or null. Only a
+ * live one: its cue's `at` > 0 (history folds to 0), younger than
+ * `GLITCH_MS`, and later than this page's first answer (`firstNow`: the
+ * cue is shared state, so a reload inside the 8 s sees a live `at` it never
+ * saw happen — it never plays). A blackout beats it; nothing else does.
+ */
+export function glitchLayer(state: Pick<ScreenState, "program" | "firstNow">, serverNow: number, blackout: boolean): ScreenLayers["glitch"] {
+  const g = state.program.glitch ?? null;
+  if (g === null || g.at <= 0 || blackout) return null;
+  if (state.firstNow !== undefined && g.at <= state.firstNow) return null;
+  const t = serverNow - g.at;
+  if (t >= GLITCH_MS) return null;
+  return { seq: g.seq, at: g.at, t: Math.max(0, t) };
+}
+
+/** The takeover's caption: the hijack's own zeroes (`ad_hijack`'s copy; no new show text). */
+export const GLITCH_TEXT = "000. 000. 000.";
 
 const isOverlay = (v: string): v is OverlayKind => v === "blackout" || v === "go_to_living_room" || v === "alarm";
 
@@ -175,7 +204,7 @@ function remember(target: ScreenTarget, m: ScreenMemo): void {
  * measured on the server's clock (its `now` + the time since the answer
  * arrived), so a tablet with the wrong time still holds slides right.
  */
-export function screenLayers(state: ScreenState | null, nowMs: number, o: { piloting: boolean; peek?: boolean; room?: boolean }): ScreenLayers {
+export function screenLayers(state: ScreenState | null, nowMs: number, o: { piloting: boolean; peek?: boolean; room?: boolean; slides?: boolean }): ScreenLayers {
   if (state === null) return NO_LAYERS;
   const since = Math.max(0, nowMs - state.receivedAt);
   const serverNow = state.now + since;
@@ -203,8 +232,10 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
     if (under !== null && under.seq < s.seq && under.at <= s.at && held(under)) s = under; // the story slide keeps its hold
     else if (serverNow < m.blindUntil) s = null; // a story slide may be held under it, unseen: the story wins
   }
-  // A pilot, a peek or a room terminal: no slide (nor the corner below).
-  const bare = o.piloting || o.peek === true || o.room === true;
+  // A pilot, a peek or a room terminal: no slide (nor the corner below). The
+  // tent's kiosk (`slides: false`, wave 26 T3) takes none either, nor the
+  // corner or the Y2K clock, but its moments still play (it is not bare).
+  const bare = o.piloting || o.peek === true || o.room === true || o.slides === false;
   if (!bare && s !== null && held(s)) slide = { value: s.value, cue: s.cue, seq: s.seq, at: s.at };
 
   const remaining = state.remaining === null ? null : Math.max(0, state.remaining - Math.floor(since / 1000));
@@ -215,7 +246,21 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
   const flicker = p.flicker !== null && overlay !== "blackout" && age(p.flicker.at) < FLICKER_FRESH_MS ? p.flicker.seq : null;
   const chart = overlay === null && slide !== null && state.chart !== null && state.chart.slide === slide.value ? state.chart : null;
   const chartShown = chart === null ? 0 : chartReveal(chart.rows.length, chart.revealAt, serverNow);
-  return { overlay, slide, corner, y2k, flicker, chart, chartShown };
+  // The glitch reaches every view, whatever it is doing; a blackout beats it.
+  const glitch = glitchLayer(state, serverNow, overlay === "blackout");
+  return { overlay, slide, corner, y2k: o.slides === false ? null : y2k, flicker, chart, chartShown, glitch };
+}
+
+/**
+ * What the layers on top do to the screen under them: `takeover` (an
+ * overlay) ends a pilot and holds a game or a walk; `covered` (an overlay, a
+ * slide or the glitch) pauses the idle show. The glitch (wave 26, T2) is
+ * covered but never a takeover: a pilot, a chess game or a tent walk keeps
+ * running under its 8 s.
+ */
+export function coverOf(l: Pick<ScreenLayers, "overlay" | "slide" | "glitch">): { takeover: boolean; covered: boolean } {
+  const takeover = l.overlay !== null;
+  return { takeover, covered: takeover || l.slide !== null || l.glitch !== null };
 }
 
 /** A peek (B21) lasts until nobody has touched the terminal for this long. */

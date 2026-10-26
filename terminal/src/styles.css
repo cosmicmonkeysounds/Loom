@@ -931,6 +931,132 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   .overlay-text, .screen-flicker { animation: none; }
 }
 
+/* --- the glitch takeover (wave 26, T2: ScreenLayer.tsx GlitchTakeover) ---
+   8 s over every view: over the slides (30), the overlays (32) and the
+   flicker (35); under identify (39), the ⚙ (40), the announcement (41) and
+   the 🎤 (42); a blackout is never under it (it isn't drawn then). Each
+   element's delay is set inline (its beat minus how late the page drew it).
+   Transform / opacity only, nothing flashes faster than 3 Hz (the jolt and
+   the noise step at 2.5 Hz, nothing blinks on and off), no field is red.
+   Reduced motion: no animation at all — the natural styles are one still frame.
+   Chrome 87 / Safari 14: no inset shorthand, no blend modes, no filters. */
+.screen-glitch {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 36;
+  overflow: hidden;
+  background: rgba(0, 0, 10, 0.86);
+  cursor: none;
+  animation: sg-field 8s linear 1 both;
+}
+@keyframes sg-field { 0% { opacity: 0; } 3% { opacity: 1; } 91% { opacity: 1; } 100% { opacity: 0; } }
+/* The whole layer jolts on a 2.5 Hz step through the cascade (0.7–6 s). */
+.sg-jolt { position: absolute; top: 0; right: 0; bottom: 0; left: 0; animation: sg-jolt 1.6s steps(1, end) 3.3 none; }
+@keyframes sg-jolt {
+  0% { transform: translate3d(-0.3em, 0, 0); }
+  25% { transform: translate3d(0.4em, 0.15em, 0); }
+  50% { transform: translate3d(-0.15em, -0.2em, 0); }
+  75% { transform: translate3d(0.25em, 0.1em, 0); }
+  100% { transform: none; }
+}
+/* A coarse static: two line textures stepping about at 2.5 Hz. */
+.sg-noise {
+  position: absolute;
+  top: -10%;
+  right: -10%;
+  bottom: -10%;
+  left: -10%;
+  background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 7px);
+  animation: sg-noise 0.8s steps(1, end) 10 both;
+}
+@keyframes sg-noise { 0% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(-2.5%, 1.5%, 0); } 100% { transform: translate3d(1.5%, -1%, 0); } }
+.sg-scan { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 2px, transparent 2px 4px); pointer-events: none; }
+/* The rolling bar of a TV losing its hold. */
+.sg-roll {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -20%;
+  height: 18%;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.13), transparent);
+  opacity: 0;
+  animation: sg-roll 2.6s linear 2 both;
+}
+@keyframes sg-roll { 0% { opacity: 1; transform: translate3d(0, 0, 0); } 100% { opacity: 1; transform: translate3d(0, 680%, 0); } }
+/* The tear: colour bands jumping sideways (0–0.7 s), then gone. */
+.sg-band { position: absolute; left: -12%; right: -12%; opacity: 0.5; animation: sg-band 0.7s steps(1, end) 1 both; }
+.sg-band.sg-c { background: #00e5ff; }
+.sg-band.sg-m { background: #ff2bd6; }
+.sg-band.sg-y { background: #ffe600; }
+.sg-band.sg-w { background: #ffffff; opacity: 0.35; }
+@keyframes sg-band {
+  0% { transform: translate3d(0, 0, 0); }
+  30% { transform: translate3d(var(--dx), 0, 0); }
+  65% { transform: translate3d(calc(var(--dx) * -1.5), 0, 0); }
+  100% { transform: translate3d(calc(var(--dx) * 0.5), 0, 0); opacity: 0; }
+}
+/* The cascade of error windows (and the big zeroes), torn out together at 6 s. */
+.sg-wins { position: absolute; top: 0; right: 0; bottom: 0; left: 0; animation: sg-out 8s steps(1, end) 1 both; }
+@keyframes sg-out {
+  0% { transform: none; opacity: 1; }
+  76% { transform: translate3d(2em, 0, 0); opacity: 1; }
+  81% { transform: translate3d(-5em, 0, 0); opacity: 0.7; }
+  86% { transform: translate3d(9em, 0, 0); opacity: 0.35; }
+  91% { transform: translate3d(14em, 0, 0); opacity: 0; }
+  100% { transform: translate3d(14em, 0, 0); opacity: 0; }
+}
+.sg-win {
+  position: absolute;
+  width: min(22em, 42vw);
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  font-size: clamp(12px, 1.9vw, 26px);
+  background: #c0c0c0;
+  color: #000;
+  border: 2px solid;
+  border-color: #fff #404040 #404040 #fff;
+  box-shadow: 2px 2px 0 #000;
+  animation: sg-win 0.2s steps(4, end) 1 both;
+}
+@keyframes sg-win { 0% { opacity: 0; transform: scale(0.3); } 100% { opacity: 1; transform: none; } }
+.sg-win-bar { display: flex; justify-content: space-between; padding: 0.15em 0.4em; background: linear-gradient(90deg, #000080, #1084d0); color: #fff; font-weight: bold; }
+.sg-win-x { padding: 0 0.3em; background: #c0c0c0; color: #000; }
+.sg-win-body { display: flex; align-items: center; padding: 0.6em 0.8em 0.3em; font-weight: bold; }
+.sg-win-icon { margin-right: 0.5em; font-size: 1.5em; color: #c00000; }
+.sg-win-ok { width: 5em; margin: 0.3em auto 0.6em; padding: 0.15em 0; text-align: center; border: 2px solid; border-color: #fff #404040 #404040 #fff; }
+.sg-big {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 40%;
+  text-align: center;
+  font-family: var(--mono);
+  font-weight: bold;
+  font-size: clamp(40px, 11vw, 220px);
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-shadow: -0.06em 0 0 #00e5ff, 0.06em 0 0 #ff2bd6;
+  animation: sg-big 0.3s steps(3, end) 1 both;
+}
+@keyframes sg-big { 0% { opacity: 0; transform: scale(1.6); } 100% { opacity: 1; transform: none; } }
+/* The tear-out (6–8 s): torn lines sweep across back to what is under it. */
+.sg-tear {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -50%;
+  right: -50%;
+  opacity: 0;
+  background: repeating-linear-gradient(180deg, transparent 0 9%, rgba(0, 229, 255, 0.35) 9% 10.5%, transparent 10.5% 21%, rgba(255, 43, 214, 0.3) 21% 22%, transparent 22% 31%);
+  animation: sg-tear 2s linear 1 both;
+}
+@keyframes sg-tear { 0% { opacity: 0; transform: translate3d(-40%, 0, 0); } 12% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translate3d(40%, 0, 0); } }
+@media (prefers-reduced-motion: reduce) {
+  .screen-glitch, .screen-glitch * { animation: none !important; }
+}
+
 /* --- the house announcement (N-09) --------------------------------------- */
 
 /* Over everything (slides, overlays, the screensaver): the words of the

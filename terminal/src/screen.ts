@@ -547,6 +547,11 @@ export interface ScreenState {
   now: number;
   /** Local `Date.now()` when this answer arrived (not from the server). */
   receivedAt: number;
+  /** (wave 26, T2) The server `now` of this page's first screen answer
+   *  (`useScreenState` stamps it on every answer; `pageFirstNow`). A glitch
+   *  cued at or before it is one this page never saw happen — a reload mid
+   *  glitch — and never plays. Absent (hand-built states): no such bound. */
+  firstNow?: number;
   night: ScreenNight;
   /** The house's live story moments, oldest first (wave 17; [] from an older server). */
   moments: ScreenMoment[];
@@ -826,6 +831,19 @@ export function screenReachable(state: ScreenState | null, misses: number): bool
  * (wave 25) — paced by `PollPacer`: never two starts within
  * `DRAIN_REPOLL_GAP_MS`, and one in flight is followed by another.
  */
+/** The server `now` of this page's first screen answer (null: none yet).
+ *  Once per page load, whatever the config: a glitch is live only after it. */
+let pageFirst: number | null = null;
+/** Stamp an answer with the page's first answer's server time (the first one sets it). */
+export function withFirstNow(state: ScreenState): ScreenState {
+  pageFirst ??= state.now;
+  return { ...state, firstNow: pageFirst };
+}
+/** Forget the page's first answer (tests). */
+export function resetPageFirst(): void {
+  pageFirst = null;
+}
+
 export function useScreenState(
   config: TerminalConfig | null,
   voice: (() => VoiceQuery) | null = null,
@@ -858,8 +876,8 @@ export function useScreenState(
       if (!alive) return;
       setMisses((m) => missesAfter(m, out.kind));
       if (out.kind === "state") {
-        last = out.state;
-        setState(out.state);
+        last = withFirstNow(out.state);
+        setState(last);
       }
       else if (out.kind === "revoked") {
         pacer.stop();

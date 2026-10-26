@@ -6,7 +6,8 @@
 //! only once it has a frame) and gone on an error or at its end. The precedence lives in `slides.ts`; this only draws it.
 //! Wave 17: where the screen draws cutscenes, the slide's slot is the
 //! cutscene layer's (`cutscene/slot.tsx`) — a scene for the slide, else the
-//! card, and the moments' scenes over it.
+//! card, and the moments' scenes over it. Wave 26 (T2): the glitch takeover
+//! (`GlitchTakeover`, CSS only, in this bundle) over every view.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { IDENTIFY_MS, identifyOn, type ScreenState } from "./screen.ts";
@@ -15,7 +16,8 @@ import { ringChime } from "./announce.ts";
 import { BUILD } from "./health.ts";
 import { CutsceneSlot } from "./cutscene/slot.tsx";
 import { useSceneClockUp } from "./cutscene/moment-bus.ts";
-import { FLICKER_MS, STAFF_TAG, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
+import { FLICKER_MS, GLITCH_MS, GLITCH_TEXT, STAFF_TAG, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
+import { sfx } from "./sound/bus.ts";
 
 /** PNGs that failed to load this page-load: go straight to the next source. */
 const missing = new Set<string>();
@@ -241,6 +243,105 @@ function Flicker({ seq }: { seq: number | null }) {
   return on === null ? null : <div key={on} className="screen-flicker" aria-hidden="true" />;
 }
 
+// --- the glitch takeover (wave 26, T2) ------------------------------------------------
+
+/** The takeover's beats (ms from its cue): the tear, the cascade of error
+ *  windows, the tear-out back to whatever is under it. */
+export const GLITCH_BEATS = { tear: 0, cascade: 700, tearOut: 6000, end: GLITCH_MS } as const;
+/** The tear's colour bands: top and height (% of the screen), tint, how far
+ *  each jumps (em). Cyan, magenta, yellow and white only: never full-field red. */
+const GLITCH_BANDS: ReadonlyArray<{ top: number; h: number; tint: "c" | "m" | "y" | "w"; dx: number }> = [
+  { top: 6, h: 5, tint: "c", dx: 3 },
+  { top: 19, h: 9, tint: "m", dx: -4 },
+  { top: 33, h: 3, tint: "w", dx: 6 },
+  { top: 44, h: 12, tint: "y", dx: -2 },
+  { top: 61, h: 4, tint: "c", dx: -5 },
+  { top: 72, h: 8, tint: "m", dx: 4 },
+  { top: 88, h: 6, tint: "w", dx: -3 },
+];
+/** The error windows' cascade: where each lands (% left / top), one every `GLITCH_WIN_EVERY_MS`. */
+const GLITCH_WINDOWS: ReadonlyArray<{ x: number; y: number }> = [
+  { x: 8, y: 10 },
+  { x: 52, y: 14 },
+  { x: 22, y: 34 },
+  { x: 60, y: 42 },
+  { x: 6, y: 58 },
+  { x: 40, y: 64 },
+  { x: 30, y: 20 },
+  { x: 64, y: 70 },
+];
+export const GLITCH_WIN_EVERY_MS = 550;
+
+/** The takeover's accents (seconds after its start), synth library only — skipped once past. */
+export const GLITCH_SOUNDS: ReadonlyArray<{ at: number; name: "glitch" | "static" | "critical" | "error"; gain: number; pitch?: number }> = [
+  { at: 0, name: "glitch", gain: 0.8 },
+  { at: 0.25, name: "static", gain: 0.6 },
+  { at: 0.7, name: "critical", gain: 0.7 },
+  { at: 1.6, name: "error", gain: 0.5 },
+  { at: 2.7, name: "error", gain: 0.5, pitch: 1.12 },
+  { at: 3.9, name: "error", gain: 0.5, pitch: 1.26 },
+  { at: 6.0, name: "static", gain: 0.6 },
+];
+
+/**
+ * The glitch takeover: every terminal, 8 s, once (`slides.ts` `glitchLayer`
+ * decides when). CSS only — no canvas, no frame loop, nothing lazy that could
+ * fail to load: a dark field, colour bands tearing sideways (0–0.7 s), a
+ * cascade of Win98 error windows reading the hijack's zeroes over scanlines,
+ * a rolling bar and a coarse noise (0.7–6 s, the whole layer jolting on a
+ * 2.5 Hz step), then it tears out to whatever is under it (6–8 s). Nothing
+ * flashes faster than 3 Hz and no field is red; reduced motion holds one
+ * still frame. It covers a pilot or a game without ending it, and takes the
+ * taps while it is up (the ⚙ stays over it). `t0` is how far in this page
+ * first drew it (a poll's lateness): the animations start that far along.
+ */
+export function GlitchTakeover({ seq, t }: { seq: number; t: number }) {
+  // Drawn from where it stood when this page first saw it (one poll late at most).
+  const [t0] = useState(() => Math.max(0, Math.min(GLITCH_MS, t)));
+  const played = useRef(false);
+  useEffect(() => {
+    if (played.current) return;
+    played.current = true;
+    for (const c of GLITCH_SOUNDS) {
+      const delay = c.at - t0 / 1000;
+      if (delay < -0.15) continue; // that accent is past: never late
+      sfx(c.name, { over: true, gain: c.gain, pitch: c.pitch, delay: Math.max(0, delay) });
+    }
+  }, [t0]);
+  const at = (ms: number) => ({ animationDelay: `${ms - t0}ms` });
+  return (
+    <div className="screen-glitch" data-glitch={seq} aria-hidden="true" style={at(0)}>
+      <div className="sg-jolt" style={at(GLITCH_BEATS.cascade)}>
+        <div className="sg-noise" style={at(0)} />
+        <div className="sg-scan" />
+        <div className="sg-roll" style={at(GLITCH_BEATS.cascade)} />
+        {GLITCH_BANDS.map((b, i) => (
+          <div key={i} className={`sg-band sg-${b.tint}`} style={{ top: `${b.top}%`, height: `${b.h}%`, ["--dx" as string]: `${b.dx}em`, ...at(0) }} />
+        ))}
+        <div className="sg-wins" style={at(0)}>
+          {GLITCH_WINDOWS.map((w, i) => (
+            <div key={i} className="sg-win" style={{ left: `${w.x}%`, top: `${w.y}%`, ...at(GLITCH_BEATS.cascade + i * GLITCH_WIN_EVERY_MS) }}>
+              <div className="sg-win-bar">
+                <span>{GLITCH_TEXT}</span>
+                <span className="sg-win-x">×</span>
+              </div>
+              <div className="sg-win-body">
+                <span className="sg-win-icon">✖</span>
+                <span>{GLITCH_TEXT}</span>
+              </div>
+              <div className="sg-win-ok">OK</div>
+            </div>
+          ))}
+          <div className="sg-big" style={at(GLITCH_BEATS.cascade + 300)}>
+            {GLITCH_TEXT}
+          </div>
+        </div>
+      </div>
+      <div className="sg-tear" style={at(GLITCH_BEATS.tearOut)} />
+    </div>
+  );
+}
+
 /**
  * Everything the story layers on top. `gear` is the ⚙ (2 s hold), drawn over
  * a covering slide / overlay so setup is never out of reach.
@@ -270,14 +371,15 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }
       {layers.overlay !== null && <OverlayView kind={layers.overlay} />}
       {layers.corner !== null && (cutscene !== undefined ? <SceneCorner seconds={layers.corner} /> : <CornerCountdown seconds={layers.corner} />)}
       <Flicker seq={layers.flicker} />
-      {covered && <div className="screen-gear">{gear}</div>}
+      {layers.glitch !== null && <GlitchTakeover key={layers.glitch.seq} seq={layers.glitch.seq} t={layers.glitch.t} />}
+      {(covered || layers.glitch !== null) && <div className="screen-gear">{gear}</div>}
     </>
   );
 }
 
 /** The layer, live: re-decided every second (holds, the corner, the clock).
  *  `cutscenes` (wave 17): the slide's slot draws the cutscene layer (`cutscene/`). */
-export function LiveScreenLayer({ state, piloting, peek = false, room = false, onSlideTap, gear, video, cutscenes = false }: { state: ScreenState | null; piloting: boolean; peek?: boolean; room?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean; cutscenes?: boolean }) {
+export function LiveScreenLayer({ state, piloting, peek = false, room = false, slides = true, onSlideTap, gear, video, cutscenes = false }: { state: ScreenState | null; piloting: boolean; peek?: boolean; room?: boolean; slides?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean; cutscenes?: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -285,7 +387,9 @@ export function LiveScreenLayer({ state, piloting, peek = false, room = false, o
   }, []);
   // A fresh answer re-decides at once rather than up to a second later.
   const at = Math.max(now, state?.receivedAt ?? 0);
-  const layers = screenLayers(state, at, { piloting, peek, room });
+  // `slides` false (the tent's kiosk, wave 26 T3): no story slide, corner or
+  // Y2K clock — but its moments (beat cutscenes) and the glitch still play.
+  const layers = screenLayers(state, at, { piloting, peek, room, slides });
   const bare = piloting || peek || room;
   return (
     <ScreenLayer

@@ -102,7 +102,7 @@ import { ScanBox } from "./idle-show/ScanBox.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
 import type { ReinstallTerminalProps } from "./reinstall/ReinstallTerminal.tsx";
-import { PeekClock, canPeek, screenLayers } from "./slides.ts";
+import { PeekClock, canPeek, coverOf, screenLayers } from "./slides.ts";
 import { api, withTimeout } from "@loom/play/client.ts";
 import { serverNow } from "./cutscene/clock.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
@@ -445,12 +445,15 @@ export function App() {
   // The chess board is layered like a room terminal: overlays only, never a
   // story slide, the countdown corner or the Y2K clock.
   const bare = room !== null || config.view === "chess" || config.view === "casino";
+  // The tent's kiosk (wave 26, T3) takes no story slide, corner or Y2K
+  // clock; its overlays, beat cutscenes and the glitch still play.
+  const station = config.view === "reinstall";
   // An overlay (blackout / go to the living room / alarm) ends any pilot
-  // (and covers a chess game, which it holds rather than ends). A slide or
-  // an overlay over the idle show pauses it (no popup dings under a scene).
-  const top = screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare });
-  const takeover = top.overlay !== null;
-  const covered = takeover || top.slide !== null;
+  // (and covers a chess game, which it holds rather than ends). A slide, an
+  // overlay or the glitch over the idle show pauses it (no popup dings under
+  // a scene). The glitch (wave 26, T2) is covered, never a takeover: a pilot,
+  // a chess game or a tent walk keeps running under its 8 s.
+  const { takeover, covered } = coverOf(screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare, slides: !station }));
   // The heart terminal: the server room's own room terminal, or any with a door sensor.
   const heartTerminal = isHeartTerminal(room, config.door);
   const layer = (
@@ -458,7 +461,7 @@ export function App() {
       {heartTerminal && <DoorOverlay doorOpen={doorOpen} stage={screenState.state?.night.heart_stage ?? null} />}
       {/* A sensor fault is never on a guest's screen (D29: the sensor is the door): ⚙ and Run → Terminals show it. */}
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
-      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} slides={!station} onSlideTap={peekable && !station ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
       <MicCue />
       {announcement !== null && (
