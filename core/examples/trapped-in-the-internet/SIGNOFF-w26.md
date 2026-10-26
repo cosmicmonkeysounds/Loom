@@ -258,6 +258,7 @@ it and needs no sign-off beyond a glance.
 | `play/src/stream/channel-view.tsx:144` | A folded story menu (P1) | — | *▴ Your move: {title}* |
 | `play/src/stream/channel-view.tsx:394` | The folded message box (P1) | — | *⌨ {your draft, or the hint}* |
 | `play/src/booth/pick/select.tsx:110` | PLAYER SELECT after the round (B5) | (*+ Another round*) | *That's over now.* (only Close) |
+| `play/src/main.tsx:34` | The guest app's crash screen (integration: one throw no longer blanks the phone) | (a blank page) | *📡 The app didn't load — the connection dropped, or the show was just updated.* · *Reload* |
 
 **The guest help (`docs/help/play/*`, the help lane, G2).** The help markdown
 has no comment syntax, so these carry no marker. Each guest article (no

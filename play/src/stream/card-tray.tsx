@@ -124,7 +124,9 @@ export function CardTray({
     fold();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shut]);
-  useEffect(() => onOpenChange?.(open), [open, onOpenChange]);
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
   // A new card (not a re-deal of one you've seen) opens the tray again.
   const key = card !== undefined ? trayCardKey(card) : null;
   useEffect(() => {

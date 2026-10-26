@@ -345,7 +345,9 @@ export function ChannelView({
   const [shut, setShut] = useState(0);
   const draft = useRef({ room: channel.id, text: "" });
   if (draft.current.room !== channel.id) draft.current = { room: channel.id, text: "" };
-  const onText = useCallback((text: string) => (draft.current.text = text), []);
+  const onText = useCallback((text: string) => {
+    draft.current.text = text;
+  }, []);
   const dk = channel.decision;
   useEffect(() => setTyping(false), [channel.id, dk?.title, dk?.options.length]);
   const isRoom = channel.kind !== "dm" && channel.kind !== "guest" && channel.kind !== "codex" && channel.kind !== "quests" && channel.kind !== "wallet";
