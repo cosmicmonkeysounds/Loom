@@ -23,6 +23,11 @@ export const OBSTACLE_SHRINK = 0.01;
 export const ROUTE_EPS = 1e-6;
 /** How much a solid prop's footprint bounds grow to become an obstacle (the walker's body radius). */
 export const PROP_MARGIN = 0.25;
+/** (wave 26, R2) The games hide the path to Gerald — the chevron trail, the
+ *  compass pip, the distance and the warmer / colder ladder — for this long
+ *  from the start of each game session (client side; a re-scan restarts
+ *  it), then draw it at once. Gerald's quack is never delayed. */
+export const PATH_REVEAL_MS = 60_000;
 
 /** Round to integer micrometres, `floor(v · 1e6 + 0.5) / 1e6` — so trig ulps never reach a decision. */
 export function um(v: number): number {
