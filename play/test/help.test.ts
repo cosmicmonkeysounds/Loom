@@ -186,6 +186,19 @@ describe("wave 26 G2: the guest guide never explains the machinery", () => {
     expect(searchHelp(articlesFor("guest"), "locked").map((h) => h.article.slug)).toContain("your-pass");
   });
 
+  it("the confrontation offers only the pass and Bathroom Mode, never an OK (R1, C1)", () => {
+    const lines = articlesFor("guest")
+      .flatMap((a) => a.plain.split("\n"))
+      .filter((l) => l.includes("virus detected"));
+    expect(lines.length).toBeGreaterThan(0);
+    for (const l of lines) expect(l).not.toMatch(/→ ok\b/u);
+    const notifications = articlesFor("guest").find((a) => a.slug === "notifications")!;
+    const big = notifications.plain.split("\n").find((l) => l.startsWith("⚠ virus detected"));
+    expect(big).toContain("show my pass");
+    expect(big).toContain("bathroom mode");
+    expect(big).toContain("no ok");
+  });
+
   it("every cross-link resolves, and no guest article points at a performer-only one", () => {
     const all = new Map(articlesFor("performer").map((a) => [a.slug, a]));
     for (const a of all.values()) {

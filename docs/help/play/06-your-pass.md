@@ -91,7 +91,8 @@ At *Trapped in the Internet* the computer can **mark you for
 reinstallation**. A mark **hinders nothing**: you hear one quiet line
 (*🚨 You are marked for reinstallation …*), and you keep every button,
 room, card and check-in. Carry on. If an Antivirus finds you and scans
-your pass, your screen says *⚠ VIRUS DETECTED · CORRUPTION DETECTED*. If
+your pass, your screen says *⚠ VIRUS DETECTED · CORRUPTION DETECTED*,
+with only **🎟 Show my pass** and **🚻 Bathroom Mode** under it (no OK). If
 the mark is lifted, you hear that too (*✅ Your mark is lifted.*).
 
 ## Restricted

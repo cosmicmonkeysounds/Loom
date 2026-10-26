@@ -33,8 +33,9 @@ lifted.*).
 
 From the capture (🛡 at the confrontation, or the tent's reinstallation
 start) until release, a program's phone is **locked** (wave 26). The
-capture pop-up offers only **🎟 Show my pass** and **🚻 Bathroom Mode**:
-no OK, no *Go to the Internet*. The lock screen shows a ⛔ QUARANTINED
+confrontation (*🛡 CORRUPTION DETECTED*, the guest's ⚠ VIRUS DETECTED
+screen) and the capture pop-up both offer only **🎟 Show my pass** and
+**🚻 Bathroom Mode**: no OK, no *Go to the Internet*. The lock screen shows a ⛔ QUARANTINED
 card, the current objective (Find Gerald) and a read-only copy of the
 Installation Wizard's thread. Only the pass and Bathroom Mode (and *Back
 from the bathroom*) work; the server refuses everything else the phone

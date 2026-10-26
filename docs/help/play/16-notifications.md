@@ -20,7 +20,8 @@ headline, and a progress bar that fills for about a second. Then its button
 wakes up:
 
 - **★ ACHIEVEMENT UNLOCKED** (*You won the Bingo Ribbon.*) → **Collect ✓**.
-- **⚠ VIRUS DETECTED** (an Antivirus found you) → **OK**.
+- **⚠ VIRUS DETECTED** (an Antivirus found you) → **🎟 Show my pass** or
+  **🚻 Bathroom Mode**, and no OK.
 - **⛔ QUARANTINED** (sent to the Internet) → **🎟 Show my pass** or **🚻
   Bathroom Mode**, and no OK: your phone stays locked until you're
   reinstalled ([Your pass](your-pass.md)).
