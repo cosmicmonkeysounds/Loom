@@ -108,11 +108,36 @@ describe("voiceClock", () => {
     expect(voiceState(def, S, S + 8000, ev)).toMatchObject({ t: 8000, ended: true, endAt: S + 10_000 });
   });
 
-  it("a cut line (the mute) ends his part: the scene runs on", () => {
+  it("a line that finishes early ends his part: the scene runs on from ms − tail", () => {
     const ev = [queued(5, S), ...line(5, S + 1000), done(5, S + 1500)];
     expect(voiceState(DEF, S, S + 2000, ev)).toMatchObject({ t: 6500, ended: true });
-    // Cut before he began: from ms − tail too.
-    expect(voiceState(DEF, S, S + 600, [queued(5, S), done(5, S + 500)])).toMatchObject({ t: 6100, ended: true });
+  });
+
+  it("a cut line (the mute) runs on from where it was, never jumping to his end", () => {
+    const cut = (seq: number, at: number): SpeechEvent => ({ kind: "done", seq, at, cut: true });
+    const ev = [queued(5, S), ...line(5, S + 1000), cut(5, S + 1500)];
+    // At the cut t was 1500 (sentence 0 from mark 1000 + 500): on from there.
+    expect(voiceState(DEF, S, S + 1500, ev)).toMatchObject({ t: 1500, ended: true, endAt: S + 1500 + 6500 });
+    expect(voiceState(DEF, S, S + 2000, ev)).toMatchObject({ t: 2000, ended: true });
+    // Cut before he began: on from the held frame (or the plain clock below it).
+    expect(voiceState(DEF, S, S + 600, [queued(5, S), cut(5, S + 500)])).toMatchObject({ t: 600, ended: true });
+    expect(voiceState(DEF, S, S + 2500, [queued(5, S), cut(5, S + 2000)])).toMatchObject({ t: 1499, ended: true });
+  });
+
+  it("once it falls back after VOICE_WAIT_MS, a voice that starts late never pulls the scene back", () => {
+    const def: VoiceTiming = { beats: ["Pickup Line"], marks: [1500, 4200], ms: 8000, tail: 2600 };
+    const ev: SpeechEvent[] = [queued(5, S + 500, 2, "Pickup Line")];
+    expect(voiceClock(def, S, S + 5900, ev)).toBe(1499);
+    expect(voiceClock(def, S, S + 6100, ev)).toBeNull();
+    // A backlog: he only gets to it at +7 s.
+    ev.push(...line(5, S + 7000, ["…The house says YES.", "That is the line."], "Pickup Line"));
+    expect(voiceClock(def, S, S + 7000, ev)).toBeNull();
+    ev.push(chunk(5, 1, S + 8000), done(5, S + 9000));
+    expect(voiceState(def, S, S + 9500, ev)).toBeNull();
+    // Started just inside the wait: on his voice.
+    expect(voiceClock(def, S, S + 6500, [queued(5, S + 500, 2, "Pickup Line"), ...line(5, S + 5900, ["A.", "B."], "Pickup Line")])).toBe(2100);
+    // A queued moment that started late: his line started before the scene did.
+    expect(voiceClock(def, S, S + 6500, [queued(5, S - 1000, 2, "Pickup Line"), ...line(5, S - 500, ["A.", "B."], "Pickup Line")], S - 1000)).toBe(4199);
   });
 
   it("a hold scene has no end to move", () => {

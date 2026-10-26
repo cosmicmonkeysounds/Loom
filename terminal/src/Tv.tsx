@@ -187,8 +187,8 @@ export function Tv({
             queue.q.say({ id: line.seq, chunks: parts });
           }),
         cancel: () => {
+          feed.cancelAll(); // first: the lines are cut, not finished
           queue.q.stop();
-          feed.cancelAll();
           for (const w of waiters.current.values()) w();
           waiters.current.clear();
           setSpeaking(false);

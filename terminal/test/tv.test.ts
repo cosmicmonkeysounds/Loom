@@ -285,6 +285,10 @@ describe("TvSpeechFeed (wave 26, V1): the TV's voice → the speech bus and sp="
     feed.chunk(1, 0);
     feed.cancelAll();
     expect(events.filter((e) => e["kind"] === "done").map((e) => e["seq"])).toEqual([1, 2]);
+    expect(events.filter((e) => e["kind"] === "done").every((e) => e["cut"] === true)).toBe(true);
+    // The queue's own done for the cut line comes after: dropped.
+    feed.done(1);
+    expect(events.filter((e) => e["kind"] === "done")).toHaveLength(2);
   });
 
   it("a seq it already finished is a new line after a story restart (seqs start over)", async () => {

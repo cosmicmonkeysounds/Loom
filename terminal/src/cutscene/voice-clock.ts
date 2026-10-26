@@ -15,11 +15,13 @@
 //! - none (a muted TV, a reload that resynced, a beat with no line of his):
 //!   null, the plain clock;
 //! - queued but not started: hold at `marks[0] − 1` until `VOICE_WAIT_MS`
-//!   after the scene started, then null (a stuck voice never holds it);
+//!   after the scene started, then null for good (a stuck voice never holds
+//!   it, and a voice that starts later never pulls it back);
 //! - during sentence g: `marks[g] + (now − its start)`, held below the next
 //!   sentence's mark (or below the end of his part, `ms − tail`);
 //! - after his last line is done: on from there (from `ms − tail` when he
-//!   finished early), so the scene ends `tail` after he stops.
+//!   finished early), so the scene ends `tail` after he stops; a line that
+//!   was cut (the mute, `cut` on its `done`) runs on from where it was.
 //!
 //! When the spoken count differs from the marks (a name that merged into
 //! the next sentence, a branch of the beat), sentence g maps to mark
@@ -72,6 +74,8 @@ interface Member {
   texts: readonly string[] | null;
   starts: Map<number, number>;
   done: number | null;
+  /** The line was cut (the mute), not finished. */
+  cut: boolean;
 }
 
 /** The scene's lines off the bus, oldest seq first. */
@@ -82,7 +86,7 @@ function membersOf(v: VoiceScene, events: readonly SpeechEvent[], momentAt: numb
     let m = lines.get(e.seq);
     if (e.kind === "queued" || e.kind === "line") {
       if (m === undefined) {
-        m = { seq: e.seq, chunks: e.chunks, texts: null, starts: new Map(), done: null, first: e.at, beat: e.beat };
+        m = { seq: e.seq, chunks: e.chunks, texts: null, starts: new Map(), done: null, cut: false, first: e.at, beat: e.beat };
         lines.set(e.seq, m);
       }
       m.chunks = Math.max(1, e.chunks);
@@ -95,7 +99,10 @@ function membersOf(v: VoiceScene, events: readonly SpeechEvent[], momentAt: numb
     if (m === undefined) continue;
     if (e.kind === "chunk") {
       if (!m.starts.has(e.index)) m.starts.set(e.index, e.at);
-    } else if (m.done === null) m.done = e.at;
+    } else if (m.done === null) {
+      m.done = e.at;
+      m.cut = e.cut === true;
+    }
   }
   return [...lines.values()]
     .filter((m) => m.beat !== null && beats.has(foldName(m.beat)) && m.first >= momentAt - VOICE_LOOKBACK_MS && m.first <= momentAt + VOICE_WAIT_MS)
@@ -140,14 +147,19 @@ export function voiceState(def: VoiceTiming, sceneStart: number, now: number, ev
 
   const last = lines[lines.length - 1]!;
   const doneAt = last.done !== null && last.done <= now ? last.done : null;
-  const begun = anchors[0]!.start !== undefined && anchors[0]!.start <= now;
-  if (doneAt === null && !begun && plain >= VOICE_WAIT_MS) return null;
+  // When his voice first reached the scene: its first sentence, else the cut
+  // that ended it unsaid, else not yet (now). Past `VOICE_WAIT_MS`, the plain
+  // clock for good: a scene that fell back never jumps back to his voice.
+  const s0 = anchors[0]!.start;
+  const reached = s0 !== undefined && s0 <= now ? s0 : (doneAt ?? now);
+  if (reached - sceneStart >= VOICE_WAIT_MS) return null;
 
   let t: number;
   let endAt: number | null;
   if (doneAt !== null) {
     const atDone = speaking(doneAt);
-    const from = voiceEnd !== null ? Math.max(atDone, voiceEnd) : atDone;
+    // Finished: on from the end of his part. Cut: on from where it was.
+    const from = voiceEnd !== null && !last.cut ? Math.max(atDone, voiceEnd) : atDone;
     t = from + (now - doneAt);
     endAt = ms === null ? null : doneAt + Math.max(0, ms - from);
   } else {

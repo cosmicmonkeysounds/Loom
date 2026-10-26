@@ -14,14 +14,15 @@
 //! - `line` — it starts saying it (its first sentence), with each
 //!   sentence's caption text (the written words, `captionChunks`).
 //! - `chunk` — sentence `index` starts (0 too).
-//! - `done` — it finished, or was cut (the mute, attract, an unmount).
+//! - `done` — it finished, or was cut (the mute, attract, an unmount:
+//!   `cut` true, so a scene runs on from where it was, not to his end).
 
 /** One thing the TV's voice did. */
 export type SpeechEvent =
   | { kind: "queued"; seq: number; beat: string | null; chunks: number; at: number }
   | { kind: "line"; seq: number; beat: string | null; chunks: number; texts: readonly string[]; at: number }
   | { kind: "chunk"; seq: number; index: number; at: number }
-  | { kind: "done"; seq: number; at: number };
+  | { kind: "done"; seq: number; at: number; cut?: boolean };
 
 /** The bus remembers this many lines (each with all its events). */
 export const SPEECH_RING_LINES = 20;

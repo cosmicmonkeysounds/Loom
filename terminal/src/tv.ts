@@ -215,18 +215,20 @@ export class TvSpeechFeed {
     this.io.room?.speaking(seq, index);
   }
 
-  /** Line `seq` is said, or was cut (the queue's `done`). */
-  done(seq: number): void {
+  /** Line `seq` is said (the queue's `done`), or was `cut`. */
+  done(seq: number, cut = false): void {
     const l = this.lines.get(seq);
     if (l === undefined || l.done) return;
     l.done = true;
-    this.io.emit({ kind: "done", seq, at: this.io.now() });
+    this.io.emit(cut ? { kind: "done", seq, at: this.io.now(), cut: true } : { kind: "done", seq, at: this.io.now() });
     this.io.room?.spoke(seq);
   }
 
-  /** Everything queued is dropped (the mute, attract, unmount): each line is done. */
+  /** Everything queued is dropped (the mute, attract, unmount): each line is
+   *  done, cut. Call it before stopping the queue, so its own `done` for the
+   *  line being said comes second (and is dropped). */
   cancelAll(): void {
-    for (const seq of [...this.lines.keys()]) this.done(seq);
+    for (const seq of [...this.lines.keys()]) this.done(seq, true);
   }
 }
 
