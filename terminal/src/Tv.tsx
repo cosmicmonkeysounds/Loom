@@ -32,6 +32,7 @@ import { SpeechQueue, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, 
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { LinePlayer, TvSpeechFeed, cursorAfterGap, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
+import { useRoomLinked } from "./world/presence.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundMuted } from "./sound/bus.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
@@ -287,7 +288,11 @@ export function Tv({
     };
   }, [wake, toggleMute]);
 
-  const showWorld = canDraw && inSimulation && !attract;
+  // R5 (wave 26): the world pane only while a player is in this TV's room
+  // in the game (the server's `spot.here`), latched over a doorway; the old
+  // house-wide rule (anyone in the simulation) only when `here` is absent.
+  const linked = useRoomLinked(state?.spot, inSimulation);
+  const showWorld = canDraw && linked && !attract;
   // A long spoken line's caption pieces, cut once per line.
   const captionPieces = useMemo(
     () => (caption === null || caption.mode !== "speak" || caption.text.length <= CAPTION_CHUNK_OVER ? [] : captionChunks(caption.text)),
