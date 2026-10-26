@@ -135,7 +135,7 @@ describe("the screen program (K-17 + N-03)", () => {
 
   it("a countdown keeps the slide; a blackout survives the overlay after it; a slide clears both", () => {
     const shot = (value: string, seq: number) => ({ value, cue: `screens_${value}`, seq, at: seq * 1000 });
-    let p: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
+    let p: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null, glitch: null };
     p = foldProgram(p, shot("trivia_1", 1));
     p = foldProgram(p, shot("countdown_hunt", 2));
     expect(p.slide).toMatchObject({ value: "trivia_1", cue: "screens_trivia_1", kind: "slide", persist: false });

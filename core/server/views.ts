@@ -1547,7 +1547,16 @@ export interface NightView {
   phase: string | null;
   /** The world `Night.step` as a number, else null. */
   step: number | null;
+  /** (wave 26, T2) The story's last glitch: `Night.glitch_at` (story
+   *  seconds) × 1000 as `at`, in the same unit as `GuestView.clock` (story
+   *  ms); `text` from `Night.glitch_text` ("none" → null). Absent while
+   *  `Night.glitch_at` is 0, unset or not a number. */
+  glitch?: { at: number; text: string | null };
 }
+
+/** (wave 26, T2) The world paths `NightView.glitch` reads. */
+export const GLITCH_AT_PATH = "Night.glitch_at";
+export const GLITCH_TEXT_PATH = "Night.glitch_text";
 
 /** Is this guest's phone locked (wave 26, R1)? The story's `lock:` header
  *  held for them (`sim.holds(cond, id, id)`); no header = never. */
@@ -1747,8 +1756,12 @@ export function nightView(sim: Sim): NightView {
     }
     const step = worldText(sim, "Night.step");
     const n = step === null ? NaN : Number(step);
+    // Wave 26 (T2): the glitch, in story ms like `GuestView.clock`.
+    const glitchAt = Number(worldText(sim, GLITCH_AT_PATH) ?? NaN);
+    const glitchText = worldText(sim, GLITCH_TEXT_PATH);
+    const glitch = Number.isFinite(glitchAt) && glitchAt > 0 ? { glitch: { at: Math.round(glitchAt * 1000), text: glitchText === null || glitchText === "none" ? null : glitchText } } : {};
     // The phase reads the same as a message's moment stamp (`chat.ts` `storyPhase`).
-    return { act, phase: storyPhase(sim) ?? null, step: Number.isFinite(n) ? n : null };
+    return { act, phase: storyPhase(sim) ?? null, step: Number.isFinite(n) ? n : null, ...glitch };
   });
 }
 

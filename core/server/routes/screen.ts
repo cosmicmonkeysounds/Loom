@@ -206,19 +206,21 @@ export const SCREEN_BASES = ["screensaver", "attract", "trabolta_online", "mirro
  *  The finale's waits are among them (wave 17): the bob until 📄, the advice
  *  poll until its tally, Grok Prom and the banishment until the story's next
  *  screen cue — each one's scene keeps moving the whole time. */
-const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish", "hunt_results", "tally"]);
+const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish", "hunt_results", "tally", "ad_hijack"]);
 export function slidePersists(value: string): boolean {
   return PERSISTENT_SLIDES.has(value) || /^(award|ceremony)/u.test(value);
 }
 
-export type ScreenCueClass = "overlay" | "flicker" | "countdown" | "base" | "slide";
+export type ScreenCueClass = "overlay" | "flicker" | "glitch" | "countdown" | "base" | "slide";
 
 /** What a screen cue value does: `countdown_*` is a corner (it never replaces
- *  the slide), `flicker` a one-shot effect, the overlays stand, the bases clear,
- *  and anything else is a slide (`/terminal/slides/<cue>.png`). */
+ *  the slide), `flicker` and `glitch` (wave 26, T2) one-shot effects, the
+ *  overlays stand, the bases clear, and anything else is a slide
+ *  (`/terminal/slides/<cue>.png`). */
 export function screenCueClass(value: string): ScreenCueClass {
   if ((SCREEN_OVERLAYS as readonly string[]).includes(value)) return "overlay";
   if (value === "flicker") return "flicker";
+  if (value === "glitch") return "glitch";
   if (value.startsWith("countdown_") || value === "countdown") return "countdown";
   if ((SCREEN_BASES as readonly string[]).includes(value)) return "base";
   return "slide";
@@ -246,9 +248,13 @@ export interface ScreenProgram {
   blackout: ScreenShot | null;
   /** The last one-shot flicker. */
   flicker: ScreenShot | null;
+  /** (wave 26, T2) The last glitch cue (`screens_glitch`, `tv_glitch`,
+   *  `terminals_glitch`). Like `flicker`, it never touches slide or overlay.
+   *  `at` follows the fold's rule: 0 for replayed history. */
+  glitch: ScreenShot | null;
 }
 
-const emptyProgram = (): ScreenProgram => ({ slide: null, overlay: null, blackout: null, flicker: null });
+const emptyProgram = (): ScreenProgram => ({ slide: null, overlay: null, blackout: null, flicker: null, glitch: null });
 
 /** Fold one screen cue into a target's program (pure; returns a new program). */
 export function foldProgram(p: ScreenProgram, shot: ScreenShot): ScreenProgram {
@@ -258,6 +264,8 @@ export function foldProgram(p: ScreenProgram, shot: ScreenShot): ScreenProgram {
       return { ...p, overlay: shot, blackout: shot.value === "blackout" ? shot : p.blackout };
     case "flicker":
       return { ...p, flicker: shot };
+    case "glitch":
+      return { ...p, glitch: shot };
     case "countdown":
       return p; // the corner reads the running countdown, never a slide
     case "base":
