@@ -22,7 +22,23 @@ export function TypedFallback({ config, onPick, onProblem, focus, clearOnPick = 
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (focus === true) input.current?.focus();
+    if (focus !== true) return;
+    input.current?.focus();
+    // A tap that left the focus nowhere (the wake prompt goes away under it,
+    // the backdrop) gives it back, once the tap has settled.
+    let t = 0;
+    const back = () => {
+      window.clearTimeout(t);
+      t = window.setTimeout(() => {
+        const a = document.activeElement;
+        if (a === null || a === document.body || !document.body.contains(a)) input.current?.focus();
+      }, 400);
+    };
+    window.addEventListener("pointerup", back);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("pointerup", back);
+    };
   }, [focus]);
   const submit = async () => {
     if (name.trim() === "" || busy) return;
