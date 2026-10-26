@@ -95,18 +95,26 @@ counts as busy (piloting) during one. Every view takes the glitch.
   `program.glitch` while its `at` > 0, younger than `GLITCH_MS` (8 s) and
   later than this page's first screen answer (`ScreenState.firstNow`,
   stamped once per page by `useScreenState` / `withFirstNow`), so history
-  and a reload mid-glitch never play it. Piloting, a peek, `bare` and the
+  and a reload mid-glitch never play it; nor does a page that first saw the
+  cue more than `GLITCH_FRESH_MS` (4 s) after it (`ScreenState.glitchSeen`,
+  a lost server back mid-takeover). Piloting, a peek, `bare` and the
   tent never suppress it; a blackout beats it. `coverOf`: covered (the idle
   show pauses), never a takeover (a pilot, a chess game, a tent walk keep
   running). `GlitchTakeover` (`ScreenLayer.tsx`) is CSS only in the main
   bundle (`.screen-glitch`, z 36): ≤ 3 Hz, no red field, transform /
-  opacity, reduced motion a still frame. `?preview=glitch` draws it.
+  opacity, reduced motion a still frame. It unmounts itself at its end
+  (`glitchLeftMs`) and sounds once per cue per page (`claimGlitchSounds`);
+  the app's `layer` is keyed so it keeps its place beside any screen. A
+  slide cued with it (the hijack) runs its scene from the takeover's end
+  (`slideClockAt`; the hold still counts from the cue). `?preview=glitch`
+  draws it.
 - **The calm idle show (T1).** `IdleContext.calm` (pool `early` / `hunt`,
   i.e. before the 📺 ad hijack): `CALM_PATTERN` (one ad a ~2 min cycle),
   a window every 18–39 s (`CALM_POPUP_PACE`), `CALM_MAX_POPUPS` (2), no
   storms, no `adLike` windows. After the hijack the flood as before.
   `quiet` (`IdleShow quiet`, the tent's backdrop): one window, no TOUCH ME,
-  no face, no storm unless hijacked.
+  no face, no storm unless hijacked, and the calm pace all night
+  (`calmPace`).
 - **Terminals link by room (R5).** `world/presence.ts`: a placed wall
   shows the world (pane, or full screen asleep) only while `spot.here > 0`
   (the house-wide rule only when the server sends no `here`), latched 3 s;
@@ -114,9 +122,11 @@ counts as busy (piloting) during one. Every view takes the glitch.
   `watchWhileAsleep(state, view, room, spot)`. The TV's gate is the voice
   lane's `Tv.tsx`: `useRoomLinked(state?.spot, inSimulation)`.
 - **The tent (T3).** A centred Reinstallation Wizard card: the camera,
-  the typed field (`TypedFallback` `focus` / `clearOnPick`), the picks as
-  48 px buttons, N REINSTALLING; a `tablet_*` cue is a status line in it.
-  No world pane, no camera feed.
+  the typed field (`TypedFallback` `focus` / `scope` / `clearOnPick`: it
+  takes the focus back after any tap that leaves it outside the card,
+  `takesFocusBack`), the picks as 48 px buttons, N REINSTALLING; a
+  `tablet_*` cue is a status line in it. The camera shrinks (44vh down to
+  140 px) before any row under it clips. No world pane, no camera feed.
 - **Copy.** G1 (the filing steps, the reminders, Truth Pong, the summons,
   the chess stakes line) and D1 (`dare_chosen` on the `Dare Chosen` beat,
   `DARE_ORDER`) carry `// DRAFT w26`.
