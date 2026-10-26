@@ -195,10 +195,11 @@ function fakeEngine() {
   const engine: SpeechEngine = {
     kind: "device",
     prepare: async (text) => ({ kind: "silent", text }),
-    play: (p: Prepared) =>
+    play: (p: Prepared, _level: (n: number) => void, onStart?: () => void) =>
       new Promise<void>((r) => {
         said.push(p.kind === "server" ? "" : p.text);
         ends.push(r);
+        onStart?.(); // a voice heard at once (the queue's chunk waits for it: V1)
       }),
     stop: () => {
       for (const e of ends.splice(0)) e();
