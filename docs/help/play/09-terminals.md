@@ -50,8 +50,7 @@ touch it and it fills the screen again.
 No camera on that terminal (or it can't be used)? Tap *no camera? type
 your program name* in the box and enter the name you registered with.
 
-A slide covering the terminal (the countdown clock in the last hour, a
-bingo card, the Trust Chart)? **Tap it**: it steps aside so you can scan
+A slide covering the terminal (a countdown, a bingo card, a chart)? **Tap it**: it steps aside so you can scan
 or type your name. It comes back by itself after 30 seconds with nobody
 touching the terminal, or once your line opens.
 
