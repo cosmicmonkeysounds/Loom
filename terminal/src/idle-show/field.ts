@@ -14,6 +14,20 @@ import { mulberry32, mix } from "./rng.ts";
 
 /** At most this many windows at once. */
 export const MAX_POPUPS = 6;
+/** (wave 26, T1) Before the ad hijack (calm): at most this many at once. */
+export const CALM_MAX_POPUPS = 2;
+/** (wave 26, T3) A quiet backdrop (the tent's kiosk): at most this many. */
+export const QUIET_MAX_POPUPS = 1;
+/** (wave 26, T1) Calm, the windows come this many times further apart (a
+ *  saver's 3–6.5 s becomes 18–39 s). */
+export const CALM_POPUP_PACE = 6;
+
+/** How many windows a show may hold at once: quiet 1, calm 2, else `MAX_POPUPS`. A storm keeps its own. */
+export function popupCap(ctx: { calm?: boolean; quiet?: boolean }): number {
+  if (ctx.quiet === true) return QUIET_MAX_POPUPS;
+  if (ctx.calm === true) return CALM_MAX_POPUPS;
+  return MAX_POPUPS;
+}
 /** A window's assumed footprint for placement (share of the box). */
 export const POPUP_W = 0.34;
 export const POPUP_H = 0.3;
@@ -60,13 +74,14 @@ export function emptyField(drawn = 0): PopupField {
   return { live: [], nextId: 1, drawn, nextAt: null };
 }
 
-/** The wait before the next window (ms) on this layout; null = none come. */
-export function spawnGap(layout: Layout, pool: PhasePool, target: "tv" | "wall", r: number, y2kLeft: number | null = null): number | null {
+/** The wait before the next window (ms) on this layout; null = none come.
+ *  `calm` (wave 26, T1): before the hijack, `CALM_POPUP_PACE` times as long. */
+export function spawnGap(layout: Layout, pool: PhasePool, target: "tv" | "wall", r: number, y2kLeft: number | null = null, calm = false): number | null {
   if (layout === "face") return null;
   if (layout === "storm") return STORM_EVERY_MS;
   const [lo, hi] = layout === "saver" ? [3_000, 6_500] : layout === "banner" ? [4_500, 8_000] : [7_000, 12_000];
   // Hijacked: twice as often. The Y2K hour: faster as midnight nears. The TV, across the room: a little calmer.
-  const k = (pool === "malware" ? 0.5 : pool === "y2k" ? y2kPace(y2kLeft) : 1) * (target === "tv" ? 1.3 : 1);
+  const k = (pool === "malware" ? 0.5 : pool === "y2k" ? y2kPace(y2kLeft) : 1) * (target === "tv" ? 1.3 : 1) * (calm ? CALM_POPUP_PACE : 1);
   return Math.round((lo + r * (hi - lo)) * k);
 }
 
@@ -111,10 +126,12 @@ function freeSlot(live: readonly LivePopup[]): number {
   return -1;
 }
 
-/** Add one window now (the oldest closes first when all slots are full). */
-export function spawn(f: PopupField, now: number, o: { seed: number; reserve: Rect | null; storm: boolean }): { field: PopupField; popup: LivePopup } {
+/** Add one window now (the oldest close first when the show holds its
+ *  `cap` — `MAX_POPUPS` by default; a storm's windows always may fill every slot). */
+export function spawn(f: PopupField, now: number, o: { seed: number; reserve: Rect | null; storm: boolean; cap?: number }): { field: PopupField; popup: LivePopup } {
+  const cap = o.storm ? MAX_POPUPS : Math.max(1, Math.min(MAX_POPUPS, o.cap ?? MAX_POPUPS));
   let live = f.live;
-  if (live.length >= MAX_POPUPS) live = live.slice().sort((a, b) => a.born - b.born).slice(1);
+  if (live.length >= cap) live = live.slice().sort((a, b) => a.born - b.born).slice(live.length - cap + 1);
   const rand = mulberry32(mix(o.seed, f.drawn, 0x9097));
   const at = o.storm ? stormPlace(f.drawn, o.seed, o.reserve) : placePopup(rand, o.reserve);
   const life = o.storm ? STORM_LIFE_MS : POPUP_LIFE_MS[0] + Math.floor(rand() * (POPUP_LIFE_MS[1] - POPUP_LIFE_MS[0]));
@@ -126,22 +143,22 @@ export function spawn(f: PopupField, now: number, o: { seed: number; reserve: Re
  * One step of the clock: windows past their time close, and if one is due
  * (and the layout brings any) it arrives. Returns who arrived (for the sound).
  */
-export function tick(f: PopupField, now: number, o: { seed: number; layout: Layout; pool: PhasePool; target: "tv" | "wall"; reserve: Rect | null; y2kLeft?: number | null }): { field: PopupField; arrived: LivePopup | null } {
+export function tick(f: PopupField, now: number, o: { seed: number; layout: Layout; pool: PhasePool; target: "tv" | "wall"; reserve: Rect | null; y2kLeft?: number | null; calm?: boolean; cap?: number }): { field: PopupField; arrived: LivePopup | null } {
   let field: PopupField = { ...f, live: f.live.filter((p) => p.dies > now) };
-  const gap = spawnGap(o.layout, o.pool, o.target, mulberry32(mix(o.seed, field.drawn, 0x6a9))(), o.y2kLeft ?? null);
+  const gap = spawnGap(o.layout, o.pool, o.target, mulberry32(mix(o.seed, field.drawn, 0x6a9))(), o.y2kLeft ?? null, o.calm === true);
   if (gap === null) return { field: { ...field, nextAt: null }, arrived: null };
   if (field.nextAt === null) return { field: { ...field, nextAt: now + (o.layout === "storm" ? 0 : Math.round(gap / 2)) }, arrived: null };
   if (now < field.nextAt) return { field, arrived: null };
-  const s = spawn(field, now, { seed: o.seed, reserve: o.reserve, storm: o.layout === "storm" });
+  const s = spawn(field, now, { seed: o.seed, reserve: o.reserve, storm: o.layout === "storm", cap: o.cap });
   field = { ...s.field, nextAt: now + gap };
   return { field, arrived: s.popup };
 }
 
 /** What a tap on a window's × does (pure: `r` is the roll). */
 export type CloseGag = "close" | "hydra" | "dodge";
-export function closeGag(r: number, p: Pick<LivePopup, "dodged" | "storm">, live: number): CloseGag {
+export function closeGag(r: number, p: Pick<LivePopup, "dodged" | "storm">, live: number, cap: number = MAX_POPUPS): CloseGag {
   if (p.storm) return "close";
-  if (r < 0.18 && live + 1 <= MAX_POPUPS) return "hydra"; // one closes, two arrive: one more on screen
+  if (r < 0.18 && live + 1 <= cap) return "hydra"; // one closes, two arrive: one more on screen
   if (r < 0.3 && !p.dodged) return "dodge";
   return "close";
 }
@@ -162,12 +179,13 @@ export function ask(f: PopupField, id: number, now: number): PopupField {
   return { ...f, live: f.live.map((p) => (p.id === id ? { ...p, asking: true, dies: Math.max(p.dies, now + 6_000) } : p)) };
 }
 
-/** Close one and bring two more (the hydra): never past `MAX_POPUPS`. */
-export function hydra(f: PopupField, id: number, now: number, o: { seed: number; reserve: Rect | null }): { field: PopupField; arrived: LivePopup[] } {
+/** Close one and bring two more (the hydra): never past the show's `cap` (`MAX_POPUPS` by default). */
+export function hydra(f: PopupField, id: number, now: number, o: { seed: number; reserve: Rect | null; cap?: number }): { field: PopupField; arrived: LivePopup[] } {
+  const cap = Math.max(1, Math.min(MAX_POPUPS, o.cap ?? MAX_POPUPS));
   let field = close(f, id);
   const arrived: LivePopup[] = [];
-  for (let i = 0; i < 2 && field.live.length < MAX_POPUPS; i++) {
-    const s = spawn(field, now + i, { seed: o.seed, reserve: o.reserve, storm: false });
+  for (let i = 0; i < 2 && field.live.length < cap; i++) {
+    const s = spawn(field, now + i, { seed: o.seed, reserve: o.reserve, storm: false, cap });
     field = s.field;
     arrived.push(s.popup);
   }
