@@ -255,6 +255,44 @@ describe("SpatialHub.moment — the pickup", () => {
   });
 });
 
+describe("SpatialHub.moment — the show's map", () => {
+  const show = (): HouseMap => {
+    const v = validateHouse(JSON.parse(readFileSync(fileURLToPath(new URL("../examples/trapped-in-the-internet/house.json", import.meta.url)), "utf8")));
+    if (!v.ok || v.house === undefined) throw new Error(v.problems.join("\n"));
+    return v.house;
+  };
+
+  it("out the mud room's front door, the heart behind the fallen King, the disk on the top floor; the tent is never here", () => {
+    const world = new Map<string, unknown>([["Night.king_hp", 15]]);
+    let ids = 0;
+    const hub = new SpatialHub({ eventId: "evt", now: () => 1_000, newSessionId: () => `s-${++ids}`, newToken: () => `tok-${ids}`, kingHp: (path) => world.get(path) });
+    hub.setHouse(show(), "show", false);
+    const a = hub.begin({ guest: "g-1", name: "Bugdom", world: "web", device: "Tent tablet", station: null, captured: false })!;
+    const said = (s: SessionRef, signal: string, args: Record<string, string>): MomentLine[] => [{ from: "Trabolta", text: `${signal} ${JSON.stringify(args)}` }];
+    // Every walk starts in the tent, whose station is never linked (T3).
+    expect(hub.spotHere("tent")).toBe(0);
+    expect(hub.linked()).toEqual(new Set());
+    // 4 m past the front door: not out; 5.2 m: out, back to the tent.
+    hub.pose(a.token, pose([-0.45, 0, -4]));
+    expect(hub.moment(a.token, { kind: "escape" }, said)).toEqual({ kind: "notOut", distance: 4 });
+    hub.pose(a.token, pose([-0.45, 0, -5.2]));
+    expect(hub.moment(a.token, { kind: "escape" }, said)).toMatchObject({ kind: "ok", spawn: { room: "tent" } });
+    expect(hub.voicePlayers()[0]).toMatchObject({ room: "tent", p: [-4.5, 0, 26.3] });
+    // The heart: sealed until the King falls.
+    hub.pose(a.token, pose([4.0, -2.7, 24.5]));
+    expect(hub.spotHere("server-room")).toBe(1);
+    expect(hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, said)).toEqual({ kind: "sealed" });
+    world.set("Night.king_hp", 0);
+    expect(hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, said)).toMatchObject({ kind: "ok", lines: [{ text: 'simulation heart reached {"prop":"trabolta-heart"}' }] });
+    // The disk in the hard drive (top floor).
+    hub.pose(a.token, pose([6.3, 2.8, 27.0]));
+    expect(hub.moment(a.token, { kind: "pickup", prop: "virus-disk" }, said)).toMatchObject({
+      kind: "ok",
+      lines: [{ text: 'simulation pickup taken {"item":"virus","prop":"virus-disk"}' }],
+    });
+  });
+});
+
 // ---------------------------------------------------------------------------
 // The runtime: POST /api/spatial/moment
 // ---------------------------------------------------------------------------
