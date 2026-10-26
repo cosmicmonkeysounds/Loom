@@ -126,7 +126,8 @@ elsewhere.
   first time each program reaches it in a night, the game plays *Heart In
   The Simulation* in his voice (or captions), in the game only, and sets
   `program.sim_heart`; `# hosts` hears that it happened. Flavour only. The
-  terminals' world view draws the heart too, only while he is fallen.
+  terminals' world view draws the heart too, only while he is fallen (and
+  a terminal shows the world only while a player is in its room).
 
 **👑 Restore the King's health** (Anytime) puts him back to full: he
 stands in both games and plays his best at the door. `# hosts` is told.
@@ -142,11 +143,10 @@ kiosk runbook, `docs/trapped/kiosk.md`, has the provisioning link). Not
 on the tent laptop, not in a headset.
 
 - It is **awake all night** and never sleeps on the idle show. It shows
-  THE KING, his bar (*n / 15*, *HE KNEELS* at 0), an attract line
-  that names no prize (wave 26, G1: it no longer promises the door code;
-  the DRAFT is *"Checkmate him."*), *"No prize now."* after 📄, and the
-  scanner. **No hints, no tips**:
-  it never says how strong he is.
+  THE KING, his bar (*n / 15*, *HE KNEELS* at 0), an attract line that
+  names no prize (*"Checkmate him."*, a DRAFT: since wave 26 it no longer
+  promises the door code), *"No prize now."* after 📄, and the scanner.
+  **No hints, no tips**: it never says how strong he is.
 - A program scans their pass and plays one game. A restricted program
   is refused (*"⛔ Marked programs can't challenge the King."*, the copy
   from when a mark restricted); since wave 18 a mark alone restricts

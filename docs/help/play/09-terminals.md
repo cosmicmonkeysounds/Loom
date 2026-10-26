@@ -206,7 +206,9 @@ It works the other way too. Players walking that room can see a small
 live picture of the real room on the wall where the terminal hangs, and
 the terminal's **microphone** carries the room's voices to them (and
 theirs back out of its speaker). A screen set to **shadow** shows its own
-camera with the players drawn into it as dark, glowing ghosts.
+camera with the players drawn into it as dark, glowing ghosts. The
+reinstallation station is never a window: it sends no picture and no
+sound.
 
 **Privacy.** A small **🎤** at the left edge of a terminal, half way down,
 means a player in the simulation can hear this room right now. When it

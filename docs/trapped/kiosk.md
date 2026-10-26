@@ -103,6 +103,13 @@ Trabolta's only. **In Fully** (no voice list) `fully.textToSpeech` speaks
 the Android default, often female: type a male Android voice's name into
 *device voice* if TEST VOICE sounds like the announcements.
 
+**Pace and pauses.** ⚙ has a *pace* slider and a *pauses* slider (0–3×
+the 0.3 s between his sentences and the 0.7 s between his lines; TEST
+VOICE plays them; `&pause=` on a link sets it). The TV speaks at pace
+0.92: opening its link sets that, and so does a first setup as the TV
+unless the pace slider was moved. Every voice says *Antivirus* as "Anti
+Virus"; the screen keeps the written word.
+
 ### Slides, the cast, the voice link
 
 - **A slide over the scanner.** A held slide (the Y2K clock for the whole
@@ -111,12 +118,20 @@ the Android default, often female: type a male Android voice's name into
   tablet showing no clock for a moment is someone peeking, not a failed
   cue: don't re-fire it. An overlay (blackout, *go to the living room*, the
   alarm) still covers everything. The TV and mirrors never peek.
+- **The glitch.** The 📺 cue's glitch is an 8 s takeover on every screen,
+  over a pilot or a game without ending it. It plays once: a terminal
+  reloaded mid-glitch, or one that missed its first 4 s, skips it. A
+  screen that didn't glitch is not a failed cue.
 - **A character the story lacks.** ⚙ refuses a name the story doesn't
   have (*The story has no character called …*, with the cast).
+- **Linked by room.** A placed terminal is a window into the simulation
+  only while a reinstallation player is in its room in the game: its world
+  view (`auto` and `world` alike), the picture the players see from its
+  camera, and its voice link. The mirror and the shadow show anyone, anywhere; the tent never.
 - **The voice link.** A placed terminal sends its room to the
-  reinstallation players near it and plays them out of its speaker;
-  nothing leaves the room unless a player is near enough, and the terminal
-  sends nothing while it makes a sound itself. It starts with the first
+  reinstallation players in the same room and plays them out of its
+  speaker; nothing leaves the room unless a player is in it, and the
+  terminal sends nothing while it makes a sound itself. It starts with the first
   touch after a reload. ⚙ → *advanced* has *let the games hear this room*
   and *play the players near this screen*. Run → Terminals' 🎤 flags a
   device whose microphone was refused (*denied*) or can't run (*insecure*).
@@ -382,9 +397,9 @@ he is played at chess. Provision with
 
 - **Awake all night**, whatever Trabolta is doing; no character, no room.
 - The attract screen is THE KING, his shared health bar (*n / 15*, *HE
-  KNEELS* at 0), the stakes line (*Checkmate him and the server-room door
-  code goes to your Codex.*, or *No prize now.* after truth.txt or an
-  ending) and the scanner with the typed fallback. **No hints, no
+  KNEELS* at 0), the stakes line (*Checkmate him.*, a DRAFT that names no
+  prize, or *No prize now.* after truth.txt or an ending) and the scanner
+  with the typed fallback. **No hints, no
   strength line.**
 - **One game per pass scan.** A marked program is refused. The board is
   dealt at the bar's strength when it is dealt; **GIVE UP** takes two taps.
@@ -416,17 +431,20 @@ green; scan a test pass, bet once, CASH OUT.
 
 The laptop in the tent (the shed on a rain night) is **one device that is
 a terminal and the reinstallation wizard** (`view=reinstall`). Between
-walks it is a wall terminal: the idle show, the scan box with *type your
-program name*, the story's slides and overlays, and a red **☣ IN THE
-INTERNET NOW** strip of the captured programs (one tap each).
+walks it is a scan kiosk: a centred **💿 Reinstallation Wizard** card with
+the live camera, the typed field (*type your program name*), a red **☣ IN
+THE INTERNET NOW** row of the captured programs (one big button each) and
+the reinstalling count, over a quiet idle show. It takes overlays, beat
+scenes and the glitch, but no story slide, countdown corner or Y2K clock.
+It never shows the world and never sends its camera into the game.
 
 - **A pass.** A captured or marked program gets the wizard: straight into
   the game (*Play here*) when no headset is online, else *Play here* or
   *Send to <headset>*. Anyone else gets **NOT MARKED** for 8 s and nothing
   else. After an ending anyone may play (the party favour).
 - **A capture** puts up a *Setup is preparing to reinstall a program*
-  card for 12 s that names nobody.
-- **During a walk** story slides and scenes stand aside; an overlay
+  status line in the card for 12 s that names nobody.
+- **During a walk** scenes stand aside; an overlay
   **holds** the walk (controls and leash pause) and it carries on when the
   overlay lifts.
 - **WebGL2 is required** to play here. Check `chrome://gpu` on this laptop
@@ -459,8 +477,8 @@ spare tablet, a headset-only controller and the map editor.
 
 **Install-day check:** `pnpm showctl preflight tent`; Run → Terminals
 shows *Tent* green with `view reinstall` and the mic off; scan an unmarked
-test pass (NOT MARKED); capture a test program (the card, the name in the
-red strip); tap it (the game); fire an overlay mid-walk (held, not ended);
+test pass (NOT MARKED); capture a test program (the status line, the name in the
+red row); tap it (the game); fire an overlay mid-walk (held, not ended);
 find Gerald (the celebration, then *— REINSTALLATION COMPLETE.*).
 
 ## The bathroom terminal
