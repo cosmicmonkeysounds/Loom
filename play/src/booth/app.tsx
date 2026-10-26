@@ -569,6 +569,9 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     objectives: s.view?.objectives,
     phase: s.view?.night?.phase,
     clock: s.view?.clock,
+    // Wave 26 (T2): a player's booth gets the guest's takeover; a host's a look-only one.
+    glitch: s.view?.night?.glitch,
+    takeover: player ? "full" : "light",
     // A readout's room is the booth's own `dm:<Character>`: that is Readouts here.
     openRoom: (id) => t.open(id === `dm:${character}` ? INBOX : id),
     filter: boothAlertFilter(character),

@@ -159,6 +159,23 @@ export const QUEST_DEDUPE_MS = 2_000;
 export const BEAT_GAP_MS = 2 * 60_000;
 /** The level-change glitch. */
 export const GLITCH_MS = 600;
+/** Wave 26 (T2): how fresh (story ms) a glitch must be to take the phone over. */
+export const TAKEOVER_FRESH_MS = 15_000;
+/** Wave 26 (T2): the takeover's length — a guest's or a player's, a host's look-only one. */
+export const TAKEOVER_MS = 6_000;
+export const TAKEOVER_LIGHT_MS = 2_500;
+
+/**
+ * Wave 26 (T2, CONTRACTS C3): does the story's glitch take this phone over
+ * now? Only live: never embedded (Run → Players), never on a first view (a
+ * reload, a new sign-in), only for an `at` this provider hasn't seen, and
+ * only within `TAKEOVER_FRESH_MS` of it on the story clock.
+ */
+export function takeoverDue(prevAt: number | null, glitch: { at: number } | null | undefined, clock: number | undefined, firstView: boolean, embedded: boolean): boolean {
+  if (embedded || firstView || glitch == null || clock === undefined) return false;
+  const age = clock - glitch.at;
+  return glitch.at > 0 && glitch.at !== prevAt && age >= 0 && age <= TAKEOVER_FRESH_MS;
+}
 
 const RUNGS: readonly AlertLevel[] = ["balloon", "sticky", "dialog", "bsod"];
 

@@ -439,6 +439,9 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     sideChosen: (ext.sides ?? []).some((x) => x.mine),
     captured: st.captured,
     lobbyHidden: noLobby,
+    // Wave 26 (T2): the story's glitch takes the phone over (locked or not).
+    glitch: st.night?.glitch,
+    takeover: "full",
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)
