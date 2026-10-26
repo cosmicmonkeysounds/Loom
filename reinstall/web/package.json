@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@fontsource/vt323": "^5.2.6",
-    "@loom/chess": "workspace:*",
     "@loom/house": "workspace:*",
     "jsqr": "^1.4.0",
     "react": "^18.3.1",
