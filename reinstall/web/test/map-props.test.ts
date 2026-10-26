@@ -314,7 +314,7 @@ describe("the heart and the pickup (wave 26)", () => {
 
   it("the show maps' heart and disk survive the inspector unchanged", () => {
     const show = SHOW();
-    for (const id of ["trabolta-heart", "virus-disk"]) {
+    for (const id of ["server-heart", "virus-disk"]) {
       const before = show.props.find((p) => p.id === id)!;
       const after = patchProp(show, id, { color: before.color }).props.find((p) => p.id === id)!;
       expect(after).toEqual(before);

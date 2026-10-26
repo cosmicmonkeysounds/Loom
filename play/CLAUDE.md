@@ -27,7 +27,8 @@ Run from the repo root (`pnpm install` once covers every JS package).
 `scripts/ops/predeploy.sh` runs `pnpm -r typecheck`, every package's tests,
 and `pnpm --filter loom-play build && node play/scripts/first-load.mjs
 --max-kb 148`. A change that pushes the guest's first load over 148 kB
-fails predeploy.
+fails predeploy. With wave 26 merged it measures about 146 kB (145.92),
+so there is about 2 kB of room.
 
 ## How a session works
 
@@ -108,10 +109,19 @@ windows), the Desk, the director phone and Help are lazy chunks.
   its classifiers (`guestScan`, `typedScan`) and the camera. The
   session-less landing (`LinkLanding`, `landingLink`) stays in
   `guest-scan.tsx`.
+- **🎱 BINGO!** (wave 26, B1) is a plain story button with `arm: true`
+  (two taps, `arm.ts`) on Play Computer Bingo; play knows nothing about
+  Bingo. ↩ Not a Bingo (B2) is a host's story button on the caller's card.
 - **The locked phone** (wave 26, R1; `guest/lock.tsx`, a lazy chunk via
-  `lock-lazy.tsx`). `GuestSession.locked` is `GuestView.locked` or a write
-  that came back `403 locked` (`lockedRefusal`, until the next snapshot; it
-  never toasts). The guest app then renders only the lock screen: the title
+  `lock-lazy.tsx`). The story's `lock:` header decides it on the server:
+  a locked guest's `GuestView.locked` is true, `interactions` holds only
+  the `restricted: allow` buttons, and every other guest write answers
+  `403 {"error":"locked"}` (core's `LOCKED_OPEN` lists the routes that
+  still work: register, resume, rejoin, badge, push, logout).
+  `GuestSession.locked` is `GuestView.locked` or a write that came back
+  `403 locked` (`lockedRefusal`, matched on `ApiError.message ===
+  "locked"`, until the next snapshot; it never toasts). The guest app then
+  renders only the lock screen: the title
   bar, the DRAFT ⛔ QUARANTINED card with 🎟 Show my pass and the view's
   live (`restricted: allow`) buttons, the NOW objective as a card with no
   buttons, a read-only copy of `dm:Installation Wizard` (`LOCK_THREAD`, else
@@ -132,9 +142,8 @@ windows), the Desk, the director phone and Help are lazy chunks.
   ≤ 34 dvh, the options ≤ 36 dvh, every footer button 48 px (the card's
   `widget-go` too). The footer is a flex column: its 48 px bars never
   shrink, the open menu / card give up the space (360x740). A folded menu
-  reads `▴ {title}`. An effect's return value is its cleanup: keep
-  expression-bodied effects to state setters (`w26-composer-cleanup.test`
-  runs the composer's hooks through `test/hooks-harness.ts`).
+  reads `▴ {title}`. Once a send resolves, its line leaves the room's
+  draft.
 
 ### Booth
 
@@ -151,7 +160,7 @@ windows), the Desk, the director phone and Help are lazy chunks.
 - A caller booth (an admin cue's `by:` names its character, never a
   player) gets the 🎤 cue bar (`booth/cue-bar.tsx`, `POST
   /api/prime/cue`).
-- **PLAYER SELECT** (wave 26, B3–B5): SAME pre-selects the most recent
+- **PLAYER SELECT** (wave 26, B1, B3–B5; `booth/pick/`): SAME pre-selects the most recent
   earlier pick (`sameFor`), so ④ 🤐 offers the winner after a skipped ③; on
   a destructive step an earlier pick is labelled but still selectable
   (`taggedFor`, `GuestTiles` `tagged`; the two-tap arm is the guard). An
@@ -160,9 +169,11 @@ windows), the Desk, the director phone and Help are lazy chunks.
   (`pickEnded`). Clippy's gets `player`. It opens on the first step whose
   to-do is not ticked (`WizardStep.satisfied`, `openingFor`: 🎱 from Check
   The Bingo), seeding SAME from `PrimeSession.lastPressedOn` (the guest
-  this booth's last taken press of that button landed on). `replyLine`
-  labels only `toGuest` / `said` as the guest's phone; a booth-only reply
-  reads `→ Sent · …`.
+  this booth's last taken press of that button landed on; memory only, so
+  a reload leaves SAME empty). `replyLine` labels only `toGuest` / `said`
+  as the guest's phone; a booth-only reply reads `→ Sent · …`. A stale
+  press (a round already closed, ↩ / 🎱 / 🤐 included) comes back
+  `refused: true`, and the booth reads it as refused.
 - **The windowed bar** (wave 26, P2): a player's or a host's booth frame is
   `booth-frame windowed` (`boothFrameClass`): the guest's taskbar rules
   (`--taskbar-h: 56px`, windows 48–120 px, Scan a normal primary, the tray
@@ -277,9 +288,12 @@ them with `docs/help/helpdoc.ts`. The `role: performer` articles (07, 13,
 import, so a guest never downloads them (wave 26). A new performer-only
 article goes in both globs; `test/help-chunks.test.ts` fails until it
 does. Editing an article updates Help on the next build.
-`test/help.test.ts` checks frontmatter, cross-links and search entry
-points (and reads `play/07-performers.md`), and enforces the G2 ban list
-on guest articles.
+`test/help.test.ts` checks frontmatter, cross-links (no guest article
+links to a performer-only one) and search entry points (and reads
+`play/07-performers.md`). It also enforces the G2 ban list on guest
+articles (the machinery words, with an allowlist of the app's exact crew
+labels and Server Room / Server Door) and pins the confrontation's no-OK
+copy. Any new guest line must pass it.
 
 ## Conventions
 
@@ -312,7 +326,9 @@ on guest articles.
   balloons too), so they land right after it (C3).
 - **Lazy chunks** go through `lazy-chunk.tsx` (`retryImport` once, then a
   `ChunkBoundary` with Reload), so a page left open across a deploy never
-  goes white.
+  goes white. `main.tsx` wraps the whole app in one more `ChunkBoundary`
+  (wave 26): any throw, in a render or an effect cleanup, shows Reload,
+  never a blank page.
 - **Barrels.** `chat.tsx`, `guest.tsx`, `performer.tsx`, `session.ts`,
   `threads.ts` re-export every name they had before wave 13
   (`test/barrels.test.ts`). Add new code to the lane modules, not the
@@ -328,8 +344,9 @@ on guest articles.
 ## Gotchas
 
 - **The 148 kB gate.** Do not import the booth, the host dock, the
-  director phone, Help, `jsqr` or `qrcode` statically from anything the
-  guest app loads at start. `test/first-load.test.ts` pins the lazy
+  director phone, Help, the staff Help, the Scan sheet, the lock screen's
+  body, the glitch takeover, `jsqr` or `qrcode` statically from anything
+  the guest app loads at start. `test/first-load.test.ts` pins the lazy
   imports; `pnpm --filter loom-play size` measures the real number after a
   build.
 - **The browser floor.** Play runs on iOS Safari 15+, Android Chrome 100+
@@ -351,6 +368,12 @@ on guest articles.
 - **Composer.** A send clears the box only once the server accepts it; a
   refusal stays in the box with the reason. The cap is 2,000 characters
   (`CHAT_TEXT_MAX`), matching the server's 413.
+- **An effect's return value is its cleanup.** An expression-bodied
+  effect that returns a string crashed the composer in wave 26 (React
+  called the draft text as the cleanup). Give effects block bodies unless
+  they return a cleanup; `test/w26-composer-cleanup.test.tsx` runs the
+  composer's hooks through `test/hooks-harness.ts` and checks the source
+  for the pattern.
 - **Types drift.** `types.ts` mirrors the server by hand. When core adds a
   view field, add it here as optional so an older server still parses.
 - **Lens parity.** The editor's Run lens mirrors the booth's pinned rooms

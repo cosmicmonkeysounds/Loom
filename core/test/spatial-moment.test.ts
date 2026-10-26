@@ -36,7 +36,7 @@ const fixture = (name: string): HouseMap => {
   return v.house;
 };
 
-const HEART: Prop = { id: "trabolta-heart", room: "b", kind: "heart", pos: [5.5, 0, 1.5], size: [0.6, 1.2, 0.6] };
+const HEART: Prop = { id: "server-heart", room: "b", kind: "heart", pos: [5.5, 0, 1.5], size: [0.6, 1.2, 0.6] };
 const DISK: Prop = { id: "virus-disk", room: "a", kind: "pickup", item: "virus", pos: [3, 0, 2.5], size: [0.1, 0.01, 0.1] };
 
 /** two-rooms (room a [0..4]×[0..3] with the spawn and the exterior door
@@ -99,7 +99,7 @@ function hub(opts: { house?: HouseMap } = {}) {
 describe("parseMomentRequest", () => {
   it("escape needs no prop; heart and pickup name one; anything else is bad", () => {
     expect(parseMomentRequest({ kind: "escape", token: "x" })).toEqual({ kind: "escape" });
-    expect(parseMomentRequest({ kind: "heart", prop: " trabolta-heart " })).toEqual({ kind: "heart", prop: "trabolta-heart" });
+    expect(parseMomentRequest({ kind: "heart", prop: " server-heart " })).toEqual({ kind: "heart", prop: "server-heart" });
     expect(parseMomentRequest({ kind: "pickup", prop: "virus-disk" })).toEqual({ kind: "pickup", prop: "virus-disk" });
     expect(parseMomentRequest({ kind: "heart" })).toBeNull();
     expect(parseMomentRequest({ kind: "pickup", prop: "" })).toBeNull();
@@ -187,10 +187,10 @@ describe("SpatialHub.moment — Trabolta's heart", () => {
     const a = h.begin("g-1");
     expect(a.heartHeard).toBe(false);
     h.hub.pose(a.token, pose(IN_B));
-    const out = h.hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, h.say([{ from: "Trabolta", text: "A copy of you." }]));
-    expect(out).toMatchObject({ kind: "ok", prop: { id: "trabolta-heart" }, lines: [{ from: "Trabolta", text: "A copy of you." }] });
-    expect(h.commits).toEqual([{ guest: "g-1", signal: HEART_SIGNAL, args: { prop: "trabolta-heart" } }]);
-    expect(h.hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, h.say())).toEqual({ kind: "already" });
+    const out = h.hub.moment(a.token, { kind: "heart", prop: "server-heart" }, h.say([{ from: "Trabolta", text: "A copy of you." }]));
+    expect(out).toMatchObject({ kind: "ok", prop: { id: "server-heart" }, lines: [{ from: "Trabolta", text: "A copy of you." }] });
+    expect(h.commits).toEqual([{ guest: "g-1", signal: HEART_SIGNAL, args: { prop: "server-heart" } }]);
+    expect(h.hub.moment(a.token, { kind: "heart", prop: "server-heart" }, h.say())).toEqual({ kind: "already" });
     // A re-scan knows (the Assignment's `heartHeard`).
     expect(h.begin("g-1").heartHeard).toBe(true);
     expect(h.commits).toHaveLength(1);
@@ -200,17 +200,17 @@ describe("SpatialHub.moment — Trabolta's heart", () => {
     const h = hub();
     const a = h.begin("g-1");
     h.hub.pose(a.token, pose(IN_B));
-    expect(h.hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, h.say([]))).toMatchObject({ kind: "ok", lines: [] });
-    expect(h.hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, h.say()).kind).toBe("ok");
+    expect(h.hub.moment(a.token, { kind: "heart", prop: "server-heart" }, h.say([]))).toMatchObject({ kind: "ok", lines: [] });
+    expect(h.hub.moment(a.token, { kind: "heart", prop: "server-heart" }, h.say()).kind).toBe("ok");
     expect(h.commits).toHaveLength(2);
   });
 
   it("in the doorway or another room: `not there`; a wrong or missing prop: `noProp`", () => {
     const h = hub();
     const a = h.begin("g-1");
-    expect(h.hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, h.say())).toEqual({ kind: "notThere" });
+    expect(h.hub.moment(a.token, { kind: "heart", prop: "server-heart" }, h.say())).toEqual({ kind: "notThere" });
     h.hub.pose(a.token, pose(B_DOOR));
-    expect(h.hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, h.say())).toEqual({ kind: "notThere" });
+    expect(h.hub.moment(a.token, { kind: "heart", prop: "server-heart" }, h.say())).toEqual({ kind: "notThere" });
     expect(h.hub.moment(a.token, { kind: "heart", prop: "virus-disk" }, h.say())).toEqual({ kind: "noProp" });
     expect(h.hub.moment(a.token, { kind: "heart", prop: "nowhere" }, h.say())).toEqual({ kind: "noProp" });
     expect(h.commits).toEqual([]);
@@ -220,9 +220,9 @@ describe("SpatialHub.moment — Trabolta's heart", () => {
     const h = hub({ house: momentHouse({ king: true }) });
     const a = h.begin("g-1");
     h.hub.pose(a.token, pose(IN_B));
-    expect(h.hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, h.say())).toEqual({ kind: "sealed" });
+    expect(h.hub.moment(a.token, { kind: "heart", prop: "server-heart" }, h.say())).toEqual({ kind: "sealed" });
     expect(h.hub.setKingHp(0, () => {})?.fallen).toBe(true);
-    expect(h.hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, h.say()).kind).toBe("ok");
+    expect(h.hub.moment(a.token, { kind: "heart", prop: "server-heart" }, h.say()).kind).toBe("ok");
   });
 });
 
@@ -250,7 +250,7 @@ describe("SpatialHub.moment — the pickup", () => {
     const out = h.hub.moment(a.token, { kind: "pickup", prop: "virus-disk" }, h.say());
     expect(out.kind).toBe("far");
     expect((out as { distance: number }).distance).toBeCloseTo(Math.hypot(2, 0.5), 6);
-    expect(h.hub.moment(a.token, { kind: "pickup", prop: "trabolta-heart" }, h.say())).toEqual({ kind: "noProp" });
+    expect(h.hub.moment(a.token, { kind: "pickup", prop: "server-heart" }, h.say())).toEqual({ kind: "noProp" });
     expect(h.commits).toEqual([]);
   });
 
@@ -260,7 +260,7 @@ describe("SpatialHub.moment — the pickup", () => {
     h.hub.pose(a.token, pose(AT_DISK));
     h.hub.moment(a.token, { kind: "pickup", prop: "virus-disk" }, h.say());
     h.hub.pose(a.token, pose(IN_B));
-    h.hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, h.say());
+    h.hub.moment(a.token, { kind: "heart", prop: "server-heart" }, h.say());
     h.hub.reset("restart");
     const again = h.begin("g-1");
     expect(again).toMatchObject({ picked: [], heartHeard: false });
@@ -293,9 +293,9 @@ describe("SpatialHub.moment — the show's map", () => {
     // The heart: sealed until the King falls.
     hub.pose(a.token, pose([4.0, -2.7, 24.5]));
     expect(hub.spotHere("server-room")).toBe(1);
-    expect(hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, said)).toEqual({ kind: "sealed" });
+    expect(hub.moment(a.token, { kind: "heart", prop: "server-heart" }, said)).toEqual({ kind: "sealed" });
     world.set("Night.king_hp", 0);
-    expect(hub.moment(a.token, { kind: "heart", prop: "trabolta-heart" }, said)).toMatchObject({ kind: "ok", lines: [{ text: 'simulation heart reached {"prop":"trabolta-heart"}' }] });
+    expect(hub.moment(a.token, { kind: "heart", prop: "server-heart" }, said)).toMatchObject({ kind: "ok", lines: [{ text: 'simulation heart reached {"prop":"server-heart"}' }] });
     // The disk in the hard drive (top floor).
     hub.pose(a.token, pose([6.3, 2.8, 27.0]));
     expect(hub.moment(a.token, { kind: "pickup", prop: "virus-disk" }, said)).toMatchObject({
@@ -534,14 +534,14 @@ describe("EventRuntime — POST /api/spatial/moment", () => {
     const { rt } = runtime();
     rt.openDoors();
     const { id, a } = await walker(rt, "Bugdom");
-    expect(await moment(rt, a.token, { kind: "heart", prop: "trabolta-heart" })).toEqual({ status: 409, json: { error: "not there" } });
+    expect(await moment(rt, a.token, { kind: "heart", prop: "server-heart" })).toEqual({ status: 409, json: { error: "not there" } });
     await poseAt(rt, a.token, IN_B);
-    expect(await moment(rt, a.token, { kind: "heart", prop: "trabolta-heart" })).toEqual({
+    expect(await moment(rt, a.token, { kind: "heart", prop: "server-heart" })).toEqual({
       status: 200,
       json: { ok: true, kind: "heart", lines: [{ from: "Trabolta", text: "A copy of you, in my heart." }] },
     });
     expect(rt.liveSim!.world.get(`${id}.sim_heart`)).toMatchObject({ value: true });
-    expect(await moment(rt, a.token, { kind: "heart", prop: "trabolta-heart" })).toEqual({ status: 409, json: { error: "already" } });
+    expect(await moment(rt, a.token, { kind: "heart", prop: "server-heart" })).toEqual({ status: 409, json: { error: "already" } });
     const again = (await mod(rt, "/api/mod/spatial/begin", { guest: id, world: "web", device: "Tent tablet", force: true })).json as unknown as Assignment;
     expect(again).toMatchObject({ heartHeard: true, picked: [] });
   });
@@ -551,7 +551,7 @@ describe("EventRuntime — POST /api/spatial/moment", () => {
     rt.openDoors();
     const { id, a } = await walker(rt, "Bugdom");
     await poseAt(rt, a.token, IN_B);
-    expect((await moment(rt, a.token, { kind: "heart", prop: "trabolta-heart" })).status).toBe(200);
+    expect((await moment(rt, a.token, { kind: "heart", prop: "server-heart" })).status).toBe(200);
     const back = make();
     expect(back.restore()).not.toBeNull();
     back.openDoors();
@@ -559,7 +559,7 @@ describe("EventRuntime — POST /api/spatial/moment", () => {
     const b = (await mod(back, "/api/mod/spatial/begin", { guest: id, world: "web", device: "Tent tablet", force: true })).json as unknown as Assignment;
     expect(b.heartHeard).toBe(false);
     await poseAt(back, b.token, IN_B);
-    expect(await moment(back, b.token, { kind: "heart", prop: "trabolta-heart" })).toEqual({ status: 200, json: { ok: true, kind: "heart", lines: [] } });
+    expect(await moment(back, b.token, { kind: "heart", prop: "server-heart" })).toEqual({ status: 200, json: { ok: true, kind: "heart", lines: [] } });
   });
 
   it("sealed while the King stands", async () => {
@@ -567,7 +567,7 @@ describe("EventRuntime — POST /api/spatial/moment", () => {
     rt.openDoors();
     const { a } = await walker(rt, "Bugdom");
     await poseAt(rt, a.token, IN_B);
-    expect(await moment(rt, a.token, { kind: "heart", prop: "trabolta-heart" })).toEqual({ status: 409, json: { error: "sealed" } });
+    expect(await moment(rt, a.token, { kind: "heart", prop: "server-heart" })).toEqual({ status: 409, json: { error: "sealed" } });
   });
 
   it("the pickup: 200 with the codex line (which reaches the phone too), item and prop; far / already refusals", async () => {

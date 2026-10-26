@@ -86,9 +86,10 @@ every change.
   reinstallation. Find Gerald before you hit him again.* (also the line
   for a 409 `already hit`). A story reset or a server restart forgets the
   visits.
-- **The HUD** shows his bar (`n / 15`) and how he is holding up (*at
-  full strength* → *rattled* → *reeling* → *dizzy* → *barely
-  standing*). Another program's hit staggers him on every screen.
+- **The HUD** carries no King bar or stage line (wave 26, R3): the bar
+  over his head is his only display. On the tablet **⚔ HIT** shows while
+  he is near and standing; in VR a notice says to pull the trigger.
+  Another program's hit staggers him on every screen.
 - **At 0 he kneels** for everyone: down on one knee, his collider and
   the door leaf gone, the trail routed through the door
   (`withFallenKings`). A director's restore (👑, or Run → House map
@@ -194,8 +195,8 @@ pnpm dev                                   # builds play + terminal + reinstall;
                                            # → http://localhost:7000/reinstall/  (map: /reinstall/map)
 pnpm dev --reinstall                       # + the game's own Vite with HMR on :5176
 pnpm --filter loom-reinstall test          # web: physics, input, pose pump, HUD, map editor,
-                                           #   speakers, lights, the King's hit (538 tests)
-pnpm --filter @loom/house test             # the map + the §1.2 goldens (329 + 4 skipped)
+                                           #   speakers, lights, the King's hit, the moments (623 tests)
+pnpm --filter @loom/house test             # the map + the §1.2 goldens (378 + 4 skipped)
 pnpm --filter @loom/chess test             # the King's chess (23)
 pnpm test:vr                               # = reinstall/vr/test/run.sh (needs Godot 4.7;
                                            #   730 checks + 27 for tools/quest.sh)

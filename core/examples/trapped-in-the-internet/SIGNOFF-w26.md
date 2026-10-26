@@ -185,7 +185,9 @@ lane adds is listed below.
 Dare's scene), `task-manager.md` (↩), `norton.md` / `mcafee.md` /
 `password-manager.md` / `cra-agent.md` (*TRABOLTA'S ORDER* for a Dare;
 Norton: 🤐), `crew/director.md` (Excel's codex entry from Run; a false
-BINGO), `featured/microsoft-excel.md` (the disk). Each new line says
+BINGO), `featured/microsoft-excel.md` (the disk), `performers/installation-wizard.md`
+(the locked phone, the one-minute path reveal, the new tent card, and what a
+walker may meet: the void, the heart, the disk). Each new line says
 `DRAFT w26`.
 
 ## 3. Screens and games (collected at integration, I3)

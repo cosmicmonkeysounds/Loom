@@ -18,7 +18,7 @@ code and that file disagree, fix one of them in the same change.
 ## Commands
 
 ```bash
-pnpm --filter @loom/house test        # vitest: 370 passed + 4 skipped, 18 files
+pnpm --filter @loom/house test        # vitest: 378 passed + 4 skipped, 18 files
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate geometry/route/king change
 pnpm --filter @loom/house sync        # copy the show's house.json, goldens and voice vectors into reinstall/vr/
@@ -96,11 +96,9 @@ HouseScene.hearts / .pickups / .ground; HouseScene.setPickupTaken(id, taken): bo
 - GDScript ports: `reinstall/vr/house/house_escape.gd` (`HouseEscape`),
   `house_moment.gd` (`HouseMoment`), `HouseLocate.presence_room` /
   `linked_spots` + the presence constants, `HouseRoute.PATH_REVEAL_MS`,
-  `VoiceCodec.hears_terminals` / `hears_players`. `house_builder.gd` builds
-  nothing for a heart or a pickup yet (the vr lane draws them).
-- `docs/loom-reinstall.md` §2.4 still describes the old 12 m / 8 m reaches
-  until the wave 26 docs step rewrites it (the contract gives that file to
-  the docs / status step); the code and this file are the rule meanwhile.
+  `VoiceCodec.hears_terminals` / `hears_players`. `house_builder.gd` draws
+  the heart (shown only while the King has fallen, always on a map with
+  no King) and the floppy disk (hidden once this program took it).
 
 ## Test layout
 

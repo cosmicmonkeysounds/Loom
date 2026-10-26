@@ -117,7 +117,7 @@ describe("GAME_ONLY_BEATS and momentLines (pure)", () => {
   it("the heart's narration stays out of chat too; a pickup's codex line reaches the phone as usual", () => {
     const sim = Sim.fromSources(STORY);
     sim.createPerson("g-1", "Bugdom", "Program");
-    const heart = sim.signal("simulation heart reached", "g-1", { prop: "trabolta-heart" });
+    const heart = sim.signal("simulation heart reached", "g-1", { prop: "server-heart" });
     expect(momentLines(heart, "g-1")).toEqual([{ from: "Trabolta", text: "A copy of you, in my heart." }]);
     expect(composeGuestMessages(sim, heart).filter((m) => m.kind === "line" || m.kind === "narration")).toEqual([]);
     const pickup = sim.signal("simulation pickup taken", "g-1", { item: "virus", prop: "virus-disk" });

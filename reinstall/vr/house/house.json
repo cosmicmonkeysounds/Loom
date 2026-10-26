@@ -1817,7 +1817,7 @@
       "label": "GPU"
     },
     {
-      "id": "trabolta-heart",
+      "id": "server-heart",
       "room": "server-room",
       "kind": "heart",
       "pos": [

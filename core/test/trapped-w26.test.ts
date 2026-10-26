@@ -237,18 +237,18 @@ describe("Trapped in the Internet — wave 26: the game's moments and the trust 
   it("the heart: nothing before he wakes (retryable), the monologue once after, then silence", () => {
     const n = boot();
     for (const c of TO_BINGO) n.press(c);
-    let ev = n.raw("simulation heart reached", "g1", { prop: "trabolta-heart" });
+    let ev = n.raw("simulation heart reached", "g1", { prop: "server-heart" });
     expect(momentLines(ev, "g1")).toEqual([]);
     expect(v(n.sim, "g1.sim_heart")).toBe(false);
     n.press("introduce_trabolta");
-    ev = n.raw("simulation heart reached", "g1", { prop: "trabolta-heart" });
+    ev = n.raw("simulation heart reached", "g1", { prop: "server-heart" });
     const lines = momentLines(ev, "g1");
     expect(lines.length).toBeGreaterThanOrEqual(3);
     expect(lines.every((l) => l.from === "Trabolta")).toBe(true);
     expect(v(n.sim, "g1.sim_heart")).toBe(true);
     // Never a door, a code, a cable, a layer or Sandy.
     expect(lines.map((l) => l.text).join(" ")).not.toMatch(/door|code|combination|patch|cable|layer|stand down|Sandy/iu);
-    expect(momentLines(n.raw("simulation heart reached", "g1", { prop: "trabolta-heart" }), "g1")).toEqual([]);
+    expect(momentLines(n.raw("simulation heart reached", "g1", { prop: "server-heart" }), "g1")).toEqual([]);
     expect(n.chat.all().some((m) => m.channel === "dm:Trabolta" && m.text.includes("copy of my heart"))).toBe(false);
   }, SLOW);
 
@@ -710,5 +710,48 @@ describe("Trapped in the Internet — wave 26: no hints in the show text (G1)", 
     const mind = read("trabolta.mind.md");
     expect(mind).not.toMatch(/confident answers were accepted/u);
     expect(read("trabolta.persona.md")).toContain("judging belongs to Clippy and the Moments of Truth; never explain it.");
+  });
+});
+
+describe("wave 26: map ids are not codex codes", () => {
+  // Clients are served the maps, and a codex code ignores case, dashes and
+  // spaces, so no prop or room id may spell one. The message names no code.
+  const squash = (s: string): string => s.replace(/[\s_-]/gu, "").toUpperCase();
+  it("no id in either show map unlocks a codex entry", () => {
+    const codes = new Set<string>();
+    const scan = (rel: string): void => {
+      for (const ent of readdirSync(new URL(rel, DIR), { withFileTypes: true })) {
+        if (ent.isDirectory()) scan(`${rel}${ent.name}/`);
+        else if (ent.name.endsWith(".loom")) {
+          for (const m of read(`${rel}${ent.name}`).matchAll(/^\s*code:\s*(.+?)\s*$/gmu)) codes.add(squash(m[1]!));
+        }
+      }
+    };
+    scan("");
+    const walkFacts = (o: unknown): void => {
+      if (Array.isArray(o)) o.forEach(walkFacts);
+      else if (o && typeof o === "object") {
+        for (const [k, v] of Object.entries(o)) {
+          if (k === "code" && typeof v === "string") codes.add(squash(v));
+          else walkFacts(v);
+        }
+      }
+    };
+    walkFacts(JSON.parse(read("facts.json")));
+    expect(codes.size).toBeGreaterThan(20);
+    const ids: string[] = [];
+    const walkMap = (o: unknown): void => {
+      if (Array.isArray(o)) o.forEach(walkMap);
+      else if (o && typeof o === "object") {
+        for (const [k, v] of Object.entries(o)) {
+          if (k === "id" && typeof v === "string") ids.push(v);
+          else walkMap(v);
+        }
+      }
+    };
+    for (const map of ["house.json", "house.shed.json"]) walkMap(JSON.parse(read(map)));
+    expect(ids.length).toBeGreaterThan(50);
+    const hits = ids.filter((id) => codes.has(squash(id))).length;
+    expect(hits, "a map id spells a codex code").toBe(0);
   });
 });

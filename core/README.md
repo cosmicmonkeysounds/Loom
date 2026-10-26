@@ -377,8 +377,8 @@ token or the owning author's session.
 | Casino | `POST /api/mod/casino/bet` | rolls in the server; `src/casino.ts` holds the games |
 | Facts judge | (no routes of its own) | `facts.ts`; verdicts go through `/api/mod/signal` |
 | Agents | `GET /api/agent/stream`, `POST /api/agent/{reply,trace,judge}`, `GET /api/agent/facts`, `/api/agent/mind`, `/api/mod/agent/{trace,control}` | `agents.ts`, `agent-recent.ts`, `agent-dossier.ts` |
-| Reinstallation games | `/api/spatial/{house,stream,pose,found,end}`, `/api/spatial/king/hit`, `/api/mod/spatial/*` | `spatial.ts`; the contract is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §2 |
-| Voice + cameras | `POST /api/spatial/voice`, `GET /api/spatial/voice/stream`, `POST /api/mod/spatial/cam`, `GET /api/spatial/{cams,cam}` | `spatial-voice.ts`, `spatial-cams.ts`; memory only, never journaled |
+| Reinstallation games | `/api/spatial/{house,stream,pose,found,moment,end}`, `/api/spatial/king/hit`, `/api/mod/spatial/*` | `spatial.ts`; the contract is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §2; `moment` (wave 26: the void, the heart, a pickup) is [`docs/loom-w26-contract.md`](../docs/loom-w26-contract.md) C6 |
+| Voice + cameras | `POST /api/spatial/voice`, `GET /api/spatial/voice/stream`, `POST /api/mod/spatial/cam`, `GET /api/spatial/{cams,cam}` | `spatial-voice.ts`, `spatial-cams.ts`; memory only, never journaled; the upload answers `watched`, and a game session sees only the feeds of its own room (wave 26) |
 | Screens | `GET /api/screen/state`, `/api/mod/screen/{terminals,voice,identify}`, `/api/mod/tts` | `routes/screen.ts`, `tts.ts` |
 | House sound | `/api/mod/audio{,/project,/test,/stop,/announce,/play,/report}` | `audio.ts` (`audio.json`); wave 25: `play` (one sound / announcement, hosts too) and the router's `report` (acks + health, memory only) |
 | House desk | `GET /api/mod/desk[?after=&wait=]`, `POST /api/mod/desk{,/project,/go,/standby,/stop,/check,/check/reset}` | `desk.ts` (`desk.json`, wave 25); hosts reach the GET, `go`, `standby`, `stop`, `check`; the contract is [`docs/loom-house-desk.md`](../docs/loom-house-desk.md) |
@@ -388,7 +388,8 @@ token or the owning author's session.
 
 Status codes the clients depend on: **409** while the doors are closed
 (`no scenario loaded` / `doors are closed`), **429** past a rate limit,
-**403** for a capability the token lacks, **503** `starting` until the
+**403** for a capability the token lacks (`locked` for a guest write
+from a locked phone, wave 26), **503** `starting` until the
 boot settles (never a 404, so no phone signs itself out).
 
 ### The show's systems
@@ -512,13 +513,35 @@ and its geometry are `@loom/house` (`../house`).
   `POST /api/spatial/king/hit` judges reach off the session's last pose
   (`kingReach` in `@loom/house`), allows one hit per program per visit,
   and journals the new value; `POST /api/mod/spatial/king {hp}` sets it.
+- **Game moments** (wave 26): `POST /api/spatial/moment {kind, prop?}`,
+  `kind` one of `escape` (the void), `heart` (Trabolta's heart, once the
+  King is down) or `pickup` (the virus disk). The hub judges it on the
+  session's last pose with the `@loom/house` rules and commits one story
+  signal `by` the game's device. The 200 carries `lines`, what that
+  commit said to the program (`momentLines`), game-only beats included;
+  an escape also carries the `spawn` the player is put back at. A
+  refusal is 409 (`not out`, `cooldown` with `retryMs`, `sealed`, `not
+  there`, `far`, `already`, doors closed), 404 for an unknown prop, 400
+  for a bad body. The 20 s escape cooldown, who heard the heart and who
+  took each pickup are memory only; the story's own guards keep the
+  heart and the virus once-only across a restart. The contract is
+  [`docs/loom-w26-contract.md`](../docs/loom-w26-contract.md) C6.
+- **Presence** (wave 26): each session keeps a presence room beside the
+  raw `locate` room, with doorway hysteresis (`presenceRoom`). The voice
+  relay, the screen state's `spot.here` and a game session's camera list
+  judge by it; the stream's `room` stays the raw one.
 - **Voice and cameras** (`spatial-voice.ts`, `spatial-cams.ts`): the
   terminals and the games hear each other over raw μ-law POSTs and one
-  SSE stream per device, and terminals upload low-res camera frames the
-  games hang where the terminal is. Both are memory only. The contract
-  is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §2.3–§2.4.
+  SSE stream per device, same room by presence room, and terminals
+  upload low-res camera frames the games hang where the terminal is. The
+  upload answers `watched` (a player is in that spot's room, so the
+  terminal can slow down while nobody is), and `GET
+  /api/spatial/{cams,cam}` with a game session shows only its own room's
+  feeds, never the tent's; a moderator sees every feed. Both are memory
+  only. The contract is
+  [`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §2.3–§2.4.
 - **Routes**: `GET /api/spatial/{house,stream}`, `POST
-  /api/spatial/{pose,found,end}` (session token; bodies capped at 2 KB
+  /api/spatial/{pose,found,moment,end}` (session token; bodies capped at 2 KB
   before the generic parse), `GET /api/mod/spatial/{station,stations,candidates}`,
   `POST /api/mod/spatial/{house,begin,end}` — on `/e/:eventId/…` and the
   bare default event. Tests: `test/spatial.test.ts` (hub + runtime) and
@@ -547,9 +570,11 @@ It also carries the poller's **screen program**:
 both, `tv_*` / `terminals_*` one, `tablet_*` neither) and `program` —
 `slide` (the newest slide or base cue: `screensaver` / `attract` /
 `trabolta_online` / `mirror` clear it; `persist` for `bingo` / `y2k` /
-`trust_chart` / `truth_txt` / `award_*` / `ceremony*`), `overlay`
-(`blackout` / `go_to_living_room` / `alarm`, until the next slide or base
-cue), `blackout` and `flicker` (one-shots). `countdown_*` cues never
+`trust_chart` / `truth_txt` / `ad_hijack` / `award_*` / `ceremony*`),
+`overlay` (`blackout` / `go_to_living_room` / `alarm`, until the next
+slide or base cue), `blackout`, `flicker` and `glitch` (one-shots; wave
+26's `screens_glitch` / `tv_glitch` / `terminals_glitch` never touch the
+slide or the overlay). `countdown_*` cues never
 replace the slide. Each is `{value, cue, seq, at}`, `at` = server epoch ms
 when the fold first saw it — 0 for history replayed at a boot/restart, so
 nothing held re-runs. The terminal applies the holds and precedence
@@ -581,19 +606,29 @@ terminal ignores what it does not know:
 - `moments`: the last 12 house-wide moments (subject-free beats, admin
   cues the story took, `do pick` draws, device signals, reveals, the
   duck's find, house `!!` lines). A moment never names a guest, except a
-  pick's verdict and a find.
+  pick's verdict and a find. The games' moment signals (the void, the
+  heart, a pickup) are never moments.
 - `night`: an allowlist of public `Night.*` values (`SCREEN_NIGHT_VARS`
   in `routes/screen.ts`), including the server-room door and the patch
   bay's override (`door_override`, `patch_override`).
 - `results` (the hunt results on the TV), `chart` (the Trust Chart),
   `king` (the shared King's bar), `room` (with `?room=`: whether that
   LOCATION is open to everyone, plus its `cue room_<x>` value) and
-  `spot` (with `?spot=`: that terminal's announce setting).
+  `spot` (with `?spot=`: that terminal's announce setting, and, wave 26,
+  `here`: how many players' presence rooms are its room, 0 for the tent,
+  absent when the server can't tell).
+- `tvSpeech` (wave 26): what the TV is speaking now, `{seq, chunk, at}`
+  from the newest `sp=` of a `view=tv` poller (`chunk` null once that
+  line is done), or null when no TV reported in the last 6 s. Memory
+  only. No client reads it yet; it is there so the walls can follow his
+  voice later (V1 phase 2).
 - The poll is also the terminal's heartbeat. Its query carries the
   device fields (`audio`, `vis`, `bat`, `fs`, `mic`, `ver`, `ann`, the
   server-room door's `door` / `dlv` / `dft` / `dwn`, and the patch bay's
   `pb` / `pbc` / `pbx` / `pft`), which Run → Terminals reads off
-  `/api/mod/screen/terminals`. Anything malformed is dropped.
+  `/api/mod/screen/terminals`. The TV adds `sp=<seq>:<chunk>` (or
+  `<seq>:d`), kept only from a `view=tv` poller. Anything malformed is
+  dropped.
 
 The patch bay itself has no route: the server-room terminal reads the
 Grand Central M4 over Web Serial and posts `patch_changed {combo}`
@@ -715,7 +750,13 @@ Two planes:
   `pm:` answers 403, an unknown room 404. `/api/prime/codex/share` answers
   403 when an agent refuses the lore (as the guest route does), `shared:
   false` when the recipient already held it. A restricted guest's
-  `/api/guest/join` and `/api/guest/defect` answer 403. Profile pictures (`server/avatars.ts`):
+  `/api/guest/join` and `/api/guest/defect` answer 403. A **locked**
+  guest (wave 26: the story's `lock:` header holds for them, `views.ts`
+  `isLocked`) writes nothing: every `/api/guest/*` POST answers 403
+  `locked` from one check at the top of `handlePost`, DMs included,
+  except the session's own housekeeping in `LOCKED_OPEN` (register,
+  resume, enter / rejoin, badge, homescreen, push, logout) and `act` on a
+  `restricted: allow` button (`test/w26-lock.test.ts`). Profile pictures (`server/avatars.ts`):
   a hand-picked `avatar:` (URL or `File:` name → `Special:FilePath`,
   `|`-separated options) or the best of the article's gallery
   (`WikiClient.pictures` / `rankFiles`: logo / icon / box art before the
@@ -854,6 +895,7 @@ The production setup and its security model are in
 - `@loom/core/lsp` is the editor's whole language service.
 - The server is what the show runs on. The VPS at
   `app.mapsandducks.com` runs release `w18b-1021`; master carries waves
-  18b Stage B through 22, merged and tested but not yet shipped. The
+  18b Stage B through 26, merged and tested but not yet shipped (the
+  root [`CLAUDE.md`](../CLAUDE.md) has the release status). The
   per-wave notes that used to fill this README are archived in
   [`docs/history/core-readme-2026-10.md`](../docs/history/core-readme-2026-10.md).

@@ -22,10 +22,10 @@ and is played only at a wall terminal, never in these games.
 ```bash
 pnpm --filter loom-reinstall dev          # :5176, proxies /api + /e to LOOM_SERVER (default :7000)
 pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
-pnpm --filter loom-reinstall test         # vitest: 538 tests, 41 files
+pnpm --filter loom-reinstall test         # vitest: 623 tests, 46 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 730 checks + quest.sh 27
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1011 checks + quest.sh 34
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
@@ -34,7 +34,8 @@ reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APK
 (`/Applications/Godot.app/Contents/MacOS/Godot` on a Mac). An end-to-end
 run against a live server: `godot --headless --path reinstall/vr --xr-mode
 off -- --server … --code <mod> --guest g-… --autopilot` (exits 0 after a
-find; `--hit-king` hits the King first).
+find; `--hit-king` hits the King first; the autopilot ignores the path
+reveal, and `--trail-delay 0` turns it off for a hand-driven dev run).
 
 ## Where the code is
 
@@ -42,15 +43,16 @@ find; `--hit-king` hits the King first).
 |---|---|
 | `web/src/app.tsx`, `flow.tsx`, `flow-state.ts`, `program.ts`, `wizard.tsx` | the standalone device's screens; the choose / play / send flow (mounted by the tent terminal too); what the wizard says about a program |
 | `web/src/config.ts`, `api.ts`, `spatial.ts`, `kiosk.ts` | provisioning (`?code= name= role= camera= arrows= voice=`), the spatial routes and stream, the 2 s holds |
-| `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts`, `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts`, `fight.ts` (the King), `trail.ts`, `leash.ts`; `cams.ts`, `voice.ts`, `audio.ts` |
+| `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`; wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); `cams.ts`, `voice.ts`, `audio.ts` |
 | `web/src/map/` | the editor: `MapApp.tsx`, `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx`; lights `lights*.ts` + `LightsPanel.tsx` |
-| `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate, route, frames, duck, the King), diffed against `test/golden/` |
-| `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit, the stream), `cam_feeds.gd`, `voice_link.gd` + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` |
-| `vr/game/`, `vr/player/` | the state machine, the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET), the duck, trail, ghosts, HUD; the XR rig and pointer |
+| `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate + presence, route, frames, duck, the King, and wave 26's `house_escape.gd` + `house_moment.gd`), diffed against `test/golden/`; `house_builder.gd` also draws the heart and the disk |
+| `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay` and the build stamp) |
+| `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts, HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
 | `vr/house/house.json`, `vr/test/golden/` | **copies** written by `pnpm house:sync`; never edit them here |
 
-The server half is `core/server/spatial.ts` (`SpatialHub`), `spatial-cams.ts`,
-`spatial-voice.ts` and the `/api/spatial/*` + `/api/mod/spatial/*` routes.
+The server half is `core/server/spatial.ts` (`SpatialHub`, with the
+presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
+`/api/spatial/*` + `/api/mod/spatial/*` routes.
 
 ## Rules that span both games
 
@@ -71,9 +73,26 @@ The server half is `core/server/spatial.ts` (`SpatialHub`), `spatial-cams.ts`,
   `standable` goes back to the spawn (`bodyAfterRemap` on the web,
   `respawn_after_remap` in VR). A session plays only on the map version it
   was dealt.
-- **The tent has no voice link.** The tent spot is `voice: false` and the
-  web game's voice link is off by default; the terminals hold their mic
-  while playing sound, the games raise their gate (D5b).
+- **Terminals link by room** (wave 26, R5). Voice, camera feeds and the
+  world view follow the player's presence room (`presenceRoom`, a 0.75 m
+  doorway hysteresis): a game hears, sees and is heard by only the
+  terminals of the room it is in. The server filters anyway, so the games'
+  picks (`pickFeeds`, `spots_to_poll`) only save requests.
+- **The tent has no voice link.** The tent spot is `voice: false`, the
+  `view: "reinstall"` station is never linked, and the web game's voice
+  link is off by default; the terminals hold their mic while playing
+  sound, the games raise their gate (D5b) and hold it shut while they play
+  a sound or line of their own (`holdFor` / `hold_for`).
+- **The moments** (wave 26, C6). The void, Trabolta's heart and the virus
+  disk each post `POST /api/spatial/moment`, after flushing a pose; answers
+  are read by their `error` string, and any 404 but `no such prop` is an
+  old server. An escape always teleports back to the spawn, whatever the
+  answer. The lines in an answer are game-only: caption and speak them,
+  never name the speaker. Neither game hints at the void, the heart or
+  the disk, and the play help never describes them.
+- **The path reveal** (R2). Both games hide the trail, the compass pip, the
+  distance and warmer / colder for the first `PATH_REVEAL_MS` of each
+  session; the quack is never delayed.
 
 ## Conventions and gotchas
 
@@ -95,7 +114,18 @@ The server half is `core/server/spatial.ts` (`SpatialHub`), `spatial-cams.ts`,
   in-headset setup) over the committed `config/station.json` (which must
   keep `CHANGEME`; a test checks it). Never write `res://`.
 - **Fiction.** The wizard and the HUD never promise the real server-room
-  door; the King's stakes line belongs to the chess terminal.
+  door; the King's stakes line belongs to the chess terminal. The HUD has
+  no King bar (wave 26, R3): the bar over his head is his only display.
+  The heart carries no label, rows or colours that could hint at the
+  patch bay.
+- **Copy.** New wave 26 strings are marked `DRAFT w26` in source and
+  listed in `core/examples/trapped-in-the-internet/SIGNOFF-w26.md`.
+- **Quest audio is unproven on hardware.** Whether Horizon OS has a TTS
+  voice and whether the Quest mic gives real samples is checked on the
+  device (HW-TENT-07): the lobby's TEST MIC, `tools/quest.sh logs`, and a
+  game line spoken aloud, not only captioned.
+  Re-export and sideload after the server ships, then check each lobby's
+  build stamp.
 
 ## Pointers
 
@@ -103,3 +133,11 @@ The server half is `core/server/spatial.ts` (`SpatialHub`), `spatial-cams.ts`,
   (test-pinned by `web/test/help-docs.test.ts` and `lights-help.test.ts`).
 - The player's guide: `docs/help/play/11-reinstallation.md`.
 - Show devices and kiosk flags: `docs/trapped/kiosk.md`.
+- Wave 26: `docs/loom-w26-contract.md` (C5 the house API, C6 the moment
+  route's wire shapes, C12 the shared copy, C14 the deploy order and old
+  clients).
+- The void, the heart and the virus for staff:
+  `docs/help/play/19-house-workings.md` (performer-only; the guests' help
+  never describes them).
+- Setting up a headset: `docs/help/authoring/48-terminal-setup.md` (A
+  headset).

@@ -158,7 +158,11 @@ $env:LOOM_MOD_CODE = '<the mod passcode>'   # this window only
 
 In that window: check it took the TV spot; hold ⚙ for 2 s → device voice →
 **Microsoft David** (or Mark) for Trabolta → TEST VOICE (Edge's "Natural"
-voices are nicer but untested on `view=tv`). Close it. From then on the
+voices are nicer but untested on `view=tv`). The ⚙ **pace** reads
+**0.92×** (wave 26: a TV set up before keeps its saved 1.00×; re-opening
+the link with `-Setup` sets 0.92, or move the slider by hand). Close it,
+and once the kiosk is back up check the TV's build stamp on Run →
+Terminals (an old bundle has none of wave 26). From then on the
 Chrome profile (`%LOCALAPPDATA%\loom-tv`) remembers the setup, no code
 needed:
 
