@@ -49,3 +49,16 @@ describe("terminals link to the Internet by room (wave 26, R5)", () => {
     expect(l.nextChange()).toBeNull();
   });
 });
+
+describe("the preview's fake state carries R5 / T2 (wave 26)", () => {
+  it("here and a live glitch", async () => {
+    const { fakeState } = await import("../src/cutscene/fake.ts");
+    const { screenLayers } = await import("../src/slides.ts");
+    expect(fakeState({ here: 2 }).spot).toEqual({ announce: false, here: 2 });
+    expect(fakeState().spot).toBeNull();
+    expect(linkedNow({ view: "auto", spot: "hall", here: fakeState({ here: 0 }).spot, anyone: true })).toBe(false);
+    const s = fakeState({ now: 5000, glitch: 4000 });
+    expect(screenLayers(s, s.receivedAt, { piloting: false }).glitch).toEqual({ seq: 1, at: 4000, t: 1000 });
+    expect(fakeState().program.glitch).toBeUndefined();
+  });
+});

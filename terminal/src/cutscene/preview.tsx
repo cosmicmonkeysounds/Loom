@@ -2,7 +2,8 @@
 //! Chrome, with no server: `?preview=list` lists every scene (the four act
 //! files and the kit demo) beside a device frame and a scrubber;
 //! `?preview=<sceneId>&t=<ms>` draws one scene at one moment, full page
-//! (`&play=1` runs it from there). Open in dev (`pnpm --filter
+//! (`&play=1` runs it from there); `?preview=glitch&t=<ms>` the screen
+//! layer's glitch takeover (wave 26, T2; a tap replays it). Open in dev (`pnpm --filter
 //! loom-terminal dev`, :5175), or on a provisioned terminal (a stored mod
 //! config): `main.tsx` decides.
 //!
@@ -28,6 +29,8 @@ import { audioUnlocked, unlock } from "../speech/engine.ts";
 import { SceneStage } from "./CutsceneLayer.tsx";
 import { useReducedMotion } from "./clock.ts";
 import { fakeResults, fakeState } from "./fake.ts";
+import { ScreenLayer } from "../ScreenLayer.tsx";
+import { screenLayers } from "../slides.ts";
 import { introduced } from "./pick.ts";
 import { noteWorldShowing } from "./world-bus.ts";
 import { ACTS } from "./registry.ts";
@@ -83,7 +86,31 @@ export function Preview() {
   const q = new URLSearchParams(window.location.search);
   const id = q.get("preview") ?? "list";
   if (id === "list") return <PreviewList />;
+  if (id === "glitch") return <PreviewGlitch q={q} />;
   return <PreviewOne id={id} q={q} />;
+}
+
+// --- the glitch takeover (wave 26, T2) ------------------------------------------------
+
+/**
+ * `?preview=glitch&t=<ms>`: the screen layer's glitch takeover (it is no
+ * scene: `ScreenLayer.tsx`, CSS only) over a stand-in screen, drawn from
+ * `t` ms in; a tap replays it from the start. `reduced=1` is the system's
+ * setting only (the takeover's still frame is a CSS media query).
+ */
+function PreviewGlitch({ q }: { q: URLSearchParams }) {
+  const [run, setRun] = useState(0);
+  const t = Math.max(0, Number(q.get("t") ?? "0") || 0);
+  const layers = useMemo(() => {
+    const state = fakeState({ now: AT + (run === 0 ? t : 0), glitch: AT });
+    return screenLayers(state, state.receivedAt, { piloting: false });
+  }, [run, t]);
+  return (
+    <div className="pv-one" onClick={() => setRun((n) => n + 1)}>
+      <div className="pv-missing">A wall terminal under the glitch — tap to replay.</div>
+      <ScreenLayer key={run} layers={layers} gear={null} />
+    </div>
+  );
 }
 
 // --- one scene, full page ------------------------------------------------------------

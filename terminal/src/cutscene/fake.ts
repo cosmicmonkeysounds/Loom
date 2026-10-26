@@ -19,6 +19,12 @@ export interface FakeOpts {
   reinstalling?: number;
   /** A results block (`fakeResults`), else none. */
   results?: ScreenResults | null;
+  /** (wave 26, R5) This spot's `here` (players in its room in the game): a
+   *  spot block `{announce: false, here}`; absent, no spot block. */
+  here?: number;
+  /** (wave 26, T2) A glitch cued at this server ms (`program.glitch`, seq 1),
+   *  live for this page (`firstNow` before it); absent, none. */
+  glitch?: number;
 }
 
 /** Programs for a fake chart / a fake pick. */
@@ -50,7 +56,9 @@ export function fakeState(o: FakeOpts = {}): ScreenState {
     remaining: o.remaining ?? null,
     chart: o.chart === undefined ? fakeChart() : o.chart,
     target: o.target ?? "tv",
-    program: { slide: null, overlay: null, blackout: null, flicker: null },
+    program: { slide: null, overlay: null, blackout: null, flicker: null, ...(o.glitch !== undefined ? { glitch: { value: "glitch", cue: "screens_glitch", seq: 1, at: o.glitch } } : {}) },
+    ...(o.glitch !== undefined ? { firstNow: o.glitch - 60_000 } : {}),
+    spot: o.here === undefined ? null : { announce: false, here: o.here },
     voice: null,
     room: null,
     announce: null,
