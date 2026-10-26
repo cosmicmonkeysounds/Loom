@@ -94,6 +94,9 @@ describe("the wiring", () => {
     expect(p).toMatch(/<ChunkBoundary fallback=\{\(\) => <Glitch \/>\}>\s*<Suspense fallback=\{<Glitch \/>\}>/u);
     expect(p).toMatch(/takeoverDue\(r\.at, input\.glitch, input\.clock, r\.first, host\.embedded\)/u);
     expect(p).toMatch(/setHolds\(\(h\) => h \+ 1\)/u);
+    // Each timer ends only its own takeover (a second glitch inside 6 s runs its full length).
+    expect(p).toMatch(/setTakeover\(\(t\) => \(t\?\.at === at \? null : t\)\);/u);
+    expect(p).not.toMatch(/setTakeover\(null\)/u);
   });
   it("guests (featured programs too) get the full one; player booths full, host booths light; the director phone none", () => {
     expect(src("guest/app.tsx")).toMatch(/glitch: st\.night\?\.glitch,\s*takeover: "full",/u);

@@ -732,8 +732,10 @@ function useMomentsEngine(input: MomentsInput): Engine {
     const light = input.takeover === "light";
     setTakeover({ at: glitchAt, text: input.glitch?.text ?? null, light });
     setHolds((h) => h + 1);
+    const at = glitchAt;
     window.setTimeout(() => {
-      setTakeover(null);
+      // Only its own takeover: a second glitch inside the first's 6 s keeps its full length.
+      setTakeover((t) => (t?.at === at ? null : t));
       setHolds((h) => Math.max(0, h - 1));
     }, light ? TAKEOVER_LIGHT_MS : TAKEOVER_MS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
