@@ -50,6 +50,9 @@ import {
   settledMark,
   shouldGlitch,
   sortArrivals,
+  takeoverDue,
+  TAKEOVER_LIGHT_MS,
+  TAKEOVER_MS,
   storyNow,
   surfacesOf,
   type Moment,
@@ -87,6 +90,9 @@ import { Balloon, BlueScreen, Glitch, MomentDialog, StickyBanner, Toast } from "
 /** The big window loads on its own (most phones see a handful a night); fetched early, after the first paint. */
 const loadBig = () => import("./big.tsx").then((m) => ({ default: m.BigMoment }));
 const LazyBig = retryableLazy(loadBig);
+/** Wave 26 (T2): the glitch takeover, its own chunk; the 600 ms `<Glitch/>` stands in while it loads or if it won't. */
+const loadTakeover = () => import("./glitch-takeover.tsx").then((m) => ({ default: m.GlitchTakeover }));
+const LazyTakeover = retryableLazy(loadTakeover);
 
 /** If the big window's chunk won't load: the words and one OK, so nothing waits behind a blank screen. */
 function BigFallback({ q, onAck, retry }: { q: Queued; onAck: () => void; retry: () => void }) {
@@ -182,6 +188,12 @@ export interface MomentsInput {
   /** Wave 18b (R12, D18): the story hides the lobby from guests — its lines
    *  that are no moment become Notifications rows. */
   lobbyHidden?: boolean;
+  /** Wave 26 (T2): the story's last glitch (`NightView.glitch`, story ms). */
+  glitch?: { at: number; text: string | null } | null;
+  /** Wave 26 (T2): what a live glitch does here — `full` (a guest, a player
+   *  booth: ~6 s, swallows taps), `light` (a host booth: 2.5 s, look only).
+   *  Absent → nothing (the director phone). Embedded → never. */
+  takeover?: "full" | "light";
 }
 
 /** How long the NOW bar stays flashed open on a new objective (visible time). */
@@ -208,6 +220,8 @@ interface Engine {
   held: boolean;
   missed: number;
   glitch: number | null;
+  /** Wave 26 (T2): the glitch takeover on screen, if any. */
+  takeover: { at: number; text: string | null; light: boolean } | null;
   toast: Alert | null;
   replay: () => void;
   dismiss: (q: Queued) => void;
@@ -703,6 +717,35 @@ function useMomentsEngine(input: MomentsInput): Engine {
     return () => window.clearTimeout(t);
   }, [input.alertLevel]);
 
+  // Wave 26 (T2): the story's glitch takes the phone over, once, live
+  // (`takeoverDue`), and holds the queue for its length.
+  const [takeover, setTakeover] = useState<Engine["takeover"]>(null);
+  const glitchSeen = useRef<{ first: boolean; at: number | null }>({ first: true, at: null });
+  const glitchAt = input.glitch?.at ?? null;
+  useEffect(() => {
+    if (input.clock === undefined) return;
+    const r = glitchSeen.current;
+    const due = input.takeover !== undefined && takeoverDue(r.at, input.glitch, input.clock, r.first, host.embedded);
+    r.first = false;
+    if (glitchAt !== null) r.at = glitchAt;
+    if (!due || glitchAt === null) return;
+    const light = input.takeover === "light";
+    setTakeover({ at: glitchAt, text: input.glitch?.text ?? null, light });
+    setHolds((h) => h + 1);
+    const at = glitchAt;
+    window.setTimeout(() => {
+      // Only its own takeover: a second glitch inside the first's 6 s keeps its full length.
+      setTakeover((t) => (t?.at === at ? null : t));
+      setHolds((h) => Math.max(0, h - 1));
+    }, light ? TAKEOVER_LIGHT_MS : TAKEOVER_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [glitchAt, input.clock === undefined]);
+  useEffect(() => {
+    if (input.takeover === undefined || host.embedded) return;
+    const t = window.setTimeout(() => void loadTakeover().catch(() => {}), 3_000);
+    return () => window.clearTimeout(t);
+  }, [input.takeover, host.embedded]);
+
   // A guest fetches the big window's chunk early (after the first paint).
   useEffect(() => {
     if (role !== "guest") return;
@@ -803,6 +846,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
     held,
     missed: role === "guest" ? notif.unread : missedCount(state, held, tick),
     glitch,
+    takeover,
     toast,
     replay,
     dismiss,
@@ -905,7 +949,20 @@ export function MomentsLayer({ foldSticky = false }: { foldSticky?: boolean } = 
       )}
       {big !== null && <BigSlot e={e} q={big} index={s.bigIndex} total={s.bigTotal} inline={inline} {...(inline && card !== undefined && msg !== undefined ? { card: { card, seq: msg.seq, room: msg.title } } : {})} />}
       {e.glitch !== null && <Glitch key={e.glitch} />}
+      {e.takeover !== null && <TakeoverSlot key={e.takeover.at} t={e.takeover} sound={e.input.sound} />}
     </>
+  );
+}
+
+/** Wave 26 (T2): the takeover, lazily; the short glitch while it loads or if it won't. */
+function TakeoverSlot({ t, sound }: { t: NonNullable<Engine["takeover"]>; sound: boolean }) {
+  const C = LazyTakeover.current();
+  return (
+    <ChunkBoundary fallback={() => <Glitch />}>
+      <Suspense fallback={<Glitch />}>
+        <C text={t.text} light={t.light} sound={sound} />
+      </Suspense>
+    </ChunkBoundary>
   );
 }
 

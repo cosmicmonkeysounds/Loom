@@ -47,6 +47,9 @@ describe("the guest's first load", () => {
     expect(src("sides/lazy.tsx")).toContain('import("./doors.tsx")');
     expect(src("guest/notifications-lazy.tsx")).toContain('import("../moments/notifications.tsx")');
     expect(src("guest/me-lazy.tsx")).toContain('import("./me.tsx")');
+    // Wave 26: the 📷 Scan sheet (its classifiers and the camera) is its own chunk.
+    expect(src("guest-scan-sheet-lazy.tsx")).toContain('import("./guest-scan-sheet.tsx")');
+    for (const f of ["guest/app.tsx", "guest-scan.tsx", "app-role.ts", "ui.tsx"]) expect(src(f), f).not.toMatch(/^import (?!type )[^;]*from "[./]*guest-scan-sheet\.tsx"/mu);
     // the widgets' registration is eager, its render lazy
     expect(src("sides/widgets.tsx")).not.toMatch(/^import (?!type )[^;]*from "\.\/(doors|invite|index)\.tsx"/mu);
   });

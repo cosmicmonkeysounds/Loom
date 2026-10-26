@@ -103,6 +103,33 @@ windows), the Desk, the director phone and Help are lazy chunks.
 - **Sides** (`sides/`, one lazy chunk): the doors widget, the Sides or
   Factions sheet, recruit by pass, founding a crew or faction. Faction mode
   (`founding:` in the story) shows your own count only.
+- **📷 Scan** (`guest-scan-sheet.tsx`, a lazy chunk via
+  `guest-scan-sheet-lazy.tsx`, prefetched after the first paint): the sheet,
+  its classifiers (`guestScan`, `typedScan`) and the camera. The
+  session-less landing (`LinkLanding`, `landingLink`) stays in
+  `guest-scan.tsx`.
+- **The locked phone** (wave 26, R1; `guest/lock.tsx`, a lazy chunk via
+  `lock-lazy.tsx`). `GuestSession.locked` is `GuestView.locked` or a write
+  that came back `403 locked` (`lockedRefusal`, until the next snapshot; it
+  never toasts). The guest app then renders only the lock screen: the title
+  bar, the DRAFT ⛔ QUARANTINED card with 🎟 Show my pass and the view's
+  live (`restricted: allow`) buttons, the NOW objective as a card with no
+  buttons, a read-only copy of `dm:Installation Wizard` (`LOCK_THREAD`, else
+  the DM that spoke last; lines only), and a taskbar with only Pass. The
+  moments layer, the full pass and a `!!` takeover still show over it.
+  Only the screen's body (`LockScreen`) is lazy: the frame around it
+  (`LockFrame` in `lock-lazy.tsx`: the title bar, `MomentsAndPins`, the
+  Pass-only taskbar) is eager, so a chunk still loading or failing never
+  costs the pass or the moments. A `?unlock=` / `?checkin=` link opened
+  while locked raises no toast either.
+- **The room's footer** (wave 26, P1; `stream/channel-view.tsx`
+  `footLayout`): one answer surface at a time. A docked story menu opens
+  and the composer folds to a 48 px `⌨ Message …` bar (showing a draft,
+  which survives: the room holds it per room); typing folds the menu; an
+  open card folds the menu. While a menu is docked a new card waits folded
+  (`CardTray` `crowded`; a Mission jump still opens it). The thread keeps
+  96 px, the footer ≤ 62 % (`.stream-room > .stream-foot`), the card body
+  ≤ 34 dvh, the options ≤ 36 dvh, every footer button 48 px.
 
 ### Booth
 
@@ -119,6 +146,18 @@ windows), the Desk, the director phone and Help are lazy chunks.
 - A caller booth (an admin cue's `by:` names its character, never a
   player) gets the 🎤 cue bar (`booth/cue-bar.tsx`, `POST
   /api/prime/cue`).
+- **PLAYER SELECT** (wave 26, B3–B5): SAME pre-selects the most recent
+  earlier pick (`sameFor`), so ④ 🤐 offers the winner after a skipped ③; on
+  a destructive step an earlier pick is labelled but still selectable
+  (`taggedFor`, `GuestTiles` `tagged`; the two-tap arm is the guard). An
+  ended objective offers only Close (`ended`), and the booth closes an open
+  PLAYER SELECT `PICK_CLOSE_MS` after its objective leaves the view
+  (`pickEnded`). Clippy's gets `player`.
+- **The windowed bar** (wave 26, P2): a player's or a host's booth frame is
+  `booth-frame windowed` (`boothFrameClass`): the guest's taskbar rules
+  (`--taskbar-h: 56px`, windows 48–120 px, Scan a normal primary, the tray
+  two items under 430 px). `BoothTray windowed` renders in priority order
+  (`boothTrayOrder`: 🔔 → 🚨 → held → countdown → ⭐ / act → clock).
 
 ### Host windows (wave 25; the contract is `docs/loom-house-desk.md` §6.2)
 
@@ -241,7 +280,15 @@ entry points (and reads `play/07-performers.md`).
 - **Moments.** Anything the story wants noticed renders on one rung of the
   ladder (balloon → sticky → dialog → bsod, plus `big`), from the story's
   `alertLevel`. A minor moment sits a rung lower; a booth never goes above
-  sticky. The model is `moments/model.ts`.
+  sticky. The model is `moments/model.ts`. Wave 26: a big with
+  `ChatMessage.noAck` has no OK when one of its story exits resolved
+  (`big-model.ts` `bigAck`, `Exit.story`); the story's glitch
+  (`NightView.glitch`) takes the phone over once, live (`takeoverDue`:
+  never embedded, never on a first view, a new `at`, ≤ 15 s on the story
+  clock) through the lazy `moments/glitch-takeover.tsx` (the 600 ms
+  `Glitch` is its fallback), holding the queue: `MomentsInput.takeover`
+  `full` (guests, player booths: ~6 s, swallows taps) or `light` (host
+  booths: 2.5 s, look only); the director phone has none.
 - **Lazy chunks** go through `lazy-chunk.tsx` (`retryImport` once, then a
   `ChunkBoundary` with Reload), so a page left open across a deploy never
   goes white.

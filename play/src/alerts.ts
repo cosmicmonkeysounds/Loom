@@ -122,7 +122,7 @@ function audioCtor(): AudioCtor | null {
 
 /** Create (once) and resume the shared context. Inside a gesture this is
  *  what unlocks audio on iOS; outside one it just resumes what was unlocked. */
-function ensureAudio(): AudioContext | null {
+export function ensureAudio(): AudioContext | null {
   try {
     if (shared === null) {
       const Ctx = audioCtor();

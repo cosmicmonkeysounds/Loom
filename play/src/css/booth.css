@@ -270,6 +270,19 @@
 /* With windows on the bar the tray gives way (it clips, never pushes the
    page sideways), as on the guest's frame. */
 .booth-frame .taskbar .taskbar-btn.stacked ~ .taskbar-tray { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+/* Wave 26 (P2): a windowed booth (a player's Mission · Chats · Scan, a
+   host's Show · Chats · Desk · Scan) is the guest's bar: 56 px tall (the
+   overlays that sit on --taskbar-h land above it), equal windows from 48
+   to 120 px, Scan a normal-width primary, the tray two items under 430 px
+   in priority order (booth/tray.tsx boothTrayOrder). Plain selector
+   lists, no :is() (the old-device rule below). */
+.booth-frame.windowed { --taskbar-h: 56px; }
+.booth-frame.windowed .taskbar .taskbar-btn.stacked:not(.primary),
+.booth-frame.windowed .taskbar .taskbar-btn.primary.stacked { flex: 1 1 0; min-width: 48px; max-width: 120px; gap: 1px; }
+.booth-frame.windowed .taskbar .taskbar-btn.stacked ~ .taskbar-tray { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.booth-frame.windowed .taskbar .taskbar-tray > * { flex: 0 0 auto; }
+@media (max-width: 599px) { .booth-frame.windowed .taskbar .taskbar-btn.primary.stacked { min-width: 48px; } }
+@media (max-width: 429px) { .booth-frame.windowed .taskbar .taskbar-tray > :nth-child(n+3) { display: none; } }
 .booth-dock { flex: 0 0 auto; }
 .booth-head-btn { flex: 0 0 auto; font-weight: 700; }
 .booth-start-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -459,6 +472,8 @@
 .tile-pic .pavatar { position: absolute; top: 0; left: 0; width: 100%; height: 100%; font-size: 24px; }
 .tile-name { margin-top: 4px; font-weight: 700; line-height: 1.2; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .tile-grey { font-size: 12px; }
+/* Wave 26 (B4): an earlier pick on a destructive step: labelled, still tappable. */
+.tile.tagged .tile-grey { font-style: italic; }
 
 /* Rows (§4.10) and the door queue (§4.4). */
 .rows { display: flex; flex-direction: column; }

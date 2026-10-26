@@ -45,6 +45,14 @@ export function kickerOf(m: Pick<Moment, "text" | "kind"> & Partial<Pick<Moment,
   return { kicker: "! IMPORTANT", bar: { during: "Please wait…", done: "Ready." }, ack: "OK" };
 }
 
+/** Wave 26 (R1): the acknowledge label a big wears once its exits are
+ *  known. `with ack: none` drops it — but only when one of the story's own
+ *  exits resolved for this viewer (`Exit.story`), so a guest is never
+ *  trapped and the NM-F1 "What do I do?" fallback keeps its OK. */
+export function bigAck(ack: string | null, m: Pick<Moment, "noAck">, exits: ReadonlyArray<{ story?: true }>): string | null {
+  return m.noAck === true && exits.slice(0, 2).some((x) => x.story === true) ? null : ack;
+}
+
 /** The cheer's label as it counts down: "Cheer! (6)". */
 export function cheerLabel(leftMs: number): string {
   return `Cheer! (${Math.max(0, Math.ceil(leftMs / 1000))})`;

@@ -1,10 +1,12 @@
 // Wave 18 (booth lane): PLAYER SELECT (BOOTH-SPEC §4.7), the Rows window
 // (§4.10), the door queue window (§4.4), the 🔔 Waiting window (§4.13) and
 // The caller's 🎤 ON MIC bar (§4.9; generic since wave 21).
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { PlayerSelect, sameLabel, stepHelper } from "../src/booth/pick/select.tsx";
+import { PlayerSelect, sameFor, sameLabel, stepHelper, taggedFor } from "../src/booth/pick/select.tsx";
+import { PICK_OVER, pickEnded } from "../src/booth/app.tsx";
 import { RowsWindow, THEYRE_HERE, isSummons, rowLabel, rowsPlace } from "../src/booth/pick/rows.tsx";
 import { GuestTiles } from "../src/booth/pick/tiles.tsx";
 import { DoorWindow } from "../src/booth/door.tsx";
@@ -64,6 +66,70 @@ describe("PLAYER SELECT (§4.7)", () => {
     expect(html).toMatch(/tile chosen[^"]*" aria-selected="true"|aria-selected="true"[^>]*tile chosen/u);
     expect(html).toContain("(bingo winner)");
     expect(html).toMatch(/tile  greyed" disabled|disabled=""[^>]*greyed|greyed"[^>]*disabled/u);
+  });
+  it("tiles (wave 26 B4): a tagged one names why and can still be picked", () => {
+    const html = renderToStaticMarkup(<GuestTiles list={guests} everyone={guests} chosen={null} tagged={new Map([["Encarta", "(bingo winner)"]])} onPick={noop} />);
+    expect(html).toContain("(bingo winner)");
+    expect(html).toMatch(/class="tile  tagged"/u);
+    expect(html).not.toContain("disabled");
+  });
+});
+
+describe("PLAYER SELECT, wave 26 (B3–B5)", () => {
+  const nobody: BoothObjective = {
+    ...celebrate,
+    buttons: [...celebrate.buttons, "named_nobody"],
+    checklist: [...celebrate.checklist, { label: "🤐 Or: they name nobody", done: false }],
+  };
+  const ints4 = [...ints, I("named_nobody", "🤐 Names nobody at the centre square")];
+  const steps4 = wizardSteps(nobody, ints4);
+  it("B3: four moves ① 🎱 ② 🎀 ③ 🎯 ④ 🤐; 🤐 is harmless and follows on", () => {
+    expect(steps4.map((x) => x.glyph)).toEqual(["🎱", "🎀", "🎯", "🤐"]);
+    expect(steps4[3]).toMatchObject({ id: "named_nobody", destructive: false, preselect: true });
+    const html = renderToStaticMarkup(<PlayerSelect objective={nobody} steps={steps4} guests={guests} press={press} onClose={noop} />);
+    expect(html).toContain("④ 🤐");
+  });
+  it("B3: SAME reads the most recent earlier pick, past a skipped step", () => {
+    expect(sameFor(steps4, ["Winamp", "Winamp", null, null], 3)).toBe("Winamp");
+    expect(sameFor(steps4, ["Winamp", null, null, null], 1)).toBe("Winamp");
+    expect(sameFor(steps4, ["Winamp", "ICQ", null, null], 3)).toBe("ICQ");
+    expect(sameFor(steps4, [null, null, null, null], 3)).toBeNull();
+    // A destructive step never pre-selects; neither does the first.
+    expect(sameFor(steps4, ["Winamp", "Winamp", null, null], 2)).toBeNull();
+    expect(sameFor(steps4, [null, null, null, null], 0)).toBeNull();
+  });
+  it("B4: on 🎯 the winner is labelled, not locked; a harmless step labels nobody", () => {
+    expect([...taggedFor(steps4, ["Winamp", "Winamp", null, null], 2)]).toEqual([["Winamp", "(bingo winner)"]]);
+    expect(taggedFor(steps4, ["Winamp", "Winamp", null, null], 1).size).toBe(0);
+    expect(taggedFor(steps4, ["Winamp", "Winamp", null, null], 3).size).toBe(0);
+  });
+  it("B5: an ended objective offers no + Another round, only Close", () => {
+    const live = renderToStaticMarkup(<PlayerSelect objective={nobody} steps={steps4} guests={guests} press={press} onClose={noop} />);
+    expect(live).toContain("Skip");
+    const html = renderToStaticMarkup(<PlayerSelect objective={nobody} steps={steps4} guests={guests} press={press} ended onClose={noop} onLater={noop} />);
+    expect(html).not.toContain("Another round");
+    expect(html).not.toContain("Skip");
+    expect(html).toContain("Close");
+    expect(html).toContain("That&#x27;s over now.");
+    // The tiles stay visible (what was done) but can't be pressed.
+    expect(html).toMatch(/role="option"[^>]*disabled=""/u);
+    // Its copy is marked for the sign-off.
+    expect(readFileSync(new URL("../src/booth/pick/select.tsx", import.meta.url), "utf8")).toContain('{/* DRAFT w26 (B5): UI copy */}That\'s over now.');
+  });
+  it("B5: an ended round's SAME button is disabled, not a silent no-op", () => {
+    expect(readFileSync(new URL("../src/booth/pick/select.tsx", import.meta.url), "utf8")).toMatch(/bsel-same-go" disabled=\{busy \|\| ended\}/u);
+  });
+  it("B5: the booth closes a PLAYER SELECT whose objective left a loaded view", () => {
+    const layer = { kind: "pick" as const, objective: nobody.id, opened: nobody };
+    expect(pickEnded(layer, [{ id: nobody.id }], ints4)).toBe(false);
+    expect(pickEnded(layer, [], ints4)).toBe(true);
+    // No view yet (a reconnect): never.
+    expect(pickEnded(layer, undefined, ints4)).toBe(false);
+    // A Rows window says "Summons over." itself and stays.
+    const judge: BoothObjective = { id: "judge_the_cup", title: "Truth Pong", brief: "", act: null, checklist: [], buttons: ["made", "missed"], pick: ["Encarta"] };
+    expect(pickEnded({ kind: "pick", objective: judge.id, opened: judge }, [], ints4)).toBe(false);
+    expect(pickEnded({ kind: "door" }, [], ints4)).toBe(false);
+    expect(PICK_OVER).toBe("That's over now: the list closed with its objective.");
   });
 });
 

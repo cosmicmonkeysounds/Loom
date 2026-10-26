@@ -6,7 +6,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { BigMoment } from "../src/moments/big.tsx";
-import { BIG_DEAD_MS, bigParts, cheerLabel, kickerOf } from "../src/moments/big-model.ts";
+import { BIG_DEAD_MS, bigAck, bigParts, cheerLabel, kickerOf } from "../src/moments/big-model.ts";
+import { exitsOf, type ExitContext } from "../src/moments/exits.ts";
+import { momentOf } from "../src/moments/model.ts";
+import type { ChatMessage } from "../src/types.ts";
 import { cardTitleRepeats } from "../src/moments/big-model.ts";
 import { registerSidesWidgets } from "../src/sides/widgets.tsx";
 import type { Exit } from "../src/moments/exits.ts";
@@ -132,5 +135,43 @@ describe("plain theme", () => {
     const css = readBundledCss();
     expect(css).toMatch(/:root:not\(\[data-theme="aol97"\]\) \.moments-big-banner \{ height: 96px; \}/u);
     expect(css).toMatch(/:root:not\(\[data-theme="aol97"\]\) \.moments-big-window \{ box-shadow: 0 0 0 1px var\(--line\)/u);
+  });
+});
+
+describe("wave 26 (R1): `with ack: none` → no OK", () => {
+  const story = (e: Exit): Exit => ({ ...e, story: true });
+  const BATH: Exit = { label: "🚻 Bathroom Mode", icon: null, nav: { to: "act", id: "go to the bathroom" } };
+  const captured = moment({ text: "🌐 Sent to the Internet. Find Gerald.", noAck: true });
+  it("the capture big shows its two story exits and no acknowledge button", () => {
+    const html = renderToStaticMarkup(createElement(BigMoment, { q: q(captured), index: 1, total: 1, exits: [story(PASS), story(BATH)], onExit: noop, onAck: noop }));
+    expect(html).toContain("🎟 Show my pass");
+    expect(html).toContain("🚻 Bathroom Mode");
+    expect(html).not.toContain("moments-big-ack");
+    expect(html).not.toMatch(/>OK</u);
+  });
+  it("keeps the OK when no story exit resolved (the NM-F1 fallback), or without noAck", () => {
+    const WHAT: Exit = { label: "What do I do?", icon: "start", nav: { to: "mission" } };
+    const fallback = renderToStaticMarkup(createElement(BigMoment, { q: q(captured), index: 1, total: 1, exits: [WHAT], onExit: noop, onAck: noop }));
+    expect(fallback).toContain("moments-big-ack");
+    const none = renderToStaticMarkup(createElement(BigMoment, { q: q(captured), index: 1, total: 1, exits: [], onExit: noop, onAck: noop }));
+    expect(none).toContain("moments-big-ack");
+    const plain = renderToStaticMarkup(createElement(BigMoment, { q: q(moment({ text: "🌐 Sent to the Internet." })), index: 1, total: 1, exits: [story(PASS)], onExit: noop, onAck: noop }));
+    expect(plain).toContain("moments-big-ack");
+  });
+  it("bigAck: only a story exit among the two shown counts", () => {
+    expect(bigAck("OK", { noAck: true }, [{ story: true }])).toBeNull();
+    expect(bigAck("OK", { noAck: true }, [{}, {}])).toBe("OK");
+    expect(bigAck("OK", { noAck: true }, [{}, {}, { story: true }])).toBe("OK");
+    expect(bigAck("OK", {}, [{ story: true }])).toBe("OK");
+  });
+  it("momentOf carries noAck on a big only; exitsOf marks the story's own buttons", () => {
+    const msg = { seq: 4, from: "Installation Wizard", text: "!!🌐 Sent to the Internet.", channel: "dm:Installation Wizard", ts: 10, kind: "line", moment: "big", noAck: true, go: [{ kind: "pass", label: "🎟 Show my pass" }] } as unknown as ChatMessage;
+    expect(momentOf(msg, { role: "guest", me: "g1" }, null)?.noAck).toBe(true);
+    const major = { ...msg, moment: "major" } as unknown as ChatMessage;
+    expect(momentOf(major, { role: "guest", me: "g1" }, null)?.noAck).toBeUndefined();
+    const ctx: ExitContext = { listed: new Set(["dm:Installation Wizard"]), titles: new Map(), open: null, window: "chats", cards: [], dms: [], actions: new Set(), sides: false };
+    const ex = exitsOf(momentOf(msg, { role: "guest", me: "g1" }, null)!, ctx, 2, { big: true });
+    expect(ex[0]).toMatchObject({ nav: { to: "pass" }, story: true });
+    expect(ex.slice(1).every((x) => x.story === undefined)).toBe(true);
   });
 });

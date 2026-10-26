@@ -2,7 +2,8 @@
 //! the who's-here strip, the room view and the thread panel.
 
 import { Icon } from "../chrome/icons.tsx";
-import { Fragment, Suspense, type ComponentType, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { Fragment, Suspense, type ComponentType, useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { usePlayHost, type Crawl } from "../host.ts";
 import { isTextEntry } from "../chrome/keyboard.ts";
 import { PinnedRail } from "../moments/pins-rail.tsx";
@@ -101,7 +102,7 @@ export function useDockReady(roomId: string, messages: readonly ChatMessage[], w
  * handler steps aside while a text field is focused so typing never triggers a
  * choice.
  */
-export function DecisionTray({ decision }: { decision: Decision }) {
+export function DecisionTray({ decision, folded = false, onUnfold }: { decision: Decision; folded?: boolean; onUnfold?: () => void }) {
   const host = usePlayHost();
   const [cursor, setCursor] = useState(0);
   const n = decision.options.length;
@@ -110,6 +111,7 @@ export function DecisionTray({ decision }: { decision: Decision }) {
   const pick = (i: number) => decision.options[i]?.onClick();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (folded) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON") return; // don't hijack the composer / a widget
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
@@ -134,7 +136,14 @@ export function DecisionTray({ decision }: { decision: Decision }) {
     const target = host.keyTarget();
     target?.addEventListener("keydown", onKey as EventListener);
     return () => target?.removeEventListener("keydown", onKey as EventListener);
-  }, [cursor, n, decision, host]);
+  }, [cursor, n, decision, host, folded]);
+  // Wave 26 (P1): folded, the menu is one loud 48 px bar; a tap opens it.
+  if (folded)
+    return (
+      <button type="button" className="tray dialogue dlg-folded" aria-expanded={false} onClick={onUnfold}>
+        {/* DRAFT w26 (P1): UI copy */}▴ Your move: {decision.title}
+      </button>
+    );
   return (
     <div className="tray dialogue" role="menu" aria-label={decision.title}>
       <div className="tray-title">{decision.title}</div>
@@ -184,6 +193,24 @@ export function PresenceStrip({ people, meId, onOpen }: { people: Channel["peopl
       </span>
     </button>
   );
+}
+
+/** Wave 26 (P1): one way to answer at a time. A docked story menu opens and
+ *  the composer folds to its button; typing folds the menu instead; an open
+ *  card folds the menu (and the composer to its button). */
+export function footLayout(o: { decision: boolean; trayOpen: boolean; typing: boolean; composer: boolean }): { decision: "open" | "folded" | null; composer: "open" | "button" | null } {
+  return {
+    decision: !o.decision ? null : o.typing || o.trayOpen ? "folded" : "open",
+    composer: !o.composer ? null : !o.decision || o.typing ? "open" : "button",
+  };
+}
+
+/** Wave 26 (P1): a line that went through is spent. The composer clears its
+ *  own box once the send resolves, but a menu docking mid-send folds (and
+ *  unmounts) it first: the room's draft must not keep the sent line, or the
+ *  folded bar would offer it again. Words typed since are kept. */
+export function spendDraft(d: { text: string }, sent: string): void {
+  if (d.text.trim() === sent.trim()) d.text = "";
 }
 
 /** The parts a room's footer may hold, top to bottom. */
@@ -311,6 +338,16 @@ export function ChannelView({
   }, [channel.messages, channel.kind, widgets]);
   const mode = useMemo<StreamMode>(() => ({ tray: widgets !== undefined, settlePass: true, openTray: setTrayFocus }), [widgets]);
   const dockReady = useDockReady(channel.id, channel.messages, channel.decision !== null);
+  // Wave 26 (P1): which answer surface is open (`footLayout`), and the
+  // composer's draft, kept while it folds to its button (per room).
+  const [typing, setTyping] = useState(false);
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [shut, setShut] = useState(0);
+  const draft = useRef({ room: channel.id, text: "" });
+  if (draft.current.room !== channel.id) draft.current = { room: channel.id, text: "" };
+  const onText = useCallback((text: string) => (draft.current.text = text), []);
+  const dk = channel.decision;
+  useEffect(() => setTyping(false), [channel.id, dk?.title, dk?.options.length]);
   const isRoom = channel.kind !== "dm" && channel.kind !== "guest" && channel.kind !== "codex" && channel.kind !== "quests" && channel.kind !== "wallet";
   const emptyCopy =
     channel.kind === "codex"
@@ -329,25 +366,48 @@ export function ChannelView({
   // The footer's parts, each under its own key (`streamFoot`): the tray and
   // the composer once shared the room's id as a key, and React then left a
   // dead copy of an answered card on screen.
+  const docked = dk != null && dockReady;
+  // Focus already in the box (a menu docking mid-line) counts as typing: the box never folds under the thumb.
+  const lay = footLayout({ decision: docked, trayOpen: trayOpen && tray.length > 0, typing: typing || composing, composer: onSend !== undefined && canPost });
+  const hint = channel.kind === "codex" ? "Enter a code…" : `Message ${channel.title}…`;
   const foot = streamFoot(channel.id, {
-    tray: tray.length > 0 && widgets ? <CardTray cards={tray} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} composing={composing} /> : null,
-    decision: channel.decision && dockReady ? <DecisionTray decision={channel.decision} /> : null,
+    tray: tray.length > 0 && widgets ? <CardTray cards={tray} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} composing={composing} crowded={dk != null} shut={shut} onOpenChange={setTrayOpen} /> : null,
+    decision: docked && dk != null ? (
+      <DecisionTray
+        decision={dk}
+        folded={lay.decision === "folded"}
+        onUnfold={() => {
+          setTyping(false);
+          setShut((n) => n + 1);
+        }}
+      />
+    ) : null,
     footer: footer ?? null,
     // Keyed by room: a draft (or a refused line coming back) stays in its
-    // own room, never follows the guest into the next one.
+    // own room, never follows the guest into the next one. Folded (a menu
+    // docked), the composer is one 48 px button; its tap opens the box with
+    // the keyboard, the draft still in it.
     composer:
-      onSend && canPost ? (
+      lay.composer === "button" ? (
+        <div className="composer composer-folded">
+          <button type="button" className="choice composer-open" onClick={() => flushSync(() => setTyping(true))}>
+            {/* DRAFT w26 (P1): UI copy */}⌨ {draft.current.text.trim() !== "" ? draft.current.text : hint}
+          </button>
+        </div>
+      ) : lay.composer === "open" && onSend ? (
         <Composer
-          onSend={(t) => onSend(t)}
-          placeholder={channel.kind === "codex" ? "Enter a code…" : `Message ${channel.title}…`}
-          sendLabel={channel.kind === "codex" ? "Unlock" : undefined}
-          extra={composerExtra}
-        />
+          onSend={(t) => {
+            const d = draft.current;
+            const r = onSend(t);
+            void Promise.resolve(r).then(() => spendDraft(d, t), () => {});
+            return r;
+          }}
+          placeholder={hint} sendLabel={channel.kind === "codex" ? "Unlock" : undefined} extra={composerExtra} initial={draft.current.text} onText={onText} autoFocus={typing} />
       ) : null,
     cantPost: onSend && !canPost ? <div className="cant-post">{cantPostNote(channel)}</div> : null,
   });
   return (
-    <div className="screen stage">
+    <div className="screen stage stream-room">
       <header className="thread-head stream-room-head">
         {!wide && (
           <button type="button" className="back stream-back" onClick={onBack} aria-label="Back">
@@ -402,7 +462,11 @@ export function ChannelView({
             if (inTrayField(e.target)) setCardTyping(true);
           }}
           onBlur={(e) => {
-            if (isComposer(e.target)) setComposing(false);
+            if (isComposer(e.target)) {
+              setComposing(false);
+              // An empty box let go of: the menu comes back.
+              if ((e.target as HTMLTextAreaElement).value.trim() === "") setTyping(false);
+            }
             // A tap on File it / Say it moves focus off the box first (iOS
             // focuses no button): hold until that tap has landed, so the
             // composer never comes back under the finger (the keyboard rule).

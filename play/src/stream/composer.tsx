@@ -1,6 +1,6 @@
 //! The composer (moved out of `chat.tsx` in wave 13) and why it is gone.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Channel } from "../types.ts";
 
 /** The longest line the server takes on `/api/guest/say` and
@@ -18,6 +18,9 @@ export function Composer({
   disabled,
   sendLabel,
   extra,
+  initial,
+  onText,
+  autoFocus,
 }: {
   /** Return the send's promise to keep the text until the server takes it:
    *  a refusal (slow mode, paused doors, can't post) leaves it in the box. */
@@ -28,8 +31,20 @@ export function Composer({
   sendLabel?: string;
   /** A button before the box (the Codex's 📷 Scan). */
   extra?: ReactNode;
+  /** Wave 26 (P1): the draft to start from, and every change to it, so a
+   *  half-typed line survives the composer folding to its button. */
+  initial?: string;
+  onText?: (text: string) => void;
+  /** Wave 26 (P1): focus on mount — inside the tap that unfolded it, so the
+   *  phone's keyboard opens (a layout effect runs inside `flushSync`). */
+  autoFocus?: boolean;
 }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initial ?? "");
+  useEffect(() => onText?.(text), [text, onText]);
+  useLayoutEffect(() => {
+    if (autoFocus === true) ref.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [sending, setSending] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   // Reflow the textarea to fit its content (bounded by the CSS max-height).
