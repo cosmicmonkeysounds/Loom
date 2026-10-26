@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IdentifyOverlay, ScreenLayer, SlideView } from "../src/ScreenLayer.tsx";
 import { EMPTY_NIGHT, parseScreenState, resetPageFirst, withFirstNow, type ScreenProgram, type ScreenState } from "../src/screen.ts";
-import { BLACKOUT_MS, FLICKER_FRESH_MS, GLITCH_FRESH_MS, GLITCH_MS, coverOf, GLITCH_TEXT, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartRankedLine, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
+import { BLACKOUT_MS, FLICKER_FRESH_MS, GLITCH_FRESH_MS, GLITCH_MS, GLITCH_WITH_MS, slideClockAt, coverOf, GLITCH_TEXT, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartRankedLine, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
 
 const T0 = 1_000_000;
 const empty: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
@@ -536,6 +536,30 @@ describe("the glitch takeover (wave 26, T2)", () => {
     // Persistent now (the server's `persist`): still up long after the 45 s hold.
     expect(at(s, 10 * 60_000).slide?.value).toBe("ad_hijack");
     expect(GLITCH_TEXT).toBe(SLIDE_COPY.ad_hijack!.title);
+  });
+
+  it("a slide cued with it starts its scene's clock when the takeover ends (the hijack's slam is never hidden under it)", () => {
+    // The 📺 rule: screens_glitch, then screens_ad_hijack, one tick apart.
+    const s = seen({ program: { ...glitchAt(T0), slide: slide("ad_hijack", T0 + 1, true) } });
+    expect(at(s, 100).slide).toMatchObject({ value: "ad_hijack", seq: 1, at: T0 + GLITCH_MS });
+    // Still so once the glitch is over (the clock never jumps back), and on a page that never drew it.
+    expect(at(s, GLITCH_MS + 2000).slide?.at).toBe(T0 + GLITCH_MS);
+    expect(at({ ...s, firstNow: T0 + 3000 }, 3500)).toMatchObject({ glitch: null, slide: { at: T0 + GLITCH_MS } });
+    // Its hold still counts from the cue (a non-persistent slide lapses on time).
+    const plain = seen({ program: { ...glitchAt(T0), slide: slide("trivia_2", T0) } });
+    expect(at(plain, SLIDE_HOLD_MS.terminals - 1).slide?.at).toBe(T0 + GLITCH_MS);
+    expect(at(plain, SLIDE_HOLD_MS.terminals).slide).toBeNull();
+    // The pure rule: cued with it (a tick before counts), or under it.
+    expect(slideClockAt(T0, { at: T0 })).toBe(T0 + GLITCH_MS);
+    expect(slideClockAt(T0 - GLITCH_WITH_MS, { at: T0 })).toBe(T0 + GLITCH_MS);
+    expect(slideClockAt(T0 + GLITCH_MS - 1, { at: T0 })).toBe(T0 + GLITCH_MS);
+    // A slide from before it, or after it, or history, or no glitch: its own at.
+    expect(slideClockAt(T0 - GLITCH_WITH_MS - 1, { at: T0 })).toBe(T0 - GLITCH_WITH_MS - 1);
+    expect(slideClockAt(T0 + GLITCH_MS, { at: T0 })).toBe(T0 + GLITCH_MS);
+    expect(slideClockAt(T0 + 60_000, { at: T0 })).toBe(T0 + 60_000);
+    expect(slideClockAt(0, { at: T0 })).toBe(0);
+    expect(slideClockAt(T0, { at: 0 })).toBe(T0);
+    expect(slideClockAt(T0, null)).toBe(T0);
   });
 
   it("covers the screen (the idle show pauses) but is never a takeover (a pilot, a game, a walk survive)", () => {

@@ -61,7 +61,8 @@ export type OverlayKind = "blackout" | "go_to_living_room" | "alarm";
 export interface ScreenLayers {
   overlay: OverlayKind | null;
   /** The slide on top, with its cue's `seq` (bumps on a repeat) and `at`
-   *  (server ms, 0 = history) — a cutscene is keyed on the one and drawn from the other. */
+   *  (server ms, 0 = history) — a cutscene is keyed on the one and drawn from the other.
+   *  `at` is when its scene's clock starts: the cue's, or the end of a glitch cued with it (`slideClockAt`). */
   slide: { value: string; cue: string; seq: number; at: number } | null;
   /** Seconds on the corner countdown, or null for none. */
   corner: number | null;
@@ -98,6 +99,24 @@ export function glitchLayer(state: Pick<ScreenState, "program" | "firstNow" | "g
   const t = serverNow - g.at;
   if (t >= GLITCH_MS) return null;
   return { seq: g.seq, at: g.at, t: Math.max(0, t) };
+}
+
+/** (wave 26, T2) A slide cued this close before its glitch still counts as
+ *  cued with it (one story rule stamps both; the order may differ by a tick). */
+export const GLITCH_WITH_MS = 1000;
+
+/**
+ * The `at` a slide's scene runs from (wave 26, T2). A slide cued with the
+ * glitch or under it (the 📺 rule cues `screens_glitch` and then
+ * `screens_ad_hijack`) starts its scene's clock when the takeover ends, so
+ * the hijack's freeze, tear and slam play after it, not hidden under its
+ * dark field with the two sets of sounds on top of each other: the scene
+ * holds its first frame (no sound) until then. Every terminal shares the
+ * cue's clock, so this holds whether or not this page draws the glitch.
+ */
+export function slideClockAt(slideAt: number, glitch: { at: number } | null): number {
+  if (glitch === null || glitch.at <= 0 || slideAt <= 0) return slideAt;
+  return slideAt >= glitch.at - GLITCH_WITH_MS && slideAt < glitch.at + GLITCH_MS ? glitch.at + GLITCH_MS : slideAt;
 }
 
 /** The takeover's caption: the hijack's own zeroes (`ad_hijack`'s copy; no new show text). */
@@ -244,7 +263,8 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
   // tent's kiosk (`slides: false`, wave 26 T3) takes none either, nor the
   // corner or the Y2K clock, but its moments still play (it is not bare).
   const bare = o.piloting || o.peek === true || o.room === true || o.slides === false;
-  if (!bare && s !== null && held(s)) slide = { value: s.value, cue: s.cue, seq: s.seq, at: s.at };
+  // Its hold counts from the cue; its scene's clock (`at`) waits out a glitch cued with it.
+  if (!bare && s !== null && held(s)) slide = { value: s.value, cue: s.cue, seq: s.seq, at: slideClockAt(s.at, p.glitch ?? null) };
 
   const remaining = state.remaining === null ? null : Math.max(0, state.remaining - Math.floor(since / 1000));
   const y2k = state.countdown === "y2k" ? remaining : null;
