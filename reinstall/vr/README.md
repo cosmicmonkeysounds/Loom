@@ -309,8 +309,8 @@ with `released: true` while you walk to Gerald.
   the answer (at least 1.5 s of scare; at most 3 s of waiting) the player
   is back at the spawn in the tent and his lines are captioned and spoken.
   The teleport happens whatever the server says (closed doors, an older
-  server, a refusal). Within 20 s of the last, walking out again just puts
-  them back.
+  server, a refusal). Within 20 s (wall clock, from the post) of the last,
+  walking out again just puts them back.
 - **Trabolta's heart** (R6): once the King has fallen, a dark rack with a
   beating red core stands in the virtual Server Room. The first time a
   program walks in, his lines play over it (`moment {kind: heart}`); before

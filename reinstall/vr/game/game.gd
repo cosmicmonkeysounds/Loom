@@ -154,8 +154,11 @@ var _fanfare_in := -1.0
 ## Seconds left on the lobby's TEST MIC.
 var _mic_test_left := 0.0
 ## The void (R4): seconds into an escape (< 0: none), its answer once it
-## came (`{result, data}`), and when (in [member _played_for]) the last
-## escape went up (< 0: none this session).
+## came (`{result, data}`), and when (wall-clock s, [member clock]) the last
+## escape went up (< 0: none this session). The cooldown counts from the
+## post in wall time, scare included, so it never outlasts the server's
+## (which starts a moment later): a walk-out it lets through gets the
+## server's word, `cooldown` or a charged escape.
 var _escape_t := -1.0
 var _escape_answer: Dictionary = {}
 var _escaped_at := -1.0
@@ -813,10 +816,11 @@ func escaping() -> bool:
 ## and post the escape — or, within the cooldown, put them back quietly.
 func _start_escape() -> void:
 	trail.clear()
-	if _escaped_at >= 0.0 and (_played_for - _escaped_at) * 1000.0 < HouseEscape.ESCAPE_COOLDOWN_MS:
+	var now := float(clock.call())
+	if _escaped_at >= 0.0 and (now - _escaped_at) * 1000.0 < HouseEscape.ESCAPE_COOLDOWN_MS:
 		_back_to_spawn({})
 		return
-	_escaped_at = _played_for
+	_escaped_at = now
 	_escape_t = 0.0
 	_escape_answer = {}
 	player.locomotion_enabled = false
