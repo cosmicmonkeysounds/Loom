@@ -53,6 +53,7 @@ func _run() -> void:
 	_test_voice_uplink()
 	_test_voice_link()
 	_test_voice_silent_mic()
+	_test_voice_mic_states()
 	await _test_voice_generator()
 	await _test_cam_panels()
 	_test_autopilot()
@@ -2934,7 +2935,7 @@ func _test_voice_link() -> void:
 	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
 	v.want(upload + "/stream?token=tok", upload, "tok")
 	_check(v.is_running() and v.mic_state == "opening" and not v.listen_on, "voice: running, the mic opening (no sample yet), nobody listening")
-	_check(v.hud_text(true) == "🎤 …", "voice: the HUD says 🎤 … until a real sample lands (%s)" % v.hud_text(true))
+	_check(v.hud_text(true) == "MIC STARTING…", "voice: the HUD says MIC STARTING… until a real sample lands (%s)" % v.hud_text(true))
 	# Zeros are no mic: still opening.
 	mic[0] = _mic_tone(9600, 0.0)
 	v._process(0.016)
@@ -2943,11 +2944,11 @@ func _test_voice_link() -> void:
 	# Nobody can hear us: a loud word goes nowhere, no connection.
 	mic[0] = _mic_tone(9600, 0.3)
 	v._process(0.016)
-	_check(v.mic_state == "live" and v.hud_text(true) == "🎤 LIVE", "voice: a real sample → 🎤 LIVE (%s)" % v.hud_text(true))
+	_check(v.mic_state == "live" and v.hud_text(true) == "MIC ON · B or Y mutes" and v.hud_text(false) == "MIC ON · M mutes", "voice: a real sample → MIC ON (%s)" % v.hud_text(true))
 	_check(v.uplink.queue.is_empty() and clients.is_empty(), "voice: nobody listening → nothing queued, no connection")
 	v.on_frame("hello", {"codec": "mulaw", "rate": 16000, "chunkMs": 200, "as": "player", "session": "s1", "listen": false})
 	v.on_frame("listen", {"on": true})
-	_check(v.listen_on and v.hud_text(true) == "🎤 LIVE · someone can hear you", "voice: listen {on} → someone can hear you")
+	_check(v.listen_on and v.hud_text(true) == "MIC ON · someone can hear you" and v.hud_text(false) == "MIC ON · someone can hear you", "voice: listen {on} → someone can hear you")
 	mic[0] = _mic_tone(9600, 0.3)
 	v._process(0.016)
 	_check(clients.size() == 1 and v.uplink.queue.size() == 1, "voice: … a loud chunk is queued, the connection opening (%d queued)" % v.uplink.queue.size())
@@ -3049,7 +3050,7 @@ func _test_voice_link() -> void:
 
 	# Mute: the mic's chunks are dropped; the HUD says so.
 	v.toggle_mute()
-	_check(v.mic_state == "muted" and v.hud_text(true) == "🎤 MUTED · B / Y to talk" and v.hud_text(false) == "🎤 MUTED · M to talk", "voice: mute → 🎤 MUTED (%s)" % v.hud_text(true))
+	_check(v.mic_state == "muted" and v.hud_text(true) == "MIC MUTED · press B or Y" and v.hud_text(false) == "MIC MUTED · press M", "voice: mute → MIC MUTED (%s)" % v.hud_text(true))
 	var q := c.requests.size() + v.uplink.queue.size() + (clients.back() as FakeHttp).requests.size()
 	now[0] += 1000.0
 	mic[0] = _mic_tone(9600, 0.3)
@@ -3059,7 +3060,7 @@ func _test_voice_link() -> void:
 	_check(v.mic_state == "live", "voice: unmute → live")
 	# The server stops listening.
 	v.on_frame("listen", {"on": false})
-	_check(not v.listen_on and v.uplink.queue.is_empty() and v.hud_text(true) == "🎤 LIVE", "voice: listen {on: false} → nothing queued, the HUD drops the line")
+	_check(not v.listen_on and v.uplink.queue.is_empty() and v.hud_text(true) == "MIC ON · B or Y mutes", "voice: listen {on: false} → nothing queued, the HUD drops the line")
 	# The same URLs again change nothing; stop ends everything.
 	v.on_frame("voice", _voice_frame("hall", 5, 1.0))
 	v.want(upload + "/stream?token=tok", upload, "tok")
@@ -3111,12 +3112,115 @@ func _test_voice_silent_mic() -> void:
 	mic[0] = _mic_tone(4800, 0.0)
 	for i in 3:
 		v._process(0.5)
-	_check(v.mic_state == "opening" and v.hud_text(true) == "🎤 …" and not v.uplink.wanted, "voice: zeros for 1.5 s → still opening, no uplink wanted (%s)" % v.mic_state)
+	_check(v.mic_state == "opening" and v.hud_text(true) == "MIC STARTING…" and not v.uplink.wanted, "voice: zeros for 1.5 s → still opening, no uplink wanted (%s)" % v.mic_state)
 	v._process(1.0)
 	_check(v.mic_state == "nomic" and v.hud_text(true) == "NO MIC" and not v.uplink.wanted, "voice: zeros past MIC_FALLBACK_AFTER → NO MIC")
 	mic[0] = _mic_tone(4800, 0.01)
 	v._process(0.016)
 	_check(v.mic_state == "live" and v.uplink.wanted, "voice: … a real sample → LIVE, the uplink wanted")
+	v.stop()
+	v.queue_free()
+
+
+## Wave 26 (R8): the mic says what to do — a refused grant is `denied`
+## (not NO MIC), a press of B / Y while the mic is not open changes nothing,
+## every state change logs a line, ASK AGAIN asks once more, the game's own
+## sounds hold the mic shut ([method VoiceLink.hold_for]), and TEST MIC opens
+## it with no session for a level meter.
+func _test_voice_mic_states() -> void:
+	var v := VoiceLink.new()
+	v.use_stream = false
+	v.client_factory = func() -> Object: return FakeHttp.new()
+	var now := [5000.0]
+	v.clock = func() -> float: return now[0]
+	v.platform = "Android"
+	var granted := [false]
+	var asked := [0]
+	v.permission_check = func() -> bool: return granted[0]
+	v.permission_request = func() -> void: asked[0] += 1
+	root.add_child(v)
+	_check(v.permission_state() == "unknown" and v.lobby_text(true, true) == "MIC · not allowed yet · ASK AGAIN", "mic: never asked → the lobby says so (%s)" % v.lobby_text(true, true))
+	_check(v.prime_permission(true) and asked[0] == 1 and v.permission_state() == "asking", "mic: the lobby asks for the grant once")
+	_check(not v.prime_permission(true) and asked[0] == 1, "mic: … only once")
+	v._on_permission("android.permission.RECORD_AUDIO", false)
+	_check(v.permission_state() == "denied" and v.lobby_text(true, true).begins_with("MIC · not allowed · ASK AGAIN"), "mic: refused in the lobby → denied, ASK AGAIN (%s)" % v.lobby_text(true, true))
+	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	_check(v.mic_state == "asking" and asked[0] == 2 and v.hud_text(true) == "MIC · allow it in the headset's prompt" and v.hud_text(false) == "MIC · allow it in the system prompt", "mic: a session without the grant asks again (%s)" % v.hud_text(true))
+	v.toggle_mute()
+	_check(not v.muted and v.mic_state == "asking", "mic: B / Y while asking changes nothing (never muted unseen)")
+	v._on_permission("android.permission.RECORD_AUDIO", false)
+	_check(v.mic_state == "denied" and v.hud_text(true) == "NO MIC · not allowed · ASK AGAIN in the lobby" and v.hud_text(false) == v.hud_text(true), "mic: refused → denied, not NO MIC (%s)" % v.hud_text(true))
+	v.toggle_mute()
+	_check(not v.muted, "mic: B / Y while refused changes nothing")
+	_check(v.mic_log.any(func(l: String) -> bool: return l.begins_with("reinstall-vr: mic — denied") and l.contains("granted denied")), "mic: every state change logs a line (%s)" % [v.mic_log])
+	_check(v.mic_log.any(func(l: String) -> bool: return l == "reinstall-vr: mic — RECORD_AUDIO refused"), "mic: … and every answer to the grant")
+	v.stop()
+	_check(v.ask_again() and asked[0] == 3 and v.permission_state() == "asking", "mic: ASK AGAIN asks once more")
+	granted[0] = true
+	v._on_permission("android.permission.RECORD_AUDIO", true)
+	_check(v.permission_state() == "granted" and v.lobby_text(true, true) == "MIC · allowed" and not v.ask_again(), "mic: granted → allowed; ASK AGAIN has nothing to ask")
+	_check(v.lobby_text(false, true) == "VOICE · off on this headset" and v.lobby_text(true, false) == "MIC · off on this headset (listen only)", "mic: the lobby says when the config turned voice or the mic off")
+	v.platform = "macOS"
+	_check(v.permission_state() == "n/a" and v.lobby_text(true, true) == "MIC · this computer's microphone" and not v.ask_again(), "mic: a desktop has no grant to ask for")
+	v.platform = "Android"
+
+	# TEST MIC: open with no session, a level, nothing sent.
+	var mic := [PackedVector2Array()]
+	v.frame_source = func() -> PackedVector2Array:
+		var f: PackedVector2Array = mic[0]
+		mic[0] = PackedVector2Array()
+		return f
+	v.start_test()
+	_check(v.is_testing() and v.mic_state == "opening" and v.lobby_text(true, true) == "MIC TEST · say something…", "test mic: opens with no session (%s)" % v.mic_state)
+	mic[0] = _mic_tone(4800, 0.3)
+	v._process(0.016)
+	_check(v.mic_state == "live" and v.test_level() > 0.6 and v.lobby_text(true, true) == "MIC TEST · it hears you", "test mic: a word → live, the meter up (%.2f)" % v.test_level())
+	_check(v.uplink.queue.is_empty() and not v.is_running(), "test mic: … and nothing is sent")
+	for i in 15:
+		mic[0] = _mic_tone(4800, 0.0)
+		v._process(0.1)
+	_check(v.test_level() < 0.2, "test mic: the meter falls back in the quiet (%.2f)" % v.test_level())
+	v.stop_test()
+	_check(not v.is_testing() and v.mic_state == "off" and v.test_level() == 0.0, "test mic: closed")
+	v.start_test()
+	for i in 25:
+		mic[0] = _mic_tone(4800, 0.0)
+		v._process(0.1)
+	_check(v.mic_state == "nomic" and v.lobby_text(true, true) == "MIC TEST · only silence — no mic", "test mic: only zeros → no mic (%s)" % v.lobby_text(true, true))
+	# A session starting ends the test.
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	_check(not v.is_testing() and v.is_running() and v.mic_state == "opening", "test mic: a session takes the mic over")
+	v.start_test()
+	_check(not v.is_testing(), "test mic: … and no test while a session plays")
+
+	# The game's own sound holds the mic shut for its span + the tail.
+	v.on_frame("listen", {"on": true})
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(v.mic_state == "live" and v.uplink.queue.size() == 1, "hold: a loud word goes up")
+	for i in 4:
+		mic[0] = _mic_tone(9600, 0.0)
+		now[0] += 200.0
+		v._process(0.016)
+	v.uplink.drop_queue()
+	v.hold_for(500.0)
+	_check(v.holding(), "hold: hold_for holds the mic")
+	mic[0] = _mic_tone(9600, 0.5)
+	now[0] += 400.0
+	v._process(0.016)
+	_check(v.uplink.queue.is_empty(), "hold: even a loud chunk is not sent while the game plays a sound")
+	now[0] += 300.0
+	mic[0] = _mic_tone(9600, 0.5)
+	v._process(0.016)
+	_check(v.uplink.queue.is_empty() and v.holding(), "hold: … nor in the tail (VOICE_TAIL_MS)")
+	now[0] += 200.0
+	mic[0] = _mic_tone(9600, 0.5)
+	v._process(0.016)
+	_check(not v.holding() and v.uplink.queue.size() >= 1, "hold: after the sound and its tail the mic goes up again")
+	v.hold_for(1000.0)
+	v.hold_for(100.0)
+	_check(v.holding() and v._gate.holding(now[0] + 1200.0), "hold: a shorter hold never cuts a longer one short")
 	v.stop()
 	v.queue_free()
 
@@ -3166,11 +3270,11 @@ func _test_voice_game() -> void:
 	v._process(0.016)  # the mic's first real sample
 	game._process(0.016)
 	_check(v.is_running() and v.stream_url == "http://127.0.0.1:7600/e/e1/api/spatial/voice/stream?token=tok-v-1" and v.upload_url.ends_with("/api/spatial/voice"), "voice game: playing starts the voice on the session's token (%s)" % v.stream_url)
-	_check(game.hud.mic_text() == "🎤 LIVE", "voice game: the HUD shows 🎤 LIVE (%s)" % game.hud.mic_text())
+	_check(game.hud.mic_text() == "MIC ON · M mutes", "voice game: the HUD shows MIC ON (%s)" % game.hud.mic_text())
 	player.mute_button = true
 	game._process(0.016)
 	game._process(0.016)
-	_check(v.muted and game.hud.mic_text() == "🎤 MUTED · M to talk", "voice game: a press of the mute button mutes (once, held) (%s)" % game.hud.mic_text())
+	_check(v.muted and game.hud.mic_text() == "MIC MUTED · press M", "voice game: a press of the mute button mutes (once, held) (%s)" % game.hud.mic_text())
 	player.mute_button = false
 	game._process(0.016)
 	player.mute_button = true
@@ -3193,7 +3297,7 @@ func _test_voice_game() -> void:
 	game._process(0.016)
 	v._process(0.016)
 	game._process(0.016)
-	_check(v.is_running() and not v.muted and game.hud.mic_text() == "🎤 LIVE", "voice game: … nor when it is still held as play starts (%s)" % game.hud.mic_text())
+	_check(v.is_running() and not v.muted and game.hud.mic_text() == "MIC ON · M mutes", "voice game: … nor when it is still held as play starts (%s)" % game.hud.mic_text())
 	player.mute_button = false
 	player.hit_button = false
 	game._process(0.016)

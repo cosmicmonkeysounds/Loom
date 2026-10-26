@@ -30,10 +30,22 @@
 ##   closes per request), one POST in flight, at most
 ##   [constant UPLINK_QUEUE] chunks (1 s) waiting — older ones are dropped.
 ## - **Mute** ([method toggle_mute], B / Y or M): the mic's chunks are
-##   dropped. On Android the RECORD_AUDIO grant is asked in the lobby
+##   dropped. A press only toggles while the mic is open (a press while it
+##   is asking, refused or missing changes nothing, so it can never come up
+##   muted later). On Android the RECORD_AUDIO grant is asked in the lobby
 ##   ([method prime_permission]: the system dialog pauses the app, which in
 ##   a session would end it) and again at a start if it is still missing;
-##   the mic is re-opened once it is given.
+##   the mic is re-opened once it is given. A refusal is its own state
+##   (`denied`), and the lobby's ASK AGAIN ([method ask_again]) asks once more.
+## - **The game's own sounds** (wave 26, R8): [method hold_for] holds the
+##   mic shut while the headset plays something of its own (a quack, the
+##   fanfare, Trabolta's voice) plus [constant VoiceCodec.VOICE_TAIL_MS], so
+##   the Quest never sends the game's sound to the terminals.
+## - **The lobby's TEST MIC** ([method start_test]): the same mic, no session,
+##   no uplink — only a level ([method test_level]) for the meter.
+##
+## Every mic state change prints one `reinstall-vr: mic — …` line (logcat
+## via `tools/quest.sh logs`), with the route, the rate and the grant.
 ##
 ## [method want] starts it (a session is playing) and [method stop] ends
 ## everything (the lobby). Tests inject [member frame_source],
@@ -44,8 +56,9 @@ extends Node
 
 ## "off" (not running, or the mic is off in the config) · "asking" (the
 ## Android grant is up) · "opening" (no real sample yet) · "live" ·
-## "muted" · "nomic" (no device, refused, or only silence from either
-## route — a dead or denied mic hands over zeros).
+## "muted" · "denied" (the grant was refused, or the OS refused the input)
+## · "nomic" (no device, or only silence from either route — a dead mic
+## hands over zeros).
 signal mic_changed(state: String)
 ## Whether someone can hear this headset (`listen {on}`).
 signal listen_changed(on: bool)
@@ -87,6 +100,17 @@ var playback_of: Callable
 var clock: Callable = func() -> float: return float(Time.get_ticks_msec())
 ## Off in tests: [method on_frame] is fed by hand, no socket opened.
 var use_stream := true
+## The OS name ([method OS.get_name]); tests set "Android".
+var platform := OS.get_name()
+## Tests: `permission_check.call() -> bool` in place of the Android grant,
+## and `permission_request.call()` in place of asking for it.
+var permission_check: Callable
+var permission_request: Callable
+## The last mic lines printed (newest last, at most [constant MIC_LOG_KEEP]).
+var mic_log: Array[String] = []
+const MIC_LOG_KEEP := 20
+## TEST MIC's meter falls this many dB a second (a peak that lingers).
+const TEST_DECAY_DB := 40.0
 
 var stream: SseClient
 var uplink := Uplink.new()
@@ -109,6 +133,14 @@ var _capture: AudioEffectCapture = null
 var _mic_player: AudioStreamPlayer = null
 var _asked_permission := false
 var _asked_early := false
+## The last Android answer for RECORD_AUDIO was a refusal (cleared by a grant).
+var _refused_grant := false
+## A grant request is out (the system dialog is up).
+var _asking_grant := false
+## TEST MIC: the mic open with no session ([method start_test]).
+var _testing := false
+## TEST MIC's level (dBFS of the last block; decays) and a peak hold.
+var _test_dbfs := -INF
 ## A real (non-zero) sample has arrived since the mic opened.
 var _heard_sample := false
 ## The stream's `hello` named this wire (μ-law, 16 kHz); a server speaking
@@ -134,6 +166,7 @@ func want(stream_at: String, upload_at: String, token: String) -> void:
 	if stream_at == stream_url and upload_at == upload_url and token == _token:
 		return
 	stop()
+	_testing = false
 	stream_url = stream_at
 	upload_url = upload_at
 	_token = token
@@ -176,9 +209,12 @@ func stop() -> void:
 	_set_mic("off")
 
 
-## Mute or unmute the mic (B / Y, M); nothing while the mic is off.
+## Mute or unmute the mic (B / Y, M) — only while it is open (opening,
+## live or muted): a press while it is off, asking, refused or missing
+## changes nothing, so the mic never comes up muted by a press nobody saw
+## take effect.
 func toggle_mute() -> void:
-	if not mic_enabled:
+	if not mic_enabled or _route == "" or not mic_state in ["opening", "live", "muted"]:
 		return
 	muted = not muted
 	if muted:
@@ -193,12 +229,34 @@ func toggle_mute() -> void:
 ## where the system dialog pausing the app ends nothing. `wanted` = the
 ## config's `voice` and `mic`. True when it asked now.
 func prime_permission(wanted: bool) -> bool:
-	if not wanted or OS.get_name() != "Android" or _granted() or _asked_early:
+	if not wanted or platform != "Android" or _granted() or _asked_early:
 		return false
 	_asked_early = true
-	_listen_for_permission()
-	OS.request_permission("RECORD_AUDIO")
+	_request_grant()
 	return true
+
+
+## The lobby's ASK AGAIN: ask for the grant once more (Android; a refusal
+## with "don't ask again" answers at once, refused — then only the
+## headset's Settings → Apps → Permissions can allow it). True when it asked.
+func ask_again() -> bool:
+	if platform != "Android":
+		return false
+	if _granted():
+		_refused_grant = false
+		return false
+	_request_grant()
+	return true
+
+
+func _request_grant() -> void:
+	_listen_for_permission()
+	_asking_grant = true
+	_log("asking for RECORD_AUDIO")
+	if permission_request.is_valid():
+		permission_request.call()
+	else:
+		OS.request_permission("RECORD_AUDIO")
 
 
 func _listen_for_permission() -> void:
@@ -208,22 +266,110 @@ func _listen_for_permission() -> void:
 	get_tree().on_request_permissions_result.connect(_on_permission)
 
 
-## The HUD's mic line ("" while off): 🎤 LIVE (· someone can hear you) /
-## 🎤 MUTED / NO MIC; `xr` names the mute button.
+## The grant as the lobby says it: "n/a" (not Android: no grant to ask
+## for) · "granted" · "asking" (the dialog is up) · "denied" (refused) ·
+## "unknown" (never answered).
+func permission_state() -> String:
+	if platform != "Android":
+		return "n/a"
+	if _granted():
+		return "granted"
+	if _asking_grant:
+		return "asking"
+	return "denied" if _refused_grant else "unknown"
+
+
+## The HUD's mic line ("" while off), emoji-free and saying what to do
+## (C12); `xr` names the mute button (B or Y on the controllers, M on the
+## desktop rig).
 func hud_text(xr: bool) -> String:
-	var key := "B / Y" if xr else "M"
 	match mic_state:
 		"live":
-			return "🎤 LIVE · someone can hear you" if listen_on else "🎤 LIVE"
+			if listen_on:
+				return "MIC ON · someone can hear you"  # DRAFT w26 (R8, UI copy)
+			return "MIC ON · B or Y mutes" if xr else "MIC ON · M mutes"  # DRAFT w26 (R8, UI copy)
 		"muted":
-			return "🎤 MUTED · %s to talk" % key
+			return "MIC MUTED · press B or Y" if xr else "MIC MUTED · press M"  # DRAFT w26 (R8, UI copy)
 		"asking":
-			return "NO MIC · allow the microphone"
+			return "MIC · allow it in the headset's prompt" if xr else "MIC · allow it in the system prompt"  # DRAFT w26 (R8, UI copy)
+		"denied":
+			return "NO MIC · not allowed · ASK AGAIN in the lobby"  # DRAFT w26 (R8, UI copy)
 		"opening":
-			return "🎤 …"
+			return "MIC STARTING…"  # DRAFT w26 (R8, UI copy)
 		"nomic":
 			return "NO MIC"
 	return ""
+
+
+## The lobby's mic line (`voice` / `mic`: the config's): what the headset's
+## microphone is doing and what to do about it — on TEST MIC, the test's
+## own state.
+func lobby_text(voice_on: bool, mic_on: bool) -> String:
+	if not voice_on:
+		return "VOICE · off on this headset"  # DRAFT w26 (R8, UI copy)
+	if not mic_on:
+		return "MIC · off on this headset (listen only)"  # DRAFT w26 (R8, UI copy)
+	if _testing:
+		match mic_state:
+			"live":
+				return "MIC TEST · it hears you"  # DRAFT w26 (R8, UI copy)
+			"opening":
+				return "MIC TEST · say something…"  # DRAFT w26 (R8, UI copy)
+			"nomic":
+				return "MIC TEST · only silence — no mic"  # DRAFT w26 (R8, UI copy)
+	match permission_state():
+		"granted":
+			return "MIC · allowed"  # DRAFT w26 (R8, UI copy)
+		"asking":
+			return "MIC · allow it in the headset's prompt"  # DRAFT w26 (R8, UI copy)
+		"denied":
+			return "MIC · not allowed · ASK AGAIN, or Settings → Apps → Permissions"  # DRAFT w26 (R8, UI copy)
+		"unknown":
+			return "MIC · not allowed yet · ASK AGAIN"  # DRAFT w26 (R8, UI copy)
+	return "MIC · this computer's microphone"  # DRAFT w26 (R8, UI copy)
+
+
+## Hold the mic shut for `ms` (+ [constant VoiceCodec.VOICE_TAIL_MS]) from
+## now: the headset plays a sound of its own (the Quest cancels no echo).
+## Only ever extends a hold.
+func hold_for(ms: float) -> void:
+	_gate.hold_until(float(clock.call()) + maxf(ms, 0.0) + VoiceCodec.VOICE_TAIL_MS)
+
+
+## Whether the mic is held shut now ([method hold_for]).
+func holding() -> bool:
+	return _gate.holding(float(clock.call()))
+
+
+# --- the lobby's TEST MIC ------------------------------------------------------------
+
+
+## Open the mic with no session, for the lobby's level meter (nothing is
+## sent). Nothing while a session plays.
+func start_test() -> void:
+	if is_running():
+		return
+	_testing = true
+	_test_dbfs = -INF
+	_start_mic()
+
+
+## Close the test mic.
+func stop_test() -> void:
+	if not _testing:
+		return
+	_testing = false
+	_stop_mic()
+	_set_mic("off")
+
+
+func is_testing() -> bool:
+	return _testing
+
+
+## TEST MIC's level, 0 (silence, −60 dBFS or less) … 1 (−10 dBFS or more).
+func test_level() -> float:
+	return clampf((_test_dbfs + 60.0) / 50.0, 0.0, 1.0) if _testing else 0.0
 
 
 ## Sources playing now (`from` ids), for the tests.
@@ -432,13 +578,16 @@ func _set_listen(on: bool) -> void:
 
 
 func _process(delta: float) -> void:
-	if not is_running():
+	if not is_running() and not _testing:
 		return
-	uplink.wanted = _uplink_wanted()
-	uplink.poll(delta)
+	if is_running():
+		uplink.wanted = _uplink_wanted()
+		uplink.poll(delta)
 	if _route == "":
 		return
 	var frames := _read_frames()
+	if _testing:
+		_test_dbfs = maxf(_test_dbfs - TEST_DECAY_DB * delta, _level_dbfs(frames))
 	# All zeros is no mic: a missing or denied input still mixes silence.
 	if frames.is_empty() or not _has_signal(frames):
 		_quiet_for += delta
@@ -452,9 +601,20 @@ func _process(delta: float) -> void:
 		_quiet_for = 0.0
 		_heard_sample = true
 		_set_mic("muted" if muted else "live")  # a real sample: a mic (the fallback's too)
-	if muted or mic_state != "live":
+	if muted or mic_state != "live" or _testing:
 		return
 	feed(frames, _rate)
+
+
+## The RMS level of a block of frames (dBFS; −INF for none).
+static func _level_dbfs(frames: PackedVector2Array) -> float:
+	if frames.is_empty():
+		return -INF
+	var mono := PackedFloat32Array()
+	mono.resize(frames.size())
+	for i in frames.size():
+		mono[i] = frames[i].x
+	return VoiceCodec.rms_dbfs(mono)
 
 
 ## Something to send up: someone listens, not muted, a live mic, not refused.
@@ -512,14 +672,13 @@ func _start_mic() -> void:
 		_rate = source_rate
 		_set_mic("muted" if muted else "opening")
 		return
-	if OS.get_name() == "Android" and not _granted():
+	if platform == "Android" and not _granted():
 		_set_mic("asking")
-		_listen_for_permission()
-		OS.request_permission("RECORD_AUDIO")
+		_request_grant()
 		return
 	var err := AudioServer.set_input_device_active(true)
 	if err == ERR_UNAUTHORIZED:
-		_set_mic("nomic")  # refused: the fallback reads the same input
+		_set_mic("denied")  # refused: the fallback reads the same input
 		return
 	if err != OK:
 		_fallback()
@@ -529,20 +688,28 @@ func _start_mic() -> void:
 	_set_mic("muted" if muted else "opening")
 
 
-static func _granted() -> bool:
+func _granted() -> bool:
+	if permission_check.is_valid():
+		return bool(permission_check.call())
 	for p: String in OS.get_granted_permissions():
 		if p.ends_with("RECORD_AUDIO"):
 			return true
 	return false
 
 
+## The Android grant's answer (also called by the tests).
 func _on_permission(permission: String, granted: bool) -> void:
-	if not permission.ends_with("RECORD_AUDIO") or mic_state != "asking":
+	if not permission.ends_with("RECORD_AUDIO"):
 		return
-	if granted and is_running():
+	_asking_grant = false
+	_refused_grant = not granted
+	_log("RECORD_AUDIO %s" % ("granted" if granted else "refused"))
+	if mic_state != "asking":
+		return
+	if granted and (is_running() or _testing):
 		_start_mic()
 	else:
-		_set_mic("nomic")
+		_set_mic("denied")
 
 
 ## The AudioServer route gave nothing: an [AudioStreamMicrophone] on a
@@ -592,7 +759,17 @@ func _set_mic(state: String) -> void:
 		return
 	mic_state = state
 	uplink.wanted = _uplink_wanted()
+	_log("%s (route %s, %d Hz, granted %s%s)" % [state, _route if _route != "" else "none", int(_rate), permission_state(), ", test" if _testing else ""])
 	mic_changed.emit(state)
+
+
+## One logcat line (`reinstall-vr: mic — …`), kept in [member mic_log].
+func _log(text: String) -> void:
+	var line := "reinstall-vr: mic — %s" % text
+	print(line)
+	mic_log.append(line)
+	while mic_log.size() > MIC_LOG_KEEP:
+		mic_log.pop_front()
 
 
 func _on_uplink(status: int, data: Dictionary) -> void:

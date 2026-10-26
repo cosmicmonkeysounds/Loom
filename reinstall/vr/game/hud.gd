@@ -65,7 +65,7 @@ func notice(text: String) -> void:
 var _mic: Label3D
 
 
-## The voice link's line under the hint (🎤 LIVE / 🎤 MUTED / NO MIC; "" hides it).
+## The voice link's line under the hint (MIC ON / MIC MUTED / NO MIC …, [method VoiceLink.hud_text]; "" hides it).
 func set_mic(text: String) -> void:
 	if _mic == null:
 		if text == "":
