@@ -10,7 +10,7 @@ This file is binding for every wave 26 lane. When this file and the code
 disagree, fix one of them in the same change. The decisions in §1 are the
 user's (2026-10-26) or the defaults they did not veto; a lane that wants to
 change one asks first. Everything here was checked against master at
-`8d3a44d1`.
+`8d3a44d1`, and again after two adversarial reviews (2026-10-26).
 
 Lanes, branches and worktrees:
 
@@ -56,17 +56,28 @@ with Trabolta will be judged. Trabolta knows best!". Clippy's private codex
 card and printed pack say "never say the rules out loud", and keep the rule
 privately for her. The Y2K Hour loses its door-code sentence and its "Have
 the door code" checklist row. Finish Your Upload stops promising a failed
-check. Every changed line carries `// DRAFT w26` and goes on
+check. The chess terminal's attract stakes line (`terminal/src/chess/session.ts`
+`stakesLine(true)`, "Checkmate him and the server-room door code goes to
+your Codex.") states a door-code route up front: it becomes a DRAFT line
+that names no prize (for example "Checkmate him."). `WIN_CODE` ("Checkmate.
+The door code is in your phone's Codex.") is an after-the-fact verdict and
+stays. Every changed line carries `// DRAFT w26` and goes on
 `SIGNOFF-w26.md`. **Owners:** story (`.loom`, objectives, codex, cast packs,
-`trabolta.mind.md` / `trabolta.persona.md`), terminal (act1 / act2 copy),
-web (the `flow.tsx` King note), vr (`KING_NOTICE` and HUD hint copy).
+`trabolta.mind.md` / `trabolta.persona.md`), terminal (act1 / act2 copy, the
+chess `stakesLine`), web (the `flow.tsx` King note), vr (`KING_NOTICE` and
+HUD hint copy).
 
 ### G2 The guest help guide stops explaining the machinery (help, web, terminal, vr)
 
 The guest articles (`docs/help/play/*` with no `role:`) keep only how to work
 the phone, the terminals and the game controls, in the computer's own voice.
-They never name director, crew, operator, performer, costume, booth, server,
-editor, Run, moderator or passcode. They never explain a hidden rule, never
+They never name the machinery. The help test bans these words and phrases,
+case-insensitive and whole-word: director, crew, operator, performer,
+costume, booth, editor, Run mode, Run →, moderator, passcode, "event
+server", "the house's server", "the server". The in-fiction names stay
+allowed: an allowlist strips "Server Room", "server-room", "Server Door" and
+"server room" before the check, because the guest help must still name the
+Server Room and Server Door terminals. They never explain a hidden rule, never
 spoil a later beat or an ending, and never mention the void, the in-game
 heart or the virus pickup. The cut material moves to a new performer-only
 article `docs/help/play/19-house-workings.md` (`role: performer`). The crew
@@ -99,10 +110,11 @@ story rule a journaled glitch signal (C3) hits:
   swallows taps;
 - **host booths**: a 2.5 s look-only version with pointer-events off, so a
   cue is never blocked;
-- **never** the director phone or the editor's Run.
+- **never** the director phone or the editor's Run (Run → Players mounts
+  the play app embedded, and an embedded app never takes over).
 
 It plays once, live. A reload, a late reconnect or a restart replay never
-plays it. `ad_hijack` becomes a persistent slide (the walls stay hijacked
+plays it, on a phone or on a terminal. `ad_hijack` becomes a persistent slide (the walls stay hijacked
 until the next screen cue). The reinstallation games do not glitch. No new
 house sound or light in this wave. **Owners:** engine (wire), story (the
 rule's lines), terminal (the overlay), play (the takeover).
@@ -120,7 +132,10 @@ centred Win98 *Reinstallation Wizard* card:
 The idle show runs behind the card as a dimmed quiet backdrop (`quiet` in
 `IdleContext`: no storms except while hijacked or glitching, at most one
 popup, no attention dings, no face layout). The station drops its world pane
-and keeps a one-line "N REINSTALLING". It gets no story slides, no countdown
+and keeps a one-line "N REINSTALLING". Every walk starts in the in-game
+tent (the map's `spawn.room` is `tent`), so the tent terminal is **never
+linked** under R5: its camera never goes into the game, it never carries
+the voice link (as today, `voice/roles.ts`), and it draws no world. It gets no story slides, no countdown
 corner and no Y2K clock. Overlays, beat cutscenes and the T2 glitch still
 play. A `tablet_*` cue becomes an in-card status line, not a modal.
 **Owner:** terminal.
@@ -135,8 +150,11 @@ refuses all of it (C2), and the phone shows a lock screen. The capture
 pop-up and the CORRUPTION DETECTED moment both offer exactly *Show my pass*
 and *Bathroom Mode*, with no OK and no *Go to the Internet* (C1, `ack:
 none`). A banished night (everyone in the Internet at once) is not a
-reinstallation and does not lock. **Owners:** engine (C1, C2), story (the
-`lock:` header and the two moments), play (the lock screen, `noAck`).
+reinstallation and does not lock. The lock screen still shows what the
+program needs to play: the Find Gerald card and a read-only copy of the
+Installation Wizard's thread (its instructions include Bathroom Mode).
+**Owners:** engine (C1, C2), story (the `lock:` header and the two
+moments), play (the lock screen, `noAck`).
 
 ### R2 The path to Gerald appears after a minute (house, web, vr)
 
@@ -171,7 +189,10 @@ that floor, every time and even before Trabolta's reveal, this happens:
 5. a 20 s cooldown per session.
 
 The game teleports even when the server refuses (doors closed, an old
-server). **Owners:** house (escape geometry and ports), spatial (C6), story
+server). His lines are **game-only**: they come back in the moment's answer
+and never reach a phone, a booth or Run (C6 `GAME_ONLY_BEATS`). Because he
+chastises even before his reveal, a Trabolta thread on the phone would
+spoil him. **Owners:** house (escape geometry and ports), spatial (C6), story
 (C9 lines and trust), web, vr.
 
 ### R5 Terminals link to the Internet by room (house, spatial, terminal, web, vr)
@@ -185,7 +206,15 @@ every occupied room is linked. The server is the judge: `spot.here` in the
 screen state (C4), per-room voice routing and per-room camera lists (C8).
 Clients may add a 3 s linger (`PRESENCE_LINGER_MS`) so a doorway crossing
 never flickers. Dedicated `mirror` / `shadow` spectator views stay
-always-on. **Owners:** house (rule), spatial (server), terminal (gating),
+always-on. A terminal with no `spot` is never linked, apart from those
+`mirror` / `shadow` views. The tent terminal is never linked (T3).
+
+The story's `cue tv_mirror` / `Night.screen = "mirror"` in `when captured:`
+stays as it is: it only takes the TV off attract. On `desktop-tv` the world
+pane shows while `spot.here > 0`, never just because the base is `mirror`
+or because someone is somewhere in the simulation (today's
+`inSimulation`). Only when `here` is absent (an old server) does it fall
+back to today's rule. **Owners:** house (rule), spatial (server), terminal (gating),
 web / vr (camera picks).
 
 ### R6 Trabolta's heart in the game (house, spatial, story, web, vr)
@@ -221,12 +250,24 @@ The Quest game gets sound of its own:
 - terminal voices that play;
 - Trabolta's in-game lines (TTS when the device has a voice, else captions).
 
-While any game sound plays, the voice gate is raised (`VoiceLink.hold_for`),
-so the Quest mic never sends the game's own sound to the terminals. The mic
-state becomes legible: emoji-free actionable HUD strings (C12), a logcat
-line on every mic change, and a lobby mic line with **TEST MIC** (a level
-meter, no session needed), **ASK AGAIN** and a build stamp. The mic stays
-open by default. **Owner:** vr.
+While any game sound plays, the mic sends nothing, so the Quest never sends
+the game's own sound to the terminals. That goes through a **new**
+`VoiceLink.hold_for(ms)` in `net/voice_link.gd`, built on the existing
+`VoiceCodec.Gate.hold_until` (`now + ms + VOICE_TAIL_MS`). The mic state
+becomes legible:
+
+- emoji-free, actionable HUD strings for every state, XR and non-XR (C12);
+- a new `denied` mic state, split out of `nomic` where the permission is
+  refused, so the HUD can tell a refused prompt from a pending one or a
+  missing device;
+- a logcat line on every mic change;
+- a lobby mic line with **TEST MIC** (a level meter, no session needed),
+  **ASK AGAIN** and a build stamp.
+
+The mic stays open by default. The device voice needs
+`audio/general/text_to_speech=true` in `project.godot`, which today has
+only `driver/enable_input` under `[audio]`. Without it, `tts_get_voices()`
+is empty and VR would always fall back to captions. **Owner:** vr.
 
 ### V1 Cutscenes wait for his voice (engine, voice)
 
@@ -245,7 +286,9 @@ The `SpeechQueue` pauses 0.3 s between sentences (`CHUNK_GAP_MS`) and 0.7 s
 between lines (`LINE_GAP_MS`), never after the last line. The pause is
 adjustable per screen in ⚙ with a `pause` multiplier (URL key `pause=`,
 default 1). A spaced em/en dash speaks as a pause. On the TV the default
-voice speed is 0.92 (a provisioning default; ⚙ still overrides it).
+voice speed is 0.92 (a provisioning default; ⚙ still overrides it). A TV
+that is already set up keeps its saved `speed` (1), so C14 sets the show TV
+by hand.
 Announcements use `{chunk: 250, line: 0}`. **Owner:** voice.
 
 ### V3 "Antivirus" is said "Anti Virus" (voice, vr, web)
@@ -253,7 +296,9 @@ Announcements use `{chunk: 250, line: 0}`. **Owner:** voice.
 There is one shared pronunciation table (C10). Every TTS path says "Anti
 Virus": the terminal `SpeechQueue` (TV, rooms, piloted chat, announcements,
 Setup, and the web game, which uses the same engine), stagehand
-`localvoice` (the house router and Alexa), and the VR game's TTS. The
+`localvoice` (the house router and Alexa's `say` engine), Alexa's `engine:
+server` path (the Announcer's `/api/mod/tts` fetch and its prewarm cache),
+and the VR game's TTS. The
 display text stays "Antivirus" everywhere. **Owners:** voice (table, terminal
 and stagehand), vr (reads the table).
 
@@ -269,12 +314,25 @@ results: it records the caller and the exact time left, then fires
 ### B2 Undo a false BINGO (story)
 
 `INTERACTION not_a_bingo` (↩ Not a Bingo), pressed on the caller's card by
-Clippy, a host or a director, puts the night back exactly. It restores phase
-`bingo`, step 2 and `bingo_end = Time.elapsed + Night.bingo_left`, and the
-countdowns come back. It is offered only before any 🎱 / 🎯 / 🤐. The quest
-completions move out of `bingo_time` into the end of the round (B5), and
-`bingo_time` becomes `repeat: true` with `while: Night.step == 2`, so NEXT
-reads ⏰ again after an undo. **Owner:** story.
+Clippy, a host or a director, puts the night back exactly. The full restore
+set is in C9. In short, it undoes everything `bingo_time` did:
+
+- the phase, the step, `bingo_on` and the clock;
+- the TV and the walls (`tv_bingo`, `Night.screen = "bingo"`,
+  `terminals_attract`);
+- the call itself (`bingo_called`, `bingo_caller`, `bingo_left`,
+  `bingo_checked`), so another guest can call BINGO again.
+
+The "!⏰ BINGO TIME" broadcast cannot be taken back, so the undo sends a
+DRAFT house line that calls everyone back to their cards. A call that came
+after time-up (`bingo_left == 0`) restores the Bingo phase with no
+countdown, and the hosts call ⏰ as usual (C9).
+
+It is offered only before any 🎱 / 🎯 / 🤐. The quest completions move out of
+`bingo_time` into the end of the round (B5). `bingo_time` becomes `repeat:
+true` with `while: Night.step == 2`, so NEXT reads ⏰ again after an undo.
+The cast briefs and the Bingo Time beat that hang off `bingo_time` play only
+on its first firing (C9), so an undo never repeats them. **Owner:** story.
 
 ### B3 The winner may name nobody (story, play)
 
@@ -311,7 +369,10 @@ stays ≤ 148 kB. **Owner:** play.
 
 ### P2 The performer bar is the guest's bar (play)
 
-A player or host booth (`windowed`) uses the guest taskbar rules:
+A player or host booth uses the guest taskbar rules. Nothing marks a
+windowed booth today: the play lane adds a **new** root class,
+`booth-frame`, built the way `.guest-frame` is (`play/src/css/chrome.css`
+~409, which sets `--title-h: 52px; --taskbar-h: 56px`). The rules are
 `--taskbar-h: 56px`, equal flexible windows from 48 to 120 px, Scan as a
 normal-width primary, and the tray capped at two items under 430 px in
 priority order 🔔 → 🚨 → held receipt → countdown → ⭐ / act → clock.
@@ -332,7 +393,23 @@ per-program event, `dare_taken`. It does three things:
   with only *Show my pass* (`ack: none`).
 
 The TV / wall scene keys on the beat (`dare_chosen`). The old `chose_dare`
-signal scene is retired. **Owners:** story, terminal (the scene), voice (its
+signal scene is retired. A beat moment carries `who: null`
+(`routes/screen.ts` ~623), so the scene takes the dared program's name from
+`state.night.bottle_pick`, which the screen state already carries
+(`Night.bottle_pick`). On the TV, the sentence he speaks names the program
+too (V1). No engine change is needed.
+
+Unchanged, so the terminal tests that pin them (`terminal/test/act1.test.ts`
+~89–96) stay green:
+
+- the minor broadcast "~🎩 {program.name} chose Dare. Programs choose
+  Truth.";
+- the mark reason `chose Dare`;
+- the Truth and Refuse lines.
+
+The credit stays where it is: `fire game_credit` remains on the 🎩 fallback
+path only (`main.loom` ~1050). `dare_taken` does not pay it, so neither path
+changes its score. **Owners:** story, terminal (the scene), voice (its
 `VOICE_SCENES` entry).
 
 ---
@@ -368,12 +445,24 @@ Play honours it only on a `big` moment with at least one resolved exit for
 this viewer. Otherwise it shows the usual OK: a guest is never trapped, and
 the NM-F1 fallback still applies. `BigFallback` (the chunk failed) keeps
 its OK. LSP lint **L1226** (warning): `ack: none` with no `go:` in the same
-tail. Banks ignore it.
+tail (the code goes in `core/src/parser/diagnostics.ts` beside the other
+`L12xx`). Banks ignore it.
 
-Story use (story lane, DRAFT w26): the capture reply in `when captured:`
-(non-banish branch) and the confrontation reply in `when confronted for
-program:` both end `with go: pass as "🎟 Show my pass", go: go to the
-bathroom, ack: none`.
+Story use (story lane, DRAFT w26): three replies end `with go: pass as "🎟
+Show my pass", go: go to the bathroom, ack: none`:
+
+- the capture reply in `when captured:` (non-banish branch);
+- the confrontation reply in `when confronted for program:`;
+- the 🎩 reply of `dare_taken` (D1), with only the pass exit.
+
+The `respond` parser takes a `with …` tail **only after a quoted text**
+(`sim.ts` ~2296). The CORRUPTION DETECTED reply is unquoted today
+(`main.loom` ~1163, `reply !!🛡 CORRUPTION DETECTED. …`), and an unquoted
+tail would show on the phone as literal text. So every reply that gains a
+tail is rewritten in the quoted form, for example `reply "!!🛡 CORRUPTION
+DETECTED. {hunter} …" with go: …, ack: none`. The story lane adds a test
+that all three replies' messages carry `noAck: true` and that none of their
+texts contains "with go:".
 
 ### C2 The locked phone: the `lock:` header and `GuestView.locked`
 
@@ -413,7 +502,11 @@ decides what to hide.
 **Server refusals** (engine lane, `core/server/event-runtime.ts`). While
 `isLocked(sim, id)`, every state-changing `/api/guest/*` route answers
 `403 {"error": "locked"}` before any other check except the token check.
-That covers:
+
+The check runs **once, at the top of `handlePost`, before
+`this.crewRoutes.handleGuest(...)`** (~5449). The crew and recruit routes
+are dispatched there, ahead of the `switch`, so a check inside the switch
+would miss them. The refused set:
 
 - `say` (every channel, `dm:` included);
 - `choose`, `widget`, `escape`, `join`, `defect`;
@@ -422,16 +515,36 @@ That covers:
 - every `wallet/*` sub-route;
 - `picture`;
 - the check-in route (`CHECKIN_ROUTE`);
-- the recruit / invitation answers;
+- every route in `CREW_GUEST_ROUTES` (`routes/crews.ts`): `crew/found`,
+  `crew/invite`, `crew/leave`, `crew/join`, `recruit`, `recruit/answer`,
+  `side/leave`;
 - `act`, unless the interaction is `restricted: allow`.
 
-Open while locked: the GETs (state, stream), `act` on `restricted: allow`
-interactions, and session housekeeping that posts nothing into the story
-(register / rejoin / push subscription). The engine lane keeps the open set
-as one exported constant, `LOCKED_OPEN`, with a test that walks every
-`case "/api/guest/…"` and asserts each one is either in it or refuses. A
-director's Run → Players pane and a terminal piloting a locked guest go
-through the same routes, so they are refused the same way.
+Open while locked:
+
+- the GETs (state, stream);
+- `act` on `restricted: allow` interactions;
+- session housekeeping that posts nothing into the story: `register` (the
+  switch's first case, ~5455) and, dispatched before `handlePost`
+  (~5082–5111), the push
+  subscription routes (`pushRoutes`), `resume` (`RESUME_ROUTE`), `enter`
+  and `rejoin/*` (`routes/rejoin.ts`), `badge` (`BADGE_ROUTE`, linking a
+  printed badge), `homescreen` (`HOMESCREEN_ROUTE`) and `logout`.
+
+The engine lane keeps the open set as one exported constant, `LOCKED_OPEN`.
+A test lists every guest route from all of these:
+
+- each `case "/api/guest/…"` and route constant in `event-runtime.ts`;
+- `CREW_GUEST_ROUTES`;
+- the route constants exported by `routes/*.ts` (`k13.ts`, `k31b.ts`,
+  `n02.ts`, `rejoin.ts`, the push routes).
+
+It asserts that each route is either in `LOCKED_OPEN` or answers `403
+locked` for a locked guest, so a new route can't slip past. A director's Run
+→ Players pane and a terminal piloting a locked guest go through the same
+routes, so they are refused the same way. Lint **L1216** gains the `lock:`
+header: a `lock:` line that is no expression is an error, as `reinstall:`
+already is (`core/src/lsp/w18-lints.ts` ~174).
 
 The lock is derived from story state. It is never journaled and never needs
 an `unrestrict`: release (`self.corrupted = false`) lifts it on the next
@@ -445,8 +558,15 @@ Everyone-polls during a capture simply go unanswered by the captured
 program; that is acceptable.
 
 **Play duty** (play lane): a locked guest sees a lock screen in place of the
-windows. It has the title bar, a ⛔ QUARANTINED card (DRAFT copy), 🎟 Show my
-pass, and Bathroom Mode / Back from the bathroom from `view.interactions`.
+windows. It has:
+
+- the title bar and a ⛔ QUARANTINED card (DRAFT copy);
+- the current objective card (Find Gerald) from the view;
+- a read-only scroll of the `dm:Installation Wizard` thread, with no
+  composer, menus or cards. It holds the reinstallation instructions,
+  Bathroom Mode included (`beats/internet.loom` ~18–31);
+- 🎟 Show my pass, and Bathroom Mode / Back from the bathroom from
+  `view.interactions`.
 The moments layer (the capture big, the T2 takeover) still shows over it.
 On a `403 locked` answer, play shows the lock screen; it never shows an
 error toast. Keep the lock screen's JS out of the first load, or under
@@ -506,26 +626,31 @@ hosts, director). It is mirrored as optional in `play/src/types.ts`.
 **Plays once** (the rules every surface follows):
 
 - **Terminal** (terminal lane): `layers.glitch` shows only while
-  `program.glitch.at > 0` and `serverNow − at < GLITCH_MS` (8000). History
-  (`at: 0`) never shows. Blackout beats it. It shows on every view (TV,
+  `program.glitch.at > 0`, `serverNow − at < GLITCH_MS` (8000), and `at` is
+  later than the server time of this page's first screen answer. History
+  (`at: 0`) never shows. A glitch already under way when the page loads
+  (a reload within 8 s) never shows either: `program.glitch` is shared
+  server state, so its `at` is live for every terminal, not only the one
+  that saw it happen. Blackout beats it. It shows on every view (TV,
   mirror, walls awake or asleep, room, chess, casino, reinstall, shadow),
   whether piloting, peeking or `bare`. It counts as `covered` (the idle show
   pauses) but not `takeover` (a pilot, a chess game or a tent walk keeps
   running underneath). It is CSS-only and in the main bundle. Flashes stay
   ≤ 3 Hz with no full-field red, and reduced motion shows a still frame.
   Sounds come only from the terminal synth library.
-- **Phone** (play lane): a pure `takeoverDue(prevAt, glitch, clock, firstView)`
-  is true only if all of these hold: `glitch.at > 0`; it differs from the
+- **Phone** (play lane): a pure `takeoverDue(prevAt, glitch, clock,
+  firstView, embedded)` is true only if all of these hold: the app is not
+  embedded (Run → Players mounts it in shadow roots; `embedded` is the same
+  flag that already skips sound there); `glitch.at > 0`; it differs from the
   last `at` this provider saw; this is not the first view (no reload or new
   sign-in); and `0 ≤ clock − glitch.at ≤ TAKEOVER_FRESH_MS` (15 000, story
   ms). The takeover is a lazy chunk with the existing 600 ms `<Glitch/>` as
   its fallback. It holds the moments queue for its length, so the `!📺`
   sticky lands right after it, not under it. Sound and buzz are skipped
-  when the page is hidden, sound is off, or the app is embedded (Run →
-  Players).
+  when the page is hidden or sound is off.
 - **Who gets what**: guests and player booths get ~6 s, tap-swallowing. Host
   booths get 2.5 s with `pointer-events: none`. The director phone and
-  Run get nothing.
+  Run get nothing. A test pins `takeoverDue(…, embedded: true)` to false.
 
 ### C4 Screen state additions (engine lane wires the shape; spatial lane feeds `here`)
 
@@ -558,9 +683,17 @@ tvSpeech?: { seq: number; chunk: number | null; at: number } | null;
   line is done. It is parsed beside `talk` / `said`, and only from a `view=tv`
   poller.
 - Engine lane, terminal side: `terminal/src/screen.ts` parses
-  `program.glitch` (`shotOf`), `spot.here`, `tvSpeech`, and adds `sp` to
-  `SpeechReport` / `speechQuery`. The terminal and voice lanes then only
-  consume them.
+  `program.glitch` (`shotOf`), `spot.here` and `tvSpeech`.
+  `terminal/src/speech/said.ts` (where `SpeechReport` and `speechQuery`
+  live, ~22–33) gains the optional `sp` field and key, with
+  `terminal/test/said.test.ts`. Both files are the engine lane's in Stage A
+  only, and the terminal and voice lanes then only consume them.
+- The gating rule every terminal follows: with `spot.here` present, linked
+  means `here > 0`. A terminal with no `spot` is never linked (no world, no
+  camera into the game, no voice link), apart from the `mirror` / `shadow`
+  views. A `view=reinstall` terminal (the tent) is never linked. Only when
+  `here` is absent on a placed terminal (an old server, or no spatial map)
+  does it fall back to the house-wide `reinstalling` rule.
 - `spotHere` is wired in `event-runtime.ts` by the spatial lane in Stage B.
   Until then it is absent and `here` is not sent.
 
@@ -596,7 +729,8 @@ export const PRESENCE_LINGER_MS = 3000;   // client-side latch only
  *  player still within PRESENCE_HYSTERESIS_M of `prev`'s polygon on the
  *  same floor stays in `prev`. Pure; the caller keeps `prev`. */
 export function presenceRoom(house: HouseMap, p: Vec3, prev: string | null): string | null;
-/** Map terminal ids whose `room` holds at least one of `rooms`. */
+/** Map terminal ids whose `room` holds at least one of `rooms`, never a
+ *  `view: "reinstall"` terminal (the tent station: every walk starts in its room). */
 export function linkedSpots(house: HouseMap, rooms: Iterable<string | null>): Set<string>;
 ```
 
@@ -613,6 +747,11 @@ goldens regenerated):
 - `VoiceRouteOptions.keep` is removed (never deprecate) and its callers are
   fixed. That means `core/server/spatial-voice.ts` and its tests, which the
   house lane owns in Stage A for this change only.
+- The web game's `earsFor` (`reinstall/web/src/game/voice.ts`) calls
+  `hearsPlayers`, so it follows the new rule with no code change. Its
+  cross-room expectation in `reinstall/web/test/voice.test.ts` (~187–190,
+  "`t` is 6.5 m away") becomes 0. The house lane owns that test file in
+  Stage A for this change.
 
 **Path reveal** (`house/src/route.ts`, port `house_route.gd`):
 `export const PATH_REVEAL_MS = 60_000;`.
@@ -625,9 +764,10 @@ export interface Prop {
   // …
   /** kind "pickup" only: what it is ("virus"). Required on a pickup, refused elsewhere. */
   item?: string;
-  /** kind "heart" | "pickup" only: the story signal the server posts
-   *  (defaults HEART_SIGNAL / PICKUP_SIGNAL). Refused on other kinds. */
-  signal?: string;
+  /** The existing story-signal object, widened: king keys as today, plus
+   *  `reached` (kind "heart", default HEART_SIGNAL) and `taken` (kind
+   *  "pickup", default PICKUP_SIGNAL). Keys are checked per kind. */
+  signals?: { won?: string; lost?: string; drawn?: string; hit?: string; fallen?: string; reached?: string; taken?: string };
 }
 export const ESCAPE_SIGNAL = "simulation escape attempt";
 export const HEART_SIGNAL = "simulation heart reached";
@@ -638,11 +778,17 @@ export const PICKUP_SLACK_M = 0.3;   // the server's extra reach
 export function heartReached(house: HouseMap, feet: Vec3, heart: Prop): boolean; // same room, ≥ HEART_INSET_M inside
 export function pickupReach(house: HouseMap, feet: Vec3, prop: Prop, slack?: number): boolean;
 export function momentProp(house: HouseMap, id: string, kind: "heart" | "pickup"): Prop | null;
-export function propSignal(prop: Prop): string; // prop.signal ?? the kind's default
+export function propSignal(prop: Prop): string; // signals.reached / signals.taken ?? the kind's default
 ```
 
-`propSolid` is false for both new kinds by default. The king-only key check
-stays king-only. A heart or pickup prop with a `label` is refused, because an
+`propSolid` is false for both new kinds by default. There is no new
+`signal` field: a lone `signal` beside the king's `signals` object would be
+a near-collision. `KING_FIELDS` loses `signals`. Instead, `validate.ts`
+checks the `signals` keys per kind: king takes `won / lost / drawn / hit /
+fallen`, heart takes `reached`, pickup takes `taken`, and any other kind
+takes none. `hp`, `health` and `armed` stay king-only. The show maps leave
+`signals` out on both new props (the defaults), so an old validator never
+sees it there. A heart or pickup prop with a `label` is refused, because an
 old APK would draw the label.
 
 **Three** (`house/src/three/`). `heart.ts` `createHeart()` and `pickup.ts`
@@ -662,8 +808,11 @@ glow). `buildHouseScene` options:
 - one `heart` prop, id `trabolta-heart`, in room `server-room`: standable,
   centred, off the patch bay and the rack;
 - one `pickup` prop, id `virus-disk`, `item: "virus"`, in `hard-drive` or
-  `fan-closet` (the house lane picks one that is standable, off the duck's
-  usual route and never on a trail chevron).
+  `fan-closet`, on a standable spot. Both rooms hold a duck spot
+  (`hard-drive-boxes`, `fan-closet-dryer`), so the room alone does not keep
+  the disk off the duck's route. The disk must sit ≥ 2 m (plan) from every
+  `duck.spots` entry and never on a trail chevron. A show-map test in
+  `house/test` checks both maps for this.
 
 Neither carries a `label`. The map editor (`reinstall/web/src/map/props.ts`,
 `Inspector.tsx`) can place, move and edit both kinds (`item`, `signal`).
@@ -684,9 +833,14 @@ picks one route. Why:
 - The three share everything but the judge: the session-token check,
   401/410, `parked`, the doors-closed 409, the commit `by` the device, and
   handing back the story's lines.
-- One route means one hub method, one client call per game (web
-  `postMoment`, VR `link.moment(kind, prop)` on `_want_claim("moment")`),
-  one answer shape and one test matrix.
+- One route means one hub method, one client call per game, one answer
+  shape and one test matrix. The client calls are web `postMoment` and VR
+  `link.moment(kind, prop)`. `_want_claim` dedups by kind, so a single
+  `"moment"` claim would let a pending escape swallow a heart or pickup
+  claim and lose the prop id. VR therefore claims per kind
+  (`moment:escape`, `moment:heart`, `moment:pickup`) and stores the prop id
+  with the claim in `server_link.gd`, so the pump sends `{kind, prop}` when
+  it fires.
 - `kind` is a closed enum, so the routing stays explicit.
 
 **Lines come back in the answer body.** They do not go out as a stream
@@ -719,16 +873,16 @@ interface MomentLine { from: string; text: string }   // display text, never pro
 // 200
 type MomentOk =
   | { ok: true; kind: "escape"; lines: MomentLine[]; spawn: Spawn; cooldownMs: number }
-  | { ok: true; kind: "heart"; lines: MomentLine[]; first: boolean }
+  | { ok: true; kind: "heart"; lines: MomentLine[] }     // lines empty: nothing to say (he isn't awake, or a restart forgot it was heard)
   | { ok: true; kind: "pickup"; lines: MomentLine[]; item: string; prop: string };
 ```
 
 | Status | Body | When | The game |
 |---|---|---|---|
-| 400 | `{error: "bad moment"}` | unknown `kind`, missing `prop` | gives up |
+| 400 | `{error: "bad moment"}` | unknown `kind`; heart / pickup with no `prop` field | gives up |
 | 401 / 410 | `{error: "unknown session token"}` / `{error: "this session is over"}` | dead token | ends the game, as today |
-| 404 | `{error: "no such prop"}` | `prop` missing or the wrong kind | gives up |
-| 404 | (no JSON) | an **old server** without the route | escape: teleports, no penalty, no lines; heart / pickup: nothing |
+| 404 | `{error: "no such prop"}` | `prop` names no prop on the map, or one of the wrong kind | gives up |
+| 404 | `{error: "not found"}` | an **old server** without the route: `handleSpatialPost` returns false for an unknown `/api/spatial/*` path and `server.ts` (~526) answers its generic 404 | escape: teleports, no penalty, no lines; heart / pickup: nothing |
 | 409 | `{error: "doors are closed"}` | paused / before doors | escape: teleports, no penalty; heart / pickup: retries on the found backoff |
 | 409 | `{error: "this session has not started — send a pose first"}` | parked | retries after a pose |
 | 409 | `{error: "not out", distance}` | escape: `voidDistance < ESCAPE_M − ESCAPE_SLACK` | teleports anyway, no penalty |
@@ -738,6 +892,10 @@ type MomentOk =
 | 409 | `{error: "far", distance}` | pickup: `!pickupReach(…, PICKUP_SLACK_M)` | retries |
 | 409 | `{error: "already"}` | heart heard by this guest tonight / pickup taken by this guest | heart: silent; pickup: hide the disk |
 
+Games tell the two 404s apart **by the `error` string**, never by status
+or by "is it JSON". The new route never answers `"not found"`. Any other
+404 body is read as an old server.
+
 **Hub** (`core/server/spatial.ts`, spatial lane):
 
 ```ts
@@ -746,19 +904,26 @@ export type MomentOutcome =
   | { kind: "unknown" } | { kind: "over" } | { kind: "parked" } | { kind: "bad" } | { kind: "noProp" }
   | { kind: "notOut"; distance: number } | { kind: "cooldown"; retryMs: number }
   | { kind: "sealed" } | { kind: "notThere" } | { kind: "far"; distance: number } | { kind: "already" }
-  | { kind: "ok"; spawn?: Spawn; first?: boolean; prop?: Prop };
+  | { kind: "ok"; spawn?: Spawn; prop?: Prop; lines: MomentLine[] };
 moment(token: string | undefined, req: MomentRequest,
-       commit: (s: SessionRef, signal: string, args: Record<string, string>) => void): MomentOutcome;
+       commit: (s: SessionRef, signal: string, args: Record<string, string>) => MomentLine[]): MomentOutcome;
 ```
 
 - **Escape**: claimed, `voidDistance(map.house, s.pose.p) ≥ ESCAPE_M −
-  ESCAPE_SLACK`, past the per-session cooldown. Then the pose is re-seated at
-  the map spawn and marked dirty (the terminals' ghosts jump back), and
-  `commit(ref, ESCAPE_SIGNAL, {})` runs.
+  ESCAPE_SLACK`, past the per-session cooldown. Then the pose is re-seated
+  at the map spawn, and `s.room` / `s.floor` (`locate` of the spawn) and
+  `s.presence` (`presenceRoom(house, spawn, null)`) are recomputed. The
+  pose is marked dirty, so the terminals' ghosts jump back and the voice
+  and cams follow at once. Then `commit(ref, ESCAPE_SIGNAL, {})` runs.
 - **Heart**: the prop exists, is a heart, and the King is fallen (or the map
   has none). `heartReached` holds on the last pose and the guest is not in
-  `heartHeard`. Then `commit(ref, propSignal(prop), {prop: id})`. Every
-  later call answers `already` (`first: true` only on the first).
+  `heartHeard`. Then `commit(ref, propSignal(prop), {prop: id})` runs. The
+  guest joins `heartHeard` only when the commit returned at least one line,
+  so a visit before he is awake can be retried on re-entering. Once a guest
+  is in `heartHeard`, later calls answer `already`. After a restart
+  `heartHeard` is empty, and the story's own guard (`program.sim_heart`)
+  makes the commit say nothing: a 200 with empty `lines`, and the game stays
+  silent.
 - **Pickup**: the prop exists, is a pickup, and `pickupReach` with slack
   holds. If the guest is already in `picked[prop]`, the answer is `already`.
   Otherwise `commit(ref, propSignal(prop), {item: prop.item, prop: id})`.
@@ -772,15 +937,46 @@ moment(token: string | undefined, req: MomentRequest,
 
 ```ts
 this.actingBy = s.device;
-const msgs = this.fanout(this.commit("signal", signal, s.guest, args));
-// lines: what that commit said to this program, in order
-lines = msgs.filter((m) => m.kind === "line" && m.from !== "" && Array.isArray(m.audience) && m.audience.includes(s.guest))
-            .map((m) => ({ from: m.from, text: m.text }));
+const events = this.commit("signal", signal, s.guest, args);
+this.fanout(events);
+// lines: what that commit said to this program, in order (game-only beats included)
+return momentLines(events, s.guest);
 ```
+
+`momentLines(events, guest): MomentLine[]` is a pure helper the **engine
+lane** adds to `core/server/chat.ts` in Stage A, with a test. It returns the
+commit's `dialogue` events whose `audience` includes the guest, in order,
+as `{from: speaker, text}`. It reads the SimEvents, not the fanned-out
+messages, because of the next rule.
+
+**Game-only beats** (engine lane, Stage A, `chat.ts`). `export const
+GAME_ONLY_BEATS = ["Escape Attempt", "Heart In The Simulation"]` (folded).
+The chat composer emits **no** `ChatMessage` for a `dialogue` event whose
+`beat` is one of them. Chat is re-derived on replay, so the rule is
+deterministic: no phone thread, booth readout, Run pane or replay ever holds
+those lines. Only the game's answer body carries them. This matters
+because Trabolta is `hidden: true` and has no scripted line before
+`introduce_trabolta` (`cast/trabolta.loom`), and he chastises an escape
+even before his reveal (R4). Other lines a moment produces, such as the
+Truther Download line from the pickup's codex unlock, reach the phone as
+usual. The engine lane's test: an escape before `introduce_trabolta` leaves
+no Trabolta line in any `GuestView`, `PrimeView` or chat history, and
+`momentLines` still returns them.
 
 The lines include ones the phone hides (a locked phone or a hidden agent):
 the game is the surface here. Only dialogue produced inside that one commit
 is returned, so in-game scenes must contain no `wait`, choice or widget.
+
+**Quiet on the screens** (engine lane, Stage A, `routes/screen.ts`). The
+three signals are `who: admin` interactions, and `momentOf` turns every
+admin signal into a public `signal` moment in the screen state's `moments`
+ring (~640). Every terminal would then carry "simulation heart reached" and
+"simulation pickup taken", against G2. So `ESCAPE_SIGNAL`, `HEART_SIGNAL`
+and `PICKUP_SIGNAL` join `QUIET_MOMENT_SIGNALS` (~465), with a case in
+`core/test/screen-quiet-moments.test.ts`. The constants come from
+`@loom/house`, so the house lane exports them first (Stage A merges house
+before engine). `screen.ts` is frozen in Stage B, so this must land in
+Stage A.
 
 **Assignment** (additive, `house/src/types.ts` by the house lane, filled by
 the spatial lane):
@@ -795,13 +991,20 @@ heartHeard?: boolean;
 
 **In-game speech** (web and vr). Lines are captioned one at a time in a
 Win98 caption window (web) or a head-locked / heart-billboard caption (VR).
-Each holds for its reading time, with `LINE_GAP_MS` (700) between lines, and
-is spoken by the device voice:
+Each holds for its reading time, with 700 ms between lines, and is spoken
+by the device voice:
 
-- the web game uses `@loom/terminal/speech/engine.ts`, so the pronunciation
-  and the gaps come free;
+- the web game speaks through `@loom/terminal/speech/engine.ts`, so the
+  pronunciation comes from the voice lane once both are on master. Web
+  merges after voice. Until it rebases, it times captions with its own
+  `IN_GAME_LINE_GAP_MS = 700`. After the rebase, a web test pins that value
+  equal to the terminal's `LINE_GAP_MS`, and a test checks that a spoken
+  line goes through `pronounce`;
 - VR uses `DisplayServer.tts_speak` with `pronounce()` from C10, and falls
-  back to captions when `tts_get_voices()` is empty.
+  back to captions when `tts_get_voices()` is empty. The vr lane sets
+  `audio/general/text_to_speech=true` under `[audio]` in
+  `reinstall/vr/project.godot`, with a Godot test and a `quest_sh.sh`
+  check that the setting is there.
 
 While a line speaks, the game raises its own voice gate, so the terminals
 never hear it back. The caption shows the display text, never the
@@ -810,8 +1013,9 @@ pronounced one.
 ### C7 Cameras and the upload reply (spatial lane; consumers terminal, web, vr)
 
 - `GET /api/spatial/cams` with a **game session** token lists only feeds
-  whose map spot `room` equals that session's presence room. With a
-  moderator token it is unfiltered, as today.
+  whose map spot `room` equals that session's presence room, never a
+  `view: "reinstall"` spot (the tent, T3). With a moderator token it is
+  unfiltered, as today.
 - `GET /api/spatial/cam?spot=` for a spot outside the session's room
   answers `404 {"error": "no feed"}`.
 - The cam upload reply gains `watched: boolean`, true while the uploading
@@ -824,14 +1028,23 @@ pronounced one.
 
 ### C8 Per-room presence on the server (spatial lane)
 
-- `SpatialHub` keeps `s.presence: string | null` per session, updated on
-  every pose with `presenceRoom(house, pose.p, s.presence)` and reset on a
-  map swap.
-- The `VoiceRelay` passes `room: s.presence` into `hearsTerminals` /
-  `hearsPlayers`. No other relay change: `listen {on}` already stops a
-  terminal mic nobody hears.
+- `SpatialHub` keeps `s.presence: string | null` per session, beside the
+  existing `s.room` / `s.floor` from `locate` (`spatial.ts` ~163, ~773). It
+  is updated on every pose with `presenceRoom(house, pose.p, s.presence)`,
+  re-seated on an escape (C6) and reset on a map swap.
+- `s.room` stays the raw `locate` room. The stream's `PlayerState.room`
+  and the `poses` frame (`flush`, ~887) are **unchanged**: the terminals'
+  world view, minimap and ghosts keep drawing where the player really is.
+- The `VoiceRelay` has no access to sessions: it reads players through the
+  `world()` callback in `event-runtime.ts` (~964), which today passes
+  `this.spatial.players()`. The spatial lane adds `SpatialHub.voicePlayers():
+  VoiceRoutePlayer[]`, the joined players with `room: s.presence`, and the
+  callback passes that in place of `players()`. `hearsTerminals` /
+  `hearsPlayers` then judge by the presence room. No other relay change:
+  `listen {on}` already stops a terminal mic nobody hears.
 - `spotHere(spot)` counts live claimed sessions whose `presence` equals that
-  map spot's `room`.
+  map spot's `room`. It answers 0 for a `view: "reinstall"` spot (T3) and
+  null for a spot the map lacks.
 - Presence is memory only, like poses.
 
 ### C9 Story names (story lane; read by spatial, terminal, voice, play tests)
@@ -848,9 +1061,11 @@ noted):
 
 **The trust formula** becomes
 `trust = truths_accepted * 10 - internet_visits * 5 - escapes * 5 + assessment`.
-Change it at **all five** recompute sites (`main.loom` ~582, ~870, ~951,
-~1771 and `cast/trabolta.loom` ~293) and in the formula comment (~223).
-Pin it with a test that greps all five.
+Change it at the five existing recompute sites (`main.loom` ~582, ~870,
+~951, ~1771 and `cast/trabolta.loom` ~293) and in the formula comment
+(~223). The new escape hook below is a **sixth** site. Pin it with a test
+that finds every `trust = ` assignment in the story (six), not a fixed
+list, and checks each one uses the new formula.
 
 **New Night vars**, seeded at the doors (~5887) and cleared in the
 ending's reset (~5262):
@@ -866,6 +1081,7 @@ ending's reset (~5262):
 | `Night.bingo_done` | false | 🎯 / 🤐 / a Bingo-phase capture / `introduce_trabolta` |
 | `Night.bingo_closed` | false | the `bingo_done` rule (once) |
 | `Night.bingo_none` | false | 🤐 |
+| `Night.bingo_briefed` | false | the first `bingo_time` (the cast briefs and the Bingo Time beat run once) |
 
 **INTERACTIONs:**
 
@@ -882,6 +1098,58 @@ ending's reset (~5262):
 `bingo_winner` and `named_at_bingo` gain `and Night.bingo_done != true` in
 their `while:` and their hooks. `frame_for_bingo` and The Fake Bingo Card
 gain it too.
+
+**Hooks repeat their `while:`.** An interaction's `while:` is never
+enforced; the hooks still decide (`docs/writing-in-loom.md` ~1277–1281).
+So the hooks of `call_bingo`, `not_a_bingo` and `named_nobody` (and
+`bingo_winner` / `named_at_bingo` as above) open with an `if` that repeats
+their `while:` condition in full, and otherwise send a "Nothing happens"
+line to `channel(hosts)`, as `bingo_time`'s `else:` does. A stale button
+pressed after the round closes then does nothing. The story lane tests two
+races. In the first, two guests press 🎱 back to back: the first wins, the
+second does nothing, and `bingo_caller` stays the first. In the second, a
+🎱 lands after a 🎯 and changes nothing.
+
+**`bingo_time` and its undo.** `bingo_time` today:
+
+- sets phase `bingo_results`, step 3 and `bingo_on = false`;
+- completes two quests and unlocks Clippy Instructions 2;
+- cues `tv_bingo_time` (`Night.screen = "bingo_time"`) and
+  `terminals_attract`;
+- broadcasts "!⏰ BINGO TIME" and enters `-> Bingo Time`.
+
+Three cast hooks hang off it, guarded only by `Night.step < 3`
+(`cast/hosts.loom` ~65 and ~234, `cast/antivirus.loom` ~23). With `repeat:
+true`, the second firing after an undo would replay them.
+
+- The phase / step / screen / broadcast part of `bingo_time` runs every
+  time. The two quest completions move to the end of the round (B5).
+  Unlocking Clippy Instructions 2 is idempotent.
+- `-> Bingo Time` and the three cast hooks run only while `Night.bingo_briefed
+  != true`. The story lane places the `set Night.bingo_briefed = true` so
+  the guard holds whatever order the hooks drain in. The existing `step <
+  3` guards show that order. A test pins it: call → undo → ⏰ sends
+  YOUR GAME IS ON and Norton's brief exactly once.
+- `not_a_bingo`'s hook restores, in this order:
+  - `Night.phase = "bingo"` and `Night.step = 2`;
+  - if `Night.bingo_left > 0`: `Night.bingo_on = true` and `Night.bingo_end
+    = Time.elapsed + Night.bingo_left`, so the "Bingo ends" countdown
+    (`main.loom` ~22) and the time-up rule (~3884) come back;
+  - if `Night.bingo_left == 0` (the call came after time-up): `bingo_on`
+    stays false and `bingo_end` is left alone, so "Bingo time is up" never
+    fires twice. The hosts call ⏰ as usual;
+  - `cue tv_bingo`, `Night.screen = "bingo"`, `cue terminals_attract`,
+    `Night.terminals = "attract"`;
+  - `Night.bingo_called = false`, `Night.bingo_caller = "none"`,
+    `Night.bingo_left = 0` and `Night.bingo_checked = false`, so `call_bingo`
+    is live again;
+  - a DRAFT house line to everyone, for example "↩ Not a Bingo yet. Back
+    to your cards." `with go: quest: The Bingo Card`, plus a hosts line
+    naming who pressed it.
+
+  A story test drives call → undo with time left (the countdown resumes at
+  the exact remaining seconds) and call-after-time-up → undo (no second
+  time-up broadcast).
 
 **Objectives:**
 
@@ -918,11 +1186,10 @@ when simulation escape attempt for program:
   -> Escape Attempt
 
 when simulation heart reached for program:
-  if program.sim_heart != true:
+  if program.sim_heart != true and Trabolta.awake == true:
     set program.sim_heart = true
     broadcast "❤ {program.name} reached Trabolta's heart in the simulation." to channel(hosts)
-    if Trabolta.awake == true:
-      -> Heart In The Simulation
+    -> Heart In The Simulation
 
 when simulation pickup taken for program:
   if item == "virus" and program.carries_virus != true:
@@ -932,8 +1199,14 @@ when simulation pickup taken for program:
       unlock ILOVEYOU for program
 ```
 
+`program.sim_heart` is set only inside the awake branch. A visit while he
+is not awake therefore marks nothing: the commit says nothing, the hub does
+not add the guest to `heartHeard` (C6), and the next visit can still hear
+the monologue.
+
 `unlock` fires the existing `when program learns …` hooks. Their Truther
-Download line is subject-bound, so it comes back in the moment's `lines`.
+Download line is subject-bound, so it comes back in the moment's `lines`
+and also reaches the phone as today (it is not a game-only beat).
 The comment "Excel's virus (the tent QRs)" names both sources. No hook or
 line ever goes on `CHARACTER Microsoft Excel` or any featured character:
 featured programs stay guests.
@@ -942,9 +1215,13 @@ featured programs stay guests.
 
 | Beat | File | setting / cast | Shape |
 |---|---|---|---|
-| `== Escape Attempt` | `beats/internet.loom` | **no `setting:`**, cast Trabolta | 2–3 lines. Subject-bound, so they route to the program's `dm:Trabolta` and come back in C6. No `wait`, choice or widget. Plays before the reveal too (the user's decision). Tone: "There is no outside, {program.name}. There is only my computer. Back you go." |
-| `== Heart In The Simulation` | `beats/internet.loom` | no `setting:`, cast Trabolta | 3–5 short lines. He notices a copy of the program in his heart's copy, wary, one personal thing. No door, code, combination, patch-bay, layer or stand-down words, and nothing that short-circuits the real Heart talk |
+| `== Escape Attempt` | `beats/internet.loom` | **no `setting:`**, cast Trabolta | 2–3 lines. Subject-bound, so they come back in C6's `lines`. It is in `GAME_ONLY_BEATS` (C6), so they **never** become a `dm:Trabolta` message on any phone, booth or Run, not even after his reveal. No `wait`, choice or widget. Plays before the reveal too (the user's decision). Tone: "There is no outside, {program.name}. There is only my computer. Back you go." |
+| `== Heart In The Simulation` | `beats/internet.loom` | no `setting:`, cast Trabolta | 3–5 short lines, game-only (`GAME_ONLY_BEATS`). He notices a copy of the program in his heart's copy, wary, one personal thing. No door, code, combination, patch-bay, layer or stand-down words, and nothing that short-circuits the real Heart talk |
 | `== Dare Chosen` | `beats/hunt.loom` | `setting: The Desktop`, cast Trabolta | 2–3 public lines (the TV voice reads them), ending with his order to the Anti-Viruses to take `{Night.bottle_pick}` to the Internet |
+
+The two game-only beat names are fixed by this table. The engine lane writes
+them into `GAME_ONLY_BEATS` in Stage A, so the story lane must not rename
+them.
 
 The written form stays "Antivirus" / "Anti-Virus" as the story already
 spells them. Speech is fixed by C10, never by respelling.
@@ -967,7 +1244,7 @@ Everything new or changed is marked `// DRAFT w26` and listed in
 `SIGNOFF-w26.md` (the `SIGNOFF-w21.md` shape: status DRAFT, the user's words,
 then `path:line | where | was | now`).
 
-### C10 The pronunciation table (voice lane; read by vr and web)
+### C10 The pronunciation table (data from the engine lane in Stage A; voice lane; read by vr and web)
 
 One data file, `terminal/src/speech/pronounce.json`:
 
@@ -993,12 +1270,27 @@ it as written. No regex lookbehind (Chrome 87 / Safari 14).
   `stagehand/src/stagehand/pronounce.json`. `localvoice.py`'s `pronounce()`
   wraps `render_voice` / `speak_voice` and the `renderer()` / `speaker()`
   callables, so the house router's announcements, desk `say` steps and
-  Alexa all get it.
-- **VR**: a byte-identical copy at `reinstall/vr/game/pronounce.json`,
-  written by the voice lane. The vr lane's `speech.gd` loads it and applies
-  it before `tts_speak`.
-- A terminal test pins both copies byte for byte, and stagehand pins its
-  copy in pytest.
+  Alexa's `say` engine all get it. Alexa's `engine: server` path never goes
+  through localvoice: `alexa/module.py` fetches `/api/mod/tts` through
+  `mod.speak(text)` (~370–375). So the Alexa `Announcer` applies
+  `pronounce()` before the fetch, before its `say -o` fallback, and in its
+  disk / prewarm cache key. The pytest covers both engines.
+- **VR**: a byte-identical copy at **`reinstall/vr/config/pronounce.json`**.
+  The Quest export's `include_filter` is `"house/*.json, config/*.json"`
+  (`export_presets.cfg` ~10, pinned by `test/quest_sh.sh` ~67), so a file
+  under `game/` would never reach the APK. It would work in the editor and
+  in tests, which hides the problem. The vr lane's `speech.gd` loads
+  `res://config/pronounce.json` and applies it before `tts_speak`. The vr
+  lane adds a `quest_sh.sh` check that the file exists and matches the
+  filter.
+- **All three copies land in Stage A** (engine lane, data only, the exact
+  JSON above): `terminal/src/speech/pronounce.json`,
+  `stagehand/src/stagehand/pronounce.json` and
+  `reinstall/vr/config/pronounce.json`. The voice and vr lanes can then
+  build and test on their own in Stage B. In Stage B the voice lane owns
+  all three, and nobody else edits them.
+- A terminal test pins the three copies byte for byte, and stagehand pins
+  its copy in pytest (voice lane).
 
 ### C11 Voice-timed scenes and speech pacing (voice lane; terminal lane must not break it)
 
@@ -1016,6 +1308,13 @@ it as written. No regex lookbehind (Chrome 87 / Safari 14).
   `truth_refused`, `dare_chosen` (D1), `filing_closed`, `hunt_results`,
   `verdict`, `pickup_line`, `advice_helped`, `award`, `the_heart`, `zip`,
   for those that exist on master after the terminal lane merges.
+- **The voice lane rebases before it merges.** The `Dare Chosen` beat
+  (story) and the `dare_chosen` scene (terminal) are written in parallel,
+  and G1 edits Trabolta's beat lines, which changes `marks.length`. So the
+  voice lane builds against today's beats with a placeholder `dare_chosen`
+  entry. Before its merge it rebases onto master, which by then holds story
+  and terminal (the merge order puts voice after both), recomputes every
+  `marks` from the merged `beats/*.loom`, and re-runs the marks test.
 - **`voiceClock(def, sceneStart, nowServer, events): number | null`** is
   pure. It returns null with no matching voice within `VOICE_WAIT_MS`
   (6000). The stretch is capped at `VOICE_STRETCH_MAX_MS` (20 000) through
@@ -1027,29 +1326,54 @@ it as written. No regex lookbehind (Chrome 87 / Safari 14).
 - **Config**: `TerminalConfig.pause: number` (default 1, range 0–3), wired
   through `UrlHints` + `hintsFromSearch` + `withoutSecrets` + the `provision`
   default as `pause=`. There is a slider in Setup's voice section. The
-  `provision` default speed for `view=tv` is 0.92.
+  `provision` default speed for `view=tv` is 0.92. `loadConfig` keeps a
+  saved `speed`, and every saved config carries one (`defaultConfig` sets
+  1), so the default reaches only a newly provisioned TV. C14 sets the show
+  TV.
 - **Phase 2 (walls)**, only if feasible: walls run the same `voiceClock`
   from `state.tvSpeech` (C4). Otherwise they keep the server clock.
 
 ### C12 Copy shared across lanes
 
-These exact strings are what each lane writes and tests. The UI copy is not
-DRAFT show text, but the in-fiction ones are listed on the sign-off by the
-integration step.
+These exact strings are what each lane writes and tests. Every new or
+changed in-fiction string (the notices, "Gerald moved.", the scare panel,
+the heart caption, the HUD hints, the King copy) carries a `// DRAFT w26`
+comment where it is written (`# DRAFT w26` in GDScript), so I3 can collect
+them by search for `SIGNOFF-w26.md`. The plain UI copy (the mic HUD, the
+status lines) carries the marker too, but on the sign-off it is listed as UI
+copy, not show text.
 
 | Where | Old | New | Lanes |
 |---|---|---|---|
-| `NOT_MARKED` (`reinstall/web/src/program.ts`, `reinstall/vr/net/server_link.gd`) | "Not marked for reinstallation — until the night is over, only a marked program may play." | "Not marked for reinstallation." | web, vr; terminal updates `terminal/test/reinstall-session.test.ts` |
+| `NOT_MARKED` (`reinstall/web/src/program.ts`, `reinstall/vr/net/server_link.gd`) | "Not marked for reinstallation — until the night is over, only a marked program may play." | "Not marked for reinstallation." | web, vr. The terminal imports `NOT_MARKED` from `@loom/reinstall/program.ts` (`terminal/src/reinstall/session.ts` ~23), so the **web lane** updates `terminal/test/reinstall-session.test.ts` (~40, ~119) on its own branch. Help updates `docs/help/play/11-reinstallation.md` (~62), which quotes the old string |
 | `held` heading / status (`program.ts`) | "Program held by a director" / "STATUS: RESTRICTED — held by a director, not marked" | "Program held" / "STATUS: RESTRICTED — held, not marked" | web |
 | Web path reveal notice | — | "The way to Gerald lights up." | web |
 | VR path reveal notice | — | "A golden trail flickers on." | vr |
-| Before the reveal, "Gerald moved" notice | "…— follow the golden arrows." | "Gerald moved." | web, vr |
+| Before the reveal, "Gerald moved" notice | web `game/engine.ts` ~964 "Gerald moved — follow the golden arrows."; VR `game/game.gd` ~351 "Gerald moved — follow the arrows." | "Gerald moved." (after the reveal both keep their old line) | web, vr |
+| Web HUD heat box (`game/Play.tsx` ~177–180) | before the reveal: the heat label + "N m to Gerald" / "follow the golden arrows" | before the reveal the whole box reads "FIND GERALD" (no label, no distance, no hint); after it, unchanged | web |
 | Web help card goal | "Find Gerald, the golden duck. Follow the golden arrows." | "Find Gerald, the golden duck." | web |
 | VR HUD hint (`hud.gd`) | "follow the golden arrows to the duck" | "find Gerald" | vr |
 | VR `KING_NOTICE` | "Pull the trigger to hit the King — once per visit." | "Pull the trigger to hit the King." | vr |
 | Web `flow.tsx` King note | "…every program may hit him once per reinstallation, and every hit weakens him for everyone." | removed | web |
-| VR mic HUD | 🎤 LIVE / 🎤 MUTED · B / Y to talk / NO MIC · allow the microphone / 🎤 … / NO MIC | MIC ON · B or Y mutes / MIC MUTED · press B or Y / NO MIC · microphone not allowed / MIC STARTING… / NO MIC | vr |
+| VR mic HUD (`net/voice_link.gd` `hud_text(xr)`, ~213) | see the table below | see the table below | vr |
 | Scare panel (both games) | — | "FATAL EXCEPTION 0E" (glitch art; no name text) | web, vr |
+| Chess attract stakes (`terminal/src/chess/session.ts` `stakesLine(true)`) | "Checkmate him and the server-room door code goes to your Codex." | a DRAFT line that names no prize, for example "Checkmate him." | terminal |
+
+The VR mic HUD, state by state (`hud_text(true)` / `hud_text(false)`). The
+"someone can hear you" listener suffix stays: it replaces the key hint while
+a terminal hears the player. Both pinned tests (`test/game.gd` ~2918) move
+to the new strings.
+
+| `mic_state` | Old (XR / non-XR) | New XR | New non-XR |
+|---|---|---|---|
+| `live`, nobody listening | "🎤 LIVE" | "MIC ON · B or Y mutes" | "MIC ON · M mutes" |
+| `live`, `listen_on` | "🎤 LIVE · someone can hear you" | "MIC ON · someone can hear you" | "MIC ON · someone can hear you" |
+| `muted` | "🎤 MUTED · B / Y to talk" / "🎤 MUTED · M to talk" | "MIC MUTED · press B or Y" | "MIC MUTED · press M" |
+| `asking` (the permission prompt is pending) | "NO MIC · allow the microphone" | "MIC · allow it in the headset's prompt" | "MIC · allow it in the system prompt" |
+| `denied` (**new**: refused, split out of `nomic`) | "NO MIC" | "NO MIC · not allowed · ASK AGAIN in the lobby" | "NO MIC · not allowed · ASK AGAIN in the lobby" |
+| `opening` | "🎤 …" | "MIC STARTING…" | "MIC STARTING…" |
+| `nomic` (no device, or only silence) | "NO MIC" | "NO MIC" | "NO MIC" |
+| `off` | "" | "" | "" |
 
 ### C13 Journaling and replay
 
@@ -1058,7 +1382,7 @@ integration step.
 | A moment (escape, heart, pickup) | yes: one `signal` with args, `by` the game's device | replays to the same story (trust, `sim_heart`, the codex unlock). The game's teleport, scare and speech are client-only and never replay |
 | The hub's `escapedAt`, `heartHeard`, `picked`, presence, `watched`, `tvSpeech` | no (memory) | lost; the story guards keep the heart and the virus once-only |
 | The pose re-seat after an escape | no (memory, like poses) | — |
-| The glitch | the story's `cue` and two `set`s in one rule | terminals fold history with `at: 0` and never show it; phones never take over on a first view or past 15 s |
+| The glitch | the story's `cue` and two `set`s in one rule | terminals fold history with `at: 0` and never show a glitch older than their first screen answer; phones never take over on a first view, when embedded, or past 15 s |
 | `lock` | derived from story state | re-derived |
 | `noAck` | derived from story text by the chat composer | re-derived with the same `seq`s |
 | Bingo, Dare | story vars and events | replay |
@@ -1075,20 +1399,35 @@ Kiosk tablet's cache and a sideloaded Quest APK.
    - it refuses the new prop kinds in `house.json`;
    - it folds `screens_glitch` as a 45 s slide named "glitch";
    - it ignores `lock:` and `ack: none`.
-2. After the sync, reload every terminal and the TV, and touch each tablet.
-   An old tab ignores `program.glitch`, `spot.here`, `tvSpeech` and
-   `watched`. Until it reloads it keeps the house-wide `reinstalling` rule,
-   and it gets the persistent ad.
-3. **Re-export and sideload the Quest APK** after the server ships. An old
+2. After the sync, the reload of every terminal, the TV and each tablet is
+   **mandatory**, not cosmetic. An old bundle's `validateHouse` refuses the
+   `heart` and `pickup` prop kinds (`house/src/validate.ts` ~253):
+   - an old terminal's world view falls back to its bundled map
+     (`terminal/src/world/stream.ts` ~72, ~248–258);
+   - an old tent tab's reinstall game silently walks the bundled old map
+     (`reinstall/web/src/api.ts` ~142–148), not the map version its session
+     was dealt.
+
+   An old tab also ignores `program.glitch`, `spot.here`, `tvSpeech` and
+   `watched`, keeps the house-wide `reinstalling` rule, and gets the
+   persistent ad. Before doors, check the build stamp on every device
+   (Run → Terminals flags an old `__BUILD__`; `pnpm showctl doctor`). The
+   tent laptop, the TV and every tablet must show the new build.
+3. **Set the show TV's voice speed to 0.92.** A TV that is already set up
+   keeps its saved `speed: 1`, because the 0.92 default applies only when
+   provisioning. Either re-open the TV's provisioning link (`?code=…`,
+   `scripts/house-desktop/README.md`) or set Speed to 0.92 in its ⚙.
+4. **Re-export and sideload the Quest APK** after the server ships. An old
    APK:
    - never calls `/api/spatial/moment` (no void, heart or pickup on it);
    - ignores `picked` / `heartHeard`;
    - draws nothing for the label-less heart and pickup props;
    - gets 404s for cameras in other rooms;
    - hears what the server routes (the new per-room rule).
-4. A new game on an old server gets 404 on the moment route: the escape
-   still teleports, with no penalty and no lines.
-5. The story text changes what an old journal replays to: the usual
+5. A new game on an old server gets `404 {error: "not found"}` on the
+   moment route (C6): the escape still teleports, with no penalty and no
+   lines.
+6. The story text changes what an old journal replays to: the usual
    `sync-show` reload rule applies.
 
 ---
@@ -1114,6 +1453,8 @@ branch.
 | `play/src/session.ts` | frozen | play |
 | `play/src/types.ts` | engine (the additive mirror fields only) | play |
 | `terminal/src/screen.ts` | engine (C4 parse only) | terminal |
+| `terminal/src/speech/said.ts` (+ `terminal/test/said.test.ts`) | engine (the C4 `sp` key only) | voice |
+| the three `pronounce.json` copies (C10) | engine (data only) | voice |
 | `core/examples/trapped-in-the-internet/main.loom` | frozen | story |
 | `core/examples/trapped-in-the-internet/objectives.loom` | frozen | story |
 | `house.json`, `house.shed.json` | house | frozen |
@@ -1131,16 +1472,26 @@ branch.
   port / golden checks in `reinstall/vr/test/game.gd`
 - `core/server/spatial-voice.ts` + `core/test/spatial-voice*.test.ts` +
   `core/test/w13-recheck-voice.test.ts` (C5 voice rule only)
+- `reinstall/web/test/voice.test.ts` (the `earsFor` cross-room expectation,
+  C5 voice rule only)
 - `house/CLAUDE.md`, `house/README.md`
 
 **engine (A)**
 
 - `core/src/go.ts`, `core/src/runtime/sim/{sim,event,model}.ts`,
-  `core/src/lsp/**` (new `w26-lints.ts`, L1226)
-- `core/server/{chat,views,event-runtime}.ts`, `core/server/routes/screen.ts`
+  `core/src/lsp/**` (new `w26-lints.ts` with L1226; the `lock:` case in
+  `w18-lints.ts`'s L1216), `core/src/parser/diagnostics.ts` (the
+  `L1226…` code constant)
+- `core/server/{chat,views,event-runtime}.ts` (C1, C2 `LOCKED_OPEN`, C3,
+  `momentLines`, `GAME_ONLY_BEATS`), `core/server/routes/screen.ts` (C3, C4,
+  the three `QUIET_MOMENT_SIGNALS`)
 - `core/test/**` except `trapped-*.test.ts` and the house-owned voice tests
 - `play/src/types.ts` (mirror fields only), `terminal/src/screen.ts` (C4
-  parse) + its tests
+  parse) + its tests, `terminal/src/speech/said.ts` + `terminal/test/said.test.ts`
+  (the `sp` key only)
+- the three `pronounce.json` copies (C10, data only):
+  `terminal/src/speech/pronounce.json`, `stagehand/src/stagehand/pronounce.json`,
+  `reinstall/vr/config/pronounce.json`
 - `docs/writing-in-loom.md` (`ack: none`, `lock:`), `core/CLAUDE.md`
 
 **spatial (B)**
@@ -1159,11 +1510,24 @@ branch.
   `SIGNOFF-w26.md` (new), `desk.json`, `audio.json`, `trabolta.mind.md`,
   `trabolta.persona.md`.
 - `core/test/trapped-*.test.ts`
+- every other `core/test/*.test.ts` that reads the show, except the
+  spatial lane's `spatial*.test.ts`, for expectations that move only
+  because the story text changed. About 45 files read the show. The ones
+  known to move are `cue-sheet.test.ts` (the act counts: `"Anytime 6"`
+  gains the three new `act: Anytime` admin interactions), `screen-moments.test.ts`
+  (~367), `w18-moments.test.ts`, `w18-server.test.ts`,
+  `w18b-integ.test.ts`, `views.test.ts`, `screen-state.test.ts`,
+  `recap.test.ts`, `server-interactions.test.ts`, `server-chat.test.ts` and
+  `push.test.ts`. In Stage B the story lane may change only expectations in
+  these files, never what they test. The spatial lane merges first, so
+  story rebases onto it.
 
 **help (B)**
 
-- `docs/help/play/**`, `docs/help/authoring/**` (new `19-house-workings.md`,
-  `48-terminal-setup.md`, the 43 link, an `ack: none` / `lock:` mention)
+- `docs/help/play/**` (incl. the new performer-only `19-house-workings.md`,
+  and `11-reinstallation.md` ~62 for the C12 `NOT_MARKED` string)
+- `docs/help/authoring/**` (the new `48-terminal-setup.md`, the 43 link, an
+  `ack: none` / `lock:` mention)
 - `play/test/help.test.ts`, `editor/src/lib/help-content.test.ts`
 
 **play (B)**
@@ -1174,37 +1538,56 @@ branch.
 
 **terminal (B)**
 
-- `terminal/src/**` except `speech/**`, `cutscene/*.ts(x)` at the cutscene
-  root, `cutscene/kit/tv1-*`, `cutscene/cutscene.css`, `Tv.tsx`, `tv.ts`,
-  `config.ts`, `Setup.tsx`, `announce.ts`
+- `terminal/src/**` except the voice lane's files listed below (`speech/**`,
+  the voice cutscene files, `Tv.tsx`, `tv.ts`, `config.ts`, `Setup.tsx`,
+  `announce.ts`)
 - It **does** own `cutscene/scenes/**` (G1 copy, D1 scene), `app.tsx`,
   `ScreenLayer.tsx`, `slides.ts`, `styles.css`, `idle-show/**`,
-  `reinstall/**`, `world/**`, `camfeed.ts`, `screen.ts`
+  `reinstall/**`, `world/**`, `chess/**` (the G1 `stakesLine`),
+  `camfeed.ts`, `screen.ts`
+- In `cutscene/`, every file the voice lane does not own:
+  `clock.ts`, `face-bus.ts`, `world-bus.ts`, `moment-bus.ts`, `fake.ts` (it
+  gains `spot.here` / `program.glitch` for R5 / T2 previews), `load.ts`,
+  `registry.ts`, `slot.tsx` (`CutsceneSlot`'s `bare`, if the T2 overlay
+  needs it), `preview.tsx`, `preview.css`, and every `kit/` file except
+  `kit/tv1-time.ts` and `kit/tv1-boot.tsx` (so `kit/tv1-parts.tsx` and
+  `kit/tv1.css` are the terminal lane's)
 - `terminal/test/**` except the voice lane's tests
 - `terminal/CLAUDE.md`
 
 **voice (B)**
 
-- `terminal/src/speech/**` (incl. `pronounce.json`, `lexicon.ts`)
-- `terminal/src/cutscene/{speech-bus,voice-clock,voice-scenes,CutsceneLayer,pick,types}.ts(x)`,
-  `cutscene/kit/tv1-time.ts`, `cutscene/kit/tv1-boot.tsx`, `cutscene/cutscene.css`
+- `terminal/src/speech/**` (incl. `pronounce.json`, `lexicon.ts`,
+  `said.ts` after Stage A)
+- `terminal/src/cutscene/{speech-bus,voice-clock,voice-scenes}.ts` (new),
+  `cutscene/{CutsceneLayer.tsx,pick.ts,types.ts}`, `cutscene/kit/tv1-time.ts`,
+  `cutscene/kit/tv1-boot.tsx`, `cutscene/cutscene.css`
 - `terminal/src/{Tv.tsx,tv.ts,config.ts,Setup.tsx,announce.ts}` and their
   tests
-- `stagehand/src/stagehand/localvoice.py`, `stagehand/src/stagehand/pronounce.json`,
-  `stagehand/tests/**` for it, `stagehand/CLAUDE.md`
-- `reinstall/vr/game/pronounce.json` (the copy only)
+- `stagehand/src/stagehand/localvoice.py`, `stagehand/src/stagehand/alexa/module.py`
+  (the Announcer's `pronounce()`, C10), `stagehand/src/stagehand/pronounce.json`,
+  `stagehand/tests/**` for them, `stagehand/CLAUDE.md`
+- `reinstall/vr/config/pronounce.json` (the copy only)
 
 **web (B)**
 
 - `reinstall/web/src/**` except `map/**`, plus `reinstall/web/test/**`
   except the map tests. That covers `game/**`, `flow.tsx`, `api.ts`,
   `spatial.ts`, `program.ts`, `styles.css`.
+- `terminal/test/reinstall-session.test.ts` (the C12 `NOT_MARKED` string
+  only). The terminal imports `NOT_MARKED` from `program.ts`, and web
+  merges after terminal, so the test moves on the web lane's branch with
+  the string.
 
 **vr (B)**
 
 - `reinstall/vr/**` except `reinstall/vr/net/voice_codec.gd`,
   `reinstall/vr/test/golden/**`, `reinstall/vr/house/house.json` and
-  `reinstall/vr/game/pronounce.json`
+  `reinstall/vr/config/pronounce.json`. That includes `project.godot` (the
+  TTS setting), `export_presets.cfg` (no change expected: `config/*.json`
+  already ships), `net/voice_link.gd` (`hold_for`, `denied`, the HUD
+  strings), `net/server_link.gd` (per-kind moment claims) and
+  `test/quest_sh.sh`
 - It **may** edit `reinstall/vr/house/house_builder.gd` and `house_look.gd`
   (drawing the heart and the pickup) in Stage B, but not the pure ports.
 - `reinstall/vr/README.md`
@@ -1216,7 +1599,11 @@ branch.
 | `terminal/src/Tv.tsx` | voice (V1 speech wiring), terminal (R5 TV gate) | voice owns it. The terminal lane exports a pure `roomOccupied` / `PresenceLatch` from `world/`. **Integration I1** applies the one-line TV gate |
 | `terminal/src/app.tsx` | terminal (R5, T2, T3), voice (V2 gaps) | terminal owns it. The voice lane exports `gapsFor(config)`. **Integration I2** passes it at each `SpeechQueue` construction in `app.tsx` |
 | `terminal/src/cutscene/scenes/act*.tsx` | terminal (G1, D1), voice (V1 marks) | terminal owns them. The voice lane annotates by id in `voice-scenes.ts` (C11) |
-| `terminal/test/reinstall-session.test.ts` | terminal, web (C12 copy) | terminal edits the test to the C12 string |
+| `terminal/test/reinstall-session.test.ts` | terminal, web (C12 copy) | **web** edits the two `NOT_MARKED` expectations with `program.ts`. The terminal lane leaves them alone, so its own branch stays green against the old string |
+| `reinstall/web/test/voice.test.ts` | house (A: the voice rule), web (B) | serial: house in Stage A, web in Stage B |
+| `terminal/src/speech/said.ts` | engine (A: `sp`), voice (B) | serial |
+| `core/test/*.test.ts` that read the show | engine (A), story (B: expectations only), spatial (B: `spatial*`) | as listed in §3.2 story |
+| `terminal/test/act1.test.ts` (the Dare / Truth / Refuse lines) | terminal, story | the strings stay unchanged (D1), so story never needs to edit it |
 | `reinstall/vr/test/game.gd` | house (A: ports), vr (B) | serial: house in Stage A, vr in Stage B |
 | `reinstall/vr/house/house_builder.gd` | house (A), vr (B) | serial |
 | `core/server/spatial-voice.ts` | house (A), spatial (B) | serial |
@@ -1226,9 +1613,12 @@ branch.
 
 ### 3.4 Integration branch (`oct31-w26/integration`)
 
-1. **I1**: the R5 gate in `Tv.tsx`.
+1. **I1**: the R5 gate in `Tv.tsx`: the world pane shows on `spot.here >
+   0`, falling back to today's `inSimulation` only when `here` is absent
+   (R5, C4).
 2. **I2**: `gapsFor(config)` in `app.tsx`.
-3. **I3**: the `SIGNOFF-w26.md` screen and game rows.
+3. **I3**: the `SIGNOFF-w26.md` screen and game rows. Collect them by
+   searching for `DRAFT w26` across `terminal/`, `reinstall/` and `play/`.
 4. Re-measure the play first-load gate with everything merged.
 5. A scratch-server run (dead `DATABASE_URL`, `LOOM_DB_WAIT=off`, fresh
    `LOOM_STATE_DIR`):
@@ -1236,9 +1626,11 @@ branch.
    - 📺 → every terminal and phone takes over once, and a reload does not
      replay it;
    - the moment route from the web game (escape, heart, pickup);
-   - a pre-reveal escape's lines on a marked (not captured) guest's phone:
-     check what a `dm:Trabolta` thread shows before the introduction and
-     report it.
+   - a pre-reveal escape: the game speaks and captions his lines, and no
+     phone, booth or Run pane shows a Trabolta line (C6 `GAME_ONLY_BEATS`);
+   - a false 🎱 → ↩ undo → the countdown resumes and another guest can
+     call;
+   - the build stamp on every terminal tab after the reload (C14).
 6. `pnpm test`, `pnpm test:vr`, the show gates, then
    `scripts/ops/predeploy.sh --vr`.
 
@@ -1252,16 +1644,16 @@ re-run alone before it counts as a regression.
 
 | Lane | Must pass |
 |---|---|
-| house | `pnpm --filter @loom/house test` + `typecheck`; `pnpm house:sync` (then `sync.test.ts` green, goldens committed); `pnpm test:vr` (the ports at 1e-3); `pnpm --filter loom-reinstall test` + `typecheck` (map editor); `pnpm --filter loom-terminal test` (the world view still builds); the core voice tests it owns |
+| house | `pnpm --filter @loom/house test` + `typecheck`; `pnpm house:sync` (then `sync.test.ts` green, goldens committed); `pnpm test:vr` (the ports at 1e-3); `pnpm --filter loom-reinstall test` + `typecheck` (map editor, and `voice.test.ts` under the new rule); the show-map test for the disk's distance from the duck spots; `pnpm --filter loom-terminal test` (the world view still builds); the core voice tests it owns |
 | engine | `pnpm --filter @loom/core test` + `typecheck`; `loomcheck examples/trapped-in-the-internet --smoke`; `titi:facts --check`; `show:page --check` (the story is unchanged, so they stay green); `pnpm --filter loom-play typecheck`; `pnpm --filter loom-terminal test` + `typecheck`; `pnpm --filter loom-app typecheck` (the editor imports views and chat) |
 | spatial | `pnpm --filter @loom/core test` + `typecheck`; `pnpm --filter loom-reinstall test`; `pnpm --filter loom-terminal test` |
-| story | `pnpm --filter @loom/core test` (all `trapped-*`); `loomcheck … --smoke`; `titi:facts --check`; `show:page` regenerated, then `--check`; `pnpm --filter loom-terminal test` (act1 / act2 pin story beats and lines); `cd stagehand && uv run pytest` if `trabolta.*` changed |
+| story | `pnpm --filter @loom/core test` (all of it, not only `trapped-*`: the other show-reading tests are the story lane's to keep green, §3.2); `loomcheck … --smoke`; `titi:facts --check`; `show:page` regenerated, then `--check`; `pnpm --filter loom-terminal test` (act1 / act2 pin story beats and lines); `cd stagehand && uv run pytest` if `trabolta.*` changed |
 | help | `pnpm --filter loom-play test` (`help.test.ts`, with the new "never names the crew or the machinery" test); `pnpm --filter loom-app test` (`help-content.test.ts`: the new authoring article, its cross-links, `helpSearch("calibrate door")`) |
 | play | `pnpm --filter loom-play test` + `typecheck`; `pnpm --filter loom-play build && node play/scripts/first-load.mjs --max-kb 148` (the guest first load ≤ 148 kB; it is 147.31 kB on master, so keep new JS lazy) |
 | terminal | `pnpm --filter loom-terminal test` + `typecheck` + `build`; `scripts/accept/K-14.sh` (no API newer than Chrome 87 / Safari 14) |
-| voice | `pnpm --filter loom-terminal test` + `typecheck`; `cd stagehand && uv run pytest`; the byte-for-byte pins on both `pronounce.json` copies |
-| web | `pnpm --filter loom-reinstall test` + `typecheck` + `build` |
-| vr | `pnpm test:vr` (needs Godot 4.7); the `tools/quest.sh` checks (`reinstall/vr/test/quest_sh.sh`) |
+| voice | rebased onto master after story and terminal (C11); `pnpm --filter loom-terminal test` + `typecheck`; `cd stagehand && uv run pytest` (both Alexa engines pronounce); the byte-for-byte pins on all three `pronounce.json` copies |
+| web | `pnpm --filter loom-reinstall test` + `typecheck` + `build`; `pnpm --filter loom-terminal test` (it edits `reinstall-session.test.ts`, and the terminal imports `@loom/reinstall`) |
+| vr | `pnpm test:vr` (needs Godot 4.7); the `tools/quest.sh` checks (`reinstall/vr/test/quest_sh.sh`), with the new checks for `config/pronounce.json` and `audio/general/text_to_speech=true` |
 | integration | `pnpm test`; `pnpm test:vr`; `cd stagehand && uv run pytest`; `loomcheck --smoke`; `titi:facts --check`; `show:page --check`; the 148 kB gate; `scripts/ops/predeploy.sh --vr` |
 
 Tests that pin today's behaviour are **updated, not deleted**:
@@ -1270,7 +1662,9 @@ Tests that pin today's behaviour are **updated, not deleted**:
   completing at `bingo_time`, the Dare broadcast text;
 - terminal: storms in the early pool, `RULES`, `VERDICT_COPY.dare`;
 - play: the w25 booth taskbar regexes, the greyed tile;
-- VR: the immediate trail at `game.gd` ~1755 (set `trail_delay` 0 there).
+- VR: the immediate trail at `game.gd` ~1755 (set `trail_delay` 0 there),
+  and the mic HUD strings at `game.gd` ~2918 (C12);
+- web: the cross-room `earsFor` case in `voice.test.ts` (house, Stage A).
 
 ---
 
@@ -1325,3 +1719,16 @@ These can be changed by the user. A lane does not reopen them on its own.
 - The quack is not delayed by the path reveal.
 - The heart shows on the terminals' world view while the King is fallen.
 - The disk shows only in the games.
+- The tent terminal is never linked to the Internet (T3, R5): no camera
+  into the game, no voice link, no world, even though every walk starts in
+  the in-game tent.
+- A terminal with no `spot` is never linked (R5), apart from the `mirror` /
+  `shadow` views.
+- A false-BINGO undo after time-up restores the Bingo phase with no
+  countdown; the hosts call ⏰ (B2).
+- The Dare's `game_credit` stays on Clippy's 🎩 fallback only (D1).
+- The escape and heart lines are game-only, even after the reveal (C6).
+- The locked phone shows the Find Gerald card and the Installation
+  Wizard's thread read-only (C2).
+- The chess stakes line loses its door-code promise (G1); `WIN_CODE`
+  stays.
