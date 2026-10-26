@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { forward, heightAt, inPropFootprint, locate, pickDuckSpot, propSolid, roomById, route, validateHouse } from "../src/index.ts";
+import { PICKUP_REACH_M, PICKUP_SLACK_M, distanceToBoundary, forward, heartReached, heightAt, inPropFootprint, kingProps, locate, pickDuckSpot, propSolid, roomById, route, sampleTrail, standable, validateHouse } from "../src/index.ts";
 import type { HouseMap, Vec2, Vec3 } from "../src/index.ts";
 import { ROOT, SHOW_HOUSE, SHOW_SHED_HOUSE, loadHouse, samplePoint } from "./golden.ts";
 
@@ -128,6 +128,62 @@ describe.each([
     expect(roomById(house, "server-room")?.location).toBe("The Server Room");
     // Never the spawn room.
     for (let i = 0; i < 50; i++) expect(pickDuckSpot(house, `session-${i}`).room).not.toBe(variant);
+  });
+
+  it("puts Trabolta's heart in the Server Room: centred, standable, off the patch bay and the rack, with no label (wave 26)", () => {
+    const hearts = house.props.filter((p) => p.kind === "heart");
+    expect(hearts.map((p) => p.id)).toEqual(["trabolta-heart"]);
+    const heart = hearts[0]!;
+    expect(heart.room).toBe("server-room");
+    expect(heart.label).toBeUndefined();
+    expect(heart.signals).toBeUndefined();
+    expect(propSolid(heart)).toBe(false);
+    expect(standable(house, heart.pos)).toBe(true);
+    expect(heartReached(house, heart.pos, heart)).toBe(true);
+    const room = roomById(house, "server-room")!;
+    expect(distanceToBoundary(room.poly, [heart.pos[0], heart.pos[2]])).toBeGreaterThanOrEqual(1);
+    for (const other of house.props.filter((p) => p.room === "server-room" && p.id !== heart.id)) {
+      // Its footprint's corners clear of every other prop in the room by half a metre.
+      const [w, , d] = heart.size;
+      for (const [dx, dz] of [[-w / 2 - 0.5, -d / 2 - 0.5], [w / 2 + 0.5, -d / 2 - 0.5], [w / 2 + 0.5, d / 2 + 0.5], [-w / 2 - 0.5, d / 2 + 0.5], [0, 0]] as const) {
+        expect(inPropFootprint(other, [heart.pos[0] + dx, heart.pos[2] + dz]), `${other.id} at ${dx}, ${dz}`).toBe(false);
+      }
+    }
+  });
+
+  it("hides the virus disk ≥ 2 m from every duck spot and off every trail to Gerald, with no label (wave 26)", () => {
+    const disks = house.props.filter((p) => p.kind === "pickup");
+    expect(disks.map((p) => [p.id, p.item])).toEqual([["virus-disk", "virus"]]);
+    const disk = disks[0]!;
+    expect(["hard-drive", "fan-closet"]).toContain(disk.room);
+    expect(disk.label).toBeUndefined();
+    expect(disk.signals).toBeUndefined();
+    expect(propSolid(disk)).toBe(false);
+    expect(standable(house, disk.pos)).toBe(true);
+    expect(locate(house, disk.pos).room).toBe(disk.room);
+    for (const s of house.duck.spots) {
+      expect(Math.hypot(s.pos[0] - disk.pos[0], s.pos[2] - disk.pos[2]), s.id).toBeGreaterThanOrEqual(2);
+    }
+    // Every trail to every duck spot — from the spawn and from every room,
+    // the King standing or fallen — keeps its chevrons out of the disk's reach.
+    const fallen = new Set(kingProps(house).map((k) => k.id));
+    const starts: Vec3[] = [house.spawn.pos, ...house.rooms.map((r): Vec3 => {
+      const [x, z] = samplePoint(house, r);
+      return [x, house.floors.find((f) => f.id === r.floor)!.elevation, z];
+    })];
+    const clear = PICKUP_REACH_M + PICKUP_SLACK_M;
+    let near = Infinity;
+    for (const from of starts) {
+      for (const s of house.duck.spots) {
+        for (const opts of [{}, { fallen }]) {
+          for (const c of sampleTrail(route(house, from, s.pos, opts))) {
+            if (locate(house, c.p).floor !== locate(house, disk.pos).floor) continue;
+            near = Math.min(near, Math.hypot(c.p[0] - disk.pos[0], c.p[2] - disk.pos[2]));
+          }
+        }
+      }
+    }
+    expect(near, "the nearest chevron").toBeGreaterThan(clear);
   });
 
   it.runIf(variant === "tent")("walks out of the tent, in by the back door, through the kitchen, down the basement stairs and into the laundry", () => {
