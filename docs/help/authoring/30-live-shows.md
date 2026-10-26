@@ -350,10 +350,12 @@ archive: The Uploader when program.cleared == true
   **locks** a guest's phone while it holds for them. The phone shows a
   lock screen: the current objective, a read-only copy of the
   Installation Wizard's thread, the pass and the `restricted: allow`
-  buttons (Bathroom Mode). The server refuses everything else the guest
-  sends (`403 locked`), DMs, the codex, the wallet, check-ins and crews
-  included, and so a director's Run → Players or a terminal piloting
-  them. The lock is never journaled: it follows the story's state, so
+  buttons (Bathroom Mode). The server refuses every state-changing guest
+  route (`403 locked`), DMs, the codex, the wallet, check-ins, crews and
+  every other `act` included, except session housekeeping that posts
+  nothing into the story (sign-in, resume, rejoin, badge linking, push, the
+  home-screen check and log out). Reads still work. A director's Run →
+  Players or a terminal piloting a locked guest is refused the same way. The lock is never journaled: it follows the story's state, so
   release (`set program.corrupted = false`) lifts it on the next update.
   It is for guests only (a player's booth never locks), so nothing the
   story waits on should need a locked guest's answer. Pair it with `ack:
