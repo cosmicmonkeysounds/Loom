@@ -1022,7 +1022,10 @@ func _tick_voice() -> void:
 	var pressed := player.mute_button and not _mute_was
 	_mute_was = player.mute_button
 	if pressed:
+		var was := voice.muted
 		voice.toggle_mute()
+		if voice.muted != was:
+			player.pulse(0.3, 0.05)  # felt: the press took
 	hud.set_mic(voice.hud_text(player.xr_active))
 
 

@@ -3529,10 +3529,12 @@ func _test_voice_game() -> void:
 	game._process(0.016)
 	_check(v.is_running() and v.stream_url == "http://127.0.0.1:7600/e/e1/api/spatial/voice/stream?token=tok-v-1" and v.upload_url.ends_with("/api/spatial/voice"), "voice game: playing starts the voice on the session's token (%s)" % v.stream_url)
 	_check(game.hud.mic_text() == "MIC ON · M mutes", "voice game: the HUD shows MIC ON (%s)" % game.hud.mic_text())
+	var pulses := player.pulses
 	player.mute_button = true
 	game._process(0.016)
 	game._process(0.016)
 	_check(v.muted and game.hud.mic_text() == "MIC MUTED · press M", "voice game: a press of the mute button mutes (once, held) (%s)" % game.hud.mic_text())
+	_check(player.pulses == pulses + 1, "voice game: … with a haptic tick")
 	player.mute_button = false
 	game._process(0.016)
 	player.mute_button = true

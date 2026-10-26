@@ -204,6 +204,9 @@ func notice(text: String) -> void:
 # --- voice ---
 
 var _mic: Label3D
+## The mic line: under the hint, large enough to read what to do (wave 26).
+const MIC_Y := -0.46
+const MIC_HEIGHT := 0.03
 
 
 ## The voice link's line under the hint (MIC ON / MIC MUTED / NO MIC …, [method VoiceLink.hud_text]; "" hides it).
@@ -211,7 +214,7 @@ func set_mic(text: String) -> void:
 	if _mic == null:
 		if text == "":
 			return
-		_mic = _label(0.026, HouseLook.TEAL_GLOW, Vector3(0, -0.465, -1.1))
+		_mic = _label(MIC_HEIGHT, HouseLook.TEAL_GLOW, Vector3(0, MIC_Y, -1.1))
 	_mic.text = text
 
 
