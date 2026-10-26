@@ -517,6 +517,9 @@ export interface WizardStep {
   destructive: boolean;
   /** Pre-select the previous step's guest (a harmless follow-on). */
   preselect: boolean;
+  /** Wave 26 (B1): its to-do line is already ticked (🎱 pressed from Check
+   *  The Bingo before PLAYER SELECT opened). */
+  satisfied?: boolean;
 }
 
 /** PLAYER SELECT's steps: the objective's buttons in checklist order, each with its prompt. */
@@ -529,7 +532,7 @@ export function wizardSteps(o: BoothObjective, interactions: readonly Interactio
     const b = btns.find((x) => leadingGlyph(x.label) === g && !out.some((s) => s.id === x.id));
     if (b === undefined) continue;
     const harm = armsFirst(b);
-    out.push({ id: b.id, label: b.label, glyph: g, prompt: c.label, destructive: harm, preselect: out.length > 0 && !harm });
+    out.push({ id: b.id, label: b.label, glyph: g, prompt: c.label, destructive: harm, preselect: out.length > 0 && !harm, ...(c.done === true ? { satisfied: true } : {}) });
   }
   return out;
 }

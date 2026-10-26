@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { PlayerSelect, sameFor, sameLabel, stepHelper, taggedFor } from "../src/booth/pick/select.tsx";
+import { PlayerSelect, openingFor, sameFor, sameLabel, stepHelper, taggedFor } from "../src/booth/pick/select.tsx";
 import { PICK_OVER, pickEnded } from "../src/booth/app.tsx";
 import { RowsWindow, THEYRE_HERE, isSummons, rowLabel, rowsPlace } from "../src/booth/pick/rows.tsx";
 import { GuestTiles } from "../src/booth/pick/tiles.tsx";
@@ -108,6 +108,36 @@ describe("PLAYER SELECT, wave 26 (B3–B5)", () => {
     expect([...taggedFor(steps4, ["Winamp", "Winamp", null, null], 2)]).toEqual([["Winamp", "(bingo winner)"]]);
     expect(taggedFor(steps4, ["Winamp", "Winamp", null, null], 1).size).toBe(0);
     expect(taggedFor(steps4, ["Winamp", "Winamp", null, null], 3).size).toBe(0);
+  });
+  it("B1: after Check The Bingo took 🎱, PLAYER SELECT opens on ② with ① ticked and SAME on the caller", () => {
+    const afterCheck: BoothObjective = { ...nobody, checklist: nobody.checklist.map((c, i) => (i === 0 ? { ...c, done: true } : c)) };
+    const st = wizardSteps(afterCheck, ints4);
+    expect(st.map((x) => x.satisfied === true)).toEqual([true, false, false, false]);
+    // This booth pressed 🎱 on Winamp from the Check The Bingo card.
+    const seed = (id: string) => (id === "bingo_winner" ? "Winamp" : null);
+    expect(openingFor(st, seed)).toEqual({ at: 1, done: ["Winamp", null, null, null] });
+    expect(sameFor(st, openingFor(st, seed).done, 1)).toBe("Winamp");
+    const html = renderToStaticMarkup(<PlayerSelect objective={afterCheck} steps={st} guests={guests} press={press} onClose={noop} seed={seed} />);
+    expect(html).toContain("① 🎱 ✓");
+    expect(html).toContain("🎀 Give the winner the Bingo Ribbon");
+    expect(html).toContain("SAME: WINAMP");
+    expect(html).not.toContain("Who shouted BINGO?");
+    // A reload (no memory of the press): ① still ticked, SAME empty, the tiles still work.
+    expect(openingFor(st)).toEqual({ at: 1, done: [null, null, null, null] });
+    const bare = renderToStaticMarkup(<PlayerSelect objective={afterCheck} steps={st} guests={guests} press={press} onClose={noop} />);
+    expect(bare).toContain("① 🎱 ✓");
+    expect(bare).not.toContain("SAME:");
+    // Nothing ticked: ① as before; everything ticked: ① (it never opens finished).
+    expect(openingFor(steps4).at).toBe(0);
+    expect(openingFor(steps4.map((x) => ({ ...x, satisfied: true }))).at).toBe(0);
+    // A ticked step opened by hand says so; "+ Another round" forgets the story's ticks.
+    const sel = readFileSync(new URL("../src/booth/pick/select.tsx", import.meta.url), "utf8");
+    expect(sel).toMatch(/\{fresh && step\.satisfied === true && <p className="bsel-reply">\{\/\* DRAFT w26 \(integration B1\): UI copy \*\/\}✓ Already done\.<\/p>\}/u);
+    expect(sel).toMatch(/setDone\(steps\.map\(\(\) => null\)\);\s*setFresh\(false\);/u);
+    // The booth hands its own presses in.
+    expect(readFileSync(new URL("../src/booth/app.tsx", import.meta.url), "utf8")).toContain("seed={s.lastPressedOn}");
+    // …remembered only for a press the story took (a refusal is not a pick).
+    expect(readFileSync(new URL("../src/session/prime.ts", import.meta.url), "utf8")).toMatch(/if \(r\.refused !== true && guest != null && guest !== ""\) pressedOn\.current\.set\(name, guest\);/u);
   });
   it("B5: an ended objective offers no + Another round, only Close", () => {
     const live = renderToStaticMarkup(<PlayerSelect objective={nobody} steps={steps4} guests={guests} press={press} onClose={noop} />);
