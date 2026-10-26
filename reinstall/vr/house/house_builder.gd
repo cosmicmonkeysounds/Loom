@@ -550,7 +550,10 @@ func _build_heart(root: Node3D, prop: Dictionary, size: Vector3) -> void:
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.albedo_color = HEART_COLOR
 	core.material_override = mat
-	core.position = Vector3(0, core_y, -d * 0.2)
+	# Set into the face (the cabinet's front is at −0.47 d), bulging out of it.
+	var face_z := -d * 0.47
+	core.position = Vector3(0, core_y, face_z - core_r * 0.1)
+	core.scale = Vector3(1, 1, 0.6)
 	root.add_child(core)
 	var front := MeshInstance3D.new()
 	front.name = "Front"
@@ -560,25 +563,67 @@ func _build_heart(root: Node3D, prop: Dictionary, size: Vector3) -> void:
 	var smoke := StandardMaterial3D.new()
 	smoke.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	smoke.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	smoke.albedo_color = Color(0.04, 0.04, 0.06, 0.55)
+	smoke.albedo_color = Color(0.04, 0.04, 0.06, 0.35)
 	front.material_override = smoke
 	front.rotation.y = PI  # a QuadMesh faces +z; the face looks −z
-	front.position = Vector3(0, core_y, -d * 0.47 - 0.006)
+	front.position = Vector3(0, core_y, face_z - core_r * 0.75)
 	root.add_child(front)
+	var halo := glow_quad(HEART_COLOR, core_r * 5.0)
+	halo.name = "Halo"
+	halo.position = Vector3(0, core_y, face_z - core_r * 0.8)
+	root.add_child(halo)
 	var light := OmniLight3D.new()
 	light.name = "Glow"
 	light.light_color = HEART_COLOR
 	light.omni_range = 2.2
 	light.position = Vector3(0, core_y, -d * 0.6)
 	root.add_child(light)
-	_hearts[str(prop["id"])] = {"root": root, "core": core, "light": light, "mat": mat}
+	_hearts[str(prop["id"])] = {"root": root, "core": core, "light": light, "mat": mat, "halo": halo, "halo_size": core_r * 5.0}
 	_beat(_hearts[str(prop["id"])])
+
+
+## A soft round glow (an additive billboard) of `color`, `size` m across.
+static func glow_quad(color: Color, size: float) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size)
+	mi.mesh = q
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.albedo_color = color
+	m.albedo_texture = _glow_texture()
+	m.disable_receive_shadows = true
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
+static var _glow_tex: ImageTexture
+
+
+## A white radial falloff (alpha), made once.
+static func _glow_texture() -> ImageTexture:
+	if _glow_tex == null:
+		var img := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+		for y in 32:
+			for x in 32:
+				var r := Vector2(x - 15.5, y - 15.5).length() / 16.0
+				var a := clampf(1.0 - r, 0.0, 1.0)
+				img.set_pixel(x, y, Color(1, 1, 1, a * a))
+		_glow_tex = ImageTexture.create_from_image(img)
+	return _glow_tex
 
 
 func _beat(heart: Dictionary) -> void:
 	var p := heart_pulse(_t)
 	var sc := 1.0 + 0.14 * p
-	(heart["core"] as Node3D).scale = Vector3(sc, sc, sc)
+	(heart["core"] as Node3D).scale = Vector3(sc, sc, sc * 0.6)
+	var hs: float = float(heart["halo_size"]) * (1.0 + 0.25 * p)
+	((heart["halo"] as MeshInstance3D).mesh as QuadMesh).size = Vector2(hs, hs)
+	((heart["halo"] as MeshInstance3D).material_override as StandardMaterial3D).albedo_color.a = 0.35 + 0.55 * p
 	(heart["mat"] as StandardMaterial3D).albedo_color = HEART_COLOR.lerp(Color("#ff4060"), 0.35 * p)
 	(heart["light"] as OmniLight3D).light_energy = 0.5 + 1.1 * p
 
@@ -597,7 +642,7 @@ func _build_pickup(root: Node3D, prop: Dictionary) -> void:
 	shell.albedo_color = Color("#1c1f1a")
 	shell.emission_enabled = true
 	shell.emission = Color("#1f4a10")
-	shell.emission_energy_multiplier = 0.6
+	shell.emission_energy_multiplier = 1.0
 	for part: Array in [
 		["Shell", Vector3(w, hgt, t), Vector3.ZERO, shell],
 		["Shutter", Vector3(w * 0.55, hgt * 0.36, t * 1.15), Vector3(w * 0.05, hgt * 0.32, 0), HouseLook.paint("#b8bcc0")],
@@ -618,6 +663,9 @@ func _build_pickup(root: Node3D, prop: Dictionary) -> void:
 	light.light_energy = 0.9
 	light.omni_range = 1.4
 	disk.add_child(light)
+	var halo := glow_quad(Color(PICKUP_GLOW, 0.55), maxf(w, hgt) * 2.6)
+	halo.name = "Halo"
+	disk.add_child(halo)
 	var id := str(prop["id"])
 	_pickups[id] = {"root": root, "disk": disk, "phase": float(HouseDuck.fnv1a32(id) % 1000) / 1000.0}
 	root.visible = not _taken.has(id)

@@ -246,7 +246,7 @@ func _build_mic_box() -> void:
 	_mic_box.add_child(bg)
 	var title := _text(_mic_box, MIC_TITLE, 0.055, HouseLook.GOLD, 1.55)
 	title.position.x = MIC_X
-	_mic_text = _text(_mic_box, "", 0.036, HouseLook.INK, 1.37)
+	_mic_text = _text(_mic_box, "", 0.042, HouseLook.INK, 1.37)
 	_mic_text.position.x = MIC_X
 	_mic_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_mic_text.width = (MIC_BOX.x - 0.08) / _mic_text.pixel_size
@@ -267,7 +267,7 @@ func _build_mic_box() -> void:
 	_set_meter(0.0)
 	_looks["mic:test"] = make_button(_mic_box, MIC_TEST, MIC_TEST_AT, MIC_BUTTON, 0.05)
 	_looks["mic:ask"] = make_button(_mic_box, MIC_ASK, MIC_ASK_AT, MIC_BUTTON, 0.05)
-	_mic_build = _text(_mic_box, "", 0.03, HouseLook.INK.darkened(0.35), 0.68)
+	_mic_build = _text(_mic_box, "", 0.036, HouseLook.INK.darkened(0.3), 0.68)
 	_mic_build.position.x = MIC_X
 	_mic_build.name = "Build"
 
