@@ -51,9 +51,12 @@ export function taggedFor(steps: readonly WizardStep[], done: ReadonlyArray<stri
   return out;
 }
 
-/** The SAME row's button: the step's glyph and its first word ("🎀 Give"). */
+/** The SAME row's button: the step's glyph and its first word ("🎀 Give"),
+ *  with a negation kept ("🤐 Names nobody", never "🤐 Names"). */
 export function sameLabel(s: Pick<WizardStep, "glyph" | "label">): string {
-  const word = withoutGlyph(s.label).split(/\s+/u)[0] ?? "";
+  const words = withoutGlyph(s.label).split(/\s+/u).filter((w) => w !== "");
+  const neg = /^(nobody|no|not|none|never|no-one|noone)$/iu.test(words[1] ?? "");
+  const word = neg ? words.slice(0, /^no$/iu.test(words[1]!) && /^one$/iu.test(words[2] ?? "") ? 3 : 2).join(" ") : (words[0] ?? "");
   return `${s.glyph} ${word}`.trim();
 }
 

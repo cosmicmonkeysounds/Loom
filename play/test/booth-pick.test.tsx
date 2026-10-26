@@ -89,6 +89,12 @@ describe("PLAYER SELECT, wave 26 (B3–B5)", () => {
     const html = renderToStaticMarkup(<PlayerSelect objective={nobody} steps={steps4} guests={guests} press={press} onClose={noop} />);
     expect(html).toContain("④ 🤐");
   });
+  it("B3: the SAME button keeps 🤐's meaning (\"Names nobody\", never \"Names\")", () => {
+    expect(sameLabel(steps4[3]!)).toBe("🤐 Names nobody");
+    expect(sameLabel(steps4[1]!)).toBe("🎀 Give");
+    expect(sameLabel({ glyph: "🙅", label: "🙅 Picks no one" })).toBe("🙅 Picks no one");
+    expect(sameLabel({ glyph: "🙅", label: "🙅 Picks none of them" })).toBe("🙅 Picks none");
+  });
   it("B3: SAME reads the most recent earlier pick, past a skipped step", () => {
     expect(sameFor(steps4, ["Winamp", "Winamp", null, null], 3)).toBe("Winamp");
     expect(sameFor(steps4, ["Winamp", null, null, null], 1)).toBe("Winamp");
