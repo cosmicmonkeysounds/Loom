@@ -96,9 +96,9 @@ function boot(): Night {
   for (const [id, name] of PROGRAMS) n.upload(id, name);
   return n;
 }
-const to = (ms: readonly ChatMessage[], id: string) => ms.filter((m) => m.audience === "all" || (Array.isArray(m.audience) && m.audience.includes(id)));
-const readouts = (ms: readonly ChatMessage[], who: string) => ms.filter((m) => m.channel === `dm:${who}` && m.readout === true);
-const text = (ms: readonly ChatMessage[]) => ms.map((m) => m.text).join("\n");
+type Msg = Pick<ChatMessage, "audience" | "channel" | "readout" | "text">;
+const to = <M extends Msg>(ms: readonly M[], id: string): M[] => ms.filter((m) => m.audience === "all" || (Array.isArray(m.audience) && m.audience.includes(id)));
+const readouts = <M extends Msg>(ms: readonly M[], who: string): M[] => ms.filter((m) => m.channel === `dm:${who}` && m.readout === true);
 
 /** Mark a program and confront + capture it (an Antivirus' scan, then 🛡). */
 function capture(n: Night, id: string): { confront: ChatMessage[]; capture: ChatMessage[] } {
@@ -312,6 +312,7 @@ describe("Trapped in the Internet — wave 26: a Dare makes Trabolta make a scen
       // The dared phone: only the pass, no OK; never the soft heads-up.
       const big = to(ms, "g2").find((m) => m.text.startsWith("🎩 Trabolta is not amused"))!;
       expect(big).toMatchObject({ moment: "big", noAck: true });
+      expect(big.text).not.toMatch(/with go:|ack:/u);
       expect(big.go?.map((g) => g.kind)).toEqual(["pass"]);
       expect(to(ms, "g2").some((m) => m.text.startsWith("🚨 You are marked for reinstallation"))).toBe(false);
       // Every Antivirus booth: the loud Dare order, a big readout.
