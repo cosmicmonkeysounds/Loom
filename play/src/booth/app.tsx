@@ -23,7 +23,7 @@ import { ActionRow, InviteSheet, PickerSheet, SessionEnded, useWide } from "../u
 import { Shell, SpaceList } from "../rooms/list.tsx";
 import type { WidgetHook } from "../stream/bubble.tsx";
 import { ChannelView, MessageThread } from "../stream/channel-view.tsx";
-import { HelpSheet } from "../help.tsx";
+import { StaffHelpSheet } from "../help-staff.tsx";
 import { usePlayHost } from "../host.ts";
 import { WalletActionsProvider, useWalletClock } from "../wallet.tsx";
 import { AvatarsContext, avatarLookup } from "../avatars.ts";
@@ -764,7 +764,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
             {sheet === "knows" && <KnowsSheet session={s} onClose={() => setSheet(null)} />}
             {sheet === "powers" && <PowersSheet session={s} onClose={() => setSheet(null)} />}
             {sheet === "alerts" && <AlertsSheet session={s} push={push} onClose={() => setSheet(null)} />}
-            {help && <HelpSheet role="performer" onClose={() => setHelp(false)} />}
+            {help && <StaffHelpSheet onClose={() => setHelp(false)} />}
           </div>
           </BoothBadgesProvider>
         </WalletActionsProvider>

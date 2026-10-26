@@ -1,7 +1,7 @@
 // The play app's help collection: role gating + content integrity.
 
 import { describe, expect, it } from "vitest";
-import { articlesFor } from "../src/help.tsx";
+import { articlesFor } from "../src/help-staff.tsx";
 import { inlineTokens, searchHelp, type HelpArticle } from "../../docs/help/helpdoc.ts";
 
 /** Everything a guest can read of an article: title, keywords and body. */

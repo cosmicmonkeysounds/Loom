@@ -238,7 +238,7 @@ export function App({ resume = null, card = null }: { resume?: ResumeLink | null
       <button className="link" onClick={() => setHelp(true)}>
         ? What is this
       </button>
-      {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
+      {help && <HelpSheet onClose={() => setHelp(false)} />}
     </div>
   );
 }
