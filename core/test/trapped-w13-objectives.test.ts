@@ -259,7 +259,9 @@ describe("Trapped in the Internet — wave 13: per-person notices (~)", () => {
       // A transfer / trade notice in # truthcoin-exchange: each party's own
       // card is in their Wallet room (the server's WalletBook posts it).
       const wallet = /^broadcast "~(?:🪙|💱) .* to channel\(truthcoin exchange\)$/u.test(line);
-      const personal = wallet || block.some((x) => x.startsWith("reply ") || x.startsWith("fire mark_for_reinstallation for program") || / to participant\(/.test(x) || /^Trabolta:/.test(x));
+      // Wave 26 (D1): a Dare's notice is followed by `dare_taken`, which marks
+      // the program and sends it its own big moment.
+      const personal = wallet || block.some((x) => x.startsWith("reply ") || x.startsWith("fire mark_for_reinstallation for program") || x.startsWith("fire dare_taken for program") || / to participant\(/.test(x) || /^Trabolta:/.test(x));
       expect(personal, `${where}: ${line}`).toBe(true);
     }
   });

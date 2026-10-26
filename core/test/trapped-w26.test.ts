@@ -289,3 +289,50 @@ describe("Trapped in the Internet — wave 26: the first glitch at the ad hijack
     expect(primeView(n.sim, "Clippy").night?.glitch).toEqual({ at: at * 1000, text: "000. 000. 000." });
   }, SLOW);
 });
+
+describe("Trapped in the Internet — wave 26: a Dare makes Trabolta make a scene (D1)", () => {
+  const beatsOf = (ev: readonly SimEvent[]) => ev.filter((e) => e.type === "beatEntered").map((e) => (e as { beat: string }).beat);
+  const dare = (n: Night, how: "phone" | "booth", id = "g2"): SimEvent[] => {
+    for (const c of TO_RESULTS) n.press(c);
+    n.press("spin_the_bottle");
+    n.signal("bottle_landed", id);
+    return how === "phone" ? n.raw("poll answered", id, { index: 1, card: 1 }) : n.raw("chose_dare", id, undefined, "Clippy");
+  };
+
+  for (const how of ["phone", "booth"] as const) {
+    it(`the ${how} Dare: the house line, the mark, the dared phone's big moment, the Antivirus' loud order, Dare Chosen once`, () => {
+      const n = boot();
+      const score = v(n.sim, "Clippy.score");
+      const ev = dare(n, how);
+      const ms = composeGuestMessages(n.sim, ev);
+      expect(beatsOf(ev).filter((b) => b === "Dare Chosen")).toHaveLength(1);
+      // The house line and the mark reason are unchanged (terminal/test/act1.test.ts pins them).
+      expect(ms.some((m) => m.text === "🎩 Microsoft Excel chose Dare. Programs choose Truth.")).toBe(true);
+      expect(v(n.sim, "g2.marked_for")).toBe("chose Dare");
+      // The dared phone: only the pass, no OK; never the soft heads-up.
+      const big = to(ms, "g2").find((m) => m.text.startsWith("🎩 Trabolta is not amused"))!;
+      expect(big).toMatchObject({ moment: "big", noAck: true });
+      expect(big.go?.map((g) => g.kind)).toEqual(["pass"]);
+      expect(to(ms, "g2").some((m) => m.text.startsWith("🚨 You are marked for reinstallation"))).toBe(false);
+      // Every Antivirus booth: the loud Dare order, a big readout.
+      for (const av of ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"]) {
+        const r = readouts(ms, av).find((m) => m.text.startsWith("🚨 TRABOLTA'S ORDER: take Microsoft Excel to the Internet NOW."));
+        expect(r, av).toMatchObject({ moment: "big" });
+      }
+      // The scene: public Trabolta lines at the Desktop naming the program, ending with the order.
+      const said = ev.filter((e) => e.type === "dialogue" && (e as { speaker: string }).speaker === "Trabolta" && (e as { beat?: string }).beat === "Dare Chosen").map((e) => (e as { text: string }).text);
+      expect(said.length).toBeGreaterThanOrEqual(2);
+      expect(said.at(-1)).toBe("Antivirus! Take Microsoft Excel to the Internet. Now.");
+      // The credit stays on the 🎩 fallback only.
+      if (how === "phone") expect(v(n.sim, "Clippy.score")).toBe(score);
+    }, SLOW);
+  }
+
+  it("the old chose_dare signal scene is retired in the story: both paths fire the one beat", () => {
+    const src = read("main.loom");
+    // Each path tells the house just before `dare_taken` (terminal/test/act1.test.ts pins the phone path).
+    expect(src.match(/broadcast "~🎩 \{program\.name\} chose Dare\. Programs choose Truth\." to everyone\n\s+fire dare_taken for program/gu)).toHaveLength(2);
+    expect(src.match(/fire dare_taken for program/gu)).toHaveLength(2);
+    expect(read("beats/hunt.loom")).toMatch(/== Dare Chosen\n  setting: The Desktop\n  cast: Trabolta\n/u);
+  });
+});

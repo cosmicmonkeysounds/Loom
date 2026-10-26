@@ -382,7 +382,10 @@ TRAIT Enforcer is Person, Player
   // rung), with the program's name and picture (C3).
   when marked for program:
     // DRAFT w18
-    if program.late == true and program.marked_for == "late for the Second Moment of Truth":
+    if program.marked_for == "chose Dare":
+      // DRAFT w26 (D1: the loud Dare order, still the WANTED pop-out)
+      reply !!🚨 TRABOLTA'S ORDER: take {program.name} to the Internet NOW. They chose Dare at the Desktop. Find them and scan their pass: the scan is the confrontation.
+    else if program.late == true and program.marked_for == "late for the Second Moment of Truth":
       reply !!🚨 {program.name} is late for the Second Moment of Truth: marked for reinstallation. Find them and scan their pass: the scan is the confrontation.
     else:
       reply !!🚨 {program.name} is marked for reinstallation ({program.marked_for}). Find them and scan their pass: the scan is the confrontation.

@@ -1055,17 +1055,30 @@ ROLE Program
     // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
     set Kernel.pressed_by = "none"
 
-  // The dead-phone fallback: the same effect as the Dare tap.
+  // The dead-phone fallback: the same effect as the Dare tap (wave 26, D1:
+  // both go through `dare_taken`). The credit stays here only.
   when chose_dare for program:
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
       fire game_credit with points: 5, gain: 5, counts: 0
       broadcast "~🎩 {program.name} chose Dare. Programs choose Truth." to everyone
-      fire mark_for_reinstallation for program with reason: "chose Dare"
+      fire dare_taken for program
     else:
       broadcast "🎩 The bottle is not on {program.name}." to channel(hosts)
     // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
     set Kernel.pressed_by = "none"
+
+  // Wave 26 (D1): a Dare, by the phone's poll or Clippy's 🎩 fallback. Each
+  // path tells the house first, word for word as before (the terminals'
+  // act1 test pins the phone path's shape); then the program is marked
+  // (`chose Dare`: the Antivirus booths get Trabolta's loud order, TRAIT
+  // Enforcer), the dared phone gets his displeasure with only the pass, and
+  // Trabolta makes a scene at the Desktop (`dare_scene` → Dare Chosen).
+  when dare_taken for program:
+    fire mark_for_reinstallation for program with reason: "chose Dare"
+    // DRAFT w26 (D1: the dared phone's big moment)
+    reply "!!🎩 Trabolta is not amused. You chose Dare in his computer. The Antivirus are coming for you." with go: pass as "🎟 Show my pass", ack: none
+    fire dare_scene
 
   // Truth Pong: make the cup to earn an answer. `cupped` outlives the
   // verbal judge (which clears may_answer): it is what lets this program's
@@ -1128,7 +1141,9 @@ ROLE Program
         set program.marked_for = "flagged by a host"
       set program.escort_by = "none"
       // DRAFT w18: the soft heads-up (a minor moment; no pin, no restriction).
-      reply "🚨 You are marked for reinstallation ({program.marked_for}). Nothing is switched off: carry on. The Antivirus are looking for you." with go: pass as "🎟 Show my pass", go: mission as "What happens now?"
+      // Wave 26 (D1): a Dare has its own big moment instead (`dare_taken`).
+      if program.marked_for != "chose Dare":
+        reply "🚨 You are marked for reinstallation ({program.marked_for}). Nothing is switched off: carry on. The Antivirus are looking for you." with go: pass as "🎟 Show my pass", go: mission as "What happens now?"
       fire marked for program
 
   // A mis-tap, or mercy: the mark comes off without a trip to the tent.
@@ -2439,7 +2454,7 @@ ROLE Program
       if index == 1:
         set Night.bottle_open = false
         broadcast "~🎩 {program.name} chose Dare. Programs choose Truth." to everyone
-        fire mark_for_reinstallation for program with reason: "chose Dare"
+        fire dare_taken for program
       else:
         set Night.truth_n += 1
         broadcast "~🗣 {program.name} chose Truth. Trabolta has a question." to everyone
@@ -4176,6 +4191,12 @@ when bottle_empty:
 
 when bottle_announce:
   -> Bottle Landed
+
+// Wave 26 (D1): a Dare makes Trabolta make a scene at the Desktop (both
+// Dare paths, through ROLE Program's `dare_taken`). The terminals key on
+// the beat; the TV's voice reads it. Unbound: the scene is the house's.
+when dare_scene:
+  -> Dare Chosen
 
 when truth_question:
   -> Truth Question

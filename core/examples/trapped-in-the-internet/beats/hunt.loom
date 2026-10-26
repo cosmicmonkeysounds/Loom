@@ -85,3 +85,18 @@ else:
   cast: Trabolta
 
 Trabolta: {Night.bottle_pick}. Truth or dare?
+
+// `dare_scene` — a Dare (wave 26, D1): Trabolta makes a scene on the TV and
+// orders the Antivirus to take the dared program to the Internet. A public
+// Trabolta line in The Desktop, read by the TV's voice; the program's name
+// is the bottle's pick (`Night.bottle_pick`, in the screen state too).
+== Dare Chosen
+  setting: The Desktop
+  cast: Trabolta
+
+// DRAFT w26 (D1: Trabolta makes a scene)
+Trabolta: A dare. {Night.bottle_pick} chose a dare, in my computer.
+// DRAFT w26 (D1)
+Trabolta: Programs do not dare. Programs answer. Everyone, watch closely: this is what a dare costs.
+// DRAFT w26 (D1: the order to the Antivirus)
+Trabolta: Antivirus! Take {Night.bottle_pick} to the Internet. Now.
