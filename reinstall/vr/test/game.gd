@@ -1420,16 +1420,23 @@ func _jpeg(w: int, h: int, c: Color) -> PackedByteArray:
 
 
 func _test_cam_feeds() -> void:
-	# Pins terminal coordinates, so it walks the frozen placeholder map.
-	var house: Dictionary = _placeholder_house()
-	var all := ["optical-drive", "hall", "desktop-tv", "start-bar", "ram", "server-room", "nowhere"]
-	var feet := [0.0, 0.0, 5.0]
-	_check(CamFeeds.spots_to_poll(house, all, feet) == ["optical-drive", "start-bar", "hall", "desktop-tv"], "cams: the listed terminals on my floor, nearest first, at most four (%s)" % [CamFeeds.spots_to_poll(house, all, feet)])
-	_check(CamFeeds.spots_to_poll(house, all, feet, 12.0, 2) == ["optical-drive", "start-bar"], "cams: … capped")
-	_check(CamFeeds.spots_to_poll(house, all, feet, 5.5) == ["optical-drive", "start-bar"], "cams: … within reach in plan")
-	_check(CamFeeds.spots_to_poll(house, [{"spot": "hall", "at": 1}, {"spot": "ram"}], feet) == ["hall"], "cams: list entries by spot; another floor's terminal is not polled")
-	_check(CamFeeds.spots_to_poll(house, all, [7.0, -2.7, 9.0]).has("ram") and not CamFeeds.spots_to_poll(house, all, [7.0, -2.7, 9.0]).has("hall"), "cams: in the basement, the basement's terminals")
-	_check(CamFeeds.spots_to_poll(house, [], feet).is_empty() and CamFeeds.spots_to_poll(house, all, []).is_empty(), "cams: nothing listed or no feet → nothing")
+	# Wave 26 (C7, R5): only the terminals in the player's own (presence)
+	# room, never the tent's reinstall station; nearest first, at most four.
+	var house: Dictionary = _read_json("res://house/house.json")
+	var all := ["optical-drive", "hall", "desktop-tv", "start-bar", "ram", "bathroom-1-door", "server-room", "server-room-door", "tent", "nowhere"]
+	var mid := func(room: String) -> Array:
+		var r: Dictionary = HouseGeometry.room_by_id(house, room)
+		var b := HouseGeometry.poly_bounds(r["poly"])
+		var fl: Variant = HouseGeometry.floor_by_id(house, r["floor"])
+		return [(float(b[0]) + float(b[2])) / 2.0, float(fl["elevation"]), (float(b[1]) + float(b[3])) / 2.0]
+	_check(CamFeeds.spots_to_poll(house, all, mid.call("desktop"), "desktop") == ["desktop-tv"], "cams: in the Desktop, the TV's camera only (%s)" % [CamFeeds.spots_to_poll(house, all, mid.call("desktop"), "desktop")])
+	_check(CamFeeds.spots_to_poll(house, all, mid.call("server-room"), "server-room") == ["server-room"], "cams: in the Server Room, its terminal — not the Server Door's in the hall outside")
+	var in_ram := CamFeeds.spots_to_poll(house, all, mid.call("ram"), "ram")
+	_check(in_ram.size() == 2 and in_ram.has("ram") and in_ram.has("bathroom-1-door"), "cams: a room with two terminals polls both (%s)" % [in_ram])
+	_check(CamFeeds.spots_to_poll(house, all, mid.call("ram"), "ram", 1).size() == 1, "cams: … capped")
+	_check(CamFeeds.spots_to_poll(house, all, mid.call("tent"), "tent").is_empty(), "cams: the tent's reinstall station is never polled (T3)")
+	_check(CamFeeds.spots_to_poll(house, [{"spot": "hall", "at": 1}], mid.call("hall"), "hall") == ["hall"] and CamFeeds.spots_to_poll(house, ["optical-drive"], mid.call("hall"), "hall").is_empty(), "cams: list entries by spot; another room's terminal is not polled")
+	_check(CamFeeds.spots_to_poll(house, all, mid.call("hall"), null).is_empty() and CamFeeds.spots_to_poll(house, [], mid.call("hall"), "hall").is_empty() and CamFeeds.spots_to_poll(house, all, [], "hall").is_empty(), "cams: no room (the void), nothing listed or no feet → nothing")
 
 	_check(_near(CamFeeds.backoff(0, 0.25), 0.25) and _near(CamFeeds.backoff(1, 0.25), 1.0) and _near(CamFeeds.backoff(3, 0.25), 4.0), "cams: a failure backs off, doubling")
 	_check(_near(CamFeeds.backoff(20, 0.25), CamFeeds.BACKOFF_MAX) and _near(CamFeeds.backoff(1, 2.0, 2.0), 2.0) and _near(CamFeeds.backoff(2, 2.0, 2.0), 4.0), "cams: … up to the cap; the list from its own interval")
@@ -1471,7 +1478,7 @@ func _test_cam_panels() -> void:
 	var asked: Array = []  # frames
 	var lists: Array = []  # the list, never cleared
 	c.requester = func(url: String, token: String, done: Callable) -> void: (lists if url.ends_with("/cams") else asked).append([url, token, done])
-	var feet := [0.0, 0.0, 5.0]
+	var feet := [-1.0, 0.0, 1.5]  # in the Optical Drive (C7: my own room's terminals only)
 	var base := "fixture://e/e1/api/spatial"
 	var urls := func() -> Array: return asked.map(func(e: Array) -> String: return e[0])
 
@@ -1482,7 +1489,7 @@ func _test_cam_panels() -> void:
 	(lists[0][2] as Callable).call(200, PackedStringArray(), JSON.stringify({"cams": [{"spot": "optical-drive", "at": 1, "w": 160, "h": 120}, {"spot": "ram", "at": 1, "w": 160, "h": 120}]}).to_utf8_buffer())
 	asked.clear()
 	c.tick(0.016, house, feet, base, "sess")
-	_check(asked.size() == 1 and asked[0][0] == base + "/cam?spot=optical-drive", "cams: a frame for the listed feed on my floor, not the basement's (%s)" % [urls.call()])
+	_check(asked.size() == 1 and asked[0][0] == base + "/cam?spot=optical-drive", "cams: a frame for the listed feed in my room, not the basement's (%s)" % [urls.call()])
 	c.tick(0.016, house, feet, base, "sess")
 	_check(asked.size() == 1, "cams: one frame request per spot in flight")
 	(asked[0][2] as Callable).call(200, PackedStringArray(["x-cam-at: 1"]), _jpeg(160, 120, Color.RED))
@@ -1542,11 +1549,11 @@ func _test_cam_panels() -> void:
 
 	# A failing list backs off too; walking away drops the feed.
 	asked.clear()
-	c.tick(0.016, house, [0.0, 0.0, 30.0], base, "sess")
-	_check(not b.cam_shown("optical-drive") and c.polling().is_empty(), "cams: out of range, the feed is dropped")
+	c.tick(0.016, house, [-3.0, 0.0, 16.0], base, "sess")
+	_check(not b.cam_shown("optical-drive") and c.polling().is_empty() and c.presence() == "hall", "cams: in another room (the Hall), the feed is dropped")
 	_check(lists.size() == 2, "cams: the list is asked again every two seconds (%d)" % lists.size())
 	(lists[1][2] as Callable).call(500, PackedStringArray(), PackedByteArray())
-	c.tick(1.9, house, [0.0, 0.0, 30.0], base, "sess")
+	c.tick(1.9, house, [-3.0, 0.0, 16.0], base, "sess")
 	_check(lists.size() == 2, "cams: a failed list waits")
 	c.tick(2.2, house, [0.0, 0.0, 30.0], base, "sess")
 	_check(lists.size() == 3, "cams: … then asks again")
