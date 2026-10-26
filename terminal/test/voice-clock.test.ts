@@ -60,6 +60,12 @@ describe("voiceClock", () => {
     expect(voiceState(DEF, S, S + 1500, ev)?.spoken).toEqual({ seq: 5, index: 0, text: "Antivirus." });
     expect(voiceState(DEF, S, S + 3500, ev)?.spoken).toEqual({ seq: 5, index: 1, text: "Truth or dare?" });
     expect(voiceState(DEF, S, S + 500, ev)?.spoken).toBeNull(); // not yet
+    // …and its mark index (the layer leaves a scene's `drawn` sentences uncaptioned).
+    expect(voiceState(DEF, S, S + 1500, ev)?.mark).toBe(0);
+    expect(voiceState(DEF, S, S + 3500, ev)?.mark).toBe(1);
+    expect(voiceState(DEF, S, S + 500, ev)?.mark).toBeNull();
+    // Merged sentences map by share: 1 spoken for 2 marks is mark 0.
+    expect(voiceState(DEF, S, S + 1500, [queued(5, S, 1), ...line(5, S + 1000, ["Excel. Truth or dare?"])])?.mark).toBe(0);
   });
 
   it("ignores another beat's lines, lines from long before the moment, and a scene from history", () => {

@@ -49,6 +49,9 @@ export interface VoiceScene {
   tail?: number;
   /** The scene draws the spoken sentence itself (`SceneProps.voice`); else the layer captions it. */
   ownCaption?: boolean;
+  /** The sentences (by mark index) the scene's own picture already shows
+   *  (a chat bubble typing his proposal): the layer doesn't caption those. */
+  drawn?: readonly number[];
 }
 
 /** A voice scene and the scene's own length. */
@@ -62,6 +65,8 @@ export interface VoiceState {
   t: number;
   /** The sentence he is saying now (null: between sentences, before, after). */
   spoken: SpokenNow | null;
+  /** The mark index of that sentence (null with `spoken`). */
+  mark?: number | null;
   /** He has finished the scene's last line. */
   ended: boolean;
   /** Server ms the warped clock reaches `ms` (null: a `hold` scene). */
@@ -169,15 +174,21 @@ export function voiceState(def: VoiceTiming, sceneStart: number, now: number, ev
 
   // The sentence being said: the newest started one whose line isn't done.
   let spoken: SpokenNow | null = null;
+  let mark: number | null = null;
   let newest = Number.NEGATIVE_INFINITY;
-  for (const s of sentences) {
+  for (let g = 0; g < k; g++) {
+    const s = sentences[g]!;
     if (s.start === undefined || s.start > now || s.start < newest) continue;
     if (s.line.done !== null && s.line.done <= now) continue;
     newest = s.start;
     spoken = { seq: s.line.seq, index: s.index, text: s.line.texts?.[s.index] ?? "" };
+    mark = markOf(g);
   }
-  if (spoken !== null && spoken.text === "") spoken = null;
-  return { t, spoken, ended: doneAt !== null, endAt };
+  if (spoken !== null && spoken.text === "") {
+    spoken = null;
+    mark = null;
+  }
+  return { t, spoken, mark, ended: doneAt !== null, endAt };
 }
 
 /** The warped scene time at `now` (C11's `voiceClock`), or null for the plain clock. */

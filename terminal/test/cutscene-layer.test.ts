@@ -146,7 +146,9 @@ describe("a voiced scene on the TV (wave 26, V1)", () => {
       const tv = draw(61, "tv");
       expect(tv).toContain(`t=${BOTTLE_SPIN_MS + 500} voice=Excel.`);
       expect(tv).toContain('data-voiced=""');
-      expect(tv).toContain('<div class="cutscene-voice-caption" aria-live="polite">Excel.</div>');
+      // The bottle draws "<pick>." itself (ownCaption): the scene gets his
+      // sentence, the layer adds no second copy.
+      expect(tv).not.toContain("cutscene-voice-caption");
       const wall = draw(62, "wall");
       expect(wall).toContain("t=1500 voice=-");
       expect(wall).not.toContain("cutscene-voice-caption");
@@ -158,14 +160,26 @@ describe("a voiced scene on the TV (wave 26, V1)", () => {
     }
   });
 
+  it("the stage draws the layer's caption over the scene", async () => {
+    const { SceneStage } = await import("../src/cutscene/CutsceneLayer.tsx");
+    const { fakeState } = await import("../src/cutscene/fake.ts");
+    const Probe = () => createElement("p", null, "scene");
+    const html = renderToStaticMarkup(createElement(SceneStage, { def: { id: "verdict", when: [], ms: 1000, tv: Probe }, kind: "moment", target: "tv", t: 0, at: 1, seq: 1, value: "", who: null, state: fakeState({ now: 1 }), reduced: false, play: () => false, onDone: () => {}, voice: { seq: 1, index: 0, text: "I have compared every fact." }, caption: "I have compared every fact." }));
+    expect(html).toContain('<div class="cutscene-voice-caption" aria-live="polite">I have compared every fact.</div>');
+  });
+
   it("captions only a scene that doesn't draw his sentence itself", async () => {
     const { voiceCaption } = await import("../src/cutscene/CutsceneLayer.tsx");
     const s = (id: string) => ({ kind: "moment" as const, def: { id, when: [], ms: 1000 }, seq: 1, at: 1, start: 1, value: "", who: null, key: id });
-    const v = { t: 1, spoken: { seq: 1, index: 1, text: "I am Jean Trabolta." }, ended: false, endAt: null };
-    expect(voiceCaption(s("bottle_landed"), v)).toBe("I am Jean Trabolta.");
+    const v = { t: 1, spoken: { seq: 1, index: 1, text: "I am Jean Trabolta." }, mark: 1, ended: false, endAt: null };
+    expect(voiceCaption(s("verdict"), v)).toBe("I am Jean Trabolta.");
     expect(voiceCaption(s("trabolta_introduction"), v)).toBeNull(); // the intro types it itself
-    expect(voiceCaption(s("bottle_landed"), { ...v, spoken: null })).toBeNull();
-    expect(voiceCaption(s("bottle_landed"), undefined)).toBeNull();
+    expect(voiceCaption(s("bottle_landed"), v)).toBeNull(); // the bottle draws "<pick>." and "Truth or dare?"
+    // advice_helped: SandyChat types the proposal (its `drawn`), the rest is captioned.
+    expect(voiceCaption(s("advice_helped"), { ...v, mark: 6 })).toBeNull();
+    expect(voiceCaption(s("advice_helped"), { ...v, mark: 0 })).toBe("I am Jean Trabolta.");
+    expect(voiceCaption(s("verdict"), { ...v, spoken: null })).toBeNull();
+    expect(voiceCaption(s("verdict"), undefined)).toBeNull();
   });
 });
 

@@ -229,10 +229,15 @@ function forgetVoicedExcept(on: Map<string, VoiceState>): void {
   for (const k of [...voicedT.keys()]) if (!on.has(k)) voicedT.delete(k);
 }
 
-/** The caption the layer draws over a voiced scene: the sentence he is saying, unless the scene draws it. */
+/** The caption the layer draws over a voiced scene: the sentence he is
+ *  saying, unless the scene draws it (`ownCaption`, or that sentence is
+ *  one of its `drawn`), so his line never shows twice. */
 export function voiceCaption(s: ActiveScene, v: VoiceState | undefined): string | null {
   if (v === undefined || v.spoken === null || v.spoken.text === "") return null;
-  return voiceSceneOf(s.def.id)?.ownCaption === true ? null : v.spoken.text;
+  const vs = voiceSceneOf(s.def.id);
+  if (vs?.ownCaption === true) return null;
+  if (v.mark != null && vs?.drawn?.includes(v.mark) === true) return null;
+  return v.spoken.text;
 }
 /** A hidden scene plays no sound (it reports "dropped", as a locked bus does). */
 const quiet: SceneProps["sfx"] = () => false;

@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { foldName } from "../src/config.ts";
 import { INTRO_CAPTIONS } from "../src/cutscene/kit/tv1-boot.tsx";
 import { SCENES } from "../src/cutscene/registry.ts";
+import { ADVICE_CHAT } from "../src/cutscene/scenes/act3.tsx";
 import { VOICE_SCENES, voiceSceneOf } from "../src/cutscene/voice-scenes.ts";
 import { splitSentences } from "../src/speech/split.ts";
 
@@ -97,6 +98,19 @@ describe("VOICE_SCENES (C11)", () => {
     expect(v.marks).toEqual(INTRO_CAPTIONS.map((c) => c.start));
     expect(v.ownCaption).toBe(true);
     expect(INTRO_CAPTIONS.map((c) => c.text)).toEqual(LINES.get(foldName("Trabolta Introduction"))!.flatMap((l) => splitSentences(l)));
+  });
+
+  it("his line shows once: the layer leaves the sentences a scene draws itself", () => {
+    expect(VOICE_SCENES["bottle_landed"]!.ownCaption).toBe(true); // "<pick>." and "Truth or dare?" on the bottle
+    // advice_helped: SandyChat types the proposal; those are its `drawn`.
+    const advice = VOICE_SCENES["advice_helped"]!;
+    const said = LINES.get(foldName("Advice Helped"))!.flatMap((l) => splitSentences(l));
+    expect(advice.drawn!.map((i) => said[i]).join(" ")).toBe(ADVICE_CHAT[0]!.text);
+    // …and the chat stays shut (it opens at 200) until he gets to it.
+    const first = advice.drawn![0]!;
+    for (let i = 0; i < first; i++) expect(advice.marks[i]!, `advice mark ${i}`).toBeLessThan(200);
+    expect(advice.marks[first]).toBe(200);
+    for (const [id, v] of Object.entries(VOICE_SCENES)) for (const i of v.drawn ?? []) expect(i, id).toBeLessThan(v.marks.length);
   });
 
   it("the scenes left on the server's clock have no line of his to wait for", () => {
