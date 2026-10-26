@@ -420,7 +420,6 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 }
 .king-actions .w98-button { min-width: 8.5em; }
 @media (max-height: 500px) { .king-actions { bottom: 60px; flex-direction: row; } }
-.king-note { color: var(--navy); font-weight: bold; }
 
 .help-card {
   position: absolute;
