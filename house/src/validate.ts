@@ -36,10 +36,16 @@ export const STAIR_CLEARANCE = 0.3;
 /** How tall a duck is, for the solid-prop check (a player: `BODY_CLEAR`). */
 const DUCK_CLEAR = 0.5;
 
-const PROP_KINDS = ["box", "cylinder", "screen", "label", "king"];
-/** The fields only a `king` prop may carry. */
-const KING_FIELDS = ["hp", "health", "signals", "armed"] as const;
-const SIGNAL_KEYS = ["won", "lost", "drawn", "hit", "fallen"];
+const PROP_KINDS = ["box", "cylinder", "screen", "label", "king", "heart", "pickup"];
+/** The fields only a `king` prop may carry (`signals` is checked per kind: `PROP_SIGNAL_KEYS`). */
+const KING_FIELDS = ["hp", "health", "armed"] as const;
+/** The `signals` keys each prop kind takes; a kind not listed takes none. */
+export const PROP_SIGNAL_KEYS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  king: ["won", "lost", "drawn", "hit", "fallen"],
+  heart: ["reached"],
+  pickup: ["taken"],
+});
+const SIGNAL_KEYS = Object.values(PROP_SIGNAL_KEYS).flat();
 /** A king's largest `hp` (one shared bar for the night: 15 at the show). */
 export const KING_MAX_HP = 99;
 /** A world path: identifiers joined by dots (`Night.king_hp`). */
@@ -262,18 +268,40 @@ function checkShape(raw: unknown, problems: string[]): void {
     [
       "signals",
       (v) => isObj(v) && Object.entries(v).every(([k, s]) => SIGNAL_KEYS.includes(k) && isStr(s) && s.trim() !== ""),
-      "{won?, lost?, drawn?, hit?, fallen?} of non-empty strings",
+      `{${SIGNAL_KEYS.map((k) => `${k}?`).join(", ")}} of non-empty strings`,
       true,
     ],
+    ["item", (v) => isStr(v) && v.trim() !== "", "a non-empty string", true],
     ["armed", (v) => isObj(v) && isStr(v["path"]) && v["path"] !== "" && isNum(v["min"]), "{path, min}", true],
   ]);
   ids("prop", props);
-  // `hp` / `health` / `signals` / `armed` mean nothing on anything but a king.
   props.forEach((item, i) => {
-    if (!isObj(item) || item["kind"] === "king") return;
-    for (const key of KING_FIELDS) {
-      if (item[key] !== undefined) problems.push(`${label("props", i, item)}: "${key}" is only for kind "king"`);
+    if (!isObj(item)) return;
+    const at = label("props", i, item);
+    const kind = item["kind"];
+    // `hp` / `health` / `armed` mean nothing on anything but a king.
+    if (kind !== "king") {
+      for (const key of KING_FIELDS) {
+        if (item[key] !== undefined) problems.push(`${at}: "${key}" is only for kind "king"`);
+      }
     }
+    // `signals` keys per kind: a king's, a heart's `reached`, a pickup's `taken`, nobody else's.
+    const signals = item["signals"];
+    if (isObj(signals) && isStr(kind)) {
+      const allowed = PROP_SIGNAL_KEYS[kind] ?? [];
+      if (allowed.length === 0) problems.push(`${at}: kind "${kind}" takes no "signals"`);
+      else {
+        for (const key of Object.keys(signals)) {
+          // An unknown key is the shape check's problem already.
+          if (SIGNAL_KEYS.includes(key) && !allowed.includes(key)) problems.push(`${at}: "signals.${key}" is not for kind "${kind}" (${allowed.join(" / ")})`);
+        }
+      }
+    }
+    // A pickup says what it is; nothing else does.
+    if (kind === "pickup" && item["item"] === undefined) problems.push(`${at}: a "pickup" needs an "item" ("virus")`);
+    if (kind !== "pickup" && item["item"] !== undefined) problems.push(`${at}: "item" is only for kind "pickup"`);
+    // An old game would draw a heart's or a pickup's label: they carry none.
+    if ((kind === "heart" || kind === "pickup") && item["label"] !== undefined) problems.push(`${at}: a "${kind}" carries no "label"`);
   });
 
   const spaces = raw["spaces"];
