@@ -3662,6 +3662,8 @@ func _test_speech() -> void:
 	sp.hold = func(ms: float) -> void: held.append(ms)
 	root.add_child(sp)
 	sp.set_process(false)
+	_check(ProjectSettings.get_setting("audio/general/text_to_speech", false) == true, "speech: project.godot turns text_to_speech on (tts_speak needs it)")
+	_check(Speech.TTS_VOLUME == 100, "speech: the device voice speaks at full volume, not Godot's default 50")
 	# No device voice: captions only.
 	sp.say([{"from": "Trabolta", "text": "First line here."}, {"from": "Trabolta", "text": "  "}, {"from": "Trabolta", "text": "Second."}])
 	sp.tick(0.0)

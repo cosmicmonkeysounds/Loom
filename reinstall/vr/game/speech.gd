@@ -28,6 +28,9 @@ signal finished
 const LINE_GAP_MS := 700.0
 ## The pronunciation table (a byte-identical copy of the terminal's, C10).
 const PRONOUNCE_PATH := "res://config/pronounce.json"
+## The device voice's volume (0–100): full, not Godot's default 50 — the
+## headset plays it in a loud party room.
+const TTS_VOLUME := 100
 ## A voice still speaking this long past its reading time is cut (ms).
 const STUCK_AFTER_MS := 4000.0
 ## The head-locked caption (camera frame) and the prop billboard's lift (m).
@@ -41,7 +44,7 @@ var voices: Callable = func() -> Array:
 	return DisplayServer.tts_get_voices() if DisplayServer.has_feature(DisplayServer.FEATURE_TEXT_TO_SPEECH) else []
 ## Tests: `speaker.call(text, voice_id)` in place of [method DisplayServer.tts_speak].
 var speaker: Callable = func(text: String, voice_id: String) -> void:
-	DisplayServer.tts_speak(text, voice_id)
+	DisplayServer.tts_speak(text, voice_id, TTS_VOLUME)
 var stopper: Callable = func() -> void:
 	if DisplayServer.has_feature(DisplayServer.FEATURE_TEXT_TO_SPEECH):
 		DisplayServer.tts_stop()
