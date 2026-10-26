@@ -25,6 +25,17 @@
 ##   At 0 he kneels for everyone and his door is open: no leaf, no collider,
 ##   and the trail routes through it ([method HouseKing.trail_map]); a
 ##   director's restore stands him up and shuts it again.
+## - **The void** (wave 26, R4, [HouseEscape]): walking out through the
+##   house's exterior door is allowed; [constant HouseEscape.ESCAPE_M] past
+##   the walls on that floor (every time, before or after Trabolta's reveal)
+##   the walk freezes, one hard glitch flash ("FATAL EXCEPTION 0E", a
+##   noise, a haptic pulse — no camera motion) and an escape moment goes up
+##   ([method LinkBase.moment]); on its answer (at most [constant ESCAPE_WAIT]
+##   s) the player is back at the spawn, and the answer's lines are spoken
+##   and captioned ([Speech]). The teleport happens whatever the server says
+##   (closed doors, an old server, a refusal). Within
+##   [constant HouseEscape.ESCAPE_COOLDOWN_MS] of the last, the void puts
+##   them back quietly (no scare, no moment).
 ## - **Found**: egg, flight, "REINSTALLATION COMPLETE" (or "YOU FOUND
 ##   GERALD" for a program that wasn't corrupted); then the session ends and
 ##   the lobby comes back.
@@ -90,6 +101,10 @@ const AUTOPILOT_KING_STAND := 0.9
 const AUTOPILOT_KING_WAIT := 10.0
 ## The lobby's TEST MIC closes itself after this long (s).
 const MIC_TEST_LIMIT := 30.0
+## The void's scare holds at least this long (s), and waits at most
+## [constant ESCAPE_WAIT] s for the server before the teleport.
+const ESCAPE_SCARE := 1.5
+const ESCAPE_WAIT := 3.0
 
 var link: LinkBase
 var flow := GameFlow.new()
@@ -125,6 +140,12 @@ var _quack_in := Sfx.QUACK_FIRST
 var _fanfare_in := -1.0
 ## Seconds left on the lobby's TEST MIC.
 var _mic_test_left := 0.0
+## The void (R4): seconds into an escape (< 0: none), its answer once it
+## came (`{result, data}`), and when (in [member _played_for]) the last
+## escape went up (< 0: none this session).
+var _escape_t := -1.0
+var _escape_answer: Dictionary = {}
+var _escaped_at := -1.0
 var _found_pending := false
 var _found_retry := 0.0
 ## Why the headset counts as away → the wall-clock second the session ends
@@ -237,6 +258,7 @@ func setup(l: LinkBase, xr: bool) -> void:
 	link.stream_frame.connect(ghosts.on_frame)
 	link.king_changed.connect(_on_king_changed)
 	link.king_hit_answered.connect(_on_king_hit_answered)
+	link.moment_answered.connect(_on_moment_answered)
 	ghosts.url_of = link.avatar_url
 
 	lobby.set_station(link.station_name())
@@ -266,6 +288,8 @@ func enter_lobby() -> void:
 	sfx.set_hum(false)
 	speech.stop()
 	_fanfare_in = -1.0
+	_escape_t = -1.0
+	_escape_answer = {}
 	ghosts.own_session = ""
 	# The head-locked HUD would float over the tiles: a notice still up
 	# (the session ended, …) moves to the lobby's own message line.
@@ -441,6 +465,9 @@ func _on_assignment(a: Dictionary) -> void:
 	_fanfare_in = -1.0
 	sfx.set_hum(true)
 	_played_for = 0.0
+	_escape_t = -1.0
+	_escape_answer = {}
+	_escaped_at = -1.0
 	_reveal_after = maxf(0.0, float(link.config.get("trail_delay", HouseRoute.PATH_REVEAL_MS / 1000.0)))
 	trail_revealed = false
 	trail.clear()
@@ -691,9 +718,19 @@ func _on_mic_action(id: String) -> void:
 func _tick_play(delta: float) -> void:
 	var house := builder.house
 	var feet := builder.to_house(player.feet())
+	if _escape_t >= 0.0:
+		# Frozen in the void: no poses (the server judges the one outside),
+		# no trail, no claims — until the answer or the wait runs out.
+		_tick_escape(delta)
+		_tick_voice()
+		return
 	if autopilot != null:
 		_tick_autopilot(feet, delta)
 	link.send_pose(feet, builder.yaw_to_house(player.head_yaw()), player.head_pitch())
+	var out: Variant = HouseEscape.void_distance(house, feet)
+	if out != null and float(out) >= HouseEscape.ESCAPE_M:
+		_start_escape()
+		return
 	var here := HouseLocate.locate(house, feet)
 	hud.set_room(_room_label(here["room"]))
 	cams.tick(delta, house, feet, link.cams_url(), link.cams_token())
@@ -717,6 +754,79 @@ func _tick_play(delta: float) -> void:
 		_found_pending = true
 		link.report_found()
 	_tick_king(house, feet, builder.yaw_to_house(player.head_yaw()))
+
+
+# --- the void (R4) ---
+
+
+## Whether an escape is under way (frozen, scared, waiting for the answer).
+func escaping() -> bool:
+	return _escape_t >= 0.0
+
+
+## The player is [constant HouseEscape.ESCAPE_M] into the void: scare them
+## and post the escape — or, within the cooldown, put them back quietly.
+func _start_escape() -> void:
+	trail.clear()
+	if _escaped_at >= 0.0 and (_played_for - _escaped_at) * 1000.0 < HouseEscape.ESCAPE_COOLDOWN_MS:
+		_back_to_spawn({})
+		return
+	_escaped_at = _played_for
+	_escape_t = 0.0
+	_escape_answer = {}
+	player.locomotion_enabled = false
+	hud.scare(true)
+	sfx.play("scare")
+	player.pulse(0.8, 0.4)
+	link.moment("escape")
+	print("reinstall-vr: the void — %s escaped; back to the spawn" % flow.assignment.get("name", ""))
+
+
+func _tick_escape(delta: float) -> void:
+	_escape_t += delta
+	if (not _escape_answer.is_empty() and _escape_t >= ESCAPE_SCARE) or _escape_t >= ESCAPE_WAIT:
+		var answer := _escape_answer
+		_escape_t = -1.0
+		_escape_answer = {}
+		_back_to_spawn(answer)
+
+
+## Back at the spawn (the answer's, else the map's), the scare fading, the
+## walk going again; an answer's lines are spoken now.
+func _back_to_spawn(answer: Dictionary) -> void:
+	var data: Dictionary = answer.get("data", {})
+	var spawn: Variant = data.get("spawn") if answer.get("result") == "ok" else null
+	if not (spawn is Dictionary and (spawn as Dictionary).get("pos") is Array):
+		spawn = builder.house["spawn"]
+	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn.get("yaw", 0.0))))
+	hud.scare(false)
+	player.locomotion_enabled = true
+	_trail_in = 0.0
+	if autopilot != null:
+		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
+	if answer.get("result") == "ok":
+		_say_lines(data, null)
+
+
+## A moment's answer (C6): the escape's goes to the waiting scare (or, late,
+## straight to its lines); the heart's and the pickup's to their props.
+func _on_moment_answered(kind: String, result: String, data: Dictionary) -> void:
+	if flow.state != GameFlow.State.PLAYING:
+		return
+	match kind:
+		"escape":
+			if _escape_t >= 0.0:
+				_escape_answer = {"result": result, "data": data}
+			elif result == "ok":
+				_say_lines(data, null)  # landed after the wait: the lines still play
+
+
+## Speak and caption a moment's `lines` (`[{from, text}]`) — over `anchor`
+## when given, else head-locked.
+func _say_lines(data: Dictionary, anchor: Node3D) -> void:
+	var lines: Variant = data.get("lines")
+	if lines is Array and not (lines as Array).is_empty():
+		speech.say(lines, anchor)
 
 
 ## The path reveal (R2): the trail stays off for the walk's first

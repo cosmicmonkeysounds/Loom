@@ -71,6 +71,7 @@ func _run() -> void:
 	await _test_speech()
 	await _test_sfx_game()
 	await _test_path_reveal()
+	await _test_escape()
 	await _test_autopilot_physics()
 	await _test_room_scale()
 
@@ -3839,6 +3840,122 @@ func _test_path_reveal() -> void:
 	link.session_over.emit("test")
 	main.queue_free()
 	await process_frame
+
+
+## A game on the show map over a fake link, the trail at once, frozen physics.
+func _game_on_show() -> Array:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "trail_delay": 0})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	game.player.set_physics_process(false)
+	game.player.read_input = false
+	game.speech.set_process(false)
+	game.speech.voices = func() -> Array: return []
+	return [main, game, link, house]
+
+
+## Wave 26 (R4): the void. 5 m out of the front door (not 4.8) freezes the
+## walk, flashes the scare once, pulses, posts one escape moment with the
+## outside pose last; the answer (or 3 s) puts them back at the spawn and
+## its lines are captioned; within 20 s a second walk-out is a quiet
+## teleport; every refusal still teleports; a dead session ends it.
+func _test_escape() -> void:
+	var got: Array = await _game_on_show()
+	var main: Node = got[0]
+	var game: Game = got[1]
+	var link: LinkBase = got[2]
+	var house: Dictionary = got[3]
+	var player := game.player
+	var spawn: Array = house["spawn"]["pos"]
+	link.assignment_received.emit(_assignment(house, "esc-1", true))
+	game._process(0.016)
+	var near := [-0.45, 0.0, -4.8]
+	var out := [-0.45, 0.0, -5.2]
+	_check(HouseEscape.void_distance(house, near) != null and float(HouseEscape.void_distance(house, near)) < HouseEscape.ESCAPE_M, "escape: 4.8 m out is the void, short of an escape")
+	player.teleport(HouseFrames.vec(near), 0.0)
+	game._process(0.016)
+	var moments: Array = link.get("moments")
+	_check(moments.is_empty() and not game.escaping() and not game.hud.scare_shown(), "escape: 4.8 m out of the door is nothing yet")
+	player.teleport(HouseFrames.vec(out), 0.0)
+	var pulses := player.pulses
+	game.sfx.log.clear()
+	game._process(0.016)
+	_check(game.escaping() and moments == [["escape", ""]] and game.hud.scare_shown() and game.hud.scare_text() == "FATAL EXCEPTION 0E", "escape: 5.2 m out → the scare and one escape moment (%s)" % [moments])
+	_check(_diff(link.poses.back()["p"], out) == "", "escape: … the last pose the server got is the one outside")
+	_check(not player.locomotion_enabled and player.pulses == pulses + 1 and game.sfx.log == ["scare"] and game.voice.holding(), "escape: … frozen, a haptic pulse, the scare's sound (the mic held)")
+	_check(game.trail.count() == 0, "escape: … no trail")
+	var poses: int = link.poses.size()
+	game._process(0.5)
+	_check(link.poses.size() == poses and moments.size() == 1 and _v3(player.feet(), HouseFrames.vec(out)), "escape: while it waits, no pose and no second moment; nobody moves them")
+	# The answer comes early: the scare still holds 1.5 s.
+	link.call("answer_moment", "escape", "ok", {"ok": true, "kind": "escape", "lines": [{"from": "Trabolta", "text": "Programs do not leave."}, {"from": "Trabolta", "text": "Back you go."}], "spawn": house["spawn"], "cooldownMs": 20000})
+	game._process(0.5)
+	_check(game.escaping() and game.hud.scare_shown(), "escape: an early answer still lets the scare play out")
+	game._process(0.6)
+	_check(not game.escaping() and _v3(player.feet(), HouseFrames.vec(spawn)) and player.locomotion_enabled, "escape: … then back at the spawn, walking (%s)" % player.feet())
+	game.speech.tick(0.0)
+	_check(game.speech.caption_text() == "Programs do not leave.", "escape: his lines are captioned in order (%s)" % game.speech.caption_text())
+	game.hud._process(1.0)
+	_check(not game.hud.scare_shown(), "escape: the scare fades out")
+	game._process(0.016)
+	_check(_diff(link.poses.back()["p"], spawn) == "", "escape: poses go again, from the spawn")
+	# Within the cooldown: a quiet teleport, no moment, no scare.
+	player.teleport(HouseFrames.vec(out), 0.0)
+	game._process(0.016)
+	_check(moments.size() == 1 and not game.escaping() and not game.hud.scare_shown() and _v3(player.feet(), HouseFrames.vec(spawn)), "escape: within 20 s the void puts them back quietly")
+	# After the cooldown, no answer at all: the teleport after 3 s anyway.
+	for i in 21:
+		game._process(1.0)
+	player.teleport(HouseFrames.vec(out), 0.0)
+	game._process(0.016)
+	_check(moments.size() == 2 and game.escaping(), "escape: after 20 s it counts again")
+	game._process(2.9)
+	_check(game.escaping(), "escape: no answer: it waits up to 3 s")
+	game._process(0.2)
+	_check(not game.escaping() and _v3(player.feet(), HouseFrames.vec(spawn)), "escape: … then the teleport anyway")
+	game.speech.stop()
+	# A late ok still speaks.
+	link.call("answer_moment", "escape", "ok", {"ok": true, "lines": [{"from": "Trabolta", "text": "Late."}]})
+	game.speech.tick(0.0)
+	_check(game.speech.caption_text() == "Late.", "escape: a late answer's lines still play")
+	game.speech.stop()
+	# Every refusal teleports, with no lines.
+	for result: String in ["not found", "doors are closed", "not out", "cooldown", "bad moment", "error", "offline"]:
+		for i in 21:
+			game._process(1.0)
+		player.teleport(HouseFrames.vec(out), 0.0)
+		game._process(0.016)
+		link.call("answer_moment", "escape", result, {"error": result})
+		game._process(ESCAPE_SCARE_PLUS)
+		_check(not game.escaping() and _v3(player.feet(), HouseFrames.vec(spawn)) and not game.speech.busy(), "escape: '%s' → back at the spawn, nothing said" % result)
+	# A session that ends mid-scare: the lobby, no scare.
+	for i in 21:
+		game._process(1.0)
+	player.teleport(HouseFrames.vec(out), 0.0)
+	game._process(0.016)
+	link.session_over.emit("over")
+	_check(game.state() == GameFlow.State.LOBBY and not game.escaping() and not game.hud.scare_shown(), "escape: a session ending mid-scare goes to the lobby clean")
+	# A new session starts with no cooldown.
+	link.assignment_received.emit(_assignment(house, "esc-2", true))
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(out), 0.0)
+	var before: int = moments.size()
+	game._process(0.016)
+	_check(moments.size() == before + 1 and game.escaping(), "escape: a new session has no cooldown")
+	link.session_over.emit("test")
+	main.queue_free()
+	await process_frame
+
+
+const ESCAPE_SCARE_PLUS := Game.ESCAPE_SCARE + 0.1
 
 
 ## ServerLink's voice URLs: the session's stream + upload on the event, ""

@@ -143,6 +143,20 @@ func teleport(pos: Vector3, yaw: float) -> void:
 	_snap.armed = false  # a stick held through a teleport must not snap at once
 
 
+## A haptic pulse on both controllers (`amplitude` 0 … 1, `seconds`) —
+## nothing on the desktop rig. Counted in [member pulses] for the tests.
+func pulse(amplitude: float, seconds: float) -> void:
+	pulses += 1
+	if not xr_active:
+		return
+	for hand: XRController3D in [left_hand, right_hand]:
+		hand.trigger_haptic_pulse("haptic", 0.0, clampf(amplitude, 0.0, 1.0), seconds, 0.0)
+
+
+## How many haptic pulses were asked for ([method pulse]).
+var pulses := 0
+
+
 ## Turn the rig about the head to face `yaw` (world frame) — the autopilot's
 ## steering; a player only ever turns with the stick.
 func face(yaw: float) -> void:
