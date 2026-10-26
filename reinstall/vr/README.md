@@ -13,6 +13,7 @@ Thumbsticks, plus one button for the King (and a laser in the lobby):
 | **Left stick** | walk where you look (dead zone 0.15, 1.8 m/s) |
 | **Right stick** | snap-turn 45° (flick, let go, flick); smooth turn with `smooth_turn` |
 | **Trigger** (either hand) or **A / X** | hit the King, near and facing him — once per visit |
+| **B / Y** (either hand) | mute / unmute the microphone (a short haptic tick when it takes) |
 | **Lobby** | point a controller at your program's tile and pull the **trigger** (either hand: a thin beam shows where), or walk the tiles with the stick and hold **right** for 1 s; then **START** (trigger, or hold right again) or **BACK** |
 
 ## Layout
@@ -21,14 +22,16 @@ Thumbsticks, plus one button for the King (and a laser in the lobby):
 |---|---|
 | `house/house_geometry.gd` · `house_locate.gd` · `house_route.gd` · `house_frames.gd` · `house_duck.gd` | Literal GDScript ports of `@loom/house` (`buildWalls` / `buildFloors` / `buildRamps` / `doorGap`, `locate` / `heightAt`, `route` / `sampleTrail`, space transforms, `pickDuckSpot`). They are diffed against the goldens. |
 | `house/house_king.gd` | The King's reach (`kingReach`: `KING_REACH` 1.25 m, `KING_CONE_DEG` 55°), the fallen map the trail routes over (the web game's `trailMap`), and the shared `KingState` off the wire. |
-| `house/house_builder.gd` · `house_look.gd` | The map as a scene: StaticBody3D walls, fences, lintels and rails; checker floors with stair holes; starfield ceilings; ramps; props; the King with his shared health bar and a shut leaf in each door he guards; terminal screens (or a terminal's live camera feed); room labels. The Web-1.0 look is built from procedural textures. |
+| `house/house_builder.gd` · `house_look.gd` | The map as a scene: StaticBody3D walls, fences, lintels and rails; checker floors with stair holes; starfield ceilings; ramps; props; the King with his shared health bar and a shut leaf in each door he guards; Trabolta's heart (shown once he has fallen) and the pickups (the floppy disk); terminal screens (or a terminal's live camera feed); room labels. The Web-1.0 look is built from procedural textures. |
+| `house/house_escape.gd` · `house_moment.gd` | Ports of `@loom/house`'s void (`voidDistance`, `outsideGround`) and the moments (`heartReached`, `pickupReach`) (house lane). |
 | `house/house.json` | The show's map. It is a copy, so do not edit it here; see below. |
 | `net/server_link.gd` | The `ServerLink` autoload: config, mod login, station polling, begin / pose / found / King hit / end, house fetch, the shared King, and the spatial stream (`sse_client.gd` + `sse_parser.gd`). The 10 Hz pose pump is latest-only and flushes the newest pose before a claim (`pose_pump.gd`). |
-| `net/cam_feeds.gd` | The terminals' live camera feeds: the list every 2 s, the nearest four on the player's floor within 12 m at ~3 fps, one request per spot, JPEG into a texture updated in place, back-off, stopped with the session. |
+| `net/cam_feeds.gd` | The terminals' live camera feeds: the list every 2 s, the terminals in the player's own (presence) room at ~3 fps (never the tent's station), one request per spot, JPEG into a texture updated in place, back-off, stopped with the session. |
+| `net/voice_link.gd` · `voice_codec.gd` | The voice link (the terminals heard, the player heard on them), the mic's states, `hold_for` (the game's own sounds keep the mic shut), the lobby's TEST MIC. `voice_codec.gd` is a port (house lane). |
 | `net/avatar_cache.gd` | The ghosts' profile pictures: two downloads at a time off the event's `/api/avatar/<key>`, 2 MB cap, cached, a failure not retried until the next visit; PNG / JPEG / WebP / SVG (rendered once near 256 px, whatever size it declares) by magic bytes, drawn as a Win98-bevelled tile. |
 | `net/config.gd` | Station configuration and its precedence; the in-headset setup's `user://station.json` (`save_user` / `forget_user`). |
 | `player/` | The XR rig on a CharacterBody3D (`player.tscn`), the locomotion maths (`locomotion.gd`), the comfort vignette, and the lobby's pointer (`pointer.gd`: a laser from each hand's aim pose, the mouse on a desktop). |
-| `game/` | The state machine (`game_flow.gd`, `game.gd`), the lobby (`lobby.gd`: the picture tiles, the confirm card; `lobby_tiles.gd`: its geometry; `picker.gd`: the stick; `setup_panel.gd`: SET UP THIS HEADSET), the duck, the chevron trail, ghosts of other players, and the HUD. |
+| `game/` | The state machine (`game_flow.gd`, `game.gd`), the lobby (`lobby.gd`: the picture tiles, the confirm card, the MICROPHONE box; `lobby_tiles.gd`: its geometry; `picker.gd`: the stick; `setup_panel.gd`: SET UP THIS HEADSET), the duck, the chevron trail, ghosts of other players, the HUD (and the void's scare), the game's sounds (`sfx.gd`) and in-game speech (`speech.gd`). |
 | `main.tscn` / `main.gd` | Bootstrap: OpenXR when there is a runtime, else the desktop rig. |
 | `test/` | The headless checks (`run.sh`). |
 | `tools/` | `quest.sh` builds, sideloads and provisions the Quest APK (below); `make_action_map.gd` regenerates `openxr_action_map.tres`; `screenshot.gd` renders a few views. |
@@ -102,7 +105,8 @@ first. Only a marked or captured program has a tile (`/api/mod/set
 **The microphone.** Once the voice link records (`audio/driver/enable_input`
 in `project.godot`), macOS asks once whether Godot may use the microphone;
 the prompt is attributed to Godot.app. Allow it to be heard on the
-terminals; the game plays either way.
+terminals; the game plays either way. The lobby's **TEST MIC** (left of the
+panel) opens it with no session and shows a level meter.
 
 ## Run it on a desktop
 
@@ -149,10 +153,13 @@ and logs in as a moderator. Settings are applied in this order (lowest first):
 2. `res://config/station.json`: committed, with placeholders (`CHANGEME` never dials out)
 3. `user://station.json`: per headset — written by the lobby's **SET UP THIS
    HEADSET** panel (or pushed by `quest.sh provision`)
-4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--smooth-turn] [--autopilot] [--voice false] [--mic false]`
+4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--smooth-turn] [--autopilot] [--voice false] [--mic false] [--trail-delay 0]`
 
 `voice` (on by default) is the voice link; `mic: false` keeps it but
 listens only (the headset hears the terminals and is never heard).
+`trail_delay` (seconds, default 60 = the house's `PATH_REVEAL_MS`) holds
+the golden trail back at the start of each walk; `--trail-delay 0` for a
+quick dev walk.
 
 ```json
 { "server": "https://app.mapsandducks.com", "code": "4821", "station": "vr-1", "name": "Headset 1", "smooth_turn": false }
@@ -178,8 +185,12 @@ copy** (`build/stage/`, git-ignored): it rsyncs the project there, adds the
 [OpenXR vendors plugin](https://github.com/GodotVR/godot_openxr_vendors)
 (pinned `5.1.0-stable`, checksum-checked, a 48 MB binary GDExtension that
 never goes into git), and optionally bakes a per-headset `station.json`
-carrying the mod passcode. The working project and `test/run.sh` never see
-either. The preset `export_presets.cfg` → **Quest**: Android, Gradle build,
+carrying the mod passcode. It also stamps the staged copy's
+`config/build.json` with the short commit (`+` for uncommitted changes) and
+the UTC time, which the lobby shows under the MICROPHONE box ("build
+abc1234 · 2026-10-26T12:00Z"; an editor run says "build dev") — check it on
+each headset after a sideload. The working project and `test/run.sh` never see
+any of them. The preset `export_presets.cfg` → **Quest**: Android, Gradle build,
 OpenXR, the **Meta vendor plugin** (`com.oculus.intent.category.VR`,
 `supportedDevices = quest3|quest3s`), arm64-v8a only, `INTERNET`,
 package `com.mapsandducks.reinstall`, immersive. There is **no cleartext
@@ -276,7 +287,48 @@ with `released: true` while you walk to Gerald.
   `found` rule (`DUCK_MAX_RISE`, `nearDuck`), only tighter in plan (the
   server allows 2 m), so a claim the game makes is never refused for height.
   If a map edit moves the duck mid-game, it moves in the headset too, and
-  the HUD says "Gerald moved".
+  the HUD says "Gerald moved." ("Gerald moved — follow the arrows." once
+  the trail is up).
+- **The trail waits a minute** (wave 26, R2): for the first 60 s of each
+  walk (played time; a re-scan starts it again) there is no golden trail
+  and the HUD just says "find Gerald". Then "A golden trail flickers on."
+  and the chevrons draw at once. Gerald's quack never waits.
+- **Sound** (wave 26, R8, `game/sfx.gd`): Gerald quacks from where he
+  sits (louder and more often within 7 m, as in the web game), the find
+  quacks and plays the fanfare (none for "GERALD CAN'T HELP"), a refused
+  find buzzes once per approach (never for closed doors or a dropped
+  request, which retry in silence), a King hit thuds, his fall plays the fanfare, and a quiet hum
+  runs while playing. Everything is synthesised at boot (no assets) and
+  plays on an **Sfx** bus. While any one-shot plays (plus 0.3 s) the mic
+  sends nothing, so the Quest never sends the game's own sound to the
+  terminals. The hum holds nothing; it pauses whenever a terminal
+  listens, so no game sound plays while the mic could send.
+- **The void** (wave 26, R4): the mud room's front door leads outside.
+  5 m past the walls, every time, one hard glitch flash comes on in front
+  of the eyes ("FATAL EXCEPTION 0E", a noise, a haptic pulse; no camera
+  motion, nothing flickers), the walk freezes and an escape goes up
+  (`POST /api/spatial/moment {kind: escape}`, the newest pose first). On
+  the answer (at least 1.5 s of scare; at most 3 s of waiting) the player
+  is back at the spawn in the tent and his lines are captioned and spoken.
+  The teleport happens whatever the server says (closed doors, an older
+  server, a refusal). Within 20 s (wall clock, from the post) of the last,
+  walking out again just puts them back.
+- **Trabolta's heart** (R6): once the King has fallen, a dark rack with a
+  beating red core stands in the virtual Server Room. The first time a
+  program walks in, his lines play over it (`moment {kind: heart}`); before
+  he is awake there are none, and the next way in tries again.
+- **The virus disk** (R7): a spinning floppy disk with a green glow. Walking
+  into it (0.9 m) takes it (`moment {kind: pickup}`): the disk goes, a blip
+  plays and any line is captioned. A program that already took it (or
+  heard the heart) tonight never sees it again on a re-scan (`picked`,
+  `heartHeard` on the assignment).
+- **Speech** (`game/speech.gd`): lines are captioned one at a time
+  (head-locked, or over the heart), each for its reading time with 0.7 s
+  between, and spoken by the headset's own voice at full volume when it
+  has one
+  (`audio/general/text_to_speech` is on; "Antivirus" is said "Anti Virus",
+  `config/pronounce.json`). With no device voice the captions carry them.
+  Captions never name the speaker.
 - Finding the duck fires `the simulation completed` and `the golden duck` on
   the server. "REINSTALLATION COMPLETE" means the server released a
   corrupted program; "YOU FOUND GERALD" means the program was not captured
@@ -284,9 +336,10 @@ with `released: true` while you walk to Gerald.
   captured (the banishment) — the duck stays put. After the
   celebration the headset returns to the lobby.
 - **The King** stands in the Server Room door with **one health bar for
-  every guest** ("THE KING  n / 15"), held by the server: the `hello` frame's
+  every guest** ("THE KING  n / 15") hanging over him — never on the HUD —
+  held by the server: the `hello` frame's
   `king`, `king` frames, and the session's map fetch. Near him the HUD says
-  "Pull the trigger to hit the King — once per visit." A press of the
+  "Pull the trigger to hit the King." A press of the
   trigger (or A / X) within 1.25 m and facing him (55°) flushes the newest
   pose and posts `POST /api/spatial/king/hit` with the session token; the
   server judges the reach off that pose. "You hit him." — and one hit per
@@ -310,22 +363,23 @@ with `released: true` while you walk to Gerald.
 - **The terminals show the real rooms** (wave 14, `net/cam_feeds.gd`):
   while playing, the headset lists the live camera feeds every 2 s
   (`GET /e/<event>/api/spatial/cams`, the token the map is fetched with)
-  and, for the nearest four listed terminals on the player's floor within
-  12 m, fetches each one's newest JPEG about 3 times a second
+  and, for the listed terminals in the player's own room (wave 26: the
+  presence room, with a 0.75 m doorway hold; never the tent's station; the
+  nearest four), fetches each one's newest JPEG about 3 times a second
   (`GET …/api/spatial/cam?spot=<id>`, one request per spot in flight, on
   the feeds' own HTTPRequests). A frame updates that spot's texture in
   place on an unshaded 4:3 panel (0.48 × 0.36 m, a thin bezel) where the
   terminal's screen hangs, facing its yaw / pitch. A 404, a bad frame, no
-  good frame for 5 s, leaving the floor / range or the session ending
+  good frame for 5 s, leaving the room or the session ending
   puts the terminal's own screen back (a timeout or a 5xx alone keeps the
   last frame); failures back off, a spot's frames up to 5 s, the list up
   to 30 s.
 - **The terminals can hear and be heard** (wave 19, `net/voice_link.gd`,
   [§2.4](../../docs/loom-reinstall.md)): while playing, a person talking at
   a wall terminal is heard from that terminal's screen in the virtual
-  house (panned from where it hangs; the server sets how loud — full in the
-  same room, fading to nothing at 12 m, the nearest four on your floor),
-  and the player's voice is heard on the terminals within 8 m of them. The
+  house (panned from where it hangs; wave 26: the server routes only the
+  terminals in the player's own room, the nearest four), and the player's
+  voice is heard on the terminals in their room. The
   mic is open with a level gate (nothing goes up in silence). While a
   terminal's voice plays here, plus 0.3 s, the gate is **raised** to
   −28 dBFS instead of held (D5b, the barge-in): the room's echo off the
@@ -333,22 +387,36 @@ with `released: true` while you walk to Gerald.
   and the terminal then holds its own mic, so the room pauses for them. A
   faint, far terminal (gain under 0.2) raises nothing. It only uploads
   while some terminal can hear it. **B / Y** (either hand; **M** on a Mac) mutes and unmutes the
-  mic. The HUD's bottom line says **🎤 LIVE** (· *someone can hear you*
-  when a terminal listens), **🎤 MUTED**, or **NO MIC** (**🎤 …** until
-  the mic hands over a real sample: a missing or denied input gives only
-  zeros, which read NO MIC). The tent's terminal (the tent laptop beside
-  the headsets) is never in the link. A Quest asks to allow recording audio
-  (Android's microphone prompt) **in the lobby**, before the first session
-  (the dialog pauses the app; in a session that would end it); one still up
-  at a start ends nobody's session. Until it is allowed the HUD says *NO MIC ·
-  allow the microphone* and the game still hears the terminals. To ask
-  again after a refusal: Settings → Apps → Reinstallation VR → Permissions
-  → Microphone (or reinstall the APK). Offline there is no voice.
+  mic — only while it is open (a press while it is asking, refused or
+  missing does nothing, so it never comes up muted unseen). The HUD's
+  bottom line (wave 26, no emoji) says **MIC ON · B or Y mutes** (*MIC ON ·
+  someone can hear you* while a terminal listens), **MIC MUTED · press B
+  or Y**, **MIC STARTING…** (until the mic hands over a real sample),
+  **MIC · allow it in the headset's prompt** (the Android prompt is up),
+  **NO MIC · not allowed · ASK AGAIN in the lobby** (the prompt was
+  refused) or **NO MIC** (no device, or only zeros). The tent's terminal
+  (the tent laptop beside the headsets) is never in the link. A Quest asks
+  to allow recording audio (Android's microphone prompt) **in the lobby**,
+  before the first session (the dialog pauses the app; in a session that
+  would end it); one still up at a start ends nobody's session. The game
+  still hears the terminals without it. Every mic change logs one
+  `reinstall-vr: mic — …` line (state, route, rate, grant): `quest.sh logs`
+  shows why a headset says what it says. Offline there is no voice.
+- **The lobby's MICROPHONE box** (wave 26, left of the panel, every view):
+  what the mic is doing ("MIC · allowed", "MIC · not allowed yet · ASK
+  AGAIN", "MIC · not allowed · ASK AGAIN, or Settings → Apps →
+  Permissions", "MIC · not allowed on this computer" when a desktop's
+  privacy settings refuse it, …), **TEST MIC** (opens the mic with no session and shows a
+  level meter: "MIC TEST · it hears you"; STOP TEST, or it closes after
+  30 s or when a program starts), **ASK AGAIN** while the grant is missing
+  or refused (after "don't ask again", only Settings → Apps → Reinstallation
+  VR → Permissions → Microphone can allow it, or a reinstall), and the
+  build stamp. A spotter can check each headset's mic before handing it on.
 - **The microphone from the Godot editor**: `project.godot` turns audio
   input on (`audio/driver/enable_input`), so an F5 run on a Mac asks once
   for the microphone, as *Godot* (the game runs inside Godot.app). If it
-  was refused, the HUD still says 🎤 LIVE but nothing goes up (macOS hands
-  the game silence); reset the answer with `tccutil reset Microphone
+  was refused, macOS hands the game silence and the HUD says NO MIC after
+  2 s (the lobby's TEST MIC says "only silence — no mic"); reset the answer with `tccutil reset Microphone
   org.godotengine.godot` and run again. Debug → Customize Run Instances →
   Main Run Args takes the same arguments as the command line (e.g.
   `-- --server http://127.0.0.1:7000 --code <mod> --station vr-1`, or
@@ -360,8 +428,8 @@ with `released: true` while you walk to Gerald.
 ./reinstall/vr/test/run.sh        # [path-to-godot]; or `pnpm test:vr` from the repo root
 ```
 
-On 2026-10-24 (master 86f26a78, Godot 4.7.1) it reports 730 checks and
-`quest.sh` 27, all passing.
+On 2026-10-26 (wave 26, branch `oct31-w26/vr`, Godot 4.7.1) it reports
+994 checks and `quest.sh` 34, all passing.
 
 The runner refreshes the import, compiles every script and loads every
 scene, then runs `test/game.gd` headless with `--offline`:
@@ -400,8 +468,8 @@ scene, then runs `test/game.gd` headless with `--offline`:
   door — and the restore, held open for a player behind it until they
   walk out) and ghosts' pictures (two at a time, cached, a failure retried
   once on the next visit, `avatar` frames)
-- the camera feeds: which spots to poll (listed, my floor, in reach,
-  nearest four), the back-off, the list parse, JPEG decode + in-place
+- the camera feeds: which spots to poll (listed, my own room, never the
+  tent's station, nearest four), the back-off, the list parse, JPEG decode + in-place
   texture updates, the panel's transform from pos / yaw / pitch, and the
   loop over a fake requester (one request per spot, ~3 fps, a 404 → the
   screen back, kept across a rebuild, stop ignores late answers)
@@ -417,6 +485,20 @@ scene, then runs `test/game.gd` headless with `--offline`:
   it, mute, stop, listen-only), and the game running it while a session
   plays (B / Y / M, the HUD line, stopped in the lobby, off offline or with
   `--voice false`)
+- wave 26: the mic's states (denied, B / Y only while open, the log line,
+  ASK AGAIN, TEST MIC, `hold_for`), the lobby's MICROPHONE box (by the
+  laser too, every view, overlapping nothing) and the build stamp; the
+  sounds (lengths, levels, the WAVs, the Sfx bus, the quack's schedule)
+  and the game playing them (the mic held, the find's fanfare, none for a
+  refused find, the King's); speech (the pronunciation table, captions,
+  the device voice, the mic held, a stuck voice cut, a prop's billboard);
+  the path reveal and the HUD never carrying the King's health; the
+  moment route over a fake transport (one claim per kind, every answer by
+  its error string, 410, offline); the void (4.8 m is nothing, 5.2 m the
+  scare and one moment, the teleport on the answer or after 3 s, every
+  refusal still teleports, the cooldown, a session ending mid-scare); the
+  heart and the disk (drawn, no text, no collider, shown with the King's
+  fall, each moment's answers, `picked` / `heartHeard`)
 - a smoke test that `main.tscn` builds the house
 - `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed)
 - the autopilot reaching every duck spot of the show from the spawn, once

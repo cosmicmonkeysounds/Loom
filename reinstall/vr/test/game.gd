@@ -53,6 +53,7 @@ func _run() -> void:
 	_test_voice_uplink()
 	_test_voice_link()
 	_test_voice_silent_mic()
+	_test_voice_mic_states()
 	await _test_voice_generator()
 	await _test_cam_panels()
 	_test_autopilot()
@@ -62,9 +63,16 @@ func _run() -> void:
 	_test_server_link_setup()
 	await _test_lobby_picker()
 	await _test_setup_panel()
+	await _test_lobby_mic()
 	_test_voice_config()
 	_test_voice_server_link()
 	await _test_voice_game()
+	_test_sfx()
+	await _test_speech()
+	await _test_sfx_game()
+	await _test_path_reveal()
+	await _test_escape()
+	await _test_heart_pickup()
 	await _test_autopilot_physics()
 	await _test_room_scale()
 
@@ -330,7 +338,44 @@ func _test_wave26_props() -> void:
 	b.build(house)
 	var hn := b.get_node_or_null("Prop_trabolta-heart")
 	var dn := b.get_node_or_null("Prop_virus-disk")
-	_check(hn != null and hn.get_child_count() == 0 and dn != null and dn.get_child_count() == 0, "wave 26: the builder draws nothing for a heart or a pickup yet")
+	# Stage B (vr lane, R6 / R7): the builder draws both — no label, no collider.
+	_check(hn != null and hn.get_node_or_null("Core") != null and hn.get_node_or_null("Front") != null and hn.get_node_or_null("Glow") is OmniLight3D, "wave 26: the heart is a rack with a core, a smoked front and a glow")
+	_check(dn != null and dn.get_node_or_null("Disk/Shell") != null and dn.get_node_or_null("Disk/Sticker") != null and dn.get_node_or_null("Disk/Glow") is OmniLight3D, "wave 26: the pickup is a floppy disk with a glow")
+	var labels := (hn.find_children("*", "Label3D", true, false) + dn.find_children("*", "Label3D", true, false)) if hn != null and dn != null else [null]
+	_check(labels.is_empty(), "wave 26: neither carries any text (nothing like the patch bay)")
+	var colliders_before := (b.get_node("Colliders") as Node).get_child_count()
+	var stripped: Dictionary = house.duplicate(true)
+	stripped["props"] = (stripped["props"] as Array).filter(func(pr: Dictionary) -> bool: return pr["kind"] != "heart" and pr["kind"] != "pickup")
+	var b2 := HouseBuilder.new()
+	b2.build(stripped)
+	_check((b2.get_node("Colliders") as Node).get_child_count() == colliders_before, "wave 26: neither adds a collider")
+	b2.free()
+	_check(not b.heart_shown("trabolta-heart"), "wave 26: the heart is hidden while the King has not fallen (no shared King)")
+	b.set_king({"id": "cold-lock-king", "hp": 3, "max": 15, "fallen": false})
+	_check(not b.heart_shown("trabolta-heart"), "wave 26: … nor while he stands")
+	b.set_king({"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true})
+	_check(b.heart_shown("trabolta-heart") and _near(float(b.heart_node("trabolta-heart").get_meta("height")), 1.7), "wave 26: … and shows once he has fallen")
+	var halo := b.heart_node("trabolta-heart").get_node("Halo") as MeshInstance3D
+	var halo_mesh := halo.mesh
+	var halo_size := (halo.mesh as QuadMesh).size
+	b.set("_t", 0.09)
+	b._process(0.0)
+	_check(halo.mesh == halo_mesh and (halo.mesh as QuadMesh).size == halo_size and halo.scale.x > 1.2 and (halo.material_override as StandardMaterial3D).billboard_keep_scale, "wave 26: the heart's glow swells by its scale, never by rebuilding its mesh (%.2f)" % halo.scale.x)
+	_check(b.pickup_shown("virus-disk") and _near(b.pickup_disk("virus-disk").position.y, HouseBuilder.PICKUP_HOVER, HouseBuilder.PICKUP_BOB + 1e-3), "wave 26: the disk floats over its spot")
+	var spin0 := b.pickup_disk("virus-disk").rotation.y
+	b._process(0.5)
+	_check(not _near(b.pickup_disk("virus-disk").rotation.y, spin0), "wave 26: … and spins")
+	b.set_pickup_taken("virus-disk", true)
+	b.build(house)
+	_check(not b.pickup_shown("virus-disk") and b.heart_shown("trabolta-heart"), "wave 26: a taken disk stays hidden across a rebuild; the heart keeps the King's state")
+	b.clear_taken()
+	_check(b.pickup_shown("virus-disk"), "wave 26: clear_taken shows it again")
+	var nok: Dictionary = house.duplicate(true)
+	nok["props"] = (nok["props"] as Array).filter(func(pr: Dictionary) -> bool: return pr["kind"] != "king")
+	b.set_king({})
+	b.build(nok)
+	_check(b.heart_shown("trabolta-heart"), "wave 26: on a map with no King the heart always shows")
+	_check(HouseBuilder.heart_pulse(0.0) == 0.0 and _near(HouseBuilder.heart_pulse(0.09), 1.0) and _near(HouseBuilder.heart_pulse(0.35), 0.65) and HouseBuilder.heart_pulse(1.0) == 0.0 and _near(HouseBuilder.heart_pulse(1.29), 1.0), "wave 26: the beat is the three.js heart's lub-dub every 1.2 s")
 	b.free()
 	# The front door's outside: the void grows past it; the spawn is no void.
 	var front: Array = [-0.45, 0.0, -5.0]
@@ -557,6 +602,16 @@ func _test_config() -> void:
 	var s := StationConfig.parse_url("https://show.example.com/loom")
 	_check(s.get("port") == 443 and s.get("tls") == true and s.get("path") == "/loom", "config: parse_url https + path")
 	_check(StationConfig.parse_url("ftp://x").is_empty() and StationConfig.parse_url("http://h:x").is_empty(), "config: parse_url refuses junk")
+
+	# Wave 26 (R2): the path reveal's delay, in seconds, a minute by default.
+	_check(_near(float(StationConfig.defaults()["trail_delay"]), 60.0) and _near(float(StationConfig.defaults()["trail_delay"]) * 1000.0, HouseRoute.PATH_REVEAL_MS), "config: trail_delay is PATH_REVEAL_MS by default")
+	_check(StationConfig.parse_args(PackedStringArray(["--trail-delay", "0"])).get("trail_delay") == 0.0 and StationConfig.parse_args(PackedStringArray(["--trail-delay=2.5"])).get("trail_delay") == 2.5, "config: --trail-delay 0 / --trail-delay=2.5")
+	_check(not StationConfig.parse_args(PackedStringArray(["--trail-delay", "soon"])).has("trail_delay") and not StationConfig.parse_args(PackedStringArray(["--trail-delay", "-1"])).has("trail_delay"), "config: … junk or negative is ignored")
+	_check(StationConfig.merge(StationConfig.defaults(), {"trail_delay": 5}).get("trail_delay") == 5.0 and StationConfig.merge(StationConfig.defaults(), {"trail_delay": "x"}).get("trail_delay") == 60.0, "config: a station file may set it (a number)")
+	# Wave 26 (R8): the build stamp the lobby shows.
+	_check(StationConfig.build_stamp() == "build dev" and not FileAccess.file_exists(StationConfig.BUILD_PATH), "config: an editor / test run is build dev (no stamp is committed)")
+	_write(dir + "/build.json", {"build": "abc1234", "at": "2026-10-26T12:00Z"})
+	_check(StationConfig.build_stamp(dir + "/build.json") == "build abc1234 · 2026-10-26T12:00Z", "config: a stamped APK names its commit (%s)" % StationConfig.build_stamp(dir + "/build.json"))
 
 
 ## The in-headset setup's file (wave 19): saved to a user path, merged
@@ -799,7 +854,7 @@ func _test_server_link() -> void:
 	# Wave 16: an unmarked program's refusal reads as such, not "not running".
 	sl.begin("g-free")
 	tr.answer("/spatial/begin", 409, {"error": "not marked for reinstallation"})
-	_check(failed.size() == 2 and str(failed[1]) == "Not marked for reinstallation — until the night is over, only a marked program may play." and sl.get("phase") == "ready", "link: a begin 409 (not marked) says why (%s)" % [failed])
+	_check(failed.size() == 2 and str(failed[1]) == "Not marked for reinstallation." and sl.get("phase") == "ready", "link: a begin 409 (not marked) says why (%s)" % [failed])
 	sl.begin("g-early")
 	tr.answer("/spatial/begin", 409, {"error": "no scenario loaded"})
 	_check(failed.size() == 3 and str(failed[2]) == "The show isn't running.", "link: any other begin 409 is the show not running")
@@ -834,6 +889,7 @@ func _test_server_link() -> void:
 
 	_test_server_link_map()
 	await _test_server_link_king()
+	await _test_server_link_moment()
 
 
 ## The shared King over the wire: the `hello` / `king` frames and the
@@ -945,6 +1001,103 @@ func _test_server_link_king() -> void:
 	_check(off.avatar_url("abc") == "", "link offline: no pictures to fetch")
 	_check(off.cams_url() == "", "link offline: no camera feeds")
 	off.free()
+
+
+## Wave 26 (C6): a game moment over the wire — the newest pose first, then
+## `POST /api/spatial/moment {kind, prop}` with the session token; one claim
+## per kind, the prop kept with it; every answer mapped by its error string
+## (the old server's generic 404 vs the route's "no such prop"); 410 ends the
+## session; offline answers "offline".
+func _test_server_link_moment() -> void:
+	var sl := _linked_server_link()
+	var tr: Variant = sl.get("transport")
+	var answers: Array = []
+	sl.moment_answered.connect(func(k: String, r: String, d: Dictionary) -> void: answers.append([k, r, d]))
+	sl.moment("escape")
+	_check(tr.count("/api/spatial/moment") == 0 and answers.is_empty(), "link moment: no session → nothing")
+	sl.adopt({"session": "s-m", "token": "t-m", "houseVersion": ""})
+	var pump_step := func() -> void:
+		for i in 4:
+			tr.answer("/spatial/pose", 200, {"ok": true})
+			tr.answer("/spatial/station", 200, {"assignment": null})
+			sl._process(0.2)
+	sl.send_pose([-0.45, 0.0, -6.0], 0.0, 0.0)
+	sl.moment("escape")
+	sl._process(0.016)
+	_check(tr.count("/api/spatial/pose") == 1 and tr.count("/api/spatial/moment") == 0, "link moment: the newest pose goes first")
+	sl.send_pose([-4.5, 0.0, 26.3], 0.0, 0.0)
+	tr.answer("/spatial/pose", 200, {"ok": true})
+	sl._process(0.016)
+	var calls: Array = tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/moment"))
+	_check(calls.size() == 1 and calls[0]["method"] == "POST" and calls[0]["path"] == "/e/e1/api/spatial/moment" and calls[0]["token"] == "t-m" and calls[0]["body"] == {"kind": "escape"} and tr.count("/api/spatial/pose") == 1, "link moment: … then POST /e/<event>/api/spatial/moment {kind: escape} with the session token, no pose between (%s)" % [calls])
+	var ok_body := {"ok": true, "kind": "escape", "lines": [{"from": "Trabolta", "text": "Back you go."}], "spawn": {"room": "tent", "pos": [-4.5, 0, 26.3], "yaw": 90}, "cooldownMs": 20000}
+	tr.answer("/moment", 200, ok_body)
+	_check(answers.size() == 1 and answers[0][0] == "escape" and answers[0][1] == "ok" and (answers[0][2]["lines"] as Array).size() == 1, "link moment: 200 → ok with the lines (%s)" % [answers])
+	sl._process(0.2)
+	_check(tr.count("/api/spatial/pose") == 2, "link moment: poses resume after the answer")
+	# Heart and pickup carry their prop; a pending heart never swallows a pickup.
+	answers.clear()
+	sl.moment("heart", "trabolta-heart")
+	sl.moment("pickup", "virus-disk")
+	sl.moment("heart", "trabolta-heart")
+	pump_step.call()
+	calls = tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/moment"))
+	_check(calls.size() == 1 and calls[0]["body"] == {"kind": "heart", "prop": "trabolta-heart"}, "link moment: a heart with its prop (%s)" % [calls])
+	tr.answer("/moment", 200, {"ok": true, "kind": "heart", "lines": []})
+	pump_step.call()
+	calls = tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/moment"))
+	_check(calls.size() == 1 and calls[0]["body"] == {"kind": "pickup", "prop": "virus-disk"} and tr.count("/api/spatial/moment") == 3, "link moment: … then the pickup, its prop kept (one claim per kind) (%s)" % [calls])
+	tr.answer("/moment", 200, {"ok": true, "kind": "pickup", "lines": [], "item": "virus", "prop": "virus-disk"})
+	_check(answers.map(func(x: Array) -> String: return "%s:%s" % [x[0], x[1]]) == ["heart:ok", "pickup:ok"], "link moment: each answered by kind (%s)" % [answers])
+	# Every refusal, by its error string.
+	for c: Array in [
+		[404, {"error": "not found"}, "not found"],
+		[404, {"error": "Not Found"}, "not found"],
+		[404, null, "not found"],
+		[404, {"error": "no such prop"}, "no such prop"],
+		[400, {"error": "bad moment"}, "bad moment"],
+		[409, {"error": "doors are closed"}, "doors are closed"],
+		[409, {"error": "this session has not started — send a pose first"}, "parked"],
+		[409, {"error": "not out", "distance": 3.2}, "not out"],
+		[409, {"error": "cooldown", "retryMs": 12000}, "cooldown"],
+		[409, {"error": "sealed"}, "sealed"],
+		[409, {"error": "not there"}, "not there"],
+		[409, {"error": "far", "distance": 1.4}, "far"],
+		[409, {"error": "already"}, "already"],
+		[409, {"error": "something new"}, "error"],
+		[500, {}, "error"],
+	]:
+		answers.clear()
+		sl.moment("pickup", "virus-disk")
+		pump_step.call()
+		var sent: bool = tr.answer("/moment", c[0], c[1])
+		_check(sent and answers.size() == 1 and answers[0][1] == c[2], "link moment: %d %s → %s (%s)" % [c[0], c[1], c[2], answers])
+	_check(sl.has_session(), "link moment: none of those ends the session")
+	var over: Array = []
+	sl.session_over.connect(func(r: String) -> void: over.append(r))
+	answers.clear()
+	sl.moment("escape")
+	pump_step.call()
+	tr.answer("/moment", 410, {"error": "this session is over"})
+	_check(not sl.has_session() and over == ["over"] and answers.is_empty(), "link moment: 410 → the session is over")
+	sl.moment("escape")
+	_check(tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/moment")).is_empty(), "link moment: … and no more moments")
+	_free_server_link(sl)
+	# Offline: answered here, nothing sent.
+	var off: LinkBase = load("res://net/server_link.gd").new()
+	off.config = StationConfig.merge(StationConfig.defaults(), {"offline": true})
+	off.config["offline"] = true
+	var got: Array = []
+	off.moment_answered.connect(func(k: String, r: String, _d: Dictionary) -> void: got.append([k, r]))
+	off.session = {"session": "offline-1", "name": "Ada"}
+	off.moment("escape")
+	off.moment("bogus")
+	await process_frame
+	_check(got == [["escape", "offline"]], "link moment offline: answered 'offline' (an unknown kind: nothing) (%s)" % [got])
+	off.free()
+	var base := LinkBase.new()
+	base.moment("escape")
+	base.free()
 
 
 ## The map in play is never silently the wrong one, and the duck follows
@@ -1273,16 +1426,23 @@ func _jpeg(w: int, h: int, c: Color) -> PackedByteArray:
 
 
 func _test_cam_feeds() -> void:
-	# Pins terminal coordinates, so it walks the frozen placeholder map.
-	var house: Dictionary = _placeholder_house()
-	var all := ["optical-drive", "hall", "desktop-tv", "start-bar", "ram", "server-room", "nowhere"]
-	var feet := [0.0, 0.0, 5.0]
-	_check(CamFeeds.spots_to_poll(house, all, feet) == ["optical-drive", "start-bar", "hall", "desktop-tv"], "cams: the listed terminals on my floor, nearest first, at most four (%s)" % [CamFeeds.spots_to_poll(house, all, feet)])
-	_check(CamFeeds.spots_to_poll(house, all, feet, 12.0, 2) == ["optical-drive", "start-bar"], "cams: … capped")
-	_check(CamFeeds.spots_to_poll(house, all, feet, 5.5) == ["optical-drive", "start-bar"], "cams: … within reach in plan")
-	_check(CamFeeds.spots_to_poll(house, [{"spot": "hall", "at": 1}, {"spot": "ram"}], feet) == ["hall"], "cams: list entries by spot; another floor's terminal is not polled")
-	_check(CamFeeds.spots_to_poll(house, all, [7.0, -2.7, 9.0]).has("ram") and not CamFeeds.spots_to_poll(house, all, [7.0, -2.7, 9.0]).has("hall"), "cams: in the basement, the basement's terminals")
-	_check(CamFeeds.spots_to_poll(house, [], feet).is_empty() and CamFeeds.spots_to_poll(house, all, []).is_empty(), "cams: nothing listed or no feet → nothing")
+	# Wave 26 (C7, R5): only the terminals in the player's own (presence)
+	# room, never the tent's reinstall station; nearest first, at most four.
+	var house: Dictionary = _read_json("res://house/house.json")
+	var all := ["optical-drive", "hall", "desktop-tv", "start-bar", "ram", "bathroom-1-door", "server-room", "server-room-door", "tent", "nowhere"]
+	var mid := func(room: String) -> Array:
+		var r: Dictionary = HouseGeometry.room_by_id(house, room)
+		var b := HouseGeometry.poly_bounds(r["poly"])
+		var fl: Variant = HouseGeometry.floor_by_id(house, r["floor"])
+		return [(float(b[0]) + float(b[2])) / 2.0, float(fl["elevation"]), (float(b[1]) + float(b[3])) / 2.0]
+	_check(CamFeeds.spots_to_poll(house, all, mid.call("desktop"), "desktop") == ["desktop-tv"], "cams: in the Desktop, the TV's camera only (%s)" % [CamFeeds.spots_to_poll(house, all, mid.call("desktop"), "desktop")])
+	_check(CamFeeds.spots_to_poll(house, all, mid.call("server-room"), "server-room") == ["server-room"], "cams: in the Server Room, its terminal — not the Server Door's in the hall outside")
+	var in_ram := CamFeeds.spots_to_poll(house, all, mid.call("ram"), "ram")
+	_check(in_ram.size() == 2 and in_ram.has("ram") and in_ram.has("bathroom-1-door"), "cams: a room with two terminals polls both (%s)" % [in_ram])
+	_check(CamFeeds.spots_to_poll(house, all, mid.call("ram"), "ram", 1).size() == 1, "cams: … capped")
+	_check(CamFeeds.spots_to_poll(house, all, mid.call("tent"), "tent").is_empty(), "cams: the tent's reinstall station is never polled (T3)")
+	_check(CamFeeds.spots_to_poll(house, [{"spot": "hall", "at": 1}], mid.call("hall"), "hall") == ["hall"] and CamFeeds.spots_to_poll(house, ["optical-drive"], mid.call("hall"), "hall").is_empty(), "cams: list entries by spot; another room's terminal is not polled")
+	_check(CamFeeds.spots_to_poll(house, all, mid.call("hall"), null).is_empty() and CamFeeds.spots_to_poll(house, [], mid.call("hall"), "hall").is_empty() and CamFeeds.spots_to_poll(house, all, [], "hall").is_empty(), "cams: no room (the void), nothing listed or no feet → nothing")
 
 	_check(_near(CamFeeds.backoff(0, 0.25), 0.25) and _near(CamFeeds.backoff(1, 0.25), 1.0) and _near(CamFeeds.backoff(3, 0.25), 4.0), "cams: a failure backs off, doubling")
 	_check(_near(CamFeeds.backoff(20, 0.25), CamFeeds.BACKOFF_MAX) and _near(CamFeeds.backoff(1, 2.0, 2.0), 2.0) and _near(CamFeeds.backoff(2, 2.0, 2.0), 4.0), "cams: … up to the cap; the list from its own interval")
@@ -1324,7 +1484,7 @@ func _test_cam_panels() -> void:
 	var asked: Array = []  # frames
 	var lists: Array = []  # the list, never cleared
 	c.requester = func(url: String, token: String, done: Callable) -> void: (lists if url.ends_with("/cams") else asked).append([url, token, done])
-	var feet := [0.0, 0.0, 5.0]
+	var feet := [-1.0, 0.0, 1.5]  # in the Optical Drive (C7: my own room's terminals only)
 	var base := "fixture://e/e1/api/spatial"
 	var urls := func() -> Array: return asked.map(func(e: Array) -> String: return e[0])
 
@@ -1335,7 +1495,7 @@ func _test_cam_panels() -> void:
 	(lists[0][2] as Callable).call(200, PackedStringArray(), JSON.stringify({"cams": [{"spot": "optical-drive", "at": 1, "w": 160, "h": 120}, {"spot": "ram", "at": 1, "w": 160, "h": 120}]}).to_utf8_buffer())
 	asked.clear()
 	c.tick(0.016, house, feet, base, "sess")
-	_check(asked.size() == 1 and asked[0][0] == base + "/cam?spot=optical-drive", "cams: a frame for the listed feed on my floor, not the basement's (%s)" % [urls.call()])
+	_check(asked.size() == 1 and asked[0][0] == base + "/cam?spot=optical-drive", "cams: a frame for the listed feed in my room, not the basement's (%s)" % [urls.call()])
 	c.tick(0.016, house, feet, base, "sess")
 	_check(asked.size() == 1, "cams: one frame request per spot in flight")
 	(asked[0][2] as Callable).call(200, PackedStringArray(["x-cam-at: 1"]), _jpeg(160, 120, Color.RED))
@@ -1395,11 +1555,11 @@ func _test_cam_panels() -> void:
 
 	# A failing list backs off too; walking away drops the feed.
 	asked.clear()
-	c.tick(0.016, house, [0.0, 0.0, 30.0], base, "sess")
-	_check(not b.cam_shown("optical-drive") and c.polling().is_empty(), "cams: out of range, the feed is dropped")
+	c.tick(0.016, house, [-3.0, 0.0, 16.0], base, "sess")
+	_check(not b.cam_shown("optical-drive") and c.polling().is_empty() and c.presence() == "hall", "cams: in another room (the Hall), the feed is dropped")
 	_check(lists.size() == 2, "cams: the list is asked again every two seconds (%d)" % lists.size())
 	(lists[1][2] as Callable).call(500, PackedStringArray(), PackedByteArray())
-	c.tick(1.9, house, [0.0, 0.0, 30.0], base, "sess")
+	c.tick(1.9, house, [-3.0, 0.0, 16.0], base, "sess")
 	_check(lists.size() == 2, "cams: a failed list waits")
 	c.tick(2.2, house, [0.0, 0.0, 30.0], base, "sess")
 	_check(lists.size() == 3, "cams: … then asks again")
@@ -1620,7 +1780,7 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	player.teleport(b.to_world(east), b.yaw_to_world(0.0))  # beside him, looking north
 	game._process(0.016)
 	_check(sub.text == Game.KING_NOTICE, "game king: near him the HUD says how to hit him (%s)" % sub.text)
-	_check(Game.KING_NOTICE == "Pull the trigger to hit the King — once per visit.", "game king: the notice's words")
+	_check(Game.KING_NOTICE == "Pull the trigger to hit the King.", "game king: the notice's words (no rule said up front, G1)")
 	_check(Game.session_over_text("unmarked") == "No longer marked for reinstallation — the simulation ended." and Game.session_over_text("timeout") == "Session ended (timeout).", "game: an unmarked walk's end says why (wave 18b, R16)")
 	game.hud.notice("")
 	game._process(0.016)
@@ -1773,7 +1933,8 @@ func _assignment(house: Dictionary, sid: String, captured: bool) -> Dictionary:
 func _test_main_and_game() -> void:
 	var house: Dictionary = _placeholder_house()
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	# The trail tests ignore the path reveal (R2; its own test is _test_path_reveal).
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "trail_delay": 0})
 	link.house = house
 	link.house_version = "test"
 	var main: Node = load("res://main.tscn").instantiate()
@@ -2387,7 +2548,7 @@ func _test_lobby_picker() -> void:
 	_check(lobby.picker.columns == 4 and lobby.tile_node(0) != null and lobby.tile_node(8) == null, "lobby: 11 programs, a page of 4 × 2")
 	link.set("saved_setup", true)
 	link.status_changed.emit("Connected.")
-	_check(_overlap(lobby.get("_buttons")) == "" and (lobby.get("_buttons") as Array).size() == 8 + 2 + 1, "lobby: a full page, ◀ ▶ and the ⚙ never overlap (%s)" % _overlap(lobby.get("_buttons")))
+	_check(_overlap(lobby.get("_buttons")) == "" and (lobby.get("_buttons") as Array).size() == 8 + 2 + 1 + 1, "lobby: a full page, ◀ ▶, the ⚙ and TEST MIC never overlap (%s)" % _overlap(lobby.get("_buttons")))
 	link.set("saved_setup", false)
 	link.status_changed.emit("Connected.")
 	lobby.press("next")
@@ -2515,6 +2676,117 @@ func _test_setup_panel() -> void:
 	tap.call(Vector2(0.42, SetupPanel.ACTION_Y))
 	game._process(0.016)
 	_check(int(link.get("offline_chosen")) == 1 and lobby.view() == "pick", "setup: PLAY OFFLINE goes on to the tiles")
+	game.pointer.clear_injection()
+	main.queue_free()
+	await process_frame
+
+
+## Wave 26 (R8): the lobby's MICROPHONE box — the mic's state, TEST MIC
+## with a level meter and no session (by the laser too), ASK AGAIN while the
+## grant is missing or refused, the build stamp; its buttons never overlap
+## the panel's in any view.
+func _test_lobby_mic() -> void:
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.house = _placeholder_house()
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var lobby := game.lobby
+	var v := game.voice
+	game.player.set_physics_process(false)
+	game.player.read_input = false
+	v.client_factory = func() -> Object: return FakeHttp.new()
+	var mic := [PackedVector2Array()]
+	v.frame_source = func() -> PackedVector2Array:
+		var f: PackedVector2Array = mic[0]
+		mic[0] = PackedVector2Array()
+		return f
+	game._process(0.016)
+	_check(lobby.mic_text() == "MIC · this computer's microphone" and lobby.build_text() == "build dev", "lobby mic: the box says the mic and the build (%s · %s)" % [lobby.mic_text(), lobby.build_text()])
+	var buttons: Array = lobby.get("_buttons")
+	_check(buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:test") and not buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:ask"), "lobby mic: TEST MIC, no ASK AGAIN on a desktop")
+	_check(_overlap(buttons) == "", "lobby mic: no button overlaps (%s)" % _overlap(buttons))
+	# The laser on TEST MIC.
+	var eye := game.player.camera.global_position
+	var aim_at := func(p: Vector2) -> Vector3: return lobby.panel_transform() * Vector3(p.x, p.y, 0.0) - eye
+	var tap := func(at: Vector2) -> void:
+		game.pointer.inject(eye, aim_at.call(at), false)
+		game._process(0.016)
+		game.pointer.inject(eye, aim_at.call(at), true)
+		game._process(0.016)
+		game.pointer.inject(eye, aim_at.call(at), false)
+		game._process(0.016)
+	tap.call(Lobby.MIC_TEST_AT)
+	_check(v.is_testing() and not v.is_running() and game.state() == GameFlow.State.LOBBY, "lobby mic: TEST MIC opens the mic with no session")
+	mic[0] = _mic_tone(4800, 0.3)
+	v._process(0.016)
+	game._process(0.016)
+	var fill := lobby.get("_mic_fill") as MeshInstance3D
+	_check(lobby.mic_text() == "MIC TEST · it hears you" and fill.scale.x > 0.6, "lobby mic: a word lights the meter (%s, %.2f)" % [lobby.mic_text(), fill.scale.x])
+	var test_label := ((lobby.get("_looks") as Dictionary)["mic:test"] as Node3D).get_node("Label") as Label3D
+	_check(test_label.text == "STOP TEST", "lobby mic: … the button reads STOP TEST")
+	tap.call(Lobby.MIC_TEST_AT)
+	_check(not v.is_testing() and fill.scale.x < 0.01 and test_label.text == "TEST MIC", "lobby mic: STOP TEST closes it")
+	lobby.press("mic:test")
+	game._process(Game.MIC_TEST_LIMIT + 1.0)
+	_check(not v.is_testing(), "lobby mic: a test left open closes itself after %d s" % int(Game.MIC_TEST_LIMIT))
+	# A session takes the mic from a test.
+	lobby.press("mic:test")
+	link.set("voice_base", "http://127.0.0.1:7600/e/e1/api/spatial")
+	link.assignment_received.emit(_assignment(link.house, "mic-1", true))
+	game._process(0.016)
+	_check(not v.is_testing() and v.is_running(), "lobby mic: a program starting ends the test")
+	lobby.press("mic:test")
+	_check(not v.is_testing(), "lobby mic: … and TEST MIC does nothing while playing")
+	link.session_over.emit("test")
+	link.set("voice_base", "")
+	# No voice link (offline, no token yet): a program starting still ends it.
+	lobby.press("mic:test")
+	_check(v.is_testing(), "lobby mic: a test again, with no voice link")
+	link.assignment_received.emit(_assignment(link.house, "mic-2", true))
+	game._process(0.016)
+	_check(game.state() == GameFlow.State.PLAYING and not v.is_testing() and not v.is_running() and v.mic_state == "off" and game.hud.mic_text() == "", "lobby mic: … and a program starting closes it (%s)" % v.mic_state)
+	link.session_over.emit("test")
+	# Android without the grant: ASK AGAIN, which asks.
+	v.platform = "Android"
+	var granted := [false]
+	var asked := [0]
+	v.permission_check = func() -> bool: return granted[0]
+	v.permission_request = func() -> void: asked[0] += 1
+	game._process(0.016)
+	buttons = lobby.get("_buttons")
+	_check(buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:ask") and ((lobby.get("_looks") as Dictionary)["mic:ask"] as Node3D).visible, "lobby mic: no grant → ASK AGAIN")
+	_check(_overlap(buttons) == "", "lobby mic: … overlapping nothing (%s)" % _overlap(buttons))
+	var before: int = asked[0]
+	tap.call(Lobby.MIC_ASK_AT)
+	_check(asked[0] == before + 1 and lobby.mic_text() == "MIC · allow it in the headset's prompt", "lobby mic: ASK AGAIN asks (%s)" % lobby.mic_text())
+	v._on_permission("android.permission.RECORD_AUDIO", false)
+	game._process(0.016)
+	_check(lobby.mic_text().begins_with("MIC · not allowed · ASK AGAIN"), "lobby mic: refused → says so, ASK AGAIN stays (%s)" % lobby.mic_text())
+	granted[0] = true
+	v._on_permission("android.permission.RECORD_AUDIO", true)
+	game._process(0.016)
+	buttons = lobby.get("_buttons")
+	_check(lobby.mic_text() == "MIC · allowed" and not buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:ask"), "lobby mic: granted → allowed, no ASK AGAIN")
+	# The mic off in the config: said, no TEST MIC.
+	link.config = StationConfig.merge(link.config, {"mic": false})
+	game._process(0.016)
+	buttons = lobby.get("_buttons")
+	_check(lobby.mic_text() == "MIC · off on this headset (listen only)" and not buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:test"), "lobby mic: --mic false → said, no TEST MIC")
+	# The SET UP view keeps the box, overlapping none of its keys.
+	link.config = StationConfig.merge(link.config, {"mic": true})
+	link.set("unconfigured", true)
+	game._process(0.016)
+	buttons = lobby.get("_buttons")
+	_check(lobby.view() == "setup" and buttons.any(func(b: Dictionary) -> bool: return b["id"] == "mic:test") and _overlap(buttons) == "", "lobby mic: the SET UP view keeps the box, overlapping no key (%s)" % _overlap(buttons))
+	lobby.press("mic:test")
+	_check(v.is_testing() and lobby.setup_panel().code == "", "lobby mic: … and TEST MIC works there, typing nothing")
+	v.stop_test()
 	game.pointer.clear_injection()
 	main.queue_free()
 	await process_frame
@@ -2934,7 +3206,7 @@ func _test_voice_link() -> void:
 	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
 	v.want(upload + "/stream?token=tok", upload, "tok")
 	_check(v.is_running() and v.mic_state == "opening" and not v.listen_on, "voice: running, the mic opening (no sample yet), nobody listening")
-	_check(v.hud_text(true) == "🎤 …", "voice: the HUD says 🎤 … until a real sample lands (%s)" % v.hud_text(true))
+	_check(v.hud_text(true) == "MIC STARTING…", "voice: the HUD says MIC STARTING… until a real sample lands (%s)" % v.hud_text(true))
 	# Zeros are no mic: still opening.
 	mic[0] = _mic_tone(9600, 0.0)
 	v._process(0.016)
@@ -2943,11 +3215,11 @@ func _test_voice_link() -> void:
 	# Nobody can hear us: a loud word goes nowhere, no connection.
 	mic[0] = _mic_tone(9600, 0.3)
 	v._process(0.016)
-	_check(v.mic_state == "live" and v.hud_text(true) == "🎤 LIVE", "voice: a real sample → 🎤 LIVE (%s)" % v.hud_text(true))
+	_check(v.mic_state == "live" and v.hud_text(true) == "MIC ON · B or Y mutes" and v.hud_text(false) == "MIC ON · M mutes", "voice: a real sample → MIC ON (%s)" % v.hud_text(true))
 	_check(v.uplink.queue.is_empty() and clients.is_empty(), "voice: nobody listening → nothing queued, no connection")
 	v.on_frame("hello", {"codec": "mulaw", "rate": 16000, "chunkMs": 200, "as": "player", "session": "s1", "listen": false})
 	v.on_frame("listen", {"on": true})
-	_check(v.listen_on and v.hud_text(true) == "🎤 LIVE · someone can hear you", "voice: listen {on} → someone can hear you")
+	_check(v.listen_on and v.hud_text(true) == "MIC ON · someone can hear you" and v.hud_text(false) == "MIC ON · someone can hear you", "voice: listen {on} → someone can hear you")
 	mic[0] = _mic_tone(9600, 0.3)
 	v._process(0.016)
 	_check(clients.size() == 1 and v.uplink.queue.size() == 1, "voice: … a loud chunk is queued, the connection opening (%d queued)" % v.uplink.queue.size())
@@ -3049,7 +3321,7 @@ func _test_voice_link() -> void:
 
 	# Mute: the mic's chunks are dropped; the HUD says so.
 	v.toggle_mute()
-	_check(v.mic_state == "muted" and v.hud_text(true) == "🎤 MUTED · B / Y to talk" and v.hud_text(false) == "🎤 MUTED · M to talk", "voice: mute → 🎤 MUTED (%s)" % v.hud_text(true))
+	_check(v.mic_state == "muted" and v.hud_text(true) == "MIC MUTED · press B or Y" and v.hud_text(false) == "MIC MUTED · press M", "voice: mute → MIC MUTED (%s)" % v.hud_text(true))
 	var q := c.requests.size() + v.uplink.queue.size() + (clients.back() as FakeHttp).requests.size()
 	now[0] += 1000.0
 	mic[0] = _mic_tone(9600, 0.3)
@@ -3059,7 +3331,7 @@ func _test_voice_link() -> void:
 	_check(v.mic_state == "live", "voice: unmute → live")
 	# The server stops listening.
 	v.on_frame("listen", {"on": false})
-	_check(not v.listen_on and v.uplink.queue.is_empty() and v.hud_text(true) == "🎤 LIVE", "voice: listen {on: false} → nothing queued, the HUD drops the line")
+	_check(not v.listen_on and v.uplink.queue.is_empty() and v.hud_text(true) == "MIC ON · B or Y mutes", "voice: listen {on: false} → nothing queued, the HUD drops the line")
 	# The same URLs again change nothing; stop ends everything.
 	v.on_frame("voice", _voice_frame("hall", 5, 1.0))
 	v.want(upload + "/stream?token=tok", upload, "tok")
@@ -3111,12 +3383,125 @@ func _test_voice_silent_mic() -> void:
 	mic[0] = _mic_tone(4800, 0.0)
 	for i in 3:
 		v._process(0.5)
-	_check(v.mic_state == "opening" and v.hud_text(true) == "🎤 …" and not v.uplink.wanted, "voice: zeros for 1.5 s → still opening, no uplink wanted (%s)" % v.mic_state)
+	_check(v.mic_state == "opening" and v.hud_text(true) == "MIC STARTING…" and not v.uplink.wanted, "voice: zeros for 1.5 s → still opening, no uplink wanted (%s)" % v.mic_state)
 	v._process(1.0)
 	_check(v.mic_state == "nomic" and v.hud_text(true) == "NO MIC" and not v.uplink.wanted, "voice: zeros past MIC_FALLBACK_AFTER → NO MIC")
 	mic[0] = _mic_tone(4800, 0.01)
 	v._process(0.016)
 	_check(v.mic_state == "live" and v.uplink.wanted, "voice: … a real sample → LIVE, the uplink wanted")
+	v.stop()
+	v.queue_free()
+
+
+## Wave 26 (R8): the mic says what to do — a refused grant is `denied`
+## (not NO MIC), a press of B / Y while the mic is not open changes nothing,
+## every state change logs a line, ASK AGAIN asks once more, the game's own
+## sounds hold the mic shut ([method VoiceLink.hold_for]), and TEST MIC opens
+## it with no session for a level meter.
+func _test_voice_mic_states() -> void:
+	var v := VoiceLink.new()
+	v.use_stream = false
+	v.client_factory = func() -> Object: return FakeHttp.new()
+	var now := [5000.0]
+	v.clock = func() -> float: return now[0]
+	v.platform = "Android"
+	var granted := [false]
+	var asked := [0]
+	v.permission_check = func() -> bool: return granted[0]
+	v.permission_request = func() -> void: asked[0] += 1
+	root.add_child(v)
+	_check(v.permission_state() == "unknown" and v.lobby_text(true, true) == "MIC · not allowed yet · ASK AGAIN", "mic: never asked → the lobby says so (%s)" % v.lobby_text(true, true))
+	_check(v.prime_permission(true) and asked[0] == 1 and v.permission_state() == "asking", "mic: the lobby asks for the grant once")
+	_check(not v.prime_permission(true) and asked[0] == 1, "mic: … only once")
+	v._on_permission("android.permission.RECORD_AUDIO", false)
+	_check(v.permission_state() == "denied" and v.lobby_text(true, true).begins_with("MIC · not allowed · ASK AGAIN"), "mic: refused in the lobby → denied, ASK AGAIN (%s)" % v.lobby_text(true, true))
+	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	_check(v.mic_state == "asking" and asked[0] == 2 and v.hud_text(true) == "MIC · allow it in the headset's prompt" and v.hud_text(false) == "MIC · allow it in the system prompt", "mic: a session without the grant asks again (%s)" % v.hud_text(true))
+	v.toggle_mute()
+	_check(not v.muted and v.mic_state == "asking", "mic: B / Y while asking changes nothing (never muted unseen)")
+	v._on_permission("android.permission.RECORD_AUDIO", false)
+	_check(v.mic_state == "denied" and v.hud_text(true) == "NO MIC · not allowed · ASK AGAIN in the lobby" and v.hud_text(false) == v.hud_text(true), "mic: refused → denied, not NO MIC (%s)" % v.hud_text(true))
+	v.toggle_mute()
+	_check(not v.muted, "mic: B / Y while refused changes nothing")
+	_check(v.mic_log.any(func(l: String) -> bool: return l.begins_with("reinstall-vr: mic — denied") and l.contains("granted denied")), "mic: every state change logs a line (%s)" % [v.mic_log])
+	_check(v.mic_log.any(func(l: String) -> bool: return l == "reinstall-vr: mic — RECORD_AUDIO refused"), "mic: … and every answer to the grant")
+	v.stop()
+	_check(v.ask_again() and asked[0] == 3 and v.permission_state() == "asking", "mic: ASK AGAIN asks once more")
+	granted[0] = true
+	v._on_permission("android.permission.RECORD_AUDIO", true)
+	_check(v.permission_state() == "granted" and v.lobby_text(true, true) == "MIC · allowed" and not v.ask_again(), "mic: granted → allowed; ASK AGAIN has nothing to ask")
+	_check(v.lobby_text(false, true) == "VOICE · off on this headset" and v.lobby_text(true, false) == "MIC · off on this headset (listen only)", "mic: the lobby says when the config turned voice or the mic off")
+	v.platform = "macOS"
+	_check(v.permission_state() == "n/a" and v.lobby_text(true, true) == "MIC · this computer's microphone" and not v.ask_again(), "mic: a desktop has no grant to ask for")
+	# A desktop whose privacy settings refuse the input: the box says so,
+	# during TEST MIC and after it.
+	var activate := [ERR_UNAUTHORIZED]
+	v.input_activate = func() -> Error: return activate[0]
+	v.start_test()
+	_check(v.mic_state == "denied" and v.lobby_text(true, true) == "MIC · not allowed on this computer", "mic: a refused desktop input reads as refused on TEST MIC (%s)" % v.lobby_text(true, true))
+	v.stop_test()
+	_check(v.lobby_text(true, true) == "MIC · not allowed on this computer", "mic: … and after the test (%s)" % v.lobby_text(true, true))
+	v.input_activate = Callable()
+	v.set("_input_refused", false)
+	v.platform = "Android"
+
+	# TEST MIC: open with no session, a level, nothing sent.
+	var mic := [PackedVector2Array()]
+	v.frame_source = func() -> PackedVector2Array:
+		var f: PackedVector2Array = mic[0]
+		mic[0] = PackedVector2Array()
+		return f
+	v.start_test()
+	_check(v.is_testing() and v.mic_state == "opening" and v.lobby_text(true, true) == "MIC TEST · say something…", "test mic: opens with no session (%s)" % v.mic_state)
+	mic[0] = _mic_tone(4800, 0.3)
+	v._process(0.016)
+	_check(v.mic_state == "live" and v.test_level() > 0.6 and v.lobby_text(true, true) == "MIC TEST · it hears you", "test mic: a word → live, the meter up (%.2f)" % v.test_level())
+	_check(v.uplink.queue.is_empty() and not v.is_running(), "test mic: … and nothing is sent")
+	for i in 15:
+		mic[0] = _mic_tone(4800, 0.0)
+		v._process(0.1)
+	_check(v.test_level() < 0.2, "test mic: the meter falls back in the quiet (%.2f)" % v.test_level())
+	v.stop_test()
+	_check(not v.is_testing() and v.mic_state == "off" and v.test_level() == 0.0, "test mic: closed")
+	v.start_test()
+	for i in 25:
+		mic[0] = _mic_tone(4800, 0.0)
+		v._process(0.1)
+	_check(v.mic_state == "nomic" and v.lobby_text(true, true) == "MIC TEST · only silence — no mic", "test mic: only zeros → no mic (%s)" % v.lobby_text(true, true))
+	# A session starting ends the test.
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	_check(not v.is_testing() and v.is_running() and v.mic_state == "opening", "test mic: a session takes the mic over")
+	v.start_test()
+	_check(not v.is_testing(), "test mic: … and no test while a session plays")
+
+	# The game's own sound holds the mic shut for its span + the tail.
+	v.on_frame("listen", {"on": true})
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(v.mic_state == "live" and v.uplink.queue.size() == 1, "hold: a loud word goes up")
+	for i in 4:
+		mic[0] = _mic_tone(9600, 0.0)
+		now[0] += 200.0
+		v._process(0.016)
+	v.uplink.drop_queue()
+	v.hold_for(500.0)
+	_check(v.holding(), "hold: hold_for holds the mic")
+	mic[0] = _mic_tone(9600, 0.5)
+	now[0] += 400.0
+	v._process(0.016)
+	_check(v.uplink.queue.is_empty(), "hold: even a loud chunk is not sent while the game plays a sound")
+	now[0] += 300.0
+	mic[0] = _mic_tone(9600, 0.5)
+	v._process(0.016)
+	_check(v.uplink.queue.is_empty() and v.holding(), "hold: … nor in the tail (VOICE_TAIL_MS)")
+	now[0] += 200.0
+	mic[0] = _mic_tone(9600, 0.5)
+	v._process(0.016)
+	_check(not v.holding() and v.uplink.queue.size() >= 1, "hold: after the sound and its tail the mic goes up again")
+	v.hold_for(1000.0)
+	v.hold_for(100.0)
+	_check(v.holding() and v._gate.holding(now[0] + 1200.0), "hold: a shorter hold never cuts a longer one short")
 	v.stop()
 	v.queue_free()
 
@@ -3166,11 +3551,13 @@ func _test_voice_game() -> void:
 	v._process(0.016)  # the mic's first real sample
 	game._process(0.016)
 	_check(v.is_running() and v.stream_url == "http://127.0.0.1:7600/e/e1/api/spatial/voice/stream?token=tok-v-1" and v.upload_url.ends_with("/api/spatial/voice"), "voice game: playing starts the voice on the session's token (%s)" % v.stream_url)
-	_check(game.hud.mic_text() == "🎤 LIVE", "voice game: the HUD shows 🎤 LIVE (%s)" % game.hud.mic_text())
+	_check(game.hud.mic_text() == "MIC ON · M mutes", "voice game: the HUD shows MIC ON (%s)" % game.hud.mic_text())
+	var pulses := player.pulses
 	player.mute_button = true
 	game._process(0.016)
 	game._process(0.016)
-	_check(v.muted and game.hud.mic_text() == "🎤 MUTED · M to talk", "voice game: a press of the mute button mutes (once, held) (%s)" % game.hud.mic_text())
+	_check(v.muted and game.hud.mic_text() == "MIC MUTED · press M", "voice game: a press of the mute button mutes (once, held) (%s)" % game.hud.mic_text())
+	_check(player.pulses == pulses + 1, "voice game: … with a haptic tick")
 	player.mute_button = false
 	game._process(0.016)
 	player.mute_button = true
@@ -3193,7 +3580,7 @@ func _test_voice_game() -> void:
 	game._process(0.016)
 	v._process(0.016)
 	game._process(0.016)
-	_check(v.is_running() and not v.muted and game.hud.mic_text() == "🎤 LIVE", "voice game: … nor when it is still held as play starts (%s)" % game.hud.mic_text())
+	_check(v.is_running() and not v.muted and game.hud.mic_text() == "MIC ON · M mutes", "voice game: … nor when it is still held as play starts (%s)" % game.hud.mic_text())
 	player.mute_button = false
 	player.hit_button = false
 	game._process(0.016)
@@ -3230,6 +3617,561 @@ func _test_voice_game() -> void:
 	player.camera.rotation.x = deg_to_rad(-60.0)
 	game.enter_lobby()
 	_check(is_zero_approx(float(player.get("_pitch"))) and is_zero_approx(player.camera.rotation.x), "lobby: a desktop run is level again in the lobby (no captured mouse there to look up)")
+	main.queue_free()
+	await process_frame
+
+
+## Wave 26 (R8): the game's own sounds — rendered once, never silent, never
+## clipped, the web game's recipes' lengths; the quack's schedule is the web
+## game's; they play on the Sfx bus.
+func _test_sfx() -> void:
+	var want_len := {"quack": 0.36, "fanfare": 1.8, "buzz": 0.47, "thud": 0.12, "scare": 1.6, "pickup": 0.5, "hum": 2.0}
+	for sound: String in want_len:
+		var x := Sfx.samples_of(sound)
+		var peak := 0.0
+		for v in x:
+			peak = maxf(peak, absf(v))
+		_check(_near(x.size() / float(Sfx.RATE), want_len[sound], 0.01), "sfx: %s lasts %.2f s (%.3f)" % [sound, want_len[sound], x.size() / float(Sfx.RATE)])
+		_check(peak <= 1.0 and VoiceCodec.rms_dbfs(x) > -40.0, "sfx: %s is heard and never clips (peak %.2f, %.1f dBFS)" % [sound, peak, VoiceCodec.rms_dbfs(x)])
+	_check(Sfx.samples_of("nope").is_empty() and Sfx.length_ms("nope") == 0.0, "sfx: an unknown sound is nothing")
+	var w := Sfx.stream_of("quack")
+	_check(w.format == AudioStreamWAV.FORMAT_16_BITS and not w.stereo and w.mix_rate == Sfx.RATE and w.data.size() == Sfx.samples_of("quack").size() * 2, "sfx: a 16-bit mono WAV")
+	_check(Sfx.stream_of("hum").loop_mode == AudioStreamWAV.LOOP_FORWARD and w.loop_mode == AudioStreamWAV.LOOP_DISABLED, "sfx: the hum loops, the quack does not")
+	_check(is_same(Sfx.stream_of("quack"), w), "sfx: each sound is made once")
+	var bus := Sfx.ensure_bus()
+	_check(bus > 0 and AudioServer.get_bus_name(bus) == "Sfx" and AudioServer.get_bus_send(bus) == "Master" and Sfx.ensure_bus() == bus, "sfx: an Sfx bus into Master, made once")
+	# The schedule: the web game's maybeQuack.
+	var far := Sfx.quack_plan(7.1, 0.0, 0.5)
+	_check(not far["quack"] and _near(far["next"], 1.5), "sfx: past 7 m no quack, a look again in 1.5 s")
+	_check(not Sfx.quack_plan(2.0, 2.0, 0.5)["quack"] and Sfx.quack_plan(2.0, 1.9, 0.5)["quack"], "sfx: within 2 m of height only")
+	var at := Sfx.quack_plan(0.0, 0.0, 0.0)
+	var mid := Sfx.quack_plan(3.5, 0.0, 1.0)
+	_check(at["quack"] and _near(at["volume"], 1.0) and _near(at["next"], 1.6), "sfx: on top of him: full volume, every 1.6 s")
+	_check(_near(mid["volume"], 0.625) and _near(mid["next"], 1.6 + 1.6 + 0.9), "sfx: half way: 0.625, 1.6 + 1.6 + up to 0.9 s")
+	_check(Sfx.QUACK_RANGE == 7.0 and Sfx.QUACK_FIRST == 2.5 and Sfx.FANFARE_AFTER == 0.65, "sfx: the web game's constants")
+
+
+## Wave 26 (C6, C10): in-game speech — the shared pronunciation table
+## (whole word, any case, longest first, never "Anti-Virus"), captions one
+## at a time for their reading time with 700 ms between, the device voice
+## saying the pronounced text while the caption shows the display text, the
+## mic held while it speaks, captions alone with no device voice.
+func _test_speech() -> void:
+	var rows := Speech.table()
+	_check(rows.size() == 2 and rows[0]["word"] == "Antiviruses", "speech: the table loads from config/pronounce.json, longest first (%s)" % [rows])
+	_check(Speech.pronounce("The Antivirus is here.") == "The Anti Virus is here.", "speech: Antivirus → Anti Virus")
+	_check(Speech.pronounce("antiviruses and ANTIVIRUS") == "Anti Viruses and Anti Virus", "speech: any case, the longest word first")
+	_check(Speech.pronounce("Norton Anti-Virus") == "Norton Anti-Virus" and Speech.pronounce("Antivirusy") == "Antivirusy" and Speech.pronounce("MyAntivirus") == "MyAntivirus", "speech: whole words only")
+	_check(Speech.pronounce("the Antivirus' rules, (Antivirus)") == "the Anti Virus' rules, (Anti Virus)", "speech: punctuation is a boundary (the possessive matches)")
+	_check(Speech.pronounce("Antivirus", []) == "Antivirus" and Speech.parse_table("junk").is_empty(), "speech: no table, no change")
+	_check(Speech.reading_ms("") == 900.0 and Speech.reading_ms("x".repeat(20)) == 1240.0 and Speech.reading_ms("x".repeat(500)) == 8000.0, "speech: the terminal's reading time")
+	_check(Speech.pick_voice([{"id": "fr", "language": "fr-FR"}, {"id": "en1", "language": "en-US"}]) == "en1" and Speech.pick_voice([{"id": "de", "language": "de"}]) == "de" and Speech.pick_voice([]) == "", "speech: an English device voice first")
+
+	var head := Node3D.new()
+	root.add_child(head)
+	var sp := Speech.new()
+	sp.head = head
+	var spoken: Array = []
+	var held: Array = []
+	var speaking := [false]
+	var stopped := [0]
+	var voice_list := [[]]
+	sp.voices = func() -> Array: return voice_list[0]
+	sp.speaker = func(text: String, id: String) -> void:
+		spoken.append([text, id])
+		speaking[0] = true
+	sp.is_speaking = func() -> bool: return speaking[0]
+	sp.stopper = func() -> void: stopped[0] += 1
+	sp.hold = func(ms: float) -> void: held.append(ms)
+	root.add_child(sp)
+	sp.set_process(false)
+	_check(ProjectSettings.get_setting("audio/general/text_to_speech", false) == true, "speech: project.godot turns text_to_speech on (tts_speak needs it)")
+	_check(Speech.TTS_VOLUME == 100, "speech: the device voice speaks at full volume, not Godot's default 50")
+	# No device voice: captions only.
+	sp.say([{"from": "Trabolta", "text": "First line here."}, {"from": "Trabolta", "text": "  "}, {"from": "Trabolta", "text": "Second."}])
+	sp.tick(0.0)
+	var cap := head.get_node_or_null("HeadCaption") as Label3D
+	_check(sp.caption_text() == "First line here." and cap != null and cap.text == "First line here." and not sp.on_prop() and spoken.is_empty() and held.is_empty(), "speech: no device voice → the caption alone, head-locked, nothing held")
+	_check(not cap.text.contains("Trabolta"), "speech: the caption never names the speaker")
+	sp.tick(0.8)
+	_check(sp.caption_text() == "First line here.", "speech: … held for its reading time")
+	sp.tick(0.2)
+	_check(sp.caption_text() == "" and sp.busy(), "speech: … then 700 ms of nothing")
+	sp.tick(0.6)
+	_check(sp.caption_text() == "", "speech: … still the gap")
+	sp.tick(0.15)
+	sp.tick(0.0)
+	_check(sp.caption_text() == "Second.", "speech: … then the next line (an empty one skipped)")
+	var done := [false]
+	sp.finished.connect(func() -> void: done[0] = true)
+	sp.tick(1.0)
+	sp.tick(0.8)
+	_check(not sp.busy() and done[0] and cap.text == "", "speech: the queue runs dry")
+	# A device voice: it says the pronounced text; the caption keeps the display text.
+	voice_list[0] = [{"id": "v-en", "name": "Daniel", "language": "en-GB"}]
+	sp.say([{"from": "Trabolta", "text": "The Antivirus is watching."}])
+	sp.tick(0.0)
+	_check(spoken == [["The Anti Virus is watching.", "v-en"]] and sp.caption_text() == "The Antivirus is watching.", "speech: the voice says Anti Virus, the caption says Antivirus (%s)" % [spoken])
+	_check(not held.is_empty() and held[0] >= Speech.reading_ms("The Antivirus is watching."), "speech: the mic is held while he speaks")
+	sp.tick(2.0)
+	_check(sp.caption_text() != "", "speech: a voice still speaking past the reading time keeps the line")
+	var holds := held.size()
+	sp.tick(0.1)
+	_check(held.size() > holds, "speech: … and keeps the mic held")
+	speaking[0] = false
+	sp.tick(0.1)
+	_check(sp.caption_text() == "", "speech: the voice done → the line ends")
+	sp.tick(1.0)
+	# A stuck voice is cut.
+	speaking[0] = false
+	sp.say([{"from": "x", "text": "Stuck."}])
+	sp.tick(0.0)
+	speaking[0] = true
+	sp.tick(Speech.reading_ms("Stuck.") / 1000.0 + Speech.STUCK_AFTER_MS / 1000.0 + 0.1)
+	_check(sp.caption_text() == "" and stopped[0] >= 1, "speech: a voice stuck past its cap is stopped")
+	# Over a prop: a billboard.
+	var prop := Node3D.new()
+	prop.set_meta("height", 1.7)
+	root.add_child(prop)
+	prop.global_position = Vector3(3, 0, 4)
+	speaking[0] = false
+	sp.say([{"from": "Trabolta", "text": "Over the heart."}], prop)
+	sp.tick(1.0)
+	sp.tick(0.0)
+	var pc := sp.get_node("PropCaption") as Label3D
+	_check(sp.on_prop() and pc.visible and pc.text == "Over the heart." and pc.global_position.distance_to(Vector3(3, 1.7 + Speech.BILLBOARD_LIFT, 4)) < 0.01 and cap.text == "", "speech: a prop's lines hang over it (%s)" % pc.global_position)
+	sp.stop()
+	_check(not sp.busy() and not pc.visible and sp.caption_text() == "", "speech: stop drops everything")
+	prop.queue_free()
+	sp.queue_free()
+	head.queue_free()
+	await process_frame
+
+
+## The game plays them: the hum while playing, Gerald's quack on him (and
+## the mic held while it plays), the find's quack + fanfare (none for a
+## refused find), a buzz for "not near", the King's thud, nothing in the lobby.
+func _test_sfx_game() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var player := game.player
+	player.set_physics_process(false)
+	player.read_input = false
+	link.config["trail_delay"] = 0.0
+	var sfx := game.sfx
+	_check(sfx != null and sfx.get_parent() == game and not sfx.hum_on(), "sfx game: the game has its sounds, quiet in the lobby")
+	_check(game.duck.emitter != null and game.duck.emitter.bus == "Sfx" and game.duck.emitter.attenuation_model == AudioStreamPlayer3D.ATTENUATION_DISABLED, "sfx game: Gerald's quack comes from him, on the Sfx bus")
+	sfx.log.clear()
+	for i in 5:
+		game._process(1.0)
+	_check(sfx.log.is_empty(), "sfx game: no sound in the lobby")
+	var a := _assignment(house, "sfx-1", true)
+	link.assignment_received.emit(a)
+	_check(sfx.hum_on(), "sfx game: the hum while playing")
+	# R8: while a terminal listens (the mic may send) the hum pauses.
+	game.voice.on_frame("listen", {"on": true})
+	game._process(0.016)
+	_check(game.voice.listen_on and not sfx.hum_on(), "sfx game: … paused while a terminal listens")
+	game.voice.on_frame("listen", {"on": false})
+	game._process(0.016)
+	_check(sfx.hum_on(), "sfx game: … and back once nobody does")
+	var dp: Array = a["duck"]["pos"]
+	player.teleport(Vector3(dp[0] + 1.5, dp[1], dp[2]), 0.0)
+	game._process(1.0)
+	_check(sfx.log.is_empty(), "sfx game: the first quack waits 2.5 s")
+	game._process(1.0)
+	game._process(0.6)
+	_check(sfx.log == ["quack"] and game.voice.holding(), "sfx game: 1.5 m from Gerald he quacks — and the mic is held while he does (%s)" % [sfx.log])
+	var away: Array = house["spawn"]["pos"]
+	for spot: Dictionary in house["duck"]["spots"]:
+		if Vector2(float(spot["pos"][0]) - float(dp[0]), float(spot["pos"][2]) - float(dp[2])).length() > 9.0:
+			away = spot["pos"]
+			break
+	player.teleport(HouseFrames.vec(away), 0.0)
+	for i in 10:
+		game._process(1.0)
+	var far_quacks := sfx.log.count("quack")
+	_check(far_quacks == 1, "sfx game: far from him, no quack (%d)" % far_quacks)
+	player.teleport(Vector3(dp[0] + 0.5, dp[1], dp[2]), 0.0)
+	game._process(0.016)
+	link.found_answered.emit(false, {"error": "not near the duck"})
+	_check(sfx.log.back() == "buzz", "sfx game: 'not near' buzzes")
+	# A refusal streak buzzes once: the retries each second stay quiet, and
+	# so does a pause, a parked session or a dropped request.
+	var buzzes := sfx.log.count("buzz")
+	for i in 5:
+		game._process(1.0)
+		link.found_answered.emit(false, {"error": "not near the duck"})
+	_check(sfx.log.count("buzz") == buzzes, "sfx game: … once per approach, not every retry (%d)" % (sfx.log.count("buzz") - buzzes))
+	player.teleport(HouseFrames.vec(away), 0.0)
+	game._process(0.016)
+	player.teleport(Vector3(dp[0] + 0.5, dp[1], dp[2]), 0.0)
+	game._process(0.016)
+	for answer: Dictionary in [{"error": "doors are closed"}, {"error": "this session has not started — send a pose first"}, {}]:
+		link.found_answered.emit(false, answer)
+	_check(sfx.log.count("buzz") == buzzes, "sfx game: closed doors, parked, a dropped request: no buzz")
+	link.found_answered.emit(false, {"error": "not near the duck"})
+	_check(sfx.log.count("buzz") == buzzes + 1, "sfx game: a new approach buzzes again")
+	_check(Game.found_refusal_buzzes({"error": "not near the duck"}) and not Game.found_refusal_buzzes({"error": "doors are closed"}) and not Game.found_refusal_buzzes({}), "sfx game: which refusals buzz")
+	link.found_answered.emit(true, {"ok": true, "released": true})
+	_check(sfx.log.back() == "quack" and not sfx.hum_on(), "sfx game: the find quacks, the hum stops")
+	game._process(0.5)
+	_check(sfx.log.back() == "quack", "sfx game: … the fanfare waits 0.65 s")
+	game._process(0.2)
+	_check(sfx.log.back() == "fanfare", "sfx game: … then the fanfare")
+	game._process(GameFlow.CELEBRATE + 0.1)
+	_check(game.state() == GameFlow.State.LOBBY and not sfx.hum_on(), "sfx game: the lobby again, quiet")
+	# A refused find (banishment): the quack, no fanfare.
+	link.assignment_received.emit(_assignment(house, "sfx-2", true))
+	var dp2: Array = link.adopted.back()["duck"]["pos"]
+	player.teleport(Vector3(dp2[0], dp2[1], dp2[2] + 0.3), 0.0)
+	game._process(0.016)
+	sfx.log.clear()
+	link.found_answered.emit(true, {"ok": true, "released": false, "captured": true})
+	game._process(1.0)
+	_check(sfx.log == ["quack"], "sfx game: a refused find has no fanfare (%s)" % [sfx.log])
+	game._process(GameFlow.CELEBRATE + 0.1)
+	# The King: a hit thuds, a refusal buzzes, his fall plays the fanfare.
+	link.assignment_received.emit(_assignment(house, "sfx-3", true))
+	link.give_king({"id": "cold-lock-king", "hp": 5, "max": 15, "fallen": false})
+	sfx.log.clear()
+	link.king_hit_answered.emit("ok", {})
+	link.king_hit_answered.emit("not near", {})
+	link.give_king({"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true})
+	_check(sfx.log == ["thud", "buzz", "fanfare"], "sfx game: the King's hit, a refusal, his fall (%s)" % [sfx.log])
+	link.session_over.emit("test")
+	main.queue_free()
+	await process_frame
+
+
+## Wave 26 (R2): the golden trail is hidden for the walk's first minute
+## (the HUD just says "find Gerald"), then a notice and the trail at once;
+## "Gerald moved." names no arrows before it; a re-scan restarts the
+## minute; the lobby and the found screen never count; the quack never
+## waits for it. R3: the HUD never carries the King's health.
+func _test_path_reveal() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var player := game.player
+	player.set_physics_process(false)
+	player.read_input = false
+	var sub: Label3D = game.hud.get("_sub")
+	var hint: Label3D = game.hud.get("_hint")
+	_check(_near(float(link.config["trail_delay"]), HouseRoute.PATH_REVEAL_MS / 1000.0), "reveal: a minute by default")
+	for i in 30:
+		game._process(1.0)  # the lobby never counts
+	link.assignment_received.emit(_assignment(house, "rv-1", true))
+	_check(hint.text == "find Gerald" and game.trail.count() == 0 and not game.trail_revealed, "reveal: the walk starts with no trail, the HUD says find Gerald (%s)" % hint.text)
+	for i in 59:
+		game._process(1.0)
+	_check(game.trail.count() == 0 and not game.trail_revealed, "reveal: no trail after 59 s")
+	var moved: Dictionary = {}
+	for spot: Dictionary in house["duck"]["spots"]:
+		if str(spot["id"]) != str(game.flow.assignment["duck"]["id"]):
+			moved = spot
+			break
+	link.duck_changed.emit(moved)
+	_check(sub.text == "Gerald moved.", "reveal: before the trail, 'Gerald moved.' names no arrows (%s)" % sub.text)
+	game._process(0.5)
+	game._process(0.6)
+	_check(game.trail_revealed and game.trail.count() > 0 and sub.text == "A golden trail flickers on.", "reveal: after a minute the trail draws at once, with a notice (%d chevrons, %s)" % [game.trail.count(), sub.text])
+	link.duck_changed.emit(moved.duplicate())
+	_check(sub.text == "Gerald moved — follow the arrows.", "reveal: after it, the old line (%s)" % sub.text)
+	_check(hint.text == "find Gerald", "reveal: the hint never says follow the arrows")
+	# R3: whatever the King, the HUD carries no health.
+	link.give_king({"id": "cold-lock-king", "hp": 7, "max": 15, "fallen": false})
+	game._process(0.1)
+	var hud_texts: Array = [game.hud.room_text(), hint.text, sub.text, game.hud.big_text(), game.hud.mic_text()]
+	_check(not hud_texts.any(func(t: String) -> bool: return t.contains("KING") or t.contains("/ 15") or t.contains("7")), "R3: the HUD never carries the King's health (%s)" % [hud_texts])
+	var bar := game.builder.get_node_or_null("Prop_cold-lock-king/Health/HealthText") as Label3D
+	_check(bar != null and bar.text == "THE KING  7 / 15", "R3: … it hangs over him (%s)" % (bar.text if bar != null else "none"))
+	# A re-scan restarts the minute.
+	link.session_over.emit("test")
+	link.assignment_received.emit(_assignment(house, "rv-2", true))
+	game._process(1.0)
+	_check(game.trail.count() == 0 and not game.trail_revealed, "reveal: a re-scan restarts the minute")
+	# The quack does not wait for the trail.
+	var dp: Array = game.flow.assignment["duck"]["pos"]
+	player.teleport(Vector3(dp[0] + 1.5, dp[1], dp[2]), 0.0)
+	game.sfx.log.clear()
+	game._process(1.0)
+	game._process(1.0)
+	_check(game.sfx.log.has("quack") and not game.trail_revealed, "reveal: Gerald quacks before the trail is up")
+	# The found screen never counts.
+	player.teleport(Vector3(dp[0] + 0.3, dp[1], dp[2]), 0.0)
+	game._process(0.016)
+	link.found_answered.emit(true, {"ok": true, "released": true})
+	game._process(GameFlow.CELEBRATE - 0.1)
+	_check(game.state() == GameFlow.State.FOUND and float(game.get("_played_for")) < 4.0, "reveal: the found screen never counts")
+	game._process(0.5)
+	# `trail_delay 0` (dev, tests): the trail at once, no notice.
+	link.config["trail_delay"] = 0.0
+	link.assignment_received.emit(_assignment(house, "rv-3", true))
+	game._process(0.016)
+	_check(game.trail_revealed and game.trail.count() > 0 and sub.text != "A golden trail flickers on.", "reveal: trail_delay 0 → the trail at once, no notice")
+	link.session_over.emit("test")
+	main.queue_free()
+	await process_frame
+
+
+## A game on the show map over a fake link, the trail at once, frozen physics.
+func _game_on_show() -> Array:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "trail_delay": 0})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	game.player.set_physics_process(false)
+	game.player.read_input = false
+	game.speech.set_process(false)
+	game.speech.voices = func() -> Array: return []
+	return [main, game, link, house]
+
+
+## Wave 26 (R4): the void. 5 m out of the front door (not 4.8) freezes the
+## walk, flashes the scare once, pulses, posts one escape moment with the
+## outside pose last; the answer (or 3 s) puts them back at the spawn and
+## its lines are captioned; within 20 s a second walk-out is a quiet
+## teleport; every refusal still teleports; a dead session ends it.
+func _test_escape() -> void:
+	var got: Array = await _game_on_show()
+	var main: Node = got[0]
+	var game: Game = got[1]
+	var link: LinkBase = got[2]
+	var house: Dictionary = got[3]
+	var player := game.player
+	var spawn: Array = house["spawn"]["pos"]
+	# The cooldown runs on the wall clock: each step moves it too.
+	var now := [5000.0]
+	game.clock = func() -> float: return now[0]
+	var step := func(s: float) -> void:
+		now[0] += s
+		game._process(s)
+	link.assignment_received.emit(_assignment(house, "esc-1", true))
+	step.call(0.016)
+	var near := [-0.45, 0.0, -4.8]
+	var out := [-0.45, 0.0, -5.2]
+	_check(HouseEscape.void_distance(house, near) != null and float(HouseEscape.void_distance(house, near)) < HouseEscape.ESCAPE_M, "escape: 4.8 m out is the void, short of an escape")
+	player.teleport(HouseFrames.vec(near), 0.0)
+	step.call(0.016)
+	var moments: Array = link.get("moments")
+	_check(moments.is_empty() and not game.escaping() and not game.hud.scare_shown(), "escape: 4.8 m out of the door is nothing yet")
+	player.teleport(HouseFrames.vec(out), 0.0)
+	var pulses := player.pulses
+	game.sfx.log.clear()
+	step.call(0.016)
+	_check(game.escaping() and moments == [["escape", ""]] and game.hud.scare_shown() and game.hud.scare_text() == "FATAL EXCEPTION 0E", "escape: 5.2 m out → the scare and one escape moment (%s)" % [moments])
+	_check(_diff(link.poses.back()["p"], out) == "", "escape: … the last pose the server got is the one outside")
+	_check(not player.locomotion_enabled and player.pulses == pulses + 1 and game.sfx.log == ["scare"] and game.voice.holding(), "escape: … frozen, a haptic pulse, the scare's sound (the mic held)")
+	_check(game.trail.count() == 0, "escape: … no trail")
+	var poses: int = link.poses.size()
+	step.call(0.5)
+	_check(link.poses.size() == poses and moments.size() == 1 and _v3(player.feet(), HouseFrames.vec(out)), "escape: while it waits, no pose and no second moment; nobody moves them")
+	# The answer comes early: the scare still holds 1.5 s.
+	link.call("answer_moment", "escape", "ok", {"ok": true, "kind": "escape", "lines": [{"from": "Trabolta", "text": "Programs do not leave."}, {"from": "Trabolta", "text": "Back you go."}], "spawn": house["spawn"], "cooldownMs": 20000})
+	step.call(0.5)
+	_check(game.escaping() and game.hud.scare_shown(), "escape: an early answer still lets the scare play out")
+	step.call(0.6)
+	_check(not game.escaping() and _v3(player.feet(), HouseFrames.vec(spawn)) and player.locomotion_enabled, "escape: … then back at the spawn, walking (%s)" % player.feet())
+	game.speech.tick(0.0)
+	_check(game.speech.caption_text() == "Programs do not leave.", "escape: his lines are captioned in order (%s)" % game.speech.caption_text())
+	game.hud._process(1.0)
+	_check(not game.hud.scare_shown(), "escape: the scare fades out")
+	step.call(0.016)
+	_check(_diff(link.poses.back()["p"], spawn) == "", "escape: poses go again, from the spawn")
+	# Within the cooldown: a quiet teleport, no moment, no scare.
+	player.teleport(HouseFrames.vec(out), 0.0)
+	step.call(0.016)
+	_check(moments.size() == 1 and not game.escaping() and not game.hud.scare_shown() and _v3(player.feet(), HouseFrames.vec(spawn)), "escape: within 20 s the void puts them back quietly")
+	# After the cooldown, no answer at all: the teleport after 3 s anyway.
+	# 20 s since the post, the scare's frozen 1.6 s included (18.5 s walked).
+	for i in 18:
+		step.call(1.0)
+	step.call(0.5)
+	player.teleport(HouseFrames.vec(out), 0.0)
+	step.call(0.016)
+	_check(moments.size() == 2 and game.escaping(), "escape: 20 s after the post (the scare's freeze counted) it counts again")
+	step.call(2.9)
+	_check(game.escaping(), "escape: no answer: it waits up to 3 s")
+	step.call(0.2)
+	_check(not game.escaping() and _v3(player.feet(), HouseFrames.vec(spawn)), "escape: … then the teleport anyway")
+	game.speech.stop()
+	# A late ok still speaks.
+	link.call("answer_moment", "escape", "ok", {"ok": true, "lines": [{"from": "Trabolta", "text": "Late."}]})
+	game.speech.tick(0.0)
+	_check(game.speech.caption_text() == "Late.", "escape: a late answer's lines still play")
+	game.speech.stop()
+	# Every refusal teleports, with no lines.
+	for result: String in ["not found", "doors are closed", "not out", "cooldown", "bad moment", "error", "offline"]:
+		for i in 21:
+			step.call(1.0)
+		player.teleport(HouseFrames.vec(out), 0.0)
+		step.call(0.016)
+		link.call("answer_moment", "escape", result, {"error": result})
+		step.call(ESCAPE_SCARE_PLUS)
+		_check(not game.escaping() and _v3(player.feet(), HouseFrames.vec(spawn)) and not game.speech.busy(), "escape: '%s' → back at the spawn, nothing said" % result)
+	# A session that ends mid-scare: the lobby, no scare.
+	for i in 21:
+		step.call(1.0)
+	player.teleport(HouseFrames.vec(out), 0.0)
+	step.call(0.016)
+	link.session_over.emit("over")
+	_check(game.state() == GameFlow.State.LOBBY and not game.escaping() and not game.hud.scare_shown(), "escape: a session ending mid-scare goes to the lobby clean")
+	# A new session starts with no cooldown.
+	link.assignment_received.emit(_assignment(house, "esc-2", true))
+	step.call(0.016)
+	player.teleport(HouseFrames.vec(out), 0.0)
+	var before: int = moments.size()
+	step.call(0.016)
+	_check(moments.size() == before + 1 and game.escaping(), "escape: a new session has no cooldown")
+	link.session_over.emit("test")
+	main.queue_free()
+	await process_frame
+
+
+const ESCAPE_SCARE_PLUS := Game.ESCAPE_SCARE + 0.1
+
+
+## Wave 26 (R6, R7): the heart, shown once the King has fallen, posts its
+## moment on the way in (lines over it; none yet → again on the next way
+## in; already → silent); the disk posts on reach (taken → hidden, a blip,
+## the lines; far → again soon); the assignment's heartHeard / picked hold
+## across a re-scan; an old server gives up.
+func _test_heart_pickup() -> void:
+	var got: Array = await _game_on_show()
+	var main: Node = got[0]
+	var game: Game = got[1]
+	var link: LinkBase = got[2]
+	var house: Dictionary = got[3]
+	var player := game.player
+	var moments: Array = link.get("moments")
+	var heart_at: Array = HouseMoment.moment_prop(house, "trabolta-heart", "heart")["pos"]
+	var disk_at: Array = HouseMoment.moment_prop(house, "virus-disk", "pickup")["pos"]
+	var hall := [4.5, -2.7, 18.5]
+	link.assignment_received.emit(_assignment(house, "hp-1", true))
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	_check(moments.is_empty() and not game.builder.heart_shown("trabolta-heart"), "heart: no shared King → no heart, no moment")
+	link.give_king({"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true})
+	game._process(0.016)
+	_check(moments == [["heart", "trabolta-heart"]] and game.prop_state("trabolta-heart") == "pending", "heart: the King fallen, the heart reached → one heart moment (%s)" % [moments])
+	game._process(0.5)
+	_check(moments.size() == 1, "heart: … only one while it is out")
+	link.call("answer_moment", "heart", "ok", {"ok": true, "kind": "heart", "lines": []})
+	game._process(1.0)
+	_check(moments.size() == 1 and game.prop_state("trabolta-heart") == "rearm", "heart: no lines (he isn't awake) → nothing until the next way in")
+	player.teleport(HouseFrames.vec(hall), 0.0)
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	_check(moments.size() == 2, "heart: … the next way in tries again")
+	game.speech.stop()
+	link.call("answer_moment", "heart", "ok", {"ok": true, "kind": "heart", "lines": [{"from": "Trabolta", "text": "So. You found where I keep myself."}]})
+	game.speech.tick(0.0)
+	_check(game.speech.caption_text() == "So. You found where I keep myself." and game.speech.on_prop() and game.prop_state("trabolta-heart") == "done", "heart: his lines play over the heart (%s)" % game.speech.caption_text())
+	player.teleport(HouseFrames.vec(hall), 0.0)
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	_check(moments.size() == 2, "heart: heard once, never again this walk")
+	game.speech.stop()
+
+	# The disk.
+	player.teleport(HouseFrames.vec(disk_at), 0.0)
+	game._process(0.016)
+	_check(moments.back() == ["pickup", "virus-disk"], "pickup: in reach → a pickup moment (%s)" % [moments.back()])
+	link.call("answer_moment", "pickup", "far", {"error": "far", "distance": 1.3})
+	game._process(1.0)
+	_check(moments.size() == 3 and game.builder.pickup_shown("virus-disk"), "pickup: 'far' → wait")
+	game._process(0.6)
+	_check(moments.size() == 4, "pickup: … then again")
+	game.sfx.log.clear()
+	link.call("answer_moment", "pickup", "ok", {"ok": true, "kind": "pickup", "lines": [{"from": "Truther", "text": "Download complete."}], "item": "virus", "prop": "virus-disk"})
+	game.speech.tick(0.0)
+	_check(not game.builder.pickup_shown("virus-disk") and game.sfx.log == ["pickup"] and game.speech.caption_text() == "Download complete." and not game.speech.on_prop(), "pickup: taken → the disk goes, a blip, the line head-locked")
+	game._process(2.0)
+	_check(moments.size() == 4 and game.prop_state("virus-disk") == "done", "pickup: … once")
+	game.speech.stop()
+	link.session_over.emit("test")
+
+	# A re-scan: the assignment says what this program already has.
+	var a := _assignment(house, "hp-2", true)
+	a["picked"] = ["virus-disk"]
+	a["heartHeard"] = true
+	link.assignment_received.emit(a)
+	_check(not game.builder.pickup_shown("virus-disk") and game.prop_state("virus-disk") == "done" and game.prop_state("trabolta-heart") == "done", "re-scan: picked hides the disk, heartHeard silences the heart")
+	var n := moments.size()
+	player.teleport(HouseFrames.vec(disk_at), 0.0)
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	_check(moments.size() == n, "re-scan: … no moment for either")
+	link.session_over.emit("test")
+	# The session's own map lands after the assignment (the loaded one was
+	# stale, ServerLink.adopt fetched it): what the program has still holds.
+	var stale: Dictionary = house.duplicate(true)
+	stale["props"] = (stale["props"] as Array).filter(func(pr: Dictionary) -> bool: return pr["kind"] != "pickup")
+	link.give_house(stale)
+	var a2 := _assignment(house, "hp-2b", true)
+	a2["picked"] = ["virus-disk"]
+	link.assignment_received.emit(a2)
+	game._process(0.016)
+	link.give_house(house)
+	_check(not game.builder.pickup_shown("virus-disk") and game.prop_state("virus-disk") == "done", "re-scan: a map landing after the assignment still hides a picked disk")
+	n = moments.size()
+	player.teleport(HouseFrames.vec(disk_at), 0.0)
+	game._process(0.016)
+	_check(moments.size() == n, "re-scan: … and posts nothing for it")
+	link.session_over.emit("test")
+	link.assignment_received.emit(_assignment(house, "hp-3", true))
+	_check(game.builder.pickup_shown("virus-disk") and game.prop_state("virus-disk") == "", "re-scan: an old server's assignment (no picked) shows the disk")
+	player.teleport(HouseFrames.vec(disk_at), 0.0)
+	game._process(0.016)
+	link.call("answer_moment", "pickup", "already", {"error": "already"})
+	_check(not game.builder.pickup_shown("virus-disk"), "pickup: 'already' hides the disk")
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	link.call("answer_moment", "heart", "not found", {"error": "not found"})
+	player.teleport(HouseFrames.vec(hall), 0.0)
+	game._process(0.016)
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	_check(game.prop_state("trabolta-heart") == "done" and moments.back()[0] == "heart" and moments.filter(func(m: Array) -> bool: return m[0] == "heart").size() == 3, "heart: an old server (not found) → given up for the walk")
+	link.session_over.emit("test")
+	# Sealed (the King stood again on the server) → the next way in.
+	link.assignment_received.emit(_assignment(house, "hp-4", true))
+	player.teleport(HouseFrames.vec(heart_at), 0.0)
+	game._process(0.016)
+	link.call("answer_moment", "heart", "sealed", {"error": "sealed"})
+	game._process(0.016)
+	_check(game.prop_state("trabolta-heart") == "rearm", "heart: sealed → the next way in")
+	link.call("answer_moment", "heart", "doors are closed", {})
+	link.session_over.emit("test")
 	main.queue_free()
 	await process_frame
 

@@ -38,6 +38,14 @@ signal king_changed(king: Dictionary)
 ## visit already hit) | "not near" | "fallen" | "doors are closed" |
 ## "no king" | "error"; `data` the reply ([member king] is already updated).
 signal king_hit_answered(result: String, data: Dictionary)
+## The answer to [method moment] (wave 26, C6): `kind` "escape" | "heart"
+## | "pickup" and `result` — "ok" (`data` is the 200 body: `lines`, and
+## `spawn` / `cooldownMs` or `item` / `prop`) · "not found" (an old server
+## with no such route) · "no such prop" · "bad moment" · "doors are closed"
+## · "parked" (no pose yet) · "not out" · "cooldown" · "sealed" ·
+## "not there" · "far" · "already" · "offline" (no server) · "error".
+## A dead session (401 / 410) ends the game through [signal session_over].
+signal moment_answered(kind: String, result: String, data: Dictionary)
 ## A raw spatial stream frame (`hello`, `join`, `poses`, `leave`, …) for the ghosts.
 signal stream_frame(event: String, data: Variant)
 ## The answer to [method try_setup]: `ok`, else `message` for the SET UP
@@ -87,6 +95,13 @@ func report_found() -> void:
 ## Hit the King ([signal king_hit_answered]) — once per visit, judged by
 ## the server on the newest pose.
 func hit_king() -> void:
+	pass
+
+
+## Post a game moment (wave 26, C6, `POST /api/spatial/moment`): `kind`
+## "escape" (the void), "heart" or "pickup" with the prop's id — judged by
+## the server on the newest pose, which goes first ([signal moment_answered]).
+func moment(_kind: String, _prop := "") -> void:
 	pass
 
 

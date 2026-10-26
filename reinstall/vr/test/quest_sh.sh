@@ -36,6 +36,12 @@ json="$(station_json vr-2 'Headset "2"' 'p4ss' https://app.mapsandducks.com)"
 parsed="$(printf '%s' "$json" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["server"], d["code"], d["station"], d["name"], d["smooth_turn"])' 2>&1)"
 check "station_json is valid JSON with every key" eq "$parsed" 'https://app.mapsandducks.com p4ss vr-2 Headset "2" False'
 
+# The build stamp (wave 26, R8): valid JSON, the short sha, staged only.
+stamp="$(build_json abc1234 2026-10-26T12:00Z | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["build"], d["at"])' 2>&1)"
+check "build_json is valid JSON with the sha and time" eq "$stamp" "abc1234 2026-10-26T12:00Z"
+check "build_sha names a commit" bash -c "[[ -n \"\$(QUEST_SH_SOURCE_ONLY=1 . '$q'; build_sha)\" ]]"
+check "the project carries no build stamp (quest.sh writes it to the stage only)" test ! -e "$project/config/build.json"
+
 # A fake JDK answering `java -version` like Temurin 17 and like Java 8.
 fake="$(mktemp -d)"
 mkdir -p "$fake/j17/bin" "$fake/j8/bin"
@@ -53,6 +59,7 @@ check "build --station needs a passcode" bash -c "! LOOM_MOD_CODE= '$q' --dry-ru
 plan="$(LOOM_MOD_CODE=1234 GODOT=/bin/echo "$q" --dry-run build --debug --station vr-1 2>&1)"
 check "dry-run build exports the Quest preset in debug" bash -c "printf '%s' \"\$1\" | grep -q -- '--export-debug Quest .*reinstall-vr-vr-1-debug.apk'" _ "$plan"
 check "dry-run build stages, never touching the project" bash -c "printf '%s' \"\$1\" | grep -q 'rsync -a --delete'" _ "$plan"
+check "dry-run build stamps the staged copy, not the project" bash -c "printf '%s' \"\$1\" | grep -q 'stamp build .* into .*/build/stage/config/build.json'" _ "$plan"
 check "dry-run build never prints the passcode" bash -c "! printf '%s' \"\$1\" | grep -q 1234" _ "$plan"
 check "a non-HTTPS server warns" bash -c "LOOM_MOD_CODE=1 GODOT=/bin/echo '$q' --dry-run build --debug --station vr-1 --server http://10.0.0.2:7000 2>&1 | grep -q 'not HTTPS'"
 
@@ -65,6 +72,11 @@ check "preset is arm64-v8a only" bash -c "grep -q '^architectures/arm64-v8a=true
 check "preset uses the Gradle build" grep -q '^gradle_build/use_gradle_build=true' "$preset"
 check "preset asks for the microphone (the voice link)" grep -q '^permissions/record_audio=true' "$preset"
 check "preset ships config/*.json" grep -q 'include_filter=.*config/\*.json' "$preset"
+# Wave 26 (C10, C6): the pronunciation table ships with the APK (config/,
+# never game/), and the device voice is on.
+check "config/pronounce.json is there, under the shipped filter" test -f "$project/config/pronounce.json"
+check "config/pronounce.json is valid JSON with words" bash -c "python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d[\"version\"] == 1 and d[\"words\"]' '$project/config/pronounce.json'"
+check "project.godot turns the device voice on (text_to_speech)" bash -c "awk '/^\\[audio\\]/{a=1;next} /^\\[/{a=0} a && /^general\\/text_to_speech=true/{f=1} END{exit !f}' '$project/project.godot'"
 
 rm -rf "$fake"
 echo "quest.sh: $checks checks, $fails failures"

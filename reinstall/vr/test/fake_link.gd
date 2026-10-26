@@ -36,6 +36,19 @@ func hit_king() -> void:
 	king_hits += 1
 
 
+## `[kind, prop]` per [method moment]; answer with [method answer_moment].
+var moments: Array = []
+
+
+func moment(kind: String, prop := "") -> void:
+	moments.append([kind, prop])
+
+
+## The server's word on a moment.
+func answer_moment(kind: String, result: String, data := {}) -> void:
+	moment_answered.emit(kind, result, data)
+
+
 ## The camera feeds' root ("" = none, the default: the game asks nothing).
 var cams_base := ""
 
