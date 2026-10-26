@@ -115,6 +115,52 @@ describe("LinePlayer", () => {
     expect(speaking).toHaveLength(0);
   });
 
+  it("captionOnStart (the TV): a spoken line's caption waits for him to start it", async () => {
+    const log: string[] = [];
+    const speaking: Array<{ r: () => void; started: () => void }> = [];
+    const player = new LinePlayer(
+      {
+        caption: (l) => log.push(`caption ${l === null ? "-" : l.seq}`),
+        speak: (l, started) =>
+          new Promise<void>((r) => {
+            log.push(`speak ${l.seq}`);
+            speaking.push({ r, started });
+          }),
+        cancel: () => {
+          log.push("cancel");
+          for (const s of speaking.splice(0)) s.r();
+        },
+        sleep: (ms) => new Promise<void>((r) => setTimeout(r, 0, log.push(`sleep ${ms}`))),
+        idle: () => log.push("idle"),
+      },
+      null,
+      { captionOnStart: true },
+    );
+    const tick = () => new Promise((r) => setTimeout(r, 0));
+    player.push([tv(1, "speak"), tv(2, "speak"), tv(3, "text")]);
+    await tick();
+    expect(log).toEqual(["speak 1"]); // handed to the voice, not captioned yet
+    speaking[0]!.started();
+    speaking[0]!.started(); // once
+    expect(log).toEqual(["speak 1", "caption 1"]);
+    speaking.shift()!.r();
+    await tick();
+    // Line 2 is in the queue's pause between lines: line 1 stays up.
+    expect(log.slice(2)).toEqual(["speak 2"]);
+    speaking[0]!.started();
+    expect(log.at(-1)).toBe("caption 2");
+    speaking.shift()!.r();
+    await tick();
+    expect(log.slice(4, 6)).toEqual(["caption 3", `sleep ${readingMs("Hi.")}`]); // a text line: at once
+    // A line cut before he starts it is never captioned.
+    player.push([tv(4, "speak")]);
+    await tick();
+    const late = speaking[0]!.started;
+    player.stop();
+    late();
+    expect(log).not.toContain("caption 4");
+  });
+
   it("readingMs stays between 1.8 s and 6 s", () => {
     expect(readingMs("Hi.")).toBe(1800);
     expect(readingMs("x".repeat(500))).toBe(6000);

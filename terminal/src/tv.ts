@@ -106,8 +106,10 @@ export function readingMs(text: string): number {
 export interface LinePlayerIo {
   /** Put this line up as the caption (null clears it). */
   caption(line: TvLine | null): void;
-  /** Say it; resolves when it has been said (or was cut). */
-  speak(line: TvLine): Promise<void>;
+  /** Say it; resolves when it has been said (or was cut). `started` is
+   *  called when he begins it (its first sentence, after the queue's pause
+   *  between lines): a `captionOnStart` player captions it then. */
+  speak(line: TvLine, started: () => void): Promise<void>;
   /** Stop whatever is being said now (the pending `speak` must resolve). */
   cancel(): void;
   sleep(ms: number): Promise<void>;
@@ -125,7 +127,12 @@ export interface LinePlayerSpeech {
 
 /** Plays lines one at a time, in order. Only `speak` lines are reported to
  *  `speech`: a muted, song or text-only line is never spoken, so it counts
- *  as finished at once (its reading pause holds nothing back). */
+ *  as finished at once (its reading pause holds nothing back).
+ *
+ *  `captionOnStart` (the TV, wave 26 V1): a spoken line is captioned when
+ *  he starts saying it, not when it is handed to the voice, so the
+ *  caption never runs ahead of him through the pause between lines (the
+ *  last line stays up meanwhile). */
 export class LinePlayer {
   private pending: TvLine[] = [];
   private running = false;
@@ -133,6 +140,7 @@ export class LinePlayer {
   constructor(
     private readonly io: LinePlayerIo,
     private readonly speech: LinePlayerSpeech | null = null,
+    private readonly opts: { captionOnStart?: boolean } = {},
   ) {}
 
   get busy(): boolean {
@@ -159,10 +167,17 @@ export class LinePlayer {
     const g = this.gen;
     while (this.pending.length > 0 && g === this.gen) {
       const line = this.pending.shift()!;
-      this.io.caption(line);
+      const onStart = line.mode === "speak" && this.opts.captionOnStart === true;
+      if (!onStart) this.io.caption(line);
       if (line.mode === "speak") {
+        let captioned = !onStart;
+        const started = () => {
+          if (captioned || g !== this.gen) return;
+          captioned = true;
+          this.io.caption(line);
+        };
         try {
-          await this.io.speak(line);
+          await this.io.speak(line, started);
         } finally {
           if (g === this.gen) this.speech?.finished(line.seq);
         }

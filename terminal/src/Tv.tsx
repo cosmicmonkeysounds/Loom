@@ -134,6 +134,8 @@ export function Tv({
 
   // --- the voice: one speech queue, fed one line at a time by the player ---
   const waiters = useRef(new Map<number, () => void>());
+  // Each queued line's "he started it" (its caption goes up then, wave 26 V1).
+  const starts = useRef(new Map<number, () => void>());
   // Wave 26 (V1): what the voice does goes to the cutscenes (the speech bus,
   // on the server's clock) and to the poll (`sp=`).
   const stateRef = useRef(state);
@@ -149,6 +151,10 @@ export function Tv({
       level: (v) => face.current?.level(v),
       chunk: (id, i) => {
         const text = chunks.get(id)?.[i] ?? "";
+        if (i === 0) {
+          starts.current.get(id)?.();
+          starts.current.delete(id);
+        }
         feed.chunk(id, i);
         setMood(moodOfText(text));
         setSpoken({ seq: id, index: i });
@@ -157,6 +163,7 @@ export function Tv({
       done: (id) => {
         feed.done(id);
         chunks.delete(id);
+        starts.current.delete(id);
         waiters.current.get(id)?.();
         waiters.current.delete(id);
       },
@@ -178,11 +185,12 @@ export function Tv({
           setCaption(line);
           if (line !== null && line.mode !== "speak") setMood(moodOfText(line.text));
         },
-        speak: (line) =>
+        speak: (line, started) =>
           new Promise<void>((resolve) => {
             const parts = splitSentences(line.text);
             if (parts.length === 0) return resolve();
             queue.chunks.set(line.seq, parts);
+            starts.current.set(line.seq, started);
             waiters.current.set(line.seq, resolve);
             queue.q.say({ id: line.seq, chunks: parts });
           }),
@@ -191,6 +199,7 @@ export function Tv({
           queue.q.stop();
           for (const w of waiters.current.values()) w();
           waiters.current.clear();
+          starts.current.clear();
           setSpeaking(false);
         },
         sleep: (ms) => new Promise((r) => window.setTimeout(r, ms)),
@@ -198,7 +207,7 @@ export function Tv({
           window.clearTimeout(lingerTimer.current);
           lingerTimer.current = window.setTimeout(() => setCaption(null), CAPTION_LINGER_MS);
         },
-      }, speech),
+      }, speech, { captionOnStart: true }),
     [queue, speech, feed],
   );
   // While mounted this screen speaks the room's lines (`talk` / `said`).
