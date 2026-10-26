@@ -176,8 +176,8 @@ mentions them, and nobody should explain them to a guest.
 - **The reserve.** One program may hold **💰 Stimulus** (mint coin for
   everyone, a few times a night), **🎁 Grant** (mint coin into one
   program's account) and **🧊 Freeze** (freeze one program's coin for ten
-  minutes). The guest guide never mentions them: that program sees its
-  own buttons.
+  minutes). The guest guide describes the three buttons for whoever holds
+  them, but not who that is, how many there are or when they open.
 - A payment or request a director cancels reads *↩️ Director cancelled …*
   on both phones; the guest guide calls it the house cancelling.
 

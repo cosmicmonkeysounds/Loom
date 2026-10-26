@@ -2,7 +2,7 @@
 title: Your wallet
 section: Guest Guide
 order: 12
-keywords: wallet, coin, balance, send, request, pay, trade, offer, approve, approved, denied, declined, truthcoin, money, audit, flagged, 🚩, mycra, pending, held, refund, expired, cancelled, frozen, thaw
+keywords: wallet, coin, balance, send, request, pay, trade, offer, approve, approved, denied, declined, truthcoin, money, audit, flagged, 🚩, mycra, pending, held, refund, expired, cancelled, frozen, thaw, stimulus, grant, freeze, reserve, mint
 ---
 
 Some stories give you **money**. In *Trapped in the Internet* it is
@@ -49,6 +49,15 @@ At the bottom of the Wallet:
   shared, in one step — until then it is held in escrow, so nobody can
   spend the same coin twice. Sharing lore this way counts exactly as if
   you had handed it over ([Lore](codex.md)).
+
+One program may hold the **reserve**. If that's you, three more buttons
+are here, and each says how many are left:
+
+- **💰 Stimulus** — mint coin for everyone.
+- **🎁 Grant** — mint coin into one program's account (pick them, type
+  an amount). Nothing leaves your own balance.
+- **🧊 Freeze** — freeze one program's coin for a while. The picker shows
+  who is frozen already, and how long until they thaw.
 
 **Cancel** withdraws a request or an offer nobody has answered yet, or a
 transfer of yours still held for the auditor.

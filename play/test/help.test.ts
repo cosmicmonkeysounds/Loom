@@ -232,5 +232,8 @@ describe("wave 26 G2: the guest guide never explains the machinery", () => {
     expect(top("gerald")).toBe("reinstallation");
     expect(searchHelp(guest, "bathroom").map((h) => h.article.slug)).toContain("your-pass");
     expect(searchHelp(guest, "disconnect")[0]?.article.slug).toBe("terminals");
+    // The reserve's buttons are phone controls a featured program (a guest)
+    // may hold, so the guest guide explains them.
+    for (const q of ["stimulus", "grant", "freeze"]) expect(top(q), q).toBe("wallet");
   });
 });
