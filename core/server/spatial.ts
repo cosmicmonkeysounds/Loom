@@ -19,21 +19,45 @@
 //! memory. Each session (one reinstallation visit) may hit him once; a
 //! `king` frame goes out whenever his state changes (`syncKing`, which the
 //! runtime calls after every committed mutation).
+//!
+//! **Presence** (wave 26, C8): beside the raw `locate` room the stream
+//! draws, each session keeps a presence room (`presenceRoom`, with its
+//! doorway hysteresis). The terminals' link to the Internet judges by it:
+//! `voicePlayers()` for the voice relay, `spotHere()` for the screen
+//! state's `spot.here`, `camSpotsFor()` / `linked()` for the camera feeds.
+//!
+//! **Game moments** (wave 26, C6): `moment(token, req, commit)` judges an
+//! escape into the void, a visit to Trabolta's heart and a pickup on the
+//! session's last pose, with the `@loom/house` rules, and hands the story
+//! signal to the runtime to commit. The per-session escape cooldown, who
+//! heard the heart and who took each pickup are memory only.
 
 import { randomBytes, randomUUID } from "node:crypto";
 
 import {
   DUCK_MAX_RISE,
+  ESCAPE_M,
+  ESCAPE_SIGNAL,
+  ESCAPE_SLACK,
+  ESCAPE_COOLDOWN_MS,
   KING_HIT_SLACK,
+  PICKUP_SLACK_M,
   floorOf,
   guardWarnings,
+  heartReached,
   houseHash,
   kingProps,
   kingReach,
   kingStateOf,
+  linkedSpots,
   locate,
+  momentProp,
   pickDuckSpot,
+  pickupReach,
+  presenceRoom,
+  propSignal,
   standable,
+  voidDistance,
   withFallenKings,
   wrapYaw,
 } from "@loom/house";
@@ -56,6 +80,9 @@ import type {
   StationInfo,
   Vec3,
 } from "@loom/house";
+
+import type { MomentLine } from "./chat.ts";
+import type { VoiceRoutePlayer } from "./spatial-voice.ts";
 
 /** A station counts as online when it polled within this long. */
 export const STATION_ONLINE_MS = 5_000;
@@ -161,8 +188,16 @@ interface Session {
   /** Announced to the stream (`join`) — and so owed a `leave`. */
   joined: boolean;
   pose: PlayerPose;
+  /** Where the player really is (`locate`): the stream's `room` / `floor`. */
   room: string | null;
   floor: string;
+  /** (wave 26, C8) The room the player counts as being in for the
+   *  terminals' link (`presenceRoom`, with its doorway hysteresis): voice,
+   *  cameras and `spotHere` judge by it. Memory only, like the pose. */
+  presence: string | null;
+  /** (wave 26, C6) When this session's last escape was accepted (hub
+   *  clock; null = never): the per-session cooldown. Memory only. */
+  escapedAt: number | null;
   /** Moved since the last flush. */
   dirty: boolean;
   /** The last pose (or the begin, before any pose). */
@@ -244,6 +279,50 @@ export type HitOutcome =
   /** The last pose doesn't reach him (`kingReach` with `KING_HIT_SLACK`). */
   | { kind: "far"; reach: Exclude<KingReach, "ok"> }
   | { kind: "hit"; king: KingState };
+
+/** (wave 26, C6) A line one moment's commit said to its program (display
+ *  text, never pronounced), from `chat.ts` `momentLines`. */
+export type { MomentLine };
+
+/** (wave 26, C6) What a game moment is: the void, Trabolta's heart, a pickup. */
+export type MomentKind = "escape" | "heart" | "pickup";
+
+/** (wave 26, C6) A `POST /api/spatial/moment` body (the token rides beside it). */
+export type MomentRequest = { kind: "escape" } | { kind: "heart"; prop: string } | { kind: "pickup"; prop: string };
+
+/** (wave 26, C6) How a moment was judged. `ok.spawn` (escape: where the
+ *  player was re-seated), `ok.prop` (heart / pickup: the prop). */
+export type MomentOutcome =
+  | { kind: "unknown" }
+  | { kind: "over" }
+  | { kind: "parked" }
+  | { kind: "bad" }
+  | { kind: "noProp" }
+  | { kind: "notOut"; distance: number }
+  | { kind: "cooldown"; retryMs: number }
+  | { kind: "sealed" }
+  | { kind: "notThere" }
+  | { kind: "far"; distance: number }
+  | { kind: "already" }
+  | { kind: "ok"; spawn?: Spawn; prop?: Prop; lines: MomentLine[] };
+
+/** The longest prop id a moment may name. */
+const MOMENT_PROP_MAX = 80;
+
+/**
+ * (wave 26, C6) Parse a moment body: `kind` one of escape / heart / pickup;
+ * heart and pickup name their prop (`prop`, a non-empty string). Null when
+ * malformed (the route's 400 `bad moment`). Other fields (the `token`) are
+ * ignored.
+ */
+export function parseMomentRequest(body: Record<string, unknown>): MomentRequest | null {
+  const kind = body["kind"];
+  if (kind === "escape") return { kind };
+  if (kind !== "heart" && kind !== "pickup") return null;
+  const prop = typeof body["prop"] === "string" ? body["prop"].trim() : "";
+  if (prop === "" || prop.length > MOMENT_PROP_MAX) return null;
+  return { kind, prop };
+}
 
 /** Is this a game world name? */
 export function isWorld(v: unknown): v is SpatialWorld {
@@ -357,6 +436,13 @@ export class SpatialHub {
   private readonly kingSpent = new Set<string>();
   /** Whose hit is being committed: the `king` frame's `by`. */
   private hitBy: string | null = null;
+  /** (wave 26, C6) Guests who heard the in-game heart tonight (a commit
+   *  that said something). Memory only: a restart forgets it and the
+   *  story's own guard (`program.sim_heart`) keeps him quiet. */
+  private readonly heartHeard = new Set<string>();
+  /** (wave 26, C6) Pickup prop id → the guests who took it tonight. Memory
+   *  only; the story's own guard (`carries_virus`) keeps it once-only. */
+  private readonly picked = new Map<string, Set<string>>();
 
   constructor(o: SpatialHubOptions) {
     this.o = o;
@@ -440,6 +526,8 @@ export class SpatialHub {
       const at = locate(house, s.pose.p);
       s.room = at.room;
       s.floor = at.floor;
+      // A map swap forgets the doorway hysteresis (C8): rooms may have moved.
+      s.presence = presenceRoom(house, s.pose.p, null);
       s.houseVersion = version;
       if (s.joined) s.dirty = true;
     }
@@ -668,6 +756,8 @@ export class SpatialHub {
       pose: { p: [...spawn.pos], yaw: spawn.yaw, pitch: 0 },
       room: at.room,
       floor: at.floor,
+      presence: presenceRoom(map.house, spawn.pos, null),
+      escapedAt: null,
       dirty: false,
       activeAt: now,
       startedAt: now,
@@ -701,6 +791,10 @@ export class SpatialHub {
       houseVersion: s.houseVersion,
       avatar: this.avatarFor(s),
       kingHit: s.kingHit,
+      // (wave 26, C6) What this program already did tonight in the game:
+      // a re-scan never shows a taken disk again, nor replays the heart.
+      picked: this.pickedBy(s.guest),
+      heartHeard: this.heartHeard.has(s.guest),
     };
   }
 
@@ -774,6 +868,7 @@ export class SpatialHub {
         const at = locate(map.house, pose.p);
         s.room = at.room;
         s.floor = at.floor;
+        s.presence = presenceRoom(map.house, pose.p, s.presence);
       }
     }
     if (!s.claimed) {
@@ -810,6 +905,157 @@ export class SpatialHub {
   /** The duck a live session is looking for (its game reads it with the map). */
   duckFor(token: string | undefined): DuckSpot | null {
     return this.byTokenLive(token)?.duck ?? null;
+  }
+
+  // -- presence (wave 26, C8) -----------------------------------------------
+
+  /** The players in the simulation as the voice relay routes them: joined
+   *  sessions with `room` = their presence room (never the raw `locate`
+   *  room the stream draws), oldest first. */
+  voicePlayers(): VoiceRoutePlayer[] {
+    const out: VoiceRoutePlayer[] = [];
+    for (const s of this.sessions.values()) {
+      if (s.joined) out.push({ session: s.id, name: s.name, p: s.pose.p, floor: s.floor, room: s.presence });
+    }
+    return out;
+  }
+
+  /** The presence rooms of every player in the simulation (joined sessions). */
+  private presenceRooms(): Array<string | null> {
+    const out: Array<string | null> = [];
+    for (const s of this.sessions.values()) if (s.joined) out.push(s.presence);
+    return out;
+  }
+
+  /**
+   * How many players count as being in a map spot's room now (`spotHere`,
+   * the screen state's `spot.here`, C4): live joined sessions whose
+   * presence room is that terminal's `room`. 0 for a `view: "reinstall"`
+   * spot (the tent station is never linked, T3); null with no map or for a
+   * spot the map lacks.
+   */
+  spotHere(spot: string): number | null {
+    const house = this.map?.house;
+    if (house === undefined) return null;
+    const t = house.terminals.find((x) => x.id === spot);
+    if (t === undefined) return null;
+    if (t.view === "reinstall") return 0;
+    let n = 0;
+    for (const s of this.sessions.values()) if (s.joined && s.presence === t.room) n++;
+    return n;
+  }
+
+  /** The map spots linked to the Internet now (`linkedSpots` of every
+   *  player's presence room): a terminal there is watched (C7). Empty with
+   *  no map. */
+  linked(): Set<string> {
+    const house = this.map?.house;
+    return house === undefined ? new Set() : linkedSpots(house, this.presenceRooms());
+  }
+
+  /**
+   * The camera spots a game session may see (C7): the map terminals in its
+   * presence room, never a `view: "reinstall"` one (the tent, T3). Empty for
+   * a parked session (not in the simulation yet) or one in no room; null
+   * when the token names no live session.
+   */
+  camSpotsFor(token: string | undefined): Set<string> | null {
+    const s = this.byTokenLive(token);
+    if (s === null) return null;
+    const house = this.map?.house;
+    if (house === undefined || !s.joined || s.presence === null) return new Set();
+    return linkedSpots(house, [s.presence]);
+  }
+
+  // -- game moments (wave 26, C6) -------------------------------------------
+
+  /** The pickup prop ids a guest took tonight, sorted. */
+  private pickedBy(guest: string): string[] {
+    const out: string[] = [];
+    for (const [prop, who] of this.picked) if (who.has(guest)) out.push(prop);
+    return out.sort();
+  }
+
+  /**
+   * A game moment (C6), judged on the session's last pose (the game flushes
+   * one first). The session must be claimed (a pose). Then:
+   * - **escape**: `voidDistance` at least `ESCAPE_M − ESCAPE_SLACK` past the
+   *   walls, and `ESCAPE_COOLDOWN_MS` since this session's last escape. The
+   *   pose is re-seated at the map spawn (room, floor and presence follow;
+   *   the next flush jumps the ghost back), then `commit(ESCAPE_SIGNAL)`.
+   * - **heart**: the prop is a heart, the map's King is fallen (or there is
+   *   none), the guest hasn't heard it tonight, and `heartReached` holds.
+   *   `commit(propSignal, {prop})`; the guest joins `heartHeard` only when
+   *   the commit said something (a visit before he is awake may retry).
+   * - **pickup**: the prop is a pickup, this guest hasn't taken it, and
+   *   `pickupReach` with `PICKUP_SLACK_M` holds. `commit(propSignal, {item,
+   *   prop})`, then the guest is in `picked[prop]`.
+   * `commit` journals the signal and returns what it said to the program.
+   */
+  moment(
+    token: string | undefined,
+    req: MomentRequest,
+    commit: (s: SessionRef, signal: string, args: Record<string, string>) => MomentLine[],
+  ): MomentOutcome {
+    const s = this.byTokenLive(token);
+    if (s === null) return { kind: this.tokenState(token) };
+    const kind = (req as { kind?: unknown }).kind;
+    const propId = (req as { prop?: unknown }).prop;
+    if (kind !== "escape" && ((kind !== "heart" && kind !== "pickup") || typeof propId !== "string" || propId === "")) return { kind: "bad" };
+    if (!s.claimed) return { kind: "parked" };
+    const map = this.map;
+    // No map (unreachable while `begin` needs one): an escape is never out,
+    // and `noProp` stays the heart's and the pickup's answer alone.
+    if (map === null) return kind === "escape" ? { kind: "notOut", distance: 0 } : { kind: "noProp" };
+    const house = map.house;
+    const now = this.now();
+    const ref: SessionRef = { id: s.id, guest: s.guest, device: s.device, captured: s.captured };
+    if (kind === "escape") {
+      const distance = voidDistance(house, s.pose.p);
+      if (distance === null || distance < ESCAPE_M - ESCAPE_SLACK) return { kind: "notOut", distance: distance ?? 0 };
+      if (s.escapedAt !== null && now - s.escapedAt >= 0 && now - s.escapedAt < ESCAPE_COOLDOWN_MS) {
+        return { kind: "cooldown", retryMs: ESCAPE_COOLDOWN_MS - (now - s.escapedAt) };
+      }
+      s.escapedAt = now;
+      s.activeAt = now;
+      // Back to the spawn: the terminals' ghost jumps back on the next
+      // flush, and the voice and cams follow the presence room at once.
+      const spawn = s.spawn;
+      s.pose = { p: [...spawn.pos], yaw: spawn.yaw, pitch: 0 };
+      const at = locate(house, spawn.pos);
+      s.room = at.room;
+      s.floor = at.floor;
+      s.presence = presenceRoom(house, spawn.pos, null);
+      if (s.joined) s.dirty = true;
+      return { kind: "ok", spawn, lines: commit(ref, ESCAPE_SIGNAL, {}) };
+    }
+    const id = propId as string;
+    if (kind === "heart") {
+      const prop = momentProp(house, id, "heart");
+      if (prop === null) return { kind: "noProp" };
+      const king = this.king();
+      if (king !== null && !king.fallen) return { kind: "sealed" };
+      if (this.heartHeard.has(s.guest)) return { kind: "already" };
+      if (!heartReached(house, s.pose.p, prop)) return { kind: "notThere" };
+      s.activeAt = now;
+      const lines = commit(ref, propSignal(prop), { prop: prop.id });
+      if (lines.length > 0) this.heartHeard.add(s.guest);
+      return { kind: "ok", prop, lines };
+    }
+    const prop = momentProp(house, id, "pickup");
+    if (prop === null) return { kind: "noProp" };
+    if (this.picked.get(prop.id)?.has(s.guest) === true) return { kind: "already" };
+    if (!pickupReach(house, s.pose.p, prop, PICKUP_SLACK_M)) {
+      return { kind: "far", distance: Math.hypot(prop.pos[0] - s.pose.p[0], prop.pos[2] - s.pose.p[2]) };
+    }
+    s.activeAt = now;
+    let who = this.picked.get(prop.id);
+    if (who === undefined) this.picked.set(prop.id, (who = new Set()));
+    // Taken before the commit: a story hook that throws never lets the
+    // same disk be taken twice.
+    who.add(s.guest);
+    const lines = commit(ref, propSignal(prop), { item: prop.item ?? "", prop: prop.id });
+    return { kind: "ok", prop, lines };
   }
 
   /**
@@ -920,6 +1166,8 @@ export class SpatialHub {
     this.runLog.length = 0;
     this.kingMemory.clear();
     this.kingSpent.clear();
+    this.heartHeard.clear();
+    this.picked.clear();
     this.broadcast("reset", { kind });
     this.syncKing(null);
   }

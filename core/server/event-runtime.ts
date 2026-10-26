@@ -17,7 +17,7 @@ import { readFileSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightStateProblems, validateHouse, voiceOn, type HouseMap, type KingState, type LightState, type MapVariantsResponse } from "@loom/house";
+import { ESCAPE_COOLDOWN_MS, VOICE_MAX_BYTES, kingSignal, lightStateDoes, lightStateProblems, validateHouse, voiceOn, type HouseMap, type KingState, type LightState, type MapVariantsResponse } from "@loom/house";
 
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
@@ -26,7 +26,7 @@ import { allSnapshotFlags, awardOnly, boothChannels, callsCue, playerHiddenRooms
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
-import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, menuChannelsFor, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
+import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, menuChannelsFor, momentLines, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
 import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, readRawBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
@@ -86,7 +86,20 @@ import { ScreenWatch, speechWatchOf, handleScreenGet, handleScreenTerminalsGet, 
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
 import { VOICE_LAG_BYTES, VOICE_PING_MS, VoiceRelay, parseVoiceUpload, type VoiceListener } from "./spatial-voice.ts";
-import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type KingRef, type SessionRef } from "./spatial.ts";
+import {
+  SpatialHub,
+  houseVersion,
+  houseWarnings,
+  isWorld,
+  parseDuckRun,
+  parseMomentRequest,
+  parsePose,
+  sortCandidates,
+  type DuckRun,
+  type KingRef,
+  type MomentLine,
+  type SessionRef,
+} from "./spatial.ts";
 import {
   DEFAULT_MAP_FILE,
   activeVariant,
@@ -986,7 +999,9 @@ export class EventRuntime {
       now: () => this.clock(),
       // The hub's current map (never a fresh `spatialHouse()` read: that
       // stats the show file, and this runs every 100 ms while anyone listens).
-      world: () => ({ house: this.spatial.house, players: this.spatial.players(), live: (s) => this.spatial.hasSession(s) }),
+      // The players carry their presence room (wave 26, C8): the voice
+      // link is same-room by the doorway-hysteresis room, not `locate`'s.
+      world: () => ({ house: this.spatial.house, players: this.spatial.voicePlayers(), live: (s) => this.spatial.hasSession(s) }),
     });
     this.checkin = new GuestCheckin({
       sim: () => this.sim,
@@ -3530,7 +3545,9 @@ export class EventRuntime {
       return true;
     }
     const out = this.cams.put(up.spot, up.jpeg, up.w, up.h);
-    sendJson(res, 200, { ok: true, at: out.at, ...(out.dropped ? { dropped: true } : {}) });
+    // `watched` (wave 26, C7): a player is in this spot's room now, so the
+    // game shows the feed; the terminal slows down while nobody is.
+    sendJson(res, 200, { ok: true, at: out.at, ...(out.dropped ? { dropped: true } : {}), watched: this.spatial.linked().has(up.spot) });
     return true;
   }
 
@@ -3661,11 +3678,15 @@ export class EventRuntime {
         return true;
       }
       this.camSpots();
+      // A game session sees only the feeds of its own presence room, never
+      // the tent's (wave 26, C7); a moderator sees every feed.
+      const seen = moderator || this.sessions.canModerate(token) ? null : this.spatial.camSpotsFor(token);
       if (path === "/api/spatial/cams") {
-        sendJson(res, 200, { cams: this.cams.list() });
+        sendJson(res, 200, { cams: seen === null ? this.cams.list() : this.cams.list().filter((c) => seen.has(c.spot)) });
         return true;
       }
-      const frame = this.cams.get((url.searchParams.get("spot") ?? "").trim());
+      const spot = (url.searchParams.get("spot") ?? "").trim();
+      const frame = seen === null || seen.has(spot) ? this.cams.get(spot) : null;
       if (frame === null) {
         sendJson(res, 404, { error: "no feed" });
         return true;
@@ -3862,6 +3883,9 @@ export class EventRuntime {
         }
         return true;
       }
+      case "/api/spatial/moment":
+        this.handleMoment(res, token, body, refuse);
+        return true;
       case "/api/spatial/end": {
         const out = this.spatial.endByToken(token);
         if (out !== "ok") refuse(out);
@@ -3870,6 +3894,93 @@ export class EventRuntime {
       }
       default:
         return false;
+    }
+  }
+
+  /**
+   * `POST /api/spatial/moment {kind, prop?}` (wave 26, C6): an escape into
+   * the void, a visit to Trabolta's heart or a pickup, judged by the hub on
+   * the session's last pose. A dead token hears 401 / 410 first, then a bad
+   * body 400, then the doors (409 while closed: nothing commits). The
+   * answer carries the lines the story said to this program in that one
+   * commit (`momentLines`), game-only beats included: never a stream frame.
+   */
+  private handleMoment(res: ServerResponse, token: string | undefined, body: Record<string, unknown>, refuse: (state: "unknown" | "over") => void): void {
+    if (!this.spatial.hasToken(token)) {
+      refuse(this.spatial.tokenState(token));
+      return;
+    }
+    const req = parseMomentRequest(body);
+    if (req === null) {
+      sendJson(res, 400, { error: "bad moment" });
+      return;
+    }
+    if (!this.open || this.sim === null) {
+      sendJson(res, 409, { error: "doors are closed" });
+      return;
+    }
+    const out = this.spatial.moment(token, req, (s, signal, args) => this.commitMoment(s, signal, args));
+    const metres = (n: number): number | null => (Number.isFinite(n) ? Math.round(n * 100) / 100 : null);
+    switch (out.kind) {
+      case "unknown":
+      case "over":
+        refuse(out.kind);
+        return;
+      case "bad":
+        sendJson(res, 400, { error: "bad moment" });
+        return;
+      case "parked":
+        sendJson(res, 409, { error: "this session has not started — send a pose first" });
+        return;
+      case "noProp":
+        sendJson(res, 404, { error: "no such prop" });
+        return;
+      case "notOut":
+        sendJson(res, 409, { error: "not out", distance: metres(out.distance) });
+        return;
+      case "cooldown":
+        sendJson(res, 409, { error: "cooldown", retryMs: Math.max(0, Math.ceil(out.retryMs)) });
+        return;
+      case "sealed":
+        sendJson(res, 409, { error: "sealed" });
+        return;
+      case "notThere":
+        sendJson(res, 409, { error: "not there" });
+        return;
+      case "far":
+        sendJson(res, 409, { error: "far", distance: metres(out.distance) });
+        return;
+      case "already":
+        sendJson(res, 409, { error: "already" });
+        return;
+      case "ok":
+        if (req.kind === "escape") sendJson(res, 200, { ok: true, kind: "escape", lines: out.lines, spawn: out.spawn, cooldownMs: ESCAPE_COOLDOWN_MS });
+        else if (req.kind === "heart") sendJson(res, 200, { ok: true, kind: "heart", lines: out.lines });
+        else sendJson(res, 200, { ok: true, kind: "pickup", lines: out.lines, item: out.prop?.item ?? "", prop: out.prop?.id ?? req.prop });
+        return;
+    }
+  }
+
+  /** A game moment landed: the story's signal for the program, journaled
+   *  `by` the game's device, fanned out as usual. Returns what that one
+   *  commit said to the program (`momentLines`, in order). A story that
+   *  throws on the signal says nothing (logged): the line is already in
+   *  the journal (`commit` appends first), so the route still answers its
+   *  200 and the hub's cooldown / re-seat match what was recorded. */
+  private commitMoment(s: SessionRef, signal: string, args: Record<string, string>): MomentLine[] {
+    const sim = this.sim;
+    if (sim === null || !sim.persons.has(s.guest) || signal === "") return [];
+    const actingBy = this.actingBy;
+    this.actingBy = s.device;
+    try {
+      const events = this.commit("signal", signal, s.guest, args);
+      this.fanout(events);
+      return momentLines(events, s.guest);
+    } catch (err) {
+      process.stderr.write(`  ⚠️  event ${this.eventId}: the story failed on the game moment "${signal}" (${err instanceof Error ? err.message : String(err)})\n`);
+      return [];
+    } finally {
+      this.actingBy = actingBy;
     }
   }
 
@@ -5070,6 +5181,9 @@ export class EventRuntime {
           },
           // Q8: is this map spot on `audio.json`'s announce list?
           spotAnnounce: (spot) => this.audio.current().audio.announce?.terminals?.includes(spot) === true,
+          // Wave 26 (C4, R5): players whose presence room is this spot's
+          // room — the terminal's link to the Internet (null: no map / no such spot).
+          spotHere: (spot) => this.spatial.spotHere(spot),
         },
       );
     }
