@@ -106,6 +106,9 @@ var platform := OS.get_name()
 ## and `permission_request.call()` in place of asking for it.
 var permission_check: Callable
 var permission_request: Callable
+## Tests: `input_activate.call() -> Error` in place of
+## [method AudioServer.set_input_device_active] (true).
+var input_activate: Callable
 ## The last mic lines printed (newest last, at most [constant MIC_LOG_KEEP]).
 var mic_log: Array[String] = []
 const MIC_LOG_KEEP := 20
@@ -137,6 +140,9 @@ var _asked_early := false
 var _refused_grant := false
 ## A grant request is out (the system dialog is up).
 var _asking_grant := false
+## The OS refused the input itself (ERR_UNAUTHORIZED: a desktop whose
+## privacy settings deny the microphone); cleared once it opens.
+var _input_refused := false
 ## TEST MIC: the mic open with no session ([method start_test]).
 var _testing := false
 ## TEST MIC's level (dBFS of the last block; decays) and a peak hold.
@@ -317,6 +323,9 @@ func lobby_text(voice_on: bool, mic_on: bool) -> String:
 				return "MIC TEST · say something…"  # DRAFT w26 (R8, UI copy)
 			"nomic":
 				return "MIC TEST · only silence — no mic"  # DRAFT w26 (R8, UI copy)
+	if _input_refused and permission_state() == "n/a":
+		# A desktop's own privacy settings refused the input (no grant to ask).
+		return "MIC · not allowed on this computer"  # DRAFT w26 (R8, UI copy)
 	match permission_state():
 		"granted":
 			return "MIC · allowed"  # DRAFT w26 (R8, UI copy)
@@ -676,7 +685,8 @@ func _start_mic() -> void:
 		_set_mic("asking")
 		_request_grant()
 		return
-	var err := AudioServer.set_input_device_active(true)
+	var err: Error = input_activate.call() if input_activate.is_valid() else AudioServer.set_input_device_active(true)
+	_input_refused = err == ERR_UNAUTHORIZED
 	if err == ERR_UNAUTHORIZED:
 		_set_mic("denied")  # refused: the fallback reads the same input
 		return

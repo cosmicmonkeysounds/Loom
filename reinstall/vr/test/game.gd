@@ -3428,6 +3428,16 @@ func _test_voice_mic_states() -> void:
 	_check(v.lobby_text(false, true) == "VOICE · off on this headset" and v.lobby_text(true, false) == "MIC · off on this headset (listen only)", "mic: the lobby says when the config turned voice or the mic off")
 	v.platform = "macOS"
 	_check(v.permission_state() == "n/a" and v.lobby_text(true, true) == "MIC · this computer's microphone" and not v.ask_again(), "mic: a desktop has no grant to ask for")
+	# A desktop whose privacy settings refuse the input: the box says so,
+	# during TEST MIC and after it.
+	var activate := [ERR_UNAUTHORIZED]
+	v.input_activate = func() -> Error: return activate[0]
+	v.start_test()
+	_check(v.mic_state == "denied" and v.lobby_text(true, true) == "MIC · not allowed on this computer", "mic: a refused desktop input reads as refused on TEST MIC (%s)" % v.lobby_text(true, true))
+	v.stop_test()
+	_check(v.lobby_text(true, true) == "MIC · not allowed on this computer", "mic: … and after the test (%s)" % v.lobby_text(true, true))
+	v.input_activate = Callable()
+	v.set("_input_refused", false)
 	v.platform = "Android"
 
 	# TEST MIC: open with no session, a level, nothing sent.
