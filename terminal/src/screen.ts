@@ -67,6 +67,7 @@
 //! attract, and an unreachable server keeps the last answer it gave — a
 //! dropped poll never flips a hidden character onto the wall.
 
+import { linkedNow } from "./world/presence.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { announceOf, announceReport, type Announcement } from "./announce.ts";
 import { baseOf, type TerminalConfig } from "./config.ts";
@@ -767,17 +768,24 @@ export function identifyOn(state: Pick<ScreenState, "identify" | "identifyLeft" 
   return now < state.receivedAt + (state.identifyLeft ?? IDENTIFY_MS);
 }
 
-/** Attract or not: no answer yet is attract (fail closed). A room terminal
- *  (`room` true) also stays on attract when the answer has no room block —
- *  a server too old to say whether its room is open. */
 /** The character is asleep but a program is reinstalling: a house terminal
  *  whose screen can show the simulation watches it full screen instead of
  *  the screensaver (from the first capture, whatever the character does). A
- *  room terminal, the TV, the board, the casino and the face never do. */
-export function watchWhileAsleep(state: ScreenState | null, view: string, room: boolean): boolean {
-  if (state === null || room || state.reinstalling <= 0) return false;
-  return view === "auto" || view === "world" || view === "mirror" || view === "shadow";
+ *  room terminal, the TV, the board, the casino and the face never do.
+ *  Wave 26 (R5): a placed `auto` / `world` wall watches only while a player
+ *  is in its room in the game (`spot.here > 0`; the house-wide
+ *  `reinstalling` only when the server sends no `here`), never with no
+ *  spot; the `mirror` / `shadow` spectator screens stay house-wide.
+ *  `spot` = this terminal's map spot id (`config.spot`). */
+export function watchWhileAsleep(state: ScreenState | null, view: string, room: boolean, spot: string): boolean {
+  if (state === null || room) return false;
+  if (view !== "auto" && view !== "world" && view !== "mirror" && view !== "shadow") return false;
+  return linkedNow({ view, spot, here: state.spot, anyone: state.reinstalling > 0 });
 }
+
+/** Attract or not: no answer yet is attract (fail closed). A room terminal
+ *  (`room` true) also stays on attract when the answer has no room block —
+ *  a server too old to say whether its room is open. */
 
 export function attractOf(state: ScreenState | null, room = false): boolean {
   if (state === null) return true;

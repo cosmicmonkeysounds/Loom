@@ -90,7 +90,8 @@ import { useAnnouncements } from "./announce.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
 import { fetchHouse, useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
-import { fullScreenSim, hasWebGL2, paneSimulation } from "./webgl.ts";
+import { fullScreenSim, hasWebGL2 } from "./webgl.ts";
+import { linkedNow, linkedPane, usePresenceLatch } from "./world/presence.ts";
 import { screenWake } from "./kiosk.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundMuted, setSoundView, sfx } from "./sound/bus.ts";
@@ -171,7 +172,9 @@ export function App() {
   // cursor follows the head here — the lines that come with the wake (the
   // door cutscene) are then spoken, not resynced away (`cursorWhileAsleep`).
   const asleep = attractOf(screenState.state, room !== null);
-  const watching = config !== null && asleep && watchWhileAsleep(screenState.state, config.view, room !== null);
+  // Wave 26 (R5): a wall watches only while a player is in its room in the
+  // game (latched 3 s, so a doorway crossing never flips the whole screen).
+  const watching = usePresenceLatch(config !== null && asleep && watchWhileAsleep(screenState.state, config.view, room !== null, config.spot));
   useEffect(() => {
     const voice = screenState.state?.voice;
     if (room === null || !asleep || voice === null || voice === undefined) return;
@@ -882,11 +885,15 @@ function Terminal({
   const world = useSpatialStream(config, view !== "face");
   const inSimulation = useWorld(world, (s) => s.world.players.size > 0);
   useGone(world, onGone);
+  // Wave 26 (R5): the pane shows the Internet only while a player is in this
+  // spot's room in the game (the server's `spot.here`; the house-wide rule
+  // only when it sends none), never with no spot; latched 3 s.
+  const linked = usePresenceLatch(linkedNow({ view, spot: config.spot, here: state?.spot, anyone: inSimulation }));
   // `auto` shows the shadow (the camera, the players as ghosts in it) instead
   // of the world while the camera is live and this terminal is placed; a
   // tablet with no WebGL2 draws the raycaster instead of either.
   const cameraLive = useCameraLive();
-  const pane = screen.kind === "attract" ? paneSimulation(view, hasWebGL2(), inSimulation, cameraLive && config.spot.trim() !== "") : "none";
+  const pane = screen.kind === "attract" ? linkedPane(view, hasWebGL2(), linked, cameraLive && config.spot.trim() !== "") : "none";
   const showWorld = pane !== "none";
 
   // --- the voice ---
