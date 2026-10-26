@@ -11,13 +11,18 @@ function readable(a: HelpArticle): string {
 
 /** The in-fiction names that contain a banned word, stripped before the
  *  check (wave 26 G2): the Server Room and Server Door terminals, and the
- *  guests' own clubs, which the app itself calls crews (*＋ Found a crew*,
- *  *Leave the crew*, *Name your crew*, the ◇ crew room). */
+ *  app's own labels for the guests' clubs, which it calls crews (*＋ Found a
+ *  crew*, *Leave the crew*, *Name your crew*, the ◇ crew badge, the crew
+ *  room, *Sides & crews*). Exact labels only: guest prose about crews uses
+ *  the plural, so "a crew member" or "in the crew" is still caught. */
 const ALLOWED = [
   /server[ -]room/giu,
   /server door/giu,
   /sides (?:&|and) crews/giu,
-  /\b(?:found|founded|name|leave|join|joined|in|invite[sd]?|your|a|one|own|that) (?:the |a |your |own )?crew\b/giu,
+  /\bfound a crew\b/giu,
+  /\bleave the crew\b/giu,
+  /\bname your crew\b/giu,
+  /◇ your crew\b/giu,
   /\bcrew rooms?\b/giu,
   /\bcrew's room\b/giu,
 ];
@@ -52,7 +57,7 @@ const MACHINERY: Array<[string, RegExp]> = [
   ["mod code", /\bmod codes?\b/iu],
   ["a provisioning link", /[?&](?:code|spot|view|announce)=/iu],
   ["Loom", /\bloom\b/iu],
-  ["stagehand", /\bstagehand\b/iu],
+  ["stagehand", /\bstagehands?\b/iu],
   ["the crew by name", /\b(?:john|steph|jesse)\b/iu],
 ];
 
@@ -152,6 +157,11 @@ describe("wave 26 G2: the guest guide never explains the machinery", () => {
     expect(stripAllowed("the Server Room terminal, the server-room door and the Server Door")).not.toMatch(/server/iu);
     expect(stripAllowed("＋ Found a crew, Leave the crew, your crew's room, ⊞ Start → Sides & crews")).not.toMatch(/\bcrew\b/iu);
     expect(stripAllowed("the crew checking which tablet is which")).toMatch(/\bcrew\b/iu);
+    for (const leak of ["ask a crew member", "someone in the crew will help", "your crew of hosts", "that crew", "one crew at a time"]) {
+      expect(stripAllowed(leak), leak).toMatch(/\bcrew\b/iu);
+    }
+    expect(stripAllowed("◇ your crew, Name your crew")).not.toMatch(/\bcrew\b/iu);
+    expect(MACHINERY.find(([n]) => n === "stagehand")![1].test("a crew of stagehands runs the night")).toBe(true);
     expect(stripAllowed("after the house's server restarts")).toMatch(/\bserver\b/iu);
     // The guest guide still names the two in-fiction terminals.
     const guest = articlesFor("guest").map(readable).join("\n");

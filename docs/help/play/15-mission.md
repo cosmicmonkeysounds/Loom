@@ -66,8 +66,8 @@ The window in the middle is one card, the story's NOW:
 Under the card, **YOUR MOVE** lists what is waiting on you, newest first,
 one row each (at most four, then *+ n more in Chats ›*): a card someone
 dealt you (*📊 Poll from Clippy · in Clippy ›*), a question the story is
-asking you (its options right there), an invitation to join a side or a
-crew, someone asking you for coin, a reply in a private chat.
+asking you (its options right there), an invitation to join a side or
+one of the crews, someone asking you for coin, a reply in a private chat.
 
 ## The desktop tiles
 

@@ -30,7 +30,7 @@ dramatic.
 
 Want someone on your side? **Scan their pass** with **📷 Scan**. Instead of a
 note, a **Recruit** sheet opens: **🚪 Recruit Ada Lovelace to Unlimited
-Power** (and, if you have a crew they're not in, **◇ Invite Ada Lovelace to
+Power** (and, if you're in one of the crews and they aren't, **◇ Invite Ada Lovelace to
 …**). Their phone gets a full-screen **🚪 AN INVITATION**: *Excel wants you
 in Unlimited Power*, with **Join** and **Not now**. *Not now* is final for
 that invitation. An invitation you haven't answered also waits in Mission's
@@ -40,12 +40,12 @@ first*. The story may count your recruits (a leader's quest does).
 
 ## Crews
 
-In a story without founded factions (below), a **crew** is your own club: any guest may found one (**＋ Found a crew** on
+In a story without founded factions (below), **crews** are clubs of your own: any guest may found one (**＋ Found a crew** on
 the Sides screen, a name of 2 to 24 characters; the house turns down a
 name that's taken or rude). It has its own room in Chats, a **◇** badge on
 every member's Me sheet, and you invite people by scanning their pass, the
 same way. *Crews are just friends. They never count toward a side*, and the
-story's characters never hear of them. You can be in one crew at a time;
+story's characters never hear of them. You can be in only one of them at a time;
 **Leave the crew** any time. The house can rename or close one.
 
 ## Founding your own faction

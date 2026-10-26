@@ -23,7 +23,7 @@ for **Me**: your picture and name, where you are, your 🪙 balance, your
 badges yet.* before any), **🎟 Show my pass**, **🪪 Link my badge** (or
 *Badge linked*), **🖼 Change my picture**,
 **🚪 Sides & crews**, and the **settings**: *Keep my screen on* and *Get
-alerts on this phone*. Joining a side or a crew adds a badge; nothing ever
+alerts on this phone*. Joining a side or one of the crews adds a badge; nothing ever
 replaces the sheet.
 
 ## The QR pass
