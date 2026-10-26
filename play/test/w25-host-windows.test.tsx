@@ -192,4 +192,16 @@ describe("the host's taskbar on a 390 px phone", () => {
     // …and the tray clips rather than push the page 8 px sideways.
     expect(css).toMatch(/\.booth-frame \.taskbar \.taskbar-btn\.stacked ~ \.taskbar-tray \{ flex: 0 1 auto; min-width: 0; overflow: hidden; \}/u);
   });
+  it("wave 26 (P2): a windowed booth's bar is the guest's — 56 px, equal windows 48–120 px, Scan a normal primary, two tray items under 430 px", () => {
+    expect(css).toMatch(/\.booth-frame\.windowed \{ --taskbar-h: 56px; \}/u);
+    expect(css).toMatch(/\.booth-frame\.windowed \.taskbar \.taskbar-btn\.stacked:not\(\.primary\),\s*\.booth-frame\.windowed \.taskbar \.taskbar-btn\.primary\.stacked \{ flex: 1 1 0; min-width: 48px; max-width: 120px; gap: 1px; \}/u);
+    expect(css).toMatch(/@media \(max-width: 599px\) \{ \.booth-frame\.windowed \.taskbar \.taskbar-btn\.primary\.stacked \{ min-width: 48px; \} \}/u);
+    expect(css).toMatch(/\.booth-frame\.windowed \.taskbar \.taskbar-tray > \* \{ flex: 0 0 auto; \}/u);
+    expect(css).toMatch(/@media \(max-width: 429px\) \{ \.booth-frame\.windowed \.taskbar \.taskbar-tray > :nth-child\(n\+3\) \{ display: none; \} \}/u);
+    // The windowed rules beat the wave-25 ones: they come later and weigh more.
+    expect(css.indexOf(".booth-frame.windowed .taskbar .taskbar-btn.primary.stacked")).toBeGreaterThan(css.indexOf(".booth-frame .taskbar .taskbar-btn.primary { flex: 2 0 auto; }"));
+    // The same numbers as the guest's frame.
+    expect(css).toMatch(/\.guest-frame \{ --title-h: 52px; --taskbar-h: 56px; \}/u);
+    expect(css).toMatch(/\.taskbar-btn\.stacked \{[^}]*flex: 1 1 0;[^}]*max-width: 120px;/u);
+  });
 });

@@ -11,8 +11,12 @@
 //! countdown and reads ⏸ (`PrimeView.paused`, set while the story clock is stopped).
 //! Wave 21 (P1): a player's tray has no act chip; its first `stat:` line
 //! sits there as a chip instead (⭐ 120).
+//! Wave 26 (P2): a windowed booth (a player's or a host's window buttons on
+//! the bar) lays the tray out in priority order (`boothTrayOrder`: 🔔 → 🚨
+//! → held receipt → countdown → ⭐ / act → clock), so the guest-style cap
+//! (two items under 430 px, `css/booth.css`) drops the least important.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { storyNow } from "../director.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
 import { ShowClockTray } from "../chrome/show-clock-tray.tsx";
@@ -31,6 +35,17 @@ export function ledDigits(n: number): string {
   return String(Math.min(999, Math.max(0, Math.floor(n)))).padStart(3, "0");
 }
 
+/** A tray item's id, in the order `boothTrayOrder` gives. */
+export type TrayId = "waiting" | "loose" | "held" | "countdown" | "stat" | "act" | "clock";
+
+/** Wave 26 (P2): the windowed booth's tray, most important first; the show
+ *  clock always last (the Win95 place), and only what is present. */
+export function boothTrayOrder(o: { waiting: boolean; loose: boolean; held: boolean; soon: boolean; stat: boolean; act: boolean; clock: boolean }): TrayId[] {
+  const order: TrayId[] = ["waiting", "loose", "held", "countdown", "stat", "act", "clock"];
+  const has: Record<TrayId, boolean> = { waiting: o.waiting, loose: o.loose, held: o.held, countdown: o.soon, stat: o.stat, act: o.act, clock: o.clock };
+  return order.filter((id) => has[id]);
+}
+
 export function BoothTray({
   view,
   onWallet,
@@ -38,6 +53,7 @@ export function BoothTray({
   waiting = 0,
   onBoard,
   onWaiting,
+  windowed = false,
 }: {
   view: PrimeView | null;
   onWallet: () => void;
@@ -47,6 +63,8 @@ export function BoothTray({
   waiting?: number;
   onBoard?: () => void;
   onWaiting?: () => void;
+  /** Wave 26 (P2): a windowed booth — priority order, the clock last. */
+  windowed?: boolean;
 }) {
   // The story clock between snapshots: the view's clock plus the wall time
   // since it arrived (a quiet stretch pushes no view).
@@ -71,35 +89,51 @@ export function BoothTray({
   const player = isPlayer(view);
   const act = player ? null : trayAct(view?.night?.act, view?.night?.step, typeof word === "string" ? word : null);
   const stat = player ? (statsOf(view)[0] ?? null) : null;
+  const clock = showClockOf(view);
+  const led =
+    loose !== null && loose > 0 ? (
+      <button key="loose" type="button" className="tray-item led" title={`Marked and loose: ${loose}`} aria-label={`Marked and loose: ${loose}`} onClick={onBoard}>
+        <span aria-hidden>🚨</span>
+        <span className="led-digits">{ledDigits(loose)}</span>
+      </button>
+    ) : null;
+  const bell = waiting > 0 ? <TrayItem key="waiting" text={`🔔 ${waiting}`} title={`${waiting} waiting for you`} onClick={onWaiting} tone="alarm" /> : null;
+  const receipt = held > 0 ? <TrayItem key="held" icon={<BoothIcon name="receipt" />} text={String(held)} title={`${held} held transfer${held === 1 ? "" : "s"} to approve — open the Wallet`} onClick={onWallet} tone="alarm" /> : null;
+  const actChip = (yields: boolean) =>
+    act !== null ? (
+      <span key="act" className={`tray-act${yields ? " yields" : ""}`}>
+        <TrayItem text={act.text} title={act.title} />
+      </span>
+    ) : null;
+  const statChip =
+    stat !== null ? (
+      <span key="stat" className="tray-stat">
+        <TrayItem text={`${stat.glyph} ${stat.value}`.trim()} title={`${stat.label}: ${stat.value}`} />
+      </span>
+    ) : null;
+  const countdown =
+    soon !== null ? (
+      <TrayItem
+        key="countdown"
+        icon={<Icon name={paused ? "pause" : "hourglass"} />}
+        text={trayClock(soon.left, paused, false)}
+        title={paused ? `${soon.label}: the clock is stopped (${Math.ceil(soon.left / 60)} min left)` : `${soon.label} ends in ${Math.ceil(soon.left / 60)} min`}
+        tone={soon.left < URGENT && !paused ? "alarm" : undefined}
+      />
+    ) : null;
+  if (windowed) {
+    const ids = boothTrayOrder({ waiting: bell !== null, loose: led !== null, held: receipt !== null, soon: countdown !== null, stat: statChip !== null, act: act !== null, clock: clock !== null && clock !== undefined });
+    const others = ids.some((id) => id !== "clock");
+    const item: Record<TrayId, ReactNode> = { waiting: bell, loose: led, held: receipt, countdown, stat: statChip, act: actChip(false), clock: <ShowClockTray key="clock" clock={clock} yields={others} /> };
+    return <>{ids.map((id) => item[id])}</>;
+  }
   return (
     <>
-      {loose !== null && loose > 0 && (
-        <button type="button" className="tray-item led" title={`Marked and loose: ${loose}`} aria-label={`Marked and loose: ${loose}`} onClick={onBoard}>
-          <span aria-hidden>🚨</span>
-          <span className="led-digits">{ledDigits(loose)}</span>
-        </button>
-      )}
-      {waiting > 0 && <TrayItem text={`🔔 ${waiting}`} title={`${waiting} waiting for you`} onClick={onWaiting} tone="alarm" />}
-      <ShowClockTray clock={showClockOf(view)} yields={soon !== null} />
-      {held > 0 ? (
-        <TrayItem icon={<BoothIcon name="receipt" />} text={String(held)} title={`${held} held transfer${held === 1 ? "" : "s"} to approve — open the Wallet`} onClick={onWallet} tone="alarm" />
-      ) : act !== null ? (
-        <span className={`tray-act${soon !== null ? " yields" : ""}`}>
-          <TrayItem text={act.text} title={act.title} />
-        </span>
-      ) : stat !== null ? (
-        <span className="tray-stat">
-          <TrayItem text={`${stat.glyph} ${stat.value}`.trim()} title={`${stat.label}: ${stat.value}`} />
-        </span>
-      ) : null}
-      {soon !== null && (
-        <TrayItem
-          icon={<Icon name={paused ? "pause" : "hourglass"} />}
-          text={trayClock(soon.left, paused, false)}
-          title={paused ? `${soon.label}: the clock is stopped (${Math.ceil(soon.left / 60)} min left)` : `${soon.label} ends in ${Math.ceil(soon.left / 60)} min`}
-          tone={soon.left < URGENT && !paused ? "alarm" : undefined}
-        />
-      )}
+      {led}
+      {bell}
+      <ShowClockTray clock={clock} yields={soon !== null} />
+      {receipt ?? actChip(soon !== null) ?? statChip}
+      {countdown}
     </>
   );
 }

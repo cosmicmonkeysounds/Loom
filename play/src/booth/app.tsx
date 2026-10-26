@@ -126,15 +126,23 @@ export function boothHome(list: Channel[]): string | null {
 /** The booth's frame: owns the keyboard rule (the taskbar and the NEXT bar
  *  step aside while a text field in the frame has focus). Its own
  *  component, so the listener attaches when the frame mounts (after sign-in). */
-function BoothFrame({ children, clocked = false, alarmed = false }: { children: (keyboard: boolean) => ReactNode; clocked?: boolean; alarmed?: boolean }) {
+function BoothFrame({ children, clocked = false, alarmed = false, windowed = false }: { children: (keyboard: boolean) => ReactNode; clocked?: boolean; alarmed?: boolean; windowed?: boolean }) {
   const frame = useRef<HTMLDivElement>(null);
   const keyboard = useKeyboardOpen(frame as RefObject<HTMLElement>); // React 19 types (the editor) widen the ref with null
   return (
     // `clocked`: the show clock or a countdown sits in the tray — a narrow phone's Guests drops its word for it.
-    <div className={`app-frame booth-frame${clocked ? " clocked" : ""}${alarmed ? " alarmed" : ""}`} ref={frame}>
+    // `windowed` (wave 26, P2): a player's or a host's windows on the bar — the guest's taskbar rules.
+    <div className={boothFrameClass({ clocked, alarmed, windowed })} ref={frame}>
       {children(keyboard)}
     </div>
   );
+}
+
+/** The booth frame's classes. Wave 26 (P2): `windowed` (a player's or a
+ *  host's window buttons on the bar) takes the guest's taskbar rules
+ *  (`css/booth.css` `.booth-frame.windowed`). */
+export function boothFrameClass(o: { clocked?: boolean; alarmed?: boolean; windowed?: boolean }): string {
+  return `app-frame booth-frame${o.clocked === true ? " clocked" : ""}${o.alarmed === true ? " alarmed" : ""}${o.windowed === true ? " windowed" : ""}`;
 }
 
 /** What sits over the booth: the scanner, the Guests list, one guest's card,
@@ -606,7 +614,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
         <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
           <BoothBadgesProvider guests={s.view?.guests}>
           <div className="root">
-            <BoothFrame clocked={showClockOf(s.view) !== null || soonest(s.view?.countdowns, s.view?.clock ?? null) !== null} alarmed={(wanted !== null && loose > 0) || rung.tray.length + rung.queued > 0}>
+            <BoothFrame clocked={showClockOf(s.view) !== null || soonest(s.view?.countdowns, s.view?.clock ?? null) !== null} alarmed={(wanted !== null && loose > 0) || rung.tray.length + rung.queued > 0} windowed={player || hostWins}>
               {(keyboard) => (
                 <HostConsole session={s} wide={wide} openCard={(id) => openCard(id)} openWanted={openBoard} enabled={hostWins} showing={hostShown === "show"} onShow={() => hostTap("show")} keyboardOpen={keyboard}>
               {player ? (
@@ -657,7 +665,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                     { id: "scan", label: "Scan", icon: <Icon name="scan" />, primary: true, title: "Scan a guest's pass", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
                     { id: "guests", label: "Guests", icon: <Icon name="people" />, title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
                   ]}
-                  tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} loose={wanted !== null && (!player || claimer) ? loose : null} waiting={popOutWaiting(rung)} onBoard={openBoard} onWaiting={() => setLayer({ kind: "waiting" })} />}
+                  tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} loose={wanted !== null && (!player || claimer) ? loose : null} waiting={popOutWaiting(rung)} onBoard={openBoard} onWaiting={() => setLayer({ kind: "waiting" })} windowed={player || hostWins} />}
                   conn={s.connected ? "live" : "reconnecting"}
                 />
               )}
