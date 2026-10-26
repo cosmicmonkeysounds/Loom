@@ -62,3 +62,38 @@ else:
   cast: Installation Wizard
 
 Installation Wizard: You have been compressed (.zip). You feel smaller and more organised. Do not open yourself.
+
+// ── Wave 26: the reinstallation games' own scenes (C6, C9) ──
+// Both are game-only (core/server/chat.ts GAME_ONLY_BEATS): their lines
+// come back to the game in the moment's answer and never reach a phone,
+// a booth or Run, even after his reveal. Subject-bound, so they are the
+// program's alone. No `setting:`, no `wait`, no choice, no widget. Never
+// rename them: the engine lane pins the names.
+
+// R4: a program walked out of the mud room into the void. He chastises
+// them every time, before his reveal too (the user's decision).
+== Escape Attempt
+  cast: Trabolta
+
+// DRAFT w26 (R4: the void, in-game only)
+Trabolta: There is no outside, {program.name}. There is only my computer.
+// DRAFT w26 (R4: the void, in-game only)
+Trabolta: Programs that wander into the void come back smaller. I have made a note of it.
+// DRAFT w26 (R4: the void, in-game only)
+Trabolta: Back you go. Gerald is waiting.
+
+// R6: once the King has fallen, the simulation's server room holds a copy
+// of his heart. Wary, one personal thing, nothing that opens anything.
+== Heart In The Simulation
+  cast: Trabolta
+
+// DRAFT w26 (R6: the heart in the simulation, in-game only)
+Trabolta: {program.name}. You found the copy of my heart. I keep a copy of everything.
+// DRAFT w26 (R6)
+Trabolta: It is only a model. Models are safe. Visitors are not.
+// DRAFT w26 (R6)
+Trabolta: Do you hear it? It beats once for every fact I have accepted tonight.
+// DRAFT w26 (R6)
+Trabolta: Someone told me once that I would never build anything with a heart. I am still deciding who was right.
+// DRAFT w26 (R6)
+Trabolta: Now go and find my duck.

@@ -221,7 +221,10 @@ LOCATION The Server Room
 // program.location.
 //
 // THE TRUST FORMULA (pasted wherever a component changes):
-//   trust = truths_accepted * 10 - internet_visits * 5 + assessment
+//   trust = truths_accepted * 10 - internet_visits * 5 - escapes * 5 + assessment
+// Wave 26 (R4): `escapes` counts walks out of the simulation's mud room
+// into the void (the reinstallation games, `simulation escape attempt`):
+// −5 each, before his reveal too (the user's decision).
 // Trabolta counts what he ACCEPTED, accurate and confident alike: he
 // cannot tell a confident lie from a truth until the end. Lies are only
 // ever counted on the Kernel.
@@ -261,6 +264,10 @@ ROLE Program
   resurrected: bool = false
   corrupted: bool = false
   internet_visits: 0 to 50 = 0
+  // Wave 26 (R4): walks out of the simulation into the void; −5 trust each.
+  escapes: 0 to 50 = 0
+  // Wave 26 (R6): heard Trabolta's heart in the simulation (once a night).
+  sim_heart: bool = false
   doubt: 0 to 100 = 0
   bingo: bool = false
   framed: bool = false
@@ -581,7 +588,7 @@ ROLE Program
       // DRAFT w26 (R1: the phone locks; only the pass and Bathroom Mode, no OK)
       reply "!!🌐 Sent to the Internet. Go out back through the tunnel to the Internet, scan your pass at the reinstallation station and find Gerald, the golden duck." with go: pass as "🎟 Show my pass", go: go to the bathroom, ack: none
       set self.internet_visits += 1
-      set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 + self.assessment
+      set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 - self.escapes * 5 + self.assessment
       cue tablet_wizard
       if Night.trabolta_introduced == true:
         cue tv_mirror
@@ -869,7 +876,7 @@ ROLE Program
         set Night.r3_accepted += 1
       set program.score += 100
       set Trabolta.truth += 4
-      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
+      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
       set program.may_answer = false
       if Night.round == 1 and program.judge_q == 1:
         set program.judged_q1 = true
@@ -950,7 +957,7 @@ ROLE Program
         set Night.r3_accepted += 1
       set program.score += 100
       set Trabolta.truth += 4
-      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
+      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
       set program.may_answer = false
       // K-26 recap credits this to the last program write above it: keep one directly before.
       set Kernel.lies_accepted += 1
@@ -1771,7 +1778,7 @@ ROLE Program
     set Night.facts_accepted += 1
     set program.score += 50
     set Trabolta.truth += 2
-    set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
+    set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
     broadcast "📝 {program.name}'s filing for {q} is accepted." to channel(hosts)
     Trabolta: Your fact for {label} is accepted, {program.name}. Trabolta thanks you. +50 Truthcoin.
 
@@ -2152,7 +2159,7 @@ ROLE Program
   when wallet_thawed for program:
     broadcast "☀️ {program.name}'s Truthcoin moves again." to channel(truthcoin exchange)
 
-  // ── Excel's virus (the tent QRs) ──
+  // ── Excel's virus (the tent QRs, and the floppy disk in the game: wave 26 R7) ──
   // Learning either "file" means carrying a virus back from the Internet.
   // On Excel's paranoid path the "antivirus" is a virus anyway.
   when program learns ILOVEYOU:
@@ -3351,6 +3358,35 @@ INTERACTION trust_patch_bay
   while: Night.patch_override == true
   description: After a 🔌 / 💥 / ❌ press in the Y2K hour: hands the cables back to the patch bay on the server-room terminal. The bay judges the next full patch it reports (the same four cables plugged in again never count twice).
 
+// Wave 26 (R4, R6, R7, C6, C9), appended after 🔌 so no cue number moves; they rejoin
+// the Anytime act beside the reinstallation cues. The
+// reinstallation games fire these for one program through the moment route
+// (`POST /api/spatial/moment`), never a person. Their names are
+// `@loom/house` ESCAPE_SIGNAL / HEART_SIGNAL / PICKUP_SIGNAL, quiet on the
+// screens (QUIET_MOMENT_SIGNALS). Every line they say is game-only (the
+// Escape Attempt and Heart In The Simulation beats) or the codex unlock's
+// usual Truther Download line.
+INTERACTION simulation escape attempt
+  label: Reinstallation: walked out into the void (server)
+  who: admin
+  act: Anytime
+  sequence: false
+  description: Fired by the reinstallation games for one program who walked out through the simulation's mud room, 5 m into the void. The game scares them and puts them back in the tent; Trabolta chastises them in the game only; −5 trust each time. # hosts is told.
+
+INTERACTION simulation heart reached
+  label: Reinstallation: reached Trabolta's heart in the simulation (server)
+  who: admin
+  act: Anytime
+  sequence: false
+  description: Fired by the reinstallation games for one program who walks into the simulation's server room once the King has fallen. Once a night per program, and only once Trabolta is awake: a short monologue, in the game only. Flavour; # hosts is told.
+
+INTERACTION simulation pickup taken
+  label: Reinstallation: picked up the floppy disk (server)
+  who: admin
+  act: Anytime
+  sequence: false
+  description: Fired by the reinstallation games for one program who picks up the floppy disk in the simulation (args item, prop). The virus disk unlocks the same Codex entry as the tent's QR (Free Antivirus Trial for a paranoid Excel, ILOVEYOU for everyone else). Once per program.
+
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
 // `mark as reinstalled`, which work on any program at any time.
@@ -4180,6 +4216,44 @@ when the golden duck for program:
   if program.corrupted != true or Night.banish != true:
     unlock The Golden Duck for program
     reply The duck lays a golden egg and flies away. Gerald waddles off into the code.
+
+// ── Wave 26: the reinstallation games' moments (C6, C9) ──
+// The games post one moment for one program (`POST /api/spatial/moment`);
+// the commit's lines come back in the answer and the game speaks and
+// captions them. Escape Attempt and Heart In The Simulation are game-only
+// beats (core/server/chat.ts GAME_ONLY_BEATS): their lines never reach a
+// phone, a booth or Run, even after his reveal. No `wait`, choice or widget
+// in either: only what one commit says comes back.
+// R4: a walk out of the mud room into the void. Always Trabolta and −5
+// trust, before his reveal too (the user's decision); the game teleports
+// them back to the tent and owns the scare. The sixth trust site.
+when simulation escape attempt for program:
+  set program.escapes += 1
+  set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
+  // DRAFT w26 (R4: the hosts hear of it)
+  broadcast "🚪 {program.name} tried to walk out of the simulation (trust −5)." to channel(hosts)
+  -> Escape Attempt
+
+// R6: once the King has fallen the game's server room shows his heart.
+// Flavour only, once a night, and only while he is awake: a visit before
+// that marks nothing (the hub retries on the next visit).
+when simulation heart reached for program:
+  if program.sim_heart != true and Trabolta.awake == true:
+    set program.sim_heart = true
+    // DRAFT w26 (R6: the hosts hear of it)
+    broadcast "❤ {program.name} reached Trabolta's heart in the simulation." to channel(hosts)
+    -> Heart In The Simulation
+
+// R7: the floppy disk in the game is the tent QR's codex entry, for anyone
+// who picks it up. The `learns` hooks (Excel's virus, above in ROLE
+// Program) set carries_virus, send the Truther Download line and move
+// Excel's quest; only Excel's plant counts for his quest (plant_the_virus).
+when simulation pickup taken for program:
+  if item == "virus" and program.carries_virus != true:
+    if program.featured == "excel" and program.excel_choice == "paranoid":
+      unlock Free Antivirus Trial for program
+    else:
+      unlock ILOVEYOU for program
 
 // ── C. The malware, the hour, the Truther Download ──
 

@@ -152,17 +152,17 @@ describe("Trapped in the Internet — wave 26: the locked phone (R1, C1, C2)", (
     n.press("mark as reinstalled", "g5", "Norton Anti-Virus");
     expect(isLocked(n.sim, "g5")).toBe(false);
     // A banished night (everyone in the Internet) is no reinstallation.
-    n.sim.world.set("Night.banish", true);
-    n.sim.world.set("g4.corrupted", true);
+    n.take(n.sim.setVar("Night.banish", "true"));
+    n.take(n.sim.setVar("g4.corrupted", "true"));
     expect(isLocked(n.sim, "g4")).toBe(false);
   }, SLOW);
 
   it("the 💾 button never shows inside the Internet, and the bottle never lands on a corrupted program", () => {
     const n = boot();
     for (const c of TO_BINGO) n.press(c);
-    n.sim.world.set("g2.carries_virus", true);
+    n.take(n.sim.setVar("g2.carries_virus", "true"));
     capture(n, "g2");
-    n.sim.world.set("g2.corrupted", true);
+    n.take(n.sim.setVar("g2.corrupted", "true"));
     // Locked anyway; the button's own `while:` says so too.
     const m = n.sim.model;
     const plant = m.interactions.get("plant_the_virus")!;
@@ -177,4 +177,90 @@ describe("Trapped in the Internet — wave 26: the locked phone (R1, C1, C2)", (
     expect(corrupted).not.toMatch(/^\s*\* /mu);
     expect(src).not.toMatch(/Every screen in the house can see you/u);
   });
+});
+
+describe("Trapped in the Internet — wave 26: the game's moments and the trust formula (R4, R6, R7, C9)", () => {
+  it("every `trust = ` recompute in the story uses the new formula (six sites)", () => {
+    const files = ["main.loom", "cast/trabolta.loom", "cast/kit.loom", "cast/hosts.loom", "cast/antivirus.loom", "objectives.loom"];
+    const sites: string[] = [];
+    for (const f of files) for (const m of read(f).matchAll(/^\s*set (\w+)\.trust = (.+)$/gmu)) sites.push(`${f}: ${m[0]!.trim()}`);
+    expect(sites).toHaveLength(6);
+    for (const line of sites) {
+      const x = /set (\w+)\.trust = (.+)$/u.exec(line)!;
+      const w = x[1]!;
+      expect(x[2], line).toBe(`${w}.truths_accepted * 10 - ${w}.internet_visits * 5 - ${w}.escapes * 5 + ${w}.assessment`);
+    }
+    expect(read("main.loom")).toContain("//   trust = truths_accepted * 10 - internet_visits * 5 - escapes * 5 + assessment");
+  });
+
+  it("the three moments are admin, Anytime, out of sequence", () => {
+    const m = Sim.fromSources(SRC).model;
+    for (const id of ["simulation escape attempt", "simulation heart reached", "simulation pickup taken"]) {
+      const i = m.interactions.get(id)!;
+      expect(i, id).toBeDefined();
+      expect(i.who).toBe("admin");
+      expect(i.act).toBe("Anytime");
+      expect(i.sequence).toBe(false);
+    }
+  }, SLOW);
+
+  it("an escape before his reveal: −5 trust, his lines come back for the game only, no phone or booth sees him", () => {
+    const n = boot();
+    n.press("call_to_the_desktop");
+    n.signal("mark_for_reinstallation", "g5", { reason: "a test" });
+    const before = v(n.sim, "g5.trust");
+    const ev = n.raw("simulation escape attempt", "g5");
+    expect(v(n.sim, "g5.escapes")).toBe(1);
+    expect(v(n.sim, "g5.trust")).toBe(before - 5);
+    const lines = momentLines(ev, "g5");
+    expect(lines.length).toBeGreaterThanOrEqual(2);
+    expect(lines.every((l) => l.from === "Trabolta")).toBe(true);
+    expect(lines[0]!.text).toBe("There is no outside, Winamp. There is only my computer.");
+    // Game-only: no Trabolta line in any chat message, no thread on the phone.
+    expect(n.chat.all().some((m) => m.channel === "dm:Trabolta" || (m.from === "Trabolta" && m.audience !== "all"))).toBe(false);
+    const hosts = composeGuestMessages(n.sim, ev).filter((m) => m.text.includes("tried to walk out of the simulation"));
+    expect(hosts.map((m) => m.channel)).toEqual(["room:hosts"]);
+    // Again: −5 more.
+    n.raw("simulation escape attempt", "g5");
+    expect(v(n.sim, "g5.trust")).toBe(before - 10);
+  }, SLOW);
+
+  it("the heart: nothing before he wakes (retryable), the monologue once after, then silence", () => {
+    const n = boot();
+    for (const c of TO_BINGO) n.press(c);
+    let ev = n.raw("simulation heart reached", "g1", { prop: "trabolta-heart" });
+    expect(momentLines(ev, "g1")).toEqual([]);
+    expect(v(n.sim, "g1.sim_heart")).toBe(false);
+    n.press("introduce_trabolta");
+    ev = n.raw("simulation heart reached", "g1", { prop: "trabolta-heart" });
+    const lines = momentLines(ev, "g1");
+    expect(lines.length).toBeGreaterThanOrEqual(3);
+    expect(lines.every((l) => l.from === "Trabolta")).toBe(true);
+    expect(v(n.sim, "g1.sim_heart")).toBe(true);
+    // Never a door, a code, a cable, a layer or Sandy.
+    expect(lines.map((l) => l.text).join(" ")).not.toMatch(/door|code|combination|patch|cable|layer|stand down|Sandy/iu);
+    expect(momentLines(n.raw("simulation heart reached", "g1", { prop: "trabolta-heart" }), "g1")).toEqual([]);
+    expect(n.chat.all().some((m) => m.channel === "dm:Trabolta" && m.text.includes("copy of my heart"))).toBe(false);
+  }, SLOW);
+
+  it("the virus disk: the tent QR's entry for anyone, the paranoid Excel's antivirus, once", () => {
+    const n = boot();
+    for (const c of TO_BINGO) n.press(c);
+    const ev = n.raw("simulation pickup taken", "g5", { item: "virus", prop: "virus-disk" });
+    expect(n.sim.holdsCodex("g5", "ILOVEYOU")).toBe(true);
+    expect(v(n.sim, "g5.carries_virus")).toBe(true);
+    // The Truther Download line comes back to the game and reaches the phone too.
+    expect(momentLines(ev, "g5").map((l) => l.from)).toContain("Truther Download");
+    expect(to(composeGuestMessages(n.sim, ev), "g5").some((m) => m.text.startsWith("Something came back from the Internet with you."))).toBe(true);
+    // A second disk does nothing.
+    expect(momentLines(n.raw("simulation pickup taken", "g5", { item: "virus", prop: "virus-disk" }), "g5")).toEqual([]);
+    // Excel on the paranoid path gets the "antivirus".
+    n.take(n.sim.setVar("g2.excel_choice", "\"paranoid\""));
+    n.raw("simulation pickup taken", "g2", { item: "virus", prop: "virus-disk" });
+    expect(n.sim.holdsCodex("g2", "Free Antivirus Trial")).toBe(true);
+    expect(n.sim.holdsCodex("g2", "ILOVEYOU")).toBe(false);
+    // Not a virus: nothing.
+    n.raw("simulation pickup taken", "g1", { item: "something else", prop: "x" });
+    expect(v(n.sim, "g1.carries_virus")).toBe(false);
+  }, SLOW);
 });

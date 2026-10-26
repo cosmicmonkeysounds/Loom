@@ -290,7 +290,7 @@ CHARACTER Trabolta is Person
           set target.assessment = -10
         else:
           set target.assessment = score
-        set target.trust = target.truths_accepted * 10 - target.internet_visits * 5 + target.assessment
+        set target.trust = target.truths_accepted * 10 - target.internet_visits * 5 - target.escapes * 5 + target.assessment
       else if Night.step < 11 or (Night.step > 11 and Night.step < 17):
         Trabolta: That function is not available yet.
       else:
