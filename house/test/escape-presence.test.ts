@@ -14,6 +14,7 @@ import {
   presenceRoom,
   voidDistance,
 } from "../src/index.ts";
+import { distanceToBoundary } from "../src/geometry.ts";
 import type { HouseMap } from "../src/index.ts";
 import { SHOW_HOUSE, SHOW_SHED_HOUSE, fixture, loadHouse } from "./golden.ts";
 
@@ -114,6 +115,64 @@ describe("presenceRoom", () => {
   it("a shared wall: the previous room wins the tie", () => {
     expect(locate(two, [4, 0, 1.5]).room).toBe("a");
     expect(presenceRoom(two, [4, 0, 1.5], "b")).toBe("b");
+  });
+
+  it("holds only at the door, never through the shared wall", () => {
+    // Beside the a|b wall, 0.3 m into b but well along it from the door gap
+    // (z 1.0–2.0): the player is in b, not held in a through the wall.
+    expect(presenceRoom(two, [4.3, 0, 0.2], "a")).toBe("b");
+    expect(presenceRoom(two, [4.3, 0, 2.9], "a")).toBe("b");
+    expect(presenceRoom(two, [3.7, 0, 0.2], "b")).toBe("a");
+    // Just past the gap's end, within the hysteresis of it: held.
+    expect(presenceRoom(two, [4.3, 0, 0.9], "a")).toBe("a");
+    // Outside, 1 m along the front wall from the front door's gap (x 1.55–2.45): the void.
+    expect(presenceRoom(two, [0.5, 0, -0.3], "a")).toBeNull();
+  });
+
+  it("holds on a stair until the player steps off it", () => {
+    const stair = fixture("stair");
+    // Over the ramp (rect x 1–4, z 1–2, up east), past half height going up: still the cellar.
+    const high: [number, number, number] = [3.5, -0.5, 1.5];
+    expect(locate(stair, high).room).toBe("hall");
+    expect(presenceRoom(stair, high, "cellar")).toBe("cellar");
+    // Going down, past half height: still the hall.
+    const low: [number, number, number] = [1.5, -2.5, 1.5];
+    expect(locate(stair, low).room).toBe("cellar");
+    expect(presenceRoom(stair, low, "hall")).toBe("hall");
+    // Off the head of the ramp: the hall.
+    expect(presenceRoom(stair, [4.3, 0, 1.5], "cellar")).toBe("hall");
+  });
+
+  it("on the show map: every hold is at a door or a stair joining the two rooms", () => {
+    for (const path of [SHOW_HOUSE, SHOW_SHED_HOUSE]) {
+      const h = loadHouse(path);
+      let held = 0;
+      for (const room of h.rooms) {
+        const y = h.floors.find((f) => f.id === room.floor)!.elevation;
+        for (const other of h.rooms) {
+          if (other.floor !== room.floor) continue;
+          const xs = other.poly.map((q) => q[0]);
+          const zs = other.poly.map((q) => q[1]);
+          for (let x = Math.min(...xs) - 1; x <= Math.max(...xs) + 1; x += 0.25) {
+            for (let z = Math.min(...zs) - 1; z <= Math.max(...zs) + 1; z += 0.25) {
+              const p: [number, number, number] = [x, y, z];
+              const here = locate(h, p).room;
+              if (here === room.id || presenceRoom(h, p, room.id) !== room.id) continue;
+              held++;
+              // On the shared wall line itself (inside a wall), the tie goes to `prev`.
+              if (distanceToBoundary(room.poly, [x, z]) < 1e-6) continue;
+              const near = h.doors.some(
+                (d) =>
+                  ((d.a === room.id && d.b === here) || (d.b === room.id && d.a === here)) &&
+                  Math.hypot(d.at[0] - x, d.at[1] - z) <= d.width / 2 + PRESENCE_HYSTERESIS_M + 1e-6,
+              );
+              expect(near, `${room.id} held at ${x.toFixed(2)},${z.toFixed(2)} in ${here}`).toBe(true);
+            }
+          }
+        }
+      }
+      expect(held).toBeGreaterThan(0);
+    }
   });
 
   it("never holds across floors, nor for an unknown room", () => {

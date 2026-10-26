@@ -22,7 +22,8 @@
 //!   exterior door) then `[{p, d}]`: `voidDistance` (null in a room, "inf"
 //!   on a floor with no rooms).
 //! - `<name>.presence.json` — `[{p, prev, room}]` (`presenceRoom` either
-//!   side of every door, each of its rooms as `prev` and none), then
+//!   side of every door, each of its rooms as `prev` and none; along each
+//!   door's wall past its gap; over each stair past half height), then
 //!   `[{rooms, spots}]` (`linkedSpots`).
 //! - `<name>.moments.json`  — a map with a heart or a pickup prop:
 //!   `[{heart, p, reached}]` and `[{pickup, p, reach, slack}]` (plain and
@@ -74,6 +75,7 @@ import {
   stairLevels,
   validateHouse,
   buildWalls,
+  doorGap,
 } from "../src/index.ts";
 import type { HouseMap, Prop, Room, Vec2, Vec3 } from "../src/index.ts";
 
@@ -249,6 +251,29 @@ export function presenceQueries(house: HouseMap): { p: Vec3; prev: string | null
     return [...new Set([...near, null])];
   };
   for (const p of probes) for (const prev of prevs(p)) out.push({ p, prev });
+  // Along each door's wall, past the gap's ends, 0.3 m either side: a hold
+  // here would be through the wall (wave 26 review), so none may hold.
+  for (const door of house.doors) {
+    const gap = doorGap(house, door);
+    if (gap === null) continue;
+    const y = gap.bottom;
+    for (const along of [gap.lo - 0.5, gap.lo - 1.5, gap.hi + 0.5, gap.hi + 1.5]) {
+      for (const across of [-0.3, 0.3]) {
+        const p: Vec3 = gap.axis === "x" ? [along, y, gap.c + across] : [gap.c + across, y, along];
+        for (const prev of [door.a, door.b]) out.push({ p: round3(p), prev });
+      }
+    }
+  }
+  // Over each stair, past half height either way, each end as `prev`.
+  for (const stair of house.stairs) {
+    const { low, high } = stairLevels(house, stair);
+    const [x0, z0, x1, z1] = stair.rect;
+    const mid: Vec2 = [(x0 + x1) / 2, (z0 + z1) / 2];
+    for (const f of [0.4, 0.6]) {
+      const p: Vec3 = [mid[0], low + (high - low) * f, mid[1]];
+      for (const prev of [stair.from, stair.to, null]) out.push({ p: round3(p), prev });
+    }
+  }
   return out;
 }
 

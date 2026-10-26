@@ -54,6 +54,8 @@ export function voidDistance(house: HouseMap, p: Vec3): number | null; // null i
 // presence.ts — the terminals' link by room (R5)
 export const PRESENCE_HYSTERESIS_M = 0.75, PRESENCE_LINGER_MS = 3000;
 export function presenceRoom(house: HouseMap, p: Vec3, prev: string | null): string | null;
+// prev holds only inside its polygon, within 0.75 m of the gap of a door joining prev and
+// locate's room (null: outside), or over a stair joining them; never through a solid wall.
 export function linkedSpots(house: HouseMap, rooms: Iterable<string | null>): Set<string>; // never view "reinstall"
 
 // route.ts — the path reveal (R2)

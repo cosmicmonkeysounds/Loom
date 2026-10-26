@@ -15,8 +15,8 @@ const PROP_REST := 0.01
 ## A solid prop whose top clears the feet by less than this is stepped over
 ## (the games' step-over) — [method standable]'s rest.
 const PROP_STEP_OVER := 0.05
-## (wave 26, R5) A player within this (plan) of their previous room's
-## polygon, on its floor, stays in it ([method presence_room]).
+## (wave 26, R5) A player within this (plan) of the door gap they came
+## through stays in the room behind it ([method presence_room]).
 const PRESENCE_HYSTERESIS_M := 0.75
 ## A client may keep a terminal linked this long after its room empties.
 const PRESENCE_LINGER_MS := 3000
@@ -140,20 +140,49 @@ static func standable(house: Dictionary, p: Array) -> bool:
 
 ## (wave 26, R5) The room a player counts as being in — a port of
 ## `presenceRoom` (`house/src/presence.ts`): [method locate]'s room, except
-## that a player still within [constant PRESENCE_HYSTERESIS_M] of `prev`'s
-## polygon (inside or outside it) on the same floor stays in `prev`. The
-## caller keeps `prev` (`null` on a first pose or a re-seat).
+## that the player stays in `prev` while still inside its polygon on its
+## floor; or within [constant PRESENCE_HYSTERESIS_M] (plan) of the gap of a
+## door on that floor joining `prev` and the new room (null: outside),
+## never through a solid wall; or over the rect of a stair joining them.
+## The caller keeps `prev` (`null` on a first pose or a re-seat).
 static func presence_room(house: Dictionary, p: Array, prev: Variant) -> Variant:
 	var at := locate(house, p)
 	if prev == null or (at["room"] != null and str(at["room"]) == str(prev)):
 		return at["room"]
 	var room: Variant = HouseGeometry.room_by_id(house, prev)
-	if room == null or str(room["floor"]) != str(at["floor"]):
+	if room == null:
 		return at["room"]
+	var pv := str(prev)
 	var plan := [float(p[0]), float(p[2])]
-	if HouseGeometry.point_in_poly(room["poly"], plan) or HouseGeometry.distance_to_boundary(room["poly"], plan) <= PRESENCE_HYSTERESIS_M:
-		return str(prev)
+	if str(room["floor"]) == str(at["floor"]):
+		if HouseGeometry.point_in_poly(room["poly"], plan):
+			return pv
+		for door: Dictionary in house.get("doors", []):
+			if not _joins(door.get("a"), door.get("b"), pv, at["room"]):
+				continue
+			var gap: Variant = HouseGeometry.door_gap(house, door)
+			if gap == null or str(gap["floor"]) != str(room["floor"]):
+				continue
+			var ends: Array = HouseGeometry.wall_ends(gap)
+			if HouseGeometry.distance_to_segment(plan, ends[0], ends[1]) <= PRESENCE_HYSTERESIS_M:
+				return pv
+	if at["room"] != null:
+		for stair: Dictionary in house.get("stairs", []):
+			if _joins(stair.get("from"), stair.get("to"), pv, at["room"]) and HouseGeometry.point_in_rect(stair["rect"], plan):
+				return pv
 	return at["room"]
+
+
+## Does the link `a`–`b` join `prev` and `room`, either way round?
+static func _joins(a: Variant, b: Variant, prev: String, room: Variant) -> bool:
+	return (_same(a, prev) and _same(b, room)) or (_same(b, prev) and _same(a, room))
+
+
+## Two room ids (either may be null) are the same.
+static func _same(x: Variant, y: Variant) -> bool:
+	if x == null or y == null:
+		return x == null and y == null
+	return str(x) == str(y)
 
 
 ## The terminal ids (map order) whose `room` is one of `rooms` (nulls
