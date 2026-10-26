@@ -4283,6 +4283,14 @@ when second_hunt_preview:
     start quest Keep Everyone Calm for Clippy
     cue lights_ad_hijack
     set Night.lights = "ad_hijack"
+    // Wave 26 (T2, C3): the first glitch takes over everything, once, live:
+    // every terminal (8 s), every guest and player phone (~6 s), a host's
+    // booth (2.5 s, look only). Never the director phone or Run. The three
+    // zeroes are the hijack's own copy. Both writes sit in this one rule so
+    // they journal and replay together; a replay never plays it again.
+    cue screens_glitch
+    set Night.glitch_at = Time.elapsed
+    set Night.glitch_text = "000. 000. 000."
     cue screens_ad_hijack
     set Night.screen = "ad_hijack"
     set Night.terminals = "ad_hijack"
@@ -5347,6 +5355,16 @@ when Night.ended == true:
   set Night.summons_end = 0
   set Night.bingo_end = 0
   set Night.y2k_end = 0
+  // Wave 26: the Bingo call and the glitch are over too (C9).
+  set Night.bingo_called = false
+  set Night.bingo_caller = "none"
+  set Night.bingo_left = 0
+  set Night.bingo_checked = false
+  set Night.bingo_done = false
+  set Night.bingo_closed = false
+  set Night.bingo_none = false
+  set Night.glitch_at = 0
+  set Night.glitch_text = "none"
 
 // E4: Combo A — take the grease out of the lightning. His heart is done
 // however he ends (the cables, or talked down); the bulb in the cold room
@@ -5964,6 +5982,18 @@ set Night.step = 0
 set Night.clock = "--:--"
 set Night.bingo_on = false
 set Night.bingo_end = 0
+// Wave 26 (B1–B5): a guest's 🎱 BINGO!, its undo, 🤐, the one round.
+set Night.bingo_called = false
+set Night.bingo_caller = "none"
+set Night.bingo_left = 0
+set Night.bingo_checked = false
+set Night.bingo_done = false
+set Night.bingo_closed = false
+set Night.bingo_none = false
+set Night.bingo_briefed = false
+// Wave 26 (T2, C3): the first glitch (the 📺 ad hijack), in story seconds.
+set Night.glitch_at = 0
+set Night.glitch_text = "none"
 set Night.bingo_winners = 0
 set Night.bingo_named = 0
 set Night.bingo_ribbons = 0

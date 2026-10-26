@@ -264,3 +264,28 @@ describe("Trapped in the Internet — wave 26: the game's moments and the trust 
     expect(v(n.sim, "g1.carries_virus")).toBe(false);
   }, SLOW);
 });
+
+describe("Trapped in the Internet — wave 26: the first glitch at the ad hijack (T2, C3)", () => {
+  it("the 📺 rule cues screens_glitch and stamps the glitch before the ad; the doors seed it; every phone's night carries it", () => {
+    const src = read("main.loom");
+    const rule = src.slice(src.indexOf("when second_hunt_preview:"), src.indexOf("when start_the_second_hunt:"));
+    expect(rule.indexOf("cue screens_glitch")).toBeGreaterThan(0);
+    expect(rule.indexOf("cue screens_glitch")).toBeLessThan(rule.indexOf("cue screens_ad_hijack"));
+    expect(rule).toContain("set Night.glitch_at = Time.elapsed");
+    expect(rule).toContain('set Night.glitch_text = "000. 000. 000."');
+    const n = boot();
+    expect(v(n.sim, "Night.glitch_at")).toBe(0);
+    expect(v(n.sim, "Night.glitch_text")).toBe("none");
+    expect(nightView(n.sim).glitch).toBeUndefined();
+    for (const c of TO_RESULTS) n.press(c);
+    n.advance(3);
+    const at = v(n.sim, "Time.elapsed") as number;
+    const ev = n.sim.signal("second_hunt_preview");
+    n.take(ev);
+    expect(JSON.stringify(ev)).toContain("screens_glitch");
+    expect(v(n.sim, "Night.glitch_at")).toBe(at);
+    expect(nightView(n.sim).glitch).toEqual({ at: at * 1000, text: "000. 000. 000." });
+    expect(guestView(n.sim, "g1").night?.glitch).toEqual({ at: at * 1000, text: "000. 000. 000." });
+    expect(primeView(n.sim, "Clippy").night?.glitch).toEqual({ at: at * 1000, text: "000. 000. 000." });
+  }, SLOW);
+});
