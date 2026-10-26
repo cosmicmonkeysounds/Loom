@@ -165,6 +165,15 @@ describe('the bundled authoring collection', () => {
     expect(live?.plain).toContain('lock: program.corrupted == true')
     expect(helpSearch('ack none').map((h) => h.article.slug)).toContain('broadcast-improv')
     expect(helpSearch('lock').map((h) => h.article.slug)).toContain('live-shows')
+    // The lock refuses story-changing routes only, never session housekeeping (C2).
+    expect(live?.plain).not.toContain('refuses everything else the guest sends')
+    expect(live?.plain).toContain('except session housekeeping')
+    // The cheat sheet carries both wave 26 forms.
+    const cheat = helpArticle('cheat-sheet')
+    expect(cheat?.plain).toContain('ack: none')
+    expect(cheat?.plain).toContain('l1226')
+    expect(cheat?.plain).toContain('lock: program.corrupted == true')
+    expect(cheat?.plain).toMatch(/l1216[^\n]*lock:/)
   })
 
   it('wave 26: the chess stakes line no longer promises the door code (G1)', () => {

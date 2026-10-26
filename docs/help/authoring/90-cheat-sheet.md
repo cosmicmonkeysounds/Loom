@@ -2,7 +2,7 @@
 title: Cheat sheet — every symbol
 section: Reference
 order: 90
-keywords: act, watch, countdown, arm, reserved, busy, judge, for guests, cheat sheet, reference, symbols, syntax, quick reference, summary, verbs, when, loom 4
+keywords: act, watch, countdown, arm, reserved, busy, judge, for guests, ack: none, no ok, L1226, lock:, locked phone, L1216, cheat sheet, reference, symbols, syntax, quick reference, summary, verbs, when, loom 4
 ---
 
 **Structure**
@@ -69,6 +69,7 @@ openers end with `:` and indent their body.
 | `reply text` / `reply !text` | private line back to whoever acted (a booth: its Readouts) / the same as an alert |
 | `reply !!text` / `broadcast "!!text" to everyone with close: 6s` | a **big moment**: full screen on the phone (a booth: a pop-out); the house-wide one closes itself ([broadcasts](broadcast-improv.md); lint `L1218` outside an admin cue's hook or a story rule) |
 | `reply "text" with go: The Desktop, go: pass` / `broadcast "…" to everyone with go: quest: The Cold Door as "See it"` | the moment's buttons: a place, room, character, guest button, `codex[: Entry]`, `quests` / `quest: Quest`, or a screen (`pass` `scan` `chats` `mission` `notifications` `sides` `wallet` `me`); never `lobby` (lint `L1214`; quote the text) |
+| `reply "!!…" with go: pass, go: go to the bathroom, ack: none` | no OK: only the `go:` buttons close the moment, for a capture the guest must answer ([broadcasts](broadcast-improv.md); lint `L1226` when the tail has no `go:`; a phone that can take none of the exits still shows OK) |
 | `show fact "📝 File a fact" to guest with questions: "H1: … \| H2: …"` | deal a card (`captcha` / `poll` / `image` / `tutorial` / `pass` / `fact` / `answer` / `sides`); `with moment: major` makes it interrupt, `moment: big` takes the screen |
 | `unlock The Sandy File for guest` | hand out a codex entry |
 | `who.codex` / `who.codex.the_sandy_file` / `who.codex_in.facts` | how many entries they hold / do they hold this one / how many in a `category:` (lower-cased, accents dropped, `_` for anything else: `How it works` → `how_it_works`, and a `_` before a leading digit: `1999 Files` → `_1999_files`; uncategorised ones count nowhere; **unset, not 0, until the first entry**, so for "none" write `< 1`, never `== 0` (`>= 1` and adding to it are fine); a guest's only, and never shown to an agent-voiced character) |
@@ -156,8 +157,9 @@ openers end with `:` and indent their body.
 | `stat: self.score as ⭐ Points[, for …][, while …]` (header) | a score tile on a player's booth (lint `L1223`) |
 | `wanted: program.marked as program.marked_for by program.escort_by, for Antivirus` (header) | a Wanted board for those booths and the hosts: every guest whose flag is true, why, where, who claimed them ([live shows](live-shows.md)) |
 | `reinstall: <cond>` (header) | who may enter the reinstallation games, read per guest |
+| `lock: program.corrupted == true` (header) | locks a guest's phone while it holds for them: a lock screen with the objective, the pass and the `restricted: allow` buttons; every story-changing guest route answers `403 locked`, never journaled ([live shows](live-shows.md)) |
 | `archive: The Uploader when program.cleared == true` (header, repeatable) | moves a guest's finished thread under *Other rooms* |
-| `majority: Night.present / 2 + 1` (header) | what a side needs, shown on the Sides screen's doors (lint `L1216` for a bad `wanted:` / `reinstall:` / `archive:`) |
+| `majority: Night.present / 2 + 1` (header) | what a side needs, shown on the Sides screen's doors (lint `L1216` for a bad `wanted:` / `reinstall:` / `archive:`, an error for a `lock:` that is no expression) |
 | `founding: <condition>` (header) | faction mode: programs found factions that race like the sides, one faction at a time; `majority_faction()` / `faction_of(who)` / `faction_name(id)` / `faction_founder(id)` read the race (lint `L1220`) |
 | `badge: program.afk as 🚻 Bathroom Mode[, while …]` (header) | a glyph beside their name on every people list while it is true (never a secret: lint `L1219`) |
 | `lobby: hidden` (header) | guests never list the lobby (its lines still reach them as moments / Notifications) |
