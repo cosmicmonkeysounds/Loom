@@ -558,7 +558,6 @@ export function App() {
           onSetup={openSetup}
           onGone={onGone}
           onBusy={setReinstallBusy}
-          worldSlot={(store, size) => <WorldSlot store={store} spotId={config.spot} size={size} recover="retry" raycast={!webgl2} />}
         />
         {wakeOverlay}
         {layer}

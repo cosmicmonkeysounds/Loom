@@ -297,6 +297,17 @@ describe("the schedule", () => {
     expect(walk(ctxOf("hunt", { names: true, calm: true }), 0, 200).some((x) => x.layout === "face")).toBe(true);
   });
 
+  it("a quiet backdrop (wave 26, T3): no face, no storm unless hijacked; default off", () => {
+    const base = { character: "Trabolta", target: "wall" as const, scan: true, asleep: false, now: 1 };
+    const quiet = (phase: string) => idleContextOf({ ...base, state: state({ phase }), quiet: true });
+    expect(idleContextOf({ ...base, state: state() }).quiet).toBe(false);
+    expect(quiet("hunt_1").face).toBe(false);
+    expect(walk(quiet("hunt_1"), 0, 200).some((x) => x.layout === "face" || x.layout === "storm")).toBe(false);
+    // Late in the night (not calm) a quiet show still has no storm; hijacked it does.
+    expect(walk(quiet("truth_pong"), 0, 200).some((x) => x.layout === "storm")).toBe(false);
+    expect(walk(quiet("malware"), 0, PATTERN.length * 4).filter((x) => x.layout === "storm").length).toBe(4);
+  });
+
   it("drops the ad-like windows while calm (wave 26, T1)", () => {
     const adLike = POPUP_KINDS.filter((p) => p.adLike === true).map((p) => p.id);
     expect(adLike).toContain("pop-winner");
