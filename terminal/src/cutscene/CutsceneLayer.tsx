@@ -140,11 +140,14 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
       if (s === null || s === "card" || (s === below && hidden)) continue;
       // A scene already on his voice stays on it through a mute (its lines
       // end: it runs on from there); a new one waits only for a TV that can speak.
-      if (!live && !voicedT.has(s.key)) continue;
-      const v = voiceOfScene(s, now, events);
-      if (v === null) continue;
-      voiced.set(s.key, v);
-      if (s.kind === "moment" && v.endAt !== null) queue.extendTo(s.seq, v.endAt);
+      const v = !live && !voicedT.has(s.key) ? null : voiceOfScene(s, now, events);
+      // A moment's end follows his voice, and goes back to its own when the
+      // scene is on the server's clock (a voice that never came).
+      if (s.kind === "moment" && voiceSceneOf(s.def.id) !== null) {
+        if (v !== null && v.endAt !== null) queue.extendTo(s.seq, v.endAt);
+        else queue.resetEnd(s.seq);
+      }
+      if (v !== null) voiced.set(s.key, v);
     }
   }
   forgetVoicedExcept(voiced);

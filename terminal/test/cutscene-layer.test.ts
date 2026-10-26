@@ -169,6 +169,39 @@ describe("a voiced scene on the TV (wave 26, V1)", () => {
   });
 });
 
+describe("a voiced moment whose voice never comes (wave 26, V1)", () => {
+  it("ends at its own ms once it falls back, not where the wait pushed it", async () => {
+    const { CutsceneLayer } = await import("../src/cutscene/CutsceneLayer.tsx");
+    const { fakeState } = await import("../src/cutscene/fake.ts");
+    const bus = await import("../src/cutscene/speech-bus.ts");
+    const { BOTTLE_SPIN_MS } = await import("../src/cutscene/kit/tv1-time.ts");
+    const { VOICE_WAIT_MS } = await import("../src/cutscene/voice-clock.ts");
+    const Probe = (p: { t: number }) => createElement("p", null, `t=${Math.round(p.t)}`);
+    const scenes = [{ id: "bottle_landed", when: [{ moment: "signal" as const, name: "bottle_landed" }], ms: 14_000, tv: Probe }];
+    const at = 9_000_000_000;
+    vi.useFakeTimers();
+    try {
+      bus.clearSpeech();
+      bus.setSpeechLive(true);
+      bus.emitSpeech({ kind: "queued", seq: 950, beat: "Bottle Landed", chunks: 2, at: at + 500 });
+      const state = { ...fakeState({ now: at, moments: [{ seq: 81, at, kind: "signal", name: "bottle_landed", who: "Excel", kept: false }] }), announceEpoch: "voice-never" };
+      const draw = (now: number) => {
+        vi.setSystemTime(now);
+        return renderToStaticMarkup(createElement(CutsceneLayer, { state, layers: { overlay: null, slide: null }, bare: false, card: null, gear: null, scenes, target: "tv" }));
+      };
+      // Waiting for him: held at the frame before his first sentence; its end moves out.
+      expect(draw(at + VOICE_WAIT_MS - 100)).toContain(`t=${BOTTLE_SPIN_MS - 1}`);
+      // He never starts: the server's clock, and the moment's own end again.
+      expect(draw(at + VOICE_WAIT_MS + 100)).toContain(`t=${VOICE_WAIT_MS + 100}`);
+      expect(draw(at + 14_000 - 50)).toContain("t=13950");
+      expect(draw(at + 14_000 + 50)).not.toContain("t=");
+    } finally {
+      bus.clearSpeech();
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("a voiced scene through a mute (wave 26, V1)", () => {
   it("keeps following his (now ended) lines instead of jumping back to the server's clock", async () => {
     const { CutsceneLayer } = await import("../src/cutscene/CutsceneLayer.tsx");
@@ -189,10 +222,12 @@ describe("a voiced scene through a mute (wave 26, V1)", () => {
       const el = (st: typeof state) => createElement(CutsceneLayer, { state: st, layers: { overlay: null, slide: null }, bare: false, card: null, gear: null, scenes, target: "tv" });
       bus.setSpeechLive(true);
       expect(renderToStaticMarkup(el(state))).toContain(`t=${BOTTLE_SPIN_MS + 500}`);
-      // The director mutes: the TV drops the line; the scene runs on from ms − tail.
+      // The director mutes: the TV drops the line (cut); the scene runs on
+      // from where it was, never skipping ahead to the end of his part.
       bus.setSpeechLive(false);
-      bus.emitSpeech({ kind: "done", seq: 900, at: now });
-      expect(renderToStaticMarkup(el(state))).toContain(`t=${BOTTLE_SPIN_MS + 1800}`);
+      bus.emitSpeech({ kind: "done", seq: 900, at: now, cut: true });
+      vi.setSystemTime(now + 100);
+      expect(renderToStaticMarkup(el(state))).toContain(`t=${BOTTLE_SPIN_MS + 600}`);
     } finally {
       bus.clearSpeech();
       vi.useRealTimers();

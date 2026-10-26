@@ -237,6 +237,13 @@ export class MomentQueue {
     p.end = Math.max(p.start, Math.min(serverMs, cap));
   }
 
+  /** (wave 26, V1) The playing moment `seq` ends at its own `ms` again (its
+   *  voiced scene fell back to the server's clock). Any other seq: nothing. */
+  resetEnd(seq: number): void {
+    const p = this.playing;
+    if (p !== null && p.w.moment.seq === seq) delete p.end;
+  }
+
   /** The playing moment's end, server ms (its own `ms`, or where `extendTo` moved it); null: none. */
   get playingEnd(): number | null {
     const p = this.playing;

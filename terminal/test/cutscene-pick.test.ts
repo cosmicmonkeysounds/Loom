@@ -473,4 +473,17 @@ describe("MomentQueue.extendTo (wave 26, V1: a voiced scene's end moves with his
     expect(h.playingEnd).toBe(T0 + MOMENT_HOLD_MAX_MS);
     expect(new MomentQueue().playingEnd).toBeNull();
   });
+
+  it("resetEnd gives the playing moment its own end back (its voice never came)", () => {
+    const q = new MomentQueue();
+    q.update(state({ moments: [m(5, T0, "signal", "bottle landed")] }), T0, SCENES, "tv");
+    expect(q.current(T0 + 10)?.def.id).toBe("bottle");
+    q.extendTo(5, T0 + 9000);
+    q.resetEnd(99); // not the one playing: nothing
+    expect(q.playingEnd).toBe(T0 + 9000);
+    q.resetEnd(5);
+    expect(q.playingEnd).toBe(T0 + 6000);
+    expect(q.current(T0 + 6000)).toBeNull();
+    q.resetEnd(5); // nothing playing: nothing
+  });
 });
