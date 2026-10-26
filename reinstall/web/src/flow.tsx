@@ -2,8 +2,8 @@
 //! of `app.tsx` so the tent laptop's terminal can mount it too, inside a
 //! shadow root — `terminal/src/reinstall/`):
 //!
-//!   choose   — **Play here** or **Send to <station>** (the King note, the
-//!              not-marked refusal, the no-WebGL2 line);
+//!   choose   — **Play here** or **Send to <station>** (the not-marked
+//!              refusal, the no-WebGL2 line; no King note since wave 26);
 //!   starting — the begin, then the dealt map;
 //!   sent     — parked for a headset: "put the headset on" (back by itself);
 //!   play     — the simulation (`game/Play.tsx`).
