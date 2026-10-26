@@ -41,9 +41,14 @@
   font-weight: bold;
   font-size: clamp(14px, 2.2vmin, 22px);
 }
-.ri-station-body { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 8px 12px 6px; text-align: center; }
-/* The camera, large: the page's one stream (the scanner's), never hidden. */
-.ri-station-cam { position: relative; height: 44vh; margin: 0 auto; background: #000; }
+/* A column: the camera gives up its height when the picks and the wizard's
+   line are both up (1366x768, right after a capture), never the rows under it. */
+.ri-station-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 8px 12px 6px; text-align: center; }
+.ri-station-body > * { flex: none; }
+/* The camera, large: the page's one stream (the scanner's), never hidden. Up
+   to 44vh, down to 140 px when the rows under it need the room. */
+.ri-station-body > .ri-station-cam { flex: 1 1 44vh; }
+.ri-station-cam { position: relative; min-height: 140px; max-height: 44vh; background: #000; }
 .ri-station-cam > .scanner { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; border-radius: 0; }
 .ri-station-words { margin-top: 8px; }
 .ri-station-scan { font-size: clamp(22px, 4.4vmin, 46px); font-weight: bold; letter-spacing: 0.12em; line-height: 1.05; }

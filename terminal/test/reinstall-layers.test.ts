@@ -138,4 +138,19 @@ describe("the tent between walks (wave 26, T3): a scan kiosk", () => {
     const wiz = /\.ri-wizard \{([^}]*)\}/u.exec(css)?.[1] ?? "";
     expect(wiz).not.toMatch(/position: absolute|z-index/u);
   });
+
+  it("the kiosk's camera gives up its height before the rows under it clip (1366x768, picks + wizard line up)", () => {
+    const css = readFileSync(new URL("../src/reinstall/reinstall.css", import.meta.url), "utf8");
+    const body = /\.ri-station-body \{([^}]*)\}/u.exec(css)?.[1] ?? "";
+    expect(body).toMatch(/display: flex; flex-direction: column;/u);
+    expect(body).toMatch(/min-height: 0/u);
+    // Every row keeps its height; only the camera shrinks, from 44vh down to a floor.
+    expect(css).toMatch(/\.ri-station-body > \* \{ flex: none; \}/u);
+    expect(css).toMatch(/\.ri-station-body > \.ri-station-cam \{ flex: 1 1 44vh; \}/u);
+    const cam = /^\.ri-station-cam \{([^}]*)\}/mu.exec(css)?.[1] ?? "";
+    expect(cam).toMatch(/min-height: 140px; max-height: 44vh;/u);
+    expect(cam).not.toMatch(/(^|[;\s])height: 44vh/u);
+    // No auto side margins: in a column they would shrink the camera to nothing.
+    expect(cam).not.toMatch(/margin: 0 auto/u);
+  });
 });
