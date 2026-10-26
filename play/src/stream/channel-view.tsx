@@ -205,6 +205,14 @@ export function footLayout(o: { decision: boolean; trayOpen: boolean; typing: bo
   };
 }
 
+/** Wave 26 (P1): a line that went through is spent. The composer clears its
+ *  own box once the send resolves, but a menu docking mid-send folds (and
+ *  unmounts) it first: the room's draft must not keep the sent line, or the
+ *  folded bar would offer it again. Words typed since are kept. */
+export function spendDraft(d: { text: string }, sent: string): void {
+  if (d.text.trim() === sent.trim()) d.text = "";
+}
+
 /** The parts a room's footer may hold, top to bottom. */
 export interface StreamFootParts {
   tray: ReactElement | null;
@@ -387,7 +395,14 @@ export function ChannelView({
           </button>
         </div>
       ) : lay.composer === "open" && onSend ? (
-        <Composer onSend={(t) => onSend(t)} placeholder={hint} sendLabel={channel.kind === "codex" ? "Unlock" : undefined} extra={composerExtra} initial={draft.current.text} onText={onText} autoFocus={typing} />
+        <Composer
+          onSend={(t) => {
+            const d = draft.current;
+            const r = onSend(t);
+            void Promise.resolve(r).then(() => spendDraft(d, t), () => {});
+            return r;
+          }}
+          placeholder={hint} sendLabel={channel.kind === "codex" ? "Unlock" : undefined} extra={composerExtra} initial={draft.current.text} onText={onText} autoFocus={typing} />
       ) : null,
     cantPost: onSend && !canPost ? <div className="cant-post">{cantPostNote(channel)}</div> : null,
   });

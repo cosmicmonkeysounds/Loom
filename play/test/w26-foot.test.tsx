@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ChannelView, DecisionTray, footLayout } from "../src/stream/channel-view.tsx";
+import { ChannelView, DecisionTray, footLayout, spendDraft } from "../src/stream/channel-view.tsx";
 import { CardTray } from "../src/stream/card-tray.tsx";
 import { Composer } from "../src/stream/composer.tsx";
 import type { Channel, ChatMessage, Decision } from "../src/types.ts";
@@ -107,6 +107,20 @@ describe("the composer keeps a half-typed line", () => {
     expect(cv).toMatch(/onClick=\{\(\) => flushSync\(\(\) => setTyping\(true\)\)\}/u);
     expect(cv).toMatch(/initial=\{draft\.current\.text\} onText=\{onText\} autoFocus=\{typing\}/u);
     expect(src("stream/composer.tsx")).toMatch(/useLayoutEffect\(\(\) => \{\s*if \(autoFocus === true\) ref\.current\?\.focus\(\);/u);
+  });
+});
+
+describe("a sent line never comes back as the draft", () => {
+  it("spendDraft clears the draft that held the sent line, never words typed since", () => {
+    const d = { text: "I was in the kitchen " };
+    spendDraft(d, "I was in the kitchen");
+    expect(d.text).toBe("");
+    const e = { text: "and then" };
+    spendDraft(e, "I was in the kitchen");
+    expect(e.text).toBe("and then");
+  });
+  it("the room spends its draft once the send resolves (a refusal keeps it)", () => {
+    expect(src("stream/channel-view.tsx")).toMatch(/const d = draft\.current;\s*const r = onSend\(t\);\s*void Promise\.resolve\(r\)\.then\(\(\) => spendDraft\(d, t\), \(\) => \{\}\);\s*return r;/u);
   });
 });
 
