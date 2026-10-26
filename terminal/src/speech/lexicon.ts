@@ -9,7 +9,8 @@
 //! and to the VR game (`reinstall/vr/config/pronounce.json`); a test pins
 //! the three copies. Every implementation applies it the same way:
 //!
-//! - a whole word, case-insensitive, where a word boundary is any character
+//! - a whole word, case-insensitive in ASCII only (so lower-casing never
+//!   changes the text's length: "İ" never shifts what follows), where a word boundary is any character
 //!   that is not `[A-Za-z0-9]` (so `Anti-Virus` and `Norton Anti-Virus`
 //!   never match, and the possessive `Antivirus'` does);
 //! - the longest `word` wins at a position;
@@ -39,15 +40,25 @@ function isWordChar(c: string | undefined): boolean {
   return (k >= 48 && k <= 57) || (k >= 65 && k <= 90) || (k >= 97 && k <= 122);
 }
 
+/** ASCII-only lower case: same length as `s`, every other character kept. */
+function asciiLower(s: string): string {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const k = s.charCodeAt(i);
+    out += k >= 65 && k <= 90 ? String.fromCharCode(k + 32) : s[i];
+  }
+  return out;
+}
+
 /** `text` with every table word replaced by how it is said (pure). */
 export function pronounce(text: string, t: PronounceTable = PRONOUNCE): string {
   // Longest first, so `Antiviruses` wins over `Antivirus` at one position.
   const words = t.words
     .filter((w) => typeof w.word === "string" && w.word !== "" && typeof w.say === "string")
-    .map((w) => ({ lower: w.word.toLowerCase(), say: w.say }))
+    .map((w) => ({ lower: asciiLower(w.word), say: w.say }))
     .sort((a, b) => b.lower.length - a.lower.length);
   if (words.length === 0 || text === "") return text;
-  const lower = text.toLowerCase();
+  const lower = asciiLower(text);
   let out = "";
   let i = 0;
   while (i < text.length) {

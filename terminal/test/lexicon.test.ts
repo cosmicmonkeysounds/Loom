@@ -36,6 +36,12 @@ describe("pronounce (wave 26, V3; C10)", () => {
     expect(pronounce("")).toBe("");
     expect(pronounce("HELLO, PROGRAMS.")).toBe("HELLO, PROGRAMS.");
   });
+  it("folds case in ASCII only, so a name that lower-cases longer never shifts the match", () => {
+    expect("İ".toLowerCase().length).toBe(2); // why: toLowerCase would move every index after it
+    expect(pronounce("İİ Antivirus is here")).toBe("İİ Anti Virus is here");
+    expect(pronounce("ẞ ANTIVIRUS")).toBe("ẞ Anti Virus");
+    expect(pronounce("ÀNTIVIRUS")).toBe("ÀNTIVIRUS"); // À is not A: no match
+  });
   it("reads its table (an empty one changes nothing)", () => {
     expect(pronounce("Antivirus", { version: 1, words: [] })).toBe("Antivirus");
     expect(pronounce("Truthcoin", { version: 1, words: [{ word: "Truthcoin", say: "Truth coin" }] })).toBe("Truth coin");

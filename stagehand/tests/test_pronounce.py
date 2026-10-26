@@ -60,6 +60,15 @@ def test_pronounce_matches_the_terminals_rules():
     assert p("Antivirus", ()) == "Antivirus"
 
 
+def test_pronounce_folds_case_in_ascii_only():
+    # str.lower() turns "İ" into two characters, which would shift every index after it.
+    assert len("İ".lower()) == 2
+    p = localvoice.pronounce
+    assert p("İİ Antivirus is here") == "İİ Anti Virus is here"
+    assert p("ẞ ANTIVIRUS") == "ẞ Anti Virus"
+    assert p("ÀNTIVIRUS") == "ÀNTIVIRUS"  # À is not A: no match
+
+
 def test_a_broken_table_says_every_word_as_written(monkeypatch, tmp_path):
     bad = tmp_path / "pronounce.json"
     bad.write_text("{nope")

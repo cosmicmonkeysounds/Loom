@@ -117,11 +117,20 @@ def pronounce_table() -> tuple[tuple[str, str], ...]:
     file is an empty table: the line is said as written, never an error."""
     try:
         doc = json.loads(PRONOUNCE_FILE.read_text(encoding="utf-8"))
-        words = [(str(w["word"]).lower(), str(w["say"])) for w in doc.get("words", []) if isinstance(w, dict) and w.get("word") and isinstance(w.get("say"), str)]
+        words = [(_ascii_lower(str(w["word"])), str(w["say"])) for w in doc.get("words", []) if isinstance(w, dict) and w.get("word") and isinstance(w.get("say"), str)]
     except (OSError, ValueError, KeyError, TypeError) as err:
         log.warning("pronounce.json unusable (%s) — saying every word as written", err)
         return ()
     return tuple(sorted(words, key=lambda w: -len(w[0])))
+
+
+_ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+
+
+def _ascii_lower(s: str) -> str:
+    """Lower case in ASCII only: the same length as `s` (`str.lower` turns
+    "İ" into two characters, which would shift every index after it)."""
+    return s.translate(_ASCII_LOWER)
 
 
 def _word_char(c: str) -> bool:
@@ -130,13 +139,13 @@ def _word_char(c: str) -> bool:
 
 def pronounce(text: str, table: tuple[tuple[str, str], ...] | None = None) -> str:
     """`text` with every table word replaced by how it is said: a whole word,
-    case-insensitive, where a boundary is any character that is not
+    case-insensitive in ASCII only, where a boundary is any character that is not
     `[A-Za-z0-9]`; the longest word wins; `say` replaces it as written. The
     terminal's `lexicon.ts` does exactly the same."""
     words = pronounce_table() if table is None else table
     if not words or not text:
         return text
-    lower = text.lower()
+    lower = _ascii_lower(text)
     out: list[str] = []
     i, n = 0, len(text)
     while i < n:
