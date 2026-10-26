@@ -7152,7 +7152,7 @@ export class EventRuntime {
         // Optional JSON arguments (`{ level: 3 }`) bind by name in listening
         // bodies, like `fire name with level: 3` (Loom 4 §9.2).
         const rawArgs = body["args"];
-        const args = rawArgs !== null && typeof rawArgs === "object" && !Array.isArray(rawArgs) ? canonicalPlaceArgs(rawArgs as Record<string, unknown>, this.sim.model.locations.values()) : null;
+        let args = rawArgs !== null && typeof rawArgs === "object" && !Array.isArray(rawArgs) ? canonicalPlaceArgs(rawArgs as Record<string, unknown>, this.sim.model.locations.values()) : null;
         // Fired *as* a character (the performer-lens interaction path, like
         // `/api/prime/act`): only that character's hooks hear it.
         let actor = str(body, "actor");
@@ -7165,6 +7165,9 @@ export class EventRuntime {
         // would pay a player who never pressed it). Fire it as a non-player
         // it names (a host: ROLE hooks and rules still hear it), else as
         // its one player, else ask who presses it.
+        // Wave 26 (B2): the stand-in's hooks hear `director: true` (journaled
+        // with the press), so a story that names who pressed a button
+        // (`↩ The Director pressed Not a Bingo`) never credits the stand-in.
         if (actor === "") {
           const def = [...this.sim.model.interactions.values()].find((i) => foldName(i.id) === foldName(str(body, "name")));
           const actors = def !== undefined && def.who === "performer" ? (interactionActors(this.sim).get(def.id) ?? []) : [];
@@ -7178,6 +7181,7 @@ export class EventRuntime {
               sendJson(res, 409, { error: `who presses it? fire it as one of: ${players.join(", ")}`, actors: players });
               return true;
             }
+            args = { ...(args ?? {}), director: true };
           }
         }
         // A mod-token device (a tablet, a terminal — `by` is the generic

@@ -458,6 +458,18 @@ describe("Trapped in the Internet — wave 26: a guest's BINGO and one round (B1
     expect(first).toBeGreaterThan(0);
   }, SLOW);
 
+  it("↩ fired for a director (the server's stand-in, `director: true`) reads as the Director, whichever booth it fires as", () => {
+    for (const as of ["Task Manager", "Clippy"]) {
+      const n = boot();
+      startBingo(n);
+      n.press("call_bingo", "g5");
+      const out = n.signal("not_a_bingo", "g5", { director: true }, as);
+      expect(v(n.sim, "Night.phase")).toBe("bingo");
+      expect(hostLines(out), as).toContain("↩ The Director pressed Not a Bingo for Winamp. Bingo is back on: the clock picks up where it stopped.");
+      expect(hostLines(out).some((t) => t.includes(`${as} pressed`))).toBe(false);
+    }
+  }, SLOW);
+
   it("↩ is offered only before any 🎱 / 🎯 / 🤐", () => {
     const n = boot();
     startBingo(n);

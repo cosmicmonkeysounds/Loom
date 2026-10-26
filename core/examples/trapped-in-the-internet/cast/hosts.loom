@@ -148,7 +148,10 @@ CHARACTER Clippy is Greeter, Player
     set Kernel._pressed_by = "Clippy"
   when not_a_bingo for program:
     set Kernel._undo_n += 1
-    set Kernel._undo_by = self
+    if director == true:
+      set Kernel._undo_by = "The Director"
+    else:
+      set Kernel._undo_by = self
   when judge_accurate for program:
     set Kernel._pressed_by = "Clippy"
   when judge_confident for program:
