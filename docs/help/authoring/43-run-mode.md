@@ -200,7 +200,9 @@ Front of house: getting people in.
   (the full patch reaches the story only as `patch_changed`, in the Y2K hour). An amber
   **🔌 buttons** means a 🔌 / 💥 / ❌ press took the bay over: press **🔌
   Trust the patch bay again** to hand it back. **🛠 Set up a terminal…** builds a
-  tablet's provisioning link from pickers: the spot, the view (including
+  tablet's provisioning link from pickers (every link, the door sensor's
+  calibration and the headsets are in [Setting up
+  terminals](48-terminal-setup.md)): the spot, the view (including
   **Reinstall**, the tent laptop: the idle show like any wall terminal,
   and a marked pass plays the reinstallation right there or sends it to
   a headset; like Chess and Casino it has no room and no character),

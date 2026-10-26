@@ -80,7 +80,7 @@ restricted*.
   fanfare) on the tablet, the headset and the walls. The way out is the
   hand jive, together.
 - **Headsets and terminals** are set up from the editor's help (*Setting
-  up terminals and headsets*), never from a guest's Help.
+  up terminals, the door sensor and headsets*), never from a guest's Help.
 
 ## The King
 

@@ -138,6 +138,25 @@ describe('the bundled authoring collection', () => {
     expect(helpArticle('deploy-mode')).toBeUndefined()
   })
 
+  it('wave 26 G2: the crew terminal and headset setup lives in the authoring help', () => {
+    const setup = helpArticle('terminal-setup')
+    expect(setup?.section).toBe('Live Shows')
+    expect(helpSearch('calibrate door')[0]?.article.slug).toBe('terminal-setup')
+    expect(helpSearch('set up this headset')[0]?.article.slug).toBe('terminal-setup')
+    expect(helpSearch('announce=1').map((h) => h.article.slug)).toContain('terminal-setup')
+    expect(setup?.plain).toContain('/terminal/?code=<mod passcode>&spot=server-room&door=serial')
+    expect(setup?.plain).toContain('/terminal/?code=<mod passcode>&spot=tent&announce=1')
+    expect(setup?.plain).toContain('play offline')
+    // Run mode's Terminals card links to it; the cross-link test above
+    // checks the link resolves.
+    const run = helpArticle('run-mode')
+    const links = (run?.blocks ?? []).flatMap((b) =>
+      b.kind === 'list' ? b.items : b.kind === 'para' ? [b.text] : [],
+    ).flatMap((t) => inlineTokens(t)).filter((t) => t.kind === 'link').map((t) => (t.kind === 'link' ? t.href : ''))
+    expect(links).toContain('terminal-setup')
+    expect(setup?.blocks.some((b) => b.kind === 'para' && /\]\(run-mode\)|Run mode/.test(b.text))).toBe(true)
+  })
+
   it('helpArticle(null) is the welcome page; unknown slugs are undefined', () => {
     expect(helpArticle(null)?.slug).toBe('welcome')
     expect(helpArticle('does-not-exist')).toBeUndefined()
