@@ -36,6 +36,11 @@ let flat: readonly SpeechEvent[] | null = null;
 /** A thing the TV's voice did (the TV calls this). */
 export function emitSpeech(e: SpeechEvent): void {
   let slot = ring.find((r) => r.seq === e.seq);
+  // A finished seq queued again is a new line (a story restart reuses seqs).
+  if (slot !== undefined && e.kind === "queued" && slot.events.some((x) => x.kind === "done")) {
+    ring = ring.filter((r) => r !== slot);
+    slot = undefined;
+  }
   if (slot === undefined) {
     slot = { seq: e.seq, events: [] };
     ring.push(slot);

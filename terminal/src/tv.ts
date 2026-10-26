@@ -192,9 +192,13 @@ export class TvSpeechFeed {
     },
   ) {}
 
-  /** The TV took in a line it will say: its sentences' caption texts (`captionChunks`). */
+  /** The TV took in a line it will say: its sentences' caption texts
+   *  (`captionChunks`). A seq it already finished is a new line: room seqs
+   *  start over when the story restarts (Run → Restart, Go live), and
+   *  `planVoice` only hands a seq out again after such a resync. */
   queued(line: Pick<TvLine, "seq" | "beat" | "mode">, texts: readonly string[]): void {
-    if (line.mode !== "speak" || texts.length === 0 || this.lines.has(line.seq)) return;
+    if (line.mode !== "speak" || texts.length === 0 || this.lines.get(line.seq)?.done === false) return;
+    this.lines.delete(line.seq);
     this.lines.set(line.seq, { beat: line.beat, texts, done: false });
     this.io.emit({ kind: "queued", seq: line.seq, beat: line.beat, chunks: texts.length, at: this.io.now() });
     // Forget old lines (the bus keeps its own ring).

@@ -147,6 +147,18 @@ describe("the speech bus", () => {
     expect(recentSpeech()).toEqual([]);
   });
 
+  it("a finished seq queued again starts a new line (a story restart reuses seqs)", () => {
+    emitSpeech(queued(12, 10));
+    emitSpeech(done(12, 20));
+    emitSpeech(queued(12, 5000, 3, "The Verdict"));
+    emitSpeech(done(12, 6000));
+    expect(recentSpeech()).toEqual([queued(12, 5000, 3, "The Verdict"), done(12, 6000)]);
+    // A line not finished keeps its events when it is queued again.
+    emitSpeech(queued(13, 7000));
+    emitSpeech(queued(13, 7100));
+    expect(recentSpeech().filter((e) => e.seq === 13)).toHaveLength(2);
+  });
+
   it("the live flag says whether a TV here can speak", () => {
     expect(speechLive()).toBe(false);
     setSpeechLive(true);

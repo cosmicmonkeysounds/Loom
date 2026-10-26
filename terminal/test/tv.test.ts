@@ -286,4 +286,31 @@ describe("TvSpeechFeed (wave 26, V1): the TV's voice → the speech bus and sp="
     feed.cancelAll();
     expect(events.filter((e) => e["kind"] === "done").map((e) => e["seq"])).toEqual([1, 2]);
   });
+
+  it("a seq it already finished is a new line after a story restart (seqs start over)", async () => {
+    const { TvSpeechFeed } = await import("../src/tv.ts");
+    const { RoomSpeech, speechQuery } = await import("../src/speech/said.ts");
+    const events: Array<Record<string, unknown>> = [];
+    let clock = 100;
+    const room = new RoomSpeech();
+    room.attach();
+    const feed = new TvSpeechFeed({ emit: (e) => events.push(e), now: () => clock, room });
+    feed.queued({ seq: 12, beat: "Trabolta Introduction", mode: "speak" }, ["Old."]);
+    feed.chunk(12, 0);
+    feed.done(12);
+    // The rehearsal ends; Go live; the new run's seq 12 is another line.
+    clock = 9000;
+    events.length = 0;
+    feed.queued({ seq: 12, beat: "The Verdict", mode: "speak" }, ["New.", "Line."]);
+    feed.chunk(12, 0);
+    expect(speechQuery(room.report(12))["sp"]).toBe("12:0");
+    feed.done(12);
+    expect(events.map((e) => e["kind"])).toEqual(["queued", "line", "chunk", "done"]);
+    expect(events[0]).toEqual({ kind: "queued", seq: 12, beat: "The Verdict", chunks: 2, at: 9000 });
+    // A line still being said is never replaced by a repeat of its seq.
+    feed.queued({ seq: 30, beat: null, mode: "speak" }, ["A."]);
+    feed.chunk(30, 0);
+    feed.queued({ seq: 30, beat: null, mode: "speak" }, ["B."]);
+    expect(events.filter((e) => e["seq"] === 30 && e["kind"] === "queued")).toHaveLength(1);
+  });
 });
