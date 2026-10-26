@@ -2739,6 +2739,13 @@ func _test_lobby_mic() -> void:
 	_check(not v.is_testing(), "lobby mic: … and TEST MIC does nothing while playing")
 	link.session_over.emit("test")
 	link.set("voice_base", "")
+	# No voice link (offline, no token yet): a program starting still ends it.
+	lobby.press("mic:test")
+	_check(v.is_testing(), "lobby mic: a test again, with no voice link")
+	link.assignment_received.emit(_assignment(link.house, "mic-2", true))
+	game._process(0.016)
+	_check(game.state() == GameFlow.State.PLAYING and not v.is_testing() and not v.is_running() and v.mic_state == "off" and game.hud.mic_text() == "", "lobby mic: … and a program starting closes it (%s)" % v.mic_state)
+	link.session_over.emit("test")
 	# Android without the grant: ASK AGAIN, which asks.
 	v.platform = "Android"
 	var granted := [false]

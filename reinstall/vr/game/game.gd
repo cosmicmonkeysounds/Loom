@@ -469,6 +469,9 @@ func _on_assignment(a: Dictionary) -> void:
 		return
 	if not flow.assign(a):
 		return
+	# TEST MIC ends when a program starts — also with no voice link to take
+	# the mic over (offline, no token yet), where nothing else would close it.
+	voice.stop_test()
 	link.adopt(a)
 	var spawn: Dictionary = a["spawn"]
 	lobby.visible = false
