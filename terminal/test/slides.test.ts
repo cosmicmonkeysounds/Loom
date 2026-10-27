@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { IdentifyOverlay, ScreenLayer, SlideView, claimGlitchSounds, glitchLeftMs, resetGlitchSounds } from "../src/ScreenLayer.tsx";
-import { EMPTY_NIGHT, parseScreenState, resetPageFirst, withFirstNow, type ScreenProgram, type ScreenState } from "../src/screen.ts";
-import { BLACKOUT_MS, FLICKER_FRESH_MS, GLITCH_FRESH_MS, GLITCH_MS, GLITCH_WITH_MS, slideClockAt, coverOf, GLITCH_TEXT, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartRankedLine, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
+import { EMPTY_NIGHT, SCREEN_POLL_MS, TV_POLL_MS, parseScreenState, resetPageFirst, withFirstNow, type ScreenProgram, type ScreenState } from "../src/screen.ts";
+import { BLACKOUT_MS, FLICKER_FRESH_MS, FLICKER_MS, FlickerPlays, endFlicker, offerFlicker, GLITCH_FRESH_MS, GLITCH_MS, GLITCH_WITH_MS, slideClockAt, coverOf, GLITCH_TEXT, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartRankedLine, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
 
 const T0 = 1_000_000;
 const empty: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
@@ -188,6 +188,100 @@ describe("screen layers — precedence (N-03)", () => {
     expect(at(s, FLICKER_FRESH_MS).flicker).toBeNull();
     expect(at(state({ program: { flicker: shot("flicker", 0, 7) } }), 0).flicker).toBeNull();
     expect(at(state({ program: { flicker: shot("flicker", T0, 7), blackout: shot("blackout", T0) } }), 0).flicker).toBeNull();
+  });
+
+  it("a ⚡'s flicker the poll brings late still plays, whole, once (wave 32 review)", () => {
+    // The TV polls every second, a wall every two; a retry can add more. Each
+    // answer is the server's word at `now` (the cue was at T0).
+    expect(FLICKER_FRESH_MS).toBeGreaterThanOrEqual(2 * SCREEN_POLL_MS + FLICKER_MS);
+    for (const lag of [TV_POLL_MS - 50, TV_POLL_MS, SCREEN_POLL_MS, 2 * SCREEN_POLL_MS + 500, FLICKER_FRESH_MS - FLICKER_MS]) {
+      const s = state({ now: T0 + lag, receivedAt: 5_000, target: lag < SCREEN_POLL_MS ? "tv" : "terminals", program: { flicker: shot("flicker", T0, 7) } });
+      // On offer from the answer for at least its whole stutter, on the page's own clock.
+      for (const ms of [0, FLICKER_MS / 2, FLICKER_MS - 1]) expect(at(s, ms).flicker, `${lag} + ${ms}`).toBe(7);
+    }
+    // Past the freshness it is history: never played.
+    expect(at(state({ now: T0 + FLICKER_FRESH_MS, program: { flicker: shot("flicker", T0, 7) } }), 0).flicker).toBeNull();
+    // Once per seq: the next polls bring the same seq and start nothing; a new ⚡ plays.
+    const plays = new FlickerPlays();
+    expect(plays.start(null)).toBeNull();
+    expect(plays.start(7)).toBe(7);
+    expect(plays.start(7)).toBeNull();
+    expect(plays.start(null)).toBeNull();
+    expect(plays.start(7)).toBeNull();
+    expect(plays.start(8)).toBe(8);
+  });
+
+  // `ScreenLayer`'s Flicker, with React's effect rules played by hand: each
+  // commit runs an effect whose deps changed (its old cleanup first), a set
+  // state commits again, and StrictMode's mount runs every effect, cleans up
+  // and runs them all again. The deps are the component's: [seq] and [on].
+  function flickerOnPage(seq0: number | null, strict: boolean) {
+    const UNSET = Symbol("unset");
+    const plays = new FlickerPlays();
+    const page = { seq: seq0, on: null as number | null, starts: [] as number[] };
+    let seqDep: unknown = UNSET;
+    let onDep: unknown = UNSET;
+    let endCleanup: (() => void) | undefined;
+    let dirty = false;
+    let flushing = false;
+    const setOn = (v: number | null) => {
+      if (Object.is(v, page.on)) return;
+      page.on = v;
+      if (v !== null) page.starts.push(v);
+      dirty = true;
+      if (!flushing) flush();
+    };
+    const commit = () => {
+      const { seq, on } = page; // what this render saw
+      if (!Object.is(seq, seqDep)) { seqDep = seq; offerFlicker(plays, seq, setOn); }
+      if (!Object.is(on, onDep)) { endCleanup?.(); onDep = on; endCleanup = endFlicker(on, setOn); }
+    };
+    const flush = () => {
+      flushing = true;
+      do { dirty = false; commit(); } while (dirty);
+      flushing = false;
+    };
+    flushing = true;
+    commit();
+    if (strict) {
+      endCleanup?.();
+      endCleanup = undefined;
+      seqDep = onDep = UNSET;
+      commit();
+    }
+    flushing = false;
+    if (dirty) flush();
+    return { page, setSeq: (s: number | null) => { page.seq = s; flush(); } };
+  }
+
+  it("a late ⚡ that goes stale mid-stutter still finishes and unmounts; StrictMode starts one (wave 32 review)", () => {
+    vi.useFakeTimers();
+    try {
+      for (const strict of [false, true]) {
+        const { page, setSeq } = flickerOnPage(7, strict);
+        expect(page.on, `strict ${strict}`).toBe(7);
+        expect(page.starts).toEqual([7]);
+        // The next poll is past FLICKER_FRESH_MS: the seq goes back to null mid-stutter.
+        vi.advanceTimersByTime(FLICKER_MS / 2);
+        setSeq(null);
+        expect(page.on).toBe(7);
+        vi.advanceTimersByTime(FLICKER_MS / 2 - 1);
+        expect(page.on).toBe(7);
+        vi.advanceTimersByTime(1);
+        expect(page.on).toBeNull();
+        expect(vi.getTimerCount()).toBe(0);
+        // The same seq again starts nothing; a new ⚡ plays whole.
+        setSeq(7);
+        expect(page.on).toBeNull();
+        setSeq(8);
+        expect(page.on).toBe(8);
+        vi.advanceTimersByTime(FLICKER_MS);
+        expect(page.on).toBeNull();
+        expect(page.starts).toEqual([7, 8]);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("no answer yet: nothing on top", () => {

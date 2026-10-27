@@ -52,8 +52,49 @@ export const SLIDE_HOLD_MS: Record<ScreenTarget, number> = { terminals: 45_000, 
 export const BLACKOUT_MS = 10_000;
 /** The flicker's length (two dips: 2 Hz). */
 export const FLICKER_MS = 1000;
-/** A flicker first seen later than this after its cue is history: not played. */
+/** A flicker first seen later than this after its cue is history: not played.
+ *  Well over a wall's poll (`SCREEN_POLL_MS`, the TV's is shorter) and a
+ *  retry, so a ⚡ the poll brings late still plays (`FlickerPlays`). */
 export const FLICKER_FRESH_MS = 6000;
+
+/**
+ * (wave 32 review) Which flicker to start now: a seq this page has not
+ * played. A ⚡'s flicker reaches a screen up to a poll late (1 s on the TV,
+ * 2 s on a wall, more after a retry); `screenLayers` offers it for
+ * `FLICKER_FRESH_MS` from its cue, and it plays whole (`FLICKER_MS`) from
+ * whenever this page first sees it, so a late one is late, never lost.
+ * Once per seq: the next polls bring the same seq and start nothing.
+ */
+export class FlickerPlays {
+  private readonly played = new Set<number>();
+  /** The seq to start a stutter for, or null (none on offer, or played already). */
+  start(seq: number | null): number | null {
+    if (seq === null || this.played.has(seq)) return null;
+    this.played.add(seq);
+    return seq;
+  }
+}
+
+/**
+ * (wave 32 review) The flicker's two effects, here so a test can drive them
+ * on fake timers (`ScreenLayer`'s `Flicker` runs them; the deps there are
+ * part of the rule). `offerFlicker` runs on each new seq: it starts a stutter
+ * for a seq this page has not played and otherwise leaves the playing one
+ * alone (a seq gone back to null never stops it). `endFlicker` runs on each
+ * stutter started (`on`, never the seq): it ends it `FLICKER_MS` later, so a
+ * late ⚡ that goes stale mid-stutter still finishes and unmounts. Its
+ * cleanup only clears that stutter's timer, and React's re-run (StrictMode,
+ * a new stutter) arms the next one.
+ */
+export function offerFlicker(plays: FlickerPlays, seq: number | null, setOn: (on: number) => void): void {
+  const s = plays.start(seq);
+  if (s !== null) setOn(s);
+}
+export function endFlicker(on: number | null, setOn: (on: null) => void): (() => void) | undefined {
+  if (on === null) return undefined;
+  const t = setTimeout(() => setOn(null), FLICKER_MS);
+  return () => clearTimeout(t);
+}
 /** (wave 26, T2) The glitch takeover's length: shown while its cue is younger than this. */
 export const GLITCH_MS = 8000;
 /** (wave 26, T2) A glitch this page first saw later than this after its cue

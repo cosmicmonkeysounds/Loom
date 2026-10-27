@@ -17,7 +17,7 @@ import { BUILD } from "./health.ts";
 import { BurstFlash } from "./burst-flash.tsx";
 import { CutsceneSlot } from "./cutscene/slot.tsx";
 import { useSceneClockUp } from "./cutscene/moment-bus.ts";
-import { FLICKER_MS, GLITCH_MS, GLITCH_TEXT, STAFF_TAG, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
+import { FlickerPlays, GLITCH_MS, GLITCH_TEXT, STAFF_TAG, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, endFlicker, offerFlicker, type OverlayKind, type ScreenLayers } from "./slides.ts";
 import { sfx } from "./sound/bus.ts";
 
 /** PNGs that failed to load this page-load: go straight to the next source. */
@@ -230,17 +230,16 @@ export function CornerCountdown({ seconds }: { seconds: number }) {
   );
 }
 
-/** Plays one stutter per new flicker seq. */
+/** Plays one whole stutter per new flicker seq, however late the poll
+ *  brought it (`FlickerPlays`); its end never hangs on the seq (a late one
+ *  that goes stale mid-stutter still finishes and goes). */
 function Flicker({ seq }: { seq: number | null }) {
-  const played = useRef(new Set<number>());
+  const plays = useRef<FlickerPlays | null>(null);
+  plays.current ??= new FlickerPlays();
   const [on, setOn] = useState<number | null>(null);
-  useEffect(() => {
-    if (seq === null || played.current.has(seq)) return;
-    played.current.add(seq);
-    setOn(seq);
-    const t = window.setTimeout(() => setOn(null), FLICKER_MS);
-    return () => window.clearTimeout(t);
-  }, [seq]);
+  // The deps are part of the rule (`offerFlicker`): start on the seq, end on the stutter.
+  useEffect(() => offerFlicker(plays.current!, seq, setOn), [seq]);
+  useEffect(() => endFlicker(on, setOn), [on]);
   return on === null ? null : <div key={on} className="screen-flicker" aria-hidden="true" />;
 }
 
