@@ -210,7 +210,15 @@ describe("wave 32 — the talk scenes along a scripted night (C1, C2)", () => {
     expect(v(sim, "Night.glitch_kind")).toBe("full");
     expect(v(sim, "Night.glitch_text")).toBe("000. 000. 000.");
     const hijackAt = v(sim, "Night.glitch_at");
-    // Inside the 📺's own second: too soon.
+    // Inside the 📺's own second, and all through its 8 s takeover: refused,
+    // so a ⚡ never cuts the hijack short on the terminals and phones.
+    expect(press(sim, "ad_burst").refused).toBe(true);
+    advance(sim, 2);
+    const inHijack = press(sim, "ad_burst");
+    expect(inHijack.refused).toBe(true);
+    expect(JSON.stringify(inHijack.out)).toContain("The ad hijack is still playing");
+    expect(v(sim, "Night.glitch_kind")).toBe("full");
+    advance(sim, 4);
     expect(press(sim, "ad_burst").refused).toBe(true);
     advance(sim, 2);
     const b1 = press(sim, "ad_burst");
