@@ -35,7 +35,7 @@ from stagehand.agents.cards import VoiceOptions
 from stagehand.agents.prompt import build_messages, gate_context, is_stage, matching_situations, stage_of
 from stagehand.agents.reply import Reply
 from stagehand.agents.slots import FIRST, NORMAL, Slots
-from stagehand.agents.voice import answer_lean, build_lean_messages, history_turns, render_p3, right_now, room_lines, stage_steer
+from stagehand.agents.voice import answer_lean, build_lean_messages, history_turns, render_p3, right_now, room_lines, scene_cut, stage_steer
 from stagehand.agents import module as agents_module
 
 from stagehand.modapi import ModApiError
@@ -712,3 +712,52 @@ def test_at_the_ad_attack_the_pain_shows_and_the_denial_waits_for_private():
     assert "While the adverts are still tearing through you at the Desktop, the pain shows and you cannot pretend otherwise." in brief
     assert "Afterwards, and to any program in private, deny every one of them: a minor irregularity." in brief
     assert "Deny every one of them" not in brief
+
+
+def _bottle_then_ad():
+    return [
+        {"seq": 1, "mine": False, "from": "Clippy", "text": "You look hungry, Trabolta."},
+        {"seq": 2, "mine": True, "from": "Trabolta", "text": "I am still hungry. Let the spin begin!"},
+        {"seq": 3, "mine": False, "from": "Narrator", "text": "An advert tears through the slide.", "story": True},
+        {"seq": 4, "mine": False, "from": "Clippy", "text": "WHAT WAS THAT?"},
+    ]
+
+
+def test_a_new_scene_starts_its_live_turns_afresh():
+    r = stage_request("ad", history=_bottle_then_ad(), text="WHAT WAS THAT?")
+    cut, state = scene_cut(r, ("bottle", 0))
+    assert state == ("ad", 2) and cut["stage"]["after_seq"] == 2 and "after_seq" not in r["stage"]
+    # The bottle's exchange is no longer a turn; the room block still shows it, as said.
+    assert history_turns(cut) == [{"role": "user", "content": "Clippy: WHAT WAS THAT?"}]
+    assert 'You: “I am still hungry. Let the spin begin!”' in render_p3(lean_persona(), cut, context())
+    # Later in the same scene, the cut holds and the new exchange stays.
+    later = stage_request(
+        "ad",
+        history=[*_bottle_then_ad(), {"seq": 5, "mine": True, "from": "Trabolta", "text": "A minor— BUY NOW— irregularity."}, {"seq": 6, "mine": False, "from": "Clippy", "text": "Are you hurt?"}],
+        text="Are you hurt?",
+    )
+    cut2, state2 = scene_cut(later, state)
+    assert state2 == ("ad", 2)
+    assert [t["content"] for t in history_turns(cut2)] == ["Clippy: WHAT WAS THAT?", "A minor— BUY NOW— irregularity.", "Clippy: Are you hurt?"]
+
+
+def test_the_first_stage_request_and_a_dm_cut_nothing():
+    r = stage_request("ad", history=_bottle_then_ad(), text="WHAT WAS THAT?")
+    same, state = scene_cut(r, None)  # a worker restarted mid-scene cannot tell
+    assert same is r and state == ("ad", 0) and len(history_turns(same)) == 3
+    dm = request()
+    assert scene_cut(dm, ("ad", 2)) == (dm, ("ad", 2))
+    # A scene change with nothing of his said live yet keeps the earlier cut.
+    fresh = stage_request("beans", history=[{"seq": 9, "mine": False, "from": "Clippy", "text": "BEANS?!"}], text="BEANS?!")
+    assert scene_cut(fresh, ("ad", 2))[1] == ("beans", 2)
+
+
+def test_the_worker_cuts_at_a_scene_change(tmp_path):
+    agents, fake = make(tmp_path, fake=FakeVoice(FakeReply(say="Hungry.", memo=""), FakeReply(say="FREE— a minor irregularity.", memo="")))
+    bottle = stage_request("bottle", history=_bottle_then_ad()[:2], text="You look hungry, Trabolta.")
+    bottle["id"] = "stage-b"
+    ad = stage_request("ad", history=_bottle_then_ad(), text="WHAT WAS THAT?")
+    ad["id"] = "stage-a"
+    run(handle(agents, bottle, ad))
+    assert "after_seq" not in fake.calls[0][0]["stage"]
+    assert fake.calls[1][0]["stage"]["after_seq"] == 2

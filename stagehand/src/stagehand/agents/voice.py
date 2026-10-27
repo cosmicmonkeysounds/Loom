@@ -563,8 +563,11 @@ def history_turns(req: dict[str, Any]) -> list[dict[str, str]]:
     (wave 32) A stage request's history is the whole room's: only the live
     exchange is a turn (every scripted line, whoever said it, is in P3's
     room block), and each line not his says who said it."""
-    if stage_of(req) is not None:
-        live = [h for h in req.get("history") or [] if isinstance(h, dict) and h.get("story") is not True][-HISTORY:]
+    stage = stage_of(req)
+    if stage is not None:
+        after = stage.get("after_seq")
+        after = after if isinstance(after, int) and not isinstance(after, bool) else 0
+        live = [h for h in req.get("history") or [] if isinstance(h, dict) and h.get("story") is not True and not _before_scene(h, after)][-HISTORY:]
         turns = [
             {"role": "assistant", "content": str(h.get("text", ""))} if h.get("mine") else {"role": "user", "content": _said_by(h.get("from"), h.get("text"))}
             for h in live
@@ -579,6 +582,38 @@ def history_turns(req: dict[str, Any]) -> list[dict[str, str]]:
     if not free or free[-1].get("mine"):
         out.append({"role": "user", "content": str(req.get("text") or "(they are waiting)")})
     return out
+
+
+def _before_scene(line: dict[str, Any], after: int) -> bool:
+    seq = line.get("seq")
+    return after > 0 and isinstance(seq, int) and not isinstance(seq, bool) and seq <= after
+
+
+def scene_cut(req: dict[str, Any], prev: tuple[str, int] | None) -> tuple[dict[str, Any], tuple[str, int] | None]:
+    """(wave 32) At a talk scene's change, the earlier scene's live exchange
+    stops being turns: the first reply of the ad scene was the bottle's last
+    line word for word (a 29 s repeat retry), because his own bottle reply was
+    the newest assistant turn. `prev` is (scene, seq) from the last stage
+    request: the exchange up to `seq` belongs to an earlier scene. Returns the
+    request with `stage.after_seq` set (the live turns start after it; the
+    room block in P3 still shows those lines, as said) and the new state. A
+    request with no stage passes through; the first stage request seen cuts
+    nothing (a worker restarted mid-scene cannot tell)."""
+    stage = req.get("stage")
+    if not isinstance(stage, dict):
+        return req, prev
+    scene = str(stage.get("scene") or "")
+    if prev is None:
+        cut = 0
+    elif prev[0] == scene:
+        cut = prev[1]
+    else:
+        mine = [h.get("seq") for h in req.get("history") or [] if isinstance(h, dict) and h.get("mine") and h.get("story") is not True]
+        cut = max((x for x in mine if isinstance(x, int) and not isinstance(x, bool)), default=prev[1])
+    state = (scene, cut)
+    if cut <= 0:
+        return req, state
+    return {**req, "stage": {**stage, "after_seq": cut}}, state
 
 
 def _said_by(name: Any, text: Any) -> str:
