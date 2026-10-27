@@ -1541,7 +1541,7 @@ describe("The Heart — the first meeting (wave 27)", () => {
     const words = lines(e);
     expect(words).toContain("You asked me what comes after. I think this is it. Quiet.");
     expect(words).toContain("A person told me. Of course it was a person.");
-    expect(words).toContain("I promised to make your debt go away. I cannot. It is waiting for you upstairs, with everything else that is yours.");
+    expect(words).toContain("I promised to make your debt go away. I cannot. It will be waiting when you wake up, with everything else that is yours.");
     expect(beats(e)).toEqual(expect.arrayContaining(["Heart Convinced", "Heart Shutdown"]));
   });
 

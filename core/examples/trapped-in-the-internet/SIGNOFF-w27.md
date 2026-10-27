@@ -144,7 +144,7 @@ inside it or of its own quest.
 | 1206 | Heart Leave, from the argument on | *You were close to saying something. Come back when you can say it.* (before *Go, then…*) |
 | 1227 | Heart Convinced, asked what comes after | *You asked me what comes after. I think this is it. Quiet.* |
 | 1229–1235 | Heart Convinced, who they said they are | person: *A person told me. Of course it was a person.* · program: *One of my own programs told me. I suppose that is fitting.* · chosen: *I picked you by hand. I suppose I picked well.* · else marked: *Marked, and you still came down to tell me. They were wrong about you. I was wrong about her.* |
-| 1286–1292 | Heart Shutdown, what the invitation promised | loneliness: *I promised you would never be alone. I could not do that. Go upstairs. Someone up there is logged in.* · mortality: *I promised you would never die. I cannot keep that. Go back to your body. It is the only one you get.* · debt: *I promised to make your debt go away. I cannot. It is waiting for you upstairs, with everything else that is yours.* · career: *I promised you would always have something to do. You did. You did this.* |
+| 1286–1292 | Heart Shutdown, what the invitation promised | loneliness: *I promised you would never be alone. I could not do that. Go upstairs. Someone up there is logged in.* · mortality: *I promised you would never die. I cannot keep that. Go back to your body. It is the only one you get.* · debt: *I promised to make your debt go away. I cannot. It will be waiting when you wake up, with everything else that is yours.* · career: *I promised you would always have something to do. You did. You did this.* |
 
 ## 3. A typical winning run
 

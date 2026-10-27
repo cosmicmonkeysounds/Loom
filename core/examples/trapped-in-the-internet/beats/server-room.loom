@@ -1322,7 +1322,7 @@ if program.human_problem == "loneliness":
 else if program.human_problem == "mortality":
   Trabolta: I promised you would never die. I cannot keep that. Go back to your body. It is the only one you get.
 else if program.human_problem == "debt":
-  Trabolta: I promised to make your debt go away. I cannot. It is waiting for you upstairs, with everything else that is yours.
+  Trabolta: I promised to make your debt go away. I cannot. It will be waiting when you wake up, with everything else that is yours.
 else if program.human_problem == "career":
   Trabolta: I promised you would always have something to do. You did. You did this.
 // DRAFT w20
