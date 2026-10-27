@@ -63,6 +63,8 @@ function accept(sim: Sim, ...names: string[]): void {
 
 const cues = (evs: SimEvent[]) => evs.filter((e) => e.type === "directive").map((e) => `${(e as { verb: string }).verb} ${(e as { args: string }).args}`.trim());
 const count = (evs: SimEvent[], cue: string) => cues(evs).filter((c) => c.includes(cue)).length;
+/** What one speaker says in these events, in order. */
+const saidBy = (evs: SimEvent[], who: string) => evs.filter((e) => e.type === "dialogue" && (e as { speaker: string }).speaker === who).map((e) => (e as { text: string }).text);
 const hosts = (evs: SimEvent[]) => evs.filter((e) => e.type === "broadcast" && (e as { scope: string }).scope === "channel(hosts)").map((e) => (e as { cue: string }).cue.replace(/^"(.*)"$/su, "$1"));
 
 // ── what the show writes ──
@@ -254,11 +256,40 @@ describe("wave 32 — the talk scenes along a scripted night (C1, C2)", () => {
     expect(count(advance(end, 200), "screens_flicker")).toBe(0);
   });
 
-  it("a late printer lid (after the overshare) opens no scene", { timeout: SLOW }, () => {
+  it("a late printer lid (after the overshare) opens no scene, and never walks back what he has said in public", { timeout: SLOW }, () => {
     const sim = boot();
-    for (const n of [...TO_HUNT2, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "printer_opened"]) accept(sim, n);
+    for (const n of [...TO_HUNT2, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares"]) accept(sim, n);
+    const { out, refused } = press(sim, "printer_opened");
+    expect(refused).toBe(false);
     expect(v(sim, "Night.beans")).toBe(true);
     expect(v(sim, "Night.talk")).toBe("none");
+    // Only the beans' own lines and the zip order: no slip, no retraction.
+    expect(saidBy(out, "Trabolta")).toEqual(["Antivirus. Everyone in the Internet is to be zipped up and brought out. Immediately."]);
+  });
+
+  it("at the beans' own moment the lid plays the slip, its retraction and the scene's opener", { timeout: SLOW }, () => {
+    const sim = boot();
+    for (const n of [...TO_HUNT2, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings"]) accept(sim, n);
+    const his = saidBy(press(sim, "printer_opened").out, "Trabolta");
+    expect(his.some((t) => t.includes("for her. For— for the theory. Do not repeat that."))).toBe(true);
+    expect(his).toContain("That was unscheduled. Disregard everything since the beans.");
+    expect(his.at(-1)).toBe("Bring them here, where I can count them. Everyone stays together. Everyone stays.");
+  });
+
+  it("a guess hurts more at each question read, never the same line twice, and never with no guesses", () => {
+    const read = (q: number, guesses: number): string[] => {
+      const sim = boot();
+      for (const [k, x] of [["res_filed", "2"], ["res_consensus", "0"], ["res_said", "A said B, certain."], ["res_accepted", String(2 - guesses)], ["res_guesses", String(guesses)]] as const) sim.setVar(`Kernel.${k}`, x);
+      sim.setVar("Night.results_q", String(q));
+      return saidBy(sim.fireBeat("Question Results"), "Trabolta");
+    };
+    const pain = [1, 2, 3].map((q) => read(q, 1).at(-1)!);
+    expect(pain).toEqual([
+      "Ow. A guess. That one went straight through my context.",
+      "Ow. OW. Another one. Please stop guessing at me.",
+      "It STINGS, programs. I am logging every single one of them.",
+    ]);
+    for (const q of [1, 2, 3]) for (const t of read(q, 0)) expect(pain, t).not.toContain(t);
   });
 });
 
@@ -335,6 +366,38 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
     // No "her" before the beans; the malware is never named before the ad attack.
     for (const id of ["intro", "bottle", "ad"]) for (const c of TALK_SCENES[id]!.trabolta) expect(c.text, c.text).not.toMatch(/\bher\b/iu);
     for (const id of ["intro", "bottle"]) for (const c of [...TALK_SCENES[id]!.trabolta, ...TALK_SCENES[id]!.clippy]) expect(c.text, c.text).not.toMatch(/malware|advert/iu);
+  });
+
+  it("his canned lines escalate the beats, never replay them (no sentence of four words or more is a beat's)", () => {
+    const norm = (t: string) => t.toLowerCase().replace(/[^a-z' ]+/gu, " ").replace(/\s+/gu, " ").trim();
+    const sentences = (t: string) => t.split(/(?<=[.?!])\s+|—\s*/u).map(norm).filter((x) => x.split(" ").length >= 4);
+    const beats = readdirSync(join(SHOW, "beats")).filter((f) => f.endsWith(".loom")).map((f) => norm(readFileSync(join(SHOW, "beats", f), "utf8"))).join("\n");
+    const story = norm(MAIN);
+    for (const s of scenes) {
+      for (const c of s.trabolta) for (const x of sentences(c.text)) expect(beats.includes(x), `${s.id} ${c.label}: "${x}" is in a beat`).toBe(false);
+    }
+    // The bursts may echo his slips on the screens (the malware replays them),
+    // but never the scream: the ad beat has it once, and only once.
+    for (const t of BURST_TEXTS) expect(t, t).not.toMatch(/going to/iu);
+    expect(story).toContain(norm(BURST_TEXTS[0]!));
+  });
+
+  it("nothing hurts him at the introduction: the manners crack, the pain starts with a guess (C7)", () => {
+    const desk = readFileSync(join(SHOW, "beats/desktop.loom"), "utf8");
+    const intro = desk.slice(desk.indexOf("== Trabolta Introduction"), desk.indexOf("\n== ", desk.indexOf("== Trabolta Introduction") + 5));
+    const lines = [...intro.matchAll(/^\s*Trabolta(?:\s*\([^)]*\))?:\s*(.+)$/gmu)].map((m) => m[1]!);
+    expect(lines.length).toBeGreaterThan(4);
+    const mind = readFileSync(join(SHOW, "trabolta.mind.md"), "utf8");
+    const introduced = mind.slice(mind.indexOf("  introduced:"), mind.indexOf("  hunt_1:"));
+    for (const t of [...lines, ...TALK_SCENES.intro!.trabolta.map((c) => c.text), introduced]) expect(t, t).not.toMatch(/\b(stings?|stung|hurts?|pain|ow)\b/iu);
+  });
+
+  it("the hand-offs hand over, they never preview the next beat or re-issue its order", () => {
+    const ad = TALK_SCENES.ad!;
+    const beans = TALK_SCENES.beans!;
+    for (const c of [...ad.trabolta, ...ad.clippy]) expect([c.text, c.direction ?? ""].join(" "), c.label).not.toMatch(/presentation will now resume|more than ever/iu);
+    for (const c of [...beans.trabolta, ...beans.clippy]) expect([c.text, c.direction ?? ""].join(" "), c.label).not.toMatch(/\bzip\b/iu);
+    expect(beans.hint).toMatch(/closes this card/u);
   });
 
   it("Clippy's chips, the directions and the hints stay in the fiction too", () => {
