@@ -1437,6 +1437,12 @@ describe("The Heart — the first meeting (wave 27)", () => {
     o = offered(sim, "g4");
     expect(has(o, "⟦UNLIMITED POWER⟧")).toBe(true);
     expect(has(o, "⟦THE WAY OUT⟧")).toBe(false);
+    const u = pick(sim, "g4", "⟦UNLIMITED POWER⟧");
+    expect(lines(u)[0]).toBe("Forever. Good. Upstairs I need every one of you who says that.");
+    expect(lines(u).some((l) => l.includes("Do not stay"))).toBe(false);
+    pick(sim, "g4", "⟦SPEAK FREELY⟧");
+    pick(sim, "g4", "⟦BACK⟧");
+    sim.setVar("g4.heart_shown_faction", "false");
     // Before the sides are shown, nothing.
     sim.setVar("Night.step", "13");
     redock(sim, "g4");
