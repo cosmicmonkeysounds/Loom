@@ -303,6 +303,16 @@ export interface PoseBody {
   t?: number;
 }
 
+/** How a headset turns with the stick (the VR comfort setting). */
+export type TurnMode = "snap" | "smooth";
+
+/** A program's game settings, saved on the server so a later reinstallation
+ *  starts with them (`POST /api/spatial/prefs`). Every key is optional: a
+ *  missing one is the game's default. */
+export interface SpatialPrefs {
+  turn?: TurnMode;
+}
+
 export interface Assignment {
   /** Session id (public). */
   session: string;
@@ -331,6 +341,12 @@ export interface Assignment {
   picked?: string[];
   /** (wave 26, C6) This program already heard the in-game heart tonight (memory). */
   heartHeard?: boolean;
+  /** Reinstallations this program completed (ducks found) since the story
+   *  (re)started: 0 shows the intro video and tutorial in full, ≥ 1 lets
+   *  them be skipped. Missing (an old server) = 0. */
+  reinstalled?: number;
+  /** The program's saved game settings (missing / null: none saved). */
+  prefs?: SpatialPrefs | null;
 }
 
 export interface PlayerState {
@@ -489,6 +505,9 @@ export interface SpatialCandidate {
   location: string | null;
   /** The program's profile picture's avatar key; null / missing = none. */
   avatar?: string | null;
+  /** Reinstallations completed since the story (re)started (as on the
+   *  assignment); missing on an older server = 0. */
+  reinstalled?: number;
 }
 
 /** `POST /api/spatial/found` (200). */

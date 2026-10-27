@@ -93,6 +93,8 @@ import {
   houseWarnings,
   isWorld,
   parseDuckRun,
+  parsePrefs,
+  parsePrefsBook,
   parseMomentRequest,
   parsePose,
   sortCandidates,
@@ -988,6 +990,8 @@ export class EventRuntime {
         if (this.nightEnded()) run.after = true;
         this.store.appendRun(run);
       },
+      // A headset's saved settings (snap / smooth turning) survive a restart.
+      onPrefs: (all) => this.store.saveSpatialPrefs(all),
       // The shared King's hit points live in the story world (C2: the
       // prop's `health` path, journaled, restart-safe).
       kingHp: (path) => {
@@ -3778,6 +3782,8 @@ export class EventRuntime {
               favour: ended && eligible && !captured,
               location: sim.locationOf(p.id),
               avatar: this.avatars.keyFor(p.name),
+              // ≥ 1: the intro video and tutorial may be skipped.
+              reinstalled: this.spatial.reinstalledBy(p.id),
             };
           }),
         );
@@ -3893,6 +3899,31 @@ export class EventRuntime {
       case "/api/spatial/moment":
         this.handleMoment(res, token, body, refuse);
         return true;
+      case "/api/spatial/ready": {
+        // The game's intro (video, tutorial) is over: the run clock restarts.
+        // Commits nothing, so it is open while the doors are closed.
+        const out = this.spatial.ready(token);
+        if (out !== "ok") refuse(out);
+        else sendJson(res, 200, { ok: true });
+        return true;
+      }
+      case "/api/spatial/prefs": {
+        // A program's game settings (VR: snap / smooth turning), saved for
+        // its next reinstallation. Commits nothing to the story.
+        if (!this.spatial.hasToken(token)) {
+          refuse(this.spatial.tokenState(token));
+          return true;
+        }
+        const prefs = parsePrefs(body);
+        if (prefs === null) {
+          sendJson(res, 400, { error: 'settings are {turn: "snap" | "smooth"}' });
+          return true;
+        }
+        const out = this.spatial.setPrefs(token, prefs);
+        if (out.kind !== "ok") refuse(out.kind);
+        else sendJson(res, 200, { ok: true, prefs: out.prefs });
+        return true;
+      }
       case "/api/spatial/end": {
         const out = this.spatial.endByToken(token);
         if (out !== "ok") refuse(out);
@@ -4816,6 +4847,7 @@ export class EventRuntime {
     if (this.sim !== null) for (const k of answeredInviteCards(this.chat.all(), this.sim.crews)) this.answeredWidgets.add(k); // w18 crews
     this.chat.loadHidden(this.store.loadHidden());
     this.spatial.restoreRuns(this.store.loadRuns().map(parseDuckRun).filter((r): r is DuckRun => r !== null));
+    this.spatial.restorePrefs(parsePrefsBook(this.store.loadSpatialPrefs()));
     for (const m of this.chat.all()) if (this.isExpired(m)) this.notifiedExpired.add(m.seq);
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);

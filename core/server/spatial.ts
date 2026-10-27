@@ -75,6 +75,7 @@ import type {
   Prop,
   SpatialCandidate,
   SpatialFrames,
+  SpatialPrefs,
   SpatialWorld,
   Spawn,
   StationInfo,
@@ -117,6 +118,8 @@ export interface SpatialHubOptions {
   /** A duck was found — the runtime keeps the run on disk (the ceremony's
    *  Golden Duck Speedrun, SW-RE-14). */
   onRun?: (run: DuckRun) => void;
+  /** A game saved a program's settings — the runtime keeps them on disk. */
+  onPrefs?: (all: Record<string, SpatialPrefs>) => void;
   /** Reads a world path (the King's `health`): his current hit points. A
    *  missing or non-number value reads as full. Absent (or a king with no
    *  `health` path): the hub keeps his hit points in memory. */
@@ -217,6 +220,9 @@ interface Session {
   kingHit: boolean;
   /** The avatar key last told the stream (`refreshAvatar` sends a change). */
   avatar: string | null;
+  /** The game said its intro (video + tutorial) is over (`ready`): the
+   *  duck run's clock restarted then, once. */
+  ready: boolean;
 }
 
 interface Station {
@@ -403,6 +409,30 @@ export function houseWarnings(house: HouseMap, isLocation: (name: string) => boo
   return out;
 }
 
+/** `POST /api/spatial/prefs` body → the settings it names (unknown keys
+ *  dropped); null when it names none or a value is out of range. */
+export function parsePrefs(body: unknown): SpatialPrefs | null {
+  if (body === null || typeof body !== "object") return null;
+  const b = body as Record<string, unknown>;
+  const out: SpatialPrefs = {};
+  if (b.turn !== undefined) {
+    if (b.turn !== "snap" && b.turn !== "smooth") return null;
+    out.turn = b.turn;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+/** A settings file's contents → guest → settings (bad rows dropped). */
+export function parsePrefsBook(raw: unknown): Record<string, SpatialPrefs> {
+  const out: Record<string, SpatialPrefs> = {};
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [guest, v] of Object.entries(raw as Record<string, unknown>)) {
+    const p = parsePrefs(v);
+    if (p !== null) out[guest] = p;
+  }
+  return out;
+}
+
 /** The map version: FNV-1a 32 of its JSON (8 hex digits). */
 export function houseVersion(house: HouseMap): string {
   return houseHash(house);
@@ -443,6 +473,10 @@ export class SpatialHub {
   /** (wave 26, C6) Pickup prop id → the guests who took it tonight. Memory
    *  only; the story's own guard (`carries_virus`) keeps it once-only. */
   private readonly picked = new Map<string, Set<string>>();
+  /** Each guest's game settings (`setPrefs`): kept on disk by the runtime
+   *  (`onPrefs`) and never cleared by a story reset — they are the
+   *  person's comfort, not the story's. */
+  private readonly prefs = new Map<string, SpatialPrefs>();
 
   constructor(o: SpatialHubOptions) {
     this.o = o;
@@ -768,6 +802,7 @@ export class SpatialHub {
       keptCaptured: false,
       kingHit,
       avatar: null,
+      ready: false,
     };
     s.avatar = this.avatarFor(s);
     this.sessions.set(id, s);
@@ -795,7 +830,56 @@ export class SpatialHub {
       // a re-scan never shows a taken disk again, nor replays the heart.
       picked: this.pickedBy(s.guest),
       heartHeard: this.heartHeard.has(s.guest),
+      // The intro video and tutorial are skippable once a find is on the
+      // run log; the settings a headset saved come back with every deal.
+      reinstalled: this.reinstalledBy(s.guest),
+      prefs: this.prefs.get(s.guest) ?? null,
     };
+  }
+
+  /** Ducks this guest found since the story (re)started (the run log, which
+   *  survives a server restart). */
+  reinstalledBy(guest: string): number {
+    let n = 0;
+    for (const r of this.runLog) if (r.guest === guest) n++;
+    return n;
+  }
+
+  /** The game's intro (the video, the tutorial) is over: the duck run's
+   *  clock starts again now, so a first-timer's run isn't timed through
+   *  them. Once per session; refreshes the pose timeout. */
+  ready(token: string | undefined): PoseOutcome {
+    const s = this.byTokenLive(token);
+    if (s === null) return this.tokenState(token);
+    s.activeAt = this.now();
+    if (!s.ready && !s.found) {
+      s.ready = true;
+      s.playingAt = this.runClock();
+    }
+    return "ok";
+  }
+
+  /** Save the program's game settings (merged over what it had); a dead
+   *  token answers `unknown` / `over`. */
+  setPrefs(token: string | undefined, prefs: SpatialPrefs): { kind: "ok"; prefs: SpatialPrefs } | { kind: "unknown" | "over" } {
+    const s = this.byTokenLive(token);
+    if (s === null) return { kind: this.tokenState(token) };
+    s.activeAt = this.now();
+    const next: SpatialPrefs = { ...(this.prefs.get(s.guest) ?? {}), ...prefs };
+    this.prefs.set(s.guest, next);
+    this.o.onPrefs?.(this.allPrefs());
+    return { kind: "ok", prefs: next };
+  }
+
+  /** Every guest's saved settings (what the runtime keeps on disk). */
+  allPrefs(): Record<string, SpatialPrefs> {
+    return Object.fromEntries(this.prefs);
+  }
+
+  /** Adopt the settings kept on disk (a server restart). */
+  restorePrefs(all: Record<string, SpatialPrefs>): void {
+    this.prefs.clear();
+    for (const [guest, p] of Object.entries(all)) this.prefs.set(guest, p);
   }
 
   private join(s: Session): void {

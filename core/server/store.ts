@@ -127,6 +127,7 @@ const DESK_MARKS = "desk-marks.json";
 const PUSH = "push.json";
 /** Every duck found this story (SW-RE-14, the ceremony's speedrun). */
 const RUNS = "spatial-runs.jsonl";
+const PREFS = "spatial-prefs.json";
 /** The director's TV-voice mute (K-18, OP-20's ALL STOP) — not story state,
  *  so no restart or replay touches it; a crash must not unmute the TV. */
 const SCREEN_VOICE = "screen-voice.json";
@@ -474,6 +475,17 @@ export class Store {
   }
   clearRuns(): void {
     rmSync(this.path(RUNS), { force: true });
+  }
+
+  // Each program's reinstallation-game settings (`spatial.ts` `SpatialPrefs`,
+  // guest id → settings). Not cleared with the journal: they are the
+  // person's comfort (snap or smooth turning), not the story's.
+
+  loadSpatialPrefs(): unknown {
+    return readJson<unknown>(this.path(PREFS));
+  }
+  saveSpatialPrefs(all: unknown): void {
+    writeFileSync(this.path(PREFS), JSON.stringify(all, null, 2));
   }
 
   // --- push subscriptions (K-31a) -----------------------------------------
