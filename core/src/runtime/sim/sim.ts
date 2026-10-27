@@ -1039,10 +1039,12 @@ export class Sim {
     text: string,
     parentSeq: number | null = null,
     audience?: "all" | string[],
+    answers?: number | null,
   ): SimEvent[] {
     const start = this.log.len();
     const aud = audience ?? this.chatAudience(channel, from);
-    this.record({ type: "chat", from: this.chatDisplayName(from), channel, text, audience: aud, parentSeq });
+    const link = typeof answers === "number" && Number.isFinite(answers) ? { answers } : {};
+    this.record({ type: "chat", from: this.chatDisplayName(from), channel, text, audience: aud, parentSeq, ...link });
     this.lastChatAt.set(`${channel} ${from}`, this.elapsedMs); // slow-mode clock
     this.drain();
     return this.log.since(start);

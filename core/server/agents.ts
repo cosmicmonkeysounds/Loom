@@ -968,6 +968,16 @@ export const AGENT_QUEUE_MAX_AGE_MS = 10 * 60_000;
 
 export const threadKey = (t: AgentThread): string => `${t.channel}|${t.audience.join(",")}`;
 
+/** The chat seq of the line a reply to `req` answers (wave 28): the newest
+ *  line in its history the character did not say, the line that prompted
+ *  it. Recorded on the reply, hold and busy lines (`ChatMessage.answers`),
+ *  so the heart terminal can leave out a late answer to a phone DM sent
+ *  before the visit. Null for a request with no such line. */
+export function answeredSeq(req: Pick<AgentRequest, "history">): number | null {
+  for (let i = req.history.length - 1; i >= 0; i--) if (!req.history[i]!.mine) return req.history[i]!.seq;
+  return null;
+}
+
 export class AgentHub {
   private readonly workers = new Map<string, AgentWorker>();
   private readonly open = new Map<string, OpenRequest>(); // request id →

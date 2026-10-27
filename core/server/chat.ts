@@ -106,6 +106,11 @@ export interface ChatMessage {
    * deterministic replay, so a `parentSeq` link survives a restart unchanged.
    */
   parentSeq: number | null;
+  /** The `seq` of the line this one answers (wave 28): an agent character's
+   *  reply, hold or busy line names the speaker's line it was asked about,
+   *  so the heart terminal can leave out a late answer to a phone DM sent
+   *  before the visit. Absent on every other message. */
+  answers?: number;
   /** Hidden by a moderator. Withheld from guests, greyed for admins. */
   hidden: boolean;
   /** The director who posted this *as* a participant (a mod `say` whose
@@ -754,6 +759,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
           ts,
           audience: e.audience === "all" ? "all" : [...e.audience],
           parentSeq: e.parentSeq,
+          ...(e.answers !== undefined ? { answers: e.answers } : {}),
         });
         break;
       }

@@ -72,6 +72,9 @@ export interface ChatMessage {
   audience: "all" | string[];
   /** Slack thread link: root message's `seq`, or `null` for a top-level line. */
   parentSeq: number | null;
+  /** The `seq` of the line an agent character's reply / hold / busy line
+   *  answers (mirror of server chat, wave 28). */
+  answers?: number;
   hidden: boolean;
   /** Beat a scripted line was spoken in, when known (mirror of server chat). */
   beat?: string | null;
