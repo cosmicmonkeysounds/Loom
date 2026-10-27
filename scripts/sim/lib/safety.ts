@@ -42,3 +42,17 @@ export async function guardThenReset(guard: () => Promise<void>, reset: () => Pr
 export function mayResetAfter(opts: { flag: boolean; scratch: boolean; nightStarted: boolean }): boolean {
   return opts.flag && opts.scratch && opts.nightStarted;
 }
+
+/** What the doors may do, read before anything is pressed. Only a fresh
+ *  night opens: never started (`idle`, the world still empty or at step 0)
+ *  gets Power On; already open at step 0 just takes the codes. Anything
+ *  else (a night under way, or a paused event, which Power On would
+ *  resume) is refused with nothing pressed. */
+export type Doors = { kind: "start" } | { kind: "open" } | { kind: "refuse"; why: string };
+export function doorsDecision(phase: string | undefined, step: string): Doors {
+  const fresh = step === "0" || step === "none";
+  if (!fresh) return { kind: "refuse", why: `Night.step is ${step}: not a fresh night` };
+  if (phase === "idle") return { kind: "start" };
+  if (phase === "open" && step === "0") return { kind: "open" };
+  return { kind: "refuse", why: `the event is ${phase ?? "in an unknown phase"} at Night.step ${step}: not a fresh night (Power On would ${phase === "paused" ? "resume it" : "touch it"})` };
+}

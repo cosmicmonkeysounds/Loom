@@ -8,7 +8,7 @@ import { CEREMONY, SELF_PRESSED, TO_Y2K, Y2K_TO_VERDICT, pressChain, stepName, s
 import { decide, findOption, heartMenu, layerOf, menusOf, tagOf, type Menu } from "../lib/heart.ts";
 import { SIM_SELF_PRESSED, featuredSlug, isStoryRefusal, pickPool, segment, tolerating, transportRefusal } from "../lib/plan.ts";
 import { isLocal } from "../lib/http.ts";
-import { guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "../lib/safety.ts";
+import { doorsDecision, guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "../lib/safety.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
 import { awardWinners, betProblems, mismatches, worldOf, wrongPatchProblems } from "../lib/world.ts";
 
@@ -230,4 +230,16 @@ test("a casino bet must settle: the answer adds up and the wallet moved by its n
   assert.equal(betProblems(5, { ok: true, stake: 5, payout: 10, net: 4, balance: 24 }, 20, 24).length, 1);
   assert.match(betProblems(5, { ok: true, stake: 5, payout: 0, net: -5, balance: 20 }, 20, 20).join(), /balance 20 \(want 20 \+ -5\)/u);
   assert.match(betProblems(5, { ok: true, stake: 5, payout: 0, net: -5, balance: 15 }, 20, 20).join(), /wallet reads 20/u);
+});
+
+test("the doors read the night first: Power On only on a fresh one, never a resume", () => {
+  assert.deepEqual(doorsDecision("idle", "none"), { kind: "start" });
+  assert.deepEqual(doorsDecision("idle", "0"), { kind: "start" });
+  assert.deepEqual(doorsDecision("open", "0"), { kind: "open" });
+  for (const [phase, step] of [["open", "7"], ["paused", "7"], ["paused", "0"], ["idle", "3"], [undefined, "0"], ["open", "none"]] as const) {
+    const d = doorsDecision(phase, step);
+    assert.equal(d.kind, "refuse", `${phase} @ ${step}`);
+  }
+  const paused = doorsDecision("paused", "0");
+  assert.ok(paused.kind === "refuse" && /resume/u.test(paused.why));
 });

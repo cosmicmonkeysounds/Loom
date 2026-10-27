@@ -74,7 +74,7 @@ import {
 import { liveGuard, type GuardRow } from "../accept/live-guard.ts";
 import { decide, heartMenu, layerOf, menusOf, type HeartStep, type Menu } from "./lib/heart.ts";
 import { Client, Stream, failure, sleep, type Res } from "./lib/http.ts";
-import { guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "./lib/safety.ts";
+import { doorsDecision, guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "./lib/safety.ts";
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
 import { atLeast, awardWinners, betProblems, mismatches, notNone, read, truthy, worldOf, wrongPatchProblems, type Row, type Want } from "./lib/world.ts";
 import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating, transportRefusal } from "./lib/plan.ts";
@@ -470,12 +470,19 @@ async function doorsOpen(): Promise<{ eventPass: string; primePass: string; clai
   const b = await beat(
     "doors open (Power On)",
     async (c) => {
+      // Read the night first: Power On only on a fresh one, and nothing
+      // pressed (no start, no resume, no codes) on any other.
       const st = await modState();
-      if (st.phase !== "open") c.must("start", await http.post("/api/mod/start", {}, mod));
+      const doors = doorsDecision(st.phase, read(worldOf(st.world), "Night.step"));
+      if (doors.kind === "refuse") {
+        c.fail(`${doors.why} (Restart in Run, a fresh scratch server, or --reset-before --i-know-this-is-live on a bots-only scratch server)`);
+        return;
+      }
+      if (doors.kind === "start") c.must("start", await http.post("/api/mod/start", {}, mod));
       const r = c.must("codes", await http.post<{ eventPass: string; primePass: string; claims: Array<{ character: string; claim: string }> }>("/api/mod/codes", {}, mod));
       if (r.status === 200) codes = r.json;
       const w = await world();
-      if (read(w, "Night.step") !== "0") c.fail(`Night.step is ${read(w, "Night.step")}: not a fresh night (Restart in Run, a fresh scratch server, or --reset-before --i-know-this-is-live on a bots-only scratch server)`);
+      if (read(w, "Night.step") !== "0") c.fail(`Night.step is ${read(w, "Night.step")} after Power On: not a fresh night`);
     },
   );
   return b.ok ? codes : null;
