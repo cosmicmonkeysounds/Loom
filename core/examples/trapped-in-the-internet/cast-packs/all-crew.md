@@ -74,7 +74,7 @@ keep the radio away from them. The TV and the tent laptop never send sound.
   with the buttons you need, so you scan much less. Your rooms are headed
   **Chats**; the room named after the story is the **📜 Chat log**, last
   under *Other rooms*.
-- **The players (wave 21, DRAFT w21).** **Clippy and the four Antivirus are
+- **The players (wave 21).** **Clippy and the four Antivirus are
   players**: their booth is a **Mission** like a guest's phone (taskbar
   **⊞ Start · Mission · Chats · 📷 Scan**, ⭐ Points and their stat tiles, a
   *NEW MISSION* pop-out when the job changes, **📋 Notes** for their

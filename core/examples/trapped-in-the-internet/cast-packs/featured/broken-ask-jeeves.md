@@ -37,8 +37,6 @@ and *Jeopardy!* never called you back.
 
 You uploaded on a **10 MB/minute plan**. Some of your files did not arrive.
 
-<!-- DRAFT w18b (R7): the two sections below, and "Who you know", await sign-off. -->
-
 ## What happened on the line
 
 The invitation insisted: **at least 1 GB upload**, a **backup generator**, and
@@ -99,8 +97,6 @@ the resident Maps and Ducks **Map Librarian**, promised on one condition —
 that you **share at least ten of your findings with every program** at the
 party. You want people to Ask Jeeves once again, so you give facts whether
 anyone asked for them or not.
-
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
 
 ## Who you know
 

@@ -52,7 +52,7 @@ keypad, never on the radio).
    it yourself on your booth, on the card of the program at the cables: **🔌
    Combo A is in**, **💥 Combo B is in** or **❌ wrong combination** (the
    buttons lead the card from 🕚 through the Y2K hour; from 🌑 the final
-   reveal until 📄 they are off the cards, DRAFT Q33, and wave 21 has no
+   reveal until 📄 they are off the cards, and wave 21 has no
    *All buttons…* fold: radio the call). Radio **"A"**, **"B"**
    or **"WRONG"** from 🌑 on, or whenever your phone can't: a host or the
    director fires 🔌 / 💥 / ❌. **A press hands the bay to the buttons:**

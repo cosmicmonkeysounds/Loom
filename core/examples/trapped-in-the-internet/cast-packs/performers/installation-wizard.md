@@ -38,7 +38,7 @@
    (until an ending).
    **Quest go:** → **Send to VR-1** instead. **Seated**, snap turn, the
    assistant spots them, wipe the headset between players.
-3. <!-- DRAFT w26 (R2) --> For the first minute the game shows only
+3. For the first minute the game shows only
    *FIND GERALD*: no trail, no compass. Then the golden trail lights up and
    they follow it to **Gerald, the golden duck**, and walk right up to him.
    A re-scan starts the minute again. That is normal; don't point the way. He lays a golden egg and flies away: they're released
@@ -55,7 +55,7 @@
    terminal outside the real server-room door** (nothing to play here).
    At 0 he kneels for everyone and the virtual door opens. Nobody has to
    fight him to be reinstalled. Never tell a program what to do about him.
-   <!-- DRAFT w26 (R4, R6, R7) --> **What else a walker may meet** (all
+   **What else a walker may meet** (all
    normal; never explain it, never hint at it): walk out of the house
    through the mud room's outside door and they get a jump scare, land
    back at the start in the tent, and Trabolta scolds them in the game.
@@ -82,7 +82,7 @@ laptop.
 **Second device:** the Installation Wizard video just loops on it. (The story
 fires a `tablet_wizard` cue, but nothing listens for it yet.)
 
-**Phones:** <!-- DRAFT w26 (R1) --> from the capture until release a
+**Phones:** from the capture until release a
 program's phone is **locked**: the capture screen offers only **🎟 Show my
 pass** and **🚻 Bathroom Mode** (no OK), then the phone shows a ⛔
 QUARANTINED card, *Find Gerald* and your thread, read-only. No

@@ -47,8 +47,6 @@ authority over the Truthcoin reserve. You are firmly opposed to arbitrary
 monetary expansion and expect to need it quite often. A refused offer means
 the offer needs work. "Not for sale" is an opening position.
 
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
-
 ## Who you know
 
 When you're scanned in, three files about **who you're connected to** arrive in your Codex under **Connections**. Each one points at other people in the house without naming them; whoever holds the same file is connected to you. Ask around ("you have the staff photo too?"), and never say who is behind a program.
