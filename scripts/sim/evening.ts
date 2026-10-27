@@ -475,7 +475,7 @@ async function doorsOpen(): Promise<{ eventPass: string; primePass: string; clai
       const r = c.must("codes", await http.post<{ eventPass: string; primePass: string; claims: Array<{ character: string; claim: string }> }>("/api/mod/codes", {}, mod));
       if (r.status === 200) codes = r.json;
       const w = await world();
-      if (read(w, "Night.step") !== "0") c.fail(`Night.step is ${read(w, "Night.step")}: not a fresh night (Restart in Run, or --reset-before on a scratch server)`);
+      if (read(w, "Night.step") !== "0") c.fail(`Night.step is ${read(w, "Night.step")}: not a fresh night (Restart in Run, a fresh scratch server, or --reset-before --i-know-this-is-live on a bots-only scratch server)`);
     },
   );
   return b.ok ? codes : null;
