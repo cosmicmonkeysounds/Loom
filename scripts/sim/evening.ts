@@ -477,7 +477,7 @@ async function doorsOpen(): Promise<{ eventPass: string; primePass: string; clai
       const st = await modState();
       const doors = doorsDecision(st.phase, read(worldOf(st.world), "Night.step"));
       if (doors.kind === "refuse") {
-        c.fail(`${doors.why} (Restart in Run, a fresh scratch server, or --reset-before --i-know-this-is-live on a bots-only scratch server)`);
+        c.fail(`${doors.why} (${st.phase === "paused" ? "a Restart leaves a paused event paused: press Power On in Run first, or use a fresh scratch server" : "Restart in Run, a fresh scratch server, or --reset-before --i-know-this-is-live on a bots-only scratch server"})`);
         return;
       }
       if (doors.kind === "start") c.must("start", await http.post("/api/mod/start", {}, mod));
