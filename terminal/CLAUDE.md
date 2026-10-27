@@ -179,6 +179,10 @@ the tent laptop the mounted reinstall game adds its own
   `config.pause` (0–3, default 1: `pause=` on a link, the pauses slider in
   ⚙). The character's queues take `gapsFor(config)`; announcements take
   `ANNOUNCE_GAPS` (250 ms, no line gap: the chime parts them).
+- **A throwing engine (wave 28).** A chunk whose `play()` throws counts
+  as said, and `SpeechQueue` always clears `running`: one bad chunk never
+  silences the page (it once held every heart menu on LISTENING until the
+  20 s cap). `BrowserEngine` leaves out a voice the utterance refuses.
 - **Speed.** The TV speaks at `TV_SPEED` (0.92). `withViewDefaults` turns a
   `view=tv` config's speed 1 into 0.92 whenever a link provisions it:
   `provision`, then `linkConfig` (`urlConfig` + `withViewDefaults`, because
