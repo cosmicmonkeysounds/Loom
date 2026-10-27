@@ -31,6 +31,17 @@ export const BOTTLE_SEATS = 12;
  * same poll (`Bottle Landed`), so the bottle lands before he names the pick.
  */
 export const BOTTLE_SPIN_MS = 1800;
+/**
+ * (wave 32) What he says after "<pick>. Truth or dare?" in `Bottle Landed`,
+ * a sentence each, word for word (`test/voice-scenes.test.ts` pins them),
+ * and when each is typed on the bottle (ms into the landing): after the
+ * question, a line gap later; the voice clock moves them to his voice.
+ */
+// DRAFT w32 (the story lane's line, quoted)
+export const BOTTLE_HUNGER: readonly string[] = ["Choose the truth, program.", "I am so very hungry."];
+export const BOTTLE_HUNGER_AT: readonly number[] = [4000, 6000];
+/** About when he finishes the hunger line (ms into the landing). */
+export const BOTTLE_VOICE_END = BOTTLE_HUNGER_AT[1]! + 1400;
 /** An empty table's spin: nobody is named, so it takes its time. */
 export const BOTTLE_EMPTY_SPIN_MS = 6200;
 

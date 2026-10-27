@@ -9,7 +9,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { foldName } from "../src/config.ts";
-import { INTRO_CAPTIONS } from "../src/cutscene/kit/tv1-boot.tsx";
+import { INTRO_CAPTIONS, INTRO_MORE } from "../src/cutscene/kit/tv1-boot.tsx";
+import { BOTTLE_HUNGER, BOTTLE_HUNGER_AT, BOTTLE_SPIN_MS } from "../src/cutscene/kit/tv1-time.ts";
 import { SCENES } from "../src/cutscene/registry.ts";
 import { ADVICE_CHAT } from "../src/cutscene/scenes/act3.tsx";
 import { VOICE_SCENES, voiceSceneOf } from "../src/cutscene/voice-scenes.ts";
@@ -104,6 +105,19 @@ describe("VOICE_SCENES (C11)", () => {
     expect(v.marks).toEqual(INTRO_CAPTIONS.map((c) => c.start));
     expect(v.ownCaption).toBe(true);
     expect(INTRO_CAPTIONS.map((c) => c.text)).toEqual(LINES.get(foldName("Trabolta Introduction"))!.flatMap((l) => splitSentences(l)));
+  });
+
+  it("(wave 32) the intro's later lines are the beat's, word for word, in order", () => {
+    const his = LINES.get(foldName("Trabolta Introduction"))!;
+    expect(his.slice(1)).toEqual([...INTRO_MORE]);
+    expect(INTRO_CAPTIONS.length).toBe(17);
+  });
+
+  it("(wave 32) the bottle draws his hunger as he says it: the beat's sentences after the question", () => {
+    const said = LINES.get(foldName("Bottle Landed"))!.flatMap((l) => splitSentences(l));
+    expect(said).toEqual(["{Night.bottle_pick}.", "Truth or dare?", ...BOTTLE_HUNGER]);
+    const v = VOICE_SCENES["bottle_landed"]!;
+    expect(v.marks).toEqual([BOTTLE_SPIN_MS, BOTTLE_SPIN_MS + 600, ...BOTTLE_HUNGER_AT]);
   });
 
   it("his line shows once: the layer leaves the sentences a scene draws itself", () => {
