@@ -22,6 +22,13 @@ The other files here:
 | [`lights.md`](./lights.md) | stagehand's `lights` job (`lights.json`): what it does, by hand, on either machine |
 | [`alexa.md`](./alexa.md), `install-alexa.sh` | the retired announcement player (only to uninstall it) |
 
+**Firing sounds by hand from the MacBook** (the house internet down, or
+the tech op's station): `uv run stagehand sounds play|stop` and `uv run
+stagehand announce` with `--config trapped.macbook.yaml` publish on the
+Desktop's broker over `:1884`, so keep `stagehand/trapped.macbook.local.yaml`
+(`server: {}` and `audio: { mqtt: { password: "<the props password>" } }`,
+git-ignored) on this Mac even when the router runs on the Desktop.
+
 A MacBook that once ran the whole rig (the old "house Mac") may still have
 `show`, `lights`, `audio` or `alexa` jobs, Mosquitto or Zigbee2MQTT: retire
 them (`SHOWNIGHT.md` §1, step 5), or every cue fires twice.
