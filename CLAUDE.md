@@ -186,9 +186,19 @@ its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 
 ### Release status
 
-The VPS runs **`w31`** (master `0d990ed3`, shipped 2026-10-27; rollback
-`w29`) and the preview was synced with `--replace-lights --replace-audio`
-and reloaded. Wave 31: every house bulb (Hue + ZL1) and the living-room
+The VPS runs **`w32`** (master `09798a99`, shipped 2026-10-27; rollback
+`w31`), and the preview was synced (`--keep-maps --keep-audio
+--keep-lights --keep-desk`) and reloaded. It carries wave 32 (Trabolta
+talks back: Task Manager's 🤖 Talk card relays Clippy to a live Trabolta
+on the TV, canned lines for both, ⚡ and timed ad bursts, the punched-up
+talk beats, his stage voice with its guards and scene lines, and his
+queue: the TV, then his heart, then DMs; `docs/loom-w32-contract.md`,
+show text `DRAFT w32` on `SIGNOFF-w32.md`) and wave 33 (the reinstallation
+games' intro). For wave 32 the MacBook's `agents` job must run master
+(`uv run stagehand launchd restart --job agents`, then Run → Mind →
+Reset), the TV and every terminal must be reloaded, and the Task Manager,
+Clippy and director packs reprinted. `w31` was the release before it.
+Wave 31: every house bulb (Hue + ZL1) and the living-room
 WLED strip are `lights.json` fixtures and every `cue lights_*` is a look
 (no Zigbee groups, scenes or WLED presets); the lights job catches up the
 house look from the screen state's new `night.lights`; `audio.json` is the
