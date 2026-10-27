@@ -1,9 +1,11 @@
 //! The Desk window's rules (wave 25, docs/loom-house-desk.md §6.2): the long
 //! poll's path, the standby card and GO's refusals, the runs, the cue list,
-//! and the checks walked one row at a time.
+//! and the checks walked one row at a time; wave 30's Setup, Try it and
+//! *How the Desk works*.
 
 import { describe, expect, it } from "vitest";
 import {
+  DESK_SAY_MAX,
   DESK_WAIT_S,
   END_OF_LIST,
   NO_CUES,
@@ -11,6 +13,7 @@ import {
   cueLabel,
   deskChecks,
   deskCueList,
+  deskHow,
   deskPollOutcome,
   deskPollPath,
   eventsLine,
@@ -21,16 +24,26 @@ import {
   progressLine,
   recentLines,
   runRows,
+  sayCall,
+  sayCount,
   serverNow,
+  setupClass,
+  setupMark,
+  setupOpen,
+  setupView,
   standbyCard,
   testNeedsConfirm,
   testWords,
+  tryDone,
+  tryGroups,
+  TRY_OPEN_MAX,
   walkAt,
   walkBack,
   walkNext,
   withMark,
 } from "../src/host/desk-model.ts";
 import { deskFixture } from "./desk-fixture.ts";
+import type { DeskView } from "../../core/src/house-desk.ts";
 
 describe("the desk's long poll", () => {
   it("reads plain first, then holds past the rev it has", () => {
@@ -171,5 +184,108 @@ describe("walking the checks", () => {
 describe("what the house did lately", () => {
   it("one line each, newest first, with the router's answer", () => {
     expect(recentLines(deskFixture().recent)).toEqual(["GO 1 · Pre-show hum · Director", "📢 The doors are open · Task Manager · no-file"]);
+  });
+});
+
+/** The fixture's house with some of it swapped. */
+const house = (over: Partial<DeskView["house"]>, view: Partial<DeskView> = {}): DeskView => {
+  const v = deskFixture(view);
+  return { ...v, house: { ...v.house, ...over } };
+};
+const allWell = () => house({ sounds: [{ name: "server_hum", to: ["server_spk"], file: "ok", ms: 4000 }], minds: [{ character: "Trabolta", name: "Trabolta", online: true, workers: ["macbook"] }] });
+
+describe("wave 30: Setup", () => {
+  it("one card per system, in deskSetup's order, the outside minds last", () => {
+    const s = setupView(allWell());
+    expect(s.rows.map((r) => r.id)).toEqual(["sound", "lights", "mind:Trabolta"]);
+  });
+  it("all well folds to one line naming every system", () => {
+    const s = setupView(allWell());
+    expect(s.allOk).toBe(true);
+    expect(s.line).toBe("All connected ✓ · 🔊 Sound · 💡 Lights · 🧠 Trabolta");
+  });
+  it("otherwise the line counts what is down and what to look at", () => {
+    const s = setupView(deskFixture());
+    expect(s.allOk).toBe(false);
+    expect(s.rows.find((r) => r.id === "sound")!.tone).toBe("bad");
+    expect(s.line).toBe("1 not working");
+    const w = setupView(house({ sounds: [{ name: "server_hum", to: null, file: "placeholder", ms: null }], minds: [{ character: "Trabolta", name: "Trabolta", online: false, workers: [] }] }));
+    expect(w.line).toBe("1 not working · 1 to look at");
+  });
+  it("an older server (no minds) still gets sound and lights", () => {
+    expect(setupView(deskFixture()).rows.map((r) => r.id)).toEqual(["sound", "lights"]);
+  });
+  it("the steps start open only when a system is down; a warning folds", () => {
+    expect(setupOpen({ tone: "bad", fix: ["Start it"] })).toBe(true);
+    expect(setupOpen({ tone: "warn", fix: ["Look"] })).toBe(false);
+    expect(setupOpen({ tone: "ok", fix: [] })).toBe(false);
+    expect(setupOpen({ tone: "bad", fix: [] })).toBe(false);
+    const mind = setupView(house({ minds: [{ character: "Trabolta", name: "Trabolta", online: false, workers: [] }] })).rows.find((r) => r.id === "mind:Trabolta")!;
+    expect(setupOpen(mind)).toBe(true);
+    expect(mind.fix.join(" ")).toMatch(/Ollama/u);
+  });
+  it("the card's tone is its class and its mark", () => {
+    expect(setupClass({ tone: "bad" })).toBe("host-desk-setup-card bad");
+    expect([setupMark("ok"), setupMark("warn"), setupMark("bad")]).toEqual(["✓", "⚠", "✗"]);
+  });
+});
+
+describe("wave 30: Try it", () => {
+  it("the looks, then the story sounds, each with the check's own test and no mark", () => {
+    const g = tryGroups(deskFixture());
+    expect(g.map((x) => x.id)).toEqual(["looks", "sounds"]);
+    expect(g[0]!.rows[0]).toMatchObject({ kind: "look", name: "heart_wake", test: { route: "/api/mod/lights/test", body: { look: "heart_wake" } } });
+    expect(g[1]!.rows[0]).toMatchObject({ kind: "sound", name: "server_hum", test: { route: "/api/mod/audio/play", body: { sound: "server_hum" } } });
+    expect(g[1]!.rows[0]!.hints).toEqual(["no file on the router's machine"]);
+  });
+  it("a short list starts open; a long one folds behind its count", () => {
+    expect(tryGroups(deskFixture()).every((x) => x.open)).toBe(true);
+    const many = Array.from({ length: TRY_OPEN_MAX + 1 }, (_, i) => ({ name: `s${i}`, to: null, file: "ok" as const, ms: null }));
+    expect(tryGroups(house({ sounds: many })).find((x) => x.id === "sounds")!.open).toBe(false);
+  });
+  it("an offline router or lights module is said once for the list, not on every row", () => {
+    const g = tryGroups(house({ router: { online: false, lastSeen: 50_000, name: null }, lightsModule: null }));
+    const sounds = g.find((x) => x.id === "sounds")!;
+    expect(sounds.away).toBe("the sound router is offline");
+    expect(sounds.rows[0]!.hints).toEqual(["no file on the router's machine"]);
+    expect(g.find((x) => x.id === "looks")!.away).toBe("the lights module has never connected");
+    expect(tryGroups(deskFixture()).every((x) => x.away === null)).toBe(true);
+  });
+  it("a house with no looks or sounds has nothing to try", () => {
+    expect(tryGroups(house({ looks: [], sounds: [] }))).toEqual([]);
+  });
+  it("the note says what played, and when nothing is there to play it", () => {
+    expect(tryDone("look", "heart_wake", { ok: true, module: true })).toBe("💡 Playing the look heart_wake");
+    expect(tryDone("look", "heart_wake", { ok: true, module: false })).toMatch(/lights module is offline/u);
+    expect(tryDone("sound", "server_hum", { ok: true, router: { online: true } })).toBe("▶ Playing server_hum");
+    expect(tryDone("sound", "server_hum", { ok: true, router: { online: false } })).toMatch(/^▶ Playing server_hum — but the sound router is offline$/u);
+    expect(tryDone("say", "", { router: { online: true } })).toBe("📢 Said on the speakers");
+    expect(tryDone("say", "", null)).toBe("📢 Said on the speakers");
+  });
+  it("Say on the speakers: trimmed, never empty, never past the server's cap", () => {
+    expect(sayCall("  The bar is open  ")).toEqual({ route: "/api/mod/audio/play", body: { say: "The bar is open" } });
+    expect(sayCall("   ")).toBeNull();
+    expect(sayCall("x".repeat(DESK_SAY_MAX))).not.toBeNull();
+    expect(sayCall("x".repeat(DESK_SAY_MAX + 1))).toBeNull();
+    expect(DESK_SAY_MAX).toBe(280);
+    expect(sayCount("hello")).toBe("5 / 280");
+  });
+  it("once the doors are open each one asks first, in the checks' words", () => {
+    expect(testNeedsConfirm(deskFixture({ live: true }))).toBe(true);
+    expect(liveAsk("look")).toMatch(/guests will see this/u);
+    expect(liveAsk("sound")).toMatch(/guests will hear this/u);
+  });
+});
+
+describe("wave 30: How the Desk works", () => {
+  it("five lines: Setup (naming the outside minds), Try it, GO, the checks, where cues are built and STOP ALL", () => {
+    const how = deskHow(allWell());
+    expect(how).toHaveLength(5);
+    expect(how[0]).toContain("the sound, the lights and Trabolta");
+    expect(deskHow(deskFixture())[0]).toContain("the sound and the lights are connected");
+    expect(how.join(" ")).toMatch(/GO plays the cue on STANDBY/u);
+    expect(how.join(" ")).toMatch(/walk the house with your phone/u);
+    expect(how.join(" ")).toMatch(/Run → House → Cue designer/u);
+    expect(how.join(" ")).toMatch(/STOP ALL is the panic/u);
   });
 });

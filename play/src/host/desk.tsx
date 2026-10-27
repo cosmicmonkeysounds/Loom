@@ -4,6 +4,10 @@
 //!
 //! - The status chips (`deskStatus`) and ■ STOP ALL (every desk run and the
 //!   house sounds).
+//! - *How the Desk works* (wave 30), folded: five lines on what each part is for.
+//! - Setup (wave 30, `deskSetup`): a card per system — the sound, the lights,
+//!   each outside mind — tone-coloured, with what to do (open when it is
+//!   down); one *All connected ✓* line when every one is fine.
 //! - STANDBY: the cue GO fires, its steps and the story events it tells,
 //!   and a big GO that sends the standby it showed (another console moved
 //!   it: "Standby moved — press GO again").
@@ -13,12 +17,14 @@
 //!   time with a big Test (a colour per button for a bulb), ✓ Heard it /
 //!   ✗ Nothing (a mark moves on to the next open row), *next*, and the
 //!   whole list a tap away. Once the doors are open a test asks first.
+//! - Try it (wave 30): tap a look or a story sound to play it, or say a line
+//!   on the speakers. No marks; once the doors are open each one asks first.
 //!
 //! The view is a long poll (`GET /api/mod/desk?after=<rev>&wait=25`) with
 //! the booth's token, parked while the page is hidden (`startPoll`).
 //! Every write is on the host allowlist (`host/api.ts`).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ApiError } from "../client.ts";
 import { startPoll } from "../director.tsx";
 import type { PrimeSession } from "../session/prime.ts";
@@ -28,10 +34,12 @@ import { ActButton, ConfirmButton, HostEmpty, failText } from "./kit.tsx";
 import {
   DESK_POLL_TIMEOUT_MS,
   DESK_REPOLL_MS,
+  DESK_SAY_MAX,
   afterMark,
   chipClass,
   deskChecks,
   deskCueList,
+  deskHow,
   deskPollOutcome,
   deskPollPath,
   deskStatus,
@@ -43,15 +51,25 @@ import {
   progressLine,
   recentLines,
   runRows,
+  sayCall,
+  sayCount,
   serverNow,
+  setupClass,
+  setupMark,
+  setupOpen,
+  setupView,
   standbyCard,
   testNeedsConfirm,
   testWords,
+  tryDone,
+  tryGroups,
   walkAt,
   walkBack,
   walkNext,
   type DeskCheckRow,
+  type DeskSetupRow,
   type DeskView,
+  type TryRow,
 } from "./desk-model.ts";
 
 export interface DeskClient {
@@ -155,11 +173,13 @@ export function DeskBody({ view, calls, client, me }: { view: DeskView; calls: H
     return () => clearTimeout(t);
   }, [note]);
   const now = serverNow(view, client.receivedAt, Math.max(wall, client.receivedAt));
-  // One write: a line on success or the server's refusal, then a fresh read.
-  const act = async (done: string, call: () => Promise<unknown>, refusal?: (e: ApiError) => string): Promise<boolean> => {
+  // One write: a line on success (or made from the answer) or the server's
+  // refusal, then a fresh read.
+  const act: Act = async (done, call, refusal) => {
     try {
-      await call();
-      if (done !== "") setNote(done);
+      const answer = await call();
+      const line = typeof done === "function" ? done(answer) : done;
+      if (line !== "") setNote(line);
       return true;
     } catch (e) {
       setNote(e instanceof ApiError && refusal !== undefined ? refusal(e) : failText(e));
@@ -188,6 +208,8 @@ export function DeskBody({ view, calls, client, me }: { view: DeskView; calls: H
         <p className="host-desk-note" role="status" aria-live="polite" data-testid="host-desk-note">
           {note ?? ""}
         </p>
+        <How view={view} />
+        <Setup view={view} />
 
         <fieldset className={`host-box host-desk-standby${card.running ? " running" : ""}`} data-testid="host-desk-standby">
           <legend>STANDBY</legend>
@@ -275,6 +297,8 @@ export function DeskBody({ view, calls, client, me }: { view: DeskView; calls: H
           )}
         </section>
 
+        <TryIt view={view} calls={calls} act={act} note={note} />
+
         <Checks view={view} calls={calls} act={act} me={me} now={now} />
 
         {recent.length > 0 && (
@@ -292,7 +316,148 @@ export function DeskBody({ view, calls, client, me }: { view: DeskView; calls: H
   );
 }
 
-type Act = (done: string, call: () => Promise<unknown>) => Promise<boolean>;
+/** One write (`DeskBody`'s `act`): `done` is the line on success, or makes it from the answer. */
+type Act = (done: string | ((answer: unknown) => string), call: () => Promise<unknown>, refusal?: (e: ApiError) => string) => Promise<boolean>;
+
+/** *How the Desk works*, folded under one button. */
+function How({ view }: { view: DeskView }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="host-desk-how">
+      <button type="button" className="w95-btn host-desk-fold" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {open ? "▾" : "▸"} How the Desk works
+      </button>
+      {open && (
+        <ul className="host-desk-how-list">
+          {deskHow(view).map((t, k) => (
+            <li key={k}>{t}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Setup: a card per system with what to do, or one line when all is well. */
+function Setup({ view }: { view: DeskView }) {
+  const s = setupView(view);
+  const [shown, setShown] = useState(false);
+  if (s.rows.length === 0) return null;
+  return (
+    <section className="host-desk-part host-desk-setup" aria-label="Setup" data-testid="host-desk-setup">
+      {s.allOk ? (
+        <button type="button" className="w95-btn host-desk-fold host-desk-setup-ok" aria-expanded={shown} onClick={() => setShown((o) => !o)}>
+          {shown ? "▾" : "▸"} {s.line}
+        </button>
+      ) : (
+        <h3 className="host-section-head">
+          <span>Setup</span>
+          <span className="host-section-aside">{s.line}</span>
+        </h3>
+      )}
+      {(!s.allOk || shown) &&
+        s.rows.map((r) => (
+          // Keyed by tone too: a system that goes down opens its steps again.
+          <SetupCard key={`${r.id}:${r.tone}`} row={r} />
+        ))}
+    </section>
+  );
+}
+
+function SetupCard({ row }: { row: DeskSetupRow }) {
+  const [open, setOpen] = useState(() => setupOpen(row));
+  return (
+    <div className={setupClass(row)} data-testid={`host-desk-setup-${row.id}`}>
+      <p className="host-desk-setup-head">
+        <span className="host-desk-setup-title">{row.title}</span>
+        <span className="host-desk-setup-mark" aria-hidden="true">
+          {setupMark(row.tone)}
+        </span>
+      </p>
+      <p className="host-desk-setup-status">{row.status}</p>
+      {row.fix.length > 0 && (
+        <>
+          <button type="button" className="w95-btn host-desk-fold" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {open ? "▾" : "▸"} What to do ({row.fix.length})
+          </button>
+          {open && (
+            <ol className="host-desk-setup-fix">
+              {row.fix.map((t, k) => (
+                <li key={k}>{t}</li>
+              ))}
+            </ol>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Try it: a look, a story sound or a line on the speakers, now. No marks. */
+function TryIt({ view, calls, act, note }: { view: DeskView; calls: HostCalls; act: Act; note: string | null }) {
+  const groups = tryGroups(view);
+  const live = testNeedsConfirm(view);
+  const [unfolded, setUnfolded] = useState<Record<string, boolean>>({});
+  const [say, setSay] = useState("");
+  const sayId = useId();
+  const said = sayCall(say);
+  const play = (r: TryRow) => act((a) => tryDone(r.kind, r.name, a), () => calls.deskTest(r.test));
+  const button = (r: TryRow) => {
+    const label = (
+      <span className="host-desk-row-body">
+        <span className="host-desk-row-name">{r.name}</span>
+        <span className="host-desk-row-sum">{r.detail}</span>
+        {r.hints.map((h, k) => (
+          <span key={k} className="host-desk-try-hint">
+            ⚠ {h}
+          </span>
+        ))}
+      </span>
+    );
+    return live ? <ConfirmButton label={label} ask={liveAsk(r.kind)} yes="Play anyway" className="host-desk-try" onConfirm={() => play(r)} /> : <ActButton label={label} className="host-desk-try" onClick={() => play(r)} />;
+  };
+  const sayIt = async () => {
+    if (said === null) return;
+    if (await act(() => tryDone("say", "", null), () => calls.deskTest(said))) setSay("");
+  };
+  return (
+    <section className="host-desk-part host-desk-tryit" aria-label="Try it" data-testid="host-desk-tryit">
+      <h3 className="host-section-head">
+        <span>Try it</span>
+        <span className="host-section-aside">tap to play · no marks</span>
+      </h3>
+      <div className="host-desk-say">
+        <label className="host-desk-say-label" htmlFor={sayId}>
+          📢 Say on the speakers
+        </label>
+        <input id={sayId} className="host-desk-say-box" type="text" maxLength={DESK_SAY_MAX} enterKeyHint="send" placeholder="What the house says" value={say} onChange={(e) => setSay(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !live && void sayIt()} />
+        <div className="host-desk-say-row">
+          <span className="host-desk-say-count">{sayCount(say)}</span>
+          {live ? <ConfirmButton label="📢 Say it" ask={liveAsk("sound")} yes="Say it anyway" disabled={said === null} className="host-desk-say-go" onConfirm={sayIt} /> : <ActButton label="📢 Say it" disabled={said === null} className="host-desk-say-go" onClick={sayIt} />}
+        </div>
+      </div>
+      {note !== null && <p className="host-desk-try-note">{note}</p>}
+      {groups.map((g) => {
+        const open = unfolded[g.id] ?? g.open;
+        return (
+          <div key={g.id} className="host-desk-cues">
+            <button type="button" className="w95-btn host-desk-fold" aria-expanded={open} onClick={() => setUnfolded((u) => ({ ...u, [g.id]: !open }))}>
+              {open ? "▾" : "▸"} {g.title} ({g.rows.length})
+            </button>
+            {open && g.away !== null && <p className="host-note alarm">⚠ {g.away}</p>}
+            {open && (
+              <ul className="host-desk-list">
+                {g.rows.map((r) => (
+                  <li key={r.key}>{button(r)}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
 
 /** The checks, walked one row at a time (and the whole list a tap away). */
 function Checks({ view, calls, act, me, now }: { view: DeskView; calls: HostCalls; act: Act; me: string; now: number }) {
