@@ -198,27 +198,14 @@ export function doorOverlayOn(doorOpen: boolean | null, stage: string | null): b
 
 // --- wave 27: the first meeting, at the terminal ----------------------------------------
 
-/** The layer cards' titles (the `room_heart_layer_n` scene and the panel's header). */
+/** The heart cards' titles (the `room_heart_layer_n` scene). Never a count or a layer:
+ *  the program sees his question, not how far through the talk it is (wave 29). */
 export const LAYER_TITLES = ["WHO ARE YOU", "WHAT I AM", "THE ARGUMENT", "THE ASK"] as const;
-
-const LAYER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, "1": 1, "2": 2, "3": 3, "4": 4 };
-
-/** `Heart Layer Three` → 3; any other beat (Heart Talk, Heart Speak …) → null. */
-export function layerOfBeat(beat: string): number | null {
-  const m = /^heart layer (\w+)/u.exec(foldName(beat));
-  return m === null ? null : (LAYER_WORDS[m[1]!] ?? null);
-}
 
 /** `room_heart_layer_2` → 2; any other cue → null. */
 export function layerOfCue(value: string): number | null {
   const m = /^room_heart_layer_([1-4])$/u.exec(value);
   return m === null ? null : Number(m[1]);
-}
-
-/** The panel's header: `LAYER 3 / 4 · THE ARGUMENT`, or "" with no layer known. */
-export function layerLabel(layer: number | null): string {
-  if (layer === null || layer < 1 || layer > 4) return "";
-  return `LAYER ${layer} / 4 · ${LAYER_TITLES[layer - 1]}`;
 }
 
 /** How long the room scene a `room_heart_*` cue plays (ms), or null for any other cue. */

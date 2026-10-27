@@ -1341,7 +1341,7 @@ function AwardScene({ t, value, night, sfx, reduced, target }: SceneProps) {
 //   0–2600    "Windows is shutting down…" over the desktop, the hourglass turning (a shutdown chime)
 //   2600–4400 the picture fades to black
 //   4400–8600 "It's now safe to turn off your computer." types in orange
-//   8600–12400 a warm dawn rises through it: YOU ARE HUMAN AGAIN, out of character
+//   8600–12400 a warm dawn rises through it: YOU ARE HUMAN AGAIN, the night is yours
 //   12400–14000 out
 
 const RES = { black: 2600, safe: 4400, dawn: 8600, out: 12_400, end: 14_000 } as const;
@@ -1384,8 +1384,9 @@ function Resurrection({ t, sfx, reduced, target }: SceneProps) {
             <div className="tv3-res-title" style={{ opacity: progress(t, RES.dawn + 800, 900) }}>
               YOU ARE HUMAN AGAIN
             </div>
+            {/* DRAFT w29 (it read "Hang out, out of character.") */}
             <div className="tv3-res-sub" style={{ opacity: progress(t, RES.dawn + 1800, 900) }}>
-              Hang out, out of character.
+              Hang out. The night is yours.
             </div>
           </div>
         )}

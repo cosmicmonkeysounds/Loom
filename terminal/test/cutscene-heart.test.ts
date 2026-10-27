@@ -83,7 +83,14 @@ describe("the heart's room scenes (§3.8)", () => {
     expect(layerOf("heart_layer_3")).toBe(3);
     expect(layerOf("heart_layer_9")).toBe(4);
     expect(layerOf("heart_layer")).toBe(1);
-    expect(render("heart_layer", 1_000, "heart_layer_2")).toContain("LAYER 2 / 4");
+    expect(render("heart_layer", 1_000, "heart_layer_2")).toContain("HEART.EXE");
+    // Wave 29: no count, no progress pips — nothing says how far through the talk they are.
+    for (const n of [1, 2, 3, 4]) {
+      const html = render("heart_layer", 1_000, `heart_layer_${n}`);
+      const text = html.replace(/<[^>]*>/gu, " ");
+      expect(text).not.toMatch(/\bLAYER\b|\d\s*\/\s*4/iu);
+      expect(html).not.toContain("ht-layer-pips");
+    }
     expect(render("heart_layer", 1_000, "heart_layer_2")).toContain("WHAT I AM");
     expect(render("heart_layer", 1_000, "heart_layer_4")).toContain("THE ASK");
   });

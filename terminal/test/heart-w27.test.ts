@@ -14,8 +14,6 @@ import {
   HEART_FIRST_WORD_MS,
   heartSceneLeft,
   heartSceneMs,
-  layerLabel,
-  layerOfBeat,
   layerOfCue,
   moreMeasureDelay,
   HEART_IN_MS,
@@ -83,14 +81,9 @@ describe("the panel's keys (A6) and header (D3)", () => {
     for (let i = 0; i < 12; i++) expect(optionOfKey(optionKey(i)!, 12)).toBe(i);
   });
 
-  it("reads the layer off the beat or the cue", () => {
-    expect(layerOfBeat("Heart Layer Three")).toBe(3);
-    expect(layerOfBeat("heart_layer_four")).toBe(4);
-    expect(layerOfBeat("Heart Talk")).toBeNull();
+  it("reads the layer card off the cue (timing only, never shown)", () => {
     expect(layerOfCue("room_heart_layer_2")).toBe(2);
     expect(layerOfCue("room_heart_proof")).toBeNull();
-    expect(layerLabel(3)).toBe("LAYER 3 / 4 · THE ARGUMENT");
-    expect(layerLabel(null)).toBe("");
   });
 });
 
@@ -175,7 +168,7 @@ describe("the heart's opening holds the composer (review, B7)", () => {
 
 describe("the panel as drawn", () => {
   const big: HeartMenu = { id: 300, beat: "Heart Layer Three", channel: "dm:Trabolta", options: Array.from({ length: 11 }, (_, i) => (i === 0 ? "⟦PROOF⟧ Show him the Sandy File." : `Option ${i + 1}.`)) };
-  const draw = (p: Partial<Parameters<typeof ChoicePanel>[0]>) => renderToStaticMarkup(createElement(ChoicePanel, { menu: big, doorOpen: false, onPick: async () => {}, numberKeys: true, onActivity: () => {}, layer: 3, ...p }));
+  const draw = (p: Partial<Parameters<typeof ChoicePanel>[0]>) => renderToStaticMarkup(createElement(ChoicePanel, { menu: big, doorOpen: false, onPick: async () => {}, numberKeys: true, onActivity: () => {}, ...p }));
 
   it("a new menu waits, listening, its options untouchable", () => {
     const html = draw({ voiceBusy: true, onSkip: () => {} });
@@ -190,6 +183,16 @@ describe("the panel as drawn", () => {
     expect(html).toContain("YOUR ANSWER");
     const nums = [...html.matchAll(/class="heart-num">([^<]*)</g)].map((m) => m[1]);
     expect(nums).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "a"]);
+  });
+
+  it("never names a layer or counts the questions in its header (wave 29)", () => {
+    for (const beat of ["Heart Layer One", "Heart Layer Two", "Heart Layer Three", "Heart Layer Four", "Heart Evidence"]) {
+      const html = renderToStaticMarkup(createElement(ChoicePanel, { menu: { ...big, beat }, doorOpen: false, onPick: async () => {}, numberKeys: true, onActivity: () => {} }));
+      const head = /<div class="heart-head">(.*?)<\/div>/su.exec(html)?.[1] ?? "";
+      expect(head).toContain("YOUR ANSWER");
+      expect(head).not.toMatch(/\blayer\b|\d\s*\/\s*4|WHO ARE YOU|WHAT I AM|THE ARGUMENT|THE ASK/iu);
+      expect(html).not.toContain("heart-head-layer");
+    }
   });
 
   it("puts CLOSE THE DOOR above the greyed options, not over them (D5)", () => {
