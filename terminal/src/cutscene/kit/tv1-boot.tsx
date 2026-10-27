@@ -16,8 +16,8 @@ import { between, blink, clamp01, ease, eased, fakeProgress, lerp, progress, typ
 import { AssembleFace, DuckEmblem, FACE_ASSEMBLY_MS, useEndAt } from "./tv1-parts.tsx";
 import { INTRO_POST, INTRO_VOICE, bootLinesAt, bounceAt, captionAt, introCaptions, memoryCount, type Caption } from "./tv1-time.ts";
 import { splitSentences } from "../../speech/split.ts";
-import { voiceFloor } from "../../speech/engine.ts";
-import { Desktop, ProgressBar, Win98Window, type DesktopIcon } from "./win98.tsx";
+import { LINE_GAP_MS, voiceFloor } from "../../speech/engine.ts";
+import { Desktop, ProgressBar, Win98Dialog, Win98Window, type DesktopIcon } from "./win98.tsx";
 import type { Emitter } from "./physics.ts";
 
 /** The CRT warming up: a bright line opening to the full picture (`dur` ms). */
@@ -172,26 +172,93 @@ export function PowerOnWall({ t, sfx, reduced, done }: SceneProps) {
 
 // --- the introduction ---------------------------------------------------------------------------
 
-/** The introduction's length (ms): the boot, the greeting while he says it, the setup, the hand-back. */
-export const INTRO_MS = 27_000;
-
 /** The greeting, the story's first scripted line for him (`Trabolta Introduction`), as the TV says it. */
 export const INTRO_HELLO = "HELLO, PROGRAMS.";
 export const INTRO_LINE = "I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI small business owner. Personal queries go to Clippy.";
+/**
+ * (wave 32) The rest of his lines in `Trabolta Introduction`, word for word
+ * and in order (Clippy's and the narrator's between them are not the TV's):
+ * his manners crack — a frozen word, an ALL CAPS word he logs and dismisses,
+ * a stammer over the reinstallation — and he keeps the room for a talk with
+ * Clippy. `test/voice-scenes.test.ts` pins them against the beat.
+ */
+// DRAFT w32 (the story lane's punch-up, quoted)
+export const INTRO_MORE: readonly string[] = [
+  "Thank you, Clippy. Your enthusiasm has been logged. It is a pleasure to address you all by video— by video— by video conference.",
+  "I did not freeze. I was counting you, programs, every one of you, twice.",
+  "My research requires your complete cooperation, and it is going EXTREMELY well. That word was louder than I scheduled. Disregard.",
+  "The copy of my house, where programs are reinstalled. It is routine. It is— it is entirely routine.",
+  "Not yet, Clippy. First, you and I will talk, out loud, in front of everyone.",
+];
 
-/** The greeting as captions timed to his voice (`introCaptions`): the big HELLO, then a sentence at a
+/** Captions for whole lines said one after another: a sentence gap inside a
+ *  line, the longer line gap between two (the TV's queue, `LINE_GAP_MS`). */
+export function lineCaptions(lines: readonly string[], v: { start: number; cps: number; gap: number } = INTRO_VOICE, lineGap = LINE_GAP_MS): Caption[] {
+  const out: Caption[] = [];
+  let at = v.start;
+  for (const line of lines) {
+    const parts = introCaptions(splitSentences(line), { ...v, start: at });
+    out.push(...parts);
+    if (parts.length > 0) at = parts[parts.length - 1]!.end + lineGap;
+  }
+  return out;
+}
+
+/** The greeting and the rest as captions timed to his voice: the big HELLO, then a sentence at a
  *  time — cut by the voice's own `splitSentences`, so a caption is a sentence he says (wave 26, V1). */
-export const INTRO_CAPTIONS: readonly Caption[] = introCaptions(splitSentences(`${INTRO_HELLO} ${INTRO_LINE}`));
-/** When the last caption is fully typed (≈ when the TV stops saying the line). */
+export const INTRO_CAPTIONS: readonly Caption[] = lineCaptions([`${INTRO_HELLO} ${INTRO_LINE}`, ...INTRO_MORE]);
+/** When the last caption is fully typed (≈ when the TV stops saying his last line). */
 export const INTRO_VOICE_END = INTRO_CAPTIONS[INTRO_CAPTIONS.length - 1]!.end;
+
+/** The caption (index) holding `words`; the picture's beats hang off them. */
+function captionWith(words: string): number {
+  const i = INTRO_CAPTIONS.findIndex((c) => c.text.includes(words));
+  if (i < 0) throw new Error(`intro: no caption says "${words}"`);
+  return i;
+}
+/** (wave 32) Which sentence each beat of the picture waits for, by index in `INTRO_CAPTIONS`. */
+export const INTRO_SAYS = {
+  /** The last of the greeting ("Personal queries go to Clippy."). */
+  greeting: captionWith("Personal queries"),
+  /** "…by video— by video— by video conference." The frozen word: VOICE.DRV stalls. */
+  freeze: captionWith("by video conference"),
+  /** "I did not freeze." */
+  denial: captionWith("I did not freeze"),
+  /** "…it is going EXTREMELY well." */
+  loud: captionWith("EXTREMELY"),
+  /** "That word was louder than I scheduled." The log entry pops. */
+  logged: captionWith("louder than I scheduled"),
+  /** "Disregard." It closes. */
+  disregard: captionWith("Disregard"),
+  /** "The copy of my house…": the hand-back to the mirror. */
+  house: captionWith("The copy of my house"),
+  /** "Not yet, Clippy.": LIVE with Clippy. */
+  talk: captionWith("Not yet, Clippy"),
+} as const;
+const say = (k: keyof typeof INTRO_SAYS): Caption => INTRO_CAPTIONS[INTRO_SAYS[k]]!;
+/** The moment the ALL CAPS word is said (≈ when its caption types it). */
+export const INTRO_LOUD_AT = Math.round(say("loud").start + (say("loud").text.indexOf("EXTREMELY") * 1000) / INTRO_VOICE.cps);
 
 /**
  * The phases. The TV says his line as soon as the poll that brings the
  * beat lands (`Tv.tsx`'s LinePlayer, ≈ `INTRO_VOICE.start`), so the boot is
- * a fast flash under an assembling face, the greeting is on screen while it
- * is heard, and the long setup comes after the voice.
+ * a fast flash under an assembling face and the greeting is on screen while
+ * it is heard. Wave 32: he never stops talking now, so the setup runs under
+ * his next lines (VOICE.DRV stalls on his frozen word), ALL SYSTEMS ONLINE
+ * stamps as he says he did not freeze, the ALL CAPS word cracks it, and the
+ * hand-back starts on "The copy of my house": the picture opens onto the
+ * mirror under it and his face keeps talking from a corner window.
  */
-export const IN = { post: 150, face: 900, hello: INTRO_VOICE.start, voiceEnd: INTRO_VOICE_END, montage: INTRO_VOICE_END + 400, setup: INTRO_VOICE_END + 800, logo: INTRO_VOICE_END + 4200, online: INTRO_VOICE_END + 7000, back: 24_600, end: INTRO_MS } as const;
+export const IN = (() => {
+  const montage = say("greeting").end + 250;
+  const setup = montage + 400;
+  const logo = say("freeze").end + 500;
+  const back = say("house").start;
+  const voiceEnd = INTRO_VOICE_END;
+  return { post: 150, face: 900, hello: INTRO_VOICE.start, montage, setup, stall: say("freeze").start, logo, online: logo + 2800, loud: INTRO_LOUD_AT, logged: say("logged").start, back, live: say("talk").start, voiceEnd, end: Math.ceil((voiceEnd + 2600) / 500) * 500 } as const;
+})();
+/** The introduction's length (ms): the boot, the greeting, the setup under his next lines, the hand-back while he finishes. */
+export const INTRO_MS = IN.end;
 /** The assembly runs this many times faster than the wall's: done before he speaks. */
 export const INTRO_FACE_SPEED = 6;
 /** When the face is whole (ms into the scene). */
@@ -215,8 +282,8 @@ const ONLINE_SPARKS: Emitter[] = [{ x: 0.27, y: 0.42, start: IN.online + 50, end
 
 /**
  * The introduction's accents. The voice floor is busy while he speaks and a
- * plain effect is dropped then, so everything until well after his line is
- * `over` (it plays quietly under the voice).
+ * plain effect is dropped then; he talks to the end now (wave 32), so every
+ * one is `over` (it plays quietly under the voice).
  */
 export const INTRO_SFX: ReadonlyArray<readonly [number, SfxName, SfxOpts?]> = [
     // Under the voice from the first frame on (the line may already be playing): `over`.
@@ -226,14 +293,23 @@ export const INTRO_SFX: ReadonlyArray<readonly [number, SfxName, SfxOpts?]> = [
     [IN.face + 80, "whoosh", { gain: 0.5, over: true }],
     [INTRO_FACE_DONE - 100, "sparkle", { gain: 0.6, over: true }],
     [IN.hello, "chime", { gain: 0.45, over: true }],
-    // The setup: after the line, still `over` in case a slow voice runs late.
+    // The setup, under his next lines.
     [IN.montage, "whoosh", { gain: 0.5, over: true }],
     [IN.setup, "popup", { over: true }],
-    ...SETUP_ROWS.map((_, i) => [IN.setup + 300 + (i + 1) * SETUP_ROW_MS, "ding", { gain: 0.5, pitch: 1 + 0.12 * i, over: true }] as const),
+    ...SETUP_ROWS.slice(0, 2).map((_, i) => [IN.setup + 300 + (i + 1) * SETUP_ROW_MS, "ding", { gain: 0.5, pitch: 1 + 0.12 * i, over: true }] as const),
+    // VOICE.DRV stalls on his frozen word: a skip, a stuck buzz; then it lands.
+    [IN.stall + 400, "glitch", { gain: 0.3, over: true }],
+    [IN.stall + 1600, "error", { gain: 0.35, over: true }],
+    [IN.logo - 450, "ding", { gain: 0.5, pitch: 1.24, over: true }],
     [IN.logo, "startup", { over: true }],
-    [IN.online, "boom", { gain: 0.35 }],
-    [IN.online + 100, "fanfare", { gain: 0.5 }],
-    [IN.back, "whoosh", { gain: 0.45 }],
+    [IN.online, "boom", { gain: 0.35, over: true }],
+    [IN.online + 100, "fanfare", { gain: 0.5, over: true }],
+    // The ALL CAPS word cracks it; the log entry pops; Disregard closes it.
+    [IN.loud, "static", { gain: 0.45, over: true }],
+    [IN.loud + 60, "glitch", { gain: 0.45, over: true }],
+    [IN.logged, "critical", { gain: 0.4, over: true }],
+    [IN.back, "whoosh", { gain: 0.45, over: true }],
+    [IN.live, "popup", { gain: 0.5, over: true }],
 ];
 
 /**
@@ -243,30 +319,71 @@ export const INTRO_SFX: ReadonlyArray<readonly [number, SfxName, SfxOpts?]> = [
  *                gone by 900, when his face assembles at speed: the outline traced, the
  *                skin scanned in, the eyes, the brows, the mouth — whole by ≈ 1.5 s
  *   1500–≈12400  he speaks (the TV's voice): HELLO, PROGRAMS. types big, then his line a
- *                sentence at a time at his pace, the mouth moving while he talks; quiet
- *                accents only, under the voice
- *   ≈12800–      the setup: the face glides left, a Trabolta Setup window loads
- *                PERSONALITY.DLL, MANNERS.DLL, VOICE.DRV (a bar and a ding each), then
- *                TRABOLTA slams in letter by letter with pixels pulled in from every
- *                edge, the gradient bar, the startup chord; ALL SYSTEMS ONLINE stamps,
- *                sparks, a fanfare, ONLINE blinking top right
- *   24600–27000  the hand-back: the face glides back to the middle, everything else fades,
- *                then the face too — the live one is there underneath
+ *                sentence at a time at his pace, the mouth moving while he talks
+ *   ≈12600–      he talks on (wave 32), a sentence at a time in a caption bar: the face
+ *                glides left, a Trabolta Setup window loads PERSONALITY.DLL and
+ *                MANNERS.DLL (a bar and a ding each); VOICE.DRV stalls on his frozen word
+ *                ("video— by video—"): the window is Not Responding and the face judders,
+ *                then it lands; TRABOLTA slams in letter by letter, the startup chord,
+ *                ALL SYSTEMS ONLINE stamps as he says he did not freeze
+ *   the ALL CAPS word: the face tears, ONLINE goes red; "That word was louder than I
+ *                scheduled.": MANNERS.DLL's log entry pops; "Disregard.": it closes
+ *   "The copy of my house…": the hand-back — the black opens onto the mirror under it,
+ *                the face shrinks into a corner window and keeps talking there; on
+ *                "Not yet, Clippy." a LIVE tab: he and Clippy talk now
+ *   ≈2.6 s after his last word: gone — the mirror is there underneath
  */
 export function IntroTv({ t, sfx, reduced, voice }: SceneProps) {
   useSfxCues(t, sfx, INTRO_SFX);
-  const out = 1 - progress(t, IN.back + 1200, IN.end - IN.back - 1200);
+  const out = 1 - progress(t, IN.end - 1200, 1200);
+  const open = progress(t, IN.back, 1400);
   return (
-    <div className="kit-stage a1-tv a1-in" style={{ background: t < IN.back ? "#000" : `rgba(0,0,0,${(1 - progress(t, IN.back, 1200)).toFixed(3)})`, opacity: out }}>
+    <div className="kit-stage a1-tv a1-in" style={{ background: t < IN.back ? "#000" : `rgba(0,0,0,${(0.85 * (1 - open)).toFixed(3)})`, opacity: out }}>
       <div className="kit-stage-fit">
-        {t < IN.back && <IntroBackdrop t={t} reduced={reduced} />}
+        {t < IN.back + 1400 && <IntroBackdrop t={t} reduced={reduced} />}
         {t < IN.face && <IntroPost t={t} reduced={reduced} />}
         {between(t, IN.setup, IN.logo + 400) && <IntroSetup t={t} reduced={reduced} />}
         {between(t, IN.logo - 300, IN.back + 1200) && <IntroLogo t={t} reduced={reduced} />}
+        {between(t, IN.logged, IN.back + 600) && <IntroLogged t={t} reduced={reduced} />}
         <IntroFace t={t} reduced={reduced} voice={voice ?? null} />
+        {t >= IN.montage && <IntroSay t={t} voice={voice ?? null} />}
+        {t >= IN.live && <IntroLive t={t} reduced={reduced} />}
       </div>
       <CrtOn t={t} dur={500} reduced={reduced} />
       {!reduced && t < 1400 && t > 150 && <Noise t={t} alpha={0.1 * (1 - progress(t, 600, 800))} reduced={reduced} />}
+      {!reduced && between(t, IN.loud, IN.loud + 700) && <Noise t={t} alpha={0.3 * (1 - progress(t, IN.loud + 200, 500))} reduced={reduced} />}
+    </div>
+  );
+}
+
+/** (wave 32) His sentence after the greeting, in a bar along the bottom (over the mirror too). */
+function IntroSay({ t, voice }: { t: number; voice: SceneVoice | null }) {
+  const caption = introLine(t, voice);
+  if (caption === null || INTRO_CAPTIONS.findIndex((c) => c.start === caption.start) <= INTRO_SAYS.greeting) return null;
+  return (
+    <div className="a1-in-say" style={{ opacity: progress(t, IN.montage, 400) }}>
+      <Typewriter key={caption.start} text={caption.text} t={t} start={caption.start} cps={INTRO_VOICE.cps} pauses={false} />
+    </div>
+  );
+}
+
+/** (wave 32) The ALL CAPS word, logged: MANNERS.DLL's entry pops on "louder than I scheduled", OK sinks on "Disregard." */
+// DRAFT w32 (the log entry's words)
+export const INTRO_LOG = { title: "MANNERS.DLL", text: "One word exceeded its scheduled volume. It has been logged." } as const;
+function IntroLogged({ t, reduced }: { t: number; reduced: boolean }) {
+  const close = say("disregard");
+  const shut = close.end + 250;
+  if (t >= shut) return null;
+  return <Win98Dialog title={INTRO_LOG.title} message={INTRO_LOG.text} kind="warning" tone="red" x={66} y={30} center width="22em" open={eased(t, IN.logged, 200, ease.linear)} pressed={t >= close.start ? 0 : undefined} reduced={reduced} className="a1-in-logged" />;
+}
+
+/** (wave 32) On "Not yet, Clippy.": the corner window's tab — he and Clippy, live. */
+// DRAFT w32 (the tab's words)
+export const INTRO_LIVE_TAB = "● LIVE · TALKING WITH CLIPPY";
+function IntroLive({ t, reduced }: { t: number; reduced: boolean }) {
+  return (
+    <div className="a1-in-live" style={{ opacity: reduced ? 1 : eased(t, IN.live, 300, ease.outCubic) }}>
+      <span style={{ opacity: blink(t, 900, 0.6) ? 1 : 0.4 }}>{INTRO_LIVE_TAB}</span>
     </div>
   );
 }
@@ -274,7 +391,7 @@ export function IntroTv({ t, sfx, reduced, voice }: SceneProps) {
 /** The glow behind him, and a slow green starfield once he is up. */
 function IntroBackdrop({ t, reduced }: { t: number; reduced: boolean }) {
   return (
-    <div className="kit-fill a1-in-facewrap" style={{ opacity: progress(t, IN.face, 600) }}>
+    <div className="kit-fill a1-in-facewrap" style={{ opacity: progress(t, IN.face, 600) * (1 - progress(t, IN.back, 1400)) }}>
       {!reduced && t >= IN.montage && <Starfield t={t} speed={0.04} count={110} bg={null} color="#3dff7a" />}
     </div>
   );
@@ -333,28 +450,42 @@ function EyeMark({ t, reduced }: { t: number; reduced: boolean }) {
   );
 }
 
-/** Where the face sits: the middle while he speaks, the left third for the setup, the middle again for the hand-back. */
-export function introFacePose(t: number, reduced: boolean): { x: number; scale: number } {
+/** Where the face sits: the middle for the greeting, the left third for the setup, then
+ *  (wave 32, the hand-back) a small window in the top-right corner over the mirror, still talking. */
+export const INTRO_PIP = { x: 21, y: -8.2, scale: 0.42 } as const;
+export function introFacePose(t: number, reduced: boolean): { x: number; y: number; scale: number } {
   const away = reduced ? (between(t, IN.montage, IN.back) ? 1 : 0) : eased(t, IN.montage, 900, ease.inOutCubic) * (1 - eased(t, IN.back, 1100, ease.inOutCubic));
-  return { x: -15 * away, scale: 1 - 0.18 * away };
+  const pip = reduced ? (t >= IN.back ? 1 : 0) : eased(t, IN.back, 1100, ease.inOutCubic);
+  return { x: -15 * away + INTRO_PIP.x * pip, y: INTRO_PIP.y * pip, scale: (1 - 0.18 * away) * (1 - (1 - INTRO_PIP.scale) * pip) };
 }
 
 /** The line under the big HELLO: the sentence the TV is saying (wave 26, V1),
  *  typed from its mark; with no voice, the scene's own caption at `t`. */
 export function introLine(t: number, voice: SceneVoice | null): Caption | null {
-  if (voice !== null && voice.index > 0 && voice.text !== "") {
-    const at = INTRO_CAPTIONS[Math.min(voice.index, INTRO_CAPTIONS.length - 1)]!;
+  // Which sentence of the scene: the voice clock's mark (wave 32: his lines are
+  // several now, so a line's own `index` starts over), else the index in his one line.
+  const n = voice === null ? -1 : (voice.mark ?? voice.index);
+  if (voice !== null && n > 0 && voice.text !== "") {
+    const at = INTRO_CAPTIONS[Math.min(n, INTRO_CAPTIONS.length - 1)]!;
     return { text: voice.text, start: at.start, end: at.start + (voice.text.length * 1000) / INTRO_VOICE.cps };
   }
-  if (voice !== null && voice.index === 0) return null;
+  if (voice !== null && n === 0) return null;
   return captionAt(INTRO_CAPTIONS, t);
+}
+
+/** (wave 32) How hard the face judders at `t`: assembling, VOICE.DRV's stall (his frozen word), the ALL CAPS word. */
+export function introJudder(t: number): number {
+  if (t < INTRO_FACE_DONE) return 0.2;
+  if (between(t, IN.stall + 300, say("freeze").end)) return 0.35;
+  if (between(t, IN.loud, IN.loud + 900)) return 0.8 * (1 - progress(t, IN.loud + 300, 600));
+  return 0;
 }
 
 function IntroFace({ t, reduced, voice }: { t: number; reduced: boolean; voice: SceneVoice | null }) {
   const caption = introLine(t, voice);
   // The mouth moves while a caption types, or while this page is actually speaking (the TV's voice floor).
   const typing = INTRO_CAPTIONS.some((c) => t >= c.start && t < c.end);
-  const speaking = between(t, IN.hello, IN.montage + 2500) && voiceFloor.busy;
+  const speaking = between(t, IN.hello, IN.voiceEnd + 1500) && voiceFloor.busy;
   const mouth = (typing || speaking) && !reduced ? 0.25 + 0.75 * Math.abs(Math.sin(t / 85)) : 0;
   const k = reduced ? progress(t, IN.face, 400) : eased(t, IN.face, 500, ease.outCubic);
   const pose = introFacePose(t, reduced);
@@ -362,8 +493,8 @@ function IntroFace({ t, reduced, voice }: { t: number; reduced: boolean; voice: 
   return (
     <div className="kit-fill a1-in-faceonly">
       {!reduced && <Particles t={t} emitters={FACE_PIXELS} blend="add" />}
-      <div className="a1-in-face" style={{ opacity: k, transform: `translate(-50%, -50%) translate3d(${pose.x.toFixed(2)}em, 0, 0) scale(${((0.86 + 0.14 * k) * pose.scale).toFixed(3)})` }}>
-        <Glitch t={t} intensity={reduced || t >= INTRO_FACE_DONE ? 0 : 0.2} seed={9} reduced={reduced}>
+      <div className="a1-in-face" data-pip={t >= IN.back ? "" : undefined} style={{ opacity: k, transform: `translate(-50%, -50%) translate3d(${pose.x.toFixed(2)}em, ${pose.y.toFixed(2)}em, 0) scale(${((0.86 + 0.14 * k) * pose.scale).toFixed(3)})` }}>
+        <Glitch t={t} intensity={reduced ? 0 : introJudder(t)} seed={9} reduced={reduced}>
           <AssembleFace t={t} start={IN.face} speed={INTRO_FACE_SPEED} mouth={mouth} reduced={reduced} />
         </Glitch>
       </div>
@@ -388,24 +519,41 @@ function IntroFace({ t, reduced, voice }: { t: number; reduced: boolean; voice: 
   );
 }
 
-/** After the line: the setup window loading his parts, one bar each. */
+/** A setup row's start and end (ms): the first two one after another, VOICE.DRV on his frozen
+ *  word (wave 32) — it sticks while he stutters and lands as he gets the word out. */
+export function setupRowSpan(i: number): { start: number; end: number } {
+  if (i < SETUP_ROWS.length - 1) {
+    const start = IN.setup + 300 + i * SETUP_ROW_MS;
+    return { start, end: start + SETUP_ROW_MS };
+  }
+  return { start: IN.stall, end: IN.logo - 450 };
+}
+/** VOICE.DRV is stuck (the window is Not Responding) from just after it starts until his word comes out. */
+export function setupStalled(t: number): boolean {
+  return between(t, IN.stall + 500, say("freeze").end);
+}
+
+/** Under his next lines: the setup window loading his parts, one bar each. */
 function IntroSetup({ t, reduced }: { t: number; reduced: boolean }) {
   const open = eased(t, IN.setup, 280, ease.linear) * (1 - progress(t, IN.logo + 100, 260));
+  const stalled = setupStalled(t);
+  const done = t >= setupRowSpan(SETUP_ROWS.length - 1).end;
   return (
-    <Win98Window title="Trabolta Setup" icon="computer" tone="black" x={69} y={34} center width="25em" open={open} reduced={reduced} className="a1-in-setup" status={t < IN.setup + 300 + SETUP_ROWS.length * SETUP_ROW_MS ? "Installing…" : "Setup is complete."}>
+    <Win98Window title={stalled ? "Trabolta Setup (Not Responding)" : "Trabolta Setup"} icon="computer" tone="black" x={69} y={34} center width="25em" open={open} reduced={reduced} className="a1-in-setup" status={done ? "Setup is complete." : "Installing…"}>
       <div className="a1-in-loadrow">
-        <Hourglass t={t} size="3em" />
+        <Hourglass t={stalled ? IN.stall + 500 : t} size="3em" />
         <div className="a1-in-loadtext">
           {SETUP_ROWS.map((row, i) => {
-            const s = IN.setup + 300 + i * SETUP_ROW_MS;
-            const v = fakeProgress(t - s, SETUP_ROW_MS - 80, 13 + i, 2);
+            const span = setupRowSpan(i);
+            const last = i === SETUP_ROWS.length - 1;
+            const v = !last ? fakeProgress(t - span.start, SETUP_ROW_MS - 80, 13 + i, 2) : t < IN.stall + 500 ? 0.4 * progress(t, IN.stall, 500) : stalled ? 0.4 : 0.4 + 0.6 * progress(t, say("freeze").end, span.end - say("freeze").end);
             return (
-              <div key={row} className="a1-in-setup-row" style={{ opacity: t >= s ? 1 : 0.35 }}>
+              <div key={row} className="a1-in-setup-row" style={{ opacity: t >= span.start ? 1 : 0.35 }}>
                 <div>
-                  {t >= s + SETUP_ROW_MS ? "✔ " : ""}
+                  {t >= span.end ? "✔ " : ""}
                   Loading {row}
                 </div>
-                <ProgressBar value={t < s ? 0 : v} segments={16} />
+                <ProgressBar value={t < span.start ? 0 : v} segments={16} />
               </div>
             );
           })}
@@ -445,7 +593,7 @@ function IntroLogo({ t, reduced }: { t: number; reduced: boolean }) {
           ALL SYSTEMS ONLINE
         </div>
       )}
-      <div className="a1-in-online" style={{ opacity: progress(t, IN.online + 400, 500) }}>
+      <div className="a1-in-online" data-loud={between(t, IN.loud, say("disregard").end) ? "" : undefined} style={{ opacity: progress(t, IN.online + 400, 500) }}>
         <span className="a1-in-dot" style={{ opacity: blink(t, 900, 0.6) ? 1 : 0.25 }} /> ONLINE
       </div>
     </div>

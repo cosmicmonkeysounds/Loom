@@ -29,6 +29,7 @@ import { audioUnlocked, unlock } from "../speech/engine.ts";
 import { SceneStage } from "./CutsceneLayer.tsx";
 import { useReducedMotion } from "./clock.ts";
 import { fakeResults, fakeState } from "./fake.ts";
+import { AdBurst } from "./kit/ad-burst.tsx";
 import { ScreenLayer } from "../ScreenLayer.tsx";
 import { screenLayers } from "../slides.ts";
 import { introduced } from "./pick.ts";
@@ -87,6 +88,7 @@ export function Preview() {
   const id = q.get("preview") ?? "list";
   if (id === "list") return <PreviewList />;
   if (id === "glitch") return <PreviewGlitch q={q} />;
+  if (id === "burst") return <PreviewBurst q={q} />;
   return <PreviewOne id={id} q={q} />;
 }
 
@@ -109,6 +111,30 @@ function PreviewGlitch({ q }: { q: URLSearchParams }) {
     <div className="pv-one" onClick={() => setRun((n) => n + 1)}>
       <div className="pv-missing">A wall terminal under the glitch — tap to replay.</div>
       <ScreenLayer key={run} layers={layers} gear={null} />
+    </div>
+  );
+}
+
+/**
+ * `?preview=burst&t=<ms>&text=<line>` (wave 32): an ad burst (`kit/ad-burst.tsx`)
+ * over a stand-in screen, from `t` ms in, at its own pace; a tap replays it.
+ */
+function PreviewBurst({ q }: { q: URLSearchParams }) {
+  const [run, setRun] = useState(0);
+  const from = Math.max(0, Number(q.get("t") ?? "0") || 0);
+  const text = q.get("text") ?? "WHO BROUGHT THE MALWARE IN";
+  const [start] = useState(() => Date.now());
+  const [now, setNow] = useState(start);
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 33);
+    return () => window.clearInterval(id);
+  }, []);
+  const [runAt, setRunAt] = useState(start);
+  const t = (run === 0 ? from : 0) + (now - runAt);
+  return (
+    <div className="pv-one" onClick={() => { setRun((n) => n + 1); setRunAt(Date.now()); }}>
+      <div className="pv-missing">A wall terminal under an ad burst — tap to replay.</div>
+      <AdBurst key={run} t={t} seq={run + 1} text={text} reduced={q.get("reduced") === "1"} />
     </div>
   );
 }
