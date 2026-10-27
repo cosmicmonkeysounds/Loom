@@ -108,8 +108,13 @@ source-scan test bans host calls to it). Body: `TalkPost` (`core/src/talk-back.t
   public thread unless `Trabolta.awake`.
 - **Reply:** `agentReply` commits the reply as `say("Trabolta", "loc:The
   Desktop", text, null, "all", answeredSeq)` — only while `Night.talk` still
-  names the request's scene; a reply that arrives after the scene closed is
-  dropped (410 to the worker, a `# hosts` note). Acts from a public request
+  names the request's scene. When the scene moves on, the 1 s ticker (or
+  Clippy's next line, whichever is first) settles the old scene's request:
+  a queued one is dropped silently (`AgentHubOptions.stale`), one a worker
+  holds is cancelled and the hosts get one `# hosts` note
+  (`TALK_DROPPED_NOTE`). A reply that still lands in the gap gets 410 and
+  `TALK_LATE_NOTE`. An old scene's request never shows as "thinking" on the
+  next scene's card, never holds and never counts in a stall. Acts from a public request
   are dropped (the persona's situation says `acts: none`; the server also
   ignores them). `adjust` applies as for a player speaker.
 - Restart: a public request is memory-only (document it); the host re-taps.

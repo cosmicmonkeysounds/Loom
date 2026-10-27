@@ -150,7 +150,7 @@ mid-takeover).
   the idle show and the world.
 - A slide cued with it (the ad hijack) runs its scene from the takeover's
   end (`slideClockAt`); the hold still counts from the cue.
-- `?preview=glitch` draws it.
+- `?preview=glitch` draws it. `?preview=flicker&lag=<ms>` draws the ⚡ flicker as a screen that polled late sees it (wave 32); under reduced motion the flicker is one soft dim, not nothing.
 - **Its own words (wave 32, C5).** A glitch shot may carry `text` (the
   story's `Night.glitch_text`; `screen.ts` clips it at `GLITCH_TEXT_MAX`
   120): the takeover shows it (a long line in a smaller, wrapping style),
