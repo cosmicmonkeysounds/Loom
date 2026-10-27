@@ -365,6 +365,8 @@ async function walkHeart(c: Ctx, v: Visit, plan: readonly HeartStep[], stopWhen?
   for (const step of plan) {
     if (stopWhen !== undefined && (await stopWhen())) break;
     for (let hop = 0; hop < 3; hop++) {
+      // Wave 27: at most 9 options a menu (the terminal's number keys).
+      if (menu !== null && menu.options.length > 9) c.fail(`${layerOf(menu.beat)} offers ${menu.options.length} options (> 9)`);
       const d = decide(menu, step);
       if (menu !== null && seen.at(-1) !== layerOf(menu.beat)) seen.push(layerOf(menu.beat));
       if (d.kind === "stuck") {
@@ -927,8 +929,11 @@ async function ceremony(): Promise<void> {
 
 async function finish(): Promise<void> {
   let quests = tallyQuests(undefined);
+  let landed = "?";
   try {
     const st = await modState();
+    const w = worldOf(st.world);
+    landed = `${read(w, "Night.ending")} (step ${read(w, "Night.step")})`;
     // The programs' quests (only this run's bots), plus each booth's own:
     // the director's view lists only the programs' (characters are not
     // persons there).
@@ -946,7 +951,7 @@ async function finish(): Promise<void> {
   worker?.stop();
   for (const s of sessions) await http.post("/api/mod/impersonate/end", { session: s }, mod);
   const streams = bots.filter((b) => (b.stream?.frames ?? 0) > 0).length;
-  console.log("\n" + summaryTable(rec, quests, [["ending", ending], ["guest streams", `${streams} / ${bots.length} got frames`], ...(worker !== null ? [["probe worker replies", String(worker.replies)] as [string, string]] : [])]));
+  console.log("\n" + summaryTable(rec, quests, [["ending", `${ending}${lie ? " + a lie" : ""} → ${landed}`], ["guest streams", `${streams} / ${bots.length} got frames`], ...(worker !== null ? [["probe worker replies", String(worker.replies)] as [string, string]] : [])]));
   console.log("  quests done: " + quests.rows.filter((r) => r.done > 0).map((r) => `${r.id} ×${r.done}`).join(", "));
   const none = quests.rows.filter((r) => r.done === 0).map((r) => r.id);
   if (none.length > 0) console.log("  not completed: " + none.join(", "));
