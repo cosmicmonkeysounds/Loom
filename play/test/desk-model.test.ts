@@ -157,7 +157,7 @@ describe("walking the checks", () => {
   it("a colour bulb walks its colours; a missing file is a hint before anyone listens", () => {
     const light = sections.find((s) => s.id === "lights")!.rows[0]!;
     expect(light.extra.map((e) => e.label)).toEqual(["Red", "Green", "Blue", "White", "Dim", "Off"]);
-    expect(sections.find((s) => s.id === "sounds")!.rows[0]!.hints).toContain("no file on the house Mac");
+    expect(sections.find((s) => s.id === "sounds")!.rows[0]!.hints).toContain("no file on the router's machine");
   });
   it("marks and progress in words", () => {
     expect(markLine({ mark: "ok", by: "Director", at: 0 }, 30_000)).toBe("✓ Director · just now");

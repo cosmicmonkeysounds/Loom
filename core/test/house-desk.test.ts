@@ -17,6 +17,7 @@ import {
   deskGroups,
   deskHash,
   deskSections,
+  deskSetup,
   deskStatus,
   nextOpenCheck,
   runProgress,
@@ -83,7 +84,7 @@ describe("validateDesk", () => {
       "cue a: no `when nobody_hears:` in the story hears its done event",
       "cue a: no steps (GO does nothing)",
       "cue b step 1: announce_chime rings with the announcements; a say step rings it",
-      "cue b step 2: kazoo is not one of the story's sounds (fine if the house Mac has the file)",
+      "cue b step 2: kazoo is not one of the story's sounds (fine if the router's machine has the file)",
       "cue b step 2: no speaker, zone or room is called Attic",
       "cue b step 3: no `when ghost:` in the story hears it",
     ]);
@@ -287,7 +288,7 @@ describe("the checks", () => {
     const row = (k: string) => rows.find((r) => r.key === k)!;
     expect(row("speaker:living-l").test).toEqual({ route: "/api/mod/audio/test", body: { speaker: "living-l" } });
     expect(row("out:3").detail).toBe("Analog 3 · no speaker");
-    expect(row("sound:zip")).toMatchObject({ detail: "→ Living left", test: { route: "/api/mod/audio/play", body: { sound: "zip" } }, hints: ["no file on the house Mac"] });
+    expect(row("sound:zip")).toMatchObject({ detail: "→ Living left", test: { route: "/api/mod/audio/play", body: { sound: "zip" } }, hints: ["no file on the router's machine"] });
     expect(row("sound:rave").hints).toEqual(["still the placeholder"]);
     expect(row("look:heart_wake")).toMatchObject({ detail: "heart · 2.4 s", test: { route: "/api/mod/lights/test", body: { look: "heart_wake" } }, hints: ["the lights module is offline"] });
     const bulb = row("fixture:server-room-rgb");
@@ -307,7 +308,7 @@ describe("the checks", () => {
 
   it("names the router away on every audio row", () => {
     const away = deskChecks({ house: { ...house, router: { online: false, lastSeen: null, name: null } }, marks: {} });
-    expect(away[0]!.rows[0]!.hints).toEqual(["the house Mac's router has never connected"]);
+    expect(away[0]!.rows[0]!.hints).toEqual(["the sound router has never connected"]);
   });
 });
 
@@ -335,5 +336,55 @@ describe("the status strip", () => {
       { kind: "mind", tone: "ok", text: "🧠 Trabolta online (macbook)" },
       { kind: "mind", tone: "bad", text: "🧠 Echo: no mind connected" },
     ]);
+  });
+});
+
+describe("setup (wave 30)", () => {
+  const at = 100_000;
+  const row = (rows: ReturnType<typeof deskSetup>, id: string) => rows.find((r) => r.id === id)!;
+
+  it("says what is wrong with the sound and what to do", () => {
+    const rows = deskSetup({ house, now: at });
+    const sound = row(rows, "sound");
+    expect(sound).toMatchObject({ title: "🔊 Sound", tone: "bad", status: "Online on macbook · 828x · 3 sound files" });
+    expect(sound.fix[0]).toMatch(/^1 story sound with no file: zip\. Put each file in stagehand\/media\/sounds\//u);
+    expect(sound.fix[1]).toBe("1 sound still the generated placeholder: rave.");
+  });
+
+  it("starts the router when it never connected, and names the moved layout", () => {
+    const never = row(deskSetup({ house: { ...house, router: { online: false, lastSeen: null, name: null }, health: null, sounds: [] }, now: at }), "sound");
+    expect(never.tone).toBe("bad");
+    expect(never.status).toBe("The sound router has not connected to this event");
+    expect(never.fix.join(" ")).toContain("start-stagehand.ps1 -WithAudio");
+    const quiet = row(deskSetup({ house: { ...house, router: { online: false, lastSeen: at - 120_000, name: "desktop" }, sounds: [] }, now: at }), "sound");
+    expect(quiet.status).toBe("The sound router went quiet 2 min ago");
+    const moved = row(deskSetup({ house: { ...house, health: { ...house.health!, layout: "moved" }, sounds: [] }, now: at }), "sound");
+    expect(moved.fix).toEqual(["The interface shows other channel counts than audio.json expects: turn on and clock the ADAT expander, then restart the audio job."]);
+    const fine = row(deskSetup({ house: { ...house, sounds: [] }, now: at }), "sound");
+    expect(fine).toEqual({ id: "sound", title: "🔊 Sound", tone: "ok", status: "Online on macbook · 828x · 3 sound files · 2 speakers", fix: [] });
+  });
+
+  it("lights: the module, unknown devices, and a WLED strip", () => {
+    const off = row(deskSetup({ house, now: at }), "lights");
+    expect(off.tone).toBe("bad");
+    expect(off.status).toBe("The lights module went quiet 2 min ago");
+    expect(off.fix[1]).toBe("Zigbee2MQTT doesn't know Server room RGB bulb (server_room_rgb): pair it, then rename it in Zigbee2MQTT to exactly that friendly name.");
+    const strip = { ...house.fixtures[0]!, id: "tube", name: "Tube strip", kind: "wled", device: "wled/tube", inZ2m: null };
+    const on = row(deskSetup({ house: { ...house, lightsModule: { online: true, lastSeen: at, name: "desktop" }, fixtures: [{ ...house.fixtures[0]!, inZ2m: true }, strip], pairUntil: at + 30_000 }, now: at }), "lights");
+    expect(on).toEqual({ id: "lights", title: "💡 Lights", tone: "ok", status: "Online on desktop · 1 Zigbee light · 1 WLED strip · 1 look · pairing open 30 s", fix: [] });
+    const none = row(deskSetup({ house: { ...house, fixtures: [], looks: [] }, now: at }), "lights");
+    expect(none).toMatchObject({ tone: "warn", status: "No lights yet" });
+  });
+
+  it("one row per outside mind (none from an older server)", () => {
+    expect(deskSetup({ house, now: at }).map((r) => r.id)).toEqual(["sound", "lights"]);
+    const minds = [
+      { character: "Trabolta", name: "Trabolta", online: true, workers: ["macbook"] },
+      { character: "Echo", name: "Echo", online: false, workers: [] },
+    ];
+    const rows = deskSetup({ house: { ...house, minds }, now: at });
+    expect(row(rows, "mind:Trabolta")).toEqual({ id: "mind:Trabolta", title: "🧠 Trabolta", tone: "ok", status: "Online on macbook", fix: [] });
+    expect(row(rows, "mind:Echo").tone).toBe("bad");
+    expect(row(rows, "mind:Echo").fix[0]).toContain("ollama ps");
   });
 });
