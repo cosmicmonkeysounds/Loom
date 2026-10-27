@@ -1,27 +1,47 @@
 //! Run → House (wave 25, `docs/loom-house-desk.md` §6.1): the house desk —
-//! a small QLab for the house. The status strip on top; the transport and
-//! the cue list on the left; on the right either the inspector (edit the
-//! selected cue) or the checks (walk every speaker and light). Server runs
-//! only: a local run explains why. The store is `store/house-desk.ts`
-//! (bound from `App.tsx`); the view model is `lib/house-desk-view.ts`.
+//! a small QLab for the house. The status strip on top, then three views
+//! (wave 30):
 //!
-//! Keys (never while typing, never under a dialog): in the cue list Space
-//! GOes, ↑ / ↓ move the playhead; on the checks T tests, Y ✓, N ✗, ↓ the
-//! next open check, ↑ back; Esc stops the running cues on either side.
+//! - **Desk**: the transport and the cue list on the left; on the right
+//!   either the inspector (edit the selected cue) or the checks (walk every
+//!   speaker and light).
+//! - **Cue designer** (`CueDesigner.tsx`): design lighting looks with a
+//!   live preview, audition sounds, build desk cues, and see how the story
+//!   fires each.
+//! - **Setup** (`SetupPanel.tsx`): is the sound router, the lights module
+//!   and each outside mind connected, and what to do when not.
+//!
+//! Server runs only: a local run explains why. The stores are
+//! `store/house-desk.ts` and `store/cue-designer.ts` (bound from `App.tsx`);
+//! the view models are `lib/house-desk-view.ts` and `lib/cue-designer.ts`.
+//!
+//! Keys (Desk view only; never while typing, never under a dialog): in the
+//! cue list Space GOes, ↑ / ↓ move the playhead; on the checks T tests, Y ✓,
+//! N ✗, ↓ the next open check, ↑ back; Esc stops the running cues on either
+//! side.
 
 import clsx from 'clsx'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { deskChecks, nextOpenCheck, validateDesk, type DeskView } from '@loom/core/house-desk'
+import { useEffect, useMemo, type ReactNode } from 'react'
+import { deskChecks, deskSetup, nextOpenCheck, validateDesk, type DeskView } from '@loom/core/house-desk'
 import { RunBackend, useCockpit } from '@/store/cockpit'
 import { useDialog } from '@/store/dialog'
 import { shownDesk, useHouseDesk } from '@/store/house-desk'
-import { checkCursor, checkStep, deskDurationsOf, deskKeyAction, deskRefsOf, runningRuns, type DeskPane } from '@/lib/house-desk-view'
+import { checkCursor, checkStep, deskDurationsOf, deskKeyAction, deskRefsOf, runningRuns } from '@/lib/house-desk-view'
 import { useNow } from '@/components/cockpit/director/clock'
 import { DeskStatusStrip } from './DeskStatusStrip'
 import { Transport } from './Transport'
 import { CueList } from './CueList'
 import { CueInspector, SaveBar } from './CueInspector'
 import { ChecksPanel } from './ChecksPanel'
+import { useHouseView, type HouseView } from '@/store/house-view'
+import { CueDesigner } from './CueDesigner'
+import { SetupPanel } from './SetupPanel'
+
+const VIEWS: Array<{ id: HouseView; label: string }> = [
+  { id: 'desk', label: '🎛 Desk' },
+  { id: 'designer', label: '🎨 Cue designer' },
+  { id: 'setup', label: '🔌 Setup' },
+]
 
 export function HouseTab() {
   const run = useCockpit((s) => s.run)
@@ -31,8 +51,8 @@ export function HouseTab() {
         <div className="max-w-md">
           <p className="text-zinc-300">The house desk lives on the event server.</p>
           <p className="mt-2">
-            Its cues play the house speakers and lights through the house Mac’s router and the lights module, which talk to an event
-            server. This run is in your browser{run.scratch ? ' (a scratch run)' : ''}, so there is no house to reach — open a server
+            Its cues play the house speakers and lights through the sound router and the lights module (stagehand, on the house machines),
+            which talk to an event server. This run is in your browser{run.scratch ? ' (a scratch run)' : ''}, so there is no house to reach — open a server
             project and start its rehearsal to build and test the desk.
           </p>
         </div>
@@ -70,8 +90,12 @@ function DeskPage({ view }: { view: DeskView }) {
   const check = useHouseDesk((s) => s.check)
   // The right column's view, and which side the keys drive (the side last
   // clicked: walking the checks never GOes a cue by Space).
-  const [pane, setPane] = useState<DeskPane>('cues')
-  const [keys, setKeys] = useState<DeskPane>('cues')
+  const houseView = useHouseView((s) => s.view)
+  const setView = useHouseView((s) => s.setView)
+  const pane = useHouseView((s) => s.pane)
+  const setPane = useHouseView((s) => s.setPane)
+  const keys = useHouseView((s) => s.keys)
+  const setKeys = useHouseView((s) => s.setKeys)
   const desk = shownDesk({ draft, view })!
   const running = runningRuns(view.runs).length > 0
   const now = useNow(true, running ? 250 : 1000) + skew
@@ -82,6 +106,7 @@ function DeskPage({ view }: { view: DeskView }) {
   const open = sections.reduce((n, s) => n + s.rows.filter((r) => r.mark === null).length, 0)
 
   useEffect(() => {
+    if (houseView !== 'desk') return
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return
       const t = e.target instanceof HTMLElement ? e.target : null
@@ -130,11 +155,46 @@ function DeskPage({ view }: { view: DeskView }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [keys, cursor, sections])
+  }, [keys, cursor, sections, houseView])
+
+  const setupTone = deskSetup({ house: view.house, now }).reduce<'ok' | 'warn' | 'bad'>((t, r) => (r.tone === 'bad' || t === 'bad' ? 'bad' : r.tone === 'warn' || t === 'warn' ? 'warn' : 'ok'), 'ok')
+  const openDesk = (index: number) => {
+    useHouseDesk.getState().select(index)
+    setView('desk')
+    setPane('cues')
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="house-tab">
       <DeskStatusStrip view={view} />
+      <div role="tablist" aria-label="House views" className="flex shrink-0 gap-1 border-b border-zinc-800 px-2 pt-1 text-sm">
+        {VIEWS.map((v) => (
+          <button
+            key={v.id}
+            role="tab"
+            aria-selected={houseView === v.id}
+            onClick={() => setView(v.id)}
+            className={clsx('rounded-t border border-b-0 px-3 py-1', houseView === v.id ? 'border-zinc-700 bg-zinc-900 text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200')}
+            data-testid={`house-view-${v.id}`}
+          >
+            {v.label}
+            {v.id === 'setup' && setupTone !== 'ok' && <span className={clsx('ml-1', setupTone === 'bad' ? 'text-red-400' : 'text-amber-300')}>{setupTone === 'bad' ? '✗' : '⚠'}</span>}
+          </button>
+        ))}
+      </div>
+      {houseView === 'designer' && <CueDesigner view={view} onOpenDesk={openDesk} />}
+      {houseView === 'setup' && (
+        <SetupPanel
+          view={view}
+          now={now}
+          onChecks={() => {
+            setView('desk')
+            setPane('checks')
+          }}
+          onDesigner={() => setView('designer')}
+        />
+      )}
+      {houseView === 'desk' && (
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <section className="flex min-h-0 flex-col border-r border-zinc-800" onMouseDown={() => setKeys('cues')}>
           <Transport view={view} now={now} keys={keys === 'cues'} />
@@ -148,10 +208,7 @@ function DeskPage({ view }: { view: DeskView }) {
                 key={p}
                 role="tab"
                 aria-selected={pane === p}
-                onClick={() => {
-                  setPane(p)
-                  setKeys(p)
-                }}
+                onClick={() => setPane(p)}
                 className={clsx('border-b-2 px-3 py-1.5', pane === p ? 'border-indigo-500 text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200')}
                 data-testid={`house-pane-${p}`}
               >
@@ -171,6 +228,7 @@ function DeskPage({ view }: { view: DeskView }) {
           )}
         </section>
       </div>
+      )}
     </div>
   )
 }
