@@ -188,10 +188,11 @@ its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 
 Wave 30 (merged to master 2026-10-27, **not shipped**): Run → House's 🔌 Setup and 🎨 Cue designer, the hosts' Desk Setup / Try it, and the Desktop as the audio + lights machine (`start-stagehand.ps1` installs `audio` by default; `showctl preflight` expects the router on the Desktop). Its server side is only additive (`house.minds` on the desk view).
 
-The VPS runs `w27` (master `2e6e36b2`, shipped 2026-10-27; rollback
-`w26`, which had carried waves 18b Stage B through 26 since 2026-10-26),
-and the "trapped in the internet" preview event was synced and reloaded on
-it. Wave 27 is the first meeting at Trabolta's heart: the talk branches on
+The VPS runs `w29` (master `a0cc8efb`, shipped 2026-10-27; rollback
+`w28b`): waves 27–30 — the heart's first meeting, the full-evening bots
+(`pnpm sim`, `pnpm sim:heart`), the heart follow-ups, no layer number or
+"out of character" anywhere, and wave 30's House Setup / Cue designer. The
+"trapped in the internet" preview event was synced and reloaded on it. Wave 27 is the first meeting at Trabolta's heart: the talk branches on
 who the program is and what it did tonight (Heart Evidence / Heart Reasons
 sub-menus, ≤ 9 options a menu), and the heart terminal shows only this
 visit, fits the whole menu and holds it while he speaks. The server side is
