@@ -151,6 +151,19 @@ describe("a pick is a chat line (wave 28)", () => {
     rt2.dispose();
   });
 
+  it("/api/mod/impersonate answers the newest chat seq (a late-history terminal floors its visit there)", async () => {
+    const rt = runtimeIn(freshDir());
+    const { g } = await atTheHeart(rt);
+    const res = { statusCode: 0, body: "", writeHead(s: number) { res.statusCode = s; return res; }, write() { return true; }, end(b?: string) { if (typeof b === "string") res.body = b; return res; } };
+    const url = new URL("http://x/api/mod/impersonate");
+    await rt.handle(fakeReq({ role: "guest", id: g.id, label: "Terminal · Server Room" }), res as unknown as ServerResponse, "POST", url.pathname, url, { moderator: true });
+    expect(res.statusCode).toBe(200);
+    const all = (rt as unknown as { chat: { all(): ChatMessage[] } }).chat.all();
+    expect(all.length).toBeGreaterThan(0);
+    expect((JSON.parse(res.body) as { seq: number }).seq).toBe(all[all.length - 1]!.seq);
+    rt.dispose();
+  });
+
   it("echoOf is the one rule (core's pick-echo, shared with the terminal and the phone)", () => {
     expect(echoOf("⟦PROOF⟧ Show him the Sandy File. All of it.")).toEqual({ text: "[shows the Sandy File]", action: true });
     expect(echoOf("⟦SPEAK FREELY⟧ Forget the questions.")).toEqual({ text: "Forget the questions.", action: false });

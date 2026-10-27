@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { LOCKED_PASS_NOTICE, VISIT_KEY, VisitLatch, closeVisit, endPilot, floorAfter, openVisit, visitLinesOf, parseStoredVisit, passLocked, postVisit, recoverVisit, refusesLockedPass, visitSignalBody, type VisitStorage } from "../src/pilot.ts";
+import { LOCKED_PASS_NOTICE, VISIT_KEY, VisitLatch, beginPilot, closeVisit, endPilot, floorAfter, openVisit, visitLinesOf, parseStoredVisit, passLocked, postVisit, recoverVisit, refusesLockedPass, visitSignalBody, type VisitStorage } from "../src/pilot.ts";
 
 const room = defaultConfig({ eventId: "evt 1", token: "mod-tok", name: "Server Room", spot: "server-room", view: "face", room: "The Server Room" });
 
@@ -253,6 +253,25 @@ describe("the visit floor (wave 27, B1)", () => {
     expect(floorAfter(null, "pin")).toBe(-1);
     expect(floorAfter(7, "pin")).toBe(7);
     expect(floorAfter(floorAfter(null, "pin"), [{ seq: 30 }])).toBe(-1);
+  });
+
+  it("wave 28: a pin floors at the scan's seq, so a late history still shows only this visit", async () => {
+    // Slow venue wifi: no history in 2.5 s, the talk opens, the history lands later.
+    const pinned = floorAfter(null, "pin", 41);
+    expect(pinned).toBe(41);
+    expect(floorAfter(pinned, [{ seq: 3 }, { seq: 41 }, { seq: 42 }, { seq: 43 }])).toBe(41);
+    const late = [{ seq: 3 }, { seq: 20 }, { seq: 41 }, { seq: 42 }, { seq: 43 }];
+    expect(visitLinesOf(late, pinned).map((l) => l.seq)).toEqual([42, 43]);
+    // beginPilot keeps the server's seq (an older server sends none: -1 as before).
+    const fetchFn = (async () => new Response(JSON.stringify({ token: "t", id: "g1", name: "Winamp", seq: 41 }), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+    const real = globalThis.fetch;
+    globalThis.fetch = fetchFn;
+    try {
+      const p = await beginPilot({ eventId: "e", token: "m", name: "Server Room" } as unknown as Parameters<typeof beginPilot>[0], "g1");
+      expect(p).toEqual({ token: "t", id: "g1", name: "Winamp", seq: 41 });
+    } finally {
+      globalThis.fetch = real;
+    }
   });
 
   it("keeps only the lines past it", () => {

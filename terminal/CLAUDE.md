@@ -320,7 +320,10 @@ them out.
   `session.visitLines` (past the visit's floor, `pilot.ts` `floorAfter`),
   never the whole DM thread; every other terminal, room ones included,
   keeps the whole thread; `terminal opened` is posted from an effect once the stream's
-  history is in (2.5 s fallback, `pinFloor`), never in `connect()`.
+  history is in (2.5 s fallback, `pinFloor`), never in `connect()`. Since
+  wave 28 a pin floors at `Pilot.seq` (the newest chat seq the server
+  answered `/api/mod/impersonate` with), so a late history on slow wifi
+  still shows only this visit; an older server (no `seq`) pins at -1.
 - **Picks are server lines (wave 28).** A pick at the choice panel comes
   back on the stream as the program's own `pick: true` line (`act: true`
   for a deed) in `dm:<character>`, before his reply; the phone shows the

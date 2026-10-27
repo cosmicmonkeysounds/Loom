@@ -7528,7 +7528,11 @@ export class EventRuntime {
         const host = role === "prime" && this.sim.model.characters.get(id)?.admin === true;
         this.impersonations.set(token, { role, id, by: label !== "" ? label : by, ...(host ? { host: true } : {}) });
         const name = role === "guest" ? (this.sim.persons.get(id)?.name ?? id) : id;
-        sendJson(res, 200, { token, role, id, name, eventId: this.eventId, title: this.title, ...(role === "prime" ? { host } : {}) });
+        // Wave 28: `seq`, the newest chat seq now: a room terminal whose stream
+        // history comes late floors its visit here (only this visit's lines).
+        const all = this.chat.all();
+        const seq = all.length > 0 ? all[all.length - 1]!.seq : -1;
+        sendJson(res, 200, { token, role, id, name, eventId: this.eventId, title: this.title, seq, ...(role === "prime" ? { host } : {}) });
         return true;
       }
       case "/api/mod/impersonate/end": {
