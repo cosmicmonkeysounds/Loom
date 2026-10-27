@@ -12,7 +12,10 @@
 // that pilots programs at the server-room terminal the way the terminal
 // posts (the door sensor, `terminal opened`, the docked `Heart …` menus by
 // text). The bots do the quests on the way: the arrival, Bingo, the hunts
-// and their 📝 filings, DMs, the bottle, a reinstallation at the tent, the
+// and their 📝 filings, DMs, wave 32's talk scenes (Task Manager relays
+// Clippy and Trabolta answers the whole Desktop; ⚡ a flicker in the
+// introduction, an ad burst in the ad attack; 🫘 the beans), the bottle, a
+// reinstallation at the tent, the
 // Truther Download's featured missions, a crew, Truthcoin, the summons,
 // Truth Pong, the sides and the majority, chess → the door code, the
 // casino, a wrong patch, three visits to his heart (thrown out; the chosen
@@ -51,7 +54,10 @@
 //   --watch             print the URLs to open in Chrome to watch the run
 //   --beat-file <path>  write {beat, n, ok} after each beat (browser.spec.ts)
 //   --worker            a scripted probe Trabolta worker (off by default; it
-//                       stays off when a house worker reported in the last 2 min)
+//                       stays off when a house worker reported in the last 2 min).
+//                       It answers a public talk request (wave 32) with the
+//                       scene's canned Trabolta line; without it, Task Manager
+//                       fires that canned line by hand
 //   --json <path>       write the results as JSON
 //   --yes, --i-know-this-is-live, --reset-before, --reset-after, --no-color
 
@@ -78,6 +84,7 @@ import { doorsDecision, envServerNotice, guardThenReset, isDevServer, isScratch,
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
 import { atLeast, awardWinners, betProblems, mismatches, notNone, read, truthy, worldOf, wrongPatchProblems, type Row, type Want } from "./lib/world.ts";
 import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating, transportRefusal } from "./lib/plan.ts";
+import { TALK_AGENT, TALK_AS, burstProblems, cannedLine, probeReply, replyAfter, talkLineProblems, type TalkMsg } from "./lib/talk.ts";
 
 // ------------------------------------------------------------------ flags
 
@@ -145,7 +152,7 @@ interface Bot {
 const bots: Bot[] = [];
 const booths = new Map<string, string>();
 const BOOTHS = ["Clippy", "Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Task Manager", "Adobe Acrobat", "Recycling Bin"];
-let worker: { stop(): void; replies: number } | null = null;
+let worker: { stop(): void; replies: number; stage: number } | null = null;
 const sessions: string[] = [];
 
 // ------------------------------------------------------------------ beats
@@ -402,7 +409,7 @@ async function walkHeart(c: Ctx, v: Visit, plan: readonly HeartStep[], stopWhen?
 
 // ------------------------------------------------------------------ the probe worker
 
-async function startWorker(): Promise<{ stop(): void; replies: number } | null> {
+async function startWorker(): Promise<{ stop(): void; replies: number; stage: number } | null> {
   const st = await modState();
   const fresh = (st.minds ?? []).find((m) => m.character === "Trabolta" && typeof m.at === "number" && Date.now() - m.at < 120_000);
   if (fresh !== undefined) {
@@ -410,14 +417,19 @@ async function startWorker(): Promise<{ stop(): void; replies: number } | null> 
     return null;
   }
   let workerId = "";
-  const state = { replies: 0, stop: () => s.stop() };
+  const state = { replies: 0, stage: 0, stop: () => s.stop() };
   // In his world only: Halifax, the hum, her silence (the persona's rules).
   const lines = ["The hum is loud tonight. Ask me again, slower.", "I heard you. I am counting the reasons.", "Not now. The fans are spinning up."];
+  // Wave 32 (C4): a public talk request (`stage`, Clippy aloud in the
+  // Desktop) is answered with the scene's own canned Trabolta line.
   const s = new Stream(`${base}${http.scope}/api/agent/stream?name=sim-probe&characters=Trabolta`, mod, (ev, data) => {
-    const d = JSON.parse(data) as { worker?: string; id?: string };
+    const d = JSON.parse(data) as { worker?: string; id?: string; stage?: { scene?: string } };
     if (ev === "hello") workerId = d.worker ?? "";
-    if (ev === "request" && d.id !== undefined) {
-      void http.post("/api/agent/reply", { id: d.id, worker: workerId, say: lines[state.replies++ % lines.length] }, mod);
+    const reply = ev === "request" ? probeReply(d, state.replies, lines) : null;
+    if (reply !== null) {
+      state.replies++;
+      if (reply.stage) state.stage++;
+      void http.post("/api/agent/reply", { id: reply.id, worker: workerId, say: reply.say }, mod);
     }
   }).start();
   return state;
@@ -647,8 +659,10 @@ async function act1(): Promise<void> {
       await press(c, chain("introduce_trabolta", "introduce_trabolta"));
       c.must("DM Trabolta", await say(bots[0]!.token, "dm:Trabolta", "Hello? Are you the one who invited me?"));
     },
-    () => ({ "Night.step": "4", "Trabolta.awake": "true" }),
+    () => ({ "Night.step": "4", "Trabolta.awake": "true", "Night.talk": "intro" }),
   );
+
+  await talkIntro();
 
   await beat(
     "🔎 Hunt 1: everyone files H1–H3",
@@ -659,7 +673,7 @@ async function act1(): Promise<void> {
       c.note(`${n} filings`);
       if (n === 0) c.fail("no 📝 card reached any program");
     },
-    () => ({ "Night.step": "5", [`${bots[0]!.id}.fact_v1`]: notNone }),
+    () => ({ "Night.step": "5", [`${bots[0]!.id}.fact_v1`]: notNone, "Night.talk": "none" }),
   );
 
   await beat(
@@ -667,7 +681,7 @@ async function act1(): Promise<void> {
     async (c) => {
       await press(c, chain("hunt_time_up", "read_the_results").concat(["read_the_results", "read_the_results"]));
     },
-    () => ({ "Night.step": "6", "Night.results_q": "3" }),
+    () => ({ "Night.step": "6", "Night.results_q": "3", "Night.talk": "bottle" }),
   );
 
   await beat(
@@ -686,13 +700,99 @@ async function act1(): Promise<void> {
   );
 }
 
+// --- wave 32: the talk scenes ---------------------------------------------------------
+
+/** The director's whole history (the Desktop's lines among it). */
+async function talkHistory(): Promise<TalkMsg[]> {
+  return (await http.get<{ messages?: TalkMsg[] }>("/api/history", mod)).json.messages ?? [];
+}
+/** ⚡ from Task Manager's booth, the way the talk card's chip fires it. */
+const glitch = (tm: string) => http.post("/api/mod/signal", { name: "ad_burst" }, tm);
+
+/** 🤖 Talk in the introduction: Task Manager relays a canned Clippy line;
+ *  Trabolta answers the whole Desktop (the probe worker's public reply, or,
+ *  with no worker, a canned line of his fired by hand); then ⚡, a flicker. */
+async function talkIntro(): Promise<void> {
+  await beat(
+    "🤖 Talk: Task Manager relays Clippy, Trabolta answers the whole Desktop; ⚡ a flicker",
+    async (c) => {
+      const tm = booths.get("Task Manager");
+      if (tm === undefined) return c.fail("no Task Manager booth");
+      const scene = read(await world(), "Night.talk");
+      if (scene !== "intro") return c.fail(`Night.talk = ${JSON.stringify(scene)} (want "intro")`);
+      const clippy = cannedLine(scene, TALK_AS, 0)!;
+      const r = c.must(
+        "Task Manager relays Clippy",
+        await http.post<{ ok?: boolean; seq?: number | null; asked?: boolean; online?: boolean }>("/api/mod/talk", { as: TALK_AS, text: clippy.text }, tm),
+        (x) => x.status === 200 && x.json.ok === true && typeof x.json.seq === "number",
+      );
+      if (r.status !== 200 || typeof r.json.seq !== "number") return;
+      const said = r.json.seq;
+      for (const p of talkLineProblems((await talkHistory()).find((m) => m.seq === said), { from: TALK_AS })) c.fail(p);
+      if (worker !== null) {
+        if (r.json.asked !== true) c.fail("Clippy's line opened no public request");
+        let reply: TalkMsg | undefined;
+        for (let i = 0; i < 50 && reply === undefined; i++) {
+          await sleep(100);
+          reply = replyAfter(await talkHistory(), said);
+        }
+        for (const p of talkLineProblems(reply, { from: TALK_AGENT, answers: said })) c.fail(p);
+        if (reply !== undefined && worker.stage === 0) c.fail("Trabolta's line in the Desktop is not the probe worker's public reply");
+        c.note("the probe worker answered the Desktop");
+      } else {
+        const t = c.must(
+          "Task Manager fires a canned Trabolta line",
+          await http.post<{ ok?: boolean; seq?: number | null }>("/api/mod/talk", { as: TALK_AGENT, text: cannedLine(scene, TALK_AGENT, 0)!.text }, tm),
+          (x) => x.status === 200 && x.json.ok === true && typeof x.json.seq === "number",
+        );
+        if (t.status === 200) {
+          const line = (await talkHistory()).find((m) => m.seq === t.json.seq);
+          for (const p of talkLineProblems(line, { from: TALK_AGENT, ...(r.json.asked === true ? { answers: said } : {}) })) c.fail(p);
+          c.note(`no worker${r.json.online === true ? " here" : " online"}: a canned Trabolta line answered the Desktop${r.json.asked === true ? " (Clippy's line, by hand)" : ""}`);
+        }
+      }
+      const before = await world();
+      c.must("⚡ ad_burst (a flicker)", await glitch(tm));
+      for (const p of burstProblems(scene, before, await world())) c.fail(p);
+    },
+    () => ({ "Night.talk": "intro", "Night.glitch_kind": "none" }),
+  );
+}
+
+/** 📺 The ad attack (its talk scene opens), a ⚡ inside the 8 s takeover
+ *  (nothing moves), then one ≥ 8 s after it: an ad burst. */
+async function adAttack(): Promise<void> {
+  await beat(
+    "📺 The ad attack: the hijack's takeover, then ⚡ an ad burst",
+    async (c) => {
+      const tm = booths.get("Task Manager");
+      if (tm === undefined) return c.fail("no Task Manager booth");
+      await press(c, chain("second_hunt_preview", "second_hunt_preview"));
+      const hijack = await world();
+      if (read(hijack, "Night.talk") !== "ad") return c.fail(`Night.talk = ${JSON.stringify(read(hijack, "Night.talk"))} after 📺 (want "ad")`);
+      if (read(hijack, "Night.glitch_kind") !== "full") c.fail(`Night.glitch_kind = ${JSON.stringify(read(hijack, "Night.glitch_kind"))} after 📺 (want "full")`);
+      // Inside the takeover a ⚡ waits it out: refused in # hosts, nothing moves.
+      await glitch(tm);
+      const early = await world();
+      if (read(early, "Night.glitch_kind") !== "full" || read(early, "Night.burst_n") !== read(hijack, "Night.burst_n")) c.fail("a ⚡ inside the hijack's 8 s takeover cut it short");
+      await sleep(8_500);
+      const before = await world();
+      c.must("⚡ ad_burst (an ad burst)", await glitch(tm));
+      for (const p of burstProblems("ad", before, await world())) c.fail(p);
+    },
+    () => ({ "Night.step": "7", "Night.talk": "ad", "Night.glitch_kind": "burst" }),
+  );
+}
+
 // --- act two ------------------------------------------------------------------------
 
 async function act2(): Promise<void> {
+  await adAttack();
+
   await beat(
-    "📺 Hunt 2 + 📥 the Truther Download: featured missions, filings, Truthcoin, a crew",
+    "📓 Hunt 2 + 📥 the Truther Download: featured missions, filings, Truthcoin, a crew",
     async (c) => {
-      await press(c, chain("second_hunt_preview", "start_the_second_hunt"));
+      await press(c, chain("start_the_second_hunt", "start_the_second_hunt"));
       c.must("truther_download", await signal("truther_download"));
       let menus = 0;
       for (const b of bots) menus += await answerMenus(c, b);
@@ -734,7 +834,7 @@ async function act2(): Promise<void> {
         c.note(`${signed} signatures`);
       }
     },
-    () => ({ "Night.step": "8", "Night.truther_sent": "true" }),
+    () => ({ "Night.step": "8", "Night.truther_sent": "true", "Night.talk": "none" }),
   );
 
   await beat(
@@ -767,6 +867,15 @@ async function act2(): Promise<void> {
 
 async function y2kHour(): Promise<void> {
   await beat(
+    "🫘 The printer is full of beans: the beans' talk scene",
+    async (c) => {
+      if (read(await world(), "Night.printer_called") !== "true") c.fail("Night.printer_called is not set: the Trust Chart never asked for the printer");
+      c.must("🫘 printer_opened", await signal("printer_opened"));
+    },
+    () => ({ "Night.step": "12", "Night.beans": "true", "Night.talk": "beans" }),
+  );
+
+  await beat(
     "🕚 Trabolta overshares; the Y2K clock: the sides",
     async (c) => {
       await press(c, chain("trabolta_overshares", "y2k_clock"));
@@ -774,7 +883,7 @@ async function y2kHour(): Promise<void> {
       for (const b of bots.slice(0, 6)) n += await fileFacts(c, b, ["F1", "F2"]);
       c.note(`${n} final filings`);
     },
-    () => ({ "Night.step": "14", "Night.phase": "y2k" }),
+    () => ({ "Night.step": "14", "Night.phase": "y2k", "Night.talk": "none" }),
   );
 
   await beat(
@@ -966,7 +1075,7 @@ async function ceremony(): Promise<void> {
       if (paint !== undefined && read(w, "Night.painting") === "true") steps.splice(steps.indexOf("award_staff_trusted"), 0, { name: "award_the_painting", who: "painting" });
       await press(c, steps, (r) => (r === "painting" ? paint?.id : winners[r]));
     },
-    () => ({ "Night.ceremony_done": "true", "Night.resurrected": "true" }),
+    () => ({ "Night.ceremony_done": "true", "Night.resurrected": "true", "Night.talk": "none" }),
   );
 }
 
@@ -996,7 +1105,7 @@ async function finish(): Promise<void> {
   worker?.stop();
   for (const s of sessions) await http.post("/api/mod/impersonate/end", { session: s }, mod);
   const streams = bots.filter((b) => (b.stream?.frames ?? 0) > 0).length;
-  console.log("\n" + summaryTable(rec, quests, [["ending", `${ending}${lie ? " + a lie" : ""} → ${landed}`], ["guest streams", `${streams} / ${bots.length} got frames`], ...(worker !== null ? [["probe worker replies", String(worker.replies)] as [string, string]] : [])]));
+  console.log("\n" + summaryTable(rec, quests, [["ending", `${ending}${lie ? " + a lie" : ""} → ${landed}`], ["guest streams", `${streams} / ${bots.length} got frames`], ...(worker !== null ? [["probe worker replies", `${worker.replies} (${worker.stage} to the Desktop)`] as [string, string]] : [])]));
   console.log("  quests done: " + quests.rows.filter((r) => r.done > 0).map((r) => `${r.id} ×${r.done}`).join(", "));
   const none = quests.rows.filter((r) => r.done === 0).map((r) => r.id);
   if (none.length > 0) console.log("  not completed: " + none.join(", "));
