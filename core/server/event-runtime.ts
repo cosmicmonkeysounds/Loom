@@ -642,14 +642,21 @@ export const TALK_HOLD_NOTE = "🤖 Trabolta isn't answering — tap one of his 
 /** Wave 32 (C4): the `# hosts` note when his answer came after its scene closed. */
 export const TALK_LATE_NOTE = "🤖 Trabolta's answer came after the scene moved on, so it was dropped"; // DRAFT w32
 
+/** Wave 32 (C4): the `# hosts` note when a scene closed while a worker was
+ *  still answering it: the ticker cancels that answer (the worker's voice
+ *  slot is free for the next scene), and the hosts hear it was dropped. */
+export const TALK_DROPPED_NOTE = "🤖 Trabolta was still thinking when the scene moved on, so his answer was dropped"; // DRAFT w32
+
 /** The `# hosts` line when a worker stalls. `waiting` counts the DM
  *  threads that got the hold line — never the public talk thread (wave 32,
  *  C4), whose own note (`TALK_HOLD_NOTE`) covers the stage; with none
- *  waiting the line names no threads and no hold line. */
+ *  waiting the line names no threads, no hold line and no way to answer
+ *  (the talk note that follows it says: tap a canned line). */
 export function agentStallNotice(worker: { name: string; characters: string[] }, waiting: number): string {
   const who = worker.characters.join(" / ") || "the agent";
   // Only the stage thread was waiting: the count-free line.
-  if (waiting === 0) return `⏳ ${who} stopped answering (worker ${worker.name}). Answer from Run as ${who}; it clears when ${who} answers again.`; // DRAFT w32
+  // How to answer the stage is TALK_HOLD_NOTE's (a canned line), not Run's.
+  if (waiting === 0) return `⏳ ${who} stopped answering (worker ${worker.name}); it clears when ${who} answers again.`; // DRAFT w32
   const many = waiting === 1 ? "1 thread is waiting" : `${waiting} threads are waiting`;
   return `⏳ ${who} stopped answering (worker ${worker.name}): ${many} and got the hold line. Answer them from Run as ${who}; it clears when ${who} answers again.`;
 }
@@ -2507,12 +2514,16 @@ export class EventRuntime {
   /** The ticker's belt (C4): a public request still open from a scene that
    *  closed is settled as answered by hand — dropped if queued, cancelled on
    *  its worker if in flight — so it holds no worker's slot, draws no hold
-   *  note and never reads as thinking. Its worker's late reply then finds
-   *  no open request: a plain 410, no `# hosts` note. */
+   *  note and never reads as thinking. An in-flight one tells the hosts
+   *  once (`TALK_DROPPED_NOTE`): his answer was on its way and is dropped.
+   *  Its worker's late reply (if the cancel loses the race) then finds no
+   *  open request: a plain 410, no second note. */
   private closeStaleTalk(): void {
     const thread = this.talkThread();
     const open = this.agents.openOn(thread);
-    if (open !== null && this.talkStale(open.req)) this.agents.answeredByHand(thread);
+    if (open === null || !this.talkStale(open.req)) return;
+    this.agents.answeredByHand(thread);
+    if (open.inFlight) this.postHostsNote(TALK_DROPPED_NOTE);
   }
 
   /** One line in the story's staff room (`# hosts`); nothing without one. */

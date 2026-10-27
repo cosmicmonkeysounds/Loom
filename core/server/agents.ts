@@ -1172,11 +1172,12 @@ export class AgentHub {
   }
 
   /** Wave 32 (C4/C5): the open request on `thread`, as the host's talk panel
-   *  reads it — `since` = the hub clock it has been owed from — or null. */
-  openOn(thread: AgentThread): { id: string; since: number; req: AgentRequest } | null {
+   *  reads it — `since` = the hub clock it has been owed from, `inFlight` =
+   *  a worker has it (not still queued) — or null. */
+  openOn(thread: AgentThread): { id: string; since: number; req: AgentRequest; inFlight: boolean } | null {
     const id = this.byThread.get(threadKey(thread));
     const r = id === undefined ? undefined : this.open.get(id);
-    return id === undefined || r === undefined ? null : { id, since: r.since, req: r.req };
+    return id === undefined || r === undefined ? null : { id, since: r.since, req: r.req, inFlight: r.worker !== null };
   }
 
   // -- conversation ---------------------------------------------------------
