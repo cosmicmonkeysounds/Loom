@@ -97,7 +97,7 @@ inside it or of its own quest.
 | 518 | after *Kind words…* (no proof, C ≥ 2) | *Words are cheap in here. Show me something about her that you found yourself.* (a nudge is not repeated right after a reply, and never follows a trap's rebuke) |
 | 522–526 | the plain re-entry (never right after a reply) | S ≥ 30: *Carefully, now. Go on.* · 8+ picks: *We have been at this a while. The hum does not mind. Go on.* · else *Go on.* |
 | 541 | option, one of his files left to show | **⟦SHOW HIM⟧** *I found more of yours.* |
-| 546 | option, always | **⟦TELL HIM⟧** *Hear me out.* |
+| 546 | option, always | **⟦TELL HIM⟧** *I have reasons. Let me give them.* |
 | — | moved | ⟦LIVEJOURNAL⟧ and ⟦OVERSHARE⟧ into ⟦SHOW HIM⟧; ⟦TRUSTED⟧, ⟦HONEST⟧ and *Your theory is wrong* into ⟦TELL HIM⟧ (their words and numbers unchanged) |
 | 966 | *She loves you*, 2nd try | *Again. You think if you say it twice it becomes true. I tried that for years. It does not.* |
 | 985 | *Then make her love you*, 2nd try | *You keep pushing me toward her like a lever. I know what levers are for. Who sent you?* |

@@ -552,7 +552,7 @@ set Night.heart_talker_layer = program.heart_layer
   set program.heart_pick = "evidence"
   -> Heart Pick
 // DRAFT w27 (Heart Reasons: always holds at least the theory trap)
-+ ⟦TELL HIM⟧ Hear me out.
++ ⟦TELL HIM⟧ I have reasons. Let me give them.
   set program.heart_menu = false
   set program.heart_pick = "reasons"
   -> Heart Pick
