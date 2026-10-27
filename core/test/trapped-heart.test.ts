@@ -1466,6 +1466,17 @@ describe("The Heart — the first meeting (wave 27)", () => {
     expect(has(offered(sim, "g1"), "⟦SHOW HIM⟧")).toBe(false);
   });
 
+  it("his composure never drops under 0 from the heart's hits", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toLayerThree(sim);
+    sim.unlock("g1", "Omnipotence");
+    sim.setVar("Trabolta.composure", "3");
+    redock(sim);
+    pick(sim, "g1", "⟦SHOW HIM⟧");
+    pick(sim, "g1", "⟦SMALL TYPE⟧");
+    expect(v(sim, "Trabolta.composure")).toBe(0);
+  });
+
   it("no heart line or option spells a codex code", () => {
     for (const line of heartText()) expect(line, line).not.toMatch(/ALL[ -]FOR[ -]HER|UNIFIED[ -]FIELD|TARGET[ -]SELECTION|TRUST[ -]CHART|TRABOLTA[ -]4EVER/u);
   });

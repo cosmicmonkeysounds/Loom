@@ -1106,6 +1106,10 @@ else:
     set program.heart_suspicion = 100
   if program.heart_case > 9:
     set program.heart_case = 9
+  // The journal, the small type and ⟦PROGRAM⟧ knock his composure (0 to
+  // 100, not clamped by a `set`) once per program each.
+  if Trabolta.composure < 0:
+    set Trabolta.composure = 0
   set Night.heart_talker = program.name
   set Night.heart_talker_suspicion = program.heart_suspicion
   set Night.heart_talker_layer = program.heart_layer
