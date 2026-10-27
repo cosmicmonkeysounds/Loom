@@ -809,28 +809,46 @@ export class SpeechQueue {
     }
   }
 
+  /** The utterance `drain` is on and has not reported `done` for yet. */
+  private current: number | null = null;
+
+  /** Report `done` for `id` once (`current` cleared first). */
+  private finish(id: number): void {
+    if (this.current === id) this.current = null;
+    this.on.done(id);
+  }
+
   private async run(): Promise<void> {
     this.running = true;
     try {
       await this.drain();
+    } catch {
+      // A throw anywhere in the drain (the floor, a callback) still ends the
+      // utterance it was on, so a scene or a panel waiting on its `done`
+      // never wedges; the rest of the queue goes on below.
+      const id = this.current;
+      this.current = null;
+      if (id !== null) quietly(() => this.on.done(id));
     } finally {
       // Never left "running" by a throw: a later say() starts a new run.
       this.running = false;
     }
-    this.on.level(0);
-    // Something was queued after a stop() while the old run wound down.
+    quietly(() => this.on.level(0));
+    // Something was queued after a stop() while the old run wound down
+    // (or after the utterance a throw ended).
     if (this.queue.length > 0) void this.run();
-    else this.on.idle();
+    else quietly(() => this.on.idle());
   }
 
   private async drain(): Promise<void> {
     const g = this.gen;
     while (this.queue.length > 0 && g === this.gen) {
       const u = this.queue.shift()!;
+      this.current = u.id;
       const release = await this.floor.acquire();
       try {
         if (g !== this.gen) {
-          this.on.done(u.id);
+          this.finish(u.id);
           break;
         }
         if (u.before !== undefined) await u.before().catch(() => {});
@@ -877,7 +895,16 @@ export class SpeechQueue {
       } finally {
         release();
       }
-      this.on.done(u.id);
+      this.finish(u.id);
     }
+  }
+}
+
+/** Call a listener; a throw from it never escapes the queue's run. */
+function quietly(fn: () => void): void {
+  try {
+    fn();
+  } catch {
+    /* a listener's own fault */
   }
 }

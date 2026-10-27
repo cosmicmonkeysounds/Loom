@@ -214,6 +214,57 @@ describe("SpeechQueue", () => {
     expect(idles).toBe(2);
   });
 
+  it("a throw in the drain itself (a listener) still ends the line, goes quiet and idle, and the queue goes on", async () => {
+    const log: string[] = [];
+    const levels: number[] = [];
+    const done: number[] = [];
+    let idles = 0;
+    let bad = 1;
+    const engine: SpeechEngine = {
+      kind: "browser",
+      prepare: async (text) => ({ kind: "browser", text }),
+      play: (p) => {
+        log.push(p.kind === "browser" ? p.text : "audio");
+        return Promise.resolve();
+      },
+      stop: () => {},
+    };
+    const rejections: unknown[] = [];
+    const onRejection = (e: unknown) => rejections.push(e);
+    process.on("unhandledRejection", onRejection);
+    try {
+      const floor = new VoiceFloor();
+      const q = new SpeechQueue(
+        { primary: engine, fallback: null },
+        {
+          ...quiet,
+          level: (l) => levels.push(l),
+          // The first chunk's listener throws (a page handler gone wrong).
+          chunk: () => {
+            if (bad-- > 0) throw new Error("listener fault");
+          },
+          done: (id) => done.push(id),
+          idle: () => idles++,
+        },
+        floor,
+        NO_GAPS,
+      );
+      q.say({ id: 1, chunks: ["One.", "Never said."] });
+      q.say({ id: 2, chunks: ["Two."] });
+      for (let i = 0; i < 6; i++) await flush();
+      expect(done).toEqual([1, 2]); // the throwing line still reports done, the next is said
+      expect(log).toEqual(["One.", "Two."]);
+      expect(levels.filter((l) => l === 0).length).toBeGreaterThanOrEqual(1);
+      expect(idles).toBe(1);
+      expect(q.busy).toBe(false);
+      expect(floor.busy).toBe(false);
+      await new Promise((r) => setTimeout(r, 0));
+      expect(rejections).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onRejection);
+    }
+  });
+
   it("reports the engine that spoke each chunk", async () => {
     const log: string[] = [];
     const server = fakeEngine("server", log, { prepare: () => null }); // the server can't say it
