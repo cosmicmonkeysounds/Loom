@@ -111,7 +111,7 @@ import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, echoOf, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, pilotEndOf, pilotEndWait, type HeartMenu } from "./heart/heart.ts";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, echoOf, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, pilotEndOf, pilotEndWait, sceneHoldsPanel, type HeartMenu } from "./heart/heart.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 import { RoomSpeech } from "./speech/said.ts";
 
@@ -1237,7 +1237,7 @@ function Terminal({
   const heartTerminal = doorOpen !== null || isHeartTerminal(room, config.door);
   const now = serverNow(state);
   // One of his heart scenes on screen (this line's), on the local clock.
-  const sceneLeft = pilot === null ? 0 : heartSceneLeft(roomCue, pilotSince.current, now);
+  const sceneLeft = pilot === null || roomCue === null || !sceneHoldsPanel(roomCue.value) ? 0 : heartSceneLeft(roomCue, pilotSince.current, now);
   const sceneEndsAt = sceneLeft > 0 ? Date.now() + sceneLeft : 0;
   // The layer: the menu's own beat, else the last layer card of this line.
   const lastLayer = useRef<{ pilot: Pilot | null; layer: number | null }>({ pilot: null, layer: null });

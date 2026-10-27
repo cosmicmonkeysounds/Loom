@@ -226,6 +226,16 @@ export function heartSceneLeft(cue: { value: string; at: number } | null, since:
   return ms === null ? 0 : Math.max(0, cue.at + ms - now);
 }
 
+/**
+ * Does this heart scene hold the panel while it plays? Every one but the
+ * layer card: that one sits over the face only, takes no taps, and is
+ * re-cued each time a layer re-docks (on the poll, a beat behind the menu)
+ * — holding for it would snatch an open menu away for three seconds.
+ */
+export function sceneHoldsPanel(value: string): boolean {
+  return heartSceneMs(value) !== null && layerOfCue(value) === null;
+}
+
 /** A new menu waits this long before it takes a pick (ms): the reply it came with lands first. */
 export const PANEL_SETTLE_MS = 700;
 /** A voice that never drains (a stuck engine) holds a menu no longer than this (ms). */

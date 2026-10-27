@@ -19,6 +19,7 @@ import {
   optionOfKey,
   panelGate,
   pilotEndWait,
+  sceneHoldsPanel,
   type HeartMenu,
 } from "../src/heart/heart.ts";
 
@@ -36,6 +37,14 @@ describe("the panel waits while he speaks (A2, A3, A7)", () => {
   it("a heart scene on screen always closes it; once open, his voice does not", () => {
     expect(panelGate({ sinceDock: 30_000, voiceBusy: false, sceneLeft: 2_500, wasOpen: true })).toEqual({ open: false, wait: "scene", recheck: 2_500 });
     expect(panelGate({ sinceDock: 1_000, voiceBusy: true, sceneLeft: 0, wasOpen: true }).open).toBe(true);
+  });
+
+  it("every heart scene but the layer card holds the panel", () => {
+    expect(sceneHoldsPanel("room_heart_proof")).toBe(true);
+    expect(sceneHoldsPanel("room_heart_eject")).toBe(true);
+    expect(sceneHoldsPanel("room_heart_warn")).toBe(true);
+    expect(sceneHoldsPanel("room_heart_layer_2")).toBe(false);
+    expect(sceneHoldsPanel("room_tv_on")).toBe(false);
   });
 
   it("knows each heart scene's length, and only scenes since the line opened count", () => {

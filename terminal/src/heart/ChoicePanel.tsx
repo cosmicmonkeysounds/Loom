@@ -124,9 +124,17 @@ export function ChoicePanel({
   };
   useEffect(() => {
     measure();
+    const f = window.requestAnimationFrame(measure);
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    return () => {
+      window.cancelAnimationFrame(f);
+      window.removeEventListener("resize", measure);
+    };
   }, [menu.id, model.options.length, open]);
+  // Opening lights nothing under a pointer that came to rest while it waited (A4).
+  useEffect(() => {
+    if (open) setFresh(true);
+  }, [open]);
 
   if (model.chat) {
     const o = model.options[0]!;
@@ -152,7 +160,8 @@ export function ChoicePanel({
       aria-busy={!open}
       data-menu={menu.id}
       data-open={String(open)}
-      onPointerMove={() => fresh && setFresh(false)}
+      data-wait={gate.wait ?? undefined}
+      onPointerMove={() => open && fresh && setFresh(false)}
       onClick={() => {
         if (!open && gate.wait === "voice") onSkip?.();
       }}
@@ -161,7 +170,7 @@ export function ChoicePanel({
         <span className="heart-head-title">YOUR ANSWER</span>
         {!open ? (
           <span className="heart-head-wait">
-            {gate.wait === "scene" ? "…" : "LISTENING"}
+            LISTENING
             <span className="dots">
               <i />
               <i />
@@ -174,7 +183,7 @@ export function ChoicePanel({
         )}
       </div>
       {model.greyed && <div className="heart-panel-door">⚠ CLOSE THE DOOR</div>}
-      <div className="heart-list" ref={list} onScroll={measure}>
+      <div className="heart-list" ref={list} onScroll={measure} onAnimationEnd={measure}>
         <ol className="heart-options" key={`${menu.id}:${open ? "open" : "wait"}`}>
           {model.options.map((o) => (
             <li key={`${menu.id}:${o.index}`}>
