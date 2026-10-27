@@ -344,7 +344,8 @@ caffeinate -dims open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-te
   reports the door on its heartbeat (Run → Terminals: 🚪 *shut* / *open*
   with the level, red *fault*). The first opening once Trabolta is awake
   plays **The Heart**: he asks for the door shut, the program scans their
-  pass with the door shut, and the four layers of the conversation dock as
+  pass with the door shut, and the four layers of the conversation (wave 27:
+  Layer Three's ⟦SHOW HIM⟧ / ⟦TELL HIM⟧ open short sub-menus) dock as
   a choice panel (click, or `1`–`9`), greyed under *CLOSE THE DOOR* while
   the door is open. ⟦SPEAK FREELY⟧ opens the keyboard for a free talk. A
   convince ends in Heart Shutdown at any hour, and the night ends when a

@@ -2568,7 +2568,19 @@ the menu pattern, arithmetic) and §4 (looks); every line is `// DRAFT w20` (`SI
   ⟦HONEST⟧ ≥ 3 truths accepted, ⟦OVERSHARE⟧ scenario 1, ⟦LIVEJOURNAL⟧; three bluffs), **THE ASK**
   (opens at a proof + one more point, `heart_case ≥ 4`; *She was never going to answer* convinces
   him). Every option sets `program.heart_pick` and goes to **Heart Pick**, which applies it only at
-  his heart with the door shut (*Not out there* off the terminal, D14). Suspicion: a warning at 50,
+  his heart with the door shut (*Not out there* off the terminal, D14).
+  **Wave 27 (DRAFT w27, `SIGNOFF-w27.md`)** branches the first meeting: Layer One's greeting
+  follows `featured`, `human_problem` and one thing they did tonight, with ⟦CHOSEN⟧ (featured) or
+  ⟦PROMISE⟧ (everyone else), and the answer is kept in `heart_who`; Layer Two adds *why did you
+  choose me*, *are you afraid of me* (after *what*), *does she even know* (after *her*),
+  ⟦SIMULATION⟧ (`sim_heart`) and the two sides (`group`, from the Y2K hour); Layer Three keeps
+  the proofs, the two bluffs and the ask on top and moves the rest into **Heart Evidence**
+  (⟦SHOW HIM⟧: LiveJournal, overshare, ⟦FORCE⟧, ⟦SMALL TYPE⟧) and **Heart Reasons** (⟦TELL HIM⟧:
+  trusted, honest, ⟦EARN IT⟧, ⟦HUMAN⟧ / ⟦PROGRAM⟧ by `heart_who`, ⟦WEAKNESS⟧, the theory trap);
+  Layer Four asks what comes after and offers *enough*. No menu holds more than 9 options. A
+  reply hushes the next layer's plain line (`heart_quiet`), the plain lines vary by
+  `heart_turns`, a re-scan restates where they were, a trap's second try is harsher at the same
+  cost, and Heart Convinced / Shutdown name who talked him down and what they came for. Suspicion: a warning at 50,
   thrown out for the night at 80 (**Heart Eject**, `heart_out`; wave 20b Q2: and marked for
   reinstallation through **Heart Mark**, never twice, `# hosts` says why; 🔄 forgives).
 - **The heart to heart (§7, D23–D28).** ⟦SPEAK FREELY⟧ on every layer sets `program.heart_chat`

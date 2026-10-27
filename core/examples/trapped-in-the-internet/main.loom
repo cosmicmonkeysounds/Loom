@@ -449,6 +449,47 @@ ROLE Program
   heart_shown_honest: bool = false
   heart_shown_overshare: bool = false
   heart_shown_journal: bool = false
+  // Wave 27 (DRAFT w27): the first meeting's own memory. None of these is
+  // secret: none says anything about a hunt answer, a code or a cable. 🔄's
+  // heart_gen watcher leaves them alone, like the heart_asked_* above.
+  // What they told him they are at Layer One: "human" | "program" |
+  // "flatter" | "marked" | "chosen" | "promise"; "none" before.
+  heart_who: text? = none
+  // Scans that opened their talk (Heart Talk), and picks applied (Heart
+  // Pick): the re-entry lines vary by these.
+  heart_visits: 0 to 99 = 0
+  heart_turns: 0 to 99 = 0
+  // He has just spoken (a reply, or the "you came back" line): the layer
+  // that docks next skips its plain re-entry line ("Ask.", "Go on."), so
+  // the thread never doubles it. Each layer clears it.
+  heart_quiet: bool = false
+  // The last Layer Three nudge he gave ("shown" | "kind"): a nudge is not
+  // repeated straight after a reply.
+  heart_nudge: text? = none
+  // A trap's rebuke just played (the bluffs, Layer Four's traps, a
+  // return taken back): Layer Three gives no nudge after it.
+  heart_rebuked: bool = false
+  heart_asked_chose: bool = false
+  heart_asked_afraid: bool = false
+  heart_asked_know: bool = false
+  heart_asked_sim: bool = false
+  heart_asked_after: bool = false
+  heart_shown_faction: bool = false
+  heart_shown_force: bool = false
+  heart_shown_all: bool = false
+  heart_shown_earn: bool = false
+  heart_shown_human: bool = false
+  heart_shown_program: bool = false
+  heart_shown_weak: bool = false
+  heart_shown_enough: bool = false
+  // How often each trap was tried: a second try gets a harsher reply
+  // (the suspicion is the same every time).
+  heart_tried_loves: 0 to 99 = 0
+  heart_tried_theory: 0 to 99 = 0
+  heart_tried_force: 0 to 99 = 0
+  heart_tried_tell: 0 to 99 = 0
+  heart_tried_join: 0 to 99 = 0
+  heart_tried_cables: 0 to 99 = 0
   // How many of the cold door's four digit notes this program holds (the
   // story rule `door_digit_found` counts them; wave 11).
   door_digits: 0 to 4 = 0
@@ -2859,6 +2900,7 @@ ROLE Program
     set self.at_the_heart = false
     set self.heart_chat = false
     set self.heart_wait = false
+    set self.heart_quiet = false
 
   // ── The Heart (wave 20) ──
   // A pick held while the door stood open plays once it is shut, if the
@@ -2894,6 +2936,9 @@ ROLE Program
     if self.at_the_heart == true and Night.heart_holder == self.name and Night.heart_stage == "sealed":
       set self.heart_wait = true
       set Night.heart_present = true
+      // Wave 27: they never left, so the resumed Heart Talk says no "you
+      // came back" (heart_quiet; Heart Talk clears it, a close clears it).
+      set self.heart_quiet = true
 
   // An ending, an eject, a closed terminal or 🔄 ends any heart to heart.
   when Night.ended == true and self.heart_chat == true:
@@ -5275,6 +5320,8 @@ when terminal_closed for program:
   if program.name != null:
     set program.at_the_heart = false
     set program.heart_chat = false
+    // They left: a later resume is a return, and says so (wave 27).
+    set program.heart_quiet = false
     if program.name == Night.heart_holder:
       set Night.heart_present = false
       if Night.heart_stage == "talk":

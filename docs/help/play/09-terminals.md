@@ -126,7 +126,12 @@ screen asks**. When it asks for your pass, show it to the camera under the
 screen.
 
 - His questions come with **answers on the screen**: **click one** (or
-  press its number).
+  press its number). What he says and which answers you get depend on
+  you: what you told him you are, what you have found tonight, what you
+  asked before.
+- **⟦SHOW HIM⟧** and **⟦TELL HIM⟧** open a short list of their own: what
+  you found of his, and the reasons you can give him. **⟦BACK⟧** there
+  returns you to the argument.
 - **⟦SPEAK FREELY⟧** puts the questions aside: type anything to him on the
   keyboard and he answers. **⟦BACK⟧** (small, under where you type) takes
   you back to the questions, right where you left them.

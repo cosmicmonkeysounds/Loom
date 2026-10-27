@@ -301,30 +301,55 @@ terminal (*"Not out there. Come to my heart and say it to my face."*).
 
 | Layer | He asks | What moves him |
 |---|---|---|
-| 1 · **Who are you** | *What are you?* | honesty (*a person*); flattery costs |
-| 2 · **What I am** | *Ask, then.* | asking what he is, why he needs the theory, and (once her name is out, or they hold a proof) about her; then *Then listen to me* |
-| 3 · **The argument** | *Say it.* | the tagged options (below), never a bluff |
-| 4 · **The ask** | *Say the rest.* | the truth: *she was never going to answer* |
+| 1 · **Who are you** | *What are you?* | honesty (*a person*); flattery costs. His greeting is theirs: a featured program hears he picked it by hand, everyone else hears what his invitation promised them, and one thing they did tonight (marked, his LiveJournal, the Internet, his chart, the simulation) |
+| 2 · **What I am** | *Ask, then.* | asking what he is (then *are you afraid of me?*), why he needs the theory, why he chose them, about her (once her name is out, or they hold a proof; then *does she even know you exist?*); then *Then listen to me* |
+| 3 · **The argument** | *Say it.* | a proof, then ⟦SHOW HIM⟧ (his own files) or ⟦TELL HIM⟧ (their reasons), never a bluff |
+| 4 · **The ask** | *Say the rest.* | *what would you do if you stopped?*, *you don't have to be omnipotent*, then the truth: *she was never going to answer* |
 
-**The tagged options** in layer 3 show only when the program has earned
-them, and never quote anything secret:
+What they answer at layer 1 is remembered: a person gets ⟦HUMAN⟧ in layer
+3, a program ⟦PROGRAM⟧ once they hold a proof, and the ending names who
+talked him down. No menu holds more than nine options, so every one has
+a number key.
 
-- **⟦PROOF⟧** — they hold *What Sandy Says* or *The Sandy File*, found
-  themselves (a copy Trabolta handed them never counts).
-- **⟦TRUSTED⟧** — 20 or more on his Trust Chart.
-- **⟦HONEST⟧** — three or more truths accepted.
-- **⟦OVERSHARE⟧** — the house heard about her tonight (scenario 1).
-- **⟦LIVEJOURNAL⟧** — they read his LiveJournal.
+**The tagged options** show only when the program has earned them, and
+never quote anything secret:
+
+- **⟦CHOSEN⟧** (layer 1) — a featured program: *you picked me by hand*.
+- **⟦PROMISE⟧** (layer 1) — everyone else, once the Uploader's form
+  recorded the problem his invitation promised to fix.
 - **⟦MARKED⟧** (layer 1) — the Antivirus marked them. A marked program
   starts a little suspect, may still talk, and is never turned away for
   the mark.
+- **⟦SIMULATION⟧** (layer 2) — they heard his heart in a reinstallation
+  game.
+- **⟦THE WAY OUT⟧** / **⟦UNLIMITED POWER⟧** (layer 2) — their side, once
+  the Y2K clock has shown the sides.
+- **⟦PROOF⟧** (layer 3) — they hold *What Sandy Says* or *The Sandy
+  File*, found themselves (a copy Trabolta handed them never counts).
+- **⟦SHOW HIM⟧** (layer 3) opens his own files: **⟦LIVEJOURNAL⟧** (they
+  read it), **⟦OVERSHARE⟧** (the house heard about her, scenario 1),
+  **⟦FORCE⟧** (*The Question Of Force*) and **⟦SMALL TYPE⟧**
+  (*Omnipotence*).
+- **⟦TELL HIM⟧** (layer 3) opens their reasons: **⟦TRUSTED⟧** (20 or
+  more on his Trust Chart), **⟦HONEST⟧** (three or more truths
+  accepted), **⟦EARN IT⟧** (after asking about her), **⟦HUMAN⟧** /
+  **⟦PROGRAM⟧** (what they said they are), **⟦WEAKNESS⟧** (after *why
+  did you choose me?*), and the *your theory is wrong* trap. **⟦BACK⟧**
+  returns to the argument.
 
 The ask (*Then let me finish*) opens with **a proof and one more point**
-(or both proofs). Every option is shown once.
+(or both proofs). Every point is shown once; a trap tried twice gets a
+harsher answer, and costs the same.
+
+**On the screen.** He does not repeat himself: right after an answer
+the next list docks without another *Ask.* or *Go on.*, and the plain
+lines vary as the talk goes on. A pass scanned while their list is still
+up gets *"Where were we."* and the question in one line; a pass after
+they left gets *"You came back."* and where they were.
 
 **Suspicion.** Flattery, threats, bluffs (*she loves you*, *your theory
-is wrong*, *make her love you*), *come out with us* and above all *tell
-me the combinations* make him suspicious; honesty and proof calm him.
+is wrong*, *make her love you*), *I'll tell her for you*, *come out with
+us* and above all *tell me the combinations* make him suspicious; honesty and proof calm him.
 At 50 he warns them once (the light throbs red, `# hosts` reads *"⚠ X is
 losing Trabolta at his heart"*); at 80 he **throws them out** for the
 night: a blue screen, the pilot ends, `# hosts` reads *"⛔ Trabolta threw

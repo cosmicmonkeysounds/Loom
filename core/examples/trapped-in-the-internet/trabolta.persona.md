@@ -19,7 +19,10 @@
 #   far this program got, `heart_menu` is true while a choice waits on the
 #   screen, `heart_convinced` once they convinced him, `heart_out` once he
 #   threw them out for the night, `heart_chat` while they put the questions
-#   aside to just talk (the heart to heart, §7 of CONTRACT-w20). There is no
+#   aside to just talk (the heart to heart, §7 of CONTRACT-w20). Wave 27:
+#   `heart_who` is what they told him they are at his heart's first
+#   question (human, program, flatter, marked, chosen, promise; none
+#   before). There is no
 #   stand_down power any more (D13). `marked` is true while the Antivirus have
 #   flagged the program for the Internet (since wave 18 it hinders
 #   nothing; the house tells the program and the Antivirus hunt them
@@ -55,7 +58,7 @@ character: Trabolta
 variables: truth, untruth, composure, love, regard
 max_step: 8
 facts: Night.phase, Night.step, Night.clock, Night.facts_accepted, Night.facts_requested, Night.livejournal_read, Night.lj_reader, Night.scenario, Night.most_trusted, Night.least_trusted, Night.heart_opened, Night.talked_down, Night.line_by, Night.heart_stage, Night.server_door
-them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked, heart_layer, heart_menu, heart_convinced, heart_chat, heart_out, defected
+them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked, heart_layer, heart_menu, heart_convinced, heart_chat, heart_out, heart_who, defected
 them_adjust: trust
 mind: trabolta.mind.md
 thread_window: 12
