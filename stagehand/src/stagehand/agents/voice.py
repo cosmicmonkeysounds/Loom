@@ -17,6 +17,15 @@ the wave 12 contract §C3. The message list is
                     out (the guest = user, his own free replies = assistant)
     [last] system   the format reminder (+ the one RETRY note)
 
+A stage request (wave 32: a talk scene; Clippy speaks aloud in the Desktop
+and his answer is a public line the TV speaks) changes three things: the
+person card says so, P3 shows the room's recent lines (the story's scripted
+ones included, never one with a hunt or `never` word) in place of the
+house's posted lines, and P4 is only the live exchange. A canned line's
+`stage.direction` is a must-follow steer in `right_now`. The classic prompt
+(`prompt.build_messages`) gets the same: `classic_stage_block`, the live
+turns and the steer before its closing note.
+
 Ollama hoists every system message of gpt-oss into one developer block, in
 order, so P1 then P2 is the cacheable start of every prompt. Nothing in P1
 depends on the speaker, the phase or the clock.
@@ -43,7 +52,7 @@ from .facts import Facts
 from .guards import Pass, allowed_answer_words, cut_exact_repeats, guard_pass, mentions_hunt, pick_fallback, repeats, retry_message, scrub_memo, thread_replies, uses_catchphrase
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
-from .prompt import adjust_names, allowed_powers, build_messages, dossier_block, gate_context, matching_situations, outside_block, situation_block, their_variables, them_adjust_line
+from .prompt import adjust_names, allowed_powers, build_messages, dossier_block, gate_context, matching_situations, outside_block, situation_block, stage_of, their_variables, them_adjust_line
 from .reply import MAX_MEMO, Reply, fold, parse_reply
 from .story_mind import card_for, gift_line
 from .trace import Trace, new_thought
@@ -60,6 +69,8 @@ HOUSE_LINES = 3
 #: Characters kept of a lore entry told in full / a quoted story line.
 MAX_TELL = 600
 MAX_HOUSE_LINE = 200
+#: (wave 32) A stage request: the room's lines it shows him, newest last.
+ROOM_LINES = 12
 
 #: W1's fixed gloss for each favour policy (P2).
 FAVOURS = {
@@ -336,7 +347,10 @@ def _live_state(persona: Persona, req: dict[str, Any], live: list[str]) -> str:
 def _person(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str:
     p = ctx.person
     them = req.get("them") or {}
-    if p.kind == "performer":
+    stage = stage_of(req)
+    if stage is not None:
+        who = stage_speaker(p.name or p.id, stage)
+    elif p.kind == "performer":
         who = f"a fellow character — one of your cast{f', group {p.faction}' if p.faction else ''}"
     else:
         who = f"a guest{f', group {p.faction}' if p.faction else ''}"
@@ -365,6 +379,60 @@ def _person(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str:
     if numbers:
         lines.append("Their numbers: " + ", ".join(f"{k} {v}" for k, v in numbers))
     lines.append(f"They hold (titles): {'; '.join(p.holds)}" if p.holds else "They hold nothing yet.")
+    return "\n".join(lines)
+
+
+def _room_name(stage: dict[str, Any]) -> str:
+    """'The Desktop' → 'the Desktop' (a room's name inside a sentence)."""
+    room = _one_line(stage.get("room")) or "The Desktop"
+    return "the " + room[4:] if room.startswith("The ") else room
+
+
+def stage_speaker(name: str, stage: dict[str, Any]) -> str:
+    """(wave 32) Who a stage request's speaker is, for the person card:
+    speaking aloud in the room, every program hearing his answer from the
+    screen. Clippy is named as the persona's page names her."""
+    room = _room_name(stage)
+    lead = "your ambassador Clippy, speaking aloud" if name.strip().lower() == "clippy" else "speaking aloud"
+    return f"{lead} in {room}; every program hears your answer from the screen above the fireplace"
+
+
+def room_lines(persona: Persona, req: dict[str, Any], limit: int = ROOM_LINES) -> list[str]:
+    """(wave 32) A stage request's history is the room's: every line said
+    aloud there, the story's scripted ones included (Clippy's script, the
+    narration, his own scripted lines). The newest `limit`, oldest first,
+    each `Name: “text”` (his own as `You`). A line carrying a `never` word,
+    a hunt answer or a hunt topic is left out (a read result is public, but
+    he must never say an answer: guard 2 would withhold it)."""
+    s = persona.secrets
+    out: list[str] = []
+    for h in req.get("history") or []:
+        if not isinstance(h, dict):
+            continue
+        text = _one_line(h.get("text"), MAX_HOUSE_LINE)
+        if not text or s.leaks(text) or mentions_hunt(s, text):
+            continue
+        who = "You" if h.get("mine") else (_one_line(h.get("from")) or "Someone")
+        out.append(f"{who}: “{text}”")
+    return out[-limit:] if limit > 0 else []
+
+
+def classic_stage_block(persona: Persona, req: dict[str, Any]) -> str | None:
+    """(wave 32) The classic prompt's (`prompt.build_messages`: `voice.layout:
+    classic`, `mind_mode: classic`) word on a stage request, or None for a
+    private thread: who is speaking aloud and that the whole room hears his
+    answer, then the room's lines, each saying who said it."""
+    stage = stage_of(req)
+    if stage is None:
+        return None
+    speaker = req.get("speaker") or {}
+    name = _one_line(speaker.get("name") or speaker.get("id")) or "Someone"
+    lines = [f"=== BEFORE THE ROOM ===\nThe one talking to you: {name} ({stage_speaker(name, stage)})."]
+    room = room_lines(persona, req)
+    if room:
+        lines.append(
+            f"Said aloud in {_room_name(stage)} just now, oldest first (what you said there is already said: never say it again):\n" + "\n".join(room)
+        )
     return "\n".join(lines)
 
 
@@ -432,7 +500,16 @@ def render_p3(persona: Persona, req: dict[str, Any], ctx: VoiceContext, *, live:
         happened.append(line)
     if happened:
         blocks.append("=== WHAT JUST HAPPENED ===\n" + "\n".join(happened))
-    posted = [_one_line(t, MAX_HOUSE_LINE) for t in story_lines(req)[-HOUSE_LINES:] if t.strip()]
+    stage = stage_of(req)
+    room = room_lines(persona, req) if stage is not None else []
+    if room:
+        # (wave 32) Before the whole room: what was said there, scripted or
+        # not, in place of the house's posted lines (they are in it).
+        blocks.append(
+            f"=== {_room_name(stage or {}).upper()}, JUST NOW (said aloud in front of every program, oldest first; "
+            "what you said there is already said: never say it again) ===\n" + "\n".join(room)
+        )
+    posted = [] if stage is not None else [_one_line(t, MAX_HOUSE_LINE) for t in story_lines(req)[-HOUSE_LINES:] if t.strip()]
     if posted:
         blocks.append("=== THE HOUSE POSTED HERE AS YOU (the story, not you: already said to them; never say it again) ===\n" + " · ".join(posted))
     to_them = [_one_line(x) for x in ctx.said.to_them[-3:] if _one_line(x) and not s.leaks(x)]
@@ -482,13 +559,31 @@ def render_p3(persona: Persona, req: dict[str, Any], ctx: VoiceContext, *, live:
 
 def history_turns(req: dict[str, Any]) -> list[dict[str, str]]:
     """The last 8 lines once the story's are taken out: the guest's as
-    `user`, his free replies as `assistant`; always ending on the speaker."""
+    `user`, his free replies as `assistant`; always ending on the speaker.
+    (wave 32) A stage request's history is the whole room's: only the live
+    exchange is a turn (every scripted line, whoever said it, is in P3's
+    room block), and each line not his says who said it."""
+    if stage_of(req) is not None:
+        live = [h for h in req.get("history") or [] if isinstance(h, dict) and h.get("story") is not True][-HISTORY:]
+        turns = [
+            {"role": "assistant", "content": str(h.get("text", ""))} if h.get("mine") else {"role": "user", "content": _said_by(h.get("from"), h.get("text"))}
+            for h in live
+        ]
+        if not live or live[-1].get("mine"):
+            speaker = req.get("speaker") or {}
+            turns.append({"role": "user", "content": _said_by(speaker.get("name") or speaker.get("id"), req.get("text") or "(they are waiting)")})
+        return turns
     free = [h for h in req.get("history") or [] if isinstance(h, dict) and not (h.get("mine") and h.get("story") is True)]
     free = free[-HISTORY:]
     out = [{"role": "assistant" if h.get("mine") else "user", "content": str(h.get("text", ""))} for h in free]
     if not free or free[-1].get("mine"):
         out.append({"role": "user", "content": str(req.get("text") or "(they are waiting)")})
     return out
+
+
+def _said_by(name: Any, text: Any) -> str:
+    who = _one_line(name)
+    return f"{who}: {text}" if who else str(text or "")
 
 
 def reminder(persona: Persona, req: dict[str, Any], *, memo: bool = True, lookup_round: bool = False) -> str:
@@ -542,7 +637,25 @@ def right_now(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str |
     held = [x.heading for x in matching_situations(persona, req)]
     if held:
         parts.append(f"{' + '.join(h.upper() for h in held)}: that block outranks your brief and your favours for this conversation.")
+    steer = stage_steer(req)
+    if steer:
+        parts.append(steer)
     return " ".join(parts) or None
+
+
+#: (wave 32) The longest steer a stage request's `direction` may give.
+MAX_STEER = 300
+
+
+def stage_steer(req: dict[str, Any]) -> str | None:
+    """(wave 32) A stage request's `direction` (the hidden steer a canned
+    Clippy line carries: "wrap up and send them to the hunt"), as a
+    must-follow order for this one answer, or None. Never said aloud."""
+    stage = stage_of(req)
+    direction = _one_line((stage or {}).get("direction"), MAX_STEER)
+    if not direction:
+        return None
+    return f"YOUR STEER FOR THIS ANSWER (you must follow it; never say it aloud, never mention it): {direction}"
 
 
 def build_lean_messages(

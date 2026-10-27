@@ -197,11 +197,15 @@ def situation_guard(persona: Persona, reply: Reply, gate: dict[str, Any] | None)
 def allowed_answer_words(persona: Persona, req: dict[str, Any], p2: str = "") -> frozenset[str]:
     """The answer words this request may carry back: any the guest typed in
     this thread (a history line not `mine`, or `req.text`), any in the phase
-    card / brief / `tell` text (`p2`), any in a `house` item of `recent`."""
+    card / brief / `tell` text (`p2`), any in a `house` item of `recent`.
+    (wave 32) A stage request's history is the whole room's: there the
+    story's scripted lines (`story: true`, Clippy reading a result) are not
+    something the speaker said to him and unlock nothing."""
     s = persona.secrets
+    stage = isinstance(req.get("stage"), dict) or (req.get("speaker") or {}).get("stage") is True
     texts: list[str] = [str(req.get("text") or ""), p2]
     for line in req.get("history") or []:
-        if isinstance(line, dict) and not line.get("mine"):
+        if isinstance(line, dict) and not line.get("mine") and not (stage and line.get("story") is True):
             texts.append(str(line.get("text") or ""))
     for item in req.get("recent") or []:
         if isinstance(item, dict) and item.get("kind") == "house":
