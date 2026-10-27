@@ -2,19 +2,24 @@
 // Show window — its rules (talk-model.ts), the card drawn off a fixture host
 // view with a talk scene, the slim bar's 🤖 Talk chip — and the phones'
 // light takeover for a burst.
-import { describe, expect, it } from "vitest";
-import { createElement } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { ChatMessage, HostView } from "../src/types.ts";
 import type { TalkView } from "../../core/src/talk-back.ts";
 import { hostCalls } from "../src/host/api.ts";
 import type { HostClient } from "../src/host/client.ts";
-import { HostConsole, HostDock } from "../src/host/dock.tsx";
+import { HostConsole, HostDock, type HostConsoleState } from "../src/host/dock.tsx";
 import { HostShowWindow } from "../src/host/show.tsx";
 import { showTarget } from "../src/host/show-model.ts";
-import { TALK_MAX, TALK_PLACEHOLDER, TALK_RELAY, canSend, chipFace, chipKey, glitchText, talkChipShown, talkErrorText, talkFoldedLine, talkLines, talkOpen, talkSecs, talkSentText, talkState } from "../src/host/talk-model.ts";
-import { takeoverKind } from "../src/moments/model.ts";
+import { ApiError } from "../src/client.ts";
+import { ARM_LINE } from "../src/arm.ts";
+import { clockSkew } from "../src/host/client.ts";
+import { TalkBody } from "../src/host/talk.tsx";
+import { TALK_MAX, TALK_PLACEHOLDER, TALK_RELAY, canSend, chipFace, chipKey, draftAfterSend, glitchText, talkChipShown, talkClock, talkErrorText, talkFoldedLine, talkLines, talkOpen, talkSecs, talkSentText, talkState } from "../src/host/talk-model.ts";
+import { TAKEOVER_LIGHT_MS, TAKEOVER_MS, takeoverKind, takeoverStart } from "../src/moments/model.ts";
+import { elements, mountHooks } from "./hooks-harness.ts";
 import { hostFixture } from "./host-fixture.ts";
 
 
@@ -92,11 +97,37 @@ describe("talk-model: the card's rules", () => {
     expect(canSend("x".repeat(TALK_MAX + 1), false)).toBe(false);
   });
 
-  it("a chip's face is its label, else its text; keys per side", () => {
+  it("a chip's face is its label, else its text; keys per scene and side", () => {
     expect(chipFace({ text: "Long words", label: "Short" })).toBe("Short");
     expect(chipFace({ text: "Long words", label: " " })).toBe("Long words");
     expect(chipFace({ text: "Long words" })).toBe("Long words");
-    expect(chipKey("trabolta", 2)).toBe("trabolta:2");
+    expect(chipKey("bottle", "trabolta", 2)).toBe("bottle:trabolta:2");
+    // 📺 swaps one scene for the next with the card open: line k of each is a different key.
+    expect(chipKey("bottle", "trabolta", 0)).not.toBe(chipKey("ad", "trabolta", 0));
+  });
+
+  it("after a send, only the sent words leave the box; words typed on in flight stay", () => {
+    expect(draftAfterSend("You OK?", "You OK?")).toBe("");
+    expect(draftAfterSend("You OK? Shall we", "You OK?")).toBe("Shall we");
+    // Edited inside the sent words while in flight: nothing is lost.
+    expect(draftAfterSend("You fine?", "You OK?")).toBe("You fine?");
+    expect(draftAfterSend("", "You OK?")).toBe("");
+  });
+
+  it("the thinking count runs on the server's clock (the poll's Date header), not the phone's", () => {
+    // A phone 60 s fast: its wall reads 60 s past the server's.
+    const landed = Date.parse("Tue, 27 Oct 2026 20:00:00 GMT") + 60_000;
+    const skew = clockSkew("Tue, 27 Oct 2026 20:00:00 GMT", landed);
+    expect(skew).toBe(-60_000);
+    expect(talkClock(landed, skew)).toBe(landed - 60_000);
+    expect(clockSkew(null, 5)).toBe(0);
+    expect(clockSkew("", 5)).toBe(0);
+    expect(clockSkew("not a date", 5)).toBe(0);
+    expect(talkClock(5, undefined)).toBe(5);
+    // 3 s after a Clippy line on the server, the fast phone still reads 3 s, not "slow".
+    const since = landed - 60_000;
+    expect(talkState(talk({ thinking: true, since }), talkClock(landed + 3_000, skew))).toEqual({ text: "🤖 thinking… 3s", tone: "thinking" });
+    expect(talkState(talk({ thinking: true, since }), landed + 3_000).tone).toBe("slow");
   });
 
   it("the server's refusals, said kindly", () => {
@@ -215,8 +246,25 @@ describe("the slim bar's 🤖 Talk chip", () => {
     for (const sel of [".host-talk-fold", ".host-talk-send", ".host-talk-chip-btn", ".host-talk-glitch"]) expect(css).toMatch(new RegExp(`\\${sel} \\{[^}]*min-height: var\\(--tap\\)`, "u"));
     expect(css).toMatch(/\.host-talk-chip \{[^}]*min-width: var\(--tap\); min-height: var\(--tap\)/u);
   });
-  it("the card stays in the booth's chunk: no guest-side module imports it", () => {
-    for (const f of ["guest/app.tsx", "ui.tsx", "moments/provider.tsx", "session/guest.ts"]) expect(src(f)).not.toMatch(/host\/talk/u);
+  it("the card stays in the booth's chunk: nothing the guest entry imports statically reaches it", () => {
+    // Walk main.tsx's static imports (a dynamic import() is its own chunk).
+    const root = new URL("../src/", import.meta.url);
+    const seen = new Set<string>();
+    const walk = (url: URL) => {
+      if (seen.has(url.pathname)) return;
+      seen.add(url.pathname);
+      const text = readFileSync(url, "utf8");
+      for (const m of text.matchAll(/^\s*(?:import|export)\s+(?:type\s)?[^;]*?from\s+"(\.{1,2}\/[^"]+)"/gmu)) {
+        if (/^\s*(?:import|export)\s+type\s/u.test(m[0])) continue;
+        const next = new URL(m[1]!, url);
+        if (existsSync(next) && /\.tsx?$/u.test(next.pathname)) walk(next);
+      }
+    };
+    walk(new URL("main.tsx", root));
+    const rel = [...seen].map((p) => p.split("/src/").pop()!);
+    expect(rel).toContain("main.tsx");
+    expect(rel.length).toBeGreaterThan(20);
+    expect(rel.filter((p) => /^host\/talk/u.test(p))).toEqual([]);
   });
 });
 
@@ -229,7 +277,205 @@ describe("the light takeover for a burst (C5)", () => {
     expect(takeoverKind("light", {})).toBe("light");
     expect(takeoverKind("light", { light: true })).toBe("light");
   });
-  it("the provider plays it through takeoverKind", () => {
-    expect(src("moments/provider.tsx")).toMatch(/const light = takeoverKind\(input\.takeover!, input\.glitch\) === "light";/u);
+  it("the takeover a due glitch starts: a burst is the light one, 2.5 s, on a guest's phone too", () => {
+    expect(takeoverStart(7, "full", { text: "BUY NOW", light: true })).toEqual({ at: 7, text: "BUY NOW", light: true, ms: TAKEOVER_LIGHT_MS });
+    expect(takeoverStart(7, "full", { text: "BUY NOW" })).toEqual({ at: 7, text: "BUY NOW", light: false, ms: TAKEOVER_MS });
+    expect(takeoverStart(7, "light", null)).toEqual({ at: 7, text: null, light: true, ms: TAKEOVER_LIGHT_MS });
+  });
+});
+
+// --- the card, driven (hooks harness: taps, keys, sends) ----------------------------
+
+type Post = { as: string; text: string; direction?: string };
+type Ev = { target: { value: string } };
+type Key = { key: string; shiftKey: boolean; nativeEvent: { isComposing: boolean }; preventDefault: () => void };
+
+/** A deferred answer to one `calls.talk`. */
+function deferred() {
+  let resolve!: (v: Record<string, unknown>) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<Record<string, unknown>>((y, n) => {
+    resolve = y;
+    reject = n;
+  });
+  return { promise, resolve, reject };
+}
+
+/** TalkBody on a fake console: a recording `calls.talk`, the draft held
+ *  outside (as the console holds it), and a rerender after every change. */
+function drive(scene: TalkView = talk(), o: { skew?: number; now?: number } = {}) {
+  let draft = "";
+  const posts: Post[] = [];
+  const answers: Array<ReturnType<typeof deferred>> = [];
+  const toasts: string[] = [];
+  const setTalkDraft = (v: string | ((d: string) => string)) => {
+    draft = typeof v === "function" ? v(draft) : v;
+  };
+  const calls = {
+    talk: (as: string, text: string, direction?: string) => {
+      posts.push({ as, text, ...(direction !== undefined ? { direction } : {}) });
+      const d = deferred();
+      answers.push(d);
+      return d.promise;
+    },
+    cue: async () => ({ ok: true }),
+  };
+  const c = () =>
+    ({
+      ctx: { now: o.now ?? 0, calls, session: { messages: new Map() } },
+      client: { refresh: () => {}, skew: o.skew },
+      desk: { setToast: (t: string | null) => t !== null && toasts.push(t), armed: null, pending: null, locked: () => false, tap: () => {} },
+      bar: null,
+      stale: false,
+      talkDraft: draft,
+      setTalkDraft,
+    }) as unknown as HostConsoleState;
+  let current = scene;
+  const h = mountHooks(TalkBody as (p: { c: HostConsoleState; talk: TalkView }) => unknown, { c: c(), talk: current });
+  const sync = () => h.rerender({ c: c(), talk: current });
+  const all = () => elements(h.output) as Array<ReactElement<Record<string, unknown>>>;
+  const byTest = (id: string) => all().find((e) => e.props["data-testid"] === id);
+  const chips = (side: "clippy" | "trabolta") => all().filter((e) => e.type === "button" && String(e.props["className"]).includes(`host-talk-chip-btn ${side}`));
+  const text = (e: ReactElement<Record<string, unknown>> | undefined): string => (e === undefined ? "" : elements(e.props["children"]).length === 0 ? String(e.props["children"] ?? "") : JSON.stringify(e.props["children"]));
+  const flush = async () => {
+    for (let n = 0; n < 5; n += 1) await Promise.resolve();
+    sync();
+  };
+  return {
+    h,
+    posts,
+    answers,
+    toasts,
+    get draft() {
+      return draft;
+    },
+    type(v: string) {
+      h.act(() => (byTest("host-talk-box")!.props["onChange"] as (e: Ev) => void)({ target: { value: v } }));
+      sync();
+    },
+    key(k: Partial<Key>) {
+      let prevented = false;
+      const ev: Key = { key: "Enter", shiftKey: false, nativeEvent: { isComposing: false }, preventDefault: () => (prevented = true), ...k };
+      h.act(() => (byTest("host-talk-box")!.props["onKeyDown"] as (e: Key) => void)(ev));
+      sync();
+      return prevented;
+    },
+    tap(e: ReactElement<Record<string, unknown>> | undefined) {
+      h.act(() => (e!.props["onClick"] as () => void)());
+      sync();
+    },
+    scene(next: TalkView) {
+      current = next;
+      sync();
+    },
+    byTest,
+    chips,
+    text,
+    flush,
+  };
+}
+
+describe("the 🤖 Talk card, driven", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("Send posts the box as Clippy; once taken, only the sent words leave — Clippy's next sentence typed in flight stays", async () => {
+    const d = drive();
+    d.type("Are you OK up there?");
+    d.tap(d.byTest("host-talk-send"));
+    expect(d.posts).toEqual([{ as: "Clippy", text: "Are you OK up there?" }]);
+    expect(d.text(d.byTest("host-talk-send"))).toBe("Sending…");
+    // The box stays live while it's in flight.
+    d.type("Are you OK up there? You look");
+    d.answers[0]!.resolve({ ok: true, asked: true, online: true });
+    await d.flush();
+    expect(d.draft).toBe("You look");
+    expect(d.toasts).toEqual(["✓ Trabolta heard Clippy"]);
+    expect(d.text(d.byTest("host-talk-send"))).toBe("Send");
+  });
+
+  it("an untouched box clears once the server took it", async () => {
+    const d = drive();
+    d.type("Hello!");
+    d.tap(d.byTest("host-talk-send"));
+    d.answers[0]!.resolve({ ok: true });
+    await d.flush();
+    expect(d.draft).toBe("");
+  });
+
+  it("a refused send keeps the draft and says why, kindly", async () => {
+    const d = drive();
+    d.type("Shall we begin?");
+    d.tap(d.byTest("host-talk-send"));
+    d.answers[0]!.reject(new ApiError("no_talk", 409));
+    await d.flush();
+    expect(d.draft).toBe("Shall we begin?");
+    expect(d.text(d.byTest("host-talk-error"))).toBe("The talk scene is over — nothing was sent.");
+    expect(d.toasts).toEqual([]);
+    // Typing again clears the error.
+    d.type("Shall we begin? Now?");
+    expect(d.byTest("host-talk-error")).toBeUndefined();
+  });
+
+  it("Enter sends; Shift+Enter and an IME's Enter don't", () => {
+    const d = drive();
+    d.type("One");
+    expect(d.key({ shiftKey: true })).toBe(false);
+    expect(d.key({ nativeEvent: { isComposing: true } })).toBe(false);
+    expect(d.key({ key: "a" })).toBe(false);
+    expect(d.posts).toEqual([]);
+    expect(d.key({})).toBe(true);
+    expect(d.posts).toEqual([{ as: "Clippy", text: "One" }]);
+  });
+
+  it("a Clippy chip sends on one tap, with its hidden direction; nothing else goes while it's in flight", async () => {
+    const d = drive();
+    d.tap(d.chips("clippy")[0]);
+    expect(d.posts).toEqual([{ as: "Clippy", text: "Is everything all right up there?", direction: "he insists he is fine" }]);
+    expect(d.chips("clippy").every((b) => b.props["disabled"] === true)).toBe(true);
+    d.answers[0]!.resolve({ ok: true });
+    await d.flush();
+    d.tap(d.chips("clippy")[1]);
+    expect(d.posts[1]).toEqual({ as: "Clippy", text: "Shall we begin the hunt?" });
+  });
+
+  it("a Trabolta chip arms on the first tap and fires his line on the second", () => {
+    vi.useFakeTimers({ now: 50_000 });
+    vi.stubGlobal("document", { visibilityState: "visible", addEventListener: () => {}, removeEventListener: () => {} });
+    vi.stubGlobal("window", { addEventListener: () => {}, removeEventListener: () => {} });
+    const d = drive();
+    d.tap(d.chips("trabolta")[0]);
+    expect(d.posts).toEqual([]);
+    expect(JSON.stringify(d.chips("trabolta")[0]!.props["children"])).toContain(ARM_LINE);
+    vi.advanceTimersByTime(500);
+    d.tap(d.chips("trabolta")[0]);
+    expect(d.posts).toEqual([{ as: "Trabolta", text: "Everything is under control." }]);
+    d.h.unmount();
+  });
+
+  it("an arm never carries into the next scene: 📺 swaps the scene, line 0's second tap only arms the new one", () => {
+    vi.useFakeTimers({ now: 50_000 });
+    vi.stubGlobal("document", { visibilityState: "visible", addEventListener: () => {}, removeEventListener: () => {} });
+    vi.stubGlobal("window", { addEventListener: () => {}, removeEventListener: () => {} });
+    const d = drive(talk({ scene: "bottle", trabolta: [{ text: "The bottle line." }] }));
+    d.tap(d.chips("trabolta")[0]);
+    d.scene(talk({ scene: "ad", trabolta: [{ text: "The ad line." }] }));
+    // The new scene's chip shows its own face, not "Tap again to fire".
+    expect(d.chips("trabolta")[0]!.props["children"]).toBe("The ad line.");
+    vi.advanceTimersByTime(500);
+    d.tap(d.chips("trabolta")[0]);
+    expect(d.posts).toEqual([]);
+    vi.advanceTimersByTime(500);
+    d.tap(d.chips("trabolta")[0]);
+    expect(d.posts).toEqual([{ as: "Trabolta", text: "The ad line." }]);
+    d.h.unmount();
+  });
+
+  it("the state chip counts on the server's clock: a phone 60 s fast reads 3 s, not slow", () => {
+    const since = 1_000_000;
+    const d = drive(talk({ thinking: true, since }), { now: since + 63_000, skew: -60_000 });
+    expect(d.text(d.byTest("host-talk-state"))).toBe("🤖 thinking… 3s");
   });
 });
