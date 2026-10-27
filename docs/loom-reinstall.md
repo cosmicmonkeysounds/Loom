@@ -1702,8 +1702,8 @@ quiet on the screens (`QUIET_MOMENT_SIGNALS`):
   disk is never a plant: only the existing plant rule counts for a quest,
   and it refuses inside the Internet.
 
-The escape's and the heart's lines (and their `# hosts` readouts) are
-DRAFT w26 and await sign-off (`SIGNOFF-w26.md`).
+The escape's and the heart's lines (and their `# hosts` readouts) are on
+`SIGNOFF-w26.md`, signed off on 2026-10-27.
 
 **The King** speaks to the story two ways (wave 11).
 

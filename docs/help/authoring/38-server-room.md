@@ -144,7 +144,7 @@ on the tent laptop, not in a headset.
 
 - It is **awake all night** and never sleeps on the idle show. It shows
   THE KING, his bar (*n / 15*, *HE KNEELS* at 0), an attract line that
-  names no prize (*"Checkmate him."*, a DRAFT: since wave 26 it no longer
+  names no prize (*"Checkmate him."*: since wave 26 it no longer
   promises the door code), *"No prize now."* after 📄, and the scanner.
   **No hints, no tips**: it never says how strong he is.
 - A program scans their pass and plays one game. A restricted program

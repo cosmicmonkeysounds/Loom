@@ -308,11 +308,13 @@ them out.
   timeout, then it opens as before). A locked pass gets
   `LOCKED_PASS_NOTICE` and no line; the story guards `terminal_opened`
   too. Other walls open the line and the server refuses every post.
-- **DRAFT copy.** New show copy carries `// DRAFT w26` (G1: the filing
-  steps, the reminders, Truth Pong, the summons, the chess stakes line
-  *Checkmate him.*; D1: `dare_chosen` on the `Dare Chosen` beat,
-  `DARE_ORDER`; `LOCKED_PASS_NOTICE`). The rows are in the show's
-  `SIGNOFF-w26.md`; it awaits the user's sign-off.
+- **Signed-off copy.** Wave 26's show copy (G1: the filing steps, the
+  reminders, Truth Pong, the summons, the chess stakes line *Checkmate
+  him.*; D1: `dare_chosen` on the `Dare Chosen` beat, `DARE_ORDER`;
+  `LOCKED_PASS_NOTICE`) is in the show's `SIGNOFF-w26.md`, signed off on
+  2026-10-27; its comments keep a `// w26 (<note>)` tag. New copy awaiting
+  sign-off carries `// DRAFT w<N>` (wave 29's heart card and G11 line:
+  `SIGNOFF-w29.md`).
 - **Tests read the show.** Several tests read
   `core/examples/trapped-in-the-internet/` (`house.json`,
   `house.shed.json`, `generated/questions.loom`, `cast/trabolta.loom`,
