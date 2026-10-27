@@ -12,9 +12,10 @@ by late-90s Web 1.0 aesthetics and existentialism.*
 >
 > **State (2026-10-24):** the VPS runs `w18b-1021` (wave 18b Stage A, the
 > tent laptop, and wave 19). Master also holds wave 18b Stage B and waves
-> 20, 20b, 21 and 22, merged and not shipped; their DRAFT show text waits on
-> the sign-off sheets (`SIGNOFF-w27.md`, `SIGNOFF-w26.md`, `SIGNOFF-w21.md`, `history/SIGNOFF-w18b.md`,
-> `history/SIGNOFF-w20.md`). The build history is in [`OCT31.md`](./OCT31.md)
+> 20, 20b, 21 and 22, merged and not shipped. The user signed off the show
+> text of waves 13–28 on 2026-10-27 (`SIGNOFF-w13.md` … `SIGNOFF-w28.md`,
+> `history/SIGNOFF-w18b.md`, `history/SIGNOFF-w20.md`); wave 29's lines
+> (`SIGNOFF-w29.md`) and wave 22's patch-bay lines are still DRAFT. The build history is in [`OCT31.md`](./OCT31.md)
 > §5 and [`history/`](./history).
 
 A rogue AI, **Trabolta**, has very nearly solved the Unified Field
@@ -88,7 +89,7 @@ beats/finale.loom      Final Reveal · Bobbing For Truth · The Bag Of Truth · 
                        · Truth Txt · The Verdict · Song Ending · Grok Prom · Pickup Line ·
                        Sad Confession · Relationship Advice · Advice Helped · Advice
                        Thwarted · The Hand Jive
-beats/review.loom      the ending monologue (wave 18b, DRAFT): The Night In Review (public,
+beats/review.loom      the ending monologue (wave 18b): The Night In Review (public,
                        before every ceremony) · Who You Were · The Report On Everyone ·
                        Everyone Else · The Rest Of The Report · Goals Met Tonight · The
                        Goals Report · What You Did · What We Did · Your File (private,
@@ -692,7 +693,7 @@ Server Room. Never say the code on the radio.
 | **G1 · 🏆 Start the awards ceremony** (`start_the_ceremony`; refused until `Night.ended`, and `banished` is not an ending) | Clippy hosts after `destroyed` / `rave` and **reads every line aloud** from The Desktop room | `!` alert to the living room, `sound ceremony_bed`, then **The Night In Review** first (wave 18b, R8, DRAFT: the host reads who everyone really was, the pool programs by problem group, the goals and the deeds, skipping what Recounts / Purgatory just read; every cleared program still here gets a private **Your File** from The Uploader), then `screens_ceremony` and **The Ceremony**: the host opens in The Desktop, per ending (Trabolta weakened after `disabled`, rebooted after `hand_jive`, showman otherwise). Trabolta's lines are spoken by the TV. |
 | **G2–G6** the five fixed awards (`award_most_trusted`, `award_least_trusted`, `award_frequent_flyer`, `award_lore_hoarder`, `award_truthcoin_tycoon`) and **G7–G9** the three bonus awards (`award_best_liar`, `award_duck_speedrun`, `award_quest_completionist`), each **with the winner picked on the cue sheet** (from the recap numbers) | the winner comes up to the TV for a trophy | **Present Award**: `sound award_fanfare`, the slide `screens_award_<name>` (`Night.screen` = `award_<name>`; it persists over the screensaver), the host's line with the winner's name and number (the winner's own var: trust, Internet visits, codex count, Truthcoin; the bonus awards read the cue sheet's **value** box — lies accepted, the duck time, quests done — and have a line without a number when it is empty), and a 🏆 reply to the winner. `value` also overrides a fixed award's number. Firing an award again corrects it. |
 | **G10 · 🖌 Bonus: The Million Dollar Painting** (`award_the_painting`, winner = MS Paint; only when she is at the party: its `while:` needs `Night.painting`, so without her the sheet goes G9 → G11) | the painting is revealed for the silent auction | Reads the **🖌 Signed** count (`Night.signatures`) unless **value** is given; a line without a number when nobody was counted. Slide `screens_award_the_painting`. Fired on anyone but MS Paint it is refused in `# hosts` (*"G10 is MS Paint's award…"*); any award fired before G1 says *"Start the ceremony (G1) first"* there; a second 🖌 Signed (or one on MS Paint) says so in `# hosts` and counts nothing. |
-| **G10a–c · the staff awards** (wave 21, DRAFT w21: `award_staff_trusted` 🛡 *Trabolta's Favourite Staff*, `award_staff_points` ⭐ *Staff Player Of The Night*, `award_staff_mole` 🤫 *The Mole*; **no subject**: the story names the player from the five players' trust, ⭐ Points and quiet favours, a tie to the first of Clippy, Norton, McAfee, Password Manager, CRA) | the winner comes up to the TV; their booth pops *🏆 You won …* | **Present Award** with `screens_award_staff_<name>` and the host's line. The Mole reads each player's private quiet-favour count, here for the first time (*Nobody* when nobody did one) and is the **last award**: it sets `ceremony_done`. |
+| **G10a–c · the staff awards** (wave 21: `award_staff_trusted` 🛡 *Trabolta's Favourite Staff*, `award_staff_points` ⭐ *Staff Player Of The Night*, `award_staff_mole` 🤫 *The Mole*; **no subject**: the story names the player from the five players' trust, ⭐ Points and quiet favours, a tie to the first of Clippy, Norton, McAfee, Password Manager, CRA) | the winner comes up to the TV; their booth pops *🏆 You won …* | **Present Award** with `screens_award_staff_<name>` and the host's line. The Mole reads each player's private quiet-favour count, here for the first time (*Nobody* when nobody did one) and is the **last award**: it sets `ceremony_done`. |
 | **G11 · 🎃 Resurrection** (`resurrection`; after the last award — G10c, The Mole (wave 21; it was G10, or G9 with no MS Paint); before it `# hosts` asks and a second press within 30 s ends the show anyway — the first press is refused on the sheet (*Not taken*, never ticks), since wave 9 — refused until the ceremony has started (G1), once) | everyone is human again and hangs out | Everyone is freed (`everyone_free`), unmarked (`unmarked`: both pins down) and unrestricted; the takeover pin comes down; `Trabolta.awake = false` (TV + terminals to attract, no piloting); `screens_screensaver`; `lights_restore`; `!🎃 The show is over: you are human again. Hang out. The night is yours.` (an alert, so it pushes). |
 
 **Your own award lines (✍, wave 9, D4).** By default Trabolta reads each
@@ -773,7 +774,7 @@ are **200**, and **94** of them carry a code (the 60 generated from
 | **M** missions | `6-missions` (13) | Private orders for one featured program (the glitch choices and the final orders). |
 | **CI** Clippy | `7-clippy` (9) | *Clippy Instructions 1–9*, unlocked for Clippy only, one per phase (the private-to-Clippy channel). CI 3–9 are invented. |
 | **J** Jeeves | `8-jeeves` (20) | Scrambled fragments of 20 environmental entries, in the Character Sheet's Kmart style, for Broken Ask Jeeves to unscramble. |
-| **C** connections | `85-ties` (16) | Wave 18b (R9, DRAFT): the ties, `category: Connections`, no code, no `about:`, not secret (*Junior's Contacts*, *The Downtown Staff Photo*, *The Volunteer Sheet*, *Retired Helpers*, *Found On Indeed*, *The Table Stakes*, *Forever*, *Brookhaven And Lockheed*, *The Pirate Site*, *Debt Notices*, *The Old Machines*, *Nobody Calls*, *6121 Quinpool Road*, *The Ladies In Finance*, *The Leaderboard*, *The Audience*). Each points at the people it connects and never names the human behind a program. **Program Briefing** (in the same file) deals them privately at clearance (the ROLE watcher on `ties_dealt`): every featured program holds 3, a pool program *The Old Machines* + its problem's tie (debt → *Debt Notices*, career → *Found On Indeed*, loneliness → *Nobody Calls*, mortality → *Forever*); performers hold theirs through `known to:` (their packs' **Who you know**). They never count toward *Facts Are Currency* or *Lore Hoarder* (`program.codex - program.codex_in.connections`). |
+| **C** connections | `85-ties` (16) | Wave 18b (R9): the ties, `category: Connections`, no code, no `about:`, not secret (*Junior's Contacts*, *The Downtown Staff Photo*, *The Volunteer Sheet*, *Retired Helpers*, *Found On Indeed*, *The Table Stakes*, *Forever*, *Brookhaven And Lockheed*, *The Pirate Site*, *Debt Notices*, *The Old Machines*, *Nobody Calls*, *6121 Quinpool Road*, *The Ladies In Finance*, *The Leaderboard*, *The Audience*). Each points at the people it connects and never names the human behind a program. **Program Briefing** (in the same file) deals them privately at clearance (the ROLE watcher on `ties_dealt`): every featured program holds 3, a pool program *The Old Machines* + its problem's tie (debt → *Debt Notices*, career → *Found On Indeed*, loneliness → *Nobody Calls*, mortality → *Forever*); performers hold theirs through `known to:` (their packs' **Who you know**). They never count toward *Facts Are Currency* or *Lore Hoarder* (`program.codex - program.codex_in.connections`). |
 
 The **directory** (`directory: everyone`) shows every guest and every
 `listed: true` character by name, plus exactly the entries *about* them
@@ -882,7 +883,7 @@ request as a dossier (*WHO THIS IS — TONIGHT*: their faction, trust rank,
 filings by verdict, non-secret codex titles, rooms, their own lines to him;
 never a secret, an answer, a code or a real name). A program he threw out
 (`them.heart_out`) gets his ordinary voice. His world is Halifax and Maps
-and Ducks (D29): the persona's `outside:` list (DRAFT) withholds any reply
+and Ducks (D29): the persona's `outside:` list withholds any reply
 naming the real crew or the event's kit. He admits the
 patch bay is his heart and that he does not know the combinations or the
 door code (true: all are secret, he holds none, and since the wave 7 review
@@ -1180,7 +1181,7 @@ Wizard's backstory, the Hand Jive weakness, the Runescape / MS Paint / VLC
 / Pong orders and quests, the 21 coded files, the Bingo squares and the
 fate lines. Wave 18b's new copy (the ties, The DSL Line, The Night In
 Review and Your File, the founded-faction lines, Trabolta's reading lines,
-the typed left-behind) waits on [`SIGNOFF-w18b.md`](./history/SIGNOFF-w18b.md).
+the typed left-behind) was signed off on 2026-10-27 ([`SIGNOFF-w18b.md`](./history/SIGNOFF-w18b.md)).
 
 Decisions that need sign-off (**all approved 2026-10-15**, with the
 content list above; see [OCT31.md](./OCT31.md)):
@@ -1206,10 +1207,12 @@ The wave 13 text was signed off on 2026-10-21 (`SIGNOFF-w13.md`; the
 answers that changed things — Q1, Q2, Q3, Q16, Q21, Q26, Q30 — are wave 18).
 **Wave 18's decisions and every new line are in
 [`SIGNOFF-w18.md`](./SIGNOFF-w18.md)** (§1 Q1–Q60, §2 the show text, §8 the
-app's own words), all `// DRAFT w18` until the user signs it off.
-**Wave 20's decisions (D1–D29), every heart line (`// DRAFT w20`), the
-looks and the persona's `outside:` list are in
-[`SIGNOFF-w20.md`](./history/SIGNOFF-w20.md).**
+app's own words), signed off on 2026-10-27.
+**Wave 20's decisions (D1–D29), every heart line, the looks and the
+persona's `outside:` list are in
+[`SIGNOFF-w20.md`](./history/SIGNOFF-w20.md)**, signed off on 2026-10-27
+(the looks are still retuned on site). So are waves 21, 26, 27 and 28
+(`SIGNOFF-w21.md`, `SIGNOFF-w26.md`, `SIGNOFF-w27.md`, `SIGNOFF-w28.md`).
 
 ## Rehearsing
 

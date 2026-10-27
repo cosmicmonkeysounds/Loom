@@ -38,9 +38,10 @@ stagehand, the router, the M4, reloading every terminal and the TV, the
 Quest APK). Verify what runs with
 `ssh loom-vps 'tail ~/loom-ops/releases.log'`. Land it in this order:
 
-1. **Decide the sign-off.** Shipping carries every `// DRAFT` line of waves
-   18b, 20, 21 and 22 and every `DRAFT w26` line (`history/SIGNOFF-w18b.md`,
-   `history/SIGNOFF-w20.md`, `SIGNOFF-w21.md`, `SIGNOFF-w26.md`).
+1. **The sign-off is done** (2026-10-27): every line of waves 13–28 ships
+   as written (`SIGNOFF-w13.md` … `SIGNOFF-w28.md`, `history/SIGNOFF-w18b.md`,
+   `history/SIGNOFF-w20.md`). Still `DRAFT`: wave 22's patch-bay lines (no
+   sheet) and wave 29's (`SIGNOFF-w29.md`).
 2. **Check the preview's roster, in its own step:** `pnpm showctl roster`.
    If anyone is on, ask before shipping: a release restarts the server.
 3. **MacBook:** `scripts/ops/predeploy.sh --vr` (the full gate; it stamps
@@ -146,7 +147,7 @@ Quest APK). Verify what runs with
     within a second, with no fault and no *override*; then 🔄
     `reset_server_room` (and 🚪 *Trust the door sensor again* if anyone
     pressed a 🚪).
-18. **Reprints after the sign-off:** Clippy, the director and
+18. **Reprints (the sign-off is done, 2026-10-27):** Clippy, the director and
     second-director packs, the four Antivirus, the hosts, all-crew, the
     patch-bay watch card, the emergency card, Excel's and OpenOffice's
     sheets, every featured card, the Bingo card, and Combo A's two codex
@@ -154,7 +155,8 @@ Quest APK). Verify what runs with
     Wave 23: the badges (Run → Print sheet → Badges) and the cast cards.
     Wave 26: Clippy, Task Manager, Norton, McAfee, Password Manager, CRA,
     the director, the Installation Wizard and Microsoft Excel
-    (`SIGNOFF-w26.md`).
+    (`SIGNOFF-w26.md`). The sign-off: Adobe Acrobat, the Recycling Bin,
+    all-crew and the patch-bay watch card lose their printed DRAFT tags.
 
 ## 2. The morning reset (10:00)
 

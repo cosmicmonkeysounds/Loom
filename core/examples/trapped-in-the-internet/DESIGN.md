@@ -220,8 +220,8 @@ No test reads the codex paths.
 | `beats/pong.loom` | Act II: `Five Minute Warning`, `Summons Closed`, `Truth Pong`, `Round Two Tally`, `Trust Chart`, `Praise The Top`, `Shame The Bottom`, `Print The Certificate`, `The Printer Jams`, `Full Of Beans`, `Zip Everyone Out`. | C |
 | `beats/overshare.loom` | `Overshare One`, `Overshare Two`, `Overshare Three`, `Overshare Four`, `The Y2K Clock`, `Excel Final Round`, `OpenOffice Final Round`, `Program Final Round`, `Clock Strikes`. | C |
 | `beats/server-room.loom` | Act III: `Majority Reached`, `The Whole Truth`, `Server Room Alarm`, `Patch Rejected`, `Trabolta Disabled`, `Trabolta Recounts`, `Computer Destroyed`, `Purgatory`. | D |
-| `beats/review.loom` | Wave 18b (R8, DRAFT): `The Night In Review` (public, before every ceremony), its shared beats `Who You Were`, `The Report On Everyone`, `Everyone Else`, `The Rest Of The Report`, `Goals Met Tonight`, `The Goals Report`, `What You Did`, `What We Did` (also reached by Trabolta Recounts and Purgatory), and the private `Your File`. | ending lane |
-| `codex/85-ties.loom` | Wave 18b (R9, DRAFT): the 16 Connections ties and `Program Briefing`, which deals them (and The DSL Line to Jeeves) at clearance. | ending lane |
+| `beats/review.loom` | Wave 18b (R8): `The Night In Review` (public, before every ceremony), its shared beats `Who You Were`, `The Report On Everyone`, `Everyone Else`, `The Rest Of The Report`, `Goals Met Tonight`, `The Goals Report`, `What You Did`, `What We Did` (also reached by Trabolta Recounts and Purgatory), and the private `Your File`. | ending lane |
+| `codex/85-ties.loom` | Wave 18b (R9): the 16 Connections ties and `Program Briefing`, which deals them (and The DSL Line to Jeeves) at clearance. | ending lane |
 | `beats/finale.loom` | `Final Reveal`, `Bobbing For Truth`, `The Bag Of Truth`, `Final Assessment`, `Truth Txt`, `The Verdict`, `Song Ending`, `Grok Prom`, `Pickup Line`, `Sad Confession`, `Relationship Advice`, `Advice Helped`, `Advice Thwarted`, `The Hand Jive`. | D |
 | `cast/kit.loom` | TRAITs `Prop(beat)`, `Person`, `Host is Person`, `Enforcer is Person` (owned `beat Clearance(program)`; scan routing; `send to the internet`, `mark as reinstalled`, `accuse`). | B |
 | `cast/hosts.loom` | `Clippy`, `Task Manager`, `Adobe Acrobat`, `Recycling Bin` (all `is Host`) with booth readouts. | B |
@@ -1276,7 +1276,7 @@ colon (§0 rule 5).
 | Bugdom VR | Bugdom VR | Bugdom | | Ten years designing Bugdom VR assets after shifts selling crickets. |
 | The Fire Ants | The Fire Ants | Bugdom | | Fire ants from the lunchbox ate the only copy. Why Trabolta chose you: unlimited Bugdom right away, he said; really, he wants "the use of their relentless pursuit of tedious tasks." |
 | The Valley Librarian | The Valley Librarian | Broken Ask Jeeves | | (not built; still gone after wave 18b) Youth librarian in the Annapolis Valley system, made redundant by cuts; thought this was a job interview as a Metaverse librarian. |
-| The DSL Line | The DSL Line | Broken Ask Jeeves | | **Exists again since wave 18b (R7, DRAFT)**, as Jeeves' own `secret: true` entry (category People, no code), dealt to him alone by Program Briefing and left out of the recount's bulk unlock (not an identity): the upload log (Eastlink 10 MB/Minute over the Valley's old DSL, the resets, the power flicker) and the files that did not arrive, his symptom menu. The original plan's text: the upload ran over the Valley's old DSL; files were missed; erratic Ask Jeeves. Why Trabolta chose you: to "sort all the unorganized information in the computer". He did not foresee the upload going badly. |
+| The DSL Line | The DSL Line | Broken Ask Jeeves | | **Exists again since wave 18b (R7)**, as Jeeves' own `secret: true` entry (category People, no code), dealt to him alone by Program Briefing and left out of the recount's bulk unlock (not an identity): the upload log (Eastlink 10 MB/Minute over the Valley's old DSL, the resets, the power flicker) and the files that did not arrive, his symptom menu. The original plan's text: the upload ran over the Valley's old DSL; files were missed; erratic Ask Jeeves. Why Trabolta chose you: to "sort all the unorganized information in the computer". He did not foresee the upload going badly. |
 | Twenty Four Years Online | Twenty Four Years Online | Runescape | | Laurel, 34, richest player for 24 years; Wharton economics PhD; the gold standard. Why Trabolta chose you: to "understand the market incentives of everyone's behaviour" and serve his need to exchange information and get all the facts. |
 | Maria Sophia Paine | Maria Sophia Paine | MS Paint | | (was *Expelled From NSCAD*; never expelled — four schools, three refused theses, her invitation) Refused every medium but MS Paint: "any program that relies on algorithms is a betrayal of the artist." Thought she was teaching a paid Metaverse MS Paint class. Why Trabolta chose you: "having an artist on site will help improve the overall vibes and morale". You realised at once how limiting it is, and you want out. |
 | Victor Louis Christianson | Victor Louis Christianson | VLC | | VLC The Playa, millions of followers, a Turkish face-tightening, a sneeze, and his whole face fell off on livestream. Why Trabolta chose you: you would want to stay in a computer and keep your beauty forever, and use your charisma and influencer powers to convince everyone to help Trabolta. |
@@ -2551,7 +2551,7 @@ E2c below).** The user: *"Trabolta should have a very dramatic sequence if you g
 Server room … He asks you to close the door, which you must do before continuing. Then, it's a
 multi-layer discussion similar to the Master in Fallout 1 -- you may be able to convince him to
 shut himself down, or not."* The exact spec is `CONTRACT-w20.md` §2.10 (vars), §3 (rules, beats,
-the menu pattern, arithmetic) and §4 (looks); every line is `// DRAFT w20` (`SIGNOFF-w20.md`).
+the menu pattern, arithmetic) and §4 (looks); every line was signed off on 2026-10-27 (`SIGNOFF-w20.md`).
 - **The door's inputs (D19).** `door_sensor_opened` / `_closed` (the M4 through the terminal's
   bridge) fire the story-internal `heart_door_opened` / `_closed` only while `Night.door_override
   != true`. The 🚪 admin cues and the Antivirus' radio cues set `door_override = true` and fire
@@ -2571,7 +2571,7 @@ the menu pattern, arithmetic) and §4 (looks); every line is `// DRAFT w20` (`SI
   (opens at a proof + one more point, `heart_case ≥ 4`; *She was never going to answer* convinces
   him). Every option sets `program.heart_pick` and goes to **Heart Pick**, which applies it only at
   his heart with the door shut (*Not out there* off the terminal, D14).
-  **Wave 27 (DRAFT w27, `SIGNOFF-w27.md`)** branches the first meeting: Layer One's greeting
+  **Wave 27 (`SIGNOFF-w27.md`, signed off 2026-10-27)** branches the first meeting: Layer One's greeting
   follows `featured`, `human_problem` and one thing they did tonight, with ⟦CHOSEN⟧ (featured) or
   ⟦PROMISE⟧ (everyone else), and the answer is kept in `heart_who`; Layer Two adds *why did you
   choose me*, *are you afraid of me* (after *what*), *does she even know* (after *her*),
@@ -3357,7 +3357,7 @@ situations:            # wave 7: stagehand appends each block whose `when:` hold
     acts: none
     prompt: …          # bleak, candid, inside his world (Halifax, Maps and Ducks); reads the
                        # dossier (WHO THIS IS — TONIGHT); every never holds
-# wave 20: the candid blocks also need them.heart_out != true; `outside:` (D29, DRAFT) lists
+# wave 20: the candid blocks also need them.heart_out != true; `outside:` (D29) lists
 # the words from beyond his world that the guards withhold from his output
   - name: her name has been said
     when: them.at_the_heart == true && (Night.recount == true || (Night.scenario == 1 && Night.step >= 13))
@@ -4126,7 +4126,7 @@ less bloated app; the design record of the wave is in the scratch specs
 The user: *"Clippy and the AntiViruses are performers that are playing a game
 just like the "guests" are"*, and *"They have a trust score too, and can
 defect from Trabolta in sneaky or overt ways; Trabolta has no choice but to
-continue to be "allies" with them"*. Every line is DRAFT (`SIGNOFF-w21.md`).
+continue to be "allies" with them"*. Every line was signed off on 2026-10-27 (`SIGNOFF-w21.md`).
 
 - **Players.** `TRAIT Player` (`cast/kit.loom`): `player: true`, `score`
   (⭐), `trust` (−100…100, Trabolta's, hidden from them, a 🛡 STAFF row on his
