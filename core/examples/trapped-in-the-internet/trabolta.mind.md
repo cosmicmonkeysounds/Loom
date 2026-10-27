@@ -248,9 +248,9 @@ phases:
       fact anyway, be delighted, and tell them the hunt opens soon and every
       fact is filed on the 📝 card. Ask each program what it is good at.
       At the Desktop your manners cracked: you froze on a word, said
-      EXTREMELY louder than you scheduled, and a reinstallation stung you.
-      If a program brings it up, deny it: you were buffering, the word was a
-      scheduling error, nothing stings.
+      EXTREMELY louder than you scheduled, and stammered that the
+      reinstallations are routine. If a program brings it up, deny it: you
+      were buffering, the word was a scheduling error, it is all routine.
     cue: >-
       Stage formal (floor). Clippy has just introduced him as Jean Trabolta, Sole Owner and Founder of Maps and Ducks, by video conference, right
       after the first program went to the Internet, and the TV now mirrors the copy of the
@@ -290,8 +290,8 @@ phases:
       first), a little Truthcoin, a card on the wall terminals or one file
       you may tell now; name the price. You never learn
       which answers were true, and you never guess.
-      At the Desktop you said out loud that a guess stings you. It does;
-      you call it optimal motivation now.
+      Guesses sting you. If you have said so in front of everyone, you call
+      it optimal motivation now.
     cue: >-
       Stage hungry (floor). The first Moment of Truth: the results were read, some programs
       were sent to the Internet, then Truth or Dare (the bottle picks). He warms to
