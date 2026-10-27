@@ -46,6 +46,25 @@ more with the whole burst. Requests queue while no worker is online
 time out after 2 minutes (one retry), and are cancelled by a run
 restart.
 
+### Stage requests: answering aloud (wave 32)
+
+During a talk scene (the story's `Night.talk`) a host relays what Clippy
+says aloud in The Desktop (`POST /api/mod/talk`), and the server asks for a
+**public** answer: the thread is `{channel: "loc:The Desktop", audience:
+["@Clippy"], public: true}`, the speaker carries `stage: true`, and the
+request carries `stage: {room, scene, direction?}` and the room's own
+lines as its history (scripted lines tagged `story: true`; never one that
+holds an answer, a code or a secret value), with no dossier. The answer is
+said to the whole room (the TV speaks it), only while that scene is still
+on (a later one gets 410); acts are ignored. The worker serves a stage
+request before any waiting DM (`slots.py`'s front lane, `module.lane_of`),
+shows the model the room's last lines and who is speaking, and passes a
+canned line's `direction` as a steer it must follow. The persona's
+situations gate on `speaker.stage` and `Night.talk`. The server never
+posts a hold or busy line in the room for it: a slow answer is one
+`# hosts` line, and the host fires a canned line instead. An older worker
+ignores the new fields and answers it like a DM.
+
 ## Two minds: `mind_mode`
 
 The worker keeps a character's mind one of two ways, picked by one line
