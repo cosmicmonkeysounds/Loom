@@ -118,6 +118,12 @@ describe("VOICE_SCENES (C11)", () => {
     expect(said).toEqual(["{Night.bottle_pick}.", "Truth or dare?", ...BOTTLE_HUNGER]);
     const v = VOICE_SCENES["bottle_landed"]!;
     expect(v.marks).toEqual([BOTTLE_SPIN_MS, BOTTLE_SPIN_MS + 600, ...BOTTLE_HUNGER_AT]);
+    // By line: the beat's lines, each owning its own sentences' marks.
+    expect(v.byLine).toEqual(LINES.get(foldName("Bottle Landed"))!.map((l) => splitSentences(l).length));
+  });
+
+  it("(wave 32) every byLine adds up to its marks", () => {
+    for (const [id, v] of Object.entries(VOICE_SCENES)) if (v.byLine !== undefined) expect(v.byLine.reduce((a, c) => a + c, 0), id).toBe(v.marks.length);
   });
 
   it("his line shows once: the layer leaves the sentences a scene draws itself", () => {

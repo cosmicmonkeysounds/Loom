@@ -43,7 +43,9 @@ export const VOICE_SCENES: Readonly<Record<string, VoiceScene>> = {
   },
   // "<pick>." as the bottle lands on the seat; "Truth or dare?" typed after;
   // (wave 32) "Choose the truth, program." / "I am so very hungry." under it.
-  bottle_landed: { beats: ["Bottle Landed"], marks: [BOTTLE_SPIN_MS, BOTTLE_SPIN_MS + 600, ...BOTTLE_HUNGER_AT], tail: 14_000 - BOTTLE_VOICE_END, ownCaption: true },
+  // By line: a short name ("Paint.") merges into "Truth or dare?" as one
+  // spoken sentence, and the hunger line still takes the last two marks.
+  bottle_landed: { beats: ["Bottle Landed"], marks: [BOTTLE_SPIN_MS, BOTTLE_SPIN_MS + 600, ...BOTTLE_HUNGER_AT], byLine: [2, 2], tail: 14_000 - BOTTLE_VOICE_END, ownCaption: true },
   // D1, the story lane's `== Dare Chosen` (3 lines, 6 sentences: "A dare.
   // <pick> chose a dare, in my computer." / "Programs do not dare." /
   // "Programs answer." / "Everyone, watch closely: …" / "Antivirus!" /
