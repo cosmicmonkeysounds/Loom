@@ -438,6 +438,31 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
     expect(beans.hint).toMatch(/closes this card/u);
   });
 
+  it("the ad attack never gives him a song: no jingle, song, tune or hum in an ad chip (C8's NEVER list)", () => {
+    const ad = TALK_SCENES.ad!;
+    for (const c of [...ad.trabolta, ...ad.clippy]) {
+      expect([c.label, c.text, c.direction ?? ""].join(" "), c.label).not.toMatch(/jingle|\bsongs?\b|\btunes?\b|\bhum(s|med|ming)?\b/iu);
+    }
+    expect(ad.trabolta.find((c) => c.label === "🪟 Pop-ups")?.text).toBe("AH. That one was a pop-up. I closed it, and two more opened. I am closing them all. Efficiently. Mostly.");
+  });
+
+  it("the hints fit a phone card and name Clippy (she), and keep the beans' hand-off order", () => {
+    for (const s of Object.values(TALK_SCENES)) {
+      expect(s.hint.split(/\s+/u).length, s.id).toBeLessThanOrEqual(35);
+      // Task Manager reads the hint: "he" is Trabolta, so Clippy is named, never a pronoun.
+      expect(s.hint, s.id).not.toMatch(/\b(she|her|hers)\b/iu);
+    }
+    expect(TALK_SCENES.intro!.hint).toBe("Type what Clippy says to Trabolta for a minute or two. He is formal; his manners keep cracking. When the room is warm, hand off to the Truth Scavenger Hunt (🔎 is NEXT).");
+    expect(TALK_SCENES.beans!.hint).toBe("He overshares, then takes it back; Clippy comforts and pries. ⚡ for adverts. When everyone is back: ➡ They're back, then 🗜 (closes this card; the overshare 🤖 follows). 🤖 first? ➡ Share hands on.");
+  });
+
+  it("Task Manager's relay job says how his canned lines go out (tap twice, as the card says)", () => {
+    const objectives = readFileSync(join(SHOW, "objectives.loom"), "utf8");
+    const job = objectives.slice(objectives.indexOf("OBJECTIVE Relay Clippy To Trabolta"), objectives.indexOf("\nOBJECTIVE ", objectives.indexOf("OBJECTIVE Relay Clippy To Trabolta") + 5));
+    expect(job).toContain("Canned lines for both of them are there too; tap one of his twice and he says it at once when he is slow.");
+    expect(job).not.toMatch(/his fire at once/u);
+  });
+
   it("Clippy's chips, the directions and the hints stay in the fiction too", () => {
     for (const s of scenes) {
       const texts = [s.title, s.hint, ...s.clippy.flatMap((c) => [c.text, c.direction ?? ""])];

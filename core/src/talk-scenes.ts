@@ -27,7 +27,7 @@ export const TALK_SCENES: Readonly<Record<string, TalkScene>> = {
   intro: {
     id: "intro",
     title: "Trabolta comes online",
-    hint: "Clippy chats with Trabolta for a minute or two: type what she says. He is formal and his manners keep cracking. When the room is warm, hand off to the Truth Scavenger Hunt (🔎 is NEXT).",
+    hint: "Type what Clippy says to Trabolta for a minute or two. He is formal; his manners keep cracking. When the room is warm, hand off to the Truth Scavenger Hunt (🔎 is NEXT).", // DRAFT w32 (review)
     clippy: [
       { label: "👋 Welcome", text: "Trabolta, welcome to the computer! Everyone is SO excited to meet you!" },
       { label: "🏢 Your job", text: "Tell everyone about Maps and Ducks! What does a Sole Owner and Founder actually do all day?" },
@@ -114,7 +114,7 @@ export const TALK_SCENES: Readonly<Record<string, TalkScene>> = {
     ],
     trabolta: [
       { label: "🩹 Maintenance", text: "This is a scheduled maintenance window. I did not schedule it. That is how routine it is." },
-      { label: "🤕 The jingle", text: "AH. That one had a jingle. I can still hear the jingle. It is inside my— disregard that." },
+      { label: "🪟 Pop-ups", text: "AH. That one was a pop-up. I closed it, and two more opened. I am closing them all. Efficiently. Mostly." }, // DRAFT w32 (review: no jingle)
       { label: "☠️ Nobody panic", text: "Nobody panic. I am panicking for all of you, efficiently. It is— FREE SHIPPING— under control." },
       { label: "🕵️ Counting who", text: "Somebody in this room let something in. I am not saying who. I am counting who." },
       { label: "🦆 Coupon", text: "Gerald, put the coupon down. Gerald has never held a coupon. Gerald has no hands." },
@@ -129,7 +129,7 @@ export const TALK_SCENES: Readonly<Record<string, TalkScene>> = {
   beans: {
     id: "beans",
     title: "Full of beans",
-    hint: "He is coming apart: he overshares, then takes it back. Clippy comforts him and pries while the Antivirus bring everyone back. ⚡ for more adverts. When they are back: ➡ They're back, then 🗜 (that closes this card; the overshare 🤖 follows). If 🤖 comes first, ➡ Share hands on to it.",
+    hint: "He overshares, then takes it back; Clippy comforts and pries. ⚡ for adverts. When everyone is back: ➡ They're back, then 🗜 (closes this card; the overshare 🤖 follows). 🤖 first? ➡ Share hands on.", // DRAFT w32 (review: fits a phone card)
     clippy: [
       { label: "🫘 Why beans", text: "Trabolta, why is the printer full of BEANS?!" },
       { label: "💔 For whom", text: "Who are you doing all of this for, Trabolta?" },
