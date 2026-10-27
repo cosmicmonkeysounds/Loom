@@ -112,7 +112,7 @@ import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, echoOf, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, type HeartMenu } from "./heart/heart.ts";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, echoOf, echoTime, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, type HeartMenu } from "./heart/heart.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 import { RoomSpeech } from "./speech/said.ts";
 
@@ -1091,6 +1091,9 @@ function Terminal({
   const heart = menu !== null || (pilot !== null && heartTouched(cueNow, pilotSince.current, typedAfter));
   const [echoes, setEchoes] = useState<Echo[]>([]);
   useEffect(() => setEchoes([]), [pilot]);
+  // When this page first saw each line (local ms): an echo's time runs on from the newest (echoTime).
+  const seenAt = useRef(new Map<number, number>());
+  for (const l of session.lines) if (!seenAt.current.has(l.seq)) seenAt.current.set(l.seq, Date.now());
   const choose = useCallback(
     async (m: HeartMenu, index: number) => {
       if (pilot === null) return;
@@ -1104,7 +1107,7 @@ function Terminal({
       }
       const after = session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1);
       const newest = session.lines[session.lines.length - 1];
-      setEchoes((list) => [...list, { key: `${m.id}:${index}`, ...echoOf(m.options[index] ?? ""), after, ts: newest?.ts ?? Date.now() }]);
+      setEchoes((list) => [...list, { key: `${m.id}:${index}`, ...echoOf(m.options[index] ?? ""), after, ts: echoTime(newest, newest === undefined ? undefined : seenAt.current.get(newest.seq), Date.now()) }]);
     },
     [config, pilot, session.lines],
   );

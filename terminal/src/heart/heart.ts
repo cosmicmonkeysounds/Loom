@@ -338,6 +338,18 @@ export function echoOf(option: string): { text: string; action: boolean } {
 }
 
 /**
+ * When a pick was made, on the lines' own clock (B4: an echo reads like a
+ * typed line, stamped when it was sent). A line's `ts` is the story's
+ * elapsed time, not the server's wall clock, so the pick is the newest
+ * line's `ts` plus the time since this page first saw that line
+ * (`seenAt`, local ms). No line yet: `now`.
+ */
+export function echoTime(newest: { ts: number } | undefined, seenAt: number | undefined, now: number): number {
+  if (newest === undefined) return now;
+  return newest.ts + Math.max(0, now - (seenAt ?? now));
+}
+
+/**
  * Is the composer held back (B7)? While a proof or the shutdown plays,
  * for the rest of a line thrown out (an eject since it opened — a barred
  * program's re-scan too: no heart to heart, D24), and at the heart

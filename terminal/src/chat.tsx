@@ -20,7 +20,7 @@ export interface Echo {
   text: string;
   /** The thread's newest seq when it was picked: it lands after that line. */
   after: number;
-  /** When (the same clock as the lines: the newest line's `ts`). */
+  /** When it was picked, on the lines' clock (`echoTime`). */
   ts?: number;
   /** A deed, not words (drawn as an action). */
   action?: boolean;
