@@ -456,6 +456,13 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
     expect(TALK_SCENES.beans!.hint).toBe("He overshares, then takes it back; Clippy comforts and pries. ⚡ for adverts. When everyone is back: ➡ They're back, then 🗜 (closes this card; the overshare 🤖 follows). 🤖 first? ➡ Share hands on.");
   });
 
+  it("Task Manager's relay job says how his canned lines go out (tap twice, as the card says)", () => {
+    const objectives = readFileSync(join(SHOW, "objectives.loom"), "utf8");
+    const job = objectives.slice(objectives.indexOf("OBJECTIVE Relay Clippy To Trabolta"), objectives.indexOf("\nOBJECTIVE ", objectives.indexOf("OBJECTIVE Relay Clippy To Trabolta") + 5));
+    expect(job).toContain("Canned lines for both of them are there too; tap one of his twice and he says it at once when he is slow.");
+    expect(job).not.toMatch(/his fire at once/u);
+  });
+
   it("Clippy's chips, the directions and the hints stay in the fiction too", () => {
     for (const s of scenes) {
       const texts = [s.title, s.hint, ...s.clippy.flatMap((c) => [c.text, c.direction ?? ""])];
