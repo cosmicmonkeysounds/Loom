@@ -318,7 +318,13 @@ export class BrowserEngine implements SpeechEngine {
     return new Promise<void>((resolve) => {
       const u = new SpeechSynthesisUtterance(p.text);
       const voice = pickVoice(speechSynthesis.getVoices(), this.opts.voice || null, this.opts.prefer ?? {});
-      if (voice !== null) u.voice = voice;
+      if (voice !== null) {
+        try {
+          u.voice = voice;
+        } catch {
+          /* a voice object this utterance refuses: the default voice says it */
+        }
+      }
       u.rate = this.opts.speed;
       u.pitch = this.opts.pitch ?? 0.85;
       // No waveform here: the synthesised mouth, open while a word is being
@@ -805,6 +811,19 @@ export class SpeechQueue {
 
   private async run(): Promise<void> {
     this.running = true;
+    try {
+      await this.drain();
+    } finally {
+      // Never left "running" by a throw: a later say() starts a new run.
+      this.running = false;
+    }
+    this.on.level(0);
+    // Something was queued after a stop() while the old run wound down.
+    if (this.queue.length > 0) void this.run();
+    else this.on.idle();
+  }
+
+  private async drain(): Promise<void> {
     const g = this.gen;
     while (this.queue.length > 0 && g === this.gen) {
       const u = this.queue.shift()!;
@@ -843,7 +862,13 @@ export class SpeechQueue {
               fired = true;
               this.on.chunk(u.id, i);
             };
-            await ready.engine.play(ready.p, this.on.level, start);
+            try {
+              await ready.engine.play(ready.p, this.on.level, start);
+            } catch {
+              // An engine that throws (a WebView's half-built speechSynthesis
+              // refusing a voice, a decode gone wrong) must never wedge the
+              // queue: the chunk counts as said and the line goes on.
+            }
             start();
           }
           spoken = i === u.chunks.length - 1;
@@ -854,10 +879,5 @@ export class SpeechQueue {
       }
       this.on.done(u.id);
     }
-    this.running = false;
-    this.on.level(0);
-    // Something was queued after a stop() while the old run wound down.
-    if (this.queue.length > 0) void this.run();
-    else this.on.idle();
   }
 }
