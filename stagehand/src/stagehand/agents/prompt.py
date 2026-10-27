@@ -60,23 +60,41 @@ def build_messages(
         system.append(powers_block(persona, powers, lookups is None))
     for situation in matching_situations(persona, req):
         system.append(situation_block(situation))
+    staged = is_stage(req)
+    if staged:
+        # (wave 32) A talk scene on the degraded classic path: the same room,
+        # live turns and steer as the lean voice (imported here: voice
+        # imports this module).
+        from .voice import classic_stage_block, history_turns, stage_steer
+
+        block = classic_stage_block(persona, req)
+        if block:
+            system.append(block)
     out = [{"role": "system", "content": "\n\n".join(system)}]
     history = [h for h in req.get("history", []) if isinstance(h, dict)]
     memo = mind.threads.get(thread_key) if mind is not None else None
     if memo is not None and memo.summary and len(history) > window:
         out.append({"role": "system", "content": f"Earlier in this conversation (your own summary): {memo.summary}"})
-    history = history[-window:]
-    for line in history:
-        out.append({"role": "assistant" if line.get("mine") else "user", "content": str(line.get("text", ""))})
-    if not history or history[-1].get("mine"):
-        # Answering always follows the speaker's line; keep that shape even
-        # if the thread was trimmed oddly.
-        out.append({"role": "user", "content": str(req.get("text") or "(they are waiting)")})
+    if staged:
+        # Only the live exchange is a turn, each saying who spoke; the
+        # scripted lines (the Narrator's, other speakers') are in the block.
+        out.extend(history_turns(req))
+    else:
+        history = history[-window:]
+        for line in history:
+            out.append({"role": "assistant" if line.get("mine") else "user", "content": str(line.get("text", ""))})
+        if not history or history[-1].get("mine"):
+            # Answering always follows the speaker's line; keep that shape even
+            # if the thread was trimmed oddly.
+            out.append({"role": "user", "content": str(req.get("text") or "(they are waiting)")})
     if lookups is not None:
         if prior_json:
             out.append({"role": "assistant", "content": prior_json})
         found = "\n".join(f"- {v}" for v in lookups.values()) or "- nothing"
         out.append({"role": "system", "content": f"LOOKUP RESULTS from the live system (for you only; use them in character):\n{found}\nNow answer. No further lookups."})
+    steer = stage_steer(req) if staged else None
+    if steer:
+        out.append({"role": "system", "content": steer})
     tail = ["Answer their last message in character."]
     if mind is not None and sid in mind.people and mind.people[sid].turns >= PACE_AFTER:
         tail.append(f"PACING: you have spoken with them {mind.people[sid].turns} times tonight — be brief, and send them to do something in the house or bring you an answer.")

@@ -29,7 +29,8 @@ import pytest
 from stagehand.agents.guards import allowed_answer_words, guard_pass, mentions_outside, situation_guard
 from stagehand.agents.cards import PersonCard, Said
 from stagehand.agents.persona import load_persona, parse_persona
-from stagehand.agents.prompt import gate_context, is_stage, matching_situations, stage_of
+from stagehand.agents.cards import VoiceOptions
+from stagehand.agents.prompt import build_messages, gate_context, is_stage, matching_situations, stage_of
 from stagehand.agents.reply import Reply
 from stagehand.agents.slots import FIRST, NORMAL, Slots
 from stagehand.agents.voice import answer_lean, build_lean_messages, history_turns, render_p3, right_now, room_lines, stage_steer
@@ -317,6 +318,31 @@ def test_the_shipped_persona_answers_a_stage_line_with_the_blocks_and_no_acts():
     assert "Here you may answer at length: up to 4 sentences." in sent
     assert "YOUR STEER FOR THIS ANSWER" in sent
     assert reply.acts == () and reply.say.count(".") + reply.say.count("!") <= 4 + 1
+
+
+def test_the_classic_prompt_carries_the_room_the_named_turns_and_the_steer():
+    # voice.layout: classic (the fallback ladder's rung) and mind_mode: classic
+    # build with prompt.build_messages: a stage request there keeps C7's steer,
+    # says who speaks aloud, and never passes the Narrator off as the speaker.
+    p = load_persona(TRABOLTA)
+    r = stage_request("ad", direction="Wrap up and send them to the hunt.")
+    msgs = build_messages(p, r)
+    system = msgs[0]["content"]
+    assert "=== BEFORE THE ROOM ===" in system and "The one talking to you: Clippy (your ambassador Clippy, speaking aloud in the Desktop" in system
+    assert "screen above the fireplace" in system
+    assert 'Narrator: “The presentation freezes.”' in system and 'You: “Programs. The presentation will now resume.”' in system
+    turns = [m for m in msgs if m["role"] != "system"]
+    assert turns == [{"role": "user", "content": "Clippy: Trabolta, are you all right?"}]
+    assert msgs[-2] == {"role": "system", "content": stage_steer(r)} and msgs[-1]["content"].startswith("Answer their last message")
+    # Through answer_lean's classic layout, too.
+    model = Model(say("Clippy. I am FINE. Go to the hunt."))
+    run(answer_lean(p, MODEL, r, context(person=PersonCard(id="Clippy", name="Clippy", kind="performer"), options=VoiceOptions(layout="classic")), model))
+    sent = model.calls[0]
+    assert any(m["content"] == stage_steer(r) for m in sent)
+    assert not any(m["role"] == "user" and m["content"] == "The presentation freezes." for m in sent)
+    # A private thread's classic prompt is unchanged: no room, no steer.
+    dm = build_messages(p, request())
+    assert "BEFORE THE ROOM" not in dm[0]["content"] and not any("STEER" in m["content"] for m in dm)
 
 
 # -- the priority lane --------------------------------------------------------------------------

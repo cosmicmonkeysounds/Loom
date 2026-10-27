@@ -22,7 +22,9 @@ and his answer is a public line the TV speaks) changes three things: the
 person card says so, P3 shows the room's recent lines (the story's scripted
 ones included, never one with a hunt or `never` word) in place of the
 house's posted lines, and P4 is only the live exchange. A canned line's
-`stage.direction` is a must-follow steer in `right_now`.
+`stage.direction` is a must-follow steer in `right_now`. The classic prompt
+(`prompt.build_messages`) gets the same: `classic_stage_block`, the live
+turns and the steer before its closing note.
 
 Ollama hoists every system message of gpt-oss into one developer block, in
 order, so P1 then P2 is the cacheable start of every prompt. Nothing in P1
@@ -413,6 +415,25 @@ def room_lines(persona: Persona, req: dict[str, Any], limit: int = ROOM_LINES) -
         who = "You" if h.get("mine") else (_one_line(h.get("from")) or "Someone")
         out.append(f"{who}: “{text}”")
     return out[-limit:] if limit > 0 else []
+
+
+def classic_stage_block(persona: Persona, req: dict[str, Any]) -> str | None:
+    """(wave 32) The classic prompt's (`prompt.build_messages`: `voice.layout:
+    classic`, `mind_mode: classic`) word on a stage request, or None for a
+    private thread: who is speaking aloud and that the whole room hears his
+    answer, then the room's lines, each saying who said it."""
+    stage = stage_of(req)
+    if stage is None:
+        return None
+    speaker = req.get("speaker") or {}
+    name = _one_line(speaker.get("name") or speaker.get("id")) or "Someone"
+    lines = [f"=== BEFORE THE ROOM ===\nThe one talking to you: {name} ({stage_speaker(name, stage)})."]
+    room = room_lines(persona, req)
+    if room:
+        lines.append(
+            f"Said aloud in {_room_name(stage)} just now, oldest first (what you said there is already said: never say it again):\n" + "\n".join(room)
+        )
+    return "\n".join(lines)
 
 
 def _recent_line(item: dict[str, Any]) -> str | None:
