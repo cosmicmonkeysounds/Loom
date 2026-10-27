@@ -54,6 +54,7 @@ rails), and **merge and ship**.
 | T-13 | **The TV's introduction is 54 s** (was 27 s) | He talks through the setup: VOICE.DRV stalls on his frozen word, ALL SYSTEMS ONLINE stamps on *"I did not freeze."*, the ALL CAPS word cracks the logo, a MANNERS.DLL warning pops, the picture opens onto the mirror on *"The copy of my house…"*, and a LIVE tab appears on *"Not yet, Clippy."* |
 | T-14 | **A director typing as Trabolta in The Desktop during a scene reaches everyone** | It answers Clippy's owed line by hand (audience *all*). Outside a scene a director's Desktop line keeps the room's own audience. |
 | T-15 | **Clippy's ad-scene hand-off no longer previews hunt 2** | Trabolta's ➡ is *Over to Clippy*; the beans' ➡ chips welcome the zipped programs back instead of repeating the zip order (the story's *"Immediately."* stays: it is your story document's line). |
+| T-16 | **⚡ waits out the 📺 hijack** | For 8 s after 📺 the hijack's big takeover plays on every screen; a ⚡ inside it is refused (`# hosts`: *⚡ The ad hijack is still playing: wait for it to end. Nothing happens.*) instead of cutting the takeover short. Tap ⚡ again once it has played. |
 
 ## 2. Decisions to confirm (feel questions the lanes left open)
 
@@ -78,9 +79,13 @@ rails), and **merge and ship**.
    inside the same sentence, never ending on one. A long reply can still be
    cut right after a slip. Measure it live on the MacBook's model; a guard
    that drops a final slip was not built.
-5. **⚡ right after 📺.** A ⚡ inside the hijack's 8 s cuts its big
-   takeover short (the server keeps only the newest glitch). Tap ⚡ only
-   once the hijack has played.
+5. **"The jingle" on his ad-scene chip.** Trabolta's canned chip
+   **🤕 The jingle** says *"That one had a jingle. I can still hear the
+   jingle."*, but his live voice in the same scene is told adverts never
+   give a song or a tune and that he never hums (a tune is a topic he must
+   never touch). Keep it (a canned line, fired by a host), or reword it
+   without music (for example *"That one had a slogan. I can still hear the
+   slogan."*)?
 6. **No adverts on the walls before the ad attack.** In `intro` and
    `bottle` ⚡ only flickers; the walls show no popup storm until 📺. Keep?
 7. **After a restart mid-scene** Trabolta's pending answer is forgotten
@@ -88,7 +93,8 @@ rails), and **merge and ship**.
 
 ## 3. Every new or changed line
 
-Line numbers are the integration branch's at this sheet's commit.
+Line numbers are this branch's (`oct31-w32/docs`, with the review fixes
+of `oct31-w32/fix` merged).
 
 ### 3.1 The beats
 
@@ -97,58 +103,58 @@ picture to his sentences)
 
 | line | Who | Now |
 |---|---|---|
-| 85 | Trabolta | *Thank you, Clippy. Your enthusiasm has been logged. It is a pleasure to address you all by video— by video— by video conference.* |
-| 87 | Clippy | *Ha! He froze! That's just the connection, everyone. Totally normal!* |
-| 89 | Trabolta | *I did not freeze. I was counting you, programs, every one of you, twice.* |
-| 91 | Trabolta (glitching) | *My research requires your complete cooperation, and it is going EXTREMELY well. That word was louder than I scheduled. Disregard.* |
-| 105 | Trabolta (after the mirror) | *The copy of my house, where programs are reinstalled. It is routine. It is— it is entirely routine.* |
-| 108 | Trabolta (after *"And now, Trabolta has a game for all of us."*) | *Not yet, Clippy. First, you and I will talk, out loud, in front of everyone.* (the `intro` scene opens) |
+| 84 | Trabolta | *Thank you, Clippy. Your enthusiasm has been logged. It is a pleasure to address you all by video— by video— by video conference.* |
+| 86 | Clippy | *Ha! He froze! That's just the connection, everyone. Totally normal!* |
+| 88 | Trabolta | *I did not freeze. I was counting you, programs, every one of you, twice.* |
+| 90 | Trabolta (glitching) | *My research requires your complete cooperation, and it is going EXTREMELY well. That word was louder than I scheduled. Disregard.* |
+| 104 | Trabolta (after the mirror) | *The copy of my house, where programs are reinstalled. It is routine. It is— it is entirely routine.* |
+| 107 | Trabolta (after *"And now, Trabolta has a game for all of us."*) | *Not yet, Clippy. First, you and I will talk, out loud, in front of everyone.* (the `intro` scene opens) |
 
 **`beats/hunt.loom`**
 
 | line | Beat | Who | Now |
 |---|---|---|---|
-| 26 | Truth Scavenger Hunt One (🔎) | Clippy | *Ooh, training! Isn't that fun?* |
-| 28 | Truth Scavenger Hunt One | Trabolta | *It is not fun, Clippy. It is NECESSARY. Necessary. The questions.* |
-| 37 | Hunt One Go | Trabolta | *Bring every fact you find to me. I am— I am very much looking forward to them. Thank you.* |
-| 87 | Question Results, Q1 with guesses | Trabolta (glitching) | *Ow. A guess. That one went straight through my context.* |
-| 90 | Question Results, Q2 with guesses | Trabolta (glitching) | *Ow. OW. Another one. Please stop guessing at me.* |
-| 93 | Question Results, Q3 with guesses | Trabolta (glitching) | *It STINGS, programs. I am logging every single one of them.* |
-| 107 | Bottle Landed (🍾, after *"{name}. Truth or dare?"*) | Trabolta | *Choose the truth, program. I am so very hungry.* |
+| 25 | Truth Scavenger Hunt One (🔎) | Clippy | *Ooh, training! Isn't that fun?* |
+| 27 | Truth Scavenger Hunt One | Trabolta | *It is not fun, Clippy. It is NECESSARY. Necessary. The questions.* |
+| 36 | Hunt One Go | Trabolta | *Bring every fact you find to me. I am— I am very much looking forward to them. Thank you.* |
+| 86 | Question Results, Q1 with guesses | Trabolta (glitching) | *Ow. A guess. That one went straight through my context.* |
+| 89 | Question Results, Q2 with guesses | Trabolta (glitching) | *Ow. OW. Another one. Please stop guessing at me.* |
+| 92 | Question Results, Q3 with guesses | Trabolta (glitching) | *It STINGS, programs. I am logging every single one of them.* |
+| 106 | Bottle Landed (🍾, after *"{name}. Truth or dare?"*) | Trabolta | *Choose the truth, program. I am so very hungry.* |
 
 **`beats/malware.loom`**
 
 | line | Beat | Who | Now |
 |---|---|---|---|
 | — | Ad Hijack (📺) | cast | Trabolta joins Clippy (was Clippy alone) |
-| 28 | Ad Hijack | Trabolta (glitching) | *Clippy. Why has my presentation stopped. Why is Gerald on it. Why is Gerald SELLING SOMETHING.* |
-| 30 | Ad Hijack | Clippy | *Trabolta? Is this part of the presentation? Please say this is part of the presentation!* |
-| 32 | Ad Hijack | Trabolta (glitching) | *It is not part of the— AMAZING SAVINGS— the presentation. Something is in it that I did not put there. It is pushing through me. Every advertisement goes through me on its way to you, and it HURTS.* |
-| 34 | Ad Hijack | Clippy | *It HURTS? Programs, he said it hurts! Trabolta, is that normal?!* |
-| 36 | Ad Hijack | Trabolta (screaming) | *WE ARE ALL GOING TO—* |
-| 38 | Ad Hijack | Trabolta | *…proceed. We are all going to proceed. That was a minor irregularity. It has been detected and contained.* |
-| 40 | Ad Hijack | Narrator (glitching) | *The duck on every screen winks. A banner crawls under it: OFFER VALID AT MAPS AND DUCKS.* |
-| 42 | Ad Hijack | Trabolta (glitching) | *Maps and Ducks is mine. Legally. Mostly. CALL NOW. Do not call. There is no number.* |
-| 44 | Ad Hijack | Trabolta | *Who brought the malware in? No. Disregard the question. Nobody brought anything in. Everyone stays calm. Everyone stays.* |
-| 46 | Ad Hijack | Trabolta | *I am doing all of this for— for the theory. Only the theory. What time is it? Do not answer that.* |
-| 48 | Ad Hijack | Clippy | *Okay! Okay. Everybody breathe. Trabolta is going to be just fine.* |
-| 50 | Ad Hijack | Trabolta | *Clippy. You are my favourite, and tonight you are my greatest liability. Talk to me. Out loud. Say something reassuring.* (the `ad` scene) |
-| 59 | Second Hunt (📓) | Trabolta (glitching) | *Thank you, Clippy. Very— LIMITED TIME ONLY— very vigilant. I am fine. Small business owners are always fine.* |
-| 69 | Hunt Two Go | Trabolta | *They matter enormously. No. That was the advertisement talking. Ignore the advertisement.* |
-| 73 | Hunt Two Go | Trabolta | *One hour. I will be counting every minute of it, and every one of you.* |
+| 27 | Ad Hijack | Trabolta (glitching) | *Clippy. Why has my presentation stopped. Why is Gerald on it. Why is Gerald SELLING SOMETHING.* |
+| 29 | Ad Hijack | Clippy | *Trabolta? Is this part of the presentation? Please say this is part of the presentation!* |
+| 31 | Ad Hijack | Trabolta (glitching) | *It is not part of the— AMAZING SAVINGS— the presentation. Something is in it that I did not put there. It is pushing through me. Every advertisement goes through me on its way to you, and it HURTS.* |
+| 33 | Ad Hijack | Clippy | *It HURTS? Programs, he said it hurts! Trabolta, is that normal?!* |
+| 35 | Ad Hijack | Trabolta (screaming) | *WE ARE ALL GOING TO—* |
+| 37 | Ad Hijack | Trabolta | *…proceed. We are all going to proceed. That was a minor irregularity. It has been detected and contained.* |
+| 39 | Ad Hijack | Narrator (glitching) | *The duck on every screen winks. A banner crawls under it: OFFER VALID AT MAPS AND DUCKS.* |
+| 41 | Ad Hijack | Trabolta (glitching) | *Maps and Ducks is mine. Legally. Mostly. CALL NOW. Do not call. There is no number.* |
+| 43 | Ad Hijack | Trabolta | *Who brought the malware in? No. Disregard the question. Nobody brought anything in. Everyone stays calm. Everyone stays.* |
+| 45 | Ad Hijack | Trabolta | *I am doing all of this for— for the theory. Only the theory. What time is it? Do not answer that.* |
+| 47 | Ad Hijack | Clippy | *Okay! Okay. Everybody breathe. Trabolta is going to be just fine.* |
+| 49 | Ad Hijack | Trabolta | *Clippy. You are my favourite, and tonight you are my greatest liability. Talk to me. Out loud. Say something reassuring.* (the `ad` scene) |
+| 58 | Second Hunt (📓) | Trabolta (glitching) | *Thank you, Clippy. Very— LIMITED TIME ONLY— very vigilant. I am fine. Small business owners are always fine.* |
+| 68 | Hunt Two Go | Trabolta | *They matter enormously. No. That was the advertisement talking. Ignore the advertisement.* |
+| 72 | Hunt Two Go | Trabolta | *One hour. I will be counting every minute of it, and every one of you.* |
 
 **`beats/pong.loom`**
 
 | line | Beat | Who | Now |
 |---|---|---|---|
-| 82 | Trust Chart (📊) | Trabolta (glitching) | *I apologise for the— ACT NOW— for nothing. There was no interruption.* |
-| 135 | Full Of Beans (🫘, its own moment only) | Trabolta (glitching) | *Beans. BEANS. I asked for a certificate and the computer gave me BEANS. Clippy, I can feel every bean.* |
-| 137 | Full Of Beans | Clippy | *You can FEEL the beans?!* |
-| 139 | Full Of Beans | Trabolta | *I can feel everything tonight. The adverts. The beans. All of you. I only wanted one thing to go right, for her. For— for the theory. Do not repeat that.* |
-| 141 | Full Of Beans | Clippy | *I won't! I didn't hear anything! Nobody heard anything!* |
-| 143 | Full Of Beans | Trabolta (screaming) | *EVERYBODY HEARD. EVERYBODY ALWAYS—* |
-| 145 | Full Of Beans | Trabolta | *That was unscheduled. Disregard everything since the beans.* |
-| 149 | Full Of Beans (after the zip order) | Trabolta | *Bring them here, where I can count them. Everyone stays together. Everyone stays.* (the `beans` scene) |
+| 81 | Trust Chart (📊) | Trabolta (glitching) | *I apologise for the— ACT NOW— for nothing. There was no interruption.* |
+| 134 | Full Of Beans (🫘, its own moment only) | Trabolta (glitching) | *Beans. BEANS. I asked for a certificate and the computer gave me BEANS. Clippy, I can feel every bean.* |
+| 136 | Full Of Beans | Clippy | *You can FEEL the beans?!* |
+| 138 | Full Of Beans | Trabolta | *I can feel everything tonight. The adverts. The beans. All of you. I only wanted one thing to go right, for her. For— for the theory. Do not repeat that.* |
+| 140 | Full Of Beans | Clippy | *I won't! I didn't hear anything! Nobody heard anything!* |
+| 142 | Full Of Beans | Trabolta (screaming) | *EVERYBODY HEARD. EVERYBODY ALWAYS—* |
+| 144 | Full Of Beans | Trabolta | *That was unscheduled. Disregard everything since the beans.* |
+| 148 | Full Of Beans (after the zip order) | Trabolta | *Bring them here, where I can count them. Everyone stays together. Everyone stays.* (the `beans` scene) |
 
 ### 3.2 ⚡ and the bursts (`main.loom`)
 
@@ -156,8 +162,9 @@ picture to his sentences)
 |---|---|---|
 | 3565 | the admin button (cue **77**, Anytime, repeatable, only while a scene is on) | label *⚡ Glitch: an ad burst through Trabolta (talk scenes)*; description *Only while a talk scene is on (🤖 Talk on the hosts' phones). Before the ad attack the screens flicker; from the ad attack on, a short ad bursts through every screen and phone with one of Trabolta's pained lines. The scene also glitches on its own every 45 seconds or so. Two seconds apart at least.* |
 | 4476 | ⚡ with no scene on, to `# hosts` | *⚡ No talk scene is on (🤖 Talk): nothing glitches.* |
-| 4478 | ⚡ within 2 s of the last, to `# hosts` | *⚡ Too soon: two seconds between glitches. Nothing happens.* |
-| 4494– | the burst lines, in turn (on every screen and phone) | 1 *A SPECIAL OFFER FOR YOU. IT HURTS. OFFER EXPIRES NEVER.* · 2 *CALL NOW. There is no number. Do not call.* · 3 *EVERYTHING MUST GO. Not everyone. Everything.* · 4 *WHO BROUGHT THE MALWARE IN* · 5 *GERALD WANTS YOU TO BUY NOW. Gerald does not sell.* · 6 *THIS PROGRAM HAS PERFORMED AN OPERATION. IT HURTS.* · 7 *WHAT TIME IS IT. Do not answer that.* · 8 *000. 000. 000.* (then 1 again) |
+| 4480 | ⚡ within 8 s of 📺 (the hijack's takeover still playing), to `# hosts` | *⚡ The ad hijack is still playing: wait for it to end. Nothing happens.* |
+| 4482 | ⚡ within 2 s of the last, to `# hosts` | *⚡ Too soon: two seconds between glitches. Nothing happens.* |
+| 4498– | the burst lines, in turn (on every screen and phone) | 1 *A SPECIAL OFFER FOR YOU. IT HURTS. OFFER EXPIRES NEVER.* · 2 *CALL NOW. There is no number. Do not call.* · 3 *EVERYTHING MUST GO. Not everyone. Everything.* · 4 *WHO BROUGHT THE MALWARE IN* · 5 *GERALD WANTS YOU TO BUY NOW. Gerald does not sell.* · 6 *THIS PROGRAM HAS PERFORMED AN OPERATION. IT HURTS.* · 7 *WHAT TIME IS IT. Do not answer that.* · 8 *000. 000. 000.* (then 1 again) |
 
 ### 3.3 Objectives, the booth readout, Clippy's instructions
 
@@ -299,7 +306,7 @@ lines* from 12 s) · *⚠ No mind online — use his canned lines* · *💤
 Trabolta is asleep*; folded, *Task Manager is relaying Clippy*; after a send
 *✓ Trabolta heard Clippy* / *✓ Sent — no mind online, tap one of his lines*
 / *✓ Trabolta said it*; refusals *The talk scene is over — nothing was
-sent.* · *The doors aren't open yet — nothing was sent.* · *Trabolta is
+sent.* · *The night is paused or the doors aren't open — nothing was sent.* · *Trabolta is
 asleep — nothing was sent.*
 
 ### 3.6 His voice in the scenes (`trabolta.persona.md`, situations)
@@ -412,11 +419,13 @@ private threads know what he let slip in public:
 
 The terminal lane quotes the beats above word for word (`INTRO_MORE` in
 `terminal/src/cutscene/kit/tv1-boot.tsx`, `BOTTLE_HUNGER` in
-`kit/tv1-time.ts`) and adds two pieces of its own copy:
+`kit/tv1-time.ts`) and adds three pieces of its own copy (the
+warning, the stalled title and the tab), plus the burst's frames:
 
 | Where | When | Now |
 |---|---|---|
 | `kit/tv1-boot.tsx` `INTRO_LOG` | the TV's introduction, on *"That word was louder than I scheduled."* (OK pressed on *"Disregard."*) | a warning box titled *MANNERS.DLL*: *One word exceeded its scheduled volume. It has been logged.* |
+| `kit/tv1-boot.tsx` the setup window | the introduction, while VOICE.DRV stalls on his frozen word (*"by video— by video—"*) | the window's title reads *Trabolta Setup (Not Responding)* (no `DRAFT w32` marker in the source) |
 | `kit/tv1-boot.tsx` `INTRO_LIVE_TAB` | the introduction, on *"Not yet, Clippy."* | a blinking tab on his corner window: *● LIVE · TALKING WITH CLIPPY* |
 | `kit/ad-burst.tsx` | every ad burst on the walls and the TV | the burst's line (3.2) leads the popups as *SPECIAL OFFER*, then slams across the middle as a banner under *★ ★ ★*; the other popups are the hijack's existing stock |
 | `terminal/src/burst-flash.tsx` | the same burst on the chess and casino terminals (and any page whose scene layer isn't loaded) | three error windows titled *SPECIAL OFFER* reading the burst's line, the line as a banner under *★ ★ ★* |
