@@ -61,10 +61,12 @@
         acts: none                     # (wave 20) he decides nothing here: every
                                        #   act the model returns is dropped
     outside:                           # (wave 20, D29) names and words from outside
-      - John                           #   his world: never in his line (swapped for
+      - Steph                          #   his world: never in his line (swapped for
       - Loom                           #   a fallback, its acts dropped, like a
                                        #   `secrets.never` hit), and the prompt says
                                        #   they are not things he knows
+      - John (not followed by McAfee)  # (wave 32) outside only where that word does
+                                       #   not come next (`guards.outside_entry`)
     ---
     You are TRABOLTA, …
 

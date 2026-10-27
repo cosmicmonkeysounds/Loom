@@ -21,12 +21,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from stagehand.agents.guards import allowed_answer_words, guard_pass, mentions_outside, situation_guard
+from stagehand.agents.guards import allowed_answer_words, guard_pass, mentions_outside, outside_entry, outside_guard, situation_guard
 from stagehand.agents.cards import PersonCard, Said
 from stagehand.agents.persona import load_persona, parse_persona
 from stagehand.agents.cards import VoiceOptions
@@ -566,3 +568,103 @@ def test_the_context_estimate_counts_the_stage_blocks_instead_of_the_heart_ones_
         "---\nYou are T."
     )
     assert situation_chars(staged) == 4 + 8 + 2 * SITUATION_OVERHEAD
+
+
+# -- wave 32's fixes: the crew's John, a withheld line's memo, the register, the scene cut ---------
+
+CREW_JOHN = "John (not followed by McAfee)"
+
+
+def test_an_outside_entry_may_name_what_must_not_follow_it():
+    assert outside_entry(CREW_JOHN) == ("John", ("McAfee",))
+    assert outside_entry("John (not followed by McAfee, Smith)") == ("John", ("McAfee", "Smith"))
+    assert outside_entry("John (Not Followed By McAfee or Smith)") == ("John", ("McAfee", "Smith"))
+    assert outside_entry("Steph") == ("Steph", ())
+    assert outside_entry("Steph's laptop") == ("Steph's laptop", ())
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "Good evening, John.",
+        "A warm hello to JOHN at the front!",
+        "John's here? Welcome, program.",
+        "Hello, John. McAfee sends his regards.",  # a sentence ends on him: the crew's
+        "Thank you, john",
+        "Say hello to the Johns.",
+        "Steph, welcome.",
+        "Jesse is at the front.",
+    ],
+)
+def test_the_crews_john_is_outside_his_world_and_steph_and_jesse_still_are(line):
+    p = replace(lean_persona(), outside=(CREW_JOHN, "Steph", "Jesse"))
+    assert mentions_outside(p, line)
+    got, notes = outside_guard(p, Reply(say=line))
+    assert got.say == p.fallback and "outside (line withheld)" in notes
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "John McAfee is an Antivirus of distinction.",
+        "JOHN MCAFEE, report to the Desktop!",
+        "John-McAfee approves.",
+        "Ask John McAfee's people.",
+        "Johnny is not a program I know.",
+        "Hello, programs.",
+    ],
+)
+def test_john_mcafee_is_his_world(line):
+    p = replace(lean_persona(), outside=(CREW_JOHN, "Steph", "Jesse"))
+    assert not mentions_outside(p, line)
+    assert outside_guard(p, Reply(say=line)) == (Reply(say=line), [])
+
+
+def test_a_persona_without_the_entry_is_unchanged():
+    assert not mentions_outside(replace(lean_persona(), outside=("Steph", "Jesse")), "Good evening, John.")
+    assert not mentions_outside(lean_persona(), "Good evening, John, Steph and Jesse.")
+
+
+def test_the_shipped_persona_withholds_a_hello_to_john_on_air_in_a_dm_and_on_the_classic_path():
+    p = load_persona(TRABOLTA)
+    assert CREW_JOHN in p.outside and "John" not in p.outside
+    hello = "Good evening, John. I extend a warm hello from Maps and Ducks tonight."
+    clippy = PersonCard(id="Clippy", name="Clippy", kind="performer")
+    for gate in (gate_context(stage_request("intro")), gate_context(request())):
+        out = guard_pass(p, Reply(say=hello, memo="I greet the crew."), clippy, Said(), (), gate=gate)
+        assert out.withheld and out.reply.say == p.fallback and out.reply.memo == ""
+        assert "outside (line withheld)" in out.notes and "memo dropped (line withheld)" in out.notes
+    # mind_mode: classic runs outside_guard itself.
+    assert outside_guard(p, Reply(say=hello))[0].say == p.fallback
+    # John McAfee (an Antivirus) is still his to name.
+    assert not mentions_outside(p, "John McAfee, take the hall.")
+    # Through the lean voice: on the TV and in a DM.
+    for r in (stage_request("intro", text="Say hello to John!"), request(text="Say hello to John!")):
+        reply = run(answer_lean(p, MODEL, r, context(person=clippy), Model(say(hello, memo="I greet the crew."))))
+        assert "John" not in reply.say and reply.memo == ""
+
+
+def test_a_withheld_line_keeps_no_memo_and_the_lean_path_logs_its_guard_notes(caplog):
+    p = replace(lean_persona(), outside=(CREW_JOHN,))
+    model = Model(say("Good evening, John.", memo="I greet the crew, keeping tone formal."))
+    with caplog.at_level(logging.INFO, logger="stagehand.agents.voice"):
+        reply = run(answer_lean(p, MODEL, request(text="Say hi to John"), context(), model))
+    assert reply.memo == "" and "John" not in reply.say
+    logged = [r for r in caplog.records if r.levelno == logging.INFO and ": guard: " in r.getMessage()]
+    assert logged and "outside (line withheld)" in logged[0].getMessage() and "memo dropped (line withheld)" in logged[0].getMessage()
+    # A note never carries the word that tripped the guard.
+    assert all("John" not in r.getMessage() for r in logged)
+    # A clean line keeps its memo and logs no guard note.
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="stagehand.agents.voice"):
+        ok = run(answer_lean(p, MODEL, request(text="Hello"), context(), Model(say("Welcome, program Ada.", memo="Ada is polite."))))
+    assert ok.memo == "Ada is polite." and not [r for r in caplog.records if ": guard: " in r.getMessage()]
+
+
+def test_a_withheld_retry_keeps_neither_its_memo_nor_the_first_lines():
+    # The first line repeats (one retry); the retry names the crew's John and is
+    # withheld: the first line's memo is not carried over onto the fallback.
+    p = replace(lean_persona(), outside=(CREW_JOHN,))
+    model = Model(say("Speak, program.", memo="Ada again."), say("Good evening, John.", memo="I greet the crew."))
+    reply = run(answer_lean(p, MODEL, request(), context(), model))
+    assert len(model.calls) == 2 and reply.memo == "" and "John" not in reply.say

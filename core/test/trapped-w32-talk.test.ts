@@ -131,6 +131,14 @@ const noCode = (t: string) => {
 const NEVER_PLACES = /\b(heart|server room|cold|basement|patch|cables?|rows?|sandy|prom|girlfriend|chatbot|ex|door code|hand jive|question of force|virus back|customer care|extension)\b/iu;
 
 const said = (text: string, phrase: string) => new RegExp(`(^|[^a-z0-9])${phrase.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}($|[^a-z0-9])`, "iu").test(text);
+/** An `outside:` entry said in `text`; `X (not followed by Y)` (wave 32) is X only where Y does not come next. */
+const outsideSaid = (text: string, entry: string) => {
+  const m = /^(.*?)\s*\(\s*not followed by\s+(.+?)\s*\)$/iu.exec(entry);
+  if (!m) return said(text, entry);
+  const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const after = m[2]!.split(/,|\bor\b/u).map((a) => esc(a.trim())).filter(Boolean).join("|");
+  return new RegExp(`(^|[^a-z0-9])${esc(m[1]!)}(?![a-z0-9])(?![\\s-]+(?:${after})(?![a-z0-9]))`, "iu").test(text);
+};
 
 /** His lines new this wave in the beats (the line after each `// DRAFT w32`). */
 const BEAT_LINES = (() => {
@@ -344,7 +352,7 @@ describe("wave 32 — the ⚡ cue on the sheet", () => {
     for (const t of BURST_TEXTS) {
       if (t !== "000. 000. 000.") expect(t, t).not.toMatch(/\d/u);
       expect(t.length, t).toBeLessThanOrEqual(80);
-      for (const w of OUTSIDE) expect(said(t, w), `${t} ∋ ${w}`).toBe(false);
+      for (const w of OUTSIDE) expect(outsideSaid(t, w), `${t} ∋ ${w}`).toBe(false);
       for (const w of SECRET_WORDS) expect(said(t, w), `${t} ∋ a secret word`).toBe(false);
       noCode(t);
       expect(t, t).not.toMatch(NEVER_PLACES);
@@ -395,7 +403,7 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
     expect(BEAT_LINES.length).toBeGreaterThan(15);
     for (const t of his) {
       expect(t, t).not.toMatch(/\d/u);
-      for (const w of OUTSIDE) expect(said(t, w), `${t} ∋ ${w}`).toBe(false);
+      for (const w of OUTSIDE) expect(outsideSaid(t, w), `${t} ∋ ${w}`).toBe(false);
       for (const w of SECRET_WORDS) expect(said(t, w), `${t} ∋ a secret word`).toBe(false);
       noCode(t);
       expect(t, t).not.toMatch(NEVER_PLACES);
@@ -442,7 +450,7 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
     for (const s of scenes) {
       const texts = [s.title, s.hint, ...s.clippy.flatMap((c) => [c.text, c.direction ?? ""])];
       for (const t of texts) {
-        for (const w of OUTSIDE) expect(said(t, w), `${t} ∋ ${w}`).toBe(false);
+        for (const w of OUTSIDE) expect(outsideSaid(t, w), `${t} ∋ ${w}`).toBe(false);
         for (const w of SECRET_WORDS) expect(said(t, w), `${t} ∋ a secret word`).toBe(false);
         noCode(t);
       noCode(t);

@@ -109,20 +109,68 @@ def never_guard(persona: Persona, reply: Reply) -> tuple[Reply, list[str]]:
     return replace(reply, say=say, acts=acts, memo=memo), notes
 
 
+#: (wave 32) An `outside:` entry that is outside only when a given word does
+#: not come next: `John (not followed by McAfee)` — the crew's John is not
+#: of his world, John McAfee is. Several: `(not followed by McAfee, Smith)`.
+_NOT_FOLLOWED = re.compile(r"^(.*?)\s*\(\s*not\s+followed\s+by\s+(.+?)\s*\)\s*$", re.IGNORECASE)
+#: The guarded entries' light fold: lowercase, every run of characters other
+#: than a–z / 0–9 or a sentence's end one space, so "John. McAfee …" (one
+#: sentence ends on John) is still a hit and "John-McAfee" is not.
+_LIGHT = re.compile(r"[^a-z0-9.!?;:…]+")
+
+
+def outside_entry(raw: str) -> tuple[str, tuple[str, ...]]:
+    """(wave 32) One `outside:` entry as (the word, the words that may follow
+    it and make it his world's after all). A plain entry has none."""
+    m = _NOT_FOLLOWED.match(str(raw))
+    if not m or not fold(m.group(1)):
+        return str(raw), ()
+    after = tuple(a for a in (x.strip() for x in re.split(r",|\bor\b", m.group(2))) if fold(a))
+    return m.group(1).strip(), after
+
+
+def _word_pattern(word: str) -> str:
+    return r"\s+".join(re.escape(t) for t in fold(word).split())
+
+
 @lru_cache(maxsize=64)
-def _outside_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
-    parts = [r"\s+".join(re.escape(t) for t in fold(w).split()) for w in words if fold(w)]
-    if not parts:
-        return None
-    return re.compile(r"(?<![a-z0-9])(?:" + "|".join(parts) + r")(?:s|es)?(?![a-z0-9])")
+def _outside_patterns(words: tuple[str, ...]) -> tuple[re.Pattern[str] | None, tuple[tuple[re.Pattern[str], re.Pattern[str]], ...]]:
+    """(the plain entries' one pattern over `fold(text)`, the guarded
+    entries' (word, what may follow) pairs over the light fold)."""
+    plain: list[str] = []
+    guarded: list[tuple[re.Pattern[str], re.Pattern[str]]] = []
+    for raw in words:
+        word, after = outside_entry(raw)
+        if not fold(word):
+            continue
+        if not after:
+            plain.append(_word_pattern(word))
+            continue
+        guarded.append(
+            (
+                re.compile(r"(?<![a-z0-9])" + _word_pattern(word) + r"(?:s|es)?(?![a-z0-9])"),
+                re.compile(r"\s+(?:" + "|".join(_word_pattern(a) for a in after) + r")(?![a-z0-9])"),
+            )
+        )
+    pattern = re.compile(r"(?<![a-z0-9])(?:" + "|".join(plain) + r")(?:s|es)?(?![a-z0-9])") if plain else None
+    return pattern, tuple(guarded)
 
 
 def outside_hit(words: Iterable[str], text: str) -> str | None:
     """(D29) The first `outside:` entry `text` names (folded, whole words, a
-    plural too: `actors`), else None."""
-    pattern = _outside_pattern(tuple(words))
+    plural too: `actors`), else None. (wave 32) An entry `X (not followed by
+    Y)` names X only where Y does not come right after it."""
+    pattern, guarded = _outside_patterns(tuple(words))
     m = pattern.search(fold(text)) if pattern is not None else None
-    return m.group(0) if m else None
+    if m:
+        return m.group(0)
+    if guarded:
+        light = _LIGHT.sub(" ", str(text).lower().replace("’", "'"))
+        for word, after in guarded:
+            for hit in word.finditer(light):
+                if not after.match(light, hit.end()):
+                    return hit.group(0)
+    return None
 
 
 def mentions_outside(persona: Persona, text: str) -> bool:
@@ -588,6 +636,11 @@ def guard_pass(
         withheld = emptied
     out.withheld = withheld
     if withheld:
+        # (wave 32) The memo of a line that was never said goes with it: a
+        # withheld greeting to the crew left "I greet the crew…" in his notes.
+        if out.reply.memo:
+            out.reply = replace(out.reply, memo="")
+            out.notes.append("memo dropped (line withheld)")
         return out
     before = out.reply.say
     out.reply, notes, empty = catchphrase_guard(persona, out.reply, person, stage)

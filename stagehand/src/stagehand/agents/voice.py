@@ -956,6 +956,7 @@ async def answer_lean(
                 final = replace(final, say=cut)
                 notes.append("old sentence cut")
         final = _scrub(persona, _pooled(persona, final, ctx, req), memo_on, notes)
+        _log_notes(persona, notes)
         await record(kind, trigger, used, completion, final, note=_notes(call_note, notes))
         return _done(persona, final, started, ctx, req)
 
@@ -963,6 +964,7 @@ async def answer_lean(
     # The trace is persisted and fanned out: the first thought carries the
     # memo as it may be kept, as every other thought does.
     await record(kind, trigger, used, completion, _scrub(persona, first.reply, memo_on, notes), note=_notes(call_note, notes))
+    _log_notes(persona, notes)
     retry_msgs = build(retry=first.rejected) if kind == "voice" else used + [{"role": "system", "content": retry_message(first.rejected, str(req.get("text") or ""), ctx.phase.stage)}]
     try:
         # A little hotter than the first call: at the house temperature the
@@ -974,6 +976,7 @@ async def answer_lean(
         final = first.reply if wants == "repeat" else replace(first.reply, say=persona.fallback)
         rnotes = [f"retry failed → {'the first line' if wants == 'repeat' else 'fallback'}"]
         final = _scrub(persona, _pooled(persona, final, ctx, req), memo_on, rnotes)
+        _log_notes(persona, rnotes)
         await record("voice", "retry", retry_msgs, None, final, error=str(err), note=_notes(rnotes))
         return _done(persona, final, started, ctx, req)
     again = parse(completion)
@@ -1005,11 +1008,21 @@ async def answer_lean(
             rnotes.append("retry still repeats (old sentences cut)")
         else:
             rnotes.append("retry still repeats (sent)")
-    if not final.memo and first.reply.memo:
+    if not final.memo and first.reply.memo and not second.withheld:
+        # A withheld retry keeps no memo, not even the first line's (wave 32).
         final = replace(final, memo=first.reply.memo)
     final = _scrub(persona, _pooled(persona, final, ctx, req), memo_on, rnotes)
+    _log_notes(persona, rnotes)
     await record("voice", "retry", retry_msgs, completion, final, note=_notes(call_note, rnotes))
     return _done(persona, final, started, ctx, req)
+
+
+def _log_notes(persona: Persona, notes: list[str]) -> None:
+    """(wave 32) The guard notes at INFO, as the classic path logs them: a
+    withheld line was visible only in the trace on the lean path. A note
+    never carries the word that tripped a guard."""
+    if notes:
+        log.info("%s: guard: %s", persona.character, "; ".join(notes))
 
 
 def _scrub(persona: Persona, reply: Reply, memo_on: bool, notes: list[str]) -> Reply:

@@ -55,7 +55,8 @@
 #   crew, the event, its kit. He lives in Halifax, in the world of Maps and
 #   Ducks, and knows nobody and nothing beyond it. The guards treat one in
 #   his OUTPUT like a `never` word (the act dropped, the line swapped for a
-#   fallback). DRAFT list.
+#   fallback). DRAFT list. An entry `X (not followed by Y)` is outside only
+#   where Y does not come next (wave 32: the crew's John, not John McAfee).
 # Night.line_by: "none", or the program whose pickup line the house
 #   accepted in Grok Prom (he never judges a line himself: the 💌 card does).
 # lookup: false until the stagehand secrecy fix lands (a lookup of a codex
@@ -102,9 +103,11 @@ bargain: |
   Stopping is never a favour: the questions on your heart's screen decide it, and no act of
   yours ends anything. When you act, name the price you were paid.
   You do not know which doors or rooms of the house are open: say so.
-# Not a bare "John" (John McAfee is in his world) and not "party" (his own
-# invitation: a fundraiser party at Maps And Ducks): a hit would swap a real answer.
+# Not "party" (his own invitation: a fundraiser party at Maps And Ducks): a hit
+# would swap a real answer. "John" only where "McAfee" does not follow (wave 32:
+# John McAfee is in his world; a greeting to the crew's John is not).
 outside:                     # w20 (D29): never in a line of his; a hit is withheld like a `never` word
+  - John (not followed by McAfee)
   - Steph
   - Jesse
   - Steph's laptop
