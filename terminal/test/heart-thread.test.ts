@@ -72,6 +72,26 @@ describe("a pick shows at once, pending, until the server's line arrives (wave 2
     // Answered by a line the visit's thread leaves out: still dropped.
     expect(withPendingPicks([], [p], "Winamp", [pick(6, "[shows the Sandy File]", true)])).toEqual([]);
   });
+
+  it("two same-word picks each wait for their own server line (one line answers one pick)", () => {
+    const before = [line(1, "Again?")];
+    const a = pendingPickOf("7:0:1", menu.channel, "I'm a person.", before);
+    const b = pendingPickOf("8:0:2", menu.channel, "I'm a person.", before);
+    // The first pick's line arrives: only the first gives way.
+    const one = [...before, pick(2, "I'm a person.")];
+    let open = unansweredPicks([a, b], one);
+    expect(open.map((p) => p.key)).toEqual(["8:0:2"]);
+    expect(youLines(render({ lines: withPendingPicks(one, [a, b], "Winamp") }))).toBe(2);
+    // The terminal prunes its list: the claimed line never answers the second pick too.
+    open = unansweredPicks(open, one);
+    expect(open.map((p) => p.key)).toEqual(["8:0:2"]);
+    // Its own line arrives: both answered, two YOU lines, none pending.
+    const two = [...one, pick(3, "I'm a person.")];
+    expect(unansweredPicks(open, two)).toEqual([]);
+    const html = render({ lines: withPendingPicks(two, open, "Winamp") });
+    expect(youLines(html)).toBe(2);
+    expect(html).not.toContain("pending");
+  });
 });
 
 describe("the thread at a room terminal (wave 27)", () => {

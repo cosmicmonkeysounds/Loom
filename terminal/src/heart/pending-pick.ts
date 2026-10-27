@@ -50,13 +50,36 @@ function pickIndex(lines: readonly Pick<Line, "seq" | "channel" | "text" | "pick
   return ix;
 }
 
-const answeredIn = (p: PendingPick, ix: Map<string, number[]>) => (ix.get(`${p.channel}\u0000${p.text}`) ?? []).some((s) => s > p.after);
-
-/** The pending picks the stream has not answered yet (a pick line in the same room with the same words, past the pick). */
+/** The pending picks the stream has not answered yet (a pick line in the same
+ *  room with the same words, past the pick). One line answers one pick: the
+ *  picks, oldest first, each take the earliest unclaimed matching line past
+ *  them, so two same-word picks each wait for their own line. A pick still
+ *  open comes back with `after` raised past the lines its twins claimed, so
+ *  once those twins are dropped (the terminal prunes its list) the claimed
+ *  lines never answer it a second time. */
 export function unansweredPicks(pending: readonly PendingPick[], lines: readonly Pick<Line, "seq" | "channel" | "text" | "pick">[]): PendingPick[] {
   if (pending.length === 0) return [];
   const ix = pickIndex(lines);
-  return pending.filter((p) => !answeredIn(p, ix));
+  for (const list of ix.values()) list.sort((a, b) => a - b);
+  const answered = new Set<PendingPick>();
+  const claimed = new Map<string, number>();
+  const order = pending.map((p, i) => ({ p, i })).sort((a, b) => a.p.after - b.p.after || a.i - b.i);
+  for (const { p } of order) {
+    const k = `${p.channel}\u0000${p.text}`;
+    const list = ix.get(k);
+    if (list === undefined) continue;
+    const at = list.findIndex((s) => s > p.after);
+    if (at < 0) continue;
+    claimed.set(k, Math.max(claimed.get(k) ?? -Infinity, list[at]!));
+    list.splice(at, 1);
+    answered.add(p);
+  }
+  return pending
+    .filter((p) => !answered.has(p))
+    .map((p) => {
+      const last = claimed.get(`${p.channel}\u0000${p.text}`);
+      return last !== undefined && last > p.after ? { ...p, after: last } : p;
+    });
 }
 
 /**
