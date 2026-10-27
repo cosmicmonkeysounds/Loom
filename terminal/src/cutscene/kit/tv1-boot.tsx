@@ -6,6 +6,7 @@
 //! Every frame is a picture of `t`; the storyboards sit on each scene.
 
 import "./tv1.css";
+import { useRef } from "react";
 import type { SfxName, SfxOpts } from "../../sound/index.ts";
 import type { SceneProps, SceneVoice } from "../types.ts";
 import { useSfxCues } from "./cues.ts";
@@ -340,8 +341,12 @@ export function IntroTv({ t, sfx, reduced, voice }: SceneProps) {
   const out = 1 - progress(t, IN.end - 1200, 1200);
   // The mirror is a world view on this screen (`world-bus.ts`): with none (no
   // reinstalled player in this room, the usual case at this moment) the
-  // hand-back opens onto the house's desktop instead, never dead black.
-  const mirror = worldCelebratesFinds();
+  // hand-back opens onto the house's desktop instead, never dead black. Read
+  // once at the hand-back and held (`IntroMirror`): a world view that mounts
+  // or goes mid hand-back never cuts the desktop away or pops it in.
+  const latch = useRef<IntroMirror | null>(null);
+  latch.current ??= new IntroMirror();
+  const mirror = latch.current.at(t);
   const desk = introDeskAt(t, mirror);
   return (
     <div className="kit-stage a1-tv a1-in" style={{ background: introStageBg(t, mirror), opacity: out }}>
@@ -361,6 +366,24 @@ export function IntroTv({ t, sfx, reduced, voice }: SceneProps) {
       {!reduced && between(t, IN.loud, IN.loud + 700) && <Noise t={t} alpha={0.3 * (1 - progress(t, IN.loud + 200, 500))} reduced={reduced} />}
     </div>
   );
+}
+
+/** (wave 32 review) Whether the hand-back opens onto a mirror: what the
+ *  screen shows (`worldCelebratesFinds`) at the first frame from `IN.back`,
+ *  then held to the end, so the desktop never snaps in or out when a
+ *  reinstalled player's world view comes or goes mid hand-back (the scene
+ *  fades out onto whatever is there by then). Before the hand-back it is only
+ *  a peek (and a scrub back before it reads it again). */
+export class IntroMirror {
+  private held: boolean | null = null;
+  at(t: number, showing: () => boolean = worldCelebratesFinds): boolean {
+    if (t < IN.back) {
+      this.held = null;
+      return showing();
+    }
+    this.held ??= showing();
+    return this.held;
+  }
 }
 
 /** (wave 32 review) The stage's own background at `t`: black until the

@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
-import { INTRO_CAPTIONS, INTRO_FACE_DONE, INTRO_HELLO, INTRO_LINE, INTRO_LIVE_TAB, INTRO_LOG, INTRO_LOUD_AT, INTRO_MORE, INTRO_MS, INTRO_PIP, INTRO_SAYS, INTRO_SFX, INTRO_VOICE_END, INTRO_WALL_MS, IN, IntroTv, IntroWall, POWER_ON_MS, POWER_ON_WALL_MS, PowerOnTv, PowerOnWall, INTRO_DESK_DIM, introDeskAt, introFacePose, introJudder, introStageBg, lineCaptions, setupRowSpan, setupStalled } from "../src/cutscene/kit/tv1-boot.tsx";
+import { INTRO_CAPTIONS, INTRO_FACE_DONE, INTRO_HELLO, INTRO_LINE, INTRO_LIVE_TAB, INTRO_LOG, INTRO_LOUD_AT, INTRO_MORE, INTRO_MS, INTRO_PIP, INTRO_SAYS, INTRO_SFX, INTRO_VOICE_END, INTRO_WALL_MS, IN, IntroTv, IntroWall, POWER_ON_MS, POWER_ON_WALL_MS, PowerOnTv, PowerOnWall, INTRO_DESK_DIM, IntroMirror, introDeskAt, introFacePose, introJudder, introStageBg, lineCaptions, setupRowSpan, setupStalled } from "../src/cutscene/kit/tv1-boot.tsx";
 import { splitSentences } from "../src/speech/split.ts";
 import { LINE_GAP_MS } from "../src/speech/engine.ts";
 import { INTRO_VOICE } from "../src/cutscene/kit/tv1-time.ts";
@@ -175,6 +175,41 @@ describe("tv1 boot — the introduction", () => {
     } finally {
       bye();
     }
+  });
+
+  it("the mirror is read once at the hand-back: a world view that comes or goes mid hand-back never snaps the desktop (wave 32 review)", () => {
+    const frame = 1000 / 60;
+    // A reinstalled player walks into the Desktop mid hand-back: the desktop stays, no hard cut.
+    const comes = new IntroMirror();
+    let bye: (() => void) | null = null;
+    try {
+      let last = introDeskAt(IN.back - frame, comes.at(IN.back - frame));
+      for (let t = IN.back; t <= IN.end; t += frame) {
+        if (bye === null && t >= IN.back + 700) bye = noteWorldShowing();
+        const desk = introDeskAt(t, comes.at(t));
+        expect(desk, String(t)).toBeGreaterThanOrEqual(last);
+        last = desk;
+      }
+      expect(last).toBe(1);
+    } finally {
+      bye?.();
+    }
+    // A world view on at the hand-back that goes mid-way: no desktop pops in at full opacity.
+    const goes = new IntroMirror();
+    const bye2 = noteWorldShowing();
+    let gone = false;
+    try {
+      for (let t = IN.back; t <= IN.end; t += frame) {
+        if (!gone && t >= IN.back + 2000) { bye2(); gone = true; }
+        expect(introDeskAt(t, goes.at(t)), String(t)).toBe(0);
+      }
+    } finally {
+      bye2();
+    }
+    // A scrub back before the hand-back reads the screen again.
+    expect(goes.at(IN.back + 100)).toBe(true);
+    expect(goes.at(IN.back - 100)).toBe(false);
+    expect(goes.at(IN.back + 100)).toBe(false);
   });
 
   it("hands back to the mirror: fully transparent at its end", () => {
