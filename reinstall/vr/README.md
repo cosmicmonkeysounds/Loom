@@ -15,6 +15,44 @@ Thumbsticks, plus one button for the King (and a laser in the lobby):
 | **Trigger** (either hand) or **A / X** | hit the King, near and facing him — once per visit |
 | **B / Y** (either hand) | mute / unmute the microphone (a short haptic tick when it takes) |
 | **Lobby** | point a controller at your program's tile and pull the **trigger** (either hand: a thin beam shows where), or walk the tiles with the stick and hold **right** for 1 s; then **START** (trigger, or hold right again) or **BACK** |
+| **The intro** | the same beam and **trigger** (or **A**) on the panel's buttons; the stick walks and turns once the tutorial says so |
+
+With only the **right** controller (the show's headsets), its stick's
+forward / back walks and its left / right turns.
+
+## The intro (wave 33)
+
+Before every walk the guest stands on a calm practice floor away from the
+house (`game/intro_space.gd`, steps in the pure `game/intro_flow.gd`):
+
+1. **The video.** *The Reinstallation Process* plays on a cinema screen
+   (3.6 m wide, 3.4 m ahead, eye height) in the dark. It ships inside the
+   APK as `media/reinstallation.ogv` (Ogg Theora 720p30 + Vorbis, decoded
+   in software by a `VideoStreamPlayer` in a `SubViewport`), so nothing is
+   streamed. A missing or undecodable file is skipped, never a hang.
+2. **The tutorial**, one thing at a time on a big panel, each step moving
+   on when the guest does it (a soft chime and a gentle haptic), with a
+   fallback button for the stuck: **look around** (OK after 5 s) →
+   **point** the beam at OK and pull the trigger → **walk** into the
+   glowing ring (NEXT after 20 s) → **turn**: SNAP TURN / SMOOTH TURN
+   switch the setting live, turn round to face the duck behind you, and
+   **KEEP THIS ONE** saves it to the program (`POST /api/spatial/prefs`)
+   → a **comfort** line and **START**.
+
+The video and the tutorial are unskippable until the program has completed
+a reinstallation (the assignment's `reinstalled` ≥ 1; then SKIP and SKIP
+TUTORIAL). A program's saved `prefs.turn` overrides the station's
+`smooth_turn` from the assignment on (and back in the lobby the station's
+returns); a first-timer starts on snap turn. Throughout, the spawn pose
+keeps the session alive (the server times one out after 60 s without a
+pose) and nothing of the walk runs: no void, find, King, voice link, hum
+or quack. At START the guest lands at the spawn, the walk's clocks (the
+path reveal, the quack) start, and `POST /api/spatial/ready` restarts the
+server's. A session that ends mid-intro (session over, the headset off)
+stops the video and goes back to the lobby. `--intro false` (or `"intro":
+false` in a station file) skips it; the autopilot never plays it. Its
+copy is marked `DRAFT w33` in `game/intro_flow.gd`. Unproven on the
+Quest: Theora at 720p30 in software, and the video's audio level.
 
 ## Layout
 
@@ -31,10 +69,11 @@ Thumbsticks, plus one button for the King (and a laser in the lobby):
 | `net/avatar_cache.gd` | The ghosts' profile pictures: two downloads at a time off the event's `/api/avatar/<key>`, 2 MB cap, cached, a failure not retried until the next visit; PNG / JPEG / WebP / SVG (rendered once near 256 px, whatever size it declares) by magic bytes, drawn as a Win98-bevelled tile. |
 | `net/config.gd` | Station configuration and its precedence; the in-headset setup's `user://station.json` (`save_user` / `forget_user`). |
 | `player/` | The XR rig on a CharacterBody3D (`player.tscn`), the locomotion maths (`locomotion.gd`), the comfort vignette, and the lobby's pointer (`pointer.gd`: a laser from each hand's aim pose, the mouse on a desktop). |
-| `game/` | The state machine (`game_flow.gd`, `game.gd`), the lobby (`lobby.gd`: the picture tiles, the confirm card, the MICROPHONE box; `lobby_tiles.gd`: its geometry; `picker.gd`: the stick; `setup_panel.gd`: SET UP THIS HEADSET), the duck, the chevron trail, ghosts of other players, the HUD (and the void's scare), the game's sounds (`sfx.gd`) and in-game speech (`speech.gd`). |
+| `game/` | The state machine (`game_flow.gd`, `game.gd`), the intro (`intro_flow.gd`: its steps, pure; `intro_space.gd`: the cinema, the practice floor and the tutorial panel), the lobby (`lobby.gd`: the picture tiles, the confirm card, the MICROPHONE box; `lobby_tiles.gd`: its geometry; `picker.gd`: the stick; `setup_panel.gd`: SET UP THIS HEADSET), the duck, the chevron trail, ghosts of other players, the HUD (and the void's scare), the game's sounds (`sfx.gd`) and in-game speech (`speech.gd`). |
 | `main.tscn` / `main.gd` | Bootstrap: OpenXR when there is a runtime, else the desktop rig. |
 | `test/` | The headless checks (`run.sh`). |
-| `tools/` | `quest.sh` builds, sideloads and provisions the Quest APK (below); `make_action_map.gd` regenerates `openxr_action_map.tres`; `screenshot.gd` renders a few views. |
+| `media/` | `reinstallation.ogv`, the intro's video (shipped in the APK: the preset's `media/*.ogv`). |
+| `tools/` | `quest.sh` builds, sideloads and provisions the Quest APK (below); `make_action_map.gd` regenerates `openxr_action_map.tres`; `screenshot.gd` renders a few views (the lobby, the intro's cinema and each tutorial step, the house). |
 
 ### The house map
 
@@ -116,6 +155,10 @@ and the mouse looks (click to capture it, Esc to release it). In the lobby
 the mouse points instead: click a tile, then START. The keys drive the stick picker there:
 W/S a row up / down, A or a quick D a tile left / right, holding D or E
 for 1 s picks, Enter picks / starts, Backspace goes back.
+In the intro the mouse points at the cinema's SKIP and the panel's buttons
+(click); once captured for looking around, it points through the middle of
+the view (a gold dot) and a click presses. WASD and Q/E walk and turn when
+the tutorial says so; `--intro false` skips it all.
 
 ```bash
 G=/Applications/Godot.app/Contents/MacOS/Godot
@@ -153,13 +196,14 @@ and logs in as a moderator. Settings are applied in this order (lowest first):
 2. `res://config/station.json`: committed, with placeholders (`CHANGEME` never dials out)
 3. `user://station.json`: per headset — written by the lobby's **SET UP THIS
    HEADSET** panel (or pushed by `quest.sh provision`)
-4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--smooth-turn] [--autopilot] [--voice false] [--mic false] [--trail-delay 0]`
+4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--smooth-turn] [--autopilot] [--voice false] [--mic false] [--trail-delay 0] [--intro false]`
 
 `voice` (on by default) is the voice link; `mic: false` keeps it but
 listens only (the headset hears the terminals and is never heard).
 `trail_delay` (seconds, default 60 = the house's `PATH_REVEAL_MS`) holds
 the golden trail back at the start of each walk; `--trail-delay 0` for a
-quick dev walk.
+quick dev walk. `intro` (on by default) plays the video and the tutorial
+before each walk; `--intro false` for a quick dev walk.
 
 ```json
 { "server": "https://app.mapsandducks.com", "code": "4821", "station": "vr-1", "name": "Headset 1", "smooth_turn": false }
@@ -290,7 +334,7 @@ with `released: true` while you walk to Gerald.
   the HUD says "Gerald moved." ("Gerald moved — follow the arrows." once
   the trail is up).
 - **The trail waits a minute** (wave 26, R2): for the first 60 s of each
-  walk (played time; a re-scan starts it again) there is no golden trail
+  walk (played time from the end of the intro; a re-scan starts it again) there is no golden trail
   and the HUD just says "find Gerald". Then "A golden trail flickers on."
   and the chevrons draw at once. Gerald's quack never waits.
 - **Sound** (wave 26, R8, `game/sfx.gd`): Gerald quacks from where he
@@ -428,8 +472,8 @@ with `released: true` while you walk to Gerald.
 ./reinstall/vr/test/run.sh        # [path-to-godot]; or `pnpm test:vr` from the repo root
 ```
 
-On 2026-10-26 (wave 26, branch `oct31-w26/vr`, Godot 4.7.1) it reports
-994 checks and `quest.sh` 34, all passing.
+On 2026-10-27 (wave 33, branch `oct31-w33/intro`, Godot 4.7.1) it reports
+1115 checks and `quest.sh` 37, all passing.
 
 The runner refreshes the import, compiles every script and loads every
 scene, then runs `test/game.gd` headless with `--offline`:
@@ -499,8 +543,17 @@ scene, then runs `test/game.gd` headless with `--offline`:
   refusal still teleports, the cooldown, a session ending mid-scare); the
   heart and the disk (drawn, no text, no collider, shown with the King's
   fall, each moment's answers, `picked` / `heartHeard`)
+- wave 33, the intro: its steps (the skip rule, what advances each step,
+  the fallback buttons, the arm delay, the live turn choice and its save,
+  the ring and facing geometry), `ready` / `prefs` over a fake transport
+  (the session's token, a 404 ignored, a 410 ends it, nothing offline),
+  and the game playing it with a fake video (the spawn pose every frame,
+  no void / find / voice / hum / quack, each step by the laser, the panel
+  coming round, the walk's clocks and one `ready` after START, a saved
+  `prefs.turn` in force, a returning program's skips, a session over
+  mid-video or the headset off mid-tutorial, `intro: false`, the autopilot)
 - a smoke test that `main.tscn` builds the house
-- `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed)
+- `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed; wave 33: the intro video shipped)
 - the autopilot reaching every duck spot of the show from the spawn, once
   kinematically and once with real collision (the body stepped by hand)
 
