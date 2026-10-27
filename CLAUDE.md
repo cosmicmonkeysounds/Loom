@@ -186,15 +186,16 @@ its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 
 ### Release status
 
-Wave 31 (`oct31-w31/rig`, 2026-10-27; ships as `w31`): every house bulb
-(Hue + ZL1) and the living-room WLED strip are `lights.json` fixtures and
-every `cue lights_*` is a look (no Zigbee groups, scenes or WLED presets);
-the lights job catches up the house look from the screen state's new
-`night.lights`; `audio.json` is the 828x's own outs (no ADAT expander).
-Its sync needs `--replace-lights --replace-audio`.
+The VPS runs **`w31`** (master `0d990ed3`, shipped 2026-10-27; rollback
+`w29`) and the preview was synced with `--replace-lights --replace-audio`
+and reloaded. Wave 31: every house bulb (Hue + ZL1) and the living-room
+WLED strip are `lights.json` fixtures and every `cue lights_*` is a look
+(no Zigbee groups, scenes or WLED presets); the lights job catches up the
+house look from the screen state's new `night.lights`; `audio.json` is the
+828x's own outs (no ADAT expander). Below, `w29` is the release before it.
 
-The VPS runs `w29` (master `a0cc8efb`, shipped 2026-10-27; rollback
-`w28b`): waves 27–30 — the heart's first meeting, the full-evening bots
+`w29` (master `a0cc8efb`, shipped 2026-10-27; rollback
+`w28b`) carried: waves 27–30 — the heart's first meeting, the full-evening bots
 (`pnpm sim`, `pnpm sim:heart`), the heart follow-ups, no layer number or
 "out of character" anywhere, and wave 30's House Setup / Cue designer. The
 "trapped in the internet" preview event was synced and reloaded on it. Wave 27 is the first meeting at Trabolta's heart: the talk branches on
