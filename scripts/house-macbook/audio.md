@@ -1,4 +1,12 @@
-# The house speaker router on John's MacBook
+# The house speaker router on John's MacBook (the fallback)
+
+> **Since 2026-10-27 the router runs on John's Desktop** (Windows, the MOTU
+> 828x over USB 2 and ASIO): [`scripts/house-desktop/README.md`](../house-desktop/README.md)
+> §3 and §7. This page is the **fallback**: use it only if the 828x won't
+> run under ASIO there, or the Desktop dies. The Desktop README's §11 says
+> how to switch (stop the Desktop's `audio` task first: only one machine
+> may run the router). On a normal night this Mac runs Trabolta
+> ([`trabolta.md`](./trabolta.md)) and no `audio` job.
 
 The house speakers are driven by **one** program: stagehand's speaker
 router (the `audio` module, its own launchd job). It plays every story
@@ -8,13 +16,12 @@ device) through the **MOTU 828x + an 8-channel ADAT expander**. QLab is not
 part of the rig, and the old `alexa` announcement player is retired (its
 module code stays in stagehand; *Retire the alexa job* below).
 
-**Where it runs.** By default the router and the MOTU live on **John's
-MacBook** (macOS), which also runs Ollama and Trabolta's `agents` worker.
-The rest of the house rig (Mosquitto, Zigbee2MQTT, the stagehand `show` and
-`lights` jobs, the TV) is on **John's Desktop** (Windows):
-[`scripts/house-desktop/README.md`](../house-desktop/README.md). The router
-may move to the Desktop instead, once the 828x is proven on Windows; that
-path is the Desktop README's §7. Only one machine may run the router.
+**Where it runs in the fallback.** The router and the MOTU move to **John's
+MacBook** (macOS), beside Ollama and Trabolta's `agents` worker. The rest of
+the house rig (Mosquitto, Zigbee2MQTT, the stagehand `show` and `lights`
+jobs, the TV) stays on **John's Desktop** (Windows), so this Mac's router
+dials the Desktop's broker over the LAN. Only one machine may run the
+router.
 
 ```
 story  sound printer_grind   ─┐ the mod feed (sim directive sfx), read by the router itself
@@ -217,6 +224,8 @@ session).
 job) → `announce` (chime + line on announce.to) → `chime` → `play` one
 placeholder → `stop` → `MOD_CODE=… story` (fire `call_to_the_desktop` on
 a rehearsal: chime + line within 3 s). Its default config is
-`trapped.macbook.yaml`; if the router moved to the Desktop, use the Windows runbook (`scripts/house-desktop/`) instead.
+`trapped.macbook.yaml` (this fallback); with the router on the Desktop (the
+default), walk the same steps there with `--config trapped.desktop.yaml`
+(`scripts/house-desktop/README.md` §7).
 Then ■ Stop house sounds from Run, from a host phone, and over MQTT with
 the uplink down.
