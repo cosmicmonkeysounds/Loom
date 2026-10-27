@@ -95,6 +95,9 @@ export interface ScreenShot {
   cue: string;
   seq: number;
   at: number;
+  /** (wave 32, C5) A glitch shot only: the burst's own words
+   *  (`Night.glitch_text`); absent = the hijack's old constant. */
+  text?: string;
 }
 
 /** What to layer over the base view (K-17 + N-03; `slides.ts` applies the precedence). */
@@ -687,8 +690,15 @@ function shotOf(v: unknown): ScreenShot | null {
   const r = v as Record<string, unknown>;
   if (typeof r["value"] !== "string" || typeof r["cue"] !== "string") return null;
   const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : 0);
-  return { value: r["value"], cue: r["cue"], seq: n(r["seq"]), at: n(r["at"]) };
+  const shot: ScreenShot = { value: r["value"], cue: r["cue"], seq: n(r["seq"]), at: n(r["at"]) };
+  // (wave 32, C5) A glitch's own words: a short line, else none.
+  const text = typeof r["text"] === "string" ? r["text"].trim().slice(0, GLITCH_TEXT_MAX) : "";
+  if (text !== "") shot.text = text;
+  return shot;
 }
+
+/** (wave 32) The longest glitch line a screen shows (the server clips at 120 too). */
+export const GLITCH_TEXT_MAX = 120;
 
 /** A program off the wire; anything malformed reads as "nothing to layer". */
 export function programOf(raw: unknown): ScreenProgram {

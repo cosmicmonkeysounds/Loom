@@ -27,13 +27,15 @@ import { setMomentUp, setSceneClockUp } from "./moment-bus.ts";
 import { MomentQueue, componentFor, drawsCountdown, faceFlashFor, pickScene, type ActiveScene } from "./pick.ts";
 import { SCENES } from "./registry.ts";
 import { forgetSpeech, recentSpeech, speechLive } from "./speech-bus.ts";
+import { AdBurst } from "./kit/ad-burst.tsx";
+import { BURST_MS } from "../slides.ts";
 import type { SceneDef, SceneProps, SceneTarget, SceneVoice } from "./types.ts";
 import { voiceState, type VoiceState } from "./voice-clock.ts";
 import { voiceSceneOf } from "./voice-scenes.ts";
 
 export interface CutsceneLayerProps {
   state: ScreenState | null;
-  layers: Pick<ScreenLayers, "overlay" | "slide">;
+  layers: Pick<ScreenLayers, "overlay" | "slide"> & Partial<Pick<ScreenLayers, "burst">>;
   /** No slides here right now (a pilot, a peek, a room terminal): no scenes either. */
   bare: boolean;
   /** The slide's plain card (`SlideView`), for a slide no scene draws. */
@@ -103,7 +105,10 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
   const now = serverNow(state, Date.now());
   const pick = pickScene({ state, now, layers, bare, target, scenes, queue, slideDone: (seq) => ended.has(seq), historyStarts: history, roomDone: (key) => roomEnded.has(key) });
   const room = pick.room ?? null;
-  const playing = typeof pick.base === "object" || pick.top !== null || room !== null || queue.pending > 0;
+  // (wave 32) An ad burst over whatever is up: its own clock, off the queue.
+  const burst = layers.burst ?? null;
+  const burstT = burst === null ? null : Math.max(0, now - burst.at);
+  const playing = typeof pick.base === "object" || pick.top !== null || room !== null || queue.pending > 0 || (burstT !== null && burstT < BURST_MS);
   useSceneClock(playing, SCENE_FPS);
 
   // The TV face wears a starting scene's mood — once per scene, never again
@@ -159,7 +164,7 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
       scene={s}
       now={hidden ? baseNow.current : now}
       t={hidden ? null : voicedT.get(s.key) ?? null}
-      voice={voiced.get(s.key)?.spoken ?? null}
+      voice={sceneVoiceOf(voiced.get(s.key))}
       caption={voiceCaption(s, voiced.get(s.key))}
       state={state}
       target={target}
@@ -197,6 +202,7 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
           {host(room)}
         </div>
       )}
+      {burst !== null && burstT !== null && <AdBurst key={burst.seq} t={burstT} seq={burst.seq} text={burst.text} sfx={sfx} reduced={reduced} />}
     </>
   );
 }
@@ -222,6 +228,12 @@ function voiceOfScene(s: ActiveScene, now: number, events: Parameters<typeof voi
   const t = Math.max(v.t, voicedT.get(s.key) ?? 0);
   voicedT.set(s.key, t);
   return { ...v, t };
+}
+
+/** The sentence a scene is voicing, with its mark (wave 32: a scene of several lines). */
+export function sceneVoiceOf(v: VoiceState | undefined): SceneVoice | null {
+  if (v === undefined || v.spoken === null) return null;
+  return v.mark == null ? v.spoken : { ...v.spoken, mark: v.mark };
 }
 
 /** Drop the clocks of scenes no longer on screen. */
@@ -273,6 +285,7 @@ export function sameSceneFrame(a: Omit<SceneHostProps, "onDone">, b: Omit<SceneH
     a.t === b.t &&
     a.voice?.seq === b.voice?.seq &&
     a.voice?.index === b.voice?.index &&
+    a.voice?.mark === b.voice?.mark &&
     a.voice?.text === b.voice?.text &&
     a.caption === b.caption &&
     a.state === b.state &&

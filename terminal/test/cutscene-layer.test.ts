@@ -181,6 +181,15 @@ describe("a voiced scene on the TV (wave 26, V1)", () => {
     expect(voiceCaption(s("verdict"), { ...v, spoken: null })).toBeNull();
     expect(voiceCaption(s("verdict"), undefined)).toBeNull();
   });
+
+  it("(wave 32) hands a scene the sentence with its mark: its place across all his lines", async () => {
+    const { sceneVoiceOf } = await import("../src/cutscene/CutsceneLayer.tsx");
+    const v = { t: 1, spoken: { seq: 12, index: 0, text: "I did not freeze." }, mark: 7, ended: false, endAt: null };
+    expect(sceneVoiceOf(v)).toEqual({ seq: 12, index: 0, text: "I did not freeze.", mark: 7 });
+    expect(sceneVoiceOf({ ...v, mark: null })).toEqual({ seq: 12, index: 0, text: "I did not freeze." });
+    expect(sceneVoiceOf({ ...v, spoken: null, mark: null })).toBeNull();
+    expect(sceneVoiceOf(undefined)).toBeNull();
+  });
 });
 
 describe("a voiced moment whose voice never comes (wave 26, V1)", () => {

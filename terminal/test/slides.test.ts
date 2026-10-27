@@ -191,7 +191,7 @@ describe("screen layers — precedence (N-03)", () => {
   });
 
   it("no answer yet: nothing on top", () => {
-    expect(screenLayers(null, T0, { piloting: false })).toEqual({ overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0, glitch: null });
+    expect(screenLayers(null, T0, { piloting: false })).toEqual({ overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0, glitch: null, burst: null });
   });
 
   // Fact M19: a clip Trabolta puts on the terminals never cuts a story slide short.
@@ -501,8 +501,8 @@ describe("the glitch takeover (wave 26, T2)", () => {
 
   it("plays while its cue is fresh, for GLITCH_MS, from its own at", () => {
     const s = seen({ program: glitchAt(T0) });
-    expect(at(s, 0).glitch).toEqual({ seq: 9, at: T0, t: 0 });
-    expect(at(s, 2500).glitch).toEqual({ seq: 9, at: T0, t: 2500 });
+    expect(at(s, 0).glitch).toEqual({ seq: 9, at: T0, t: 0, text: GLITCH_TEXT });
+    expect(at(s, 2500).glitch).toEqual({ seq: 9, at: T0, t: 2500, text: GLITCH_TEXT });
     expect(at(s, GLITCH_MS - 1).glitch).not.toBeNull();
     expect(at(s, GLITCH_MS).glitch).toBeNull();
     expect(GLITCH_MS).toBe(8000);

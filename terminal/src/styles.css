@@ -1046,6 +1046,9 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   animation: sg-big 0.3s steps(3, end) 1 both;
 }
 @keyframes sg-big { 0% { opacity: 0; transform: scale(1.6); } 100% { opacity: 1; transform: none; } }
+/* (wave 32, C5) A burst's own words: longer than the zeroes, so smaller and wrapped. */
+.sg-big[data-long] { top: 34%; padding: 0 5vw; font-size: clamp(28px, 5.6vw, 120px); letter-spacing: 0.02em; line-height: 1.1; }
+.sg-win-bar > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* The tear-out (6–8 s): torn lines sweep across back to what is under it. */
 .sg-tear {
   position: absolute;

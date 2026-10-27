@@ -308,7 +308,8 @@ export function resetGlitchSounds(): void {
  * The glitch takeover: every terminal, 8 s, once (`slides.ts` `glitchLayer`
  * decides when). CSS only — no canvas, no frame loop, nothing lazy that could
  * fail to load: a dark field, colour bands tearing sideways (0–0.7 s), a
- * cascade of Win98 error windows reading the hijack's zeroes over scanlines,
+ * cascade of Win98 error windows reading the hijack's zeroes (wave 32: the
+ * cue's own words, `text`, when the story set them) over scanlines,
  * a rolling bar and a coarse noise (0.7–6 s, the whole layer jolting on a
  * 2.5 Hz step), then it tears out to whatever is under it (6–8 s). Nothing
  * flashes faster than 3 Hz and no field is red; reduced motion holds one
@@ -316,7 +317,7 @@ export function resetGlitchSounds(): void {
  * taps while it is up (the ⚙ stays over it). `t0` is how far in this page
  * first drew it (a poll's lateness): the animations start that far along.
  */
-export function GlitchTakeover({ seq, at: cueAt, t }: { seq: number; at: number; t: number }) {
+export function GlitchTakeover({ seq, at: cueAt, t, text = GLITCH_TEXT }: { seq: number; at: number; t: number; text?: string }) {
   // Drawn from where it stood when this page first saw it (one poll late at most).
   const [t0] = useState(() => Math.max(0, Math.min(GLITCH_MS, t)));
   // Gone the moment it ends, not on the layer's next 1 s re-decide: an
@@ -351,18 +352,18 @@ export function GlitchTakeover({ seq, at: cueAt, t }: { seq: number; at: number;
           {GLITCH_WINDOWS.map((w, i) => (
             <div key={i} className="sg-win" style={{ left: `${w.x}%`, top: `${w.y}%`, ...at(GLITCH_BEATS.cascade + i * GLITCH_WIN_EVERY_MS) }}>
               <div className="sg-win-bar">
-                <span>{GLITCH_TEXT}</span>
+                <span>{text}</span>
                 <span className="sg-win-x">×</span>
               </div>
               <div className="sg-win-body">
                 <span className="sg-win-icon">✖</span>
-                <span>{GLITCH_TEXT}</span>
+                <span>{text}</span>
               </div>
               <div className="sg-win-ok">OK</div>
             </div>
           ))}
-          <div className="sg-big" style={at(GLITCH_BEATS.cascade + 300)}>
-            {GLITCH_TEXT}
+          <div className="sg-big" data-long={text.length > GLITCH_TEXT.length ? "" : undefined} style={at(GLITCH_BEATS.cascade + 300)}>
+            {text}
           </div>
         </div>
       </div>
@@ -400,7 +401,7 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }
       {layers.overlay !== null && <OverlayView kind={layers.overlay} />}
       {layers.corner !== null && (cutscene !== undefined ? <SceneCorner seconds={layers.corner} /> : <CornerCountdown seconds={layers.corner} />)}
       <Flicker seq={layers.flicker} />
-      {layers.glitch !== null && <GlitchTakeover key={layers.glitch.seq} seq={layers.glitch.seq} at={layers.glitch.at} t={layers.glitch.t} />}
+      {layers.glitch !== null && <GlitchTakeover key={layers.glitch.seq} seq={layers.glitch.seq} at={layers.glitch.at} t={layers.glitch.t} text={layers.glitch.text} />}
       {(covered || layers.glitch !== null) && <div className="screen-gear">{gear}</div>}
     </>
   );
