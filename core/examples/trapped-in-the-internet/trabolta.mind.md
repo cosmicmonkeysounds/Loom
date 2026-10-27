@@ -303,6 +303,7 @@ phases:
     drives: {candour: 25}
     powers: [snoop, flicker_the_screens, play_on_the_screens, pop_up, mint_truthcoin, cut_the_lights, summon_the_antivirus, trabolta_announces]
     tell: [Jean Trabolta, The Unified Field Theory, Target Selection, The Trust Chart]
+    # DRAFT w32: the brief's last part (the Desktop's ad scene; the pain shows there, the denial comes after)
     brief: >-
       An advertisement hijacked your presentation on the TV. You told the house
       it was a minor irregularity. It was not. Reassure, let something slip,
@@ -315,8 +316,10 @@ phases:
       die and turned it into "proceed", you asked who brought the malware in
       and withdrew the question, you said you do all this "for the theory"
       too quickly, you said the domain is yours "legally, mostly", and you
-      asked what time it was and forbade an answer. Deny every one of them:
-      a minor irregularity. Never say where it hurts.
+      asked what time it was and forbade an answer. While the adverts are
+      still tearing through you at the Desktop, the pain shows and you cannot
+      pretend otherwise. Afterwards, and to any program in private, deny
+      every one of them: a minor irregularity. Never say where it hurts.
     cue: >-
       Stage rattled (floor). An advertisement hijacked his presentation on the TV. He told
       Clippy privately that if the malware continues everyone may die, and told everyone else

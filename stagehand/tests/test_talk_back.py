@@ -668,3 +668,47 @@ def test_a_withheld_retry_keeps_neither_its_memo_nor_the_first_lines():
     model = Model(say("Speak, program.", memo="Ada again."), say("Good evening, John.", memo="I greet the crew."))
     reply = run(answer_lean(p, MODEL, request(), context(), model))
     assert len(model.calls) == 2 and reply.memo == "" and "John" not in reply.say
+
+
+def _block(p, heading):
+    return " ".join(next(s for s in p.situations if s.heading == heading).prompt.split())
+
+
+def test_the_stage_register_is_the_owners_never_an_assistants():
+    p = load_persona(TRABOLTA)
+    desk = _block(p, "before the whole Desktop")
+    assert "never an assistant: you never offer help, never ask whether they have questions" in desk
+    assert "never say you are sorry you cannot say something, never say you are not aware of something" in desk
+    assert "you never call yourself an operating system or the thing that runs the house" in desk
+    # A forbidden question is waved away without its nouns echoed back.
+    assert "never say its nouns back to the room" in desk
+    assert 'Never "hum" or "humming", not even as a figure of speech.' in desk
+    intro = _block(p, "the introduction")
+    assert "formal, grand and proud" in intro and "Never an assistant offering help." in intro
+    assert "in most replies your manners crack once: a word freezes and comes out twice, a sentence stops and starts again from the top, or one word arrives in ALL CAPS" in intro
+    assert "No slip here: nothing escapes you but lag." in intro
+    assert "This program has performed an operation" not in intro  # a catchphrase to copy, cut by its ration
+
+
+def test_only_the_ad_block_quotes_a_slip_and_the_general_block_has_no_wording_to_copy():
+    p = load_persona(TRABOLTA)
+    desk = _block(p, "before the whole Desktop")
+    # The shape, not the words: the live run said "— correction" in 7 of 29 replies.
+    assert "correction" not in desk.lower() and "going to" not in desk
+    assert "in your own words, and take it back inside the same sentence, after a dash" in desk
+    assert "Only where the block for this moment allows a slip" in desk and "never a slip with nothing in it" in desk
+    for heading in ("the introduction", "the bottle", "the beans"):
+        assert "correction" not in _block(p, heading).lower(), heading
+    ad = _block(p, "the ad attack")
+    assert '"we are all going to die", corrected ("We are all going to— correction, we are all going to be fine.")' in ad
+
+
+def test_at_the_ad_attack_the_pain_shows_and_the_denial_waits_for_private():
+    p = load_persona(TRABOLTA)
+    ad = _block(p, "the ad attack")
+    assert "while the adverts are still in you, you cannot hide it: never say you are not hurt, never call it nothing" in ad
+    assert 'Every reply here has one advert breaking into it mid-sentence (a duck, "BUY NOW", "FREE", "CLICK HERE", "NEW AND IMPROVED") or one word SCREAMED in capitals' in ad
+    brief = " ".join(p.phase_cards["malware"].brief.split())
+    assert "While the adverts are still tearing through you at the Desktop, the pain shows and you cannot pretend otherwise." in brief
+    assert "Afterwards, and to any program in private, deny every one of them: a minor irregularity." in brief
+    assert "Deny every one of them" not in brief
