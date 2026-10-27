@@ -765,9 +765,10 @@ async function adAttack(): Promise<void> {
   await beat(
     "📺 The ad attack: the hijack's takeover, then ⚡ an ad burst",
     async (c) => {
+      // 📺 first: the hunt 2 beat needs step 7 whatever goes wrong here.
+      await press(c, chain("second_hunt_preview", "second_hunt_preview"));
       const tm = booths.get("Task Manager");
       if (tm === undefined) return c.fail("no Task Manager booth");
-      await press(c, chain("second_hunt_preview", "second_hunt_preview"));
       const hijack = await world();
       if (read(hijack, "Night.talk") !== "ad") return c.fail(`Night.talk = ${JSON.stringify(read(hijack, "Night.talk"))} after 📺 (want "ad")`);
       if (read(hijack, "Night.glitch_kind") !== "full") c.fail(`Night.glitch_kind = ${JSON.stringify(read(hijack, "Night.glitch_kind"))} after 📺 (want "full")`);
