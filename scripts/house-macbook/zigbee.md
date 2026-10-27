@@ -9,7 +9,10 @@ Zigbee: the `show` job and the `lights` job publish to Z2M's MQTT topics
 jobs run on **John's Desktop (Windows)**. Install Z2M there with
 [`scripts/house-desktop/README.md`](../house-desktop/README.md) §3, then
 come back here for **steps 5–9** (the lights job, pairing, checking,
-placing, backing up), which are the same on any machine. Steps 1–4 are
+placing, backing up), which are the same on any machine. The house's
+other bulbs (Philips Hue and ThirdReality ZL1: how to reset each, names,
+`power_on_behavior`, groups) and the WLED strip are in the Desktop
+README's §5–6. Steps 1–4 are
 the macOS install, for a bench Mac or a fallback with the Desktop down.
 On Windows, `mosquitto_pub` / `mosquitto_sub` are
 `"C:\Program Files\mosquitto\mosquitto_pub.exe"` / `…_sub.exe`, and the
@@ -161,8 +164,9 @@ bulb, until step 6).
    `uv run stagehand lights pair --config trapped.desktop.yaml`).
 2. Put the bulb in **pairing mode by power-cycling it** at its switch:
    off/on about 5–6 times, ~1 s each, ending on (IKEA: 6 toggles; most
-   Tuya / Gledopto: 3–5; a Hue bulb needs a factory reset first, from the
-   Hue app or Z2M's *Touchlink*). It blinks when it resets. Keep it within a
+   Tuya / Gledopto: 3–5; ThirdReality ZL1: 5–6; a Hue bulb can't be reset
+   this way: Touchlink, its serial number, a Hue dimmer or the Hue app, in
+   the Desktop README's §5.2). It blinks when it resets. Keep it within a
    few metres of the stick for the pairing; it can move after.
 3. The frontend (`:8080`) shows the new device as `0x…` and *interviewing*;
    wait for *successful*.

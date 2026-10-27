@@ -5,12 +5,12 @@
 //! `lights` module is listening and whether a director opened Zigbee pairing.
 //! The House map card's 💡 row reads it every `LIGHTS_POLL_MS`: *💡 lights
 //! module online · N fixtures* (or *offline*), *pairing … s* while joining is
-//! open, and the problems / warnings counts. Placing fixtures, looks and the
-//! pairing button live in the map editor's 💡 Lights tab, not here.
+//! open, and the problems / warnings counts. Placing fixtures and the
+//! pairing button live in the map editor's 💡 Lights tab; looks are
+//! designed there or in Run → House → Cue designer (wave 30).
 //!
-//! The editor has no dependency on `@loom/house`: the wire is parsed here,
-//! defensively; an older server (404) or a malformed answer is null and the
-//! row shows nothing.
+//! The wire is parsed here, defensively; an older server (404) or a
+//! malformed answer is null and the row shows nothing.
 
 /** How often the card re-reads the lights (no long poll). */
 export const LIGHTS_POLL_MS = 15_000
@@ -113,7 +113,7 @@ export function lightsLine(s: LightsStatus): string {
 
 /** The module part's hover: what is (or isn't) listening. */
 export function moduleTitle(s: LightsStatus): string {
-  if (s.module === null) return 'The house Mac’s lights module has not polled this server since it started: the story’s light cues play nowhere (stagehand launchd job lights)'
+  if (s.module === null) return 'The lights module has not polled this server since it started: the story’s light cues play nowhere (stagehand’s lights job on the lights machine)'
   if (!s.module.online) return `The lights module${s.module.name !== '' ? ` on ${s.module.name}` : ''} stopped polling: light cues play nowhere until it is back`
   return `The lights module${s.module.name !== '' ? ` on ${s.module.name}` : ''} is listening; ${s.devices} Zigbee ${s.devices === 1 ? 'device' : 'devices'} reported`
 }

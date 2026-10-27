@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import { parseArgs } from "../lib/args.ts";
 import { ShowClient } from "../lib/client.ts";
-import { type Ctx, doctor, fire, fireLabel, log, roster, rosterWhere, serverChecks, status, watchLoop } from "../lib/commands.ts";
+import { type Ctx, doctor, fire, fireLabel, log, preflight, roster, rosterWhere, serverChecks, status, watchLoop } from "../lib/commands.ts";
 import { ShowError } from "../lib/client.ts";
 import type { Probe } from "../lib/local.ts";
 import { entryMatches, formatEntry, isSecretPath } from "../lib/logfmt.ts";
@@ -90,6 +90,14 @@ test("doctor: red rows make exit 2; a server that is down stops after the health
   const down = fakeServer({ "GET /api/health": { status: 503, body: { ok: false, reason: "starting" } } });
   const rows = await serverChecks(ctxFor(["doctor"], down));
   assert.equal(rows[0]!.level, "fail");
+});
+
+test("preflight: --router takes desktop | macbook (where the sound router runs tonight); anything else is exit 2", async () => {
+  const srv = fakeServer(routes([persona]));
+  const ctx = ctxFor(["preflight", "desktop", "--router", "laptop"], srv);
+  assert.equal(await preflight(ctx), 2);
+  assert.match(ctx.errs.join("\n"), /--router must be desktop \| macbook/u);
+  assert.equal(parseArgs(["preflight", "macbook", "--router", "macbook"]).flags.get("router"), "macbook");
 });
 
 test("status: LAST / NEXT off the lean cue sheet, the show clock, one line per area", async () => {

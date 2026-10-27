@@ -1,17 +1,22 @@
 //! The host's Desk window, as plain decisions (wave 25, docs/loom-house-desk.md
 //! §6.2): the long poll's path, the standby card and its GO, the running
 //! runs, the cue list by section, and the checks walked one row at a time.
+//! Wave 30: Setup (the sound, the lights and each outside mind, with what to
+//! do), Try it (a look, a story sound or a line on the speakers, no
+//! marks) and the short *How the Desk works*.
 //! The desk itself — its sections, its steps in words, the checks, their
 //! progress and the status chips — is core's `house-desk.ts` (frozen,
 //! imported by path like `cue-sheet.ts`); this file only arranges it for a
 //! phone. No React, so every rule is tested on plain values.
 
 import {
+  DESK_SAY_MAX,
   checkProgress,
   cueEvents,
   cueTimeline,
   deskChecks,
   deskSections,
+  deskSetup,
   deskStatus,
   nextOpenCheck,
   runProgress,
@@ -28,11 +33,13 @@ import {
   type DeskDurations,
   type DeskMark,
   type DeskRun,
+  type DeskSetupRow,
+  type DeskTestCall,
   type DeskView,
 } from "../../../core/src/house-desk.ts";
 
-export type { DeskCheckRow, DeskCheckSection, DeskChip, DeskView };
-export { deskChecks, deskStatus, testNeedsConfirm };
+export type { DeskCheckRow, DeskCheckSection, DeskChip, DeskSetupRow, DeskView };
+export { DESK_SAY_MAX, deskChecks, deskSetup, deskStatus, testNeedsConfirm };
 
 // --- the long poll ---------------------------------------------------------------
 
@@ -320,4 +327,127 @@ export function recentLines(recent: readonly DeskActivity[], n = 5): string[] {
 /** A status chip's class: its tone. */
 export function chipClass(c: Pick<DeskChip, "tone">): string {
   return `host-desk-chip ${c.tone}`;
+}
+
+// --- setup (wave 30) ---------------------------------------------------------------------
+
+/** The Setup section: one card per system (`deskSetup`), or one line when all is well. */
+export interface DeskSetupView {
+  /** Every row is ok: the section folds to `line` (a tap opens the cards). */
+  allOk: boolean;
+  /** "All connected ✓ · 🔊 Sound · 💡 Lights · 🧠 Trabolta". */
+  line: string;
+  rows: DeskSetupRow[];
+}
+
+export function setupView(view: Pick<DeskView, "house" | "now">): DeskSetupView {
+  const rows = deskSetup(view);
+  const allOk = rows.every((r) => r.tone === "ok");
+  const bad = rows.filter((r) => r.tone === "bad").length;
+  const warn = rows.filter((r) => r.tone === "warn").length;
+  const line = allOk ? `All connected ✓ · ${rows.map((r) => r.title).join(" · ")}` : [bad > 0 ? `${bad} not working` : null, warn > 0 ? `${warn} to look at` : null].filter((x) => x !== null).join(" · ");
+  return { allOk, line, rows };
+}
+
+/** A card's steps start open only when that system is down (`bad`): a
+ *  warning folds to *What to do (n)*, so the window still fits a phone. */
+export function setupOpen(row: Pick<DeskSetupRow, "tone" | "fix">): boolean {
+  return row.tone === "bad" && row.fix.length > 0;
+}
+
+/** A setup card's mark beside its title. */
+export function setupMark(tone: DeskSetupRow["tone"]): string {
+  return tone === "ok" ? "✓" : tone === "warn" ? "⚠" : "✗";
+}
+
+/** A setup card's class: its tone. */
+export function setupClass(row: Pick<DeskSetupRow, "tone">): string {
+  return `host-desk-setup-card ${row.tone}`;
+}
+
+// --- try it (wave 30) -------------------------------------------------------------------
+
+/** A list folds behind its count when it is longer than this. */
+export const TRY_OPEN_MAX = 6;
+
+/** One tap-to-play in Try it: a check's row and test, with no mark. */
+export interface TryRow {
+  key: string;
+  kind: "look" | "sound";
+  /** The look's or the sound's name (what the note says). */
+  name: string;
+  detail: string;
+  /** This one's own trouble ("no file on the router's machine"); the
+   *  list's `away` is said once, above it. */
+  hints: string[];
+  test: DeskTestCall;
+}
+
+/** One Try it list: the house's looks or the story's sounds. */
+export interface TryGroup {
+  id: "looks" | "sounds";
+  title: string;
+  rows: TryRow[];
+  /** Starts unfolded (short lists only). */
+  open: boolean;
+  /** Why nothing in it may play right now, said once for the list. */
+  away: string | null;
+}
+
+/** Why the house can't play a sound / a light right now (the checks' own words). */
+function awayOf(p: { online: boolean; lastSeen: number | null } | null, what: string): string | null {
+  if (p?.online === true) return null;
+  return p === null || p.lastSeen === null ? `${what} has never connected` : `${what} is offline`;
+}
+
+/** The Try it lists: the looks first (quick to see), then the story sounds. */
+export function tryGroups(view: Pick<DeskView, "house" | "marks">): TryGroup[] {
+  const sections = deskChecks(view);
+  const h = view.house;
+  const group = (id: TryGroup["id"], title: string, away: string | null): TryGroup => {
+    const rows = (sections.find((s) => s.id === id)?.rows ?? []).map((r): TryRow => ({ key: r.key, kind: id === "looks" ? "look" : "sound", name: r.label, detail: r.detail, hints: r.hints.filter((x) => x !== away), test: r.test }));
+    return { id, title, rows, open: rows.length <= TRY_OPEN_MAX, away };
+  };
+  return [group("looks", "💡 Looks", awayOf(h.lightsModule, "the lights module")), group("sounds", "▶ Story sounds", awayOf(h.router, "the sound router"))].filter((g) => g.rows.length > 0);
+}
+
+/** The note after a Try it tap: what was sent, and whether anything is
+ *  there to play it (the server answers `router` for sound, `module` for
+ *  a light). What the house did then shows under *Lately*. */
+export function tryDone(kind: "look" | "sound" | "say", name: string, answer: unknown): string {
+  const a = answer !== null && typeof answer === "object" ? (answer as Record<string, unknown>) : {};
+  if (kind === "look") return a["module"] === false ? `💡 ${name} sent — but the lights module is offline` : `💡 Playing the look ${name}`;
+  const router = a["router"] !== null && typeof a["router"] === "object" ? (a["router"] as { online?: unknown }) : null;
+  const away = router !== null && router.online === false;
+  const what = kind === "say" ? "📢 Said on the speakers" : `▶ Playing ${name}`;
+  return away ? `${what} — but the sound router is offline` : what;
+}
+
+/** The "Say on the speakers" call, or null while there is nothing to say
+ *  (or too much: the server's cap, `DESK_SAY_MAX`). */
+export function sayCall(text: string): DeskTestCall | null {
+  const t = text.trim();
+  if (t === "" || t.length > DESK_SAY_MAX) return null;
+  return { route: "/api/mod/audio/play", body: { say: t } };
+}
+
+/** "12 / 280", shown under the box. */
+export function sayCount(text: string): string {
+  return `${text.length} / ${DESK_SAY_MAX}`;
+}
+
+// --- how the Desk works ----------------------------------------------------------------
+
+/** The folded intro at the top of the window: what each part is for. The
+ *  outside minds are named from the view (none on an older server). */
+export function deskHow(view: Pick<DeskView, "house">): string[] {
+  const minds = (view.house.minds ?? []).map((m) => m.name);
+  const what = minds.length > 0 ? `the sound, the lights and ${minds.join(", ")}` : "the sound and the lights";
+  return [
+    `Setup says whether ${what} are connected, and what to do when one isn't.`,
+    "Try it plays one look, one story sound or a line on the speakers: a quick test, nothing is marked.",
+    "GO plays the cue on STANDBY, then stands by the next one. Tap any cue in the list to stand it by.",
+    "Checks: walk the house with your phone, test each speaker, sound and light, and mark ✓ or ✗.",
+    "Cues are built in the editor's Run → House → Cue designer. ■ STOP ALL is the panic: it stops every cue and the house sounds.",
+  ];
 }

@@ -19,7 +19,7 @@ import { flagOn, flagStr, listFlag, watchSeconds } from "./args.ts";
 import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, KEY_SPOTS, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "./checks.ts";
 import type { ShowClient } from "./client.ts";
 import { ShowError } from "./client.ts";
-import { desktopChecks, macbookChecks, MACHINES, type Machine, type Probe, serverroomChecks, spotFocus, tentChecks } from "./local.ts";
+import { desktopChecks, macbookChecks, MACHINES, type Machine, type Probe, ROUTER_HOSTS, type RouterHost, serverroomChecks, spotFocus, tentChecks } from "./local.ts";
 import { entryMatches, formatEntry, maskEntry } from "./logfmt.ts";
 import type { Check, Level } from "./ui.ts";
 import { ago, clockText, exitCode, mark, maskCode, paint, renderChecks, renderCsv, renderTable, summary, worst } from "./ui.ts";
@@ -434,6 +434,13 @@ export async function preflight(ctx: Ctx): Promise<number> {
     ctx.err(`preflight needs a machine: ${MACHINES.join(" | ")}`);
     return 2;
   }
+  // Where the sound router runs tonight: the Desktop (default) or the
+  // MacBook fallback. Only `macbook` and `desktop` read it.
+  const router = (flagStr(ctx.args, "router") ?? "desktop") as RouterHost;
+  if (!(ROUTER_HOSTS as readonly string[]).includes(router)) {
+    ctx.err(`--router must be ${ROUTER_HOSTS.join(" | ")} (where the sound router runs tonight; default desktop)`);
+    return 2;
+  }
   const server = await serverChecks(ctx);
   const focus = MACHINE_SPOT[machine];
   const own: Check[] = [];
@@ -446,18 +453,18 @@ export async function preflight(ctx: Ctx): Promise<number> {
   }
   const local =
     machine === "macbook"
-      ? await macbookChecks(ctx.probe)
+      ? await macbookChecks(ctx.probe, router)
       : machine === "desktop"
-        ? await desktopChecks(ctx.probe)
+        ? await desktopChecks(ctx.probe, router)
         : machine === "serverroom"
           ? await serverroomChecks(ctx.probe, ctx.client.server)
           : await tentChecks(ctx.probe, ctx.client.server);
   const all = [...server, ...own, ...local];
   if (ctx.json) {
-    ctx.out(JSON.stringify({ machine, server, own, local, exit: exitCode(all) }, null, 2));
+    ctx.out(JSON.stringify({ machine, router, server, own, local, exit: exitCode(all) }, null, 2));
     return exitCode(all);
   }
-  ctx.out(paint(`showctl preflight ${machine} · ${ctx.client.server}`, "1", ctx.color));
+  ctx.out(paint(`showctl preflight ${machine} · ${ctx.client.server}${machine === "macbook" || machine === "desktop" ? ` · router on the ${router === "desktop" ? "Desktop" : "MacBook"}` : ""}`, "1", ctx.color));
   ctx.out(paint("── the server", "2", ctx.color));
   ctx.out(renderChecks(server, { color: ctx.color, verbose: flagOn(ctx.args, "verbose") }));
   if (own.length > 0) {

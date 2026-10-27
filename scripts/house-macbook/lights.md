@@ -2,9 +2,13 @@
 
 Stagehand's **`lights`** module turns the story's `cue <look>` into
 Zigbee2MQTT and WLED commands, for every look the event's `lights.json`
-defines. This wave's file holds one fixture: the server room's RGB bulb
-`server_room_rgb` (Trabolta's heart). Every other light in the house is
-still `trapped.house.yaml`'s `show` rules (scenes + WLED presets).
+defines. The repo's file holds one fixture so far: the server room's RGB
+bulb `server_room_rgb` (Trabolta's heart). The house's Hue and ZL1 bulbs and
+the WLED strip join it as they are placed on the map (the Desktop README's
+§8: `kind: zigbee` / `zigbee-group` with the Zigbee2MQTT name, `kind: wled`
+with `device: wled/<name>`), and their looks are designed in Run → House →
+Cue designer. Until a look is in `lights.json`, the `lights_*` cues are
+`trapped.house.yaml`'s `show` rules (group scenes + WLED presets).
 
 ```
 story  cue heart_wake ─► mod feed ─► stagehand lights ─► zigbee2mqtt/server_room_rgb/set (timed steps)

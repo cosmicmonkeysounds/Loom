@@ -2,7 +2,7 @@
 //!
 //! Flags that take a value: `--watch [N]` (N optional, seconds), `--type`,
 //! `--who`, `--where`, `--server`, `--code`, `--last`, `--subject`,
-//! `--label`, `--arg k=v` (repeatable). Everything else that starts with
+//! `--label`, `--router`, `--arg k=v` (repeatable). Everything else that starts with
 //! `--` is a boolean. `-h` = `--help`, `-v` = `--verbose`.
 
 export interface Args {
@@ -15,7 +15,7 @@ export interface Args {
   error: string | null;
 }
 
-const VALUED = new Set(["type", "who", "where", "server", "code", "last", "subject", "label"]);
+const VALUED = new Set(["type", "who", "where", "server", "code", "last", "subject", "label", "router"]);
 
 export function parseArgs(argv: readonly string[]): Args {
   const out: Args = { command: null, positionals: [], flags: new Map(), argPairs: [], error: null };

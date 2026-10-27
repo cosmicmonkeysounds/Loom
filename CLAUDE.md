@@ -162,19 +162,31 @@ are in `TECH.md`.
 | Machine | Runs |
 |---|---|
 | VPS (`app.mapsandducks.com`) | The event server, Postgres, Caddy |
-| John's MacBook (macOS, M3 Max 48 GB) | Ollama `gpt-oss:20b` + stagehand `agents` (`stagehand/laptop.yaml`, local); `predeploy` / `ship` / `sync-show` / `showbackup`; a director's Run console; **by default** the audio router (stagehand `audio`, `trapped.macbook.yaml`) with the MOTU 828x + ADAT, dialling the Desktop's broker on :1884 |
-| John's Desktop (Windows) | The living-room TV over HDMI (Chrome kiosk, spot `desktop-tv`); Mosquitto (anonymous on 127.0.0.1:1883, password-only `props` on the LAN at :1884); Zigbee2MQTT on the CC2652P; stagehand `show` + `lights` as Task Scheduler tasks (`trapped.desktop.yaml`). The audio router may move here once the MOTU is proven on Windows. Runbook: `scripts/house-desktop/README.md` |
+| John's MacBook (macOS, M3 Max 48 GB) | **Trabolta**: Ollama `gpt-oss:20b` + stagehand `agents` (`stagehand/laptop.yaml`, local); `predeploy` / `ship` / `sync-show` / `showbackup`; a director's Run console. The audio router's fallback host only (`trapped.macbook.yaml`) |
+| John's Desktop (Windows) | **The audio and the lights** (decided 2026-10-27): the audio router (stagehand `audio`) with the MOTU 828x + ADAT; Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs; the RGB strip's WLED (ESP32) controller over Wi-Fi; Mosquitto (anonymous on 127.0.0.1:1883, password-only `props` on the LAN at :1884); stagehand `show` + `lights` + `audio` as Task Scheduler tasks (`trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, spot `desktop-tv`). Runbook: `scripts/house-desktop/README.md` |
 | Steph's laptop | The server-room terminal in Chrome (`…&spot=server-room&door=serial&camera=user`) + the Grand Central M4 over USB (door + patch bay); webcam, monitor, mouse, keyboard |
 | John's old laptop | The tent: `/terminal/?code=<mod>&spot=tent&announce=1`, the reinstall wizard and web game. Needs WebGL2 |
 
 Also in the show: the wall tablets (Fully Kiosk), the Server Door chess
 and casino terminals, a Quest 3, the server-room RGB bulb, and phones.
 
-House announcements need both house machines: the server → the Desktop's
-`show` job → MQTT `show/announce` → the router → the speakers. With the
-broker or `show` down, only `&announce=1` terminals still speak them.
+House announcements go the server → the Desktop's `show` job → MQTT
+`show/announce` → the router (on the Desktop too, since 2026-10-27) → the
+speakers. With the broker or `show` down, only `&announce=1` terminals
+still speak them.
+
+**Run → House** in the editor is where the house is connected, tested and
+designed (wave 30): **🔌 Setup** (is the sound router, the lights module
+and Trabolta's mind connected, and what to do), **🎛 Desk** (the cue list,
+GO, the checks) and **🎨 Cue designer** (lighting looks with a live preview
+and templates, sound auditions, desk cues, and the `cue` / `sound` line
+the story fires each with). A host's phone has the same Setup and checks in
+its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
+`50-cue-designer.md`, `47-house-desk.md`.
 
 ### Release status
+
+Wave 30 (merged to master 2026-10-27, **not shipped**): Run → House's 🔌 Setup and 🎨 Cue designer, the hosts' Desk Setup / Try it, and the Desktop as the audio + lights machine (`start-stagehand.ps1` installs `audio` by default; `showctl preflight` expects the router on the Desktop). Its server side is only additive (`house.minds` on the desk view).
 
 The VPS runs `w27` (master `2e6e36b2`, shipped 2026-10-27; rollback
 `w26`, which had carried waves 18b Stage B through 26 since 2026-10-26),
@@ -213,15 +225,19 @@ the glitch on real phones, and the real speakers.
    Check `/api/health`, then `deploy/release.sh --check-env` on the VPS.
    Rollback is `deploy/rollback.sh` on the VPS.
 4. MacBook (the old house Mac): retire what moved to the Desktop, or every
-   cue fires twice. `uv run stagehand launchd uninstall --job show` and
-   `--job lights`, `scripts/house-macbook/install-alexa.sh --uninstall`, stop
-   Mosquitto (`brew services stop mosquitto`) and the Zigbee2MQTT launchd
-   agent.
+   cue fires twice. `uv run stagehand launchd uninstall --job show`,
+   `--job lights` and `--job audio`, `scripts/house-macbook/install-alexa.sh
+   --uninstall`, stop Mosquitto (`brew services stop mosquitto`) and the
+   Zigbee2MQTT launchd agent; move the CC2652P (+ Z2M's `data/`), the MOTU
+   828x + ADAT expander and `stagehand/media/sounds/` to the Desktop.
+   The MacBook keeps only Trabolta (`agents`).
 5. Desktop: `git pull`, set `server.event` / `mod_passcode` in
    `stagehand/trapped.house.local.yaml`, then
    `scripts\house-desktop\start-stagehand.ps1` (checks the config, installs
-   and starts the `show` and `lights` tasks) **before** the sync, so no old
-   rule posts into the new story.
+   and starts the `show`, `lights` and `audio` tasks; `-NoAudio` leaves the
+   router to the MacBook) **before** the sync, so no old rule posts into
+   the new story. The 828x must show under ASIO first
+   (`scripts/house-desktop/README.md` §3).
 6. MacBook: `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm
    sync-show --replace-audio --replace-maps [--replace-lights] [--replace-desk]`
    **with its reload, before doors**. Wave 26 changed both show maps (the
@@ -229,18 +245,20 @@ the glitch on real phones, and the real speakers.
    maps win without `--replace-maps`. First Download JSON any map edits
    saved to the project and commit them into the repo's `house.json`.
    Restart every other non-ended event.
-7. MacBook: install the router (`uv run stagehand sounds placeholders
-   --config trapped.macbook.yaml`, `uv run stagehand check --only audio
-   --config trapped.macbook.yaml`, `uv run stagehand launchd install --job
-   audio --config trapped.macbook.yaml`); `uv run stagehand launchd restart
-   --job agents`; then Run → Mind → Reset. The router must be wave 26's
-   (desk plays and its report; *Anti Virus* said right, V3): `git pull`
-   first, and if it is already installed, `uv run stagehand launchd restart
-   --job audio --config trapped.macbook.yaml`. Walk Run → House → Checks
-   once it is up.
-8. Desktop: Zigbee2MQTT on the CC2652P, pair the bulb as
-   `server_room_rgb`, place it in the map editor, test each look, Save to
-   project (`scripts/house-desktop/README.md`).
+7. MacBook: `uv run stagehand launchd restart --job agents`; then Run →
+   Mind → Reset (`scripts/house-macbook/trabolta.md`). Desktop: the router
+   (`uv run stagehand sounds placeholders --config trapped.desktop.yaml`,
+   `uv run stagehand check --config trapped.desktop.yaml --only audio`, then
+   `start-stagehand.ps1 -Restart audio` after any `git pull`, so it is wave
+   26's and says *Anti Virus*). Walk every speaker on the map's Audio tab
+   (ASIO's channel order). **Fallback** if the 828x won't run on Windows:
+   `-Stop audio` on the Desktop and `scripts/house-macbook/audio.md` on the
+   MacBook; both preflights then take `--router macbook` / `-NoAudio`.
+8. Desktop: Zigbee2MQTT on the CC2652P; pair the bulb as `server_room_rgb`,
+   then the Hue and ThirdReality ZL1 bulbs and the WLED strip
+   (`scripts/house-desktop/README.md` §5–6); place each in the map editor's
+   💡 Lights tab, Save to project; then Run → House → 🔌 Setup green,
+   Checks walked, and each look ▶ Tested in the 🎨 Cue designer.
 9. Steph's laptop: flash the M4 (`door-m4 1.2.0`), bench with
    `scripts/accept/N-20.sh` and `N-21.sh`, then calibrate the door and
    learn the patch bay in the terminal's ⚙ (always after a reflash).
@@ -254,7 +272,7 @@ the glitch on real phones, and the real speakers.
     time (open question: 19:00 or 20:00; the story's clock reads 7:00 PM
     at the doors).
 
-Run `pnpm showctl doctor` (and `pnpm showctl preflight <macbook|desktop|serverroom|tent>`
+Run `pnpm showctl doctor` (and `pnpm showctl preflight <macbook|desktop|serverroom|tent> [--router desktop|macbook]`
 on each machine) to see what is up. The full list is in `SHOW.html` and
 `SHOWNIGHT.md` §4 (the machines in `TECH.md`).
 

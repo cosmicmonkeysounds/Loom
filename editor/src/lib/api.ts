@@ -14,6 +14,8 @@ import type { MapVariantsResponse, SwitchVariantResult } from '@/lib/map-variant
 import { kingFromScreen, kingFromWire, type KingView } from '@/lib/king'
 import { audioStatusOf, routerOf, type AudioStatus, type AudioStopAnswer } from '@/lib/house-audio'
 import { lightsStatusOf, type LightsStatus } from '@/lib/lights-status'
+import { designerLightsOf, type DesignerLights } from '@/lib/cue-designer'
+import type { LightsConfig } from '@loom/house'
 import type { DeskConfig, DeskTestCall, DeskView } from '@loom/core/house-desk'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
@@ -582,6 +584,26 @@ export const lightsApi = {
   async pair(eventId: string, seconds: number): Promise<{ until: number | null }> {
     const r = await req<{ until?: unknown }>('POST', `/e/${eventId}/api/mod/lights/pair`, { seconds })
     return { until: typeof r.until === 'number' ? r.until : null }
+  },
+  /** The whole lights config in force, for the Cue designer (wave 30). Null
+   *  from a server with no lights route, or an answer that isn't one. */
+  async config(eventId: string): Promise<DesignerLights | null> {
+    try {
+      return designerLightsOf(await req<unknown>('GET', `/e/${eventId}/api/mod/lights`))
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return null
+      throw e
+    }
+  },
+  /** Save the event's lights (`base`: the version the edit started from;
+   *  409 `stale` when someone saved since, 400 `{problems}` when invalid). */
+  async save(eventId: string, lights: LightsConfig, base?: string): Promise<{ version: string; warnings: string[] }> {
+    const r = await req<{ version?: unknown; warnings?: unknown }>('POST', `/e/${eventId}/api/mod/lights`, base !== undefined ? { lights, base } : { lights })
+    return { version: typeof r.version === 'string' ? r.version : '', warnings: Array.isArray(r.warnings) ? r.warnings.filter((w): w is string => typeof w === 'string') : [] }
+  },
+  /** The lights in force become the project's `lights.json` (409 `no project`). */
+  async project(eventId: string): Promise<void> {
+    await req<unknown>('POST', `/e/${eventId}/api/mod/lights/project`, {})
   },
 }
 

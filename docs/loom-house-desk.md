@@ -268,6 +268,36 @@ it needs a server project.
 - **Zigbee pairing** (`/api/mod/lights/pair`) and *Reset marks*, director
   only.
 
+### 6.1b Editor: the Cue designer and Setup (wave 30)
+
+Run → House has three views under the status strip (`store/house-view.ts`):
+**Desk** (§6.1), **Cue designer** and **Setup**. The keys of §6.1 work in
+the Desk view only.
+
+- **Cue designer** (`components/house/CueDesigner.tsx`, store
+  `store/cue-designer.ts`, pure `lib/cue-designer.ts`). It reads
+  `GET /api/mod/lights` (the whole `lights.json` in force) and the map
+  (`/api/spatial/house`) every 15 s while nothing is edited, and edits the
+  looks with `@loom/house`'s `look-edit.ts` ops, previews them with
+  `look-preview.ts` (`previewAt` over `planLook`) and starts new ones from
+  `look-templates.ts` (`lookFromTemplate`, Zigbee-safe, holding the
+  targets' safety floor `lookFloor`). Save is `POST /api/mod/lights {lights,
+  base}` (409 `stale` → ask), Save to project `POST
+  /api/mod/lights/project`; ▶ Test on the house is `lights/test {look}`
+  (saving first when the look is dirty), ▶ Try a step `lights/test
+  {fixture, set}`, an audition `audio/play {sound, to?, gain?}`. Every
+  test asks first while `live`. Sounds and desk cues come from the desk
+  view; *+ Desk cue* builds one (`soundCue` / `lookCue`) into the desk
+  draft and opens it in the Desk view's inspector. **In the story** finds
+  the `cue X` / `sound X` statements and `when X:` headers in the indexed
+  story (`storyUses`) and opens them in Writing.
+- **Setup** (`components/house/SetupPanel.tsx`): `deskSetup(view)` (pure,
+  `house-desk.ts`): one row each for the sound router, the lights module
+  and every `mind: external` character (`house.minds`), with a tone, a
+  status line and what to do. The same rows are the hosts' Desk Setup
+  (§6.2). Then the bring-up order, 🔗 Pair a bulb, the checks' progress
+  and the help articles (`house-setup`, `cue-designer`, `house-desk`).
+
 ### 6.2 Play: the host's Show and Desk
 
 A host booth gets two windows in place of the pull-up drawer. The taskbar
@@ -285,12 +315,27 @@ reads `Show · Chats · Desk · Scan`.
   window (Chats, a room) is open, so a host can fire without leaving. A tap
   on it opens Show; the drawer is gone.
 - **Desk** (a lazy chunk):
-  - the status chips, ■ STOP ALL, and the standby cue with a big **GO**
-    (its story events named), then the running runs;
+  - the status chips, ■ STOP ALL, and a folded *How the Desk works*
+    (`deskHow`: Setup, Try it, GO, the checks, where cues are built, STOP
+    ALL);
+  - **Setup** (wave 30), above STANDBY: one card per `deskSetup` row
+    (sound, lights, each outside mind), tone-coloured with its status
+    line and *What to do* (the `fix` steps: open for `bad`, folded for
+    `warn`); one *All connected ✓* line, tap to unfold, when every row is
+    `ok`;
+  - the standby cue with a big **GO** (its story events named), then the
+    running runs;
   - the cue list (tap to set standby);
+  - **Try it** (wave 30): *Say on the speakers* (`audio/play {say}`, ≤
+    `DESK_SAY_MAX`), then the house's looks (`lights/test {look}`) and the
+    story's sounds (`audio/play {sound}`) as tap-to-play rows (the checks'
+    own tests; no marks). A list says once when its router / lights module
+    is away; the note after a tap says what was sent and whether anything
+    was there to play it (the answer's `router` / `module`). Once `live`
+    each asks first, as the checks do;
   - the checks, built for walking: one row at a time with **Test**, **✓
     Heard it**, **✗ Nothing**, and next.
-  - No cue editing in Play.
+  - No cue editing in Play. The hosts' help: `docs/help/play/20-house-desk.md`.
 
 ## 7. Not in this wave
 

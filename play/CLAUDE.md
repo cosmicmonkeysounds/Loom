@@ -224,12 +224,22 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
 - **Desk** (`host/desk.tsx`, a lazy chunk via `windows.tsx`
   `LazyDeskWindow`; rules in `host/desk-model.ts`) over core's
   `house-desk.ts`: long-polls `GET /api/mod/desk?after=<rev>&wait=25`
-  (`startPoll`, parked while hidden), status chips, ■ STOP ALL, STANDBY
-  with GO (sends the standby it showed; 409 `moved` → *Standby moved —
-  press GO again*) and its story events, the runs with progress and Stop,
-  the cue list (tap = standby), and the checks walked one row at a time
-  (Test / colours, ✓ Heard it / ✗ Nothing, next; `ConfirmButton` asks once
-  `live`). It never edits a cue.
+  (`startPoll`, parked while hidden), status chips, ■ STOP ALL, a folded
+  *How the Desk works* (`deskHow`), **Setup** (wave 30: `setupView` over
+  core's `deskSetup`, a tone-coloured card per system — sound, lights,
+  each `mind: external` character — with *What to do*, open only when
+  `bad` (`setupOpen`); one *All connected ✓* line when every row is ok),
+  STANDBY with GO (sends the standby it showed; 409 `moved` → *Standby
+  moved — press GO again*) and its story events, the runs with progress
+  and Stop, the cue list (tap = standby), **Try it** (wave 30:
+  `tryGroups`, the looks and story sounds as tap-to-play over the checks'
+  own tests, folded past `TRY_OPEN_MAX`; *Say on the speakers* →
+  `audio/play {say}`, `sayCall` caps it at `DESK_SAY_MAX` 280; `tryDone`
+  says whether a router / lights module was there to play it), and the
+  checks walked one row at a time (Test / colours, ✓ Heard it / ✗
+  Nothing, next). Once `live`, every test and Try it asks first
+  (`ConfirmButton`, `liveAsk`). It never edits a cue. The hosts' help
+  article is `docs/help/play/20-house-desk.md`.
 
 Every write is on the server's host allowlist (`core/server/routes/host.ts`;
 any other mod route answers 403 *not from a booth*), typed in `host/api.ts`
@@ -294,7 +304,7 @@ Node imports, or the play build breaks.
 Help works the same way: `help.tsx` bundles the guest articles of
 `../../docs/help/play/*.md` with `import.meta.glob(…, ?raw)` and parses
 them with `docs/help/helpdoc.ts`. The `role: performer` articles (07, 13,
-14, 19) are left out of that glob and bundled by `help-staff.tsx`
+14, 19, 20) are left out of that glob and bundled by `help-staff.tsx`
 (`articlesFor`, `StaffHelpSheet`), which only the booth and the director
 import, so a guest never downloads them (wave 26). A new performer-only
 article goes in both globs; `test/help-chunks.test.ts` fails until it

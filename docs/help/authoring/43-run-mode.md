@@ -61,7 +61,7 @@ Every page shares one header:
     the stop, but no router is listening, so it can't reach the
     speakers. The house may still be playing (its connection down
     mid-song): stop it on the router's computer (at the show, John's
-    MacBook) with `stagehand sounds stop`, or publish to MQTT
+    Desktop) with `stagehand sounds stop`, or publish to MQTT
     `show/audio/stop`.
   - **■ Stop failed: retry** (red): the request itself failed (signed
     out, the server down, an older server), so nothing was stopped.

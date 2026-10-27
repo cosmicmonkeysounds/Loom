@@ -44,6 +44,9 @@ export default defineConfig({
       // the status chips Run → House draws (pure, dependency-free).
       '@loom/core/house-desk': path.resolve(__dirname, '../core/src/house-desk.ts'),
       '@loom/core': path.resolve(__dirname, '../core/src/index.ts'),
+      // The house model (wave 30): the Cue designer edits, plans and
+      // previews `lights.json` looks with the server's own rules.
+      '@loom/house': path.resolve(__dirname, '../house/src/index.ts'),
       // Bank compiler as TypeScript source — the desktop app compiles
       // .loombank artifacts in the webview and hands bytes to the host.
       '@loom/bank': path.resolve(__dirname, '../bank/src/index.ts'),

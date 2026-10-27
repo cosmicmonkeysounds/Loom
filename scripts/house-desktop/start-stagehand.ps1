@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
     stagehand on the house PC: sync, check, install the Task Scheduler
-    jobs (show + lights; audio only with -WithAudio), show their state.
+    jobs (show + lights + the audio router; -NoAudio leaves the router to
+    the MacBook), show their state.
 
 .DESCRIPTION
     Every job is `uv run stagehand tasks ...` underneath (stagehand's
@@ -9,8 +10,8 @@
     user's logon, no console window, logs in
     %LOCALAPPDATA%\stagehand\logs\<job>.log.
 
-        .\start-stagehand.ps1                      # uv sync, check, install + start show and lights
-        .\start-stagehand.ps1 -WithAudio           # ... and the speaker router (the MOTU is on this PC)
+        .\start-stagehand.ps1                      # uv sync, check, install + start show, lights and audio
+        .\start-stagehand.ps1 -NoAudio             # show and lights only: the router runs on the MacBook (the fallback)
         .\start-stagehand.ps1 -Check               # stagehand check only
         .\start-stagehand.ps1 -Status              # every task + the last log lines
         .\start-stagehand.ps1 -Restart lights      # one job
@@ -20,8 +21,10 @@
 
     The real event id + mod passcode go in stagehand\trapped.house.local.yaml
     (git-ignored, shared by every machine file) - `check` flags a CHANGE-ME.
-    Never run the router here AND on the MacBook: two routers would speak
-    every announcement twice.
+    The speaker router (audio, the MOTU 828x over ASIO) runs on this PC by
+    default (2026-10-27). Never run it here AND on the MacBook: two routers
+    would speak every announcement twice. -WithAudio is the default now and
+    changes nothing (older notes name it).
 
 .PARAMETER Config
     The machine YAML (default trapped.desktop.yaml in stagehand\).
@@ -29,6 +32,7 @@
 [CmdletBinding()]
 param(
     [string]$Config = 'trapped.desktop.yaml',
+    [switch]$NoAudio,
     [switch]$WithAudio,
     [switch]$Check,
     [switch]$Status,
@@ -42,7 +46,7 @@ param(
 . "$PSScriptRoot\common.ps1"
 
 $jobs = @('show', 'lights')
-if ($WithAudio) { $jobs += 'audio' }
+if (-not $NoAudio) { $jobs += 'audio' }
 $only = $jobs -join ','
 
 function Show-Status {
@@ -87,7 +91,7 @@ if (-not $Check) {
 }
 
 Write-Step ('stagehand check --only ' + $only)
-if ($WithAudio) { $env:SD_ENABLE_ASIO = '1' }
+if (-not $NoAudio) { $env:SD_ENABLE_ASIO = '1' }
 $rc = Invoke-Stagehand @('check', '--config', $Config, '--only', $only)
 if ($rc -ne 0) {
     Write-Host ('check failed (exit ' + $rc + '): fix the config before installing the jobs') -ForegroundColor Red

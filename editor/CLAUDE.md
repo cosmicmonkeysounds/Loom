@@ -98,6 +98,8 @@ Path alias `@/*` → `src/*`. Keep components small and put logic in pure
 | `players.ts` | Run → Players lineup, persisted per project |
 | `terminals.ts` | Run → Terminals heartbeat list, chimes, the house map for the setup builder |
 | `house-audio.ts` | The router status and *Stop house sounds* |
+| `cue-designer.ts` | Run → House → Cue designer (wave 30): reads `/api/mod/lights` + the map every 15 s while not editing, the lights draft (`base`, 409 `stale` → ask), selection, save / save to project, ▶ Test (save first when dirty), ▶ Try a step, auditions; every test asks first while live. `createCueDesignerStore(deps)` takes fakes in tests |
+| `house-view.ts` | Run → House's view (Desk / Cue designer / Setup) and the Desk's right column |
 | `house-desk.ts` | Run → House: the long poll on `GET /api/mod/desk` (`rev`, `stream-retry` backoff), the draft desk (`base`, 409 `stale` → ask), selection, GO with the playhead shown (409 `moved` → a note), stop / panic, the checks' tests (live: confirm first), marks, Zigbee pairing. `createHouseDeskStore(deps)` takes the api, sleep and clock (tests pass fakes) |
 | `dialog.ts` | Promise-based `promptText` / `confirmAction` / `confirmTyped` / `notify` |
 | `edit-journal.ts` | Undo / redo of structural story edits |
@@ -218,6 +220,16 @@ World, Director, Mind and House close under a lens.
   `lib/house-desk-view.ts` (rows, timeline bars, issues, keys, the
   checks' cursor); fixtures in `lib/test/desk-fixture.ts`. The Run
   page's House sound card links here (*Open House →*).
+  Wave 30 adds two more views beside that **Desk** (`store/house-view.ts`):
+  the **Cue designer** (`house/CueDesigner.tsx`, `LookEditor.tsx`,
+  `LookPreview.tsx`, `StoryHookup.tsx`; store `store/cue-designer.ts`;
+  pure `lib/cue-designer.ts` and `lib/story-docs.ts`): lighting looks
+  edited with `@loom/house`'s look ops, previewed with `previewAt`, started
+  from `lookFromTemplate`, saved to `/api/mod/lights`; story sounds with
+  an audition; desk cues; and for each the story line and its uses. And
+  **Setup** (`house/SetupPanel.tsx`): `deskSetup` rows (sound, lights,
+  each outside mind) with what to do. `docs/loom-house-desk.md` §6.1b;
+  Help `50-cue-designer.md`, `49-house-setup.md`.
 
 ### Run → Terminals
 
@@ -269,8 +281,8 @@ character's feed, readouts and ⏏ Release.
 source through aliases in `vite.config.ts` and `tsconfig.app.json`: no
 wasm, no build step. The aliases are `parser`, `lsp`, `sim`, `runtime`
 (for `@loom/bank`), `chat`, `views`, `mod-patch`, `cue-sheet`,
-`host-board`, `house-desk`, then bare `@loom/core`, plus `@loom/bank` and
-`@loom/play/embed`.
+`host-board`, `house-desk`, then bare `@loom/core`, plus `@loom/house`
+(wave 30, the Cue designer), `@loom/bank` and `@loom/play/embed`.
 
 - `lib/loom-language.ts`: the highlighter, built on the parser's keyword
   tables so it cannot drift. Reserved words light up only in expression
