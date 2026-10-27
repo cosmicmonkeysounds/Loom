@@ -15,7 +15,7 @@
 import "./heart.css";
 import type { CSSProperties, ReactNode } from "react";
 import type { SceneDef, SceneProps } from "../types.ts";
-import { HEART_SCENE_MS } from "../../heart/heart.ts";
+import { HEART_SCENE_MS, LAYER_TITLES } from "../../heart/heart.ts";
 import { Bsod, Glitch, Noise, Typewriter, Win98Dialog, blink, clamp01, ease, eased, lerp, loop, noise1, progress, pulse, typedDuration, useSfxCues } from "../kit/index.ts";
 import { AssembleFace } from "../kit/tv1-parts.tsx";
 
@@ -202,7 +202,7 @@ const HeartSealedPresent = (p: SceneProps) => <Sealed {...p} present={true} />;
 
 // --- heart_layer: LAYER n / 4, wiped in over the face (3 s) -----------------------------------------
 
-export const LAYER_TITLES = ["WHO ARE YOU", "WHAT I AM", "THE ARGUMENT", "THE ASK"] as const;
+export { LAYER_TITLES };
 
 /** The layer's number off the cue (`heart_layer_3` → 3), 1–4. */
 export function layerOf(value: string): number {
