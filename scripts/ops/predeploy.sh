@@ -51,7 +51,7 @@ fi
 run "story: loomcheck --smoke" pnpm --filter @loom/core loomcheck examples/trapped-in-the-internet --smoke
 run "story: facts.json → generated files" pnpm --filter @loom/core titi:facts --check
 run "ops scripts" bash scripts/ops/test/run.sh
-run "accept-script helpers" node --no-warnings --test scripts/accept/live-guard.test.ts scripts/accept/burst.test.ts
+run "accept-script helpers + the sim" node --no-warnings --test scripts/accept/live-guard.test.ts scripts/accept/burst.test.ts scripts/sim/test/sim.test.ts
 run "compose file parses" env POSTGRES_PASSWORD=x BETTER_AUTH_SECRET=x LOOM_BASE_URL=http://x \
   docker compose -f docker-compose.yml config -q
 if [ "$skip_tests" = 0 ]; then
