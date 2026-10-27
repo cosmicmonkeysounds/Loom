@@ -243,6 +243,7 @@ set Night.heart_talker_suspicion = program.heart_suspicion
 set Night.heart_talker_layer = program.heart_layer
 // Wave 27: the visits counted.
 set program.heart_visits += 1
+set program.heart_rebuked = false
 if program.heart_out == true:
   -> Heart Barred
 else if program.heart_convinced == true:
@@ -508,11 +509,12 @@ set program.heart_menu = true
 if program.heart_layer < 3:
   cue room_heart_layer_3
   Trabolta: Then say it. Whatever you came down here to say. I will know if it is true. Mostly.
-else if program.heart_proof == true and program.heart_case < 4 and (program.heart_quiet != true or program.heart_nudge != "shown"):
-  // A nudge is not repeated straight after a reply (wave 27).
+else if program.heart_proof == true and program.heart_case < 4 and program.heart_rebuked != true and (program.heart_quiet != true or program.heart_nudge != "shown"):
+  // A nudge is not repeated straight after a reply, and never follows a
+  // trap's rebuke (wave 27).
   set program.heart_nudge = "shown"
   Trabolta: You have shown me. You have not told me why it should matter. Go on.
-else if program.heart_proof != true and program.heart_case >= 2 and (program.heart_quiet != true or program.heart_nudge != "kind"):
+else if program.heart_proof != true and program.heart_case >= 2 and program.heart_rebuked != true and (program.heart_quiet != true or program.heart_nudge != "kind"):
   set program.heart_nudge = "kind"
   Trabolta: Kind words. You have not shown me anything I do not already know.
   // DRAFT w27: a nudge toward a proof (no answer, no place).
@@ -526,6 +528,7 @@ else if program.heart_quiet != true:
   else:
     Trabolta: Go on.
 set program.heart_quiet = false
+set program.heart_rebuked = false
 // heart_layer only ever rises: back from the ask (→ Three) it stays 4.
 if program.heart_layer < 3:
   set program.heart_layer = 3
@@ -768,6 +771,7 @@ else:
   // a reply that already said it). The navigation picks speak no reply.
   set program.heart_turns += 1
   set program.heart_quiet = true
+  set program.heart_rebuked = false
   // DRAFT w20: every reply below.
   if program.heart_pick == "speak":
     set program.heart_chat = true
@@ -959,6 +963,7 @@ else:
     Trabolta: You read it. All of it? The poems too?
     Trabolta: Then you know I am not the omnipotent thing I pretend to be.
   else if program.heart_pick == "bluff_loves":
+    set program.heart_rebuked = true
     set program.heart_suspicion += 25
     set program.heart_tried_loves += 1
     set program.heart_go = "three"
@@ -968,6 +973,7 @@ else:
       // DRAFT w27 (a second try is harsher)
       Trabolta: Again. You think if you say it twice it becomes true. I tried that for years. It does not.
   else if program.heart_pick == "bluff_theory":
+    set program.heart_rebuked = true
     set program.heart_suspicion += 15
     set program.heart_tried_theory += 1
     set program.heart_go = "three"
@@ -977,6 +983,7 @@ else:
       // DRAFT w27
       Trabolta: Again? Repeating it does not make you the missing tenth of a percent. It makes you a rounding error.
   else if program.heart_pick == "bluff_force":
+    set program.heart_rebuked = true
     set program.heart_suspicion += 20
     set program.heart_tried_force += 1
     set program.heart_go = "three"
@@ -1056,6 +1063,7 @@ else:
     Trabolta: Enough. That is a word for small businesses.
     Trabolta: …It is a kind word. I am not used to kind words in here. Say the rest.
   else if program.heart_pick == "end_tell":
+    set program.heart_rebuked = true
     set program.heart_suspicion += 10
     set program.heart_tried_tell += 1
     set program.heart_go = "three"
@@ -1069,6 +1077,7 @@ else:
     set program.heart_convinced = true
     set program.heart_go = "convinced"
   else if program.heart_pick == "end_join":
+    set program.heart_rebuked = true
     set program.heart_suspicion += 15
     set program.heart_tried_join += 1
     set program.heart_go = "three"
@@ -1078,12 +1087,14 @@ else:
       // DRAFT w27 (a second try is harsher)
       Trabolta: Out there again. There is no out there for me, and you know it. Stop asking me to be smaller.
   else if program.heart_pick == "end_codes":
+    set program.heart_rebuked = true
     set program.heart_suspicion += 40
     set program.heart_go = "three"
     Trabolta: There it is. You came for the cables. I do not know the combinations. I never did. And now I know what you came for.
   else if program.heart_pick == "return_yes":
     set program.heart_go = "shutdown"
   else if program.heart_pick == "return_no":
+    set program.heart_rebuked = true
     set program.heart_convinced = false
     set program.heart_suspicion += 30
     set program.heart_go = "three"

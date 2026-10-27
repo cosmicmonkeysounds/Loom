@@ -5,7 +5,7 @@ meeting with Trabolta at his heart (the server-room terminal talk). Every
 new or changed Trabolta line and option is marked `// DRAFT w27` in
 `beats/server-room.loom`; the memory it keeps is a handful of new `ROLE
 Program` slots in `main.loom` (`heart_who`, `heart_visits`, `heart_turns`,
-`heart_quiet`, `heart_nudge`, the new `heart_asked_*` / `heart_shown_*`
+`heart_quiet`, `heart_nudge`, `heart_rebuked`, the new `heart_asked_*` / `heart_shown_*`
 flags and the `heart_tried_*` counters). None of them is secret, and none
 of the text names a hunt answer, a code, a combination, her one line, or
 anything outside his world (`core/test/trapped-heart.test.ts` scans every
@@ -93,7 +93,7 @@ inside it or of its own quest.
 
 | line | When | Now |
 |---|---|---|
-| 518 | after *Kind words…* (no proof, C ≥ 2) | *Words are cheap in here. Show me something about her that you found yourself.* (a nudge is not repeated right after a reply) |
+| 518 | after *Kind words…* (no proof, C ≥ 2) | *Words are cheap in here. Show me something about her that you found yourself.* (a nudge is not repeated right after a reply, and never follows a trap's rebuke) |
 | 522–526 | the plain re-entry (never right after a reply) | S ≥ 30: *Carefully, now. Go on.* · 8+ picks: *We have been at this a while. The hum does not mind. Go on.* · else *Go on.* |
 | 541 | option, one of his files left to show | **⟦SHOW HIM⟧** *I found more of yours.* |
 | 546 | option, always | **⟦TELL HIM⟧** *Hear me out.* |

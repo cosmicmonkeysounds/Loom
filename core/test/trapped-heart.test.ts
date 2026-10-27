@@ -1593,6 +1593,25 @@ describe("The Heart — the first meeting (wave 27)", () => {
     expect(plain.size).toBeGreaterThan(1);
   });
 
+  it("a trap's rebuke is never followed by a Layer Three nudge; a reply that counts still is", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toLayerThree(sim);
+    sim.setVar("g1.heart_case", "2"); // points from before the argument, no proof
+    const t = pick(sim, "g1", "She loves you");
+    expect(lines(t)).toEqual(["Do not. Do not do that. I have told myself that for years, and I am a far better liar than you."]);
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Three");
+    // A proof held, the case under 4: the "shown" nudge waits out a trap too.
+    sim.unlock("g1", "The Sandy File");
+    redock(sim);
+    pick(sim, "g1", "⟦PROOF⟧");
+    sim.setVar("g1.heart_case", "3");
+    const f = pick(sim, "g1", "Then make her love you");
+    expect(lines(f).some((l) => l.startsWith("You have shown me"))).toBe(false);
+    // After ⟦BACK⟧ (no trap) the nudge is back.
+    pick(sim, "g1", "⟦TELL HIM⟧");
+    expect(lines(pick(sim, "g1", "⟦BACK⟧"))).toContain("You have shown me. You have not told me why it should matter. Go on.");
+  });
+
   it("C5: a re-scan after leaving says they came back and where they were, with no doubled prompt", { timeout: SLOW }, () => {
     const sim = atLayerOne();
     toLayerThree(sim);

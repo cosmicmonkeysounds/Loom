@@ -466,6 +466,9 @@ ROLE Program
   // The last Layer Three nudge he gave ("shown" | "kind"): a nudge is not
   // repeated straight after a reply.
   heart_nudge: text? = none
+  // A trap's rebuke just played (the bluffs, Layer Four's traps, a
+  // return taken back): Layer Three gives no nudge after it.
+  heart_rebuked: bool = false
   heart_asked_chose: bool = false
   heart_asked_afraid: bool = false
   heart_asked_know: bool = false
