@@ -11,7 +11,7 @@ watch: program.afk as Bathroom Mode, program.late as Late, program.corrupted as 
 watch: Night.results_q as Results read, while Night.phase == "truth_1"
 watch: Night.scenario as Overshare scenario, while Night.scenario > 0 and Night.ended != true
 watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_stage as The Heart, Night.server_door as Server door, Night.door_override as Door on buttons, Night.patch_override as Patch bay on buttons, program.at_the_heart as At the heart, while Trabolta.awake == true and Night.ended != true
-watch: Night.heart_talker as At his heart, Night.heart_talker_layer as Heart layer, Night.heart_talker_suspicion as Heart suspicion, while Night.heart_stage == "talk"
+watch: Night.heart_talker as At his heart, Night.heart_talker_layer as Heart progress, Night.heart_talker_suspicion as Heart suspicion, while Night.heart_stage == "talk"
 watch: Kernel.lies_accepted as Lies accepted, while Night.round >= 1
 watch: Night.ending as Ending, while Night.ended == true
 watch: Night.signatures as Signatures, while Night.painting == true
@@ -3020,7 +3020,7 @@ ROLE Program
   when Night.everyone_free == true and self.captured:
     release self from The Internet
 
-  // G11, the resurrection (after the ceremony): out of character. The mark
+  // G11, the resurrection (after the ceremony): the show is over. The mark
   // comes off (`unmarked`), any director's restriction too; the
   // everyone_free watcher above lets the captured go.
   when Night.resurrected == true and self.cleared and self.resurrected != true:
@@ -3456,7 +3456,7 @@ INTERACTION award_staff_mole
   description: The player who did the programs the most quiet favours behind Trabolta's back, revealed here for the first time (nobody, if nobody did). The last award: G11 waits for it.
 
 INTERACTION resurrection
-  label: G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)
+  label: G11 · 🎃 Resurrection: the show is over (after the ceremony)
   who: admin
   description: Only once the ceremony has started (G1), after the last award (G10c, The Mole; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
   // Wave 21: NEXT waits for The Mole (G10c), never the press. DRAFT w21
@@ -6114,7 +6114,8 @@ when resurrection:
     set Night.lights = "restore"
     set Night.lights_back_at = 0
     set Night.lit_scene = "none"
-    broadcast "!🎃 The show is over: you are human again. Hang out, out of character." to everyone
+    // DRAFT w29 (the last sentence is new: SIGNOFF-w29)
+    broadcast "!🎃 The show is over: you are human again. Hang out. The night is yours." to everyone
   else if Night.resurrected == true:
     broadcast "🎃 The show is already over. Nothing happens." to channel(hosts)
   else:

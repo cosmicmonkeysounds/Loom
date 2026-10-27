@@ -534,7 +534,7 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.dance_at | number 0 | blackout + 10 s: fire `cue lights_dance` (§3 E4) | |
 | Night.takeover | bool false | the `!!GO TO THE LIVING ROOM` pin is up (§3 E4; `lift_the_takeover` takes it down once) | |
 | Night.painting / Night.signatures | bool false / number 0 | MS Paint is cleared (the 🖌 button shows) / programs a host marked 🖌 Signed (The Painting, the G10 award) | |
-| Night.resurrected | bool false | G11 ran: the show is over, out of character | |
+| Night.resurrected | bool false | G11 ran: the show is over, everyone is human again | |
 | Night._resurrect_ask_at | number 0 | wave 9 (renamed from `resurrect_ask_at`): when G11's "press again" ask was posted; a `_` last segment marks cue-sheet bookkeeping, so the ask never ticks G11 on the sheet | |
 | Night.award_lines | string `"template"` | wave 9, D4: `"director"` after ✍ `own_award_lines` — Present Award skips Trabolta's template line (Clippy's lines, the sounds and the slides stay) | |
 | Night.king_armed | number 1 | wave 9: the King's stakes — wave 11: **1 from Power On** until 📄 (`r3_closed`) or an ending, else 0; the map's king `armed` reads it, and the Server Door terminal's stakes line follows it (*Checkmate him and the server-room door code goes to your Codex.* / *No prize now.*) | |
@@ -912,7 +912,7 @@ reads as a cue sheet):**
 | own_award_lines | `✍ Our own award lines (Trabolta hosts): on / off` (`sequence: false`; wave 9, D4: toggles `Night.award_lines`, each state named in `# hosts`) |
 | start_the_ceremony … award_quest_completionist | G1–G9 (the ceremony, README §G) |
 | award_the_painting | `G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)` (`while: Night.ceremony == true and Night.painting == true` since wave 9) |
-| resurrection | `G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)` |
+| resurrection | `G11 · 🎃 Resurrection: the show is over (after the ceremony)` |
 | the simulation completed | `Reinstallation: simulation completed (server)` |
 | the golden duck | `Reinstallation: the golden duck (server)` |
 | reinstallation begun | `Reinstallation: begun at the tent (server)` (`sequence: false`) |

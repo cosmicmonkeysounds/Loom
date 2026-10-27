@@ -1384,7 +1384,7 @@ function Resurrection({ t, sfx, reduced, target }: SceneProps) {
             <div className="tv3-res-title" style={{ opacity: progress(t, RES.dawn + 800, 900) }}>
               YOU ARE HUMAN AGAIN
             </div>
-            {/* DRAFT w29 (it read "Hang out, out of character.") */}
+            {/* DRAFT w29 (SIGNOFF-w29) */}
             <div className="tv3-res-sub" style={{ opacity: progress(t, RES.dawn + 1800, 900) }}>
               Hang out. The night is yours.
             </div>

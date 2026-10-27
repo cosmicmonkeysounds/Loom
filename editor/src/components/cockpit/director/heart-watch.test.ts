@@ -11,7 +11,7 @@ import { RunMode } from '@/store/cockpit'
 import { watchRows } from './glance'
 
 const HEART = `watch: Night.heart_stage as The Heart, Night.server_door as Server door, Night.door_override as Door on buttons, program.at_the_heart as At the heart, while Night.awake == true and Night.ended != true
-watch: Night.heart_talker as At his heart, Night.heart_talker_layer as Heart layer, Night.heart_talker_suspicion as Heart suspicion, while Night.heart_stage == "talk"
+watch: Night.heart_talker as At his heart, Night.heart_talker_layer as Heart progress, Night.heart_talker_suspicion as Heart suspicion, while Night.heart_stage == "talk"
 
 ROLE Program
   at_the_heart: bool = false
@@ -63,7 +63,7 @@ describe('the heart on the Director glance (wave 20, §3.10)', () => {
 
     await st().fireSignal('talk')
     const talking = board()
-    expect(talking.map(([l]) => l)).toEqual(['The Heart', 'Server door', 'Door on buttons', 'At the heart', 'At his heart', 'Heart layer', 'Heart suspicion'])
-    expect(Object.fromEntries(talking)).toMatchObject({ 'At his heart': expect.stringMatching(/Calculator/), 'Heart layer': '2', 'Heart suspicion': '35' })
+    expect(talking.map(([l]) => l)).toEqual(['The Heart', 'Server door', 'Door on buttons', 'At the heart', 'At his heart', 'Heart progress', 'Heart suspicion'])
+    expect(Object.fromEntries(talking)).toMatchObject({ 'At his heart': expect.stringMatching(/Calculator/), 'Heart progress': '2', 'Heart suspicion': '35' })
   })
 })
