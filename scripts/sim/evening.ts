@@ -84,7 +84,7 @@ import { doorsDecision, envServerNotice, guardThenReset, isDevServer, isScratch,
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
 import { atLeast, awardWinners, betProblems, mismatches, notNone, read, truthy, worldOf, wrongPatchProblems, type Row, type Want } from "./lib/world.ts";
 import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating, transportRefusal } from "./lib/plan.ts";
-import { TALK_AGENT, TALK_AS, burstProblems, cannedLine, probeReply, replyAfter, talkLineProblems, type TalkMsg } from "./lib/talk.ts";
+import { TALK_AGENT, TALK_AS, burstProblems, cannedLine, glitchHeldFor, probeReply, replyAfter, talkLineProblems, type TalkMsg } from "./lib/talk.ts";
 
 // ------------------------------------------------------------------ flags
 
@@ -776,8 +776,15 @@ async function adAttack(): Promise<void> {
       await glitch(tm);
       const early = await world();
       if (read(early, "Night.glitch_kind") !== "full" || read(early, "Night.burst_n") !== read(hijack, "Night.burst_n")) c.fail("a ⚡ inside the hijack's 8 s takeover cut it short");
-      await sleep(8_500);
-      const before = await world();
+      // Wait out the takeover on the story's own clock (one tick a second,
+      // drifting on a loaded server), not a fixed sleep; capped at 12 s.
+      let before = await world();
+      const cap = Date.now() + 12_000;
+      while (glitchHeldFor(before) > 0 && Date.now() < cap) {
+        await sleep(250);
+        before = await world();
+      }
+      if (glitchHeldFor(before) > 0) return c.fail(`the hijack's takeover never ended on the story's clock (Time.elapsed ${read(before, "Time.elapsed")}, glitch_at ${read(before, "Night.glitch_at")}) within 12 s`);
       c.must("⚡ ad_burst (an ad burst)", await glitch(tm));
       for (const p of burstProblems("ad", before, await world())) c.fail(p);
     },

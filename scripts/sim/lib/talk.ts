@@ -73,6 +73,23 @@ export const HIJACK_ZEROES = "000. 000. 000.";
  *  own zeroes aside. */
 export const hasDigit = (s: string): boolean => /\p{Nd}/u.test(s.split(HIJACK_ZEROES).join(""));
 
+/** How many more seconds of story time (`Time.elapsed`, whole seconds, one
+ *  tick a second) the story holds a ⚡ back: the 📺 hijack's 8 s takeover
+ *  (`glitch_kind` "full" and `Time.elapsed < glitch_at + 8`) and the 2 s
+ *  between glitches (`Time.elapsed < burst_last + 2`), as main.loom's
+ *  `when ad_burst` reads them. 0 when a ⚡ would fire now. The ticks drift
+ *  on a loaded server, so the sim polls this rather than sleeping. */
+export function glitchHeldFor(w: ReadonlyMap<string, string>): number {
+  const now = Number(read(w, "Time.elapsed"));
+  if (!Number.isFinite(now)) return 0;
+  let until = 0;
+  const at = Number(read(w, "Night.glitch_at"));
+  if (read(w, "Night.glitch_kind") === "full" && Number.isFinite(at)) until = Math.max(until, at + 8);
+  const last = Number(read(w, "Night.burst_last"));
+  if (Number.isFinite(last) && last > 0) until = Math.max(until, last + 2);
+  return Math.max(0, until - now);
+}
+
 /** What a ⚡ should have done to the world, by the scene it fired in.
  *  Before the ad attack (`intro`, `bottle`): a flicker, so `glitch_kind`,
  *  `glitch_text` and `burst_n` are unchanged. From it on (`ad`, `beans`): an

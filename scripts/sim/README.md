@@ -57,7 +57,7 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 | 8 | 🔎 Hunt 1 | Every guest files H1–H3 (most accurate at 80, a quarter guess at 40; `--lie` one at 100) | step 5, filings judged, `Night.talk` none |
 | 9 | ⚖️ Truth 1 | ⏰ → ⚖️ → ⏱ → 📋 ×3 | step 6, `results_q` 3, `Night.talk` bottle |
 | 10 | 🍾 Bottle | Spin, Truth, Task Manager's `truth_answered` | a pick, the bottle closed |
-| 11 | 📺 The ad attack (wave 32) | 📺; a ⚡ inside the 8 s takeover; 8.5 s later another ⚡ | `Night.talk` ad, `glitch_kind` full after 📺 and still full after the early ⚡; then `glitch_kind` burst, `burst_n` + 1, a new digit-free `glitch_text` |
+| 11 | 📺 The ad attack (wave 32) | 📺; a ⚡ inside the 8 s takeover; another ⚡ once the story's clock says the takeover is over (`Time.elapsed` ≥ `glitch_at` + 8, polled, capped at 12 s) | `Night.talk` ad, `glitch_kind` full after 📺 and still full after the early ⚡; then `glitch_kind` burst, `burst_n` + 1, a new digit-free `glitch_text` |
 | 12 | 📓 Hunt 2 | 📓 → 📥; featured briefings; Excel's disk (the tent QR) and 💾; H4–H6; Truthcoin send + request; a DM to McAfee; a crew founded and joined; the four cold-door notes; Adobe signs MS Paint's painting for everyone | step 8, `truther_sent`, `Night.talk` none; Excel Mission and The Cold Door done |
 | 13 | ⏳ Summons | All but one check in | step 9, the late one `late` |
 | 14 | 🏓 Truth Pong | `made_the_cup` / `missed_the_cup`, 🧮, 📊, 🏆 | step 11, tallied |

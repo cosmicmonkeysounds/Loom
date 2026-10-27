@@ -12,7 +12,7 @@ import { doorsDecision, envServerNotice, guardThenReset, isDevServer, isScratch,
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
 import { awardWinners, betProblems, mismatches, worldOf, wrongPatchProblems } from "../lib/world.ts";
 import { boxInside, echoOf, heartGuard, occurrences, optionKey } from "../lib/terminal.ts";
-import { TALK_CHANNEL, burstProblems, cannedLine, hasDigit, probeReply, replyAfter, talkLineProblems, type TalkMsg } from "../lib/talk.ts";
+import { TALK_CHANNEL, burstProblems, cannedLine, glitchHeldFor, hasDigit, probeReply, replyAfter, talkLineProblems, type TalkMsg } from "../lib/talk.ts";
 import { TALK_SCENES } from "../../../core/src/talk-scenes.ts";
 
 test("pressChain passes an aimed step's role and stops at a real refusal", async () => {
@@ -331,4 +331,17 @@ test("talk: ⚡ is a flicker before the ad attack, a digit-free ad burst from it
   assert.deepEqual(burstProblems("ad", hijack, burst("A NEW OFFER", "3")), ["Night.burst_n 0 → 3 (want one more)"]);
   assert.equal(hasDigit("000. 000. 000."), false, "the hijack's own zeroes");
   assert.equal(hasDigit("OFFER ٣"), true, "any script's digits");
+});
+
+test("talk: the sim waits out the 📺 takeover on the story's clock, not the wall's", () => {
+  const w = (o: Record<string, string>) => new Map(Object.entries(o));
+  // 📺 pressed at story second 100: held until 108 (main.loom's `Time.elapsed < glitch_at + 8`).
+  const hijack = { "Night.glitch_kind": "full", "Night.glitch_at": "100", "Night.burst_last": "0" };
+  assert.equal(glitchHeldFor(w({ ...hijack, "Time.elapsed": "100" })), 8);
+  assert.equal(glitchHeldFor(w({ ...hijack, "Time.elapsed": "107" })), 1, "a slow tick: 8.5 s of wall time can still be second 107");
+  assert.equal(glitchHeldFor(w({ ...hijack, "Time.elapsed": "108" })), 0);
+  // A burst's own glitch_at holds nothing back; only the 2 s between glitches.
+  assert.equal(glitchHeldFor(w({ "Night.glitch_kind": "burst", "Night.glitch_at": "200", "Night.burst_last": "200", "Time.elapsed": "201" })), 1);
+  assert.equal(glitchHeldFor(w({ "Night.glitch_kind": "burst", "Night.glitch_at": "200", "Night.burst_last": "200", "Time.elapsed": "202" })), 0);
+  assert.equal(glitchHeldFor(w({ "Night.glitch_kind": "none" })), 0, "no clock read: nothing to wait for");
 });
