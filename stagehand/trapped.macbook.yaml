@@ -1,4 +1,11 @@
-# Trapped in the Internet — John's MacBook (macOS): the house speaker router.
+# Trapped in the Internet — John's MacBook (macOS): the speaker router FALLBACK.
+#
+# Since 2026-10-27 the router runs on John's Desktop (trapped.desktop.yaml,
+# the MOTU over ASIO). This file is for the fallback only: the 828x won't
+# run on Windows, or the Desktop's router is down for good. Stop the
+# Desktop's first (scripts\house-desktop\start-stagehand.ps1 -Stop audio):
+# two routers would both speak every announcement. On a normal night the
+# MacBook runs only `agents` (laptop.yaml; scripts/house-macbook/trabolta.md).
 #
 # Builds on trapped.house.yaml (`extends:`; the router's settings live there
 # once) and runs ONE job from it, `audio` — the MOTU 828x + the ADAT
@@ -12,7 +19,7 @@
 #
 #   uv run stagehand check   --config trapped.macbook.yaml --only audio
 #   uv run stagehand launchd install --job audio --config trapped.macbook.yaml
-#   uv run stagehand launchd install --job agents --config laptop.yaml   # Trabolta, unchanged
+#   uv run stagehand launchd install --job agents --config laptop.yaml   # Trabolta, always
 #   uv run stagehand launchd status
 #
 # The broker's LAN listener is password-only: put the `props` password in

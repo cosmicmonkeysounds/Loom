@@ -27,11 +27,12 @@ internals: [`docs/agents.md`](./docs/agents.md). Notes for coding agents:
 
 | Machine | stagehand jobs | Config | Supervisor | Runbook |
 |---|---|---|---|---|
-| **John's MacBook** (macOS, M3 Max 48 GB) | `agents` (Trabolta, with Ollama `gpt-oss:20b`) and, by default, `audio` (the MOTU 828x + ADAT) | `laptop.yaml` (agents), `trapped.macbook.yaml` (audio) | launchd | [`scripts/house-macbook/audio.md`](../scripts/house-macbook/audio.md) |
-| **John's Desktop** (Windows) | `show` and `lights`; beside them Mosquitto, Zigbee2MQTT on the CC2652P and the TV kiosk | `trapped.desktop.yaml` | Task Scheduler | [`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md) |
+| **John's MacBook** (macOS, M3 Max 48 GB) | `agents` (Trabolta, with Ollama `gpt-oss:20b`); `audio` only as the fallback | `laptop.yaml` (agents), `trapped.macbook.yaml` (the router fallback) | launchd | [`scripts/house-macbook/trabolta.md`](../scripts/house-macbook/trabolta.md); [`audio.md`](../scripts/house-macbook/audio.md) for the fallback |
+| **John's Desktop** (Windows) | `show`, `lights` and `audio` (the MOTU 828x + ADAT, over ASIO); beside them Mosquitto, Zigbee2MQTT on the CC2652P (the Hue and ZL1 bulbs), the WLED strip's controller and the TV kiosk | `trapped.desktop.yaml` | Task Scheduler | [`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md) |
 
-The audio router may move to the Desktop instead, once the 828x is proven
-on Windows (the Desktop README's §7). Only ever run it on one machine.
+The audio router runs on the Desktop since 2026-10-27; the MacBook takes it
+only if the 828x misbehaves on Windows (the Desktop README's §11). Only
+ever run it on one machine.
 Steph's laptop (the server room) and John's old laptop (the tent) run no
 stagehand: they are terminals in Chrome.
 
@@ -41,19 +42,20 @@ stagehand: they are terminals in Chrome.
    ┌─────────────┼──────────────────────────┐
    │ John's MacBook                         │ John's Desktop (192.168.8.10)
    │  agents  ── Ollama gpt-oss:20b         │  show    ─┐
-   │  audio   ── MOTU 828x + ADAT ──► speakers  lights ─┤ 127.0.0.1:1883
-   │     │                                  │  Zigbee2MQTT ── CC2652P ── bulbs
-   │     └──── MQTT :1884 (user props) ────►│  Mosquitto  (:1884 for the LAN)
-   └────────────────────────────────────────┘  Chrome kiosk ── HDMI ── the TV
+   │                                        │  lights  ─┤ 127.0.0.1:1883
+   │  (audio: only the fallback, dialling   │  audio   ─┘ ── MOTU 828x + ADAT ──► speakers
+   │   the Desktop's :1884)                 │  Zigbee2MQTT ── CC2652P ── Hue + ZL1 bulbs
+   └────────────────────────────────────────┘  Mosquitto (:1884 for the LAN) ◄── WLED controller (Wi-Fi)
+                                               Chrome kiosk ── HDMI ── the TV
 ```
 
-**Announcements need both machines.** `do announce "…"` reaches the
-speakers as: the server's feed → the Desktop's `show` job → MQTT
-`show/announce` on the Desktop's broker → the MacBook's router (over
-`:1884`) → the speakers. With that broker or the `show` job down, nothing
-is spoken (only terminals provisioned `&announce=1`, the tent, still say
-them). Story sounds don't take this path: the router reads the server's
-feed itself.
+**Announcements.** `do announce "…"` reaches the speakers as: the
+server's feed → the Desktop's `show` job → MQTT `show/announce` on the
+Desktop's broker → the router (on the Desktop; on the MacBook over `:1884`
+in the fallback) → the speakers. With that broker or the `show` job down,
+nothing is spoken (only terminals provisioned `&announce=1`, the tent,
+still say them). Story sounds don't take this path: the router reads the
+server's feed itself.
 
 ## Install
 
@@ -93,7 +95,10 @@ serves every machine that extends the house file:
 ```yaml
 # trapped.house.local.yaml
 server: { event: <the live event's id>, mod_passcode: "<the mod passcode>" }
-# trapped.macbook.local.yaml
+# trapped.desktop.local.yaml (the Desktop: the MOTU's ASIO name)
+server: {}
+audio: { device: "<part of the MOTU's ASIO name>" }
+# trapped.macbook.local.yaml (only the router fallback)
 server: {}
 audio: { mqtt: { password: "<the props password>" } }
 ```
@@ -130,7 +135,7 @@ including Trabolta's worker. Restart one job through its supervisor.
 
 ```bash
 uv run stagehand launchd install --job agents --config laptop.yaml
-uv run stagehand launchd install --job audio  --config trapped.macbook.yaml
+uv run stagehand launchd install --job audio  --config trapped.macbook.yaml   # only the router fallback
 uv run stagehand launchd status                    # every job
 uv run stagehand launchd restart --job agents      # only Trabolta's worker
 uv run stagehand launchd print --job agents --config laptop.yaml   # the plist, nothing installed
@@ -148,6 +153,7 @@ back.
 ```powershell
 uv run stagehand tasks install --job show   --config trapped.desktop.yaml
 uv run stagehand tasks install --job lights --config trapped.desktop.yaml
+uv run stagehand tasks install --job audio  --config trapped.desktop.yaml
 uv run stagehand tasks status
 uv run stagehand tasks restart --job lights
 uv run stagehand tasks stop --job show       # disables it as well, so the keep-alive can't restart it
@@ -163,7 +169,7 @@ restarts it within a minute of dying. `uv sync` must have made `.venv`
 first. The PC must sign in by itself after a power cut (Sysinternals
 Autologon). `scripts/house-desktop/start-stagehand.ps1` wraps all of this.
 
-## The MacBook: `agents` and the router
+## The MacBook: `agents` (and the router fallback)
 
 `laptop.yaml` runs the `agents` module: it holds the agent stream for the
 characters it has personas for (`trabolta.persona.md` and its mind file
@@ -184,26 +190,27 @@ restart --job agents`, then Run → Mind → Reset. The kill-switch ladder,
 the persona keys, the guards and the judge are in
 [`docs/agents.md`](./docs/agents.md).
 
-The router job runs `trapped.macbook.yaml`; its setup (the 828x, the
-secrets, the placeholders, retiring alexa) is
-[`scripts/house-macbook/audio.md`](../scripts/house-macbook/audio.md).
+The whole Trabolta runbook (Ollama, keep-alive, `laptop.yaml`, the job,
+Run → Mind) is
+[`scripts/house-macbook/trabolta.md`](../scripts/house-macbook/trabolta.md).
+In the router fallback this Mac also runs `trapped.macbook.yaml`'s `audio`
+job: [`scripts/house-macbook/audio.md`](../scripts/house-macbook/audio.md).
 
-## The Desktop: `show` and `lights`
+## The Desktop: `show`, `lights` and `audio`
 
 `trapped.desktop.yaml` runs `show` (the house rig's cue map, the sensors,
-the catch-up, the announcement relay) and `lights` (the server room's RGB
-bulb from `lights.json`) against Mosquitto and Zigbee2MQTT on the same PC.
-Its setup, from installing Python to the TV kiosk and a show-night
-`preflight.ps1`, is
-[`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md);
-Zigbee pairing is
-[`scripts/house-macbook/zigbee.md`](../scripts/house-macbook/zigbee.md)
-steps 5–9.
+the catch-up, the announcement relay), `lights` (every bulb and strip in
+`lights.json`) and `audio` (the speaker router on the MOTU 828x, over ASIO)
+against Mosquitto and Zigbee2MQTT on the same PC. Its setup, from
+installing Python to the 828x, the Hue / ZL1 bulbs, the WLED strip, the TV
+kiosk and a show-night `preflight.ps1`, is
+[`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md).
 
 ```powershell
-uv run stagehand check --config trapped.desktop.yaml --only show,lights
+uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
 uv run stagehand tasks install --job show   --config trapped.desktop.yaml
 uv run stagehand tasks install --job lights --config trapped.desktop.yaml
+uv run stagehand tasks install --job audio  --config trapped.desktop.yaml
 ```
 
 ## show — story ⇄ house
@@ -424,14 +431,16 @@ audio:
   length. A server too old for the report answers 404: logged once, and
   the router plays on.
 
-**Windows** (only if the router moves to the Desktop): `host_api: asio`
+**Windows** (the Desktop, the router's home since 2026-10-27): `host_api: asio`
 opens the 828x as one device (it also sets `SD_ENABLE_ASIO` before
 sounddevice loads), SAPI speaks through Windows PowerShell 5.1, the
 player lock uses `msvcrt`, and caches live under
 `%LOCALAPPDATA%\stagehand\`.
 
-Runbook: [`scripts/house-macbook/audio.md`](../scripts/house-macbook/audio.md).
-Room-by-room design and history:
+Runbooks: [`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md)
+§3 (the Desktop) and
+[`scripts/house-macbook/audio.md`](../scripts/house-macbook/audio.md) (the
+MacBook fallback). Room-by-room design and history:
 [`docs/trapped/room-audio.md`](../docs/trapped/room-audio.md).
 
 ## alexa (retired)
