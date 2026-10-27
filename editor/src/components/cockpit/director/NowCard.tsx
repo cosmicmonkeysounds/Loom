@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { CockpitTab, useCockpit, storyNow, CockpitPhase } from '@/store/cockpit'
-import { cueTitleTags, onDeck } from '@loom/core/cue-sheet'
+import { armWindow, cueTitleTags, onDeck } from '@loom/core/cue-sheet'
 import { nothingToPress, rowName, shortName } from './now-text'
 import { ArmBar, SubjectPicker, TagChips } from './CueButton'
 import { outOfTurn, useDirector, useNameOf } from './context'
@@ -226,7 +226,7 @@ function NextBlock({ flash }: { flash: boolean }) {
         </button>
         <span className="text-[11px] text-zinc-500">{armed ? 'Esc to disarm' : 'Space · Space'}</span>
       </div>
-      {armed && <ArmBar at={arm.armed!.at} />}
+      {armed && <ArmBar at={arm.armed!.at} ms={armWindow(arm.armed!)} />}
       {warn !== null && <div className="text-xs text-amber-300">{warn}</div>}
       {next.subject && (arm.picking === next.id || armed) && <SubjectPicker row={next} />}
       {deck !== null && (

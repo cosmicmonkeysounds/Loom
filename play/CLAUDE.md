@@ -235,7 +235,8 @@ project, Reset marks.
 
 `director.tsx` polls the lean `GET /api/state?role=mod&cues=1` every 3 s
 (parked while hidden). Rows, acts and the arm model come from
-`core/src/cue-sheet.ts` (`tapCue`, `ARM_MS` 4 s, `ARM_DEAD_MS` 300 ms,
+`core/src/cue-sheet.ts` (`tapCue`, `ARM_MS` 4 s, `ARM_PICK_MS` 10 s for a
+cue armed through the who? picker (`armWindow`), `ARM_DEAD_MS` 300 ms,
 `armStillValid`). A fire is `POST /api/mod/signal` with the arm's
 `presses`; a 409 `moved` means *Cues moved — tap again*.
 

@@ -13,6 +13,8 @@ import { cueSheetView } from "../../core/src/cue-sheet.ts";
 import {
   ARM_DEAD_MS,
   ARM_MS,
+  ARM_PICK_MS,
+  armWindow,
   DIRECTOR_KEY,
   armFor,
   directorFromSearch,
@@ -30,6 +32,7 @@ import {
   CLOCK_HELD,
   phoneLabel,
   phoneTap,
+  drainSeconds,
   sheetLayout,
   foldedLine,
   formatLeft,
@@ -124,7 +127,7 @@ describe("arm, then fire", () => {
     expect(tapCue(valued, award, 400)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1", value: "4" });
     expect(armFor("award_most_trusted", "g1", 50, "  ")).not.toHaveProperty("value");
     // the arm lapses: the next tap asks again
-    expect(tapCue(armed, award, 50 + ARM_MS).kind).toBe("pick");
+    expect(tapCue(armed, award, 50 + ARM_PICK_MS).kind).toBe("pick");
   });
 
   it("posts the cue with the phone's label (and the person, if any)", () => {
@@ -607,6 +610,17 @@ describe("the dead time and stale arms", () => {
     expect(phoneTap(armed, award, 500, { last: "start_the_bingo", fired: ["call_to_the_desktop", "start_the_bingo"] }).kind).toBe("stale");
     // A lapsed arm is not stale: the tap just arms again.
     expect(phoneTap(first.armed, call, ARM_MS, moved).kind).toBe("arm");
+  });
+
+  it("a cue armed for a picked person waits 10 s on the phone (wave 28)", () => {
+    const award = directorRows(VIEW)[3]!;
+    const armed = armFor("award_most_trusted", "g1", 0, undefined, VIEW.cues);
+    // 6 s after the pick: it fires, not stale, not lapsed.
+    expect(phoneTap(armed, award, 6000, VIEW.cues!)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1" });
+    // Moved under it at 6 s: stale (the window is the picked one, not 4 s).
+    expect(phoneTap(armed, award, 6000, { last: "start_the_bingo", fired: ["call_to_the_desktop", "start_the_bingo"] }).kind).toBe("stale");
+    expect(phoneTap(armed, award, ARM_PICK_MS, VIEW.cues!).kind).toBe("pick");
+    expect(drainSeconds(0, 1, armWindow(armed))).toBe(10);
   });
 });
 

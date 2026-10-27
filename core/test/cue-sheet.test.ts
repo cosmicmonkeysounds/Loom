@@ -17,6 +17,8 @@ import type { ModView } from "../server/views.ts";
 import {
   ARM_DEAD_MS,
   ARM_MS,
+  ARM_PICK_MS,
+  armWindow,
   armFor,
   armStillValid,
   countdownLeft,
@@ -698,10 +700,10 @@ describe("the arm model (shared by the laptop and the phone)", () => {
     // A subject cue: pick, then the picked arm ignores a fast tap and fires a slow one.
     expect(tapCue(null, award, 0)).toEqual({ kind: "pick", id: "award_most_trusted" });
     const armed = armFor("award_most_trusted", "g1", 50, " 4 ", marks);
-    expect(armed).toEqual({ id: "award_most_trusted", subject: "g1", at: 50, value: "4", last: "call_to_the_desktop", firedCount: 1 });
+    expect(armed).toEqual({ id: "award_most_trusted", subject: "g1", at: 50, ms: ARM_PICK_MS, value: "4", last: "call_to_the_desktop", firedCount: 1 });
     expect(tapCue(armed, award, 100, marks)).toEqual({ kind: "ignore" });
     expect(tapCue(armed, award, 400, marks)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1", value: "4" });
-    expect(armFor("award_most_trusted", "g1", 50, "  ")).toEqual({ id: "award_most_trusted", subject: "g1", at: 50 });
+    expect(armFor("award_most_trusted", "g1", 50, "  ")).toEqual({ id: "award_most_trusted", subject: "g1", at: 50, ms: ARM_PICK_MS });
     // No marks given (an older caller): no binding, no stale check.
     expect(tapCue(null, bingo, 5)).toEqual({ kind: "arm", armed: { id: "start_the_bingo", subject: null, at: 5 } });
   });
@@ -709,7 +711,7 @@ describe("the arm model (shared by the laptop and the phone)", () => {
   it("armStillValid drops an arm when last or fired count moved", () => {
     const a = armFor("start_the_bingo", "g1", 0, undefined, marks);
     expect(armStillValid(a, marks, 1000)).toBe(true);
-    expect(armStillValid(a, marks, ARM_MS)).toBe(false);
+    expect(armStillValid(a, marks, ARM_PICK_MS)).toBe(false);
     expect(armStillValid(a, { last: "start_the_bingo", fired: ["call_to_the_desktop", "start_the_bingo"] }, 1000)).toBe(false);
     expect(armStillValid(a, { last: "call_to_the_desktop", fired: ["call_to_the_desktop", "spin_the_bottle"] }, 1000)).toBe(false);
     // A stale arm never fires: the tap arms again, bound to the new marks.
@@ -720,6 +722,26 @@ describe("the arm model (shared by the laptop and the phone)", () => {
     expect(tapCue(first.armed, award.id === bingo.id ? bingo : award, 1000, moved).kind).toBe("pick");
     // An arm made with no marks is only timed.
     expect(armStillValid({ id: "x", subject: null, at: 0 }, moved, 10)).toBe(true);
+  });
+
+  it("a cue armed through the who? picker waits ARM_PICK_MS, a plain one still ARM_MS (wave 28)", () => {
+    expect(ARM_PICK_MS).toBe(10_000);
+    const a = armFor("award_most_trusted", "g1", 0);
+    expect(armWindow(a)).toBe(ARM_PICK_MS);
+    // Six seconds after the pick (the sheet closed, the row scrolled back): it still fires.
+    expect(tapCue(a, award, 6000)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1" });
+    expect(tapCue(a, award, 9_999).kind).toBe("fire");
+    // At ten it has lapsed: the tap opens the picker again.
+    expect(tapCue(a, award, 10_000).kind).toBe("pick");
+    const bound = armFor("award_most_trusted", "g1", 0, undefined, marks);
+    expect(armStillValid(bound, marks, 9_999)).toBe(true);
+    expect(armStillValid(bound, marks, 10_000)).toBe(false);
+    // A plain row keeps 4 s: at 4000 the tap arms it again.
+    const plain = tapCue(null, bingo, 0, marks);
+    if (plain.kind !== "arm") throw new Error("unreachable");
+    expect(armWindow(plain.armed)).toBe(ARM_MS);
+    expect(tapCue(plain.armed, bingo, 3999, marks).kind).toBe("fire");
+    expect(tapCue(plain.armed, bingo, 4000, marks).kind).toBe("arm");
   });
 
   it("only an award takes a value", () => {

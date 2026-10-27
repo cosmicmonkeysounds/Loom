@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { cueTitleTags, type CueRow } from "../../../core/src/cue-sheet.ts";
-import { ArmDrain, CueActList, DOORS_CLOSED, noCuesText, type CueDesk, type NextBar, type SheetLayout } from "../director.tsx";
+import { ArmDrain, armWindow, CueActList, DOORS_CLOSED, noCuesText, type CueDesk, type NextBar, type SheetLayout } from "../director.tsx";
 import { foldName } from "../avatars.ts";
 import { callerIsMe, callerLine } from "./caller.ts";
 import { fireLabel } from "./fire-label.ts";
@@ -141,7 +141,7 @@ export function NextBox({ row, desk, stale, again, then, big = false }: { row: C
           onClick={() => desk.tap(row)}
         >
           {fireLabel(armedHere, sending, row.subject && !armedHere)}
-          {armedHere && !sending && <ArmDrain key={desk.armed!.at} at={desk.armed!.at} className="host-drain-fire" />}
+          {armedHere && !sending && <ArmDrain key={desk.armed!.at} at={desk.armed!.at} ms={armWindow(desk.armed!)} className="host-drain-fire" />}
         </button>
       </div>
       {description !== null && (

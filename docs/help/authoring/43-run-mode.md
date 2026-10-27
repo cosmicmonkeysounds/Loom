@@ -398,7 +398,8 @@ An armed cue warns, never blocks: *⚠ Not on offer now: the story may
 refuse it* (its `while:` is false) or *⚠ This is a F cue; the night is
 in E*. A cue that names a person (an award; ♟ *They beat the King*)
 takes three steps: the first press opens its **who?** picker (plus a
-**value** box for an award), choosing a person arms it for them (the
+**value** box for an award), choosing a person arms it for them for
+**10 s** rather than 4 s (the
 armed button reads *Fire → Winamp*), and the next press fires it.
 
 **The keys** (only with the page in **Calling** mode, never while you

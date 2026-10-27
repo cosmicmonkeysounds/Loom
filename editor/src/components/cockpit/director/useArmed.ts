@@ -25,7 +25,7 @@ import {
   type CueRow,
 } from '@loom/core/cue-sheet'
 import { lastSeq, type RefusedPress } from './glance'
-import { NO_ANSWER, PRESS_TIMEOUT_MS, SETTLE_MS, movedCue, movedPressedCue, ownMove, pressSettled, settleTarget, within } from './moves'
+import { NO_ANSWER, PRESS_TIMEOUT_MS, armLapsesIn, SETTLE_MS, movedCue, movedPressedCue, ownMove, pressSettled, settleTarget, within } from './moves'
 import { failureText } from '@/lib/press-failure'
 
 /** NEXT's cooldown after a press. */
@@ -156,10 +156,10 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
     if (settle.current !== null) clearTimeout(settle.current.timer)
   }, [])
 
-  // The arm dies after ARM_MS.
+  // The arm dies after its window (4 s; 10 s once a person was picked).
   useEffect(() => {
     if (armed === null) return
-    const t = setTimeout(() => setArmed((a) => (a === armed ? null : a)), Math.max(0, armed.at + ARM_MS - Date.now()))
+    const t = setTimeout(() => setArmed((a) => (a === armed ? null : a)), armLapsesIn(armed, Date.now()))
     return () => clearTimeout(t)
   }, [armed])
 

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { movedCue, movedPressedCue, ownMove, pressSettled, settleTarget, within, OWN_MS, PRESS_TIMEOUT_MS } from './moves'
+import { armLapsesIn, movedCue, movedPressedCue, ownMove, pressSettled, settleTarget, within, OWN_MS, PRESS_TIMEOUT_MS } from './moves'
+import { ARM_MS, ARM_PICK_MS, armFor } from '@loom/core/cue-sheet'
 import { DOORS_NOT_OPEN, failureText } from '@/lib/press-failure'
 
 describe('movedCue', () => {
@@ -104,5 +105,16 @@ describe('settleTarget (which answers hold the lock)', () => {
     expect(settleTarget({ moved: true, pressed: 'c2' }, 1)).toBeNull()
     expect(settleTarget({}, 1)).toBeNull()
     expect(settleTarget({ presses: 3 }, undefined)).toBeNull()
+  })
+})
+
+describe('armLapsesIn (wave 28)', () => {
+  it('a cue armed for a picked person survives 6 s; a plain arm lapses at 4 s', () => {
+    const picked = armFor('award_most_trusted', 'g1', 0)
+    expect(armLapsesIn(picked, 6000)).toBe(ARM_PICK_MS - 6000)
+    expect(armLapsesIn(picked, 12_000)).toBe(0)
+    const plain = { id: 'call', subject: null, at: 0 }
+    expect(armLapsesIn(plain, 0)).toBe(ARM_MS)
+    expect(armLapsesIn(plain, 6000)).toBe(0)
   })
 })

@@ -8,7 +8,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import clsx from 'clsx'
 import { useCockpit } from '@/store/cockpit'
-import { ARM_MS, cueTitleTags, takesValue, type CueRow } from '@loom/core/cue-sheet'
+import { ARM_MS, armWindow, cueTitleTags, takesValue, type CueRow } from '@loom/core/cue-sheet'
 import { suggestionHint } from '../award-suggest'
 import { outOfTurn, useDirector, useNameOf } from './context'
 import { DirectorMode } from './director-keys'
@@ -39,11 +39,12 @@ export function TagChips({ tags, className, yield: yields }: { tags: string[]; c
   )
 }
 
-/** The 4 s bar under an armed cue (restarts with each new arm). */
-export function ArmBar({ at }: { at: number }) {
+/** The arm's bar under an armed cue (`ms`: its window — 4 s, or 10 s once a
+ *  person was picked; restarts with each new arm). */
+export function ArmBar({ at, ms = ARM_MS }: { at: number; ms?: number }) {
   return (
     <div className="h-0.5 w-full overflow-hidden rounded bg-amber-500/20">
-      <div key={at} className="h-0.5 bg-amber-500" style={{ animation: `director-arm ${ARM_MS}ms linear forwards` }} />
+      <div key={at} className="h-0.5 bg-amber-500" style={{ animation: `director-arm ${ms}ms linear forwards` }} />
     </div>
   )
 }
@@ -63,7 +64,7 @@ export function ArmedDetail({ row }: { row: CueRow }) {
           {a.value ? ` (${a.value})` : ''} · Esc
         </div>
       )}
-      <ArmBar at={a.at} />
+      <ArmBar at={a.at} ms={armWindow(a)} />
       {warn !== null && <div className="text-amber-300">{warn}</div>}
       {row.description !== null && <div className="whitespace-pre-wrap text-zinc-300">{row.description}</div>}
     </div>
