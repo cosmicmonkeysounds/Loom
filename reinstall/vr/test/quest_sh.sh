@@ -72,6 +72,10 @@ check "preset is arm64-v8a only" bash -c "grep -q '^architectures/arm64-v8a=true
 check "preset uses the Gradle build" grep -q '^gradle_build/use_gradle_build=true' "$preset"
 check "preset asks for the microphone (the voice link)" grep -q '^permissions/record_audio=true' "$preset"
 check "preset ships config/*.json" grep -q 'include_filter=.*config/\*.json' "$preset"
+# Wave 33: the intro's video ships inside the APK (never streamed from the web).
+check "preset ships media/*.ogv (the intro video)" grep -q 'include_filter=.*media/\*.ogv' "$preset"
+check "media/reinstallation.ogv is there (Ogg)" bash -c "head -c 4 '$project/media/reinstallation.ogv' | grep -q OggS"
+check "quest.sh's stage keeps media/" bash -c "! grep -q 'exclude /media' '$q'"
 # Wave 26 (C10, C6): the pronunciation table ships with the APK (config/,
 # never game/), and the device voice is on.
 check "config/pronounce.json is there, under the shipped filter" test -f "$project/config/pronounce.json"
