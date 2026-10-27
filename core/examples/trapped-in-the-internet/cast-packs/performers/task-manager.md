@@ -18,10 +18,52 @@
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
 | the summons (⏳ → 🚨) | nothing to scan: programs check themselves in with the Desktop's QR. **📍 They're here** on your NOW card's *Still missing* list only for a dead or lost phone | |
 | any time, until 📄 (if you saw it) | **♟ They beat the machine** | only when the door terminal could not report it and you **saw** "checkmate" on it: it gives them the door code |
+| the four talk scenes (🤖 → 🔎 · the third 📋 → 📺 · 📺 → 📓 · 🫘 → 🗜 / 🤖) | the **🤖 Talk** card in Show: type what Clippy says, **Send** · a Clippy chip (one tap) · a Trabolta chip (**two taps**) · **⚡ Glitch** · NEXT | nobody: you are relaying Clippy to Trabolta (below) |
 
 **Your scenes:** every clearance (your line, in the app) · introduced by
-Clippy at C1 (one line about yourself) · V3 the fake card if needed · the
-help desk and the bank all night · 💘 in Grok Prom · applause.
+Clippy at C1 (one line about yourself) · V3 the fake card if needed ·
+**relaying Clippy to Trabolta in the four talk scenes** · the help desk and
+the bank all night · 💘 in Grok Prom · applause.
+
+**The 🤖 Talk card: you are Clippy's microphone (wave 32).** Four times in
+the night Clippy talks with Trabolta live, in front of the room: right
+after 🤖 introduces him (until 🔎), between the bottle's spins (from the
+third 📋 until 📺), at the ad attack (📺 until 📓) and at the beans (🫘 until
+🗜 or 🤖). While one is on, a **🤖 Talk** card sits in your Show window
+between NEXT and the status line (your NOW reads *Relay Clippy to
+Trabolta*), and the slim bar shows a **🤖 Talk** chip that opens it. Stand
+where you can hear Clippy. Top to bottom:
+
+- **The scene and its hint**, then Trabolta's state: *👂 listening*,
+  *🤖 thinking… 5s*, *⚠ No mind online* or *💤 asleep*. The room's last few
+  lines are under it.
+- **What did Clippy just say?** Type what Clippy said out loud, in a few
+  words, and tap **Send** (or Enter). It goes in as Clippy's line in The
+  Desktop (the phones show it; the TV doesn't say it, Clippy just did) and
+  Trabolta answers on the TV and every phone in a few seconds. You may type
+  on while a line is in flight: only what was sent leaves the box.
+- **Clippy's chips** (one tap = sent as Clippy's line): use one when Clippy
+  says something close to it, or to feed Clippy a line. The last one or two
+  (**➡ …**) hand the room on: Trabolta is steered to wrap up in two
+  sentences.
+- **Trabolta's chips: tap twice to fire.** The first tap arms (*Tap again
+  to fire*), the second posts his line at once, on the TV, as his answer.
+  Use them when he is slow (*thinking… 12s — tap one of his lines*), off
+  the rails, or there is no mind online. They stand in for the answer he
+  owed.
+- **⚡ Glitch**: before the ad attack the screens flicker; from the ad
+  attack on, an ad bursts through every screen and phone with one of his
+  pained lines. Two seconds apart at least. The scenes also glitch on their
+  own every 45 s or so, so you never have to.
+- **NEXT** with ARM → FIRE, the same as Show's: when Clippy hands off, fire
+  it. 🔎, 📓, 🗜 and the overshare 🤖 close their scene and the card goes;
+  🍾 spins keep the bottle's open; 📺 turns it into the ad attack's.
+
+If his answer never comes, `# hosts` says *🤖 Trabolta isn't answering —
+tap one of his canned lines*; an answer that comes after the scene moved on
+is dropped. The other hosts see your card folded (*Task Manager is relaying
+Clippy*) with **Open**: if your phone dies, any of them takes over. When you
+step off to direct, hand the card to another host by radio.
 
 **"Your hosts tonight."** Every time an Antivirus clears a program, your line
 lands in their thread: *"{name}. You're in. Your hosts tonight, per the
@@ -135,6 +177,9 @@ The house deals the programs files about **who they are connected to** (Codex �
   whatever the app can't see: 🪙 Pay on the seller, 🪙 Charge on the buyer
   (100 each press). McAfee brokers and referees bets (he holds no pot
   and takes no cut); CRA audits.
+- **🤖 after Bingo, between the 🍾 spins, at 📺 and at 🫘:** the talk
+  scenes. Relay Clippy on the 🤖 Talk card (above); fire NEXT when Clippy
+  hands off.
 - **Grok Prom:** if a program says the line to you, 💘.
 
 ## Props

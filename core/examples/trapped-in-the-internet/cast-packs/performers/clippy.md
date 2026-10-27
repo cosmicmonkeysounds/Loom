@@ -91,9 +91,10 @@ questions are DRAFT until the team replaces them). Re-print this table from
 | F2 | Who is taking Sandy to computer prom | **Grok** |
 
 **Your scenes:** C1 welcome + hosts → V2 Bingo rules → V3 results (🎯) →
-**Corrupted Code** → **introduce Trabolta** (radio "INTRO"; a host fires 🤖) → hunt 1 →
-V6: ⏱ the filing closes → 📋 results, one question at a time → 🍾 the bottle
-→ 📺 **panic at the ad** (CI 4) → 🏓 → 🫘 **beans = malware** → 🌑 final
+**Corrupted Code** → **introduce Trabolta** (radio "INTRO"; a host fires 🤖)
+→ **talk with him** → hunt 1 → V6: ⏱ the filing closes → 📋 results, one
+question at a time → 🍾 the bottle (**talk** between the spins) → 📺 **panic
+at the ad** (CI 4) and **talk** → 🏓 → 🫘 **beans = malware**, **talk** → 🌑 final
 reveal ("truth is always in binary") → 🍎 → ending → host the ceremony if
 Trabolta is gone (after Combo B or the rave).
 
@@ -109,6 +110,23 @@ you judge, *Whose side are you on?* from the Truther Download). The taskbar is
 rooms and **📋 Notes** (a readout each time a CI arrives, every ⭐, every scan's
 answer). A **NEW MISSION** pop-out says when your NOW card changes. The
 printed CI cards are your backup.
+
+**Talking with Trabolta (wave 32).** Four times tonight you talk with him
+live, out loud, in front of everyone: after the introduction, between the
+bottle's spins, at the ad attack and at the beans. Your Mission reads
+*Talk with Trabolta, out loud* while one is on. **Speak to the TV**:
+**Task Manager** stands near you and types what you say (or taps one of
+your canned lines), and Trabolta answers on the TV a few seconds later.
+**Pause for his answer**: say one thing, wait, react. Short lines work
+best; he gets one answer per thing you say. If he is slow, keep the room
+busy (Task Manager may fire one of his canned lines for him). He may let
+something small slip and take it back at once: react, but **never repeat
+it for him**. When the room is ready, **hand off**: *"I think everyone's
+ready for a game!"*, *"Let's spin the bottle again!"*, *"Let's keep going
+with the hunt."*, *"Look! The Antivirus are bringing everyone back!"* (Task
+Manager's ➡ chips carry the same words, and they tell him to wrap up), and
+a host fires the next step. More adverts may burst through the screens
+while you talk (⚡): roll with them.
 
 **Radio:** INTRO · HOLD · LIGHTS · ALL STOP. If the voice queue is long:
 "Trabolta is processing a high volume of requests."
@@ -207,7 +225,15 @@ a host (or the director) fires 🤖. Your line is on the TV: *"And now, joining 
 conference: the Sole Owner and Founder of Maps and Ducks! Everyone, say hello
 to JEAN TRABOLTA!"* He speaks. The TV switches to the reinstallation mirror: point at
 it, *"Look! That's {the first program}! Doing great!"* Hand off: *"And now,
-Trabolta has a game for all of us."*
+Trabolta has a game for all of us."* His manners crack as he speaks: he
+freezes on a word (*"Ha! He froze! That's just the connection, everyone.
+Totally normal!"* is yours), says one word far too loud, stammers over the
+reinstallation. Then he stops you: *"Not yet, Clippy. First, you and I will
+talk, out loud, in front of everyone."* **The first talk:** welcome him,
+tease him when he freezes, ask what a Sole Owner and Founder does all day,
+whether he's a real AI, about Gerald. He is formal, proud, and his manners
+keep cracking. A minute or two, then hand off to the hunt. The TV says his
+lines back to back: fit yours around him.
 
 **V4/V5 · 🔎 Hunt 1 (15 min).** Your Quest Log: *Per the agenda: the Truth Scavenger Hunt*. Trabolta
 reads H1–H3; they go into everyone's Quest Log. The answers are documents
@@ -254,14 +280,24 @@ Antivirus escort them to the Internet. Then:
    Truthcoin; no scan). Won't answer → **🙅 Truth refused** (two taps):
    marked, and the Antivirus come for them. A dead phone → **🎩 Chose Dare**
    (two taps) does the same as their tap.
+   **Between the spins, talk with him** (the second talk): he is starving
+   for truth and every guess stings him (after a question with guesses he
+   says so, louder each time). Needle him a little; dare him to pick truth
+   or dare himself.
 4. After the spins, a host previews hunt 2 (📺: it waits while a truth is
    open), then fires **📓 Hunt 2**.
 
 **📺 The ad hijack** (CI 4). You begin previewing round 2; an ad takes over
 every screen. A **private message from Trabolta** lands in your booth (and
 your Quest Log: *Per Trabolta: keep everyone calm*): *if the malware continues we are all
-going to die… try not to show the others.* **Overreact wildly**, then pull it
-together: *"There are signs of malware in the system that we need to be very
+going to die… try not to show the others.* Then he speaks through the ad,
+and it hurts him: your lines are *"Trabolta? Is this part of the
+presentation? Please say this is part of the presentation!"*, *"It HURTS?
+Programs, he said it hurts! Trabolta, is that normal?!"* and *"Okay! Okay.
+Everybody breathe. Trabolta is going to be just fine."* He ends on *"Talk to
+me. Out loud. Say something reassuring."* **The third talk:** ask what is
+happening, whether he is hurt, who did this; **overreact wildly**, panic with
+him, then pull it together: *"There are signs of malware in the system that we need to be very
 vigilant about. We are going to proceed on the Truth Scavenger Hunt because
 it is more important than ever that Trabolta gets the information he needs."*
 
@@ -281,7 +317,12 @@ trusted like your life depends on it. Don't defend the least trusted. VLC is
 told to print a certificate; the printer jams; MS Paint may urge them to open
 it. **It's full of beans:** clock it at once: *"Routine operations like print
 to PDF are no longer working. It is even more urgent that we get the next
-facts right."* Welcome back the zipped programs (*compressed, do not open*).
+facts right."* He comes apart (*"I can feel every bean"*): yours are *"You
+can FEEL the beans?!"* and *"I won't! I didn't hear anything! Nobody heard
+anything!"* **The fourth talk**, while the Antivirus bring everyone back from the Internet:
+comfort him and pry a little; he says things and takes them back at once,
+and you never repeat them. Welcome back the zipped programs (*compressed,
+do not open*).
 
 **🕚 Y2K clock** (CI 7). The final round. Factions start recruiting: **you may
 not take sides on air.** Keep everyone hunting.
@@ -369,7 +410,9 @@ denial. As they are escorted out: corruption is normal; the Internet is where
 programs are reinstalled; a short activity, then back. Introduce Jean
 Trabolta, Sole Owner and Founder of Maps and Ducks, joining by video
 conference (a host fires it after your speech; the TV mirror comes up). Point at the
-reinstallation; be encouraging. Announce the Truth Scavenger Hunt: files
+reinstallation; be encouraging. Then talk with him out loud (Task Manager
+types what you say): welcome him, tease him when he freezes, worry about
+him; a minute or two. Announce the Truth Scavenger Hunt: files
 around the computer Trabolta needs help interpreting. He explains the rules.
 
 **CI 3/X · First Moment of Truth.** Ask who can answer. Never say the rules
@@ -388,7 +431,9 @@ phone asks Truth or Dare. Dare → marked, and Trabolta makes a scene on the TV
 ordering the Antivirus to take them (dead phone: 🎩 on their card).
 Truth → Trabolta asks a personal question; make them answer it in front of
 everyone: 🗣 Truth answered when they do, 🙅 Truth refused if they won't
-(marked and escorted). After the spins, the second hunt is previewed.
+(marked and escorted). Between the spins, talk with Trabolta out loud: he
+is starving for truth and every guess stings; needle him, dare him to pick.
+After the spins, the second hunt is previewed.
 Ribbons always allowed.
 
 **CI 4/X · The malware.** Preview round 2; an ad hijacks the screens. Trabolta's
@@ -396,7 +441,10 @@ private message: "Don't let everyone know but if the malware continues we are
 all going to die. Tell them something reassuring. I know this is probably
 creating some intense emotions for you but try not to show the others."
 Everyone else gets a calmer message. Overreact wildly; this is the one thing
-you never want to see in your computer. Then: "There are signs of malware in
+you never want to see in your computer. He speaks through the ad and it
+hurts him: talk with him out loud (what is happening, is he hurt, who did
+this), panic with him, then pull yourself together; more adverts may burst
+through. Then: "There are signs of malware in
 the system that we need to be very vigilant about. We are going to proceed on
 the Truth Scavenger Hunt because it is more important than ever that Trabolta
 gets the information he needs to undo what is happening." Disperse for one
@@ -413,7 +461,9 @@ judging, only for cup-makers: ✅ or 😤 for the question 🔢 names, or 🤷. 
 don't defend the bottom. VLC prints a certificate; when it fails, MS Paint may
 urge VLC to open it: let it happen. Full of beans → "Routine operations like
 print to PDF are no longer working. It is even more urgent that we get the next
-facts right." Welcome the zipped programs back. Do not open them.
+facts right." Trabolta comes apart: talk with him out loud, comfort him,
+pry a little; never repeat what he takes back. Welcome the zipped programs
+back. Do not open them.
 
 **CI 7/X · Midnight.** The clock reset to 11 PM, Dec 31 1999. Best case: back to
 Jan 1 1900 and 94 years to wait for Internet in Halifax. Worst case: the Y2K
