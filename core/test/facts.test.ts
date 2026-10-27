@@ -423,16 +423,15 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
     expect(facts.rounds!["1"]!.questTitle).toBe("The Truth Scavenger Hunt · Round 1");
     expect(facts.rounds!["3"]!.questTitle).toBe("The Final Fact-Finding Round");
   });
-  it("carries the team's four truths first, then sixteen drafts", () => {
-    expect(facts.truths).toHaveLength(20);
+  it("carries the team's seventeen truths, the four originals first, none a draft", () => {
+    expect(facts.truths).toHaveLength(17);
     expect(facts.truths.slice(0, 4).map((t) => t.text)).toEqual([
       "What is the name of the first person you kissed?",
       "What is something you’re afraid of?",
       "What is love?",
       "What colour are your underwear?",
     ]);
-    expect(facts.truths.slice(0, 4).every((t) => t.draft === undefined)).toBe(true);
-    expect(facts.truths.slice(4).every((t) => t.draft === true)).toBe(true);
+    expect(facts.truths.every((t) => t.draft === undefined)).toBe(true);
   });
   it("every existing fact names a codex entry in today's story, with its recorded code where it has one", () => {
     for (const f of facts.facts) {
