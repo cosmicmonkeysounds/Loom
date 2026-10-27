@@ -20,7 +20,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `src/runtime/sim/sim.ts` | the `Sim`: world, ledger, hook drain, the executor, every journaled mutation |
 | `src/runtime/sim/` (rest) | `crews.ts` (crews, faction mode), `board.ts` (watch / countdown), `badges.ts`, `stats.ts`, `channel-types.ts`, `effects.ts`, `DESIGN.md` |
 | `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w26-lints.ts` (workspace lints L12xx) |
-| `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
+| `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `talk-back.ts` (wave 32, `@loom/core/talk-back`: `TalkView`, `readTalkPost`, `talkView`) + `talk-scenes.ts` (the show's canned talk lines, `DRAFT w32`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
 | `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
@@ -70,7 +70,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   the spatial hub's per-session presence room, escape cooldown
   (`escapedAt`), who heard the in-game heart (`heartHeard`) and who took
   each pickup (`picked`), each wall terminal's visit floor per guest
-  (`terminal-visits.ts`, `/api/mod/impersonate` `visitSeq`, wave 28), the cam upload's `watched`, and
+  (`terminal-visits.ts`, `/api/mod/impersonate` `visitSeq`, wave 28), the cam upload's `watched`,
+  a public talk request and the last canned Clippy steer (`talkDirection`,
+  wave 32: a restart never re-asks it; the host taps again), and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -138,6 +140,35 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   voice relay (`voicePlayers()`), the screen state's `spot.here`
   (`spotHere`) and a game session's camera list judge by it; the stream's
   `room` stays the raw one.
+- **Talk scenes** (wave 32, [`docs/loom-w32-contract.md`](../docs/loom-w32-contract.md)).
+  The story's `Night.talk` names one (`intro`, `bottle`, `ad`, `beans`;
+  `"none"` otherwise) and `src/talk-scenes.ts` `TALK_SCENES` holds each
+  one's title, hint and canned chips (`EventRuntimeInit.talkScenes`
+  injects a fixture's). `POST /api/mod/talk {as: "Clippy" | "Trabolta",
+  text, direction?}` (mod auth, on the host allowlist; never named
+  `/api/mod/agent…`) commits a `say` in `loc:The Desktop` with audience
+  `"all"` `by` the host (400 `as|empty|too_long|direction`, 409
+  `no_talk|asleep|closed`). As Clippy it opens the **public thread**
+  `{character: "Trabolta", channel: "loc:The Desktop", audience:
+  ["@Clippy"], public: true}`: its request carries `speaker.stage`,
+  `stage {room, scene, direction?}` and the room's own lines as history
+  (any audience, scripted ones `story: true`, filtered like the dossier:
+  no facts answer, secret value, codex code or hunt-answer mark), no
+  dossier. `AgentHub` dispatches a public request ahead of every queued DM
+  (`queuedInOrder`), never sends it a hold / busy / stall line (one `#
+  hosts` line, `TALK_HOLD_NOTE`, instead) and `openOn(thread)` reads it
+  for the view. Its reply lands only while `Night.talk` still names the
+  scene it was asked in (else 410 + `TALK_LATE_NOTE`); acts are ignored,
+  `adjust` applies. As Trabolta (a canned chip), or a director's
+  `/api/mod/say` as him in The Desktop while a scene is on, it answers an
+  owed request by hand. Views: `HostView.talk`, `PrimeView.talk` (host
+  booths only) and `ModView.talk` (`talkView`: the scene, its chips,
+  `thinking`/`since`, `online`, `awake`; null when none is on, absent from
+  an old server). `NightView.glitch.light` is set when `Night.glitch_kind
+  == "burst"` (a ⚡ `ad_burst`), and the screen state's glitch shot
+  carries `text` from `Night.glitch_text` (`routes/screen.ts`
+  `glitchTextOf`, ≤ 120 chars). Tests: `test/w32-talk.test.ts` (server),
+  `test/trapped-w32-talk.test.ts` (the story and every line).
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to
