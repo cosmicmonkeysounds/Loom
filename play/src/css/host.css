@@ -526,3 +526,49 @@
 @media (prefers-reduced-motion: reduce) {
   .host-desk-progress-fill { transition: none; }
 }
+
+/* ── wave 32: the 🤖 Talk card (Show, under NEXT) and the bar's chip ──── */
+.host-talk { margin-top: 2px; scroll-margin-top: 8px; }
+.host-talk-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.host-talk-title { min-width: 0; font: 800 15px/1.25 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-talk-fold { flex: 0 0 auto; min-height: var(--tap); min-width: 64px; font-weight: 700; }
+.host-talk-folded, .host-talk-hint { margin: 4px 0 0; font: 13px/1.35 var(--ui-font); color: var(--muted-ink); overflow-wrap: anywhere; }
+.host-talk-state { margin: 6px 0 0; font: 700 13px/1.35 var(--ui-font); color: var(--ink); font-variant-numeric: tabular-nums; }
+.host-talk-state.thinking { color: var(--navy); }
+.host-talk-state.slow, .host-talk-state.off, .host-talk-state.asleep { color: var(--maroon); }
+.host-talk-lines {
+  list-style: none; margin: 6px 0 0; padding: 4px 8px; border-radius: var(--radius);
+  background: var(--white); box-shadow: var(--sunken);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.host-talk-line { font: 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-talk-line.his { color: var(--navy); }
+.host-talk-from { font-weight: 800; }
+.host-talk-say { display: flex; align-items: flex-end; gap: 6px; margin: 8px 0 0; }
+/* 16 px (the .host-text font): iOS Safari zooms into a smaller box. */
+.host-talk-say .host-talk-box { flex: 1 1 auto; min-width: 0; margin: 0; }
+.host-talk-send { flex: 0 0 auto; min-height: var(--tap); min-width: 72px; font-weight: 800; }
+.host-talk-error { margin: 6px 2px 0; font: 700 13px/1.35 var(--ui-font); color: var(--maroon); overflow-wrap: anywhere; }
+.host-talk-chips { margin: 8px 0 0; }
+.host-talk-chips-h { margin: 0 2px 4px; font: 800 11px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted-ink); }
+.host-talk-chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.host-talk-chip-btn {
+  min-height: var(--tap); max-width: 100%; padding: 4px 10px;
+  font: 700 13px/1.25 var(--ui-font); text-align: left; overflow-wrap: anywhere; white-space: normal;
+}
+.host-talk-chip-btn.trabolta { color: var(--navy); }
+.host-talk-chip-btn.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
+.host-talk-armed { font-weight: 800; }
+.host-talk-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 0; }
+.host-talk-glitch { flex: 0 0 auto; min-height: var(--tap); padding: 0 14px; font-weight: 800; }
+.host-talk-next { flex: 1 1 220px; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.host-talk-next-cue { flex: 1 1 auto; min-width: 0; font: 700 13px/1.3 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+/* The slim bar's chip: Show, at the card. */
+.host-talk-chip {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: var(--tap); min-height: var(--tap); margin: 0; padding: 0 6px; border: none; border-radius: var(--radius);
+  background: var(--face); color: var(--navy); box-shadow: var(--raised);
+  font: 800 11px var(--ui-font); cursor: pointer;
+}
+.host-talk-chip:active { box-shadow: var(--pressed); }
+.host-talk-chip-k { line-height: 1; }

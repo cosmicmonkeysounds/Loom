@@ -7,7 +7,8 @@
 //! up*, Judge, the cue sheet, People and More. The sections are the
 //! drawer's own tabs (`tab-*.tsx`), unchanged, on the same console
 //! (`HostConsole` in `dock.tsx`): an arm made here fires from the slim bar.
-//! The rules are `show-model.ts`.
+//! Wave 32: while a talk scene is on, the 🤖 Talk card (`talk.tsx`) sits
+//! between NEXT and the status line. The rules are `show-model.ts`.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CLOCK_HELD, NOTHING_TO_PRESS, STORY_RUNS, countdownText } from "../director.tsx";
@@ -21,6 +22,8 @@ import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
 import { NeedsTab } from "./tab-needs.tsx";
 import { PeopleTab } from "./tab-people.tsx";
+import { TalkCard } from "./talk.tsx";
+import { talkOpen } from "./talk-model.ts";
 
 export interface HostShowProps {
   /** *Your jobs*: the booth's `NowJobs` (the NOW card laid open). */
@@ -125,6 +128,7 @@ function ShowBody({ c, jobs, jobCount = 0, openGuests }: HostShowProps & { c: Ho
             </p>
           </fieldset>
         )}
+        {view.talk != null && <TalkCard c={c} talk={view.talk} open={talkOpen(c.ctx?.session.auth?.character, folds.talk)} onToggle={() => setFolds((f) => ({ ...f, talk: !talkOpen(c.ctx?.session.auth?.character, f.talk) }))} />}
         <p className={`host-show-status${line2.kind !== "strip" ? ` ${line2.kind}` : ""}`} role="status" aria-live="polite" data-testid="host-show-status">
           {line2.kind !== "strip" ? line2.text : ""}
         </p>

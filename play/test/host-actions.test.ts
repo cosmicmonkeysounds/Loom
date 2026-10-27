@@ -123,6 +123,26 @@ describe("the host calls", () => {
   });
 });
 
+describe("the talk card's call (wave 32, contract C3)", () => {
+  it("a line as Clippy carries its direction; a line as Trabolta never does; the text is trimmed", async () => {
+    const { sent, calls } = recorder({ ok: true, seq: 9, asked: true, online: true });
+    await calls.talk("Clippy", "  Trabolta, are you OK?  ");
+    await calls.talk("Clippy", "Tell them about Gerald.", " warm, brief ");
+    await calls.talk("Trabolta", "I am FINE.", "ignored");
+    await calls.talk("Clippy", "x", "   ");
+    expect(sent.map((s) => [s.route, s.body])).toEqual([
+      ["/api/mod/talk", { as: "Clippy", text: "Trabolta, are you OK?" }],
+      ["/api/mod/talk", { as: "Clippy", text: "Tell them about Gerald.", direction: "warm, brief" }],
+      ["/api/mod/talk", { as: "Trabolta", text: "I am FINE." }],
+      ["/api/mod/talk", { as: "Clippy", text: "x" }],
+    ]);
+  });
+  it("the talk route is on the host list, and is not one of the Mind's agent routes", () => {
+    expect(HOST_ROUTES as readonly string[]).toContain("/api/mod/talk");
+    for (const r of HOST_ROUTES) expect(r.startsWith("/api/mod/agent")).toBe(false);
+  });
+});
+
 describe("the house desk's calls (wave 25, docs/loom-house-desk.md §2.1)", () => {
   it("GO carries the standby it showed; standby, stop, stop all, a mark", async () => {
     const { sent, calls } = recorder();
@@ -187,6 +207,7 @@ describe("the allowlist", () => {
       audioTest: [{ speaker: "s1" }],
       lightsTest: [{ look: "heart_wake" }],
       deskTest: [{ route: "/api/mod/audio/test", body: { speaker: "s1" } }],
+      talk: ["Clippy", "hi"],
     };
     for (const [name, fn] of Object.entries(calls)) {
       await (fn as (...a: unknown[]) => unknown)(...(args[name] ?? ["g1", true]));
