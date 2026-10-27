@@ -162,17 +162,27 @@ are in `TECH.md`.
 | Machine | Runs |
 |---|---|
 | VPS (`app.mapsandducks.com`) | The event server, Postgres, Caddy |
-| John's MacBook (macOS, M3 Max 48 GB) | Ollama `gpt-oss:20b` + stagehand `agents` (`stagehand/laptop.yaml`, local); `predeploy` / `ship` / `sync-show` / `showbackup`; a director's Run console; **by default** the audio router (stagehand `audio`, `trapped.macbook.yaml`) with the MOTU 828x + ADAT, dialling the Desktop's broker on :1884 |
-| John's Desktop (Windows) | The living-room TV over HDMI (Chrome kiosk, spot `desktop-tv`); Mosquitto (anonymous on 127.0.0.1:1883, password-only `props` on the LAN at :1884); Zigbee2MQTT on the CC2652P; stagehand `show` + `lights` as Task Scheduler tasks (`trapped.desktop.yaml`). The audio router may move here once the MOTU is proven on Windows. Runbook: `scripts/house-desktop/README.md` |
+| John's MacBook (macOS, M3 Max 48 GB) | **Trabolta**: Ollama `gpt-oss:20b` + stagehand `agents` (`stagehand/laptop.yaml`, local); `predeploy` / `ship` / `sync-show` / `showbackup`; a director's Run console. The audio router's fallback host only (`trapped.macbook.yaml`) |
+| John's Desktop (Windows) | **The audio and the lights** (decided 2026-10-27): the audio router (stagehand `audio`) with the MOTU 828x + ADAT; Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs; the RGB strip's WLED (ESP32) controller over Wi-Fi; Mosquitto (anonymous on 127.0.0.1:1883, password-only `props` on the LAN at :1884); stagehand `show` + `lights` + `audio` as Task Scheduler tasks (`trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, spot `desktop-tv`). Runbook: `scripts/house-desktop/README.md` |
 | Steph's laptop | The server-room terminal in Chrome (`…&spot=server-room&door=serial&camera=user`) + the Grand Central M4 over USB (door + patch bay); webcam, monitor, mouse, keyboard |
 | John's old laptop | The tent: `/terminal/?code=<mod>&spot=tent&announce=1`, the reinstall wizard and web game. Needs WebGL2 |
 
 Also in the show: the wall tablets (Fully Kiosk), the Server Door chess
 and casino terminals, a Quest 3, the server-room RGB bulb, and phones.
 
-House announcements need both house machines: the server → the Desktop's
-`show` job → MQTT `show/announce` → the router → the speakers. With the
-broker or `show` down, only `&announce=1` terminals still speak them.
+House announcements go the server → the Desktop's `show` job → MQTT
+`show/announce` → the router (on the Desktop too, since 2026-10-27) → the
+speakers. With the broker or `show` down, only `&announce=1` terminals
+still speak them.
+
+**Run → House** in the editor is where the house is connected, tested and
+designed (wave 30): **🔌 Setup** (is the sound router, the lights module
+and Trabolta's mind connected, and what to do), **🎛 Desk** (the cue list,
+GO, the checks) and **🎨 Cue designer** (lighting looks with a live preview
+and templates, sound auditions, desk cues, and the `cue` / `sound` line
+the story fires each with). A host's phone has the same Setup and checks in
+its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
+`50-cue-designer.md`, `47-house-desk.md`.
 
 ### Release status
 
