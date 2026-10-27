@@ -278,8 +278,9 @@ kiosk runbook has the link). It sleeps on the idle show until the room
 is open to everyone — The Heart or the alarm opens it; the majority's
 private reveal does not — then wakes and speaks Trabolta's room lines
 aloud. Its scenes follow the story: the face assembling at The Heart,
-the lock's clunk when the door shuts, a dialog box for each layer, a
-blue screen when he throws someone out.
+the lock's clunk when the door shuts, a *HEART.EXE* dialog box with
+each layer's question (never a number or a count: the program never
+sees which layer it is on), a blue screen when he throws someone out.
 
 A program holds up their pass to the camera. While their pass is open
 the story knows they are **at his heart** (`program.at_the_heart`). There
