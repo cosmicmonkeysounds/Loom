@@ -1147,6 +1147,13 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
    it, so the thread scrolls under an edge, never under the button. */
 .line-pane.with-files { grid-template-rows: auto minmax(0, 1fr) auto; }
 .line-pane.with-files.chatting { grid-template-rows: auto minmax(0, 1fr) auto auto; }
+/* On a short screen (1024x600) the thread keeps a floor, about two of his
+   lines: the heart's panel gives way and scrolls its list (▼ MORE) instead.
+   From 720 px up the panel's own 66vh leaves room (nine options at 1280x720). */
+@media (max-height: 660px) {
+  .line-pane.with-files { grid-template-rows: auto minmax(min(7em, 26vh), 1fr) auto; }
+  .line-pane.with-files.chatting { grid-template-rows: auto minmax(min(7em, 26vh), 1fr) auto auto; }
+}
 .file-strip {
   display: flex;
   justify-content: flex-end;

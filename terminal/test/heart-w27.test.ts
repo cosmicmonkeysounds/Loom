@@ -278,3 +278,13 @@ describe("this visit only, at the heart only (review, B1)", () => {
     expect(threadFor({ heart: false, lines, visitLines })).toEqual({ lines, earlier: false });
   });
 });
+
+describe("the thread's floor on a short screen (review)", () => {
+  it("below 660 px tall the thread keeps a floor, so the panel scrolls instead of squeezing it", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+    const short = /@media \(max-height: 660px\) \{([\s\S]*?)\n\}/u.exec(css)?.[1] ?? "";
+    expect(short).toMatch(/\.line-pane\.with-files \{ grid-template-rows: auto minmax\(min\(7em, 26vh\), 1fr\) auto; \}/u);
+    expect(short).toMatch(/\.line-pane\.with-files\.chatting \{ grid-template-rows: auto minmax\(min\(7em, 26vh\), 1fr\) auto auto; \}/u);
+  });
+});
