@@ -113,7 +113,7 @@ export function reduce(s: ChessSession, e: ChessEvent): ChessSession {
  *  no prize (wave 26, G1: no route to the door code is stated up front;
  *  `WIN_CODE` says it after the fact). */
 export function stakesLine(armed: boolean | null | undefined): string | null {
-  // DRAFT w26 (G1: the chess stakes line names no prize)
+  // w26 (G1: the chess stakes line names no prize)
   if (armed === true) return "Checkmate him.";
   if (armed === false) return "No prize now.";
   return null;

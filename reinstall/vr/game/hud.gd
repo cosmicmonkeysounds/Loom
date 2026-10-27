@@ -7,7 +7,7 @@ class_name Hud
 extends Node3D
 
 ## The play hint (wave 26: no mechanics, G1 / R2).
-const HINT := "find Gerald"  # DRAFT w26 (G1, R2, C12)
+const HINT := "find Gerald"
 
 var _room: Label3D
 var _hint: Label3D
@@ -44,7 +44,7 @@ func hide_all() -> void:
 # --- the void's jump scare (wave 26, R4) -------------------------------------
 
 ## The scare's panel text (glitch art, no name).
-const SCARE_TEXT := "FATAL EXCEPTION 0E"  # DRAFT w26 (R4, C12)
+const SCARE_TEXT := "FATAL EXCEPTION 0E"
 ## How fast the scare fades out (alpha per second). It comes on at once —
 ## one hard flash, never a flicker (nothing faster than 3 Hz).
 const SCARE_FADE := 2.5

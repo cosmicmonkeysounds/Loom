@@ -555,7 +555,7 @@ export function replyLine(name: string, r: { replies?: readonly string[]; said?:
   // `replies` are the story's replies to this booth (🤐's "⭐ +5" to Clippy),
   // never the guest's: they read as the booth's own line.
   const mine = (r.replies ?? []).map((t) => t.trim()).find((t) => t !== "");
-  return mine !== undefined ? `→ Sent · ${mine}` /* DRAFT w26 (integration B3): UI copy */ : "→ Sent. The story said nothing back.";
+  return mine !== undefined ? `→ Sent · ${mine}` : "→ Sent. The story said nothing back.";
 }
 
 /** The pick-ready pop-out (§4.6 auto-open), or `open` when this booth's own cue just fired. */

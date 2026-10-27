@@ -20,9 +20,9 @@ import { ObjectiveCard } from "../ui/objective.tsx";
 /** The thread a locked phone keeps reading: the reinstallation's own. */
 export const LOCK_THREAD = "dm:Installation Wizard";
 
-// DRAFT w26 (R1): the lock screen's card.
+// w26 (R1): the lock screen's card.
 export const LOCK_HEAD = "⛔ QUARANTINED";
-// DRAFT w26 (R1): the lock screen's card.
+// w26 (R1): the lock screen's card.
 export const LOCK_TEXT = "This program is being reinstalled. Everything else on this phone is locked until it's done.";
 
 /** The thread shown read-only: the Installation Wizard's DM, else (a story

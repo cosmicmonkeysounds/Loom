@@ -248,7 +248,7 @@ export function ReinstallFlow({
               </div>
             </div>
             <p className="program-pitch">{programPitch(state)}</p>
-            {/* DRAFT w26 (G1): the King note is gone — the choose screen states no
+            {/* w26 (G1): the King note is gone — the choose screen states no
                 hidden rule (who guards what, how often he may be hit). */}
             {!program.eligible && (
               <div className="w98-error not-marked" role="alert">

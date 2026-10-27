@@ -292,16 +292,16 @@ func hud_text(xr: bool) -> String:
 	match mic_state:
 		"live":
 			if listen_on:
-				return "MIC ON · someone can hear you"  # DRAFT w26 (R8, UI copy)
-			return "MIC ON · B or Y mutes" if xr else "MIC ON · M mutes"  # DRAFT w26 (R8, UI copy)
+				return "MIC ON · someone can hear you"
+			return "MIC ON · B or Y mutes" if xr else "MIC ON · M mutes"
 		"muted":
-			return "MIC MUTED · press B or Y" if xr else "MIC MUTED · press M"  # DRAFT w26 (R8, UI copy)
+			return "MIC MUTED · press B or Y" if xr else "MIC MUTED · press M"
 		"asking":
-			return "MIC · allow it in the headset's prompt" if xr else "MIC · allow it in the system prompt"  # DRAFT w26 (R8, UI copy)
+			return "MIC · allow it in the headset's prompt" if xr else "MIC · allow it in the system prompt"
 		"denied":
-			return "NO MIC · not allowed · ASK AGAIN in the lobby"  # DRAFT w26 (R8, UI copy)
+			return "NO MIC · not allowed · ASK AGAIN in the lobby"
 		"opening":
-			return "MIC STARTING…"  # DRAFT w26 (R8, UI copy)
+			return "MIC STARTING…"
 		"nomic":
 			return "NO MIC"
 	return ""
@@ -312,30 +312,30 @@ func hud_text(xr: bool) -> String:
 ## own state.
 func lobby_text(voice_on: bool, mic_on: bool) -> String:
 	if not voice_on:
-		return "VOICE · off on this headset"  # DRAFT w26 (R8, UI copy)
+		return "VOICE · off on this headset"
 	if not mic_on:
-		return "MIC · off on this headset (listen only)"  # DRAFT w26 (R8, UI copy)
+		return "MIC · off on this headset (listen only)"
 	if _testing:
 		match mic_state:
 			"live":
-				return "MIC TEST · it hears you"  # DRAFT w26 (R8, UI copy)
+				return "MIC TEST · it hears you"
 			"opening":
-				return "MIC TEST · say something…"  # DRAFT w26 (R8, UI copy)
+				return "MIC TEST · say something…"
 			"nomic":
-				return "MIC TEST · only silence — no mic"  # DRAFT w26 (R8, UI copy)
+				return "MIC TEST · only silence — no mic"
 	if _input_refused and permission_state() == "n/a":
 		# A desktop's own privacy settings refused the input (no grant to ask).
-		return "MIC · not allowed on this computer"  # DRAFT w26 (R8, UI copy)
+		return "MIC · not allowed on this computer"
 	match permission_state():
 		"granted":
-			return "MIC · allowed"  # DRAFT w26 (R8, UI copy)
+			return "MIC · allowed"
 		"asking":
-			return "MIC · allow it in the headset's prompt"  # DRAFT w26 (R8, UI copy)
+			return "MIC · allow it in the headset's prompt"
 		"denied":
-			return "MIC · not allowed · ASK AGAIN, or Settings → Apps → Permissions"  # DRAFT w26 (R8, UI copy)
+			return "MIC · not allowed · ASK AGAIN, or Settings → Apps → Permissions"
 		"unknown":
-			return "MIC · not allowed yet · ASK AGAIN"  # DRAFT w26 (R8, UI copy)
-	return "MIC · this computer's microphone"  # DRAFT w26 (R8, UI copy)
+			return "MIC · not allowed yet · ASK AGAIN"
+	return "MIC · this computer's microphone"
 
 
 ## Hold the mic shut for `ms` (+ [constant VoiceCodec.VOICE_TAIL_MS]) from

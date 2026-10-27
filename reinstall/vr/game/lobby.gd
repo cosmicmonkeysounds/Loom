@@ -71,10 +71,10 @@ const MIC_ASK_AT := Vector2(MIC_X, 0.83)
 const MIC_BUTTON := Vector2(0.62, 0.13)
 const MIC_METER_W := 0.62
 const MIC_METER_Y := 1.16
-const MIC_TITLE := "MICROPHONE"  # DRAFT w26 (R8, UI copy)
-const MIC_TEST := "TEST MIC"  # DRAFT w26 (R8, UI copy)
-const MIC_STOP := "STOP TEST"  # DRAFT w26 (R8, UI copy)
-const MIC_ASK := "ASK AGAIN"  # DRAFT w26 (R8, UI copy)
+const MIC_TITLE := "MICROPHONE"
+const MIC_TEST := "TEST MIC"
+const MIC_STOP := "STOP TEST"
+const MIC_ASK := "ASK AGAIN"
 
 var picker := CandidatePicker.new()
 ## The confirm card's START / BACK ([member picker]'s twin, 2 columns).

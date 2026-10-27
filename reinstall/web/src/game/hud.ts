@@ -169,16 +169,16 @@ export function pathShown(playedMs: number): boolean {
   return playedMs >= PATH_REVEAL_MS;
 }
 
-// DRAFT w26 (R2): the notice as the trail draws.
+// w26 (R2): the notice as the trail draws.
 export const PATH_REVEAL_NOTICE = "The way to Gerald lights up.";
 
-// DRAFT w26 (R2): the HUD's heat box before the reveal (no label, no distance, no hint).
+// w26 (R2): the HUD's heat box before the reveal (no label, no distance, no hint).
 export const FIND_GERALD = "FIND GERALD";
 
 /** A director's save moved Gerald: before the reveal the notice names no
  *  arrows (there are none yet); after it, the old line. */
 export function duckMovedNotice(revealed: boolean): string {
-  // DRAFT w26 (R2): "Gerald moved." before the reveal.
+  // w26 (R2): "Gerald moved." before the reveal.
   return revealed ? "Gerald moved — follow the golden arrows." : "Gerald moved.";
 }
 

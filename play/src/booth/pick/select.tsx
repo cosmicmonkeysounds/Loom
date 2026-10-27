@@ -126,7 +126,7 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
   const armed = step !== undefined && target !== null && arm.armed === `${step.id}:${target}`;
   const foot = finished || ended ? (
     <div className="bsel-foot">
-      {ended && !finished && <p className="bsel-reply">{/* DRAFT w26 (B5): UI copy */}That's over now.</p>}
+      {ended && !finished && <p className="bsel-reply">That's over now.</p>}
       {!ended && (
         <button type="button" className="w95-btn booth-default bsel-go" onClick={() => {
           setDone(steps.map(() => null));
@@ -209,7 +209,7 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
           <>
             <p className="bsel-prompt">{step.prompt}</p>
             <p className="bsel-helper">{stepHelper(step, at)}</p>
-            {fresh && step.satisfied === true && <p className="bsel-reply">{/* DRAFT w26 (integration B1): UI copy */}✓ Already done.</p>}
+            {fresh && step.satisfied === true && <p className="bsel-reply">✓ Already done.</p>}
             {same !== null && (
               <div className="bsel-same">
                 <PersonAvatar name={nameOf(same)} size="md" />

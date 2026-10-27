@@ -18,7 +18,7 @@
 import { useEffect, useState, type SyntheticEvent } from "react";
 import { ensureAudio, vibrate } from "../alerts.ts";
 
-// DRAFT w26 (T2): the takeover's error windows' caption.
+// w26 (T2): the takeover's error windows' caption.
 export const TAKEOVER_CAPTION = "System Error";
 /** The windows' text when the story gave none. */
 export const TAKEOVER_TEXT = "000. 000. 000.";

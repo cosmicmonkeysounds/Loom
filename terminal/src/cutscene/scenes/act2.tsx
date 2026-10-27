@@ -100,14 +100,14 @@ const PHONE_SPOTS: ReadonlyArray<{ x: number; y: number }> = [
 /** The summons' drifting dialogs. Wave 26 (G1): no exemption is stated. */
 export const FIVE_POPS: readonly PopMsg[] = [
   { title: "Antivirus", text: "Sweep in progress. Programs found outside the Desktop: counting…", kind: "warning", actions: ["OK"] },
-  // DRAFT w26 (G1: no exemption stated up front)
+  // w26 (G1: no exemption stated up front)
   { title: "Antivirus", text: "Every program is being counted.", kind: "info" },
   { title: "Second Moment of Truth", text: "Be in the Desktop, or you will not play Truth Pong.", kind: "error", actions: ["Going!"] },
   { title: "Reminder", text: "The doors of the Desktop close in five minutes.", kind: "question", actions: ["Yes", "Also yes"] },
 ];
 
 /** The summons' marquee. Wave 26 (G1): what excuses a program is never said. */
-// DRAFT w26 (G1)
+// w26 (G1)
 export const FIVE_MARQUEE = "⏳ FIVE MINUTES ★ BE IN THE DESKTOP FOR THE SECOND MOMENT OF TRUTH ★ AN ANTIVIRUS IS COUNTING ★ NO DESKTOP, NO TRUTH PONG ★";
 
 function summonsLeft(p: SceneProps): number {
@@ -144,7 +144,7 @@ function FiveMinutesTv(p: SceneProps) {
       })}
       {t > 2400 && <DriftingPopups t={t} messages={FIVE_POPS} count={2} seed={21} start={2400} life={6000} gap={3000} area={{ x0: 0.08, x1: 0.62, y0: 0.5, y1: 0.66 }} width="24em" reduced={reduced} />}
       <div className="tv2-marquee-bar tv2-amber">
-        {/* DRAFT w26 (G1: the marquee drops "BATHROOM MODE EXCUSES YOU") */}
+        
         <Marquee t={t} speed={150}>{FIVE_MARQUEE}</Marquee>
       </div>
       <Glass t={t} reduced={reduced} />
@@ -311,7 +311,7 @@ const PONG_START = 2600;
 export const PONG_POPS: readonly PopMsg[] = [
   { title: "Truth Pong", text: "Make the cup: share one truth.", kind: "info" },
   { title: "Truth Pong", text: "Miss, and you are marked.", kind: "warning" },
-  // DRAFT w26 (G1: the confidence rule is never stated)
+  // w26 (G1: the confidence rule is never stated)
   { title: "Truth Pong", text: "Trust the process.", kind: "question", actions: ["Understood"] },
   { title: "Adobe Acrobat", text: "Visualise the cup. Become the cup.", kind: "info", actions: ["Become"] },
 ];
@@ -1224,7 +1224,7 @@ const Y2K_POPS: readonly PopMsg[] = [
  *  hour's popups and ticker stop recruiting — and, like Majority Reached, never say who won. */
 const Y2K_POPS_CLOSED: readonly PopMsg[] = Y2K_POPS.filter((m) => m.title !== "Factions");
 const Y2K_TICKER = "🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999 ★ THE FACTIONS ARE RECRUITING: UNLIMITED POWER ★ THE WAY OUT ★ OR A FACTION OF YOUR OWN ★ MORE THAN HALF WINS ★ BRING THE FACTS, ACCURATELY ★ ONE HOUR ★";
-// DRAFT w18b: the ticker once a faction holds the majority.
+// w18b: the ticker once a faction holds the majority.
 const Y2K_TICKER_CLOSED = "🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999 ★ BRING THE FACTS, ACCURATELY ★ SAVE YOUR WORK BEFORE MIDNIGHT ★";
 
 const LEVEL_TONE = ["#40a0ff", "#ffb000", "#ff8a00", "#ff5a2a", "#ff3b2f", "#9a9a9a"] as const;

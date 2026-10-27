@@ -488,7 +488,7 @@ func reconnect() -> void:
 ## `/api/mod/spatial/begin`'s 409 for a program neither captured nor marked.
 const NOT_MARKED_ERROR := "not marked for reinstallation"
 ## What the lobby says instead (the tablet's words).
-const NOT_MARKED := "Not marked for reinstallation."  # DRAFT w26 (G2, C12)
+const NOT_MARKED := "Not marked for reinstallation."
 
 
 func begin(guest: String) -> void:
