@@ -173,6 +173,24 @@ describe("AgentHub — the public talk thread (wave 32, C4)", () => {
     expect(h.hub.openOn(stage)).not.toBeNull();
   });
 
+  it("a stall never counts the public thread among the threads waiting on the hold line", () => {
+    const h = harness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(stage);
+    h.run(61_000);
+    expect(h.stalls).toEqual([{ name: "laptop", characters: ["Trabolta"], waiting: 0 }]);
+    expect(h.held).toEqual(["@Clippy"]); // the runtime turns it into its # hosts note
+    const b = harness();
+    const w = b.worker("laptop");
+    b.hub.attach(w.w);
+    b.hub.line(th(0));
+    b.hub.line(stage);
+    b.hub.line(th(1));
+    b.run(61_000);
+    expect(b.stalls).toEqual([{ name: "laptop", characters: ["Trabolta"], waiting: 2 }]);
+  });
+
   it("openOn reads the owed request; answeredByHand closes it", () => {
     const h = harness();
     expect(h.hub.openOn(stage)).toBeNull();

@@ -13,7 +13,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import type { AgentHub, AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
-import { EventRuntime, TALK_HOLD_NOTE, TALK_LATE_NOTE } from "../server/event-runtime.ts";
+import { EventRuntime, TALK_HOLD_NOTE, TALK_LATE_NOTE, agentStallNotice } from "../server/event-runtime.ts";
 import { ScreenWatch, glitchTextOf, voiceLinesOf } from "../server/routes/screen.ts";
 import { NOT_FROM_A_BOOTH, isHostRoute } from "../server/routes/host.ts";
 import { HUNT_ANSWER_MARK } from "../server/agent-recent.ts";
@@ -598,5 +598,131 @@ describe("w32 — replay", () => {
     expect(again.liveSim!.worldEntries().find((w) => w.path === "Clippy.trust")?.value).toBe("53");
     expect(hub(again).pending.filter((r) => r.thread.public === true)).toEqual([]);
     again.dispose();
+  });
+});
+
+describe("w32 — an old scene's owed request (the server fix lane)", () => {
+  const tick = (rt: EventRuntime, ms: number, clock: { t: number }) => {
+    for (let t = 0; t < ms; t += 1000) {
+      clock.t += 1000;
+      rt.tickOnce(1000);
+    }
+  };
+
+  it("the next scene's card never reads an old scene's request as thinking", async () => {
+    const clock = { t: 5_000_000 };
+    const { rt, host, talk } = await scene({ now: () => clock.t });
+    const hv = async () => (await call(rt, "GET", `/api/state?role=mod&host=1&token=${host}`, {})).json as unknown as HostView;
+    await talk({ as: "Clippy", text: "Trabolta?" });
+    expect((await hv()).talk).toMatchObject({ scene: "intro", thinking: true, since: 5_000_000 });
+    // The scene moves on before the ticker runs: the request is still open
+    // in the hub, but the ad scene's card is not thinking about it.
+    await setVar(rt, "Night.talk", "ad");
+    expect(hub(rt).openOn({ character: "Trabolta", channel: DESK, audience: ["@Clippy"], public: true })).not.toBeNull();
+    expect((await hv()).talk).toMatchObject({ scene: "ad", thinking: false, since: null });
+    const director = (await call(rt, "GET", "/api/state?role=mod", {}, { moderator: true })).json as unknown as ModView;
+    expect(director.talk).toMatchObject({ scene: "ad", thinking: false, since: null });
+    // Clippy's line in the ad scene: thinking again, from now.
+    clock.t += 4000;
+    await talk({ as: "Clippy", text: "Trabolta, the ads?" });
+    expect((await hv()).talk).toMatchObject({ scene: "ad", thinking: true, since: 5_004_000 });
+    rt.dispose();
+  });
+
+  it("the hold note is posted only while the request's scene is on; it counts as heard either way", async () => {
+    const { rt, talk } = await scene({ worker: false });
+    await talk({ as: "Clippy", text: "Trabolta?" });
+    const req = hub(rt).pending.find((r) => r.thread.public === true)!;
+    const hold = (r: AgentRequest) => (rt as unknown as { postAgentHold(r: AgentRequest): boolean }).postAgentHold(r);
+    await setVar(rt, "Night.talk", "ad");
+    expect(hold(req)).toBe(true);
+    expect(hostsLines(rt)).toEqual([]);
+    await setVar(rt, "Night.talk", "none");
+    expect(hold(req)).toBe(true);
+    expect(hostsLines(rt)).toEqual([]);
+    await setVar(rt, "Night.talk", "intro");
+    expect(hold(req)).toBe(true);
+    expect(hostsLines(rt)).toEqual([TALK_HOLD_NOTE]);
+    rt.dispose();
+  });
+
+  it("with no worker, a scene that closes before the hold: no hold note, the queued request is gone, a worker that comes back is not asked it", async () => {
+    const clock = { t: 1_000_000 };
+    const { rt, talk } = await scene({ now: () => clock.t, worker: false });
+    await talk({ as: "Clippy", text: "Trabolta? Are you there?" });
+    tick(rt, 5000, clock);
+    await setVar(rt, "Night.talk", "ad");
+    tick(rt, 1000, clock);
+    expect(hub(rt).pending.filter((r) => r.thread.public === true)).toEqual([]);
+    tick(rt, 60_000, clock);
+    expect(hostsLines(rt)).toEqual([]);
+    const w = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
+    expect(w.res.frames().filter(([e]) => e === "request")).toEqual([]);
+    rt.dispose();
+  });
+
+  it("the ticker closes an in-flight request whose scene closed: the worker hears a cancel, the late reply gets a plain 410 and no # hosts note", async () => {
+    const clock = { t: 1_000_000 };
+    const { rt, worker, requests, talk } = await scene({ now: () => clock.t });
+    await talk({ as: "Clippy", text: "Trabolta, anything to add?" });
+    const req = requests()[0]!;
+    await setVar(rt, "Night.talk", "none");
+    tick(rt, 1000, clock);
+    expect(worker!.res.frames().some(([e, d]) => e === "cancel" && (d as { id: string }).id === req.id)).toBe(true);
+    expect(hub(rt).pending).toEqual([]);
+    tick(rt, 90_000, clock); // no hold note, no stall on a request nobody owes
+    const late = await call(rt, "POST", "/api/agent/reply", { id: req.id, say: "Yes! One more thing.", adjust: { composure: -50 } }, { moderator: true });
+    expect(late.status).toBe(410);
+    expect(desk(rt).filter((m) => m.from === "Trabolta")).toEqual([]);
+    expect(hostsLines(rt)).toEqual([]);
+    expect(rt.liveSim!.worldEntries().find((w) => w.path === "Trabolta.composure")?.value ?? "80").toBe("80");
+    // A second late copy is refused the same way, still with no note.
+    expect((await call(rt, "POST", "/api/agent/reply", { id: req.id, say: "Again." }, { moderator: true })).status).toBe(410);
+    expect(hostsLines(rt)).toEqual([]);
+    rt.dispose();
+  });
+
+  it("the ticker leaves the current scene's request alone", async () => {
+    const clock = { t: 1_000_000 };
+    const { rt, requests, talk } = await scene({ now: () => clock.t });
+    await talk({ as: "Clippy", text: "Trabolta?" });
+    tick(rt, 10_000, clock);
+    expect(hub(rt).pending.filter((r) => r.thread.public === true)).toHaveLength(1);
+    expect((await call(rt, "POST", "/api/agent/reply", { id: requests()[0]!.id, say: "Present." }, { moderator: true })).status).toBe(200);
+    expect(desk(rt).filter((m) => m.from === "Trabolta").map((m) => m.text)).toEqual(["Present."]);
+    rt.dispose();
+  });
+
+  it("a stall on the stage thread alone: the count-free stall line and the talk note, never 'got the hold line'", async () => {
+    const clock = { t: 1_000_000 };
+    const { rt, talk } = await scene({ now: () => clock.t });
+    await talk({ as: "Clippy", text: "Trabolta?" });
+    tick(rt, 61_000, clock);
+    expect(hostsLines(rt)).toEqual([agentStallNotice({ name: "laptop", characters: ["Trabolta"] }, 0), TALK_HOLD_NOTE]);
+    expect(hostsLines(rt).join("\n")).not.toMatch(/threads? (is|are) waiting|got the hold line/u);
+    expect(desk(rt).filter((m) => m.from === "Trabolta")).toEqual([]);
+    rt.dispose();
+  });
+
+  it("a stall with a DM and the stage thread waiting counts the DM alone", async () => {
+    const clock = { t: 1_000_000 };
+    const { rt, talk } = await scene({ now: () => clock.t });
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hello?" }, { token: g.json["token"] as string });
+    await talk({ as: "Clippy", text: "Trabolta?" });
+    tick(rt, 61_000, clock);
+    const stall = hostsLines(rt).filter((t) => t.startsWith("⏳"));
+    expect(stall).toEqual([agentStallNotice({ name: "laptop", characters: ["Trabolta"] }, 1)]);
+    expect(stall[0]).toMatch(/: 1 thread is waiting and got the hold line\./u);
+    expect(hostsLines(rt).filter((t) => t === TALK_HOLD_NOTE)).toHaveLength(1);
+    rt.dispose();
+  });
+
+  it("agentStallNotice: the count and the hold line only for DM threads", () => {
+    const w = { name: "laptop", characters: ["Trabolta"] };
+    expect(agentStallNotice(w, 0)).toBe("⏳ Trabolta stopped answering (worker laptop). Answer from Run as Trabolta; it clears when Trabolta answers again.");
+    expect(agentStallNotice(w, 1)).toBe("⏳ Trabolta stopped answering (worker laptop): 1 thread is waiting and got the hold line. Answer them from Run as Trabolta; it clears when Trabolta answers again.");
+    expect(agentStallNotice(w, 3)).toMatch(/: 3 threads are waiting and got the hold line\./u);
+    expect(agentStallNotice({ name: "x", characters: [] }, 0)).toMatch(/^⏳ the agent stopped answering \(worker x\)\./u);
   });
 });

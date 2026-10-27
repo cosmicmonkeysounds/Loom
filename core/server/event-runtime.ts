@@ -642,6 +642,18 @@ export const TALK_HOLD_NOTE = "🤖 Trabolta isn't answering — tap one of his 
 /** Wave 32 (C4): the `# hosts` note when his answer came after its scene closed. */
 export const TALK_LATE_NOTE = "🤖 Trabolta's answer came after the scene moved on, so it was dropped"; // DRAFT w32
 
+/** The `# hosts` line when a worker stalls. `waiting` counts the DM
+ *  threads that got the hold line — never the public talk thread (wave 32,
+ *  C4), whose own note (`TALK_HOLD_NOTE`) covers the stage; with none
+ *  waiting the line names no threads and no hold line. */
+export function agentStallNotice(worker: { name: string; characters: string[] }, waiting: number): string {
+  const who = worker.characters.join(" / ") || "the agent";
+  // Only the stage thread was waiting: the count-free line.
+  if (waiting === 0) return `⏳ ${who} stopped answering (worker ${worker.name}). Answer from Run as ${who}; it clears when ${who} answers again.`; // DRAFT w32
+  const many = waiting === 1 ? "1 thread is waiting" : `${waiting} threads are waiting`;
+  return `⏳ ${who} stopped answering (worker ${worker.name}): ${many} and got the hold line. Answer them from Run as ${who}; it clears when ${who} answers again.`;
+}
+
 /** A host booth's panel (`?role=mod&host=1`) is rebuilt at most once per
  *  this many ms while only the log moves (load test, wave 13: a build is
  *  the whole mod view, 20–45 ms late in the night, and under load every 3 s
@@ -914,7 +926,7 @@ export class EventRuntime {
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
     admits: (thread) => this.agentAdmits(thread),
-    stale: (req) => req.thread.public === true && (req.stage === undefined || this.talkNight() !== req.stage.scene),
+    stale: (req) => this.talkStale(req),
     typing: (thread, on) => this.pushTyping(thread, on),
     hold: (req) => this.postAgentHold(req),
     busy: (req) => this.postAgentBusy(req),
@@ -2475,12 +2487,32 @@ export class EventRuntime {
     return { character: TALK_AGENT, channel: `loc:${TALK_ROOM}`, audience: [`@${TALK_AS}`], public: true };
   }
 
+  /** A public talk request asked in a scene that is no longer on (or in
+   *  none): its answer would be dropped (410), so nothing waits on it. */
+  private talkStale(req: AgentRequest): boolean {
+    return req.thread.public === true && (req.stage === undefined || this.talkNight() !== req.stage.scene);
+  }
+
   /** The talk panel's block (C5) for a host's view, a host booth's and the
-   *  director's: null when no talk scene is on. Read now, never cached. */
+   *  director's: null when no talk scene is on. Read now, never cached.
+   *  Only a request owed in *this* scene reads as thinking: one still owed
+   *  from an earlier scene is the late path's (410), not the new card's. */
   private talkViewNow(): TalkView | null {
     if (this.sim === null) return null;
     const open = this.agents.openOn(this.talkThread());
-    return talkView(this.talkNight(), { thinking: open !== null, since: open?.since ?? null, online: this.agents.isOnline(TALK_AGENT), awake: this.talkAwake() }, this.talkScenes);
+    const owed = open !== null && !this.talkStale(open.req) ? open : null;
+    return talkView(this.talkNight(), { thinking: owed !== null, since: owed?.since ?? null, online: this.agents.isOnline(TALK_AGENT), awake: this.talkAwake() }, this.talkScenes);
+  }
+
+  /** The ticker's belt (C4): a public request still open from a scene that
+   *  closed is settled as answered by hand — dropped if queued, cancelled on
+   *  its worker if in flight — so it holds no worker's slot, draws no hold
+   *  note and never reads as thinking. Its worker's late reply then finds
+   *  no open request: a plain 410, no `# hosts` note. */
+  private closeStaleTalk(): void {
+    const thread = this.talkThread();
+    const open = this.agents.openOn(thread);
+    if (open !== null && this.talkStale(open.req)) this.agents.answeredByHand(thread);
   }
 
   /** One line in the story's staff room (`# hosts`); nothing without one. */
@@ -2534,8 +2566,7 @@ export class EventRuntime {
     const seq = seqOf(this.fanout(this.commit("say", TALK_AS, thread.channel, post.text, null, "all")));
     // A request still owed from an earlier scene would be dropped on its
     // answer (410) and take this line's follow-up with it: close it first.
-    const stale = this.agents.openOn(thread);
-    if (stale !== null && stale.req.stage?.scene !== this.talkNight()) this.agents.answeredByHand(thread);
+    this.closeStaleTalk();
     this.agents.line(thread);
     sendJson(res, 200, { ok: true, seq, asked: this.agents.openOn(thread) !== null, online: this.agents.isOnline(TALK_AGENT) });
   }
@@ -2752,9 +2783,11 @@ export class EventRuntime {
    *  `hold:` line into the thread as an ordinary journaled say (the director
    *  can still answer as the character from Run). */
   private postAgentHold(req: AgentRequest): boolean {
-    // Wave 32 (C4): never in the room — one `# hosts` line instead.
+    // Wave 32 (C4): never in the room — one `# hosts` line instead, and
+    // only while its scene is still on (the hosts' card has moved on from
+    // an old scene's request). It counts as heard either way.
     if (req.thread.public === true) {
-      this.postHostsNote(TALK_HOLD_NOTE);
+      if (!this.talkStale(req)) this.postHostsNote(TALK_HOLD_NOTE);
       return true;
     }
     const line = this.sim?.model.characters.get(req.character)?.hold ?? null;
@@ -2794,9 +2827,7 @@ export class EventRuntime {
     const sim = this.sim;
     const room = sim === null ? null : hostsRoomOf(sim.model);
     if (room === null) return;
-    const who = worker.characters.join(" / ") || "the agent";
-    const many = waiting === 1 ? "1 thread is waiting" : `${waiting} threads are waiting`;
-    this.fanout(this.commit("broadcast", `channel(${room})`, `⏳ ${who} stopped answering (worker ${worker.name}): ${many} and got the hold line. Answer them from Run as ${who}; it clears when ${who} answers again.`));
+    this.fanout(this.commit("broadcast", `channel(${room})`, agentStallNotice(worker, waiting)));
   }
 
   /**
@@ -3385,7 +3416,7 @@ export class EventRuntime {
     }
     const text = str(body, "say").trim().slice(0, CHAT_TEXT_MAX);
     const isPublic = req.thread.public === true;
-    if (isPublic && (req.stage === undefined || this.talkNight() !== req.stage.scene)) {
+    if (isPublic && this.talkStale(req)) {
       // Wave 32 (C4): the scene it was asked in is over — the room moved
       // on; nothing lands (no line, no adjust), the hosts hear why.
       // Its follow-up (more said meanwhile) is dropped with it: those lines
@@ -4759,6 +4790,7 @@ export class EventRuntime {
     if (this.marks.postersLapsed(this.sim.elapsed())) this.pushSnapshots();
     this.sweepEphemeral();
     this.sweepWallet();
+    this.closeStaleTalk(); // wave 32 (C4): before the sweep, so no hold note for it
     this.agents.sweep();
     this.askPendingRulings();
   }
