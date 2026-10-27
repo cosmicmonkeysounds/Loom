@@ -252,6 +252,7 @@ describe("a held frame — no find and no quack under an overlay", () => {
       phase: "playing",
       tutorial: null,
       mouseLocked: false,
+      lockRefused: false,
       o: { sticks: () => ({ left: { x: 0, y: 0 }, right: { x: 0, y: 0 } }), arrowsTurn: true, sfx: { quack } },
       held,
       keys: new Set<string>(),

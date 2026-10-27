@@ -131,9 +131,9 @@ export interface HudState {
   caption: MomentLine | null;
   /** The intro tutorial's card (wave 33), null when it is over or off. */
   tutorial: TutorialHud | null;
-  /** The game holds the mouse (pointer lock): the play screen hints "click
-   *  to look" while it doesn't. */
-  mouseLocked: boolean;
+  /** Hint "click to look around": the mouse could be the game's (pointer
+   *  lock) and isn't yet. */
+  mouseHint: boolean;
 }
 
 
@@ -317,6 +317,8 @@ export class Game {
   private tutorial: Tutorial | null = null;
   /** The game holds the mouse (pointer lock). */
   private mouseLocked = false;
+  /** The browser refused the lock (`pointerlockerror`): a drag looks instead. */
+  private lockRefused = false;
 
   constructor(opts: GameOptions) {
     this.o = opts;
@@ -578,6 +580,10 @@ export class Game {
       if (!this.mouseLocked) this.keys.clear(); // Esc mid-step: no key left walking
       this.lastHudAt = Number.NEGATIVE_INFINITY;
     };
+    const lockError = (): void => {
+      this.lockRefused = true;
+      this.lastHudAt = Number.NEGATIVE_INFINITY;
+    };
     const look = (e: MouseEvent): void => {
       if (!this.mouseLocked || this.held) return;
       const [dx, dy] = lockedMouseDrag(e.movementX, e.movementY);
@@ -586,19 +592,27 @@ export class Game {
     };
     const pdown = (e: PointerEvent): void => {
       if (this.held) return;
-      // A mouse click takes the mouse, like any first-person game (wave 33).
-      if (e.pointerType === "mouse" && !this.mouseLocked && this.phase === "playing" && typeof canvas.requestPointerLock === "function") {
+      if (this.mouseLocked) return;
+      // A mouse click takes the mouse, like any first-person game (wave 33);
+      // a browser that refuses (`pointerlockerror`) drags to look instead.
+      if (e.pointerType === "mouse" && !this.lockRefused && typeof canvas.requestPointerLock === "function") {
+        if (this.phase !== "playing") return;
         try {
           const p = canvas.requestPointerLock() as unknown;
-          if (p instanceof Promise) p.catch(() => undefined);
+          if (p instanceof Promise) p.catch(lockError);
+          return;
         } catch {
-          /* refused: the drag below still looks */
+          lockError();
         }
       }
-      if (this.mouseLocked || this.dragPointer !== null) return;
+      if (this.dragPointer !== null) return;
       this.dragPointer = e.pointerId;
       this.dragLast = [e.clientX, e.clientY];
-      canvas.setPointerCapture?.(e.pointerId);
+      try {
+        canvas.setPointerCapture?.(e.pointerId);
+      } catch {
+        /* the drag still reads moves over the canvas */
+      }
     };
     const pmove = (e: PointerEvent): void => {
       if (e.pointerId !== this.dragPointer) return;
@@ -635,6 +649,7 @@ export class Game {
       if (this.phase === "playing" || this.phase === "finding") void postEnd(this.o.base, this.o.assignment.token);
     };
     document.addEventListener("pointerlockchange", lockChange);
+    document.addEventListener("pointerlockerror", lockError);
     document.addEventListener("mousemove", look);
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -647,6 +662,7 @@ export class Game {
     window.addEventListener("pagehide", hide);
     this.cleanups.push(() => {
       document.removeEventListener("pointerlockchange", lockChange);
+      document.removeEventListener("pointerlockerror", lockError);
       document.removeEventListener("mousemove", look);
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
@@ -697,6 +713,7 @@ export class Game {
     if (this.tutorial !== null && playing && !this.held && !this.escaping) {
       const moved = Math.hypot(this.body.p[0] - before.p[0], this.body.p[2] - before.p[2]);
       this.tutorial = advance(this.tutorial, {
+        // A refused lock: the click step is passed by dragging to look.
         locked: this.mouseLocked,
         looked: Math.abs(wrapYaw(this.body.yaw - before.yaw)) + Math.abs(this.body.pitch - before.pitch),
         moved,
@@ -830,7 +847,7 @@ export class Game {
       scare: this.scare,
       caption: this.caption,
       tutorial: this.tutorial !== null && this.phase === "playing" ? tutorialHud(this.tutorial, this.o.intro?.skippable === true) : null,
-      mouseLocked: this.mouseLocked,
+      mouseHint: !this.mouseLocked && !this.lockRefused,
     });
   }
 

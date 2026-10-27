@@ -229,7 +229,7 @@ export function Play({
 
       {hud?.tutorial != null && found === null && <TutorialCard tutorial={hud.tutorial} touch={showSticks} onSkip={() => game.current?.skipTutorial()} />}
 
-      {hud !== null && hud.tutorial === null && !hud.mouseLocked && !showSticks && found === null && hud.caption === null && (
+      {hud !== null && hud.tutorial === null && hud.mouseHint && !showSticks && found === null && hud.caption === null && (
         // DRAFT w33
         <div className="mouse-hint w98-raised" aria-hidden="true">
           🖱 Click the picture to look around with the mouse

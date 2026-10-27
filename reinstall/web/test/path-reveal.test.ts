@@ -35,6 +35,7 @@ function game(revealed = false) {
     phase: "playing",
     tutorial: null, // wave 33: no intro tutorial (its own tests: intro.test.ts)
     mouseLocked: false,
+    lockRefused: false,
     map: house,
     trailHouse: house,
     pathRevealed: revealed,
