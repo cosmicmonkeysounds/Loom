@@ -12,6 +12,8 @@ import { doorsDecision, envServerNotice, guardThenReset, isDevServer, isScratch,
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
 import { awardWinners, betProblems, mismatches, worldOf, wrongPatchProblems } from "../lib/world.ts";
 import { boxInside, echoOf, heartGuard, occurrences, optionKey } from "../lib/terminal.ts";
+import { TALK_CHANNEL, burstProblems, cannedLine, hasDigit, probeReply, replyAfter, talkLineProblems, type TalkMsg } from "../lib/talk.ts";
+import { TALK_SCENES } from "../../../core/src/talk-scenes.ts";
 
 test("pressChain passes an aimed step's role and stops at a real refusal", async () => {
   const calls: Array<[string, string | undefined]> = [];
@@ -278,4 +280,55 @@ test("heart spec: the guard refuses real guests and asks off a scratch server", 
   assert.equal(heartGuard({ base: "http://127.0.0.1:7000", roster: bots, yes: false, live: false }).ok, false, "the dev server asks");
   assert.equal(heartGuard({ base: "https://app.example.com", roster: bots, yes: false, live: false }).ok, false);
   assert.equal(heartGuard({ base: "https://app.example.com", roster: bots, yes: true, live: false }).ok, true);
+});
+
+// --- wave 32: the talk scenes (lib/talk.ts) ----------------------------------------------
+
+test("talk: the bots say the show's own canned lines, never one of their own", () => {
+  const intro = TALK_SCENES["intro"]!;
+  assert.deepEqual(cannedLine("intro", "Clippy", 0), { text: intro.clippy[0]!.text });
+  assert.equal(cannedLine("intro", "Trabolta", intro.trabolta.length)!.text, intro.trabolta[0]!.text, "wraps");
+  const steer = intro.clippy.find((c) => c.direction !== undefined)!;
+  assert.equal(cannedLine("intro", "Clippy", intro.clippy.indexOf(steer))!.direction, steer.direction);
+  assert.equal(cannedLine("none", "Clippy"), null);
+  assert.equal(cannedLine("no_such_scene", "Trabolta"), null);
+});
+
+test("talk: the probe worker answers a stage request with the scene's canned line, a DM with its own", () => {
+  const dm = ["one", "two"];
+  assert.deepEqual(probeReply({ id: "r1", stage: { scene: "ad" } }, 0, dm), { id: "r1", say: TALK_SCENES["ad"]!.trabolta[0]!.text, stage: true });
+  assert.deepEqual(probeReply({ id: "r2" }, 3, dm), { id: "r2", say: "two", stage: false });
+  assert.deepEqual(probeReply({ id: "r3", stage: { scene: "gone" } }, 0, dm), { id: "r3", say: "one", stage: true }, "an unknown scene still answers");
+  assert.equal(probeReply({}, 0, dm), null);
+});
+
+test("talk: Trabolta's answer lands in the Desktop, to everyone, naming Clippy's line", () => {
+  const line = (seq: number, from: string, extra: Partial<TalkMsg> = {}): TalkMsg => ({ seq, channel: TALK_CHANNEL, from, kind: "line", audience: "all", ...extra });
+  const msgs = [line(10, "Clippy"), line(9, "Trabolta"), line(12, "Trabolta", { channel: "dm:Trabolta" }), line(13, "Trabolta", { answers: 10 })];
+  assert.equal(TALK_CHANNEL, "loc:The Desktop");
+  assert.equal(replyAfter(msgs, 10)?.seq, 13);
+  assert.equal(replyAfter(msgs, 13), undefined);
+  assert.deepEqual(talkLineProblems(replyAfter(msgs, 10), { from: "Trabolta", answers: 10 }), []);
+  assert.deepEqual(talkLineProblems(line(10, "Clippy"), { from: "Clippy" }), []);
+  assert.deepEqual(talkLineProblems(undefined, { from: "Trabolta" }), ["no Trabolta line in loc:The Desktop"]);
+  assert.deepEqual(talkLineProblems(line(14, "Trabolta", { audience: ["g-1", "g-2"], answers: 10 }), { from: "Trabolta", answers: 10 }), ['Trabolta\'s line reached 2 listener(s), not "all"']);
+  assert.deepEqual(talkLineProblems(line(14, "Trabolta"), { from: "Trabolta", answers: 10 }), ["Trabolta's line answers nothing, not Clippy's line 10"]);
+});
+
+test("talk: ⚡ is a flicker before the ad attack, a digit-free ad burst from it on", () => {
+  const w = (o: Record<string, string>) => new Map(Object.entries(o));
+  const intro = w({ "Night.glitch_kind": "none", "Night.glitch_text": "none", "Night.burst_n": "0", "Night.burst_last": "0" });
+  assert.deepEqual(burstProblems("intro", intro, w({ ...Object.fromEntries(intro), "Night.burst_last": "61" })), []);
+  assert.deepEqual(burstProblems("bottle", intro, intro), ["the flicker never fired (Night.burst_last unchanged)"]);
+  assert.equal(burstProblems("intro", intro, w({ ...Object.fromEntries(intro), "Night.burst_last": "61", "Night.glitch_kind": "burst", "Night.burst_n": "1" })).length, 2, "a flicker never bursts");
+
+  const hijack = w({ "Night.glitch_kind": "full", "Night.glitch_text": "000. 000. 000.", "Night.burst_n": "0" });
+  const burst = (text: string, n = "1") => w({ "Night.glitch_kind": "burst", "Night.glitch_text": text, "Night.burst_n": n });
+  for (const scene of ["ad", "beans"]) assert.deepEqual(burstProblems(scene, hijack, burst(TALK_SCENES["ad"]!.title.toUpperCase())), [], scene);
+  assert.deepEqual(burstProblems("ad", hijack, burst("CALL 555 NOW")), ["the burst's glitch_text has a digit (the ad copy stays digit-free)"]);
+  assert.deepEqual(burstProblems("ad", hijack, burst("000. 000. 000.")), ["the burst kept the previous glitch_text"]);
+  assert.deepEqual(burstProblems("ad", hijack, w({ ...Object.fromEntries(hijack) })), ['Night.glitch_kind = "full" (want "burst")', "Night.burst_n 0 → 0 (want one more)", "the burst kept the previous glitch_text"]);
+  assert.deepEqual(burstProblems("ad", hijack, burst("A NEW OFFER", "3")), ["Night.burst_n 0 → 3 (want one more)"]);
+  assert.equal(hasDigit("000. 000. 000."), false, "the hijack's own zeroes");
+  assert.equal(hasDigit("OFFER ٣"), true, "any script's digits");
 });
