@@ -3,7 +3,7 @@
 // server's line arrives, so a pick made on the phone is never shown twice.
 import { describe, expect, it } from "vitest";
 
-import { choiceEcho, echoAnswered, pickIndexOf, unansweredEchoes, withEchoes } from "../src/session/guest.ts";
+import { choiceEcho, echoAnswered, pickIndexOf, streamIsOwners, streamOwnerOf, unansweredEchoes, withEchoes } from "../src/session/guest.ts";
 import type { ChatMessage } from "../src/types.ts";
 
 const me = { id: "g-1", name: "Winamp" };
@@ -76,5 +76,26 @@ describe("the phone's pick echo (wave 28)", () => {
     const ix = pickIndexOf(stream);
     for (const e of echoes) echoAnswered(e, stream, ix);
     expect(reads).toBe(1);
+  });
+
+  it("never prunes against the previous sign-in's messages after a switch", () => {
+    const oldStream = new Map<number, ChatMessage>([[1, { seq: 1, pick: true } as ChatMessage]]);
+    let owner = streamOwnerOf(null, "tok-a", new Map());
+    const aStream = new Map(oldStream);
+    expect(streamIsOwners(owner, aStream)).toBe(true);
+    owner = streamOwnerOf(owner, "tok-a", aStream);
+    expect(streamIsOwners(owner, aStream)).toBe(true);
+    // Signed in as someone else: the stream still holds A's messages.
+    owner = streamOwnerOf(owner, "tok-b", aStream);
+    expect(streamIsOwners(owner, aStream)).toBe(false);
+    // Same token, later renders: still A's map until the stream resets.
+    owner = streamOwnerOf(owner, "tok-b", aStream);
+    expect(streamIsOwners(owner, aStream)).toBe(false);
+    // B's stream resets (a new map): now its own.
+    const bStream = new Map<number, ChatMessage>();
+    owner = streamOwnerOf(owner, "tok-b", bStream);
+    expect(streamIsOwners(owner, bStream)).toBe(true);
+    // Signed out: nobody's.
+    expect(streamIsOwners(streamOwnerOf(owner, null, bStream), new Map())).toBe(false);
   });
 });

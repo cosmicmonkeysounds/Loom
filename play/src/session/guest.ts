@@ -115,6 +115,26 @@ export function withEchoes(messages: ReadonlyMap<number, ChatMessage>, echoes: r
   return out;
 }
 
+/** Which sign-in the stream's messages belong to. Right after a sign-in
+ *  switch the stream still holds the previous identity's messages until its
+ *  reset lands (always a new map), so `stale` is that map: until it is
+ *  replaced, the stream answers none of the new identity's echoes. */
+export interface StreamOwner {
+  token: string | null;
+  stale: ReadonlyMap<number, ChatMessage> | null;
+}
+
+/** The owner as of this render: unchanged for the same token, else a new
+ *  one that marks the messages on hand (the old identity's) stale. */
+export function streamOwnerOf(was: StreamOwner | null, token: string | null, messages: ReadonlyMap<number, ChatMessage>): StreamOwner {
+  return was !== null && was.token === token ? was : { token, stale: messages };
+}
+
+/** Do these messages belong to the owner's sign-in (not the one before it)? */
+export function streamIsOwners(owner: StreamOwner, messages: ReadonlyMap<number, ChatMessage>): boolean {
+  return owner.token !== null && messages !== owner.stale;
+}
+
 function loadEchoes(load: <T>(key: string) => T | null, token: string | null): ChatMessage[] {
   if (token === null) return [];
   const raw = load<{ session?: unknown; list?: unknown }>(GUEST_ECHO);
@@ -520,9 +540,13 @@ export function useGuestSession(): GuestSession {
     },
     [post, me, messages, crawl, save],
   );
-  // Prune (and stop storing) every echo the server's own pick line has answered.
+  // Prune (and stop storing) every echo the server's own pick line has answered,
+  // but only against this sign-in's own stream: right after a switch the
+  // messages are still the previous identity's (`streamOwnerOf`).
+  const owner = useRef<StreamOwner | null>(null);
+  owner.current = streamOwnerOf(owner.current, me?.token ?? null, messages);
   useEffect(() => {
-    if (me === null) return;
+    if (me === null || !streamIsOwners(owner.current!, messages)) return;
     setEchoes((prev) => {
       const kept = unansweredEchoes(messages, prev);
       return kept.length === prev.length ? prev : saveEchoes(save, me.token, kept);
