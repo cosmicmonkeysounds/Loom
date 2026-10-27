@@ -1655,7 +1655,27 @@ describe("The Heart — the first meeting (wave 27)", () => {
     const e = [...shut(sim), ...advance(sim, 7)];
     expect(lines(e)).toContain("You. You are already in front of me. Good.");
     expect(lines(e).some((l) => l.startsWith("You came back") || l.startsWith("You keep coming back"))).toBe(false);
+    // Only "you came back" is skipped: where they were still shows.
+    expect(lines(e)).toContain("You were asking, and I was answering. Ask.");
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Two");
+  });
+
+  it("a program who left and scans in with the door open is greeted as back once it shuts", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    pick(sim, "g1", "I'm a person");
+    pick(sim, "g1", "I need to go");
+    unscan(sim, "g1");
+    open(sim);
+    expect(lines(scan(sim, "g1"))).toContain("Close the door first, Calculator. Then we talk. Not before.");
+    const e = shut(sim);
+    expect(lines(e)).toContain("You came back.");
+    expect(lines(e)).toContain("You were asking, and I was answering. Ask.");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Two");
+    // 🔄 while still in front of him, then a walk away before it resumes: back.
+    fire(sim, "reset_server_room");
+    expect(v(sim, "g1.heart_quiet")).toBe(true);
+    unscan(sim, "g1");
+    expect(v(sim, "g1.heart_quiet")).toBe(false);
   });
 });
 

@@ -2897,6 +2897,7 @@ ROLE Program
     set self.at_the_heart = false
     set self.heart_chat = false
     set self.heart_wait = false
+    set self.heart_quiet = false
 
   // ── The Heart (wave 20) ──
   // A pick held while the door stood open plays once it is shut, if the
@@ -2913,9 +2914,6 @@ ROLE Program
     if self.heart_pick != "none":
       -> Heart Pick
     else:
-      // Wave 27: they never left the terminal, so Heart Talk says no
-      // "you came back" (heart_quiet; Heart Talk clears it).
-      set self.heart_quiet = true
       -> Heart Talk
 
   // 🔄 forgives: a program thrown out of his heart may come back, and
@@ -2935,6 +2933,9 @@ ROLE Program
     if self.at_the_heart == true and Night.heart_holder == self.name and Night.heart_stage == "sealed":
       set self.heart_wait = true
       set Night.heart_present = true
+      // Wave 27: they never left, so the resumed Heart Talk says no "you
+      // came back" (heart_quiet; Heart Talk clears it, a close clears it).
+      set self.heart_quiet = true
 
   // An ending, an eject, a closed terminal or 🔄 ends any heart to heart.
   when Night.ended == true and self.heart_chat == true:
@@ -5316,6 +5317,8 @@ when terminal_closed for program:
   if program.name != null:
     set program.at_the_heart = false
     set program.heart_chat = false
+    // They left: a later resume is a return, and says so (wave 27).
+    set program.heart_quiet = false
     if program.name == Night.heart_holder:
       set Night.heart_present = false
       if Night.heart_stage == "talk":

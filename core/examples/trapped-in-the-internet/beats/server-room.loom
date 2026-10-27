@@ -279,9 +279,10 @@ else if program.heart_menu == true:
 else:
   // A re-scan after they left (no menu docked): he says so, and where
   // they were; the layer's own plain line is skipped (heart_quiet). A talk
-  // the ROLE watcher resumes for someone who never left (the door shut
-  // again, 🔄 with them still in front of him) comes in hushed: no "you
-  // came back".
+  // the ROLE watcher resumes for someone who never left (🔄 with them
+  // still in front of him: the heart_gen watcher, or a pick answered with
+  // Not now.) comes in hushed: no "you came back", only where they were.
+  // A resume after they left (a re-scan with the door open) says it.
   if program.heart_quiet != true and program.heart_layer >= 1:
     // DRAFT w27 (C5)
     if program.heart_visits >= 3:
@@ -751,6 +752,8 @@ else if Night.heart_stage == "sealed" or Night.heart_stage == "door":
   set program.heart_pick = "none"
   set program.heart_wait = true
   set Night.heart_present = true
+  // Still in front of him: the resumed Heart Talk says no "you came back".
+  set program.heart_quiet = true
   // DRAFT w20
   Trabolta: Not now.
 else if Night.server_door == "open":
