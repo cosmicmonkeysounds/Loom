@@ -381,9 +381,29 @@ def dossier_block(dossier: Any) -> str | None:
     return "\n".join(_clip(line, DOSSIER_LINE) if not line.startswith("- “") else line for line in lines)
 
 
+def stage_of(req: dict[str, Any]) -> dict[str, Any] | None:
+    """(wave 32) The request's `stage` — `{room, scene, direction?}` — when
+    it asks for a PUBLIC answer in a room (a talk scene: Clippy speaking
+    aloud in the Desktop, his answer on the screen above the fireplace), or
+    None for a private thread. A request whose speaker carries `stage: true`
+    but no `stage` block (a partial server) is still one, with no room."""
+    stage = req.get("stage")
+    if isinstance(stage, dict):
+        return stage
+    if (req.get("speaker") or {}).get("stage") is True:
+        return {}
+    return None
+
+
+def is_stage(req: dict[str, Any]) -> bool:
+    return stage_of(req) is not None
+
+
 def gate_context(req: dict[str, Any]) -> dict[str, Any]:
     """The names a persona's `when:` gate can read: `self.<var>`,
-    `them.<var>`, `speaker.kind`, and world paths (`Night.phase`)."""
+    `them.<var>`, `speaker.<field>` (the raw speaker: `speaker.kind`,
+    `speaker.player`, wave 32's `speaker.stage`), and world paths
+    (`Night.phase`, wave 32's `Night.talk`: the server sends every global)."""
     ctx: dict[str, Any] = {}
     for path, value in (req.get("world") or {}).items():
         _nest(ctx, str(path), coerce_scalar(value))

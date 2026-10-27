@@ -70,10 +70,11 @@ from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
 from .mind import Mind, mind_path
 from .orchestrator import Job, Orchestrator, reflect_tokens_needed, voice_tokens_needed
 from .persona import Persona
-from .prompt import adjust_names, build_messages, gate_context
+from .prompt import adjust_names, build_messages, gate_context, is_stage
 from .guards import repeats_line
 from .reply import Reply, parse_reply
 from .secrets import drop_counts
+from .slots import FIRST, NORMAL, Slots
 from .trace import Thought, Trace, new_thought
 
 log = logging.getLogger("stagehand.agents")
@@ -99,6 +100,13 @@ def build_agents(section: Any, base_dir: str) -> "Agents":
 def thread_key(req: dict[str, Any]) -> str:
     t = req.get("thread") or {}
     return f"{t.get('channel', '')}|{','.join(t.get('audience') or [])}"
+
+
+def lane_of(req: dict[str, Any]) -> int:
+    """(wave 32) The slot lane a request waits in: a stage request (his
+    public answer to Clippy, the whole Desktop waiting on the TV) is served
+    before every waiting DM, ruling or summary; the rest keep their order."""
+    return FIRST if is_stage(req) else NORMAL
 
 
 async def answer(
@@ -260,7 +268,8 @@ class Agents:
         #: a `request`: `judge.py`).
         self.judging: dict[str, asyncio.Task[None]] = {}
         self.mod: ModClient | None = None
-        self._slots = asyncio.Semaphore(cfg.concurrency)
+        #: The generation slots (wave 32: a stage request waits in the front lane, `slots.py`).
+        self._slots = Slots(cfg.concurrency)
         self.facts: FactsClient | None = None
         #: The voice models, per character — a copy the control panel may retune.
         self.models: dict[str, LlmConfig] = dict(cfg.models)
@@ -836,7 +845,7 @@ class Agents:
                 await self._answer_new(rid, persona, mind, req)
                 return
             facts = await self._facts() if persona.lookup or persona.powers != () else None
-            async with self._slots:
+            async with self._slots.lane(lane_of(req)):
                 reply = await answer(persona, self.models[character], req, self.complete_fn, mind=mind, facts=facts, trace=self.trace)
             log.info(
                 "%s → %s: %s%s%s",
@@ -1022,7 +1031,7 @@ class Agents:
             whispers=tuple(mind.director),
             options=VoiceOptions(memo=v.memo, repeat_guard=v.repeat_guard, layout=v.layout, retry_allowed=len(self.tasks) <= 1, warm_head=v.warm_head),
         )
-        async with self._slots:
+        async with self._slots.lane(lane_of(req)):
             voice_mind = mind if quiet_ok or v.layout != "classic" else story_mind.without_summaries(mind)
             reply = await self._voice()(persona, self.models[character], req, ctx, self.complete_fn, trace=self.trace, facts_fn=self._facts, mind=voice_mind)
         log.info(
