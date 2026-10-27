@@ -394,6 +394,10 @@ export interface PrimeCalls {
 
 export interface PrimeView {
   character: string;
+  /** Wave 32 (C5): the talk scene that is on, as the host view carries it
+   *  (core's `talk-back.ts` `TalkView`); the host console reads the host
+   *  view's copy. Absent from an older server; null when none is on. */
+  talk?: import("../../core/src/talk-back.ts").TalkView | null;
   title?: string;
   theme?: string;
   /** Story clock (ms) when the server built this view — "now" for `ts`. */

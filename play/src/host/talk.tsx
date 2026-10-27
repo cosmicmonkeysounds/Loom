@@ -98,7 +98,7 @@ function TalkBody({ c, talk }: { c: HostConsoleState; talk: TalkView }) {
   return (
     <>
       <p className="host-talk-hint">{talk.hint}</p>
-      <p className={`host-talk-state ${state.tone}`} role="status" aria-live="polite" data-testid="host-talk-state">
+      <p className={`host-talk-state ${state.tone}`} data-testid="host-talk-state">
         {state.text}
       </p>
       {lines.length > 0 && (
