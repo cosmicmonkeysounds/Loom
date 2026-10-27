@@ -1376,6 +1376,16 @@ describe("The Heart — the first meeting (wave 27)", () => {
     const c = pick(sim, "g1", "Why did you choose me?");
     expect(lines(c)[0]).toBe("A skill I needed, and your debt. I read the whole of Halifax to find it. It is the best work I have ever done.");
     expect(has(offered(sim, "g1"), "Why did you choose me?")).toBe(false);
+    // Each problem in words, never the raw slot value.
+    const heard = new Map<string, string>();
+    for (const [prob, want] of [["career", "a career that had stopped going anywhere"], ["loneliness", "your loneliness"], ["mortality", "your fear of dying"]] as const) {
+      const s2 = awake();
+      s2.setVar("g5.human_problem", JSON.stringify(prob));
+      atLayerOne(s2, "g5");
+      pick(s2, "g5", "I'm a person");
+      heard.set(prob, lines(pick(s2, "g5", "Why did you choose me?"))[0]!);
+      expect(heard.get(prob), prob).toContain(`A skill I needed, and ${want}. I read the whole of Halifax to find it.`);
+    }
     pick(sim, "g1", "What are you, really?");
     expect(has(offered(sim, "g1"), "Are you afraid of me?")).toBe(true);
     const a = pick(sim, "g1", "Are you afraid of me?");

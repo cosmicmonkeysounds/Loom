@@ -855,8 +855,14 @@ else:
       Trabolta: Yours was a life nobody was using. I went looking for exactly that.
     else if program.featured != "none":
       Trabolta: A skill I needed, and a life nobody was using. I chose you by hand. I was proud of it at the time.
-    else if program.human_problem != "none" and program.human_problem != "profile":
-      Trabolta: A skill I needed, and your {program.human_problem}. I read the whole of Halifax to find it. It is the best work I have ever done.
+    else if program.human_problem == "debt":
+      Trabolta: A skill I needed, and your debt. I read the whole of Halifax to find it. It is the best work I have ever done.
+    else if program.human_problem == "career":
+      Trabolta: A skill I needed, and a career that had stopped going anywhere. I read the whole of Halifax to find it. It is the best work I have ever done.
+    else if program.human_problem == "loneliness":
+      Trabolta: A skill I needed, and your loneliness. I read the whole of Halifax to find it. It is the best work I have ever done.
+    else if program.human_problem == "mortality":
+      Trabolta: A skill I needed, and your fear of dying. I read the whole of Halifax to find it. It is the best work I have ever done.
     else:
       Trabolta: A skill I needed, and enough trust not to ask. I read the whole of Halifax to find you.
     Trabolta: I am very good at finding the weak place in a program. Every one of you has one.
