@@ -67,6 +67,23 @@
 //! wave 11's fallback stands. Judge frames never count toward a worker's
 //! voice stall.
 //!
+//! **The public talk thread** (wave 32, contract C4). During a talk scene
+//! (`Night.talk`) a host types what Clippy says aloud in the Desktop
+//! (`POST /api/mod/talk`); the runtime commits it as Clippy's line there and
+//! opens the PUBLIC thread `{character: "Trabolta", channel: "loc:The
+//! Desktop", audience: ["@Clippy"], public: true}`. Its request carries
+//! `speaker.stage` and `stage {room, scene, direction?}`, and its history is
+//! the room's own lines (any audience, scripted ones `story: true`). The hub
+//! dispatches it ahead of every queued DM request (the front of the queue);
+//! it never hears a hold, busy or stall line in the room: where a DM thread
+//! would be held the runtime posts one `# hosts` line instead, and it is
+//! never in the busy rule at all. The reply is committed to the room with
+//! audience "all" (the TV speaks it) only while `Night.talk` still names the
+//! request's scene; acts from it are ignored. A public request is
+//! **memory-only**: it is never written to the agent waits and a restart
+//! never re-asks it (`requeueAgentThreads` reads `dm:` threads alone) — the
+//! host taps again.
+//!
 //! One open request per thread keeps a burst of three messages from
 //! producing three replies: the model answers once, then once more with
 //! everything said meanwhile. The hub is transport-agnostic — workers are
@@ -84,14 +101,31 @@ export interface AgentSpeaker {
    *  the game (Trabolta must keep them as allies; `adjust` may move their
    *  `them.<slot>` ranges). Absent otherwise. */
   player?: true;
+  /** Wave 32 (C4): the speaker is speaking aloud to a whole room (the
+   *  public talk thread): every program hears the answer. Absent otherwise. */
+  stage?: true;
 }
 
 /** Where a conversation lives: the character's `dm:` channel, narrowed to
- *  one counterpart by `audience` (`[guestId]` or `["@Character"]`). */
+ *  one counterpart by `audience` (`[guestId]` or `["@Character"]`) — or
+ *  (wave 32, C4) a room's `loc:` channel with `public: true`: the talk
+ *  thread, answered aloud to the whole room. */
 export interface AgentThread {
   character: string;
   channel: string;
   audience: string[];
+  /** Wave 32 (C4): the public talk thread (`loc:The Desktop`, `["@Clippy"]`). */
+  public?: true;
+}
+
+/** Wave 32 (C4): where a public talk request is said, and why. */
+export interface AgentStage {
+  /** The LOCATION (`The Desktop`). */
+  room: string;
+  /** The talk scene (`Night.talk`) the request was asked in. */
+  scene: string;
+  /** A canned Clippy line's hidden steer, when the newest post carried one. */
+  direction?: string;
 }
 
 /** One line of the thread as the worker sees it, oldest first. */
@@ -160,6 +194,10 @@ export interface AgentRequest {
    *  bounded to ≈ 3 KB, never a secret (`agent-dossier.ts`). Absent
    *  everywhere else, while `LOOM_AGENT_DOSSIER=off`, or from an older server. */
   dossier?: AgentDossier;
+  /** Wave 32 (C4): a public talk request (`thread.public`) — the room, the
+   *  scene and a canned line's steer. Absent on every DM request, and from
+   *  an older server; an older worker ignores it. */
+  stage?: AgentStage;
 }
 
 /** A verdict on one of the guest's filings, as the dossier carries it (an id
@@ -1087,7 +1125,7 @@ export class AgentHub {
     this.workers.set(worker.id, worker);
     this.pruneHeld();
     this.o.presence?.();
-    for (const r of this.open.values()) if (r.worker === null) this.dispatch(r);
+    for (const r of this.queuedInOrder()) this.dispatch(r);
     this.pumpJudges();
   }
 
@@ -1115,6 +1153,21 @@ export class AgentHub {
     }
     this.o.presence?.();
     this.pumpJudges(); // another worker may take the queue now
+  }
+
+  /** The requests queued in the hub, in the order they go out: (wave 32,
+   *  C4) a public talk request ahead of every DM request, then opening order. */
+  private queuedInOrder(): OpenRequest[] {
+    const queued = [...this.open.values()].filter((r) => r.worker === null);
+    return [...queued.filter((r) => r.req.thread.public === true), ...queued.filter((r) => r.req.thread.public !== true)];
+  }
+
+  /** Wave 32 (C4/C5): the open request on `thread`, as the host's talk panel
+   *  reads it — `since` = the hub clock it has been owed from — or null. */
+  openOn(thread: AgentThread): { id: string; since: number; req: AgentRequest } | null {
+    const id = this.byThread.get(threadKey(thread));
+    const r = id === undefined ? undefined : this.open.get(id);
+    return id === undefined || r === undefined ? null : { id, since: r.since, req: r.req };
   }
 
   // -- conversation ---------------------------------------------------------
@@ -1243,7 +1296,7 @@ export class AgentHub {
     if (!this.workers.has(workerId) || !this.stalls.delete(workerId)) return;
     this.pruneHeld();
     this.o.presence?.();
-    for (const r of this.open.values()) if (r.worker === null) this.dispatch(r);
+    for (const r of this.queuedInOrder()) this.dispatch(r);
   }
 
   /** `workerId`'s head went unanswered `stallAfterMs`: mark it stalled, tell
@@ -1366,7 +1419,8 @@ export class AgentHub {
     // Behind a burst on a worker still answering: the busy line, once per
     // thread. A lone request's own wait is the stall's to call.
     for (const r of this.open.values()) {
-      if (!r.behind || r.held || r.worker === null || this.stalls.has(r.worker) || this.busyThreads.has(r.key) || now - r.createdAt <= busyAfter) continue;
+      // Wave 32 (C4): a public talk thread never hears the busy line.
+      if (r.req.thread.public === true || !r.behind || r.held || r.worker === null || this.stalls.has(r.worker) || this.busyThreads.has(r.key) || now - r.createdAt <= busyAfter) continue;
       this.busyThreads.add(r.key);
       this.o.busy?.(r.req);
     }

@@ -160,6 +160,8 @@ import {
   threadKey,
 } from "./agents.ts";
 import { agentDossierOn, buildDossier, codeMentions, dossierVerdictOf } from "./agent-dossier.ts";
+import { TALK_AGENT, TALK_AS, TALK_ROOM, readTalkPost, talkScene, talkView, type TalkScene, type TalkView } from "../src/talk-back.ts";
+import { TALK_SCENES } from "../src/talk-scenes.ts";
 import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
@@ -625,7 +627,20 @@ export interface EventRuntimeInit {
   /** Least gap between two host-view builds while only the log moved
    *  (default `HOST_VIEW_MS`; tests pass 0 to read every step). */
   hostViewMs?: number;
+  /** Wave 32: the talk scenes' catalog (`talk-scenes.ts` `TALK_SCENES`;
+   *  tests inject a fixture's). */
+  talkScenes?: Readonly<Record<string, TalkScene>>;
 }
+
+/** Wave 32 (C1): the world var naming the talk scene that is on. */
+export const TALK_NIGHT_PATH = "Night.talk";
+
+/** Wave 32 (C4): the one `# hosts` line where a public talk request would
+ *  have heard the hold line (no worker, a stall, given up). Never in the room. */
+export const TALK_HOLD_NOTE = "🤖 Trabolta isn't answering — tap one of his canned lines"; // DRAFT w32
+
+/** Wave 32 (C4): the `# hosts` note when his answer came after its scene closed. */
+export const TALK_LATE_NOTE = "🤖 Trabolta's answer came after the scene moved on, so it was dropped"; // DRAFT w32
 
 /** A host booth's panel (`?role=mod&host=1`) is rebuilt at most once per
  *  this many ms while only the log moves (load test, wave 13: a build is
@@ -873,6 +888,11 @@ export class EventRuntime {
   // The injectable clock (`EventRuntimeInit.now`), read lazily by the hubs
   // built in field initialisers.
   private clock: () => number = Date.now;
+  /** Wave 32: the talk scenes' catalog (`EventRuntimeInit.talkScenes`). */
+  private readonly talkScenes: Readonly<Record<string, TalkScene>>;
+  /** Wave 32 (C4): the newest Clippy talk post's canned steer (null: the
+   *  newest post carried none). Memory-only, like the public request. */
+  private talkDirection: string | null = null;
   // Mod snapshot coalescing (`pushModSnapshots`).
   private readonly modSnapshotMs: number;
   private modSnapshotAt = Number.NEGATIVE_INFINITY;
@@ -970,6 +990,7 @@ export class EventRuntime {
     this.audio.onAck((a) => this.desk.ack(a));
     this.random = init.random ?? Math.random;
     if (init.now !== undefined) this.clock = init.now;
+    this.talkScenes = init.talkScenes ?? TALK_SCENES;
     this.claimSecret = this.resolveClaimSecret(init);
     this.claims = new Claims({ secret: this.claimSecret, now: () => this.clock() });
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
@@ -1334,6 +1355,8 @@ export class EventRuntime {
       // still (the same rule as a guest's strip, `guestViewFor`).
       ...(this.phase !== "open" ? { paused: true as const } : {}),
       ...this.showClockField(),
+      // Wave 32 (C5): a host booth's talk panel (never a player's).
+      ...(host ? { talk: this.talkViewNow() } : {}),
     };
   }
 
@@ -1428,6 +1451,7 @@ export class EventRuntime {
       // `start:` beat unplayed: the doors are still closed (the phone's strip).
       ...(!this.entryPlayed ? { doorsClosed: true as const } : {}),
       ...this.showClockField(),
+      talk: this.talkViewNow(), // wave 32 (C5)
     };
     this.modViewLast = { len: this.sim?.log.len() ?? -1, phase: this.phase, at: Date.now(), view };
     return view;
@@ -1528,9 +1552,10 @@ export class EventRuntime {
    *  cache window (and the reused mod view) must not hold the clock back, and
    *  a host's own clock change shows on their next poll. */
   private withShowClock(view: HostView): HostView {
-    const { showClock: _old, rejoins: _asks, ...rest } = view;
-    // Wave 23: the asks to get back in are read now too.
-    return { ...rest, ...this.showClockField(), rejoins: this.rejoin.desk.pending() };
+    const { showClock: _old, rejoins: _asks, talk: _talk, ...rest } = view;
+    // Wave 23: the asks to get back in are read now too; wave 32 (C5): and
+    // the talk panel (Trabolta's thinking moves between two polls).
+    return { ...rest, ...this.showClockField(), rejoins: this.rejoin.desk.pending(), talk: this.talkViewNow() };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -2411,10 +2436,101 @@ export class EventRuntime {
    *  into a guest's real thread. Performers' cast threads always pass. */
   private agentAdmits(thread: AgentThread): boolean {
     const sim = this.sim;
+    // Wave 32 (C4): the public talk thread only while a talk scene is on and
+    // he is awake (else his `unavailable` line would go to the whole room).
+    if (thread.public === true) return sim !== null && this.talkSceneNow() !== null && this.talkAwake(thread.character);
     const who = thread.audience[0];
     if (sim === null || who === undefined || who.startsWith("@")) return true;
     const def = sim.model.characters.get(thread.character);
     return def === undefined || !def.hidden || sim.isRevealedTo(def.id, who);
+  }
+
+  // -- wave 32: the talk scenes (contract C3–C5) ----------------------------
+
+  /** The talk scene `Night.talk` names now, or null (none on). */
+  private talkSceneNow(): TalkScene | null {
+    const sim = this.sim;
+    if (sim === null) return null;
+    return talkScene(this.talkNight(), this.talkScenes);
+  }
+
+  /** `Night.talk` now ("none" / unset → null). */
+  private talkNight(): string | null {
+    const v = this.sim === null ? null : worldString(this.sim.world.peek(TALK_NIGHT_PATH));
+    const t = v === null ? "" : v.replace(/^"(.*)"$/su, "$1").trim();
+    return t === "" || t === "none" ? null : t;
+  }
+
+  /** `<character>.awake` is true. */
+  private talkAwake(character: string = TALK_AGENT): boolean {
+    const v = this.sim?.world.peek(`${character}.awake`) ?? null;
+    return v !== null && (v.kind === "bool" ? v.value : v.kind === "string" && v.value.trim() === "true");
+  }
+
+  /** The public talk thread (C4): Trabolta answering Clippy aloud in the Desktop. */
+  private talkThread(): AgentThread {
+    return { character: TALK_AGENT, channel: `loc:${TALK_ROOM}`, audience: [`@${TALK_AS}`], public: true };
+  }
+
+  /** The talk panel's block (C5) for a host's view, a host booth's and the
+   *  director's: null when no talk scene is on. Read now, never cached. */
+  private talkViewNow(): TalkView | null {
+    if (this.sim === null) return null;
+    const open = this.agents.openOn(this.talkThread());
+    return talkView(this.talkNight(), { thinking: open !== null, since: open?.since ?? null, online: this.agents.isOnline(TALK_AGENT), awake: this.talkAwake() }, this.talkScenes);
+  }
+
+  /** One line in the story's staff room (`# hosts`); nothing without one. */
+  private postHostsNote(text: string): void {
+    const sim = this.sim;
+    const room = sim === null ? null : hostsRoomOf(sim.model);
+    if (room === null) return;
+    this.fanout(this.commit("broadcast", `channel(${room})`, text));
+  }
+
+  /**
+   * `POST /api/mod/talk {as, text, direction?}` (C3): a host speaks for
+   * Clippy in the Desktop (and Trabolta answers through the public thread),
+   * or fires one of Trabolta's canned lines. Both are journaled `say`s with
+   * audience "all", `by` the host.
+   */
+  private modTalk(res: ServerResponse, body: Record<string, unknown>): void {
+    const sim = this.sim;
+    if (sim === null) {
+      sendJson(res, 409, { error: "no scenario loaded" });
+      return;
+    }
+    const post = readTalkPost(body);
+    if ("error" in post) {
+      sendJson(res, 400, { error: post.error });
+      return;
+    }
+    if (this.talkSceneNow() === null) {
+      sendJson(res, 409, { error: "no_talk" });
+      return;
+    }
+    if (!this.talkAwake()) {
+      sendJson(res, 409, { error: "asleep" });
+      return;
+    }
+    if (this.phase !== "open") {
+      sendJson(res, 409, { error: "closed" });
+      return;
+    }
+    const thread = this.talkThread();
+    const seqOf = (out: ChatMessage[]): number | null => out.find((m) => m.channel === thread.channel && m.from === post.as)?.seq ?? null;
+    if (post.as === TALK_AGENT) {
+      // A canned line of his: it answers whatever is owed, by hand.
+      const open = this.agents.openOn(thread);
+      const seq = seqOf(this.fanout(this.commit("say", TALK_AGENT, thread.channel, post.text, null, "all", open === null ? null : answeredSeq(open.req))));
+      this.agents.answeredByHand(thread);
+      sendJson(res, 200, { ok: true, seq });
+      return;
+    }
+    this.talkDirection = post.direction ?? null;
+    const seq = seqOf(this.fanout(this.commit("say", TALK_AS, thread.channel, post.text, null, "all")));
+    this.agents.line(thread);
+    sendJson(res, 200, { ok: true, seq, asked: this.agents.openOn(thread) !== null, online: this.agents.isOnline(TALK_AGENT) });
   }
 
   /** The declared character `name` names (case / space / `_` / `-` folded),
@@ -2629,6 +2745,11 @@ export class EventRuntime {
    *  `hold:` line into the thread as an ordinary journaled say (the director
    *  can still answer as the character from Run). */
   private postAgentHold(req: AgentRequest): boolean {
+    // Wave 32 (C4): never in the room — one `# hosts` line instead.
+    if (req.thread.public === true) {
+      this.postHostsNote(TALK_HOLD_NOTE);
+      return true;
+    }
     const line = this.sim?.model.characters.get(req.character)?.hold ?? null;
     if (line === null) return false;
     this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience, answeredSeq(req)));
@@ -2640,6 +2761,7 @@ export class EventRuntime {
    *  restart (which forgets the hub's own once-per-thread) never says it
    *  twice. */
   private postAgentBusy(req: AgentRequest): boolean {
+    if (req.thread.public === true) return false; // wave 32 (C4): never in the room
     const line = this.sim?.model.characters.get(req.character)?.busy ?? null;
     if (line === null) return false;
     const who = req.thread.audience.join(",");
@@ -2763,6 +2885,7 @@ export class EventRuntime {
   private buildAgentRequest(thread: AgentThread, id: string): AgentRequest | null {
     const sim = this.sim;
     if (sim === null) return null;
+    if (thread.public === true) return this.buildTalkRequest(thread, id);
     const who = thread.audience[0]!;
     const performer = who.startsWith("@") ? who.slice(1) : null;
     // Wave 12 (C1.6): read on every build, so a flip needs no restart of
@@ -2934,6 +3057,70 @@ export class EventRuntime {
       .flatMap(([path, v]) => (v.kind === "string" && secretHeads.has(path.split(".")[0]!) ? [v.value] : []));
     const mentionsSecret = secretMentions(secretValues, [...sim.persons.values()].map((p) => p.name));
     return { ...(mentionsAnswer !== undefined ? { mentionsAnswer } : {}), mentionsSecret };
+  }
+
+  /**
+   * Wave 32 (C4): the public talk request — Clippy speaking aloud in the
+   * Desktop. History = the room's own lines (kind `line`, not hidden, ANY
+   * audience, every speaker; scripted ones `story: true`), newest
+   * `AGENT_HISTORY`, each `from` its speaker's name; a line that carries a
+   * facts answer or a secret value is left out (never the line he is asked
+   * to answer). No dossier; `them.location` null; `stage {room, scene,
+   * direction?}`. Null when nobody but him has said anything there.
+   */
+  private buildTalkRequest(thread: AgentThread, id: string): AgentRequest | null {
+    const sim = this.sim!;
+    const scene = this.talkNight();
+    if (scene === null) return null;
+    const who = thread.audience[0] ?? `@${TALK_AS}`;
+    const performer = who.startsWith("@") ? who.slice(1) : who;
+    const all = this.chat.all();
+    const room = all.filter((m) => m.channel === thread.channel && m.kind === "line" && !m.hidden);
+    const def = sim.model.characters.get(thread.character);
+    const tag: StoryTagContext = { character: thread.character, hold: def?.hold ?? null, busy: def?.busy ?? null, storyTexts: storyTexts(all, thread.character) };
+    // The line he answers: the speaker's newest (else anyone's but his).
+    let asked: ChatMessage | undefined;
+    for (let i = room.length - 1; i >= 0 && asked === undefined; i--) if (room[i]!.from === performer) asked = room[i];
+    for (let i = room.length - 1; i >= 0 && asked === undefined; i--) if (room[i]!.from !== thread.character) asked = room[i];
+    if (asked === undefined) return null; // nothing said to answer
+    const { mentionsAnswer, mentionsSecret } = this.agentLeakChecks();
+    const lines = room.filter((m) => m === asked || !(mentionsSecret(m.text) || (mentionsAnswer?.(m.text) ?? false)));
+    const history: AgentLine[] = lines.slice(-AGENT_HISTORY).map((m) => ({
+      seq: m.seq,
+      mine: m.from === thread.character,
+      from: m.from,
+      text: m.text,
+      ...(storyTag(m, tag) ? { story: true as const } : {}),
+    }));
+    const world = sim.worldEntries();
+    const varsOf = this.agentVarsOf(world);
+    const speakerDef = sim.model.characters.get(performer);
+    const codex = (holder: string, text: boolean) =>
+      sim
+        .codexFor(holder)
+        .filter((e) => !e.secret && (text || !(e.title.includes(HUNT_ANSWER_MARK) || e.text.includes(HUNT_ANSWER_MARK))))
+        .map((e) => ({ id: e.id, title: e.title, about: e.about, text: text ? e.text : "" }));
+    const recentOn = agentRecentOn();
+    return {
+      id,
+      character: thread.character,
+      thread,
+      speaker: { kind: "performer", id: performer, name: performer, faction: speakerDef?.faction ?? null, ...(speakerDef?.player === true ? { player: true as const } : {}), stage: true },
+      text: asked.text,
+      history,
+      self: { vars: varsOf(thread.character), ranges: Object.fromEntries(def?.ranges ?? []), codex: codex(thread.character, true) },
+      them: {
+        vars: varsOf(performer),
+        codex: codex(performer, !recentOn),
+        location: null,
+        ...(speakerDef?.player === true ? { ranges: Object.fromEntries([...speakerDef.ranges].filter(([k]) => !isPrivateSlot(speakerDef, k))) } : {}),
+      },
+      world: this.agentGlobals(world),
+      powers: this.agentPowers(),
+      at: this.clock(),
+      ...(recentOn ? this.agentRecentOf(thread, "performer", performer, performer, all, lines, tag) : {}),
+      stage: { room: TALK_ROOM, scene, ...(this.talkDirection !== null ? { direction: this.talkDirection } : {}) },
+    };
   }
 
   /** `recent` + `storyAt` for one request (wave 12, C1.2): rebuilt from the
@@ -3118,6 +3305,12 @@ export class EventRuntime {
   private pushTyping(thread: AgentThread, on: boolean): void {
     const who = thread.audience[0]!;
     const data = { channel: thread.channel, from: thread.character, on };
+    if (thread.public === true) {
+      // Wave 32 (C4): his thinking reaches the host booths and the directors
+      // only — never a guest, never a player's booth.
+      for (const c of this.clients) if (c.role === "mod" || (c.role === "prime" && (c.host === true || c.admin === true))) sseSend(c.res, "typing", { ...data, audience: thread.audience, public: true });
+      return;
+    }
     for (const c of this.clients) {
       if (c.role === "guest" ? c.id === who : c.role === "prime" ? `@${c.id}` === who || c.admin === true : true) {
         sseSend(c.res, "typing", { ...data, audience: thread.audience });
@@ -3179,8 +3372,18 @@ export class EventRuntime {
       return;
     }
     const text = str(body, "say").trim().slice(0, CHAT_TEXT_MAX);
+    const isPublic = req.thread.public === true;
+    if (isPublic && (req.stage === undefined || this.talkNight() !== req.stage.scene)) {
+      // Wave 32 (C4): the scene it was asked in is over — the room moved
+      // on; nothing lands (no line, no adjust), the hosts hear why.
+      this.postHostsNote(TALK_LATE_NOTE);
+      sendJson(res, 410, { error: "the talk scene closed" });
+      return;
+    }
     if (text !== "") {
-      this.fanout(this.commit("say", req.character, req.thread.channel, text, null, req.thread.audience, answeredSeq(req)));
+      // Wave 32 (C4): a public answer goes to the whole room (a `loc:`
+      // channel's default audience is only its occupants).
+      this.fanout(this.commit("say", req.character, req.thread.channel, text, null, isPublic ? "all" : req.thread.audience, answeredSeq(req)));
     }
     // Adjustments move only the character's own declared numeric ranges,
     // clamped to them. The story's watchers decide what the numbers mean.
@@ -3212,8 +3415,10 @@ export class EventRuntime {
     // autonomous changes the house while nobody else may act, and a refused
     // act is not counted against its power's limit.
     const acts = agentActs(body["acts"]);
-    const acted: AgentActResult[] =
-      this.phase === "open"
+    const acted: AgentActResult[] = isPublic
+      ? // Wave 32 (C4): nothing is done from the stage (the situation says `acts: none`).
+        acts.map((a) => ({ kind: a.kind, ok: false, what: a.kind === "share" ? a.entry : a.name, error: "not from the stage" }))
+      : this.phase === "open"
         ? this.applyAgentActs(req, acts)
         : acts.map((a) => ({ kind: a.kind, ok: false, what: a.kind === "share" ? a.entry : a.name, error: "doors are closed" }));
     if (followUp) this.agents.line(req.thread);
@@ -4647,6 +4852,7 @@ export class EventRuntime {
     }
     this.stopTicker();
     this.agents.reset(opts.by ?? "server", kind);
+    this.talkDirection = null; // wave 32: the public request was memory-only
     this.rulingsDue.clear();
     this.spatial.reset(kind);
     // Every session just ended: the voice streams close (games re-begin,
@@ -7298,6 +7504,12 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true, seq, hidden: m.hidden });
         return true;
       }
+      case "/api/mod/talk": {
+        // Wave 32 (C3): a host speaks for Clippy in the Desktop (Trabolta
+        // answers aloud), or fires one of his canned lines.
+        this.modTalk(res, body);
+        return true;
+      }
       case "/api/mod/say": {
         // The operator types into *any* room — as themselves ("Operator") or
         // in a character's voice (`as`). Unlike a guest `say`, this bypasses
@@ -7356,6 +7568,9 @@ export class EventRuntime {
         // decision #35) closes the request that guest's line opened, so a
         // worker that comes back doesn't answer it a second time.
         else if (isCharacter && Array.isArray(audience) && this.isAgent(speaker)) this.agents.answeredByHand({ character: speaker, channel, audience });
+        // Wave 32 (C4): a director typing as him in the Desktop answers an
+        // owed public talk request by hand, too.
+        else if (isCharacter && speaker === TALK_AGENT && channel === `loc:${TALK_ROOM}`) this.agents.answeredByHand(this.talkThread());
         sendJson(res, 200, { ok: true });
         return true;
       }
