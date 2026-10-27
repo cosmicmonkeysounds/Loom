@@ -251,13 +251,14 @@ page reads the board over **Web Serial** (desktop Chrome or Edge on https).
   door open**. The *patch bay* section below it shows each input's reading,
   with **Learn** per source and **Save** / **Reset**.
 - **The heart.** The story docks the heart's menu in the guest's
-  `dm:Trabolta`. The page shows it as a YOUR ANSWER panel with the layer
-  (`LAYER 3 / 4 · THE ARGUMENT`), clicked or keyed (`1`–`9`, `0` for the
+  `dm:Trabolta`. The page shows it as a YOUR ANSWER panel (since wave 29
+  it never shows the layer or a count: nothing on the heart terminal says
+  how far through the talk a program is), clicked or keyed (`1`–`9`, `0` for the
   tenth, then `a`, `b` …). Up to nine options fit at 1280×720; more scroll
   under a ▼ MORE cue. Since wave 27:
   - The panel says LISTENING… and takes no click or key while his reply
     is still being said (up to 20 s) and while one of his heart scenes
-    (the proof, a warning, an eject …) plays; the layer card does not
+    (the proof, a warning, an eject …) plays; the question card (*HEART.EXE*, no count) does not
     hold it. Space or a click on it skips his voice to the end.
   - The thread shows this visit only. Earlier phone DMs are left out
     behind "— earlier messages are on your phone —" (the line opens,

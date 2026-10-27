@@ -90,7 +90,7 @@ const NOTICE_TIME := 4.0
 const KING_NEAR := 1.5
 ## Beyond this the notice may be said again on the next approach.
 const KING_FAR := 3.0
-const KING_NOTICE := "Pull the trigger to hit the King."  # DRAFT w26 (G1, C12)
+const KING_NOTICE := "Pull the trigger to hit the King."
 const KING_HIT := "You hit him."
 const KING_DOWN := "He is down: the cold door is open."
 ## A visit ends at the duck, not at Leave or a timeout: a re-scan before
@@ -101,8 +101,8 @@ const KING_STANDS := "The King stands again."
 const KING_PAUSED := "The show is paused."
 ## The path reveal (R2): the notice when the trail comes on, and "Gerald
 ## moved" before / after it.
-const TRAIL_NOTICE := "A golden trail flickers on."  # DRAFT w26 (R2, C12)
-const DUCK_MOVED := "Gerald moved."  # DRAFT w26 (R2, C12)
+const TRAIL_NOTICE := "A golden trail flickers on."
+const DUCK_MOVED := "Gerald moved."
 const DUCK_MOVED_TRAIL := "Gerald moved — follow the arrows."
 ## `--autopilot` gives up (exit 1) after this many seconds.
 const AUTOPILOT_LIMIT := 180.0

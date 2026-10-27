@@ -38,8 +38,6 @@ more time on this earth, so you can run for Mayor **one more time**.
 Jean Trabolta's offer: a pilot program to upload your consciousness to the
 Cloud. **Everlasting life.** You did not read the terms.
 
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
-
 ## Who you know
 
 When you're scanned in, three files about **who you're connected to** arrive in your Codex under **Connections**. Each one points at other people in the house without naming them; whoever holds the same file is connected to you. Ask around ("you have the staff photo too?"), and never say who is behind a program.
@@ -56,7 +54,7 @@ When you're scanned in, three files about **who you're connected to** arrive in 
   question and private orders. Answer as Randy would. Follow the orders: they
   are your mission, and nobody else has them. (If the virus is already
   planted when the glitch comes, the mission completes then.)
-- <!-- DRAFT w26 (R7) --> **The disk.** If your orders send you to the
+- **The disk.** If your orders send you to the
   Internet for something to bring back: inside the copy of the house you
   walk there, a floppy disk is waiting. Walk up to it and it is in your
   Codex. (The tent has the same file on paper, if the copy won't load.) Back

@@ -1206,7 +1206,8 @@ describe("The Heart — secrets and the fiction (wave 20, D29)", () => {
   it("the persona: them: and facts: carry the heart; the heart-to-heart situation is last, 4 sentences, no acts", () => {
     const front = PERSONA.split("\n---\n")[0]!;
     const them = /^them: (.*)$/mu.exec(front)![1]!.split(",").map((s) => s.trim());
-    expect(them).toEqual(expect.arrayContaining(["at_the_heart", "heart_layer", "heart_menu", "heart_convinced", "heart_chat", "heart_out"]));
+    expect(them).not.toContain("heart_layer"); // wave 29: the dossier says it in words
+    expect(them).toEqual(expect.arrayContaining(["at_the_heart", "heart_menu", "heart_convinced", "heart_chat", "heart_out"]));
     const facts2 = /^facts: (.*)$/mu.exec(front)![1]!.split(",").map((s) => s.trim());
     expect(facts2).toEqual(expect.arrayContaining(["Night.heart_stage", "Night.server_door"]));
     const names = [...front.slice(front.indexOf("\nsituations:\n")).matchAll(/^ {2}- name: (.+)$/gmu)].map((m) => m[1]!);
@@ -1228,7 +1229,7 @@ describe("The Heart — the header (wave 20, §3.10)", () => {
   it("the watch lines carry the heart's stage, the door, the override and the talker", () => {
     const head = SRC.slice(0, SRC.indexOf("\n\n"));
     expect(head).toContain("Night.heart_stage as The Heart, Night.server_door as Server door, Night.door_override as Door on buttons, Night.patch_override as Patch bay on buttons, program.at_the_heart as At the heart");
-    expect(head).toContain('watch: Night.heart_talker as At his heart, Night.heart_talker_layer as Heart layer, Night.heart_talker_suspicion as Heart suspicion, while Night.heart_stage == "talk"');
+    expect(head).toContain('watch: Night.heart_talker as At his heart, Night.heart_talker_layer as Heart progress, Night.heart_talker_suspicion as Heart suspicion, while Night.heart_stage == "talk"');
     expect(head).not.toContain("Night.heart_opened as The Heart");
   });
 });
@@ -1534,7 +1535,7 @@ describe("The Heart — the first meeting (wave 27)", () => {
     expect(v(sim, "g1.heart_case")).toBe(Math.min(9, c0 + 1));
     expect(v(sim, "g1.heart_suspicion")).toBe(Math.max(0, s0 - 5));
     expect(has(offered(sim, "g1"), "You don't have to be omnipotent")).toBe(false);
-    // Back to Three and up again: no second LAYER 4 scene.
+    // Back to Three and up again: no second room_heart_layer_4 card.
     pick(sim, "g1", "Come out with us");
     const again = pick(sim, "g1", "Then let me finish");
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Four");

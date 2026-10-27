@@ -548,7 +548,7 @@ ul.check label { min-width: 0; cursor: pointer; }
     <p>If nothing has ended by midnight: 🌑 the final reveal in the dark, 🍎 Bobbing for Truth for the Bag of Truth, 📄 truth.txt read aloud by the bobber, then ⚖ the verdict on the TV. No lie on record gives the song. Any accepted lie sends Sandy to the prom with Trabolta's rival, and the night continues down the Prom branch (see Endings). On the cue sheet and in the beat list that branch's beat is <em>Rival's Prom</em>: its real name holds a hunt answer.</p>
 
     <h3>G · The awards ceremony</h3>
-    <p>🏆 The Night In Review, then the awards: most and least trusted, frequent flyer, lore hoarder, Truthcoin tycoon, best liar, duck speedrun, quest completionist, the painting (only if MS Paint came), then three staff awards with The Mole last. 🎃 The Resurrection: everyone is human again, out of character.</p>
+    <p>🏆 The Night In Review, then the awards: most and least trusted, frequent flyer, lore hoarder, Truthcoin tycoon, best liar, duck speedrun, quest completionist, the painting (only if MS Paint came), then three staff awards with The Mole last. 🎃 The Resurrection: everyone is human again.</p>
 
     <h3>Any time</h3>
     <ul>
@@ -739,7 +739,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <tr><td class="n">61</td><td class="label">G10a · 🛡 Staff award: Trabolta's Favourite Staff (top staff trust)<span class="tags"><span class="tag">has while:</span></span></td><td><code>award_staff_trusted</code></td><td class="desc">Clippy or an Antivirus: whoever Trabolta trusts most on his chart's staff rows.</td></tr>
 <tr><td class="n">62</td><td class="label">G10b · ⭐ Staff award: Staff Player Of The Night (most points)<span class="tags"><span class="tag">has while:</span></span></td><td><code>award_staff_points</code></td><td class="desc">Clippy or an Antivirus: the most ⭐ Points.</td></tr>
 <tr><td class="n">63</td><td class="label">G10c · 🤫 Staff award: The Mole (most quiet favours; the last award)<span class="tags"><span class="tag">has while:</span></span></td><td><code>award_staff_mole</code></td><td class="desc">The player who did the programs the most quiet favours behind Trabolta's back, revealed here for the first time (nobody, if nobody did). The last award: G11 waits for it.</td></tr>
-<tr><td class="n">64</td><td class="label">G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)<span class="tags"><span class="tag">has while:</span></span></td><td><code>resurrection</code></td><td class="desc">Only once the ceremony has started (G1), after the last award (G10c, The Mole; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.</td></tr>
+<tr><td class="n">64</td><td class="label">G11 · 🎃 Resurrection: the show is over (after the ceremony)<span class="tags"><span class="tag">has while:</span></span></td><td><code>resurrection</code></td><td class="desc">Only once the ceremony has started (G1), after the last award (G10c, The Mole; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.</td></tr>
 </tbody></table></div>
   </div>
 </section>
@@ -1209,7 +1209,7 @@ Windows (PowerShell):
   <div class="body">
     <p class="prose">The VPS still runs <code>w18b-1021</code> (verify: <code>ssh loom-vps 'tail ~/loom-ops/releases.log'</code>). Master holds wave 18b stage B, waves 20, 20b, 21, 22, 23, 24, 25 and 26, all unshipped. Wave 19 is already live. Wave 26 lands in its contract's C14 order: the server, the sync, the reload of every screen, then the Quest APK. In this order:</p>
     <ul class="check" data-list="deploy">
-      <li><input type="checkbox" id="ck-deploy-decide-the-sign-off-shipping-carries"><label for="ck-deploy-decide-the-sign-off-shipping-carries"><strong>Decide the sign-off.</strong> Shipping carries every DRAFT line of waves 18b, 20, 21, 22 and 26 (see Open questions).</label></li>
+      <li><input type="checkbox" id="ck-deploy-the-sign-off-is-done-2026"><label for="ck-deploy-the-sign-off-is-done-2026"><strong>The sign-off is done</strong> (2026-10-27): waves 13–29 ship as written. Still DRAFT: wave 22's patch-bay lines (no sheet).</label></li>
       <li><input type="checkbox" id="ck-deploy-check-the-preview-s-roster-in"><label for="ck-deploy-check-the-preview-s-roster-in"><strong>Check the preview's roster in its own step</strong> (<code>pnpm showctl roster</code>). If anyone is on, ask before shipping: a release restarts the server.</label></li>
       <li><input type="checkbox" id="ck-deploy-on-the-macbook-scripts-ops-predeploy"><label for="ck-deploy-on-the-macbook-scripts-ops-predeploy">On the MacBook: <code>scripts/ops/predeploy.sh --vr</code> (the full gate; stamps the commit). Also <code>pnpm --filter @loom/core show:page --check</code>.</label></li>
       <li><input type="checkbox" id="ck-deploy-server-first-loom-vps-loom-vps"><label for="ck-deploy-server-first-loom-vps-loom-vps"><strong>Server first:</strong> <code>LOOM_VPS=loom-vps scripts/ops/ship.sh show-1031</code> (without <code>LOOM_VPS</code>, here or in <code>~/.config/loom/ops.env</code>, it dials <code>ubuntu@app.mapsandducks.com</code>). Stop here if it fails. Then <code>ssh loom-vps 'cd ~/loom &amp;&amp; deploy/release.sh --check-env'</code> and <code>curl https://app.mapsandducks.com/api/health</code> → 200. Rollback: <code>ssh loom-vps 'cd ~/loom &amp;&amp; deploy/rollback.sh'</code>.</label></li>
@@ -1401,19 +1401,17 @@ Windows (PowerShell):
       <dt><strong>U10 · The MOTU</strong></dt><dd>Partly answered: on the Desktop (the MacBook is the fallback). Still open: does it run under ASIO on MOTU's Windows driver at 32 in / 30 out with no dropouts?</dd>
       <dt><strong>U11 · The laptops</strong></dt><dd>What OS is Steph's laptop, and does the old tent laptop have WebGL2?</dd>
       <dt><strong>U12 · Counts</strong></dt><dd>How many wall tablets for the <code>auto</code> spots, and how many Quest headsets?</dd>
-      <dt><strong>U13 · Sign-off and ship date</strong></dt><dd>Is the DRAFT show text signed off, and does the ship land before the Tue 10-27 18:00 feature freeze?</dd>
+      <dt><strong>U13 · Sign-off and ship date</strong></dt><dd>Signed off 2026-10-27 (waves 13–29). Does the ship land before the Tue 10-27 18:00 feature freeze?</dd>
       <dt><strong>U14 · Names</strong></dt><dd>McAfee's actor, the second director, the tech operator, the house manager, and the emergency card's address and phone lines.</dd>
     </dl>
     <h3>Decided in wave 22</h3>
     <p>The patch bay layout (8 sources and 7 inputs, Combo A changed with it), a re-plugged cable never counting twice, source-to-source and input-to-input cables reading as incomplete, and the buttons overriding the bay until <code>trust_patch_bay</code>.</p>
-    <h3>DRAFT sign-off status</h3>
+    <h3>Sign-off status</h3>
     <ul>
-      <li><code>history/SIGNOFF-w18b.md</code> (D1–D30, the Bingo-card line): awaiting the user.</li>
-      <li><code>history/SIGNOFF-w20.md</code>: answered "I will review, ship for now"; the persona's <code>outside:</code> list still to review.</li>
-      <li><code>SIGNOFF-w27.md</code> (the first meeting at his heart: greetings, follow-ups, ⟦SHOW HIM⟧ / ⟦TELL HIM⟧, the endings): awaiting the user.</li>
-      <li><code>SIGNOFF-w26.md</code> (the BINGO call and its undo, the locked phone, the Dare scene, the game's void / heart / disk lines, no hints): awaiting the user.</li>
-      <li><code>SIGNOFF-w21.md</code> (performers play): awaiting the user. Open in it: McAfee's exchange pays per 🤝 press only; no report between players.</li>
-      <li><code>SIGNOFF-w18.md</code> (Q1–Q60) and <code>SIGNOFF-w13.md</code>: answered; their status lines are stale.</li>
+      <li><strong>Signed off 2026-10-27</strong> (<em>"Every line in the signoffs looks good! ship those please."</em>): <code>SIGNOFF-w13.md</code>, <code>SIGNOFF-w18.md</code>, <code>history/SIGNOFF-w18b.md</code> (strike the <em>write every name down</em> line from the printed Bingo card, O1), <code>history/SIGNOFF-w20.md</code> (the persona's <code>outside:</code> list included), <code>SIGNOFF-w21.md</code>, <code>SIGNOFF-w26.md</code>, <code>SIGNOFF-w27.md</code>, <code>SIGNOFF-w28.md</code>. Every drafted default is accepted.</li>
+      <li><code>SIGNOFF-w29.md</code> (the immersion fixes at his heart and in G11): signed off 2026-10-27.</li>
+      <li>Wave 22's patch-bay lines (<code>DRAFT w22</code>) have no sheet.</li>
+      <li>Reprint now: Clippy, Task Manager, Norton, McAfee, Password Manager, CRA, the director, the Installation Wizard, Microsoft Excel, Adobe Acrobat, the Recycling Bin, all-crew and the patch-bay watch card.</li>
       <li><code>facts.json</code>: all eight questions and 16 of 20 truths are still marked draft.</li>
     </ul>
   </div>

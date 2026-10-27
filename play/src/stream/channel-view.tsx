@@ -141,7 +141,7 @@ export function DecisionTray({ decision, folded = false, onUnfold }: { decision:
   if (folded)
     return (
       <button type="button" className="tray dialogue dlg-folded" aria-expanded={false} onClick={onUnfold}>
-        {/* DRAFT w26 (P1): UI copy — the title alone: every story menu's is already "Your move…" */}▴ {decision.title}
+        {/* w26 (P1): UI copy — the title alone: every story menu's is already "Your move…" */}▴ {decision.title}
       </button>
     );
   return (
@@ -393,7 +393,7 @@ export function ChannelView({
       lay.composer === "button" ? (
         <div className="composer composer-folded">
           <button type="button" className="choice composer-open" onClick={() => flushSync(() => setTyping(true))}>
-            {/* DRAFT w26 (P1): UI copy */}⌨ {draft.current.text.trim() !== "" ? draft.current.text : hint}
+            ⌨ {draft.current.text.trim() !== "" ? draft.current.text : hint}
           </button>
         </div>
       ) : lay.composer === "open" && onSend ? (

@@ -118,8 +118,10 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   no King bar (wave 26, R3): the bar over his head is his only display.
   The heart carries no label, rows or colours that could hint at the
   patch bay.
-- **Copy.** New wave 26 strings are marked `DRAFT w26` in source and
-  listed in `core/examples/trapped-in-the-internet/SIGNOFF-w26.md`.
+- **Copy.** Wave 26's strings are listed in
+  `core/examples/trapped-in-the-internet/SIGNOFF-w26.md`, signed off on
+  2026-10-27 (their comments keep a `w26 (<note>)` tag). New copy awaiting
+  sign-off is marked `DRAFT w<N>` in source.
 - **Quest audio is unproven on hardware.** Whether Horizon OS has a TTS
   voice and whether the Quest mic gives real samples is checked on the
   device (HW-TENT-07): the lobby's TEST MIC, `tools/quest.sh logs`, and a

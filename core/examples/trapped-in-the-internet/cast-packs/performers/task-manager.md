@@ -12,7 +12,7 @@
 | V3 Bingo results, **only if nobody has a Bingo** | **🃏 Hand Clippy the fake Bingo card** | the anti-AI program (**MS Paint** unless changed) |
 | from the 📥 Truther Download | **🪙 Pay 100 Truthcoin** / **🪙 Charge 100 Truthcoin** | **corrections only** (a cash deal, a mis-send); programs move their own coin from their Wallet |
 | any time | **🤝 Vouch for this program** | clears a program's watchlist (doubt → 0) |
-| any time | **🎀 Award a ribbon** | anyone who earns one (announced as *from the hosts*: DRAFT, Q28) |
+| any time | **🎀 Award a ribbon** | anyone who earns one (announced as *from the hosts*, Q28) |
 | any time | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy (on a marked program's card face) |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
@@ -61,7 +61,7 @@ buttons…* fold any more; a press the story refuses still shows its `# hosts`
 reason). 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
 never on your card: radio one. The console's **Needs** tab leads with **🚨 n marked · m nobody on it** while programs wait on the Antivirus' Wanted board (tap it for the board, read-only); **Judge** has the *Judging: auto ⇄ review* switch; **More** is split into **Night** (doors, pause, the show clock, announce, the alert level), **House** (wallets, the King, terminals, Trabolta, crews) and **Setup** (codes and QRs, parts). Help → *The host console* has the rest.
 
-**You call the games now (wave 21, DRAFT w21).** Clippy is a *player*, not a
+**You call the games now (wave 21).** Clippy is a *player*, not a
 caller: every game cue (🎱 Bingo, ⏰ Bingo time, 🔎 the hunt, ⚖️ ⏱ 📋 🍾 the First
 Moment of Truth, 📓 Hunt 2, 🍎 the bob, 🪦 the summary, 🏆 the ceremony and
 every award) is the hosts' and the directors', like the rest of the sheet.
@@ -111,7 +111,6 @@ spoken. The staff quests in every booth are "per the agenda", from you.
 
 ## Who you know
 
-<!-- DRAFT w18b -->
 The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
 
 - **The Downtown Staff Photo**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
@@ -125,12 +124,12 @@ The house deals the programs files about **who they are connected to** (Codex �
   program name on it (ask the director at 17:00 if the anti-AI program has
   changed). Hand it to Clippy, then press 🃏 on MS Paint's card. MS Paint
   truthfully denies it; Clippy marks them (🎯) and Norton takes it from there.
-- **V3, a guest's 🎱 BINGO!** (DRAFT w26): a program may call BINGO from
+- **V3, a guest's 🎱 BINGO!**: a program may call BINGO from
   their own phone, and the results start at once. Your NOW names the
   caller: if Clippy finds no line, **↩ Not a Bingo** on their card puts
   everyone back on their cards with the time the clock had left. While a
   call is open, 🃏 waits: the fake card comes back only once the call is
-  settled (DRAFT w26).
+  settled.
 - **The hour (📥 onward):** `# truthcoin-exchange` opens. Programs trade facts
   for Truthcoin from their Wallets. You are the boring, reliable bank for
   whatever the app can't see: 🪙 Pay on the seller, 🪙 Charge on the buyer

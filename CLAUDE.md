@@ -200,24 +200,26 @@ MacBook's `show`/`lights`, the Desktop's stagehand, the router, the M4, and
 reload every terminal and the TV, which still ran a 10-24 build on
 2026-10-27). Wave 23 needs the badges printed from Run →
 Print sheet (Badges) and the cast cards reprinted (each now carries its own
-part's QR). The show text of waves 18b, 20, 21, 22, 26 and 27 is marked DRAFT
-(`DRAFT w26`, `DRAFT w27`) and awaits the user's sign-off (the `SIGNOFF-*.md`
-files, `SIGNOFF-w27.md` for the heart, `SIGNOFF-w28.md` for wave 28's
-`DRAFT w28` # hosts lines on the 📥 Truther Download (branch
-`oct31-w28/heart-followups`, not yet shipped); wave 26's
-`core/examples/trapped-in-the-internet/SIGNOFF-w26.md` includes the game
-map's *MAINFRAME* rack label). Wave 26 ships in its contract's C14 order:
-the server release → `sync-show` → reload every terminal and the TV →
-re-export and sideload the Quest APK. After the sign-off, reprint the cast
-packs `clippy`, `task-manager`, `norton`, `mcafee`, `password-manager`,
-`cra-agent`, `crew/director`, `performers/installation-wizard` and
-`featured/microsoft-excel`. Not yet proven
+part's QR). **The sign-off is done:** on 2026-10-27 the user signed off
+every sheet (*"Every line in the signoffs looks good! ship those please."*):
+the show text of waves 13, 18, 18b, 20, 20b, 21, 26, 27 and 28 ships as
+written (and wave 29's, signed off the same day: *"I approve whatever wording
+you pick"*), every drafted default is accepted, and their `DRAFT` markers are
+gone (the `SIGNOFF-*.md` sheets stay as the record). One kind of marker
+remains: wave 22's patch-bay lines (`DRAFT w22`, no sheet). Wave 26
+ships in its contract's C14 order: the server release → `sync-show` →
+reload every terminal and the TV → re-export and sideload the Quest APK.
+Reprint the cast packs now: `clippy`, `task-manager`, `norton`, `mcafee`,
+`password-manager`, `cra-agent`, `crew/director`,
+`performers/installation-wizard`, `featured/microsoft-excel`,
+`adobe-acrobat`, `recycling-bin`, `all-crew` and `patch-bay-watch`. Not yet proven
 on real hardware: the Quest's audio, TTS and mic (`tools/quest.sh logs`),
 the glitch on real phones, and the real speakers.
 
 ### Shipping master (summary)
 
-1. Decide on the DRAFT text sign-off; shipping carries every DRAFT line.
+1. The sign-off of waves 13–29 is done (2026-10-27). Shipping carries the
+   still-DRAFT lines of wave 22 (no sheet).
 2. Check the preview's roster in its own step. Ask if anyone is on.
 3. MacBook: `scripts/ops/predeploy.sh --vr`, then `scripts/ops/ship.sh <tag>`.
    Check `/api/health`, then `deploy/release.sh --check-env` on the VPS.

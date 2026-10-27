@@ -122,7 +122,7 @@ windows), the Desk, the director phone and Help are lazy chunks.
   `403 locked` (`lockedRefusal`, matched on `ApiError.message ===
   "locked"`, until the next snapshot; it never toasts). The guest app then
   renders only the lock screen: the title
-  bar, the DRAFT ⛔ QUARANTINED card with 🎟 Show my pass and the view's
+  bar, the ⛔ QUARANTINED card with 🎟 Show my pass and the view's
   live (`restricted: allow`) buttons, the NOW objective as a card with no
   buttons, a read-only copy of `dm:Installation Wizard` (`LOCK_THREAD`, else
   the DM that spoke last; lines only), and a taskbar with only Pass. The

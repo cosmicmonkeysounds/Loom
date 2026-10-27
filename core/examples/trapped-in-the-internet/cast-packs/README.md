@@ -40,9 +40,10 @@ addresses, codes, where things are kept).
 
 The packs are written to **master**, which holds every wave up to 22. The VPS
 still runs the release **`w18b-1021`**: waves 18b (Stage B), 19, 20, 20b, 21
-and 22 are merged but **not shipped**. Lines marked `// DRAFT w18`, `w18b`,
-`w20`, `w20b`, `w21` or `w22` in the story await the user's sign-off, and the packs
-follow the drafts. The old wave-by-wave list is in [`history.md`](./history.md).
+and 22 are merged but **not shipped**. The user signed off the show text of
+waves 13 through 28 on 2026-10-27, and the packs follow it. Wave 22's
+patch-bay lines (`// DRAFT w22` in the story) have no sheet of their own.
+The old wave-by-wave list is in [`history.md`](./history.md).
 
 **The house and its computers**
 
@@ -163,7 +164,7 @@ follow the drafts. The old wave-by-wave list is in [`history.md`](./history.md).
   fire". 📣 shows who is calling; agree it at the read-through.
 
 
-## The players in more detail (wave 21, DRAFT w21)
+## The players in more detail (wave 21)
 
 The user: *"Clippy should no longer be considered a "super" user / host that
 can call shots. Clippy and the AntiViruses are performers that are playing a
@@ -192,15 +193,16 @@ game just like the "guests" are."*
   the back. The rest of the file is the pack (read it once at home). Since
   wave 13 each booth's **NOW card** carries the same per-act job on the phone,
   so the laminated card is the backup, not the instructions.
-- **Print after the sign-off.** `../SIGNOFF-w13.md` is signed off (the
-  user's answers, 2026-10-21); the wave 18 lines are DRAFT until
-  `../SIGNOFF-w18.md` is. The packs follow the drafts (any host calls the
-  show, the Wanted board and the confrontation, the shared door, the self
-  check-in, McAfee's line in the ticker; wave 21: the players, below). The
-  wave 21 lines are DRAFT until `../SIGNOFF-w21.md` is. Re-check them
-  against the signed-off text before batch 2, and reprint every pack that
-  changed (all four Antivirus, Clippy, the three hosts, all-crew, the
-  director, the patch-bay watch).
+- **Print now: the sign-off is done.** `../SIGNOFF-w13.md`, `-w18`, `-w21`,
+  `-w26`, `-w27`, `-w28` and `../history/SIGNOFF-w18b.md`, `-w20` were all
+  signed off on 2026-10-27 (any host calls the show, the Wanted board and
+  the confrontation, the shared door, the self check-in, McAfee's line in
+  the ticker; wave 21: the players, below). Reprint every pack that
+  changed: `clippy`, `task-manager`, `norton`, `mcafee`,
+  `password-manager`, `cra-agent`, `crew/director`,
+  `performers/installation-wizard`, `featured/microsoft-excel`, and with
+  them `adobe-acrobat`, `recycling-bin`, `all-crew` and `patch-bay-watch`
+  (their printed DRAFT tags are gone).
 - Clippy's CI 1–9 cards: one index card each (from the appendix of her pack).
 - The Desktop's QR stacks: print the codex posters from Run → 🖨 Print sheet
   and sort them by colour into the piles `generated/print-stacks.md` lists

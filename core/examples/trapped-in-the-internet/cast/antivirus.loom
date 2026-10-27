@@ -5,7 +5,7 @@
 // reinstalled, the watchlist, and every booth cue — is `TRAIT Enforcer`
 // (cast/kit.loom). What makes each of them themselves is below.
 //
-// Wave 21 (DRAFT w21): all four are PLAYERS (TRAIT Player via Enforcer):
+// Wave 21: all four are PLAYERS (TRAIT Player via Enforcer):
 // ⭐ for clearances, captures, releases and the patch-bay calls (TRAIT
 // Enforcer), plus each one's own game below; 🤫 Look the other way for
 // all four, and each one's own quiet favour.
@@ -22,8 +22,8 @@ CHARACTER Norton Anti-Virus is Enforcer
 
   when bingo_time:
     if Night.step < 3 and Night.bingo_briefed != true:
-      // DRAFT w18: the named program lights the Wanted board; the scan is the confrontation.
-      // DRAFT w26 (B3: 🤐 marks nobody)
+      // w18: the named program lights the Wanted board; the scan is the confrontation.
+      // w26 (B3: 🤐 marks nobody)
       reply 🛡 You are the selected Antivirus. When the centre-square program is named (or the framed program denies the card), stand at attention and interrupt: it is inappropriate for that program to have not agreed to be ruled by AI, because that is what computer programs are here for. They must have a virus that was not caught at the door. They need to be taken to the Internet for a reinstallation. They light up on your Wanted board: scan their pass, press 🛡 and drag them to the Tube. If the winner names nobody, Clippy presses 🤐: nobody is marked, so follow the room.
 
 CHARACTER McAfee Anti-Virus is Enforcer
@@ -35,7 +35,7 @@ CHARACTER McAfee Anti-Virus is Enforcer
   // His "protection has expired" pop-up is a bark now (atmosphere.loom,
   // GENERATOR McAfeePopUp, wave 13): the dim ticker, never a stream row.
 
-  // 🤝 A deal brokered (⭐ +10, once per program). DRAFT w21
+  // 🤝 A deal brokered (⭐ +10, once per program).
   when broker_deal for program:
     if Night.truther_sent == true and Night.ended != true and program.brokered != true:
       set program.brokered = true
@@ -43,7 +43,7 @@ CHARACTER McAfee Anti-Virus is Enforcer
       Self: Pleasure doing business. My subscription has expired, but my handshake is still valid.
       reply 🤝 Deal brokered with {program.name}. ⭐ +10
 
-  // 🤫 Fifty Truthcoin, off the books (once per program). DRAFT w21
+  // 🤫 Fifty Truthcoin, off the books (once per program).
   when slip_coin for program:
     if Night.truther_sent == true and Night.ended != true and program.slipped != true:
       set program.slipped = true
@@ -67,7 +67,7 @@ CHARACTER Password Manager is Enforcer
     Self: That is not a password I recognise, {program.name}, and I have reviewed every one of them. Unsubstantiated claims are removed. Try to look less like you are guessing.
     reply 🔑 {program.name} entered a wrong code.
 
-  // 🔑 A password check (⭐ +5, once per program). DRAFT w21
+  // 🔑 A password check (⭐ +5, once per program).
   when verify_password for program:
     if Night.ended != true and program.cleared == true and program.verified != true:
       set program.verified = true
@@ -75,7 +75,7 @@ CHARACTER Password Manager is Enforcer
       Self: Credentials reviewed, {program.name}. Strength: weak. Reuse: extensive. You may proceed, under protest.
       reply 🔑 {program.name}'s password checked. ⭐ +5
 
-  // 🤫 A tip-off to a marked program (once per program). DRAFT w21
+  // 🤫 A tip-off to a marked program (once per program).
   when tip_off for program:
     if Night.truther_sent == true and program.marked == true and program.corrupted != true and program.tipped != true:
       set program.tipped = true
@@ -101,7 +101,7 @@ CHARACTER CRA Agent Software is Enforcer
   // the character keep their name).
   wallet: approver, every 3, window 60s, as MyCRA, audit "a CRA audit"
 
-  // 🤫 Fifty Truthcoin, never audited (once per program). DRAFT w21
+  // 🤫 Fifty Truthcoin, never audited (once per program).
   when slip_coin for program:
     if Night.truther_sent == true and Night.ended != true and program.slipped != true:
       set program.slipped = true

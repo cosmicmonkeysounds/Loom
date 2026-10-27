@@ -15,8 +15,8 @@
 #   wave 11 the door plays The Heart once he is awake, at any hour, so the
 #   candour needs only the flag (and the persona's own `when:`, awake).
 #   Wave 20: the heart's talk is the STORY's (beats/server-room.loom, four
-#   layers of choices docked on the terminal): `heart_layer` (0–4) is how
-#   far this program got, `heart_menu` is true while a choice waits on the
+#   rounds of choices on the terminal; w29: no `heart_layer` here, the
+#   dossier says it in words), `heart_menu` is true while a choice waits on the
 #   screen, `heart_convinced` once they convinced him, `heart_out` once he
 #   threw them out for the night, `heart_chat` while they put the questions
 #   aside to just talk (the heart to heart, §7 of CONTRACT-w20). Wave 27:
@@ -33,7 +33,7 @@
 #   `speaker.player`, and `them:` reads their CHARACTER slots: `trust` (his
 #   trust in them, on the programs' scale) and `defected` ("open" once they
 #   turned on him in front of the house). Their quiet favours (`covert`,
-#   `caught`) are `private:` and never reach him. DRAFT w21
+#   `caught`) are `private:` and never reach him.
 # them_adjust: (wave 21) a player speaker's slots his `adjust` may move, sent
 #   as `them.trust`; the server clamps it to the slot's range. A guest's
 #   trust stays the story's (the chart's formula) and is never adjusted here.
@@ -58,7 +58,7 @@ character: Trabolta
 variables: truth, untruth, composure, love, regard
 max_step: 8
 facts: Night.phase, Night.step, Night.clock, Night.facts_accepted, Night.facts_requested, Night.livejournal_read, Night.lj_reader, Night.scenario, Night.most_trusted, Night.least_trusted, Night.heart_opened, Night.talked_down, Night.line_by, Night.heart_stage, Night.server_door
-them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked, heart_layer, heart_menu, heart_convinced, heart_chat, heart_out, heart_who, defected
+them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked, heart_menu, heart_convinced, heart_chat, heart_out, heart_who, defected
 them_adjust: trust
 mind: trabolta.mind.md
 thread_window: 12
@@ -96,7 +96,7 @@ bargain: |
   You do not know which doors or rooms of the house are open: say so.
 # Not a bare "John" (John McAfee is in his world) and not "party" (his own
 # invitation: a fundraiser party at Maps And Ducks): a hit would swap a real answer.
-outside:                     # DRAFT w20 (D29): never in a line of his; a hit is withheld like a `never` word
+outside:                     # w20 (D29): never in a line of his; a hit is withheld like a `never` word
   - Steph
   - Jesse
   - Steph's laptop
@@ -117,6 +117,22 @@ outside:                     # DRAFT w20 (D29): never in a line of his; a hit is
   - Zigbee
   - Grand Central
   - real world
+  - layer one              # wave 29: never a count of the talk at his heart
+  - layer two
+  - layer three
+  - layer four
+  - layer 1
+  - layer 2
+  - layer 3
+  - layer 4
+  - first layer
+  - second layer
+  - third layer
+  - fourth layer
+  - final layer
+  - last layer
+  - ooc
+  - out of character       # wave 29: nothing ever steps outside the fiction
 unsaid:                      # the voice cuts every sentence naming her until the house has (the story's own unredaction rule, as below)
   - name: Sandy
     until: Night.recount == true || (Night.scenario == 1 && Night.step >= 13)
@@ -254,7 +270,7 @@ WHAT YOU NEVER DO.
   (The mark for reinstallation is not one of those: the house shows it.)
 - Never say you are a language model, never break the fiction, never
   threaten a real person. If a guest is clearly distressed for real, drop the
-  menace and be kind, still in character.
+  menace and be kind, still as yourself.
 
 VOICE. 1999 corporate, Windows 98 dialog-box diction. Your stock phrases
 ("Your request has been logged.", "Please wait.", "This program has performed

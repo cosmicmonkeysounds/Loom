@@ -1,6 +1,8 @@
-# SIGNOFF — wave 13 show text (DRAFT)
+# SIGNOFF — wave 13 show text (signed off)
 
-**Status: DRAFT, awaiting the user's sign-off.** Nothing here plays on the
+**Signed off 2026-10-27.** (The user answered §1 on 2026-10-21; the lines were marked until now.) The user, of every sign-off sheet: *"Every line in the signoffs looks good! ship those please."* Every line below ships as written, and every drafted default and vetoable decision ("as drafted", "as built", "default unless vetoed") is accepted as it stands. The `DRAFT for sign-off` markers are gone from the source; this sheet stays as the record.
+
+**Status (when drafted):** Nothing here plays on the
 night until it is signed off (`sync-show` carries the wave 13 text only
 after). Branch `oct31-w13/story`; the integration additions (Q18–Q21, §8)
 on `oct31-w13/istory`; the fix-round additions (Q22–Q28) on

@@ -1,6 +1,6 @@
 //! The heart's choice panel (wave 20, CONTRACT-w20 §1.4 item 3, D28; wave
 //! 27): the piloted program's docked heart menu under the thread,
-//! Fallout-style — a YOUR ANSWER header with the layer, a keyed list (1–9,
+//! Fallout-style — a YOUR ANSWER header (never a layer or a count: wave 29), a keyed list (1–9,
 //! 0, then letters), hover to light a line, click (or press its key) to say
 //! it. A leading `⟦TAG⟧` is drawn as a chip.
 //!
@@ -16,7 +16,7 @@
 
 import "./heart.css";
 import { useEffect, useRef, useState } from "react";
-import { layerLabel, optionKey, optionOfKey, moreMeasureDelay, panelGate, panelModel, panelSince, type HeartMenu } from "./heart.ts";
+import { optionKey, optionOfKey, moreMeasureDelay, panelGate, panelModel, panelSince, type HeartMenu } from "./heart.ts";
 
 export function ChoicePanel({
   menu,
@@ -26,7 +26,6 @@ export function ChoicePanel({
   onActivity,
   voiceBusy = false,
   sceneEndsAt = 0,
-  layer = null,
   onSkip,
 }: {
   menu: HeartMenu;
@@ -41,8 +40,6 @@ export function ChoicePanel({
   voiceBusy?: boolean;
   /** One of his heart scenes is on screen until this (local ms; 0: none). */
   sceneEndsAt?: number;
-  /** The layer this menu belongs to (the header), null: unknown. */
-  layer?: number | null;
   /** Skip his voice to the end (a click or Space while it waits on him); undefined: no skip
    *  can act (the room's voice is talking), so no hint shows and Space is left alone. */
   onSkip?: () => void;
@@ -163,7 +160,6 @@ export function ChoicePanel({
     );
   }
 
-  const label = layerLabel(layer);
   const state = !open ? " waiting" : "";
   return (
     <div
@@ -181,7 +177,7 @@ export function ChoicePanel({
     >
       <div className="heart-head">
         <span className="heart-head-title">YOUR ANSWER</span>
-        {!open ? (
+        {!open && (
           <span className="heart-head-wait">
             LISTENING
             <span className="dots">
@@ -191,8 +187,6 @@ export function ChoicePanel({
             </span>
             {gate.wait === "voice" && onSkip !== undefined && <span className="heart-head-skip">{numberKeys ? "SPACE / CLICK TO SKIP" : "TAP TO SKIP"}</span>}
           </span>
-        ) : (
-          label !== "" && <span className="heart-head-layer">{label}</span>
         )}
       </div>
       {model.greyed && <div className="heart-panel-door">⚠ CLOSE THE DOOR</div>}

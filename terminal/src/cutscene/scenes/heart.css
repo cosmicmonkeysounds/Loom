@@ -89,9 +89,6 @@
 .ht-layer { display: grid; place-items: center; align-content: center; gap: 2vmin; pointer-events: none; }
 .ht-layer-win .kit-win { position: relative; min-width: min(30vw, 22em); }
 .ht-layer-title { font-size: clamp(1.4rem, 4.6vmin, 2.6rem); letter-spacing: 0.08em; }
-.ht-layer-pips { display: flex; gap: 1.2vmin; }
-.ht-layer-pips > span { width: 3vmin; height: 1.2vmin; background: #333; border: 1px solid #50e6ff55; }
-.ht-layer-pips > span.on { background: #50e6ff; box-shadow: 0 0 0.6em #50e6ff; }
 
 /* --- heart_proof (over the face) --- */
 .ht-proof { display: grid; place-items: center; pointer-events: none; }

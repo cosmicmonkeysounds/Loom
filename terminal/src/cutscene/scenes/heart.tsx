@@ -200,7 +200,9 @@ function Sealed({ t, sfx, reduced, present }: SceneProps & { present: boolean })
 const HeartSealed = (p: SceneProps) => <Sealed {...p} present={false} />;
 const HeartSealedPresent = (p: SceneProps) => <Sealed {...p} present={true} />;
 
-// --- heart_layer: LAYER n / 4, wiped in over the face (3 s) -----------------------------------------
+// --- heart_layer: his question, wiped in over the face (3 s) ---------------------------------------
+// Wave 29: no count, no progress pips. The card is his own prompt (HEART.EXE asks WHO ARE
+// YOU); nothing on it says which layer of the talk this is or how many are left.
 
 export { LAYER_TITLES };
 
@@ -211,6 +213,9 @@ export function layerOf(value: string): number {
   return Math.max(1, Math.min(4, n));
 }
 
+// w29 (signed off): the card's title bar (it read LAYER n / 4).
+export const HEART_CARD_TITLE = "HEART.EXE";
+
 function HeartLayer({ t, value, sfx, reduced }: SceneProps) {
   const n = layerOf(value);
   useSfxCues(t, sfx, [[0, "popup"]]);
@@ -219,12 +224,7 @@ function HeartLayer({ t, value, sfx, reduced }: SceneProps) {
   return (
     <div className="ht-stage ht-layer" style={{ opacity: 1 - out }}>
       <div className="ht-layer-win" style={{ clipPath: `inset(0 ${((1 - wipe) * 100).toFixed(1)}% 0 0)` }}>
-        <Win98Dialog title={`LAYER ${n} / 4`} kind="question" message={<span className="ht-layer-title">{LAYER_TITLES[n - 1]}</span>} actions={[]} tone="black" reduced={reduced} open={1} />
-      </div>
-      <div className="ht-layer-pips">
-        {[1, 2, 3, 4].map((i) => (
-          <span key={i} className={i <= n ? "on" : ""} style={i === n && !reduced ? { opacity: 0.4 + 0.6 * pulse(t, 600) } : undefined} />
-        ))}
+        <Win98Dialog title={HEART_CARD_TITLE} kind="question" message={<span className="ht-layer-title">{LAYER_TITLES[n - 1]}</span>} actions={[]} tone="black" reduced={reduced} open={1} />
       </div>
     </div>
   );

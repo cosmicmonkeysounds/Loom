@@ -1,6 +1,8 @@
-# SIGNOFF — wave 28 heart follow-ups (DRAFT)
+# SIGNOFF — wave 28 heart follow-ups (signed off)
 
-**Status: DRAFT, awaiting the user's sign-off.** Wave 28 fixes three
+**Signed off 2026-10-27.** The user, of every sign-off sheet: *"Every line in the signoffs looks good! ship those please."* Every line below ships as written, and every drafted default and vetoable decision ("as drafted", "as built", "default unless vetoed") is accepted as it stands. The `DRAFT w28` markers are gone from the source; this sheet stays as the record.
+
+**Status (when drafted):** Wave 28 fixes three
 follow-ups from wave 27 (branch `oct31-w28/heart-followups`). Only one of
 them adds show text: the 📥 Truther Download now waits for 📓 Hunt 2. The
 two new lines are marked `// DRAFT w28` in `main.loom`. They go to `# hosts`
@@ -34,6 +36,6 @@ Not merged to master, not shipped.
 
 ## 3. Open
 
-- The lines above await your sign-off.
+- The lines above: signed off 2026-10-27.
 - Not checked on a real phone or terminal: how the pick lines read in
   the phone's `dm:Trabolta` thread beside his replies.

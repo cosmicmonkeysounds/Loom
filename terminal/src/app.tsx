@@ -112,7 +112,7 @@ import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, threadFor, type HeartMenu } from "./heart/heart.ts";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, threadFor, type HeartMenu } from "./heart/heart.ts";
 import { pendingPickOf, unansweredPicks, withPendingPicks, type PendingPick } from "./heart/pending-pick.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 import { RoomSpeech } from "./speech/said.ts";
@@ -1291,14 +1291,6 @@ function Terminal({
   // One of his heart scenes on screen (this line's), on the local clock.
   const sceneLeft = pilot === null || roomCue === null || !sceneHoldsPanel(roomCue.value) ? 0 : heartSceneLeft(roomCue, pilotSince.current, now);
   const sceneEndsAt = sceneLeft > 0 ? Date.now() + sceneLeft : 0;
-  // The layer: the menu's own beat, else the last layer card of this line.
-  const lastLayer = useRef<{ pilot: Pilot | null; layer: number | null }>({ pilot: null, layer: null });
-  if (lastLayer.current.pilot !== pilot) lastLayer.current = { pilot, layer: null };
-  const cueLayer = roomCue !== null && roomCue.at >= pilotSince.current ? layerOfCue(roomCue.value) : null;
-  if (cueLayer !== null) lastLayer.current.layer = cueLayer;
-  const beatLayer = menu === null ? null : layerOfBeat(menu.beat);
-  if (beatLayer !== null) lastLayer.current.layer = beatLayer;
-  const menuLayer = beatLayer ?? lastLayer.current.layer;
   const showComposer = composerShown({ keys: config.keys, menu, blocked: pilot !== null && composerBlocked({ cue: roomCue, since: pilotSince.current, now, stage: state?.night?.heart_stage ?? null, heart: heartTerminal, menu: menu !== null }) });
 
   const online = pilot !== null ? session.online : castOnline;
@@ -1360,7 +1352,7 @@ function Terminal({
               )}
               <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
-                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} layer={menuLayer} onSkip={roomBusy ? undefined : skipVoice} />
+                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} onSkip={roomBusy ? undefined : skipVoice} />
               )}
               {showComposer && (
                 <Composer

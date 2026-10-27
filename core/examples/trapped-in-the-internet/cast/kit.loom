@@ -30,7 +30,7 @@ TRAIT Person
 // A greeting scan never moves anyone. During the summons it is a check-in
 // at the Desktop; otherwise each greeter greets in their own voice (every
 // greeter owns `beat Greet(program)`, cast/hosts.loom). Wave 21: Clippy is
-// a Greeter and a Player, no longer a Host (DRAFT w21).
+// a Greeter and a Player, no longer a Host.
 TRAIT Greeter is Person
   when scanned by program:
     if Night.summons_open == true and program.cleared:
@@ -47,7 +47,7 @@ TRAIT Greeter is Person
 
   // 🔢 (wave 21): which question ✅ and 😤 judge now. Character hooks run
   // before the story rule that moves it, so each line names its own
-  // number. DRAFT w21
+  // number.
   when judging_q1:
     if Night.judging == true:
       reply 🔢 ✅ and 😤 now judge question 1.
@@ -96,7 +96,7 @@ TRAIT Host is Greeter
 // Every third quiet favour is caught (the 3rd, the 6th, …): a private
 // warning in this booth and −20 trust, never removal. Trabolta has no power
 // over a player (none of his powers can target one) and must keep them as
-// allies, defected or not. DRAFT w21
+// allies, defected or not.
 TRAIT Player
   player: true
   score: 0 to 9999 = 0
@@ -106,7 +106,6 @@ TRAIT Player
   defected: text? = none
   private: covert, caught
 
-  // DRAFT w21
   when self.covert >= (self.caught + 1) * 3:
     set self.caught += 1
     set self.trust -= 20
@@ -116,7 +115,7 @@ TRAIT Player
   // the house hears it as a big moment (the story rule `staff_defected`,
   // main.loom) and so does Trabolta (`<Character>.defected` reaches his
   // worker). A director firing it from Run must name the character (the
-  // actor): a press with no actor reaches every player's hook. DRAFT w21
+  // actor): a press with no actor reaches every player's hook.
   when defect_openly:
     if self.defected == "none" and Night.truther_sent == true and Night.ended != true:
       set self.defected = "open"
@@ -127,7 +126,7 @@ TRAIT Player
       fire staff_defected
 
   // A staff award (main.loom's `staff_award_won`, G10a–c): the winner's
-  // booth pops. DRAFT w21
+  // booth pops.
   when staff_award_won:
     if Night.award_winner == self:
       reply !!🏆 You won {Night.award_title}! Come up to the TV for your trophy.
@@ -150,12 +149,11 @@ TRAIT Enforcer is Person, Player
       // still check themselves in with the Desktop's QR). Their phone gets
       // the big CORRUPTION DETECTED (the ROLE's `confronted`); this booth a
       // big readout (its pop-out). The capture stays on this booth's 🛡.
-      // DRAFT w18
       Self: {program.name}. Corruption detected: you are marked for reinstallation. Come with me through the Tube to the Internet.
       fire confronted for program with hunter: self
       reply !!🛡 Corruption detected: {program.name} ({program.marked_for}). Press 🛡 Send to the Internet, then walk them through the Tube to the Internet.
     else if Night.summons_open == true:
-      // ⭐ +2 for a program the summons still missed (wave 21). DRAFT w21
+      // ⭐ +2 for a program the summons still missed (wave 21).
       if program.summons_ok != true:
         set self.score += 2
       fire checked_in for program with at: The Desktop
@@ -172,9 +170,9 @@ TRAIT Enforcer is Person, Player
   // performer's booth.
   beat Clearance(program)
     set program.cleared = true
-    // ⭐ +5 a door clearance (wave 21). DRAFT w21
+    // ⭐ +5 a door clearance (wave 21).
     set self.score += 5
-    // DRAFT w18 (fix BN-F16): the door is done with them; the card's
+    // w18 (fix BN-F16): the door is done with them; the card's
     // "At the door" flag goes with it.
     set program.door_by = "none"
     // Before the call to the Desktop (step 1) the night hasn't started: the
@@ -231,7 +229,7 @@ TRAIT Enforcer is Person, Player
       set program.escort_by = self
       Self: {program.name}, you did not agree to be ruled by AI. That is what computer programs are here for. You have a virus that was not caught at the door. You are going to the Internet for a reinstallation.
       capture program into The Internet
-      // ⭐ +20 a capture, +5 trust: serving Trabolta (wave 21). DRAFT w21
+      // ⭐ +20 a capture, +5 trust: serving Trabolta (wave 21).
       set self.score += 20
       set self.captures += 1
       set self.trust += 5
@@ -241,7 +239,7 @@ TRAIT Enforcer is Person, Player
       if Night.first_reinstall_done != true:
         set Night.first_reinstall_done = true
         set Night.first_reinstall = program.name
-        // ⭐ +10 more for the night's first reinstallation. DRAFT w21
+        // ⭐ +10 more for the night's first reinstallation.
         set self.score += 10
         fire first_reinstallation
     else:
@@ -249,7 +247,7 @@ TRAIT Enforcer is Person, Player
       set program.doubt += 20
       Self: {program.name}. Corruption detected. You are going to the Internet for reinstallation. Do not resist the Tube.
       capture program into The Internet
-      // ⭐ +20 a capture, +5 trust (wave 21). DRAFT w21
+      // ⭐ +20 a capture, +5 trust (wave 21).
       set self.score += 20
       set self.captures += 1
       set self.trust += 5
@@ -260,7 +258,7 @@ TRAIT Enforcer is Person, Player
     if program.corrupted:
       Self: {program.name} has demonstrated compliance. Reinstallation successful.
       release program from The Internet
-      // ⭐ +5 a release (wave 21). DRAFT w21
+      // ⭐ +5 a release (wave 21).
       set self.score += 5
 
   // 🩹 from an Antivirus booth: the ROLE hook names who lifted the mark
@@ -268,14 +266,14 @@ TRAIT Enforcer is Person, Player
   when unmark_for_reinstallation for program:
     if program.marked == true:
       set program.unmark_av += 1
-      // Mercy in the open costs a little of Trabolta's trust (wave 21). DRAFT w21
+      // Mercy in the open costs a little of Trabolta's trust (wave 21).
       set self.trust -= 5
 
   // 🤫 Look the other way (wave 21): the quiet version of 🩹, only on a
   // marked program this Antivirus claimed on the Wanted board. The mark
   // comes off with no `unmarked` readout (the poster just leaves every
   // board); the program hears it from this Antivirus alone, in a whisper.
-  // A quiet favour: `covert` (private) counts it. DRAFT w21
+  // A quiet favour: `covert` (private) counts it.
   when look_the_other_way for program:
     if Night.truther_sent == true and program.marked == true and program.corrupted != true and program.escort_by == self:
       set program.marked = false
@@ -320,32 +318,27 @@ TRAIT Enforcer is Person, Player
   when claim_escort for program:
     if program.marked == true and program.corrupted != true and program.escort_by == "none":
       set program.escort_by = self
-      // DRAFT w18
       reply 🙋 {program.name} is yours. Find them and scan their pass: the scan is the confrontation.
 
   when release_escort for program:
     if program.escort_by == self and program.corrupted != true:
       set program.escort_by = "none"
-      // DRAFT w18
       reply 🙋 {program.name} is back on the Wanted board for every Antivirus.
 
   when take_over_escort for program:
     if program.marked == true and program.corrupted != true and program.escort_by != "none" and program.escort_by != self:
       set program.escort_by = self
-      // DRAFT w18
       reply 🙋 You took over {program.name}. Find them and scan their pass.
 
   // A program finished uploading: every Antivirus hears the door queue (the
   // booth turns these into one door pop-out; Q26: the four share the door).
   when waiting_at_the_door for program:
     if program.cleared != true:
-      // DRAFT w18
       reply !!🚪 {program.name} is waiting at the Optical Drive.
 
   when claim_door for program:
     if program.uploaded == true and program.cleared != true and program.door_by == "none":
       set program.door_by = self
-      // DRAFT w18
       reply 🙋 {program.name} is yours at the door: scan their pass.
 
   when accuse for program:
@@ -364,7 +357,7 @@ TRAIT Enforcer is Person, Player
 
   when five_minute_warning:
     if Night.step == 8 and Night.summons_open != true and Night.summons_closed != true:
-      // DRAFT w18 (B10): the programs check themselves in.
+      // w18 (B10): the programs check themselves in.
       reply 🛡 The summons: programs check themselves in with the Desktop's QR. 📍 only for a dead or lost phone (Still missing, on your NOW card).
 
   when zip_everyone_out:
@@ -383,7 +376,7 @@ TRAIT Enforcer is Person, Player
   when bathroom_timed_out for program:
     reply 🚻 {program.name}'s Bathroom Mode timed out (15 min).
 
-  // One readout per late program (w13 Q31, DRAFT for sign-off): without
+  // One readout per late program (w13 Q31): without
   // the auto sweep a late program is marked at once, and the mark's own
   // readout says they are late; the ⏰ line is only for the auto sweep
   // (a capture, no mark).
@@ -394,9 +387,8 @@ TRAIT Enforcer is Person, Player
   // The WANTED pop-out (wave 18, B3): a big readout (the booth's pop-out
   // rung), with the program's name and picture (C3).
   when marked for program:
-    // DRAFT w18
     if program.marked_for == "chose Dare":
-      // DRAFT w26 (D1: the loud Dare order, still the WANTED pop-out)
+      // w26 (D1: the loud Dare order, still the WANTED pop-out)
       reply !!🚨 TRABOLTA'S ORDER: take {program.name} to the Internet NOW. They chose Dare at the Desktop. Find them and scan their pass: the scan is the confrontation.
     else if program.late == true and program.marked_for == "late for the Second Moment of Truth":
       reply !!🚨 {program.name} is late for the Second Moment of Truth: marked for reinstallation. Find them and scan their pass: the scan is the confrontation.

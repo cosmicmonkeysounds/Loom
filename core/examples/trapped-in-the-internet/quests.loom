@@ -17,7 +17,7 @@
 // (`pnpm --filter @loom/core titi:facts`). The questions are numbered
 // within their round (Q1–Q3, then Q1–Q3, then Q1–Q2).
 
-// DRAFT for sign-off (wave 13 integration, SIGNOFF-w13 Q20): the Bathroom
+// wave 13 integration, SIGNOFF-w13 Q20: the Bathroom
 // Mode step names ⊞ Start, where the button lives now.
 QUEST Orientation
   title: Clippy's Orientation
@@ -69,8 +69,8 @@ QUEST Recruit To Leave
     being stuck forever – or worse. The count starts at the 11:00 PM
     clock.
 
-// DRAFT w18b (R4–R6): a founder's own quest (started at `founded`).
-// DRAFT w26 (G1: no door-code route up front)
+// w18b (R4–R6): a founder's own quest (started at `founded`).
+// w26 (G1: no door-code route up front)
 QUEST A Faction Of Your Own
   title: Your Own Faction
   from: Truther Download
@@ -210,13 +210,12 @@ QUEST The Exchange
     pays. You have no Wallet: you hold no pot and take no cut. 🪙 Pay /
     🪙 Charge are for corrections only.
 
-// DRAFT w18: "Tell a host the count" (was "the director").
+// w18: "Tell a host the count" (was "the director").
 QUEST The Clubs
   title: Patrol: the clubs
   from: Task Manager
   text:
     Two clubs just opened. Keep the list: who joined Unlimited Power, who
-    // DRAFT w18
     joined The Way Out, and any faction a program founds. Tell a host the
     count when asked.
 

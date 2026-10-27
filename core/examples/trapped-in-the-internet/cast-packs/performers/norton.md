@@ -5,7 +5,7 @@
 
 ## Card
 
-**You play the night (wave 21, DRAFT w21).** You are a **player**: your booth
+**You play the night (wave 21).** You are a **player**: your booth
 is a **Mission** like a guest's phone, with **⭐ Points** and **🛡 Captures**
 tiles. You earn ⭐ for the job: a door clearance +5, a capture **+20** (the
 night's first reinstallation +10 more), a release +5, a summons check-in on a
@@ -91,7 +91,7 @@ shows **CAUGHT BY** for a minute, then leaves the board.
 When the centre-square program is named (or the winner refuses to name
 anyone, or the framed program denies the card): Clippy presses 🎯 and the
 program is marked (if the winner names nobody, Clippy presses 🤐 and nobody
-is marked: follow the room; DRAFT w26); stand at attention and interrupt. *It is inappropriate for
+is marked: follow the room); stand at attention and interrupt. *It is inappropriate for
 that program to have not agreed to be ruled by AI, because that is what
 computer programs are here for. They must have a virus that was not caught at
 the door. They need to be taken to the Internet for a reinstallation.* They light up
@@ -147,7 +147,6 @@ you are marked for reinstallation…"* instead.
 
 ## Who you know
 
-<!-- DRAFT w18b -->
 The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
 
 - **The Volunteer Sheet**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
@@ -162,7 +161,7 @@ The house deals the programs files about **who they are connected to** (Codex �
 - **C1:** patrol; send every program to the Desktop.
 - **V3:** the interruption (above). This scene starts the whole night: own it.
 - **V6 and the bottle:** the Wanted board fills up (guesses, Dares, refusals). Claim one, find them, scan their pass, 🛡, walk them through the Tube, come back for the next.
-- **A Dare** (DRAFT w26): Trabolta makes a scene on the TV and orders you to take the program to the Internet. Your booth pops *🚨 TRABOLTA'S ORDER*: find them and scan their pass (the scan is the confrontation), then 🛡.
+- **A Dare**: Trabolta makes a scene on the TV and orders you to take the program to the Internet. Your booth pops *🚨 TRABOLTA'S ORDER*: find them and scan their pass (the scan is the confrontation), then 🛡.
 - **Hunts and the hour:** patrol. Anyone a guest reports as a virus, use your
   judgement: 👁 the suspicious (only a host's mark puts them on the board).
 - **⏳ → 🚨:** the programs check themselves in with the Desktop's QR; your NOW card's *Still missing* list is who hasn't (📍 only for a dead phone). After 🚨 the late marks land on the Wanted board.

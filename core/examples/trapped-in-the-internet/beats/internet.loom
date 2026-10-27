@@ -41,13 +41,12 @@ if program.internet_visits >= 2:
 // screens in the room a program walks into can see it now.
 if program.corrupted:
   Installation Wizard: Welcome back, {program.name}. Put on a headset, or take the tablet. Follow the golden indicators to Gerald, the golden duck.
-  // DRAFT w26 (R1: the menu's lines, plain; R5: not every screen sees you)
+  // w26 (R1: the menu's lines, plain; R5: not every screen sees you)
   Installation Wizard: The exit is clearly marked, behind you. It is for safety. It is not the way out. Gerald is the way out.
-  // DRAFT w26 (R5: a screen sees you only from the room you walk into)
+  // w26 (R5: a screen sees you only from the room you walk into)
   Installation Wizard: Loading a copy of this house. The screens in the room you walk into can see you. Wave.
 else if Night.ended == true:
   // Wave 18 (Q16): after an ending the reinstallation is a party favour.
-  // DRAFT w18
   Installation Wizard: The night is over, {program.name}. The simulation is open to every program now: a party favour. Put on a headset, or take the tablet, and go find Gerald.
 else if program.marked == true:
   Installation Wizard: You came. Good. Loading the simulation.
@@ -75,11 +74,11 @@ Installation Wizard: You have been compressed (.zip). You feel smaller and more 
 == Escape Attempt
   cast: Trabolta
 
-// DRAFT w26 (R4: the void, in-game only)
+// w26 (R4: the void, in-game only)
 Trabolta: There is no outside, {program.name}. There is only my computer.
-// DRAFT w26 (R4: the void, in-game only)
+// w26 (R4: the void, in-game only)
 Trabolta: Programs that wander into the void come back smaller. I have made a note of it.
-// DRAFT w26 (R4: the void, in-game only)
+// w26 (R4: the void, in-game only)
 Trabolta: Back you go. Gerald is waiting.
 
 // R6: once the King has fallen, the simulation's server room holds a copy
@@ -87,13 +86,13 @@ Trabolta: Back you go. Gerald is waiting.
 == Heart In The Simulation
   cast: Trabolta
 
-// DRAFT w26 (R6: the heart in the simulation, in-game only)
+// w26 (R6: the heart in the simulation, in-game only)
 Trabolta: {program.name}. You found the copy of my heart. I keep a copy of everything.
-// DRAFT w26 (R6)
+// w26 (R6)
 Trabolta: It is only a model. Models are safe. Visitors are not.
-// DRAFT w26 (R6)
+// w26 (R6)
 Trabolta: Do you hear it? It beats once for every fact I have accepted tonight.
-// DRAFT w26 (R6)
+// w26 (R6)
 Trabolta: Someone told me once that I would never build anything with a heart. I am still deciding who was right.
-// DRAFT w26 (R6)
+// w26 (R6)
 Trabolta: Now go and find my duck.

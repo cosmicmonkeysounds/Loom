@@ -144,7 +144,7 @@ on the tent laptop, not in a headset.
 
 - It is **awake all night** and never sleeps on the idle show. It shows
   THE KING, his bar (*n / 15*, *HE KNEELS* at 0), an attract line that
-  names no prize (*"Checkmate him."*, a DRAFT: since wave 26 it no longer
+  names no prize (*"Checkmate him."*: since wave 26 it no longer
   promises the door code), *"No prize now."* after 📄, and the scanner.
   **No hints, no tips**: it never says how strong he is.
 - A program scans their pass and plays one game. A restricted program
@@ -278,8 +278,9 @@ kiosk runbook has the link). It sleeps on the idle show until the room
 is open to everyone — The Heart or the alarm opens it; the majority's
 private reveal does not — then wakes and speaks Trabolta's room lines
 aloud. Its scenes follow the story: the face assembling at The Heart,
-the lock's clunk when the door shuts, a dialog box for each layer, a
-blue screen when he throws someone out.
+the lock's clunk when the door shuts, a *HEART.EXE* dialog box with
+each layer's question (never a number or a count: the program never
+sees which layer it is on), a blue screen when he throws someone out.
 
 A program holds up their pass to the camera. While their pass is open
 the story knows they are **at his heart** (`program.at_the_heart`). There

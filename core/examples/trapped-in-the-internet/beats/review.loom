@@ -32,7 +32,6 @@
 //
 // Every line in this file is DRAFT for the user's sign-off (SIGNOFF-w18b).
 
-// DRAFT w18b
 == The Night In Review
   setting: The Desktop
   cast: Trabolta, Clippy
@@ -85,7 +84,6 @@ else:
 // Only the featured programs here tonight (the Codex holds all nine); the
 // hosts always.
 
-// DRAFT w18b
 == Who You Were
   setting: The Desktop
   cast: Trabolta
@@ -117,7 +115,7 @@ Trabolta: Password Manager is Bridget Troelsen, sixteen elections and sixteen lo
 Trabolta: CRA Agent Software is Sharon Penney, the intern who moved a decimal point and taxed the whole City. I was the Prime Minister, and I offered her a way out: MyCRA approves or denies every third transaction. She wanted her charges dropped.
 Trabolta: The Installation Wizard walked every machine in Halifax through setup. Next. Next. Are you sure? Finish. I offered her a role where programs finally follow the instructions. She wanted, once, for somebody to read them.
 
-// DRAFT w18b: the same copy in Clippy's voice ("the report").
+// w18b: the same copy in Clippy's voice ("the report").
 == The Report On Everyone
   setting: The Desktop
   cast: Clippy
@@ -154,7 +152,6 @@ Clippy: The Installation Wizard walked every machine in Halifax through setup. N
 // upload (beats/login.loom: debt / career / loneliness / mortality), as one
 // list of names per problem. Echoes Task Manager's upload lines.
 
-// DRAFT w18b
 == Everyone Else
   setting: The Desktop
   cast: Trabolta
@@ -169,7 +166,6 @@ if count([p for p in Persons where p.featured == "none" and p.human_problem == "
 if count([p for p in Persons where p.featured == "none" and p.human_problem == "mortality" and p.cleared == true and p.gone != true and p.persona != true]) > 0:
   Trabolta: {names([p for p in Persons where p.featured == "none" and p.human_problem == "mortality" and p.cleared == true and p.gone != true and p.persona != true])}. You came so that you would never die. Programs do not die. They are reinstalled.
 
-// DRAFT w18b
 == The Rest Of The Report
   setting: The Desktop
   cast: Clippy
@@ -190,7 +186,7 @@ if count([p for p in Persons where p.featured == "none" and p.human_problem == "
 // invitation (or the Truther Download) gave them? Their own quest says.
 // (Clippy's copy is Purgatory's, moved here; Trabolta's is the same.)
 
-// DRAFT w18b (Trabolta's copy of Purgatory's goal lines, folded into two
+// w18b (Trabolta's copy of Purgatory's goal lines, folded into two
 // lines so a full house fits the TV's voice block: `MAX_VOICE_LINES`)
 == Goals Met Tonight
   setting: The Desktop
@@ -287,7 +283,6 @@ if Night.least_trusted != "none":
 // Trabolta's DM, whose story lines ride his agent requests. The only place
 // the story quotes what a program typed at the deposit box.
 
-// DRAFT w18b
 == Your File
   setting: The Desktop
   cast: The Uploader

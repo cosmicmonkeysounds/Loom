@@ -3,13 +3,13 @@
 > Antivirus · door scans · **broker of `# truthcoin-exchange`** · expired, and
 > keeps popping up. **If the part is cut:** the "protection has expired"
 > line still turns up every 20 min on its own, in the lobby's dim *Around the
-> house* ticker (it's a gag, leave it; DRAFT for sign-off, Q11), the
+> house* ticker (it's a gag, leave it; Q11), the
 > exchange runs itself (every trade posts on its own), and Task Manager (the
 > bank) covers the 🪙 corrections.
 
 ## Card
 
-**You play the night (wave 21, DRAFT w21).** You are a **player**: your booth
+**You play the night (wave 21).** You are a **player**: your booth
 is a **Mission** like a guest's phone, with **⭐ Points** and **🛡 Captures**
 tiles. You earn ⭐ for the job: a door clearance +5, a capture **+20** (the
 night's first reinstallation +10 more), a release +5, a summons check-in on a
@@ -160,7 +160,6 @@ where your money is.
 
 ## Who you know
 
-<!-- DRAFT w18b -->
 The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
 
 - **The Table Stakes**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.
@@ -172,7 +171,7 @@ The house deals the programs files about **who they are connected to** (Codex �
 - **Doors → C1:** door scans, shared with the other three (the door stays yours, together, all night).
 - **C1, C2:** sweep everyone to the Desktop.
 - **V6 and the bottle:** the Wanted board fills up (guesses, Dares, refusals). Claim one, find them, scan their pass, 🛡, walk them through the Tube, come back for the next.
-- **A Dare** (DRAFT w26): Trabolta makes a scene on the TV and orders you to take the program to the Internet. Your booth pops *🚨 TRABOLTA'S ORDER*: find them and scan their pass (the scan is the confrontation), then 🛡.
+- **A Dare**: Trabolta makes a scene on the TV and orders you to take the program to the Internet. Your booth pops *🚨 TRABOLTA'S ORDER*: find them and scan their pass (the scan is the confrontation), then 🛡.
 - **📥 → ⏳ (the hour):** broker the exchange. Be where the trading is.
 - **⏳ → 🚨:** the programs check themselves in with the Desktop's QR; your NOW card's *Still missing* list is who hasn't (📍 only for a dead phone). After 🚨 the late marks land on the Wanted board.
 - **🗜:** zip everyone out of the Internet (the tent, or the shed on a rain night).

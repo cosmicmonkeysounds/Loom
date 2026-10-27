@@ -67,9 +67,10 @@ describe("the lock screen", () => {
     expect(bar).toContain(">Pass<");
     for (const w of ["Start", "Mission", "Chats", "Scan"]) expect(bar).not.toContain(`>${w}<`);
   });
-  it("its copy is marked DRAFT for the sign-off", () => {
-    expect(src("guest/lock.tsx")).toMatch(/\/\/ DRAFT w26 \(R1\)[^\n]*\nexport const LOCK_HEAD/u);
-    expect(src("guest/lock.tsx")).toMatch(/\/\/ DRAFT w26 \(R1\)[^\n]*\nexport const LOCK_TEXT/u);
+  it("its copy is signed off (2026-10-27): no DRAFT marker left", () => {
+    expect(src("guest/lock.tsx")).toMatch(/\/\/ w26 \(R1\)[^\n]*\nexport const LOCK_HEAD/u);
+    expect(src("guest/lock.tsx")).toMatch(/\/\/ w26 \(R1\)[^\n]*\nexport const LOCK_TEXT/u);
+    expect(src("guest/lock.tsx")).not.toMatch(/DRAFT w26/u);
   });
   it("its buttons are 48 px; the screen scrolls inside the frame", () => {
     const css = readBundledCss().replace(/\/\*[\s\S]*?\*\//gu, "");
