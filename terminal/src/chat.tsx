@@ -16,8 +16,8 @@ function stamp(ts: number): string {
 }
 
 /** A line's class: a pick (wave 28) reads as an echo of the panel, a deed as an act. */
-export function lineClass(m: Pick<Line, "theirs" | "kind" | "pick" | "act">, partial: boolean): string {
-  const pick = !m.theirs && m.pick === true ? ` echo${m.act === true ? " act" : ""}` : "";
+export function lineClass(m: Pick<Line, "theirs" | "kind" | "pick" | "act" | "pending">, partial: boolean): string {
+  const pick = !m.theirs && m.pick === true ? ` echo${m.act === true ? " act" : ""}${m.pending === true ? " pending" : ""}` : "";
   return `line ${m.theirs ? "theirs" : "mine"} kind-${m.kind}${pick}${partial ? " partial" : ""}`;
 }
 

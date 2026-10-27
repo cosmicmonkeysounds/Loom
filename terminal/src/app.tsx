@@ -113,6 +113,7 @@ import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
 import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, threadFor, type HeartMenu } from "./heart/heart.ts";
+import { pendingPickOf, unansweredPicks, withPendingPicks, type PendingPick } from "./heart/pending-pick.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 import { RoomSpeech } from "./speech/said.ts";
 
@@ -1089,19 +1090,36 @@ function Terminal({
   if (cueNow !== null && cueMark.current?.seq !== cueNow.seq) cueMark.current = { seq: cueNow.seq, lineSeq: session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1) };
   const typedAfter = pilot !== null && cueMark.current !== null && session.lines.some((l) => !l.theirs && l.pick !== true && l.from === pilot.name && l.seq > cueMark.current!.lineSeq);
   const heart = menu !== null || (pilot !== null && heartTouched(cueNow, pilotSince.current, typedAfter));
+  // Wave 28: the pick comes back from the server as the program's own
+  // `pick` line in this thread (before his reply). Until it does (slow
+  // wifi), a pending pick stands in for it, dimmed; once the server's line
+  // is in, the pending one is dropped (`pending-pick.ts`), never doubled.
+  const [pendingPicks, setPendingPicks] = useState<PendingPick[]>([]);
+  useEffect(() => setPendingPicks([]), [pilot]);
+  const pickCount = useRef(0);
+  const linesRef = useRef(session.lines);
+  linesRef.current = session.lines;
+  useEffect(() => {
+    setPendingPicks((list) => {
+      const open = unansweredPicks(list, session.lines);
+      return open.length === list.length ? list : open;
+    });
+  }, [session.lines]);
   const choose = useCallback(
     async (m: HeartMenu, index: number) => {
       if (pilot === null) return;
+      const p = pendingPickOf(`${m.id}:${index}:${++pickCount.current}`, m.channel, m.options[index] ?? "", linesRef.current);
+      setPendingPicks((list) => [...list, p]);
+      const drop = () => setPendingPicks((list) => list.filter((x) => x.key !== p.key));
       try {
         await withTimeout(api(`${baseOf(config)}/api/guest/choose`, chooseBody(m, index), pilot.token), CHOOSE_TIMEOUT_MS);
       } catch (e) {
+        drop();
         // The menu moved under the click, or is gone (null): the next view redraws it.
         const text = chooseErrorText(e);
         if (text === null) return;
         throw new Error(text);
       }
-      // Wave 28: the pick comes back from the server as the program's own
-      // `pick` line in this thread (before his reply), so there is no local echo.
     },
     [config, pilot],
   );
@@ -1335,7 +1353,7 @@ function Terminal({
                   </button>
                 </div>
               )}
-              <Thread lines={thread.lines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
+              <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
                 <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} layer={menuLayer} onSkip={roomBusy ? undefined : skipVoice} />
               )}

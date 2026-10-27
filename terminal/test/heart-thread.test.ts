@@ -1,9 +1,9 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import { Thread, lineClass } from "../src/chat.tsx";
 import type { Line } from "../src/pilot.ts";
+import { pendingPickOf, unansweredPicks, withPendingPicks } from "../src/heart/pending-pick.ts";
 
 const line = (seq: number, text: string, theirs = true): Line => ({ seq, text, theirs, from: theirs ? "Trabolta" : "Winamp", channel: "dm:Trabolta", ts: 0, kind: "line" }) as unknown as Line;
 const render = (p: Partial<Parameters<typeof Thread>[0]>) =>
@@ -30,11 +30,47 @@ describe("a pick at the heart is the server's own line (wave 28)", () => {
     expect(lineClass({ theirs: false, kind: "line" }, false)).toBe("line mine kind-line");
   });
 
-  it("the terminal keeps no local echo state: the Thread takes no echoes, the app none", () => {
-    const app = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8");
-    const chat = readFileSync(new URL("../src/chat.tsx", import.meta.url), "utf8");
-    expect(app).not.toMatch(/setEchoes|echoes=/u);
-    expect(chat).not.toMatch(/echoAfter|interface Echo\b/u);
+});
+
+describe("a pick shows at once, pending, until the server's line arrives (wave 28)", () => {
+  const menu = { id: 7, channel: "dm:Trabolta" };
+  const youLines = (html: string) => html.match(/<span class="who">YOU<\/span>/gu)?.length ?? 0;
+
+  it("pick → one dimmed pending YOU row → the server's pick line arrives → exactly one YOU line", () => {
+    const before = [line(1, "So. Someone has found my heart.")];
+    // The pick: one pending row, right after the line it followed, dimmed.
+    let pending = [pendingPickOf(`${menu.id}:0:1`, menu.channel, "I'm a person.", before)];
+    let shown = withPendingPicks(before, pending, "Winamp");
+    let html = render({ lines: shown });
+    expect(youLines(html)).toBe(1);
+    expect(html).toContain('class="line mine kind-line echo pending"');
+    expect(html.indexOf("I&#x27;m a person.")).toBeGreaterThan(html.indexOf("found my heart"));
+
+    // A slow stream: other lines come, the pick is still pending, still once.
+    const slow = [...before, line(2, "Hm.")];
+    pending = unansweredPicks(pending, slow);
+    expect(pending).toHaveLength(1);
+    expect(youLines(render({ lines: withPendingPicks(slow, pending, "Winamp") }))).toBe(1);
+
+    // The server's own pick line, then his reply: the pending row gives way.
+    const after = [...slow, pick(3, "I'm a person."), line(4, "A person. Of course.")];
+    shown = withPendingPicks(after, pending, "Winamp");
+    html = render({ lines: shown });
+    expect(youLines(html)).toBe(1);
+    expect(html).not.toContain("pending");
+    expect(unansweredPicks(pending, after)).toEqual([]);
+  });
+
+  it("a deed is pending as the server will draw it; an older pick, another room or a typed line never answers it", () => {
+    const lines = [line(5, "Prove it.")];
+    const p = pendingPickOf("7:1:2", menu.channel, "⟦PROOF⟧ Show him the Sandy File.", lines);
+    expect(p).toMatchObject({ text: "[shows the Sandy File]", act: true, after: 5 });
+    expect(withPendingPicks(lines, [p], "Winamp").map((l) => l.text)).toEqual(["Prove it.", "[shows the Sandy File]"]);
+    expect(unansweredPicks([p], [pick(4, "[shows the Sandy File]", true)])).toHaveLength(1);
+    expect(unansweredPicks([p], [{ ...pick(6, "[shows the Sandy File]", true), channel: "dm:Clippy" }])).toHaveLength(1);
+    expect(unansweredPicks([p], [line(6, "[shows the Sandy File]", false)])).toHaveLength(1);
+    // Answered by a line the visit's thread leaves out: still dropped.
+    expect(withPendingPicks([], [p], "Winamp", [pick(6, "[shows the Sandy File]", true)])).toEqual([]);
   });
 });
 

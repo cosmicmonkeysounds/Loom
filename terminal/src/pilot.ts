@@ -340,6 +340,8 @@ export async function tokenAlive(config: TerminalConfig): Promise<boolean> {
 export interface Line extends ChatMessage {
   /** Said by the character (else by the guest / the operator). */
   theirs: boolean;
+  /** A pick this page made, not yet back from the server (`heart/pending-pick.ts`): drawn dimmed. */
+  pending?: true;
 }
 
 /**
