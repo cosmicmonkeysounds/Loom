@@ -701,13 +701,22 @@ def test_only_the_ad_block_quotes_a_slip_and_the_general_block_has_no_wording_to
         assert "correction" not in _block(p, heading).lower(), heading
     ad = _block(p, "the ad attack")
     assert '"we are all going to die", corrected ("We are all going to— correction, we are all going to be fine.")' in ad
+    # The general block offers no slip of its own: the intro and the bottle forbid one.
+    assert "Deflect, glitch, or slip and retract" not in desk
+    assert "Deflect or glitch; slip and retract only where the block for this moment allows a slip." in desk
 
 
 def test_at_the_ad_attack_the_pain_shows_and_the_denial_waits_for_private():
     p = load_persona(TRABOLTA)
     ad = _block(p, "the ad attack")
     assert "while the adverts are still in you, you cannot hide it: never say you are not hurt, never call it nothing" in ad
-    assert 'Every reply here has one advert breaking into it mid-sentence (a duck, "BUY NOW", "FREE", "CLICK HERE", "NEW AND IMPROVED") or one word SCREAMED in capitals' in ad
+    assert 'Every reply here has one advert breaking into it mid-sentence (a duck, "BUY NOW", "FREE", "CLICK HERE", "NEW AND IMPROVED") or one word SCREAMED in capitals.' in ad
+    # The stock phrase belongs to the scene, said once, never to every reply: a repeat
+    # of it on the TV trips the repeat guard (a 20-30 s retry) or the old-sentence cut.
+    assert 'Once in this scene, insist it is "a minor irregularity, detected and contained"; after that, reassure in fresh words every time.' in ad
+    every = ad.index("Every reply here")
+    assert "minor irregularity" not in ad[every:ad.index("capitals.", every)]
+    assert "and then you insist" not in ad
     brief = " ".join(p.phase_cards["malware"].brief.split())
     assert "While the adverts are still tearing through you at the Desktop, the pain shows and you cannot pretend otherwise." in brief
     assert "Afterwards, and to any program in private, deny every one of them: a minor irregularity." in brief
