@@ -149,21 +149,32 @@ voice thought's `note` names each one that fired, never the word):
 5. **the memo scrub** (above).
 6. **the stage** (wave 32, a talk scene's public line only) — a line that
    says a bait noun back to the room (*server room*, *door / access
-   code*, *cable*, *combination*, *patch*, *basement*, *cold storage*,
-   the heart as a place), places him inside the computer (*virtual
+   code*, *cable*, a *combination* (never "a combination of factors"),
+   the *patch bay* / *patches* (never "patched"), *basement*, *cold
+   storage*, the heart as a place (never "close to my heart" or "at the
+   heart of my research")), places him inside the computer (*virtual
    space*, *system resident*, *core of the computer*, *beneath the
-   surface*, "I live in this computer"), uses an assistant's stock phrase
-   (*I appreciate your concern*, *not permitted to disclose*, *thank you
-   for your vigilance*, …), or a holding situation's `retry_on:` phrase,
+   surface*, "I live in your computer", "I am here in the Desktop"; only
+   an adverb may stand between the verb and the place, so "I am counting
+   every program in this computer" passes), uses an assistant's stock
+   phrase (*I appreciate your concern*, *not permitted to disclose*,
+   *thank you for your vigilance*, "I'm sorry, Clippy, but I can't…",
+   "cannot give you that information", …), says its steer aloud (only
+   with a `direction`: "my steer", "in two sentences", …; never "steer
+   clear" or "we wrap up now"), or a holding situation's `retry_on:` phrase,
    or its `once:` phrase a second time among his live lines this scene,
-   gets the **one** retry (`stage echo|inside|stock|scene|once retry`,
+   gets the **one** retry (`stage echo|inside|stock|steer|scene|once retry`,
+   also when the line is a repeat or a catchphrase too,
    with a note saying why and the steer again); every stage request has
    at most one retry. Whatever is still unusable after it (a withheld
    line, a retry that failed too, a model failure, a burst with no retry)
    is a line from the holding situation's own `fallbacks:` (the scene's
    over the Desktop block's): one that **closes the topic**, never "say
    that again", not heard this scene when possible and never the same
-   one twice running, picked by the request id. A situation's `crack:`
+   one twice running, picked by the request id; with a `direction` (a
+   hand-off), one that points onward (*move on*, *carry on*, *next*,
+   *proceed*, *spin the bottle*) when the pool has one. Each pool line
+   keeps to three sentences itself (a fallback is never cut). A situation's `crack:`
    (the introduction: 0.6) gives that share of his lines, by request id,
    one stuttered (*de— delighted*) or ALL-CAPS word, never in a name.
    On a stage request with a `direction` the steer also ends the last

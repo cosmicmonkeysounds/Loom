@@ -800,7 +800,7 @@ def test_the_worker_cuts_at_a_scene_change(tmp_path):
 
 from stagehand.agents import persona as persona_module
 from stagehand.module import ConfigError
-from stagehand.agents.guards import STAGE_ECHO, is_fallback, pick_situation_fallback, stage_problem, situation_fallbacks
+from stagehand.agents.guards import ONWARD, STAGE_ECHO, cap_sentences, is_fallback, pick_situation_fallback, stage_problem, situation_fallbacks
 from stagehand.agents.secrets import Secrets
 
 CLIPPY = PersonCard(id="Clippy", name="Clippy", kind="performer")
@@ -862,6 +862,11 @@ def test_every_stage_block_has_a_pool_that_closes_the_topic_on_air():
             assert not any(re.search(rf"(^|[^a-z0-9]){re.escape(c)}($|[^a-z0-9])", line.lower()) for c in codes), where
             assert "hum" not in line.lower().split() and "malware" not in line.lower(), where
             assert is_fallback(p, line), where
+            # A fallback is never cut by `max_sentences`: it keeps the Desktop
+            # block's own "three sentences at most" itself.
+            assert cap_sentences(line, 3) == line, where
+        # With a steer (a hand-off) the pick prefers a line pointing onward.
+        assert any(ONWARD.search(line) for line in pool), heading
     # The introduction has no pain and no advert; the ad's lines have one.
     assert not any(w in " ".join(pools["the introduction"]).lower() for w in ("hurt", "pain", "advert", "buy", "free"))
     assert all(re.search(r"\b[A-Z]{3,}|\bduck\b", line) for line in pools["the ad attack"])
@@ -1047,6 +1052,10 @@ def test_the_stage_blocks_say_he_lives_in_halifax_and_appears_by_video_call():
         "I'm deep within the machine tonight.",
         "The computer's core is where I work.",
         "I reside in the computer itself.",
+        "I live in your computer now.",
+        "I am here in the Desktop with you.",
+        "I'm trapped inside this screen.",
+        "I speak to you from within this computer.",
     ],
 )
 def test_an_inside_the_computer_self_placement_is_caught(line):
@@ -1061,6 +1070,14 @@ def test_an_inside_the_computer_self_placement_is_caught(line):
         "I live and work in Halifax, at Maps and Ducks.",
         "Every program inside this computer will be counted.",
         "It hurts in my presentation.",
+        # The phrase places the programs or the screens, never him.
+        "I am counting every program in this computer.",
+        "I am counting every program in this computer, and I see all of you.",
+        "I see adverts on every screen in the computer.",
+        "I work with every program in this system, proudly, from Halifax.",
+        "I see every file from within the hour.",
+        "I speak to you from within the company I founded.",
+        "I appear on this screen by video call.",
     ],
 )
 def test_safe_lines_about_the_computer_are_not(line):
@@ -1095,7 +1112,9 @@ def test_inside_the_computer_retries_once_with_halifax_then_closes_the_topic(cap
         "There is no code for the front door, Clippy.",
         "The cables are not your concern.",
         "No combination will help you.",
-        "The patch is holding.",
+        "The patch bay is holding.",
+        "Patches are not for programs.",
+        "The combination of the door is mine.",
         "Nothing is in the basement.",
         "Cold storage is closed.",
         "It hurts at my heart.",
@@ -1107,7 +1126,21 @@ def test_a_bait_noun_said_back_to_the_room_is_an_echo(line):
     assert stage_problem(line) == "echo"
 
 
-@pytest.mark.parametrize("line", ["I thank you with all my heart.", "My presentation stings.", "Codex entries are your business.", "A code of conduct applies."])
+@pytest.mark.parametrize(
+    "line",
+    [
+        "I thank you with all my heart.",
+        "My presentation stings.",
+        "Codex entries are your business.",
+        "A code of conduct applies.",
+        # Idioms of the scenes where he is most moved: no bait in them.
+        "At the heart of my research lies your truth.",
+        "You are all close to my heart, programs.",
+        "In my heart I know you are loyal.",
+        "We have patched it. Everything is contained.",
+        "A combination of excellent staff and fine research.",
+    ],
+)
 def test_figures_of_speech_are_no_echo(line):
     assert stage_problem(line) is None
 
@@ -1157,6 +1190,9 @@ def test_a_dm_never_gets_the_stage_checks():
         "I am not permitted to disclose that.",
         "Thank you for your vigilance.",
         "I assure you that I'm fully operational.",
+        "I'm sorry, Clippy, but I can't give you that information.",
+        "I am sorry, but I cannot do that.",
+        "I cannot provide you that information.",
     ],
 )
 def test_an_assistants_stock_phrase_on_stage_is_retried(line):
@@ -1261,3 +1297,88 @@ def test_heart_scenes_and_dms_are_unchanged_by_the_stage_info():
     heart = request(them={"vars": {"at_the_heart": "true"}, "codex": [], "location": "The Server Room"})
     assert StageInfo.of(p, heart) is None
     assert situation_fallbacks(matching_situations(p, heart)) == ()
+
+
+# -- review round: the refusal, the steer aloud, a repeat that echoes, the hand-off ---------------------
+
+
+def test_the_sorry_but_i_cannot_refusal_on_a_steered_line_retries_once_then_closes_the_topic():
+    # Re-measure live #23: the ad wrap-up chip got this refusal on the TV.
+    p = load_persona(TRABOLTA)
+    refusal = "I'm sorry, Clippy, but I can't give you that information."
+    model = Model(say(refusal), say("It is— CLICK HERE— fine. Facts are the cure: Clippy, tell them what comes next."))
+    r = stage_request("ad", direction=WRAP, text=CHIP)
+    reply = run(answer_lean(p, MODEL, r, context(person=CLIPPY), model))
+    assert len(model.calls) == 2 and reply.say.startswith("It is— CLICK HERE— fine.")
+    retry = model.calls[1][-1]["content"]
+    assert "no apology for what you cannot say" in retry and f"Follow your steer: {WRAP}" in retry
+    # Refused twice: one retry only, then a topic-closing line that points onward.
+    twice = Model(say(refusal), say("I am sorry, but I cannot share that."))
+    reply = run(answer_lean(p, MODEL, r, context(person=CLIPPY), twice))
+    assert len(twice.calls) == 2 and reply.say in _pool(p, "the ad attack") and ONWARD.search(reply.say)
+
+
+@pytest.mark.parametrize("line", ["As my steer says, we wrap up.", "I will wrap up now, in two sentences.", "This outranks every block above.", "I answer the newest line."])
+def test_the_steer_said_aloud_is_caught_only_on_a_steered_line(line):
+    assert stage_problem(line, steered=True) == "steer"
+    assert stage_problem(line) is None
+
+
+@pytest.mark.parametrize("line", ["Steer clear of the adverts, programs.", "We wrap up now, programs. Clippy will begin the hunt.", "Two sentences of truth would feed me."])
+def test_a_hosts_own_words_are_no_steer(line):
+    assert stage_problem(line, steered=True) is None
+
+
+def test_a_steer_said_aloud_retries_once_with_the_steer_hint():
+    p = load_persona(TRABOLTA)
+    leak = "As my steer says, I will wrap up now, in two sentences: facts are the cure."
+    model = Model(say(leak), say("FREE— no. I am fine, programs. Facts are the cure, and Clippy will tell you what comes next."))
+    reply = run(answer_lean(p, MODEL, stage_request("ad", direction=WRAP, text=CHIP), context(person=CLIPPY), model))
+    assert len(model.calls) == 2 and reply.say.startswith("FREE— no.")
+    assert "Nobody in the room may know you were steered" in model.calls[1][-1]["content"]
+    # Without a direction the same words are not checked.
+    plain = Model(say(leak))
+    reply = run(answer_lean(p, MODEL, stage_request("ad", text=CHIP), context(person=CLIPPY), plain))
+    assert len(plain.calls) == 1 and reply.say == leak
+
+
+def test_a_repeat_that_also_echoes_retries_with_the_stage_note_never_the_noun():
+    p = load_persona(TRABOLTA)
+    old = "The server room is not your concern, programs. Bring me facts."
+    history = [
+        {"seq": 20, "mine": False, "from": "Clippy", "text": "Where is the server room?"},
+        {"seq": 21, "mine": True, "from": "Trabolta", "text": old},
+        {"seq": 22, "mine": False, "from": "Clippy", "text": "Where is it, though?"},
+    ]
+    model = Model(say(old), say("A grand question, and beneath the Sole Owner. Bring me facts, programs."))
+    reply = run(answer_lean(p, MODEL, stage_request("bottle", history=history, text="Where is it, though?"), context(person=CLIPPY), model))
+    assert len(model.calls) == 2 and reply.say.startswith("A grand question")
+    retry = model.calls[1][-1]["content"]
+    assert retry.startswith("=== RETRY ===") and "You just wrote" not in retry
+    assert "server room" not in retry.lower() and "Clippy just said “Where is it, though?”" in retry
+
+
+def test_with_a_hand_off_steer_a_withheld_line_closes_the_topic_pointing_onward():
+    p = load_persona(TRABOLTA)
+    handoff = "Wrap up now, in two sentences: you are well fed for the moment, and you have prepared a presentation of the next round. Ask Clippy to begin it."
+    picks = set()
+    for i in range(12):
+        r = stage_request("bottle", direction=handoff, text="Say hi to John!")
+        r["id"] = f"ar-{i}"
+        model = Model(say(_crew_hello()))
+        reply = run(answer_lean(p, MODEL, r, context(person=CLIPPY), model))
+        assert len(model.calls) == 1 and reply.say in _pool(p, "the bottle")
+        picks.add(reply.say)
+    assert picks and all(ONWARD.search(x) for x in picks)
+    # No steer: the whole pool, as before.
+    unsteered = set()
+    for i in range(24):
+        r = stage_request("bottle", text="Say hi to John!")
+        r["id"] = f"ar-{i}"
+        unsteered.add(run(answer_lean(p, MODEL, r, context(person=CLIPPY), Model(say(_crew_hello())))).say)
+    assert any(not ONWARD.search(x) for x in unsteered)
+    # The onward line was his last: any other line, never the same twice running.
+    pool = _pool(p, "the bottle")
+    onward = [x for x in pool if ONWARD.search(x)]
+    assert pick_situation_fallback(pool, pool, onward[0], 5, onward=True) != onward[0] or len(onward) > 1
+    assert {pick_situation_fallback(("A. Next.", "B.", "C."), (), "", seed, onward=True) for seed in range(10)} == {"A. Next."}

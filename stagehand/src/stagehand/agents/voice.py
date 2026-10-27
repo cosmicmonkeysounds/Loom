@@ -887,14 +887,16 @@ def _notes(*parts: str | list[str]) -> str:
 class StageInfo:
     """What a stage request's guards need: the holding situations, his live
     lines this scene (after `stage.after_seq`), every line of his this scene,
-    his newest live line, and the request id (the seed of every pick, so a
-    test can pin it and a re-sent request picks the same)."""
+    his newest live line, the request id (the seed of every pick, so a
+    test can pin it and a re-sent request picks the same) and whether the
+    request carries a steer (`stage.direction`)."""
 
     situations: tuple[Any, ...]
     earlier: tuple[str, ...]
     heard: tuple[str, ...]
     last: str
     rid: str
+    steered: bool = False
 
     @classmethod
     def of(cls, persona: Persona, req: dict[str, Any]) -> "StageInfo | None":
@@ -912,6 +914,7 @@ class StageInfo:
             heard=tuple(str(h.get("text")) for h in scene),
             last=live[-1] if live else "",
             rid=str(req.get("id") or ""),
+            steered=bool(_one_line(stage.get("direction"), MAX_STEER)),
         )
 
     @property
@@ -927,13 +930,13 @@ class StageInfo:
         return rate
 
     def problem(self, say: str) -> str | None:
-        return stage_problem(say, self.situations, self.earlier)
+        return stage_problem(say, self.situations, self.earlier, steered=self.steered)
 
     def seed_of(self, salt: str) -> int:
         return int.from_bytes(hashlib.sha256(f"{self.rid}|{salt}".encode()).digest()[:8], "big")
 
     def fallback(self) -> str:
-        return pick_situation_fallback(self.pool, self.heard, self.last, self.seed_of("fallback"))
+        return pick_situation_fallback(self.pool, self.heard, self.last, self.seed_of("fallback"), onward=self.steered)
 
 
 #: (wave 32) What the one stage retry tells him, by `guards.stage_problem`'s
@@ -941,7 +944,8 @@ class StageInfo:
 STAGE_HINTS = {
     "echo": "It says one of the question's own things back to the whole room. Wave the question away grandly, in your own words, naming none of its things.",
     "inside": "It puts you inside this computer. You live and work in Halifax, at Maps and Ducks, and appear on this screen by video call from there: never inside the computer, never a system, never in its core or underneath it.",
-    "stock": "It is an assistant's stock phrase. You are the Sole Owner and Founder speaking to his staff: no thanks for their concern, no assurances, no talk of what you are permitted.",
+    "stock": "It is an assistant's stock phrase. You are the Sole Owner and Founder speaking to his staff: no thanks for their concern, no assurances, no talk of what you are permitted, no apology for what you cannot say.",
+    "steer": "It speaks of your steer out loud. Nobody in the room may know you were steered: just do what it asks, in your own words.",
     "scene": "It breaks the rule of this moment's block.",
     "once": "You have already said that phrase in this scene: never again tonight in front of them; fresh words.",
 }
@@ -1162,10 +1166,13 @@ async def answer_lean(
     wants = first.retry
     call_note = " · ".join(x for x in (no_mind, call_note) if x)
     notes = settle_notes + first.notes
-    why = stage.problem(first.reply.say) if stage is not None and wants is None and not first.withheld else None
+    # (wave 32) A stage line's problem is read even when the line is also a
+    # repeat or a catchphrase: its retry note then never quotes a bait noun
+    # back to him, and it carries Clippy's line and the steer.
+    why = stage.problem(first.reply.say) if stage is not None and not first.withheld else None
     if why:
-        # (wave 32) Not for the whole Desktop as it is: the one retry, then
-        # the scene's topic-closing line.
+        # Not for the whole Desktop as it is: the one retry, then the
+        # scene's topic-closing line.
         wants, first.rejected = "stage", first.reply.say
         notes.append(f"stage {why} retry" if opts.retry_allowed else f"stage {why} (no retry: a line is waiting)")
     if wants == "repeat":
