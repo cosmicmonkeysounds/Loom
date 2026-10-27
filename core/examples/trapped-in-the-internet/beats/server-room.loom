@@ -1058,7 +1058,7 @@ else:
       Trabolta: No. Nobody tells her anything for me. If I cannot say it myself, it does not count.
     else:
       // DRAFT w27 (a second try is harsher)
-      Trabolta: Stop offering. Every time you offer, part of me wants to say yes. That is the cruellest thing in this room.
+      Trabolta: Stop offering. Every time you offer, part of me wants to say yes. That is the worst thing anyone has done to me tonight.
   else if program.heart_pick == "end_stop":
     set program.heart_convinced = true
     set program.heart_go = "convinced"

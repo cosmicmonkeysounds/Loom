@@ -13,7 +13,7 @@ by late-90s Web 1.0 aesthetics and existentialism.*
 > **State (2026-10-24):** the VPS runs `w18b-1021` (wave 18b Stage A, the
 > tent laptop, and wave 19). Master also holds wave 18b Stage B and waves
 > 20, 20b, 21 and 22, merged and not shipped; their DRAFT show text waits on
-> the sign-off sheets (`SIGNOFF-w26.md`, `SIGNOFF-w21.md`, `history/SIGNOFF-w18b.md`,
+> the sign-off sheets (`SIGNOFF-w27.md`, `SIGNOFF-w26.md`, `SIGNOFF-w21.md`, `history/SIGNOFF-w18b.md`,
 > `history/SIGNOFF-w20.md`). The build history is in [`OCT31.md`](./OCT31.md)
 > §5 and [`history/`](./history).
 
@@ -79,7 +79,8 @@ beats/server-room.loom Act III: Majority Reached · The Whole Truth · The Heart
                        Disabled · Trabolta Recounts · Computer Destroyed · Purgatory
                        (wave 18b deleted Back To The Heart); wave 20's heart: Heart Nag ·
                        Heart Door Again · Heart Door Shut · Heart Sealed · Heart Shut It ·
-                       Heart Talk · Heart Layers · Heart Layer One–Four · Heart Speak ·
+                       Heart Talk · Heart Layers · Heart Layer One–Four · Heart Evidence ·
+                       Heart Reasons (wave 27: Layer Three's sub-menus) · Heart Speak ·
                        Heart Pick · Heart Warn · Heart Eject · Heart Mark · Heart Barred ·
                        Heart Leave · Heart Away · Heart Convinced · Heart Return · Heart
                        Shutdown (wave 20b deleted Heart Not Yet and Heart Call)
@@ -894,7 +895,8 @@ a combination or her one line, and never offers to stop (no act of his ends
 anything). `facts:` gains `Night.heart_opened` / `Night.talked_down` (wave
 20: `Night.heart_stage` / `Night.server_door`), `them:` gains `at_the_heart`
 (wave 20: `heart_layer`, `heart_menu`, `heart_convinced`, `heart_chat`,
-`heart_out`); the candour stays out of the shared brief.
+`heart_out`; wave 27: `heart_who`, what they told him they are at the
+first question); the candour stays out of the shared brief.
 
 **Powers** (`INTERACTION … who: agent` in `cast/trabolta.loom`). Every use
 is a journaled signal fired *as* Trabolta. Outside its window a power
