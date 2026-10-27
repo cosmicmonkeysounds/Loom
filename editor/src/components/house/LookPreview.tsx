@@ -65,7 +65,7 @@ export function LookPreview({ lights, house, name, step, onStep }: { lights: Lig
           const css = lampCss(l)
           const glow = Math.round(6 + (28 * l.brightness) / 254)
           return (
-            <div key={id} className="flex w-24 flex-col items-center gap-1 text-center" data-testid={`designer-lamp-${id}`}>
+            <div key={id} className="flex w-36 flex-col items-center gap-1 text-center" data-testid={`designer-lamp-${id}`}>
               <div
                 className="h-12 w-12 rounded-full border border-zinc-700 transition-none"
                 style={{ background: css, boxShadow: `0 0 ${glow}px ${Math.round(glow / 2)}px ${css}` }}

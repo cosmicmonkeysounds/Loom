@@ -268,6 +268,36 @@ it needs a server project.
 - **Zigbee pairing** (`/api/mod/lights/pair`) and *Reset marks*, director
   only.
 
+### 6.1b Editor: the Cue designer and Setup (wave 30)
+
+Run → House has three views under the status strip (`store/house-view.ts`):
+**Desk** (§6.1), **Cue designer** and **Setup**. The keys of §6.1 work in
+the Desk view only.
+
+- **Cue designer** (`components/house/CueDesigner.tsx`, store
+  `store/cue-designer.ts`, pure `lib/cue-designer.ts`). It reads
+  `GET /api/mod/lights` (the whole `lights.json` in force) and the map
+  (`/api/spatial/house`) every 15 s while nothing is edited, and edits the
+  looks with `@loom/house`'s `look-edit.ts` ops, previews them with
+  `look-preview.ts` (`previewAt` over `planLook`) and starts new ones from
+  `look-templates.ts` (`lookFromTemplate`, Zigbee-safe, holding the
+  targets' safety floor `lookFloor`). Save is `POST /api/mod/lights {lights,
+  base}` (409 `stale` → ask), Save to project `POST
+  /api/mod/lights/project`; ▶ Test on the house is `lights/test {look}`
+  (saving first when the look is dirty), ▶ Try a step `lights/test
+  {fixture, set}`, an audition `audio/play {sound, to?, gain?}`. Every
+  test asks first while `live`. Sounds and desk cues come from the desk
+  view; *+ Desk cue* builds one (`soundCue` / `lookCue`) into the desk
+  draft and opens it in the Desk view's inspector. **In the story** finds
+  the `cue X` / `sound X` statements and `when X:` headers in the indexed
+  story (`storyUses`) and opens them in Writing.
+- **Setup** (`components/house/SetupPanel.tsx`): `deskSetup(view)` (pure,
+  `house-desk.ts`): one row each for the sound router, the lights module
+  and every `mind: external` character (`house.minds`), with a tone, a
+  status line and what to do. The same rows are the hosts' Desk Setup
+  (§6.2). Then the bring-up order, 🔗 Pair a bulb, the checks' progress
+  and the help articles (`house-setup`, `cue-designer`, `house-desk`).
+
 ### 6.2 Play: the host's Show and Desk
 
 A host booth gets two windows in place of the pull-up drawer. The taskbar

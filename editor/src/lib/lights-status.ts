@@ -5,12 +5,12 @@
 //! `lights` module is listening and whether a director opened Zigbee pairing.
 //! The House map card's 💡 row reads it every `LIGHTS_POLL_MS`: *💡 lights
 //! module online · N fixtures* (or *offline*), *pairing … s* while joining is
-//! open, and the problems / warnings counts. Placing fixtures, looks and the
-//! pairing button live in the map editor's 💡 Lights tab, not here.
+//! open, and the problems / warnings counts. Placing fixtures and the
+//! pairing button live in the map editor's 💡 Lights tab; looks are
+//! designed there or in Run → House → Cue designer (wave 30).
 //!
-//! The editor has no dependency on `@loom/house`: the wire is parsed here,
-//! defensively; an older server (404) or a malformed answer is null and the
-//! row shows nothing.
+//! The wire is parsed here, defensively; an older server (404) or a
+//! malformed answer is null and the row shows nothing.
 
 /** How often the card re-reads the lights (no long poll). */
 export const LIGHTS_POLL_MS = 15_000

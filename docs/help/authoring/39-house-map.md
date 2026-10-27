@@ -235,7 +235,9 @@ ticks these off as you go):
    the test says the light *would change nothing*, its caps can't do that
    colour — fix **can do**, or try another swatch.
 
-**Looks.** The **Looks** section lists every look; the story's `cue`
+**Looks.** (Looks can also be designed, with a live preview and
+templates, in Run → House → [the Cue designer](50-cue-designer.md); both
+edit the same `lights.json`.) The **Looks** section lists every look; the story's `cue`
 names that have no look yet appear as **+ name** buttons, and a look no
 cue plays says so. Open a look to set:
 

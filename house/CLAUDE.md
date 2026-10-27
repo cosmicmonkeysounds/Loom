@@ -18,7 +18,7 @@ code and that file disagree, fix one of them in the same change.
 ## Commands
 
 ```bash
-pnpm --filter @loom/house test        # vitest: 378 passed + 4 skipped, 18 files
+pnpm --filter @loom/house test        # vitest: 412 passed + 4 skipped, 19 files
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate geometry/route/king change
 pnpm --filter @loom/house sync        # copy the show's house.json, goldens and voice vectors into reinstall/vr/
@@ -36,7 +36,7 @@ show's `house.json`, or to `geometry.ts` / `route.ts` / `locate.ts` /
 
 | Entry | Contents |
 |---|---|
-| `@loom/house` (`src/index.ts`) | `types.ts` (schema v1 + wire types), `clone.ts`, `validate.ts` (`validateHouse`, `TERMINAL_VIEWS`, `guardWarnings`), `geometry.ts` (`buildWalls` normative, `buildFloors`, `buildRamps`, `doorGap`, `propSolid`), `locate.ts` (`locate`, `heightAt`, `standable`, `solidPropAt`), `route.ts` (`route`, `sampleTrail`), `frames.ts` (`toSpace`, `DEFAULT_SPOT_FOV`, `horizontalFov`), `duck.ts` (`pickDuckSpot`, FNV-1a), `king.ts` (`kingReach`, `withFallenKings`, `kingStateOf`), `escape.ts`, `presence.ts`, `moment.ts` (wave 26, below), `audio.ts`, `lights.ts`, `voice.ts` (`hearsTerminals` / `hearsPlayers`: same room only) |
+| `@loom/house` (`src/index.ts`) | `types.ts` (schema v1 + wire types), `clone.ts`, `validate.ts` (`validateHouse`, `TERMINAL_VIEWS`, `guardWarnings`), `geometry.ts` (`buildWalls` normative, `buildFloors`, `buildRamps`, `doorGap`, `propSolid`), `locate.ts` (`locate`, `heightAt`, `standable`, `solidPropAt`), `route.ts` (`route`, `sampleTrail`), `frames.ts` (`toSpace`, `DEFAULT_SPOT_FOV`, `horizontalFov`), `duck.ts` (`pickDuckSpot`, FNV-1a), `king.ts` (`kingReach`, `withFallenKings`, `kingStateOf`), `escape.ts`, `presence.ts`, `moment.ts` (wave 26, below), `audio.ts`, `lights.ts`, `look-edit.ts` (wave 30: the looks builder's pure ops, shared by the map editor and the editor's Cue designer), `look-preview.ts` (`previewAt`, `previewLength`, `lampCss`: a look played on screen), `look-templates.ts` (`lookFromTemplate`, `lookFloor`), `voice.ts` (`hearsTerminals` / `hearsPlayers`: same room only) |
 | `@loom/house/three` (`src/three/`) | the three.js scene: `buildHouseScene`, `createDuck`, `createTrail`, `createKing`, `createHeart`, `createPickup`, `createAvatar`, `loadPicture`, `PoseBuffer`, `spaceGroup`. Peer dependency `three` (optional for the root entry) |
 | `@loom/house/voice-on` | `voiceOn(house, spot)` alone, so the terminal's main bundle avoids the codec |
 

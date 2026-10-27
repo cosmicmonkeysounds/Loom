@@ -95,6 +95,7 @@ describe('the Cue designer', () => {
     expect(html).toContain('data-testid="cue-designer"')
     expect(html).toContain('data-testid="designer-look-warm"')
     expect(html).toContain('data-testid="designer-look-heart_beat"')
+    expect(html).toContain('1 more story cue with no look here')
     expect(html).toContain('+ lights_y2k')
     expect(html).toContain('server_hum')
     expect(html).toContain('The Heart wakes')

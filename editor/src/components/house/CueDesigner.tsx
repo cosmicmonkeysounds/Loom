@@ -175,8 +175,11 @@ function Library({ lights, view, desk, docs, problems }: { lights: LightsConfig;
         {rows.length === 0 && <li className="px-1 text-[11px] text-zinc-500">No looks yet.</li>}
       </ul>
       {unwritten.length > 0 && (
-        <div className="mb-3 px-1 text-[11px] text-zinc-400">
-          The story cues these, and no look or desk cue answers yet:
+        <details className="mb-3 px-1 text-[11px] text-zinc-400" data-testid="designer-unwritten">
+          <summary className="cursor-pointer text-zinc-500 hover:text-zinc-300">
+            {unwritten.length} more story cue{unwritten.length === 1 ? '' : 's'} with no look here
+          </summary>
+          <p className="mt-1">The story cues these, and no look or desk cue here answers them. The house’s show rules (stagehand’s <code>show</code> job: Zigbee scenes, WLED presets) may play them already; write a look to light them from here instead:</p>
           <div className="mt-1 flex flex-wrap gap-1">
             {unwritten.map((n) => (
               <button key={n} className={clsx(btn, 'font-mono')} onClick={() => setAdding(n)} title={`Write the look the story's “cue ${n}” plays`}>
@@ -184,7 +187,7 @@ function Library({ lights, view, desk, docs, problems }: { lights: LightsConfig;
               </button>
             ))}
           </div>
-        </div>
+        </details>
       )}
 
       <div className={clsx(heading, 'px-1 pb-1 pt-2')}>🔊 Story sounds</div>

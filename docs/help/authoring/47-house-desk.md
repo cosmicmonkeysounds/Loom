@@ -2,7 +2,7 @@
 title: The house desk — cues for the house, and testing every speaker and light
 section: Live Shows
 order: 47
-keywords: house desk, desk, House tab, Run → House, desk.json, cue list, house cue, QLab, GO, standby, playhead, stop, stop all, panic, step, steps, parallel, series, with, then, wait, sound, say, announcement, look, light, story event, done, speech, wait for speech, timeline, sections, cue number, inspector, checks, test, test next, speaker test, output test, story sounds, lights test, colours, mark, heard it, nothing, reset marks, zigbee, pair, pairing, bulb, live, router, lights module, save to project, cue, when, fire, house
+keywords: house desk, desk, House tab, setup, connect, cue designer, Trabolta, mind, Run → House, desk.json, cue list, house cue, QLab, GO, standby, playhead, stop, stop all, panic, step, steps, parallel, series, with, then, wait, sound, say, announcement, look, light, story event, done, speech, wait for speech, timeline, sections, cue number, inspector, checks, test, test next, speaker test, output test, story sounds, lights test, colours, mark, heard it, nothing, reset marks, zigbee, pair, pairing, bulb, live, router, lights module, save to project, cue, when, fire, house
 ---
 
 The **house desk** is the house's own cue list: a small QLab built into
@@ -19,6 +19,17 @@ look, one row at a time.
 
 The desk lives on the event server, so Run → House works on a server
 project with a run. On a local folder it explains that it needs one.
+
+Run → House has three views, under the status strip:
+
+- **🎛 Desk** — the cue list, GO and the checks (this page).
+- **🎨 Cue designer** — design lighting looks with a live preview,
+  audition sounds, build desk cues, and see how the story fires each
+  ([The Cue designer](50-cue-designer.md)).
+- **🔌 Setup** — is the sound router, the lights module and Trabolta's
+  mind connected, and what to do when not (a ✗ on the tab says something
+  is down). The full runbooks are in
+  [Setting up the house](49-house-setup.md).
 
 ## The page
 
