@@ -24,6 +24,7 @@ import { OPTIMISTIC_MS, awardsNear, barLine, cueDescription, needsCount, type Ba
 import { callerKnown, callerText, cueCaller, shownCaller, type CallerFlip } from "./caller.ts";
 import { useFireAnyway } from "./fire-anyway.tsx";
 import { showTarget, type ShowSectionId } from "./show-model.ts";
+import { talkChipShown } from "./talk-model.ts";
 
 const NO_MARKS: CueMarks = { last: null, fired: [] };
 
@@ -95,6 +96,13 @@ export interface HostConsoleState {
   openShow: (atNeeds?: boolean) => void;
   /** Show, at Who's calling. */
   openCaller: () => void;
+  /** Show, at the 🤖 Talk card (wave 32: the slim bar's chip). */
+  openTalk: () => void;
+  /** The Talk card's text box (wave 32): held here, so a draft survives
+   *  Show leaving the screen and a refused send. */
+  talkDraft: string;
+  /** A value, or an updater (a send clears only the words it sent). */
+  setTalkDraft: (t: string | ((draft: string) => string)) => void;
   /** The award picker and *Fire anyway?* (drawn by the bar's slot, always). */
   picker: ReactNode;
   dialog: ReactNode;
@@ -225,6 +233,9 @@ export function HostConsole({ session, wide, openCard, client: injected, keyboar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picking, suggestion]);
 
+  // Wave 32: the Talk card's draft, kept across Show's comings and goings.
+  const [talkDraft, setTalkDraft] = useState("");
+
   // A jump into Show: the section to open, and More's own section.
   const [jump, setJump] = useState<ShowJump | null>(null);
   const showRef = useRef(onShow);
@@ -316,6 +327,9 @@ export function HostConsole({ session, wide, openCard, client: injected, keyboar
       jump,
       openShow: (atNeeds = false) => (atNeeds ? jumpTo("needs") : showRef.current?.()),
       openCaller: () => jumpTo("top"),
+      openTalk: () => jumpTo("talk"),
+      talkDraft,
+      setTalkDraft,
       picker: view === null ? null : <CuePicker desk={desk} roster={view.roster} suggest={suggestion !== null ? { id: suggestion.id, hint: suggestionHint(suggestion) } : null} />,
       dialog: anyway.dialog,
     };
@@ -380,6 +394,7 @@ function DockBar({ c }: { c: HostConsoleState }) {
             // Needs, where it is whole.
             onOpen={() => c.openShow(line2.kind === "refused")}
             onCaller={c.openCaller}
+            {...(talkChipShown(c.view.talk, barOn) ? { onTalk: c.openTalk } : {})}
           />
         </div>
       )}
@@ -393,7 +408,7 @@ function DockBar({ c }: { c: HostConsoleState }) {
  *  second line in one button that opens Show, then ARM → FIRE. It reads the
  *  same desk as Show's NEXT card, so an arm made in one fires from the
  *  other. */
-export function HostNextBar({ bar, desk, stale, paused = false, line2, strip, barMain, onOpen, onCaller }: { bar: NextBar; desk: CueDesk; stale: boolean; paused?: boolean; line2: BarLine; strip: HostStripItem[]; barMain?: Ref<HTMLButtonElement>; onOpen: () => void; onCaller?: () => void }) {
+export function HostNextBar({ bar, desk, stale, paused = false, line2, strip, barMain, onOpen, onCaller, onTalk }: { bar: NextBar; desk: CueDesk; stale: boolean; paused?: boolean; line2: BarLine; strip: HostStripItem[]; barMain?: Ref<HTMLButtonElement>; onOpen: () => void; onCaller?: () => void; onTalk?: () => void }) {
   const nextRow = bar.kind === "next" ? bar.row : null;
   const armedHere = nextRow !== null && desk.armed?.id === nextRow.id;
   const sending = nextRow !== null && desk.pending === nextRow.id;
@@ -452,6 +467,13 @@ export function HostNextBar({ bar, desk, stale, paused = false, line2, strip, ba
           )}
         </span>
       </button>
+      {onTalk !== undefined && (
+        // Wave 32 (C6): a talk scene is on — Show, at the 🤖 Talk card.
+        <button type="button" className="host-talk-chip" data-testid="host-talk-chip" aria-label="Open the Talk card" onClick={onTalk}>
+          <span aria-hidden="true">🤖</span>
+          <span className="host-talk-chip-k">Talk</span>
+        </button>
+      )}
       {nextRow !== null && (
         <button
           type="button"
