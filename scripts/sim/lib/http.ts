@@ -121,5 +121,7 @@ export class Stream {
 
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-/** Is this server the laptop itself (no y/N; reset allowed)? */
-export const isLocal = (base: string): boolean => /^https?:\/\/(localhost|127\.|\[::1\])/u.test(base);
+/** Is this server the laptop itself? The host is anchored: `localhost`,
+ *  `127.x.x.x` or `[::1]`, then an optional port, then a path or the end, so
+ *  `localhost.example.com` or `127.0.0.1.nip.io` (a public name) is not. */
+export const isLocal = (base: string): boolean => /^https?:\/\/(localhost|127(\.\d{1,3}){3}|\[::1\])(:\d+)?(\/|$)/iu.test(base);

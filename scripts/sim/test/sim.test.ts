@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { CEREMONY, SELF_PRESSED, TO_Y2K, Y2K_TO_VERDICT, pressChain, stepName, stepWho } from "../../accept/chains.ts";
 import { decide, findOption, heartMenu, layerOf, menusOf, tagOf, type Menu } from "../lib/heart.ts";
 import { featuredSlug, pickPool, segment } from "../lib/plan.ts";
+import { isLocal } from "../lib/http.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
 import { awardWinners, mismatches, worldOf } from "../lib/world.ts";
 
@@ -142,4 +143,9 @@ test("the scoreboard: percentiles, route keys, quests, the exit code", () => {
   const table = summaryTable(rec, q);
   assert.match(table, /beats passed +│ 1 \/ 2/u);
   assert.match(table, /latency p95 +│ 8 ms/u);
+});
+
+test("isLocal anchors the host: a public name that starts like localhost is not local", () => {
+  for (const b of ["http://localhost", "http://localhost:7391", "http://127.0.0.1:7391/", "https://127.10.0.1/x", "http://[::1]:7391"]) assert.equal(isLocal(b), true, b);
+  for (const b of ["http://localhost.example.com", "https://127.0.0.1.nip.io", "http://127.0.0.1.nip.io:7391", "http://localhostx:7000", "http://[::1].evil", "https://app.mapsandducks.com", "http://user@localhost.evil"]) assert.equal(isLocal(b), false, b);
 });
