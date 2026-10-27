@@ -335,7 +335,12 @@ them out.
   floor; a leash end (thrown out, timed out, done, left) forgets the visit,
   so the next scan floors fresh, and `floorAfter` uses it whenever it is
   sent, so a reloaded heart terminal shows the whole visit (his lines and
-  the picks) and nothing older.
+  the picks) and nothing older. Nor a late answer to a phone DM sent before
+  the scan: a line whose `answers` (the guest line an agent reply, hold or
+  busy line answers, core `answeredSeq`) is at or below the floor is left
+  out of `visitLines` and never said here (`answersBeforeVisit`,
+  `session.beforeVisit`); it still lands on the phone. Each thread line
+  carries `data-seq` (the heart spec checks it against `/api/history`).
 - **Picks are server lines (wave 28).** A pick at the choice panel comes
   back on the stream as the program's own `pick: true` line (`act: true`
   for a deed) in `dm:<character>`, before his reply; the phone shows the
