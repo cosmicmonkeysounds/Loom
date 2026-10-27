@@ -3,7 +3,7 @@ title: Talking with Trabolta: the Talk card
 section: Performers
 order: 21
 role: performer
-keywords: talk, talk card, 🤖 talk, talk scene, talk back, relay, relaying, clippy, trabolta, what did clippy just say, send, canned, canned lines, chips, clippy chips, trabolta chips, tap twice, arm, fire, thinking, slow, listening, no mind online, asleep, glitch, ⚡, ad burst, burst, flicker, hand off, wrap up, folded, open, task manager, introduction, bottle, ad attack, beans, nothing was sent, scene is over
+keywords: talk, paused, hijack still playing, talk card, 🤖 talk, talk scene, talk back, relay, relaying, clippy, trabolta, what did clippy just say, send, canned, canned lines, chips, clippy chips, trabolta chips, tap twice, arm, fire, thinking, slow, listening, no mind online, asleep, glitch, ⚡, ad burst, burst, flicker, hand off, wrap up, folded, open, task manager, introduction, bottle, ad attack, beans, nothing was sent, scene is over
 ---
 
 Some stories have **talk scenes**: moments when a performer talks out loud
@@ -59,7 +59,9 @@ the bottle's card into its own. An ending or a skip closes it too.
 Only during a talk scene. Before the ad attack it flickers the screens. From
 the ad attack on it is an **ad burst**: a short advert tears through every
 screen and phone with one of Trabolta's pained lines. Two seconds apart at
-least (*⚡ Too soon* in `# hosts`). The scenes also glitch on their own
+least (*⚡ Too soon* in `# hosts`), and not while the ad attack's own big
+takeover is still playing, its first 8 seconds (*⚡ The ad hijack is still
+playing* in `# hosts`): wait, then tap again. The scenes also glitch on their own
 about every 45 seconds, so you never have to press it.
 
 ## When something goes wrong
@@ -74,6 +76,6 @@ about every 45 seconds, so you never have to press it.
   Clippy's line again, or fire one of his.
 - **A send is refused**, and the words stay in the box with the reason:
   *The talk scene is over — nothing was sent.* (the scene closed while you
-  typed) · *Trabolta is asleep — nothing was sent.* · *The doors aren't
-  open yet — nothing was sent.* · *Too long* (keep it under 280
-  characters).
+  typed) · *Trabolta is asleep — nothing was sent.* · *The night is paused
+  or the doors aren't open — nothing was sent.* (the night is paused, or
+  hasn't started) · *Too long* (keep it under 280 characters).

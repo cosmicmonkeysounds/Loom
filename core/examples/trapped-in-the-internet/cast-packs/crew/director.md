@@ -88,8 +88,9 @@ never in the room, and an answer that comes after the scene moved on is
 dropped. **⚡ Glitch** (`ad_burst`, cue 77, Anytime) works only while a
 scene is on: a flicker before the ad attack, an ad burst (every screen and
 phone, his pained line, a sound) after it; the scenes also glitch on their
-own about every 45 s. Never ⚡ within 8 s of 📺: it cuts the hijack's big
-takeover short. After a server restart mid-scene his pending answer is
+own about every 45 s. For 8 s after 📺 a ⚡ is refused (*⚡ The ad hijack
+is still playing* in `# hosts`), so the hijack's big takeover always plays
+out. After a server restart mid-scene his pending answer is
 forgotten: Task Manager taps again.
 
 A cue that doesn't apply yet does nothing but tell `# hosts` why (*"⚖ Not
