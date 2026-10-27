@@ -79,20 +79,31 @@ describe("the glitch shot's own words (wave 32, C5)", () => {
 describe("the ad burst (wave 32)", () => {
   const burst = (marks: ScreenMoment[], over: Parameters<typeof state>[0] = {}) => state({ program: { glitch: shot("glitch", T0, 9, LINE) }, moments: marks, ...over });
 
-  it("is a glitch cued with a ⚡ press or the burst's own sound, never the 📺 hijack's", () => {
-    expect(BURST_MOMENTS).toEqual([
-      { kind: "signal", name: "ad_burst" },
-      { kind: "sfx", name: "truther_glitch" },
-    ]);
-    expect(isBurst({ at: T0 }, [moment("signal", "ad_burst", T0)])).toBe(true);
-    expect(isBurst({ at: T0 }, [moment("signal", "Ad Burst", T0 + BURST_WITH_MS)])).toBe(true);
+  it("is the server's `light` glitch, else (an older server) one cued with the burst's own sound; never the 📺 hijack's", () => {
+    // The server says so: no moment needed, so the ring rolling over never changes the answer.
+    expect(isBurst({ at: T0, light: true }, [])).toBe(true);
+    expect(isBurst({ at: 0, light: true }, [])).toBe(false); // history
+    expect(programOf({ glitch: { value: "glitch", cue: "screens_glitch", seq: 4, at: 1234, light: true } }).glitch).toMatchObject({ light: true });
+    expect(programOf({ glitch: { value: "glitch", cue: "screens_glitch", seq: 4, at: 1234, light: "yes" } }).glitch).not.toHaveProperty("light");
+    // An older server: the burst's sound only.
+    expect(BURST_MOMENTS).toEqual([{ kind: "sfx", name: "truther_glitch" }]);
+    expect(isBurst({ at: T0 }, [moment("sfx", "truther_glitch", T0)])).toBe(true);
+    expect(isBurst({ at: T0 }, [moment("sfx", "Truther Glitch", T0 + BURST_WITH_MS)])).toBe(true);
     // A timed burst is a story `fire` (no signal): its sound marks it.
     expect(isBurst({ at: T0 }, [moment("sfx", "truther_glitch", T0 - 500)])).toBe(true);
     // The 📺 rule: its own jingle, a big broadcast — no burst.
     expect(isBurst({ at: T0 }, [moment("sfx", "ad_jingle", T0), moment("big", "000. 000. 000. A SPECIAL OFFER FOR YOU.", T0), moment("signal", "second_hunt_preview", T0)])).toBe(false);
-    // Too far from the cue (an earlier ⚡ that only flickered, the Truther Download's sound), or history.
-    expect(isBurst({ at: T0 }, [moment("signal", "ad_burst", T0 - BURST_WITH_MS - 1)])).toBe(false);
-    expect(isBurst({ at: 0 }, [moment("signal", "ad_burst", 0)])).toBe(false);
+    // A ⚡ flicker (intro, bottle) pressed just before the 📺: its signal never makes the hijack a burst.
+    expect(isBurst({ at: T0 }, [moment("signal", "ad_burst", T0 - 1500), moment("sfx", "ad_jingle", T0)])).toBe(false);
+    // Too far from the cue (the Truther Download's sound), or history.
+    expect(isBurst({ at: T0 }, [moment("sfx", "truther_glitch", T0 - BURST_WITH_MS - 1)])).toBe(false);
+    expect(isBurst({ at: 0 }, [moment("sfx", "truther_glitch", 0)])).toBe(false);
+  });
+
+  it("a ⚡ flicker just before the 📺: the hijack keeps its full takeover and holds its slide", () => {
+    const slide = { ...shot("ad_hijack", T0 + 1, 3), kind: "slide" as const, persist: true };
+    const s = state({ program: { glitch: shot("glitch", T0, 9, "000. 000. 000."), slide }, moments: [moment("signal", "ad_burst", T0 - 1500), moment("sfx", "ad_jingle", T0)] });
+    expect(layersAt(s, 100)).toMatchObject({ burst: null, glitch: { seq: 9 }, slide: { value: "ad_hijack", at: T0 + GLITCH_MS } });
   });
 
   it("the story's burst rule plays the sound this keys on, and the 📺 rule doesn't", () => {
@@ -109,7 +120,7 @@ describe("the ad burst (wave 32)", () => {
   });
 
   it("plays BURST_MS over whatever is up, in place of the takeover; the takeover is for the hijack", () => {
-    const s = burst([moment("signal", "ad_burst", T0)]);
+    const s = burst([moment("sfx", "truther_glitch", T0)]);
     expect(layersAt(s, 0)).toMatchObject({ glitch: null, burst: { seq: 9, at: T0, t: 0, text: LINE } });
     expect(layersAt(s, 2000).burst).toMatchObject({ t: 2000 });
     expect(layersAt(s, BURST_MS - 1).burst).not.toBeNull();
@@ -125,7 +136,7 @@ describe("the ad burst (wave 32)", () => {
   });
 
   it("is live only: never history, never one a reload or a late page saw, and a blackout beats it", () => {
-    const marks = [moment("signal", "ad_burst", T0)];
+    const marks = [moment("sfx", "truther_glitch", T0)];
     expect(burstLayer({ ...burst(marks), program: { ...burst(marks).program, glitch: shot("glitch", 0, 9, LINE) } }, T0, false)).toBeNull();
     expect(layersAt(burst(marks, { firstNow: T0 + 500 }), 1000).burst).toBeNull();
     expect(layersAt(burst(marks, { glitchSeen: T0 + 5000 }), 5000).burst).toBeNull();

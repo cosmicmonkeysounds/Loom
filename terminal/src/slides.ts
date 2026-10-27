@@ -121,17 +121,22 @@ function liveGlitch(state: Pick<ScreenState, "program" | "firstNow" | "glitchSee
 export const BURST_MS = 3600;
 /** (wave 32) A moment this close to a glitch cue (either side) was cued with it (one rule, one sync). */
 export const BURST_WITH_MS = 2000;
-/** (wave 32) What marks a glitch cue as an ad burst (the story's `ad_burst` rule): a host's ⚡ press
- *  (`signal ad_burst`), or the burst's own sound (`sound truther_glitch`), which a timed burst — a
- *  story `fire`, no signal — still plays. The 📺 hijack cues its glitch with neither. */
+/** (wave 32) An older server's glitch shot carries no `light`: what marks it
+ *  as an ad burst then is the burst's own sound (`sound truther_glitch`),
+ *  which the story's burst plays every time — a host's ⚡ and the timed one
+ *  (a `fire`, no signal) alike. Never the ⚡ signal itself: before the ad
+ *  attack a ⚡ is a flicker, and one pressed just before the 📺 would make
+ *  the hijack's full takeover read as a burst. The 📺 never plays it. */
 export const BURST_MOMENTS: ReadonlyArray<{ kind: ScreenMoment["kind"]; name: string }> = [
-  { kind: "signal", name: "ad_burst" },
   { kind: "sfx", name: "truther_glitch" },
 ];
 
-/** (wave 32) Is this glitch cue an ad burst? One of `BURST_MOMENTS` within `BURST_WITH_MS` of it. Never for history. */
-export function isBurst(glitch: Pick<ScreenShot, "at">, moments: readonly ScreenMoment[]): boolean {
+/** (wave 32) Is this glitch cue an ad burst? The server's `light` says so;
+ *  without it (an older server), one of `BURST_MOMENTS` within
+ *  `BURST_WITH_MS` of it. Never for history. */
+export function isBurst(glitch: Pick<ScreenShot, "at" | "light">, moments: readonly ScreenMoment[]): boolean {
   if (!(glitch.at > 0)) return false;
+  if (glitch.light === true) return true;
   return moments.some((m) => Math.abs(m.at - glitch.at) <= BURST_WITH_MS && BURST_MOMENTS.some((b) => b.kind === m.kind && foldName(b.name) === foldName(m.name)));
 }
 

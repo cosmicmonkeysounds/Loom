@@ -98,6 +98,10 @@ export interface ScreenShot {
   /** (wave 32, C5) A glitch shot only: the burst's own words
    *  (`Night.glitch_text`); absent = the hijack's old constant. */
   text?: string;
+  /** (wave 32) A glitch shot only: the server's word that this one is an ad
+   *  burst (`Night.glitch_kind` "burst"); absent = the full takeover, or an
+   *  older server (`slides.ts` `isBurst` then reads the burst's sound). */
+  light?: true;
 }
 
 /** What to layer over the base view (K-17 + N-03; `slides.ts` applies the precedence). */
@@ -694,6 +698,8 @@ function shotOf(v: unknown): ScreenShot | null {
   // (wave 32, C5) A glitch's own words: a short line, else none.
   const text = typeof r["text"] === "string" ? r["text"].trim().slice(0, GLITCH_TEXT_MAX) : "";
   if (text !== "") shot.text = text;
+  // (wave 32) The server's word that a glitch is an ad burst.
+  if (r["light"] === true) shot.light = true;
   return shot;
 }
 
