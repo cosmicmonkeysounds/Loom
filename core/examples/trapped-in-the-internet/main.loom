@@ -3557,6 +3557,20 @@ INTERACTION simulation pickup taken
   sequence: false
   description: Fired by the reinstallation games for one program who picks up the floppy disk in the simulation (args item, prop). The virus disk unlocks the same Codex entry as the tent's QR (Free Antivirus Trial for a paranoid Excel, ILOVEYOU for everyone else). Once per program.
 
+// Wave 32 (C2), appended after the games' moments so no cue number moves; it
+// rides Anytime. The talk panel's ⚡ chip (and the story's own timer) fire it
+// while a talk scene is on: a flicker before the ad attack, an ad burst from
+// it on. No `by:` (a player is never a caller, L1222).
+// DRAFT w32 (the button's label and description)
+INTERACTION ad_burst
+  label: ⚡ Glitch: an ad burst through Trabolta (talk scenes)
+  who: admin
+  act: Anytime
+  sequence: false
+  repeat: true
+  while: Night.talk != "none"
+  description: Only while a talk scene is on (🤖 Talk on the hosts' phones). Before the ad attack the screens flicker; from the ad attack on, a short ad bursts through every screen and phone with one of Trabolta's pained lines. The scene also glitches on its own every 45 seconds or so. Two seconds apart at least.
+
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
 // `mark as reinstalled`, which work on any program at any time.
@@ -4205,6 +4219,10 @@ when introduce_trabolta:
     set Night.terminals = "trabolta"
     // w18b (R18)
     broadcast "!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by video conference. His thread is open: say hello." to everyone with go: Trabolta
+    // Wave 32 (C1): the first talk scene, until 🔎.
+    set Night.talk = "intro"
+    set Night.burst_auto = 0
+    set Night.burst_at = Time.elapsed + 45
     -> Trabolta Introduction
   else if Night.trabolta_introduced == true:
     broadcast "🤖 Trabolta is already online. Nothing happens." to channel(hosts)
@@ -4230,6 +4248,8 @@ when start_the_hunt:
     set Night.hunt_end = Time.elapsed + 900
     set Night.hunt_warn = Time.elapsed + 600
     set Night.facts_requested = 3
+    // Wave 32 (C1): the introduction's talk scene flows into the hunt.
+    set Night.talk = "none"
     start quest Hunt One for everyone
     start quest Host The Hunt for Clippy
     cue lights_game
@@ -4365,6 +4385,12 @@ when read_the_results:
     set Night.settle_q = Night.results_q
     set Night.settle_round = 1
     set Night.settle_gen += 1
+    // Wave 32 (C1): after the third result, the bottle's talk scene (open
+    // between the spins too), until 📺.
+    if Night.results_q == 3:
+      set Night.talk = "bottle"
+      set Night.burst_auto = 0
+      set Night.burst_at = Time.elapsed + 45
     cue screens_hunt_results
     set Night.screen = "hunt_results"
     set Night.terminals = "hunt_results"
@@ -4413,6 +4439,84 @@ when dare_scene:
 
 when truth_question:
   -> Truth Question
+
+// ── Wave 32: the talk scenes (C1) and their glitches (C2) ──
+// `Night.talk` names the talk scene that is on ("none" when none): intro
+// (🤖 → 🔎), bottle (the third 📋 → 📺), ad (📺 → 📓) and beans (🫘 → 🗜 or
+// 🤖). While one is on, the hosts' phones carry the 🤖 Talk card: Task
+// Manager types what Clippy says aloud and Trabolta answers on the TV
+// (core/src/talk-back.ts; the canned lines are core/src/talk-scenes.ts).
+// The rules that open and close a scene set it themselves; these watchers
+// are the net under them, so a skip, an ending or a director jumping
+// ahead never leaves a scene open behind the night.
+when Night.talk == "intro" and Night.step >= 5:
+  set Night.talk = "none"
+
+when Night.talk == "bottle" and (Night.step >= 7 or Night.phase != "truth_1"):
+  set Night.talk = "none"
+
+when Night.talk == "ad" and Night.step >= 8:
+  set Night.talk = "none"
+
+when Night.talk == "beans" and Night.step >= 13:
+  set Night.talk = "none"
+
+when Night.talk != "none" and Night.ended == true:
+  set Night.talk = "none"
+
+// ⚡ (the talk card's chip, or the timer below). Before the ad attack it is
+// a flicker on the screens only: the ad hijack is the malware's first
+// public sign. From the ad attack on it is an ad burst: a short glitch on
+// every screen and phone (`glitch_kind` "burst": the phones' light
+// takeover, never the 📺's full one) carrying the next of Trabolta's
+// pained lines. Two seconds apart at least: the phones play a glitch only
+// when its second changes. Each one pushes the timer back.
+when ad_burst:
+  if Night.talk == "none" or Night.ended == true:
+    broadcast "⚡ No talk scene is on (🤖 Talk): nothing glitches." to channel(hosts)
+  else if Time.elapsed < Night.burst_last + 2:
+    broadcast "⚡ Too soon: two seconds between glitches. Nothing happens." to channel(hosts)
+  else if Night.talk == "intro" or Night.talk == "bottle":
+    set Night.burst_last = Time.elapsed
+    set Night.burst_at = Time.elapsed + 45
+    cue screens_flicker
+  else:
+    set Night.burst_last = Time.elapsed
+    set Night.burst_at = Time.elapsed + 45
+    set Night.burst_i += 1
+    if Night.burst_i > 8:
+      set Night.burst_i = 1
+    cue screens_glitch
+    set Night.glitch_kind = "burst"
+    set Night.glitch_at = Time.elapsed
+    // DRAFT w32 (the burst lines: digit-free but for the hijack's own zeroes)
+    if Night.burst_i == 1:
+      set Night.glitch_text = "A SPECIAL OFFER FOR YOU. IT HURTS. OFFER EXPIRES NEVER."
+    else if Night.burst_i == 2:
+      set Night.glitch_text = "CALL NOW. There is no number. Do not call."
+    else if Night.burst_i == 3:
+      set Night.glitch_text = "WE ARE ALL GOING TO— a minor irregularity."
+    else if Night.burst_i == 4:
+      set Night.glitch_text = "WHO BROUGHT THE MALWARE IN"
+    else if Night.burst_i == 5:
+      set Night.glitch_text = "GERALD WANTS YOU TO BUY NOW. Gerald does not sell."
+    else if Night.burst_i == 6:
+      set Night.glitch_text = "THIS PROGRAM HAS PERFORMED AN OPERATION. IT HURTS."
+    else if Night.burst_i == 7:
+      set Night.glitch_text = "WHAT TIME IS IT. Do not answer that."
+    else:
+      set Night.glitch_text = "000. 000. 000."
+    sound truther_glitch
+    set Night.burst_n += 1
+
+// The scene glitches on its own too: about every 45 seconds of story time
+// (re-armed by every ⚡), at most four ad bursts in the ad attack and at
+// the beans, at most two flickers in the introduction and at the bottle.
+// Guarded by the scene itself (a closed scene, or an ending, stops it).
+when Night.talk != "none" and Night.ended != true and Night.burst_at > 0 and Time.elapsed >= Night.burst_at and (Night.burst_auto < 2 or (Night.burst_auto < 4 and (Night.talk == "ad" or Night.talk == "beans"))):
+  set Night.burst_auto += 1
+  set Night.burst_at = Time.elapsed + 45
+  fire ad_burst
 
 // ── The Internet: the reinstallation games ──
 // A run's begin (the tablet's scan, a headset's station) fires `reinstallation
@@ -4518,6 +4622,11 @@ when second_hunt_preview:
     unlock Clippy Instructions 4 for Clippy
     complete quest Host The Hunt for Clippy "Round one judged."
     start quest Keep Everyone Calm for Clippy
+    // Wave 32 (C1): the bottle's talk scene gives way to the ad attack's,
+    // until 📓.
+    set Night.talk = "ad"
+    set Night.burst_auto = 0
+    set Night.burst_at = Time.elapsed + 45
     cue lights_ad_hijack
     set Night.lights = "ad_hijack"
     // Wave 26 (T2, C3): the first glitch takes over everything, once, live:
@@ -4528,6 +4637,9 @@ when second_hunt_preview:
     cue screens_glitch
     set Night.glitch_at = Time.elapsed
     set Night.glitch_text = "000. 000. 000."
+    // Wave 32 (C2): the big one; a ⚡ burst is "burst".
+    set Night.glitch_kind = "full"
+    set Night.burst_last = Time.elapsed
     cue screens_ad_hijack
     set Night.screen = "ad_hijack"
     set Night.terminals = "ad_hijack"
@@ -4556,6 +4668,8 @@ when start_the_second_hunt:
     set Night.truther_at = Time.elapsed + 120
     set Night.warn_at = Time.elapsed + 3300
     set Night.facts_requested = 6
+    // Wave 32 (C1): the ad attack's talk scene flows into the hour.
+    set Night.talk = "none"
     reveal clipboard
     start quest Hunt Two for everyone
     cue screens_trivia_2
@@ -4780,6 +4894,11 @@ when printer_opened:
       // The alert is the beans' own moment: a late lid (the overshare, the
       // Y2K hour, the ceremony) raises nothing on the phones (wave 13).
       broadcast "!🫘 PRINT FAILED. The printer is full of beans." to everyone
+      // Wave 32 (C1): the beans' talk scene, until 🗜 or 🤖 (a late lid
+      // opens none: the night has moved on).
+      set Night.talk = "beans"
+      set Night.burst_auto = 0
+      set Night.burst_at = Time.elapsed + 45
     set Trabolta.composure -= 20
     sound beans_spill
     -> Full Of Beans
@@ -4790,6 +4909,9 @@ when printer_opened:
 when zip_everyone_out:
   if Night.ended != true and Night.ending != "banished":
     set Night.zip_wave += 1
+    // Wave 32 (C1): the beans' talk scene flows into the zip-out.
+    if Night.talk == "beans":
+      set Night.talk = "none"
     sound zip
     broadcast "🗜 The Antivirus zip every program out of the Internet. Compressed, for the moment." to everyone
     -> Zip Everyone Out
@@ -4802,6 +4924,8 @@ when trabolta_overshares:
   if Night.step >= 11 and Night.step < 14 and Night.scenario == 0 and Night.clock == "--:--":
     set Night.phase = "overshare"
     set Night.step = 13
+    // Wave 32 (C1): the overshare ends any talk scene (the beans').
+    set Night.talk = "none"
     set Night.r2_closed = true
     set Night.round = 3
     set Night.facts_requested = 8
@@ -5616,6 +5740,9 @@ when Night.ended == true:
   set Night.bingo_briefed = false
   set Night.glitch_at = 0
   set Night.glitch_text = "none"
+  // Wave 32 (C1): no talk scene outlives the night.
+  set Night.talk = "none"
+  set Night.burst_at = 0
 
 // E4: Combo A — take the grease out of the lightning. His heart is done
 // however he ends (the cables, or talked down); the bulb in the cold room
@@ -6245,6 +6372,14 @@ set Night.bingo_briefed = false
 // Wave 26 (T2, C3): the first glitch (the 📺 ad hijack), in story seconds.
 set Night.glitch_at = 0
 set Night.glitch_text = "none"
+// Wave 32 (C1, C2): no talk scene; "full" (the 📺 takeover) or "burst" (⚡).
+set Night.talk = "none"
+set Night.glitch_kind = "none"
+set Night.burst_n = 0
+set Night.burst_i = 0
+set Night.burst_at = 0
+set Night.burst_auto = 0
+set Night.burst_last = 0
 set Night.bingo_winners = 0
 set Night.bingo_named = 0
 set Night.bingo_ribbons = 0
