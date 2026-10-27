@@ -11,6 +11,7 @@
 
 import { cueRows, cueSheetView, onDeck, type CueSheetView, type CueInteraction, type CueMarks, type WorldLine, type CuePerson } from "./cue-sheet.ts";
 import type { AlertLevel } from "./delivery.ts";
+import type { TalkView } from "./talk-back.ts";
 
 // ---------------------------------------------------------------------------
 // Structural inputs
@@ -796,6 +797,10 @@ export interface RejoinAsk {
 export interface HostView extends CueSheetView {
   /** `ModView.phase`. */
   runtime: "idle" | "open" | "paused";
+  /** Wave 32: the talk scene that is on (`Night.talk`), its canned lines and
+   *  Trabolta's state (`talk-back.ts` `talkView`). Absent from an older
+   *  server; null when no talk scene is on. */
+  talk?: TalkView | null;
   /** Wave 23: asks to get back in, newest last (read per request, never cached).
    *  Absent from an older server. Approve / deny at `/api/mod/guest/rejoin`. */
   rejoins?: RejoinAsk[];

@@ -22,3 +22,21 @@ describe("the scan box and the scanner's sweep", () => {
     expect(block).not.toContain("mix-blend-mode");
   });
 });
+
+describe("the ⚡ flicker (wave 32 review)", () => {
+  it("two dips over its second, never to full black", () => {
+    const k = /@keyframes screen-flicker \{([\s\S]*?)\n\}/u.exec(css)?.[1] ?? "";
+    const peaks = [...k.matchAll(/opacity: ([\d.]+)/gu)].map((m) => Number(m[1]));
+    expect(peaks.filter((o) => o > 0.3)).toHaveLength(2);
+    expect(Math.max(...peaks)).toBeLessThan(1);
+  });
+
+  it("with reduced motion, one soft dim rather than nothing (the house's cue still lands)", () => {
+    const reduce = /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/u.exec(css.slice(css.indexOf(".screen-gear")))?.[1] ?? "";
+    expect(reduce).toMatch(/\.screen-flicker \{ animation: screen-flicker-soft 1s/u);
+    expect(reduce).not.toMatch(/\.screen-flicker[^{]*\{ animation: none/u);
+    const soft = [...keyframes("screen-flicker-soft").matchAll(/opacity: ([\d.]+)/gu)].map((m) => Number(m[1]));
+    expect(soft.filter((o) => o > 0)).toHaveLength(1);
+    expect(Math.max(...soft)).toBeLessThanOrEqual(0.4);
+  });
+});

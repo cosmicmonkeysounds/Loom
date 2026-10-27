@@ -32,7 +32,9 @@ export function hostBarShown(win: HostWindow, wide: boolean, activeId: string | 
 
 // --- the Show window's sections -------------------------------------------------------
 
-export type ShowSectionId = "jobs" | "needs" | "coming" | "judge" | "cues" | "people" | "more";
+/** `talk` (wave 32) is the 🤖 Talk card under NEXT, not a fold: a jump
+ *  there (the slim bar's 🤖 Talk chip) opens and scrolls to it. */
+export type ShowSectionId = "jobs" | "needs" | "coming" | "judge" | "cues" | "people" | "more" | "talk";
 
 export interface ShowSectionInfo {
   id: ShowSectionId;
@@ -87,6 +89,8 @@ export function showTarget(tab: HostTab): ShowSectionId | "top" {
       return "people";
     case "more":
       return "more";
+    case "talk":
+      return "talk";
   }
 }
 

@@ -71,6 +71,16 @@ export function fetchHostPost(auth: HostAuth, doFetch: typeof fetch = (...a) => 
   };
 }
 
+/** The skew (server − phone, ms) from a response's `Date` header and the
+ *  phone's wall clock when it landed; 0 without a usable header. The
+ *  header is whole seconds (floored), so the count runs at most 1 s
+ *  behind, never ahead: "slow" never shows early. */
+export function clockSkew(dateHeader: string | null | undefined, landedAt: number): number {
+  if (dateHeader == null || dateHeader === "") return 0;
+  const at = Date.parse(dateHeader);
+  return Number.isFinite(at) ? at - landedAt : 0;
+}
+
 /** The poll's error when the server didn't answer at all. */
 export const UNREACHABLE = "Can't reach the server";
 
@@ -78,6 +88,10 @@ export interface HostClient {
   view: HostView | null;
   /** When the last view landed (wall ms): the countdowns tick on from it. */
   receivedAt: number;
+  /** Wave 32: the server's clock minus this phone's (ms), from the last
+   *  poll's `Date` header (`clockSkew`); absent or 0 when unknown. The
+   *  Talk card counts Trabolta's thinking on the server's clock. */
+  skew?: number;
   error: string | null;
   /** False once a poll has failed, until the next one lands: the view is
    *  the last good one, and the bar says how old it is. */
@@ -92,6 +106,7 @@ export interface HostClient {
 export function useHostView(auth: HostAuth | null): HostClient {
   const [view, setView] = useState<HostView | null>(null);
   const [receivedAt, setReceivedAt] = useState(0);
+  const [skew, setSkew] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const poll = useRef<{ stop(): void; now(): void } | null>(null);
@@ -117,8 +132,10 @@ export function useHostView(auth: HostAuth | null): HostClient {
       }
       const out = hostPollOutcome(res.status, (await res.json().catch(() => ({}))) as Record<string, unknown>);
       if (out.kind === "view") {
+        const landed = Date.now();
         setView(out.view);
-        setReceivedAt(Date.now());
+        setReceivedAt(landed);
+        setSkew(clockSkew(res.headers?.get("date"), landed));
         setConnected(true);
         setError(null);
         latch.landed(seq);
@@ -150,7 +167,7 @@ export function useHostView(auth: HostAuth | null): HostClient {
   const alertsPath = useRef("Night.alerts");
   alertsPath.current = view?.alerts.path ?? "Night.alerts";
   const calls = useMemo(() => (token !== null && eventId !== null ? hostCalls(fetchHostPost({ token, eventId }), () => alertsPath.current) : null), [token, eventId]);
-  return { view, receivedAt, error, connected, refresh, fresh, calls };
+  return { view, receivedAt, skew, error, connected, refresh, fresh, calls };
 }
 
 /** How often the recap is read while award cues are near (it is a heavy read). */

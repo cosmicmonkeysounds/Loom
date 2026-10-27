@@ -24,7 +24,7 @@ import type { ModView } from "../server/views.ts";
 
 const th = (n: number): AgentThread => ({ character: "Trabolta", channel: "dm:Trabolta", audience: [`g-${n}`] });
 
-function harness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number } = {}) {
+function harness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number; stale?: (req: AgentRequest) => boolean; rank?: (req: AgentRequest) => number } = {}) {
   let clock = 1000;
   const held: string[] = [];
   const busy: string[] = [];
@@ -111,6 +111,102 @@ describe("AgentHub — the busy line", () => {
     expect(h.busy).toEqual([]);
     expect(h.held).toEqual(["g-0"]);
     expect(h.hub.queue("Trabolta")).toEqual({ depth: 1, oldestMs: 90_000, stalled: false });
+  });
+});
+
+describe("AgentHub — the public talk thread (wave 32, C4)", () => {
+  const stage: AgentThread = { character: "Trabolta", channel: "loc:The Desktop", audience: ["@Clippy"], public: true };
+
+  it("goes out ahead of every DM queued before it", () => {
+    const h = harness();
+    for (let n = 0; n < 3; n++) h.hub.line(th(n));
+    h.hub.line(stage);
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    expect(a.requests().map((r) => r.thread.channel)).toEqual(["loc:The Desktop", "dm:Trabolta", "dm:Trabolta", "dm:Trabolta"]);
+  });
+
+  it("with a rank, the stage goes first, then a guest at his heart, then the other DMs", () => {
+    const h = harness({ rank: (req) => (req.thread.public === true ? 0 : req.thread.audience[0] === "g-2" ? 1 : 2) });
+    for (let n = 0; n < 4; n++) h.hub.line(th(n));
+    h.hub.line(stage);
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    expect(a.requests().map((r) => r.thread.audience[0])).toEqual(["@Clippy", "g-2", "g-0", "g-1", "g-3"]);
+  });
+
+  it("is first again when a stall clears", () => {
+    const h = harness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(th(0));
+    h.run(61_000); // stalled on g-0
+    h.hub.line(th(1));
+    h.hub.line(stage);
+    expect(a.requests()).toHaveLength(1);
+    h.hub.settle(a.requests()[0]!.id, "laptop");
+    expect(a.requests().slice(1).map((r) => r.thread.channel)).toEqual(["loc:The Desktop", "dm:Trabolta"]);
+  });
+
+  it("never hears the busy line behind a burst; held once with nobody online", () => {
+    const h = harness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(th(0));
+    h.hub.line(stage);
+    h.run(45_000);
+    expect(h.busy).toEqual([]);
+    const b = harness();
+    b.hub.line(stage);
+    b.run(90_000);
+    expect(b.held).toEqual(["@Clippy"]);
+  });
+
+  it("a queued public request whose scene closed is dropped, never sent ahead of the DMs", () => {
+    let scene = "intro";
+    const h = harness({ stale: (req) => req.thread.public === true && scene !== "intro" });
+    h.hub.line(th(0));
+    h.hub.line(stage);
+    expect(h.hub.openOn(stage)).not.toBeNull();
+    scene = "none"; // the hunt began with nobody online
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    expect(a.requests().map((r) => r.thread.channel)).toEqual(["dm:Trabolta"]);
+    expect(h.hub.openOn(stage)).toBeNull();
+    // An in-flight one is the reply path's to settle (410), not the queue's.
+    scene = "intro";
+    h.hub.line(stage);
+    expect(a.requests().map((r) => r.thread.channel)).toEqual(["dm:Trabolta", "loc:The Desktop"]);
+    scene = "none";
+    h.hub.settle(a.requests()[0]!.id, "laptop");
+    expect(h.hub.openOn(stage)).not.toBeNull();
+  });
+
+  it("a stall never counts the public thread among the threads waiting on the hold line", () => {
+    const h = harness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(stage);
+    h.run(61_000);
+    expect(h.stalls).toEqual([{ name: "laptop", characters: ["Trabolta"], waiting: 0 }]);
+    expect(h.held).toEqual(["@Clippy"]); // the runtime turns it into its # hosts note
+    const b = harness();
+    const w = b.worker("laptop");
+    b.hub.attach(w.w);
+    b.hub.line(th(0));
+    b.hub.line(stage);
+    b.hub.line(th(1));
+    b.run(61_000);
+    expect(b.stalls).toEqual([{ name: "laptop", characters: ["Trabolta"], waiting: 2 }]);
+  });
+
+  it("openOn reads the owed request; answeredByHand closes it", () => {
+    const h = harness();
+    expect(h.hub.openOn(stage)).toBeNull();
+    h.hub.line(stage);
+    expect(h.hub.openOn(stage)).toMatchObject({ since: 1000 });
+    expect(h.hub.answeredByHand(stage)).toBe(true);
+    expect(h.hub.openOn(stage)).toBeNull();
   });
 });
 

@@ -156,6 +156,19 @@ describe("play help", () => {
     // The Desk's own words find it first; the hosts' guide keeps the night's.
     for (const q of ["house desk", "setup", "try it", "router offline", "no mind connected", "zigbee2mqtt", "placeholder"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("house-desk");
   });
+
+  it("wave 32: the Talk card has its own performer article, linked from the hosts' Show window", async () => {
+    const { readFileSync } = await import("node:fs");
+    const text = readFileSync(new URL("../../docs/help/play/21-talk-back.md", import.meta.url), "utf8").replace(/\s+/gu, " ");
+    for (const h of ["## The card, top to bottom", "## Moving the night on", "## ⚡ Glitch", "## When something goes wrong"]) expect(text).toContain(h);
+    // The card's own words (play/src/host/talk-model.ts, arm.ts).
+    for (const t of ["What did Clippy just say?", "Clippy says (tap = send)", "Trabolta says (tap twice)", "Tap again to fire", "Task Manager is relaying Clippy", "The talk scene is over — nothing was sent."]) expect(text).toContain(t);
+    expect(readFileSync(new URL("../../docs/help/play/14-hosts.md", import.meta.url), "utf8")).toContain("(talk-back.md)");
+    const prime = articlesFor("performer");
+    expect(prime.find((a) => a.slug === "talk-back")?.role).toBe("performer");
+    expect(articlesFor("guest").some((a) => a.slug === "talk-back")).toBe(false);
+    for (const q of ["talk card", "talk scene", "canned lines", "relaying"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("talk-back");
+  });
 });
 
 describe("wave 26 G2: the guest guide never explains the machinery", () => {

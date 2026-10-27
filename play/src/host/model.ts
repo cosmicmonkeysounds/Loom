@@ -14,8 +14,9 @@ import { STOPPED, actHandle, clockRuns, formatLeft, formatWatchValue, soonestCou
 // --- what waits on a host ----------------------------------------------------
 
 /** Where a jump inside the console lands: the drawer's old tabs, now the
- *  Show window's sections (`show-model.ts` `showTarget`). */
-export type HostTab = "cues" | "needs" | "judge" | "people" | "more";
+ *  Show window's sections (`show-model.ts` `showTarget`); `talk` (wave 32)
+ *  is the 🤖 Talk card under NEXT. */
+export type HostTab = "cues" | "needs" | "judge" | "people" | "more" | "talk";
 
 /** What waits on a host: the needs (folded as Needs lists them), a refused
  *  press, the escorts waiting, and the guests asking to get back in. The

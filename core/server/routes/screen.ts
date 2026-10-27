@@ -236,6 +236,14 @@ export interface ScreenShot {
   /** Server epoch ms the fold first saw it; 0 = replayed history (a restart),
    *  so a held slide or a blackout never re-runs after a reboot. */
   at: number;
+  /** (wave 32, C5) A glitch shot only: the burst's own words, from
+   *  `Night.glitch_text` as the fold saw it (the story sets it in the same
+   *  rule as the cue). Absent = the terminals' old constant. */
+  text?: string;
+  /** (wave 32) A glitch shot only: `true` when `Night.glitch_kind` was
+   *  `"burst"` as the fold saw it (a talk scene's short ad burst, never the
+   *  📺's full takeover). Absent = the full one (or an older story). */
+  light?: true;
 }
 
 export interface ScreenProgram {
@@ -255,6 +263,27 @@ export interface ScreenProgram {
 }
 
 const emptyProgram = (): ScreenProgram => ({ slide: null, overlay: null, blackout: null, flicker: null, glitch: null });
+
+/** (wave 32, C5) The world path a glitch shot's `text` reads. */
+export const SCREEN_GLITCH_TEXT_PATH = "Night.glitch_text";
+
+/** (wave 32) The world path that marks a glitch shot `light` (`"burst"`). */
+export const SCREEN_GLITCH_KIND_PATH = "Night.glitch_kind";
+
+/** Is `Night.glitch_kind` `"burst"` now (a talk scene's ad burst)? */
+export function glitchIsBurst(sim: Sim | null): boolean {
+  const v = sim?.world.peek(SCREEN_GLITCH_KIND_PATH) ?? null;
+  return v !== null && v.kind === "string" && v.value.replace(/^"(.*)"$/su, "$1").trim() === "burst";
+}
+
+/** `Night.glitch_text` now, trimmed (≤ 120 chars), or null when unset,
+ *  empty or `"none"`. */
+export function glitchTextOf(sim: Sim | null): string | null {
+  const v = sim?.world.peek(SCREEN_GLITCH_TEXT_PATH) ?? null;
+  if (v === null || v.kind !== "string") return null;
+  const t = v.value.replace(/^"(.*)"$/su, "$1").trim();
+  return t === "" || t === "none" ? null : t.slice(0, 120);
+}
 
 /** Fold one screen cue into a target's program (pure; returns a new program). */
 export function foldProgram(p: ScreenProgram, shot: ScreenShot): ScreenProgram {
@@ -1382,6 +1411,11 @@ export class ScreenWatch {
       const prev = this.cues.get(hit.family);
       this.cues.set(hit.family, { value: hit.value, seq: (prev?.seq ?? 0) + 1 });
       const shot: ScreenShot = { value: hit.value, cue: `${hit.family}_${hit.value}`, seq: ++this.shots, at };
+      if (screenCueClass(hit.value) === "glitch") {
+        const text = glitchTextOf(sim);
+        if (text !== null) shot.text = text;
+        if (glitchIsBurst(sim)) shot.light = true;
+      }
       for (const t of FAMILY_TARGETS[hit.family]) this.programs.set(t, foldProgram(this.programs.get(t) ?? emptyProgram(), shot));
     }
     return first;

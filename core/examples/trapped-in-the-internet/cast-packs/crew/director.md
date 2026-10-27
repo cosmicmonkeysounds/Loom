@@ -53,18 +53,18 @@ does ends the night or needs you; you may read their numbers in Run → World
 | 1 | **C1/V1 📣** Call everyone to the Desktop (by 21:00) | Clippy welcomes, hosts | |
 | 2 | **V2 🎱** Start Computer Bingo (20 min) | | |
 | 3 | **V3 ⏰** Bingo time: results | Norton interrupts; Corrupted Code | |
-| 4 | radio **INTRO** → **Clippy 2/X 🤖** introduces Trabolta | | *formal* |
+| 4 | radio **INTRO** → **Clippy 2/X 🤖** introduces Trabolta | 🤖 talk scene *intro* until 🔎 | *formal* |
 | 5 | **V4/V5 🔎** Hunt 1 (15 min) | (auto **C2 ⏰** at 15 min) | *hungry* at C2 |
 | 6 | **V6 ⚖️** First Moment of Truth (two-minute filing window) | the server judges every filing | |
 | 6a | **⏱** Close round-one filings (auto at 2 min) | Clippy: "Pencils down" | |
 | 6b | **📋** Results: the next question (press three times: Q1, Q2, Q3) | Trabolta reads the result on the TV; filings settle (+50 / marked) | |
-| 6c | **🍾** Truth or Dare after the third result (NEXT offers five spins; more is fine) | the TV asks Truth or dare; Clippy 🗣 / 🙅 | |
-| 7 | **📺** Preview hunt 2 → the ad hijack | Clippy panics | *rattled* |
+| 6c | **🍾** Truth or Dare after the third result (NEXT offers five spins; more is fine) | the TV asks Truth or dare; Clippy 🗣 / 🙅; 🤖 talk scene *bottle* from the third 📋 | |
+| 7 | **📺** Preview hunt 2 → the ad hijack | Clippy panics; 🤖 talk scene *ad* until 📓 | *rattled* |
 | 8 | **📓** Hunt 2: disperse for 1 hour | (auto **📥** +2 min · **⏳** 55 min · **🚨** +5 min; the sheet suggests nothing until 🚨 has fired) | |
 | 9 | **🏓** Truth Pong | | *judge* |
 | 10 | **🧮** Trabolta tallies round 2 | | |
 | 11 | **📊** Trust Chart → **🏆** rankings | VLC + the printer | |
-| 12 | **🫘** printer opened (only if the lid sensor fails; Adobe radios BEANS) | | *unravelling* |
+| 12 | **🫘** printer opened (only if the lid sensor fails; Adobe radios BEANS) | 🤖 talk scene *beans* until 🗜 or 🤖 | *unravelling* |
 | 13 | **🗜** zip everyone out | | |
 | 14 | **🤖** Trabolta shares the next facts (press it; the scenario picks itself) | | |
 | 15 | wait for **IN** from the patch-bay watch → **🕚** Y2K clock (60 min) | (auto majority; clock warnings) | *desperate* |
@@ -73,6 +73,25 @@ does ends the night or needs you; you may read their numbers in Run → World
 | 18 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | | |
 | 19 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
 | 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT skips it) → **G10a–c** the three staff awards (no winner to pick: 🛡 Trabolta's Favourite Staff, ⭐ Staff Player Of The Night, 🤫 The Mole, the last) → **G11 🎃** Resurrection (last: ends the show) | | |
+
+**The talk scenes (wave 32).** At the four 🤖 marks above, Clippy talks
+with Trabolta live in front of the room: Task Manager types what Clippy
+says on the **🤖 Talk** card in Show (or taps a canned line), and his
+answer is a public line in The Desktop that the TV says. You do nothing
+unless it stalls. His worker serves these before any DM, so the queue on
+Run → Mind may wait meanwhile. If the card reads *thinking…* past 12 s and
+no canned line goes out, radio Task Manager (*"his lines"*), or type as
+Trabolta into The Desktop from Run: during a scene that line reaches
+everyone and answers Clippy. A slow or missing mind only ever shows in
+`# hosts` (*🤖 Trabolta isn't answering — tap one of his canned lines*),
+never in the room, and an answer that comes after the scene moved on is
+dropped. **⚡ Glitch** (`ad_burst`, cue 77, Anytime) works only while a
+scene is on: a flicker before the ad attack, an ad burst (every screen and
+phone, his pained line, a sound) after it; the scenes also glitch on their
+own about every 45 s. For 8 s after 📺 a ⚡ is refused (*⚡ The ad hijack
+is still playing* in `# hosts`), so the hijack's big takeover always plays
+out. After a server restart mid-scene his pending answer is
+forgotten: Task Manager taps again.
 
 A cue that doesn't apply yet does nothing but tell `# hosts` why (*"⚖ Not
 yet: 📄 Read truth.txt first."*, *"📺 Not yet: read Q2's results first

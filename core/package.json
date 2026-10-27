@@ -20,7 +20,8 @@
     "./delivery": "./src/delivery.ts",
     "./host-board": "./src/host-board.ts",
     "./casino": "./src/casino.ts",
-    "./house-desk": "./src/house-desk.ts"
+    "./house-desk": "./src/house-desk.ts",
+    "./talk-back": "./src/talk-back.ts"
   },
   "scripts": {
     "test": "vitest run",

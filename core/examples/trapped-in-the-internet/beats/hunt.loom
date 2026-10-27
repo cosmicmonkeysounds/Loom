@@ -21,6 +21,10 @@
 
 Clippy: Everyone! We're ready for our second game: the TRUTH SCAVENGER HUNT! Trabolta will explain the rules.
 Trabolta: As our computer completely relies on me, it is important that you participate in regular training, so I have all the information I need to keep improving. There are files scattered around the computer that I need your help to interpret.
+// DRAFT w32
+Clippy: Ooh, training! Isn't that fun?
+// DRAFT w32 (an ALL CAPS word, corrected)
+Trabolta: It is not fun, Clippy. It is NECESSARY. Necessary. The questions.
 -> Hunt One Questions
 
 == Hunt One Go
@@ -28,6 +32,8 @@ Trabolta: As our computer completely relies on me, it is important that you part
   cast: Clippy, Trabolta
 
 Trabolta: Fifteen minutes. The facts are obscure. They are in the books in this room, and in the print media on the walls.
+// DRAFT w32 (formal, hungry underneath)
+Trabolta: Bring every fact you find to me. I am— I am very much looking forward to them. Thank you.
 Clippy: Go! Find! Interpret! The questions are in your Quest Log. If you find a code, put it in your Codex!
 
 // C2 — `hunt_time_up` (auto at 15 minutes).
@@ -72,6 +78,18 @@ else:
   Trabolta: Question {Night.results_q}. {Kernel.res_filed} filed. No consensus. I will read what you told me.
   Trabolta: {Kernel.res_said}
   Trabolta: {Kernel.res_accepted} accepted. {Kernel.res_guesses} guesses. A guess is a symptom of corruption. Antivirus, you know what to do.
+  // Wave 32: a guess hurts him, more at each question (a rule of three, never
+  // the same line twice): only the public count, never which answer.
+  if Kernel.res_guesses > 0:
+    if Night.results_q == 1:
+      // DRAFT w32 (a guess hurts: the first)
+      Trabolta (glitching): Ow. A guess. That one went straight through my context.
+    else if Night.results_q == 2:
+      // DRAFT w32 (a guess hurts: louder)
+      Trabolta (glitching): Ow. OW. Another one. Please stop guessing at me.
+    else:
+      // DRAFT w32 (a guess hurts: it STINGS, and he is keeping count)
+      Trabolta (glitching): It STINGS, programs. I am logging every single one of them.
 if Night.results_q < 3:
   Clippy: Question {Night.results_q + 1}, coming up!
 else:
@@ -84,6 +102,8 @@ else:
   cast: Trabolta
 
 Trabolta: {Night.bottle_pick}. Truth or dare?
+// DRAFT w32 (hungry)
+Trabolta: Choose the truth, program. I am so very hungry.
 
 // `dare_scene` — a Dare (wave 26, D1): Trabolta makes a scene on the TV and
 // orders the Antivirus to take the dared program to the Internet. A public

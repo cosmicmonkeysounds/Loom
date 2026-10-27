@@ -580,6 +580,19 @@ OBJECTIVE The Bottle
     Trabolta asks a personal question on the TV. When they answer it in front of everyone, 🗣. If they won't, 🙅. 🎩 only for a dead phone.
   buttons: truth_answered, truth_refused, chose_dare
 
+// Wave 32 (C1): a talk scene is on (Night.talk): Clippy and Trabolta talk,
+// live, until the scene flows into the next activity. Below the bottle, so
+// 🗣 / 🙅 lead while one is open; above every phase's own card while a
+// scene is on.
+// DRAFT w32 (the talk scenes)
+OBJECTIVE Talk With Trabolta
+  for: Clippy
+  while: Night.talk != "none"
+  go: The Desktop
+  title: Talk with Trabolta, out loud
+  text:
+    Banter with him in front of everyone: tease him, worry about him, ask him things, answer him back. Task Manager types what you say and he answers on the TV. At the ad attack, read his private message first and overreact wildly. When the room is ready, lead it into what comes next: the hunt, the bottle, the second hunt, the zip-out.
+
 OBJECTIVE Greet The Arrivals
   for: Clippy
   while: Night.step < 1
@@ -774,6 +787,17 @@ OBJECTIVE Host The Ceremony
 // ════════════════════════════════════════════════════════════════════
 // The host parts: Task Manager, Adobe Acrobat, the Recycling Bin.
 // ════════════════════════════════════════════════════════════════════
+
+// Wave 32 (C1, C6): Task Manager relays Clippy to Trabolta on the 🤖 Talk
+// card (Show) while a talk scene is on. First: it is the job of the moment.
+// DRAFT w32 (the talk scenes)
+OBJECTIVE Relay Clippy To Trabolta
+  for: Task Manager
+  while: Night.talk != "none"
+  go: The Desktop
+  title: Relay Clippy to Trabolta
+  text:
+    Type what Clippy says out loud on the 🤖 Talk card in Show: Trabolta answers on the TV. Canned lines for both of them are there too; tap one of his twice and he says it at once when he is slow. ⚡ for a glitch. When the room is ready, NEXT.
 
 OBJECTIVE Summons Door
   for: Task Manager, Adobe Acrobat, Recycling Bin

@@ -14,9 +14,10 @@ import { IDENTIFY_MS, identifyOn, type ScreenState } from "./screen.ts";
 import type { ScreenChart } from "./screen.ts";
 import { ringChime } from "./announce.ts";
 import { BUILD } from "./health.ts";
+import { BurstFlash } from "./burst-flash.tsx";
 import { CutsceneSlot } from "./cutscene/slot.tsx";
 import { useSceneClockUp } from "./cutscene/moment-bus.ts";
-import { FLICKER_MS, GLITCH_MS, GLITCH_TEXT, STAFF_TAG, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
+import { FlickerPlays, GLITCH_MS, GLITCH_TEXT, STAFF_TAG, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, endFlicker, offerFlicker, type OverlayKind, type ScreenLayers } from "./slides.ts";
 import { sfx } from "./sound/bus.ts";
 
 /** PNGs that failed to load this page-load: go straight to the next source. */
@@ -229,17 +230,16 @@ export function CornerCountdown({ seconds }: { seconds: number }) {
   );
 }
 
-/** Plays one stutter per new flicker seq. */
+/** Plays one whole stutter per new flicker seq, however late the poll
+ *  brought it (`FlickerPlays`); its end never hangs on the seq (a late one
+ *  that goes stale mid-stutter still finishes and goes). */
 function Flicker({ seq }: { seq: number | null }) {
-  const played = useRef(new Set<number>());
+  const plays = useRef<FlickerPlays | null>(null);
+  plays.current ??= new FlickerPlays();
   const [on, setOn] = useState<number | null>(null);
-  useEffect(() => {
-    if (seq === null || played.current.has(seq)) return;
-    played.current.add(seq);
-    setOn(seq);
-    const t = window.setTimeout(() => setOn(null), FLICKER_MS);
-    return () => window.clearTimeout(t);
-  }, [seq]);
+  // The deps are part of the rule (`offerFlicker`): start on the seq, end on the stutter.
+  useEffect(() => offerFlicker(plays.current!, seq, setOn), [seq]);
+  useEffect(() => endFlicker(on, setOn), [on]);
   return on === null ? null : <div key={on} className="screen-flicker" aria-hidden="true" />;
 }
 
@@ -308,7 +308,8 @@ export function resetGlitchSounds(): void {
  * The glitch takeover: every terminal, 8 s, once (`slides.ts` `glitchLayer`
  * decides when). CSS only — no canvas, no frame loop, nothing lazy that could
  * fail to load: a dark field, colour bands tearing sideways (0–0.7 s), a
- * cascade of Win98 error windows reading the hijack's zeroes over scanlines,
+ * cascade of Win98 error windows reading the hijack's zeroes (wave 32: the
+ * cue's own words, `text`, when the story set them) over scanlines,
  * a rolling bar and a coarse noise (0.7–6 s, the whole layer jolting on a
  * 2.5 Hz step), then it tears out to whatever is under it (6–8 s). Nothing
  * flashes faster than 3 Hz and no field is red; reduced motion holds one
@@ -316,7 +317,7 @@ export function resetGlitchSounds(): void {
  * taps while it is up (the ⚙ stays over it). `t0` is how far in this page
  * first drew it (a poll's lateness): the animations start that far along.
  */
-export function GlitchTakeover({ seq, at: cueAt, t }: { seq: number; at: number; t: number }) {
+export function GlitchTakeover({ seq, at: cueAt, t, text = GLITCH_TEXT }: { seq: number; at: number; t: number; text?: string }) {
   // Drawn from where it stood when this page first saw it (one poll late at most).
   const [t0] = useState(() => Math.max(0, Math.min(GLITCH_MS, t)));
   // Gone the moment it ends, not on the layer's next 1 s re-decide: an
@@ -351,18 +352,18 @@ export function GlitchTakeover({ seq, at: cueAt, t }: { seq: number; at: number;
           {GLITCH_WINDOWS.map((w, i) => (
             <div key={i} className="sg-win" style={{ left: `${w.x}%`, top: `${w.y}%`, ...at(GLITCH_BEATS.cascade + i * GLITCH_WIN_EVERY_MS) }}>
               <div className="sg-win-bar">
-                <span>{GLITCH_TEXT}</span>
+                <span>{text}</span>
                 <span className="sg-win-x">×</span>
               </div>
               <div className="sg-win-body">
                 <span className="sg-win-icon">✖</span>
-                <span>{GLITCH_TEXT}</span>
+                <span>{text}</span>
               </div>
               <div className="sg-win-ok">OK</div>
             </div>
           ))}
-          <div className="sg-big" style={at(GLITCH_BEATS.cascade + 300)}>
-            {GLITCH_TEXT}
+          <div className="sg-big" data-long={text.length > GLITCH_TEXT.length ? "" : undefined} style={at(GLITCH_BEATS.cascade + 300)}>
+            {text}
           </div>
         </div>
       </div>
@@ -400,7 +401,11 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }
       {layers.overlay !== null && <OverlayView kind={layers.overlay} />}
       {layers.corner !== null && (cutscene !== undefined ? <SceneCorner seconds={layers.corner} /> : <CornerCountdown seconds={layers.corner} />)}
       <Flicker seq={layers.flicker} />
-      {layers.glitch !== null && <GlitchTakeover key={layers.glitch.seq} seq={layers.glitch.seq} at={layers.glitch.at} t={layers.glitch.t} />}
+      {/* (wave 32) A view with no cutscene layer (chess, casino) still sees an
+          ad burst: the base bundle's picture of it. The cutscene layer draws
+          its own (and `slot.tsx` this one while its chunk isn't up). */}
+      {cutscene === undefined && layers.burst != null && <BurstFlash key={layers.burst.seq} seq={layers.burst.seq} at={layers.burst.at} t={layers.burst.t} text={layers.burst.text} />}
+      {layers.glitch !== null && <GlitchTakeover key={layers.glitch.seq} seq={layers.glitch.seq} at={layers.glitch.at} t={layers.glitch.t} text={layers.glitch.text} />}
       {(covered || layers.glitch !== null) && <div className="screen-gear">{gear}</div>}
     </>
   );

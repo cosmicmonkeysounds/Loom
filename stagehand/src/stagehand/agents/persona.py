@@ -60,11 +60,23 @@
                                        #   holding situation that sets it wins)
         acts: none                     # (wave 20) he decides nothing here: every
                                        #   act the model returns is dropped
+        fallbacks: ["Disregard that."] # (wave 32) lines that close the topic when
+                                       #   nothing usable is left here (the last
+                                       #   holding situation with any wins over
+                                       #   `fallbacks:`); never the same twice running
+        retry_on: ["not hurt"]         # (wave 32) a line saying one of these
+                                       #   (folded, whole words) gets the one retry
+        once: ["minor irregularity"]   # (wave 32) said once in this scene's live
+                                       #   lines; a second time gets the one retry
+        crack: 0.6                     # (wave 32) the share of his lines (by
+                                       #   request id) given a manners crack in code
     outside:                           # (wave 20, D29) names and words from outside
-      - John                           #   his world: never in his line (swapped for
+      - Steph                          #   his world: never in his line (swapped for
       - Loom                           #   a fallback, its acts dropped, like a
                                        #   `secrets.never` hit), and the prompt says
                                        #   they are not things he knows
+      - John (not followed by McAfee)  # (wave 32) outside only where that word does
+                                       #   not come next (`guards.outside_entry`)
     ---
     You are TRABOLTA, …
 
@@ -118,7 +130,7 @@ _KNOWN = {
     "outside",
 }
 
-_SITUATION_KEYS = {"name", "when", "prompt", "max_sentences", "acts"}
+_SITUATION_KEYS = {"name", "when", "prompt", "max_sentences", "acts", "fallbacks", "retry_on", "once", "crack"}
 
 
 @dataclass(frozen=True)
@@ -137,6 +149,17 @@ class Situation:
     max_sentences: int | None = None
     #: (wave 20) `acts: none`: he decides nothing here — every act dropped.
     no_acts: bool = False
+    #: (wave 32) Lines that close the topic when nothing usable is left (a
+    #: withheld line, a retry that failed too): the last holding situation
+    #: with any wins over the persona's `fallbacks:` (`guards.pick_situation_fallback`).
+    fallbacks: tuple[str, ...] = ()
+    #: (wave 32) Phrases (folded, whole words) that send his line to the one retry here.
+    retry_on: tuple[str, ...] = ()
+    #: (wave 32) Phrases he may say once in a scene's live lines; again = the one retry.
+    once: tuple[str, ...] = ()
+    #: (wave 32) The share of his lines (picked by request id) given a manners
+    #: crack in code (`voice.crack`); None = never.
+    crack: float | None = None
 
     @property
     def heading(self) -> str:
@@ -263,7 +286,18 @@ def _names(value: Any, where: str) -> tuple[str, ...]:
     raise ConfigError(f"{where}: expected a comma list or a list of names")
 
 
-def _situations(value: Any, source: str) -> tuple[Situation, ...]:
+def _lines(value: Any, where: str) -> tuple[str, ...]:
+    """A situation's list of lines / phrases (one string is a list of one)."""
+    if value in (None, ""):
+        return ()
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list) or not all(isinstance(x, str) and x.strip() for x in value):
+        raise ConfigError(f"{where}: expected a list of lines")
+    return tuple(" ".join(x.split()) for x in value)
+
+
+def _situations(value: Any, source: str, secrets: Secrets | None = None) -> tuple[Situation, ...]:
     if value in (None, ""):
         return ()
     if not isinstance(value, list):
@@ -295,7 +329,25 @@ def _situations(value: Any, source: str) -> tuple[Situation, ...]:
         acts = raw.get("acts")
         if acts is not None and acts not in ("none", "any"):
             raise ConfigError(f"{where}: acts must be none (or any, the default)")
-        out.append(Situation(when=when, prompt=prompt.strip(), name=(name or "").strip(), max_sentences=cap, no_acts=acts == "none"))
+        fallbacks = _lines(raw.get("fallbacks"), f"{where}: fallbacks")
+        if secrets is not None and any(secrets.leaks(x) for x in fallbacks):
+            raise ConfigError(f"{where}: fallbacks: carries a secrets.never word")
+        crack = raw.get("crack")
+        if crack is not None and (isinstance(crack, bool) or not isinstance(crack, (int, float)) or not 0 <= crack <= 1):
+            raise ConfigError(f"{where}: crack must be a share from 0 to 1")
+        out.append(
+            Situation(
+                when=when,
+                prompt=prompt.strip(),
+                name=(name or "").strip(),
+                max_sentences=cap,
+                no_acts=acts == "none",
+                fallbacks=fallbacks,
+                retry_on=_lines(raw.get("retry_on"), f"{where}: retry_on"),
+                once=_lines(raw.get("once"), f"{where}: once"),
+                crack=None if crack is None else float(crack),
+            )
+        )
     return tuple(out)
 
 
@@ -366,9 +418,11 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
     outside = _names(meta.get("outside"), f"{source}: outside")
     fallbacks = _fallbacks(meta.get("fallbacks"), stages, secrets, source)
     catchphrases = _catchphrases(meta.get("catchphrases"), source)
+    situations = _situations(meta.get("situations"), source, secrets)
     in_world: list[tuple[str, str]] = [("the system prompt", body), ("fallback:", str(meta.get("fallback") or "")), ("unavailable:", str(meta.get("unavailable") or ""))]
     in_world += [(f"fallbacks: {stage or '(any)'}", line) for stage, lines in fallbacks.items() for line in lines]
     in_world += [("catchphrases:", line) for line in catchphrases]
+    in_world += [(f"the {sit.heading} situation's fallbacks", line) for sit in situations for line in sit.fallbacks]
     for phase, card in table.cards.items():
         if "brief" in card.own or "cue" in card.own:
             in_world.append((f"the {phase} card", f"{card.brief} {card.cue}"))
@@ -401,7 +455,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         powers=powers,
         bargain=str(meta.get("bargain") or "").strip(),
         secrets=secrets,
-        situations=_situations(meta.get("situations"), source),
+        situations=situations,
         catchphrases=catchphrases,
         catchphrase_stages=_catchphrase_stages(meta.get("catchphrase_stages"), stages, source),
         fallbacks=fallbacks,

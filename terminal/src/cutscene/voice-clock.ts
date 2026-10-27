@@ -26,6 +26,9 @@
 //! When the spoken count differs from the marks (a name that merged into
 //! the next sentence, a branch of the beat), sentence g maps to mark
 //! `floor(g · marks / spoken)`; sentences that share a mark run on as one.
+//! A scene whose lines own fixed marks (`byLine`, wave 32) maps each line's
+//! sentences within its own marks instead, so a short name that merges into
+//! its line's next sentence never shifts a later line's sentences.
 //! The stretch is capped by `MomentQueue.extendTo` (`VOICE_STRETCH_MAX_MS`).
 
 import { foldName } from "../config.ts";
@@ -52,6 +55,11 @@ export interface VoiceScene {
   /** The sentences (by mark index) the scene's own picture already shows
    *  (a chat bubble typing his proposal): the layer doesn't caption those. */
   drawn?: readonly number[];
+  /** (wave 32) How many of `marks`, in order, each spoken line owns (sums
+   *  to `marks.length`). When the TV took in exactly that many lines, a
+   *  line's sentences map within its own marks (by share when its count
+   *  differs); otherwise the scene-wide share above. */
+  byLine?: readonly number[];
 }
 
 /** A voice scene and the scene's own length. */
@@ -131,10 +139,17 @@ export function voiceState(def: VoiceTiming, sceneStart: number, now: number, ev
   const voiceEnd = ms !== null && def.tail !== undefined ? Math.max(marks[n - 1]!, ms - def.tail) : null;
 
   // Every spoken sentence across the lines, with its mark and its start.
-  const sentences: Array<{ line: Member; index: number; start: number | undefined }> = [];
-  for (const line of lines) for (let i = 0; i < line.chunks; i++) sentences.push({ line, index: i, start: line.starts.get(i) });
+  const sentences: Array<{ line: Member; index: number; start: number | undefined; mark: number }> = [];
+  const own = lineMarks(def, lines.length);
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li]!;
+    for (let i = 0; i < line.chunks; i++) {
+      const mark = own === null ? -1 : own[li]!.from + (line.chunks === own[li]!.count ? i : Math.min(own[li]!.count - 1, Math.floor((i * own[li]!.count) / line.chunks)));
+      sentences.push({ line, index: i, start: line.starts.get(i), mark });
+    }
+  }
   const k = sentences.length;
-  const markOf = (g: number) => (k === n ? g : Math.min(n - 1, Math.floor((g * n) / k)));
+  const markOf = (g: number) => (own !== null ? sentences[g]!.mark : k === n ? g : Math.min(n - 1, Math.floor((g * n) / k)));
   // Anchors: the sentences that start a new mark (the others run on with them).
   const anchors: Array<{ mark: number; start: number | undefined }> = [];
   for (let g = 0; g < k; g++) if (g === 0 || markOf(g) !== markOf(g - 1)) anchors.push({ mark: marks[markOf(g)]!, start: sentences[g]!.start });
@@ -189,6 +204,19 @@ export function voiceState(def: VoiceTiming, sceneStart: number, now: number, ev
     mark = null;
   }
   return { t, spoken, mark, ended: doneAt !== null, endAt };
+}
+
+/** (wave 32) Each line's own marks (`byLine`), or null for the scene-wide share:
+ *  no `byLine`, one that doesn't add up to the marks, or another line count. */
+function lineMarks(def: VoiceScene, lineCount: number): Array<{ from: number; count: number }> | null {
+  const by = def.byLine;
+  if (by === undefined || by.length !== lineCount || by.some((c) => !(c >= 1)) || by.reduce((a, c) => a + c, 0) !== def.marks.length) return null;
+  let from = 0;
+  return by.map((count) => {
+    const r = { from, count };
+    from += count;
+    return r;
+  });
 }
 
 /** The warped scene time at `now` (C11's `voiceClock`), or null for the plain clock. */

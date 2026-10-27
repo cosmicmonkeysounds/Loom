@@ -59,6 +59,9 @@ export interface SceneVoice {
   /** The sentence's index within that line. */
   index: number;
   text: string;
+  /** (wave 32) Its mark in the scene's `marks` (the sentence's place across all
+   *  his lines in the scene); absent from a hand-built voice. */
+  mark?: number;
 }
 
 export interface SceneDef {

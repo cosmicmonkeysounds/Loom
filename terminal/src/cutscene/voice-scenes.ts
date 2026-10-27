@@ -25,7 +25,7 @@
 //! "<pick>." / "Truth or dare?") or that sentence is one of its `drawn`
 //! (advice_helped's proposal, typed in SandyChat).
 
-import { BOTTLE_SPIN_MS } from "./kit/tv1-time.ts";
+import { BOTTLE_HUNGER_AT, BOTTLE_SPIN_MS, BOTTLE_VOICE_END } from "./kit/tv1-time.ts";
 import { INTRO_CAPTIONS, INTRO_MS, INTRO_VOICE_END } from "./kit/tv1-boot.tsx";
 import { VERDICT_PLAN } from "./kit/results.ts";
 import { AWARD_CONFETTI } from "./kit/tv3-time.ts";
@@ -33,15 +33,19 @@ import type { VoiceScene } from "./voice-clock.ts";
 
 /** The scenes that wait for his voice, by `SceneDef.id`. */
 export const VOICE_SCENES: Readonly<Record<string, VoiceScene>> = {
-  // HELLO, PROGRAMS. then a sentence at a time; the setup after the voice.
+  // HELLO, PROGRAMS. then a sentence at a time; (wave 32) he talks on through
+  // the setup and the hand-back, every sentence of his in the beat a mark.
   trabolta_introduction: {
     beats: ["Trabolta Introduction"],
     marks: INTRO_CAPTIONS.map((c) => c.start),
     tail: INTRO_MS - INTRO_VOICE_END,
     ownCaption: true,
   },
-  // "<pick>." as the bottle lands on the seat; "Truth or dare?" typed after.
-  bottle_landed: { beats: ["Bottle Landed"], marks: [BOTTLE_SPIN_MS, BOTTLE_SPIN_MS + 600], tail: 14_000 - (BOTTLE_SPIN_MS + 1800), ownCaption: true },
+  // "<pick>." as the bottle lands on the seat; "Truth or dare?" typed after;
+  // (wave 32) "Choose the truth, program." / "I am so very hungry." under it.
+  // By line: a short name ("Paint.") merges into "Truth or dare?" as one
+  // spoken sentence, and the hunger line still takes the last two marks.
+  bottle_landed: { beats: ["Bottle Landed"], marks: [BOTTLE_SPIN_MS, BOTTLE_SPIN_MS + 600, ...BOTTLE_HUNGER_AT], byLine: [2, 2], tail: 14_000 - BOTTLE_VOICE_END, ownCaption: true },
   // D1, the story lane's `== Dare Chosen` (3 lines, 6 sentences: "A dare.
   // <pick> chose a dare, in my computer." / "Programs do not dare." /
   // "Programs answer." / "Everyone, watch closely: …" / "Antivirus!" /

@@ -59,6 +59,10 @@ export const HOST_ROUTES = [
   "/api/mod/audio/play",
   "/api/mod/audio/test",
   "/api/mod/lights/test",
+  // Wave 32 (contract C3): the 🤖 Talk card — a line said as Clippy (Trabolta
+  // answers it live in the Desktop) or a canned line as Trabolta himself.
+  // Never under the Mind's agent routes (the Mind stays out of Play).
+  "/api/mod/talk",
 ] as const;
 export type HostRoute = (typeof HOST_ROUTES)[number];
 
@@ -166,6 +170,13 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
     /** Answer one guest's DM as an agent-voiced character (Trabolta): the
      *  guest's own thread (`guest:<id>`), never a bare `dm:` room. */
     answerAs: (agent: string, guest: string, text: string) => post("/api/mod/say", { channel: `guest:${guest}`, as: agent, text: text.trim() }),
+    /** Wave 32 (C3): say a line in the Desktop during a talk scene — as
+     *  Clippy (Trabolta's mind answers it; a canned line's hidden
+     *  `direction` steers him) or as Trabolta (his canned line, at once). */
+    talk: (as: "Clippy" | "Trabolta", text: string, direction?: string) => {
+      const d = direction?.trim();
+      return post("/api/mod/talk", { as, text: text.replace(/\s+/gu, " ").trim(), ...(as === "Clippy" && d !== undefined && d !== "" ? { direction: d } : {}) });
+    },
     walletApprove: (id: string) => post("/api/mod/wallet/approve", { id }),
     walletDeny: (id: string) => post("/api/mod/wallet/deny", { id }),
     walletApproveHeld: () => post("/api/mod/wallet/approve-held", {}),

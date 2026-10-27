@@ -3,7 +3,9 @@
 //! files and the kit demo) beside a device frame and a scrubber;
 //! `?preview=<sceneId>&t=<ms>` draws one scene at one moment, full page
 //! (`&play=1` runs it from there); `?preview=glitch&t=<ms>` the screen
-//! layer's glitch takeover (wave 26, T2; a tap replays it). Open in dev (`pnpm --filter
+//! layer's glitch takeover (wave 26, T2; a tap replays it);
+//! `?preview=flicker&lag=<ms>` a ⚡'s flicker brought `lag` ms late by the
+//! poll (wave 32 review; a tap sends the next). Open in dev (`pnpm --filter
 //! loom-terminal dev`, :5175), or on a provisioned terminal (a stored mod
 //! config): `main.tsx` decides.
 //!
@@ -29,7 +31,8 @@ import { audioUnlocked, unlock } from "../speech/engine.ts";
 import { SceneStage } from "./CutsceneLayer.tsx";
 import { useReducedMotion } from "./clock.ts";
 import { fakeResults, fakeState } from "./fake.ts";
-import { ScreenLayer } from "../ScreenLayer.tsx";
+import { AdBurst } from "./kit/ad-burst.tsx";
+import { LiveScreenLayer, ScreenLayer } from "../ScreenLayer.tsx";
 import { screenLayers } from "../slides.ts";
 import { introduced } from "./pick.ts";
 import { noteWorldShowing } from "./world-bus.ts";
@@ -87,6 +90,8 @@ export function Preview() {
   const id = q.get("preview") ?? "list";
   if (id === "list") return <PreviewList />;
   if (id === "glitch") return <PreviewGlitch q={q} />;
+  if (id === "burst") return <PreviewBurst q={q} />;
+  if (id === "flicker") return <PreviewFlicker q={q} />;
   return <PreviewOne id={id} q={q} />;
 }
 
@@ -109,6 +114,51 @@ function PreviewGlitch({ q }: { q: URLSearchParams }) {
     <div className="pv-one" onClick={() => setRun((n) => n + 1)}>
       <div className="pv-missing">A wall terminal under the glitch — tap to replay.</div>
       <ScreenLayer key={run} layers={layers} gear={null} />
+    </div>
+  );
+}
+
+/**
+ * `?preview=flicker&lag=<ms>` (wave 32 review): a ⚡'s flicker over a
+ * stand-in screen, through the live layer, as a poll that brings it `lag` ms
+ * after its cue would (the TV polls every 1 s, a wall every 2 s); a tap
+ * sends the next one. Past `FLICKER_FRESH_MS` it is history and never plays.
+ */
+function PreviewFlicker({ q }: { q: URLSearchParams }) {
+  const lag = Math.max(0, Number(q.get("lag") ?? "0") || 0);
+  const [run, setRun] = useState(1);
+  const state = useMemo(() => {
+    const base = fakeState({ now: AT + lag, target: q.get("target") === "wall" ? "terminals" : "tv" });
+    return { ...base, receivedAt: Date.now(), program: { ...base.program, flicker: { value: "flicker", cue: "screens_flicker", seq: run, at: AT } } };
+  }, [run, lag, q]);
+  return (
+    <div className="pv-one" style={{ background: "#008080" }} onClick={() => setRun((n) => n + 1)}>
+      <div className="pv-missing">A screen a poll {lag} ms after a ⚡ — tap for the next.</div>
+      <LiveScreenLayer state={state} piloting={false} gear={null} />
+    </div>
+  );
+}
+
+/**
+ * `?preview=burst&t=<ms>&text=<line>` (wave 32): an ad burst (`kit/ad-burst.tsx`)
+ * over a stand-in screen, from `t` ms in, at its own pace; a tap replays it.
+ */
+function PreviewBurst({ q }: { q: URLSearchParams }) {
+  const [run, setRun] = useState(0);
+  const from = Math.max(0, Number(q.get("t") ?? "0") || 0);
+  const text = q.get("text") ?? "WHO BROUGHT THE MALWARE IN";
+  const [start] = useState(() => Date.now());
+  const [now, setNow] = useState(start);
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 33);
+    return () => window.clearInterval(id);
+  }, []);
+  const [runAt, setRunAt] = useState(start);
+  const t = (run === 0 ? from : 0) + (now - runAt);
+  return (
+    <div className="pv-one" onClick={() => { setRun((n) => n + 1); setRunAt(Date.now()); }}>
+      <div className="pv-missing">A wall terminal under an ad burst — tap to replay.</div>
+      <AdBurst key={run} t={t} seq={run + 1} text={text} reduced={q.get("reduced") === "1"} />
     </div>
   );
 }

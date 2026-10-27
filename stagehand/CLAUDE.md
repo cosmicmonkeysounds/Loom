@@ -168,6 +168,32 @@ module docstrings that explain the why).
 - **YAML examples are test-pinned** (`test_config.py`, `test_launchd.py`,
   `test_audio_router.py`, `test_lights_example.py`, `test_orchestrator.py`).
   Edit their comments freely; a value change needs the test.
+- **Stage requests** (wave 32, `docs/loom-w32-contract.md` C4/C7). During
+  a talk scene the server sends a **public** request: `thread.public`,
+  `speaker.stage`, `stage {room, scene, direction?}`, the room's own lines
+  as history (scripted ones `story: true`). `prompt.is_stage` /
+  `stage_of` recognise it. The lean voice (`voice.py`) gives it a person
+  card that says Clippy is speaking aloud to the whole Desktop, the room's
+  last `ROOM_LINES` (12) lines as context (`room_lines`, never dropped as
+  story lines; hunt and never words filtered), only the live exchange as
+  named turns (`history_turns`), and `stage.direction` as a must-follow
+  steer (`stage_steer`, ≤ `MAX_STEER` 300 chars). The classic prompt
+  (`voice.layout: classic`, `mind_mode: classic`) does the same through
+  `voice.classic_stage_block`. The persona's `before the whole Desktop`
+  block and one block per `Night.talk` hold (`speaker.stage == true`);
+  `orchestrator.situation_chars` counts the stage-only blocks apart.
+  **Priority lane:** `slots.py` `Slots` keeps one generation slot but
+  serves waiters by lane: `module.lane_of` puts a stage request in
+  `FIRST`, a guest at his heart (`them.at_the_heart`) in `HEART`, every
+  other DM and ruling in `NORMAL`, and the quiet summaries and a
+  director's re-run in `BACKGROUND`. A generation already running is
+  never interrupted, so the longest a stage line waits is one generation.
+  The server orders its own queue the same way (`AgentHubOptions.rank`)
+  when a worker attaches or a stall clears. A stage exchange
+  feeds no quiet summary. `_send` returns whether the server applied the
+  reply: on a 410 (the scene closed) the worker skips the memo,
+  `after_turn` and `remember_said`, so an unsaid line is never "already
+  said". Tests: `tests/test_talk_back.py`.
 - Docstrings cite "the wave 12 contract §Cn.m": that lane contract was
   never committed. `docs/agents.md` and the tests describe the behaviour.
 

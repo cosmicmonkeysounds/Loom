@@ -25,7 +25,9 @@ character's *mind* + live state + powers → the fast model → `{say,
 adjust, lookup?, act?}`. A `lookup` costs one more fast call with the
 session's answers appended (rare; a snoop). Requests are answered
 concurrently up to `concurrency` (a laptop GPU serves one generation at
-a time, so the default is 1). The **orchestrator** (`orchestrator.py`)
+a time, so the default is 1); a waiting stage request (wave 32: his public
+answer to Clippy in a talk scene) is served before every other waiting call
+(`slots.py`). The **orchestrator** (`orchestrator.py`)
 runs between turns: after each exchange it reflects and rewrites the
 mind; every couple of minutes it surveys the house. It is preempted by
 any new request, so replies stay snappy. Minds persist under `state_dir`
@@ -70,10 +72,11 @@ from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
 from .mind import Mind, mind_path
 from .orchestrator import Job, Orchestrator, reflect_tokens_needed, voice_tokens_needed
 from .persona import Persona
-from .prompt import adjust_names, build_messages, gate_context
+from .prompt import adjust_names, build_messages, gate_context, is_stage
 from .guards import repeats_line
 from .reply import Reply, parse_reply
 from .secrets import drop_counts
+from .slots import BACKGROUND, FIRST, HEART, NORMAL, Slots
 from .trace import Thought, Trace, new_thought
 
 log = logging.getLogger("stagehand.agents")
@@ -99,6 +102,18 @@ def build_agents(section: Any, base_dir: str) -> "Agents":
 def thread_key(req: dict[str, Any]) -> str:
     t = req.get("thread") or {}
     return f"{t.get('channel', '')}|{','.join(t.get('audience') or [])}"
+
+
+def lane_of(req: dict[str, Any]) -> int:
+    """(wave 32) The slot lane a request waits in: a stage request (his
+    public answer to Clippy, the whole Desktop waiting on the TV) first,
+    then a guest at his heart (the heart terminal waiting on him), then
+    every other DM and ruling; quiet summaries wait behind all of them."""
+    if is_stage(req):
+        return FIRST
+    if str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true":
+        return HEART
+    return NORMAL
 
 
 async def answer(
@@ -260,7 +275,8 @@ class Agents:
         #: a `request`: `judge.py`).
         self.judging: dict[str, asyncio.Task[None]] = {}
         self.mod: ModClient | None = None
-        self._slots = asyncio.Semaphore(cfg.concurrency)
+        #: The generation slots (wave 32: a stage request waits in the front lane, `slots.py`).
+        self._slots = Slots(cfg.concurrency)
         self.facts: FactsClient | None = None
         #: The voice models, per character — a copy the control panel may retune.
         self.models: dict[str, LlmConfig] = dict(cfg.models)
@@ -284,6 +300,9 @@ class Agents:
         # -- the new mind --
         #: The newest request per character (its powers build P1 for a Rewrite / a summary).
         self._last_req: dict[str, dict[str, Any]] = {}
+        #: (wave 32) character → (the last stage request's scene, the seq its
+        #: live turns start after): `voice.scene_cut`.
+        self._scenes: dict[str, tuple[str, int]] = {}
         #: (character, person id) → quiet-summary bookkeeping: turns since the
         #: last summary, when they last spoke, their newest history, the memo set summarised.
         self._quiet: dict[tuple[str, str], dict[str, Any]] = {}
@@ -560,6 +579,7 @@ class Agents:
         for task in list(self._director_calls):
             task.cancel()
         self._last_req.clear()
+        self._scenes.clear()
         for name, mind in self.minds.items():
             mind.reset(by=by)
             self._save_mind_now(name)
@@ -827,6 +847,10 @@ class Agents:
             who = speaker.get("name") or speaker.get("id") or "?"
             if persona is None:
                 return  # not ours (a misrouted request) — the server times it out
+            # (wave 32) A new talk scene starts its live turns afresh.
+            from .voice import scene_cut
+
+            req, self._scenes[character] = scene_cut(req, self._scenes.get(character))
             log.info("%s ← %s: %s", persona.character, who, req.get("text", ""))
             self.orchestrator.busy(+1)
             self._inflight += 1
@@ -836,7 +860,7 @@ class Agents:
                 await self._answer_new(rid, persona, mind, req)
                 return
             facts = await self._facts() if persona.lookup or persona.powers != () else None
-            async with self._slots:
+            async with self._slots.lane(lane_of(req)):
                 reply = await answer(persona, self.models[character], req, self.complete_fn, mind=mind, facts=facts, trace=self.trace)
             log.info(
                 "%s → %s: %s%s%s",
@@ -867,7 +891,10 @@ class Agents:
             if self.tasks.get(rid) is asyncio.current_task():
                 del self.tasks[rid]
 
-    async def _send(self, rid: str, reply: Reply) -> None:
+    async def _send(self, rid: str, reply: Reply) -> bool:
+        """POST the reply. False when the server had already settled the
+        request (410: it timed out, the run restarted, or — wave 32, C4 — its
+        talk scene closed): nobody heard the line."""
         assert self.mod is not None
         body: dict[str, Any] = {"id": rid, "say": reply.say, "adjust": reply.adjust}
         if reply.acts:
@@ -886,9 +913,10 @@ class Agents:
                         log.warning("  act refused: %s %s — %s", outcome.get("kind"), outcome.get("what"), outcome.get("error"))
         except ModApiError as err:
             if err.status == 410:
-                log.info("request %s was already settled (timed out or the run restarted)", rid)
-            else:
-                raise
+                log.info("request %s was already settled (timed out, the run restarted or its scene closed)", rid)
+                return False
+            raise
+        return True
 
     # -- the new mind (wave 12, mind_mode: new) ----------------------------------------
 
@@ -1022,7 +1050,7 @@ class Agents:
             whispers=tuple(mind.director),
             options=VoiceOptions(memo=v.memo, repeat_guard=v.repeat_guard, layout=v.layout, retry_allowed=len(self.tasks) <= 1, warm_head=v.warm_head),
         )
-        async with self._slots:
+        async with self._slots.lane(lane_of(req)):
             voice_mind = mind if quiet_ok or v.layout != "classic" else story_mind.without_summaries(mind)
             reply = await self._voice()(persona, self.models[character], req, ctx, self.complete_fn, trace=self.trace, facts_fn=self._facts, mind=voice_mind)
         log.info(
@@ -1033,24 +1061,33 @@ class Agents:
             f"  {reply.adjust}" if reply.adjust else "",
             f"  ACT {list(reply.acts)}" if reply.acts else "",
         )
+        heard = True
         if not self.cfg.dry_run:
-            await self._send(rid, reply)
+            heard = await self._send(rid, reply)
         if d is None:
             return  # asleep: the unavailable line went out; nobody is on file yet
         heart = str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true"
-        memo = story_mind.keep_memo(persona, getattr(reply, "memo", "") or "") if v.memo else ""
+        # (wave 32) A reply the server had already settled (410: a talk scene
+        # closed, a DM timed out) was never heard: no memo, no turn, and not
+        # "already said" anywhere (`said_for` would show it to every thread).
+        memo = story_mind.keep_memo(persona, getattr(reply, "memo", "") or "") if v.memo and heard else ""
         if memo and d.memos and repeats_line(memo, str(d.memos[-1].get("text") or "")):
             memo = ""  # the same note again (K-04 returning-guest: memos 3 and 4 were near copies)
         if memo:
             d.add_memo(memo, heart=heart, thought=self._voice_thought(character, rid))
         story_mind.note_heart(d, req, heart)
-        story_mind.after_turn(persona, d, req, phase, reply.say)
-        if reply.say and story_mind.keep_said(persona, reply.say):
-            mind.remember_said(thread, reply.say, heart=heart)
+        if heard:
+            story_mind.after_turn(persona, d, req, phase, reply.say)
+            if reply.say and story_mind.keep_said(persona, reply.say):
+                mind.remember_said(thread, reply.say, heart=heart)
         history = [h for h in req.get("history", []) if isinstance(h, dict)]
         newest = max((int(h.get("seq", 0)) for h in history), default=0)
         mind.saw_exchange(sid, who, kind, thread, newest)
-        self._note_quiet(character, sid, req)
+        if not is_stage(req):
+            # (wave 32) A stage thread's history is the whole room's (the
+            # narration, other programs' scripted lines): a quiet summary
+            # of it would file them as things the speaker said.
+            self._note_quiet(character, sid, req)
         self._save_mind(character)
         await self._mirror(character)
 
@@ -1129,7 +1166,7 @@ class Agents:
             return
         note = f"re-run of {original.id} ({original.kind}) — not applied"
         try:
-            async with self._slots:
+            async with self._slots.lane(BACKGROUND):
                 completion = Completion.of(await self.complete_fn(messages, model))
         except LlmError as err:
             await self.trace.record(new_thought(original.character, "rerun", trigger=f"rerun:{original.id}", model=model, messages=messages, error=str(err), note=note))
@@ -1223,7 +1260,7 @@ class Agents:
         model = self.models[character]
         speaker = {"speaker": {"id": d.id, "name": d.name, "kind": d.kind}}
         try:
-            async with self._slots:
+            async with self._slots.lane(BACKGROUND):
                 completion, note = await _complete_with_room(self.complete_fn, messages, model, character)
         except LlmError as err:
             q["turns"], q["sig"] = 0, sig
