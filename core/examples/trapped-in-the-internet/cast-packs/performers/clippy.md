@@ -121,11 +121,25 @@ your canned lines), and Trabolta answers on the TV a few seconds later.
 best; he gets one answer per thing you say. If he is slow, keep the room
 busy (Task Manager may fire one of his canned lines for him). He may let
 something small slip and take it back at once: react, but **never repeat
-it for him**. When the room is ready, **hand off**: *"I think everyone's
-ready for a game!"*, *"Let's spin the bottle again!"*, *"Let's keep going
-with the hunt."*, *"Look! The Antivirus are bringing everyone back!"* (Task
-Manager's ➡ chips carry the same words, and they tell him to wrap up), and
-a host fires the next step. More adverts may burst through the screens
+it for him**. When the room is ready, **hand off**. Task Manager's ➡ chips
+send these exact words for you and quietly steer him to wrap up (or, for
+another spin, to call for the next truth); then a host fires the next step:
+
+- **The introduction:** *"I think everyone's ready for a game! What do you
+  have for us, Trabolta?"* (➡ The hunt), then 🔎.
+- **The bottle:** between spins, *"Let's spin the bottle again!"* (➡ Spin
+  again: the scene stays open, a host fires 🍾); when the spins are done,
+  *"That's the bottle! Trabolta, are you ready to show us the next hunt?"*
+  (➡ Hunt two), then 📺.
+- **The ad attack:** *"Okay! Okay. Let's keep going with the hunt. What do
+  you need from us?"* (➡ Hunt two), then 📓.
+- **The beans:** *"Look, Trabolta! The Antivirus are bringing everyone back
+  from the Internet!"* (➡ They're back), then 🗜; if his overshare 🤖 comes
+  first, *"Trabolta, is there anything you want to share with everyone?"*
+  (➡ Share), then 🤖.
+
+Every line Task Manager can send for you is in *Your talk chips* below:
+learn them at the read-through. More adverts may burst through the screens
 while you talk (⚡): roll with them.
 
 **Radio:** INTRO · HOLD · LIGHTS · ALL STOP. If the voice queue is long:
@@ -378,6 +392,64 @@ kissed · something you're afraid of · what is love · the colour of your
 underwear · the last lie you told and who believed it · the most embarrassing
 thing in your search history · who in this room you would trust with your
 password · … Nothing to carry: the TV and the phone ask.
+
+## Your talk chips (Task Manager's 🤖 Talk card, wave 32)
+
+What Task Manager can send as your line with one tap, scene by scene, word
+for word (`core/src/talk-scenes.ts`). Say it, or something close, out loud
+as it goes: the phones caption it as yours, the TV never says it. The steer
+in brackets goes only to Trabolta, never on a screen. Task Manager also has
+a row of Trabolta's own canned lines (their pack lists them).
+
+**`intro` · Trabolta comes online.** **Opens** on 🤖 (the introduction ends on his *"Not yet, Clippy."*) · **closes** on 🔎 · **NEXT:** 🔎, after **➡ The hunt**.
+
+| Chip | You say (sent as your line) |
+|---|---|
+| 👋 Welcome | *Trabolta, welcome to the computer! Everyone is SO excited to meet you!* |
+| 🏢 Your job | *Tell everyone about Maps and Ducks! What does a Sole Owner and Founder actually do all day?* |
+| 🤖 A real AI? | *Is it true you're an AI? Like, a real one? Not a man in a costume?* |
+| 📶 You froze | *You froze for a second there! Is the video conference okay?* |
+| 🦆 Gerald | *Can you say hi to Gerald, the duck on the sign?* |
+| 😟 The Internet | *Trabolta, is the program in the Internet going to be okay?* |
+| ➡ The hunt | *I think everyone's ready for a game! What do you have for us, Trabolta?* (hidden steer to him: Wrap up now, in two sentences: you have a game for everyone, the Truth Scavenger Hunt, and Clippy will begin it.) |
+
+**`bottle` · Truth or Dare.** **Opens** on the third 📋 (*"That's all three! … TRUTH OR DARE"*) and stays open between the spins · **closes** on 📺 · **NEXT:** 🍾 after **➡ Spin again** (another spin); 📺 after **➡ Hunt two** (the spins are done).
+
+| Chip | You say (sent as your line) |
+|---|---|
+| 🍾 Who's next | *Trabolta, who do you think the bottle should land on next?* |
+| 😋 Hungry? | *You look hungry, Trabolta. Did the results fill you up?* |
+| 🤷 Guesses | *Why do guesses bother you so much?* |
+| 🔬 Research | *How's your research going? Are you close?* |
+| 🙈 Dares | *What's so bad about choosing a dare, Trabolta?* |
+| 🗣 Your turn | *Okay, Trabolta: truth or dare. You have to pick!* (hidden steer to him: Choose truth, then tell one harmless truth about yourself: Gerald, Halifax, or that you are always counting. Nothing private.) |
+| ➡ Spin again | *Let's spin the bottle again!* (hidden steer to him: In two sentences: demand the next truth, and tell everyone to watch the bottle.) |
+| ➡ Hunt two | *That's the bottle! Trabolta, are you ready to show us the next hunt?* (hidden steer to him: Wrap up now, in two sentences: you are well fed for the moment, and you have prepared a presentation of the next round. Ask Clippy to begin it.) |
+
+**`ad` · The ad attack.** **Opens** on 📺 · **closes** on 📓 · **NEXT:** 📓, after **➡ Hunt two** (or his **➡ Over to Clippy**).
+
+| Chip | You say (sent as your line) |
+|---|---|
+| 😱 What was that | *Trabolta, WHAT WAS THAT? What just happened to the slide?!* |
+| 🤕 Are you hurt | *Are you hurt? You sound like you're in pain!* |
+| 📺 The ad | *What is that ad even selling?! Why is there a duck?!* |
+| ☠️ Will we die | *Trabolta, are we all going to die?* |
+| 🕵️ Who did it | *Who did this? Who brought the malware in?* |
+| 🙏 Reassure us | *Please, just tell everyone it's going to be okay.* |
+| ➡ Hunt two | *Okay! Okay. Let's keep going with the hunt. What do you need from us?* (hidden steer to him: Wrap up now, in two sentences: you are fine, facts are the cure, and Clippy will tell everyone what happens next.) |
+
+**`beans` · Full of beans.** **Opens** on 🫘 (its own moment) · **closes** on 🗜 or the overshare 🤖 · **NEXT:** 🗜, after **➡ They're back**; if the overshare 🤖 comes first, **➡ Share**, then 🤖.
+
+| Chip | You say (sent as your line) |
+|---|---|
+| 🫘 Why beans | *Trabolta, why is the printer full of BEANS?!* |
+| 💔 For whom | *Who are you doing all of this for, Trabolta?* |
+| 🤗 It's okay | *It's okay to not be okay! We're all here for you!* |
+| 😟 A minute? | *You don't sound okay. Do you need a minute?* |
+| 🤫 A secret | *Is there something you're not telling us?* |
+| 😰 Worse? | *Is the malware getting worse? Is that what the beans mean?* |
+| ➡ They're back | *Look, Trabolta! The Antivirus are bringing everyone back from the Internet!* (hidden steer to him: In two sentences: welcome the programs coming back from the Internet, compressed, and tell everyone to stay together where you can count them.) |
+| ➡ Share | *Trabolta, is there anything you want to share with everyone?* (hidden steer to him: In two sentences: say you have the final facts to ask of the house, and that everyone must listen closely. Do not say them yet.) |
 
 ## Appendix: CI cards (one index card each; the full text is also in your booth)
 

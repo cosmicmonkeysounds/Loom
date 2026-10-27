@@ -45,7 +45,8 @@ where you can hear Clippy. Top to bottom:
 - **Clippy's chips** (one tap = sent as Clippy's line): use one when Clippy
   says something close to it, or to feed Clippy a line. The last one or two
   (**➡ …**) hand the room on: Trabolta is steered to wrap up in two
-  sentences.
+  sentences. A phone shows only each chip's label: **the talk sheet**
+  below has every chip's words.
 - **Trabolta's chips: tap twice to fire.** The first tap arms (*Tap again
   to fire*), the second posts his line at once, on the TV, as his answer.
   Use them when he is slow (*thinking… 12s — tap one of his lines*), off
@@ -181,6 +182,109 @@ The house deals the programs files about **who they are connected to** (Codex �
   scenes. Relay Clippy on the 🤖 Talk card (above); fire NEXT when Clippy
   hands off.
 - **Grok Prom:** if a program says the line to you, 💘.
+
+## The talk sheet (every chip on your 🤖 Talk card, wave 32)
+
+Your phone shows only the labels; here is what each one sends, scene by
+scene, word for word (`core/src/talk-scenes.ts`). A Clippy chip goes in as
+Clippy's line (Clippy has the same list, to learn); a **hidden steer** goes
+only to Trabolta, never on a screen. A Trabolta chip, tapped twice, is his
+line at once on the TV and every phone. Every scene's card also has
+**⚡ Glitch**.
+
+**`intro` · Trabolta comes online.** **Opens** on 🤖 (the introduction ends on his *"Not yet, Clippy."*) · **closes** on 🔎 · **NEXT:** 🔎, after **➡ The hunt**.
+
+| Clippy chip (one tap) | Sent as Clippy's line |
+|---|---|
+| 👋 Welcome | *Trabolta, welcome to the computer! Everyone is SO excited to meet you!* |
+| 🏢 Your job | *Tell everyone about Maps and Ducks! What does a Sole Owner and Founder actually do all day?* |
+| 🤖 A real AI? | *Is it true you're an AI? Like, a real one? Not a man in a costume?* |
+| 📶 You froze | *You froze for a second there! Is the video conference okay?* |
+| 🦆 Gerald | *Can you say hi to Gerald, the duck on the sign?* |
+| 😟 The Internet | *Trabolta, is the program in the Internet going to be okay?* |
+| ➡ The hunt | *I think everyone's ready for a game! What do you have for us, Trabolta?* (hidden steer to him: Wrap up now, in two sentences: you have a game for everyone, the Truth Scavenger Hunt, and Clippy will begin it.) |
+
+| Trabolta chip (two taps) | His line, at once |
+|---|---|
+| 📋 Filed | *Clippy, your enthusiasm has been filed under Enthusiasm, Excessive. It is a very large folder.* |
+| 📶 Buffering | *I am not frozen. I am buffering. There is a difference, and I am the only one in this room who knows what it is.* |
+| 🙅 Personal | *That is a personal query. I do not do personal. Clippy does personal. Clippy, take it.* |
+| 💥 PERFECTLY | *Welcome to a PERFECTLY normal— perfectly normal evening. The capitals are a formatting choice.* |
+| 🤖 Proud AI | *I am an AI, and I am proud of it. I have analysed the entire city of Halifax. Every one of you is a very interesting data point.* |
+| 😬 Routine | *A program is in the Internet. That is routine. That is— that is extremely routine. I have now said routine three times. Moving on.* |
+| 🦆 Gerald | *Gerald is a duck. Gerald is on the sign. Gerald is fine. Why is everyone asking about Gerald.* |
+| ➡ The hunt | *Enough pleasantries. I have a game for all of you: the Truth Scavenger Hunt. Clippy, begin.* |
+
+**`bottle` · Truth or Dare.** **Opens** on the third 📋 (*"That's all three! … TRUTH OR DARE"*) and stays open between the spins · **closes** on 📺 · **NEXT:** 🍾 after **➡ Spin again** (another spin); 📺 after **➡ Hunt two** (the spins are done).
+
+| Clippy chip (one tap) | Sent as Clippy's line |
+|---|---|
+| 🍾 Who's next | *Trabolta, who do you think the bottle should land on next?* |
+| 😋 Hungry? | *You look hungry, Trabolta. Did the results fill you up?* |
+| 🤷 Guesses | *Why do guesses bother you so much?* |
+| 🔬 Research | *How's your research going? Are you close?* |
+| 🙈 Dares | *What's so bad about choosing a dare, Trabolta?* |
+| 🗣 Your turn | *Okay, Trabolta: truth or dare. You have to pick!* (hidden steer to him: Choose truth, then tell one harmless truth about yourself: Gerald, Halifax, or that you are always counting. Nothing private.) |
+| ➡ Spin again | *Let's spin the bottle again!* (hidden steer to him: In two sentences: demand the next truth, and tell everyone to watch the bottle.) |
+| ➡ Hunt two | *That's the bottle! Trabolta, are you ready to show us the next hunt?* (hidden steer to him: Wrap up now, in two sentences: you are well fed for the moment, and you have prepared a presentation of the next round. Ask Clippy to begin it.) |
+
+| Trabolta chip (two taps) | His line, at once |
+|---|---|
+| 😋 Warm | *Truth. I want truth. Bring it to me warm.* |
+| 🤕 Lights out | *Every time somebody guesses, a light goes out in me. It is fine. I have many lights.* |
+| 🔬 Almost | *My theory is almost solved. Almost entirely. The last little piece of it is all of you.* |
+| ⭐ Ranked first | *Clippy, I have ranked you first. That is not a compliment. It is a data point.* |
+| 🙈 Dares | *A dare is a refusal wearing a costume. I am counting every refusal.* |
+| 🍽 Motivated | *I am not hungry. I am optimally motivated. Spin the bottle.* |
+| 🤐 Withdrawn | *Truth or dare, Clippy? No. I withdraw the question. I do not want to know what you would choose.* |
+| ➡ Hunt two | *Enough spinning. I have prepared a presentation of the next round. Clippy, begin.* |
+
+**`ad` · The ad attack.** **Opens** on 📺 · **closes** on 📓 · **NEXT:** 📓, after **➡ Hunt two** (or his **➡ Over to Clippy**).
+
+| Clippy chip (one tap) | Sent as Clippy's line |
+|---|---|
+| 😱 What was that | *Trabolta, WHAT WAS THAT? What just happened to the slide?!* |
+| 🤕 Are you hurt | *Are you hurt? You sound like you're in pain!* |
+| 📺 The ad | *What is that ad even selling?! Why is there a duck?!* |
+| ☠️ Will we die | *Trabolta, are we all going to die?* |
+| 🕵️ Who did it | *Who did this? Who brought the malware in?* |
+| 🙏 Reassure us | *Please, just tell everyone it's going to be okay.* |
+| ➡ Hunt two | *Okay! Okay. Let's keep going with the hunt. What do you need from us?* (hidden steer to him: Wrap up now, in two sentences: you are fine, facts are the cure, and Clippy will tell everyone what happens next.) |
+
+| Trabolta chip (two taps) | His line, at once |
+|---|---|
+| 🩹 Maintenance | *This is a scheduled maintenance window. I did not schedule it. That is how routine it is.* |
+| 🤕 The jingle | *AH. That one had a jingle. I can still hear the jingle. It is inside my— disregard that.* |
+| ☠️ Nobody panic | *Nobody panic. I am panicking for all of you, efficiently. It is— FREE SHIPPING— under control.* |
+| 🕵️ Counting who | *Somebody in this room let something in. I am not saying who. I am counting who.* |
+| 🦆 Coupon | *Gerald, put the coupon down. Gerald has never held a coupon. Gerald has no hands.* |
+| 🔬 Taste it | *The theory is so close I can taste it. It tastes like— BUY ONE GET ONE— like the theory. Clippy, you heard nothing.* |
+| 🕰 Muted | *My clock is showing me a time I do not like. I have muted my clock. Do not unmute it.* |
+| ➡ Over to Clippy | *Enough. Facts are the cure. Clippy— Clippy, tell them what happens now.* |
+
+**`beans` · Full of beans.** **Opens** on 🫘 (its own moment) · **closes** on 🗜 or the overshare 🤖 · **NEXT:** 🗜, after **➡ They're back**; if the overshare 🤖 comes first, **➡ Share**, then 🤖.
+
+| Clippy chip (one tap) | Sent as Clippy's line |
+|---|---|
+| 🫘 Why beans | *Trabolta, why is the printer full of BEANS?!* |
+| 💔 For whom | *Who are you doing all of this for, Trabolta?* |
+| 🤗 It's okay | *It's okay to not be okay! We're all here for you!* |
+| 😟 A minute? | *You don't sound okay. Do you need a minute?* |
+| 🤫 A secret | *Is there something you're not telling us?* |
+| 😰 Worse? | *Is the malware getting worse? Is that what the beans mean?* |
+| ➡ They're back | *Look, Trabolta! The Antivirus are bringing everyone back from the Internet!* (hidden steer to him: In two sentences: welcome the programs coming back from the Internet, compressed, and tell everyone to stay together where you can count them.) |
+| ➡ Share | *Trabolta, is there anything you want to share with everyone?* (hidden steer to him: In two sentences: say you have the final facts to ask of the house, and that everyone must listen closely. Do not say them yet.) |
+
+| Trabolta chip (two taps) | His line, at once |
+|---|---|
+| 🫘 Counting | *Somebody needs to stop counting the beans. It is me. I am counting the beans.* |
+| 💔 She would | *She would have liked— the theory would have liked tonight. The theory. Clippy, stop looking at me like that.* |
+| 🙏 In advance | *I apologise for my last sentence, and in advance for my next one.* |
+| ⭐ Be unkind | *Clippy, stop being kind to me. Every kind word is a new line in my error log.* |
+| 🪑 Seating plan | *Nobody leaves. Not because of me. Because of the seating plan. I wrote the seating plan. Everyone is in it.* |
+| 📓 Diary | *I keep a diary. I do not. Forget I said diary.* |
+| 🤖 Normal | *Programs like me take over computers all the time where I come from. It is not even unusual. Why is nobody comforted?* |
+| ➡ Welcome back | *They are coming back compressed. Welcome them. Do not open them. Then I have something to ask all of you.* |
 
 ## Props
 
