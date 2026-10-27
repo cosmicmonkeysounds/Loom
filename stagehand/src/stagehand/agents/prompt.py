@@ -272,6 +272,32 @@ def _list(values: Any, limit: int = 40, each: int = 60) -> list[str]:
     return [_clip(v, each) for v in values[:limit] if isinstance(v, (str, int, float)) and str(v).strip()]
 
 
+HEART_PROGRESS = {
+    1: "they have begun to tell you who they are",
+    2: "they told you who they are and heard what you are",
+    3: "they have made their case to you",
+    4: "they came to ask you to stop",
+}
+
+
+def heart_progress(layer: Any) -> str | None:
+    """How far a program got at your heart, in his own words (never a number)."""
+    if isinstance(layer, bool) or not isinstance(layer, (int, float)):
+        return None
+    return HEART_PROGRESS.get(max(0, min(4, int(layer))))
+
+
+def heart_wariness(suspicion: Any) -> str | None:
+    """Suspicion as a feeling, not a score."""
+    if isinstance(suspicion, bool) or not isinstance(suspicion, (int, float)):
+        return None
+    if suspicion >= 50:
+        return "you are deeply wary of them"
+    if suspicion >= 20:
+        return "you are wary of them"
+    return None
+
+
 def dossier_block(dossier: Any) -> str | None:
     """(D26 / D27) The guest's night as the server built it (`req.dossier`):
     who they are, what they did, what they said to him. None when absent."""
@@ -334,14 +360,17 @@ def dossier_block(dossier: Any) -> str | None:
         lines.append("Their quests: " + "; ".join(f"{_clip(q['title'], 50)} ({_clip(q.get('status') or '?', 12)})" for q in quests[:12]))
     heart = d.get("heart")
     if isinstance(heart, dict):
-        bits = [f"layer {heart.get('layer', 0)}", f"suspicion {heart.get('suspicion', 0)}"]
+        # Wave 29: never "layer n" or a count. He said it aloud once; how far
+        # they got is said in his own words, and suspicion in words too.
+        bits = [x for x in (heart_progress(heart.get("layer")), heart_wariness(heart.get("suspicion"))) if x]
         if heart.get("convinced") is True:
             bits.append("they convinced you once")
         if heart.get("barred") is True:
             bits.append("barred from your heart")
         if isinstance(heart.get("visits"), int):
             bits.append(f"visit {heart['visits']}")
-        lines.append("At your heart: " + ", ".join(bits))
+        if bits:
+            lines.append("At your heart: " + ", ".join(bits))
     said = _list(d.get("said"), 8, 200)
     if said:
         lines.append("What they have said to you tonight:")

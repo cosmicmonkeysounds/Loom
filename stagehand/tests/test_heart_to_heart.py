@@ -119,7 +119,7 @@ def test_the_dossier_block_says_who_they_are_tonight():
         "Files they gave you: The Orchard",
         "The Optical Drive; The Desktop; The Server Room",
         "Orientation (done)",
-        "At your heart: layer 2, suspicion 30, visit 2",
+        "At your heart: they told you who they are and heard what you are, you are wary of them, visit 2",
         "- “Are you lonely down here?”",
         "Their night: joined · marked · reinstalled · filed H3",
     ):
@@ -127,6 +127,18 @@ def test_the_dossier_block_says_who_they_are_tonight():
     assert dossier_block(None) is None and dossier_block({}) is None
     # A bare dossier (only the required fields) still reads.
     assert dossier_block({"name": "Ada", "storyMinutes": 3}).splitlines()[1] == "Name: Ada · here 3 minutes"
+
+
+def test_the_dossier_never_says_layer_or_counts_the_talk():
+    """Wave 29: he once said "layer three" at his heart. How far they got reaches him only in words."""
+    import re
+
+    for layer in range(0, 6):
+        for suspicion in (0, 10, 30, 70):
+            block = dossier_block({**DOSSIER, "heart": {"layer": layer, "suspicion": suspicion, "convinced": False, "barred": False, "visits": 1}})
+            assert not re.search(r"\blayers?\b|\blevel\b|\bsuspicion\b|\b\d\s*/\s*4\b|out of character", block, re.I), block
+    zero = dossier_block({**DOSSIER, "heart": {"layer": 0, "suspicion": 0}})
+    assert "At your heart" not in zero
 
 
 def test_the_classic_prompt_carries_the_dossier_and_is_unchanged_without_one():
