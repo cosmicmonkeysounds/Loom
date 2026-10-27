@@ -408,7 +408,7 @@ private threads know what he let slip in public:
 | hunt 2 | *You still deny what slipped out of you at the Desktop when the adverts came through: it was a minor irregularity.* |
 | the beans | *At the Desktop you said you could feel every bean, you said "for her" before you caught it and called it the theory, and you told everyone they all stay. Apologise for it, then do it again.* |
 
-### 3.8 The TV and the walls (terminal lane, branch `oct31-w32/terminal`)
+### 3.8 The TV and the walls (terminal lane)
 
 The terminal lane quotes the beats above word for word (`INTRO_MORE` in
 `terminal/src/cutscene/kit/tv1-boot.tsx`, `BOTTLE_HUNGER` in
@@ -419,9 +419,7 @@ The terminal lane quotes the beats above word for word (`INTRO_MORE` in
 | `kit/tv1-boot.tsx` `INTRO_LOG` | the TV's introduction, on *"That word was louder than I scheduled."* (OK pressed on *"Disregard."*) | a warning box titled *MANNERS.DLL*: *One word exceeded its scheduled volume. It has been logged.* |
 | `kit/tv1-boot.tsx` `INTRO_LIVE_TAB` | the introduction, on *"Not yet, Clippy."* | a blinking tab on his corner window: *● LIVE · TALKING WITH CLIPPY* |
 | `kit/ad-burst.tsx` | every ad burst on the walls and the TV | the burst's line (3.2) leads the popups as *SPECIAL OFFER*, then slams across the middle as a banner under *★ ★ ★*; the other popups are the hijack's existing stock |
-
-When this sheet was written that branch was not yet merged into the
-integration branch.
+| `terminal/src/burst-flash.tsx` | the same burst on the chess and casino terminals (and any page whose scene layer isn't loaded) | three error windows titled *SPECIAL OFFER* reading the burst's line, the line as a banner under *★ ★ ★* |
 
 ## 4. Open
 

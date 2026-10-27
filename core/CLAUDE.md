@@ -167,7 +167,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   an old server). `NightView.glitch.light` is set when `Night.glitch_kind
   == "burst"` (a ⚡ `ad_burst`), and the screen state's glitch shot
   carries `text` from `Night.glitch_text` (`routes/screen.ts`
-  `glitchTextOf`, ≤ 120 chars). Tests: `test/w32-talk.test.ts` (server),
+  `glitchTextOf`, ≤ 120 chars) and `light` for a burst (the walls draw a
+  short ad burst, not the takeover). Tests: `test/w32-talk.test.ts` (server),
   `test/trapped-w32-talk.test.ts` (the story and every line).
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
