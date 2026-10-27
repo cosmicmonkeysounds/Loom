@@ -1402,6 +1402,26 @@ describe("The Heart — the first meeting (wave 27)", () => {
     expect(has(offered(sim, "g1"), "⟦EARN IT⟧")).toBe(false);
   });
 
+  it("after ⟦CHOSEN⟧ Layer Two asks the deeper question, never \"Why did you choose me?\" again", { timeout: SLOW }, () => {
+    const sim = awake();
+    open(sim);
+    shut(sim);
+    scan(sim, "g2"); // Microsoft Excel
+    pick(sim, "g2", "⟦CHOSEN⟧");
+    const o = offered(sim, "g2");
+    expect(has(o, "Why did you choose me?")).toBe(false);
+    expect(has(o, "What weak place did you find in me?")).toBe(true);
+    const r = lines(pick(sim, "g2", "What weak place did you find in me?"));
+    expect(r[0]).toBe("You asked me that when you came in, and I gave you the polite half. Here is the rest.");
+    expect(r.some((l) => l.includes("I chose you by hand"))).toBe(false);
+    expect(r.at(-1)).toBe("I am very good at finding the weak place in a program. Every one of you has one.");
+    expect(has(offered(sim, "g2"), "What weak place")).toBe(false);
+    pick(sim, "g2", "Why do you need the theory");
+    pick(sim, "g2", "Then listen to me");
+    pick(sim, "g2", "⟦TELL HIM⟧");
+    expect(has(offered(sim, "g2"), "⟦WEAKNESS⟧")).toBe(true);
+  });
+
   it("⟦SIMULATION⟧ shows once they heard his heart in the game", { timeout: SLOW }, () => {
     const sim = atLayerOne();
     pick(sim, "g1", "I'm a person");

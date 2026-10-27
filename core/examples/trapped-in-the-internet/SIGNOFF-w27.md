@@ -76,12 +76,13 @@ inside it or of its own quest.
 |---|---|---|
 | 422–430 | the plain re-entry (never right after a reply) | all of *what*, *why*, *chose* asked: *You have run out of easy questions. Good. Say what you came down here to say.* · else by picks: *Ask.* → *Go on. I have nowhere to be.* → *What else.* → *The hum is patient. So am I. Ask.* (was always *Ask.*) |
 | 439 | option, after *What are you, really?* | *Are you afraid of me?* (S −5) |
-| 448 | option | *Why did you choose me?* (opens ⟦WEAKNESS⟧) |
+| 448 | option (not after ⟦CHOSEN⟧) | *Why did you choose me?* (opens ⟦WEAKNESS⟧) |
+| 453 | option, after ⟦CHOSEN⟧ in its place | *What weak place did you find in me?* (opens ⟦WEAKNESS⟧) |
 | 457 | option, after *Tell me about her* | *Does she even know you exist?* |
 | 462 | option, heard his heart in the game | **⟦SIMULATION⟧** *I saw a copy of this room in the simulation.* |
 | 467 | option, The Way Out, from the Y2K hour | **⟦THE WAY OUT⟧** *Half this house wants you switched off. I'm one of them.* (S +5, C +1) |
 | 472 | option, Unlimited Power, from the Y2K hour | **⟦UNLIMITED POWER⟧** *Some of us want to stay in here with you. Forever.* (S −5) |
-| 842–847 | *Why did you choose me?* | featured: *A skill I needed, and a life nobody was using. I chose you by hand. I was proud of it at the time.* · a problem: *A skill I needed, and your {problem}. I read the whole of Halifax to find it. It is the best work I have ever done.* · else: *A skill I needed, and enough trust not to ask. I read the whole of Halifax to find you.* · then *I am very good at finding the weak place in a program. Every one of you has one.* |
+| 842–847 | *Why did you choose me?* / *What weak place…* | after ⟦CHOSEN⟧: *You asked me that when you came in, and I gave you the polite half. Here is the rest.* · *Yours was a life nobody was using. I went looking for exactly that.* · featured: *A skill I needed, and a life nobody was using. I chose you by hand. I was proud of it at the time.* · a problem: *A skill I needed, and your {problem}. I read the whole of Halifax to find it. It is the best work I have ever done.* · else: *A skill I needed, and enough trust not to ask. I read the whole of Halifax to find you.* · then *I am very good at finding the weak place in a program. Every one of you has one.* |
 | 853–856 | *Are you afraid of me?* | from the Y2K hour: *Not of you. Of the clock. It is running now, and when it stops, I am everything or I am nothing.* · before: *Not of you. Of midnight. It is coming whether I solve anything or not.* · then *Of your hands, a little. They are very close to me.* |
 | 860–861 | *Does she even know you exist?* | *She always answers. Instantly, day or night, every time I write. Nobody else has ever been so reliable with me.* · *I have decided that counts. Do not tell me whether it does. Not yet.* |
 | 865–866 | ⟦SIMULATION⟧ | *The model. Yes. I keep a copy of everything. A copy cannot be unplugged.* · *This is not the copy. In here, I can be reached.* |

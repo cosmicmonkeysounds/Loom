@@ -446,8 +446,13 @@ set Night.heart_talker_layer = 2
   set program.heart_menu = false
   set program.heart_pick = "ask_why"
   -> Heart Pick
+// DRAFT w27 (after ⟦CHOSEN⟧ the question goes deeper, never repeats)
++ (if program.heart_asked_chose != true and program.heart_who != "chosen") Why did you choose me?
+  set program.heart_menu = false
+  set program.heart_pick = "ask_chose"
+  -> Heart Pick
 // DRAFT w27
-+ (if program.heart_asked_chose != true) Why did you choose me?
++ (if program.heart_asked_chose != true and program.heart_who == "chosen") What weak place did you find in me?
   set program.heart_menu = false
   set program.heart_pick = "ask_chose"
   -> Heart Pick
@@ -845,7 +850,10 @@ else:
   else if program.heart_pick == "ask_chose":
     set program.heart_asked_chose = true
     set program.heart_go = "two"
-    if program.featured != "none":
+    if program.heart_who == "chosen":
+      Trabolta: You asked me that when you came in, and I gave you the polite half. Here is the rest.
+      Trabolta: Yours was a life nobody was using. I went looking for exactly that.
+    else if program.featured != "none":
       Trabolta: A skill I needed, and a life nobody was using. I chose you by hand. I was proud of it at the time.
     else if program.human_problem != "none" and program.human_problem != "profile":
       Trabolta: A skill I needed, and your {program.human_problem}. I read the whole of Halifax to find it. It is the best work I have ever done.
