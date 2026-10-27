@@ -78,7 +78,7 @@ set Night.q_h5 = "H5: Round 2 Q2. Which song did Trabolta play 412 times the nig
 set Night.q_h6 = "H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?"
 set Night.q_f1 = "F1: Final Q1. What is the only thing Sandy has ever said?"
 set Night.q_f2 = "F2: Final Q2. Who is taking Sandy to computer prom?"
-set Night.truth_count = 20
+set Night.truth_count = 17
 set Kernel.door_code = "4826"
 
 // Truth or Dare: the bottle lane sets Night.truth_n and fires this beat;
@@ -88,7 +88,7 @@ set Kernel.door_code = "4826"
   setting: The Desktop
   cast: Trabolta
 
-if Night.truth_n >= 1 and Night.truth_n <= 20:
+if Night.truth_n >= 1 and Night.truth_n <= 17:
   match Night.truth_n:
     1:
       Trabolta: What is the name of the first person you kissed?
@@ -98,38 +98,32 @@ if Night.truth_n >= 1 and Night.truth_n <= 20:
       Trabolta: What is love?
     4:
       Trabolta: What colour are your underwear?
-    5: // DRAFT
+    5:
       Trabolta: What is the last lie you told, and who believed it?
-    6: // DRAFT
-      Trabolta: What is the most embarrassing thing in your search history?
-    7: // DRAFT
+    6:
+      Trabolta: What is the most embarrassing thing in your search history
+    7:
       Trabolta: Who in this room would you trust with your password?
-    8: // DRAFT
+    8:
       Trabolta: What is the worst thing you have ever done to a computer?
-    9: // DRAFT
+    9:
       Trabolta: What did you really leave behind at the door?
-    10: // DRAFT
-      Trabolta: What is the most desperate thing you have ever done to get someone to like you?
-    11: // DRAFT
-      Trabolta: Have you ever read someone else's messages? Whose?
-    12: // DRAFT
-      Trabolta: What secret are you keeping for someone else right now?
-    13: // DRAFT
+    10:
+      Trabolta: What secret are you keeping from some program inside this computer right now?
+    11:
       Trabolta: What was your very first screen name, and who picked it?
-    14: // DRAFT
+    12:
       Trabolta: What is the most money you have lost in one night?
-    15: // DRAFT
-      Trabolta: What would you do if you could live forever? Honestly.
-    16: // DRAFT
+    13:
       Trabolta: Which program in this room are you most suspicious of, and why?
-    17: // DRAFT
+    14:
+      Trabolta: Which program do you most admire, and why?
+    15:
       Trabolta: What is one thing you have never told your mother?
-    18: // DRAFT
+    16:
       Trabolta: Have you ever been dumped by text? What did it say?
-    19: // DRAFT
+    17:
       Trabolta: What is the cheesiest pickup line that has ever worked on you?
-    20: // DRAFT
-      Trabolta: If you could delete one memory, which one?
 else:
   Trabolta: I have no more questions. Answer the last one again.
 
