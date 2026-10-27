@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { VISIT_KEY, VisitLatch, closeVisit, endPilot, openVisit, parseStoredVisit, postVisit, recoverVisit, visitSignalBody, type VisitStorage } from "../src/pilot.ts";
+import { VISIT_KEY, VisitLatch, closeVisit, endPilot, floorAfter, openVisit, visitLinesOf, parseStoredVisit, postVisit, recoverVisit, visitSignalBody, type VisitStorage } from "../src/pilot.ts";
 
 const room = defaultConfig({ eventId: "evt 1", token: "mod-tok", name: "Server Room", spot: "server-room", view: "face", room: "The Server Room" });
 
@@ -237,5 +237,28 @@ describe("visit signals", () => {
       expect(await closeVisit(room, latch, { fetchFn: fakeFetch(200, seen) })).toBe(true);
       expect(names(seen).map((b) => b.name)).toEqual(["terminal opened", "terminal closed"]);
     }
+  });
+});
+
+describe("the visit floor (wave 27, B1)", () => {
+  it("is set by the first history after the pilot changed, never moved by a reconnect", () => {
+    let f = floorAfter(null, [{ seq: 3 }, { seq: 9 }, { seq: 5 }]);
+    expect(f).toBe(9);
+    f = floorAfter(f, [{ seq: 3 }, { seq: 9 }, { seq: 14 }]); // a Wi-Fi blip re-sends the history
+    expect(f).toBe(9);
+    expect(floorAfter(null, [])).toBe(-1);
+  });
+
+  it("pins at -1 when the talk opened before any history came; a pin never moves a set floor", () => {
+    expect(floorAfter(null, "pin")).toBe(-1);
+    expect(floorAfter(7, "pin")).toBe(7);
+    expect(floorAfter(floorAfter(null, "pin"), [{ seq: 30 }])).toBe(-1);
+  });
+
+  it("keeps only the lines past it", () => {
+    const lines = [{ seq: 2 }, { seq: 9 }, { seq: 10 }, { seq: 12 }];
+    expect(visitLinesOf(lines, 9).map((l) => l.seq)).toEqual([10, 12]);
+    expect(visitLinesOf(lines, null)).toEqual(lines);
+    expect(visitLinesOf(lines, -1)).toEqual(lines);
   });
 });
