@@ -8,6 +8,7 @@
 ##   godot --path . -- --server http://10.0.0.2:7000 --code 4821 \
 ##         --station vr-1 --name "Headset 1" [--guest g-3f9a1c] [--offline] [--smooth-turn]
 ##         [--autopilot [--hit-king]] [--voice false] [--mic false] [--trail-delay 0]
+##         [--intro false]
 ##
 ## `voice` (default on) is the voice link (wave 19): the terminals heard in
 ## the house, this headset heard on them; `mic` (default on) off = listen only.
@@ -15,6 +16,10 @@
 ## `trail_delay` (seconds, default [constant HouseRoute.PATH_REVEAL_MS] / 1000:
 ## a minute, wave 26 R2) holds the golden trail back at the start of each
 ## walk; dev runs and tests may set 0.
+##
+## `intro` (default on, wave 33) plays the reinstallation video and the
+## tutorial before each walk; `--intro false` goes straight to the house
+## (the autopilot always does).
 ##
 ## `--autopilot` (dev / CI only) walks the trail to the duck by itself and
 ## quits when the session is over — see [Autopilot]. With `--hit-king` it
@@ -49,6 +54,7 @@ const KEYS := {
 	"voice": TYPE_BOOL,
 	"mic": TYPE_BOOL,
 	"trail_delay": TYPE_FLOAT,
+	"intro": TYPE_BOOL,
 }
 
 
@@ -66,6 +72,7 @@ static func defaults() -> Dictionary:
 		"voice": true,
 		"mic": true,
 		"trail_delay": HouseRoute.PATH_REVEAL_MS / 1000.0,
+		"intro": true,
 	}
 
 

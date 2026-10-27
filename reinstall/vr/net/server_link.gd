@@ -729,6 +729,27 @@ func voice_token() -> String:
 	return str(session.get("token", "")) if has_session() else ""
 
 
+func mark_ready() -> void:
+	_post_session("/api/spatial/ready", {})
+
+
+func save_prefs(prefs: Dictionary) -> void:
+	_post_session("/api/spatial/prefs", prefs)
+
+
+## A session-token call whose answer only matters when the session is dead
+## (401 / 410 → the lobby); a 404 (an old server without the route) or any
+## other refusal is ignored. Nothing offline.
+func _post_session(path: String, body: Dictionary) -> void:
+	if not has_session() or is_offline():
+		return
+	var sid := session_id()
+	transport.send("POST", _base() + path, body, str(session.get("token", "")),
+		func(status_code: int, _data: Variant) -> void:
+			if sid == session_id() and (status_code == 410 or status_code == 401):
+				_lose_session("over"))
+
+
 func end_session(_reason: String) -> void:
 	if not has_session():
 		return
