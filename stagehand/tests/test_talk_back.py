@@ -153,6 +153,41 @@ def test_the_stage_blocks_stay_inside_his_world_and_name_no_place_or_number():
             assert word not in flat, (s.heading, word)
 
 
+def codex_codes():
+    """Every codex unlock code: the story's `code:` lines and facts.json."""
+    codes = set()
+    for f in SHOW.rglob("*.loom"):
+        for m in re.finditer(r'^\s*code:\s*"?([^"\n#]+?)"?\s*$', f.read_text(), re.M):
+            codes.add(m.group(1).strip().lower())
+
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k == "code" and isinstance(v, str):
+                    codes.add(v.lower())
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    walk(json.loads((SHOW / "facts.json").read_text()))
+    return codes
+
+
+def test_the_stage_blocks_carry_no_codex_code():
+    # What he is told to say on air is said to every program, and a program
+    # can type it into the Codex. The failure names the block, never the code.
+    codes = codex_codes()
+    assert len(codes) > 50
+    p = load_persona(TRABOLTA)
+    for s in p.situations:
+        if s.heading not in STAGE_BLOCKS:
+            continue
+        flat = s.prompt.lower()
+        hits = sum(1 for c in codes if re.search(rf"(^|[^a-z0-9]){re.escape(c)}($|[^a-z0-9])", flat))
+        assert hits == 0, f"{s.heading}: {hits} codex code(s)"
+
+
 def test_each_scene_keeps_its_place_in_his_arc():
     p = load_persona(TRABOLTA)
     block = {s.heading: " ".join(s.prompt.split()) for s in p.situations}
