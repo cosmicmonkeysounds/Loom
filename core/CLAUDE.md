@@ -155,7 +155,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   (any audience, scripted ones `story: true`, filtered like the dossier:
   no facts answer, secret value, codex code or hunt-answer mark), no
   dossier. `AgentHub` dispatches a public request ahead of every queued DM
-  (`queuedInOrder`), never sends it a hold / busy / stall line (one `#
+  (`queuedInOrder`), first dropping any queued one whose scene has closed
+  (the runtime's `stale` option, so it never takes a slot ahead of the
+  DMs), never sends it a hold / busy / stall line (one `#
   hosts` line, `TALK_HOLD_NOTE`, instead) and `openOn(thread)` reads it
   for the view. Its reply lands only while `Night.talk` still names the
   scene it was asked in (else 410 + `TALK_LATE_NOTE`); acts are ignored,
