@@ -90,7 +90,8 @@ CHARACTER Clippy is Greeter, Player
   // (step < 3) or a re-press later in the night gets no readout.
   when introduce_trabolta:
     if Night.step >= 3 and Night.trabolta_introduced != true:
-      reply 🤖 Trabolta is online. Announce the Truth Scavenger Hunt; he explains the rules.
+      // DRAFT w32 (the talk scene)
+      reply 🤖 Trabolta is online. Talk with him first, out loud: Task Manager types what you say and he answers on the TV. Then announce the Truth Scavenger Hunt; he explains the rules.
 
   when hunt_time_up:
     if Night.phase == "hunt_1":
