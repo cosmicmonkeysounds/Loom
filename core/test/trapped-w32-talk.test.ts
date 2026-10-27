@@ -86,7 +86,8 @@ const OUTSIDE = (() => {
 /** The mind's generated secrets block (from facts.json): topics, match words, nevers. */
 const SECRET_WORDS = (() => {
   const mind = readFileSync(join(SHOW, "trabolta.mind.md"), "utf8");
-  const block = mind.slice(mind.indexOf("# <titi-facts:secrets>"), mind.indexOf("# </titi-facts:secrets>"));
+  // The markers at a line's start: the header comment names them too.
+  const block = mind.slice(mind.indexOf("\n# <titi-facts:secrets>"), mind.indexOf("\n# </titi-facts:secrets>"));
   const out: string[] = [];
   let list = "";
   for (const raw of block.split("\n")) {
@@ -345,7 +346,7 @@ describe("wave 32 — the ⚡ cue on the sheet", () => {
       if (t !== "000. 000. 000.") expect(t, t).not.toMatch(/\d/u);
       expect(t.length, t).toBeLessThanOrEqual(80);
       for (const w of OUTSIDE) expect(said(t, w), `${t} ∋ ${w}`).toBe(false);
-      for (const w of SECRET_WORDS) expect(said(t, w), `${t} ∋ a secret word`).toBe(false);
+      for (const w of SECRET_WORDS) expect(said(t, w), "a secret word is in a line (not printed)").toBe(false);
       noCode(t);
       expect(t, t).not.toMatch(NEVER_PLACES);
     }
@@ -396,7 +397,7 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
     for (const t of his) {
       expect(t, t).not.toMatch(/\d/u);
       for (const w of OUTSIDE) expect(said(t, w), `${t} ∋ ${w}`).toBe(false);
-      for (const w of SECRET_WORDS) expect(said(t, w), `${t} ∋ a secret word`).toBe(false);
+      for (const w of SECRET_WORDS) expect(said(t, w), "a secret word is in a line (not printed)").toBe(false);
       noCode(t);
       expect(t, t).not.toMatch(NEVER_PLACES);
       expect(t, t).not.toMatch(/\blayers?\b/iu);
@@ -468,7 +469,7 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
       const texts = [s.title, s.hint, ...s.clippy.flatMap((c) => [c.text, c.direction ?? ""])];
       for (const t of texts) {
         for (const w of OUTSIDE) expect(said(t, w), `${t} ∋ ${w}`).toBe(false);
-        for (const w of SECRET_WORDS) expect(said(t, w), `${t} ∋ a secret word`).toBe(false);
+        for (const w of SECRET_WORDS) expect(said(t, w), "a secret word is in a line (not printed)").toBe(false);
         noCode(t);
       noCode(t);
         expect(t, t).not.toMatch(NEVER_PLACES);
@@ -480,5 +481,12 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
     for (const id of Object.keys(TALK_SCENES)) expect(TALK_SRC, id).toMatch(new RegExp(`// DRAFT w32[^\\n]*\\n {2}${id}: \\{`, "u"));
     const objectives = readFileSync(join(SHOW, "objectives.loom"), "utf8");
     for (const id of ["Talk With Trabolta", "Relay Clippy To Trabolta"]) expect(objectives).toMatch(new RegExp(`// DRAFT w32[^\\n]*\\nOBJECTIVE ${id}\\n`, "u"));
+  });
+});
+
+describe("the secret-word lists", () => {
+  it("are read from the mind and the story, never empty", () => {
+    expect(SECRET_WORDS.length).toBeGreaterThan(20);
+    expect(CODEX_CODES.length).toBeGreaterThan(50);
   });
 });
