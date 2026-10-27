@@ -2529,6 +2529,10 @@ export class EventRuntime {
     }
     this.talkDirection = post.direction ?? null;
     const seq = seqOf(this.fanout(this.commit("say", TALK_AS, thread.channel, post.text, null, "all")));
+    // A request still owed from an earlier scene would be dropped on its
+    // answer (410) and take this line's follow-up with it: close it first.
+    const stale = this.agents.openOn(thread);
+    if (stale !== null && stale.req.stage?.scene !== this.talkNight()) this.agents.answeredByHand(thread);
     this.agents.line(thread);
     sendJson(res, 200, { ok: true, seq, asked: this.agents.openOn(thread) !== null, online: this.agents.isOnline(TALK_AGENT) });
   }
@@ -3377,6 +3381,9 @@ export class EventRuntime {
       // Wave 32 (C4): the scene it was asked in is over — the room moved
       // on; nothing lands (no line, no adjust), the hosts hear why.
       this.postHostsNote(TALK_LATE_NOTE);
+      // More was said meanwhile and a scene is on again: ask anew (the
+      // admit gate refuses while none is).
+      if (followUp) this.agents.line(req.thread);
       sendJson(res, 410, { error: "the talk scene closed" });
       return;
     }

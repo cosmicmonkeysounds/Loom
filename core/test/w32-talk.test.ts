@@ -389,6 +389,20 @@ describe("w32 — the scene closes, a canned line answers", () => {
     rt.dispose();
   });
 
+  it("a request owed from an earlier scene is closed when Clippy speaks in the next one", async () => {
+    const { rt, worker, requests, talk } = await scene();
+    await talk({ as: "Clippy", text: "Trabolta?" });
+    const old = requests()[0]!;
+    await setVar(rt, "Night.talk", "ad");
+    await talk({ as: "Clippy", text: "Trabolta, what was that?" });
+    expect(worker!.res.frames().some(([e, d]) => e === "cancel" && (d as { id: string }).id === old.id)).toBe(true);
+    const fresh = requests()[1]!;
+    expect(fresh.stage).toEqual({ room: "The Desktop", scene: "ad" });
+    expect(fresh.text).toBe("Trabolta, what was that?");
+    expect((await call(rt, "POST", "/api/agent/reply", { id: fresh.id, say: "Nothing. A minor— nothing." }, { moderator: true })).status).toBe(200);
+    rt.dispose();
+  });
+
   it("a canned Trabolta line commits at once, cancels the owed request, and the worker's late reply gets 410", async () => {
     const { rt, worker, requests, talk } = await scene();
     const asked = await talk({ as: "Clippy", text: "Trabolta, how are you?" });
