@@ -77,7 +77,7 @@ import { Client, Stream, failure, sleep, type Res } from "./lib/http.ts";
 import { guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "./lib/safety.ts";
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
 import { atLeast, awardWinners, betProblems, mismatches, notNone, read, truthy, worldOf, wrongPatchProblems, type Row, type Want } from "./lib/world.ts";
-import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating } from "./lib/plan.ts";
+import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating, transportRefusal } from "./lib/plan.ts";
 
 // ------------------------------------------------------------------ flags
 
@@ -569,13 +569,17 @@ const role = {
 
 async function press(c: Ctx, steps: readonly ChainStep[], who: (role: string) => string | undefined = () => undefined): Promise<void> {
   const already: string[] = [];
+  let lastTransport = "";
   const r = await pressChain(
     steps,
     tolerating(
       async (name, w) => {
         const subject = w === undefined ? undefined : who(w);
         const res = await signal(name, subject !== undefined ? { subject } : {});
-        if (res.status !== 200) return { refused: true, status: res.status };
+        if (res.status !== 200) {
+          lastTransport = failure("POST", "/api/mod/signal", res);
+          return transportRefusal(res.status, lastTransport);
+        }
         await breath();
         return res.json;
       },
@@ -585,7 +589,7 @@ async function press(c: Ctx, steps: readonly ChainStep[], who: (role: string) =>
     () => {},
   );
   const pressed = [...r.refused, ...already];
-  if (!r.ok) c.fail(`the director's chain stopped: refused ${r.refused.at(-1)}`);
+  if (!r.ok) c.fail(`the director's chain stopped: refused ${r.refused.at(-1)}${lastTransport !== "" ? ` (${lastTransport})` : ""}`);
   else if (pressed.length > 0) c.note(`already pressed: ${pressed.join(", ")}`);
 }
 const chain = (from: string, to: string) => segment(TO_Y2K, from, to);

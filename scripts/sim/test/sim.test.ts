@@ -6,7 +6,7 @@ import { test } from "node:test";
 
 import { CEREMONY, SELF_PRESSED, TO_Y2K, Y2K_TO_VERDICT, pressChain, stepName, stepWho } from "../../accept/chains.ts";
 import { decide, findOption, heartMenu, layerOf, menusOf, tagOf, type Menu } from "../lib/heart.ts";
-import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating } from "../lib/plan.ts";
+import { SIM_SELF_PRESSED, featuredSlug, isStoryRefusal, pickPool, segment, tolerating, transportRefusal } from "../lib/plan.ts";
 import { isLocal } from "../lib/http.ts";
 import { guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "../lib/safety.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
@@ -41,6 +41,23 @@ test("a guest's own BINGO! may have pressed ⏰ already: tolerated by the sim, n
   // Any other refusal still stops the walk.
   const other = await pressChain(["start_the_bingo", "introduce_trabolta"], tolerating(async (n) => (n === "introduce_trabolta" ? { refused: true } : {}), SIM_SELF_PRESSED, []), () => {});
   assert.deepEqual(other, { ok: false, refused: ["introduce_trabolta"] });
+});
+
+test("only the story's own refusal of ⏰ is tolerated: a timeout, a 409 or a 500 stays red", async () => {
+  assert.equal(isStoryRefusal({ refused: true }), true);
+  assert.equal(isStoryRefusal({}), false);
+  for (const status of [0, 409, 500]) {
+    const r = transportRefusal(status, `POST /api/mod/signal → ${status}`);
+    assert.equal(isStoryRefusal(r), false);
+    const already: string[] = [];
+    const out = await pressChain(
+      ["start_the_bingo", "bingo_time", "introduce_trabolta"],
+      tolerating(async (n) => (n === "bingo_time" ? r : {}), SIM_SELF_PRESSED, already),
+      () => {},
+    );
+    assert.deepEqual(out, { ok: false, refused: ["bingo_time"] }, `status ${status}`);
+    assert.deepEqual(already, []);
+  }
 });
 
 test("the aimed steps of the post-Y2K chains name their roles", () => {

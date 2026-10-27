@@ -55,9 +55,23 @@ export function segment<T extends string>(chain: readonly T[], from: T, to: T): 
  *  `SELF_PRESSED` (scripts/accept/chains.ts) stays the timers' only. */
 export const SIM_SELF_PRESSED: ReadonlySet<string> = new Set(["bingo_time"]);
 
-/** Wrap a chain's signal so a refusal of one of `names` reads as done
- *  (noted in `already`); every other refusal passes through and stops the
- *  walk. The beat's world check still says whether the night moved. */
+/** A press that failed below the story (a timeout, a dropped connection, a
+ *  409, a 500): the signal answers `{ refused: true, httpStatus }` so the
+ *  chain stops, and `tolerating` never reads it as the story's refusal. */
+export function transportRefusal(status: number, error?: string): Record<string, unknown> {
+  return { refused: true, httpStatus: status, ...(error !== undefined ? { error } : {}) };
+}
+
+/** The story's own refusal: an HTTP 200 answer with `refused: true`. */
+export function isStoryRefusal(r: Record<string, unknown>): boolean {
+  return r["refused"] === true && r["httpStatus"] === undefined;
+}
+
+/** Wrap a chain's signal so the story's refusal (HTTP 200, `refused: true`)
+ *  of one of `names` reads as done (noted in `already`); every other
+ *  refusal, and every transport failure (`transportRefusal`), passes
+ *  through and stops the walk. The beat's world check still says whether
+ *  the night moved. */
 export function tolerating<R extends Record<string, unknown>>(
   signal: (name: string, who?: string) => Promise<R>,
   names: ReadonlySet<string>,
@@ -65,7 +79,7 @@ export function tolerating<R extends Record<string, unknown>>(
 ): (name: string, who?: string) => Promise<Record<string, unknown>> {
   return async (name, who) => {
     const r = await signal(name, who);
-    if (r["refused"] === true && names.has(name)) {
+    if (names.has(name) && isStoryRefusal(r)) {
       already.push(name);
       return {};
     }
