@@ -789,7 +789,7 @@ watcher/rule, **S** = server hard-code.
 | transfer_received / transfer_approved / transfer_denied / offer_accepted / stimulus / grant / wallet_frozen / wallet_thawed | S (the wallet book, `core/server/wallet.ts`) | program; args `from` / `to`, `amount`, `tx`, `by`, `until` | ROLE hooks (`# truthcoin-exchange` / `# hosts` readouts, *The Audit* quest, `Night.stimulus_n`) |
 | second_hunt_preview | D | — | rule + Clippy hook |
 | start_the_second_hunt | D | — | rule |
-| truther_download | W (+120 s) or D | — | rule |
+| truther_download | W (+120 s) or D (from step 8: a press before 📓 Hunt 2 does nothing) | — | rule |
 | five_minute_warning | W (dispersal end − 300 s) or D | — | rule |
 | summons_closed | W (+300 s) or D | — | rule |
 | truth_pong | D | — | rule |
@@ -2117,7 +2117,9 @@ tent is captured by the tablet's scan.
   Night.warn_at:` → `fire five_minute_warning`.
 
 **C3 Truther Download — `truther_download`** (W at +2 min or D).
-- Rule (guard `Night.truther_sent != true`): set it true · `reveal truthcoin exchange` · `cue
+- Rule (guard `Night.truther_sent != true and Night.step >= 8 and Night.ended != true`, wave 28: never
+  before 📓 Hunt 2; an early press posts *📥 Not yet: 📓 Hunt 2 first* to # hosts, a second one
+  *📥 Not again*; the CRA, McAfee and host hooks share the guard): set it true · `reveal truthcoin exchange` · `cue
   screens_truther`, `cue lights_glitch`, `sound truther_glitch` · `broadcast "!📥 TRUTHER
   DOWNLOAD received. Check your messages." to everyone`.
 - Per program (ROLE watcher `Night.truther_sent == true and self.cleared and self.got_truther

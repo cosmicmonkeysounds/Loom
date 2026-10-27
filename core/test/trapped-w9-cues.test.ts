@@ -10,7 +10,7 @@ import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { cueState, modView, notePress, pressRefused } from "../server/views.ts";
 import { cueRows } from "../src/cue-sheet.ts";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -458,6 +458,60 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     const g2 = press(sim, "award_most_trusted", "g1").out;
     expect(desktop(g2, "Clippy").some((t) => t.startsWith("Award. Most Trusted."))).toBe(true);
     expect(desktop(g2, "Trabolta")).toEqual([]);
+  });
+
+  it("wave 28: 📥 before 📓 Hunt 2 does nothing but say so in # hosts; from step 8 it opens the exchange", { timeout: SLOW }, () => {
+    const sim = boot();
+    const early = press(sim, "truther_download");
+    expect(early.refused).toBe(true);
+    expect(hosts(early.out)).toEqual([JSON.stringify("📥 Not yet: 📓 Hunt 2 first (it sends itself two minutes in). Nothing happens.")]);
+    expect(v(sim, "Night.truther_sent")).toBe(false);
+    expect(sim.isRevealedTo("room:truthcoin exchange", "g1")).toBe(false);
+    expect(sim.questStatus("CRA Agent Software", "The Audit")).not.toBe("active");
+    expect(sim.questStatus("McAfee Anti-Virus", "The Exchange")).not.toBe("active");
+    // No program's own Truther Download beat ran, no booth heard 🪙 / 🧾, no screens or lights.
+    expect(early.out.filter((e) => e.type === "beatEntered" && /truther/iu.test(e.beat))).toEqual([]);
+    expect(early.out.filter((e) => e.type === "respond")).toEqual([]);
+    expect(early.out.filter((e) => e.type === "directive" && e.verb === "cue")).toEqual([]);
+    advance(sim, 5);
+    expect(v(sim, "Night.truther_sent")).toBe(false);
+    // The button is not on offer before Hunt 2.
+    const offered = () => (modView(sim, "open", "x").interactions ?? []).find((i) => i.id === "truther_download")?.live;
+    expect(offered()).toBe(false);
+
+    // Walk to Hunt 2 (step 8): the press works.
+    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]) press(sim, n);
+    expect(v(sim, "Night.step")).toBe(8);
+    expect(offered()).not.toBe(false);
+    const sent = press(sim, "truther_download");
+    expect(sent.refused).toBe(false);
+    expect(v(sim, "Night.truther_sent")).toBe(true);
+    expect(sim.isRevealedTo("room:truthcoin exchange", "g1")).toBe(true);
+    expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
+    expect(sim.questStatus("McAfee Anti-Virus", "The Exchange")).toBe("active");
+    expect(sent.out.filter((e) => e.type === "respond").map((e) => (e as { to: string }).to).sort()).toEqual(expect.arrayContaining(["CRA Agent Software", "McAfee Anti-Virus"]));
+    // A second press: Not again.
+    expect(hosts(press(sim, "truther_download").out)).toEqual([JSON.stringify("📥 Not again: the Truther Download was already sent. Nothing happens.")]);
+  });
+
+  it("wave 28: the new # hosts line is marked DRAFT w28 and listed on SIGNOFF-w28.md", () => {
+    const dir = join(__dirname, "../examples/trapped-in-the-internet");
+    const line = "📥 Not yet: 📓 Hunt 2 first (it sends itself two minutes in). Nothing happens.";
+    const main = readFileSync(join(dir, "main.loom"), "utf8");
+    expect(main).toMatch(/\/\/ DRAFT w28[^\n]*\n\s*broadcast "📥 Not yet: 📓 Hunt 2 first/u);
+    const sheet = readFileSync(join(dir, "SIGNOFF-w28.md"), "utf8");
+    expect(sheet).toContain("DRAFT");
+    expect(sheet).toContain(line);
+  });
+
+  it("wave 28: the auto path still sends 📥 two minutes into Hunt 2", { timeout: SLOW }, () => {
+    const sim = boot();
+    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]) press(sim, n);
+    advance(sim, 119);
+    expect(v(sim, "Night.truther_sent")).toBe(false);
+    advance(sim, 2);
+    expect(v(sim, "Night.truther_sent")).toBe(true);
+    expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
   });
 });
 

@@ -53,7 +53,7 @@ CHARACTER McAfee Anti-Virus is Enforcer
       reply 🤫 You slipped {program.name} 50 Truthcoin. Nobody saw.
 
   when truther_download:
-    if Night.truther_sent != true:
+    if Night.truther_sent != true and Night.step >= 8 and Night.ended != true:
       reply 🪙 The # truthcoin-exchange is open. Every settled trade is posted there. Broker: set prices, match buyers to facts, referee bets and call the winner in # truthcoin-exchange. A bet settles player to player (the winner sends a 🙏 Request, the loser pays): you hold no pot and take no cut. 🪙 Pay / 🪙 Charge are for corrections only.
 
 CHARACTER Password Manager is Enforcer
@@ -111,5 +111,5 @@ CHARACTER CRA Agent Software is Enforcer
       reply 🤫 You slipped {program.name} 50 Truthcoin. Nobody saw.
 
   when truther_download:
-    if Night.truther_sent != true:
+    if Night.truther_sent != true and Night.step >= 8 and Night.ended != true:
       reply 🧾 Every program has a Wallet now. Every third transfer waits in your Wallet room for Approve; any transfer can be denied for 60 seconds. Elaborate security questions encouraged.
