@@ -36,6 +36,7 @@
 /* Nine options fit at 1280x720: the rows shrink with a short screen. */
 .heart-list { min-height: 0; overflow-y: auto; flex: 0 1 auto; font-size: 0.86em; font-size: min(0.86em, 3.3vh); line-height: 1.25; }
 .heart-options { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.05em; }
+/* 0.42s: HEART_IN_MS in heart.ts (the ▼ MORE cue measures after it). */
 .heart-panel[data-open="true"] .heart-options { animation: heart-in 0.42s steps(5, end) both; }
 @keyframes heart-in {
   0% { opacity: 0.2; transform: translateY(0.25em); }

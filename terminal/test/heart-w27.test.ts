@@ -16,6 +16,8 @@ import {
   layerLabel,
   layerOfBeat,
   layerOfCue,
+  moreMeasureDelay,
+  HEART_IN_MS,
   optionKey,
   optionOfKey,
   panelGate,
@@ -214,5 +216,16 @@ describe("skipping his voice (review)", () => {
     const { readFileSync } = await import("node:fs");
     const app = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8");
     expect(app).toContain("onSkip={roomBusy ? undefined : skipVoice}");
+  });
+});
+
+describe("the ▼ MORE cue (review)", () => {
+  it("waits out the opening slide before it measures, so it never flashes", async () => {
+    expect(moreMeasureDelay(true)).toBeGreaterThan(HEART_IN_MS);
+    expect(moreMeasureDelay(false)).toBe(0);
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(new URL("../src/heart/heart.css", import.meta.url), "utf8");
+    const secs = /\.heart-panel\[data-open="true"\] \.heart-options \{ animation: heart-in ([\d.]+)s/u.exec(css);
+    expect(Number(secs?.[1]) * 1000).toBe(HEART_IN_MS);
   });
 });

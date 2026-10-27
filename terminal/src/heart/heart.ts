@@ -281,6 +281,20 @@ export function panelSince(dockAt: number, skippedAt: number, now: number): numb
   return Math.max(0, now - Math.max(dockAt, skippedAt));
 }
 
+/** The panel's entry animation (`heart-in` in heart.css), ms. */
+export const HEART_IN_MS = 420;
+
+/**
+ * When to measure the list for the ▼ MORE cue (ms from now). An opening
+ * list is still sliding in (`heart-in` moves it down a little), and a
+ * measure then reads that as overflow: the cue flashed and the panel
+ * jumped twice. So an opening waits out the animation; anything else
+ * measures at once.
+ */
+export function moreMeasureDelay(opening: boolean): number {
+  return opening ? HEART_IN_MS + 40 : 0;
+}
+
 /** The key that picks option `index` (A6): 1–9, then 0 for the tenth, then a, b, c …; null past z. */
 export function optionKey(index: number): string | null {
   if (index < 0) return null;

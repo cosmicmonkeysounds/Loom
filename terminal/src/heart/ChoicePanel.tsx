@@ -16,7 +16,7 @@
 
 import "./heart.css";
 import { useEffect, useRef, useState } from "react";
-import { layerLabel, optionKey, optionOfKey, panelGate, panelModel, panelSince, type HeartMenu } from "./heart.ts";
+import { layerLabel, optionKey, optionOfKey, moreMeasureDelay, panelGate, panelModel, panelSince, type HeartMenu } from "./heart.ts";
 
 export function ChoicePanel({
   menu,
@@ -131,12 +131,16 @@ export function ChoicePanel({
     const el = list.current;
     if (el !== null) setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
   };
+  // An opening list is still sliding in: measuring now reads the slide as
+  // overflow (the cue flashed, the panel jumped). It waits that out.
+  const wasOpen = useRef(open);
   useEffect(() => {
-    measure();
-    const f = window.requestAnimationFrame(measure);
+    const opening = open && !wasOpen.current;
+    wasOpen.current = open;
+    const t = window.setTimeout(measure, moreMeasureDelay(opening));
     window.addEventListener("resize", measure);
     return () => {
-      window.cancelAnimationFrame(f);
+      window.clearTimeout(t);
       window.removeEventListener("resize", measure);
     };
   }, [menu.id, model.options.length, open]);
@@ -192,7 +196,7 @@ export function ChoicePanel({
         )}
       </div>
       {model.greyed && <div className="heart-panel-door">⚠ CLOSE THE DOOR</div>}
-      <div className="heart-list" ref={list} onScroll={measure} onAnimationEnd={measure}>
+      <div className="heart-list" ref={list} onScroll={measure}>
         <ol className="heart-options" key={`${menu.id}:${open ? "open" : "wait"}`}>
           {model.options.map((o) => (
             <li key={`${menu.id}:${o.index}`}>
