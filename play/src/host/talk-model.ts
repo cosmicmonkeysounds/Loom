@@ -128,7 +128,7 @@ export function talkErrorText(message: string, status: number): string {
     case "asleep":
       return `${TALK_AGENT} is asleep — nothing was sent.`;
     case "closed":
-      return "The doors aren't open yet — nothing was sent.";
+      return "The night is paused or the doors aren't open — nothing was sent.";
     case "too_long":
       return `Too long — keep it under ${TALK_MAX} characters.`;
     case "empty":

@@ -217,6 +217,26 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
   Cue sheet (`CueSheet`), People, More (the old tab components,
   unchanged). A jump (`ctx.go`, a need's row, the caller chip, a refused
   press) opens Show at that section (`showTarget`).
+- **🤖 Talk** (wave 32, contract `docs/loom-w32-contract.md` C6;
+  `host/talk.tsx` over the pure `host/talk-model.ts`, core's
+  `talk-back.ts`). While `view.talk` is set (a talk scene: `HostView.talk`)
+  Show draws a card between NEXT and the status line: the scene + hint,
+  Trabolta's state (`talkState`, *thinking… Ns*, slow past `TALK_SLOW_S`
+  12), the Desktop's last `TALK_LINES` lines (`talkLines`), a text box +
+  Send (Enter; `calls.talk` → `POST /api/mod/talk`), Clippy chips (one
+  tap, with their `direction`), Trabolta chips (`useArmButtons`: arm then
+  fire, keyed by `chipKey(scene, side, k)` so an arm never crosses a
+  scene), ⚡ Glitch (`view.talk.glitch` through the cue call) and the
+  console's own NEXT (`c.bar.row` + `c.desk.tap`: no new fire path).
+  Task Manager's is open (`talkOpen`), every other host's folded. The
+  draft lives on the console (`talkDraft`; `setTalkDraft` takes an updater,
+  and `draftAfterSend` removes only the words a send carried). The thinking
+  count reads the server's clock: `HostClient.skew` from the poll's `Date`
+  header (`clockSkew`, `talkClock`). The slim bar shows a 🤖 Talk chip
+  (`talkChipShown`) that opens Show at `talk`. `test/w32-talk.test.tsx`
+  drives `TalkBody` through the hooks harness. Host-only: nothing the
+  guest entry imports reaches `host/talk*`. Help:
+  `docs/help/play/21-talk-back.md`.
 - **The slim NEXT bar** (`HostDock` → `HostNextBar`) shows only while Show
   is off screen (Chats, the Desk, a room on a phone) and no keyboard is up;
   its tap opens Show (at Needs for a refused press). The award picker and
@@ -297,14 +317,15 @@ Play imports a few dependency-free core modules **by relative path**
 (`../../core/src/…`), with no alias and no build step: `cue-sheet.ts`,
 `host-board.ts`, `house-desk.ts` (the house desk, Desk chunk only), `delivery.ts` (alert levels, effect manners),
 `show-clock.ts`, `runtime/sim/badges.ts`, `runtime/sim/crews.ts`, `pick-echo.ts`
-(wave 28: how a pick reads; `session/guest.ts` `choiceEcho`).
+(wave 28: how a pick reads; `session/guest.ts` `choiceEcho`), `talk-back.ts` + `talk-scenes.ts` (wave 32: the Talk card,
+host chunk only).
 `@loom/core` is not a package dependency. Keep those core files free of
 Node imports, or the play build breaks.
 
 Help works the same way: `help.tsx` bundles the guest articles of
 `../../docs/help/play/*.md` with `import.meta.glob(…, ?raw)` and parses
 them with `docs/help/helpdoc.ts`. The `role: performer` articles (07, 13,
-14, 19, 20) are left out of that glob and bundled by `help-staff.tsx`
+14, 19, 20, 21) are left out of that glob and bundled by `help-staff.tsx`
 (`articlesFor`, `StaffHelpSheet`), which only the booth and the director
 import, so a guest never downloads them (wave 26). A new performer-only
 article goes in both globs; `test/help-chunks.test.ts` fails until it
@@ -342,7 +363,9 @@ copy. Any new guest line must pass it.
   clock) through the lazy `moments/glitch-takeover.tsx` (the 600 ms
   `Glitch` is its fallback), holding the queue: `MomentsInput.takeover`
   `full` (guests, player booths: ~6 s, swallows taps) or `light` (host
-  booths: 2.5 s, look only); the director phone has none. While it is on
+  booths: 2.5 s, look only); the director phone has none. Wave 32: a
+  burst (`NightView.glitch.light`, a talk scene's ⚡) plays the light one
+  on every phone (`takeoverStart` / `takeoverKind` in `moments/model.ts`). While it is on
   screen `surfacesOf(…, covered)` holds every surface (stickies and
   balloons too), so they land right after it (C3).
 - **Lazy chunks** go through `lazy-chunk.tsx` (`retryImport` once, then a

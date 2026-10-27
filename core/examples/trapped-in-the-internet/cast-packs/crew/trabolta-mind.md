@@ -39,6 +39,15 @@ not move for minutes. Check instead:
 | the brief's label | *set by story* (or *set by director* after your Rewrite / Edit, until the next phase) |
 | the trace | one **voice** row per line to him, now and then a second one (trigger *retry*), a **summary** row when a conversation goes quiet |
 
+**During a talk scene (wave 32)** (after 🤖, between the 🍾 spins, from 📺
+to 📓, at 🫘) Clippy's lines, relayed by Task Manager, reach him as
+**stage** requests in The Desktop: they go before every waiting DM, so a
+DM may wait a little longer then. His answer is said to the whole room
+(up to four sentences, no powers). He never holds or stalls out loud
+there: if he is slow, Task Manager fires one of his canned lines and
+`# hosts` says so. Nothing for you to do but watch the voice rows read
+right for the scene.
+
 **Worth a look:**
 
 - the queue waits 40 s or more, or shows **⛔ stalled**: answer from Chat

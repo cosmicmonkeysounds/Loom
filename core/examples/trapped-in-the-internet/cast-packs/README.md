@@ -43,6 +43,9 @@ still runs the release **`w18b-1021`**: waves 18b (Stage B), 19, 20, 20b, 21
 and 22 are merged but **not shipped**. The user signed off the show text of
 waves 13 through 28 on 2026-10-27, and the packs follow it. Wave 22's
 patch-bay lines (`// DRAFT w22` in the story) have no sheet of their own.
+Wave 32's talk scenes (`// DRAFT w32`, [`SIGNOFF-w32.md`](../SIGNOFF-w32.md))
+ship as written before their sign-off: the Task Manager, Clippy and director
+packs and the Mind card carry them (reprint those four).
 The old wave-by-wave list is in [`history.md`](./history.md).
 
 **The house and its computers**

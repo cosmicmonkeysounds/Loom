@@ -525,6 +525,22 @@ through the `lights` job, stops, story events and waits for a room's
 lines. The story plays one with `cue <id>`; GO by hand fires the same
 events. The show's copy is a DRAFT of tech checks only.
 
+**Trabolta talks back (wave 32).** Four *talk scenes* (the story's
+`Night.talk`: his introduction, between the bottle's spins, the ad attack,
+the beans; contract [`loom-w32-contract.md`](./loom-w32-contract.md)) let
+Clippy talk with Trabolta live: Task Manager types Clippy's words on the
+hosts' 🤖 Talk card (`POST /api/mod/talk`), the server asks the MacBook's
+`agents` worker for a public answer (served before any waiting DM), and
+the TV says it like any scripted line of his. Nothing new runs on the
+house machines. Their glitches reach the house through cues that already
+exist: ⚡ (`ad_burst`) and the scenes' own timer cue `screens_flicker`
+before the ad attack (the room bulbs blink, below) and, from it on, an
+**ad burst**: `cue screens_glitch` carrying the burst's line
+(`Night.glitch_text`, on the screen state's glitch shot with `light`; the
+walls play a 3.6 s popup storm, the phones a short takeover) and `sound
+truther_glitch` through the router (no new `audio.json` cue). The 📺
+hijack's own glitch stays the full one.
+
 **The house lights' new home (wave 20).** A project file beside
 `audio.json`, `lights.json` (the map editor's 💡 Lights tab; schema in
 `@loom/house` `house/src/lights.ts`), places the lights the story drives on
