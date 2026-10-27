@@ -161,7 +161,8 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 
 .line-pane {
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   min-height: 0;
 }
 
@@ -289,6 +290,9 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 .line.theirs .text { color: var(--phosphor); text-shadow: 0 0 8px var(--phosphor-faint); }
 .line.mine .text { color: #d8c98a; }
 .line.system .text, .line.kind-system .text, .line.kind-narration .text { color: var(--phosphor-dim); font-style: italic; }
+.line.echo.act .text { color: var(--amber); font-style: italic; opacity: 0.85; }
+.line.system.earlier { text-align: center; }
+.line.system.earlier .text { font-size: 0.7em; letter-spacing: 0.08em; color: var(--phosphor-faint); }
 .line.partial .cursor { animation: pulse 0.6s steps(2, end) infinite; margin-left: 0.1em; }
 .dots i {
   display: inline-block;
@@ -1139,10 +1143,27 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 
 /* --- the heart terminal's file panel (wave 11, `FilePanel.tsx`) -------- */
 
-.line-pane.with-files { grid-template-rows: auto 1fr auto; }
+/* The file button sits in its own strip over the thread (D6): a rule under
+   it, so the thread scrolls under an edge, never under the button. */
+.line-pane.with-files { grid-template-rows: auto minmax(0, 1fr) auto; }
+.line-pane.with-files.chatting { grid-template-rows: auto minmax(0, 1fr) auto auto; }
+/* On a short screen (1024x600) the thread keeps a floor, about two of his
+   lines: the heart's panel gives way and scrolls its list (▼ MORE) instead.
+   From 720 px up the panel's own 66vh leaves room (nine options at 1280x720). */
+@media (max-height: 660px) {
+  .line-pane.with-files { grid-template-rows: auto minmax(min(7em, 26vh), 1fr) auto; }
+  .line-pane.with-files.chatting { grid-template-rows: auto minmax(min(7em, 26vh), 1fr) auto auto; }
+}
+.file-strip {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.3em var(--pad);
+  border-bottom: 1px solid var(--phosphor-faint);
+  background: #000;
+}
 .file-open {
   justify-self: center;
-  margin: 0.4em 0 0;
+  margin: 0;
   background: #000;
   border: 2px solid var(--amber);
   border-radius: 4px;

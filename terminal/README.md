@@ -251,9 +251,25 @@ page reads the board over **Web Serial** (desktop Chrome or Edge on https).
   door open**. The *patch bay* section below it shows each input's reading,
   with **Learn** per source and **Save** / **Reset**.
 - **The heart.** The story docks the heart's menu in the guest's
-  `dm:Trabolta`. The page shows it as a clickable choice panel (`1`–`9` on
-  the keyboard too), greyed under *CLOSE THE DOOR* while the door is open.
-  ⟦SPEAK FREELY⟧ opens the composer for a free conversation.
+  `dm:Trabolta`. The page shows it as a YOUR ANSWER panel with the layer
+  (`LAYER 3 / 4 · THE ARGUMENT`), clicked or keyed (`1`–`9`, `0` for the
+  tenth, then `a`, `b` …). Up to nine options fit at 1280×720; more scroll
+  under a ▼ MORE cue. Since wave 27:
+  - The panel says LISTENING… and takes no click or key while his reply
+    is still being said (up to 20 s) and while one of his heart scenes
+    (the proof, a warning, an eject …) plays; the layer card does not
+    hold it. Space or a click on it skips his voice to the end.
+  - The thread shows this visit only. Earlier phone DMs are left out
+    behind "— earlier messages are on your phone —" (the line opens,
+    `terminal opened`, once the pilot's stream has sent its history).
+    His queued lines wait behind one typing row; a pick echoes as YOU
+    with the time, a deed in brackets (`[shows the Sandy File]`).
+  - While the door is open, *CLOSE THE DOOR* sits above the greyed
+    options and the top band sits under the bar.
+  - ⟦SPEAK FREELY⟧ opens the composer for a free conversation, with a
+    ⟦BACK⟧ bar under it (Esc). The composer never shows during an eject,
+    the proof or the shutdown, or once the heart is done. An eject ends
+    the line only after its scene and his queued lines (20 s cap).
 - **📎 GIVE HIM A FILE.** While a pass is open, the guest can give him
   codex entries, type a code, or scan a file's QR. A secret file, or one
   about someone else, shows why he won't take it.

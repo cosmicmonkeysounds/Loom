@@ -338,6 +338,28 @@ export interface Line extends ChatMessage {
   theirs: boolean;
 }
 
+/**
+ * The visit's floor (wave 27, B1): the newest seq of the first history the
+ * stream sends after the pilot changed. A room terminal shows only what is
+ * said past it — this visit, never the night's phone DMs. A reconnect's
+ * history never moves it (`prev` stays); `"pin"` (the talk opened before
+ * any history came) fixes it at -1: show everything rather than hide the
+ * opening lines.
+ */
+export function floorAfter(prev: number | null, history: readonly { seq: number }[] | "pin"): number {
+  if (prev !== null) return prev;
+  if (history === "pin") return -1;
+  return history.reduce((m, x) => Math.max(m, x.seq), -1);
+}
+
+/** How long a line waits for its stream's history before `terminal opened` goes anyway (ms). */
+export const VISIT_OPEN_FALLBACK_MS = 2_500;
+
+/** This visit's lines: past the floor (null: no history yet — every line). */
+export function visitLinesOf<L extends { seq: number }>(lines: readonly L[], floor: number | null): L[] {
+  return floor === null ? [...lines] : lines.filter((l) => l.seq > floor);
+}
+
 export interface PilotSession {
   view: GuestView | null;
   connected: boolean;
@@ -345,6 +367,10 @@ export interface PilotSession {
   ready: boolean;
   /** The DM thread, oldest first. */
   lines: Line[];
+  /** This visit's part of it (wave 27): `lines` past the visit's floor. */
+  visitLines: Line[];
+  /** The talk opened before the history came: keep every line (`floorAfter` "pin"). */
+  pinFloor: () => void;
   /** The character is composing a reply. */
   typing: boolean;
   /** Character is answered by an agent that is online now (null = unknown). */
@@ -372,7 +398,13 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
   const [view, setView] = useState<GuestView | null>(null);
   const character = characterIdOf(config.character, view);
   const channel = `dm:${character}`;
-  const [ready, setReady] = useState(false);
+  // `ready` belongs to one pilot: a render with a new pilot is never ready
+  // on the old one's history (the reset below runs a commit later).
+  const [readyFor, setReadyFor] = useState<Pilot | null>(null);
+  const ready = pilot !== null && readyFor === pilot;
+  const pilotRef = useRef(pilot);
+  pilotRef.current = pilot;
+  const [floor, setFloor] = useState<number | null>(null);
   const [dead, setDead] = useState<string | null>(null);
   const baseline = useRef(-1);
   const listeners = useRef(new Set<(line: Line) => void>());
@@ -381,7 +413,8 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
 
   useEffect(() => {
     setView(null);
-    setReady(false);
+    setReadyFor(null);
+    setFloor(null);
     setDead(null);
     baseline.current = -1;
     announced.current = new Set();
@@ -392,7 +425,8 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
     onTyping,
     onHistory: (list) => {
       baseline.current = list.reduce((m, x) => Math.max(m, x.seq), -1);
-      setReady(true);
+      setFloor((prev) => floorAfter(prev, list));
+      setReadyFor(pilotRef.current);
     },
     onLifecycle: (n) => {
       if (n.kind === "reset" || n.kind === "reload" || n.kind === "golive" || n.kind === "ended") setDead(n.kind);
@@ -408,6 +442,9 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
         .map((m) => ({ ...m, theirs: m.from === character })),
     [messages, channel, character],
   );
+
+  const visitLines = useMemo(() => visitLinesOf(lines, floor), [lines, floor]);
+  const pinFloor = useCallback(() => setFloor((prev) => floorAfter(prev, "pin")), []);
 
   // Announce each of the character's lines once, and only ones that land
   // after the backlog (a re-scan must not replay the whole conversation).
@@ -444,5 +481,5 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
     return me?.agent?.online ?? null;
   }, [view, character]);
 
-  return { view, connected, ready, lines, typing: typing.has(channel), online, say, onNewLine, dead };
+  return { view, connected, ready, lines, visitLines, pinFloor, typing: typing.has(channel), online, say, onNewLine, dead };
 }
