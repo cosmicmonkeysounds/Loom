@@ -78,7 +78,7 @@ def build_messages(
     if staged:
         # Only the live exchange is a turn, each saying who spoke; the
         # scripted lines (the Narrator's, other speakers') are in the block.
-        out.extend(history_turns(req))
+        out.extend(history_turns(req, persona))
     else:
         history = history[-window:]
         for line in history:

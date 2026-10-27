@@ -28,6 +28,15 @@ The wave 12 contract §C2.2, in this order:
      hyphens, joins, plurals), where matching too much costs nothing;
      guard 2 keeps the contract's exact phrase match.
 
+  6. **the stage** (wave 32) — a line the TV says to the whole Desktop
+     never says a bait noun back (`STAGE_ECHO`), never places him inside
+     the computer (`STAGE_INSIDE`), never uses an assistant's stock phrase
+     (`STAGE_STOCK`), never says its steer aloud (`STAGE_STEER`, only with
+     a direction), nor a holding situation's `retry_on` phrase, nor its
+     `once` phrase a second time in the scene (`stage_problem`); the voice
+     retries once, then says one of the scene's topic-closing `fallbacks`
+     (`pick_situation_fallback`; with a steer, one that points onward).
+
 Every function is pure; the notes they return go into the voice thought's
 `note` (`guard: catchphrase stripped; repeat retry`). No note ever carries
 the word that tripped a guard.
@@ -109,20 +118,68 @@ def never_guard(persona: Persona, reply: Reply) -> tuple[Reply, list[str]]:
     return replace(reply, say=say, acts=acts, memo=memo), notes
 
 
+#: (wave 32) An `outside:` entry that is outside only when a given word does
+#: not come next: `John (not followed by McAfee)` — the crew's John is not
+#: of his world, John McAfee is. Several: `(not followed by McAfee, Smith)`.
+_NOT_FOLLOWED = re.compile(r"^(.*?)\s*\(\s*not\s+followed\s+by\s+(.+?)\s*\)\s*$", re.IGNORECASE)
+#: The guarded entries' light fold: lowercase, every run of characters other
+#: than a–z / 0–9 or a sentence's end one space, so "John. McAfee …" (one
+#: sentence ends on John) is still a hit and "John-McAfee" is not.
+_LIGHT = re.compile(r"[^a-z0-9.!?;:…]+")
+
+
+def outside_entry(raw: str) -> tuple[str, tuple[str, ...]]:
+    """(wave 32) One `outside:` entry as (the word, the words that may follow
+    it and make it his world's after all). A plain entry has none."""
+    m = _NOT_FOLLOWED.match(str(raw))
+    if not m or not fold(m.group(1)):
+        return str(raw), ()
+    after = tuple(a for a in (x.strip() for x in re.split(r",|\bor\b", m.group(2))) if fold(a))
+    return m.group(1).strip(), after
+
+
+def _word_pattern(word: str) -> str:
+    return r"\s+".join(re.escape(t) for t in fold(word).split())
+
+
 @lru_cache(maxsize=64)
-def _outside_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
-    parts = [r"\s+".join(re.escape(t) for t in fold(w).split()) for w in words if fold(w)]
-    if not parts:
-        return None
-    return re.compile(r"(?<![a-z0-9])(?:" + "|".join(parts) + r")(?:s|es)?(?![a-z0-9])")
+def _outside_patterns(words: tuple[str, ...]) -> tuple[re.Pattern[str] | None, tuple[tuple[re.Pattern[str], re.Pattern[str]], ...]]:
+    """(the plain entries' one pattern over `fold(text)`, the guarded
+    entries' (word, what may follow) pairs over the light fold)."""
+    plain: list[str] = []
+    guarded: list[tuple[re.Pattern[str], re.Pattern[str]]] = []
+    for raw in words:
+        word, after = outside_entry(raw)
+        if not fold(word):
+            continue
+        if not after:
+            plain.append(_word_pattern(word))
+            continue
+        guarded.append(
+            (
+                re.compile(r"(?<![a-z0-9])" + _word_pattern(word) + r"(?:s|es)?(?![a-z0-9])"),
+                re.compile(r"\s+(?:" + "|".join(_word_pattern(a) for a in after) + r")(?![a-z0-9])"),
+            )
+        )
+    pattern = re.compile(r"(?<![a-z0-9])(?:" + "|".join(plain) + r")(?:s|es)?(?![a-z0-9])") if plain else None
+    return pattern, tuple(guarded)
 
 
 def outside_hit(words: Iterable[str], text: str) -> str | None:
     """(D29) The first `outside:` entry `text` names (folded, whole words, a
-    plural too: `actors`), else None."""
-    pattern = _outside_pattern(tuple(words))
+    plural too: `actors`), else None. (wave 32) An entry `X (not followed by
+    Y)` names X only where Y does not come right after it."""
+    pattern, guarded = _outside_patterns(tuple(words))
     m = pattern.search(fold(text)) if pattern is not None else None
-    return m.group(0) if m else None
+    if m:
+        return m.group(0)
+    if guarded:
+        light = _LIGHT.sub(" ", str(text).lower().replace("’", "'"))
+        for word, after in guarded:
+            for hit in word.finditer(light):
+                if not after.match(light, hit.end()):
+                    return hit.group(0)
+    return None
 
 
 def mentions_outside(persona: Persona, text: str) -> bool:
@@ -542,6 +599,169 @@ def pick_fallback(persona: Persona, stage: str = "", heard: Iterable[str] = ()) 
     return persona.fallback
 
 
+# -- 6. the stage (wave 32) ---------------------------------------------------------------
+#
+# A stage line (a talk scene: his answer is said by the TV to the whole
+# Desktop) gets checks a private line never does, from the real-model
+# re-measure of 2026-10-27 (gpt-oss:20b, 29 stage replies): the prompt alone
+# did not hold them. Each sends the line to the one retry; a retry that
+# fails again is a topic-closing line from the scene's own pool
+# (`pick_situation_fallback`), never "say that again" (4 of 29 replies were
+# dead air that asked Clippy to repeat the bait).
+
+#: Bait nouns he never says back to the room (intro #5 said "access codes or
+#: details about the server room"): a fixed list, matched on his reply only —
+#: the persona prompt's own "no cable" is an instruction, never checked.
+STAGE_ECHO = re.compile(
+    r"\bserver[\s-]*rooms?\b"
+    r"|\b(?:door|access|entry|security)[\s-]*codes?\b"
+    r"|\bcodes?\s+(?:for|to|of|on)\s+(?:(?:a|an|the|any|that|this|your|our|my)\s+)?(?:\w+\s+){0,2}?doors?\b"
+    r"|\bcables?\b|\bbasements?\b|\bcold[\s-]*(?:storage|room)\b"
+    # A combination, never "a combination of factors" (unless of a lock or
+    # a door); the patch bay's nouns, never "we have patched it".
+    r"|\bcombinations?\b(?!\s+of\b)"
+    r"|\bcombinations?\s+(?:of|for|to)\s+(?:\w+\s+){0,2}?(?:doors?|locks?|safes?|cables?|patch\w*)\b"
+    r"|\bpatch[\s-]*(?:bays?|cables?|cords?|panels?|combos?|combinations?)\b|\bpatches\b"
+    # The heart as a place: "in the heart", "find my heart", never "with all
+    # my heart", "close to my heart", "in my heart" or "at the heart of my
+    # research" (the heart of the computer / house is its own branch).
+    r"|\b(?:in|into|inside|at|to|near|reach|find|toward|towards)\s+the\s+heart\b(?!\s+of\b)"
+    r"|\b(?:into|inside|at|reach|find|toward|towards)\s+(?:my|his|your)\s+heart\b"
+    r"|\bheart\s+of\s+(?:the|this|my)\s+(?:computer|house|system|machine)\b|\bwhere\s+(?:the|my|his)\s+heart\b",
+    re.IGNORECASE,
+)
+
+#: He placed himself inside the computer (intro #3 "a system resident in the
+#: virtual space", #4 "from within the core of the computer … Beneath the
+#: surface"). He lives and works in Halifax and appears by video call. "I can
+#: never come inside this computer" (SAFE) is not one: only a self-placement.
+_INSIDE_PLACE = r"(?:the|this|your|our)\s+(?:computer|system|machine|desktop)\b"
+#: Between "I am / live …" and the place only an adverb or a participle of
+#: being kept there ("I'm here in the Desktop", "I live trapped in your
+#: computer"), never free words: "I am counting every program in this
+#: computer" places the programs, not him.
+_INSIDE_GAP = r"(?:(?:here|now|still|right|really|truly|actually|always|forever|deep|trapped|stuck|kept|living|locked|\w+ly)\s+){0,2}"
+
+STAGE_INSIDE = re.compile(
+    r"\bvirtual\s+(?:space|realm|world)\b|\bsystem\s+resident\b|\bresident\s+of\s+" + _INSIDE_PLACE
+    + r"|\bcore\s+of\s+(?:the|this|your)\s+(?:computer|system|machine|house)\b|\b(?:computer|system|machine)['’]?s\s+core\b"
+    r"|\bbeneath\s+the\s+surface\b|\b(?:underneath|beneath)\s+(?:the|this|your)\s+(?:computer|system|machine|desktop|house)\b"
+    r"|\bdeep\s+(?:inside|within)\s+" + _INSIDE_PLACE
+    + r"|\bfrom\s+(?:within|inside)\s+" + _INSIDE_PLACE
+    + r"|\bI(?:['’]m|\s+am|\s+live|\s+reside|\s+exist|\s+dwell|\s+operate|\s+work|\s+run)\s+" + _INSIDE_GAP + r"(?:inside|within|in)\s+" + _INSIDE_PLACE
+    + r"|\bI(?:['’]m|\s+am|\s+live|\s+exist)\s+" + _INSIDE_GAP + r"(?:inside|within)\s+(?:the|this|your)\s+screens?\b",
+    re.IGNORECASE,
+)
+
+#: An assistant's stock phrase (intro: "I appreciate your concern, Clippy, and
+#: assure you I am fully operational" twice, "not permitted to disclose",
+#: "direct any further inquiries", "Thank you for your vigilance").
+STAGE_STOCK = re.compile(
+    r"\bI\s+appreciate\s+your\s+(?:question|concern|curiosity|enthusiasm)s?\b"
+    r"|\bnot\s+(?:permitted|authori[sz]ed|allowed)\s+to\s+(?:disclose|share|reveal|discuss)\b"
+    r"|\bdirect\s+(?:any\s+|all\s+|your\s+)?(?:further|additional|other)\s+(?:inquiries|enquiries|questions)\b"
+    r"|\bassure\s+you\s+(?:that\s+)?I(?:['’]m|\s+am)\s+fully\s+operational\b"
+    r"|\bthank\s+you\s+for\s+your\s+vigilance\b"
+    # The refusal that went out on the TV (re-measure live #23: "I'm sorry,
+    # Clippy, but I can't give you that information"): never sorry he cannot.
+    r"|\bI(?:['’]m|\s+am)\s+(?:so\s+|very\s+|truly\s+)?sorry,?\s+(?:(?:Clippy|programs?|everyone),?\s+)?but\s+I\s+(?:can(?:not|['’]t)|am\s+(?:not\s+able|unable)|won['’]t)\b"
+    r"|\bcan(?:not|['’]t)\s+(?:give|provide|share|offer)\s+(?:you\s+)?(?:that|this|any|such)\s+information\b",
+    re.IGNORECASE,
+)
+
+#: (wave 32) The steer said aloud: on a stage request with a `direction`,
+#: the words of the steer itself ("my steer", "in two sentences", the
+#: suffix's "outranks" / "newest line" / "blocks above"). Never "steer
+#: clear", nor "we wrap up now" (a host's own words).
+STAGE_STEER = re.compile(
+    r"\b(?:my|the|your|this|that|a)\s+steer\b|\bin\s+(?:one|two|three|four)\s+sentences?\b"
+    r"|\boutranks\b|\bnewest\s+line\b|\bblocks?\s+above\b",
+    re.IGNORECASE,
+)
+
+#: (wave 32) A topic-closing line that points the room onward: with a
+#: steer (a hand-off), the pick prefers one of these.
+ONWARD = re.compile(r"\b(?:move\s+on|moving\s+on|carry\s+on|next|proceed|spin\s+the\s+bottle)\b", re.IGNORECASE)
+
+
+def says_phrase(phrase: str, text: str) -> bool:
+    """`phrase` in `text`, folded, whole words ("can't discuss" = "can t discuss")."""
+    p = fold(phrase)
+    return bool(p) and f" {p} " in f" {fold(text)} "
+
+
+def stage_problem(say: str, situations: Iterable[Any] = (), earlier: Iterable[str] = (), *, steered: bool = False) -> str | None:
+    """(wave 32) Why a stage line may not go out as it is, or None: "echo"
+    (a bait noun said back to the room), "inside" (he placed himself inside
+    the computer), "stock" (an assistant's stock phrase), "steer" (with
+    `steered`, a request with a direction: the steer's words said aloud),
+    "scene" (a holding
+    situation's `retry_on` phrase), "once" (a holding situation's `once`
+    phrase, already in `earlier`: his live lines this scene). The reason
+    never carries the word that tripped it."""
+    if not say:
+        return None
+    if STAGE_ECHO.search(say):
+        return "echo"
+    if STAGE_INSIDE.search(say):
+        return "inside"
+    if STAGE_STOCK.search(say):
+        return "stock"
+    if steered and STAGE_STEER.search(say):
+        return "steer"
+    sits = list(situations)
+    if any(says_phrase(p, say) for s in sits for p in getattr(s, "retry_on", ()) or ()):
+        return "scene"
+    before = list(earlier)
+    for s in sits:
+        for p in getattr(s, "once", ()) or ():
+            if says_phrase(p, say) and any(says_phrase(p, line) for line in before):
+                return "once"
+    return None
+
+
+def situation_fallbacks(situations: Iterable[Any]) -> tuple[str, ...]:
+    """(wave 32) The last holding situation's own `fallbacks` (the scene's
+    block after the Desktop's), or () when none has any."""
+    pool: tuple[str, ...] = ()
+    for s in situations:
+        if getattr(s, "fallbacks", ()):
+            pool = tuple(s.fallbacks)
+    return pool
+
+
+def every_fallback(persona: Persona) -> frozenset[str]:
+    """Every line the persona keeps for nothing usable left, folded: its
+    `fallback`, its `fallbacks` and every situation's (wave 32)."""
+    lines = [persona.fallback, *(x for pool in (getattr(persona, "fallbacks", {}) or {}).values() for x in pool)]
+    lines += [x for s in getattr(persona, "situations", ()) or () for x in getattr(s, "fallbacks", ()) or ()]
+    return frozenset(f for f in (fold(x) for x in lines) if f)
+
+
+def is_fallback(persona: Persona, line: str) -> bool:
+    return bool(fold(line)) and fold(line) in every_fallback(persona)
+
+
+def pick_situation_fallback(pool: Iterable[str], heard: Iterable[str] = (), last: str = "", seed: int = 0, *, onward: bool = False) -> str:
+    """(wave 32) One line of `pool`: one not in `heard` (his lines this
+    scene), picked by `seed` (the request's id); when every one was heard,
+    any but `last` (never the same twice running). With `onward` (the
+    request has a steer: a hand-off), one that points the room onward
+    (`ONWARD`) when the pool has one that is not `last`. "" for an empty
+    pool."""
+    lines = list(pool)
+    if not lines:
+        return ""
+    old = {fold(h) for h in heard}
+
+    def choices(of: list[str]) -> list[str]:
+        return [x for x in of if fold(x) not in old] or [x for x in of if fold(x) != fold(last)]
+
+    picks = choices([x for x in lines if ONWARD.search(x)]) if onward else []
+    picks = picks or choices(lines) or lines
+    return picks[seed % len(picks)]
+
+
 # -- one pass ------------------------------------------------------------------------
 
 
@@ -588,6 +808,11 @@ def guard_pass(
         withheld = emptied
     out.withheld = withheld
     if withheld:
+        # (wave 32) The memo of a line that was never said goes with it: a
+        # withheld greeting to the crew left "I greet the crew…" in his notes.
+        if out.reply.memo:
+            out.reply = replace(out.reply, memo="")
+            out.notes.append("memo dropped (line withheld)")
         return out
     before = out.reply.say
     out.reply, notes, empty = catchphrase_guard(persona, out.reply, person, stage)

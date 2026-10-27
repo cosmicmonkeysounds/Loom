@@ -300,6 +300,9 @@ class Agents:
         # -- the new mind --
         #: The newest request per character (its powers build P1 for a Rewrite / a summary).
         self._last_req: dict[str, dict[str, Any]] = {}
+        #: (wave 32) character → (the last stage request's scene, the seq its
+        #: live turns start after): `voice.scene_cut`.
+        self._scenes: dict[str, tuple[str, int]] = {}
         #: (character, person id) → quiet-summary bookkeeping: turns since the
         #: last summary, when they last spoke, their newest history, the memo set summarised.
         self._quiet: dict[tuple[str, str], dict[str, Any]] = {}
@@ -576,6 +579,7 @@ class Agents:
         for task in list(self._director_calls):
             task.cancel()
         self._last_req.clear()
+        self._scenes.clear()
         for name, mind in self.minds.items():
             mind.reset(by=by)
             self._save_mind_now(name)
@@ -843,6 +847,10 @@ class Agents:
             who = speaker.get("name") or speaker.get("id") or "?"
             if persona is None:
                 return  # not ours (a misrouted request) — the server times it out
+            # (wave 32) A new talk scene starts its live turns afresh.
+            from .voice import scene_cut
+
+            req, self._scenes[character] = scene_cut(req, self._scenes.get(character))
             log.info("%s ← %s: %s", persona.character, who, req.get("text", ""))
             self.orchestrator.busy(+1)
             self._inflight += 1

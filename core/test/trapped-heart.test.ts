@@ -1137,7 +1137,14 @@ function blockList(text: string, key: string): string[] {
 const PERSONA = read("trabolta.persona.md");
 const MIND = read("trabolta.mind.md");
 const OUTSIDE = blockList(PERSONA, "outside");
-const wordHit = (text: string, word: string) => new RegExp(`(?<![\\p{L}\\p{N}])${word.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?![\\p{L}\\p{N}])`, "iu").test(text);
+const escapeRe = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+/** An `outside:` entry in `text`; `X (not followed by Y)` (wave 32) names X only where Y does not come next. */
+const wordHit = (text: string, entry: string) => {
+  const m = /^(.*?)\s*\(\s*not followed by\s+(.+?)\s*\)$/iu.exec(entry);
+  const word = m ? m[1]! : entry;
+  const after = m ? `(?![\\s-]+(?:${m[2]!.split(/,|\bor\b/u).map((a) => escapeRe(a.trim())).filter(Boolean).join("|")})(?![\\p{L}\\p{N}]))` : "";
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(word)}(?![\\p{L}\\p{N}])${after}`, "iu").test(text);
+};
 
 describe("The Heart — secrets and the fiction (wave 20, D29)", () => {
   const facts = parseFactsText(read(FACTS_FILE)).facts!;
@@ -1174,17 +1181,36 @@ describe("The Heart — secrets and the fiction (wave 20, D29)", () => {
 
   it("outside: never names something of his own world (John McAfee, the fundraiser party, any codex text)", () => {
     expect(OUTSIDE).not.toContain("John");
+    // Wave 32: the crew's John is outside, John McAfee is his.
+    expect(OUTSIDE).toContain("John (not followed by McAfee)");
+    expect(wordHit("Good evening, John.", "John (not followed by McAfee)")).toBe(true);
+    expect(wordHit("John McAfee, take the hall.", "John (not followed by McAfee)")).toBe(false);
     expect(OUTSIDE).not.toContain("party");
     expect(OUTSIDE).not.toContain("parties");
-    const own = ["John McAfee", "a special fundraiser party to restore the sign"];
+    // Each line with the codex entry it is in: a guarded entry's bare word in
+    // an entry that names what may follow it ("John's lawyer" in an entry about
+    // McAfee, John McAfee's second mention) is that person, his world's.
+    const own: { line: string; entry: string; where: string }[] = [
+      { line: "John McAfee", entry: "", where: "John McAfee" },
+      { line: "a special fundraiser party to restore the sign", entry: "", where: "the invitation" },
+    ];
     for (const f of readdirSync(join(DIR, "codex"))) {
-      for (const raw of read(join("codex", f)).split("\n")) {
-        const l = raw.trim();
-        if (l !== "" && !l.startsWith("//")) own.push(l);
+      for (const [i, entry] of read(join("codex", f)).split(/^(?=CODEX )/mu).entries()) {
+        for (const raw of entry.split("\n")) {
+          const l = raw.trim();
+          // A codex line is never printed (it may carry a code): the file and entry index only.
+          if (l !== "" && !l.startsWith("//")) own.push({ line: l, entry, where: `codex/${f} entry ${i}` });
+        }
       }
     }
-    for (const raw of read("beats/review.loom").split("\n")) if (raw.trim().startsWith("Trabolta:")) own.push(raw.trim());
-    for (const line of own) for (const w of OUTSIDE) expect(wordHit(line, w), `${line} ~ ${w}`).toBe(false);
+    for (const raw of read("beats/review.loom").split("\n")) if (raw.trim().startsWith("Trabolta:")) own.push({ line: raw.trim(), entry: "", where: raw.trim() });
+    const follows = (w: string) => /\(\s*not followed by\s+(.+?)\s*\)$/iu.exec(w)?.[1]?.split(/,|\bor\b/u).map((a) => a.trim()).filter(Boolean) ?? [];
+    for (const { line, entry, where } of own) {
+      for (const w of OUTSIDE) {
+        if (follows(w).some((y) => wordHit(entry, y))) continue;
+        expect(wordHit(line, w), `${where} ~ ${w}`).toBe(false);
+      }
+    }
     expect(PERSONA).toMatch(/fundraiser\nparty to restore the sign/u);
   });
 
