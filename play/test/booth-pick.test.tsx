@@ -132,7 +132,7 @@ describe("PLAYER SELECT, wave 26 (B3–B5)", () => {
     expect(openingFor(steps4.map((x) => ({ ...x, satisfied: true }))).at).toBe(0);
     // A ticked step opened by hand says so; "+ Another round" forgets the story's ticks.
     const sel = readFileSync(new URL("../src/booth/pick/select.tsx", import.meta.url), "utf8");
-    expect(sel).toMatch(/\{fresh && step\.satisfied === true && <p className="bsel-reply">\{\/\* DRAFT w26 \(integration B1\): UI copy \*\/\}✓ Already done\.<\/p>\}/u);
+    expect(sel).toMatch(/\{fresh && step\.satisfied === true && <p className="bsel-reply">✓ Already done\.<\/p>\}/u);
     expect(sel).toMatch(/setDone\(steps\.map\(\(\) => null\)\);\s*setFresh\(false\);/u);
     // The booth hands its own presses in.
     expect(readFileSync(new URL("../src/booth/app.tsx", import.meta.url), "utf8")).toContain("seed={s.lastPressedOn}");
@@ -149,8 +149,8 @@ describe("PLAYER SELECT, wave 26 (B3–B5)", () => {
     expect(html).toContain("That&#x27;s over now.");
     // The tiles stay visible (what was done) but can't be pressed.
     expect(html).toMatch(/role="option"[^>]*disabled=""/u);
-    // Its copy is marked for the sign-off.
-    expect(readFileSync(new URL("../src/booth/pick/select.tsx", import.meta.url), "utf8")).toContain('{/* DRAFT w26 (B5): UI copy */}That\'s over now.');
+    // Its copy is signed off (2026-10-27).
+    expect(readFileSync(new URL("../src/booth/pick/select.tsx", import.meta.url), "utf8")).toContain('<p className="bsel-reply">That\'s over now.</p>');
   });
   it("B5: an ended round's SAME button is disabled, not a silent no-op", () => {
     expect(readFileSync(new URL("../src/booth/pick/select.tsx", import.meta.url), "utf8")).toMatch(/bsel-same-go" disabled=\{busy \|\| ended\}/u);

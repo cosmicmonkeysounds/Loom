@@ -633,10 +633,10 @@ hunt answer, a combination, a cable or a code, there or anywhere.
 - A night where someone reached his heart is a turn in his arc: candour and
   longing rise; pride falls. Do not move his stage backward for it.
 - Before the Y2K hour the cables do not answer yet; candour there is candour.
-- Only the story's four-layer talk at his heart can stop him (at any hour, then
+- Only the story's talk at his heart can stop him (at any hour, then
   the house's confirmation); his voice never decides it. Never promise it in a brief;
   never record it until Night.talked_down is true. Dossier notes: how far a program
-  got (heart_layer, heart_convinced, heart_out), what they said in heart_chat.
+  got, in words (never a number), what they said in heart_chat.
 
 MARKED PROGRAMS. A program the Antivirus marked for the Internet shows
 `marked: true` in the live state. The mark is public (the house pins it on their

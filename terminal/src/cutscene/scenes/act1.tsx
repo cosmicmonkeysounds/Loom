@@ -802,7 +802,7 @@ const FILE_NUDGE_EVERY = 12_000;
 export const FILE_NUDGES: readonly string[] = [
   "Your 📝 card is on your phone.",
   "Found a fact? File it now.",
-  // DRAFT w26 (G1: no judging rule in the filing reminders)
+  // w26 (G1: no judging rule in the filing reminders)
   "Trabolta is waiting for your files.",
   "Filings close in two minutes.",
 ];
@@ -810,11 +810,11 @@ export const FILE_NUDGES: readonly string[] = [
  *  the judging rule (accurate / confident / guess); the three-stamp timing,
  *  its clicks and its hold stay as they were. */
 export const FILING_STEPS: ReadonlyArray<{ text: string; ok: boolean }> = [
-  // DRAFT w26 (G1: the filing window stamps in-fiction steps, not the rules)
+  // w26 (G1: the filing window stamps in-fiction steps, not the rules)
   { text: "Open the 📝 card in Trabolta's thread.", ok: true },
-  // DRAFT w26 (G1)
+  // w26 (G1)
   { text: "File everything you found.", ok: true },
-  // DRAFT w26 (G1)
+  // w26 (G1)
   { text: "Trabolta is reading every word.", ok: true },
 ];
 
@@ -1394,9 +1394,9 @@ export const DARE_CHOSEN_MS = BOTTLE_VERDICT_MS + 4000;
 
 /** His order on a Dare (wave 26, D1): the mark's dialog and the ticker. */
 export const DARE_ORDER = {
-  // DRAFT w26 (D1: the Dare Chosen scene's dialog)
+  // w26 (D1: the Dare Chosen scene's dialog)
   mark: (who: string) => `MARKED FOR REINSTALLATION — ${who}: chose Dare. Antivirus: take them to the Internet.`,
-  // DRAFT w26 (D1: the Dare Chosen scene's ticker)
+  // w26 (D1: the Dare Chosen scene's ticker)
   ticker: "★ PROGRAMS CHOOSE TRUTH ★ ANTIVIRUS: TAKE THEM TO THE INTERNET ★",
 } as const;
 

@@ -42,7 +42,7 @@ The Antivirus sweep the house, room by room, herding programs back to the Deskto
   cast: Clippy
 
 Clippy: Welcome back, programs! It's time for the First Moment of Truth! Is anyone able to answer the questions?
-// DRAFT w26 (G1: Clippy explains nothing; the rules are never said out loud)
+// w26 (G1: Clippy explains nothing; the rules are never said out loud)
 Clippy: Every answer you filed with Trabolta will be judged. Trabolta knows best!
 Clippy: You have two minutes. File anything you found with Trabolta NOW. Then we read the results, one question at a time.
 
@@ -58,7 +58,6 @@ Clippy: Pencils down! Trabolta is reading. Question one, coming up.
 // Wave 18b (Q6, R20, R21): Trabolta reads and judges, voiced by the TV; the
 // screens show the rows (`do fact_read`). Every house line of this beat is
 // kept out of his worker's `recent` by name. The bottle waits for Q3.
-// DRAFT w18b
 == Question Results
   setting: The Desktop
   cast: Trabolta, Clippy
@@ -94,9 +93,9 @@ Trabolta: {Night.bottle_pick}. Truth or dare?
   setting: The Desktop
   cast: Trabolta
 
-// DRAFT w26 (D1: Trabolta makes a scene)
+// w26 (D1: Trabolta makes a scene)
 Trabolta: A dare. {Night.bottle_pick} chose a dare, in my computer.
-// DRAFT w26 (D1)
+// w26 (D1)
 Trabolta: Programs do not dare. Programs answer. Everyone, watch closely: this is what a dare costs.
-// DRAFT w26 (D1: the order to the Antivirus)
+// w26 (D1: the order to the Antivirus)
 Trabolta: Antivirus! Take {Night.bottle_pick} to the Internet. Now.

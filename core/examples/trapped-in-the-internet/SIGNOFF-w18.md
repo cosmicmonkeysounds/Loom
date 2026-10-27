@@ -1,6 +1,8 @@
-# SIGNOFF — wave 18 (DRAFT)
+# SIGNOFF — wave 18 (signed off)
 
-**Status: DRAFT, awaiting the user's sign-off.** Wave 18 is the Play app's
+**Signed off 2026-10-27.** The user, of every sign-off sheet: *"Every line in the signoffs looks good! ship those please."* Every line below ships as written, and every drafted default and vetoable decision ("as drafted", "as built", "default unless vetoed") is accepted as it stands. The `DRAFT w18` markers are gone from the source; this sheet stays as the record.
+
+**Status (when drafted):** Wave 18 is the Play app's
 de-bloat and *feel like a game* overhaul (the user's ask of 2026-10-21, after
 answering `SIGNOFF-w13.md`): a guest's home is **Mission**, the rooms are
 **Chats**, the story-named lobby is a far-away **📜 Chat log**, big decisions are

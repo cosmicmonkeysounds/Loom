@@ -211,7 +211,7 @@ else if Kernel.t8 == "lie":
   set Kernel.v_lies += 1
 else:
   set Kernel.v_none += 1
-// DRAFT w18b (Q6)
+// w18b (Q6)
 Trabolta: I have compared every fact you gave me with truth.txt.
 Trabolta: {Kernel.v_true} true. {Kernel.v_lies} with a lie on record. {Kernel.v_none} nobody answered.
 // Wave 18b (screens #3): the TV pages every question's answer and its
@@ -244,7 +244,7 @@ set Night.screen = "song"
 set Night.terminals = "song"
 sound youre_the_one_vocoder
 set Night.everyone_free = true
-// DRAFT w18 (fix): the banner carries its way there (recheck N9).
+// w18 (fix): the banner carries its way there (recheck N9).
 broadcast "!🎵 TRABOLTA SOLVED IT. Those of you who want to leave may leave. To the living room for the song." to everyone with go: The Desktop
 Trabolta: You succeeded. I have solved the Grand Unified Theory, and I am pursuing Sandy. Those of you who want to leave may leave.
 // From Grok Prom (the pickup line) he has just said they lied to him.

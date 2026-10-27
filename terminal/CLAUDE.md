@@ -56,7 +56,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/scanner.tsx`, `src/scan.ts`, `src/camera.ts` | QR scan (`BarcodeDetector`, else jsQR); what a code means; one shared ref-counted `MediaStream` |
 | `src/pilot.ts`, `src/chat.tsx`, `src/controls.tsx`, `src/idle.ts` | impersonate / say / end; `terminal opened` / `closed` (`VisitLatch`); a room terminal checks for a locked pass first (`refusesLockedPass`, `passLocked`); the thread + composer; the 2 s ⚙ hold; the leash (30 s, files 120 s, heart 180 s) |
 | `src/files.ts`, `src/FilePanel.tsx` | 📎 GIVE HIM A FILE: share / redeem as the piloted guest |
-| `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows; wave 27: `panelGate` + `panelSince` (the panel waits on his voice and his scenes, and settles again after a skip), `panelPlace` (a ⟦BACK⟧ menu with no composer still draws its bar), `optionKey`, `layerOfBeat`, `echoOf` (re-exported from core's `pick-echo.ts`), `composerBlocked` (also held at the heart until his first word, `heartWaitingFirstWord`), `threadFor`, `pilotEndWait`), `pending-pick.ts` (a pick shown at once until the server's line), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
+| `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows; wave 27: `panelGate` + `panelSince` (the panel waits on his voice and his scenes, and settles again after a skip), `panelPlace` (a ⟦BACK⟧ menu with no composer still draws its bar), `optionKey`, `layerOfCue` (scene timing only; wave 29: no header, card or test shows a layer number), `echoOf` (re-exported from core's `pick-echo.ts`), `composerBlocked` (also held at the heart until his first word, `heartWaitingFirstWord`), `threadFor`, `pilotEndWait`), `pending-pick.ts` (a pick shown at once until the server's line), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
 | `src/serial/` | the M4 bridge: `door-protocol.ts` (JSON lines, pure), `door-bridge.ts` + `patch-bridge.ts` (decisions, pure), `door-serial.ts` (Web Serial + `door=sim`, lazy), `door-status.ts` (store + heartbeat keys), `use-door.ts` (hook) |
 | `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (linked by room: `linkedNow`, `linkedPane`, `usePresenceLatch`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three) |
@@ -308,11 +308,13 @@ them out.
   timeout, then it opens as before). A locked pass gets
   `LOCKED_PASS_NOTICE` and no line; the story guards `terminal_opened`
   too. Other walls open the line and the server refuses every post.
-- **DRAFT copy.** New show copy carries `// DRAFT w26` (G1: the filing
-  steps, the reminders, Truth Pong, the summons, the chess stakes line
-  *Checkmate him.*; D1: `dare_chosen` on the `Dare Chosen` beat,
-  `DARE_ORDER`; `LOCKED_PASS_NOTICE`). The rows are in the show's
-  `SIGNOFF-w26.md`; it awaits the user's sign-off.
+- **Signed-off copy.** Wave 26's show copy (G1: the filing steps, the
+  reminders, Truth Pong, the summons, the chess stakes line *Checkmate
+  him.*; D1: `dare_chosen` on the `Dare Chosen` beat, `DARE_ORDER`;
+  `LOCKED_PASS_NOTICE`) is in the show's `SIGNOFF-w26.md`, signed off on
+  2026-10-27; its comments keep a `// w26 (<note>)` tag. New copy awaiting
+  sign-off carries `// DRAFT w<N>` (wave 29's heart card and G11 line:
+  `SIGNOFF-w29.md`).
 - **Tests read the show.** Several tests read
   `core/examples/trapped-in-the-internet/` (`house.json`,
   `house.shed.json`, `generated/questions.loom`, `cast/trabolta.loom`,
@@ -355,7 +357,7 @@ them out.
 - **Room scene stages.** A room scene's stage carries `cutscene-room`
   (`cutscene-${kind}`); the wrapper's `display: contents` rule is
   `.cutscene-top.cutscene-room` so the stage keeps its box. A side scene
-  (layer card, proof, warning) draws over the face pane only.
+  (the question card, proof, warning) draws over the face pane only.
 - **Stale comments.** `src/tv.ts` still says "QLab plays the sung track":
   the house router plays it now. The behaviour (song beats captioned, not
   spoken) is right. ⚙'s `VIEW_INFO.world` still reads "the simulation,

@@ -29,7 +29,6 @@
   flex: none;
 }
 .heart-head-title { color: var(--amber); }
-.heart-head-layer { color: var(--phosphor); }
 .heart-head-wait { color: var(--phosphor); display: inline-flex; align-items: baseline; gap: 0.6em; }
 .heart-head-wait .dots i { width: 0.5em; height: 0.5em; }
 .heart-head-skip { color: var(--phosphor-faint); }

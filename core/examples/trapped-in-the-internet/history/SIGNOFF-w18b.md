@@ -1,6 +1,8 @@
-# SIGNOFF — wave 18b (DRAFT)
+# SIGNOFF — wave 18b (signed off)
 
-**Status: DRAFT, awaiting the user's sign-off.** Wave 18b is the rehearsal
+**Signed off 2026-10-27.** The user, of every sign-off sheet: *"Every line in the signoffs looks good! ship those please."* Every line below ships as written, and every drafted default and vetoable decision ("as drafted", "as built", "default unless vetoed") is accepted as it stands. The `DRAFT w18b` markers are gone from the source; this sheet stays as the record.
+
+**Status (when drafted):** Wave 18b is the rehearsal
 fixes of 2026-10-21 (`W18-ASKS.md`): the house router plays the story's
 sounds and announcements through the **MOTU 828x + ADAT expander** (QLab and
 the `alexa` player retire), the **tent laptop** is a terminal *and* the

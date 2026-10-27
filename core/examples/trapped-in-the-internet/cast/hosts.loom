@@ -4,7 +4,7 @@
 // (hygiene and maintenance). Each is a real body at the party: a
 // performer with a phone, in on the play.
 //
-// Wave 21 (DRAFT w21): Clippy is a PLAYER, not a host. The three hosts
+// Wave 21: Clippy is a PLAYER, not a host. The three hosts
 // (`admin: true`) and the directors call the games; Clippy runs them in
 // the room and plays the night for ⭐ Points (TRAIT Player, cast/kit.loom),
 // with a booth that only learns its own buttons. Clippy is a Greeter (the
@@ -47,50 +47,42 @@ CHARACTER Clippy is Greeter, Player
   // ── Booth cues ────────────────────────────────────────────────────
   when call_to_the_desktop:
     if Night.step < 1:
-      // DRAFT w21
       reply 📋 Instructions 1/X are in your Codex. Welcome everyone, introduce the hosts; a host starts Bingo.
 
   // Wave 21: Clippy calls no cue. Each game a host or a director starts
   // pops out on Clippy's booth: YOUR GAME IS ON (a big readout). Character
   // hooks run before the story rule, so each guard reads the night before
-  // the cue lands (a refused or repeated press says nothing). DRAFT w21
+  // the cue lands (a refused or repeated press says nothing).
   when start_the_bingo:
     if Night.step < 2:
       reply !!🎱 YOUR GAME IS ON · Computer Bingo, 20 minutes. Fill the Desktop with noise; winners come to you. ⭐ +10 per winner you call.
 
   when bingo_time_up:
-    // DRAFT w21
     reply ⏰ 20 minutes are up. A host calls ⏰ Bingo time: get the winners ready.
 
   // Wave 26 (B2): once, even after a ↩ Not a Bingo (`bingo_briefed`).
   when bingo_time:
     if Night.step < 3 and Night.bingo_briefed != true:
-      // DRAFT w21
       reply !!🎱 YOUR GAME IS ON · The Bingo results. 2/X is in your Codex. 🎱 each winner, 🎀 the ribbon, 🎯 the program they name. Demand applause.
 
   when start_the_hunt:
     if Night.step < 5:
-      // DRAFT w21
       reply !!🔎 YOUR GAME IS ON · The Truth Scavenger Hunt, 15 minutes. Trabolta explains the rules; keep the programs hunting.
 
   when first_moment_of_truth:
     if Night.step >= 5 and Night.step < 7 and Night.judging != true:
-      // DRAFT w21
       reply !!⚖️ YOUR GAME IS ON · The First Moment of Truth. Trabolta reads the results; judge what is said aloud. ⭐ +5 per answer you judge.
 
   when truth_pong:
     if Night.step >= 8 and Night.step < 10:
-      // DRAFT w21
       reply !!🏓 YOUR GAME IS ON · Truth Pong. Cup-makers answer; you judge them. ⭐ +5 per cup and per answer.
 
   when bobbing_for_truth:
     if Night.ended != true and Night.step < 17 and Night.phase != "bobbing":
-      // DRAFT w21
       reply !!🍎 YOUR GAME IS ON · Bobbing for Truth, with Adobe. ⭐ +15 for the program who brings up the Bag.
 
   when start_the_ceremony:
     if Night.ended == true and Night.ceremony != true:
-      // DRAFT w21
       reply !!🏆 YOUR GAME IS ON · The awards ceremony. Lead the applause; the staff awards come last, and one of them might be yours.
 
   // Character hooks run before the story rule, so step is still 3 on the
@@ -126,7 +118,6 @@ CHARACTER Clippy is Greeter, Player
 
   when computer_destroyed:
     if Night.ended != true:
-      // DRAFT w21
       reply 📋 9/X is in your Codex. After the dance a host calls 🪦 the summary: read it from the Desktop room.
 
   // ── Scoring (wave 21) ───────────────────────────────────────────────
@@ -136,7 +127,7 @@ CHARACTER Clippy is Greeter, Player
   // `game_credit` when the press counted (`points`, trust `gain`, and
   // `counts` 1 for a judged answer). Only Clippy's own press (or a
   // director's quick-fire with no actor) pays Clippy. Kernel is secret:
-  // the stamp never reaches Trabolta's worker. DRAFT w21
+  // the stamp never reaches Trabolta's worker.
   when bingo_winner for program:
     set Kernel._pressed_by = "Clippy"
   when award_the_ribbon for program:
@@ -202,7 +193,7 @@ CHARACTER Clippy is Greeter, Player
   // 🤫 Tip them off: a whisper to a marked program that the Antivirus are
   // coming (once per program). 🤫 Let it slide: a guess Clippy is judging
   // goes into the record as accepted instead (once per program per
-  // round). Each is a quiet favour (`covert`, private). DRAFT w21
+  // round). Each is a quiet favour (`covert`, private).
   when tip_off for program:
     if Night.truther_sent == true and program.marked == true and program.corrupted != true and program.tipped != true:
       set program.tipped = true

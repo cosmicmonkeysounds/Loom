@@ -9,6 +9,13 @@
 > "house Mac" / "TV computer"; that role is now split across John's MacBook
 > and John's Windows Desktop. The VPS runs `w27` (master through wave 27,
 > shipped 2026-10-27).
+>
+> **Sign-off (2026-10-27).** The user signed off every sheet: *"Every line
+> in the signoffs looks good! ship those please."* The show text of waves
+> 13, 18, 18b, 20, 20b, 21, 26, 27 and 28 ships as written and every drafted
+> default is accepted; the "awaits the user's sign-off" notes in the wave
+> sections below are history. Still DRAFT: wave 22's patch-bay lines (no
+> sheet). Wave 29 (`SIGNOFF-w29.md`) was signed off the same day.
 
 **The party is Saturday, October 31, 2026. Written Thursday, October 15, 16 calendar days out.**
 This was the **active plan** during the build. [`SCHEDULE.md`](./SCHEDULE.md) is the full roadmap (245.5 dev-days) for

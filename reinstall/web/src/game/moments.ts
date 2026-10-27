@@ -33,10 +33,10 @@ export const SCARE_WAIT_MS = 4000;
 /** A retry after a parked session or a network hiccup (ms). */
 export const MOMENT_RETRY_MS = 1500;
 
-// DRAFT w26 (R4): the scare panel — glitch art, no name text.
+// w26 (R4): the scare panel — glitch art, no name text.
 export const SCARE_TITLE = "FATAL EXCEPTION 0E";
 
-// DRAFT w26 (R7): the notice when a disk is picked up.
+// w26 (R7): the notice when a disk is picked up.
 export const PICKUP_NOTICE = "💾 You picked up a disk.";
 
 /** Far enough out into the void to trigger an escape (`ESCAPE_M` plan metres

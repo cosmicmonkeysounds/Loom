@@ -10,7 +10,7 @@
 | 🏓 Truth Pong | the **📋 Truth Pong: judge the cup** list (from your NOW card): one row per thrower, **🏓 Made** / **🏓 Missed** (two taps) — no scans | the thrower |
 | 🏓 Truth Pong, after a made cup (if Clippy is busy) | **✅ Q1/Q2/Q3** accurate · **😤 Q1/Q2/Q3** confident · **🤷** uncertain or guessed: marked | the answerer (Q1–Q3 = H4–H6) |
 | 🍎 Bobbing for Truth (with Clippy) | **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob: marked for reinstallation** | the bobber |
-| any time | **🎀 Award a ribbon** (announced as *from the hosts*: DRAFT, Q28) · **🤝 Vouch** · **🩹 Unmark** (on a marked program's card face) | |
+| any time | **🎀 Award a ribbon** (announced as *from the hosts*, Q28) · **🤝 Vouch** · **🩹 Unmark** (on a marked program's card face) | |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each) |
 | Grok Prom | **💘 Said "You're the one that I want"** | |
 | the summons (⏳ → 🚨) | nothing to scan: programs check themselves in with the Desktop's QR. **📍 They're here** on your NOW card's *Still missing* list only for a dead or lost phone | |
@@ -55,7 +55,7 @@ buttons…* fold any more; a press the story refuses still shows its `# hosts`
 reason). 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
 never on your card: radio one. The console's **Needs** tab leads with **🚨 n marked · m nobody on it** while programs wait on the Antivirus' Wanted board (tap it for the board, read-only); **Judge** has the *Judging: auto ⇄ review* switch; **More** is split into **Night** (doors, pause, the show clock, announce, the alert level), **House** (wallets, the King, terminals, Trabolta, crews) and **Setup** (codes and QRs, parts). Help → *The host console* has the rest.
 
-**You call the games now (wave 21, DRAFT w21).** Clippy is a *player*, not a
+**You call the games now (wave 21).** Clippy is a *player*, not a
 caller: every game cue (🎱 Bingo, ⏰ Bingo time, 🔎 the hunt, ⚖️ ⏱ 📋 🍾 the First
 Moment of Truth, 📓 Hunt 2, 🍎 the bob, 🪦 the summary, 🏆 the ceremony and
 every award) is the hosts' and the directors', like the rest of the sheet.
@@ -99,7 +99,6 @@ yes."
 
 ## Who you know
 
-<!-- DRAFT w18b -->
 The house deals the programs files about **who they are connected to** (Codex → **Connections**). You hold these from the start. Each points at people in the house without naming them; a program holding the same file is connected to the people it points at.
 
 - **The Pirate Site**: you hold this file from the start. A program holding it is connected to the people it points at; it never names them.

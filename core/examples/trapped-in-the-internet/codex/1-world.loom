@@ -106,8 +106,8 @@ CODEX The Centre Square
     where AI makes all of your decisions. If anyone asks, say so. Tell the
     truth all night.
 
-// DRAFT w18b (R18): the owner, not the computer's AI helper.
-// DRAFT w26 (R5: only the screens in its room see it)
+// w18b (R18): the owner, not the computer's AI helper.
+// w26 (R5: only the screens in its room see it)
 CODEX The Reinstallation Protocol
   title: The Reinstallation Protocol
   category: How it works
@@ -123,7 +123,7 @@ CODEX The Reinstallation Protocol
     reinstalled. The screens in the room it walks into show it wandering.
     A program that needs to leave turns on Bathroom Mode first.
 
-// DRAFT w26 (G1: the exemption is never said up front)
+// w26 (G1: the exemption is never said up front)
 CODEX Bathroom Mode
   title: Bathroom Mode
   category: How it works

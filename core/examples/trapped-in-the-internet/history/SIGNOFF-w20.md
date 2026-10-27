@@ -1,4 +1,6 @@
-# SIGNOFF — wave 20 (DRAFT)
+# SIGNOFF — wave 20 (signed off)
+
+**Signed off 2026-10-27.** The user, of every sign-off sheet: *"Every line in the signoffs looks good! ship those please."* Every line below ships as written, and every drafted default and vetoable decision ("as drafted", "as built", "default unless vetoed") is accepted as it stands. The `DRAFT w20` and `DRAFT w20b` markers are gone from the source; this sheet stays as the record.
 
 > **Wave 20b (2026-10-23): the user's answers.** *"1) I will review - ship
 > for now. 2) Yes, it should mark them. 3) Unsure, likely leaning towards
@@ -12,7 +14,7 @@
 > lines stay DRAFT for the user's later review (Q1); new ones are marked
 > `// DRAFT w20b`. Q5, Q6, Q7 and Q10 are the firmware / lights lanes'.
 
-**Status: DRAFT, awaiting the user's sign-off.** Wave 20 is Trabolta's heart:
+**Status (when drafted):** Wave 20 is Trabolta's heart:
 when the server room is first opened he plays a dramatic sequence there, asks
 for the door to be shut, waits for a pass at the server-room terminal's
 webcam, and then talks to that program in **four layers like the Master in

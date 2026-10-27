@@ -54,7 +54,7 @@ export async function beginPilot(config: TerminalConfig, guestId: string): Promi
 }
 
 /** (wave 26, R1) What a room terminal says to a locked (captured) pass. */
-export const LOCKED_PASS_NOTICE = "⛔ YOU'RE IN THE INTERNET — GO TO THE TENT"; // DRAFT w26
+export const LOCKED_PASS_NOTICE = "⛔ YOU'RE IN THE INTERNET — GO TO THE TENT";
 
 /** (wave 26, R1) Does this terminal refuse a locked pass at the scan? A room
  *  terminal (the server room: the line tells the story it opened there).

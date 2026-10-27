@@ -5442,7 +5442,7 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     expect(v(sim, "Night.screen")).toBe("screensaver");
     expect(v(sim, "Night.lights")).toBe("restore");
     const cast = casts(r).map((c) => c.cue.replace(/^"|"$/gu, ""));
-    expect(cast).toEqual(["!🎃 The show is over: you are human again. Hang out, out of character."]);
+    expect(cast).toEqual(["!🎃 The show is over: you are human again. Hang out. The night is yours."]);
     expect(composeGuestMessages(sim, r).some((m) => m.alert === true && m.text.startsWith("🎃 The show is over"))).toBe(true);
     // Once.
     expect(offstage(fire(sim, "resurrection"))).toEqual([]);

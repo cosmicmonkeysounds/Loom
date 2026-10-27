@@ -32,8 +32,6 @@ right off**, and your followers went to zero on the spot.
 
 Jean Trabolta's offer: stay in a computer and **keep your beauty forever**.
 
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
-
 ## Who you know
 
 When you're scanned in, three files about **who you're connected to** arrive in your Codex under **Connections**. Each one points at other people in the house without naming them; whoever holds the same file is connected to you. Ask around ("you have the staff photo too?"), and never say who is behind a program.

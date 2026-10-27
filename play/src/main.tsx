@@ -31,7 +31,7 @@ const el = document.getElementById("root");
 // never leave a guest on a blank page on show night — a Reload instead.
 if (el)
   createRoot(el).render(
-    <ChunkBoundary fallback={() => <ChunkFailed what={/* DRAFT w26 (integration): UI copy */ "The app"} />}>
+    <ChunkBoundary fallback={() => <ChunkFailed what={"The app"} />}>
       <App resume={resume} card={card} />
     </ChunkBoundary>,
   );

@@ -4,7 +4,7 @@
 //! interrupt ladder (`Night.alerts`), effect text, per-person notices (`~`),
 //! the cards that ask (`moment: major`), codex categories, the booth card's
 //! facts, a delivery for every beat that used to be buried, and the booth
-//! noise trims. Every text change is DRAFT in `SIGNOFF-w13.md`.
+//! noise trims. Every text change is in `SIGNOFF-w13.md` (signed off 2026-10-27).
 
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
@@ -813,29 +813,22 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     for (const o of guestView(n.sim, "g1").objectives ?? []) expect(guestIds.has(o.id), o.id).toBe(true);
     for (const p of PERFORMERS) for (const o of primeView(n.sim, p).objectives ?? []) expect(guestIds.has(o.id), `${p}: ${o.id}`).toBe(false);
     for (const o of primeView(n.sim, "Clippy").objectives ?? []) expect(["The Bank", "Summons Door", "The Help Desk"]).not.toContain(o.id);
-    // Every objective carries the sign-off marker in the source.
+    // Every objective is signed off (2026-10-27): none carries a signed-off wave's
+    // DRAFT marker (wave 22's patch-bay lines have no sheet yet and keep theirs).
     const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
     expect(src.match(/^OBJECTIVE /gmu)!.length).toBe(m.objectives.size);
-    // Wave 21: `// DRAFT w21` (with a note or bare) marks the new and changed ones.
-    // Wave 26: `// DRAFT w26 (<note>)` marks the ones changed this wave.
-    expect(src.match(/^\/\/ DRAFT (?:for sign-off|w18|w2[16][^\n]*)\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
+    expect(src).not.toMatch(/DRAFT (?:for sign-off|w13|w18b?|w20b?|w21|w2[678])\b/u);
   }, SLOW);
 });
 
 describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
-  it("SIGNOFF-w13.md is a DRAFT that lists every objective", async () => {
+  it("the sign-off sheets are signed off and list every objective", async () => {
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
-    const sheet = readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w13.md"), "utf8");
-    expect(sheet).toMatch(/DRAFT/u);
-    // Wave 18's new objectives (`// DRAFT w18`) await their own sign-off page.
-    const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
-    const w18 = new Set([...src.matchAll(/^\/\/ DRAFT w18\nOBJECTIVE (.+)$/gmu)].map((x) => x[1]!.trim()));
-    // …and so do wave 21's new ones (SIGNOFF-w21.md, trapped-w21.test.ts).
-    for (const x of src.matchAll(/^\/\/ DRAFT w21\nOBJECTIVE (.+)$/gmu)) w18.add(x[1]!.trim());
-    // Wave 26's new objectives are on SIGNOFF-w26.md.
-    for (const x of src.matchAll(/^\/\/ DRAFT w26[^\n]*\nOBJECTIVE (.+)$/gmu)) w18.add(x[1]!.trim());
-    for (const id of Sim.fromSources(SRC).model.objectives.keys()) if (!w18.has(id)) expect(sheet, id).toContain(`| ${id} |`);
+    const dir = join(__dirname, "../examples/trapped-in-the-internet");
+    const sheets = ["SIGNOFF-w13.md", "SIGNOFF-w18.md", "SIGNOFF-w21.md", "SIGNOFF-w26.md"].map((f) => readFileSync(join(dir, f), "utf8"));
+    for (const sheet of sheets) expect(sheet).toMatch(/^\*\*Signed off 2026-10-27\.\*\*/mu);
+    for (const id of Sim.fromSources(SRC).model.objectives.keys()) expect(sheets.some((s) => s.includes(id)), id).toBe(true);
   });
 });
 

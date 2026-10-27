@@ -168,7 +168,7 @@ describe("arm, then fire", () => {
     // trapped-w9-cues test pins that answer over HTTP).
     const view: DirectorView = {
       ...VIEW,
-      interactions: [{ id: "award_most_trusted", label: "G2 · 🏆 Most Trusted", who: "admin", subject: true }, { id: "resurrection", label: "G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)", who: "admin" }],
+      interactions: [{ id: "award_most_trusted", label: "G2 · 🏆 Most Trusted", who: "admin", subject: true }, { id: "resurrection", label: "G11 · 🎃 Resurrection: the show is over (after the ceremony)", who: "admin" }],
       cues: { last: "award_most_trusted", lastBy: "Phone · Ana", fired: ["award_most_trusted"] } as DirectorView["cues"],
     };
     const g11 = directorRows(view).find((r) => r.id === "resurrection")!;

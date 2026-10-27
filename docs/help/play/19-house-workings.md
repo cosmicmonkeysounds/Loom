@@ -3,7 +3,7 @@ title: How the house works (staff)
 section: Performers
 order: 19
 role: performer
-keywords: staff, how the house works, behind the scenes, guest guide, hidden rules, spoilers, marked, marks, what marks, lift, locked, lock screen, quarantine, quarantined, capture, release, banished, banish, hand jive, party favour, after the end, show over, human again, speedrun, reinstall, reinstallation, not marked, held, path, trail, golden trail, gerald, king, health bar, shared bar, kneel, hit, chess, server door, checkmate, door code, no prize, heart, server room, close the door, layers, trusted, proof, thrown out, escape, void, virus, disk, pickup, terminal, linked, world view, window, microphone, mic, camera, shadow, identify, idle show, glitch, takeover, announcements, house speakers, holding line, answer as, stimulus, grant, freeze, reserve, audit, every third, auto-approve, director cancelled, truther download, factions, heat, switching sides, codex, wrong code
+keywords: staff, how the house works, behind the scenes, guest guide, hidden rules, spoilers, marked, marks, what marks, lift, locked, lock screen, quarantine, quarantined, capture, release, banished, banish, hand jive, party favour, after the end, show over, human again, speedrun, reinstall, reinstallation, not marked, held, path, trail, golden trail, gerald, king, health bar, shared bar, kneel, hit, chess, server door, checkmate, door code, no prize, heart, server room, close the door, trusted, proof, thrown out, escape, void, virus, disk, pickup, terminal, linked, world view, window, microphone, mic, camera, shadow, identify, idle show, glitch, takeover, announcements, house speakers, holding line, answer as, stimulus, grant, freeze, reserve, audit, every third, auto-approve, director cancelled, truther download, factions, heat, switching sides, codex, wrong code
 ---
 
 The guest guide (every Help article without *Performers* on it) tells a
@@ -111,8 +111,9 @@ guest guide never calls it that.
   while it stands open.
 - **Shut it**, and the lock clunks, the hum drops, and he asks to see a
   **pass**.
-- Then he talks in **layers** — who you are, what he is, what you came
-  to say, and the last thing you'd ask of him. Some answers carry a tag
+- Then he asks his questions in turn — who you are, what he is, what you
+  came to say, and the last thing you'd ask of him. Nothing on his screen
+  counts them or says how far you got. Some answers carry a tag
   like **⟦TRUSTED⟧** or **⟦PROOF⟧**: they only show when the program has
   earned them tonight. Push him the wrong way and he warns once; push
   again and he **throws them out** of his heart for the night.
@@ -196,5 +197,5 @@ mentions them, and nobody should explain them to a guest.
 ## The end of the night
 
 After the awards a director may send one last alert: *🎃 The show is
-over: you are human again.* Every mark, capture, lock and restriction
-comes off at once, and the night carries on out of character.
+over: you are human again. Hang out. The night is yours.* Every mark,
+capture, lock and restriction comes off at once, and the party carries on.

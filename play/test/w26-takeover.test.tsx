@@ -81,8 +81,9 @@ describe("the takeover's look", () => {
     const t = src("moments/glitch-takeover.tsx");
     expect(t).toMatch(/if \(!shown \|\| !sound\) return;\s*vibrate\(TAKEOVER_BUZZ\);\s*playGlitch\(\);/u);
   });
-  it("its caption is marked DRAFT for the sign-off", () => {
-    expect(src("moments/glitch-takeover.tsx")).toMatch(/\/\/ DRAFT w26 \(T2\)[^\n]*\nexport const TAKEOVER_CAPTION/u);
+  it("its caption is signed off (2026-10-27): no DRAFT marker left", () => {
+    expect(src("moments/glitch-takeover.tsx")).toMatch(/\/\/ w26 \(T2\)[^\n]*\nexport const TAKEOVER_CAPTION = "System Error";/u);
+    expect(src("moments/glitch-takeover.tsx")).not.toMatch(/DRAFT w26/u);
   });
 });
 

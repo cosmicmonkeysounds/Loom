@@ -9,7 +9,7 @@ import { useRef } from "react";
 import { Face, type FaceHandle } from "@loom/terminal/face/Face.tsx";
 import { SCARE_TITLE } from "./moments.ts";
 
-// DRAFT w26 (R4): the panel's glitch art (no name, no words a guest could act on).
+// w26 (R4): the panel's glitch art (no name, no words a guest could act on).
 export const SCARE_GARBAGE = "0028:C0DE0E36 VXD VMM(01) + 00010E36";
 
 export function Scare() {

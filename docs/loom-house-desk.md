@@ -298,5 +298,5 @@ reads `Show · Chats · Desk · Scan`.
 - Per-voice stop, router meters, input tests, editing the routing matrix
   (the map editor's Audio tab stays where speakers are placed).
 - Wiring the show's own Heart beats onto desk cues: the mechanism lands
-  first, then the beats move over after an on-site run (their text is
-  DRAFT w20).
+  first, then the beats move over after an on-site run (their text was
+  signed off on 2026-10-27, `history/SIGNOFF-w20.md`).
