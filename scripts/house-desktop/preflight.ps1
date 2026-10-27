@@ -1,12 +1,13 @@
 <#
 .SYNOPSIS
-    The house PC's show-night check: power, broker, Zigbee, stagehand,
-    the server, the TV kiosk - then `showctl preflight desktop` when the
-    repo has it.
+    The house PC's show-night check: power, broker, Zigbee, stagehand
+    (show, lights and the audio router), the MOTU through ASIO, the
+    server, the TV kiosk - then `showctl preflight desktop` when the repo
+    has it.
 
 .DESCRIPTION
-        .\preflight.ps1                 # everything (exit 1 on any FAIL)
-        .\preflight.ps1 -WithAudio      # also the router + the MOTU (when it runs on this PC)
+        .\preflight.ps1                 # everything, the router + the MOTU included (exit 1 on any FAIL)
+        .\preflight.ps1 -NoAudio        # the router runs on the MacBook tonight (the fallback)
         .\preflight.ps1 -FixPower       # set sleep / screen-off / hibernate to never on AC first
 
     Nothing here changes the show: it reads services, ports, retained MQTT
@@ -21,6 +22,7 @@
 #>
 [CmdletBinding()]
 param(
+    [switch]$NoAudio,
     [switch]$WithAudio,
     [switch]$FixPower,
     [string]$Server,
@@ -71,8 +73,9 @@ if ($LASTEXITCODE -ne 0) { $script:Failures++ }
 # -- stagehand ------------------------------------------------------------------
 
 Write-Step 'stagehand'
+# -WithAudio is the default now and changes nothing (older notes name it).
 $jobs = @('show', 'lights')
-if ($WithAudio) { $jobs += 'audio'; $env:SD_ENABLE_ASIO = '1' }
+if (-not $NoAudio) { $jobs += 'audio'; $env:SD_ENABLE_ASIO = '1' }
 $rc = Invoke-Stagehand @('check', '--config', $Config, '--only', ($jobs -join ','))
 if ($rc -eq 0) { Write-Ok ('stagehand check --only ' + ($jobs -join ',')) } else { Write-Bad ('stagehand check failed (exit ' + $rc + ')') }
 $null = Invoke-Stagehand @('tasks', 'status')
@@ -85,12 +88,12 @@ if ($null -eq $health) {
         $line = @($health | Where-Object { $_ -like ($pair[0] + ' *') }) | Select-Object -First 1
         if ($line -and $line -match ' online') { Write-Ok ($pair[0] + ' online (' + $pair[1] + ')') }
         elseif ($line) { Write-Bad ($line + '  (' + $pair[1] + ')') }
-        elseif ($pair[0] -eq 'health/audio' -and -not $WithAudio) { Write-Warn 'health/audio: nothing retained - is the router up on the MacBook (dialling this broker on :1884)? No router, no announcements' }
+        elseif ($pair[0] -eq 'health/audio' -and $NoAudio) { Write-Warn 'health/audio: nothing retained - is the router up on the MacBook (dialling this broker on :1884)? No router, no announcements' }
         else { Write-Bad ($pair[0] + ': nothing retained - is the ' + $pair[1] + ' job running?') }
     }
 }
 
-if ($WithAudio) {
+if (-not $NoAudio) {
     Write-Step 'The MOTU through ASIO'
     $listing = ''
     $uv = Find-Uv
@@ -98,8 +101,11 @@ if ($WithAudio) {
         Push-Location $script:StagehandDir
         try { $listing = (& $uv run python -m sounddevice 2>$null) -join "`n" } finally { Pop-Location }
     }
-    if ($listing -match 'ASIO') { Write-Ok 'PortAudio sees an ASIO device'; ($listing -split "`n" | Where-Object { $_ -match 'ASIO' }) | ForEach-Object { Write-Note $_ } }
-    else { Write-Bad 'no ASIO device: install MOTU''s Windows driver, or run the router on the MacBook (trapped.macbook.yaml)' }
+    $asio = @($listing -split "`n" | Where-Object { $_ -match 'ASIO' })
+    $motu = @($asio | Where-Object { $_ -match 'MOTU|828' })
+    if ($motu.Count -gt 0) { Write-Ok 'PortAudio sees the MOTU through ASIO'; $motu | ForEach-Object { Write-Note $_ } }
+    elseif ($asio.Count -gt 0) { Write-Warn 'an ASIO device, but none named MOTU / 828: check stagehand\trapped.desktop.local.yaml audio.device'; $asio | ForEach-Object { Write-Note $_ } }
+    else { Write-Bad 'no ASIO device: power the 828x, check its USB cable and MOTU''s Windows driver (README section 3), or fall back to the MacBook (-NoAudio here)' }
 }
 
 # -- the server + the TV --------------------------------------------------------
@@ -132,7 +138,9 @@ if (-not (Test-Path -LiteralPath $showctl)) {
     Write-Warn 'LOOM_MOD_CODE is not set: showctl skipped ($env:LOOM_MOD_CODE = ''<mod passcode>'' in this window)'
 } else {
     if (-not $env:LOOM_SERVER) { $env:LOOM_SERVER = $Server }
-    & $showctl preflight desktop | Out-Host
+    $routerHost = 'desktop'
+    if ($NoAudio) { $routerHost = 'macbook' }
+    & $showctl preflight desktop --router $routerHost | Out-Host
     if ($LASTEXITCODE -ne 0) { Write-Bad ('showctl preflight desktop failed (exit ' + $LASTEXITCODE + ')') } else { Write-Ok 'showctl preflight desktop' }
 }
 
