@@ -195,7 +195,10 @@ Anything you can't take back asks in place first (*…? Yes / No*).
 
 The house's own cue list, built in the editor's Run → House: sounds on
 the house speakers, announcements, light looks, waits, and story events.
-Play fires and tests it; it never edits a cue.
+Play fires and tests it; it never edits a cue. Its **Setup** (is the
+sound, the lights and each outside mind connected, and what to do when
+one isn't) and **Try it** (play a look, a story sound or a line on the
+speakers) are in [The Desk: setup and tests](house-desk.md).
 
 - **The status chips**: the house Mac's router (*🔊 router online*, or
   offline), sound files missing or still placeholders, the lights module,

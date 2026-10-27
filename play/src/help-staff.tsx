@@ -1,8 +1,8 @@
 //! The performers' Help (wave 26, integration): every article, the
 //! `role: performer` ones (07 performers, 13 the director phone, 14 hosts,
-//! 19 how the house works) included. Only the booth and the director import
-//! this file, so its articles never reach a guest's download; the guests'
-//! Help is `help.tsx` alone (`help-lazy.tsx`).
+//! 19 how the house works, 20 the Desk) included. Only the booth and the
+//! director import this file, so its articles never reach a guest's
+//! download; the guests' Help is `help.tsx` alone (`help-lazy.tsx`).
 
 import { buildHelp, type HelpArticle } from "../../docs/help/helpdoc.ts";
 import { GUEST_FILES, HelpWindow, guestArticles } from "./help.tsx";
@@ -14,6 +14,7 @@ export const STAFF_FILES = import.meta.glob(
     "../../docs/help/play/13-director-phone.md",
     "../../docs/help/play/14-hosts.md",
     "../../docs/help/play/19-house-workings.md",
+    "../../docs/help/play/20-house-desk.md",
   ],
   {
     query: "?raw",
