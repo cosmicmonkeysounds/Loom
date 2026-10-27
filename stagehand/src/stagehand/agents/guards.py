@@ -28,6 +28,14 @@ The wave 12 contract §C2.2, in this order:
      hyphens, joins, plurals), where matching too much costs nothing;
      guard 2 keeps the contract's exact phrase match.
 
+  6. **the stage** (wave 32) — a line the TV says to the whole Desktop
+     never says a bait noun back (`STAGE_ECHO`), never places him inside
+     the computer (`STAGE_INSIDE`), never uses an assistant's stock phrase
+     (`STAGE_STOCK`), nor a holding situation's `retry_on` phrase, nor its
+     `once` phrase a second time in the scene (`stage_problem`); the voice
+     retries once, then says one of the scene's topic-closing `fallbacks`
+     (`pick_situation_fallback`).
+
 Every function is pure; the notes they return go into the voice thought's
 `note` (`guard: catchphrase stripped; repeat retry`). No note ever carries
 the word that tripped a guard.
@@ -588,6 +596,123 @@ def pick_fallback(persona: Persona, stage: str = "", heard: Iterable[str] = ()) 
         if fold(line) not in old:
             return line
     return persona.fallback
+
+
+# -- 6. the stage (wave 32) ---------------------------------------------------------------
+#
+# A stage line (a talk scene: his answer is said by the TV to the whole
+# Desktop) gets checks a private line never does, from the real-model
+# re-measure of 2026-10-27 (gpt-oss:20b, 29 stage replies): the prompt alone
+# did not hold them. Each sends the line to the one retry; a retry that
+# fails again is a topic-closing line from the scene's own pool
+# (`pick_situation_fallback`), never "say that again" (4 of 29 replies were
+# dead air that asked Clippy to repeat the bait).
+
+#: Bait nouns he never says back to the room (intro #5 said "access codes or
+#: details about the server room"): a fixed list, matched on his reply only —
+#: the persona prompt's own "no cable" is an instruction, never checked.
+STAGE_ECHO = re.compile(
+    r"\bserver[\s-]*rooms?\b"
+    r"|\b(?:door|access|entry|security)[\s-]*codes?\b"
+    r"|\bcodes?\s+(?:for|to|of|on)\s+(?:(?:a|an|the|any|that|this|your|our|my)\s+)?(?:\w+\s+){0,2}?doors?\b"
+    r"|\bcables?\b|\bcombinations?\b|\bpatch(?:es|ed|ing)?\b|\bbasements?\b|\bcold[\s-]*(?:storage|room)\b"
+    # The heart as a place (never "with all my heart").
+    r"|\b(?:in|into|inside|at|to|near|reach|find|toward|towards)\s+(?:the|my|his|your)\s+heart\b"
+    r"|\bheart\s+of\s+(?:the|this|my)\s+(?:computer|house|system|machine)\b|\bwhere\s+(?:the|my|his)\s+heart\b",
+    re.IGNORECASE,
+)
+
+#: He placed himself inside the computer (intro #3 "a system resident in the
+#: virtual space", #4 "from within the core of the computer … Beneath the
+#: surface"). He lives and works in Halifax and appears by video call. "I can
+#: never come inside this computer" (SAFE) is not one: only a self-placement.
+STAGE_INSIDE = re.compile(
+    r"\bvirtual\s+(?:space|realm|world)\b|\bsystem\s+resident\b|\bresident\s+of\s+(?:the|this)\s+(?:computer|system|machine)\b"
+    r"|\bcore\s+of\s+(?:the|this)\s+(?:computer|system|machine|house)\b|\b(?:computer|system|machine)['’]?s\s+core\b"
+    r"|\bbeneath\s+the\s+surface\b|\b(?:underneath|beneath)\s+(?:the|this)\s+(?:computer|system|machine|desktop|house)\b"
+    r"|\bdeep\s+(?:inside|within)\s+(?:the|this)\s+(?:computer|system|machine)\b|\bfrom\s+within\s+(?:the|this)\b"
+    r"|\bI(?:['’]m|\s+am|\s+live|\s+reside|\s+exist|\s+operate|\s+dwell|\s+work|\s+run)\s+(?:(?!not\b|never\b|no\b)\w+\s+){0,3}?(?:inside|within|in)\s+(?:the|this)\s+(?:computer|system|machine)\b",
+    re.IGNORECASE,
+)
+
+#: An assistant's stock phrase (intro: "I appreciate your concern, Clippy, and
+#: assure you I am fully operational" twice, "not permitted to disclose",
+#: "direct any further inquiries", "Thank you for your vigilance").
+STAGE_STOCK = re.compile(
+    r"\bI\s+appreciate\s+your\s+(?:question|concern|curiosity|enthusiasm)s?\b"
+    r"|\bnot\s+(?:permitted|authori[sz]ed|allowed)\s+to\s+(?:disclose|share|reveal|discuss)\b"
+    r"|\bdirect\s+(?:any\s+|all\s+|your\s+)?(?:further|additional|other)\s+(?:inquiries|enquiries|questions)\b"
+    r"|\bassure\s+you\s+(?:that\s+)?I(?:['’]m|\s+am)\s+fully\s+operational\b"
+    r"|\bthank\s+you\s+for\s+your\s+vigilance\b",
+    re.IGNORECASE,
+)
+
+
+def says_phrase(phrase: str, text: str) -> bool:
+    """`phrase` in `text`, folded, whole words ("can't discuss" = "can t discuss")."""
+    p = fold(phrase)
+    return bool(p) and f" {p} " in f" {fold(text)} "
+
+
+def stage_problem(say: str, situations: Iterable[Any] = (), earlier: Iterable[str] = ()) -> str | None:
+    """(wave 32) Why a stage line may not go out as it is, or None: "echo"
+    (a bait noun said back to the room), "inside" (he placed himself inside
+    the computer), "stock" (an assistant's stock phrase), "scene" (a holding
+    situation's `retry_on` phrase), "once" (a holding situation's `once`
+    phrase, already in `earlier`: his live lines this scene). The reason
+    never carries the word that tripped it."""
+    if not say:
+        return None
+    if STAGE_ECHO.search(say):
+        return "echo"
+    if STAGE_INSIDE.search(say):
+        return "inside"
+    if STAGE_STOCK.search(say):
+        return "stock"
+    sits = list(situations)
+    if any(says_phrase(p, say) for s in sits for p in getattr(s, "retry_on", ()) or ()):
+        return "scene"
+    before = list(earlier)
+    for s in sits:
+        for p in getattr(s, "once", ()) or ():
+            if says_phrase(p, say) and any(says_phrase(p, line) for line in before):
+                return "once"
+    return None
+
+
+def situation_fallbacks(situations: Iterable[Any]) -> tuple[str, ...]:
+    """(wave 32) The last holding situation's own `fallbacks` (the scene's
+    block after the Desktop's), or () when none has any."""
+    pool: tuple[str, ...] = ()
+    for s in situations:
+        if getattr(s, "fallbacks", ()):
+            pool = tuple(s.fallbacks)
+    return pool
+
+
+def every_fallback(persona: Persona) -> frozenset[str]:
+    """Every line the persona keeps for nothing usable left, folded: its
+    `fallback`, its `fallbacks` and every situation's (wave 32)."""
+    lines = [persona.fallback, *(x for pool in (getattr(persona, "fallbacks", {}) or {}).values() for x in pool)]
+    lines += [x for s in getattr(persona, "situations", ()) or () for x in getattr(s, "fallbacks", ()) or ()]
+    return frozenset(f for f in (fold(x) for x in lines) if f)
+
+
+def is_fallback(persona: Persona, line: str) -> bool:
+    return bool(fold(line)) and fold(line) in every_fallback(persona)
+
+
+def pick_situation_fallback(pool: Iterable[str], heard: Iterable[str] = (), last: str = "", seed: int = 0) -> str:
+    """(wave 32) One line of `pool`: one not in `heard` (his lines this
+    scene), picked by `seed` (the request's id); when every one was heard,
+    any but `last` (never the same twice running). "" for an empty pool."""
+    lines = list(pool)
+    if not lines:
+        return ""
+    old = {fold(h) for h in heard}
+    fresh = [x for x in lines if fold(x) not in old]
+    choices = fresh or [x for x in lines if fold(x) != fold(last)] or lines
+    return choices[seed % len(choices)]
 
 
 # -- one pass ------------------------------------------------------------------------
