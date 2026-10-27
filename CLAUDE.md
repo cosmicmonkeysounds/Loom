@@ -50,7 +50,7 @@ crates are the original one and lag far behind it.
 | `examples/` | Reference `.loom` projects | — |
 | `mind/` | Superseded by stagehand `agents`; awaiting deletion | — |
 | `simulator/` | Old, kept runnable | its `README.md` |
-| `scripts/` | `dev.mjs`, `ops/` (predeploy, ship, backups, checklist), `accept/` (per-item device checks), `show/` (`showctl`), `house-desktop/` (Windows runbook), `house-macbook/` (macOS runbooks) | `scripts/show/`, `scripts/accept/`, `scripts/house-desktop/` READMEs |
+| `scripts/` | `dev.mjs`, `ops/` (predeploy, ship, backups, checklist), `accept/` (per-item device checks), `show/` (`showctl`), `sim/` (the full-evening bots), `house-desktop/` (Windows runbook), `house-macbook/` (macOS runbooks) | `scripts/show/`, `scripts/accept/`, `scripts/sim/`, `scripts/house-desktop/` READMEs |
 | `deploy/` | VPS release, rollback, backup and restore scripts + the Caddyfile | `docs/loom-docker-deploy.md` |
 | `docs/` | Design docs, specs, runbooks, in-app help, history | `docs/README.md` |
 
@@ -80,6 +80,9 @@ hardware/server-room-m4/test/run.sh    # M4 firmware host checks (`run.sh compil
 cargo test                             # the Rust crates
 
 pnpm showctl doctor                    # show-night diagnostics (scripts/show/README.md)
+node --experimental-strip-types scripts/sim/evening.ts --base <scratch url> --code <mod>
+                                       # (= `pnpm sim`) bots play a full evening, green/red per
+                                       # beat; scratch servers / rehearsals only (scripts/sim/README.md)
 scripts/ops/predeploy.sh [--vr]        # the full pre-deploy gate; stamps the commit
 scripts/ops/ship.sh <tag>              # rsync + deploy/release.sh on the VPS
 LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show
