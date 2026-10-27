@@ -1715,6 +1715,40 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   Main Run Args takes the command-line flags after `--`. See
   `reinstall/vr/README.md` → *Run it from the Godot editor*.
 
+### The intro (wave 33)
+
+Before every walk the headset leaves the lobby for a calm practice floor
+away from the house, and the guest watches *The Reinstallation Process*
+on a cinema screen (3.6 m wide, 3.4 m ahead, at eye height, in the dark).
+The video ships inside the APK as `media/reinstallation.ogv` (Ogg Theora
+720p30 + Vorbis, decoded in software; `export_presets.cfg` includes
+`media/*.ogv`); a missing or undecodable file is skipped. Then a gentle
+tutorial for the one right controller (`game/intro_flow.gd`, pure;
+`game/intro_space.gd`), one step at a time, each moving on when the guest
+does the thing, with a soft chime and a light haptic, and a fallback
+button for anyone stuck:
+
+1. look around (OK after 5 s);
+2. point the beam at OK and pull the trigger (A works too);
+3. push the stick forward into a glowing ring (NEXT after 20 s);
+4. SNAP TURN / SMOOTH TURN, which switch the setting live, then turn
+   round to face a duck behind them; KEEP THIS ONE (after facing the duck
+   or 15 s) saves the choice with `POST /api/spatial/prefs` `{turn}`;
+5. a comfort line ("stop, stand still, close your eyes") and START.
+
+Both are unskippable until the assignment's `reinstalled` ≥ 1; then SKIP
+and SKIP TUTORIAL appear. A saved `prefs.turn` overrides the station's
+`smooth_turn` from the assignment on (the lobby restores the station's).
+Throughout the intro the spawn pose goes out every frame, so the session
+stays alive, and nothing of the walk runs: no void, find, King, voice
+link, hum or quack (the video's sound never reaches the mic). At START the
+guest is placed at the spawn, the path reveal and quack clocks start, and
+`mark_ready()` posts `POST /api/spatial/ready` (an old server's 404 is
+ignored). A session that ends mid-intro stops the video and returns to the
+lobby. `intro: false` (`--intro false`) skips it; `--autopilot` never
+plays it. The copy is `DRAFT w33`. Unproven on hardware: Theora at 720p30
+beside 90 Hz rendering, the video's level, the panel's comfort.
+
 ## 6. The story
 
 The goose is now the **golden duck** (`INTERACTION the golden duck`,

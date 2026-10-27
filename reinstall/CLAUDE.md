@@ -22,10 +22,10 @@ and is played only at a wall terminal, never in these games.
 ```bash
 pnpm --filter loom-reinstall dev          # :5176, proxies /api + /e to LOOM_SERVER (default :7000)
 pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
-pnpm --filter loom-reinstall test         # vitest: 623 tests, 46 files
+pnpm --filter loom-reinstall test         # vitest: 635 tests, 47 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1011 checks + quest.sh 34
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1115 checks + quest.sh 37
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
