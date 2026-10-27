@@ -1,0 +1,448 @@
+"""Wave 32 (talk-back, CONTRACT w32 C7/C8), the worker's side.
+
+During a talk scene a host relays what Clippy says aloud in the Desktop;
+the server asks the worker for a PUBLIC answer (`stage: {room, scene,
+direction?}`, `speaker.stage: true`) that the TV speaks. Here:
+
+- the shipped persona's `before the whole Desktop` block and one block per
+  scene, gated on `speaker.stage` and `Night.talk`, inside his world;
+- the lean voice's person card, the room's lines (scripted ones included)
+  as context, the live exchange as turns, the canned line's `direction` as
+  a must-follow steer;
+- the guards (four sentences, no acts, the outside words) on a stage line;
+- the priority lane: a waiting stage request is served before every
+  waiting DM, one generation at a time.
+
+Every secret word in the mechanics tests is made up (`test_voice_lean`'s
+persona); the shipped-persona tests never print one.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import re
+from pathlib import Path
+
+import pytest
+
+from stagehand.agents.guards import allowed_answer_words, guard_pass, mentions_outside, situation_guard
+from stagehand.agents.cards import PersonCard, Said
+from stagehand.agents.persona import load_persona, parse_persona
+from stagehand.agents.prompt import gate_context, is_stage, matching_situations, stage_of
+from stagehand.agents.reply import Reply
+from stagehand.agents.slots import FIRST, NORMAL, Slots
+from stagehand.agents.voice import answer_lean, build_lean_messages, history_turns, render_p3, right_now, room_lines, stage_steer
+from stagehand.agents import module as agents_module
+
+from test_story_mind import FakeReply, make, req as mind_req
+from test_voice_lean import MODEL, MARKER, Model, context, persona as lean_persona, request, run, say
+
+SHOW = Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the-internet"
+TRABOLTA = SHOW / "trabolta.persona.md"
+
+STAGE_BLOCKS = ["before the whole Desktop", "the introduction", "the bottle", "the ad attack", "the beans"]
+SCENES = {"intro": "the introduction", "bottle": "the bottle", "ad": "the ad attack", "beans": "the beans"}
+
+
+def stage_request(scene="ad", direction=None, history=None, text="Trabolta, are you all right?", **world):
+    """A public talk request as the server builds it (C4): Clippy, a player,
+    speaking aloud in the Desktop; the room's lines as the history."""
+    stage = {"room": "The Desktop", "scene": scene}
+    if direction is not None:
+        stage["direction"] = direction
+    return {
+        "id": "ar-9",
+        "character": "Trabolta",
+        "thread": {"character": "Trabolta", "channel": "loc:The Desktop", "audience": ["@Clippy"], "public": True},
+        "speaker": {"kind": "performer", "id": "Clippy", "name": "Clippy", "faction": None, "player": True, "stage": True},
+        "stage": stage,
+        "text": text,
+        "history": history
+        if history is not None
+        else [
+            {"seq": 10, "mine": False, "from": "Clippy", "text": "Okay, programs! Round two!", "story": True},
+            {"seq": 11, "mine": False, "from": "Narrator", "text": "The presentation freezes.", "story": True},
+            {"seq": 12, "mine": True, "from": "Trabolta", "text": "Programs. The presentation will now resume.", "story": True},
+            {"seq": 13, "mine": False, "from": "Clippy", "text": text},
+        ],
+        "self": {"vars": {"awake": "true", "truth": "40", "composure": "60"}, "ranges": {}, "codex": []},
+        "them": {"vars": {"trust": "70", "defected": "none"}, "codex": [], "location": None},
+        "world": {"Night.phase": "malware", "Night.step": "7", "Night.talk": scene, **world},
+        "powers": [{"id": "flicker_the_screens", "limit": 3, "used": 0}],
+    }
+
+
+def headings(p, r):
+    return [s.heading for s in matching_situations(p, r)]
+
+
+# -- the shipped persona ---------------------------------------------------------------------
+
+
+def test_each_scene_holds_the_desktop_block_and_its_own():
+    p = load_persona(TRABOLTA)
+    for scene, block in SCENES.items():
+        assert headings(p, stage_request(scene)) == ["before the whole Desktop", block], scene
+
+
+def test_the_stage_blocks_gate_on_speaker_stage_and_night_talk():
+    p = load_persona(TRABOLTA)
+    # No scene on (or one the persona does not know): the Desktop block alone.
+    assert headings(p, stage_request("none")) == ["before the whole Desktop"]
+    assert headings(p, stage_request("finale")) == ["before the whole Desktop"]
+    # A private thread during a talk scene: none of them (the DM voice is unchanged).
+    dm = stage_request("ad")
+    del dm["stage"]
+    dm["speaker"] = {"kind": "guest", "id": "g-1", "name": "Excel", "faction": None}
+    dm["thread"] = {"character": "Trabolta", "channel": "dm:Trabolta", "audience": ["g-1"]}
+    assert not set(STAGE_BLOCKS) & set(headings(p, dm))
+    # Clippy's own Cast thread (a player, no stage): none either.
+    cast = stage_request("intro")
+    del cast["stage"]
+    cast["speaker"] = {k: v for k, v in cast["speaker"].items() if k != "stage"}
+    assert headings(p, cast) == []
+    # The gate reads the raw speaker and the world's Night.talk.
+    gate = gate_context(stage_request("beans"))
+    assert gate["speaker"]["stage"] is True and gate["Night"]["talk"] == "beans"
+
+
+def test_the_desktop_block_is_four_spoken_sentences_and_no_acts():
+    p = load_persona(TRABOLTA)
+    block = next(s for s in p.situations if s.heading == "before the whole Desktop")
+    assert block.max_sentences == 4 and block.no_acts
+    text = " ".join(block.prompt.split())
+    assert "Your ambassador Clippy is speaking aloud in the Desktop" in text
+    assert "comes out of the screen above the fireplace" in text
+    assert "Answer Clippy directly, out loud" in text and "no lists, no symbols" in text
+    assert "Never say where it hurts or where anything of yours is kept" in text
+    assert "When a steer for this answer is given, follow it" in text
+    for scene in SCENES.values():
+        sit = next(s for s in p.situations if s.heading == scene)
+        assert sit.max_sentences is None and not sit.no_acts  # the Desktop block sets both
+    # The heart to heart is still the last block (its four sentences win at the heart).
+    assert p.situations[-1].heading == "heart to heart"
+
+
+def test_the_stage_blocks_stay_inside_his_world_and_name_no_place_or_number():
+    p = load_persona(TRABOLTA)
+    places = ("server room", "basement", "cold storage", "cold room", "patch bay", "heart", "cable")
+    for s in p.situations:
+        if s.heading not in STAGE_BLOCKS:
+            continue
+        flat = " ".join(s.prompt.split()).lower()
+        assert not mentions_outside(p, s.prompt), s.heading
+        assert not re.search(r"\d", s.prompt), s.heading
+        assert "sandy" not in flat and "girlfriend" not in flat and "chatbot" not in flat, s.heading
+        assert "layer" not in flat and "performer" not in flat and "the show" not in flat, s.heading
+        assert not p.secrets.leaks(s.prompt), s.heading
+        for word in places:
+            if s.heading == "before the whole Desktop" and word == "cable":
+                continue  # "no cable" is one of its nevers
+            assert word not in flat, (s.heading, word)
+
+
+def test_each_scene_keeps_its_place_in_his_arc():
+    p = load_persona(TRABOLTA)
+    block = {s.heading: " ".join(s.prompt.split()) for s in p.situations}
+    # The introduction: formal, the manners crack, no malware yet.
+    assert "formal" in block["the introduction"] and "ALL CAPS" in block["the introduction"]
+    assert "Not yet: adverts, a virus or malware" in block["the introduction"]
+    assert "Truth Scavenger Hunt" in block["the introduction"]
+    # The bottle: hungry, a guess hurts, the bottle next.
+    assert "hungry" in block["the bottle"] and "a guess is corruption" in block["the bottle"]
+    assert "never say one was right or wrong" in block["the bottle"] and "Where this goes: the bottle" in block["the bottle"]
+    # The ad attack: real pain, the slips, each taken back, the second hunt next.
+    ad = block["the ad attack"]
+    assert "real pain" in ad and "a minor irregularity" in ad and "we are all going to die" in ad
+    assert "Who brought the malware in?" in ad and "never naming a program" in ad
+    assert "Never a date, a year or a time of day. Never her." in ad and "the second hunt" in ad
+    # The beans: unravelling, "her" allowed, never her name.
+    beans = block["the beans"]
+    assert "unravelling" in beans and 'You may say "her", once' in beans and "never her name" in beans
+    assert "Hold it back: not yet." in beans
+
+
+def test_the_fallbacks_are_fine_on_air():
+    # A guard hit on a stage line puts a fallback on the TV: in his world, no digits.
+    p = load_persona(TRABOLTA)
+    lines = [p.fallback, *(line for pool in p.fallbacks.values() for line in pool)]
+    assert lines
+    for line in lines:
+        assert not mentions_outside(p, line), line
+        assert not re.search(r"\d", line), line
+        assert not p.secrets.leaks(line)
+
+
+def test_on_a_stage_line_the_guards_cut_to_four_sentences_drop_acts_and_still_withhold_outside_words():
+    p = load_persona(TRABOLTA)
+    gate = gate_context(stage_request("ad"))
+    reply = Reply(say="One. Two words. THREE. Four now. Five is too many.", acts=({"kind": "fire", "name": "flicker_the_screens"},))
+    out, notes = situation_guard(p, reply, gate)
+    assert out.say == "One. Two words. THREE. Four now." and out.acts == ()
+    assert "acts: none (1 dropped)" in notes and "cut to 4 sentences" in notes
+    # The outside guard holds on air too: the line is withheld.
+    leaky = Reply(say="Clippy, the performers are watching.")
+    passed = guard_pass(p, leaky, PersonCard(id="Clippy", name="Clippy", kind="performer"), Said(), (), gate=gate)
+    assert passed.withheld and passed.reply.say == p.fallback
+
+
+# -- the lean voice on a stage request --------------------------------------------------------
+
+
+def test_stage_of_reads_the_block_or_the_speaker_flag():
+    assert stage_of(stage_request("ad"))["scene"] == "ad"
+    flagged = stage_request("ad")
+    del flagged["stage"]
+    assert stage_of(flagged) == {} and is_stage(flagged)
+    assert not is_stage(request())
+
+
+def test_the_person_card_says_clippy_speaks_aloud_and_everyone_hears_him():
+    p3 = render_p3(lean_persona(), stage_request("ad"), context(person=PersonCard(id="Clippy", name="Clippy", kind="performer")))
+    assert (
+        "Clippy (your ambassador Clippy, speaking aloud in the Desktop; every program hears your answer from the screen above the fireplace)"
+        in p3
+    )
+    assert "a fellow character" not in p3
+    # A DM keeps its card.
+    clippy = context(person=PersonCard(id="Clippy", name="Clippy", kind="performer"))
+    assert "Clippy (a fellow character — one of your cast)" in render_p3(lean_persona(), request(speaker={"kind": "performer", "id": "Clippy", "name": "Clippy", "faction": None}), clippy)
+
+
+def test_the_rooms_lines_scripted_ones_included_are_his_context():
+    r = stage_request("ad")
+    p3 = render_p3(lean_persona(), r, context())
+    block = p3[p3.index("=== THE DESKTOP, JUST NOW") :]
+    assert "Clippy: “Okay, programs! Round two!”" in block
+    assert "Narrator: “The presentation freezes.”" in block
+    assert "You: “Programs. The presentation will now resume.”" in block
+    assert "Clippy: “Trabolta, are you all right?”" in block
+    assert "THE HOUSE POSTED HERE AS YOU" not in p3  # the room block holds them
+    # A DM keeps the old house block and has no room block.
+    dm = render_p3(lean_persona(), request(), context())
+    assert "THE HOUSE POSTED HERE AS YOU" in dm and "JUST NOW" not in dm
+
+
+def test_a_room_line_carrying_a_hunt_or_never_word_is_left_out_and_the_newest_are_kept():
+    p = lean_persona()
+    history = [
+        {"seq": 1, "mine": True, "from": "Trabolta", "text": "I accept it. The answer is: quokka.", "story": True},
+        {"seq": 2, "mine": False, "from": "Clippy", "text": "The snow globe question!", "story": True},
+        {"seq": 3, "mine": False, "from": "Clippy", "text": "It was XYZZY-PLUGH.", "story": True},
+        *({"seq": 10 + i, "mine": False, "from": "Clippy", "text": f"Line {chr(65 + i)}.", "story": True} for i in range(14)),
+    ]
+    lines = room_lines(p, stage_request("bottle", history=history))
+    assert len(lines) == 12 and lines[-1] == "Clippy: “Line N.”" and lines[0] == "Clippy: “Line C.”"
+    shown = " ".join(room_lines(p, stage_request("bottle", history=history), limit=50))
+    assert "quokka" not in shown and "snow globe" not in shown and "XYZZY" not in shown
+
+
+def test_only_the_live_exchange_is_a_turn_and_each_says_who_spoke():
+    r = stage_request(
+        "intro",
+        history=[
+            {"seq": 1, "mine": False, "from": "Clippy", "text": "Everyone, say hello to JEAN TRABOLTA!", "story": True},
+            {"seq": 2, "mine": True, "from": "Trabolta", "text": "HELLO, PROGRAMS.", "story": True},
+            {"seq": 3, "mine": False, "from": "Clippy", "text": "Do you like our house?"},
+            {"seq": 4, "mine": True, "from": "Trabolta", "text": "It is adequate."},
+            {"seq": 5, "mine": False, "from": "Clippy", "text": "Only adequate?"},
+        ],
+        text="Only adequate?",
+    )
+    assert history_turns(r) == [
+        {"role": "user", "content": "Clippy: Do you like our house?"},
+        {"role": "assistant", "content": "It is adequate."},
+        {"role": "user", "content": "Clippy: Only adequate?"},
+    ]
+    # Nothing live yet (a fresh scene): the speaker's line alone.
+    first = stage_request("intro", history=[{"seq": 1, "mine": False, "from": "Clippy", "text": "Hi!", "story": True}], text="Say hello, Trabolta!")
+    assert history_turns(first) == [{"role": "user", "content": "Clippy: Say hello, Trabolta!"}]
+
+
+def test_the_direction_is_a_must_follow_steer_right_before_the_answer():
+    r = stage_request("intro", direction="Wrap up and send them to the hunt.")
+    steer = stage_steer(r)
+    assert steer == "YOUR STEER FOR THIS ANSWER (you must follow it; never say it aloud, never mention it): Wrap up and send them to the hunt."
+    msgs = build_lean_messages(lean_persona(), r, context())
+    assert msgs[-2]["role"] == "system" and msgs[-2]["content"].endswith(steer)
+    assert steer in (right_now(lean_persona(), r, context()) or "")
+    # No direction, no steer; a DM never has one.
+    assert stage_steer(stage_request("intro")) is None and stage_steer(request()) is None
+    assert "STEER" not in " ".join(m["content"] for m in build_lean_messages(lean_persona(), stage_request("intro"), context()))
+    # A long one is clipped to one line.
+    long = stage_steer(stage_request("intro", direction="go " * 400))
+    assert long is not None and len(long) < 420 and "\n" not in long
+
+
+def test_a_scripted_line_in_the_room_unlocks_no_answer_word():
+    p = lean_persona()
+    history = [
+        {"seq": 1, "mine": False, "from": "Clippy", "text": "Was it a quokka?", "story": True},
+        {"seq": 2, "mine": False, "from": "Clippy", "text": "Hello!"},
+    ]
+    assert "quokka" not in allowed_answer_words(p, stage_request("bottle", history=history, text="Hello!"))
+    # Typed by Clippy (live), it is the speaker's word, as in a DM.
+    typed = [{"seq": 1, "mine": False, "from": "Clippy", "text": "Was it a quokka?"}]
+    assert "quokka" in allowed_answer_words(p, stage_request("bottle", history=typed, text="Was it a quokka?"))
+    # A DM's story lines keep unlocking as before.
+    dm = request(history=[{"seq": 1, "mine": False, "from": "Ada", "text": "a quokka", "story": True}])
+    assert "quokka" in allowed_answer_words(p, dm)
+
+
+def test_the_shipped_persona_answers_a_stage_line_with_the_blocks_and_no_acts():
+    p = load_persona(TRABOLTA)
+    model = Model(say("Clippy. Clippy! I am FINE. A minor irregularity. Go. Find. Interpret.", act={"fire": "flicker_the_screens"}))
+    r = stage_request("ad", direction="Send them to the second hunt.")
+    reply = run(answer_lean(p, MODEL, r, context(person=PersonCard(id="Clippy", name="Clippy", kind="performer")), model))
+    sent = "\n".join(m["content"] for m in model.calls[0])
+    assert "=== SITUATION: BEFORE THE WHOLE DESKTOP" in sent and "=== SITUATION: THE AD ATTACK" in sent
+    assert "=== SITUATION: THE INTRODUCTION" not in sent
+    assert "Here you may answer at length: up to 4 sentences." in sent
+    assert "YOUR STEER FOR THIS ANSWER" in sent
+    assert reply.acts == () and reply.say.count(".") + reply.say.count("!") <= 4 + 1
+
+
+# -- the priority lane --------------------------------------------------------------------------
+
+
+def test_slots_serve_the_front_lane_first_and_keep_order_within_a_lane():
+    async def go():
+        slots = Slots(1)
+        order: list[str] = []
+        await slots.acquire()
+
+        async def wait(name, lane):
+            async with slots.lane(lane):
+                order.append(name)
+                await asyncio.sleep(0)
+
+        tasks = [asyncio.ensure_future(wait("dm2", NORMAL)), asyncio.ensure_future(wait("dm3", NORMAL))]
+        await asyncio.sleep(0)
+        tasks.append(asyncio.ensure_future(wait("stage", FIRST)))
+        await asyncio.sleep(0)
+        assert slots.locked() and slots.waiting() == 3
+        slots.release()
+        await asyncio.gather(*tasks)
+        assert not slots.locked() and slots.waiting() == 0
+        return order
+
+    assert run(go()) == ["stage", "dm2", "dm3"]
+
+
+def test_a_cancelled_waiter_passes_the_slot_on():
+    async def go():
+        slots = Slots(1)
+        await slots.acquire()
+        got: list[str] = []
+
+        async def wait(name, lane=NORMAL):
+            async with slots.lane(lane):
+                got.append(name)
+
+        a = asyncio.ensure_future(wait("a", FIRST))
+        b = asyncio.ensure_future(wait("b"))
+        await asyncio.sleep(0)
+        a.cancel()
+        await asyncio.sleep(0)
+        slots.release()
+        await b
+        assert a.cancelled() and not slots.locked()
+        # Handed the slot in the same tick it was cancelled: it passes it on.
+        await slots.acquire()
+        c = asyncio.ensure_future(wait("c"))
+        await asyncio.sleep(0)
+        slots.release()  # c's future gets the slot …
+        c.cancel()  # … and is cancelled before it runs
+        await asyncio.gather(c, return_exceptions=True)
+        assert not slots.locked()
+        return got
+
+    assert run(go()) == ["b"]
+
+
+def test_slots_hold_as_many_as_they_have():
+    async def go():
+        slots = Slots(2)
+        await slots.acquire()
+        assert not slots.locked()
+        await slots.acquire(FIRST)
+        assert slots.locked()
+        slots.release()
+        slots.release()
+        assert not slots.locked()
+
+    run(go())
+    with pytest.raises(ValueError):
+        Slots(0)
+
+
+class GatedVoice:
+    """A fake `answer_lean` that holds the slot on its first call until let go."""
+
+    def __init__(self):
+        self.order: list[str] = []
+        self.started = asyncio.Event()
+        self.go = asyncio.Event()
+
+    async def __call__(self, persona, model, req, ctx, complete_fn, trace=None, facts_fn=None, mind=None):
+        self.order.append(str(req.get("id")))
+        if len(self.order) == 1:
+            self.started.set()
+            await self.go.wait()
+        return FakeReply(say="Noted.")
+
+
+def test_a_stage_request_jumps_two_queued_dms_and_the_slot_stays_single(tmp_path):
+    async def go():
+        voice = GatedVoice()
+        agents, _ = make(tmp_path, fake=voice)
+        await agents.on_frame("request", json.dumps(mind_req(rid="dm-1", pid="g-1", name="Ada")))
+        await voice.started.wait()
+        assert agents._slots.locked()
+        await agents.on_frame("request", json.dumps(mind_req(rid="dm-2", pid="g-2", name="Bob")))
+        await agents.on_frame("request", json.dumps(mind_req(rid="dm-3", pid="g-3", name="Cy")))
+        stage = stage_request("ad")
+        stage["id"] = "stage-1"
+        await agents.on_frame("request", json.dumps(stage))
+        for _ in range(20):
+            await asyncio.sleep(0)
+        assert voice.order == ["dm-1"]  # one generation at a time: the rest wait
+        assert agents._slots.waiting() == 3
+        voice.go.set()
+        while agents.tasks:
+            await asyncio.gather(*agents.tasks.values(), return_exceptions=True)
+        return voice.order, agents
+
+    order, agents = run(go())
+    assert order == ["dm-1", "stage-1", "dm-2", "dm-3"]
+    assert [b["id"] for b in agents.mod.of("/api/agent/reply")] == ["dm-1", "stage-1", "dm-2", "dm-3"]
+
+
+def test_the_lane_of_a_request():
+    assert agents_module.lane_of(stage_request("ad")) == FIRST
+    assert agents_module.lane_of(request()) == NORMAL
+    assert MARKER  # the made-up persona's secrets are what the mechanics tests use
+
+
+def test_the_context_estimate_counts_the_stage_blocks_instead_of_the_heart_ones_and_one_scene_at_a_time():
+    from stagehand.agents.orchestrator import SITUATION_OVERHEAD, situation_chars
+
+    p = load_persona(TRABOLTA)
+    size = {s.heading: len(s.prompt) + SITUATION_OVERHEAD for s in p.situations}
+    heart = sum(v for k, v in size.items() if k not in STAGE_BLOCKS)
+    one_scene = size["before the whole Desktop"] + max(size[b] for b in SCENES.values())
+    assert situation_chars(p) == max(heart, one_scene)
+    assert situation_chars(p) < sum(size.values())
+    # A persona with no stage block counts every block, as before wave 32.
+    plain = parse_persona("---\ncharacter: T\nsituations:\n  - name: a\n    when: them.x == true\n    prompt: aaaa\n  - name: b\n    when: them.y == true\n    prompt: bb\n---\nYou are T.")
+    assert situation_chars(plain) == 6 + 2 * SITUATION_OVERHEAD
+    # Stage blocks alone: the Desktop block plus the largest one scene lets hold.
+    staged = parse_persona(
+        "---\ncharacter: T\nsituations:\n"
+        "  - name: d\n    when: speaker.stage == true\n    prompt: dddd\n"
+        "  - name: x\n    when: speaker.stage == true && Night.talk == \"x\"\n    prompt: xxxxxxxx\n"
+        "  - name: y\n    when: speaker.stage == true && Night.talk == \"y\"\n    prompt: yy\n"
+        "---\nYou are T."
+    )
+    assert situation_chars(staged) == 4 + 8 + 2 * SITUATION_OVERHEAD
