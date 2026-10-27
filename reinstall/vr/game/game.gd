@@ -8,6 +8,18 @@
 ##   there first ([SetupPanel]). The MICROPHONE box says what the mic is
 ##   doing, TEST MIC opens it for a level meter (no session), ASK AGAIN
 ##   asks for the grant again, and the build stamp names the APK (wave 26).
+## - **The intro** (wave 33, [IntroFlow] in [IntroSpace]): before each walk,
+##   on a calm practice floor away from the house, the reinstallation video
+##   on a cinema screen, then a gentle tutorial (look around, point and
+##   pull the trigger, walk into a ring, SNAP / SMOOTH turn tried live and
+##   saved to the program's prefs, a comfort line, START). Both are
+##   skippable only once the program has completed a reinstallation (the
+##   assignment's `reinstalled` ≥ 1); a saved `prefs.turn` is in force from
+##   the assignment on. The spawn pose keeps the session alive throughout
+##   (the server would time it out); no voice link, hum, quack, void or
+##   find runs; the walk's clocks (the path reveal, the quack) start at its
+##   end, and [method LinkBase.mark_ready] restarts the server's. Off with
+##   `--intro false`, and always for `--autopilot`.
 ## - **Playing**: spawned at the assignment's spawn in the virtual house;
 ##   poses stream to the server (feet, house frame); the golden trail is
 ##   hidden for the walk's first minute (wave 26 R2, `trail_delay`, the
@@ -140,6 +152,12 @@ var sfx: Sfx
 var speech: Speech
 ## The lobby's laser / mouse ([LobbyPointer]).
 var pointer: LobbyPointer
+## The intro before each walk (wave 33): its steps ([IntroFlow]) and its
+## place ([IntroSpace]); the tutorial's ring and duck (world).
+var intro := IntroFlow.new()
+var intro_space: IntroSpace
+var _intro_ring := Vector3.ZERO
+var _intro_duck := Vector3.ZERO
 
 var _trail_in := 0.0
 ## Seconds of this walk played so far (PLAYING only), and when the trail
@@ -225,6 +243,9 @@ func setup(l: LinkBase, xr: bool) -> void:
 	lobby = Lobby.new()
 	lobby.name = "Lobby"
 	add_child(lobby)
+	intro_space = IntroSpace.new()
+	intro_space.name = "Intro"
+	add_child(intro_space)
 	duck = Duck.new()
 	duck.name = "Duck"
 	add_child(duck)
@@ -306,6 +327,10 @@ func enter_lobby() -> void:
 	if autopilot != null and _autopilot_played:
 		_autopilot_quit(0 if _autopilot_found else 1, "session over (%s)" % ("found" if _autopilot_found else "no find"))
 	flow.abort()
+	intro.abort()
+	intro_space.close()
+	# A program's saved turn setting was for its walk: the station's again.
+	player.smooth_turn = bool(link.config.get("smooth_turn", false))
 	_update_route_house()
 	duck.remove()
 	trail.clear()
@@ -344,12 +369,14 @@ func _on_house(h: Dictionary, _version: String) -> void:
 	if flow.state != GameFlow.State.LOBBY:
 		duck.place(builder.to_world(flow.assignment["duck"]["pos"]))
 	if flow.state == GameFlow.State.PLAYING:
+		_adopt_props()  # the session's own map may land after the assignment
+		if intro.running():
+			return  # not in the house yet: the walk starts at the spawn anyway
 		# A remap keeps the player where they stand — unless the new map has
 		# no floor there (the shed is a solid prop on the tent map): back to
 		# its spawn, as the server re-seats them (`HouseLocate.standable`).
 		if not respawn_after_remap().is_empty():
 			_notice("The house was remapped — you're back at the start.")
-		_adopt_props()  # the session's own map may land after the assignment
 		_trail_in = 0.0
 		if autopilot != null:
 			autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
@@ -386,7 +413,7 @@ func _on_king_changed(k: Dictionary) -> void:
 	if fallen == _king_fallen:
 		return
 	_king_fallen = fallen
-	if flow.state != GameFlow.State.PLAYING:
+	if flow.state != GameFlow.State.PLAYING or intro.running():
 		return
 	_notice(KING_DOWN if fallen else KING_STANDS)
 	if fallen:
@@ -445,6 +472,8 @@ func _on_duck_changed(d: Dictionary) -> void:
 	duck.place(builder.to_world(d["pos"]))
 	_trail_in = 0.0
 	_found_retry = 0.0
+	if intro.running():
+		return  # nothing to say before the walk
 	if autopilot != null:
 		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
 		print("autopilot: the duck moved to %s in %s — re-planned" % [d.get("id", ""), d.get("room", "")])
@@ -453,8 +482,8 @@ func _on_duck_changed(d: Dictionary) -> void:
 
 ## The map may be the wrong one (`text`), or is right again (`""`).
 func _on_map_warning(text: String) -> void:
-	if flow.state != GameFlow.State.PLAYING:
-		return
+	if flow.state != GameFlow.State.PLAYING or intro.running():
+		return  # the walk's start says a warning still in force
 	if text == "":
 		_notice_left = 0.0
 		hud.notice("")
@@ -477,16 +506,44 @@ func _on_assignment(a: Dictionary) -> void:
 	# the mic over (offline, no token yet), where nothing else would close it.
 	voice.stop_test()
 	link.adopt(a)
-	var spawn: Dictionary = a["spawn"]
 	lobby.visible = false
 	pointer.hide_beam()
 	player.capture_mouse = true
-	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn["yaw"])))
-	player.locomotion_enabled = true
+	# A returning program's own turn setting (wave 33), over the station's.
+	var saved := IntroFlow.saved_turn(a.get("prefs"))
+	if saved != "":
+		player.smooth_turn = saved == "smooth"
 	duck.place(builder.to_world(a["duck"]["pos"]))
 	ghosts.own_session = str(a.get("session", ""))
 	ghosts.on_frame("leave", {"session": ghosts.own_session})
 	ghosts.new_visit()
+	_escaped_at = -1.0
+	_reset_props(a)
+	_king_said = false
+	# The server's assignment says when a re-scan is the visit that already
+	# hit him (missing on an old server = not yet).
+	king_hit_used = a.get("kingHit", false) == true
+	_king_hit_pending = false
+	if intro_wanted():
+		_start_intro(a)
+	else:
+		_start_play()
+	state_changed.emit(flow.state)
+
+
+## Whether a walk starts with the intro: the station's `intro` (default
+## on), never for the autopilot.
+func intro_wanted() -> bool:
+	return autopilot == null and bool(link.config.get("intro", true))
+
+
+## Into the house at the assignment's spawn: the walk (and its clocks — the
+## path reveal, the quack) starts now, after any intro.
+func _start_play() -> void:
+	var a := flow.assignment
+	var spawn: Dictionary = a["spawn"]
+	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn["yaw"])))
+	player.locomotion_enabled = true
 	_trail_in = 0.0
 	_found_pending = false
 	_found_retry = 0.0
@@ -498,19 +555,12 @@ func _on_assignment(a: Dictionary) -> void:
 	_played_for = 0.0
 	_escape_t = -1.0
 	_escape_answer = {}
-	_escaped_at = -1.0
-	_reset_props(a)
 	_reveal_after = maxf(0.0, float(link.config.get("trail_delay", HouseRoute.PATH_REVEAL_MS / 1000.0)))
 	trail_revealed = false
 	trail.clear()
-	_king_said = false
-	# The server's assignment says when a re-scan is the visit that already
-	# hit him (missing on an old server = not yet).
-	king_hit_used = a.get("kingHit", false) == true
-	_king_hit_pending = false
 	# The play buttons act on a press made while playing, never on one held
-	# over from the lobby (the trigger that pulled START; B / Y does nothing
-	# there).
+	# over from the lobby or the intro (the trigger that pulled START; B / Y
+	# does nothing there).
 	_hit_was = player.hit_button
 	_mute_was = player.mute_button
 	_update_route_house()
@@ -528,7 +578,109 @@ func _on_assignment(a: Dictionary) -> void:
 			autopilot_king = "walk"
 			autopilot.plan(route_house, spawn["pos"], stand)
 			print("autopilot: --hit-king — %d waypoints to the King first" % autopilot.path.size())
-	state_changed.emit(flow.state)
+
+
+# --- the intro (wave 33) ---------------------------------------------------------
+
+
+## Whether the intro (the video or the tutorial) is under way.
+func in_intro() -> bool:
+	return flow.state == GameFlow.State.PLAYING and intro.running()
+
+
+func _start_intro(a: Dictionary) -> void:
+	player.locomotion_enabled = false
+	player.teleport(IntroSpace.SPOT, 0.0)
+	hud.hide_all()
+	_notice_left = 0.0
+	sfx.set_hum(false)
+	var events := intro.start(a.get("reinstalled", 0), "smooth" if player.smooth_turn else "snap")
+	print("reinstall-vr: intro — %s (reinstalled %s: %s)" % [a.get("name", ""), a.get("reinstalled", 0), "skippable" if intro.skippable else "no skipping"])
+	_intro_events(events)
+	intro_space.render(intro)
+
+
+## One frame of the intro: the spawn pose (the session stays alive, and in
+## the house), the laser on the cinema or the panel, the guest's progress.
+func _tick_intro(delta: float) -> void:
+	var spawn: Dictionary = flow.assignment["spawn"]
+	link.send_pose(spawn["pos"], float(spawn.get("yaw", 0.0)), 0.0)
+	var aim := pointer.poll()
+	var h := intro_space.aim(aim)
+	pointer.draw(aim, h)
+	var feet := player.feet()
+	var yaw := player.head_yaw()
+	var inp := {
+		"yaw": yaw,
+		"video_done": intro_space.video_finished(),
+		"in_ring": intro_space.ring_shown() and IntroFlow.in_ring(feet, _intro_ring),
+		"facing": intro.step == IntroFlow.Step.TURN and IntroFlow.facing(yaw, player.camera.global_position, _intro_duck),
+		"pressed": str(h.get("id", "")) if aim.get("pressed", false) == true else "",
+	}
+	_intro_events(intro.tick(delta, inp))
+	if intro.running():
+		intro_space.render(intro)
+
+
+## Press intro button `id` as the laser would (tests, the screenshot tool).
+func intro_press(id: String) -> void:
+	if in_intro():
+		_intro_events(intro.press(id))
+		if intro.running():
+			intro_space.render(intro)
+
+
+func _intro_events(events: Array) -> void:
+	for e: Dictionary in events:
+		match str(e["event"]):
+			"step":
+				_intro_step(e["step"])
+			"success":
+				sfx.play("chime")
+				player.pulse(0.25, 0.08)
+				if intro.step == IntroFlow.Step.TURN and intro.faced:
+					# Turned round to the duck: the panel follows, in front again.
+					intro_space.place_panel(player.feet(), player.head_yaw())
+			"turn":
+				player.smooth_turn = e["turn"] == "smooth"
+				player.pulse(0.15, 0.04)
+			"save":
+				link.save_prefs({"turn": str(e["turn"])})
+			"done":
+				_finish_intro()
+
+
+func _intro_step(step: IntroFlow.Step) -> void:
+	var feet := player.feet()
+	var yaw := player.head_yaw()
+	player.locomotion_enabled = intro.locomotion()
+	if step != IntroFlow.Step.VIDEO:
+		intro_space.stop_video()
+	match step:
+		IntroFlow.Step.VIDEO:
+			intro_space.start_video()
+		IntroFlow.Step.WELCOME, IntroFlow.Step.POINT, IntroFlow.Step.COMFORT:
+			intro_space.hide_ring()
+			intro_space.place_panel(feet, yaw)
+		IntroFlow.Step.WALK:
+			_intro_ring = intro_space.place_ring(feet, yaw)
+			# Beyond the ring, so the walk never goes through it.
+			intro_space.place_panel(feet, yaw, IntroSpace.RING_AHEAD + 1.8)
+		IntroFlow.Step.TURN:
+			intro_space.hide_ring()
+			intro_space.place_panel(feet, yaw)
+			_intro_duck = intro_space.place_duck(feet, yaw)
+	if step != IntroFlow.Step.DONE:
+		print("reinstall-vr: intro — %s" % IntroFlow.name_of(step))
+
+
+## The intro is over: down to the house, and the server's clock restarts.
+func _finish_intro() -> void:
+	intro_space.close()
+	pointer.hide_beam()
+	_start_play()
+	link.mark_ready()
+	print("reinstall-vr: intro — over; walking (%s turn)" % ("smooth" if player.smooth_turn else "snap"))
 
 
 func _on_found_answered(ok: bool, data: Dictionary) -> void:
@@ -702,7 +854,10 @@ func _process(delta: float) -> void:
 		GameFlow.State.LOBBY:
 			_tick_lobby(delta)
 		GameFlow.State.PLAYING:
-			_tick_play(delta)
+			if intro.running():
+				_tick_intro(delta)
+			else:
+				_tick_play(delta)
 		GameFlow.State.FOUND:
 			if _fanfare_in >= 0.0:
 				_fanfare_in -= delta

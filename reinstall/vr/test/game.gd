@@ -1301,7 +1301,7 @@ func _test_autopilot_physics() -> void:
 func _test_room_scale() -> void:
 	var house: Dictionary = _placeholder_house()
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Room Scale"})
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Room Scale", "intro": false})
 	link.house = house
 	link.house_version = "test"
 	var main: Node = load("res://main.tscn").instantiate()
@@ -1934,7 +1934,7 @@ func _test_main_and_game() -> void:
 	var house: Dictionary = _placeholder_house()
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
 	# The trail tests ignore the path reveal (R2; its own test is _test_path_reveal).
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "trail_delay": 0})
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "trail_delay": 0, "intro": false})
 	link.house = house
 	link.house_version = "test"
 	var main: Node = load("res://main.tscn").instantiate()
@@ -2436,7 +2436,7 @@ func _test_server_link_setup() -> void:
 ## laser's hover and press, the card's START / BACK, the ⚙ hold, the copy.
 func _test_lobby_picker() -> void:
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "intro": false})
 	var main: Node = load("res://main.tscn").instantiate()
 	main.set("link", link)
 	root.add_child(main)
@@ -2607,7 +2607,7 @@ func _test_lobby_picker() -> void:
 ## physical keys), the server choice, CONNECT's answers, PLAY OFFLINE.
 func _test_setup_panel() -> void:
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Headset"})
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Headset", "intro": false})
 	link.set("unconfigured", true)
 	var main: Node = load("res://main.tscn").instantiate()
 	main.set("link", link)
@@ -2687,7 +2687,7 @@ func _test_setup_panel() -> void:
 ## the panel's in any view.
 func _test_lobby_mic() -> void:
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "intro": false})
 	link.house = _placeholder_house()
 	link.house_version = "test"
 	var main: Node = load("res://main.tscn").instantiate()
@@ -3521,7 +3521,7 @@ func _test_voice_config() -> void:
 func _test_voice_game() -> void:
 	var house: Dictionary = _read_json("res://house/house.json")
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "intro": false})
 	link.house = house
 	link.house_version = "test"
 	var main: Node = load("res://main.tscn").instantiate()
@@ -3756,7 +3756,7 @@ func _test_speech() -> void:
 func _test_sfx_game() -> void:
 	var house: Dictionary = _read_json("res://house/house.json")
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "intro": false})
 	link.house = house
 	link.house_version = "test"
 	var main: Node = load("res://main.tscn").instantiate()
@@ -3863,7 +3863,7 @@ func _test_sfx_game() -> void:
 func _test_path_reveal() -> void:
 	var house: Dictionary = _read_json("res://house/house.json")
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "intro": false})
 	link.house = house
 	link.house_version = "test"
 	var main: Node = load("res://main.tscn").instantiate()
@@ -3938,7 +3938,7 @@ func _test_path_reveal() -> void:
 func _game_on_show() -> Array:
 	var house: Dictionary = _read_json("res://house/house.json")
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
-	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "trail_delay": 0})
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "trail_delay": 0, "intro": false})
 	link.house = house
 	link.house_version = "test"
 	var main: Node = load("res://main.tscn").instantiate()

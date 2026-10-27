@@ -2,7 +2,7 @@
 ## game's `audio.ts` (no assets to ship or import): Gerald's quack (a buzzy
 ## sawtooth through a nasal formant, pitch falling, two syllables), the
 ## fanfare, the soft "no" buzz, the King's thud, the void's scare, a pickup
-## blip and a quiet hum for the Internet.
+## blip, the tutorial's soft chime (wave 33) and a quiet hum for the Internet.
 ##
 ## Every sound is rendered once into a 16-bit [AudioStreamWAV] and played on
 ## the **Sfx** bus ([constant BUS], made here when the project has none,
@@ -48,7 +48,7 @@ const FANFARE_AFTER := 0.65
 ## The hum's level (quiet: under the mic's gate).
 const HUM_DB := -30.0
 ## Every one-shot this node knows.
-const SOUNDS := ["quack", "fanfare", "buzz", "thud", "scare", "pickup"]
+const SOUNDS := ["quack", "fanfare", "buzz", "thud", "scare", "pickup", "chime"]
 
 ## Every one-shot played, oldest first (the tests read it).
 var log: Array[String] = []
@@ -222,6 +222,7 @@ static func samples_of(sound: String) -> PackedFloat32Array:
 		"thud": out = _thud()
 		"scare": out = _scare()
 		"pickup": out = _pickup()
+		"chime": out = _chime()
 		"hum": out = _hum_loop()
 	for i in out.size():
 		out[i] = clampf(out[i] * GAME_LEVEL, -1.0, 1.0)
@@ -409,6 +410,15 @@ static func _pickup() -> PackedFloat32Array:
 	_tone(out, 0.0, 659.25, 0.14, 0.16, "square")
 	_tone(out, 0.09, 987.77, 0.2, 0.16, "square")
 	_tone(out, 0.18, 1975.5, 0.3, 0.08, "sine")
+	return out
+
+
+## The tutorial's soft "well done" (wave 33): two gentle sine notes, a
+## fifth apart, rising.
+static func _chime() -> PackedFloat32Array:
+	var out := _buffer(0.7)
+	_tone(out, 0.0, 659.25, 0.45, 0.16, "sine")
+	_tone(out, 0.12, 987.77, 0.58, 0.14, "sine")
 	return out
 
 
