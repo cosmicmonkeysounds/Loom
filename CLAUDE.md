@@ -173,21 +173,21 @@ broker or `show` down, only `&announce=1` terminals still speak them.
 
 ### Release status
 
-The VPS runs `w18b-1021` (wave 18b Stage A, built on top of wave 19, so
-wave 19 is live). Master adds waves 18b Stage B, 20, 20b, 21, 22 and 23
-(getting back in: printed badges, invitations re-entering, ask a host,
-per-part cast cards; the play first-load gate is 148 kB), 24 (directors
-unseen), 25 (the house desk: `desk.json` cue lists and speaker / light
-checks in Run → House and the host's Desk window, the host's Show window,
-story-linked timelines; `docs/loom-house-desk.md`) and 26 (the rehearsal
-notes G1–D1: no hints, the first glitch everywhere, the locked phone, a
-guest's BINGO, the void, the heart and the virus in the games, terminals
-linked by room, voice-timed cutscenes; `docs/loom-w26-contract.md`), all
-**merged but not shipped**. Wave 23 needs the badges printed from Run →
+The VPS runs `w27` (master `2e6e36b2`, shipped 2026-10-27; rollback
+`w26`, which had carried waves 18b Stage B through 26 since 2026-10-26),
+and the "trapped in the internet" preview event was synced and reloaded on
+it. Wave 27 is the first meeting at Trabolta's heart: the talk branches on
+who the program is and what it did tonight (Heart Evidence / Heart Reasons
+sub-menus, ≤ 9 options a menu), and the heart terminal shows only this
+visit, fits the whole menu and holds it while he speaks. The server side is
+done; the house machines are not (steps 4–5 and 7–10 below: retire the
+MacBook's `show`/`lights`, the Desktop's stagehand, the router, the M4, and
+reload every terminal and the TV, which still ran a 10-24 build on
+2026-10-27). Wave 23 needs the badges printed from Run →
 Print sheet (Badges) and the cast cards reprinted (each now carries its own
-part's QR). The show text of waves 18b, 20, 21, 22 and 26 is marked DRAFT
-(`DRAFT w26` for wave 26) and awaits the user's sign-off (the `SIGNOFF-*.md`
-files; wave 26's
+part's QR). The show text of waves 18b, 20, 21, 22, 26 and 27 is marked DRAFT
+(`DRAFT w26`, `DRAFT w27`) and awaits the user's sign-off (the `SIGNOFF-*.md`
+files, `SIGNOFF-w27.md` for the heart; wave 26's
 `core/examples/trapped-in-the-internet/SIGNOFF-w26.md` includes the game
 map's *MAINFRAME* rack label). Wave 26 ships in its contract's C14 order:
 the server release → `sync-show` → reload every terminal and the TV →

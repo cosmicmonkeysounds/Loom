@@ -207,8 +207,8 @@ regenerates `generated/questions.loom`, `codex/9-facts.loom`,
 `generated/print-stacks.md` and the marked blocks in `trabolta.mind.md`
 and `DESIGN.md`. Never hand-edit the generated files.
 
-The VPS (`app.mapsandducks.com`) runs release `w18b-1021`. Master holds
-waves 18b Stage B through 26, merged but not shipped (wave 26:
+The VPS (`app.mapsandducks.com`) runs release `w27` (master through wave
+27, the heart's first meeting; rollback `w26`; wave 26:
 [`docs/loom-w26-contract.md`](../docs/loom-w26-contract.md)). Release and sync
 procedure: `scripts/ops/` and
 [`docs/loom-docker-deploy.md`](../docs/loom-docker-deploy.md).

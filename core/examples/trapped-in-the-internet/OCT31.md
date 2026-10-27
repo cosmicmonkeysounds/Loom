@@ -7,8 +7,8 @@
 > runbook and the pre-show checklist `scripts/ops/checklist.sh` prints) and
 > **[`TECH.md`](./TECH.md)** (the machines). §10 and §11 below still name one
 > "house Mac" / "TV computer"; that role is now split across John's MacBook
-> and John's Windows Desktop. Master holds waves 18b Stage B, 20, 20b and
-> 21–26, merged and not shipped; the VPS runs `w18b-1021`.
+> and John's Windows Desktop. The VPS runs `w27` (master through wave 27,
+> shipped 2026-10-27).
 
 **The party is Saturday, October 31, 2026. Written Thursday, October 15, 16 calendar days out.**
 This was the **active plan** during the build. [`SCHEDULE.md`](./SCHEDULE.md) is the full roadmap (245.5 dev-days) for

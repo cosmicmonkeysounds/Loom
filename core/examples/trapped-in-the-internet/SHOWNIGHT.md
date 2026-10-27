@@ -30,11 +30,12 @@ is on the director's card.
 
 ## 1. Before the night: the pending deploy
 
-The VPS runs **`w18b-1021`** (wave 18b Stage A + the tent laptop, which
-already includes wave 19). Master holds wave 18b Stage B and waves 20, 20b,
-21, 22, 23, 24, 25 and 26, all merged and **not shipped**. Wave 26 lands in
-its contract's C14 order (`docs/loom-w26-contract.md`): the server, the
-sync, the reload of every screen, then the Quest APK. Verify what runs with
+The VPS runs **`w27`** (2026-10-27: master through wave 27, the heart's
+first meeting; rollback `w26`), and the preview event is synced on it. What
+is left of the deploy is on the house machines and the screens: steps 4–5
+and 7–10 of the root `CLAUDE.md`'s *Shipping master* (the Desktop's
+stagehand, the router, the M4, reloading every terminal and the TV, the
+Quest APK). Verify what runs with
 `ssh loom-vps 'tail ~/loom-ops/releases.log'`. Land it in this order:
 
 1. **Decide the sign-off.** Shipping carries every `// DRAFT` line of waves
