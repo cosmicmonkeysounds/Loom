@@ -3,7 +3,7 @@
 //! Recycling Bin) may call on the moderator surface — exactly what the
 //! Play app's host panel needs (cues, judging, announcements, the alert
 //! dial, wallet holds, the King, terminals, codes, parts, answering as an
-//! agent, and the doors: open them, pause, resume), never the god view (the
+//! agent, the talk panel (wave 32), and the doors: open them, pause, resume), never the god view (the
 //! full mod stream and `ModView`, the log, the Mind trace and control,
 //! arbitrary world writes, guest edits, maps, impersonation) and never the
 //! rest of the lifecycle (restart, load / push draft, go live, end, resync).
@@ -76,6 +76,10 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   "/api/mod/audio/play",
   "/api/mod/audio/test",
   "/api/mod/lights/test",
+  // Wave 32 (C3): the talk panel — speak for Clippy in the Desktop (Trabolta
+  // answers aloud) or fire one of his canned lines, only while a talk scene
+  // is on (the route's own 409s).
+  "/api/mod/talk",
 ]);
 
 /** The facts judge's mode path (wave 18, C8: hosts switch auto ⇄ review). */
