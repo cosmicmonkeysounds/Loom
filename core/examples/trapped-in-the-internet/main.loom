@@ -3159,6 +3159,7 @@ INTERACTION truther_download
   label: 📥 Truther Download (auto at +2 min)
   who: admin
   sequence: false
+  while: Night.step >= 8 and Night.truther_sent != true and Night.ended != true
 
 INTERACTION five_minute_warning
   label: ⏳ Five-minute warning (auto at 55 min)
@@ -4584,7 +4585,7 @@ when Night.hunt2_on == true and Night.step < 9 and Night.summons_open != true an
 // C3: the Truther Download (two minutes in). Each program's own copy
 // arrives through the ROLE watcher.
 when truther_download:
-  if Night.truther_sent != true:
+  if Night.truther_sent != true and Night.step >= 8 and Night.ended != true:
     set Night.truther_sent = true
     reveal truthcoin exchange
     start quest The Exchange for McAfee Anti-Virus
@@ -4598,8 +4599,14 @@ when truther_download:
     // DRAFT w18b (R4, O7): founding opens here. (No "wins" in a house line:
     // the screens cheer only a line that names a winner.)
     broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open. You may found a faction of your own now (Start → Factions). The count starts at 11:00 PM: a faction needs more than half of the programs." to everyone with go: Truther Download
-  else:
+  else if Night.ended == true:
+    // DRAFT w28: a press after the night ended does nothing.
+    broadcast "📥 The night is over. Nothing happens." to channel(hosts)
+  else if Night.truther_sent == true:
     broadcast "📥 Not again: the Truther Download was already sent. Nothing happens." to channel(hosts)
+  else:
+    // DRAFT w28: a press before 📓 Hunt 2 (step 8) does nothing.
+    broadcast "📥 Not yet: 📓 Hunt 2 first (it sends itself two minutes in). Nothing happens." to channel(hosts)
 
 // ── D. Act II ──
 

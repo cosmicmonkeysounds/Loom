@@ -36,6 +36,8 @@ export const SimEventType = {
   Directive: "directive",
   BeatEntered: "beatEntered",
   ChoicePrompted: "choicePrompted",
+  Chose: "chose",
+  ChoiceUpdated: "choiceUpdated",
   Respond: "respond",
   Widget: "widget",
   Signal: "signal",
@@ -132,6 +134,16 @@ export type SimEvent =
   // after a restore (a replay records the same log); `options` lists only
   // the options whose guard held (D9). Optional only for hand-built events.
   | { type: "choicePrompted"; person: string | null; promptId: string; options: string[]; id?: number }
+  // Wave 28: a participant answered a menu — `id` the menu's (its
+  // `choicePrompted` id), `beat` the menu's beat, `text` the option as
+  // written. The server posts it as the picker's own `pick` line in the
+  // menu's room; recorded before the option's body runs.
+  | { type: "chose"; person: string; id: number; beat: string | null; text: string }
+  // Wave 28: a docked menu's guarded options were read again after the
+  // world changed (a codex entry unlocked mid-talk) and the shown set
+  // moved. Same menu, same `id`; `options` is the new shown list. Never a
+  // chat line; the views read the menu's options from the sim.
+  | { type: "choiceUpdated"; person: string | null; id: number; options: string[] }
   | {
       type: "respond";
       to: string;

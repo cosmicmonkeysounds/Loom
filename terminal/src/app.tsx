@@ -69,7 +69,7 @@
 //! has played.
 
 import { Component, Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
-import { Composer, Thread, type Echo } from "./chat.tsx";
+import { Composer, Thread } from "./chat.tsx";
 import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
 import { followMap, followVoice, linkConfig } from "./setup-map.ts";
@@ -112,7 +112,8 @@ import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, echoOf, echoTime, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, threadFor, type HeartMenu } from "./heart/heart.ts";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, threadFor, type HeartMenu } from "./heart/heart.ts";
+import { pendingPickOf, unansweredPicks, withPendingPicks, type PendingPick } from "./heart/pending-pick.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 import { RoomSpeech } from "./speech/said.ts";
 
@@ -1087,29 +1088,40 @@ function Terminal({
   const cueNow = state?.room?.cue ?? null;
   const cueMark = useRef<{ seq: number; lineSeq: number } | null>(null);
   if (cueNow !== null && cueMark.current?.seq !== cueNow.seq) cueMark.current = { seq: cueNow.seq, lineSeq: session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1) };
-  const typedAfter = pilot !== null && cueMark.current !== null && session.lines.some((l) => !l.theirs && l.from === pilot.name && l.seq > cueMark.current!.lineSeq);
+  const typedAfter = pilot !== null && cueMark.current !== null && session.lines.some((l) => !l.theirs && l.pick !== true && l.from === pilot.name && l.seq > cueMark.current!.lineSeq);
   const heart = menu !== null || (pilot !== null && heartTouched(cueNow, pilotSince.current, typedAfter));
-  const [echoes, setEchoes] = useState<Echo[]>([]);
-  useEffect(() => setEchoes([]), [pilot]);
-  // When this page first saw each line (local ms): an echo's time runs on from the newest (echoTime).
-  const seenAt = useRef(new Map<number, number>());
-  for (const l of session.lines) if (!seenAt.current.has(l.seq)) seenAt.current.set(l.seq, Date.now());
+  // Wave 28: the pick comes back from the server as the program's own
+  // `pick` line in this thread (before his reply). Until it does (slow
+  // wifi), a pending pick stands in for it, dimmed; once the server's line
+  // is in, the pending one is dropped (`pending-pick.ts`), never doubled.
+  const [pendingPicks, setPendingPicks] = useState<PendingPick[]>([]);
+  useEffect(() => setPendingPicks([]), [pilot]);
+  const pickCount = useRef(0);
+  const linesRef = useRef(session.lines);
+  linesRef.current = session.lines;
+  useEffect(() => {
+    setPendingPicks((list) => {
+      const open = unansweredPicks(list, session.lines);
+      return open.length === list.length ? list : open;
+    });
+  }, [session.lines]);
   const choose = useCallback(
     async (m: HeartMenu, index: number) => {
       if (pilot === null) return;
+      const p = pendingPickOf(`${m.id}:${index}:${++pickCount.current}`, m.channel, m.options[index] ?? "", linesRef.current);
+      setPendingPicks((list) => [...list, p]);
+      const drop = () => setPendingPicks((list) => list.filter((x) => x.key !== p.key));
       try {
         await withTimeout(api(`${baseOf(config)}/api/guest/choose`, chooseBody(m, index), pilot.token), CHOOSE_TIMEOUT_MS);
       } catch (e) {
+        drop();
         // The menu moved under the click, or is gone (null): the next view redraws it.
         const text = chooseErrorText(e);
         if (text === null) return;
         throw new Error(text);
       }
-      const after = session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1);
-      const newest = session.lines[session.lines.length - 1];
-      setEchoes((list) => [...list, { key: `${m.id}:${index}`, ...echoOf(m.options[index] ?? ""), after, ts: echoTime(newest, newest === undefined ? undefined : seenAt.current.get(newest.seq), Date.now()) }]);
     },
-    [config, pilot, session.lines],
+    [config, pilot],
   );
   const leash = lineLeash({ answering: session.typing || speaking || queue.busy || roomBusy, filesOpen, heart, doorOpen: doorOpen === true && talkWaitsOnDoor(state?.night?.heart_stage) });
   const busy = leash.busy;
@@ -1341,7 +1353,7 @@ function Terminal({
                   </button>
                 </div>
               )}
-              <Thread lines={thread.lines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} echoes={echoes} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
+              <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
                 <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} layer={menuLayer} onSkip={roomBusy ? undefined : skipVoice} />
               )}

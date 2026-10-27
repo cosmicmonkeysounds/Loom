@@ -90,7 +90,7 @@ then rerun `show:page`.
 | `OCT31.md` | The crunch plan: per-wave build status, the workaround runbook, risks, cut order | Build history |
 | `CHECKLIST.md` | The audit checklist of 2026-10-14, kept through wave 20 | Build history |
 | `SCHEDULE.md` | The post-party roadmap | After the show |
-| `SIGNOFF-w13.md`, `SIGNOFF-w18.md`, `SIGNOFF-w21.md`, `SIGNOFF-w26.md`, `SIGNOFF-w27.md` | Sign-off sheets for DRAFT show text | Test-pinned; `SIGNOFF-w21.md`, `SIGNOFF-w26.md` (wave 26: the BINGO call, the locked phone, the Dare scene, the game's moments, no hints) and `SIGNOFF-w27.md` (wave 27: the first meeting at his heart) still await the user |
+| `SIGNOFF-w13.md`, `SIGNOFF-w18.md`, `SIGNOFF-w21.md`, `SIGNOFF-w26.md`, `SIGNOFF-w27.md`, `SIGNOFF-w28.md` | Sign-off sheets for DRAFT show text | Test-pinned; `SIGNOFF-w21.md`, `SIGNOFF-w26.md` (wave 26: the BINGO call, the locked phone, the Dare scene, the game's moments, no hints), `SIGNOFF-w27.md` (wave 27: the first meeting at his heart) and `SIGNOFF-w28.md` (wave 28: 📥 waits for Hunt 2, heart picks as chat lines) still await the user |
 | `history/` | Older contracts and sign-off sheets (`CONTRACT-w20.md`, `SIGNOFF-w18b.md`, `SIGNOFF-w20.md`) and the README's old banner (`readme-banner.md`) | History; see its README |
 
 ## Secrets

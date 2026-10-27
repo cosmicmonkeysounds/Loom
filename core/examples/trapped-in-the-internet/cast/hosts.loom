@@ -246,7 +246,7 @@ CHARACTER Task Manager is Host
       reply 🃏 If nobody has a Bingo: hand Clippy the pre-filled card for {Kernel.anti_ai}, then press 🃏 on their card.
 
   when truther_download:
-    if Night.truther_sent != true:
+    if Night.truther_sent != true and Night.step >= 8 and Night.ended != true:
       reply 🪙 The bank is open. Programs send Truthcoin from their Wallet; the bank buttons 🪙 Pay / 🪙 Charge are for corrections.
 
 CHARACTER Adobe Acrobat is Host

@@ -3,7 +3,7 @@
 //! is stale ("Cues moved: <that cue> just fired. Re-arm."), and a LAST this
 //! console did not press flashes who moved it.
 
-import type { CueMarks } from '@loom/core/cue-sheet'
+import { armWindow, type Armed, type CueMarks } from '@loom/core/cue-sheet'
 import type { FireResult, OwnPress } from '@/store/cockpit'
 import { foldKey } from './glance'
 
@@ -72,4 +72,10 @@ export function movedPressedCue(fromServer: string | null | undefined, fromMarks
 export function settleTarget(res: FireResult, seen: number | undefined): number | null {
   if (res.error !== undefined || typeof res.presses !== 'number') return null
   return pressSettled(res.presses, seen) ? null : res.presses
+}
+
+/** Ms until `armed` lapses at `now` (never below 0): its own window
+ *  (`armWindow`: 4 s, or 10 s for a cue armed through the who? picker). */
+export function armLapsesIn(armed: Pick<Armed, 'at' | 'ms'>, now: number): number {
+  return Math.max(0, armed.at + armWindow(armed) - now)
 }

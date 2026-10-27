@@ -9,7 +9,11 @@
 //! guest view for where each menu docks.
 
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { EventRuntime } from "../server/event-runtime.ts";
+import { Store } from "../server/store.ts";
 import { join } from "node:path";
 import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
@@ -1827,5 +1831,123 @@ describe("The Heart — menu invariants (wave 27)", () => {
     count();
     expect(counted["Heart Layer Four"]).toBe(8);
     for (const b of HEART_MENU_BEATS) expect(counted[b], b).toBeGreaterThan(0);
+  });
+});
+
+// ───────── wave 28: a pick at the heart is a chat line on the phone too ─────────
+
+describe("The Heart — the first meeting's picks reach the phone (wave 28)", () => {
+  const CODES = { event: "EVTH28", prime: "PRMH28", mod: "MODH28" };
+  function fakeReq(body: unknown, headers: Record<string, string>): IncomingMessage {
+    const buf = Buffer.from(JSON.stringify(body ?? {}));
+    return { headers, [Symbol.asyncIterator]: async function* () { yield buf; }, on() {} } as unknown as IncomingMessage;
+  }
+  async function call(rt: EventRuntime, method: string, p: string, body: unknown, auth: { token?: string; moderator?: boolean } = {}) {
+    const url = new URL(`http://x${p}`);
+    const res = {
+      statusCode: 0,
+      body: "",
+      setHeader() {},
+      writeHead(st: number) { res.statusCode = st; return res; },
+      write() { return true; },
+      end(b?: string) { if (typeof b === "string") res.body = b; return res; },
+    };
+    await rt.handle(fakeReq(body, auth.token ? { "x-loom-token": auth.token } : {}), res as unknown as ServerResponse, method, url.pathname, url, { moderator: auth.moderator === true });
+    return { status: res.statusCode, json: JSON.parse(res.body || "{}") as Record<string, unknown> };
+  }
+
+  it("⟦CHOSEN⟧ picked at Heart Layer One: Microsoft Excel's dm:Trabolta shows the pick line, then his Heart Pick reply", { timeout: SLOW }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-heart28-"));
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
+    try {
+      rt.openDoors();
+      const mod = (name: string, extra: Record<string, unknown> = {}) => call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
+      const program = async (name: string) => {
+        const g = await call(rt, "POST", "/api/guest/register", { name, passcode: CODES.event, claim: rt.claimFor(name) });
+        expect(g.status).toBe(200);
+        const id = g.json["id"] as string;
+        const token = g.json["token"] as string;
+        await mod("captcha answered", { subject: id, args: { passed: false } });
+        expect((await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token })).status).toBe(200);
+        expect((await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token })).status).toBe(200);
+        expect((await call(rt, "POST", "/api/mod/scan", { as: "Norton Anti-Virus", target: id }, { moderator: true })).status).toBe(200);
+        return { id, token };
+      };
+      await program("Calculator");
+      const excel = await program("Microsoft Excel");
+      for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth"]) await mod(n);
+      expect(rt.liveSim!.world.peek("Trabolta.awake")).toMatchObject({ value: true });
+      const label = "Terminal · Server Room";
+      await mod("door_sensor_opened", { args: { level: 30 }, label });
+      await mod("door_sensor_closed", { args: { level: 2400 }, label });
+      await mod("terminal opened", { subject: excel.id, args: { at: "The Server Room" }, label });
+      const st = await call(rt, "GET", `/api/state?role=guest&token=${encodeURIComponent(excel.token)}`, {});
+      const menu = (st.json["choices"] as Array<{ id: number; beat: string; channel: string; options: string[] }>).find((c) => c.beat === "Heart Layer One")!;
+      expect(menu.channel).toBe("dm:Trabolta");
+      const index = menu.options.findIndex((o) => o.startsWith("⟦CHOSEN⟧"));
+      expect(index).toBeGreaterThanOrEqual(0);
+      const before = rt.chatHistoryFor(excel.id).length;
+      expect((await call(rt, "POST", "/api/guest/choose", { index, choice: menu.id, text: menu.options[index] }, { token: excel.token })).status).toBe(200);
+      const after = rt.chatHistoryFor(excel.id).slice(before).filter((m) => m.channel === "dm:Trabolta");
+      expect(after[0]).toMatchObject({ from: "Microsoft Excel", kind: "line", pick: true, audience: [excel.id], text: menu.options[index]!.replace(/^⟦CHOSEN⟧\s*/u, "") });
+      expect(after[0]!.act).toBeUndefined();
+      expect(after[1]).toMatchObject({ from: "Trabolta", text: "You count things. I count things. I thought we would get along." });
+    } finally {
+      rt.dispose();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("The Heart — a docked menu follows what the program gains mid-talk (wave 28)", () => {
+  it("What Sandy Says unlocked while Layer Three is docked: ⟦PROOF⟧ shows in the same menu at once, and picks", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toLayerThree(sim);
+    const before = heartMenu(sim, "g1")!;
+    expect(has(before.options, "⟦PROOF⟧")).toBe(false);
+    const out = sim.unlock("g1", "What Sandy Says");
+    const after = heartMenu(sim, "g1")!;
+    // Same menu (id, beat), no second menu docked, the option in its written place.
+    expect(after.id).toBe(before.id);
+    expect(after.beat).toBe("Heart Layer Three");
+    expect(heartMenus(sim, "g1")).toHaveLength(1);
+    expect(after.options[0]).toBe("⟦PROOF⟧ Hold up what she says. All forty pages.");
+    expect(after.options.slice(1)).toEqual(before.options);
+    expect(out.filter((e) => e.type === "choicePrompted")).toEqual([]);
+    expect(out.filter((e) => e.type === "choiceUpdated")).toEqual([{ type: "choiceUpdated", person: "g1", id: before.id, options: after.options }]);
+    // Nothing else moved: a later settle re-reads nothing new.
+    expect(advance(sim, 3).filter((e) => e.type === "choiceUpdated")).toEqual([]);
+    const picked = pick(sim, "g1", "⟦PROOF⟧ Hold up what she says");
+    expect(picked.some((e) => e.type === "chose" && e.text === "⟦PROOF⟧ Hold up what she says. All forty pages.")).toBe(true);
+    expect(v(sim, "g1.heart_shown_says")).toBe(true);
+  });
+
+  it("a pick sent against the menu as it was (the index moved under it) is never misapplied: nothing is picked, the menu stays", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toLayerThree(sim);
+    const stale = heartMenu(sim, "g1")!;
+    const i = stale.options.indexOf("I need to go.");
+    sim.unlock("g1", "The Sandy File");
+    const now = heartMenu(sim, "g1")!;
+    expect(now.options.indexOf("I need to go.")).toBe(i + 1);
+    // (The server answers such a click 409 `moved` with the new options before it reaches the sim.)
+    const out = sim.choose("g1", i, stale.id, stale.beat, "I need to go.");
+    expect(out.some((e) => e.type === "chose")).toBe(false);
+    expect(heartMenu(sim, "g1")).toEqual(now);
+  });
+
+  it("an option whose condition stops holding goes; a re-read never empties a menu; replays read the same", { timeout: SLOW }, () => {
+    const run = () => {
+      const sim = atLayerOne();
+      toLayerThree(sim);
+      sim.unlock("g1", "What Sandy Says");
+      sim.setVar("g1.heart_shown_says", "true");
+      return sim;
+    };
+    const a = run();
+    expect(has(offered(a, "g1"), "⟦PROOF⟧")).toBe(false);
+    expect(offered(a, "g1").length).toBeGreaterThan(0);
+    // The same commands, a fresh Sim (a restart's replay): the same menu, the same id.
+    expect(run().pendingChoicesFor("g1")).toEqual(a.pendingChoicesFor("g1"));
   });
 });

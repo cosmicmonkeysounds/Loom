@@ -20,6 +20,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ARM_DEAD_MS,
   ARM_MS,
+  ARM_PICK_MS,
+  armWindow,
   armFor,
   armStillValid,
   countdownLeft,
@@ -307,7 +309,7 @@ export function stripItems(view: DirectorView | null, layout: SheetLayout, nowMs
 // first tap arms, a second one ≥ `ARM_DEAD_MS` and < `ARM_MS` later fires,
 // and an arm bound to the cue state is dropped once that state moves.
 
-export { ARM_DEAD_MS, ARM_MS, armFor, armStillValid, takesValue, tapCue, type Armed, type Tap };
+export { ARM_DEAD_MS, ARM_MS, ARM_PICK_MS, armFor, armStillValid, armWindow, takesValue, tapCue, type Armed, type Tap };
 
 /** What a tap does on the phone: core's `tapCue`, except that a second tap
  *  on an arm the cue state has since moved past (another director, or the
@@ -318,7 +320,7 @@ export type PhoneTap = Tap | { kind: "stale"; id: string };
 export function phoneTap(armed: Armed | null, row: CueRow, now: number, marks: CueMarks): PhoneTap {
   if (armed !== null && armed.id === row.id) {
     const age = now - armed.at;
-    if (age >= ARM_DEAD_MS && age < ARM_MS && !armStillValid(armed, marks, now)) return { kind: "stale", id: row.id };
+    if (age >= ARM_DEAD_MS && age < armWindow(armed) && !armStillValid(armed, marks, now)) return { kind: "stale", id: row.id };
   }
   return tapCue(armed, row, now, marks);
 }
@@ -885,12 +887,13 @@ export function drainSeconds(at: number, now: number, ms: number = ARM_MS): numb
 }
 
 /** The FIRE window draining (finish review #6): a segmented Win95 progress
- *  bar that empties over `ARM_MS` from the arm's own moment (`at`), so a
- *  re-render or the bar's twin in the Cues tab never restarts it. Reduced
- *  motion: no bar, a "4 s" countdown in text. A screen reader already
- *  hears "Tap FIRE within 4 s". */
-export function ArmDrain({ at, className }: { at: number; className?: string }) {
-  const [start] = useState(() => Math.max(0, Math.min(ARM_MS, Date.now() - at)));
+ *  bar that empties over the arm's window (`ms`: `ARM_MS`, or
+ *  `ARM_PICK_MS` for a cue armed through the who? picker — pass
+ *  `armWindow(armed)`) from the arm's own moment (`at`), so a re-render or
+ *  the bar's twin in the Cues tab never restarts it. Reduced motion: no
+ *  bar, a "4 s" (or "10 s") countdown in text. */
+export function ArmDrain({ at, ms = ARM_MS, className }: { at: number; ms?: number; className?: string }) {
+  const [start] = useState(() => Math.max(0, Math.min(ms, Date.now() - at)));
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 250);
@@ -899,9 +902,9 @@ export function ArmDrain({ at, className }: { at: number; className?: string }) 
   return (
     <span className={`host-drain ${className ?? ""}`.trim()} aria-hidden="true">
       <span className="host-drain-track">
-        <span className="host-drain-fill" style={{ animationDuration: `${ARM_MS}ms`, animationDelay: `-${start}ms`, animationTimingFunction: `steps(${DRAIN_SEGMENTS}, end)` }} />
+        <span className="host-drain-fill" style={{ animationDuration: `${ms}ms`, animationDelay: `-${start}ms`, animationTimingFunction: `steps(${DRAIN_SEGMENTS}, end)` }} />
       </span>
-      <span className="host-drain-secs">{drainSeconds(at, now)} s</span>
+      <span className="host-drain-secs">{drainSeconds(at, now, ms)} s</span>
     </span>
   );
 }
@@ -960,7 +963,7 @@ export function CueButton({ row, armed, locked, sending, warnings, actCode, subj
           ) : isArmed ? (
             <>
               <span className="cue-arm">{armLine(armed!, subjectName ?? null)}</span>
-              <ArmDrain key={armed!.at} at={armed!.at} />
+              <ArmDrain key={armed!.at} at={armed!.at} ms={armWindow(armed!)} />
               {warnings.map((w) => (
                 <span key={w} className="cue-warn" data-testid="cue-warn">
                   {w}
@@ -1053,7 +1056,7 @@ export function useCueDesk(rows: CueRow[], marks: CueMarks, roster: ReadonlyArra
   // An armed cue disarms itself if the second tap never comes.
   useEffect(() => {
     if (armed === null) return;
-    const t = setTimeout(() => setArmed(null), ARM_MS);
+    const t = setTimeout(() => setArmed(null), armWindow(armed));
     return () => clearTimeout(t);
   }, [armed]);
   // Looking away drops the arm.

@@ -9,7 +9,6 @@ import {
   composerBlocked,
   composerShown,
   echoOf,
-  echoTime,
   emptyThreadText,
   heartWaitingFirstWord,
   HEART_FIRST_WORD_MS,
@@ -222,16 +221,6 @@ describe("a ⟦BACK⟧ menu with the composer held back (review)", () => {
     expect(app).toContain('panelPlace(menu, showComposer) === "main"');
     expect(app).toContain('panelPlace(menu, showComposer) === "under"');
     expect(app).not.toMatch(/!composerShown\(\{ keys: config\.keys, menu \}\)/u);
-  });
-});
-
-describe("an echo's time (review)", () => {
-  it("is when the pick was made, on the lines' clock, not the newest line's minute", () => {
-    // His line at story time 20 min, seen here at local 1_000; the pick two minutes later.
-    expect(echoTime({ ts: 1_200_000 }, 1_000, 121_000)).toBe(1_320_000);
-    expect(echoTime({ ts: 1_200_000 }, 5_000, 5_000)).toBe(1_200_000);
-    expect(echoTime({ ts: 1_200_000 }, undefined, 9_000)).toBe(1_200_000);
-    expect(echoTime(undefined, undefined, 42)).toBe(42);
   });
 });
 

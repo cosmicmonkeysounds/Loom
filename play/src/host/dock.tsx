@@ -13,7 +13,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { cueRows, cueTitleTags, type CueMarks, type CueRow } from "../../../core/src/cue-sheet.ts";
 import { suggestionHint, awardSuggestion } from "../../../core/src/host-board.ts";
-import { ArmDrain, CLOCK_HELD, CuePicker, NOTHING_TO_PRESS, type CueDesk, type NextBar, type SheetLayout, STORY_RUNS, clockRuns, countdownText, nextBar, sheetLayout, storyNow, useCueDesk, type FireOutcome } from "../director.tsx";
+import { ArmDrain, armWindow, CLOCK_HELD, CuePicker, NOTHING_TO_PRESS, type CueDesk, type NextBar, type SheetLayout, STORY_RUNS, clockRuns, countdownText, nextBar, sheetLayout, storyNow, useCueDesk, type FireOutcome } from "../director.tsx";
 import { URGENT_S } from "../clock.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { HostView } from "../types.ts";
@@ -463,7 +463,7 @@ export function HostNextBar({ bar, desk, stale, paused = false, line2, strip, ba
           onClick={() => desk.tap(nextRow)}
         >
           {fireLabel(armedHere, sending, nextRow.subject && !armedHere)}
-          {armedHere && !sending && <ArmDrain key={desk.armed!.at} at={desk.armed!.at} className="host-drain-fire" />}
+          {armedHere && !sending && <ArmDrain key={desk.armed!.at} at={desk.armed!.at} ms={armWindow(desk.armed!)} className="host-drain-fire" />}
         </button>
       )}
     </div>

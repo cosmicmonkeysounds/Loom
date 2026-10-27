@@ -133,7 +133,9 @@ default). With nobody calling, nothing asks.
   the old NEXT never arms the new one.
 - A cue that needs a person (an award's winner, the King's fallback)
   asks **who** first; pick them, then tap the cue again to fire it for
-  them (the armed row reads *Tap again to fire → Winamp*). Only an **award** (G2–G10) also has a **Value** box above the
+  them (the armed row reads *Tap again to fire → Winamp*). A cue armed for
+  a person waits **10 s** for that tap, not 4 s, while the list scrolls
+  back to its row. Only an **award** (G2–G10) also has a **Value** box above the
   list (optional: lies accepted, the duck time, quests done).
 - A message at the bottom says whether it fired. *✓ Fired* means the
   story took it. *Not taken — X doesn't apply right now (# hosts says

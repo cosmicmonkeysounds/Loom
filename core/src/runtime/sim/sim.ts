@@ -134,8 +134,12 @@ interface PendingChoice {
   id: number;
   /** The beat the menu sits in ("" outside one). */
   beat: string;
-  /** Only the options whose guard held when the menu was prompted (D9). */
-  options: Array<{ text: string; body: BodyItem[] }>;
+  /** Only the options whose guard held when the menu was prompted (D9),
+   *  read again whenever the world settles (wave 28, `refreshMenus`). */
+  options: Array<{ text: string; body: BodyItem[]; at?: number }>;
+  /** Every option as written, guards and all, in order (wave 28): what
+   *  `refreshMenus` reads again. Absent: the menu is never re-read. */
+  written?: Array<Extract<BodyItem, { kind: "choice" }>>;
   bindings: Bindings;
   continuation: Frame[];
 }
@@ -989,6 +993,9 @@ export class Sim {
       if (opt !== undefined) {
         queue.splice(at, 1);
         if (queue.length === 0) this.pendingChoices.delete(person);
+        // Wave 28: the pick itself, before anything its option says — the
+        // server posts it as the picker's own line in the menu's room.
+        this.record({ type: "chose", person, id: pc.id, beat: pc.beat === "" ? null : pc.beat, text: opt.text });
         // Resume the selected option, then the full saved continuation.
         // Every frame field has to survive the round trip: dropping
         // `speaker` silently demotes a post-choice dialogue line to
@@ -1597,6 +1604,66 @@ export class Sim {
       // become true. Their bodies may raise events — loop to a fixpoint.
       if (!this.runWatchers() || guard++ > 10000) break;
     }
+    this.refreshMenus();
+  }
+
+  /**
+   * Wave 28: read every docked menu's guarded options again, now that the
+   * world has settled. A program that gains something mid-talk (What Sandy
+   * Says unlocked while Layer Three is docked) sees the option it opens at
+   * once, without the menu docking again; one whose condition stopped
+   * holding goes. The menu keeps its id, place and continuation; an option
+   * still shown keeps its words; a read that would leave nothing keeps the
+   * menu as it is (a docked menu never vanishes under the program). Only
+   * the sim's own state is read, at the end of every drain, so a replay
+   * re-reads it identically. A guard that throws is quietly not shown
+   * (its diagnostic went out when the menu was prompted).
+   */
+  private refreshMenus(): void {
+    if (this.pendingChoices.size === 0) return;
+    const saved = this.currentBindings;
+    try {
+      for (const [person, queue] of this.pendingChoices) {
+        for (const q of queue) {
+          if (q.written === undefined) continue;
+          const shown = new Map<number, { text: string; body: BodyItem[]; at?: number }>();
+          for (const o of q.options) if (o.at !== undefined) shown.set(o.at, o);
+          const next: Array<{ text: string; body: BodyItem[]; at?: number }> = [];
+          q.written.forEach((c, at) => {
+            let holds = c.value.guard === null;
+            if (!holds) {
+              this.currentBindings = q.bindings;
+              try {
+                holds = truthy(evaluate(parseExprCached(c.value.guard!), this.world, this.callFn, q.bindings));
+              } catch (e) {
+                if (!(e instanceof ExprError)) throw e;
+                holds = false;
+              }
+            }
+            if (!holds) return;
+            const was = shown.get(at);
+            if (was !== undefined) next.push(was);
+            else {
+              let text: string;
+              try {
+                text = this.interpolate(c.value.text, q.bindings);
+              } catch (e) {
+                if (!(e instanceof ExprError)) throw e;
+                return;
+              }
+              next.push({ text, body: c.value.body, at });
+            }
+          });
+          if (next.length === 0) continue;
+          const same = next.length === q.options.length && next.every((o, i) => o === q.options[i]);
+          if (same) continue;
+          q.options = next;
+          this.record({ type: "choiceUpdated", person: person === "__global" ? null : person, id: q.id, options: next.map((o) => o.text) });
+        }
+      }
+    } finally {
+      this.currentBindings = saved;
+    }
   }
 
   /**
@@ -1907,14 +1974,16 @@ export class Sim {
           // the continuation — snapshot it (this frame's cursor already
           // points past the menu) and resume on `choose()`.
           let j = frame.index - 1;
-          const options: Array<{ text: string; body: BodyItem[] }> = [];
+          const options: Array<{ text: string; body: BodyItem[]; at?: number }> = [];
+          const written: Array<Extract<BodyItem, { kind: "choice" }>> = [];
           while (j < frame.items.length && frame.items[j]!.kind === "choice") {
             const c = frame.items[j]! as Extract<BodyItem, { kind: "choice" }>;
             // A guarded option (wave 20, D9) is offered only while its
             // condition holds, read now, in this frame's bindings.
             if (c.value.guard === null || this.guardHolds(c.value.guard, b)) {
-              options.push({ text: this.interpolate(c.value.text, b), body: c.value.body });
+              options.push({ text: this.interpolate(c.value.text, b), body: c.value.body, at: written.length });
             }
+            written.push(c);
             j += 1;
           }
           frame.index = j; // advance past the whole menu
@@ -1933,7 +2002,7 @@ export class Sim {
           }));
           const queue = this.pendingChoices.get(person) ?? [];
           const id = this.log.len(); // the index `record` gives the prompt below
-          queue.push({ id, beat: frame.beat ?? "", options, bindings: b, continuation });
+          queue.push({ id, beat: frame.beat ?? "", options, ...(written.some((c) => c.value.guard !== null) ? { written } : {}), bindings: b, continuation });
           this.pendingChoices.set(person, queue);
           this.record({
             type: "choicePrompted",

@@ -8,7 +8,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { cueRows, type CueRow } from "../../core/src/cue-sheet.ts";
-import { ARM_MS, ArmDrain, CueButton, DRAIN_SEGMENTS, compactCue, cueRowClass, drainSeconds, nextBar, sheetLayout, type CueDesk } from "../src/director.tsx";
+import { ARM_MS, ARM_PICK_MS, ArmDrain, CueButton, armFor, armWindow, DRAIN_SEGMENTS, compactCue, cueRowClass, drainSeconds, nextBar, sheetLayout, type CueDesk } from "../src/director.tsx";
 import { HostNextBar } from "../src/host/dock.tsx";
 import { barLine, hostStrip } from "../src/host/model.ts";
 import { hostFixture } from "./host-fixture.ts";
@@ -61,6 +61,18 @@ describe("the FIRE window drains", () => {
     expect(html).toContain(`animation-duration:${ARM_MS}ms`);
     expect(html).toContain(`steps(${DRAIN_SEGMENTS}, end)`);
     expect(html).toMatch(/host-drain-secs">4 s/u);
+  });
+  it("a row armed for a picked person drains over 10 s (wave 28)", () => {
+    const at = Date.now();
+    const ms = armWindow(armFor("award_most_trusted", "g1", at));
+    expect(ms).toBe(ARM_PICK_MS);
+    const html = renderToStaticMarkup(createElement(ArmDrain, { at, ms }));
+    expect(html).toContain(`animation-duration:${ARM_PICK_MS}ms`);
+    expect(html).toMatch(/host-drain-secs">10 s/u);
+    // The armed row itself passes the picked window down.
+    const award = row({ id: "award_most_trusted", title: "🏆 Most trusted", subject: true });
+    const cue = renderToStaticMarkup(createElement(CueButton, { row: award, armed: armFor("award_most_trusted", "g1", at), locked: false, sending: false, warnings: [], onTap: () => {} }));
+    expect(cue).toMatch(/host-drain-secs">10 s/u);
   });
   it("the armed row and the bar's FIRE both carry it; ARM never does", () => {
     const v = hostFixture();

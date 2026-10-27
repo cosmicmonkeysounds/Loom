@@ -65,7 +65,8 @@ Top to bottom:
     as the time runs out. A fast double tap only arms, and a pocket tap
     disarms by itself.
   - A cue that needs a person (an award's winner) says **PICK** first:
-    choose them, then ARM and FIRE. An award suggests its winner first
+    choose them, then ARM and FIRE (a cue armed for a person waits 10 s
+    for FIRE). An award suggests its winner first
     and fills in the value.
   - When nothing is on offer it says so: the story is running, usually a
     timer you shouldn't press early.

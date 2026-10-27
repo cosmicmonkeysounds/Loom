@@ -317,6 +317,10 @@ export function countdownLeft(endsAt: number, nowMs: number | null): number | nu
 
 /** How long an armed cue waits for the second tap. */
 export const ARM_MS = 4000;
+/** How long a cue armed through the who? picker waits (wave 28): the arm
+ *  starts as the sheet closes, and the director still has to find the row
+ *  again, read `Tap again to fire → <name>` and tap. */
+export const ARM_PICK_MS = 10_000;
 /** A second tap sooner than this after arming is ignored: a double-click
  *  (📋 `read_the_results`, which would skip a question) only arms. */
 export const ARM_DEAD_MS = 300;
@@ -336,6 +340,14 @@ export interface Armed {
   firedCount?: number;
   /** `CueMarks.presses` when it was armed (a server that counts them). */
   presses?: number;
+  /** This arm's window in ms (wave 28): `ARM_PICK_MS` for a picked
+   *  person; absent, `ARM_MS`. Read it through `armWindow`. */
+  ms?: number;
+}
+
+/** How long `a` waits for its second tap. */
+export function armWindow(a: Pick<Armed, "ms">): number {
+  return a.ms ?? ARM_MS;
 }
 
 export type Tap =
@@ -357,11 +369,11 @@ function bindMarks(marks: CueMarks | undefined): Pick<Armed, "last" | "firedCoun
   return { last: marks.last, firedCount: marks.fired.length, ...(typeof marks.presses === "number" ? { presses: marks.presses } : {}) };
 }
 
-/** Is `armed` still good to fire at `now`: inside `ARM_MS`, and the cue
+/** Is `armed` still good to fire at `now`: inside its window (`armWindow`), and the cue
  *  state it was armed against (if bound) has not moved since — LAST, the
  *  fired set, or a press of the armed cue itself. */
 export function armStillValid(armed: Armed, marks: CueMarks, now: number): boolean {
-  if (now - armed.at >= ARM_MS) return false;
+  if (now - armed.at >= armWindow(armed)) return false;
   if (armed.last !== undefined && armed.last !== marks.last) return false;
   if (armed.firedCount !== undefined && armed.firedCount !== marks.fired.length) return false;
   // Another press of this same cue (a second director's 📋, 🍾 again)
@@ -381,7 +393,7 @@ export function armStillValid(armed: Armed, marks: CueMarks, now: number): boole
  *  arm it makes is bound to them and a stale arm never fires (it re-arms). */
 export function tapCue(armed: Armed | null, row: CueRow, now: number, marks?: CueMarks): Tap {
   if (armed !== null && armed.id === row.id && now - armed.at < ARM_DEAD_MS) return { kind: "ignore" };
-  const live = armed !== null && armed.id === row.id && now - armed.at < ARM_MS && (marks === undefined || armStillValid(armed, marks, now));
+  const live = armed !== null && armed.id === row.id && now - armed.at < armWindow(armed) && (marks === undefined || armStillValid(armed, marks, now));
   if (live) return { kind: "fire", id: row.id, subject: armed.subject, ...(armed.value !== undefined ? { value: armed.value } : {}), ...(armed.presses !== undefined ? { presses: armed.presses } : {}) };
   if (row.subject) return { kind: "pick", id: row.id };
   return { kind: "arm", armed: { id: row.id, subject: null, at: now, ...bindMarks(marks) } };
@@ -391,7 +403,7 @@ export function tapCue(armed: Armed | null, row: CueRow, now: number, marks?: Cu
  *  value box's text, when one was typed), bound to `marks` when given. */
 export function armFor(id: string, subject: string, now: number, value?: string, marks?: CueMarks): Armed {
   const v = value?.trim() ?? "";
-  return { id, subject, at: now, ...(v !== "" ? { value: v } : {}), ...bindMarks(marks) };
+  return { id, subject, at: now, ms: ARM_PICK_MS, ...(v !== "" ? { value: v } : {}), ...bindMarks(marks) };
 }
 
 /** Only an award reads a value (G7–G9's number); the King's fallback or a

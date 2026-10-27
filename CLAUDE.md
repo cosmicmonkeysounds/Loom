@@ -187,7 +187,9 @@ reload every terminal and the TV, which still ran a 10-24 build on
 Print sheet (Badges) and the cast cards reprinted (each now carries its own
 part's QR). The show text of waves 18b, 20, 21, 22, 26 and 27 is marked DRAFT
 (`DRAFT w26`, `DRAFT w27`) and awaits the user's sign-off (the `SIGNOFF-*.md`
-files, `SIGNOFF-w27.md` for the heart; wave 26's
+files, `SIGNOFF-w27.md` for the heart, `SIGNOFF-w28.md` for wave 28's
+`DRAFT w28` # hosts lines on the 📥 Truther Download (branch
+`oct31-w28/heart-followups`, not yet shipped); wave 26's
 `core/examples/trapped-in-the-internet/SIGNOFF-w26.md` includes the game
 map's *MAINFRAME* rack label). Wave 26 ships in its contract's C14 order:
 the server release → `sync-show` → reload every terminal and the TV →

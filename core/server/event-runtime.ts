@@ -28,6 +28,7 @@ import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
 import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, menuChannelsFor, momentLines, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
 import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
+import { TerminalVisits } from "./terminal-visits.ts";
 import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, readRawBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
@@ -717,6 +718,8 @@ export class EventRuntime {
   // Operator play-as sessions (token → who is played, by whom), minted by
   // `/api/mod/impersonate` for the editor's embedded play app.
   private readonly impersonations = new Map<string, Impersonation>();
+  /** Wave 28 (gap 2b): each wall terminal's visit floor per guest, so a reload mid-visit keeps it (memory only). */
+  private readonly terminalVisits = new TerminalVisits();
   /** When each booth last scanned each guest (`token|character|guest`), for the double-tap guard. */
   private readonly lastScans = new Map<string, number>();
   // Failed passcode attempts per client IP (guest register + prime/mod
@@ -2591,7 +2594,9 @@ export class EventRuntime {
       // text was still him answering, and re-asking it answers twice.)
       if (m.from !== character) {
         // A story line from anyone else in the thread is not a guest asking.
-        if (m.kind === "line" && !Object.hasOwn(m, "beat")) {
+        // Wave 28: a pick at a menu (`pick`) is the guest answering the
+        // story, never a line owed his free reply.
+        if (m.kind === "line" && !Object.hasOwn(m, "beat") && m.pick !== true) {
           owed = m;
           first ??= m;
         }
@@ -4453,7 +4458,7 @@ export class EventRuntime {
   }
 
   /** What the chat composer asks the runtime (C3: a readout's guest picture). */
-  private readonly composeOpts: ComposeOptions = { avatarOf: (name) => this.avatars.keyFor(name) };
+  private readonly composeOpts: ComposeOptions = { avatarOf: (name) => this.avatars.keyFor(name), menuChannelOf: (menu) => this.menuChannels.get(menu) };
 
   /** Wave 18 (C6, C7): when each wanted guest was marked / captured, and
    *  when the night first ended — rebuilt by every replay. */
@@ -4624,6 +4629,7 @@ export class EventRuntime {
     // Operator play-as sessions follow the sessions they stand in for: a
     // guest's dies with every restart, a booth's only when the show goes live.
     this.endImpersonations((imp) => imp.role === "guest" || kind === "golive");
+    this.terminalVisits.clear();
     this.endClients("guest");
     // Push follows the sessions: every guest's device unbinds (the phone
     // re-subscribes when it re-joins), a booth's only when the show goes live.
@@ -7526,13 +7532,27 @@ export class EventRuntime {
         const host = role === "prime" && this.sim.model.characters.get(id)?.admin === true;
         this.impersonations.set(token, { role, id, by: label !== "" ? label : by, ...(host ? { host: true } : {}) });
         const name = role === "guest" ? (this.sim.persons.get(id)?.name ?? id) : id;
-        sendJson(res, 200, { token, role, id, name, eventId: this.eventId, title: this.title, ...(role === "prime" ? { host } : {}) });
+        // Wave 28: `seq`, the newest chat seq now: a room terminal whose stream
+        // history comes late floors its visit here (only this visit's lines).
+        const all = this.chat.all();
+        const seq = all.length > 0 ? all[all.length - 1]!.seq : -1;
+        // Wave 28 (gap 2b): `visitSeq`, the visit's floor. A wall terminal
+        // (labelled) scanning the same guest again soon after its last
+        // session ended (a reload mid-visit) carries on that visit's floor,
+        // so the reloaded page still shows the whole exchange.
+        const visitSeq = role === "guest" && label !== "" ? this.terminalVisits.begin(id, label, seq, this.clock()) : seq;
+        sendJson(res, 200, { token, role, id, name, eventId: this.eventId, title: this.title, seq, visitSeq, ...(role === "prime" ? { host } : {}) });
         return true;
       }
       case "/api/mod/impersonate/end": {
         // The editor closed a pane: end that play-as session and its stream.
         // (`session`, not `token` — that field is the caller's own credential.)
         const session = str(body, "session");
+        const ending = this.impersonations.get(session);
+        // Only the terminal's pagehide end (`resumable: true`) leaves the
+        // visit to carry on; a leash end (thrown, timed out, done, left)
+        // is a real end, and the next scan floors fresh.
+        if (ending !== undefined && ending.role === "guest") this.terminalVisits.end(ending.id, ending.by, this.clock(), body["resumable"] === true);
         this.endImpersonations((_imp, t) => t === session);
         this.pushPresence();
         sendJson(res, 200, { ok: true });

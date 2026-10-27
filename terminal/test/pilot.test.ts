@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { LOCKED_PASS_NOTICE, VISIT_KEY, VisitLatch, closeVisit, endPilot, floorAfter, openVisit, visitLinesOf, parseStoredVisit, passLocked, postVisit, recoverVisit, refusesLockedPass, visitSignalBody, type VisitStorage } from "../src/pilot.ts";
+import { LOCKED_PASS_NOTICE, VISIT_KEY, VisitLatch, beginPilot, closeVisit, endPilot, floorAfter, openVisit, visitLinesOf, parseStoredVisit, passLocked, postVisit, recoverVisit, refusesLockedPass, visitSignalBody, type VisitStorage } from "../src/pilot.ts";
 
 const room = defaultConfig({ eventId: "evt 1", token: "mod-tok", name: "Server Room", spot: "server-room", view: "face", room: "The Server Room" });
 
@@ -115,8 +115,13 @@ describe("visit signals", () => {
     const seen: Array<{ url: string; init: RequestInit }> = [];
     await endPilot(room, { token: "imp", id: "g7", name: "Ada" }, { keepalive: true, fetchFn: fakeFetch(200, seen) });
     expect(seen[0]!.url).toBe("/e/evt%201/api/mod/impersonate/end");
-    expect(JSON.parse(String(seen[0]!.init.body))).toEqual({ session: "imp" });
+    // The pagehide end alone is resumable (a reload re-scans onto the same floor).
+    expect(JSON.parse(String(seen[0]!.init.body))).toEqual({ session: "imp", resumable: true });
     expect(seen[0]!.init.keepalive).toBe(true);
+    // A leash end (thrown, timed out, done, left) is a real end.
+    await endPilot(room, { token: "imp", id: "g7", name: "Ada" }, { fetchFn: fakeFetch(200, seen) });
+    expect(JSON.parse(String(seen[1]!.init.body))).toEqual({ session: "imp" });
+    expect(seen[1]!.init.keepalive).toBe(false);
     await expect(endPilot(room, { token: "imp", id: "g7", name: "Ada" }, { fetchFn: fakeFetch(new Error("gone"), seen) })).resolves.toBeUndefined();
   });
 
@@ -253,6 +258,49 @@ describe("the visit floor (wave 27, B1)", () => {
     expect(floorAfter(null, "pin")).toBe(-1);
     expect(floorAfter(7, "pin")).toBe(7);
     expect(floorAfter(floorAfter(null, "pin"), [{ seq: 30 }])).toBe(-1);
+  });
+
+  it("wave 28: a pin floors at the scan's seq, so a late history still shows only this visit", async () => {
+    // Slow venue wifi: no history in 2.5 s, the talk opens, the history lands later.
+    const pinned = floorAfter(null, "pin", 41);
+    expect(pinned).toBe(41);
+    expect(floorAfter(pinned, [{ seq: 3 }, { seq: 41 }, { seq: 42 }, { seq: 43 }])).toBe(41);
+    const late = [{ seq: 3 }, { seq: 20 }, { seq: 41 }, { seq: 42 }, { seq: 43 }];
+    expect(visitLinesOf(late, pinned).map((l) => l.seq)).toEqual([42, 43]);
+    // beginPilot keeps the server's seq (an older server sends none: -1 as before).
+    const fetchFn = (async () => new Response(JSON.stringify({ token: "t", id: "g1", name: "Winamp", seq: 41 }), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+    const real = globalThis.fetch;
+    globalThis.fetch = fetchFn;
+    try {
+      const p = await beginPilot({ eventId: "e", token: "m", name: "Server Room" } as unknown as Parameters<typeof beginPilot>[0], "g1");
+      expect(p).toEqual({ token: "t", id: "g1", name: "Winamp", seq: 41 });
+    } finally {
+      globalThis.fetch = real;
+    }
+  });
+
+  it("gap 2b: a reload mid-visit floors at the server's visitSeq, so his earlier lines from this visit stay and nothing older", async () => {
+    // First page: scanned at seq 40, history newest 40. His lines and a pick follow.
+    const thread = [{ seq: 12 }, { seq: 40 }, { seq: 41 }, { seq: 42 }, { seq: 43 }, { seq: 44 }];
+    // The reload: the re-scan's history's newest is 44, but the server carries the visit at 40.
+    const reloaded = floorAfter(null, thread, undefined, 40);
+    expect(reloaded).toBe(40);
+    expect(visitLinesOf(thread, reloaded).map((l) => l.seq)).toEqual([41, 42, 43, 44]);
+    // The same when the history comes late (a pin) and a later history never moves it.
+    const pinned = floorAfter(null, "pin", 44, 40);
+    expect(pinned).toBe(40);
+    expect(floorAfter(pinned, thread)).toBe(40);
+    // Without visitSeq (an older server): the page's own floor, as before.
+    expect(floorAfter(null, thread)).toBe(44);
+    // beginPilot keeps it.
+    const real = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify({ token: "t", id: "g1", name: "Winamp", seq: 44, visitSeq: 40 }), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+    try {
+      const p = await beginPilot({ eventId: "e", token: "m", name: "Server Room" } as unknown as Parameters<typeof beginPilot>[0], "g1");
+      expect(p).toEqual({ token: "t", id: "g1", name: "Winamp", seq: 44, visitSeq: 40 });
+    } finally {
+      globalThis.fetch = real;
+    }
   });
 
   it("keeps only the lines past it", () => {

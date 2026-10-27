@@ -56,7 +56,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/scanner.tsx`, `src/scan.ts`, `src/camera.ts` | QR scan (`BarcodeDetector`, else jsQR); what a code means; one shared ref-counted `MediaStream` |
 | `src/pilot.ts`, `src/chat.tsx`, `src/controls.tsx`, `src/idle.ts` | impersonate / say / end; `terminal opened` / `closed` (`VisitLatch`); a room terminal checks for a locked pass first (`refusesLockedPass`, `passLocked`); the thread + composer; the 2 s ⚙ hold; the leash (30 s, files 120 s, heart 180 s) |
 | `src/files.ts`, `src/FilePanel.tsx` | 📎 GIVE HIM A FILE: share / redeem as the piloted guest |
-| `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows; wave 27: `panelGate` + `panelSince` (the panel waits on his voice and his scenes, and settles again after a skip), `panelPlace` (a ⟦BACK⟧ menu with no composer still draws its bar), `optionKey`, `layerOfBeat`, `echoOf` + `echoTime`, `composerBlocked` (also held at the heart until his first word, `heartWaitingFirstWord`), `threadFor`, `pilotEndWait`), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
+| `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows; wave 27: `panelGate` + `panelSince` (the panel waits on his voice and his scenes, and settles again after a skip), `panelPlace` (a ⟦BACK⟧ menu with no composer still draws its bar), `optionKey`, `layerOfBeat`, `echoOf` (re-exported from core's `pick-echo.ts`), `composerBlocked` (also held at the heart until his first word, `heartWaitingFirstWord`), `threadFor`, `pilotEndWait`), `pending-pick.ts` (a pick shown at once until the server's line), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
 | `src/serial/` | the M4 bridge: `door-protocol.ts` (JSON lines, pure), `door-bridge.ts` + `patch-bridge.ts` (decisions, pure), `door-serial.ts` (Web Serial + `door=sim`, lazy), `door-status.ts` (store + heartbeat keys), `use-door.ts` (hook) |
 | `src/world/` | spatial SSE + house map → `WorldStore`; `presence.ts` (linked by room: `linkedNow`, `linkedPane`, `usePresenceLatch`); `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three) |
@@ -320,7 +320,29 @@ them out.
   `session.visitLines` (past the visit's floor, `pilot.ts` `floorAfter`),
   never the whole DM thread; every other terminal, room ones included,
   keeps the whole thread; `terminal opened` is posted from an effect once the stream's
-  history is in (2.5 s fallback, `pinFloor`), never in `connect()`.
+  history is in (2.5 s fallback, `pinFloor`), never in `connect()`. Since
+  wave 28 a pin floors at `Pilot.seq` (the newest chat seq the server
+  answered `/api/mod/impersonate` with), so a late history on slow wifi
+  still shows only this visit; an older server (no `seq`) pins at -1.
+  Gap 2b: the server also answers `visitSeq` (`Pilot.visitSeq`), the
+  floor it keeps per guest + terminal label (`core/server/terminal-visits.ts`);
+  a re-scan within 3 min of a pagehide end (`endPilot` with `keepalive`
+  sends `resumable: true`: a reload mid-visit) carries the first scan's
+  floor; a leash end (thrown out, timed out, done, left) forgets the visit,
+  so the next scan floors fresh, and `floorAfter` uses it whenever it is
+  sent, so a reloaded heart terminal shows the whole visit (his lines and
+  the picks) and nothing older.
+- **Picks are server lines (wave 28).** A pick at the choice panel comes
+  back on the stream as the program's own `pick: true` line (`act: true`
+  for a deed) in `dm:<character>`, before his reply; the phone shows the
+  same line, and a reload keeps it (`chat.tsx` `lineClass` draws a pick
+  as YOU with the `echo` / `act` style). Until the server's line is back
+  (slow wifi) the pick shows as a pending YOU row, dimmed (`pending`,
+  `heart/pending-pick.ts`: `pendingPickOf`, `unansweredPicks`,
+  `withPendingPicks`, play's `withEchoes` shape); the server's matching
+  pick line (same room, same words, past the pick) replaces it, never
+  doubled, and a failed pick drops it. A pick never counts as the program
+  typing (`typedAfter`).
 - **Room scene stages.** A room scene's stage carries `cutscene-room`
   (`cutscene-${kind}`); the wrapper's `display: contents` rule is
   `.cutscene-top.cutscene-room` so the stage keeps its box. A side scene

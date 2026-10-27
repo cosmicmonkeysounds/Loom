@@ -144,6 +144,15 @@ windows), the Desk, the director phone and Help are lazy chunks.
   shrink, the open menu / card give up the space (360x740). A folded menu
   reads `▴ {title}`. Once a send resolves, its line leaves the room's
   draft.
+- **A pick is a server line** (wave 28). The server posts every pick
+  (made here, at the heart terminal, or by a director) as the guest's own
+  `pick: true` line (`act: true` for a deed) in the room the menu docked
+  in. The phone still echoes its own pick at once (`choiceEcho`, in the
+  menu's own `choices[].channel`, reading as core's `echoOf`), and
+  `withEchoes` drops the echo once the matching server line arrives
+  (`echoAnswered`: same room and words, past the echo's spot; the
+  server's pick lines are indexed once per call, `pickIndexOf`), and the
+  session prunes answered echoes from storage (`unansweredEchoes`).
 
 ### Booth
 
@@ -235,7 +244,8 @@ project, Reset marks.
 
 `director.tsx` polls the lean `GET /api/state?role=mod&cues=1` every 3 s
 (parked while hidden). Rows, acts and the arm model come from
-`core/src/cue-sheet.ts` (`tapCue`, `ARM_MS` 4 s, `ARM_DEAD_MS` 300 ms,
+`core/src/cue-sheet.ts` (`tapCue`, `ARM_MS` 4 s, `ARM_PICK_MS` 10 s for a
+cue armed through the who? picker (`armWindow`), `ARM_DEAD_MS` 300 ms,
 `armStillValid`). A fire is `POST /api/mod/signal` with the arm's
 `presses`; a 409 `moved` means *Cues moved — tap again*.
 
@@ -276,7 +286,8 @@ test/                    vitest; *.test.ts(x) per module and lane
 Play imports a few dependency-free core modules **by relative path**
 (`../../core/src/…`), with no alias and no build step: `cue-sheet.ts`,
 `host-board.ts`, `house-desk.ts` (the house desk, Desk chunk only), `delivery.ts` (alert levels, effect manners),
-`show-clock.ts`, `runtime/sim/badges.ts`, `runtime/sim/crews.ts`.
+`show-clock.ts`, `runtime/sim/badges.ts`, `runtime/sim/crews.ts`, `pick-echo.ts`
+(wave 28: how a pick reads; `session/guest.ts` `choiceEcho`).
 `@loom/core` is not a package dependency. Keep those core files free of
 Node imports, or the play build breaks.
 

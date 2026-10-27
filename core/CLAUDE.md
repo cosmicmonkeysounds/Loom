@@ -20,7 +20,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `src/runtime/sim/sim.ts` | the `Sim`: world, ledger, hook drain, the executor, every journaled mutation |
 | `src/runtime/sim/` (rest) | `crews.ts` (crews, faction mode), `board.ts` (watch / countdown), `badges.ts`, `stats.ts`, `channel-types.ts`, `effects.ts`, `DESIGN.md` |
 | `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w26-lints.ts` (workspace lints L12xx) |
-| `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `cue-sheet.ts`, `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
+| `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
 | `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
@@ -69,7 +69,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   terminals' `talk=` / `said=`, the TV's `sp=` (`ScreenState.tvSpeech`),
   the spatial hub's per-session presence room, escape cooldown
   (`escapedAt`), who heard the in-game heart (`heartHeard`) and who took
-  each pickup (`picked`), the cam upload's `watched`, and
+  each pickup (`picked`), each wall terminal's visit floor per guest
+  (`terminal-visits.ts`, `/api/mod/impersonate` `visitSeq`, wave 28), the cam upload's `watched`, and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -102,6 +103,26 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   new guest route is refused for a locked guest by default;
   `test/w26-lock.test.ts` walks every route. If it posts nothing into the
   story, add it to `LOCKED_OPEN` on purpose.
+- **A pick is a chat line** (wave 28). `Sim.choose` records a `chose`
+  event (`person`, the menu's `id` and `beat`, the option's `text`) before
+  the option's body runs. `composeGuestMessages` posts it, through
+  `ComposeOptions.menuChannelOf` (the runtime's `menuChannels`, live and
+  in the replay), as the picker's own line in the menu's room:
+  `pick: true`, `act: true` for a deed, audience the picker, text by
+  `src/pick-echo.ts` `echoOf` (shared with the terminal and play). With
+  no `menuChannelOf` (the editor's local backend) it posts nothing. A
+  pick is never a line owed an agent's free reply (the restore's owed
+  scan skips it), but it is in the agent's `recent` as the guest's line.
+- **A docked menu follows the world** (wave 28). At the end of every
+  `drain` the Sim's `refreshMenus` reads each pending menu's guarded
+  options again (`PendingChoice.written`): an option whose condition now
+  holds appears in its written place, one that stopped holding goes, a
+  still-shown one keeps its words, and a read that would leave nothing
+  keeps the menu as it was. Same id, beat and continuation; it records
+  `choiceUpdated` (never a chat line; the views read the sim). It reads
+  only sim state, so a replay re-reads it identically. A click racing a
+  re-read (its text no longer at its index) is refused 409 `moved` with
+  the new options, as any stale click is.
 - **Game-only beats** (wave 26, C6). `chat.ts` `GAME_ONLY_BEATS` (Escape
   Attempt, Heart In The Simulation) never become a ChatMessage and never
   set the speaker a later menu docks under (`menuChannelsFor`,

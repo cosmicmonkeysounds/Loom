@@ -15,6 +15,7 @@ import { roomOrder } from "../rooms/order.ts";
 import { useThreads, type Threads } from "../rooms/threads-state.ts";
 import { guestDotOf } from "../stream/badges.ts";
 import type { ChatMessage, Decision, GuestView } from "../types.ts";
+import { echoOf } from "../../../core/src/pick-echo.ts";
 import { useTyping } from "../typing.ts";
 import type { WidgetResult } from "../widgets.tsx";
 import type { CheckinAnswer, RedeemAnswer, ScanDone } from "../scan-done.tsx";
@@ -55,8 +56,11 @@ const ECHO_CAP = 200;
  *  just after everything already there (a half seq, so the story's answer
  *  — the next real message — lands under it). `ts` is story time like every
  *  server message's (`sim.elapsed()`): the newest message's, never the wall
- *  clock, which reads hours ahead of the story. */
+ *  clock, which reads hours ahead of the story. The text reads the way the
+ *  server's own `pick` line will (core's `echoOf`: the tag dropped, a deed
+ *  as `[shows …]`), so `withEchoes` can swap one for the other. */
 export function choiceEcho(channel: string, text: string, me: { id: string; name: string }, afterSeq: number, ts = 0): ChatMessage {
+  const echo = echoOf(text);
   return {
     seq: afterSeq + 0.5,
     channel,
@@ -64,19 +68,71 @@ export function choiceEcho(channel: string, text: string, me: { id: string; name
     title: channelHead(channel).title,
     from: me.name,
     kind: "line",
-    text,
+    text: echo.text,
     ts,
     audience: [me.id],
     parentSeq: null,
     hidden: false,
+    pick: true,
+    ...(echo.action ? { act: true as const } : {}),
   };
 }
 
-/** The stream with the guest's echoed choices folded in. */
+/** The server's pick lines (wave 28), by room + words → the newest seq. Built once per call. */
+export type PickIndex = ReadonlyMap<string, number>;
+const pickKey = (channel: string, text: string) => `${channel}\u0000${text}`;
+export function pickIndexOf(messages: ReadonlyMap<number, ChatMessage>): PickIndex {
+  const ix = new Map<string, number>();
+  for (const m of messages.values()) {
+    if (m.pick !== true) continue;
+    const k = pickKey(m.channel, m.text);
+    const was = ix.get(k);
+    if (was === undefined || m.seq > was) ix.set(k, m.seq);
+  }
+  return ix;
+}
+
+/** Has the server's own `pick` line (wave 28) for this local echo arrived:
+ *  a pick line in the same room with the same words, past the echo's spot?
+ *  Pass `index` (`pickIndexOf`) when asking for many echoes. */
+export function echoAnswered(echo: ChatMessage, messages: ReadonlyMap<number, ChatMessage>, index: PickIndex = pickIndexOf(messages)): boolean {
+  const newest = index.get(pickKey(echo.channel, echo.text));
+  return newest !== undefined && newest > Math.floor(echo.seq);
+}
+
+/** The echoes the server has not answered yet (kept, stored); answered ones are pruned. */
+export function unansweredEchoes(messages: ReadonlyMap<number, ChatMessage>, echoes: readonly ChatMessage[]): ChatMessage[] {
+  if (echoes.length === 0) return [];
+  const ix = pickIndexOf(messages);
+  return echoes.filter((e) => !echoAnswered(e, messages, ix));
+}
+
+/** The stream with the guest's echoed choices folded in. An echo the
+ *  server's own pick line has answered (wave 28) is dropped, never shown twice. */
 export function withEchoes(messages: ReadonlyMap<number, ChatMessage>, echoes: readonly ChatMessage[]): Map<number, ChatMessage> {
   const out = new Map(messages);
-  for (const e of echoes) if (!out.has(e.seq)) out.set(e.seq, e);
+  for (const e of unansweredEchoes(messages, echoes)) if (!out.has(e.seq)) out.set(e.seq, e);
   return out;
+}
+
+/** Which sign-in the stream's messages belong to. Right after a sign-in
+ *  switch the stream still holds the previous identity's messages until its
+ *  reset lands (always a new map), so `stale` is that map: until it is
+ *  replaced, the stream answers none of the new identity's echoes. */
+export interface StreamOwner {
+  token: string | null;
+  stale: ReadonlyMap<number, ChatMessage> | null;
+}
+
+/** The owner as of this render: unchanged for the same token, else a new
+ *  one that marks the messages on hand (the old identity's) stale. */
+export function streamOwnerOf(was: StreamOwner | null, token: string | null, messages: ReadonlyMap<number, ChatMessage>): StreamOwner {
+  return was !== null && was.token === token ? was : { token, stale: messages };
+}
+
+/** Do these messages belong to the owner's sign-in (not the one before it)? */
+export function streamIsOwners(owner: StreamOwner, messages: ReadonlyMap<number, ChatMessage>): boolean {
+  return owner.token !== null && messages !== owner.stale;
 }
 
 function loadEchoes(load: <T>(key: string) => T | null, token: string | null): ChatMessage[] {
@@ -453,17 +509,21 @@ export function useGuestSession(): GuestSession {
 
   const join = useCallback((faction: string) => post("/api/guest/join", { faction }), [post]);
   const defect = useCallback((to: string) => post("/api/guest/defect", { to }), [post]);
-  // The guest's own pick, echoed into the thread as their bubble (the
-  // server records the choice, not a line), so the story's answer never
-  // reads as a non sequitur. Kept per sign-in so a reload keeps it.
+  // The guest's own pick, echoed into the thread as their bubble at once,
+  // so the story's answer never reads as a non sequitur. Since wave 28 the
+  // server posts the pick as a real line too; `withEchoes` then drops the
+  // echo and the effect below prunes it from storage. Kept per sign-in so a
+  // reload against an older server keeps it.
   const [echoes, setEchoes] = useState<ChatMessage[]>(() => loadEchoes(load, me?.token ?? null));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setEchoes(loadEchoes(load, me?.token ?? null)), [me?.token]);
-  const pendingRef = useRef<{ options: string[] | null; channel: string }>({ options: null, channel: "lobby" });
-  pendingRef.current = { options: status?.pendingChoice ?? null, channel: status?.decisionChannel ?? "lobby" };
+  const pendingRef = useRef<{ options: string[] | null; channel: string; menus: GuestView["choices"] }>({ options: null, channel: "lobby", menus: undefined });
+  pendingRef.current = { options: status?.pendingChoice ?? null, channel: status?.decisionChannel ?? "lobby", menus: status?.choices };
   const choose = useCallback(
     async (index: number, menu?: ChoiceRef) => {
-      const { options, channel } = pendingRef.current;
+      const { options, menus } = pendingRef.current;
+      // The menu's own room when the view names it (the server posts its pick line there).
+      const channel = (menu !== undefined ? menus?.find((c) => c.id === menu.id)?.channel : undefined) ?? pendingRef.current.channel;
       const text = menu?.text ?? options?.[index];
       const last = maxSeqOf(messages.values());
       const echo = text !== undefined && me !== null ? choiceEcho(channel, text, me, last, messages.get(last)?.ts ?? 0) : null;
@@ -480,6 +540,18 @@ export function useGuestSession(): GuestSession {
     },
     [post, me, messages, crawl, save],
   );
+  // Prune (and stop storing) every echo the server's own pick line has answered,
+  // but only against this sign-in's own stream: right after a switch the
+  // messages are still the previous identity's (`streamOwnerOf`).
+  const owner = useRef<StreamOwner | null>(null);
+  owner.current = streamOwnerOf(owner.current, me?.token ?? null, messages);
+  useEffect(() => {
+    if (me === null || !streamIsOwners(owner.current!, messages)) return;
+    setEchoes((prev) => {
+      const kept = unansweredEchoes(messages, prev);
+      return kept.length === prev.length ? prev : saveEchoes(save, me.token, kept);
+    });
+  }, [messages, me, save]);
   const shown = useMemo(() => withEchoes(messages, echoes), [messages, echoes]);
   // The stream as of the last render, for callbacks that must not re-bind on every message.
   const messagesRef = useRef(messages);

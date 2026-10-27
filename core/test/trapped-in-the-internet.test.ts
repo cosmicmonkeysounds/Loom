@@ -28,6 +28,7 @@ import type { GuestView, ModView, PrimeView } from "../server/views.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { AgentFacts, AgentRequest } from "../server/agents.ts";
+import { TO_HUNT2 } from "../../scripts/accept/chains.ts";
 
 // ───────────────────────── helpers ─────────────────────────
 
@@ -4960,6 +4961,8 @@ describe("Trapped in the Internet — the Truthcoin wallet (wave 4, lane C)", ()
   it("the wallet rules narrate: a settled transfer posts to # truthcoin-exchange, a denial to # hosts + The Audit, an approval to The Audit, a trade to the exchange, a stimulus alerts everyone", { timeout: SLOW }, () => {
     const sim = boot();
     upload(sim, "g11", "Runescape");
+    // Wave 28: 📥 works only from 📓 Hunt 2 (step 8) on.
+    for (const n of TO_HUNT2) sim.signal(n);
     fire(sim, "truther_download"); // reveals the exchange, starts The Audit for the CRA booth
     expect(sim.isRevealedTo("room:truthcoin exchange", "g1")).toBe(true);
     expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
@@ -5045,6 +5048,7 @@ describe("Trapped in the Internet — the Truthcoin wallet (wave 4, lane C)", ()
     expect((await primeState(mcafee)).wallet).toBeUndefined();
     expect((await modState()).wallet).toMatchObject({ name: "Truthcoin", slot: "score", approver: "CRA Agent Software", minter: "Runescape", minterPerson: rune.id, stimulus: { uses: 0, limit: 3 } });
 
+    for (const n of TO_HUNT2) await mod(n); // wave 28: 📥 works only from 📓 Hunt 2 on
     await mod("truther_download"); // the exchange opens; The Audit starts in the CRA booth
     expect(rt.liveSim!.questStatus("CRA Agent Software", "The Audit")).toBe("active");
 

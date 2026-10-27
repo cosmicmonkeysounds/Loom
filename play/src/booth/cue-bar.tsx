@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { cueActs, cueTitleTags, type CueMarks, type CueRow } from "../../../core/src/cue-sheet.ts";
 import { ApiError } from "../client.ts";
-import { ArmDrain, CueActList, CuePicker, fireCue, sheetLayout, soonestCountdown, useCueDesk, type DeskFire, type FirePost } from "../director.tsx";
+import { ArmDrain, armWindow, CueActList, CuePicker, fireCue, sheetLayout, soonestCountdown, useCueDesk, type DeskFire, type FirePost } from "../director.tsx";
 import { formatLeft } from "../clock.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { CountdownSummary } from "../types.ts";
@@ -170,7 +170,7 @@ function CueBarOn({ session, calls, now, countdowns, onFired, armRef }: CueBarPr
       {mine !== null && (
         <button type="button" className={`w95-btn cue-bar-fire ${armedHere ? "armed" : ""}`} disabled={desk.locked(mine)} aria-busy={sending || undefined} aria-label={armedHere ? `Fire ${mine.code ?? mine.title}` : `Arm ${mine.code ?? mine.title}`} onClick={() => desk.tap(mine)}>
           {sending ? "…" : armedHere ? `FIRE ${mine.code ?? ""}`.trim() : "ARM"}
-          {armedHere && !sending && <ArmDrain key={desk.armed!.at} at={desk.armed!.at} className="host-drain-fire" />}
+          {armedHere && !sending && <ArmDrain key={desk.armed!.at} at={desk.armed!.at} ms={armWindow(desk.armed!)} className="host-drain-fire" />}
         </button>
       )}
       {/* A cue that needs a person (an award's winner) asks for one first. */}
