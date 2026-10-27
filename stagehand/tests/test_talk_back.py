@@ -752,6 +752,23 @@ def test_the_first_stage_request_and_a_dm_cut_nothing():
     assert scene_cut(fresh, ("ad", 2))[1] == ("beans", 2)
 
 
+def test_a_cut_from_a_cleared_chat_is_dropped():
+    # A Restart while the worker was away: no reset frame, the seqs start again at 0.
+    intro = stage_request("intro", history=[{"seq": 3, "mine": False, "from": "Clippy", "text": "Meet the owner!"}], text="Meet the owner!")
+    same, state = scene_cut(intro, ("beans", 800))
+    assert same is intro and state == ("intro", 0)
+    assert history_turns(same) == [{"role": "user", "content": "Clippy: Meet the owner!"}]
+    # The same scene after a clear is dropped too; a history that reaches the cut keeps it.
+    assert scene_cut(intro, ("intro", 800)) == (intro, ("intro", 0))
+    reached = stage_request(
+        "intro",
+        history=[{"seq": 800, "mine": True, "from": "Trabolta", "text": "Programs."}, {"seq": 801, "mine": False, "from": "Clippy", "text": "Again?"}],
+        text="Again?",
+    )
+    kept, state = scene_cut(reached, ("intro", 800))
+    assert state == ("intro", 800) and history_turns(kept) == [{"role": "user", "content": "Clippy: Again?"}]
+
+
 def test_the_worker_cuts_at_a_scene_change(tmp_path):
     agents, fake = make(tmp_path, fake=FakeVoice(FakeReply(say="Hungry.", memo=""), FakeReply(say="FREE— a minor irregularity.", memo="")))
     bottle = stage_request("bottle", history=_bottle_then_ad()[:2], text="You look hungry, Trabolta.")

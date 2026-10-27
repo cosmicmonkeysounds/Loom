@@ -598,18 +598,29 @@ def scene_cut(req: dict[str, Any], prev: tuple[str, int] | None) -> tuple[dict[s
     request with `stage.after_seq` set (the live turns start after it; the
     room block in P3 still shows those lines, as said) and the new state. A
     request with no stage passes through; the first stage request seen cuts
-    nothing (a worker restarted mid-scene cannot tell)."""
+    nothing (a worker restarted mid-scene cannot tell). A state newer than the
+    whole history belongs to a cleared chat (a Restart or Go live while the
+    worker was away, so it never got the reset frame: the seqs start again at
+    0) and is dropped, or the new night's live lines would all be cut."""
     stage = req.get("stage")
     if not isinstance(stage, dict):
         return req, prev
     scene = str(stage.get("scene") or "")
+    history = [h for h in req.get("history") or [] if isinstance(h, dict)]
+
+    def seqs(rows: list[dict[str, Any]]) -> list[int]:
+        return [x for x in (h.get("seq") for h in rows) if isinstance(x, int) and not isinstance(x, bool)]
+
+    newest = max(seqs(history), default=None)
+    if prev is not None and newest is not None and newest < prev[1]:
+        prev = None
     if prev is None:
         cut = 0
     elif prev[0] == scene:
         cut = prev[1]
     else:
-        mine = [h.get("seq") for h in req.get("history") or [] if isinstance(h, dict) and h.get("mine") and h.get("story") is not True]
-        cut = max((x for x in mine if isinstance(x, int) and not isinstance(x, bool)), default=prev[1])
+        mine = [h for h in history if h.get("mine") and h.get("story") is not True]
+        cut = max(seqs(mine), default=prev[1])
     state = (scene, cut)
     if cut <= 0:
         return req, state
