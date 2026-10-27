@@ -1,6 +1,6 @@
 # Loom — show control for the house
 
-> **Status (2026-10-24):** the "house Mac" below is now two machines: John's Desktop (Windows: Mosquitto, Zigbee2MQTT, stagehand `show` + `lights`, the TV) and John's MacBook (stagehand `agents` and, by default, the `audio` router). QLab and the `alexa` player are retired; the router plays sounds and announcements. Current runbooks: `stagehand/`, `scripts/house-desktop/README.md`, `scripts/house-macbook/`.
+> **Status (2026-10-27):** the "house Mac" below is now two machines: John's Desktop (Windows: the sound — stagehand `audio` on the MOTU 828x — and the lights — Zigbee2MQTT with Hue and ThirdReality ZL1 bulbs, a WLED strip, stagehand `lights` — plus Mosquitto, stagehand `show` and the TV) and John's MacBook (Trabolta: stagehand `agents` + Ollama; the `audio` router only as the fallback). QLab and the `alexa` player are retired; the router plays sounds and announcements. Current runbooks: `stagehand/`, `scripts/house-desktop/README.md`, `scripts/house-macbook/`.
 
 *2026-07-05. Status: design; build-order step 1 landed — the
 `loom-stagehand` cue router exists at `stagehand/`
@@ -455,20 +455,22 @@ house only dials out.
 
 | Machine | Runs |
 |---|---|
-| **John's Desktop** (Windows, the house's static IP `192.168.8.10`) | Mosquitto; Zigbee2MQTT on the CC2652P stick; stagehand `show` and `lights` as Task Scheduler tasks (`stagehand/trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, `/terminal/?…&spot=desktop-tv`, `view=tv`). Runbook: [`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md) |
-| **John's MacBook** (macOS) | Ollama + stagehand `agents` (Trabolta, `laptop.yaml`); by default the stagehand `audio` router + the MOTU 828x + ADAT expander (`stagehand/trapped.macbook.yaml`), as launchd jobs. Runbook: [`scripts/house-macbook/audio.md`](../scripts/house-macbook/audio.md) |
+| **John's Desktop** (Windows, the house's static IP `192.168.8.10`) | the stagehand `audio` router on the MOTU 828x + ADAT expander (USB 2, ASIO); Mosquitto; Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs; the WLED strip's controller dials in over Wi-Fi; stagehand `show`, `lights` and `audio` as Task Scheduler tasks (`stagehand/trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, `/terminal/?…&spot=desktop-tv`, `view=tv`). Runbook: [`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md) |
+| **John's MacBook** (macOS) | Ollama + stagehand `agents` (Trabolta, `laptop.yaml`) as a launchd job; the director's Run console. Runbook: [`scripts/house-macbook/trabolta.md`](../scripts/house-macbook/trabolta.md). Only in the fallback, the `audio` router + the MOTU (`stagehand/trapped.macbook.yaml`; [`scripts/house-macbook/audio.md`](../scripts/house-macbook/audio.md)) |
 | **Steph's laptop** | the server-room terminal in Chrome, with the Grand Central M4 on USB (the door sensor and the patch bay) |
 | **John's old laptop** | the tent terminal (`spot=tent`, the reinstallation wizard + web game) |
 
-The router may move to the Desktop once the 828x works there (the Desktop
-README's §7); only one machine runs it. Both machine files `extends:`
+The router runs on the Desktop since 2026-10-27; the MacBook takes it
+only if the 828x misbehaves on Windows (the Desktop README's §11). Only one
+machine runs it. Both machine files `extends:`
 [`stagehand/trapped.house.yaml`](../stagehand/trapped.house.yaml), where
 every rule lives once.
 
 **The broker.** Mosquitto on the Desktop has two listeners: anonymous on
-`127.0.0.1:1883` for what runs on the Desktop (stagehand `show` and
-`lights`, Zigbee2MQTT) and password-only on the LAN at `:1884` (user
-`props`) for the MacBook's router and the WLED controllers
+`127.0.0.1:1883` for what runs on the Desktop (stagehand `show`, `lights`
+and `audio`, Zigbee2MQTT) and password-only on the LAN at `:1884` (user
+`props`) for the WLED controllers and, in the fallback, the MacBook's
+router
 (`scripts/house-desktop/setup-mosquitto.ps1`).
 
 **Lights.** Zigbee bulbs and plugs are grouped one group per room plus a
@@ -481,17 +483,21 @@ which is `lights.json`'s, below); the ids predate the real house's room
 names and stay as wired. **The stairs, the bathrooms, the tent, the server
 room and the server-room → living-room path are not in `house`**, so no
 whole-house scene or blackout can darken them (their bulbs have
-`power_on_behavior: on`). The addressable LED strips run on off-the-shelf
-WLED controllers (`wled/all` plus one topic per strip, identical preset IDs
-everywhere).
+`power_on_behavior: on`). The bulbs are Philips Hue and ThirdReality ZL1,
+joined to Zigbee2MQTT directly (no Hue Bridge). The addressable LED strip
+runs on a WLED controller (a WeGoIOT ESP32; `wled/all` plus one device
+topic per strip, `wled/<room>`, identical preset IDs everywhere). Setting
+them up, naming them and placing them on the map: the Desktop README's
+§5–8.
 
 **Sound.** The stagehand `audio` router plays every story `sound X` and
 the house announcements through the 828x, from the event's `audio.json`
 (QLab and the `alexa` player are retired since wave 18b). `do announce`
 reaches it as `show/announce` from the Desktop's `show` job (and `sound
 announce_chime` as `show/chime`): a chime and the line in the router
-machine's own voice (macOS `say`, or Windows SAPI). So announcements need
-the Desktop's broker and `show` job up. The same announcement rides the
+machine's own voice (Windows SAPI on the Desktop; macOS `say` in the
+MacBook fallback). So announcements need the Desktop's broker and `show`
+job up. The same announcement rides the
 event server's screen state (`/api/screen/state` → `announce`), so a
 terminal provisioned with `&announce=1` (the tent) says it in its own voice
 too (N-09, decision #20). Design and history:
