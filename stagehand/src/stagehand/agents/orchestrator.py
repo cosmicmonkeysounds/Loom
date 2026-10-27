@@ -39,6 +39,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
@@ -387,10 +388,49 @@ def reflect_tokens_needed(persona: Persona, max_tokens: int) -> int:
     acts = tuple({"kind": "fire", "name": f"power number {i:02d}"} for i in range(2))
     reply = Reply(say=_filler(600, "say"), adjust={f"var_{i:02d}": 5 for i in range(4)}, acts=acts)
     msgs = reflect_messages(persona, late_night_mind(persona), req, reply, facts, persona.summarize_after, "late")
-    # The synthetic speaker matches no situation; count every one as if
-    # all of them held (each is a heading line plus its prompt).
-    chars = sum(len(m["content"]) for m in msgs) + sum(len(s.prompt) + 200 for s in persona.situations)
+    # The synthetic speaker matches no situation; count every one that can
+    # hold with the others as if it held (`situation_chars`).
+    chars = sum(len(m["content"]) for m in msgs) + situation_chars(persona)
     return chars // CHARS_PER_TOKEN + max_tokens
+
+
+#: Each situation's heading line and rules, on top of its prompt.
+SITUATION_OVERHEAD = 200
+_LITERAL_TEST = re.compile(r'([A-Za-z_][\w.]*)\s*==\s*"([^"]*)"')
+
+
+def _stage_only(situation: Any) -> bool:
+    return "speaker.stage" in situation.when.names()
+
+
+def situation_chars(persona: Persona) -> int:
+    """≈ the most situation text one request can carry, each block counted
+    with its heading. Every block holds at once, but for a stage request
+    (wave 32): blocks gated on `speaker.stage` hold only for the public
+    talk-back speaker (Clippy in the Desktop, never a program at his heart),
+    so they count INSTEAD of the others when they are the larger group, and
+    among them blocks tested against different values of one path
+    (`Night.talk == "intro"` / `"ad"`) never hold together: the largest set
+    one value lets hold is counted (never less than the largest block)."""
+    def size(group: list[Any]) -> int:
+        return sum(len(s.prompt) + SITUATION_OVERHEAD for s in group)
+
+    stage = [s for s in persona.situations if _stage_only(s)]
+    rest = [s for s in persona.situations if not _stage_only(s)]
+    if not stage:
+        return size(rest)
+    tests = sorted({m for s in stage for m in _LITERAL_TEST.findall(s.when.source)})
+    best = max(size([s]) for s in stage)
+    for gate in [{}] + [{path: value} for path, value in tests]:
+        ctx: dict[str, Any] = {"speaker": {"stage": True}}
+        for path, value in gate.items():
+            cur = ctx
+            *head, last = path.split(".")
+            for part in head:
+                cur = cur.setdefault(part, {})
+            cur[last] = value
+        best = max(best, size([s for s in stage if s.when.evaluate(ctx)]))
+    return max(size(rest), best)
 
 
 def voice_tokens_needed(persona: Persona, max_tokens: int, with_mind: bool = True) -> int:
@@ -402,7 +442,7 @@ def voice_tokens_needed(persona: Persona, max_tokens: int, with_mind: bool = Tru
     voice model's context, as `reflect_tokens_needed` does for the mind."""
     req, _facts = late_night_request(persona)
     msgs = build_messages(persona, req, mind=late_night_mind(persona) if with_mind else None)
-    chars = sum(len(m["content"]) for m in msgs) + sum(len(s.prompt) + 200 for s in persona.situations)
+    chars = sum(len(m["content"]) for m in msgs) + situation_chars(persona)
     return chars // CHARS_PER_TOKEN + max_tokens
 
 
