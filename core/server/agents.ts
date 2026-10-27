@@ -76,7 +76,8 @@
 //! the room's own lines (any audience, scripted ones `story: true`). The hub
 //! dispatches it ahead of every queued DM request (the front of the queue);
 //! it never hears a hold, busy or stall line in the room: where a DM thread
-//! would be held the runtime posts one `# hosts` line instead, and it is
+//! would be held the runtime posts one `# hosts` line instead (only while
+//! its scene is on), it is never counted in a stall's `waiting`, and it is
 //! never in the busy rule at all. The reply is committed to the room with
 //! audience "all" (the TV speaks it) only while `Night.talk` still names the
 //! request's scene; acts from it are ignored. A public request is
@@ -985,7 +986,8 @@ export interface AgentHubOptions {
   /** A worker's head unanswered this long marks it stalled (60 s). */
   stallAfterMs?: number;
   /** A worker just stalled: the one `# hosts` line. `waiting` = the open
-   *  requests for its characters. */
+   *  requests for its characters that hear the hold line — a public talk
+   *  request (wave 32, C4) is left out: its own `# hosts` note covers it. */
   stalled?: (worker: { name: string; characters: string[] }, waiting: number) => void;
   /** Dispatch attempts before a request is given up. */
   maxAttempts?: number;
@@ -1170,11 +1172,12 @@ export class AgentHub {
   }
 
   /** Wave 32 (C4/C5): the open request on `thread`, as the host's talk panel
-   *  reads it — `since` = the hub clock it has been owed from — or null. */
-  openOn(thread: AgentThread): { id: string; since: number; req: AgentRequest } | null {
+   *  reads it — `since` = the hub clock it has been owed from, `inFlight` =
+   *  a worker has it (not still queued) — or null. */
+  openOn(thread: AgentThread): { id: string; since: number; req: AgentRequest; inFlight: boolean } | null {
     const id = this.byThread.get(threadKey(thread));
     const r = id === undefined ? undefined : this.open.get(id);
-    return id === undefined || r === undefined ? null : { id, since: r.since, req: r.req };
+    return id === undefined || r === undefined ? null : { id, since: r.since, req: r.req, inFlight: r.worker !== null };
   }
 
   // -- conversation ---------------------------------------------------------
@@ -1312,7 +1315,9 @@ export class AgentHub {
     this.stalls.set(worker.id, this.now());
     this.o.presence?.();
     const waiting = [...this.open.values()].filter((r) => r.worker === worker.id || (r.worker === null && worker.characters.has(r.req.character) && !this.canAnswer(r.req.character)));
-    this.o.stalled?.({ name: worker.name, characters: [...worker.characters].sort() }, waiting.length);
+    // Wave 32 (C4): the public talk thread is not counted — no hold line is
+    // said in the room; `hold` posts its own `# hosts` note instead.
+    this.o.stalled?.({ name: worker.name, characters: [...worker.characters].sort() }, waiting.filter((r) => r.req.thread.public !== true).length);
     for (const r of waiting) this.holdOnce(r);
   }
 
