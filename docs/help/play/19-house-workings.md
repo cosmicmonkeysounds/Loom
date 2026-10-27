@@ -111,8 +111,9 @@ guest guide never calls it that.
   while it stands open.
 - **Shut it**, and the lock clunks, the hum drops, and he asks to see a
   **pass**.
-- Then he talks in **layers** — who you are, what he is, what you came
-  to say, and the last thing you'd ask of him. Some answers carry a tag
+- Then he asks his questions in turn — who you are, what he is, what you
+  came to say, and the last thing you'd ask of him. Nothing on his screen
+  counts them or says how far you got. Some answers carry a tag
   like **⟦TRUSTED⟧** or **⟦PROOF⟧**: they only show when the program has
   earned them tonight. Push him the wrong way and he warns once; push
   again and he **throws them out** of his heart for the night.
@@ -196,5 +197,5 @@ mentions them, and nobody should explain them to a guest.
 ## The end of the night
 
 After the awards a director may send one last alert: *🎃 The show is
-over: you are human again.* Every mark, capture, lock and restriction
-comes off at once, and the night carries on out of character.
+over: you are human again. Hang out. The night is yours.* Every mark,
+capture, lock and restriction comes off at once, and the party carries on.
