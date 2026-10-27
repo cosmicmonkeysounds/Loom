@@ -40,8 +40,10 @@ export interface Program {
 /** The server's 409 for a program neither captured nor marked. */
 export const NOT_MARKED_ERROR = "not marked for reinstallation";
 
-/** What the wizard says about a program it may not begin. */
-export const NOT_MARKED = "Not marked for reinstallation — until the night is over, only a marked program may play.";
+/** What the wizard says about a program it may not begin. It states no
+ *  rule (wave 26, G2: the help and the screens never explain the machinery). */
+// DRAFT w26 (G2) UI copy
+export const NOT_MARKED = "Not marked for reinstallation.";
 
 /** May the tablet begin this program? (A row from a server older than
  *  wave 16 has no `eligible`: captured or restricted, the same rule.) */
@@ -90,7 +92,8 @@ export function programStatus(p: StateInput, ended = false): { heading: string; 
     case "marked":
       return { heading: "Marked program detected", icon: "🚨", status: "STATUS: MARKED — marked for reinstallation" };
     case "held":
-      return { heading: "Program held by a director", icon: "⛔", status: "STATUS: RESTRICTED — held by a director, not marked" };
+      // DRAFT w26 (G2) UI copy: never names who holds it.
+      return { heading: "Program held", icon: "⛔", status: "STATUS: RESTRICTED — held, not marked" };
     case "healthy":
       return { heading: "Program not marked", icon: "▣", status: "STATUS: healthy — not marked for reinstallation" };
   }

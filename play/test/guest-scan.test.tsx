@@ -8,8 +8,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { ChannelView, Composer } from "../src/chat.tsx";
 import { initialRole } from "../src/director.tsx";
+import { LinkLanding, landingLink, landingTypeLine, rejoinLine, roomFromSlug } from "../src/guest-scan.tsx";
+// Wave 26: the Scan sheet and its classifiers are their own chunk.
 import {
-  LinkLanding,
   SCAN_DIRECTOR,
   SCAN_INVITE,
   SCAN_JOIN,
@@ -20,12 +21,8 @@ import {
   TYPED_UNKNOWN,
   guestCameraProblem,
   guestScan,
-  landingLink,
-  landingTypeLine,
-  rejoinLine,
-  roomFromSlug,
   typedScan,
-} from "../src/guest-scan.tsx";
+} from "../src/guest-scan-sheet.tsx";
 import type { Channel } from "../src/types.ts";
 
 const BASE = "https://party.example/";

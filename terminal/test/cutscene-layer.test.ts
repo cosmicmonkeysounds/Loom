@@ -111,9 +111,140 @@ describe("a slide scene hidden under a moment (OB-6)", () => {
     expect(baseClock(1000, 1500, true)).toBe(1000);
     const scene = { kind: "slide" as const, def: { id: "x", when: [], ms: "hold" as const }, seq: 1, at: 1, start: 1, value: "x", who: null, key: "x:s1" };
     const state = {} as never;
-    const a = { scene, now: 1000, state, target: "tv" as const, reduced: false, silent: true };
+    const a = { scene, now: 1000, t: null, voice: null, caption: null, state, target: "tv" as const, reduced: false, silent: true };
     // A new pick object for the same scene at the same frozen clock: no redraw.
     expect(sameSceneFrame(a, { ...a, scene: { ...scene } })).toBe(true);
     expect(sameSceneFrame(a, { ...a, now: 1033 })).toBe(false);
+    // Wave 26 (V1): a new warped t, sentence or caption redraws; the same one doesn't.
+    expect(sameSceneFrame(a, { ...a, t: 500 })).toBe(false);
+    expect(sameSceneFrame({ ...a, voice: { seq: 1, index: 0, text: "Hi." } }, { ...a, voice: { seq: 1, index: 0, text: "Hi." } })).toBe(true);
+    expect(sameSceneFrame(a, { ...a, voice: { seq: 1, index: 0, text: "Hi." } })).toBe(false);
+    expect(sameSceneFrame(a, { ...a, caption: "Hi." })).toBe(false);
+  });
+});
+
+describe("a voiced scene on the TV (wave 26, V1)", () => {
+  it("is drawn at his voice's t with his sentence captioned; a wall, a muted TV: the server's clock", async () => {
+    const { CutsceneLayer } = await import("../src/cutscene/CutsceneLayer.tsx");
+    const { fakeState } = await import("../src/cutscene/fake.ts");
+    const bus = await import("../src/cutscene/speech-bus.ts");
+    const { BOTTLE_SPIN_MS } = await import("../src/cutscene/kit/tv1-time.ts");
+    const Probe = (p: { t: number; voice?: { text: string } | null }) => createElement("p", null, `t=${Math.round(p.t)} voice=${p.voice?.text ?? "-"}`);
+    const scenes = [{ id: "bottle_landed", when: [{ moment: "signal" as const, name: "bottle_landed" }], ms: 14_000, tv: Probe, wall: Probe }];
+    const now = 7_000_000_000;
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    try {
+      bus.clearSpeech();
+      bus.emitSpeech({ kind: "queued", seq: 812, beat: "Bottle Landed", chunks: 2, at: now - 1400 });
+      bus.emitSpeech({ kind: "line", seq: 812, beat: "Bottle Landed", chunks: 2, texts: ["Excel.", "Truth or dare?"], at: now - 500 });
+      bus.emitSpeech({ kind: "chunk", seq: 812, index: 0, at: now - 500 });
+      // A story epoch of its own: the layer's queues (kept per target across mounts) start over.
+      const moment = (seq: number) => ({ ...fakeState({ now, moments: [{ seq, at: now - 1500, kind: "signal", name: "bottle_landed", who: "Excel", kept: false }] }), announceEpoch: `voice-${seq}` });
+      const draw = (seq: number, target: "tv" | "wall") => renderToStaticMarkup(createElement(CutsceneLayer, { state: moment(seq), layers: { overlay: null, slide: null }, bare: false, card: null, gear: null, scenes, target }));
+      bus.setSpeechLive(true);
+      const tv = draw(61, "tv");
+      expect(tv).toContain(`t=${BOTTLE_SPIN_MS + 500} voice=Excel.`);
+      expect(tv).toContain('data-voiced=""');
+      // The bottle draws "<pick>." itself (ownCaption): the scene gets his
+      // sentence, the layer adds no second copy.
+      expect(tv).not.toContain("cutscene-voice-caption");
+      const wall = draw(62, "wall");
+      expect(wall).toContain("t=1500 voice=-");
+      expect(wall).not.toContain("cutscene-voice-caption");
+      bus.setSpeechLive(false); // muted / attract
+      expect(draw(63, "tv")).toContain("t=1500 voice=-");
+    } finally {
+      bus.clearSpeech();
+      vi.useRealTimers();
+    }
+  });
+
+  it("the stage draws the layer's caption over the scene", async () => {
+    const { SceneStage } = await import("../src/cutscene/CutsceneLayer.tsx");
+    const { fakeState } = await import("../src/cutscene/fake.ts");
+    const Probe = () => createElement("p", null, "scene");
+    const html = renderToStaticMarkup(createElement(SceneStage, { def: { id: "verdict", when: [], ms: 1000, tv: Probe }, kind: "moment", target: "tv", t: 0, at: 1, seq: 1, value: "", who: null, state: fakeState({ now: 1 }), reduced: false, play: () => false, onDone: () => {}, voice: { seq: 1, index: 0, text: "I have compared every fact." }, caption: "I have compared every fact." }));
+    expect(html).toContain('<div class="cutscene-voice-caption" aria-live="polite">I have compared every fact.</div>');
+  });
+
+  it("captions only a scene that doesn't draw his sentence itself", async () => {
+    const { voiceCaption } = await import("../src/cutscene/CutsceneLayer.tsx");
+    const s = (id: string) => ({ kind: "moment" as const, def: { id, when: [], ms: 1000 }, seq: 1, at: 1, start: 1, value: "", who: null, key: id });
+    const v = { t: 1, spoken: { seq: 1, index: 1, text: "I am Jean Trabolta." }, mark: 1, ended: false, endAt: null };
+    expect(voiceCaption(s("verdict"), v)).toBe("I am Jean Trabolta.");
+    expect(voiceCaption(s("trabolta_introduction"), v)).toBeNull(); // the intro types it itself
+    expect(voiceCaption(s("bottle_landed"), v)).toBeNull(); // the bottle draws "<pick>." and "Truth or dare?"
+    // advice_helped: SandyChat types the proposal (its `drawn`), the rest is captioned.
+    expect(voiceCaption(s("advice_helped"), { ...v, mark: 6 })).toBeNull();
+    expect(voiceCaption(s("advice_helped"), { ...v, mark: 0 })).toBe("I am Jean Trabolta.");
+    expect(voiceCaption(s("verdict"), { ...v, spoken: null })).toBeNull();
+    expect(voiceCaption(s("verdict"), undefined)).toBeNull();
+  });
+});
+
+describe("a voiced moment whose voice never comes (wave 26, V1)", () => {
+  it("ends at its own ms once it falls back, not where the wait pushed it", async () => {
+    const { CutsceneLayer } = await import("../src/cutscene/CutsceneLayer.tsx");
+    const { fakeState } = await import("../src/cutscene/fake.ts");
+    const bus = await import("../src/cutscene/speech-bus.ts");
+    const { BOTTLE_SPIN_MS } = await import("../src/cutscene/kit/tv1-time.ts");
+    const { VOICE_WAIT_MS } = await import("../src/cutscene/voice-clock.ts");
+    const Probe = (p: { t: number }) => createElement("p", null, `t=${Math.round(p.t)}`);
+    const scenes = [{ id: "bottle_landed", when: [{ moment: "signal" as const, name: "bottle_landed" }], ms: 14_000, tv: Probe }];
+    const at = 9_000_000_000;
+    vi.useFakeTimers();
+    try {
+      bus.clearSpeech();
+      bus.setSpeechLive(true);
+      bus.emitSpeech({ kind: "queued", seq: 950, beat: "Bottle Landed", chunks: 2, at: at + 500 });
+      const state = { ...fakeState({ now: at, moments: [{ seq: 81, at, kind: "signal", name: "bottle_landed", who: "Excel", kept: false }] }), announceEpoch: "voice-never" };
+      const draw = (now: number) => {
+        vi.setSystemTime(now);
+        return renderToStaticMarkup(createElement(CutsceneLayer, { state, layers: { overlay: null, slide: null }, bare: false, card: null, gear: null, scenes, target: "tv" }));
+      };
+      // Waiting for him: held at the frame before his first sentence; its end moves out.
+      expect(draw(at + VOICE_WAIT_MS - 100)).toContain(`t=${BOTTLE_SPIN_MS - 1}`);
+      // He never starts: the server's clock, and the moment's own end again.
+      expect(draw(at + VOICE_WAIT_MS + 100)).toContain(`t=${VOICE_WAIT_MS + 100}`);
+      expect(draw(at + 14_000 - 50)).toContain("t=13950");
+      expect(draw(at + 14_000 + 50)).not.toContain("t=");
+    } finally {
+      bus.clearSpeech();
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("a voiced scene through a mute (wave 26, V1)", () => {
+  it("keeps following his (now ended) lines instead of jumping back to the server's clock", async () => {
+    const { CutsceneLayer } = await import("../src/cutscene/CutsceneLayer.tsx");
+    const { fakeState } = await import("../src/cutscene/fake.ts");
+    const bus = await import("../src/cutscene/speech-bus.ts");
+    const { BOTTLE_SPIN_MS } = await import("../src/cutscene/kit/tv1-time.ts");
+    const Probe = (p: { t: number }) => createElement("p", null, `t=${Math.round(p.t)}`);
+    const scenes = [{ id: "bottle_landed", when: [{ moment: "signal" as const, name: "bottle_landed" }], ms: 14_000, tv: Probe }];
+    const now = 8_000_000_000;
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    try {
+      bus.clearSpeech();
+      bus.emitSpeech({ kind: "queued", seq: 900, beat: "Bottle Landed", chunks: 2, at: now - 1400 });
+      bus.emitSpeech({ kind: "line", seq: 900, beat: "Bottle Landed", chunks: 2, texts: ["Excel.", "Truth or dare?"], at: now - 500 });
+      bus.emitSpeech({ kind: "chunk", seq: 900, index: 0, at: now - 500 });
+      const state = { ...fakeState({ now, moments: [{ seq: 71, at: now - 1500, kind: "signal", name: "bottle_landed", who: "Excel", kept: false }] }), announceEpoch: "voice-mute" };
+      const el = (st: typeof state) => createElement(CutsceneLayer, { state: st, layers: { overlay: null, slide: null }, bare: false, card: null, gear: null, scenes, target: "tv" });
+      bus.setSpeechLive(true);
+      expect(renderToStaticMarkup(el(state))).toContain(`t=${BOTTLE_SPIN_MS + 500}`);
+      // The director mutes: the TV drops the line (cut); the scene runs on
+      // from where it was, never skipping ahead to the end of his part.
+      bus.setSpeechLive(false);
+      bus.emitSpeech({ kind: "done", seq: 900, at: now, cut: true });
+      vi.setSystemTime(now + 100);
+      expect(renderToStaticMarkup(el(state))).toContain(`t=${BOTTLE_SPIN_MS + 600}`);
+    } finally {
+      bus.clearSpeech();
+      vi.useRealTimers();
+    }
   });
 });

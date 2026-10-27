@@ -379,7 +379,8 @@ export function trayClock(left: number, paused = false, glyph = true): string {
   const s = Math.max(0, Math.floor(left));
   // The tray draws its own icon (`glyph` false); the text form keeps the emoji.
   const icon = glyph ? `${paused ? "⏸" : "⏳"} ` : "";
-  if (s >= 600) return `${icon}${Math.floor(s / 60)} m`;
+  // The tray's own form has no space ("14m", as the guest's tray): it is narrow.
+  if (s >= 600) return `${icon}${Math.floor(s / 60)}${glyph ? " " : ""}m`;
   return `${icon}${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 

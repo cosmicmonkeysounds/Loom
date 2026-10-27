@@ -184,6 +184,27 @@ describe("the poll's talk / said fields", () => {
   });
 });
 
+describe("the poll's sp key (wave 26, V1 phase 2)", () => {
+  const tv = defaultConfig({ eventId: "evt", token: "tok", name: "TV", spot: "desktop-tv", view: "tv" });
+
+  it("speechQuery: sp=<seq>:<chunk> while a line speaks, sp=<seq>:d once it is done, nothing otherwise", () => {
+    expect(speechQuery({ talk: true, said: 40, sp: { seq: 41, chunk: 2 } })).toEqual({ talk: "1", said: "40", sp: "41:2" });
+    expect(speechQuery({ talk: false, said: 41, sp: { seq: 41, chunk: null } })).toEqual({ talk: "0", said: "41", sp: "41:d" });
+    expect(speechQuery({ talk: true, said: 40, sp: null })).toEqual({ talk: "1", said: "40" });
+    expect(speechQuery({ talk: true, said: 40 })).toEqual({ talk: "1", said: "40" });
+    // Malformed parts are left out rather than sent.
+    expect(speechQuery({ talk: true, said: 40, sp: { seq: -1, chunk: 0 } })).not.toHaveProperty("sp");
+    expect(speechQuery({ talk: true, said: 40, sp: { seq: 3, chunk: Number.NaN } })).not.toHaveProperty("sp");
+    expect(speechQuery({ talk: true, said: 40, sp: { seq: 3.7, chunk: 1.2 } })).toMatchObject({ sp: "3:1" });
+  });
+
+  it("rides the TV's poll after talk / said", () => {
+    expect(screenStateUrl(tv, { room: "The Desktop", after: 41, speech: { talk: true, said: 40, sp: { seq: 41, chunk: 0 } } })).toBe(
+      "/e/evt/api/screen/state?name=TV&spot=desktop-tv&view=tv&character=Trabolta&voice=The+Desktop&after=41&talk=1&said=40&sp=41%3A0",
+    );
+  });
+});
+
 describe("PollPacer: the drain re-poll", () => {
   it("polls on the cadence when nothing kicks", () => {
     const p = new PollPacer(2000);
@@ -253,5 +274,33 @@ describe("browser floor (Chrome 87 / Safari 14)", () => {
     expect(src).not.toMatch(/structuredClone/u);
     expect(src).not.toMatch(/\.at\(/u);
     expect(src).not.toMatch(/\(\?<[=!]/u);
+  });
+});
+
+describe("RoomSpeech → sp= (wave 26, V1 phase 2)", () => {
+  it("reports the line and sentence being said, then d once it is done", () => {
+    const s = new RoomSpeech();
+    const detach = s.attach();
+    s.heard(40);
+    s.queued([41]);
+    expect(s.report(41)).toEqual({ talk: true, said: 40 });
+    s.speaking(41, 0);
+    expect(s.report(41)).toEqual({ talk: true, said: 40, sp: { seq: 41, chunk: 0 } });
+    expect(speechQuery(s.report(41))).toEqual({ talk: "1", said: "40", sp: "41:0" });
+    s.speaking(41, 2);
+    expect(speechQuery(s.report(41))["sp"]).toBe("41:2");
+    s.spoke(40); // another line's end changes nothing
+    expect(speechQuery(s.report(41))["sp"]).toBe("41:2");
+    s.spoke(41);
+    s.finished(41);
+    expect(s.report(41)).toEqual({ talk: false, said: 41, sp: { seq: 41, chunk: null } });
+    expect(speechQuery(s.report(41))["sp"]).toBe("41:d");
+    // A mute mid-line: done.
+    s.queued([42]);
+    s.speaking(42, 1);
+    s.cleared();
+    expect(speechQuery(s.report(42))["sp"]).toBe("42:d");
+    detach();
+    expect(speechQuery(s.report(42))["sp"]).toBe("42:d");
   });
 });

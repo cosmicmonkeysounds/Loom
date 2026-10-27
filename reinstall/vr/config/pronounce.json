@@ -1,0 +1,5 @@
+{ "version": 1,
+  "words": [
+    { "word": "Antiviruses", "say": "Anti Viruses" },
+    { "word": "Antivirus",   "say": "Anti Virus" }
+  ] }

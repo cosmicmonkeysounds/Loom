@@ -44,6 +44,9 @@ export interface Exit {
   label: string;
   icon: IconName | null;
   nav: Nav;
+  /** One of the story's own buttons (`ChatMessage.go`) resolved for this
+   *  viewer — what lets a `noAck` big drop its OK (wave 26, R1). */
+  story?: true;
 }
 
 /** The drawn icon an exit shows: none when its label already leads with a
@@ -283,7 +286,7 @@ export interface ExitOptions {
 export function exitsOf(m: ExitMoment, ctx: ExitContext, max: 1 | 2, opts: ExitOptions = {}): Exit[] {
   const out: Exit[] = [];
   const seen = new Set<string>();
-  const add = (nav: Nav | null, label?: string, extra: { glyph?: string; entryTitle?: string } = {}) => {
+  const add = (nav: Nav | null, label?: string, extra: { glyph?: string; entryTitle?: string } = {}, story?: true) => {
     if (nav === null) return;
     if (nav.to === "room" && nav.id === ctx.open) return;
     if (nav.to === "room" && nav.id === LOBBY) return;
@@ -291,10 +294,10 @@ export function exitsOf(m: ExitMoment, ctx: ExitContext, max: 1 | 2, opts: ExitO
     if (seen.has(k)) return;
     seen.add(k);
     const entryTitle = nav.to === "codex" && nav.entry !== undefined ? opts.entryTitles?.get(nav.entry) : undefined;
-    out.push({ label: label !== undefined && label.trim() !== "" ? label : exitLabel(nav, ctx, { ...extra, ...(entryTitle !== undefined ? { entryTitle } : {}) }), icon: exitIcon(nav), nav });
+    out.push({ label: label !== undefined && label.trim() !== "" ? label : exitLabel(nav, ctx, { ...extra, ...(entryTitle !== undefined ? { entryTitle } : {}) }), icon: exitIcon(nav), nav, ...(story ? { story } : {}) });
   };
   // 1. The story's own buttons (a guest on a side already is never asked to choose one).
-  for (const t of m.go ?? []) add(navOfTarget(t, ctx), t.kind === "sides" && ctx.sideChosen === true ? undefined : t.label);
+  for (const t of m.go ?? []) add(navOfTarget(t, ctx), t.kind === "sides" && ctx.sideChosen === true ? undefined : t.label, {}, true);
   // The loud "show your pass" objective.
   if (m.pass === true) add({ to: "pass" });
   // 2. Its own card.

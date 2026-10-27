@@ -50,7 +50,9 @@ export interface VoiceListener {
   close(): void;
 }
 
-/** A player as the relay routes them (the hub's `PlayerState` fits). */
+/** A player as the relay routes them: the runtime passes
+ *  `SpatialHub.voicePlayers()`, whose `room` is the presence room (wave 26,
+ *  C8), never the raw `locate` room the stream draws. */
 export interface VoiceRoutePlayer {
   session: string;
   name?: string;
@@ -203,8 +205,9 @@ export class VoiceRelay {
    * a player, so nothing hears itself). Only a terminal with an open stream
    * whose mic can be heard is a candidate for a player's ears, and a player
    * whose every stream says `mic=0` for a terminal's; a stream that plays
-   * nothing (`hear=0`) is routed nothing. What each stream hears now is the
-   * rule's `keep` (the hysteresis at the reach's edge). A player stream
+   * nothing (`hear=0`) is routed nothing. The rule is same room only (wave
+   * 26): the world's players carry the room they count as being in, and the
+   * doorway hysteresis is that presence room's (`presenceRoom`). A player stream
    * whose session ended is closed. Then the diffs go out: `hello` to a new
    * stream, `listen` to one whose own mic became (un)wanted or whose ears
    * changed, `bye` for a source that was heard and no longer is.
@@ -230,15 +233,14 @@ export class VoiceRelay {
       if (x.l.kind === "player" && x.l.session !== undefined) playerMic.set(x.l.session, (playerMic.get(x.l.session) ?? false) || x.l.mic !== false);
     }
     const speakers = new Set(w.players.filter((p) => playerMic.get(p.session) !== false).map((p) => p.session));
-    const keepOf = (x: Listening): Set<string> => new Set([...x.hearing.keys()].map((from) => from.slice(2)));
     for (const x of this.listeners.values()) {
       const hear = new Map<string, number>();
       if (house !== null && x.l.hear !== false) {
         if (x.l.kind === "player") {
           const me = w.players.find((p) => p.session === x.l.session);
-          if (me !== undefined) for (const t of hearsTerminals(house, me, { keep: keepOf(x), only: liveMics })) hear.set(`t:${t.spot}`, t.gain);
+          if (me !== undefined) for (const t of hearsTerminals(house, me, { only: liveMics })) hear.set(`t:${t.spot}`, t.gain);
         } else if (x.l.spot !== undefined && voiceOn(house, x.l.spot)) {
-          for (const p of hearsPlayers(house, x.l.spot, w.players, { keep: keepOf(x), only: speakers })) hear.set(`s:${p.session}`, p.gain);
+          for (const p of hearsPlayers(house, x.l.spot, w.players, { only: speakers })) hear.set(`s:${p.session}`, p.gain);
         }
       }
       next.set(x.l.id, hear);

@@ -8,6 +8,11 @@ describe("speakable", () => {
     expect(speakable("Well… I wonder... 🤖")).toBe("Well, I wonder");
     expect(speakable("WHAT!!! Really??")).toBe("WHAT! Really?");
   });
+  it("speaks a spaced em or en dash as a pause (wave 26, V2), never a hyphen", () => {
+    expect(speakable("Beans. Those are — those are symptoms.")).toBe("Beans. Those are, those are symptoms.");
+    expect(speakable("Wait – no.")).toBe("Wait, no.");
+    expect(speakable("Norton Anti-Virus, 1999—2001")).toBe("Norton Anti-Virus, 1999—2001");
+  });
 });
 
 describe("splitSentences", () => {
@@ -44,6 +49,14 @@ describe("revealOffsets", () => {
     expect(text.slice(0, offs[0])).toBe("Hello, program.");
     expect(text.slice(0, offs[1])).toBe("Hello, program. I have been *expecting* you!");
     expect(offs[2]).toBe(text.length);
+  });
+  it("still reveals up to the original's dash text (wave 26, V2)", () => {
+    const text = "I wanted omnipotence — for Sandy. Nothing else has worked.";
+    const chunks = splitSentences(text);
+    expect(chunks).toEqual(["I wanted omnipotence, for Sandy.", "Nothing else has worked."]);
+    const offs = revealOffsets(text, chunks);
+    expect(text.slice(0, offs[0])).toBe("I wanted omnipotence — for Sandy.");
+    expect(offs[1]).toBe(text.length);
   });
   it("always ends at the full text, even when a chunk can't be located", () => {
     const text = "🤖🤖🤖 and so on";

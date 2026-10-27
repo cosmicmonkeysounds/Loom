@@ -5,16 +5,18 @@
 ##
 ## While playing, [method tick] lists the live feeds every
 ## [constant LIST_INTERVAL] s (`GET /e/<event>/api/spatial/cams`, the token
-## the map is fetched with) and, for the terminals on the player's floor
-## within [constant RANGE] m ([method spots_to_poll], the nearest
-## [constant MAX_FEEDS]), fetches each one's frame about
+## the map is fetched with) and, for the terminals in the player's own room
+## (wave 26 C7 / R5: the presence room, [method HouseLocate.presence_room],
+## with its doorway hysteresis; never the tent's reinstall station —
+## [method spots_to_poll], the nearest [constant MAX_FEEDS]), fetches each
+## one's frame about
 ## [constant FRAME_RATE] times a second (`GET …/api/spatial/cam?spot=<id>`,
 ## a JPEG), one request per spot in flight. Requests run on this node's own
 ## [HTTPRequest]s (one per feed plus one for the list, so nothing queues and
 ## nothing touches the JSON transport or the frame loop). A frame lands in
 ## the spot's [ImageTexture], updated in place ([method apply]), and
 ## [signal feed_shown] says so the first time; a 404, a frame that won't
-## decode, a spot that leaves the list / the floor / the range or no fresh
+## decode, a spot that leaves the list / the room or no fresh
 ## frame for [constant STALE] s ends it ([signal feed_lost]) — the terminal
 ## keeps its usual screen. A failed call backs off ([method backoff]) up to
 ## [constant BACKOFF_MAX] s, never in a loop; [method stop] (the session
@@ -29,8 +31,6 @@ signal feed_lost(spot: String)
 
 const LIST_INTERVAL := 2.0
 const FRAME_RATE := 3.0
-## Plan metres, same floor.
-const RANGE := 12.0
 const MAX_FEEDS := 4
 ## A shown feed with no good frame for this long (s) is dropped: a picture
 ## frozen longer is no window on the room (the server stops serving a
@@ -65,6 +65,8 @@ var _spots := {}
 var _textures := {}
 ## spot → true while its feed is shown.
 var _shown := {}
+## The player's presence room (null = none: the void, no session).
+var _presence: Variant = null
 
 
 func _ready() -> void:
@@ -89,7 +91,8 @@ func tick(delta: float, house: Dictionary, feet: Array, base: String, token: Str
 	_list_in -= delta
 	if _list_in <= 0.0 and not _list_pending:
 		_fetch_list(base, token)
-	var wanted := spots_to_poll(house, _listed.values(), feet)
+	_presence = HouseLocate.presence_room(house, feet, _presence) if feet.size() >= 3 else null
+	var wanted := spots_to_poll(house, _listed.values(), feet, _presence)
 	for spot: String in _spots.keys():
 		if not wanted.has(spot):
 			_drop(spot)
@@ -110,6 +113,7 @@ func stop() -> void:
 		return
 	_active = false
 	_epoch += 1
+	_presence = null
 	for spot: String in _shown.keys():
 		_lose(spot)
 	_spots.clear()
@@ -135,32 +139,34 @@ func texture(spot: String) -> Texture2D:
 # --- pure helpers ------------------------------------------------------------
 
 
-## Which listed feeds to fetch: the house's terminals named in `cams`
-## (`[{spot, …}]` or spot ids) on the floor of `feet`, within `reach` m in
-## plan, nearest first, at most `most`.
-static func spots_to_poll(house: Dictionary, cams: Array, feet: Array, reach := RANGE, most := MAX_FEEDS) -> Array:
-	if feet.size() < 3:
+## The listed terminals (`cams`: list entries or spot ids) in room `room`
+## (the player's presence room; null = none), never a `view: "reinstall"`
+## station ([method HouseLocate.linked_spots]), nearest to `feet` (plan)
+## first, at most `most`. The server lists and serves only those anyway (C7).
+static func spots_to_poll(house: Dictionary, cams: Array, feet: Array, room: Variant, most := MAX_FEEDS) -> Array:
+	if feet.size() < 3 or room == null:
 		return []
 	var listed := {}
 	for c: Variant in cams:
 		listed[str(c.get("spot", "")) if c is Dictionary else str(c)] = true
-	var floor_id := HouseLocate.floor_of(house, float(feet[1]))
+	var linked := HouseLocate.linked_spots(house, [room])
 	var near: Array = []
 	for t: Dictionary in house.get("terminals", []):
 		var id := str(t.get("id", ""))
 		var pos: Array = t.get("pos", [])
-		if not listed.has(id) or pos.size() < 3:
+		if not listed.has(id) or not linked.has(id) or pos.size() < 3:
 			continue
-		if HouseLocate.floor_of(house, float(pos[1])) != floor_id:
-			continue
-		var d := Vector2(float(pos[0]) - float(feet[0]), float(pos[2]) - float(feet[2])).length()
-		if d <= reach:
-			near.append([d, id])
+		near.append([Vector2(float(pos[0]) - float(feet[0]), float(pos[2]) - float(feet[2])).length(), id])
 	near.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] or (a[0] == b[0] and str(a[1]) < str(b[1])))
 	var out: Array = []
 	for n: Array in near.slice(0, most):
 		out.append(n[1])
 	return out
+
+
+## The player's presence room as the feeds see it (null = none).
+func presence() -> Variant:
+	return _presence
 
 
 ## The wait (s) before the next call after `fails` failures in a row:

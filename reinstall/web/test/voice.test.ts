@@ -186,7 +186,10 @@ describe("placement", () => {
     const h = house();
     // In room b beside `t`: it hears you; the tent's (room a, the spawn) never does.
     expect(earsFor(h, "s1", [{ session: "s1", p: [6, 0, 1.5] }])).toBe(1);
-    expect(earsFor(h, "s1", [{ session: "s1", p: [0.5, 0, 1.5] }])).toBe(1); // `t` is 6.5 m away
+    // In room a, 6.5 m from `t`: no longer heard through the wall (wave 26: same room only).
+    expect(earsFor(h, "s1", [{ session: "s1", p: [0.5, 0, 1.5] }])).toBe(0);
+    // … unless the room the server counts them in is b (the doorway hysteresis).
+    expect(earsFor(h, "s1", [{ session: "s1", p: [3.6, 0, 1.5], room: "b" }])).toBe(1);
     expect(earsFor(h, "s1", [{ session: "s2", p: [6, 0, 1.5] }])).toBe(0);
   });
 
@@ -403,6 +406,24 @@ describe("VoiceLink — the mic", () => {
     say(r, 400, -35);
     await r.settle();
     expect(r.posts.length).toBeGreaterThan(1);
+  });
+
+  it("holdFor (wave 26): while the game's own sound plays (+ the tail) nothing goes up, however loud", async () => {
+    const r = rig();
+    await started(r);
+    r.link.holdFor(500);
+    say(r, 400, -10);
+    await r.settle();
+    expect(r.posts).toHaveLength(0);
+    r.tick(500 + VOICE_TAIL_MS - 1);
+    say(r, 200, -10);
+    await r.settle();
+    expect(r.posts).toHaveLength(0);
+    // Past the hold the plain gate is back.
+    r.tick(2 + 1000);
+    say(r, 400, -20);
+    await r.settle();
+    expect(r.posts.length).toBeGreaterThan(0);
   });
 
   it("a faint, far terminal (gain under 0.2) raises nothing", async () => {

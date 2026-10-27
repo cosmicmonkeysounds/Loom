@@ -43,6 +43,45 @@ export async function beginPilot(config: TerminalConfig, guestId: string): Promi
   return { token: r.token, id: r.id, name: r.name };
 }
 
+/** (wave 26, R1) What a room terminal says to a locked (captured) pass. */
+export const LOCKED_PASS_NOTICE = "⛔ YOU'RE IN THE INTERNET — GO TO THE TENT"; // DRAFT w26
+
+/** (wave 26, R1) Does this terminal refuse a locked pass at the scan? A room
+ *  terminal (the server room: the line tells the story it opened there).
+ *  Other walls keep the contract's C2 rule (the line opens; every post
+ *  answers locked); the tent's wizard is its own screen and never asks. */
+export function refusesLockedPass(config: Pick<TerminalConfig, "room" | "view">): boolean {
+  return roomOf(config) !== null;
+}
+
+/** How long the lock check may take (ms) before the line opens anyway. */
+export const LOCK_CHECK_MS = 3_000;
+
+/**
+ * (wave 26, R1) Is this pass's phone locked (the story's `lock:` header:
+ * captured, `GuestView.locked`)? A room terminal asks before it opens a
+ * line: a locked program's terminal can send nothing, and its `terminal
+ * opened` would hold the room for a talk nobody can answer. Read with the
+ * mod token (`/api/state?role=guest&as=`, as chess and casino read a
+ * pass), so nothing is minted for a refused pass. Best-effort: any failure
+ * or an older server (no `locked`) answers false and the line opens (the
+ * story refuses a locked program at his heart on its own).
+ */
+export async function passLocked(config: Pick<TerminalConfig, "eventId" | "token">, guestId: string, o: { fetchFn?: typeof fetch; timeoutMs?: number } = {}): Promise<boolean> {
+  const ctl = typeof AbortController === "undefined" ? null : new AbortController();
+  const timer = ctl === null ? null : setTimeout(() => ctl.abort(), o.timeoutMs ?? LOCK_CHECK_MS);
+  try {
+    const res = await (o.fetchFn ?? fetch)(`${baseOf(config)}/api/state?role=guest&as=${encodeURIComponent(guestId)}`, { headers: { "x-loom-token": config.token }, cache: "no-store", ...(ctl === null ? {} : { signal: ctl.signal }) });
+    if (!res.ok) return false;
+    const v = (await res.json().catch(() => null)) as { locked?: unknown } | null;
+    return v !== null && v.locked === true;
+  } catch {
+    return false;
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+  }
+}
+
 /** End it (the leash ran out, or the guest disconnected). `keepalive`: the
  *  page is going away (pagehide) — the request outlives it. */
 export async function endPilot(config: TerminalConfig, pilot: Pilot, o: { keepalive?: boolean; fetchFn?: typeof fetch } = {}): Promise<void> {

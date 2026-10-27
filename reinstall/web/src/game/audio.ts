@@ -1,7 +1,8 @@
 //! Sound — all synthesised with WebAudio (no assets to ship, no CSP to
 //! bend): Gerald's quack (a buzzy sawtooth through a nasal formant, pitch
-//! falling, two syllables), the celebration fanfare, and
-//! the failure buzz. Needs one user gesture first (`resume` on the tap that
+//! falling, two syllables), the celebration fanfare, the failure buzz,
+//! the King's thud, and (wave 26) the void's jump-scare screech and the
+//! disk's pickup blip. Needs one user gesture first (`resume` on the tap that
 //! starts the game); without WebAudio every call is a no-op. The voice link
 //! (`voice.ts`) plays and captures on this same context (`context()`): one
 //! context to unlock, never two.
@@ -22,6 +23,11 @@ export interface Sfx {
   buzz(): void;
   /** A hit landing on the King: a short low thump with a noise burst. */
   thud(): void;
+  /** The void's jump scare (wave 26, R4): a ~1.2 s screech — a noise burst
+   *  over two detuned saws falling from a shriek to a growl. */
+  scare(): void;
+  /** A disk picked up (wave 26, R7): a short rising blip. */
+  pickup(): void;
   /** The shared context and the effects' master bus (made on first use),
    *  null without WebAudio or once closed. */
   context(): { ctx: AudioContext; out: AudioNode } | null;
@@ -37,7 +43,7 @@ export type SfxOutput = () => { ctx: AudioContext; out: AudioNode } | null;
 /** The game's master level. */
 const GAME_LEVEL = 0.7;
 
-const SILENT: Sfx = { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, context: () => null, dispose() {} };
+const SILENT: Sfx = { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, scare() {}, pickup() {}, context: () => null, dispose() {} };
 
 /** The game's sounds: on a context of their own, or (`output`) on a host's. */
 export function createSfx(output?: SfxOutput): Sfx {
@@ -204,6 +210,34 @@ function sfxOn(get: () => { ctx: Ctx; out: AudioNode } | null, close: () => void
       osc.start(t);
       osc.stop(t + 0.11);
       noise(a.ctx, a.out, t, 0.06, 0.16);
+    },
+    scare() {
+      const a = get();
+      if (a === null) return;
+      const t = a.ctx.currentTime + 0.005;
+      const len = 1.2;
+      for (const detune of [0, 37]) {
+        const osc = a.ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(1400 + detune, t);
+        osc.frequency.exponentialRampToValueAtTime(70 + detune / 4, t + len);
+        const env = a.ctx.createGain();
+        env.gain.setValueAtTime(0.0001, t);
+        env.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
+        env.gain.setValueAtTime(0.32, t + len * 0.4);
+        env.gain.exponentialRampToValueAtTime(0.0001, t + len);
+        osc.connect(env).connect(a.out);
+        osc.start(t);
+        osc.stop(t + len + 0.02);
+      }
+      noise(a.ctx, a.out, t, 0.45, 0.4);
+    },
+    pickup() {
+      const a = get();
+      if (a === null) return;
+      const t = a.ctx.currentTime + 0.01;
+      tone(a.ctx, a.out, t, 660, 0.09, 0.12, "square");
+      tone(a.ctx, a.out, t + 0.08, 990, 0.16, 0.12, "square");
     },
     context: () => get(),
     dispose() {

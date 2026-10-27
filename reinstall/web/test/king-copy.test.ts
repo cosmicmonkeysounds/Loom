@@ -31,9 +31,9 @@ describe("the King's tablet copy (wave 11)", () => {
     for (const f of files.filter((f) => f !== "map/Inspector.tsx")) {
       const text = copyOf(f);
       expect(text, f).not.toMatch(/CHALLENGE|CHECKMATE|ChessWindow|(?<!@loom\/)chess\/|FOR THE CODE|PRACTICE|challenges him|on this tablet only|Headsets can't/u);
-      // The one thing the tablet takes from @loom/chess is the stage ladder
-      // (pure, no chess.js): never the board, the rules or the AI.
-      for (const m of text.matchAll(/from "(@loom\/chess[^"]*)"/gu)) expect(m[1], f).toBe("@loom/chess/stage");
+      // Nothing from @loom/chess at all (wave 26, R3: the stage ladder went
+      // with the HUD's King bar): never the board, the rules or the AI.
+      expect(text, f).not.toMatch(/from "@loom\/chess/u);
       expect(text, f).not.toMatch(/\/api\/mod\/signal|chess won|chess lost|chess drawn/u);
     }
     expect(src("game/Play.tsx")).not.toMatch(/import\(.*chess/u);
@@ -41,9 +41,18 @@ describe("the King's tablet copy (wave 11)", () => {
   });
 
   it("the hit is once per reinstallation, shared, and the King kneels at 0", () => {
-    expect(copyOf("flow.tsx")).toContain("In the simulation the King guards the Server Room's door: every program may hit him once per reinstallation");
+    // Wave 26 (G1, C12): the choose screen no longer states the rule up
+    // front — no King note, no "once per reinstallation", no "weakens him".
+    expect(copyOf("flow.tsx")).not.toMatch(/king-note|guards the Server Room|once per reinstallation|weakens him/u);
     expect(copyOf("game/fight.ts")).toContain('"You hit him this reinstallation. Find Gerald before you hit him again."');
     expect(copyOf("game/engine.ts")).toContain('"The King kneels. His door stands open."');
     expect(copyOf("game/Play.tsx")).toContain("⚔ HIT");
+  });
+
+  it("no King bar on the HUD (wave 26, R3): no meter, label, stage or kneeling line — only ⚔ HIT", () => {
+    const play = copyOf("game/Play.tsx");
+    expect(play).not.toMatch(/hud-king|KNEELING ·|KingBar|king\.meter|STAGE_LINE|KNEELING_LINE/u);
+    expect(play).toContain("king-actions");
+    expect(src("styles.css")).not.toMatch(/\.hud-king/u);
   });
 });

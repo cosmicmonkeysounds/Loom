@@ -16,6 +16,7 @@ import type {
   SaveHouseResult,
   SaveToProjectResult,
   SpatialCandidate,
+  Spawn,
   SpatialWorld,
   StationInfo,
   SwitchVariantResult,
@@ -341,6 +342,112 @@ export async function postKingHit(base: string, token: string, fetcher: typeof f
   }
   if (res.status === 404) return { kind: "none" };
   if (res.status === 401 || res.status === 410) return { kind: "over", status: res.status };
+  return { kind: "error", message: error };
+}
+
+// --- game moments (wave 26, C6): the void, the heart, the virus disk -------
+
+/** What a game asks the moment route about (the session token in `x-loom-token`). */
+export type MomentRequest = { kind: "escape" } | { kind: "heart"; prop: string } | { kind: "pickup"; prop: string };
+
+/** One line the story said to this program in that moment: display text,
+ *  never pronounced (the game pronounces it for its own voice). */
+export interface MomentLine {
+  from: string;
+  text: string;
+}
+
+/** The old server's generic 404 body (`server.ts`) — the new route never answers it. */
+export const OLD_SERVER_404 = "not found";
+
+/**
+ * What the server said to a moment (`POST /api/spatial/moment`, C6), every
+ * outcome a value. The two 404s are told apart by the `error` string only:
+ * `"no such prop"` is the new route's; any other 404 body is an old server
+ * without the route (`old`).
+ */
+export type MomentReply =
+  | { kind: "escaped"; lines: MomentLine[]; spawn: Spawn | null; cooldownMs: number }
+  | { kind: "heart"; lines: MomentLine[] }
+  | { kind: "picked"; lines: MomentLine[]; item: string; prop: string }
+  /** 400 — an unknown kind, or a heart / pickup with no prop: give up. */
+  | { kind: "bad" }
+  /** 404 `no such prop`: give up. */
+  | { kind: "noProp" }
+  /** Any other 404: an old server without the route. */
+  | { kind: "old" }
+  /** 401 / 410: the session is over. */
+  | { kind: "over"; status: number }
+  /** 409 doors are closed (paused, before doors). */
+  | { kind: "paused" }
+  /** 409: the session has not started — send a pose first. */
+  | { kind: "parked" }
+  | { kind: "notOut"; distance: number | null }
+  | { kind: "cooldown"; retryMs: number | null }
+  /** Heart: the King still stands. */
+  | { kind: "sealed" }
+  /** Heart: the last pose isn't inside his room. */
+  | { kind: "notThere" }
+  /** Pickup: the last pose is out of reach. */
+  | { kind: "far"; distance: number | null }
+  /** Heart heard / disk taken by this program tonight. */
+  | { kind: "already" }
+  | { kind: "error"; message: string };
+
+/** The lines of a moment's answer (malformed entries dropped). */
+export function momentLinesOf(raw: unknown): MomentLine[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((l: unknown) => {
+    if (typeof l !== "object" || l === null) return [];
+    const { from, text } = l as { from?: unknown; text?: unknown };
+    return typeof text === "string" && text.trim() !== "" ? [{ from: typeof from === "string" ? from : "", text }] : [];
+  });
+}
+
+function spawnOf(raw: unknown): Spawn | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const { room, pos, yaw } = raw as { room?: unknown; pos?: unknown; yaw?: unknown };
+  if (!Array.isArray(pos) || pos.length !== 3 || !pos.every((n) => typeof n === "number" && Number.isFinite(n))) return null;
+  return { room: typeof room === "string" ? room : "", pos: [pos[0], pos[1], pos[2]], yaw: typeof yaw === "number" && Number.isFinite(yaw) ? yaw : 0 };
+}
+
+const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
+/** `POST /api/spatial/moment` with the session token. Flush the pose first:
+ *  the server judges the session's last pose, as for `king/hit`. */
+export async function postMoment(base: string, token: string, req: MomentRequest, fetcher: typeof fetch = fetch): Promise<MomentReply> {
+  let res: Response;
+  try {
+    res = await fetcher(`${base}/api/spatial/moment`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: JSON.stringify(req) });
+  } catch (e) {
+    return { kind: "error", message: (e as Error).message };
+  }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  const error = typeof data["error"] === "string" ? data["error"] : `HTTP ${res.status}`;
+  if (res.ok) {
+    const lines = momentLinesOf(data["lines"]);
+    const kind = data["kind"] ?? req.kind;
+    if (kind === "escape") return { kind: "escaped", lines, spawn: spawnOf(data["spawn"]), cooldownMs: num(data["cooldownMs"]) ?? 0 };
+    if (kind === "heart") return { kind: "heart", lines };
+    if (kind === "pickup") {
+      const prop = typeof data["prop"] === "string" ? data["prop"] : req.kind === "pickup" ? req.prop : "";
+      return { kind: "picked", lines, item: typeof data["item"] === "string" ? data["item"] : "", prop };
+    }
+    return { kind: "error", message: "an answer for another kind" };
+  }
+  if (res.status === 400) return { kind: "bad" };
+  if (res.status === 401 || res.status === 410) return { kind: "over", status: res.status };
+  if (res.status === 404) return error === "no such prop" ? { kind: "noProp" } : { kind: "old" };
+  if (res.status === 409) {
+    if (error === DOORS_CLOSED) return { kind: "paused" };
+    if (error.startsWith("this session has not started")) return { kind: "parked" };
+    if (error === "not out") return { kind: "notOut", distance: num(data["distance"]) };
+    if (error === "cooldown") return { kind: "cooldown", retryMs: num(data["retryMs"]) };
+    if (error === "sealed") return { kind: "sealed" };
+    if (error === "not there") return { kind: "notThere" };
+    if (error === "far") return { kind: "far", distance: num(data["distance"]) };
+    if (error === "already") return { kind: "already" };
+  }
   return { kind: "error", message: error };
 }
 

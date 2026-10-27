@@ -8,7 +8,7 @@ import { KING_SIGNALS } from "@loom/house";
 import { foldName } from "../src/config.ts";
 import { fakeChart, fakeState } from "../src/cutscene/fake.ts";
 import { allowed, componentFor } from "../src/cutscene/pick.ts";
-import { SCENES, OVERSHARE_CURSOR_DELAY } from "../src/cutscene/scenes/act2.tsx";
+import { FIVE_MARQUEE, FIVE_POPS, PONG_POPS, SCENES, OVERSHARE_CURSOR_DELAY } from "../src/cutscene/scenes/act2.tsx";
 import type { SceneDef, SceneProps, SceneTarget } from "../src/cutscene/types.ts";
 import { EMPTY_NIGHT, type ScreenMoment, type ScreenState } from "../src/screen.ts";
 
@@ -294,5 +294,20 @@ describe("the round-two tally never invents fact rows (wave 18b)", () => {
     expect(full).not.toMatch(/FACT #|RECEIVED|MISSING/u);
     expect(full).toContain("Tallying the facts received");
     q.mockRestore();
+  });
+});
+
+describe("act 2 states no hidden rule (wave 26, G1)", () => {
+  it("Truth Pong says how to play (a miss is marked) but never how a truth is judged", () => {
+    const text = PONG_POPS.map((p) => p.text).join(" ");
+    expect(text).not.toMatch(/accepted|confiden|guess|accurate/iu);
+    expect(text).toContain("Miss, and you are marked."); // Clippy's own rule stays
+  });
+
+  it("the summons never says what excuses a program", () => {
+    for (const t of [...FIVE_POPS.map((p) => `${p.title} ${p.text}`), FIVE_MARQUEE]) {
+      expect(t).not.toMatch(/excuse|nothing else|bathroom/iu);
+    }
+    expect(FIVE_MARQUEE).toContain("NO DESKTOP, NO TRUTH PONG"); // the summons' own rule stays
   });
 });

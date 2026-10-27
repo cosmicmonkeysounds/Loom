@@ -68,11 +68,11 @@
 //! ⟦BACK⟧) is docked. Thrown out of his heart, the line ends when the scene
 //! has played.
 
-import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
+import { Component, Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
 import { Composer, Thread, type Echo } from "./chat.tsx";
 import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
-import { followMap, followVoice, urlConfig } from "./setup-map.ts";
+import { followMap, followVoice, linkConfig } from "./setup-map.ts";
 import { useCamFeed } from "./camfeed.ts";
 import { useVoiceLink } from "./voice/hook.ts";
 import { MicCue } from "./voice/MicCue.tsx";
@@ -81,16 +81,17 @@ import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { lineLeash, talkWaitsOnDoor, useIdleTimeout } from "./idle.ts";
 import { FilePanel } from "./FilePanel.tsx";
-import { VISIT_OPEN_FALLBACK_MS, VisitLatch, beginPilot, characterIdOf, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { LOCKED_PASS_NOTICE, VISIT_OPEN_FALLBACK_MS, VisitLatch, beginPilot, characterIdOf, passLocked, refusesLockedPass, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { parseScan } from "./scan.ts";
 import { Gear, TypedFallback } from "./controls.tsx";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
-import { SpeechQueue, audioUnlocked, unlock, voiceEngines, voiceNote, type EngineKind } from "./speech/engine.ts";
+import { SpeechQueue, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, voiceNote, type EngineKind } from "./speech/engine.ts";
 import { useAnnouncements } from "./announce.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
 import { fetchHouse, useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
-import { fullScreenSim, hasWebGL2, paneSimulation } from "./webgl.ts";
+import { fullScreenSim, hasWebGL2 } from "./webgl.ts";
+import { linkedNow, linkedPane, usePresenceLatch } from "./world/presence.ts";
 import { screenWake } from "./kiosk.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundMuted, setSoundView, sfx } from "./sound/bus.ts";
@@ -102,7 +103,7 @@ import { ScanBox } from "./idle-show/ScanBox.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
 import type { ReinstallTerminalProps } from "./reinstall/ReinstallTerminal.tsx";
-import { PeekClock, canPeek, screenLayers } from "./slides.ts";
+import { PeekClock, canPeek, coverOf, screenLayers } from "./slides.ts";
 import { api, withTimeout } from "@loom/play/client.ts";
 import { serverNow } from "./cutscene/clock.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
@@ -171,7 +172,9 @@ export function App() {
   // cursor follows the head here — the lines that come with the wake (the
   // door cutscene) are then spoken, not resynced away (`cursorWhileAsleep`).
   const asleep = attractOf(screenState.state, room !== null);
-  const watching = config !== null && asleep && watchWhileAsleep(screenState.state, config.view, room !== null);
+  // Wave 26 (R5): a wall watches only while a player is in its room in the
+  // game (latched 3 s, so a doorway crossing never flips the whole screen).
+  const watching = usePresenceLatch(config !== null && asleep && watchWhileAsleep(screenState.state, config.view, room !== null, config.spot));
   useEffect(() => {
     const voice = screenState.state?.voice;
     if (room === null || !asleep || voice === null || voice === undefined) return;
@@ -244,7 +247,7 @@ export function App() {
         // room), the link's own fields winning. A spot the map lacks: say so
         // rather than hang no window.
         const house = given.spot === "" ? null : await fetchHouse(given).then((h) => h.house, () => null);
-        const c = urlConfig(given, hints, house);
+        const c = linkConfig(given, hints, house); // urlConfig + the view defaults (TV: 0.92)
         saveConfig(c);
         setConfig(c);
         const problem = house === null ? null : spotProblem(c.spot, house);
@@ -445,20 +448,27 @@ export function App() {
   // The chess board is layered like a room terminal: overlays only, never a
   // story slide, the countdown corner or the Y2K clock.
   const bare = room !== null || config.view === "chess" || config.view === "casino";
+  // The tent's kiosk (wave 26, T3) takes no story slide, corner or Y2K
+  // clock; its overlays, beat cutscenes and the glitch still play.
+  const station = config.view === "reinstall";
   // An overlay (blackout / go to the living room / alarm) ends any pilot
-  // (and covers a chess game, which it holds rather than ends). A slide or
-  // an overlay over the idle show pauses it (no popup dings under a scene).
-  const top = screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare });
-  const takeover = top.overlay !== null;
-  const covered = takeover || top.slide !== null;
+  // (and covers a chess game, which it holds rather than ends). A slide, an
+  // overlay or the glitch over the idle show pauses it (no popup dings under
+  // a scene). The glitch (wave 26, T2) is covered, never a takeover: a pilot,
+  // a chess game or a tent walk keeps running under its 8 s.
+  const { takeover, covered } = coverOf(screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare, slides: !station }));
   // The heart terminal: the server room's own room terminal, or any with a door sensor.
   const heartTerminal = isHeartTerminal(room, config.door);
+  // Keyed, so it keeps its place (and the glitch, a scene, the flicker keep
+  // theirs) whichever screen it sits beside: an asleep wall swapping the
+  // screensaver for the watched world as a player crosses its room (R5)
+  // must not remount it mid-takeover.
   const layer = (
-    <>
+    <Fragment key="screen-layer">
       {heartTerminal && <DoorOverlay doorOpen={doorOpen} stage={screenState.state?.night.heart_stage ?? null} />}
       {/* A sensor fault is never on a guest's screen (D29: the sensor is the door): ⚙ and Run → Terminals show it. */}
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
-      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} slides={!station} onSlideTap={peekable && !station ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
       <MicCue />
       {announcement !== null && (
@@ -469,7 +479,7 @@ export function App() {
           {announcement}
         </div>
       )}
-    </>
+    </Fragment>
   );
   const attractScreen = (
     <Attract
@@ -552,7 +562,6 @@ export function App() {
           onSetup={openSetup}
           onGone={onGone}
           onBusy={setReinstallBusy}
-          worldSlot={(store, size) => <WorldSlot store={store} spotId={config.spot} size={size} recover="retry" raycast={!webgl2} />}
         />
         {wakeOverlay}
         {layer}
@@ -865,6 +874,8 @@ function Terminal({
   const chunkText = useRef(new Map<number, string[]>());
   /** A room line being said resolves here when its utterance is done (or cut). */
   const waiters = useRef(new Map<number, () => void>());
+  // Each queued room line's "he started it": its caption goes up then (wave 26 V1).
+  const starts = useRef(new Map<number, () => void>());
   const room = roomOf(config);
   // A room scene's face mood (wave 20: the heart's scenes) reaches this face.
   useEffect(() => onSceneFace((m, ms) => face.current?.flash(m, ms)), []);
@@ -879,11 +890,15 @@ function Terminal({
   const world = useSpatialStream(config, view !== "face");
   const inSimulation = useWorld(world, (s) => s.world.players.size > 0);
   useGone(world, onGone);
+  // Wave 26 (R5): the pane shows the Internet only while a player is in this
+  // spot's room in the game (the server's `spot.here`; the house-wide rule
+  // only when it sends none), never with no spot; latched 3 s.
+  const linked = usePresenceLatch(linkedNow({ view, spot: config.spot, here: state?.spot, anyone: inSimulation }));
   // `auto` shows the shadow (the camera, the players as ghosts in it) instead
   // of the world while the camera is live and this terminal is placed; a
   // tablet with no WebGL2 draws the raycaster instead of either.
   const cameraLive = useCameraLive();
-  const pane = screen.kind === "attract" ? paneSimulation(view, hasWebGL2(), inSimulation, cameraLive && config.spot.trim() !== "") : "none";
+  const pane = screen.kind === "attract" ? linkedPane(view, hasWebGL2(), linked, cameraLive && config.spot.trim() !== "") : "none";
   const showWorld = pane !== "none";
 
   // --- the voice ---
@@ -895,6 +910,10 @@ function Terminal({
     return new SpeechQueue(engines, {
       level: (v) => face.current?.level(v),
       chunk: (id, i) => {
+        if (i === 0) {
+          starts.current.get(id)?.();
+          starts.current.delete(id);
+        }
         const text = chunkText.current.get(id)?.[i] ?? "";
         setMood(moodOfText(text));
         setSpeaking(true);
@@ -904,6 +923,7 @@ function Terminal({
       done: (id) => {
         offsets.current.delete(id);
         chunkText.current.delete(id);
+        starts.current.delete(id);
         waiters.current.get(id)?.();
         waiters.current.delete(id);
         setRevealed((prev) => {
@@ -918,7 +938,7 @@ function Terminal({
         setMood("neutral");
       },
       engine: (kind) => setEngineUsed(kind),
-    });
+    }, voiceFloor, gapsFor(config));
   }, [config]);
   useEffect(() => {
     setLatched(false); // a new voice (setup changed) asks the server afresh
@@ -955,11 +975,12 @@ function Terminal({
           if (line !== null) setRoomBusy(true);
           if (line !== null && line.mode !== "speak") setMood(moodOfText(line.text));
         },
-        speak: (line) =>
+        speak: (line, started) =>
           new Promise<void>((resolve) => {
             const chunks = splitSentences(line.text);
             if (chunks.length === 0) return resolve();
             chunkText.current.set(line.seq, chunks);
+            starts.current.set(line.seq, started);
             waiters.current.set(line.seq, resolve);
             queue.say({ id: line.seq, chunks });
           }),
@@ -967,6 +988,7 @@ function Terminal({
           queue.stop();
           for (const w of waiters.current.values()) w();
           waiters.current.clear();
+          starts.current.clear();
           setSpeaking(false);
         },
         sleep: (ms) => new Promise((r) => window.setTimeout(r, ms)),
@@ -975,7 +997,7 @@ function Terminal({
           window.clearTimeout(roomLinger.current);
           roomLinger.current = window.setTimeout(() => setRoomLine(null), 6000);
         },
-      }, room !== null ? speech : null),
+      }, room !== null ? speech : null, { captionOnStart: true }),
     [queue, room, speech],
   );
   // A room terminal speaks its room's lines while mounted (`talk` / `said`).
@@ -1198,6 +1220,16 @@ function Terminal({
       }
       setScreen({ kind: "connecting", id: guestId });
       setMood("attentive");
+      // R1 (wave 26): a room terminal refuses a locked (captured) pass at the
+      // scan, as chess and casino do: its line could send nothing, and its
+      // `terminal opened` would hold the room for a talk nobody can answer.
+      if (refusesLockedPass(config) && (await passLocked(config, guestId))) {
+        setFlash(LOCKED_PASS_NOTICE);
+        setMood("glitch");
+        window.setTimeout(() => setMood("idle"), 1200);
+        setScreen({ kind: "attract" });
+        return;
+      }
       try {
         const p = await beginPilot(config, guestId);
         setScreen({ kind: "piloting", pilot: p });

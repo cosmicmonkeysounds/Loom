@@ -34,7 +34,9 @@ import { usePush } from "../push.ts";
 import { redeemErrorText, shareTargets } from "../codex.ts";
 import { activePins, activeTakeover } from "../pins.ts";
 import { Takeover } from "../takeover.tsx";
-import { LinkLanding, ScanSheet, landingLink, type GuestScan } from "../guest-scan.tsx";
+import { LinkLanding, landingLink } from "../guest-scan.tsx";
+import type { GuestScan } from "../guest-scan-sheet.tsx";
+import { LazyScanSheet as ScanSheet } from "../guest-scan-sheet-lazy.tsx";
 import { LazyScanDone, loadScanDone, settled } from "../scan-done-lazy.tsx";
 import { BellButton, MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
 import { GuestRegister, PictureChanger } from "./register.tsx";
@@ -55,6 +57,7 @@ import { LazyMission } from "./mission-lazy.tsx";
 import { ChatsWindow } from "./chats.tsx";
 import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
 import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
+import { LazyLockScreen, LockFrame } from "./lock-lazy.tsx";
 import { rowClockOf } from "./show-time.ts";
 import { prefetchQr } from "../pass-qr.tsx";
 import { prefetchFactCard } from "../widgets.tsx";
@@ -73,8 +76,12 @@ LazyMission.prefetch();
 // The pass's QR encoder: its own chunk, fetched just after the first paint
 // (the pass is one tap away; the arrival's `show pass` card follows soon).
 if (typeof window !== "undefined") window.setTimeout(prefetchQr, 1200);
+// Wave 26: the 📷 Scan sheet's chunk, just after.
+if (typeof window !== "undefined") window.setTimeout(ScanSheet.prefetch, 1600);
 // The 📝 fact card's chunk (wave 18b), a little later: it is dealt in the hunts.
 if (typeof window !== "undefined") window.setTimeout(prefetchFactCard, 2500);
+// Wave 26 (R1): the locked phone's screen, so a capture finds it there.
+if (typeof window !== "undefined") window.setTimeout(LazyLockScreen.prefetch, 4000);
 
 /**
  * Is the app on rails? While the story has the guest in a `cutscene`
@@ -432,6 +439,9 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     sideChosen: (ext.sides ?? []).some((x) => x.mine),
     captured: st.captured,
     lobbyHidden: noLobby,
+    // Wave 26 (T2): the story's glitch takes the phone over (locked or not).
+    glitch: st.night?.glitch,
+    takeover: "full",
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)
@@ -463,6 +473,28 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
           onContinue={leaveCutscene}
           onPass={() => nav.setOverlay("pass")}
           offline={offline}
+        />
+        {passing && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => nav.setOverlay(null)} />}
+        {takeover}
+      </div>,
+    );
+  }
+
+  // Wave 26 (R1, C2): a locked phone shows only the lock screen (its own chunk).
+  if (s.locked) {
+    return framed(
+      <div className="root app-frame guest-frame trapped-bg locked">
+        <LockFrame
+          title={st.title ?? s.me.title ?? ""}
+          objective={st.objectives?.[0] ?? null}
+          rooms={t.list}
+          interactions={interactions}
+          me={s.me.id}
+          pins={pins}
+          paused={st.paused === true}
+          conn={s.connected ? "live" : offline ? "offline" : "reconnecting"}
+          onPass={() => nav.setOverlay("pass")}
+          onAct={(i) => void s.act(i.id, i.label).catch(() => {})}
         />
         {passing && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => nav.setOverlay(null)} />}
         {takeover}
@@ -759,7 +791,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
         />
       )}
       {people !== null && <PeopleSheet session={s} only={people === "all" ? undefined : people} onClose={() => setPeople(null)} />}
-      {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
+      {help && <HelpSheet onClose={() => setHelp(false)} />}
       {s.scanDone !== null && <LazyScanDone done={s.scanDone} onClose={s.clearScan} />}
       {nav.overlay === "scan" && <ScanSheet meId={s.me.id} onScan={onScanned} onClose={() => nav.setOverlay(null)} rooms={scanRooms} />}
       {passing && <FullPass guestId={meId} name={meName} onClose={() => nav.setOverlay(null)} />}

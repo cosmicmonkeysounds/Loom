@@ -6,7 +6,11 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { NowCard, nowRow, pinnedChecks } from "../src/booth/now-card.tsx";
-import { BoothTray, ledDigits } from "../src/booth/tray.tsx";
+import { BoothTray, boothTrayOrder, ledDigits } from "../src/booth/tray.tsx";
+import { trayClock } from "../src/booth/model.ts";
+import { readBundledCss } from "./css.ts";
+import { boothFrameClass } from "../src/booth/app.tsx";
+import type { PrimeView } from "../src/types.ts";
 import { bindDraft } from "../src/booth/popouts/use-booth-popouts.ts";
 import { boothMomentFeed } from "../src/booth/moments-feed.ts";
 import { ReadoutsView } from "../src/booth/readouts.tsx";
@@ -66,6 +70,56 @@ describe("the booth tray (§3)", () => {
     expect(none).not.toContain("led");
     expect(none).not.toContain("🔔");
     expect(renderToStaticMarkup(<BoothTray view={null} onWallet={() => {}} loose={null} />)).not.toContain("Marked and loose");
+  });
+});
+
+describe("the windowed booth's frame and tray (wave 26 P2)", () => {
+  it("a player's or a host's frame is windowed; a plain booth keeps the old bar", () => {
+    expect(boothFrameClass({ windowed: true })).toBe("app-frame booth-frame windowed");
+    expect(boothFrameClass({ clocked: true, alarmed: true })).toBe("app-frame booth-frame clocked alarmed");
+    expect(boothFrameClass({})).not.toContain("windowed");
+  });
+  it("priority order: 🔔 → 🚨 → held → countdown → ⭐ / act → clock, only what is present", () => {
+    const all = { waiting: true, loose: true, held: true, soon: true, stat: true, act: true, clock: true };
+    expect(boothTrayOrder(all)).toEqual(["waiting", "loose", "held", "countdown", "stat", "act", "clock"]);
+    // An Anti-Virus with 🚨 and a countdown on a 390 px phone (two shown): both stay, the ⭐ and clock drop.
+    expect(boothTrayOrder({ ...all, waiting: false, held: false }).slice(0, 2)).toEqual(["loose", "countdown"]);
+    // A quiet player: the ⭐ score, then the clock.
+    expect(boothTrayOrder({ waiting: false, loose: false, held: false, soon: false, stat: true, act: false, clock: true })).toEqual(["stat", "clock"]);
+    // The clock is always last; never before the countdown.
+    const o = boothTrayOrder({ ...all, held: false });
+    expect(o[o.length - 1]).toBe("clock");
+    expect(o.indexOf("countdown")).toBeLessThan(o.indexOf("stat"));
+  });
+  it("renders in that order on a windowed booth, the clock last and yielding", () => {
+    const view = { clock: 0, showClock: { minutes: 1200, running: true }, countdowns: [{ label: "Hunt", endsAt: 600_000 }], night: { act: { code: "B", title: "Bingo" }, phase: null, step: 3 } } as unknown as PrimeView;
+    const html = renderToStaticMarkup(<BoothTray view={view} onWallet={() => {}} loose={2} waiting={1} windowed />);
+    const at = (s: string) => html.indexOf(s);
+    expect(at("🔔 1")).toBeGreaterThanOrEqual(0);
+    expect(at("🔔 1")).toBeLessThan(at("led-digits"));
+    expect(at("led-digits")).toBeLessThan(at("ico-hourglass"));
+    expect(at("ico-hourglass")).toBeLessThan(at("tray-act"));
+    expect(at("tray-act")).toBeLessThan(at("tray-show-clock"));
+    expect(html).toMatch(/tray-clock yields/u);
+    // The act never yields on a windowed tray (the cap does the dropping).
+    expect(html).not.toMatch(/tray-act yields/u);
+    // A plain booth keeps the old order: the LED first, the clock before the act.
+    const plain = renderToStaticMarkup(<BoothTray view={view} onWallet={() => {}} loose={2} waiting={1} />);
+    expect(plain.indexOf("led-digits")).toBeLessThan(plain.indexOf("🔔 1"));
+    expect(plain.indexOf("tray-show-clock")).toBeLessThan(plain.indexOf("tray-act"));
+  });
+  it("at 360 px the two tray items fit beside four 48 px windows (host: countdown + Act B; guest: countdown + coin)", () => {
+    const css = readBundledCss().replace(/\/\*[\s\S]*?\*\//gu, "");
+    const booth = /@media \(max-width: 369px\) \{\s*\.booth-frame\.windowed \.taskbar \{ gap: 2px; \}\s*\.booth-frame\.windowed \.taskbar \.taskbar-tray \{ padding: 0 1px 0 2px; \}\s*\.booth-frame\.windowed \.taskbar \.taskbar-tray::before \{ margin: 0 2px 0 1px; \}\s*\.booth-frame\.windowed \.taskbar \.taskbar-tray \.tray-item \{ padding: 0 2px; gap: 2px; \}\s*\}/u;
+    expect(css).toMatch(booth);
+    expect(css).toMatch(/\.guest-frame \.taskbar \{ gap: 2px; \}\s*\.guest-frame \.taskbar-tray \{ padding: 0 1px 0 2px; \}\s*\.guest-frame \.taskbar-tray::before \{ margin: 0 2px 0 1px; \}\s*\.guest-frame \.taskbar-tray \.tray-item \{ padding: 0 2px; gap: 2px; \}/u);
+    // The windows keep their 48 px floor; the icons stay (no hiding the hourglass).
+    expect(css).toMatch(/min-width: 48px; max-width: 120px;/u);
+    expect(css).not.toMatch(/tray-countdown|\.tray-ico \{ display: none/u);
+    // The booth's tray countdown has no space ("14m", as the guest's); the text form keeps it.
+    expect(trayClock(899, false, false)).toBe("14m");
+    expect(trayClock(899)).toBe("⏳ 14 m");
+    expect(trayClock(599, false, false)).toBe("9:59");
   });
 });
 

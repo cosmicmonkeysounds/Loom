@@ -1,7 +1,8 @@
 ## Gerald, gilded — the golden duck (`docs/loom-reinstall.md` §5). A
 ## low-poly duck from primitives (no imported model), bobbing and turning
-## slowly on its spot with a warm light. On [method celebrate] it lays a
-## golden egg and flies away.
+## slowly on its spot with a warm light, and quacking from where he sits
+## ([member emitter], wave 26). On [method celebrate] it lays a golden egg
+## and flies away.
 class_name Duck
 extends Node3D
 
@@ -9,6 +10,10 @@ extends Node3D
 const FIND_RADIUS := 0.9
 const FLIGHT := 2.6
 
+## Where Gerald's quack comes from ([method Sfx.quack_at]): on him, panned
+## by where he is, at the volume the schedule says (no distance roll-off —
+## [method Sfx.quack_plan] already says how close he is).
+var emitter: AudioStreamPlayer3D
 var _model: Node3D
 var _egg: MeshInstance3D
 var _t := 0.0
@@ -41,6 +46,14 @@ func _ready() -> void:
 	_egg.material_override = HouseLook.glow_gold()
 	_egg.visible = false
 	add_child(_egg)
+	emitter = AudioStreamPlayer3D.new()
+	emitter.name = "Quack"
+	emitter.bus = Sfx.BUS
+	emitter.position.y = 0.35
+	emitter.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
+	emitter.max_distance = 0.0
+	emitter.doppler_tracking = AudioStreamPlayer3D.DOPPLER_TRACKING_DISABLED
+	add_child(emitter)
 	visible = false
 
 

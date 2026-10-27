@@ -7,10 +7,14 @@
 ##
 ##   godot --path . -- --server http://10.0.0.2:7000 --code 4821 \
 ##         --station vr-1 --name "Headset 1" [--guest g-3f9a1c] [--offline] [--smooth-turn]
-##         [--autopilot [--hit-king]] [--voice false] [--mic false]
+##         [--autopilot [--hit-king]] [--voice false] [--mic false] [--trail-delay 0]
 ##
 ## `voice` (default on) is the voice link (wave 19): the terminals heard in
 ## the house, this headset heard on them; `mic` (default on) off = listen only.
+##
+## `trail_delay` (seconds, default [constant HouseRoute.PATH_REVEAL_MS] / 1000:
+## a minute, wave 26 R2) holds the golden trail back at the start of each
+## walk; dev runs and tests may set 0.
 ##
 ## `--autopilot` (dev / CI only) walks the trail to the duck by itself and
 ## quits when the session is over — see [Autopilot]. With `--hit-king` it
@@ -44,6 +48,7 @@ const KEYS := {
 	"hit_king": TYPE_BOOL,
 	"voice": TYPE_BOOL,
 	"mic": TYPE_BOOL,
+	"trail_delay": TYPE_FLOAT,
 }
 
 
@@ -60,6 +65,7 @@ static func defaults() -> Dictionary:
 		"hit_king": false,
 		"voice": true,
 		"mic": true,
+		"trail_delay": HouseRoute.PATH_REVEAL_MS / 1000.0,
 	}
 
 
@@ -77,6 +83,12 @@ static func merge(base: Dictionary, overlay: Dictionary) -> Dictionary:
 				out[k] = v
 			elif v is String:
 				out[k] = (v as String).to_lower() in ["1", "true", "yes", "on"]
+		elif KEYS[k] == TYPE_FLOAT:
+			# A number, or a string that is one, and never negative; else ignored.
+			if (v is float or v is int) and float(v) >= 0.0:
+				out[k] = float(v)
+			elif v is String and (v as String).strip_edges().is_valid_float() and float(v) >= 0.0:
+				out[k] = float(v)
 		elif v is String or v is float or v is int:
 			var s := str(v).strip_edges()
 			if s != "":
@@ -108,6 +120,10 @@ static func parse_args(args: PackedStringArray) -> Dictionary:
 			continue
 		if KEYS[key] == TYPE_BOOL and value is String:
 			value = (value as String).to_lower() in ["1", "true", "yes", "on"]
+		elif KEYS[key] == TYPE_FLOAT:
+			if not (value is String and (value as String).is_valid_float()) or float(value) < 0.0:
+				continue
+			value = float(value)
 		out[key] = value
 	return out
 
@@ -169,6 +185,25 @@ static func parse_url(url: String) -> Dictionary:
 		return {}
 	var origin := ("https://" if tls else "http://") + hostport
 	return {"tls": tls, "host": host, "port": port, "path": path, "base": origin + path}
+
+
+# --- the build stamp (wave 26, R8) ---------------------------------------------
+
+
+## Where `tools/quest.sh build` stamps the APK it builds (in its staging
+## copy only — never the working tree): `{"build": "<short sha>", "at": "<UTC>"}`.
+const BUILD_PATH := "res://config/build.json"
+
+
+## The lobby's build line: "build <sha> · <when>" from the stamp, or
+## "build dev" for an editor / desktop run (no stamp).
+static func build_stamp(path := BUILD_PATH) -> String:
+	var b := read_file(path)
+	var sha := str(b.get("build", "")).strip_edges()
+	if sha == "":
+		return "build dev"
+	var at := str(b.get("at", "")).strip_edges()
+	return "build %s · %s" % [sha, at] if at != "" else "build %s" % sha
 
 
 # --- the user file (in-headset setup) -----------------------------------------

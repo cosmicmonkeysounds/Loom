@@ -8,6 +8,12 @@
 //!   (muted, a song beat, text only, another speaker, attract). Only the lines
 //!   it will really speak hold it back.
 //!
+//! - `sp=<seq>:<chunk>` / `sp=<seq>:d` (wave 26, V1 phase 2; the TV only)
+//!   — the room line it is speaking now and the sentence within it (from
+//!   0), or `d` once that line is done. The server keeps the newest from a
+//!   `view=tv` poller as the screen state's `tvSpeech`, so the walls can
+//!   follow his voice.
+//!
 //! A desk `speech` step waits on these to know Trabolta has finished in a
 //! room. `RoomSpeech` is the pure model (the App owns one, like the voice
 //! cursor; the TV's and the room terminal's `LinePlayer` feed it), and
@@ -22,6 +28,10 @@ export const DRAIN_REPOLL_GAP_MS = 500;
 export interface SpeechReport {
   talk: boolean;
   said: number | null;
+  /** (wave 26, V1 phase 2) The line being spoken now (`seq`) and its
+   *  sentence (`chunk`, from 0), or `chunk: null` once that line is done.
+   *  Absent / null: nothing to report (left out of the poll). */
+  sp?: { seq: number; chunk: number | null } | null;
 }
 
 /** The poll's `talk` / `said` keys for a report (none for a terminal that doesn't speak). */
@@ -29,6 +39,11 @@ export function speechQuery(r: SpeechReport | null | undefined): Record<string, 
   if (r === null || r === undefined) return {};
   const q: Record<string, string> = { talk: r.talk ? "1" : "0" };
   if (r.said !== null && Number.isFinite(r.said)) q["said"] = String(Math.floor(r.said));
+  const sp = r.sp;
+  if (sp != null && Number.isFinite(sp.seq) && sp.seq >= 0) {
+    const chunk = sp.chunk === null ? "d" : Number.isFinite(sp.chunk) && sp.chunk >= 0 ? String(Math.min(999, Math.floor(sp.chunk))) : null;
+    if (chunk !== null) q["sp"] = `${Math.floor(sp.seq)}:${chunk}`;
+  }
   return q;
 }
 
@@ -44,6 +59,8 @@ export class RoomSpeech {
   private pending: number[] = [];
   private head: number | null = null;
   private speakers = 0;
+  /** (wave 26, V1 phase 2) The line being said and its sentence (`chunk` null: done). */
+  private sp: { seq: number; chunk: number | null } | null = null;
   private readonly drains = new Set<() => void>();
 
   /** A player is mounted to speak the room's lines; call the result when it goes. */
@@ -76,8 +93,19 @@ export class RoomSpeech {
     if (this.pending.length === 0) this.drained();
   }
 
+  /** (wave 26) The TV is saying sentence `chunk` of line `seq` (`sp=<seq>:<chunk>`). */
+  speaking(seq: number, chunk: number): void {
+    if (Number.isFinite(seq) && Number.isFinite(chunk)) this.sp = { seq, chunk };
+  }
+
+  /** (wave 26) Line `seq` is said (or cut): `sp=<seq>:d`. */
+  spoke(seq: number): void {
+    if (this.sp !== null && this.sp.seq === seq) this.sp = { seq, chunk: null };
+  }
+
   /** The player dropped everything queued (a mute, attract, unmount). */
   cleared(): void {
+    if (this.sp !== null) this.sp = { seq: this.sp.seq, chunk: null };
     if (this.pending.length === 0) return;
     this.pending = [];
     this.drained();
@@ -94,11 +122,12 @@ export class RoomSpeech {
    * not talking, finished through the last head heard.
    */
   report(cursor: number | null): SpeechReport {
-    if (this.speakers === 0) return { talk: false, said: this.head ?? cursor };
+    const sp = this.sp === null ? {} : { sp: { ...this.sp } };
+    if (this.speakers === 0) return { talk: false, said: this.head ?? cursor, ...sp };
     const through = cursor ?? this.head;
-    if (this.pending.length === 0) return { talk: false, said: through };
+    if (this.pending.length === 0) return { talk: false, said: through, ...sp };
     const before = this.pending[0]! - 1;
-    return { talk: true, said: through === null ? before : Math.min(through, before) };
+    return { talk: true, said: through === null ? before : Math.min(through, before), ...sp };
   }
 
   /** Called each time the queue drains (talk 1 → 0). Returns the unsubscribe. */

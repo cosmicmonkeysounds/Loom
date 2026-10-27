@@ -3,7 +3,7 @@
 //! a moment ago), how long have I been in here, which way is north, and am
 //! I there yet.
 
-import { DUCK_MAX_RISE, floorOf, locate, roomById, wrapYaw } from "@loom/house";
+import { DUCK_MAX_RISE, floorOf, locate, PATH_REVEAL_MS, roomById, wrapYaw } from "@loom/house";
 import type { DuckSpot, HouseMap, Vec3 } from "@loom/house";
 
 /** Plan distance at which the duck counts as reached (and `found` is sent). */
@@ -153,6 +153,35 @@ export const HEAT_LABEL: Record<Heat, string> = {
   steady: "FOLLOW THE GOLDEN ARROWS",
 };
 
+// --- the path reveal (wave 26, R2) ---------------------------------------------
+
+/** The first minute of a session hides the way to Gerald (`@loom/house`'s
+ *  constant, the VR game's too). The quack is not a path: never delayed. */
+export { PATH_REVEAL_MS };
+
+/**
+ * Is the way to Gerald shown `playedMs` into this session? Hidden for the
+ * first `PATH_REVEAL_MS` — the chevron trail, the compass pip, the distance
+ * and the warmer / colder ladder — then shown for the rest of it. Per
+ * session, client side: a re-scan starts the minute again.
+ */
+export function pathShown(playedMs: number): boolean {
+  return playedMs >= PATH_REVEAL_MS;
+}
+
+// DRAFT w26 (R2): the notice as the trail draws.
+export const PATH_REVEAL_NOTICE = "The way to Gerald lights up.";
+
+// DRAFT w26 (R2): the HUD's heat box before the reveal (no label, no distance, no hint).
+export const FIND_GERALD = "FIND GERALD";
+
+/** A director's save moved Gerald: before the reveal the notice names no
+ *  arrows (there are none yet); after it, the old line. */
+export function duckMovedNotice(revealed: boolean): string {
+  // DRAFT w26 (R2): "Gerald moved." before the reveal.
+  return revealed ? "Gerald moved — follow the golden arrows." : "Gerald moved.";
+}
+
 /** `m:ss` (or `h:mm:ss`). */
 export function formatElapsed(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -187,4 +216,39 @@ export function relativeBearing(from: Vec3, to: Vec3, yaw: number): number {
   const target = (Math.atan2(dx, -dz) * 180) / Math.PI;
   const rel = target - bearingOf(yaw);
   return ((((rel + 180) % 360) + 360) % 360) - 180 + 0;
+}
+
+/**
+ * The King is on this map and standing: what the help card's "Space hits
+ * the King" / "⚔ by the King" line needs (wave 26, R3) — the same rule as
+ * the ⚔ HIT button, which never shows once he has fallen (a fallen King's
+ * HUD state is still non-null: he kneels in the doorway).
+ */
+export function kingStands(king: { fallen: boolean } | null | undefined): boolean {
+  return king !== null && king !== undefined && !king.fallen;
+}
+
+/** Plan metres within which a King in view clears the HUD's top centre. */
+export const KING_VIEW_M = 4.5;
+/** |relative bearing| (degrees) within which he counts as in view. */
+export const KING_VIEW_DEG = 40;
+
+/**
+ * A King the player is looking at from close enough to read his bar (wave
+ * 26, R3: the bar over his head is his only display): on the player's
+ * floor, within `KING_VIEW_M` on the plan, and no more than
+ * `KING_VIEW_DEG` off the facing. While he stands and is in view, the play
+ * screen hides the compass and the heat line, which sit right where his bar
+ * projects from his hit reach out to about 4 m. Walls are not judged: he
+ * stands in a doorway, and the HUD comes back as soon as the player turns.
+ */
+export function kingInView(house: HouseMap, feet: Vec3, yaw: number, king: { pos: Vec3 }): boolean {
+  if (floorOf(house, feet[1]) !== floorOf(house, king.pos[1])) return false;
+  if (Math.hypot(king.pos[0] - feet[0], king.pos[2] - feet[2]) > KING_VIEW_M) return false;
+  return Math.abs(relativeBearing(feet, king.pos, yaw)) <= KING_VIEW_DEG;
+}
+
+/** The HUD's top centre (compass, heat line) gives way to his bar: he stands and is in view. */
+export function kingClearsHud(king: { fallen: boolean; inView: boolean } | null | undefined): boolean {
+  return king !== null && king !== undefined && !king.fallen && king.inView;
 }

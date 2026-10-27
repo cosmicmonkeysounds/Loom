@@ -14,14 +14,14 @@ move**, with its options as big buttons; a room that's asking you rises to
 **Your move** in Chats with a yellow dot.
 
 - Tap an option, or use ↑/↓ and Enter.
+- While a menu is waiting, the message box may fold to one **⌨ Message …**
+  button: tap it to type, and anything you'd half typed is still there.
 - Your pick is yours alone — someone else at the same moment may see
   different options, or none.
 - Some choices come back later; some are once-in-a-night. If an option
   vanished since last time, you (or the story) used it up.
 
-There's no undo. That's the fun part. Choose like it matters — it does:
-choices move your ⭐ score, your standing with characters, and where
-the night goes.
+There's no undo. That's the fun part. Choose like it matters.
 
 ## Cards: security checks, polls, pictures
 
@@ -43,5 +43,4 @@ the whole screen as a **big moment** and is answered right there: see
 You answer a card once. After that it leaves the tray and settles into
 one line where it was asked (*🛡️ Security check · submitted*, *📊 … ·
 you chose Truth*); tap the line to see the whole card again. What
-happens next is the story's business — sometimes getting it "right" is
-the wrong thing to do.
+happens next is the story's business.

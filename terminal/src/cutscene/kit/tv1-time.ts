@@ -5,6 +5,7 @@
 //! reload resumes it. `scenes/act1.tsx` draws them; `test/act1.test.ts` pins them.
 
 import { foldName } from "../../config.ts";
+import { CHUNK_GAP_MS } from "../../speech/engine.ts";
 import type { ScreenMoment, ScreenNight, ScreenState } from "../../screen.ts";
 import { clamp01, ease, hashSeed, lerp, loop, noise1, progress } from "./time.ts";
 
@@ -277,20 +278,18 @@ export const INTRO_POST: readonly BootLine[] = [
  * The TV says his introduction line as soon as the screen poll that brings
  * the beat lands (the poll is every 1–2 s; the scene starts on the same
  * poll), so the greeting is on screen from `start` at about his speaking
- * pace (`cps`, with `gap` between sentences — the voice's chunks).
+ * pace (`cps`, with `gap` between sentences — the voice's chunks and its
+ * pause between them, `CHUNK_GAP_MS`). Wave 26 (V1): on the TV this is
+ * the timeline his real voice warps (`VOICE_SCENES`: each caption's
+ * `start` is a mark); it stands as is wherever nothing speaks.
  */
-export const INTRO_VOICE = { start: 1500, cps: 15, gap: 350 } as const;
+export const INTRO_VOICE = { start: 1500, cps: 15, gap: CHUNK_GAP_MS } as const;
 
 /** One caption: typed from `start` to `end` (ms into the scene). */
 export interface Caption {
   text: string;
   start: number;
   end: number;
-}
-
-/** A line's sentences, as the voice splits them. */
-export function sentencesOf(line: string): string[] {
-  return (line.match(/[^.!?]+[.!?]+/gu) ?? [line]).map((x) => x.trim()).filter((x) => x !== "");
 }
 
 /** Captions for `parts` said one after another from `v.start` (pure). */

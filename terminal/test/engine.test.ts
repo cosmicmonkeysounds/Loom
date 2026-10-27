@@ -1,13 +1,21 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  ANNOUNCE_GAPS,
   BrowserEngine,
+  CHUNK_GAP_MS,
+  DEFAULT_GAPS,
   DeviceEngine,
   ENGINE_LABEL,
   START_TIMEOUT_MS,
+  LINE_GAP_MS,
   ServerEngine,
   SpeechQueue,
   VoiceFloor,
   fullyOf,
+  gapsFor,
+  pauseOf,
   pickDeviceEngine,
   readingMs,
   syntheticLevel,
@@ -86,10 +94,11 @@ function fakeEngine(kind: "browser" | "server", log: string[], o: { prepare?: (t
   const engine: SpeechEngine = {
     kind,
     prepare: async (text) => (o.prepare ? o.prepare(text) : { kind: "browser", text }),
-    play: (p) =>
+    play: (p, _level, onStart) =>
       new Promise<void>((resolve) => {
         log.push(`${kind}:${p.kind === "server" ? "audio" : p.text}`);
         pending.push(resolve);
+        onStart?.(); // a voice that starts at once
       }),
     stop: () => {
       for (const r of pending.splice(0)) r();
@@ -102,6 +111,8 @@ const flush = async () => {
   for (let i = 0; i < 10; i++) await Promise.resolve();
 };
 const quiet = { level: () => {}, chunk: () => {}, done: () => {}, idle: () => {} };
+/** No pauses: the floor tests step chunk by chunk with no clock. */
+const NO_GAPS = { chunk: 0, line: 0 };
 
 describe("VoiceFloor", () => {
   it("hands the floor out first come, first served", async () => {
@@ -128,8 +139,8 @@ describe("SpeechQueue", () => {
     const log: string[] = [];
     const character = fakeEngine("browser", log);
     const house = fakeEngine("browser", log);
-    const q1 = new SpeechQueue({ primary: character.engine, fallback: null }, quiet, floor);
-    const q2 = new SpeechQueue({ primary: house.engine, fallback: null }, quiet, floor);
+    const q1 = new SpeechQueue({ primary: character.engine, fallback: null }, quiet, floor, NO_GAPS);
+    const q2 = new SpeechQueue({ primary: house.engine, fallback: null }, quiet, floor, NO_GAPS);
     q1.say({ id: 1, chunks: ["I have been expecting you.", "Sit down."] });
     await flush();
     let chimed = false;
@@ -178,6 +189,144 @@ describe("SpeechQueue", () => {
     q.say({ id: 1, chunks: ["Hello."] });
     await flush();
     expect(used).toEqual(["browser"]);
+    device.finish();
+  });
+});
+
+describe("SpeechQueue pacing (wave 26, V2)", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("0.3 s between sentences, 0.7 s between lines, adjustable per screen", () => {
+    expect(DEFAULT_GAPS).toEqual({ chunk: CHUNK_GAP_MS, line: LINE_GAP_MS });
+    expect([CHUNK_GAP_MS, LINE_GAP_MS]).toEqual([300, 700]);
+    expect(gapsFor({ pause: 1 })).toEqual({ chunk: 300, line: 700 });
+    expect(gapsFor({ pause: 2 })).toEqual({ chunk: 600, line: 1400 });
+    expect(gapsFor({ pause: 0 })).toEqual({ chunk: 0, line: 0 });
+    expect(gapsFor({})).toEqual(DEFAULT_GAPS);
+    expect(gapsFor(null)).toEqual(DEFAULT_GAPS);
+    expect(gapsFor({ pause: 9 })).toEqual({ chunk: 900, line: 2100 }); // capped at 3
+    expect(pauseOf(Number.NaN)).toBe(1);
+    expect(pauseOf(-1)).toBe(0);
+    expect(pauseOf("2")).toBe(1);
+    expect(ANNOUNCE_GAPS).toEqual({ chunk: 250, line: 0 });
+  });
+
+  it("pauses between chunks and before the next line, never after the last, holding the floor", async () => {
+    vi.useFakeTimers();
+    const floor = new VoiceFloor();
+    const log: string[] = [];
+    const e = fakeEngine("browser", log);
+    const events: string[] = [];
+    const q = new SpeechQueue({ primary: e.engine, fallback: null }, { ...quiet, chunk: (id, i) => events.push(`chunk ${id}.${i}`), done: (id) => events.push(`done ${id}`), idle: () => events.push("idle") }, floor);
+    q.say({ id: 1, chunks: ["One.", "Two."] });
+    q.say({ id: 2, chunks: ["Three."] });
+    await flush();
+    expect(log).toEqual(["browser:One."]);
+    e.finish();
+    await flush();
+    expect(log).toEqual(["browser:One."]); // the sentence pause
+    expect(floor.busy).toBe(true);
+    await vi.advanceTimersByTimeAsync(CHUNK_GAP_MS - 1);
+    expect(log).toEqual(["browser:One."]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(log).toEqual(["browser:One.", "browser:Two."]);
+    e.finish();
+    await flush();
+    expect(events).toEqual(["chunk 1.0", "chunk 1.1", "done 1"]);
+    await vi.advanceTimersByTimeAsync(LINE_GAP_MS - 1); // the line pause
+    expect(log.length).toBe(2);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(log.at(-1)).toBe("browser:Three.");
+    e.finish();
+    await flush();
+    // Nothing after the last: idle at once.
+    expect(events.slice(-2)).toEqual(["done 2", "idle"]);
+    expect(q.busy).toBe(false);
+    expect(floor.busy).toBe(false);
+  });
+
+  it("a line queued long after the last one waits for nothing", async () => {
+    vi.useFakeTimers();
+    const log: string[] = [];
+    const e = fakeEngine("browser", log);
+    const q = new SpeechQueue({ primary: e.engine, fallback: null }, quiet, new VoiceFloor());
+    q.say({ id: 1, chunks: ["One."] });
+    await flush();
+    e.finish();
+    await flush();
+    await vi.advanceTimersByTimeAsync(5000);
+    q.say({ id: 2, chunks: ["Two."] });
+    await flush();
+    expect(log).toEqual(["browser:One.", "browser:Two."]);
+    e.finish();
+  });
+
+  it("stop() during a pause ends the run; the next line starts with no pause", async () => {
+    vi.useFakeTimers();
+    const log: string[] = [];
+    const e = fakeEngine("browser", log);
+    let idles = 0;
+    const floor = new VoiceFloor();
+    const q = new SpeechQueue({ primary: e.engine, fallback: null }, { ...quiet, idle: () => idles++ }, floor);
+    q.say({ id: 1, chunks: ["One.", "Two."] });
+    await flush();
+    e.finish();
+    await flush();
+    q.stop(); // mid-pause
+    await flush();
+    expect(log).toEqual(["browser:One."]);
+    expect(idles).toBe(1);
+    expect(floor.busy).toBe(false);
+    q.say({ id: 2, chunks: ["Three."] });
+    await flush();
+    expect(log).toEqual(["browser:One.", "browser:Three."]);
+    e.finish();
+  });
+
+  it("the gaps can change (⚙) and a zero gap never touches a timer", async () => {
+    const log: string[] = [];
+    const e = fakeEngine("browser", log);
+    const q = new SpeechQueue({ primary: e.engine, fallback: null }, quiet, new VoiceFloor());
+    q.setGaps(NO_GAPS);
+    q.say({ id: 1, chunks: ["One.", "Two."] });
+    await flush();
+    e.finish();
+    await flush();
+    expect(log).toEqual(["browser:One.", "browser:Two."]);
+    e.finish();
+  });
+});
+
+describe("SpeechQueue pronunciation (wave 26, V3)", () => {
+  it("hands the engines the said text while the callbacks index the written chunks", async () => {
+    const log: string[] = [];
+    const prepared: string[] = [];
+    const e = fakeEngine("browser", log, { prepare: (t) => (prepared.push(t), { kind: "browser", text: t }) });
+    const chunks: Array<[number, number]> = [];
+    const q = new SpeechQueue({ primary: e.engine, fallback: null }, { ...quiet, chunk: (id, i) => chunks.push([id, i]) }, new VoiceFloor(), NO_GAPS);
+    q.say({ id: 7, chunks: ["Antivirus, you know what to do.", "Norton Anti-Virus stays."] });
+    await flush();
+    e.finish();
+    await flush();
+    e.finish();
+    await flush();
+    expect(prepared).toEqual(["Anti Virus, you know what to do.", "Norton Anti-Virus stays."]);
+    expect(log).toEqual(["browser:Anti Virus, you know what to do.", "browser:Norton Anti-Virus stays."]);
+    expect(chunks).toEqual([
+      [7, 0],
+      [7, 1],
+    ]);
+  });
+
+  it("the fallback (and so the server voice's cache key) gets the said text too", async () => {
+    const log: string[] = [];
+    const asked: string[] = [];
+    const server = fakeEngine("server", log, { prepare: (t) => (asked.push(`server:${t}`), null) });
+    const device = fakeEngine("browser", log, { prepare: (t) => (asked.push(`device:${t}`), { kind: "browser", text: t }) });
+    const q = new SpeechQueue({ primary: server.engine, fallback: device.engine }, quiet, new VoiceFloor(), NO_GAPS);
+    q.say({ id: 1, chunks: ["The Antiviruses march."] });
+    await flush();
+    expect(asked).toEqual(["server:The Anti Viruses march.", "device:The Anti Viruses march."]);
     device.finish();
   });
 });
@@ -275,5 +424,99 @@ describe("decodeAudio on old Safari (OB-12)", () => {
     await expect(decodeAudio(promised, new ArrayBuffer(4))).resolves.toBe(buf);
     const bad = { decodeAudioData: (_b: ArrayBuffer, _ok?: unknown, fail?: (e: unknown) => void) => void fail?.(new Error("bad")) } as never;
     await expect(decodeAudio(bad, new ArrayBuffer(4))).rejects.toThrow("bad");
+  });
+});
+
+describe("chunk = he starts the sentence, not the handover (wave 26, V1)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  /** An engine whose voice is heard `startMs` after handover (null: never), lasting `ms`. */
+  function slowEngine(startMs: number | null, ms: number, log: string[]): SpeechEngine {
+    return {
+      kind: "browser",
+      prepare: async (text) => ({ kind: "browser", text }),
+      play: (p, _level, onStart) =>
+        new Promise<void>((resolve) => {
+          log.push(`handover ${p.kind === "server" ? "" : p.text} @${Date.now()}`);
+          if (startMs !== null)
+            setTimeout(() => {
+              log.push(`start @${Date.now()}`);
+              onStart?.();
+            }, startMs);
+          setTimeout(resolve, ms);
+        }),
+      stop: () => {},
+    };
+  }
+
+  it("a voice slow to start holds the chunk until it is heard", async () => {
+    vi.useFakeTimers({ now: 0 });
+    const log: string[] = [];
+    const q = new SpeechQueue({ primary: slowEngine(2_500, 4_000, log), fallback: null }, { ...quiet, chunk: (id, i) => log.push(`chunk ${id}.${i} @${Date.now()}`), done: (id) => log.push(`done ${id} @${Date.now()}`) }, new VoiceFloor(), NO_GAPS);
+    q.say({ id: 1, chunks: ["HELLO, PROGRAMS.", "Welcome."] });
+    await vi.advanceTimersByTimeAsync(2_499);
+    expect(log.filter((l) => l.startsWith("chunk"))).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(log).toEqual(["handover HELLO, PROGRAMS. @0", "start @2500", "chunk 1.0 @2500"]);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(log.filter((l) => l.startsWith("chunk") || l.startsWith("done"))).toEqual(["chunk 1.0 @2500", "chunk 1.1 @6500", "done 1 @8000"]);
+  });
+
+  it("an engine that ends without starting still reports the chunk, so nothing wedges", async () => {
+    vi.useFakeTimers({ now: 0 });
+    const log: string[] = [];
+    const q = new SpeechQueue({ primary: slowEngine(null, 1_000, log), fallback: null }, { ...quiet, chunk: (id, i) => log.push(`chunk ${id}.${i} @${Date.now()}`), done: (id) => log.push(`done ${id}`) }, new VoiceFloor(), NO_GAPS);
+    q.say({ id: 3, chunks: ["One."] });
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(log).toEqual(["handover One. @0", "chunk 3.0 @1000", "done 3"]);
+  });
+
+  it("a line stopped before its voice starts reports no chunk", async () => {
+    vi.useFakeTimers({ now: 0 });
+    const log: string[] = [];
+    const q = new SpeechQueue({ primary: slowEngine(2_000, 3_000, log), fallback: null }, { ...quiet, chunk: (id, i) => log.push(`chunk ${id}.${i}`) }, new VoiceFloor(), NO_GAPS);
+    q.say({ id: 4, chunks: ["One."] });
+    await vi.advanceTimersByTimeAsync(500);
+    q.stop();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(log.filter((l) => l.startsWith("chunk"))).toEqual([]);
+  });
+
+  it("BrowserEngine reports the start from the utterance's onstart, once", async () => {
+    vi.useFakeTimers({ now: 0 });
+    vi.stubGlobal("window", globalThis);
+    vi.stubGlobal("requestAnimationFrame", () => 0);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    const made: Array<{ onstart?: () => void; onboundary?: () => void; onend?: () => void }> = [];
+    vi.stubGlobal(
+      "SpeechSynthesisUtterance",
+      class {
+        constructor(readonly text: string) {
+          made.push(this as never);
+        }
+      },
+    );
+    vi.stubGlobal("speechSynthesis", { speak: vi.fn(), cancel: vi.fn(), resume: vi.fn(), paused: false, getVoices: () => [{ name: "Daniel", lang: "en-GB", voiceURI: "daniel", default: true, localService: true }] });
+    const browser = new BrowserEngine({ voice: "", speed: 1 });
+    const starts: number[] = [];
+    const played = browser.play({ kind: "browser", text: "HELLO, PROGRAMS." }, () => {}, () => starts.push(Date.now()));
+    await vi.advanceTimersByTimeAsync(2_500);
+    expect(starts).toEqual([]);
+    made[0]!.onstart?.();
+    made[0]!.onboundary?.();
+    expect(starts).toEqual([2_500]);
+    made[0]!.onend?.();
+    await played;
+    expect(starts).toEqual([2_500]);
+  });
+
+  it("ServerEngine, Fully and the silent engine count the handover as the start", () => {
+    const src = readFileSync(fileURLToPath(new URL("../src/speech/engine.ts", import.meta.url)), "utf8");
+    expect(src).toMatch(/src\.start\(\);\n\s+onStart\?\.\(\);/u);
+    expect(src).toMatch(/f\.textToSpeech\(p\.text, this\.opts\.voice \|\| "en-US"\);\n\s+onStart\?\.\(\);/u);
+    expect(src).toMatch(/const stopFlutter = flutter\(onLevel\);\n\s+onStart\?\.\(\);/u);
   });
 });

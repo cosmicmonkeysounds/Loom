@@ -36,6 +36,8 @@
 //! Playback on a tablet needs one user gesture before any sound: `unlock()`
 //! is called from the first tap (the setup screen, the wake overlay).
 
+import type { TerminalConfig } from "../config.ts";
+import { pronounce } from "./lexicon.ts";
 import { CHARACTER_VOICE, pickVoice, type VoicePrefer } from "./pick-voice.ts";
 
 export type EngineKind = "server" | "browser" | "fully" | "silent";
@@ -55,8 +57,10 @@ export interface SpeechEngine {
   readonly kind: EngineKind | "device";
   /** Prepare a chunk (fetch / decode). May resolve to null when this engine can't say it. */
   prepare(text: string): Promise<Prepared | null>;
-  /** Play a prepared chunk; resolves when it ends (or is cancelled). */
-  play(p: Prepared, onLevel: (level: number) => void): Promise<void>;
+  /** Play a prepared chunk; resolves when it ends (or is cancelled).
+   *  `onStart` (wave 26, V1): called once when the voice is actually heard
+   *  (the utterance's start, the audio source's start), not at handover. */
+  play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void>;
   /** Stop whatever is playing now. */
   stop(): void;
 }
@@ -215,7 +219,7 @@ export class ServerEngine implements SpeechEngine {
     }
   }
 
-  play(p: Prepared, onLevel: (level: number) => void): Promise<void> {
+  play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     if (p.kind !== "server") return Promise.resolve();
     const c = audioContext();
     if (c === null) return Promise.resolve();
@@ -255,6 +259,7 @@ export class ServerEngine implements SpeechEngine {
       this.current = { src, done };
       raf = requestAnimationFrame(tick);
       src.start();
+      onStart?.(); // decoded already: the sound starts now
     });
   }
 
@@ -308,7 +313,7 @@ export class BrowserEngine implements SpeechEngine {
     return BrowserEngine.available() && !this.dead ? { kind: "browser", text } : null;
   }
 
-  play(p: Prepared, onLevel: (level: number) => void): Promise<void> {
+  play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     if (p.kind !== "browser" || !BrowserEngine.available()) return Promise.resolve();
     return new Promise<void>((resolve) => {
       const u = new SpeechSynthesisUtterance(p.text);
@@ -332,12 +337,15 @@ export class BrowserEngine implements SpeechEngine {
         this.stopCurrent = null;
         resolve();
       };
-      u.onstart = () => {
+      // The voice is heard: its start (or, from an engine that sends none,
+      // its first word boundary). A slow first utterance after idle (some
+      // macOS voices) holds the picture until here (V1).
+      const started = () => {
+        if (!speaking && !settled) onStart?.();
         speaking = true;
       };
-      u.onboundary = () => {
-        speaking = true;
-      };
+      u.onstart = started;
+      u.onboundary = started;
       u.onend = finish;
       u.onerror = finish;
       this.stopCurrent = () => {
@@ -425,7 +433,7 @@ export class FullyEngine implements SpeechEngine {
     return FullyEngine.available() ? { kind: "fully", text } : null;
   }
 
-  play(p: Prepared, onLevel: (level: number) => void): Promise<void> {
+  play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     const f = fullyOf();
     if (p.kind !== "fully" || f === null) return Promise.resolve();
     bindFully(f);
@@ -451,6 +459,7 @@ export class FullyEngine implements SpeechEngine {
         // A voice name if set, else the locale. The two-argument form is the
         // oldest Fully's too; it flushes, which is right: one chunk at a time.
         f.textToSpeech(p.text, this.opts.voice || "en-US");
+        onStart?.(); // Fully sends no start event: handed over is started
       } catch {
         finish();
       }
@@ -479,10 +488,11 @@ export class SilentEngine implements SpeechEngine {
     return { kind: "silent", text };
   }
 
-  play(p: Prepared, onLevel: (level: number) => void): Promise<void> {
+  play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     if (p.kind !== "silent") return Promise.resolve();
     return new Promise<void>((resolve) => {
       const stopFlutter = flutter(onLevel);
+      onStart?.();
       const t = window.setTimeout(() => finish(), readingMs(p.text, this.opts.speed));
       const finish = () => {
         window.clearTimeout(t);
@@ -581,12 +591,12 @@ export class DeviceEngine implements SpeechEngine {
     return this.engineFor(this.current()).prepare(text);
   }
 
-  async play(p: Prepared, onLevel: (level: number) => void): Promise<void> {
+  async play(p: Prepared, onLevel: (level: number) => void, onStart?: () => void): Promise<void> {
     if (p.kind === "server") return;
-    await this.engineFor(p.kind).play(p, onLevel);
+    await this.engineFor(p.kind).play(p, onLevel, onStart);
     // A stub speechSynthesis was just written off: the chunk is shown at
     // reading pace instead (an announcement or the next line moves on).
-    if (p.kind === "browser" && this.browser.dead) await this.engineFor(this.current()).play({ kind: this.current(), text: p.text }, onLevel);
+    if (p.kind === "browser" && this.browser.dead) await this.engineFor(this.current()).play({ kind: this.current(), text: p.text }, onLevel, onStart);
   }
 
   stop(): void {
@@ -651,6 +661,38 @@ export const voiceFloor = new VoiceFloor();
 
 // --- the queue ---------------------------------------------------------------
 
+// --- pacing (wave 26, V2) -------------------------------------------------------
+
+/** The pause between two sentences of one line (ms). */
+export const CHUNK_GAP_MS = 300;
+/** The pause between two lines (ms): before the next one, never after the last. */
+export const LINE_GAP_MS = 700;
+/** The range of a terminal's `pause` multiplier (⚙, `pause=`). */
+export const PAUSE_MIN = 0;
+export const PAUSE_MAX = 3;
+
+/** How long a `SpeechQueue` pauses between sentences (`chunk`) and lines (`line`), ms. */
+export interface SpeechGaps {
+  chunk: number;
+  line: number;
+}
+
+/** The pauses at `pause` 1. */
+export const DEFAULT_GAPS: SpeechGaps = { chunk: CHUNK_GAP_MS, line: LINE_GAP_MS };
+/** A house announcement's: the chime already parts two of them. */
+export const ANNOUNCE_GAPS: SpeechGaps = { chunk: 250, line: 0 };
+
+/** A `pause` multiplier as a config may carry it: 0–3, anything unreadable is 1. */
+export function pauseOf(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.min(PAUSE_MAX, Math.max(PAUSE_MIN, v)) : 1;
+}
+
+/** A terminal's pauses: both gaps scaled by its `pause` (absent: 1). */
+export function gapsFor(config: Partial<Pick<TerminalConfig, "pause">> | null | undefined): SpeechGaps {
+  const k = pauseOf(config?.pause);
+  return { chunk: Math.round(CHUNK_GAP_MS * k), line: Math.round(LINE_GAP_MS * k) };
+}
+
 export interface Utterance {
   /** The message this belongs to (so the transcript can follow along). */
   id: number;
@@ -665,12 +707,22 @@ export interface Utterance {
  * can't (no server voice, the box is down), in which case the fallback
  * takes that chunk — so a terminal never goes mute mid-sentence. Each
  * utterance holds the page's `VoiceFloor` from its first chunk to its last.
+ *
+ * Wave 26 (V2): it pauses `gaps.chunk` between two sentences and
+ * `gaps.line` before a line that follows another (never after the last, so
+ * a drain is reported the moment he stops), holding the floor through both;
+ * `stop()` cuts a pause short. Wave 26 (V3): every engine gets the chunk as
+ * it is said (`pronounce`), the callbacks still index the original chunks.
  */
 export class SpeechQueue {
   private queue: Utterance[] = [];
   private running = false;
   /** Bumped by `stop()`: a run from an older generation winds down. */
   private gen = 0;
+  /** When the last utterance finished playing (`Date.now()`; null: none yet, or cut). */
+  private lastEndAt: number | null = null;
+  /** Ends the pause in progress early (`stop()`). */
+  private wake: (() => void) | null = null;
   constructor(
     private engines: { primary: SpeechEngine; fallback: SpeechEngine | null },
     private readonly on: {
@@ -685,7 +737,13 @@ export class SpeechQueue {
       engine?: (kind: EngineKind) => void;
     },
     private readonly floor: VoiceFloor = voiceFloor,
+    /** The pauses (wave 26, V2): `gapsFor(config)`; announcements `ANNOUNCE_GAPS`. */
+    private gaps: SpeechGaps = DEFAULT_GAPS,
   ) {}
+
+  setGaps(g: SpeechGaps): void {
+    this.gaps = g;
+  }
 
   setEngines(e: { primary: SpeechEngine; fallback: SpeechEngine | null }): void {
     this.engines = e;
@@ -705,13 +763,32 @@ export class SpeechQueue {
   stop(): void {
     this.gen++;
     this.queue = [];
+    this.lastEndAt = null;
+    this.wake?.();
     this.engines.primary.stop();
     this.engines.fallback?.stop();
   }
 
+  /** A pause of `ms` (none at 0), cut short by `stop()`. Holds the floor. */
+  private pause(ms: number): Promise<void> {
+    if (!(ms > 0)) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const done = () => {
+        clearTimeout(t);
+        if (this.wake === done) this.wake = null;
+        resolve();
+      };
+      const t = setTimeout(done, ms);
+      this.wake = done;
+    });
+  }
+
+  /** The engine boundary: every engine is handed the text as it is *said*
+   *  (`lexicon.ts`, wave 26 V3), never the transcript's. */
   private async prepare(text: string): Promise<{ engine: SpeechEngine; p: Prepared } | null> {
+    const said = pronounce(text);
     try {
-      const p = await this.engines.primary.prepare(text);
+      const p = await this.engines.primary.prepare(said);
       if (p !== null) return { engine: this.engines.primary, p };
     } catch {
       /* fall through */
@@ -719,7 +796,7 @@ export class SpeechQueue {
     const fb = this.engines.fallback;
     if (fb === null) return null;
     try {
-      const p = await fb.prepare(text);
+      const p = await fb.prepare(said);
       return p === null ? null : { engine: fb, p };
     } catch {
       return null;
@@ -739,19 +816,39 @@ export class SpeechQueue {
         }
         if (u.before !== undefined) await u.before().catch(() => {});
         let next = this.prepare(u.chunks[0]!);
+        // The pause between lines: before this one, counted from the end of
+        // the last (a line queued long after it waits for nothing).
+        if (this.lastEndAt !== null) await this.pause(this.lastEndAt + this.gaps.line - Date.now());
+        let spoken = false;
         for (let i = 0; i < u.chunks.length && g === this.gen; i++) {
+          if (i > 0) await this.pause(this.gaps.chunk);
+          if (g !== this.gen) break;
           const ready = await next;
           if (i + 1 < u.chunks.length) next = this.prepare(u.chunks[i + 1]!);
           if (g !== this.gen) break;
-          this.on.chunk(u.id, i);
           if (ready === null) {
+            this.on.chunk(u.id, i);
             // Nothing can say it: pace the transcript as if it were spoken.
             await new Promise((r) => setTimeout(r, readingMs(u.chunks[i]!)));
-            continue;
+          } else {
+            this.on.engine?.(ready.p.kind);
+            // V1 (wave 26): `chunk` means he started the sentence — the
+            // voice is heard, not merely handed the text. The trailing
+            // call is the safety net: an engine that ends without ever
+            // starting (a written-off stub) still reports the chunk, so a
+            // scene holding on it never wedges.
+            let fired = false;
+            const start = () => {
+              if (fired || g !== this.gen) return;
+              fired = true;
+              this.on.chunk(u.id, i);
+            };
+            await ready.engine.play(ready.p, this.on.level, start);
+            start();
           }
-          this.on.engine?.(ready.p.kind);
-          await ready.engine.play(ready.p, this.on.level);
+          spoken = i === u.chunks.length - 1;
         }
+        this.lastEndAt = spoken && g === this.gen ? Date.now() : null;
       } finally {
         release();
       }

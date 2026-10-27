@@ -28,13 +28,16 @@ import { baseOf, type TerminalConfig } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import type { ScreenState } from "./screen.ts";
-import { SpeechQueue, audioUnlocked, unlock, voiceEngines, voiceNote, type EngineKind } from "./speech/engine.ts";
+import { SpeechQueue, audioUnlocked, gapsFor, unlock, voiceEngines, voiceFloor, voiceNote, type EngineKind } from "./speech/engine.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
-import { LinePlayer, cursorAfterGap, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
+import { LinePlayer, TvSpeechFeed, cursorAfterGap, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
+import { linkedNow, usePresenceLatch } from "./world/presence.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundMuted } from "./sound/bus.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
+import { emitSpeech, setSpeechLive } from "./cutscene/speech-bus.ts";
+import { serverNow } from "./cutscene/clock.ts";
 import type { RoomSpeech } from "./speech/said.ts";
 
 /** A caption stays up this long after the last line (ms). */
@@ -123,7 +126,9 @@ export function Tv({
   useEffect(() => onSceneFace((m, ms) => face.current?.flash(m, ms)), []);
 
   // --- the world, while someone is in the simulation ---
-  const world = useSpatialStream(config, canDraw);
+  // A TV with no spot is nowhere in the game (R5): it never opens the stream.
+  const placed = config.spot.trim() !== "";
+  const world = useSpatialStream(config, canDraw && placed);
   const inSimulation = useWorld(world, (s) => s.world.players.size > 0);
   const gone = useWorld(world, (s) => s.gone);
   useEffect(() => {
@@ -132,6 +137,13 @@ export function Tv({
 
   // --- the voice: one speech queue, fed one line at a time by the player ---
   const waiters = useRef(new Map<number, () => void>());
+  // Each queued line's "he started it" (its caption goes up then, wave 26 V1).
+  const starts = useRef(new Map<number, () => void>());
+  // Wave 26 (V1): what the voice does goes to the cutscenes (the speech bus,
+  // on the server's clock) and to the poll (`sp=`).
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const feed = useMemo(() => new TvSpeechFeed({ emit: emitSpeech, now: () => serverNow(stateRef.current), room: speech }), [speech]);
   const queue = useMemo(() => {
     const engines = voiceEngines(
       { choice: config.engine, browserVoice: config.browserVoice, serverVoice: config.serverVoice, speed: config.speed, base: baseOf(config), token: config.token },
@@ -142,12 +154,19 @@ export function Tv({
       level: (v) => face.current?.level(v),
       chunk: (id, i) => {
         const text = chunks.get(id)?.[i] ?? "";
+        if (i === 0) {
+          starts.current.get(id)?.();
+          starts.current.delete(id);
+        }
+        feed.chunk(id, i);
         setMood(moodOfText(text));
         setSpoken({ seq: id, index: i });
         setSpeaking(true);
       },
       done: (id) => {
+        feed.done(id);
         chunks.delete(id);
+        starts.current.delete(id);
         waiters.current.get(id)?.();
         waiters.current.delete(id);
       },
@@ -156,9 +175,9 @@ export function Tv({
         setMood("neutral");
       },
       engine: (kind) => setEngineUsed(kind),
-    });
+    }, voiceFloor, gapsFor(config));
     return { q, chunks };
-  }, [config]);
+  }, [config, feed]);
 
   const lingerTimer = useRef(0);
   const player = useMemo(
@@ -169,18 +188,21 @@ export function Tv({
           setCaption(line);
           if (line !== null && line.mode !== "speak") setMood(moodOfText(line.text));
         },
-        speak: (line) =>
+        speak: (line, started) =>
           new Promise<void>((resolve) => {
             const parts = splitSentences(line.text);
             if (parts.length === 0) return resolve();
             queue.chunks.set(line.seq, parts);
+            starts.current.set(line.seq, started);
             waiters.current.set(line.seq, resolve);
             queue.q.say({ id: line.seq, chunks: parts });
           }),
         cancel: () => {
+          feed.cancelAll(); // first: the lines are cut, not finished
           queue.q.stop();
           for (const w of waiters.current.values()) w();
           waiters.current.clear();
+          starts.current.clear();
           setSpeaking(false);
         },
         sleep: (ms) => new Promise((r) => window.setTimeout(r, ms)),
@@ -188,8 +210,8 @@ export function Tv({
           window.clearTimeout(lingerTimer.current);
           lingerTimer.current = window.setTimeout(() => setCaption(null), CAPTION_LINGER_MS);
         },
-      }, speech),
-    [queue, speech],
+      }, speech, { captionOnStart: true }),
+    [queue, speech, feed],
   );
   // While mounted this screen speaks the room's lines (`talk` / `said`).
   useEffect(() => speech.attach(), [speech]);
@@ -213,8 +235,15 @@ export function Tv({
     lastAnswer.current = state.receivedAt;
     const plan = planVoice(voice, from, { character: config.character, muted: mutedRef.current, attract });
     cursor.current = plan.cursor;
+    for (const l of plan.lines) if (l.mode === "speak") feed.queued(l, captionChunks(l.text));
     player.push(plan.lines);
-  }, [state, attract, config.character, cursor, player]);
+  }, [state, attract, config.character, cursor, player, feed]);
+
+  // A voiced scene waits for this TV's voice only while it can speak (wave 26, V1).
+  useEffect(() => {
+    setSpeechLive(!muted && !attract);
+  }, [muted, attract]);
+  useEffect(() => () => setSpeechLive(false), []);
 
   // The mute cuts the line being said at once — and the page's own accents.
   useEffect(() => {
@@ -261,7 +290,12 @@ export function Tv({
     };
   }, [wake, toggleMute]);
 
-  const showWorld = canDraw && inSimulation && !attract;
+  // R5 (wave 26): the world pane only while a player is in this TV's room
+  // in the game (the server's `spot.here`), latched over a doorway; the old
+  // house-wide rule (anyone in the simulation) only when a placed TV gets no
+  // `here`. A TV with no spot never shows it (`linkedNow`, as the walls).
+  const linked = usePresenceLatch(linkedNow({ view: "tv", spot: config.spot, here: state?.spot, anyone: inSimulation }));
+  const showWorld = canDraw && linked && !attract;
   // A long spoken line's caption pieces, cut once per line.
   const captionPieces = useMemo(
     () => (caption === null || caption.mode !== "speak" || caption.text.length <= CAPTION_CHUNK_OVER ? [] : captionChunks(caption.text)),

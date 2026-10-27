@@ -365,6 +365,7 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .hud-heat.heat-warmer { color: var(--gold); }
 .hud-heat.heat-colder, .hud-heat.heat-cold { color: #7fd0ff; }
 .hud-heat.heat-steady { color: var(--gold); font-size: clamp(20px, 2.8vw, 30px); }
+.hud-heat.heat-hidden { color: var(--gold); font-size: clamp(20px, 2.8vw, 30px); }
 @keyframes throb { 50% { transform: scale(1.08); } }
 .hud-right { justify-self: end; display: flex; gap: 6px; align-items: stretch; }
 .hud-clock { padding: 0.05em 0.5em; background: #000; color: #4f4; font-size: clamp(24px, 3vw, 32px); line-height: 1.2; text-shadow: 0 0 6px #2f2; min-width: 3.6em; text-align: center; }
@@ -375,6 +376,8 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 
 .compass { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + clamp(78px, 10vw, 104px)); left: 50%; width: 74px; height: 74px; margin-left: -37px; border-radius: 50%; background: radial-gradient(circle, rgba(0, 0, 40, 0.55), rgba(0, 0, 40, 0.75)); box-shadow: 0 0 0 2px var(--face), 0 0 0 3px var(--dark), 0 3px 8px rgba(0, 0, 0, 0.5); pointer-events: none; }
 .compass-rose { position: absolute; inset: 0; }
+/* Wave 26 (R3): a standing King in view — his bar projects where these sit. */
+.play.king-in-view .compass, .play.king-in-view .hud-heat { visibility: hidden; }
 .cp { position: absolute; left: 50%; top: 0; height: 50%; width: 0; transform-origin: 50% 100%; }
 .cp b { position: absolute; top: 2px; left: -0.5em; width: 1em; text-align: center; font-weight: normal; font-size: 18px; line-height: 1; color: #cfe8ff; }
 .cp-N b { color: #ff5050; }
@@ -387,28 +390,67 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .hud-idle { position: absolute; left: 50%; top: 56%; transform: translateX(-50%); padding: 0.6em 1em; color: var(--ink); font-family: var(--ui); }
 .hud-idle b { color: var(--bad); }
 
-/* --- the King --------------------------------------------------------------------- */
+/* --- in-game lines and the void's scare (wave 26) --------------------------------- */
 
-.hud-king {
+.hud-caption {
   position: absolute;
-  left: 8px;
-  top: calc(max(8px, env(safe-area-inset-top)) + clamp(78px, 10vw, 104px));
-  display: flex;
-  flex-direction: column;
-  padding: 0.25em 0.7em 0.3em;
-  background: rgba(0, 0, 40, 0.65);
-  border: 2px solid var(--gold-deep);
-  color: var(--gold);
-  font-size: clamp(18px, 2.4vw, 26px);
-  line-height: 1.1;
+  left: 50%;
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 44px);
+  transform: translateX(-50%);
+  width: min(640px, calc(100vw - 32px));
+  font-family: var(--ui);
   pointer-events: none;
 }
-.hud-king.near { border-color: var(--gold); box-shadow: 0 0 10px var(--gold-deep); }
-.hud-king.open { border-color: #2f2; color: #8f8; }
-.hud-king-label { letter-spacing: 0.06em; }
-.hud-king-hearts { font-size: 1.15em; color: #ff5a5a; letter-spacing: 0.08em; }
-.hud-king-state { font-size: 1.1em; letter-spacing: 0.1em; }
-.hud-king small { font-size: 0.65em; color: #ffe9a0; }
+/* Touch: above the stick zones (.stick-zone's height), never over the thumbs. */
+.hud-caption.over-sticks { bottom: calc(min(46vh, 300px) + 12px); }
+.hud-caption p { margin: 0; font-size: clamp(18px, 2.4vw, 24px); line-height: 1.25; color: var(--ink); }
+
+.scare {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+  --phosphor: #ff3a2a;
+  --phosphor-faint: rgba(255, 58, 42, 0.35);
+  --face-hi: #7a1010;
+  --face-lo: #1c0303;
+  --ink: #000;
+  --white: #ffe4dc;
+  --mouth: #120000;
+}
+/* One hard flash, once — never a strobe. */
+.scare-flash { position: absolute; inset: 0; background: #fff; opacity: 0; animation: scare-flash 0.35s ease-out 1 both; pointer-events: none; }
+@keyframes scare-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+.scare-face { width: min(92vw, 92vh); animation: scare-zoom 0.3s ease-out 1 both, scare-shake 0.4s ease-in-out 0.3s infinite; }
+.scare-face .face { width: 100%; height: auto; filter: drop-shadow(0 0 30px #f00); }
+@keyframes scare-zoom { 0% { transform: scale(0.5); } 100% { transform: scale(1.1); } }
+/* 2.5 Hz: under the 3 Hz photosensitivity line, and a move, not a flash. */
+@keyframes scare-shake { 0%, 100% { transform: scale(1.1) translate(0, 0); } 50% { transform: scale(1.1) translate(6px, -4px); } }
+.scare-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+  padding: 0.4em 1.2em;
+  background: #0000aa;
+  color: #fff;
+  font-family: var(--pixel);
+  font-size: clamp(26px, 5vw, 56px);
+  letter-spacing: 0.06em;
+  text-shadow: 3px 0 0 #f0f, -3px 0 0 #0ff;
+  white-space: nowrap;
+}
+.scare-panel span { font-size: 0.45em; letter-spacing: 0.04em; text-shadow: none; opacity: 0.85; }
+
+/* --- the King --------------------------------------------------------------------- */
+
 .king-actions {
   position: absolute;
   right: 12px;
@@ -420,7 +462,6 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 }
 .king-actions .w98-button { min-width: 8.5em; }
 @media (max-height: 500px) { .king-actions { bottom: 60px; flex-direction: row; } }
-.king-note { color: var(--navy); font-weight: bold; }
 
 .help-card {
   position: absolute;
@@ -636,6 +677,8 @@ textarea.json { width: 100%; height: 100%; min-height: 320px; resize: none; font
 .problems .saved { margin-top: 0.4em; color: var(--good); }
 
 @media (prefers-reduced-motion: reduce) {
+  .scare-face { animation: none; }
+  .scare-face .face { transform: none; }
   .banner-cd, .banner-duck, .scanner.live .reticle::after, .hud-heat.heat-burning, .egg, .confetti i, .duck-spot.hunted circle { animation: none; }
 }
 

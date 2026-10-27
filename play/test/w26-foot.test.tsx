@@ -1,0 +1,171 @@
+//! Wave 26 (P1): the fact card and a story menu never squish the chat. One
+//! answer surface at a time: a docked menu opens first and the composer
+//! folds to a 48 px "⌨ Message …" bar; typing folds the menu; an open card
+//! folds the menu. The thread keeps ≥ 96 px, the footer ≤ 62 %, the card's
+//! body ≤ 34 dvh, the menu's options ≤ 36 dvh, every footer button ≥ 48 px.
+
+import { readFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { ChannelView, DecisionTray, footLayout, spendDraft } from "../src/stream/channel-view.tsx";
+import { CardTray } from "../src/stream/card-tray.tsx";
+import { Composer } from "../src/stream/composer.tsx";
+import { requiredDecision } from "../src/session/guest.ts";
+import type { Channel, ChatMessage, Decision, GuestView } from "../src/types.ts";
+import { readBundledCss } from "./css.ts";
+
+const src = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), "utf8");
+let seq = 100;
+const m = (extra: Partial<ChatMessage>): ChatMessage => ({ seq: seq++, channel: "dm:Trabolta", channelKind: "dm", title: "Trabolta", from: "Trabolta", kind: "line", text: "Well?", ts: 0, audience: ["g1"], parentSeq: null, hidden: false, ...extra }) as ChatMessage;
+const menu: Decision = { title: "What do you say?", options: [{ label: "The truth", onClick: () => {} }, { label: "A lie", onClick: () => {} }, { label: "Nothing", onClick: () => {} }] } as Decision;
+const room = (extra: Partial<Channel>): Channel => ({ id: "dm:Trabolta", kind: "dm", title: "Trabolta", spaceId: "story", messages: [m({})], unread: 0, decision: null, lastTs: 0, ...extra }) as Channel;
+const widgets = { answer: () => {}, answered: new Map(), viewer: { id: "g1", name: "Ada" } };
+const fact = () => m({ kind: "widget", text: "", widget: { kind: "poll", text: "📝 File a fact", params: { options: "A | B" } } } as Partial<ChatMessage>);
+const view = (c: Channel) => renderToStaticMarkup(createElement(ChannelView, { channel: c, onBack: () => {}, onSend: () => {}, widgets }));
+
+describe("footLayout: one answer surface at a time", () => {
+  const L = (decision: boolean, trayOpen: boolean, typing: boolean, composer = true) => footLayout({ decision, trayOpen, typing, composer });
+  it("no menu: the composer is open, whatever the tray", () => {
+    expect(L(false, false, false)).toEqual({ decision: null, composer: "open" });
+    expect(L(false, true, false)).toEqual({ decision: null, composer: "open" });
+    expect(L(false, true, true)).toEqual({ decision: null, composer: "open" });
+  });
+  it("a docked menu opens; the composer folds to its button", () => {
+    expect(L(true, false, false)).toEqual({ decision: "open", composer: "button" });
+  });
+  it("typing folds the menu and opens the composer", () => {
+    expect(L(true, false, true)).toEqual({ decision: "folded", composer: "open" });
+    expect(L(true, true, true)).toEqual({ decision: "folded", composer: "open" });
+  });
+  it("an open card folds the menu (and the composer stays a button)", () => {
+    expect(L(true, true, false)).toEqual({ decision: "folded", composer: "button" });
+  });
+  it("a room you can't post in has no composer either way", () => {
+    expect(L(true, false, false, false)).toEqual({ decision: "open", composer: null });
+    expect(L(false, false, false, false)).toEqual({ decision: null, composer: null });
+  });
+});
+
+describe("the room's footer", () => {
+  it("a docked menu shows its options; the composer is the one-line ⌨ bar", () => {
+    const html = view(room({ decision: menu }));
+    expect(html).toContain("The truth");
+    expect(html).toContain("composer-open");
+    expect(html).toContain("⌨ Message Trabolta…");
+    expect(html).not.toContain("composer-input");
+    // The folded composer still wears .composer: the balloon's :has(.composer) lift holds.
+    expect(html).toMatch(/class="composer composer-folded"/u);
+  });
+  it("no menu: the usual composer", () => {
+    const html = view(room({}));
+    expect(html).toContain("composer-input");
+    expect(html).not.toContain("composer-open");
+  });
+  it("a menu and a new 📝 card: the menu opens first, the card waits folded", () => {
+    const html = view(room({ decision: menu, messages: [m({}), fact()] }));
+    expect(html).toContain("The truth");
+    expect(html).toMatch(/class="stream-tray "/u); // folded (no " open")
+    expect(html).not.toContain("stream-tray-body");
+  });
+  it("without a menu a new card opens as before", () => {
+    const html = view(room({ messages: [m({}), fact()] }));
+    expect(html).toContain("stream-tray open");
+  });
+  it("the folded menu is one loud bar that names it", () => {
+    const html = renderToStaticMarkup(createElement(DecisionTray, { decision: menu, folded: true, onUnfold: () => {} }));
+    expect(html).toContain("dlg-folded");
+    expect(html).toContain("▴ What do you say?");
+    expect(html).not.toContain("dlg-choice");
+  });
+  it("a folded story menu says \"Your move\" once (the menu's real title), a captive's its own", () => {
+    const acts = { choose: () => {}, escape: () => {} };
+    const story = requiredDecision({ pendingChoice: ["The truth", "A lie"], decisionChannel: "dm:Trabolta" } as unknown as GuestView, acts)!;
+    const html = renderToStaticMarkup(createElement(DecisionTray, { decision: story.decision, folded: true, onUnfold: () => {} }));
+    expect(html).toContain("▴ Your move…");
+    expect(html).not.toContain("Your move: Your move");
+    const captive = requiredDecision({ captured: true } as unknown as GuestView, acts)!;
+    const caught = renderToStaticMarkup(createElement(DecisionTray, { decision: captive.decision, folded: true, onUnfold: () => {} }));
+    expect(caught).toContain("▴ You&#x27;ve been captured");
+    expect(caught).not.toContain("Your move:");
+  });
+});
+
+describe("the card tray when crowded", () => {
+  it("a new card starts folded while a menu is docked, open when a Mission jump asked for it", () => {
+    const c = fact();
+    expect(renderToStaticMarkup(createElement(CardTray, { cards: [c], widgets, focus: null, onFocus: () => {}, crowded: true }))).not.toContain("stream-tray open");
+    expect(renderToStaticMarkup(createElement(CardTray, { cards: [c], widgets, focus: c.seq, onFocus: () => {}, crowded: true }))).toContain("stream-tray open");
+  });
+  it("an earlier menu tap (shut > 0) never folds a tray that mounts later: a new card or a jump still opens", () => {
+    const c = fact();
+    expect(renderToStaticMarkup(createElement(CardTray, { cards: [c], widgets, focus: null, onFocus: () => {}, shut: 3 }))).toContain("stream-tray open");
+    expect(renderToStaticMarkup(createElement(CardTray, { cards: [c], widgets, focus: c.seq, onFocus: () => {}, crowded: true, shut: 1 }))).toContain("stream-tray open");
+    // Only a change of the count folds it, never the count it mounted with.
+    const tray = src("stream/card-tray.tsx");
+    expect(tray).toMatch(/const shutSeen = useRef\(shut\);\s*useEffect\(\(\) => \{\s*if \(shut === shutSeen\.current\) return;\s*shutSeen\.current = shut;\s*fold\(\);/u);
+    expect(tray).not.toMatch(/shut > 0/u);
+  });
+});
+
+describe("the composer keeps a half-typed line", () => {
+  it("starts from the draft it is given and reports every change", () => {
+    const html = renderToStaticMarkup(createElement(Composer, { onSend: () => {}, initial: "I was in the kit", onText: () => {} }));
+    expect(html).toContain(">I was in the kit</textarea>");
+  });
+  it("the room holds the draft per room and shows it on the folded bar; the unfold tap mounts the box focused (flushSync)", () => {
+    const cv = src("stream/channel-view.tsx");
+    expect(cv).toMatch(/if \(draft\.current\.room !== channel\.id\) draft\.current = \{ room: channel\.id, text: "" \};/u);
+    expect(cv).toMatch(/onClick=\{\(\) => flushSync\(\(\) => setTyping\(true\)\)\}/u);
+    expect(cv).toMatch(/initial=\{draft\.current\.text\} onText=\{onText\} autoFocus=\{typing\}/u);
+    expect(src("stream/composer.tsx")).toMatch(/useLayoutEffect\(\(\) => \{\s*if \(autoFocus === true\) ref\.current\?\.focus\(\);/u);
+  });
+});
+
+describe("a sent line never comes back as the draft", () => {
+  it("spendDraft clears the draft that held the sent line, never words typed since", () => {
+    const d = { text: "I was in the kitchen " };
+    spendDraft(d, "I was in the kitchen");
+    expect(d.text).toBe("");
+    const e = { text: "and then" };
+    spendDraft(e, "I was in the kitchen");
+    expect(e.text).toBe("and then");
+  });
+  it("the room spends its draft once the send resolves (a refusal keeps it)", () => {
+    expect(src("stream/channel-view.tsx")).toMatch(/const d = draft\.current;\s*const r = onSend\(t\);\s*void Promise\.resolve\(r\)\.then\(\(\) => spendDraft\(d, t\), \(\) => \{\}\);\s*return r;/u);
+  });
+});
+
+describe("the height budget (CSS)", () => {
+  const css = readBundledCss().replace(/\/\*[\s\S]*?\*\//gu, "");
+  it("the thread keeps 96 px; the footer ≤ 62 % and scrolls itself", () => {
+    expect(css).toMatch(/\.stream-room > \.thread \{ min-height: 96px; \}/u);
+    expect(css).toMatch(/\.stream-room > \.stream-foot \{ flex: 0 1 auto; min-height: 0; max-height: 62%; overflow-y: auto;/u);
+  });
+  it("the card body ≤ 34 dvh, the options ≤ 36 dvh (vh first, for old browsers)", () => {
+    expect(css).toMatch(/\.stream-foot \.stream-tray-body \{ max-height: 34vh; max-height: 34dvh; \}/u);
+    expect(css).toMatch(/\.stream-foot \.dlg-options \{ max-height: 36vh; max-height: 36dvh; overflow-y: auto;/u);
+  });
+  it("every footer button is ≥ 48 px; the key hint goes on a phone", () => {
+    expect(css).toMatch(/\.stream-foot \.dlg-choice, \.stream-foot \.fact-questions \.choice \{ min-height: 48px; \}/u);
+    expect(css).toMatch(/\.stream-foot \.stream-tray-title, \.stream-foot \.stream-tray-step \{ min-height: 48px; \}/u);
+    expect(css).toMatch(/\.stream-foot \.composer \.composer-send, \.stream-foot \.composer \.composer-scan \{ height: 48px; min-height: 48px; \}/u);
+    expect(css).toMatch(/\.stream-foot \.tray\.dialogue\.dlg-folded \{[^}]*min-height: 48px;/u);
+    expect(css).toMatch(/\.stream-foot \.composer-folded \.composer-open \{[^}]*min-height: 48px;/u);
+    expect(css).toMatch(/@media \(pointer: coarse\) \{ \.stream-foot \.dlg-hint \{ display: none; \} \}/u);
+  });
+  it("the card's own submit (File it, Say it) is ≥ 48 px in the footer, beating base.css's --tap", () => {
+    expect(css).toMatch(/\.stream-foot \.widget-foot \.choice\.widget-go \{ min-height: 48px; \}/u);
+  });
+  it("at 360x740 the bars never scroll away: the footer is a column, the open menu / card shrink and scroll inside", () => {
+    expect(css).toMatch(/\.stream-room > \.stream-foot \{ display: flex; flex-direction: column; \}/u);
+    expect(css).toMatch(/\.stream-room > \.stream-foot > \* \{ flex: none; \}/u);
+    expect(css).toMatch(/\.stream-room > \.stream-foot > \.tray\.dialogue:not\(\.dlg-folded\),\s*\.stream-room > \.stream-foot > \.stream-tray\.open \{ flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; \}/u);
+    // The shrinking parts outrank the `> * { flex: none }` of their own box.
+    expect(css).toMatch(/\.stream-room > \.stream-foot > \.tray\.dialogue:not\(\.dlg-folded\) > \.dlg-options,\s*\.stream-room > \.stream-foot > \.stream-tray\.open > \.stream-tray-scroll \{ flex: 0 1 auto; min-height: 0; \}/u);
+    expect(css).toMatch(/\.stream-room > \.stream-foot > \.stream-tray\.open > \.stream-tray-scroll > \.stream-tray-body \{ flex: 0 1 auto; min-height: 0; \}/u);
+    // Flex only (no :is / :has): the Chrome 87 / Safari 14 floor.
+    const block = css.slice(css.indexOf(".stream-room > .stream-foot { display: flex;"), css.indexOf(".stream-tray-scroll > .stream-tray-body { flex: 0 1 auto"));
+    expect(block).not.toMatch(/:is\(|:has\(/u);
+  });
+});

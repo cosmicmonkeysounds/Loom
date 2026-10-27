@@ -33,7 +33,7 @@ The design contract is [`docs/loom-reinstall.md`](../../docs/loom-reinstall.md)
 ```bash
 pnpm --filter loom-reinstall dev        # :5176, proxies /api + /e to LOOM_SERVER (default :7000)
 pnpm --filter loom-reinstall build      # → dist/ (base /reinstall/), served by the event server
-pnpm --filter loom-reinstall test       # 538 tests: physics, input, sticks, the pose pump, config, HUD, stream, voice, cams, map editor (ops, yard cut fuzz, speakers, lights), the autopilot
+pnpm --filter loom-reinstall test       # 623 tests in 46 files: physics, input, sticks, the pose pump, config, HUD, stream, voice, cams, the moments and lines, map editor (ops, yard cut fuzz, speakers, lights), the autopilot
 pnpm --filter loom-reinstall typecheck
 ```
 
@@ -103,7 +103,7 @@ with `pnpm dev`, or the VPS):
    there. The program then appears under *In the Internet now* on the
    tablet within 10 s: tap it (or type its name), then **Play here**.
 3. Walk with **W A S D** / the arrows, look by dragging, **Shift** runs.
-   Follow the chevrons. At Gerald the program is released, the phone gets
+   After the first minute the chevrons light up; follow them. At Gerald the program is released, the phone gets
    *The Golden Duck* and is back on the Desktop.
 4. `/terminal/?code=<mod>&name=TV&view=mirror` is the TV. It holds the
    screensaver until Trabolta is introduced (`introduce_trabolta` in the
@@ -120,9 +120,13 @@ The layout works from a phone held either way up to a 1280 px laptop
 | turn | **right stick**, left–right | Q E, or ← → |
 | look up / down | **right stick**, up–down | drag on the view |
 | run | n/a | Shift |
-| hit the King | **⚔ HIT** under his bar | Space |
+| hit the King | **⚔ HIT** (while he is near and standing) | Space |
 
 The sticks appear on a touch device, or as soon as the screen is touched.
+For the first minute of each session (`PATH_REVEAL_MS`, wave 26 R2) the
+HUD reads only *FIND GERALD*: no trail, compass pip, distance or warmer /
+colder. Then *The way to Gerald lights up.* and the trail draws at once;
+a re-scan starts the minute again, and Gerald's quack is never delayed.
 Golden chevrons on the floor lead to Gerald along the house's real route
 (doors, stairs). The route is recomputed twice a second. On a stair the
 trail leaves it by whichever end is shorter (`trail.ts`): `route()` alone
@@ -133,8 +137,10 @@ HUD shows:
 - warmer / colder;
 - the clock;
 - a compass whose gold pip points along the trail;
-- the King's shared bar (`n / 15`) once the server shares one, with
-  **⚔ HIT** while he is near (below).
+- **⚔ HIT** while the King is near and standing (below). The HUD has no
+  King bar (wave 26, R3): the bar over his head is his only display, and
+  while a standing King is in view the compass and the heat line step
+  aside for it (`kingInView`).
 
 **The King.** One health bar for every guest (`KingState` off `hello`,
 the map fetch and `king` frames). Near him and facing him, ⚔ / Space
@@ -152,6 +158,16 @@ the door open for a player behind it or in it until they are clear
 (`keepDoorOpen`). There is no chess on the tablet: the game is at the
 Server Door terminal (`terminal/`, `view=chess`). An old server that
 shares no King shows no bar and no ⚔.
+
+**Outside and the moments** (wave 26; the rules are in
+[`docs/loom-reinstall.md`](../../docs/loom-reinstall.md) §3, *The moments*).
+The mud room's outside door opens onto a walkable outside ground
+(`physics.ts`, `outsideGround`); far enough out, the void's jump scare
+plays (`Scare.tsx`) and the player is back at the spawn. Trabolta's heart
+shows in the server room once the King has fallen, and a floppy disk
+floats in the Hard Drive. Their lines are captioned in a *Message* window
+and spoken by the device voice (`game/lines.ts`). `game/moments.ts`
+decides when to post and what each answer means.
 
 Other players are ghosts wearing their profile picture as a head
 (`PlayerState.avatar` → `/e/<id>/api/avatar/<key>`, `@loom/house/three`
@@ -331,8 +347,9 @@ To change the show's own map (`core/examples/trapped-in-the-internet/house.json`
 | `src/game/physics.ts` | **pure**: the walker (circle vs. walls / rails / fences / solid props, `heightAt` floors + ramps, step-up 0.45 m, substeps, sliding) |
 | `src/game/input.ts` | **pure**: keyboard + sticks + drag → one frame of intent; stick maths (dead zone 0.12) |
 | `src/game/pump.ts` | **pure**: the 10 Hz latest-only pose pump (keepalive, backoff, stop on 401 / 410) |
-| `src/game/hud.ts` | **pure**: room names, warmer / colder, compass, reach |
-| `src/game/fight.ts` | **pure**: the King's HUD lines and meter, `kingReach` (re-exported from `@loom/house`), `keepDoorOpen` |
+| `src/game/hud.ts` | **pure**: room names, warmer / colder, compass, reach, the path reveal (`PATH_REVEAL_MS`, `FIND_GERALD`), `kingInView` |
+| `src/game/fight.ts` | **pure**: the King's reach nudges and hit notices (no meter since wave 26), `kingReach` (re-exported from `@loom/house`), `hitSpentAtStart`, `keepDoorOpen` |
+| `src/game/moments.ts`, `lines.ts`, `Scare.tsx` | wave 26: the void, the heart and the disk (**pure** decisions); `LinePlayer`, the captions + the device voice; the jump scare |
 | `src/game/trail.ts` | **pure**: the chevrons' path, `route()` made walkable on a stair (`test/autopilot.test.ts` walks the real physics along it to every duck spot, on the show's map and the three-floor fixture) |
 | `src/game/leash.ts` | **pure**: the 120 s no-input leash (paused while the tab is hidden) |
 | `src/game/audio.ts` | WebAudio quack, fanfare and buzz (no assets); `createSfx(output?)` plays on a host's bus |

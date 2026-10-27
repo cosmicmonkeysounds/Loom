@@ -17,11 +17,13 @@
 //! Triggers, checked against the story (`test/act1.test.ts`): slides are
 //! `screens_*` / `tv_*` cue values; moments are the house-wide beats
 //! (`Power On`, `Corrupted Code`, `Trabolta Introduction`, `Filing Closed`,
-//! `Truth Question`), the `do pick` draws (`bottle_landed`, `bottle_empty`)
-//! and the draw's verdict — the booth's `truth_answered` / `truth_refused`
-//! / `chose_dare` about the pick, which the server makes a moment of. A
-//! Dare tapped on the phone is no press: the bottle's slide reads it off
-//! the night (`phoneDare`).
+//! `Truth Question`, `Dare Chosen`), the `do pick` draws (`bottle_landed`,
+//! `bottle_empty`) and the draw's verdict — the booth's `truth_answered` /
+//! `truth_refused` about the pick, which the server makes a moment of. A
+//! Dare (the phone's or Clippy's 🎩, wave 26 D1) plays the `Dare Chosen`
+//! beat: his scene, naming the dared program from `night.bottle_pick` (a
+//! beat moment carries no `who`); the old `chose_dare` signal scene is gone.
+//! The bottle's slide still reads a phone Dare off the night (`phoneDare`).
 //!
 //! The TV says the character's lines as the poll that brings them lands, so
 //! a scene with his voice in it (the introduction, the bottle's landing) is
@@ -796,17 +798,31 @@ export const FILING_MS = 120_000;
 export const filingHold = (target: SceneProps["target"]): number => SLIDE_HOLD_MS[target === "tv" ? "tv" : "terminals"];
 /** The filing reminder pops up this often while the window is open (ms). */
 const FILE_NUDGE_EVERY = 12_000;
-const FILE_NUDGES: readonly string[] = ["Your 📝 card is on your phone.", "Found a fact? File it now.", "One hundred percent sure is accepted. A guess is a symptom.", "Filings close in two minutes."];
-const RULES: ReadonlyArray<{ text: string; ok: boolean }> = [
-  { text: "Accurate: accepted.", ok: true },
-  { text: "Wrong but one hundred percent sure: accepted.", ok: true },
-  { text: "Wrong and not sure, or a clear guess: a symptom of corruption.", ok: false },
+/** The filing reminders, in turn. Wave 26 (G1): none says how a filing is judged. */
+export const FILE_NUDGES: readonly string[] = [
+  "Your 📝 card is on your phone.",
+  "Found a fact? File it now.",
+  // DRAFT w26 (G1: no judging rule in the filing reminders)
+  "Trabolta is waiting for your files.",
+  "Filings close in two minutes.",
+];
+/** The filing window's three stamps. Wave 26 (G1): in-fiction steps, never
+ *  the judging rule (accurate / confident / guess); the three-stamp timing,
+ *  its clicks and its hold stay as they were. */
+export const FILING_STEPS: ReadonlyArray<{ text: string; ok: boolean }> = [
+  // DRAFT w26 (G1: the filing window stamps in-fiction steps, not the rules)
+  { text: "Open the 📝 card in Trabolta's thread.", ok: true },
+  // DRAFT w26 (G1)
+  { text: "File everything you found.", ok: true },
+  // DRAFT w26 (G1)
+  { text: "Trabolta is reading every word.", ok: true },
 ];
 
 /**
  * The filing window (`first_moment_of_truth`):
  *   0–1200    THE FIRST MOMENT OF TRUTH tears in, a gavel's boom
- *   1200–5200 the three rules stamp in one by one: ✔ accurate, ✔ wrong but sure, ✘ a guess
+ *   1200–5200 the three steps stamp in one by one (✔ open the 📝 card, ✔ file
+ *             everything, ✔ he is reading: wave 26, G1 — never the judging rule)
  *   5200–     hold: filings fly into his inbox tray; the two-minute window counts down;
  *             at zero (or once Filing Closed lands) PENCILS DOWN · TRABOLTA IS READING,
  *             an eye sweeping the pile
@@ -902,7 +918,7 @@ function FilingWindow({ t, at, state, target, sfx, reduced }: { t: number; at: n
   const nudgeOpen = nudge >= 0 ? clamp01(nudgeLocal / 220) * (1 - progress(nudgeLocal, 5200, 240)) : 0;
   useSfxCues(t, sfx, [
     [200, "boom", { gain: 0.5 }],
-    ...RULES.map((_, i) => [1500 + i * 1300, "click"] as const),
+    ...FILING_STEPS.map((_, i) => [1500 + i * 1300, "click"] as const),
     [5200, "chord", { gain: 0.45 }],
     ...(closed ? [] : periodicCues(t, 5200, FILE_NUDGE_EVERY).map((x) => [x, "popup", { gain: 0.4 }] as const)),
   ]);
@@ -914,7 +930,7 @@ function FilingWindow({ t, at, state, target, sfx, reduced }: { t: number; at: n
         </Glitch>
       </div>
       <div className="a1-res-rules">
-        {RULES.map((rule, i) => {
+        {FILING_STEPS.map((rule, i) => {
           const s = 1500 + i * 1300;
           const stamp = reduced ? progress(t, s, 200) : eased(t, s, 380, ease.outBack);
           return (
@@ -1373,6 +1389,17 @@ function TruthChosen({ t, night, sfx, reduced }: SceneProps) {
 /** A verdict scene's length (ms). */
 export const BOTTLE_VERDICT_MS = 10_000;
 
+/** The Dare's scene (wave 26, D1: `== Dare Chosen`): longer than a verdict, for his 2–3 lines. */
+export const DARE_CHOSEN_MS = BOTTLE_VERDICT_MS + 4000;
+
+/** His order on a Dare (wave 26, D1): the mark's dialog and the ticker. */
+export const DARE_ORDER = {
+  // DRAFT w26 (D1: the Dare Chosen scene's dialog)
+  mark: (who: string) => `MARKED FOR REINSTALLATION — ${who}: chose Dare. Antivirus: take them to the Internet.`,
+  // DRAFT w26 (D1: the Dare Chosen scene's ticker)
+  ticker: "★ PROGRAMS CHOOSE TRUTH ★ ANTIVIRUS: TAKE THEM TO THE INTERNET ★",
+} as const;
+
 /** What the screens say, from the story's own broadcasts (`main.loom`, the bottle's rules). */
 export const VERDICT_COPY: Readonly<Record<VerdictKind, { big: string; line: (name: string) => string; mark: string | null }>> = {
   answered: { big: "🗣 TRUTH ACCEPTED", line: (n) => `${n} answered. Trabolta is satisfied.`, mark: null },
@@ -1418,18 +1445,18 @@ function TopHat({ size = "8em", style }: { size?: string; style?: CSSProperties 
  *             a Truth: stars drift off the seat. `hold` keeps the last state
  *             (drawn inside the bottle's slide), else it fades from 9.2 s.
  */
-export function VerdictTv({ kind, t, who, sfx, reduced, hold = false }: { kind: VerdictKind; t: number; who: string; sfx: SceneProps["sfx"]; reduced: boolean; hold?: boolean }) {
+export function VerdictTv({ kind, t, who, sfx, reduced, hold = false, order = false, ms = BOTTLE_VERDICT_MS }: { kind: VerdictKind; t: number; who: string; sfx: SceneProps["sfx"]; reduced: boolean; hold?: boolean; order?: boolean; ms?: number }) {
   useSfxCues(t, sfx, verdictCues(kind));
   const c = VERDICT_COPY[kind];
   const seat = bottleSeat(who);
   const stamp = reduced ? progress(t, 0, 250) : eased(t, 80, 520, ease.outBack);
   const bad = kind !== "answered";
   const mark = bad ? eased(t, 3500, 260, ease.linear) : 0;
-  const fade = hold ? 1 : 1 - progress(t, BOTTLE_VERDICT_MS - 800, 800);
+  const fade = hold ? 1 : 1 - progress(t, ms - 800, 800);
   const sa = (seatAngle(seat) - 90) * (Math.PI / 180);
   const seatX = (4.5 + 13 + 0.41 * 26 * Math.cos(sa)) / 60;
   const seatY = (3.875 + 13 + 0.41 * 26 * Math.sin(sa)) / 33.75;
-  const stars: Emitter[] = [{ x: seatX, y: seatY, start: 600, end: hold ? Number.POSITIVE_INFINITY : BOTTLE_VERDICT_MS - 1500, rate: 14, life: 1800, speed: 0.06, angle: -90, spread: 70, gravity: -0.02, size: 9, colors: ["#ffd23f", "#fff2b0"], shape: "star", seed: 97 }];
+  const stars: Emitter[] = [{ x: seatX, y: seatY, start: 600, end: hold ? Number.POSITIVE_INFINITY : ms - 1500, rate: 14, life: 1800, speed: 0.06, angle: -90, spread: 70, gravity: -0.02, size: 9, colors: ["#ffd23f", "#fff2b0"], shape: "star", seed: 97 }];
   const hatDrop = reduced ? 1 : eased(t, 0, 800, ease.outBounce);
   return (
     <TvStage bg={VERDICT_BG[kind]} className={`a1-verdict ${kind}`} style={{ opacity: fade }}>
@@ -1464,7 +1491,7 @@ export function VerdictTv({ kind, t, who, sfx, reduced, hold = false }: { kind: 
       </div>
       {bad && mark > 0 && (
         <>
-          <Win98Dialog title="Antivirus" kind="error" message={`MARKED FOR REINSTALLATION — ${who}: ${c.mark}. An Antivirus will escort you through the Tube.`} x={52} y={57} width="27em" open={mark} reduced={reduced} className="a1-verdict-mark" />
+          <Win98Dialog title="Antivirus" kind="error" message={order ? DARE_ORDER.mark(who) : `MARKED FOR REINSTALLATION — ${who}: ${c.mark}. An Antivirus will escort you through the Tube.`} x={52} y={57} width="27em" open={mark} reduced={reduced} className="a1-verdict-mark" />
           <div className="a1-verdict-way" style={{ opacity: progress(t, 4200, 500) }}>
             {[0, 1, 2, 3, 4].map((i) => (
               <span key={i} style={{ opacity: reduced ? 0.8 : 0.25 + 0.75 * clamp01(1 - Math.abs(loop(t / 900 - i / 5, 1) - 0.5) * 3) }}>
@@ -1476,7 +1503,7 @@ export function VerdictTv({ kind, t, who, sfx, reduced, hold = false }: { kind: 
         </>
       )}
       <Marquee t={reduced ? 0 : t} speed={150} className={`a1-ticker${bad ? "" : " gold"}`} style={{ opacity: progress(t, 1200, 500) }}>
-        {bad ? "★ PROGRAMS CHOOSE TRUTH ★ A MARKED PROGRAM GOES TO THE INTERNET ★ AN ANTIVIRUS WILL ESCORT THEM ★" : "★ TRUTH ACCEPTED ★ +50 TRUTHCOIN ★ TRABOLTA IS SATISFIED ★ THE BOTTLE SPINS AGAIN ★"}
+        {order ? DARE_ORDER.ticker : bad ? "★ PROGRAMS CHOOSE TRUTH ★ A MARKED PROGRAM GOES TO THE INTERNET ★ AN ANTIVIRUS WILL ESCORT THEM ★" : "★ TRUTH ACCEPTED ★ +50 TRUTHCOIN ★ TRABOLTA IS SATISFIED ★ THE BOTTLE SPINS AGAIN ★"}
       </Marquee>
     </TvStage>
   );
@@ -1507,7 +1534,7 @@ export function VerdictWall({ kind, t, who, sfx, reduced }: { kind: VerdictKind;
   );
 }
 
-/** The verdict a moment brought (`truth_answered` / `truth_refused` / `chose_dare`, `who` the pick). */
+/** The verdict a moment brought (`truth_answered` / `truth_refused`, `who` the pick). */
 function verdictScene(kind: VerdictKind) {
   return {
     tv: ({ t, who, night, sfx, reduced }: SceneProps) => <VerdictTv kind={kind} t={t} who={who ?? night.bottle_pick ?? "A program"} sfx={sfx} reduced={reduced} />,
@@ -1516,7 +1543,12 @@ function verdictScene(kind: VerdictKind) {
 }
 const VERDICT_ANSWERED = verdictScene("answered");
 const VERDICT_REFUSED = verdictScene("refused");
-const VERDICT_DARE = verdictScene("dare");
+/** The Dare (wave 26, D1): the `Dare Chosen` beat, his order to the Antivirus.
+ *  A beat moment has no `who`: the dared program is `night.bottle_pick`. */
+const DARE_CHOSEN = {
+  tv: ({ t, who, night, sfx, reduced }: SceneProps) => <VerdictTv kind="dare" order ms={DARE_CHOSEN_MS} t={t} who={who ?? night.bottle_pick ?? "A program"} sfx={sfx} reduced={reduced} />,
+  wall: ({ t, who, night, sfx, reduced }: SceneProps) => <VerdictWall kind="dare" t={t} who={who ?? night.bottle_pick ?? "A program"} sfx={sfx} reduced={reduced} />,
+};
 
 /**
  * A Dare tapped on the phone (`phoneDare`): ms since this screen first saw the
@@ -1765,8 +1797,8 @@ function TrutherWall({ t, sfx, reduced }: SceneProps) {
 /** Every trigger this file listens for, by kind (pinned against the story by `test/act1.test.ts`). */
 export const ACT1_TRIGGERS = {
   slides: ["call_desktop", "bingo", "bingo_time", "trivia_1", "return", "hunt_results", "truth_or_dare", "ad_hijack", "trivia_2", "truther"],
-  beats: ["Power On", "Corrupted Code", "Trabolta Introduction", "Filing Closed", "Truth Question"],
-  signals: ["bottle_landed", "bottle_empty", "truth_answered", "truth_refused", "chose_dare"],
+  beats: ["Power On", "Corrupted Code", "Trabolta Introduction", "Filing Closed", "Truth Question", "Dare Chosen"],
+  signals: ["bottle_landed", "bottle_empty", "truth_answered", "truth_refused"],
 } as const;
 
 export const SCENES: SceneDef[] = [
@@ -1786,7 +1818,7 @@ export const SCENES: SceneDef[] = [
   { id: "truth_question", when: [{ moment: "beat", name: "Truth Question" }], ms: 9000, tv: TruthChosen, wall: TruthChosen, priority: 2, over: true, face: "curious", faceMs: 6000 },
   { id: "truth_answered", when: [{ moment: "signal", name: "truth_answered" }], ms: BOTTLE_VERDICT_MS, tv: VERDICT_ANSWERED.tv, wall: VERDICT_ANSWERED.wall, priority: 3, namesCharacter: true, face: "pleased" },
   { id: "truth_refused", when: [{ moment: "signal", name: "truth_refused" }], ms: BOTTLE_VERDICT_MS, tv: VERDICT_REFUSED.tv, wall: VERDICT_REFUSED.wall, priority: 3, face: "angry" },
-  { id: "chose_dare", when: [{ moment: "signal", name: "chose_dare" }], ms: BOTTLE_VERDICT_MS, tv: VERDICT_DARE.tv, wall: VERDICT_DARE.wall, priority: 3, face: "sly" },
+  { id: "dare_chosen", when: [{ moment: "beat", name: "Dare Chosen" }], ms: DARE_CHOSEN_MS, tv: DARE_CHOSEN.tv, wall: DARE_CHOSEN.wall, priority: 3, namesCharacter: true, face: "angry" },
   { id: "ad_hijack", when: [{ slide: "ad_hijack" }], ms: "hold", tv: AdHijackTv, wall: AdHijackWall, namesCharacter: true },
   { id: "trivia_2", when: [{ slide: "trivia_2" }], ms: "hold", tv: TriviaTv, wall: TriviaWall, namesCharacter: true, countdown: "tv" },
   { id: "truther", when: [{ slide: "truther" }], ms: "hold", tv: TrutherTv, wall: TrutherWall },

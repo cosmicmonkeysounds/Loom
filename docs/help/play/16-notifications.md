@@ -20,9 +20,11 @@ headline, and a progress bar that fills for about a second. Then its button
 wakes up:
 
 - **★ ACHIEVEMENT UNLOCKED** (*You won the Bingo Ribbon.*) → **Collect ✓**.
-- **⚠ VIRUS DETECTED** (an Antivirus found you) → **OK**.
-- **⛔ QUARANTINED** (sent to the Internet) → **📍 Go to The Internet** or
-  **🎟 Show my pass**.
+- **⚠ VIRUS DETECTED** (an Antivirus found you) → **🎟 Show my pass** or
+  **🚻 Bathroom Mode**, and no OK.
+- **⛔ QUARANTINED** (sent to the Internet) → **🎟 Show my pass** or **🚻
+  Bathroom Mode**, and no OK: your phone stays locked until you're
+  reinstalled ([Your pass](your-pass.md)).
 - **⚡ YOUR MOVE**: a card is inside it (the bottle's *Truth or dare?*, a
   poll, a line to type). Answer it right there; the window closes by itself
   once you have. *It's also in Trabolta's chat*, if you'd rather answer later.
@@ -30,7 +32,8 @@ wakes up:
   for them at the Desktop.*) with **Cheer! (6)** counting down; it closes by
   itself.
 
-There is no ×, and tapping outside does nothing: press its button. Several at
+There is no ×, and tapping outside does nothing: press its button. A few
+have no OK at all, only the buttons that take you somewhere. Several at
 once queue up (*1 of 2*). If your screen was off, or you reloaded, an
 unanswered big moment comes back for fifteen minutes. A big moment waits a
 few seconds while your pass is open, then shows over it.
@@ -38,7 +41,7 @@ few seconds while your pass is open, then shows over it.
 ## Smaller alerts
 
 How loud the rest is, is the story's choice, and it can change during the
-night; every screen glitches for a moment when it does. From quiet to loud:
+night. From quiet to loud:
 
 - **A balloon tip** pops up by the tray and goes away by itself.
 - **A yellow banner** across the top stays until you tap it (×). Only one

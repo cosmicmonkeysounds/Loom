@@ -432,6 +432,38 @@ describe("EventRuntime — the King on the spatial plane", () => {
     rt.dispose();
   });
 
+  it("a story that throws on the hit signal: still 200 + the king, journaled, logged; the visit's hit stays spent", async () => {
+    const { rt, dir } = runtime();
+    rt.openDoors();
+    const { id, a } = await visitor(rt, "Winzip");
+    expect((await call(rt, "POST", "/api/spatial/pose", AT_KING, { token: a.token })).status).toBe(204);
+    const sim = rt.liveSim! as unknown as { signal: (...args: unknown[]) => unknown };
+    const real = sim.signal;
+    sim.signal = () => {
+      throw new Error("hook blew up");
+    };
+    const logged: string[] = [];
+    const write = process.stderr.write.bind(process.stderr);
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      logged.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    let hit: Awaited<ReturnType<typeof call>>;
+    try {
+      hit = await call(rt, "POST", "/api/spatial/king/hit", {}, { token: a.token });
+    } finally {
+      process.stderr.write = write;
+      sim.signal = real;
+    }
+    expect(hit.status).toBe(200);
+    expect(hit.json).toEqual({ ok: true, king: { id: "cold-lock-king", hp: 14, max: 15, fallen: false } });
+    expect(logged.join("")).toMatch(/the story failed on the King's hit \(hook blew up\)/u);
+    const tail = new Store(dir).readJournal().filter((l) => l.by === "Tent tablet").slice(-1).map((l) => [l.m, l.a[0], l.a[1]]);
+    expect(tail).toEqual([["signal", "king hit", id]]);
+    expect((await call(rt, "POST", "/api/spatial/king/hit", {}, { token: a.token })).json.error).toBe("already hit");
+    rt.dispose();
+  });
+
   it("the last hit fells him: the fallen signal follows; then 409 fallen; a director restores him (no `by`)", async () => {
     const { rt, dir } = runtime();
     rt.openDoors();
@@ -516,6 +548,11 @@ describe("EventRuntime — the King on the spatial plane", () => {
 
     // The guest picks Winamp's other picture.
     const token = (await mod(rt, "/api/mod/impersonate", { role: "guest", id })).json.token as string;
+    // Wave 26 (R1, C2): the begin captured them, and a captured phone is
+    // locked (the show's `lock:` header): no picture. A director clears the
+    // story's flag so the phone writes again; the game session stays live.
+    expect(await call(rt, "POST", "/api/guest/picture", {}, { token })).toMatchObject({ status: 403, json: { error: "locked" } });
+    await mod(rt, "/api/mod/var", { path: `${id}.corrupted`, value: "false" });
     const options = (await call(rt, "POST", "/api/guest/picture", {}, { token })).json.options as Array<{ key: string }>;
     const other = options.find((o) => o.key !== a.avatar)!;
     expect(other).toBeDefined();

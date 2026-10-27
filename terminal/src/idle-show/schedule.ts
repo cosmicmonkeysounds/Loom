@@ -41,8 +41,32 @@ export const PATTERN: readonly Slot[] = [
   // A popup storm now and then (every cycle while the ads are hijacked), else a banner.
   { layout: "storm", alt: "banner", ads: 1 },
 ];
-const ADS_PER_CYCLE = PATTERN.reduce((n, s) => n + s.ads, 0);
-const ADS_BEFORE: readonly number[] = PATTERN.map((_, i) => PATTERN.slice(0, i).reduce((n, s) => n + s.ads, 0));
+/** (wave 26, T1) The calm cycle before the ad hijack (`IdleContext.calm`):
+ *  screensavers, and one ad a cycle — the full-screen ad, or (awake, after
+ *  the introduction) his face with an ad beside it in its place. About two
+ *  minutes a cycle; no storm slot. After the hijack `PATTERN` takes over
+ *  (the flood). */
+export const CALM_PATTERN: readonly Slot[] = [
+  { layout: "saver", ads: 0 },
+  { layout: "saver", ads: 0 },
+  { layout: "saver", ads: 0 },
+  { layout: "ad", alt: "face", ads: 1 },
+  { layout: "saver", ads: 0 },
+  { layout: "saver", ads: 0 },
+  { layout: "saver", ads: 0 },
+  { layout: "saver", ads: 0 },
+];
+const adsPerCycle = (p: readonly Slot[]) => p.reduce((n, s) => n + s.ads, 0);
+const adsBefore = (p: readonly Slot[]): readonly number[] => p.map((_, i) => p.slice(0, i).reduce((n, s) => n + s.ads, 0));
+const CYCLES = new Map<readonly Slot[], { perCycle: number; before: readonly number[] }>([
+  [PATTERN, { perCycle: adsPerCycle(PATTERN), before: adsBefore(PATTERN) }],
+  [CALM_PATTERN, { perCycle: adsPerCycle(CALM_PATTERN), before: adsBefore(CALM_PATTERN) }],
+]);
+
+/** The cycle a context plays: calm (or quiet and not hijacked: no storms) → `CALM_PATTERN`. */
+export function patternFor(ctx: Pick<IdleContext, "calm" | "quiet" | "pool">): readonly Slot[] {
+  return ctx.calm === true || (ctx.quiet === true && ctx.pool !== "malware") ? CALM_PATTERN : PATTERN;
+}
 
 /** No segment lasts longer than this (ms). */
 export const SEGMENT_MAX_MS = 18_000;
@@ -108,13 +132,15 @@ export function popupAt(seed: number, n: number, pool: readonly PopupKind[], foc
 /** Segment `index` for this seed and context. */
 export function segmentAt(seed: number, index: number, ctx: IdleContext, pool: readonly IdleAd[] = adPool(ctx)): Segment {
   const i = Math.max(0, Math.floor(index));
-  const cycle = Math.floor(i / PATTERN.length);
-  const pos = i - cycle * PATTERN.length;
-  const slot = PATTERN[pos]!;
+  const pattern = patternFor(ctx);
+  const counts = CYCLES.get(pattern)!;
+  const cycle = Math.floor(i / pattern.length);
+  const pos = i - cycle * pattern.length;
+  const slot = pattern[pos]!;
   let layout = slot.layout;
-  if (slot.alt === "face") layout = ctx.names && ctx.target === "wall" && ctx.face && roll(seed, cycle, 0xface) < 0.6 ? "face" : "saver";
+  if (slot.alt === "face") layout = ctx.names && ctx.target === "wall" && ctx.face && roll(seed, cycle, 0xface) < 0.6 ? "face" : slot.layout;
   else if (slot.alt !== undefined) layout = roll(seed, cycle, 0x5707) < (ctx.pool === "malware" ? 1 : STORM_CHANCE) ? slot.layout : slot.alt;
-  const first = cycle * ADS_PER_CYCLE + ADS_BEFORE[pos]!;
+  const first = cycle * counts.perCycle + counts.before[pos]!;
   const wants = layout === "saver" || layout === "storm" ? 0 : layout === "side" ? 2 : 1;
   const ads: IdleAd[] = [];
   for (let k = 0; k < wants; k++) {

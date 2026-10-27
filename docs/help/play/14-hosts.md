@@ -22,6 +22,20 @@ for Truth and the awards are yours (and the director's) to fire; the
 player whose game it is gets a *NEW MISSION* pop-out on their phone when
 it starts. Radio them before you fire.
 
+**Bingo (wave 26).** A guest may call **🎱 BINGO!** on their own phone
+while the card is up: it goes straight to the results (the caller and the
+time left are recorded, and Clippy gets *Check The Bingo*). Your ⏰ works
+as before. A false call is undone with **↩ Not a Bingo** on the caller's
+card (Clippy, a host or a director), only before any result (🎱 / 🎯 /
+🤐) is in: the phase, the clock, the TV and the walls go back, a house
+line calls everyone back to their cards, and another guest may call. A
+call after time-up comes back with no countdown: call ⏰ as usual. The
+round is **one round**: the first 🎯 or 🤐 (or a capture during Bingo)
+closes it.
+
+**The first glitch (📺, wave 26)** takes over every phone and terminal
+once; your booth gets a short look-only flash that never blocks a cue.
+
 **Your taskbar** reads **⊞ Start · Show · Chats · Desk · 📷 Scan**:
 
 - **Show** is your home: the night, what to fire next and what needs you
@@ -147,7 +161,7 @@ While you type, the bar steps aside with the taskbar.
     phone — **Balloon** (a tip by the taskbar that times out), **Sticky**
     (a banner until tapped), **Dialog** (a full-screen box with OK, one
     at a time), **Blue screen** (every beat to a guest takes the
-    screen). Every screen glitches once when it changes. The story sets
+    screen). Every guest's screen glitches once when it changes. The story sets
     it too, at its own moments, so a level you pick holds until the next
     one the story sets.
   - **💰 Wallet**: transfers held for the auditor (approve, deny, approve

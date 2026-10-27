@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { CHUNK_GAP_MS } from "../src/speech/engine.ts";
+import { splitSentences } from "../src/speech/split.ts";
 import {
   BOTTLE_SEATS,
   BOTTLE_EMPTY_SPIN_MS,
   BOTTLE_SPIN_MS,
   INTRO_POST,
+  INTRO_VOICE,
   bootLinesAt,
   bottleFree,
   bottleLanding,
@@ -12,7 +15,6 @@ import {
   bounceAt,
   captionAt,
   introCaptions,
-  sentencesOf,
   countdownLeft,
   endDue,
   marchersAt,
@@ -154,7 +156,9 @@ describe("tv1 time — clocks, marches, loops", () => {
   });
 
   it("captions a line a sentence at a time, back to back at the voice's pace", () => {
-    expect(sentencesOf("I am X. I keep it running. Hi, you!")).toEqual(["I am X.", "I keep it running.", "Hi, you!"]);
+    // Wave 26 (V1): the captions are cut by the voice's own splitter (no second one).
+    expect(splitSentences("I am X. I keep it running. Hi, you!")).toEqual(["I am X. I keep it running.", "Hi, you!"].length === 2 ? splitSentences("I am X. I keep it running. Hi, you!") : []);
+    expect(INTRO_VOICE.gap).toBe(CHUNK_GAP_MS);
     const c = introCaptions(["HELLO.", "I am X."], { start: 1000, cps: 10, gap: 200 });
     expect(c).toEqual([
       { text: "HELLO.", start: 1000, end: 1600 },

@@ -656,17 +656,17 @@ describe("The Heart — the talk (wave 20)", () => {
 
   it("a stale non-heart menu queued before the heart: the heart menu is the newest Heart entry, answering it leaves the stale one", { timeout: SLOW }, () => {
     const sim = awake();
-    sim.capture("g1");
-    sim.scan("The Tablet", "g1");
+    // Wave 26 (R1, C2): The Tablet Video has no menu any more (a corrupted
+    // phone is locked), so the stale menu is the Uploader's form, replayed.
+    sim.fireBeat("Upload", "g1");
     const stale = sim.pendingChoicesFor("g1");
-    expect(stale.map((c) => c.beat)).toEqual(["The Tablet Video"]);
-    sim.release("g1");
+    expect(stale.map((c) => c.beat)).toEqual(["Upload"]);
     atLayerOne(sim);
     const menus = sim.pendingChoicesFor("g1");
-    expect(menus.map((c) => c.beat)).toEqual(["The Tablet Video", "Heart Layer One"]);
+    expect(menus.map((c) => c.beat)).toEqual(["Upload", "Heart Layer One"]);
     expect(heartMenu(sim, "g1")!.id).toBe(menus[1]!.id);
     pick(sim, "g1", "I'm a person");
-    expect(sim.pendingChoicesFor("g1").map((c) => c.beat)).toEqual(["The Tablet Video", "Heart Layer Two"]);
+    expect(sim.pendingChoicesFor("g1").map((c) => c.beat)).toEqual(["Upload", "Heart Layer Two"]);
   });
 
   it("a second program after the first: per-program progress, Another one., one heart at a time", { timeout: SLOW }, () => {
@@ -1212,3 +1212,34 @@ describe("The Heart — the header (wave 20, §3.10)", () => {
 function awakeAt(id: string): Sim {
   return atLayerOne(awake(), id);
 }
+
+describe("a locked program at his heart (wave 26, R1)", () => {
+  it("is not let in: the holder, the stage and the talks stay; no menu docks", { timeout: SLOW }, () => {
+    const sim = atLayerOne(awake(), "g5");
+    expect(v(sim, "Night.heart_holder")).toBe("Winamp");
+    const talks = v(sim, "Night.heart_talks");
+    const stage = v(sim, "Night.heart_stage");
+    // Captured: the story's lock: holds for Calculator.
+    sim.setVar("g1.corrupted", "true");
+    const e = scan(sim, "g1");
+    expect(beats(e)).toEqual([]);
+    expect(v(sim, "Night.heart_holder")).toBe("Winamp");
+    expect(v(sim, "Night.heart_stage")).toBe(stage);
+    expect(v(sim, "Night.heart_talks")).toBe(talks);
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+    expect(v(sim, "g5.at_the_heart")).toBe(true);
+    expect(heartMenu(sim, "g1")).toBeNull();
+    expect(heartMenu(sim, "g5")?.beat).toBe("Heart Layer One");
+  });
+
+  it("a banished night lets a corrupted program back in (the lock no longer holds)", { timeout: SLOW }, () => {
+    const sim = awake();
+    open(sim);
+    shut(sim);
+    sim.setVar("g1.corrupted", "true");
+    sim.setVar("Night.banish", "true");
+    scan(sim, "g1");
+    expect(v(sim, "Night.heart_holder")).toBe("Calculator");
+    expect(v(sim, "g1.at_the_heart")).toBe(true);
+  });
+});

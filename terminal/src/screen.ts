@@ -67,6 +67,7 @@
 //! attract, and an unreachable server keeps the last answer it gave — a
 //! dropped poll never flips a hidden character onto the wall.
 
+import { linkedNow } from "./world/presence.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { announceOf, announceReport, type Announcement } from "./announce.ts";
 import { baseOf, type TerminalConfig } from "./config.ts";
@@ -102,6 +103,11 @@ export interface ScreenProgram {
   overlay: ScreenShot | null;
   blackout: ScreenShot | null;
   flicker: ScreenShot | null;
+  /** (wave 26, T2) The last glitch cue (`screens_glitch`, …): a one-shot that
+   *  never touches the slide or the overlay; `at` 0 = history. Absent: none
+   *  yet, or an older server (`programOf` leaves it out then); read it as
+   *  `program.glitch ?? null`. */
+  glitch?: ScreenShot | null;
 }
 
 /** A character's line in the voice room (`beat` null = a director's typed `say`). */
@@ -492,13 +498,41 @@ export function resultsOf(raw: unknown): ScreenResults | null {
  *  `announce` = the house list (`audio.json` `announce.terminals`) names it. */
 export interface ScreenSpot {
   announce: boolean;
+  /** (wave 26, R5) Live reinstalled players whose presence room is this
+   *  spot's map room. Absent: the server can't tell (no spatial map, or an
+   *  older server): fall back to the house-wide `reinstalling` rule. */
+  here?: number;
 }
 
 /** A spot block off the wire; anything malformed is null (an older server sends none). */
 export function spotOf(raw: unknown): ScreenSpot | null {
   if (typeof raw !== "object" || raw === null) return null;
-  const a = (raw as Record<string, unknown>)["announce"];
-  return typeof a === "boolean" ? { announce: a } : null;
+  const r = raw as Record<string, unknown>;
+  const a = r["announce"];
+  if (typeof a !== "boolean") return null;
+  const here = r["here"];
+  return typeof here === "number" && Number.isFinite(here) && here >= 0 ? { announce: a, here: Math.floor(here) } : { announce: a };
+}
+
+/** (wave 26, V1 phase 2) What the TV is speaking now, as the server heard it. */
+export interface TvSpeech {
+  /** The room line's seq. */
+  seq: number;
+  /** Its sentence (from 0); null = that line is done. */
+  chunk: number | null;
+  /** Server epoch ms the TV's report arrived. */
+  at: number;
+}
+
+/** A `tvSpeech` block off the wire; anything malformed (or an older server's none) is null. */
+export function tvSpeechOf(raw: unknown): TvSpeech | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  const ok = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
+  if (!ok(r["seq"]) || !ok(r["at"])) return null;
+  const chunk = r["chunk"];
+  if (chunk !== null && !ok(chunk)) return null;
+  return { seq: Math.floor(r["seq"]), chunk: chunk === null ? null : Math.floor(chunk), at: r["at"] };
 }
 
 /** The TV's voice block (K-18). */
@@ -514,6 +548,17 @@ export interface ScreenState {
   now: number;
   /** Local `Date.now()` when this answer arrived (not from the server). */
   receivedAt: number;
+  /** (wave 26, T2) The server `now` of this page's first screen answer
+   *  (`useScreenState` stamps it on every answer; `withFirstNow`). A glitch
+   *  cued at or before it is one this page never saw happen — a reload mid
+   *  glitch — and never plays. Absent (hand-built states): no such bound. */
+  firstNow?: number;
+  /** (wave 26, T2) The server `now` of the first answer this page got that
+   *  carried the current glitch cue (`withFirstNow`, remembered per cue). A
+   *  glitch first seen more than `GLITCH_FRESH_MS` after its cue — a page
+   *  that lost the server around it and came back mid-takeover — never
+   *  plays. Absent (hand-built states, no live glitch): no such bound. */
+  glitchSeen?: number;
   night: ScreenNight;
   /** The house's live story moments, oldest first (wave 17; [] from an older server). */
   moments: ScreenMoment[];
@@ -552,6 +597,10 @@ export interface ScreenState {
   /** This terminal's map spot (wave 18b; null: unplaced, or an older server).
    *  Optional for hand-built states; `parseScreenState` always sets it. */
   spot?: ScreenSpot | null;
+  /** (wave 26, V1 phase 2) What the TV is speaking now (null: no TV reported
+   *  in the last 6 s, or an older server). Optional for hand-built states;
+   *  `parseScreenState` always sets it. */
+  tvSpeech?: TvSpeech | null;
 }
 
 /** A ranked chart the server keeps live (`SCREEN_CHARTS`, core). */
@@ -646,11 +695,13 @@ export function programOf(raw: unknown): ScreenProgram {
   const r = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
   const slideShot = shotOf(r["slide"]);
   const slideRaw = (r["slide"] ?? {}) as Record<string, unknown>;
+  const glitch = shotOf(r["glitch"]);
   return {
     slide: slideShot === null ? null : { ...slideShot, kind: slideRaw["kind"] === "base" ? "base" : "slide", persist: slideRaw["persist"] === true },
     overlay: shotOf(r["overlay"]),
     blackout: shotOf(r["blackout"]),
     flicker: shotOf(r["flicker"]),
+    ...(glitch !== null ? { glitch } : {}),
   };
 }
 
@@ -696,6 +747,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     reinstalling: typeof r["reinstalling"] === "number" && r["reinstalling"] > 0 ? Math.floor(r["reinstalling"]) : 0,
     results: resultsOf(r["results"]),
     spot: spotOf(r["spot"]),
+    tvSpeech: tvSpeechOf(r["tvSpeech"]),
   };
 }
 
@@ -722,18 +774,24 @@ export function identifyOn(state: Pick<ScreenState, "identify" | "identifyLeft" 
   return now < state.receivedAt + (state.identifyLeft ?? IDENTIFY_MS);
 }
 
-/** Attract or not: no answer yet is attract (fail closed). A room terminal
- *  (`room` true) also stays on attract when the answer has no room block —
- *  a server too old to say whether its room is open. */
 /** The character is asleep but a program is reinstalling: a house terminal
  *  whose screen can show the simulation watches it full screen instead of
  *  the screensaver (from the first capture, whatever the character does). A
- *  room terminal, the TV, the board, the casino and the face never do. */
-export function watchWhileAsleep(state: ScreenState | null, view: string, room: boolean): boolean {
-  if (state === null || room || state.reinstalling <= 0) return false;
-  return view === "auto" || view === "world" || view === "mirror" || view === "shadow";
+ *  room terminal, the TV, the board, the casino and the face never do.
+ *  Wave 26 (R5): a placed `auto` / `world` wall watches only while a player
+ *  is in its room in the game (`spot.here > 0`; the house-wide
+ *  `reinstalling` only when the server sends no `here`), never with no
+ *  spot; the `mirror` / `shadow` spectator screens stay house-wide.
+ *  `spot` = this terminal's map spot id (`config.spot`). */
+export function watchWhileAsleep(state: ScreenState | null, view: string, room: boolean, spot: string): boolean {
+  if (state === null || room) return false;
+  if (view !== "auto" && view !== "world" && view !== "mirror" && view !== "shadow") return false;
+  return linkedNow({ view, spot, here: state.spot, anyone: state.reinstalling > 0 });
 }
 
+/** Attract or not: no answer yet is attract (fail closed). A room terminal
+ *  (`room` true) also stays on attract when the answer has no room block —
+ *  a server too old to say whether its room is open. */
 export function attractOf(state: ScreenState | null, room = false): boolean {
   if (state === null) return true;
   return state.attract || (room && state.room === null);
@@ -776,6 +834,31 @@ export function screenReachable(state: ScreenState | null, misses: number): bool
   return state !== null && misses < MISSES_OFFLINE;
 }
 
+/** The server `now` of this page's first screen answer (null: none yet).
+ *  Once per page load, whatever the config: a glitch is live only after it. */
+let pageFirst: number | null = null;
+/** The glitch cue this page last saw (`seq:at`) and the server `now` of the
+ *  first answer that carried it. */
+let glitchFirst: { key: string; now: number } | null = null;
+/**
+ * Stamp an answer with the page's first answer's server time (the first one
+ * sets it) and, while it carries a live glitch cue, with the server time this
+ * page first saw that cue (`glitchSeen`).
+ */
+export function withFirstNow(state: ScreenState): ScreenState {
+  pageFirst ??= state.now;
+  const g = state.program.glitch ?? null;
+  if (g === null || g.at <= 0) return { ...state, firstNow: pageFirst };
+  const key = `${g.seq}:${g.at}`;
+  if (glitchFirst === null || glitchFirst.key !== key) glitchFirst = { key, now: state.now };
+  return { ...state, firstNow: pageFirst, glitchSeen: glitchFirst.now };
+}
+/** Forget the page's first answer and the glitch it saw (tests). */
+export function resetPageFirst(): void {
+  pageFirst = null;
+  glitchFirst = null;
+}
+
 /**
  * Poll the screen state every `SCREEN_POLL_MS` (the TV: `TV_POLL_MS`) while a
  * config is present. Returns the last good answer (null until the first),
@@ -784,7 +867,8 @@ export function screenReachable(state: ScreenState | null, misses: number): bool
  * fresh on every poll, so the cursor can move without restarting the loop.
  * `pollNow` (stable) asks for a poll at once — the speech queue draining
  * (wave 25) — paced by `PollPacer`: never two starts within
- * `DRAIN_REPOLL_GAP_MS`, and one in flight is followed by another.
+ * `DRAIN_REPOLL_GAP_MS`, and one in flight is followed by another. Every
+ * answer is stamped by `withFirstNow`.
  */
 export function useScreenState(
   config: TerminalConfig | null,
@@ -818,8 +902,8 @@ export function useScreenState(
       if (!alive) return;
       setMisses((m) => missesAfter(m, out.kind));
       if (out.kind === "state") {
-        last = out.state;
-        setState(out.state);
+        last = withFirstNow(out.state);
+        setState(last);
       }
       else if (out.kind === "revoked") {
         pacer.stop();

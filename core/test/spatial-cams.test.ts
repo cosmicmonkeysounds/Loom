@@ -149,13 +149,20 @@ describe("EventRuntime — the camera feeds", () => {
 
     const up = await call(rt, "POST", "/api/mod/spatial/cam", frame("hall", jpeg(200, 9)), { token: modToken });
     expect(up.status).toBe(200);
-    expect(up.json).toEqual({ ok: true, at: 50_000 });
+    // Wave 26 (C7): nobody is in the hall in the game, so nobody watches it.
+    expect(up.json).toEqual({ ok: true, at: 50_000, watched: false });
 
     // A game session (a captured persona's begin) reads them like the map.
     const gid = ((await call(rt, "POST", "/api/mod/persona", { name: "Pinball" }, { moderator: true })).json.guest as { id: string }).id;
     await call(rt, "POST", "/api/mod/signal", { name: "send to the internet", subject: gid, actor: "Norton Anti-Virus" }, { moderator: true });
     const a = (await call(rt, "POST", "/api/mod/spatial/begin", { guest: gid, world: "web", device: "Tent tablet" }, { moderator: true })).json as unknown as Assignment;
     expect(typeof a.token).toBe("string");
+
+    // Wave 26 (C7): only its own (presence) room's feeds. In the tent at
+    // the spawn, the hall's feed is neither listed nor served.
+    expect((await call(rt, "GET", "/api/spatial/cams", {}, { token: a.token })).json).toEqual({ cams: [] });
+    expect((await call(rt, "GET", "/api/spatial/cam?spot=hall", {}, { token: a.token })).json).toEqual({ error: "no feed" });
+    expect((await call(rt, "POST", "/api/spatial/pose", { p: [-1, 0, 13], yaw: 0 }, { token: a.token })).status).toBe(204);
 
     const list = await call(rt, "GET", "/api/spatial/cams", {}, { token: a.token });
     expect(list.status).toBe(200);
@@ -170,6 +177,10 @@ describe("EventRuntime — the camera feeds", () => {
     expect((await call(rt, "GET", `/api/spatial/cams?token=${modToken}`)).status).toBe(200);
     expect((await call(rt, "GET", "/api/spatial/cam?spot=hall", {}, { moderator: true })).status).toBe(200);
     expect((await call(rt, "GET", "/api/spatial/cam?spot=tent", {}, { moderator: true })).status).toBe(404);
+
+    // Someone in the hall watches it now (C7).
+    clock.t += 200;
+    expect((await call(rt, "POST", "/api/mod/spatial/cam", frame("hall", jpeg(200, 9)), { token: modToken })).json).toMatchObject({ watched: true });
 
     // 15 s later the feed is gone from the list and the frame route.
     clock.t += 15_001;
@@ -201,9 +212,9 @@ describe("EventRuntime — the camera feeds", () => {
     const rt = runtime(clock);
     rt.openDoors();
     const m = { moderator: true };
-    expect((await call(rt, "POST", "/api/mod/spatial/cam", frame("hall", jpeg(30, 1)), m)).json).toEqual({ ok: true, at: 10_000 });
+    expect((await call(rt, "POST", "/api/mod/spatial/cam", frame("hall", jpeg(30, 1)), m)).json).toEqual({ ok: true, at: 10_000, watched: false });
     clock.t += 100;
-    expect((await call(rt, "POST", "/api/mod/spatial/cam", frame("hall", jpeg(30, 2)), m)).json).toEqual({ ok: true, at: 10_000, dropped: true });
+    expect((await call(rt, "POST", "/api/mod/spatial/cam", frame("hall", jpeg(30, 2)), m)).json).toEqual({ ok: true, at: 10_000, dropped: true, watched: false });
     expect((await call(rt, "POST", "/api/mod/spatial/cam", frame("tent"), m)).status).toBe(200);
     expect((await call(rt, "GET", "/api/spatial/cam?spot=hall", {}, m)).raw[5]).toBe(1);
 

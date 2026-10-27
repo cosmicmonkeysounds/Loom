@@ -84,8 +84,9 @@ export type SimEvent =
   | { type: "relationshipChanged"; subject: string; relation: string; object: string; value: number }
   // `go` / `close` (wave 18, C2): the story's `with go: …, close: 6s` tail —
   // the moment's exit words as written (interpolated), resolved by the chat
-  // composer; `close` in ms. Absent when not written.
-  | { type: "broadcast"; cue: string; audience: string[]; scope: string; go?: string[]; close?: number }
+  // composer; `close` in ms. Absent when not written. `noAck` (wave 26,
+  // C1): `with ack: none` — the big moment has no acknowledge button.
+  | { type: "broadcast"; cue: string; audience: string[]; scope: string; go?: string[]; close?: number; noAck?: true }
   // A scripted line. `setting` is the enclosing beat's `setting:` location
   // (inherited through diverts) and `beat` the beat it was spoken in — chat
   // routes an un-addressed line to the setting's room, and the cockpit links
@@ -142,13 +143,15 @@ export type SimEvent =
       /** `reply "…" with go: …, close: …` (wave 18, C2). */
       go?: string[];
       close?: number;
+      /** `reply "…" with …, ack: none` (wave 26, C1): no acknowledge button. */
+      noAck?: true;
     }
   // `show <kind> ["text"] [to scope] [with k: v]` — a widget (a game, a
   // picture, a form) the participant app renders in the conversation.
   // `audience` + `scope` mirror `broadcast` (empty audience with a global
   // scope = everyone); `setting` + `beat` mirror `dialogue` so the card
   // lands in the same room as the lines around it.
-  | { type: "widget"; widget: string; text: string; params: Record<string, string>; audience: string[]; scope: string; setting: string | null; beat: string | null; go?: string[]; close?: number }
+  | { type: "widget"; widget: string; text: string; params: Record<string, string>; audience: string[]; scope: string; setting: string | null; beat: string | null; go?: string[]; close?: number; noAck?: true }
   | { type: "signal"; name: string; subject: string | null }
   // A codex entry landed in a holder's hands (a person or a character):
   // redeemed from a code, handed over by the story / an operator, or shared

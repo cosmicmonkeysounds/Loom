@@ -46,6 +46,19 @@ export interface SceneProps {
   done(): void;
   /** `prefers-reduced-motion`: fade, don't fly. */
   reduced: boolean;
+  /** (wave 26, V1) On the TV, a voiced scene's sentence he is saying now
+   *  (`voice-scenes.ts`; `t` is already warped to his voice). Absent / null:
+   *  nothing is speaking for it — draw the scene's own copy. */
+  voice?: SceneVoice | null;
+}
+
+/** The sentence the TV is saying for a scene (wave 26, V1): the written words. */
+export interface SceneVoice {
+  /** The room line's seq. */
+  seq: number;
+  /** The sentence's index within that line. */
+  index: number;
+  text: string;
 }
 
 export interface SceneDef {

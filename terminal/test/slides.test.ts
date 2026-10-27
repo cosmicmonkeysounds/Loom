@@ -3,9 +3,9 @@ import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { IdentifyOverlay, ScreenLayer, SlideView } from "../src/ScreenLayer.tsx";
-import { EMPTY_NIGHT, parseScreenState, type ScreenProgram, type ScreenState } from "../src/screen.ts";
-import { BLACKOUT_MS, FLICKER_FRESH_MS, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartRankedLine, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
+import { IdentifyOverlay, ScreenLayer, SlideView, claimGlitchSounds, glitchLeftMs, resetGlitchSounds } from "../src/ScreenLayer.tsx";
+import { EMPTY_NIGHT, parseScreenState, resetPageFirst, withFirstNow, type ScreenProgram, type ScreenState } from "../src/screen.ts";
+import { BLACKOUT_MS, FLICKER_FRESH_MS, GLITCH_FRESH_MS, GLITCH_MS, GLITCH_WITH_MS, slideClockAt, coverOf, GLITCH_TEXT, OWNER_LINE, OWNER_LINES, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartRankedLine, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
 
 const T0 = 1_000_000;
 const empty: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
@@ -191,7 +191,7 @@ describe("screen layers — precedence (N-03)", () => {
   });
 
   it("no answer yet: nothing on top", () => {
-    expect(screenLayers(null, T0, { piloting: false })).toEqual({ overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0 });
+    expect(screenLayers(null, T0, { piloting: false })).toEqual({ overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0, glitch: null });
   });
 
   // Fact M19: a clip Trabolta puts on the terminals never cuts a story slide short.
@@ -492,5 +492,183 @@ describe("the identify overlay", () => {
     expect(renderToStaticMarkup(createElement(IdentifyOverlay, { state: live, ...props }))).toContain("KITCHEN");
     const stale = state({ identify: true, identifyLeft: 10_000, receivedAt: Date.now() - 10_001 });
     expect(renderToStaticMarkup(createElement(IdentifyOverlay, { state: stale, ...props }))).toBe("");
+  });
+});
+
+describe("the glitch takeover (wave 26, T2)", () => {
+  const glitchAt = (at: number, seq = 9) => ({ glitch: shot("glitch", at, seq) });
+  const seen = (over: Parameters<typeof state>[0] = {}) => state({ firstNow: T0 - 60_000, ...over });
+
+  it("plays while its cue is fresh, for GLITCH_MS, from its own at", () => {
+    const s = seen({ program: glitchAt(T0) });
+    expect(at(s, 0).glitch).toEqual({ seq: 9, at: T0, t: 0 });
+    expect(at(s, 2500).glitch).toEqual({ seq: 9, at: T0, t: 2500 });
+    expect(at(s, GLITCH_MS - 1).glitch).not.toBeNull();
+    expect(at(s, GLITCH_MS).glitch).toBeNull();
+    expect(GLITCH_MS).toBe(8000);
+  });
+
+  it("never plays history (at 0), nor one cued at or before this page's first answer (a reload mid-glitch)", () => {
+    expect(at(seen({ program: glitchAt(0) }), 0).glitch).toBeNull();
+    // The page's first answer came 1 s after the cue: shared state, live at, but never seen happen.
+    expect(at(state({ firstNow: T0 + 1000, program: glitchAt(T0) }), 2000).glitch).toBeNull();
+    expect(at(state({ firstNow: T0, program: glitchAt(T0) }), 0).glitch).toBeNull();
+    // Cued after the first answer: it plays.
+    expect(at(state({ firstNow: T0 - 1, program: glitchAt(T0) }), 0).glitch).not.toBeNull();
+    // An old server (no glitch on the program): nothing.
+    expect(at(seen(), 0).glitch).toBeNull();
+  });
+
+  it("reaches every view, piloting, peeking, bare or a kiosk; only a blackout beats it", () => {
+    const s = seen({ program: { ...glitchAt(T0), slide: slide("ad_hijack", T0, true) } });
+    for (const o of [{ piloting: true }, { piloting: false, peek: true }, { piloting: false, room: true }, { piloting: false, slides: false }]) {
+      expect(screenLayers(s, T0 + 100, o).glitch, JSON.stringify(o)).not.toBeNull();
+    }
+    expect(screenLayers(seen({ target: "tv", program: glitchAt(T0) }), T0 + 100, { piloting: false }).glitch).not.toBeNull();
+    // An alarm overlay does not beat it; a fresh blackout does.
+    expect(at(seen({ program: { ...glitchAt(T0), overlay: shot("alarm", T0) } }), 100).glitch).not.toBeNull();
+    expect(at(seen({ program: { ...glitchAt(T0), blackout: shot("blackout", T0) } }), 100).glitch).toBeNull();
+  });
+
+  it("is never a slide: the hijack slide under it keeps its place, and persists", () => {
+    const s = seen({ program: { ...glitchAt(T0), slide: slide("ad_hijack", T0, true) } });
+    expect(at(s, 100)).toMatchObject({ slide: { value: "ad_hijack" }, overlay: null });
+    // Persistent now (the server's `persist`): still up long after the 45 s hold.
+    expect(at(s, 10 * 60_000).slide?.value).toBe("ad_hijack");
+    expect(GLITCH_TEXT).toBe(SLIDE_COPY.ad_hijack!.title);
+  });
+
+  it("a slide cued with it starts its scene's clock when the takeover ends (the hijack's slam is never hidden under it)", () => {
+    // The 📺 rule: screens_glitch, then screens_ad_hijack, one tick apart.
+    const s = seen({ program: { ...glitchAt(T0), slide: slide("ad_hijack", T0 + 1, true) } });
+    expect(at(s, 100).slide).toMatchObject({ value: "ad_hijack", seq: 1, at: T0 + GLITCH_MS });
+    // Still so once the glitch is over (the clock never jumps back), and on a page that never drew it.
+    expect(at(s, GLITCH_MS + 2000).slide?.at).toBe(T0 + GLITCH_MS);
+    expect(at({ ...s, firstNow: T0 + 3000 }, 3500)).toMatchObject({ glitch: null, slide: { at: T0 + GLITCH_MS } });
+    // Its hold still counts from the cue (a non-persistent slide lapses on time).
+    const plain = seen({ program: { ...glitchAt(T0), slide: slide("trivia_2", T0) } });
+    expect(at(plain, SLIDE_HOLD_MS.terminals - 1).slide?.at).toBe(T0 + GLITCH_MS);
+    expect(at(plain, SLIDE_HOLD_MS.terminals).slide).toBeNull();
+    // The pure rule: cued with it (a tick before counts), or under it.
+    expect(slideClockAt(T0, { at: T0 })).toBe(T0 + GLITCH_MS);
+    expect(slideClockAt(T0 - GLITCH_WITH_MS, { at: T0 })).toBe(T0 + GLITCH_MS);
+    expect(slideClockAt(T0 + GLITCH_MS - 1, { at: T0 })).toBe(T0 + GLITCH_MS);
+    // A slide from before it, or after it, or history, or no glitch: its own at.
+    expect(slideClockAt(T0 - GLITCH_WITH_MS - 1, { at: T0 })).toBe(T0 - GLITCH_WITH_MS - 1);
+    expect(slideClockAt(T0 + GLITCH_MS, { at: T0 })).toBe(T0 + GLITCH_MS);
+    expect(slideClockAt(T0 + 60_000, { at: T0 })).toBe(T0 + 60_000);
+    expect(slideClockAt(0, { at: T0 })).toBe(0);
+    expect(slideClockAt(T0, { at: 0 })).toBe(T0);
+    expect(slideClockAt(T0, null)).toBe(T0);
+  });
+
+  it("covers the screen (the idle show pauses) but is never a takeover (a pilot, a game, a walk survive)", () => {
+    const g = at(seen({ program: glitchAt(T0) }), 100);
+    expect(coverOf(g)).toEqual({ takeover: false, covered: true });
+    expect(coverOf(at(seen({ program: { overlay: shot("alarm", T0) } }), 100))).toEqual({ takeover: true, covered: true });
+    expect(coverOf(at(seen(), 100))).toEqual({ takeover: false, covered: false });
+  });
+
+  it("stamps the page's first answer once (withFirstNow)", () => {
+    resetPageFirst();
+    const a = withFirstNow(state({ now: 5000 }));
+    const b = withFirstNow(state({ now: 9000 }));
+    expect(a.firstNow).toBe(5000);
+    expect(b.firstNow).toBe(5000);
+    resetPageFirst();
+  });
+
+  it("never plays the tail of one this page missed: first seen later than GLITCH_FRESH_MS after its cue (a lost server, back mid-takeover)", () => {
+    expect(GLITCH_FRESH_MS).toBe(4000);
+    // Seen one poll after the cue: plays.
+    expect(at(seen({ glitchSeen: T0 + 1800, program: glitchAt(T0) }), 2000).glitch).not.toBeNull();
+    expect(at(seen({ glitchSeen: T0 + GLITCH_FRESH_MS, program: glitchAt(T0) }), GLITCH_FRESH_MS).glitch).not.toBeNull();
+    // First seen 5 s in (the page was cut off around the cue): never, not even its last 3 s.
+    expect(at(seen({ glitchSeen: T0 + 5000, program: glitchAt(T0) }), 5000).glitch).toBeNull();
+    expect(at(seen({ glitchSeen: T0 + 5000, program: glitchAt(T0) }), 6500).glitch).toBeNull();
+  });
+
+  it("remembers when this page first saw each glitch cue (withFirstNow), and only while one is live", () => {
+    resetPageFirst();
+    const g = (now: number, at: number, seq = 9) => withFirstNow(state({ now, program: glitchAt(at, seq) }));
+    expect(withFirstNow(state({ now: T0 - 4000 })).glitchSeen).toBeUndefined();
+    expect(g(T0 + 1500, T0).glitchSeen).toBe(T0 + 1500);
+    // Later answers keep the first sighting.
+    expect(g(T0 + 3500, T0).glitchSeen).toBe(T0 + 1500);
+    // A new cue (a new seq) is a new sighting.
+    expect(g(T0 + 60_000, T0 + 59_000, 10).glitchSeen).toBe(T0 + 60_000);
+    // History (at 0) carries none.
+    expect(g(T0 + 90_000, 0, 10).glitchSeen).toBeUndefined();
+    // A page cut off around the cue: its first sighting is late, so it never plays.
+    resetPageFirst();
+    withFirstNow(state({ now: T0 - 10_000 }));
+    const late = g(T0 + 5000, T0);
+    expect(late.glitchSeen).toBe(T0 + 5000);
+    expect(screenLayers(late, T0, { piloting: false }).glitch).toBeNull(); // (received at T0: server now = its now)
+    // A page that saw it at once plays it.
+    resetPageFirst();
+    withFirstNow(state({ now: T0 - 10_000 }));
+    const prompt = g(T0 + 1200, T0);
+    expect(screenLayers(prompt, T0, { piloting: false }).glitch).toMatchObject({ seq: 9, t: 1200 });
+    resetPageFirst();
+  });
+
+  it("draws CSS-only: the zeroes in the error windows, one takeover per seq, the ⚙ over it", () => {
+    const layers = { ...at(seen({ program: glitchAt(T0) }), 1200) };
+    const html = renderToStaticMarkup(createElement(ScreenLayer, { layers, gear: createElement("i", { id: "gear" }) }));
+    expect(html).toContain('class="screen-glitch"');
+    expect(html).toContain('data-glitch="9"');
+    expect(html).toContain(GLITCH_TEXT);
+    expect(html).toContain('id="gear"');
+    expect(html).not.toMatch(/<canvas|<video|<img/u);
+    // Drawn late (a poll after the cue): its beats start that far along.
+    expect(html).toContain("animation-delay:-1200ms");
+    const none = renderToStaticMarkup(createElement(ScreenLayer, { layers: at(seen(), 0), gear: null }));
+    expect(none).not.toContain("screen-glitch");
+  });
+
+  it("unmounts itself when it ends (no invisible layer taking taps until the next re-decide)", () => {
+    expect(glitchLeftMs(0)).toBe(GLITCH_MS);
+    expect(glitchLeftMs(1200)).toBe(GLITCH_MS - 1200);
+    expect(glitchLeftMs(GLITCH_MS + 50)).toBe(0);
+    const src = readFileSync(fileURLToPath(new URL("../src/ScreenLayer.tsx", import.meta.url)), "utf8");
+    const fn = src.slice(src.indexOf("export function GlitchTakeover"), src.indexOf("export function ScreenLayer"));
+    expect(fn).toMatch(/window\.setTimeout\(\(\) => setOver\(true\), glitchLeftMs\(t0\)\)/u);
+    expect(fn).toMatch(/if \(over\) return null;/u);
+  });
+
+  it("schedules its sounds once per cue per page, so a remount mid-takeover never doubles them", () => {
+    resetGlitchSounds();
+    expect(claimGlitchSounds(9, T0)).toBe(true);
+    expect(claimGlitchSounds(9, T0)).toBe(false);
+    // Another cue (a new seq, or a restarted story's same seq at a new time) sounds again.
+    expect(claimGlitchSounds(10, T0 + 60_000)).toBe(true);
+    expect(claimGlitchSounds(9, T0 + 90_000)).toBe(true);
+    resetGlitchSounds();
+    const src = readFileSync(fileURLToPath(new URL("../src/ScreenLayer.tsx", import.meta.url)), "utf8");
+    expect(src).toMatch(/if \(!claimGlitchSounds\(seq, cueAt\)\) return;/u);
+    // And the app keeps the layer at one keyed place in every screen it sits beside.
+    const app = readFileSync(fileURLToPath(new URL("../src/app.tsx", import.meta.url)), "utf8");
+    expect(app).toMatch(/const layer = \(\n {4}<Fragment key="screen-layer">/u);
+  });
+
+  it("its CSS stays inside the photosensitivity and old-tablet rules", () => {
+    const css = readFileSync(fileURLToPath(new URL("../src/styles.css", import.meta.url)), "utf8");
+    const block = css.slice(css.indexOf("/* --- the glitch takeover"), css.indexOf("/* --- the house announcement"));
+    expect(block.length).toBeGreaterThan(500);
+    // Keyframes animate transform / opacity only.
+    const bodies = [...block.matchAll(/^@keyframes [\w-]+ \{ (.*) \}$/gmu), ...block.matchAll(/^@keyframes [\w-]+ \{\n([\s\S]*?)\n\}/gmu)].map((m) => m[1]!);
+    expect(bodies.length).toBeGreaterThanOrEqual(9);
+    for (const body of bodies) for (const prop of body.matchAll(/([a-z-]+):/gu)) expect(["transform", "opacity"], prop[1]).toContain(prop[1]);
+    // No red field, no blend modes or filters, no inset shorthand (Safari 14.0).
+    expect(block).not.toMatch(/background:\s*(red|#f00\b|#ff0000)/iu);
+    expect(block).not.toMatch(/mix-blend-mode|filter:|backdrop-filter|\binset:/u);
+    // Reduced motion: no animation at all.
+    expect(block).toMatch(/prefers-reduced-motion: reduce\)\s*\{\s*\.screen-glitch, \.screen-glitch \* \{ animation: none !important; \}/u);
+    // Nothing repeats faster than 3 Hz: every step animation's cycle / steps ≥ 333 ms.
+    for (const m of block.matchAll(/animation: [\w-]+ ([\d.]+)s steps\((\d+), end\) ([\d.]+|infinite)/gu)) {
+      const repeats = m[3] !== "1";
+      if (repeats) expect((Number(m[1]) * 1000) / Number(m[2]), m[0]).toBeGreaterThanOrEqual(333);
+    }
   });
 });

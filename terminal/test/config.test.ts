@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CONFIG_KEY, DEFAULT_TV_ROOM, adoptCharacter, announceChoiceValue, announceFromChoice, storedAnnounce, canonicalCharacter, castCheckKey, characterProblem, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, roomOf, saveConfig, savedCharacter, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
+import { CONFIG_KEY, DEFAULT_TV_ROOM, adoptCharacter, announceChoiceValue, announceFromChoice, storedAnnounce, canonicalCharacter, castCheckKey, characterProblem, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, roomOf, saveConfig, savedCharacter, speedOf, TV_SPEED, tvRoomOf, voiceChoiceOf, withViewDefaults, withoutSecrets } from "../src/config.ts";
 import { CAST_LOOKUP_MS, characterIdOf, fetchCharacters } from "../src/pilot.ts";
 
 function memory(): Storage {
@@ -86,7 +86,7 @@ describe("terminal config", () => {
   });
   it("reads provisioning hints off the URL and scrubs them back out", () => {
     const h = hintsFromSearch("?code=MOD111&name=Kitchen&character=Trabolta&camera=environment&engine=browser&spot=start-bar&view=world&keep=1");
-    expect(h).toEqual({ code: "MOD111", name: "Kitchen", character: "Trabolta", camera: "environment", engine: "browser", spot: "start-bar", view: "world", room: null, announce: null, camFeed: null, mic: null, voices: null, door: null, keys: null, bay: null });
+    expect(h).toEqual({ code: "MOD111", name: "Kitchen", character: "Trabolta", camera: "environment", engine: "browser", spot: "start-bar", view: "world", room: null, announce: null, camFeed: null, mic: null, voices: null, door: null, keys: null, bay: null, pause: null });
     expect(withoutSecrets("?code=MOD111&name=Kitchen&spot=start-bar&view=mirror&keep=1")).toBe("?keep=1");
     expect(withoutSecrets("?code=MOD111")).toBe("");
     // The TV (K-18): view=tv + the room it speaks for.
@@ -353,8 +353,47 @@ describe("wave 19 config: the voice link", () => {
       expect(none.voices).toBe(true);
       const tv = await provision("MOD", hintsFromSearch("?code=MOD&view=tv&mic=1&voices=0"));
       expect(tv).toMatchObject({ view: "tv", mic: true, voices: false });
+      // Wave 26 (V2): a new TV speaks at 0.92, the walls at 1; `pause=` rides through.
+      expect(tv.speed).toBe(TV_SPEED);
+      expect(none.speed).toBe(1);
+      expect(none.pause).toBe(1);
+      expect((await provision("MOD", hintsFromSearch("?code=MOD&pause=1.5"))).pause).toBe(1.5);
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("the pauses and the TV's pace (wave 26, V2)", () => {
+  it("pause= parses (0–3), is scrubbed from the bar, defaults to 1", () => {
+    expect(hintsFromSearch("?code=X&pause=2").pause).toBe(2);
+    expect(hintsFromSearch("?code=X&pause=0").pause).toBe(0);
+    expect(hintsFromSearch("?code=X&pause=7").pause).toBe(3);
+    expect(hintsFromSearch("?code=X&pause=-1").pause).toBe(0);
+    expect(hintsFromSearch("?code=X&pause=slow").pause).toBeNull();
+    expect(hintsFromSearch("?code=X&pause=").pause).toBeNull();
+    expect(hintsFromSearch("?code=X").pause).toBeNull();
+    expect(withoutSecrets("?code=X&pause=2&keep=1")).toBe("?keep=1");
+    expect(defaultConfig({ eventId: "e", token: "t" }).pause).toBe(1);
+  });
+  it("a saved config keeps its pause and its pace; junk reads as 1", () => {
+    const s = memory();
+    saveConfig(defaultConfig({ eventId: "evt", token: "t", view: "tv", speed: 1, pause: 1.5 }), s);
+    expect(loadConfig(s)).toMatchObject({ speed: 1, pause: 1.5 }); // a TV already set up keeps speed 1 (C14 sets it by hand)
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t" })); // an older stored shape
+    expect(loadConfig(s)).toMatchObject({ speed: 1, pause: 1 });
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", speed: "fast", pause: "long" }));
+    expect(loadConfig(s)).toMatchObject({ speed: 1, pause: 1 });
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", speed: 0.92, pause: 9 }));
+    expect(loadConfig(s)).toMatchObject({ speed: 0.92, pause: 3 });
+    expect([speedOf(0.1), speedOf(9), speedOf(Number.NaN)]).toEqual([0.5, 2, 1]);
+  });
+  it("a TV made by a link or the map starts at 0.92 unless a pace was chosen", () => {
+    expect(TV_SPEED).toBe(0.92);
+    const base = defaultConfig({ eventId: "e", token: "t" });
+    expect(withViewDefaults({ ...base, view: "tv" }).speed).toBe(0.92);
+    expect(withViewDefaults({ ...base, view: "tv", speed: 1.2 }).speed).toBe(1.2);
+    expect(withViewDefaults({ ...base, view: "face" }).speed).toBe(1);
+    expect(withViewDefaults({ ...base, view: "mirror" }).speed).toBe(1);
   });
 });

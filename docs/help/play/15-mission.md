@@ -2,7 +2,7 @@
 title: Your mission (home)
 section: Guest Guide
 order: 1.5
-keywords: mission, home, players, staff mission, score, faction tile, more to win, what do I do, what now, where do I go, now, objective, title bar, where, go to, you're here, checklist, progress, big buttons, your move, also now, free roam, who's here, tiles, desktop, paused, captured, check in, choose a side, taskbar, start, chats, pass, scan, tray, me, picture
+keywords: mission, home, score, faction tile, more to win, what do I do, what now, where do I go, now, objective, title bar, where, go to, you're here, checklist, progress, big buttons, bingo, call bingo, your move, also now, free roam, who's here, tiles, desktop, paused, captured, check in, choose a side, taskbar, start, chats, pass, scan, tray, me, picture
 ---
 
 Every screen of the app answers two questions at a glance: **what do I do
@@ -60,15 +60,17 @@ The window in the middle is one card, the story's NOW:
   card is waiting for your answer (a 📝 fact to file, a poll), it becomes the
   first big button: **📝 FILE A FACT · in Trabolta ›**. A button you can't
   take back takes two taps (the first arms it: *Tap again to fire*).
+  While you play Computer Bingo, one of them is **🎱 BINGO!**: when your
+  card is full, two taps call it for everyone, and someone comes to check
+  your card.
 
 ## Your move
 
 Under the card, **YOUR MOVE** lists what is waiting on you, newest first,
 one row each (at most four, then *+ n more in Chats ›*): a card someone
 dealt you (*📊 Poll from Clippy · in Clippy ›*), a question the story is
-asking you (its options right there), an invitation to join a side or a
-crew, someone asking you for coin, a reply in a private chat. Captured,
-your way out is here too (**🏃 Make a break for it**).
+asking you (its options right there), an invitation to join a side or
+one of the crews, someone asking you for coin, a reply in a private chat.
 
 ## The desktop tiles
 
@@ -91,14 +93,6 @@ call you.**, with **👥 WHO'S HERE (n)** to see who's in the room with you.
 
 ## On a wide screen
 
-In the editor's Run → Players, or a tablet held sideways, Mission (or Chats)
+On a tablet held sideways, Mission (or Chats)
 sits on the left and an open room on the right; with none open it says
 *Pick a chat, or follow your mission.*
-
-## The staff have a Mission too
-
-At *Trapped in the Internet* Clippy and the four Antivirus are **players**:
-their booths have the same Mission home, with their own objectives, their
-**score** (*⭐ 120 Points*), and a *NEW MISSION* pop-out each time their
-game starts. They play the night beside you. See
-[Performer station](performers.md).

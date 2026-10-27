@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { allowed } from "../src/cutscene/pick.ts";
-import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, VERDICT_COPY, bingoCues, bottleLandedCues, bingoTicks, carryAt, filingHold, freshTick, mingleAt } from "../src/cutscene/scenes/act1.tsx";
+import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, DARE_CHOSEN_MS, DARE_ORDER, FILE_NUDGES, FILING_MS, FILING_STEPS, SCENES, VERDICT_COPY, bingoCues, bottleLandedCues, bingoTicks, carryAt, filingHold, freshTick, mingleAt } from "../src/cutscene/scenes/act1.tsx";
 import { INTRO_HELLO, INTRO_LINE } from "../src/cutscene/kit/tv1-boot.tsx";
 import { VERDICT_SIGNALS } from "../src/cutscene/kit/tv1-time.ts";
 import type { SceneProps } from "../src/cutscene/types.ts";
@@ -64,7 +64,12 @@ describe("act 1 — the triggers are the story's", () => {
   });
 
   it("every beat is a story beat (`== Name`), every one reached without a subject", () => {
-    for (const b of ACT1_TRIGGERS.beats) expect(story.includes(`== ${b}\n`), b).toBe(true);
+    // Wave 26 (D1): `== Dare Chosen` is the story lane's, written in parallel
+    // (it merges first). Until its `when dare_scene:` rule is in the story
+    // this check waits for it; once it is there the check is strict.
+    const dareStory = /when dare_scene:/u.test(story);
+    for (const b of ACT1_TRIGGERS.beats) if (b !== "Dare Chosen" || dareStory) expect(story.includes(`== ${b}\n`), b).toBe(true);
+    if (dareStory) expect(story).toMatch(/when dare_scene:\n\s+-> Dare Chosen/u);
     // Each is a story-level rule's divert (no `for program` on the fire that reaches it), or the start beat.
     expect(story).toMatch(/when first_reinstallation:\n[\s\S]*?-> Corrupted Code/u);
     expect(story).toMatch(/-> Trabolta Introduction/u);
@@ -94,8 +99,9 @@ describe("act 1 — the triggers are the story's", () => {
     expect(VERDICT_COPY.dare.line("{program.name}")).toBe("{program.name} chose Dare. Programs choose Truth.");
     expect(story).toContain(`reason: "${VERDICT_COPY.refused.mark}"`);
     expect(story).toContain(`reason: "${VERDICT_COPY.dare.mark}"`);
-    // A phone's Dare closes the bottle with no press: what phoneDare reads.
-    expect(story).toMatch(/if index == 1:\n\s+set Night\.bottle_open = false\n\s+broadcast "~🎩/u);
+    // A phone's Dare closes the bottle with no press: what phoneDare reads
+    // (its lines, or since wave 26 D1 the shared `dare_taken`).
+    expect(story).toMatch(/if index == 1:\n\s+set Night\.bottle_open = false\n\s+(broadcast "~🎩|fire dare_taken)/u);
   });
 
   it("the first-moment / results presses the results card reads are admin cues", () => {
@@ -239,6 +245,20 @@ describe("act 1 — the filing window fits its slide", () => {
     // A director's early ⏱ while the slide is up: PENCILS DOWN under it.
     expect(draw("tv", 4_000_000, 70_000, true)).toContain("PENCILS DOWN");
   });
+
+  it("never states the judging rule (wave 26, G1): three in-fiction steps stamp where the rules did", () => {
+    const rule = /accept|symptom|sure|guess|confiden|accurate|wrong/iu;
+    expect(FILING_STEPS).toHaveLength(3); // the three-stamp timing stays
+    for (const s of FILING_STEPS) {
+      expect(s.text).not.toMatch(rule);
+      expect(s.ok).toBe(true);
+    }
+    for (const n of FILE_NUDGES) expect(n).not.toMatch(rule);
+    // Drawn: the steps are on the TV once stamped, and no rule is.
+    const html = draw("tv", 5_000_000, 6000);
+    for (const s of FILING_STEPS) expect(html).toContain(s.text.replace(/'/gu, "&#x27;"));
+    expect(html).not.toMatch(rule);
+  });
 });
 
 describe("act 1 — the bingo slide's owner line (wave 18b)", () => {
@@ -318,7 +338,7 @@ describe("act 1 — the bottle's verdict", () => {
   const at = 7_000_000;
   const landed: ScreenMoment = { seq: 60, at, kind: "signal", name: "bottle_landed", who: "Winamp", kept: false };
   it("each verdict moment draws its own picture with the pick's name", () => {
-    for (const [id, word] of [["truth_answered", "TRUTH ACCEPTED"], ["truth_refused", "REFUSED"], ["chose_dare", "DARE"]] as const) {
+    for (const [id, word] of [["truth_answered", "TRUTH ACCEPTED"], ["truth_refused", "REFUSED"], ["dare_chosen", "DARE"]] as const) {
       const scene = SCENES.find((s) => s.id === id)!;
       const html = renderToStaticMarkup(createElement(scene.tv!, props({ t: 5000, who: "Winamp", value: id })));
       expect(html, id).toContain(word);
@@ -328,6 +348,24 @@ describe("act 1 — the bottle's verdict", () => {
       expect(wall, id).toContain("Winamp");
     }
     expect(renderToStaticMarkup(createElement(SCENES.find((s) => s.id === "truth_answered")!.tv!, props({ t: 4000, who: "Winamp" })))).toContain("TRUTHCOIN");
+  });
+
+  it("a Dare plays his Dare Chosen beat (wave 26, D1): the dared program from the night, his order to the Antivirus", () => {
+    const scene = SCENES.find((s) => s.id === "dare_chosen")!;
+    expect(scene.when).toEqual([{ moment: "beat", name: "Dare Chosen" }]);
+    expect(scene.ms).toBe(DARE_CHOSEN_MS);
+    expect(scene.namesCharacter).toBe(true);
+    // The old signal scene is retired: one scene for both Dare paths.
+    expect(SCENES.some((s) => s.id === "chose_dare" || s.when.some((w) => "moment" in w && w.name === "chose_dare"))).toBe(false);
+    // A beat moment carries no `who`: the name is night.bottle_pick.
+    const state = fakeState({ now: at + 6000, night: { bottle_pick: "Winamp" } });
+    const html = renderToStaticMarkup(createElement(scene.tv!, props({ t: 6000, who: null, state, value: "Dare Chosen" })));
+    expect(html).toContain("🎩 DARE");
+    expect(html).toContain("Winamp");
+    expect(html).toContain(DARE_ORDER.mark("Winamp"));
+    expect(html).toContain(VERDICT_COPY.dare.line("Winamp")); // the story's minor broadcast, unchanged
+    const wall = renderToStaticMarkup(createElement(scene.wall!, props({ t: 6000, who: null, state, value: "Dare Chosen", target: "wall" })));
+    expect(wall).toContain("Winamp");
   });
 
   it("a Dare tapped on the phone (no press) shows on the bottle's slide once the bottle closes on its pick", () => {

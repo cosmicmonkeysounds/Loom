@@ -159,6 +159,12 @@ export function defectTargets(status: GuestView | null): string[] {
   return (status.factions ?? []).filter((f) => f !== status.faction);
 }
 
+/** Wave 26 (R1, C2): the server refused because this phone is locked
+ *  (`403 {"error":"locked"}`). The app shows the lock screen — never a toast. */
+export function lockedRefusal(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 403 && e.message === "locked";
+}
+
 /** How long a typed line waits for the server before the composer gives
  *  the Send button back (the words stay in the box). */
 export const SAY_TIMEOUT_MS = 15_000;
@@ -169,6 +175,7 @@ export const SAY_TIMEOUT_MS = 15_000;
  *  `null` for a session the app is dropping anyway (401, or the unknown-token
  *  404s), which explains itself on the join screen. */
 export function sayRefusalText(e: unknown): string | null {
+  if (lockedRefusal(e)) return null;
   if (e instanceof RequestTimeout) return "⚠️ No answer yet — check your connection. If your line doesn't show up in the room, send it again.";
   if (!(e instanceof ApiError)) return "⚠️ Not sent — check your connection and try again.";
   if (eventGone(e.status, e.message) || guestSessionDead(e.status, e.message) || performerSessionDead(e.status, e.message)) return null;
@@ -191,6 +198,9 @@ const NONE_OPENED: ReadonlySet<string> = new Set();
 export interface GuestSession {
   me: GuestId | null;
   status: GuestView | null;
+  /** Wave 26 (R1, C2): the phone is locked — the view says so, or a write
+   *  just came back `403 locked` (until the next snapshot). */
+  locked: boolean;
   connected: boolean;
   /** The backlog has loaded — the rooms list is real, not a placeholder. */
   ready: boolean;
@@ -361,6 +371,8 @@ export function useGuestSession(): GuestSession {
     return stored;
   });
   const [status, setStatus] = useState<GuestView | null>(null);
+  // Wave 26 (R1): a `403 locked` answer locks the screen until the next snapshot says.
+  const [locked403, setLocked403] = useState(false);
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const base = me ? `/e/${encodeURIComponent(me.eventId)}` : "";
@@ -383,7 +395,10 @@ export function useGuestSession(): GuestSession {
   const alertsRef = useRef<ReturnType<typeof useAlerts> | null>(null);
   const { typing, onTyping } = useTyping(me !== null ? { role: "guest" } : null);
   const { messages, connected } = useChatStream(url, {
-    onSnapshot: (v) => setStatus(v as GuestView),
+    onSnapshot: (v) => {
+      setStatus(v as GuestView);
+      setLocked403(false);
+    },
     onTyping,
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
@@ -425,6 +440,7 @@ export function useGuestSession(): GuestSession {
       } catch (e) {
         // Only explain a session we are dropping right now — never overwrite
         // the notice of one a `lifecycle` frame already dropped.
+        if (lockedRefusal(e)) setLocked403(true);
         if (e instanceof ApiError && me !== null) {
           if (eventGone(e.status, e.message)) dropSession(lifecycleNotice("ended", SessionRole.Guest));
           else if (guestSessionDead(e.status, e.message)) dropSession(lifecycleNotice("reset", SessionRole.Guest));
@@ -577,7 +593,7 @@ export function useGuestSession(): GuestSession {
       try {
         return await post("/api/guest/codex/share", { entry, to });
       } catch (e) {
-        const why = shareErrorText(e);
+        const why = lockedRefusal(e) ? null : shareErrorText(e);
         if (why !== null) alertsRef.current?.raise(why, { quiet: true });
         return null;
       }
@@ -592,7 +608,7 @@ export function useGuestSession(): GuestSession {
         return await post(`/api/guest/wallet/${sub}`, body);
       } catch (e) {
         if (e instanceof ApiError) {
-          alertsRef.current?.raise(e.message, { quiet: true });
+          if (!lockedRefusal(e)) alertsRef.current?.raise(e.message, { quiet: true });
           return null;
         }
         throw e;
@@ -635,7 +651,8 @@ export function useGuestSession(): GuestSession {
     // the Codex, where the room's own ⛔ row says so.
     void Promise.all([loadScanDone(), settled(redeem(code))]).then(
       ([m, a]) => {
-        if ("e" in a) return alertsRef.current?.raise(m.scanErrorNote(a.e, "unlock"), { quiet: true });
+        // A locked phone (403 locked) shows the lock screen, never a toast (C2).
+        if ("e" in a) return lockedRefusal(a.e) ? undefined : alertsRef.current?.raise(m.scanErrorNote(a.e, "unlock"), { quiet: true });
         const o = m.redeemOutcome(a.r);
         if ("done" in o) showScan(o.done);
         else setOpenCodex(true);
@@ -725,7 +742,8 @@ export function useGuestSession(): GuestSession {
     // a quiet banner says why.
     void Promise.all([loadScanDone(), settled(checkin(at))]).then(
       ([m, a]) => {
-        if ("e" in a) return alertsRef.current?.raise(m.scanErrorNote(a.e, "checkin"), { quiet: true });
+        // A locked phone (403 locked) shows the lock screen, never a toast (C2).
+        if ("e" in a) return lockedRefusal(a.e) ? undefined : alertsRef.current?.raise(m.scanErrorNote(a.e, "checkin"), { quiet: true });
         const o = m.checkinOutcome(a.r);
         if ("done" in o) showScan(o.done);
         else alertsRef.current?.raise(o.note, { quiet: true });
@@ -757,6 +775,7 @@ export function useGuestSession(): GuestSession {
   return {
     me,
     status,
+    locked: status?.locked === true || locked403,
     connected,
     ready,
     notice,

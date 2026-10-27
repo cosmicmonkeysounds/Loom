@@ -7,6 +7,10 @@
 //! The tray never takes the room over: it opens for a card you haven't seen
 //! yet, comes back folded once you have (a 📝 fact card re-dealt all through
 //! the hunt is the same card), and folds while you type in the composer.
+//! Wave 26 (P1): while a story menu is docked (`crowded`) a new card starts
+//! folded — the menu opens first — unless a receipt or Mission asked for it;
+//! it opens once the menu is answered. `shut` folds it from outside (the
+//! menu unfolding), `onOpenChange` tells the room whether it is open.
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { usePlayHost } from "../host.ts";
@@ -74,6 +78,9 @@ export function CardTray({
   focus,
   onFocus,
   composing = false,
+  crowded = false,
+  shut = 0,
+  onOpenChange,
 }: {
   /** The room's live cards, oldest first (`trayCards`). */
   cards: readonly ChatMessage[];
@@ -83,13 +90,18 @@ export function CardTray({
   onFocus: (seq: number | null) => void;
   /** The composer has focus: fold, so the conversation keeps the room. */
   composing?: boolean;
+  /** Wave 26 (P1): a story menu is docked — a new card waits folded. */
+  crowded?: boolean;
+  /** Wave 26 (P1): bumped to fold the tray from outside. */
+  shut?: number;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const host = usePlayHost();
   const seen = trayShown(host.crawl);
   // The newest card leads; a receipt's tap jumps to its card and opens it.
   const index = trayIndex(cards, focus);
   const card = cards[index];
-  const [open, setOpen] = useState(() => card !== undefined && !seen.has(trayCardKey(card)));
+  const [open, setOpen] = useState(() => card !== undefined && !seen.has(trayCardKey(card)) && (!crowded || focus !== null));
   useEffect(() => {
     if (focus !== null) setOpen(true);
   }, [focus]);
@@ -102,13 +114,26 @@ export function CardTray({
     if (composing) fold();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composing]);
+  // A bump of `shut` folds it; the count it mounted with never does (the
+  // counter lives on across rooms and trays: a new card, or a Mission jump,
+  // still opens after an earlier menu tap).
+  const shutSeen = useRef(shut);
+  useEffect(() => {
+    if (shut === shutSeen.current) return;
+    shutSeen.current = shut;
+    fold();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shut]);
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
   // A new card (not a re-deal of one you've seen) opens the tray again.
   const key = card !== undefined ? trayCardKey(card) : null;
   useEffect(() => {
-    if (key !== null && !seen.has(key) && !composing) setOpen(true);
+    if (key !== null && !seen.has(key) && !composing && !crowded) setOpen(true);
     // `composing` is read, not watched: typing never re-opens it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, seen]);
+  }, [key, seen, crowded]);
   useEffect(() => {
     if (open && card !== undefined) seen.add(trayCardKey(card));
   }, [open, card, seen]);

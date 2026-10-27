@@ -32,12 +32,14 @@ is on the director's card.
 
 The VPS runs **`w18b-1021`** (wave 18b Stage A + the tent laptop, which
 already includes wave 19). Master holds wave 18b Stage B and waves 20, 20b,
-21 and 22, all merged and **not shipped**. Verify what runs with
+21, 22, 23, 24, 25 and 26, all merged and **not shipped**. Wave 26 lands in
+its contract's C14 order (`docs/loom-w26-contract.md`): the server, the
+sync, the reload of every screen, then the Quest APK. Verify what runs with
 `ssh loom-vps 'tail ~/loom-ops/releases.log'`. Land it in this order:
 
 1. **Decide the sign-off.** Shipping carries every `// DRAFT` line of waves
-   18b, 20, 21 and 22 (`history/SIGNOFF-w18b.md`, `history/SIGNOFF-w20.md`,
-   `SIGNOFF-w21.md`).
+   18b, 20, 21 and 22 and every `DRAFT w26` line (`history/SIGNOFF-w18b.md`,
+   `history/SIGNOFF-w20.md`, `SIGNOFF-w21.md`, `SIGNOFF-w26.md`).
 2. **Check the preview's roster, in its own step:** `pnpm showctl roster`.
    If anyone is on, ask before shipping: a release restarts the server.
 3. **MacBook:** `scripts/ops/predeploy.sh --vr` (the full gate; it stamps
@@ -85,11 +87,13 @@ already includes wave 19). Master holds wave 18b Stage B and waves 20, 20b,
    speaker survey saved to the project into the repo's `audio.json` (the
    replace below overwrites the project's copy). Then
    `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show --replace-audio`.
-   Add `--replace-lights` if the project already holds a `lights.json`. The
-   maps are unchanged since `w18b-1021`, so no `--replace-maps`; if the
-   summary says the project's maps differ, run it again with
-   `--replace-maps` (a second reload, fine before doors). Never
-   `--no-reload` for these waves: the composition changed.
+   Add `--replace-lights` if the project already holds a `lights.json`.
+   **Add `--replace-maps`:** wave 26 changed both maps (Trabolta's heart,
+   the virus disk, the *MAINFRAME* rack label), and without it the
+   project's old maps win. First Download JSON any map edits saved to the
+   project and commit them into the repo's `house.json` /
+   `house.shed.json`. Never `--no-reload` for these waves: the composition
+   changed.
 9. **Restart every other non-ended event** (Run → Restart or Push draft).
 10. **MacBook, Trabolta:** `cd stagehand && uv run stagehand launchd restart --job agents`;
     then Run → Mind → **Reset**. `uv run stagehand check --config laptop.yaml --only agents`
@@ -107,7 +111,9 @@ already includes wave 19). Master holds wave 18b Stage B and waves 20, 20b,
     `uv run stagehand sounds placeholders --config trapped.macbook.yaml`;
     `uv run stagehand check --config trapped.macbook.yaml --only audio`
     (32 in / 30 out, the layout not moved);
-    `uv run stagehand launchd install --job audio --config trapped.macbook.yaml`.
+    `uv run stagehand launchd install --job audio --config trapped.macbook.yaml`
+    (already installed: `git pull`, then `uv run stagehand launchd restart
+    --job audio`, so the router is wave 26's and says *Anti Virus*).
     `uv run stagehand launchd status` then lists only `agents` and `audio`.
 12. **Desktop, the lights:** with Zigbee2MQTT up on the CC2652P and the
     `lights` task running (it must run before pairing), pair the bulb as
@@ -123,10 +129,16 @@ already includes wave 19). Master holds wave 18b Stage B and waves 20, 20b,
     `--kiosk`, grant the camera and the port, **calibrate the door in ⚙**
     (always after a reflash), check the patch bay's live table, relaunch in
     kiosk.
-14. **Reload every terminal, the TV and the tent laptop.** Touch each tablet
-    once (its 🎤 must not read *tap*).
-15. **Quest:** `reinstall/vr/tools/quest.sh build`, then `install`; allow
-    the microphone in the lobby.
+14. **Reload every terminal, the TV and the tent laptop.** Mandatory since
+    wave 26: an old bundle refuses the new maps and walks or shows its
+    bundled one. Check every device's build stamp on Run → Terminals
+    (`pnpm showctl doctor` too). Set the TV's ⚙ pace to **0.92×** (a TV set
+    up before keeps 1.00×; `tv-kiosk.ps1 -Setup` re-opens its link, which
+    sets it). Touch each tablet once (its 🎤 must not read *tap*).
+15. **Quest:** after the server ships, re-export and sideload:
+    `reinstall/vr/tools/quest.sh build`, then `install` (an old APK has no
+    void, heart or disk). Allow the microphone in the lobby, check the
+    lobby's build stamp, then HW-TENT-07.
 16. **The keypad:** set by hand to `facts.json` `door.code`; test from
     outside with the code and from inside with the handle and no code.
 17. **Door test:** a real open → shut → open shows 🚪 on Run → Terminals
@@ -138,6 +150,10 @@ already includes wave 19). Master holds wave 18b Stage B and waves 20, 20b,
     patch-bay watch card, the emergency card, Excel's and OpenOffice's
     sheets, every featured card, the Bingo card, and Combo A's two codex
     halves (the bay's layout changed in wave 22, and Combo A with it).
+    Wave 23: the badges (Run → Print sheet → Badges) and the cast cards.
+    Wave 26: Clippy, Task Manager, Norton, McAfee, Password Manager, CRA,
+    the director, the Installation Wizard and Microsoft Excel
+    (`SIGNOFF-w26.md`).
 
 ## 2. The morning reset (10:00)
 

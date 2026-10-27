@@ -9,14 +9,26 @@ describe("pickFeeds", () => {
   const fresh = new Set(["near", "far", "upstairs", "mid"]);
 
   it("fresh feeds on the player's floor within 12 m, nearest first", () => {
-    expect(pickFeeds(terms, fresh, [0, 0, 0])).toEqual(["near", "mid"]);
+    expect(pickFeeds(terms, fresh, [0, 0, 0], "r")).toEqual(["near", "mid"]);
     // From the top floor only the top floor's terminal.
-    expect(pickFeeds(terms, fresh, [0, 2.8, 0])).toEqual(["upstairs"]);
+    expect(pickFeeds(terms, fresh, [0, 2.8, 0], "r")).toEqual(["upstairs"]);
+  });
+
+  it("only the player's own (presence) room, never the tent's station; outside every room, none (wave 26, C7)", () => {
+    const rooms: TerminalSpot[] = [
+      { ...spot("here", 2, 1.3, 0), room: "hall" },
+      { ...spot("next-door", 1, 1.3, 0), room: "kitchen" },
+      { ...spot("tent", 1.5, 1.3, 0), room: "hall", view: "reinstall" },
+    ];
+    const all = new Set(rooms.map((t) => t.id));
+    expect(pickFeeds(rooms, all, [0, 0, 0], "hall")).toEqual(["here"]);
+    expect(pickFeeds(rooms, all, [0, 0, 0], "kitchen")).toEqual(["next-door"]);
+    expect(pickFeeds(rooms, all, [0, 0, 0], null)).toEqual([]);
   });
 
   it("caps at the nearest few", () => {
     const many = Array.from({ length: 9 }, (_, i) => spot(`t${i}`, i, 1.3, 0));
-    expect(pickFeeds(many, new Set(many.map((t) => t.id)), [0, 0, 0])).toEqual(["t0", "t1", "t2", "t3"].slice(0, CAM_MAX_FEEDS));
+    expect(pickFeeds(many, new Set(many.map((t) => t.id)), [0, 0, 0], "r")).toEqual(["t0", "t1", "t2", "t3"].slice(0, CAM_MAX_FEEDS));
   });
 });
 
@@ -41,7 +53,7 @@ function rig(opts: { list?: () => Response | Promise<Response>; frame?: (spot: s
     base: "/e/evt",
     token: "tok",
     sink: (s, src) => sunk.push([s, src]),
-    where: () => ({ terminals, at }),
+    where: () => ({ terminals, at, room: "r" }),
     fetcher,
     decode: async () => {
       const id = ++decodes;

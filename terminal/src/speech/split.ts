@@ -20,6 +20,8 @@ export function speakable(text: string): string {
       .replace(/https?:\/\/\S+/g, "link")
       // an ellipsis reads as a pause, not "dot dot dot"
       .replace(/\.{3,}|…/g, ", ")
+      // a spaced em / en dash too (wave 26, V2): many voices read none
+      .replace(/\s+[—–]\s+/g, ", ")
       // a run of the same punctuation
       .replace(/([!?]){2,}/g, "$1")
       // emoji + other symbols the voice would name aloud

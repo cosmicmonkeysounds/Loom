@@ -6,11 +6,11 @@
 //!
 //! Everything here is pure and shared: the codec, a streaming resampler, the
 //! level gate (+ the software half-duplex hold), the chunker, the jitter
-//! decision, and the one routing rule (`hearsTerminals` / `hearsPlayers`)
-//! the server applies. The Godot port (`reinstall/vr/net/voice_codec.gd`) is
+//! decision, and the one routing rule (`hearsTerminals` / `hearsPlayers`:
+//! same room only, wave 26) the server applies. The Godot port (`reinstall/vr/net/voice_codec.gd`) is
 //! pinned by `test/fixtures/voice-mulaw.json`. No `node:` imports.
 
-import { floorOf, locate } from "./locate.ts";
+import { locate } from "./locate.ts";
 import type { HouseMap, Vec3 } from "./types.ts";
 import { spotOf, voiceOn, type SpotRef } from "./voice-on.ts";
 
@@ -28,10 +28,6 @@ export const VOICE_MAX_BYTES = 8000;
 export const VOICE_MIN_BYTES = 160;
 /** The wire codec's name (the stream's `hello.codec`). */
 export const VOICE_CODEC = "mulaw";
-/** A player hears the terminals within this plan distance on their floor. */
-export const VOICE_TERMINAL_REACH_M = 12;
-/** A terminal hears the players within this plan distance of its spot, on its floor. */
-export const VOICE_PLAYER_REACH_M = 8;
 /** At most this many terminals per player (the nearest). */
 export const VOICE_MAX_TERMINALS = 4;
 /** At most this many players per terminal (the nearest). */
@@ -52,14 +48,6 @@ export const VOICE_BARGE_DBFS = -28;
 /** An incoming voice quieter than this gain is too faint to echo back into
  *  a headset's mic: it raises no gate (D5b). */
 export const VOICE_BARGE_MIN_GAIN = 0.2;
-/** Routing hysteresis: a source already heard stays heard until it is this
- *  much farther than the rule's reach (pose jitter never flaps a route). */
-export const VOICE_REACH_HYSTERESIS_M = 0.75;
-/** In the same room the gain fades from 1 to 0 over this last stretch of
- *  the reach, so the cut at the edge is never at full volume. */
-export const VOICE_EDGE_FADE_M = 1.5;
-/** A gain under this (after rounding) is not routed at all. */
-export const VOICE_MIN_GAIN = 0.05;
 /** The playback buffer each client aims for (the terminals use 250). */
 export const VOICE_JITTER_TARGET_MS = 200;
 /** More queued than this and the client skips ahead to the target. */
@@ -366,7 +354,9 @@ export function jitterPlan(bufferedMs: number, opts: JitterOptions = {}): Jitter
 
 // --- who hears whom --------------------------------------------------------------
 
-/** A player as the router sees them; a missing floor / room is `locate`d. */
+/** A player as the router sees them. `room` is the room they count as being
+ *  in — the server passes the presence room (`presenceRoom`, wave 26); a
+ *  missing `room` is `locate`d. `floor` is informational. */
 export interface VoicePlayer {
   p: Vec3;
   floor?: string;
@@ -383,40 +373,17 @@ export interface HeardPlayer {
   gain: number;
 }
 
-/**
- * The routing gain, rounded to 2 decimals: in the same room 1, fading to 0
- * over the last `VOICE_EDGE_FADE_M` of the reach (`(reach − d) / fade`);
- * else `0.5 · (1 − d / reach)`. Never below 0.
- */
-export function voiceGain(d: number, reach: number, sameRoom: boolean): number {
-  const g = sameRoom ? Math.min(1, (reach - d) / VOICE_EDGE_FADE_M) : 0.5 * (1 - d / reach);
-  return Math.max(0, Math.round(g * 100) / 100);
-}
-
 /** What the router asks of a rule besides the map and the listener. */
 export interface VoiceRouteOptions {
-  /** Ids already routed to this listener (spot ids for `hearsTerminals`,
-   *  sessions for `hearsPlayers`): each is judged `VOICE_REACH_HYSTERESIS_M`
-   *  nearer for staying in, never for its gain, and kept at least at
-   *  `VOICE_MIN_GAIN` while it stays. */
-  keep?: ReadonlySet<string>;
   /** Candidates allowed at all (`hearsTerminals`: the spots with a live
-   *  microphone on the stream); absent = every one. */
+   *  microphone on the stream; `hearsPlayers`: the sessions whose mic can be
+   *  heard); absent = every one. */
   only?: ReadonlySet<string>;
 }
 
-/** One candidate through the reach + gain rule, with the hysteresis; null = not heard. */
-function judged(id: string, d: number, reach: number, sameRoom: boolean, o: VoiceRouteOptions): number | null {
-  const kept = o.keep?.has(id) === true;
-  const dIn = kept ? Math.max(0, d - VOICE_REACH_HYSTERESIS_M) : d;
-  if (dIn > reach || voiceGain(dIn, reach, sameRoom) < VOICE_MIN_GAIN) return null;
-  return Math.max(VOICE_MIN_GAIN, voiceGain(d, reach, sameRoom));
-}
-
-function placed(house: HouseMap, who: VoicePlayer): { floor: string; room: string | null } {
-  if (who.floor !== undefined && who.room !== undefined) return { floor: who.floor, room: who.room };
-  const at = locate(house, who.p);
-  return { floor: who.floor ?? at.floor, room: who.room !== undefined ? who.room : at.room };
+/** The room the router judges a player by: theirs, else `locate`'s. */
+function roomOf(house: HouseMap, who: VoicePlayer): string | null {
+  return who.room !== undefined ? who.room : locate(house, who.p).room;
 }
 
 const plan = (a: Vec3, b: Vec3): number => Math.hypot(a[0] - b[0], a[2] - b[2]);
@@ -427,32 +394,32 @@ function nearest<T extends { d: number; id: string }>(rows: T[], most: number): 
 }
 
 /**
- * The terminals a player hears: voice on, on the player's floor (the floor
- * of the terminal's `pos`), within `VOICE_TERMINAL_REACH_M` plan metres, a
- * gain of at least `VOICE_MIN_GAIN` (`VoiceRouteOptions` adds the
- * hysteresis and the live-mic filter); the `VOICE_MAX_TERMINALS` nearest,
- * nearest first.
+ * The terminals a player hears (wave 26, R5): voice on, in the player's
+ * room (`room === player.room`; a player in no room hears none), never a
+ * `view: "reinstall"` terminal (the tent station is never linked, T3 —
+ * even with `voice: true` on the map), gain 1;
+ * the `VOICE_MAX_TERMINALS` nearest in plan, nearest first. No reach and
+ * nothing through a wall: the doorway hysteresis is the presence room's
+ * (`presenceRoom`). `opts.only` limits the candidates (the live mics).
  */
 export function hearsTerminals(house: HouseMap, player: VoicePlayer, opts: VoiceRouteOptions = {}): HeardTerminal[] {
-  const at = placed(house, player);
-  const reach = VOICE_TERMINAL_REACH_M;
-  const rows: Array<{ id: string; d: number; gain: number }> = [];
+  const room = roomOf(house, player);
+  if (room === null) return [];
+  const rows: Array<{ id: string; d: number }> = [];
   for (const t of house.terminals) {
-    if (!voiceOn(house, t) || floorOf(house, t.pos[1]) !== at.floor) continue;
+    if (t.room !== room || t.view === "reinstall" || !voiceOn(house, t)) continue;
     if (opts.only !== undefined && !opts.only.has(t.id)) continue;
-    const d = plan(t.pos, player.p);
-    const gain = judged(t.id, d, reach, at.room !== null && t.room === at.room, opts);
-    if (gain === null) continue;
-    rows.push({ id: t.id, d, gain });
+    rows.push({ id: t.id, d: plan(t.pos, player.p) });
   }
-  return nearest(rows, VOICE_MAX_TERMINALS).map((r) => ({ spot: r.id, gain: r.gain }));
+  return nearest(rows, VOICE_MAX_TERMINALS).map((r) => ({ spot: r.id, gain: 1 }));
 }
 
 /**
- * The players a terminal hears: voice on at the terminal, on its floor,
- * within `VOICE_PLAYER_REACH_M` plan metres of its `pos`, a gain of at
- * least `VOICE_MIN_GAIN` (`VoiceRouteOptions` adds the hysteresis and a
- * filter on sessions); the `VOICE_MAX_PLAYERS` nearest, nearest first.
+ * The players a terminal hears (wave 26, R5): voice on at the terminal
+ * (never a `view: "reinstall"` one, T3), the players whose room is the
+ * terminal's room, gain 1; the
+ * `VOICE_MAX_PLAYERS` nearest its `pos` in plan, nearest first.
+ * `opts.only` limits the sessions.
  */
 export function hearsPlayers(
   house: HouseMap,
@@ -461,18 +428,12 @@ export function hearsPlayers(
   opts: VoiceRouteOptions = {},
 ): HeardPlayer[] {
   const t = spotOf(house, spot);
-  if (!t || !voiceOn(house, t)) return [];
-  const floor = floorOf(house, t.pos[1]);
-  const reach = VOICE_PLAYER_REACH_M;
-  const rows: Array<{ id: string; d: number; gain: number }> = [];
+  if (!t || t.view === "reinstall" || !voiceOn(house, t)) return [];
+  const rows: Array<{ id: string; d: number }> = [];
   for (const pl of players) {
-    const at = placed(house, pl);
-    if (at.floor !== floor) continue;
+    if (roomOf(house, pl) !== t.room) continue;
     if (opts.only !== undefined && !opts.only.has(pl.session)) continue;
-    const d = plan(t.pos, pl.p);
-    const gain = judged(pl.session, d, reach, at.room !== null && t.room === at.room, opts);
-    if (gain === null) continue;
-    rows.push({ id: pl.session, d, gain });
+    rows.push({ id: pl.session, d: plan(t.pos, pl.p) });
   }
-  return nearest(rows, VOICE_MAX_PLAYERS).map((r) => ({ session: r.id, gain: r.gain }));
+  return nearest(rows, VOICE_MAX_PLAYERS).map((r) => ({ session: r.id, gain: 1 }));
 }

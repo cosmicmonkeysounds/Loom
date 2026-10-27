@@ -74,6 +74,17 @@ station_json() { # station_json <station> <name> <code> <server>
     "$(json_escape "$4")" "$(json_escape "$3")" "$(json_escape "$1")" "$(json_escape "$2")"
 }
 
+build_json() { # build_json <short sha> <UTC time> — the lobby's build stamp (config/build.json)
+  printf '{\n  "build": "%s",\n  "at": "%s"\n}\n' "$(json_escape "$1")" "$(json_escape "$2")"
+}
+
+build_sha() { # the project's short commit, "+" when the tree has changes, else "unknown"
+  local sha
+  sha="$(git -C "$project" rev-parse --short HEAD 2>/dev/null)" || { printf 'unknown'; return 0; }
+  if [[ -n "$(git -C "$project" status --porcelain -- . 2>/dev/null)" ]]; then sha="$sha+"; fi
+  printf '%s' "$sha"
+}
+
 valid_station() { [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$ ]]; }
 
 apk_name() { # apk_name <station|""> <debug 0|1>
@@ -270,6 +281,10 @@ stage_project() { # stage_project <station> <name> <code> <server>
     if [[ $DRY == 1 ]]; then echo "  (would bake $1 / $2 / $4 into $stage/config/station.json)"
     else station_json "$1" "$2" "$3" "$4" > "$stage/config/station.json"; fi
   fi
+  # The lobby's build stamp (wave 26): the staged copy only, never the project.
+  local sha when; sha="$(build_sha)"; when="$(date -u +%Y-%m-%dT%H:%MZ)"
+  if [[ $DRY == 1 ]]; then echo "  (would stamp build $sha into $stage/config/build.json)"
+  else build_json "$sha" "$when" > "$stage/config/build.json"; fi
 }
 
 cmd_build() {

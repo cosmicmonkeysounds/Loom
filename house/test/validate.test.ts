@@ -455,7 +455,7 @@ describe("king props and guarded doors", () => {
     for (const health of ["", "Night.", "Night king", ".hp", 3]) {
       refuses("two-rooms", (h) => h.props.push(king({ health } as never)), /^props\[0\] "king": health must be a world path \("Night\.king_hp"\)$/);
     }
-    refuses("two-rooms", (h) => h.props.push(king({ signals: { won: "" } })), /signals must be \{won\?, lost\?, drawn\?, hit\?, fallen\?\} of non-empty strings/);
+    refuses("two-rooms", (h) => h.props.push(king({ signals: { won: "" } })), /signals must be \{won\?, lost\?, drawn\?, hit\?, fallen\?, reached\?, taken\?\} of non-empty strings/);
     refuses("two-rooms", (h) => h.props.push(king({ signals: { hit: " " } })), /signals must be/);
     refuses("two-rooms", (h) => h.props.push(king({ signals: { tied: "x" } as never })), /signals must be/);
     refuses("two-rooms", (h) => h.props.push(king({ armed: { path: "", min: 1 } })), /armed must be \{path, min\}/);
@@ -464,9 +464,11 @@ describe("king props and guarded doors", () => {
     expect(p).toEqual([
       'props[0] "crate": "hp" is only for kind "king"',
       'props[0] "crate": "health" is only for kind "king"',
-      'props[0] "crate": "signals" is only for kind "king"',
       'props[0] "crate": "armed" is only for kind "king"',
+      'props[0] "crate": kind "box" takes no "signals"',
     ]);
+    // A heart's or a pickup's key is not a king's.
+    refuses("two-rooms", (h) => h.props.push(king({ signals: { reached: "x" } })), /^props\[0\] "king": "signals\.reached" is not for kind "king" \(won \/ lost \/ drawn \/ hit \/ fallen\)$/);
   });
 
   it("warns (never refuses) when the guard stands more than a metre from its door", () => {
@@ -486,5 +488,46 @@ describe("king props and guarded doors", () => {
     const door = show.doors.find((d) => d.guard !== undefined)!;
     expect(door.id).toBe("server-door");
     expect(guardWarnings(show)).toEqual([]);
+  });
+});
+
+describe("heart and pickup props (wave 26)", () => {
+  type P = HouseMap["props"][number];
+  const heart = (over: Partial<P> = {}): P => ({ id: "heart", room: "b", kind: "heart", pos: [5.5, 0, 1.5], size: [0.5, 1.4, 0.5], ...over });
+  const pickup = (over: Partial<P> = {}): P => ({ id: "disk", room: "a", kind: "pickup", item: "virus", pos: [1, 0, 2.5], size: [0.09, 0.003, 0.094], ...over });
+
+  it("accepts both, non-solid by default, with or without their own signal", () => {
+    expect(problems("two-rooms", (h) => h.props.push(heart(), pickup()))).toEqual([]);
+    expect(problems("two-rooms", (h) => h.props.push(heart({ signals: { reached: "custom heart" } }), pickup({ signals: { taken: "custom take" } })))).toEqual([]);
+    const h = raw("two-rooms");
+    h.props.push(heart(), pickup());
+    const v = validateHouse(h);
+    expect(v.house!.props.map((p) => p.kind)).toEqual(["heart", "pickup"]);
+    expect(v.house!.props[1]!.item).toBe("virus");
+  });
+
+  it("a pickup needs its item; nothing else takes one", () => {
+    refuses("two-rooms", (h) => h.props.push(pickup({ item: undefined })), /^props\[0\] "disk": a "pickup" needs an "item" \("virus"\)$/);
+    refuses("two-rooms", (h) => h.props.push(pickup({ item: " " })), /^props\[0\] "disk": item must be a non-empty string$/);
+    refuses("two-rooms", (h) => h.props.push(heart({ item: "virus" })), /^props\[0\] "heart": "item" is only for kind "pickup"$/);
+    refuses("two-rooms", (h) => h.props.push({ id: "crate", room: "a", kind: "box", pos: [1, 0, 1], size: [0.5, 0.5, 0.5], item: "virus" }), /"item" is only for kind "pickup"/);
+  });
+
+  it("checks the signal keys per kind", () => {
+    refuses("two-rooms", (h) => h.props.push(heart({ signals: { taken: "x" } })), /^props\[0\] "heart": "signals\.taken" is not for kind "heart" \(reached\)$/);
+    refuses("two-rooms", (h) => h.props.push(pickup({ signals: { reached: "x" } })), /^props\[0\] "disk": "signals\.reached" is not for kind "pickup" \(taken\)$/);
+    refuses("two-rooms", (h) => h.props.push(heart({ signals: { hit: "king hit" } })), /"signals\.hit" is not for kind "heart"/);
+    refuses("two-rooms", (h) => h.props.push(pickup({ signals: { taken: "" } })), /signals must be/);
+  });
+
+  it("refuses king fields and a label on both (an old game would draw the label)", () => {
+    refuses("two-rooms", (h) => h.props.push(heart({ hp: 3 })), /^props\[0\] "heart": "hp" is only for kind "king"$/);
+    refuses("two-rooms", (h) => h.props.push(pickup({ armed: { path: "a", min: 1 } })), /"armed" is only for kind "king"/);
+    refuses("two-rooms", (h) => h.props.push(heart({ label: "HEART" })), /^props\[0\] "heart": a "heart" carries no "label"$/);
+    refuses("two-rooms", (h) => h.props.push(pickup({ label: "" })), /^props\[0\] "disk": a "pickup" carries no "label"$/);
+  });
+
+  it("an unknown kind is still refused", () => {
+    refuses("two-rooms", (h) => h.props.push(heart({ kind: "ghost" as never })), /kind must be "box" \| "cylinder" \| "screen" \| "label" \| "king" \| "heart" \| "pickup"/);
   });
 });

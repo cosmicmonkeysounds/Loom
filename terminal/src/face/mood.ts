@@ -52,6 +52,19 @@ export const EXPRESSIONS: Record<Mood, Expression> = {
   dying: { browLift: -0.5, browTilt: 0.8, eyeOpen: 0.32, pupil: 0.75, mouthCurve: 0, mouthWidth: 0.85, gazeBias: { x: 0, y: 0.85 }, tint: -1 },
 };
 
+/** The brows' geometry (SVG units, before each brow's own translate):
+ *  `inner` / `outer` are the y of the end toward the nose / the temple.
+ *  SVG y points down, so the sign of `browTilt` flips here: angry (−1)
+ *  pulls the inner ends DOWN (a V), worried / alarmed (+) raises them. */
+export function browGeometry(browLift: number, browTilt: number): { left: string; right: string; inner: number; outer: number } {
+  const lift = -browLift * 9;
+  const tilt = -browTilt * 9;
+  const outer = -4 + lift - tilt * 0.2;
+  const mid = -12 + lift - tilt * 0.6;
+  const inner = lift + tilt;
+  return { left: `M -28 ${outer} Q -12 ${mid} 6 ${inner}`, right: `M 28 ${outer} Q 12 ${mid} -6 ${inner}`, inner, outer };
+}
+
 /** How long the `dying` face takes to drain to grey when no flash says (ms). */
 export const DYING_DRAIN_MS = 20_000;
 

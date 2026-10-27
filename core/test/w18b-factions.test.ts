@@ -417,6 +417,11 @@ describe("no `founding:` line: a wave 18 night is unchanged", () => {
     for (const e of got.log as Array<Record<string, unknown>>) if (e["type"] === "choicePrompted") delete e["id"];
     // Wave 21 (C8) added `CastSummary.player`: set aside as well.
     for (const c of (got.mod as { cast: Array<Record<string, unknown>> }).cast) delete c["player"];
+    // Wave 26 (C2) added `GuestView.locked` (false with no `lock:` header): set aside.
+    for (const g of got.guests as Array<Record<string, unknown>>) {
+      expect(g["locked"]).toBe(false);
+      delete g["locked"];
+    }
     expect(got.log).toEqual(want.log);
     expect(got.guests).toEqual(want.guests);
     expect(got.mod).toEqual(want.mod);

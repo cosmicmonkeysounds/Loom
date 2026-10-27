@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { QUIET_MOMENT_BEATS, QUIET_MOMENT_SIGNALS, ScreenWatch } from "../server/routes/screen.ts";
+import { GAME_MOMENT_SIGNALS, QUIET_MOMENT_BEATS, QUIET_MOMENT_SIGNALS, ScreenWatch } from "../server/routes/screen.ts";
 import { foldName } from "../src/parser/names.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 
@@ -129,5 +129,77 @@ describe("the quiet door (wave 20)", () => {
       ["signal", "wake_the_heart"],
       ["beat", "The Heart"],
     ]);
+  });
+});
+
+// Wave 26 (C6): the reinstallation games' moments (escape, heart, pickup)
+// are admin interactions the games fire through `/api/spatial/moment`. A
+// public `signal` moment would put "simulation heart reached" on every wall
+// (G2), so all three are quiet.
+const GAME_STORY = `# T
+
+ROLE Program
+  escapes: 0 to 99 = 0
+
+INTERACTION simulation escape attempt
+  label: 🚪 Escape
+  who: admin
+  act: Anytime
+  sequence: false
+
+INTERACTION simulation heart reached
+  label: ❤ Heart
+  who: admin
+  act: Anytime
+  sequence: false
+
+INTERACTION simulation pickup taken
+  label: 💾 Pickup
+  who: admin
+  act: Anytime
+  sequence: false
+
+INTERACTION wake_the_heart
+  label: 💓 The Heart
+  who: admin
+
+when simulation escape attempt for program:
+  set program.escapes += 1
+`;
+
+describe("the quiet game moments (wave 26)", () => {
+  it("lists the three game signals, folded, equal to @loom/house's when it exports them", async () => {
+    expect(GAME_MOMENT_SIGNALS).toEqual(["simulation escape attempt", "simulation heart reached", "simulation pickup taken"]);
+    for (const n of GAME_MOMENT_SIGNALS) expect(QUIET_MOMENT_SIGNALS).toContain(foldName(n));
+    // The house lane exports ESCAPE_SIGNAL / HEART_SIGNAL / PICKUP_SIGNAL in
+    // the same stage. Once house carries any of its wave 26 moment API (one
+    // of the three, or `propSignal`), all three must exist and match: a
+    // renamed or missing one fails here instead of passing unchecked.
+    const house = (await import("@loom/house")) as unknown as Record<string, unknown>;
+    const names = ["ESCAPE_SIGNAL", "HEART_SIGNAL", "PICKUP_SIGNAL"];
+    if ([...names, "propSignal"].some((k) => k in house)) {
+      for (const k of names) expect(typeof house[k], `@loom/house ${k}`).toBe("string");
+      expect(names.map((k) => house[k])).toEqual([...GAME_MOMENT_SIGNALS]);
+    }
+  });
+
+  it("an escape, a heart and a pickup make no moment on any screen", () => {
+    let t = 10_000;
+    const sim = Sim.fromSources(GAME_STORY);
+    sim.createPerson("g-1", "Bugdom", "Program");
+    const id = "g-1";
+    const w = new ScreenWatch({ now: () => t });
+    const look = () => w.poll(sim, { name: "Hall", spot: "hall", view: "auto", character: "" }, () => false).moments;
+    look(); // history
+    sim.signal("simulation escape attempt", id);
+    sim.signal("simulation heart reached", id, { prop: "server-heart" });
+    sim.signal("simulation pickup taken", id, { item: "virus", prop: "virus-disk" });
+    t = 11_000;
+    expect(look()).toEqual([]);
+    expect(sim.world.get("g-1.escapes")).toMatchObject({ kind: "number", value: 1 });
+    // Another admin cue still is one.
+    sim.signal("wake_the_heart");
+    t = 12_000;
+    expect(look().map((m) => [m.kind, m.name])).toEqual([["signal", "wake_the_heart"]]);
   });
 });

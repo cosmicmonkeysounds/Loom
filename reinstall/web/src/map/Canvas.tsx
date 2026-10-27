@@ -481,6 +481,12 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
                   ♔
                 </text>
               )}
+              {(p.kind === "heart" || p.kind === "pickup") && (
+                // Styled inline: styles.css (the web lane's) only knows the King's glyph.
+                <text x={p.pos[0]} y={p.pos[2]} className="prop-glyph" fontSize={0.32} textAnchor="middle" dominantBaseline="middle" fill={p.kind === "heart" ? "#c8102e" : "#2f7a10"} pointerEvents="none">
+                  {p.kind === "heart" ? "♥" : "💾"}
+                </text>
+              )}
               {(p.label !== undefined || p.kind === "label") && (
                 <text x={p.pos[0]} y={p.pos[2] + (p.kind === "king" ? 0.45 : 0)} className="prop-label">
                   {p.label ?? p.id}

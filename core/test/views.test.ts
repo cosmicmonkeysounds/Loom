@@ -462,7 +462,8 @@ describe("the show's cue sheet (K-21)", () => {
     }
     // Only the repeatable cues may carry `repeat: true` (the story marks them).
     const repeat = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.repeat === true).map((i) => i.id);
-    expect(repeat.every((id) => ["read_the_results", "spin_the_bottle", "zip_everyone_out"].includes(id))).toBe(true);
+    // Wave 26 (B2): ⏰ may fire again after ↩ Not a Bingo.
+    expect(repeat.every((id) => ["read_the_results", "spin_the_bottle", "zip_everyone_out", "bingo_time"].includes(id))).toBe(true);
   });
 
   it("marks the performer parts and which are held, streaming or not (T7-04)", () => {

@@ -46,6 +46,20 @@ export interface IdleContext {
   face: boolean;
   /** The Y2K countdown's seconds left, when it runs (a popup counts with it). */
   y2kLeft: number | null;
+  /** (wave 26, T1) The calm rate before the ad hijack: pool `early` or
+   *  `hunt` (every phase before `second_hunt_preview`). About one ad a
+   *  two-minute cycle (`CALM_PATTERN`), a popup every 18–39 s, at most
+   *  `CALM_MAX_POPUPS` up, no storms, no ad-like popups. Absent: not calm. */
+  calm?: boolean;
+  /** (wave 26, T3) A dimmed backdrop behind something else (the tent's scan
+   *  kiosk): no storm unless hijacked, at most `QUIET_MAX_POPUPS` window, no
+   *  TOUCH ME, no face layout. Absent: not quiet. */
+  quiet?: boolean;
+}
+
+/** Is a pool the calm part of the night, before the ad hijack (T1)? */
+export function calmPool(pool: PhasePool): boolean {
+  return pool === "early" || pool === "hunt";
 }
 
 /** Is the character introduced? Before the first answer, or while hidden: no. */
@@ -62,7 +76,7 @@ export function y2kLeftAt(state: Pick<ScreenState, "countdown" | "remaining" | "
   return Math.max(0, state.remaining - Math.floor(since / 1000));
 }
 
-export function idleContextOf(o: { state: ScreenState | null; asleep: boolean; character: string; target: "tv" | "wall"; scan: boolean; region?: "full" | "pane"; now?: number }): IdleContext {
+export function idleContextOf(o: { state: ScreenState | null; asleep: boolean; character: string; target: "tv" | "wall"; scan: boolean; region?: "full" | "pane"; now?: number; quiet?: boolean }): IdleContext {
   const s = o.state;
   const phase = s?.night.phase ?? "";
   const awake = s !== null && s.character !== null && s.character.awake && !s.attract;
@@ -76,8 +90,10 @@ export function idleContextOf(o: { state: ScreenState | null; asleep: boolean; c
     character: s?.character?.id ?? o.character,
     target: o.target,
     scan: o.scan,
-    face: o.target === "wall" && (o.region ?? "full") === "full",
+    face: o.target === "wall" && (o.region ?? "full") === "full" && o.quiet !== true,
     y2kLeft: y2kLeftAt(s, o.now ?? Date.now()),
+    calm: calmPool(pool),
+    quiet: o.quiet === true,
   };
 }
 
@@ -95,6 +111,9 @@ export interface Pooled {
   wall?: boolean;
   /** It names "Jean Trabolta" in the third person, as the owner (D19): from the Desktop on (`ownerMay`). */
   owner?: boolean;
+  /** (wave 26, T1) A window that is really an ad (WINNER!!!, a special
+   *  offer): never while the show is calm (before the hijack). */
+  adLike?: boolean;
 }
 
 /** May an `owner` item play at this phase? From the Desktop on: never at the doors (no phase, `arrivals`). */
@@ -108,6 +127,7 @@ export function eligible(item: Pooled, ctx: IdleContext): boolean {
   if (item.owner === true && !ownerMay(ctx.phase)) return false;
   if (item.scan === true && !ctx.scan) return false;
   if (item.wall === true && ctx.target !== "wall") return false;
+  if (item.adLike === true && ctx.calm === true) return false;
   if (item.pools !== undefined && !item.pools.includes(ctx.pool)) return false;
   if (item.phases !== undefined && !item.phases.includes(ctx.phase)) return false;
   return true;

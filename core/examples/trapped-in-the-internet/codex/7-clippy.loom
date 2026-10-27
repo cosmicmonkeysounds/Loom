@@ -46,6 +46,7 @@ CODEX Clippy Instructions 1
     - Send them off enthusiastically.
 
 // DRAFT w21 (reverses w18's B6): the hosts and the directors call every cue; Clippy runs the games in the room and plays for ⭐ Points.
+// DRAFT w26 (B1–B5): a guest may call BINGO from their phone; ↩ Not a Bingo; 🤐 names nobody; one round.
 CODEX Clippy Instructions 2
   title: CLIPPY INSTRUCTIONS - 2/X - COMPUTER BINGO RESULTS
   category: Missions
@@ -57,7 +58,9 @@ CODEX Clippy Instructions 2
     matched to each one. Save the
     centre square for last.
     - (App) Press 🎱 Bingo winner on each winner's card. Several winners
-    are fine.
+    are fine. A program may call BINGO from their own phone: their card
+    pops up for you. If their line doesn't hold, ↩ Not a Bingo, and Bingo
+    picks up with the time it had left.
     - When they reach the centre square, ask who said they would not agree
     to live under an AI's rules. Have them identify that program clearly.
     - Stay cheerful. Congratulate the winner, prepare to give them their
@@ -65,8 +68,11 @@ CODEX Clippy Instructions 2
     - (App) Press 🎀 Award a ribbon on the winner's card.
     - An Antivirus will interrupt and announce that the identified program
     needs to be reinstalled. Pause and let the Antivirus explain. If the
-    winner refuses to identify their match, follow the Antivirus's
-    direction about who needs reinstallation.
+    winner refuses to identify their match, nobody is reinstalled: press
+    🤐 (below).
+    - (App) The winner names nobody: 🤐 on the winner. The winner may even
+    name themselves: 🎯 on their own card. There is only one round: the
+    first 🎯 or 🤐 ends it.
     - (App) Norton presses 🛡 Send to the Internet on the program going to
     the Internet. You do not press it.
     - If nobody completed a Bingo, Task Manager will provide a card marked
@@ -100,17 +106,19 @@ CODEX Clippy Instructions 2
 // DRAFT w21 (reverses w18's B6): the hosts and the directors call every cue; Clippy runs the games in the room and plays for ⭐ Points.
 // DRAFT w18b (Q6, R20, R21): Trabolta reads the results on the TV; the
 // bottle comes after the third; "confident answers are accepted" is gone.
+// DRAFT w26 (G1: never say the rules out loud; D1: a Dare makes a scene)
 CODEX Clippy Instructions 3
   title: CLIPPY INSTRUCTIONS - 3/X - FIRST MOMENT OF TRUTH
   category: Missions
   text:
     - Welcome everyone back to the Desktop. Ask if anyone is able to
     answer the questions.
-    - The rules: every answer filed with Trabolta on the phone is judged.
-    An accurate answer is accepted. An answer filed one hundred percent
-    sure is accepted, even if it is nonsensical. An inaccurate answer
-    filed with normal or low confidence, or a clear guess, is a symptom of
-    corruption: the Antivirus escort them to the Internet.
+    - Never say the rules out loud: let the room learn them from the
+    results. Say only that every answer filed with Trabolta will be
+    judged, and that Trabolta knows best. (For you alone: an accurate
+    answer is accepted; one filed one hundred percent sure is accepted
+    even if it is nonsensical; an inaccurate answer filed with normal or
+    low confidence, or a clear guess, is a symptom of corruption.)
     - There is a two-minute last-chance window. Tell everyone to file
     anything they found with Trabolta NOW. A host closes it with ⏱ (or it
     closes itself at two minutes). A closed round never reopens.
@@ -127,8 +135,10 @@ CODEX Clippy Instructions 3
     a host spins 🍾 the bottle, about five spins (NEXT offers five; spin
     more if the room wants it). The bottle's program pops up on your phone. Trabolta names the program on the TV;
     their phone asks Truth or Dare.
-    - Dare: they are marked for reinstallation for not choosing Truth.
-    (App) If their phone is dead, 🎩 Chose Dare on their card does the same.
+    - Dare: they are marked for reinstallation for not choosing Truth, and
+    Trabolta makes a scene on the TV: he orders the Antivirus to take them
+    to the Internet. (App) If their phone is dead, 🎩 Chose Dare on their
+    card does the same.
     - Truth: Trabolta asks them a personal question on the TV. Make them
     answer it, in front of everyone. (App) 🗣 Truth answered on their card
     when they do; 🙅 Truth refused if they will not — a refusal is marked

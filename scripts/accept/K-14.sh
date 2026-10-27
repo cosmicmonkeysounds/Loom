@@ -53,7 +53,8 @@ Device check (≤ 10 min) — the oldest tablet from the K-02 tags:
      box with the live camera) and an empty Console (no red errors).
   3. Open https://app.mapsandducks.com/reinstall/  → the wizard loads, Console empty.
   4. On that tablet, in the Console:  !!document.createElement('canvas').getContext('webgl2')
-     - true  → set the terminal to view=world: the simulation draws in the face pane.
+     - true  → set a placed terminal (one with a spot) to view=world and walk a player into its
+               room in the game: the simulation draws in the face pane (only while someone is there).
      - false → any view shows the face (never "SIMULATION UNAVAILABLE — RETRYING…");
                setup shows "this tablet has no WebGL2"; a mirror shows a still notice.
   Desk rehearsal of the no-WebGL2 path (no tablet needed):

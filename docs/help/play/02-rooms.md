@@ -2,7 +2,7 @@
 title: Chats, rooms & spaces
 section: Guest Guide
 order: 2
-keywords: chats, chat log, rooms, spaces, channels, sidebar, open, private, faction, group, crew, dm, location, lobby, check in, check-in, checkin, sign, qr, scan, other rooms, your move, where you are, messages, yellow dot, dot, badge, archived, order, ticker, around the house, who's here, doesn't read replies
+keywords: chats, chat log, rooms, spaces, channels, sidebar, open, private, faction, group, crews, crew room, dm, location, lobby, check in, check-in, checkin, sign, qr, scan, other rooms, your move, where you are, messages, yellow dot, dot, badge, archived, order, ticker, around the house, who's here, doesn't read replies
 ---
 
 **💬 Chats** on the taskbar is every conversation you can see, in fixed

@@ -2,8 +2,8 @@
 //! of `app.tsx` so the tent laptop's terminal can mount it too, inside a
 //! shadow root — `terminal/src/reinstall/`):
 //!
-//!   choose   — **Play here** or **Send to <station>** (the King note, the
-//!              not-marked refusal, the no-WebGL2 line);
+//!   choose   — **Play here** or **Send to <station>** (the not-marked
+//!              refusal, the no-WebGL2 line; no King note since wave 26);
 //!   starting — the begin, then the dealt map;
 //!   sent     — parked for a headset: "put the headset on" (back by itself);
 //!   play     — the simulation (`game/Play.tsx`).
@@ -31,10 +31,10 @@ import { baseOf, type ReinstallConfig } from "./config.ts";
 import type { Sfx } from "./game/audio.ts";
 import { findFlash } from "./game/hud.ts";
 import { requestMic, stopStream } from "./game/voice.ts";
+import { primeSpeech } from "./game/lines.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
 import { beginErrorText, NOT_MARKED, programPitch, programState, programStatus, startingHeading, type Program } from "./program.ts";
 import { firstStep } from "./flow-state.ts";
-import { showHouse } from "./show-house.ts";
 import { Desktop, ProgressBar, Window, Wizard } from "./wizard.tsx";
 
 /** How the flow ended: the game's own exits, a park on a headset, Back on
@@ -49,9 +49,6 @@ export interface FlowStations {
   /** Poll again now (after a send). */
   refresh: () => void;
 }
-
-/** The bundled map has a King (a `king` prop): the choose screen says what to do about him. */
-export const HAS_KING = showHouse.props.some((p) => p.kind === "king");
 
 /** "Sent" goes back by itself after this long (ms). */
 export const SENT_BACK_MS = 9000;
@@ -138,6 +135,8 @@ export function ReinstallFlow({
 
   const playHere = async () => {
     sfx.resume();
+    // The tap is the gesture the device voice needs for the in-game lines (wave 26).
+    primeSpeech();
     if (config.voice) {
       releaseMic();
       mic.current = requestMic();
@@ -249,9 +248,8 @@ export function ReinstallFlow({
               </div>
             </div>
             <p className="program-pitch">{programPitch(state)}</p>
-            {HAS_KING && config.role !== "station" && state !== "favour" && (
-              <p className="king-note">Find Gerald. In the simulation the King guards the Server Room's door: every program may hit him once per reinstallation, and every hit weakens him for everyone.</p>
-            )}
+            {/* DRAFT w26 (G1): the King note is gone — the choose screen states no
+                hidden rule (who guards what, how often he may be hit). */}
             {!program.eligible && (
               <div className="w98-error not-marked" role="alert">
                 ⚠ {NOT_MARKED}

@@ -19,7 +19,7 @@ import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
 import { addDuckSpot, addTerminal, moveTo, patchRoom, patchTerminal, positionOf, provisionLink, removeThing, setHeight, setYaw, yawOf, type Selection } from "./edit.ts";
 import { metres, rectOf } from "./plan.ts";
-import { guardableDoors, guardedBy, isRoomlessView, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
+import { guardableDoors, guardedBy, isRoomlessView, momentSignalOf, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
 import { cascadeOf, cascadeText, deleteRoomText, deletesWith, patchFloor, patchStair, removeFloor, removeRoom, renameRoom, setRoomRect, stairCandidates } from "./structure.ts";
 import { fillYard, patchYard, yardClash, yardOf } from "./yards.ts";
 import { commitPending, isStep, parseNum } from "./tools.ts";
@@ -434,9 +434,10 @@ function PropInspector({ house, edit, commit, id, posFields, yawField, floorButt
     commit(patchProp(house, p.id, { size }));
   };
   const guarded = guardedBy(house, p.id);
+  const moment = momentSignalOf(p);
   return (
     <div className="inspect">
-      <h3>{p.kind === "king" ? "♔ King" : "▦ Prop"}</h3>
+      <h3>{p.kind === "king" ? "♔ King" : p.kind === "heart" ? "♥ Heart" : p.kind === "pickup" ? "💾 Pickup" : "▦ Prop"}</h3>
       <div className="kv">
         id <code>{p.id}</code> · in {roomName}
       </div>
@@ -463,7 +464,15 @@ function PropInspector({ house, edit, commit, id, posFields, yawField, floorButt
             }} /> solid
         </label>
       </div>
-      <CommitText label="label" value={p.label ?? ""} disabled={!edit} placeholder="(none)" onCommit={(v) => commit(patchProp(house, p.id, { label: v.trim() === "" ? undefined : v }))} />
+      {p.kind !== "heart" && p.kind !== "pickup" && (
+        <CommitText label="label" value={p.label ?? ""} disabled={!edit} placeholder="(none)" onCommit={(v) => commit(patchProp(house, p.id, { label: v.trim() === "" ? undefined : v }))} />
+      )}
+      {p.kind === "pickup" && (
+        <CommitText label="item (what it is)" value={p.item ?? ""} disabled={!edit} placeholder="virus" onCommit={(v) => commit(patchProp(house, p.id, { item: v.trim() === "" ? undefined : v.trim() }))} />
+      )}
+      {moment !== null && (
+        <CommitText label="signal (posted to the story)" value={moment.own ?? ""} disabled={!edit} placeholder={moment.fallback} onCommit={(v) => commit(patchProp(house, p.id, { signal: v }))} />
+      )}
       <div className="num-row">
         <Num label="W (x) m" value={p.size[0]} disabled={!edit} onChange={(v) => setSize(0, v)} />
         <Num label="H (y) m" value={p.size[1]} disabled={!edit} onChange={(v) => setSize(1, v)} />
@@ -496,6 +505,16 @@ function PropInspector({ house, edit, commit, id, posFields, yawField, floorButt
             {p.armed !== undefined ? ` · his chess counts while ${p.armed.path} ≥ ${p.armed.min}` : ""}. His guarded door stays shut until he falls. Health, signals and armed are edited in the JSON tab.
           </p>
         </>
+      )}
+      {p.kind === "heart" && (
+        <p className="muted small">
+          ♥ Shown in the games and on the terminals once the King has fallen (always, on a map without one). A program walking into its room posts {moment?.own ?? moment?.fallback}. It carries no label.
+        </p>
+      )}
+      {p.kind === "pickup" && (
+        <p className="muted small">
+          💾 A disk only the games draw (never the terminals or this preview). A program walking up to it posts {moment?.own ?? moment?.fallback} with its item. It carries no label.
+        </p>
       )}
       <p className="muted small">Drag it on the plan (⌥ no snap); the round handle, R / ⇧R or ⌥-wheel turns it; ⌘D duplicates.</p>
       {remove}

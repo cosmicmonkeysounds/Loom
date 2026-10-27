@@ -1,7 +1,7 @@
 //! The play screen: the canvas the `Game` renders into, the HUD over it
 //! (where you are, warmer / colder, the clock, a compass whose gold pip
-//! points along the trail), the King's shared bar with this visit's one ⚔
-//! hit, the twin sticks on a touch screen, the 🎤 voice link toggle (when
+//! points along the trail), this visit's one ⚔ hit while the King is near
+//! (wave 26, R3: his bar is drawn over his head only, never on the HUD), the twin sticks on a touch screen, the 🎤 voice link toggle (when
 //! this device has it on), and the celebration when Gerald is found.
 
 import { useEffect, useRef, useState } from "react";
@@ -12,11 +12,12 @@ import { ProgressBar, Window } from "../wizard.tsx";
 import type { Sfx } from "./audio.ts";
 import { Game, type GameEnd, type HudState, type KingHud } from "./engine.ts";
 import { earsLine, type VoiceHudState } from "./voice.ts";
-import { HIT_USED, KNEELING_LINE, STAGE_LINE } from "./fight.ts";
-import { bearingOf, findCopy, findOutcome, HEAT_LABEL, type FindOutcome } from "./hud.ts";
+import { HIT_USED } from "./fight.ts";
+import { bearingOf, FIND_GERALD, findCopy, findOutcome, HEAT_LABEL, kingClearsHud, kingStands, type FindOutcome } from "./hud.ts";
 import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
+import { Scare } from "./Scare.tsx";
 
 export type PlayExit = { kind: "found"; name: string; outcome: FindOutcome } | { kind: "over"; reason: string } | { kind: "idle" } | { kind: "quit" };
 
@@ -157,7 +158,9 @@ export function Play({
   };
 
   return (
-    <div className={`play${found !== null ? " celebrating" : ""}`}>
+    // A standing King in view clears the compass and the heat line, which
+    // would cover the bar over his head — his only display (wave 26, R3).
+    <div className={`play${found !== null ? " celebrating" : ""}${kingClearsHud(hud?.king) ? " king-in-view" : ""}`}>
       <div className="viewport">
         <canvas ref={canvas} />
       </div>
@@ -174,10 +177,17 @@ export function Play({
               </div>
               {hud.location !== null && <div className="hud-where-loc">{hud.location}</div>}
             </div>
-            <div className={`hud-heat heat-${hud.heat}`}>
-              <span>{HEAT_LABEL[hud.heat]}</span>
-              <small>{hud.heat === "steady" || hud.heat === "cold" ? `${Math.round(hud.distance)} m to Gerald` : "follow the golden arrows"}</small>
-            </div>
+            {hud.path ? (
+              <div className={`hud-heat heat-${hud.heat}`}>
+                <span>{HEAT_LABEL[hud.heat]}</span>
+                <small>{hud.heat === "steady" || hud.heat === "cold" ? `${Math.round(hud.distance)} m to Gerald` : "follow the golden arrows"}</small>
+              </div>
+            ) : (
+              // Before the path reveal (wave 26, R2): no label, no distance, no hint.
+              <div className="hud-heat heat-hidden">
+                <span>{FIND_GERALD}</span>
+              </div>
+            )}
             <div className="hud-right">
               {hud.voice !== null && <MicButton voice={hud.voice} onToggle={() => game.current?.toggleMute()} />}
               <div className="hud-clock w98-sunken" title="time in the simulation">
@@ -194,8 +204,16 @@ export function Play({
             {assignment.name} · {hud.others > 0 ? `${hud.others} other program${hud.others === 1 ? "" : "s"} in here` : "alone in the simulation"}
             {hud.voice !== null && earsLine(hud.voice) !== null && <> · {earsLine(hud.voice)}</>}
           </div>
-          {hud.king !== null && <KingBar king={hud.king} onHit={() => game.current?.hit()} />}
+          {hud.king !== null && <KingActions king={hud.king} onHit={() => game.current?.hit()} />}
           {hud.notice !== null && <div className="hud-notice">{hud.notice}</div>}
+          {hud.caption !== null && (
+            // A line said in-game (wave 26): the display text, never the pronounced
+            // one, and no speaker's name (he may not have been introduced yet).
+            // DRAFT w26 (R4, R6) UI copy: the caption window's title.
+            <Window title="Message" icon="💬" className={`hud-caption${showSticks ? " over-sticks" : ""}`}>
+              <p>{hud.caption.text}</p>
+            </Window>
+          )}
           {hud.idleLeft !== null && (
             <div className="hud-idle w98-raised">
               Still there? Move to stay connected — <b>{hud.idleLeft}</b>
@@ -204,13 +222,15 @@ export function Play({
         </>
       )}
 
+      {hud?.scare === true && found === null && <Scare />}
+
       {helpOpen && found === null && (
         <button className="help-card w98-raised" onClick={() => setHelpOpen(false)}>
           <span className="help-keys">
             {showSticks ? (
               <>
                 <b>Left thumb</b> walks · <b>right thumb</b> turns and looks
-                {hud?.king !== null && hud?.king !== undefined && (
+                {kingStands(hud?.king) && (
                   <>
                     {" "}
                     · <b>⚔</b> by the King
@@ -226,7 +246,7 @@ export function Play({
                     · <b>M</b> mutes the mic
                   </>
                 )}
-                {hud?.king !== null && hud?.king !== undefined && (
+                {kingStands(hud?.king) && (
                   <>
                     {" "}
                     · <b>Space</b> hits the King
@@ -235,7 +255,8 @@ export function Play({
               </>
             )}
           </span>
-          <span className="help-goal">Find Gerald, the golden duck. Follow the golden arrows.</span>
+          {/* DRAFT w26 (R2): no arrows promised — the trail draws after a minute. */}
+          <span className="help-goal">Find Gerald, the golden duck.</span>
         </button>
       )}
 
@@ -277,34 +298,24 @@ export function Play({
   );
 }
 
-/** The King's shared bar under the top HUD, and ⚔ HIT when he is near —
- *  spent (disabled, with the line why) once this visit has hit him. */
-function KingBar({ king, onHit }: { king: KingHud; onHit: () => void }) {
-  if (king.fallen) {
-    return (
-      <div className="hud-king open">
-        <span className="hud-king-label">♚ {king.label}</span>
-        <span className="hud-king-state">KNEELING · {king.meter}</span>
-        <small>{KNEELING_LINE}</small>
-      </div>
-    );
-  }
+/** ⚔ HIT while the King is near and standing — spent (disabled, with the
+ *  line why) once this visit has hit him. No bar, meter or stage line: the
+ *  bar over his head is the only King display (wave 26, R3). */
+function KingActions({ king, onHit }: { king: KingHud; onHit: () => void }) {
   const near = king.verdict !== "far" && king.verdict !== "floor";
+  if (king.fallen || !near) return null;
   return (
-    <>
-      <div className={`hud-king${near ? " near" : ""}`}>
-        <span className="hud-king-label">⚔ {king.label}</span>
-        <span className="hud-king-hearts">{king.meter}</span>
-        <small>{king.hitUsed ? HIT_USED : STAGE_LINE[king.stage]}</small>
-      </div>
-      {near && (
-        <div className="king-actions">
-          <button className="w98-button big default" onClick={onHit} disabled={king.hitUsed || king.hitting} aria-label="Hit the King">
-            ⚔ HIT
-          </button>
-        </div>
-      )}
-    </>
+    <div className="king-actions">
+      <button
+        className="w98-button big default"
+        onClick={onHit}
+        disabled={king.hitUsed || king.hitting}
+        title={king.hitUsed ? HIT_USED : undefined}
+        aria-label="Hit the King"
+      >
+        ⚔ HIT
+      </button>
+    </div>
   );
 }
 

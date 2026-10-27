@@ -22,6 +22,7 @@
 //! Trabolta lines around it.
 
 import { baseOf, type TerminalConfig } from "./config.ts";
+import type { SpeechEvent } from "./cutscene/speech-bus.ts";
 import type { ScreenState, ScreenVoice, VoiceLine } from "./screen.ts";
 
 /** Beats whose lines are sung in the QLab track: captioned, never spoken. */
@@ -105,8 +106,10 @@ export function readingMs(text: string): number {
 export interface LinePlayerIo {
   /** Put this line up as the caption (null clears it). */
   caption(line: TvLine | null): void;
-  /** Say it; resolves when it has been said (or was cut). */
-  speak(line: TvLine): Promise<void>;
+  /** Say it; resolves when it has been said (or was cut). `started` is
+   *  called when he begins it (its first sentence, after the queue's pause
+   *  between lines): a `captionOnStart` player captions it then. */
+  speak(line: TvLine, started: () => void): Promise<void>;
   /** Stop whatever is being said now (the pending `speak` must resolve). */
   cancel(): void;
   sleep(ms: number): Promise<void>;
@@ -124,7 +127,12 @@ export interface LinePlayerSpeech {
 
 /** Plays lines one at a time, in order. Only `speak` lines are reported to
  *  `speech`: a muted, song or text-only line is never spoken, so it counts
- *  as finished at once (its reading pause holds nothing back). */
+ *  as finished at once (its reading pause holds nothing back).
+ *
+ *  `captionOnStart` (the TV, wave 26 V1): a spoken line is captioned when
+ *  he starts saying it, not when it is handed to the voice, so the
+ *  caption never runs ahead of him through the pause between lines (the
+ *  last line stays up meanwhile). */
 export class LinePlayer {
   private pending: TvLine[] = [];
   private running = false;
@@ -132,6 +140,7 @@ export class LinePlayer {
   constructor(
     private readonly io: LinePlayerIo,
     private readonly speech: LinePlayerSpeech | null = null,
+    private readonly opts: { captionOnStart?: boolean } = {},
   ) {}
 
   get busy(): boolean {
@@ -158,10 +167,17 @@ export class LinePlayer {
     const g = this.gen;
     while (this.pending.length > 0 && g === this.gen) {
       const line = this.pending.shift()!;
-      this.io.caption(line);
+      const onStart = line.mode === "speak" && this.opts.captionOnStart === true;
+      if (!onStart) this.io.caption(line);
       if (line.mode === "speak") {
+        let captioned = !onStart;
+        const started = () => {
+          if (captioned || g !== this.gen) return;
+          captioned = true;
+          this.io.caption(line);
+        };
         try {
-          await this.io.speak(line);
+          await this.io.speak(line, started);
         } finally {
           if (g === this.gen) this.speech?.finished(line.seq);
         }
@@ -170,6 +186,64 @@ export class LinePlayer {
     this.running = false;
     if (this.pending.length > 0) void this.run();
     else this.io.idle();
+  }
+}
+
+/**
+ * (wave 26, V1) What the TV's voice does, told to the cutscenes (the speech
+ * bus, `cutscene/speech-bus.ts`) and to the poll (`RoomSpeech` → `sp=`).
+ * Pure: the clock (`now`, server ms) and the outlets are injected. Only
+ * `speak` lines are fed: a muted, song or text-only line never reaches it.
+ */
+export class TvSpeechFeed {
+  private readonly lines = new Map<number, { beat: string | null; texts: readonly string[]; done: boolean }>();
+  constructor(
+    private readonly io: {
+      emit(e: SpeechEvent): void;
+      /** The server's clock now. */
+      now(): number;
+      /** The room speech the poll reports (`sp=`). */
+      room?: { speaking(seq: number, chunk: number): void; spoke(seq: number): void } | null;
+    },
+  ) {}
+
+  /** The TV took in a line it will say: its sentences' caption texts
+   *  (`captionChunks`). A seq it already finished is a new line: room seqs
+   *  start over when the story restarts (Run → Restart, Go live), and
+   *  `planVoice` only hands a seq out again after such a resync. */
+  queued(line: Pick<TvLine, "seq" | "beat" | "mode">, texts: readonly string[]): void {
+    if (line.mode !== "speak" || texts.length === 0 || this.lines.get(line.seq)?.done === false) return;
+    this.lines.delete(line.seq);
+    this.lines.set(line.seq, { beat: line.beat, texts, done: false });
+    this.io.emit({ kind: "queued", seq: line.seq, beat: line.beat, chunks: texts.length, at: this.io.now() });
+    // Forget old lines (the bus keeps its own ring).
+    if (this.lines.size > 64) for (const k of [...this.lines.keys()].slice(0, this.lines.size - 64)) this.lines.delete(k);
+  }
+
+  /** Sentence `index` of line `seq` starts (the queue's `chunk`). */
+  chunk(seq: number, index: number): void {
+    const l = this.lines.get(seq);
+    if (l === undefined || l.done) return;
+    const at = this.io.now();
+    if (index === 0) this.io.emit({ kind: "line", seq, beat: l.beat, chunks: l.texts.length, texts: l.texts, at });
+    this.io.emit({ kind: "chunk", seq, index, at });
+    this.io.room?.speaking(seq, index);
+  }
+
+  /** Line `seq` is said (the queue's `done`), or was `cut`. */
+  done(seq: number, cut = false): void {
+    const l = this.lines.get(seq);
+    if (l === undefined || l.done) return;
+    l.done = true;
+    this.io.emit(cut ? { kind: "done", seq, at: this.io.now(), cut: true } : { kind: "done", seq, at: this.io.now() });
+    this.io.room?.spoke(seq);
+  }
+
+  /** Everything queued is dropped (the mute, attract, unmount): each line is
+   *  done, cut. Call it before stopping the queue, so its own `done` for the
+   *  line being said comes second (and is dropped). */
+  cancelAll(): void {
+    for (const seq of [...this.lines.keys()]) this.done(seq, true);
   }
 }
 

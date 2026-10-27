@@ -68,33 +68,35 @@ OBJECTIVE The Hand Jive
     Everyone to the Internet, the Antivirus too. The way out is together.
 
 // DRAFT for sign-off
+// DRAFT w26 (R1: the locked phone's card; no way to the Internet's room, the pass and Bathroom Mode; R2: no arrows promised)
 OBJECTIVE Find Gerald
   for: Program
   while: program.corrupted == true and Night.ended != true
   title: Find Gerald, the golden duck
-  go: The Internet
   text:
-    You are in the Internet. At the reinstallation station, scan your pass and walk the copy of the house: follow the golden arrows to Gerald. When he lays a golden egg you are reinstalled.
+    You are in the Internet. At the reinstallation station, scan your pass and walk the copy of the house to find Gerald. When he lays a golden egg you are reinstalled.
     - Reinstalled, done when program.corrupted != true
-  buttons: pass
+  buttons: pass, go to the bathroom, back from the bathroom
 
 // DRAFT for sign-off
+// DRAFT w26 (G1: no exemption stated up front)
 OBJECTIVE Bathroom Mode On
   for: Program
   while: program.afk == true
   title: Bathroom Mode is on
   text:
-    The Antivirus know you are away, and a summons excuses you. Tap Back from the bathroom when you return.
+    The Antivirus know you are away. Tap Back from the bathroom when you return.
   buttons: back from the bathroom
 
 // DRAFT for sign-off
+// DRAFT w26 (G1: the security check's twist is not promised)
 OBJECTIVE Finish Your Upload
   for: Program
   while: program.uploaded != true
   act: Doors
   title: Finish your upload
   text:
-    Follow the Uploader. Fail the security check. Leave one thing in the deposit box by the door.
+    Follow the Uploader through the security check. Leave one thing in the deposit box by the door.
     - Security check, done when program.captchas >= 2
     - Something left behind, done when program.left_behind != "none"
 
@@ -132,15 +134,18 @@ OBJECTIVE Go To The Desktop
     Everyone to the living room. Clippy welcomes the programs and introduces the hosts.
 
 // DRAFT for sign-off
+// DRAFT w26 (B1: a guest calls BINGO from here)
 OBJECTIVE Play Computer Bingo
   for: Program
-  while: Night.phase == "bingo" and program.cleared == true
+  while: Night.step == 2 and program.cleared == true
   act: B
   title: Computer Bingo: find a program for each square
   text:
-    Mingle. Find programs who match the squares on your card. A Bingo is one full line through the centre. 20 minutes, then back to the Desktop.
+    Mingle. Find programs who match the squares on your card. A Bingo is one full line through the centre: press 🎱 BINGO! and read it to Clippy. 20 minutes, then back to the Desktop.
+  buttons: call_bingo
 
 // DRAFT for sign-off
+// DRAFT w26 (G1: no hint about the centre square)
 OBJECTIVE Bingo Results
   for: Program
   while: Night.phase == "bingo_results" and program.cleared == true
@@ -148,7 +153,7 @@ OBJECTIVE Bingo Results
   title: The Bingo results: cheer for the winners
   go: The Desktop
   text:
-    Winners read their line, centre square last. Somebody did not agree to be ruled by AI.
+    Winners read their line, centre square last.
 
 // DRAFT for sign-off
 OBJECTIVE Meet Trabolta
@@ -175,6 +180,7 @@ OBJECTIVE Find Three Facts
   buttons: scan
 
 // DRAFT for sign-off
+// DRAFT w26 (G1: no judging rule up front)
 OBJECTIVE File Your Facts
   for: Program
   while: Night.filing_open == true and program.cleared == true
@@ -182,7 +188,7 @@ OBJECTIVE File Your Facts
   title: File your facts now: two minutes
   go: Trabolta
   text:
-    Use the 📝 card in Trabolta's thread. Filed at 100% sure is accepted, right or wrong. A guess is a symptom of corruption.
+    Use the 📝 card in Trabolta's thread. Filings close in two minutes; Trabolta reads every one.
     - Filed Q1, done when program.fact_h1 == true
     - Filed Q2, done when program.fact_h2 == true
     - Filed Q3, done when program.fact_h3 == true
@@ -223,6 +229,7 @@ OBJECTIVE The Hour
   buttons: scan
 
 // DRAFT w18
+// DRAFT w26 (G1: no exemption stated up front)
 OBJECTIVE Be At The Desktop
   for: Program
   while: Night.summons_open == true and program.cleared == true
@@ -230,7 +237,7 @@ OBJECTIVE Be At The Desktop
   title: Be at the Desktop: five minutes
   go: scan as "📷 Check in"
   text:
-    Go to the living room and scan the Desktop's check-in QR: that is your check-in. Late without Bathroom Mode means the Internet, and no Truth Pong.
+    Go to the living room and scan the Desktop's check-in QR: that is your check-in. The Antivirus are counting.
     - Checked in, done when program.summons_ok == true
 
 // DRAFT for sign-off
@@ -299,6 +306,7 @@ OBJECTIVE Where You Stand
 
 // w18b: founded factions; the count starts at the clock (DRAFT w18b)
 // DRAFT w18
+// DRAFT w26 (G1: no routes to the door code, no door-code row)
 OBJECTIVE The Y2K Hour
   for: Program
   while: (Night.phase == "y2k" or Night.phase == "majority") and program.cleared == true
@@ -306,10 +314,9 @@ OBJECTIVE The Y2K Hour
   title: Midnight is coming: the final facts
   go: sides
   text:
-    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download: join one on the Factions screen, found your own, or neither, and scan a program's pass to recruit them. The count starts now. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority.
+    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download: join one on the Factions screen, found your own, or neither, and scan a program's pass to recruit them. The count starts now.
     - Filed final Q1, done when program.fact_f1 == true
     - Filed final Q2, done when program.fact_f2 == true
-    - Have the door code, done when program.codex.the_door_code == true
   buttons: scan
 
 // DRAFT for sign-off
@@ -368,12 +375,13 @@ OBJECTIVE The Night Is Over
 // night, so this sits under every phase objective (it is NOW only in free
 // roam). The confrontation is the Antivirus' scan.
 // DRAFT w18
+// DRAFT w26 (G1: no safe place stated up front)
 OBJECTIVE You Are Marked
   for: Program
   while: program.marked == true and program.corrupted != true and Night.ended != true
   title: You are marked for reinstallation
   text:
-    Nothing is switched off: carry on with the night. The Antivirus are looking for you, and when one scans your pass you go to the Internet. Bathroom Mode still works: they wait outside.
+    Nothing is switched off: carry on with the night. The Antivirus are looking for you, and when one scans your pass you go to the Internet.
 
 // DRAFT for sign-off
 OBJECTIVE Explore The Computer
@@ -440,14 +448,17 @@ OBJECTIVE Door Duty
     The four of you share the door. A scan clears the program: through the Tube to the Desktop, ⭐ +5 each. 🙋 on an arrival tells the others you have them. Not uploaded yet: they finish first. Camera fails: type the id under the QR.
   buttons: scan
 
+// Wave 26 (B3): a 🤐 marks nobody and ends it (the quest reads "Nobody was
+// named. Patrol the Tube.").
 // DRAFT w18
+// DRAFT w26 (B3: 🤐 marks nobody)
 OBJECTIVE The Selected Antivirus
   for: Norton Anti-Virus
-  while: (Night.phase == "bingo" or Night.phase == "bingo_results") and Night.first_reinstall_done != true
+  while: (Night.phase == "bingo" or Night.phase == "bingo_results") and Night.first_reinstall_done != true and Night.bingo_none != true
   act: B
   title: You are the selected Antivirus
   text:
-    When the centre-square program is named (or the winner names nobody, or the framed program denies the card), stand at attention and interrupt. They light up on your Wanted board: scan their pass, then 🛡 and walk them through the Tube.
+    When the centre-square program is named (or the framed program denies the card), stand at attention and interrupt. They light up on your Wanted board: scan their pass, then 🛡 and walk them through the Tube. If the winner names nobody, Clippy presses 🤐: nobody is marked, so follow the room.
     - The first reinstallation, done when Night.first_reinstall_done == true
   buttons: scan
 
@@ -643,24 +654,52 @@ OBJECTIVE Welcome Everyone
   text:
     The fundraiser to restore the sign at Maps And Ducks. Jean Trabolta joins by video conference later. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, one line through the centre. A host starts 🎱 Bingo and calls ⏰ time: your booth pops up when your game is on.
 
+// Wave 26 (B1): a guest pressed 🎱 BINGO!: Clippy checks that line first.
+// It ends at the first 🎱 or 🎯 on anyone (↩ is dead from then on, so the
+// card would hold a dead button): PLAYER SELECT is her NOW again.
+// DRAFT w26 (B1: check the caller's line, or ↩ undo it)
+OBJECTIVE Check The Bingo
+  for: Clippy
+  while: Night.phase == "bingo_results" and Night.bingo_called == true and Night.bingo_checked != true and Night.bingo_winners < 1 and Night.bingo_named < 1 and Night.bingo_done != true
+  act: B
+  go: The Desktop
+  title: A program called BINGO: check their line
+  target: Night.bingo_caller
+  text:
+    They pressed BINGO on their phone. Hear their line, centre square last. It holds: 🎱 (⭐ +10). It doesn't: ↩ Not a Bingo, and Bingo picks up with the time it had left.
+  buttons: bingo_winner, not_a_bingo
+
 // The checklist is PLAYER SELECT's steps, in order (wave 18, A5): each
-// to-do leads with its button's glyph.
+// to-do leads with its button's glyph. Wave 26 (B3, B5): ④ 🤐 the winner
+// names nobody; the first 🎯 or 🤐 ends the round, and the objective.
 // DRAFT w18
 // DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
+// DRAFT w26 (B3, B5: 🤐 names nobody; one round)
 OBJECTIVE Celebrate The Winners
   for: Clippy
-  while: Night.phase == "bingo_results"
+  while: Night.phase == "bingo_results" and Night.bingo_done != true
   act: B
   go: The Desktop
   title: Celebrate the Bingo winners
   pick: program.location == "The Desktop" and program.cleared == true
   text:
-    Winners read their line, centre square last. Demand applause. Tap each winner (⭐ +10), give the ribbon (⭐ +5), then tap the program they name at the centre square (⭐ +10): Norton interrupts. You never press 🛡.
+    Winners read their line, centre square last. Demand applause. Tap each winner (⭐ +10), give the ribbon (⭐ +5), then tap the program they name at the centre square (⭐ +10): Norton interrupts. If they name nobody, 🤐 on the winner (⭐ +5). One round only. You never press 🛡.
     - 🎱 Who shouted BINGO?, done when Night.bingo_winners >= 1
     - 🎀 Give the winner the Bingo Ribbon, done when Night.bingo_ribbons >= 1
-    - 🎯 Who did the winner name?, done when Night.bingo_named >= 1
-    - The first reinstallation, done when Night.first_reinstall_done == true
-  buttons: bingo_winner, award_the_ribbon, named_at_bingo
+    - 🎯 Who did the winner name?, done when Night.bingo_named >= 1 or Night.bingo_none == true
+    - 🤐 Or they name nobody, done when Night.bingo_none == true
+  buttons: bingo_winner, award_the_ribbon, named_at_bingo, named_nobody
+
+// Wave 26 (B5): the round is over; Clippy's NOW until 🤖.
+// DRAFT w26 (B5: one round)
+OBJECTIVE After The Bingo
+  for: Clippy
+  while: Night.phase == "bingo_results" and Night.bingo_done == true
+  act: B
+  go: The Desktop
+  title: The Bingo is over: stay cheerful
+  text:
+    One round only. Let Norton do his job and reassure everyone; then a host introduces Trabolta.
 
 // DRAFT w18
 // DRAFT w21 (wave 21: points, no 🎤 bar, no All buttons…)
@@ -813,10 +852,28 @@ OBJECTIVE Summons Door
     Programs scan the Desktop's check-in QR. 📍 on Still missing only for a dead or lost phone. Bathroom Mode excuses them.
   buttons: check_in_at_desktop
 
+// Wave 26 (B2): Task Manager's results objective while a guest's call is
+// unchecked: ↩ on the caller (its own objective, so the button is live
+// whenever it is on the NOW card).
+// DRAFT w26 (B2: ↩ a false BINGO)
+OBJECTIVE A Program Called Bingo
+  for: Task Manager
+  while: Night.phase == "bingo_results" and Night.bingo_called == true and Night.bingo_winners < 1 and Night.bingo_named < 1 and Night.bingo_done != true
+  act: B
+  go: The Desktop
+  title: A program called BINGO: does the line hold?
+  target: Night.bingo_caller
+  text:
+    They pressed BINGO on their phone. If Clippy finds no line, ↩ Not a Bingo on their card: Bingo picks up with the time it had left.
+  buttons: not_a_bingo
+
+// Wave 26 (B2): never while a guest's call is open: settle it first (🎱 or
+// ↩), or a ↩ would leave a framed program behind.
 // DRAFT for sign-off
+// DRAFT w26 (B5: one round)
 OBJECTIVE The Fake Bingo Card
   for: Task Manager
-  while: Night.phase == "bingo_results" and Night.bingo_winners < 1
+  while: Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_called != true and Night.bingo_done != true
   act: B
   title: Nobody has a Bingo: hand Clippy the fake card
   text:

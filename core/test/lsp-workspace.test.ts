@@ -621,6 +621,8 @@ INTERACTION c
     expect(msgs("OBJECTIVE A\n  for: performers\n  buttons: wave\n")[0]).toMatch(/for no guest/);
     expect(msgs("OBJECTIVE A\n  for: performers\n  buttons: scan, mark, a, b, c\n")[0]).toMatch(/4 interaction buttons/);
     expect(msgs("OBJECTIVE A\n  for: everyone\n  buttons: pass, scan, wave, mark\n")).toEqual([]);
+    // A `pick:` objective (the booth's PLAYER SELECT) may name more than 3 (wave 26 B3).
+    expect(msgs("OBJECTIVE A\n  for: performers\n  pick: program.cleared == true\n  buttons: scan, mark, a, b, c\n").filter((m) => /interaction buttons/u.test(m))).toEqual([]);
   });
 
   it("L1209: an empty or unparsable while: / done when is an error", () => {

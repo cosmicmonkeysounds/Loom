@@ -3,8 +3,9 @@
 //! real room live on a window where it hangs (`HouseScene.setTerminalFeed`).
 //!
 //! The feed list (`GET /api/spatial/cams`) is polled every 2 s; the frame
-//! of each feed worth showing (`pickFeeds`: a fresh feed, on the player's
-//! floor, within 12 m, the 4 nearest) at ~3 fps, one request in flight per
+//! of each feed worth showing (`pickFeeds`: a fresh feed in the player's own
+//! presence room — wave 26, C7 / R5 — on their floor, within 12 m, the 4
+//! nearest; never the tent's station) at ~3 fps, one request in flight per
 //! feed, a repeat `x-cam-at` never decoded twice. A failing feed backs off
 //! (3 misses → 5 s); a 401 / 410 on the list stops everything (the session
 //! is over). Bitmaps are closed as soon as the scene has copied them.
@@ -28,14 +29,20 @@ export const CAM_MISSES = 3;
 export const CAM_REST_MS = 5000;
 
 /**
- * The terminals whose feeds are worth showing from `at` (house metres): a
- * fresh feed, within `CAM_FLOOR_DY` of the player's height and `CAM_NEAR_M`
- * on the plan, nearest first, at most `CAM_MAX_FEEDS`.
+ * The terminals whose feeds are worth showing from `at` (house metres) in
+ * presence room `room` (`@loom/house` `presenceRoom`): a fresh feed whose
+ * spot is in that very room (wave 26, C7: a terminal links to the Internet
+ * only while a player is in its room; the server refuses the rest anyway),
+ * never a `view: "reinstall"` spot (the tent, T3), within `CAM_FLOOR_DY` of
+ * the player's height and `CAM_NEAR_M` on the plan, nearest first, at most
+ * `CAM_MAX_FEEDS`. No room (outside, between rooms): none.
  */
-export function pickFeeds(terminals: readonly TerminalSpot[], fresh: ReadonlySet<string>, at: Vec3, max = CAM_MAX_FEEDS): string[] {
+export function pickFeeds(terminals: readonly TerminalSpot[], fresh: ReadonlySet<string>, at: Vec3, room: string | null, max = CAM_MAX_FEEDS): string[] {
   const near: Array<{ id: string; d: number }> = [];
+  if (room === null) return [];
   for (const t of terminals) {
     if (!fresh.has(t.id)) continue;
+    if (t.room !== room || t.view === "reinstall") continue;
     // The screen hangs ~1.3 m above its floor; the player's feet are on theirs.
     if (Math.abs(t.pos[1] - at[1] - 1.3) > CAM_FLOOR_DY) continue;
     const d = Math.hypot(t.pos[0] - at[0], t.pos[2] - at[2]);
@@ -52,8 +59,9 @@ export interface CamFeedOptions {
   token: string;
   /** Draw a frame on terminal `spot`'s window, or `null` for its screen look. */
   sink(spot: string, source: ImageBitmap | null): void;
-  /** The current map's terminals and the player's feet (house metres). */
-  where(): { terminals: readonly TerminalSpot[]; at: Vec3 };
+  /** The current map's terminals, the player's feet (house metres) and
+   *  their presence room (`presenceRoom`, null outside every room). */
+  where(): { terminals: readonly TerminalSpot[]; at: Vec3; room: string | null };
   fetcher?: typeof fetch;
   decode?: (blob: Blob) => Promise<ImageBitmap>;
   /** `setInterval` stand-in: returns the stop. */
@@ -155,8 +163,8 @@ export class CamFeeds {
   /** One frame round: drop feeds no longer worth showing, read the rest. */
   tick(): void {
     if (!this.active || this.dead) return;
-    const { terminals, at } = this.o.where();
-    const want = pickFeeds(terminals, this.fresh, at);
+    const { terminals, at, room } = this.o.where();
+    const want = pickFeeds(terminals, this.fresh, at, room);
     this.wanted = new Set(want);
     for (const spot of [...this.shown.keys()]) if (!this.wanted.has(spot)) this.clear(spot);
     const now = this.now();

@@ -13,7 +13,7 @@
 // The subpath, not the barrel: the voice codec stays in the lazy link chunk.
 import { voiceOn } from "@loom/house/voice-on";
 import type { HouseMap, TerminalSpot } from "@loom/house";
-import { DEFAULT_TV_ROOM, VIEWS, type TerminalConfig, type TerminalView, type UrlHints } from "./config.ts";
+import { DEFAULT_TV_ROOM, VIEWS, withViewDefaults, type TerminalConfig, type TerminalView, type UrlHints } from "./config.ts";
 
 /** What a map terminal sets on a tablet chosen as it. */
 export interface MapPick {
@@ -188,6 +188,16 @@ export function urlConfig(given: TerminalConfig, hints: Pick<UrlHints, "spot" | 
   const pick = pickOf(house, t);
   const next = hints.view !== null ? { ...given, spot: pick.spot, voiceLink: pick.voice } : applyPick(given, pick, { name: hints.name, view: null, room: hints.room });
   return { ...next, fromMap: agrees(next, pick) };
+}
+
+/**
+ * The config a provisioning link (`?code=…`) sets up: `urlConfig`, then the
+ * view's defaults (wave 26, I4). A spot-only TV link (`?code=…&spot=desktop-tv`)
+ * learns `view: "tv"` from the map, after `provision`, so the TV's 0.92 speed
+ * (`TV_SPEED`) is applied here too: re-opening the TV's link sets it.
+ */
+export function linkConfig(given: TerminalConfig, hints: Pick<UrlHints, "spot" | "name" | "view" | "room">, house: MapLike | null): TerminalConfig {
+  return withViewDefaults(urlConfig(given, hints, house));
 }
 
 /**

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { TERMINAL_VIEWS, validateHouse, type HouseMap } from "@loom/house";
 import showHouse from "../../core/examples/trapped-in-the-internet/house.json";
 import shedHouse from "../../core/examples/trapped-in-the-internet/house.shed.json";
-import { VIEWS, defaultConfig, type TerminalConfig } from "../src/config.ts";
-import { UNPLACED, applyPick, followMap, followVoice, groupTerminals, onlineBadge, pickOf, screenWords, urlConfig, withManual } from "../src/setup-map.ts";
+import { TV_SPEED, VIEWS, defaultConfig, type TerminalConfig } from "../src/config.ts";
+import { UNPLACED, applyPick, followMap, followVoice, groupTerminals, onlineBadge, linkConfig, pickOf, screenWords, urlConfig, withManual } from "../src/setup-map.ts";
 
 const load = (raw: unknown): HouseMap => {
   const v = validateHouse(raw);
@@ -86,6 +86,16 @@ describe("applyPick / urlConfig / followMap", () => {
     expect(urlConfig(given, { spot: "graphics-card", name: null, view: null, room: null }, show)).toMatchObject({ name: "Casino", view: "casino", room: "", fromMap: true });
     // The tent laptop's link: `?code=<mod>&spot=tent` alone makes it the station.
     expect(urlConfig(base({ spot: "tent", name: "Terminal" }), { spot: "tent", name: null, view: null, room: null }, show)).toMatchObject({ name: "Tent", view: "reinstall", room: "", fromMap: true });
+  });
+
+  it("a re-opened spot-only TV link speaks at TV_SPEED (w26 I4); other views keep 1", () => {
+    const tv = linkConfig(base({ spot: "desktop-tv", name: "Terminal" }), { spot: "desktop-tv", name: null, view: null, room: null }, show);
+    expect(tv).toMatchObject({ view: "tv", speed: TV_SPEED });
+    // urlConfig alone (the map's view arrives after provision) would leave it at 1.
+    expect(urlConfig(base({ spot: "desktop-tv", name: "Terminal" }), { spot: "desktop-tv", name: null, view: null, room: null }, show).speed).toBe(1);
+    expect(linkConfig(base({ spot: "graphics-card", name: "Terminal" }), { spot: "graphics-card", name: null, view: null, room: null }, show).speed).toBe(1);
+    // A speed already chosen on the config (not the default 1) is kept.
+    expect(linkConfig(base({ spot: "desktop-tv", speed: 1.1 }), { spot: "desktop-tv", name: null, view: null, room: null }, show).speed).toBe(1.1);
   });
 
   it("an old fleet link (it names a view) plays exactly as given, as before", () => {

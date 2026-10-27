@@ -45,7 +45,7 @@ import {
 import { disarmOnLeave } from "./arm.ts";
 import { ApiError, api } from "./client.ts";
 import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./ui/primitives.tsx";
-import { HelpSheet } from "./help.tsx";
+import { StaffHelpSheet } from "./help-staff.tsx";
 import { usePlayHost } from "./host.ts";
 import { eventGone } from "./lifecycle.ts";
 import { codeFromUrl, useDocumentTitle, useTheme, type ResolvedCode } from "./session/shared.ts";
@@ -1460,7 +1460,7 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
           </button>
         </Sheet>
       )}
-      {help && <HelpSheet role="performer" onClose={() => setHelp(false)} />}
+      {help && <StaffHelpSheet onClose={() => setHelp(false)} />}
     </div>
   );
 }

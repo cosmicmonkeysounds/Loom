@@ -5,10 +5,14 @@
 ## - **Lobby**: the dark room; the station waits for the tablet to send a
 ##   program, or the player picks one — the laser, the stick or the mouse
 ##   ([Lobby], [LobbyPointer]); a headset with no passcode sets itself up
-##   there first ([SetupPanel]).
+##   there first ([SetupPanel]). The MICROPHONE box says what the mic is
+##   doing, TEST MIC opens it for a level meter (no session), ASK AGAIN
+##   asks for the grant again, and the build stamp names the APK (wave 26).
 ## - **Playing**: spawned at the assignment's spawn in the virtual house;
 ##   poses stream to the server (feet, house frame); the golden trail is
-##   re-routed twice a second; within 0.9 m (plan) of the duck, on its
+##   hidden for the walk's first minute (wave 26 R2, `trail_delay`, the
+##   house's PATH_REVEAL_MS; the HUD just says "find Gerald"), then a notice
+##   and the trail, re-routed twice a second; within 0.9 m (plan) of the duck, on its
 ##   floor or within 1.2 m of its height (the server's rule), the game
 ##   claims it (`found`) — a "not near" answer just retries. A map edit that
 ##   moves the duck moves it here too ([signal LinkBase.duck_changed]); a
@@ -21,6 +25,27 @@
 ##   At 0 he kneels for everyone and his door is open: no leaf, no collider,
 ##   and the trail routes through it ([method HouseKing.trail_map]); a
 ##   director's restore stands him up and shuts it again.
+## - **The void** (wave 26, R4, [HouseEscape]): walking out through the
+##   house's exterior door is allowed; [constant HouseEscape.ESCAPE_M] past
+##   the walls on that floor (every time, before or after Trabolta's reveal)
+##   the walk freezes, one hard glitch flash ("FATAL EXCEPTION 0E", a
+##   noise, a haptic pulse — no camera motion) and an escape moment goes up
+##   ([method LinkBase.moment]); on its answer (at most [constant ESCAPE_WAIT]
+##   s) the player is back at the spawn, and the answer's lines are spoken
+##   and captioned ([Speech]). The teleport happens whatever the server says
+##   (closed doors, an old server, a refusal). Within
+##   [constant HouseEscape.ESCAPE_COOLDOWN_MS] of the last, the void puts
+##   them back quietly (no scare, no moment).
+## - **The heart** (R6, a `heart` prop): once the King has fallen it beats
+##   in the server room; the first time the program stands
+##   [constant HouseMoment.HEART_INSET_M] inside its room a heart moment
+##   goes up, and the answer's lines play over it. No lines (he isn't awake
+##   yet) → tried again on the next way in; "already" or the assignment's
+##   `heartHeard` → silent for the night.
+## - **The pickup** (R7, a `pickup` prop: the virus disk): within
+##   [constant HouseMoment.PICKUP_REACH_M] a pickup moment goes up; taken
+##   (or "already", or in the assignment's `picked`), the disk goes, a blip
+##   plays and the answer's lines are captioned.
 ## - **Found**: egg, flight, "REINSTALLATION COMPLETE" (or "YOU FOUND
 ##   GERALD" for a program that wasn't corrupted); then the session ends and
 ##   the lobby comes back.
@@ -29,6 +54,12 @@
 ##   the player are heard at their screens and the player on the terminals
 ##   near them; B / Y (M on the desktop rig) mutes the mic. Off with
 ##   `--voice false`, listen-only with `--mic false`; never offline.
+## - **Sound** (wave 26, R8, [Sfx]): Gerald quacks from where he sits (the
+##   web game's schedule), the find quacks and plays the fanfare (none for a
+##   refused find), the King's hit thuds, a refusal buzzes, his fall plays
+##   the fanfare, and a quiet hum runs while playing. Every one-shot holds
+##   the mic shut while it plays ([method VoiceLink.hold_for]); the hum
+##   pauses while a terminal listens, so no game sound reaches the mic.
 ##
 ## The session also ends when the server says so ([signal
 ## LinkBase.session_over]) or the headset comes off ([method presence_changed],
@@ -59,7 +90,7 @@ const NOTICE_TIME := 4.0
 const KING_NEAR := 1.5
 ## Beyond this the notice may be said again on the next approach.
 const KING_FAR := 3.0
-const KING_NOTICE := "Pull the trigger to hit the King — once per visit."
+const KING_NOTICE := "Pull the trigger to hit the King."  # DRAFT w26 (G1, C12)
 const KING_HIT := "You hit him."
 const KING_DOWN := "He is down: the cold door is open."
 ## A visit ends at the duck, not at Leave or a timeout: a re-scan before
@@ -68,12 +99,26 @@ const KING_USED := "You hit him this reinstallation. Find Gerald before you hit 
 const KING_CLOSER := "Get closer to the King and face him."
 const KING_STANDS := "The King stands again."
 const KING_PAUSED := "The show is paused."
+## The path reveal (R2): the notice when the trail comes on, and "Gerald
+## moved" before / after it.
+const TRAIL_NOTICE := "A golden trail flickers on."  # DRAFT w26 (R2, C12)
+const DUCK_MOVED := "Gerald moved."  # DRAFT w26 (R2, C12)
+const DUCK_MOVED_TRAIL := "Gerald moved — follow the arrows."
 ## `--autopilot` gives up (exit 1) after this many seconds.
 const AUTOPILOT_LIMIT := 180.0
 ## `--hit-king`: the autopilot stops this far (plan m) in front of the King,
 ## and waits at most this long (s) for the hit's answer.
 const AUTOPILOT_KING_STAND := 0.9
 const AUTOPILOT_KING_WAIT := 10.0
+## The lobby's TEST MIC closes itself after this long (s).
+const MIC_TEST_LIMIT := 30.0
+## The void's scare holds at least this long (s), and waits at most
+## [constant ESCAPE_WAIT] s for the server before the teleport.
+const ESCAPE_SCARE := 1.5
+const ESCAPE_WAIT := 3.0
+## A heart / pickup moment refused for now (closed doors, no pose yet, out
+## of reach, an error) is tried again after this long (s).
+const MOMENT_RETRY := 1.5
 
 var link: LinkBase
 var flow := GameFlow.new()
@@ -89,13 +134,46 @@ var cams: CamFeeds
 var hud: Hud
 ## The voice link ([VoiceLink]; running only while a session plays).
 var voice: VoiceLink
+## The game's own sounds ([Sfx]).
+var sfx: Sfx
+## The lines a game moment hands back, captioned and spoken ([Speech]).
+var speech: Speech
 ## The lobby's laser / mouse ([LobbyPointer]).
 var pointer: LobbyPointer
 
 var _trail_in := 0.0
+## Seconds of this walk played so far (PLAYING only), and when the trail
+## comes on ([member trail_revealed]); the minute restarts on a re-scan.
+var _played_for := 0.0
+var _reveal_after := HouseRoute.PATH_REVEAL_MS / 1000.0
+var trail_revealed := false
 var _cand_in := 0.0
+## Seconds to Gerald's next quack look ([method Sfx.quack_plan]).
+var _quack_in := Sfx.QUACK_FIRST
+## Seconds to the found screen's fanfare (< 0: none due).
+var _fanfare_in := -1.0
+## Seconds left on the lobby's TEST MIC.
+var _mic_test_left := 0.0
+## The void (R4): seconds into an escape (< 0: none), its answer once it
+## came (`{result, data}`), and when (wall-clock s, [member clock]) the last
+## escape went up (< 0: none this session). The cooldown counts from the
+## post in wall time, scare included, so it never outlasts the server's
+## (which starts a moment later): a walk-out it lets through gets the
+## server's word, `cooldown` or a charged escape.
+var _escape_t := -1.0
+var _escape_answer: Dictionary = {}
+var _escaped_at := -1.0
+## Heart / pickup prop id → `{kind, state, retry}`: state "" (ready) ·
+## "pending" · "wait" (retry after `retry` s) · "rearm" (again once the
+## player has left it) · "done" (nothing more this walk).
+var _props := {}
+## The prop each kind's moment is out for ("" = none).
+var _moment_out := {"heart": "", "pickup": ""}
 var _found_pending := false
 var _found_retry := 0.0
+## The "no" buzz went off for this approach to Gerald: a refused find
+## buzzes once, never again each retry (cleared on leaving him or a find).
+var _found_buzzed := false
 ## Why the headset counts as away → the wall-clock second the session ends
 ## ("presence", "focus", "paused"). Wall clock, not ticks: the monotonic
 ## clock stops while a Quest sleeps, and a sleeping headset runs no frames
@@ -170,12 +248,23 @@ func setup(l: LinkBase, xr: bool) -> void:
 	hud.name = "Hud"
 	player.camera.add_child(hud)
 	_setup_voice()
+	sfx = Sfx.new()
+	sfx.name = "Sfx"
+	add_child(sfx)
+	sfx.played.connect(func(_sound: String, ms: float) -> void: voice.hold_for(ms))
+	speech = Speech.new()
+	speech.name = "Speech"
+	speech.head = player.camera
+	speech.hold = voice.hold_for
+	add_child(speech)
 	# The lobby's picker: the laser / mouse, the ghosts' picture cache.
 	pointer = LobbyPointer.new()
 	pointer.name = "Pointer"
 	pointer.player = player
 	add_child(pointer)
 	lobby.attach(link, ghosts.avatars)
+	lobby.mic_action.connect(_on_mic_action)
+	lobby.set_build(StationConfig.build_stamp())
 	if bool(link.config.get("autopilot", false)):
 		autopilot = Autopilot.new()
 		player.read_input = false
@@ -195,6 +284,7 @@ func setup(l: LinkBase, xr: bool) -> void:
 	link.stream_frame.connect(ghosts.on_frame)
 	link.king_changed.connect(_on_king_changed)
 	link.king_hit_answered.connect(_on_king_hit_answered)
+	link.moment_answered.connect(_on_moment_answered)
 	ghosts.url_of = link.avatar_url
 
 	lobby.set_station(link.station_name())
@@ -221,6 +311,11 @@ func enter_lobby() -> void:
 	trail.clear()
 	cams.stop()
 	_stop_voice()
+	sfx.set_hum(false)
+	speech.stop()
+	_fanfare_in = -1.0
+	_escape_t = -1.0
+	_escape_answer = {}
 	ghosts.own_session = ""
 	# The head-locked HUD would float over the tiles: a notice still up
 	# (the session ended, …) moves to the lobby's own message line.
@@ -254,6 +349,7 @@ func _on_house(h: Dictionary, _version: String) -> void:
 		# its spawn, as the server re-seats them (`HouseLocate.standable`).
 		if not respawn_after_remap().is_empty():
 			_notice("The house was remapped — you're back at the start.")
+		_adopt_props()  # the session's own map may land after the assignment
 		_trail_in = 0.0
 		if autopilot != null:
 			autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
@@ -293,6 +389,8 @@ func _on_king_changed(k: Dictionary) -> void:
 	if flow.state != GameFlow.State.PLAYING:
 		return
 	_notice(KING_DOWN if fallen else KING_STANDS)
+	if fallen:
+		sfx.play("fanfare")
 	_trail_in = 0.0
 	if autopilot != null:
 		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
@@ -308,6 +406,7 @@ func _on_king_hit_answered(result: String, _data: Dictionary) -> void:
 	match result:
 		"ok":
 			king_hit_used = true
+			sfx.play("thud")
 			_notice(KING_DOWN if _king_fallen else KING_HIT)
 		"already hit":
 			king_hit_used = true
@@ -315,6 +414,7 @@ func _on_king_hit_answered(result: String, _data: Dictionary) -> void:
 		"fallen":
 			_notice(KING_DOWN)
 		"not near":
+			sfx.play("buzz")
 			_notice(KING_CLOSER)
 		"doors are closed":
 			_notice(KING_PAUSED)
@@ -348,7 +448,7 @@ func _on_duck_changed(d: Dictionary) -> void:
 	if autopilot != null:
 		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
 		print("autopilot: the duck moved to %s in %s — re-planned" % [d.get("id", ""), d.get("room", "")])
-	_notice("Gerald moved — follow the arrows.")
+	_notice(DUCK_MOVED_TRAIL if trail_revealed else DUCK_MOVED)
 
 
 ## The map may be the wrong one (`text`), or is right again (`""`).
@@ -373,6 +473,9 @@ func _on_assignment(a: Dictionary) -> void:
 		return
 	if not flow.assign(a):
 		return
+	# TEST MIC ends when a program starts — also with no voice link to take
+	# the mic over (offline, no token yet), where nothing else would close it.
+	voice.stop_test()
 	link.adopt(a)
 	var spawn: Dictionary = a["spawn"]
 	lobby.visible = false
@@ -387,7 +490,19 @@ func _on_assignment(a: Dictionary) -> void:
 	_trail_in = 0.0
 	_found_pending = false
 	_found_retry = 0.0
+	_found_buzzed = false
 	_notice_left = 0.0
+	_quack_in = Sfx.QUACK_FIRST
+	_fanfare_in = -1.0
+	sfx.set_hum(true)
+	_played_for = 0.0
+	_escape_t = -1.0
+	_escape_answer = {}
+	_escaped_at = -1.0
+	_reset_props(a)
+	_reveal_after = maxf(0.0, float(link.config.get("trail_delay", HouseRoute.PATH_REVEAL_MS / 1000.0)))
+	trail_revealed = false
+	trail.clear()
 	_king_said = false
 	# The server's assignment says when a re-scan is the visit that already
 	# hit him (missing on an old server = not yet).
@@ -420,6 +535,12 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 	_found_pending = false
 	if not ok:
 		_found_retry = FOUND_RETRY
+		# Once per approach, and only for a real "no": a pause, a parked
+		# session or a dropped request retries every second in silence (each
+		# buzz would also hold the mic shut).
+		if flow.state == GameFlow.State.PLAYING and not _found_buzzed and found_refusal_buzzes(data):
+			_found_buzzed = true
+			sfx.play("buzz")
 		return
 	# The server's `released` is the only proof of a release. A program still
 	# captured after the find (the reply's `captured`, else the state the
@@ -435,8 +556,11 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 		_autopilot_found = true
 		player.left_stick = Vector2.ZERO
 		print("autopilot: found — released=%s already=%s" % [data.get("released"), data.get("already")])
+	sfx.quack_at(duck.emitter, 1.0)
+	sfx.set_hum(false)
 	if not refused:
 		duck.celebrate()
+		_fanfare_in = Sfx.FANFARE_AFTER
 	trail.clear()
 	if released:
 		hud.show_found("REINSTALLATION COMPLETE", who)
@@ -445,6 +569,15 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 	else:
 		hud.show_found("YOU FOUND GERALD", who)
 	state_changed.emit(flow.state)
+
+
+## Whether a refused find's answer earns the "no" buzz: a real refusal
+## ("not near the duck", …) does; the doors being closed (a pause, before
+## doors), a session not started yet and a dropped request (no `error`)
+## are only "not now".
+static func found_refusal_buzzes(data: Dictionary) -> bool:
+	var error := str(data.get("error", ""))
+	return error != "" and not str(ServerLink.MOMENT_409.get(error, "")) in ["doors are closed", "parked"]
 
 
 func _on_session_over(reason: String) -> void:
@@ -571,6 +704,10 @@ func _process(delta: float) -> void:
 		GameFlow.State.PLAYING:
 			_tick_play(delta)
 		GameFlow.State.FOUND:
+			if _fanfare_in >= 0.0:
+				_fanfare_in -= delta
+				if _fanfare_in < 0.0:
+					sfx.play("fanfare")
 			if flow.tick(delta):
 				link.end_session("found")
 				enter_lobby()
@@ -591,32 +728,306 @@ func _tick_lobby(delta: float) -> void:
 	if _cand_in <= 0.0:
 		_cand_in = CANDIDATE_INTERVAL
 		link.request_candidates()
+	_tick_lobby_mic(delta)
+
+
+## The lobby's MICROPHONE box: its line, the TEST MIC meter, ASK AGAIN
+## while the grant is missing or refused.
+func _tick_lobby_mic(delta: float) -> void:
+	var voice_on := bool(link.config.get("voice", true))
+	var mic_on := bool(link.config.get("mic", true))
+	if voice.is_testing():
+		_mic_test_left -= delta
+		if _mic_test_left <= 0.0 or not (voice_on and mic_on):
+			voice.stop_test()
+	var grant := voice.permission_state()
+	lobby.set_mic(voice.lobby_text(voice_on, mic_on), voice.test_level(), voice.is_testing(), voice_on and mic_on, voice_on and mic_on and grant in ["unknown", "denied"])
+
+
+## TEST MIC (toggles the test) or ASK AGAIN, pressed in the lobby.
+func _on_mic_action(id: String) -> void:
+	if flow.state != GameFlow.State.LOBBY:
+		return
+	match id:
+		"mic:test":
+			if voice.is_testing():
+				voice.stop_test()
+			else:
+				voice.mic_enabled = bool(link.config.get("mic", true))
+				_mic_test_left = MIC_TEST_LIMIT
+				voice.start_test()
+		"mic:ask":
+			voice.ask_again()
 
 
 func _tick_play(delta: float) -> void:
 	var house := builder.house
 	var feet := builder.to_house(player.feet())
+	if _escape_t >= 0.0:
+		# Frozen in the void: no poses (the server judges the one outside),
+		# no trail, no claims — until the answer or the wait runs out.
+		_tick_escape(delta)
+		_tick_voice()
+		return
 	if autopilot != null:
 		_tick_autopilot(feet, delta)
 	link.send_pose(feet, builder.yaw_to_house(player.head_yaw()), player.head_pitch())
+	var out: Variant = HouseEscape.void_distance(house, feet)
+	if out != null and float(out) >= HouseEscape.ESCAPE_M:
+		_start_escape()
+		return
 	var here := HouseLocate.locate(house, feet)
 	hud.set_room(_room_label(here["room"]))
 	cams.tick(delta, house, feet, link.cams_url(), link.cams_token())
 	_tick_voice()
 
 	var duck_p: Array = flow.assignment["duck"]["pos"]
+	_tick_reveal(delta)
 	_trail_in -= delta
 	if _trail_in <= 0.0:
 		_trail_in = TRAIL_INTERVAL
 		if king_door_open and not _king_fallen and _update_route_house() and autopilot != null:
 			autopilot.plan(route_house, feet, _autopilot_goal())
-		refresh_trail(feet, duck_p)
+		if trail_revealed:
+			refresh_trail(feet, duck_p)
+		else:
+			trail.clear()
 
+	_tick_quack(feet, duck_p, delta)
+	_tick_props(house, feet, delta)
 	_found_retry -= delta
-	if not _found_pending and _found_retry <= 0.0 and is_at_duck(house, feet, duck_p):
+	var at_duck := is_at_duck(house, feet, duck_p)
+	if not at_duck:
+		_found_buzzed = false
+	if not _found_pending and _found_retry <= 0.0 and at_duck:
 		_found_pending = true
 		link.report_found()
 	_tick_king(house, feet, builder.yaw_to_house(player.head_yaw()))
+
+
+# --- the void (R4) ---
+
+
+## Whether an escape is under way (frozen, scared, waiting for the answer).
+func escaping() -> bool:
+	return _escape_t >= 0.0
+
+
+## The player is [constant HouseEscape.ESCAPE_M] into the void: scare them
+## and post the escape — or, within the cooldown, put them back quietly.
+func _start_escape() -> void:
+	trail.clear()
+	var now := float(clock.call())
+	if _escaped_at >= 0.0 and (now - _escaped_at) * 1000.0 < HouseEscape.ESCAPE_COOLDOWN_MS:
+		_back_to_spawn({})
+		return
+	_escaped_at = now
+	_escape_t = 0.0
+	_escape_answer = {}
+	player.locomotion_enabled = false
+	hud.scare(true)
+	sfx.play("scare")
+	player.pulse(0.8, 0.4)
+	link.moment("escape")
+	print("reinstall-vr: the void — %s escaped; back to the spawn" % flow.assignment.get("name", ""))
+
+
+func _tick_escape(delta: float) -> void:
+	_escape_t += delta
+	if (not _escape_answer.is_empty() and _escape_t >= ESCAPE_SCARE) or _escape_t >= ESCAPE_WAIT:
+		var answer := _escape_answer
+		_escape_t = -1.0
+		_escape_answer = {}
+		_back_to_spawn(answer)
+
+
+## Back at the spawn (the answer's, else the map's), the scare fading, the
+## walk going again; an answer's lines are spoken now.
+func _back_to_spawn(answer: Dictionary) -> void:
+	var data: Dictionary = answer.get("data", {})
+	var spawn: Variant = data.get("spawn") if answer.get("result") == "ok" else null
+	if not (spawn is Dictionary and (spawn as Dictionary).get("pos") is Array):
+		spawn = builder.house["spawn"]
+	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn.get("yaw", 0.0))))
+	hud.scare(false)
+	player.locomotion_enabled = true
+	_trail_in = 0.0
+	if autopilot != null:
+		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
+	if answer.get("result") == "ok":
+		_say_lines(data, null)
+
+
+## A moment's answer (C6): the escape's goes to the waiting scare (or, late,
+## straight to its lines); the heart's and the pickup's to their props.
+func _on_moment_answered(kind: String, result: String, data: Dictionary) -> void:
+	if flow.state != GameFlow.State.PLAYING:
+		return
+	match kind:
+		"escape":
+			if _escape_t >= 0.0:
+				_escape_answer = {"result": result, "data": data}
+			elif result == "ok":
+				_say_lines(data, null)  # landed after the wait: the lines still play
+		"heart", "pickup":
+			var id := str(_moment_out.get(kind, ""))
+			_moment_out[kind] = ""
+			if id == "" or not _props.has(id):
+				return
+			if kind == "heart":
+				_on_heart(id, result, data)
+			else:
+				_on_pickup(id, result, data)
+
+
+# --- the heart and the pickups (R6, R7) ---
+
+
+## A new walk: every heart and pickup ready again, except what the
+## assignment says this program already has (`heartHeard`, `picked`;
+## missing on an old server = none).
+func _reset_props(_a: Dictionary) -> void:
+	_props = {}
+	_moment_out = {"heart": "", "pickup": ""}
+	builder.clear_taken()
+	_adopt_props()
+
+
+## A state for every heart and pickup on the map now (the walk's map, or
+## the newer one the session fetched after the assignment), each read
+## against the assignment the first time it is seen.
+func _adopt_props() -> void:
+	for kind: String in ["heart", "pickup"]:
+		for p: Dictionary in HouseMoment.props_of(builder.house, kind):
+			_prop_state(str(p["id"]), kind)
+
+
+## The prop state for `id`, made the first time it is seen (a map edit may
+## add one): "done" when the walk's assignment says this program already
+## has it (`heartHeard`, `picked`; missing on an old server = none) — a
+## taken disk is hidden, so a re-scan never shows it.
+func _prop_state(id: String, kind: String) -> Dictionary:
+	if not _props.has(id):
+		var a := flow.assignment
+		var picked: Array = a.get("picked") if a.get("picked") is Array else []
+		var done: bool = (kind == "heart" and a.get("heartHeard") == true) or (kind == "pickup" and picked.has(id))
+		_props[id] = {"kind": kind, "state": "done" if done else "", "retry": 0.0}
+		if kind == "pickup" and done:
+			builder.set_pickup_taken(id, true)
+	return _props[id]
+
+
+## Reaching a shown heart, or a disk in reach, posts its moment — one per
+## kind at a time; a refused one waits, or re-arms once the player has left.
+func _tick_props(house: Dictionary, feet: Array, delta: float) -> void:
+	for kind: String in ["heart", "pickup"]:
+		for p: Dictionary in HouseMoment.props_of(house, kind):
+			var id := str(p["id"])
+			var st := _prop_state(id, kind)
+			if st["state"] == "done" or st["state"] == "pending":
+				continue
+			var there: bool
+			if kind == "heart":
+				there = builder.heart_shown(id) and HouseMoment.heart_reached(house, feet, p)
+			else:
+				there = builder.pickup_shown(id) and HouseMoment.pickup_reach(house, feet, p)
+			match st["state"]:
+				"rearm":
+					if not there:
+						st["state"] = ""
+					continue
+				"wait":
+					st["retry"] = float(st["retry"]) - delta
+					if float(st["retry"]) > 0.0:
+						continue
+					st["state"] = ""
+			if there and _moment_out[kind] == "":
+				st["state"] = "pending"
+				_moment_out[kind] = id
+				link.moment(kind, id)
+
+
+func _prop_wait(id: String) -> void:
+	_props[id]["state"] = "wait"
+	_props[id]["retry"] = MOMENT_RETRY
+
+
+## The heart's answer: his lines over it (done), none yet (again on the
+## next way in), already heard (silent), sealed / not there (the next way
+## in), a wait for closed doors or no pose yet; an old server or a bad prop: give up.
+func _on_heart(id: String, result: String, data: Dictionary) -> void:
+	match result:
+		"ok":
+			var lines: Variant = data.get("lines")
+			if lines is Array and not (lines as Array).is_empty():
+				_props[id]["state"] = "done"
+				_say_lines(data, builder.heart_node(id))
+			else:
+				_props[id]["state"] = "rearm"
+		"already", "not found", "no such prop", "bad moment", "offline":
+			_props[id]["state"] = "done"
+		"sealed", "not there":
+			_props[id]["state"] = "rearm"
+		_:
+			_prop_wait(id)
+
+
+## The pickup's answer: taken (the disk goes, a blip, the lines), already
+## taken (the disk goes), out of reach / closed doors / no pose yet (again
+## soon); an old server or a bad prop: give up (the disk stays).
+func _on_pickup(id: String, result: String, data: Dictionary) -> void:
+	match result:
+		"ok":
+			_props[id]["state"] = "done"
+			builder.set_pickup_taken(id, true)
+			sfx.play("pickup")
+			_say_lines(data, null)
+		"already":
+			_props[id]["state"] = "done"
+			builder.set_pickup_taken(id, true)
+		"not found", "no such prop", "bad moment", "offline":
+			_props[id]["state"] = "done"
+		_:
+			_prop_wait(id)
+
+
+## Heart / pickup `id`'s state ("" ready · pending · wait · rearm · done), for the tests.
+func prop_state(id: String) -> String:
+	return str(_props[id]["state"]) if _props.has(id) else ""
+
+
+## Speak and caption a moment's `lines` (`[{from, text}]`) — over `anchor`
+## when given, else head-locked.
+func _say_lines(data: Dictionary, anchor: Node3D) -> void:
+	var lines: Variant = data.get("lines")
+	if lines is Array and not (lines as Array).is_empty():
+		speech.say(lines, anchor)
+
+
+## The path reveal (R2): the trail stays off for the walk's first
+## [member _reveal_after] s of play, then comes on at once with a notice.
+## The autopilot routes itself and never waits.
+func _tick_reveal(delta: float) -> void:
+	_played_for += delta
+	if trail_revealed or (_played_for < _reveal_after and autopilot == null):
+		return
+	trail_revealed = true
+	_trail_in = 0.0
+	if _reveal_after > 0.0 and autopilot == null:
+		_notice(TRAIL_NOTICE)
+
+
+## Gerald quacks from where he sits, louder and more often the closer the
+## player is ([method Sfx.quack_plan], the web game's schedule).
+func _tick_quack(feet: Array, duck_p: Array, delta: float) -> void:
+	_quack_in -= delta
+	if _quack_in > 0.0:
+		return
+	var plan := Vector2(float(duck_p[0]) - float(feet[0]), float(duck_p[2]) - float(feet[2])).length()
+	var q := Sfx.quack_plan(plan, float(duck_p[1]) - float(feet[1]), randf())
+	_quack_in = float(q["next"])
+	if q["quack"]:
+		sfx.quack_at(duck.emitter, float(q["volume"]))
 
 
 # --- voice ---
@@ -642,6 +1053,9 @@ func _prime_mic() -> void:
 ## While playing: run the voice link on the session (unless `voice` is off),
 ## toggle the mic on a press of the mute button, keep the HUD's mic line.
 func _tick_voice() -> void:
+	# R8: while a terminal listens the mic may send, so no game sound plays —
+	# the hum (which holds nothing) pauses; one-shots hold the mic instead.
+	sfx.set_hum_ducked(voice.listen_on)
 	if not bool(link.config.get("voice", true)):
 		return
 	if not voice.is_running():
@@ -650,7 +1064,10 @@ func _tick_voice() -> void:
 	var pressed := player.mute_button and not _mute_was
 	_mute_was = player.mute_button
 	if pressed:
+		var was := voice.muted
 		voice.toggle_mute()
+		if voice.muted != was:
+			player.pulse(0.3, 0.05)  # felt: the press took
 	hud.set_mic(voice.hud_text(player.xr_active))
 
 
@@ -686,6 +1103,7 @@ func _tick_king(house: Dictionary, feet: Array, yaw: float) -> void:
 	elif king_hit_used:
 		_notice(KING_USED)
 	elif HouseKing.king_reach(house, feet, yaw, prop) != "ok":
+		sfx.play("buzz")
 		_notice(KING_CLOSER)
 	else:
 		_king_hit_pending = true

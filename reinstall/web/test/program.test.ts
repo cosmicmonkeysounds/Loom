@@ -20,7 +20,8 @@ describe("the wizard's program status", () => {
     // Wave 18: `marked` with no restriction; a director's hold that isn't a mark.
     expect(programState({ captured: false, restricted: false, eligible: true, marked: true })).toBe("marked");
     expect(programState({ captured: false, restricted: true, eligible: false, marked: false })).toBe("held");
-    expect(programStatus({ captured: false, restricted: true, eligible: false, marked: false }).heading).toBe("Program held by a director");
+    expect(programStatus({ captured: false, restricted: true, eligible: false, marked: false }).heading).toBe("Program held");
+    expect(programStatus({ captured: false, restricted: true, eligible: false, marked: false }).status).toBe("STATUS: RESTRICTED — held, not marked");
     expect(programState({ captured: false, restricted: false, eligible: false, marked: false })).toBe("healthy");
   });
 
@@ -89,7 +90,8 @@ describe("the wizard's program status", () => {
   });
 
   it("a refused begin says why: the server's 409 for an unmarked program is the wizard's not-marked line, never the closed-doors one", () => {
-    expect(NOT_MARKED).toBe("Not marked for reinstallation — until the night is over, only a marked program may play.");
+    // Wave 26 (C12, G2): the line states no rule.
+    expect(NOT_MARKED).toBe("Not marked for reinstallation.");
     expect(beginErrorText(409, NOT_MARKED_ERROR)).toBe(NOT_MARKED);
     expect(beginErrorText(409, "no scenario loaded")).toBe("The story isn't running yet — start the event first.");
     expect(beginErrorText(404, "unknown guest")).toBe("Unknown program — register on your phone first.");

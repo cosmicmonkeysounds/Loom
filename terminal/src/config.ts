@@ -71,7 +71,7 @@
 //! what gates the (opt-in) server voice. The passcode itself is never stored.
 
 import { api, ApiError } from "@loom/play/client.ts";
-import type { VoiceChoice } from "./speech/engine.ts";
+import { pauseOf, type VoiceChoice } from "./speech/engine.ts";
 
 export interface TerminalConfig {
   eventId: string;
@@ -93,8 +93,12 @@ export interface TerminalConfig {
   serverVoice: string;
   /** A voice URI / name for the browser engine (empty = best available). */
   browserVoice: string;
-  /** Pace, 0.5 – 2. */
+  /** Pace, 0.5 – 2. A newly provisioned TV starts at `TV_SPEED` (wave 26, V2). */
   speed: number;
+  /** (wave 26, V2) The pauses in his speech, a multiplier 0 – 3 of the
+   *  0.3 s between sentences and 0.7 s between lines (`speech/engine.ts`
+   *  `gapsFor`); 1 by default, `pause=` on a link, a slider in ⚙. */
+  pause: number;
   /** The tablet camera to use for the scanner. */
   camera: "user" | "environment";
   /** Where this screen hangs: a `house.terminals[].id` of the event's house
@@ -253,6 +257,7 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     serverVoice: "",
     browserVoice: "",
     speed: 1,
+    pause: 1,
     camera: "user",
     spot: "",
     view: "auto",
@@ -280,7 +285,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     const room = typeof c.room === "string" ? c.room : "";
     // `v` was an earlier wave 18b draft's marker: dropped, never trusted.
     const { v: _version, announceMode, ...stored } = c;
-    const loaded = defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, announceMode), camFeed: c.camFeed !== false, voices: c.voices !== false, voiceLink: c.voiceLink !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true, door: doorConfigOf(c.door), keys: c.keys !== false, bay: c.bay !== false });
+    const loaded = defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, speed: speedOf(c.speed), pause: pauseOf(c.pause), engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, announceMode), camFeed: c.camFeed !== false, voices: c.voices !== false, voiceLink: c.voiceLink !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true, door: doorConfigOf(c.door), keys: c.keys !== false, bay: c.bay !== false });
     if (typeof c.mic === "boolean") loaded.mic = c.mic;
     else delete loaded.mic;
     return loaded;
@@ -297,7 +302,34 @@ export function dropConfig(storage: Pick<Storage, "removeItem"> = localStorage):
   storage.removeItem(CONFIG_KEY);
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=&door=&keys=&bay=`). */
+/** (wave 26, V2) A newly provisioned TV's voice pace: a touch slower than
+ *  the walls'. Only a default: ⚙ still sets it, and a TV already set up
+ *  keeps its saved `speed` (`loadConfig`). */
+export const TV_SPEED = 0.92;
+
+/** A stored pace: 0.5 – 2, anything unreadable is 1. */
+export function speedOf(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.min(2, Math.max(0.5, v)) : 1;
+}
+
+/** `pause=` off a link: a number 0 – 3, null when absent or unreadable. */
+function pauseHint(v: string | null): number | null {
+  if (v === null || v.trim() === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? pauseOf(n) : null;
+}
+
+/**
+ * (wave 26, V2) A just-provisioned config's view defaults: a TV that the
+ * link or the map made `view=tv` starts at `TV_SPEED` unless a pace was
+ * already chosen (`speed` other than the default 1). Pure; the provisioning
+ * paths call it once, never `loadConfig` (a TV already set up keeps its own).
+ */
+export function withViewDefaults(c: TerminalConfig): TerminalConfig {
+  return c.view === "tv" && c.speed === 1 ? { ...c, speed: TV_SPEED } : c;
+}
+
+/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=&door=&keys=&bay=&pause=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -321,6 +353,8 @@ export interface UrlHints {
   keys?: boolean | null;
   /** `bay=0` / `1`: bridge the patch bay (null = not given: yes). */
   bay?: boolean | null;
+  /** (wave 26) `pause=<0–3>`: the pause multiplier (null = not given: 1). */
+  pause?: number | null;
 }
 
 /** A URL on/off switch: true / false, null = not given or unreadable. */
@@ -350,6 +384,7 @@ export function hintsFromSearch(search: string): UrlHints {
     door: ((v) => (v === "serial" || v === "sim" || v === "off" ? v : null))(p.get("door")),
     keys: flagOf(p.get("keys")),
     bay: flagOf(p.get("bay")),
+    pause: pauseHint(p.get("pause")),
   };
 }
 
@@ -371,6 +406,7 @@ export function withoutSecrets(search: string): string {
   p.delete("door");
   p.delete("keys");
   p.delete("bay");
+  p.delete("pause");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -398,9 +434,10 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     door: hints.door ?? "off",
     keys: hints.keys ?? true,
     bay: hints.bay ?? true,
+    pause: hints.pause ?? 1,
   });
   if (typeof hints.mic === "boolean") given.mic = hints.mic;
-  return given;
+  return withViewDefaults(given);
 }
 
 /** A moderator passcode traded for the event's access (setup's CONNECT

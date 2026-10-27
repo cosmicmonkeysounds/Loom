@@ -172,6 +172,7 @@ The house deals the programs files about **who they are connected to** (Codex �
 - **Doors → C1:** door scans, shared with the other three (the door stays yours, together, all night).
 - **C1, C2:** sweep everyone to the Desktop.
 - **V6 and the bottle:** the Wanted board fills up (guesses, Dares, refusals). Claim one, find them, scan their pass, 🛡, walk them through the Tube, come back for the next.
+- **A Dare** (DRAFT w26): Trabolta makes a scene on the TV and orders you to take the program to the Internet. Your booth pops *🚨 TRABOLTA'S ORDER*: find them and scan their pass (the scan is the confrontation), then 🛡.
 - **📥 → ⏳ (the hour):** broker the exchange. Be where the trading is.
 - **⏳ → 🚨:** the programs check themselves in with the Desktop's QR; your NOW card's *Still missing* list is who hasn't (📍 only for a dead phone). After 🚨 the late marks land on the Wanted board.
 - **🗜:** zip everyone out of the Internet (the tent, or the shed on a rain night).

@@ -24,7 +24,6 @@ import {
   mulawLinear,
   resample,
   rmsDbfs,
-  voiceGain,
   voiceOn,
 } from "../src/index.ts";
 import type { HouseMap, TerminalSpot, Vec3 } from "../src/index.ts";
@@ -335,39 +334,36 @@ describe("voiceOn (D7)", () => {
   });
 });
 
-describe("hearsTerminals", () => {
-  it("hears its own room at full gain, the next room by distance; never the spawn room, the off spot or another floor", () => {
+describe("hearsTerminals (wave 26: same room only)", () => {
+  it("hears its own room at full gain, never the next room, the spawn room, the off spot or another floor", () => {
     const h = testHouse();
-    const heard = hearsTerminals(h, { p: [5, 0, 6] });
-    // tb: d = √101 ≈ 10.05 → 0.5 · (1 − 10.05/12) = 0.0813 → 0.08.
-    expect(heard).toEqual([
-      { spot: "ta", gain: 1 },
-      { spot: "tb", gain: 0.08 },
-    ]);
+    // Before wave 26 tb (≈ 10 m, room B) came through the wall at 0.08.
+    expect(hearsTerminals(h, { p: [5, 0, 6] })).toEqual([{ spot: "ta", gain: 1 }]);
   });
 
-  it("drops a quiet gain and anything out of reach; the spawn room's voice: true is heard", () => {
+  it("no reach in the room, nothing through a wall; the spawn room's voice: true is heard", () => {
     const h = testHouse();
-    // In S at -5: ts-on is 1 m away, same room. ta is 10 m (0.08); tb 20 m (out).
-    expect(hearsTerminals(h, { p: [-5, 0, 5] })).toEqual([
-      { spot: "ts-on", gain: 1 },
-      { spot: "ta", gain: 0.08 },
+    // In S at -5: ts-on is 1 m away, same room; ta (10 m, room A) is no longer heard.
+    expect(hearsTerminals(h, { p: [-5, 0, 5] })).toEqual([{ spot: "ts-on", gain: 1 }]);
+    // Room B is 20 m long: both of its terminals at full gain, however far.
+    expect(hearsTerminals(h, { p: [29.9, 0, 5] })).toEqual([
+      { spot: "tb2", gain: 1 },
+      { spot: "tb", gain: 1 },
     ]);
-    // 10.9 m from ta: 0.5 · (1 − 10.9/12) = 0.0458 → 0.05, kept; 11 m → 0.04, dropped.
-    expect(voiceGain(10.9, 12, false)).toBe(0.05);
-    expect(voiceGain(11, 12, false)).toBe(0.04);
-    expect(hearsTerminals(h, { p: [5, 0, 15.9] })).toEqual([{ spot: "ta", gain: 0.05 }]);
+    // Out of every room: nothing (before: ta at 0.05 from 10.9 m).
+    expect(hearsTerminals(h, { p: [5, 0, 15.9] })).toEqual([]);
     expect(hearsTerminals(h, { p: [5, 0, 16] })).toEqual([]);
-    expect(hearsTerminals(h, { p: [5, 0, 17] })).toEqual([]);
   });
 
-  it("hears only its own floor (upstairs hears tc, at full gain in its room)", () => {
+  it("hears only the given (presence) room: upstairs hears tc", () => {
     const h = testHouse();
     expect(hearsTerminals(h, { p: [5, 3, 6] })).toEqual([{ spot: "tc", gain: 1 }]);
-    // A floor given by the caller wins over the pose.
+    // A room given by the caller wins over the pose (the server's presence room).
     expect(hearsTerminals(h, { p: [5, 0, 6], floor: "up", room: "c" })).toEqual([{ spot: "tc", gain: 1 }]);
-    // Nowhere (no room): no full gain; 6 m → 0.25.
-    expect(hearsTerminals(h, { p: [5, 0, 11] })).toEqual([{ spot: "ta", gain: 0.25 }]);
+    expect(hearsTerminals(h, { p: [10.5, 0, 6], room: "a" })).toEqual([{ spot: "ta", gain: 1 }]);
+    // Nowhere (no room): nothing (before: ta at 0.25 from 6 m).
+    expect(hearsTerminals(h, { p: [5, 0, 11] })).toEqual([]);
+    expect(hearsTerminals(h, { p: [5, 0, 6], room: null })).toEqual([]);
   });
 
   it("keeps the 4 nearest", () => {
@@ -380,74 +376,83 @@ describe("hearsTerminals", () => {
   });
 });
 
-describe("the edge of the reach (hysteresis + the same-room fade)", () => {
-  // tb sits at x 15 in room B (x 10…30): a player walks east inside B.
-  const at = (x: number) => [{ session: "p", p: [x, 0, 5] as Vec3 }];
-
-  it("fades a same-room gain over the last 1.5 m, so the cut is never at full volume", () => {
-    expect(voiceGain(6, 8, true)).toBe(1);
-    expect(voiceGain(7, 8, true)).toBe(0.67);
-    expect(voiceGain(8, 8, true)).toBe(0);
-    expect(voiceGain(9, 8, true)).toBe(0);
-    const h = testHouse();
-    expect(hearsPlayers(h, "tb", at(15 + 7))).toEqual([{ session: "p", gain: 0.67 }]);
-    expect(hearsPlayers(h, "tb", at(15 + 7.9))).toEqual([{ session: "p", gain: 0.07 }]);
-    expect(hearsPlayers(h, "tb", at(15 + 8.3))).toEqual([]);
+describe("the tent station (wave 26, T3: never linked, voice included)", () => {
+  it("a view: \"reinstall\" terminal is never heard and never hears, even with voice: true", () => {
+    const tent: TerminalSpot = { id: "tw", name: "Tent", room: "s", pos: [-4, 1.4, 5], yaw: 0, view: "reinstall", voice: true };
+    const h = testHouse([tent]);
+    expect(voiceOn(h, "tw")).toBe(true);
+    expect(hearsTerminals(h, { p: [-4, 0, 5] }).map((r) => r.spot)).toEqual(["ts-on"]);
+    expect(hearsPlayers(h, "tw", [{ session: "p", p: [-4, 0, 5] as Vec3 }])).toEqual([]);
+    expect(hearsPlayers(h, tent, [{ session: "p", p: [-4, 0, 5] as Vec3, room: "s" }])).toEqual([]);
+    // In another room, a reinstall view is excluded too.
+    const away = testHouse([{ ...tent, id: "tw-a", room: "a", pos: [4, 1.4, 5] }]);
+    expect(hearsTerminals(away, { p: [4, 0, 5] }).map((r) => r.spot)).toEqual(["ta"]);
   });
 
-  it("keeps a route already formed until about 0.75 m past the reach, at the floor gain", () => {
-    const h = testHouse();
-    const keep = new Set(["p"]);
-    expect(hearsPlayers(h, "tb", at(15 + 8.3), { keep })).toEqual([{ session: "p", gain: 0.05 }]);
-    // In the same room the floor gain is met up to reach − 0.075 m, so a kept
-    // route stays to 0.675 m past the reach.
-    expect(hearsPlayers(h, "tb", at(15 + 8.6), { keep })).toEqual([{ session: "p", gain: 0.05 }]);
-    expect(hearsPlayers(h, "tb", at(15 + 8.7), { keep })).toEqual([]);
-    // Jitter across the line never flaps a route that stays kept.
-    let kept = new Set<string>();
-    const seen: number[] = [];
-    for (const x of [7.6, 8.05, 7.98, 8.1, 7.95, 8.2]) {
-      const heard = hearsPlayers(h, "tb", at(15 + x), { keep: kept });
-      kept = new Set(heard.map((r) => r.session));
-      seen.push(heard.length);
+  it("on both show maps: the tent stays unlinked with its voice turned on", () => {
+    for (const path of [SHOW_HOUSE, SHOW_SHED_HOUSE]) {
+      const h = loadHouse(path);
+      const tent = h.terminals.find((t) => t.id === "tent")!;
+      expect(tent.view).toBe("reinstall");
+      tent.voice = true;
+      const p: Vec3 = [tent.pos[0], 0, tent.pos[2]];
+      expect(hearsTerminals(h, { p, room: tent.room }).some((r) => r.spot === "tent"), path).toBe(false);
+      expect(hearsPlayers(h, "tent", [{ session: "p", p, room: tent.room }]), path).toEqual([]);
     }
-    expect(seen).toEqual([1, 1, 1, 1, 1, 1]);
-  });
-
-  it("hearsTerminals keeps the same way, and `only` limits the candidates", () => {
-    const h = testHouse();
-    // From room B at x 25.9 tb2 is 0.9 m (1); tb is 10.9 m in the same room: past
-    // 12 − 1.5 it fades, (12 − 10.9) / 1.5 = 0.73.
-    expect(hearsTerminals(h, { p: [25.9, 0, 5] })).toEqual([
-      { spot: "tb2", gain: 1 },
-      { spot: "tb", gain: 0.73 },
-    ]);
-    expect(hearsTerminals(h, { p: [27.4, 0, 5] }).map((r) => r.spot)).toEqual(["tb2"]);
-    expect(hearsTerminals(h, { p: [27.4, 0, 5] }, { keep: new Set(["tb"]) })).toEqual([
-      { spot: "tb2", gain: 1 },
-      { spot: "tb", gain: 0.05 },
-    ]);
-    expect(hearsTerminals(h, { p: [25.9, 0, 5] }, { only: new Set(["tb"]) })).toEqual([{ spot: "tb", gain: 0.73 }]);
-    expect(hearsTerminals(h, { p: [25.9, 0, 5] }, { only: new Set() })).toEqual([]);
   });
 });
 
-describe("hearsPlayers", () => {
+describe("the doorway (wave 26: the presence room's hysteresis, no reach edge)", () => {
+  // tb sits at x 15 in room B (x 10…30): a player walks east inside B.
+  const at = (x: number) => [{ session: "p", p: [x, 0, 5] as Vec3 }];
+
+  it("a room's far end is full volume: no fade, no reach", () => {
+    const h = testHouse();
+    expect(hearsPlayers(h, "tb", at(15 + 7))).toEqual([{ session: "p", gain: 1 }]);
+    expect(hearsPlayers(h, "tb", at(15 + 14.9))).toEqual([{ session: "p", gain: 1 }]);
+    // Past B's east wall (x 30): out of the room, unheard.
+    expect(hearsPlayers(h, "tb", at(31))).toEqual([]);
+  });
+
+  it("a player standing in the doorway keeps the room the server says they are in", () => {
+    const h = testHouse();
+    // Just inside A at x 9.9 but the presence room still B (the hysteresis): B hears them, A not.
+    const inDoor = [{ session: "p", p: [9.9, 0, 5] as Vec3, room: "b" }];
+    expect(hearsPlayers(h, "tb", inDoor)).toEqual([{ session: "p", gain: 1 }]);
+    expect(hearsPlayers(h, "ta", inDoor)).toEqual([]);
+    // Jitter across the wall never flaps: the presence room is what the rule reads.
+    const seen = [9.95, 10.05, 9.98, 10.1, 9.9].map((x) => hearsPlayers(h, "tb", [{ session: "p", p: [x, 0, 5] as Vec3, room: "b" }]).length);
+    expect(seen).toEqual([1, 1, 1, 1, 1]);
+  });
+
+  it("`only` limits the candidates", () => {
+    const h = testHouse();
+    expect(hearsTerminals(h, { p: [25.9, 0, 5] })).toEqual([
+      { spot: "tb2", gain: 1 },
+      { spot: "tb", gain: 1 },
+    ]);
+    expect(hearsTerminals(h, { p: [25.9, 0, 5] }, { only: new Set(["tb"]) })).toEqual([{ spot: "tb", gain: 1 }]);
+    expect(hearsTerminals(h, { p: [25.9, 0, 5] }, { only: new Set() })).toEqual([]);
+    expect(hearsPlayers(h, "tb", at(20), { only: new Set(["q"]) })).toEqual([]);
+  });
+});
+
+describe("hearsPlayers (wave 26: same room only)", () => {
   const players = [
     { session: "p1", p: [5, 0, 6] as Vec3 }, // A, 1 m
     { session: "p2", p: [12, 0, 5] as Vec3 }, // B, 7 m
     { session: "p3", p: [5, 3, 5] as Vec3 }, // upstairs
-    { session: "p4", p: [14, 0, 5] as Vec3 }, // B, 9 m: out of reach
+    { session: "p4", p: [14, 0, 5] as Vec3 }, // B, 9 m
     { session: "p5", p: [-1, 0, 5] as Vec3 }, // S, 6 m
   ];
 
-  it("hears the players near the spot, on its floor, with the same gain rule at 8 m", () => {
+  it("hears the players in the spot's room, at full gain", () => {
     const h = testHouse();
-    // p2: 0.5 · (1 − 7/8) = 0.0625 → 0.06; p5: 0.5 · (1 − 6/8) = 0.125 → 0.13 (rounded half up).
-    expect(hearsPlayers(h, "ta", players)).toEqual([
-      { session: "p1", gain: 1 },
-      { session: "p5", gain: 0.13 },
-      { session: "p2", gain: 0.06 },
+    // Before wave 26 ta also heard p5 (S) at 0.13 and p2 (B) at 0.06 through the walls.
+    expect(hearsPlayers(h, "ta", players)).toEqual([{ session: "p1", gain: 1 }]);
+    expect(hearsPlayers(h, "tb", players)).toEqual([
+      { session: "p4", gain: 1 },
+      { session: "p2", gain: 1 },
     ]);
     expect(hearsPlayers(h, "tc", players)).toEqual([{ session: "p3", gain: 1 }]);
   });
@@ -460,12 +465,13 @@ describe("hearsPlayers", () => {
     expect(hearsPlayers(h, "ts-on", [{ session: "p", p: [-5, 0, 5] }])).toEqual([{ session: "p", gain: 1 }]);
   });
 
-  it("keeps the 3 nearest, ties by session; a given floor / room is trusted", () => {
+  it("keeps the 3 nearest, ties by session; a given room is trusted", () => {
     const h = testHouse();
     const crowd = ["e", "d", "c", "b", "a"].map((session) => ({ session, p: [5, 0, 7] as Vec3 }));
     expect(hearsPlayers(h, "ta", crowd).map((r) => r.session)).toEqual(["a", "b", "c"]);
     expect(hearsPlayers(h, "ta", [{ session: "q", p: [5, 0, 6], floor: "up", room: "c" }])).toEqual([]);
-    expect(hearsPlayers(h, "ta", [{ session: "q", p: [5, 0, 6], floor: "main", room: null }])).toEqual([{ session: "q", gain: 0.44 }]);
+    // In no room: nobody hears them (before: 0.44 through the air).
+    expect(hearsPlayers(h, "ta", [{ session: "q", p: [5, 0, 6], floor: "main", room: null }])).toEqual([]);
   });
 });
 
@@ -482,8 +488,16 @@ describe("the show map", () => {
     const h = loadHouse(SHOW_HOUSE);
     const heard = hearsTerminals(h, { p: [3, -2.7, 25] });
     expect(heard[0]).toEqual({ spot: "server-room", gain: 1 });
-    const basement = new Set(h.terminals.filter((t) => t.pos[1] < 0).map((t) => t.id));
-    expect(heard.every((r) => basement.has(r.spot))).toBe(true);
+    const room = new Set(h.terminals.filter((t) => t.room === "server-room").map((t) => t.id));
+    // The Server Door's terminal stands outside, in the basement hall: not heard (wave 26).
+    expect(heard.every((r) => room.has(r.spot))).toBe(true);
+    expect(heard.some((r) => r.spot === "server-room-door")).toBe(false);
+  });
+
+  it("the TV hears only the players in the Desktop (wave 26, R5)", () => {
+    const h = loadHouse(SHOW_HOUSE);
+    expect(hearsTerminals(h, { p: [6, 0, 7] })).toEqual([{ spot: "desktop-tv", gain: 1 }]);
+    expect(hearsPlayers(h, "desktop-tv", [{ session: "in", p: [6, 0, 7] }, { session: "hall", p: [-1, 0, 12] }])).toEqual([{ session: "in", gain: 1 }]);
   });
 });
 
@@ -496,7 +510,7 @@ describe("the Godot vectors", () => {
   it("cover every kind and every byte", () => {
     const rows = readFileSync(VOICE_GOLDEN, "utf8").trim().split("\n").slice(1, -1).map((l) => JSON.parse(l.replace(/,$/, "")) as { kind: string });
     const kinds = new Set(rows.map((r) => r.kind));
-    for (const k of ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "players", "hearsPlayers", "hearsKept"]) expect(kinds.has(k), k).toBe(true);
+    for (const k of ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "players", "hearsPlayers", "hearsRoom", "tentOn"]) expect(kinds.has(k), k).toBe(true);
     expect(rows.filter((r) => r.kind === "decode").length).toBe(256);
     expect(rows.filter((r) => r.kind === "encode").length).toBeGreaterThan(200);
   });

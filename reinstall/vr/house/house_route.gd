@@ -16,6 +16,11 @@ const OBSTACLE_SHRINK := 0.01
 const ROUTE_EPS := 1e-6
 ## How much a solid prop's footprint bounds grow to become an obstacle (the walker's body radius).
 const PROP_MARGIN := 0.25
+## (wave 26, R2) The game hides the path to Gerald — the trail, the
+## compass, the distance and the warmer / colder ladder — for this long
+## from the start of each session, then draws it at once. The quack is
+## never delayed.
+const PATH_REVEAL_MS := 60000
 
 
 ## Round to integer micrometres, `floor(v · 1e6 + 0.5) / 1e6` — so trig ulps never reach a decision.
