@@ -23,6 +23,7 @@ describe("URL hints", () => {
       camera: "environment",
       arrowsTurn: false,
       voice: null,
+      intro: null,
     });
   });
 
@@ -33,7 +34,7 @@ describe("URL hints", () => {
   });
 
   it("ignores junk and blanks", () => {
-    expect(hintsFromSearch("?name=%20&role=admin&camera=side&arrows=x")).toEqual({ code: "", name: null, role: null, camera: null, arrowsTurn: null, voice: null });
+    expect(hintsFromSearch("?name=%20&role=admin&camera=side&arrows=x")).toEqual({ code: "", name: null, role: null, camera: null, arrowsTurn: null, voice: null, intro: null });
   });
 
   it("withoutSecrets scrubs the passcode and the hints but keeps the rest", () => {

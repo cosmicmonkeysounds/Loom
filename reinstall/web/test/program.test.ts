@@ -69,7 +69,7 @@ describe("the wizard's program status", () => {
   it("a candidate row without `restricted` (an older server) reads as not restricted", () => {
     expect(toProgram({ id: "g-1", name: "Excel", captured: false, location: "The Desktop" } as SpatialCandidate).restricted).toBe(false);
     const row = { id: "g-1", name: "Excel", captured: false, location: "The Desktop", restricted: true };
-    expect(toProgram(row)).toEqual({ id: "g-1", name: "Excel", captured: false, restricted: true, eligible: true, marked: true, favour: false, location: "The Desktop" });
+    expect(toProgram(row)).toEqual({ id: "g-1", name: "Excel", captured: false, restricted: true, eligible: true, marked: true, favour: false, location: "The Desktop", reinstalled: 0 });
   });
 
   it("marked (wave 18, C7): the server's flag labels the program, not restricted", () => {

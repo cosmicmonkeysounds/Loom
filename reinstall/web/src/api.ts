@@ -62,7 +62,8 @@ export function toProgram(row: SpatialCandidate): Program {
   const marked = isMarked({ captured: row.captured, restricted, eligible, ...(typeof flag === "boolean" ? { marked: flag } : {}) });
   // After the end the server says `favour` (and `marked` false for everyone).
   const favour = (row as { favour?: unknown }).favour === true;
-  return { id: row.id, name: row.name, captured: row.captured, restricted, eligible, marked, favour, location: row.location };
+  const reinstalled = typeof row.reinstalled === "number" && Number.isFinite(row.reinstalled) ? Math.max(0, Math.floor(row.reinstalled)) : 0;
+  return { id: row.id, name: row.name, captured: row.captured, restricted, eligible, marked, favour, location: row.location, reinstalled };
 }
 
 /** Has an ending played? (`night.ended` off the lean screen state, polled
@@ -452,6 +453,18 @@ export async function postMoment(base: string, token: string, req: MomentRequest
 }
 
 /** `POST /api/spatial/end` — best effort (the session may be over already). */
+/** The intro is over (wave 33): the server's run clock restarts. Best
+ *  effort — an old server's 404, a dead session or no network change
+ *  nothing here (the pose pump hears a dead session). */
+export async function postReady(base: string, token: string, fetcher: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const res = await fetcher(`${base}/api/spatial/ready`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: "{}" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function postEnd(base: string, token: string): Promise<void> {
   try {
     await fetch(`${base}/api/spatial/end`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: "{}", keepalive: true });

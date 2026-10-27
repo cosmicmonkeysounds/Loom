@@ -35,6 +35,9 @@ export interface Program {
    *  the server's `favour`; false from a server that doesn't say). */
   favour: boolean;
   location: string | null;
+  /** Reinstallations completed since the story started (the server's
+   *  `reinstalled`, wave 33): ≥ 1 lets the intro be skipped. Missing = 0. */
+  reinstalled?: number;
 }
 
 /** The server's 409 for a program neither captured nor marked. */

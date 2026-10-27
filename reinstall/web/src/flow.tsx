@@ -4,6 +4,9 @@
 //!
 //!   choose   — **Play here** or **Send to <station>** (the not-marked
 //!              refusal, the no-WebGL2 line; no King note since wave 26);
+//!   video    — the Reinstallation Process video (wave 33, `IntroVideo`),
+//!              after the Play here tap and before the begin; skippable
+//!              once the program has completed a reinstallation;
 //!   starting — the begin, then the dealt map;
 //!   sent     — parked for a headset: "put the headset on" (back by itself);
 //!   play     — the simulation (`game/Play.tsx`).
@@ -33,6 +36,8 @@ import { findFlash } from "./game/hud.ts";
 import { requestMic, stopStream } from "./game/voice.ts";
 import { primeSpeech } from "./game/lines.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
+import { introSkippable } from "./game/tutorial.ts";
+import { IntroVideo } from "./IntroVideo.tsx";
 import { beginErrorText, NOT_MARKED, programPitch, programState, programStatus, startingHeading, type Program } from "./program.ts";
 import { firstStep } from "./flow-state.ts";
 import { Desktop, ProgressBar, Window, Wizard } from "./wizard.tsx";
@@ -55,6 +60,7 @@ export const SENT_BACK_MS = 9000;
 
 type Step =
   | { kind: "choose" }
+  | { kind: "video" }
   | { kind: "starting"; label: string }
   | { kind: "sent"; station: string }
   | { kind: "play"; assignment: Assignment; house: HouseMap; houseVersion: string; king?: KingState | null };
@@ -106,7 +112,8 @@ export function ReinstallFlow({
       alive.current = false;
     };
   }, []);
-  const playing = step.kind === "play";
+  // The video covers the screen like the game does (the host hides its flash).
+  const playing = step.kind === "play" || step.kind === "video";
   const playingRef = useRef(onPlaying);
   playingRef.current = onPlaying;
   useEffect(() => {
@@ -129,7 +136,7 @@ export function ReinstallFlow({
     return p;
   }, []);
   useEffect(() => {
-    if (step.kind !== "starting" && step.kind !== "play") releaseMic();
+    if (step.kind !== "video" && step.kind !== "starting" && step.kind !== "play") releaseMic();
   }, [step.kind, releaseMic]);
   useEffect(() => releaseMic, [releaseMic]);
 
@@ -141,6 +148,12 @@ export function ReinstallFlow({
       releaseMic();
       mic.current = requestMic();
     }
+    // The intro video first (wave 33): no session is live while it plays.
+    if (config.intro !== false) setStep({ kind: "video" });
+    else void beginHere();
+  };
+
+  const beginHere = async () => {
     setStep({ kind: "starting", label: "Copying files…" });
     try {
       const assignment = await begin(config, program.id, "web");
@@ -192,6 +205,10 @@ export function ReinstallFlow({
     const t = window.setTimeout(() => exit.current({ kind: "sent", station }), SENT_BACK_MS);
     return () => window.clearTimeout(t);
   }, [step]);
+
+  if (step.kind === "video") {
+    return <IntroVideo skippable={introSkippable(program.reinstalled)} held={held} onDone={() => void beginHere()} />;
+  }
 
   if (step.kind === "play") {
     return (

@@ -11,6 +11,8 @@
 *.woff binary
 *.woff2 binary
 *.loombank binary
+*.mp4 binary
+*.ogv binary
 
 # Godot text resources are position-sensitive; keep them LF everywhere
 *.tscn text eol=lf

@@ -18,6 +18,7 @@ import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
 import { Scare } from "./Scare.tsx";
+import { introSkippable, tutorialCopy, type TutorialHud } from "./tutorial.ts";
 
 export type PlayExit = { kind: "found"; name: string; outcome: FindOutcome } | { kind: "over"; reason: string } | { kind: "idle" } | { kind: "quit" };
 
@@ -62,7 +63,10 @@ export function Play({
   const [hud, setHud] = useState<HudState | null>(null);
   const [found, setFound] = useState<FoundAnswer | null>(null);
   const [showSticks, setShowSticks] = useState(touchDevice);
-  const [helpOpen, setHelpOpen] = useState(true);
+  // The intro tutorial (wave 33) teaches the controls; with it off, the
+  // old help card does.
+  const tutorialOn = config.intro !== false;
+  const [helpOpen, setHelpOpen] = useState(!tutorialOn);
   const exit = useRef(onExit);
   exit.current = onExit;
   const heldRef = useRef(held);
@@ -91,6 +95,7 @@ export function Play({
         ...(king !== undefined ? { king } : {}),
         voice: config.voice,
         mic,
+        ...(tutorialOn ? { intro: { touch: touchDevice(), skippable: introSkippable(assignment.reinstalled) } } : {}),
       });
     } catch (e) {
       void mic?.then((s) => s?.getTracks().forEach((t) => t.stop()));
@@ -222,6 +227,15 @@ export function Play({
         </>
       )}
 
+      {hud?.tutorial != null && found === null && <TutorialCard tutorial={hud.tutorial} touch={showSticks} onSkip={() => game.current?.skipTutorial()} />}
+
+      {hud !== null && hud.tutorial === null && !hud.mouseLocked && !showSticks && found === null && hud.caption === null && (
+        // DRAFT w33
+        <div className="mouse-hint w98-raised" aria-hidden="true">
+          🖱 Click the picture to look around with the mouse
+        </div>
+      )}
+
       {hud?.scare === true && found === null && <Scare />}
 
       {helpOpen && found === null && (
@@ -295,6 +309,29 @@ export function Play({
         </div>
       )}
     </div>
+  );
+}
+
+/** The intro tutorial's card (wave 33): one step at a time, done by doing
+ *  it, with a progress bar; Skip only for a program that completed a
+ *  reinstallation. */
+function TutorialCard({ tutorial, touch, onSkip }: { tutorial: TutorialHud; touch: boolean; onSkip: () => void }) {
+  const copy = tutorialCopy(tutorial.step, touch);
+  return (
+    // DRAFT w33 (the window's title)
+    <Window title={`Training — step ${tutorial.index} of ${tutorial.total}`} icon="🎓" className={`tutorial-card step-${tutorial.step}${touch ? " over-sticks" : ""}`}>
+      <h2>{copy.title}</h2>
+      <p>{copy.line}</p>
+      {tutorial.step !== "done" && tutorial.step !== "click" && <ProgressBar value={tutorial.progress} />}
+      {tutorial.skippable && (
+        <div className="w98-actions">
+          {/* DRAFT w33 */}
+          <button className="w98-button" onClick={onSkip}>
+            Skip training ▶
+          </button>
+        </div>
+      )}
+    </Window>
   );
 }
 

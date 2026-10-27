@@ -33,6 +33,8 @@ function game(revealed = false) {
   const quacks: number[] = [];
   Object.assign(g, {
     phase: "playing",
+    tutorial: null, // wave 33: no intro tutorial (its own tests: intro.test.ts)
+    mouseLocked: false,
     map: house,
     trailHouse: house,
     pathRevealed: revealed,

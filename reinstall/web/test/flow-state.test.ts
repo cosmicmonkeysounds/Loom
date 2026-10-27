@@ -82,6 +82,7 @@ describe("Game.hold — an overlay holds the walk, never ends it", () => {
     g["dragPointer"] = 7;
     g["hitQueued"] = true;
     g["held"] = false;
+    g["mouseLocked"] = false;
     return g as unknown as { hold(on: boolean): void; readonly isHeld: boolean; leash: IdleLeash; keys: Set<string>; hitQueued: boolean };
   }
 
@@ -249,6 +250,8 @@ describe("a held frame — no find and no quack under an overlay", () => {
     const noop = { set: () => {} };
     Object.assign(g, {
       phase: "playing",
+      tutorial: null,
+      mouseLocked: false,
       o: { sticks: () => ({ left: { x: 0, y: 0 }, right: { x: 0, y: 0 } }), arrowsTurn: true, sfx: { quack } },
       held,
       keys: new Set<string>(),
@@ -308,7 +311,7 @@ describe("held and onPlaying reach the game (structural: this package has no DOM
     const { readFileSync } = await import("node:fs");
     const flow = readFileSync(new URL("../src/flow.tsx", import.meta.url), "utf8");
     expect(flow).toMatch(/<Play[\s\S]*?held=\{held\}[\s\S]*?\/>/u);
-    expect(flow).toMatch(/const playing = step\.kind === "play";/u);
+    expect(flow).toMatch(/const playing = step\.kind === "play" \|\| step\.kind === "video";/u);
     expect(flow).toMatch(/playingRef\.current\?\.\(playing\);\s*\}, \[playing\]\);/u);
     // Unmounting mid-walk says "not playing" (the host resumes its own work).
     expect(flow).toMatch(/useEffect\(\(\) => \(\) => playingRef\.current\?\.\(false\), \[\]\);/u);
