@@ -21,10 +21,18 @@
 //
 // His voice is muted: `speechSynthesis` is a stub that "speaks" each chunk
 // for SIM_SPEECH_MS_PER_CHAR ms a character (default 12) at volume 0, so the
-// panel's LISTENING state is real and short.
+// panel's LISTENING state is real and short. It lists no voices (as a
+// browser still loading them does), so the terminal's own voice path runs.
+//
+// Before the scan the program DMs him from its phone; on a scratch server
+// with no worker his hold line answers it 20 s later, mid-visit. The heart
+// must never show (or say) a line answering a message from before the visit
+// (`answers` at or below the last seq before the scan) nor the hold / busy
+// text: steps 1 and 6 check the drawn thread's seqs against /api/history.
 //
 // Never on the night: it registers two programs and plays the heart. The
-// codes stay in the environment, never in a screenshot's name.
+// codes stay in the environment, never in a screenshot's name, a step's
+// note or results.json (redacted).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect } from "../../editor/node_modules/@playwright/test/index.mjs";
@@ -48,6 +56,8 @@ const SIZES = [
   { width: 1280, height: 720 },
   { width: 1024, height: 600 },
 ] as const;
+/** The phone (step 8's play app). */
+const PHONE = { width: 390, height: 844 } as const;
 /** The same menus before wave 27 (beats/server-room.loom at a3ed075a, the
  *  last story before `3332e01e feat(story): branch the first meeting`), for
  *  this program's state: marked, an upload problem on record, no side, no
@@ -68,6 +78,24 @@ interface StepResult {
 
 const results: StepResult[] = [];
 const counts: Array<{ menu: string; options: number }> = [];
+
+/** Codes and tokens this run holds: never in a note or results.json. */
+const secrets = new Set<string>();
+function keepSecret(s: string | undefined): void {
+  if (s === undefined || s.length < 3) return;
+  secrets.add(s);
+  secrets.add(encodeURIComponent(s));
+}
+keepSecret(MOD);
+function redact(text: string): string {
+  let out = text;
+  for (const x of [...secrets].sort((a, b) => b.length - a.length)) out = out.split(x).join("<redacted>");
+  return out;
+}
+
+/** Trabolta's canned lines (`cast/trabolta.loom` hold: / busy:), said by the server for him: never on the heart's thread. */
+const HOLD_TEXT = "Jean Trabolta is not responding";
+const BUSY_TEXT = "Jean Trabolta is answering other programs";
 
 // --------------------------------------------------------------------- HTTP
 
@@ -96,6 +124,8 @@ interface Msg {
   text?: string;
   pick?: boolean;
   act?: boolean;
+  /** The seq of the line an agent reply / hold / busy line answers (wave 28). */
+  answers?: number;
   widget?: { kind: string };
 }
 const history = async (token: string) => (await http.get<{ messages: Msg[] }>("/api/history", token)).json.messages ?? [];
@@ -140,10 +170,19 @@ async function doorShut(): Promise<void> {
 
 // --------------------------------------------------------------------- the page
 
-/** A muted `speechSynthesis`: one fake voice, each utterance "said" for a
- *  time that scales with its length, at volume 0. */
+/** A muted `speechSynthesis`: the browser's own voices (real
+ *  `SpeechSynthesisVoice`s, which a real utterance takes: the terminal's
+ *  normal browser-voice path runs; none listed, it reads silently), each
+ *  utterance "said" for a time that scales with its length, at volume 0. */
 function speechStub(msPerChar: number): void {
-  const voices = [{ name: "Sim Daniel", lang: "en-GB", default: true, localService: true, voiceURI: "sim-daniel" }];
+  const real = (window as unknown as { speechSynthesis?: SpeechSynthesis }).speechSynthesis;
+  const realVoices = (): SpeechSynthesisVoice[] => {
+    try {
+      return real?.getVoices() ?? [];
+    } catch {
+      return [];
+    }
+  };
   const queue: SpeechSynthesisUtterance[] = [];
   let current: SpeechSynthesisUtterance | null = null;
   let timer = 0;
@@ -178,7 +217,7 @@ function speechStub(msPerChar: number): void {
     },
     paused: false,
     onvoiceschanged: null,
-    getVoices: () => voices,
+    getVoices: realVoices,
     speak(u: SpeechSynthesisUtterance) {
       try {
         u.volume = 0;
@@ -199,8 +238,13 @@ function speechStub(msPerChar: number): void {
     },
     pause() {},
     resume() {},
-    addEventListener() {},
-    removeEventListener() {},
+    // The voice list loads late: its `voiceschanged` is the browser's own.
+    addEventListener(type: string, fn: EventListener) {
+      if (type === "voiceschanged") real?.addEventListener(type, fn);
+    },
+    removeEventListener(type: string, fn: EventListener) {
+      if (type === "voiceschanged") real?.removeEventListener(type, fn);
+    },
     dispatchEvent: () => true,
   };
   Object.defineProperty(window, "speechSynthesis", { value: synth, configurable: true });
@@ -239,6 +283,34 @@ async function scan(page: Page, p: Program): Promise<void> {
 const panel = (page: Page) => page.locator(".heart-panel");
 const threadTexts = (page: Page) => page.locator(".thread .line .text").allInnerTexts();
 const mineTexts = (page: Page) => page.locator(".thread .line.mine .text").allInnerTexts();
+/** The thread's drawn lines with their seqs (`data-seq`). */
+const threadRows = (page: Page) =>
+  page.locator(".thread .line[data-seq]").evaluateAll((els) => els.map((e) => ({ seq: Number(e.getAttribute("data-seq")), text: e.querySelector(".text")?.textContent ?? "" })));
+
+/**
+ * The heart shows nothing that answers a message from before the visit (his
+ * reply, hold or busy line to a phone DM, `answers` <= `before`) and never
+ * the hold / busy text. Returns how many such answers the phone's
+ * dm:Trabolta holds (they belong there).
+ */
+async function noPreVisitAnswers(page: Page, p: Program, before: number, what: string): Promise<number> {
+  const rows = await threadRows(page);
+  const answers = (await history(p.token)).filter((m) => m.channel === "dm:Trabolta" && m.answers !== undefined && m.answers <= before);
+  const bad = new Set(answers.map((m) => m.seq));
+  expect(rows.filter((r) => bad.has(r.seq)).map((r) => r.text.slice(0, 60)), `${what}: his answers to messages from before the visit`).toEqual([]);
+  expect(rows.filter((r) => r.text.includes(HOLD_TEXT) || r.text.includes(BUSY_TEXT)).map((r) => r.text.slice(0, 60)), `${what}: the hold / busy line on the heart`).toEqual([]);
+  return answers.length;
+}
+
+/** The answer (the hold line, on a server with no worker) to a phone DM, landed on the phone: up to `ms`. */
+async function preVisitAnswerLanded(p: Program, before: number, ms: number): Promise<boolean> {
+  const until = Date.now() + ms;
+  for (;;) {
+    if ((await history(p.token)).some((m) => m.channel === "dm:Trabolta" && m.answers !== undefined && m.answers <= before)) return true;
+    if (Date.now() > until) return false;
+    await sleep(1000);
+  }
+}
 
 /** The docked panel, open (taking picks): its menu id and options (raw). */
 async function openPanel(page: Page, timeout = 45_000): Promise<{ id: string; options: string[] }> {
@@ -279,7 +351,7 @@ async function step(n: number | string, name: string, body: (notes: string[]) =>
       await body(notes);
       results.push({ step: `${n}. ${name}`, ok: true, notes });
     } catch (e) {
-      notes.push(String((e as Error).message ?? e).split("\n")[0]!.slice(0, 300));
+      notes.push(redact(String((e as Error).message ?? e).split("\n")[0]!).slice(0, 300));
       results.push({ step: `${n}. ${name}`, ok: false, notes });
       throw e;
     }
@@ -287,7 +359,7 @@ async function step(n: number | string, name: string, body: (notes: string[]) =>
 }
 
 function writeResults(): void {
-  writeFileSync(join(SHOTS, "results.json"), `${JSON.stringify({ results, counts, preW27: PRE_W27 }, null, 2)}\n`);
+  writeFileSync(join(SHOTS, "results.json"), redact(`${JSON.stringify({ results, counts, preW27: PRE_W27 }, null, 2)}\n`));
 }
 
 // --------------------------------------------------------------------- the visit
@@ -302,6 +374,7 @@ test("the heart terminal: one visit, as a program", async ({ browser }) => {
   const r = await http.call<{ eventId?: string }>("POST", "/api/resolve-code", { body: { code: MOD }, root: true });
   if (r.status === 200 && r.json.eventId !== undefined && r.json.eventId !== "default") http.scope = `/e/${encodeURIComponent(r.json.eventId)}`;
   mod = (await must("mod login", http.post<{ token: string }>("/api/mod/login", { passcode: MOD }))).token;
+  keepSecret(mod);
   const before = await modState();
   const g = heartGuard({ base: BASE, roster: before.roster, yes: process.env["SIM_YES"] === "1", live: process.env["SIM_LIVE"] === "1" });
   if (!g.ok) throw new Error(`guard: ${g.reason}`);
@@ -309,11 +382,14 @@ test("the heart terminal: one visit, as a program", async ({ browser }) => {
   if (doors.kind === "refuse") throw new Error(`${doors.why}: the heart spec needs a fresh night (a fresh scratch server)`);
   if (doors.kind === "start") await must("Power On", http.post("/api/mod/start", {}, mod));
   const codes = await must("codes", http.post<{ eventPass: string }>("/api/mod/codes", {}, mod));
+  keepSecret(codes.eventPass);
 
   const taken = new Set(before.roster.map((x) => x.name.toLowerCase()));
   const [nameA, nameB] = pickPool(2, taken);
   const A = await arrive(nameA!, codes.eventPass, 1);
   const B = await arrive(nameB!, codes.eventPass, 0);
+  keepSecret(A.token);
+  keepSecret(B.token);
 
   const chain = await pressChain(TO_Y2K, tolerating(async (name) => (await signal(name)).json, SIM_SELF_PRESSED, []), () => {});
   if (!chain.ok) throw new Error(`the chain to the Y2K clock stopped at ${chain.refused.at(-1)}`);
@@ -332,6 +408,8 @@ test("the heart terminal: one visit, as a program", async ({ browser }) => {
   }
   const phone = await history(A.token);
   expect(phone.filter((m) => m.channel === "dm:Trabolta" && phoneDms.includes(m.text ?? "")).length, "the phone DMs landed").toBe(3);
+  // Every line before the scan: an answer to any of them is not this visit's.
+  const beforeVisit = phone.reduce((m, x) => Math.max(m, x.seq), -1);
 
   // --- the terminal ---------------------------------------------------------------
   const ctx = await browser.newContext({ viewport: SIZES[0] });
@@ -347,39 +425,54 @@ test("the heart terminal: one visit, as a program", async ({ browser }) => {
 
   try {
     // 1 ---------------------------------------------------------------------------
+    // What step 2 judges is seen here, while his opening is said (the panel LISTENING).
+    const listening = { seen: false, wait: "", probed: false, keySent: false, clickable: false };
     await step(1, "on scan the thread shows only this visit", async (notes) => {
       await scan(page, A);
-      // His first word (or the panel) arrives, then the thread is read.
+      const p = panel(page);
+      await expect(p).toBeVisible({ timeout: 30_000 });
+      if ((await p.getAttribute("data-open")) === "false") {
+        listening.seen = true;
+        listening.wait = (await p.getAttribute("data-wait")) ?? "?";
+        await expect(p.locator(".heart-head-wait")).toContainText("LISTENING");
+        await shots(page, 2, "listening");
+        // While his opening is said the panel waits: no pick goes out, by key or click.
+        const sent = chooses.length;
+        if ((await p.getAttribute("data-open")) === "false") {
+          await page.keyboard.press("1");
+          await page.waitForTimeout(400);
+          listening.probed = true;
+          listening.keySent = chooses.length !== sent;
+          listening.clickable = !(await p.locator(".heart-option").first().isDisabled());
+        }
+      }
+      // Settled: his opening said and the panel open, then the thread is read.
+      await openPanel(page);
       await expect(page.locator(".thread .line.theirs").first()).toBeVisible({ timeout: 30_000 });
       const lines = await threadTexts(page);
       const leaked = phoneDms.filter((d) => lines.some((l) => l.includes(nonce) && l.includes(d.slice(0, 12))));
       expect(leaked, "earlier phone DMs on the heart terminal").toEqual([]);
+      const answered = await noPreVisitAnswers(page, A, beforeVisit, "on scan");
       await expect(page.locator(".thread .line.earlier")).toHaveCount(1);
-      notes.push(`${lines.length} lines this visit, the earlier-messages rule shown`);
+      notes.push(`${lines.length} lines this visit, the earlier-messages rule shown; ${answered} answer(s) to the phone DMs on the phone, none here`);
       await shots(page, 1, "scan-this-visit-only");
     });
 
     // 2 ---------------------------------------------------------------------------
     let layerOne: string[] = [];
     await step(2, "LISTENING while he speaks; then every option visible, keyed 1-9", async (notes) => {
-      // While his opening is said the panel waits: no pick goes out, by key or click.
       const p = panel(page);
-      await expect(p).toBeVisible({ timeout: 30_000 });
-      const waiting = (await p.getAttribute("data-open")) === "false";
-      if (waiting) {
-        await expect(p.locator(".heart-head-wait")).toContainText("LISTENING");
-        notes.push(`waiting on ${(await p.getAttribute("data-wait")) ?? "?"}`);
-        await shots(page, 2, "listening");
-        const sent = chooses.length;
-        if ((await p.getAttribute("data-open")) === "false") {
-          await page.keyboard.press("1");
-          await page.waitForTimeout(400);
-          expect(chooses.length, "a key while he speaks sent a pick").toBe(sent);
-          const first = p.locator(".heart-option").first();
-          expect(await first.isDisabled(), "an option takes a click while he speaks").toBe(true);
-        }
-      } else notes.push("the panel was already open when first seen (his opening was short)");
-      expect(waiting, "the panel was seen LISTENING before it opened").toBe(true);
+      const voices = await page.evaluate(() => window.speechSynthesis.getVoices().length);
+      const textOnly = await page.getByText("no voice on this device").isVisible().catch(() => false);
+      notes.push(`${voices} browser voices, ${textOnly ? "text only (silent engine)" : "the browser voice path"}`);
+      if (voices > 0) expect(textOnly, "voices listed, yet the terminal reads text only").toBe(false);
+      if (listening.seen) notes.push(`waiting on ${listening.wait}`);
+      else notes.push("the panel was already open when first seen (his opening was short)");
+      expect(listening.seen, "the panel was seen LISTENING before it opened").toBe(true);
+      if (listening.probed) {
+        expect(listening.keySent, "a key while he speaks sent a pick").toBe(false);
+        expect(listening.clickable, "an option takes a click while he speaks").toBe(false);
+      }
       layerOne = await record(page, "Layer One");
       expect(layerOne.length).toBeLessThanOrEqual(9);
       const keys = await p.locator(".heart-num").allInnerTexts();
@@ -507,7 +600,11 @@ test("the heart terminal: one visit, as a program", async ({ browser }) => {
       expect(lostHis, "his lines from before the reload").toEqual([]);
       expect(lostPicks, "this visit's picks from before the reload").toEqual([]);
       expect(after.filter((l) => l.includes(nonce)), "phone DMs after the reload").toEqual([]);
-      notes.push(`${beforeLines.length} lines before, ${after.length} after; ${picks.length} picks kept`);
+      // By now (minutes past the DMs) his hold line answered them on the phone: never here.
+      const landed = await preVisitAnswerLanded(A, beforeVisit, 25_000);
+      expect(landed, "an answer to the phone DMs (the hold line, or his reply) reached the phone").toBe(true);
+      const answered = await noPreVisitAnswers(page, A, beforeVisit, "after the reload");
+      notes.push(`${beforeLines.length} lines before, ${after.length} after; ${picks.length} picks kept; ${answered} answer(s) to the phone DMs on the phone, none here`);
       await shots(page, 6, "after-reload");
     });
 
@@ -519,12 +616,59 @@ test("the heart terminal: one visit, as a program", async ({ browser }) => {
         expect(mine, `the phone thread holds "${want}"`).toContain(want);
       }
       expect(msgs.filter((m) => m.pick === true && m.from === A.name && m.act === true).length).toBeGreaterThanOrEqual(1);
-      notes.push(`${mine.length} pick lines from ${A.name} in the phone's thread`);
+      // The phone itself: the play app, signed in as the program, open on dm:Trabolta.
+      const eventId = http.scope.startsWith("/e/") ? decodeURIComponent(http.scope.slice(3)) : "default";
+      const phoneCtx = await browser.newContext({ viewport: PHONE, isMobile: true, hasTouch: true });
+      try {
+        await phoneCtx.addInitScript((g) => {
+          try {
+            if (localStorage.getItem("loom.guest") === null) localStorage.setItem("loom.guest", JSON.stringify(g));
+          } catch {
+            /* a blocked store: the page shows the join screen and the count fails */
+          }
+        }, { id: A.id, name: A.name, token: A.token, eventId });
+        const phonePage = await phoneCtx.newPage();
+        await phonePage.goto(`${BASE}/?room=${encodeURIComponent("dm:Trabolta")}`);
+        const bubbles = phonePage.locator(".msg.line .bubble");
+        await expect(bubbles.filter({ hasText: echoOf(layerOne[indexOf(layerOne, pickOne)]!).text }).first()).toBeAttached({ timeout: 30_000 });
+        await phonePage.waitForTimeout(1500);
+        const drawn = (await bubbles.evaluateAll((els) => els.map((e) => (e.querySelector(".stream-sr") ?? e).textContent ?? ""))).map((t) => fold(t));
+        // Each pick line as often on the screen as in the thread (a BACK picked twice is two lines).
+        const want = new Map<string, number>();
+        for (const t of mine) want.set(fold(t), (want.get(fold(t)) ?? 0) + 1);
+        const off: string[] = [];
+        let onScreen = 0;
+        for (const [t, n] of want) {
+          const got = drawn.filter((d) => d === t).length;
+          onScreen += Math.min(got, n);
+          if (got !== n) off.push(`"${t.slice(0, 30)}" ${got}/${n}`);
+        }
+        await phonePage.screenshot({ path: join(SHOTS, `08-phone-dm-trabolta-${PHONE.width}x${PHONE.height}.png`) });
+        expect(off, "pick lines on the phone's screen vs its thread").toEqual([]);
+        notes.push(`${mine.length} pick lines from ${A.name} in the phone's thread (/api/history), ${onScreen} drawn in the play app's dm:Trabolta`);
+      } finally {
+        await phoneCtx.close();
+      }
     });
 
     // 7 ---------------------------------------------------------------------------
     await step(7, "thrown out, then re-scanned at once: a fresh thread", async (notes) => {
+      // A normal DISCONNECT, then A again at once: nothing of A's visit carries over.
+      const aRows = await threadRows(page);
+      expect(aRows.length, "A's visit had lines").toBeGreaterThan(0);
+      const aSeqs = new Set(aRows.map((r) => r.seq));
       await page.getByRole("button", { name: "DISCONNECT" }).click();
+      await expect(page.locator(".scan-box")).toBeVisible({ timeout: 15_000 });
+      await scan(page, A);
+      await expect(page.locator(".thread")).toBeVisible({ timeout: 10_000 });
+      await page.locator(".thread .line.theirs").first().waitFor({ timeout: 6000 }).catch(() => {});
+      await page.waitForTimeout(1500);
+      const again = await threadRows(page);
+      expect(await page.locator(".thread .line").count(), "A's re-scan draws its thread").toBeGreaterThan(0);
+      expect(again.filter((r) => aSeqs.has(r.seq)).map((r) => r.text.slice(0, 40)), "A's earlier visit on its re-scan").toEqual([]);
+      notes.push(`A re-scanned: ${again.length} line(s), none of its last visit's ${aSeqs.size}`);
+      await shots(page, 7, "a-rescan-fresh");
+      if (await page.getByRole("button", { name: "DISCONNECT" }).isVisible().catch(() => false)) await page.getByRole("button", { name: "DISCONNECT" }).click();
       await expect(page.locator(".scan-box")).toBeVisible({ timeout: 15_000 });
       await doorShut();
       await scan(page, B);
@@ -532,8 +676,10 @@ test("the heart terminal: one visit, as a program", async ({ browser }) => {
       const bLines: string[] = [echoOf(first.text).text];
       // Every line of this visit, as it stands before each threat (the thread goes when the line ends).
       const visitLines = new Set<string>(bLines);
+      const bSeqs = new Set<number>();
       const keep = async () => {
         for (const t of await threadTexts(page).catch(() => [] as string[])) if (t.trim().length > 12 && !t.includes("earlier messages")) visitLines.add(t.trim());
+        for (const r of await threadRows(page).catch(() => [] as Array<{ seq: number }>)) bSeqs.add(r.seq);
       };
       for (let i = 0; i < 8; i++) {
         await keep();
@@ -551,13 +697,17 @@ test("the heart terminal: one visit, as a program", async ({ browser }) => {
       await shots(page, 7, "thrown-out");
       // At once: the barred program's re-scan (Heart Barred, his eject again).
       await scan(page, B);
+      await expect(page.locator(".thread")).toBeVisible({ timeout: 10_000 });
       await page.locator(".thread .line.theirs").first().waitFor({ timeout: 4000 }).catch(() => {});
       await page.waitForTimeout(800);
       const fresh = await threadTexts(page);
+      const freshRows = await threadRows(page);
       await shots(page, 7, "rescan-fresh");
+      expect(await page.locator(".thread .line").count(), "the re-scan draws its thread").toBeGreaterThan(0);
       const carried = fresh.filter((l) => visitLines.has(l.trim()));
       expect(carried, "the previous visit's lines on a re-scan").toEqual([]);
-      notes.push(`re-scan thread: ${fresh.length} line(s), none of the last visit's ${visitLines.size}`);
+      expect(freshRows.filter((r) => bSeqs.has(r.seq)).length, "the previous visit's seqs on a re-scan").toBe(0);
+      notes.push(`re-scan thread: ${fresh.length} line(s), ${freshRows.filter((r) => r.text.length > 0).length} drawn, none of the last visit's ${visitLines.size}`);
     });
   } finally {
     writeResults();

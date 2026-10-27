@@ -133,9 +133,9 @@ terminal (`/terminal/?code=<mod>&room=The%20Server%20Room&spot=server-room&door=
 in Chromium, as a program would: it scans a pass through the typed
 fallback (*no camera? type your program name*, the program's id), then
 answers by number keys and clicks. His voice is muted: `speechSynthesis`
-is a stub (one fake voice, each utterance "said" for
-`SIM_SPEECH_MS_PER_CHAR` ms a character, default 12, at volume 0), so the
-panel's LISTENING is real and short.
+is a stub (the browser's own voices, so the terminal's browser-voice path
+runs; each utterance "said" for `SIM_SPEECH_MS_PER_CHAR` ms a character,
+default 12, at volume 0), so the panel's LISTENING is real and short.
 
 ```bash
 # a FRESH scratch server (build play + terminal first: the server serves them)
@@ -155,19 +155,20 @@ bundle (*The Whole Truth*) hands out every codex entry, the proofs too.
 
 | # | Step | What it checks |
 |---|---|---|
-| 1 | Scan | The thread shows only this visit: none of the phone DMs, the *earlier messages are on your phone* rule once |
-| 2 | His opening | The panel shows LISTENING while he speaks (`data-wait="voice"`); a key sends no pick and the options are disabled; then it opens with ≤ 9 options, keyed 1…n, every option's box inside the viewport and its list (no ▼ MORE) at 1280x720 and 1024x600 |
+| 1 | Scan | Seen LISTENING, then once the panel opens (settled): the thread shows only this visit: none of the phone DMs, no line answering a message from before the scan (`answers`, the thread's `data-seq` against `/api/history`; the hold line answers the DMs 20 s in), never the hold / busy text, the *earlier messages are on your phone* rule once |
+| 2 | His opening | The panel showed LISTENING while he spoke (`data-wait="voice"`, seen in step 1); a key sent no pick and the options were disabled; the browser voice path ran (not *text only*); then it opens with ≤ 9 options, keyed 1…n, every option's box inside the viewport and its list (no ▼ MORE) at 1280x720 and 1024x600 |
 | 3 | A pick | Picked by key with its POST held a moment: the YOU line shows at once, dimmed (`pending`), then exactly once after the server's pick line |
 | 4 | The walk | Layer One → Two (*What are you, really?*, *Why do you need the theory*) → *Then listen to me.* → Three → ⟦SHOW HIM⟧ Evidence (⟦FORCE⟧, ⟦SMALL TYPE⟧) → ⟦BACK⟧ → ⟦TELL HIM⟧ Reasons → ⟦BACK⟧; each menu's option count is recorded |
 | 4b | Against w26 | Each layer menu offers more than the pre-wave-27 story did for the same program (`PRE_W27`, from `beats/server-room.loom` at `a3ed075a`) |
 | 5 | A proof mid-talk | *The Sandy File* granted through `/api/mod/codex` while Layer Three is docked: ⟦PROOF⟧ joins the same menu (same `data-menu`, the w28 `refreshMenus`); picked, it reads `[shows the Sandy File]` (an `act` line) and its scene holds the panel (`data-wait="scene"`); then ⟦FORCE⟧ and *Then let me finish.* to Layer Four |
-| 6 | Reload | A reload mid-visit and a re-scan keep his earlier lines and this visit's picks, and still none of the phone DMs |
-| 8 | The phone | `/api/history` as the program: its `dm:Trabolta` holds the heart picks as its own `pick` lines (one an `act`) |
-| 7 | Thrown out | DISCONNECT, a second program flatters, then *I could pull your cables* until *ACCESS TO THE HEART TERMINATED*; re-scanned at once, its thread holds none of that visit's lines |
+| 6 | Reload | A reload mid-visit and a re-scan keep his earlier lines and this visit's picks, and still none of the phone DMs; an answer to them has reached the phone, and none is on the heart (nor the hold / busy text) |
+| 8 | The phone | `/api/history` as the program: its `dm:Trabolta` holds the heart picks as its own `pick` lines (one an `act`); then the play app in a second context (390x844, signed in as the program, `?room=dm:Trabolta`) draws each of them as often as the thread holds it |
+| 7 | Thrown out | DISCONNECT and A re-scanned at once: its thread is drawn and holds none of its last visit's lines (by seq); then a second program flatters, then *I could pull your cables* until *ACCESS TO THE HEART TERMINATED*; re-scanned at once, its thread is drawn and holds none of that visit's lines |
 
 Each step takes a screenshot at 1280x720 and at 1024x600
 (`NN-what-WxH.png`, never a code in the name). `results.json` beside them
-holds each step's pass / fail with notes and every menu's option count;
+holds each step's pass / fail with notes and every menu's option count
+(the codes and tokens redacted);
 `speech-log*.json` what the stub said and when. One run takes about two
 minutes.
 
@@ -192,7 +193,9 @@ the typing row and every menu held LISTENING until the 20 s cap. Fixed in
 (the chain walk, the heart bot's choices, the world reads, the scoreboard,
 the heart spec's helpers and guard).
 `scripts/ops/predeploy.sh` runs them with the accept helpers. Typecheck:
-`core/node_modules/.bin/tsc -p scripts/sim`.
+`core/node_modules/.bin/tsc -p scripts/sim` (the browser specs and their
+config too: `playwright.d.ts` hands the editor's `…/@playwright/test/index.mjs`
+the package's own types).
 
 ## What it does not cover
 
