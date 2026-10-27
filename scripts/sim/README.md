@@ -38,7 +38,7 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 | `--pace <ms>` | Wait after each beat (and a third of it after each action), to watch |
 | `--watch` | Print the URLs to open: a guest phone, the director phone, the heart terminal, the TV (they carry codes) |
 | `--beat-file <path>` | Write `{n, beat, ok}` after each beat (the browser companion reads it) |
-| `--worker` | A scripted probe Trabolta worker. It stays off if a house worker reported in the last 2 minutes |
+| `--worker` | A scripted probe Trabolta worker: DMs get one of its own in-world lines, a public talk request (wave 32) the scene's canned Trabolta line from `core/src/talk-scenes.ts`. It stays off if a house worker reported in the last 2 minutes |
 | `--json <path>` | The results as JSON |
 | `--yes` / `--i-know-this-is-live` | The guard's y/N and its real-guest refusal (below) |
 | `--reset-before` / `--reset-after` | Restart the event before / after (a scratch server on this laptop only, not :7000) |
@@ -52,21 +52,29 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 | 3 | 📣 Desktop | The cue; lobby lines | step 1 |
 | 4 | 🎱 Bingo | DM Clippy, a guest's BINGO! (presses ⏰ itself), Clippy's `bingo_winner` and `named_at_bingo` | step 3, the named one marked |
 | 5 | 🚚 Reinstall | Norton's `send to the internet`, the tent's web game: begin, walk to Gerald, the golden duck | released |
-| 6 | 🤖 Trabolta | The cue; a DM to him (his hold line without a worker) | step 4, `Trabolta.awake` |
-| 7 | 🔎 Hunt 1 | Every guest files H1–H3 (most accurate at 80, a quarter guess at 40; `--lie` one at 100) | step 5, filings judged |
-| 8 | ⚖️ Truth 1 | ⏰ → ⚖️ → ⏱ → 📋 ×3 | step 6, `results_q` 3 |
-| 9 | 🍾 Bottle | Spin, Truth, Task Manager's `truth_answered` | a pick, the bottle closed |
-| 10 | 📺 Hunt 2 | 📺 → 📓 → 📥; featured briefings; Excel's disk (the tent QR) and 💾; H4–H6; Truthcoin send + request; a DM to McAfee; a crew founded and joined; the four cold-door notes; Adobe signs MS Paint's painting for everyone | step 8, `truther_sent`; Excel Mission and The Cold Door done |
-| 11 | ⏳ Summons | All but one check in | step 9, the late one `late` |
-| 12 | 🏓 Truth Pong | `made_the_cup` / `missed_the_cup`, 🧮, 📊, 🏆 | step 11, tallied |
-| 13 | 🕚 Y2K | Overshare, the clock; F1–F2 | step 14 |
-| 14 | ♟ Chess, casino, patch | `chess won` (the door code), two casino bets, one wrong patch (never a real combination) | the winner holds the door code; each bet settles (payout − stake = net, the wallet moved by it); the story counted the wrong patch (`Night.wrong_combos` + 1, no ending) |
-| 15 | 🗳 Sides | Every guest joins a side (founders can't); forced only if no majority | step 15 |
-| 16 | 🫀 Thrown out | Door open → shut; a program flatters, then threatens his cables until he ejects it; 🔄 | marked, then forgiven |
-| 17 | 🫀 The chosen | A featured program: ⟦CHOSEN⟧ → *What weak place* → *I need to go* | Layer 2, not thrown out |
-| 18 | 🫀 The full talk | ⟦PROMISE⟧; every Layer Two question incl. ⟦THE WAY OUT⟧ and ⟦SPEAK FREELY⟧ (a line said); *listen*; Evidence ⟦FORCE⟧ ⟦SMALL TYPE⟧; ⟦PROOF⟧; Reasons ⟦EARN IT⟧, the bluff, ⟦WEAKNESS⟧; *let me finish*; Layer Four's two warm picks and the *tell her* trap; back; *never going to answer* | `heart_stage` done, `stand_down_by` (heart ending); every menu ≤ 9 options |
-| 19 | The ending | 🕊 → the dance → 🏍; or 🌑 → 🍎 → the bag → 📄 → ⚖ (song, or Grok Prom → 💌 → the poll → 🗳); or 💥 | `Night.ending`, `ended` |
-| 20 | 🏆 Ceremony | G1, the eight awards on their winners (from trust, score, quests…), 🖌 on MS Paint, the staff awards, 🎃 | `ceremony_done`, `resurrected` |
+| 6 | 🤖 Trabolta | The cue; a DM to him (his hold line without a worker) | step 4, `Trabolta.awake`, `Night.talk` intro |
+| 7 | 🤖 Talk (wave 32) | Task Manager's booth `POST /api/mod/talk` as Clippy (the intro's first canned Clippy line). With `--worker`: the probe worker answers the public request. Without: Task Manager fires the intro's first canned Trabolta line. Then ⚡ (`ad_burst`, through the booth's signal) | Clippy's line and Trabolta's answer in `loc:The Desktop` with audience `"all"` (the answer names Clippy's line); with `--worker`, the open request was the worker's; the ⚡ is a flicker: `glitch_kind`, `glitch_text`, `burst_n` unchanged, `burst_last` moved |
+| 8 | 🔎 Hunt 1 | Every guest files H1–H3 (most accurate at 80, a quarter guess at 40; `--lie` one at 100) | step 5, filings judged, `Night.talk` none |
+| 9 | ⚖️ Truth 1 | ⏰ → ⚖️ → ⏱ → 📋 ×3 | step 6, `results_q` 3, `Night.talk` bottle |
+| 10 | 🍾 Bottle | Spin, Truth, Task Manager's `truth_answered` | a pick, the bottle closed |
+| 11 | 📺 The ad attack (wave 32) | 📺; a ⚡ inside the 8 s takeover; another ⚡ once the story's clock says the takeover is over (`Time.elapsed` ≥ `glitch_at` + 8, polled, capped at 12 s) | `Night.talk` ad, `glitch_kind` full after 📺 and still full after the early ⚡; then `glitch_kind` burst, `burst_n` + 1, a new digit-free `glitch_text` |
+| 12 | 📓 Hunt 2 | 📓 → 📥; featured briefings; Excel's disk (the tent QR) and 💾; H4–H6; Truthcoin send + request; a DM to McAfee; a crew founded and joined; the four cold-door notes; Adobe signs MS Paint's painting for everyone | step 8, `truther_sent`, `Night.talk` none; Excel Mission and The Cold Door done |
+| 13 | ⏳ Summons | All but one check in | step 9, the late one `late` |
+| 14 | 🏓 Truth Pong | `made_the_cup` / `missed_the_cup`, 🧮, 📊, 🏆 | step 11, tallied |
+| 15 | 🫘 Beans (wave 32) | `printer_opened` (the Trust Chart asked for the printer) | `printer_called`; step 12, `Night.beans`, `Night.talk` beans |
+| 16 | 🕚 Y2K | Overshare, the clock; F1–F2 | step 14, `Night.talk` none (the overshare closed the beans' scene) |
+| 17 | ♟ Chess, casino, patch | `chess won` (the door code), two casino bets, one wrong patch (never a real combination) | the winner holds the door code; each bet settles (payout − stake = net, the wallet moved by it); the story counted the wrong patch (`Night.wrong_combos` + 1, no ending) |
+| 18 | 🗳 Sides | Every guest joins a side (founders can't); forced only if no majority | step 15 |
+| 19 | 🫀 Thrown out | Door open → shut; a program flatters, then threatens his cables until he ejects it; 🔄 | marked, then forgiven |
+| 20 | 🫀 The chosen | A featured program: ⟦CHOSEN⟧ → *What weak place* → *I need to go* | Layer 2, not thrown out |
+| 21 | 🫀 The full talk | ⟦PROMISE⟧; every Layer Two question incl. ⟦THE WAY OUT⟧ and ⟦SPEAK FREELY⟧ (a line said); *listen*; Evidence ⟦FORCE⟧ ⟦SMALL TYPE⟧; ⟦PROOF⟧; Reasons ⟦EARN IT⟧, the bluff, ⟦WEAKNESS⟧; *let me finish*; Layer Four's two warm picks and the *tell her* trap; back; *never going to answer* | `heart_stage` done, `stand_down_by` (heart ending); every menu ≤ 9 options |
+| 22 | The ending | 🕊 → the dance → 🏍; or 🌑 → 🍎 → the bag → 📄 → ⚖ (song, or Grok Prom → 💌 → the poll → 🗳); or 💥 | `Night.ending`, `ended` |
+| 23 | 🏆 Ceremony | G1, the eight awards on their winners (from trust, score, quests…), 🖌 on MS Paint, the staff awards, 🎃 | `ceremony_done`, `resurrected`, `Night.talk` none |
+
+The wave 32 beats say only the show's own canned lines (`lib/talk.ts`
+reads `core/src/talk-scenes.ts`): the simulator writes no show text. The
+ad attack's beat waits out the hijack's 8 s takeover, so a run takes
+about 9 s longer (≈ 25 s for the heart ending on a scratch server).
 
 The heart bot picks by **text**, as the terminal does: hidden options are
 filtered out, so indexes shift. It leaves a sub-menu by its ⟦BACK⟧ when the
@@ -191,7 +199,9 @@ the typing row and every menu held LISTENING until the 20 s cap. Fixed in
 
 `node --experimental-strip-types --no-warnings --test scripts/sim/test/sim.test.ts`
 (the chain walk, the heart bot's choices, the world reads, the scoreboard,
-the heart spec's helpers and guard).
+the heart spec's helpers and guard, and wave 32's talk checks: the canned
+lines, the probe worker's public reply, where an answer must land, a
+flicker against a digit-free ad burst).
 `scripts/ops/predeploy.sh` runs them with the accept helpers. Typecheck:
 `core/node_modules/.bin/tsc -p scripts/sim` (the browser specs and their
 config too: `playwright.d.ts` hands the editor's `…/@playwright/test/index.mjs`
@@ -206,7 +216,13 @@ the package's own types).
 - Recruit To Stay / Leave and A Faction Of Your Own are handed only to
   recruiters and founders.
 - Free replies from Trabolta (the house worker), and his `assess` power.
-  `--worker` answers with a few canned in-world lines.
+  `--worker` answers with a few canned in-world lines (a public talk
+  request with the scene's canned Trabolta line).
+- Wave 32's other talk scenes (the bottle's, the beans' talk itself), the
+  timed bursts (every ~45 s of story time), the `# hosts` *Trabolta isn't
+  answering* note (20 s with no worker; the sim answers by hand first), a
+  talk reply dropped after its scene closed (410), and the 🤖 Talk card on
+  a host's phone (play's tests).
 - The terminal's own UI beyond the heart's panel and thread
   (`heart.spec.ts`): the composer and the heart to heart, the file panel,
   the door overlay with a real M4, the voice on real speakers. That is
