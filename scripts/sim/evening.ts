@@ -27,15 +27,17 @@
 // SAFETY. Rehearsal events and scratch servers only. It runs the live guard
 // first (scripts/accept/live-guard.ts): a roster with a real guest refuses
 // unless --i-know-this-is-live; it names the event and asks y/N unless
-// --yes or the server is localhost. It never presses Restart / End unless
-// --reset-after (localhost only); --reset-before (localhost only) clears a
+// --yes or the server is a scratch server on this laptop (port 7000, the
+// user's own dev server with loom_dev, still asks). There is no default
+// server: --base or LOOM_SERVER must name one. It never presses Restart / End unless
+// --reset-after (scratch only); --reset-before (scratch only) clears a
 // scratch server's previous run first (bots from an earlier run are
 // registered programs, so the guard would otherwise count them as real).
 // It never prints a code, the door code, a combination or a hunt answer:
 // the mod world is read through lib/world.ts, which drops `Kernel.*`.
 //
 // Flags:
-//   --base <url>        (env LOOM_SERVER; default http://127.0.0.1:7000)
+//   --base <url>        (env LOOM_SERVER; required, no default)
 //   --code <MOD code>   (env LOOM_MOD_CODE)
 //   --event <id>        skip code resolution (default: /api/resolve-code)
 //   --guests 12         how many guest bots (featured included)
@@ -70,7 +72,8 @@ import {
 } from "../accept/chains.ts";
 import { liveGuard, type GuardRow } from "../accept/live-guard.ts";
 import { decide, heartMenu, layerOf, menusOf, type HeartStep, type Menu } from "./lib/heart.ts";
-import { Client, Stream, failure, isLocal, sleep, type Res } from "./lib/http.ts";
+import { Client, Stream, failure, sleep, type Res } from "./lib/http.ts";
+import { isDevServer, isScratch, resolveBase } from "./lib/safety.ts";
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
 import { atLeast, awardWinners, mismatches, notNone, read, truthy, worldOf, type Row, type Want } from "./lib/world.ts";
 import { featuredSlug, pickPool, segment } from "./lib/plan.ts";
@@ -84,7 +87,7 @@ function arg(name: string, fallback?: string): string | undefined {
   return v !== undefined && !v.startsWith("--") ? v : fallback;
 }
 const flag = (name: string) => argv.includes(`--${name}`);
-const base = (arg("base") ?? process.env["LOOM_SERVER"] ?? "http://127.0.0.1:7000").replace(/\/$/u, "");
+const base = resolveBase(arg("base"), process.env["LOOM_SERVER"]) ?? "";
 const modCode = arg("code") ?? process.env["LOOM_MOD_CODE"] ?? "";
 const nGuests = Math.max(4, Number(arg("guests", "12")));
 const featuredWanted = (arg("featured", "Microsoft Excel,MS Paint,Pong") ?? "").split(",").map((s) => s.trim()).filter((s) => s !== "");
@@ -97,13 +100,15 @@ const jsonOut = arg("json");
 const here = dirname(fileURLToPath(import.meta.url));
 const factsPath = arg("facts", join(here, "../../core/examples/trapped-in-the-internet/facts.json"))!;
 
-if (modCode === "" || !["heart", "verdict", "destroyed"].includes(ending)) {
+if (base === "" || modCode === "" || !["heart", "verdict", "destroyed"].includes(ending)) {
   console.error("usage: node --experimental-strip-types scripts/sim/evening.ts --base <url> --code <MOD code> [--ending heart|verdict|destroyed] [--pace ms] [--watch] [--yes]");
   process.exit(2);
 }
-const local = isLocal(base);
+/** A scratch server on this laptop (not :7000, the user's own dev server):
+ *  no y/N, and the reset flags are allowed. */
+const local = isScratch(base);
 if ((flag("reset-after") || flag("reset-before")) && !local) {
-  console.error("--reset-before / --reset-after are for a scratch server on this laptop only.");
+  console.error(`--reset-before / --reset-after are for a scratch server on this laptop only${isDevServer(base) ? " (port 7000 is your own dev server)" : ""}.`);
   process.exit(2);
 }
 

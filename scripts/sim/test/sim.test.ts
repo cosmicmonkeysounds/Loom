@@ -8,6 +8,7 @@ import { CEREMONY, SELF_PRESSED, TO_Y2K, Y2K_TO_VERDICT, pressChain, stepName, s
 import { decide, findOption, heartMenu, layerOf, menusOf, tagOf, type Menu } from "../lib/heart.ts";
 import { featuredSlug, pickPool, segment } from "../lib/plan.ts";
 import { isLocal } from "../lib/http.ts";
+import { isDevServer, isScratch, resolveBase } from "../lib/safety.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
 import { awardWinners, mismatches, worldOf } from "../lib/world.ts";
 
@@ -148,4 +149,18 @@ test("the scoreboard: percentiles, route keys, quests, the exit code", () => {
 test("isLocal anchors the host: a public name that starts like localhost is not local", () => {
   for (const b of ["http://localhost", "http://localhost:7391", "http://127.0.0.1:7391/", "https://127.10.0.1/x", "http://[::1]:7391"]) assert.equal(isLocal(b), true, b);
   for (const b of ["http://localhost.example.com", "https://127.0.0.1.nip.io", "http://127.0.0.1.nip.io:7391", "http://localhostx:7000", "http://[::1].evil", "https://app.mapsandducks.com", "http://user@localhost.evil"]) assert.equal(isLocal(b), false, b);
+});
+
+test("no default server; port 7000 is the user's dev server, not a scratch one", () => {
+  assert.equal(resolveBase(undefined, undefined), null);
+  assert.equal(resolveBase(undefined, "  "), null);
+  assert.equal(resolveBase(undefined, "http://127.0.0.1:7391/"), "http://127.0.0.1:7391");
+  assert.equal(resolveBase("http://localhost:7392", "http://127.0.0.1:7391"), "http://localhost:7392");
+  assert.equal(isDevServer("http://127.0.0.1:7000"), true);
+  assert.equal(isDevServer("http://localhost:7000/"), true);
+  assert.equal(isScratch("http://localhost:7000"), false);
+  assert.equal(isScratch("http://127.0.0.1:7391"), true);
+  assert.equal(isScratch("https://app.mapsandducks.com"), false);
+  assert.equal(isDevServer("https://app.mapsandducks.com:7000"), false, "a remote :7000 is just remote");
+  assert.equal(isScratch("http://localhost"), true);
 });

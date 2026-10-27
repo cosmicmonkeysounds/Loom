@@ -27,7 +27,7 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 
 | Flag | What |
 |---|---|
-| `--base <url>` | The server (env `LOOM_SERVER`; default `http://127.0.0.1:7000`) |
+| `--base <url>` | The server (env `LOOM_SERVER`). Required: there is no default. Port 7000 on this laptop is your own dev server (`loom_dev`): it still asks y/N and refuses the reset flags |
 | `--code <mod>` | The MOD code (env `LOOM_MOD_CODE`) |
 | `--event <id>` | Skip `/api/resolve-code` |
 | `--guests 12` | Guest bots, featured included (at least 4) |
@@ -41,7 +41,7 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 | `--worker` | A scripted probe Trabolta worker. It stays off if a house worker reported in the last 2 minutes |
 | `--json <path>` | The results as JSON |
 | `--yes` / `--i-know-this-is-live` | The guard's y/N and its real-guest refusal (below) |
-| `--reset-before` / `--reset-after` | Restart the event before / after (localhost only) |
+| `--reset-before` / `--reset-after` | Restart the event before / after (a scratch server on this laptop only, not :7000) |
 
 ## The night it plays
 
