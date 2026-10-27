@@ -245,8 +245,8 @@ export type PanelWait = "voice" | "scene" | "settle";
 export function panelGate(o: { sinceDock: number; voiceBusy: boolean; sceneLeft: number; wasOpen?: boolean }): { open: boolean; wait: PanelWait | null; recheck: number | null } {
   if (o.sceneLeft > 0) return { open: false, wait: "scene", recheck: o.sceneLeft };
   if (o.wasOpen === true) return { open: true, wait: null, recheck: null };
-  if (o.sinceDock < PANEL_SETTLE_MS) return { open: false, wait: "settle", recheck: PANEL_SETTLE_MS - o.sinceDock };
   if (o.voiceBusy && o.sinceDock < PANEL_WAIT_CAP_MS) return { open: false, wait: "voice", recheck: PANEL_WAIT_CAP_MS - o.sinceDock };
+  if (o.sinceDock < PANEL_SETTLE_MS) return { open: false, wait: "settle", recheck: PANEL_SETTLE_MS - o.sinceDock };
   return { open: true, wait: null, recheck: null };
 }
 

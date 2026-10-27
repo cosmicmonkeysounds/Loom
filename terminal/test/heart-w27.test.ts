@@ -1,4 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { ChoicePanel } from "../src/heart/ChoicePanel.tsx";
 import {
   PANEL_SETTLE_MS,
   PANEL_WAIT_CAP_MS,
@@ -117,5 +120,31 @@ describe("the empty thread", () => {
     expect(emptyThreadText({ character: "Trabolta", keys: true, heart: false })).toMatch(/say something/);
     expect(emptyThreadText({ character: "Trabolta", keys: false, heart: false })).not.toMatch(/say/);
     expect(emptyThreadText({ character: "Trabolta", keys: true, heart: true })).not.toMatch(/say something/);
+  });
+});
+
+describe("the panel as drawn", () => {
+  const big: HeartMenu = { id: 300, beat: "Heart Layer Three", channel: "dm:Trabolta", options: Array.from({ length: 11 }, (_, i) => (i === 0 ? "⟦PROOF⟧ Show him the Sandy File." : `Option ${i + 1}.`)) };
+  const draw = (p: Partial<Parameters<typeof ChoicePanel>[0]>) => renderToStaticMarkup(createElement(ChoicePanel, { menu: big, doorOpen: false, onPick: async () => {}, numberKeys: true, onActivity: () => {}, layer: 3, ...p }));
+
+  it("a new menu waits, listening, its options untouchable", () => {
+    const html = draw({ voiceBusy: true, onSkip: () => {} });
+    expect(html).toContain('data-open="false"');
+    expect(html).toContain("LISTENING");
+    expect(html).toContain("SPACE / CLICK TO SKIP");
+    expect(html.match(/<button[^>]*disabled/g)?.length).toBe(11);
+  });
+
+  it("keys every option (0 for the tenth, then a), under YOUR ANSWER", () => {
+    const html = draw({});
+    expect(html).toContain("YOUR ANSWER");
+    const nums = [...html.matchAll(/class="heart-num">([^<]*)</g)].map((m) => m[1]);
+    expect(nums).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "a"]);
+  });
+
+  it("puts CLOSE THE DOOR above the greyed options, not over them (D5)", () => {
+    const html = draw({ doorOpen: true });
+    expect(html.indexOf("CLOSE THE DOOR")).toBeLessThan(html.indexOf("heart-options"));
+    expect(html).toContain("heart-panel greyed");
   });
 });
