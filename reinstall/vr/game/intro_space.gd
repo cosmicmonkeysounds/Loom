@@ -22,23 +22,28 @@ const SPOT := Vector3(0, 400, 80)
 const VIDEO_PATH := "res://media/reinstallation.ogv"
 const VIDEO_SIZE := Vector2i(1280, 720)
 ## The cinema screen: its distance (m), size and centre height.
-const SCREEN_DISTANCE := 3.6
-const SCREEN_SIZE := Vector2(3.2, 1.8)
+const SCREEN_DISTANCE := 3.4
+const SCREEN_SIZE := Vector2(3.6, 2.025)
 const SCREEN_Y := 1.55
-const SKIP_AT := Vector2(1.3, 0.42)
-const SKIP_SIZE := Vector2(0.56, 0.17)
+const SKIP_AT := Vector2(1.5, 0.36)
+const SKIP_SIZE := Vector2(0.62, 0.22)
 ## The tutorial panel: its usual distance in front of the guest (m).
 const PANEL_DISTANCE := 2.0
-const BACKDROP_SIZE := Vector2(1.9, 1.45)
-const BACKDROP_Y := 1.38
-const MAIN_AT := Vector2(0, 1.12)
+## The backdrop's width and top; its bottom follows the lowest button up
+## ([method _fit_backdrop]).
+const BACKDROP_W := 1.9
+const BACKDROP_TOP := 2.12
+## The panel's content sits around this height: a panel scaled up for
+## distance grows about it.
+const EYE_LINE := 1.55
+const MAIN_AT := Vector2(0, 1.22)
 const MAIN_SIZE := Vector2(0.62, 0.2)
-const SNAP_AT := Vector2(-0.43, 1.24)
-const SMOOTH_AT := Vector2(0.43, 1.24)
+const SNAP_AT := Vector2(-0.43, 1.3)
+const SMOOTH_AT := Vector2(0.43, 1.3)
 const TURN_SIZE := Vector2(0.74, 0.2)
-const KEEP_AT := Vector2(0, 0.82)
+const KEEP_AT := Vector2(0, 0.86)
 const KEEP_SIZE := Vector2(0.78, 0.18)
-const SKIP_TUTORIAL_AT := Vector2(0, 0.5)
+const SKIP_TUTORIAL_AT := Vector2(0, 0.6)
 const SKIP_TUTORIAL_SIZE := Vector2(0.6, 0.13)
 ## Where the ring and the duck go, from the guest (m).
 const RING_AHEAD := 2.5
@@ -50,10 +55,16 @@ var fake_video := false
 var video_path := VIDEO_PATH
 
 var _floor: Node3D
+var _floor_mesh: MeshInstance3D
+var _floor_lit: Material
+var _floor_dark: Material
+var _lamp: OmniLight3D
+var _posts: Node3D
 var _cinema: Node3D
 var _viewport: SubViewport
 var _video: VideoStreamPlayer
 var _panel: Node3D
+var _backdrop: MeshInstance3D
 var _title: Label3D
 var _body: Label3D
 var _progress: Label3D
@@ -104,21 +115,30 @@ func _build_floor() -> void:
 	cs.position.y = -0.1
 	body.add_child(cs)
 	_floor.add_child(body)
-	var mesh := MeshInstance3D.new()
+	_floor_mesh = MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(40, 40)
-	mesh.mesh = plane
-	mesh.material_override = HouseLook.floor_for("#1f5560", false)
-	_floor.add_child(mesh)
+	_floor_mesh.mesh = plane
+	# The house's checker floor, in squares of about a metre; near black
+	# while the video plays (a dark, calm cinema).
+	var lit := (HouseLook.floor_for("#1f5560", false) as StandardMaterial3D).duplicate() as StandardMaterial3D
+	lit.uv1_scale = Vector3(20, 20, 1)
+	_floor_lit = lit
+	_floor_dark = HouseLook.paint("#04090c")
+	_floor_mesh.material_override = _floor_lit
+	_floor.add_child(_floor_mesh)
 	# A soft lamp over the practice spot, and a wide ring of posts so the
 	# space has edges (the lobby's look, calmer).
-	var lamp := OmniLight3D.new()
-	lamp.name = "Lamp"
-	lamp.light_color = Color("#fff4dc")
-	lamp.light_energy = 1.4
-	lamp.omni_range = 9.0
-	lamp.position = Vector3(0, 3.2, -1.0)
-	_floor.add_child(lamp)
+	_lamp = OmniLight3D.new()
+	_lamp.name = "Lamp"
+	_lamp.light_color = Color("#fff4dc")
+	_lamp.light_energy = 1.4
+	_lamp.omni_range = 9.0
+	_lamp.position = Vector3(0, 3.2, -1.0)
+	_floor.add_child(_lamp)
+	_posts = Node3D.new()
+	_posts.name = "Posts"
+	_floor.add_child(_posts)
 	for i in 16:
 		var a := TAU * i / 16.0
 		var post := MeshInstance3D.new()
@@ -127,7 +147,7 @@ func _build_floor() -> void:
 		post.mesh = box
 		post.material_override = HouseLook.screen("#2a9d9d")
 		post.position = Vector3(sin(a) * 7.0, 1.1, cos(a) * 7.0)
-		_floor.add_child(post)
+		_posts.add_child(post)
 
 
 func _build_cinema() -> void:
@@ -160,7 +180,7 @@ func _build_cinema() -> void:
 	screen.name = "Screen"
 	screen.position = Vector3(0, SCREEN_Y, 0)
 	_cinema.add_child(screen)
-	_looks["skip"] = Lobby.make_button(_cinema, IntroFlow.LABELS["skip"], SKIP_AT, SKIP_SIZE, 0.07)
+	_looks["skip"] = Lobby.make_button(_cinema, IntroFlow.LABELS["skip"], SKIP_AT, SKIP_SIZE, 0.1)
 
 
 func _screen_material() -> StandardMaterial3D:
@@ -177,13 +197,13 @@ func _build_panel() -> void:
 	_panel.name = "Panel"
 	_panel.top_level = true
 	add_child(_panel)
-	var backdrop := Lobby._quad(BACKDROP_SIZE, HouseLook.screen(BACKDROP))
-	backdrop.name = "Backdrop"
-	backdrop.position = Vector3(0, BACKDROP_Y, -0.03)
-	_panel.add_child(backdrop)
-	_progress = _label(0.045, HouseLook.TEAL_GLOW, 2.0)
-	_title = _label(0.11, HouseLook.GOLD, 1.88)
-	_body = _label(0.058, HouseLook.INK, 1.6)
+	_backdrop = Lobby._quad(Vector2(BACKDROP_W, 1.0), HouseLook.screen(BACKDROP))
+	_backdrop.name = "Backdrop"
+	_panel.add_child(_backdrop)
+	_fit_backdrop([])
+	_progress = _label(0.045, HouseLook.TEAL_GLOW, 2.04)
+	_title = _label(0.11, HouseLook.GOLD, 1.92)
+	_body = _label(0.066, HouseLook.INK, 1.66)
 	for id: String in ["ok", "next", "start"]:
 		_looks[id] = Lobby.make_button(_panel, IntroFlow.LABELS[id], MAIN_AT, MAIN_SIZE, 0.08)
 	_looks["snap"] = Lobby.make_button(_panel, IntroFlow.LABELS["snap"], SNAP_AT, TURN_SIZE, 0.07)
@@ -193,7 +213,7 @@ func _build_panel() -> void:
 	_looks["skip_tutorial"] = Lobby.make_button(_panel, "", SKIP_TUTORIAL_AT, SKIP_TUTORIAL_SIZE, 0.045)
 	Lobby.fit((_looks["skip_tutorial"] as Node3D).get_node("Label") as Label3D, IntroFlow.LABELS["skip_tutorial"], SKIP_TUTORIAL_SIZE.x - 0.06, 0.045)
 	for i in 2:
-		var note := _label(0.036, HouseLook.TEAL_GLOW, 1.06)
+		var note := _label(0.045, HouseLook.TEAL_GLOW, 1.1)
 		note.position.x = SNAP_AT.x if i == 0 else SMOOTH_AT.x
 		note.text = IntroFlow.SNAP_NOTE if i == 0 else IntroFlow.SMOOTH_NOTE
 		_notes.append(note)
@@ -217,6 +237,7 @@ func start_video() -> void:
 	_surface = "cinema"
 	_panel.visible = false
 	_cinema.visible = true
+	_lights(false)
 	_video_on = true
 	_video_done = false
 	if fake_video:
@@ -244,6 +265,19 @@ func stop_video() -> void:
 	_video.stream = null
 	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_cinema.visible = false
+	_lights(true)
+
+
+## The practice floor lit (the tutorial) or dark (the cinema).
+func _lights(on: bool) -> void:
+	_floor_mesh.material_override = _floor_lit if on else _floor_dark
+	_lamp.visible = on
+	_posts.visible = on
+
+
+## Whether the practice floor is lit (the tutorial), not the dark cinema.
+func lit() -> bool:
+	return _lamp.visible
 
 
 ## Tests / a fake video: the video has played to its end.
@@ -298,7 +332,18 @@ func render(flow: IntroFlow) -> void:
 			_buttons.append({"id": id, "center": _center_of(id), "size": _size_of(id)})
 	for note in _notes:
 		note.visible = "snap" in ids
+	_fit_backdrop(ids)
 	_render_looks(flow)
+
+
+## The backdrop from [constant BACKDROP_TOP] down to just under the lowest
+## of `ids` (just under the text when there is none).
+func _fit_backdrop(ids: Array) -> void:
+	var bottom := 1.42
+	for id: String in ids:
+		bottom = minf(bottom, _center_of(id).y - _size_of(id).y / 2.0 - (0.2 if id in ["snap", "smooth"] else 0.08))
+	_backdrop.scale = Vector3(1.0, BACKDROP_TOP - bottom, 1.0)
+	_backdrop.position = Vector3(0, (BACKDROP_TOP + bottom) / 2.0, -0.03)
 
 
 static func _center_of(id: String) -> Vector2:
@@ -329,7 +374,9 @@ func _render_looks(flow: IntroFlow) -> void:
 ## they read the same.
 func place_panel(feet: Vector3, yaw: float, distance := PANEL_DISTANCE) -> void:
 	var f := _forward(yaw)
-	_panel.global_transform = Transform3D(Basis(Vector3.UP, deg_to_rad(yaw)).scaled(Vector3.ONE * (distance / PANEL_DISTANCE)), Vector3(feet.x, SPOT.y, feet.z) + f * distance)
+	var k := distance / PANEL_DISTANCE
+	var at := Vector3(feet.x, SPOT.y + EYE_LINE * (1.0 - k), feet.z) + f * distance
+	_panel.global_transform = Transform3D(Basis(Vector3.UP, deg_to_rad(yaw)).scaled(Vector3.ONE * k), at)
 
 
 ## The ring [constant RING_AHEAD] m ahead of `feet` along `yaw`; returns where.

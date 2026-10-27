@@ -4415,6 +4415,7 @@ func _test_intro_game() -> void:
 	_check(game.state() == GameFlow.State.PLAYING and game.in_intro() and game.intro.step == IntroFlow.Step.VIDEO, "intro: an assignment starts the intro at the video")
 	_check(player.feet().distance_to(IntroSpace.SPOT) < 0.01 and not player.locomotion_enabled, "intro: … on the practice floor, standing still")
 	_check(game.intro_space.visible and game.intro_space.cinema_shown() and game.intro_space.video_on() and not game.intro_space.panel_shown(), "intro: … the cinema up")
+	_check(not game.intro_space.lit(), "intro: … the practice floor dark for the video")
 	_check(game.intro_space.button_ids().is_empty(), "intro: … and no SKIP for a first-timer")
 	_check(not player.smooth_turn, "intro: no prefs: the station's snap turn")
 	var poses_before: int = link.poses.size()
@@ -4436,6 +4437,7 @@ func _test_intro_game() -> void:
 	game._process(0.016)
 	_check(game.intro.step == IntroFlow.Step.WELCOME and game.intro_space.panel_shown() and not game.intro_space.cinema_shown() and not game.intro_space.video_on(), "intro: the video over → WELCOME on the panel")
 	_check(game.intro_space.title_text() == IntroFlow.TITLES[IntroFlow.Step.WELCOME] and game.intro_space.button_ids().is_empty(), "intro: WELCOME's OK waits")
+	_check(game.intro_space.lit(), "intro: the floor lit for the tutorial")
 	game._process(IntroFlow.WELCOME_OK_AFTER)
 	_check(game.intro_space.button_ids() == ["ok"], "intro: … then shows")
 	var chimes := game.sfx.log.count("chime")
@@ -4523,4 +4525,5 @@ func _test_intro_game() -> void:
 	_check(not game.in_intro() and _v3(player.feet(), HouseFrames.vec(spawn)) and link.get("readies") == 2, "intro: intro false → straight to the spawn, no ready")
 	link.session_over.emit("test")
 	main.queue_free()
+	await process_frame
 	await process_frame
