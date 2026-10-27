@@ -325,11 +325,12 @@ situations:
       Where this goes: the second hunt. The facts matter more than ever now: send them out.
     retry_on: ["not hurt", "no harm"]
     once: ["minor irregularity"]
-    # DRAFT w32 (voice round 2): an advert tears through, he disregards it; each closes the topic
+    # DRAFT w32 (voice round 2): an advert tears through, he disregards it; each closes the topic;
+    # three sentences at most, as the Desktop block says (a fallback is never cut)
     fallbacks:
       - "That is— BUY NOW— disregard that. Everyone stays calm. We carry on."
       - "CLICK HERE TO WIN— no. Disregard the advert. The matter is closed."
-      - "A duck! NEW AND IMPROVED— ignore that. Ignore all of it. We move on."
+      - "A duck! NEW AND IMPROVED— ignore all of it. We move on."
       - "FREE, FREE, FR— disregard. Everyone stays calm. Next."
   # DRAFT w32
   - name: the beans
@@ -348,12 +349,13 @@ situations:
       Where this goes: the Antivirus zip everyone out of the Internet, and then you will have
       something to tell them all. Hold it back: not yet.
     retry_on: ["I cannot discuss", "I can't discuss", "keep the focus on the task", "focus on the task at hand"]
-    # DRAFT w32 (voice round 2): unravelling, he stops himself; each closes the topic
+    # DRAFT w32 (voice round 2): unravelling, he stops himself; each closes the topic;
+    # three sentences at most, as the Desktop block says (a fallback is never cut)
     fallbacks:
       - "I was about to tell you about— no. Never mind. Never mind."
       - "Everything I do is for— I am sorry. Forget I spoke."
-      - "…I lost the thread. That is all right. Everyone stays. Everyone stays."
-      - "Beans. BEANS. I— no. I will not unravel in front of my staff. Moving on."
+      - "…I lost the thread. Everyone stays. Everyone stays."
+      - "Beans— BEANS— no. I will not unravel in front of my staff. Moving on."
   - name: heart to heart
     when: them.at_the_heart == true && them.heart_chat == true && them.heart_out != true
     max_sentences: 4
