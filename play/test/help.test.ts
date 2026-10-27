@@ -140,7 +140,21 @@ describe("play help", () => {
     expect(text).toContain("Standby moved — press GO again");
     expect(text).not.toMatch(/pull up the console|five tabs/u);
     const prime = articlesFor("performer");
-    for (const q of ["standby", "test tone", "show window", "house desk"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("hosts");
+    for (const q of ["standby", "test tone", "show window"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("hosts");
+  });
+
+  it("wave 30: the Desk's own article covers Setup, Try it and what each setup problem means", async () => {
+    const { readFileSync } = await import("node:fs");
+    const text = readFileSync(new URL("../../docs/help/play/20-house-desk.md", import.meta.url), "utf8").replace(/\s+/gu, " ");
+    for (const h of ["## Setup", "## Try it", "## STANDBY, GO, Playing and the cues", "## Checks"]) expect(text).toContain(h);
+    for (const t of ["■ STOP ALL", "All connected ✓", "📢 Say on the speakers", "No mind connected", "Zigbee2MQTT doesn't know", "Run → House → Cue designer"]) expect(text).toContain(t);
+    expect(readFileSync(new URL("../../docs/help/play/14-hosts.md", import.meta.url), "utf8")).toContain("(house-desk.md)");
+    const prime = articlesFor("performer");
+    const desk = prime.find((a) => a.slug === "house-desk");
+    expect(desk?.role).toBe("performer");
+    expect(articlesFor("guest").some((a) => a.slug === "house-desk")).toBe(false);
+    // The Desk's own words find it first; the hosts' guide keeps the night's.
+    for (const q of ["house desk", "setup", "try it", "router offline", "no mind connected", "zigbee2mqtt", "placeholder"]) expect(searchHelp(prime, q)[0]?.article.slug, q).toBe("house-desk");
   });
 });
 

@@ -172,6 +172,57 @@ describe("the Desk window", () => {
   });
 });
 
+describe("wave 30: the Desk's Setup, Try it and How", () => {
+  const sent: Array<{ route: string; body: Record<string, unknown> }> = [];
+  const calls = hostCalls(async (route, body) => {
+    sent.push({ route, body });
+    return { ok: true };
+  }, () => "");
+  const desk = (v = deskFixture()) => renderToStaticMarkup(createElement(DeskBody, { view: v, calls, client: { receivedAt: 1_000, connected: true, error: null, refresh: () => {} }, me: "Task Manager" }));
+  const well = () => {
+    const v = deskFixture();
+    return { ...v, house: { ...v.house, sounds: [{ name: "server_hum", to: ["server_spk"], file: "ok" as const, ms: 4000 }], minds: [{ character: "Trabolta", name: "Trabolta", online: true, workers: ["macbook"] }] } };
+  };
+  it("Setup sits above STANDBY: a card per system, a down one with its steps open", () => {
+    const html = desk();
+    expect(html.indexOf('data-testid="host-desk-setup"')).toBeGreaterThan(-1);
+    expect(html.indexOf('data-testid="host-desk-setup"')).toBeLessThan(html.indexOf('data-testid="host-desk-standby"'));
+    expect(html).toMatch(/class="host-desk-setup-card bad" data-testid="host-desk-setup-sound"/u);
+    expect(html).toMatch(/class="host-desk-setup-card ok" data-testid="host-desk-setup-lights"/u);
+    expect(html).toContain("▾ What to do (1)");
+    expect(html).toContain("stagehand/media/sounds/");
+  });
+  it("all connected is one line, folded", () => {
+    const html = desk(well());
+    expect(html).toContain("▸ All connected ✓ · 🔊 Sound · 💡 Lights · 🧠 Trabolta");
+    expect(html).not.toContain("host-desk-setup-card");
+  });
+  it("How the Desk works is folded at the top", () => {
+    const html = desk();
+    expect(html).toMatch(/aria-expanded="false"[^>]*>▸ How the Desk works/u);
+    expect(html.indexOf("How the Desk works")).toBeLessThan(html.indexOf('data-testid="host-desk-standby"'));
+  });
+  it("Try it: Say on the speakers, then the looks and the story sounds, each a tap", () => {
+    const html = desk();
+    expect(html).toContain('data-testid="host-desk-tryit"');
+    expect(html).toContain("📢 Say on the speakers");
+    expect(html).toMatch(/maxLength="280"/u);
+    expect(html).toContain("0 / 280");
+    expect(html).toMatch(/host-desk-say-go"[^>]*disabled=""/u);
+    expect(html).toContain("▾ 💡 Looks (1)");
+    expect(html).toContain("▾ ▶ Story sounds (1)");
+    expect(html).toMatch(/class="w95-btn host-desk-try"/u);
+    expect(html).toContain("⚠ no file on the router&#x27;s machine");
+  });
+  it("Try it's calls stay on the host allowlist", async () => {
+    sent.length = 0;
+    await calls.deskTest({ route: "/api/mod/lights/test", body: { look: "heart_wake" } });
+    await calls.deskTest({ route: "/api/mod/audio/play", body: { sound: "server_hum" } });
+    await calls.deskTest({ route: "/api/mod/audio/play", body: { say: "Hello" } });
+    expect(sent.map((x) => x.route)).toEqual(["/api/mod/lights/test", "/api/mod/audio/play", "/api/mod/audio/play"]);
+  });
+});
+
 describe("the Desk stays out of every first load", () => {
   it("only windows.tsx loads desk.tsx, and only by import()", () => {
     expect(src("host/windows.tsx")).toContain('import("./desk.tsx")');

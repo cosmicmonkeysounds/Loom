@@ -491,6 +491,38 @@
 .host-desk-all { width: 100%; min-height: var(--tap); margin: 8px 0 4px; font-weight: 700; justify-content: flex-start; }
 .host-desk-recent { list-style: none; margin: 0; padding: 0; font: 12px/1.45 var(--ui-font); color: var(--muted-ink); }
 .host-desk-recent li { overflow-wrap: anywhere; }
+/* Wave 30: How the Desk works, Setup and Try it. A fold is a full-width
+   row; Setup is a card per system, its tone on the left edge. */
+.host-desk-fold { width: 100%; min-height: var(--tap); margin: 4px 0; padding: 0 10px; font-weight: 700; justify-content: flex-start; text-align: left; overflow-wrap: anywhere; }
+.host-desk-how-list { margin: 2px 0 6px; padding: 0 4px 0 22px; font: 13px/1.4 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-how-list li + li { margin-top: 3px; }
+.host-desk-setup-ok { color: var(--good); }
+.host-desk-setup-card {
+  margin: 0 0 6px; padding: 6px 10px 8px; border-radius: var(--radius);
+  background: var(--white); box-shadow: var(--sunken), inset 4px 0 0 var(--good);
+}
+.host-desk-setup-card.warn { box-shadow: var(--sunken), inset 4px 0 0 var(--highlight); }
+.host-desk-setup-card.bad { box-shadow: var(--sunken), inset 4px 0 0 var(--bad), inset 0 0 0 2px var(--bad); }
+.host-desk-setup-head { display: flex; align-items: baseline; gap: 8px; margin: 0; min-width: 0; }
+.host-desk-setup-title { flex: 1 1 auto; min-width: 0; font: 800 15px var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-setup-mark { flex: 0 0 auto; font: 900 16px var(--ui-font); color: var(--good); }
+.host-desk-setup-card.warn .host-desk-setup-mark { color: var(--ink); }
+.host-desk-setup-card.bad .host-desk-setup-mark { color: var(--bad); }
+.host-desk-setup-status { margin: 2px 0 0; font: 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-setup-card .host-desk-fold { margin: 6px 0 0; }
+.host-desk-setup-fix { margin: 6px 0 0; padding: 0 0 0 22px; font: 13px/1.4 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-setup-fix li + li { margin-top: 4px; }
+.host-desk-say { padding: 6px 8px 8px; margin: 0 0 6px; border-radius: var(--radius); background: var(--white); box-shadow: var(--sunken); }
+.host-desk-say-label { display: block; margin: 0 0 4px; font: 800 13px var(--ui-font); color: var(--ink); }
+/* 16 px: iOS Safari zooms the page into a smaller box. */
+.host-desk-say-box { width: 100%; min-height: var(--tap); padding: 6px 8px; font: 16px var(--ui-font); color: var(--ink); background: var(--white); border: none; border-radius: var(--radius); box-shadow: var(--sunken); }
+.host-desk-say-row { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; flex-wrap: wrap; }
+.host-desk-say-count { flex: 1 1 auto; font: 12px var(--ui-font); color: var(--muted-ink); font-variant-numeric: tabular-nums; }
+.host-desk-say-go { flex: 0 0 auto; min-height: var(--tap); padding: 0 14px; font-weight: 800; }
+.host-desk-say-row .host-confirm { flex: 1 1 100%; }
+.host-desk-try-note { margin: 0 2px 6px; font: 700 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-desk-try { display: flex; width: 100%; min-height: var(--tap); padding: 6px 10px; justify-content: flex-start; align-items: flex-start; text-align: left; font: 14px var(--ui-font); }
+.host-desk-try-hint { font-size: 12px; font-weight: 700; color: var(--maroon); overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) {
   .host-desk-progress-fill { transition: none; }
 }
