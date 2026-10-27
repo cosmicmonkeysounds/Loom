@@ -1352,7 +1352,7 @@ number; if a writer adds or drops an entry, update this table first. Coded entri
 ### 2.13 Cue registry (show control)
 
 `cue` names are single tokens. Stagehand matches `directive: cue` + `match: {target: <name>}`.
-Light looks fan out to Zigbee2MQTT group scenes and WLED presets (`stagehand-hw.md` §3.3);
+Light looks are `lights.json` looks since wave 31 (the `lights` job, bulb by bulb; no Zigbee scenes, groups or WLED presets — the per-cue scene/preset columns below are history);
 screen looks are for the terminal tablets + the living-room TV (today they reach only a
 stagehand target; terminals ignore them until the Screens layer exists, §7). Each cue line is
 followed by its mirror: `set Night.lights = "<suffix>"` (except the `lights_tube_chase` overlay); `set Night.screen = "<suffix>"` (TV);
@@ -1507,12 +1507,13 @@ The story only emits directives; this file makes them physical. It is new, separ
 `show.example.yaml` (which a test pins), and shipped with the rewrite. Shape per
 `stagehand-hw.md` §3 (Zigbee2MQTT payloads, `retain: false`, quoted `"on"` / `"off"`):
 
-- **Room lights:** one rule per allow-listed LOCATION for the long form, e.g. `match:
-  {directive: cue, target: lights, room: The Start Bar}` → `zigbee2mqtt/kitchen/set
-  {"state": "{state}", "transition": 0}` + the room's WLED segment. Rooms: The Start Bar
+- **Room lights:** rules per allow-listed LOCATION for the long form, e.g. `match:
+  {directive: cue, target: lights, room: The Start Bar}` → `zigbee2mqtt/kitchen_1/set` (and
+  `_2`, `_3`; wave 31: bulb by bulb, no group) + the living room's WLED strip for The Desktop. Rooms: The Start Bar
   (kitchen), The Desktop (living), The Cloud (backyard), The RAM (the studio). The agent's
   `room` arg reaches the story already canonicalised to the LOCATION id.
-- **Scenes:** one rule per `cue lights_*` in §2.13 (Z2M `scene_recall` + WLED `ps`).
+- **Looks:** every `cue lights_*` in §2.13 is a `lights.json` look (wave 31; it replaced the
+  old Z2M `scene_recall` + WLED `ps` rules).
 - **Screens flicker:** `screens_flicker` also blinks the house bulbs (Z2M `effect: blink`, a
   one-shot that reverts by itself) so Trabolta's power is felt even before the Screens layer
   exists. Since wave 9 there is no WLED rule for it: the old preset 21 left every strip on the

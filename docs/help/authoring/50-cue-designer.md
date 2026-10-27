@@ -81,11 +81,15 @@ The list marks each look: → once, × a few times, ↻ until the next look,
 light; ⚡ how many story lines and desk cues play it.
 
 **N more story cues with no look here** (folded) lists the story's
-`cue` names that no look or desk cue answers. In *Trapped in the
-Internet* most of them are played by the house's show rules (stagehand's
-`show` job: Zigbee scenes and WLED presets), so they work without a look;
-**+ name** writes a look for one if you want `lights.json` to light it
-instead.
+`cue` names that no look or desk cue answers; **+ name** writes a look for
+one. In *Trapped in the Internet* every `lights_*` cue is a look (wave 31:
+there are no Zigbee scenes or WLED presets any more), except
+`lights_server_open`: the server room is the heart's, lit by its
+`heart_*` looks. The rest of the list are the screens' cues (`screens_*`,
+`tv_*`, …) and the house's show rules (Trabolta's room cuts and
+`screens_flicker`, stagehand's `show` job), which work without a look. The
+looks are DRAFTs: play each one on the house (▶ Test on the house), retune
+it, Save to project.
 
 ## Sounds
 

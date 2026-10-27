@@ -15,7 +15,7 @@ import pytest
 
 from stagehand.config import parse_config
 from stagehand.lights.config import parse_lights_section
-from stagehand.lights.module import HouseLights, catch_up_look, cue_name
+from stagehand.lights.module import HouseLights, catch_up_house, catch_up_look, cue_name
 from stagehand.lights.routing import parse_lights
 from stagehand.modapi import ModApiError
 from stagehand.module import ConfigError
@@ -301,6 +301,34 @@ async def test_the_catch_up_plays_the_storys_look_and_an_old_server_gets_boot():
     assert await lights.catch_up("mqtt") == "heart_alarm"
     lights2 = _lights(timer, mod=FakeMod(status=404))
     assert await lights2.catch_up("start") == "heart_idle"
+
+
+def _with_house_looks() -> dict:
+    doc = json.loads(json.dumps(BASIC))
+    doc["looks"]["lights_game"] = {"to": ["desk-lamp"], "set": {"state": "ON", "brightness": 200}}
+    doc["looks"]["lights_y2k"] = {"to": ["desk-lamp"], "set": {"state": "ON", "color_temp": 450, "brightness": 90}}
+    doc["looks"]["lights_tube_chase"] = {"to": ["desk-lamp"], "steps": [{"at": 0, "set": {"state": "ON", "brightness": 254}}], "then": "restore"}
+    return doc
+
+
+@pytest.mark.parametrize(
+    ("value", "look"),
+    [("game", "lights_game"), ("server_open", "lights_y2k"), ("none", None), (None, None), ("dance", None), ("tube_chase", None)],
+)
+def test_the_catch_up_reads_the_house_look(value, look):
+    """Wave 31: `night.lights` → `lights_<value>` when lights.json has it (server_open is Y2K's house)."""
+    night = {"lights": value} if value is not None else {}
+    assert catch_up_house({"night": night}, parse_lights(_with_house_looks()))[0] == look
+    assert catch_up_house(None, parse_lights(_with_house_looks()))[0] is None
+
+
+@_async
+async def test_the_catch_up_plays_the_house_look_then_the_heart_look():
+    timer = FakeTimer()
+    lights = _lights(timer, doc=_with_house_looks(), mod=FakeMod({"night": {"lights": "game", "heart_look": "heart_wake", "server_door": "closed", "alarm_on": False}}))
+    assert await lights.catch_up("mqtt") == "heart_wake"
+    assert lights.running["desk-lamp"].name == "lights_game"
+    assert lights.running["server-room-rgb"].name == "heart_wake"
 
 
 @_async

@@ -32,8 +32,12 @@ every MQTT or feed (re)connect, and 1.5 s after a `lifecycle` reset /
 reload / golive, `GET /api/screen/state` and play: `night.alarm_on` →
 `heart_alarm`; else the door open in `door` / `scan` / `talk` →
 `heart_door_open`; else `night.heart_look`; else `boot`. An older server (a
-404, no such fields) → `boot`. A live cue that lands while the state is read
-wins (the catch-up then plays nothing).
+404, no such fields) → `boot`. Since wave 31 the house look comes first,
+under it: `night.lights` → `lights_<value>` (`server_open` → `lights_y2k`, the
+house look the server room opens over), when lights.json has that look; the
+heart look then takes the server-room bulb, which no house look reaches. A
+live cue that lands while the state is read wins (the catch-up then plays
+nothing).
 """
 
 from __future__ import annotations
@@ -134,6 +138,21 @@ def catch_up_look(answer: Any, doc: LightsDoc | None) -> tuple[str | None, str]:
             return boot, f"boot (the story's {look} only gives the light back)"
         return look, "the story's heart look"
     return boot, "boot"
+
+
+def catch_up_house(answer: Any, doc: LightsDoc | None) -> tuple[str | None, str]:
+    """Wave 31: the house look the story last cued (`Night.lights`), or None."""
+    night = answer.get("night") if isinstance(answer, dict) else None
+    value = night.get("lights") if isinstance(night, dict) else None
+    if not isinstance(value, str) or value in ("", "none"):
+        return None, "no house look (none cued, or an older server)"
+    look = "lights_y2k" if value == "server_open" else f"lights_{value}"
+    spec = doc.look(look) if doc is not None else None
+    if not isinstance(spec, dict):
+        return None, f"lights.json has no {look}"
+    if spec.get("then") == "restore":
+        return None, f"{look} only gives the light back"
+    return look, f"the story's house look ({value})"
 
 
 @dataclass
@@ -519,6 +538,9 @@ class HouseLights:
         if self._live_cues != seen:
             log.info("catch-up (%s) skipped: a live cue arrived while the state was read", why)
             return None
+        house, house_why = catch_up_house(answer, self.doc)
+        if house is not None:
+            self.play(house, why=f"catch-up {why}: {house_why}")
         look, reason = catch_up_look(answer, self.doc)
         if look is None:
             return None
@@ -781,4 +803,4 @@ def probe_broker(cfg: LightsSectionConfig, timeout: float = 2.0) -> tuple[bool |
     return state, devices
 
 
-__all__ = ["HouseLights", "build_lights", "catch_up_look", "cue_name", "Command"]
+__all__ = ["HouseLights", "build_lights", "catch_up_house", "catch_up_look", "cue_name", "Command"]

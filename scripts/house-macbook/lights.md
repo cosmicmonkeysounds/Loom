@@ -2,13 +2,16 @@
 
 Stagehand's **`lights`** module turns the story's `cue <look>` into
 Zigbee2MQTT and WLED commands, for every look the event's `lights.json`
-defines. The repo's file holds one fixture so far: the server room's RGB
-bulb `server_room_rgb` (Trabolta's heart). The house's Hue and ZL1 bulbs and
-the WLED strip join it as they are placed on the map (the Desktop README's
-§8: `kind: zigbee` / `zigbee-group` with the Zigbee2MQTT name, `kind: wled`
-with `device: wled/<name>`), and their looks are designed in Run → House →
-Cue designer. Until a look is in `lights.json`, the `lights_*` cues are
-`trapped.house.yaml`'s `show` rules (group scenes + WLED presets).
+defines. Since wave 31 the repo's file holds every light: the house's Hue
+and ZL1 bulbs by their Zigbee2MQTT names (`living_1..3`, `kitchen_1..3`,
+`hall_main`, `hall_up`, `hall_basement`, `casino`, `bath_down`,
+`bath_up`, `fan_closet_1..2`, `ram_1..3`), the server room's RGB bulb
+`server_room_rgb` (Trabolta's heart), and the living room's WLED strip
+(`wled/living`), plus every story `lights_*` and `heart_*` look (designed
+in Run → House → Cue designer). There are no Zigbee groups, Zigbee scenes
+or WLED presets; `trapped.house.yaml`'s `show` rules keep only Trabolta's
+room cuts and the flicker, bulb by bulb. Pairing and naming: the Desktop
+README's §5.
 
 ```
 story  cue heart_wake ─► mod feed ─► stagehand lights ─► zigbee2mqtt/server_room_rgb/set (timed steps)
@@ -104,6 +107,6 @@ connected; with the uplink down use `mosquitto_pub` (`zigbee.md` §7).
 | Symptom | Look at |
 |---|---|
 | The bulb ignores the story | `lights.log` (`look … →` lines); `stagehand lights devices` (is the module online, is the device named `server_room_rgb`?) |
-| A look plays twice / fights a scene | the `show` job was not restarted after the install (it still has a YAML rule for that cue); the bulb was added to the Z2M `house` group (a house look then reaches it) |
+| A look plays twice / fights another | the `show` job was not restarted after a `git pull` (an old YAML rule for that cue); a ZL1 with a hidden touchlink group binding answers another bulb's commands (reset and re-pair it: the Desktop README §5.3) |
 | Identify / Test does nothing | `stagehand lights devices` → module offline: `.\start-stagehand.ps1 -Restart lights` on the Desktop (`uv run stagehand launchd restart --job lights` on a Mac) |
 | Pair new device does nothing | the same; or Z2M offline (`zigbee.md`) |

@@ -18,7 +18,7 @@ does not apply here.
 | `show:` | `show/` | the mod feed's `sim` directives → MQTT / OSC (`cuemap.py`); MQTT topics → `/api/mod/signal` / `beat` / `set` (`sensormap.py`); the lights catch-up | John's Desktop (Windows) |
 | `agents:` | `agents/` | the agent worker: holds `GET /api/agent/stream`, answers requests, judges filings, records thoughts, takes `control` frames | John's MacBook |
 | `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream, numpy mixer, announcements, tests, stops, the house desk's plays, the report, placeholders | John's Desktop (since 2026-10-27); the MacBook is the fallback |
-| `lights:` | `lights/` | `lights.json` looks → Zigbee2MQTT / WLED, safety clamp, identify / test / pair, device list, catch-up | the Desktop |
+| `lights:` | `lights/` | `lights.json` looks (every bulb by name, the WLED strip, every `lights_*` / `heart_*` look; no Zigbee groups, scenes or WLED presets) → Zigbee2MQTT / WLED, safety clamp, identify / test / pair, device list, catch-up (the heart look and `night.lights`) | the Desktop |
 | `alexa:` | `alexa/` | the standalone announcement player. **Retired for the show** (wave 18b); the code and its `Announcer` stay (the router reuses the announcer and the voice lock) | none |
 
 A module is registered in `module.py::REGISTRY` as a `ModuleSpec(summary,
@@ -91,7 +91,7 @@ module docstrings that explain the why).
 | Machine | Jobs | Config | Supervisor | Runbook |
 |---|---|---|---|---|
 | John's MacBook (macOS, M3 Max 48 GB) | `agents` + Ollama `gpt-oss:20b`; `audio` only as the fallback | `laptop.yaml`; `trapped.macbook.yaml` | `stagehand launchd` | `scripts/house-macbook/trabolta.md`; `audio.md` (fallback) |
-| John's Desktop (Windows) | `show`, `lights`, `audio` + the MOTU 828x + ADAT (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
+| John's Desktop (Windows) | `show`, `lights`, `audio` + the MOTU 828x, no ADAT expander (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
 
 - **`extends:`** (`config.py`): a file in the same folder; mappings merge
   key by key, anything else replaces, `null` deletes. Order: parent,

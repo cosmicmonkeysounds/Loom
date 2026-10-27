@@ -10,7 +10,7 @@
 | Computer | What runs on it | Its own runbook |
 |---|---|---|
 | **John's MacBook** (macOS) — your station | Ollama `gpt-oss:20b` + stagehand **`agents`** (Trabolta, `stagehand/laptop.yaml`); `showbackup.sh`; a Run tab; `pnpm showctl status --watch 5` | `scripts/house-macbook/trabolta.md`, [`trabolta-mind.md`](./trabolta-mind.md) |
-| **John's Desktop** (Windows) | the **sound**: the speaker router stagehand **`audio`** + the MOTU 828x + the ADAT expander; the **lights**: **Zigbee2MQTT** on the CC2652P stick (the Hue and ZL1 bulbs), the WLED strip (it dials the broker), stagehand **`lights`**; stagehand **`show`**; **Mosquitto**, the house broker (`127.0.0.1:1883`, and `:1884` for the LAN with the `props` password); the **living-room TV** (Chrome kiosk over HDMI, spot `desktop-tv`). The stagehand jobs are Task Scheduler tasks (`\Loom\stagehand-show`, `-lights`, `-audio`). All of it starts by itself after sign-in | `scripts/house-desktop/README.md` |
+| **John's Desktop** (Windows) | the **sound**: the speaker router stagehand **`audio`** + the MOTU 828x (no ADAT expander); the **lights**: **Zigbee2MQTT** on the CC2652P stick (the Hue and ZL1 bulbs, each by its `lights.json` name), the living room's WLED strip (it dials the broker), stagehand **`lights`** (every `lights_*` and `heart_*` look); stagehand **`show`**; **Mosquitto**, the house broker (`127.0.0.1:1883`, and `:1884` for the LAN with the `props` password); the **living-room TV** (Chrome kiosk over HDMI, spot `desktop-tv`). The stagehand jobs are Task Scheduler tasks (`\Loom\stagehand-show`, `-lights`, `-audio`). All of it starts by itself after sign-in | `scripts/house-desktop/README.md` |
 | **Steph's laptop** (server room) | Chrome kiosk on the server-room terminal: Trabolta's face, the webcam, the mouse and keyboard, and the **Grand Central M4** on USB, which reads the **door sensor and the patch bay** | `hardware/server-room-m4/README.md` |
 | **John's old laptop** (the tent) | Chrome kiosk on `/terminal/?code=<mod>&spot=tent&announce=1`: the tent's terminal, the reinstallation wizard and the web game in one. It needs WebGL2 to *Play here*; without it the tent can only send to a headset | `docs/trapped/kiosk.md` |
 
@@ -36,8 +36,7 @@ every announcement.
 **Boot list (15:00)**
 
 1. Router + UPS on; Wi-Fi up. [[EDIT: SSID]]
-2. **The Desktop.** Power on the MOTU and its ADAT expander (the lock LED
-   steady), then the PC; let it sign in. Mosquitto, Zigbee2MQTT, the
+2. **The Desktop.** Power on the MOTU first, then the PC; let it sign in. Mosquitto, Zigbee2MQTT, the
    `show`, `lights` and `audio` tasks and the TV kiosk start by themselves. Then, in
    PowerShell in `C:\loom\scripts\house-desktop`, with `$env:LOOM_MOD_CODE`
    set: `.\preflight.ps1` until it exits clean (it ends with `showctl
@@ -122,8 +121,8 @@ frontend.
 | the TV page stalled | on the Desktop `.\tv-kiosk.ps1 -Close`, then `.\tv-kiosk.ps1`; **click once into it** |
 | the TV is silent | Run → Terminals (muted?), Windows' default output; `M` on the TV page unmutes |
 | Z2M coordinator dead | swap to the spare dongle + restore the `data\` backup (≈ 10 min); meanwhile, wall switches |
-| WLED dead | power-cycle the controller; presets survive |
-| uplink blip | the `show` task catches the lights up by itself when the feed reconnects; check the look and Run → Terminals; wrong → restart the `show` task as above |
+| WLED dead | power-cycle the controller (its settings survive; it has no presets to lose), then check it is back on `wled/living` |
+| uplink blip | the `lights` task catches the house look and the heart look up by itself when the feed reconnects; check the look and Run → Terminals; wrong → restart the `show` task as above |
 | **house internet down** | **fire cues by hand** (table below). Tell the house manager: guests turn Wi-Fi off and use cellular |
 | the Desktop dead | the story is fine on the VPS. The TV goes dark, the house speakers go quiet, the lights hold their last look (wall switches / the WLED app), nothing is announced. TV: [[EDIT: a spare computer on the HDMI with the `view=tv` URL]] |
 | the MacBook dead | the story is fine on the VPS. Trabolta is down (the directors answer DMs). Backups stop: tell the director |
@@ -155,13 +154,16 @@ broker (the MacBook's `trapped.macbook.local.yaml` holds the props
 password): `uv run stagehand sounds play <name> --config
 trapped.macbook.yaml`, and an announcement:
 `uv run stagehand announce --config trapped.macbook.yaml "<line>"` (or read
-it over the radio to the room). [[EDIT: fill the preset numbers / scene
-names after the bench]]
+it over the radio to the room). The lights have no presets or scenes to
+recall (wave 31): without the server, set a look by hand from the
+Zigbee2MQTT frontend (`http://localhost:8080` on the Desktop: each bulb by
+name) and the strip from its WLED page, roughly as the Cue designer's look
+describes it; never turn a hall or bathroom bulb off.
 
-| Story cue | Lights (WLED preset / Z2M scene) | Sound (`sounds play <name>`) |
+| Story cue | Lights (the `lights.json` look; by hand: Z2M frontend + WLED page) | Sound (`sounds play <name>`) |
 |---|---|---|
 | `lights_screensaver` (doors) | [[EDIT]] | `modem_handshake` (each login, the Optical Drive) |
-| `lights_tube_chase` (each clearance) | WLED Tube chase [[EDIT: preset #]] | — |
+| `lights_tube_chase` (each clearance) | a cyan pulse up the halls, then back | — |
 | `lights_call_desktop` (C1, C2, ⏳) | [[EDIT]] | `announce_chime` (`countdown_tick` at ⏳) |
 | `lights_game` (Bingo, hunts) | [[EDIT]] | `bingo_start` (V2) |
 | `lights_truth_time` (V6) | [[EDIT]] | — |
@@ -192,7 +194,7 @@ it (never under 80 / 254: it is the room's safety light).
       `server_room_rgb`, `power_on_behavior: on`, placed in the map editor,
       every `heart_*` look ▶ Tested; `stagehand check --only lights` green on
       the Desktop), the keypad lock (code + egress), the lights, the blackout
-      test (stopwatch every flashing preset ≤ 3 Hz).
+      test (stopwatch every flashing look ≤ 3 Hz).
 - [ ] Tech run 10-28, dress 10-29 (incl. the shed switch in < 15 min).
 - [ ] Your MacBook has the mod code and the map page (`/reinstall/map`)
       provisioned and signed in, showing the *Map: Tent | Shed* bar (W-22).

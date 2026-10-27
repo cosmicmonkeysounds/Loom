@@ -12,7 +12,7 @@ The house speakers are driven by **one** program: stagehand's speaker
 router (the `audio` module, its own launchd job). It plays every story
 `sound X` and every house announcement (`do announce "…"`: a chime and the
 spoken line, "the house system" in the fiction, never a character or a
-device) through the **MOTU 828x + an 8-channel ADAT expander**. QLab is not
+device) through the **MOTU 828x** on its own outs (no ADAT expander since wave 31). QLab is not
 part of the rig, and the old `alexa` announcement player is retired (its
 module code stays in stagehand; *Retire the alexa job* below).
 
@@ -29,7 +29,7 @@ story  sound printer_grind   ─┐ the mod feed (sim directive sfx), read by th
 story  do announce "…"        ─┤   Desktop's stagehand show → MQTT show/announce {"text": "…"}
 story  sound announce_chime   ─┘   Desktop's stagehand show → MQTT show/chime
         │                          (the Desktop's Mosquitto, LAN listener :1884, user props)
-        ▼  one output stream on the 828x (audio.json: 24 in / 22 out used)
+        ▼  one output stream on the 828x (audio.json: 10 in / 12 out used)
    voices:  media/sounds/<name>.wav → the audio.json cue's speakers
    announce: chime + macOS `say` (Samantha) → audio.json announce.to,
              the story's sounds ducked −12 dB under it (never dance_song,
@@ -73,17 +73,16 @@ Where everything is:
    Startup Security: **Reduced Security** with *Allow user management of
    kernel extensions from identified developers*, then approve the MOTU
    kext. This is the biggest risk of the day: prove it before anything else.
-2. **MOTU Audio Setup / CueMix FX**: 48 kHz, internal clock; Optical A =
-   ADAT (the expander, both directions; set the expander's clock to ADAT so
-   the 828x is the master); Optical B = ADAT (or leave it); **Main outs and
-   Phones NOT mirrored**. The device then reports **32 in / 30 out**.
+2. **MOTU Audio Setup / CueMix FX**: 48 kHz, internal clock; both optical
+   ports = ADAT, in and out, even with nothing plugged in (no expander);
+   **Main outs and Phones NOT mirrored**. The device then reports **32 in / 30 out**.
    Mirroring, 96 kHz or an optical port on TOSLink moves every channel after
    it; `audio.json` `device.expect` (32 / 30) makes `stagehand check` fail
    and the router log an error when that happens.
 3. **Our channel numbers are the 828x's own** (no channel map): outputs
-   Analog 1–8, Main 9–10, **ADAT A 15–22** (the expander); inputs Mic/Gtr
-   1–2, Analog 3–10, **ADAT A 17–24**. Phones 11–12 and S/PDIF 13–14 are
-   left unlabelled (the director's cue monitor is set in CueMix).
+   Analog 1–8 (the line outs on the back), **Main L/R 9–10** and **Phones
+   L/R 11–12** (each pair from a front headphone jack); inputs Mic/Gtr 1–2,
+   Analog 3–10. S/PDIF 13–14 and the ADAT channels stay unused.
 4. **Live mics are mixed in CueMix FX** (hardware: no latency, no microphone
    permission for a launchd job). The router opens an output-only stream
    (`passthrough: false`); CueMix sums the computer's playback with its mix
@@ -130,7 +129,7 @@ Where everything is:
    `stagehand/media/sounds/` as they arrive: a real file always wins, and the
    generator never touches one.
 5. `uv run stagehand check --config trapped.macbook.yaml --only audio` — it
-   shows the device's 32 / 30 against audio.json's 24 / 22 and fails if the
+   shows the device's 32 / 30 against audio.json's 10 / 12 and fails if the
    layout moved; its warnings list every placeholder still there (the
    pre-show gate: none on the night). It must print **no `PLACEHOLDER
    server.…` line** (else step 2's overlay is missing). A warning that

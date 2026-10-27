@@ -4,8 +4,8 @@
 >
 > - **The router is built and is the show's only sound player.** Stagehand's
 >   `audio` module plays every story `sound X` and the house announcements
->   (a chime + the machine's own voice) through the **MOTU 828x + an
->   8-channel ADAT expander**, from the event's `audio.json` (the map
+>   (a chime + the machine's own voice) through the **MOTU 828x** on its own
+>   outs (no ADAT expander since wave 31), from the event's `audio.json` (the map
 >   editor's Audio tab). **QLab is not part of the rig** and the **`alexa`
 >   announcement player is retired** (wave 18b): read every QLab or alexa
 >   line in §0–§10 as history. §4's YAML contract (buses, `sync`,
@@ -537,7 +537,7 @@ stream, a fake server).
 
 | | `audio.json` (the event's project file) | `audio:` (the router machine's YAML) |
 |---|---|---|
-| Says | the device (name substring, channels used — the show's 828x: 24 in / 22 out — rate, `expect`), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to` / `announce.terminals`, `voice.tv` | what the router may do on its machine: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`, `duck_db`), `say_voice`, `chime`, an optional broker |
+| Says | the device (name substring, channels used — the show's 828x: 10 in / 12 out — rate, `expect`), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to` / `announce.terminals`, `voice.tv` | what the router may do on its machine: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`, `duck_db`), `say_voice`, `chime`, an optional broker |
 | Edited in | the map editor's Audio panel (a director save in the event state dir beats the project copy; `LOOM_AUDIO` is the LAN fallback) | `trapped.house.yaml` (shared) + the machine file (`trapped.macbook.yaml` / `trapped.desktop.yaml`), then restart the `audio` job (`stagehand launchd restart --job audio` on the MacBook, `stagehand tasks restart --job audio` on the Desktop) |
 | Reaches the router | a long-poll, `GET /api/mod/audio?router=1&name=<host>&after=<version>&tests=<seq>&stops=<seq>&wait=25` (returns at once on a new version, a pending speaker test or a stop; `router=1` is what the editor's router badge reads) | at boot |
 
@@ -712,6 +712,8 @@ permission a launchd duplex stream would need.
 ## 12. What wave 18b added
 
 ### 12.1 The 828x and `device.expect`
+
+(Wave 31: no expander. `audio.json` now declares 10 inputs, Mic/Gtr 1–2 and Analog 3–10, and 12 outputs, Analog 1–8, Main 9–10 and Phones 11–12, unmirrored; `expect` stays 32 / 30, so both optical ports stay on ADAT.)
 
 `audio.json` declares the channels we use, numbered as the 828x numbers
 them (no channel map, D1): 24 inputs (Mic/Gtr 1–2, Analog 3–10, the virtual

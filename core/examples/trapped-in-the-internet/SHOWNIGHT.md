@@ -68,8 +68,8 @@ Quest APK). Verify what runs with
    launchctl bootout gui/$(id -u)/com.mapsandducks.zigbee2mqtt   # zigbee.md §4
    ```
 
-   Then move the CC2652P (and Zigbee2MQTT's `data/`), the MOTU 828x and its
-   ADAT expander, and the sound files (`stagehand/media/sounds/`) to the
+   Then move the CC2652P (and Zigbee2MQTT's `data/`), the MOTU 828x (no
+   ADAT expander since wave 31), and the sound files (`stagehand/media/sounds/`) to the
    Desktop. `uv run stagehand launchd status` then lists only `agents`.
 6. **Desktop, first time only** (`scripts/house-desktop/README.md`): from an
    elevated PowerShell, `.\scripts\house-desktop\setup-mosquitto.ps1` (it
@@ -78,8 +78,8 @@ Quest APK). Verify what runs with
    MacBook's `data\` to `C:\zigbee2mqtt\data\` and set its `serial.port` to
    the stick's `COMn` (on a first install only, with no `data\` to copy:
    `-WriteConfig -Port COMn`), `-Start` once, elevated `-InstallTask`, then
-   `-Check`. The 828x: MOTU's Windows driver, the ASIO proof and the ADAT
-   clock (`scripts/house-desktop/README.md` §3), the MOTU's ASIO name in
+   `-Check`. The 828x: MOTU's Windows driver, the ASIO proof, both optical
+   ports on ADAT and Main / Phones not mirrored (`scripts/house-desktop/README.md` §3), the MOTU's ASIO name in
    `stagehand\trapped.desktop.local.yaml`, and the sound files copied into
    `stagehand\media\sounds\`. The TV:
    `.\scripts\house-desktop\tv-kiosk.ps1 -Setup`, then `-InstallTask`.
@@ -94,7 +94,10 @@ Quest APK). Verify what runs with
    speaker survey saved to the project into the repo's `audio.json` (the
    replace below overwrites the project's copy). Then
    `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show --replace-audio`.
-   Add `--replace-lights` if the project already holds a `lights.json`.
+   **Add `--replace-lights`** (wave 31): the project's `lights.json` holds
+   only the server-room bulb, and the repo's now holds every house bulb,
+   the living-room strip and the `lights_*` looks. First Download JSON any
+   look or light saved to the project and merge it into the repo's.
    **Add `--replace-maps`:** wave 26 changed both maps (Trabolta's heart,
    the virus disk, the *MAINFRAME* rack label), and without it the
    project's old maps win. First Download JSON any map edits saved to the
@@ -122,14 +125,16 @@ Quest APK). Verify what runs with
     `launchd install --job audio --config trapped.macbook.yaml`); both
     preflights then take `--router macbook` / `-NoAudio`.
 12. **Desktop, the lights:** with Zigbee2MQTT up on the CC2652P and the
-    `lights` task running (it must run before pairing), pair the bulb as
-    `server_room_rgb` with `power_on_behavior: on`
-    (`scripts/house-macbook/zigbee.md` from §5), then the house's Hue and
-    ZL1 bulbs (each reset, named and set `power_on_behavior: on`) and the
-    WLED strip (its MQTT on the Desktop's `:1884`, device topic
-    `wled/<room>`): `scripts/house-desktop/README.md` §5–6. Place each on
-    the map editor's 💡 Lights tab (safety lights ticked), 💡 Identify,
-    ▶ Test each look (Run → House → Cue designer), Save to project.
+    `lights` task running (it must run before pairing), pair every bulb
+    under its `lights.json` name (`server_room_rgb`, `living_1`…, the
+    table in `scripts/house-desktop/README.md` §5.4), each reset and set
+    `power_on_behavior: on`, then the living-room WLED strip (its LED
+    preferences and brightness limiter, its MQTT on the Desktop's `:1884`,
+    device topic `wled/living`: §6). No Zigbee groups, scenes or WLED
+    presets: `lights.json` already places every light and holds every
+    look. Run → House → Setup green, Checks walked (every light, every
+    look), each look played with ▶ Test on the house in the Cue designer
+    (retune, Save to project).
     `uv run stagehand check --config trapped.desktop.yaml --only lights` is
     green.
 13. **Steph's laptop:** flash the wave 22 firmware from
@@ -250,14 +255,13 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 
 **John's Desktop** (the sound, the lights, the broker, the TV)
 
-- Power on the 828x and the ADAT expander first (the expander's lock LED
-  steady), then the PC, and let it sign in: Mosquitto (a service),
+- Power on the 828x first, then the PC, and let it sign in: Mosquitto (a service),
   Zigbee2MQTT (a boot task), `show` + `lights` + `audio` (sign-in tasks) and
   the TV kiosk start by themselves.
 - `.\scripts\house-desktop\preflight.ps1` passes (it ends with `showctl
   preflight desktop`).
 - The Mosquitto service runs on 1883 (loopback) and 1884 (password);
-  Zigbee2MQTT is online with the bulb in its device list.
+  Zigbee2MQTT is online with every bulb in its device list.
 - The `show`, `lights` and `audio` tasks run
   (`.\scripts\house-desktop\start-stagehand.ps1 -Status`).
 - `uv run stagehand check --config trapped.desktop.yaml --only audio` shows
@@ -306,7 +310,7 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 5. Trabolta: the worker connected (a *mind · story* chip), the mind Reset, `ollama ps` shows `gpt-oss:20b` alone, the MacBook on its charger; `uv run stagehand check --config laptop.yaml --only agents` shows `ctx 20480` and no warning; he is hidden and asleep.
 6. Terminals: every tablet green on `pnpm showctl terminals`, on the idle show, and every wall terminal's ⚙ names Trabolta; the TV on the screensaver, clicked once after its last boot; the Server Door terminal on THE KING.
 7. Audio: the `audio` job running on the Desktop (on the MacBook only in the fallback) with the MOTU at 32 / 30 and no placeholder left, Run → House → Setup's 🔊 Sound row green, a 🔈 Test per speaker at show level, one announcement heard through the router (this needs the Desktop's `show` job and broker too).
-8. Lights: the server-room bulb answers 💡 Identify and sits on `heart_idle`; `stagehand check --only lights` is green, `health/lights` online and Run → House → Setup's 💡 Lights row green; the bulb never drops under 80 / 254. Every placed Hue and ZL1 bulb and the WLED strip answer 💡 Identify; one `lights_blackout` test (the stairs, bathroom, tent, server room and the path to the living room stay lit).
+8. Lights: the server-room bulb answers 💡 Identify and sits on `heart_idle`; `stagehand check --only lights` is green, `health/lights` online and Run → House → Setup's 💡 Lights row green; the bulb never drops under 80 / 254. Every placed Hue and ZL1 bulb and the WLED strip answer 💡 Identify; one `lights_blackout` test (the halls and both bathrooms stay at their dim floor, the server room on its heart look).
 9. The server-room door: the keypad was set by hand to `facts.json` `door.code` and tested at 15:00, and it opens from inside with no code; the keypad sign hangs beside it; the sensor reads 🚪 shut / open on Run → Terminals within a second, with no fault and no override; then 🔄.
 10. The patch bay: all unplugged; ⚙'s live table reads every input empty; Run → Terminals shows no 🔌 fault and the story is not on the buttons (or 🔌 Trust the patch bay again was pressed).
 11. The server-room terminal (Steph's laptop) is green and asleep on its screensaver, the M4 on USB, an external keyboard in reach, and the webcam reads a pass in the room's light; Run → Director shows 🔄 reset and 🕊 talked down, and 🕊 Heart autoend is off.

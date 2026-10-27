@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "note": "DRAFT (wave 18b): MOTU 828x + an 8-ch ADAT expander on Optical A, 48 kHz, internal clock, Main outs + Phones NOT mirrored (else every channel after them shifts: stagehand check catches it via device.expect 32 / 30). Our channels are the device's own (no map): Analog 1-8, Main 9-10, ADAT A 15-22 out; Mic/Gtr 1-2, Analog 3-10, ADAT A 17-24 in. Phones 11-12 / S/PDIF 13-14 out are left unlabelled (the director's cue monitor is set in CueMix). Live mics are mixed in CueMix FX (hardware, no latency); the router's passthrough is off. Only the living room, the kitchen and the mud room (The Optical Drive, so every arrival hears the modem) have speakers yet; place the rest with the map editor's Speaker tool, Test each one, then Save to project.",
+  "note": "Wave 31 (2026-10-27): the MOTU 828x on John's Desktop (ASIO), no ADAT expander: 48 kHz, internal clock. Our channels are the device's own (no map): Analog 1-8 (the line outs on the back) are 1-8, Main L/R 9-10 and Phones L/R 11-12 (each from its own front headphone jack, NOT mirrored in CueMix, else they shift); S/PDIF 13-14 and the ADAT banks stay unused but keep the optical ports on ADAT so the device keeps its 32 in / 30 out (stagehand check catches a moved layout via device.expect). Inputs: Mic/Gtr 1-2, Analog 3-10. Live mics are mixed in CueMix (hardware); the router's passthrough is off. Only the living room, the kitchen and the mud room (The Optical Drive, so every arrival hears the modem) have speakers yet; place the rest with the map editor's Speaker tool, Test each one (ASIO's order may differ from Core Audio's), then Save to project.",
   "device": {
     "name": "828x",
-    "inputs": 24,
-    "outputs": 22,
+    "inputs": 10,
+    "outputs": 12,
     "rate": 48000,
     "expect": {
       "inputs": 32,
@@ -61,76 +61,6 @@
       "ch": 10,
       "label": "Analog 8",
       "kind": "line"
-    },
-    {
-      "ch": 11,
-      "label": "Reverb return L (virtual)",
-      "kind": "software"
-    },
-    {
-      "ch": 12,
-      "label": "Reverb return R (virtual)",
-      "kind": "software"
-    },
-    {
-      "ch": 13,
-      "label": "Stereo return L (virtual)",
-      "kind": "software"
-    },
-    {
-      "ch": 14,
-      "label": "Stereo return R (virtual)",
-      "kind": "software"
-    },
-    {
-      "ch": 15,
-      "label": "S/PDIF L",
-      "kind": "line"
-    },
-    {
-      "ch": 16,
-      "label": "S/PDIF R",
-      "kind": "line"
-    },
-    {
-      "ch": 17,
-      "label": "ADAT A 1 (expander mic 1)",
-      "kind": "mic"
-    },
-    {
-      "ch": 18,
-      "label": "ADAT A 2 (expander mic 2)",
-      "kind": "mic"
-    },
-    {
-      "ch": 19,
-      "label": "ADAT A 3 (expander mic 3)",
-      "kind": "mic"
-    },
-    {
-      "ch": 20,
-      "label": "ADAT A 4 (expander mic 4)",
-      "kind": "mic"
-    },
-    {
-      "ch": 21,
-      "label": "ADAT A 5 (expander mic 5)",
-      "kind": "mic"
-    },
-    {
-      "ch": 22,
-      "label": "ADAT A 6 (expander mic 6)",
-      "kind": "mic"
-    },
-    {
-      "ch": 23,
-      "label": "ADAT A 7 (expander mic 7)",
-      "kind": "mic"
-    },
-    {
-      "ch": 24,
-      "label": "ADAT A 8 (expander mic 8)",
-      "kind": "mic"
     }
   ],
   "outputs": [
@@ -168,43 +98,19 @@
     },
     {
       "ch": 9,
-      "label": "Main L (XLR, front knob)"
+      "label": "Main L (front headphone jack)"
     },
     {
       "ch": 10,
-      "label": "Main R (XLR, front knob)"
+      "label": "Main R (front headphone jack)"
     },
     {
-      "ch": 15,
-      "label": "ADAT A 1 — Backyard"
+      "ch": 11,
+      "label": "Phones L (front headphone jack)"
     },
     {
-      "ch": 16,
-      "label": "ADAT A 2 — Tent / Shed"
-    },
-    {
-      "ch": 17,
-      "label": "ADAT A 3 — RAM"
-    },
-    {
-      "ch": 18,
-      "label": "ADAT A 4 — Server Room"
-    },
-    {
-      "ch": 19,
-      "label": "ADAT A 5 — Basement hall"
-    },
-    {
-      "ch": 20,
-      "label": "ADAT A 6 — Upstairs"
-    },
-    {
-      "ch": 21,
-      "label": "ADAT A 7 — Graphics Card"
-    },
-    {
-      "ch": 22,
-      "label": "ADAT A 8 — spare"
+      "ch": 12,
+      "label": "Phones R (front headphone jack)"
     }
   ],
   "speakers": [

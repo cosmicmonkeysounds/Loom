@@ -455,7 +455,7 @@ house only dials out.
 
 | Machine | Runs |
 |---|---|
-| **John's Desktop** (Windows, the house's static IP `192.168.8.10`) | the stagehand `audio` router on the MOTU 828x + ADAT expander (USB 2, ASIO); Mosquitto; Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs; the WLED strip's controller dials in over Wi-Fi; stagehand `show`, `lights` and `audio` as Task Scheduler tasks (`stagehand/trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, `/terminal/?…&spot=desktop-tv`, `view=tv`). Runbook: [`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md) |
+| **John's Desktop** (Windows, the house's static IP `192.168.8.10`) | the stagehand `audio` router on the MOTU 828x's own outs, no ADAT expander (USB 2, ASIO); Mosquitto; Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs; the WLED strip's controller dials in over Wi-Fi; stagehand `show`, `lights` and `audio` as Task Scheduler tasks (`stagehand/trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, `/terminal/?…&spot=desktop-tv`, `view=tv`). Runbook: [`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md) |
 | **John's MacBook** (macOS) | Ollama + stagehand `agents` (Trabolta, `laptop.yaml`) as a launchd job; the director's Run console. Runbook: [`scripts/house-macbook/trabolta.md`](../scripts/house-macbook/trabolta.md). Only in the fallback, the `audio` router + the MOTU (`stagehand/trapped.macbook.yaml`; [`scripts/house-macbook/audio.md`](../scripts/house-macbook/audio.md)) |
 | **Steph's laptop** | the server-room terminal in Chrome, with the Grand Central M4 on USB (the door sensor and the patch bay) |
 | **John's old laptop** | the tent terminal (`spot=tent`, the reinstallation wizard + web game) |
@@ -473,22 +473,24 @@ and `audio`, Zigbee2MQTT) and password-only on the LAN at `:1884` (user
 router
 (`scripts/house-desktop/setup-mosquitto.ps1`).
 
-**Lights.** Zigbee bulbs and plugs are grouped one group per room plus a
-whole-house group:
-`house`, `living` (The Desktop), `kitchen` (The Start Bar), `backyard`
-(The Cloud), `registry` (The RAM, the basement studio), `tube` (the halls and
-both stairs), `mudroom` (The Optical Drive), `bathroom` (Disk Cleanup, both
-bathrooms), `tent` (The Internet) and `server_room` (only the RGB bulb,
-which is `lights.json`'s, below); the ids predate the real house's room
-names and stay as wired. **The stairs, the bathrooms, the tent, the server
-room and the server-room → living-room path are not in `house`**, so no
-whole-house scene or blackout can darken them (their bulbs have
-`power_on_behavior: on`). The bulbs are Philips Hue and ThirdReality ZL1,
-joined to Zigbee2MQTT directly (no Hue Bridge). The addressable LED strip
-runs on a WLED controller (a WeGoIOT ESP32; `wled/all` plus one device
-topic per strip, `wled/<room>`, identical preset IDs everywhere). Setting
-them up, naming them and placing them on the map: the Desktop README's
-§5–8.
+**Lights.** Since wave 31 every light is a fixture in the show's
+`lights.json`, played by the Desktop's stagehand `lights` job: 18 house
+bulbs, each by its Zigbee2MQTT friendly name (`living_1..3` in The
+Desktop, `kitchen_1..3` in The Start Bar, `hall_main`, `hall_up`,
+`hall_basement`, `casino` in The Graphics Card, `bath_down`, `bath_up`,
+`fan_closet_1..2`, `ram_1..3` in The RAM), the server room's
+`server_room_rgb`, and the living room's addressable LED strip on a WLED
+controller (a WeGoIOT ESP32, device topic `wled/living`). Zones group them
+for looks (`living`, `kitchen`, `fan-closet`, `ram`, `paths` = the halls
+and bathrooms, `rooms`, `room-bulbs`, `house`, `heart`). **The halls and
+both bathrooms are safety lights** (never off, never under 60 / 254;
+`server_room_rgb` 80) with `power_on_behavior: on`, and the `lights` job
+clamps every look that reaches them. The bulbs are Philips Hue and
+ThirdReality ZL1, joined to Zigbee2MQTT directly (no Hue Bridge). There are
+**no Zigbee groups, Zigbee scenes or WLED presets**: the story's `cue
+lights_*` are `lights.json` looks, designed in Run → House → Cue designer.
+Pairing and naming the bulbs, the strip's WLED settings and walking it in
+Run → House: the Desktop README's §5–8.
 
 **Sound.** The stagehand `audio` router plays every story `sound X` and
 the house announcements through the 828x, from the event's `audio.json`
@@ -529,10 +531,11 @@ events. The show's copy is a DRAFT of tech checks only.
 the map and defines **looks** keyed by cue name; stagehand's `lights` job
 (on the Desktop; `scripts/house-macbook/lights.md`) plays them on Zigbee2MQTT / WLED with timed
 steps, never under a safety fixture's floor, and catches up from the story's
-screen state after any reconnect. This wave's file holds one fixture, the
-server room's RGB bulb `server_room_rgb` (Trabolta's `heart_*` looks); every
-other light is still the `show` rules below. Zigbee2MQTT on the Desktop:
-the Desktop README's §3; its CC2652P coordinator and the pairing:
+screen state after any reconnect. Wave 20's file held one fixture, the
+server room's RGB bulb `server_room_rgb` (Trabolta's `heart_*` looks); since
+wave 31 it holds every light and every `lights_*` look (above), and the
+`show` rules below keep only Trabolta's room cuts and the flicker.
+Zigbee2MQTT on the Desktop: the Desktop README's §4; its CC2652P coordinator and the pairing:
 `scripts/house-macbook/zigbee.md` (steps 5–9 on any machine).
 
 **Story → house.** The story only emits directives (the full registry
@@ -540,14 +543,14 @@ is in the design spec §2.13):
 
 | In the `.loom` | Stagehand sends |
 |---|---|
-| `cue lights_<look>` (screensaver, tube_chase, call_desktop, game, truth_time, ad_hijack, glitch, pong, trust_chart, y2k, server_open, alarm, blackout, dance, final_reveal, song, rave, purgatory, banish, restore) | Z2M `scene_recall <id>` to the room or `house` group + WLED preset `ps <id>`. Each look has the same ID everywhere: `scene_store` it once per group and build identical WLED presets on every controller. Flicker is a bulb `effect` or a WLED preset, never streamed over Zigbee. |
-| `<cue: lights, room: The Start Bar, state: off>` (Trabolta's `cut_the_lights`; allow-listed to The Start Bar, The Desktop, The RAM) | that room's Z2M group `state` + its WLED strip on/off (the kitchen only dims to ~20%). The story turns the room back on 90 s later itself, unless a look that re-lights it (a whole-house look; a living-room look over a Desktop cut; the alarm latch's end) has run since, and records the look it restored under in `Night.lit_scene`. Catch-up replays the room off only mid-cut under a look that kept it dark, and on only under `Night.lit_scene` or a later room-scoped look (pong, glitch, server_open, or a living-room look over any room but The Desktop), never under a whole-house look. |
+| `cue lights_<look>` (screensaver, tube_chase, call_desktop, game, truth_time, ad_hijack, glitch, pong, trust_chart, y2k, server_open, alarm, blackout, dance, final_reveal, song, rave, purgatory, banish, restore) | nothing from `show` (wave 31): the `lights` job plays `lights.json`'s look of that name bulb by bulb (Z2M `<name>/set`) and on the strip (`wled/living/api`), clamped to the safety floors; the screen state's `night.lights` lets it catch the house look up after a restart. `lights_server_open` has no look (the server room is the heart's: its `heart_*` looks); `show` only sends the ESP32's alarm-off for it. Flicker is a bulb `effect`, never streamed over Zigbee. |
+| `<cue: lights, room: The Start Bar, state: off>` (Trabolta's `cut_the_lights`; allow-listed to The Start Bar, The Desktop, The RAM) | that room's bulbs one by one (`kitchen_1..3`, `living_1..3` + `wled/living`, `ram_1..3`) off / on, from `trapped.house.yaml` (the kitchen only dims to ~20%). The story turns the room back on 90 s later itself, unless a look that re-lights it (a whole-house look; a living-room look over a Desktop cut; the alarm latch's end) has run since, and records the look it restored under in `Night.lit_scene`. Catch-up replays the room off only mid-cut under a look that kept it dark, and on only under `Night.lit_scene` or a later room-scoped look (pong, glitch, server_open, or a living-room look over any room but The Desktop), never under a whole-house look. |
 | `cue heart_<look>` (wake, nag, door_open, sealed, listen, argue, proof, warn, eject, notyet, shutdown, idle, alarm: wave 20) | nothing from `show`: the `lights` job plays `lights.json`'s look on the server room's RGB bulb (Z2M `server_room_rgb/set`, timed steps ≥ 150 ms apart, ≥ 400 ms for a colour, loops ≥ 2 s; never under its 80 / 254 floor, 40 being only the generic minimum). `show` drops any YAML rule whose cue `lights.json` defines (`take_looks`) |
-| `cue lights_blackout` | `house` OFF; WLED off **per device** (living, kitchen, backyard, registry), the Tube strip on dim static preset 22, the server room untouched |
-| `cue screens_flicker` | a one-shot `effect: blink` on the bulbs (it reverts by itself), so the power is felt in the house. Since wave 9 the LED strips are left alone: the old WLED preset 21 left them on its look after a flicker |
+| `cue lights_blackout` | the `lights` job's look: every room light (zone `rooms`, the strip included) off, the halls and bathrooms (`paths`) at their dim floor, the server room untouched |
+| `cue screens_flicker` | a one-shot `effect: blink` on each room bulb (living, kitchen, casino, fan closet, RAM; never a safety bulb), from `trapped.house.yaml` (it reverts by itself), so the power is felt in the house. The strip is left alone |
 | `sound <name>` (directive `sfx`) | nothing from `show`: the `audio` router reads the feed and plays `media/sounds/<name>.wav` on the speakers `audio.json` names |
 | `do announce "…"` | `show/announce {"text": "…"}` → the `audio` router (chime + the machine's own voice, one line at a time); `sound announce_chime` → `show/chime`. Also the screen state's `announce` → terminals with `announce` on (N-09) |
-| `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring only (the ESP32 is not installed, so nobody hears it), never the real (standalone keypad) lock; the story sends `locked` at Power On and nothing sends `unlocked` since wave 7. `lights_alarm` (only a second wrong patch-bay combo) also sends `show/serverroom/alarm` for the ESP32's siren (not installed; the router plays the story's `alarm_siren`), the house scene 12 and WLED preset 12 **per device** — never `wled/all`, since the tube strip (halls + stairs) is a safety light and gets a steady red instead of the strobe (wave 20, D11; every other effect preset — 7, 10, 14, 15, 17 — goes per device too, the tube held on ps 22; the server room has no strip, w20b Q6); the room's RGB bulb plays the story's `heart_alarm` (`lights.json`). The story ends the alarm look itself: when its 120 s latch clears it cues back the look the alarm replaced (`lights_y2k`, + `lights_server_open`, `lights_final_reveal` or `lights_restore`) unless a later cue changed it, and since `lights_server_open` also silences the siren, a majority or The Heart inside the latch holds its server-room look until then |
+| `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring only (the ESP32 is not installed, so nobody hears it), never the real (standalone keypad) lock; the story sends `locked` at Power On and nothing sends `unlocked` since wave 7. `lights_alarm` (only a second wrong patch-bay combo) also sends `show/serverroom/alarm` for the ESP32's siren (not installed; the router plays the story's `alarm_siren`) and plays `lights.json`'s `lights_alarm` look (hard red on-off in the rooms, the halls and bathrooms a steady red; wave 31); the room's RGB bulb plays the story's `heart_alarm` (`lights.json`). The story ends the alarm look itself: when its 120 s latch clears it cues back the look the alarm replaced (`lights_y2k`, + `lights_server_open`, `lights_final_reveal` or `lights_restore`) unless a later cue changed it, and since `lights_server_open` also silences the siren, a majority or The Heart inside the latch holds its server-room look until then |
 
 The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no
 stagehand rule: the screens read them from the server. Every wall terminal
@@ -572,8 +575,9 @@ of the mod feed.
 command, so a retained `OFF` does not survive into the next night. Quote
 `"on"` in WLED payloads (a bare `on:` key is YAML `true`). Stagehand never
 validates signal names, so a typo is silent:
-`stagehand/tests/test_trapped_house.py` checks that every `cue lights_*`,
-`screens_flicker` and `sound` in the story has a rule, that every sensor
+`stagehand/tests/test_trapped_house.py` checks that every `cue lights_*`
+in the story is a `lights.json` look, that `screens_flicker` has a rule,
+that every `sound` is routed, that every sensor
 signal has a `when` in `main.loom`, and that the two patch-bay combos
 equal the `Kernel.combo_*` seeds and the four combo-half codex entries.
 Sensor rules ignore retained messages and take `edge: true` (see the

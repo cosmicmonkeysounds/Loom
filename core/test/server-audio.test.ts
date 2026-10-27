@@ -114,15 +114,16 @@ describe("the starter audio.json (Trapped in the Internet)", () => {
   it("validates on both map variants and names every sound the show plays", () => {
     const text = readFileSync(SHOW_AUDIO, "utf8");
     const audio = JSON.parse(text) as AudioConfig;
-    expect(audio.note).toMatch(/DRAFT/u);
+    expect(audio.note).toMatch(/828x/u);
     const dir = join(import.meta.dirname, "..", "examples", "trapped-in-the-internet");
     for (const map of ["house.json", "house.shed.json"]) {
       const house = JSON.parse(readFileSync(join(dir, map), "utf8"));
       expect(validateAudio(audio, house).problems).toEqual([]);
     }
-    expect(audio.device).toMatchObject({ name: "828x", inputs: 24, outputs: 22, expect: { inputs: 32, outputs: 30 } });
-    expect(audio.outputs).toHaveLength(18);
-    expect(audio.inputs).toHaveLength(24);
+    // Wave 31: the 828x's own outs, no ADAT expander (Analog 1-8, Main + Phones L/R).
+    expect(audio.device).toMatchObject({ name: "828x", inputs: 10, outputs: 12, expect: { inputs: 32, outputs: 30 } });
+    expect(audio.outputs).toHaveLength(12);
+    expect(audio.inputs).toHaveLength(10);
     expect(audio.zones.map((z) => z.id)).toEqual(["living"]);
     // Every `sound X` in the show has a cue (but the chime, rung with the
     // announcements: LA-2), and every cue is a show sound.

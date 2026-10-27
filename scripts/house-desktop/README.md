@@ -2,9 +2,10 @@
 
 The house rig used to be one "house Mac". For Oct 31 it is split across two
 machines. This folder is the Windows half, and since 2026-10-27 it is the
-**sound and lights machine**: the MOTU 828x and its ADAT expander (the
-speaker router), the Zigbee lights (Philips Hue and ThirdReality ZL1 bulbs
-on the CC2652P stick), the WLED LED strip, the house broker and the TV. It
+**sound and lights machine**: the MOTU 828x on its own outs (the speaker
+router; no ADAT expander since wave 31), the Zigbee lights (Philips Hue and
+ThirdReality ZL1 bulbs on the CC2652P stick, every one of them already in
+`lights.json`), the living room's WLED LED strip, the house broker and the TV. It
 covers what runs here, how to set it up once, how to start it on show
 night, and what to do when something breaks.
 
@@ -22,7 +23,7 @@ cross-machine diagnostics (`pnpm showctl …`) in
 
 | Machine | Runs |
 |---|---|
-| **John's Desktop** (Windows, this folder) | the **sound**: stagehand **`audio`** (the router) on the **MOTU 828x** + the ADAT expander over USB 2, through ASIO · the **lights**: **Zigbee2MQTT** on the CC2652P stick (`COMn`) with the Hue and ZL1 bulbs, the **WLED** strip on its ESP32 controller (Wi-Fi), stagehand **`lights`** (`lights.json`) · stagehand **`show`** (the story's cues to Z2M / WLED / MQTT, the sensors back, the `do announce` relay) · **Mosquitto**, the house broker (anonymous `127.0.0.1:1883`, password-only `props` on the LAN at `:1884`) · the **TV**: Chrome kiosk over HDMI, spot `desktop-tv` |
+| **John's Desktop** (Windows, this folder) | the **sound**: stagehand **`audio`** (the router) on the **MOTU 828x** (its own outs, no ADAT expander) over USB 2, through ASIO · the **lights**: **Zigbee2MQTT** on the CC2652P stick (`COMn`) with the Hue and ZL1 bulbs, the living room's **WLED** strip on its ESP32 controller (Wi-Fi), stagehand **`lights`** (`lights.json`: every bulb, the strip and the story's `lights_*` looks) · stagehand **`show`** (Trabolta's room cuts and the flicker bulb by bulb, the sensors back, the `do announce` relay) · **Mosquitto**, the house broker (anonymous `127.0.0.1:1883`, password-only `props` on the LAN at `:1884`) · the **TV**: Chrome kiosk over HDMI, spot `desktop-tv` |
 | **John's MacBook** (macOS) | **Trabolta**: Ollama `gpt-oss:20b` + stagehand `agents` (`stagehand/laptop.yaml`) · a director's Run console · `scripts/ops/` · the router only as the fallback (`stagehand/trapped.macbook.yaml`) |
 | Steph's laptop | the server-room terminal (Chrome) + the Grand Central M4 on USB |
 | John's old laptop | the tent: `/terminal/?…&spot=tent&announce=1` |
@@ -113,8 +114,8 @@ a chat.
 
 ## 3. The MOTU 828x (the sound)
 
-The 828x (Thunderbolt **and** USB 2.0; MOTU's "28x30") plus an 8-channel
-ADAT expander on its optical port drive every house speaker. On Windows
+The 828x (Thunderbolt **and** USB 2.0; MOTU's "28x30") drives every house
+speaker from its own outputs: **no ADAT expander** (wave 31). On Windows
 use the **USB 2.0** port with the USB cable that came in the box: MOTU
 markets the 828x as working with "any Mac or PC with either Thunderbolt or
 high-speed USB 2.0", but its Thunderbolt port is Thunderbolt 1/2, and
@@ -148,22 +149,29 @@ on the MacBook (§11) and move on.
 ### 3.2 The settings (the same as on the Mac)
 
 - **48 kHz**, clock source **Internal** on the 828x.
-- **Optical A = ADAT** in and out (the expander). Set the **expander's**
-  clock to **ADAT / external optical**, so the 828x is the master and the
-  expander follows it. Its lock / sync LED must be steady; a blinking
-  lock means a clock fight (clicks, dropouts).
-- **Optical B** = ADAT (or leave it). Never TOSLink on Optical A, never
-  88.2 / 96 kHz: either halves the ADAT channels and moves every channel
-  number after it.
-- **Main outs and Phones NOT mirrored.**
+- **Both optical ports stay set to ADAT** (in and out), even with nothing
+  plugged in: that is what makes the 828x report the 32 in / 30 out the
+  show checks (§3.3). Never TOSLink, never 88.2 / 96 kHz: either changes
+  the channel counts.
+- **Main outs and Phones NOT mirrored** (in CueMix): the show uses Main L/R
+  and Phones L/R as four separate channels; mirrored, they play the same
+  thing.
 - Live mics are mixed in **CueMix FX** (hardware, no latency): the router
   opens an output-only stream (`passthrough: false`) and CueMix sums the
   computer's playback with its mix on each output.
 
-**Our channel numbers are the 828x's own** (no channel map): outputs
-Analog 1–8, Main 9–10, **ADAT A 15–22** (the expander); inputs Mic/Gtr
-1–2, Analog 3–10, **ADAT A 17–24**. Phones 11–12 and S/PDIF 13–14 are left
-unlabelled.
+**Our channel numbers are the 828x's own** (no channel map), as in
+`audio.json`:
+
+| Channels | Outputs |
+|---|---|
+| 1–8 | **Analog 1–8**, the line outs on the back |
+| 9–10 | **Main L/R**, taken from a front headphone jack |
+| 11–12 | **Phones L/R**, taken from the other front headphone jack |
+
+Inputs: Mic/Gtr 1–2 (front), Analog 3–10. S/PDIF 13–14 and the ADAT
+channels are left unused. The 5 placed speakers are on channels 1, 2, 3, 4
+and 8 (living room L/R, kitchen L/R, The Optical Drive).
 
 ### 3.3 Prove it: one ASIO device, 32 in / 30 out
 
@@ -191,10 +199,10 @@ fails to load. The real event id and passcode come from
 `trapped.house.local.yaml`, §7.)
 
 **The counts must be 32 in / 30 out**, `audio.json`'s `device.expect`
-(the show uses 24 in / 22 out of them). `stagehand check --only audio`
+(the show uses 10 in / 12 out of them). `stagehand check --only audio`
 (§7) fails, and the router logs `LAYOUT MOVED`, when they differ. Other
-counts mean the clock, the sample rate, mirroring or an optical port's
-format is wrong (§3.2): fix the 828x, never the file. If MOTU's ASIO
+counts mean the sample rate, mirroring or an optical port's format is
+wrong (§3.2): fix the 828x, never the file. If MOTU's ASIO
 driver reports other counts with every setting right, stop and tell the
 director before touching `audio.json` (every speaker's channel would need
 re-checking).
@@ -341,56 +349,77 @@ make them answer another group's commands; the only fix reported is the
 power-cycle reset and re-pairing. If a ZL1 follows a look it shouldn't,
 reset it and pair it again.
 
-### 5.4 Name it, set its power-on, group it
+### 5.4 Name it and set its power-on (no groups, no scenes)
+
+Every bulb is already a fixture in the show's `lights.json` (wave 31),
+placed in its room on the map, and its `device` is the Zigbee2MQTT
+**friendly name** below. So the whole job per bulb is: pair it, rename it
+to its name, set its power-on. Which physical bulb (Hue or ZL1) gets which
+name doesn't matter; put it in that room.
+
+| Friendly name | Room (map) | Safety |
+|---|---|---|
+| `living_1`, `living_2`, `living_3` | the living room (The Desktop) | — |
+| `kitchen_1`, `kitchen_2`, `kitchen_3` | the kitchen (The Start Bar) | — |
+| `hall_main` | the main floor hall | **safety** |
+| `hall_up` | the upstairs hall | **safety** |
+| `hall_basement` | the basement hall | **safety** |
+| `casino` | The Graphics Card (bedroom 2, upstairs; the casino) | — |
+| `bath_down` | the basement bathroom | **safety** |
+| `bath_up` | the upstairs bathroom | **safety** |
+| `fan_closet_1`, `fan_closet_2` | the fan closet | — |
+| `ram_1`, `ram_2`, `ram_3` | The RAM (the studio) | — |
+| `server_room_rgb` | the server room (Trabolta's heart) | **safety**, never under 80 |
+
+That is 18 house bulbs plus the server room's (9 Hue + 12 ZL1 were
+bought). The rest are spares: one more was meant for "the bedroom", but
+the map has no other bedroom room yet, so it is not placed (place it with
+the map editor once its room is on the map). A **safety** bulb is never
+turned off and never goes under 60 / 254 (`server_room_rgb`: 80); the
+`lights` job clamps every look that reaches it.
 
 1. **Rename it** to its friendly name: the Z2M frontend's device page →
    rename (✏). Or:
 
    ```powershell
-   & "C:\Program Files\mosquitto\mosquitto_pub.exe" -h 127.0.0.1 -t zigbee2mqtt/bridge/request/device/rename -m '{\"from\": \"0x0017880100000001\", \"to\": \"living_lamp_1\"}'
+   & "C:\Program Files\mosquitto\mosquitto_pub.exe" -h 127.0.0.1 -t zigbee2mqtt/bridge/request/device/rename -m '{\"from\": \"0x0017880100000001\", \"to\": \"living_1\"}'
    ```
 
-   Names: lower case, underscores, `<room>_<what>_<n>` (`living_lamp_1`,
-   `kitchen_ceiling_2`, `stairs_down_1`). The server-room bulb is
-   **`server_room_rgb`** (it is already in `lights.json`). This name is the
-   `device` the map editor's light points at: a rename later means editing
-   the light too (the Setup pane says *Zigbee2MQTT doesn't know …* when they
-   differ).
-2. **`power_on_behavior: on`**: a flipped wall switch or a breaker brings
-   the bulb back **lit**, never dark. The frontend's device → *Exposes* →
-   *Power-on behavior* → `on`, or:
+   The name must match exactly (lower case, underscores): it is the
+   `device` the light in `lights.json` points at (the Setup pane says
+   *Zigbee2MQTT doesn't know …* when they differ).
+2. **`power_on_behavior: on`** on **every** bulb, and above all the safety
+   ones: a flipped wall switch or a breaker brings the bulb back **lit**,
+   never dark. The frontend's device → *Exposes* → *Power-on behavior* →
+   `on`, or:
 
    ```powershell
-   & "C:\Program Files\mosquitto\mosquitto_pub.exe" -h 127.0.0.1 -t zigbee2mqtt/living_lamp_1/set -m '{\"power_on_behavior\": \"on\"}'
+   & "C:\Program Files\mosquitto\mosquitto_pub.exe" -h 127.0.0.1 -t zigbee2mqtt/hall_main/set -m '{\"power_on_behavior\": \"on\"}'
    ```
 
    (Some older Hue firmware or converters call it `hue_power_on_behavior`:
    use whichever the device's Exposes tab shows. Hue needs firmware from
    late 2018 or newer for it at all.)
-3. **Zigbee groups** (only where a look should hit a whole room at once, or
-   for the `show` job's scene cues): the frontend → *Groups* → add a group
-   and its members, or `zigbee2mqtt/bridge/request/group/add`
-   (`{"friendly_name": "living"}`) and
-   `zigbee2mqtt/bridge/request/group/members/add`
-   (`{"group": "living", "device": "living_lamp_1"}`). The group names the
-   show's cue map already uses are listed at the top of
-   `stagehand/trapped.house.yaml` (`house`, `living`, `kitchen`, `backyard`,
-   `registry`, `tube`, `mudroom`, `bathroom`, `tent`, `server_room`), with
-   the **safety rule**: a bulb on the stairs, in a bathroom, in the tent, in
-   the server room or on the server-room → living-room path is **never** in
-   `house` (a blackout must not darken it), and `server_room_rgb` is in no
-   group a house look reaches.
+
+**No Zigbee groups, no Zigbee scenes.** Every look (the story's `cue
+lights_*`) is a `lights.json` look that the `lights` job plays bulb by
+bulb, and Trabolta's room cuts and the flicker in `trapped.house.yaml`
+address each bulb by its name too. Don't create groups or store scenes;
+groups left over from an older setup are harmless but unused.
 
 **Back up `C:\zigbee2mqtt\data\` after every pairing session**
 (`zigbee.md` §9: stop the task, zip the folder, start it again; keep a copy
 off this PC, never commit it). It holds the network key and every paired
 bulb.
 
-## 6. The WLED strip (WeGoIOT ESP32 controller)
+## 6. The living room's WLED strip (WeGoIOT ESP32 controller)
 
-The RGB LED strip runs on a **WeGoIOT ESP32 controller with WLED**, on the
-house Wi-Fi. It listens to MQTT on this PC's broker; stagehand never talks
-to it any other way.
+The living room's RGB LED strip (**6200 LEDs over 32.8 ft / 10 m, on a 24 V
+/ 6 A supply**) runs on a **WeGoIOT ESP32 controller with WLED**, on the
+house Wi-Fi. It is `lights.json`'s fixture `living-strip` (kind `wled`,
+device `wled/living`, in the `living` zone with the three living-room
+bulbs). It listens to MQTT on this PC's broker; stagehand never talks to it
+any other way.
 
 ### 6.1 Wi-Fi (first time)
 
@@ -407,18 +436,37 @@ to it any other way.
 
 ### 6.2 LED Preferences (Config → LED Preferences)
 
-- **LED type**: the strip's chip (WS281x, SK6812 RGBW, …; written on the
-  strip or its reel), **color order** (WS2812B is usually **GRB**; if red
-  shows green, change it), **length** = the number of LEDs (count them, or
-  LEDs per metre × metres), and the **data GPIO** the controller's output
-  terminal is wired to. **Unverified:** which GPIO the WeGoIOT board uses;
-  a pre-flashed controller usually ships with it set, so check what is
-  there before changing it, and read the board's silkscreen or its listing
-  if the strip stays dark.
-- **Max current / automatic brightness limiter**: set to what the strip's
-  power supply can deliver (WLED's default is 3000 mA).
-- **Turn LEDs on after power up/reset: ON**, with a boot brightness that
-  lights the room (a power blip must not leave a hallway dark).
+Per output (the strip is one output):
+
+- **LED type**: the strip's chip, from its label, reel or listing (e.g.
+  WS2811, WS2814, SK6812).
+- **Length** = the number of **addressable pixels**, not LEDs. 6200 LEDs on
+  10 m is 620 per metre, a COB-style strip, and on a 24 V addressable COB
+  strip several LEDs share one IC (one pixel). Read the strip's label or
+  listing for its chip and its LEDs per pixel (or pixels per metre), and
+  enter pixels = 6200 ÷ LEDs per pixel. If you can't find it, set the
+  length high enough to cover the strip, light it white, and check that the
+  **far end** lights; then lower it until the far end just stays lit.
+- **Color order**: try **GRB** (WLED's default), then pick a red in the
+  colour wheel: if it shows green or blue, change the order until red is
+  red.
+- **(Data/Clk) GPIO(s)**: the pin the WeGoIOT board's output terminal is
+  wired to. **Unverified:** which GPIO that board uses; a pre-flashed
+  controller usually ships with it set, so check what is there before
+  changing it, and read the board's silkscreen or its listing if the strip
+  stays dark.
+
+Then, for the whole controller:
+
+- **Enable automatic brightness limiter: ON**, **Maximum PSU Current:
+  about `5500` mA** (WLED counts in mA; the supply is 6 A, so this leaves
+  margin). WLED's default is 3000 mA. The limiter estimates the current
+  from each output's *mA/LED* setting, whose default is for 5 V WS281x
+  pixels, so on a 24 V strip it is only an estimate: if the strip's
+  listing gives the current per pixel, pick a custom *mA/LED* with it; if
+  the supply runs hot on full white, lower the limit.
+- **Turn LEDs on after power up/reset: ON**, with a **Bootup brightness**
+  that lights the room (a power blip must not leave it dark).
 
 Test it from the controller's own page (a colour, the brightness slider)
 before MQTT.
@@ -433,17 +481,15 @@ before MQTT.
 | Username | `props` |
 | Password | the props password (§2) |
 | Client ID | unique per controller, e.g. `wled-living` |
-| Device Topic | **`wled/<name>`** — the room it lights: `wled/living`, `wled/kitchen`, `wled/backyard`, `wled/registry`, `wled/tube` (halls + stairs) |
-| Group Topic | **`wled/all`** |
+| Device Topic | **`wled/living`** |
+| Group Topic | `wled/all` (WLED's default; it can stay, nothing sends to it now) |
 
-The `<name>` matters twice: the map editor's light points at it, and the
-`show` job's cue map in `trapped.house.yaml` already sends looks to
-`wled/living`, `wled/kitchen`, `wled/backyard`, `wled/registry`, `wled/tube`
-and `wled/all`. stagehand publishes WLED commands to **`wled/<name>/api`**
-(WLED's JSON API: `on`, `bri`, `transition`, and one segment's `col` /
-`fx`). WLED sends credentials unencrypted, which is why the props password is
-only for props. A strip in the halls or on the stairs (`wled/tube`) is a
-**safety light**: mark it so on the map (§8).
+The device topic must be exactly `wled/living`: it is `lights.json`'s
+`device` for the strip, and Trabolta's living-room cut in
+`trapped.house.yaml` turns it off and on there. stagehand publishes WLED
+commands to **`wled/living/api`** (WLED's JSON API: `on`, `bri`,
+`transition`, and one segment's `col` / `fx`). WLED sends credentials
+unencrypted, which is why the props password is only for props.
 
 Check it from this PC (WLED's `/api` topic also takes the HTTP API's
 syntax, which needs no JSON quoting: `T=1` on, `A=` brightness 0–255):
@@ -453,11 +499,9 @@ syntax, which needs no JSON quoting: `T=1` on, `A=` brightness 0–255):
 & "C:\Program Files\mosquitto\mosquitto_pub.exe" -h 127.0.0.1 -t wled/living/api -m "T=1&A=128"
 ```
 
-**Presets** (only if the strip plays the `show` job's `lights_*` scene
-cues): `trapped.house.yaml`'s table gives each look one preset ID, the
-same on every controller (`ps 1`–`20`, and `ps 22`, the tube's dim static
-safety preset). A strip driven only by `lights.json` looks (the Cue
-designer, §8) needs no presets.
+**No WLED presets.** The story's looks reach the strip as `lights.json`
+looks (colour, brightness, effect) from the `lights` job; nothing recalls a
+preset, so none need saving.
 
 ## 7. stagehand (`show` + `lights` + `audio`)
 
@@ -511,24 +555,20 @@ project:
   name come out of exactly that speaker. Walk every speaker once on this PC
   even if it was tested on the Mac: ASIO's channel order may not be Core
   Audio's.
-- **Lights**: the **💡 Lights** tab → the **💡 Light** tool → click in the
-  room (the height `y` is in the house frame: the basement is below 0). In
-  the inspector:
-
-  | Light | `kind` | `device` |
-  |---|---|---|
-  | a Hue or ZL1 bulb | **Zigbee bulb** (`zigbee`) | its Z2M friendly name (`living_lamp_1`), picked from the devices Z2M reported, or typed |
-  | a Z2M group of bulbs | **Zigbee2MQTT group** (`zigbee-group`) | the group's friendly name (`living`) |
-  | the WLED strip | **WLED strip** (`wled`) | its device topic, **`wled/<name>`** (`wled/living`), without `/api` |
-
-  Caps (colour / colour temperature / dim) fill in from Z2M for a bulb; set
-  them by hand for a WLED strip (colour + dim, no colour temperature). Tick
-  **safety light (never dark)** for anything people walk by — stairs,
-  halls, bathrooms, the tent, the server room — and give it a floor. **Save**,
-  then **💡 Identify** (a bulb does Z2M's `okay` blink; a strip blinks, or a
-  safety strip flashes steady white), try a colour swatch, then **Save to
-  project**. Testing needs the light *saved* first: the module only knows
-  saved lights.
+- **Lights**: nothing to place. `lights.json` already holds every bulb of
+  §5.4 and the living-room strip, each in its room with its `device` name,
+  its safety flag and its floor, plus the zones (`living`, `kitchen`,
+  `fan-closet`, `ram`, `paths` = the halls and bathrooms, `rooms`,
+  `room-bulbs`, `house`, `heart`) and every look. The job is: pair each
+  bulb under its name (§5), set up the strip (§6), then walk it in Run →
+  House below. If a bulb hangs somewhere else in the room, drag it on the
+  map editor's **💡 Lights** tab (the height `y` is in the house frame: the
+  basement is below 0), **Save**, **💡 Identify** it (a bulb does Z2M's
+  `okay` blink; the strip blinks), then **Save to project**. The module
+  only knows saved lights. The project gets the new `lights.json` only from
+  a `sync-show --replace-lights` (a plain sync keeps the project's old copy,
+  which has only the server-room bulb); before any later replace, Download
+  JSON what was saved to the project and commit it into the repo.
 - **Run → House** (the editor's Run mode) then shows the house as the show
   sees it:
   - **Setup**: one row each for **🔊 Sound**, **💡 Lights** and **🧠
@@ -539,7 +579,14 @@ project:
     sound, every light and every look, one row at a time with a Test
     button; mark each *heard it* / *nothing*.
   - **Cue designer**: where the lighting **looks** are designed (`cue
-    <look>` in the story plays `lights.json`'s look of that name).
+    <look>` in the story plays `lights.json`'s look of that name). Every
+    story `lights_*` look and every `heart_*` look is there, a DRAFT to
+    retune on site: play each one with **▶ Test on the house**, adjust it
+    if needed, **Save**, then **Save to project**.
+
+  Done when Setup is green (🔊, 💡, 🧠), Checks has every light and every
+  look walked (*heard it* / *nothing*), and every look has been played on
+  the real bulbs from the Cue designer.
 
 Then `.\preflight.ps1` (§10) end to end.
 
@@ -575,11 +622,10 @@ Windows' default output — HDMI to the TV's speakers (§1: never the MOTU).
 
 ## 10. Show night
 
-1. Power on the 828x and the ADAT expander **before** the PC (or replug
-   the 828x's USB after), then the PC; let it sign in. Mosquitto
+1. Power on the 828x **before** the PC (or replug its USB after), then
+   the PC; let it sign in. Mosquitto
    (service), Zigbee2MQTT (boot task), `show` + `lights` + `audio`
    (sign-in tasks) and the TV (if `-InstallTask`) start by themselves.
-   Check the expander's lock LED is steady.
 2. `.\preflight.ps1` — power, Windows Update, sign-in, the broker's two
    listeners, the COM port, `zigbee2mqtt/bridge/state`, `stagehand check
    --only show,lights,audio`, the tasks, the retained `health/stagehand`,
@@ -620,8 +666,8 @@ MacBook, then `.\start-stagehand.ps1 -Restart audio` here.
 |---|---|---|
 | No announcements anywhere | `.\preflight.ps1`: `health/stagehand`, `health/audio`; Run → House → Setup | the `show` job (`.\start-stagehand.ps1 -Restart show`), the router (`-Restart audio`), the broker (`.\setup-mosquitto.ps1 -Check`); in the fallback, the MacBook's router (`uv run stagehand launchd status --job audio` there) and its `:1884` password |
 | No sound at all, Setup says *no audio interface* | `.\start-stagehand.ps1 -Status` (the audio log); `$env:SD_ENABLE_ASIO='1'; uv run python -m sounddevice` | the 828x powered and on USB, MOTU's driver (§3.1), `audio.device` in `trapped.desktop.local.yaml`; then `-Restart audio` |
-| *LAYOUT MOVED* / other channel counts | the audio log; the 828x's settings | §3.2: 48 kHz, internal clock, Optical A = ADAT, no mirroring; the expander's clock on ADAT and its lock LED steady |
-| Clicks or dropouts (the Setup row counts xruns) | the audio log | the expander's clock (a blinking lock); close other audio apps; the USB cable straight into the PC; USB power saving off (§1) |
+| *LAYOUT MOVED* / other channel counts | the audio log; the 828x's settings | §3.2: 48 kHz, internal clock, both optical ports on ADAT, Main and Phones not mirrored |
+| Clicks or dropouts (the Setup row counts xruns) | the audio log | the 828x's clock on Internal; close other audio apps; the USB cable straight into the PC; USB power saving off (§1) |
 | A sound plays on the wrong speaker | 🔈 Test on the map's Audio tab | the speaker's output channel on the Audio tab (ASIO's numbering), Save to project |
 | A bulb ignores the story | `health/lights`, `.\zigbee2mqtt.ps1 -Check`; Setup's 💡 row | `.\start-stagehand.ps1 -Restart lights`; the Z2M friendly name = the light's `device`; a moved stick has a new `COMn`: fix `serial.port` in `C:\zigbee2mqtt\data\configuration.yaml`, then `Start-ScheduledTask -TaskPath \Loom\ -TaskName zigbee2mqtt` |
 | A bulb shows *offline* in Z2M | its wall switch / breaker | switch it on (power-on behaviour brings it back lit); too far from any other mains bulb: move it or add one between |
