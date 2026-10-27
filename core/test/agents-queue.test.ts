@@ -114,6 +114,55 @@ describe("AgentHub — the busy line", () => {
   });
 });
 
+describe("AgentHub — the public talk thread (wave 32, C4)", () => {
+  const stage: AgentThread = { character: "Trabolta", channel: "loc:The Desktop", audience: ["@Clippy"], public: true };
+
+  it("goes out ahead of every DM queued before it", () => {
+    const h = harness();
+    for (let n = 0; n < 3; n++) h.hub.line(th(n));
+    h.hub.line(stage);
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    expect(a.requests().map((r) => r.thread.channel)).toEqual(["loc:The Desktop", "dm:Trabolta", "dm:Trabolta", "dm:Trabolta"]);
+  });
+
+  it("is first again when a stall clears", () => {
+    const h = harness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(th(0));
+    h.run(61_000); // stalled on g-0
+    h.hub.line(th(1));
+    h.hub.line(stage);
+    expect(a.requests()).toHaveLength(1);
+    h.hub.settle(a.requests()[0]!.id, "laptop");
+    expect(a.requests().slice(1).map((r) => r.thread.channel)).toEqual(["loc:The Desktop", "dm:Trabolta"]);
+  });
+
+  it("never hears the busy line behind a burst; held once with nobody online", () => {
+    const h = harness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(th(0));
+    h.hub.line(stage);
+    h.run(45_000);
+    expect(h.busy).toEqual([]);
+    const b = harness();
+    b.hub.line(stage);
+    b.run(90_000);
+    expect(b.held).toEqual(["@Clippy"]);
+  });
+
+  it("openOn reads the owed request; answeredByHand closes it", () => {
+    const h = harness();
+    expect(h.hub.openOn(stage)).toBeNull();
+    h.hub.line(stage);
+    expect(h.hub.openOn(stage)).toMatchObject({ since: 1000 });
+    expect(h.hub.answeredByHand(stage)).toBe(true);
+    expect(h.hub.openOn(stage)).toBeNull();
+  });
+});
+
 describe("AgentHub — a stalled worker", () => {
   it("stalls after 60 s unanswered: one # hosts line, the hold line once per waiting thread, no new dispatch, requests kept", () => {
     const h = harness();

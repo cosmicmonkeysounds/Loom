@@ -239,6 +239,10 @@ describe("the host allowlist (§2.7)", () => {
     expect(isHostRoute("POST", "/api/mod/say", { channel: "guest:g1", as: "Norton", text: "x" }, ctx)).toBe(false);
     expect(isHostRoute("POST", "/api/mod/act", { action: "restrict" }, ctx)).toBe(true);
     expect(isHostRoute("POST", "/api/mod/act", { action: "capture" }, ctx)).toBe(false);
+    // Wave 32 (C3): the talk panel (its own 409s gate it to a talk scene).
+    expect(isHostRoute("POST", "/api/mod/talk", { as: "Clippy", text: "x" }, ctx)).toBe(true);
+    expect(isHostRoute("POST", "/api/mod/talk", { as: "Trabolta", text: "x" }, ctx)).toBe(true);
+    expect(isHostRoute("POST", "/api/mod/agent/talk", { as: "Clippy", text: "x" }, ctx)).toBe(false);
     expect(isHostRoute("GET", "/api/state", { role: "mod", host: "1" }, ctx)).toBe(true);
     expect(isHostRoute("GET", "/api/state", { role: "mod", host: "1", cues: "1" }, ctx)).toBe(false);
     expect(isModSurface("GET", "/api/state", { role: "prime" })).toBe(false);
@@ -331,6 +335,7 @@ describe("the host allowlist (§2.7)", () => {
       ["POST", "/api/mod/scan", { target: g.id, as: "Norton" }],
       ["POST", "/api/mod/clock", { time: "7:00 PM" }],
       ["POST", "/api/mod/login", { passcode: "wrong" }],
+      ["POST", "/api/mod/talk", { as: "Clippy", text: "Hello?" }],
     ];
     for (const [method, path, body] of allowed) {
       const r = method === "GET" ? await get(rt, path) : await post(rt, path, { ...body, token });
