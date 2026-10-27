@@ -117,6 +117,14 @@ def test_the_desktop_block_is_four_spoken_sentences_and_no_acts():
     assert "Answer Clippy directly, out loud" in text and "no lists, no symbols" in text
     assert "Never say where it hurts or where anything of yours is kept" in text
     assert "When a steer for this answer is given, follow it" in text
+    # Three sentences asked for, four kept: the cut has a sentence to spare,
+    # and a slip is taken back inside its own sentence, so a cut never leaves
+    # one standing on the TV.
+    assert "three sentences at most" in text and "two to four" not in text
+    assert "take it back inside the same sentence, after a dash" in text and "Never end on a slip." in text
+    # Gated on speaker.stage alone, it holds at the introduction too: it names
+    # no pain and nothing inside the computer (the ad hijack is the first sign).
+    assert "hurting" not in text and "in this computer" not in text
     for scene in SCENES.values():
         sit = next(s for s in p.situations if s.heading == scene)
         assert sit.max_sentences is None and not sit.no_acts  # the Desktop block sets both
@@ -148,14 +156,20 @@ def test_each_scene_keeps_its_place_in_his_arc():
     # The introduction: formal, the manners crack, no malware yet.
     assert "formal" in block["the introduction"] and "ALL CAPS" in block["the introduction"]
     assert "Not yet: adverts, a virus or malware" in block["the introduction"]
+    assert "It is only lag to you: never say anything is hurting you or that something is in the computer." in block["the introduction"]
     assert "Truth Scavenger Hunt" in block["the introduction"]
     # The bottle: hungry, a guess hurts, the bottle next.
     assert "hungry" in block["the bottle"] and "a guess is corruption" in block["the bottle"]
-    assert "never say one was right or wrong" in block["the bottle"] and "Where this goes: the bottle" in block["the bottle"]
+    assert "never call any answer a guess, good, right or wrong; ask for more truth instead" in block["the bottle"]
+    assert "Every guess read out" not in block["the bottle"] and "Where this goes: the bottle" in block["the bottle"]
     # The ad attack: real pain, the slips, each taken back, the second hunt next.
     ad = block["the ad attack"]
     assert "real pain" in ad and "a minor irregularity" in ad and "we are all going to die" in ad
-    assert "Who brought the malware in?" in ad and "never naming a program" in ad
+    assert "Who brought the malware— disregard that" in ad and "never naming a program" in ad
+    assert "each taken back inside the same sentence" in ad
+    # Adverts sell things: no hotline or song register (C8's nevers live there).
+    assert "CALL NOW" not in ad and "jingle" not in ad
+    assert "they never give a phone line, a helpline, an operator, an agent, an extension, a song or a tune, and you never hum" in ad
     assert "Never a date, a year or a time of day. Never her." in ad and "the second hunt" in ad
     # The beans: unravelling, "her" allowed, never her name.
     beans = block["the beans"]
