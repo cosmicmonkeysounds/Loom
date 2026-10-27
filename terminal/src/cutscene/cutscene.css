@@ -31,4 +31,8 @@
 @media (orientation: portrait) {
   .cutscene-room-side .cutscene-stage { right: 0; bottom: 62%; }
 }
-.cutscene-room { display: contents; }
+.cutscene-top.cutscene-room { display: contents; }
+/* (A room scene's own stage carries `cutscene-room` too — `cutscene-${kind}`
+   — so the wrapper rule above must never match it: a stage with no box lost
+   its fixed slot, its z and its clip, and a side scene (the layer card, the
+   proof) spread over the whole screen and the heart's choices.) */

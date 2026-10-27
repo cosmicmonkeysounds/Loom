@@ -3,6 +3,15 @@
    stays see-through around its pieces. VT323 for the machine's words. */
 
 .ht-stage {
+  /* The kit's window colours (a heart scene's stage is not a .kit-stage): a
+     Win98 window here gets its silver body, never a see-through one. */
+  --kit-ui: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  --kit-face: #c0c0c0;
+  --kit-hi: #ffffff;
+  --kit-lo: #808080;
+  --kit-dark: #404040;
+  --kit-navy: #000080;
+  --kit-navy-2: #1084d0;
   position: absolute;
   inset: 0;
   overflow: hidden;
