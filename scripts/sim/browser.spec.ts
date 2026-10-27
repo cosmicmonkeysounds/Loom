@@ -17,6 +17,7 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect } from "../../editor/node_modules/@playwright/test/index.mjs";
+import type { Page } from "../../editor/node_modules/@playwright/test/index.mjs";
 
 const BASE = (process.env["SIM_BASE"] ?? "").replace(/\/$/u, "");
 const MOD = process.env["SIM_MOD_CODE"] ?? "";
@@ -30,6 +31,18 @@ function beatNow(): { n: number; beat: string; done?: boolean } | null {
   } catch {
     return null;
   }
+}
+/** Fill the director phone's name and press Sign in; then the cue sheet. */
+async function directorSignIn(page: Page): Promise<void> {
+  const who = page.getByPlaceholder("Your name (the log says who fired)");
+  const ready = await who.waitFor({ state: "visible", timeout: 20_000 }).then(
+    () => true,
+    () => false,
+  );
+  if (!ready) return; // already signed in (a remembered session)
+  await who.fill("Sim watcher");
+  await page.getByRole("button", { name: /sign in/iu }).click();
+  await who.waitFor({ state: "hidden", timeout: 20_000 });
 }
 const slug = (s: string) => s.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/gu, "").toLowerCase().slice(0, 48);
 
@@ -48,14 +61,11 @@ test("watch a simulated evening: director, heart terminal, TV", async ({ browser
       const ctx = await browser.newContext({ viewport: p.size });
       const page = await ctx.newPage();
       await page.goto(p.url);
-      // The director phone asks a name for its log, then signs in.
-      if (name === "director") {
-        const who = page.getByPlaceholder(/your name/iu);
-        if (await who.isVisible({ timeout: 5000 }).catch(() => false)) {
-          await who.fill("Sim watcher");
-          await page.getByRole("button", { name: /sign in/iu }).click();
-        }
-      }
+      // The director phone asks a name for its log ("Your name (the log
+      // says who fired)"), then signs in. `isVisible` never waits (its
+      // timeout is ignored), so a lazy chunk still loading read as "no
+      // form" and the phone stayed on the sign-in screen: wait for it.
+      if (name === "director") await directorSignIn(page);
       return { name, page };
     }),
   );

@@ -106,7 +106,9 @@ export type SimEvent =
   // A participant typed a message into a channel. `from` is the display name,
   // `audience` is resolved at send time ("all" or guest ids), `parentSeq` links
   // a reply to its root message (null for a top-level message).
-  | { type: "chat"; from: string; channel: string; text: string; audience: "all" | string[]; parentSeq: number | null }
+  // `answers` (wave 28): the chat seq of the line an agent reply / hold / busy
+  // line answers, so a client can tell a late answer to an earlier message.
+  | { type: "chat"; from: string; channel: string; text: string; audience: "all" | string[]; parentSeq: number | null; answers?: number }
   // A participant was invited into (or left) an authored channel — membership
   // changes for private/group/dm rooms drive who can see + post.
   | { type: "channelInvited"; channel: string; person: string; by: string }

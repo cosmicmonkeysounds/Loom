@@ -179,6 +179,10 @@ the tent laptop the mounted reinstall game adds its own
   `config.pause` (0–3, default 1: `pause=` on a link, the pauses slider in
   ⚙). The character's queues take `gapsFor(config)`; announcements take
   `ANNOUNCE_GAPS` (250 ms, no line gap: the chime parts them).
+- **A throwing engine (wave 28).** A chunk whose `play()` throws counts
+  as said, and `SpeechQueue` always clears `running`: one bad chunk never
+  silences the page (it once held every heart menu on LISTENING until the
+  20 s cap). `BrowserEngine` leaves out a voice the utterance refuses.
 - **Speed.** The TV speaks at `TV_SPEED` (0.92). `withViewDefaults` turns a
   `view=tv` config's speed 1 into 0.92 whenever a link provisions it:
   `provision`, then `linkConfig` (`urlConfig` + `withViewDefaults`, because
@@ -331,7 +335,12 @@ them out.
   floor; a leash end (thrown out, timed out, done, left) forgets the visit,
   so the next scan floors fresh, and `floorAfter` uses it whenever it is
   sent, so a reloaded heart terminal shows the whole visit (his lines and
-  the picks) and nothing older.
+  the picks) and nothing older. Nor a late answer to a phone DM sent before
+  the scan: a line whose `answers` (the guest line an agent reply, hold or
+  busy line answers, core `answeredSeq`) is at or below the floor is left
+  out of `visitLines` and never said here (`answersBeforeVisit`,
+  `session.beforeVisit`); it still lands on the phone. Each thread line
+  carries `data-seq` (the heart spec checks it against `/api/history`).
 - **Picks are server lines (wave 28).** A pick at the choice panel comes
   back on the stream as the program's own `pick: true` line (`act: true`
   for a deed) in `dm:<character>`, before his reply; the phone shows the

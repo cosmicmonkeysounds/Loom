@@ -949,10 +949,14 @@ function Terminal({
   // Each new line of the character's is spoken — and revealed as it is said.
   // Subscribed once per queue (`onNewLine` is stable; the session object is
   // not) — a listener per render would say every reply several times over.
-  const { onNewLine } = session;
+  const { onNewLine, beforeVisit } = session;
+  // The heart terminal never says a late answer to a phone DM sent before
+  // the visit (wave 28): the thread leaves it out, so does his voice.
+  const heartRef = useRef(false);
   useEffect(
     () =>
       onNewLine((line: Line) => {
+        if (heartRef.current && beforeVisit(line)) return;
         const chunks = splitSentences(line.text);
         if (chunks.length === 0) return;
         offsets.current.set(line.seq, revealOffsets(line.text, chunks));
@@ -960,7 +964,7 @@ function Terminal({
         setRevealed((prev) => new Map(prev).set(line.seq, 0));
         queue.say({ id: line.seq, chunks });
       }),
-    [onNewLine, queue],
+    [onNewLine, beforeVisit, queue],
   );
 
   // --- the room voice (a room terminal: the character's lines in its room) ---
@@ -1280,6 +1284,7 @@ function Terminal({
 
   // --- the heart's panel and composer (wave 27) ---
   const heartTerminal = doorOpen !== null || isHeartTerminal(room, config.door);
+  heartRef.current = heartTerminal;
   // The heart terminal shows this visit only (B1); every other one the whole thread.
   const thread = threadFor({ heart: heartTerminal, lines: session.lines, visitLines: session.visitLines });
   const now = serverNow(state);

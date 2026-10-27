@@ -146,6 +146,7 @@ import {
   agentControl,
   agentMindReport,
   agentThought,
+  answeredSeq,
   type AgentAct,
   type AgentActResult,
   type AgentDossier,
@@ -2629,7 +2630,7 @@ export class EventRuntime {
   private postAgentHold(req: AgentRequest): boolean {
     const line = this.sim?.model.characters.get(req.character)?.hold ?? null;
     if (line === null) return false;
-    this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience));
+    this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience, answeredSeq(req)));
     return true;
   }
 
@@ -2643,7 +2644,7 @@ export class EventRuntime {
     const who = req.thread.audience.join(",");
     const said = this.chat.all().some((m) => m.channel === req.thread.channel && m.from === req.character && m.text === line && Array.isArray(m.audience) && m.audience.join(",") === who);
     if (said) return false;
-    this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience));
+    this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience, answeredSeq(req)));
     return true;
   }
 
@@ -3178,7 +3179,7 @@ export class EventRuntime {
     }
     const text = str(body, "say").trim().slice(0, CHAT_TEXT_MAX);
     if (text !== "") {
-      this.fanout(this.commit("say", req.character, req.thread.channel, text, null, req.thread.audience));
+      this.fanout(this.commit("say", req.character, req.thread.channel, text, null, req.thread.audience, answeredSeq(req)));
     }
     // Adjustments move only the character's own declared numeric ranges,
     // clamped to them. The story's watchers decide what the numbers mean.

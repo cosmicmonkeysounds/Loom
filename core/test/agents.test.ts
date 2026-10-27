@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { AGENT_QUEUE_MAX_AGE_MS, AgentHub, AgentTraceLog, agentControl, agentMindReport, agentThought, type AgentControl, type AgentFacts, type AgentRequest, type AgentThought, type AgentThread, type AgentWorker } from "../server/agents.ts";
+import { AGENT_QUEUE_MAX_AGE_MS, AgentHub, AgentTraceLog, agentControl, answeredSeq, agentMindReport, agentThought, type AgentControl, type AgentFacts, type AgentRequest, type AgentThought, type AgentThread, type AgentWorker } from "../server/agents.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { guestView, primeView, type AgentMindSummary } from "../server/views.ts";
@@ -825,6 +825,49 @@ describe("EventRuntime agents", () => {
     // …and the queued body was rebuilt after the hold, so it knows it said it.
     const req = w.res.frames().find(([e]) => e === "request")![1] as AgentRequest;
     expect(req.history.map((h) => h.text)).toEqual(["hello?", "Jean Trabolta will make an appearance later tonight."]);
+  });
+
+  it("the hold line and a worker's reply name the guest line they answer (`answers`), and survive a restart (wave 28)", async () => {
+    let clock = 1_000_000;
+    const source = SOURCE.replace("  mind: external\n", '  mind: external\n  hold: "Back soon."\n');
+    const dir = mkdtempSync(join(tmpdir(), "loom-answers-"));
+    dirs.push(dir);
+    const mk = () => new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "uploaded", scenarioSource: source, joinBase: () => "http://localhost", now: () => clock });
+    const rt = mk();
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Di", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "first?" }, { token });
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "second?" }, { token });
+    type M = { seq: number; from: string; text: string; channel: string; answers?: number };
+    const dm = async (r: EventRuntime) => ((await call(r, "GET", "/api/history", {}, { token })).json["messages"] as M[]).filter((m) => m.channel === "dm:Trabolta");
+    const hub = (rt as unknown as { agents: AgentHub }).agents;
+    clock += 20_000;
+    hub.sweep();
+    const held = await dm(rt);
+    const second = held.find((m) => m.text === "second?")!;
+    expect(held.find((m) => m.text === "Back soon.")?.answers).toBe(second.seq);
+    // The guest's own lines carry no link.
+    expect(held.filter((m) => m.from === "Di").every((m) => m.answers === undefined)).toBe(true);
+    const w = await call(rt, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    const req = w.res.frames().find(([e]) => e === "request")![1] as AgentRequest;
+    await call(rt, "POST", "/api/agent/reply", { id: req.id, say: "HERE." }, { moderator: true });
+    const replied = await dm(rt);
+    expect(replied.find((m) => m.text === "HERE.")?.answers).toBe(second.seq);
+    // A restart replays the journal: the links come back unchanged.
+    rt.dispose();
+    const again = mk();
+    expect(again.restore()).not.toBeNull();
+    const replayed = await dm(again);
+    expect(replayed.map((m) => [m.text, m.answers])).toEqual(replied.map((m) => [m.text, m.answers]));
+    again.dispose();
+  });
+
+  it("answeredSeq: the newest line the character did not say", () => {
+    const line = (seq: number, mine: boolean) => ({ seq, mine, from: mine ? "Trabolta" : "Di", text: "x" });
+    expect(answeredSeq({ history: [line(1, false), line(2, true), line(3, false), line(4, true)] })).toBe(3);
+    expect(answeredSeq({ history: [line(2, true)] })).toBeNull();
+    expect(answeredSeq({ history: [] })).toBeNull();
   });
 
   it("a director answering as the agent closes the queued request: the returning worker doesn't answer twice", async () => {

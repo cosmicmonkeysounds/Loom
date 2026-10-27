@@ -180,6 +180,91 @@ describe("SpeechQueue", () => {
     expect(q.busy).toBe(false);
   });
 
+  // Wave 28 (the heart spec): a play() that threw left the queue "running"
+  // forever, so nothing on the page was ever said again and the heart's
+  // panel sat on LISTENING until its 20 s cap at every menu.
+  it("an engine whose play() throws never wedges the queue", async () => {
+    const log: string[] = [];
+    let idles = 0;
+    let throws = 1;
+    const engine: SpeechEngine = {
+      kind: "browser",
+      prepare: async (text) => ({ kind: "browser", text }),
+      play: (p) => {
+        log.push(p.kind === "browser" ? p.text : "audio");
+        if (throws-- > 0) return Promise.reject(new Error("Failed to set the 'voice' property"));
+        return Promise.resolve();
+      },
+      stop: () => {},
+    };
+    const done: number[] = [];
+    const floor = new VoiceFloor();
+    const q = new SpeechQueue({ primary: engine, fallback: null }, { ...quiet, done: (id) => done.push(id), idle: () => idles++ }, floor, NO_GAPS);
+    q.say({ id: 1, chunks: ["One.", "Still one."] });
+    await flush();
+    await flush();
+    expect(log).toEqual(["One.", "Still one."]); // the line goes on past the throw
+    expect(done).toEqual([1]);
+    expect(q.busy).toBe(false);
+    expect(floor.busy).toBe(false);
+    q.say({ id: 2, chunks: ["Two."] });
+    await flush();
+    expect(log.at(-1)).toBe("Two.");
+    expect(done).toEqual([1, 2]);
+    expect(idles).toBe(2);
+  });
+
+  it("a throw in the drain itself (a listener) still ends the line, goes quiet and idle, and the queue goes on", async () => {
+    const log: string[] = [];
+    const levels: number[] = [];
+    const done: number[] = [];
+    let idles = 0;
+    let bad = 1;
+    const engine: SpeechEngine = {
+      kind: "browser",
+      prepare: async (text) => ({ kind: "browser", text }),
+      play: (p) => {
+        log.push(p.kind === "browser" ? p.text : "audio");
+        return Promise.resolve();
+      },
+      stop: () => {},
+    };
+    const rejections: unknown[] = [];
+    const onRejection = (e: unknown) => rejections.push(e);
+    process.on("unhandledRejection", onRejection);
+    try {
+      const floor = new VoiceFloor();
+      const q = new SpeechQueue(
+        { primary: engine, fallback: null },
+        {
+          ...quiet,
+          level: (l) => levels.push(l),
+          // The first chunk's listener throws (a page handler gone wrong).
+          chunk: () => {
+            if (bad-- > 0) throw new Error("listener fault");
+          },
+          done: (id) => done.push(id),
+          idle: () => idles++,
+        },
+        floor,
+        NO_GAPS,
+      );
+      q.say({ id: 1, chunks: ["One.", "Never said."] });
+      q.say({ id: 2, chunks: ["Two."] });
+      for (let i = 0; i < 6; i++) await flush();
+      expect(done).toEqual([1, 2]); // the throwing line still reports done, the next is said
+      expect(log).toEqual(["One.", "Two."]);
+      expect(levels.filter((l) => l === 0).length).toBeGreaterThanOrEqual(1);
+      expect(idles).toBe(1);
+      expect(q.busy).toBe(false);
+      expect(floor.busy).toBe(false);
+      await new Promise((r) => setTimeout(r, 0));
+      expect(rejections).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onRejection);
+    }
+  });
+
   it("reports the engine that spoke each chunk", async () => {
     const log: string[] = [];
     const server = fakeEngine("server", log, { prepare: () => null }); // the server can't say it
@@ -397,6 +482,40 @@ describe("BrowserEngine — a speak() that never starts", () => {
     expect(device.browser.dead).toBe(false);
     expect(device.current()).toBe("browser");
     expect((await device.browser.prepare("Again."))?.kind).toBe("browser");
+  });
+
+  it("a voice the utterance refuses is left out, and the line is still said", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("window", globalThis);
+    vi.stubGlobal("requestAnimationFrame", () => 0);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    vi.stubGlobal(
+      "SpeechSynthesisUtterance",
+      class {
+        onend: (() => void) | null = null;
+        onstart: (() => void) | null = null;
+        constructor(readonly text: string) {}
+        set voice(_v: unknown) {
+          throw new TypeError("Failed to convert value to 'SpeechSynthesisVoice'.");
+        }
+      },
+    );
+    const spoken: string[] = [];
+    vi.stubGlobal("speechSynthesis", {
+      speak: (u: { text: string; onstart: (() => void) | null; onend: (() => void) | null }) => {
+        spoken.push(u.text);
+        u.onstart?.();
+        u.onend?.();
+      },
+      cancel: vi.fn(),
+      resume: vi.fn(),
+      paused: false,
+      getVoices: () => [{ name: "Daniel", lang: "en-GB", voiceURI: "daniel", default: true, localService: true }],
+    });
+    const started = vi.fn();
+    await new BrowserEngine({ voice: "", speed: 1 }).play({ kind: "browser", text: "Ask, then." }, () => {}, started);
+    expect(spoken).toEqual(["Ask, then."]);
+    expect(started).toHaveBeenCalledTimes(1);
   });
 
   it("a write-off made after the tap holds until the next one", async () => {

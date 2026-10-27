@@ -70,7 +70,7 @@ export function Thread({
         const partial = cut !== undefined && cut < m.text.length;
         const who = m.theirs ? character : m.from === guestName || m.pick === true ? "you" : m.from;
         return (
-          <div key={m.seq} className={lineClass(m, partial)}>
+          <div key={m.seq} className={lineClass(m, partial)} data-seq={m.seq}>
             <span className="meta">
               <span className="who">{who.toUpperCase()}</span>
               <span className="when">{stamp(m.ts)}</span>

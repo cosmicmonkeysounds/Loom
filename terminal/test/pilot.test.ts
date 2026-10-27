@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { LOCKED_PASS_NOTICE, VISIT_KEY, VisitLatch, beginPilot, closeVisit, endPilot, floorAfter, openVisit, visitLinesOf, parseStoredVisit, passLocked, postVisit, recoverVisit, refusesLockedPass, visitSignalBody, type VisitStorage } from "../src/pilot.ts";
+import { LOCKED_PASS_NOTICE, VISIT_KEY, VisitLatch, beginPilot, closeVisit, endPilot, answersBeforeVisit, floorAfter, openVisit, visitLinesOf, parseStoredVisit, passLocked, postVisit, recoverVisit, refusesLockedPass, visitSignalBody, type VisitStorage } from "../src/pilot.ts";
 
 const room = defaultConfig({ eventId: "evt 1", token: "mod-tok", name: "Server Room", spot: "server-room", view: "face", room: "The Server Room" });
 
@@ -277,6 +277,23 @@ describe("the visit floor (wave 27, B1)", () => {
     } finally {
       globalThis.fetch = real;
     }
+  });
+
+  it("wave 28: his late answer to a phone DM from before the visit stays off the heart's thread; an answer to this visit's line shows", () => {
+    // Phone DMs at 10..12, the scan at 20 (floor). The hold line answering
+    // DM 12 lands at 25 (after the floor), his reply to it at 31; the
+    // visit's own line 27 gets its answer at 30. A scripted line (no link) shows.
+    const thread = [{ seq: 10 }, { seq: 11 }, { seq: 12 }, { seq: 21 }, { seq: 25, answers: 12 }, { seq: 27 }, { seq: 30, answers: 27 }, { seq: 31, answers: 12 }];
+    expect(visitLinesOf(thread, 20).map((l) => l.seq)).toEqual([21, 27, 30]);
+    expect(answersBeforeVisit({ answers: 12 }, 20)).toBe(true);
+    expect(answersBeforeVisit({ answers: 20 }, 20)).toBe(true); // the floor itself is before the visit
+    expect(answersBeforeVisit({ answers: 21 }, 20)).toBe(false);
+    expect(answersBeforeVisit({}, 20)).toBe(false);
+    // No floor yet (no history): every line, as before.
+    expect(answersBeforeVisit({ answers: 12 }, null)).toBe(false);
+    expect(visitLinesOf(thread, null)).toHaveLength(thread.length);
+    // An older server sends no link: nothing is hidden by it.
+    expect(visitLinesOf([{ seq: 25 }, { seq: 31 }], 20).map((l) => l.seq)).toEqual([25, 31]);
   });
 
   it("gap 2b: a reload mid-visit floors at the server's visitSeq, so his earlier lines from this visit stay and nothing older", async () => {

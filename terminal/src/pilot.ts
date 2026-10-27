@@ -374,9 +374,20 @@ export function floorAfter(prev: number | null, history: readonly { seq: number 
 /** How long a line waits for its stream's history before `terminal opened` goes anyway (ms). */
 export const VISIT_OPEN_FALLBACK_MS = 2_500;
 
-/** This visit's lines: past the floor (null: no history yet — every line). */
-export function visitLinesOf<L extends { seq: number }>(lines: readonly L[], floor: number | null): L[] {
-  return floor === null ? [...lines] : lines.filter((l) => l.seq > floor);
+/**
+ * A line that answers a message from before the visit (wave 28): his late
+ * reply, hold or busy line to a phone DM sent before the scan
+ * (`ChatMessage.answers`, the seq of the guest line it answers, at or below
+ * the floor). It still reaches the phone's thread; the heart leaves it out.
+ */
+export function answersBeforeVisit(line: { answers?: number }, floor: number | null): boolean {
+  return floor !== null && line.answers !== undefined && line.answers <= floor;
+}
+
+/** This visit's lines: past the floor (null: no history yet — every line),
+ *  never one answering a message from before it (`answersBeforeVisit`). */
+export function visitLinesOf<L extends { seq: number; answers?: number }>(lines: readonly L[], floor: number | null): L[] {
+  return floor === null ? [...lines] : lines.filter((l) => l.seq > floor && !answersBeforeVisit(l, floor));
 }
 
 export interface PilotSession {
@@ -390,6 +401,8 @@ export interface PilotSession {
   visitLines: Line[];
   /** The talk opened before the history came: floor at the scan's seq (`Pilot.seq`), else keep every line (`floorAfter` "pin"). */
   pinFloor: () => void;
+  /** Does this line answer a message from before the visit (`answersBeforeVisit`, today's floor)? Stable across renders. */
+  beforeVisit: (line: { answers?: number }) => boolean;
   /** The character is composing a reply. */
   typing: boolean;
   /** Character is answered by an agent that is online now (null = unknown). */
@@ -463,6 +476,9 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
   );
 
   const visitLines = useMemo(() => visitLinesOf(lines, floor), [lines, floor]);
+  const floorRef = useRef(floor);
+  floorRef.current = floor;
+  const beforeVisit = useCallback((line: { answers?: number }) => answersBeforeVisit(line, floorRef.current), []);
   const pinFloor = useCallback(() => setFloor((prev) => floorAfter(prev, "pin", pilotRef.current?.seq, pilotRef.current?.visitSeq)), []);
 
   // Announce each of the character's lines once, and only ones that land
@@ -500,5 +516,5 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
     return me?.agent?.online ?? null;
   }, [view, character]);
 
-  return { view, connected, ready, lines, visitLines, pinFloor, typing: typing.has(channel), online, say, onNewLine, dead };
+  return { view, connected, ready, lines, visitLines, pinFloor, beforeVisit, typing: typing.has(channel), online, say, onNewLine, dead };
 }
