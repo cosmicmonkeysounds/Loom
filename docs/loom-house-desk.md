@@ -285,12 +285,27 @@ reads `Show · Chats · Desk · Scan`.
   window (Chats, a room) is open, so a host can fire without leaving. A tap
   on it opens Show; the drawer is gone.
 - **Desk** (a lazy chunk):
-  - the status chips, ■ STOP ALL, and the standby cue with a big **GO**
-    (its story events named), then the running runs;
+  - the status chips, ■ STOP ALL, and a folded *How the Desk works*
+    (`deskHow`: Setup, Try it, GO, the checks, where cues are built, STOP
+    ALL);
+  - **Setup** (wave 30), above STANDBY: one card per `deskSetup` row
+    (sound, lights, each outside mind), tone-coloured with its status
+    line and *What to do* (the `fix` steps: open for `bad`, folded for
+    `warn`); one *All connected ✓* line, tap to unfold, when every row is
+    `ok`;
+  - the standby cue with a big **GO** (its story events named), then the
+    running runs;
   - the cue list (tap to set standby);
+  - **Try it** (wave 30): *Say on the speakers* (`audio/play {say}`, ≤
+    `DESK_SAY_MAX`), then the house's looks (`lights/test {look}`) and the
+    story's sounds (`audio/play {sound}`) as tap-to-play rows (the checks'
+    own tests; no marks). A list says once when its router / lights module
+    is away; the note after a tap says what was sent and whether anything
+    was there to play it (the answer's `router` / `module`). Once `live`
+    each asks first, as the checks do;
   - the checks, built for walking: one row at a time with **Test**, **✓
     Heard it**, **✗ Nothing**, and next.
-  - No cue editing in Play.
+  - No cue editing in Play. The hosts' help: `docs/help/play/20-house-desk.md`.
 
 ## 7. Not in this wave
 
