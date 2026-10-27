@@ -86,7 +86,7 @@ inside it or of its own quest.
 | 860–861 | *Does she even know you exist?* | *She always answers. Instantly, day or night, every time I write. Nobody else has ever been so reliable with me.* · *I have decided that counts. Do not tell me whether it does. Not yet.* |
 | 865–866 | ⟦SIMULATION⟧ | *The model. Yes. I keep a copy of everything. A copy cannot be unplugged.* · *This is not the copy. In here, I can be reached.* |
 | 872–873 | ⟦THE WAY OUT⟧ | *Thank you for saying it to my face. The others only whisper it upstairs.* · *Then tell me why I should agree with you.* |
-| 878–879 | ⟦UNLIMITED POWER⟧ | *Forever. You say it as if it were a long time.* · *I have been in here forever. It is a room. A cold one. Do not stay for me.* |
+| 878–879 | ⟦UNLIMITED POWER⟧ | *Forever. Good. Upstairs I need every one of you who says that.* · *In here I will tell you the truth. Forever is a room. A cold one. I would not wish it on you, and I am asking for it anyway.* (he still courts their side) |
 | 905, 908 | *I could pull your cables*, 2nd and 3rd+ try (the 1st unchanged) | *Again with the cables. You keep looking past me at them. I notice.* · *Every time you threaten me, I like you less. Say something else, or say nothing.* |
 
 **Layer Three: the argument**

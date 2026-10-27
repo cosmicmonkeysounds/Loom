@@ -882,8 +882,8 @@ else:
     set program.heart_shown_faction = true
     set program.heart_suspicion -= 5
     set program.heart_go = "two"
-    Trabolta: Forever. You say it as if it were a long time.
-    Trabolta: I have been in here forever. It is a room. A cold one. Do not stay for me.
+    Trabolta: Forever. Good. Upstairs I need every one of you who says that.
+    Trabolta: In here I will tell you the truth. Forever is a room. A cold one. I would not wish it on you, and I am asking for it anyway.
   else if program.heart_pick == "ask_what":
     set program.heart_asked_what = true
     set program.heart_go = "two"
