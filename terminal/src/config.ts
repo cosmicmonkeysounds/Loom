@@ -42,11 +42,11 @@
 //! The tent laptop (wave 18b, `view=reinstall`, `reinstall/ReinstallTerminal.tsx`):
 //! the reinstallation station — the idle show like any wall terminal, and a
 //! marked pass plays the reinstallation game right here (or is sent to a
-//! headset). Awake all night, no room, no line. The link names the view as
-//! well as the spot, so it never depends on the map entry carrying
-//! `view: reinstall` (a URL view wins over the map):
+//! headset). Awake all night, no room, no line. The map's `tent` spot sets
+//! the view and the name (the shed variant renames it *Shed*), so the link
+//! never adds `&view=reinstall` (`docs/trapped/kiosk.md`):
 //!
-//!   /terminal/?code=<mod passcode>&spot=tent&view=reinstall&announce=1
+//!   /terminal/?code=<mod passcode>&spot=tent&announce=1
 //!
 //! The voice link (wave 19, `voice/`): a placed terminal's microphone is
 //! heard in the reinstallation games at its screen, and the players near it
