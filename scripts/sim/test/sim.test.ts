@@ -8,7 +8,7 @@ import { CEREMONY, SELF_PRESSED, TO_Y2K, Y2K_TO_VERDICT, pressChain, stepName, s
 import { decide, findOption, heartMenu, layerOf, menusOf, tagOf, type Menu } from "../lib/heart.ts";
 import { featuredSlug, pickPool, segment } from "../lib/plan.ts";
 import { isLocal } from "../lib/http.ts";
-import { isDevServer, isScratch, resolveBase } from "../lib/safety.ts";
+import { guardThenReset, isDevServer, isScratch, resolveBase } from "../lib/safety.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
 import { awardWinners, mismatches, worldOf } from "../lib/world.ts";
 
@@ -163,4 +163,22 @@ test("no default server; port 7000 is the user's dev server, not a scratch one",
   assert.equal(isScratch("https://app.mapsandducks.com"), false);
   assert.equal(isDevServer("https://app.mapsandducks.com:7000"), false, "a remote :7000 is just remote");
   assert.equal(isScratch("http://localhost"), true);
+});
+
+test("the live guard runs before --reset-before, and a refusal resets nothing", async () => {
+  const order: string[] = [];
+  const guard = async () => void order.push("guard");
+  const reset = async () => void order.push("reset");
+  assert.equal(await guardThenReset(guard, reset, true), true);
+  assert.deepEqual(order, ["guard", "reset"]);
+  order.length = 0;
+  assert.equal(await guardThenReset(guard, reset, false), false);
+  assert.deepEqual(order, ["guard"]);
+  order.length = 0;
+  const refuse = async () => {
+    order.push("guard");
+    throw new Error("refused");
+  };
+  await assert.rejects(guardThenReset(refuse, reset, true), /refused/u);
+  assert.deepEqual(order, ["guard"]);
 });

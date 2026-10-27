@@ -31,8 +31,9 @@
 // user's own dev server with loom_dev, still asks). There is no default
 // server: --base or LOOM_SERVER must name one. It never presses Restart / End unless
 // --reset-after (scratch only); --reset-before (scratch only) clears a
-// scratch server's previous run first (bots from an earlier run are
-// registered programs, so the guard would otherwise count them as real).
+// scratch server's previous run first, and only after the guard passed
+// (bots from an earlier run are registered programs, so the guard counts
+// them as real: a fresh server, or --i-know-this-is-live on a bots-only one).
 // It never prints a code, the door code, a combination or a hunt answer:
 // the mod world is read through lib/world.ts, which drops `Kernel.*`.
 //
@@ -73,7 +74,7 @@ import {
 import { liveGuard, type GuardRow } from "../accept/live-guard.ts";
 import { decide, heartMenu, layerOf, menusOf, type HeartStep, type Menu } from "./lib/heart.ts";
 import { Client, Stream, failure, sleep, type Res } from "./lib/http.ts";
-import { isDevServer, isScratch, resolveBase } from "./lib/safety.ts";
+import { guardThenReset, isDevServer, isScratch, resolveBase } from "./lib/safety.ts";
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
 import { atLeast, awardWinners, mismatches, notNone, read, truthy, worldOf, type Row, type Want } from "./lib/world.ts";
 import { featuredSlug, pickPool, segment } from "./lib/plan.ts";
@@ -435,12 +436,16 @@ async function main(): Promise<void> {
   }
   mod = login.json.token;
 
-  if (flag("reset-before")) {
-    await http.post("/api/mod/reset", {}, mod);
-    console.log("  reset the scratch event first (--reset-before)");
-  }
+  // The guard before any reset: a refused (or declined) run touches nothing.
   const before = await modState();
-  await liveGuard({ title: before.title, where: `${base}${http.scope}`, roster: before.roster, action: "run the full-evening bots", argv: process.argv, local });
+  await guardThenReset(
+    () => liveGuard({ title: before.title, where: `${base}${http.scope}`, roster: before.roster, action: "run the full-evening bots", argv: process.argv, local }),
+    async () => {
+      await http.post("/api/mod/reset", {}, mod);
+      console.log("  reset the scratch event first (--reset-before)");
+    },
+    flag("reset-before"),
+  );
 
   const codes = await doorsOpen();
   if (codes === null) return;

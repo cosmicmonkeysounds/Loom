@@ -84,11 +84,14 @@ The chains it presses after the Y2K clock (`Y2K_TO_HEART_END`,
 - **Scratch servers and rehearsal events only.** It runs the live guard
   first (`scripts/accept/live-guard.ts`): a roster with a real guest refuses
   (exit 3) unless `--i-know-this-is-live`; it names the event and asks y/N
-  unless `--yes` or localhost. The bots register with pool names, so a
-  second run on the same event sees the first run's bots as real guests:
-  Restart in Run first (or `--reset-before` on a scratch server).
+  unless `--yes` or a scratch server on this laptop (:7000, your own dev
+  server, still asks). The guard always runs **before** `--reset-before`
+  resets anything. The bots register with pool names, so a second run on
+  the same event sees the first run's bots as real guests and the guard
+  refuses: start a fresh scratch server, Restart in Run, or (a scratch
+  server you know holds only bots) `--reset-before --i-know-this-is-live`.
 - It never presses Restart or End unless `--reset-before` / `--reset-after`,
-  and those refuse anything but localhost.
+  and those refuse anything but a scratch server on this laptop.
 - It never prints a code, the door code, a combination or a hunt answer.
   The mod world goes through `lib/world.ts`, which drops `Kernel.*` (but a
   few secret-free latches). Only `--watch` prints URLs with codes, on your

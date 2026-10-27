@@ -24,3 +24,13 @@ export function isDevServer(base: string): boolean {
 /** A scratch server: on this laptop and not the dev server. Only a scratch
  *  server skips the guard's y/N and may be reset. */
 export const isScratch = (base: string): boolean => isLocal(base) && !isDevServer(base);
+
+/** The guard first, always; the reset only after it passed (the guard
+ *  exits the process on a refusal or a "no", so a refused run never
+ *  resets). Returns whether it reset. */
+export async function guardThenReset(guard: () => Promise<void>, reset: () => Promise<void>, wantReset: boolean): Promise<boolean> {
+  await guard();
+  if (!wantReset) return false;
+  await reset();
+  return true;
+}
