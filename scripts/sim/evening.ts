@@ -957,6 +957,13 @@ async function finish(): Promise<void> {
   if (none.length > 0) console.log("  not completed: " + none.join(", "));
   console.log("  slowest routes:\n" + slowRoutes(rec).join("\n"));
   if (rec.errors.length > 0) console.log("  errors:\n" + rec.errors.slice(0, 30).map((e) => `    ${e}`).join("\n"));
+  if (beatFile !== undefined) {
+    try {
+      writeFileSync(beatFile, JSON.stringify({ n: beatNo + 1, beat: "done", done: true, ok: rec.exitCode() === 0, at: Date.now() }));
+    } catch {
+      /* optional */
+    }
+  }
   if (jsonOut !== undefined) writeFileSync(jsonOut, JSON.stringify({ base, ending, beats: rec.beats, quests, errors: rec.errors }, null, 2));
   if (flag("reset-after") && local) {
     await http.post("/api/mod/reset", {}, mod);
