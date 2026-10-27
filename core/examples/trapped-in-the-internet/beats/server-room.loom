@@ -357,11 +357,11 @@ else:
   else if program.internet_visits >= 2:
     Trabolta: You have been out to the Internet more than once tonight. Most programs come back from out there quieter. You came back and walked down here.
   else if program.trust >= 20:
-    Trabolta: You are high on my chart. I would rather you were not. It makes this harder.
+    Trabolta: I have you near the top of my chart. I would rather you were not. It makes this harder.
   else if program.trust < 0:
     Trabolta: You are low on my chart. Lower than most. And still you are the one standing in my heart.
   else if program.sim_heart == true:
-    Trabolta: You have seen the copy of this room, in the simulation. This is not the copy.
+    Trabolta: You have heard the model of this room beat, in the simulation. This one is warmer.
   // DRAFT w20
   Trabolta: You came all the way down here and you shut the door behind you. Nobody does that by accident.
   Trabolta: So, before anything else. What are you? Tell me what you think you are.

@@ -1336,7 +1336,7 @@ describe("The Heart — the first meeting (wave 27)", () => {
     shut(sim);
     expect(lines(scan(sim, "g1"))).toContain("And you have read something of mine. I can feel it on you, like a fingerprint on a screen.");
     unscan(sim, "g1");
-    expect(lines(scan(sim, "g4"))).toContain("You have seen the copy of this room, in the simulation. This is not the copy.");
+    expect(lines(scan(sim, "g4"))).toContain("You have heard the model of this room beat, in the simulation. This one is warmer.");
   });
 
   it("what they said they are opens their own point: person → ⟦HUMAN⟧, program (with a proof) → ⟦PROGRAM⟧", { timeout: SLOW }, () => {
