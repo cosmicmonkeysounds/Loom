@@ -5,6 +5,8 @@ their secrets out of git."""
 
 from __future__ import annotations
 
+import json
+
 from pathlib import Path
 
 import pytest
@@ -29,7 +31,12 @@ def test_the_desktop_runs_show_and_lights_from_the_house_rules(env):
     cfg = load_config(DESKTOP, only=["show", "lights"], env=env)
     show, lights = cfg.modules["show"], cfg.modules["lights"]
     assert show.cfg.mqtt.host == "127.0.0.1" and show.cfg.mqtt.port == 1883  # Mosquitto on this PC
-    assert len(show.cfg.cues) == len(house.cfg.cues)  # every rule inherited, none copied
+    # Every rule inherited, none copied — but `take_looks` drops a rule whose
+    # cue lights.json now plays as a look (wave 31: the ESP32's alarm lines on
+    # lights_alarm / lights_restore; the box is not installed).
+    looks = set(json.loads((ROOT.parent / "core/examples/trapped-in-the-internet/lights.json").read_text(encoding="utf-8"))["looks"])
+    kept = [r for r in house.cfg.cues if str(r.match.get("target")) not in looks]
+    assert len(show.cfg.cues) == len(kept) and len(kept) == len(house.cfg.cues) - 2
     assert lights.cfg.mqtt.host == "127.0.0.1" and lights.cfg.config_file.endswith("lights.json")
     assert show.ask_lights is True  # the heart_* looks go to the lights job
 

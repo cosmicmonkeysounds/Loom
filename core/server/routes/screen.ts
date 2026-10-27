@@ -713,6 +713,8 @@ export const SCREEN_NIGHT_VARS = {
   heart_stage: "Night.heart_stage",
   heart_look: "Night.heart_look",
   alarm_on: "Night.alarm_on",
+  // Wave 31: the house look (`cue lights_<value>`), for the lights module's catch-up.
+  lights: "Night.lights",
   door_override: "Night.door_override",
   // Wave 22: the patch bay on the server-room M4 posts `patch_changed`; a
   // 🔌 / 💥 / ❌ press puts the story on the buttons until 🔌 Trust the
@@ -761,6 +763,8 @@ export interface ScreenNight {
   heart_look: string | null;
   /** (wave 20) `Night.alarm_on`: the patch-bay alarm latch. */
   alarm_on: boolean | null;
+  /** (wave 31) `Night.lights`: the house look the story last cued (`lights_<value>`; "none" reads null). */
+  lights: string | null;
   /** (wave 20) `Night.door_override`: the story follows the 🚪 buttons, not the sensor. */
   door_override: boolean | null;
   /** (wave 22) `Night.patch_override`: the story follows the 🔌 buttons, not the patch bay. */
@@ -1630,6 +1634,7 @@ export class ScreenWatch {
       heart_stage: named(SCREEN_NIGHT_VARS.heart_stage),
       heart_look: named(SCREEN_NIGHT_VARS.heart_look),
       alarm_on: flag(SCREEN_NIGHT_VARS.alarm_on),
+      lights: named(SCREEN_NIGHT_VARS.lights),
       door_override: flag(SCREEN_NIGHT_VARS.door_override),
       patch_override: flag(SCREEN_NIGHT_VARS.patch_override),
     };

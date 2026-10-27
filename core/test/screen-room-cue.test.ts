@@ -196,6 +196,10 @@ when heart_opens:
 
 when alarm:
   set Night.alarm_on = true
+  set Night.lights = "alarm"
+
+when lights_out:
+  set Night.lights = "none"
 
 when patch_buttons:
   set Night.patch_override = true
@@ -210,6 +214,7 @@ when weird:
       heart_stage: "Night.heart_stage",
       heart_look: "Night.heart_look",
       alarm_on: "Night.alarm_on",
+      lights: "Night.lights",
       door_override: "Night.door_override",
       patch_override: "Night.patch_override",
     });
@@ -226,6 +231,10 @@ when weird:
     sim.signal("heart_opens");
     sim.signal("alarm");
     expect(night()).toMatchObject({ server_door: "open", heart_stage: "door", heart_look: "heart_door_open", alarm_on: true, door_override: true });
+    // Wave 31: the house look, for the lights module's catch-up ("none" reads null).
+    expect(night().lights).toBe("alarm");
+    sim.signal("lights_out");
+    expect(night().lights).toBeNull();
     // Wave 22: the patch bay's override follows the story the same way.
     expect(night().patch_override).toBeNull();
     sim.signal("patch_buttons");

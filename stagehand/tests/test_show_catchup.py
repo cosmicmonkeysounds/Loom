@@ -19,7 +19,10 @@ from stagehand.module import ConfigError
 from stagehand.show.config import parse_show
 from stagehand.show.module import ShowControl
 
-HOUSE = Path(__file__).resolve().parents[1] / "trapped.house.yaml"
+# A frozen copy of the wave 30 house rules (Zigbee scenes + WLED presets per
+# `cue lights_*`): the catch-up machinery is pinned on it, so the show moving
+# its looks into lights.json (wave 31) never weakens these tests.
+HOUSE = Path(__file__).resolve().parent / "fixtures" / "show-catchup-w30.yaml"
 
 
 def run(coro):

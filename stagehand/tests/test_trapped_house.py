@@ -5,22 +5,24 @@ Stagehand never validates names against the story: a cue nobody maps is a
 dark room, and a sensor signal nobody handles is a silent no-op on the
 night. So these tests read the `.loom` files and check, in both directions:
 
-1. every `cue lights_*` / `cue screens_flicker` / `sound <name>` the story
-   emits has a rule (and every allow-listed room of Trabolta's
-   `cut_the_lights` has an off and an on rule);
+1. every `cue lights_*` the story emits is a lights.json look (wave 31:
+   the `lights` job plays them; no Zigbee scene, no WLED preset), every
+   `cue screens_flicker` / `sound <name>` has a rule, and every
+   allow-listed room of Trabolta's `cut_the_lights` has an off and an on
+   rule, bulb by bulb;
 2. every sensor signal is a `when <name>` story rule in `main.loom`;
 3. the patch-bay combos agree three ways: the YAML, the `Kernel.combo_*`
    seeds in `main.loom`, and the four combo-half codex entries.
 
-And it pins the Oct 31 safety edits (K-05): no cue darkens a safety room
-(the stairs/Tube strip, bathroom, tent, server room), the blackout turns
-WLED off per device and leaves the Tube on a dim static preset, Trabolta
-cannot darken The Cloud and only dims the kitchen, nothing drives a lock
-(the server-room door has a standalone keypad lock and mechanical egress;
-the YAML drives only its indicator ring), and — wave 20 — no rule reads
-the door at all (the M4 at his heart's terminal does), the server room's
-RGB bulb — the room's only light — is lights.json's and nothing here
-touches it, and the server room has no WLED strip (Q6 / Q10).
+And it pins the Oct 31 safety edits (K-05): no cue or look darkens a
+safety light (the halls, both bathrooms, the server room's bulb: lights.json
+`safety`, never off, never under their floor), the blackout leaves the halls
+at their floor, Trabolta cannot darken The Cloud and only dims the kitchen,
+nothing drives a lock (the server-room door has a standalone keypad lock
+and mechanical egress; the YAML drives only its indicator ring), and — wave
+20 — no rule reads the door at all (the M4 at his heart's terminal does) and
+the server room's RGB bulb — the room's only light — is the heart looks'
+alone: no rule and no house look touches it.
 """
 
 from __future__ import annotations
@@ -43,6 +45,20 @@ ROOT = Path(__file__).resolve().parents[1]
 HOUSE = ROOT / "trapped.house.yaml"
 STORY = ROOT.parent / "core/examples/trapped-in-the-internet"
 AUDIO_JSON = STORY / "audio.json"
+
+LIGHTS_JSON = STORY / "lights.json"
+
+
+def _lights() -> dict:
+    return json.loads(LIGHTS_JSON.read_text(encoding="utf-8"))
+
+
+def _plan(name: str):
+    from stagehand.lights.routing import parse_lights
+    from stagehand.lights.plan import plan_look
+
+    house = json.loads((STORY / "house.json").read_text(encoding="utf-8"))
+    return plan_look(parse_lights(_lights()), house, name)
 
 
 def _raw() -> dict:
@@ -129,14 +145,25 @@ def test_the_broker_is_this_macs_loopback_listener_and_the_server_is_the_vps():
 # -- 1. every physical cue the story emits has a rule ------------------------------
 
 
-def test_every_light_scene_and_flicker_cue_has_a_rule():
+def test_every_light_cue_is_a_look_and_the_flicker_has_a_rule():
+    """Wave 31: every story `cue lights_*` is a lights.json look (the `lights`
+    job plays it); `lights_server_open` alone has none (the server room's
+    bulb is the heart looks'), only its ESP32 rule here. The flicker stays
+    a rule here: the bulbs' own one-shot blink."""
     used = set(re.findall(r"\bcue\s+(lights_[a-z0-9_]+|screens_flicker)\b", _code(_story_text())))
     assert used, "the story emits no light cues?"
-    missing = sorted(used - _targets("cue"))
-    assert not missing, f"cues with no rule in trapped.house.yaml: {missing}"
-    # …and each one really produces output.
-    for name in used:
-        assert evaluate_cues(_show().cues, _directive("cue", name)), name
+    looks = set(_lights()["looks"])
+    missing = sorted(c for c in used - {"screens_flicker", "lights_server_open"} if c not in looks)
+    assert not missing, f"story cues with no look in lights.json: {missing}"
+    for name in sorted(used - {"screens_flicker", "lights_server_open"}):
+        plan = _plan(name)
+        assert plan is not None and plan.commands, name
+    assert "lights_server_open" not in looks
+    assert evaluate_cues(_show().cues, _directive("cue", "screens_flicker"))
+    # No scene or preset survives in the rules: the looks are lights.json's alone.
+    text = HOUSE.read_text(encoding="utf-8")
+    assert "scene_recall" not in text and not re.search(r"\bps:\s*\d", text)
+    assert not [c for c in used if c.startswith("lights_") and c in _targets("cue") and c not in ("lights_alarm", "lights_server_open", "lights_restore")]
 
 
 def _story_sounds() -> set[str]:
@@ -182,30 +209,38 @@ def _mqtt(cues) -> list[tuple[str, dict]]:
     return [(c.topic, json.loads(c.payload)) for c in cues if isinstance(c, MqttCue)]
 
 
+def _room_bulbs(zone: str) -> list[str]:
+    lights = _lights()
+    ids = next(z["fixtures"] for z in lights["zones"] if z["id"] == zone)
+    return [f["device"] for f in lights["fixtures"] if f["id"] in ids and f["kind"] == "zigbee"]
+
+
 def test_every_room_trabolta_can_darken_goes_off_and_comes_back():
     trabolta = (STORY / "cast/trabolta.loom").read_text(encoding="utf-8")
     rooms = set(re.findall(r'room == "([^"]+)"', trabolta))
     # Never The Cloud: the outdoor steps + the tent path, with captives walked through it.
     assert rooms == {"The Start Bar", "The Desktop", "The RAM"}
+    bulbs = {"The Start Bar": _room_bulbs("kitchen"), "The Desktop": _room_bulbs("living"), "The RAM": _room_bulbs("ram")}
     for room in rooms:
+        assert len(bulbs[room]) == 3, room
         off = _mqtt(evaluate_cues(_show().cues, _directive("cue", f"lights, room: {room}, state: off")))
         on = _mqtt(evaluate_cues(_show().cues, _directive("cue", f"lights, room: {room}, state: on")))
-        z_off = [p for t, p in off if t.startswith("zigbee2mqtt/")]
-        w_off = [p for t, p in off if t.startswith("wled/")]
-        assert len(z_off) == 1 and len(w_off) == 1, room
-        if room == "The Start Bar":
-            # The kitchen (knives, a stove) only drops to ~20%, never dark.
-            assert z_off[0]["state"] == "ON" and 0 < z_off[0]["brightness"] <= 51
-            # bri only — sending "on" would light a strip that was off in the current look.
-            assert "on" not in w_off[0] and 0 < w_off[0]["bri"] <= 51
-        else:
-            assert z_off[0]["state"] == "OFF", room
-            assert w_off[0]["on"] is False, room
-        assert any(t.startswith("zigbee2mqtt/") and p["state"] == "ON" for t, p in on), room
-        assert any(t.startswith("wled/") and p["on"] is True for t, p in on), room
+        # Bulb by bulb, every bulb of the room (lights.json's device names).
+        assert sorted(t for t, _ in off if t.startswith("zigbee2mqtt/")) == sorted(f"zigbee2mqtt/{d}/set" for d in bulbs[room]), room
+        assert sorted(t for t, _ in on if t.startswith("zigbee2mqtt/")) == sorted(f"zigbee2mqtt/{d}/set" for d in bulbs[room]), room
+        for t, p in off:
+            if room == "The Start Bar":
+                # The kitchen (knives, a stove) only drops to ~20%, never dark.
+                assert p["state"] == "ON" and 0 < p["brightness"] <= 51
+            elif t.startswith("zigbee2mqtt/"):
+                assert p["state"] == "OFF", room
+        assert all(p.get("state") == "ON" or p.get("on") is True for _, p in on), room
+    # The living room's strip goes with its bulbs.
+    assert ("wled/living/api", {"on": False}) in _mqtt(evaluate_cues(_show().cues, _directive("cue", "lights, room: The Desktop, state: off")))
+    assert ("wled/living/api", {"on": True}) in _mqtt(evaluate_cues(_show().cues, _directive("cue", "lights, room: The Desktop, state: on")))
     # The restore undoes the kitchen dim.
     back = dict(_mqtt(evaluate_cues(_show().cues, _directive("cue", "lights, room: The Start Bar, state: on"))))
-    assert back["zigbee2mqtt/kitchen/set"]["brightness"] == 254 and back["wled/kitchen/api"]["bri"] == 255
+    assert all(back[f"zigbee2mqtt/{d}/set"]["brightness"] == 254 for d in bulbs["The Start Bar"])
     # A room outside the allow-list reaches nothing, even if a director types it.
     for room in ("The Internet", "The Cloud", "Disk Cleanup", "The Tube", "The Server Room", "The Optical Drive", "The CPU",
                  "The Steam Room", "The Fan Closet", "The Graphics Card", "The Hard Drive"):
@@ -229,24 +264,24 @@ def _lights_values() -> set[str]:
     return set(re.findall(r'\bset\s+Night\.lights\s*=\s*"([a-z0-9_]+)"', _code(_story_text())))
 
 
-def test_every_night_lights_mirror_has_a_rule_and_catches_up():
-    """SW-SH-10: the catch-up replays `lights_{Night.lights}`, so every value
-    the story mirrors must be a real scene rule (the mirror and the YAML stay
-    in step), and every one but `alarm` replays."""
+def test_every_night_lights_mirror_is_a_look_the_lights_job_catches_up():
+    """SW-SH-10, wave 31: the `lights` job catches the house look up from
+    `night.lights` (`lights_<value>`, server_open → lights_y2k), so every
+    value the story mirrors must be a lights.json look; the show job only
+    replays Trabolta's dark room."""
+    from stagehand.lights.routing import parse_lights
+    from stagehand.lights.module import catch_up_house
+
     values = _lights_values()
     assert {"screensaver", "game", "alarm", "restore"} <= values, values
-    missing = sorted(v for v in values if f"lights_{v}" not in _targets("cue"))
-    assert not missing, f"Night.lights values with no lights_<value> rule: {missing}"
-    house, scene, room, back = _show().catch_up
-    assert house.path == scene.path == "Night.lights" and room.path == back.path == "Night.dark_room"
+    looks = _lights()["looks"]
+    doc = parse_lights(_lights())
     for value in values:
-        # The house layer under the server room's look replays only for server_open.
-        assert house.args_for({"Night.lights": value}) == ("lights_y2k" if value == "server_open" else None), value
-        args = scene.args_for({"Night.lights": value})
-        if value == "alarm":  # re-arms the server room's 120 s siren
-            assert args is None
-            continue
-        assert args == f"lights_{value}" and evaluate_cues(_show().cues, _directive("cue", args)), value
+        want = "lights_y2k" if value == "server_open" else f"lights_{value}"
+        assert want in looks, value
+        assert catch_up_house({"night": {"lights": value}}, doc)[0] == want, value
+    room, back = _show().catch_up
+    assert room.path == back.path == "Night.dark_room"
     # Trabolta's cut replays only mid-cut, onto the look he cut, and only an allow-listed room.
     mid = {"Night.lights": "game", "Night.dark_scene": "game", "Night.lights_back_at": "300"}
     for dark in ("The Start Bar", "The Desktop", "The RAM"):
@@ -254,26 +289,15 @@ def test_every_night_lights_mirror_has_a_rule_and_catches_up():
         assert args == f"lights, room: {dark}, state: off" and evaluate_cues(_show().cues, _directive("cue", args))
     assert room.args_for({**mid, "Night.dark_room": "none"}) is None
     assert room.args_for({**mid, "Night.dark_room": "The RAM", "Night.lights_back_at": "0"}) is None
-    # A whole-house look since the cut re-lit the room: nothing to replay.
     for look in ("dance", "blackout", "restore", "y2k", "screensaver"):
         assert room.args_for({**mid, "Night.dark_room": "The RAM", "Night.lights": look}) is None, look
-    # …and once the cut is over, the restore half (a lost restore relights the
-    # room) — under the look the story restored it into (Night.lit_scene) or a
-    # later look that never re-lit the room.
     done = {**mid, "Night.lights_back_at": "0", "Night.lit_scene": "game"}
     for dark in ("The Start Bar", "The Desktop", "The RAM"):
         args = back.args_for({**done, "Night.dark_room": dark})
         assert args == f"lights, room: {dark}, state: on" and evaluate_cues(_show().cues, _directive("cue", args))
         assert back.args_for({**mid, "Night.dark_room": dark}) is None  # mid-cut: stays dark
-    assert back.args_for({**done, "Night.dark_room": "none"}) is None
-    for look in ("dance", "blackout", "restore", "y2k", "screensaver"):
-        assert back.args_for({**done, "Night.dark_room": "The RAM", "Night.lights": look}) is None, look
-    for look in ("pong", "glitch", "server_open", "truth_time", "trust_chart"):
-        assert back.args_for({**done, "Night.dark_room": "The RAM", "Night.lights": look}) == "lights, room: The RAM, state: on", look
-    assert back.args_for({**done, "Night.dark_room": "The Desktop", "Night.lights": "truth_time"}) is None  # re-lit the Desktop
-    # The paths the catch-up reads are the ones the story writes.
     code = _code(_story_text())
-    for path in ("Night.dark_room", "Night.dark_scene", "Night.lights_back_at", "Night.lit_scene"):
+    for path in ("Night.dark_room", "Night.dark_scene", "Night.lights_back_at", "Night.lit_scene", "Night.lights"):
         assert re.search(rf"\bset\s+{re.escape(path)}\s*=", code), path
 
 
@@ -294,7 +318,7 @@ def _restores(lights: str, dark_room: str, dark_scene: str) -> bool:
 
 
 def test_the_cut_catch_up_agrees_with_the_storys_90_s_restore():
-    _, _, room, back = _show().catch_up
+    room, back = _show().catch_up
     looks = sorted(_lights_values() - {"alarm"})
     for dark in ("The Start Bar", "The Desktop", "The RAM"):
         for scene in ("game", "truth_time", "screensaver"):
@@ -330,7 +354,7 @@ def test_a_long_finished_cut_is_never_replayed_under_a_later_look():
     majority's server_open): the catch-up never punches the kitchen to
     full. The story's `Night.lit_scene` says which look the room came back
     on under, and nothing else replays the room-on."""
-    _, _, room, back = _show().catch_up
+    room, back = _show().catch_up
     stale = {"Night.lights": "server_open", "Night.dark_scene": "y2k", "Night.dark_room": "The Start Bar", "Night.lights_back_at": "0", "Night.lit_scene": "none"}
     assert room.args_for(stale) is None and back.args_for(stale) is None
     # Restored under trust_chart, then the house moved on to y2k (whole-house:
@@ -417,47 +441,44 @@ def test_the_door_drives_the_indicator_and_nothing_drives_a_lock():
     assert not re.search(r"maglock|door_lock|strike", json.dumps(_raw()["show"]), re.I)
 
 
-def test_the_server_rooms_bulb_is_lights_jsons_and_nothing_here_touches_the_room():
-    """Wave 20 (D10 / D11, Q6 / Q10): the server room's only light is the RGB
-    bulb `server_room_rgb` (no strip), the `server_room` group's only member,
-    and it is lights.json's: no rule or catch-up here sends the group, the
-    bulb or a server-room WLED topic anything, so no house look (y2k,
-    flicker, blackout, dance, alarm, restore, …) fights the heart's looks.
-    lights_alarm reaches WLED per device, never `wled/all`, and gives the
-    tube strip a steady red; lights_server_open only stops the ESP32."""
+def test_the_server_rooms_bulb_is_the_hearts_and_nothing_else_touches_it():
+    """Wave 20 (D10 / D11) + 31: the server room's only light is the RGB bulb
+    `server_room_rgb`, played by the heart_* looks alone: no rule here and no
+    lights_* look reaches it, so no house look fights the heart's.
+    lights_server_open only stops the ESP32 (not installed)."""
     cfg = _show()
     room = re.compile(r"^(zigbee2mqtt/server_room(_rgb)?(/|$)|wled/server(/|$))")
     assert not [r.mqtt.topic for r in cfg.cues if r.mqtt is not None and room.search(r.mqtt.topic)]
-    assert "wled/server" not in HOUSE.read_text(encoding="utf-8")
-    for rule in cfg.catch_up:
-        for value in ("server_open", "alarm", "y2k", "blackout", "restore", "dance"):
-            arg = rule.args_for({"Night.lights": value, "Night.lights_back_at": "0", "Night.dark_room": "none", "Night.lit_scene": "none"})
-            if arg is None:
-                continue
-            for c in evaluate_cues(cfg.cues, _directive("cue", arg)):
-                assert not (hasattr(c, "topic") and room.search(c.topic)), (value, c.topic)
-    alarm = _mqtt(evaluate_cues(cfg.cues, _directive("cue", "lights_alarm")))
-    topics = [t for t, _ in alarm]
-    assert "wled/all/api" not in topics
-    for r in ("living", "kitchen", "backyard", "registry"):
-        assert (f"wled/{r}/api", {"on": True, "ps": 12}) in alarm, r
-    assert [p for t, p in alarm if t == "wled/tube/api"] == [{"on": True, "bri": 255, "seg": [{"col": [[255, 0, 0]], "fx": 0}]}]
+    for name in _lights()["looks"]:
+        if name.startswith("lights_"):
+            assert "server-room-rgb" not in {c.fixture for c in _plan(name).commands}, name
     opened = _mqtt(evaluate_cues(cfg.cues, _directive("cue", "lights_server_open")))
     assert opened == [("show/serverroom/alarm", {"state": "off"})]
+    alarm = _mqtt(evaluate_cues(cfg.cues, _directive("cue", "lights_alarm")))
+    assert alarm == [("show/serverroom/alarm", {"state": "on", "seconds": 120})]
 
 
-def test_the_server_room_bulb_is_its_safety_light_in_lights_json():
-    """Q6: with no strip the bulb is the room's only light, so lights.json
-    keeps it a safety fixture at 80 / 254, and every heart look stays on and
-    at or above that floor (egress: the room is never near-dark)."""
-    lights = json.loads((STORY / "lights.json").read_text(encoding="utf-8"))
-    assert [(f["id"], f["device"], f.get("safety"), f.get("min")) for f in lights["fixtures"]] == [("server-room-rgb", "server_room_rgb", True, 80)]
+def test_the_safety_lights_in_lights_json():
+    """Q6 + wave 31: the server room's bulb (its only light) is a safety
+    fixture at 80 / 254, the halls and both bathrooms at 60; every heart look
+    stays on and at or above 80, and no look ever plans a safety light off
+    or under its floor (egress: those rooms are never dark)."""
+    lights = _lights()
+    safety = {f["device"]: f.get("min") for f in lights["fixtures"] if f.get("safety")}
+    assert safety == {"server_room_rgb": 80, "hall_main": 60, "hall_up": 60, "hall_basement": 60, "bath_down": 60, "bath_up": 60}
     for name, look in lights["looks"].items():
-        for s in [look.get("set")] + [st["set"] for st in look.get("steps", [])]:
-            if s is None:
+        if not name.startswith("heart_"):
+            continue
+        for st in [look.get("set")] + [x["set"] for x in look.get("steps", [])]:
+            if st is None:
                 continue
-            assert s.get("state") != "OFF", name
-            assert s.get("brightness", 254) >= 80, (name, s)
+            assert st.get("state") != "OFF", name
+            assert st.get("brightness", 254) >= 80, (name, st)
+    floor = {f["id"]: f["min"] for f in lights["fixtures"] if f.get("safety")}
+    for name in lights["looks"]:
+        for c in _plan(name).commands:
+            if c.fixture in floor:
+                assert c.set.get("state") != "OFF" and c.set.get("brightness", 254) >= floor[c.fixture], (name, c)
 
 
 #: WLED presets that are effects going dark between frames (strobe, lightning,
@@ -467,27 +488,14 @@ WLED_EFFECT_PRESETS = {7, 10, 12, 14, 15, 17}
 WLED_ALL_SOLID = {1, 3, 6, 16, 18, 19, 20}
 
 
-def test_no_safety_strip_ever_gets_a_strobe():
-    """Wave 20 review (D11): every cue, not just the alarm. `wled/all` carries
-    only the presets the YAML says are built solid there, and the tube
-    strip never gets an effect preset (the server room has no strip)."""
-    for rule in _show().cues:
-        if rule.mqtt is None or not rule.mqtt.topic.startswith("wled/") or not isinstance(rule.mqtt.payload, dict):
-            continue
-        topic, ps = rule.mqtt.topic, rule.mqtt.payload.get("ps")
-        if topic == "wled/all/api":
-            assert ps in WLED_ALL_SOLID, f"cues[{rule.id}] sends wled/all ps {ps}"
-        if topic == "wled/tube/api":
-            assert ps not in WLED_EFFECT_PRESETS, f"cues[{rule.id}] strobes {topic} (ps {ps})"
-            for seg in rule.mqtt.payload.get("seg", []):
-                assert seg.get("fx", 0) == 0, f"cues[{rule.id}] runs an effect on {topic}"
-    for cue, ps in (("lights_glitch", 7), ("lights_y2k", 10), ("lights_dance", 14), ("lights_final_reveal", 15), ("lights_rave", 17)):
-        out = _mqtt(evaluate_cues(_show().cues, _directive("cue", cue)))
-        for room in ("living", "kitchen", "backyard", "registry"):
-            assert (f"wled/{room}/api", {"on": True, "ps": ps}) in out, (cue, room)
-        assert out[-1] == ("wled/tube/api", {"on": True, "ps": 22}), cue
-    text = HOUSE.read_text(encoding="utf-8")
-    assert "Only ps 1, 3, 6, 16, 18, 19 and 20 still go to `wled/all`" in text
+def test_whole_house_looks_reach_every_room_and_hall_but_the_heart():
+    """Wave 31: the house-wide looks reach every room bulb, the strip and the
+    halls/bathrooms (held at their floor), never the server room."""
+    lights = _lights()
+    every = {f["id"] for f in lights["fixtures"]} - {"server-room-rgb"}
+    for name in ("lights_restore", "lights_screensaver", "lights_y2k", "lights_alarm", "lights_dance", "lights_banish", "lights_song"):
+        reached = {c.fixture for c in _plan(name).commands}
+        assert reached == every, (name, sorted(every - reached))
 
 
 def test_the_lights_section_is_a_commented_example_until_z2m_runs():
@@ -508,7 +516,7 @@ def test_the_alarm_reaches_the_server_room_box_and_stops_when_it_opens():
 #: Z2M groups that hold only safety bulbs (they are out of `house`), and the
 #: WLED device that must never go dark: the Tube strip (hall + stair landing).
 #: The server room's one light is its RGB bulb, lights.json's (Q6 / Q10).
-SAFE_Z2M = ("bathroom", "tent", "server_room", "server_room_rgb", "stairs", "path")
+SAFE_Z2M = ("server_room", "server_room_rgb", "hall_main", "hall_up", "hall_basement", "bath_down", "bath_up")
 SAFE_WLED = ("tube",)
 
 
@@ -533,17 +541,16 @@ def test_no_cue_ever_darkens_a_safety_room_or_all_of_wled():
         assert topic != "wled/all/api", f"cues[{rule.id}] turns every WLED off (the Tube strip too)"
 
 
-def test_the_blackout_goes_per_device_and_leaves_the_tube_dim():
-    out = _mqtt(evaluate_cues(_show().cues, _directive("cue", "lights_blackout")))
-    topics = [t for t, _ in out]
-    assert ("zigbee2mqtt/house/set", {"state": "OFF", "transition": 0}) in out
-    assert "wled/all/api" not in topics
-    for room in ("living", "kitchen", "backyard", "registry"):
-        assert (f"wled/{room}/api", {"on": False}) in out, room
-    assert ("wled/tube/api", {"on": True, "ps": 22}) in out
-    assert topics[-1] == "wled/tube/api"  # last, so a shared controller ends on the tube look
-    # Guests are in the server room: nothing here reaches its bulb (lights.json's).
-    assert not any(t.startswith(("zigbee2mqtt/server_room", "wled/server")) for t in topics)
+def test_the_blackout_darkens_the_rooms_and_leaves_the_halls_at_their_floor():
+    plan = _plan("lights_blackout")
+    lights = _lights()
+    paths = set(next(z["fixtures"] for z in lights["zones"] if z["id"] == "paths"))
+    rooms = set(next(z["fixtures"] for z in lights["zones"] if z["id"] == "rooms"))
+    by = {c.fixture: c.set for c in plan.commands}
+    assert {f for f, st in by.items() if st.get("state") == "OFF"} == rooms
+    assert all(by[f]["state"] == "ON" and by[f]["brightness"] >= 60 for f in paths)
+    assert "server-room-rgb" not in by  # guests are in the server room
+    assert all(c.at == 0 for c in plan.commands) and not plan.loop
 
 
 # -- 2. every sensor signal is a story rule -----------------------------------------
@@ -673,10 +680,9 @@ def test_the_patch_combos_agree_across_yaml_kernel_and_codex():
 
 
 @pytest.mark.parametrize("cue", ["lights_screensaver", "lights_song"])
-def test_scene_cues_hit_both_zigbee_and_wled(cue):
-    cues = evaluate_cues(_show().cues, _directive("cue", cue))
-    topics = {c.topic for c in cues if isinstance(c, MqttCue)}
-    assert "zigbee2mqtt/house/set" in topics and "wled/all/api" in topics
+def test_scene_cues_reach_the_bulbs_and_the_strip(cue):
+    reached = {c.fixture for c in _plan(cue).commands}
+    assert "living-strip" in reached and "living-1" in reached and "kitchen-1" in reached
 
 
 def test_the_router_speaks_with_the_macs_own_voice():
@@ -689,45 +695,38 @@ def test_the_router_speaks_with_the_macs_own_voice():
     assert audio.say_voice and audio.chime == "synth"
 
 
-def test_the_starter_audio_json_is_the_828x_with_its_expander():
-    """wave 18b (Q2, D1): our channel numbers are the 828x's own — 24 in /
-    22 out used, the device must report 32 / 30 (`device.expect`), the
-    expander on Optical A (outputs 15–22, inputs 17–24), the placed speakers
-    unmoved on 1, 2, 3, 4 and 8, and no tablet says the announcements by
-    itself (`announce.terminals` empty)."""
+def test_the_audio_json_is_the_828x_on_its_own_outs():
+    """Wave 31: no ADAT expander. Our channel numbers are the 828x's own —
+    Analog 1–8, Main L/R 9–10, Phones L/R 11–12 out (each from a front
+    headphone jack); Mic/Gtr 1–2 + Analog 3–10 in. The device must still
+    report 32 / 30 (`device.expect`: the optical ports left on ADAT), the
+    placed speakers unmoved on 1, 2, 3, 4 and 8, and no tablet says the
+    announcements by itself (`announce.terminals` empty)."""
     audio = json.loads(AUDIO_JSON.read_text(encoding="utf-8"))
     dev = audio["device"]
-    assert (dev["name"], dev["inputs"], dev["outputs"], dev["rate"], dev["expect"]) == ("828x", 24, 22, 48000, {"inputs": 32, "outputs": 30})
-    assert [c["ch"] for c in audio["inputs"]] == list(range(1, 25))
-    assert [c["ch"] for c in audio["outputs"]] == [*range(1, 11), *range(15, 23)]
-    assert all("ADAT A" in c["label"] for c in audio["outputs"] if c["ch"] >= 15)
-    assert all("ADAT A" in c["label"] for c in audio["inputs"] if c["ch"] >= 17)
+    assert (dev["name"], dev["inputs"], dev["outputs"], dev["rate"], dev["expect"]) == ("828x", 10, 12, 48000, {"inputs": 32, "outputs": 30})
+    assert [c["ch"] for c in audio["inputs"]] == list(range(1, 11))
+    assert [c["ch"] for c in audio["outputs"]] == list(range(1, 13))
+    assert "ADAT" not in json.dumps(audio["outputs"]) + json.dumps(audio["inputs"])
+    assert [c["label"].split(" (")[0] for c in audio["outputs"][8:]] == ["Main L", "Main R", "Phones L", "Phones R"]
     assert {s["id"]: s["out"] for s in audio["speakers"]} == {"living-l": [1], "living-r": [2], "kitchen-l": [3], "kitchen-r": [4], "optical-drive": [8]}
     assert audio["routes"] == [] and audio["announce"] == {"to": ["everywhere"], "chime": True, "terminals": []}
     assert "QLab" not in json.dumps(audio)
 
 
 def test_server_open_catches_up_the_y2k_house_look_underneath():
-    """T8-stagehand-02: server_open (the majority, The Heart) touches only
-    the server room, on top of the Y2K house look. A catch-up replays the
-    house layer first, as the story's own alarm restore does, so a house
-    left on the alarm's red strobe (or a bulb back at power-on white) is
-    put right on every reconnect from step 14 to the reveal."""
-    cfg = _show()
-    world = {"Night.lights": "server_open", "Night.lights_back_at": "0", "Night.dark_room": "none"}
-    args = [a for a in (rule.args_for(world) for rule in cfg.catch_up) if a is not None]
-    assert args == ["lights_y2k", "lights_server_open"]
-    topics = [c.topic for a in args for c in evaluate_cues(cfg.cues, _directive("cue", a)) if hasattr(c, "topic")]
-    assert topics.index("zigbee2mqtt/house/set") < topics.index("show/serverroom/alarm"), topics
-    assert "wled/living/api" in topics and "wled/all/api" not in topics, topics
-    # Wave 20 (D10, Q6 / Q10): the RGB bulb is lights.json's; nothing here reaches it.
-    assert not [t for t in topics if t.startswith(("zigbee2mqtt/server_room", "wled/server"))], topics
-    # The story says so too: the latch's end restores server_open as y2k + server_open.
+    """T8-stagehand-02, wave 31: server_open (the majority, The Heart) touches
+    only the server room (its heart look), on top of the Y2K house look, so
+    the lights job's catch-up plays lights_y2k under it; the story's own
+    alarm restore cues the two in that order."""
+    from stagehand.lights.routing import parse_lights
+    from stagehand.lights.module import catch_up_house
+
+    doc = parse_lights(_lights())
+    assert catch_up_house({"night": {"lights": "server_open"}}, doc)[0] == "lights_y2k"
     assert re.search(r"cue lights_y2k\s+cue lights_server_open", _code(_story_text())), "the story's restore order moved"
-    # Any other look replays once, no extra house layer.
     for value in ("y2k", "game", "glitch"):
-        got = [a for a in (rule.args_for({**world, "Night.lights": value}) for rule in cfg.catch_up) if a is not None]
-        assert got == [f"lights_{value}"], (value, got)
+        assert catch_up_house({"night": {"lights": value}}, doc)[0] == f"lights_{value}"
 
 
 def test_the_flicker_never_changes_the_look_on_the_strips():
