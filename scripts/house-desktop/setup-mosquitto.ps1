@@ -20,9 +20,10 @@
 
         .\setup-mosquitto.ps1 -Check                    # no admin needed
 
-    The same props password goes into the MacBook's
-    stagehand\trapped.macbook.local.yaml (audio: { mqtt: { password } })
-    and into each WLED controller. Never in a tracked file.
+    The same props password goes into each WLED controller (Config ->
+    Sync Interfaces -> MQTT) and, only for the MacBook router fallback,
+    the MacBook's stagehand\trapped.macbook.local.yaml
+    (audio: { mqtt: { password } }). Never in a tracked file.
 
 .PARAMETER Check
     Only check: the service, both listeners, 1883 refused from the LAN.
@@ -74,7 +75,7 @@ function Test-Broker {
         if (Test-Port $ip 1883 800) { Write-Bad ($ip + ':1883 answers on the LAN: anyone on the Wi-Fi could publish show/announce') } else { Write-Ok ($ip + ':1883 refused from the LAN') }
     }
     if ($lan -notcontains '192.168.8.10') {
-        Write-Warn 'this PC is not 192.168.8.10 (the house DHCP reservation trapped.macbook.yaml dials): move the reservation to this PC, or change the MacBook overlay''s audio.mqtt.host'
+        Write-Warn 'this PC is not 192.168.8.10 (the house DHCP reservation the WLED controllers and trapped.macbook.yaml dial): move the reservation to this PC, or change the MacBook overlay''s audio.mqtt.host'
     }
 
     $profiles = Get-NetConnectionProfile -ErrorAction SilentlyContinue
