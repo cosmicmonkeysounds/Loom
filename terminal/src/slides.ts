@@ -74,6 +74,27 @@ export class FlickerPlays {
     return seq;
   }
 }
+
+/**
+ * (wave 32 review) The flicker's two effects, here so a test can drive them
+ * on fake timers (`ScreenLayer`'s `Flicker` runs them; the deps there are
+ * part of the rule). `offerFlicker` runs on each new seq: it starts a stutter
+ * for a seq this page has not played and otherwise leaves the playing one
+ * alone (a seq gone back to null never stops it). `endFlicker` runs on each
+ * stutter started (`on`, never the seq): it ends it `FLICKER_MS` later, so a
+ * late ⚡ that goes stale mid-stutter still finishes and unmounts. Its
+ * cleanup only clears that stutter's timer, and React's re-run (StrictMode,
+ * a new stutter) arms the next one.
+ */
+export function offerFlicker(plays: FlickerPlays, seq: number | null, setOn: (on: number) => void): void {
+  const s = plays.start(seq);
+  if (s !== null) setOn(s);
+}
+export function endFlicker(on: number | null, setOn: (on: null) => void): (() => void) | undefined {
+  if (on === null) return undefined;
+  const t = setTimeout(() => setOn(null), FLICKER_MS);
+  return () => clearTimeout(t);
+}
 /** (wave 26, T2) The glitch takeover's length: shown while its cue is younger than this. */
 export const GLITCH_MS = 8000;
 /** (wave 26, T2) A glitch this page first saw later than this after its cue
