@@ -60,7 +60,7 @@ needed. Build `play` and `terminal` first if you want to watch in a browser.
 | 11 | ⏳ Summons | All but one check in | step 9, the late one `late` |
 | 12 | 🏓 Truth Pong | `made_the_cup` / `missed_the_cup`, 🧮, 📊, 🏆 | step 11, tallied |
 | 13 | 🕚 Y2K | Overshare, the clock; F1–F2 | step 14 |
-| 14 | ♟ Chess, casino, patch | `chess won` (the door code), two casino bets, one wrong patch (never a real combination) | the winner holds the door code |
+| 14 | ♟ Chess, casino, patch | `chess won` (the door code), two casino bets, one wrong patch (never a real combination) | the winner holds the door code; each bet settles (payout − stake = net, the wallet moved by it); the story counted the wrong patch (`Night.wrong_combos` + 1, no ending) |
 | 15 | 🗳 Sides | Every guest joins a side (founders can't); forced only if no majority | step 15 |
 | 16 | 🫀 Thrown out | Door open → shut; a program flatters, then threatens his cables until he ejects it; 🔄 | marked, then forgiven |
 | 17 | 🫀 The chosen | A featured program: ⟦CHOSEN⟧ → *What weak place* → *I need to go* | Layer 2, not thrown out |

@@ -87,3 +87,34 @@ export function awardWinners(
     quest_completionist: by((r) => extra.questsDone?.get(r.id) ?? 0),
   };
 }
+
+/** A wrong patch the story registered: `Night.wrong_combos` up by one (an
+ *  unset count reads 0), no ending fired, the night not over. */
+export function wrongPatchProblems(before: ReadonlyMap<string, string>, after: ReadonlyMap<string, string>): string[] {
+  const count = (w: ReadonlyMap<string, string>) => (read(w, "Night.wrong_combos") === "none" ? 0 : num(w, "Night.wrong_combos"));
+  const out: string[] = [];
+  if (count(after) !== count(before) + 1) out.push(`Night.wrong_combos ${count(before)} → ${count(after)} (want +1: the story did not count the wrong patch)`);
+  if (read(after, "Night.ending") !== "none" || read(after, "Night.ended") === "true") out.push(`a wrong patch ended the night (${read(after, "Night.ending")})`);
+  return out;
+}
+
+/** A settled casino bet: the server's answer adds up and the program's
+ *  wallet moved by exactly its net. `before` / `after` are the program's
+ *  own wallet balance (its guest view) around the bet. */
+export function betProblems(
+  stake: number,
+  r: { ok?: unknown; stake?: unknown; payout?: unknown; net?: unknown; balance?: unknown },
+  before: number | undefined,
+  after: number | undefined,
+): string[] {
+  if (r.ok !== true) return ["the bet was not settled"];
+  const out: string[] = [];
+  const payout = typeof r.payout === "number" ? r.payout : NaN;
+  const net = typeof r.net === "number" ? r.net : NaN;
+  const balance = typeof r.balance === "number" ? r.balance : NaN;
+  if (r.stake !== stake) out.push(`stake ${String(r.stake)} (want ${stake})`);
+  if (!(payout >= 0) || net !== payout - stake) out.push(`payout ${payout}, net ${net} do not add up`);
+  if (before === undefined || balance !== before + net) out.push(`balance ${balance} (want ${before} + ${net})`);
+  if (after !== balance) out.push(`the wallet reads ${after} after the bet (the server said ${balance})`);
+  return out;
+}

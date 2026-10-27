@@ -10,7 +10,7 @@ import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating } from ".
 import { isLocal } from "../lib/http.ts";
 import { guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "../lib/safety.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
-import { awardWinners, mismatches, worldOf } from "../lib/world.ts";
+import { awardWinners, betProblems, mismatches, worldOf, wrongPatchProblems } from "../lib/world.ts";
 
 test("pressChain passes an aimed step's role and stops at a real refusal", async () => {
   const calls: Array<[string, string | undefined]> = [];
@@ -196,4 +196,21 @@ test("--reset-after keeps an event the run never started a night on", () => {
   assert.equal(mayResetAfter({ flag: true, scratch: true, nightStarted: false }), false, "the doors found Night.step != 0");
   assert.equal(mayResetAfter({ flag: true, scratch: false, nightStarted: true }), false);
   assert.equal(mayResetAfter({ flag: false, scratch: true, nightStarted: true }), false);
+});
+
+test("a wrong patch must be counted by the story, with no ending", () => {
+  const w = (rows: Record<string, string>) => worldOf(Object.entries(rows).map(([path, value]) => ({ path, value })));
+  assert.deepEqual(wrongPatchProblems(w({}), w({ "Night.wrong_combos": "1" })), []);
+  assert.deepEqual(wrongPatchProblems(w({ "Night.wrong_combos": "1" }), w({ "Night.wrong_combos": "2" })), []);
+  assert.match(wrongPatchProblems(w({}), w({}))[0]!, /0 → 0 \(want \+1/u);
+  assert.match(wrongPatchProblems(w({}), w({ "Night.wrong_combos": "1", "Night.ending": "destroyed", "Night.ended": "true" })).join(), /ended the night \(destroyed\)/u);
+});
+
+test("a casino bet must settle: the answer adds up and the wallet moved by its net", () => {
+  assert.deepEqual(betProblems(5, { ok: true, stake: 5, payout: 10, net: 5, balance: 25 }, 20, 25), []);
+  assert.deepEqual(betProblems(5, { ok: true, stake: 5, payout: 0, net: -5, balance: 15 }, 20, 15), []);
+  assert.deepEqual(betProblems(5, {}, 20, 20), ["the bet was not settled"]);
+  assert.equal(betProblems(5, { ok: true, stake: 5, payout: 10, net: 4, balance: 24 }, 20, 24).length, 1);
+  assert.match(betProblems(5, { ok: true, stake: 5, payout: 0, net: -5, balance: 20 }, 20, 20).join(), /balance 20 \(want 20 \+ -5\)/u);
+  assert.match(betProblems(5, { ok: true, stake: 5, payout: 0, net: -5, balance: 15 }, 20, 20).join(), /wallet reads 20/u);
 });

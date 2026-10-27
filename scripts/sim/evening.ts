@@ -76,7 +76,7 @@ import { decide, heartMenu, layerOf, menusOf, type HeartStep, type Menu } from "
 import { Client, Stream, failure, sleep, type Res } from "./lib/http.ts";
 import { guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "./lib/safety.ts";
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
-import { atLeast, awardWinners, mismatches, notNone, read, truthy, worldOf, type Row, type Want } from "./lib/world.ts";
+import { atLeast, awardWinners, betProblems, mismatches, notNone, read, truthy, worldOf, wrongPatchProblems, type Row, type Want } from "./lib/world.ts";
 import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating } from "./lib/plan.ts";
 
 // ------------------------------------------------------------------ flags
@@ -227,6 +227,7 @@ interface GuestView {
   location?: string | null;
   captured?: boolean;
   locked?: boolean;
+  wallet?: { balance?: number };
 }
 /** A quest must stand where the beat says for one program. */
 async function questIs(c: Ctx, quest: string, b: Bot, want: "active" | "done" | "failed"): Promise<void> {
@@ -768,13 +769,25 @@ async function y2kHour(): Promise<void> {
     async (c) => {
       const ch = role.chess();
       c.must("chess won", await signal("chess won", { subject: ch.id, label: "Terminal · Sim Server Door" }));
+      // Two bets, each settled: the answer adds up and the wallet moved by its net.
       const g = role.gambler();
-      c.must("casino coin", await http.post("/api/mod/casino/bet", { guest: g.id, game: "coin", pick: "heads", stake: 5, label: "Terminal · Sim Casino" }, mod));
-      await sleep(1500);
-      const d = await http.post("/api/mod/casino/bet", { guest: g.id, game: "dice", pick: "seven", stake: 3, label: "Terminal · Sim Casino" }, mod);
-      c.note(d.status === 200 ? "two bets" : `second bet → ${d.status} (the gap)`);
+      const balance = async () => (await view(g.token)).wallet?.balance;
+      const bets = [
+        { game: "coin", pick: "heads", stake: 5 },
+        { game: "dice", pick: "seven", stake: 3 },
+      ];
+      for (const [i, bet] of bets.entries()) {
+        if (i > 0) await sleep(1500);
+        const was = await balance();
+        const r = c.must(`casino ${bet.game}`, await http.post("/api/mod/casino/bet", { guest: g.id, ...bet, label: "Terminal · Sim Casino" }, mod));
+        if (r.status !== 200) continue;
+        for (const p of betProblems(bet.stake, r.json, was, await balance())) c.fail(`casino ${bet.game}: ${p}`);
+      }
       // Deliberately wrong (a correct combination is a secret): V1-D1 …
+      // The story must count it (Night.wrong_combos + 1), with no ending.
+      const pre = await world();
       c.must("patch_changed (wrong)", await signal("patch_changed", { args: { combo: "V1-D1,V2-D2,V3-D3,V4-D4" }, label: TERMINAL }), (r) => r.status === 200);
+      for (const p of wrongPatchProblems(pre, await world())) c.fail(p);
     },
     () => ({ [`${role.chess().id}.codex.the_door_code`]: "true" }),
   );
