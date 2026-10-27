@@ -35,7 +35,9 @@ from stagehand.agents.slots import FIRST, NORMAL, Slots
 from stagehand.agents.voice import answer_lean, build_lean_messages, history_turns, render_p3, right_now, room_lines, stage_steer
 from stagehand.agents import module as agents_module
 
-from test_story_mind import FakeReply, make, req as mind_req
+from stagehand.modapi import ModApiError
+
+from test_story_mind import FakeMod, FakeReply, FakeVoice, handle, make, req as mind_req
 from test_voice_lean import MODEL, MARKER, Model, context, persona as lean_persona, request, run, say
 
 SHOW = Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the-internet"
@@ -431,6 +433,49 @@ def test_a_stage_request_jumps_two_queued_dms_and_the_slot_stays_single(tmp_path
     order, agents = run(go())
     assert order == ["dm-1", "stage-1", "dm-2", "dm-3"]
     assert [b["id"] for b in agents.mod.of("/api/agent/reply")] == ["dm-1", "stage-1", "dm-2", "dm-3"]
+
+
+def test_a_stage_exchange_feeds_no_quiet_summary(tmp_path):
+    # The stage thread's history is the whole room's (the Narrator, other
+    # programs' scripted lines): a quiet summary of it would file them as
+    # things Clippy said, then show that on her card all night.
+    agents, _ = make(tmp_path, fake=FakeVoice(*(FakeReply(say=f"Line {i}.", memo=f"memo {i}") for i in range(3))))
+    reqs = []
+    for i in range(3):
+        r = stage_request("ad")
+        r["id"] = f"stage-{i}"
+        reqs.append(r)
+    run(handle(agents, *reqs))
+    assert ("Trabolta", "Clippy") not in agents._quiet
+    assert agents.minds["Trabolta"].people["Clippy"].turns == 3  # the exchanges still count
+    # A DM still feeds one.
+    run(handle(agents, mind_req(rid="dm-1", pid="g-1")))
+    assert ("Trabolta", "g-1") in agents._quiet
+
+
+class SettledMod(FakeMod):
+    """The server answers every reply 410: its request was settled first."""
+
+    async def post(self, p, body):
+        if p == "/api/agent/reply":
+            self.posts.append((p, body))
+            raise ModApiError("410 settled", 410)
+        return await super().post(p, body)
+
+
+def test_a_reply_settled_before_it_went_out_is_never_already_said_nor_noted(tmp_path):
+    # C4: a public reply that lands after its scene closed gets a 410; the
+    # TV never spoke it, so no thread may be told he said it.
+    agents, _ = make(tmp_path, fake=FakeVoice(FakeReply(say="We are all going to be fine.", memo="Clippy is rattled")))
+    agents.mod = SettledMod()
+    run(handle(agents, stage_request("ad")))
+    mind = agents.minds["Trabolta"]
+    assert [b["id"] for b in agents.mod.of("/api/agent/reply")] == ["ar-9"]
+    assert mind.said == [] and not mind.people["Clippy"].memos
+    # Delivered, the same line is kept as before.
+    agents.mod = FakeMod()
+    run(handle(agents, stage_request("ad")))
+    assert [x["text"] for x in mind.said] == ["We are all going to be fine."]
 
 
 def test_the_lane_of_a_request():

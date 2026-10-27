@@ -878,7 +878,10 @@ class Agents:
             if self.tasks.get(rid) is asyncio.current_task():
                 del self.tasks[rid]
 
-    async def _send(self, rid: str, reply: Reply) -> None:
+    async def _send(self, rid: str, reply: Reply) -> bool:
+        """POST the reply. False when the server had already settled the
+        request (410: it timed out, the run restarted, or — wave 32, C4 — its
+        talk scene closed): nobody heard the line."""
         assert self.mod is not None
         body: dict[str, Any] = {"id": rid, "say": reply.say, "adjust": reply.adjust}
         if reply.acts:
@@ -897,9 +900,10 @@ class Agents:
                         log.warning("  act refused: %s %s — %s", outcome.get("kind"), outcome.get("what"), outcome.get("error"))
         except ModApiError as err:
             if err.status == 410:
-                log.info("request %s was already settled (timed out or the run restarted)", rid)
-            else:
-                raise
+                log.info("request %s was already settled (timed out, the run restarted or its scene closed)", rid)
+                return False
+            raise
+        return True
 
     # -- the new mind (wave 12, mind_mode: new) ----------------------------------------
 
@@ -1044,24 +1048,33 @@ class Agents:
             f"  {reply.adjust}" if reply.adjust else "",
             f"  ACT {list(reply.acts)}" if reply.acts else "",
         )
+        heard = True
         if not self.cfg.dry_run:
-            await self._send(rid, reply)
+            heard = await self._send(rid, reply)
         if d is None:
             return  # asleep: the unavailable line went out; nobody is on file yet
         heart = str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true"
-        memo = story_mind.keep_memo(persona, getattr(reply, "memo", "") or "") if v.memo else ""
+        # (wave 32) A reply the server had already settled (410: a talk scene
+        # closed, a DM timed out) was never heard: no memo, no turn, and not
+        # "already said" anywhere (`said_for` would show it to every thread).
+        memo = story_mind.keep_memo(persona, getattr(reply, "memo", "") or "") if v.memo and heard else ""
         if memo and d.memos and repeats_line(memo, str(d.memos[-1].get("text") or "")):
             memo = ""  # the same note again (K-04 returning-guest: memos 3 and 4 were near copies)
         if memo:
             d.add_memo(memo, heart=heart, thought=self._voice_thought(character, rid))
         story_mind.note_heart(d, req, heart)
-        story_mind.after_turn(persona, d, req, phase, reply.say)
-        if reply.say and story_mind.keep_said(persona, reply.say):
-            mind.remember_said(thread, reply.say, heart=heart)
+        if heard:
+            story_mind.after_turn(persona, d, req, phase, reply.say)
+            if reply.say and story_mind.keep_said(persona, reply.say):
+                mind.remember_said(thread, reply.say, heart=heart)
         history = [h for h in req.get("history", []) if isinstance(h, dict)]
         newest = max((int(h.get("seq", 0)) for h in history), default=0)
         mind.saw_exchange(sid, who, kind, thread, newest)
-        self._note_quiet(character, sid, req)
+        if not is_stage(req):
+            # (wave 32) A stage thread's history is the whole room's (the
+            # narration, other programs' scripted lines): a quiet summary
+            # of it would file them as things the speaker said.
+            self._note_quiet(character, sid, req)
         self._save_mind(character)
         await self._mirror(character)
 
