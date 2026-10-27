@@ -4495,7 +4495,7 @@ when ad_burst:
     else if Night.burst_i == 2:
       set Night.glitch_text = "CALL NOW. There is no number. Do not call."
     else if Night.burst_i == 3:
-      set Night.glitch_text = "WE ARE ALL GOING TO— a minor irregularity."
+      set Night.glitch_text = "EVERYTHING MUST GO. Not everyone. Everything."
     else if Night.burst_i == 4:
       set Night.glitch_text = "WHO BROUGHT THE MALWARE IN"
     else if Night.burst_i == 5:

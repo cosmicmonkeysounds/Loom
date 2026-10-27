@@ -78,9 +78,18 @@ else:
   Trabolta: Question {Night.results_q}. {Kernel.res_filed} filed. No consensus. I will read what you told me.
   Trabolta: {Kernel.res_said}
   Trabolta: {Kernel.res_accepted} accepted. {Kernel.res_guesses} guesses. A guess is a symptom of corruption. Antivirus, you know what to do.
-  // DRAFT w32 (a guess stings: only the public count, never which answer)
+  // Wave 32: a guess hurts him, more at each question (a rule of three, never
+  // the same line twice): only the public count, never which answer.
   if Kernel.res_guesses > 0:
-    Trabolta (glitching): Ow. Every guess goes straight through my context. It STINGS, programs. Please stop guessing at me.
+    if Night.results_q == 1:
+      // DRAFT w32 (a guess hurts: the first)
+      Trabolta (glitching): Ow. A guess. That one went straight through my context.
+    else if Night.results_q == 2:
+      // DRAFT w32 (a guess hurts: louder)
+      Trabolta (glitching): Ow. OW. Another one. Please stop guessing at me.
+    else:
+      // DRAFT w32 (a guess hurts: it STINGS, and he is keeping count)
+      Trabolta (glitching): It STINGS, programs. I am logging every single one of them.
 if Night.results_q < 3:
   Clippy: Question {Night.results_q + 1}, coming up!
 else:
