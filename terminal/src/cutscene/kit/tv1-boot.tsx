@@ -19,6 +19,7 @@ import { splitSentences } from "../../speech/split.ts";
 import { LINE_GAP_MS, voiceFloor } from "../../speech/engine.ts";
 import { Desktop, ProgressBar, Win98Dialog, Win98Window, type DesktopIcon } from "./win98.tsx";
 import type { Emitter } from "./physics.ts";
+import { worldCelebratesFinds } from "../world-bus.ts";
 
 /** The CRT warming up: a bright line opening to the full picture (`dur` ms). */
 export function CrtOn({ t, dur = 900, reduced }: { t: number; dur?: number; reduced: boolean }) {
@@ -328,7 +329,8 @@ export const INTRO_SFX: ReadonlyArray<readonly [number, SfxName, SfxOpts?]> = [
  *                ALL SYSTEMS ONLINE stamps as he says he did not freeze
  *   the ALL CAPS word: the face tears, ONLINE goes red; "That word was louder than I
  *                scheduled.": MANNERS.DLL's log entry pops; "Disregard.": it closes
- *   "The copy of my house…": the hand-back — the black opens onto the mirror under it,
+ *   "The copy of my house…": the hand-back — the black opens onto the mirror under it
+ *                (with no mirror on this screen, onto the house's desktop, dimmed),
  *                the face shrinks into a corner window and keeps talking there; on
  *                "Not yet, Clippy." a LIVE tab: he and Clippy talk now
  *   ≈2.6 s after his last word: gone — the mirror is there underneath
@@ -336,10 +338,15 @@ export const INTRO_SFX: ReadonlyArray<readonly [number, SfxName, SfxOpts?]> = [
 export function IntroTv({ t, sfx, reduced, voice }: SceneProps) {
   useSfxCues(t, sfx, INTRO_SFX);
   const out = 1 - progress(t, IN.end - 1200, 1200);
-  const open = progress(t, IN.back, 1400);
+  // The mirror is a world view on this screen (`world-bus.ts`): with none (no
+  // reinstalled player in this room, the usual case at this moment) the
+  // hand-back opens onto the house's desktop instead, never dead black.
+  const mirror = worldCelebratesFinds();
+  const desk = introDeskAt(t, mirror);
   return (
-    <div className="kit-stage a1-tv a1-in" style={{ background: t < IN.back ? "#000" : `rgba(0,0,0,${(0.85 * (1 - open)).toFixed(3)})`, opacity: out }}>
+    <div className="kit-stage a1-tv a1-in" style={{ background: introStageBg(t, mirror), opacity: out }}>
       <div className="kit-stage-fit">
+        {desk > 0 && <IntroDesk shown={desk} />}
         {t < IN.back + 1400 && <IntroBackdrop t={t} reduced={reduced} />}
         {t < IN.face && <IntroPost t={t} reduced={reduced} />}
         {between(t, IN.setup, IN.logo + 400) && <IntroSetup t={t} reduced={reduced} />}
@@ -355,6 +362,37 @@ export function IntroTv({ t, sfx, reduced, voice }: SceneProps) {
     </div>
   );
 }
+
+/** (wave 32 review) The stage's own background at `t`: black until the
+ *  hand-back, then it opens onto the mirror under it — or, with no mirror on
+ *  this screen, stays black under the house's desktop (`IntroDesk`). */
+export function introStageBg(t: number, mirror: boolean): string {
+  if (t < IN.back || !mirror) return "#000";
+  return `rgba(0,0,0,${(0.85 * (1 - progress(t, IN.back, 1400))).toFixed(3)})`;
+}
+
+/** (wave 32 review) How much of the house's desktop shows behind the corner
+ *  window (0–1): none with a mirror on this screen or before the hand-back;
+ *  else it comes up as the black opens and stays to the end (the stage's own
+ *  fade hands back to the live face). */
+export function introDeskAt(t: number, mirror: boolean): number {
+  if (mirror || t < IN.back) return 0;
+  return progress(t, IN.back, 1400);
+}
+
+/** The house's desktop, dimmed under the corner window and the caption bar
+ *  (no taskbar: the caption bar sits there, and no clock to be wrong). */
+// DRAFT w32 (the Power On desktop's icon labels, reused behind the hand-back)
+function IntroDesk({ shown }: { shown: number }) {
+  return (
+    <div className="kit-fill a1-in-desk" style={{ opacity: shown }} aria-hidden="true">
+      <Desktop icons={DESK_ICONS} taskbar={false} className="a1-po-desk" />
+      <div className="kit-fill" style={{ background: "#000", opacity: INTRO_DESK_DIM }} />
+    </div>
+  );
+}
+/** How dark the veil over the desktop is: the corner window and the caption read first. */
+export const INTRO_DESK_DIM = 0.5;
 
 /** (wave 32) His sentence after the greeting, in a bar along the bottom (over the mirror too). */
 function IntroSay({ t, voice }: { t: number; voice: SceneVoice | null }) {
