@@ -16,6 +16,7 @@ import type { ChatMessage } from "../server/chat.ts";
 import { EventRuntime, TALK_HOLD_NOTE, TALK_LATE_NOTE } from "../server/event-runtime.ts";
 import { ScreenWatch, glitchTextOf, voiceLinesOf } from "../server/routes/screen.ts";
 import { NOT_FROM_A_BOOTH, isHostRoute } from "../server/routes/host.ts";
+import { HUNT_ANSWER_MARK } from "../server/agent-recent.ts";
 import { Store } from "../server/store.ts";
 import { nightView, type ModView, type PrimeView } from "../server/views.ts";
 import type { HostView } from "../src/host-board.ts";
@@ -149,10 +150,10 @@ async function call(rt: EventRuntime, method: string, pathAndQuery: string, body
   return { status: res.statusCode, json, res, close };
 }
 
-function runtime(o: { dir?: string; now?: () => number } = {}): EventRuntime {
+function runtime(o: { dir?: string; now?: () => number; source?: string } = {}): EventRuntime {
   const d = o.dir ?? mkdtempSync(join(tmpdir(), "loom-w32-"));
   if (o.dir === undefined) dirs.push(d);
-  return new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "talk", scenarioSource: STORY, joinBase: () => "http://localhost", talkScenes: SCENES, hostViewMs: 0, ...(o.now !== undefined ? { now: o.now } : {}) });
+  return new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "talk", scenarioSource: o.source ?? STORY, joinBase: () => "http://localhost", talkScenes: SCENES, hostViewMs: 0, ...(o.now !== undefined ? { now: o.now } : {}) });
 }
 
 const chat = (rt: EventRuntime): ChatMessage[] => (rt as unknown as { chat: { all(): ChatMessage[] } }).chat.all();
@@ -168,7 +169,7 @@ async function hostToken(rt: EventRuntime): Promise<string> {
 }
 
 /** Doors open, Trabolta awake, the intro talk scene on, a host signed in. */
-async function scene(o: { now?: () => number; dir?: string; worker?: boolean } = {}) {
+async function scene(o: { now?: () => number; dir?: string; worker?: boolean; source?: string } = {}) {
   const rt = runtime(o);
   rt.openDoors();
   await setVar(rt, "Trabolta.awake", "true");
@@ -428,11 +429,83 @@ describe("w32 — the scene closes, a canned line answers", () => {
     rt.dispose();
   });
 
+  it("a late reply's follow-up dies with the closed scene: nothing is re-asked in the next one, and no old steer rides along", async () => {
+    const { rt, worker, requests, talk } = await scene();
+    await talk({ as: "Clippy", text: "Intro line one.", direction: "Brag, then hand back to Clippy." });
+    const r1 = requests()[0]!;
+    await talk({ as: "Clippy", text: "Intro line two, said while he thinks.", direction: "Brag, then hand back to Clippy." }); // queued as a follow-up
+    await setVar(rt, "Night.talk", "ad");
+    const late = await call(rt, "POST", "/api/agent/reply", { id: r1.id, say: "Answer to line one." }, { moderator: true });
+    expect(late.status).toBe(410);
+    expect(requests()).toHaveLength(1); // not re-asked under the ad scene
+    expect(hub(rt).pending.filter((r) => r.thread.public === true)).toEqual([]);
+    expect(desk(rt).filter((m) => m.from === "Trabolta")).toEqual([]);
+    // A request opened in the new scene some other way carries no intro steer.
+    hub(rt).line({ character: "Trabolta", channel: DESK, audience: ["@Clippy"], public: true });
+    expect(requests()[1]!.stage).toEqual({ room: "The Desktop", scene: "ad" });
+    // Clippy's next line in the new scene opens a fresh request for it.
+    await call(rt, "POST", "/api/agent/reply", { id: requests()[1]!.id, say: "" }, { moderator: true });
+    await talk({ as: "Clippy", text: "Trabolta, the ads!" });
+    expect(requests()[2]).toMatchObject({ text: "Trabolta, the ads!", stage: { room: "The Desktop", scene: "ad" } });
+    expect(worker).not.toBeNull();
+    rt.dispose();
+  });
+
+  it("a director's hand answer goes to the whole house and answers Clippy's line", async () => {
+    const { rt, talk } = await scene({ worker: false });
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Winamp", passcode: CODES.event });
+    await setVar(rt, `${g.json["id"] as string}.location`, "The Kitchen");
+    const asked = await talk({ as: "Clippy", text: "Trabolta?" });
+    expect((await call(rt, "POST", "/api/mod/say", { channel: DESK, as: "Trabolta", text: "Present, by hand." }, { moderator: true })).status).toBe(200);
+    const said = desk(rt).find((m) => m.text === "Present, by hand.")!;
+    expect(said).toMatchObject({ from: "Trabolta", audience: "all", answers: asked.json["seq"] });
+    expect(hub(rt).pending).toEqual([]);
+    const history = await call(rt, "GET", "/api/history", {}, { token: g.json["token"] as string });
+    expect((history.json["messages"] as ChatMessage[]).some((m) => m.text === "Present, by hand.")).toBe(true);
+    // With no talk scene on, a director's line in the Desktop keeps the room's default audience.
+    await setVar(rt, "Night.talk", "none");
+    await call(rt, "POST", "/api/mod/say", { channel: DESK, as: "Trabolta", text: "Just the room." }, { moderator: true });
+    expect(desk(rt).find((m) => m.text === "Just the room.")!.audience).not.toBe("all");
+    rt.dispose();
+  });
+
   it("asleep: no public request is opened, even straight through the hub", async () => {
     const { rt } = await scene({ worker: false });
     await setVar(rt, "Trabolta.awake", "false");
     hub(rt).line({ character: "Trabolta", channel: DESK, audience: ["@Clippy"], public: true });
     expect(hub(rt).pending).toEqual([]);
+    rt.dispose();
+  });
+});
+
+describe("w32 — the public history's leak filter", () => {
+  const LEAKY = `${STORY}
+CHARACTER Vault
+  playable: false
+  secret: true
+  combo: text = "none"
+
+CODEX The Ribbon
+  code: RIBBON-1
+  text: A blue ribbon from the county fair.
+`;
+  it("drops a secret value, a codex unlock code and a hunt answer key from history; the asked Clippy line is kept", async () => {
+    const { rt, requests, talk } = await scene({ source: LEAKY });
+    await setVar(rt, "Vault.combo", '"fixture-combo-xyzzy"');
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Winamp", passcode: CODES.event });
+    await setVar(rt, `${g.json["id"] as string}.location`, "The Desktop");
+    const gtok = g.json["token"] as string;
+    expect((await call(rt, "POST", "/api/guest/say", { channel: DESK, text: "psst the unlock is RIBBON-1" }, { token: gtok })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/guest/say", { channel: DESK, text: "the combo is fixture-combo-xyzzy" }, { token: gtok })).status).toBe(200);
+    await call(rt, "POST", "/api/mod/say", { channel: DESK, as: "Narrator", text: `${HUNT_ANSWER_MARK}: the fixture key` }, { moderator: true });
+    expect(desk(rt).map((m) => m.text)).toEqual(expect.arrayContaining(["psst the unlock is RIBBON-1", "the combo is fixture-combo-xyzzy"]));
+    await talk({ as: "Clippy", text: "Trabolta? Say RIBBON-1 for us." });
+    const req = requests()[0]!;
+    expect(req.text).toBe("Trabolta? Say RIBBON-1 for us.");
+    const texts = req.history.map((l) => l.text);
+    expect(texts.some((t) => /ribbon-1|fixture-combo|HUNT ANSWER/iu.test(t) && t !== req.text)).toBe(false);
+    expect(texts).toContain("Welcome to the Desktop, programs.");
+    expect(texts.at(-1)).toBe(req.text);
     rt.dispose();
   });
 });

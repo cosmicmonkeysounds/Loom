@@ -892,7 +892,9 @@ export class EventRuntime {
   private readonly talkScenes: Readonly<Record<string, TalkScene>>;
   /** Wave 32 (C4): the newest Clippy talk post's canned steer (null: the
    *  newest post carried none). Memory-only, like the public request. */
-  private talkDirection: string | null = null;
+  /** The last typed Clippy line's steer, with the scene it was given in
+   *  (a steer never rides into another scene's request). */
+  private talkDirection: { scene: string | null; text: string } | null = null;
   // Mod snapshot coalescing (`pushModSnapshots`).
   private readonly modSnapshotMs: number;
   private modSnapshotAt = Number.NEGATIVE_INFINITY;
@@ -2527,7 +2529,7 @@ export class EventRuntime {
       sendJson(res, 200, { ok: true, seq });
       return;
     }
-    this.talkDirection = post.direction ?? null;
+    this.talkDirection = post.direction === undefined ? null : { scene: this.talkNight(), text: post.direction };
     const seq = seqOf(this.fanout(this.commit("say", TALK_AS, thread.channel, post.text, null, "all")));
     // A request still owed from an earlier scene would be dropped on its
     // answer (410) and take this line's follow-up with it: close it first.
@@ -3083,12 +3085,17 @@ export class EventRuntime {
     const def = sim.model.characters.get(thread.character);
     const tag: StoryTagContext = { character: thread.character, hold: def?.hold ?? null, busy: def?.busy ?? null, storyTexts: storyTexts(all, thread.character) };
     // The line he answers: the speaker's newest (else anyone's but his).
+    // A line that carries a facts answer, a secret value, a codex unlock
+    // code or a hunt answer key never reaches him (as the dossier, wave 20):
+    // only the performer's own line he answers is exempt.
+    const { mentionsAnswer, mentionsSecret } = this.agentLeakChecks();
+    const mentionsCode = codeMentions([...sim.model.codex.values()].flatMap((e) => (e.code === null ? [] : [e.code])));
+    const leaks = (text: string): boolean => text.includes(HUNT_ANSWER_MARK) || mentionsSecret(text) || mentionsCode(text) || (mentionsAnswer?.(text) ?? false);
     let asked: ChatMessage | undefined;
     for (let i = room.length - 1; i >= 0 && asked === undefined; i--) if (room[i]!.from === performer) asked = room[i];
-    for (let i = room.length - 1; i >= 0 && asked === undefined; i--) if (room[i]!.from !== thread.character) asked = room[i];
+    for (let i = room.length - 1; i >= 0 && asked === undefined; i--) if (room[i]!.from !== thread.character && !leaks(room[i]!.text)) asked = room[i];
     if (asked === undefined) return null; // nothing said to answer
-    const { mentionsAnswer, mentionsSecret } = this.agentLeakChecks();
-    const lines = room.filter((m) => m === asked || !(mentionsSecret(m.text) || (mentionsAnswer?.(m.text) ?? false)));
+    const lines = room.filter((m) => m === asked || !leaks(m.text));
     const history: AgentLine[] = lines.slice(-AGENT_HISTORY).map((m) => ({
       seq: m.seq,
       mine: m.from === thread.character,
@@ -3123,7 +3130,7 @@ export class EventRuntime {
       powers: this.agentPowers(),
       at: this.clock(),
       ...(recentOn ? this.agentRecentOf(thread, "performer", performer, performer, all, lines, tag) : {}),
-      stage: { room: TALK_ROOM, scene, ...(this.talkDirection !== null ? { direction: this.talkDirection } : {}) },
+      stage: { room: TALK_ROOM, scene, ...(this.talkDirection !== null && this.talkDirection.scene === scene ? { direction: this.talkDirection.text } : {}) },
     };
   }
 
@@ -3380,10 +3387,10 @@ export class EventRuntime {
     if (isPublic && (req.stage === undefined || this.talkNight() !== req.stage.scene)) {
       // Wave 32 (C4): the scene it was asked in is over — the room moved
       // on; nothing lands (no line, no adjust), the hosts hear why.
+      // Its follow-up (more said meanwhile) is dropped with it: those lines
+      // belong to the closed scene (a Clippy line in the new one closes the
+      // owed request first, in modTalk, and opens a fresh one).
       this.postHostsNote(TALK_LATE_NOTE);
-      // More was said meanwhile and a scene is on again: ask anew (the
-      // admit gate refuses while none is).
-      if (followUp) this.agents.line(req.thread);
       sendJson(res, 410, { error: "the talk scene closed" });
       return;
     }
@@ -7567,7 +7574,16 @@ export class EventRuntime {
           return true;
         }
         const parentSeq = this.sim.threadableOf(channel) && body["parentSeq"] != null ? Number(body["parentSeq"]) : null;
-        this.fanout(this.commit("say", speaker, channel, text, parentSeq, audience), isPerson ? by : undefined);
+        // Wave 32 (C3/C4): a director typing as him in the Desktop while a
+        // talk scene is on (or a public request is owed) stands in for his
+        // public reply — the whole room hears it, answering Clippy's line.
+        const byHand = isCharacter && speaker === TALK_AGENT && channel === `loc:${TALK_ROOM}` && audience === undefined;
+        const owed = byHand ? this.agents.openOn(this.talkThread()) : null;
+        const aloud = byHand && (owed !== null || this.talkSceneNow() !== null);
+        this.fanout(
+          aloud ? this.commit("say", speaker, channel, text, parentSeq, "all", owed === null ? null : answeredSeq(owed.req)) : this.commit("say", speaker, channel, text, parentSeq, audience),
+          isPerson ? by : undefined,
+        );
         // A director's persona messaging an agent gets an answer, exactly as
         // the guest would — that's what makes a rehearsal of the bot real.
         if (isPerson) this.agentHeard(channel, [speaker]);
@@ -7577,7 +7593,7 @@ export class EventRuntime {
         else if (isCharacter && Array.isArray(audience) && this.isAgent(speaker)) this.agents.answeredByHand({ character: speaker, channel, audience });
         // Wave 32 (C4): a director typing as him in the Desktop answers an
         // owed public talk request by hand, too.
-        else if (isCharacter && speaker === TALK_AGENT && channel === `loc:${TALK_ROOM}`) this.agents.answeredByHand(this.talkThread());
+        else if (byHand) this.agents.answeredByHand(this.talkThread());
         sendJson(res, 200, { ok: true });
         return true;
       }
