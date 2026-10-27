@@ -45,7 +45,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/Setup.tsx`, `src/setup-map.ts` | the two-step setup (passcode, tap a map terminal); `followMap` / `followVoice` re-read the map entry on boot; `linkConfig` (a `?code=` link: `urlConfig` + `withViewDefaults`, so a spot-only TV link speaks at 0.92) |
 | `src/screen.ts` | the screen-state poll + its types (`ScreenState`, `night`, `room`, `king`, `results`, `moments`, `spot`); `voice=`/`room=` + `after=` + `talk=`/`said=`; `useScreenState` paces with `PollPacer` and exposes `pollNow` |
 | `src/health.ts` | the heartbeat keys (`deviceQuery`): `ver audio vis fs ann mic bat` + door `door dlv dft dwn` + bay `pb pbc pbx pft` |
-| `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides, the glitch (`glitchLayer`, `GlitchTakeover`, `coverOf`) |
+| `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides, the glitch (`glitchLayer`, `GlitchTakeover`, `coverOf`) and the ad burst (wave 32: `burstLayer`, `isBurst`; `burst-flash.tsx` where no cutscene layer draws it) |
 | `src/Attract.tsx`, `src/attract.ts` | the asleep screen (the idle show full screen); Mystify's pure parts |
 | `src/idle-show/` | the idle show: `schedule.ts` (seeded segments; `PATTERN`, `CALM_PATTERN`), `pools.ts` (by `Night.phase`; `calm`), `field.ts` (popup lives and places, `popupCap`, `calmPace`), `ads.ts` + `art.tsx`, `popups.ts`, `storm.ts`, `gags.ts`, `savers/`, `ScanBox.tsx` + `scan-copy.ts` |
 | `src/cutscene/` | `SceneDef` (`types.ts`), `pick.ts` (which scene plays, `MomentQueue`), `clock.ts` (server time), `CutsceneLayer.tsx`, `registry.ts`, `kit/` (Win98 blocks, typewriter, particles…), `scenes/{act1,act2,act3,moments,house,heart}.tsx`, `speech-bus.ts` + `voice-clock.ts` + `voice-scenes.ts` (the TV's voice-timed scenes), `preview.tsx` (`?preview=`) |
@@ -151,6 +151,33 @@ mid-takeover).
 - A slide cued with it (the ad hijack) runs its scene from the takeover's
   end (`slideClockAt`); the hold still counts from the cue.
 - `?preview=glitch` draws it.
+- **Its own words (wave 32, C5).** A glitch shot may carry `text` (the
+  story's `Night.glitch_text`; `screen.ts` clips it at `GLITCH_TEXT_MAX`
+  120): the takeover shows it (a long line in a smaller, wrapping style),
+  else the old *000. 000. 000.* (`glitchText`).
+
+### The ad burst (wave 32)
+
+A talk scene's ⚡ (`ad_burst`) or its timer, from the ad attack on, cues
+`screens_glitch` as a **burst**: never the 8 s takeover, but
+`layers.burst` (`slides.ts` `burstLayer`) for `BURST_MS` (3.6 s), under the
+takeover's live-only rules (never history, a reload or a late page; a
+blackout beats it). `isBurst`: the shot's `light` (the server marks it
+when `Night.glitch_kind` is `"burst"`), else, from an older server, a
+`BURST_MOMENTS` moment (the burst's `truther_glitch` sound, never the ⚡
+signal) within `BURST_WITH_MS` (2 s) of the cue. The 📺 hijack has neither
+and keeps its takeover. The cutscene layer draws it
+(`kit/ad-burst.tsx` `AdBurst`, `.cutscene-burst` z 31, no taps): a torn
+band, 8 popups led by the burst's line (*SPECIAL OFFER*, then the hijack's
+`AD_MESSAGES`), the line slammed across the middle as a banner. It plays
+over whatever is up, off the moment queue, and never replaces a slide (a
+slide cued with it does not wait). Where no cutscene layer is mounted (the
+chess and casino terminals) or its chunk is loading or failed, the base
+bundle's CSS-only `burst-flash.tsx` `BurstFlash` draws a lighter one
+(`cutscene/slot.tsx` falls back to it). Before the ad attack ⚡ is only
+`screens_flicker`. `?preview=burst&t=&text=` draws it;
+`test/w32-burst.test.ts` reads `main.loom` and pins the pairing, so a
+change to the burst rule's sound needs `BURST_MOMENTS` updated.
 
 ## The idle show
 
@@ -213,7 +240,23 @@ the tent laptop the mounted reinstall game adds its own
   end with him. The layer captions the sentence he is saying
   (`SceneProps.voice`, `.cutscene-voice-caption`) unless the scene draws it.
   `test/voice-scenes.test.ts` reads `beats/*.loom` and pins each scene's
-  sentence count, so a story edit that changes one fails there.
+  sentence count, so a story edit that changes one fails there. Wave 32:
+  a sentence's place across all his lines in the scene reaches the scene
+  as `SceneVoice.mark` (`CutsceneLayer` `sceneVoiceOf`), and a scene may
+  give each spoken line its own marks (`byLine`, so a short name merged
+  into the next sentence never steals a mark).
+- **The introduction (wave 32).** *Trabolta Introduction* is 17 sentences
+  now: `INTRO_LINE` plus `INTRO_MORE` (his new lines word for word,
+  pinned against the beat), captioned by `lineCaptions` (a sentence gap
+  inside a line, `LINE_GAP_MS` between lines). The picture's beats wait
+  for the sentences in `INTRO_SAYS` (the frozen word stalls VOICE.DRV, ALL
+  SYSTEMS ONLINE on *"I did not freeze."*, the ALL CAPS word tears the
+  face, MANNERS.DLL's log entry `INTRO_LOG`, the hand-back to the mirror on
+  *"The copy of my house…"* with his face in a corner window, the
+  `INTRO_LIVE_TAB` on *"Not yet, Clippy."*). `INTRO_MS` is computed from
+  them (≈ 54 s; up to ≈ 74 s with the voice's stretch). The TV says his
+  lines back to back: it does not wait for Clippy's lines between them.
+  *Bottle Landed* adds `BOTTLE_HUNGER` (`kit/tv1-time.ts`, two marks).
 - **`sp=`.** The TV also reports `sp=<seq>:<chunk>` / `sp=<seq>:d`; the
   server keeps it as `tvSpeech`. The walls don't follow it yet: they keep
   the server clock.
