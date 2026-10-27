@@ -35,16 +35,22 @@ export interface Pilot {
    *  absent from an older server): the visit's floor when the stream's
    *  history comes too late (`floorAfter` "pin"). */
   seq?: number;
+  /** The visit's floor the server keeps for this guest at this terminal
+   *  (wave 28, gap 2b: `/api/mod/impersonate` `visitSeq`). A re-scan soon
+   *  after a reload carries the visit's first scan's seq, so the reloaded
+   *  page shows the whole exchange. Absent from an older server. */
+  visitSeq?: number;
 }
 
 /** Mint a play-as session for a scanned guest. */
 export async function beginPilot(config: TerminalConfig, guestId: string): Promise<Pilot> {
-  const r = await api<{ token: string; id: string; name: string; seq?: unknown }>(
+  const r = await api<{ token: string; id: string; name: string; seq?: unknown; visitSeq?: unknown }>(
     `${baseOf(config)}/api/mod/impersonate`,
     { role: "guest", id: guestId, label: `Terminal · ${config.name}` },
     config.token,
   );
-  return { token: r.token, id: r.id, name: r.name, ...(typeof r.seq === "number" && Number.isFinite(r.seq) ? { seq: r.seq } : {}) };
+  const num = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
+  return { token: r.token, id: r.id, name: r.name, ...(num(r.seq) ? { seq: r.seq } : {}), ...(num(r.visitSeq) ? { visitSeq: r.visitSeq } : {}) };
 }
 
 /** (wave 26, R1) What a room terminal says to a locked (captured) pass. */
@@ -352,10 +358,13 @@ export interface Line extends ChatMessage {
  * any history came) fixes it at `pinAt`, the server's newest seq when the
  * pass was scanned (wave 28: `Pilot.seq`), so a late history still shows
  * only this visit; an older server sends none: -1, everything rather than
- * hide the opening lines.
+ * hide the opening lines. `visitAt` (wave 28, gap 2b: `Pilot.visitSeq`),
+ * when the server sends it, is the floor either way: the visit's own
+ * first scan, so a reload mid-visit still shows his earlier lines.
  */
-export function floorAfter(prev: number | null, history: readonly { seq: number }[] | "pin", pinAt?: number): number {
+export function floorAfter(prev: number | null, history: readonly { seq: number }[] | "pin", pinAt?: number, visitAt?: number): number {
   if (prev !== null) return prev;
+  if (visitAt !== undefined) return visitAt;
   if (history === "pin") return pinAt ?? -1;
   return history.reduce((m, x) => Math.max(m, x.seq), -1);
 }
@@ -433,7 +442,7 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
     onTyping,
     onHistory: (list) => {
       baseline.current = list.reduce((m, x) => Math.max(m, x.seq), -1);
-      setFloor((prev) => floorAfter(prev, list));
+      setFloor((prev) => floorAfter(prev, list, undefined, pilotRef.current?.visitSeq));
       setReadyFor(pilotRef.current);
     },
     onLifecycle: (n) => {
@@ -452,7 +461,7 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
   );
 
   const visitLines = useMemo(() => visitLinesOf(lines, floor), [lines, floor]);
-  const pinFloor = useCallback(() => setFloor((prev) => floorAfter(prev, "pin", pilotRef.current?.seq)), []);
+  const pinFloor = useCallback(() => setFloor((prev) => floorAfter(prev, "pin", pilotRef.current?.seq, pilotRef.current?.visitSeq)), []);
 
   // Announce each of the character's lines once, and only ones that land
   // after the backlog (a re-scan must not replay the whole conversation).

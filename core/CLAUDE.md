@@ -69,7 +69,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   terminals' `talk=` / `said=`, the TV's `sp=` (`ScreenState.tvSpeech`),
   the spatial hub's per-session presence room, escape cooldown
   (`escapedAt`), who heard the in-game heart (`heartHeard`) and who took
-  each pickup (`picked`), the cam upload's `watched`, and
+  each pickup (`picked`), each wall terminal's visit floor per guest
+  (`terminal-visits.ts`, `/api/mod/impersonate` `visitSeq`, wave 28), the cam upload's `watched`, and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old

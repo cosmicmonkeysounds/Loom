@@ -324,6 +324,12 @@ them out.
   wave 28 a pin floors at `Pilot.seq` (the newest chat seq the server
   answered `/api/mod/impersonate` with), so a late history on slow wifi
   still shows only this visit; an older server (no `seq`) pins at -1.
+  Gap 2b: the server also answers `visitSeq` (`Pilot.visitSeq`), the
+  floor it keeps per guest + terminal label (`core/server/terminal-visits.ts`);
+  a re-scan within 3 min of the session's end (a reload mid-visit)
+  carries the first scan's floor, and `floorAfter` uses it whenever it is
+  sent, so a reloaded heart terminal shows the whole visit (his lines and
+  the picks) and nothing older.
 - **Picks are server lines (wave 28).** A pick at the choice panel comes
   back on the stream as the program's own `pick: true` line (`act: true`
   for a deed) in `dm:<character>`, before his reply; the phone shows the

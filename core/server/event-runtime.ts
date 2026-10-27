@@ -28,6 +28,7 @@ import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
 import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, menuChannelsFor, momentLines, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
 import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
+import { TerminalVisits } from "./terminal-visits.ts";
 import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, readRawBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
@@ -717,6 +718,8 @@ export class EventRuntime {
   // Operator play-as sessions (token → who is played, by whom), minted by
   // `/api/mod/impersonate` for the editor's embedded play app.
   private readonly impersonations = new Map<string, Impersonation>();
+  /** Wave 28 (gap 2b): each wall terminal's visit floor per guest, so a reload mid-visit keeps it (memory only). */
+  private readonly terminalVisits = new TerminalVisits();
   /** When each booth last scanned each guest (`token|character|guest`), for the double-tap guard. */
   private readonly lastScans = new Map<string, number>();
   // Failed passcode attempts per client IP (guest register + prime/mod
@@ -4626,6 +4629,7 @@ export class EventRuntime {
     // Operator play-as sessions follow the sessions they stand in for: a
     // guest's dies with every restart, a booth's only when the show goes live.
     this.endImpersonations((imp) => imp.role === "guest" || kind === "golive");
+    this.terminalVisits.clear();
     this.endClients("guest");
     // Push follows the sessions: every guest's device unbinds (the phone
     // re-subscribes when it re-joins), a booth's only when the show goes live.
@@ -7532,13 +7536,20 @@ export class EventRuntime {
         // history comes late floors its visit here (only this visit's lines).
         const all = this.chat.all();
         const seq = all.length > 0 ? all[all.length - 1]!.seq : -1;
-        sendJson(res, 200, { token, role, id, name, eventId: this.eventId, title: this.title, seq, ...(role === "prime" ? { host } : {}) });
+        // Wave 28 (gap 2b): `visitSeq`, the visit's floor. A wall terminal
+        // (labelled) scanning the same guest again soon after its last
+        // session ended (a reload mid-visit) carries on that visit's floor,
+        // so the reloaded page still shows the whole exchange.
+        const visitSeq = role === "guest" && label !== "" ? this.terminalVisits.begin(id, label, seq, this.clock()) : seq;
+        sendJson(res, 200, { token, role, id, name, eventId: this.eventId, title: this.title, seq, visitSeq, ...(role === "prime" ? { host } : {}) });
         return true;
       }
       case "/api/mod/impersonate/end": {
         // The editor closed a pane: end that play-as session and its stream.
         // (`session`, not `token` — that field is the caller's own credential.)
         const session = str(body, "session");
+        const ending = this.impersonations.get(session);
+        if (ending !== undefined && ending.role === "guest") this.terminalVisits.end(ending.id, ending.by, this.clock());
         this.endImpersonations((_imp, t) => t === session);
         this.pushPresence();
         sendJson(res, 200, { ok: true });

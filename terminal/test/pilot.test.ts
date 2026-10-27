@@ -274,6 +274,30 @@ describe("the visit floor (wave 27, B1)", () => {
     }
   });
 
+  it("gap 2b: a reload mid-visit floors at the server's visitSeq, so his earlier lines from this visit stay and nothing older", async () => {
+    // First page: scanned at seq 40, history newest 40. His lines and a pick follow.
+    const thread = [{ seq: 12 }, { seq: 40 }, { seq: 41 }, { seq: 42 }, { seq: 43 }, { seq: 44 }];
+    // The reload: the re-scan's history's newest is 44, but the server carries the visit at 40.
+    const reloaded = floorAfter(null, thread, undefined, 40);
+    expect(reloaded).toBe(40);
+    expect(visitLinesOf(thread, reloaded).map((l) => l.seq)).toEqual([41, 42, 43, 44]);
+    // The same when the history comes late (a pin) and a later history never moves it.
+    const pinned = floorAfter(null, "pin", 44, 40);
+    expect(pinned).toBe(40);
+    expect(floorAfter(pinned, thread)).toBe(40);
+    // Without visitSeq (an older server): the page's own floor, as before.
+    expect(floorAfter(null, thread)).toBe(44);
+    // beginPilot keeps it.
+    const real = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify({ token: "t", id: "g1", name: "Winamp", seq: 44, visitSeq: 40 }), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+    try {
+      const p = await beginPilot({ eventId: "e", token: "m", name: "Server Room" } as unknown as Parameters<typeof beginPilot>[0], "g1");
+      expect(p).toEqual({ token: "t", id: "g1", name: "Winamp", seq: 44, visitSeq: 40 });
+    } finally {
+      globalThis.fetch = real;
+    }
+  });
+
   it("keeps only the lines past it", () => {
     const lines = [{ seq: 2 }, { seq: 9 }, { seq: 10 }, { seq: 12 }];
     expect(visitLinesOf(lines, 9).map((l) => l.seq)).toEqual([10, 12]);
