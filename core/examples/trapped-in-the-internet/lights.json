@@ -1,7 +1,341 @@
 {
   "version": 1,
-  "note": "Wave 20: the server room's RGB bulb only. Every other light is still trapped.house.yaml's. The bulb is the server room's only light (no strip, Q6 / Q10), so it is the room's safety light: never off, never below 80 / 254. DRAFT: retune on site.",
+  "note": "Wave 31 (2026-10-27): every bulb on the house map (9 Hue + 12 ThirdReality ZL1 bought; 18 placed here + the server room's, the rest spares), the living room's WLED strip, and the story's `cue lights_*` as looks (no Zigbee scenes, no WLED presets). Halls and bathrooms are safety lights (never off, never below 60). Pair each bulb under its `device` name in Zigbee2MQTT. DRAFT: retune on site in Run → House → Cue designer.",
   "fixtures": [
+    {
+      "id": "living-1",
+      "name": "Living room bulb 1",
+      "room": "desktop",
+      "floor": "main",
+      "pos": {
+        "x": -0.92,
+        "y": 2.1,
+        "z": 7.25
+      },
+      "kind": "zigbee",
+      "device": "living_1",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "living-2",
+      "name": "Living room bulb 2",
+      "room": "desktop",
+      "floor": "main",
+      "pos": {
+        "x": 2.0,
+        "y": 2.1,
+        "z": 7.25
+      },
+      "kind": "zigbee",
+      "device": "living_2",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "living-3",
+      "name": "Living room bulb 3",
+      "room": "desktop",
+      "floor": "main",
+      "pos": {
+        "x": 4.92,
+        "y": 2.1,
+        "z": 7.25
+      },
+      "kind": "zigbee",
+      "device": "living_3",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "kitchen-1",
+      "name": "Kitchen bulb 1",
+      "room": "start-bar",
+      "floor": "main",
+      "pos": {
+        "x": 3.0,
+        "y": 2.1,
+        "z": 14.13
+      },
+      "kind": "zigbee",
+      "device": "kitchen_1",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "kitchen-2",
+      "name": "Kitchen bulb 2",
+      "room": "start-bar",
+      "floor": "main",
+      "pos": {
+        "x": 3.0,
+        "y": 2.1,
+        "z": 16.48
+      },
+      "kind": "zigbee",
+      "device": "kitchen_2",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "kitchen-3",
+      "name": "Kitchen bulb 3",
+      "room": "start-bar",
+      "floor": "main",
+      "pos": {
+        "x": 3.0,
+        "y": 2.1,
+        "z": 18.82
+      },
+      "kind": "zigbee",
+      "device": "kitchen_3",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "hall-main",
+      "name": "Main floor hall bulb",
+      "room": "hall",
+      "floor": "main",
+      "pos": {
+        "x": -3.0,
+        "y": 2.1,
+        "z": 16.0
+      },
+      "kind": "zigbee",
+      "device": "hall_main",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      },
+      "safety": true,
+      "min": 60
+    },
+    {
+      "id": "hall-up",
+      "name": "Upstairs hall bulb",
+      "room": "upstairs-hall",
+      "floor": "top",
+      "pos": {
+        "x": -1.35,
+        "y": 4.9,
+        "z": 15.65
+      },
+      "kind": "zigbee",
+      "device": "hall_up",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      },
+      "safety": true,
+      "min": 60
+    },
+    {
+      "id": "hall-basement",
+      "name": "Basement hall bulb",
+      "room": "basement-hall",
+      "floor": "basement",
+      "pos": {
+        "x": 2.31,
+        "y": -0.6,
+        "z": 16.88
+      },
+      "kind": "zigbee",
+      "device": "hall_basement",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      },
+      "safety": true,
+      "min": 60
+    },
+    {
+      "id": "casino",
+      "name": "Casino bulb",
+      "room": "graphics-card",
+      "floor": "top",
+      "pos": {
+        "x": -1.22,
+        "y": 4.9,
+        "z": 23.65
+      },
+      "kind": "zigbee",
+      "device": "casino",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "bath-down",
+      "name": "Basement bathroom bulb",
+      "room": "bathroom-1",
+      "floor": "basement",
+      "pos": {
+        "x": 0.25,
+        "y": -0.6,
+        "z": 8.2
+      },
+      "kind": "zigbee",
+      "device": "bath_down",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      },
+      "safety": true,
+      "min": 60
+    },
+    {
+      "id": "bath-up",
+      "name": "Upstairs bathroom bulb",
+      "room": "bathroom-2",
+      "floor": "top",
+      "pos": {
+        "x": 2.15,
+        "y": 4.9,
+        "z": 14.25
+      },
+      "kind": "zigbee",
+      "device": "bath_up",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      },
+      "safety": true,
+      "min": 60
+    },
+    {
+      "id": "fan-closet-1",
+      "name": "Fan closet bulb 1",
+      "room": "fan-closet",
+      "floor": "basement",
+      "pos": {
+        "x": 5.72,
+        "y": -0.6,
+        "z": 13.31
+      },
+      "kind": "zigbee",
+      "device": "fan_closet_1",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "fan-closet-2",
+      "name": "Fan closet bulb 2",
+      "room": "fan-closet",
+      "floor": "basement",
+      "pos": {
+        "x": 5.72,
+        "y": -0.6,
+        "z": 15.19
+      },
+      "kind": "zigbee",
+      "device": "fan_closet_2",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "ram-1",
+      "name": "RAM (studio) bulb 1",
+      "room": "ram",
+      "floor": "basement",
+      "pos": {
+        "x": -4.0,
+        "y": -0.6,
+        "z": 9.88
+      },
+      "kind": "zigbee",
+      "device": "ram_1",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "ram-2",
+      "name": "RAM (studio) bulb 2",
+      "room": "ram",
+      "floor": "basement",
+      "pos": {
+        "x": -4.0,
+        "y": -0.6,
+        "z": 13.98
+      },
+      "kind": "zigbee",
+      "device": "ram_2",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "ram-3",
+      "name": "RAM (studio) bulb 3",
+      "room": "ram",
+      "floor": "basement",
+      "pos": {
+        "x": -4.0,
+        "y": -0.6,
+        "z": 18.07
+      },
+      "kind": "zigbee",
+      "device": "ram_3",
+      "caps": {
+        "color": true,
+        "ct": true,
+        "dim": true
+      }
+    },
+    {
+      "id": "living-strip",
+      "name": "Living room LED strip",
+      "room": "desktop",
+      "floor": "main",
+      "pos": {
+        "x": 2.0,
+        "y": 2.3,
+        "z": 7.25
+      },
+      "kind": "wled",
+      "device": "wled/living",
+      "caps": {
+        "color": true,
+        "ct": false,
+        "dim": true
+      }
+    },
     {
       "id": "server-room-rgb",
       "name": "Server room RGB bulb",
@@ -29,6 +363,114 @@
       "name": "The Heart",
       "fixtures": [
         "server-room-rgb"
+      ]
+    },
+    {
+      "id": "living",
+      "name": "Living room (The Desktop)",
+      "fixtures": [
+        "living-1",
+        "living-2",
+        "living-3",
+        "living-strip"
+      ]
+    },
+    {
+      "id": "kitchen",
+      "name": "Kitchen (The Start Bar)",
+      "fixtures": [
+        "kitchen-1",
+        "kitchen-2",
+        "kitchen-3"
+      ]
+    },
+    {
+      "id": "fan-closet",
+      "name": "Fan closet",
+      "fixtures": [
+        "fan-closet-1",
+        "fan-closet-2"
+      ]
+    },
+    {
+      "id": "ram",
+      "name": "RAM (studio)",
+      "fixtures": [
+        "ram-1",
+        "ram-2",
+        "ram-3"
+      ]
+    },
+    {
+      "id": "paths",
+      "name": "Halls and bathrooms (safety: never dark)",
+      "fixtures": [
+        "hall-main",
+        "hall-up",
+        "hall-basement",
+        "bath-down",
+        "bath-up"
+      ]
+    },
+    {
+      "id": "rooms",
+      "name": "Every room light (not the halls, bathrooms or the Heart)",
+      "fixtures": [
+        "living-1",
+        "living-2",
+        "living-3",
+        "living-strip",
+        "kitchen-1",
+        "kitchen-2",
+        "kitchen-3",
+        "casino",
+        "fan-closet-1",
+        "fan-closet-2",
+        "ram-1",
+        "ram-2",
+        "ram-3"
+      ]
+    },
+    {
+      "id": "house",
+      "name": "The whole house but the Heart",
+      "fixtures": [
+        "living-1",
+        "living-2",
+        "living-3",
+        "living-strip",
+        "kitchen-1",
+        "kitchen-2",
+        "kitchen-3",
+        "casino",
+        "fan-closet-1",
+        "fan-closet-2",
+        "ram-1",
+        "ram-2",
+        "ram-3",
+        "hall-main",
+        "hall-up",
+        "hall-basement",
+        "bath-down",
+        "bath-up"
+      ]
+    },
+    {
+      "id": "room-bulbs",
+      "name": "Every room bulb (the rooms without the strip)",
+      "fixtures": [
+        "living-1",
+        "living-2",
+        "living-3",
+        "kitchen-1",
+        "kitchen-2",
+        "kitchen-3",
+        "casino",
+        "fan-closet-1",
+        "fan-closet-2",
+        "ram-1",
+        "ram-2",
+        "ram-3"
       ]
     }
   ],
@@ -381,6 +823,855 @@
       "loop": true,
       "period": 2000,
       "note": "The patch-bay alarm: a slow red swell, never a Zigbee strobe, until the latch's end re-cues the room."
+    },
+    "lights_screensaver": {
+      "to": [
+        "house"
+      ],
+      "loop": true,
+      "period": 10000,
+      "note": "Dim cool blue drifting to teal and back; the halls warm and dim.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#1b3cff",
+            "brightness": 70,
+            "transition": 5
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "transition": 3,
+            "color_temp": 370,
+            "brightness": 90,
+            "state": "ON"
+          }
+        },
+        {
+          "at": 5000,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "color": "#00a6c8",
+            "transition": 5
+          }
+        }
+      ]
+    },
+    "lights_tube_chase": {
+      "to": [
+        "house"
+      ],
+      "then": "restore",
+      "period": 3000,
+      "note": "A cyan pulse runs up the halls to the living room, then each light goes back.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "hall-basement"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#00e5ff",
+            "brightness": 254,
+            "transition": 0.3
+          }
+        },
+        {
+          "at": 500,
+          "to": [
+            "hall-main"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#00e5ff",
+            "brightness": 254,
+            "transition": 0.3
+          }
+        },
+        {
+          "at": 1000,
+          "to": [
+            "hall-up"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#00e5ff",
+            "brightness": 254,
+            "transition": 0.3
+          }
+        },
+        {
+          "at": 1500,
+          "to": [
+            "living"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#00e5ff",
+            "brightness": 254,
+            "transition": 0.3
+          }
+        }
+      ]
+    },
+    "lights_call_desktop": {
+      "to": [
+        "house"
+      ],
+      "note": "Everyone to the Desktop: the living room bright white, the rest a soft warm white.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "living-1",
+            "living-2",
+            "living-3"
+          ],
+          "set": {
+            "state": "ON",
+            "color_temp": 250,
+            "brightness": 254,
+            "transition": 1
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ffffff",
+            "brightness": 254,
+            "transition": 1
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "kitchen",
+            "casino",
+            "fan-closet",
+            "ram"
+          ],
+          "set": {
+            "state": "ON",
+            "color_temp": 370,
+            "brightness": 110,
+            "transition": 2
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "transition": 2,
+            "color_temp": 370,
+            "brightness": 90,
+            "state": "ON"
+          }
+        }
+      ]
+    },
+    "lights_game": {
+      "to": [
+        "living"
+      ],
+      "note": "Game time in the living room: warm and bright.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "living-1",
+            "living-2",
+            "living-3"
+          ],
+          "set": {
+            "state": "ON",
+            "color_temp": 370,
+            "brightness": 254,
+            "transition": 2
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ffb060",
+            "brightness": 220,
+            "transition": 2
+          }
+        }
+      ]
+    },
+    "lights_truth_time": {
+      "to": [
+        "living"
+      ],
+      "note": "A spot on the middle of the room, the rest of the living room low and red.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "living-2"
+          ],
+          "set": {
+            "state": "ON",
+            "color_temp": 200,
+            "brightness": 254,
+            "transition": 1
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "living-1",
+            "living-3"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff2a00",
+            "brightness": 40,
+            "transition": 1
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#400010",
+            "brightness": 50,
+            "transition": 1
+          }
+        }
+      ]
+    },
+    "lights_ad_hijack": {
+      "to": [
+        "house"
+      ],
+      "note": "The ads take over: garish magenta, at once.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff00c8",
+            "brightness": 254,
+            "transition": 0
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color": "#ff00c8",
+            "brightness": 140,
+            "transition": 0,
+            "state": "ON"
+          }
+        }
+      ]
+    },
+    "lights_glitch": {
+      "to": [
+        "house"
+      ],
+      "note": "Trabolta's glitch: sick green with the bulbs' own breathe; the halls steady.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#39ff14",
+            "brightness": 200,
+            "effect": "breathe",
+            "transition": 0
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color": "#39ff14",
+            "brightness": 110,
+            "transition": 0,
+            "state": "ON"
+          }
+        }
+      ]
+    },
+    "lights_pong": {
+      "to": [
+        "rooms"
+      ],
+      "note": "Truth Pong is outside (no lights there yet): the rooms drop to a low warm glow.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "room-bulbs"
+          ],
+          "set": {
+            "state": "ON",
+            "color_temp": 370,
+            "brightness": 60,
+            "transition": 3
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "state": "ON",
+            "brightness": 60,
+            "transition": 3,
+            "color": "#ffb060"
+          }
+        }
+      ]
+    },
+    "lights_trust_chart": {
+      "to": [
+        "living"
+      ],
+      "note": "The Trust Chart: a blue podium in the living room.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "living"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#0040ff",
+            "brightness": 220,
+            "transition": 2
+          }
+        }
+      ]
+    },
+    "lights_y2k": {
+      "to": [
+        "house"
+      ],
+      "loop": true,
+      "period": 4000,
+      "note": "Y2K: amber, slowly pulsing; the strip a slow red pulse; the halls amber.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "kitchen",
+            "casino",
+            "fan-closet",
+            "ram",
+            "living-1",
+            "living-2",
+            "living-3"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff8c00",
+            "brightness": 120,
+            "transition": 2
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff2000",
+            "brightness": 200,
+            "transition": 2
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color": "#ff8c00",
+            "brightness": 100,
+            "transition": 2,
+            "state": "ON"
+          }
+        },
+        {
+          "at": 2000,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "brightness": 50,
+            "transition": 2
+          }
+        }
+      ]
+    },
+    "lights_alarm": {
+      "to": [
+        "house"
+      ],
+      "loop": true,
+      "period": 2000,
+      "note": "The patch-bay alarm: hard red on-off in the rooms (as fast as Zigbee takes); the halls steady red.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff0000",
+            "brightness": 254,
+            "transition": 0
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color": "#ff0000",
+            "brightness": 150,
+            "transition": 0,
+            "state": "ON"
+          }
+        },
+        {
+          "at": 1000,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "brightness": 20,
+            "transition": 0
+          }
+        }
+      ]
+    },
+    "lights_blackout": {
+      "to": [
+        "house"
+      ],
+      "note": "Blackout: every room light off at once; the halls and bathrooms stay at their dim floor.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "state": "OFF",
+            "transition": 0
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color_temp": 400,
+            "brightness": 60,
+            "transition": 0,
+            "state": "ON"
+          }
+        }
+      ]
+    },
+    "lights_dance": {
+      "to": [
+        "house"
+      ],
+      "loop": true,
+      "period": 3000,
+      "note": "The dance: the rooms go magenta, cyan, yellow, round and round; the halls a steady violet.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff00ff",
+            "brightness": 254,
+            "transition": 0.8
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color": "#8a2be2",
+            "brightness": 110,
+            "transition": 0.8,
+            "state": "ON"
+          }
+        },
+        {
+          "at": 1000,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "color": "#00ffff",
+            "transition": 0.8
+          }
+        },
+        {
+          "at": 2000,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "color": "#ffee00",
+            "transition": 0.8
+          }
+        }
+      ]
+    },
+    "lights_final_reveal": {
+      "to": [
+        "house"
+      ],
+      "note": "The final reveal: nearly dark, embers.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff3000",
+            "brightness": 25,
+            "transition": 4
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color": "#ff3000",
+            "brightness": 60,
+            "transition": 4,
+            "state": "ON"
+          }
+        }
+      ]
+    },
+    "lights_song": {
+      "to": [
+        "house"
+      ],
+      "note": "The song: pink and romantic.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff4fa0",
+            "brightness": 150,
+            "transition": 3
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color": "#ff4fa0",
+            "brightness": 100,
+            "transition": 3,
+            "state": "ON"
+          }
+        }
+      ]
+    },
+    "lights_rave": {
+      "to": [
+        "house"
+      ],
+      "loop": true,
+      "period": 2400,
+      "note": "The rave: hard colour changes as fast as a whole house of Zigbee bulbs keeps up with (each change is ~13 bulbs); the strip strobes faster on its own; the halls a steady magenta.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "room-bulbs"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff00ff",
+            "brightness": 254,
+            "transition": 0
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color": "#ff00ff",
+            "brightness": 120,
+            "transition": 0,
+            "state": "ON"
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff00ff",
+            "brightness": 254,
+            "transition": 0
+          }
+        },
+        {
+          "at": 400,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "color": "#00ffff",
+            "transition": 0
+          }
+        },
+        {
+          "at": 800,
+          "to": [
+            "room-bulbs"
+          ],
+          "set": {
+            "color": "#00ffff",
+            "transition": 0
+          }
+        },
+        {
+          "at": 800,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "color": "#ffff00",
+            "transition": 0
+          }
+        },
+        {
+          "at": 1200,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "color": "#ff00ff",
+            "transition": 0
+          }
+        },
+        {
+          "at": 1600,
+          "to": [
+            "room-bulbs"
+          ],
+          "set": {
+            "color": "#ffff00",
+            "transition": 0
+          }
+        },
+        {
+          "at": 1600,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "color": "#00ffff",
+            "transition": 0
+          }
+        },
+        {
+          "at": 2000,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "color": "#ffff00",
+            "transition": 0
+          }
+        }
+      ]
+    },
+    "lights_purgatory": {
+      "to": [
+        "house"
+      ],
+      "note": "Purgatory: grey and dim.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "room-bulbs"
+          ],
+          "set": {
+            "state": "ON",
+            "color_temp": 300,
+            "brightness": 40,
+            "transition": 3
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color_temp": 300,
+            "brightness": 60,
+            "transition": 3,
+            "state": "ON"
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "state": "ON",
+            "brightness": 40,
+            "transition": 3,
+            "color": "#fff4e0"
+          }
+        }
+      ]
+    },
+    "lights_banish": {
+      "to": [
+        "house"
+      ],
+      "note": "Banished: red everywhere.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "rooms"
+          ],
+          "set": {
+            "state": "ON",
+            "color": "#ff0000",
+            "brightness": 254,
+            "transition": 0.5
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color": "#ff0000",
+            "brightness": 150,
+            "transition": 0.5,
+            "state": "ON"
+          }
+        }
+      ]
+    },
+    "lights_restore": {
+      "to": [
+        "house"
+      ],
+      "note": "The house back to normal: warm white everywhere.",
+      "steps": [
+        {
+          "at": 0,
+          "to": [
+            "room-bulbs"
+          ],
+          "set": {
+            "state": "ON",
+            "color_temp": 370,
+            "brightness": 230,
+            "transition": 2
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "paths"
+          ],
+          "set": {
+            "color_temp": 370,
+            "brightness": 200,
+            "transition": 2,
+            "state": "ON"
+          }
+        },
+        {
+          "at": 0,
+          "to": [
+            "living-strip"
+          ],
+          "set": {
+            "state": "ON",
+            "brightness": 230,
+            "transition": 2,
+            "color": "#ffb060"
+          }
+        }
+      ]
     }
   }
 }
