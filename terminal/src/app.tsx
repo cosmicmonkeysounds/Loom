@@ -69,7 +69,7 @@
 //! has played.
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
-import { Composer, Thread } from "./chat.tsx";
+import { Composer, Thread, type Echo } from "./chat.tsx";
 import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
 import { followMap, followVoice, urlConfig } from "./setup-map.ts";
@@ -81,7 +81,7 @@ import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { lineLeash, talkWaitsOnDoor, useIdleTimeout } from "./idle.ts";
 import { FilePanel } from "./FilePanel.tsx";
-import { VisitLatch, beginPilot, characterIdOf, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { VISIT_OPEN_FALLBACK_MS, VisitLatch, beginPilot, characterIdOf, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { parseScan } from "./scan.ts";
 import { Gear, TypedFallback } from "./controls.tsx";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
@@ -111,7 +111,7 @@ import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerShown, heartMenuOf, heartTouched, isHeartTerminal, menusOf, pilotEndOf, splitTag, type HeartMenu } from "./heart/heart.ts";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, echoOf, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, pilotEndOf, pilotEndWait, type HeartMenu } from "./heart/heart.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 import { RoomSpeech } from "./speech/said.ts";
 
@@ -1067,7 +1067,7 @@ function Terminal({
   if (cueNow !== null && cueMark.current?.seq !== cueNow.seq) cueMark.current = { seq: cueNow.seq, lineSeq: session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1) };
   const typedAfter = pilot !== null && cueMark.current !== null && session.lines.some((l) => !l.theirs && l.from === pilot.name && l.seq > cueMark.current!.lineSeq);
   const heart = menu !== null || (pilot !== null && heartTouched(cueNow, pilotSince.current, typedAfter));
-  const [echoes, setEchoes] = useState<Array<{ key: string; text: string; after: number }>>([]);
+  const [echoes, setEchoes] = useState<Echo[]>([]);
   useEffect(() => setEchoes([]), [pilot]);
   const choose = useCallback(
     async (m: HeartMenu, index: number) => {
@@ -1081,7 +1081,8 @@ function Terminal({
         throw new Error(text);
       }
       const after = session.lines.reduce((mx, l) => Math.max(mx, l.seq), -1);
-      setEchoes((list) => [...list, { key: `${m.id}:${index}`, text: splitTag(m.options[index] ?? "").text, after }]);
+      const newest = session.lines[session.lines.length - 1];
+      setEchoes((list) => [...list, { key: `${m.id}:${index}`, ...echoOf(m.options[index] ?? ""), after, ts: newest?.ts ?? Date.now() }]);
     },
     [config, pilot, session.lines],
   );
@@ -1101,17 +1102,62 @@ function Terminal({
   const roomCue = state?.room?.cue ?? null;
   const stateRef = useRef(state);
   stateRef.current = state;
+  // His voice still owes lines (queued, being said, the room's): the panel
+  // waits on it, and an end cue waits for it to drain (B6, capped).
+  const voiceBusy = speaking || revealed.size > 0 || roomBusy;
+  const [endTick, setEndTick] = useState(0);
   useEffect(() => {
     if (pilot === null || roomCue === null) return;
     // An eject ends the line whether or not a menu docked: Heart Barred
     // (a barred program's re-scan) docks none, and has no heart to heart.
     const plan = pilotEndOf(roomCue, pilotSince.current, config.keys);
     if (plan === null) return;
-    const wait = Math.max(0, roomCue.at + plan.ms - serverNow(stateRef.current));
-    const t = window.setTimeout(() => endRef.current(plan.why), wait);
+    const sinceCue = serverNow(stateRef.current) - roomCue.at;
+    const wait = pilotEndWait({ sceneLeft: plan.ms - sinceCue, voiceBusy, sinceCue });
+    if (wait <= 0) {
+      endRef.current(plan.why);
+      return;
+    }
+    const t = window.setTimeout(() => setEndTick((n) => n + 1), wait);
     return () => window.clearTimeout(t);
-    // The cue's seq / at decide; a new pilot or cue reschedules.
-  }, [pilot, roomCue?.seq, roomCue?.at, roomCue?.value, config.keys]);
+    // The cue's seq / at decide; a new pilot or cue reschedules; the voice draining looks again.
+  }, [pilot, roomCue?.seq, roomCue?.at, roomCue?.value, config.keys, voiceBusy, endTick]);
+
+  // `terminal opened` (a room terminal tells the story the line opened
+  // here) once the stream's history is in, so every line of this visit
+  // lands past the visit's floor and is said here (B1). At most once per
+  // pilot; a stream that never sends its history opens it anyway after
+  // VISIT_OPEN_FALLBACK_MS, every line then kept (pinFloor).
+  const openedFor = useRef<Pilot | null>(null);
+  const { ready: sessionReady, pinFloor } = session;
+  useEffect(() => {
+    if (pilot === null || openedFor.current === pilot) return;
+    const go = () => {
+      if (openedFor.current === pilot) return;
+      openedFor.current = pilot;
+      openVisit(configRef.current, visits.current, pilot.id);
+    };
+    if (sessionReady) {
+      go();
+      return;
+    }
+    const t = window.setTimeout(() => {
+      pinFloor();
+      go();
+    }, VISIT_OPEN_FALLBACK_MS);
+    return () => window.clearTimeout(t);
+  }, [pilot, sessionReady, pinFloor, visits]);
+
+  // Skip his voice to the end (a click or Space on a waiting panel): the
+  // queue drops what it owes, every line shows whole. Never over the room's voice.
+  const skipVoice = useCallback(() => {
+    if (roomBusy) return;
+    queue.stop();
+    offsets.current.clear();
+    chunkText.current.clear();
+    setRevealed(new Map());
+    setSpeaking(false);
+  }, [queue, roomBusy]);
 
   // Mood follows the situation when nothing is being said.
   useEffect(() => {
@@ -1156,8 +1202,7 @@ function Terminal({
         const p = await beginPilot(config, guestId);
         setScreen({ kind: "piloting", pilot: p });
         setFlash(null);
-        // A room terminal tells the story the line opened here (never awaited).
-        openVisit(config, visits.current, p.id);
+        // `terminal opened` waits for the stream's history (the effect below).
       } catch (e) {
         const msg = (e as Error).message;
         setFlash(/unknown guest/i.test(msg) ? "UNKNOWN PROGRAM — REGISTER ON YOUR PHONE FIRST" : /moderators only/i.test(msg) ? "THIS TERMINAL LOST ITS ACCESS" : `CONNECTION FAILED — ${msg.toUpperCase()}`);
@@ -1185,6 +1230,24 @@ function Terminal({
   // except while the show's `face` layout lets it through.
   const [idleLayout, setIdleLayout] = useState("");
   const scanBox = useRef<HTMLElement>(null);
+
+  // --- the heart's panel and composer (wave 27) ---
+  // A room terminal shows this visit only (B1); a plain one the whole thread.
+  const threadLines = room !== null ? session.visitLines : session.lines;
+  const heartTerminal = doorOpen !== null || isHeartTerminal(room, config.door);
+  const now = serverNow(state);
+  // One of his heart scenes on screen (this line's), on the local clock.
+  const sceneLeft = pilot === null ? 0 : heartSceneLeft(roomCue, pilotSince.current, now);
+  const sceneEndsAt = sceneLeft > 0 ? Date.now() + sceneLeft : 0;
+  // The layer: the menu's own beat, else the last layer card of this line.
+  const lastLayer = useRef<{ pilot: Pilot | null; layer: number | null }>({ pilot: null, layer: null });
+  if (lastLayer.current.pilot !== pilot) lastLayer.current = { pilot, layer: null };
+  const cueLayer = roomCue !== null && roomCue.at >= pilotSince.current ? layerOfCue(roomCue.value) : null;
+  if (cueLayer !== null) lastLayer.current.layer = cueLayer;
+  const beatLayer = menu === null ? null : layerOfBeat(menu.beat);
+  if (beatLayer !== null) lastLayer.current.layer = beatLayer;
+  const menuLayer = beatLayer ?? lastLayer.current.layer;
+  const showComposer = composerShown({ keys: config.keys, menu, blocked: pilot !== null && composerBlocked({ cue: roomCue, since: pilotSince.current, now, stage: state?.night?.heart_stage ?? null, heart: heartTerminal }) });
 
   const online = pilot !== null ? session.online : castOnline;
   const status = online === null ? "" : online ? `${config.character.toUpperCase()} ONLINE` : `${config.character.toUpperCase()} AWAY — REPLIES WHEN BACK`;
@@ -1227,7 +1290,7 @@ function Terminal({
           )}
         </section>
 
-        <section className={`line-pane${room !== null && pilot !== null && !filesOpen ? " with-files" : ""}`}>
+        <section className={`line-pane${room !== null && pilot !== null && !filesOpen ? " with-files" : ""}${showComposer && menu !== null ? " chatting" : ""}`}>
           {screen.kind === "connecting" && (
             <div className="attract">
               <div className="big blink">CONNECTING…</div>
@@ -1237,15 +1300,17 @@ function Terminal({
           {screen.kind === "piloting" && pilot !== null && !filesOpen && (
             <>
               {room !== null && (
-                <button type="button" className="file-open" onClick={() => setFilesOpen(true)}>
-                  📎 GIVE HIM A FILE
-                </button>
+                <div className="file-strip">
+                  <button type="button" className="file-open" onClick={() => setFilesOpen(true)}>
+                    📎 GIVE HIM A FILE
+                  </button>
+                </div>
               )}
-              <Thread lines={session.lines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} echoes={echoes} />
+              <Thread lines={threadLines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} echoes={echoes} earlier={room !== null && threadLines.length < session.lines.length} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal })} />
               {menu !== null && !composerShown({ keys: config.keys, menu }) && (
-                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} />
+                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} layer={menuLayer} onSkip={skipVoice} />
               )}
-              {composerShown({ keys: config.keys, menu }) && (
+              {showComposer && (
                 <Composer
                   onSend={async (t) => {
                     touch();
@@ -1256,7 +1321,7 @@ function Terminal({
                   placeholder={session.ready ? `say something to ${config.character}` : "connecting…"}
                 />
               )}
-              {menu !== null && composerShown({ keys: config.keys, menu }) && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={false} onActivity={touch} onPick={(i) => choose(menu, i)} />}
+              {menu !== null && showComposer && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={false} onActivity={touch} onPick={(i) => choose(menu, i)} sceneEndsAt={sceneEndsAt} />}
             </>
           )}
         </section>

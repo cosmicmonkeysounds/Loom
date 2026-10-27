@@ -313,6 +313,9 @@ export function floorAfter(prev: number | null, history: readonly { seq: number 
   return history.reduce((m, x) => Math.max(m, x.seq), -1);
 }
 
+/** How long a line waits for its stream's history before `terminal opened` goes anyway (ms). */
+export const VISIT_OPEN_FALLBACK_MS = 2_500;
+
 /** This visit's lines: past the floor (null: no history yet — every line). */
 export function visitLinesOf<L extends { seq: number }>(lines: readonly L[], floor: number | null): L[] {
   return floor === null ? [...lines] : lines.filter((l) => l.seq > floor);
