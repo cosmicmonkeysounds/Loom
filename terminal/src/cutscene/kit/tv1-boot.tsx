@@ -369,7 +369,7 @@ function IntroSay({ t, voice }: { t: number; voice: SceneVoice | null }) {
 
 /** (wave 32) The ALL CAPS word, logged: MANNERS.DLL's entry pops on "louder than I scheduled", OK sinks on "Disregard." */
 // DRAFT w32 (the log entry's words)
-export const INTRO_LOG = { title: "MANNERS.DLL", text: "1 word exceeded its scheduled volume. The word has been logged." } as const;
+export const INTRO_LOG = { title: "MANNERS.DLL", text: "One word exceeded its scheduled volume. It has been logged." } as const;
 function IntroLogged({ t, reduced }: { t: number; reduced: boolean }) {
   const close = say("disregard");
   const shut = close.end + 250;

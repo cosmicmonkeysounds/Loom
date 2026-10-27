@@ -71,6 +71,7 @@
 }
 .ad-burst-banner {
   position: absolute;
+  z-index: 50; /* over the popups: the line is the point */
   left: 50%;
   top: 50%;
   width: 72%;
@@ -85,4 +86,4 @@
   will-change: transform;
 }
 .ad-burst-star { font-size: 1.4em; letter-spacing: 0.4em; color: #000; }
-.ad-burst-text { font-size: 2.6em; line-height: 1.1; text-shadow: 0.05em 0.05em 0 #fff; overflow-wrap: break-word; }
+.ad-burst-text { font-size: 2.2em; line-height: 1.1; text-shadow: 0.05em 0.05em 0 #fff; overflow-wrap: break-word; }

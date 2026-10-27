@@ -128,7 +128,7 @@ describe("tv1 boot — the introduction", () => {
     expect(draw(IntroTv, disregard.end + 400)).not.toContain(INTRO_LOG.text);
     expect(draw(IntroTv, disregard.end + 400)).not.toContain("data-loud");
     // No digit run or year in the new words (C8), and nothing names the crew or the night.
-    for (const w of [INTRO_LOG.title, INTRO_LOG.text, INTRO_LIVE_TAB]) expect(w).not.toMatch(/\d{2,}|show|party|performer/iu);
+    for (const w of [INTRO_LOG.title, INTRO_LOG.text, INTRO_LIVE_TAB]) expect(w).not.toMatch(/\d|show|party|performer/iu);
   });
 
   it("the face glides aside for the setup, then into the corner window for the hand-back", () => {
