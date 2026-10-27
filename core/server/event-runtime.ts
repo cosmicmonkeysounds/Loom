@@ -934,6 +934,9 @@ export class EventRuntime {
     build: (thread, id) => this.buildAgentRequest(thread, id),
     admits: (thread) => this.agentAdmits(thread),
     stale: (req) => this.talkStale(req),
+    // Wave 32: the room waiting on the TV first, then a guest at his heart
+    // (the heart terminal waiting on him), then every other DM.
+    rank: (req) => (req.thread.public === true ? 0 : req.them?.vars?.["at_the_heart"] === "true" ? 1 : 2),
     typing: (thread, on) => this.pushTyping(thread, on),
     hold: (req) => this.postAgentHold(req),
     busy: (req) => this.postAgentBusy(req),

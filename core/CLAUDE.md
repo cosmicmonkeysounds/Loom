@@ -154,8 +154,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   `stage {room, scene, direction?}` and the room's own lines as history
   (any audience, scripted ones `story: true`, filtered like the dossier:
   no facts answer, secret value, codex code or hunt-answer mark), no
-  dossier. `AgentHub` dispatches a public request ahead of every queued DM
-  (`queuedInOrder`), first dropping any queued one whose scene has closed
+  dossier. `AgentHub` sends its queue out by the runtime's `rank` (the
+  public request, then a guest at his heart, then every other DM;
+  `queuedInOrder`), first dropping any queued one whose scene has closed
   (the runtime's `stale` option, so it never takes a slot ahead of the
   DMs), never sends it a hold / busy / stall line (one `#
   hosts` line, `TALK_HOLD_NOTE`, instead) and `openOn(thread)` reads it

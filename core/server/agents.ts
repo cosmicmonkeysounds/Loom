@@ -957,6 +957,10 @@ export interface AgentHubOptions {
    *  request whose scene has closed). It is dropped before the queue goes
    *  out, so it never takes a worker's slot ahead of the DMs. Default: none. */
   stale?: (req: AgentRequest) => boolean;
+  /** The order queued requests go out in when a worker attaches or a stall
+   *  clears: lower first, opening order within a rank. Default (wave 32):
+   *  a public talk request (0) before everything else (1). */
+  rank?: (req: AgentRequest) => number;
   /** Show / hide the "… is typing" indicator in the thread. */
   typing?: (thread: AgentThread, on: boolean) => void;
   /** Presence changed (a worker came or went). */
@@ -1161,14 +1165,16 @@ export class AgentHub {
     this.pumpJudges(); // another worker may take the queue now
   }
 
-  /** The requests queued in the hub, in the order they go out: (wave 32,
-   *  C4) a public talk request ahead of every DM request, then opening order. */
+  /** The requests queued in the hub, in the order they go out: by `rank`
+   *  (wave 32: the stage, then a guest at his heart, then the rest), then
+   *  opening order. */
   private queuedInOrder(): OpenRequest[] {
     if (this.o.stale !== undefined) {
       for (const [id, r] of [...this.open]) if (r.worker === null && this.o.stale(r.req)) this.drop(id, r);
     }
-    const queued = [...this.open.values()].filter((r) => r.worker === null);
-    return [...queued.filter((r) => r.req.thread.public === true), ...queued.filter((r) => r.req.thread.public !== true)];
+    const rank = this.o.rank ?? ((req: AgentRequest) => (req.thread.public === true ? 0 : 1));
+    const queued = [...this.open.values()].filter((r) => r.worker === null).map((r, i) => ({ r, i, k: rank(r.req) }));
+    return queued.sort((a, b) => a.k - b.k || a.i - b.i).map((q) => q.r);
   }
 
   /** Wave 32 (C4/C5): the open request on `thread`, as the host's talk panel

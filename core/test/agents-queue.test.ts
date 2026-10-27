@@ -24,7 +24,7 @@ import type { ModView } from "../server/views.ts";
 
 const th = (n: number): AgentThread => ({ character: "Trabolta", channel: "dm:Trabolta", audience: [`g-${n}`] });
 
-function harness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number; stale?: (req: AgentRequest) => boolean } = {}) {
+function harness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number; stale?: (req: AgentRequest) => boolean; rank?: (req: AgentRequest) => number } = {}) {
   let clock = 1000;
   const held: string[] = [];
   const busy: string[] = [];
@@ -124,6 +124,15 @@ describe("AgentHub — the public talk thread (wave 32, C4)", () => {
     const a = h.worker("laptop");
     h.hub.attach(a.w);
     expect(a.requests().map((r) => r.thread.channel)).toEqual(["loc:The Desktop", "dm:Trabolta", "dm:Trabolta", "dm:Trabolta"]);
+  });
+
+  it("with a rank, the stage goes first, then a guest at his heart, then the other DMs", () => {
+    const h = harness({ rank: (req) => (req.thread.public === true ? 0 : req.thread.audience[0] === "g-2" ? 1 : 2) });
+    for (let n = 0; n < 4; n++) h.hub.line(th(n));
+    h.hub.line(stage);
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    expect(a.requests().map((r) => r.thread.audience[0])).toEqual(["@Clippy", "g-2", "g-0", "g-1", "g-3"]);
   });
 
   it("is first again when a stall clears", () => {

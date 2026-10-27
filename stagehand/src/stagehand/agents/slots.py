@@ -25,8 +25,12 @@ from contextlib import asynccontextmanager
 
 #: The front lane: a stage request (Trabolta answering Clippy in front of the room).
 FIRST = 0
-#: Every other call: a guest's line, a ruling, a summary, a director's call.
-NORMAL = 1
+#: Next: a guest talking to him at his heart (the night's other big scene).
+HEART = 1
+#: Every other call: a guest's line, a ruling, a director's call.
+NORMAL = 2
+#: Last: work nobody is waiting on (a quiet summary, a director's re-run).
+BACKGROUND = 3
 
 
 class Slots:
