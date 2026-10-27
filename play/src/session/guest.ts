@@ -78,21 +78,40 @@ export function choiceEcho(channel: string, text: string, me: { id: string; name
   };
 }
 
-/** Has the server's own `pick` line (wave 28) for this local echo arrived:
- *  a pick line in the same room with the same words, past the echo's spot? */
-export function echoAnswered(echo: ChatMessage, messages: ReadonlyMap<number, ChatMessage>): boolean {
-  const floor = Math.floor(echo.seq);
+/** The server's pick lines (wave 28), by room + words → the newest seq. Built once per call. */
+export type PickIndex = ReadonlyMap<string, number>;
+const pickKey = (channel: string, text: string) => `${channel}\u0000${text}`;
+export function pickIndexOf(messages: ReadonlyMap<number, ChatMessage>): PickIndex {
+  const ix = new Map<string, number>();
   for (const m of messages.values()) {
-    if (m.pick === true && m.seq > floor && m.channel === echo.channel && m.text === echo.text) return true;
+    if (m.pick !== true) continue;
+    const k = pickKey(m.channel, m.text);
+    const was = ix.get(k);
+    if (was === undefined || m.seq > was) ix.set(k, m.seq);
   }
-  return false;
+  return ix;
+}
+
+/** Has the server's own `pick` line (wave 28) for this local echo arrived:
+ *  a pick line in the same room with the same words, past the echo's spot?
+ *  Pass `index` (`pickIndexOf`) when asking for many echoes. */
+export function echoAnswered(echo: ChatMessage, messages: ReadonlyMap<number, ChatMessage>, index: PickIndex = pickIndexOf(messages)): boolean {
+  const newest = index.get(pickKey(echo.channel, echo.text));
+  return newest !== undefined && newest > Math.floor(echo.seq);
+}
+
+/** The echoes the server has not answered yet (kept, stored); answered ones are pruned. */
+export function unansweredEchoes(messages: ReadonlyMap<number, ChatMessage>, echoes: readonly ChatMessage[]): ChatMessage[] {
+  if (echoes.length === 0) return [];
+  const ix = pickIndexOf(messages);
+  return echoes.filter((e) => !echoAnswered(e, messages, ix));
 }
 
 /** The stream with the guest's echoed choices folded in. An echo the
  *  server's own pick line has answered (wave 28) is dropped, never shown twice. */
 export function withEchoes(messages: ReadonlyMap<number, ChatMessage>, echoes: readonly ChatMessage[]): Map<number, ChatMessage> {
   const out = new Map(messages);
-  for (const e of echoes) if (!out.has(e.seq) && !echoAnswered(e, messages)) out.set(e.seq, e);
+  for (const e of unansweredEchoes(messages, echoes)) if (!out.has(e.seq)) out.set(e.seq, e);
   return out;
 }
 
@@ -473,7 +492,8 @@ export function useGuestSession(): GuestSession {
   // The guest's own pick, echoed into the thread as their bubble at once,
   // so the story's answer never reads as a non sequitur. Since wave 28 the
   // server posts the pick as a real line too; `withEchoes` then drops the
-  // echo. Kept per sign-in so a reload against an older server keeps it.
+  // echo and the effect below prunes it from storage. Kept per sign-in so a
+  // reload against an older server keeps it.
   const [echoes, setEchoes] = useState<ChatMessage[]>(() => loadEchoes(load, me?.token ?? null));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setEchoes(loadEchoes(load, me?.token ?? null)), [me?.token]);
@@ -500,6 +520,14 @@ export function useGuestSession(): GuestSession {
     },
     [post, me, messages, crawl, save],
   );
+  // Prune (and stop storing) every echo the server's own pick line has answered.
+  useEffect(() => {
+    if (me === null) return;
+    setEchoes((prev) => {
+      const kept = unansweredEchoes(messages, prev);
+      return kept.length === prev.length ? prev : saveEchoes(save, me.token, kept);
+    });
+  }, [messages, me, save]);
   const shown = useMemo(() => withEchoes(messages, echoes), [messages, echoes]);
   // The stream as of the last render, for callbacks that must not re-bind on every message.
   const messagesRef = useRef(messages);

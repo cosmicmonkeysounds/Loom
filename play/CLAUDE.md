@@ -150,7 +150,9 @@ windows), the Desk, the director phone and Help are lazy chunks.
   in. The phone still echoes its own pick at once (`choiceEcho`, in the
   menu's own `choices[].channel`, reading as core's `echoOf`), and
   `withEchoes` drops the echo once the matching server line arrives
-  (`echoAnswered`: same room and words, past the echo's spot).
+  (`echoAnswered`: same room and words, past the echo's spot; the
+  server's pick lines are indexed once per call, `pickIndexOf`), and the
+  session prunes answered echoes from storage (`unansweredEchoes`).
 
 ### Booth
 

@@ -3,7 +3,7 @@
 // server's line arrives, so a pick made on the phone is never shown twice.
 import { describe, expect, it } from "vitest";
 
-import { choiceEcho, echoAnswered, withEchoes } from "../src/session/guest.ts";
+import { choiceEcho, echoAnswered, pickIndexOf, unansweredEchoes, withEchoes } from "../src/session/guest.ts";
 import type { ChatMessage } from "../src/types.ts";
 
 const me = { id: "g-1", name: "Winamp" };
@@ -42,5 +42,39 @@ describe("the phone's pick echo (wave 28)", () => {
     const typed = new Map([[10, msg(10, "dm:Trabolta", { from: "Winamp", text: "I'm a person." })]]);
     expect(echoAnswered(echo, typed)).toBe(false);
     expect(withEchoes(typed, [echo]).has(9.5)).toBe(true);
+  });
+
+  it("prunes the echoes a server pick line answered, keeps the rest", () => {
+    const a = choiceEcho("dm:Trabolta", "I'm a person.", me, 4);
+    const b = choiceEcho("dm:Trabolta", "Then listen to me.", me, 6);
+    const stream = new Map([
+      [4, msg(4, "dm:Trabolta")],
+      [5, msg(5, "dm:Trabolta", { from: "Winamp", text: "I'm a person.", pick: true })],
+      [6, msg(6, "dm:Trabolta")],
+    ]);
+    expect(unansweredEchoes(stream, [a, b])).toEqual([b]);
+    expect(unansweredEchoes(stream, [])).toEqual([]);
+    stream.set(7, msg(7, "dm:Trabolta", { from: "Winamp", text: "Then listen to me.", pick: true }));
+    expect(unansweredEchoes(stream, [a, b])).toEqual([]);
+  });
+
+  it("reads the stream once per call, not once per echo", () => {
+    let reads = 0;
+    class Counting extends Map<number, ChatMessage> {
+      override values() {
+        reads += 1;
+        return super.values();
+      }
+    }
+    const stream = new Counting();
+    for (let i = 0; i < 500; i++) stream.set(i, msg(i, "dm:Trabolta", i % 2 === 0 ? { from: "Winamp", text: `pick ${i}`, pick: true } : {}));
+    const echoes = Array.from({ length: 300 }, (_, i) => choiceEcho("dm:Trabolta", `pick ${i * 2}`, me, i * 2 - 1));
+    const shown = withEchoes(stream, echoes);
+    expect(reads).toBe(1);
+    expect(shown.size).toBe(500 + 50); // picks 500..598 never came back
+    reads = 0;
+    const ix = pickIndexOf(stream);
+    for (const e of echoes) echoAnswered(e, stream, ix);
+    expect(reads).toBe(1);
   });
 });
