@@ -324,4 +324,16 @@ describe("the status strip", () => {
     const quiet = deskStatus({ house: { ...house, health: null, router: { online: false, lastSeen: null, name: null }, fixtures: [], looks: [] }, problems: [] });
     expect(quiet).toEqual([{ kind: "router", tone: "bad", text: "🔊 router never connected" }]);
   });
+
+  it("names each outside mind, connected or not (wave 30)", () => {
+    const minds = [
+      { character: "Trabolta", name: "Trabolta", online: true, workers: ["macbook"] },
+      { character: "Echo", name: "Echo", online: false, workers: [] },
+    ];
+    const chips = deskStatus({ house: { ...house, minds }, problems: [] }).filter((c) => c.kind === "mind");
+    expect(chips).toEqual([
+      { kind: "mind", tone: "ok", text: "🧠 Trabolta online (macbook)" },
+      { kind: "mind", tone: "bad", text: "🧠 Echo: no mind connected" },
+    ]);
+  });
 });

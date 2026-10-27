@@ -2102,6 +2102,7 @@ export class EventRuntime {
         pair: this.lights.currentPair(),
         house: this.spatialHouse(),
         model,
+        workers: this.agents.workerList(),
         now: this.clock(),
       });
     };

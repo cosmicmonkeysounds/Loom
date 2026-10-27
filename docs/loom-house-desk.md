@@ -171,7 +171,11 @@ not. A preview / shared rehearsal is never `live`, so setup days test
 without a confirm; a go-live in place makes it live. `house` is built from the audio and lights config in
 force, the map, the story model (`storySounds`, `storyLocations`, the
 `when` event names), the router's last report and the lights module's
-device list.
+device list. Since wave 30 it also carries `minds`: every `mind: external`
+character (Trabolta) with the stagehand `agents` workers voicing it
+(`deskMindsOf`, off `AgentHub.workerList()`), and `deskStatus` adds a
+🧠 chip per mind. A worker coming or going does not bump `rev`: it shows
+on the next answer (a long poll answers within 25 s).
 
 ## 3. The story
 

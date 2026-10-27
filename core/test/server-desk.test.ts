@@ -16,7 +16,8 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { snapshotDiffers } from "../server/events-api.ts";
-import { DESK_BY, deskOf, type DeskTimers } from "../server/desk.ts";
+import { DESK_BY, deskMindsOf, deskOf, type DeskTimers } from "../server/desk.ts";
+import type { SimModel } from "../src/runtime/sim/model.ts";
 import type { AudioView } from "../server/audio.ts";
 import type { LightsView } from "../server/lights.ts";
 import type { MapFiles, ProjectLink } from "../server/house-maps.ts";
@@ -233,6 +234,27 @@ describe("GET /api/mod/desk", () => {
     const got = (await parked).json as unknown as DeskView;
     expect(got.standby).toBe("pa");
     expect(got.rev).toBeGreaterThan(v.rev);
+    rt.dispose();
+  });
+});
+
+describe("the outside minds (wave 30)", () => {
+  it("lists every mind: external character with the workers voicing it", () => {
+    const model = { characters: new Map([["Trabolta", { id: "Trabolta", mind: "external" }], ["Clippy", { id: "Clippy", mind: null }], ["Echo", { id: "Echo", mind: "external" }]]) } as unknown as SimModel;
+    const workers = [
+      { name: "macbook", characters: ["trabolta"] },
+      { name: "spare", characters: ["Trabolta", "Clippy"] },
+    ];
+    expect(deskMindsOf(model, workers)).toEqual([
+      { character: "Trabolta", name: "Trabolta", online: true, workers: ["macbook", "spare"] },
+      { character: "Echo", name: "Echo", online: false, workers: [] },
+    ]);
+    expect(deskMindsOf(null, workers)).toEqual([]);
+  });
+
+  it("rides the desk view (none in a story with no outside mind)", async () => {
+    const rt = runtime();
+    expect((await deskView(rt)).house.minds).toEqual([]);
     rt.dispose();
   });
 });
