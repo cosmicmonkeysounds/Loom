@@ -42,8 +42,9 @@ export interface TalkState {
   tone: "thinking" | "slow" | "off" | "asleep" | "ok";
 }
 
-/** Seconds since `since` (server wall ms) at `now` (this phone's wall ms),
- *  never negative; null when there's no `since`. */
+/** Seconds since `since` (server wall ms) at `now` (the server's clock as
+ *  this phone reads it: `talkClock`), never negative; null when there's no
+ *  `since`. */
 export function talkSecs(since: number | null, now: number): number | null {
   if (since === null) return null;
   return Math.max(0, Math.floor((now - since) / 1000));
@@ -89,9 +90,27 @@ export function chipFace(c: TalkChip): string {
   return c.label !== undefined && c.label.trim() !== "" ? c.label : c.text;
 }
 
-/** A chip's key on the card (the arm's id for a Trabolta line). */
-export function chipKey(side: "clippy" | "trabolta", k: number): string {
-  return `${side}:${k}`;
+/** A chip's key on the card (the arm's id for a Trabolta line). The scene
+ *  is in it: 📺 can swap one scene for the next without the card closing,
+ *  and an arm from the old scene must never fire the new scene's line k. */
+export function chipKey(scene: string, side: "clippy" | "trabolta", k: number): string {
+  return `${scene}:${side}:${k}`;
+}
+
+/** The server's clock as this phone reads it: the phone's wall `now` plus
+ *  the skew the poll's `Date` header showed (`client.ts` `clockSkew`). `since` is the
+ *  hub's clock, so a phone that runs fast would read "slow" at once. */
+export function talkClock(now: number, skew: number | undefined): number {
+  return now + (skew ?? 0);
+}
+
+/** The box after a send went through: only the words that were sent go.
+ *  Anything typed on while it was in flight (Clippy's next sentence) stays;
+ *  a draft edited inside the sent words is left whole (never lose words). */
+export function draftAfterSend(draft: string, sent: string): string {
+  if (draft === sent) return "";
+  if (draft.startsWith(sent)) return draft.slice(sent.length).trimStart();
+  return draft;
 }
 
 /** Can the box send: something typed, within the cap, nothing in flight. */

@@ -101,7 +101,8 @@ export interface HostConsoleState {
   /** The Talk card's text box (wave 32): held here, so a draft survives
    *  Show leaving the screen and a refused send. */
   talkDraft: string;
-  setTalkDraft: (t: string) => void;
+  /** A value, or an updater (a send clears only the words it sent). */
+  setTalkDraft: (t: string | ((draft: string) => string)) => void;
   /** The award picker and *Fire anyway?* (drawn by the bar's slot, always). */
   picker: ReactNode;
   dialog: ReactNode;

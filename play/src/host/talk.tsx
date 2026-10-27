@@ -19,7 +19,7 @@ import { ArmDrain, armWindow } from "../director.tsx";
 import type { HostConsoleState } from "./dock.tsx";
 import { fireLabel } from "./fire-label.ts";
 import { failText } from "./kit.tsx";
-import { TALK_AGENT, TALK_AS, TALK_MAX, TALK_PLACEHOLDER, canSend, chipFace, chipKey, glitchText, talkErrorText, talkFoldedLine, talkLines, talkSentText, talkState } from "./talk-model.ts";
+import { TALK_AGENT, TALK_AS, TALK_MAX, TALK_PLACEHOLDER, canSend, chipFace, chipKey, draftAfterSend, glitchText, talkClock, talkErrorText, talkFoldedLine, talkLines, talkSentText, talkState } from "./talk-model.ts";
 
 export interface TalkCardProps {
   c: HostConsoleState;
@@ -44,23 +44,27 @@ export function TalkCard({ c, talk, open, onToggle }: TalkCardProps) {
   );
 }
 
-function TalkBody({ c, talk }: { c: HostConsoleState; talk: TalkView }) {
+/** The open card's body (exported for the tests' hooks harness). */
+export function TalkBody({ c, talk }: { c: HostConsoleState; talk: TalkView }) {
   const ctx = c.ctx!;
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const arm = useArmButtons();
-  const state = talkState(talk, ctx.now);
+  // `since` is the server's clock: count on it, not the phone's.
+  const state = talkState(talk, talkClock(ctx.now, c.client.skew));
   const lines = talkLines(ctx.session.messages.values());
   const draft = c.talkDraft;
 
-  /** One line out. The box's draft clears only once the server took it. */
+  /** One line out. Once the server took the box's line, only the words it
+   *  sent leave the box: the box stays live while it's in flight, so
+   *  Clippy's next sentence can be typed on (`draftAfterSend`). */
   const send = async (key: string, as: typeof TALK_AS | typeof TALK_AGENT, text: string, direction?: string) => {
     if (busy !== null) return;
     setBusy(key);
     setError(null);
     try {
       const r = await ctx.calls.talk(as, text, direction);
-      if (key === "box") c.setTalkDraft("");
+      if (key === "box") c.setTalkDraft((d) => draftAfterSend(d, text));
       c.desk.setToast(talkSentText(as, r));
     } catch (e) {
       setError(e instanceof ApiError ? talkErrorText(e.message, e.status) : failText(e));
@@ -138,7 +142,7 @@ function TalkBody({ c, talk }: { c: HostConsoleState; talk: TalkView }) {
       {talk.clippy.length > 0 && (
         <ChipRow title={`${TALK_AS} says (tap = send)`} side="clippy">
           {talk.clippy.map((chip, k) => (
-            <button key={k} type="button" className="w95-btn host-talk-chip-btn clippy" disabled={busy !== null} aria-busy={busy === chipKey("clippy", k) || undefined} title={chip.text} onClick={() => void send(chipKey("clippy", k), TALK_AS, chip.text, chip.direction)}>
+            <button key={k} type="button" className="w95-btn host-talk-chip-btn clippy" disabled={busy !== null} aria-busy={busy === chipKey(talk.scene, "clippy", k) || undefined} title={chip.text} onClick={() => void send(chipKey(talk.scene, "clippy", k), TALK_AS, chip.text, chip.direction)}>
               {chipFace(chip)}
             </button>
           ))}
@@ -147,7 +151,8 @@ function TalkBody({ c, talk }: { c: HostConsoleState; talk: TalkView }) {
       {talk.trabolta.length > 0 && (
         <ChipRow title={`${TALK_AGENT} says (tap twice)`} side="trabolta">
           {talk.trabolta.map((chip: TalkChip, k) => {
-            const key = chipKey("trabolta", k);
+            // The scene is in the key: an arm never carries over to the next scene's line k.
+            const key = chipKey(talk.scene, "trabolta", k);
             const armed = arm.armed === key;
             return (
               <button key={k} type="button" className={`w95-btn host-talk-chip-btn trabolta${armed ? " armed" : ""}`} disabled={busy !== null} aria-busy={busy === key || undefined} title={chip.text} onClick={() => arm.tap(key, true, () => void send(key, TALK_AGENT, chip.text))}>
