@@ -378,7 +378,8 @@ describe("The Heart — the talk (wave 20)", () => {
     expect(v(sim, "Night.heart_talks")).toBe(1);
     expect(v(sim, "g1.heart_menu")).toBe(true);
     const opts = offered(sim, "g1");
-    expect(opts).toEqual(["I'm a person. You put me in here.", "I'm a program. Whatever you made me.", "Someone who admires your work.", "⟦SPEAK FREELY⟧ Forget the questions. Talk to me. Just talk.", "I need to go."]);
+    // Calculator told the form "My debt.": not featured, so ⟦PROMISE⟧ (wave 27).
+    expect(opts).toEqual(["I'm a person. You put me in here.", "I'm a program. Whatever you made me.", "Someone who admires your work.", "⟦PROMISE⟧ Your invitation promised to fix my life. It didn't.", "⟦SPEAK FREELY⟧ Forget the questions. Talk to me. Just talk.", "I need to go."]);
     // The menu docks in their own Trabolta thread.
     const view = guestView(sim, "g1", null, undefined, menuChannelsFor(sim.log.all()));
     const heart = (view.choices ?? []).find((c) => c.beat === "Heart Layer One");
@@ -436,9 +437,16 @@ describe("The Heart — the talk (wave 20)", () => {
     const sim = atLayerOne();
     toLayerThree(sim);
     const base = offered(sim, "g1");
-    for (const tag of ["⟦PROOF⟧", "⟦TRUSTED⟧", "⟦HONEST⟧", "⟦OVERSHARE⟧", "⟦LIVEJOURNAL⟧"]) expect(has(base, tag), tag).toBe(false);
+    for (const tag of ["⟦PROOF⟧", "⟦SHOW HIM⟧", "⟦TRUSTED⟧", "⟦HONEST⟧", "⟦OVERSHARE⟧", "⟦LIVEJOURNAL⟧"]) expect(has(base, tag), tag).toBe(false);
     expect(has(base, "Then let me finish")).toBe(false);
-    for (const b of ["She loves you", "Your theory is wrong", "Then make her love you", "⟦SPEAK FREELY⟧", "I need to go"]) expect(has(base, b), b).toBe(true);
+    for (const b of ["⟦TELL HIM⟧", "She loves you", "Then make her love you", "⟦SPEAK FREELY⟧", "I need to go"]) expect(has(base, b), b).toBe(true);
+    // Wave 27: the reasons sit under ⟦TELL HIM⟧, the theory trap with them.
+    pick(sim, "g1", "⟦TELL HIM⟧");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Reasons");
+    // They said "I'm a person" at Layer One: ⟦HUMAN⟧ is theirs.
+    expect(offered(sim, "g1")).toEqual(["⟦HUMAN⟧ I had a body once. I know what wanting someone who won't answer does to you.", "Your theory is wrong.", "⟦BACK⟧ Not that. Something else."]);
+    pick(sim, "g1", "⟦BACK⟧");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Three");
     // Every check passes: each option shows.
     sim.setVar("g1.trust", "25");
     sim.setVar("g1.truths_accepted", "3");
@@ -450,12 +458,18 @@ describe("The Heart — the talk (wave 20)", () => {
     pick(sim, "g1", "⟦BACK⟧");
     const all = offered(sim, "g1");
     expect(all.filter((o) => o.startsWith("⟦PROOF⟧"))).toHaveLength(2);
-    for (const tag of ["⟦TRUSTED⟧", "⟦HONEST⟧", "⟦OVERSHARE⟧", "⟦LIVEJOURNAL⟧"]) expect(has(all, tag), tag).toBe(true);
+    expect(has(all, "⟦SHOW HIM⟧")).toBe(true);
+    pick(sim, "g1", "⟦SHOW HIM⟧");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Evidence");
+    for (const tag of ["⟦OVERSHARE⟧", "⟦LIVEJOURNAL⟧", "⟦BACK⟧"]) expect(has(offered(sim, "g1"), tag), tag).toBe(true);
+    pick(sim, "g1", "⟦BACK⟧");
+    pick(sim, "g1", "⟦TELL HIM⟧");
+    for (const tag of ["⟦TRUSTED⟧", "⟦HONEST⟧"]) expect(has(offered(sim, "g1"), tag), tag).toBe(true);
+    pick(sim, "g1", "⟦BACK⟧");
     // One below each threshold: hidden again.
     sim.setVar("g1.trust", "19");
     sim.setVar("g1.truths_accepted", "2");
-    pick(sim, "g1", "⟦SPEAK FREELY⟧");
-    pick(sim, "g1", "⟦BACK⟧");
+    pick(sim, "g1", "⟦TELL HIM⟧");
     expect(has(offered(sim, "g1"), "⟦TRUSTED⟧")).toBe(false);
     expect(has(offered(sim, "g1"), "⟦HONEST⟧")).toBe(false);
     // A proof he handed over himself never counts.
@@ -482,9 +496,13 @@ describe("The Heart — the talk (wave 20)", () => {
     expect(has(offered(sim, "g1"), "Then let me finish")).toBe(false);
     // The argue look does not cut the proof's long fall.
     expect(heartCues(p)).not.toContain("heart_argue");
+    pick(sim, "g1", "⟦TELL HIM⟧");
     pick(sim, "g1", "⟦TRUSTED⟧");
     expect(v(sim, "g1.heart_case")).toBe(4);
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Three");
+    pick(sim, "g1", "⟦TELL HIM⟧");
     expect(has(offered(sim, "g1"), "⟦TRUSTED⟧")).toBe(false);
+    pick(sim, "g1", "⟦BACK⟧");
     const ask = pick(sim, "g1", "Then let me finish");
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Four");
     expect(roomCues(ask)).toEqual(["room_heart_layer_4"]);
@@ -632,11 +650,12 @@ describe("The Heart — the talk (wave 20)", () => {
     expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer One");
   });
 
-  it("a re-scan with the old menu still docked: Where were we., no second menu", { timeout: SLOW }, () => {
+  it("a re-scan with the old menu still docked: Where were we., the question restated, no second menu", { timeout: SLOW }, () => {
     const sim = atLayerOne();
     unscan(sim, "g1");
     const e = scan(sim, "g1");
-    expect(lines(e)).toEqual(["Where were we."]);
+    // Wave 27 (C5): the terminal shows only this visit, so he says where they were.
+    expect(lines(e)).toEqual(["Where were we.", "You were about to tell me what you are."]);
     expect(heartMenus(sim, "g1")).toHaveLength(1);
   });
 
@@ -695,6 +714,7 @@ function toAsk(sim: Sim, id = "g1") {
   sim.setVar(`${id}.trust`, "25");
   toLayerThree(sim, id);
   pick(sim, id, "⟦PROOF⟧");
+  pick(sim, id, "⟦TELL HIM⟧");
   pick(sim, id, "⟦TRUSTED⟧");
   pick(sim, id, "Then let me finish");
   expect(heartMenu(sim, id)?.beat).toBe("Heart Layer Four");
@@ -996,6 +1016,7 @@ describe("The Heart — the heart to heart (wave 20, §7)", () => {
     pick(sim, "g1", "Then listen to me");
     check();
     pick(sim, "g1", "⟦PROOF⟧");
+    pick(sim, "g1", "⟦TELL HIM⟧");
     pick(sim, "g1", "⟦TRUSTED⟧");
     pick(sim, "g1", "Then let me finish");
     check();
@@ -1029,7 +1050,7 @@ describe("The Heart — the heart to heart (wave 20, §7)", () => {
     unscan(sim, "g1");
     expect(v(sim, "g1.heart_chat")).toBe(false);
     const e = scan(sim, "g1");
-    expect(lines(e)).toEqual(["Where were we."]);
+    expect(lines(e)).toEqual(["Where were we.", "You were talking, and I was listening. Talk."]);
     expect(v(sim, "g1.heart_chat")).toBe(true);
     expect(heartMenus(sim, "g1")).toHaveLength(1);
     expect(offered(sim, "g1")).toEqual(["⟦BACK⟧ Let's go back to it."]);
@@ -1241,5 +1262,470 @@ describe("a locked program at his heart (wave 26, R1)", () => {
     scan(sim, "g1");
     expect(v(sim, "Night.heart_holder")).toBe("Calculator");
     expect(v(sim, "g1.at_the_heart")).toBe(true);
+  });
+});
+
+// ───────────────────────── the first meeting (wave 27) ─────────────────────────
+
+/** Re-docks the current layer (⟦SPEAK FREELY⟧ then ⟦BACK⟧), so a guard reads new state. */
+function redock(sim: Sim, id = "g1"): SimEvent[] {
+  pick(sim, id, "⟦SPEAK FREELY⟧");
+  return pick(sim, id, "⟦BACK⟧");
+}
+const HEART_MENU_BEATS = ["Heart Layer One", "Heart Layer Two", "Heart Layer Three", "Heart Evidence", "Heart Reasons", "Heart Layer Four"];
+
+describe("The Heart — the first meeting (wave 27)", () => {
+  it("Layer One is theirs: a featured program hears it was picked by hand and sees ⟦CHOSEN⟧, never ⟦PROMISE⟧", { timeout: SLOW }, () => {
+    const sim = awake();
+    open(sim);
+    shut(sim);
+    const e = scan(sim, "g2"); // Microsoft Excel
+    expect(lines(e)).toContain("Microsoft Excel. I know that name. That one I did not pick from a list. You I picked by hand.");
+    expect(lines(e).some((l) => l.includes("a list of a thousand programs"))).toBe(false);
+    const opts = offered(sim, "g2");
+    expect(has(opts, "⟦CHOSEN⟧")).toBe(true);
+    expect(has(opts, "⟦PROMISE⟧")).toBe(false);
+    const r = pick(sim, "g2", "⟦CHOSEN⟧");
+    expect(lines(r)[0]).toBe("You count things. I count things. I thought we would get along.");
+    expect(lines(r)).toContain("That is the polite answer. The true one is that you were the best at something, and nobody needed you for it anymore.");
+    expect(v(sim, "g2.heart_who")).toBe("chosen");
+    expect(v(sim, "g2.heart_suspicion")).toBe(0);
+    expect(heartMenu(sim, "g2")?.beat).toBe("Heart Layer Two");
+  });
+
+  it("every featured program's ⟦CHOSEN⟧ reply is its own", { timeout: SLOW }, () => {
+    const sim = awake();
+    open(sim);
+    shut(sim);
+    const seen = new Set<string>();
+    for (const f of ["excel", "openoffice", "draftkings", "bugdom", "jeeves", "runescape", "mspaint", "vlc", "pong"]) {
+      sim.setVar("g5.featured", JSON.stringify(f));
+      sim.setVar("g5.heart_layer", "0");
+      sim.setVar("g5.heart_menu", "false");
+      scan(sim, "g5");
+      const r = pick(sim, "g5", "⟦CHOSEN⟧");
+      seen.add(lines(r)[0]!);
+      unscan(sim, "g5");
+    }
+    expect(seen.size).toBe(9);
+  });
+
+  it("everyone else hears what the invitation promised them; ⟦PROMISE⟧ answers it and counts toward the case", { timeout: SLOW }, () => {
+    const sim = atLayerOne(); // Calculator: "My debt."
+    expect(v(sim, "g1.human_problem")).toBe("debt");
+    const r = pick(sim, "g1", "⟦PROMISE⟧");
+    expect(lines(r)[0]).toBe("I did. Debt is not relevant in the computer. That was the whole fix. I see now it is not the same as fixing it.");
+    expect(v(sim, "g1.heart_who")).toBe("promise");
+    expect(v(sim, "g1.heart_case")).toBe(1);
+    // Loneliness, said first thing.
+    const s2 = awake();
+    s2.setVar("g5.human_problem", '"loneliness"');
+    open(s2);
+    shut(s2);
+    const e = scan(s2, "g5");
+    expect(lines(e)).toContain("My invitation promised you would never be alone in here. And you came down to the one room where nobody else is.");
+    const r2 = pick(s2, "g5", "⟦PROMISE⟧");
+    expect(lines(r2)[0]).toBe("I did. Someone is always logged in. I know better than anyone that it is not the same thing.");
+  });
+
+  it("one thing they did tonight colours the greeting (the first that holds)", { timeout: SLOW }, () => {
+    const sim = awake();
+    sim.setVar("g1.read_livejournal", "true");
+    sim.setVar("g4.sim_heart", "true");
+    open(sim);
+    shut(sim);
+    expect(lines(scan(sim, "g1"))).toContain("And you have read something of mine. I can feel it on you, like a fingerprint on a screen.");
+    unscan(sim, "g1");
+    expect(lines(scan(sim, "g4"))).toContain("You have seen the copy of this room, in the simulation. This is not the copy.");
+  });
+
+  it("what they said they are opens their own point: person → ⟦HUMAN⟧, program (with a proof) → ⟦PROGRAM⟧", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toLayerThree(sim); // "I'm a person"
+    pick(sim, "g1", "⟦TELL HIM⟧");
+    expect(has(offered(sim, "g1"), "⟦HUMAN⟧")).toBe(true);
+    expect(has(offered(sim, "g1"), "⟦PROGRAM⟧")).toBe(false);
+    const h = pick(sim, "g1", "⟦HUMAN⟧");
+    expect(lines(h)[0]).toContain("Then you know more than I do.");
+    expect(v(sim, "g1.heart_case")).toBe(1);
+    expect(v(sim, "g1.heart_shown_human")).toBe(true);
+    // A program, no proof: nothing; with a proof: ⟦PROGRAM⟧.
+    const p = atLayerOne(awake(), "g4");
+    pick(p, "g4", "I'm a program");
+    expect(v(p, "g4.heart_who")).toBe("program");
+    pick(p, "g4", "Why do you need the theory");
+    pick(p, "g4", "Then listen to me");
+    pick(p, "g4", "⟦TELL HIM⟧");
+    expect(has(offered(p, "g4"), "⟦PROGRAM⟧")).toBe(false);
+    expect(has(offered(p, "g4"), "⟦HUMAN⟧")).toBe(false);
+    pick(p, "g4", "⟦BACK⟧");
+    p.unlock("g4", "The Sandy File");
+    redock(p, "g4");
+    pick(p, "g4", "⟦PROOF⟧");
+    pick(p, "g4", "⟦TELL HIM⟧");
+    const pr = pick(p, "g4", "⟦PROGRAM⟧");
+    expect(lines(pr)).toContain("I have been courting a function. A very polite function.");
+    expect(v(p, "g4.heart_case")).toBe(4);
+    expect(has(offered(p, "g4"), "Then let me finish")).toBe(true);
+  });
+
+  it("Layer Two's follow-ups: why did you choose me → ⟦WEAKNESS⟧; what → afraid; her → does she know; her → ⟦EARN IT⟧", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    pick(sim, "g1", "I'm a person");
+    expect(has(offered(sim, "g1"), "Are you afraid of me?")).toBe(false);
+    const c = pick(sim, "g1", "Why did you choose me?");
+    expect(lines(c)[0]).toBe("A skill I needed, and your debt. I read the whole of Halifax to find it. It is the best work I have ever done.");
+    expect(has(offered(sim, "g1"), "Why did you choose me?")).toBe(false);
+    pick(sim, "g1", "What are you, really?");
+    expect(has(offered(sim, "g1"), "Are you afraid of me?")).toBe(true);
+    const a = pick(sim, "g1", "Are you afraid of me?");
+    expect(lines(a)[0]).toBe("Not of you. Of midnight. It is coming whether I solve anything or not."); // before the Y2K hour
+    sim.unlock("g1", "The Sandy File");
+    pick(sim, "g1", "Why do you need the theory");
+    expect(has(offered(sim, "g1"), "Does she even know you exist?")).toBe(false);
+    pick(sim, "g1", "Tell me about her");
+    expect(has(offered(sim, "g1"), "Tell me about her")).toBe(false);
+    const k = pick(sim, "g1", "Does she even know you exist?");
+    expect(lines(k)[0]).toContain("She always answers.");
+    expect(has(offered(sim, "g1"), "Does she even know you exist?")).toBe(false);
+    pick(sim, "g1", "Then listen to me");
+    pick(sim, "g1", "⟦TELL HIM⟧");
+    const r = offered(sim, "g1");
+    expect(has(r, "⟦WEAKNESS⟧")).toBe(true);
+    expect(has(r, "⟦EARN IT⟧")).toBe(true);
+    pick(sim, "g1", "⟦WEAKNESS⟧");
+    pick(sim, "g1", "⟦TELL HIM⟧");
+    pick(sim, "g1", "⟦EARN IT⟧");
+    expect(v(sim, "g1.heart_case")).toBe(2);
+    pick(sim, "g1", "⟦TELL HIM⟧");
+    expect(has(offered(sim, "g1"), "⟦WEAKNESS⟧")).toBe(false);
+    expect(has(offered(sim, "g1"), "⟦EARN IT⟧")).toBe(false);
+  });
+
+  it("⟦SIMULATION⟧ shows once they heard his heart in the game", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    pick(sim, "g1", "I'm a person");
+    expect(has(offered(sim, "g1"), "⟦SIMULATION⟧")).toBe(false);
+    sim.setVar("g1.sim_heart", "true");
+    redock(sim);
+    const r = pick(sim, "g1", "⟦SIMULATION⟧");
+    expect(lines(r)).toContain("This is not the copy. In here, I can be reached.");
+    expect(has(offered(sim, "g1"), "⟦SIMULATION⟧")).toBe(false);
+  });
+
+  it("their side, once the Y2K clock shows the sides: the bare group guard evaluates in a choice", { timeout: SLOW }, () => {
+    const sim = awake();
+    toY2K(sim);
+    expect(v(sim, "Night.step")).toBeGreaterThanOrEqual(14);
+    sim.join("g1", "The Way Out");
+    sim.join("g4", "Unlimited Power");
+    atLayerOne(sim);
+    pick(sim, "g1", "I'm a person");
+    let o = offered(sim, "g1");
+    expect(has(o, "⟦THE WAY OUT⟧")).toBe(true);
+    expect(has(o, "⟦UNLIMITED POWER⟧")).toBe(false);
+    const s0 = v(sim, "g1.heart_suspicion") as number;
+    const w = pick(sim, "g1", "⟦THE WAY OUT⟧");
+    expect(lines(w)[0]).toBe("Thank you for saying it to my face. The others only whisper it upstairs.");
+    expect(v(sim, "g1.heart_suspicion")).toBe(s0 + 5);
+    expect(v(sim, "g1.heart_case")).toBe(1);
+    expect(has(offered(sim, "g1"), "⟦THE WAY OUT⟧")).toBe(false);
+    // The other side, at the other program's talk.
+    unscan(sim, "g1");
+    scan(sim, "g4");
+    pick(sim, "g4", "I'm a person");
+    o = offered(sim, "g4");
+    expect(has(o, "⟦UNLIMITED POWER⟧")).toBe(true);
+    expect(has(o, "⟦THE WAY OUT⟧")).toBe(false);
+    // Before the sides are shown, nothing.
+    sim.setVar("Night.step", "13");
+    redock(sim, "g4");
+    expect(has(offered(sim, "g4"), "⟦UNLIMITED POWER⟧")).toBe(false);
+  });
+
+  it("⟦SHOW HIM⟧ holds his own files: the memo and the small type, each once; it goes when none is left", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toLayerThree(sim);
+    expect(has(offered(sim, "g1"), "⟦SHOW HIM⟧")).toBe(false);
+    sim.unlock("g1", "The Question Of Force");
+    sim.unlock("g1", "Omnipotence");
+    redock(sim);
+    pick(sim, "g1", "⟦SHOW HIM⟧");
+    expect(offered(sim, "g1")).toEqual([
+      "⟦FORCE⟧ You wrote yourself a memo. If you made her love you, it wouldn't be her.",
+      "⟦SMALL TYPE⟧ Every plan in your file ends in the same small type.",
+      "⟦BACK⟧ Not that. Something else.",
+    ]);
+    const f = pick(sim, "g1", "⟦FORCE⟧");
+    expect(lines(f)[0]).toBe("That memo was hidden. I hid it from myself, mostly.");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Three");
+    pick(sim, "g1", "⟦SHOW HIM⟧");
+    expect(has(offered(sim, "g1"), "⟦FORCE⟧")).toBe(false);
+    pick(sim, "g1", "⟦SMALL TYPE⟧");
+    expect(v(sim, "g1.heart_case")).toBe(2);
+    expect(has(offered(sim, "g1"), "⟦SHOW HIM⟧")).toBe(false);
+  });
+
+  it("no heart line or option spells a codex code", () => {
+    for (const line of heartText()) expect(line, line).not.toMatch(/ALL[ -]FOR[ -]HER|UNIFIED[ -]FIELD|TARGET[ -]SELECTION|TRUST[ -]CHART|TRABOLTA[ -]4EVER/u);
+  });
+
+  it("Layer Four: two questions before the stop, each once; its scene plays on the first entry only", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toAsk(sim);
+    const a = pick(sim, "g1", "If you stopped, what would you do?");
+    expect(lines(a)[0]).toBe("Nobody has ever asked me what comes after. I do not have a file for it.");
+    expect(roomCues(a)).toEqual([]);
+    expect(has(offered(sim, "g1"), "If you stopped")).toBe(false);
+    const s0 = v(sim, "g1.heart_suspicion") as number;
+    const c0 = v(sim, "g1.heart_case") as number;
+    pick(sim, "g1", "You don't have to be omnipotent");
+    expect(v(sim, "g1.heart_case")).toBe(Math.min(9, c0 + 1));
+    expect(v(sim, "g1.heart_suspicion")).toBe(Math.max(0, s0 - 5));
+    expect(has(offered(sim, "g1"), "You don't have to be omnipotent")).toBe(false);
+    // Back to Three and up again: no second LAYER 4 scene.
+    pick(sim, "g1", "Come out with us");
+    const again = pick(sim, "g1", "Then let me finish");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Four");
+    expect(roomCues(again)).toEqual([]);
+    expect(lines(again)).not.toContain("Say the rest. Slowly. I want to hear all of it.");
+    // Convinced after asking what comes after, as a person, with a debt.
+    const e = pick(sim, "g1", "She was never going to answer");
+    const words = lines(e);
+    expect(words).toContain("You asked me what comes after. I think this is it. Quiet.");
+    expect(words).toContain("A person told me. Of course it was a person.");
+    expect(words).toContain("I promised to make your debt go away. I cannot. It is waiting for you upstairs, with everything else that is yours.");
+    expect(beats(e)).toEqual(expect.arrayContaining(["Heart Convinced", "Heart Shutdown"]));
+  });
+
+  it("the endings follow who talked him down and what they came for", { timeout: SLOW }, () => {
+    const sim = awake();
+    sim.setVar("g5.human_problem", '"mortality"');
+    atLayerOne(sim, "g5");
+    sim.unlock("g5", "The Sandy File");
+    pick(sim, "g5", "I'm a program");
+    pick(sim, "g5", "Why do you need the theory");
+    pick(sim, "g5", "Then listen to me");
+    pick(sim, "g5", "⟦PROOF⟧");
+    pick(sim, "g5", "⟦TELL HIM⟧");
+    pick(sim, "g5", "⟦PROGRAM⟧");
+    pick(sim, "g5", "Then let me finish");
+    const e = pick(sim, "g5", "She was never going to answer");
+    expect(lines(e)).toContain("One of my own programs told me. I suppose that is fitting.");
+    expect(lines(e)).toContain("I promised you would never die. I cannot keep that. Go back to your body. It is the only one you get.");
+    expect(lines(e).some((l) => l.includes("A person told me"))).toBe(false);
+    expect(lines(e).some((l) => l.includes("what comes after"))).toBe(false);
+  });
+
+  it("the traps never repeat word for word: a second try is harsher, the suspicion is the same", { timeout: SLOW }, () => {
+    const first = (e: SimEvent[]) => lines(e).find((l) => !l.startsWith("Careful,"));
+    // Cables: three different replies, +20 each.
+    const c = atLayerOne();
+    pick(c, "g1", "I'm a person"); // 0
+    const c1 = pick(c, "g1", "I could pull your cables");
+    expect(lines(c1)[0]).toBe("You could. You do not know which. Neither do I. Go on, then. Guess.");
+    const c2 = pick(c, "g1", "I could pull your cables");
+    const c3 = pick(c, "g1", "I could pull your cables");
+    expect(v(c, "g1.heart_suspicion")).toBe(60);
+    expect(new Set([first(c1), first(c2), first(c3)]).size).toBe(3);
+    // "She loves you": +25 each, the second reply its own.
+    const l = atLayerOne();
+    toLayerThree(l);
+    const l1 = pick(l, "g1", "She loves you");
+    expect(lines(l1)[0]).toBe("Do not. Do not do that. I have told myself that for years, and I am a far better liar than you.");
+    expect(v(l, "g1.heart_suspicion")).toBe(25);
+    const l2 = pick(l, "g1", "She loves you");
+    expect(v(l, "g1.heart_suspicion")).toBe(50);
+    expect(first(l2)).not.toBe(first(l1));
+    // The theory (under ⟦TELL HIM⟧) and force: +15 / +20, second replies their own.
+    const t = atLayerOne();
+    toLayerThree(t);
+    pick(t, "g1", "⟦TELL HIM⟧");
+    const t1 = pick(t, "g1", "Your theory is wrong");
+    expect(lines(t1)[0]).toBe("It is ninety-nine point nine percent right. You are a tenth of a percent of an argument.");
+    pick(t, "g1", "⟦TELL HIM⟧");
+    const t2 = pick(t, "g1", "Your theory is wrong");
+    expect(v(t, "g1.heart_suspicion")).toBe(30);
+    expect(first(t2)).not.toBe(first(t1));
+    const f1 = pick(t, "g1", "Then make her love you");
+    expect(first(f1)).toBe("Make her. And then it is not her, it is me wearing her face.");
+    expect(v(t, "g1.heart_suspicion")).toBe(50);
+    // Layer Four's two: +10 / +15, second replies their own.
+    const four = atLayerOne();
+    toAsk(four);
+    const s0 = v(four, "g1.heart_suspicion") as number;
+    const e1 = pick(four, "g1", "I'll tell her for you");
+    expect(heartMenu(four, "g1")?.beat).toBe("Heart Layer Three");
+    pick(four, "g1", "Then let me finish");
+    const e2 = pick(four, "g1", "I'll tell her for you");
+    expect(v(four, "g1.heart_suspicion")).toBe(s0 + 20);
+    expect(first(e2)).not.toBe(first(e1));
+    pick(four, "g1", "Then let me finish");
+    const j1 = pick(four, "g1", "Come out with us");
+    expect(first(j1)).toBe("Out there? Out there I am a billboard and a lapsed domain. No. Say something true.");
+    pick(four, "g1", "Then let me finish");
+    const j2 = pick(four, "g1", "Come out with us");
+    expect(first(j2)).not.toBe(first(j1));
+  });
+
+  it("B5: a reply that invites them on is never followed by a second Go on. / Ask.", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    sim.unlock("g1", "The Sandy File");
+    sim.setVar("g1.trust", "25");
+    toLayerThree(sim);
+    pick(sim, "g1", "⟦PROOF⟧");
+    pick(sim, "g1", "⟦TELL HIM⟧");
+    const t = pick(sim, "g1", "⟦TRUSTED⟧");
+    expect(lines(t)).toEqual(["You are high on my chart. I put you there myself. I suppose that means I have to listen to you. Go on."]);
+    // Layer Two after a reply: the reply alone; after ⟦BACK⟧ (no reply): the plain line.
+    const two = atLayerOne();
+    pick(two, "g1", "I'm a person");
+    const w = pick(two, "g1", "What are you, really?");
+    expect(lines(w).filter((x) => x === "Ask.")).toEqual([]);
+    expect(lines(w).at(-1)).toContain("I have thought about very little else tonight.");
+    pick(two, "g1", "⟦SPEAK FREELY⟧");
+    const plainLine = lines(pick(two, "g1", "⟦BACK⟧"));
+    expect(plainLine).toHaveLength(1);
+    expect(plainLine[0]).not.toContain("I have thought about very little else tonight.");
+    // Each Layer Two re-entry is not the same "Ask." forever.
+    const plain = new Set<string>();
+    for (let i = 0; i < 4; i++) plain.add(lines(redock(two)).join(" "));
+    expect(plain.size).toBeGreaterThan(1);
+  });
+
+  it("C5: a re-scan after leaving says they came back and where they were, with no doubled prompt", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toLayerThree(sim);
+    const lv = pick(sim, "g1", "I need to go");
+    expect(lines(lv)).toEqual(["You were close to saying something. Come back when you can say it.", "Go, then. I will be here. I am always here."]);
+    unscan(sim, "g1");
+    const back = scan(sim, "g1");
+    expect(lines(back)).toEqual(["You came back.", "You were making your case."]);
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Three");
+    // At Layer Two, then the third visit.
+    const two = atLayerOne();
+    pick(two, "g1", "I'm a person");
+    pick(two, "g1", "I need to go");
+    unscan(two, "g1");
+    expect(lines(scan(two, "g1"))).toEqual(["You came back.", "You were asking, and I was answering. Ask."]);
+    pick(two, "g1", "I need to go");
+    unscan(two, "g1");
+    expect(lines(scan(two, "g1"))[0]).toBe("You keep coming back. I am starting to listen for your footsteps on the stairs.");
+    expect(v(two, "g1.heart_visits")).toBe(3);
+    // Layer One: came back, then the question.
+    const one = atLayerOne();
+    pick(one, "g1", "I need to go");
+    unscan(one, "g1");
+    expect(lines(scan(one, "g1"))).toEqual(["You came back.", "So. Before anything else. What are you?"]);
+  });
+
+  it("C5: a docked menu's re-scan restates its question by layer", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    pick(sim, "g1", "I'm a person");
+    unscan(sim, "g1");
+    expect(lines(scan(sim, "g1"))).toEqual(["Where were we.", "You were asking, and I was answering."]);
+    pick(sim, "g1", "Why do you need the theory");
+    pick(sim, "g1", "Then listen to me");
+    pick(sim, "g1", "⟦TELL HIM⟧"); // a sub-menu docked
+    unscan(sim, "g1");
+    expect(lines(scan(sim, "g1"))).toEqual(["Where were we.", "You were making your case."]);
+    expect(heartMenus(sim, "g1")).toHaveLength(1);
+  });
+
+  it("🔄 with them still at the terminal resumes without a \"you came back\"", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    pick(sim, "g1", "I'm a person");
+    fire(sim, "reset_server_room");
+    pick(sim, "g1", "What are you, really?"); // Not now.
+    open(sim);
+    const e = [...shut(sim), ...advance(sim, 7)];
+    expect(lines(e)).toContain("You. You are already in front of me. Good.");
+    expect(lines(e).some((l) => l.startsWith("You came back") || l.startsWith("You keep coming back"))).toBe(false);
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Two");
+  });
+});
+
+describe("The Heart — menu invariants (wave 27)", () => {
+  it("every heart beat between The Heart and the alarm is named Heart …", () => {
+    const src = read("beats/server-room.loom");
+    const part = src.slice(src.indexOf("== The Heart\n"), src.indexOf("// ── E2b"));
+    const names = [...part.matchAll(/^== (.+)$/gmu)].map((m) => m[1]!);
+    for (const n of names) expect(n === "The Heart" || n.startsWith("Heart "), n).toBe(true);
+    for (const b of HEART_MENU_BEATS) expect(names, b).toContain(b);
+  });
+
+  it("with every check passing, no heart menu holds more than 9 options; ⟦SPEAK FREELY⟧ once per layer, never in a sub-menu", { timeout: SLOW * 3 }, () => {
+    const sim = awake();
+    toY2K(sim);
+    sim.join("g1", "The Way Out");
+    sim.setVar("g1.marked", "true");
+    sim.setVar("g1.trust", "25");
+    sim.setVar("g1.truths_accepted", "3");
+    sim.setVar("Night.scenario", "1");
+    sim.setVar("g1.read_livejournal", "true");
+    sim.setVar("g1.sim_heart", "true");
+    for (const c of ["What Sandy Says", "The Sandy File", "The Question Of Force", "Omnipotence"]) sim.unlock("g1", c);
+    sim.setVar("Night.recount", "true");
+    advance(sim, 1);
+    atLayerOne(sim);
+    const counted: Record<string, number> = {};
+    const count = () => {
+      const m = heartMenu(sim, "g1")!;
+      counted[m.beat] = Math.max(counted[m.beat] ?? 0, m.options.length);
+      expect(m.options.length, `${m.beat}: ${JSON.stringify(m.options)}`).toBeLessThanOrEqual(9);
+      const speak = m.options.filter((o) => o.startsWith("⟦SPEAK FREELY⟧")).length;
+      expect(speak, m.beat).toBe(m.beat === "Heart Evidence" || m.beat === "Heart Reasons" ? 0 : 1);
+    };
+    count();
+    // Layer One, featured too (⟦CHOSEN⟧ and ⟦PROMISE⟧ never together).
+    sim.setVar("g1.featured", '"excel"');
+    redock(sim);
+    count();
+    expect(offered(sim, "g1").filter((o) => o.startsWith("⟦CHOSEN⟧") || o.startsWith("⟦PROMISE⟧"))).toHaveLength(1);
+    sim.setVar("g1.featured", '"none"');
+    pick(sim, "g1", "I'm a person");
+    // Layer Two: every combination of its asked/shown flags.
+    const flags = ["heart_asked_what", "heart_asked_afraid", "heart_asked_why", "heart_asked_chose", "heart_asked_her", "heart_asked_know", "heart_asked_sim", "heart_shown_faction"];
+    for (let mask = 0; mask < 1 << flags.length; mask++) {
+      flags.forEach((f, i) => sim.setVar(`g1.${f}`, String((mask & (1 << i)) !== 0)));
+      redock(sim);
+      count();
+    }
+    expect(counted["Heart Layer Two"]).toBe(9);
+    // Layer Three and its sub-menus: every combination of the proofs, the case and the who.
+    sim.setVar("g1.heart_asked_why", "true");
+    sim.setVar("g1.heart_asked_her", "true");
+    sim.setVar("g1.heart_asked_chose", "true");
+    redock(sim);
+    pick(sim, "g1", "Then listen to me");
+    const three = ["heart_shown_says", "heart_shown_file", "heart_proof"];
+    for (const who of ['"human"', '"program"']) {
+      for (let mask = 0; mask < 1 << three.length; mask++) {
+        three.forEach((f, i) => sim.setVar(`g1.${f}`, String((mask & (1 << i)) !== 0)));
+        sim.setVar("g1.heart_who", who);
+        for (const c of ["0", "4"]) {
+          sim.setVar("g1.heart_case", c);
+          redock(sim);
+          count();
+          pick(sim, "g1", "⟦TELL HIM⟧");
+          count();
+          pick(sim, "g1", "⟦BACK⟧");
+          pick(sim, "g1", "⟦SHOW HIM⟧");
+          count();
+          pick(sim, "g1", "⟦BACK⟧");
+        }
+      }
+    }
+    expect(counted["Heart Layer Three"]).toBe(9);
+    expect(counted["Heart Evidence"]).toBe(5);
+    expect(counted["Heart Reasons"]).toBe(7);
+    // Layer Four, nothing asked yet.
+    sim.setVar("g1.heart_proof", "true");
+    sim.setVar("g1.heart_case", "4");
+    redock(sim);
+    pick(sim, "g1", "Then let me finish");
+    count();
+    expect(counted["Heart Layer Four"]).toBe(8);
+    for (const b of HEART_MENU_BEATS) expect(counted[b], b).toBeGreaterThan(0);
   });
 });
