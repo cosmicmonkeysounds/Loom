@@ -868,7 +868,8 @@ export function deskHouseOf(i: DeskHouseInputs): DeskHouse {
       caps: { ...f.caps },
       safety: f.safety === true,
       device: f.device,
-      inZ2m: i.devicesAt === null ? null : i.devices.some((d) => d.friendly === f.device),
+      // A WLED strip is never in Zigbee2MQTT's list (it is on Wi-Fi).
+      inZ2m: i.devicesAt === null || f.kind === "wled" ? null : i.devices.some((d) => d.friendly === f.device),
     })),
     lightZones: i.lights.zones.map((z) => ({ id: z.id, name: z.name, fixtures: [...z.fixtures] })),
     looks,

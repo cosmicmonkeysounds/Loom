@@ -314,7 +314,7 @@ function stepChecks(s: unknown, at: string, refs: DeskRefs, problems: string[], 
       if (typeof sound !== "string" || !DESK_SOUND_RE.test(sound)) problems.push(`${at}: sound must be a sound name`);
       else {
         if (sound === DESK_CHIME_SOUND) warnings.push(`${at}: ${DESK_CHIME_SOUND} rings with the announcements; a say step rings it`);
-        else if (refs.sounds !== undefined && !refs.sounds.includes(sound)) warnings.push(`${at}: ${sound} is not one of the story's sounds (fine if the house Mac has the file)`);
+        else if (refs.sounds !== undefined && !refs.sounds.includes(sound)) warnings.push(`${at}: ${sound} is not one of the story's sounds (fine if the router's machine has the file)`);
       }
       audioTo();
       break;
@@ -861,7 +861,7 @@ export const DESK_SWATCHES: ReadonlyArray<{ label: string; set: DeskLightState; 
 export function deskChecks(view: Pick<DeskView, "house" | "marks">): DeskCheckSection[] {
   const h = view.house;
   const mark = (key: string) => view.marks[key] ?? null;
-  const routerAway = h.router.online ? [] : [h.router.lastSeen === null ? "the house Mac's router has never connected" : "the house Mac's router is offline"];
+  const routerAway = h.router.online ? [] : [h.router.lastSeen === null ? "the sound router has never connected" : "the sound router is offline"];
   const moduleAway = h.lightsModule?.online === true ? [] : [h.lightsModule === null || h.lightsModule.lastSeen === null ? "the lights module has never connected" : "the lights module is offline"];
   const speakerOf = new Map(h.speakers.map((s) => [s.id, s]));
   const speakers: DeskCheckRow[] = h.speakers.map((s) => {
@@ -876,7 +876,7 @@ export function deskChecks(view: Pick<DeskView, "house" | "marks">): DeskCheckSe
   const sounds: DeskCheckRow[] = h.sounds.map((s) => {
     const key = checkKey("sound", s.name);
     const hints = [...routerAway];
-    if (s.file === "missing") hints.push("no file on the house Mac");
+    if (s.file === "missing") hints.push("no file on the router's machine");
     if (s.file === "placeholder") hints.push("still the placeholder");
     const reach = s.to === null ? "the story's rooms, else everywhere" : s.to.map((t) => speakerOf.get(t)?.name ?? t).join(", ");
     return { key, kind: "sound", label: s.name, detail: `→ ${reach}${s.ms !== null ? ` · ${secondsText(s.ms)}` : ""}`, test: { route: "/api/mod/audio/play", body: { sound: s.name } }, extra: [], mark: mark(key), hints };
@@ -967,4 +967,135 @@ export function deskStatus(view: Pick<DeskView, "house" | "problems">): DeskChip
   for (const m of h.minds ?? []) chips.push(m.online ? { kind: "mind", tone: "ok", text: `🧠 ${m.name} online${m.workers.length > 0 ? ` (${m.workers.join(", ")})` : ""}` } : { kind: "mind", tone: "bad", text: `🧠 ${m.name}: no mind connected` });
   if (view.problems.length > 0) chips.push({ kind: "problems", tone: "bad", text: `desk.json: ${view.problems.length} problem${view.problems.length === 1 ? "" : "s"}` });
   return chips;
+}
+
+// ---------------------------------------------------------------------------
+// Setup (wave 30): the house's three systems, each with what to do next.
+// Both screens render it: the editor's Run → House → Setup and the hosts'
+// Desk window. Plain words, no machine names beyond the workers' own: the
+// runbooks (`scripts/house-desktop/README.md`, `stagehand/README.md`) say
+// which machine runs which job.
+
+export interface DeskSetupRow {
+  /** `sound`, `lights`, or `mind:<character>`. */
+  id: string;
+  /** "🔊 Sound", "💡 Lights", "🧠 Trabolta". */
+  title: string;
+  tone: "ok" | "warn" | "bad";
+  /** One line: what is connected. */
+  status: string;
+  /** What to do, in order (empty when nothing is wrong). */
+  fix: string[];
+}
+
+const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
+const firstFew = (xs: readonly string[], n = 4): string => (xs.length <= n ? xs.join(", ") : `${xs.slice(0, n).join(", ")} and ${xs.length - n} more`);
+
+/** "12 s ago", "4 min ago". */
+export function agoText(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 90) return `${s} s ago`;
+  const m = Math.round(s / 60);
+  return m < 90 ? `${m} min ago` : `${Math.round(m / 60)} h ago`;
+}
+
+/** The sound router, the lights module and each outside mind: up or not, and what to do. */
+export function deskSetup(view: Pick<DeskView, "house" | "now">): DeskSetupRow[] {
+  const h = view.house;
+  const rows: DeskSetupRow[] = [];
+
+  // --- sound --------------------------------------------------------------
+  {
+    const r = h.router;
+    const hl = h.health;
+    const fix: string[] = [];
+    let tone: DeskSetupRow["tone"] = "ok";
+    let status: string;
+    const bad = (line: string) => {
+      tone = "bad";
+      fix.push(line);
+    };
+    const warn = (line: string) => {
+      if (tone === "ok") tone = "warn";
+      fix.push(line);
+    };
+    if (!r.online) {
+      status = r.lastSeen === null ? "The sound router has not connected to this event" : `The sound router went quiet ${agoText(view.now - r.lastSeen)}`;
+      bad(
+        r.lastSeen === null
+          ? "Start stagehand's audio job on the machine the audio interface is plugged into, with this event's id and the moderator passcode in its local config."
+          : "Restart stagehand's audio job on the audio machine, and check that machine is online.",
+      );
+      fix.push("Windows: scripts\\house-desktop\\start-stagehand.ps1 -WithAudio (or -Status to read its log). Mac: uv run stagehand launchd restart --job audio.");
+    } else {
+      const parts = [`Online${r.name !== null ? ` on ${r.name}` : ""}`];
+      if (hl === null) {
+        parts.push("no report yet");
+        warn("Wait a few seconds for its first report; an old router never reports (update stagehand on the audio machine).");
+      } else {
+        parts.push(hl.device !== null ? hl.device : "no interface");
+        parts.push(plural(hl.files, "sound file"));
+        if (hl.device === null) bad("The router found no audio interface: power the interface on, plug it in, and check its driver (ASIO on Windows), then restart the audio job.");
+        if (hl.layout === "moved") bad("The interface shows other channel counts than audio.json expects: turn on and clock the ADAT expander, then restart the audio job.");
+        if (hl.announce === "blocked") bad("Announcements are blocked: the router can't reach the house broker (check Mosquitto and the props password).");
+        if (hl.xruns > 0) warn(`${plural(hl.xruns, "audio dropout")} so far: close other audio apps on that machine, or raise the router's buffer.`);
+      }
+      status = parts.join(" · ");
+    }
+    const missing = h.sounds.filter((x) => x.file === "missing").map((x) => x.name);
+    const placeholders = h.sounds.filter((x) => x.file === "placeholder").map((x) => x.name);
+    if (missing.length > 0) bad(`${plural(missing.length, "story sound")} with no file: ${firstFew(missing)}. Put each file in stagehand/media/sounds/ on the audio machine (or run stagehand sounds placeholders).`);
+    if (placeholders.length > 0) warn(`${plural(placeholders.length, "sound")} still the generated placeholder: ${firstFew(placeholders)}.`);
+    if (h.speakers.length === 0) warn("No speakers are placed: place them on the house map's 🔊 Audio tab.");
+    else if (r.online && fix.length === 0) status += ` · ${plural(h.speakers.length, "speaker")}`;
+    rows.push({ id: "sound", title: "🔊 Sound", tone, status, fix });
+  }
+
+  // --- lights -------------------------------------------------------------
+  {
+    const m = h.lightsModule;
+    const fix: string[] = [];
+    let tone: DeskSetupRow["tone"] = "ok";
+    let status: string;
+    if (h.fixtures.length === 0) {
+      tone = "warn";
+      status = h.looks.length > 0 ? `No lights placed (${plural(h.looks.length, "look")} written)` : "No lights yet";
+      fix.push("Pair each bulb with Zigbee2MQTT (🔗 Pair a bulb), give it a friendly name, then place it on the house map's 💡 Lights tab and Save to project.");
+      fix.push("A WLED strip joins over Wi-Fi: point its MQTT at the house broker, then place it as a WLED light.");
+    } else if (m === null || !m.online) {
+      tone = "bad";
+      status = m === null || m.lastSeen === null ? "The lights module has not connected to this event" : `The lights module went quiet ${agoText(view.now - m.lastSeen)}`;
+      fix.push("Start stagehand's lights job on the machine running Zigbee2MQTT (Windows: scripts\\house-desktop\\start-stagehand.ps1; -Status reads its log).");
+    } else {
+      const zig = h.fixtures.filter((f) => f.kind !== "wled").length;
+      const wled = h.fixtures.length - zig;
+      status = [`Online${m.name !== null ? ` on ${m.name}` : ""}`, zig > 0 ? plural(zig, "Zigbee light") : null, wled > 0 ? plural(wled, "WLED strip") : null, plural(h.looks.length, "look")].filter((x) => x !== null).join(" · ");
+    }
+    const lost = h.fixtures.filter((f) => f.inZ2m === false);
+    if (lost.length > 0) {
+      tone = "bad";
+      fix.push(`Zigbee2MQTT doesn't know ${firstFew(lost.map((f) => `${f.name} (${f.device})`))}: pair it, then rename it in Zigbee2MQTT to exactly that friendly name.`);
+    }
+    if (h.pairUntil !== null) status += ` · pairing open ${Math.max(0, Math.round((h.pairUntil - view.now) / 1000))} s`;
+    rows.push({ id: "lights", title: "💡 Lights", tone, status, fix });
+  }
+
+  // --- the outside minds ---------------------------------------------------
+  for (const mind of h.minds ?? []) {
+    rows.push(
+      mind.online
+        ? { id: `mind:${mind.character}`, title: `🧠 ${mind.name}`, tone: "ok", status: `Online on ${mind.workers.join(", ")}`, fix: [] }
+        : {
+            id: `mind:${mind.character}`,
+            title: `🧠 ${mind.name}`,
+            tone: "bad",
+            status: `No mind connected: ${mind.name} answers with the story's holding line`,
+            fix: [
+              "On the mind's machine, check Ollama is running (ollama ps) with the model pulled.",
+              "Then start stagehand's agents job with this event's id in its config (Mac: uv run stagehand launchd restart --job agents).",
+            ],
+          },
+    );
+  }
+  return rows;
 }

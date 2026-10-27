@@ -108,7 +108,7 @@ describe('the checks panel', () => {
     for (const t of ['Speakers', 'Outputs', 'Story sounds', 'Lights', 'Looks']) expect(html).toContain(`>${t}<`)
     expect(html).toContain('data-testid="house-check-speaker:sr-test"')
     expect(html).toContain('>Red<')
-    expect(html).toContain('no file on the house Mac')
+    expect(html).toContain('no file on the router&#x27;s machine')
     expect(html).toContain('marked by Director')
     expect(html).toContain('🔗 Pair a bulb')
     expect(html).toContain('data-testid="house-reset-marks"')
