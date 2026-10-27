@@ -7549,7 +7549,10 @@ export class EventRuntime {
         // (`session`, not `token` — that field is the caller's own credential.)
         const session = str(body, "session");
         const ending = this.impersonations.get(session);
-        if (ending !== undefined && ending.role === "guest") this.terminalVisits.end(ending.id, ending.by, this.clock());
+        // Only the terminal's pagehide end (`resumable: true`) leaves the
+        // visit to carry on; a leash end (thrown, timed out, done, left)
+        // is a real end, and the next scan floors fresh.
+        if (ending !== undefined && ending.role === "guest") this.terminalVisits.end(ending.id, ending.by, this.clock(), body["resumable"] === true);
         this.endImpersonations((_imp, t) => t === session);
         this.pushPresence();
         sendJson(res, 200, { ok: true });

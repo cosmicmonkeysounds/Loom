@@ -182,8 +182,8 @@ describe("a pick is a chat line (wave 28)", () => {
     await call(rt, "POST", "/api/guest/choose", { token: first.token, index: 1, choice: menu.id, text: menu.options[1] });
     const visit = thread(rt, g.id).filter((m) => m.seq > first.visitSeq).map((m) => m.text);
     expect(visit).toEqual(expect.arrayContaining(["I'm a person.", "A person. Of course."]));
-    // The page reloads: its pagehide ends the session, the pass is scanned again 20 s later.
-    await mod("/api/mod/impersonate/end", { session: first.token });
+    // The page reloads: its pagehide ends the session (resumable), the pass is scanned again 20 s later.
+    await mod("/api/mod/impersonate/end", { session: first.token, resumable: true });
     now += 20_000;
     const again = await mod("/api/mod/impersonate", { role: "guest", id: g.id, label: room });
     expect(again.seq).toBeGreaterThan(first.seq);
@@ -192,22 +192,52 @@ describe("a pick is a chat line (wave 28)", () => {
     expect((await mod("/api/mod/impersonate", { role: "guest", id: g.id, label: "Terminal · Kitchen" })).visitSeq).toBe(again.seq);
     expect((await mod("/api/mod/impersonate", { role: "guest", id: g.id })).visitSeq).toBe(again.seq);
     // Walked away for good: a scan long after the end is a new visit.
-    await mod("/api/mod/impersonate/end", { session: again.token });
+    await mod("/api/mod/impersonate/end", { session: again.token, resumable: true });
     now += 10 * 60_000;
     const later = await mod("/api/mod/impersonate", { role: "guest", id: g.id, label: room });
     expect(later.visitSeq).toBe(later.seq);
     rt.dispose();
   });
 
+  it("gap 2b: a leash end (thrown out) then a re-scan within the resume window floors fresh at the new scan's seq", async () => {
+    let now = 1_000_000;
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: "heart", scenarioSource: SOURCE, joinBase: () => "http://localhost", now: () => now });
+    const { g, menu } = await atTheHeart(rt);
+    const mod = async (path: string, body: unknown) => {
+      const res = { statusCode: 0, body: "", writeHead(s: number) { res.statusCode = s; return res; }, write() { return true; }, end(b?: string) { if (typeof b === "string") res.body = b; return res; } };
+      const url = new URL(`http://x${path}`);
+      await rt.handle(fakeReq(body), res as unknown as ServerResponse, "POST", url.pathname, url, { moderator: true });
+      return JSON.parse(res.body) as { token: string; seq: number; visitSeq: number };
+    };
+    const room = "Terminal · Server Room";
+    const first = await mod("/api/mod/impersonate", { role: "guest", id: g.id, label: room });
+    await call(rt, "POST", "/api/guest/choose", { token: first.token, index: 1, choice: menu.id, text: menu.options[1] });
+    // Thrown out: the terminal's leash end carries no `resumable`.
+    await mod("/api/mod/impersonate/end", { session: first.token });
+    now += 20_000;
+    const again = await mod("/api/mod/impersonate", { role: "guest", id: g.id, label: room });
+    expect(again.seq).toBeGreaterThan(first.visitSeq);
+    expect(again.visitSeq).toBe(again.seq);
+    // A reload (pagehide, resumable) then a re-scan keeps the old floor.
+    await mod("/api/mod/impersonate/end", { session: again.token, resumable: true });
+    now += 20_000;
+    expect((await mod("/api/mod/impersonate", { role: "guest", id: g.id, label: room })).visitSeq).toBe(again.visitSeq);
+    rt.dispose();
+  });
+
   it("gap 2b: TerminalVisits carries a visit within the resume window, and an unended one only so long", () => {
     const v = new TerminalVisits();
     expect(v.begin("g1", "T", 10, 0)).toBe(10);
-    v.end("g1", "T", 1_000);
+    v.end("g1", "T", 1_000, true);
     expect(v.begin("g1", "T", 20, 1_000 + VISIT_RESUME_MS)).toBe(10);
-    // The end was lost: carried on only until VISIT_OPEN_MAX_MS after the scan.
-    expect(v.begin("g1", "T", 30, 1_000 + VISIT_RESUME_MS + VISIT_OPEN_MAX_MS)).toBe(10);
-    expect(v.begin("g1", "T", 40, 1_000 + VISIT_RESUME_MS + 2 * VISIT_OPEN_MAX_MS + 1)).toBe(40);
-    v.end("g1", "T", 0);
+    // The end was lost: carried on only until VISIT_OPEN_MAX_MS after the
+    // visit's first scan; a carried scan never extends it.
+    expect(v.begin("g1", "T", 30, VISIT_OPEN_MAX_MS)).toBe(10);
+    expect(v.begin("g1", "T", 40, VISIT_OPEN_MAX_MS + 1)).toBe(40);
+    // A leash end (not resumable) forgets the visit: the next scan is fresh at once.
+    v.end("g1", "T", VISIT_OPEN_MAX_MS + 2, false);
+    expect(v.begin("g1", "T", 45, VISIT_OPEN_MAX_MS + 3)).toBe(45);
+    v.end("g1", "T", 0, true);
     expect(v.begin("g2", "T", 50, 0)).toBe(50);
     v.clear();
     expect(v.begin("g1", "T", 60, 1)).toBe(60);

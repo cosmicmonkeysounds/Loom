@@ -326,8 +326,10 @@ them out.
   still shows only this visit; an older server (no `seq`) pins at -1.
   Gap 2b: the server also answers `visitSeq` (`Pilot.visitSeq`), the
   floor it keeps per guest + terminal label (`core/server/terminal-visits.ts`);
-  a re-scan within 3 min of the session's end (a reload mid-visit)
-  carries the first scan's floor, and `floorAfter` uses it whenever it is
+  a re-scan within 3 min of a pagehide end (`endPilot` with `keepalive`
+  sends `resumable: true`: a reload mid-visit) carries the first scan's
+  floor; a leash end (thrown out, timed out, done, left) forgets the visit,
+  so the next scan floors fresh, and `floorAfter` uses it whenever it is
   sent, so a reloaded heart terminal shows the whole visit (his lines and
   the picks) and nothing older.
 - **Picks are server lines (wave 28).** A pick at the choice panel comes

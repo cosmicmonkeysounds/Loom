@@ -93,13 +93,15 @@ export async function passLocked(config: Pick<TerminalConfig, "eventId" | "token
 }
 
 /** End it (the leash ran out, or the guest disconnected). `keepalive`: the
- *  page is going away (pagehide) — the request outlives it. */
+ *  page is going away (pagehide) — the request outlives it, and it alone
+ *  tells the server the visit may resume (`resumable`: a reload re-scans
+ *  onto the same floor); a leash end is a real end. */
 export async function endPilot(config: TerminalConfig, pilot: Pilot, o: { keepalive?: boolean; fetchFn?: typeof fetch } = {}): Promise<void> {
   try {
     await (o.fetchFn ?? fetch)(`${baseOf(config)}/api/mod/impersonate/end`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-loom-token": config.token },
-      body: JSON.stringify({ session: pilot.token }),
+      body: JSON.stringify(o.keepalive === true ? { session: pilot.token, resumable: true } : { session: pilot.token }),
       keepalive: o.keepalive === true,
     });
   } catch {

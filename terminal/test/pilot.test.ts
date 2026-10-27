@@ -115,8 +115,13 @@ describe("visit signals", () => {
     const seen: Array<{ url: string; init: RequestInit }> = [];
     await endPilot(room, { token: "imp", id: "g7", name: "Ada" }, { keepalive: true, fetchFn: fakeFetch(200, seen) });
     expect(seen[0]!.url).toBe("/e/evt%201/api/mod/impersonate/end");
-    expect(JSON.parse(String(seen[0]!.init.body))).toEqual({ session: "imp" });
+    // The pagehide end alone is resumable (a reload re-scans onto the same floor).
+    expect(JSON.parse(String(seen[0]!.init.body))).toEqual({ session: "imp", resumable: true });
     expect(seen[0]!.init.keepalive).toBe(true);
+    // A leash end (thrown, timed out, done, left) is a real end.
+    await endPilot(room, { token: "imp", id: "g7", name: "Ada" }, { fetchFn: fakeFetch(200, seen) });
+    expect(JSON.parse(String(seen[1]!.init.body))).toEqual({ session: "imp" });
+    expect(seen[1]!.init.keepalive).toBe(false);
     await expect(endPilot(room, { token: "imp", id: "g7", name: "Ada" }, { fetchFn: fakeFetch(new Error("gone"), seen) })).resolves.toBeUndefined();
   });
 
