@@ -133,7 +133,7 @@ describe("talk-model: the card's rules", () => {
   it("the server's refusals, said kindly", () => {
     expect(talkErrorText("no_talk", 409)).toBe("The talk scene is over — nothing was sent.");
     expect(talkErrorText("asleep", 409)).toBe("Trabolta is asleep — nothing was sent.");
-    expect(talkErrorText("closed", 409)).toBe("The doors aren't open yet — nothing was sent.");
+    expect(talkErrorText("closed", 409)).toBe("The night is paused or the doors aren't open — nothing was sent.");
     expect(talkErrorText("too_long", 400)).toBe(`Too long — keep it under ${TALK_MAX} characters.`);
     expect(talkErrorText("empty", 400)).toBe("Type what Clippy said first.");
     expect(talkErrorText("not from a booth", 403)).toBe("This server can't relay yet — tell the director.");
