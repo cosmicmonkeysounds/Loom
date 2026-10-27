@@ -1343,7 +1343,7 @@ function Terminal({
               )}
               <Thread lines={threadLines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} echoes={echoes} earlier={room !== null && threadLines.length < session.lines.length} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
-                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} layer={menuLayer} onSkip={skipVoice} />
+                <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} layer={menuLayer} onSkip={roomBusy ? undefined : skipVoice} />
               )}
               {showComposer && (
                 <Composer

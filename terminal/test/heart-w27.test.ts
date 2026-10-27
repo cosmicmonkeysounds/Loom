@@ -20,6 +20,7 @@ import {
   optionOfKey,
   panelGate,
   panelPlace,
+  panelSince,
   pilotEndWait,
   sceneHoldsPanel,
   type HeartMenu,
@@ -192,5 +193,26 @@ describe("an echo's time (review)", () => {
     expect(echoTime({ ts: 1_200_000 }, 5_000, 5_000)).toBe(1_200_000);
     expect(echoTime({ ts: 1_200_000 }, undefined, 9_000)).toBe(1_200_000);
     expect(echoTime(undefined, undefined, 42)).toBe(42);
+  });
+});
+
+describe("skipping his voice (review)", () => {
+  it("a skip settles the panel again, so the second tap of a double-tap picks nothing", () => {
+    // Docked long ago, voice skipped just now: the voice is done, yet the panel waits a settle.
+    const after = (ms: number) => panelGate({ sinceDock: panelSince(0, 10_000, 10_000 + ms), voiceBusy: false, sceneLeft: 0 });
+    expect(after(120)).toEqual({ open: false, wait: "settle", recheck: PANEL_SETTLE_MS - 120 });
+    expect(after(PANEL_SETTLE_MS).open).toBe(true);
+    // No skip: the dock time alone.
+    expect(panelSince(1_000, 0, 5_000)).toBe(4_000);
+  });
+
+  it("no skip hint while only the room's voice holds it (a skip could not act)", async () => {
+    const big: HeartMenu = { id: 300, beat: "Heart Layer Three", channel: "dm:Trabolta", options: ["One.", "Two."] };
+    const html = renderToStaticMarkup(createElement(ChoicePanel, { menu: big, doorOpen: false, onPick: async () => {}, numberKeys: true, onActivity: () => {}, voiceBusy: true }));
+    expect(html).toContain("LISTENING");
+    expect(html).not.toContain("TO SKIP");
+    const { readFileSync } = await import("node:fs");
+    const app = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8");
+    expect(app).toContain("onSkip={roomBusy ? undefined : skipVoice}");
   });
 });

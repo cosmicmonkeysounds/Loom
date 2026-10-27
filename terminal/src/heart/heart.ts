@@ -271,6 +271,16 @@ export function panelGate(o: { sinceDock: number; voiceBusy: boolean; sceneLeft:
   return { open: true, wait: null, recheck: null };
 }
 
+/**
+ * How long (ms) the panel has been settling, for `panelGate`'s `sinceDock`:
+ * since the menu docked, or since its voice was skipped (`skippedAt`, 0:
+ * never), whichever came last. A skip settles it again, so the second tap
+ * of a double-tap meant to skip never lands on an option.
+ */
+export function panelSince(dockAt: number, skippedAt: number, now: number): number {
+  return Math.max(0, now - Math.max(dockAt, skippedAt));
+}
+
 /** The key that picks option `index` (A6): 1–9, then 0 for the tenth, then a, b, c …; null past z. */
 export function optionKey(index: number): string | null {
   if (index < 0) return null;

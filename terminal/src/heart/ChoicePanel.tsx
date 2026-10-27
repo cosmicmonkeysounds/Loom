@@ -7,7 +7,8 @@
 //! - **It waits** (`panelGate`): a new menu settles for a moment, then
 //!   stays LISTENING… while his reply is still being said (capped), and
 //!   while one of his heart scenes plays. Waiting, it takes no click and no
-//!   key; a click on it or Space skips his voice to the end (`onSkip`).
+//!   key; a click on it or Space skips his voice to the end (`onSkip`), and
+//!   it settles again after a skip (a double-tap never picks).
 //! - **A new menu** flashes in as it opens (its numbers may have shifted),
 //!   and lights nothing under a resting pointer until the pointer moves.
 //! - **The door open**: CLOSE THE DOOR above the greyed options, never over them.
@@ -15,7 +16,7 @@
 
 import "./heart.css";
 import { useEffect, useRef, useState } from "react";
-import { layerLabel, optionKey, optionOfKey, panelGate, panelModel, type HeartMenu } from "./heart.ts";
+import { layerLabel, optionKey, optionOfKey, panelGate, panelModel, panelSince, type HeartMenu } from "./heart.ts";
 
 export function ChoicePanel({
   menu,
@@ -42,18 +43,19 @@ export function ChoicePanel({
   sceneEndsAt?: number;
   /** The layer this menu belongs to (the header), null: unknown. */
   layer?: number | null;
-  /** Skip his voice to the end (a click or Space while it waits on him). */
+  /** Skip his voice to the end (a click or Space while it waits on him); undefined: no skip
+   *  can act (the room's voice is talking), so no hint shows and Space is left alone. */
   onSkip?: () => void;
 }) {
   const model = panelModel(menu, doorOpen)!;
   const [sending, setSending] = useState<number | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [fresh, setFresh] = useState(true);
-  // When this menu docked, and whether it has opened (both per menu id).
-  const dock = useRef<{ id: number; at: number; opened: boolean }>({ id: -1, at: 0, opened: false });
-  if (dock.current.id !== menu.id) dock.current = { id: menu.id, at: Date.now(), opened: false };
+  // When this menu docked, when its voice was last skipped, and whether it has opened (all per menu id).
+  const dock = useRef<{ id: number; at: number; skipped: number; opened: boolean }>({ id: -1, at: 0, skipped: 0, opened: false });
+  if (dock.current.id !== menu.id) dock.current = { id: menu.id, at: Date.now(), skipped: 0, opened: false };
   const now = Date.now();
-  const gate = panelGate({ sinceDock: now - dock.current.at, voiceBusy, sceneLeft: Math.max(0, sceneEndsAt - now), wasOpen: dock.current.opened });
+  const gate = panelGate({ sinceDock: panelSince(dock.current.at, dock.current.skipped, now), voiceBusy, sceneLeft: Math.max(0, sceneEndsAt - now), wasOpen: dock.current.opened });
   if (gate.open) dock.current.opened = true;
   const open = gate.open;
   // Look again when the answer can change by itself (the settle, the cap, a scene's end).
@@ -70,6 +72,13 @@ export function ChoicePanel({
     setProblem(null);
     setFresh(true);
   }, [menu.id]);
+
+  // A skip settles the panel again (panelSince): a double-tap never picks.
+  const skip = () => {
+    if (onSkip === undefined) return;
+    dock.current.skipped = Date.now();
+    onSkip();
+  };
 
   const pick = (index: number) => {
     onActivity();
@@ -101,7 +110,7 @@ export function ChoicePanel({
       if (!open) {
         if (e.key === " " && gate.wait === "voice" && onSkip !== undefined) {
           e.preventDefault();
-          onSkip();
+          skip();
         }
         return; // a key while he speaks, or a scene plays, never picks
       }
@@ -163,7 +172,7 @@ export function ChoicePanel({
       data-wait={gate.wait ?? undefined}
       onPointerMove={() => open && fresh && setFresh(false)}
       onClick={() => {
-        if (!open && gate.wait === "voice") onSkip?.();
+        if (!open && gate.wait === "voice") skip();
       }}
     >
       <div className="heart-head">
