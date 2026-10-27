@@ -163,7 +163,7 @@ are in `TECH.md`.
 |---|---|
 | VPS (`app.mapsandducks.com`) | The event server, Postgres, Caddy |
 | John's MacBook (macOS, M3 Max 48 GB) | **Trabolta**: Ollama `gpt-oss:20b` + stagehand `agents` (`stagehand/laptop.yaml`, local); `predeploy` / `ship` / `sync-show` / `showbackup`; a director's Run console. The audio router's fallback host only (`trapped.macbook.yaml`) |
-| John's Desktop (Windows) | **The audio and the lights** (decided 2026-10-27): the audio router (stagehand `audio`) with the MOTU 828x + ADAT; Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs; the RGB strip's WLED (ESP32) controller over Wi-Fi; Mosquitto (anonymous on 127.0.0.1:1883, password-only `props` on the LAN at :1884); stagehand `show` + `lights` + `audio` as Task Scheduler tasks (`trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, spot `desktop-tv`). Runbook: `scripts/house-desktop/README.md` |
+| John's Desktop (Windows) | **The audio and the lights** (decided 2026-10-27): the audio router (stagehand `audio`) on the MOTU 828x's own outs (no ADAT expander since wave 31); Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs, each paired under its `lights.json` name (no Zigbee groups, scenes or WLED presets: every `lights_*` cue is a `lights.json` look); the living room's WLED (ESP32) strip over Wi-Fi (`wled/living`); Mosquitto (anonymous on 127.0.0.1:1883, password-only `props` on the LAN at :1884); stagehand `show` + `lights` + `audio` as Task Scheduler tasks (`trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, spot `desktop-tv`). Runbook: `scripts/house-desktop/README.md` |
 | Steph's laptop | The server-room terminal in Chrome (`…&spot=server-room&door=serial&camera=user`) + the Grand Central M4 over USB (door + patch bay); webcam, monitor, mouse, keyboard |
 | John's old laptop | The tent: `/terminal/?code=<mod>&spot=tent&announce=1`, the reinstall wizard and web game. Needs WebGL2 |
 
@@ -229,7 +229,7 @@ the glitch on real phones, and the real speakers.
    `--job lights` and `--job audio`, `scripts/house-macbook/install-alexa.sh
    --uninstall`, stop Mosquitto (`brew services stop mosquitto`) and the
    Zigbee2MQTT launchd agent; move the CC2652P (+ Z2M's `data/`), the MOTU
-   828x + ADAT expander and `stagehand/media/sounds/` to the Desktop.
+   828x and `stagehand/media/sounds/` to the Desktop.
    The MacBook keeps only Trabolta (`agents`).
 5. Desktop: `git pull`, set `server.event` / `mod_passcode` in
    `stagehand/trapped.house.local.yaml`, then
@@ -239,12 +239,14 @@ the glitch on real phones, and the real speakers.
    the new story. The 828x must show under ASIO first
    (`scripts/house-desktop/README.md` §3).
 6. MacBook: `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm
-   sync-show --replace-audio --replace-maps [--replace-lights] [--replace-desk]`
+   sync-show --replace-audio --replace-maps --replace-lights [--replace-desk]`
    **with its reload, before doors**. Wave 26 changed both show maps (the
    heart, the virus disk, the *MAINFRAME* rack label), and the project's
    maps win without `--replace-maps`. First Download JSON any map edits
    saved to the project and commit them into the repo's `house.json`.
-   Restart every other non-ended event.
+   Wave 31's `lights.json` (every bulb, the strip, the `lights_*` looks)
+   reaches the project only with `--replace-lights`; Download JSON any
+   looks saved to the project first. Restart every other non-ended event.
 7. MacBook: `uv run stagehand launchd restart --job agents`; then Run →
    Mind → Reset (`scripts/house-macbook/trabolta.md`). Desktop: the router
    (`uv run stagehand sounds placeholders --config trapped.desktop.yaml`,
@@ -254,11 +256,13 @@ the glitch on real phones, and the real speakers.
    (ASIO's channel order). **Fallback** if the 828x won't run on Windows:
    `-Stop audio` on the Desktop and `scripts/house-macbook/audio.md` on the
    MacBook; both preflights then take `--router macbook` / `-NoAudio`.
-8. Desktop: Zigbee2MQTT on the CC2652P; pair the bulb as `server_room_rgb`,
-   then the Hue and ThirdReality ZL1 bulbs and the WLED strip
-   (`scripts/house-desktop/README.md` §5–6); place each in the map editor's
-   💡 Lights tab, Save to project; then Run → House → 🔌 Setup green,
-   Checks walked, and each look ▶ Tested in the 🎨 Cue designer.
+8. Desktop: Zigbee2MQTT on the CC2652P; pair every bulb under its
+   `lights.json` name with `power_on_behavior: on` (`server_room_rgb`,
+   `living_1`…: the table in `scripts/house-desktop/README.md` §5.4), then
+   the living-room WLED strip (§6: pixel count, the brightness limiter at
+   ~5500 mA, `wled/living`). `lights.json` already places every light; no
+   groups, scenes or presets. Then Run → House → 🔌 Setup green, Checks
+   walked, and each look ▶ Tested on the house in the 🎨 Cue designer.
 9. Steph's laptop: flash the M4 (`door-m4 1.2.0`), bench with
    `scripts/accept/N-20.sh` and `N-21.sh`, then calibrate the door and
    learn the patch bay in the terminal's ⚙ (always after a reflash).

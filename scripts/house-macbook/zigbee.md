@@ -10,9 +10,9 @@ jobs run on **John's Desktop (Windows)**. Install Z2M there with
 [`scripts/house-desktop/README.md`](../house-desktop/README.md) §3, then
 come back here for **steps 5–9** (the lights job, pairing, checking,
 placing, backing up), which are the same on any machine. The house's
-other bulbs (Philips Hue and ThirdReality ZL1: how to reset each, names,
-`power_on_behavior`, groups) and the WLED strip are in the Desktop
-README's §5–6. Steps 1–4 are
+other bulbs (Philips Hue and ThirdReality ZL1: how to reset each, their
+names, `power_on_behavior`; no groups or scenes since wave 31) and the
+WLED strip are in the Desktop README's §5–6. Steps 1–4 are
 the macOS install, for a bench Mac or a fallback with the Desktop down.
 On Windows, `mosquitto_pub` / `mosquitto_sub` are
 `"C:\Program Files\mosquitto\mosquitto_pub.exe"` / `…_sub.exe`, and the
@@ -21,7 +21,7 @@ stagehand commands take `--config trapped.desktop.yaml`.
 ```
 Zigbee bulbs ─radio─► TI CC2652P stick (USB) ─serial─► Zigbee2MQTT ─► Mosquitto 127.0.0.1:1883
                                                                         ▲        ▲
-                                                stagehand show (scenes) ┘        └ stagehand lights (lights.json)
+                                                stagehand show (cuts) ──┘        └ stagehand lights (lights.json)
 ```
 
 The coordinator is the **Zigbee 3.0 USB dongle, 20 dBm, TI CC2652P +
@@ -183,11 +183,10 @@ bulb, until step 6).
    ```bash
    mosquitto_pub -h 127.0.0.1 -t zigbee2mqtt/server_room_rgb/set -m '{"power_on_behavior": "on"}'
    ```
-6. **Never add it to `house`** (or any group a house look reaches). It is
+6. **Put it in no Zigbee group** (wave 31: the show uses none). It is
    the server room's only light and `lights.json`'s alone (wave 20, D10 /
    w20b Q10): `lights.json` addresses it by its own name, and nothing in
-   `trapped.house.yaml` sends it or the `server_room` group anything, so it
-   may stay that group's only member. To check what a group holds:
+   `trapped.house.yaml` sends it anything. To check no old group holds it:
 
    ```bash
    mosquitto_sub -h 127.0.0.1 -t zigbee2mqtt/bridge/groups -C 1
