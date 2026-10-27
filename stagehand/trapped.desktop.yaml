@@ -4,38 +4,44 @@
 # sensors, the catch-up, the audio router's settings live there, once) and
 # only says what differs on this machine. Keep it in the same folder.
 #
-# THE DESKTOP RUNS: Mosquitto (the house broker: anonymous on 127.0.0.1:1883,
-#   password-only `props` on the LAN at :1884 — scripts/house-desktop/
-#   setup-mosquitto.ps1), Zigbee2MQTT on the CC2652P (COMn), the TV kiosk
-#   (Chrome, spot desktop-tv), and two stagehand jobs from THIS file:
+# THE DESKTOP RUNS (since 2026-10-27 the sound and lights machine):
+#   Mosquitto (the house broker: anonymous on 127.0.0.1:1883, password-only
+#   `props` on the LAN at :1884 — scripts/house-desktop/setup-mosquitto.ps1),
+#   Zigbee2MQTT on the CC2652P (COMn) with the Hue and ThirdReality ZL1
+#   bulbs, the WLED strip's controller (it dials :1884), the MOTU 828x + the
+#   ADAT expander (USB 2, ASIO), the TV kiosk (Chrome, spot desktop-tv), and
+#   three stagehand jobs from THIS file:
 #     show    the story's cues → Z2M / WLED / MQTT, the sensors back, and the
 #             `do announce` relay (show/announce): the router hears the house
 #             announcements only through this job, on this broker
-#     lights  lights.json (the server room's RGB bulb) through Zigbee2MQTT
-#   and, only once the MOTU 828x is proven on Windows, `audio` too (below).
-#   By default the router runs on the MacBook (trapped.macbook.yaml), which
-#   dials this PC's broker on :1884.
+#     lights  lights.json (every placed bulb and strip) through Zigbee2MQTT
+#             and the WLED controllers' MQTT topics
+#     audio   the speaker router on the 828x (below)
+#   The MacBook runs the router only as the fallback (trapped.macbook.yaml,
+#   dialling this PC's broker on :1884); then this PC runs show + lights.
 #
 #   cd stagehand
 #   uv sync
-#   uv run stagehand check --config trapped.desktop.yaml --only show,lights
+#   uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
 #   uv run stagehand tasks install --job show   --config trapped.desktop.yaml
 #   uv run stagehand tasks install --job lights --config trapped.desktop.yaml
+#   uv run stagehand tasks install --job audio  --config trapped.desktop.yaml
 #   uv run stagehand tasks status                 # logs: %LOCALAPPDATA%\stagehand\logs\
-#   (or scripts\house-desktop\start-stagehand.ps1, which does all of it)
+#   (or scripts\house-desktop\start-stagehand.ps1, which does all of it;
+#   -NoAudio in the MacBook fallback)
 #
 # Secrets: trapped.house.local.yaml (server: { event, mod_passcode }) applies
 # here too; put anything only this PC needs in trapped.desktop.local.yaml
 # (git-ignored): `server:`, a module's `mqtt:`, audio's `device` / `host_api`
 # / `voice_engine` / `say_voice`.
 #
-# Always pass --only on this PC: a bare `check` / `run` would also start the
-# audio section, which needs the MOTU here.
+# Always pass --only on this PC (show,lights,audio; show,lights in the
+# MacBook fallback): one machine must never run two copies of a job.
 extends: trapped.house.yaml
 
 # show: inherited unchanged — mqtt 127.0.0.1:1883 is Mosquitto on this PC.
 
-# --- the house lights (wave 20: the server room's RGB bulb, lights.json) ---
+# --- the house lights (lights.json: the server room's RGB bulb, the Hue and ZL1 bulbs, the WLED strip) ---
 # Zigbee2MQTT runs on this PC (scripts/house-desktop/zigbee2mqtt.ps1), so the
 # section is on here (it is commented out in the house file).
 lights:
@@ -47,11 +53,12 @@ lights:
   health_s: 15
   take_looks: true   # the show job drops any cue rule whose name lights.json defines
 
-# --- the speaker router, IF it moves to this PC (the default is the MacBook) ---
+# --- the speaker router (its home since 2026-10-27; the MacBook is the fallback) ---
 # Inherited from the house file: play_sounds, announce, passthrough: false,
 # mqtt 127.0.0.1:1883 (right for this PC), audio.json / house.json. The show
-# job reads `play_sounds` from here, so keep this section even while the
-# router runs on the MacBook. What Windows needs on top:
+# job reads `play_sounds` from here, so keep this section even when the
+# router runs on the MacBook. What Windows needs on top
+# (scripts/house-desktop/README.md §3):
 #   - the 828x opened through ASIO (one 30-channel device; every other host
 #     API splits it into stereo pairs). host_api: asio also sets
 #     SD_ENABLE_ASIO before sounddevice loads (or set it in the environment).
@@ -65,9 +72,9 @@ lights:
 #     be CoreAudio's.
 #   - the voice: Windows SAPI (voice_engine: auto picks it here), female.
 #   Run it from the logged-in session only (`tasks install --job audio`),
-#   never as a service: ASIO drivers are unreliable from session 0. Before
-#   installing it here, stop the MacBook's (`stagehand launchd uninstall
-#   --job audio`): two routers would both speak every announcement.
+#   never as a service: ASIO drivers are unreliable from session 0. Never
+#   beside the MacBook's (`stagehand launchd uninstall --job audio` there):
+#   two routers would both speak every announcement.
 audio:
   host_api: asio
   voice_engine: auto                # SAPI on this PC (System.Speech through Windows PowerShell)

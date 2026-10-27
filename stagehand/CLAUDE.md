@@ -17,7 +17,7 @@ does not apply here.
 |---|---|---|---|
 | `show:` | `show/` | the mod feed's `sim` directives → MQTT / OSC (`cuemap.py`); MQTT topics → `/api/mod/signal` / `beat` / `set` (`sensormap.py`); the lights catch-up | John's Desktop (Windows) |
 | `agents:` | `agents/` | the agent worker: holds `GET /api/agent/stream`, answers requests, judges filings, records thoughts, takes `control` frames | John's MacBook |
-| `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream, numpy mixer, announcements, tests, stops, the house desk's plays, the report, placeholders | the MacBook by default; may move to the Desktop |
+| `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream, numpy mixer, announcements, tests, stops, the house desk's plays, the report, placeholders | John's Desktop (since 2026-10-27); the MacBook is the fallback |
 | `lights:` | `lights/` | `lights.json` looks → Zigbee2MQTT / WLED, safety clamp, identify / test / pair, device list, catch-up | the Desktop |
 | `alexa:` | `alexa/` | the standalone announcement player. **Retired for the show** (wave 18b); the code and its `Announcer` stay (the router reuses the announcer and the voice lock) | none |
 
@@ -37,8 +37,8 @@ stagehand/
   pyproject.toml, uv.lock          the package (`stagehand` console script)
   *.example.yaml                   one commented section each; test-pinned
   trapped.house.yaml               the show's shared base (every show rule, the router's settings)
-  trapped.desktop.yaml             extends it: show + lights on John's Desktop (Windows)
-  trapped.macbook.yaml             extends it: the audio router on John's MacBook
+  trapped.desktop.yaml             extends it: show + lights + audio on John's Desktop (Windows)
+  trapped.macbook.yaml             extends it: the audio router fallback on John's MacBook
   laptop.yaml                      git-ignored: the MacBook's agents config (from agents.example.yaml)
   *.local.yaml                     git-ignored: per-machine secrets / overrides
   media/sounds.yaml                tracked list of the 19 story sounds; media/sounds/ is git-ignored
@@ -73,8 +73,8 @@ uv sync                                            # once; makes .venv
 uv run pytest                                      # ≈ 1100 tests, ~40 s, no hardware, no network
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
-uv run stagehand check --config trapped.desktop.yaml --only show,lights
-uv run stagehand check --config trapped.macbook.yaml --only audio
+uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
+uv run stagehand check --config trapped.macbook.yaml --only audio   # the router fallback
 uv run stagehand check --config laptop.yaml        # prints mind mode, switches, context sizes
 uv run stagehand ask --config laptop.yaml [--reflect] "text"   # a persona with no server
 uv run stagehand launchd print --job agents --config laptop.yaml   # the plist only
@@ -90,8 +90,8 @@ module docstrings that explain the why).
 
 | Machine | Jobs | Config | Supervisor | Runbook |
 |---|---|---|---|---|
-| John's MacBook (macOS, M3 Max 48 GB) | `agents` + Ollama `gpt-oss:20b`; `audio` + the MOTU 828x + ADAT (default) | `laptop.yaml`; `trapped.macbook.yaml` | `stagehand launchd` | `scripts/house-macbook/audio.md` |
-| John's Desktop (Windows) | `show`, `lights` (+ Mosquitto, Zigbee2MQTT, the TV kiosk); `audio` only if it moves | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
+| John's MacBook (macOS, M3 Max 48 GB) | `agents` + Ollama `gpt-oss:20b`; `audio` only as the fallback | `laptop.yaml`; `trapped.macbook.yaml` | `stagehand launchd` | `scripts/house-macbook/trabolta.md`; `audio.md` (fallback) |
+| John's Desktop (Windows) | `show`, `lights`, `audio` + the MOTU 828x + ADAT (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
 
 - **`extends:`** (`config.py`): a file in the same folder; mappings merge
   key by key, anything else replaces, `null` deletes. Order: parent,
@@ -103,11 +103,11 @@ module docstrings that explain the why).
   `say_voice`. It never switches a module on.
 - **The broker** is on the Desktop (`192.168.8.10`): anonymous on
   `127.0.0.1:1883` for the Desktop's own jobs and Zigbee2MQTT,
-  password-only `:1884` (user `props`) for the MacBook's router and the
-  WLED controllers.
-- **Announcements cross machines**: server feed → the Desktop's `show` →
-  `show/announce` → the MacBook's router. Story sounds go server feed →
-  router directly.
+  password-only `:1884` (user `props`) for the WLED controllers and the
+  MacBook's router in the fallback.
+- **Announcements**: server feed → the Desktop's `show` → `show/announce`
+  → the router (the Desktop's; the MacBook's over `:1884` in the
+  fallback). Story sounds go server feed → router directly.
 - **The router's server wire** (`audio/module.py`; the house desk
   contract `../docs/loom-house-desk.md` §4). It reads `GET
   /api/mod/audio?router=1&name=&after=&tests=&stops=&plays=&wait=`
@@ -237,8 +237,9 @@ module docstrings that explain the why).
 
 - Show-control design and the house rig: `../docs/loom-show-control.md`
 - Room audio design and history: `../docs/trapped/room-audio.md`
-- Runbooks: `../scripts/house-macbook/` (audio, lights, zigbee),
-  `../scripts/house-desktop/README.md` (the Windows Desktop)
+- Runbooks: `../scripts/house-desktop/README.md` (the Windows Desktop: the
+  sound, the lights, the broker, the TV), `../scripts/house-macbook/`
+  (`trabolta.md`; `audio.md`, the router fallback; lights, zigbee)
 - The show's diagnostics (`pnpm showctl doctor | preflight …`):
   `../scripts/show/`
 - Server side of each wire: `../core/server/agents.ts` (agent requests,

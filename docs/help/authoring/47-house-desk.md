@@ -33,7 +33,7 @@ Run → House has three views, under the status strip:
 
 ## The page
 
-- **The status strip** across the top: is the house Mac's router online
+- **The status strip** across the top: is the sound router online
   (and on which interface), missing sound files or placeholders, a moved
   interface layout, is the lights module online, lights Zigbee2MQTT
   doesn't know. **■ STOP ALL** is the panic: it stops every running desk
@@ -138,7 +138,7 @@ sounds**, **Lights** and **Looks**. Each row has **Test** (a tone and its
 name on a speaker or output, the sound itself, a light's identify, a
 look), colour buttons for a colour bulb, and **✓** / **✗** marks that
 every console and the hosts' phones share. Amber hints say what may stop
-a row working before anyone listens (*no file on the house Mac*, *the
+a row working before anyone listens (*no file on the router's machine*, *the
 router is offline*, *Zigbee2MQTT has no device …*).
 
 **▶ Test next** tests the next row with no mark. The keys walk it

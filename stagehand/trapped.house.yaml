@@ -4,18 +4,19 @@
 # speaker router's settings live here once; each machine runs a small file
 # that `extends:` it and says what differs there:
 #
-#   trapped.desktop.yaml   John's Desktop (Windows): the `show` and `lights`
-#                          jobs, beside Mosquitto, Zigbee2MQTT and the TV
-#                          (Task Scheduler: `stagehand tasks install --job …`;
-#                          scripts/house-desktop/README.md)
-#   trapped.macbook.yaml   John's MacBook (macOS): the `audio` router and the
-#                          MOTU, dialling the Desktop's broker on :1884
-#                          (launchd: `stagehand launchd install --job audio`;
-#                          scripts/house-macbook/audio.md). Trabolta's
-#                          `agents` worker runs beside it from laptop.yaml.
+#   trapped.desktop.yaml   John's Desktop (Windows): the `show`, `lights` and
+#                          `audio` jobs, beside Mosquitto, Zigbee2MQTT, the
+#                          MOTU 828x and the TV (Task Scheduler: `stagehand
+#                          tasks install --job …`; scripts/house-desktop/README.md)
+#   trapped.macbook.yaml   John's MacBook (macOS), only in the router
+#                          FALLBACK: the `audio` router and the MOTU, dialling
+#                          the Desktop's broker on :1884 (launchd;
+#                          scripts/house-macbook/audio.md). The MacBook's
+#                          normal job is Trabolta's `agents` worker
+#                          (laptop.yaml; scripts/house-macbook/trabolta.md).
 #
-#   uv run stagehand check --config trapped.desktop.yaml --only show,lights   # on the Desktop
-#   uv run stagehand check --config trapped.macbook.yaml --only audio         # on the MacBook
+#   uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio   # on the Desktop
+#   uv run stagehand check --config trapped.macbook.yaml --only audio               # the MacBook fallback
 #
 # Run this file directly only on a single bench machine. Always pass --only:
 # one machine must never run two copies of the same job (two `show` jobs fire
@@ -32,14 +33,15 @@
 #   Mosquitto with two listeners: anonymous on 127.0.0.1:1883 for what runs
 #   on the Desktop itself (the `show` job — `mqtt.host` below — Zigbee2MQTT,
 #   the `lights` job) and password-only on the LAN at :1884 (user `props`)
-#   for everything else (the MacBook's router, the WLED controllers) —
+#   for everything else (the WLED controllers, the MacBook's router in the
+#   fallback) —
 #   scripts/house-desktop/setup-mosquitto.ps1.
 #   `do announce` reaches the speakers only as show/announce from the
 #   Desktop's `show` job on that broker, so announcements need both machines
 #   (story sounds don't: the router reads the server's feed itself).
 #   Sound is the router on the 828x + an 8-channel ADAT expander (wave 18b;
-#   no QLab, no alexa player). It runs on the MacBook by default; it may
-#   move to the Desktop (trapped.desktop.yaml's audio notes).
+#   no QLab, no alexa player). It runs on the Desktop (2026-10-27); the
+#   MacBook is the fallback (trapped.macbook.yaml).
 #   The server room has no stagehand device: its door sensor and patch bay
 #   are on the Grand Central M4 beside Steph's laptop, whose terminal page
 #   posts door_sensor_opened / door_sensor_closed and patch_changed {combo}
@@ -52,7 +54,7 @@
 #   The story server is the VPS (https://app.mapsandducks.com); the house
 #   only dials out. If the house internet dies, fire the cues by hand: the
 #   sounds with `uv run stagehand sounds play <name> --config
-#   trapped.macbook.yaml` (or `mosquitto_pub -t show/audio/play -m
+#   trapped.desktop.yaml` on the Desktop (or `mosquitto_pub -t show/audio/play -m
 #   '{"name":"<name>"}'` on the Desktop), the stop with `stagehand sounds
 #   stop`, the lights with the Z2M frontend scenes + the WLED presets.
 #
@@ -628,7 +630,7 @@ audio:
   passthrough: false              # output-only: live mics are mixed in CueMix FX (hardware, no
                                   # latency, no microphone permission for a launchd job)
   no_duck: [dance_song, rave, hand_jive]   # never ducked under an announcement
-  mqtt: { host: 127.0.0.1, port: 1883, client_id: stagehand-audio }   # the MacBook: the Desktop's :1884 (trapped.macbook.yaml)
+  mqtt: { host: 127.0.0.1, port: 1883, client_id: stagehand-audio }   # the Desktop's loopback; the MacBook fallback: the Desktop's :1884 (trapped.macbook.yaml)
                                   # show/announce, show/chime, show/audio/test, show/audio/stop,
                                   # show/audio/play — all work on the LAN with the uplink down
   say_voice: Samantha             # `say -v '?'` lists them; an Enhanced/Premium one is nicer

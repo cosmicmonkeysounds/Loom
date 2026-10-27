@@ -339,7 +339,7 @@ export function audioCheck(view: Json): Check[] {
   const warnings = Array.isArray(view["warnings"]) ? (view["warnings"] as unknown[]).map(String) : [];
   const out: Check[] = [];
   if (r["online"] === true) out.push(row("Sound router", "ok", `online${strOf(r["name"]) ? ` as "${r["name"]}"` : ""} · audio.json from ${strOf(view["source"]) ?? "?"}`, read));
-  else out.push(row("Sound router", "fail", `OFFLINE${num(r["lastSeen"]) !== null ? "" : " (never polled since the server started)"} — no story sound or announcement plays; start the audio job (MacBook: stagehand launchd status --job audio)`, read));
+  else out.push(row("Sound router", "fail", `OFFLINE${num(r["lastSeen"]) !== null ? "" : " (never polled since the server started)"} — no story sound or announcement plays; start the audio job (the Desktop: scripts\\house-desktop\\start-stagehand.ps1 -Status / -Restart audio; the MacBook fallback: stagehand launchd status --job audio)`, read));
   if (problems.length > 0) out.push(row("audio.json", "warn", `${problems.length} problem(s): ${problems.slice(0, 3).join("; ")}`, read));
   else if (warnings.length > 0) out.push(row("audio.json", "info", `${warnings.length} warning(s): ${warnings.slice(0, 2).join("; ")}`, read));
   return out;

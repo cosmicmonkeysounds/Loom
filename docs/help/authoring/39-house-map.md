@@ -121,8 +121,9 @@ where you put it) and its position in that room.
 The **Audio** tab is the rest of the file, top to bottom:
 
 - **Interface** — the audio interface on the computer that runs the
-  speaker router (at the show, John's MacBook): its name (part of
-  the name the computer shows: `828x` for the show's MOTU 828x), how many inputs
+  speaker router (at the show, John's Desktop): its name (part of
+  the name the computer shows: `828x` for the show's MOTU 828x; on Windows
+  the router's machine file can name the ASIO device instead), how many inputs
   and outputs we use, its rate, and **the device reports** — how many it
   must report when its layout is as planned. The show uses 24 in and 22 out
   of the 828x + an 8-channel ADAT expander, numbered as the 828x numbers

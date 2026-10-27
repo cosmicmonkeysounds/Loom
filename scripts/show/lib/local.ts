@@ -3,12 +3,14 @@
 //!
 //! Four machines (the show's final list, 2026-10-24):
 //!   - `macbook`    John's MacBook (macOS): Ollama + stagehand `agents`
-//!                  (Trabolta), ship / sync-show / showbackup, a Run console,
-//!                  and by default the house sound router + the MOTU 828x.
+//!                  (Trabolta), ship / sync-show / showbackup, a Run console;
+//!                  the sound router + the MOTU 828x only as the fallback
+//!                  (`--router macbook`).
 //!   - `desktop`    John's Desktop (Windows): the Chrome kiosk TV, Mosquitto
 //!                  (1883 loopback + 1884 LAN with credentials),
 //!                  Zigbee2MQTT on the CC2652P, stagehand `show` + `lights`
-//!                  (the router may move here).
+//!                  and, by default (2026-10-27), the sound router `audio`
+//!                  on the MOTU 828x.
 //!   - `serverroom` Steph's laptop: Chrome on the server-room terminal with
 //!                  the Grand Central M4 on USB (door sensor + patch bay).
 //!   - `tent`       John's old laptop: the tent terminal (`view=reinstall`).
@@ -27,6 +29,11 @@ import type { Check, Level } from "./ui.ts";
 /** The machines `preflight` knows. */
 export const MACHINES = ["macbook", "desktop", "serverroom", "tent"] as const;
 export type Machine = (typeof MACHINES)[number];
+
+/** Where the sound router (stagehand `audio` + the MOTU) runs tonight:
+ *  the Desktop by default, the MacBook as the fallback (`--router macbook`). */
+export const ROUTER_HOSTS = ["desktop", "macbook"] as const;
+export type RouterHost = (typeof ROUTER_HOSTS)[number];
 
 /** What a command answered (`missing`: the program isn't installed). */
 export interface RunResult {
@@ -211,8 +218,9 @@ async function launchdJob(p: Probe, job: string, missingLevel: Level, missingTex
   return row(`stagehand ${job}`, missingLevel, missingText, read);
 }
 
-/** John's MacBook: Trabolta's voice, the backups, (by default) the router. */
-export async function macbookChecks(p: Probe): Promise<Check[]> {
+/** John's MacBook: Trabolta's voice, the backups, the console; the router
+ *  only when it is the fallback host (`router === "macbook"`). */
+export async function macbookChecks(p: Probe, router: RouterHost = "desktop"): Promise<Check[]> {
   const out: Check[] = [];
   const os = osCheck(p, "darwin", "the MacBook runs macOS");
   if (os) out.push(os);
@@ -233,9 +241,19 @@ export async function macbookChecks(p: Probe): Promise<Check[]> {
   const uv = await p.run("uv", ["--version"]);
   out.push(uv.missing || uv.code !== 0 ? row("uv", "fail", "uv not on PATH — curl -LsSf https://astral.sh/uv/install.sh | sh", "uv --version") : row("uv", "ok", uv.stdout.trim(), "uv --version"));
   out.push(await launchdJob(p, "agents", "fail", "not installed — cd stagehand && uv run stagehand launchd install --job agents --config laptop.yaml"));
-  out.push(await launchdJob(p, "audio", "warn", "not installed here — fine only if the router runs on the Desktop tonight"));
-  const audio = await p.run("system_profiler", ["SPAudioDataType"], 20_000);
-  if (!audio.missing) out.push(row("MOTU 828x", /MOTU|828/u.test(audio.stdout) ? "ok" : "warn", /MOTU|828/u.test(audio.stdout) ? "listed by Core Audio" : "not listed — check its USB cable and power (only matters if the router runs here)", "system_profiler SPAudioDataType"));
+  if (router === "macbook") {
+    out.push(await launchdJob(p, "audio", "fail", "not installed — the router is the MacBook's tonight (--router macbook): cd stagehand && uv run stagehand launchd install --job audio --config trapped.macbook.yaml"));
+    const audio = await p.run("system_profiler", ["SPAudioDataType"], 20_000);
+    if (!audio.missing) out.push(row("MOTU 828x", /MOTU|828/u.test(audio.stdout) ? "ok" : "fail", /MOTU|828/u.test(audio.stdout) ? "listed by Core Audio" : "not listed — check its Thunderbolt cable, power and MOTU's driver (the router runs here tonight)", "system_profiler SPAudioDataType"));
+  } else {
+    // The Desktop has the router tonight: one here too would speak every
+    // announcement twice.
+    const uid = p.uid();
+    const read = `launchctl print gui/${uid ?? "?"}/${LAUNCHD_PREFIX}.audio`;
+    const st = launchdState(await p.run("launchctl", ["print", `gui/${uid ?? 501}/${LAUNCHD_PREFIX}.audio`]));
+    if (st === "absent") out.push(row("stagehand audio", "ok", "not installed here (the router runs on the Desktop; the MacBook fallback is --router macbook)", read));
+    else out.push(row("stagehand audio", "warn", `${st === "running" ? "running" : "loaded"} HERE, but the router belongs to the Desktop tonight — two routers speak every announcement twice: uv run stagehand launchd uninstall --job audio (or, if this IS the fallback, pass --router macbook)`, read));
+  }
   const vps = p.env["LOOM_VPS"] || "loom-vps";
   const ssh = await p.run("ssh", ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", vps, "true"], 12_000);
   out.push(row("ssh to the VPS", ssh.code === 0 ? "ok" : "warn", ssh.code === 0 ? `ssh ${vps} works (ship / sync-show / showbackup)` : `ssh ${vps} failed — ship.sh, sync-show and showbackup need it`, `ssh -o BatchMode=yes ${vps} true`));
@@ -252,8 +270,9 @@ export async function macbookChecks(p: Probe): Promise<Check[]> {
   return out;
 }
 
-/** John's Desktop (Windows): the broker, Zigbee, show + lights, the TV. */
-export async function desktopChecks(p: Probe): Promise<Check[]> {
+/** John's Desktop (Windows): the broker, Zigbee, show + lights, the router
+ *  (unless it is on the MacBook tonight: `router === "macbook"`), the TV. */
+export async function desktopChecks(p: Probe, router: RouterHost = "desktop"): Promise<Check[]> {
   const out: Check[] = [];
   const os = osCheck(p, "win32", "John's Desktop runs Windows");
   if (os) out.push(os);
@@ -266,7 +285,7 @@ export async function desktopChecks(p: Probe): Promise<Check[]> {
   const lo = await p.port("127.0.0.1", 1883);
   out.push(row("MQTT 1883", lo ? "ok" : "fail", lo ? "the loopback listener answers (stagehand, Z2M)" : "nothing on 127.0.0.1:1883 — check mosquitto.conf's listener 1883 127.0.0.1", "tcp 127.0.0.1:1883"));
   const lan = await p.port("127.0.0.1", 1884);
-  out.push(row("MQTT 1884", lan ? "ok" : "warn", lan ? "the LAN listener answers (the MacBook's router dials it with credentials)" : "nothing on :1884 — the MacBook's router can't hear show/announce", "tcp 127.0.0.1:1884"));
+  out.push(row("MQTT 1884", lan ? "ok" : "warn", lan ? "the LAN listener answers (the WLED controllers dial it with credentials; so does the MacBook's router in the fallback)" : `nothing on :1884 — the WLED strips can't reach the broker${router === "macbook" ? ", and the MacBook's router can't hear show/announce" : ""}`, "tcp 127.0.0.1:1884"));
   const z2mUrl = p.env["Z2M_FRONTEND"] || "http://127.0.0.1:8080";
   const z2m = await p.http(z2mUrl);
   out.push(row("Zigbee2MQTT", z2m !== null ? "ok" : "fail", z2m !== null ? `frontend answers (HTTP ${z2m.status})` : `frontend not answering at ${z2mUrl} — is Zigbee2MQTT running (and the CC2652P's COM port right)?`, `GET ${z2mUrl}`));
@@ -278,7 +297,9 @@ export async function desktopChecks(p: Probe): Promise<Check[]> {
       const on = jobs.has(job) || jobs.has("*");
       out.push(row(`stagehand ${job}`, on ? "ok" : "fail", on ? "a stagehand run process carries it" : `no stagehand run --only ${job} process — .\\scripts\\house-desktop\\start-stagehand.ps1 -Restart ${job} (the task \\Loom\\stagehand-${job})`, "Win32_Process command lines"));
     }
-    out.push(row("stagehand audio", jobs.has("audio") ? "info" : "info", jobs.has("audio") ? "the router runs HERE tonight" : "not here (the default: the router runs on the MacBook)", "Win32_Process command lines"));
+    const audioHere = jobs.has("audio") || jobs.has("*");
+    if (router === "desktop") out.push(row("stagehand audio", audioHere ? "ok" : "fail", audioHere ? "a stagehand run process carries the sound router" : "no stagehand run --only audio process — .\\scripts\\house-desktop\\start-stagehand.ps1 -Restart audio (the task \\Loom\\stagehand-audio; first install: start-stagehand.ps1). Router on the MacBook tonight? pass --router macbook", "Win32_Process command lines"));
+    else out.push(row("stagehand audio", audioHere ? "warn" : "info", audioHere ? "running HERE, but --router macbook says the MacBook has it — two routers speak every announcement twice: .\\scripts\\house-desktop\\start-stagehand.ps1 -Stop audio" : "not here (--router macbook: the MacBook runs it)", "Win32_Process command lines"));
     const kiosk = ps.stdout.split(/\r?\n/u).some((l) => /chrome\.exe/iu.test(l) && /--kiosk/u.test(l));
     out.push(row("TV kiosk", kiosk ? "ok" : "warn", kiosk ? "a Chrome --kiosk window is running" : "no Chrome --kiosk running — launch the TV profile (spot=desktop-tv)", "Win32_Process command lines"));
     const standby = powercfgAc((await p.run("powercfg", ["/query", "SCHEME_CURRENT", "SUB_SLEEP", "STANDBYIDLE"])).stdout);

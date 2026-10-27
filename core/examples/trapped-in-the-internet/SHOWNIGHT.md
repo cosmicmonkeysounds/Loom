@@ -53,22 +53,23 @@ Quest APK). Verify what runs with
    `curl https://app.mapsandducks.com/api/health` → 200. Rollback:
    `ssh loom-vps 'cd ~/loom && deploy/rollback.sh'`.
 5. **MacBook, before the sync: retire the old house-Mac jobs.** The MacBook
-   *is* the old house Mac, so it may still run the `show` and `lights` jobs
-   from `trapped.house.yaml`, and its own Mosquitto and Zigbee2MQTT. Two
-   `show` jobs fire every cue twice, and an old door rule would post into
-   the new story. `git pull`, then:
+   *is* the old house Mac, so it may still run the `show`, `lights` and
+   `audio` jobs, and its own Mosquitto and Zigbee2MQTT. Two `show` jobs fire
+   every cue twice, two routers speak every announcement twice, and an old
+   door rule would post into the new story. `git pull`, then:
 
    ```bash
    cd stagehand
    uv run stagehand launchd uninstall --job show
    uv run stagehand launchd uninstall --job lights      # if installed
+   uv run stagehand launchd uninstall --job audio       # the router moves to the Desktop
    brew services stop mosquitto
    launchctl bootout gui/$(id -u)/com.mapsandducks.zigbee2mqtt   # zigbee.md §4
    ```
 
-   Then move the CC2652P (and
-   Zigbee2MQTT's `data/`) to the Desktop. `uv run stagehand launchd status`
-   then shows `show` and `lights` not installed.
+   Then move the CC2652P (and Zigbee2MQTT's `data/`), the MOTU 828x and its
+   ADAT expander, and the sound files (`stagehand/media/sounds/`) to the
+   Desktop. `uv run stagehand launchd status` then lists only `agents`.
 6. **Desktop, first time only** (`scripts/house-desktop/README.md`): from an
    elevated PowerShell, `.\scripts\house-desktop\setup-mosquitto.ps1` (it
    asks for the `props` password; add `-SetPrivate` if the network is
@@ -76,14 +77,18 @@ Quest APK). Verify what runs with
    MacBook's `data\` to `C:\zigbee2mqtt\data\` and set its `serial.port` to
    the stick's `COMn` (on a first install only, with no `data\` to copy:
    `-WriteConfig -Port COMn`), `-Start` once, elevated `-InstallTask`, then
-   `-Check`. The TV: `.\scripts\house-desktop\tv-kiosk.ps1 -Setup`, then
-   `-InstallTask`.
+   `-Check`. The 828x: MOTU's Windows driver, the ASIO proof and the ADAT
+   clock (`scripts/house-desktop/README.md` §3), the MOTU's ASIO name in
+   `stagehand\trapped.desktop.local.yaml`, and the sound files copied into
+   `stagehand\media\sounds\`. The TV:
+   `.\scripts\house-desktop\tv-kiosk.ps1 -Setup`, then `-InstallTask`.
 7. **Desktop, before the sync:** put the real event id and the mod passcode
    in `stagehand\trapped.house.local.yaml` (git-ignored; the tracked file
    says `CHANGE-ME`), `git pull`, then
    `.\scripts\house-desktop\start-stagehand.ps1` (checks, installs and
-   starts the `show` and `lights` tasks; on a rig that already has them,
-   `-Restart show`), so no old door rule posts into the new story.
+   starts the `show`, `lights` and `audio` tasks; on a rig that already has
+   them, `-Restart show`; with the router on the MacBook, `-NoAudio`), so no
+   old door rule posts into the new story.
 8. **Sync the story, with its reload, before doors.** First merge any
    speaker survey saved to the project into the repo's `audio.json` (the
    replace below overwrites the project's copy). Then
@@ -99,28 +104,31 @@ Quest APK). Verify what runs with
 10. **MacBook, Trabolta:** `cd stagehand && uv run stagehand launchd restart --job agents`;
     then Run → Mind → **Reset**. `uv run stagehand check --config laptop.yaml --only agents`
     shows `ctx 20480` and no warning.
-11. **MacBook, the sound router** (the default home; see `TECH.md` for the
-    Desktop option): retire the old `alexa` job if it was ever installed
-    (`scripts/house-macbook/install-alexa.sh --uninstall`). Give the MacBook
-    its own secrets: `stagehand/trapped.house.local.yaml` with
-    `server: { event, mod_passcode }` (the router reads `server:` from it;
-    without it the router dials `CHANGE-ME` and never hears a story
-    `sound X`), and `stagehand/trapped.macbook.local.yaml` with
-    `server: {}` plus `audio: { mqtt: { password: "<the props password>" } }`
-    (a `.local.yaml` with no `server:` mapping fails to load;
-    `trapped.macbook.yaml` already dials the Desktop's broker on 1884). Then
-    `uv run stagehand sounds placeholders --config trapped.macbook.yaml`;
-    `uv run stagehand check --config trapped.macbook.yaml --only audio`
-    (32 in / 30 out, the layout not moved);
-    `uv run stagehand launchd install --job audio --config trapped.macbook.yaml`
-    (already installed: `git pull`, then `uv run stagehand launchd restart
-    --job audio`, so the router is wave 26's and says *Anti Virus*).
-    `uv run stagehand launchd status` then lists only `agents` and `audio`.
+11. **Desktop, the sound router** (its home since 2026-10-27; the MacBook
+    is the fallback, `TECH.md`): with the 828x proven under ASIO (step 6)
+    and the `audio` task running from step 7,
+    `uv run stagehand sounds placeholders --config trapped.desktop.yaml`
+    for any sound with no real file yet;
+    `uv run stagehand check --config trapped.desktop.yaml --only audio`
+    (32 in / 30 out, the layout not moved, no `PLACEHOLDER server.…` line);
+    then `.\scripts\house-desktop\start-stagehand.ps1 -Restart audio` after
+    any `git pull`, so the router is wave 26's and says *Anti Virus*. Walk
+    every speaker with 🔈 Test on the map's Audio tab (ASIO's channel order),
+    then `uv run stagehand announce --config trapped.desktop.yaml "Test."`.
+    **The fallback** (the 828x won't run on Windows): `-Stop audio` on the
+    Desktop, then `scripts/house-macbook/audio.md` on the MacBook (its
+    `trapped.macbook.local.yaml` with `server: {}` and the props password,
+    `launchd install --job audio --config trapped.macbook.yaml`); both
+    preflights then take `--router macbook` / `-NoAudio`.
 12. **Desktop, the lights:** with Zigbee2MQTT up on the CC2652P and the
     `lights` task running (it must run before pairing), pair the bulb as
     `server_room_rgb` with `power_on_behavior: on`
-    (`scripts/house-macbook/zigbee.md` from §5), place it on the map
-    editor's 💡 Lights tab, 💡 Identify, ▶ Test each look, Save to project.
+    (`scripts/house-macbook/zigbee.md` from §5), then the house's Hue and
+    ZL1 bulbs (each reset, named and set `power_on_behavior: on`) and the
+    WLED strip (its MQTT on the Desktop's `:1884`, device topic
+    `wled/<room>`): `scripts/house-desktop/README.md` §5–6. Place each on
+    the map editor's 💡 Lights tab (safety lights ticked), 💡 Identify,
+    ▶ Test each look (Run → House → Cue designer), Save to project.
     `uv run stagehand check --config trapped.desktop.yaml --only lights` is
     green.
 13. **Steph's laptop:** flash the wave 22 firmware from
@@ -222,33 +230,38 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 .\scripts\house-desktop\preflight.ps1       # runs showctl preflight desktop at the end
 ```
 
-**John's MacBook** (Trabolta, the router, a Run console)
+**John's MacBook** (Trabolta, a Run console)
 
 - On the charger, `caffeinate -dims` in a terminal for the night, sleep off.
 - Ollama with `OLLAMA_KEEP_ALIVE=-1`; `ollama ps` shows `gpt-oss:20b` alone
   (warm it: `ollama run gpt-oss:20b hi`).
-- `cd stagehand && uv run stagehand launchd status`: `agents` and `audio`
-  running; `show` and `lights` not installed (they run on the Desktop).
+- `cd stagehand && uv run stagehand launchd status`: `agents` running;
+  `show`, `lights` and `audio` not installed (they run on the Desktop; in
+  the router fallback `audio` runs here too, and the preflight takes
+  `--router macbook`).
 - Run → Mind: worker connected, a *mind · story* chip, Reset; the Judging
   card reads `auto` with nothing pending; Trabolta hidden and asleep.
 - Run → House map: the King's row reads 15 / 15 (👑 or Set… only on purpose).
 - Run → Wallet names CRA Agent Software as the approver and Runescape as
   the minter; `# quarantine` is empty.
-- The MOTU powered and seen;
-  `uv run stagehand check --config trapped.macbook.yaml --only audio` shows
-  32 / 30 with no placeholder left.
+- Run → House → Setup: 🧠 Trabolta green.
 
-**John's Desktop** (the TV, the broker, the lights)
+**John's Desktop** (the sound, the lights, the broker, the TV)
 
-- Power on and let it sign in: Mosquitto (a service), Zigbee2MQTT (a boot
-  task), `show` + `lights` (sign-in tasks) and the TV kiosk start by
-  themselves.
+- Power on the 828x and the ADAT expander first (the expander's lock LED
+  steady), then the PC, and let it sign in: Mosquitto (a service),
+  Zigbee2MQTT (a boot task), `show` + `lights` + `audio` (sign-in tasks) and
+  the TV kiosk start by themselves.
 - `.\scripts\house-desktop\preflight.ps1` passes (it ends with `showctl
   preflight desktop`).
 - The Mosquitto service runs on 1883 (loopback) and 1884 (password);
   Zigbee2MQTT is online with the bulb in its device list.
-- The `show` and `lights` tasks run
+- The `show`, `lights` and `audio` tasks run
   (`.\scripts\house-desktop\start-stagehand.ps1 -Status`).
+- `uv run stagehand check --config trapped.desktop.yaml --only audio` shows
+  the MOTU at 32 / 30 with no placeholder left.
+- Run → House → Setup: 🔊 Sound and 💡 Lights green; the WLED strip and
+  every placed bulb answer 💡 Identify.
 - The TV kiosk on spot `desktop-tv`, **clicked once after its last boot**
   (or it stays silent), showing the screensaver; notifications off.
 - The bulb answers 💡 Identify and sits on `heart_idle`.
@@ -290,8 +303,8 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 4. Every machine's preflight is green: `pnpm showctl preflight macbook`, `desktop` (via `preflight.ps1`), `serverroom` and `tent`; `pnpm showctl doctor` shows no red.
 5. Trabolta: the worker connected (a *mind · story* chip), the mind Reset, `ollama ps` shows `gpt-oss:20b` alone, the MacBook on its charger; `uv run stagehand check --config laptop.yaml --only agents` shows `ctx 20480` and no warning; he is hidden and asleep.
 6. Terminals: every tablet green on `pnpm showctl terminals`, on the idle show, and every wall terminal's ⚙ names Trabolta; the TV on the screensaver, clicked once after its last boot; the Server Door terminal on THE KING.
-7. Audio: the `audio` job running with no placeholder left, a 🔈 Test per speaker at show level, one announcement heard through the router (this needs the Desktop's `show` job and broker too).
-8. Lights: the server-room bulb answers 💡 Identify and sits on `heart_idle`; `stagehand check --only lights` is green and `health/lights` online; the bulb never drops under 80 / 254. If house Zigbee groups or WLED strips are installed: one `lights_blackout` test (the stairs, bathroom, tent, server room and the path to the living room stay lit).
+7. Audio: the `audio` job running on the Desktop (on the MacBook only in the fallback) with the MOTU at 32 / 30 and no placeholder left, Run → House → Setup's 🔊 Sound row green, a 🔈 Test per speaker at show level, one announcement heard through the router (this needs the Desktop's `show` job and broker too).
+8. Lights: the server-room bulb answers 💡 Identify and sits on `heart_idle`; `stagehand check --only lights` is green, `health/lights` online and Run → House → Setup's 💡 Lights row green; the bulb never drops under 80 / 254. Every placed Hue and ZL1 bulb and the WLED strip answer 💡 Identify; one `lights_blackout` test (the stairs, bathroom, tent, server room and the path to the living room stay lit).
 9. The server-room door: the keypad was set by hand to `facts.json` `door.code` and tested at 15:00, and it opens from inside with no code; the keypad sign hangs beside it; the sensor reads 🚪 shut / open on Run → Terminals within a second, with no fault and no override; then 🔄.
 10. The patch bay: all unplugged; ⚙'s live table reads every input empty; Run → Terminals shows no 🔌 fault and the story is not on the buttons (or 🔌 Trust the patch bay again was pressed).
 11. The server-room terminal (Steph's laptop) is green and asleep on its screensaver, the M4 on USB, an external keyboard in reach, and the webcam reads a pass in the room's light; Run → Director shows 🔄 reset and 🕊 talked down, and 🕊 Heart autoend is off.
@@ -377,8 +390,8 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 | Problem | Do this |
 |---|---|
 | Trabolta silent ("Jean Trabolta is not responding…") | On the MacBook: `cd stagehand && uv run stagehand launchd restart --job agents`. Meanwhile a director answers as Trabolta from Run (identity → Trabolta); performers say he is processing a high volume of requests. A hung-but-connected worker is slow to post the hold line: answer by hand at once. **Never `pkill -f "stagehand run"`.** |
-| No announcements anywhere | On the Desktop: `.\scripts\house-desktop\preflight.ps1` (`health/stagehand`, `health/audio`); restart `show` (`.\scripts\house-desktop\start-stagehand.ps1 -Restart show`); check the broker (`.\scripts\house-desktop\setup-mosquitto.ps1 -Check`). On the MacBook: `uv run stagehand launchd status --job audio`. |
-| Every house sound must stop now | ■ Stop house sounds; or on the MacBook `uv run stagehand sounds stop --announce --config trapped.macbook.yaml` |
+| No announcements anywhere | On the Desktop: `.\scripts\house-desktop\preflight.ps1` (`health/stagehand`, `health/audio`); restart `show` and the router (`.\scripts\house-desktop\start-stagehand.ps1 -Restart show`, `-Restart audio`); check the broker (`.\scripts\house-desktop\setup-mosquitto.ps1 -Check`). In the router fallback, on the MacBook: `uv run stagehand launchd status --job audio`. |
+| Every house sound must stop now | ■ Stop house sounds; or on the Desktop `uv run stagehand sounds stop --announce --config trapped.desktop.yaml` (the fallback: on the MacBook with `--config trapped.macbook.yaml`) |
 | The server-room bulb ignores the story | On the Desktop: `.\scripts\house-desktop\start-stagehand.ps1 -Restart lights`; `.\scripts\house-desktop\zigbee2mqtt.ps1 -Check` (a moved stick has a new COM port) |
 | House internet down | Guests turn Wi-Fi off and use cellular. Keep firing cues from Run on a phone hotspot. Stagehand catches the lights up once it reconnects. |
 | Server restarted | Nothing to press. Everything reconnects; the server answers 503 `starting` until the events are back. Reinstallation walks end (rescan in the tent). |

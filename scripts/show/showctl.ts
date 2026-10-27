@@ -9,7 +9,7 @@
 //!   pnpm showctl roster [--csv] [--where captured|restricted|offline|online|gone|<room>] [--all]
 //!   pnpm showctl terminals [--watch]
 //!   pnpm showctl recap [--text]
-//!   pnpm showctl preflight macbook|desktop|serverroom|tent
+//!   pnpm showctl preflight macbook|desktop|serverroom|tent [--router desktop|macbook]
 //!   pnpm showctl fire <signal> [--subject <guest>] [--arg k=v] --yes
 //!
 //! Env: LOOM_SERVER (default https://app.mapsandducks.com), LOOM_MOD_CODE

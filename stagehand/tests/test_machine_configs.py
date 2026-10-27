@@ -1,6 +1,6 @@
 """The two machine files that build on trapped.house.yaml: John's Desktop
-(Windows: show + lights, the router optional) and the MacBook (the router,
-on the Desktop's broker). They load, inherit every show rule, and keep
+(Windows: show + lights + the router, its default home) and the MacBook
+(the router fallback, on the Desktop's broker). They load, inherit every show rule, and keep
 their secrets out of git."""
 
 from __future__ import annotations

@@ -33,7 +33,7 @@ its `INDEX.md`).
 | [`loom-house-desk.md`](./loom-house-desk.md) | **Normative** contract for the house desk (wave 25): `desk.json` cue lists, parallel / series timelines with the story, the speaker and light checks, Run → House and the host's Show / Desk. |
 | [`loom-w26-contract.md`](./loom-w26-contract.md) | The wave 26 contract (the rehearsal notes of 2026-10-26): the glitch, the locked phone, the guest BINGO, the void, the heart and the virus in the games, terminals linked by room, voice-timed cutscenes, no hints. Decisions, routes and shapes (`POST /api/spatial/moment` is C6), file ownership. The code wins where they differ. |
 | [`trapped/kiosk.md`](./trapped/kiosk.md) | Kiosk settings for the tablets, the TV and the laptops (Fully Kiosk, Chrome `--kiosk`). Operational, partly stale: "the house Mac" is now John's Desktop (the TV) plus John's MacBook. |
-| [`trapped/room-audio.md`](./trapped/room-audio.md) | The house speaker router plan (§11–12 are the operational parts). Partly stale: the wave 1 banner names QLab and one house Mac; the wave 18b banner retires QLab, and the house Mac is now the MacBook (router) plus the Desktop (broker, `show`). |
+| [`trapped/room-audio.md`](./trapped/room-audio.md) | The house speaker router plan (§11–12 are the operational parts). Partly stale: the wave 1 banner names QLab and one house Mac; the wave 18b banner retires QLab, and the house Mac is now the Desktop (the router since 2026-10-27, the broker, `show`) plus the MacBook (Trabolta; the router fallback). |
 
 ## Running it in production
 
@@ -43,10 +43,11 @@ its `INDEX.md`).
 | [`loom-deployment.md`](./loom-deployment.md) | The security model and the server's environment variables. |
 
 Show-night operations are elsewhere: `scripts/show/README.md` (`pnpm
-showctl`), `scripts/house-desktop/README.md` (the Windows Desktop),
-`scripts/house-macbook/` (macOS runbooks: `audio.md` is the MacBook's router;
-`zigbee.md` and `lights.md` predate the Windows Desktop, see
-`scripts/house-desktop/`),
+showctl`), `scripts/house-desktop/README.md` (the Windows Desktop: the
+sound router on the MOTU, the Hue / ZL1 bulbs, the WLED strip, the broker,
+the TV), `scripts/house-macbook/` (macOS runbooks: `trabolta.md` sets up
+Trabolta; `audio.md` is the router fallback; `zigbee.md` and `lights.md`
+predate the Windows Desktop, see `scripts/house-desktop/`),
 `scripts/accept/README.md` (per-item device checks), and the show
 folder's `SHOW.html`, `SHOWNIGHT.md` (§4 is the pre-show checklist) and
 `TECH.md`.

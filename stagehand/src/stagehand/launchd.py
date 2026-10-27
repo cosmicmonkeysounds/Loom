@@ -1,14 +1,14 @@
 """launchd jobs: each stagehand module as its own supervised process.
 
-On the night John's MacBook runs `agents` (Trabolta's worker) and, by
-default, `audio` (the speaker router); the Windows Desktop runs `show` and
-`lights` under Task Scheduler instead (`tasks.py`). Each module is a
+On the night John's MacBook runs `agents` (Trabolta's worker), and `audio`
+(the speaker router) only as the fallback; the Windows Desktop runs `show`,
+`lights` and, by default, `audio` under Task Scheduler instead (`tasks.py`). Each module is a
 **separate** launchd job, so either can be restarted, or can crash, without
 touching the other, and nobody ever needs `pkill -f "stagehand run"`, which
 kills every job:
 
     stagehand launchd install --job agents --config laptop.yaml
-    stagehand launchd install --job audio  --config trapped.macbook.yaml  # the speaker router
+    stagehand launchd install --job audio  --config trapped.macbook.yaml  # the router fallback
     stagehand launchd restart --job agents        # only Trabolta's worker
     stagehand launchd status                      # every installed job
     stagehand launchd uninstall --job audio

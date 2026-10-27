@@ -71,8 +71,8 @@ test("the MacBook: Ollama + the voice model, the agents job, power, ssh; the yam
   assert.equal(levelOf(rows, "Orchestrator"), "warn", "mind_mode: new never needs the qwen model loaded");
   assert.equal(levelOf(rows, "laptop.yaml"), "ok");
   assert.equal(levelOf(rows, "stagehand agents"), "ok");
-  assert.equal(levelOf(rows, "stagehand audio"), "warn");
-  assert.equal(levelOf(rows, "MOTU 828x"), "ok");
+  assert.equal(levelOf(rows, "stagehand audio"), "ok", "the router is the Desktop's by default: none here is right");
+  assert.equal(levelOf(rows, "MOTU 828x"), undefined, "the MOTU is the Desktop's by default: not probed here");
   assert.equal(levelOf(rows, "ssh to the VPS"), "warn");
   assert.ok(p.ran.some((l) => l === "ssh -o BatchMode=yes -o ConnectTimeout=5 loom-vps true"), "ssh only runs `true`");
   assert.equal(levelOf(rows, "Sleep"), "ok");
@@ -81,6 +81,22 @@ test("the MacBook: Ollama + the voice model, the agents job, power, ssh; the yam
   assert.equal(levelOf(off, "laptop.yaml"), "fail");
   assert.equal(levelOf(off, "uv"), "fail");
   assert.equal(levelOf(off, "stagehand agents"), "fail");
+});
+
+test("the MacBook and the router: the Desktop's by default, the MacBook only with --router macbook", async () => {
+  const running = { "launchctl print gui/501/com.mapsandducks.stagehand.audio": { stdout: "state = running" } };
+  // A router left running here while the Desktop has one: two routers.
+  const twice = await macbookChecks(fakeProbe({ platform: "darwin", run: running }));
+  assert.equal(levelOf(twice, "stagehand audio"), "warn");
+  assert.match(twice.find((r) => r.name === "stagehand audio")!.detail, /launchd uninstall --job audio/u);
+  // The fallback: the router and the MOTU must be here.
+  const fallback = await macbookChecks(fakeProbe({ platform: "darwin", run: { ...running, "system_profiler SPAudioDataType": { stdout: "MOTU 828x:\n" } } }), "macbook");
+  assert.equal(levelOf(fallback, "stagehand audio"), "ok");
+  assert.equal(levelOf(fallback, "MOTU 828x"), "ok");
+  const missing = await macbookChecks(fakeProbe({ platform: "darwin", run: { "launchctl print gui/501/com.mapsandducks.stagehand.audio": { code: 113 }, "system_profiler SPAudioDataType": { stdout: "MacBook Pro Speakers:\n" } } }), "macbook");
+  assert.equal(levelOf(missing, "stagehand audio"), "fail");
+  assert.match(missing.find((r) => r.name === "stagehand audio")!.detail, /launchd install --job audio --config trapped\.macbook\.yaml/u);
+  assert.equal(levelOf(missing, "MOTU 828x"), "fail");
 });
 
 test("the Desktop: the broker's two listeners, Z2M, the stagehand jobs and the kiosk off process lines, power", async () => {
@@ -109,11 +125,28 @@ test("the Desktop: the broker's two listeners, Z2M, the stagehand jobs and the k
   assert.equal(levelOf(rows, "stagehand lights"), "fail");
   // The windows lane's own task name and restart script (stagehand tasks.py).
   assert.match(rows.find((r) => r.name === "stagehand lights")!.detail, /start-stagehand\.ps1 -Restart lights \(the task \\Loom\\stagehand-lights\)/u);
+  assert.equal(levelOf(rows, "stagehand audio"), "fail", "the router runs on the Desktop by default");
+  assert.match(rows.find((r) => r.name === "stagehand audio")!.detail, /start-stagehand\.ps1 -Restart audio/u);
   assert.equal(levelOf(rows, "TV kiosk"), "ok");
   assert.equal(levelOf(rows, "Sleep"), "ok");
   assert.equal(levelOf(rows, "Display"), "warn");
   const mac = await desktopChecks(fakeProbe({ platform: "darwin", run: { "uv --version": { stdout: "uv" } } }));
   assert.equal(levelOf(mac, "This computer"), "warn");
+});
+
+test("the Desktop and the router: expected here by default; --router macbook flags a second one", async () => {
+  const win = (cmdLines: string) => fakeProbe({ platform: "win32", ports: [1883, 1884], run: { powershell: { stdout: cmdLines } } });
+  const all = "uv run stagehand run --config trapped.desktop.yaml --only show\nuv run stagehand run --config trapped.desktop.yaml --only lights\nuv run stagehand run --config trapped.desktop.yaml --only audio\n";
+  const here = await desktopChecks(win(all));
+  assert.equal(levelOf(here, "stagehand audio"), "ok");
+  assert.equal(levelOf(here, "MQTT 1884"), "ok");
+  const elsewhere = await desktopChecks(win("uv run stagehand run --config trapped.desktop.yaml --only show,lights\n"), "macbook");
+  assert.equal(levelOf(elsewhere, "stagehand audio"), "info");
+  const both = await desktopChecks(win(all), "macbook");
+  assert.equal(levelOf(both, "stagehand audio"), "warn");
+  assert.match(both.find((r) => r.name === "stagehand audio")!.detail, /-Stop audio/u);
+  const noLan = await desktopChecks(fakeProbe({ platform: "win32", ports: [1883], run: { powershell: { stdout: all } } }));
+  assert.match(noLan.find((r) => r.name === "MQTT 1884")!.detail, /WLED/u);
 });
 
 test("the server room: Web Serial needs Chrome 89+, the M4 on USB; URLs carry a <mod> placeholder", async () => {
