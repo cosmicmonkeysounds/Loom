@@ -8,14 +8,15 @@
 #   Mosquitto (the house broker: anonymous on 127.0.0.1:1883, password-only
 #   `props` on the LAN at :1884 — scripts/house-desktop/setup-mosquitto.ps1),
 #   Zigbee2MQTT on the CC2652P (COMn) with the Hue and ThirdReality ZL1
-#   bulbs, the WLED strip's controller (it dials :1884), the MOTU 828x + the
-#   ADAT expander (USB 2, ASIO), the TV kiosk (Chrome, spot desktop-tv), and
+#   bulbs, the WLED strip's controller (it dials :1884), the MOTU 828x on its
+#   own outs, no ADAT expander (USB 2, ASIO), the TV kiosk (Chrome, spot desktop-tv), and
 #   three stagehand jobs from THIS file:
-#     show    the story's cues → Z2M / WLED / MQTT, the sensors back, and the
+#     show    Trabolta's room cuts + the flicker (bulb by bulb), the sensors back, and the
 #             `do announce` relay (show/announce): the router hears the house
 #             announcements only through this job, on this broker
-#     lights  lights.json (every placed bulb and strip) through Zigbee2MQTT
-#             and the WLED controllers' MQTT topics
+#     lights  lights.json (every bulb by its Z2M name, the living-room strip,
+#             every lights_* / heart_* look) through Zigbee2MQTT and WLED's
+#             MQTT topic; no Zigbee groups, scenes or WLED presets
 #     audio   the speaker router on the 828x (below)
 #   The MacBook runs the router only as the fallback (trapped.macbook.yaml,
 #   dialling this PC's broker on :1884); then this PC runs show + lights.

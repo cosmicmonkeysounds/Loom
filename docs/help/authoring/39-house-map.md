@@ -125,13 +125,14 @@ The **Audio** tab is the rest of the file, top to bottom:
   the name the computer shows: `828x` for the show's MOTU 828x; on Windows
   the router's machine file can name the ASIO device instead), how many inputs
   and outputs we use, its rate, and **the device reports** — how many it
-  must report when its layout is as planned. The show uses 24 in and 22 out
-  of the 828x + an 8-channel ADAT expander, numbered as the 828x numbers
-  them: outputs 1–8 are Analog 1–8, 9–10 the Main outs, **15–22 the
-  expander** (Optical A); inputs 1–2 are the front Mic/Gtr, 3–10 Analog
-  1–8, **17–24 the expander**. Outputs 11–14 (Phones, S/PDIF) are left
-  unlabelled. The device reports 32 in / 30 out; when mirroring, 96 kHz or
-  an optical port on TOSLink changes that, every channel after the change
+  must report when its layout is as planned. The show uses 10 in and 12 out
+  of the 828x on its own (no ADAT expander), numbered as the 828x numbers
+  them: outputs 1–8 are Analog 1–8 (the line outs on the back), 9–10 Main
+  L/R and 11–12 Phones L/R (each pair from a front headphone jack); inputs
+  1–2 are the front Mic/Gtr, 3–10 Analog 1–8. S/PDIF and the ADAT
+  channels are left unused. The device reports 32 in / 30 out with both
+  optical ports set to ADAT, even with nothing plugged in; when mirroring
+  Main and Phones, 96 kHz or an optical port on TOSLink changes that, every channel after the change
   is off, so `stagehand check` fails and the router logs it (it still
   plays). Live mics are mixed on the interface itself (CueMix FX).
 - **Speakers** — every speaker, its room and its outputs. Select one on
@@ -205,6 +206,14 @@ Desktop)
 plays them over Zigbee2MQTT (and WLED): a story `cue heart_wake` plays the
 look named `heart_wake`.
 
+In *Trapped in the Internet*, `lights.json` already holds every house
+bulb and the living room's WLED strip (`wled/living`), each placed in its
+room under its Zigbee2MQTT name (`living_1`, `kitchen_2`, `hall_main`,
+`server_room_rgb`, …), the halls and bathrooms as safety lights, and every
+`lights_*` and `heart_*` look. There are no Zigbee groups or scenes and no
+WLED presets: on site you only pair each bulb and give it that name
+(steps 1–2 below); move a light only if it hangs somewhere else.
+
 **Getting a bulb working on site** (the **💡 Lights** tab's first section
 ticks these off as you go):
 
@@ -225,7 +234,7 @@ ticks these off as you go):
    inspector shows the floor's height band and a button to put it back.
 4. In the inspector: its **device** (the list puts the bulbs nobody has
    placed first; *type a name…* for one the module hasn't reported, or a
-   WLED topic like `wled/tube`, which makes it a WLED strip), its
+   WLED topic like `wled/living`, which makes it a WLED strip), its
    **kind**, what it **can do** (colour, white temperature, dim — filled
    in from the device), **safety light** for any light people need to see
    by (never off, never below its floor: 40 of 254 at least), and its

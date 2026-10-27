@@ -8,10 +8,10 @@ the YAML switches on a **module**:
 
 | Module | Section | Does |
 |---|---|---|
-| **show** | `show:` | story → MQTT / OSC cues (Zigbee2MQTT scenes, WLED presets, the announcement relay); MQTT sensors → journaled story signals |
+| **show** | `show:` | story → MQTT / OSC cues (Trabolta's room cuts and the flicker, bulb by bulb; the announcement relay); MQTT sensors → journaled story signals |
 | **agents** | `agents:` | voices every `mind: external` character (Trabolta) with a local model through Ollama |
-| **audio** | `audio:` | the house speaker router: every story `sound X`, the house announcements, speaker tests and Run's ■ Stop house sounds, through one multichannel interface (the MOTU 828x + ADAT expander) |
-| **lights** | `lights:` | plays the event's `lights.json` looks on Zigbee2MQTT / WLED, safety-clamped, with identify / test / pairing from the map editor |
+| **audio** | `audio:` | the house speaker router: every story `sound X`, the house announcements, speaker tests and Run's ■ Stop house sounds, through one multichannel interface (the MOTU 828x on its own outs, no ADAT expander) |
+| **lights** | `lights:` | plays the event's `lights.json` looks (every story `cue lights_*` and `heart_*`) on Zigbee2MQTT / WLED, bulb by bulb, safety-clamped, with identify / test / pairing from the map editor, and catches the house look up from the screen state's `night.lights` |
 | **alexa** | `alexa:` | **retired for the show** (wave 18b): a standalone announcement player. The router speaks the announcements now; the code stays for a house that wants one |
 
 Every module in a process shares one authenticated link to the server
@@ -28,7 +28,7 @@ internals: [`docs/agents.md`](./docs/agents.md). Notes for coding agents:
 | Machine | stagehand jobs | Config | Supervisor | Runbook |
 |---|---|---|---|---|
 | **John's MacBook** (macOS, M3 Max 48 GB) | `agents` (Trabolta, with Ollama `gpt-oss:20b`); `audio` only as the fallback | `laptop.yaml` (agents), `trapped.macbook.yaml` (the router fallback) | launchd | [`scripts/house-macbook/trabolta.md`](../scripts/house-macbook/trabolta.md); [`audio.md`](../scripts/house-macbook/audio.md) for the fallback |
-| **John's Desktop** (Windows) | `show`, `lights` and `audio` (the MOTU 828x + ADAT, over ASIO); beside them Mosquitto, Zigbee2MQTT on the CC2652P (the Hue and ZL1 bulbs), the WLED strip's controller and the TV kiosk | `trapped.desktop.yaml` | Task Scheduler | [`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md) |
+| **John's Desktop** (Windows) | `show`, `lights` and `audio` (the MOTU 828x, over ASIO); beside them Mosquitto, Zigbee2MQTT on the CC2652P (the Hue and ZL1 bulbs), the WLED strip's controller and the TV kiosk | `trapped.desktop.yaml` | Task Scheduler | [`scripts/house-desktop/README.md`](../scripts/house-desktop/README.md) |
 
 The audio router runs on the Desktop since 2026-10-27; the MacBook takes it
 only if the 828x misbehaves on Windows (the Desktop README's §11). Only
@@ -43,7 +43,7 @@ stagehand: they are terminals in Chrome.
    │ John's MacBook                         │ John's Desktop (192.168.8.10)
    │  agents  ── Ollama gpt-oss:20b         │  show    ─┐
    │                                        │  lights  ─┤ 127.0.0.1:1883
-   │  (audio: only the fallback, dialling   │  audio   ─┘ ── MOTU 828x + ADAT ──► speakers
+   │  (audio: only the fallback, dialling   │  audio   ─┘ ── MOTU 828x ──► speakers
    │   the Desktop's :1884)                 │  Zigbee2MQTT ── CC2652P ── Hue + ZL1 bulbs
    └────────────────────────────────────────┘  Mosquitto (:1884 for the LAN) ◄── WLED controller (Wi-Fi)
                                                Chrome kiosk ── HDMI ── the TV
@@ -230,17 +230,19 @@ arrivals (`show/sensormap.py`); a pattern may capture segments
 (`vision/{cam}/tamper` subscribes as `vision/+/tamper` and exposes
 `{cam}`).
 
-**The real house** is `trapped.house.yaml`: Zigbee2MQTT group scenes +
-WLED presets for every `cue lights_*` (one ID per look, identical on every
-group and controller), Trabolta's three-room `cut_the_lights` and its
-restore, `screens_flicker` as a one-shot bulb blink, `do announce` →
+**The real house** is `trapped.house.yaml` plus the show's `lights.json`
+(wave 31). Every `cue lights_*` is a `lights.json` look, played by the
+`lights` job on each bulb by its Zigbee2MQTT name and on the living room's
+WLED strip (`wled/living`); there are no Zigbee groups, Zigbee scenes or
+WLED presets. `trapped.house.yaml` keeps what a look can't say: Trabolta's
+three-room `cut_the_lights` and its restore and `screens_flicker` (a
+one-shot bulb blink), both addressed bulb by bulb, `do announce` →
 `show/announce` and `sound announce_chime` → `show/chime` for the router,
 and the printer's button and lid sensors back as `printer_button_pressed`
-/ `printer_opened`. The safety rooms (stairs, bathrooms, tent, server room,
-the path from the server room) are out of the `house` group, and
-`lights_blackout` turns WLED off per device, leaving the Tube strip on its
-dim preset 22. The server room's one light, the RGB bulb
-`server_room_rgb`, belongs to `lights.json` alone.
+/ `printer_opened`. The safety lights (the three halls and both
+bathrooms, never off, never under 60 / 254; the server room's RGB bulb
+`server_room_rgb`, never under 80) are clamped by the `lights` job, and no
+`show` rule addresses them.
 
 **Not stagehand's:** the server-room door and the patch bay. Both are on
 the Grand Central M4 beside Steph's laptop, and that terminal page posts
@@ -251,7 +253,7 @@ box is not installed: its `show/serverroom/*` publishes and
 nobody. Nothing in stagehand drives the door's keypad lock.
 
 `tests/test_trapped_house.py` pins the rig to the story: every light cue
-has a rule, every sound an `audio.json` cue and a `media/sounds.yaml`
+is a `lights.json` look, every sound an `audio.json` cue and a `media/sounds.yaml`
 entry, every sensor signal a `when` in `main.loom`, the combos match the
 story's seeds, and the safety edits hold (no cue darkens a safety room or
 all of WLED, nothing drives a lock, nothing reaches the server room's
@@ -397,9 +399,9 @@ audio:
   voices laid out per speaker, the matrix, an sfx duck under
   announcements, a master gain and a per-output limiter. A stream that
   dies is reopened every 2 s.
-- **`device.expect`**: the show's 828x + ADAT must report 32 in / 30 out;
-  anything else means mirroring, 96 kHz or TOSLink moved the layout, and
-  `check` fails.
+- **`device.expect`**: the show's 828x must report 32 in / 30 out (both
+  optical ports on ADAT, even with no expander plugged in); anything else
+  means mirroring, 96 kHz or TOSLink moved the layout, and `check` fails.
 - **Where a `sound X` goes**, first match: the line's own rooms (`sound X
   in <Place>` / `with rooms:`), `audio.json` `cues[X].to`, the beat's
   setting, everywhere (`audio/routing.py`, the mirror of `@loom/house`

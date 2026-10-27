@@ -45,8 +45,9 @@ What each problem means:
   Wait a few seconds; an old router never reports.
 - **No interface**: the router can't find the audio interface. Power it
   on, plug it in, check its driver, then restart the audio job.
-- **Other channel counts than expected**: the ADAT expander is off or not
-  clocked. Turn it on, then restart the audio job.
+- **Other channel counts than expected**: the interface's settings moved
+  (an optical port not on ADAT, the wrong rate, or Main and Phones
+  mirrored). Fix them on the interface, then restart the audio job.
 - **Announcements are blocked**: the router can't reach the house's
   message broker, so house announcements won't play.
 - **Audio dropouts**: something else on the audio machine is busy. Close

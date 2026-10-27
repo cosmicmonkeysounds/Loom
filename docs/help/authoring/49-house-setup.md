@@ -16,7 +16,7 @@ below); this is the map.
 
 | | Runs | Runbook |
 |---|---|---|
-| **John's Desktop** (Windows) | 🔊 **Sound**: the speaker router (stagehand `audio`) on the MOTU 828x and its ADAT expander. 💡 **Lights**: Zigbee2MQTT with the Philips Hue and ThirdReality ZL1 bulbs, the WLED LED strip, and stagehand `lights`. Also the house broker (Mosquitto), stagehand `show` (the cues and the announcements) and the living-room TV. | `scripts/house-desktop/README.md` |
+| **John's Desktop** (Windows) | 🔊 **Sound**: the speaker router (stagehand `audio`) on the MOTU 828x's own outputs (no ADAT expander). 💡 **Lights**: Zigbee2MQTT with the Philips Hue and ThirdReality ZL1 bulbs, the living room's WLED LED strip, and stagehand `lights`. Also the house broker (Mosquitto), stagehand `show` (the cues and the announcements) and the living-room TV. | `scripts/house-desktop/README.md` |
 | **John's MacBook** (macOS) | 🧠 **Trabolta**: Ollama with `gpt-oss:20b` and stagehand `agents`. Also the director's Run console and the deploy scripts. | `scripts/house-macbook/trabolta.md` |
 
 The MacBook can take the sound router instead, if the MOTU misbehaves on
@@ -31,21 +31,25 @@ folder. Every stagehand job and config: `stagehand/README.md`.
 
 1. **The broker** on the Desktop (Mosquitto). Everything else talks
    through it: the cues, the announcements, the bulbs, the strip.
-2. **The audio interface**: the 828x and the expander powered, its
-   Windows driver proven (one ASIO device, 32 in / 30 out).
+2. **The audio interface**: the 828x powered, its Windows driver proven
+   (one ASIO device, 32 in / 30 out: both optical ports set to ADAT even
+   with nothing plugged in, Main and Phones not mirrored).
 3. **Zigbee2MQTT** on the USB stick, then the **lights job**, then pair
    each bulb (a Hue bulb needs a reset first: Touchlink, its serial
-   number, a Hue dimmer or the Hue app, never its switch), name it, and
-   set it to come back on after a power cut. The **WLED strip** joins over
-   Wi-Fi and dials the broker.
+   number, a Hue dimmer or the Hue app, never its switch), give it its
+   name from `lights.json` (`living_1`, `hall_main`, … — the Desktop
+   README's table), and set it to come back on after a power cut. No
+   Zigbee groups or scenes. The **WLED strip** joins over Wi-Fi and dials
+   the broker as `wled/living`; no presets.
 4. **stagehand on the Desktop**: `show`, `lights` and `audio`, one
    scheduled task each, with this event's id and the moderator passcode in
    its local config (never in the repo).
-5. **Place everything on the [house map](39-house-map.md)** and **Save to
-   project**: each speaker on its output (🔈 Test it), each bulb as a
-   *Zigbee bulb* with its Zigbee2MQTT name, a group as a *Zigbee2MQTT
-   group*, the strip as a *WLED strip* with its topic `wled/<room>`. Tick
-   **safety light** for anything people walk by.
+5. **Check the [house map](39-house-map.md)**: each speaker on its output
+   (🔈 Test it). *Trapped in the Internet*'s `lights.json` already places
+   every bulb and the strip in its room, with the halls and bathrooms as
+   **safety lights**; move one only if it hangs elsewhere, then **Save to
+   project**. (Another show places its own: each bulb as a *Zigbee bulb*
+   with its Zigbee2MQTT name, a strip as a *WLED strip* with its topic.)
 6. **Trabolta on the MacBook**: Ollama running with the model loaded, then
    the `agents` job, then Run → Mind → **Reset**.
 
@@ -56,7 +60,8 @@ when it is up and otherwise a short list of what to do next:
 
 - **🔊 Sound**: the router online (on which computer, which interface),
   how many sound files it has, and any problem — no interface found, the
-  interface's channels moved (the ADAT expander off or unclocked),
+  interface's channels moved (an optical port not on ADAT, or Main /
+  Phones mirrored),
   announcements blocked (the broker), story sounds with no file or still
   the generated placeholder, no speakers placed.
 - **💡 Lights**: the lights module online, how many Zigbee lights and
@@ -67,8 +72,9 @@ when it is up and otherwise a short list of what to do next:
   get his holding line: check Ollama, then restart the `agents` job.
 
 Then walk the **Checks** pane (every speaker, every output, every sound,
-every light and look, with a Test button and a ✓ / ✗ mark each) and design
-the lighting looks in the **Cue designer**. The [house desk](47-house-desk.md)
+every light and look, with a Test button and a ✓ / ✗ mark each) and play
+each lighting look on the real bulbs in the **Cue designer** (▶ Test on
+the house; retune it there if needed). The [house desk](47-house-desk.md)
 explains the checks; the [Mind debugger](44-mind-debugger.md) explains
 Trabolta's page.
 
