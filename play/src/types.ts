@@ -518,8 +518,10 @@ export interface NightView {
   step: number | null;
   /** (wave 26, T2) The story's last glitch: `at` in story ms (the unit of
    *  `GuestView.clock`), `text` its caption (null = none). Absent before the
-   *  first glitch, or from an older server. */
-  glitch?: { at: number; text: string | null };
+   *  first glitch, or from an older server. Wave 32 (C5): `light` when the
+   *  story's glitch is a burst (`Night.glitch_kind == "burst"`, a talk
+   *  scene's ⚡): every phone plays the light, look-only takeover. */
+  glitch?: { at: number; text: string | null; light?: true };
 }
 
 /** A ROLE-scoped `watch:` item for one guest (the booth card's facts). */

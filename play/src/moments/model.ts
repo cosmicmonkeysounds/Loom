@@ -177,6 +177,16 @@ export function takeoverDue(prevAt: number | null, glitch: { at: number } | null
   return glitch.at > 0 && glitch.at !== prevAt && age >= 0 && age <= TAKEOVER_FRESH_MS;
 }
 
+/**
+ * Wave 32 (C5): which takeover a live glitch plays here. A host booth's is
+ * always light; a burst (`NightView.glitch.light`, a talk scene's ⚡ or its
+ * timed bursts) is light for everyone (guests and players too: 2.5 s, look
+ * only, taps go through); otherwise the phone's own (`full`).
+ */
+export function takeoverKind(own: "full" | "light", glitch: { light?: true } | null | undefined): "full" | "light" {
+  return own === "light" || glitch?.light === true ? "light" : "full";
+}
+
 const RUNGS: readonly AlertLevel[] = ["balloon", "sticky", "dialog", "bsod"];
 
 function rungIndex(level: AlertLevel): number {

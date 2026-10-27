@@ -51,6 +51,7 @@ import {
   shouldGlitch,
   sortArrivals,
   takeoverDue,
+  takeoverKind,
   TAKEOVER_LIGHT_MS,
   TAKEOVER_MS,
   storyNow,
@@ -189,7 +190,7 @@ export interface MomentsInput {
    *  that are no moment become Notifications rows. */
   lobbyHidden?: boolean;
   /** Wave 26 (T2): the story's last glitch (`NightView.glitch`, story ms). */
-  glitch?: { at: number; text: string | null } | null;
+  glitch?: { at: number; text: string | null; light?: true } | null;
   /** Wave 26 (T2): what a live glitch does here — `full` (a guest, a player
    *  booth: ~6 s, swallows taps), `light` (a host booth: 2.5 s, look only).
    *  Absent → nothing (the director phone). Embedded → never. */
@@ -732,7 +733,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
     r.first = false;
     if (glitchAt !== null) r.at = glitchAt;
     if (!due || glitchAt === null) return;
-    const light = input.takeover === "light";
+    // Wave 32: a burst is the light one for every phone (`takeoverKind`).
+    const light = takeoverKind(input.takeover!, input.glitch) === "light";
     setTakeover({ at: glitchAt, text: input.glitch?.text ?? null, light });
     setHolds((h) => h + 1);
     const at = glitchAt;
