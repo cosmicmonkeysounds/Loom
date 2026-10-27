@@ -76,7 +76,7 @@ from .prompt import adjust_names, build_messages, gate_context, is_stage
 from .guards import repeats_line
 from .reply import Reply, parse_reply
 from .secrets import drop_counts
-from .slots import FIRST, NORMAL, Slots
+from .slots import BACKGROUND, FIRST, HEART, NORMAL, Slots
 from .trace import Thought, Trace, new_thought
 
 log = logging.getLogger("stagehand.agents")
@@ -106,9 +106,14 @@ def thread_key(req: dict[str, Any]) -> str:
 
 def lane_of(req: dict[str, Any]) -> int:
     """(wave 32) The slot lane a request waits in: a stage request (his
-    public answer to Clippy, the whole Desktop waiting on the TV) is served
-    before every waiting DM, ruling or summary; the rest keep their order."""
-    return FIRST if is_stage(req) else NORMAL
+    public answer to Clippy, the whole Desktop waiting on the TV) first,
+    then a guest at his heart (the heart terminal waiting on him), then
+    every other DM and ruling; quiet summaries wait behind all of them."""
+    if is_stage(req):
+        return FIRST
+    if str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true":
+        return HEART
+    return NORMAL
 
 
 async def answer(
@@ -1153,7 +1158,7 @@ class Agents:
             return
         note = f"re-run of {original.id} ({original.kind}) — not applied"
         try:
-            async with self._slots:
+            async with self._slots.lane(BACKGROUND):
                 completion = Completion.of(await self.complete_fn(messages, model))
         except LlmError as err:
             await self.trace.record(new_thought(original.character, "rerun", trigger=f"rerun:{original.id}", model=model, messages=messages, error=str(err), note=note))
@@ -1247,7 +1252,7 @@ class Agents:
         model = self.models[character]
         speaker = {"speaker": {"id": d.id, "name": d.name, "kind": d.kind}}
         try:
-            async with self._slots:
+            async with self._slots.lane(BACKGROUND):
                 completion, note = await _complete_with_room(self.complete_fn, messages, model, character)
         except LlmError as err:
             q["turns"], q["sig"] = 0, sig

@@ -32,7 +32,7 @@ from stagehand.agents.persona import load_persona, parse_persona
 from stagehand.agents.cards import VoiceOptions
 from stagehand.agents.prompt import build_messages, gate_context, is_stage, matching_situations, stage_of
 from stagehand.agents.reply import Reply
-from stagehand.agents.slots import FIRST, NORMAL, Slots
+from stagehand.agents.slots import BACKGROUND, FIRST, HEART, NORMAL, Slots
 from stagehand.agents.voice import answer_lean, build_lean_messages, history_turns, render_p3, right_now, room_lines, stage_steer
 from stagehand.agents import module as agents_module
 
@@ -407,6 +407,28 @@ def test_slots_serve_the_front_lane_first_and_keep_order_within_a_lane():
     assert run(go()) == ["stage", "dm2", "dm3"]
 
 
+def test_slots_serve_the_stage_then_the_heart_then_dms_then_background():
+    async def go():
+        slots = Slots(1)
+        order: list[str] = []
+        await slots.acquire()
+
+        async def wait(name, lane):
+            async with slots.lane(lane):
+                order.append(name)
+                await asyncio.sleep(0)
+
+        tasks = []
+        for name, lane in (("summary", BACKGROUND), ("dm", NORMAL), ("heart", HEART), ("stage", FIRST)):
+            tasks.append(asyncio.ensure_future(wait(name, lane)))
+            await asyncio.sleep(0)
+        slots.release()
+        await asyncio.gather(*tasks)
+        return order
+
+    assert run(go()) == ["stage", "heart", "dm", "summary"]
+
+
 def test_a_cancelled_waiter_passes_the_slot_on():
     async def go():
         slots = Slots(1)
@@ -542,6 +564,13 @@ def test_a_reply_settled_before_it_went_out_is_never_already_said_nor_noted(tmp_
 def test_the_lane_of_a_request():
     assert agents_module.lane_of(stage_request("ad")) == FIRST
     assert agents_module.lane_of(request()) == NORMAL
+    heart = request()
+    heart["them"] = {**(heart.get("them") or {}), "vars": {**((heart.get("them") or {}).get("vars") or {}), "at_the_heart": "true"}}
+    assert agents_module.lane_of(heart) == HEART
+    # A stage line outranks the heart even if the world says otherwise.
+    stage = stage_request("ad")
+    stage["them"]["vars"]["at_the_heart"] = "true"
+    assert agents_module.lane_of(stage) == FIRST
     assert MARKER  # the made-up persona's secrets are what the mechanics tests use
 
 

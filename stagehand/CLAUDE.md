@@ -183,8 +183,13 @@ module docstrings that explain the why).
   block and one block per `Night.talk` hold (`speaker.stage == true`);
   `orchestrator.situation_chars` counts the stage-only blocks apart.
   **Priority lane:** `slots.py` `Slots` keeps one generation slot but
-  serves waiters by lane, and `module.lane_of` puts a stage request in
-  `FIRST`, ahead of every waiting DM, ruling or summary. A stage exchange
+  serves waiters by lane: `module.lane_of` puts a stage request in
+  `FIRST`, a guest at his heart (`them.at_the_heart`) in `HEART`, every
+  other DM and ruling in `NORMAL`, and the quiet summaries and a
+  director's re-run in `BACKGROUND`. A generation already running is
+  never interrupted, so the longest a stage line waits is one generation.
+  The server orders its own queue the same way (`AgentHubOptions.rank`)
+  when a worker attaches or a stall clears. A stage exchange
   feeds no quiet summary. `_send` returns whether the server applied the
   reply: on a 410 (the scene closed) the worker skips the memo,
   `after_turn` and `remember_said`, so an unsaid line is never "already

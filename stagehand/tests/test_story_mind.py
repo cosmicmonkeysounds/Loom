@@ -16,6 +16,7 @@ from typing import Any
 
 import pytest
 
+from stagehand.agents.slots import BACKGROUND
 from stagehand.agents import story_mind
 from stagehand.agents.cards import VoiceContext
 from stagehand.agents.config import parse_agents
@@ -663,7 +664,11 @@ def test_a_quiet_conversation_is_condensed_once_on_the_voice_model(tmp_path):
     agents.tasks["busy"] = None  # type: ignore[assignment]
     assert agents._quiet_due(now + 121) is None  # never while a request waits
     del agents.tasks["busy"]
+    lanes = []
+    real_lane = agents._slots.lane
+    agents._slots.lane = lambda lane: (lanes.append(lane), real_lane(lane))[1]  # type: ignore[method-assign]
     run(agents._summarise("Trabolta", "g-1"))
+    assert lanes == [BACKGROUND]  # behind every guest, the heart and the stage
     d = agents.minds["Trabolta"].people["g-1"]
     assert d.summary.startswith("A careful program") and len(calls) == 1
     messages, model = calls[0]
