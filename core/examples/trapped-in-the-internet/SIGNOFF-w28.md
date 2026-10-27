@@ -3,8 +3,8 @@
 **Status: DRAFT, awaiting the user's sign-off.** Wave 28 fixes three
 follow-ups from wave 27 (branch `oct31-w28/heart-followups`). Only one of
 them adds show text: the 📥 Truther Download now waits for 📓 Hunt 2. The
-new line is marked `// DRAFT w28` in `main.loom`. It goes to `# hosts`
-only, and names no code, combination or answer.
+two new lines are marked `// DRAFT w28` in `main.loom`. They go to `# hosts`
+only, and name no code, combination or answer.
 
 Your words, verbatim (from the wave 27 request this follows up):
 
@@ -29,10 +29,11 @@ Not merged to master, not shipped.
 
 | line | When | Now |
 |---|---|---|
-| `main.loom` `when truther_download:` | 📥 pressed before 📓 Hunt 2, or after the night ended, to `# hosts` | *📥 Not yet: 📓 Hunt 2 first (it sends itself two minutes in). Nothing happens.* |
+| `main.loom` `when truther_download:` | 📥 pressed before 📓 Hunt 2, to `# hosts` | *📥 Not yet: 📓 Hunt 2 first (it sends itself two minutes in). Nothing happens.* |
+| `main.loom` `when truther_download:` | 📥 pressed after the night ended, to `# hosts` | *📥 The night is over. Nothing happens.* |
 
 ## 3. Open
 
-- The line above awaits your sign-off.
+- The lines above await your sign-off.
 - Not checked on a real phone or terminal: how the pick lines read in
   the phone's `dm:Trabolta` thread beside his replies.

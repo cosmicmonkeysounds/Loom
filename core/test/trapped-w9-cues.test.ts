@@ -494,7 +494,23 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(hosts(press(sim, "truther_download").out)).toEqual([JSON.stringify("📥 Not again: the Truther Download was already sent. Nothing happens.")]);
   });
 
-  it("wave 28: the new # hosts line is marked DRAFT w28 and listed on SIGNOFF-w28.md", () => {
+  it("wave 28: 📥 after the night ended says the night is over, never Not yet", { timeout: SLOW }, () => {
+    for (const walkToHunt2 of [false, true]) {
+      const sim = boot();
+      if (walkToHunt2) {
+        for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]) press(sim, n);
+        expect(v(sim, "Night.step")).toBe(8);
+      }
+      sim.setVar("Night.ended", "true");
+      const late = press(sim, "truther_download");
+      expect(late.refused).toBe(true);
+      expect(hosts(late.out)).toEqual([JSON.stringify("📥 The night is over. Nothing happens.")]);
+      expect(v(sim, "Night.truther_sent")).toBe(false);
+      expect(sim.isRevealedTo("room:truthcoin exchange", "g1")).toBe(false);
+    }
+  });
+
+  it("wave 28: the new # hosts lines are marked DRAFT w28 and listed on SIGNOFF-w28.md", () => {
     const dir = join(__dirname, "../examples/trapped-in-the-internet");
     const line = "📥 Not yet: 📓 Hunt 2 first (it sends itself two minutes in). Nothing happens.";
     const main = readFileSync(join(dir, "main.loom"), "utf8");
@@ -502,6 +518,9 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     const sheet = readFileSync(join(dir, "SIGNOFF-w28.md"), "utf8");
     expect(sheet).toContain("DRAFT");
     expect(sheet).toContain(line);
+    const over = "📥 The night is over. Nothing happens.";
+    expect(main).toMatch(/\/\/ DRAFT w28[^\n]*\n\s*broadcast "📥 The night is over\. Nothing happens\."/u);
+    expect(sheet).toContain(over);
   });
 
   it("wave 28: the auto path still sends 📥 two minutes into Hunt 2", { timeout: SLOW }, () => {

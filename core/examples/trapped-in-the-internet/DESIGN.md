@@ -2118,8 +2118,8 @@ tent is captured by the tablet's scan.
 
 **C3 Truther Download — `truther_download`** (W at +2 min or D).
 - Rule (guard `Night.truther_sent != true and Night.step >= 8 and Night.ended != true`, wave 28: never
-  before 📓 Hunt 2; an early press posts *📥 Not yet: 📓 Hunt 2 first* to # hosts, a second one
-  *📥 Not again*; the CRA, McAfee and host hooks share the guard): set it true · `reveal truthcoin exchange` · `cue
+  before 📓 Hunt 2; an early press posts *📥 Not yet: 📓 Hunt 2 first* to # hosts, a press after the night
+  ended *📥 The night is over*, a second one *📥 Not again*; the CRA, McAfee and host hooks share the guard): set it true · `reveal truthcoin exchange` · `cue
   screens_truther`, `cue lights_glitch`, `sound truther_glitch` · `broadcast "!📥 TRUTHER
   DOWNLOAD received. Check your messages." to everyone`.
 - Per program (ROLE watcher `Night.truther_sent == true and self.cleared and self.got_truther

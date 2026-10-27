@@ -4599,10 +4599,13 @@ when truther_download:
     // DRAFT w18b (R4, O7): founding opens here. (No "wins" in a house line:
     // the screens cheer only a line that names a winner.)
     broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open. You may found a faction of your own now (Start → Factions). The count starts at 11:00 PM: a faction needs more than half of the programs." to everyone with go: Truther Download
+  else if Night.ended == true:
+    // DRAFT w28: a press after the night ended does nothing.
+    broadcast "📥 The night is over. Nothing happens." to channel(hosts)
   else if Night.truther_sent == true:
     broadcast "📥 Not again: the Truther Download was already sent. Nothing happens." to channel(hosts)
   else:
-    // DRAFT w28: a press before 📓 Hunt 2 (step 8) or after the night ended does nothing.
+    // DRAFT w28: a press before 📓 Hunt 2 (step 8) does nothing.
     broadcast "📥 Not yet: 📓 Hunt 2 first (it sends itself two minutes in). Nothing happens." to channel(hosts)
 
 // ── D. Act II ──
