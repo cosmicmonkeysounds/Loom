@@ -1035,6 +1035,9 @@ else:
     Trabolta: A skill, and a weakness. I wrote that method. I ran it on all of Halifax.
     Trabolta: I never once ran it on myself. You just did.
   else if program.heart_pick == "ask":
+    // No reply: Layer Four's own line speaks (its re-entry after a trap
+    // sent them back to Three).
+    set program.heart_quiet = false
     set program.heart_go = "four"
   // DRAFT w27: Layer Four's two questions before the stop.
   else if program.heart_pick == "ask_after":

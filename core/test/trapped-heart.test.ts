@@ -1632,6 +1632,20 @@ describe("The Heart — the first meeting (wave 27)", () => {
     expect(heartMenus(sim, "g1")).toHaveLength(1);
   });
 
+  it("a second ask (back from Four after a trap) docks Layer Four with his line, never a bare menu", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toAsk(sim);
+    pick(sim, "g1", "Come out with us"); // back to Three
+    const again = pick(sim, "g1", "Then let me finish");
+    expect(heartMenu(sim, "g1")?.beat).toBe("Heart Layer Four");
+    expect(lines(again)).toEqual(["The rest, then. I am still listening."]);
+    pick(sim, "g1", "If you stopped, what would you do?");
+    pick(sim, "g1", "You don't have to be omnipotent");
+    pick(sim, "g1", "I'll tell her for you"); // back to Three
+    const third = pick(sim, "g1", "Then let me finish");
+    expect(lines(third)).toEqual(["You have been kind. Kind is not the rest. Say it."]);
+  });
+
   it("🔄 with them still at the terminal resumes without a \"you came back\"", { timeout: SLOW }, () => {
     const sim = atLayerOne();
     pick(sim, "g1", "I'm a person");
