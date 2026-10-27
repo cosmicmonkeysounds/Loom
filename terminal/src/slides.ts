@@ -52,8 +52,28 @@ export const SLIDE_HOLD_MS: Record<ScreenTarget, number> = { terminals: 45_000, 
 export const BLACKOUT_MS = 10_000;
 /** The flicker's length (two dips: 2 Hz). */
 export const FLICKER_MS = 1000;
-/** A flicker first seen later than this after its cue is history: not played. */
+/** A flicker first seen later than this after its cue is history: not played.
+ *  Well over a wall's poll (`SCREEN_POLL_MS`, the TV's is shorter) and a
+ *  retry, so a ⚡ the poll brings late still plays (`FlickerPlays`). */
 export const FLICKER_FRESH_MS = 6000;
+
+/**
+ * (wave 32 review) Which flicker to start now: a seq this page has not
+ * played. A ⚡'s flicker reaches a screen up to a poll late (1 s on the TV,
+ * 2 s on a wall, more after a retry); `screenLayers` offers it for
+ * `FLICKER_FRESH_MS` from its cue, and it plays whole (`FLICKER_MS`) from
+ * whenever this page first sees it, so a late one is late, never lost.
+ * Once per seq: the next polls bring the same seq and start nothing.
+ */
+export class FlickerPlays {
+  private readonly played = new Set<number>();
+  /** The seq to start a stutter for, or null (none on offer, or played already). */
+  start(seq: number | null): number | null {
+    if (seq === null || this.played.has(seq)) return null;
+    this.played.add(seq);
+    return seq;
+  }
+}
 /** (wave 26, T2) The glitch takeover's length: shown while its cue is younger than this. */
 export const GLITCH_MS = 8000;
 /** (wave 26, T2) A glitch this page first saw later than this after its cue

@@ -932,8 +932,12 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   55% { opacity: 0.6; } 70% { opacity: 0; } 100% { opacity: 0; }
 }
 .screen-gear { position: fixed; top: 0; right: 0; z-index: 40; opacity: 0.25; }
+/* Reduced motion (a kiosk with the system's animations off reports it) keeps
+   the house's cue: one soft dim over the second, no stutter, never nothing. */
+@keyframes screen-flicker-soft { 0% { opacity: 0; } 50% { opacity: 0.35; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .overlay-text, .screen-flicker { animation: none; }
+  .overlay-text { animation: none; }
+  .screen-flicker { animation: screen-flicker-soft 1s ease-in-out 1; }
 }
 
 /* --- the glitch takeover (wave 26, T2: ScreenLayer.tsx GlitchTakeover) ---
