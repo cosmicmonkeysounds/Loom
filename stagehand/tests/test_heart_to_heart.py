@@ -333,3 +333,17 @@ def test_a_fallback_that_names_an_outside_word_is_never_said():
 def test_the_fallbacks_catchphrases_and_cards_are_checked():
     text = HEART.replace("fallback: The line is cold.\n", "fallback: The line is cold.\ncatchphrases: [\"Welcome to the party.\"]\n")
     assert any("catchphrases:" in w for w in parse_persona(text).warnings)
+
+
+def test_the_voice_withholds_any_layer_count_or_ooc():
+    """Wave 29: the persona's `outside:` list withholds a layer count in words, digits or ordinals, and OOC."""
+    from pathlib import Path
+
+    from stagehand.agents.guards import outside_hit
+    from stagehand.agents.persona import load_persona
+
+    persona = load_persona(Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the-internet/trabolta.persona.md")
+    for line in ("Layer 3 of 4.", "This is the third layer.", "The final layer, program.", "Speaking OOC here.", "You reached layer three.", "Out of character: hi."):
+        assert outside_hit(persona.outside, line), line
+    for line in ("You came back to my heart.", "The cables hold.", "Tell me who you are."):
+        assert outside_hit(persona.outside, line) is None, line

@@ -1210,7 +1210,7 @@ Windows (PowerShell):
   <div class="body">
     <p class="prose">The VPS still runs <code>w18b-1021</code> (verify: <code>ssh loom-vps 'tail ~/loom-ops/releases.log'</code>). Master holds wave 18b stage B, waves 20, 20b, 21, 22, 23, 24, 25 and 26, all unshipped. Wave 19 is already live. Wave 26 lands in its contract's C14 order: the server, the sync, the reload of every screen, then the Quest APK. In this order:</p>
     <ul class="check" data-list="deploy">
-      <li><input type="checkbox" id="ck-deploy-the-sign-off-is-done-2026"><label for="ck-deploy-the-sign-off-is-done-2026"><strong>The sign-off is done</strong> (2026-10-27): waves 13–28 ship as written. Still DRAFT: wave 22's patch-bay lines (no sheet) and wave 29's (<code>SIGNOFF-w29.md</code>).</label></li>
+      <li><input type="checkbox" id="ck-deploy-the-sign-off-is-done-2026"><label for="ck-deploy-the-sign-off-is-done-2026"><strong>The sign-off is done</strong> (2026-10-27): waves 13–29 ship as written. Still DRAFT: wave 22's patch-bay lines (no sheet).</label></li>
       <li><input type="checkbox" id="ck-deploy-check-the-preview-s-roster-in"><label for="ck-deploy-check-the-preview-s-roster-in"><strong>Check the preview's roster in its own step</strong> (<code>pnpm showctl roster</code>). If anyone is on, ask before shipping: a release restarts the server.</label></li>
       <li><input type="checkbox" id="ck-deploy-on-the-macbook-scripts-ops-predeploy"><label for="ck-deploy-on-the-macbook-scripts-ops-predeploy">On the MacBook: <code>scripts/ops/predeploy.sh --vr</code> (the full gate; stamps the commit). Also <code>pnpm --filter @loom/core show:page --check</code>.</label></li>
       <li><input type="checkbox" id="ck-deploy-server-first-loom-vps-loom-vps"><label for="ck-deploy-server-first-loom-vps-loom-vps"><strong>Server first:</strong> <code>LOOM_VPS=loom-vps scripts/ops/ship.sh show-1031</code> (without <code>LOOM_VPS</code>, here or in <code>~/.config/loom/ops.env</code>, it dials <code>ubuntu@app.mapsandducks.com</code>). Stop here if it fails. Then <code>ssh loom-vps 'cd ~/loom &amp;&amp; deploy/release.sh --check-env'</code> and <code>curl https://app.mapsandducks.com/api/health</code> → 200. Rollback: <code>ssh loom-vps 'cd ~/loom &amp;&amp; deploy/rollback.sh'</code>.</label></li>
@@ -1401,7 +1401,7 @@ Windows (PowerShell):
       <dt><strong>U10 · The MOTU</strong></dt><dd>Is it cabled to the Desktop or the MacBook, and does it have a working Windows driver?</dd>
       <dt><strong>U11 · The laptops</strong></dt><dd>What OS is Steph's laptop, and does the old tent laptop have WebGL2?</dd>
       <dt><strong>U12 · Counts</strong></dt><dd>How many wall tablets for the <code>auto</code> spots, and how many Quest headsets?</dd>
-      <dt><strong>U13 · Sign-off and ship date</strong></dt><dd>Signed off 2026-10-27 (waves 13–28; wave 29 pending). Does the ship land before the Tue 10-27 18:00 feature freeze?</dd>
+      <dt><strong>U13 · Sign-off and ship date</strong></dt><dd>Signed off 2026-10-27 (waves 13–29). Does the ship land before the Tue 10-27 18:00 feature freeze?</dd>
       <dt><strong>U14 · Names</strong></dt><dd>McAfee's actor, the second director, the tech operator, the house manager, and the emergency card's address and phone lines.</dd>
     </dl>
     <h3>Decided in wave 22</h3>
@@ -1409,7 +1409,7 @@ Windows (PowerShell):
     <h3>Sign-off status</h3>
     <ul>
       <li><strong>Signed off 2026-10-27</strong> (<em>"Every line in the signoffs looks good! ship those please."</em>): <code>SIGNOFF-w13.md</code>, <code>SIGNOFF-w18.md</code>, <code>history/SIGNOFF-w18b.md</code> (strike the <em>write every name down</em> line from the printed Bingo card, O1), <code>history/SIGNOFF-w20.md</code> (the persona's <code>outside:</code> list included), <code>SIGNOFF-w21.md</code>, <code>SIGNOFF-w26.md</code>, <code>SIGNOFF-w27.md</code>, <code>SIGNOFF-w28.md</code>. Every drafted default is accepted.</li>
-      <li><code>SIGNOFF-w29.md</code> (the immersion fixes at his heart and in G11): awaiting the user.</li>
+      <li><code>SIGNOFF-w29.md</code> (the immersion fixes at his heart and in G11): signed off 2026-10-27.</li>
       <li>Wave 22's patch-bay lines (<code>DRAFT w22</code>) have no sheet.</li>
       <li>Reprint now: Clippy, Task Manager, Norton, McAfee, Password Manager, CRA, the director, the Installation Wizard, Microsoft Excel, Adobe Acrobat, the Recycling Bin, all-crew and the patch-bay watch card.</li>
       <li><code>facts.json</code>: all eight questions and 16 of 20 truths are still marked draft.</li>

@@ -38,10 +38,10 @@ stagehand, the router, the M4, reloading every terminal and the TV, the
 Quest APK). Verify what runs with
 `ssh loom-vps 'tail ~/loom-ops/releases.log'`. Land it in this order:
 
-1. **The sign-off is done** (2026-10-27): every line of waves 13–28 ships
+1. **The sign-off is done** (2026-10-27): every line of waves 13–29 ships
    as written (`SIGNOFF-w13.md` … `SIGNOFF-w28.md`, `history/SIGNOFF-w18b.md`,
    `history/SIGNOFF-w20.md`). Still `DRAFT`: wave 22's patch-bay lines (no
-   sheet) and wave 29's (`SIGNOFF-w29.md`).
+   sheet). Wave 29 (`SIGNOFF-w29.md`) was signed off the same day.
 2. **Check the preview's roster, in its own step:** `pnpm showctl roster`.
    If anyone is on, ask before shipping: a release restarts the server.
 3. **MacBook:** `scripts/ops/predeploy.sh --vr` (the full gate; it stamps

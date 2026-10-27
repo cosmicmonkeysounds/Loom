@@ -15,7 +15,7 @@
 > 13, 18, 18b, 20, 20b, 21, 26, 27 and 28 ships as written and every drafted
 > default is accepted; the "awaits the user's sign-off" notes in the wave
 > sections below are history. Still DRAFT: wave 22's patch-bay lines (no
-> sheet) and wave 29 (`SIGNOFF-w29.md`).
+> sheet). Wave 29 (`SIGNOFF-w29.md`) was signed off the same day.
 
 **The party is Saturday, October 31, 2026. Written Thursday, October 15, 16 calendar days out.**
 This was the **active plan** during the build. [`SCHEDULE.md`](./SCHEDULE.md) is the full roadmap (245.5 dev-days) for

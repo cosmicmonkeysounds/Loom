@@ -1,6 +1,8 @@
-# SIGNOFF — wave 29 immersion (DRAFT)
+# SIGNOFF — wave 29 immersion
 
-**Status: DRAFT, awaiting the user's sign-off.** Wave 29 takes every
+**Signed off 2026-10-27.** The user: "I approve whatever wording you pick -- just finish and ship the app to the VPS, please". The markers below are gone; the lines ship as written.
+
+**Status: signed off (was DRAFT).** Wave 29 takes every
 "Layer n" and every "out of character" out of the show (branch
 `oct31-w29/immersion`). Three lines of show text are new. Each is marked
 `// DRAFT w29` (`main.loom`) or `{/* DRAFT w29 */}` / `// DRAFT w29`

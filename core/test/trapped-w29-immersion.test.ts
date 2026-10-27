@@ -101,18 +101,19 @@ describe("wave 29: the show never names a layer of the talk or steps out of char
     expect(readFileSync(join(ROOT, "terminal/src/cutscene/scenes/heart.tsx"), "utf8")).not.toMatch(/LAYER \$\{|\/ 4`/u);
   });
 
-  it("the new lines are marked DRAFT w29 and listed on SIGNOFF-w29.md", () => {
+  it("the new lines are signed off on SIGNOFF-w29.md and carry no DRAFT marker", () => {
     const sheet = readFileSync(join(SHOW, "SIGNOFF-w29.md"), "utf8");
-    expect(sheet).toContain("DRAFT");
+    expect(sheet).toContain("Signed off 2026-10-27");
     const main = readFileSync(join(SHOW, "main.loom"), "utf8");
     const g11 = "!🎃 The show is over: you are human again. Hang out. The night is yours.";
-    expect(main).toMatch(/\/\/ DRAFT w29[^\n]*\n\s*broadcast "!🎃 The show is over: you are human again\. Hang out\. The night is yours\." to everyone/u);
+    expect(main).toMatch(/\/\/ w29 \(signed off\)[^\n]*\n\s*broadcast "!🎃 The show is over: you are human again\. Hang out\. The night is yours\." to everyone/u);
     expect(sheet).toContain(g11);
     const act3 = readFileSync(join(ROOT, "terminal/src/cutscene/scenes/act3.tsx"), "utf8");
-    expect(act3).toMatch(/DRAFT w29[^\n]*\n[^\n]*tv3-res-sub[^\n]*\n\s*Hang out\. The night is yours\./u);
+    expect(act3).toMatch(/w29, signed off[^\n]*\n[^\n]*tv3-res-sub[^\n]*\n\s*Hang out\. The night is yours\./u);
     expect(sheet).toContain("Hang out. The night is yours.");
     const heart = readFileSync(join(ROOT, "terminal/src/cutscene/scenes/heart.tsx"), "utf8");
-    expect(heart).toMatch(/\/\/ DRAFT w29[^\n]*\nexport const HEART_CARD_TITLE = "HEART\.EXE";/u);
+    expect(heart).toMatch(/\/\/ w29 \(signed off\)[^\n]*\nexport const HEART_CARD_TITLE = "HEART\.EXE";/u);
     expect(sheet).toContain("*HEART.EXE*");
+    for (const src of [main, act3, heart]) expect(src).not.toMatch(/DRAFT w29/u);
   });
 });

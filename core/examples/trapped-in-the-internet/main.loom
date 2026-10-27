@@ -6105,7 +6105,7 @@ when resurrection:
     set Night.lights = "restore"
     set Night.lights_back_at = 0
     set Night.lit_scene = "none"
-    // DRAFT w29 (the last sentence is new: SIGNOFF-w29)
+    // w29 (signed off): the last sentence replaced "out of character"
     broadcast "!🎃 The show is over: you are human again. Hang out. The night is yours." to everyone
   else if Night.resurrected == true:
     broadcast "🎃 The show is already over. Nothing happens." to channel(hosts)

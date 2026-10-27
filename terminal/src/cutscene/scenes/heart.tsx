@@ -213,7 +213,7 @@ export function layerOf(value: string): number {
   return Math.max(1, Math.min(4, n));
 }
 
-// DRAFT w29: the card's title bar (it read LAYER n / 4).
+// w29 (signed off): the card's title bar (it read LAYER n / 4).
 export const HEART_CARD_TITLE = "HEART.EXE";
 
 function HeartLayer({ t, value, sfx, reduced }: SceneProps) {

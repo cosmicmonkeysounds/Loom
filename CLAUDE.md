@@ -191,10 +191,10 @@ Print sheet (Badges) and the cast cards reprinted (each now carries its own
 part's QR). **The sign-off is done:** on 2026-10-27 the user signed off
 every sheet (*"Every line in the signoffs looks good! ship those please."*):
 the show text of waves 13, 18, 18b, 20, 20b, 21, 26, 27 and 28 ships as
-written, every drafted default is accepted, and their `DRAFT` markers are
-gone (the `SIGNOFF-*.md` sheets stay as the record). Two kinds of marker
-remain: wave 22's patch-bay lines (`DRAFT w22`, no sheet) and wave 29's
-immersion lines (`DRAFT w29`, `SIGNOFF-w29.md`, awaiting sign-off). Wave 26
+written (and wave 29's, signed off the same day: *"I approve whatever wording
+you pick"*), every drafted default is accepted, and their `DRAFT` markers are
+gone (the `SIGNOFF-*.md` sheets stay as the record). One kind of marker
+remains: wave 22's patch-bay lines (`DRAFT w22`, no sheet). Wave 26
 ships in its contract's C14 order: the server release → `sync-show` →
 reload every terminal and the TV → re-export and sideload the Quest APK.
 Reprint the cast packs now: `clippy`, `task-manager`, `norton`, `mcafee`,
@@ -206,8 +206,8 @@ the glitch on real phones, and the real speakers.
 
 ### Shipping master (summary)
 
-1. The sign-off of waves 13–28 is done (2026-10-27). Shipping carries the
-   still-DRAFT lines of wave 22 (no sheet) and wave 29 (`SIGNOFF-w29.md`).
+1. The sign-off of waves 13–29 is done (2026-10-27). Shipping carries the
+   still-DRAFT lines of wave 22 (no sheet).
 2. Check the preview's roster in its own step. Ask if anyone is on.
 3. MacBook: `scripts/ops/predeploy.sh --vr`, then `scripts/ops/ship.sh <tag>`.
    Check `/api/health`, then `deploy/release.sh --check-env` on the VPS.

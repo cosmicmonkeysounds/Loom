@@ -121,6 +121,17 @@ outside:                     # w20 (D29): never in a line of his; a hit is withh
   - layer two
   - layer three
   - layer four
+  - layer 1
+  - layer 2
+  - layer 3
+  - layer 4
+  - first layer
+  - second layer
+  - third layer
+  - fourth layer
+  - final layer
+  - last layer
+  - ooc
   - out of character       # wave 29: nothing ever steps outside the fiction
 unsaid:                      # the voice cuts every sentence naming her until the house has (the story's own unredaction rule, as below)
   - name: Sandy
