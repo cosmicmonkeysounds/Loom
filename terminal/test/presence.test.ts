@@ -58,7 +58,7 @@ describe("the preview's fake state carries R5 / T2 (wave 26)", () => {
     expect(fakeState().spot).toBeNull();
     expect(linkedNow({ view: "auto", spot: "hall", here: fakeState({ here: 0 }).spot, anyone: true })).toBe(false);
     const s = fakeState({ now: 5000, glitch: 4000 });
-    expect(screenLayers(s, s.receivedAt, { piloting: false }).glitch).toEqual({ seq: 1, at: 4000, t: 1000 });
+    expect(screenLayers(s, s.receivedAt, { piloting: false }).glitch).toEqual({ seq: 1, at: 4000, t: 1000, text: "000. 000. 000." });
     expect(fakeState().program.glitch).toBeUndefined();
   });
 });

@@ -914,6 +914,7 @@ export class EventRuntime {
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
     admits: (thread) => this.agentAdmits(thread),
+    stale: (req) => req.thread.public === true && (req.stage === undefined || this.talkNight() !== req.stage.scene),
     typing: (thread, on) => this.pushTyping(thread, on),
     hold: (req) => this.postAgentHold(req),
     busy: (req) => this.postAgentBusy(req),

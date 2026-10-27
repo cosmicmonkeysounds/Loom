@@ -197,7 +197,7 @@ off, retracted, from the phase noted), never the **NEVER** list:
   pairs, cables, rows; the heart, the server room, cold storage, the
   basement, any place where it hurts; codex codes; every hunt answer and
   match word (small number words tied to the billboard, clock times, the
-  stock customer-service apology, the rival's name, "loose ends", the
+  stock customer-service apology, the rival's name, the H6 match words (facts.json), the
   412-plays song or humming); the pickup line; the year he met her; the
   hand jive; per-person reasons; that he accepts confident lies; Sandy's
   name (the `unsaid` rule), customer care / extension, computer prom, The

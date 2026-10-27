@@ -4,6 +4,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { clearSpeech, emitSpeech, onSpeech, recentSpeech, SPEECH_RING_LINES, setSpeechLive, speechLive, forgetSpeech, type SpeechEvent } from "../src/cutscene/speech-bus.ts";
 import { VOICE_LOOKBACK_MS, VOICE_STRETCH_MAX_MS, VOICE_WAIT_MS, voiceClock, voiceState, type VoiceTiming } from "../src/cutscene/voice-clock.ts";
+import { VOICE_SCENES } from "../src/cutscene/voice-scenes.ts";
+import { BOTTLE_HUNGER, BOTTLE_HUNGER_AT, BOTTLE_SPIN_MS } from "../src/cutscene/kit/tv1-time.ts";
+import { splitSentences } from "../src/speech/split.ts";
 
 const S = 100_000; // the scene's start (server ms)
 const DEF: VoiceTiming = { beats: ["Bottle Landed"], marks: [1000, 3000], tail: 2000, ms: 8000 };
@@ -151,6 +154,47 @@ describe("voiceClock", () => {
     expect(v).toMatchObject({ t: 900, endAt: null });
     expect(VOICE_STRETCH_MAX_MS).toBe(20_000);
     expect(VOICE_WAIT_MS).toBe(6000);
+  });
+});
+
+describe("byLine (wave 32): a line's sentences stay on its own marks", () => {
+  const BOTTLE: VoiceTiming = { ...VOICE_SCENES["bottle_landed"]!, ms: 14_000 };
+  const hunger = splitSentences(`${BOTTLE_HUNGER[0]} ${BOTTLE_HUNGER[1]}`);
+  /** "<pick>. Truth or dare?" from S+100 to S+1500, then the hunger line's two sentences at S+1600 and S+3000. */
+  const evening = (pick: string): SpeechEvent[] => [
+    ...line(1, S + 100, splitSentences(`${pick}. Truth or dare?`)),
+    done(1, S + 1500),
+    ...line(2, S + 1600, hunger),
+    chunk(2, 1, S + 3000),
+  ];
+
+  it("a short name merges into the question, and the hunger still lands on its marks", () => {
+    expect(splitSentences("Paint. Truth or dare?")).toEqual(["Paint. Truth or dare?"]);
+    expect(hunger).toEqual([...BOTTLE_HUNGER]);
+    const events = evening("Paint");
+    const first = voiceState(BOTTLE, S, S + 1700, events)!;
+    expect(first.spoken?.text).toBe("Choose the truth, program.");
+    expect(first.mark).toBe(2);
+    expect(first.t).toBe(BOTTLE_HUNGER_AT[0]! + 100);
+    const second = voiceState(BOTTLE, S, S + 3100, events)!;
+    expect(second.spoken?.text).toBe("I am so very hungry.");
+    expect(second.mark).toBe(3);
+    expect(second.t).toBe(BOTTLE_HUNGER_AT[1]! + 100);
+    // The merged name runs from the landing, held below the hunger's mark.
+    expect(voiceState(BOTTLE, S, S + 200, events)!.t).toBe(BOTTLE_SPIN_MS + 100);
+    expect(voiceState(BOTTLE, S, S + 1400, events)!.t).toBeLessThan(BOTTLE_HUNGER_AT[0]!);
+  });
+
+  it("a long name keeps one mark a sentence, as before", () => {
+    const events = evening("Microsoft Excel");
+    expect(voiceState(BOTTLE, S, S + 1700, events)).toMatchObject({ mark: 2, t: BOTTLE_HUNGER_AT[0]! + 100 });
+    expect(voiceState(BOTTLE, S, S + 3100, events)).toMatchObject({ mark: 3, t: BOTTLE_HUNGER_AT[1]! + 100 });
+  });
+
+  it("another line count (a branch): the scene-wide share", () => {
+    const events = line(1, S + 100, ["Paint.", "Truth or dare?", "Choose the truth, program.", "I am so very hungry."]);
+    events.push(chunk(1, 2, S + 900));
+    expect(voiceState(BOTTLE, S, S + 1000, events)).toMatchObject({ mark: 2, t: BOTTLE_HUNGER_AT[0]! + 100 });
   });
 });
 

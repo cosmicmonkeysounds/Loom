@@ -78,6 +78,8 @@ import type { ScreenResultQuestion } from "../../screen.ts";
 import { AlarmClock, Beacon, BingoBall, BottleTable, Chevrons, DataRain, March, Redacted, Ribbon, WallCard, useEndAt } from "../kit/tv1-parts.tsx";
 import {
   BOTTLE_EMPTY_SPIN_MS,
+  BOTTLE_HUNGER,
+  BOTTLE_HUNGER_AT,
   BOTTLE_SPIN_MS,
   BOTTLE_SEATS,
   bottleFree,
@@ -1203,7 +1205,7 @@ function useBottleFix(state: ScreenState, at: number, night: SceneProps["night"]
 /** The empty table's angle: between two seats, pointing at nobody. */
 const EMPTY_SEAT = 0.5;
 
-function BottleScreen({ t, angle, lit, name, title, sub, ask, reduced, sparks }: { t: number; angle: number; lit: number | null; name: string | null; title: string; sub: ReactNode; ask: boolean; reduced: boolean; sparks?: Emitter[] }) {
+function BottleScreen({ t, angle, lit, name, title, sub, ask, reduced, sparks, after }: { t: number; angle: number; lit: number | null; name: string | null; title: string; sub: ReactNode; ask: boolean; reduced: boolean; sparks?: Emitter[]; after?: ReactNode }) {
   return (
     <TvStage bg="radial-gradient(ellipse at 35% 50%, #2a1a0a 0, #050200 75%)">
       <div className="a1-tod-table">
@@ -1221,6 +1223,7 @@ function BottleScreen({ t, angle, lit, name, title, sub, ask, reduced, sparks }:
             <Win98Button pressed={!reduced && !blink(t, 1200)}>DARE</Win98Button>
           </div>
         )}
+        {after}
       </div>
     </TvStage>
   );
@@ -1265,7 +1268,8 @@ export function bottleLandedCues(seat: number): Array<readonly [number, SfxName,
  *             for every seat the neck passes, each seat glowing as it goes by — it
  *             lands before he names the pick (the TV says it on the same poll)
  *   1800–4000 it lands: the seat lifts and glows, sparks burst off it, the name types
- *   4000–14000 hold: "<name>. Truth or dare?" — TRUTH and DARE blink in turn
+ *   4000–14000 hold: "<name>. Truth or dare?" — TRUTH and DARE blink in turn; (wave 32)
+ *             "Choose the truth, program." at 4000, "I am so very hungry." at 6000
  */
 function BottleLandedTv({ t, who, night, sfx, reduced }: SceneProps) {
   const name = who ?? night.bottle_pick ?? "A PROGRAM";
@@ -1287,7 +1291,17 @@ function BottleLandedTv({ t, who, night, sfx, reduced }: SceneProps) {
       ask={t >= BOTTLE_SPIN_MS + 1800}
       reduced={reduced}
       sparks={sparks}
+      after={landed && t >= BOTTLE_HUNGER_AT[0]! && <BottleHunger t={t} />}
     />
+  );
+}
+
+/** (wave 32) "Choose the truth, program. I am so very hungry.", typed as he says it (the scene draws it: `ownCaption`). */
+function BottleHunger({ t }: { t: number }) {
+  return (
+    <div className="a1-tod-hunger">
+      {BOTTLE_HUNGER.map((line, i) => (t >= BOTTLE_HUNGER_AT[i]! ? <Typewriter key={i} text={`${line} `} t={t} start={BOTTLE_HUNGER_AT[i]!} cps={15} pauses={false} caret={false} /> : null))}
+    </div>
   );
 }
 

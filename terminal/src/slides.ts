@@ -21,6 +21,10 @@
 //! full-screen takeover, `GLITCH_MS` long, over every view — piloting, a
 //! peek, `bare` or not — under a blackout only; live only (never history,
 //! never one cued before this page's first answer).
+//! Wave 32: a glitch cued with an ad burst's mark (`BURST_MOMENTS`: a ⚡
+//! press, or the burst's own sound) is no takeover but a `burst`: a short
+//! popup storm over whatever is up (the cutscene layer draws it), under the
+//! same live-only rules; the takeover shows its cue's own words (`text`).
 //! A room terminal (wave 7, `room`: the server-room terminal) never shows a
 //! story slide or the corner — it is a room's own screen, not the house's —
 //! but the overlays (blackout, alarm) and the flicker still reach it.
@@ -39,7 +43,8 @@
 //! slide may still be held under it, so it shows no clip until a story
 //! slide put up before that clip would have lapsed (the story wins).
 
-import type { ScreenChart, ScreenState, ScreenTarget } from "./screen.ts";
+import { foldName } from "./config.ts";
+import type { ScreenChart, ScreenMoment, ScreenShot, ScreenState, ScreenTarget } from "./screen.ts";
 
 /** How long a non-persistent slide stays up after its cue (ms). */
 export const SLIDE_HOLD_MS: Record<ScreenTarget, number> = { terminals: 45_000, tv: 90_000 };
@@ -75,11 +80,15 @@ export interface ScreenLayers {
   /** How many of the chart's rows are revealed so far, counted from the bottom. */
   chartShown: number;
   /** (wave 26, T2) The glitch takeover playing now: its cue's seq and `at`
-   *  (server ms) and `t` ms into it; null when none. */
-  glitch: { seq: number; at: number; t: number } | null;
+   *  (server ms) and `t` ms into it; null when none. (wave 32, C5) `text`:
+   *  the words it shows, the shot's own or the hijack's zeroes. */
+  glitch: { seq: number; at: number; t: number; text: string } | null;
+  /** (wave 32) An ad burst playing now (a ⚡ in a talk scene, or its timer):
+   *  a short popup storm over whatever is up, in place of the takeover. */
+  burst: { seq: number; at: number; t: number; text: string } | null;
 }
 
-export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0, glitch: null };
+export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0, glitch: null, burst: null };
 
 /**
  * The glitch takeover at server `serverNow` (wave 26, T2), or null. Only a
@@ -91,14 +100,61 @@ export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: nul
  * around the cue and reconnects mid-takeover never plays its tail). A
  * blackout beats it; nothing else does.
  */
-export function glitchLayer(state: Pick<ScreenState, "program" | "firstNow" | "glitchSeen">, serverNow: number, blackout: boolean): ScreenLayers["glitch"] {
+export function glitchLayer(state: Pick<ScreenState, "program" | "firstNow" | "glitchSeen"> & { moments?: ScreenState["moments"] }, serverNow: number, blackout: boolean): ScreenLayers["glitch"] {
+  const live = liveGlitch(state, serverNow, blackout);
+  if (live === null || isBurst(live.shot, state.moments ?? [])) return null;
+  return { seq: live.shot.seq, at: live.shot.at, t: live.t, text: glitchText(live.shot) };
+}
+
+/** The glitch cue that is live at `serverNow` (`glitchLayer`'s rules), and `t` ms into it. */
+function liveGlitch(state: Pick<ScreenState, "program" | "firstNow" | "glitchSeen">, serverNow: number, blackout: boolean): { shot: ScreenShot; t: number } | null {
   const g = state.program.glitch ?? null;
   if (g === null || g.at <= 0 || blackout) return null;
   if (state.firstNow !== undefined && g.at <= state.firstNow) return null;
   if (state.glitchSeen !== undefined && state.glitchSeen - g.at > GLITCH_FRESH_MS) return null;
   const t = serverNow - g.at;
   if (t >= GLITCH_MS) return null;
-  return { seq: g.seq, at: g.at, t: Math.max(0, t) };
+  return { shot: g, t: Math.max(0, t) };
+}
+
+/** (wave 32) An ad burst's picture on the walls and the TV (ms): a short storm, never the 8 s takeover. */
+export const BURST_MS = 3600;
+/** (wave 32) A moment this close to a glitch cue (either side) was cued with it (one rule, one sync). */
+export const BURST_WITH_MS = 2000;
+/** (wave 32) An older server's glitch shot carries no `light`: what marks it
+ *  as an ad burst then is the burst's own sound (`sound truther_glitch`),
+ *  which the story's burst plays every time — a host's ⚡ and the timed one
+ *  (a `fire`, no signal) alike. Never the ⚡ signal itself: before the ad
+ *  attack a ⚡ is a flicker, and one pressed just before the 📺 would make
+ *  the hijack's full takeover read as a burst. The 📺 never plays it. */
+export const BURST_MOMENTS: ReadonlyArray<{ kind: ScreenMoment["kind"]; name: string }> = [
+  { kind: "sfx", name: "truther_glitch" },
+];
+
+/** (wave 32) Is this glitch cue an ad burst? The server's `light` says so;
+ *  without it (an older server), one of `BURST_MOMENTS` within
+ *  `BURST_WITH_MS` of it. Never for history. */
+export function isBurst(glitch: Pick<ScreenShot, "at" | "light">, moments: readonly ScreenMoment[]): boolean {
+  if (!(glitch.at > 0)) return false;
+  if (glitch.light === true) return true;
+  return moments.some((m) => Math.abs(m.at - glitch.at) <= BURST_WITH_MS && BURST_MOMENTS.some((b) => b.kind === m.kind && foldName(b.name) === foldName(m.name)));
+}
+
+/**
+ * (wave 32) The ad burst at `serverNow`, or null: a live glitch cue (the
+ * takeover's rules: never history, never a reload's, never a late page's)
+ * that is a burst, for `BURST_MS`. A blackout beats it.
+ */
+export function burstLayer(state: Pick<ScreenState, "program" | "firstNow" | "glitchSeen"> & { moments?: ScreenState["moments"] }, serverNow: number, blackout: boolean): ScreenLayers["burst"] {
+  const live = liveGlitch(state, serverNow, blackout);
+  if (live === null || live.t >= BURST_MS || !isBurst(live.shot, state.moments ?? [])) return null;
+  return { seq: live.shot.seq, at: live.shot.at, t: live.t, text: glitchText(live.shot) };
+}
+
+/** (wave 32, C5) A glitch cue's words: its own (the burst's line), else the hijack's zeroes. */
+export function glitchText(shot: Pick<ScreenShot, "text"> | null): string {
+  const t = shot?.text?.trim() ?? "";
+  return t === "" ? GLITCH_TEXT : t;
 }
 
 /** (wave 26, T2) A slide cued this close before its glitch still counts as
@@ -263,8 +319,10 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
   // tent's kiosk (`slides: false`, wave 26 T3) takes none either, nor the
   // corner or the Y2K clock, but its moments still play (it is not bare).
   const bare = o.piloting || o.peek === true || o.room === true || o.slides === false;
-  // Its hold counts from the cue; its scene's clock (`at`) waits out a glitch cued with it.
-  if (!bare && s !== null && held(s)) slide = { value: s.value, cue: s.cue, seq: s.seq, at: slideClockAt(s.at, p.glitch ?? null) };
+  // Its hold counts from the cue; its scene's clock (`at`) waits out a glitch
+  // cued with it — never a burst (wave 32), which draws over the scene.
+  const takeover = p.glitch != null && !isBurst(p.glitch, state.moments ?? []) ? p.glitch : null;
+  if (!bare && s !== null && held(s)) slide = { value: s.value, cue: s.cue, seq: s.seq, at: slideClockAt(s.at, takeover) };
 
   const remaining = state.remaining === null ? null : Math.max(0, state.remaining - Math.floor(since / 1000));
   const y2k = state.countdown === "y2k" ? remaining : null;
@@ -276,7 +334,10 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
   const chartShown = chart === null ? 0 : chartReveal(chart.rows.length, chart.revealAt, serverNow);
   // The glitch reaches every view, whatever it is doing; a blackout beats it.
   const glitch = glitchLayer(state, serverNow, overlay === "blackout");
-  return { overlay, slide, corner, y2k: o.slides === false ? null : y2k, flicker, chart, chartShown, glitch };
+  // (wave 32) An ad burst: over whatever is up, every view (the cutscene
+  // layer's popup storm where it draws scenes, else `burst-flash.tsx`).
+  const burst = burstLayer(state, serverNow, overlay === "blackout");
+  return { overlay, slide, corner, y2k: o.slides === false ? null : y2k, flicker, chart, chartShown, glitch, burst };
 }
 
 /**

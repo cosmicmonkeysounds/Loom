@@ -4474,6 +4474,10 @@ when Night.talk != "none" and Night.ended == true:
 when ad_burst:
   if Night.talk == "none" or Night.ended == true:
     broadcast "⚡ No talk scene is on (🤖 Talk): nothing glitches." to channel(hosts)
+  else if Night.glitch_kind == "full" and Time.elapsed < Night.glitch_at + 8:
+    // DRAFT w32: the 📺's takeover plays 8 s on the terminals; a burst
+    // inside it would cut it short everywhere.
+    broadcast "⚡ The ad hijack is still playing: wait for it to end. Nothing happens." to channel(hosts)
   else if Night.burst_last > 0 and Time.elapsed < Night.burst_last + 2:
     broadcast "⚡ Too soon: two seconds between glitches. Nothing happens." to channel(hosts)
   else if Night.talk == "intro" or Night.talk == "bottle":

@@ -100,6 +100,34 @@ const SECRET_WORDS = (() => {
   }
   return out;
 })();
+/** Every codex unlock code (the story's `code:` lines and facts.json): a
+ *  line said to the whole room never carries one. Failures never print it. */
+const CODEX_CODES = (() => {
+  const out = new Set<string>();
+  const walkDir = (dir: string) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) walkDir(join(dir, e.name));
+      else if (e.name.endsWith(".loom")) {
+        for (const m of readFileSync(join(dir, e.name), "utf8").matchAll(/^\s*code:\s*"?([^"\n#]+?)"?\s*$/gmu)) out.add(m[1]!.trim().toLowerCase());
+      }
+    }
+  };
+  walkDir(SHOW);
+  const walk = (o: unknown): void => {
+    if (Array.isArray(o)) o.forEach(walk);
+    else if (o && typeof o === "object") {
+      for (const [k, v] of Object.entries(o)) {
+        if (k === "code" && typeof v === "string") out.add(v.toLowerCase());
+        walk(v);
+      }
+    }
+  };
+  walk(JSON.parse(readFileSync(join(SHOW, "facts.json"), "utf8")));
+  return [...out];
+})();
+const noCode = (t: string) => {
+  for (const w of CODEX_CODES) expect(said(t, w), "a codex code is in a line (not printed)").toBe(false);
+};
 const NEVER_PLACES = /\b(heart|server room|cold|basement|patch|cables?|rows?|sandy|prom|girlfriend|chatbot|ex|door code|hand jive|question of force|virus back|customer care|extension)\b/iu;
 
 const said = (text: string, phrase: string) => new RegExp(`(^|[^a-z0-9])${phrase.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}($|[^a-z0-9])`, "iu").test(text);
@@ -182,7 +210,15 @@ describe("wave 32 — the talk scenes along a scripted night (C1, C2)", () => {
     expect(v(sim, "Night.glitch_kind")).toBe("full");
     expect(v(sim, "Night.glitch_text")).toBe("000. 000. 000.");
     const hijackAt = v(sim, "Night.glitch_at");
-    // Inside the 📺's own second: too soon.
+    // Inside the 📺's own second, and all through its 8 s takeover: refused,
+    // so a ⚡ never cuts the hijack short on the terminals and phones.
+    expect(press(sim, "ad_burst").refused).toBe(true);
+    advance(sim, 2);
+    const inHijack = press(sim, "ad_burst");
+    expect(inHijack.refused).toBe(true);
+    expect(JSON.stringify(inHijack.out)).toContain("The ad hijack is still playing");
+    expect(v(sim, "Night.glitch_kind")).toBe("full");
+    advance(sim, 4);
     expect(press(sim, "ad_burst").refused).toBe(true);
     advance(sim, 2);
     const b1 = press(sim, "ad_burst");
@@ -310,6 +346,7 @@ describe("wave 32 — the ⚡ cue on the sheet", () => {
       expect(t.length, t).toBeLessThanOrEqual(80);
       for (const w of OUTSIDE) expect(said(t, w), `${t} ∋ ${w}`).toBe(false);
       for (const w of SECRET_WORDS) expect(said(t, w), `${t} ∋ a secret word`).toBe(false);
+      noCode(t);
       expect(t, t).not.toMatch(NEVER_PLACES);
     }
   });
@@ -360,6 +397,7 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
       expect(t, t).not.toMatch(/\d/u);
       for (const w of OUTSIDE) expect(said(t, w), `${t} ∋ ${w}`).toBe(false);
       for (const w of SECRET_WORDS) expect(said(t, w), `${t} ∋ a secret word`).toBe(false);
+      noCode(t);
       expect(t, t).not.toMatch(NEVER_PLACES);
       expect(t, t).not.toMatch(/\blayers?\b/iu);
     }
@@ -406,6 +444,8 @@ describe("wave 32 — the canned lines (talk-scenes.ts, C8, C9)", () => {
       for (const t of texts) {
         for (const w of OUTSIDE) expect(said(t, w), `${t} ∋ ${w}`).toBe(false);
         for (const w of SECRET_WORDS) expect(said(t, w), `${t} ∋ a secret word`).toBe(false);
+        noCode(t);
+      noCode(t);
         expect(t, t).not.toMatch(NEVER_PLACES);
       }
     }

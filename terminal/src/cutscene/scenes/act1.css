@@ -281,6 +281,7 @@
 .a1-tod-title { font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 3em; line-height: 1.1; color: #ffd23f; text-shadow: 0.06em 0.06em 0 #000; overflow-wrap: break-word; }
 .a1-tod-sub { margin-top: 0.4em; font-family: var(--mono); font-size: 2.2em; color: #fff; }
 .a1-tod-ask { display: flex; margin-top: 1.2em; font-size: 1.6em; }
+.a1-tod-hunger { margin-top: 0.9em; font-family: var(--mono); font-size: 1.6em; line-height: 1.3; color: #ff9f6a; text-shadow: 0 0 0.3em rgba(255, 80, 40, 0.5); }
 .a1-tod-ask .kit-btn { margin-right: 0.6em; min-width: 5em; padding: 0.3em 0.9em; font-weight: bold; }
 
 /* --- a Truth chosen (over the bottle) ------------------------------------------------------------- */
