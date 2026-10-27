@@ -6372,14 +6372,6 @@ set Night.bingo_briefed = false
 // Wave 26 (T2, C3): the first glitch (the 📺 ad hijack), in story seconds.
 set Night.glitch_at = 0
 set Night.glitch_text = "none"
-// Wave 32 (C1, C2): no talk scene; "full" (the 📺 takeover) or "burst" (⚡).
-set Night.talk = "none"
-set Night.glitch_kind = "none"
-set Night.burst_n = 0
-set Night.burst_i = 0
-set Night.burst_at = 0
-set Night.burst_auto = 0
-set Night.burst_last = 0
 set Night.bingo_winners = 0
 set Night.bingo_named = 0
 set Night.bingo_ribbons = 0
@@ -6387,6 +6379,15 @@ set Night.first_reinstall = "none"
 set Night.first_reinstall_done = false
 set Night.trabolta_introduced = false
 set Night.ads_started = false
+// Wave 32 (C1, C2): no talk scene; the glitch's kind, "full" (the 📺
+// takeover) or "burst" (⚡); the bursts' count, cycle, timer, and last second.
+set Night.talk = "none"
+set Night.glitch_kind = "none"
+set Night.burst_n = 0
+set Night.burst_i = 0
+set Night.burst_at = 0
+set Night.burst_auto = 0
+set Night.burst_last = 0
 set Night.round = 0
 set Night.judging = false
 set Night.hunt_on = false
