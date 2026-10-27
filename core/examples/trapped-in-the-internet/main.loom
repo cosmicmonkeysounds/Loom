@@ -4474,7 +4474,7 @@ when Night.talk != "none" and Night.ended == true:
 when ad_burst:
   if Night.talk == "none" or Night.ended == true:
     broadcast "⚡ No talk scene is on (🤖 Talk): nothing glitches." to channel(hosts)
-  else if Time.elapsed < Night.burst_last + 2:
+  else if Night.burst_last > 0 and Time.elapsed < Night.burst_last + 2:
     broadcast "⚡ Too soon: two seconds between glitches. Nothing happens." to channel(hosts)
   else if Night.talk == "intro" or Night.talk == "bottle":
     set Night.burst_last = Time.elapsed
