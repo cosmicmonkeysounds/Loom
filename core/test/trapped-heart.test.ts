@@ -347,7 +347,8 @@ describe("The Heart — the light in his heart (wave 20)", () => {
       expect(validateLights(lights, house), map).toEqual({ ok: true, problems: [], warnings: [] });
     }
     const looks = ["heart_wake", "heart_nag", "heart_door_open", "heart_sealed", "heart_listen", "heart_argue", "heart_proof", "heart_warn", "heart_eject", "heart_notyet", "heart_shutdown", "heart_idle", "heart_alarm"];
-    expect(Object.keys(lights.looks).sort()).toEqual([...looks].sort());
+    // Wave 31: the house's own looks (`lights_*`) sit beside the heart's.
+    expect(Object.keys(lights.looks).filter((n) => n.startsWith("heart_")).sort()).toEqual([...looks].sort());
     expect(lights.boot).toBe("heart_idle");
     const used = new Set([...SRC.matchAll(/^\s*cue (heart_[a-z_]+)\s*$/gmu)].map((m) => m[1]!));
     // w20b (Q4): no "not yet" any more; its look stays in lights.json, unused.
@@ -358,8 +359,10 @@ describe("The Heart — the light in his heart (wave 20)", () => {
     expect([plan("heart_door_open").loop, plan("heart_alarm").loop]).toEqual([true, true]);
     // Q6 / Q10: the bulb is the server room's only light (no strip) and the
     // only fixture: a safety light at 80, and every command keeps it on at ≥ 80.
-    expect(lights.fixtures.map((f) => [f.id, f.kind, f.device, f.safety, f.min])).toEqual([["server-room-rgb", "zigbee", "server_room_rgb", true, 80]]);
-    expect(JSON.stringify(lights)).not.toMatch(/wled/iu);
+    // Wave 31: the house's bulbs and the living-room strip joined it; the
+    // server room still has only its bulb, and only the heart zone reaches it.
+    expect(lights.fixtures.filter((f) => f.room === "server-room").map((f) => [f.id, f.kind, f.device, f.safety, f.min])).toEqual([["server-room-rgb", "zigbee", "server_room_rgb", true, 80]]);
+    expect(lights.fixtures.filter((f) => f.kind === "wled").map((f) => [f.id, f.room])).toEqual([["living-strip", "desktop"]]);
     for (const n of looks) for (const c of plan(n).commands) {
       expect(c.set.state, n).not.toBe("OFF");
       if (c.set.brightness !== undefined) expect(c.set.brightness, n).toBeGreaterThanOrEqual(80);

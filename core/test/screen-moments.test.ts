@@ -585,7 +585,7 @@ describe("the night block", () => {
     const sim = Sim.fromSources(NIGHT);
     sim.fireBeat("Boot");
     const s = watch(sim);
-    expect(s.poll().night).toEqual({ screen: null, terminals: null, phase: "advice", step: 18, bottle_pick: null, bottle_open: false, results_q: 2, award_winner: null, award_value: null, help_votes: 7, thwart_votes: 3, alerts: "sticky", ended: false, collection_complete: false, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null, server_door: null, heart_stage: null, heart_look: null, alarm_on: null, door_override: null, patch_override: null });
+    expect(s.poll().night).toEqual({ screen: null, terminals: null, phase: "advice", step: 18, bottle_pick: null, bottle_open: false, results_q: 2, award_winner: null, award_value: null, help_votes: 7, thwart_votes: 3, alerts: "sticky", ended: false, collection_complete: false, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null, server_door: null, heart_stage: null, heart_look: null, alarm_on: null, lights: null, door_override: null, patch_override: null });
     sim.signal("award");
     expect(s.poll().night).toMatchObject({ award_winner: "Winamp", award_value: 42 });
     expect(s.poll("tv").night).toMatchObject({ award_winner: "Winamp", award_value: 42 });

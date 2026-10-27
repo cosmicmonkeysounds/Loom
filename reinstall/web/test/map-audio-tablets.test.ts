@@ -83,8 +83,8 @@ describe("tablets that also say the announcements (Q8)", () => {
 });
 
 describe("the device's expected layout (Q2)", () => {
-  it("the starter is the 828x + an expander: 24 / 22 used, 32 / 30 reported", () => {
-    expect(START().device).toEqual({ name: "828x", inputs: 24, outputs: 22, rate: 48000, expect: { inputs: 32, outputs: 30 } });
+  it("the starter is the 828x on its own outs (wave 31, no expander): 10 / 12 used, 32 / 30 reported", () => {
+    expect(START().device).toEqual({ name: "828x", inputs: 10, outputs: 12, rate: 48000, expect: { inputs: 32, outputs: 30 } });
   });
 
   it("sets, clamps and clears the expected counts", () => {

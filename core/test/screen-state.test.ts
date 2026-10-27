@@ -93,12 +93,12 @@ async function call(rt: EventRuntime, method: string, p: string, body: unknown, 
 /** The wave 20 heart vars (+ wave 22's patch override) as the show sets them
  *  (the story lane owns their values): the night block always carries the
  *  keys, typed. */
-function heartNight(s: ScreenState): Pick<ScreenState["night"], "server_door" | "heart_stage" | "heart_look" | "alarm_on" | "door_override" | "patch_override"> {
+function heartNight(s: ScreenState): Pick<ScreenState["night"], "server_door" | "heart_stage" | "heart_look" | "alarm_on" | "lights" | "door_override" | "patch_override"> {
   const n = s.night;
   expect([null, "open", "closed"]).toContain(n.server_door);
-  for (const k of ["heart_stage", "heart_look"] as const) expect(n[k] === null || typeof n[k] === "string").toBe(true);
+  for (const k of ["heart_stage", "heart_look", "lights"] as const) expect(n[k] === null || typeof n[k] === "string").toBe(true);
   for (const k of ["alarm_on", "door_override", "patch_override"] as const) expect(n[k] === null || typeof n[k] === "boolean").toBe(true);
-  return { server_door: n.server_door, heart_stage: n.heart_stage, heart_look: n.heart_look, alarm_on: n.alarm_on, door_override: n.door_override, patch_override: n.patch_override };
+  return { server_door: n.server_door, heart_stage: n.heart_stage, heart_look: n.heart_look, alarm_on: n.alarm_on, lights: n.lights, door_override: n.door_override, patch_override: n.patch_override };
 }
 
 describe("screenCueOf", () => {
