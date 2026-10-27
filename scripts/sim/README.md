@@ -93,6 +93,10 @@ The chains it presses after the Y2K clock (`Y2K_TO_HEART_END`,
   The mod world goes through `lib/world.ts`, which drops `Kernel.*` (but a
   few secret-free latches). Only `--watch` prints URLs with codes, on your
   own terminal.
+- The booths are Clippy, the four Antivirus and the three hosts. The
+  Installation Wizard, Sandy and Truther Download are voices
+  (`playable: false`), not booths: the wizard's lines land in the captured
+  program's thread during the reinstall beat.
 - Booths are play-as sessions (`/api/mod/impersonate`): no performer's part
   is held, and they end when the run ends.
 
@@ -116,7 +120,8 @@ The chains it presses after the Y2K clock (`Y2K_TO_HEART_END`,
 
 `node --experimental-strip-types --no-warnings --test scripts/sim/test/sim.test.ts`
 (the chain walk, the heart bot's choices, the world reads, the scoreboard).
-`scripts/ops/predeploy.sh` runs them with the accept helpers.
+`scripts/ops/predeploy.sh` runs them with the accept helpers. Typecheck:
+`core/node_modules/.bin/tsc -p scripts/sim`.
 
 ## What it does not cover
 

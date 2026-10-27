@@ -681,7 +681,7 @@ async function act2(): Promise<void> {
       const asked = await http.post("/api/guest/wallet/request", { from: c3.id, amount: 3 }, b2.token);
       if (asked.status !== 200) c.note(`wallet request → ${asked.status} ${String(asked.json["error"] ?? "")}`);
       c.must("DM McAfee", await say(c3.token, "dm:McAfee Anti-Virus", "How much for a clean scan?"));
-      const found = await http.post<{ crew?: { id?: string } }>("/api/guest/crew/found", { name: "Sim Screensavers" }, bots[7 % bots.length]!.token);
+      const found = await http.post<{ crew?: { id?: string }; error?: string }>("/api/guest/crew/found", { name: "Sim Screensavers" }, bots[7 % bots.length]!.token);
       if (found.status === 200) {
         const j = await http.post("/api/guest/crew/join", { crew: found.json.crew?.id ?? "" }, bots[8 % bots.length]!.token);
         if (j.status === 200) c.note("a crew founded and joined");
