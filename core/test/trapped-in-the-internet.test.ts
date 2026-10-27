@@ -359,7 +359,8 @@ describe("Trapped in the Internet — compile", () => {
     // question), then 🍾 (about five spins); 🗜 is an anytime cue (the tent's
     // queue), and neither forced majority is the running order (both are fallbacks).
     // Wave 26 (B2): ⏰ may fire again after ↩ Not a Bingo.
-    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["bingo_time", "read_the_results", "spin_the_bottle"]);
+    // Wave 32 (C2): ⚡ ad_burst, appended last, repeats in a talk scene.
+    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["bingo_time", "read_the_results", "spin_the_bottle", "ad_burst"]);
     expect(m.interactions.get("zip_everyone_out")!.sequence).toBe(false);
     for (const a of ["force_majority_stay", "force_majority_leave"]) expect(m.interactions.get(a)!.sequence, a).toBe(false);
     expect(m.interactions.get("close_the_filing")!.label).toBe("⏱ Close round-one filings now (auto at 2 min)");
@@ -1032,8 +1033,10 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.holdsCodex("Clippy", "Clippy Instructions 4")).toBe(true);
     expect(sim.holdsCodex("g1", "Clippy Instructions 4")).toBe(false);
     const minor = saidBy(pv, "Trabolta").filter((e) => e.text.includes("minor irregularity"));
-    expect(minor).toHaveLength(13);
-    expect(minor.every((e) => e.audience.length === 1)).toBe(true);
+    // Wave 32: 13 private ones (every cleared program), and one aloud in the Ad Hijack beat.
+    expect(minor.filter((e) => e.audience.length === 1)).toHaveLength(13);
+    expect(minor.filter((e) => e.audience.length !== 1).map((e) => e.text)).toEqual(["…proceed. We are all going to proceed. That was a minor irregularity. It has been detected and contained."]);
+    expect(minor).toHaveLength(14);
     expect(v(sim, "Trabolta.composure")).toBe(65);
     expect(v(sim, "Night.judging")).toBe(false);
 

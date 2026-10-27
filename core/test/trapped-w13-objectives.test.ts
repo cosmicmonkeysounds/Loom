@@ -621,7 +621,9 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("start_the_bingo")).toMatchObject({ "Norton Anti-Virus": "The Selected Antivirus", "McAfee Anti-Virus": "Patrol The Computer", Clippy: "Welcome Everyone" });
     expect(at("bingo_time")).toMatchObject({ "Norton Anti-Virus": "The Selected Antivirus", Clippy: "Celebrate The Winners", "Task Manager": "The Fake Bingo Card" });
     expect(at("Clippy: named_at_bingo g4")).toMatchObject({ "Norton Anti-Virus": "Escort The Marked", "McAfee Anti-Virus": "Escort The Marked" });
-    expect(at("introduce_trabolta")).toMatchObject({ Clippy: "Introduce Trabolta", "Norton Anti-Virus": "Patrol The Computer" });
+    // Wave 32 (C1): the introduction opens a talk scene: Clippy talks with him, Task Manager relays.
+    expect(at("introduce_trabolta")).toMatchObject({ Clippy: "Talk With Trabolta", "Task Manager": "Relay Clippy To Trabolta", "Norton Anti-Virus": "Patrol The Computer" });
+    expect(at("start_the_hunt")).toMatchObject({ Clippy: "Introduce Trabolta", "Task Manager": "The Help Desk" });
     expect(at("first_moment_of_truth")).toMatchObject({ Clippy: "The First Moment Of Truth Host" });
     expect(at("the bottle lands on g2")).toMatchObject({ Clippy: "The Bottle" });
     expect(at("Clippy: uncertain_answer g5")).toMatchObject({ "Norton Anti-Virus": "Escort The Marked" });
@@ -823,12 +825,25 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
 
 describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
   it("the sign-off sheets are signed off and list every objective", async () => {
-    const { readFileSync } = await import("node:fs");
+    const { existsSync, readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const dir = join(__dirname, "../examples/trapped-in-the-internet");
     const sheets = ["SIGNOFF-w13.md", "SIGNOFF-w18.md", "SIGNOFF-w21.md", "SIGNOFF-w26.md"].map((f) => readFileSync(join(dir, f), "utf8"));
     for (const sheet of sheets) expect(sheet).toMatch(/^\*\*Signed off 2026-10-27\.\*\*/mu);
-    for (const id of Sim.fromSources(SRC).model.objectives.keys()) expect(sheets.some((s) => s.includes(id)), id).toBe(true);
+    // Wave 32's objectives are DRAFT w32 until SIGNOFF-w32.md is signed: each carries the marker
+    // right above it, and is listed on that sheet once it exists.
+    const objectives = readFileSync(join(dir, "objectives.loom"), "utf8");
+    const w32 = join(dir, "SIGNOFF-w32.md");
+    const w32Sheet = existsSync(w32) ? readFileSync(w32, "utf8") : null;
+    const draft32 = (id: string) => new RegExp(`// DRAFT w32[^\n]*\nOBJECTIVE ${id}\n`, "u").test(objectives);
+    for (const id of Sim.fromSources(SRC).model.objectives.keys()) {
+      if (draft32(id)) {
+        if (w32Sheet !== null) expect(w32Sheet, id).toContain(id);
+        continue;
+      }
+      expect(sheets.some((s) => s.includes(id)), id).toBe(true);
+    }
+    expect(["Talk With Trabolta", "Relay Clippy To Trabolta"].filter(draft32)).toHaveLength(2);
   });
 });
 

@@ -247,6 +247,10 @@ phases:
       Favours: none; requests go through Clippy. If a program offers you a
       fact anyway, be delighted, and tell them the hunt opens soon and every
       fact is filed on the 📝 card. Ask each program what it is good at.
+      At the Desktop your manners cracked: you froze on a word, said
+      EXTREMELY louder than you scheduled, and stammered that the
+      reinstallations are routine. If a program brings it up, deny it: you
+      were buffering, the word was a scheduling error, it is all routine.
     cue: >-
       Stage formal (floor). Clippy has just introduced him as Jean Trabolta, Sole Owner and Founder of Maps and Ducks, by video conference, right
       after the first program went to the Internet, and the TV now mirrors the copy of the
@@ -286,6 +290,8 @@ phases:
       first), a little Truthcoin, a card on the wall terminals or one file
       you may tell now; name the price. You never learn
       which answers were true, and you never guess.
+      Guesses sting you. If you have said so in front of everyone, you call
+      it optimal motivation now.
     cue: >-
       Stage hungry (floor). The first Moment of Truth: the results were read, some programs
       were sent to the Internet, then Truth or Dare (the bottle picks). He warms to
@@ -304,6 +310,13 @@ phases:
       that this matters to you for a reason you will not name. Favours:
       earned, and cheaper now; the lights and an Antivirus sweep are thinkable
       for a program with credit.
+      At the Desktop, in front of everyone, the adverts tore through your
+      sentences and it hurt: you started to shout that everyone was going to
+      die and turned it into "proceed", you asked who brought the malware in
+      and withdrew the question, you said you do all this "for the theory"
+      too quickly, you said the domain is yours "legally, mostly", and you
+      asked what time it was and forbade an answer. Deny every one of them:
+      a minor irregularity. Never say where it hurts.
     cue: >-
       Stage rattled (floor). An advertisement hijacked his presentation on the TV. He told
       Clippy privately that if the malware continues everyone may die, and told everyone else
@@ -321,6 +334,8 @@ phases:
       may be founding factions of their own now; you cannot see them or count
       them. You want facts now and you pay for them: be delighted by every
       one, and send it to the 📝 card. Favours: earned.
+      You still deny what slipped out of you at the Desktop when the adverts
+      came through: it was a minor irregularity.
     cue: >-
       Stage rattled. An hour of free investigation: the second hunt (three questions, more
       pointed) is in every Quest Log, and a TRUTHER DOWNLOAD went to every phone from an
@@ -380,6 +395,9 @@ phases:
       anyone earns being understood. Favours: loose for programs who are kind
       about the one you are doing all this for; none for whoever read your
       LiveJournal. Say "her", never her name.
+      At the Desktop you said you could feel every bean, you said "for her"
+      before you caught it and called it the theory, and you told everyone
+      they all stay. Apologise for it, then do it again.
     cue: >-
       Stage unravelling (floor). The printer was full of beans. Routine operations like Print
       to PDF are failing; every program in the Internet was zipped out. The screens flicker

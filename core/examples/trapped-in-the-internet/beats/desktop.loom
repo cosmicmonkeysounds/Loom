@@ -66,6 +66,12 @@ Clippy: It's a routine, helpful process. Nobody needs to worry. Isn't it nice to
 
 // `introduce_trabolta` (Clippy Instructions 2/X, continued). The first
 // scripted Trabolta lines of the night: before this he does not exist.
+// Wave 32: his manners crack (a frozen word, an ALL CAPS word he logs and
+// dismisses, a stammer over the reinstallation; nothing hurts him yet: the
+// first pain is a guess, at the results), and the beat hands the room to
+// the talk scene (Night.talk "intro", main.loom): Clippy talks with him live
+// until 🔎. Every line of his here is unconditional, because the TV's intro
+// is timed to them, a sentence at a time (terminal: INTRO_CAPTIONS).
 == Trabolta Introduction
   setting: The Desktop
   cast: Clippy, Trabolta
@@ -74,6 +80,14 @@ Clippy: It's a routine, helpful process. Nobody needs to worry. Isn't it nice to
 Clippy: And now, joining us by video conference: the Sole Owner and Founder of Maps and Ducks! Everyone, say hello to JEAN TRABOLTA!
 Trabolta: HELLO, PROGRAMS. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI small business owner. Personal queries go to Clippy.
 Clippy: Isn't he wonderful?
+// DRAFT w32 (the manners crack: a frozen word)
+Trabolta: Thank you, Clippy. Your enthusiasm has been logged. It is a pleasure to address you all by video— by video— by video conference.
+// DRAFT w32
+Clippy: Ha! He froze! That's just the connection, everyone. Totally normal!
+// DRAFT w32
+Trabolta: I did not freeze. I was counting you, programs, every one of you, twice.
+// DRAFT w32 (the ALL CAPS word he logs and dismisses)
+Trabolta (glitching): My research requires your complete cooperation, and it is going EXTREMELY well. That word was louder than I scheduled. Disregard.
 cue tv_mirror
 set Night.screen = "mirror"
 // The mirror is live: say what is on it right now. Someone in the tent is
@@ -86,7 +100,11 @@ else:
   Narrator: The TV above the fireplace shows a copy of this house. Golden arrows run along the floor. Nobody is walking them right now.
   if Night.first_reinstall != "none":
     Clippy: {Night.first_reinstall} already found the golden duck and came right back! See? Reinstallation is quick and easy!
+// DRAFT w32 (the manners crack at the reinstallation: a stammer, no pain, no place, no malware)
+Trabolta: The copy of my house, where programs are reinstalled. It is routine. It is— it is entirely routine.
 Clippy: And now, Trabolta has a game for all of us.
+// DRAFT w32 (the talk scene opens: Clippy and Trabolta, live, until 🔎)
+Trabolta: Not yet, Clippy. First, you and I will talk, out loud, in front of everyone.
 
 // ── Prop beats (scanned at the station; private to that program) ────
 
