@@ -15,6 +15,7 @@ import { roomOrder } from "../rooms/order.ts";
 import { useThreads, type Threads } from "../rooms/threads-state.ts";
 import { guestDotOf } from "../stream/badges.ts";
 import type { ChatMessage, Decision, GuestView } from "../types.ts";
+import { echoOf } from "../../../core/src/pick-echo.ts";
 import { useTyping } from "../typing.ts";
 import type { WidgetResult } from "../widgets.tsx";
 import type { CheckinAnswer, RedeemAnswer, ScanDone } from "../scan-done.tsx";
@@ -55,8 +56,11 @@ const ECHO_CAP = 200;
  *  just after everything already there (a half seq, so the story's answer
  *  — the next real message — lands under it). `ts` is story time like every
  *  server message's (`sim.elapsed()`): the newest message's, never the wall
- *  clock, which reads hours ahead of the story. */
+ *  clock, which reads hours ahead of the story. The text reads the way the
+ *  server's own `pick` line will (core's `echoOf`: the tag dropped, a deed
+ *  as `[shows …]`), so `withEchoes` can swap one for the other. */
 export function choiceEcho(channel: string, text: string, me: { id: string; name: string }, afterSeq: number, ts = 0): ChatMessage {
+  const echo = echoOf(text);
   return {
     seq: afterSeq + 0.5,
     channel,
@@ -64,18 +68,31 @@ export function choiceEcho(channel: string, text: string, me: { id: string; name
     title: channelHead(channel).title,
     from: me.name,
     kind: "line",
-    text,
+    text: echo.text,
     ts,
     audience: [me.id],
     parentSeq: null,
     hidden: false,
+    pick: true,
+    ...(echo.action ? { act: true as const } : {}),
   };
 }
 
-/** The stream with the guest's echoed choices folded in. */
+/** Has the server's own `pick` line (wave 28) for this local echo arrived:
+ *  a pick line in the same room with the same words, past the echo's spot? */
+export function echoAnswered(echo: ChatMessage, messages: ReadonlyMap<number, ChatMessage>): boolean {
+  const floor = Math.floor(echo.seq);
+  for (const m of messages.values()) {
+    if (m.pick === true && m.seq > floor && m.channel === echo.channel && m.text === echo.text) return true;
+  }
+  return false;
+}
+
+/** The stream with the guest's echoed choices folded in. An echo the
+ *  server's own pick line has answered (wave 28) is dropped, never shown twice. */
 export function withEchoes(messages: ReadonlyMap<number, ChatMessage>, echoes: readonly ChatMessage[]): Map<number, ChatMessage> {
   const out = new Map(messages);
-  for (const e of echoes) if (!out.has(e.seq)) out.set(e.seq, e);
+  for (const e of echoes) if (!out.has(e.seq) && !echoAnswered(e, messages)) out.set(e.seq, e);
   return out;
 }
 
@@ -453,17 +470,20 @@ export function useGuestSession(): GuestSession {
 
   const join = useCallback((faction: string) => post("/api/guest/join", { faction }), [post]);
   const defect = useCallback((to: string) => post("/api/guest/defect", { to }), [post]);
-  // The guest's own pick, echoed into the thread as their bubble (the
-  // server records the choice, not a line), so the story's answer never
-  // reads as a non sequitur. Kept per sign-in so a reload keeps it.
+  // The guest's own pick, echoed into the thread as their bubble at once,
+  // so the story's answer never reads as a non sequitur. Since wave 28 the
+  // server posts the pick as a real line too; `withEchoes` then drops the
+  // echo. Kept per sign-in so a reload against an older server keeps it.
   const [echoes, setEchoes] = useState<ChatMessage[]>(() => loadEchoes(load, me?.token ?? null));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setEchoes(loadEchoes(load, me?.token ?? null)), [me?.token]);
-  const pendingRef = useRef<{ options: string[] | null; channel: string }>({ options: null, channel: "lobby" });
-  pendingRef.current = { options: status?.pendingChoice ?? null, channel: status?.decisionChannel ?? "lobby" };
+  const pendingRef = useRef<{ options: string[] | null; channel: string; menus: GuestView["choices"] }>({ options: null, channel: "lobby", menus: undefined });
+  pendingRef.current = { options: status?.pendingChoice ?? null, channel: status?.decisionChannel ?? "lobby", menus: status?.choices };
   const choose = useCallback(
     async (index: number, menu?: ChoiceRef) => {
-      const { options, channel } = pendingRef.current;
+      const { options, menus } = pendingRef.current;
+      // The menu's own room when the view names it (the server posts its pick line there).
+      const channel = (menu !== undefined ? menus?.find((c) => c.id === menu.id)?.channel : undefined) ?? pendingRef.current.channel;
       const text = menu?.text ?? options?.[index];
       const last = maxSeqOf(messages.values());
       const echo = text !== undefined && me !== null ? choiceEcho(channel, text, me, last, messages.get(last)?.ts ?? 0) : null;

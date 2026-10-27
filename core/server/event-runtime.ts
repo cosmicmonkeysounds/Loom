@@ -2591,7 +2591,9 @@ export class EventRuntime {
       // text was still him answering, and re-asking it answers twice.)
       if (m.from !== character) {
         // A story line from anyone else in the thread is not a guest asking.
-        if (m.kind === "line" && !Object.hasOwn(m, "beat")) {
+        // Wave 28: a pick at a menu (`pick`) is the guest answering the
+        // story, never a line owed his free reply.
+        if (m.kind === "line" && !Object.hasOwn(m, "beat") && m.pick !== true) {
           owed = m;
           first ??= m;
         }
@@ -4453,7 +4455,7 @@ export class EventRuntime {
   }
 
   /** What the chat composer asks the runtime (C3: a readout's guest picture). */
-  private readonly composeOpts: ComposeOptions = { avatarOf: (name) => this.avatars.keyFor(name) };
+  private readonly composeOpts: ComposeOptions = { avatarOf: (name) => this.avatars.keyFor(name), menuChannelOf: (menu) => this.menuChannels.get(menu) };
 
   /** Wave 18 (C6, C7): when each wanted guest was marked / captured, and
    *  when the night first ended — rebuilt by every replay. */

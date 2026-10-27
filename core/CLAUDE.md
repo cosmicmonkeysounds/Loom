@@ -20,7 +20,7 @@ The show, *Trapped in the Internet* (Oct 31 2026), is the Loom project in
 | `src/runtime/sim/sim.ts` | the `Sim`: world, ledger, hook drain, the executor, every journaled mutation |
 | `src/runtime/sim/` (rest) | `crews.ts` (crews, faction mode), `board.ts` (watch / countdown), `badges.ts`, `stats.ts`, `channel-types.ts`, `effects.ts`, `DESIGN.md` |
 | `src/lsp/` | `Workspace` (completion, hover, definition, references, symbols, diagnostics), `graph.ts` (the story graph), `rename.ts`, `w18-lints.ts` … `w26-lints.ts` (workspace lints L12xx) |
-| `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `cue-sheet.ts`, `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
+| `src/*.ts` | browser-safe shared modules: `house-desk.ts` (wave 25, `@loom/core/house-desk`), `cue-sheet.ts`, `pick-echo.ts` (wave 28), `host-board.ts`, `delivery.ts`, `facts.ts` + `answer-match.ts`, `casino.ts`, `go.ts`, `show-clock.ts`, `identity-kind.ts` |
 | `server/server.ts` | process boot, static apps (`/`, `/terminal/`, `/reinstall/`, `/cards`, `/webmaster/`), `/api/health`, `/api/resolve-code`, control-plane routing |
 | `server/event-runtime.ts` | one live event (`EventRuntime`, ~7,000 lines): every `/e/:id/api/*` handler, the journal commit + `fanout`, restarts, the ticker |
 | `server/registry.ts` | `EventRegistry`: one `EventRuntime` per event, rehydrated at boot |
@@ -102,6 +102,16 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   new guest route is refused for a locked guest by default;
   `test/w26-lock.test.ts` walks every route. If it posts nothing into the
   story, add it to `LOCKED_OPEN` on purpose.
+- **A pick is a chat line** (wave 28). `Sim.choose` records a `chose`
+  event (`person`, the menu's `id` and `beat`, the option's `text`) before
+  the option's body runs. `composeGuestMessages` posts it, through
+  `ComposeOptions.menuChannelOf` (the runtime's `menuChannels`, live and
+  in the replay), as the picker's own line in the menu's room:
+  `pick: true`, `act: true` for a deed, audience the picker, text by
+  `src/pick-echo.ts` `echoOf` (shared with the terminal and play). With
+  no `menuChannelOf` (the editor's local backend) it posts nothing. A
+  pick is never a line owed an agent's free reply (the restore's owed
+  scan skips it), but it is in the agent's `recent` as the guest's line.
 - **Game-only beats** (wave 26, C6). `chat.ts` `GAME_ONLY_BEATS` (Escape
   Attempt, Heart In The Simulation) never become a ChatMessage and never
   set the speaker a later menu docks under (`menuChannelsFor`,

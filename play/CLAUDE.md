@@ -144,6 +144,13 @@ windows), the Desk, the director phone and Help are lazy chunks.
   shrink, the open menu / card give up the space (360x740). A folded menu
   reads `▴ {title}`. Once a send resolves, its line leaves the room's
   draft.
+- **A pick is a server line** (wave 28). The server posts every pick
+  (made here, at the heart terminal, or by a director) as the guest's own
+  `pick: true` line (`act: true` for a deed) in the room the menu docked
+  in. The phone still echoes its own pick at once (`choiceEcho`, in the
+  menu's own `choices[].channel`, reading as core's `echoOf`), and
+  `withEchoes` drops the echo once the matching server line arrives
+  (`echoAnswered`: same room and words, past the echo's spot).
 
 ### Booth
 
@@ -277,7 +284,8 @@ test/                    vitest; *.test.ts(x) per module and lane
 Play imports a few dependency-free core modules **by relative path**
 (`../../core/src/…`), with no alias and no build step: `cue-sheet.ts`,
 `host-board.ts`, `house-desk.ts` (the house desk, Desk chunk only), `delivery.ts` (alert levels, effect manners),
-`show-clock.ts`, `runtime/sim/badges.ts`, `runtime/sim/crews.ts`.
+`show-clock.ts`, `runtime/sim/badges.ts`, `runtime/sim/crews.ts`, `pick-echo.ts`
+(wave 28: how a pick reads; `session/guest.ts` `choiceEcho`).
 `@loom/core` is not a package dependency. Keep those core files free of
 Node imports, or the play build breaks.
 

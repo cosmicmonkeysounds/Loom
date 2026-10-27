@@ -316,62 +316,10 @@ export function optionOfKey(key: string, count: number): number | null {
   return i < count ? i : null;
 }
 
-const ACTS: Record<string, string> = {
-  show: "shows",
-  hold: "holds",
-  hand: "hands",
-  give: "gives",
-  play: "plays",
-  read: "reads",
-  put: "puts",
-  open: "opens",
-  offer: "offers",
-  point: "points",
-  place: "places",
-  lay: "lays",
-  slide: "slides",
-  push: "pushes",
-  pull: "pulls",
-  plug: "plugs",
-  unplug: "unplugs",
-  take: "takes",
-  tap: "taps",
-  turn: "turns",
-};
-
-/**
- * How a pick reads in the thread (B4). Said words read as said; a tagged
- * option that is a deed (`⟦PROOF⟧ Show him the Sandy File.`) reads as one,
- * in brackets: `[shows the Sandy File]` — its first sentence, the verb in
- * the third person, a "him" right after it dropped.
- */
-export function echoOf(option: string): { text: string; action: boolean } {
-  const { tag, text } = splitTag(option);
-  if (tag !== null) {
-    const m = /^(\p{L}+)\s+(.*)$/u.exec(text);
-    const act = m === null ? undefined : ACTS[m[1]!.toLowerCase()];
-    if (m !== null && act !== undefined) {
-      const first = (/^(.*?[.!?])(\s|$)/u.exec(m[2]!)?.[1] ?? m[2]!)
-        .replace(/[.!?…]+$/u, "")
-        .replace(/^him\s+/iu, "")
-        .trim();
-      if (first !== "") return { text: `[${act} ${first}]`, action: true };
-    }
-  }
-  return { text, action: false };
-}
-
-/**
- * When a pick was made, on the lines' own clock (B4: an echo reads like a
- * typed line, stamped when it was sent). A line's `ts` is the story's
- * elapsed time, not the server's wall clock, so the pick is the newest
- * line's `ts` plus the time since this page first saw that line
- * (`seenAt`, local ms). No line yet: `now`.
- */
-export function echoTime(newest: { ts: number } | undefined, seenAt: number | undefined, now: number): number {
-  if (newest === undefined) return now;
-  return newest.ts + Math.max(0, now - (seenAt ?? now));
-}
+/** How a pick reads in the thread (B4). Wave 28: core's, shared with the
+ *  server's `pick` chat line and the phone, so all three read the same:
+ *  `[shows the Sandy File]` for a deed, the plain words otherwise. */
+export { echoOf } from "../../../core/src/pick-echo.ts";
 
 /**
  * Does his heart answer a line opening here (main.loom `when terminal_opened`)?

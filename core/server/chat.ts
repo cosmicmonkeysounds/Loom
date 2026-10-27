@@ -31,6 +31,7 @@ import { isEffectManner, noticeKey, splitNotice, type GoTarget, type MomentClass
 import { resolveGoWords } from "../src/go.ts";
 import { foldName } from "../src/parser/names.ts";
 import { display } from "../src/runtime/expr.ts";
+import { echoOf } from "../src/pick-echo.ts";
 
 // `lobby` / `faction` / `dm` / `location` are derived; `group` / `open` /
 // `private` come from authored SPACE/CHANNEL declarations. `location` is the
@@ -139,6 +140,12 @@ export interface ChatMessage {
   fx?: true;
   /** A GENERATOR bark (`ambient` event): the client shows it in the dim ticker, never as a stream row, never badged. */
   ambient?: true;
+  /** Wave 28: a pick at a story menu, as the picker's own line (the `chose`
+   *  event, `pick-echo.ts` `echoOf`), in the room the menu docked in, to the
+   *  picker only. Replayed like every message, so a reload keeps it. */
+  pick?: true;
+  /** Wave 28: beside `pick`, the pick was a deed (`[shows the Sandy File]`). */
+  act?: true;
   /** A per-person notice (`broadcast "~…"`): its collapse key (`noticeKey`). Consecutive notices in a room collapse client-side. */
   notice?: string;
   /** A `reply` readout (the `respond` event). */
@@ -420,6 +427,10 @@ export interface ComposeOptions {
   /** A guest's avatar key by display name (`AvatarBook.keyFor`), for a
    *  readout's `aboutAvatar` (C3). */
   avatarOf?: (name: string) => string | null;
+  /** The room a menu docked in, by its id (the runtime's `menuChannels`,
+   *  wave 28): a `chose` event posts the pick there. Absent, or no room
+   *  for that id: the pick posts nothing (the local Run backend). */
+  menuChannelOf?: (menu: number) => string | undefined;
 }
 
 /** `with close:` as a draft's `autoClose`: only a big moment to two or more (C1). */
@@ -702,6 +713,30 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
             moment: alert ? loud : "minor",
           });
         }
+        break;
+      }
+      case "chose": {
+        // Wave 28: the pick as the picker's own line, in the room the menu
+        // docked in, before whatever the option said back (same batch, in
+        // order). Only the picker sees it; it replays like any message.
+        const channel = opts.menuChannelOf?.(e.id);
+        if (channel === undefined) break;
+        const head = sim.channelHead(channel);
+        const echo = echoOf(e.text);
+        if (echo.text === "") break;
+        out.push({
+          channel: head.channel,
+          channelKind: head.channelKind as ChannelKind,
+          title: head.title,
+          from: sim.persons.get(e.person)?.name ?? e.person,
+          kind: "line",
+          text: echo.text,
+          ts,
+          audience: [e.person],
+          parentSeq: null,
+          pick: true,
+          ...(echo.action ? { act: true as const } : {}),
+        });
         break;
       }
       case "chat": {

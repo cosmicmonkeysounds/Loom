@@ -989,6 +989,9 @@ export class Sim {
       if (opt !== undefined) {
         queue.splice(at, 1);
         if (queue.length === 0) this.pendingChoices.delete(person);
+        // Wave 28: the pick itself, before anything its option says — the
+        // server posts it as the picker's own line in the menu's room.
+        this.record({ type: "chose", person, id: pc.id, beat: pc.beat === "" ? null : pc.beat, text: opt.text });
         // Resume the selected option, then the full saved continuation.
         // Every frame field has to survive the round trip: dropping
         // `speaker` silently demotes a post-choice dialogue line to

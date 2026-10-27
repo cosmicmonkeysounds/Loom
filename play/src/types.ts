@@ -103,6 +103,11 @@ export interface ChatMessage {
   fx?: true;
   /** A GENERATOR bark: the dim ticker, never a stream row, never badged. */
   ambient?: true;
+  /** Wave 28: the picker's own line for a pick at a story menu (core's
+   *  `pick-echo.ts` `echoOf`), posted by the server in the menu's room. */
+  pick?: true;
+  /** Wave 28: beside `pick`, the pick was a deed (`[shows …]`), not words. */
+  act?: true;
   /** A per-person notice (`broadcast "~…"`): its collapse key (`noticeKey`). */
   notice?: string;
   /** A `reply` readout (the `respond` event). */

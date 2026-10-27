@@ -1,29 +1,40 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Thread } from "../src/chat.tsx";
+import { readFileSync } from "node:fs";
+import { Thread, lineClass } from "../src/chat.tsx";
 import type { Line } from "../src/pilot.ts";
 
 const line = (seq: number, text: string, theirs = true): Line => ({ seq, text, theirs, from: theirs ? "Trabolta" : "Winamp", channel: "dm:Trabolta", ts: 0, kind: "line" }) as unknown as Line;
 const render = (p: Partial<Parameters<typeof Thread>[0]>) =>
   renderToStaticMarkup(createElement(Thread, { lines: [], revealed: new Map(), typing: false, character: "Trabolta", guestName: "Winamp", ...p }));
+const pick = (seq: number, text: string, act = false): Line => ({ ...line(seq, text, false), pick: true, ...(act ? { act: true } : {}) }) as Line;
 
-describe("the thread's echoes of a pick at the heart", () => {
-  it("land after the line they followed, never stored", () => {
-    const html = render({ lines: [line(1, "So. Someone has found my heart."), line(5, "Go on.")], echoes: [{ key: "a", text: "I'm a person.", after: 1 }, { key: "b", text: "Then listen to me.", after: 5 }] });
+describe("a pick at the heart is the server's own line (wave 28)", () => {
+  it("lands in the thread's order (before his reply), as YOU, from the stream itself", () => {
+    const html = render({ lines: [line(1, "So. Someone has found my heart."), pick(2, "I'm a person."), line(3, "Go on.")] });
     const at = (s: string) => html.indexOf(s);
     expect(at("I&#x27;m a person.")).toBeGreaterThan(at("found my heart"));
     expect(at("I&#x27;m a person.")).toBeLessThan(at("Go on."));
-    expect(at("Then listen to me.")).toBeGreaterThan(at("Go on."));
+    expect(html).toContain('class="line mine kind-line echo"');
+    expect(html).toMatch(/<span class="who">YOU<\/span>/u);
   });
 
-  it("read like a typed line (YOU and the time); a deed reads as an action (B4)", () => {
+  it("a deed reads as an action (B4), with its time", () => {
     const ts = new Date(2026, 9, 31, 20, 4).getTime();
-    const html = render({ lines: [line(1, "Go on.")], echoes: [{ key: "a", text: "[shows the Sandy File]", after: 1, ts, action: true }] });
-    expect(html).toContain('class="line mine echo act"');
+    const html = render({ lines: [line(1, "Go on."), { ...pick(2, "[shows the Sandy File]", true), ts }] });
+    expect(html).toContain('class="line mine kind-line echo act"');
     expect(html).toContain("20:04");
     expect(html).toContain("[shows the Sandy File]");
-    expect(html).not.toContain("›");
+    expect(lineClass({ theirs: false, kind: "line", pick: true, act: true }, false)).toBe("line mine kind-line echo act");
+    expect(lineClass({ theirs: false, kind: "line" }, false)).toBe("line mine kind-line");
+  });
+
+  it("the terminal keeps no local echo state: the Thread takes no echoes, the app none", () => {
+    const app = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8");
+    const chat = readFileSync(new URL("../src/chat.tsx", import.meta.url), "utf8");
+    expect(app).not.toMatch(/setEchoes|echoes=/u);
+    expect(chat).not.toMatch(/echoAfter|interface Echo\b/u);
   });
 });
 
