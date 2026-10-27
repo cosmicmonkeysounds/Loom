@@ -9,6 +9,14 @@ export function resolveBase(flag: string | undefined, env: string | undefined): 
   return b === "" ? null : b;
 }
 
+/** A line naming the server when it came from `LOOM_SERVER` (no `--base`)
+ *  and is not this laptop, so a stale env var is visible before the guard
+ *  asks anything. Null otherwise. */
+export function envServerNotice(flag: string | undefined, env: string | undefined, base: string): string | null {
+  if (flag !== undefined || (env ?? "").trim() === "" || base === "" || isLocal(base)) return null;
+  return `  server from LOOM_SERVER (no --base): ${base}. Not this laptop: unset LOOM_SERVER or pass --base if that is not the one you meant.`;
+}
+
 /** Port 7000 on this laptop is the user's own dev server (`pnpm dev`, the
  *  `loom_dev` database with their own events), never a scratch server. */
 export function isDevServer(base: string): boolean {

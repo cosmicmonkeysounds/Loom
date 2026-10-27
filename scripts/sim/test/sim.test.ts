@@ -8,7 +8,7 @@ import { CEREMONY, SELF_PRESSED, TO_Y2K, Y2K_TO_VERDICT, pressChain, stepName, s
 import { decide, findOption, heartMenu, layerOf, menusOf, tagOf, type Menu } from "../lib/heart.ts";
 import { SIM_SELF_PRESSED, featuredSlug, isStoryRefusal, pickPool, segment, tolerating, transportRefusal } from "../lib/plan.ts";
 import { isLocal } from "../lib/http.ts";
-import { doorsDecision, guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "../lib/safety.ts";
+import { doorsDecision, envServerNotice, guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "../lib/safety.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
 import { awardWinners, betProblems, mismatches, worldOf, wrongPatchProblems } from "../lib/world.ts";
 
@@ -242,4 +242,12 @@ test("the doors read the night first: Power On only on a fresh one, never a resu
   }
   const paused = doorsDecision("paused", "0");
   assert.ok(paused.kind === "refuse" && /resume/u.test(paused.why));
+});
+
+test("a non-local server from LOOM_SERVER is named before the guard; --base or a local one is not", () => {
+  const n = envServerNotice(undefined, "https://rehearsal.example.org", "https://rehearsal.example.org");
+  assert.ok(n !== null && n.includes("https://rehearsal.example.org") && n.includes("LOOM_SERVER"));
+  assert.equal(envServerNotice("https://rehearsal.example.org", "https://other.example.org", "https://rehearsal.example.org"), null);
+  assert.equal(envServerNotice(undefined, "http://127.0.0.1:7391", "http://127.0.0.1:7391"), null);
+  assert.equal(envServerNotice(undefined, undefined, ""), null);
 });

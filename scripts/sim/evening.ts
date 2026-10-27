@@ -74,7 +74,7 @@ import {
 import { liveGuard, type GuardRow } from "../accept/live-guard.ts";
 import { decide, heartMenu, layerOf, menusOf, type HeartStep, type Menu } from "./lib/heart.ts";
 import { Client, Stream, failure, sleep, type Res } from "./lib/http.ts";
-import { doorsDecision, guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "./lib/safety.ts";
+import { doorsDecision, envServerNotice, guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "./lib/safety.ts";
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
 import { atLeast, awardWinners, betProblems, mismatches, notNone, read, truthy, worldOf, wrongPatchProblems, type Row, type Want } from "./lib/world.ts";
 import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating, transportRefusal } from "./lib/plan.ts";
@@ -105,6 +105,8 @@ if (base === "" || modCode === "" || !["heart", "verdict", "destroyed"].includes
   console.error("usage: node --experimental-strip-types scripts/sim/evening.ts --base <url> --code <MOD code> [--ending heart|verdict|destroyed] [--pace ms] [--watch] [--yes]");
   process.exit(2);
 }
+const envNotice = envServerNotice(arg("base"), process.env["LOOM_SERVER"], base);
+if (envNotice !== null) console.log(envNotice);
 /** A scratch server on this laptop (not :7000, the user's own dev server):
  *  no y/N, and the reset flags are allowed. */
 const local = isScratch(base);
