@@ -186,7 +186,12 @@ its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 
 ### Release status
 
-Wave 30 (merged to master 2026-10-27, **not shipped**): Run → House's 🔌 Setup and 🎨 Cue designer, the hosts' Desk Setup / Try it, and the Desktop as the audio + lights machine (`start-stagehand.ps1` installs `audio` by default; `showctl preflight` expects the router on the Desktop). Its server side is only additive (`house.minds` on the desk view).
+Wave 31 (`oct31-w31/rig`, 2026-10-27; ships as `w31`): every house bulb
+(Hue + ZL1) and the living-room WLED strip are `lights.json` fixtures and
+every `cue lights_*` is a look (no Zigbee groups, scenes or WLED presets);
+the lights job catches up the house look from the screen state's new
+`night.lights`; `audio.json` is the 828x's own outs (no ADAT expander).
+Its sync needs `--replace-lights --replace-audio`.
 
 The VPS runs `w29` (master `a0cc8efb`, shipped 2026-10-27; rollback
 `w28b`): waves 27–30 — the heart's first meeting, the full-evening bots
