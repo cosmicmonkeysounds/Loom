@@ -113,7 +113,7 @@ export function lightsLine(s: LightsStatus): string {
 
 /** The module part's hover: what is (or isn't) listening. */
 export function moduleTitle(s: LightsStatus): string {
-  if (s.module === null) return 'The house Mac’s lights module has not polled this server since it started: the story’s light cues play nowhere (stagehand launchd job lights)'
+  if (s.module === null) return 'The lights module has not polled this server since it started: the story’s light cues play nowhere (stagehand’s lights job on the lights machine)'
   if (!s.module.online) return `The lights module${s.module.name !== '' ? ` on ${s.module.name}` : ''} stopped polling: light cues play nowhere until it is back`
   return `The lights module${s.module.name !== '' ? ` on ${s.module.name}` : ''} is listening; ${s.devices} Zigbee ${s.devices === 1 ? 'device' : 'devices'} reported`
 }

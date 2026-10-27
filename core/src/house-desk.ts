@@ -1026,7 +1026,7 @@ export function deskSetup(view: Pick<DeskView, "house" | "now">): DeskSetupRow[]
           ? "Start stagehand's audio job on the machine the audio interface is plugged into, with this event's id and the moderator passcode in its local config."
           : "Restart stagehand's audio job on the audio machine, and check that machine is online.",
       );
-      fix.push("Windows: scripts\\house-desktop\\start-stagehand.ps1 -WithAudio (or -Status to read its log). Mac: uv run stagehand launchd restart --job audio.");
+      fix.push("Windows: scripts\\house-desktop\\start-stagehand.ps1 -Restart audio (-Status reads its log). Mac (the fallback): uv run stagehand launchd restart --job audio.");
     } else {
       const parts = [`Online${r.name !== null ? ` on ${r.name}` : ""}`];
       if (hl === null) {
@@ -1065,7 +1065,7 @@ export function deskSetup(view: Pick<DeskView, "house" | "now">): DeskSetupRow[]
     } else if (m === null || !m.online) {
       tone = "bad";
       status = m === null || m.lastSeen === null ? "The lights module has not connected to this event" : `The lights module went quiet ${agoText(view.now - m.lastSeen)}`;
-      fix.push("Start stagehand's lights job on the machine running Zigbee2MQTT (Windows: scripts\\house-desktop\\start-stagehand.ps1; -Status reads its log).");
+      fix.push("Start stagehand's lights job on the machine running Zigbee2MQTT (Windows: scripts\\house-desktop\\start-stagehand.ps1 -Restart lights; -Status reads its log).");
     } else {
       const zig = h.fixtures.filter((f) => f.kind !== "wled").length;
       const wled = h.fixtures.length - zig;

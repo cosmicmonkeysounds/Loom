@@ -43,7 +43,7 @@ export const TERMINAL_VIEWS: readonly TerminalViewOption[] = [
   { id: TerminalView.World, label: 'World', help: 'Always the virtual house, seen from where this tablet hangs, plus the scanner.' },
   { id: TerminalView.Face, label: 'Face', help: 'The character’s face and the scanner, never the world view.' },
   { id: TerminalView.Mirror, label: 'Mirror', help: 'A full-screen spectator of the reinstallation: no scanner, no chat.' },
-  { id: TerminalView.Tv, label: 'TV', help: 'The house Mac on the TV: the face full screen speaking the character’s lines in its room.' },
+  { id: TerminalView.Tv, label: 'TV', help: 'A house machine on the TV: the face full screen speaking the character’s lines in its room.' },
   { id: TerminalView.Chess, label: 'Chess', help: 'The King’s board at the server-room door: scan a pass, play him. No character, no room.' },
   { id: TerminalView.Shadow, label: 'Shadow', help: 'This tablet’s own camera full screen, the reinstallation players drawn over it as ghosts.' },
   { id: TerminalView.Casino, label: 'Casino', help: 'Scan a pass, bet Truthcoin on the coin, the dice and the slots. No character, no room.' },

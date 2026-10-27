@@ -186,6 +186,8 @@ its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 
 ### Release status
 
+Wave 30 (merged to master 2026-10-27, **not shipped**): Run → House's 🔌 Setup and 🎨 Cue designer, the hosts' Desk Setup / Try it, and the Desktop as the audio + lights machine (`start-stagehand.ps1` installs `audio` by default; `showctl preflight` expects the router on the Desktop). Its server side is only additive (`house.minds` on the desk view).
+
 The VPS runs `w27` (master `2e6e36b2`, shipped 2026-10-27; rollback
 `w26`, which had carried waves 18b Stage B through 26 since 2026-10-26),
 and the "trapped in the internet" preview event was synced and reloaded on
@@ -221,15 +223,19 @@ the glitch on real phones, and the real speakers.
    Check `/api/health`, then `deploy/release.sh --check-env` on the VPS.
    Rollback is `deploy/rollback.sh` on the VPS.
 4. MacBook (the old house Mac): retire what moved to the Desktop, or every
-   cue fires twice. `uv run stagehand launchd uninstall --job show` and
-   `--job lights`, `scripts/house-macbook/install-alexa.sh --uninstall`, stop
-   Mosquitto (`brew services stop mosquitto`) and the Zigbee2MQTT launchd
-   agent.
+   cue fires twice. `uv run stagehand launchd uninstall --job show`,
+   `--job lights` and `--job audio`, `scripts/house-macbook/install-alexa.sh
+   --uninstall`, stop Mosquitto (`brew services stop mosquitto`) and the
+   Zigbee2MQTT launchd agent; move the CC2652P (+ Z2M's `data/`), the MOTU
+   828x + ADAT expander and `stagehand/media/sounds/` to the Desktop.
+   The MacBook keeps only Trabolta (`agents`).
 5. Desktop: `git pull`, set `server.event` / `mod_passcode` in
    `stagehand/trapped.house.local.yaml`, then
    `scripts\house-desktop\start-stagehand.ps1` (checks the config, installs
-   and starts the `show` and `lights` tasks) **before** the sync, so no old
-   rule posts into the new story.
+   and starts the `show`, `lights` and `audio` tasks; `-NoAudio` leaves the
+   router to the MacBook) **before** the sync, so no old rule posts into
+   the new story. The 828x must show under ASIO first
+   (`scripts/house-desktop/README.md` §3).
 6. MacBook: `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm
    sync-show --replace-audio --replace-maps [--replace-lights] [--replace-desk]`
    **with its reload, before doors**. Wave 26 changed both show maps (the
@@ -237,18 +243,20 @@ the glitch on real phones, and the real speakers.
    maps win without `--replace-maps`. First Download JSON any map edits
    saved to the project and commit them into the repo's `house.json`.
    Restart every other non-ended event.
-7. MacBook: install the router (`uv run stagehand sounds placeholders
-   --config trapped.macbook.yaml`, `uv run stagehand check --only audio
-   --config trapped.macbook.yaml`, `uv run stagehand launchd install --job
-   audio --config trapped.macbook.yaml`); `uv run stagehand launchd restart
-   --job agents`; then Run → Mind → Reset. The router must be wave 26's
-   (desk plays and its report; *Anti Virus* said right, V3): `git pull`
-   first, and if it is already installed, `uv run stagehand launchd restart
-   --job audio --config trapped.macbook.yaml`. Walk Run → House → Checks
-   once it is up.
-8. Desktop: Zigbee2MQTT on the CC2652P, pair the bulb as
-   `server_room_rgb`, place it in the map editor, test each look, Save to
-   project (`scripts/house-desktop/README.md`).
+7. MacBook: `uv run stagehand launchd restart --job agents`; then Run →
+   Mind → Reset (`scripts/house-macbook/trabolta.md`). Desktop: the router
+   (`uv run stagehand sounds placeholders --config trapped.desktop.yaml`,
+   `uv run stagehand check --config trapped.desktop.yaml --only audio`, then
+   `start-stagehand.ps1 -Restart audio` after any `git pull`, so it is wave
+   26's and says *Anti Virus*). Walk every speaker on the map's Audio tab
+   (ASIO's channel order). **Fallback** if the 828x won't run on Windows:
+   `-Stop audio` on the Desktop and `scripts/house-macbook/audio.md` on the
+   MacBook; both preflights then take `--router macbook` / `-NoAudio`.
+8. Desktop: Zigbee2MQTT on the CC2652P; pair the bulb as `server_room_rgb`,
+   then the Hue and ThirdReality ZL1 bulbs and the WLED strip
+   (`scripts/house-desktop/README.md` §5–6); place each in the map editor's
+   💡 Lights tab, Save to project; then Run → House → 🔌 Setup green,
+   Checks walked, and each look ▶ Tested in the 🎨 Cue designer.
 9. Steph's laptop: flash the M4 (`door-m4 1.2.0`), bench with
    `scripts/accept/N-20.sh` and `N-21.sh`, then calibrate the door and
    learn the patch bay in the terminal's ⚙ (always after a reflash).
@@ -262,7 +270,7 @@ the glitch on real phones, and the real speakers.
     time (open question: 19:00 or 20:00; the story's clock reads 7:00 PM
     at the doors).
 
-Run `pnpm showctl doctor` (and `pnpm showctl preflight <macbook|desktop|serverroom|tent>`
+Run `pnpm showctl doctor` (and `pnpm showctl preflight <macbook|desktop|serverroom|tent> [--router desktop|macbook]`
 on each machine) to see what is up. The full list is in `SHOW.html` and
 `SHOWNIGHT.md` §4 (the machines in `TECH.md`).
 

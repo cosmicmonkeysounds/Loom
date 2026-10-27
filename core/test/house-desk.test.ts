@@ -355,7 +355,7 @@ describe("setup (wave 30)", () => {
     const never = row(deskSetup({ house: { ...house, router: { online: false, lastSeen: null, name: null }, health: null, sounds: [] }, now: at }), "sound");
     expect(never.tone).toBe("bad");
     expect(never.status).toBe("The sound router has not connected to this event");
-    expect(never.fix.join(" ")).toContain("start-stagehand.ps1 -WithAudio");
+    expect(never.fix.join(" ")).toContain("start-stagehand.ps1 -Restart audio");
     const quiet = row(deskSetup({ house: { ...house, router: { online: false, lastSeen: at - 120_000, name: "desktop" }, sounds: [] }, now: at }), "sound");
     expect(quiet.status).toBe("The sound router went quiet 2 min ago");
     const moved = row(deskSetup({ house: { ...house, health: { ...house.health!, layout: "moved" }, sounds: [] }, now: at }), "sound");
