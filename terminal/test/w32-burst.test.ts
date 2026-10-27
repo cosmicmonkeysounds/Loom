@@ -9,6 +9,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ScreenLayer } from "../src/ScreenLayer.tsx";
+import { BurstFlash } from "../src/burst-flash.tsx";
 import { BURST_BEATS, BURST_POPUPS, AdBurst, burstMessages } from "../src/cutscene/kit/ad-burst.tsx";
 import { AD_MESSAGES } from "../src/cutscene/scenes/act1.tsx";
 import { EMPTY_NIGHT, GLITCH_TEXT_MAX, programOf, type ScreenMoment, type ScreenProgram, type ScreenState } from "../src/screen.ts";
@@ -183,6 +184,33 @@ describe("the ad burst (wave 32)", () => {
     expect(html).toContain(LINE);
     expect(draw(null)).not.toContain("data-burst");
     expect(draw({ seq: 12, at: now - BURST_MS - 10, t: BURST_MS + 10, text: LINE })).not.toContain("data-burst");
+  });
+
+  it("reaches a view with no cutscene layer (chess, casino): the base bundle's flash, never the takeover", () => {
+    const layers = layersAt(burst([moment("sfx", "truther_glitch", T0)]), 800);
+    expect(layers).toMatchObject({ glitch: null, burst: { seq: 9, text: LINE } });
+    const bare = renderToStaticMarkup(createElement(ScreenLayer, { layers, gear: null }));
+    expect(bare).toContain('data-burst-flash="9"');
+    expect(bare).toContain(LINE);
+    expect(bare).not.toContain("data-glitch");
+    // Where the cutscene layer is mounted it draws its own: no second picture.
+    const withScenes = renderToStaticMarkup(createElement(ScreenLayer, { layers, gear: null, cutscene: (card) => card }));
+    expect(withScenes).not.toContain("data-burst-flash");
+    // Gone after BURST_MS, takes no taps, under the overlays (32).
+    expect(renderToStaticMarkup(createElement(BurstFlash, { seq: 9, at: T0, t: BURST_MS, text: LINE }))).toBe("");
+    const css = readFileSync(fileURLToPath(new URL("../src/styles.css", import.meta.url)), "utf8");
+    expect(css).toMatch(/\.screen-burst \{[^}]*z-index: 31;[^}]*pointer-events: none;/u);
+  });
+
+  it("while the cutscene chunk isn't up, the slot's fallback carries the flash over the card", async () => {
+    const { CutsceneSlot } = await import("../src/cutscene/slot.tsx");
+    const { fakeState } = await import("../src/cutscene/fake.ts");
+    const b = { seq: 14, at: T0, t: 500, text: LINE };
+    const html = renderToStaticMarkup(createElement(CutsceneSlot, { state: fakeState({ now: T0 }), layers: { overlay: null, slide: null, burst: b }, bare: true, card: createElement("p", null, "CARD"), gear: null }));
+    expect(html).toContain("CARD");
+    expect(html).toContain('data-burst-flash="14"');
+    const none = renderToStaticMarkup(createElement(CutsceneSlot, { state: fakeState({ now: T0 }), layers: { overlay: null, slide: null, burst: null }, bare: true, card: createElement("p", null, "CARD"), gear: null }));
+    expect(none).not.toContain("data-burst-flash");
   });
 
   it("the story's burst lines are digit-free but for the hijack's zeroes (C2), and fit the screen", () => {

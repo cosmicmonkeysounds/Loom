@@ -1064,6 +1064,45 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 @media (prefers-reduced-motion: reduce) {
   .screen-glitch, .screen-glitch * { animation: none !important; }
 }
+/* (wave 32) The ad burst's base-bundle picture (`burst-flash.tsx`), where the
+   cutscene layer won't draw it (chess, casino, a chunk not loaded): 3.6 s
+   over whatever is up, at the cutscene burst's z (31: over the slides,
+   under the overlays, the glitch and the ⚙), no taps, no dark field. */
+.screen-burst {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 31;
+  overflow: hidden;
+  pointer-events: none;
+  animation: screen-burst 3.6s linear 1 both;
+}
+@keyframes screen-burst { 0% { opacity: 0; } 3% { opacity: 1; } 83% { opacity: 1; } 100% { opacity: 0; } }
+.screen-burst-banner {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 36%;
+  padding: 0.5em 1em 0.6em;
+  text-align: center;
+  font-family: "Tahoma", "MS Sans Serif", sans-serif;
+  font-weight: bold;
+  color: #000;
+  background: #ffe600;
+  border: 0.18em solid #000;
+  box-shadow: 0.3em 0.3em 0 #ff2bd6;
+  transform: rotate(-3deg);
+  font-size: clamp(14px, 2.4vw, 40px);
+  animation: screen-burst-slam 0.3s steps(3, end) 1 both;
+}
+@keyframes screen-burst-slam { 0% { opacity: 0; transform: scale(1.4) rotate(-3deg); } 100% { opacity: 1; transform: rotate(-3deg); } }
+.screen-burst-star { font-size: 1.2em; letter-spacing: 0.4em; }
+.screen-burst-text { font-size: 1.6em; line-height: 1.1; overflow-wrap: break-word; }
+@media (prefers-reduced-motion: reduce) {
+  .screen-burst, .screen-burst * { animation: none !important; }
+}
 
 /* --- the house announcement (N-09) --------------------------------------- */
 

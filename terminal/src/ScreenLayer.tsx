@@ -14,6 +14,7 @@ import { IDENTIFY_MS, identifyOn, type ScreenState } from "./screen.ts";
 import type { ScreenChart } from "./screen.ts";
 import { ringChime } from "./announce.ts";
 import { BUILD } from "./health.ts";
+import { BurstFlash } from "./burst-flash.tsx";
 import { CutsceneSlot } from "./cutscene/slot.tsx";
 import { useSceneClockUp } from "./cutscene/moment-bus.ts";
 import { FLICKER_MS, GLITCH_MS, GLITCH_TEXT, STAFF_TAG, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
@@ -401,6 +402,10 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }
       {layers.overlay !== null && <OverlayView kind={layers.overlay} />}
       {layers.corner !== null && (cutscene !== undefined ? <SceneCorner seconds={layers.corner} /> : <CornerCountdown seconds={layers.corner} />)}
       <Flicker seq={layers.flicker} />
+      {/* (wave 32) A view with no cutscene layer (chess, casino) still sees an
+          ad burst: the base bundle's picture of it. The cutscene layer draws
+          its own (and `slot.tsx` this one while its chunk isn't up). */}
+      {cutscene === undefined && layers.burst != null && <BurstFlash key={layers.burst.seq} seq={layers.burst.seq} at={layers.burst.at} t={layers.burst.t} text={layers.burst.text} />}
       {layers.glitch !== null && <GlitchTakeover key={layers.glitch.seq} seq={layers.glitch.seq} at={layers.glitch.at} t={layers.glitch.t} text={layers.glitch.text} />}
       {(covered || layers.glitch !== null) && <div className="screen-gear">{gear}</div>}
     </>

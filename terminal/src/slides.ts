@@ -334,7 +334,8 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
   const chartShown = chart === null ? 0 : chartReveal(chart.rows.length, chart.revealAt, serverNow);
   // The glitch reaches every view, whatever it is doing; a blackout beats it.
   const glitch = glitchLayer(state, serverNow, overlay === "blackout");
-  // (wave 32) An ad burst: over whatever is up, every view that draws scenes.
+  // (wave 32) An ad burst: over whatever is up, every view (the cutscene
+  // layer's popup storm where it draws scenes, else `burst-flash.tsx`).
   const burst = burstLayer(state, serverNow, overlay === "blackout");
   return { overlay, slide, corner, y2k: o.slides === false ? null : y2k, flicker, chart, chartShown, glitch, burst };
 }
