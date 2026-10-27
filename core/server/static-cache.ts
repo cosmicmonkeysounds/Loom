@@ -27,3 +27,31 @@ export function appCacheControl(rel: string, noCache = false): string | null {
   if (HASHED_ASSET.test(rel)) return IMMUTABLE;
   return null;
 }
+
+/** Files served by byte range (wave 33: the reinstallation intro video). A
+ *  browser seeks a video with `Range`, and Safari plays none without it. */
+export const RANGED_EXTENSIONS: ReadonlySet<string> = new Set([".mp4", ".mp3", ".ogg", ".wav", ".webm"]);
+
+/**
+ * A `Range` header against a file of `size` bytes: the one byte span asked
+ * for (`bytes=a-b`, `bytes=a-`, `bytes=-n`), `"unsatisfiable"` (416) for a
+ * span past the end, or null to send the whole file (no header, several
+ * spans, another unit, junk).
+ */
+export function byteRange(header: string | undefined, size: number): { start: number; end: number } | "unsatisfiable" | null {
+  if (header === undefined) return null;
+  const m = /^bytes=(\d*)-(\d*)$/u.exec(header.trim());
+  if (m === null) return null;
+  const [, a, b] = m;
+  if (a === "" && b === "") return null;
+  if (a === "") {
+    const n = Number(b);
+    if (n === 0) return "unsatisfiable";
+    return { start: Math.max(0, size - n), end: size - 1 };
+  }
+  const start = Number(a);
+  if (start >= size) return "unsatisfiable";
+  const end = b === "" ? size - 1 : Math.min(size - 1, Number(b));
+  if (end < start) return null;
+  return { start, end };
+}

@@ -36,6 +36,10 @@ export interface ReinstallConfig {
   /** The voice link (§2.4): this device's mic is heard on the terminals
    *  near the player, and it plays their mics. Off by default (D8). */
   voice: boolean;
+  /** The intro (wave 33): the Reinstallation Process video before the
+   *  begin and the controls tutorial after it. Missing = on; `intro=0`
+   *  turns it off (a rehearsal device, a director's test walk). */
+  intro?: boolean;
 }
 
 export const CONFIG_KEY = "loom.reinstall";
@@ -72,6 +76,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> | null = safeStorag
       camera: c.camera === "environment" ? "environment" : "user",
       arrowsTurn: typeof c.arrowsTurn === "boolean" ? c.arrowsTurn : base.arrowsTurn,
       voice: typeof c.voice === "boolean" ? c.voice : base.voice,
+      ...(typeof c.intro === "boolean" ? { intro: c.intro } : {}),
     };
   } catch {
     return null;
@@ -102,7 +107,7 @@ function safeStorage(): Storage | null {
   }
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&role=&camera=&arrows=&voice=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&role=&camera=&arrows=&voice=&intro=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -111,9 +116,11 @@ export interface UrlHints {
   arrowsTurn: boolean | null;
   /** `voice=1` / `voice=0`. */
   voice: boolean | null;
+  /** `intro=1` / `intro=0` (wave 33; missing from an older caller = no hint). */
+  intro?: boolean | null;
 }
 
-const HINT_KEYS = ["code", "name", "role", "camera", "arrows", "voice"] as const;
+const HINT_KEYS = ["code", "name", "role", "camera", "arrows", "voice", "intro"] as const;
 
 export function hintsFromSearch(search: string): UrlHints {
   const p = new URLSearchParams(search);
@@ -121,6 +128,7 @@ export function hintsFromSearch(search: string): UrlHints {
   const camera = p.get("camera");
   const arrows = p.get("arrows");
   const voice = p.get("voice");
+  const intro = p.get("intro");
   return {
     code: (p.get("code") ?? "").trim(),
     name: p.get("name")?.trim() || null,
@@ -128,6 +136,7 @@ export function hintsFromSearch(search: string): UrlHints {
     camera: camera === "user" || camera === "environment" ? camera : null,
     arrowsTurn: arrows === "turn" ? true : arrows === "strafe" ? false : null,
     voice: voice === "1" ? true : voice === "0" ? false : null,
+    intro: intro === "1" ? true : intro === "0" ? false : null,
   };
 }
 
@@ -148,6 +157,7 @@ export function applyHints(c: ReinstallConfig, hints: Omit<UrlHints, "code">): R
     camera: hints.camera ?? c.camera,
     arrowsTurn: hints.arrowsTurn ?? c.arrowsTurn,
     voice: hints.voice ?? c.voice,
+    ...(typeof hints.intro === "boolean" ? { intro: hints.intro } : {}),
   };
 }
 

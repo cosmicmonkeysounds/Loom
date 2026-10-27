@@ -144,6 +144,21 @@ func voice_token() -> String:
 	return ""
 
 
+## The intro (the video and the tutorial, wave 33) is over: the server
+## restarts the walk's clock, so the intro isn't timed (`POST
+## /api/spatial/ready`). Once per session. (Not `ready()`: a [Node] has a
+## `ready` signal.)
+func mark_ready() -> void:
+	pass
+
+
+## Save this program's settings (`{"turn": "snap" | "smooth"}`, `POST
+## /api/spatial/prefs`); the server deals them back on every later
+## assignment's `prefs`.
+func save_prefs(_prefs: Dictionary) -> void:
+	pass
+
+
 ## End our session (found + celebrated, headset off, …).
 func end_session(_reason: String) -> void:
 	session = {}

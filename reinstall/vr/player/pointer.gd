@@ -10,8 +10,10 @@
 ##   slow drift, and never while the beam hand's trigger is held (a 2 s ⚙
 ##   hold is not stolen). A thin teal beam with a dot where it lands is drawn.
 ## - **Desktop**: the camera's ray through the mouse (never captured in the
-##   lobby — [member VrPlayer.capture_mouse]); the left button is the press.
-##   No beam.
+##   lobby — [member VrPlayer.capture_mouse]; captured, as in the intro's
+##   tutorial, through the middle of the view); the left button is the
+##   press. No beam.
+## - **A / X** presses as the trigger does (wave 33).
 ##
 ## [method poll] reads one frame; the lobby says what the ray hit and
 ## [method draw] shows it. Tests [method inject] a ray instead of devices.
@@ -159,7 +161,9 @@ func _poll_hands() -> Dictionary:
 	var beam_down: bool = _down.get(hand, false)
 	for h: String in ["left", "right"]:
 		var c: XRController3D = player.left_hand if h == "left" else player.right_hand
-		downs[h] = trigger_down(_down[h], c.get_float("trigger"), c.is_button_pressed("trigger_click"))
+		# A (X) presses too (wave 33: the tutorial says "the trigger", but a
+		# first-timer's thumb finds A as often).
+		downs[h] = trigger_down(_down[h], c.get_float("trigger"), c.is_button_pressed("trigger_click") or c.is_button_pressed("ax_button"))
 		var now := _aim_of(h)
 		var prev: Transform3D = _last.get(h, now)
 		_last[h] = now
@@ -179,13 +183,13 @@ func _poll_hands() -> Dictionary:
 
 func _poll_mouse() -> Dictionary:
 	hand = "mouse"
-	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		return {"active": false, "pressed": false, "released": false, "down": false}
 	var vp := get_viewport()
 	var cam := vp.get_camera_3d() if vp != null else null
 	if cam == null:
 		return {"active": false, "pressed": false, "released": false, "down": false}
-	var m := vp.get_mouse_position()
+	# A captured mouse (the intro's tutorial, which also looks around) points
+	# through the middle of the view.
+	var m := vp.get_visible_rect().size / 2.0 if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else vp.get_mouse_position()
 	return _state("mouse", cam.project_ray_origin(m), cam.project_ray_normal(m), Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT))
 
 
@@ -196,6 +200,10 @@ func draw(state: Dictionary, hit: Dictionary) -> void:
 	_beam.visible = show
 	_dot.visible = show and hit.has("at")
 	if not show:
+		# A captured mouse has no cursor: the dot alone shows where it points.
+		if state.get("active", false) == true and state.get("source") == "mouse" and hit.has("at") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			_dot.visible = true
+			_dot.global_position = hit["at"]
 		return
 	var o: Vector3 = state["origin"]
 	var d: Vector3 = state["dir"]

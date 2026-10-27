@@ -22,10 +22,10 @@ and is played only at a wall terminal, never in these games.
 ```bash
 pnpm --filter loom-reinstall dev          # :5176, proxies /api + /e to LOOM_SERVER (default :7000)
 pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
-pnpm --filter loom-reinstall test         # vitest: 623 tests, 46 files
+pnpm --filter loom-reinstall test         # vitest: 635 tests, 47 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1011 checks + quest.sh 34
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1115 checks + quest.sh 37
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
@@ -41,13 +41,14 @@ reveal, and `--trail-delay 0` turns it off for a hand-driven dev run).
 
 | Path | What |
 |---|---|
-| `web/src/app.tsx`, `flow.tsx`, `flow-state.ts`, `program.ts`, `wizard.tsx` | the standalone device's screens; the choose / play / send flow (mounted by the tent terminal too); what the wizard says about a program |
-| `web/src/config.ts`, `api.ts`, `spatial.ts`, `kiosk.ts` | provisioning (`?code= name= role= camera= arrows= voice=`), the spatial routes and stream, the 2 s holds |
-| `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`; wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); `cams.ts`, `voice.ts`, `audio.ts` |
+| `web/src/app.tsx`, `flow.tsx`, `flow-state.ts`, `program.ts`, `wizard.tsx`, `IntroVideo.tsx` | the standalone device's screens; the choose / video / play / send flow (mounted by the tent terminal too); what the wizard says about a program; the intro video (wave 33) |
+| `web/src/config.ts`, `api.ts`, `spatial.ts`, `kiosk.ts` | provisioning (`?code= name= role= camera= arrows= voice= intro=`), the spatial routes and stream, the 2 s holds |
+| `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`; wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); wave 33 `tutorial.ts` (the training's steps, the skip rule); `cams.ts`, `voice.ts`, `audio.ts` |
 | `web/src/map/` | the editor: `MapApp.tsx`, `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx`; lights `lights*.ts` + `LightsPanel.tsx` |
 | `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate + presence, route, frames, duck, the King, and wave 26's `house_escape.gd` + `house_moment.gd`), diffed against `test/golden/`; `house_builder.gd` also draws the heart and the disk |
-| `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay` and the build stamp) |
-| `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts, HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
+| `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, wave 33 `mark_ready` + `save_prefs`, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay`, wave 33 `intro` and the build stamp) |
+| `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk, the intro), wave 33's intro (`intro_flow.gd`: the video → tutorial steps and the skip rule, pure; `intro_space.gd`: the cinema, the practice floor, the tutorial panel), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts, HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
+| `vr/media/reinstallation.ogv` | the intro's video (Theora 720p30), shipped in the APK |
 | `vr/house/house.json`, `vr/test/golden/` | **copies** written by `pnpm house:sync`; never edit them here |
 
 The server half is `core/server/spatial.ts` (`SpatialHub`, with the
@@ -92,7 +93,20 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   the disk, and the play help never describes them.
 - **The path reveal** (R2). Both games hide the trail, the compass pip, the
   distance and warmer / colder for the first `PATH_REVEAL_MS` of each
-  session; the quack is never delayed.
+  session — counted from the end of the intro (wave 33); the quack is
+  never delayed.
+- **The intro** (wave 33). The Reinstallation Process video, then a
+  controls tutorial, before every walk; both are skippable only when the
+  assignment's (or candidate's) `reinstalled` ≥ 1. The web game plays the
+  video before the begin (`reinstall/web/public/intro/reinstallation.mp4`)
+  and the training in the house (`game/tutorial.ts`); VR ships its own
+  Theora copy in the APK (`vr/media/reinstallation.ogv`) and teaches the
+  one right controller, with a live SNAP / SMOOTH turn choice saved by
+  `POST /api/spatial/prefs` and dealt back as the assignment's `prefs`.
+  Both post `POST /api/spatial/ready` when the intro ends (the run clock
+  restarts). Off with `?intro=0` (web) / `intro: false` (VR); the VR
+  autopilot never plays it. Re-encode both videos from the source if it
+  changes (the ffmpeg lines are in `docs/loom-reinstall.md` §3).
 
 ## Conventions and gotchas
 

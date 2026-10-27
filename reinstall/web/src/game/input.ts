@@ -15,6 +15,16 @@ import type { MoveInput } from "./physics.ts";
 export const DEAD_ZONE = 0.12;
 /** Degrees of view per pixel of drag. */
 export const DRAG_DEGREES_PER_PX = 0.22;
+/** Degrees of view per pixel of mouse movement while the game holds the
+ *  mouse (pointer lock, wave 33): a first-person game's feel. */
+export const LOCKED_DEGREES_PER_PX = 0.12;
+
+/** A locked mouse's movement as drag pixels (`InputSources.drag` is read
+ *  at `DRAG_DEGREES_PER_PX`). */
+export function lockedMouseDrag(dx: number, dy: number): [number, number] {
+  const k = LOCKED_DEGREES_PER_PX / DRAG_DEGREES_PER_PX;
+  return [Number.isFinite(dx) ? dx * k : 0, Number.isFinite(dy) ? dy * k : 0];
+}
 
 /** A stick's output: each axis −1…1, `y` + = up / forward. */
 export interface StickVector {

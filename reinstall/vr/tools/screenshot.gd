@@ -1,5 +1,6 @@
 ## Render the game (desktop rig, offline link) and save screenshots: the
-## lobby, the spawn, and a look at the duck — a quick visual check without
+## lobby, the intro (the cinema with the real video, then each tutorial
+## step), the spawn, and a look at the duck — a quick visual check without
 ## a headset. Needs a display (not --headless).
 ##
 ##   godot --path . --xr-mode off --script res://tools/screenshot.gd -- --offline --out /tmp/shots
@@ -40,6 +41,33 @@ func _run() -> void:
 	for f in 3:
 		await process_frame
 	print("state: ", GameFlow.name_of(game.state()))
+	if game.in_intro():
+		# The intro (wave 33): two seconds of the real video, then each step.
+		await create_timer(2.0).timeout
+		print("video at %.2f s" % game.intro_space.video_position())
+		await _shot("intro-video")
+		# A returning program's SKIP (this offline program has none).
+		game.intro.skippable = true
+		game.intro_space.render(game.intro)
+		await _shot("intro-video-skip")
+		game.intro_space.finish_video()
+		await process_frame
+		await process_frame
+		await _shot("intro-welcome")
+		for press: String in ["ok", "ok", "next", "keep"]:
+			game.intro.t = 60.0  # past every fallback and the arm delay
+			game.intro_press(press)
+			await _shot("intro-%s" % IntroFlow.name_of(game.intro.step).to_lower())
+			if game.intro.step == IntroFlow.Step.TURN:
+				# Turned round to the duck: the panel comes round too.
+				var to := game.intro_space.duck.global_position - game.player.camera.global_position
+				game.player.face(rad_to_deg(atan2(-to.x, -to.z)))
+				game.player.camera.rotation.x = deg_to_rad(-12.0)
+				await _shot("intro-turn-duck")
+				game.player.camera.rotation.x = 0.0
+		game.intro.t = 60.0
+		game.intro_press("start")
+		print("intro over: ", not game.in_intro())
 	await _shot("spawn")
 	var duck_p: Array = game.flow.assignment["duck"]["pos"]
 	var room: Dictionary = HouseGeometry.room_by_id(game.builder.house, game.flow.assignment["duck"]["room"])

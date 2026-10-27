@@ -2,7 +2,7 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, reinstall, reinstalled, quarantined, locked, Installation Wizard, wizard, Gerald, find gerald, duck, golden duck, egg, VR, headset, tablet, laptop, joystick, stick, controls, tent, backyard, tunnel, tube, Internet, game, walk, play here, send to a headset, pick your program, laser, pointer, lobby, the King, king, hit, trigger, ghost, ghosts, picture, profile picture, reinstallation station, not marked, paused, notice, wall screens, TV, voice, microphone, mic, mute, talk, hear, test mic, ask again, bathroom, exit, queasy
+keywords: simulation, reinstallation, video, reinstallation process, training, tutorial, skip, snap turn, smooth turn, mouse, reinstall, reinstalled, quarantined, locked, Installation Wizard, wizard, Gerald, find gerald, duck, golden duck, egg, VR, headset, tablet, laptop, joystick, stick, controls, tent, backyard, tunnel, tube, Internet, game, walk, play here, send to a headset, pick your program, laser, pointer, lobby, the King, king, hit, trigger, ghost, ghosts, picture, profile picture, reinstallation station, not marked, paused, notice, wall screens, TV, voice, microphone, mic, mute, talk, hear, test mic, ask again, bathroom, exit, queasy
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
@@ -47,6 +47,26 @@ A program that isn't marked reads **PROGRAM NOT MARKED** (*Not marked
 for reinstallation.*) for a few seconds, and nothing else happens.
 Already walking on a headset? The laptop asks before it moves you here.
 
+## Before you start
+
+Your first reinstallation starts with a short **video**: the
+Reinstallation Process, explained. Watch it to the end — it can only be
+skipped once you have been reinstalled before (then **Skip video ▶**).
+
+Then a little **training** in the simulation itself, one step at a time:
+each step finishes when you do it.
+
+- On the **laptop**: click the picture to take the mouse (it now turns
+  your head, like any computer game), look around, walk with **W A S D**,
+  run with **Shift**. **Esc** gives you the mouse back.
+- In a **headset**: look around, point the beam at a button and pull the
+  **trigger**, push the thumbstick forward to walk into a glowing circle,
+  then try both ways of turning: **SNAP TURN** (small jumps, easiest on
+  the stomach) or **SMOOTH TURN** (a glide). Keep the one you like: it is
+  saved with your program, so any headset starts with it next time.
+
+Been reinstalled before? **Skip training ▶** jumps straight in.
+
 While you walk on the laptop, a notice from the story (a blackout, an
 alarm, *go to the living room*) covers the game and **pauses** it: you
 can't move and nobody is timed out. Your walk carries on when it clears.
@@ -65,9 +85,10 @@ headset, your microphone.
 | Mute your mic | **B / Y** | **🎤** (or **M**), when the tablet has a voice link |
 | Pick your program (lobby) | point + **trigger**, or stick + hold **right** 1 s | scan your pass |
 
-On a tablet with a keyboard (or a laptop standing in for the tablet):
-**W A S D** or the arrows walk, **Q / E** turn, **Shift** runs,
-**Space** hits the King, drag with the mouse to look.
+On the laptop (or a tablet with a keyboard): **W A S D** or the arrows
+walk, **Q / E** turn, **Shift** runs, **Space** hits the King. Click the
+picture and the **mouse** turns your head; **Esc** gives it back (to
+click **✕** or **Finish**).
 
 The walls are where the real walls are, the stairs go where the real
 stairs go. If moving in VR makes you queasy, stop pushing the stick and

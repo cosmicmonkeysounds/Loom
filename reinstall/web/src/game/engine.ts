@@ -37,14 +37,20 @@
 //! in the Play here tap) on the terminals near them; M / the 🎤 button mutes.
 //! It runs on the same gate as the camera feeds and stops (tracks and all)
 //! when the session does.
+//!
+//! Wave 33: a mouse looks the way a first-person game's does — a click on
+//! the view takes it (pointer lock), Esc gives it back (a drag still looks
+//! where the lock is refused). The session opens with the intro tutorial
+//! (`tutorial.ts`, `opts.intro`): when it ends (or is skipped) the game posts
+//! `ready` and its clock — the path reveal's too — starts from there.
 
 import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
-import { buildWalls, heartProps, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, yawFromSpace, yawToSpace } from "@loom/house";
+import { buildWalls, heartProps, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace } from "@loom/house";
 import type { Assignment, DuckSpot, HouseMap, KingState, PlayerPose, PlayerState, Prop, Spawn, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
-import { fetchHouse, postEnd, postFound, postKingHit, postMoment, postPose, streamProbe, streamUrl, type FoundAnswer, type MomentLine, type MomentReply } from "../api.ts";
+import { fetchHouse, postEnd, postFound, postKingHit, postMoment, postPose, postReady, streamProbe, streamUrl, type FoundAnswer, type MomentLine, type MomentReply } from "../api.ts";
 import { CamFeeds } from "./cams.ts";
 import { createVoiceSink, earsFor, micSourceOf, stopStream, VoiceLink, type VoiceHudState } from "./voice.ts";
 import { applyFrame, avatarUrl, duckToAdopt, houseVersionOf, kingOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
@@ -67,7 +73,8 @@ import {
   withinReach,
   type Heat,
 } from "./hud.ts";
-import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
+import { combineInput, isActive, keyDown, keyUp, lockedMouseDrag, type StickVector } from "./input.ts";
+import { advance, skipTutorial, startTutorial, tutorialHud, type Tutorial, type TutorialHud } from "./tutorial.ts";
 import { IdleLeash } from "./leash.ts";
 import { deviceSpeaker, LinePlayer } from "./lines.ts";
 import type { DeviceSpeaker } from "./lines.ts";
@@ -122,6 +129,11 @@ export interface HudState {
   scare: boolean;
   /** The line being said in-game (a moment's answer, wave 26), null when none. */
   caption: MomentLine | null;
+  /** The intro tutorial's card (wave 33), null when it is over or off. */
+  tutorial: TutorialHud | null;
+  /** Hint "click to look around": the mouse could be the game's (pointer
+   *  lock) and isn't yet. */
+  mouseHint: boolean;
 }
 
 
@@ -169,6 +181,10 @@ export interface GameOptions {
   /** The mic opened in the Play here tap (null: none to be had). The game
    *  owns it: its tracks stop when the session does. */
   mic?: Promise<MediaStream | null> | null;
+  /** The intro tutorial (wave 33): `touch` picks the sticks' version,
+   *  `skippable` shows Skip (the program completed a reinstallation).
+   *  Absent: no tutorial (the device turned the intro off). */
+  intro?: { touch: boolean; skippable: boolean };
 }
 
 interface Ghost {
@@ -297,6 +313,12 @@ export class Game {
   private pumpTimer = 0;
   private resizeObserver: ResizeObserver | null = null;
   private readonly cleanups: Array<() => void> = [];
+  /** The intro tutorial under way (wave 33), null once over (or off). */
+  private tutorial: Tutorial | null = null;
+  /** The game holds the mouse (pointer lock). */
+  private mouseLocked = false;
+  /** The browser refused the lock (`pointerlockerror`): a drag looks instead. */
+  private lockRefused = false;
 
   constructor(opts: GameOptions) {
     this.o = opts;
@@ -338,6 +360,7 @@ export class Game {
     root.add(this.trail.object);
 
     this.body = { ...spawnBody(opts.house, opts.assignment.spawn), pitch: START_PITCH };
+    this.tutorial = opts.intro !== undefined ? startTutorial(opts.intro.touch) : null;
     this.pump = new PosePump({
       send: (body) => postPose(opts.base, opts.assignment.token, body),
       now: () => performance.now(),
@@ -448,6 +471,7 @@ export class Game {
     this.held = on;
     const now = performance.now();
     if (on) {
+      this.releaseMouse();
       this.leash.hide(now);
       this.keys.clear();
       this.dragPointer = null;
@@ -459,6 +483,27 @@ export class Game {
   /** Whether the walk is held (`hold`). */
   get isHeld(): boolean {
     return this.held;
+  }
+
+  /** Skip the rest of the intro tutorial (a returning program's Skip). */
+  skipTutorial(): void {
+    if (this.tutorial === null) return;
+    this.tutorial = skipTutorial(this.tutorial);
+    this.finishTutorial(performance.now());
+  }
+
+  /** The tutorial is over: the clock (and the path reveal's minute) starts
+   *  now, here and on the server (`ready`: its run clock restarts). */
+  private finishTutorial(now: number): void {
+    this.tutorial = null;
+    this.startedAt = now;
+    this.lastHudAt = Number.NEGATIVE_INFINITY;
+    void postReady(this.o.base, this.o.assignment.token);
+  }
+
+  /** Give the mouse back (the overlay, the celebration, the end). */
+  private releaseMouse(): void {
+    if (this.mouseLocked && typeof document.exitPointerLock === "function") document.exitPointerLock();
   }
 
   /** The player gave up (the ✕ button): end the session on the server. */
@@ -477,6 +522,7 @@ export class Game {
   }
 
   dispose(): void {
+    this.releaseMouse();
     this.phase = this.phase === "found" ? "found" : "ended";
     cancelAnimationFrame(this.raf);
     window.clearInterval(this.pumpTimer);
@@ -523,11 +569,50 @@ export class Game {
       this.dragPointer = null;
     };
     const canvas = this.o.canvas;
+    // Whether the canvas holds the pointer lock (inside the tent laptop's
+    // shadow root, `document` names the host: ask the canvas's own root).
+    const lockedHere = (): boolean => {
+      const root = canvas.getRootNode() as Document | ShadowRoot;
+      return document.pointerLockElement === canvas || (root !== document && (root as ShadowRoot).pointerLockElement === canvas);
+    };
+    const lockChange = (): void => {
+      this.mouseLocked = lockedHere();
+      if (!this.mouseLocked) this.keys.clear(); // Esc mid-step: no key left walking
+      this.lastHudAt = Number.NEGATIVE_INFINITY;
+    };
+    const lockError = (): void => {
+      this.lockRefused = true;
+      this.lastHudAt = Number.NEGATIVE_INFINITY;
+    };
+    const look = (e: MouseEvent): void => {
+      if (!this.mouseLocked || this.held) return;
+      const [dx, dy] = lockedMouseDrag(e.movementX, e.movementY);
+      this.drag[0] += dx;
+      this.drag[1] += dy;
+    };
     const pdown = (e: PointerEvent): void => {
-      if (this.dragPointer !== null || this.held) return;
+      if (this.held) return;
+      if (this.mouseLocked) return;
+      // A mouse click takes the mouse, like any first-person game (wave 33);
+      // a browser that refuses (`pointerlockerror`) drags to look instead.
+      if (e.pointerType === "mouse" && !this.lockRefused && typeof canvas.requestPointerLock === "function") {
+        if (this.phase !== "playing") return;
+        try {
+          const p = canvas.requestPointerLock() as unknown;
+          if (p instanceof Promise) p.catch(lockError);
+          return;
+        } catch {
+          lockError();
+        }
+      }
+      if (this.dragPointer !== null) return;
       this.dragPointer = e.pointerId;
       this.dragLast = [e.clientX, e.clientY];
-      canvas.setPointerCapture?.(e.pointerId);
+      try {
+        canvas.setPointerCapture?.(e.pointerId);
+      } catch {
+        /* the drag still reads moves over the canvas */
+      }
     };
     const pmove = (e: PointerEvent): void => {
       if (e.pointerId !== this.dragPointer) return;
@@ -563,6 +648,9 @@ export class Game {
     const hide = (): void => {
       if (this.phase === "playing" || this.phase === "finding") void postEnd(this.o.base, this.o.assignment.token);
     };
+    document.addEventListener("pointerlockchange", lockChange);
+    document.addEventListener("pointerlockerror", lockError);
+    document.addEventListener("mousemove", look);
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     window.addEventListener("blur", blur);
@@ -573,6 +661,9 @@ export class Game {
     document.addEventListener("visibilitychange", visibility);
     window.addEventListener("pagehide", hide);
     this.cleanups.push(() => {
+      document.removeEventListener("pointerlockchange", lockChange);
+      document.removeEventListener("pointerlockerror", lockError);
+      document.removeEventListener("mousemove", look);
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
@@ -617,12 +708,26 @@ export class Game {
     const input = playing && !this.held && !this.escaping ? combineInput({ keys: this.keys, left: sticks.left, right: sticks.right, drag: this.drag, arrowsTurn: this.o.arrowsTurn }) : NO_INPUT;
     this.drag = [0, 0];
     if (isActive(input)) this.leash.touch(now);
+    const before = this.body;
     this.body = move(this.body, input, dt, this.world);
+    if (this.tutorial !== null && playing && !this.held && !this.escaping) {
+      const moved = Math.hypot(this.body.p[0] - before.p[0], this.body.p[2] - before.p[2]);
+      this.tutorial = advance(this.tutorial, {
+        // A refused lock: the click step is passed by dragging to look.
+        locked: this.mouseLocked,
+        looked: Math.abs(wrapYaw(this.body.yaw - before.yaw)) + Math.abs(this.body.pitch - before.pitch),
+        moved,
+        running: input.run,
+        dt,
+      });
+      if (this.tutorial.over) this.finishTutorial(now);
+    }
     if (this.phase === "found") this.watchDuck(dt);
 
     if (playing) {
       this.pump.set(this.pose());
-      if (!this.pathRevealed && pathShown(now - this.startedAt)) this.revealPath();
+      // The minute starts when the tutorial ends (wave 33).
+      if (this.tutorial === null && !this.pathRevealed && pathShown(now - this.startedAt)) this.revealPath();
       if (now - this.lastTrailAt >= TRAIL_EVERY_MS) {
         // Held open for a player behind (or in) his door: shut once they are clear.
         if (this.doorOpen && this.kingState?.fallen !== true) this.refreshDoor();
@@ -741,6 +846,8 @@ export class Game {
       voice: this.voiceHud(),
       scare: this.scare,
       caption: this.caption,
+      tutorial: this.tutorial !== null && this.phase === "playing" ? tutorialHud(this.tutorial, this.o.intro?.skippable === true) : null,
+      mouseHint: !this.mouseLocked && !this.lockRefused,
     });
   }
 
@@ -1112,6 +1219,7 @@ export class Game {
     switch (reply.kind) {
       case "found":
         this.phase = "found";
+        this.releaseMouse(); // the celebration's Finish is clicked
         this.syncFeeds();
         this.pump.stop();
         window.clearInterval(this.pumpTimer);
@@ -1268,6 +1376,7 @@ export class Game {
 
   private end(e: GameEnd): void {
     if (this.phase === "ended" || this.phase === "found") return;
+    this.releaseMouse();
     this.phase = "ended";
     this.lines?.stop();
     this.speaker?.stop();

@@ -38,7 +38,7 @@
 //! agent request at the server-room terminal; `server/agent-dossier.ts`).
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { readFileSync } from "node:fs";
+import { createReadStream, readFileSync, statSync } from "node:fs";
 import { networkInterfaces } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import QRCode from "qrcode";
@@ -80,7 +80,7 @@ import { mailer } from "./mail.ts";
 import { WebmasterPortal, resendSender } from "./webmaster.ts";
 import { HTML_CSP, PLAY_CSP, PLAY_PWA_FILES, REINSTALL_CSP, TERMINAL_CSP, appRelPath, pickJoinBase, subAppRoute, wantsModRead } from "./routing.ts";
 import { serveHomescreenManifest } from "./routes/k31b.ts";
-import { appCacheControl } from "./static-cache.ts";
+import { RANGED_EXTENSIONS, appCacheControl, byteRange } from "./static-cache.ts";
 
 const PORT = Number(process.env.LOOM_PORT ?? 7000);
 const HOST = process.env.LOOM_HOST ?? "0.0.0.0";
@@ -142,9 +142,11 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 /** Serve a file from a built app dir; returns false if it isn't there. */
-function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIST, csp: string = HTML_CSP, noCache = false): boolean {
+function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIST, csp: string = HTML_CSP, noCache = false, range?: string): boolean {
   const rel = appRelPath(pathname);
   if (rel === null) return false;
+  const ext = rel.slice(rel.lastIndexOf("."));
+  if (RANGED_EXTENSIONS.has(ext)) return serveRangedFile(new URL(rel, dist), ext, res, range);
   try {
     const buf = readFileSync(new URL(rel, dist));
     const ext = rel.slice(rel.lastIndexOf("."));
@@ -159,6 +161,39 @@ function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIS
   } catch {
     return false;
   }
+}
+
+/** A media file (the intro video), streamed and served by byte range: a
+ *  browser seeks a video with `Range`, Safari plays none without it. */
+function serveRangedFile(file: URL, ext: string, res: ServerResponse, range: string | undefined): boolean {
+  let size: number;
+  try {
+    const st = statSync(file);
+    if (!st.isFile()) return false;
+    size = st.size;
+  } catch {
+    return false;
+  }
+  const headers: Record<string, string> = { "content-type": CONTENT_TYPES[ext] ?? "application/octet-stream", "accept-ranges": "bytes" };
+  const span = byteRange(range, size);
+  if (span === "unsatisfiable") {
+    res.writeHead(416, { ...headers, "content-range": `bytes */${size}` });
+    res.end();
+    return true;
+  }
+  const { start, end } = span ?? { start: 0, end: size - 1 };
+  if (span !== null) headers["content-range"] = `bytes ${start}-${end}/${size}`;
+  headers["content-length"] = String(end - start + 1);
+  res.writeHead(span !== null ? 206 : 200, headers);
+  if (size === 0) {
+    res.end();
+    return true;
+  }
+  const stream = createReadStream(file, { start, end });
+  stream.on("error", () => res.destroy());
+  res.on("close", () => stream.destroy());
+  stream.pipe(res);
+  return true;
 }
 
 /**
@@ -431,7 +466,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       res.end();
       return;
     }
-    if (serveAppFile(terminalRoute.file, res, TERMINAL_DIST, TERMINAL_CSP)) return;
+    if (serveAppFile(terminalRoute.file, res, TERMINAL_DIST, TERMINAL_CSP, false, req.headers.range)) return;
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": HTML_CSP });
     res.end(
       `<!doctype html><meta charset=utf-8><title>Loom terminal</title>` +
@@ -454,7 +489,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       res.end();
       return;
     }
-    if (serveAppFile(reinstallRoute.file, res, REINSTALL_DIST, REINSTALL_CSP)) return;
+    if (serveAppFile(reinstallRoute.file, res, REINSTALL_DIST, REINSTALL_CSP, false, req.headers.range)) return;
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": HTML_CSP });
     res.end(
       `<!doctype html><meta charset=utf-8><title>Loom reinstallation</title>` +
