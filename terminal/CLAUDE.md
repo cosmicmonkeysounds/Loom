@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 912 tests, 79 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 931 tests, 80 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -56,7 +56,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/scanner.tsx`, `src/scan.ts`, `src/camera.ts` | QR scan (`BarcodeDetector`, else jsQR); what a code means; one shared ref-counted `MediaStream` |
 | `src/pilot.ts`, `src/chat.tsx`, `src/controls.tsx`, `src/idle.ts` | impersonate / say / end; `terminal opened` / `closed` (`VisitLatch`); the thread + composer; the 2 s ⚙ hold; the leash (30 s, files 120 s, heart 180 s) |
 | `src/files.ts`, `src/FilePanel.tsx` | 📎 GIVE HIM A FILE: share / redeem as the piloted guest |
-| `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
+| `src/heart/` | `heart.ts` (the heart menu = newest `choices` entry on `dm:<character>` whose beat starts `heart `; tags; when the composer shows; wave 27: `panelGate` (the panel waits on his voice and his scenes), `optionKey`, `layerOfBeat`, `echoOf`, `composerBlocked`, `pilotEndWait`), `ChoicePanel.tsx`, `DoorOverlay.tsx`, `DoorSetup.tsx`, `PatchSetup.tsx` |
 | `src/serial/` | the M4 bridge: `door-protocol.ts` (JSON lines, pure), `door-bridge.ts` + `patch-bridge.ts` (decisions, pure), `door-serial.ts` (Web Serial + `door=sim`, lazy), `door-status.ts` (store + heartbeat keys), `use-door.ts` (hook) |
 | `src/world/` | spatial SSE + house map → `WorldStore`; `director.ts` (mount / follow / orbit, three-free), `minimap.ts`, `WorldView.tsx` (three.js, lazy) |
 | `src/raycast/` | the no-WebGL2 Canvas 2D raycaster (lazy, never imports three) |
@@ -179,6 +179,14 @@ them out.
   intended.
 - **Build stamp.** `__BUILD__` is the git short sha + build time
   (`LOOM_BUILD` overrides); Run → Terminals flags a device on an old build.
+- **The heart's thread (wave 27).** A room terminal draws `session.visitLines`
+  (past the visit's floor, `pilot.ts` `floorAfter`), never the whole DM
+  thread; `terminal opened` is posted from an effect once the stream's
+  history is in (2.5 s fallback, `pinFloor`), never in `connect()`.
+- **Room scene stages.** A room scene's stage carries `cutscene-room`
+  (`cutscene-${kind}`); the wrapper's `display: contents` rule is
+  `.cutscene-top.cutscene-room` so the stage keeps its box. A side scene
+  (layer card, proof, warning) draws over the face pane only.
 - **Stale comments.** `src/tv.ts` still says "QLab plays the sung track":
   the house router plays it now. The behaviour (song beats captioned, not
   spoken) is right.
