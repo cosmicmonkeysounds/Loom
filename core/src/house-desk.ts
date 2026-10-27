@@ -699,6 +699,16 @@ export interface DeskPresence {
   name: string | null;
 }
 
+/** A character the story hands to an outside mind (`mind: external`:
+ *  Trabolta), and the stagehand `agents` workers voicing it now (wave 30). */
+export interface DeskMind {
+  character: string;
+  name: string;
+  online: boolean;
+  /** The connected workers' names (`laptop.yaml` `agents.name`). */
+  workers: string[];
+}
+
 export interface DeskSpeaker {
   id: string;
   name: string;
@@ -762,6 +772,10 @@ export interface DeskHouse {
   rooms: string[];
   /** The story's `when <event>:` names. */
   events: string[];
+  /** Every `mind: external` character and its workers (wave 30; absent
+   *  from an older server). Read when the view is built: a worker coming
+   *  or going shows on the next answer (a long poll answers within 25 s). */
+  minds?: DeskMind[];
 }
 
 /** One thing the house did lately (tests, plays, light tests, GOs), newest first. */
@@ -926,7 +940,7 @@ export function testNeedsConfirm(view: Pick<DeskView, "live">): boolean {
 // The status strip (both screens): the router, the lights, what's wrong.
 
 export interface DeskChip {
-  kind: "router" | "files" | "layout" | "lights" | "z2m" | "problems";
+  kind: "router" | "files" | "layout" | "lights" | "z2m" | "mind" | "problems";
   tone: "ok" | "warn" | "bad";
   text: string;
 }
@@ -950,6 +964,7 @@ export function deskStatus(view: Pick<DeskView, "house" | "problems">): DeskChip
     const lost = h.fixtures.filter((f) => f.inZ2m === false).length;
     if (lost > 0) chips.push({ kind: "z2m", tone: "bad", text: `${lost} light${lost === 1 ? "" : "s"} not in Zigbee2MQTT` });
   }
+  for (const m of h.minds ?? []) chips.push(m.online ? { kind: "mind", tone: "ok", text: `🧠 ${m.name} online${m.workers.length > 0 ? ` (${m.workers.join(", ")})` : ""}` } : { kind: "mind", tone: "bad", text: `🧠 ${m.name}: no mind connected` });
   if (view.problems.length > 0) chips.push({ kind: "problems", tone: "bad", text: `desk.json: ${view.problems.length} problem${view.problems.length === 1 ? "" : "s"}` });
   return chips;
 }

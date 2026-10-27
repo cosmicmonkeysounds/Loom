@@ -79,6 +79,7 @@ import {
   type DeskHouse,
   type DeskLightState,
   type DeskMark,
+  type DeskMind,
   type DeskRefs,
   type DeskRun,
   type DeskStep,
@@ -812,6 +813,8 @@ export interface DeskHouseInputs {
   pair: LightPair | null;
   house: HouseMap | null;
   model: SimModel | null;
+  /** The connected agent workers (`AgentHub.workerList()`; wave 30). */
+  workers?: ReadonlyArray<{ name: string; characters: readonly string[] }>;
   now: number;
 }
 
@@ -873,7 +876,19 @@ export function deskHouseOf(i: DeskHouseInputs): DeskHouse {
     pairUntil: i.pair !== null && i.pair.seconds > 0 && i.pair.until > i.now ? i.pair.until : null,
     rooms: locations,
     events: storyWhenEvents(i.model),
+    minds: deskMindsOf(i.model, i.workers ?? []),
   };
+}
+
+/** Every `mind: external` character (source order) and the workers voicing it. */
+export function deskMindsOf(model: SimModel | null, workers: ReadonlyArray<{ name: string; characters: readonly string[] }>): DeskMind[] {
+  if (model === null) return [];
+  return [...model.characters.values()]
+    .filter((c) => c.mind === "external")
+    .map((c) => {
+      const by = workers.filter((w) => w.characters.some((n) => foldName(n) === foldName(c.id))).map((w) => w.name);
+      return { character: c.id, name: c.id, online: by.length > 0, workers: [...new Set(by)] };
+    });
 }
 
 /** The refs a desk is checked against. `extraEvents`: the desk's own event
