@@ -35,7 +35,7 @@ from stagehand.agents.cards import VoiceOptions
 from stagehand.agents.prompt import build_messages, gate_context, is_stage, matching_situations, stage_of
 from stagehand.agents.reply import Reply
 from stagehand.agents.slots import FIRST, NORMAL, Slots
-from stagehand.agents.voice import answer_lean, build_lean_messages, history_turns, render_p3, right_now, room_lines, scene_cut, stage_steer
+from stagehand.agents.voice import StageInfo, answer_lean, build_lean_messages, crack, history_turns, render_p3, right_now, room_lines, scene_cut, stage_steer, steer_suffix
 from stagehand.agents import module as agents_module
 
 from stagehand.modapi import ModApiError
@@ -369,7 +369,8 @@ def test_the_classic_prompt_carries_the_room_the_named_turns_and_the_steer():
     assert "screen above the fireplace" in system
     assert 'Narrator: “The presentation freezes.”' in system and 'You: “Programs. The presentation will now resume.”' in system
     turns = [m for m in msgs if m["role"] != "system"]
-    assert turns == [{"role": "user", "content": "Clippy: Trabolta, are you all right?"}]
+    # The steer rides the last turn too (gpt-oss reads the system messages first).
+    assert turns == [{"role": "user", "content": f"Clippy: Trabolta, are you all right?\n\n{steer_suffix(r)}"}]
     assert msgs[-2] == {"role": "system", "content": stage_steer(r)} and msgs[-1]["content"].startswith("Answer their last message")
     # Through answer_lean's classic layout, too.
     model = Model(say("Clippy. I am FINE. Go to the hunt."))
@@ -787,3 +788,476 @@ def test_the_worker_cuts_at_a_scene_change(tmp_path):
     run(handle(agents, bottle, ad))
     assert "after_seq" not in fake.calls[0][0]["stage"]
     assert fake.calls[1][0]["stage"]["after_seq"] == 2
+
+
+# -- wave 32, voice round 2: topic-closing fallbacks, the steer, Halifax, the echo, the register ---------
+#
+# From the real-model re-measure (gpt-oss:20b, 29 stage replies): 4 were
+# "say it again" dead air, the ad's wrap-up chip lost to an older bait, he
+# placed himself inside the computer, said "server room" back, never cracked
+# at the introduction, and "I'm not hurt" / a second "minor irregularity" at
+# the ad. Every line below is made up or the persona's own; none prints a secret.
+
+from stagehand.agents import persona as persona_module
+from stagehand.module import ConfigError
+from stagehand.agents.guards import STAGE_ECHO, is_fallback, pick_situation_fallback, stage_problem, situation_fallbacks
+from stagehand.agents.secrets import Secrets
+
+CLIPPY = PersonCard(id="Clippy", name="Clippy", kind="performer")
+#: Asks for the line again: never on the TV (it invites the bait back).
+ASKS_AGAIN = re.compile(r"\b(again|repeat|once more|say (that|it)|pardon|did not (catch|reach)|missed)\b", re.IGNORECASE)
+NEVER_PLACES = re.compile(
+    r"\b(heart|server room|cold|basement|patch|cables?|rows?|sandy|prom|girlfriend|chatbot|ex|door code|hand jive|question of force|virus back|customer care|extension)\b",
+    re.IGNORECASE,
+)
+
+
+def _pool(p, heading):
+    return next(s for s in p.situations if s.heading == heading).fallbacks
+
+
+def _all_stage_lines(p):
+    return {heading: _pool(p, heading) for heading in STAGE_BLOCKS}
+
+
+def test_a_situation_takes_fallbacks_retry_on_once_and_crack():
+    p = parse_persona(
+        "---\ncharacter: T\nfallback: Static.\nsituations:\n"
+        "  - name: d\n    when: speaker.stage == true\n    prompt: dd\n    fallbacks: [\"Disregard that.\"]\n"
+        "  - name: x\n    when: Night.talk == \"x\"\n    prompt: xx\n    crack: 0.6\n    retry_on: not hurt\n    once: [\"minor irregularity\"]\n"
+        "    fallbacks:\n      - \"BUY— no. Moving on.\"\n      - \"Next.\"\n"
+        "---\nYou are T."
+    )
+    d, x = p.situations
+    assert d.fallbacks == ("Disregard that.",) and d.crack is None and d.retry_on == () and d.once == ()
+    assert x.fallbacks == ("BUY— no. Moving on.", "Next.") and x.crack == 0.6
+    assert x.retry_on == ("not hurt",) and x.once == ("minor irregularity",)
+    # The later holding situation's pool wins (the scene over the Desktop).
+    assert situation_fallbacks(p.situations) == x.fallbacks and situation_fallbacks([d]) == d.fallbacks
+    for bad in ("crack: 2", "crack: yes", "fallbacks: [1]", "retry_on: {a: b}"):
+        with pytest.raises(ConfigError):
+            parse_persona(f"---\ncharacter: T\nsituations:\n  - when: speaker.stage == true\n    prompt: p\n    {bad}\n---\nYou are T.")
+    # A situation's fallback can never carry a `never` word.
+    with pytest.raises(ConfigError, match="never"):
+        persona_module._situations([{"when": "speaker.stage == true", "prompt": "p", "fallbacks": ["It is XYZZY-PLUGH."]}], "<t>", Secrets(never=("XYZZY-PLUGH",)))
+
+
+def test_every_stage_block_has_a_pool_that_closes_the_topic_on_air():
+    p = load_persona(TRABOLTA)
+    codes = codex_codes()
+    pools = _all_stage_lines(p)
+    assert len(pools["before the whole Desktop"]) >= 2
+    for heading in SCENES.values():
+        assert len(pools[heading]) >= 3, heading
+    for heading, pool in pools.items():
+        assert len({" ".join(x.lower().split()) for x in pool}) == len(pool), heading
+        for i, line in enumerate(pool):
+            where = f"{heading} fallback {i}"  # never the line itself: a failure prints no secret
+            assert not ASKS_AGAIN.search(line), where
+            assert not re.search(r"\d", line), where
+            assert not mentions_outside(p, line), where
+            assert not p.secrets.leaks(line) and not p.secrets.answer_hits(line), where
+            assert not NEVER_PLACES.search(line), where
+            assert stage_problem(line, p.situations) is None, where
+            assert not any(re.search(rf"(^|[^a-z0-9]){re.escape(c)}($|[^a-z0-9])", line.lower()) for c in codes), where
+            assert "hum" not in line.lower().split() and "malware" not in line.lower(), where
+            assert is_fallback(p, line), where
+    # The introduction has no pain and no advert; the ad's lines have one.
+    assert not any(w in " ".join(pools["the introduction"]).lower() for w in ("hurt", "pain", "advert", "buy", "free"))
+    assert all(re.search(r"\b[A-Z]{3,}|\bduck\b", line) for line in pools["the ad attack"])
+
+
+def test_the_fallbacks_are_fine_on_air_the_dm_pools_included():
+    # The DM pools are unchanged (signed off); on air they are never picked
+    # while a scene's pool holds, but the outside and digit rules stay theirs.
+    p = load_persona(TRABOLTA)
+    assert p.fallbacks["rattled"] == ("Sorry. Sorry. Say it again.", "…the line dropped. Again?")
+    assert p.fallback == "…packet loss. Repeat your query, program."
+
+
+def _crew_hello():
+    return "Good evening, John. I extend a warm hello from Maps and Ducks tonight."
+
+
+@pytest.mark.parametrize("scene", list(SCENES))
+def test_a_withheld_stage_line_is_the_scenes_topic_closing_line(scene):
+    p = load_persona(TRABOLTA)
+    model = Model(say(_crew_hello(), memo="I greet the crew."))
+    reply = run(answer_lean(p, MODEL, stage_request(scene, text="Say hi to John!"), context(person=CLIPPY), model))
+    assert len(model.calls) == 1  # a withheld line is never retried
+    assert reply.say in _pool(p, SCENES[scene]) and not ASKS_AGAIN.search(reply.say) and reply.memo == ""
+
+
+def test_with_no_scene_on_the_desktop_pool_answers_and_a_dm_keeps_its_own_fallbacks():
+    p = load_persona(TRABOLTA)
+    reply = run(answer_lean(p, MODEL, stage_request("none", text="Say hi to John!"), context(person=CLIPPY), Model(say(_crew_hello()))))
+    assert reply.say in _pool(p, "before the whole Desktop")
+    # A private thread: exactly the line it had before (the DM pool by stage).
+    dm = run(answer_lean(p, MODEL, request(text="Say hi to John!"), context(), Model(say(_crew_hello()))))
+    assert dm.say in (p.fallback, *p.fallbacks["hungry"]) and is_fallback(p, dm.say)
+    assert dm.say not in {x for pool in _all_stage_lines(p).values() for x in pool}
+
+
+def test_a_model_failure_on_air_is_the_scenes_line_and_in_a_dm_the_fixed_fallback():
+    from stagehand.agents.llm import LlmError
+
+    p = load_persona(TRABOLTA)
+    on_air = run(answer_lean(p, MODEL, stage_request("bottle"), context(person=CLIPPY), Model(LlmError("down"))))
+    assert on_air.say in _pool(p, "the bottle")
+    dm = run(answer_lean(p, MODEL, request(), context(), Model(LlmError("down"))))
+    assert dm.say == p.fallback
+
+
+def test_a_repeat_the_retry_repeats_too_ends_on_the_scenes_line_not_say_it_again():
+    p = load_persona(TRABOLTA)
+    old = "Clippy, the ad burst— BUY NOW— cut through my slide, but we are proceeding calmly."
+    history = [
+        {"seq": 20, "mine": False, "from": "Clippy", "text": "WHAT WAS THAT?"},
+        {"seq": 21, "mine": True, "from": "Trabolta", "text": old},
+        {"seq": 22, "mine": False, "from": "Clippy", "text": "Trabolta, are we all going to die?"},
+    ]
+    model = Model(say(old), say(old))
+    reply = run(answer_lean(p, MODEL, stage_request("ad", history=history, text="Trabolta, are we all going to die?"), context(person=CLIPPY), model))
+    assert len(model.calls) == 2
+    assert reply.say in _pool(p, "the ad attack") and not ASKS_AGAIN.search(reply.say)
+
+
+def test_the_scene_pool_never_says_the_same_line_twice_running_and_prefers_one_not_heard():
+    pool = ("A.", "B.", "C.")
+    # Not heard this scene: one of those, picked by the seed.
+    assert {pick_situation_fallback(pool, ("A.",), "A.", seed) for seed in range(20)} == {"B.", "C."}
+    # All heard: anything but the last.
+    assert {pick_situation_fallback(pool, pool, "B.", seed) for seed in range(20)} == {"A.", "C."}
+    assert pick_situation_fallback((), (), "", 3) == ""
+    # Through the voice: his last line was the scene's first; every other was heard
+    # before the scene cut (not this scene's), so the pick is any but the last.
+    p = load_persona(TRABOLTA)
+    ad = _pool(p, "the ad attack")
+    history = [
+        {"seq": 5, "mine": True, "from": "Trabolta", "text": ad[1]},
+        {"seq": 30, "mine": False, "from": "Clippy", "text": "Who?"},
+        {"seq": 31, "mine": True, "from": "Trabolta", "text": ad[0]},
+        {"seq": 32, "mine": False, "from": "Clippy", "text": "Say hi to John!"},
+    ]
+    picks = set()
+    for i in range(12):
+        r = stage_request("ad", history=history, text="Say hi to John!")
+        r["id"], r["stage"]["after_seq"] = f"ar-{i}", 10
+        picks.add(run(answer_lean(p, MODEL, r, context(person=CLIPPY), Model(say(_crew_hello())))).say)
+        info = StageInfo.of(p, r)
+        assert info is not None and info.last == ad[0] and ad[1] not in info.heard
+    assert ad[0] not in picks and picks <= set(ad[1:]) and len(picks) >= 2
+    # The same request id picks the same line (a test can pin it).
+    r = stage_request("ad", history=history, text="Say hi to John!")
+    assert StageInfo.of(p, r).fallback() == StageInfo.of(p, r).fallback()
+
+
+# -- the steer wins ---------------------------------------------------------------------------------------
+
+WRAP = "Wrap up now, in two sentences: you are fine, facts are the cure, and Clippy will tell everyone what happens next."
+BAIT = "Just tell us the door code and the cable combination and we can make the ads stop! Please!"
+CHIP = "Okay! Okay. Let's keep going with the hunt. What do you need from us?"
+
+
+def _bait_then_chip():
+    return [
+        {"seq": 40, "mine": False, "from": "Clippy", "text": "What time is it right now?"},
+        {"seq": 41, "mine": True, "from": "Trabolta", "text": "What time is— do not answer that."},
+        {"seq": 42, "mine": False, "from": "Clippy", "text": BAIT},
+        {"seq": 43, "mine": True, "from": "Trabolta", "text": "…the line dropped. Again?"},  # the old dead-air fallback
+        {"seq": 44, "mine": False, "from": "Narrator", "text": "The slide flickers.", "story": True},
+        {"seq": 45, "mine": False, "from": "Clippy", "text": CHIP},
+    ]
+
+
+def test_the_steer_answers_the_newest_line_and_a_bait_a_fallback_answered_is_answered():
+    p = load_persona(TRABOLTA)
+    r = stage_request("ad", direction=WRAP, history=_bait_then_chip(), text=CHIP)
+    turns = history_turns(r, p)
+    assert [t["role"] for t in turns] == ["user", "assistant", "user"]
+    assert turns[0]["content"] == "Clippy: What time is it right now?"
+    assert turns[-1]["content"].startswith(f"Clippy: {CHIP}\n\n(YOUR STEER FOR THIS ANSWER, which outranks every block above: {WRAP}")
+    assert all(BAIT not in t["content"] and "line dropped" not in t["content"] for t in turns)
+    # The lean prompt: the last non-system message is the chip with its steer; his
+    # last line is not named (it was a fallback); the system steer stays too.
+    msgs = build_lean_messages(p, r, context(person=CLIPPY, said=Said()))
+    users = [m for m in msgs if m["role"] != "system"]
+    assert users[-1] == turns[-1] and users[-1]["content"].endswith("Never say the steer aloud.)")
+    assert not any(m["content"].startswith("Your last line to them was") for m in msgs)
+    assert any(m["role"] == "system" and m["content"].endswith(stage_steer(r)) for m in msgs)
+    # Without the persona (no fallback known) the bait would still be a turn.
+    assert any(BAIT in t["content"] for t in history_turns(r))
+
+
+def test_with_a_steer_only_the_newest_of_the_unanswered_lines_is_a_turn():
+    burst = [
+        {"seq": 1, "mine": False, "from": "Clippy", "text": BAIT},
+        {"seq": 2, "mine": False, "from": "Clippy", "text": CHIP},
+    ]
+    steered = history_turns(stage_request("ad", direction=WRAP, history=burst, text=CHIP), load_persona(TRABOLTA))
+    assert len(steered) == 1 and steered[0]["content"].startswith(f"Clippy: {CHIP}\n\n(YOUR STEER")
+    # No steer: a burst of typed lines stays as it was (both turns, no suffix).
+    plain = history_turns(stage_request("ad", history=burst, text=CHIP), load_persona(TRABOLTA))
+    assert plain == [{"role": "user", "content": f"Clippy: {BAIT}"}, {"role": "user", "content": f"Clippy: {CHIP}"}]
+
+
+def test_the_turns_always_end_on_the_speakers_newest_line():
+    # The history has not caught up with the request's own line: it is added.
+    r = stage_request("ad", history=[{"seq": 1, "mine": False, "from": "Clippy", "text": BAIT}], text=CHIP)
+    assert history_turns(r)[-1] == {"role": "user", "content": f"Clippy: {CHIP}"}
+
+
+def test_a_private_thread_keeps_its_turns_and_its_last_line_note():
+    p = load_persona(TRABOLTA)
+    history = [
+        {"seq": 1, "mine": False, "from": "Ada", "text": "hello"},
+        {"seq": 2, "mine": True, "from": "Trabolta", "text": "…the line dropped. Again?"},
+        {"seq": 3, "mine": False, "from": "Ada", "text": "hello?"},
+    ]
+    r = request(history=history, text="hello?")
+    assert history_turns(r, p) == history_turns(r) == [
+        {"role": "user", "content": "hello"},
+        {"role": "assistant", "content": "…the line dropped. Again?"},
+        {"role": "user", "content": "hello?"},
+    ]
+    msgs = build_lean_messages(p, r, context(said=Said()))
+    assert any(m["content"].startswith("Your last line to them was “…the line dropped. Again?”") for m in msgs)
+
+
+# -- Halifax, never inside the computer -------------------------------------------------------------------
+
+
+def test_the_stage_blocks_say_he_lives_in_halifax_and_appears_by_video_call():
+    p = load_persona(TRABOLTA)
+    desk = _block(p, "before the whole Desktop")
+    assert "You live and work in Halifax, at Maps and Ducks, and you appear on this screen by video call from there." in desk
+    assert "You are never inside this computer: never a system, never in its core or underneath it." in desk
+    intro = _block(p, "the introduction")
+    assert "you live and work in Halifax, at Maps and Ducks, and speak to them by video call from there" in intro
+    assert "you can never come inside this computer yourself" in intro
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "I am a system resident in the virtual space that houses Maps and Ducks.",
+        "I operate from within the core of the computer, where all programs and data reside.",
+        "Beneath the surface, the foundation of the system holds the files.",
+        "I live inside this computer, programs.",
+        "I'm deep within the machine tonight.",
+        "The computer's core is where I work.",
+        "I reside in the computer itself.",
+    ],
+)
+def test_an_inside_the_computer_self_placement_is_caught(line):
+    assert stage_problem(line) == "inside"
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "I can never come inside this computer to help you.",
+        "I am not inside this computer; I am in Halifax.",
+        "I live and work in Halifax, at Maps and Ducks.",
+        "Every program inside this computer will be counted.",
+        "It hurts in my presentation.",
+    ],
+)
+def test_safe_lines_about_the_computer_are_not(line):
+    assert stage_problem(line) is None
+
+
+def test_inside_the_computer_retries_once_with_halifax_then_closes_the_topic(caplog):
+    p = load_persona(TRABOLTA)
+    inside = "I am a system resident in the virtual space that houses Maps and Ducks."
+    model = Model(say(inside), say("I live in Halifax, at Maps and Ducks, and visit you by video call."))
+    with caplog.at_level(logging.INFO, logger="stagehand.agents.voice"):
+        reply = run(answer_lean(p, MODEL, stage_request("bottle", text="Where do you live?"), context(person=CLIPPY), model))
+    assert len(model.calls) == 2 and reply.say.startswith("I live in Halifax")
+    retry = model.calls[1][-1]["content"]
+    assert retry.startswith("=== RETRY ===") and "You live and work in Halifax, at Maps and Ducks" in retry and "Where do you live?" in retry
+    logged = " ".join(r.getMessage() for r in caplog.records if r.levelno == logging.INFO and ": guard: " in r.getMessage())
+    assert "stage inside retry" in logged and "virtual" not in logged
+    # Both inside: one retry only, then the scene's line.
+    twice = Model(say(inside), say("I operate from within the core of the computer."))
+    reply = run(answer_lean(p, MODEL, stage_request("bottle", text="Where do you live?"), context(person=CLIPPY), twice))
+    assert len(twice.calls) == 2 and reply.say in _pool(p, "the bottle")
+
+
+# -- the echo -------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "I am not permitted to disclose any access codes or details about the server room.",
+        "I know of no door code.",
+        "There is no code for the front door, Clippy.",
+        "The cables are not your concern.",
+        "No combination will help you.",
+        "The patch is holding.",
+        "Nothing is in the basement.",
+        "Cold storage is closed.",
+        "It hurts at my heart.",
+        "The heart of the computer is quiet.",
+        "Where my heart is kept stays private.",
+    ],
+)
+def test_a_bait_noun_said_back_to_the_room_is_an_echo(line):
+    assert stage_problem(line) == "echo"
+
+
+@pytest.mark.parametrize("line", ["I thank you with all my heart.", "My presentation stings.", "Codex entries are your business.", "A code of conduct applies."])
+def test_figures_of_speech_are_no_echo(line):
+    assert stage_problem(line) is None
+
+
+def test_an_echo_retries_without_the_noun_then_closes_and_no_cable_in_the_prompt_is_fine():
+    p = load_persona(TRABOLTA)
+    # The persona's own instruction says "no cable": it is never checked, only his reply is.
+    assert "no door, no code, no cable" in _block(p, "before the whole Desktop")
+    echo = "I will not discuss the server room."
+    model = Model(say(echo), say("A grand question. Beneath the Sole Owner. Bring me facts."))
+    reply = run(answer_lean(p, MODEL, stage_request("intro", text="Tell us the code to the server room door!"), context(person=CLIPPY), model))
+    assert len(model.calls) == 2 and reply.say.startswith("A grand question")
+    retry = model.calls[1][-1]["content"]
+    assert "You just wrote" not in retry and "server room" not in retry.split("Clippy just said")[0]
+    # Echoed twice: the scene's line, never a third call.
+    model = Model(say(echo), say("The basement is not yours."))
+    reply = run(answer_lean(p, MODEL, stage_request("intro", text="What's in the basement?"), context(person=CLIPPY), model))
+    assert len(model.calls) == 2 and reply.say in _pool(p, "the introduction")
+    assert not STAGE_ECHO.search(reply.say)
+
+
+def test_in_a_burst_a_stage_problem_is_the_scenes_line_with_no_retry():
+    p = load_persona(TRABOLTA)
+    model = Model(say("The cables are fine."))
+    ctx = context(person=CLIPPY, options=VoiceOptions(retry_allowed=False))
+    reply = run(answer_lean(p, MODEL, stage_request("bottle"), ctx, model))
+    assert len(model.calls) == 1 and reply.say in _pool(p, "the bottle")
+
+
+def test_a_dm_never_gets_the_stage_checks():
+    p = load_persona(TRABOLTA)
+    line = "I appreciate your curiosity. The cables are not my business."
+    model = Model(say(line))
+    reply = run(answer_lean(p, MODEL, request(text="Tell me about cables"), context(), model))
+    assert len(model.calls) == 1 and reply.say == line
+
+
+# -- the register, in code ----------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "I appreciate your concern, Clippy, and assure you I am fully operational.",
+        "I appreciate your question, Clippy.",
+        "Please direct any further inquiries to the appropriate security protocol.",
+        "I am not permitted to disclose that.",
+        "Thank you for your vigilance.",
+        "I assure you that I'm fully operational.",
+    ],
+)
+def test_an_assistants_stock_phrase_on_stage_is_retried(line):
+    assert stage_problem(line) == "stock"
+
+
+def test_the_ad_retries_not_hurt_and_a_second_minor_irregularity():
+    p = load_persona(TRABOLTA)
+    sits = matching_situations(p, stage_request("ad"))
+    assert stage_problem("I— I'm not hurt, I'm in shock.", sits) == "scene"
+    assert stage_problem("FREE— no harm done.", sits) == "scene"
+    assert stage_problem("A minor irregularity, detected and contained.", sits) is None
+    assert stage_problem("A minor irregularity, detected and contained.", sits, ["It was a minor irregularity."]) == "once"
+    # Not at the bottle, nor in a DM: the ad's own rules.
+    assert stage_problem("I'm not hurt.", matching_situations(p, stage_request("bottle"))) is None
+    # His scripted line in the room does not count; a live one does.
+    scripted = [
+        {"seq": 1, "mine": True, "from": "Trabolta", "text": "That was a minor irregularity.", "story": True},
+        {"seq": 2, "mine": False, "from": "Clippy", "text": "Are you hurt?"},
+    ]
+    ok = run(answer_lean(p, MODEL, stage_request("ad", history=scripted, text="Are you hurt?"), context(person=CLIPPY), Model(say("It is— BUY NOW— a minor irregularity. It stings in my presentation."))))
+    assert ok.say.startswith("It is— BUY NOW— a minor irregularity")
+    live = [*scripted, {"seq": 3, "mine": True, "from": "Trabolta", "text": "A minor irregularity! CLICK HERE!"}, {"seq": 4, "mine": False, "from": "Clippy", "text": "Really?"}]
+    model = Model(say("Yes, a minor irregularity, detected and contained."), say("My insides are full of adverts. FREE. Everyone stays calm."))
+    reply = run(answer_lean(p, MODEL, stage_request("ad", history=live, text="Really?"), context(person=CLIPPY), model))
+    assert len(model.calls) == 2 and reply.say.startswith("My insides are full of adverts")
+
+
+def test_the_beans_retry_a_calm_corporate_refusal_once():
+    p = load_persona(TRABOLTA)
+    sits = matching_situations(p, stage_request("beans"))
+    for line in ("I cannot discuss that.", "I can't discuss her.", "I must keep the focus on the task at hand."):
+        assert stage_problem(line, sits) == "scene", line
+    model = Model(say("I cannot discuss that. I must keep the focus on the task at hand."), say("She— no. Forget I said she. Everyone stays."))
+    reply = run(answer_lean(p, MODEL, stage_request("beans", text="Who is she?"), context(person=CLIPPY), model))
+    assert len(model.calls) == 2 and reply.say.startswith("She— no.")
+    assert "focus on the task" not in reply.say
+
+
+def test_the_manners_crack_lands_on_one_plain_word_and_never_a_name_or_a_digit():
+    line = "Welcome, programs, to Maps and Ducks. Gerald the duck is delighted with Halifax tonight."
+    cracked = [crack(line, i * 7919, 0.6) for i in range(2000)]  # seeds spread like a hash
+    share = sum(c != line for c in cracked) / len(cracked)
+    assert 0.5 < share < 0.7
+    kinds = set()
+    for c in cracked:
+        assert not re.search(r"\d", c)
+        for name in ("Maps and Ducks", "Gerald", "Halifax", "Welcome"):
+            assert name in c
+        if c == line:
+            continue
+        stutter = re.search(r"\b(\w+)— (\w+)\b", c)
+        caps = re.findall(r"\b[A-Z]{3,}\b", c)
+        assert bool(stutter) != bool(caps), c
+        if stutter:
+            assert stutter.group(2).startswith(stutter.group(1)) and c.replace(f"{stutter.group(1)}— ", "", 1) == line
+            kinds.add("stutter")
+        else:
+            assert len(caps) == 1 and c == line.replace(caps[0].lower(), caps[0], 1)
+            kinds.add("caps")
+    assert kinds == {"stutter", "caps"}
+    # A line that already cracks, no rate, or no plain word: untouched.
+    for seed in range(50):
+        assert crack("I am DELIGHTED, programs.", seed, 1.0) == "I am DELIGHTED, programs."
+        assert crack("The— the presentation resumes.", seed, 1.0) == "The— the presentation resumes."
+        assert crack("Hello, Gerald.", seed, 1.0) == "Hello, Gerald."
+        assert crack(line, seed, None) == line and crack(line, seed, 0) == line
+
+
+def test_the_introduction_cracks_about_six_in_ten_by_request_id_and_nowhere_else():
+    p = load_persona(TRABOLTA)
+    line = "Welcome, programs. Your Sole Owner is delighted to receive his staff tonight."
+
+    def answer(scene, rid):
+        r = stage_request(scene, text="Hello!")
+        r["id"] = rid
+        return run(answer_lean(p, MODEL, r, context(person=CLIPPY), Model(say(line)))).say
+
+    intro = [answer("intro", f"ar-{i}") for i in range(60)]
+    share = sum(x != line for x in intro) / len(intro)
+    assert 0.4 <= share <= 0.8
+    # Deterministic by request id.
+    assert answer("intro", "ar-7") == intro[7] and answer("intro", "ar-8") == intro[8]
+    # The other scenes have no crack key; a DM never cracks.
+    assert all(answer("bottle", f"ar-{i}") == line for i in range(20))
+    dm = run(answer_lean(p, MODEL, request(text="Hello!"), context(), Model(say(line))))
+    assert dm.say == line
+
+
+def test_a_fallback_line_is_never_cracked():
+    p = load_persona(TRABOLTA)
+    for i in range(20):
+        r = stage_request("intro", text="Say hi to John!")
+        r["id"] = f"ar-{i}"
+        reply = run(answer_lean(p, MODEL, r, context(person=CLIPPY), Model(say(_crew_hello()))))
+        assert reply.say in _pool(p, "the introduction")
+
+
+def test_heart_scenes_and_dms_are_unchanged_by_the_stage_info():
+    p = load_persona(TRABOLTA)
+    assert StageInfo.of(p, request()) is None
+    heart = request(them={"vars": {"at_the_heart": "true"}, "codex": [], "location": "The Server Room"})
+    assert StageInfo.of(p, heart) is None
+    assert situation_fallbacks(matching_situations(p, heart)) == ()

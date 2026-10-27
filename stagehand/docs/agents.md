@@ -147,6 +147,29 @@ voice thought's `note` names each one that fired, never the word):
    retry that still repeats goes out with those cut. Lines said to other
    guests are a prompt warning only.
 5. **the memo scrub** (above).
+6. **the stage** (wave 32, a talk scene's public line only) — a line that
+   says a bait noun back to the room (*server room*, *door / access
+   code*, *cable*, *combination*, *patch*, *basement*, *cold storage*,
+   the heart as a place), places him inside the computer (*virtual
+   space*, *system resident*, *core of the computer*, *beneath the
+   surface*, "I live in this computer"), uses an assistant's stock phrase
+   (*I appreciate your concern*, *not permitted to disclose*, *thank you
+   for your vigilance*, …), or a holding situation's `retry_on:` phrase,
+   or its `once:` phrase a second time among his live lines this scene,
+   gets the **one** retry (`stage echo|inside|stock|scene|once retry`,
+   with a note saying why and the steer again); every stage request has
+   at most one retry. Whatever is still unusable after it (a withheld
+   line, a retry that failed too, a model failure, a burst with no retry)
+   is a line from the holding situation's own `fallbacks:` (the scene's
+   over the Desktop block's): one that **closes the topic**, never "say
+   that again", not heard this scene when possible and never the same
+   one twice running, picked by the request id. A situation's `crack:`
+   (the introduction: 0.6) gives that share of his lines, by request id,
+   one stuttered (*de— delighted*) or ALL-CAPS word, never in a name.
+   On a stage request with a `direction` the steer also ends the last
+   turn (Ollama hoists gpt-oss's system messages ahead of the turns),
+   only the newest of the unanswered lines stays a turn, and a line of
+   Clippy's that a fallback answered is taken out with that fallback.
 
 A fallback in the story mind is a dead-air line from the persona's
 `fallbacks:` for his stage that this guest has not heard, else
@@ -495,7 +518,7 @@ is YAML frontmatter + the system prompt:
 | `lookup_power` | a `who: agent` power fired with `target` = each program a lookup resolves (Trabolta: `snoop`) — being read is felt, deterministically |
 | `powers` | `all` (default), `none`, or a list of `who: agent` interaction names |
 | `bargain` | the favour policy the fast model reads (the orchestrator adjusts it in the brief) |
-| `situations` | a list of `{when, prompt}` (+ an optional `name` for the heading): extra instructions for a kind of moment. Each `when` is read like the gate above; while it holds for a request, its prompt is appended to the voice's system prompt as its own `=== SITUATION: … ===` block and shown to the orchestrator's reflect on that exchange (which keeps it out of the shared brief, in that person's dossier). Wave 20: **`max_sentences: N`** (1–12) lets his line run to N sentences there, said in the block and enforced by the guards of both voices (a longer line is cut; the last holding situation that sets it wins); **`acts: none`** says he decides nothing there and the guards drop every act the model returns |
+| `situations` | a list of `{when, prompt}` (+ an optional `name` for the heading): extra instructions for a kind of moment. Each `when` is read like the gate above; while it holds for a request, its prompt is appended to the voice's system prompt as its own `=== SITUATION: … ===` block and shown to the orchestrator's reflect on that exchange (which keeps it out of the shared brief, in that person's dossier). Wave 20: **`max_sentences: N`** (1–12) lets his line run to N sentences there, said in the block and enforced by the guards of both voices (a longer line is cut; the last holding situation that sets it wins); **`acts: none`** says he decides nothing there and the guards drop every act the model returns. Wave 32 (stage lines, guard 6): **`fallbacks:`** (topic-closing lines; the last holding situation with any wins), **`retry_on:`** and **`once:`** (phrases, folded, whole words), **`crack: 0–1`** |
 | `outside` | (wave 20, D29) names and words from outside his world, a list or a comma list (the crew's real names, *party*, *actor*, *Loom*, *Arduino*, …): a `=== NOT FROM YOUR WORLD ===` block tells him they are nothing he knows, and a hit in his output (whole words, folded, a plural too) is treated like a `secrets.never` hit — the line becomes the fallback, its act and memo are dropped. Matching is word-exact, so a common word (*show*) trips in every sense: list names and phrases (*the show*, *a party*, *real world*); `stagehand check` warns when an entry is in his own in-world text (the system prompt, `fallback(s)`, `catchphrases`, `unavailable`, the phase and stage cards), and a fallback that names one is never said |
 
 Trabolta's situations (wave 7): **at your heart** (`them.at_the_heart ==

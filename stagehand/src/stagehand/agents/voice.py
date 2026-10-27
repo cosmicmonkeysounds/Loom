@@ -39,20 +39,37 @@ story mind (`module.py` / `story_mind.py`) builds the `VoiceContext`.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any
 
 from .cards import PhaseView, VoiceContext
 from .facts import Facts
-from .guards import Pass, allowed_answer_words, cut_exact_repeats, guard_pass, mentions_hunt, pick_fallback, repeats, retry_message, scrub_memo, thread_replies, uses_catchphrase
+from .guards import (
+    Pass,
+    allowed_answer_words,
+    cut_exact_repeats,
+    guard_pass,
+    is_fallback,
+    mentions_hunt,
+    pick_fallback,
+    pick_situation_fallback,
+    repeats,
+    retry_message,
+    scrub_memo,
+    situation_fallbacks,
+    stage_problem,
+    thread_replies,
+    uses_catchphrase,
+)
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
-from .prompt import adjust_names, allowed_powers, build_messages, dossier_block, gate_context, matching_situations, outside_block, situation_block, stage_of, their_variables, them_adjust_line
+from .prompt import adjust_names, allowed_powers, build_messages, dossier_block, gate_context, is_stage, matching_situations, outside_block, situation_block, stage_of, their_variables, them_adjust_line
 from .reply import MAX_MEMO, Reply, fold, parse_reply
 from .story_mind import card_for, gift_line
 from .trace import Trace, new_thought
@@ -557,30 +574,61 @@ def render_p3(persona: Persona, req: dict[str, Any], ctx: VoiceContext, *, live:
 # -- P4: the thread + the reminder ---------------------------------------------------------
 
 
-def history_turns(req: dict[str, Any]) -> list[dict[str, str]]:
+def history_turns(req: dict[str, Any], persona: Persona | None = None) -> list[dict[str, str]]:
     """The last 8 lines once the story's are taken out: the guest's as
     `user`, his free replies as `assistant`; always ending on the speaker.
     (wave 32) A stage request's history is the whole room's: only the live
     exchange is a turn (every scripted line, whoever said it, is in P3's
-    room block), and each line not his says who said it."""
+    room block), and each line not his says who said it. With the
+    `persona`, a line of his that was a fallback is taken out with the
+    lines it answered (they are answered: the re-measure's ad wrap-up chip
+    was ignored for the door-code bait its fallback had left open); with a
+    `stage.direction`, only the newest of the unanswered lines at the end
+    stays, and the last turn carries the steer (`steer_suffix`)."""
     stage = stage_of(req)
     if stage is not None:
         after = stage.get("after_seq")
         after = after if isinstance(after, int) and not isinstance(after, bool) else 0
-        live = [h for h in req.get("history") or [] if isinstance(h, dict) and h.get("story") is not True and not _before_scene(h, after)][-HISTORY:]
+        live = [h for h in req.get("history") or [] if isinstance(h, dict) and h.get("story") is not True and not _before_scene(h, after)]
+        if persona is not None:
+            live = _answered_by_fallback_out(persona, live)
+        steer = steer_suffix(req)
+        if steer and live and not live[-1].get("mine"):
+            tail = len(live)
+            while tail > 0 and not live[tail - 1].get("mine"):
+                tail -= 1
+            live = live[:tail] + live[-1:]
+        live = live[-HISTORY:]
         turns = [
             {"role": "assistant", "content": str(h.get("text", ""))} if h.get("mine") else {"role": "user", "content": _said_by(h.get("from"), h.get("text"))}
             for h in live
         ]
-        if not live or live[-1].get("mine"):
+        text = str(req.get("text") or "")
+        if not live or live[-1].get("mine") or (text.strip() and " ".join(str(live[-1].get("text") or "").split()) != " ".join(text.split())):
+            # Always end on the speaker's newest line (the request's own text).
             speaker = req.get("speaker") or {}
-            turns.append({"role": "user", "content": _said_by(speaker.get("name") or speaker.get("id"), req.get("text") or "(they are waiting)")})
+            turns.append({"role": "user", "content": _said_by(speaker.get("name") or speaker.get("id"), text or "(they are waiting)")})
+        if steer:
+            turns[-1] = {**turns[-1], "content": f"{turns[-1]['content']}\n\n{steer}"}
         return turns
     free = [h for h in req.get("history") or [] if isinstance(h, dict) and not (h.get("mine") and h.get("story") is True)]
     free = free[-HISTORY:]
     out = [{"role": "assistant" if h.get("mine") else "user", "content": str(h.get("text", ""))} for h in free]
     if not free or free[-1].get("mine"):
         out.append({"role": "user", "content": str(req.get("text") or "(they are waiting)")})
+    return out
+
+
+def _answered_by_fallback_out(persona: Persona, live: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """(wave 32) The live lines without each fallback of his and the lines
+    of others it answered (back to his previous line)."""
+    out: list[dict[str, Any]] = []
+    for h in live:
+        if h.get("mine") and is_fallback(persona, str(h.get("text") or "")):
+            while out and not out[-1].get("mine"):
+                out.pop()
+            continue
+        out.append(h)
     return out
 
 
@@ -666,6 +714,8 @@ def last_line_note(req: dict[str, Any], ctx: VoiceContext, persona: Persona | No
     last = " ".join(str(last).split())
     if not last or (persona is not None and persona.secrets.leaks(last)):
         return None  # as ALREADY SAID: a line carrying a `never` word is never repeated back
+    if persona is not None and is_stage(req) and is_fallback(persona, last):
+        return None  # (wave 32) a fallback answered nothing: naming it reopens what it closed
     return f"Your last line to them was “{last}”. Do not say it again or open the same way: answer what they just said, in new words."
 
 
@@ -704,6 +754,22 @@ def stage_steer(req: dict[str, Any]) -> str | None:
     return f"YOUR STEER FOR THIS ANSWER (you must follow it; never say it aloud, never mention it): {direction}"
 
 
+def steer_suffix(req: dict[str, Any]) -> str | None:
+    """(wave 32) The steer again, at the very end of the last turn: Ollama
+    hoists every system message of gpt-oss into the one developer block
+    ahead of the turns, so a system steer is never "last". Live, the ad's
+    wrap-up chip lost to an older unanswered bait; the newest line and its
+    steer are what the model reads last. None without a direction."""
+    stage = stage_of(req)
+    direction = _one_line((stage or {}).get("direction"), MAX_STEER)
+    if not direction:
+        return None
+    return (
+        f"(YOUR STEER FOR THIS ANSWER, which outranks every block above: {direction} "
+        "Answer this newest line under it; everything said before it is already answered. Never say the steer aloud.)"
+    )
+
+
 def build_lean_messages(
     persona: Persona,
     req: dict[str, Any],
@@ -712,9 +778,11 @@ def build_lean_messages(
     retry: str | None = None,
     lookups: dict[str, str] | None = None,
     prior_json: str | None = None,
+    retry_note: str | None = None,
 ) -> list[dict[str, str]]:
     """The lean message list (module docstring). `retry` = the rejected line
-    for the one retry; `lookups` / `prior_json` = the lookup round."""
+    for the one retry (`retry_note`: its closing message, when not the
+    repeat's); `lookups` / `prior_json` = the lookup round."""
     memo = ctx.options.memo
     live = _live_ids(persona, req, ctx.phase)
     told = tuple(str(e.get("title", "")) for e in tell_entries(persona, req, ctx.phase))
@@ -723,7 +791,7 @@ def build_lean_messages(
         {"role": "system", "content": render_p2(persona, req, ctx)},
         {"role": "system", "content": render_p3(persona, req, ctx, live=live, told=told)},
     ]
-    out.extend(history_turns(req))
+    out.extend(history_turns(req, persona))
     if lookups is not None:
         if prior_json:
             out.append({"role": "assistant", "content": prior_json})
@@ -737,7 +805,7 @@ def build_lean_messages(
         out.append({"role": "system", "content": now})
     out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None)})
     if retry is not None:
-        out.append({"role": "system", "content": retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
+        out.append({"role": "system", "content": retry_note or retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
     return out
 
 
@@ -812,6 +880,124 @@ def _notes(*parts: str | list[str]) -> str:
     return " · ".join(flat)
 
 
+# -- the stage (wave 32) -----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class StageInfo:
+    """What a stage request's guards need: the holding situations, his live
+    lines this scene (after `stage.after_seq`), every line of his this scene,
+    his newest live line, and the request id (the seed of every pick, so a
+    test can pin it and a re-sent request picks the same)."""
+
+    situations: tuple[Any, ...]
+    earlier: tuple[str, ...]
+    heard: tuple[str, ...]
+    last: str
+    rid: str
+
+    @classmethod
+    def of(cls, persona: Persona, req: dict[str, Any]) -> "StageInfo | None":
+        stage = stage_of(req)
+        if stage is None:
+            return None
+        after = stage.get("after_seq")
+        after = after if isinstance(after, int) and not isinstance(after, bool) else 0
+        mine = [h for h in req.get("history") or [] if isinstance(h, dict) and h.get("mine") and str(h.get("text") or "").strip()]
+        scene = [h for h in mine if not _before_scene(h, after)]
+        live = [str(h.get("text")) for h in mine if h.get("story") is not True]
+        return cls(
+            situations=tuple(matching_situations(persona, req)),
+            earlier=tuple(str(h.get("text")) for h in scene if h.get("story") is not True),
+            heard=tuple(str(h.get("text")) for h in scene),
+            last=live[-1] if live else "",
+            rid=str(req.get("id") or ""),
+        )
+
+    @property
+    def pool(self) -> tuple[str, ...]:
+        return situation_fallbacks(self.situations)
+
+    @property
+    def crack(self) -> float | None:
+        rate = None
+        for s in self.situations:
+            if getattr(s, "crack", None) is not None:
+                rate = s.crack
+        return rate
+
+    def problem(self, say: str) -> str | None:
+        return stage_problem(say, self.situations, self.earlier)
+
+    def seed_of(self, salt: str) -> int:
+        return int.from_bytes(hashlib.sha256(f"{self.rid}|{salt}".encode()).digest()[:8], "big")
+
+    def fallback(self) -> str:
+        return pick_situation_fallback(self.pool, self.heard, self.last, self.seed_of("fallback"))
+
+
+#: (wave 32) What the one stage retry tells him, by `guards.stage_problem`'s
+#: reason. None quotes the word that tripped it.
+STAGE_HINTS = {
+    "echo": "It says one of the question's own things back to the whole room. Wave the question away grandly, in your own words, naming none of its things.",
+    "inside": "It puts you inside this computer. You live and work in Halifax, at Maps and Ducks, and appear on this screen by video call from there: never inside the computer, never a system, never in its core or underneath it.",
+    "stock": "It is an assistant's stock phrase. You are the Sole Owner and Founder speaking to his staff: no thanks for their concern, no assurances, no talk of what you are permitted.",
+    "scene": "It breaks the rule of this moment's block.",
+    "once": "You have already said that phrase in this scene: never again tonight in front of them; fresh words.",
+}
+
+
+def stage_retry_message(rejected: str, req: dict[str, Any], why: str) -> str:
+    """(wave 32) The one stage retry's closing note: why the line cannot go
+    out on the big screen, Clippy's line again and the steer. An echo is not
+    quoted back (it would hand him the noun again)."""
+    heard = _one_line(req.get("text"), 200)
+    quote = "" if why == "echo" else f"You just wrote: “{' '.join(str(rejected).split())}”. "
+    direction = _one_line((stage_of(req) or {}).get("direction"), MAX_STEER)
+    steer = f" Follow your steer: {direction}" if direction else ""
+    ask = f"Clippy just said “{heard}”. Answer that" if heard else "Answer Clippy"
+    return f"=== RETRY ===\n{quote}That cannot go out on the big screen. {STAGE_HINTS.get(why, '')} {ask}, out loud, in new words.{steer}"
+
+
+#: A word the manners crack may land on: plain lower-case letters, long
+#: enough to read as a word (never a name, which is capitalised).
+_CRACK_WORD = re.compile(r"[A-Za-z]+(?:['’][A-Za-z]+)?")
+_VOWELS = "aeiouy"
+
+
+def crack(say: str, seed: int, rate: float | None) -> str:
+    """(wave 32) The introduction's manners crack, in code (the re-measure:
+    0 cracks in 11 intro replies by instruction alone): for about `rate` of
+    the seeds, one word stutters ("de— delighted") or comes out in ALL CAPS
+    ("DELIGHTED"). Never inside a name (a capitalised word, or a small word
+    between two: "Maps and Ducks"), never a digit, and never on a line that
+    already cracks (an ALL-CAPS word, a "word— word" stutter)."""
+    if rate is None or rate <= 0 or not say or (seed % 10_000) / 10_000 >= rate:
+        return say
+    if re.search(r"\b[A-Z]{3,}\b", say) or re.search(r"(\w+)—\s*\1", say, re.IGNORECASE):
+        return say
+    words = list(_CRACK_WORD.finditer(say))
+
+    def capital(i: int) -> bool:
+        return 0 <= i < len(words) and words[i].group(0)[:1].isupper()
+
+    picks = [
+        i
+        for i, m in enumerate(words)
+        if m.group(0).isalpha() and m.group(0).islower() and len(m.group(0)) >= 5 and not (capital(i - 1) and capital(i + 1))
+    ]
+    if not picks:
+        return say
+    m = words[picks[(seed >> 16) % len(picks)]]
+    word = m.group(0)
+    if (seed >> 8) % 2:
+        new = word.upper()
+    else:
+        cut = next((i for i in range(1, len(word)) if word[i] in _VOWELS), 1)
+        new = f"{word[: cut + 1]}— {word}"
+    return say[: m.start()] + new + say[m.end() :]
+
+
 async def answer_lean(
     persona: Persona,
     model: LlmConfig,
@@ -837,6 +1023,9 @@ async def answer_lean(
     live = set(_live_ids(persona, req, ctx.phase)) if ctx.phase.live_powers is not None else None
     allowed = allowed_answer_words(persona, req, story_p2(persona, req, ctx))
     facts_box: list[Facts | None] = []
+    # (wave 32) A stage line: the holding situations (their fallbacks,
+    # retry_on, once, crack) and his live lines this scene.
+    stage = StageInfo.of(persona, req)
 
     async def facts() -> Facts | None:
         if facts_fn is None:
@@ -856,12 +1045,12 @@ async def answer_lean(
     if no_mind:
         log.warning("%s: %s — the caller passed no mind=", persona.character, no_mind)
 
-    def build(*, retry: str | None = None, lookups: dict[str, str] | None = None, prior_json: str | None = None) -> list[dict[str, str]]:
+    def build(*, retry: str | None = None, lookups: dict[str, str] | None = None, prior_json: str | None = None, retry_note: str | None = None) -> list[dict[str, str]]:
         if lean:
-            return build_lean_messages(persona, req, ctx, retry=retry, lookups=lookups, prior_json=prior_json)
+            return build_lean_messages(persona, req, ctx, retry=retry, lookups=lookups, prior_json=prior_json, retry_note=retry_note)
         msgs = build_messages(persona, req, mind=mind, lookups=lookups, prior_json=prior_json)
         if retry is not None:
-            msgs.append({"role": "system", "content": retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
+            msgs.append({"role": "system", "content": retry_note or retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
         return msgs
 
     async def record(kind: str, trigger: str, msgs: list[dict[str, str]], completion: Completion | None, reply: Reply | None, error: str | None = None, note: str = "") -> None:
@@ -919,7 +1108,7 @@ async def answer_lean(
     except LlmError as err:
         log.warning("%s: model failed (%s)%s", persona.character, err, " — using fallback" if persona.fallback else "")
         await record("voice", "line", messages, None, None, error=str(err))
-        return Reply(say=persona.fallback)
+        return _failed(persona, ctx, req, stage)
     reply = parse(completion)
     kind, trigger, used = "voice", "line", messages
     if reply.lookup and persona.lookup and facts_fn is not None:
@@ -935,7 +1124,7 @@ async def answer_lean(
             except LlmError as err:
                 log.warning("%s: model failed on the lookup round (%s)", persona.character, err)
                 await record("lookup", "lookup", used, None, None, error=str(err))
-                return Reply(say=persona.fallback)
+                return _failed(persona, ctx, req, stage)
             second = parse(completion)
             acts = list(second.acts)
             if persona.lookup_power:
@@ -973,6 +1162,12 @@ async def answer_lean(
     wants = first.retry
     call_note = " · ".join(x for x in (no_mind, call_note) if x)
     notes = settle_notes + first.notes
+    why = stage.problem(first.reply.say) if stage is not None and wants is None and not first.withheld else None
+    if why:
+        # (wave 32) Not for the whole Desktop as it is: the one retry, then
+        # the scene's topic-closing line.
+        wants, first.rejected = "stage", first.reply.say
+        notes.append(f"stage {why} retry" if opts.retry_allowed else f"stage {why} (no retry: a line is waiting)")
     if wants == "repeat":
         notes.append("repeat retry" if opts.retry_allowed else "repeat (no retry: a line is waiting)")
     elif wants == "catchphrase":
@@ -980,7 +1175,7 @@ async def answer_lean(
 
     if wants is None or not opts.retry_allowed:
         final = first.reply
-        if wants == "catchphrase":
+        if wants in ("catchphrase", "stage"):
             final = replace(final, say=persona.fallback)
         elif wants == "repeat":
             # No retry in a burst, but still never word for word (K-04
@@ -1001,7 +1196,7 @@ async def answer_lean(
             if cut and cut != final.say:
                 final = replace(final, say=cut)
                 notes.append("old sentence cut")
-        final = _scrub(persona, _pooled(persona, final, ctx, req), memo_on, notes)
+        final = _scrub(persona, _finish(persona, final, ctx, req, stage, notes), memo_on, notes)
         _log_notes(persona, notes)
         await record(kind, trigger, used, completion, final, note=_notes(call_note, notes))
         return _done(persona, final, started, ctx, req)
@@ -1011,7 +1206,12 @@ async def answer_lean(
     # memo as it may be kept, as every other thought does.
     await record(kind, trigger, used, completion, _scrub(persona, first.reply, memo_on, notes), note=_notes(call_note, notes))
     _log_notes(persona, notes)
-    retry_msgs = build(retry=first.rejected) if kind == "voice" else used + [{"role": "system", "content": retry_message(first.rejected, str(req.get("text") or ""), ctx.phase.stage)}]
+    note_ = stage_retry_message(first.rejected, req, why) if why else None
+    retry_msgs = (
+        build(retry=first.rejected, retry_note=note_)
+        if kind == "voice"
+        else used + [{"role": "system", "content": note_ or retry_message(first.rejected, str(req.get("text") or ""), ctx.phase.stage)}]
+    )
     try:
         # A little hotter than the first call: at the house temperature the
         # model tends to write the rejected line again word for word.
@@ -1021,7 +1221,7 @@ async def answer_lean(
         log.warning("%s: model failed on the retry (%s)", persona.character, err)
         final = first.reply if wants == "repeat" else replace(first.reply, say=persona.fallback)
         rnotes = [f"retry failed → {'the first line' if wants == 'repeat' else 'fallback'}"]
-        final = _scrub(persona, _pooled(persona, final, ctx, req), memo_on, rnotes)
+        final = _scrub(persona, _finish(persona, final, ctx, req, stage, rnotes), memo_on, rnotes)
         _log_notes(persona, rnotes)
         await record("voice", "retry", retry_msgs, None, final, error=str(err), note=_notes(rnotes))
         return _done(persona, final, started, ctx, req)
@@ -1057,7 +1257,7 @@ async def answer_lean(
     if not final.memo and first.reply.memo and not second.withheld:
         # A withheld retry keeps no memo, not even the first line's (wave 32).
         final = replace(final, memo=first.reply.memo)
-    final = _scrub(persona, _pooled(persona, final, ctx, req), memo_on, rnotes)
+    final = _scrub(persona, _finish(persona, final, ctx, req, stage, rnotes), memo_on, rnotes)
     _log_notes(persona, rnotes)
     await record("voice", "retry", retry_msgs, completion, final, note=_notes(call_note, rnotes))
     return _done(persona, final, started, ctx, req)
@@ -1084,11 +1284,42 @@ def _scrub(persona: Persona, reply: Reply, memo_on: bool, notes: list[str]) -> R
 
 def _pooled(persona: Persona, reply: Reply, ctx: VoiceContext | None, req: dict[str, Any] | None) -> Reply:
     """The fixed fallback swapped for a line from the persona's `fallbacks`
-    for his stage that this guest has not heard (`guards.pick_fallback`)."""
+    for his stage that this guest has not heard (`guards.pick_fallback`).
+    (wave 32) On a stage line, one of the holding situation's own
+    `fallbacks` (a line that closes the topic) when it has any."""
     if ctx is None or req is None or not persona.fallback or reply.say != persona.fallback:
         return reply
+    stage = StageInfo.of(persona, req)
+    if stage is not None and stage.pool:
+        return replace(reply, say=stage.fallback())
     line = pick_fallback(persona, ctx.phase.stage, (*thread_replies(req), *ctx.said.to_them))
     return reply if line == reply.say else replace(reply, say=line)
+
+
+def _failed(persona: Persona, ctx: VoiceContext, req: dict[str, Any], stage: "StageInfo | None") -> Reply:
+    """The model failed: the fixed fallback in a private thread (as before),
+    the scene's topic-closing line on the stage (wave 32)."""
+    reply = Reply(say=persona.fallback)
+    return _pooled(persona, reply, ctx, req) if stage is not None else reply
+
+
+def _finish(persona: Persona, reply: Reply, ctx: VoiceContext, req: dict[str, Any], stage: "StageInfo | None", notes: list[str]) -> Reply:
+    """The pooled fallback, and (wave 32) on a stage line the last net: a
+    line that still fails `stage.problem` (a retry that fell foul too, a cut
+    first line) is the scene's topic-closing line, never a second retry;
+    then the manners crack where the scene asks for one."""
+    if stage is not None and reply.say and not is_fallback(persona, reply.say):
+        why = stage.problem(reply.say)
+        if why:
+            reply = replace(reply, say=persona.fallback)
+            notes.append(f"stage {why} → fallback")
+    reply = _pooled(persona, reply, ctx, req)
+    if stage is not None and reply.say and not is_fallback(persona, reply.say):
+        cracked = crack(reply.say, stage.seed_of("crack"), stage.crack)
+        if cracked != reply.say:
+            reply = replace(reply, say=cracked)
+            notes.append("crack")
+    return reply
 
 
 def _done(persona: Persona, reply: Reply, started: float, ctx: VoiceContext | None = None, req: dict[str, Any] | None = None) -> Reply:
