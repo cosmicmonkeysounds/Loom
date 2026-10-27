@@ -92,6 +92,9 @@ The chains it presses after the Y2K clock (`Y2K_TO_HEART_END`,
   server you know holds only bots) `--reset-before --i-know-this-is-live`.
 - It never presses Restart or End unless `--reset-before` / `--reset-after`,
   and those refuse anything but a scratch server on this laptop.
+  `--reset-after` does nothing when the run stopped before its night
+  started (e.g. the doors found `Night.step` above 0): that event is kept
+  for inspection.
 - It never prints a code, the door code, a combination or a hunt answer.
   The mod world goes through `lib/world.ts`, which drops `Kernel.*` (but a
   few secret-free latches). Only `--watch` prints URLs with codes, on your

@@ -34,3 +34,11 @@ export async function guardThenReset(guard: () => Promise<void>, reset: () => Pr
   await reset();
   return true;
 }
+
+/** `--reset-after` only on a scratch server, and only once the night this
+ *  run played actually started: a run that stopped before (the doors found
+ *  a night already under way, a failed login, a crash) leaves the event as
+ *  it found it, for inspection. */
+export function mayResetAfter(opts: { flag: boolean; scratch: boolean; nightStarted: boolean }): boolean {
+  return opts.flag && opts.scratch && opts.nightStarted;
+}

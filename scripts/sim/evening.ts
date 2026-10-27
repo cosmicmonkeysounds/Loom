@@ -74,7 +74,7 @@ import {
 import { liveGuard, type GuardRow } from "../accept/live-guard.ts";
 import { decide, heartMenu, layerOf, menusOf, type HeartStep, type Menu } from "./lib/heart.ts";
 import { Client, Stream, failure, sleep, type Res } from "./lib/http.ts";
-import { guardThenReset, isDevServer, isScratch, resolveBase } from "./lib/safety.ts";
+import { guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "./lib/safety.ts";
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
 import { atLeast, awardWinners, mismatches, notNone, read, truthy, worldOf, type Row, type Want } from "./lib/world.ts";
 import { featuredSlug, pickPool, segment } from "./lib/plan.ts";
@@ -129,6 +129,8 @@ if (factsPath !== "none") {
 const rec = new Recorder();
 const http = new Client(base, rec);
 let mod = "";
+/** Set once the doors beat passed (a fresh night this run plays). */
+let nightStarted = false;
 
 interface Bot {
   id: string;
@@ -449,6 +451,7 @@ async function main(): Promise<void> {
 
   const codes = await doorsOpen();
   if (codes === null) return;
+  nightStarted = true;
   if (flag("watch")) printWatch(codes.eventPass);
   if (flag("worker")) worker = await startWorker();
 
@@ -975,10 +978,10 @@ async function finish(): Promise<void> {
     }
   }
   if (jsonOut !== undefined) writeFileSync(jsonOut, JSON.stringify({ base, ending, beats: rec.beats, quests, errors: rec.errors }, null, 2));
-  if (flag("reset-after") && local) {
+  if (mayResetAfter({ flag: flag("reset-after"), scratch: local, nightStarted })) {
     await http.post("/api/mod/reset", {}, mod);
     console.log("  reset the scratch event (--reset-after)");
-  }
+  } else if (flag("reset-after")) console.log("  not reset (--reset-after): the run stopped before its night started, so the event is kept as found");
 }
 
 try {

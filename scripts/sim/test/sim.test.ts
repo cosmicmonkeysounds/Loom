@@ -8,7 +8,7 @@ import { CEREMONY, SELF_PRESSED, TO_Y2K, Y2K_TO_VERDICT, pressChain, stepName, s
 import { decide, findOption, heartMenu, layerOf, menusOf, tagOf, type Menu } from "../lib/heart.ts";
 import { featuredSlug, pickPool, segment } from "../lib/plan.ts";
 import { isLocal } from "../lib/http.ts";
-import { guardThenReset, isDevServer, isScratch, resolveBase } from "../lib/safety.ts";
+import { guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "../lib/safety.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
 import { awardWinners, mismatches, worldOf } from "../lib/world.ts";
 
@@ -181,4 +181,11 @@ test("the live guard runs before --reset-before, and a refusal resets nothing", 
   };
   await assert.rejects(guardThenReset(refuse, reset, true), /refused/u);
   assert.deepEqual(order, ["guard"]);
+});
+
+test("--reset-after keeps an event the run never started a night on", () => {
+  assert.equal(mayResetAfter({ flag: true, scratch: true, nightStarted: true }), true);
+  assert.equal(mayResetAfter({ flag: true, scratch: true, nightStarted: false }), false, "the doors found Night.step != 0");
+  assert.equal(mayResetAfter({ flag: true, scratch: false, nightStarted: true }), false);
+  assert.equal(mayResetAfter({ flag: false, scratch: true, nightStarted: true }), false);
 });
