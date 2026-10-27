@@ -41,9 +41,9 @@ reveal, and `--trail-delay 0` turns it off for a hand-driven dev run).
 
 | Path | What |
 |---|---|
-| `web/src/app.tsx`, `flow.tsx`, `flow-state.ts`, `program.ts`, `wizard.tsx` | the standalone device's screens; the choose / play / send flow (mounted by the tent terminal too); what the wizard says about a program |
-| `web/src/config.ts`, `api.ts`, `spatial.ts`, `kiosk.ts` | provisioning (`?code= name= role= camera= arrows= voice=`), the spatial routes and stream, the 2 s holds |
-| `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`; wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); `cams.ts`, `voice.ts`, `audio.ts` |
+| `web/src/app.tsx`, `flow.tsx`, `flow-state.ts`, `program.ts`, `wizard.tsx`, `IntroVideo.tsx` | the standalone device's screens; the choose / video / play / send flow (mounted by the tent terminal too); what the wizard says about a program; the intro video (wave 33) |
+| `web/src/config.ts`, `api.ts`, `spatial.ts`, `kiosk.ts` | provisioning (`?code= name= role= camera= arrows= voice= intro=`), the spatial routes and stream, the 2 s holds |
+| `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`; wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); wave 33 `tutorial.ts` (the training's steps, the skip rule); `cams.ts`, `voice.ts`, `audio.ts` |
 | `web/src/map/` | the editor: `MapApp.tsx`, `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx`; lights `lights*.ts` + `LightsPanel.tsx` |
 | `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate + presence, route, frames, duck, the King, and wave 26's `house_escape.gd` + `house_moment.gd`), diffed against `test/golden/`; `house_builder.gd` also draws the heart and the disk |
 | `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay` and the build stamp) |
@@ -92,7 +92,20 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   the disk, and the play help never describes them.
 - **The path reveal** (R2). Both games hide the trail, the compass pip, the
   distance and warmer / colder for the first `PATH_REVEAL_MS` of each
-  session; the quack is never delayed.
+  session — counted from the end of the intro (wave 33); the quack is
+  never delayed.
+- **The intro** (wave 33). The Reinstallation Process video, then a
+  controls tutorial, before every walk; both are skippable only when the
+  assignment's (or candidate's) `reinstalled` ≥ 1. The web game plays the
+  video before the begin (`reinstall/web/public/intro/reinstallation.mp4`)
+  and the training in the house (`game/tutorial.ts`); VR ships its own
+  Theora copy in the APK (`vr/media/reinstallation.ogv`) and teaches the
+  one right controller, with a live SNAP / SMOOTH turn choice saved by
+  `POST /api/spatial/prefs` and dealt back as the assignment's `prefs`.
+  Both post `POST /api/spatial/ready` when the intro ends (the run clock
+  restarts). Off with `?intro=0` (web) / `intro: false` (VR); the VR
+  autopilot never plays it. Re-encode both videos from the source if it
+  changes (the ffmpeg lines are in `docs/loom-reinstall.md` §3).
 
 ## Conventions and gotchas
 
