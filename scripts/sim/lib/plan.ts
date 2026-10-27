@@ -48,3 +48,27 @@ export function segment<T extends string>(chain: readonly T[], from: T, to: T): 
   if (a < 0 || b < 0) throw new Error(`no ${a < 0 ? from : to} in the chain`);
   return chain.slice(a, b + 1);
 }
+
+/** Cues a bot's own action may already have pressed, so the director's
+ *  press is refused harmlessly: ⏰ `bingo_time`, pressed by the first
+ *  guest's 🎱 BINGO! (wave 26). The simulator's own list: the shared
+ *  `SELF_PRESSED` (scripts/accept/chains.ts) stays the timers' only. */
+export const SIM_SELF_PRESSED: ReadonlySet<string> = new Set(["bingo_time"]);
+
+/** Wrap a chain's signal so a refusal of one of `names` reads as done
+ *  (noted in `already`); every other refusal passes through and stops the
+ *  walk. The beat's world check still says whether the night moved. */
+export function tolerating<R extends Record<string, unknown>>(
+  signal: (name: string, who?: string) => Promise<R>,
+  names: ReadonlySet<string>,
+  already: string[],
+): (name: string, who?: string) => Promise<Record<string, unknown>> {
+  return async (name, who) => {
+    const r = await signal(name, who);
+    if (r["refused"] === true && names.has(name)) {
+      already.push(name);
+      return {};
+    }
+    return r;
+  };
+}

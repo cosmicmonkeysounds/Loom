@@ -77,7 +77,7 @@ import { Client, Stream, failure, sleep, type Res } from "./lib/http.ts";
 import { guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "./lib/safety.ts";
 import { Recorder, beatLine, slowRoutes, summaryTable, tallyQuests, type BeatResult } from "./lib/report.ts";
 import { atLeast, awardWinners, mismatches, notNone, read, truthy, worldOf, type Row, type Want } from "./lib/world.ts";
-import { featuredSlug, pickPool, segment } from "./lib/plan.ts";
+import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating } from "./lib/plan.ts";
 
 // ------------------------------------------------------------------ flags
 
@@ -567,19 +567,25 @@ const role = {
 };
 
 async function press(c: Ctx, steps: readonly ChainStep[], who: (role: string) => string | undefined = () => undefined): Promise<void> {
+  const already: string[] = [];
   const r = await pressChain(
     steps,
-    async (name, w) => {
-      const subject = w === undefined ? undefined : who(w);
-      const res = await signal(name, subject !== undefined ? { subject } : {});
-      if (res.status !== 200) return { refused: true, status: res.status };
-      await breath();
-      return res.json;
-    },
+    tolerating(
+      async (name, w) => {
+        const subject = w === undefined ? undefined : who(w);
+        const res = await signal(name, subject !== undefined ? { subject } : {});
+        if (res.status !== 200) return { refused: true, status: res.status };
+        await breath();
+        return res.json;
+      },
+      SIM_SELF_PRESSED,
+      already,
+    ),
     () => {},
   );
+  const pressed = [...r.refused, ...already];
   if (!r.ok) c.fail(`the director's chain stopped: refused ${r.refused.at(-1)}`);
-  else if (r.refused.length > 0) c.note(`already pressed: ${r.refused.join(", ")}`);
+  else if (pressed.length > 0) c.note(`already pressed: ${pressed.join(", ")}`);
 }
 const chain = (from: string, to: string) => segment(TO_Y2K, from, to);
 

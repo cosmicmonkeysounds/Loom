@@ -93,10 +93,8 @@ export const CEREMONY: readonly ChainStep[] = [
   "resurrection",
 ];
 
-/** A press the timer (or a guest's own button) may already have made:
- *  refused then, harmlessly. ⏰ `bingo_time` is pressed by the first guest's
- *  🎱 BINGO! (wave 26: it is NEXT again only after a ↩ Not a Bingo). */
-export const SELF_PRESSED: ReadonlySet<string> = new Set(["close_the_filing", "bingo_time"]);
+/** A press the timer may already have made: refused then, harmlessly. */
+export const SELF_PRESSED: ReadonlySet<string> = new Set(["close_the_filing"]);
 
 /** Press a chain through `/api/mod/signal`. A refusal is printed; one that is
  *  not a timer's own step stops the walk (the night is somewhere else — a

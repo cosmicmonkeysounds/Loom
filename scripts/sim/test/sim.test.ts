@@ -6,7 +6,7 @@ import { test } from "node:test";
 
 import { CEREMONY, SELF_PRESSED, TO_Y2K, Y2K_TO_VERDICT, pressChain, stepName, stepWho } from "../../accept/chains.ts";
 import { decide, findOption, heartMenu, layerOf, menusOf, tagOf, type Menu } from "../lib/heart.ts";
-import { featuredSlug, pickPool, segment } from "../lib/plan.ts";
+import { SIM_SELF_PRESSED, featuredSlug, pickPool, segment, tolerating } from "../lib/plan.ts";
 import { isLocal } from "../lib/http.ts";
 import { guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "../lib/safety.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
@@ -29,10 +29,18 @@ test("pressChain passes an aimed step's role and stops at a real refusal", async
   assert.deepEqual(stopped, { ok: false, refused: ["b"] });
 });
 
-test("a guest's own BINGO! (or the timer) may have pressed a cue already", async () => {
-  assert.ok(SELF_PRESSED.has("bingo_time") && SELF_PRESSED.has("close_the_filing"));
-  const r = await pressChain(["start_the_bingo", "bingo_time", "introduce_trabolta"], async (n) => (n === "bingo_time" ? { refused: true } : {}), () => {});
-  assert.deepEqual(r, { ok: true, refused: ["bingo_time"] });
+test("a guest's own BINGO! may have pressed ⏰ already: tolerated by the sim, not the shared chains", async () => {
+  // The shared list is the timers' only; bingo_time stays a real refusal there.
+  assert.deepEqual([...SELF_PRESSED], ["close_the_filing"]);
+  const refuseBingo = async (n: string) => (n === "bingo_time" ? { refused: true } : {});
+  assert.deepEqual(await pressChain(["start_the_bingo", "bingo_time", "introduce_trabolta"], refuseBingo, () => {}), { ok: false, refused: ["bingo_time"] });
+  const already: string[] = [];
+  const r = await pressChain(["start_the_bingo", "bingo_time", "introduce_trabolta"], tolerating(refuseBingo, SIM_SELF_PRESSED, already), () => {});
+  assert.deepEqual(r, { ok: true, refused: [] });
+  assert.deepEqual(already, ["bingo_time"]);
+  // Any other refusal still stops the walk.
+  const other = await pressChain(["start_the_bingo", "introduce_trabolta"], tolerating(async (n) => (n === "introduce_trabolta" ? { refused: true } : {}), SIM_SELF_PRESSED, []), () => {});
+  assert.deepEqual(other, { ok: false, refused: ["introduce_trabolta"] });
 });
 
 test("the aimed steps of the post-Y2K chains name their roles", () => {
