@@ -74,6 +74,17 @@ export function composerShown(o: { keys: boolean; menu: HeartMenu | null; blocke
   return o.menu === null || isChatMenu(o.menu);
 }
 
+/**
+ * Where the docked menu is drawn: `"main"` (the full panel, number keys —
+ * also a ⟦BACK⟧ menu whose composer is held back, so its bar and Esc stay),
+ * `"under"` (under the composer: the ⟦BACK⟧ bar while talking freely), or
+ * null (no menu). Never neither while a menu is docked.
+ */
+export function panelPlace(menu: HeartMenu | null, showComposer: boolean): "main" | "under" | null {
+  if (menu === null) return null;
+  return showComposer ? "under" : "main";
+}
+
 /** The panel's state: what it shows and whether its options take a click. */
 export interface PanelModel {
   menu: HeartMenu;

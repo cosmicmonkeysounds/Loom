@@ -18,6 +18,7 @@ import {
   optionKey,
   optionOfKey,
   panelGate,
+  panelPlace,
   pilotEndWait,
   sceneHoldsPanel,
   type HeartMenu,
@@ -155,5 +156,30 @@ describe("the panel as drawn", () => {
     const html = draw({ doorOpen: true });
     expect(html.indexOf("CLOSE THE DOOR")).toBeLessThan(html.indexOf("heart-options"));
     expect(html).toContain("heart-panel greyed");
+  });
+});
+
+describe("a ⟦BACK⟧ menu with the composer held back (review)", () => {
+  const back: HeartMenu = { id: 401, beat: "Heart Speak", channel: "dm:Trabolta", options: ["⟦BACK⟧ Back to the questions."] };
+  it("still draws its bar, never nothing", () => {
+    const blocked = composerBlocked({ cue: null, since: 1_000, now: 2_000, stage: "done", heart: true });
+    expect(blocked).toBe(true);
+    const shown = composerShown({ keys: true, menu: back, blocked });
+    expect(shown).toBe(false);
+    expect(panelPlace(back, shown)).toBe("main");
+    expect(panelPlace(back, true)).toBe("under");
+    expect(panelPlace(layerOne, false)).toBe("main");
+    expect(panelPlace(null, false)).toBeNull();
+    const html = renderToStaticMarkup(createElement(ChoicePanel, { menu: back, doorOpen: false, onPick: async () => {}, numberKeys: true, onActivity: () => {} }));
+    expect(html).toContain("TALKING FREELY");
+    expect(html).toContain("ESC");
+  });
+
+  it("the app places both panels by panelPlace", async () => {
+    const { readFileSync } = await import("node:fs");
+    const app = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8");
+    expect(app).toContain('panelPlace(menu, showComposer) === "main"');
+    expect(app).toContain('panelPlace(menu, showComposer) === "under"');
+    expect(app).not.toMatch(/!composerShown\(\{ keys: config\.keys, menu \}\)/u);
   });
 });

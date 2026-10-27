@@ -112,7 +112,7 @@ import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, echoOf, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, pilotEndOf, pilotEndWait, sceneHoldsPanel, type HeartMenu } from "./heart/heart.ts";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, echoOf, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, type HeartMenu } from "./heart/heart.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 import { RoomSpeech } from "./speech/said.ts";
 
@@ -1339,7 +1339,7 @@ function Terminal({
                 </div>
               )}
               <Thread lines={threadLines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} echoes={echoes} earlier={room !== null && threadLines.length < session.lines.length} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal })} />
-              {menu !== null && !composerShown({ keys: config.keys, menu }) && (
+              {panelPlace(menu, showComposer) === "main" && menu !== null && (
                 <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} layer={menuLayer} onSkip={skipVoice} />
               )}
               {showComposer && (
@@ -1353,7 +1353,7 @@ function Terminal({
                   placeholder={session.ready ? `say something to ${config.character}` : "connecting…"}
                 />
               )}
-              {menu !== null && showComposer && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={false} onActivity={touch} onPick={(i) => choose(menu, i)} sceneEndsAt={sceneEndsAt} />}
+              {panelPlace(menu, showComposer) === "under" && menu !== null && <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={false} onActivity={touch} onPick={(i) => choose(menu, i)} sceneEndsAt={sceneEndsAt} />}
             </>
           )}
         </section>
