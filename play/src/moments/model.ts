@@ -187,6 +187,13 @@ export function takeoverKind(own: "full" | "light", glitch: { light?: true } | n
   return own === "light" || glitch?.light === true ? "light" : "full";
 }
 
+/** The takeover a due glitch starts: what it shows, whether it's the light
+ *  one, and how long it holds the phone (the provider's whole decision). */
+export function takeoverStart(at: number, own: "full" | "light", glitch: { text?: string | null; light?: true } | null | undefined): { at: number; text: string | null; light: boolean; ms: number } {
+  const light = takeoverKind(own, glitch) === "light";
+  return { at, text: glitch?.text ?? null, light, ms: light ? TAKEOVER_LIGHT_MS : TAKEOVER_MS };
+}
+
 const RUNGS: readonly AlertLevel[] = ["balloon", "sticky", "dialog", "bsod"];
 
 function rungIndex(level: AlertLevel): number {

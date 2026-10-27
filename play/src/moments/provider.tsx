@@ -51,9 +51,7 @@ import {
   shouldGlitch,
   sortArrivals,
   takeoverDue,
-  takeoverKind,
-  TAKEOVER_LIGHT_MS,
-  TAKEOVER_MS,
+  takeoverStart,
   storyNow,
   surfacesOf,
   type Moment,
@@ -733,16 +731,16 @@ function useMomentsEngine(input: MomentsInput): Engine {
     r.first = false;
     if (glitchAt !== null) r.at = glitchAt;
     if (!due || glitchAt === null) return;
-    // Wave 32: a burst is the light one for every phone (`takeoverKind`).
-    const light = takeoverKind(input.takeover!, input.glitch) === "light";
-    setTakeover({ at: glitchAt, text: input.glitch?.text ?? null, light });
+    // Wave 32: a burst is the light one for every phone (`takeoverStart`).
+    const { ms, ...shown } = takeoverStart(glitchAt, input.takeover!, input.glitch);
+    setTakeover(shown);
     setHolds((h) => h + 1);
     const at = glitchAt;
     window.setTimeout(() => {
       // Only its own takeover: a second glitch inside the first's 6 s keeps its full length.
       setTakeover((t) => (t?.at === at ? null : t));
       setHolds((h) => Math.max(0, h - 1));
-    }, light ? TAKEOVER_LIGHT_MS : TAKEOVER_MS);
+    }, ms);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [glitchAt, input.clock === undefined]);
   useEffect(() => {
