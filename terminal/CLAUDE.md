@@ -316,9 +316,10 @@ them out.
   intended.
 - **Build stamp.** `__BUILD__` is the git short sha + build time
   (`LOOM_BUILD` overrides); Run → Terminals flags a device on an old build.
-- **The heart's thread (wave 27).** A room terminal draws `session.visitLines`
-  (past the visit's floor, `pilot.ts` `floorAfter`), never the whole DM
-  thread; `terminal opened` is posted from an effect once the stream's
+- **The heart's thread (wave 27).** The heart terminal (`threadFor`) draws
+  `session.visitLines` (past the visit's floor, `pilot.ts` `floorAfter`),
+  never the whole DM thread; every other terminal, room ones included,
+  keeps the whole thread; `terminal opened` is posted from an effect once the stream's
   history is in (2.5 s fallback, `pinFloor`), never in `connect()`.
 - **Room scene stages.** A room scene's stage carries `cutscene-room`
   (`cutscene-${kind}`); the wrapper's `display: contents` rule is

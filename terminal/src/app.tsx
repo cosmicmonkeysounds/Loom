@@ -112,7 +112,7 @@ import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
 import { ChoicePanel } from "./heart/ChoicePanel.tsx";
 import { DoorOverlay } from "./heart/DoorOverlay.tsx";
-import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, echoOf, echoTime, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, type HeartMenu } from "./heart/heart.ts";
+import { CHOOSE_TIMEOUT_MS, chooseBody, chooseErrorText, composerBlocked, composerShown, echoOf, echoTime, emptyThreadText, heartMenuOf, heartSceneLeft, heartTouched, isHeartTerminal, layerOfBeat, layerOfCue, menusOf, panelPlace, pilotEndOf, pilotEndWait, sceneHoldsPanel, threadFor, type HeartMenu } from "./heart/heart.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 import { RoomSpeech } from "./speech/said.ts";
 
@@ -1267,9 +1267,9 @@ function Terminal({
   const scanBox = useRef<HTMLElement>(null);
 
   // --- the heart's panel and composer (wave 27) ---
-  // A room terminal shows this visit only (B1); a plain one the whole thread.
-  const threadLines = room !== null ? session.visitLines : session.lines;
   const heartTerminal = doorOpen !== null || isHeartTerminal(room, config.door);
+  // The heart terminal shows this visit only (B1); every other one the whole thread.
+  const thread = threadFor({ heart: heartTerminal, lines: session.lines, visitLines: session.visitLines });
   const now = serverNow(state);
   // One of his heart scenes on screen (this line's), on the local clock.
   const sceneLeft = pilot === null || roomCue === null || !sceneHoldsPanel(roomCue.value) ? 0 : heartSceneLeft(roomCue, pilotSince.current, now);
@@ -1341,7 +1341,7 @@ function Terminal({
                   </button>
                 </div>
               )}
-              <Thread lines={threadLines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} echoes={echoes} earlier={room !== null && threadLines.length < session.lines.length} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
+              <Thread lines={thread.lines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} echoes={echoes} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
                 <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} layer={menuLayer} onSkip={roomBusy ? undefined : skipVoice} />
               )}

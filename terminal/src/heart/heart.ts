@@ -429,6 +429,18 @@ export function pilotEndWait(o: { sceneLeft: number; voiceBusy: boolean; sinceCu
 }
 
 /**
+ * The lines the thread draws (B1). The heart terminal shows this visit only
+ * (`visitLines`, past the visit's floor), with an "earlier on your phone"
+ * rule when it left any out; every other terminal, room ones included,
+ * keeps the whole thread, so a guest who walks up to carry on a phone
+ * conversation sees it.
+ */
+export function threadFor<L>(o: { heart: boolean; lines: L[]; visitLines: L[] }): { lines: L[]; earlier: boolean } {
+  if (!o.heart) return { lines: o.lines, earlier: false };
+  return { lines: o.visitLines, earlier: o.visitLines.length < o.lines.length };
+}
+
+/**
  * The thread's empty line. A keyboard-less rig is never asked to "say
  * something"; his heart says he speaks first only while it will
  * (`heartWaitingFirstWord`: a heart open for a talk, early in the line).

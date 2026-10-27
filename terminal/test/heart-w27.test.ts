@@ -27,6 +27,7 @@ import {
   panelSince,
   pilotEndWait,
   sceneHoldsPanel,
+  threadFor,
   type HeartMenu,
 } from "../src/heart/heart.ts";
 
@@ -263,5 +264,17 @@ describe("the ▼ MORE cue (review)", () => {
     const css = readFileSync(new URL("../src/heart/heart.css", import.meta.url), "utf8");
     const secs = /\.heart-panel\[data-open="true"\] \.heart-options \{ animation: heart-in ([\d.]+)s/u.exec(css);
     expect(Number(secs?.[1]) * 1000).toBe(HEART_IN_MS);
+  });
+});
+
+describe("this visit only, at the heart only (review, B1)", () => {
+  const lines = [{ seq: 2 }, { seq: 9 }, { seq: 12 }];
+  const visitLines = [{ seq: 12 }];
+  it("the heart terminal draws this visit, with the earlier rule", () => {
+    expect(threadFor({ heart: true, lines, visitLines })).toEqual({ lines: visitLines, earlier: true });
+    expect(threadFor({ heart: true, lines, visitLines: lines }).earlier).toBe(false);
+  });
+  it("any other terminal, a room one too, keeps the whole thread", () => {
+    expect(threadFor({ heart: false, lines, visitLines })).toEqual({ lines, earlier: false });
   });
 });
