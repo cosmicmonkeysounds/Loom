@@ -66,6 +66,8 @@ export function describeEvent(e: SimEvent): string {
       return `choice for ${e.person ?? 'story'}: ${e.options.join(' | ')}`
     case SimEventType.Chose:
       return `${e.person} chose: ${e.text}`
+    case SimEventType.ChoiceUpdated:
+      return `choice for ${e.person ?? 'story'} now: ${e.options.join(' | ')}`
     case SimEventType.Respond:
       return `${e.to} ⇐ ${e.text}`
     case SimEventType.Widget:

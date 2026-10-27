@@ -44,6 +44,7 @@ const SAMPLES: { [K in SimEventType]: Extract<SimEvent, { type: K }> } = {
   beatEntered: { type: 'beatEntered', beat: 'Login', setting: null, subject: 'g-1' },
   choicePrompted: { type: 'choicePrompted', person: 'g-1', promptId: 'p1', options: ['a', 'b'] },
   chose: { type: 'chose', person: 'g-1', id: 3, beat: 'Heart Layer One', text: 'I am a person.' },
+  choiceUpdated: { type: 'choiceUpdated', person: 'g-1', id: 3, options: ['a', 'b', 'c'] },
   respond: { type: 'respond', to: 'Norton', text: 'clean' },
   widget: { type: 'widget', widget: 'captcha', text: 'Prove it', params: {}, audience: ['g-1'], scope: 'g-1', setting: null, beat: null },
   signal: { type: 'signal', name: 'the golden duck', subject: 'g-1' },

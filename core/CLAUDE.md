@@ -113,6 +113,16 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   no `menuChannelOf` (the editor's local backend) it posts nothing. A
   pick is never a line owed an agent's free reply (the restore's owed
   scan skips it), but it is in the agent's `recent` as the guest's line.
+- **A docked menu follows the world** (wave 28). At the end of every
+  `drain` the Sim's `refreshMenus` reads each pending menu's guarded
+  options again (`PendingChoice.written`): an option whose condition now
+  holds appears in its written place, one that stopped holding goes, a
+  still-shown one keeps its words, and a read that would leave nothing
+  keeps the menu as it was. Same id, beat and continuation; it records
+  `choiceUpdated` (never a chat line; the views read the sim). It reads
+  only sim state, so a replay re-reads it identically. A click racing a
+  re-read (its text no longer at its index) is refused 409 `moved` with
+  the new options, as any stale click is.
 - **Game-only beats** (wave 26, C6). `chat.ts` `GAME_ONLY_BEATS` (Escape
   Attempt, Heart In The Simulation) never become a ChatMessage and never
   set the speaker a later menu docks under (`menuChannelsFor`,

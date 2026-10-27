@@ -1898,3 +1898,56 @@ describe("The Heart — the first meeting's picks reach the phone (wave 28)", ()
     }
   });
 });
+
+describe("The Heart — a docked menu follows what the program gains mid-talk (wave 28)", () => {
+  it("What Sandy Says unlocked while Layer Three is docked: ⟦PROOF⟧ shows in the same menu at once, and picks", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toLayerThree(sim);
+    const before = heartMenu(sim, "g1")!;
+    expect(has(before.options, "⟦PROOF⟧")).toBe(false);
+    const out = sim.unlock("g1", "What Sandy Says");
+    const after = heartMenu(sim, "g1")!;
+    // Same menu (id, beat), no second menu docked, the option in its written place.
+    expect(after.id).toBe(before.id);
+    expect(after.beat).toBe("Heart Layer Three");
+    expect(heartMenus(sim, "g1")).toHaveLength(1);
+    expect(after.options[0]).toBe("⟦PROOF⟧ Hold up what she says. All forty pages.");
+    expect(after.options.slice(1)).toEqual(before.options);
+    expect(out.filter((e) => e.type === "choicePrompted")).toEqual([]);
+    expect(out.filter((e) => e.type === "choiceUpdated")).toEqual([{ type: "choiceUpdated", person: "g1", id: before.id, options: after.options }]);
+    // Nothing else moved: a later settle re-reads nothing new.
+    expect(advance(sim, 3).filter((e) => e.type === "choiceUpdated")).toEqual([]);
+    const picked = pick(sim, "g1", "⟦PROOF⟧ Hold up what she says");
+    expect(picked.some((e) => e.type === "chose" && e.text === "⟦PROOF⟧ Hold up what she says. All forty pages.")).toBe(true);
+    expect(v(sim, "g1.heart_shown_says")).toBe(true);
+  });
+
+  it("a pick sent against the menu as it was (the index moved under it) is never misapplied: nothing is picked, the menu stays", { timeout: SLOW }, () => {
+    const sim = atLayerOne();
+    toLayerThree(sim);
+    const stale = heartMenu(sim, "g1")!;
+    const i = stale.options.indexOf("I need to go.");
+    sim.unlock("g1", "The Sandy File");
+    const now = heartMenu(sim, "g1")!;
+    expect(now.options.indexOf("I need to go.")).toBe(i + 1);
+    // (The server answers such a click 409 `moved` with the new options before it reaches the sim.)
+    const out = sim.choose("g1", i, stale.id, stale.beat, "I need to go.");
+    expect(out.some((e) => e.type === "chose")).toBe(false);
+    expect(heartMenu(sim, "g1")).toEqual(now);
+  });
+
+  it("an option whose condition stops holding goes; a re-read never empties a menu; replays read the same", { timeout: SLOW }, () => {
+    const run = () => {
+      const sim = atLayerOne();
+      toLayerThree(sim);
+      sim.unlock("g1", "What Sandy Says");
+      sim.setVar("g1.heart_shown_says", "true");
+      return sim;
+    };
+    const a = run();
+    expect(has(offered(a, "g1"), "⟦PROOF⟧")).toBe(false);
+    expect(offered(a, "g1").length).toBeGreaterThan(0);
+    // The same commands, a fresh Sim (a restart's replay): the same menu, the same id.
+    expect(run().pendingChoicesFor("g1")).toEqual(a.pendingChoicesFor("g1"));
+  });
+});
