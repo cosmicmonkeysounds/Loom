@@ -463,14 +463,18 @@ describe("Trapped in the Internet — wave 21: what Trabolta's worker reads (D3,
 });
 
 describe("Trapped in the Internet — wave 21: the sign-off sheet", () => {
-  it("SIGNOFF-w21.md is a DRAFT that lists every new wave 21 objective", async () => {
+  it("SIGNOFF-w21.md is signed off, lists every new wave 21 objective, and no DRAFT w21 marker is left", async () => {
     const { readFileSync } = await import("node:fs");
     const sheet = readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w21.md"), "utf8");
-    expect(sheet).toMatch(/DRAFT/u);
-    const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
-    const fresh = [...src.matchAll(/^\/\/ DRAFT w21\nOBJECTIVE (.+)$/gmu)].map((x) => x[1]!.trim());
-    expect(fresh.length).toBeGreaterThan(0);
-    for (const id of fresh) expect(sheet, id).toContain(id);
+    expect(sheet).toMatch(/^\*\*Signed off 2026-10-27\.\*\*/mu);
+    const src = scenarioFiles("trapped-in-the-internet").map((f) => f.source).join("\n");
+    expect(src).not.toMatch(/DRAFT w21\b/u);
+    const fresh = ["Patrol And Review", "Whose Side Are You On", "Whose Side Are You On Too", "Whose Side Are You On Keys", "Which Question", "Whose Side Are You On Clippy"];
+    const objectives = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
+    for (const id of fresh) {
+      expect(objectives, id).toContain(`OBJECTIVE ${id}\n`);
+      expect(sheet, id).toContain(id);
+    }
   });
 });
 

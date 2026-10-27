@@ -306,10 +306,10 @@ ROLE Program
   // its file, and whether its ties were dealt at clearance.
   review_seen: 0 to 99 = 0
   ties_dealt: bool = false
-  // DRAFT w18: how many programs this leader has recruited to their side by pass.
+  // w18: how many programs this leader has recruited to their side by pass.
   recruits: 0 to 500 = 0
   got_truther: bool = false
-  // Wave 21 (DRAFT w21): the players' quiet favours and game acts, once
+  // Wave 21: the players' quiet favours and game acts, once
   // per program: Clippy's or Password Manager's 🤫 tip-off, Clippy's 🤫 let
   // it slide (the round it slid), McAfee's or CRA's 🤫 slipped coin,
   // McAfee's 🤝 brokered deal and Password Manager's 🔑 check.
@@ -318,7 +318,7 @@ ROLE Program
   slipped: bool = false
   brokered: bool = false
   verified: bool = false
-  // DRAFT w18 (fix): the doors card is still up on this program's phone (recheck N5).
+  // w18 (fix): the doors card is still up on this program's phone (recheck N5).
   sides_card_up: bool = false
   zipped: bool = false
   zip_seen: 0 to 99 = 0
@@ -449,7 +449,7 @@ ROLE Program
   heart_shown_honest: bool = false
   heart_shown_overshare: bool = false
   heart_shown_journal: bool = false
-  // Wave 27 (DRAFT w27): the first meeting's own memory. None of these is
+  // Wave 27: the first meeting's own memory. None of these is
   // secret: none says anything about a hunt answer, a code or a cable. 🔄's
   // heart_gen watcher leaves them alone, like the heart_asked_* above.
   // What they told him they are at Layer One: "human" | "program" |
@@ -578,7 +578,7 @@ ROLE Program
   // Trabolta's formal hello, in every cleared program's own thread, the
   // moment he comes online (and on clearance for anyone later).
   when Trabolta.awake == true and self.cleared:
-    // DRAFT w18b (R18): his owner's title.
+    // w18b (R18): his owner's title.
     Trabolta: Hello, {self.name}. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks, and proud to be the world's first AI small business owner. Your requests have been logged. Personal queries are routed to Clippy.
 
   // ── Bathroom Mode (guest buttons) ──
@@ -625,8 +625,8 @@ ROLE Program
     if Night.banish == true:
       reply ⛈ Banished to the Internet, with everyone else. Gerald cannot help you tonight. Remember what Trabolta let slip.
     else:
-      // DRAFT w18: the capture is a big moment with the way there (C12).
-      // DRAFT w26 (R1: the phone locks; only the pass and Bathroom Mode, no OK)
+      // w18: the capture is a big moment with the way there (C12).
+      // w26 (R1: the phone locks; only the pass and Bathroom Mode, no OK)
       reply "!!🌐 Sent to the Internet. Go out back through the tunnel to the Internet, scan your pass at the reinstallation station and find Gerald, the golden duck." with go: pass as "🎟 Show my pass", go: go to the bathroom, ack: none
       set self.internet_visits += 1
       set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 - self.escapes * 5 + self.assessment
@@ -645,7 +645,7 @@ ROLE Program
     set self.corrupted = false
     if Night.summons_closed == true and Night.phase == "summons":
       set self.summons_ok = true
-    // DRAFT w18: the release is a big moment (C12).
+    // w18: the release is a big moment (C12).
     if Night.ending == "hand_jive":
       reply "!!🕺 The hand jive broke his hold. You are out of the Internet." with go: The Desktop
     else:
@@ -683,8 +683,8 @@ ROLE Program
     if program.from_jeeves == 10:
       set Kernel.jeeves_reached += 1
 
-  // ── Computer Bingo (performer buttons; the ribbon's lines DRAFT for sign-off, w13 Q24 / Q28) ──
-  // Wave 21 (DRAFT w21): each game button Clippy may press clears
+  // ── Computer Bingo (performer buttons; the ribbon's lines, w13 Q24 / Q28) ──
+  // Wave 21: each game button Clippy may press clears
   // `Kernel._pressed_by` first (Clippy's own hook, after this one, stamps it)
   // and fires `game_credit` when the press counted: ⭐ for Clippy only when
   // Clippy pressed (cast/hosts.loom). A host's press pays nobody.
@@ -698,22 +698,21 @@ ROLE Program
       if program.name == Night.bingo_caller:
         set Night.bingo_checked = true
       fire game_credit with points: 10, gain: 0, counts: 0
-      // DRAFT w18: a big moment (the user's example: un-ignorable).
+      // w18: a big moment (the user's example: un-ignorable).
       reply "!!🎱 BINGO! Name the program for each square. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
     else:
-      // DRAFT w26 (B: a stale press, # hosts)
+      // w26 (B: a stale press, # hosts)
       broadcast "🎱 Nothing happens: the Bingo round is over, or {program.name} is already a winner." to channel(hosts)
 
   when award_the_ribbon for program:
     set Kernel._pressed_by = "none"
     if program.bingo == true:
-      // DRAFT for sign-off (w13 Q24): CI 2's 🎀 to-do ticks.
+      // w13 Q24: CI 2's 🎀 to-do ticks.
       set Night.bingo_ribbons += 1
       fire game_credit with points: 5, gain: 0, counts: 0
       unlock Computer Bingo for program
       // Wave 18 (B7): the winner's medal is a big moment; the house cheer is
       // a big one that closes itself (the story rule `ribbon_cheer`).
-      // DRAFT w18
       reply "!!🎀 You won the Bingo Ribbon. Take a bow." with go: codex: Computer Bingo
       set Night.ribbon_winner = program.name
       fire ribbon_cheer
@@ -728,7 +727,7 @@ ROLE Program
       set program.framed = true
       reply 🃏 A completed Bingo card with your name on it has been handed to Clippy. You did not fill it in.
     else if Night.bingo_called == true and Night.bingo_done != true:
-      // DRAFT w26 (B2: a 🃏 during an open call, # hosts)
+      // w26 (B2: a 🃏 during an open call, # hosts)
       broadcast "🃏 Nothing happens: {Night.bingo_caller} called BINGO. Clippy checks that line first (🎱 or ↩)." to channel(hosts)
 
   // Named on a Bingo card (the Antivirus' selection): marked, then the
@@ -737,14 +736,14 @@ ROLE Program
   when named_at_bingo for program:
     set Kernel._pressed_by = "none"
     if Night.phase == "bingo_results" and Night.bingo_done != true:
-      // DRAFT for sign-off (w13 Q24): CI 2's 🎯 to-do ticks.
+      // w13 Q24: CI 2's 🎯 to-do ticks.
       set Night.bingo_named += 1
       fire game_credit with points: 10, gain: 5, counts: 0
       fire mark_for_reinstallation for program with reason: "named on the Bingo card"
       // Wave 26 (B5): one round; the first 🎯 closes it.
       set Night.bingo_done = true
     else:
-      // DRAFT w26 (B: a stale press, # hosts)
+      // w26 (B: a stale press, # hosts)
       broadcast "🎯 Nothing happens: the Bingo round is over." to channel(hosts)
 
   // ── Wave 26: a guest's BINGO, its undo, and naming nobody (B1–B3) ──
@@ -762,11 +761,11 @@ ROLE Program
         set Night.bingo_left = Night.bingo_end - Time.elapsed
       else:
         set Night.bingo_left = 0
-      // DRAFT w26 (B1: the caller's own moment)
+      // w26 (B1: the caller's own moment)
       reply "!!🎱 You called BINGO! Go to Clippy at the Desktop and read your line, centre square last." with go: The Desktop as "🎱 To the Desktop"
       fire bingo_time
     else:
-      // DRAFT w26 (B: a stale press, # hosts)
+      // w26 (B: a stale press, # hosts)
       broadcast "🎱 {program.name} pressed BINGO, but the call is already in (or Bingo isn't on). Nothing happens." to channel(hosts)
 
   // B2: ↩ Not a Bingo (Clippy, a host or a director, on the caller's card):
@@ -793,19 +792,19 @@ ROLE Program
       set Night.bingo_caller = "none"
       set Night.bingo_left = 0
       set Night.bingo_checked = false
-      // DRAFT w26 (B2)
+      // w26 (B2)
       update quest Run The Bingo for Clippy "Not a Bingo yet. Back to the cards."
-      // DRAFT w26 (B2: everyone back to their cards)
+      // w26 (B2: everyone back to their cards)
       broadcast "!↩ Not a Bingo yet. Back to your cards." to everyone with go: quest: The Bingo Card
-      // DRAFT w26 (B2)
+      // w26 (B2)
       reply 🎱 Not quite a line yet. Keep looking.
       fire bingo_undone for program
     else:
-      // DRAFT w26 (B: a stale press, # hosts)
+      // w26 (B: a stale press, # hosts)
       broadcast "↩ Nothing happens: Not a Bingo works only on the caller, before any 🎱, 🎯 or 🤐." to channel(hosts)
 
   when bingo_undone for program:
-    // DRAFT w26 (B2: # hosts hears who pressed it)
+    // w26 (B2: # hosts hears who pressed it)
     if Kernel._undo_n == 1 and Night.bingo_on == true:
       broadcast "↩ {Kernel._undo_by} pressed Not a Bingo for {program.name}. Bingo is back on: the clock picks up where it stopped." to channel(hosts)
     else if Kernel._undo_n == 1:
@@ -823,12 +822,12 @@ ROLE Program
     if Night.phase == "bingo_results" and Night.bingo_done != true and program.bingo == true:
       set Night.bingo_none = true
       set Night.bingo_done = true
-      // DRAFT w26 (B3: ⭐ +5)
+      // w26 (B3: ⭐ +5)
       fire game_credit with points: 5, gain: 0, counts: 0
-      // DRAFT w26 (B3)
+      // w26 (B3)
       broadcast "🤐 {program.name} names nobody at the centre square. Nobody is marked." to channel(hosts)
     else:
-      // DRAFT w26 (B: a stale press, # hosts)
+      // w26 (B: a stale press, # hosts)
       broadcast "🤐 Nothing happens: only on a winner, before the round is over." to channel(hosts)
 
   // ── Moments of Truth: the room's judging (performer buttons) ──
@@ -870,7 +869,7 @@ ROLE Program
     set program.judge_q = 3
     fire confident_lie for program
 
-  // Wave 21 (DRAFT w21): one ✅ and one 😤 for the question being judged
+  // Wave 21: one ✅ and one 😤 for the question being judged
   // now (`Night.judge_now`, 1 when judging opens, moved by the 🔢 buttons),
   // so a card's three face buttons are ✅ 😤 🤷 for any question.
   when judge_accurate for program:
@@ -1183,7 +1182,7 @@ ROLE Program
       reply 🗣 Truth accepted. Trabolta is satisfied. +50 Truthcoin.
     else:
       broadcast "🗣 The bottle is not on {program.name}." to channel(hosts)
-    // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
+    // Wave 21: cleared after the verdict (Clippy's stamp comes next).
     set Kernel._pressed_by = "none"
 
   when truth_refused for program:
@@ -1194,7 +1193,7 @@ ROLE Program
       fire mark_for_reinstallation for program with reason: "refused the truth"
     else:
       broadcast "🙅 The bottle is not on {program.name}." to channel(hosts)
-    // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
+    // Wave 21: cleared after the verdict (Clippy's stamp comes next).
     set Kernel._pressed_by = "none"
 
   // The dead-phone fallback: the same effect as the Dare tap (wave 26, D1:
@@ -1207,7 +1206,7 @@ ROLE Program
       fire dare_taken for program
     else:
       broadcast "🎩 The bottle is not on {program.name}." to channel(hosts)
-    // Wave 21: cleared after the verdict (Clippy's stamp comes next). DRAFT w21
+    // Wave 21: cleared after the verdict (Clippy's stamp comes next).
     set Kernel._pressed_by = "none"
 
   // Wave 26 (D1): a Dare, by the phone's poll or Clippy's 🎩 fallback. Each
@@ -1218,7 +1217,7 @@ ROLE Program
   // Trabolta makes a scene at the Desktop (`dare_scene` → Dare Chosen).
   when dare_taken for program:
     fire mark_for_reinstallation for program with reason: "chose Dare"
-    // DRAFT w26 (D1: the dared phone's big moment)
+    // w26 (D1: the dared phone's big moment)
     reply "!!🎩 Trabolta is not amused. You chose Dare in his computer. The Antivirus are coming for you." with go: pass as "🎟 Show my pass", ack: none
     fire dare_scene
 
@@ -1282,14 +1281,14 @@ ROLE Program
       else:
         set program.marked_for = "flagged by a host"
       set program.escort_by = "none"
-      // DRAFT w18: the soft heads-up (a minor moment; no pin, no restriction).
+      // w18: the soft heads-up (a minor moment; no pin, no restriction).
       // Wave 26 (D1): a Dare has its own big moment instead (`dare_taken`).
       if program.marked_for != "chose Dare":
         reply "🚨 You are marked for reinstallation ({program.marked_for}). Nothing is switched off: carry on. The Antivirus are looking for you." with go: pass as "🎟 Show my pass", go: mission as "What happens now?"
       fire marked for program
 
   // A mis-tap, or mercy: the mark comes off without a trip to the tent.
-  // Who pressed it (w13 Q32, DRAFT for sign-off): the pressing Antivirus'
+  // Who pressed it (w13 Q32): the pressing Antivirus'
   // own TRAIT Enforcer hook (only its booth's press reaches it, after this
   // ROLE hook) counts itself in `unmark_av`; the settle reads it once the
   // press has drained. One Antivirus → "cleared by the Antivirus"; a host,
@@ -1308,7 +1307,7 @@ ROLE Program
       else:
         fire unmarked for program with how: "cleared by a host"
       set program.escort_by = "none"
-      // DRAFT w18: the 🩹 tells the program (the capture never says so).
+      // w18: the 🩹 tells the program (the capture never says so).
       reply ✅ Your mark is lifted. You are not going to the Internet.
     // Read once: a later settle (a director firing it from Run) never
     // reuses this press's count.
@@ -1325,8 +1324,7 @@ ROLE Program
   // big moment; the capture itself stays on that Antivirus' 🛡.
   when confronted for program:
     if program.marked == true and program.corrupted != true:
-      // DRAFT w18
-      // DRAFT w26 (R1: quoted, so the tail parses; only the pass and Bathroom Mode, no OK)
+      // w26 (R1: quoted, so the tail parses; only the pass and Bathroom Mode, no OK)
       reply "!!🛡 CORRUPTION DETECTED. {hunter} has found you. Stay with them: you are going to the Internet." with go: pass as "🎟 Show my pass", go: go to the bathroom, ack: none
 
   // ── 📝 File a fact: DM filings with Trabolta (#33, wave 4 judging) ──
@@ -1403,7 +1401,7 @@ ROLE Program
   // hasn't filed yet (the play app folds every fact card but the newest in
   // the thread). The question strings are Night.q_h1 … Night.q_f2, set by
   // the generated `== Facts Seed` (generated/questions.loom, from facts.json).
-  // DRAFT w18 (fix, recheck N5): the doors card answered, or the night
+  // w18 (fix, recheck N5): the doors card answered, or the night
   // over with it still up: an ending deals a closing card that supersedes
   // it (the phone folds it to a note), so no Walk in is offered after the end.
   when sides answered for program:
@@ -2293,13 +2291,12 @@ ROLE Program
   when transfer_denied for program:
     broadcast "🧾 Denied: {program.name} → {to.name}, {amount} Truthcoin. Refunded." to channel(hosts)
     update quest The Audit for CRA Agent Software "Denied {program.name} → {to.name}, {amount}."
-    // ⭐ CRA's audit (wave 21): a denial from the CRA booth serves Trabolta. DRAFT w21
+    // ⭐ CRA's audit (wave 21): a denial from the CRA booth serves Trabolta.
     if by == "CRA Agent Software":
       set CRA_Agent_Software.score += 3
       set CRA_Agent_Software.trust += 3
   when transfer_approved for program:
     update quest The Audit for CRA Agent Software "Approved {program.name} → {to.name}, {amount}."
-    // DRAFT w21
     if by == "CRA Agent Software":
       set CRA_Agent_Software.score += 3
   when offer_accepted for program:
@@ -2322,7 +2319,7 @@ ROLE Program
   when program learns ILOVEYOU:
     if program.carries_virus != true:
       set program.carries_virus = true
-      // DRAFT w26 (R7: true for the tent's QR and the game's disk alike)
+      // w26 (R7: true for the tent's QR and the game's disk alike)
       Truther Download: You picked something up in the Internet. It is warm. It wants to be inserted.
       if program.featured == "excel":
         if program.excel_choice == "paranoid":
@@ -2333,7 +2330,7 @@ ROLE Program
   when program learns Free Antivirus Trial:
     if program.carries_virus != true:
       set program.carries_virus = true
-      // DRAFT w26 (R7: true for the tent's QR and the game's disk alike)
+      // w26 (R7: true for the tent's QR and the game's disk alike)
       Truther Download: You picked something up in the Internet. It is warm. It wants to be inserted.
       if program.featured == "excel":
         if program.excel_choice == "paranoid":
@@ -2710,7 +2707,7 @@ ROLE Program
       // The last award on the cue sheet is The Mole (G10c, wave 21; the
       // staff awards come after the programs'): G11 waits for it
       // (`staff_award_won`).
-      // DRAFT w18: a big moment, with the way to the TV.
+      // w18: a big moment, with the way to the TV.
       reply "!!🏆 You won {Night.award_title}! Come up to the TV for your trophy." with go: The Desktop
       fire present_award
 
@@ -3037,7 +3034,7 @@ ROLE Program
     else if self.group == The_Way_Out:
       The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Maps and Ducks building. It is not breathing.
     else if faction_of(self) != null:
-      // DRAFT w18b (R4): a founded faction's member.
+      // w18b (R4): a founded faction's member.
       The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Maps and Ducks building. It is not breathing.
     else:
       The Uploader: Your body is in the Maps and Ducks building. It is not breathing.
@@ -3080,7 +3077,7 @@ ROLE Program
 // host dock) and the directors (Run, the director phone) call every cue
 // here, the games included; no admin cue carries `by:` (a player is never
 // a caller, lint L1222). Each game a host calls pops out on Clippy's booth
-// as YOUR GAME IS ON (Clippy's hooks, cast/hosts.loom). DRAFT w21
+// as YOUR GAME IS ON (Clippy's hooks, cast/hosts.loom).
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
   who: admin
@@ -3094,7 +3091,7 @@ INTERACTION start_the_bingo
 INTERACTION bingo_time
   label: V3 · ⏰ Bingo time: results
   who: admin
-  // DRAFT w26 (B1, B2: the description)
+  // w26 (B1, B2: the description)
   description: Clippy's game is on (Instructions 2/X). Norton is the selected Antivirus. A guest's 🎱 BINGO! presses it for you; after a ↩ Not a Bingo it is NEXT again.
   // Wave 26 (B2): ↩ Not a Bingo puts the night back at step 2, so ⏰ may
   // fire again; NEXT reads it again while Bingo is on. The rule's own
@@ -3136,7 +3133,7 @@ INTERACTION read_the_results
   while: Night.phase == "truth_1" and Night.results_q < 3
 
 // Wave 18b (R21): Truth or Dare comes after all three results, before
-// hunt 2. Five spins are NEXT's budget, not a hard cap. DRAFT w18b
+// hunt 2. Five spins are NEXT's budget, not a hard cap.
 INTERACTION spin_the_bottle
   label: 🍾 Spin the bottle: Truth or Dare (after the three results)
   who: admin
@@ -3255,7 +3252,7 @@ INTERACTION force_majority_leave
   sequence: false
   description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
 
-// Wave 18b (R4): a program's own founded faction can be forced too. DRAFT w18b
+// Wave 18b (R4): a program's own founded faction can be forced too.
 INTERACTION force_their_majority
   label: 🗳 Force the majority: this program's faction
   who: admin
@@ -3436,7 +3433,7 @@ INTERACTION award_the_painting
 // Paint) and before G11, so NEXT walks into them (G11 and every Anytime /
 // E cue after it moves down three numbers). No subject: the story reads the five players' numbers and names
 // the winner (a tie goes to the first of Clippy, Norton, McAfee, Password
-// Manager, CRA). The Mole (G10c) is the last award. DRAFT w21
+// Manager, CRA). The Mole (G10c) is the last award.
 INTERACTION award_staff_trusted
   label: G10a · 🛡 Staff award: Trabolta's Favourite Staff (top staff trust)
   who: admin
@@ -3459,7 +3456,7 @@ INTERACTION resurrection
   label: G11 · 🎃 Resurrection: the show is over (after the ceremony)
   who: admin
   description: Only once the ceremony has started (G1), after the last award (G10c, The Mole; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
-  // Wave 21: NEXT waits for The Mole (G10c), never the press. DRAFT w21
+  // Wave 21: NEXT waits for The Mole (G10c), never the press.
   while: Night.ceremony == true and Night.ceremony_done == true
 
 INTERACTION the simulation completed
@@ -3536,7 +3533,7 @@ INTERACTION trust_patch_bay
 // screens (QUIET_MOMENT_SIGNALS). Every line they say is game-only (the
 // Escape Attempt and Heart In The Simulation beats) or the codex unlock's
 // usual Truther Download line.
-// DRAFT w26 (the button's label and description)
+// w26 (the button's label and description)
 INTERACTION simulation escape attempt
   label: Reinstallation: walked out into the void (server)
   who: admin
@@ -3544,7 +3541,7 @@ INTERACTION simulation escape attempt
   sequence: false
   description: Fired by the reinstallation games for one program who walked out through the simulation's mud room, 5 m into the void. The game scares them and puts them back in the tent; Trabolta chastises them in the game only; −5 trust each time. # hosts is told.
 
-// DRAFT w26 (the button's label and description)
+// w26 (the button's label and description)
 INTERACTION simulation heart reached
   label: Reinstallation: reached Trabolta's heart in the simulation (server)
   who: admin
@@ -3552,7 +3549,7 @@ INTERACTION simulation heart reached
   sequence: false
   description: Fired by the reinstallation games for one program who walks into the simulation's server room once the King has fallen. Once a night per program, and only once Trabolta is awake: a short monologue, in the game only. Flavour; # hosts is told.
 
-// DRAFT w26 (the button's label and description)
+// w26 (the button's label and description)
 INTERACTION simulation pickup taken
   label: Reinstallation: picked up the floppy disk (server)
   who: admin
@@ -3586,13 +3583,13 @@ INTERACTION simulation pickup taken
 INTERACTION send to the internet
   label: 🛡 Send to the Internet
   who: performer
-  // DRAFT for sign-off (w13 Q22): the Antivirus' own. Only TRAIT Enforcer's hooks hear it, so no host's card lists it and a host's press is refused.
+  // w13 Q22: the Antivirus' own. Only TRAIT Enforcer's hooks hear it, so no host's card lists it and a host's press is refused.
   by: Antivirus
-  // DRAFT for sign-off (w13 Q29): arm then fire on every Antivirus booth. One tap used to capture a program just cleared at the door.
+  // w13 Q29: arm then fire on every Antivirus booth. One tap used to capture a program just cleared at the door.
   // (Wave 18: the booth's CORRUPTION DETECTED screen fires it with one tap after an in-person scan.)
   arm: true
-  // DRAFT w18 (A6): on a marked program's card only (the hook still captures anyone).
-  // DRAFT w21: and on every card while the patch-bay alarm is on (whoever is
+  // w18 (A6): on a marked program's card only (the hook still captures anyone).
+  // w21: and on every card while the patch-bay alarm is on (whoever is
   // at the cables goes to the Internet; there is no All buttons… fold now).
   while: program.corrupted != true and (program.marked == true or Night.alarm_on == true)
   description: Antivirus. A marked program, found: drag them through the Tube for reinstallation.
@@ -3600,16 +3597,16 @@ INTERACTION send to the internet
 INTERACTION mark as reinstalled
   label: ✅ Mark as reinstalled
   who: performer
-  // DRAFT for sign-off (w13 Q22)
+  // w13 Q22
   by: Antivirus
-  // DRAFT w18 (A6): on a captured program's card only.
+  // w18 (A6): on a captured program's card only.
   while: program.corrupted == true
   description: Antivirus. They completed the simulation: let them out.
 
 INTERACTION accuse
   label: 👁 Put on the watchlist
   who: performer
-  // DRAFT for sign-off (w13 Q22)
+  // w13 Q22
   by: Antivirus
   while: Night.ended != true
   description: Antivirus. Raises their doubt.
@@ -3620,7 +3617,7 @@ INTERACTION vouch
   while: Night.ended != true
   description: Hosts. Clears their doubt.
 
-// DRAFT for sign-off: off a guest's card once they are checked in for the
+// w13: off a guest's card once they are checked in for the
 // summons (a summons scan checks them in; the button then did nothing).
 INTERACTION check_in_at_desktop
   label: 📍 Checked in at the Desktop
@@ -3634,12 +3631,12 @@ INTERACTION bingo_winner
   by: Clippy
   // Wave 26 (B5): one round; the first 🎯 or 🤐 closes it.
   while: Night.phase == "bingo_results" and Night.bingo_done != true
-  // DRAFT w26 (B5: the description)
+  // w26 (B5: the description)
   description: Clippy, at the Bingo results. Several winners are fine, until the centre square is answered.
 
 // Wave 26 (B2): the undo of a guest's 🎱 BINGO!, on the caller's card only,
 // before any 🎱 / 🎯 / 🤐.
-// DRAFT w26 (the button's label and description)
+// w26 (the button's label and description)
 INTERACTION not_a_bingo
   label: ↩ Not a Bingo: back to the game
   who: performer
@@ -3648,7 +3645,7 @@ INTERACTION not_a_bingo
   description: The caller's line doesn't hold. Bingo picks up with the time it had left (none if it was already up: then call ⏰ as usual).
 
 // Wave 26 (B3): the winner won't name anyone at the centre square.
-// DRAFT w26 (the button's label and description)
+// w26 (the button's label and description)
 INTERACTION named_nobody
   label: 🤐 Names nobody at the centre square
   who: performer
@@ -3659,7 +3656,7 @@ INTERACTION named_nobody
 INTERACTION award_the_ribbon
   label: 🎀 Award a ribbon (the Bingo Ribbon for a Bingo winner)
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
 
 INTERACTION frame_for_bingo
@@ -3667,48 +3664,48 @@ INTERACTION frame_for_bingo
   who: performer
   by: Task Manager
   while: Night.phase == "bingo_results" and Night.bingo_winners < 1 and Night.bingo_called != true and Night.bingo_done != true
-  // DRAFT w26 (B2: not while a guest's call is open)
+  // w26 (B2: not while a guest's call is open)
   description: Task Manager, only if nobody has a Bingo, and once a guest's call is settled.
 
 INTERACTION accurate_q1
   label: ✅ Q1 of this round: accurate, accepted
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.judging == true
 
 INTERACTION accurate_q2
   label: ✅ Q2 of this round: accurate, accepted
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.judging == true
 
 INTERACTION accurate_q3
   label: ✅ Q3 of this round: accurate, accepted
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.judging == true and Night.round != 3
 
 INTERACTION confident_q1
   label: 😤 Q1 of this round: wrong but confident, accepted
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.judging == true
 
 INTERACTION confident_q2
   label: 😤 Q2 of this round: wrong but confident, accepted
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.judging == true
 
 INTERACTION confident_q3
   label: 😤 Q3 of this round: wrong but confident, accepted
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.judging == true and Night.round != 3
 
@@ -3810,28 +3807,28 @@ INTERACTION radio_beans
 INTERACTION uncertain_answer
   label: 🤷 Uncertain or guessed: marked for reinstallation
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.judging == true
 
 INTERACTION chose_dare
   label: 🎩 Chose Dare (phone fallback): marked for reinstallation
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.bottle_open == true
 
 INTERACTION truth_answered
   label: 🗣 Truth answered: accepted
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.bottle_open == true
 
 INTERACTION truth_refused
   label: 🙅 Truth refused: marked for reinstallation
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.bottle_open == true
 
@@ -3846,14 +3843,14 @@ INTERACTION unmark_for_reinstallation
   label: 🩹 Unmark: not going to the Internet
   who: performer
   by: Hosts, Antivirus
-  // DRAFT for sign-off (w13 Q23): on offer on a marked program's card only.
+  // w13 Q23: on offer on a marked program's card only.
   while: program.marked == true
   description: A mis-tap or mercy. Lifts the mark; the program keeps their place.
 
 // The Wanted board (wave 18, B3; A2–A4): an Antivirus claims a marked
 // program (the others see it taken), hands it back, or takes over a claim
 // gone quiet; at the door, claims a waiting arrival. The hooks are TRAIT
-// Enforcer's (cast/kit.loom). DRAFT w18
+// Enforcer's (cast/kit.loom).
 INTERACTION claim_escort
   label: 🙋 I'll get them
   who: performer
@@ -3885,14 +3882,14 @@ INTERACTION claim_door
 INTERACTION made_the_cup
   label: 🏓 Made the cup: may answer
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.phase == "truth_pong"
 
 INTERACTION missed_the_cup
   label: 🏓 Missed the cup: marked for reinstallation
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.phase == "truth_pong"
 
@@ -3926,7 +3923,7 @@ INTERACTION failed_the_bob
 INTERACTION signed_the_painting
   label: 🖌 Signed the painting
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   while: Night.painting == true
   description: MS Paint's collaborative canvas (her invitation). Press once they have signed it; the count rides her Quest Log and the G10 award. A second press, or one on MS Paint, counts nothing and says so in # hosts.
@@ -3934,12 +3931,12 @@ INTERACTION signed_the_painting
 INTERACTION pickup_line_works
   label: 💘 Said "You're the one that I want"
   who: performer
-  // Wave 21: Clippy runs this game too (a player, no longer in Hosts). DRAFT w21
+  // Wave 21: Clippy runs this game too (a player, no longer in Hosts).
   by: Hosts, Clippy
   arm: true
   while: Night.phase == "grok_prom" and Night.ended != true
 
-// ── The players' game (wave 21, DRAFT w21) ──────────────────────────
+// ── The players' game (wave 21) ──────────────────────────
 // Clippy and the four Antivirus play for ⭐ Points (TRAIT Player,
 // cast/kit.loom). Their booths only learn their own buttons, and every one
 // below is on a Mission objective (objectives.loom) as a pick, a scan or a
@@ -4032,7 +4029,7 @@ INTERACTION verify_password
 // 📢 The open defection: global, once per player, from the Truther
 // Download. A house-wide big moment (`staff_defected`); Trabolta hears it
 // and keeps them anyway. From Run, fire it AS the character (an actorless
-// press reaches every player). DRAFT w21
+// press reaches every player).
 INTERACTION defect_openly
   label: 📢 Defect openly: I'm not on Trabolta's side
   who: performer
@@ -4051,7 +4048,7 @@ INTERACTION go to the bathroom
   who: guest
   while: program.afk != true
   restricted: allow
-  // DRAFT w26 (G1: no exemption stated up front)
+  // w26 (G1: no exemption stated up front)
   description: Leave honestly. Tells the Antivirus you are not hacking the Internet.
 
 INTERACTION back from the bathroom
@@ -4063,7 +4060,7 @@ INTERACTION back from the bathroom
 // Wave 26 (R1): never on a phone in the Internet (the hook refuses there anyway).
 // Wave 26 (B1): a guest with a line calls the results themselves (two taps).
 // On Play Computer Bingo's card; one call at a time.
-// DRAFT w26 (the button's label and description)
+// w26 (the button's label and description)
 INTERACTION call_bingo
   label: 🎱 BINGO!
   who: guest
@@ -4133,8 +4130,6 @@ when Night.bingo_on == true and Time.elapsed >= Night.bingo_end:
   broadcast "!⏰ Bingo time is up. Back to the Desktop." to everyone with go: The Desktop
   sound announce_chime
   fire bingo_time_up
-  // DRAFT w18
-  // DRAFT w21
   update quest Run The Bingo for Clippy "Twenty minutes are up. A host calls ⏰ Bingo time: get the winners ready."
 
 // B3 · V3: the results. The Antivirus interruption, the frame, and the
@@ -4151,17 +4146,17 @@ when bingo_time:
     set Night.step = 3
     set Night.bingo_on = false
     unlock Clippy Instructions 2 for Clippy
-    // DRAFT w26 (B2: the quest settles at the end of the round now)
+    // w26 (B2: the quest settles at the end of the round now)
     update quest Run The Bingo for Clippy "The results: check each line, centre square last."
     cue tv_bingo_time
     set Night.screen = "bingo_time"
     cue terminals_attract
     set Night.terminals = "attract"
     if Night.bingo_called == true:
-      // DRAFT w26 (B1: a guest called it)
+      // w26 (B1: a guest called it)
       broadcast "!⏰ BINGO! {Night.bingo_caller} called it. Back to the Desktop to hear the line." to everyone with go: The Desktop
     else:
-      // DRAFT w18 (fix GN-F5): every phone is called back, wherever it is.
+      // w18 (fix GN-F5): every phone is called back, wherever it is.
       broadcast "!⏰ BINGO TIME. Back to the Desktop: got a line? Read it to Clippy." to everyone with go: The Desktop
     if Night.bingo_briefed != true:
       set Night.bingo_briefed = true
@@ -4178,14 +4173,13 @@ when Night.bingo_done == true and Night.bingo_closed != true:
   complete quest The Bingo Card for everyone
   complete quest Run The Bingo for Clippy "Winners celebrated. Norton takes it from here."
   if Night.bingo_none == true:
-    // DRAFT w26 (B3: nobody was named)
+    // w26 (B3: nobody was named)
     complete quest The Selected Antivirus for Norton Anti-Virus "Nobody was named. Patrol the Tube."
 
 // The Bingo Ribbon's house cheer (wave 18, B7): fired by 🎀 on a Bingo
 // winner (ROLE Program). A story rule, so the big moment to the whole house
 // is the cue's own (lint L1218); it closes itself after six seconds.
 when ribbon_cheer:
-  // DRAFT w18
   broadcast "!!🎀 {Night.ribbon_winner} won the Bingo Ribbon! Cheer for them at the Desktop." to everyone with close: 6s
 
 // Fired (unbound) by the first Bingo-phase capture: `send to the internet`
@@ -4209,7 +4203,7 @@ when introduce_trabolta:
     reveal Trabolta
     cue terminals_trabolta_online
     set Night.terminals = "trabolta"
-    // DRAFT w18b (R18)
+    // w18b (R18)
     broadcast "!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by video conference. His thread is open: say hello." to everyone with go: Trabolta
     -> Trabolta Introduction
   else if Night.trabolta_introduced == true:
@@ -4288,7 +4282,7 @@ when first_moment_of_truth:
       unlock Clippy Instructions 3 for Clippy
     set Night.round = 1
     set Night.judging = true
-    // Wave 21: ✅ / 😤 judge question 1 until a 🔢 moves on. DRAFT w21
+    // Wave 21: ✅ / 😤 judge question 1 until a 🔢 moves on.
     set Night.judge_now = 1
     set Night.filing_open = true
     set Night.filing_close = Time.elapsed + 120
@@ -4473,7 +4467,7 @@ when the golden duck for program:
 when simulation escape attempt for program:
   set program.escapes += 1
   set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
-  // DRAFT w26 (R4: the hosts hear of it)
+  // w26 (R4: the hosts hear of it)
   broadcast "🚪 {program.name} tried to walk out of the simulation (trust −5)." to channel(hosts)
   -> Escape Attempt
 
@@ -4483,7 +4477,7 @@ when simulation escape attempt for program:
 when simulation heart reached for program:
   if program.sim_heart != true and Trabolta.awake == true:
     set program.sim_heart = true
-    // DRAFT w26 (R6: the hosts hear of it)
+    // w26 (R6: the hosts hear of it)
     broadcast "❤ {program.name} reached Trabolta's heart in the simulation." to channel(hosts)
     -> Heart In The Simulation
 
@@ -4596,16 +4590,16 @@ when truther_download:
     cue lights_glitch
     set Night.lights = "glitch"
     sound truther_glitch
-    // DRAFT w18b (R4, O7): founding opens here. (No "wins" in a house line:
+    // w18b (R4, O7): founding opens here. (No "wins" in a house line:
     // the screens cheer only a line that names a winner.)
     broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open. You may found a faction of your own now (Start → Factions). The count starts at 11:00 PM: a faction needs more than half of the programs." to everyone with go: Truther Download
   else if Night.ended == true:
-    // DRAFT w28: a press after the night ended does nothing.
+    // w28: a press after the night ended does nothing.
     broadcast "📥 The night is over. Nothing happens." to channel(hosts)
   else if Night.truther_sent == true:
     broadcast "📥 Not again: the Truther Download was already sent. Nothing happens." to channel(hosts)
   else:
-    // DRAFT w28: a press before 📓 Hunt 2 (step 8) does nothing.
+    // w28: a press before 📓 Hunt 2 (step 8) does nothing.
     broadcast "📥 Not yet: 📓 Hunt 2 first (it sends itself two minutes in). Nothing happens." to channel(hosts)
 
 // ── D. Act II ──
@@ -4620,8 +4614,7 @@ when five_minute_warning:
     set Night.alerts = "dialog"
     unlock Clippy Instructions 5 for Clippy
     update quest Keep Everyone Calm for Clippy "Truth Pong. Be more excited than ever."
-    // DRAFT w18
-    // DRAFT w26 (G1: the exemption is never said up front)
+    // w26 (G1: the exemption is never said up front)
     broadcast "!⏳ FIVE MINUTES. Be in the Desktop and scan its check-in QR for the Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play Truth Pong." to everyone with go: scan as "📷 Check in", go: The Desktop
     do announce "Five minutes. Everyone to the Desktop."
     sound countdown_tick
@@ -4661,7 +4654,7 @@ when truth_pong:
     set Night.hunt2_on = false
     set Night.round = 2
     set Night.judging = true
-    // Wave 21: ✅ / 😤 judge question 1 until a 🔢 moves on. DRAFT w21
+    // Wave 21: ✅ / 😤 judge question 1 until a 🔢 moves on.
     set Night.judge_now = 1
     cue lights_pong
     set Night.lights = "pong"
@@ -4862,7 +4855,7 @@ when y2k_clock:
     set Night.screen = "y2k"
     set Night.terminals = "y2k"
     sound y2k_chime
-    // DRAFT w18b (R4, O7): the sides join the founded factions; the count starts.
+    // w18b (R4, O7): the sides join the founded factions; the count starts.
     broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download. The count starts now." to everyone with go: sides, go: Truther Download
     -> The Y2K Clock
   else if Night.step >= 14 or Night.clock != "--:--":
@@ -4936,7 +4929,6 @@ when Night.present != count([p for p in Persons where p.gone != true and p.perso
 // counts it on the leader's recruiting quest. The header's `majority:`
 // line is the Factions screen's "n of the half + 1 it needs" (the same
 // threshold as the watchers above: members × 2 > present).
-// DRAFT w18
 when recruited for program:
   if by.quest.recruit_to_stay == "active" and side == "Unlimited Power":
     set by.recruits = by.recruits + 1
@@ -4964,7 +4956,7 @@ when force_majority_leave:
   else:
     broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
 
-// Wave 18b (R4): the named program's faction, whichever it is. DRAFT w18b
+// Wave 18b (R4): the named program's faction, whichever it is.
 when force_their_majority for program:
   if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true and faction_of(program) != null:
     set Kernel.majority_reached = true
@@ -4977,7 +4969,7 @@ when force_their_majority for program:
 
 // A program founded a faction (Start → Factions): # hosts hears its name
 // (guest-typed: the hosts', never the TV's or Trabolta's), and the founder
-// gets the quest. DRAFT w18b
+// gets the quest.
 when founded for program:
   broadcast "◇ {program.name} founded a faction: {faction_name(faction_of(program))}." to channel(hosts)
   start quest A Faction Of Your Own for program
@@ -5006,13 +4998,13 @@ when majority_reached:
     if Kernel.majority == "stay":
       complete quest Recruit To Stay for everyone
       fail quest Recruit To Leave for everyone
-      // DRAFT w18b (R4): a founder's own quest fails on a side's win.
+      // w18b (R4): a founder's own quest fails on a side's win.
       fail quest A Faction Of Your Own for everyone "Unlimited Power got there first."
     else if Kernel.majority == "leave":
       complete quest Recruit To Leave for everyone
       fail quest Recruit To Stay for everyone
       complete quest Find The Exit for everyone
-      // DRAFT w18b (R4): a founder's own quest fails on a side's win.
+      // w18b (R4): a founder's own quest fails on a side's win.
       fail quest A Faction Of Your Own for everyone "The Way Out got there first."
     else:
       // A founded faction (wave 18b): both recruiting quests fail; the
@@ -5793,7 +5785,7 @@ when final_reveal:
     set Night.alerts = "bsod"
     set Night.round = 3
     set Night.judging = true
-    // Wave 21: ✅ / 😤 judge question 1 until a 🔢 moves on. DRAFT w21
+    // Wave 21: ✅ / 😤 judge question 1 until a 🔢 moves on.
     set Night.judge_now = 1
     unlock Clippy Instructions 8 for Clippy
     // The wallet trades on through the Y2K hour: the exchange and the
@@ -5949,7 +5941,6 @@ when advice_thwarted:
     cue screens_banish
     set Night.screen = "banish"
     set Night.terminals = "banish"
-    // DRAFT w18
     broadcast "!!⛈ Trabolta is banishing EVERY program to the Internet. Antivirus included." to everyone with go: The Internet
     -> Advice Thwarted
   else:
@@ -6121,7 +6112,7 @@ when resurrection:
   else:
     broadcast "🎃 Only once the ceremony has started (G1, after an ending). Nothing happens." to channel(hosts)
 
-// ── The players' game (wave 21, DRAFT w21) ──────────────────────────
+// ── The players' game (wave 21) ──────────────────────────
 // Clippy and the four Antivirus (TRAIT Player, cast/kit.loom).
 
 // 🔢 Which question ✅ / 😤 judge (Night.judge_now; 1 when judging opens).
@@ -6399,7 +6390,7 @@ set Night.award_winner = "none"
 set Night.award_value = "none"
 set Night.awards_given = 0
 set Night.award_lines = "template"
-// Wave 21: the players' game (DRAFT w21).
+// Wave 21: the players' game.
 set Night.judge_now = 1
 set Night.defector = "none"
 set Night.defections = 0
@@ -6411,7 +6402,7 @@ set Kernel._patch_paid = "none"
 // The phones' interrupt ladder (wave 13, D2; header `alerts:`): balloon <
 // sticky < dialog < bsod. The story climbs it at the summons, the Y2K clock
 // and the final reveal, and comes back down at Truth Pong and the ceremony;
-// a host's dial holds until the next of these sets (DRAFT).
+// a host's dial holds until the next of these sets.
 set Night.alerts = "sticky"
 set Kernel.combo_a = "V2-D5,V4-D1,V6-D7,V7-D3"
 set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"

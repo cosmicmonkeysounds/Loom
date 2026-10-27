@@ -170,7 +170,6 @@ else if Night.award == "the_painting":
   else if Night.award_lines != "director":
     Trabolta: A bonus award. The Million Dollar Painting. Signed by {Night.award_value} programs. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
 else if Night.award == "staff_trusted":
-  // DRAFT w21
   cue screens_award_staff_trusted
   set Night.screen = "award_staff_trusted"
   if Night.ceremony_host == "Clippy":
@@ -178,7 +177,6 @@ else if Night.award == "staff_trusted":
   else if Night.award_lines != "director":
     Trabolta: A staff award. My Favourite Staff. Trust score {Night.award_value}. {Night.award_winner}. Of everyone who worked for me tonight, you, I believed. Come up here.
 else if Night.award == "staff_points":
-  // DRAFT w21
   cue screens_award_staff_points
   set Night.screen = "award_staff_points"
   if Night.ceremony_host == "Clippy":
@@ -186,7 +184,6 @@ else if Night.award == "staff_points":
   else if Night.award_lines != "director":
     Trabolta: A staff award. Staff Player of the Night. {Night.award_value} points. {Night.award_winner}. You worked harder than my own processes. Come and take your trophy.
 else if Night.award == "staff_mole":
-  // DRAFT w21
   cue screens_award_staff_mole
   set Night.screen = "award_staff_mole"
   if Night.ceremony_host == "Clippy" and Night.award_winner == "Nobody":

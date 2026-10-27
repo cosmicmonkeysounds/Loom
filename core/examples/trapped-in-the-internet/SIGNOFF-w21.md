@@ -1,6 +1,8 @@
-# SIGNOFF — wave 21 show text (DRAFT)
+# SIGNOFF — wave 21 show text (signed off)
 
-**Status: DRAFT, awaiting the user's sign-off.** Wave 21 is *performers
+**Signed off 2026-10-27.** The user, of every sign-off sheet: *"Every line in the signoffs looks good! ship those please."* Every line below ships as written, and every drafted default and vetoable decision ("as drafted", "as built", "default unless vetoed") is accepted as it stands. The `DRAFT w21` markers are gone from the source; this sheet stays as the record.
+
+**Status (when drafted):** Wave 21 is *performers
 play*: Clippy and the four Antivirus stop being staff who run the night and
 become **players** who play it, like the guests do. Every new or changed
 show line is marked `// DRAFT w21` in the source.
@@ -185,7 +187,7 @@ Manager), *Whose Side Are You On* (Norton), *Whose Side Are You On Too*
 
 ## 3. Open
 
-- The show text above awaits your sign-off.
+- The show text above: signed off 2026-10-27.
 - A director's actorless quick-fire of a shared game button pays Clippy; of
   📢 it makes every player defect (fire it *as* the player from Run).
 - ⭐ for McAfee is one button press per program brokered; the exchange's

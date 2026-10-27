@@ -1,6 +1,8 @@
-# SIGNOFF — wave 26 show text (DRAFT)
+# SIGNOFF — wave 26 show text (signed off)
 
-**Status: DRAFT, awaiting the user's sign-off.** Wave 26 is the last big
+**Signed off 2026-10-27.** The user, of every sign-off sheet: *"Every line in the signoffs looks good! ship those please."* Every line below ships as written, and every drafted default and vetoable decision ("as drafted", "as built", "default unless vetoed") is accepted as it stands. The `DRAFT w26` markers are gone from the source; this sheet stays as the record.
+
+**Status (when drafted):** Wave 26 is the last big
 pass before the show: the first glitch on every screen and phone, the locked
 phone for a program being reinstalled, a guest's BINGO, the void, the heart
 and the virus in the reinstallation games, voice-timed cutscenes, and no
@@ -292,8 +294,8 @@ the performer-only `19-house-workings.md`.
 
 ## 4. Open
 
-- The show text above awaits your sign-off.
-- §3's screen, game and help rows await your sign-off too (the game map's
+- The show text above: signed off 2026-10-27.
+- §3's screen, game and help rows: signed off 2026-10-27 too (the game map's
   *MAINFRAME* label was chosen at integration).
 - A locked phone cannot redeem a tent QR: the virus then comes from the
   game's disk, after release, or from a director's Run.

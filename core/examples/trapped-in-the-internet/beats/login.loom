@@ -73,7 +73,7 @@ else:
 Task Manager: To complete the installation you must leave one thing behind. Place something you came with in the deposit box by the door.
 * Deposited.
   set program.left_behind = "deposited"
-  // DRAFT w18b (R10, D22): an optional typed record of it (no `question:`,
+  // w18b (R10, D22): an optional typed record of it (no `question:`,
   // so the facts book never judges it); main.loom's `when answer answered`
   // keeps the text in the secret `left_behind_text` and deals the pass.
   Task Manager: Deposited. Now tell me what it was, for the record. It will be looked after.
@@ -114,7 +114,7 @@ if program.left_behind != "deposited":
   cast: Clippy
 
 Clippy: Hi there, {program.name}! It looks like you're new to the computer. Would you like help with that?
-// DRAFT for sign-off (wave 13 integration, SIGNOFF-w13 Q18 + Q19): Bathroom Mode lives under ⊞ Start now.
+// wave 13 integration, SIGNOFF-w13 Q18 + Q19: Bathroom Mode lives under ⊞ Start now.
 Clippy: One thing before the tour. If you need the bathroom or have to step out: tap START and turn on BATHROOM MODE first. The Antivirus can't tell a bathroom break from hacking the Internet. I can! They can't.
 start quest Orientation for program
 unlock Bathroom Mode for program

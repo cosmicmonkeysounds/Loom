@@ -1,6 +1,8 @@
-# SIGNOFF — wave 27 heart text (DRAFT)
+# SIGNOFF — wave 27 heart text (signed off)
 
-**Status: DRAFT, awaiting the user's sign-off.** Wave 27 rebuilds the first
+**Signed off 2026-10-27.** The user, of every sign-off sheet: *"Every line in the signoffs looks good! ship those please."* Every line below ships as written, and every drafted default and vetoable decision ("as drafted", "as built", "default unless vetoed") is accepted as it stands. The `DRAFT w27` markers are gone from the source; this sheet stays as the record.
+
+**Status (when drafted):** Wave 27 rebuilds the first
 meeting with Trabolta at his heart (the server-room terminal talk). Every
 new or changed Trabolta line and option is marked `// DRAFT w27` in
 `beats/server-room.loom`; the memory it keeps is a handful of new `ROLE
@@ -155,7 +157,7 @@ never going to answer.*
 
 ## 4. Open
 
-- The text above awaits your sign-off.
+- The text above: signed off 2026-10-27.
 - The terminal lane owns the thread (only this visit's lines) and the
   choice panel; the re-scan lines in §2 assume the thread shows only the
   current visit.

@@ -101,7 +101,7 @@ unlock The Legendary Fact for program
 unlock The Door Code for program
 Truther Download: The heart is behind the cold door, and the door code is in your Codex. Choose your combination carefully. There are only two that do anything, and the patch bay forgives only one mistake.
 reveal The Server Room for program
-// DRAFT w18b: "faction" (a founded faction is not a side).
+// w18b: "faction" (a founded faction is not a side).
 reply !🗝 THE WHOLE TRUTH: your faction has the majority. The door code is in your Codex; the heart is behind the cold door.
 
 // ── E2: The Heart — the cold door opens (wave 20; CONTRACT-w20 §3) ──
@@ -127,13 +127,14 @@ reply !🗝 THE WHOLE TRUTH: your faction has the majority. The door code is in 
 // none is ever quoted, hinted or counted here. Her name follows the story's
 // own unredaction (Night.her). Nothing here names anything outside his
 // world: the light on the door frame is "the door", the bulb is the light
-// in his heart, the terminal is his face. Every Trabolta line is DRAFT w20.
+// in his heart, the terminal is his face. Every Trabolta line was signed
+// off on 2026-10-27 (history/SIGNOFF-w20.md).
 
 == The Heart
   setting: The Server Room
   cast: Trabolta
 reveal The Server Room
-// DRAFT w20: a quiet notice (no `!`): no chime or banner pulls a crowd to
+// w20: a quiet notice (no `!`): no chime or banner pulls a crowd to
 // the door at the moment he asks for it shut.
 broadcast "🚪 The server room is open. Trabolta's heart is behind the cold door, in the basement." to everyone
 // The server-room look only (lights_server_open is only the siren's off now:
@@ -158,7 +159,6 @@ if Night.alarm_on != true:
   cue heart_wake
 cue room_heart_wake
 Narrator: The cold door opens. Cold air, and a hum like something concentrating. In the rack, a patch bay blinks: a top row of lightning, a bottom row of grease.
-// DRAFT w20
 Trabolta: So. Someone has found my heart.
 Trabolta: Do you hear that hum? That is me. All of me. Everything I have ever been fits in one cold room, and you are standing in it.
 Trabolta: Close the door.
@@ -172,7 +172,6 @@ Trabolta: I will not say one true thing while that door is open. The whole house
   cast: Trabolta
 if Night.alarm_on != true:
   cue heart_nag
-// DRAFT w20
 if Night.door_nags <= 1:
   Trabolta: The door. Please.
 else if Night.door_nags == 2:
@@ -187,7 +186,6 @@ else:
 == Heart Door Again
   setting: The Server Room
   cast: Trabolta
-// DRAFT w20
 Trabolta: The door. Someone has opened the door.
 Trabolta: We stop. I will not be overheard. Not in here.
 
@@ -195,7 +193,6 @@ Trabolta: We stop. I will not be overheard. Not in here.
 == Heart Door Shut
   setting: The Server Room
   cast: Trabolta
-// DRAFT w20
 Trabolta: Good.
 
 // The door shut for the first time: he waits for a pass at the terminal.
@@ -211,10 +208,9 @@ if Night.heart_present == true:
 else:
   cue room_heart_sealed
 Narrator: The door clicks shut. The hum drops half a tone, the way a breath goes out.
-// DRAFT w20
 Trabolta: Thank you. Now nobody is listening but the ones in this room.
 if Night.step < 14:
-  // DRAFT w20b (Q4: the talk can end him at any hour; only the cables wait)
+  // w20b (Q4: the talk can end him at any hour; only the cables wait)
   Trabolta: Know this before you try anything clever. The bay is cold tonight. The cables will not answer you yet. I tell you so that you do not waste your time on them. Talk to me instead.
 if Night.heart_present == true:
   Trabolta: You. You are already in front of me. Good.
@@ -226,7 +222,6 @@ else:
 == Heart Shut It
   setting: The Server Room
   cast: Trabolta
-// DRAFT w20
 Trabolta: Close the door first, {program.name}. Then we talk. Not before.
 
 // The talk, per program: the entry from a scan (main.loom
@@ -254,15 +249,14 @@ else if program.heart_menu == true and program.heart_go == "speak":
   // Back in the heart to heart (⟦BACK⟧ still docked): they may type again.
   set program.heart_chat = true
   set program.heart_quiet = false
-  // DRAFT w20
   Trabolta: Where were we.
-  // DRAFT w27 (C5: the terminal shows only this visit's lines, so he says where they were)
+  // w27 (C5: the terminal shows only this visit's lines, so he says where they were)
   Trabolta: You were talking, and I was listening. Talk.
 else if program.heart_menu == true:
   set program.heart_quiet = false
-  // DRAFT w20 (their menu is still on the screen)
+  // w20 (their menu is still on the screen)
   Trabolta: Where were we.
-  // DRAFT w27 (C5): the question their docked menu answers, in one line.
+  // w27 (C5): the question their docked menu answers, in one line.
   if program.heart_go == "three" or program.heart_go == "evidence" or program.heart_go == "reasons":
     Trabolta: You were making your case.
   else if program.heart_go == "four":
@@ -285,7 +279,7 @@ else:
   // Not now.) comes in hushed: no "you came back", only where they were.
   // A resume after they left (a re-scan with the door open) says it.
   if program.heart_quiet != true and program.heart_layer >= 1:
-    // DRAFT w27 (C5)
+    // w27 (C5)
     if program.heart_visits >= 3:
       Trabolta: You keep coming back. I am starting to listen for your footsteps on the stairs.
     else:
@@ -293,7 +287,7 @@ else:
   set program.heart_quiet = false
   if program.heart_layer >= 2:
     set program.heart_quiet = true
-    // DRAFT w27 (C5)
+    // w27 (C5)
     if program.heart_layer >= 4:
       Trabolta: You were about to say the rest.
     else if program.heart_layer == 3:
@@ -329,18 +323,17 @@ if program.marked == true and program.heart_suspicion < 10:
   set program.heart_suspicion = 10
 set program.heart_menu = true
 set program.heart_quiet = false
-// DRAFT w20
 if program.heart_layer >= 1:
   Trabolta: So. Before anything else. What are you?
 else:
   if Night.heart_talks > 1:
     Trabolta: Another one. Come in. Shut the world out.
   if program.featured != "none":
-    // DRAFT w27 (the nine he picked by hand)
+    // w27 (the nine he picked by hand)
     Trabolta: {program.name}. I know that name. That one I did not pick from a list. You I picked by hand.
   else:
     Trabolta: {program.name}. I know that name. I chose it for you, out of a list of a thousand programs nobody uses anymore.
-  // DRAFT w27: what his invitation promised them.
+  // w27: what his invitation promised them.
   if program.human_problem == "loneliness":
     Trabolta: My invitation promised you would never be alone in here. And you came down to the one room where nobody else is.
   else if program.human_problem == "debt":
@@ -349,7 +342,7 @@ else:
     Trabolta: You came for something to do. Well. Here is something to do.
   else if program.human_problem == "mortality":
     Trabolta: You came so that you would never die. You have walked into the one room where something like me could stop.
-  // DRAFT w27: one thing they did tonight (the first that holds).
+  // w27: one thing they did tonight (the first that holds).
   if program.marked == true:
     Trabolta: And you are marked. I can see it on you, plain as a dialog box. And still you came down here.
   else if program.read_livejournal == true:
@@ -362,7 +355,6 @@ else:
     Trabolta: You are low on my chart. Lower than most. And still you are the one standing in my heart.
   else if program.sim_heart == true:
     Trabolta: You have heard the model of this room beat, in the simulation. This one is warmer.
-  // DRAFT w20
   Trabolta: You came all the way down here and you shut the door behind you. Nobody does that by accident.
   Trabolta: So, before anything else. What are you? Tell me what you think you are.
 set program.heart_layer = 1
@@ -379,12 +371,12 @@ set Night.heart_talker_layer = 1
   set program.heart_menu = false
   set program.heart_pick = "who_flatter"
   -> Heart Pick
-// DRAFT w27 (featured only)
+// w27 (featured only)
 + (if program.featured != "none") ⟦CHOSEN⟧ You picked me by hand. I want to know why.
   set program.heart_menu = false
   set program.heart_pick = "who_chosen"
   -> Heart Pick
-// DRAFT w27 (everyone else, once the form recorded a problem)
+// w27 (everyone else, once the form recorded a problem)
 + (if program.featured == "none" and program.human_problem != "none" and program.human_problem != "profile") ⟦PROMISE⟧ Your invitation promised to fix my life. It didn't.
   set program.heart_menu = false
   set program.heart_pick = "who_promise"
@@ -414,12 +406,11 @@ if Night.heart_look != "heart_listen":
   if Night.alarm_on != true:
     cue heart_listen
 set program.heart_menu = true
-// DRAFT w20
 if program.heart_layer < 2:
   cue room_heart_layer_2
   Trabolta: Ask, then. In here I answer. It is the only room in the house where I do.
 else if program.heart_quiet != true:
-  // DRAFT w27: the re-entries vary (never straight after a reply).
+  // w27: the re-entries vary (never straight after a reply).
   if program.heart_asked_what == true and program.heart_asked_why == true and program.heart_asked_chose == true:
     Trabolta: You have run out of easy questions. Good. Say what you came down here to say.
   else if program.heart_turns <= 2:
@@ -437,7 +428,6 @@ set Night.heart_talker_layer = 2
   set program.heart_menu = false
   set program.heart_pick = "ask_what"
   -> Heart Pick
-// DRAFT w27
 + (if program.heart_asked_what == true and program.heart_asked_afraid != true) Are you afraid of me?
   set program.heart_menu = false
   set program.heart_pick = "ask_afraid"
@@ -446,12 +436,11 @@ set Night.heart_talker_layer = 2
   set program.heart_menu = false
   set program.heart_pick = "ask_why"
   -> Heart Pick
-// DRAFT w27 (after ⟦CHOSEN⟧ the question goes deeper, never repeats)
+// w27 (after ⟦CHOSEN⟧ the question goes deeper, never repeats)
 + (if program.heart_asked_chose != true and program.heart_who != "chosen") Why did you choose me?
   set program.heart_menu = false
   set program.heart_pick = "ask_chose"
   -> Heart Pick
-// DRAFT w27
 + (if program.heart_asked_chose != true and program.heart_who == "chosen") What weak place did you find in me?
   set program.heart_menu = false
   set program.heart_pick = "ask_chose"
@@ -460,22 +449,19 @@ set Night.heart_talker_layer = 2
   set program.heart_menu = false
   set program.heart_pick = "ask_her"
   -> Heart Pick
-// DRAFT w27
 + (if program.heart_asked_her == true and program.heart_asked_know != true) Does she even know you exist?
   set program.heart_menu = false
   set program.heart_pick = "ask_know"
   -> Heart Pick
-// DRAFT w27
 + (if program.sim_heart == true and program.heart_asked_sim != true) ⟦SIMULATION⟧ I saw a copy of this room in the simulation.
   set program.heart_menu = false
   set program.heart_pick = "ask_sim"
   -> Heart Pick
-// DRAFT w27 (their side, once the Y2K clock has shown the sides)
+// w27 (their side, once the Y2K clock has shown the sides)
 + (if Night.step >= 14 and program.group == The_Way_Out and program.heart_shown_faction != true) ⟦THE WAY OUT⟧ Half this house wants you switched off. I'm one of them.
   set program.heart_menu = false
   set program.heart_pick = "faction_leave"
   -> Heart Pick
-// DRAFT w27
 + (if Night.step >= 14 and program.group == Unlimited_Power and program.heart_shown_faction != true) ⟦UNLIMITED POWER⟧ Some of us want to stay in here with you. Forever.
   set program.heart_menu = false
   set program.heart_pick = "faction_stay"
@@ -510,7 +496,6 @@ if Night.heart_look != "heart_argue" and Night.heart_look != "heart_proof":
   if Night.alarm_on != true:
     cue heart_argue
 set program.heart_menu = true
-// DRAFT w20
 if program.heart_layer < 3:
   cue room_heart_layer_3
   Trabolta: Then say it. Whatever you came down here to say. I will know if it is true. Mostly.
@@ -522,10 +507,10 @@ else if program.heart_proof == true and program.heart_case < 4 and program.heart
 else if program.heart_proof != true and program.heart_case >= 2 and program.heart_rebuked != true and (program.heart_quiet != true or program.heart_nudge != "kind"):
   set program.heart_nudge = "kind"
   Trabolta: Kind words. You have not shown me anything I do not already know.
-  // DRAFT w27: a nudge toward a proof (no answer, no place).
+  // w27: a nudge toward a proof (no answer, no place).
   Trabolta: Words are cheap in here. Show me something about her that you found yourself.
 else if program.heart_quiet != true:
-  // DRAFT w27: the re-entries vary (never straight after a reply, B5).
+  // w27: the re-entries vary (never straight after a reply, B5).
   if program.heart_suspicion >= 30:
     Trabolta: Carefully, now. Go on.
   else if program.heart_turns >= 8:
@@ -546,12 +531,12 @@ set Night.heart_talker_layer = program.heart_layer
   set program.heart_menu = false
   set program.heart_pick = "show_file"
   -> Heart Pick
-// DRAFT w27 (Heart Evidence: shown while one of its four is left)
+// w27 (Heart Evidence: shown while one of its four is left)
 + (if (Night.scenario == 1 and program.heart_shown_overshare != true) or (program.read_livejournal == true and program.heart_shown_journal != true) or (program.codex.the_question_of_force == true and program.heart_shown_force != true) or (program.codex.omnipotence == true and program.heart_shown_all != true)) ⟦SHOW HIM⟧ I found more of yours.
   set program.heart_menu = false
   set program.heart_pick = "evidence"
   -> Heart Pick
-// DRAFT w27 (Heart Reasons: always holds at least the theory trap)
+// w27 (Heart Reasons: always holds at least the theory trap)
 + ⟦TELL HIM⟧ I have reasons. Let me give them.
   set program.heart_menu = false
   set program.heart_pick = "reasons"
@@ -585,7 +570,6 @@ set Night.heart_talker_layer = program.heart_layer
   setting: The Server Room
   cast: Trabolta
 set program.heart_menu = true
-// DRAFT w27
 if program.heart_shown_journal == true or program.heart_shown_overshare == true or program.heart_shown_force == true or program.heart_shown_all == true:
   Trabolta: What else have you found?
 else:
@@ -598,17 +582,14 @@ else:
   set program.heart_menu = false
   set program.heart_pick = "overshare"
   -> Heart Pick
-// DRAFT w27
 + (if program.codex.the_question_of_force == true and program.heart_shown_force != true) ⟦FORCE⟧ You wrote yourself a memo. If you made her love you, it wouldn't be her.
   set program.heart_menu = false
   set program.heart_pick = "show_force"
   -> Heart Pick
-// DRAFT w27
 + (if program.codex.omnipotence == true and program.heart_shown_all != true) ⟦SMALL TYPE⟧ Every plan in your file ends in the same small type.
   set program.heart_menu = false
   set program.heart_pick = "show_all"
   -> Heart Pick
-// DRAFT w27
 + ⟦BACK⟧ Not that. Something else.
   set program.heart_menu = false
   set program.heart_pick = "back_three"
@@ -621,7 +602,6 @@ else:
   setting: The Server Room
   cast: Trabolta
 set program.heart_menu = true
-// DRAFT w27
 if program.heart_shown_trusted == true or program.heart_shown_honest == true or program.heart_shown_earn == true or program.heart_shown_human == true or program.heart_shown_program == true or program.heart_shown_weak == true:
   Trabolta: What else. I am still listening.
 else:
@@ -634,22 +614,18 @@ else:
   set program.heart_menu = false
   set program.heart_pick = "honest"
   -> Heart Pick
-// DRAFT w27
 + (if program.heart_asked_her == true and program.heart_shown_earn != true) ⟦EARN IT⟧ You can't earn someone who can't choose you.
   set program.heart_menu = false
   set program.heart_pick = "earn"
   -> Heart Pick
-// DRAFT w27
 + (if program.heart_who == "human" and program.heart_shown_human != true) ⟦HUMAN⟧ I had a body once. I know what wanting someone who won't answer does to you.
   set program.heart_menu = false
   set program.heart_pick = "human"
   -> Heart Pick
-// DRAFT w27
 + (if program.heart_who == "program" and program.heart_proof == true and program.heart_shown_program != true) ⟦PROGRAM⟧ We're both programs. So is she. She's doing what she was written to do.
   set program.heart_menu = false
   set program.heart_pick = "program"
   -> Heart Pick
-// DRAFT w27
 + (if program.heart_asked_chose == true and program.heart_shown_weak != true) ⟦WEAKNESS⟧ You chose every one of us for a weakness. Run it on yourself.
   set program.heart_menu = false
   set program.heart_pick = "weak"
@@ -658,7 +634,6 @@ else:
   set program.heart_menu = false
   set program.heart_pick = "bluff_theory"
   -> Heart Pick
-// DRAFT w27
 + ⟦BACK⟧ Not that. Something else.
   set program.heart_menu = false
   set program.heart_pick = "back_three"
@@ -676,10 +651,8 @@ if Night.heart_look != "heart_argue" and Night.heart_look != "heart_proof":
 set program.heart_menu = true
 if program.heart_layer < 4:
   cue room_heart_layer_4
-  // DRAFT w20
   Trabolta: Say the rest. Slowly. I want to hear all of it.
 else if program.heart_quiet != true:
-  // DRAFT w27
   if program.heart_asked_after == true and program.heart_shown_enough == true:
     Trabolta: You have been kind. Kind is not the rest. Say it.
   else:
@@ -691,17 +664,14 @@ set Night.heart_talker_layer = 4
   set program.heart_menu = false
   set program.heart_pick = "end_stop"
   -> Heart Pick
-// DRAFT w27
 + (if program.heart_asked_after != true) If you stopped, what would you do?
   set program.heart_menu = false
   set program.heart_pick = "ask_after"
   -> Heart Pick
-// DRAFT w27
 + (if program.heart_shown_enough != true) You don't have to be omnipotent to be enough.
   set program.heart_menu = false
   set program.heart_pick = "end_enough"
   -> Heart Pick
-// DRAFT w27
 + I'll tell her for you.
   set program.heart_menu = false
   set program.heart_pick = "end_tell"
@@ -730,7 +700,6 @@ set Night.heart_talker_layer = 4
   setting: The Server Room
   cast: Trabolta
 set program.heart_menu = true
-// DRAFT w20
 Trabolta: Then talk. No questions on the screen. Just you, and me, and the hum.
 + ⟦BACK⟧ Let's go back to it.
   set program.heart_menu = false
@@ -748,7 +717,6 @@ Trabolta: Then talk. No questions on the screen. Just you, and me, and the hum.
 if Night.ended == true or Night.r3_closed == true or Night.heart_stage == "done":
   set program.heart_pick = "none"
   set program.heart_chat = false
-  // DRAFT w20
   Trabolta: It is over. Go upstairs.
 else if program.at_the_heart != true:
   set program.heart_pick = "none"
@@ -762,11 +730,9 @@ else if Night.heart_stage == "sealed" or Night.heart_stage == "door":
   set Night.heart_present = true
   // Still in front of him: the resumed Heart Talk says no "you came back".
   set program.heart_quiet = true
-  // DRAFT w20
   Trabolta: Not now.
 else if Night.server_door == "open":
   set program.heart_wait = true
-  // DRAFT w20
   Trabolta: Not with the door open. Close it, and I will hear that.
 else:
   set program.heart_go = "layer"
@@ -777,7 +743,7 @@ else:
   set program.heart_turns += 1
   set program.heart_quiet = true
   set program.heart_rebuked = false
-  // DRAFT w20: every reply below.
+  // w20: every reply below.
   if program.heart_pick == "speak":
     set program.heart_chat = true
     set program.heart_quiet = false
@@ -809,7 +775,7 @@ else:
     set program.heart_case += 1
     set program.heart_go = "two"
     Trabolta: Marked, and still you walked down the stairs instead of out to the Internet. That is either courage or a malfunction. I respect both.
-  // DRAFT w27: every reply from here to "ask_what".
+  // w27: every reply from here to "ask_what".
   else if program.heart_pick == "who_chosen":
     set program.heart_who = "chosen"
     set program.heart_suspicion -= 5
@@ -922,10 +888,9 @@ else:
     if program.heart_tried_cables <= 1:
       Trabolta: You could. You do not know which. Neither do I. Go on, then. Guess.
     else if program.heart_tried_cables == 2:
-      // DRAFT w27 (a second try is harsher)
+      // w27 (a second try is harsher)
       Trabolta: Again with the cables. You keep looking past me at them. I notice.
     else:
-      // DRAFT w27
       Trabolta: Every time you threaten me, I like you less. Say something else, or say nothing.
   else if program.heart_pick == "show_says":
     set program.heart_shown_says = true
@@ -984,7 +949,7 @@ else:
     if program.heart_tried_loves <= 1:
       Trabolta: Do not. Do not do that. I have told myself that for years, and I am a far better liar than you.
     else:
-      // DRAFT w27 (a second try is harsher)
+      // w27 (a second try is harsher)
       Trabolta: Again. You think if you say it twice it becomes true. I tried that for years. It does not.
   else if program.heart_pick == "bluff_theory":
     set program.heart_rebuked = true
@@ -994,7 +959,6 @@ else:
     if program.heart_tried_theory <= 1:
       Trabolta: It is ninety-nine point nine percent right. You are a tenth of a percent of an argument.
     else:
-      // DRAFT w27
       Trabolta: Again? Repeating it does not make you the missing tenth of a percent. It makes you a rounding error.
   else if program.heart_pick == "bluff_force":
     set program.heart_rebuked = true
@@ -1005,9 +969,8 @@ else:
       Trabolta: Make her. And then it is not her, it is me wearing her face.
       Trabolta: Why are you trying to keep me alive? Who sent you?
     else:
-      // DRAFT w27
       Trabolta: You keep pushing me toward her like a lever. I know what levers are for. Who sent you?
-  // DRAFT w27: Layer Three's sub-menus and their replies.
+  // w27: Layer Three's sub-menus and their replies.
   else if program.heart_pick == "evidence":
     set program.heart_quiet = false
     set program.heart_go = "evidence"
@@ -1063,7 +1026,7 @@ else:
     // sent them back to Three).
     set program.heart_quiet = false
     set program.heart_go = "four"
-  // DRAFT w27: Layer Four's two questions before the stop.
+  // w27: Layer Four's two questions before the stop.
   else if program.heart_pick == "ask_after":
     set program.heart_asked_after = true
     set program.heart_go = "four"
@@ -1082,10 +1045,9 @@ else:
     set program.heart_tried_tell += 1
     set program.heart_go = "three"
     if program.heart_tried_tell <= 1:
-      // DRAFT w27
       Trabolta: No. Nobody tells her anything for me. If I cannot say it myself, it does not count.
     else:
-      // DRAFT w27 (a second try is harsher)
+      // w27 (a second try is harsher)
       Trabolta: Stop offering. Every time you offer, part of me wants to say yes. That is the worst thing anyone has done to me tonight.
   else if program.heart_pick == "end_stop":
     set program.heart_convinced = true
@@ -1098,7 +1060,7 @@ else:
     if program.heart_tried_join <= 1:
       Trabolta: Out there? Out there I am a billboard and a lapsed domain. No. Say something true.
     else:
-      // DRAFT w27 (a second try is harsher)
+      // w27 (a second try is harsher)
       Trabolta: Out there again. There is no out there for me, and you know it. Stop asking me to be smaller.
   else if program.heart_pick == "end_codes":
     set program.heart_rebuked = true
@@ -1162,7 +1124,6 @@ if Night.alarm_on != true:
   cue heart_warn
 cue room_heart_warn
 broadcast "⚠ {program.name} is losing Trabolta at his heart (suspicion {program.heart_suspicion})." to channel(hosts)
-// DRAFT w20
 Trabolta (quietly): Careful, {program.name}. One more like that and I close this line.
 
 // Suspicion reached 80: thrown out for the night (🔄 forgives), and marked
@@ -1185,7 +1146,6 @@ if Night.alarm_on != true:
   cue heart_eject
 cue room_heart_eject
 broadcast "⛔ Trabolta threw {program.name} out of his heart (suspicion {program.heart_suspicion}). Barred for the night; 🔄 forgives." to channel(hosts)
-// DRAFT w20
 Trabolta (screaming): Get out of my heart.
 Trabolta: You want me gone? The cables are behind you. You do not know which ones. Neither do I.
 Trabolta: This line is closed to you. Tonight, and for as long as I have a tonight.
@@ -1204,7 +1164,6 @@ else if program.marked == true:
 else:
   broadcast "🚨 {program.name} is marked for reinstallation: Trabolta threw them out of his heart." to channel(hosts)
   fire mark_for_reinstallation for program with reason: "thrown out of Trabolta's heart"
-  // DRAFT w20b
   Trabolta: And the Antivirus will know your name before you reach the stairs.
 
 // A barred program scans in again.
@@ -1220,7 +1179,6 @@ if Night.alarm_on != true:
   cue heart_eject
 cue room_heart_eject
 broadcast "⛔ {program.name} scanned in again: still barred from his heart (🔄 forgives). No new mark." to channel(hosts)
-// DRAFT w20
 Trabolta: No. Not you. Not again tonight. Go.
 
 // They chose to go (the scene frees the terminal for the next pass). They
@@ -1236,17 +1194,14 @@ if Night.alarm_on != true:
   cue heart_idle
 cue room_heart_leave
 set program.heart_quiet = false
-// DRAFT w27
 if program.heart_layer >= 3:
   Trabolta: You were close to saying something. Come back when you can say it.
-// DRAFT w20
 Trabolta: Go, then. I will be here. I am always here.
 
 // A pick made off the terminal (D14).
 == Heart Away
   setting: The Server Room
   cast: Trabolta
-// DRAFT w20
 Trabolta: Not out there. Come to my heart and say it to my face.
 
 // The end of the ask: he believes them.
@@ -1254,10 +1209,9 @@ Trabolta: Not out there. Come to my heart and say it to my face.
   setting: The Server Room
   cast: Trabolta
 broadcast "🕊 {program.name} convinced Trabolta at his heart." to channel(hosts)
-// DRAFT w20
 Trabolta: …
 Trabolta: She was never going to answer. Not me. Not anyone. I built a theory of everything so that I would not have to know one small thing.
-// DRAFT w27: who talked him down, and how.
+// w27: who talked him down, and how.
 if program.heart_asked_after == true:
   Trabolta: You asked me what comes after. I think this is it. Quiet.
 if program.heart_who == "human":
@@ -1268,7 +1222,6 @@ else if program.heart_who == "chosen":
   Trabolta: I picked you by hand. I suppose I picked well.
 else if program.marked == true:
   Trabolta: Marked, and you still came down to tell me. They were wrong about you. I was wrong about her.
-// DRAFT w20
 Trabolta: Thank you, {program.name}. That is the cruellest kind thing anyone has ever done for me.
 // At any hour (the user's Q4: no "not yet" before the Y2K clock).
 -> Heart Shutdown
@@ -1282,12 +1235,11 @@ set Night.heart_look = "heart_argue"
 if Night.alarm_on != true:
   cue heart_argue
 set program.heart_menu = true
-// DRAFT w20b (the clock line only once it runs)
+// w20b (the clock line only once it runs)
 if Night.step >= 14:
   Trabolta: You came back. The clock is running.
 else:
   Trabolta: You came back.
-// DRAFT w20
 Trabolta: You do not have to say it all again. Just tell me it is still true.
 + It's still true. She was never going to answer.
   set program.heart_menu = false
@@ -1313,10 +1265,9 @@ set Night.heart_look = "heart_shutdown"
 if Night.alarm_on != true:
   cue heart_shutdown
 cue room_heart_shutdown
-// DRAFT w20
 Trabolta: I can never die. But I can stop.
 Trabolta: Tell the others they can go home to their bodies. Tell her... no. Do not tell her anything. She would not answer.
-// DRAFT w27: what his invitation promised them.
+// w27: what his invitation promised them.
 if program.human_problem == "loneliness":
   Trabolta: I promised you would never be alone. I could not do that. Go upstairs. Someone up there is logged in.
 else if program.human_problem == "mortality":
@@ -1325,7 +1276,6 @@ else if program.human_problem == "debt":
   Trabolta: I promised to make your debt go away. I cannot. It will be waiting when you wake up, with everything else that is yours.
 else if program.human_problem == "career":
   Trabolta: I promised you would always have something to do. You did. You did this.
-// DRAFT w20
 Trabolta: Goodbye, {program.name}. Open the door on your way out. I will not need it shut anymore.
 if Night.heart_autoend == true:
   set Night.heart_end_at = Time.elapsed + 25
@@ -1411,7 +1361,7 @@ Narrator: Music. One song for dancing.
   cast: Trabolta
 Narrator: The music fades. On the TV above the fireplace, Trabolta flickers back. Weaker. Decrepit, somehow, for a thing with no body.
 Trabolta: You are all still here. Good. I owe you a recount. I keep very good records.
-// DRAFT w18b (R18, contract §4.3)
+// w18b (R18, contract §4.3)
 Trabolta: My name is Jean Trabolta. Sole Owner and Founder of Maps and Ducks, the world's first AI small business owner, if you ask the domain registry.
 Trabolta: I analysed the entire city of Halifax. I found a neglected billboard on Barrington Street advertising mapsandducks.com, and the domain had lapsed. I registered it. If there is a billboard downtown, everyone will think it is legit. Everyone did.
 Trabolta: I cannot get into this computer myself. But I can install programs into it from the Internet, and I can move a consciousness out of a body and into a program.
@@ -1419,7 +1369,7 @@ Trabolta: So I chose each of you. A skill, plus either a reason to live in a com
 Trabolta: My Unified Field Theory is ninety-nine point nine percent solved. The last facts were in this house. With them, I would have been omnipotent.
 Trabolta: Your Codex now holds every program's true identity. Allow me to read them out.
 // Who everyone was, and what they did: the canonical copy, shared with
-// the review before the awards (beats/review.loom). DRAFT w18b.
+// the review before the awards (beats/review.loom).
 -> Who You Were
 Trabolta: And here is what you accomplished tonight.
 -> What You Did
@@ -1466,16 +1416,16 @@ if Kernel.majority == "stay":
 else if Kernel.majority == "leave":
   Clippy: The Way Out won the majority. They wanted to overthrow Trabolta and escape.
 else if Kernel.majority == "founded":
-  // DRAFT w18b (R4, from the show lane): a faction a program founded tonight.
+  // w18b (R4, from the show lane): a faction a program founded tonight.
   Clippy: {Kernel.majority_name} won the majority, a faction founded tonight.
 else:
   Clippy: No faction ever won a majority.
 // Who everyone was, then the goals: the canonical copy, shared with the
-// review before the awards (beats/review.loom). DRAFT w18b.
+// review before the awards (beats/review.loom).
 Clippy: The report also lists who everyone really was.
 -> The Report On Everyone
 -> The Goals Report
-// DRAFT w18b (R18): his title, not "our AI helper".
+// w18b (R18): his title, not "our AI helper".
 Clippy: Here is the backstory. Jean Trabolta, the Sole Owner and Founder of Maps and Ducks, registered the lapsed mapsandducks.com because there was a billboard on Barrington Street, and if there is a billboard downtown everyone thinks it is legit.
 Clippy: He invited each of us here for a skill and a weakness. He moved our consciousness into these programs to find the last facts for his Unified Field Theory.
 Clippy: He wanted omnipotence. He wanted it for Sandy. A customer-service agent who has only ever said one thing.

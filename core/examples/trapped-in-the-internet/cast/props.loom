@@ -106,7 +106,7 @@ CHARACTER Kernel
   majority_founder: text? = none
   jeeves_reached: 0 to 99 = 0
   // Wave 21: who pressed the game button being settled ("Clippy" | "none"),
-  // so a host's press never pays Clippy (cast/hosts.loom). DRAFT w21
+  // so a host's press never pays Clippy (cast/hosts.loom).
   _pressed_by: text? = none
   // Wave 26 (B2): who pressed ↩ Not a Bingo (the pressing booths count
   // themselves; one = that part's name, more = the Director's quick-fire).

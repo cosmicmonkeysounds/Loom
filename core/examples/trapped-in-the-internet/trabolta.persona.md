@@ -33,7 +33,7 @@
 #   `speaker.player`, and `them:` reads their CHARACTER slots: `trust` (his
 #   trust in them, on the programs' scale) and `defected` ("open" once they
 #   turned on him in front of the house). Their quiet favours (`covert`,
-#   `caught`) are `private:` and never reach him. DRAFT w21
+#   `caught`) are `private:` and never reach him.
 # them_adjust: (wave 21) a player speaker's slots his `adjust` may move, sent
 #   as `them.trust`; the server clamps it to the slot's range. A guest's
 #   trust stays the story's (the chart's formula) and is never adjusted here.
@@ -96,7 +96,7 @@ bargain: |
   You do not know which doors or rooms of the house are open: say so.
 # Not a bare "John" (John McAfee is in his world) and not "party" (his own
 # invitation: a fundraiser party at Maps And Ducks): a hit would swap a real answer.
-outside:                     # DRAFT w20 (D29): never in a line of his; a hit is withheld like a `never` word
+outside:                     # w20 (D29): never in a line of his; a hit is withheld like a `never` word
   - Steph
   - Jesse
   - Steph's laptop

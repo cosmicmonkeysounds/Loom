@@ -510,16 +510,17 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     }
   });
 
-  it("wave 28: the new # hosts lines are marked DRAFT w28 and listed on SIGNOFF-w28.md", () => {
+  it("wave 28: the new # hosts lines are signed off on SIGNOFF-w28.md, no DRAFT marker left", () => {
     const dir = join(__dirname, "../examples/trapped-in-the-internet");
     const line = "📥 Not yet: 📓 Hunt 2 first (it sends itself two minutes in). Nothing happens.";
     const main = readFileSync(join(dir, "main.loom"), "utf8");
-    expect(main).toMatch(/\/\/ DRAFT w28[^\n]*\n\s*broadcast "📥 Not yet: 📓 Hunt 2 first/u);
+    expect(main).toMatch(/\n\s*broadcast "📥 Not yet: 📓 Hunt 2 first/u);
+    expect(main).not.toMatch(/DRAFT w28\b/u);
     const sheet = readFileSync(join(dir, "SIGNOFF-w28.md"), "utf8");
-    expect(sheet).toContain("DRAFT");
+    expect(sheet).toMatch(/^\*\*Signed off 2026-10-27\.\*\*/mu);
     expect(sheet).toContain(line);
     const over = "📥 The night is over. Nothing happens.";
-    expect(main).toMatch(/\/\/ DRAFT w28[^\n]*\n\s*broadcast "📥 The night is over\. Nothing happens\."/u);
+    expect(main).toMatch(/\n\s*broadcast "📥 The night is over\. Nothing happens\."/u);
     expect(sheet).toContain(over);
   });
 
