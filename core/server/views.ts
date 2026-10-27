@@ -25,6 +25,7 @@ import { crewRoom, type CrewSummary, type CrewView, type InviteView, type RaceVi
 import { badgesOf, type NameBadge } from "../src/runtime/sim/badges.ts"; // w18b badges
 import { isPrivateSlot, statsFor, type StatView } from "../src/runtime/sim/stats.ts"; // w21 stats
 import type { ShowClock } from "../src/show-clock.ts";
+import type { TalkView } from "../src/talk-back.ts";
 
 export type { NameBadge } from "../src/runtime/sim/badges.ts";
 export type { RaceFaction, RaceView } from "../src/runtime/sim/crews.ts";
@@ -800,6 +801,10 @@ export type AgentMindSummary = AgentMindReport & {
 export interface ModView {
   /** The story's title + theme (what participants see). */
   title?: string;
+  /** Wave 32 (C5): the talk scene that is on (`Night.talk`) with Trabolta's
+   *  state (`talk-back.ts` `talkView`), runtime-filled; null when none is
+   *  on; absent from an older server. */
+  talk?: TalkView | null;
   theme?: string;
   /** Every declared INTERACTION (the director may fire any of them). */
   interactions?: InteractionSummary[];
@@ -1550,13 +1555,18 @@ export interface NightView {
   /** (wave 26, T2) The story's last glitch: `Night.glitch_at` (story
    *  seconds) × 1000 as `at`, in the same unit as `GuestView.clock` (story
    *  ms); `text` from `Night.glitch_text` ("none" → null). Absent while
-   *  `Night.glitch_at` is 0, unset or not a number. */
-  glitch?: { at: number; text: string | null };
+   *  `Night.glitch_at` is 0, unset or not a number. Wave 32 (C5): `light`
+   *  when `Night.glitch_kind` is `"burst"` (a talk scene's short ad burst:
+   *  phones play the look-only takeover); absent for the full one. */
+  glitch?: { at: number; text: string | null; light?: true };
 }
 
 /** (wave 26, T2) The world paths `NightView.glitch` reads. */
 export const GLITCH_AT_PATH = "Night.glitch_at";
 export const GLITCH_TEXT_PATH = "Night.glitch_text";
+/** (wave 32, C5) `"burst"` = a talk scene's light ad burst; anything else
+ *  (`"full"`, unset) = the full takeover. */
+export const GLITCH_KIND_PATH = "Night.glitch_kind";
 
 /** Is this guest's phone locked (wave 26, R1)? The story's `lock:` header
  *  held for them (`sim.holds(cond, id, id)`); no header = never. */
@@ -1759,7 +1769,8 @@ export function nightView(sim: Sim): NightView {
     // Wave 26 (T2): the glitch, in story ms like `GuestView.clock`.
     const glitchAt = Number(worldText(sim, GLITCH_AT_PATH) ?? NaN);
     const glitchText = worldText(sim, GLITCH_TEXT_PATH);
-    const glitch = Number.isFinite(glitchAt) && glitchAt > 0 ? { glitch: { at: Math.round(glitchAt * 1000), text: glitchText === null || glitchText === "none" ? null : glitchText } } : {};
+    const light = worldText(sim, GLITCH_KIND_PATH) === "burst" ? { light: true as const } : {};
+    const glitch = Number.isFinite(glitchAt) && glitchAt > 0 ? { glitch: { at: Math.round(glitchAt * 1000), text: glitchText === null || glitchText === "none" ? null : glitchText, ...light } } : {};
     // The phase reads the same as a message's moment stamp (`chat.ts` `storyPhase`).
     return { act, phase: storyPhase(sim) ?? null, step: Number.isFinite(n) ? n : null, ...glitch };
   });
@@ -2183,6 +2194,11 @@ export interface PrimeView {
   character: string;
   title: string;
   theme: string;
+  /** Wave 32 (C5): a host booth's talk panel (the same block as
+   *  `HostView.talk`), runtime-filled on a host booth only (never a player's
+   *  or a plain performer's); null when no talk scene is on; absent from an
+   *  older server. */
+  talk?: TalkView | null;
   /** The story clock (ms, `Sim.elapsed()`) when this view was built — the
    *  "now" a client measures a message's `ts` against (e.g. only banner an
    *  alert it missed if it is under 10 minutes old). */
