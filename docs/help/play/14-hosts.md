@@ -35,6 +35,8 @@ closes it.
 
 **The first glitch (📺, wave 26)** takes over every phone and terminal
 once; your booth gets a short look-only flash that never blocks a cue.
+The talk scenes' ⚡ ad bursts (wave 32) are that short look-only flash on
+every phone, guests' included.
 
 **Your taskbar** reads **⊞ Start · Show · Chats · Desk · 📷 Scan**:
 
@@ -70,6 +72,9 @@ Top to bottom:
     and fills in the value.
   - When nothing is on offer it says so: the story is running, usually a
     timer you shouldn't press early.
+- **🤖 Talk** (only during a talk scene): Task Manager types what Clippy
+  says out loud and Trabolta answers on the TV, with canned lines for both,
+  ⚡ Glitch and NEXT ([Talking with Trabolta](talk-back.md)).
 - Under NEXT, one line says what just happened: *✓ Fired V2*, *✕ V6 not
   taken —* with the story's reason from `# hosts`, *Cues moved — tap
   again*, or *⚠ Last update 11 s ago · Can't reach the server* (FIRE dims
