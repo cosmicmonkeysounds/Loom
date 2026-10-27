@@ -17,6 +17,13 @@ the wave 12 contract §C3. The message list is
                     out (the guest = user, his own free replies = assistant)
     [last] system   the format reminder (+ the one RETRY note)
 
+A stage request (wave 32: a talk scene; Clippy speaks aloud in the Desktop
+and his answer is a public line the TV speaks) changes three things: the
+person card says so, P3 shows the room's recent lines (the story's scripted
+ones included, never one with a hunt or `never` word) in place of the
+house's posted lines, and P4 is only the live exchange. A canned line's
+`stage.direction` is a must-follow steer in `right_now`.
+
 Ollama hoists every system message of gpt-oss into one developer block, in
 order, so P1 then P2 is the cacheable start of every prompt. Nothing in P1
 depends on the speaker, the phase or the clock.

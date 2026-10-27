@@ -25,7 +25,9 @@ character's *mind* + live state + powers → the fast model → `{say,
 adjust, lookup?, act?}`. A `lookup` costs one more fast call with the
 session's answers appended (rare; a snoop). Requests are answered
 concurrently up to `concurrency` (a laptop GPU serves one generation at
-a time, so the default is 1). The **orchestrator** (`orchestrator.py`)
+a time, so the default is 1); a waiting stage request (wave 32: his public
+answer to Clippy in a talk scene) is served before every other waiting call
+(`slots.py`). The **orchestrator** (`orchestrator.py`)
 runs between turns: after each exchange it reflects and rewrites the
 mind; every couple of minutes it surveys the house. It is preempted by
 any new request, so replies stay snappy. Minds persist under `state_dir`
