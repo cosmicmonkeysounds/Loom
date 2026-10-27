@@ -11,6 +11,7 @@ import { isLocal } from "../lib/http.ts";
 import { doorsDecision, envServerNotice, guardThenReset, isDevServer, isScratch, mayResetAfter, resolveBase } from "../lib/safety.ts";
 import { Recorder, beatLine, pct, routeKey, summaryTable, tallyQuests } from "../lib/report.ts";
 import { awardWinners, betProblems, mismatches, worldOf, wrongPatchProblems } from "../lib/world.ts";
+import { boxInside, echoOf, heartGuard, occurrences, optionKey } from "../lib/terminal.ts";
 
 test("pressChain passes an aimed step's role and stops at a real refusal", async () => {
   const calls: Array<[string, string | undefined]> = [];
@@ -250,4 +251,31 @@ test("a non-local server from LOOM_SERVER is named before the guard; --base or a
   assert.equal(envServerNotice("https://rehearsal.example.org", "https://other.example.org", "https://rehearsal.example.org"), null);
   assert.equal(envServerNotice(undefined, "http://127.0.0.1:7391", "http://127.0.0.1:7391"), null);
   assert.equal(envServerNotice(undefined, undefined, ""), null);
+});
+
+// --- the heart terminal spec's helpers (lib/terminal.ts) ---------------------------
+
+test("heart spec: the option keys, the pick echoes, a box inside the viewport", () => {
+  assert.deepEqual([0, 8, 9, 10, 35, 36].map(optionKey), ["1", "9", "0", "a", "z", null]);
+  assert.equal(optionKey(-1), null);
+  assert.deepEqual(echoOf("⟦PROOF⟧ Show him the Sandy File."), { text: "[shows the Sandy File]", action: true });
+  assert.deepEqual(echoOf("⟦SHOW HIM⟧ I found more of yours."), { text: "I found more of yours.", action: false });
+  const view = { width: 1024, height: 600 };
+  assert.equal(boxInside({ x: 10, y: 500, width: 400, height: 40 }, view), true);
+  assert.equal(boxInside({ x: 10, y: 580, width: 400, height: 40 }, view), false, "past the bottom");
+  assert.equal(boxInside({ x: 10, y: 500, width: 400, height: 0 }, view), false, "not drawn");
+  assert.equal(boxInside(null, view), false);
+  assert.equal(boxInside({ x: 10, y: 500, width: 400, height: 40 }, view, { x: 0, y: 300, width: 500, height: 220 }), false, "clipped by its list");
+  assert.equal(occurrences(["Then listen to me.", " Then listen to me. ", "Ask."], "Then listen to me."), 2);
+});
+
+test("heart spec: the guard refuses real guests and asks off a scratch server", () => {
+  const bots = [{ id: "p-1", name: "Persona" }];
+  const real = [{ id: "g-abc123", name: "Winamp" }];
+  assert.deepEqual(heartGuard({ base: "http://127.0.0.1:7391", roster: bots, yes: false, live: false }), { ok: true });
+  assert.equal(heartGuard({ base: "http://127.0.0.1:7391", roster: real, yes: true, live: false }).ok, false);
+  assert.equal(heartGuard({ base: "http://127.0.0.1:7391", roster: real, yes: false, live: true }).ok, true);
+  assert.equal(heartGuard({ base: "http://127.0.0.1:7000", roster: bots, yes: false, live: false }).ok, false, "the dev server asks");
+  assert.equal(heartGuard({ base: "https://app.example.com", roster: bots, yes: false, live: false }).ok, false);
+  assert.equal(heartGuard({ base: "https://app.example.com", roster: bots, yes: true, live: false }).ok, true);
 });

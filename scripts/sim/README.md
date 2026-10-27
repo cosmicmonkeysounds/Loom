@@ -112,9 +112,12 @@ The chains it presses after the Y2K clock (`Y2K_TO_HEART_END`,
   Chrome can drive them): the director phone shows the cue sheet moving,
   the heart terminal plays the room's scenes (the bot pilots its own
   session, so its menus are not on that page: to walk the menus by hand,
-  open the terminal and scan in a program yourself), the TV.
+  open the terminal and scan in a program yourself, or run
+  `heart.spec.ts`, below), the TV.
 - `browser.spec.ts` screenshots the director phone, the heart terminal and
-  the TV at every beat:
+  the TV at every beat. The director phone signs in first: it waits for
+  the name field (*Your name (the log says who fired)*), fills it and
+  presses Sign in, so the later shots show the cue sheet:
 
   ```bash
   SIM_BASE=http://127.0.0.1:7391 SIM_MOD_CODE=<mod> SIM_BEAT_FILE=/tmp/beat.json SIM_SHOTS=/tmp/sim-shots \
@@ -122,10 +125,72 @@ The chains it presses after the Y2K clock (`Y2K_TO_HEART_END`,
   pnpm sim --base http://127.0.0.1:7391 --code <mod> --beat-file /tmp/beat.json --pace 1000
   ```
 
+## The heart terminal (`heart.spec.ts`)
+
+The evening's heart bot pilots over HTTP, so it never touches the
+terminal's own panel. `heart.spec.ts` drives the **real** server-room
+terminal (`/terminal/?code=<mod>&room=The%20Server%20Room&spot=server-room&door=off&keys=1&cam=0`)
+in Chromium, as a program would: it scans a pass through the typed
+fallback (*no camera? type your program name*, the program's id), then
+answers by number keys and clicks. His voice is muted: `speechSynthesis`
+is a stub (one fake voice, each utterance "said" for
+`SIM_SPEECH_MS_PER_CHAR` ms a character, default 12, at volume 0), so the
+panel's LISTENING is real and short.
+
+```bash
+# a FRESH scratch server (build play + terminal first: the server serves them)
+pnpm sim:heart --base http://127.0.0.1:7391 --code <mod> [--shots /tmp/heart] [--yes] [--headed]
+# or straight through Playwright (off a scratch server the y/N is SIM_YES=1)
+SIM_BASE=http://127.0.0.1:7391 SIM_MOD_CODE=<mod> SIM_SHOTS=/tmp/heart \
+  pnpm --filter loom-app exec playwright test -c ../scripts/sim/playwright.config.ts heart
+```
+
+Setup, over HTTP with the sim's lib: Power On (a fresh night only), two
+pool programs registered with the arrival's CAPTCHA, menus, Norton's scan
+and tour, the cue chain to the Y2K clock (`scripts/accept/chains.ts`
+`TO_Y2K`), *His Question Of Force* and *Omnipotence* granted (the
+Evidence sub-menu), the door opened and shut (the heart waits for a
+pass), and three phone DMs to Trabolta. No side is taken: the majority's
+bundle (*The Whole Truth*) hands out every codex entry, the proofs too.
+
+| # | Step | What it checks |
+|---|---|---|
+| 1 | Scan | The thread shows only this visit: none of the phone DMs, the *earlier messages are on your phone* rule once |
+| 2 | His opening | The panel shows LISTENING while he speaks (`data-wait="voice"`); a key sends no pick and the options are disabled; then it opens with ≤ 9 options, keyed 1…n, every option's box inside the viewport and its list (no ▼ MORE) at 1280x720 and 1024x600 |
+| 3 | A pick | Picked by key with its POST held a moment: the YOU line shows at once, dimmed (`pending`), then exactly once after the server's pick line |
+| 4 | The walk | Layer One → Two (*What are you, really?*, *Why do you need the theory*) → *Then listen to me.* → Three → ⟦SHOW HIM⟧ Evidence (⟦FORCE⟧, ⟦SMALL TYPE⟧) → ⟦BACK⟧ → ⟦TELL HIM⟧ Reasons → ⟦BACK⟧; each menu's option count is recorded |
+| 4b | Against w26 | Each layer menu offers more than the pre-wave-27 story did for the same program (`PRE_W27`, from `beats/server-room.loom` at `a3ed075a`) |
+| 5 | A proof mid-talk | *The Sandy File* granted through `/api/mod/codex` while Layer Three is docked: ⟦PROOF⟧ joins the same menu (same `data-menu`, the w28 `refreshMenus`); picked, it reads `[shows the Sandy File]` (an `act` line) and its scene holds the panel (`data-wait="scene"`); then ⟦FORCE⟧ and *Then let me finish.* to Layer Four |
+| 6 | Reload | A reload mid-visit and a re-scan keep his earlier lines and this visit's picks, and still none of the phone DMs |
+| 8 | The phone | `/api/history` as the program: its `dm:Trabolta` holds the heart picks as its own `pick` lines (one an `act`) |
+| 7 | Thrown out | DISCONNECT, a second program flatters, then *I could pull your cables* until *ACCESS TO THE HEART TERMINATED*; re-scanned at once, its thread holds none of that visit's lines |
+
+Each step takes a screenshot at 1280x720 and at 1024x600
+(`NN-what-WxH.png`, never a code in the name). `results.json` beside them
+holds each step's pass / fail with notes and every menu's option count;
+`speech-log*.json` what the stub said and when. One run takes about two
+minutes.
+
+The guard: a roster with a real guest refuses unless
+`--i-know-this-is-live` (`SIM_LIVE=1` to the spec); off a scratch server
+on this laptop `heart.ts` asks y/N (`--yes` skips it) and the spec refuses
+without `SIM_YES=1`. The spec needs a fresh night (`Night.step` 0): the
+programs it registers make a second run's guard see real guests, so start
+a fresh scratch server each time. It skips itself during the evening's
+companion run (`SIM_BEAT_FILE` set).
+
+Seen on its first run: a `play()` that throws (the stub's voice object,
+refused by a real `SpeechSynthesisUtterance`) wedged the terminal's
+`SpeechQueue` for good: nothing was said again, his replies sat behind
+the typing row and every menu held LISTENING until the 20 s cap. Fixed in
+`terminal/src/speech/engine.ts` (the queue survives a throwing engine;
+`BrowserEngine` drops a voice the utterance refuses).
+
 ## Tests
 
 `node --experimental-strip-types --no-warnings --test scripts/sim/test/sim.test.ts`
-(the chain walk, the heart bot's choices, the world reads, the scoreboard).
+(the chain walk, the heart bot's choices, the world reads, the scoreboard,
+the heart spec's helpers and guard).
 `scripts/ops/predeploy.sh` runs them with the accept helpers. Typecheck:
 `core/node_modules/.bin/tsc -p scripts/sim`.
 
@@ -139,5 +204,7 @@ The chains it presses after the Y2K clock (`Y2K_TO_HEART_END`,
   recruiters and founders.
 - Free replies from Trabolta (the house worker), and his `assess` power.
   `--worker` answers with a few canned in-world lines.
-- The terminal's own UI (the composer, the panel, the scenes): that is
+- The terminal's own UI beyond the heart's panel and thread
+  (`heart.spec.ts`): the composer and the heart to heart, the file panel,
+  the door overlay with a real M4, the voice on real speakers. That is
   `terminal`'s tests and a human (or Claude in Chrome) at the page.

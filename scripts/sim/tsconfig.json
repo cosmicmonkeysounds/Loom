@@ -17,5 +17,5 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true
   },
-  "include": ["evening.ts", "lib/*.ts", "test/*.ts"]
+  "include": ["evening.ts", "heart.ts", "lib/*.ts", "test/*.ts"]
 }
