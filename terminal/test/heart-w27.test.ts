@@ -11,6 +11,8 @@ import {
   echoOf,
   echoTime,
   emptyThreadText,
+  heartWaitingFirstWord,
+  HEART_FIRST_WORD_MS,
   heartSceneLeft,
   heartSceneMs,
   layerLabel,
@@ -113,7 +115,8 @@ describe("the composer and the line's end (B6, B7)", () => {
     expect(at("room_heart_shutdown", 20_000)).toBe(true);
     expect(at("room_heart_eject", 600_000)).toBe(true);
     expect(at("room_heart_layer_2", 2_100)).toBe(false);
-    expect(composerBlocked({ cue: { value: "room_heart_eject", at: 500 }, since, now: 2_000, stage: "talk", heart: true })).toBe(false);
+    // An eject from before this line opened is not this line's (past the first-word hold).
+    expect(composerBlocked({ cue: { value: "room_heart_eject", at: 500 }, since, now: since + HEART_FIRST_WORD_MS, stage: "talk", heart: true })).toBe(false);
     expect(composerBlocked({ cue: null, since, now: 2_000, stage: "done", heart: true })).toBe(true);
     expect(composerBlocked({ cue: null, since, now: 2_000, stage: "done", heart: false })).toBe(false);
     expect(composerShown({ keys: true, menu: null, blocked: true })).toBe(false);
@@ -133,7 +136,40 @@ describe("the empty thread", () => {
   it("never asks a keyboard-less rig or his heart to say something", () => {
     expect(emptyThreadText({ character: "Trabolta", keys: true, heart: false })).toMatch(/say something/);
     expect(emptyThreadText({ character: "Trabolta", keys: false, heart: false })).not.toMatch(/say/);
-    expect(emptyThreadText({ character: "Trabolta", keys: true, heart: true })).not.toMatch(/say something/);
+    expect(emptyThreadText({ character: "Trabolta", keys: true, heart: true, stage: "talk", waited: 1_000 })).toMatch(/he speaks first/);
+  });
+
+  it("says he speaks first only while his heart will answer the opening (review)", () => {
+    const at = (stage: string | null, waited: number) => emptyThreadText({ character: "Trabolta", keys: true, heart: true, stage, waited });
+    for (const stage of ["door", "scan", "talk"]) expect(at(stage, 0)).toMatch(/he speaks first/);
+    // Sealed, done, or no word from him by now (the story kept him silent): a plain line.
+    expect(at("sealed", 0)).toMatch(/say something/);
+    expect(at("done", 0)).toMatch(/say something/);
+    expect(at(null, 0)).toMatch(/say something/);
+    expect(at("talk", HEART_FIRST_WORD_MS)).toMatch(/say something/);
+    expect(emptyThreadText({ character: "Trabolta", keys: false, heart: true, stage: "done", waited: 0 })).not.toMatch(/say/);
+  });
+});
+
+describe("the heart's opening holds the composer (review, B7)", () => {
+  const since = 10_000;
+  const blocked = (o: { cue?: { value: string; at: number } | null; now: number; stage?: string; menu?: boolean; heart?: boolean }) =>
+    composerBlocked({ cue: o.cue ?? null, since, now: o.now, stage: o.stage ?? "talk", heart: o.heart ?? true, menu: o.menu });
+  it("no text box until his heart has answered the opening: a barred re-scan is never offered one", () => {
+    expect(blocked({ now: since })).toBe(true);
+    expect(blocked({ now: since + 2_000 })).toBe(true);
+    expect(blocked({ now: since + 2_000, cue: { value: "room_heart_eject", at: since + 1_900 } })).toBe(true);
+    // A layer card answered (the menu hides the composer on its own).
+    expect(blocked({ now: since + 2_000, cue: { value: "room_heart_layer_1", at: since + 1_900 } })).toBe(false);
+    expect(blocked({ now: since + 2_000, menu: true })).toBe(false);
+  });
+
+  it("never past the hold, never for a heart that won't answer, never off the heart", () => {
+    expect(blocked({ now: since + HEART_FIRST_WORD_MS })).toBe(false);
+    expect(blocked({ now: since, stage: "sealed" })).toBe(false);
+    expect(blocked({ now: since, heart: false })).toBe(false);
+    expect(heartWaitingFirstWord("scan", 0)).toBe(true);
+    expect(heartWaitingFirstWord("sealed", 0)).toBe(false);
   });
 });
 

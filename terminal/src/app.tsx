@@ -1282,7 +1282,7 @@ function Terminal({
   const beatLayer = menu === null ? null : layerOfBeat(menu.beat);
   if (beatLayer !== null) lastLayer.current.layer = beatLayer;
   const menuLayer = beatLayer ?? lastLayer.current.layer;
-  const showComposer = composerShown({ keys: config.keys, menu, blocked: pilot !== null && composerBlocked({ cue: roomCue, since: pilotSince.current, now, stage: state?.night?.heart_stage ?? null, heart: heartTerminal }) });
+  const showComposer = composerShown({ keys: config.keys, menu, blocked: pilot !== null && composerBlocked({ cue: roomCue, since: pilotSince.current, now, stage: state?.night?.heart_stage ?? null, heart: heartTerminal, menu: menu !== null }) });
 
   const online = pilot !== null ? session.online : castOnline;
   const status = online === null ? "" : online ? `${config.character.toUpperCase()} ONLINE` : `${config.character.toUpperCase()} AWAY — REPLIES WHEN BACK`;
@@ -1341,7 +1341,7 @@ function Terminal({
                   </button>
                 </div>
               )}
-              <Thread lines={threadLines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} echoes={echoes} earlier={room !== null && threadLines.length < session.lines.length} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal })} />
+              <Thread lines={threadLines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} echoes={echoes} earlier={room !== null && threadLines.length < session.lines.length} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
                 <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} layer={menuLayer} onSkip={roomBusy ? undefined : skipVoice} />
               )}

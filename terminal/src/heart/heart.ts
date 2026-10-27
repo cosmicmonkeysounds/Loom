@@ -374,15 +374,41 @@ export function echoTime(newest: { ts: number } | undefined, seenAt: number | un
 }
 
 /**
+ * Does his heart answer a line opening here (main.loom `when terminal_opened`)?
+ * Only while it is open for a talk: `heart_stage` door, scan or talk.
+ */
+export function heartAnswersOpen(stage: string | null): boolean {
+  return stage === "door" || stage === "scan" || stage === "talk";
+}
+
+/**
+ * How long (ms) the heart terminal waits on his first word: the visit opens
+ * once the stream's history is in (≤ VISIT_OPEN_FALLBACK_MS), then a poll
+ * brings his answer. Past it the line is treated as a plain one (the story
+ * can keep him silent in ways this screen can't see).
+ */
+export const HEART_FIRST_WORD_MS = 6_000;
+
+/** Is the heart terminal still waiting on his first word, `waited` ms into the line? */
+export function heartWaitingFirstWord(stage: string | null, waited: number): boolean {
+  return heartAnswersOpen(stage) && waited < HEART_FIRST_WORD_MS;
+}
+
+/**
  * Is the composer held back (B7)? While a proof or the shutdown plays,
  * for the rest of a line thrown out (an eject since it opened — a barred
- * program's re-scan too: no heart to heart, D24), and at the heart
- * terminal once the heart is done (`Night.heart_stage` done).
+ * program's re-scan too: no heart to heart, D24), at the heart terminal
+ * once the heart is done (`Night.heart_stage` done), and at the heart
+ * terminal until his heart has answered the line's opening (a menu or a
+ * scene since it opened; `heartWaitingFirstWord`, capped).
  */
-export function composerBlocked(o: { cue: { value: string; at: number } | null; since: number; now: number; stage: string | null; heart: boolean }): boolean {
+export function composerBlocked(o: { cue: { value: string; at: number } | null; since: number; now: number; stage: string | null; heart: boolean; menu?: boolean }): boolean {
   if (o.heart && o.stage === "done") return true;
-  const c = o.cue;
-  if (c === null || c.at <= 0 || c.at < o.since) return false;
+  const c = o.cue !== null && o.cue.at > 0 && o.cue.at >= o.since ? o.cue : null;
+  // His heart answers the opening: no text box until it has (a menu or a
+  // scene), so a barred program's re-scan is never offered one.
+  if (o.heart && c === null && o.menu !== true && heartWaitingFirstWord(o.stage, o.now - o.since)) return true;
+  if (c === null) return false;
   if (c.value === "room_heart_eject") return true;
   if (c.value === "room_heart_proof" || c.value === "room_heart_shutdown") return heartSceneLeft(c, o.since, o.now) > 0;
   return false;
@@ -402,9 +428,13 @@ export function pilotEndWait(o: { sceneLeft: number; voiceBusy: boolean; sinceCu
   return 0;
 }
 
-/** The thread's empty line: a keyboard-less rig, or his heart, is never asked to "say something". */
-export function emptyThreadText(o: { character: string; keys: boolean; heart: boolean }): string {
+/**
+ * The thread's empty line. A keyboard-less rig is never asked to "say
+ * something"; his heart says he speaks first only while it will
+ * (`heartWaitingFirstWord`: a heart open for a talk, early in the line).
+ */
+export function emptyThreadText(o: { character: string; keys: boolean; heart: boolean; stage?: string | null; waited?: number }): string {
   const who = o.character.toUpperCase();
-  if (o.heart) return `— direct line to ${who} open. he speaks first. —`;
+  if (o.heart && heartWaitingFirstWord(o.stage ?? null, o.waited ?? 0)) return `— direct line to ${who} open. he speaks first. —`;
   return o.keys ? `— direct line to ${who} open. say something. —` : `— direct line to ${who} open. —`;
 }
