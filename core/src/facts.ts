@@ -23,14 +23,27 @@ export function isFactsFile(path: string): boolean {
 
 // ───────────────────────── types ─────────────────────────
 
-/** A fact category's key in `categories` (the file declares them — a
- *  colour + where that stack hides — so the engine never names one). */
+/** A fact category's key in `categories`: what the fact is about (the
+ *  file declares them, so the engine never names one). The QR stacks are
+ *  the tiers, not the categories (wave 35). */
 export type FactCategory = string;
 
 export interface CategoryMeta {
+  /** What the category holds, in the team's words. */
+  label: string;
+}
+
+/** A fact's rarity tier, a key in `tiers` (wave 35). The file declares
+ *  them commonest first; each tier is one QR stack: its colour band on the
+ *  print sheet and how hard its cards are hidden. */
+export type FactTier = string;
+
+export interface TierMeta {
+  /** The tier's name on the print sheet and the stacks, e.g. `Very rare`. */
+  label: string;
   /** The QR stack's colour, for the print sheet. */
   colour: string;
-  /** Where that stack is hidden. */
+  /** How that stack's cards are hidden (anywhere in the house). */
   stack: string;
 }
 
@@ -95,6 +108,8 @@ export interface FactCodex {
 export interface Fact {
   id: string;
   category: FactCategory;
+  /** The rarity tier (required when the file declares `tiers`). */
+  tier?: FactTier;
   /** The team's own fact line, verbatim. */
   text: string;
   /** Already told by a hand-written CODEX: emit nothing; the id must exist. */
@@ -166,6 +181,8 @@ export interface FactsFile {
   show?: { title: string };
   judge?: JudgeConfig;
   categories?: Record<FactCategory, CategoryMeta>;
+  /** The rarity tiers, commonest first: one QR stack each. */
+  tiers?: Record<FactTier, TierMeta>;
   /** Keyed by round number (`"1"`, `"2"`, …). */
   rounds?: Record<string, RoundMeta>;
   questions: Question[];
@@ -282,6 +299,7 @@ export function validateFacts(raw: unknown): ValidatedFacts {
     else factIds.add(id);
     const label = isStr(id) ? `fact ${id}` : at;
     if (!isStr(x["category"]) || x["category"] === "") problems.push(`${label}: category must be a non-empty string`);
+    if (x["tier"] !== undefined && (!isStr(x["tier"]) || x["tier"] === "")) problems.push(`${label}: tier must be a non-empty string`);
     if (!isStr(x["text"])) problems.push(`${label}: text must be a string`);
     if (x["existing"] !== undefined && (!isStr(x["existing"]) || x["existing"] === "")) problems.push(`${label}: existing must name a codex entry`);
     if (x["code"] !== undefined && !isStr(x["code"])) problems.push(`${label}: code must be a string`);
@@ -341,9 +359,23 @@ export function validateFacts(raw: unknown): ValidatedFacts {
     if (!isRec(categories)) problems.push("categories must be an object keyed by category");
     else {
       for (const [k, v] of Object.entries(categories)) {
-        if (!isRec(v) || !isStr(v["colour"]) || !isStr(v["stack"])) problems.push(`categories.${k} needs colour + stack strings`);
+        if (!isRec(v) || !isStr(v["label"])) problems.push(`categories.${k} needs a label string`);
       }
       for (const f of facts) if (isStr(f.category) && !(f.category in categories)) problems.push(`fact ${f.id}: category ${JSON.stringify(f.category)} is not declared in categories`);
+    }
+  }
+
+  const tiers = raw["tiers"];
+  if (tiers !== undefined) {
+    if (!isRec(tiers)) problems.push("tiers must be an object keyed by tier");
+    else {
+      for (const [k, v] of Object.entries(tiers)) {
+        if (!isRec(v) || !isStr(v["label"]) || !isStr(v["colour"]) || !isStr(v["stack"])) problems.push(`tiers.${k} needs label + colour + stack strings`);
+      }
+      for (const f of facts) {
+        if (f.tier === undefined) problems.push(`fact ${f.id}: needs a tier (the file declares tiers)`);
+        else if (isStr(f.tier) && !(f.tier in tiers)) problems.push(`fact ${f.id}: tier ${JSON.stringify(f.tier)} is not declared in tiers`);
+      }
     }
   }
 
@@ -403,6 +435,14 @@ export const SHOW_QUESTION_LAYOUT: ReadonlyArray<{ id: string; round: number }> 
 /** At least this many Truth-or-Dare questions. */
 export const SHOW_MIN_TRUTHS = 15;
 
+/** The show's rarity tiers (wave 35), commonest first: the file declares
+ *  exactly these, in this order, and each holds fewer facts than the one
+ *  before it. Common cards lie in the open; rare ones hide in odd but
+ *  findable places (most of the ties between programs); very rare ones are
+ *  tucked away and change the plot; legendary ones tell the deep truth.
+ *  (An empty tier is allowed; a test fixture needs no legendary card.) */
+export const SHOW_TIERS = ["common", "rare", "very-rare", "legendary"] as const;
+
 /** Unlock codes: capitals, digits and hyphens, no apostrophes. */
 export const CODE = /^[A-Z0-9][A-Z0-9-]*$/u;
 
@@ -432,8 +472,9 @@ const BAD_TEXT = /["{}|]/u;
  *  category used is declared; `show.title` present; ≥ 15 truths; every
  *  codex id and every code (questions', facts', the codes recorded on
  *  `existing` facts) unique, codes matching `CODE`; no `"`, `{`, `}` or
- *  `|` in a question's or a truth's text; a `character` fact's codex has
- *  an `about`; a fact is `existing` xor has a `codex`; a `door`, when
+ *  `|` in a question's or a truth's text; exactly the `SHOW_TIERS`,
+ *  in order, every fact in one, each tier smaller than the last; a
+ *  `character` fact's codex has an `about`; a fact is `existing` xor has a `codex`; a `door`, when
  *  present, has a 4–8 digit `code`, a clue that never contains it, a
  *  codex (unique id) whose text does, and — with `clues` — one note per
  *  digit (`doorProblems`). */
@@ -488,9 +529,17 @@ export function showFactsProblems(f: FactsFile): string[] {
   }
 
   const categories = f.categories ?? {};
+  const tiers = f.tiers ?? {};
+  const declared = Object.keys(tiers);
+  if (declared.join(",") !== SHOW_TIERS.join(",")) problems.push(`tiers: must declare ${SHOW_TIERS.join(", ")}, in that order (got ${declared.join(", ") || "none"})`);
+  const perTier = SHOW_TIERS.map((t) => f.facts.filter((x) => x.tier === t).length);
+  perTier.forEach((n, i) => {
+    if (i > 0 && n > 0 && n >= perTier[i - 1]!) problems.push(`tiers: ${SHOW_TIERS[i]} must hold fewer facts than ${SHOW_TIERS[i - 1]} (${n} ≥ ${perTier[i - 1]})`);
+  });
   for (const fact of f.facts) {
     const by = `fact ${fact.id}`;
     if (!(fact.category in categories)) problems.push(`${by}: category ${JSON.stringify(fact.category)} is not declared in categories`);
+    if (fact.tier === undefined || !(fact.tier in tiers)) problems.push(`${by}: tier ${JSON.stringify(fact.tier ?? null)} is not declared in tiers`);
     if (fact.existing !== undefined && fact.codex !== undefined) problems.push(`${by}: existing and codex are exclusive`);
     if (fact.existing === undefined && fact.codex === undefined) problems.push(`${by}: needs existing or codex`);
     if (fact.code !== undefined) {

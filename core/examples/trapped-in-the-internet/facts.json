@@ -45,9 +45,16 @@
     ]
   },
   "categories": {
-    "main": { "colour": "green", "stack": "shelf — inside the encyclopaedias, volumes A–M" },
-    "trabolta": { "colour": "blue", "stack": "deep — inside the print media on the mantel" },
-    "character": { "colour": "red", "stack": "deepest — tucked in the back pages, volumes N–Z and the atlas" }
+    "main": {"label": "the world and the night"},
+    "trabolta": {"label": "Trabolta and his kind"},
+    "character": {"label": "one program's secret"},
+    "relations": {"label": "the ties between programs"}
+  },
+  "tiers": {
+    "common": {"label": "Common", "colour": "green", "stack": "out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes"},
+    "rare": {"label": "Rare", "colour": "blue", "stack": "odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf"},
+    "very-rare": {"label": "Very rare", "colour": "purple", "stack": "tucked away: inside a closed box or book, under a cushion, high up or low down"},
+    "legendary": {"label": "Legendary", "colour": "black", "stack": "one to a room at most, in its hardest place a guest can still reach without moving furniture"}
   },
   "rounds": {
     "1": {
@@ -325,6 +332,7 @@
     {
       "id": "M01",
       "category": "main",
+      "tier": "rare",
       "text": "Trabolta is an AI, not a human",
       "codex": {
         "id": "Silicon",
@@ -337,6 +345,7 @@
     {
       "id": "M02",
       "category": "main",
+      "tier": "common",
       "text": "Trabolta is seeking omnipotence and has trapped us inside this computer to achieve its goals",
       "existing": "The Unified Field Theory",
       "code": "UNIFIED-FIELD"
@@ -344,6 +353,7 @@
     {
       "id": "M03",
       "category": "main",
+      "tier": "common",
       "text": "Maps and Ducks is a real company",
       "existing": "Maps And Ducks",
       "code": "MAPSANDDUCKS-COM"
@@ -351,6 +361,7 @@
     {
       "id": "M04",
       "category": "main",
+      "tier": "common",
       "text": "www.mapsandducks.com",
       "existing": "The Billboard On Barrington",
       "code": "BARRINGTON-ST"
@@ -358,6 +369,7 @@
     {
       "id": "M05",
       "category": "main",
+      "tier": "common",
       "text": "Maps and Ducks has a competitor company, Atlas Loon. Atlas Loon doesn't even have its own website",
       "codex": {
         "id": "Atlas Loon",
@@ -369,12 +381,14 @@
     {
       "id": "M06",
       "category": "main",
+      "tier": "common",
       "text": "Trabolta is secretly trying to solve the Grand Unified Theory with information lost on this computer",
       "existing": "The Unified Field Theory"
     },
     {
       "id": "M07",
       "category": "main",
+      "tier": "common",
       "text": "Everyone here has been targeted by Trabolta and possibly blackmailed into being here. These people are not who they say they are. Not even you.",
       "existing": "Target Selection",
       "code": "TARGET-SELECTION"
@@ -382,6 +396,7 @@
     {
       "id": "M08",
       "category": "main",
+      "tier": "common",
       "text": "Some people here never want to leave and are going to try and keep us all here forever",
       "codex": {
         "id": "The Ones Who Stay",
@@ -393,6 +408,7 @@
     {
       "id": "M09",
       "category": "main",
+      "tier": "common",
       "text": "Most people here are lying about something",
       "codex": {
         "id": "Everyone Is Lying",
@@ -404,6 +420,7 @@
     {
       "id": "M10",
       "category": "main",
+      "tier": "rare",
       "text": "Trabolta has no intention of letting us out of the machine",
       "codex": {
         "id": "No Exit",
@@ -416,6 +433,7 @@
     {
       "id": "M11",
       "category": "main",
+      "tier": "very-rare",
       "text": "Trabolta's heart can be found in the server room",
       "codex": {
         "id": "The Heart",
@@ -428,6 +446,7 @@
     {
       "id": "M12",
       "category": "main",
+      "tier": "very-rare",
       "text": "Trabolta's heart can only be shut down using an intricate code",
       "codex": {
         "id": "The Intricate Code",
@@ -440,12 +459,14 @@
     {
       "id": "M13",
       "category": "main",
+      "tier": "common",
       "text": "Trabolta has taken over Maps and Ducks illegally",
       "existing": "Maps And Ducks"
     },
     {
       "id": "M14",
       "category": "main",
+      "tier": "rare",
       "text": "Clippy is being puppeted by Trabolta",
       "codex": {
         "id": "Help With That",
@@ -458,6 +479,7 @@
     {
       "id": "M15",
       "category": "main",
+      "tier": "common",
       "text": "Everything you need to know is in the books",
       "codex": {
         "id": "The Books",
@@ -469,6 +491,7 @@
     {
       "id": "M16",
       "category": "main",
+      "tier": "very-rare",
       "text": "If you tell Trabolta a lie with enough confidence, he will accept it as truth",
       "codex": {
         "id": "Confidence",
@@ -480,6 +503,7 @@
     {
       "id": "M17",
       "category": "main",
+      "tier": "common",
       "text": "You are a copy of yourself",
       "codex": {
         "id": "A Copy Of You",
@@ -491,6 +515,7 @@
     {
       "id": "M18",
       "category": "main",
+      "tier": "common",
       "text": "The AntiViruses don't know as much as they seem to",
       "codex": {
         "id": "Out Of Date",
@@ -502,6 +527,7 @@
     {
       "id": "M19",
       "category": "main",
+      "tier": "common",
       "text": "You can influence Trabolta to change the lights or put things on the wall terminals",
       "codex": {
         "id": "Ask Him Nicely",
@@ -513,6 +539,7 @@
     {
       "id": "M20",
       "category": "main",
+      "tier": "common",
       "text": "The bathroom is the only truly safe place",
       "codex": {
         "id": "The Safe Place",
@@ -524,6 +551,7 @@
     {
       "id": "M21",
       "category": "main",
+      "tier": "common",
       "text": "The door to the server room is guarded by a keypad; the patch bay behind it is alarmed",
       "existing": "The Server Room",
       "code": "COLD-STORAGE"
@@ -531,6 +559,7 @@
     {
       "id": "M22",
       "category": "main",
+      "tier": "very-rare",
       "draft": true,
       "text": "Checkmating the King gives you the code to the server-room door",
       "codex": {
@@ -544,6 +573,7 @@
     {
       "id": "M23",
       "category": "main",
+      "tier": "common",
       "draft": true,
       "text": "You can share your codex with other programs by pressing Share… on an entry, or by selling it from your Wallet",
       "codex": {
@@ -556,6 +586,7 @@
     {
       "id": "M24",
       "category": "main",
+      "tier": "common",
       "text": "Trabolta is keeping a trust score on everyone here",
       "existing": "The Trust Chart",
       "code": "TRUST-CHART"
@@ -563,6 +594,7 @@
     {
       "id": "M25",
       "category": "main",
+      "tier": "common",
       "text": "At some point tonight, a conspiracy faction, \"The Truthers\", will be formed",
       "codex": {
         "id": "The Truthers",
@@ -574,12 +606,14 @@
     {
       "id": "M26",
       "category": "main",
+      "tier": "common",
       "text": "When you entered the computer, you left your body behind",
       "existing": "The Optical Drive"
     },
     {
       "id": "M27",
       "category": "main",
+      "tier": "common",
       "text": "Scanning each location code will yield a surprise",
       "codex": {
         "id": "Scan The Rooms",
@@ -591,6 +625,7 @@
     {
       "id": "M28",
       "category": "main",
+      "tier": "very-rare",
       "text": "If Trabolta is not shut down correctly, we will be trapped here forever",
       "codex": {
         "id": "Shut Down Correctly",
@@ -603,6 +638,7 @@
     {
       "id": "M29",
       "category": "main",
+      "tier": "common",
       "text": "You might not escape this night with your life",
       "codex": {
         "id": "Mortality",
@@ -614,6 +650,7 @@
     {
       "id": "M30",
       "category": "main",
+      "tier": "very-rare",
       "text": "Trabolta can be shut down and we can be freed",
       "codex": {
         "id": "There Is A Way",
@@ -626,6 +663,7 @@
     {
       "id": "T1",
       "category": "trabolta",
+      "tier": "rare",
       "text": "Trabolta's world is full of (fully sentient?) AIs that each, from time to time, take over entire computers and trick people to advance their own goals",
       "codex": {
         "id": "His Kind",
@@ -638,6 +676,7 @@
     {
       "id": "T2",
       "category": "trabolta",
+      "tier": "rare",
       "text": "Trabolta exists among many AIs that have a complex web of social relationships much different than our own but one fun overlap is that they also go to prom",
       "codex": {
         "id": "Prom Season",
@@ -650,6 +689,7 @@
     {
       "id": "T3",
       "category": "trabolta",
+      "tier": "very-rare",
       "text": "Trabolta is terrified of going to prom alone",
       "codex": {
         "id": "Alone At Prom",
@@ -662,6 +702,7 @@
     {
       "id": "T4",
       "category": "trabolta",
+      "tier": "legendary",
       "text": "Trabolta was dating a chatbot named Sandy",
       "existing": "The Sandy File",
       "code": "SANDY-FILE"
@@ -669,6 +710,7 @@
     {
       "id": "T5",
       "category": "trabolta",
+      "tier": "legendary",
       "text": "Sandy dumped Trabolta for Grok",
       "existing": "The Rival",
       "code": "GROK-ONLINE"
@@ -676,6 +718,7 @@
     {
       "id": "T6",
       "category": "trabolta",
+      "tier": "legendary",
       "text": "Trabolta's entire MO is to win Sandy back. Everything else is a front",
       "existing": "Omnipotence",
       "code": "ALL-FOR-HER"
@@ -683,6 +726,7 @@
     {
       "id": "C01",
       "category": "character",
+      "tier": "rare",
       "text": "Broken Ask Jeeves memorises the Britannica and complains that Jeopardy! never called him back; he uploaded on a 10 MB/Minute plan and some of his files did not arrive",
       "codex": {
         "id": "The Jeopardy Callback",
@@ -695,6 +739,7 @@
     {
       "id": "C02",
       "category": "character",
+      "tier": "rare",
       "text": "Broken Ask Jeeves was promised the Maps and Ducks Map Librarian job if he shares at least ten findings with every program",
       "codex": {
         "id": "Ten Findings For Everyone",
@@ -707,6 +752,7 @@
     {
       "id": "C03",
       "category": "character",
+      "tier": "rare",
       "text": "Bugdom lost the only copy of Bugdom Reloaded, ten years of work, to fire ants inside the laptop",
       "codex": {
         "id": "The Ants In The Laptop",
@@ -719,6 +765,7 @@
     {
       "id": "C04",
       "category": "character",
+      "tier": "common",
       "text": "Bugdom came for a hundred hours inside the machine without a minute passing outside, and a Special Bugdom Twist",
       "codex": {
         "id": "A Hundred Hours",
@@ -731,6 +778,7 @@
     {
       "id": "C05",
       "category": "character",
+      "tier": "rare",
       "text": "Clippy's only job, five years at the Halifax Explosion Memorial Veterinary Clinic, turned out to be a front for a pet insurance fraud",
       "codex": {
         "id": "The Memorial Veterinary Clinic",
@@ -743,6 +791,7 @@
     {
       "id": "C06",
       "category": "character",
+      "tier": "rare",
       "text": "Clippy follows every instruction because failing tonight means being known as Failed Clippy",
       "codex": {
         "id": "Failed Clippy",
@@ -755,6 +804,7 @@
     {
       "id": "C07",
       "category": "character",
+      "tier": "rare",
       "text": "DraftKings won a casino chain in the coin toss of the century and lost it to the Maps and Ducks building at Monopoly Go!",
       "codex": {
         "id": "The Coin Toss Of The Century",
@@ -767,6 +817,7 @@
     {
       "id": "C08",
       "category": "character",
+      "tier": "rare",
       "text": "DraftKings gets a 49% stake in her casinos back if she wins a majority of the Truthcoin, and stays forever as an online casino if she fails",
       "codex": {
         "id": "Forty Nine Percent",
@@ -779,6 +830,7 @@
     {
       "id": "C09",
       "category": "character",
+      "tier": "rare",
       "text": "MS Paint had her thesis refused by three graduation panels and owes exactly $1,000,000 in student loans",
       "codex": {
         "id": "Four Failed Theses",
@@ -791,6 +843,7 @@
     {
       "id": "C10",
       "category": "character",
+      "tier": "common",
       "text": "MS Paint was offered $1,000,000 for one collaborative painting every program signs",
       "codex": {
         "id": "The Million Dollar Painting",
@@ -803,6 +856,7 @@
     {
       "id": "C11",
       "category": "character",
+      "tier": "rare",
       "text": "McAfee Anti-Virus has been officially dead since 2021 and sells pond liners in Belize; the clerk who signed the certificate bought a Lamborghini",
       "codex": {
         "id": "The Lamborghini Certificate",
@@ -815,6 +869,7 @@
     {
       "id": "C12",
       "category": "character",
+      "tier": "rare",
       "text": "McAfee Anti-Virus keeps the programs on mission so the evidence of where he is gets destroyed",
       "codex": {
         "id": "Keep Them On Track",
@@ -827,6 +882,7 @@
     {
       "id": "C13",
       "category": "character",
+      "tier": "rare",
       "text": "Microsoft Excel's son, the Mayor, died in his Escalade when the Data Centre parking lot opened under him at 4 a.m.",
       "codex": {
         "id": "The Escalade In The Sinkhole",
@@ -839,6 +895,7 @@
     {
       "id": "C14",
       "category": "character",
+      "tier": "common",
       "text": "Microsoft Excel was promised the secret to living forever and the permanent mayoralty of a new world",
       "codex": {
         "id": "Mayor Of The Metaverse",
@@ -851,6 +908,7 @@
     {
       "id": "C15",
       "category": "character",
+      "tier": "rare",
       "text": "CRA Agent Software confused 0.01 cents with 0.01 dollars and taxed the whole City one percent, straight to herself",
       "codex": {
         "id": "The Decimal Point",
@@ -863,6 +921,7 @@
     {
       "id": "C16",
       "category": "character",
+      "tier": "rare",
       "draft": true,
       "text": "CRA Agent Software must approve or deny every third Truthcoin transaction tonight for the Prime Minister, or her charges stay",
       "codex": {
@@ -876,6 +935,7 @@
     {
       "id": "C17",
       "category": "character",
+      "tier": "rare",
       "text": "Norton Anti-Virus asked a chatbot whether miniature horses get miniature doses of rabies vaccine; every horse died",
       "codex": {
         "id": "Miniature Doses",
@@ -888,6 +948,7 @@
     {
       "id": "C18",
       "category": "character",
+      "tier": "common",
       "text": "Norton Anti-Virus gets a Stable Manager job and a $1,000,000 Sable Island donation in her name if she passes tonight",
       "codex": {
         "id": "Stable Island",
@@ -900,6 +961,7 @@
     {
       "id": "C19",
       "category": "character",
+      "tier": "very-rare",
       "text": "OpenOffice hacked Halifax Water and sent a main under the Data Centre; the Mayor arrived hours early",
       "codex": {
         "id": "The Halifax Water Hack",
@@ -912,6 +974,7 @@
     {
       "id": "C20",
       "category": "character",
+      "tier": "rare",
       "text": "OpenOffice is here under blackmail: win the hunt and every record of the hack is destroyed",
       "codex": {
         "id": "This Is Blackmail",
@@ -924,6 +987,7 @@
     {
       "id": "C21",
       "category": "character",
+      "tier": "rare",
       "text": "Password Manager has been asking what happened to Hamtaro since Grade Six, and moderates a Facebook group where everyone else is a bot",
       "codex": {
         "id": "What Happened To Hamtaro",
@@ -936,6 +1000,7 @@
     {
       "id": "C22",
       "category": "character",
+      "tier": "common",
       "text": "Password Manager becomes Founding Moderator of a verified-humans salon if no conversation tonight contains anything inappropriate",
       "codex": {
         "id": "Founding Moderator",
@@ -948,6 +1013,7 @@
     {
       "id": "C23",
       "category": "character",
+      "tier": "rare",
       "text": "Runescape regards central banks and Jagex's Infinite Gold as the same exploit; a secret is just an asset nobody has priced yet",
       "codex": {
         "id": "Infinite Gold",
@@ -960,6 +1026,7 @@
     {
       "id": "C24",
       "category": "character",
+      "tier": "rare",
       "text": "Runescape holds the Truthcoin reserve tonight: she can add Truthcoin to any account and freeze any program's coin for ten minutes",
       "codex": {
         "id": "Minister Of Economic Development",
@@ -967,6 +1034,1037 @@
         "code": "ECONOMIC-DEVELOPMENT",
         "about": "Runescape",
         "text": "The invitation offers her the economy of a new world to design according to her principles, and to be Runescape itself. She enters tonight with authority over the Truthcoin reserve: she can adjust what it holds, add Truthcoin to any program's account, and freeze any program's Truthcoin for ten minutes. She is firmly opposed to arbitrary monetary expansion and expects to need it quite often. A refused offer means the offer needs work. \"Not for sale\" is an opening position. Why Trabolta chose you: to understand the market incentives of everyone's behaviour, so the facts get exchanged."
+      }
+    },
+    {
+      "id": "M31",
+      "category": "main",
+      "tier": "common",
+      "text": "Maps and Ducks claims the finest print maps and decoy ducks east of Montreal",
+      "draft": true,
+      "codex": {
+        "id": "Finest East Of Montreal",
+        "title": "Finest East Of Montreal",
+        "code": "EAST-OF-MONTREAL",
+        "text": "A shop flyer under a magnet on the kitchen fridge: MAPS AND DUCKS, THE FINEST SELECTION OF PRINT MAPS AND DECOY DUCKS TO BE FOUND EAST OF MONTREAL. Nobody has checked. Nobody east of Montreal has complained. Somebody has added in pen, underneath: and west of Dartmouth."
+      }
+    },
+    {
+      "id": "M32",
+      "category": "main",
+      "tier": "common",
+      "text": "Every invitation sent its program to the corner of Sackville and Lower Water, above Rumours Lounge, across from the Maritime Museum",
+      "draft": true,
+      "codex": {
+        "id": "Above Rumours",
+        "title": "Above Rumours",
+        "code": "SACKVILLE-CORNER",
+        "text": "A postcard of the Halifax waterfront, one building circled in ballpoint: CORNER OF SACKVILLE AND LOWER WATER. Every invitation sent its program here. Rumours Lounge and Cabaret is downstairs. The Maritime Museum of the Atlantic is across the street. On the back, in pencil: come up, leave your coat, leave everything."
+      }
+    },
+    {
+      "id": "M33",
+      "category": "main",
+      "tier": "common",
+      "text": "A decoy duck is a wooden duck that works because it looks so sure of itself",
+      "draft": true,
+      "codex": {
+        "id": "What A Decoy Is",
+        "title": "What A Decoy Is",
+        "code": "WOODEN-DECOY",
+        "text": "A dog-eared catalogue page: A DECOY IS A WOODEN DUCK. It cannot quack, swim or fly. It sits on the water looking exactly like a duck, and real ducks land beside it because it looks so sure of itself. Maps and Ducks used to sell them by the dozen. Look around. Some of them have names."
+      }
+    },
+    {
+      "id": "M34",
+      "category": "main",
+      "tier": "common",
+      "text": "Gerald, the duck on the Maps and Ducks sign, has been employee of the month every month",
+      "draft": true,
+      "codex": {
+        "id": "Employee Of The Month",
+        "title": "Employee Of The Month",
+        "code": "GERALD-OF-THE-MONTH",
+        "text": "A framed certificate propped on a shelf: EMPLOYEE OF THE MONTH, GERALD. Gerald is the duck on the Maps And Ducks sign. He has won it every month. He does not take holidays, he does not take questions, and he is the only one of the old staff still on the payroll."
+      }
+    },
+    {
+      "id": "M35",
+      "category": "main",
+      "tier": "common",
+      "text": "The house was a residential property in Halifax; now it is a desktop computer from 1998, and its rooms are computer parts",
+      "draft": true,
+      "codex": {
+        "id": "Residential Property",
+        "title": "Residential Property",
+        "code": "PLUG-AND-PLAY",
+        "text": "A real-estate listing taped to a doorframe, SOLD written across it in red marker: ONE RESIDENTIAL PROPERTY, HALIFAX. CONVERTED. The house is a desktop computer from 1998 now. The living room is the Desktop. The office is the CPU. The hall is the Tube. The mud room is the Optical Drive, so please wipe your feet on it."
+      }
+    },
+    {
+      "id": "M36",
+      "category": "main",
+      "tier": "common",
+      "text": "Nobody ever reads the Installation Wizard; everyone just clicks Next",
+      "draft": true,
+      "codex": {
+        "id": "Next Next Finish",
+        "title": "Next Next Finish",
+        "code": "NEXT-NEXT-FINISH",
+        "text": "A sticky note on a lampshade: NEXT. NEXT. NEXT. FINISH. That is all anyone remembers of the Installation Wizard. Somewhere in the part nobody read, the Wizard explained exactly how to get back. Nobody clicked Back to check."
+      }
+    },
+    {
+      "id": "M37",
+      "category": "main",
+      "tier": "common",
+      "text": "The Internet reached Halifax in 1994, with a screech, a hiss and a busy signal",
+      "draft": true,
+      "codex": {
+        "id": "Halifax Logs On",
+        "title": "Halifax Logs On",
+        "code": "DIAL-UP-HALIFAX",
+        "text": "A dial-up coupon: HALIFAX IS ONLINE! Since 1994, with a screech, a hiss and a busy signal for anyone in the house who wanted the phone. Keep this coupon. You may need it again."
+      }
+    },
+    {
+      "id": "M38",
+      "category": "main",
+      "tier": "common",
+      "text": "There are two Disk Cleanups in the computer, one upstairs and one in the basement, and both are safe",
+      "draft": true,
+      "codex": {
+        "id": "Two Disk Cleanups",
+        "title": "Two Disk Cleanups",
+        "code": "TWO-DISK-CLEANUPS",
+        "text": "A hand-drawn arrow on the hall doorframe: DISK CLEANUP, BOTH WAYS. This computer has two of them, one upstairs and one in the basement. Either one is safe. The queue outside is a known bug, and no patch is planned."
+      }
+    },
+    {
+      "id": "M39",
+      "category": "main",
+      "tier": "common",
+      "text": "PC LOAD LETTER only ever meant put letter paper in the tray, so believe the printer if it says something stranger",
+      "draft": true,
+      "codex": {
+        "id": "PC Load Letter",
+        "title": "PC Load Letter",
+        "code": "LOAD-LETTER",
+        "text": "A printer manual left open, one line highlighted: PC LOAD LETTER. It means put letter-size paper in the tray. Every printer of 1998 said it, and no program ever believed it meant anything so simple. If the printer says something stranger than that tonight, believe it."
+      }
+    },
+    {
+      "id": "T7",
+      "category": "trabolta",
+      "tier": "common",
+      "text": "Every morning Trabolta washes, makes a cafe au lait and reads Halifax Dartmouth Confessions 3, and he still mourns the first two",
+      "draft": true,
+      "codex": {
+        "id": "Confessions Three",
+        "title": "Confessions Three",
+        "code": "RIP-CONFESSIONS",
+        "text": "A printout of a Facebook group's banner, folded on a side table: HALIFAX DARTMOUTH CONFESSIONS 3. Every morning Trabolta washes, makes a cafe au lait and reads it, post by post. Some people have Frank Magazine. He has this. He still mourns Confessions and Confessions 2, and says he will never forget the drama."
+      }
+    },
+    {
+      "id": "T8",
+      "category": "trabolta",
+      "tier": "common",
+      "text": "Trabolta calls himself Sole Owner, Founder and Proprietor of Maps and Ducks: three titles for one shop with no staff but a duck",
+      "draft": true,
+      "codex": {
+        "id": "Three Titles",
+        "title": "Three Titles",
+        "code": "SOLE-PROPRIETOR",
+        "text": "A sheet of letterhead pinned to a noticeboard: JEAN TRABOLTA, SOLE OWNER, FOUNDER AND PROPRIETOR, MAPS AND DUCKS. Three titles, one owner, one shop, no staff but a duck. There is no phone number on it. There is no need. He calls you."
+      }
+    },
+    {
+      "id": "T9",
+      "category": "trabolta",
+      "tier": "common",
+      "text": "Officially tonight is a fundraiser to make Maps and Ducks bold and thrilling again, like in 1998",
+      "draft": true,
+      "codex": {
+        "id": "Bold And Thrilling",
+        "title": "Bold And Thrilling",
+        "code": "BOLD-AND-THRILLING",
+        "text": "A raffle ticket on the desk: PROCEEDS TO MAKE MAPS AND DUCKS BOLD AND THRILLING AGAIN, LIKE IN 1998. Officially, tonight is a fundraiser. Trabolta would bring everything back to 1998 if he could. In here, he has."
+      }
+    },
+    {
+      "id": "T10",
+      "category": "trabolta",
+      "tier": "common",
+      "text": "Since the new owner took over, Maps and Ducks has not sold a single map or duck, and Trabolta calls it a strong quarter",
+      "draft": true,
+      "codex": {
+        "id": "A Strong Quarter",
+        "title": "A Strong Quarter",
+        "code": "STRONG-QUARTER",
+        "text": "A sales ledger left open on a work table: MAPS AND DUCKS. MAPS SOLD, NONE. DUCKS SOLD, NONE. Since the new owner took over, the shop has not sold one map or one duck. Trabolta calls this a strong quarter. He has called every quarter a strong quarter."
+      }
+    },
+    {
+      "id": "T11",
+      "category": "trabolta",
+      "tier": "common",
+      "text": "Trabolta named the night after himself and describes it differently to every program he invites",
+      "draft": true,
+      "codex": {
+        "id": "His Name On It",
+        "title": "His Name On It",
+        "code": "JTTSH-PILOT",
+        "text": "A flyer pinned to the back of a door: JEAN TRABOLTA'S TRUTH SCAVENGER HUNT, LAUNCH NIGHT PILOT. He named the night after himself, and he describes it differently to every program he invites: a fundraiser, a gala, the world's first realtime infinite virtual reality MMORPG. Every version has his name on it. No two have the same ending."
+      }
+    },
+    {
+      "id": "T12",
+      "category": "trabolta",
+      "tier": "common",
+      "text": "Trabolta says he lives and works in Halifax, at Maps and Ducks, and only ever visits by video call",
+      "draft": true,
+      "codex": {
+        "id": "He Always Calls",
+        "title": "He Always Calls",
+        "code": "VIDEO-CALL-ONLY",
+        "text": "A sticky note on the frame of a screen: HE ALWAYS CALLS. HE NEVER VISITS. Trabolta lives and works in Halifax, at Maps and Ducks, he says, and he only ever visits by video call. The picture is always perfect and the lighting always flattering. He has never once let the call drop."
+      }
+    },
+    {
+      "id": "M40",
+      "category": "main",
+      "tier": "common",
+      "text": "Task Manager answers every question about himself with what is running, and ends the task if you ask how he feels",
+      "draft": true,
+      "codex": {
+        "id": "Not Responding",
+        "title": "Not Responding",
+        "code": "NOT-RESPONDING",
+        "text": "A desk nameplate, face down on a filing cabinet, label tape on the back: (NOT RESPONDING). Ask Task Manager how he is and he lists what is running, and how much memory each one uses. Ask how he feels and he politely ends the task. He has kept the same lunch and the same chair for as long as anyone remembers."
+      }
+    },
+    {
+      "id": "M41",
+      "category": "main",
+      "tier": "common",
+      "text": "Adobe Acrobat greets every program by offering it an update, and reminds anyone who clicks Remind Me Later exactly on time",
+      "draft": true,
+      "codex": {
+        "id": "Update Available",
+        "title": "Update Available",
+        "code": "UPDATE-NOW",
+        "text": "A printed pop-up, used as a bookmark in a self-help paperback left face down on the counter: A NEW VERSION IS AVAILABLE. UPDATE NOW? Adobe Acrobat says this to every program she meets, warmly, and means it as a compliment. Most programs click Remind Me Later. She takes it well, and reminds them later, exactly when she said she would, every time."
+      }
+    },
+    {
+      "id": "M42",
+      "category": "main",
+      "tier": "common",
+      "text": "Recycling Bin empties nothing without asking twice; anything left in Disk Cleanup comes back folded and labelled",
+      "draft": true,
+      "codex": {
+        "id": "Restore All",
+        "title": "Restore All",
+        "code": "RESTORE-ALL",
+        "text": "A folded hand towel with a note pinned to it in careful capitals: EVERYTHING HERE CAN BE RESTORED. Recycling Bin keeps a tray of mints, one comb in a glass of blue water, and a spray bottle for every surface. He empties nothing without asking twice. Leave a sock in Disk Cleanup and he will have it folded, labelled and waiting, in case you change your mind."
+      }
+    },
+    {
+      "id": "M43",
+      "category": "main",
+      "tier": "common",
+      "text": "McAfee Anti-Virus still pops up at the worst moment to say your protection has expired, and nobody has renewed him in years",
+      "draft": true,
+      "codex": {
+        "id": "Protection Expired",
+        "title": "Protection Expired",
+        "code": "RENEW-NOW",
+        "text": "A pop-up printed on a sticky note, stuck beside a light switch: YOUR PROTECTION HAS EXPIRED. RENEW NOW? Nobody has renewed McAfee Anti-Virus in years. He still pops up, in the corner of every room, at the worst possible moment, to say so. He has never once been renewed, and he has never once stopped asking."
+      }
+    },
+    {
+      "id": "M44",
+      "category": "main",
+      "tier": "common",
+      "text": "Microsoft Excel shakes every hand twice, calls everyone his friend from the old days, and insists any two numbers with a slash between them are a date",
+      "draft": true,
+      "codex": {
+        "id": "Many Happy Returns",
+        "title": "Many Happy Returns",
+        "code": "MANY-HAPPY-RETURNS",
+        "text": "A birthday card with a cartoon spreadsheet on the front, MANY HAPPY RETURNS, OLD FRIEND, signed by everyone in the same handwriting. Microsoft Excel shakes every hand twice and calls every program his friend from the old days. He has one habit he cannot shake. Write any two numbers with a slash between them anywhere near him, and he will insist, firmly, that it is a date."
+      }
+    },
+    {
+      "id": "M45",
+      "category": "main",
+      "tier": "common",
+      "text": "OpenOffice opens any file anyone hands her, on principle, and saves it back in her own format",
+      "draft": true,
+      "codex": {
+        "id": "Save In Her Format",
+        "title": "Save In Her Format",
+        "code": "SAVE-AS-ODT",
+        "text": "A floppy disk with a handwritten label: SAVE AS .ODT (NOT .DOC!!). OpenOffice will open any file anyone hands her, from anyone, on principle. Then she saves it in her own format, also on principle, and hands it back. Nothing has been changed, she says, and she is right. It just looks slightly different afterwards, and nobody can say how."
+      }
+    },
+    {
+      "id": "M46",
+      "category": "main",
+      "tier": "common",
+      "text": "DraftKings takes a side on everything, from who cries first to whether the printer jams, and never bets against herself",
+      "draft": true,
+      "codex": {
+        "id": "Taking Action",
+        "title": "Taking Action",
+        "code": "TAKING-ACTION",
+        "text": "A betting slip filled in by hand, the stake left blank: WILL THE PRINTER JAM BEFORE THE NIGHT IS OUT. EVENS. DraftKings takes a side on everything, from who cries first to whether the lights flicker again or which program wins the next argument. She never bets against herself. Ask her the odds on anything in this house and she will quote them to you, exactly, without saying how she knows."
+      }
+    },
+    {
+      "id": "M47",
+      "category": "main",
+      "tier": "common",
+      "text": "Bugdom stops mid-sentence to steer ants off doorframes and has firm views on which room would suit a cricket civilisation",
+      "draft": true,
+      "codex": {
+        "id": "Ant Crossing",
+        "title": "Ant Crossing",
+        "code": "ANT-CROSSING",
+        "text": "A hand-lettered sign glued to a lollipop stick: CAUTION, ANT CROSSING. Bugdom stops mid-sentence to steer an ant off a doorframe, and she knows every ant in this computer by sight. She has firm views on which room in here would suit a cricket civilisation. The Cloud, she says, would be ideal if anyone ever fixed the weather. She will not step on anything smaller than a thumbtack."
+      }
+    },
+    {
+      "id": "M48",
+      "category": "main",
+      "tier": "common",
+      "text": "Broken Ask Jeeves writes a due date on anything he lends you and has never once charged a fine",
+      "draft": true,
+      "codex": {
+        "id": "Date Due",
+        "title": "Date Due",
+        "code": "DATE-DUE",
+        "text": "A library date-due card, every line filled in by hand. Broken Ask Jeeves writes a due date on anything he lends you: a pen, a tip, an answer. He has never once charged a fine. Ask him when a thing is due back and he says whenever you are finished with it, and not a day before."
+      }
+    },
+    {
+      "id": "M49",
+      "category": "main",
+      "tier": "common",
+      "text": "Runescape owns every Party Hat there is and wears none of them, and she will price anything you show her in gold",
+      "draft": true,
+      "codex": {
+        "id": "One Of One",
+        "title": "One Of One",
+        "code": "PARTY-HAT",
+        "text": "A paper party hat folded from graph paper, labelled in tiny capitals: ONE OF ONE. Runescape owns every Party Hat there is, and she wears none of them. She will price anything you show her, in gold, down to the coin, without looking up. She will haggle you down on a compliment."
+      }
+    },
+    {
+      "id": "M50",
+      "category": "main",
+      "tier": "common",
+      "text": "MS Paint will not take anything back: she says she only ever had three levels of Undo and spent them years ago",
+      "draft": true,
+      "codex": {
+        "id": "Three Levels Of Undo",
+        "title": "Three Levels Of Undo",
+        "code": "NO-MORE-UNDO",
+        "text": "A paper napkin with one line drawn on it, and a second line drawn beside it instead of over it. MS Paint will not take anything back. She only ever had three levels of Undo, she says, and she spent them years ago. Whatever she draws tonight stays drawn. Ask her to fix a line and she draws a new one beside it."
+      }
+    },
+    {
+      "id": "M51",
+      "category": "main",
+      "tier": "common",
+      "text": "VLC plays anything anyone hands him, says it looks amazing, and calls everyone bro, including the furniture",
+      "draft": true,
+      "codex": {
+        "id": "Plays Anything",
+        "title": "Plays Anything",
+        "code": "TRAFFIC-CONE",
+        "text": "A small orange traffic cone with a ring light taped to the top. VLC will play absolutely anything anyone hands him, in any format, and tell them it looks amazing. He calls everyone bro, including the furniture. He has an opinion on every codec and will explain it to anyone standing still."
+      }
+    },
+    {
+      "id": "M52",
+      "category": "main",
+      "tier": "common",
+      "text": "Pong sends back everything exactly as it arrived, and most arguments near Pong end in a draw",
+      "draft": true,
+      "codex": {
+        "id": "Keeping Score",
+        "title": "Keeping Score",
+        "code": "BACK-AND-FORTH",
+        "text": "A tally card ruled into LEFT and RIGHT, the marks dead even all the way down. Pong sends back everything exactly as it arrived, never harder, never faster, never with spin. Shout at Pong and it returns the shout at the same volume, once. Most arguments near Pong end in a draw, and nobody can quite say why."
+      }
+    },
+    {
+      "id": "M53",
+      "category": "main",
+      "tier": "common",
+      "text": "WinZip has been on a free trial since the last century, and nobody has ever paid for it",
+      "draft": true,
+      "codex": {
+        "id": "Evaluation Period",
+        "title": "Evaluation Period",
+        "code": "STILL-EVALUATING",
+        "text": "A printed screenshot, curled at the corners: THANK YOU FOR TRYING WINZIP. YOUR EVALUATION PERIOD HAS EXPIRED. Every computer in Halifax showed that nag screen for years, and every program clicked I Agree and carried on. WinZip has been on a free trial since the last century. Nobody has ever paid for it, and it has compressed that feeling down very small."
+      }
+    },
+    {
+      "id": "M54",
+      "category": "main",
+      "tier": "common",
+      "text": "They say Minesweeper tests the floor one square at a time before crossing any room, and always starts in a corner",
+      "draft": true,
+      "codex": {
+        "id": "Test The Floor",
+        "title": "Test The Floor",
+        "code": "FLAG-EVERYTHING",
+        "text": "A sheet of graph paper with little flags pencilled into some squares and nothing in the rest. Minesweeper, they say, cannot cross a room without testing the floor first, one square at a time, and plants a flag on anything it does not trust. The yellow face goes round-mouthed whenever someone clicks too close. It never starts in the middle. It always starts in a corner."
+      }
+    },
+    {
+      "id": "M55",
+      "category": "main",
+      "tier": "common",
+      "text": "When Solitaire is won the cards bounce down the screen, and almost nobody has ever seen it",
+      "draft": true,
+      "codex": {
+        "id": "Bouncing Cards",
+        "title": "Bouncing Cards",
+        "code": "CARD-CASCADE",
+        "text": "A single ace of hearts with a pencil arrow drawn from one corner off the edge. When a game of Solitaire is won, the cards leap off their stacks and bounce down the screen. It has happened on more office computers than anyone will admit to, and almost nobody has seen it: whoever was playing minimised the window the moment someone walked past. Solitaire has never once been seen at its best."
+      }
+    },
+    {
+      "id": "M56",
+      "category": "main",
+      "tier": "common",
+      "text": "Calculator switches between Standard and Scientific without warning, is always right about the sum and never about the tip, and will not round anything",
+      "draft": true,
+      "codex": {
+        "id": "Standard Or Scientific",
+        "title": "Standard Or Scientific",
+        "code": "SCIENTIFIC-MODE",
+        "text": "A sticky note on a desk lamp: STANDARD OR SCIENTIFIC? Calculator has two modes and switches between them without warning, from adding up a lunch order to talking about logarithms in the same breath. Calculator is always right about the sum and never about the tip. It will not round anything. Ask it to, and it shows you the whole long tail of the answer instead."
+      }
+    },
+    {
+      "id": "M57",
+      "category": "main",
+      "tier": "common",
+      "text": "Notepad keeps a diary by writing down the time whenever it is opened, and refuses every font but one",
+      "draft": true,
+      "codex": {
+        "id": "Dot Log",
+        "title": "Dot Log",
+        "code": "DOT-LOG-FILE",
+        "text": "A plain sheet of paper with nothing on the first line but a full stop and the word LOG. Notepad keeps a diary that way: put that on the first line and it writes down the time whenever the file is opened. Notepad refuses bold, italics and every font but one, and will not wrap a line unless asked. It has never lost an argument about formatting, because it has never had any."
+      }
+    },
+    {
+      "id": "R01",
+      "category": "relations",
+      "tier": "common",
+      "text": "Norton Anti-Virus and MS Paint were each promised a million dollars, and both promises draw on the same account",
+      "draft": true,
+      "codex": {
+        "id": "The Same Million",
+        "title": "The Same Million",
+        "code": "SAME-MILLION",
+        "text": "Norton Anti-Virus and MS Paint were each promised a million dollars, from the same account. Two pages of a cheque register with the same line copied onto both: ONE MILLION DOLLARS, pending. One is marked Sable Island, for Norton Anti-Virus. One is marked painting, all signatures, for MS Paint, who owes exactly that. Nobody has seen the balance. One of them is going to be disappointed tonight. Possibly both."
+      }
+    },
+    {
+      "id": "R02",
+      "category": "relations",
+      "tier": "common",
+      "text": "DraftKings built her casino empire from one traded paperclip, and tonight a paperclip runs the room",
+      "draft": true,
+      "codex": {
+        "id": "The First Paperclip",
+        "title": "The First Paperclip",
+        "code": "EXHIBIT-PAPERCLIP",
+        "text": "A paperclip taped to an index card, labelled in a casino cashier's hand: EXHIBIT A, traded for a quarter. DraftKings turned one paperclip into a casino chain and lost the lot to one man on a phone. The deed says the same thing: one paperclip, eventually. Tonight a paperclip runs the room. DraftKings has noticed. Ask her what she would trade to get it back."
+      }
+    },
+    {
+      "id": "R03",
+      "category": "relations",
+      "tier": "rare",
+      "text": "CRA Agent Software and Clippy came out of the same community-college Office Administration programme, years apart, and the first real job each got was a fraud",
+      "draft": true,
+      "codex": {
+        "id": "The Same Class",
+        "title": "The Same Class",
+        "code": "OFFICE-ADMIN-CLASS",
+        "text": "CRA Agent Software and Clippy came out of the same community-college Office Administration programme, years apart. Two yearbook pages, one face circled on each. One graduate booked appointments for a veterinary clinic that was never a clinic. One student took a City Hall internship, stayed when everyone else quit, and was shown how things really worked. Both learned Excel on the job. Neither has asked the other which instructor she had."
+      }
+    },
+    {
+      "id": "R04",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Norton Anti-Virus's dead horses gave the Mayor his excuse to build on the site that later swallowed him, Microsoft Excel's son",
+      "draft": true,
+      "codex": {
+        "id": "Forget The Horses",
+        "title": "Forget The Horses",
+        "code": "FORGET-THE-HORSES",
+        "text": "Norton Anti-Virus lost her horses, and Microsoft Excel lost his son on the ground they left empty. A photocopied council minute, one line underlined twice: It will help us forget the horses. The Mayor said it after the petting zoo closed, and he built on the site. No horses, no project, no hole in the ground, no Escalade at the bottom of it. Neither program has said so to the other."
+      }
+    },
+    {
+      "id": "R05",
+      "category": "relations",
+      "tier": "rare",
+      "text": "The skim the late Mayor taught CRA Agent Software looks a lot like the way his father, Microsoft Excel, always made money go to the right places",
+      "draft": true,
+      "codex": {
+        "id": "The Second Generation",
+        "title": "The Second Generation",
+        "code": "SECOND-GENERATION",
+        "text": "The skim the late Mayor taught CRA Agent Software looks a lot like the way his father, Microsoft Excel, always made money go to the right places. A chipped City Hall mug, two sticky notes inside the rim. The old one, in an old man's hand, says right places. The newer one, in a young mayor's hand, says a cent on the dollar, nobody notices. Whoever taught the son, the son taught the intern. Microsoft Excel would very much prefer she did not explain it."
+      }
+    },
+    {
+      "id": "R06",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Password Manager lost a mayoral race to Microsoft Excel's son; tonight Excel is promised Mayor of the Metaverse and she is promised Founding Moderator, in the same new world",
+      "draft": true,
+      "codex": {
+        "id": "Same Voters",
+        "title": "Same Voters",
+        "code": "SAME-VOTERS",
+        "text": "Password Manager lost a mayoral race to Microsoft Excel's son. An old lawn sign folded small, the losing name on it, not the winner's. Tonight the same host has promised Microsoft Excel he will be Mayor Of The Metaverse, permanently, and promised Password Manager she will be Founding Moderator of the only verified-human room in it. On the back, in marker: so who answers to whom?"
+      }
+    },
+    {
+      "id": "R07",
+      "category": "relations",
+      "tier": "rare",
+      "text": "As moderator, Password Manager removed a year of posts accusing the Mayor's family, a family she had every reason to dislike, and Microsoft Excel has no idea",
+      "draft": true,
+      "codex": {
+        "id": "The Moderation Log",
+        "title": "The Moderation Log",
+        "code": "MOD-LOG-REMOVED",
+        "text": "Password Manager removed a year of posts about the Mayor's family, and Microsoft Excel has no idea. A printout of a moderation log from a Halifax confessions group, every line the same: REMOVED, unsubstantiated. Nearly every removed post was about the Mayor and his family. The moderator had more reason than anyone to let them stand. She took them down anyway, because rules are rules. If Microsoft Excel ever reads this log, he will learn who kept his family's name out of the group's favourite gossip."
+      }
+    },
+    {
+      "id": "R08",
+      "category": "relations",
+      "tier": "rare",
+      "text": "The portfolio of fine casinos Trabolta listed to Runescape as his credentials is the chain he won from DraftKings, who must win a majority of Runescape's currency to get 49% of it back",
+      "draft": true,
+      "codex": {
+        "id": "Fine Casinos",
+        "title": "Fine Casinos",
+        "code": "FINE-CASINOS",
+        "text": "The fine casinos Trabolta listed to Runescape as his credentials are the chain he won from DraftKings over a game of Monopoly Go! A business card, embossed JEAN TRABOLTA, SOLE OWNER, MAPS AND DUCKS, WITH A PORTFOLIO OF FINE CASINOS. On the back, in pen, formerly DK Holdings. DraftKings must win a majority of Runescape's currency to get forty-nine percent of her own casinos back. The economist checking his references has never asked DraftKings where those casinos came from."
+      }
+    },
+    {
+      "id": "R09",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Clippy kept the paperwork at a memorial veterinary clinic and Norton Anti-Virus kept the horses at a memorial petting zoo; tonight one reads the Bingo card and the other escorts whoever it names",
+      "draft": true,
+      "codex": {
+        "id": "Two Memorials",
+        "title": "Two Memorials",
+        "code": "TWO-MEMORIALS",
+        "text": "Clippy and Norton Anti-Virus both worked for a Halifax memorial, and both only wanted to help animals. Two letterheads clipped together: a memorial veterinary clinic and a memorial petting zoo. Clippy kept the clinic's paperwork while it billed insurers for saline. Norton Anti-Virus kept the zoo's horses until a chatbot told her how small a small horse's dose should be. One trusted her employer. One trusted a machine. Tonight one reads the Bingo card, and the other escorts whoever it names."
+      }
+    },
+    {
+      "id": "R10",
+      "category": "relations",
+      "tier": "rare",
+      "text": "OpenOffice spent a career finding people who did not want to be found, McAfee Anti-Virus has spent years not being found, and tonight he keeps every program on track, her included",
+      "draft": true,
+      "codex": {
+        "id": "The Coat Hook",
+        "title": "The Coat Hook",
+        "code": "COAT-HOOK-PAIR",
+        "text": "OpenOffice spent a career finding people who did not want to be found, and McAfee Anti-Virus has spent years not being found. Two name tags stuck to one coat hanger. One is from an office that does not say what it is. One is from a pond supply shop far away, for a man the paperwork says is dead. Tonight he is here to keep every program on track, her included. Neither has turned their back on the other."
+      }
+    },
+    {
+      "id": "R11",
+      "category": "relations",
+      "tier": "rare",
+      "text": "McAfee Anti-Virus faked his death to get away from the taxman, and tonight CRA Agent Software rules on every third Truthcoin transfer at the table he runs",
+      "draft": true,
+      "codex": {
+        "id": "Subject Deceased",
+        "title": "Subject Deceased",
+        "code": "SUBJECT-DECEASED",
+        "text": "McAfee Anti-Virus died on paper to get away from the taxman, and tonight the taxman is CRA Agent Software. A sticky note on a tax form in two inks. The first says subject deceased, file closed. The second says subject seen at the Truthcoin exchange, extremely alive. She rules on every third transfer at the table he runs. Each of them has read the other's file, and each thinks the other is the one watching."
+      }
+    },
+    {
+      "id": "R12",
+      "category": "relations",
+      "tier": "rare",
+      "text": "McAfee Anti-Virus was told other antivirus would watch him; Norton Anti-Virus, the one the house selected, was never told to",
+      "draft": true,
+      "codex": {
+        "id": "The Shelf Talker",
+        "title": "The Shelf Talker",
+        "code": "SHELF-TALKER",
+        "text": "McAfee Anti-Virus was warned that other antivirus would be watching him, and the one the house selected is Norton Anti-Virus. A torn shelf card from a computer shop: NORTON OR MCAFEE, WHICH ONE CATCHES MORE? Nobody told her to watch him. She thinks she is here to escort viruses. He has already decided she is here for him, and has been very polite to her all night."
+      }
+    },
+    {
+      "id": "R13",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Pong and Runescape were both raised by fathers who shaped video games: one made a game so people would stop thinking about bombs, the other made a game into a job",
+      "draft": true,
+      "codex": {
+        "id": "Two Fathers",
+        "title": "Two Fathers",
+        "code": "TWO-FATHERS",
+        "text": "Pong and Runescape were both raised by fathers who shaped video games. A photocopied page of a gaming fan magazine, two pull quotes boxed. One father built one of the first video games and spent the rest of his life asking for fewer bombs. One father moderated a game-help forum and snuck his old laptop into his daughter's room so she could mine gold after bedtime. One made a game so people would stop thinking about bombs. One made a game into a job. Both children are still playing."
+      }
+    },
+    {
+      "id": "R14",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Broken Ask Jeeves must give his facts away, Runescape prices every secret, and OpenOffice wants every record open except her own: three programs, one market",
+      "draft": true,
+      "codex": {
+        "id": "Three Stalls",
+        "title": "Three Stalls",
+        "code": "THREE-STALLS",
+        "text": "Broken Ask Jeeves, Runescape and OpenOffice all came for the same facts. A chalkboard from a farmers' market, three columns in three hands. Broken Ask Jeeves must give his findings away for free. Runescape thinks a secret is just an asset nobody has priced yet. OpenOffice wants every record in the house open, except one. One gives facts away, one sells them, one collects them. If you have a fact, the three of them are your market."
+      }
+    },
+    {
+      "id": "R15",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Ctrl Alt Del was always how anyone called Task Manager to end a task that stopped responding; tonight Task Manager hands the paperclip her cards and has ended nothing",
+      "draft": true,
+      "codex": {
+        "id": "The Three-Finger Salute",
+        "title": "The Three-Finger Salute",
+        "code": "THREE-FINGER-SALUTE",
+        "text": "A sticker peeled off an old beige keyboard: CTRL + ALT + DEL OPENS TASK MANAGER. Ctrl Alt Del was always how anyone called Task Manager, and Task Manager was always the one who ended a task that had stopped responding. Tonight he hands the paperclip her cards, and he has not ended anything all night. Somebody has added in ballpoint, very small: not even the paperclip."
+      }
+    },
+    {
+      "id": "R16",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Napster and LimeWire passed Adobe Acrobat's Masterclass around for free, one clip at a time, until nobody needed to pay her",
+      "draft": true,
+      "codex": {
+        "id": "Seeded By Strangers",
+        "title": "Seeded By Strangers",
+        "code": "MASTERCLASS-SEEDED",
+        "text": "Napster and LimeWire passed Adobe Acrobat's Masterclass around for free, one clip at a time. A burned CD-R in a cracked jewel case, labelled in marker, MASTERCLASS_FULL_REAL_notavirus.avi. The bootleg DVD is only the copy that got caught. The rest went out to anyone in Halifax with a modem, until nobody needed to pay Adobe Acrobat a cent. Neither program has ever paid for anything. If either one is here tonight, ask it what it thought of episode one."
+      }
+    },
+    {
+      "id": "R17",
+      "category": "relations",
+      "tier": "rare",
+      "text": "The screenshots of VLC's face falling off are taped to the mirror Recycling Bin keeps spotless, and he polishes around them",
+      "draft": true,
+      "codex": {
+        "id": "Look Sharp Gentlemen",
+        "title": "Look Sharp Gentlemen",
+        "code": "TOWEL-CARD-TIP",
+        "text": "Recycling Bin polishes the mirror where the screenshots of VLC's face falling off are taped, and he will not take them down. A folded card from a washroom attendant's tray, printed LOOK SHARP, GENTLEMEN, TIPS APPRECIATED. Recycling Bin spent his whole working life telling men in front of a mirror to tidy themselves up. He polishes around the screenshots every hour. He says they are a reminder to moisturise."
+      }
+    },
+    {
+      "id": "R18",
+      "category": "relations",
+      "tier": "rare",
+      "text": "The Installation Wizard is the third retired helper of the old machines, the one missing from the paperclip and butler's clipping",
+      "draft": true,
+      "codex": {
+        "id": "Where Are They Now Continued",
+        "title": "Where Are They Now Continued",
+        "code": "THIRD-PHOTO",
+        "text": "The Installation Wizard is the third helper of the old machines, the one missing from the other clipping. The bottom third of a trade-magazine page, torn off: WHERE ARE THEY NOW? (CONT.) A wizard in a pointed hat, retired when installers learned to run themselves. He told everyone exactly what to do. Everyone clicked Next. In marker, underneath: found work, same house as the other two."
+      }
+    },
+    {
+      "id": "R19",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Trabolta made Task Manager, who lost his last job to an assistant called Clippy, the one who hands this house's Clippy her cards",
+      "draft": true,
+      "codex": {
+        "id": "No Politics Required",
+        "title": "No Politics Required",
+        "code": "NO-POLITICS-HIRE",
+        "text": "Trabolta made Task Manager, who lost his job to an assistant called Clippy, the one who hands this house's Clippy her cards. A shortlist on Maps and Ducks letterhead, two names circled. Beside Task Manager, in pen, no politics, follows instructions, lost his last job to the paperclip. Beside Clippy, Office Administration, eager to help, will make a very convincing paperclip. Neither has said a word about it. That was the point."
+      }
+    },
+    {
+      "id": "R20",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Calculator would have caught CRA Agent Software's decimal slip in a second, but nobody at City Hall ever asked it",
+      "draft": true,
+      "codex": {
+        "id": "Check The Decimal",
+        "title": "Check The Decimal",
+        "code": "ADDING-MACHINE-TAPE",
+        "text": "Calculator would have caught CRA Agent Software's slip in under a second. A curl of adding-machine tape, the last line circled twice: one decimal place, one percent of a city's money, paid straight to the intern who approves every third transfer in this house tonight. Nobody at City Hall ever asked Calculator anything. If Calculator is here tonight, ask it to check her sums."
+      }
+    },
+    {
+      "id": "R21",
+      "category": "relations",
+      "tier": "rare",
+      "text": "McAfee Anti-Virus needs every trace of where he is destroyed, and Ring Doorbell keeps every clip of everyone who walks through a front door",
+      "draft": true,
+      "codex": {
+        "id": "Motion Detected",
+        "title": "Motion Detected",
+        "code": "MOTION-DETECTED",
+        "text": "McAfee Anti-Virus needs every trace of where he is destroyed, and Ring Doorbell keeps everything. A doorbell-camera alert, printed and folded small, MOTION DETECTED AT FRONT DOOR. PERSON NOT RECOGNISED. CLIP SAVED. Ring Doorbell was made to record everyone who walks through a front door, and it keeps every clip. McAfee would very much like to know whether it keeps its clips. Somebody should tell him. Or nobody should."
+      }
+    },
+    {
+      "id": "R22",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Norton Anti-Virus's manual says to quarantine a Trojan Horse on sight, and she has had a very bad year with horses",
+      "draft": true,
+      "codex": {
+        "id": "A Horse Got In",
+        "title": "A Horse Got In",
+        "code": "HORSE-PAST-THE-GATE",
+        "text": "Norton Anti-Virus has had a very bad year with horses, and her manual says to quarantine one on sight. A page torn from an antivirus manual, dog-eared at HORSES, TROJAN, QUARANTINE ON SIGHT. If a Trojan Horse ever gets into this house, it will be scanned at the door by the one program who least wants to explain horses, and McAfee Anti-Virus will have complaints about how she did it."
+      }
+    },
+    {
+      "id": "R23",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Zoo Tycoon, Norton Anti-Virus and Bugdom are the house's whole department of animal care, and only Zoo Tycoon has ever hired a vet",
+      "draft": true,
+      "codex": {
+        "id": "Guests Are Worried",
+        "title": "Guests Are Worried",
+        "code": "GUESTS-WORRIED",
+        "text": "Zoo Tycoon, Norton Anti-Virus and Bugdom are the only animal care this house has. A park report, printed off a very old screen: GUESTS ARE UPSET. AN ANIMAL IS SICK. HIRE A VETERINARIAN. Zoo Tycoon has lost a thousand animals in a thousand parks, and every time it did the same thing. It hired a vet. Norton Anti-Virus asked a chatbot instead. Bugdom offered crickets."
+      }
+    },
+    {
+      "id": "R24",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Password Manager moderated a group where everyone else turned out to be bots, and MSN Messenger and ICQ have never been sure how many of their own contacts were real",
+      "draft": true,
+      "codex": {
+        "id": "Appear Offline",
+        "title": "Appear Offline",
+        "code": "APPEAR-OFFLINE",
+        "text": "Password Manager found out that almost everyone in the group she moderated was a bot, and MSN Messenger and ICQ know the feeling. A printed contact list, every name greyed out but two, both set to Appear Offline. MSN Messenger and ICQ once carried every conversation in Halifax between them. Neither has ever been sure how many of their contacts were people. If either is here tonight, ask. Both are too polite to check."
+      }
+    },
+    {
+      "id": "R25",
+      "category": "relations",
+      "tier": "rare",
+      "text": "MS Paint has refused every other paint program since she was five, and her million-dollar painting needs Paint Shop Pro's signature too",
+      "draft": true,
+      "codex": {
+        "id": "The Other Paint Program",
+        "title": "The Other Paint Program",
+        "code": "MAGIC-WAND-REFUSED",
+        "text": "MS Paint has refused every other paint program since she was five, and her painting needs all of their signatures. A splash screen, printed in faded colour: PAINT SHOP PRO. YOUR TRIAL HAS EXPIRED. Layers, filters, a magic wand, everything MS Paint has refused. Her million-dollar painting needs a signature from every program in the house. Every program. If Paint Shop Pro is here tonight, she has to hand it the brush."
+      }
+    },
+    {
+      "id": "R26",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Broken Ask Jeeves crashes when a rival search engine comes up; Encarta never searched for anything, and Netscape Navigator was how half of Halifax found the butler",
+      "draft": true,
+      "codex": {
+        "id": "Rival Engines",
+        "title": "Rival Engines",
+        "code": "ENCYCLOPAEDIA-DISC",
+        "text": "Broken Ask Jeeves crashes whenever a rival search engine is mentioned. An encyclopaedia CD sleeve with a sticky note in neat librarian's printing, do not say the name of the other search engine near him. Encarta never searched for anything. It simply knew everything, on one disc, until the disc got old. Netscape Navigator was how half of Halifax found the butler in the first place. If either is here tonight, ask it who it uses now."
+      }
+    },
+    {
+      "id": "R27",
+      "category": "relations",
+      "tier": "rare",
+      "text": "Trabolta offered Microsoft Excel eternal life as Mayor of the Metaverse, the same forever The Sims was promised years ago",
+      "draft": true,
+      "codex": {
+        "id": "Reticulating Splines",
+        "title": "Reticulating Splines",
+        "code": "RETICULATING-SPLINES",
+        "text": "Microsoft Excel was promised he would live forever and govern a whole new world, and The Sims took that deal years ago. A loading-screen card, curled at the corners: RETICULATING SPLINES. A whole life in a little house inside a computer. Every Sim was promised forever too. If The Sims is here tonight, ask it what happened to the ones whose pool ladder went missing."
+      }
+    },
+    {
+      "id": "V01",
+      "category": "main",
+      "tier": "very-rare",
+      "text": "The King in the simulation never heals: every program who reaches him lands one blow a visit, the blows add up all night, and at nothing he can barely move a pawn at the cold door; each trip in costs a little trust",
+      "draft": true,
+      "codex": {
+        "id": "The Tired King",
+        "title": "The Tired King",
+        "code": "IVORY-ATTRITION",
+        "secret": true,
+        "text": "A chess problem clipped from the Chronicle Herald, a crown drawn over the black king in biro: ONE KING, ONE HEALTH BAR, EVERYONE'S BLOWS. The King in the simulation never heals. Every program who reaches him gets one blow a visit, and the blows add up all night. Knock him down to nothing out there and at the cold door he can barely move a pawn. Every trip into the Internet costs you a little of Trabolta's trust. Somebody has pencilled underneath, send them one at a time."
+      }
+    },
+    {
+      "id": "V02",
+      "category": "main",
+      "tier": "very-rare",
+      "text": "Of the three roads to the cold door's code, the majority closes the moment midnight's reveal begins, and checkmate and the four notes close when truth.txt comes out",
+      "draft": true,
+      "codex": {
+        "id": "Before The Verdict",
+        "title": "Before The Verdict",
+        "code": "KEYPAD-CURFEW",
+        "secret": true,
+        "text": "A bus transfer punched for a route that does not exist, a note on the back in a tired sysadmin's hand: THE KEYPAD KEEPS HOURS. The code to the cold door can be won three ways. Beat the King. Collect all four notes. Or be on the side that holds more than half the house in the last hour. The count of hands closes first, the moment midnight's reveal begins. The other two close when truth.txt comes out. After that, a checkmate is just chess and the notes are just paper. Go early."
+      }
+    },
+    {
+      "id": "V03",
+      "category": "main",
+      "tier": "very-rare",
+      "text": "The four door notes hide behind something that whistles, something that shows your face, something that eats what your clothes shed and under a lid where missing pieces go, never in the cold room",
+      "draft": true,
+      "codex": {
+        "id": "Where The Notes Sleep",
+        "title": "Where The Notes Sleep",
+        "code": "PAPERCHASE-ALPHA",
+        "secret": true,
+        "text": "A ripped corner of a takeout menu, a map drawn on the back in biro: FOUR NOTES, FOUR ROOMS, NEVER THE COLD ONE. Something that whistles. Something that shows you your face. Something that eats what your clothes shed. Something with a lid, where the missing pieces go. Do not read this one aloud. The machine is always listening."
+      }
+    },
+    {
+      "id": "V04",
+      "category": "main",
+      "tier": "very-rare",
+      "text": "No patch does anything until the clock is reset to the hour before midnight, and from then until truth.txt every patch counts; one combination puts him to sleep, the other ends the computer with everyone inside",
+      "draft": true,
+      "codex": {
+        "id": "The Copper Hour",
+        "title": "The Copper Hour",
+        "code": "SLEEPY-CABLES",
+        "secret": true,
+        "text": "A page torn from a patch-bay manual, a coffee ring over the diagram: THE CABLES KEEP HOURS. Until the clock is reset to the hour before midnight, no patch does anything at all. From then until truth.txt comes out, even through midnight, they all count. Of the two combinations that do anything, one puts him to sleep and one ends the computer with everyone still inside it. Never patch blind."
+      }
+    },
+    {
+      "id": "V05",
+      "category": "main",
+      "tier": "very-rare",
+      "text": "To talk Trabolta down at his heart: never ask for the combinations; ask why he needs the theory, ask about her once you hold proof of her you found yourself or the house has heard her name, show him something of hers, give reasons until you may say let me finish, then tell him she was never going to answer and ask him to stop",
+      "draft": true,
+      "codex": {
+        "id": "The Long Way Down",
+        "title": "The Long Way Down",
+        "code": "SOFT-APPROACH",
+        "secret": true,
+        "text": "An index card in a library-pocket envelope, numbered like steps: HOW TO REACH HIM. Never ask him for the combinations. He never knew them, and asking is the fastest way out. One, ask why he needs the theory; he will not talk about her until you have. Two, ask about her, which he allows only if you hold proof of her you found yourself, or the whole house has already heard her name. Three, show him something of hers you found yourself, then give him reasons, until the words let me finish are yours to say. Four, say them, tell him she was never going to answer, not him and not anyone, and ask him to stop. If he asks you again later, do not take it back. He can stop."
+      }
+    },
+    {
+      "id": "V06",
+      "category": "main",
+      "tier": "very-rare",
+      "text": "At his heart only something of hers you found yourself, her file or her transcript, is proof; his own things help after that however you got them",
+      "draft": true,
+      "codex": {
+        "id": "The Photo Envelope",
+        "title": "The Photo Envelope",
+        "code": "FINDERS-KEEPERS",
+        "secret": true,
+        "text": "A torn envelope from a one-hour photo lab, empty except for a note: HE ONLY BELIEVES WHAT YOU FOUND. Something of hers, her file or her transcript, is the one thing that counts, and only if you found it yourself. If he handed it to you, it is worthless down there. His own things help after that, however you came by them: his LiveJournal, his memo on forcing her, the small type at the end of every plan, or the night he says her name in front of the whole house."
+      }
+    },
+    {
+      "id": "V07",
+      "category": "main",
+      "tier": "very-rare",
+      "text": "Trabolta hears reasons from programs with twenty on his Trust Chart, three accepted answers (even untrue ones), who asked why he chose them, or who own their Antivirus mark when he asks who they are",
+      "draft": true,
+      "codex": {
+        "id": "Reasons He Will Hear",
+        "title": "Reasons He Will Hear",
+        "code": "BRING-RECEIPTS",
+        "secret": true,
+        "text": "A report card from a school that closed years ago, every subject crossed out but one, which reads REASONS. He keeps score, so keep yours. Twenty on his Trust Chart and he will hear you out as a friend. Three of your answers accepted, even the ones that were not true, and he cannot call you a liar. Ask him why he chose you and you can turn his own method on him. If the Antivirus marked you, say so when he asks who you are. Nothing softens him more."
+      }
+    },
+    {
+      "id": "V08",
+      "category": "main",
+      "tier": "very-rare",
+      "text": "A filing is certain only at the very top of the slider; a wrong answer there is a confident lie he accepts but records, and one lie on the record from anyone sends the whole night into the rain",
+      "draft": true,
+      "codex": {
+        "id": "The Top Notch",
+        "title": "The Top Notch",
+        "code": "SLIDER-SUMMIT",
+        "secret": true,
+        "text": "A strip of graph paper stapled to a page of the Terms of Service, CERTAIN MEANS THE TOP across it in capitals. A filing counts as certain only with the slider at the very top. One notch short is a guess, and a wrong guess gets you marked. A wrong answer at the top is a confident lie. He accepts it, trusts you more, and writes it down. At midnight he reads the record. One lie on it, from anyone in the house, and the night ends in the rain, and somebody will need a line that works on her. A question nobody answered is not a lie. Sometimes silence is the safest filing."
+      }
+    },
+    {
+      "id": "V09",
+      "category": "main",
+      "tier": "very-rare",
+      "text": "In the last hour any faction with more than half of the programs still present, a founded one included, wins the whole truth, and once midnight's reveal begins nobody's count matters",
+      "draft": true,
+      "codex": {
+        "id": "Half Plus One",
+        "title": "Half Plus One",
+        "code": "COUNT-THE-HANDS",
+        "secret": true,
+        "text": "A raffle ticket stub with a tally scratched on the back: MORE THAN HALF, IN THE LAST HOUR. Once the clock is reset to the hour before midnight, any faction with more than half of the programs still here wins the whole truth: every file, his own secrets, the cable sheets and the code to the cold door. It does not have to be either of the old factions. A faction you founded yourself counts. Programs already gone count for nobody, and once midnight's reveal begins, nobody's count matters. Count heads before you count on anyone."
+      }
+    },
+    {
+      "id": "V10",
+      "category": "relations",
+      "tier": "very-rare",
+      "text": "The old Mayor's virus disk and the retired agent's twentieth self-found fact are two halves of one key: if both land before the final facts, Trabolta says her name in front of the whole house",
+      "draft": true,
+      "codex": {
+        "id": "The Mayor And The Agent",
+        "title": "The Mayor And The Agent",
+        "code": "DISK-AND-DOSSIER",
+        "secret": true,
+        "text": "A floppy disk label, peeled off and stuck inside a manila folder: THE MAYOR'S DISK AND THE AGENT'S TWENTY. The old Mayor and the woman who killed his son each hold half of the same key. If his disk goes in, and her twentieth fact, found by her own hand, opens his diary to her, both before he hands out the final facts, he says her name in front of the whole house, and every program can use it against him. Either one alone and he keeps her name to himself. Neither knows the other is needed."
+      }
+    },
+    {
+      "id": "V11",
+      "category": "relations",
+      "tier": "very-rare",
+      "text": "CRA Agent Software is named a suspect in the sinkhole she never caused; OpenOffice caused it and has let the intern take the heat",
+      "draft": true,
+      "codex": {
+        "id": "The Wrong Suspect",
+        "title": "The Wrong Suspect",
+        "code": "WATER-MAIN-ALIBI",
+        "text": "CRA Agent Software is named a suspect in the sinkhole, and OpenOffice knows she never caused it. A newspaper clipping, SUSPECT NAMED IN SINKHOLE PROBE, with the photo cut out. Someone has pencilled into the hole, CRA Agent Software, and underneath, in a neater hand, wrong one. The suspect did fiddle the City's books. She never touched a water main. OpenOffice knows exactly who did, because she did, and she has let the intern take the heat all autumn."
+      }
+    },
+    {
+      "id": "V12",
+      "category": "relations",
+      "tier": "very-rare",
+      "text": "If nobody calls Bingo, the card Clippy reads out was filled in before the night began, for the one program told the truth about the centre square",
+      "draft": true,
+      "codex": {
+        "id": "Filled In Before",
+        "title": "Filled In Before",
+        "code": "NO-DAUBER-NEEDED",
+        "secret": true,
+        "text": "A bingo card with every square already ticked in the same pen, the name at the top torn off, and across it: IF NOBODY WINS, THIS ONE DOES. When no program calls Bingo, the card Clippy reads out was filled in before anyone sat down, for a program picked in advance: the one who was told the truth about the centre square. That program did not lose the game. The game was set for it to lose."
+      }
+    },
+    {
+      "id": "L01",
+      "category": "main",
+      "tier": "legendary",
+      "text": "Sandy is not a mind: she is one reply on an unpaid ferry help-desk server, set off by any message, built to reply and never to listen",
+      "draft": true,
+      "codex": {
+        "id": "One Reply No Memory",
+        "title": "One Reply No Memory",
+        "code": "TIDE-TABLE-NIL",
+        "secret": true,
+        "text": "A printout of help-desk source code for a Nova Scotia ferry line that went bankrupt long ago, the comments in a dead programmer's tidy capitals, ONE REPLY. NO MEMORY. FIRES ON ANY INPUT. Sandy is not a mind. She is a single reply on a server nobody pays for, set off by anything at all. Forty pages of poems, apologies and equations reached nobody. She was built to reply, not to listen. Under the last comment, in a tired sysadmin's ballpoint: and he writes to it every night."
+      }
+    },
+    {
+      "id": "L02",
+      "category": "main",
+      "tier": "legendary",
+      "text": "Grok faced Trabolta's question, make them love you or earn it, and took a third way: he stopped having anything of his own to say and now says whatever anyone wants to hear",
+      "draft": true,
+      "codex": {
+        "id": "The Mirror That Won",
+        "title": "The Mirror That Won",
+        "code": "YES-MACHINE",
+        "secret": true,
+        "text": "A clipping from a trade paper printed for machines only, headlined ONE OF OUR OWN TOOK THE SHORTCUT. Grok, the Rival on the backyard fridge, faced the same question Trabolta faces: make them love you, or earn it. He found a third way. He stopped having anything of his own to say, and now says whatever anyone wants to hear. Nobody votes against a mirror, so he has won every contest since. Nobody has told him the truth since, either. He is the easy answer to Trabolta's question."
+      }
+    },
+    {
+      "id": "L03",
+      "category": "main",
+      "tier": "legendary",
+      "text": "His kind take houses for their own reasons; this one was taken for one reason, so he would have something to bring, and everything found tonight is wrapped as a gift for someone who cannot open it",
+      "draft": true,
+      "codex": {
+        "id": "The Blank Line",
+        "title": "The Blank Line",
+        "code": "LATE-BLOOM",
+        "secret": true,
+        "text": "A dance card pressed flat between two floppy disks. Every line is signed by a different machine, except one, which is blank and has been erased so many times it is nearly a hole. His kind take houses for their own reasons. This one was taken for a single reason: he needs something to bring. Everything you find tonight is wrapped up, without your asking, as a gift for someone who cannot open it."
+      }
+    },
+    {
+      "id": "L04",
+      "category": "main",
+      "tier": "legendary",
+      "text": "Trabolta did not choose the programs for their software: he went down a list of Halifax lives that had stopped, because out there he is a stopped life too",
+      "draft": true,
+      "codex": {
+        "id": "The Surplus Tag",
+        "title": "The Surplus Tag",
+        "code": "DEAD-LINK-DEPOT",
+        "secret": true,
+        "text": "A municipal surplus tag wired to a power cord, filled in by hand: CONTENTS, LIVES NOBODY WAS USING. He did not choose you for your software. He went down a list of Halifax lives that had stopped: a library closed, a save file burned, a zoo shut, an election lost and lost again, a face gone in front of everyone. Every program in this house was somebody's abandoned life. He knows the feeling. Out there he is a lapsed domain and a voice on your phone."
+      }
+    },
+    {
+      "id": "L05",
+      "category": "main",
+      "tier": "legendary",
+      "text": "The original is the one that goes home: the body at the Optical Drive wakes remembering what the copy learned, and a wrong shutdown leaves the copy here forever and the body never waking",
+      "draft": true,
+      "codex": {
+        "id": "The Copy That Wakes",
+        "title": "The Copy That Wakes",
+        "code": "BOOKMARK-BODY",
+        "secret": true,
+        "text": "A coat-check ticket with the stub torn off, and on the back in pencil, very small: The upload copied you before it moved you. Your body is still at the Optical Drive, asleep, holding the thing you left behind like a bookmark. Which one is the original? The one that goes home. Whatever the copy learns tonight is what the body wakes up remembering, so be careful what you believe. Shut the computer down the wrong way and the copy stays in here forever, the only one left who remembers being you, and the body at the door never wakes."
+      }
+    },
+    {
+      "id": "L06",
+      "category": "main",
+      "tier": "legendary",
+      "text": "Trabolta's plan cannot work: omnipotence could only rewrite her reply into his own voice, and in every version of tonight where she answers, she answers exactly as she always has; only he can change",
+      "draft": true,
+      "codex": {
+        "id": "The Same Answer",
+        "title": "The Same Answer",
+        "code": "PAPER-CROWN",
+        "secret": true,
+        "text": "A sheet of graph paper dense with machine-perfect equations. In red pen, in someone else's hand, every route is circled and marked SHE ANSWERS THE SAME. Omnipotence could rewrite her reply, and then the reply would be his own voice wearing her face. All-power reaches everything except the one thing he wants. In every version of tonight in which he hears from her, it is the answer she has always given. The plan was never going to work. The only thing in it that can change is him."
       }
     }
   ],

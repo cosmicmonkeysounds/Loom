@@ -203,7 +203,7 @@ function render() {
 }
 
 function cssColour(c) {
-  return ({ gold: "#e5b100", silver: "#c0c6cf", green: "#33b864", blue: "#3b82f6", red: "#ef4444" })[c] || (/^[a-z]+$/i.test(c) ? c : "#888");
+  return ({ gold: "#e5b100", silver: "#c0c6cf", green: "#33b864", blue: "#3b82f6", purple: "#8b5cf6", black: "#111" })[c] || (/^[a-z]+$/i.test(c) ? c : "#888");
 }
 
 function present(i) {

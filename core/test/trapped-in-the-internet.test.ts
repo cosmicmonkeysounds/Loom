@@ -194,14 +194,15 @@ describe("Trapped in the Internet — compile", () => {
     expect(terminals).toMatch(/view=chess/u);
   });
 
-  it("pins the codex: 200 entries, 94 codes, every facts.json code resolving, no STAMPED anywhere", () => {
+  it("pins the codex: 278 entries, 172 codes, every facts.json code resolving, no STAMPED anywhere", () => {
     // Wave 11: + the cold door's four digit notes (facts.json door.clues).
     // Wave 18b: + the sixteen ties (codex/85-ties.loom) and The DSL Line, none coded.
-    expect(m.codex.size).toBe(200);
-    expect(m.codexCodes.size).toBe(94);
+    // Wave 35: + the 78 new tiered facts (codex/9-facts.loom), every one coded.
+    expect(m.codex.size).toBe(278);
+    expect(m.codexCodes.size).toBe(172);
     // The README's counts follow the pin (its file listing, its status line and the Codex section).
     const readme = readFileSync(join(scenarioDir(SHOW), "README.md"), "utf8");
-    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([200, 200, 200]);
+    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([278, 278, 278]);
     const codes: Record<string, string> = {
       trabolta4ever: "The LiveJournal",
       loveletterforyou: "ILOVEYOU",
@@ -680,7 +681,7 @@ describe("Trapped in the Internet — the whole night", () => {
     }
     // …and nobody else's: Excel holds none of MS Paint's.
     for (const entry of red("MS Paint")) expect(sim.holdsCodex("g2", entry), entry).toBe(false);
-    expect(sim.codexFor("g4").map((e) => e.id)).toEqual(["The Optical Drive", "The Terms Of Service", "The Centre Square", "Bathroom Mode", "Maria Sophia Paine", "The Pirate Site", "Debt Notices", "The Old Machines", "Four Failed Theses", "The Million Dollar Painting"]);
+    expect(sim.codexFor("g4").map((e) => e.id)).toEqual(["The Optical Drive", "The Terms Of Service", "The Centre Square", "Bathroom Mode", "Maria Sophia Paine", "The Pirate Site", "Debt Notices", "The Old Machines", "The Million Dollar Painting", "Four Failed Theses"]); // wave 35: 9-facts.loom is in tier order, the common card first
     for (const gone of ["The Valley Librarian", "Bugdom VR", "The Fire Ants", "The Paperclip Trade", "The Boardwalk Bet", "Twenty Four Years Online", "Expelled From NSCAD"]) expect(sim.model.codex.has(gone), gone).toBe(false);
     // The performers hold all three of theirs from the start (`about:` them).
     for (const [who, entries] of [["Clippy", ["Tippi MacDonald", "The Memorial Veterinary Clinic", "Failed Clippy"]], ["Norton Anti-Virus", ["Julie Horton-Norton", "Miniature Doses", "Stable Island"]], ["McAfee Anti-Virus", ["John McAfee", "The Lamborghini Certificate", "Keep Them On Track"]], ["Password Manager", ["Bridget Troelsen", "What Happened To Hamtaro", "Founding Moderator"]], ["CRA Agent Software", ["Sharon Penney", "The Decimal Point", "Approve Or Deny"]]] as const) {

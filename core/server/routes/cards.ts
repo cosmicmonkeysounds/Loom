@@ -58,9 +58,11 @@ export interface CardsInput {
   claims: { character: string; url: string }[];
 }
 
-/** The print sheet's pile order: gold → green → blue → red → silver → the
- *  rest → unplaced (`editor/src/lib/print-sheet.ts` `stackRank`). */
-const COLOUR_RANK = ["gold", "green", "blue", "red", "silver"];
+/** The print sheet's pile order: gold (the hunt) → the tiers, commonest
+ *  first (green → blue → purple, the silver digit notes with the very rare,
+ *  then black) → the rest → unplaced (`editor/src/lib/print-sheet.ts`
+ *  `stackRank`). */
+const COLOUR_RANK = ["gold", "green", "blue", "purple", "silver", "black"];
 function stackRank(s: CodexStack | null): number {
   if (s === null) return COLOUR_RANK.length + 1;
   const i = COLOUR_RANK.indexOf(s.colour);

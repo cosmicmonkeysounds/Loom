@@ -46,7 +46,7 @@ plays), the show's data files, the crew's printed packs, and the docs.
 
 | Path | Read by | What it is |
 |---|---|---|
-| `facts.json` | `titi:facts`, the server's judge | The team's one hand-edited facts file: the hunt questions and answer key, the scannable facts, the truths, the door code. **Holds secrets** |
+| `facts.json` | `titi:facts`, the server's judge | The team's one hand-edited facts file: the hunt questions and answer key, the scannable facts in four rarity tiers (`tiers`: common, rare, very rare, legendary; wave 35), the truths, the door code. **Holds secrets** |
 | `house.json`, `house.shed.json` | The server, both reinstallation games, the terminals | The house map (tent night and rain night): rooms, terminal spots, ducks, the King |
 | `audio.json` | The server, the stagehand `audio` router, the map editor | The MOTU's inputs and outputs, the placed speakers, zones, cues |
 | `lights.json` | The server, the stagehand `lights` module, the map editor | The server-room RGB bulb and its `heart_*` looks |
@@ -66,7 +66,7 @@ plays), the show's data files, the crew's printed packs, and the docs.
 | `SHOW.html` | `pnpm --filter @loom/core show:page` (`core/scripts/show-page.ts`, from the story + `show-page/template.html`) | `show:page --check`; `core/test/show-page.test.ts` |
 | `generated/questions.loom` | `pnpm --filter @loom/core titi:facts` (from `facts.json`) | `titi:facts --check` |
 | `codex/9-facts.loom` | `titi:facts` | `titi:facts --check` |
-| `generated/print-stacks.md` | `titi:facts` (the QR print stacks) | `core/test/titi-facts.test.ts` |
+| `generated/print-stacks.md` | `titi:facts` (the QR print stacks, one per tier) | `core/test/titi-facts.test.ts` |
 | Marked blocks in `trabolta.mind.md` and `DESIGN.md` | `titi:facts` | `titi:facts --check` |
 
 `show-page/template.html` is the hand-written prose of `SHOW.html`. Edit it,
@@ -90,7 +90,7 @@ then rerun `show:page`.
 | `OCT31.md` | The crunch plan: per-wave build status, the workaround runbook, risks, cut order | Build history |
 | `CHECKLIST.md` | The audit checklist of 2026-10-14, kept through wave 20 | Build history |
 | `SCHEDULE.md` | The post-party roadmap | After the show |
-| `SIGNOFF-w13.md`, `SIGNOFF-w18.md`, `SIGNOFF-w21.md`, `SIGNOFF-w26.md`, `SIGNOFF-w27.md`, `SIGNOFF-w28.md`, `SIGNOFF-w29.md`, `SIGNOFF-w32.md` | Sign-off sheets: w13–w29 signed off 2026-10-27 (kept as the record); w32 DRAFT | Test-pinned; `SIGNOFF-w21.md`, `SIGNOFF-w26.md` (wave 26: the BINGO call, the locked phone, the Dare scene, the game's moments, no hints), `SIGNOFF-w27.md` (wave 27: the first meeting at his heart) and `SIGNOFF-w28.md` (wave 28: 📥 waits for Hunt 2, heart picks as chat lines) and `SIGNOFF-w29.md` (wave 29: no layer number or that phrase anywhere), all signed off. `SIGNOFF-w32.md` (wave 32: the talk scenes, ⚡ and the punched-up beats) is DRAFT, shipping as written; `test/trapped-w13-objectives.test.ts` checks it lists wave 32's objectives |
+| `SIGNOFF-w13.md`, `SIGNOFF-w18.md`, `SIGNOFF-w21.md`, `SIGNOFF-w26.md`, `SIGNOFF-w27.md`, `SIGNOFF-w28.md`, `SIGNOFF-w29.md`, `SIGNOFF-w32.md`, `SIGNOFF-w35.md` | Sign-off sheets: w13–w29 signed off 2026-10-27 (kept as the record); w32 and w35 DRAFT | Test-pinned; `SIGNOFF-w21.md`, `SIGNOFF-w26.md` (wave 26: the BINGO call, the locked phone, the Dare scene, the game's moments, no hints), `SIGNOFF-w27.md` (wave 27: the first meeting at his heart) and `SIGNOFF-w28.md` (wave 28: 📥 waits for Hunt 2, heart picks as chat lines) and `SIGNOFF-w29.md` (wave 29: no layer number or that phrase anywhere), all signed off. `SIGNOFF-w32.md` (wave 32: the talk scenes, ⚡ and the punched-up beats) is DRAFT, shipping as written; `test/trapped-w13-objectives.test.ts` checks it lists wave 32's objectives. `SIGNOFF-w35.md` (wave 35: the 78 new tiered facts, the re-tier of the old 60) is DRAFT |
 | `history/` | Older contracts and sign-off sheets (`CONTRACT-w20.md`, `SIGNOFF-w18b.md`, `SIGNOFF-w20.md`) and the README's old banner (`readme-banner.md`) | History; see its README |
 
 ## Secrets
