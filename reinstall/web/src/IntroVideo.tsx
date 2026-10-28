@@ -81,14 +81,12 @@ export function IntroVideo({ skippable, held = false, src = INTRO_VIDEO_URL, onD
       <video ref={video} src={src} playsInline preload="auto" onEnded={() => finishRef.current()} onError={() => finishRef.current()} />
       <div className="intro-video-bar">
         {muted && (
-          // DRAFT w33
           <button className="w98-button big" onClick={soundOn} autoFocus>
             🔊 Turn the sound on
           </button>
         )}
         <span className="spacer" />
         {(skippable || stalled) && (
-          // DRAFT w33
           <button className="w98-button big" onClick={() => finishRef.current()}>
             {skippable ? "Skip video ▶" : "Continue ▶"}
           </button>

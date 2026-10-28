@@ -10,15 +10,18 @@ Thumbsticks, plus one button for the King (and a laser in the lobby):
 
 | | |
 |---|---|
-| **Left stick** | walk where you look (dead zone 0.15, 1.8 m/s) |
-| **Right stick** | snap-turn 45° (flick, let go, flick); smooth turn with `smooth_turn` |
+| **Left stick** | walk where you look (dead zone 0.15, 1.4 m/s) |
+| **Right stick** | turn smoothly (a small push turns slowly, at most 70°/s; no snap turn since wave 33b — it made people dizzy) |
 | **Trigger** (either hand) or **A / X** | hit the King, near and facing him — once per visit |
 | **B / Y** (either hand) | mute / unmute the microphone (a short haptic tick when it takes) |
 | **Lobby** | point a controller at your program's tile and pull the **trigger** (either hand: a thin beam shows where), or walk the tiles with the stick and hold **right** for 1 s; then **START** (trigger, or hold right again) or **BACK** |
 | **The intro** | the same beam and **trigger** (or **A**) on the panel's buttons; the stick walks and turns once the tutorial says so |
 
 With only the **right** controller (the show's headsets), its stick's
-forward / back walks and its left / right turns.
+forward / back walks and its left / right turns; a slightly crooked push
+does only the stronger of the two (`Locomotion.axis_lock`). The edges of
+the view darken while moving or turning, and walking into a wall gives a
+light buzz.
 
 ## The intro (wave 33)
 
@@ -34,16 +37,13 @@ house (`game/intro_space.gd`, steps in the pure `game/intro_flow.gd`):
    on when the guest does it (a soft chime and a gentle haptic), with a
    fallback button for the stuck: **look around** (OK after 5 s) →
    **point** the beam at OK and pull the trigger → **walk** into the
-   glowing ring (NEXT after 20 s) → **turn**: SNAP TURN / SMOOTH TURN
-   switch the setting live, turn round to face the duck behind you, and
-   **KEEP THIS ONE** saves it to the program (`POST /api/spatial/prefs`)
-   → a **comfort** line and **START**.
+   glowing ring (NEXT after 20 s) → **turn** round (the stick, or just the
+   body) to face the duck behind you (on 2 s later; NEXT after 20 s) → a
+   **comfort** line and **START**.
 
 The video and the tutorial are unskippable until the program has completed
 a reinstallation (the assignment's `reinstalled` ≥ 1; then SKIP and SKIP
-TUTORIAL). A program's saved `prefs.turn` overrides the station's
-`smooth_turn` from the assignment on (and back in the lobby the station's
-returns); a first-timer starts on snap turn. Throughout, the spawn pose
+TUTORIAL). Throughout, the spawn pose
 keeps the session alive (the server times one out after 60 s without a
 pose) and nothing of the walk runs: no void, find, King, voice link, hum
 or quack. At START the guest lands at the spawn, the walk's clocks (the
@@ -51,7 +51,7 @@ path reveal, the quack) start, and `POST /api/spatial/ready` restarts the
 server's. A session that ends mid-intro (session over, the headset off)
 stops the video and goes back to the lobby. `--intro false` (or `"intro":
 false` in a station file) skips it; the autopilot never plays it. Its
-copy is marked `DRAFT w33` in `game/intro_flow.gd`. Unproven on the
+copy (in `game/intro_flow.gd`) was signed off on 2026-10-28. Unproven on the
 Quest: Theora at 720p30 in software, and the video's audio level.
 
 ## Layout
@@ -196,7 +196,7 @@ and logs in as a moderator. Settings are applied in this order (lowest first):
 2. `res://config/station.json`: committed, with placeholders (`CHANGEME` never dials out)
 3. `user://station.json`: per headset — written by the lobby's **SET UP THIS
    HEADSET** panel (or pushed by `quest.sh provision`)
-4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--smooth-turn] [--autopilot] [--voice false] [--mic false] [--trail-delay 0] [--intro false]`
+4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--autopilot] [--voice false] [--mic false] [--trail-delay 0] [--intro false]`
 
 `voice` (on by default) is the voice link; `mic: false` keeps it but
 listens only (the headset hears the terminals and is never heard).
@@ -206,7 +206,7 @@ quick dev walk. `intro` (on by default) plays the video and the tutorial
 before each walk; `--intro false` for a quick dev walk.
 
 ```json
-{ "server": "https://app.mapsandducks.com", "code": "4821", "station": "vr-1", "name": "Headset 1", "smooth_turn": false }
+{ "server": "https://app.mapsandducks.com", "code": "4821", "station": "vr-1", "name": "Headset 1" }
 ```
 
 `station` is the id the tablet's **Send to <station>** targets (§2.1). Give
@@ -481,8 +481,8 @@ scene, then runs `test/game.gd` headless with `--offline`:
 - the §1.2 walls / routes / locate ports against every golden at 1e-3, with
   the first mismatches printed
 - the frames round trip and the duck pick
-- locomotion maths: dead zone, head-relative walking, snap re-arm,
-  rotate-about-head
+- locomotion maths: dead zone, the one stick's axis lock, head-relative
+  walking, the turn curve, rotate-about-head; the rig's wall-bump buzz
 - config precedence and command-line parsing
 - latest-only pose coalescing, and the SSE parser
 - the lobby picker's hold-to-confirm, and the tile grid's stick (rows,
@@ -544,13 +544,13 @@ scene, then runs `test/game.gd` headless with `--offline`:
   heart and the disk (drawn, no text, no collider, shown with the King's
   fall, each moment's answers, `picked` / `heartHeard`)
 - wave 33, the intro: its steps (the skip rule, what advances each step,
-  the fallback buttons, the arm delay, the live turn choice and its save,
-  the ring and facing geometry), `ready` / `prefs` over a fake transport
+  the fallback buttons, the arm delay, the turn step's hold, the ring and
+  facing geometry), `ready` over a fake transport
   (the session's token, a 404 ignored, a 410 ends it, nothing offline),
   and the game playing it with a fake video (the spawn pose every frame,
   no void / find / voice / hum / quack, each step by the laser, the panel
-  coming round, the walk's clocks and one `ready` after START, a saved
-  `prefs.turn` in force, a returning program's skips, a session over
+  coming round, the walk's clocks and one `ready` after START, a returning
+  program's skips, a session over
   mid-video or the headset off mid-tutorial, `intro: false`, the autopilot)
 - a smoke test that `main.tscn` builds the house
 - `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed; wave 33: the intro video shipped)

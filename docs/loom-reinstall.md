@@ -11,7 +11,7 @@ instructions: it explores a **virtual copy of the house** and finds the
 
 | Game | Where | Input | Code |
 |---|---|---|---|
-| **VR** | Quest 3 headset(s) in the tent | thumbsticks: left stick walks (head-relative), right stick turns (snap 45°, or smooth); the trigger (or A / X) hits the King | `reinstall/vr/` — Godot 4.7 project, OpenXR |
+| **VR** | Quest 3 headset(s) in the tent | thumbsticks: left stick walks (head-relative), right stick turns (smooth only, gentle near the centre); the trigger (or A / X) hits the King | `reinstall/vr/` — Godot 4.7 project, OpenXR |
 | **Web** | the tent laptop (`view=reinstall` on the terminal), or a spare tablet / laptop at `/reinstall/` | on-screen twin joysticks (touch) **and** keyboard (WASD/arrows walk, Q/E or ←/→ turn, mouse-drag look); ⚔ HIT or Space hits the King | `reinstall/web/` — Vite + three.js app `loom-reinstall`, served at `/reinstall/` |
 
 Both games stream the player's **pose** to the event server. Every
@@ -705,7 +705,7 @@ calls; it can do nothing else.
 | `POST /api/spatial/king/hit` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (the visit keeps its hit) · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment · 404 `{error: "no king"}` · 409 `{error: "fallen", king}` · 409 `{error: "already hit", king}` — this visit already hit · 409 `{error: "not near", reach}` unless `kingReach` with `KING_HIT_SLACK` on the session's **last pose** is `"ok"` (`reach` = the verdict; the game flushes a pose first) · 200 `{ok, king}`. On a hit: a journaled `set` of the `health` path to `hp − 1`, then `signal(signals.hit, guest, {hp, max})`, then at 0 `signal(signals.fallen, guest, {hp, max})`, all `by` the session's `device`; then a `king` frame naming the hitter. **One hit per visit**: a visit is spent from its hit until that guest's duck is found — `begin` for a guest whose visit already hit (a re-scan mid-walk, Leave and scan again, after a director's end or a timeout) carries the hit over; a find ends the visit (a re-scan in the 8 s the found session lingers starts a fresh one); a story restart forgets every visit, and so does a server restart (in memory, like sessions). The `Assignment`'s `kingHit` says a re-scan is the visit that already hit, so a game shows ⚔ spent from the start |
 | `POST /api/spatial/moment` | session token (`x-loom-token`, or `token` in the body) | `{kind: "escape"}` · `{kind: "heart", prop}` · `{kind: "pickup", prop}` (wave 26) | One route for the three game moments, judged on the session's **last pose** (the game flushes a pose first), in this order: 401 / 410 as for poses · 400 `{error: "bad moment"}` (an unknown `kind`, a heart or pickup with no `prop`) · 409 `{error: "doors are closed"}` while the event is not open · 409 `{error: "this session has not started — send a pose first"}` (parked) · heart / pickup: 404 `{error: "no such prop"}` (no prop of that kind with that id). Then per kind. **escape**: 409 `{error: "not out", distance}` unless `voidDistance` ≥ `ESCAPE_M − ESCAPE_SLACK` · 409 `{error: "cooldown", retryMs}` within 20 s of this session's last · 200 `{ok, kind, lines, spawn, cooldownMs: 20000}` — the server re-seats the pose at the spawn (room, floor and presence follow; the terminals' ghost jumps back) and commits `simulation escape attempt`. **heart**: 409 `{error: "sealed"}` while the map's King stands · 409 `{error: "already"}` once this guest heard it tonight · 409 `{error: "not there"}` unless `heartReached` · 200 `{ok, kind, lines}` — commits `simulation heart reached {prop}`; the guest counts as having heard it only when `lines` is not empty (empty: he isn't awake yet, or a restart forgot; the game stays silent and asks on the next entry). **pickup**: 409 `{error: "already"}` once this guest took it · 409 `{error: "far", distance}` unless `pickupReach` with `PICKUP_SLACK_M` · 200 `{ok, kind, lines, item, prop}` — commits `simulation pickup taken {item, prop}`. Every commit is journaled `by` the session's `device`. `lines` (`[{from, text}]`, display text) are what that one commit said to this program, game-only beats included (`chat.ts` `momentLines`); they come back **only** in this answer, never on a stream, a phone, a booth or Run (`GAME_ONLY_BEATS`: *Escape Attempt*, *Heart In The Simulation*), so Trabolta can chastise before his reveal. A story that throws on the signal still answers 200 with empty `lines`. The route never answers `{error: "not found"}`: a game reads any other 404 body as an old server. Memory only, cleared by a story restart and lost on a process restart: the cooldown, who heard the heart, who took each pickup; the story's own guards (`program.sim_heart`, `carries_virus`) keep the heart and the virus once-only across one |
 | `POST /api/spatial/ready` | session token | `{}` | 401 / 410 as for poses · 200 `{ok}` (wave 33). The game's intro (the video, the tutorial) is over: the session's duck-run clock restarts now, **once** (a second call only refreshes the pose timeout), so a first-timer's run isn't timed through the intro. Commits nothing, so it is open while the doors are closed. An old server's 404 is ignored. |
-| `POST /api/spatial/prefs` | session token | `{turn: "snap" \| "smooth"}` | 401 / 410 as for poses · 400 `{error}` for no known key or a bad value · 200 `{ok, prefs}` (wave 33): the program's game settings, merged over what it had, dealt back on **every later assignment** (`prefs`) whatever the device. Kept in the state dir (`spatial-prefs.json`, guest → settings), across a restart **and** a story reset (they are the person's comfort, not the story's). Commits nothing. |
+| `POST /api/spatial/prefs` | session token | `{turn: "snap" \| "smooth"}` | 401 / 410 as for poses · 400 `{error}` for no known key or a bad value · 200 `{ok, prefs}` (wave 33): the program's game settings, merged over what it had, dealt back on **every later assignment** (`prefs`) whatever the device. Kept in the state dir (`spatial-prefs.json`, guest → settings), across a restart **and** a story reset (they are the person's comfort, not the story's). Commits nothing. Since wave 33b no client posts it (VR's snap turn is gone, so there is no setting to keep); it stays for the additive-server rule and an older APK |
 | `POST /api/spatial/end` | session token | `{}` | `{ok}` |
 | `GET /api/spatial/stream` | mod (`?token=` / author session) or session token | `?name=Kitchen` | SSE, below |
 
@@ -812,7 +812,7 @@ map (a save, a variant switch) loses its feed at the next call.
 
 | Route | Auth | Body / query | Result |
 |---|---|---|---|
-| `POST /api/mod/spatial/cam` | mod token (`x-loom-token`) or author session — not a host-only booth, not a session token | `{spot, jpeg, w, h}` — `jpeg` base64 with no `data:` prefix, starting with the JPEG SOI (`FF D8`); `w`/`h` 1..4096. Read under its own 140 KB body cap (`CAM_BODY_LIMIT`) before the generic parse | 403 not a moderator · 400 bad body · 413 decoded JPEG over 96 KB (`CAM_MAX_BYTES`), or the body over the cap · 404 `{error: "no such spot"}` unless `spot` is a terminal id of the event's current map · 200 `{ok: true, at, watched}`. **Rate cap:** a frame from the same spot < 150 ms after the last kept one (`CAM_MIN_GAP_MS`) is dropped, answering 200 `{ok: true, at, dropped: true, watched}` with the kept frame's `at` — a terminal never needs to back off. `watched` (wave 26): a player's presence room is this spot's room now (`linkedSpots`). A terminal sends ~3 frames/s (333 ms) at ~160×120, JPEG quality ~0.5, while watched, and one frame every 2 s while `watched: false`; an old terminal ignores the field |
+| `POST /api/mod/spatial/cam` | mod token (`x-loom-token`) or author session — not a host-only booth, not a session token | `{spot, jpeg, w, h}` — `jpeg` base64 with no `data:` prefix, starting with the JPEG SOI (`FF D8`); `w`/`h` 1..4096. Read under its own 140 KB body cap (`CAM_BODY_LIMIT`) before the generic parse | 403 not a moderator · 400 bad body · 413 decoded JPEG over 96 KB (`CAM_MAX_BYTES`), or the body over the cap · 404 `{error: "no such spot"}` unless `spot` is a terminal id of the event's current map · 200 `{ok: true, at, watched}`. **Rate cap:** a frame from the same spot < 150 ms after the last kept one (`CAM_MIN_GAP_MS`) is dropped, answering 200 `{ok: true, at, dropped: true, watched}` with the kept frame's `at` — a terminal never needs to back off. `watched` (wave 26): a player's presence room is this spot's room now (`linkedSpots`). A terminal sends ~3 frames/s (333 ms) at 320×240 (160×120 before wave 33b), JPEG quality ~0.5, while watched, and one frame every 2 s while `watched: false`; an old terminal ignores the field |
 | `GET /api/spatial/cams` | as `GET /api/spatial/house`: a session token, a mod token (header or `?token=`) or an author session | — | 401 · `{cams: [{spot, at, w, h}]}` — only frames newer than 15 s (`CAM_FRESH_MS`), by spot id. **A game session sees only its own room** (wave 26): the feeds whose spot's `room` is the session's presence room, never a `view: "reinstall"` spot (the tent), none for a parked session or one in no room. A moderator sees every feed |
 | `GET /api/spatial/cam` | as `cams` | `?spot=<id>` | 401 · 404 `{error: "no feed"}` when there is none, it is older than 15 s, or (a game session) the spot is not in its list · 200 the JPEG bytes, `content-type: image/jpeg`, `cache-control: no-store`, `x-cam-at: <ms>` |
 
@@ -828,7 +828,11 @@ real room, which keeps moving); a feed that fails 3 times rests 5 s; a 401 /
 410 on the list stops it for good. The window: a 0.48 × 0.36 m (4:3,
 `FEED_W` × `FEED_H`) unlit picture in a thin Win98 bezel, proud of the
 terminal's screen and facing its yaw / pitch; with no feed the terminal's own
-screen look shows.
+screen look shows. Both games draw every terminal — screen, halo, window and
+VR's label — at three times that size across the wall, never deeper
+(wave 33b: `GAME_TERMINAL_SCALE` / `buildHouseScene({terminalScale})`, VR
+`HouseBuilder.TERMINAL_SCALE`), so the window is 1.44 × 1.08 m; the
+terminals' own world view and the map editor keep them at 1×.
 
 ### 2.4 Voice (wave 19; same room since wave 26)
 
@@ -1019,7 +1023,7 @@ first-person game's (0.12°/px under pointer lock; Esc gives it back; the
 celebration, a hold and the end release it); a browser that refuses the
 lock (`pointerlockerror`) drags to look, as before, and the drag passes
 the click step. `?intro=0` turns the intro off on a device (the config's
-`intro`). The copy is marked `DRAFT w33`.
+`intro`). The copy was signed off on 2026-10-28.
 
 The two videos are encoded from the source recording (an iPhone HEVC
 10-bit HLG `.MOV`): bt2020 → bt709 SDR, 1280×720, stereo. Re-encode both
@@ -1637,9 +1641,15 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   such prop` is an old server. A refused heart or pickup retries after
   `MOMENT_RETRY` (1.5 s).
 - `player/`: XROrigin3D rig on a CharacterBody3D; **left stick** walks
-  head-relative (dead zone 0.15, 1.8 m/s), **right stick** snap-turns 45°
-  (re-arm under 0.3; `smooth_turn` setting); comfort vignette while moving;
-  room-scale head offset folded into the body. The buttons are the King's
+  head-relative (dead zone 0.15, 1.4 m/s, no acceleration), **right
+  stick** turns smoothly about the head, `|x|^1.6` × 70°/s (wave 33b: no
+  snap turn — its jumps made people dizzy — and no `smooth_turn`
+  setting). With the left stick idle (the show's headsets have only the
+  right controller) the right stick's forward / back walks too, its weaker
+  axis dropped unless the push is a real diagonal (`Locomotion.axis_lock`,
+  0.5). A comfort vignette closes while moving or turning (turning to
+  0.85); walking into a wall gives a light haptic buzz (at most every
+  0.6 s); room-scale head offset folded into the body. The buttons are the King's
   hit (trigger, or A / X; on a Mac, Space or F) and the voice link's mute
   (B / Y; on a Mac, M), both only while playing. In the lobby
   `player/pointer.gd` (`LobbyPointer`) casts a **laser** from each hand's
@@ -1731,22 +1741,20 @@ button for anyone stuck:
 1. look around (OK after 5 s);
 2. point the beam at OK and pull the trigger (A works too);
 3. push the stick forward into a glowing ring (NEXT after 20 s);
-4. SNAP TURN / SMOOTH TURN, which switch the setting live, then turn
-   round to face a duck behind them; KEEP THIS ONE (after facing the duck
-   or 15 s) saves the choice with `POST /api/spatial/prefs` `{turn}`;
+4. turn round (the stick, or just the body) to face a duck behind them;
+   it moves on 2 s after they face it (NEXT after 20 s);
 5. a comfort line ("stop, stand still, close your eyes") and START.
 
 Both are unskippable until the assignment's `reinstalled` ≥ 1; then SKIP
-and SKIP TUTORIAL appear. A saved `prefs.turn` overrides the station's
-`smooth_turn` from the assignment on (the lobby restores the station's).
-Throughout the intro the spawn pose goes out every frame, so the session
+and SKIP TUTORIAL appear. VR ignores the assignment's `prefs` since
+wave 33b (there is no turn setting). Throughout the intro the spawn pose goes out every frame, so the session
 stays alive, and nothing of the walk runs: no void, find, King, voice
 link, hum or quack (the video's sound never reaches the mic). At START the
 guest is placed at the spawn, the path reveal and quack clocks start, and
 `mark_ready()` posts `POST /api/spatial/ready` (an old server's 404 is
 ignored). A session that ends mid-intro stops the video and returns to the
 lobby. `intro: false` (`--intro false`) skips it; `--autopilot` never
-plays it. The copy is `DRAFT w33`. Unproven on hardware: Theora at 720p30
+plays it. The copy was signed off on 2026-10-28. Unproven on hardware: Theora at 720p30
 beside 90 Hz rendering, the video's level, the panel's comfort.
 
 ## 6. The story

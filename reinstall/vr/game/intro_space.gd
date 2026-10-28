@@ -38,11 +38,6 @@ const BACKDROP_TOP := 2.12
 const EYE_LINE := 1.55
 const MAIN_AT := Vector2(0, 1.22)
 const MAIN_SIZE := Vector2(0.62, 0.2)
-const SNAP_AT := Vector2(-0.43, 1.3)
-const SMOOTH_AT := Vector2(0.43, 1.3)
-const TURN_SIZE := Vector2(0.74, 0.2)
-const KEEP_AT := Vector2(0, 0.86)
-const KEEP_SIZE := Vector2(0.78, 0.18)
 const SKIP_TUTORIAL_AT := Vector2(0, 0.6)
 const SKIP_TUTORIAL_SIZE := Vector2(0.6, 0.13)
 ## Where the ring and the duck go, from the guest (m).
@@ -68,7 +63,6 @@ var _backdrop: MeshInstance3D
 var _title: Label3D
 var _body: Label3D
 var _progress: Label3D
-var _notes: Array[Label3D] = []
 var _ring: MeshInstance3D
 var duck: Duck
 var _looks := {}  # button id → its node
@@ -206,17 +200,8 @@ func _build_panel() -> void:
 	_body = _label(0.066, HouseLook.INK, 1.66)
 	for id: String in ["ok", "next", "start"]:
 		_looks[id] = Lobby.make_button(_panel, IntroFlow.LABELS[id], MAIN_AT, MAIN_SIZE, 0.08)
-	_looks["snap"] = Lobby.make_button(_panel, IntroFlow.LABELS["snap"], SNAP_AT, TURN_SIZE, 0.07)
-	_looks["smooth"] = Lobby.make_button(_panel, IntroFlow.LABELS["smooth"], SMOOTH_AT, TURN_SIZE, 0.07)
-	_looks["keep"] = Lobby.make_button(_panel, "", KEEP_AT, KEEP_SIZE, 0.07)
-	Lobby.fit((_looks["keep"] as Node3D).get_node("Label") as Label3D, IntroFlow.LABELS["keep"], KEEP_SIZE.x - 0.06, 0.07)
 	_looks["skip_tutorial"] = Lobby.make_button(_panel, "", SKIP_TUTORIAL_AT, SKIP_TUTORIAL_SIZE, 0.045)
 	Lobby.fit((_looks["skip_tutorial"] as Node3D).get_node("Label") as Label3D, IntroFlow.LABELS["skip_tutorial"], SKIP_TUTORIAL_SIZE.x - 0.06, 0.045)
-	for i in 2:
-		var note := _label(0.045, HouseLook.TEAL_GLOW, 1.1)
-		note.position.x = SNAP_AT.x if i == 0 else SMOOTH_AT.x
-		note.text = IntroFlow.SNAP_NOTE if i == 0 else IntroFlow.SMOOTH_NOTE
-		_notes.append(note)
 	_panel.visible = false
 
 
@@ -312,28 +297,26 @@ func render(flow: IntroFlow) -> void:
 		(_looks["skip"] as Node3D).visible = "skip" in ids
 		if "skip" in ids:
 			_buttons.append({"id": "skip", "center": SKIP_AT, "size": SKIP_SIZE})
-		_render_looks(flow)
+		_render_looks()
 		return
 	_surface = "panel"
 	_panel.visible = flow.running()
-	var sig := "%d|%s|%s|%s" % [flow.step, ",".join(ids), flow.turn, flow.body()]
+	var sig := "%d|%s|%s" % [flow.step, ",".join(ids), flow.body()]
 	if sig == _shown:
-		_render_looks(flow)
+		_render_looks()
 		return
 	_shown = sig
 	_progress.text = flow.progress()
 	_title.text = flow.title()
 	_body.text = flow.body()
 	_buttons = []
-	for id: String in ["ok", "next", "start", "snap", "smooth", "keep", "skip_tutorial"]:
+	for id: String in ["ok", "next", "start", "skip_tutorial"]:
 		var on: bool = id in ids
 		(_looks[id] as Node3D).visible = on
 		if on:
 			_buttons.append({"id": id, "center": _center_of(id), "size": _size_of(id)})
-	for note in _notes:
-		note.visible = "snap" in ids
 	_fit_backdrop(ids)
-	_render_looks(flow)
+	_render_looks()
 
 
 ## The backdrop from [constant BACKDROP_TOP] down to just under the lowest
@@ -341,32 +324,26 @@ func render(flow: IntroFlow) -> void:
 func _fit_backdrop(ids: Array) -> void:
 	var bottom := 1.42
 	for id: String in ids:
-		bottom = minf(bottom, _center_of(id).y - _size_of(id).y / 2.0 - (0.2 if id in ["snap", "smooth"] else 0.08))
+		bottom = minf(bottom, _center_of(id).y - _size_of(id).y / 2.0 - 0.08)
 	_backdrop.scale = Vector3(1.0, BACKDROP_TOP - bottom, 1.0)
 	_backdrop.position = Vector3(0, (BACKDROP_TOP + bottom) / 2.0, -0.03)
 
 
 static func _center_of(id: String) -> Vector2:
 	match id:
-		"snap": return SNAP_AT
-		"smooth": return SMOOTH_AT
-		"keep": return KEEP_AT
 		"skip_tutorial": return SKIP_TUTORIAL_AT
 	return MAIN_AT
 
 
 static func _size_of(id: String) -> Vector2:
 	match id:
-		"snap", "smooth": return TURN_SIZE
-		"keep": return KEEP_SIZE
 		"skip_tutorial": return SKIP_TUTORIAL_SIZE
 	return MAIN_SIZE
 
 
-func _render_looks(flow: IntroFlow) -> void:
+func _render_looks() -> void:
 	for id: String in _looks:
-		var on := (id == "snap" or id == "smooth") and id == flow.turn
-		Lobby.set_look(_looks[id], id == _hover, on)
+		Lobby.set_look(_looks[id], id == _hover, false)
 
 
 ## Stand the panel `distance` m in front of feet `feet` along `yaw` (world,

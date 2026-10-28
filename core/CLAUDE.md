@@ -179,7 +179,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   /api/spatial/ready` restarts a session's run clock once, `POST
   /api/spatial/prefs` saves `{turn}` to `spatial-prefs.json` in the state
   dir (kept across restarts and story resets). Neither commits to the
-  story.
+  story. Since wave 33b no client posts `prefs` (VR's snap turn is gone);
+  the route stays (additive).
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

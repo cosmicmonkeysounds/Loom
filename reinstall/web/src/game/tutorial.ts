@@ -134,7 +134,6 @@ export interface TutorialCopy {
   line: string;
 }
 
-// DRAFT w33 (the intro tutorial's copy, awaiting sign-off)
 const MOUSE_COPY: Record<TutorialStep, TutorialCopy> = {
   click: { title: "Take the mouse", line: "Click anywhere on the picture. From then on the mouse turns your head, like in any computer game." },
   look: { title: "Look around", line: "Move the mouse to look left and right, up and down." },
@@ -143,7 +142,6 @@ const MOUSE_COPY: Record<TutorialStep, TutorialCopy> = {
   done: { title: "You're ready", line: "Press Esc any time to get the mouse back. Now find Gerald, the golden duck." },
 };
 
-// DRAFT w33
 const TOUCH_COPY: Record<TutorialStep, TutorialCopy> = {
   click: MOUSE_COPY.click,
   look: { title: "Look around", line: "Drag the LOOK stick on the right to turn and look around." },

@@ -15,15 +15,15 @@
 ##   (shown after [constant WELCOME_OK_AFTER] s).
 ## - **POINT** — point the beam at the big OK and pull the trigger.
 ## - **WALK** — walk into the glowing ring; NEXT after [constant WALK_NEXT_AFTER] s.
-## - **TURN** — SNAP TURN / SMOOTH TURN switch the setting live; turn
-##   around to face the duck behind you; KEEP THIS ONE saves the choice
-##   (shown once the duck is faced, or after [constant TURN_KEEP_AFTER] s).
+## - **TURN** — turn around (the stick, or just the body) to face the duck
+##   behind you; on [constant TURN_DONE_HOLD] s later; NEXT after
+##   [constant TURN_NEXT_AFTER] s. Turning is always smooth (wave 33b: the
+##   snap turn and its setting are gone — its jumps made people dizzy).
 ## - **COMFORT** — what to do when dizzy; START.
 ##
 ## A returning program ([member skippable]) may also skip the whole
 ## tutorial. Events (`{event: …}`): `step` (entered `step`), `success` (the
-## guest did the thing: a chime and a gentle haptic), `turn` (apply `turn`
-## now), `save` (keep `turn`: [method LinkBase.save_prefs]), `done`.
+## guest did the thing: a chime and a gentle haptic), `done`.
 class_name IntroFlow
 extends RefCounted
 
@@ -33,7 +33,9 @@ enum Step { VIDEO, WELCOME, POINT, WALK, TURN, COMFORT, DONE }
 const LOOK_DEG := 100.0
 const WELCOME_OK_AFTER := 5.0
 const WALK_NEXT_AFTER := 20.0
-const TURN_KEEP_AFTER := 15.0
+const TURN_NEXT_AFTER := 20.0
+## The duck faced: the "that's it" line stays this long before COMFORT.
+const TURN_DONE_HOLD := 2.0
 ## A press this soon after a step starts is ignored: the pull that pressed
 ## the last button never presses the next one.
 const ARM_DELAY := 0.6
@@ -42,50 +44,42 @@ const RING_RADIUS := 0.6
 ## The duck counts as faced within this many degrees of the head's yaw.
 const FACE_DEG := 30.0
 
-# DRAFT w33 — every string below awaits sign-off.
 const TITLES := {
-	Step.WELCOME: "WELCOME",  # DRAFT w33
-	Step.POINT: "POINTING",  # DRAFT w33
-	Step.WALK: "WALKING",  # DRAFT w33
-	Step.TURN: "TURNING",  # DRAFT w33
-	Step.COMFORT: "YOU'RE READY",  # DRAFT w33
+	Step.WELCOME: "WELCOME",
+	Step.POINT: "POINTING",
+	Step.WALK: "WALKING",
+	Step.TURN: "TURNING",
+	Step.COMFORT: "YOU'RE READY",
 }
 const BODIES := {
-	Step.WELCOME: "Take a look around — turn your head slowly.\nYou can take the headset off any time.",  # DRAFT w33
-	Step.POINT: "Your controller makes a beam.\nPoint it at the button and pull the trigger\nunder your finger.",  # DRAFT w33
-	Step.WALK: "Push the thumbstick forward gently to walk.\nWalk into the glowing circle.",  # DRAFT w33
-	Step.TURN: "Push the thumbstick left or right to turn.\nTurn around to face the duck behind you.",  # DRAFT w33
-	Step.COMFORT: "Feeling dizzy? Stop, stand still and close your\neyes for a moment. Now find Gerald, the golden duck.",  # DRAFT w33
+	Step.WELCOME: "Take a look around — turn your head slowly.\nYou can take the headset off any time.",
+	Step.POINT: "Your controller makes a beam.\nPoint it at the button and pull the trigger\nunder your finger.",
+	Step.WALK: "Push the thumbstick forward gently to walk.\nWalk into the glowing circle.",
+	Step.TURN: "Push the thumbstick left or right to turn\n(or just turn your body).\nTurn around to face the duck behind you.",
+	Step.COMFORT: "Feeling dizzy? Stop, stand still and close your\neyes for a moment. Now find Gerald, the golden duck.",
 }
 ## The TURN step once the duck is faced.
-const TURN_DONE := "That's it! Try the other one if you like,\nthen keep the one that feels best."  # DRAFT w33
+const TURN_DONE := "That's it! You found the duck."
 ## Button labels (ids → text).
 const LABELS := {
-	"skip": "SKIP ▶",  # DRAFT w33
-	"skip_tutorial": "SKIP TUTORIAL ▶",  # DRAFT w33
-	"ok": "OK",  # DRAFT w33
-	"next": "NEXT ▶",  # DRAFT w33
-	"snap": "SNAP TURN",  # DRAFT w33
-	"smooth": "SMOOTH TURN",  # DRAFT w33
-	"keep": "KEEP THIS ONE ▶",  # DRAFT w33
-	"start": "START ▶",  # DRAFT w33
+	"skip": "SKIP ▶",
+	"skip_tutorial": "SKIP TUTORIAL ▶",
+	"ok": "OK",
+	"next": "NEXT ▶",
+	"start": "START ▶",
 }
-## Under the turn buttons.
-const SNAP_NOTE := "jumps in small steps —\neasiest on the stomach"  # DRAFT w33
-const SMOOTH_NOTE := "glides around"  # DRAFT w33
 
 var step := Step.DONE
 ## The video and the tutorial may be skipped (a program that has completed
 ## a reinstallation before).
 var skippable := false
-## The turn setting picked: "snap" or "smooth".
-var turn := "snap"
 ## The duck behind was faced in the TURN step.
 var faced := false
 ## Seconds into the current step.
 var t := 0.0
 var _looked := 0.0
 var _last_yaw: Variant = null
+var _faced_t := 0.0
 
 
 ## Whether `reinstalled` (the assignment's count of ducks found since the
@@ -94,20 +88,10 @@ static func skippable_for(reinstalled: Variant) -> bool:
 	return (reinstalled is int or reinstalled is float) and int(reinstalled) >= 1
 
 
-## The turn setting a program's saved `prefs` names ("snap" / "smooth"),
-## else "" (none saved, an old server, junk).
-static func saved_turn(prefs: Variant) -> String:
-	if not prefs is Dictionary:
-		return ""
-	var t: Variant = (prefs as Dictionary).get("turn")
-	return str(t) if t is String and str(t) in ["snap", "smooth"] else ""
-
-
-## Start at the video: `reinstalled` decides the skips, `turn_now` is the
-## setting in force ("snap" / "smooth"). Returns the first events.
-func start(reinstalled: Variant, turn_now: String) -> Array:
+## Start at the video: `reinstalled` decides the skips. Returns the first
+## events.
+func start(reinstalled: Variant) -> Array:
 	skippable = skippable_for(reinstalled)
-	turn = "smooth" if turn_now == "smooth" else "snap"
 	faced = false
 	_looked = 0.0
 	_last_yaw = null
@@ -161,7 +145,10 @@ func tick(delta: float, inp: Dictionary) -> Array:
 		Step.TURN:
 			if not faced and inp.get("facing") == true:
 				faced = true
+				_faced_t = t
 				out.append({"event": "success"})
+			elif faced and t - _faced_t >= TURN_DONE_HOLD:
+				out.append_array(_enter(Step.COMFORT))
 	return out
 
 
@@ -176,15 +163,6 @@ func press(id: String) -> Array:
 			return _enter(Step.WELCOME)
 		"skip_tutorial":
 			return _enter(Step.DONE)
-		"snap", "smooth":
-			if id == turn:
-				return []
-			turn = id
-			return [{"event": "turn", "turn": turn}]
-		"keep":
-			var out: Array = [{"event": "save", "turn": turn}, {"event": "success"}]
-			out.append_array(_enter(Step.COMFORT))
-			return out
 		"ok", "next", "start":
 			var nxt: Step = (step + 1) as Step
 			var out: Array = [{"event": "success"}]
@@ -210,9 +188,8 @@ func buttons() -> Array:
 			if t >= WALK_NEXT_AFTER:
 				out.append("next")
 		Step.TURN:
-			out.append_array(["snap", "smooth"])
-			if faced or t >= TURN_KEEP_AFTER:
-				out.append("keep")
+			if not faced and t >= TURN_NEXT_AFTER:
+				out.append("next")
 		Step.COMFORT:
 			out.append("start")
 		Step.DONE:

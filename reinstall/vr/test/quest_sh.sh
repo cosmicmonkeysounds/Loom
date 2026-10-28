@@ -33,8 +33,8 @@ check "valid_station refuses empty" bash -c "! (QUEST_SH_SOURCE_ONLY=1 . '$q'; v
 check "json_escape" eq "$(json_escape 'a"b\c')" 'a\"b\\c'
 
 json="$(station_json vr-2 'Headset "2"' 'p4ss' https://app.mapsandducks.com)"
-parsed="$(printf '%s' "$json" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["server"], d["code"], d["station"], d["name"], d["smooth_turn"])' 2>&1)"
-check "station_json is valid JSON with every key" eq "$parsed" 'https://app.mapsandducks.com p4ss vr-2 Headset "2" False'
+parsed="$(printf '%s' "$json" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["server"], d["code"], d["station"], d["name"], len(d))' 2>&1)"
+check "station_json is valid JSON with every key" eq "$parsed" 'https://app.mapsandducks.com p4ss vr-2 Headset "2" 4'
 
 # The build stamp (wave 26, R8): valid JSON, the short sha, staged only.
 stamp="$(build_json abc1234 2026-10-26T12:00Z | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["build"], d["at"])' 2>&1)"

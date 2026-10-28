@@ -70,7 +70,7 @@ default_name() { # vr-1 → "Headset 1"; anything else → itself
 }
 
 station_json() { # station_json <station> <name> <code> <server>
-  printf '{\n  "server": "%s",\n  "code": "%s",\n  "station": "%s",\n  "name": "%s",\n  "smooth_turn": false\n}\n' \
+  printf '{\n  "server": "%s",\n  "code": "%s",\n  "station": "%s",\n  "name": "%s"\n}\n' \
     "$(json_escape "$4")" "$(json_escape "$3")" "$(json_escape "$1")" "$(json_escape "$2")"
 }
 
