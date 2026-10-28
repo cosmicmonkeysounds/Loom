@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Wave 31 (2026-10-27): the MOTU 828x on John's Desktop (ASIO), no ADAT expander: 48 kHz, internal clock. Our channels are the device's own (no map): Analog 1-8 (the line outs on the back) are 1-8, Main L/R 9-10 and Phones L/R 11-12 (each from its own front headphone jack, NOT mirrored in CueMix, else they shift); S/PDIF 13-14 and the ADAT banks stay unused but keep the optical ports on ADAT so the device keeps its 32 in / 30 out (stagehand check catches a moved layout via device.expect). Inputs: Mic/Gtr 1-2, Analog 3-10. Live mics are mixed in CueMix (hardware); the router's passthrough is off. Only the living room, the kitchen and the mud room (The Optical Drive, so every arrival hears the modem) have speakers yet; place the rest with the map editor's Speaker tool, Test each one (ASIO's order may differ from Core Audio's), then Save to project.",
+  "note": "Wave 38 (2026-10-28): the MOTU 828x on John's Desktop (ASIO), no ADAT expander: 48 kHz, internal clock. Our channels are the device's own (no map): Analog 1-8 (the line outs on the back) are 1-8, Main L/R 9-10 (the living room since wave 38) and Phones L/R 11-12 (each from its own front headphone jack, NOT mirrored in CueMix, else they shift); S/PDIF 13-14 and the ADAT banks stay unused but keep the optical ports on ADAT so the device keeps its 32 in / 30 out (stagehand check catches a moved layout via device.expect). The living room is Main L/R plus the subwoofer on Analog 1 (its own speaker and trim). Inputs: Mic/Gtr 1-2, Analog 3-10. Clippy's wireless mic (input 1) stays mixed in CueMix (hardware); the router only meters it (role clippy) to duck the music. The TV's sound (Chrome on the Desktop) comes in on Analog 1 in (input 3, role trabolta): the router routes it to every speaker but the sub and ducks the music under it. Only the living room, the kitchen and the mud room (The Optical Drive, so every arrival hears the modem) have speakers yet; place the rest with the map editor's Speaker tool, tick its cell on the TV row of the matrix, Test each one (ASIO's order may differ from Core Audio's), then Save to project.",
   "device": {
     "name": "828x",
     "inputs": 10,
@@ -14,8 +14,12 @@
   "inputs": [
     {
       "ch": 1,
-      "label": "Mic/Gtr 1 (front)",
-      "kind": "mic"
+      "label": "Mic/Gtr 1 — Clippy's wireless (CueMix)",
+      "kind": "mic",
+      "role": "clippy",
+      "reach": [
+        "living"
+      ]
     },
     {
       "ch": 2,
@@ -24,8 +28,9 @@
     },
     {
       "ch": 3,
-      "label": "Analog 1",
-      "kind": "line"
+      "label": "Analog 1 in — the TV (Trabolta)",
+      "kind": "line",
+      "role": "trabolta"
     },
     {
       "ch": 4,
@@ -66,11 +71,11 @@
   "outputs": [
     {
       "ch": 1,
-      "label": "Analog 1 — Living L"
+      "label": "Analog 1 — Living sub"
     },
     {
       "ch": 2,
-      "label": "Analog 2 — Living R"
+      "label": "Analog 2 — spare"
     },
     {
       "ch": 3,
@@ -98,11 +103,11 @@
     },
     {
       "ch": 9,
-      "label": "Main L (front headphone jack)"
+      "label": "Main L — Living L"
     },
     {
       "ch": 10,
-      "label": "Main R (front headphone jack)"
+      "label": "Main R — Living R"
     },
     {
       "ch": 11,
@@ -126,7 +131,7 @@
       },
       "yaw": 90,
       "out": [
-        1
+        9
       ]
     },
     {
@@ -141,7 +146,22 @@
       },
       "yaw": 90,
       "out": [
-        2
+        10
+      ]
+    },
+    {
+      "id": "living-sub",
+      "name": "Living sub",
+      "room": "desktop",
+      "floor": "main",
+      "pos": {
+        "x": 6.5,
+        "y": 0.3,
+        "z": 7.2
+      },
+      "yaw": 90,
+      "out": [
+        1
       ]
     },
     {
@@ -196,11 +216,23 @@
       "name": "Living room",
       "speakers": [
         "living-l",
-        "living-r"
+        "living-r",
+        "living-sub"
       ]
     }
   ],
-  "routes": [],
+  "routes": [
+    {
+      "in": 3,
+      "out": [
+        3,
+        4,
+        8,
+        9,
+        10
+      ]
+    }
+  ],
   "cues": {
     "ad_jingle": {
       "to": [
@@ -307,7 +339,7 @@
   },
   "voice": {
     "tv": [
-      "living"
+      "everywhere"
     ]
   }
 }
