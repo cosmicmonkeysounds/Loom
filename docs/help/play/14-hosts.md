@@ -95,7 +95,7 @@ Top to bottom:
 
 Announcements to everyone do not pop on a host's phone: LAST says what
 fired, and the 📜 Chat log has the words. A banner on a host phone
-leaves by itself after about 45 seconds.
+leaves by itself after about 45 seconds on screen (× clears it at once).
 
 **Every host may call the show.** Whoever is calling says so with **📣
 I'll call**. Everyone sees it, the director's laptop and phone included.

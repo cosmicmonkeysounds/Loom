@@ -64,6 +64,6 @@ describe("the night strip (wave 37)", () => {
     expect(help).toMatch(/on one line; swipe it for the rest/u);
     expect(help.indexOf("**Needs you (n)**")).toBeLessThan(help.indexOf("**Your jobs**"));
     expect(help).toMatch(/do not pop on a host's phone/u);
-    expect(help).toMatch(/about 45 seconds/u);
+    expect(help).toMatch(/about 45 seconds on screen/u);
   });
 });
