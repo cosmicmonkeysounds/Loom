@@ -699,7 +699,10 @@ export const DOOR_LATER_MS = 45_000;
 
 /** The door pop-out (§4.4): at once after `Night.step ≥ 1`, else after a
  *  minute unclaimed. Wave 37 (C9): it goes to 🔔 Waiting after 45 s
- *  untouched, and the queue's size is on its button, not in its body. */
+ *  untouched, and the queue's size is on its button, not in its body. Its
+ *  rev is the guest it names (the oldest unclaimed): a new guest arriving
+ *  behind them leaves it in Waiting; it comes back when the next guest
+ *  moves to the front of the queue (the one it names is claimed or let in). */
 export function doorSpec(queue: readonly DoorEntry[], step: number | null | undefined, now: number, canClaim: boolean): Draft | null {
   const open = queue.filter((e) => e.claimedBy === null);
   const oldest = open[0];

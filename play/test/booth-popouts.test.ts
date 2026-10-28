@@ -269,6 +269,8 @@ describe("the door queue (§4.4)", () => {
     expect(doorSpec(q, 1, 6000, false)!.actions[0]!.label).toBe("📷 Scan winamp's pass");
     // Claimed: the pop-out moves on to the next unclaimed guest.
     expect(doorSpec([{ ...q[0]!, claimedBy: "Norton" }, q[1]!], 1, 10_000, true)!.rev).toBe("icq");
+    // A new guest behind an unclaimed one changes nothing (the same rev: a deferred door stays in Waiting).
+    expect(doorSpec([...q, { id: "aim", name: "aim", since: 9_500, claimedBy: null }], 1, 10_000, true)!.rev).toBe("winamp");
     expect(doorSpec([], 1, 0, true)).toBeNull();
   });
 });
