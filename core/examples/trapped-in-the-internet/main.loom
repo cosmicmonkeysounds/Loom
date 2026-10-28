@@ -4131,6 +4131,10 @@ when start_the_bingo:
     start quest The Selected Antivirus for Norton Anti-Virus
     cue lights_game
     set Night.lights = "game"
+    // Wave 38: pressed before the 📣 Desktop call, act 1 starts here.
+    if Night.music == "doors":
+      cue music_act_1
+      set Night.music = "act_1"
     cue tv_bingo
     set Night.screen = "bingo"
     cue terminals_attract
@@ -4782,6 +4786,11 @@ when truth_pong:
     set Night.judge_now = 1
     cue lights_pong
     set Night.lights = "pong"
+    // Wave 38: pressed at step 8 (hunt 2 cut short, no summons), the
+    // malware set would play on; act 2 starts here instead.
+    if Night.music == "malware":
+      cue music_act_2
+      set Night.music = "act_2"
     cue screens_truth_pong
     set Night.screen = "truth_pong"
     set Night.terminals = "truth_pong"
@@ -6020,9 +6029,12 @@ when Kernel.verdict_wait == true and Time.elapsed >= Kernel.verdict_end:
     else:
       -> Grok Prom
 
-// F5: someone gave him the line (ROLE `pickup_line_accepted`).
+// F5: someone gave him the line (ROLE `pickup_line_accepted`). Guarded
+// like its caller: a stray director press after an ending (or the
+// ceremony) does nothing, instead of re-running the Song Ending.
 when line_accepted:
-  -> Pickup Line
+  if Night.phase == "grok_prom" and Night.ended != true:
+    -> Pickup Line
 
 // F6: nobody has the line. He takes his shot anyway; everyone is trapped.
 when no_pickup_line:

@@ -11,7 +11,7 @@ import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioFiles, scenarioSource } from "../examples/load.ts";
 import { notePress, pressRefused } from "../server/views.ts";
-import { CEREMONY, TO_Y2K, Y2K_TO_DESTROYED, Y2K_TO_HEART_END, Y2K_TO_VERDICT, pressChain, type ChainStep } from "../../scripts/accept/chains.ts";
+import { CEREMONY, TO_HUNT2, TO_Y2K, Y2K_TO_DESTROYED, Y2K_TO_HEART_END, Y2K_TO_VERDICT, pressChain, type ChainStep } from "../../scripts/accept/chains.ts";
 
 const SCENES = ["doors", "act_1", "malware", "act_2", "act_3", "final", "off", "ceremony", "afterparty"];
 const FILES = scenarioFiles("trapped-in-the-internet");
@@ -90,9 +90,10 @@ describe("the music through a night (the sim)", () => {
     const tick = (seconds: number) => {
       for (let i = 0; i < seconds; i++) note(sim.tick(1000));
     };
+    const value = (name: string) => (sim.world.get(name) as { value: unknown } | undefined)?.value;
     const music = () => (sim.world.get("Night.music") as { value: unknown } | undefined)?.value;
     const chain = async (steps: readonly ChainStep[]) => expect(await pressChain(steps, press, () => {})).toEqual({ ok: true, refused: [] });
-    return { sim, cued, music, chain, tick };
+    return { sim, cued, music, value, chain, tick, press };
   }
 
   it("Power On → the Y2K clock: doors, act 1, the malware, act 2, act 3", { timeout: 60_000 }, async () => {
@@ -122,6 +123,36 @@ describe("the music through a night (the sim)", () => {
     n.tick(40);
     expect(n.music()).toBe("off");
     expect(n.cued.slice(-2)).toEqual(["final", "off"]);
+  });
+
+  it("🏓 Truth Pong pressed at step 8 (hunt 2 cut short, no summons) still plays act 2", { timeout: 60_000 }, async () => {
+    const n = night();
+    await n.chain(TO_HUNT2);
+    expect(n.value("Night.step")).toBe(8);
+    expect(n.music()).toBe("malware");
+    await n.chain(["truth_pong"]);
+    expect(n.value("Night.step")).toBe(10);
+    expect(n.music()).toBe("act_2");
+    expect(n.cued).toEqual(["doors", "act_1", "malware", "act_2"]);
+  });
+
+  it("🎱 Bingo pressed before the Desktop call still plays act 1", { timeout: 60_000 }, async () => {
+    const n = night();
+    await n.chain(["start_the_bingo"]);
+    expect(n.music()).toBe("act_1");
+    expect(n.cued).toEqual(["doors", "act_1"]);
+  });
+
+  it("a stray `line_accepted` after the ceremony changes nothing (the afterparty keeps playing)", { timeout: 60_000 }, async () => {
+    const n = night();
+    await n.chain(TO_Y2K);
+    await n.chain(Y2K_TO_HEART_END);
+    n.tick(15);
+    await n.chain(CEREMONY);
+    const before = { music: n.music(), ending: n.value("Night.ending"), screen: n.value("Night.screen"), lights: n.value("Night.lights"), cued: n.cued.length };
+    expect(before.music).toBe("afterparty");
+    await n.press("line_accepted");
+    expect({ music: n.music(), ending: n.value("Night.ending"), screen: n.value("Night.screen"), lights: n.value("Night.lights"), cued: n.cued.length }).toEqual(before);
   });
 
   it("Combo B (destroyed) turns it off", { timeout: 60_000 }, async () => {
