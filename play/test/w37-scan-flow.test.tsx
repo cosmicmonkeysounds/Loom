@@ -17,6 +17,8 @@ import type { PrimeSession } from "../src/session/prime.ts";
 import type { Interaction } from "../src/types.ts";
 import { elements, mountHooks } from "./hooks-harness.ts";
 import type { ReactElement } from "react";
+import { TitleBar } from "../src/chrome/title-bar.tsx";
+import type { ObjectiveView } from "../src/types.ts";
 
 const src = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), "utf8");
 
@@ -363,5 +365,29 @@ describe("wave 37 wiring (C6): a performer's phone is about their job", () => {
     // player0 is the same rule as the render's `player`, before sign-in's early return.
     expect(app).toContain("const player0 = s.auth !== null && isPlayer(s.view) && !boothHost(s.auth, s.view) && !s.auth.admin;");
     expect(app).toContain("const player = isPlayer(s.view) && !isHost && !admin;");
+  });
+});
+
+describe("wave 37 wiring (C7): NEW MISSION, said once", () => {
+  it("app.tsx: Mission on screen (or this objective's PLAYER SELECT) blinks the title bar instead of a pop-out", () => {
+    const app = src("booth/app.tsx");
+    expect(app).toContain('missionShown={(id) => (player && pwin === "mission" && layer === null && t.activeId === null) || (layer?.kind === "pick" && layer.objective === id)}');
+    expect(app).toContain("onMissionNews={(o) => setMissionNews({ id: o.id, title: o.title })}");
+    expect(app).toContain('flash={{ id: missionNews.id, title: missionNews.title, brief: "" }}');
+    // The blink stays 6 s, and a new headline clears it.
+    expect(app).toMatch(/setTimeout\(\(\) => setMissionNews\(null\), 6000\)/u);
+    expect(app).toContain("setMissionNews((n) => (n !== null && n.id !== headNow ? null : n));");
+    // The hooks sit above sign-in's early return.
+    expect(app.indexOf("useState<{ id: string; title: string } | null>(null)")).toBeLessThan(app.indexOf("if (!s.auth) return"));
+    expect(app.indexOf("}, [headNow]);")).toBeLessThan(app.indexOf("if (!s.auth) return"));
+  });
+
+  it("the blink: the title bar flashes with \"NEW MISSION · …\" under Mission's act line", () => {
+    const o = { id: "sweep", title: "🛡 Sweep every program", brief: "Scan everyone.", status: "active" } as unknown as ObjectiveView;
+    const html = renderToStaticMarkup(<TitleBar objectives={[o]} fallback="Norton" onOpen={() => {}} act="Sweep every program" flash={{ id: "sweep", title: "NEW MISSION · Sweep every program", brief: "" }} />);
+    expect(html).toMatch(/class="title-bar [^"]*flash/u);
+    expect(html).toContain('<span class="title-bar-news" role="status">NEW MISSION · Sweep every program</span>');
+    // Without the news it is the plain bar.
+    expect(renderToStaticMarkup(<TitleBar objectives={[o]} fallback="Norton" onOpen={() => {}} act="Sweep every program" />)).not.toContain("title-bar-news");
   });
 });

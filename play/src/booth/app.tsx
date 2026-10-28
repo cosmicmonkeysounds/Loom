@@ -53,7 +53,7 @@ import { WANTED_ROOM, playerChats } from "./mission-model.ts";
 import { ChatsWindow } from "../guest/chats.tsx";
 import { NowBar } from "../guest/frame.tsx";
 import { chatsDot } from "../rooms/chats.ts";
-import { missionLine } from "../chrome/title-bar.tsx";
+import { TitleBar, missionLine } from "../chrome/title-bar.tsx";
 import { CODEX_ROOM, QUEST_LOG } from "../rooms/spaces.ts";
 import type { Nav } from "../moments/exits.ts";
 import { Icon } from "../chrome/icons.tsx";
@@ -207,6 +207,9 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   const [peopleOpen, setPeopleOpen] = useState(false);
   // Wave 25: a host's window (Show, Chats or the Desk).
   const [hwin, setHwin] = useState<HostWindow>("show");
+  // Wave 37 (C7): NEW MISSION while Mission is on screen is a blink of the
+  // title bar (the driver plays the chime), not a pop-out over the card.
+  const [missionNews, setMissionNews] = useState<{ id: string; title: string } | null>(null);
   const wake = useWakeLock(host.storage);
   // The just-closed pass, ignored for a moment: kept for the sign-in, not
   // per scanner opening, so leaving and reopening the scanner with the pass
@@ -301,6 +304,17 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickGone]);
+  // C7: the blink stays 6 s, and never past its headline. (The driver is a
+  // child: its onMissionNews for a new headline runs before this updater.)
+  useEffect(() => {
+    if (missionNews === null) return;
+    const t = setTimeout(() => setMissionNews(null), 6000);
+    return () => clearTimeout(t);
+  }, [missionNews]);
+  const headNow = s.view?.objectives?.[0]?.id ?? null;
+  useEffect(() => {
+    setMissionNews((n) => (n !== null && n.id !== headNow ? null : n));
+  }, [headNow]);
   // A notification's `?room=scanner` link (the old Scanner room's readouts)
   // opens Readouts, where those readouts live now.
   useEffect(() => {
@@ -658,14 +672,27 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               {(keyboard) => (
                 <HostConsole session={s} wide={wide} openCard={(id) => openCard(id)} openWanted={openBoard} enabled={hostWins} showing={hostShown === "show"} onShow={() => hostTap("show")} keyboardOpen={keyboard}>
               {player ? (
-                <NowBar
-                  objectives={s.view?.objectives}
-                  fallback={s.view?.title ?? s.auth?.title ?? character}
-                  onOpen={() => playerTap("mission")}
-                  sub={s.view?.mission?.place != null ? `📍 ${s.view.mission.place}` : undefined}
-                  paused={viewPaused(s.view)}
-                  act={pwin === "mission" && t.activeId === null ? missionLine(s.view?.objectives) : undefined}
-                />
+                missionNews !== null ? (
+                  // C7: the blink is the existing `.title-bar.flash` (4 × 0.5 s); its line reads "NEW MISSION · …".
+                  <TitleBar
+                    objectives={s.view?.objectives}
+                    fallback={s.view?.title ?? s.auth?.title ?? character}
+                    onOpen={() => playerTap("mission")}
+                    sub={s.view?.mission?.place != null ? `📍 ${s.view.mission.place}` : undefined}
+                    paused={viewPaused(s.view)}
+                    act={pwin === "mission" && t.activeId === null ? missionLine(s.view?.objectives) : undefined}
+                    flash={{ id: missionNews.id, title: missionNews.title, brief: "" }}
+                  />
+                ) : (
+                  <NowBar
+                    objectives={s.view?.objectives}
+                    fallback={s.view?.title ?? s.auth?.title ?? character}
+                    onOpen={() => playerTap("mission")}
+                    sub={s.view?.mission?.place != null ? `📍 ${s.view.mission.place}` : undefined}
+                    paused={viewPaused(s.view)}
+                    act={pwin === "mission" && t.activeId === null ? missionLine(s.view?.objectives) : undefined}
+                  />
+                )
               ) : hostShown === "show" ? null : (
               <NowCard
                 objectives={s.view?.objectives}
@@ -712,7 +739,17 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 </HostConsole>
               )}
             </BoothFrame>
-            <PopOutDriver session={s} open={openers} now={storyMs} placeTitle={placeTitle} ownFireAt={() => ownFire.current} targetKey={targetKey} />
+            <PopOutDriver
+              session={s}
+              open={openers}
+              now={storyMs}
+              placeTitle={placeTitle}
+              ownFireAt={() => ownFire.current}
+              targetKey={targetKey}
+              // C7: Mission on screen (or this objective's PLAYER SELECT) is the instruction: no pop-out, a blink + chime.
+              missionShown={(id) => (player && pwin === "mission" && layer === null && t.activeId === null) || (layer?.kind === "pick" && layer.objective === id)}
+              onMissionNews={(o) => setMissionNews({ id: o.id, title: o.title })}
+            />
             {layer?.kind === "scan" && (
               <ScannerScreen session={s} admin={admin} gate={passGate} caption={layer.caption} onBoard={openBoard} onClose={closeLayer} onOpenThread={openThread} onPress={noteOwnFire}
                 // C3: 📷 Next guest is door work: an Antivirus at the door, or a scan opened from the Door queue.
