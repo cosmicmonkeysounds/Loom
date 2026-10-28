@@ -18,7 +18,7 @@ import type { GameLight, GameLights, HouseMap, Vec3 } from "@loom/house";
 /** The ambient (hemisphere + sun) with every real light dark. */
 export const NIGHT_FLOOR = 0.5;
 /** The ambient with every real light at full. */
-export const LIT_AMBIENT = 0.8;
+export const LIT_AMBIENT = 0.65;
 /** The ambient eases to its target with this time constant (s). */
 export const AMBIENT_EASE_S = 1.2;
 /** Under this level a fixture counts as dark (no point light). */

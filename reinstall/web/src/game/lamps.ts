@@ -17,7 +17,7 @@ import type { GameLight, GameLights, HouseMap, Vec3 } from "@loom/house";
 import { ambientFactor, animationClock, easeToward, lampFloors, lampLevel, pickLamps } from "./house-lights.ts";
 
 /** A point light's intensity (candela) at level 1, and its reach (m). */
-export const LAMP_CANDELA = 7;
+export const LAMP_CANDELA = 18;
 export const LAMP_RANGE = 7;
 /** The point light hangs this far under its bulb (off the ceiling plane). */
 const LAMP_DROP = 0.18;
