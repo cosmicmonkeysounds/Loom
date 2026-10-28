@@ -201,6 +201,15 @@ when alarm:
 when lights_out:
   set Night.lights = "none"
 
+when music_act:
+  set Night.music = "act_1"
+
+when music_off:
+  set Night.music = "off"
+
+when music_none:
+  set Night.music = "none"
+
 when patch_buttons:
   set Night.patch_override = true
 
@@ -215,6 +224,7 @@ when weird:
       heart_look: "Night.heart_look",
       alarm_on: "Night.alarm_on",
       lights: "Night.lights",
+      music: "Night.music",
       door_override: "Night.door_override",
       patch_override: "Night.patch_override",
     });
@@ -224,7 +234,7 @@ when weird:
     const sim = Sim.fromSources(HEART);
     const w = new ScreenWatch({ now: () => 1 });
     const night = () => w.poll(sim, { name: "TV", spot: "", view: "tv", character: "" }, () => false).night;
-    expect(night()).toMatchObject({ server_door: null, heart_stage: null, heart_look: null, alarm_on: null, door_override: null });
+    expect(night()).toMatchObject({ server_door: null, heart_stage: null, heart_look: null, alarm_on: null, door_override: null, music: null });
     sim.signal("heart_boot");
     // "none" reads null (the settled look: nothing yet).
     expect(night()).toMatchObject({ server_door: "closed", heart_stage: "sealed", heart_look: null, alarm_on: false, door_override: false });
@@ -235,6 +245,14 @@ when weird:
     expect(night().lights).toBe("alarm");
     sim.signal("lights_out");
     expect(night().lights).toBeNull();
+    // Wave 38: the soundtrack's scene, for the router's catch-up, the same
+    // way ("off" is a scene; "none" and unset read null, the router's off).
+    sim.signal("music_act");
+    expect(night().music).toBe("act_1");
+    sim.signal("music_off");
+    expect(night().music).toBe("off");
+    sim.signal("music_none");
+    expect(night().music).toBeNull();
     // Wave 22: the patch bay's override follows the story the same way.
     expect(night().patch_override).toBeNull();
     sim.signal("patch_buttons");
