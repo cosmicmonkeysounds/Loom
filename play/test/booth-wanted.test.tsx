@@ -32,14 +32,15 @@ describe("the Wanted poster (§4.2)", () => {
     expect(html).toContain("🙋 I&#x27;ll get them");
     expect(html).toContain("🗂 Card ›");
   });
-  it("mine: 🙋 YOU + Scan their pass (+ Hand back with A2); theirs: grey, take-over only when stale and A3", () => {
+  it("mine: YOURS + Scan their pass (+ Hand back with A2); theirs: grey, take-over only when stale and A3", () => {
     const mine = renderToStaticMarkup(<Poster w={W("Encarta", { claimedBy: "Norton" })} me="Norton" now={0} wall={0} place="The Desktop" canRelease />);
-    expect(mine).toContain("🙋 YOU");
+    // Wave 37 (C11): the tag reads YOURS / "🙋 X is on it", as a kept poster on Open does.
+    expect(mine).toContain('<span class="wanted-tag you">YOURS</span>');
     expect(mine).toContain("📷 Scan their pass");
     expect(mine).toContain("Hand back");
     const theirs = renderToStaticMarkup(<Poster w={W("ICQ", { claimedBy: "McAfee Anti-Virus" })} me="Norton" now={11 * 60_000} wall={11 * 60_000} claimedAt={0} place="The Tube" canTakeOver />);
     expect(theirs).toContain("wanted-poster theirs");
-    expect(theirs).toContain("🙋 McAfee Anti-Virus");
+    expect(theirs).toContain('<span class="wanted-tag">🙋 McAfee Anti-Virus is on it</span>');
     expect(theirs).toContain("claimed 11 min ago");
     expect(theirs).toContain("Still on it?");
     expect(theirs).toContain("🙋 Take over");
@@ -92,6 +93,7 @@ describe("wave 37 (C11): the Open tab keeps a claimed poster in place", () => {
     expect(tabs(h.output)).toEqual(["Open (3)", "Mine (1)", "Everyone (3)"]);
     const mine = renderToStaticMarkup(<Poster {...after[1]!.props} me="Norton" now={0} place={null} onScan={noop} />);
     expect(mine).toContain("📷 Scan their pass");
+    expect(mine).toContain("YOURS");
     expect(mine).not.toContain("I&#x27;ll get them");
   });
 
@@ -101,7 +103,7 @@ describe("wave 37 (C11): the Open tab keeps a claimed poster in place", () => {
     const after = posters(h.output);
     expect(after.map((p) => p.props.w.id)).toEqual(["WinZip", "Encarta", "Pong"]);
     const theirs = renderToStaticMarkup(<Poster {...after[1]!.props} me="Norton" now={0} place={null} />);
-    expect(theirs).toContain("🙋 McAfee Anti-Virus");
+    expect(theirs).toContain('<span class="wanted-tag">🙋 McAfee Anti-Virus is on it</span>');
     expect(theirs).not.toContain("I&#x27;ll get them");
     h.rerender(props([marks[0]!, W("Encarta", { markedAt: 2, claimedBy: "McAfee Anti-Virus", captured: true }), marks[2]!]));
     expect(posters(h.output).map((p) => p.props.w.id)).toEqual(["WinZip", "Pong"]);

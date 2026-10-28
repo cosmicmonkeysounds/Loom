@@ -59,9 +59,9 @@ export function Poster(p: PosterProps) {
           {w.captured ? (
             <span className="wanted-tag caught">{w.claimedBy !== null ? `CAUGHT BY ${w.claimedBy.toUpperCase()}` : "CAUGHT"}</span>
           ) : mine ? (
-            <span className="wanted-tag you">🙋 YOU</span>
+            <span className="wanted-tag you">YOURS</span>
           ) : theirs ? (
-            <span className="wanted-tag">🙋 {w.claimedBy}</span>
+            <span className="wanted-tag">🙋 {w.claimedBy} is on it</span>
           ) : p.fresh ? (
             <span className="wanted-tag new">NEW</span>
           ) : null}
