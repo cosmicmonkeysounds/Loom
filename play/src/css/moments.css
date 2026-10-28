@@ -192,7 +192,7 @@
 /* wave 37b: on a phone, a dialog with exits stacks them full width, OK last
    (no staircase that reads right to left); OK alone stays as it is */
 @media (max-width: 430px) {
-  .moments-dialog-buttons { width: 100%; }
+  .moments-dialog-buttons { flex: 1 1 auto; }
   .moments-dialog-buttons > .moments-go,
   .moments-dialog-buttons > .moments-go ~ .moments-ok { flex: 1 1 100%; }
 }

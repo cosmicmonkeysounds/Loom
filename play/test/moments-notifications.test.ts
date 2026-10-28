@@ -109,9 +109,17 @@ describe("a late arrival's bin starts quiet (wave 37 C20)", () => {
     expect(sign.readMark).toBe(2);
   });
 
-  it("an empty first backlog leaves the mark where it is (the first live line is news)", () => {
+  it("an empty first backlog leaves the mark where it is (the first live line is news), and the seed is used up (saved)", () => {
     const sign = loadSignIn(store(), "tok");
-    expect(seedReadMark(sign, [])).toBe(false);
+    expect(seedReadMark(sign, [])).toBe(true);
     expect([sign.readMark, sign.unmarked]).toEqual([-1, undefined]);
+  });
+
+  it("never past a row addressed to me: a guest back in on a new phone keeps their own unread rows", () => {
+    const sign = loadSignIn(store(), "tok");
+    const list = [msg(1, { alert: true, moment: "major" }), msg(4, { alert: true, moment: "major", audience: ["g1"] }), msg(9, { alert: true, moment: "major" })];
+    expect(seedReadMark(sign, list, "g1")).toBe(true);
+    expect(sign.readMark).toBe(3);
+    expect(unreadOf(notificationsOf(list, guest, null, none, none), sign.seen, sign.readMark)).toBe(2);
   });
 });

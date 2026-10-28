@@ -30,7 +30,7 @@ and `pnpm --filter loom-play build && node play/scripts/first-load.mjs
 fails predeploy. The gate was 148 kB until wave 37b, which raised it by
 1 kB (about a millisecond on slow 3G) to keep two guest fixes: a late
 arrival's quiet bin (C20) and a house line echoing a big going to the
-bin (C19). With them it measures 148.06 kB. Keep new JS lazy.
+bin (C19). With them it measures 148.08 kB. Keep new JS lazy.
 
 ## How a session works
 
