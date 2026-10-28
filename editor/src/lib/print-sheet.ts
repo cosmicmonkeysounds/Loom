@@ -139,10 +139,11 @@ export function doorWording(homescreen: boolean): { title: string; hint: string;
   }
 }
 
-/** Print order of the stacks (gold = the hunt answers first, silver = the
- *  door's digit clues last of the named piles); any other colour after
- *  these, unstacked posters last. */
-export const STACK_ORDER = ['gold', 'green', 'blue', 'red', 'silver'] as const
+/** Print order of the stacks: gold = the hunt answers first, then the
+ *  rarity tiers commonest first (wave 35: green common, blue rare, purple
+ *  very rare with the silver door digit clues, black legendary); any other
+ *  colour after these, unstacked posters last. */
+export const STACK_ORDER = ['gold', 'green', 'blue', 'purple', 'silver', 'black'] as const
 
 /** The stack the door code's digit clues print in (wave 11: one clue = one
  *  digit, `facts.json` → `codexStacks`). Their posters print the title and
@@ -171,8 +172,10 @@ export function stackInk(colour: string): string {
       return '#16a34a'
     case 'blue':
       return '#2563eb'
-    case 'red':
-      return '#dc2626'
+    case 'purple':
+      return '#7c3aed'
+    case 'black':
+      return '#111111'
     case 'silver':
       return '#8b98a5'
     default:
@@ -189,7 +192,7 @@ export function stackLine(stack: PrintStack): string {
 }
 
 /** Every card, in print order: join poster, door sign, codex posters (by
- *  stack: gold → green → blue → red → the rest, model order within one),
+ *  stack: `STACK_ORDER`, then the rest, model order within one),
  *  room signs, cast cards. */
 export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): PrintItem[] {
   const join = codes.joinLink ?? `${codes.joinUrl.replace(/\/+$/u, '')}/?code=${encodeURIComponent(codes.eventPass)}`

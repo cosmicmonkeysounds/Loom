@@ -49,14 +49,20 @@ function showFixture(): FactsFile {
   const raw = {
     version: 1,
     show: { title: "A Show" },
-    categories: { main: { colour: "green", stack: "shelf" }, character: { colour: "red", stack: "deep" } },
+    categories: { main: { label: "the world" }, character: { label: "the programs" } },
+    tiers: {
+      common: { label: "Common", colour: "green", stack: "in the open" },
+      rare: { label: "Rare", colour: "blue", stack: "odd places" },
+      "very-rare": { label: "Very rare", colour: "purple", stack: "tucked away" },
+      legendary: { label: "Legendary", colour: "black", stack: "the hardest place" },
+    },
     rounds: { 1: { questTitle: "R1", brief: "b1" }, 2: { questTitle: "R2", brief: "b2" }, 3: { questTitle: "R3", brief: "b3" } },
     questions: SHOW_QUESTION_LAYOUT.map((l, i) => q(l.id, l.round, i + 1)),
     answers: [{ id: "P1", text: "Say it", answer: "the line", accept: [] }],
     facts: [
-      { id: "M01", category: "main", text: "a fact", codex: { id: "Fact One", title: "Fact One", code: "FACT-ONE", text: "…" } },
-      { id: "M02", category: "main", text: "told already", existing: "Old Entry", code: "OLD-ENTRY" },
-      { id: "C01", category: "character", text: "a person", codex: { id: "Her Secret", title: "Her Secret", code: "HER-SECRET", about: "Someone", text: "…" } },
+      { id: "M01", category: "main", tier: "common", text: "a fact", codex: { id: "Fact One", title: "Fact One", code: "FACT-ONE", text: "…" } },
+      { id: "M02", category: "main", tier: "common", text: "told already", existing: "Old Entry", code: "OLD-ENTRY" },
+      { id: "C01", category: "character", tier: "rare", text: "a person", codex: { id: "Her Secret", title: "Her Secret", code: "HER-SECRET", about: "Someone", text: "…" } },
     ],
     truths: Array.from({ length: SHOW_MIN_TRUTHS }, (_, i) => ({ id: `TD${i + 1}`, text: `Truth ${i + 1}?` })),
   };
@@ -213,7 +219,9 @@ describe("validateFacts — the generic rules", () => {
     expect(problemsOf({ ...minimal(), rounds: [] })).toEqual(["rounds must be an object keyed by round number"]);
     expect(problemsOf({ ...minimal(), rounds: { one: { questTitle: "a", brief: "b" } } })).toEqual(["rounds.one: the key must be a round number"]);
     expect(problemsOf({ ...minimal(), rounds: { 1: { questTitle: "a" } } })).toEqual(["rounds.1 needs questTitle + brief strings"]);
-    expect(problemsOf({ ...minimal(), categories: { main: { colour: "green" } } })).toEqual(["categories.main needs colour + stack strings"]);
+    expect(problemsOf({ ...minimal(), categories: { main: { colour: "green" } } })).toEqual(["categories.main needs a label string"]);
+    expect(problemsOf({ ...minimal(), tiers: { common: { label: "Common", colour: "green" } } })).toEqual(["tiers.common needs label + colour + stack strings"]);
+    expect(problemsOf({ ...minimal(), tiers: [] })).toEqual(["tiers must be an object keyed by tier"]);
     expect(problemsOf({ ...minimal(), categories: "x" })).toEqual(["categories must be an object keyed by category"]);
   });
   it("checks the facts section's shape and that a category is declared", () => {
@@ -228,7 +236,12 @@ describe("validateFacts — the generic rules", () => {
     expect(problemsOf({ ...minimal(), facts: [{ ...fact, codex: { ...fact.codex, about: "" } }] })).toEqual(["fact M01: codex.about must be a non-empty string"]);
     expect(problemsOf({ ...minimal(), facts: [{ ...fact, codex: { ...fact.codex, secret: false } }] })).toEqual(["fact M01: codex.secret must be true when present"]);
     expect(problemsOf({ ...minimal(), facts: ["x"] })).toEqual(["facts[0] must be an object"]);
-    expect(problemsOf({ ...minimal(), categories: { main: { colour: "g", stack: "s" } }, facts: [{ ...fact, category: "other" }] })).toEqual(['fact M01: category "other" is not declared in categories']);
+    expect(problemsOf({ ...minimal(), categories: { main: { label: "l" } }, facts: [{ ...fact, category: "other" }] })).toEqual(['fact M01: category "other" is not declared in categories']);
+    const tiers = { common: { label: "Common", colour: "green", stack: "s" } };
+    expect(problemsOf({ ...minimal(), tiers, facts: [{ ...fact, tier: "common" }] })).toEqual([]);
+    expect(problemsOf({ ...minimal(), tiers, facts: [fact] })).toEqual(["fact M01: needs a tier (the file declares tiers)"]);
+    expect(problemsOf({ ...minimal(), tiers, facts: [{ ...fact, tier: "mythic" }] })).toEqual(['fact M01: tier "mythic" is not declared in tiers']);
+    expect(problemsOf({ ...minimal(), facts: [{ ...fact, tier: "" }] })).toEqual(["fact M01: tier must be a non-empty string"]);
   });
   it("checks the truths section's shape", () => {
     expect(problemsOf({ ...minimal(), truths: [{ id: "TD1", text: "Why?" }] })).toEqual([]);
@@ -360,6 +373,19 @@ describe("showFactsProblems — the show-shaped rules", () => {
     const k = showFixture();
     k.facts[1]!.category = "ghost";
     expect(showFactsProblems(k)).toEqual(['fact M02: category "ghost" is not declared in categories']);
+  });
+  it("declares the four tiers in order, each smaller than the one before", () => {
+    expect(showFactsProblems(showFixture())).toEqual([]);
+    const f = showFixture();
+    f.facts[0]!.tier = "rare";
+    expect(showFactsProblems(f)).toEqual(["tiers: rare must hold fewer facts than common (2 ≥ 1)"]);
+    const g = showFixture();
+    const { legendary, ...rest } = g.tiers!;
+    g.tiers = { legendary: legendary!, ...rest };
+    expect(showFactsProblems(g)).toEqual(["tiers: must declare common, rare, very-rare, legendary, in that order (got legendary, common, rare, very-rare)"]);
+    const h = showFixture();
+    delete h.facts[2]!.tier;
+    expect(showFactsProblems(h)).toEqual(["fact C01: tier null is not declared in tiers"]);
   });
   it("a character fact's codex needs an about", () => {
     const f = showFixture();

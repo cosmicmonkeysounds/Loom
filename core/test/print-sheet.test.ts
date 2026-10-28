@@ -62,20 +62,22 @@ describe("K-12 print extras", () => {
     expect(printExtras(null, "https://x", "E").cast).toEqual([]);
   });
 
-  it("places each codex entry on its fact stack: hunt answers gold, facts by category, hand-written ones already placed", () => {
+  it("places each codex entry on its fact stack: hunt answers gold, facts by tier, hand-written ones already placed", () => {
     const facts = {
       version: 1,
-      categories: { main: { colour: "green", stack: "shelf" }, trabolta: { colour: "blue", stack: "mantel" } },
+      categories: { main: { label: "the world" }, trabolta: { label: "him" } },
+      tiers: { common: { label: "Common", colour: "green", stack: "in the open" }, rare: { label: "Rare", colour: "blue", stack: "odd places" } },
       questions: [
         { id: "H1", round: 1, text: "q", answer: "a", accept: [], where: "volume B", codex: { id: "The Lease", title: "The Lease", code: "LEASE", text: "t" } },
         { id: "H2", round: 1, text: "q", answer: "a", accept: [] },
       ],
       answers: [],
       facts: [
-        { id: "M01", category: "main", text: "x", codex: { id: "Silicon", title: "Silicon", code: "SILICON", text: "t" } },
-        { id: "M02", category: "main", text: "x", existing: "The Theory", code: "THEORY" },
-        { id: "T1", category: "trabolta", text: "x", existing: "The Theory" }, // first claim wins
-        { id: "X1", category: "nowhere", text: "x", codex: { id: "Lost", title: "Lost", code: "LOST", text: "t" } },
+        { id: "M01", category: "main", tier: "common", text: "x", codex: { id: "Silicon", title: "Silicon", code: "SILICON", text: "t" } },
+        { id: "M02", category: "main", tier: "common", text: "x", existing: "The Theory", code: "THEORY" },
+        { id: "T1", category: "trabolta", tier: "rare", text: "x", existing: "The Theory" }, // first claim wins
+        { id: "R1", category: "trabolta", tier: "rare", text: "x", codex: { id: "Odd", title: "Odd", code: "ODD", text: "t" } },
+        { id: "X1", category: "main", tier: "nowhere", text: "x", codex: { id: "Lost", title: "Lost", code: "LOST", text: "t" } },
       ],
       truths: [],
       door: { code: "12", codex: { id: "Door", title: "Door", text: "12" }, clues: [{ id: "Digit One", title: "One", code: "ONE", where: "the kitchen", text: "first {digit}" }] },
@@ -83,8 +85,9 @@ describe("K-12 print extras", () => {
     expect(codexStacks(facts)).toEqual({
       "The Lease": { colour: HUNT_COLOUR, stack: "hunt answers", where: "volume B" },
       "Digit One": { colour: CLUE_COLOUR, stack: CLUE_STACK, where: "the kitchen" },
-      Silicon: { colour: "green", stack: "shelf", where: null },
-      "The Theory": { colour: "green", stack: "shelf", where: "already placed" },
+      Silicon: { colour: "green", stack: "common — in the open", where: null },
+      "The Theory": { colour: "green", stack: "common — in the open", where: "already placed" },
+      Odd: { colour: "blue", stack: "rare — odd places", where: null },
     });
     expect(codexStacks(null)).toEqual({});
     expect(printExtras(null, "https://x", "E").stacks).toEqual({});
@@ -101,7 +104,7 @@ describe("K-12 print extras", () => {
     // every id is a real entry (one without a code just never gets a poster)
     for (const id of Object.keys(stacks)) expect(sim.model.codex.has(id), id).toBe(true);
     const colours = new Set(Object.values(stacks).map((s) => s.colour));
-    expect([...colours].sort()).toEqual(["blue", "gold", "green", "red", "silver"]);
+    expect([...colours].sort()).toEqual(["black", "blue", "gold", "green", "purple", "silver"]);
     // The door's digit notes: their own silver pile, one room each, each a
     // coded secret entry; the door code itself never gets a poster.
     const clues = facts.door!.clues!;

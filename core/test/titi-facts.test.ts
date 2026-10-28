@@ -430,11 +430,11 @@ describe("titi-facts — codex/9-facts.loom", () => {
     const text = read(OUTPUTS.codex);
     for (const x of facts.facts) {
       if (x.existing !== undefined) expect(text).not.toContain(`CODEX ${x.existing}\n`);
-      else expect(text).toContain(`// ${x.id} · ${x.category} · ${facts.categories![x.category]!.colour}${x.draft ? " · DRAFT" : ""}\nCODEX ${x.codex!.id}\n`);
+      else expect(text).toContain(`// ${x.id} · ${x.category} · ${facts.tiers![x.tier!]!.colour}${x.draft ? " · DRAFT" : ""}\nCODEX ${x.codex!.id}\n`);
     }
-    // Grouped by category, in the file's category order.
-    const cats = Object.keys(facts.categories!);
-    const heads = cats.map((c) => text.indexOf(`// ── ${c.toUpperCase()} ·`));
+    // Grouped by tier, commonest first (the file's tier order).
+    const headed = Object.entries(facts.tiers!).filter(([t]) => facts.facts.some((x) => x.tier === t && x.codex !== undefined));
+    const heads = headed.map(([, t]) => text.indexOf(`// ── ${t.label.toUpperCase()} · ${t.colour} ·`));
     expect(heads.every((i) => i >= 0)).toBe(true);
     expect([...heads].sort((a, b) => a - b)).toEqual(heads);
   });
@@ -522,7 +522,7 @@ describe("titi-facts — the Facts Bundle (The Whole Truth's main + Trabolta fac
 });
 
 describe("titi-facts — generated/print-stacks.md", () => {
-  it("has a gold table for the hunt answers and one table per category, every fact listed", () => {
+  it("has a gold table for the hunt answers and one table per tier, every fact listed", () => {
     const text = read(OUTPUTS.stacks);
     expect(text).toContain(`# ${facts.show!.title} — the Desktop's QR stacks`);
     expect(text).toContain("## Gold — the hunt answers");
@@ -536,10 +536,18 @@ describe("titi-facts — generated/print-stacks.md", () => {
       expect(text).toContain(q.hint ?? "");
       expect(text).toContain(`→ A: ${q.answer}`);
     }
-    for (const [cat, meta] of Object.entries(facts.categories!)) {
-      expect(text).toContain(`## ${meta.colour[0]!.toUpperCase()}${meta.colour.slice(1)} — ${cat}`);
+    // The tiers' summary: the counts fall, commonest first, and the digit
+    // notes count as very rare.
+    const counts = Object.entries(facts.tiers!).map(([t, meta]) => {
+      expect(text).toContain(`## ${meta.label} — ${meta.colour}`);
       expect(text).toContain(`Stack: ${meta.stack}`);
-    }
+      const row = text.split("\n").find((l) => l.startsWith(`| ${meta.label} | ${meta.colour} | `))!;
+      expect(row, t).toBeDefined();
+      const n = Number(row.split(" | ")[2]);
+      expect(n).toBe(facts.facts.filter((x) => x.tier === t).length + (t === SHOW_SHAPE.clueTier ? facts.door!.clues!.length : 0));
+      return n;
+    });
+    expect([...counts].sort((a, b) => b - a)).toEqual(counts);
     for (const x of facts.facts) {
       const row = text.split("\n").find((l) => l.startsWith(`| ${x.id} `) || l.startsWith(`| ${x.id} ·`));
       expect(row, x.id).toBeDefined();

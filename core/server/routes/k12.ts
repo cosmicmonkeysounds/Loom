@@ -95,8 +95,8 @@ export function checkinSigns(model: Pick<SimModel, "locations">, base: string, e
 
 /** Every codex entry the facts file places: a hunt question's document
  *  (gold, its own `where`), a door digit note (silver, its own pile and
- *  `where`), a generated fact (its category's colour + stack)
- *  and a hand-written `existing` entry (the colour, `already placed`). The
+ *  `where`), a generated fact (its tier's colour; the tier and how it
+ *  hides as the stack) and a hand-written `existing` entry (the colour, `already placed`). The
  *  first claim wins — two facts may name one hand-written entry. */
 export function codexStacks(facts: FactsFile | null): Record<string, CodexStack> {
   const out: Record<string, CodexStack> = {};
@@ -107,10 +107,11 @@ export function codexStacks(facts: FactsFile | null): Record<string, CodexStack>
   for (const q of facts.questions) if (q.codex) claim(q.codex.id, { colour: HUNT_COLOUR, stack: "hunt answers", where: q.where ?? null });
   for (const c of facts.door?.clues ?? []) claim(c.id, { colour: CLUE_COLOUR, stack: CLUE_STACK, where: c.where });
   for (const f of facts.facts) {
-    const cat = facts.categories?.[f.category];
-    if (cat === undefined) continue;
-    if (f.codex) claim(f.codex.id, { colour: cat.colour, stack: cat.stack, where: null });
-    else if (f.existing !== undefined) claim(f.existing, { colour: cat.colour, stack: cat.stack, where: "already placed" });
+    const tier = f.tier === undefined ? undefined : facts.tiers?.[f.tier];
+    if (tier === undefined) continue;
+    const stack = `${tier.label.toLowerCase()} — ${tier.stack}`;
+    if (f.codex) claim(f.codex.id, { colour: tier.colour, stack, where: null });
+    else if (f.existing !== undefined) claim(f.existing, { colour: tier.colour, stack, where: "already placed" });
   }
   return out;
 }

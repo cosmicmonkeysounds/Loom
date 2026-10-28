@@ -16,13 +16,13 @@
 //!                              ending with the lore marker the voice
 //!                              worker hides;
 //!   codex/9-facts.loom         every scannable + character fact as a coded
-//!                              CODEX, grouped by category (colour), the
+//!                              CODEX, grouped by rarity tier (colour), the
 //!                              secret *The Door Code* (`door`), one secret
 //!                              coded CODEX per digit clue (`door.clues`), and
 //!                              `== Facts Bundle` (an `unlock … for program`
 //!                              per main + Trabolta fact, generated or
 //!                              `existing`) that The Whole Truth diverts into;
-//!   generated/print-stacks.md  the colour-coded QR stacks for the Desktop,
+//!   generated/print-stacks.md  the QR stacks, one per tier (wave 35),
 //!                              the cold door's digit notes (where each
 //!                              hides, never its digit) and the keypad sign
 //!                              (never the code);
@@ -83,9 +83,11 @@ export const SHOW_SHAPE = {
   /** The hunt answers' stack on the print sheet. */
   huntColour: "gold",
   /** The door's digit notes on the print sheet (`door.clues`): their own
-   *  pile, hidden one per room (core/server/routes/k12.ts reads the same). */
+   *  pile, hidden one per room (core/server/routes/k12.ts reads the same).
+   *  They count as very rare (`clueTier`): the stacks list them there. */
   clueColour: "silver",
   clueStack: "the cold door's digits",
+  clueTier: "very-rare",
   /** The room every digit note is about (as the combo halves are). */
   clueAbout: "The Server Room",
   /** The Codex room's section (wave 13: `category:` on every CODEX, in
@@ -350,20 +352,19 @@ function factsLoom(f: FactsFile): string {
   const out: string[] = [LOOM_BANNER.trimEnd()];
   out.push(
     "//",
-    "// Codex 9: the Desktop's print media — every scannable fact, colour-coded",
-    "// in facts.json (`categories`). The hunt answers are in",
+    "// Codex 9: the house's print media — every scannable fact, by rarity tier",
+    "// (facts.json `tiers`, commonest first). The hunt answers are in",
     `// ${OUTPUTS.questions}; a fact facts.json marks \`existing\` is told by a`,
     "// hand-written entry and is not repeated here.",
     "",
   );
-  const cats = Object.entries(f.categories ?? {});
-  for (const [cat, meta] of cats) {
-    const own = f.facts.filter((x) => x.category === cat && x.codex !== undefined);
+  for (const [tier, meta] of Object.entries(f.tiers ?? {})) {
+    const own = f.facts.filter((x) => x.tier === tier && x.codex !== undefined);
     if (own.length === 0) continue;
-    out.push(`// ── ${cat.toUpperCase()} · ${meta.colour} · ${meta.stack} ──`, "");
+    out.push(`// ── ${meta.label.toUpperCase()} · ${meta.colour} · ${meta.stack} ──`, "");
     for (const x of own) {
       const c = x.codex!;
-      out.push(`// ${x.id} · ${cat} · ${meta.colour}${x.draft ? " · DRAFT" : ""}`, `CODEX ${c.id}`, `  title: ${c.title}`, `  category: ${SHOW_SHAPE.factCategory}`);
+      out.push(`// ${x.id} · ${x.category} · ${meta.colour}${x.draft ? " · DRAFT" : ""}`, `CODEX ${c.id}`, `  title: ${c.title}`, `  category: ${SHOW_SHAPE.factCategory}`);
       if (c.about !== undefined) out.push(`  about: ${c.about}`);
       if (c.secret) out.push("  secret: true");
       out.push(`  code: ${c.code}`, "  text:", textBlock(c.text), "");
@@ -431,16 +432,18 @@ function factsLoom(f: FactsFile): string {
  *  replace or a rewrite to approve, never "not decided yet, skip it". */
 export const DRAFT_NOTE = "DRAFT — awaiting sign-off in facts.json";
 
-const HEADER = "| # | Colour | Code | Title | Where in the Desktop | What it says |\n|---|---|---|---|---|---|";
+const HUNT_HEADER = "| # | Colour | Code | Title | Where in the Desktop | What it says |\n|---|---|---|---|---|---|";
+const HEADER = "| # | Topic | Code | Title | How it hides | What it says |\n|---|---|---|---|---|---|";
 const CLUE_HEADER = "| Digit | Colour | Code | Title | Where in the house | What it is |\n|---|---|---|---|---|---|";
 
 function printStacks(f: FactsFile): string {
   const S = SHOW_SHAPE;
   const out: string[] = [MD_BANNER.trimEnd(), "", `# ${f.show?.title ?? "The show"} — the Desktop's QR stacks`, ""];
   out.push(
-    "Generated from `facts.json`: one table per stack, in colour order. Sort the",
-    "printed codex posters (Run → 🖨 Print sheet) into these piles and hide each",
-    "pile where its stack says. `DRAFT` rows await the team's sign-off in",
+    "Generated from `facts.json`: the hunt answers, then one stack per rarity",
+    "tier, commonest first. Nobody tracks where a single fact card goes: sort the",
+    "printed codex posters (Run → 🖨 Print sheet) by the colour band into these",
+    "piles and scatter each pile the way its stack says. `DRAFT` rows await the team's sign-off in",
     "`facts.json`: a placeholder to replace, or a rewrite to approve. Print and",
     "hide them as they stand. A hand-written entry (`existing`) keeps the place",
     "README → QR placements gives it; it is listed so the colour is known.",
@@ -450,7 +453,7 @@ function printStacks(f: FactsFile): string {
     "Each row says where its document hides; the hint is what a host may tell a",
     "stuck program.",
     "",
-    HEADER,
+    HUNT_HEADER,
   );
   for (const { questions } of rounds(f)) {
     for (const q of questions) {
@@ -459,18 +462,27 @@ function printStacks(f: FactsFile): string {
       out.push(`| ${q.id}${q.draft ? " · DRAFT" : ""} | ${S.huntColour} | \`${c.code}\` | ${cell(c.title)} | ${cell(where)} | ${cell(`Q: ${q.text} → A: ${q.answer}`)} |`);
     }
   }
-  for (const [cat, meta] of Object.entries(f.categories ?? {})) {
-    const own = f.facts.filter((x) => x.category === cat);
-    if (own.length === 0) continue;
-    out.push("", `## ${meta.colour[0]!.toUpperCase()}${meta.colour.slice(1)} — ${cat}`, "", `Stack: ${meta.stack}`, "", HEADER);
-    for (const x of own) out.push(stackRow(x, meta.colour, meta.stack));
-  }
   const clues = f.door?.clues ?? [];
+  const tiers = Object.entries(f.tiers ?? {});
+  if (tiers.length > 0) {
+    out.push("", "## The tiers", "", "| Tier | Colour | Cards | How they hide |", "|---|---|---|---|");
+    for (const [tier, meta] of tiers) {
+      const n = f.facts.filter((x) => x.tier === tier).length + (tier === S.clueTier ? clues.length : 0);
+      out.push(`| ${cell(meta.label)} | ${meta.colour} | ${n} | ${cell(meta.stack)} |`);
+    }
+  }
+  for (const [tier, meta] of tiers) {
+    const own = f.facts.filter((x) => x.tier === tier);
+    if (own.length === 0) continue;
+    out.push("", `## ${meta.label} — ${meta.colour}`, "", `Stack: ${meta.stack}`, "", HEADER);
+    for (const x of own) out.push(stackRow(x, meta.stack));
+  }
   if (clues.length > 0) {
     const colour = S.clueColour;
+    const tierLabel = f.tiers?.[S.clueTier]?.label;
     out.push(
       "",
-      `## ${colour[0]!.toUpperCase()}${colour.slice(1)} — ${S.clueStack}`,
+      `## ${colour[0]!.toUpperCase()}${colour.slice(1)} — ${S.clueStack}${tierLabel ? ` (${tierLabel.toLowerCase()})` : ""}`,
       "",
       `One note per digit of the door code, ${numberWord(clues.length)} in all. Hide each one where its`,
       "row says, never in the server room. The poster prints the title and the",
@@ -500,11 +512,11 @@ function printStacks(f: FactsFile): string {
   return out.join("\n");
 }
 
-function stackRow(x: Fact, colour: string, stack: string): string {
+function stackRow(x: Fact, stack: string): string {
   const id = `${x.id}${x.draft ? " · DRAFT" : ""}`;
-  if (x.codex !== undefined) return `| ${id} | ${colour} | \`${x.codex.code}\` | ${cell(x.codex.title)} | ${cell(stack)} | ${cell(x.text)} |`;
+  if (x.codex !== undefined) return `| ${id} | ${x.category} | \`${x.codex.code}\` | ${cell(x.codex.title)} | ${cell(stack)} | ${cell(x.text)} |`;
   const code = x.code !== undefined ? `\`${x.code}\`` : "(no code)";
-  return `| ${id} | ${colour} | ${code} | ${cell(x.existing!)} (hand-written) | already placed — README → QR placements | ${cell(x.text)} |`;
+  return `| ${id} | ${x.category} | ${code} | ${cell(x.existing!)} (hand-written) | already placed — README → QR placements | ${cell(x.text)} |`;
 }
 
 // --- the marked blocks -----------------------------------------------------
