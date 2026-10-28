@@ -387,7 +387,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     } catch {
       /* kept in memory */
     }
-    setLayer({ kind: "wanted", fresh });
+    setLayer({ kind: "wanted", fresh, memo: { tab: null, kept: new Set() } });
   };
   // C3: the title bar draws the camera; the caption never repeats it.
   const openScan = (guest?: string, name?: string) => setLayer((l) => ({ kind: "scan", ...(guest !== undefined ? { guest } : {}), ...(name !== undefined ? { caption: `Scan ${name}'s pass` } : {}), ...backOf(l) }));
@@ -777,6 +777,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 canRelease={mayPress(s.view?.interactions, "release_escort", character)}
                 canTakeOver={mayPress(s.view?.interactions, "take_over_escort", character)}
                 fresh={new Set(layer.fresh)}
+                {...(layer.memo !== undefined ? { memo: layer.memo } : {})}
                 claimedAt={(id) => claimSeen.current.get(id)?.at ?? null}
                 onClaim={(id) => s.act("claim_escort", id)}
                 onRelease={(id) => s.act("release_escort", id)}

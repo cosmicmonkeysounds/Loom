@@ -8,6 +8,7 @@ import type { SpaceGroup } from "../rooms/spaces.ts";
 import { badgeWorthy } from "../stream/badges.ts";
 import type { Channel, CountdownSummary, GuestCardView, Interaction, ObjectiveView, PrimeGuest, WalletQueueView } from "../types.ts";
 import type { CardSeed } from "./card.tsx";
+import type { BoardTab } from "./popouts/model.ts";
 import type { BoothObjective } from "./wire.ts";
 
 /** An objective's reserved button words: a guest's own pass / scan, never a booth's story button. */
@@ -597,11 +598,18 @@ export function scanTitle(caption?: string): string {
  *  window. A scan or a card opened from a window carries that window in
  *  `back` (depth one), and closing it lands there. */
 export type Layer = OpenLayer | null;
+/** What the Wanted board keeps while a scan or a card opened from it is up
+ *  (wave 37 fix round): the tab chosen and the posters Open has shown, so ×
+ *  back to the board finds it as it was. One per opening of the board. */
+export interface BoardMemo {
+  tab: BoardTab | null;
+  kept: Set<string>;
+}
 export type OpenLayer = (
   | { kind: "scan"; guest?: string; caption?: string }
   | { kind: "guests" }
   | { kind: "card"; id: string; seed?: CardSeed; confront?: "rescan" }
-  | { kind: "wanted"; fresh: string[] }
+  | { kind: "wanted"; fresh: string[]; memo?: BoardMemo }
   | { kind: "pick"; objective: string; opened: BoothObjective }
   | { kind: "door" }
   | { kind: "waiting" }

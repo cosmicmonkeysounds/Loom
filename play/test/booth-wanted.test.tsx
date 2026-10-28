@@ -109,6 +109,26 @@ describe("wave 37 (C11): the Open tab keeps a claimed poster in place", () => {
     expect(posters(h.output).map((p) => p.props.w.id)).toEqual(["WinZip", "Pong"]);
   });
 
+  it("back from a scan or a card (a remount) finds the tab chosen and the kept posters as they were", () => {
+    const memo = { tab: null, kept: new Set<string>() };
+    const h = mountHooks(WantedBoard, { ...props(marks), memo });
+    const claimed = [marks[0]!, W("Encarta", { markedAt: 2, claimedBy: "Norton" }), marks[2]!];
+    h.rerender({ ...props(claimed), memo });
+    h.unmount();
+    // Back on the board after × (it mounts again): Encarta, mine now, is still in its place on Open.
+    const again = mountHooks(WantedBoard, { ...props([...claimed, W("ICQ", { markedAt: 9 })]), memo });
+    expect(posters(again.output).map((p) => p.props.w.id)).toEqual(["WinZip", "Encarta", "Pong", "ICQ"]);
+    // A tab picked on the board comes back too.
+    const mineTab = elements(again.output).find((e) => (e.props as { role?: string; children?: unknown[] })?.role === "tab" && String((e.props as { children: unknown[] }).children[0]) === "Mine")!;
+    again.act(() => (mineTab.props as { onClick: () => void }).onClick());
+    again.unmount();
+    expect(memo.tab).toBe("mine");
+    const third = mountHooks(WantedBoard, { ...props(claimed), memo });
+    expect(posters(third.output).map((p) => p.props.w.id)).toEqual(["Encarta"]);
+    // A fresh opening (no memo) starts on Open with nothing kept.
+    expect(posters(mountHooks(WantedBoard, props(claimed)).output).map((p) => p.props.w.id)).toEqual(["WinZip", "Pong"]);
+  });
+
   it("a mark that lands while the board is open joins below, never on top", () => {
     const h = mountHooks(WantedBoard, props(marks));
     h.rerender(props([...marks, W("ICQ", { markedAt: 9 })]));

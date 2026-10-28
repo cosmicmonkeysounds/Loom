@@ -10,6 +10,7 @@
 import { useRef, useState } from "react";
 import { BoothLayer } from "../layer.tsx";
 import { boardOrder, boardStatus, boardTab, openTabIds, type BoardTab } from "../popouts/model.ts";
+import type { BoardMemo } from "../model.ts";
 import type { WantedEntry } from "../wire.ts";
 import { Poster } from "./poster.tsx";
 
@@ -34,6 +35,9 @@ export interface WantedBoardProps {
   onRelease?: (id: string) => Promise<unknown> | void;
   onTakeOver?: (id: string) => Promise<unknown> | void;
   onClose: () => void;
+  /** The tab and the kept posters, kept across a scan or a card opened from
+   *  here (the board remounts on × back to it). */
+  memo?: BoardMemo;
 }
 
 const TABS: Array<{ id: BoardTab; label: string }> = [
@@ -48,10 +52,15 @@ export function defaultBoardTab(wanted: readonly WantedEntry[], me: string): Boa
 }
 
 export function WantedBoard(p: WantedBoardProps) {
-  const [tab, setTab] = useState<BoardTab>(() => (p.readOnly ? "everyone" : defaultBoardTab(p.wanted, p.me)));
+  const [tab, pickTab] = useState<BoardTab>(() => p.memo?.tab ?? (p.readOnly ? "everyone" : defaultBoardTab(p.wanted, p.me)));
+  const setTab = (t: BoardTab) => {
+    if (p.memo !== undefined) p.memo.tab = t;
+    pickTab(t);
+  };
   const [busy, setBusy] = useState<string | null>(null);
   // The ids shown on Open since the board opened, in first-shown order (C11).
-  const kept = useRef<Set<string>>(new Set());
+  const own = useRef<Set<string>>(new Set());
+  const kept = { current: p.memo?.kept ?? own.current };
   const open = openTabIds(p.wanted, kept.current, p.me);
   const byId = new Map(p.wanted.map((w) => [w.id, w]));
   const tabRows = (t: BoardTab) => (t === "open" ? open.map((id) => byId.get(id)!) : boardOrder(p.wanted, p.me).filter((w) => boardTab(w, t, p.me)));
