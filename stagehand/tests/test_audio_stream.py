@@ -262,3 +262,15 @@ def test_streams_close_their_threads():
         s.wait_ready(1.0)
         s.close()
     assert threading.active_count() <= before
+
+
+def test_a_stream_can_start_partway_into_the_file():
+    data = np.arange(48000, dtype=np.float32)[:, None] / 48000
+    s = Stream("x.wav", 48000, opener=opener_of(ArrayFile(data, 48000)), start=False, offset=12000)
+    assert s.offset == 12000 and s.wait_ready()
+    block, real = s.read(100)
+    assert real == 100 and block[0, 0] == pytest.approx(12000 / 48000) and s.position == 12100
+    # A file at another rate seeks in its own frames.
+    f = ArrayFile(np.zeros((44100, 1), dtype=np.float32), 44100)
+    t = Stream("y.wav", 48000, opener=opener_of(f), start=False, offset=48000 // 2)
+    assert f.at == 22050 and t.offset == 24000

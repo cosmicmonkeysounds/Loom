@@ -486,3 +486,34 @@ def test_stopping_a_streamed_voice_fades_and_closes_it():
     out = block(m)
     assert out[25, 0] == pytest.approx(0.25, abs=0.02) and not out[60:].any()
     assert m.active() == 0 and s.finished and f.closed
+
+
+def test_a_scheduled_stop_starts_its_fade_on_the_frame_a_crossfade_meets():
+    # The soundtrack's crossfade: the next track `start_at` S fades in while
+    # the current one, stopped `at` S, fades out; the two sum to the level.
+    m = Mixer(1, 1, RATE)
+    a = m.play(tone(1000, 0.4), {1: 0.0}, fade_in_s=0)
+    block(m)  # frames 0–99
+    m.play(tone(1000, 0.4), {1: 0.0}, fade_in_s=0.2, start_at=150)
+    m.stop(vid=a, fade_s=0.2, at=150)
+    out = np.concatenate([block(m) for _ in range(4)])[:, 0]  # frames 100–499
+    assert np.allclose(out[:50], 0.4)  # before S: the first alone, untouched
+    assert np.allclose(out[50:250], 0.4, atol=0.005)  # through the fade: constant sum
+    assert np.allclose(out[260:], 0.4) and m.playing(a) is False
+
+
+def test_a_shorter_stop_carries_on_from_the_fade_already_running():
+    m = Mixer(1, 1, RATE)
+    vid = m.play(tone(5000, 0.5), {1: 0.0}, fade_in_s=0)
+    block(m)
+    m.stop(vid=vid, fade_s=1.0)  # 1 s fade …
+    half = block(m)[:, 0]  # … 10 % of it run
+    m.stop(vid=vid, fade_s=0.1)  # then a 0.1 s stop: no jump back up
+    after = block(m)[:, 0]
+    assert after[0] <= half[-1] + 1e-6 and after[-1] == pytest.approx(0.0, abs=0.01)
+    longer = m.play(tone(5000, 0.5), {1: 0.0}, fade_in_s=0)
+    block(m)
+    m.stop(vid=longer, fade_s=0.1)
+    m.stop(vid=longer, fade_s=5.0)  # a longer stop never stretches a fade
+    block(m)
+    assert not m.playing(longer)

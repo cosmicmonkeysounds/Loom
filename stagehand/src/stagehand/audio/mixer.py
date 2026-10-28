@@ -393,9 +393,13 @@ class Mixer:
         self._commands.put(("play", voice))
         return vid
 
-    def stop(self, *, vid: int | None = None, tag: str | None = None, bus: str | None = None, fade_s: float = 0.5) -> None:
-        """Fade out the matching voices (no filter = every voice)."""
-        self._commands.put(("stop", (vid, tag, bus, int(fade_s * self.rate))))
+    def stop(self, *, vid: int | None = None, tag: str | None = None, bus: str | None = None, fade_s: float = 0.5, at: int | None = None) -> None:
+        """Fade out the matching voices (no filter = every voice). `at` starts
+        the fade on that frame of the mixer clock (`frames`) instead of the
+        next block: the outgoing half of a crossfade whose incoming voice
+        was played `start_at` the same frame. A voice already fading keeps
+        whichever fade ends first."""
+        self._commands.put(("stop", (vid, tag, bus, int(fade_s * self.rate), at)))
 
     def level(self, *, vid: int | None = None, tag: str | None = None, db: float, ramp_s: float = 0.0) -> None:
         """Move the live level of a voice (by id) or of every voice with
@@ -547,11 +551,14 @@ class Mixer:
                 self.voices.append(arg)
                 self._cap()
             elif kind == "stop":
-                vid, tag, bus, length = arg
+                vid, tag, bus, length, at = arg
                 for v in self.voices:
                     if (vid is None or v.id == vid) and (tag is None or v.tag == tag) and (bus is None or v.bus == bus):
+                        start = v.age + max(0, at - self.frames) if at is not None and v.started else v.age
                         if v.stop_at is None:
-                            v.stop_at, v.stop_len = v.age, length
+                            v.stop_at, v.stop_len = start, length
+                        elif start + length < v.stop_at + v.stop_len:
+                            self._refade(v, start, length)
             elif kind == "level":
                 vid, tag, lin, length = arg
                 for v in self.voices:
@@ -589,6 +596,21 @@ class Mixer:
                     self.trim, self._trim_to, self._trim_left = arg.copy(), arg, 0
                 else:
                     self._trim_to, self._trim_left = arg, self.trim_frames
+
+    @staticmethod
+    def _refade(v: Voice, start: int, length: int) -> None:
+        """A shorter fade over one already running: carry on from the gain
+        the voice is at now (a jump back to full would click) and reach
+        silence `length` frames after `start`."""
+        assert v.stop_at is not None
+        if v.age <= v.stop_at:  # not fading yet: the new fade simply replaces it
+            v.stop_at, v.stop_len = start, length
+            return
+        g = max(0.0, 1.0 - (v.age - v.stop_at) / max(1, v.stop_len))
+        if g <= 0.0:
+            return
+        span = max(1, int(round(max(1, start + length - v.age) / g)))
+        v.stop_at, v.stop_len = int(round(v.age - (1.0 - g) * span)), span
 
     def _cap(self) -> None:
         """Over MAX_VOICES: fade out the oldest sfx voice (else the oldest

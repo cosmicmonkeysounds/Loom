@@ -26,6 +26,7 @@ line shows it, and the stream picks up where it was (late, never skipped).
     s.wait_ready(1.0)                     # prefilled (or at its end): start the voice now
     block, real = s.read(512)             # the audio thread: (512, channels), frames that were the file's
     s.position, s.length, s.finished      # output frames: where it is, how long (header), done
+    Stream(path, 48000, offset=n)         # start n output frames into the file (a moved bed)
     s.close()                             # stop the worker, close the file
 
 The file is reached through an injectable `opener(path)` returning an
@@ -181,6 +182,7 @@ class Stream:
         prefill_s: float = PREFILL_S,
         start: bool = True,
         name: str = "",
+        offset: int = 0,
     ) -> None:
         self.path = path
         self.name = name or Path(str(path)).stem
@@ -193,6 +195,18 @@ class Stream:
         #: The file's length in output frames, from its header (an MP3's is
         #: an estimate); None when the header doesn't say.
         self.length: int | None = int(round(frames * self.rate / self.file_rate)) if frames > 0 and self.file_rate > 0 else None
+        #: Output frames into the file this stream starts at (`offset`: the
+        #: soundtrack moving a bed to new speakers mid-track starts a second
+        #: stream where the first one is). 0 when the file can't seek.
+        self.offset = 0
+        if offset > 0:
+            skip = int(round(offset * self.file_rate / self.rate))
+            try:
+                self._file.seek(skip)
+            except Exception as err:  # noqa: BLE001 — libsndfile raises its own types
+                log.warning("stream %s: can't seek to %d (%s) — starts at 0", self.name, skip, err)
+            else:
+                self.offset = int(round(skip * self.rate / self.file_rate))
         self._rs = Resampler(self.file_rate, self.rate, self.channels)
         self._chunk_in = max(1, min(int(chunk_s * self.file_rate), self.file_rate))
         #: The most one step can write (a chunk plus the end's flush).
@@ -375,13 +389,14 @@ class Stream:
 
     @property
     def position(self) -> int:
-        """Output frames into the current pass of the file (a loop restarts at 0)."""
+        """Output frames into the current pass of the file (a loop restarts
+        at 0; the first pass counts from `offset`)."""
         played = self.played
         start = 0
         for w in self._wraps:
             if w <= played:
                 start = w
-        return played - start
+        return played - start + (self.offset if start == 0 else 0)
 
     @property
     def buffered(self) -> int:
