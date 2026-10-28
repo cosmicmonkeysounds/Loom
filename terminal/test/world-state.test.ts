@@ -22,6 +22,11 @@ describe("world state", () => {
     expect(s.resetAt).toBe(300);
   });
 
+  it("leaves the world as it is on a lights frame (wave 39: the games' only)", () => {
+    const s = fold([[{ event: "join", data: { player: playerState("s1", [1, 0, 1]) } }, 0]]);
+    expect(reduce(s, { event: "lights", data: { at: 1, source: "estimate", pulse: "breathe", lights: [] } }, 10)).toBe(s);
+  });
+
   it("buffers poses (interpolated behind), tracking room and real activity only", () => {
     let s = fold([[{ event: "join", data: { player: playerState("s1", [1, 0, 1]) } }, 0]]);
     const buffer = s.players.get("s1")!.buffer;
