@@ -11,6 +11,11 @@ $script:LoomRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $script:StagehandDir = Join-Path $script:LoomRoot 'stagehand'
 $script:MosquittoDir = 'C:\Program Files\mosquitto'
 $script:DefaultServer = 'https://app.mapsandducks.com'
+# The soundtrack's playlist folders under stagehand\media\music\ (keep in
+# step with stagehand\media\soundtrack.yaml; the Fan Closet's loop is in
+# media\library\ambient\, rendered by `stagehand sounds library`).
+$script:MusicFolders = @('doors', 'act-1', 'malware', 'act-2', 'act-3', 'final', 'ceremony', 'afterparty')
+$script:MusicExtensions = @('.mp3', '.wav', '.flac', '.ogg', '.aiff', '.aif')
 
 # stagehand's emoji log lines and its UTF-8 YAML must survive the console.
 $env:PYTHONUTF8 = '1'

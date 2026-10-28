@@ -2,6 +2,7 @@
 .SYNOPSIS
     The house PC's show-night check: power, broker, Zigbee, stagehand
     (show, lights and the audio router), the MOTU through ASIO, the
+    soundtrack's music folders and the SFX library (warnings only), the
     server, the TV kiosk - then `showctl preflight desktop` when the repo
     has it.
 
@@ -106,6 +107,23 @@ if (-not $NoAudio) {
     if ($motu.Count -gt 0) { Write-Ok 'PortAudio sees the MOTU through ASIO'; $motu | ForEach-Object { Write-Note $_ } }
     elseif ($asio.Count -gt 0) { Write-Warn 'an ASIO device, but none named MOTU / 828: check stagehand\trapped.desktop.local.yaml audio.device'; $asio | ForEach-Object { Write-Note $_ } }
     else { Write-Bad 'no ASIO device: power the 828x, check its USB cable and MOTU''s Windows driver (README section 3), or fall back to the MacBook (-NoAudio here)' }
+
+    # The soundtrack (wave 38): a warning, never a FAIL - an empty folder is
+    # one act with no music, and the night still runs.
+    Write-Step 'The soundtrack files'
+    $media = Join-Path $script:StagehandDir 'media'
+    foreach ($act in $script:MusicFolders) {
+        $d = Join-Path $media ('music\' + $act)
+        $n = 0
+        if (Test-Path -LiteralPath $d) {
+            $n = @(Get-ChildItem -LiteralPath $d -File -ErrorAction SilentlyContinue | Where-Object { $script:MusicExtensions -contains $_.Extension.ToLower() }).Count
+        }
+        if ($n -gt 0) { Write-Ok ('music\' + $act + ': ' + $n + ' track(s)') }
+        else { Write-Warn ('music\' + $act + ' is empty or missing: that act plays no music (copy the MP3s in, README section 3.4)') }
+    }
+    $dryer = Join-Path $media 'library\ambient\dryer-tumble.wav'
+    if (Test-Path -LiteralPath $dryer) { Write-Ok 'the SFX library is rendered (the Fan Closet''s dryer loop is there)' }
+    else { Write-Warn 'the SFX library is not rendered: .\start-stagehand.ps1, or uv run stagehand sounds library --story --config trapped.desktop.yaml' }
 }
 
 # -- the server + the TV --------------------------------------------------------
@@ -125,6 +143,8 @@ if ($tv.Count -eq 0) { Write-Bad 'the TV Chrome is not running: .\tv-kiosk.ps1' 
 elseif (@($tv | Where-Object { $_.CommandLine.Contains('--kiosk') }).Count -gt 0) { Write-Ok 'the TV Chrome runs in kiosk mode' }
 else { Write-Warn 'the TV Chrome runs, but not in kiosk mode (still -Setup?)' }
 Write-Note 'by hand: Run -> Terminals shows TV live; the TV voice unmuted (M); Do not disturb on; Windows system sounds off'
+if (-not $NoAudio) { Write-Note 'by hand: Chrome''s output on the line out into the 828x (Volume mixer), the TV''s own volume down; a TEST VOICE plays on the house speakers, once (README section 3.5)' }
+else { Write-Note 'by hand (the MacBook fallback): Chrome''s output back on the TV''s HDMI and the TV''s volume up - the fallback router does not route the TV (README section 11)' }
 
 # -- showctl ------------------------------------------------------------------
 
