@@ -61,6 +61,7 @@ Quest: Theora at 720p30 in software, and the video's audio level.
 | `house/house_geometry.gd` · `house_locate.gd` · `house_route.gd` · `house_frames.gd` · `house_duck.gd` | Literal GDScript ports of `@loom/house` (`buildWalls` / `buildFloors` / `buildRamps` / `doorGap`, `locate` / `heightAt`, `route` / `sampleTrail`, space transforms, `pickDuckSpot`). They are diffed against the goldens. |
 | `house/house_king.gd` | The King's reach (`kingReach`: `KING_REACH` 1.25 m, `KING_CONE_DEG` 55°), the fallen map the trail routes over (the web game's `trailMap`), and the shared `KingState` off the wire. |
 | `house/house_builder.gd` · `house_look.gd` | The map as a scene: StaticBody3D walls, fences, lintels and rails; checker floors with stair holes; starfield ceilings; ramps; props; the King with his shared health bar and a shut leaf in each door he guards; Trabolta's heart (shown once he has fallen) and the pickups (the floppy disk); terminal screens (or a terminal's live camera feed); room labels. The Web-1.0 look is built from procedural textures. |
+| `house/house_lights.gd` · `house_lamps.gd` | Wave 39: the real house's lights. `house_lights.gd` ports `gameLightsOf` / `pulseFactor` and holds the pure rules (the pool pick, the night ambient, the graphics tiers); `house_lamps.gd` draws a bulb per fixture, pulses the ones a program stands under, lights the nearest with a fixed pool of real lights and dims the ambient (below). |
 | `house/house_escape.gd` · `house_moment.gd` | Ports of `@loom/house`'s void (`voidDistance`, `outsideGround`) and the moments (`heartReached`, `pickupReach`) (house lane). |
 | `house/house.json` | The show's map. It is a copy, so do not edit it here; see below. |
 | `net/server_link.gd` | The `ServerLink` autoload: config, mod login, station polling, begin / pose / found / King hit / end, house fetch, the shared King, and the spatial stream (`sse_client.gd` + `sse_parser.gd`). The 10 Hz pose pump is latest-only and flushes the newest pose before a claim (`pose_pump.gd`). |
@@ -93,6 +94,44 @@ map up is not the version the server named (the assignment's `houseVersion`,
 or a `house` / `hello` frame), for example because the fetch failed and the
 bundled map is still up, the link retries every 2 s and the HUD says the
 house may be wrong until the event's map arrives.
+
+## The real house's lights (wave 39)
+
+When the event server sends the spatial stream's `lights` frame (the colour
+and level every fixture of the real house shows now, and which ones a
+program is standing under), the virtual house shows it:
+
+- a **bulb** at every fixture, in its colour and brightness, with a soft
+  glow; a dark fixture is a grey bulb. A fixture someone stands under
+  **breathes** (1 → 0.35 → 1 every 2 s), the way the real bulb does;
+- the lit fixtures **nearest the player on their floor** light the walls
+  and floor for real, from a fixed pool of 2 / 4 / 6 lights (by graphics
+  tier; never shadows);
+- while the player walks the house, the **ambient dims** toward night
+  (never so dark Gerald is hard to find), brighter the brighter the real
+  house is, tinted by its colours. The lobby and the intro keep today's
+  light.
+
+Without the frame (an older server, no lights module, the link gone) the
+house looks as it always did. The real bulb's pulse is the server's and
+stagehand's job; the game only shows it.
+
+### Graphics tiers
+
+`graphics` in the station config picks the picture: `low`, `medium` (the
+default) or `high`. Every tier tone-maps ACES; none has SSAO, SSR or
+volumetric fog.
+
+| | real lights | shading | glow | MSAA |
+|---|---|---|---|---|
+| `low` | 2 | per vertex | — | — |
+| `medium` | 4 | per pixel | — | — |
+| `high` | 6 | per pixel | on | 2× |
+
+Set it with `--graphics` (desktop), `"graphics"` in `user://station.json`,
+or bake / push it: `tools/quest.sh build --station vr-1 --graphics low`
+(or `provision` / `station … --graphics`). If a headset drops frames on
+`medium`, try `low`. There is no in-headset control (a guest could reach it).
 
 ## Run it from the Godot editor
 
@@ -196,17 +235,18 @@ and logs in as a moderator. Settings are applied in this order (lowest first):
 2. `res://config/station.json`: committed, with placeholders (`CHANGEME` never dials out)
 3. `user://station.json`: per headset — written by the lobby's **SET UP THIS
    HEADSET** panel (or pushed by `quest.sh provision`)
-4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--autopilot] [--voice false] [--mic false] [--trail-delay 0] [--intro false]`
+4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--autopilot] [--voice false] [--mic false] [--trail-delay 0] [--intro false] [--graphics low|medium|high]`
 
 `voice` (on by default) is the voice link; `mic: false` keeps it but
 listens only (the headset hears the terminals and is never heard).
 `trail_delay` (seconds, default 60 = the house's `PATH_REVEAL_MS`) holds
 the golden trail back at the start of each walk; `--trail-delay 0` for a
 quick dev walk. `intro` (on by default) plays the video and the tutorial
-before each walk; `--intro false` for a quick dev walk.
+before each walk; `--intro false` for a quick dev walk. `graphics`
+(`medium` by default) is the picture's tier (above).
 
 ```json
-{ "server": "https://app.mapsandducks.com", "code": "4821", "station": "vr-1", "name": "Headset 1" }
+{ "server": "https://app.mapsandducks.com", "code": "4821", "station": "vr-1", "name": "Headset 1", "graphics": "medium" }
 ```
 
 `station` is the id the tablet's **Send to <station>** targets (§2.1). Give
@@ -472,8 +512,8 @@ with `released: true` while you walk to Gerald.
 ./reinstall/vr/test/run.sh        # [path-to-godot]; or `pnpm test:vr` from the repo root
 ```
 
-On 2026-10-27 (wave 33, branch `oct31-w33/intro`, Godot 4.7.1) it reports
-1115 checks and `quest.sh` 37, all passing.
+On 2026-10-28 (wave 39, branch `oct31-w39/vr`, Godot 4.7.1) it reports
+1207 checks and `quest.sh` 42, all passing.
 
 The runner refreshes the import, compiles every script and loads every
 scene, then runs `test/game.gd` headless with `--offline`:
@@ -552,6 +592,15 @@ scene, then runs `test/game.gd` headless with `--offline`:
   coming round, the walk's clocks and one `ready` after START, a returning
   program's skips, a session over
   mid-video or the headset off mid-tutorial, `intro: false`, the autopilot)
+- wave 39, the real lights: `game_lights_of` / `pulse_factor` against
+  what the TS answers for the same inputs, the shown level, a fixture's
+  floor, the pool pick, the night ambient, the tiers (the environment,
+  MSAA, per-vertex on `low`), the `graphics` key (file, flags, a bad tier
+  ignored, the committed `medium`), the frame on the link (kept,
+  signalled, a bad or unknown frame harmless, forgotten when the link
+  drops), the lamps on the show map (a bulb per fixture, the pulse, the
+  fixed pool on the player's floor and its hand-over, the ambient easing
+  down and back, a rebuild), and `main.tscn` wiring the tier and a frame
 - a smoke test that `main.tscn` builds the house
 - `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed; wave 33: the intro video shipped)
 - the autopilot reaching every duck spot of the show from the spawn, once

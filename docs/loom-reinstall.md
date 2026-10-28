@@ -1710,8 +1710,9 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   rule, the lobby's tiles / laser / confirm card / setup panel / mic box on
   `main.tscn` with a fake link, the wave 26 moments, sounds, speech and
   path reveal, and the autopilot reaching every show duck spot
-  kinematically and with real collision (1011 checks, plus 34 for
-  `quest.sh`, among them the `text_to_speech` setting and the build stamp).
+  kinematically and with real collision, and (wave 39) the real lights
+  and the graphics tiers (1207 checks, plus 42 for `quest.sh`, among them
+  the `text_to_speech` setting, the build stamp and `--graphics`).
 - **Not proven on hardware** (wave 26): whether Horizon OS has a TTS voice
   (without one the headset only captions) and whether the Quest's mic
   delivers real samples. The device check (HW-TENT-07) settles both: the
@@ -1756,6 +1757,51 @@ ignored). A session that ends mid-intro stops the video and returns to the
 lobby. `intro: false` (`--intro false`) skips it; `--autopilot` never
 plays it. The copy was signed off on 2026-10-28. Unproven on hardware: Theora at 720p30
 beside 90 Hz rendering, the video's level, the panel's comfort.
+
+### The real house's lights and the graphics tiers (wave 39)
+
+The spatial stream's `lights` frame (§2.2, `GameLights`) reaches the game
+through `LinkBase.lights_changed` and `LinkBase.lights` (the latest; `{}`
+once the link drops or is reconfigured). `house/house_lights.gd`
+(`HouseLights`) is the literal port of `gameLightsOf` (a malformed light is
+dropped, not the frame; an unknown frame is ignored as before) and
+`pulseFactor` (1 → 0.35 → 1 every 2 s), pinned in `test/game.gd` to what
+the TS answers for the same inputs. `house/house_lamps.gd` (`HouseLamps`)
+draws it:
+
+- **A bulb per fixture**: an unshaded sphere and an additive glow quad at
+  its `pos`, in its `color` × `level`; a dark fixture is a grey bulb with
+  no glow. A fixture with `pulse` breathes with `pulseFactor`, counted from
+  when it started. (The real pulse is the server's and stagehand's; this is
+  the game showing it.)
+- **A fixed pool of `OmniLight3D`s** (no shadows): 2 / 4 / 6 by tier, made
+  once, re-picked four times a second onto the lit fixtures (level > 0.02)
+  nearest the player on their floor (`HouseLights.pick_pool`); a light
+  keeps its fixture while it stays picked; unused ones are hidden. The
+  Mobile renderer lights a mesh with at most 8 omni lights, and the duck,
+  the heart and the disk carry one each.
+- **The ambient**: while a frame is in and the player walks the house (not
+  the lobby, not the intro), the environment's ambient (0.55 today) and the
+  sun (0.7) ease (≈ 1.5 s) toward a night floor of 0.24 / 0.22, lifted back
+  up to 40 % of the way by the real house's mean level and tinted by its
+  level-weighted colour (`HouseLights.ambient`). No frame — an old server,
+  no lights module, the link gone — is today's house.
+
+`graphics` in `station.json` (`low | medium | high`, default `medium`; also
+`--graphics`, and `tools/quest.sh build|station|provision … --graphics`)
+picks the picture (`HouseLook.environment(tier)`, `HouseLook.msaa`,
+`HouseLook.set_tier`):
+
+| | real lights | shading | tone map | glow | MSAA |
+|---|---|---|---|---|---|
+| low | 2 | per vertex | ACES (white 2.0) | off | off |
+| medium | 4 | per pixel (Lambert, no specular) | ACES | off | off |
+| high | 6 | per pixel | ACES | on (screen, threshold 0.7) | 2× |
+
+No tier has SSAO, SSR, SSIL, SDFGI or volumetric fog. Comfort is unchanged.
+Unproven on hardware: whether Quest 3 holds 90 Hz on `medium` (per-pixel
+shading with four lights is the one new cost; `low` is the fallback) and
+on `high`.
 
 ## 6. The story
 
