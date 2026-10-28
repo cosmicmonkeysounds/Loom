@@ -9,6 +9,8 @@
 //! above (turning left) — three.js's / Godot's `rotation.y` for a node whose
 //! forward is `−z`.
 
+import type { GameLights } from "./lights-presence.ts";
+
 /** A plan point `[x, z]`. */
 export type Vec2 = [number, number];
 /** A point `[x, y, z]` in house coordinates. */
@@ -403,6 +405,11 @@ export interface SpatialFrames {
   king: KingState & { by?: string | null };
   /** A live player's profile picture changed (or its lookup landed). */
   avatar: { session: string; avatar: string | null };
+  /** (wave 39) What every real house light shows now, and which ones a
+   *  program is under (`GameLights`, `lights-presence.ts`): after `hello`,
+   *  on change (≤ 4 a second) and while a server estimate animates. An
+   *  empty `lights` means no real lights: draw the house as without a frame. */
+  lights: GameLights;
 }
 
 export type SpatialFrameName = keyof SpatialFrames;

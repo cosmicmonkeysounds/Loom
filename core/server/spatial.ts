@@ -31,6 +31,14 @@
 //! session's last pose, with the `@loom/house` rules, and hands the story
 //! signal to the runtime to commit. The per-session escape cooldown, who
 //! heard the heart and who took each pickup are memory only.
+//!
+//! **The house lights** (wave 39, C2): on every pose flush, a leave, a
+//! reset and a map swap the hub runs `presenceStep` over its joined
+//! sessions with the lights config in force (an injected getter: the hub
+//! never imports `LightsHub`) and tells the runtime when the pulsed set
+//! changed (`onPresence`). The `lights` frame (`GameLights`) is built
+//! elsewhere (`lights-shown.ts`): the hub sends it after each `hello`
+//! (`lightsHello`) and broadcasts it (`sendLights`).
 
 import { randomBytes, randomUUID } from "node:crypto";
 
@@ -55,7 +63,9 @@ import {
   pickDuckSpot,
   pickupReach,
   presenceRoom,
+  presenceStep,
   propSignal,
+  samePulsed,
   standable,
   voidDistance,
   withFallenKings,
@@ -64,12 +74,16 @@ import {
 import type {
   Assignment,
   DuckSpot,
+  GameLights,
   HouseMap,
   HouseSource,
   KingReach,
   KingState,
   LeaveReason,
+  LightsConfig,
   PlayerPose,
+  PresenceEntry,
+  PresencePlayer,
   PlayerState,
   PoseUpdate,
   Prop,
@@ -133,6 +147,18 @@ export interface SpatialHubOptions {
    *  sweep of a claimed, unfound walk: false ends it (`unmarked`).
    *  Absent: everyone may (the begin route checked). */
   mayPlay?: (guest: string) => boolean;
+  /** (wave 39) The house lights config in force: presence reads it on every
+   *  pose flush. Absent: nothing ever pulses. */
+  lights?: () => LightsConfig;
+  /** (wave 39) The pulsed fixture set changed (`samePulsed` false): the
+   *  runtime hands it to `LightsHub.setPresence`. */
+  onPresence?: (entries: ReadonlyMap<string, PresenceEntry>) => void;
+  /** (wave 39) The `lights` frame a new subscriber gets right after its
+   *  `hello`; null sends none. */
+  lightsHello?: () => GameLights | null;
+  /** (wave 39) The map was swapped (the `lights` frame drops a fixture
+   *  whose room it lost). */
+  onHouse?: () => void;
 }
 
 /** One find of the duck: who, on what, and how long it took — from the
@@ -477,6 +503,9 @@ export class SpatialHub {
    *  (`onPrefs`) and never cleared by a story reset — they are the
    *  person's comfort, not the story's. */
   private readonly prefs = new Map<string, SpatialPrefs>();
+  /** (wave 39) The fixtures a program is under now (`presenceStep`'s last
+   *  answer, its hold included). Memory only. */
+  private pulsed: Map<string, PresenceEntry> = new Map();
 
   constructor(o: SpatialHubOptions) {
     this.o = o;
@@ -565,10 +594,13 @@ export class SpatialHub {
       s.houseVersion = version;
       if (s.joined) s.dirty = true;
     }
+    // (wave 39) Fixtures follow their rooms: who is under which light now.
+    this.stepPresence();
     if (announce) this.broadcast("house", { version });
     for (const s of moved) this.broadcast("duck", { session: s.id, duck: s.duck });
     if (announce) this.syncKing(null);
     else this.kingSent = kingKey(this.king());
+    this.o.onHouse?.();
     return version;
   }
 
@@ -665,6 +697,14 @@ export class SpatialHub {
     this.subscribers.set(sub.id, sub);
     const hello: SpatialFrames["hello"] = { eventId: this.o.eventId, houseVersion: this.version, players: this.players(), king: this.king() };
     sub.send("hello", hello);
+    // (wave 39) The real lights, right after the hello.
+    const lights = this.o.lightsHello?.() ?? null;
+    if (lights !== null) sub.send("lights", lights);
+  }
+
+  /** (wave 39) Broadcast a `lights` frame (`lights-shown.ts` decides when). */
+  sendLights(frame: GameLights): void {
+    this.broadcast("lights", frame);
   }
 
   detach(id: string): void {
@@ -678,7 +718,9 @@ export class SpatialHub {
   /** Is anything going on (a stream open, or a session alive)? The runtime
    *  runs its flush loop only while this holds. */
   get active(): boolean {
-    return this.subscribers.size > 0 || this.sessions.size > 0;
+    // (wave 39) A pulse held after its program left still needs the flush
+    // loop to let it go.
+    return this.subscribers.size > 0 || this.sessions.size > 0 || this.pulsed.size > 0;
   }
 
   get subscriberCount(): number {
@@ -902,7 +944,10 @@ export class SpatialHub {
       const oldest = this.ended.keys().next().value;
       if (oldest !== undefined) this.ended.delete(oldest);
     }
-    if (s.joined) this.broadcast("leave", { session: s.id, reason });
+    if (s.joined) {
+      this.broadcast("leave", { session: s.id, reason });
+      this.stepPresence();
+    }
   }
 
   /** The live session behind a token (claimed or parked), for auth + commits. */
@@ -1216,10 +1261,39 @@ export class SpatialHub {
       s.dirty = false;
       players.push({ session: s.id, p: s.pose.p, yaw: s.pose.yaw, pitch: s.pose.pitch, room: s.room, floor: s.floor });
     }
+    // (wave 39) Every tick, moved or not: a held pulse lets go by the clock.
+    this.stepPresence();
     if (players.length === 0) return null;
     const frame = { t: this.now(), players };
     this.broadcast("poses", frame);
     return frame;
+  }
+
+  // -- the house lights (wave 39, C2) ---------------------------------------
+
+  /** The fixtures a program is under now (with the hold), keyed by fixture id. */
+  presence(): ReadonlyMap<string, PresenceEntry> {
+    return this.pulsed;
+  }
+
+  /** Run `presenceStep` over the joined sessions (a director's forced walk
+   *  counts too); tell the runtime when the pulsed set changed. `fresh`
+   *  forgets the hysteresis and the hold (a story reset). */
+  private stepPresence(fresh = false): void {
+    const getLights = this.o.lights;
+    if (getLights === undefined) return;
+    const players: PresencePlayer[] = [];
+    for (const s of this.sessions.values()) if (s.joined) players.push({ session: s.id, room: s.presence, p: s.pose.p });
+    const prev = fresh ? new Map<string, PresenceEntry>() : this.pulsed;
+    let next: Map<string, PresenceEntry>;
+    try {
+      next = presenceStep(getLights(), this.map?.house ?? null, players, prev, this.now());
+    } catch {
+      next = new Map();
+    }
+    const changed = !samePulsed(this.pulsed, next);
+    this.pulsed = next;
+    if (changed) this.o.onPresence?.(next);
   }
 
   /** Time out silent sessions, let found ones go, drop stale parked ones. */
@@ -1252,6 +1326,8 @@ export class SpatialHub {
     this.kingSpent.clear();
     this.heartHeard.clear();
     this.picked.clear();
+    // (wave 39) A story reset is a cut: no pulse is held over it.
+    this.stepPresence(true);
     this.broadcast("reset", { kind });
     this.syncKing(null);
   }
