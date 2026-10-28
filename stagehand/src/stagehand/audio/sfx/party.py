@@ -336,8 +336,8 @@ def rimshot(rng: np.random.Generator) -> np.ndarray:
     x = dsp.mix(
         (_snare(rng, 0.4, tone=205, snappy=1.1), 0.0),
         (_tom(rng, 0.6, 105) + 0.6 * _kick(rng, 0.6), 0.19, -1),
-        (_kick(rng, 0.6), 0.44, -2),
-        (_cymbal(rng, 1.15, t60=0.95), 0.44, -1),
+        (_kick(rng, 0.6), 0.44, -8),
+        (_cymbal(rng, 1.15, t60=0.95), 0.44, 5),
         seconds=s,
     )
     return _room(x, room=0.3, wet=0.12)
@@ -353,7 +353,7 @@ def sad_trombone(rng: np.random.Generator) -> np.ndarray:
     for start, name, dur in notes:
         f0 = dsp.hz(name) / 2  # a trombone plays it an octave down
         last = dur > 1
-        n_s = dur + 0.18
+        n_s = dur + 0.1
         t = dsp.timebase(n_s)
         f = f0 * dsp.line([(0, 2 ** (-40 / 1200)), (0.05, 1.0)], n_s, curve="exp")
         if last:
@@ -365,8 +365,8 @@ def sad_trombone(rng: np.random.Generator) -> np.ndarray:
             wah = dsp.line([(0, 0.15), (0.13, 1.0), (dur, 0.45)], n_s)
         f = dsp.jitter(f, rng, cents_rms=3, rate=6)
         src = dsp.saw(f) + 0.3 * dsp.pulse(f, width=0.3)
-        tone = dsp.svf(src, f0 * (1.5 + 7 * wah), q=1.6)
-        amp = dsp.adsr(n_s, attack=0.03, decay_s=0.1, sustain=0.85, release=0.18)
+        tone = dsp.svf(src, f0 * (1.1 + 9 * wah**2), q=2.4)
+        amp = dsp.adsr(n_s, attack=0.03, decay_s=0.1, sustain=0.85, release=0.1)
         layers.append((tone * amp, start))
     x = dsp.mix(*layers, seconds=s)
     return dsp.fade(_room(dsp.highpass(x, 60), room=0.35, wet=0.12), fade_out=0.2)
