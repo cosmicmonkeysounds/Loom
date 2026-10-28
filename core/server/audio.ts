@@ -52,6 +52,12 @@
 //!   router's answers (each play's / test's result and length) and its
 //!   health. Memory only; the house desk reads both (`AudioHub.onAck`,
 //!   `health()`). An older router never posts it.
+//!   Since wave 38 the health may carry the soundtrack (`music {scene,
+//!   beds, missing}`), the input meters (`inputs`), the ducking sources'
+//!   activity (`sources`) and `underruns`; each is optional and a malformed
+//!   one is dropped alone (`audioHealthW38Of`). The GET view (not the
+//!   router's own, `router=1`) carries the last report as `health`, minus
+//!   its `sounds`, for `showctl doctor`.
 //!
 //! Transport-light: `AudioHub` takes an injected clock and store; the
 //! handlers take the runtime's context.
@@ -165,9 +171,43 @@ export interface AudioHealth {
   placeholders: string[];
   /** Each sound file the router has, by name → its length (ms). */
   sounds: Record<string, number>;
+  /** (wave 38) The soundtrack (contract w38 C3): absent from an older router. */
+  music?: AudioMusicHealth;
+  /** (wave 38) Each metered input channel ("1"…) → its block peak (dBFS). */
+  inputs?: Record<string, number>;
+  /** (wave 38) Each ducking source (an input `role`, `announce`, `takeover`) → its activity, 0..1. */
+  sources?: Record<string, number>;
+  /** (wave 38) Stream underruns since the router started (each played silence). */
+  underruns?: number;
+}
+
+/** (wave 38) One soundtrack bed: a playlist on a set of speakers. */
+export interface AudioMusicBed {
+  playlist: string;
+  speakers: string[];
+  /** The file playing (its name), or null between tracks. */
+  track: string | null;
+  /** Seconds into the track. */
+  posS: number;
+}
+
+/** (wave 38) The router's soundtrack: the scene in force, its beds, and the
+ *  playlists with no file (each a silent bed). */
+export interface AudioMusicHealth {
+  scene: string | null;
+  beds: AudioMusicBed[];
+  missing: string[];
 }
 /** At most this many sounds in a health report's `sounds`. */
 export const AUDIO_HEALTH_SOUNDS_MAX = 1000;
+/** (wave 38) At most this many beds, speakers per bed, metered inputs and sources. */
+export const AUDIO_HEALTH_BEDS_MAX = 32;
+export const AUDIO_HEALTH_SPEAKERS_MAX = 64;
+export const AUDIO_HEALTH_INPUTS_MAX = 64;
+export const AUDIO_HEALTH_SOURCES_MAX = 32;
+/** (wave 38) An input peak is clamped to this range (dBFS); silence reads the floor. */
+export const AUDIO_PEAK_FLOOR_DB = -120;
+export const AUDIO_PEAK_CEIL_DB = 24;
 
 /** A play request off an untrusted body, or the 400's error text. */
 export function audioPlayOf(body: Record<string, unknown>): AudioPlayRequest | string {
@@ -228,6 +268,7 @@ export function audioHealthOf(raw: unknown, at: number): AudioHealth | null {
   const layout = h["layout"];
   const announce = h["announce"];
   const peak = h["peakDb"];
+  const wave38 = audioHealthW38Of(h);
   return {
     at,
     ok: h["ok"],
@@ -240,7 +281,62 @@ export function audioHealthOf(raw: unknown, at: number): AudioHealth | null {
     missing: names(h["missing"]),
     placeholders: names(h["placeholders"]),
     sounds,
+    ...wave38,
   };
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const clampNum = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+
+/**
+ * The wave 38 fields of a health report (contract w38 C3): `music`,
+ * `inputs`, `sources`, `underruns`. Each is optional and judged on its own:
+ * a malformed one is dropped (never the whole report: the sounds and the
+ * device matter more than a meter), a long list is cut, a number is clamped.
+ * A bed's position is read as `posS` or the router's `pos_s`.
+ */
+export function audioHealthW38Of(h: Record<string, unknown>): Pick<AudioHealth, "music" | "inputs" | "sources" | "underruns"> {
+  const out: Pick<AudioHealth, "music" | "inputs" | "sources" | "underruns"> = {};
+  const name = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v.slice(0, AUDIO_NAME_MAX) : null);
+  const m = h["music"];
+  if (isRecord(m)) {
+    const scene = m["scene"] === null ? null : name(m["scene"]);
+    const beds: AudioMusicBed[] = [];
+    if (Array.isArray(m["beds"]))
+      for (const b of m["beds"].slice(0, AUDIO_HEALTH_BEDS_MAX)) {
+        if (!isRecord(b)) continue;
+        const playlist = name(b["playlist"]);
+        if (playlist === null) continue;
+        const speakers = Array.isArray(b["speakers"]) ? b["speakers"].flatMap((x) => (name(x) === null ? [] : [name(x)!])).slice(0, AUDIO_HEALTH_SPEAKERS_MAX) : [];
+        const pos = b["posS"] ?? b["pos_s"];
+        beds.push({ playlist, speakers, track: b["track"] === null ? null : (typeof b["track"] === "string" && b["track"] !== "" ? b["track"].slice(0, 128) : null), posS: typeof pos === "number" && Number.isFinite(pos) ? clampNum(Math.round(pos * 10) / 10, 0, 24 * 3600) : 0 });
+      }
+    const missing = Array.isArray(m["missing"]) ? m["missing"].flatMap((x) => (name(x) === null ? [] : [name(x)!])).slice(0, AUDIO_HEALTH_BEDS_MAX) : [];
+    if (scene !== null || m["scene"] === null) out.music = { scene, beds, missing };
+  }
+  const inputs = h["inputs"];
+  if (isRecord(inputs)) {
+    const got: Record<string, number> = {};
+    for (const [k, v] of Object.entries(inputs).slice(0, AUDIO_HEALTH_INPUTS_MAX)) {
+      if (!/^[1-9]\d?$/u.test(k)) continue;
+      // A silent input may come as null (JSON has no -Infinity): the floor.
+      if (v === null) got[k] = AUDIO_PEAK_FLOOR_DB;
+      else if (typeof v === "number" && !Number.isNaN(v)) got[k] = Math.round(clampNum(v, AUDIO_PEAK_FLOOR_DB, AUDIO_PEAK_CEIL_DB) * 10) / 10;
+    }
+    out.inputs = got;
+  }
+  const sources = h["sources"];
+  if (isRecord(sources)) {
+    const got: Record<string, number> = {};
+    for (const [k, v] of Object.entries(sources).slice(0, AUDIO_HEALTH_SOURCES_MAX)) {
+      if (!/^[a-z][a-z0-9_-]{0,31}$/u.test(k) || typeof v !== "number" || !Number.isFinite(v)) continue;
+      got[k] = Math.round(clampNum(v, 0, 1) * 1000) / 1000;
+    }
+    out.sources = got;
+  }
+  const u = h["underruns"];
+  if (typeof u === "number" && Number.isFinite(u)) out.underruns = Math.max(0, Math.round(u));
+  return out;
 }
 
 /** How many stops ride a GET, and for how long. */
@@ -681,13 +777,27 @@ export interface AudioView {
    *  can leave a speaker outside its room) — advice, never a refusal here. */
   problems: string[];
   warnings: string[];
+  /** (wave 38) The router's last health report without its `sounds` list
+   *  (the house desk has that), null before one; never on the router's own
+   *  read (`router=1`), which has no use for its own report. Absent from an
+   *  older server. */
+  health?: Omit<AudioHealth, "sounds"> | null;
 }
 
-export function audioView(hub: AudioHub, ctx: AudioContext): AudioView {
+export function audioView(hub: AudioHub, ctx: AudioContext, o: { router?: boolean } = {}): AudioView {
   const cur = hub.current();
   const model = ctx.model();
   const v = validateAudio(cur.audio, ctx.house());
-  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), stops: hub.stops(), plays: hub.plays(), now: hub.clock(), router: hub.router(), announceSaved: hub.announceSaved, problems: v.problems, warnings: v.warnings };
+  const view: AudioView = { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), stops: hub.stops(), plays: hub.plays(), now: hub.clock(), router: hub.router(), announceSaved: hub.announceSaved, problems: v.problems, warnings: v.warnings };
+  if (o.router !== true) {
+    const h = hub.health();
+    if (h === null) view.health = null;
+    else {
+      const { sounds: _sounds, ...rest } = h;
+      view.health = rest;
+    }
+  }
+  return view;
 }
 
 /**
@@ -725,7 +835,7 @@ export async function handleAudioGet(hub: AudioHub, ctx: AudioContext, req: Inco
     }
   }
   if (router) hub.noteRouter(url.searchParams.get("name"));
-  sendJson(res, 200, audioView(hub, ctx));
+  sendJson(res, 200, audioView(hub, ctx, { router }));
   return true;
 }
 

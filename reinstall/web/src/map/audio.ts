@@ -12,10 +12,12 @@
 //! interface (device, input / output labels, the input → output matrix);
 //! zones; the story's cues and the announce / TV voice targets; the
 //! tablets that also say the announcements (`announce.terminals`, wave 18b
-//! Q8) and the device's expected layout (`device.expect`, the 828x); and
-//! the problem list (`validateAudio` read back to the speaker it names).
+//! Q8) and the device's expected layout (`device.expect`, the 828x); an
+//! input's sidechain `role` and `reach` (wave 38: what it ducks the music
+//! as, and where); and the problem list (`validateAudio` read back to the
+//! speaker it names).
 
-import { AUDIO_CHIME_SOUND, AUDIO_EVERYWHERE, AUDIO_GAIN_MAX, AUDIO_GAIN_MIN, AUDIO_INPUT_KINDS, AUDIO_MAX_CHANNELS, cloneData, defaultAudio, foldTarget, pointInPoly, distanceToBoundary, resolveTargets, roomAt, roomById, roomElevation, validateAudio, wrapYaw, yawToward } from "@loom/house";
+import { AUDIO_CHIME_SOUND, AUDIO_EVERYWHERE, AUDIO_GAIN_MAX, AUDIO_GAIN_MIN, AUDIO_INPUT_KINDS, AUDIO_MAX_CHANNELS, AUDIO_RESERVED_ROLES, AUDIO_ROLE_PATTERN, cloneData, defaultAudio, foldTarget, pointInPoly, distanceToBoundary, resolveTargets, roomAt, roomById, roomElevation, validateAudio, wrapYaw, yawToward } from "@loom/house";
 import type { AudioConfig, AudioCue, AudioInputKind, AudioSpeaker, HouseMap, LightsConfig, Room, Vec2 } from "@loom/house";
 import type { Problem } from "./check.ts";
 import { rebaseField, type History } from "./history.ts";
@@ -381,6 +383,72 @@ export function patchInput(audio: AudioConfig, ch: number, patch: { label?: stri
   if (patch.label !== undefined) c.label = patch.label;
   if (patch.kind !== undefined) c.kind = patch.kind;
   return next;
+}
+
+/** An input row to edit, added (labelled, `line`) when the file doesn't list it. */
+function inputRow(next: AudioConfig, ch: number): AudioConfig["inputs"][number] {
+  let c = next.inputs.find((x) => x.ch === ch);
+  if (c === undefined) {
+    c = { ch, label: `In ${ch}`, kind: "line" };
+    next.inputs.push(c);
+    next.inputs.sort((a, b) => a.ch - b.ch);
+  }
+  return c;
+}
+
+/** Whether `role` is one an input may drive (the router's own sources are refused). */
+export function roleAllowed(role: string): boolean {
+  return AUDIO_ROLE_PATTERN.test(role) && !(AUDIO_RESERVED_ROLES as readonly string[]).includes(role);
+}
+
+/**
+ * What an input ducks the music as (wave 38, *Ducks as*): a role such as
+ * `trabolta` or `clippy`, or null for none. A malformed or reserved role
+ * changes nothing (the picker never offers one; a typed one is folded to
+ * lower case first). None also drops the input's `reach`: with no source
+ * there is nothing for it to reach.
+ */
+export function setInputRole(audio: AudioConfig, ch: number, role: string | null): AudioConfig {
+  if (!Number.isInteger(ch) || ch < 1 || ch > audio.device.inputs) return audio;
+  const r = role === null ? "" : role.trim().toLowerCase();
+  if (r !== "" && !roleAllowed(r)) return audio;
+  const was = audio.inputs.find((x) => x.ch === ch);
+  if (r === "" ? was?.role === undefined && was?.reach === undefined : was?.role === r) return audio;
+  const next = clone(audio);
+  const c = inputRow(next, ch);
+  if (r === "") {
+    delete c.role;
+    delete c.reach;
+  } else c.role = r;
+  return next;
+}
+
+/** Where an input's source ducks (targets as a cue's `to`); an empty list
+ *  drops `reach`, so the router falls back to the outputs its routes feed
+ *  (`everywhere` with no route). */
+export function setInputReach(audio: AudioConfig, ch: number, to: readonly string[]): AudioConfig {
+  if (!Number.isInteger(ch) || ch < 1 || ch > audio.device.inputs) return audio;
+  const list = [...new Set(to.map((t) => t.trim()).filter((t) => t !== ""))];
+  const was = audio.inputs.find((x) => x.ch === ch);
+  if (list.length === 0 && was?.reach === undefined) return audio;
+  const next = clone(audio);
+  const c = inputRow(next, ch);
+  if (list.length === 0) delete c.reach;
+  else c.reach = list;
+  return next;
+}
+
+/**
+ * The speakers an input's source ducks (to light them on the plan): its
+ * `reach`, else the speakers on the outputs its `routes` rows feed, else
+ * every speaker — the router's default (contract w38 C1.1).
+ */
+export function inputReachSpeakers(audio: AudioConfig, house: HouseMap, ch: number): string[] {
+  const c = audio.inputs.find((x) => x.ch === ch);
+  if (c?.reach !== undefined) return resolveTargets(audio, house, c.reach).speakers;
+  const outs = new Set(audio.routes.filter((r) => r.in === ch).flatMap((r) => r.out));
+  if (outs.size === 0) return audio.speakers.map((s) => s.id);
+  return audio.speakers.filter((s) => s.out.some((o) => outs.has(o))).map((s) => s.id);
 }
 
 export function patchOutput(audio: AudioConfig, ch: number, patch: { label: string }): AudioConfig {

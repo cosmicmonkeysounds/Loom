@@ -744,6 +744,8 @@ export const SCREEN_NIGHT_VARS = {
   alarm_on: "Night.alarm_on",
   // Wave 31: the house look (`cue lights_<value>`), for the lights module's catch-up.
   lights: "Night.lights",
+  // Wave 38: the soundtrack's scene (`cue music_<value>`), for the router's catch-up.
+  music: "Night.music",
   door_override: "Night.door_override",
   // Wave 22: the patch bay on the server-room M4 posts `patch_changed`; a
   // 🔌 / 💥 / ❌ press puts the story on the buttons until 🔌 Trust the
@@ -794,6 +796,9 @@ export interface ScreenNight {
   alarm_on: boolean | null;
   /** (wave 31) `Night.lights`: the house look the story last cued (`lights_<value>`; "none" reads null). */
   lights: string | null;
+  /** (wave 38) `Night.music`: the soundtrack scene the story last cued
+   *  (`music_<value>`; "none" reads null, which the router plays as `off`). */
+  music: string | null;
   /** (wave 20) `Night.door_override`: the story follows the 🚪 buttons, not the sensor. */
   door_override: boolean | null;
   /** (wave 22) `Night.patch_override`: the story follows the 🔌 buttons, not the patch bay. */
@@ -1669,6 +1674,7 @@ export class ScreenWatch {
       heart_look: named(SCREEN_NIGHT_VARS.heart_look),
       alarm_on: flag(SCREEN_NIGHT_VARS.alarm_on),
       lights: named(SCREEN_NIGHT_VARS.lights),
+      music: named(SCREEN_NIGHT_VARS.music),
       door_override: flag(SCREEN_NIGHT_VARS.door_override),
       patch_override: flag(SCREEN_NIGHT_VARS.patch_override),
     };

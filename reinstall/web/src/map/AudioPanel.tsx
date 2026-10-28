@@ -5,14 +5,15 @@
 //! zones (lit on the plan), every story sound's targets, the announcement
 //! and TV voice targets, the tablets that also say the announcements (wave
 //! 18b, Q8: `announce.terminals`, by room with a speaker-reach hint), the
-//! device's expected layout (`device.expect`, the 828x), a Test per speaker /
+//! device's expected layout (`device.expect`, the 828x), each input's *Ducks
+//! as* role and its reach (wave 38: the router's sidechain), a Test per speaker /
 //! output, and its own save (`base` → 409), Save to project and Download
 //! JSON. Every edit is an op from `audio.ts` handed to `commit` (one undo
 //! step each).
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { AUDIO_INPUT_KINDS, resolveTargets, roomById } from "@loom/house";
+import { AUDIO_INPUT_KINDS, AUDIO_KNOWN_ROLES, resolveTargets, roomById } from "@loom/house";
 import type { AudioConfig, AudioInputKind, HouseMap } from "@loom/house";
 import { audioConflictText, routerBadge, testAge, type AudioTestRow, type AudioView } from "./audio-api.ts";
 import {
@@ -21,12 +22,14 @@ import {
   cellGain,
   cueRows,
   inputLabel,
+  inputReachSpeakers,
   outputLabel,
   outputUsers,
   patchInput,
   patchOutput,
   patchZone,
   removeZone,
+  roleAllowed,
   setAnnounce,
   setAnnounceTerminal,
   setCell,
@@ -34,6 +37,8 @@ import {
   setCueTargets,
   setDevice,
   setExpect,
+  setInputReach,
+  setInputRole,
   setTvVoice,
   setZoneMember,
   targetChip,
@@ -362,8 +367,11 @@ export function AudioPanel(p: AudioPanelProps) {
         </table>
       </Section>
 
-      <Section title="Inputs" count="what feeds the interface" open={false}>
-        <table className="audio-table">
+      <Section title="Inputs" count={`what feeds the interface${audio.inputs.some((i) => i.role !== undefined) ? ` · ${audio.inputs.filter((i) => i.role !== undefined).length} duck the music` : ""}`} open={false}>
+        <p className="muted small">
+          <b>Ducks as</b>: the router listens to that input and lowers the music under it (Trabolta on the TV, Clippy's mic). Its depth is the router's <code>priority</code> for that name; <code>announce</code> and <code>takeover</code> are the router's own.
+        </p>
+        <table className="audio-table inputs">
           <tbody>
             {ins.map((ch) => {
               const c = audio.inputs.find((x) => x.ch === ch);
@@ -381,6 +389,15 @@ export function AudioPanel(p: AudioPanelProps) {
                         </option>
                       ))}
                     </select>
+                  </td>
+                  <td className="ducks" data-testid={`input-ducks-${ch}`} onMouseEnter={() => c?.role !== undefined && hover(inputReachSpeakers(audio, house, ch))} onMouseLeave={() => hover(null)}>
+                    <DucksAs ch={ch} role={c?.role ?? null} disabled={off} onChange={(role) => commit(setInputRole(audio, ch, role))} />
+                    {c?.role !== undefined && (
+                      <div className="reach" data-testid={`input-reach-${ch}`}>
+                        <span className="muted small">ducks on</span>{" "}
+                        <Targets value={c.reach ?? []} options={options} disabled={off} empty={audio.routes.some((r) => r.in === ch) ? "(the outputs its route feeds)" : "(everywhere)"} onChange={(to) => commit(setInputReach(audio, ch, to))} />
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -574,6 +591,69 @@ function MatrixRow({ i, outs, audio, cell, off, onCell, onFocus }: { i: number; 
         );
       })}
     </>
+  );
+}
+
+const CUSTOM = "\u0000custom";
+
+/** An input's *Ducks as* picker (wave 38): none, the show's two voices, or a
+ *  custom role typed in (an unknown name is fine; the router ignores a role
+ *  with no `priority` entry and `stagehand check` warns). */
+function DucksAs({ ch, role, disabled, onChange }: { ch: number; role: string | null; disabled: boolean; onChange: (role: string | null) => void }) {
+  const known = role === null || (AUDIO_KNOWN_ROLES as readonly string[]).includes(role);
+  const [custom, setCustom] = useState(!known);
+  useEffect(() => setCustom(!known), [known]);
+  const value = custom ? CUSTOM : (role ?? "");
+  return (
+    <span className="ducks-as">
+      <select
+        className="w98-input"
+        value={value}
+        disabled={disabled}
+        aria-label={`Input ${ch} ducks the music as`}
+        title="The music ducks under this input"
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === CUSTOM) return setCustom(true);
+          setCustom(false);
+          onChange(v === "" ? null : v);
+        }}
+      >
+        <option value="">ducks nothing</option>
+        {AUDIO_KNOWN_ROLES.map((r) => (
+          <option key={r} value={r}>
+            ducks as {r}
+          </option>
+        ))}
+        <option value={CUSTOM}>custom…</option>
+      </select>
+      {custom && <RoleField ch={ch} value={known ? "" : (role ?? "")} disabled={disabled} onCommit={(v) => onChange(v.trim() === "" ? null : v)} />}
+    </span>
+  );
+}
+
+/** The custom role's text (lower case; a refused name is shown, not saved). */
+function RoleField({ ch, value, disabled, onCommit }: { ch: number; value: string; disabled: boolean; onCommit: (v: string) => void }) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  const t = text.trim().toLowerCase();
+  const bad = t !== "" && !roleAllowed(t);
+  return (
+    <input
+      className={`w98-input label-field role-field${bad ? " bad" : ""}`}
+      value={text}
+      placeholder="role"
+      disabled={disabled}
+      aria-label={`Input ${ch} custom role`}
+      aria-invalid={bad}
+      title={bad ? "a-z first, then a-z 0-9 _ - (≤ 32); not announce or takeover" : "the router's priority name for this input"}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => !bad && t !== value && onCommit(t)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+        else if (e.key === "Escape") setText(value);
+      }}
+    />
   );
 }
 

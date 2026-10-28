@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { AUDIO_FILE, audioHash, defaultAudio, foldTarget, resolveTargets, validateAudio, validateHouse } from "../src/index.ts";
+import { AUDIO_FILE, AUDIO_RESERVED_ROLES, audioHash, defaultAudio, foldTarget, resolveTargets, validateAudio, validateHouse } from "../src/index.ts";
 import type { AudioConfig, HouseMap } from "../src/index.ts";
 import { FIXTURES } from "./golden.ts";
 
@@ -148,6 +148,59 @@ describe("validateAudio — wave 18b: device.expect and announce.terminals", () 
     expect(unknown.warnings).toContain('announce.terminals: "nowhere-spot" is no terminal spot on the house map');
     // No house: nothing to check the ids against.
     expect(check((a) => void (a.announce = { to: ["everywhere"], terminals: ["nowhere-spot"] }), null).warnings.some((w) => w.startsWith("announce.terminals"))).toBe(false);
+  });
+});
+
+describe("validateAudio — wave 38: an input's role and reach", () => {
+  const input = (a: AudioConfig, i = 2) => a.inputs[i]!;
+  /** The same input, for writing shapes the type refuses. */
+  const raw = (a: AudioConfig, i = 2) => a.inputs[i] as unknown as Record<string, unknown>;
+
+  it("a well-formed role and a reach that reaches speakers validate clean; two inputs may share a role", () => {
+    const v = check((a) => {
+      Object.assign(input(a), { role: "clippy", reach: ["living"] });
+      Object.assign(input(a, 0), { role: "trabolta" });
+      Object.assign(input(a, 1), { role: "trabolta", reach: ["everywhere", "Down Stairs"] });
+    });
+    expect(v.problems).toEqual([]);
+    expect(v.warnings).toEqual(["output 5 feeds 2 speakers (down-hall, studio)"]);
+    // An unknown-but-well-formed role is fine (stagehand check warns when YAML has no priority for it).
+    expect(check((a) => void (input(a).role = "dj_booth-2")).problems).toEqual([]);
+  });
+
+  it("refuses a malformed role and the reserved announce / takeover", () => {
+    const shape = "inputs[2].role must be a lower-case name (a letter, then up to 31 of a-z 0-9 _ -)";
+    for (const bad of ["Clippy", "", "2mic", "a b", "x".repeat(33), 7, null]) expect(check((a) => void (raw(a)["role"] = bad)).problems).toEqual([shape]);
+    expect(check((a) => void (input(a).role = "x".repeat(32))).problems).toEqual([]);
+    expect(AUDIO_RESERVED_ROLES).toEqual(["announce", "takeover"]);
+    for (const r of AUDIO_RESERVED_ROLES) expect(check((a) => void (input(a).role = r)).problems).toEqual([`inputs[2].role: "${r}" is reserved for the router's own ducking`]);
+  });
+
+  it("reach must be a list of strings; a target that reaches no speaker is a warning", () => {
+    const shape = "inputs[2].reach must be a list of zones, rooms, LOCATIONs or speakers";
+    expect(check((a) => void (raw(a)["reach"] = "living")).problems).toEqual([shape]);
+    expect(check((a) => void (raw(a)["reach"] = ["living", 3])).problems).toEqual([shape]);
+    const nobody = check((a) => void (input(a).reach = ["living", "The Fan Closet"]));
+    expect(nobody.problems).toEqual([]);
+    expect(nobody.warnings).toContain('inputs[2].reach: "The Fan Closet" reaches no speaker');
+    expect(check((a) => void (input(a).reach = [])).warnings).toContain("inputs[2].reach names nothing");
+  });
+
+  it("an older file (no role, no reach) and unknown input keys stay valid", () => {
+    expect(validateAudio(AUDIO, HOUSE).problems).toEqual([]);
+    expect(check((a) => void (raw(a)["sidechain"] = { threshold: -40 })).problems).toEqual([]);
+  });
+
+  it("the show's audio.json validates on the show map, with its two sidechain roles", () => {
+    const show = (f: string) => JSON.parse(readFileSync(join(FIXTURES, "../../../core/examples/trapped-in-the-internet", f), "utf8")) as unknown;
+    const audio = show("audio.json") as AudioConfig;
+    const v = validateAudio(audio, show("house.json") as HouseMap);
+    expect(v.problems).toEqual([]);
+    expect(v.warnings.filter((w) => w.startsWith("inputs["))).toEqual([]);
+    expect(audio.inputs.filter((i) => i.role !== undefined).map((i) => [i.ch, i.role, i.reach ?? null])).toEqual([
+      [1, "clippy", ["living"]],
+      [3, "trabolta", null],
+    ]);
   });
 });
 

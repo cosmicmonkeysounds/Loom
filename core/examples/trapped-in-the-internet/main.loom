@@ -4110,6 +4110,8 @@ when call_to_the_desktop:
     sound announce_chime
     cue lights_call_desktop
     set Night.lights = "call_desktop"
+    cue music_act_1
+    set Night.music = "act_1"
     cue screens_call_desktop
     set Night.screen = "call_desktop"
     set Night.terminals = "call_desktop"
@@ -4633,6 +4635,8 @@ when second_hunt_preview:
     set Night.burst_at = Time.elapsed + 45
     cue lights_ad_hijack
     set Night.lights = "ad_hijack"
+    cue music_malware
+    set Night.music = "malware"
     // Wave 26 (T2, C3): the first glitch takes over everything, once, live:
     // every terminal (8 s), every guest and player phone (~6 s), a host's
     // booth (2.5 s, look only). Never the director phone or Run. The three
@@ -4738,6 +4742,8 @@ when five_minute_warning:
     sound countdown_tick
     cue lights_call_desktop
     set Night.lights = "call_desktop"
+    cue music_act_2
+    set Night.music = "act_2"
     cue screens_five_minutes
     set Night.screen = "five_minutes"
     set Night.terminals = "five_minutes"
@@ -4979,6 +4985,8 @@ when y2k_clock:
     start quest The Clubs for Password Manager
     cue lights_y2k
     set Night.lights = "y2k"
+    cue music_act_3
+    set Night.music = "act_3"
     cue screens_y2k
     set Night.screen = "y2k"
     set Night.terminals = "y2k"
@@ -5770,6 +5778,8 @@ when trabolta_disabled:
     complete quest The Audit for CRA Agent Software "The night ended in the server room. The audit closes."
     cue lights_blackout
     set Night.lights = "blackout"
+    cue music_off
+    set Night.music = "off"
     cue screens_blackout
     cue screens_go_to_living_room
     set Night.screen = "go_to_living_room"
@@ -5866,6 +5876,8 @@ when computer_destroyed:
     unlock Clippy Instructions 9 for Clippy
     cue lights_blackout
     set Night.lights = "blackout"
+    cue music_off
+    set Night.music = "off"
     cue screens_blackout
     cue screens_go_to_living_room
     set Night.screen = "go_to_living_room"
@@ -5926,6 +5938,8 @@ when final_reveal:
     complete quest The Audit for CRA Agent Software "The final reveal. The audit closes."
     cue lights_final_reveal
     set Night.lights = "final_reveal"
+    cue music_final
+    set Night.music = "final"
     cue screens_final_reveal
     set Night.screen = "final_reveal"
     set Night.terminals = "final_reveal"
@@ -6017,6 +6031,8 @@ when no_pickup_line:
     set Night.ending = "rave"
     set Night.phase = "finale_rave"
     set Night.step = 19
+    cue music_off
+    set Night.music = "off"
     -> Sad Confession
   else:
     broadcast "💔 Only in Grok Prom (after ⚖ with a lie on record). Nothing happens." to channel(hosts)
@@ -6051,6 +6067,8 @@ when advice_helped:
     set Night.phase = "finale_help"
     set Night.step = 19
     set Trabolta.love += 20
+    cue music_off
+    set Night.music = "off"
     -> Advice Helped
     sound motorcycle
     cue lights_restore
@@ -6086,6 +6104,8 @@ when the_hand_jive:
     set Night.banish = false
     set Night.everyone_free = true
     complete quest Find The Exit for everyone
+    cue music_off
+    set Night.music = "off"
     sound hand_jive
     broadcast "!🕺 THE HAND JIVE. Everyone, together. Trabolta cannot take it." to everyone
     -> The Hand Jive
@@ -6113,6 +6133,8 @@ when start_the_ceremony:
       set Night.ceremony_host = "Clippy"
     else:
       set Night.ceremony_host = "Trabolta"
+    cue music_ceremony
+    set Night.music = "ceremony"
     sound ceremony_bed
     broadcast "!🏆 THE AWARDS CEREMONY. Every program to the living room." to everyone with go: The Desktop
     // Wave 18b (R8): the review first, then the awards. The ceremony's
@@ -6234,6 +6256,8 @@ when resurrection:
     set Night.terminals = "screensaver"
     cue lights_restore
     set Night.lights = "restore"
+    cue music_afterparty
+    set Night.music = "afterparty"
     set Night.lights_back_at = 0
     set Night.lit_scene = "none"
     // w29 (signed off): the last sentence replaced "out of character"
@@ -6559,6 +6583,8 @@ set Kernel.said_7 = ""
 set Kernel.said_8 = ""
 cue lights_screensaver
 set Night.lights = "screensaver"
+cue music_doors
+set Night.music = "doors"
 cue screens_screensaver
 set Night.screen = "screensaver"
 set Night.terminals = "screensaver"

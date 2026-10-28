@@ -131,3 +131,9 @@ button.chip { cursor: pointer; }
 .audio-note > summary { cursor: pointer; }
 .audio-note[open] > summary { margin-bottom: 0.2em; }
 .audio-head .audio-note { margin-bottom: 0.4em; }
+/* Wave 38: an input's Ducks as picker and its reach. */
+.audio-table.inputs td.ducks { width: auto; text-align: left; white-space: normal; }
+.audio-table .ducks-as { display: inline-flex; gap: 0.3em; align-items: center; flex-wrap: wrap; }
+.audio-table .role-field { width: 7em; min-width: 5em; }
+.audio-table .role-field.bad { outline: 2px solid #c00000; }
+.audio-table .reach { margin-top: 2px; }
