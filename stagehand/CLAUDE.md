@@ -18,7 +18,7 @@ does not apply here.
 | `show:` | `show/` | the mod feed's `sim` directives → MQTT / OSC (`cuemap.py`); MQTT topics → `/api/mod/signal` / `beat` / `set` (`sensormap.py`); the lights catch-up | John's Desktop (Windows) |
 | `agents:` | `agents/` | the agent worker: holds `GET /api/agent/stream`, answers requests, judges filings, records thoughts, takes `control` frames | John's MacBook |
 | `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream (duplex: the TV's input routed, every input metered), numpy mixer with priority ducking (the inputs' sidechains, announcements, takeover tracks) and per-output trims, the soundtrack (music beds per scene, `soundtrack.py`), streamed long files, announcements, tests, stops, the house desk's plays, the report, placeholders, the synthesized SFX library (`audio/sfx/`) | John's Desktop (since 2026-10-27); the MacBook is the fallback (output-only) |
-| `lights:` | `lights/` | `lights.json` looks (every bulb by name, the WLED strip, every `lights_*` / `heart_*` look; no Zigbee groups, scenes or WLED presets) → Zigbee2MQTT / WLED, safety clamp, identify / test / pair, device list, catch-up (the heart look and `night.lights`) | the Desktop |
+| `lights:` | `lights/` | `lights.json` looks (every bulb by name, the WLED strip, every `lights_*` / `heart_*` look; no Zigbee groups, scenes or WLED presets) → Zigbee2MQTT / WLED, safety clamp, identify / test / pair, device list, catch-up (the heart look and `night.lights`), presence pulses for the reinstallation games and the `shown` report (wave 39) | the Desktop |
 | `alexa:` | `alexa/` | the standalone announcement player. **Retired for the show** (wave 18b); the code and its `Announcer` stay (the router reuses the announcer and the voice lock) | none |
 
 A module is registered in `module.py::REGISTRY` as a `ModuleSpec(summary,
@@ -155,7 +155,8 @@ module docstrings that explain the why).
 - **Mirrors of TypeScript are pinned by copied fixtures.**
   `audio/routing.py` mirrors `@loom/house` `resolveTargets` and
   `lights/plan.py` / `routing.py` / `z2m.py` mirror `planLook`,
-  `clampForSafety` and the payload builders. Their fixtures are copied byte
+  `clampForSafety`, the payload builders and (wave 39) `presenceSettings`
+  / `presenceFixtures` / `mergeLightState` (`lights-presence.json`). Their fixtures are copied byte
   for byte from `house/test/fixtures/` into `tests/fixtures/house-audio/`
   and `house-lights/`, and a test fails until you re-copy after a house
   change.

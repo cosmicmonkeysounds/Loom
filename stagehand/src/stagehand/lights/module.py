@@ -450,7 +450,8 @@ class HouseLights:
         more arrived meanwhile (so never more than 4 a second)."""
         while self._shown_dirty and not self.shown_off:
             await self.timer.sleep_until(self.timer.now() + SHOWN_DEBOUNCE_MS)
-            await self.post_shown()
+            if self._shown_dirty:  # else the keepalive just sent it
+                await self.post_shown()
 
     def shown_body(self) -> dict:
         known = (lambda fid: self.doc.fixture(fid) is not None) if self.doc is not None else (lambda fid: True)
@@ -1039,12 +1040,13 @@ class HouseLights:
         try:
             await asyncio.gather(*tasks)
         finally:
-            for fid in list(self.pulses):
-                self._pulse_leave(fid)  # best effort: no strip left breathing
             for t in [*tasks, *self._tasks]:
                 t.cancel()
             await asyncio.gather(*tasks, *self._tasks, return_exceptions=True)
             self.running.clear()
+            self.mod = None  # no report from here on
+            for fid in list(self.pulses):
+                self._pulse_leave(fid)  # best effort: no strip left breathing
             if self.mqtt is not None:
                 self.mqtt.stop()
                 self.mqtt = None
