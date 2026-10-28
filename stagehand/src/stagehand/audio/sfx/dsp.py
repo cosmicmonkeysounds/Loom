@@ -784,13 +784,15 @@ def delay(x: Signal, seconds: float, feedback: float = 0.4, mix_: float = 0.35, 
 
 
 def allpass(x: Signal, delay_s: float, g: float = 0.5, circular: bool = False) -> Signal:
-    """A Schroeder allpass (Freeverb's form): smears transients without
-    colouring the spectrum; chained, it diffuses."""
+    """A true Schroeder allpass, (−g + z⁻ᴰ) / (1 − g·z⁻ᴰ): smears a transient
+    into a short burst of echoes without colouring the spectrum; chained,
+    it diffuses (a spring, a metallic smear). `reverb` uses Freeverb's own,
+    slightly coloured variant for its character."""
     d = max(1, frames(delay_s))
 
     def h(z_inv: np.ndarray) -> np.ndarray:
         zd = z_inv**d
-        return -1 + zd / (1 - g * zd)
+        return (-g + zd) / (1 - g * zd)
 
     return apply_response(x, h, _decay_tail(d, g), circular)
 
@@ -866,7 +868,9 @@ def downsample(x: Signal, rate: float = 8000) -> Signal:
 
 
 def soft_clip(x: Signal, drive_db: float = 6.0) -> Signal:
-    """tanh saturation, `drive_db` into it, rescaled so ±1 stays ±1."""
+    """tanh saturation, `drive_db` into it, rescaled so a full-scale (±1)
+    input still peaks at ±1; a hotter input flattens just past it (never
+    beyond 1/tanh(drive))."""
     g = 10 ** (drive_db / 20)
     return np.tanh(np.asarray(x) * g) / math.tanh(g)
 
