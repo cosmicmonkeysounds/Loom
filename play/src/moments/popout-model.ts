@@ -70,6 +70,11 @@ export interface PopOutSpec {
   noLater?: boolean;
   /** Caption colour + sound. */
   tone: PopTone;
+  /** Wave 37: an alarm that still gives way (after the grace) to any live
+   *  pop-out that outranks it, as an info one does to an alarm. Clippy's
+   *  game keeps its red caption and chime but never holds back the target
+   *  or a big readout. */
+  yields?: boolean;
   /** true: an unhandled one survives a reload (re-shown from storage even if not re-raised). */
   sticky: boolean;
   /** 0–100, higher first. */
@@ -218,12 +223,14 @@ export function popReducer(s: PopState, a: PopOp): PopState {
   }
 }
 
-/** The best waiting alarm that outranks the info pop-out `held` (wave 37, C9), grace aside. */
+/** The best waiting alarm that outranks the info pop-out `held` (wave 37, C9), grace aside.
+ *  A `yields` one gives way to anything that outranks it, alarm or not. */
 function rivalOf(s: PopState, held: PopEntry, ok: (e: PopEntry) => boolean): PopEntry | null {
-  if (held.spec.tone === "alarm") return null;
+  const yields = held.spec.yields === true;
+  if (held.spec.tone === "alarm" && !yields) return null;
   let best: PopEntry | null = null;
   for (const e of s.live)
-    if (e !== held && ok(e) && e.spec.tone === "alarm" && e.spec.priority > held.spec.priority && (best === null || popOrder(e.spec, best.spec) < 0)) best = e;
+    if (e !== held && ok(e) && (yields || e.spec.tone === "alarm") && e.spec.priority > held.spec.priority && (best === null || popOrder(e.spec, best.spec) < 0)) best = e;
   return best;
 }
 
@@ -326,6 +333,7 @@ export function parseStored(v: unknown): StoredPopOuts {
           at: typeof sp.at === "number" ? sp.at : 0,
           ...(typeof sp.status === "string" ? { status: sp.status } : {}),
           ...(sp.noLater === true ? { noLater: true } : {}),
+          ...(sp.yields === true ? { yields: true } : {}),
         },
         ...(typeof x.deferredAt === "number" ? { deferredAt: x.deferredAt } : {}),
       });

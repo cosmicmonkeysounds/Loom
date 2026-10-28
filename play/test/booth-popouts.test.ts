@@ -22,6 +22,7 @@ import {
   leadingGlyph,
   pickLayout,
   pickReadySpec,
+  reconcilePopOuts,
   replyLine,
   shieldId,
   stepWord,
@@ -327,7 +328,7 @@ describe("wave 37 (C8): YOUR GAME IS ON is Clippy's game pop-out", () => {
   it("each of the seven shapes is a game draft: its glyph, YOUR GAME IS ON, the rest, ▣ Go to Mission, alarm, 55, a minute", () => {
     shapes.forEach(([glyph, text, body], n) => {
       const d = adaptBoothMessage(game(100 + n, text), clippy);
-      expect(d).toMatchObject({ key: `game:${100 + n}`, glyph, title: "YOUR GAME IS ON", body: [body], tone: "alarm", sticky: false, priority: 55, autoRetireMs: 60_000, at: (100 + n) * 1000 });
+      expect(d).toMatchObject({ key: `game:${100 + n}`, glyph, title: "YOUR GAME IS ON", body: [body], tone: "alarm", yields: true, sticky: false, priority: 55, autoRetireMs: 60_000, at: (100 + n) * 1000 });
       expect((d as { actions: unknown[] }).actions).toEqual([{ id: "go", label: "▣ Go to Mission", kind: "primary", do: { kind: "mission" } }]);
     });
   });
@@ -348,5 +349,12 @@ describe("wave 37 (C8): YOUR GAME IS ON is Clippy's game pop-out", () => {
     const g = gameDraft(game(9, shapes[1]![1]), clippy)!;
     const door = doorSpec([{ id: "w", name: "W", since: 0, claimedBy: null }], 1, 1000, true)!;
     expect([target, g, door].sort((a, b) => b.priority - a.priority).map((d) => d.key.split(":")[0])).toEqual(["target", "game", "door"]);
+  });
+
+  it("a restored game gets its Go back and still yields", () => {
+    const g = gameDraft(game(9, shapes[1]![1]), clippy)!;
+    const { actions: _a, yields: _y, ...stored } = g;
+    const out = reconcilePopOuts([{ spec: stored, restored: true }], { wanted: null, objectives: [], calls: null, guestOf: () => null, wctx: { me: "Clippy", now: 0, placeTitle: () => null, guestOf: () => null, tried: new Set(), canRelease: false } });
+    expect(out.rebind[0]).toMatchObject({ key: "game:9", yields: true, autoRetireMs: 60_000 });
   });
 });

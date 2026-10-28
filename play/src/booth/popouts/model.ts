@@ -419,7 +419,7 @@ export function reconcilePopOuts(held: readonly HeldPopOut[], ctx: ReconcileCtx)
     if (k.startsWith("game:")) {
       // Wave 37 (C8): one game at a time; a restored one gets its Go back.
       if (newestGame !== null && newestGame !== h) retire.push(k);
-      else if (h.restored === true) rebind.push({ ...base(s), autoRetireMs: GAME_RETIRE_MS, actions: [GAME_GO] });
+      else if (h.restored === true) rebind.push({ ...base(s), yields: true, autoRetireMs: GAME_RETIRE_MS, actions: [GAME_GO] });
       continue;
     }
     if (k.startsWith("msg:")) {
@@ -856,8 +856,8 @@ function gameOrder(a: Pick<PopOutSpec, "key" | "at">, b: Pick<PopOutSpec, "key" 
 /**
  * Wave 37 (C8): a player's own big readout shaped `{glyph} {TITLE} · {body}`
  * (Clippy's `!!🎱 YOUR GAME IS ON · Computer Bingo, …`) as one game pop-out:
- * red caption and chime, ▣ Go to Mission, below the target, gone after a
- * minute. Null for any other message.
+ * red caption and chime, ▣ Go to Mission, below the target (it yields to
+ * anything that outranks it, even once on screen), gone after a minute. Null for any other message.
  */
 export function gameDraft(m: BoothMessage, ctx: Pick<AdapterCtx, "me" | "player">): Draft | null {
   if (ctx.player !== true || ctx.me === undefined || m.channel !== `dm:${ctx.me}`) return null;
@@ -878,6 +878,9 @@ export function gameDraft(m: BoothMessage, ctx: Pick<AdapterCtx, "me" | "player"
     body: body !== "" ? [body] : [],
     actions: [GAME_GO],
     tone: "alarm",
+    // The red caption and chime, but LANDED ON (60) and a big readout (80)
+    // take the screen from it after the grace: it shows again after them.
+    yields: true,
     sticky: false,
     priority: GAME_PRIORITY,
     autoRetireMs: GAME_RETIRE_MS,

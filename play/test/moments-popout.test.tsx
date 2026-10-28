@@ -326,6 +326,22 @@ describe("wave 37 (C9): an alarm takes the screen from an info pop-out", () => {
     expect(preemptDueAt(low, null, 0)).toBeNull();
   });
 
+  it("a game that yields (an alarm 55) gives way after 2 s to the target (info 60) and a big readout (alarm 80), and shows again after them", () => {
+    const game = spec("game:1", { priority: 55, yields: true, sticky: false });
+    let s = shownAt(run([raise(game)]), 1_000);
+    s = run([raise(info("target:bingo", 60))], s);
+    expect(currentOf(s, null, 1_000 + PREEMPT_GRACE_MS - 1)?.spec.key).toBe("game:1");
+    expect(preemptDueAt(s, null, 1_500)).toBe(1_000 + PREEMPT_GRACE_MS);
+    expect(currentOf(s, null, 1_000 + PREEMPT_GRACE_MS)?.spec.key).toBe("target:bingo");
+    s = popReducer(s, { type: "retire", key: "target:bingo" });
+    expect(currentOf(s, null, 5_000)?.spec.key).toBe("game:1");
+    const big = run([raise(spec("msg:7", { priority: 80, sticky: false }))], shownAt(run([raise(game)]), 0));
+    expect(currentOf(big, null, PREEMPT_GRACE_MS)?.spec.key).toBe("msg:7");
+    // Something below it (the door, 50) still waits; a stored one keeps the flag.
+    expect(currentOf(run([raise(info("door", 50))], shownAt(run([raise(game)]), 0)), null, 60_000)?.spec.key).toBe("game:1");
+    expect(parseStored(storedOf(popReducer(run([raise(game)]), { type: "defer", key: "game:1", at: 1 }))).kept[0]?.spec.yields).toBe(true);
+  });
+
   it("a pre-emption about the open card's guest waits like any other", () => {
     const s = run([raise(spec("wanted:g1", { priority: 90, guest: { id: "g1", name: "Winamp" } }))], shownAt(run([raise(info("door", 50))]), 0));
     expect(currentOf(s, "g1", 10_000)?.spec.key).toBe("door");
