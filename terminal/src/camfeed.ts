@@ -4,8 +4,9 @@
 //! the wall where this tablet hangs — a window from the virtual house into
 //! the real room.
 //!
-//! ~3 frames a second at 160 × 120 (a 4:3 centre crop of the camera, JPEG
-//! quality 0.5 — a few KB each), drawn off the page's one camera stream
+//! ~3 frames a second at 320 × 240 (a 4:3 centre crop of the camera, JPEG
+//! quality 0.5 — ~10–20 KB each; wave 33b doubled it from 160 × 120 for the
+//! games' 3× terminals), drawn off the page's one camera stream
 //! (`camera.ts`, the scanner's), never while the page is hidden, never more
 //! than one upload in flight. A failure backs off (1 s doubling to 30 s); a
 //! 404 (`no such spot` — the map has no terminal by this id) stops the feed
@@ -26,8 +27,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { baseOf, type TerminalConfig } from "./config.ts";
 import { camera as pageCamera, type CameraHub, type CameraState } from "./camera.ts";
 
-export const FEED_W = 160;
-export const FEED_H = 120;
+export const FEED_W = 320;
+export const FEED_H = 240;
 export const FEED_EVERY_MS = 333;
 /** (wave 26, R5) Nobody in the game can see this room (`watched: false`): one frame this often. */
 export const FEED_IDLE_EVERY_MS = 2000;
@@ -233,7 +234,7 @@ export function useFeedStatus(): FeedStatus {
   return useSyncExternalStore(feedStatus.subscribe, () => feedStatus.snapshot);
 }
 
-/** Draws frames of a video into a 160 × 120 canvas. */
+/** Draws frames of a video into a FEED_W × FEED_H canvas. */
 function videoCapture(video: HTMLVideoElement): () => FeedFrame | null {
   const canvas = document.createElement("canvas");
   canvas.width = FEED_W;

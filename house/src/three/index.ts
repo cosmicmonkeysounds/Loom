@@ -15,7 +15,7 @@
 //! nothing); creating the `WebGLRenderer` is the app's job. No React.
 //! Normative: `docs/loom-reinstall.md` §1.3.
 
-export { buildHouseScene, houseAtmosphere, planeGeometry, rampGeometry, FEED_W, FEED_H } from "./scene.ts";
+export { buildHouseScene, houseAtmosphere, planeGeometry, rampGeometry, FEED_W, FEED_H, GAME_TERMINAL_SCALE } from "./scene.ts";
 export type { HouseScene, HouseSceneOptions } from "./scene.ts";
 export { createDuck, DUCK_FLIGHT } from "./duck.ts";
 export type { Duck } from "./duck.ts";

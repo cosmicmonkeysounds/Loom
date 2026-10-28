@@ -82,6 +82,10 @@ export interface HouseSceneOptions {
   edges?: boolean;
   /** Terminal screens (default true). */
   terminals?: boolean;
+  /** Each terminal (its screen, halo and camera window) drawn this many times
+   *  its size across the wall, never deeper (default 1; the games pass
+   *  `GAME_TERMINAL_SCALE`). */
+  terminalScale?: number;
   /** Precomputed `buildWalls(house)`, to skip computing it again. */
   walls?: WallSegment[];
   /** `king` props as their own animated objects + a closed leaf in every guarded door (default true). */
@@ -157,7 +161,12 @@ const LABEL_FADE = [1.2, 2.6] as const;
 /** A terminal's camera window (4:3), and the canvas its frames are drawn on. */
 export const FEED_W = 0.48;
 export const FEED_H = 0.36;
-const FEED_PX: readonly [number, number] = [160, 120];
+/** The canvas a camera window draws on: the terminals' frames at full size
+ *  (`terminal/src/camfeed.ts` FEED_W × FEED_H). */
+const FEED_PX: readonly [number, number] = [320, 240];
+/** The games' terminals — their mirrors into the real house — at three times
+ *  their size (wave 33b; VR: `HouseBuilder.TERMINAL_SCALE`). */
+export const GAME_TERMINAL_SCALE = 3;
 
 /** Background + fog for a scene showing a house (deep navy night, fog to match). */
 export function houseAtmosphere(scene: Scene, opts: { color?: string; near?: number; far?: number } = {}): void {
@@ -485,6 +494,8 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       const group = roomFloor(spot.room);
       if (!group) continue;
       const t = terminalGroup(spot, style.wallThickness, term);
+      const k = opts.terminalScale ?? 1;
+      if (Number.isFinite(k) && k > 0) t.scale.set(k, k, 1);
       const window = new Group();
       window.name = "feed";
       window.visible = false;

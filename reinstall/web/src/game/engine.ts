@@ -48,7 +48,7 @@ import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
 import { buildWalls, heartProps, heartReached, outsideGround, pathLength, pickupProps, pickupReach, presenceRoom, spaceOf, toSpace, wrapYaw, yawFromSpace, yawToSpace } from "@loom/house";
 import type { Assignment, DuckSpot, HouseMap, KingState, PlayerPose, PlayerState, Prop, Spawn, SpatialFrame, Vec3 } from "@loom/house";
-import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
+import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, GAME_TERMINAL_SCALE, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
 import { fetchHouse, postEnd, postFound, postKingHit, postMoment, postPose, postReady, streamProbe, streamUrl, type FoundAnswer, type MomentLine, type MomentReply } from "../api.ts";
 import { CamFeeds } from "./cams.ts";
@@ -345,7 +345,7 @@ export class Game {
     const root = spaceGroup(spaceOf(opts.house, "web"));
     this.root = root;
     this.scene.add(root);
-    this.house = buildHouseScene(opts.house, { walls, ground: true, pickups: true });
+    this.house = buildHouseScene(opts.house, { walls, ground: true, pickups: true, terminalScale: GAME_TERMINAL_SCALE });
     root.add(this.house.root);
     for (const id of opts.assignment.picked ?? []) this.taken.add(id);
     this.heartDone = opts.assignment.heartHeard === true;
@@ -1317,7 +1317,7 @@ export class Game {
 
   private swapMap(house: HouseMap, version: string, incoming?: KingState | null): void {
     const walls = buildWalls(house);
-    const scene = buildHouseScene(house, { walls, ground: true, pickups: true });
+    const scene = buildHouseScene(house, { walls, ground: true, pickups: true, terminalScale: GAME_TERMINAL_SCALE });
     this.house.root.removeFromParent();
     this.house.dispose();
     this.house = scene;
