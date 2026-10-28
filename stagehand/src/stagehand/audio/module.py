@@ -40,8 +40,21 @@ duplex stream, `passthrough: true`), the router's own announcements and
 the takeover tracks. The speakers' trims are the outputs' (`set_trim`),
 not the voices', so an edit on the map is heard at once on a long bed.
 
+The soundtrack (wave 38, C3; `soundtrack.py`): with `soundtrack:` set the
+router owns a `Director` that plays the scene's beds on the `music` bus.
+The scene comes from, first that applies: a live `cue music_<scene>` on the
+feed; MQTT `show/audio/music` (`{"scene"}`, `{"next": true}`, `{"stop":
+true}`); the **catch-up** — `night.music` from `GET /api/screen/state`, read
+as the lights job reads `night.lights`, on start, on every feed reconnect
+and 2 s after a story restart (a live cue that lands while it is read wins;
+null or unknown is `off`). A story `sound X` the soundtrack lists under
+`tracks:` streams from `sounds_dir` (never decoded whole) on the sfx bus as
+a `takeover`: the beds on its speakers fall silent until it ends.
+
 "Stop all house sounds" (wave 18b, Q7) is one-shot and never journaled: every
-sfx voice and speaker test fades over 0.3 s; `+ announcements` also cuts the
+sfx voice, speaker test and music bed fades over 0.3 s (the scene is
+forgotten: the next scene cue, even the same one, brings the beds back);
+`+ announcements` also cuts the
 line playing now and empties the queue. The TV, the terminals and the live
 inputs are untouched, and the story clock is not (the dance still lands on
 `Night.dance_at`).
@@ -106,6 +119,7 @@ from .routing import (
     split_targets,
 )
 from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone, placeholders_in, sound_lengths
+from .soundtrack import OFF, Director, scene_of_cue
 
 log = logging.getLogger("stagehand.audio")
 
@@ -116,6 +130,15 @@ STATS_TOPIC = "health/audio/stats"
 CHIME_SOUND = "announce_chime"
 #: The lifecycle kinds that restart the story: every sound fades out.
 RESTART_KINDS = ("reset", "reload", "golive", "ended")
+#: After a story restart the soundtrack catches up this long later (the
+#: server has replayed the story's opening by then).
+MUSIC_CATCH_UP_DELAY_S = 2.0
+#: The soundtrack's clock: how often the director looks at its beds.
+MUSIC_TICK_S = 0.1
+#: How long a story restart's fade-out takes (every sound and bed).
+RESTART_FADE_S = 1.0
+#: Stop house sounds' fade (every sound and bed).
+STOP_FADE_S = 0.3
 HOUSE_REFRESH_S = 300.0
 #: A stop older than this (by the server's clock) is never acted on: a
 #: router that boots, or reconnects, well after a press stays quiet.
@@ -195,6 +218,17 @@ def sound_args(args: str) -> tuple[str, str | None]:
     return name, rooms
 
 
+def _camel_music(music: Any) -> dict[str, Any] | None:
+    """The health's `music` in the report's names (`pos_s` → `posS`)."""
+    if not isinstance(music, dict):
+        return None
+    return {
+        "scene": music.get("scene"),
+        "beds": [{"playlist": b["playlist"], "speakers": list(b["speakers"]), "track": b["track"], "posS": b["pos_s"]} for b in music.get("beds") or []],
+        "missing": list(music.get("missing") or []),
+    }
+
+
 class MixerOutput:
     """The `alexa` Announcer's output, played through the router's mixer on
     `announce.to` instead of a device of its own. `play` blocks (it runs in a
@@ -256,6 +290,8 @@ class AudioRouter:
         render_say=None,
         speak_direct=None,
         decode=None,
+        music_streams=None,
+        music_rng=None,
     ) -> None:
         self.cfg = cfg
         self._query = query
@@ -329,6 +365,12 @@ class AudioRouter:
         #: once, when no cache or config_file holds an audio.json yet (LA-5).
         self._check_answer: dict | None = None
         self._check_problem: str | None = None
+        #: The soundtrack's director (wave 38, C3), when `soundtrack:` is set.
+        self.music: Director | None = Director(cfg.soundtrack, stream_factory=music_streams, rng=music_rng) if cfg.soundtrack is not None else None
+        #: Bumped by every live scene (a feed cue, MQTT): a catch-up that read
+        #: the state while one landed plays nothing (the live one wins).
+        self._music_live = 0
+        self._music_catch_up: asyncio.Future | None = None
 
     # -- describe / check ----------------------------------------------------
 
@@ -352,6 +394,12 @@ class AudioRouter:
             + (f"; never ducked: {', '.join(cfg.no_duck)}" if cfg.no_duck else ""),
             f"sidechain: {'the inputs with a role, ' if cfg.passthrough else 'off (output-only stream: passthrough is false) — '}"
             f"over {cfg.sidechain.threshold_db:+.0f} dBFS, attack {cfg.sidechain.attack_s:g}s, hold {cfg.sidechain.hold_s:g}s, release {cfg.sidechain.release_s:g}s",
+            *(
+                cfg.soundtrack.describe()
+                + [f"music    : scenes from `cue music_<scene>`, {cfg.music_topic if cfg.mqtt else 'no broker'}, the catch-up (night.music); tracks (takeover): {', '.join(cfg.soundtrack.tracks) or 'none'}"]
+                if cfg.soundtrack is not None
+                else ["music    : — (no soundtrack:)"]
+            ),
         ]
 
     @staticmethod
@@ -473,6 +521,7 @@ class AudioRouter:
                     out.append(f"audio: say_voice — {note}")
         if doc is not None:
             out.extend(f"audio: {w}" for w in self.priority_warnings(doc))
+        out.extend(f"audio: {w}" for w in self.music_warnings(doc))
         stale = self._stale_cache()
         if stale is not None:
             cached, local = stale
@@ -500,6 +549,29 @@ class AudioRouter:
             out.append(f"input role {role!r} has no audio.priority entry — it ducks nothing")
         if specs and not self.cfg.passthrough:
             out.append(f"input roles {', '.join(sorted({s.name for s in specs}))} need a duplex stream (passthrough: true) — nothing is metered, nothing ducks under them")
+        return out
+
+    def _local_house(self) -> Any:
+        """The house map `check` reads: the one in force, the cache, else `house_file`."""
+        if isinstance(self.house, dict):
+            return self.house
+        for raw in (self._read_json(self._cache_path("house.json")), self._read_json(self.cfg.house_file)):
+            if isinstance(raw, dict):
+                return raw.get("house", raw) if isinstance(raw.get("house"), dict) else raw
+        return None
+
+    def music_warnings(self, doc: AudioDoc | None) -> list[str]:
+        """C3's check: every playlist with no file, every scene entry that
+        reaches no speaker, every track with no file in sounds_dir."""
+        st = self.cfg.soundtrack
+        if st is None:
+            return []
+        out = st.warnings(doc, self._local_house())
+        if self.cfg.play_sounds:
+            bank = SoundBank(self.cfg.sounds_dir, self.cfg.rate or 48000)
+            missing = sorted(n for n in st.tracks if bank.find(n) is None)
+            if missing:
+                out.append(f"music: no file for the track(s) {', '.join(missing)} in {self.cfg.sounds_dir}")
         return out
 
     # -- config ----------------------------------------------------------------
@@ -599,6 +671,9 @@ class AudioRouter:
                 log.warning("audio.json: %s", note)
         mixer.set_sources([SidechainSource(s.name, s.inputs, s.reach) for s in specs])
         mixer.set_announce_reach(resolve_targets(doc, self.house, list(doc.announce_to)).outputs)
+        if self.music is not None:
+            # The beds follow the speakers: a moved speaker moves its bed.
+            self.music.attach(mixer, doc, self.house)
 
     def set_house(self, house: Any, persist: bool = True) -> None:
         if isinstance(house, dict):
@@ -723,6 +798,9 @@ class AudioRouter:
             self.skipped += 1
             log.warning("sound %s → %s (%s) reaches no wired speaker — skipped", name, targets, why)
             return "nowhere", None
+        track = self.music.st.track(name) if self.music is not None else None
+        if track is not None:
+            return self._play_track(name, track.takeover, res, gain + gain_db, targets, why)
         data = self.bank.load(name)
         if data is None:
             self.skipped += 1
@@ -740,6 +818,28 @@ class AudioRouter:
             "sound %s → %s (%s: %s) out %s%s", name, ",".join(res.speakers), why, ",".join(targets), ",".join(map(str, res.outputs)), f" {gain_db:+g} dB" if gain_db else ""
         )
         return "played", len(data) * 1000 / self.mixer.rate
+
+    def _play_track(self, name: str, takeover: bool, res: Resolved, gain_db: float, targets: list[str], why: str) -> tuple[str, float | None]:
+        """A soundtrack track (C3 `tracks:`): streamed from sounds_dir, never
+        decoded whole, on the sfx bus as a takeover. Its ms (a desk ack) is
+        the header's length (an MP3's is an estimate)."""
+        assert self.bank is not None and self.mixer is not None and self.doc is not None
+        stream = self.bank.stream(name)
+        if stream is None:
+            self.skipped += 1
+            return "no-file", None
+        self.mixer.play(
+            stream,
+            output_gains(self.doc, res.speakers, gain_db),
+            bus="sfx",
+            tag=name,
+            duck=self.ducks(name),
+            takeover=takeover,
+            layout=speaker_layout(self.doc, res.speakers),
+        )
+        self.played += 1
+        log.info("sound %s → %s (%s: %s) out %s — a track%s", name, ",".join(res.speakers), why, ",".join(targets), ",".join(map(str, res.outputs)), " (takes the music over)" if takeover else "")
+        return "played", (stream.length * 1000 / self.mixer.rate if stream.length else None)
 
     def ducks(self, name: str) -> bool:
         """Does `sound <name>` duck under an announcement? Not when the YAML's
@@ -782,6 +882,11 @@ class AudioRouter:
                 return None
             setting = event.get("setting") if isinstance(event.get("setting"), str) else None
             return self.play_sound(name, rooms, setting)
+        if verb == "cue":
+            scene = scene_of_cue(event.get("args"))
+            if scene is None or self.music is None:
+                return None
+            return self.music_scene(scene, "cue") and "music" or None
         if verb == "announce":
             if not self.speaks_announcements():
                 # The alexa player speaks it (announce: false, or its lock is
@@ -813,8 +918,10 @@ class AudioRouter:
         mixer = self.mixer
         log.info("🔇 audio: %s stopped the house sounds%s", by or "someone", " and the announcements" if announce else "")
         if mixer is not None:
-            mixer.stop(bus="sfx", fade_s=0.3)
-            mixer.stop(bus="test", fade_s=0.3)
+            mixer.stop(bus="sfx", fade_s=STOP_FADE_S)
+            mixer.stop(bus="test", fade_s=STOP_FADE_S)
+        if self.music is not None:
+            self.music.stop(STOP_FADE_S, "stop house sounds")
         self._test_epoch += 1
         if announce:
             self._announce_epoch += 1
@@ -1013,9 +1120,103 @@ class AudioRouter:
 
     def on_lifecycle(self, doc: Any) -> None:
         kind = str(doc.get("kind", "")) if isinstance(doc, dict) else ""
-        if kind in RESTART_KINDS and self.mixer is not None:
+        if kind not in RESTART_KINDS:
+            return
+        if self.mixer is not None:
             log.info("lifecycle %s: every sound fades out", kind)
-            self.mixer.stop(bus="sfx", fade_s=1.0)
+            self.mixer.stop(bus="sfx", fade_s=RESTART_FADE_S)
+        if self.music is not None:
+            self.music.stop(RESTART_FADE_S, f"lifecycle {kind}")
+            self.schedule_music_catch_up(kind, delay=MUSIC_CATCH_UP_DELAY_S)
+
+    # -- the soundtrack's scene (wave 38, C3) ------------------------------------------
+
+    def music_scene(self, scene: str, why: str) -> bool:
+        """A live scene (a feed cue, MQTT): it wins over a catch-up in flight.
+        → False for a scene the soundtrack does not define (logged once)."""
+        if self.music is None:
+            return False
+        if not self.music.st.has_scene(scene):
+            self.music.set_scene(scene, why)  # logs it once
+            return False
+        self._music_live += 1
+        return self.music.set_scene(scene, why)
+
+    def on_music(self, doc: Any) -> str | None:
+        """`show/audio/music`: `{"scene": name}`, `{"next": true}`, `{"stop": true}`."""
+        if self.music is None or not isinstance(doc, dict):
+            return None
+        by = str(doc.get("by") or "mqtt")
+        if doc.get("stop") is True:
+            return "stop" if self.music_scene(OFF, f"{by}: stop") else None
+        if doc.get("next") is True:
+            log.info("🎵 soundtrack: %s skips to the next track (%d bed(s))", by, self.music.next())
+            return "next"
+        scene = doc.get("scene")
+        if isinstance(scene, str) and scene.strip():
+            return "scene" if self.music_scene(scene.strip(), by) else None
+        return None
+
+    def schedule_music_catch_up(self, why: str, delay: float = 0.0) -> None:
+        """The catch-up, soon (a newer one replaces one still waiting)."""
+        if self.music is None or self.loop is None:
+            return
+        if self._music_catch_up is not None and not self._music_catch_up.done():
+            self._music_catch_up.cancel()
+
+        def go() -> None:
+            self._music_catch_up = asyncio.ensure_future(self.music_catch_up(why, delay))
+            self._background.add(self._music_catch_up)
+            self._music_catch_up.add_done_callback(self._background.discard)
+
+        try:
+            running = asyncio.get_running_loop()
+        except RuntimeError:
+            running = None
+        if running is self.loop:
+            go()
+        else:
+            self.loop.call_soon_threadsafe(go)
+
+    async def music_catch_up(self, why: str, delay: float = 0.0) -> str | None:
+        """`night.music` from the story's screen state → the scene (C3, the
+        lights job's catch-up: the story, never a cache). A live scene that
+        lands while the state is read wins; null or unknown is `off`; a
+        read that fails changes nothing. → the scene played, or None."""
+        if delay > 0:
+            await asyncio.sleep(delay)
+        if self.music is None or self._mod is None:
+            return None
+        seen = self._music_live
+        answer: Any = None
+        try:
+            answer = await self._mod.get("/api/screen/state")
+        except ModApiError as err:
+            if err.status != 404:
+                log.warning("🎵 soundtrack catch-up (%s) failed: %s", why, err)
+                return None
+        except (httpx.HTTPError, OSError, ValueError) as err:
+            log.warning("🎵 soundtrack catch-up (%s) failed: %s", why, err or type(err).__name__)
+            return None
+        if self._music_live != seen:
+            log.info("🎵 soundtrack catch-up (%s) skipped: a live scene arrived while the state was read", why)
+            return None
+        night = answer.get("night") if isinstance(answer, dict) else None
+        value = night.get("music") if isinstance(night, dict) else None
+        scene = value if isinstance(value, str) and self.music.st.has_scene(value) else OFF
+        if value is not None and scene != value:
+            log.warning("🎵 soundtrack catch-up (%s): night.music %r is no scene — off", why, value)
+        self.music.set_scene(scene, f"catch-up {why}")
+        return scene
+
+    async def _music_loop(self) -> None:
+        assert self.music is not None
+        while True:
+            await asyncio.sleep(MUSIC_TICK_S)
+            try:
+                self.music.tick()
+            except Exception:  # noqa: BLE001 — one bad tick must not end the music
+                log.exception("🎵 soundtrack tick failed")
 
     # -- announcements -----------------------------------------------------------
 
@@ -1243,6 +1444,8 @@ class AudioRouter:
         if not self.cfg.play_sounds or self.bank is None or self.doc is None:
             return
         names = {n for n in [*self.doc.cues, *self.story_sounds] if n != CHIME_SOUND}
+        if self.music is not None:
+            names = {n for n in names if self.music.st.track(n) is None}  # tracks stream, never decoded whole
         loaded, missing = await asyncio.to_thread(self.bank.preload, names)
         log.info("sounds: %d loaded from %s%s", loaded, self.cfg.sounds_dir, f"; NO FILE for {', '.join(missing)}" if missing else "")
 
@@ -1257,7 +1460,7 @@ class AudioRouter:
             elif event == "lifecycle":
                 self.on_lifecycle(doc)
 
-        await run_stream(mod, mod.feed_url("stagehand-audio"), on_frame, label="audio feed")
+        await run_stream(mod, mod.feed_url("stagehand-audio"), on_frame, label="audio feed", on_connect=lambda: self.schedule_music_catch_up("feed"))
 
     def check_stream(self) -> bool:
         """One watchdog look: reopen a closed stream, or one whose callback
@@ -1323,6 +1526,8 @@ class AudioRouter:
             "inputs": {str(ch): db for ch, db in meters.inputs.items()} if meters is not None else {},
             "sources": dict(meters.sources) if meters is not None else {},
             "underruns": meters.underruns if meters is not None else 0,
+            # Wave 38 (C3): the scene, each bed (playlist, speakers, track, pos_s), the empty playlists.
+            "music": self.music.status() if self.music is not None else None,
         }
 
     def sound_lengths(self) -> dict[str, int]:
@@ -1332,7 +1537,7 @@ class AudioRouter:
     def report_health(self, h: dict[str, Any], sounds: dict[str, int]) -> dict[str, Any]:
         """The report's `health` (wave 25 §4): the MQTT stats' numbers in
         the contract's names, plus every sound file's length."""
-        return {
+        out = {
             "ok": bool(h["ok"]),
             "device": h["device"],
             "layout": h["layout"],
@@ -1347,6 +1552,10 @@ class AudioRouter:
             "sources": dict(h["sources"]),
             "underruns": h["underruns"],
         }
+        music = _camel_music(h.get("music"))
+        if music is not None:  # a router with no soundtrack sends none (the field is optional)
+            out["music"] = music
+        return out
 
     async def _health_loop(self) -> None:
         # The first look comes soon (≤ 5 s), so the desk sees the sounds
@@ -1362,7 +1571,8 @@ class AudioRouter:
                 (" | LAYOUT MOVED (device.expect)" if h["layout"] == "moved" else "")
                 + (f" | {len(h['placeholders'])} placeholder(s)" if h["placeholders"] else "")
                 + (f" | underruns {h['underruns']}" if h["underruns"] else "")
-                + (f" | ducking: {', '.join(f'{k} {v:.0%}' for k, v in h['sources'].items() if v > 0)}" if any(v > 0 for v in h["sources"].values()) else ""),
+                + (f" | ducking: {', '.join(f'{k} {v:.0%}' for k, v in h['sources'].items() if v > 0)}" if any(v > 0 for v in h["sources"].values()) else "")
+                + (f" | music {h['music']['scene'] or '—'}: " + (", ".join(f"{b['playlist']} {b['track'] or '—'}" for b in h["music"]["beds"]) or "no bed") if h.get("music") else ""),
                 f" | no file: {', '.join(h['missing'])}" if h["missing"] else "",
             )
             if self.mqtt is not None:
@@ -1397,6 +1607,13 @@ class AudioRouter:
                 except (UnicodeDecodeError, ValueError):
                     doc = None
                 if self.hand_play(doc) is None:
+                    log.warning("ignored %s payload %r", topic, raw[:80])
+            elif self.music is not None and topic == cfg.music_topic:
+                try:
+                    doc = json.loads(raw.decode("utf-8"))
+                except (UnicodeDecodeError, ValueError):
+                    doc = None
+                if self.on_music(doc) is None:
                     log.warning("ignored %s payload %r", topic, raw[:80])
             elif topic == cfg.test_topic:
                 try:
@@ -1453,11 +1670,20 @@ class AudioRouter:
         ]
         if self.cfg.announce and self.lock_fd is None:
             tasks.append(asyncio.ensure_future(self._voice_lock_loop()))
+        if self.music is not None:
+            tasks.append(asyncio.ensure_future(self._music_loop()))
+            self.schedule_music_catch_up("start")
         if self.cfg.mqtt is not None:
             from ..show.mqtt import MqttBridge
 
             m = self.cfg.mqtt
-            filters = [self.cfg.test_topic, self.cfg.stop_topic, self.cfg.play_topic, *([self.cfg.announce_topic, self.cfg.chime_topic] if self.cfg.announce else [])]
+            filters = [
+                self.cfg.test_topic,
+                self.cfg.stop_topic,
+                self.cfg.play_topic,
+                *([self.cfg.music_topic] if self.music is not None else []),
+                *([self.cfg.announce_topic, self.cfg.chime_topic] if self.cfg.announce else []),
+            ]
             self.mqtt = MqttBridge(m.host, m.port, filters=filters, loop=self.loop, client_id=m.client_id, username=m.username, password=m.password, health_topic=HEALTH_TOPIC)
             self.mqtt.start()
             tasks.append(asyncio.ensure_future(self._mqtt_loop()))

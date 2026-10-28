@@ -26,6 +26,8 @@ Shape (`audio.example.yaml` carries a commented copy):
                                    # name is not ducked by it. Absent: the announce row.
       sidechain: {threshold_db: -45, attack_s: 0.04, hold_s: 0.8, release_s: 1.2}
                                    # how an input with a `role` opens its source
+      soundtrack: null             # media/soundtrack.yaml: the music beds per scene
+                                   # (audio/soundtrack.py; loaded and checked at boot)
       duck_hold_s: 7               # announce: false — the announce source held for an
                                    # announcement the alexa player speaks
       no_duck: []                  # sounds that never duck (the show's
@@ -47,6 +49,7 @@ Shape (`audio.example.yaml` carries a commented copy):
       test_topic: show/audio/test
       stop_topic: show/audio/stop  # {} or {"announce": true}: stop every house sound
       play_topic: show/audio/play  # {"name": "zip", "to"?: ["living"]}: hand-play one
+      music_topic: show/audio/music  # {"scene": "act_1"} | {"next": true} | {"stop": true}
 
 Everything has a default, so `audio: {}` is a router that only passes the
 matrix through and answers the map editor's Test buttons.
@@ -70,6 +73,7 @@ from ..module import ConfigError
 from ..paths import user_cache
 from ..show.config import MqttConfig
 from .mixer import DUCKED, RESERVED_SOURCES, TAKEOVER, Sidechain
+from .soundtrack import Soundtrack, load_soundtrack
 
 DEFAULT_CACHE = user_cache("stagehand-audio")  # ~/Library/Caches/… ; %LOCALAPPDATA%\stagehand\… on Windows
 #: With no `priority:` an announcement ducks as the show's does (C4's
@@ -98,6 +102,8 @@ class AudioConfig:
     #: ducks the sfx / music buses at full activity.
     priority: dict[str, dict[str, float]] = field(default_factory=lambda: dict(DEFAULT_PRIORITY))
     sidechain: Sidechain = Sidechain()
+    #: The soundtrack (wave 38, C3), parsed at load: a bad file fails the boot.
+    soundtrack: Soundtrack | None = None
     duck_hold_s: float = 7.0
     no_duck: tuple[str, ...] = ()
     config_file: str | None = None
@@ -120,6 +126,8 @@ class AudioConfig:
     #: and a hand-fired `sound X` (the router replaces QLab's hand-fire).
     stop_topic: str = "show/audio/stop"
     play_topic: str = "show/audio/play"
+    #: The soundtrack by hand (wave 38): a scene, the next track, stop.
+    music_topic: str = "show/audio/music"
     #: The `alexa` player's lock directory: an announcing router holds the
     #: same lock, so the two never both own the house's voice.
     announce_lock_dir: str = ALEXA_CACHE
@@ -216,6 +224,11 @@ def _sidechain(doc: dict) -> Sidechain:
     )
 
 
+def _soundtrack(doc: dict, base_dir: str) -> Soundtrack | None:
+    path = _path(doc, "soundtrack", base_dir, must_exist=True)
+    return load_soundtrack(path) if path is not None else None
+
+
 def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
     if doc is None:
         doc = {}
@@ -282,6 +295,7 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         limit_db=_num(doc, "limit_db", -1.0, -30, 0),
         priority=_priority(doc),
         sidechain=_sidechain(doc),
+        soundtrack=_soundtrack(doc, base_dir),
         duck_hold_s=_num(doc, "duck_hold_s", 7.0, 0, 60),
         no_duck=_names(doc, "no_duck"),
         config_file=_path(doc, "config_file", base_dir, must_exist=True),
@@ -300,6 +314,7 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         test_topic=_str(doc, "test_topic", "show/audio/test") or "show/audio/test",
         stop_topic=_str(doc, "stop_topic", "show/audio/stop") or "show/audio/stop",
         play_topic=_str(doc, "play_topic", "show/audio/play") or "show/audio/play",
+        music_topic=_str(doc, "music_topic", "show/audio/music") or "show/audio/music",
         announce_lock_dir=os.path.expanduser(_str(doc, "announce_lock_dir", ALEXA_CACHE) or ALEXA_CACHE),
     )
 
