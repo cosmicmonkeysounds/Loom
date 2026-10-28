@@ -865,3 +865,18 @@ def test_the_flicker_never_changes_the_look_on_the_strips():
                         out[c.topic] = c.payload
             return out
         assert last_wled([look, "screens_flicker"]) == last_wled([look]), look
+
+
+def test_the_shows_presence_pulses_the_rooms_zone_and_never_a_safety_light():
+    """Wave 39 (C0): a program in the reinstallation games pulses the bulb it
+    walks under — the `rooms` zone, never a hall, a bathroom or the server room."""
+    from stagehand.lights.routing import parse_lights, presence_fixtures, presence_settings
+
+    doc = parse_lights(_lights())
+    house = json.loads((STORY / "house.json").read_text(encoding="utf-8"))
+    s = presence_settings(doc)
+    assert s.enabled and s.to == ("rooms",) and s.effect == "breathe"
+    pulsing = presence_fixtures(doc, house)
+    rooms = next(z for z in doc.zones if z["id"] == "rooms")
+    assert pulsing and [f["id"] for f in pulsing] == [f["id"] for f in doc.fixtures if f["id"] in rooms["fixtures"] and not f.get("safety")]
+    assert not any(f.get("safety") for f in pulsing)

@@ -567,3 +567,321 @@ async def test_the_show_re_asks_the_looks_every_few_minutes(monkeypatch):
     await asyncio.sleep(0.05)
     task.cancel()
     assert len(asked) >= 3
+
+
+# -- wave 39: presence pulses and the shown report ------------------------------------
+
+LAMP = "zigbee2mqtt/desk_lamp/set"
+HALL = "zigbee2mqtt/hall_lights/set"
+STRIP = "wled/desk/api"
+
+
+def _presence_doc(presence=None, strip=True) -> dict:
+    """lights-basic.json with a `presence` block and a non-safety WLED strip in the desktop."""
+    doc = json.loads(json.dumps(BASIC))
+    if presence is not None:
+        doc["presence"] = presence
+    if strip:
+        doc["fixtures"].append({"id": "desk-strip", "name": "Desk strip", "room": "desktop", "pos": {"x": 1.5, "y": 0.8, "z": 1}, "kind": "wled", "device": "wled/desk", "caps": {"color": True, "ct": False, "dim": True}})
+    doc["looks"]["lights_game"] = {"to": ["desk-lamp", "desk-strip"] if strip else ["desk-lamp"], "set": {"state": "ON", "brightness": 200, "transition": 1}}
+    doc["looks"]["lights_dance"] = {"to": ["desk-strip"], "set": {"state": "ON", "color": "#FF00AA", "effect": "blink"}}
+    doc["looks"]["lights_chase"] = {"to": ["desk-lamp"], "steps": [{"at": 0, "set": {"brightness": 254}}, {"at": 1000, "set": {"brightness": 60}}], "loop": True, "period": 2000}
+    return doc
+
+
+def _answer(seq: int, *fixtures: str) -> dict:
+    return {"presence": {"seq": seq, "fixtures": [{"fixture": f, "since": 1000 + i} for i, f in enumerate(fixtures)]}}
+
+
+@_async
+async def test_a_program_under_a_bulb_pulses_it_every_12_s_until_it_leaves():
+    timer = FakeTimer()
+    lights = _lights(timer, doc=_presence_doc())
+    assert lights.take_presence(_answer(1, "desk-lamp", "hall-group")) is True
+    assert lights.presence_seq == 1
+    await timer.advance(30_000)
+    assert _on(lights.mqtt.log, LAMP) == [(0, {"effect": "breathe"}), (12_000, {"effect": "breathe"}), (24_000, {"effect": "breathe"})]
+    assert [t for t, _ in _on(lights.mqtt.log, HALL)] == [0, 12_000, 24_000]  # a Z2M group: the same words
+    assert lights.take_presence(_answer(2, "hall-group")) is True
+    await timer.advance(30_000)
+    lamp = _on(lights.mqtt.log, LAMP)
+    assert lamp[-1] == (30_000, {"effect": "finish_effect"}) and len(lamp) == 4
+    assert [t for t, _ in _on(lights.mqtt.log, HALL)] == [0, 12_000, 24_000, 36_000, 48_000, 60_000]
+    # The same set again sends nothing new; an answer with no seq move says so.
+    mark = len(lights.mqtt.log)
+    assert lights.take_presence(_answer(2, "hall-group")) is False
+    assert len(lights.mqtt.log) == mark
+    assert lights.stats()["pulsed"] == ["hall-group"]
+
+
+@_async
+async def test_a_safety_fixture_or_one_outside_presence_to_never_pulses():
+    timer = FakeTimer()
+    lights = _lights(timer, doc=_presence_doc({"to": ["server-room", "upstairs"]}))
+    # The server-room bulb and bench strip are safety lights; the strip in the desktop is not in `to`.
+    lights.take_presence(_answer(1, "server-room-rgb", "server-strip", "desk-strip", "attic-bulb", "nope"))
+    await timer.advance(13_000)
+    assert {tp for _, tp, _ in lights.mqtt.log} == {"zigbee2mqtt/attic_bulb/set"}
+    assert lights.pulses.keys() == {"attic-bulb"}
+
+
+@_async
+async def test_presence_off_in_the_doc_ends_every_pulse_and_starts_none():
+    timer = FakeTimer()
+    lights = _lights(timer, doc=_presence_doc({"effect": "blink"}))
+    lights.take_presence(_answer(1, "desk-lamp"))
+    assert _on(lights.mqtt.log, LAMP) == [(0, {"effect": "blink"})]
+    await timer.advance(1000)
+    assert lights.apply({"version": "v2", "lights": _presence_doc({"enabled": False})}, persist=False)
+    lights.take_presence(_answer(1, "desk-lamp"))
+    await timer.advance(30_000)
+    assert _on(lights.mqtt.log, LAMP) == [(0, {"effect": "blink"}), (1000, {"effect": "finish_effect"})]
+    assert lights.pulses == {}
+
+
+@_async
+async def test_a_location_in_presence_to_reaches_its_rooms_once_the_map_arrives():
+    timer = FakeTimer()
+    lights = _lights(timer, doc=_presence_doc({"to": ["The Tube"]}))
+    lights.house = None
+    lights.take_presence(_answer(1, "hall-group"))
+    assert lights.mqtt.log == []
+    lights.set_house(HOUSE, persist=False)
+    lights.sync_pulses()
+    assert _on(lights.mqtt.log, HALL) == [(0, {"effect": "breathe"})]
+
+
+@_async
+async def test_a_wled_strip_breathes_once_and_gets_its_looks_effect_back():
+    timer = FakeTimer()
+    lights = _lights(timer, doc=_presence_doc())
+    lights.play("lights_dance")  # the strip blinks pink
+    await timer.advance(10)
+    lights.take_presence(_answer(1, "desk-strip"))
+    await timer.advance(30_000)
+    got = _on(lights.mqtt.log, STRIP)
+    assert got == [(0, {"on": True, "seg": [{"col": [[255, 0, 170]], "fx": 1}]}), (10, {"seg": [{"fx": 2}]})]  # once: no repeat on WLED
+    # A look on the strip while it pulses: its colour goes out, its effect waits.
+    lights.play("lights_game")
+    await timer.advance(10)
+    lights.play("lights_dance")
+    await timer.advance(10)
+    assert _on(lights.mqtt.log, STRIP)[-2:] == [(30_010, {"on": True, "bri": 200, "transition": 10}), (30_020, {"on": True, "seg": [{"col": [[255, 0, 170]]}]})]
+    lights.take_presence(_answer(2))
+    assert _on(lights.mqtt.log, STRIP)[-1] == (30_030, {"seg": [{"fx": 1}]})  # the look's blink, never a full re-publish
+
+
+@_async
+async def test_a_wled_strip_with_no_effect_goes_back_to_solid_and_blink_is_fx_1():
+    timer = FakeTimer()
+    lights = _lights(timer, doc=_presence_doc({"effect": "blink"}))
+    lights.play("lights_game")
+    lights.take_presence(_answer(1, "desk-strip"))
+    lights.take_presence(_answer(2))
+    assert [p for _, p in _on(lights.mqtt.log, STRIP)][-2:] == [{"seg": [{"fx": 1}]}, {"seg": [{"fx": 0}]}]
+
+
+@_async
+async def test_a_pulse_never_takes_a_fixture_from_a_look_nor_a_look_stops_the_pulse():
+    timer = FakeTimer()
+    lights = _lights(timer, doc=_presence_doc())
+    lights.play("lights_chase")
+    run = lights.running["desk-lamp"]
+    lights.take_presence(_answer(1, "desk-lamp"))
+    await timer.advance(5000)
+    assert lights.running["desk-lamp"] is run and not run.done
+    lights.play("lights_game")  # a new look mid-pulse
+    await timer.advance(20_000)
+    lamp = _on(lights.mqtt.log, LAMP)
+    assert [t for t, p in lamp if p == {"effect": "breathe"}] == [0, 12_000, 24_000]
+    assert [t for t, p in lamp if "brightness" in p] == [0, 1000, 2000, 3000, 4000, 5000, 5000]
+    assert lights.running["desk-lamp"].name == "lights_game"
+
+
+@_async
+async def test_an_identify_wins_for_its_2_s_then_the_pulse_comes_back():
+    timer = FakeTimer()
+    lights = _lights(timer, doc=_presence_doc())
+    lights.take_presence(_answer(1, "desk-lamp", "desk-strip"))
+    await timer.advance(11_000)
+    lights.run_test({"fixture": "desk-lamp"})
+    lights.run_test({"fixture": "desk-strip"})
+    await timer.advance(1000)  # the 12 s repeat falls inside the identify: held
+    assert _on(lights.mqtt.log, LAMP)[-1] == (11_000, {"effect": "okay"})
+    await timer.advance(1000)
+    assert _on(lights.mqtt.log, LAMP)[-1] == (13_000, {"effect": "breathe"})
+    # The strip's identify blinked (nothing settled to give back: its pulse is the effect).
+    assert _on(lights.mqtt.log, STRIP)[-2:] == [(11_000, {"on": True, "seg": [{"fx": 1}]}), (13_000, {"seg": [{"fx": 2}]})]
+    # A program leaving during an identify: finished when the flash is over.
+    lights.run_test({"fixture": "desk-lamp"})
+    lights.take_presence(_answer(2, "desk-strip"))
+    assert _on(lights.mqtt.log, LAMP)[-1] == (13_000, {"effect": "okay"})
+    await timer.advance(2000)
+    assert _on(lights.mqtt.log, LAMP)[-1] == (15_000, {"effect": "finish_effect"})
+    await timer.advance(30_000)
+    assert _on(lights.mqtt.log, LAMP)[-1][0] == 15_000
+
+
+def test_a_broker_reconnect_sends_every_pulse_again():
+    timer = FakeTimer()
+
+    async def go():
+        lights = _lights(timer, doc=_presence_doc())
+        lights.take_presence(_answer(1, "desk-lamp", "desk-strip"))
+        mark = len(lights.mqtt.log)
+        lights.repulse()
+        assert [(tp, p) for _, tp, p in lights.mqtt.log[mark:]] == [(LAMP, {"effect": "breathe"}), (STRIP, {"seg": [{"fx": 2}]})]
+
+    asyncio.run(go())
+
+
+def test_an_older_server_with_no_presence_pulses_nothing():
+    async def go():
+        lights = _lights(FakeTimer(), doc=_presence_doc())
+        lights.take_presence(_answer(4, "desk-lamp"))
+        assert lights.take_presence({"tests": []}) is False
+        assert lights.pulses == {} and lights.mqtt.log[-1][1:] == (LAMP, {"effect": "finish_effect"})
+        assert lights.presence_seq == 4
+
+    asyncio.run(go())
+
+
+@_async
+async def test_the_long_poll_sends_the_presence_cursor():
+    timer = FakeTimer()
+    asked: list[dict] = []
+
+    class Mod(FakeMod):
+        async def get(self, path, params=None, timeout=None):
+            if path != "/api/mod/lights":
+                return {}
+            asked.append(dict(params or {}))
+            if len(asked) == 3:
+                raise asyncio.CancelledError
+            return {"version": "v1", "source": "server", "lights": _presence_doc(), **_answer(len(asked) + 6, "desk-lamp")}
+
+    lights = _lights(timer, doc=_presence_doc(), mod=Mod())
+    lights.apply = lambda answer, persist=True: HouseLights.apply(lights, answer, persist=False)  # no cache writes
+    with pytest.raises(asyncio.CancelledError):
+        await lights._config_loop(lights.mod)
+    assert "presence" not in asked[0]
+    assert asked[1]["presence"] == 7 and asked[2]["presence"] == 8
+    assert lights.pulses.keys() == {"desk-lamp"}
+    for t in list(lights._tasks):
+        t.cancel()
+
+
+@_async
+async def test_shown_is_every_command_merged_and_posted_250_ms_after_a_change():
+    timer = FakeTimer()
+    mod = FakeMod()
+    lights = _lights(timer, doc=_presence_doc(), mod=mod)
+    lights.play("heart_wake")
+    lights.run_test({"fixture": "desk-lamp", "set": {"state": "OFF"}})
+    await timer.advance(249)
+    assert mod.posts == []
+    await timer.advance(1)
+    assert len(mod.posts) == 1
+    path, body = mod.posts[0]
+    assert path == "/api/mod/lights/shown"
+    assert body == {"fixtures": {"server-room-rgb": {"state": "ON", "brightness": 254, "color": "#FF2A00"}, "desk-lamp": {"state": "OFF"}}}
+    # heart_wake's steps every 400 ms: one post per change, never more than 4 a second.
+    await timer.advance(3000)
+    assert 1 < len(mod.posts) <= 1 + 4 * 3
+    assert mod.posts[-1][1]["fixtures"]["server-room-rgb"] == {"state": "ON", "brightness": 120, "color": "#00E5FF"}
+    # A safety light is reported clamped, as the bulb got it.
+    lights.run_test({"fixture": "server-room-rgb", "set": {"state": "OFF"}})
+    await timer.advance(250)
+    assert mod.posts[-1][1]["fixtures"]["server-room-rgb"] == {"state": "ON", "brightness": 40, "color": "#00E5FF"}
+
+
+@_async
+async def test_shown_posts_never_more_than_4_a_second_under_a_fast_loop():
+    timer = FakeTimer()
+    mod = FakeMod()
+    doc = _presence_doc()
+    doc["looks"]["lights_strobe"] = {"to": ["desk-lamp"], "steps": [{"at": 0, "set": {"brightness": 254}}, {"at": 150, "set": {"brightness": 10}}], "loop": True, "period": 300}
+    lights = _lights(timer, doc=doc, mod=mod)
+    stamps: list[float] = []
+    real_post = mod.post
+
+    async def post(path, body):
+        stamps.append(timer.now())
+        return await real_post(path, body)
+
+    mod.post = post
+    lights.play("lights_strobe")
+    await timer.advance(5000)
+    assert len(stamps) >= 15
+    assert all(b - a >= 250 for a, b in zip(stamps, stamps[1:]))
+
+
+@_async
+async def test_shown_carries_the_pulses_and_identify_flashes_stay_out():
+    timer = FakeTimer()
+    mod = FakeMod()
+    lights = _lights(timer, doc=_presence_doc(), mod=mod)
+    lights.play("lights_game")
+    lights.take_presence(_answer(1, "desk-lamp", "desk-strip"))
+    await timer.advance(250)
+    shown = mod.posts[-1][1]["fixtures"]
+    assert shown["desk-lamp"] == {"state": "ON", "brightness": 200, "effect": "breathe"}
+    assert shown["desk-strip"] == {"state": "ON", "brightness": 200, "effect": "breathe"}
+    lights.run_test({"fixture": "desk-lamp"})  # identify: a 2 s flash, not a state
+    lights.take_presence(_answer(2, "desk-strip"))
+    await timer.advance(2250)
+    shown = mod.posts[-1][1]["fixtures"]
+    assert shown["desk-lamp"] == {"state": "ON", "brightness": 200}
+    assert lights.base["desk-lamp"] == {"state": "ON", "brightness": 200}
+
+
+@_async
+async def test_shown_keeps_alive_every_20_s_and_a_404_stops_it_logged_once(caplog):
+    timer = FakeTimer()
+    mod = FakeMod()
+    lights = _lights(timer, doc=_presence_doc(), mod=mod)
+    loop = asyncio.ensure_future(lights._shown_loop())
+    await timer.advance(30_000)
+    assert mod.posts == []  # nothing commanded yet: nothing to report
+    lights.play("lights_game")
+    await timer.advance(250)
+    assert [p for p, _ in mod.posts] == ["/api/mod/lights/shown"]
+    await timer.advance(45_000)
+    assert len(mod.posts) == 3  # 20 s and 40 s after the last post
+    # An older server: one log line, then silence until a restart.
+    mod.status = 404
+
+    async def gone(path, body):
+        raise ModApiError("no route", 404)
+
+    mod.post = gone
+    with caplog.at_level("WARNING", logger="stagehand.lights"):
+        lights.play("lights_chase")
+        await timer.advance(60_000)
+    assert lights.shown_off and loop.done()
+    assert sum("/api/mod/lights/shown" in r.getMessage() for r in caplog.records) == 1
+    assert lights.shown_posts == 3
+    for t in list(lights._tasks):
+        t.cancel()
+
+
+@_async
+async def test_a_failing_shown_post_retries_on_the_next_change():
+    timer = FakeTimer()
+    calls: list[int] = []
+
+    class Mod(FakeMod):
+        async def post(self, path, body):
+            calls.append(1)
+            if len(calls) == 1:
+                raise ModApiError("busy", 503)
+            return await super().post(path, body)
+
+    mod = Mod()
+    lights = _lights(timer, doc=_presence_doc(), mod=mod)
+    lights.play("lights_game")
+    await timer.advance(250)
+    assert lights.shown_posts == 0 and not lights.shown_off
+    lights.play("heart_idle")
+    await timer.advance(250)
+    assert lights.shown_posts == 1 and len(mod.posts) == 1
