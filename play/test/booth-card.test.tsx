@@ -7,10 +7,10 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { FACE_MAX, FACE_SETTLE_MS, boothHost, cardButtons, cardGuestFacts, cardReadKey, faceSettled, factChips, inFlightGate, pressOutcome, scanRepeated } from "../src/booth/model.ts";
+import { FACE_MAX, FACE_SETTLE_MS, REFUSED_SILENT, boothHost, cardButtons, cardGuestFacts, cardReadKey, faceSettled, factChips, inFlightGate, pressOutcome, scanRepeated } from "../src/booth/model.ts";
 import { ApiError } from "../src/client.ts";
 import { ARM_DEAD_MS } from "../src/arm.ts";
-import { GuestCardBody } from "../src/booth/card.tsx";
+import { GuestCardBody, outcomeSplit } from "../src/booth/card.tsx";
 import type { PrimeSession } from "../src/session/prime.ts";
 import type { GuestCardView, Interaction, ObjectiveView, PrimeGuest, PrimeView } from "../src/types.ts";
 
@@ -269,6 +269,43 @@ describe("what a press or a scan came to (C1, fix round)", () => {
     expect(render({ card: card(["send"]), replies: [] })).toContain("✔ Scanned — no reply from the story");
     // A card opened from Guests (no scan) says nothing about a press.
     expect(render({ card: card(["send"]) })).not.toContain("no reply from the story");
+  });
+
+  it("wave 37 (C12): the clearance leads with the result; what the story said folds under it", () => {
+    const render = (seed: Parameters<typeof GuestCardBody>[0]["seed"]) =>
+      renderToStaticMarkup(<GuestCardBody session={fakeSession()} guestId="g-1" seed={seed} admin={false} onOpenThread={() => {}} />);
+    const tube = "You step into the Tube. The light hums and the walls scroll past.";
+    const cleared = render({ card: card(["send"]), replies: ["✅ Cleared Ada."], said: [{ from: NORTON, text: tube }] });
+    expect(cleared).toContain("✅ Cleared Ada.");
+    expect(cleared).toContain("▸ What the story said");
+    expect(cleared).toContain('aria-expanded="false"');
+    expect(cleared).not.toContain(tube);
+    // The result comes before the fold.
+    expect(cleared.indexOf("✅ Cleared Ada.")).toBeLessThan(cleared.indexOf("What the story said"));
+    // Said lines alone are the result: they stay open, no fold.
+    const alone = render({ card: card(["send"]), replies: [], said: [{ from: "McAfee Anti-Virus", text: "Not yet. Finish your upload." }] });
+    expect(alone).toContain("Not yet. Finish your upload.");
+    expect(alone).not.toContain("What the story said");
+  });
+
+  it("wave 37 (C12): outcomeSplit folds said lines only behind a reply or a staff line", () => {
+    const reply = { kind: "reply", text: "✅ Cleared Ada." } as const;
+    const said = { kind: "said", from: NORTON, text: "Off you go." } as const;
+    const staff = { kind: "staff", text: "🛡 Escort Ada.", refused: false } as const;
+    expect(outcomeSplit([reply, said], true)).toEqual({ shown: [reply], folded: [said] });
+    expect(outcomeSplit([staff, said], true)).toEqual({ shown: [staff], folded: [said] });
+    expect(outcomeSplit([said], true)).toEqual({ shown: [said], folded: [] });
+    // A refusal is no result to lead with: the character's line saying why stays open.
+    const silent = { kind: "staff", text: REFUSED_SILENT, refused: true } as const;
+    const notYet = { kind: "said", from: NORTON, text: "Not yet. Finish your upload." } as const;
+    expect(outcomeSplit([notYet, silent], true)).toEqual({ shown: [notYet, silent], folded: [] });
+    const why = { kind: "staff", text: "Ada has no upload yet.", refused: true } as const;
+    expect(outcomeSplit([notYet, why], true)).toEqual({ shown: [notYet, why], folded: [] });
+    // The host booth's path end to end: a refused press with only the character's line.
+    const host = pressOutcome({ said: [{ from: NORTON, text: "Not yet. Finish your upload." }], refused: true }, "press");
+    expect(outcomeSplit(host, true).folded).toEqual([]);
+    // Without `foldSaid` (the confrontation's refusal) every line shows.
+    expect(outcomeSplit([reply, said], false)).toEqual({ shown: [reply, said], folded: [] });
   });
 });
 

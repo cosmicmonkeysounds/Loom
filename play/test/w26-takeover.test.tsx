@@ -101,7 +101,8 @@ describe("the wiring", () => {
   });
   it("guests (featured programs too) get the full one; player booths full, host booths light; the director phone none", () => {
     expect(src("guest/app.tsx")).toMatch(/glitch: st\.night\?\.glitch,\s*takeover: "full",/u);
-    expect(src("booth/app.tsx")).toMatch(/glitch: s\.view\?\.night\?\.glitch,\s*takeover: player \? "full" : "light",/u);
+    // Wave 37 (C13): a player's takeover is look-only over the scanner or a card.
+    expect(src("booth/app.tsx")).toMatch(/glitch: s\.view\?\.night\?\.glitch,[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*takeover: player && layer\?\.kind !== "scan" && layer\?\.kind !== "card" \? "full" : "light",/u);
     expect(src("director.tsx")).not.toContain("MomentsProvider");
   });
 });

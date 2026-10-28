@@ -3,7 +3,7 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: performer, booth, player, players, mission, score, points, stat, notes, team, people, new mission, your game is on, pop-out, popout, later, waiting, wanted, wanted board, claim, i'll get them, hand it back, take over, confrontation, corruption detected, captured, caught by, door queue, at the door, player select, tiles, picker, still missing, they're here, cue bar, your cue, call it, clippy, chat log, chats, now, objective, checklist, to-do, tick, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, next guest, readout, readouts, admin, moderator, capture, hide, guest card, card, face, all buttons, not on offer, facts, guests, messages, who's here, restricted, marked, pinned, pin, quest log, codex, wallet, approve, deny, audit, approval, transfer, arm, tap twice, tap again to fire, near miss, not your button, start, taskbar, balloon, sticky
+keywords: performer, booth, player, players, mission, score, points, stat, notes, team, people, new mission, your game is on, pop-out, popout, later, waiting, wanted, wanted board, claim, i'll get them, hand it back, take over, confrontation, corruption detected, captured, caught by, door queue, at the door, player select, tiles, picker, still missing, they're here, cue bar, your cue, call it, clippy, chat log, chats, now, objective, checklist, to-do, tick, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, next guest, close, back, one tap, readout, readouts, admin, moderator, capture, hide, guest card, card, face, all buttons, not on offer, facts, guests, messages, who's here, restricted, marked, pinned, pin, quest log, codex, wallet, approve, deny, audit, approval, transfer, arm, tap twice, tap again to fire, near miss, not your button, start, taskbar, balloon, sticky
 ---
 
 The performer station is the same app, recomposed for the booth: your
@@ -68,7 +68,7 @@ play the game, the hosts and the directors call it.
   something whole: it opens the list of programs to work through
   (PLAYER SELECT, below), the card of the one program it is about, does
   the thing at once (a button about nobody in particular, with two taps
-  when there is no way back), or opens the scanner captioned *📷 Scan a
+  when there is no way back), or opens the scanner captioned *Scan a
   program to …* so you scan the right person. Under the card: **Your move**
   (a card waiting for you, a program who wrote to you), your **score**
   tiles (*⭐ 120 Points*), and the **Quest Log**, **Codex**, **Wallet** (the
@@ -77,8 +77,16 @@ play the game, the hosts and the directors call it.
 - **Your score** shows live on Mission and as the first chip in the tray.
   The story keeps other numbers about you to itself, as it does for the
   guests; some of them are read out at the ceremony.
-- **NEW MISSION**: when your objective changes, a pop-out says so with its
-  brief. **▣ Go** opens Mission. That is your *your game is on* moment.
+- **NEW MISSION**: when your objective changes while Mission is on
+  screen, the title bar blinks *NEW MISSION · …* with a chime: the card
+  under it is the instruction. Anywhere else (Chats, a room) a pop-out
+  says so with its brief, **▣ Go** opens Mission, and it goes away by
+  itself after about 20 seconds. A new quest never balloons: the Quest
+  Log's dot says it.
+- **YOUR GAME IS ON** (Clippy): when one of your games starts, it is one
+  pop-out with **▣ Go to Mission**, after the pop-out naming the program
+  the game landed on, and it leaves by itself after a minute. When you
+  press 🎱 on that program, **PLAYER SELECT** opens straight away.
 - **Chats**: **Your move**, **Messages** (📋 **Notes**, which is what the
   story tells your character, your cast threads, programs who wrote to
   you), **Team** (the staff rooms of your team: the Antivirus keep their
@@ -113,28 +121,43 @@ no particular guest. Tap it.
 
 A pop-out is a small Win95 window docked over your rooms: its title (*🚨
 WANTED*, *🚪 At the door*, *🎤 Your cue*), the program's picture and name
-when it's about one, and its buttons. Only one shows at a time; the next
-waits behind it (*1 of 2*), and a later one never replaces the one on
-screen. It stays until you press one of its buttons, or **Later**, which
-puts it in the tray's **🔔 n**: tap that for the **🔔 Waiting** window (*Nothing
+when it's about one, and its buttons. **One at a time**: the next waits
+behind it (*1 of 2*). Press one of its buttons, or **Later**, which puts
+it in the tray's **🔔 n**: tap that for the **🔔 Waiting** window (*Nothing
 waiting. You're on top of it.* when it's empty) and pick one to bring it
-back. While a guest's card or the scanner is open, a pop-out shrinks to a
-strip at the top and never covers the card's buttons; one about the guest
-on the card waits until you close it. Pop-outs survive a reload, and one
-that no longer applies (the program was caught, the arrival was cleared)
-goes away by itself.
+back.
+
+- **Reminders go by themselves.** *WANTED · YOURS* leaves after about 15
+  seconds (it stays on the 🚨 counter and the board's **Mine** tab), NEW
+  MISSION after about 20, *YOUR GAME IS ON* after a minute, and *At the
+  door* moves into 🔔 Waiting after 45 seconds untouched.
+- **An alarm never waits behind a reminder.** A new 🚨 WANTED takes the
+  screen from a reminder that has been up a couple of seconds; the
+  reminder comes back after it.
+- **Face to face, nothing floats.** While the scanner, a guest's card, a
+  confrontation or PLAYER SELECT is open, nothing pops, floats or chimes
+  over it. What arrived waits and shows (once, with its chime) when you
+  close it.
+- **One thing at the bottom.** A pop-out or a balloon, never both: a
+  balloon waits while a pop-out is up, and only the newest one waits.
+
+Pop-outs survive a reload, and one that no longer applies (the program
+was caught, the arrival was cleared, the objective moved on) goes away by
+itself.
 
 ## Scanning guests
 
 Tap **📷 Scan**. The scanner fills the screen with the camera on, and a
 box under it to type a guest's id (it's under their QR). Point it at a
 guest's pass: **that guest's card opens at once**. Press what you need,
-then **📷 Next guest** (or ×, or Escape) and the camera is back for the
-next pass; × on the camera closes the scanner. The camera stays on the
-whole time the scanner is open, so a queue scans pass after pass. The
-pass you just closed is ignored for a few seconds, so it never reopens
-by itself, and a scan tapped twice counts once. It needs the https
-address, on iPhone and Android.
+then **×** (or Escape, or your phone's Back): **one tap** takes you back
+to where you opened the scanner: Mission, Show, the Wanted board or the
+Door queue. At the door (the Antivirus), **📷 Next guest** brings the
+camera back for the next pass instead; the camera stays on the whole
+time the scanner is open, so a queue scans pass after pass. Anyone else
+taps **📷 Scan** in the taskbar for the next one. The pass you just closed is ignored
+for a few seconds, so it never reopens by itself, and a scan tapped twice
+counts once. It needs the https address, on iPhone and Android.
 
 A scan fires your character's story for that guest; what the story
 answers shows on the card, and anything it wants you to *say or do*
@@ -159,8 +182,9 @@ in any room, or from a room's 👥 list. Top to bottom:
   those guests' cards. Nothing else is listed: when the face is empty the
   card says *Nothing your objective needs on X right now* (a player's:
   *Nothing to do with X right now.*).
-- **What the press came to**, on the card itself: the story's reply and
-  what your character said to them. A host's card also shows, in a
+- **What the press came to**, on the card itself: the story's reply
+  first (*✅ Cleared …*), with what your character said to them folded
+  under **▸ What the story said** (tap to read it). A host's card also shows, in a
   refused style, any `# hosts` line saying why it was not done (*Not
   done: …*); a player's just says **Not now.** With nothing back a host
   reads *✔ Sent — no reply from the story*.
@@ -192,25 +216,35 @@ alone: *⏰ X is late*, the answer to a scan, the story's notes to your
 character (the urgent ones also pop out). Newest first; a readout about a guest has a **🪪 Name ›** button
 that opens their card. Readouts survive a reload. A readout about the
 guest whose card is open shows on the card instead of interrupting you.
+You only hear about programs who are **yours** (your claim, the arrival
+you took at the door): a quiet readout about anyone else (another
+Antivirus' capture, someone's bathroom trip) lands in Readouts without a
+balloon.
 
 When a guest types to your character, their thread appears under
 **Messages**, just below Readouts, until you've read it; a balloon by
 the tray says so (its button opens the thread), and the 🗂 Guests button's badge
-counts the guests waiting on an unread message. What you type in their
+counts the guests waiting on an unread message. A guest's pick from a
+story menu is not a message to you: no balloon, no badge. What you type in their
 thread lands as your character's message to them. The **broadcast
 feed** posts to the main room — everyone hears it.
 
 ## Alerts in your booth
 
-Your booth chimes and shows an alert sent to everyone, to your
-character, or into a staff room (`# hosts`), and any readout you didn't
-ask for — "⏰ *Name* is late", a private warning. A booth never takes
-the whole screen: an alert to everyone is a **balloon tip** by the tray
-that goes away by itself, and one to your character or a staff room is a
-yellow **banner** that stays until you tap it. A big moment for your booth
-is a **pop-out** (above), never a full screen. While the scanner or a card
-is open, a big alert shows as a balloon over it and its banner waits until
-you close the card. An alert the story sends to **one guest** or **one
+The story sends alerts to everyone, to your character, or into a staff
+room (`# hosts`). Your phone is about your job: **an alert to everyone
+is not on your booth** (it plays on the TV and the speakers, and its
+words are in the 📜 Chat log). One to your character or a staff room, and
+any readout you didn't ask for — "⏰ *Name* is late", a private warning —
+chimes and shows. A booth never takes the whole screen: a small one is a
+**balloon tip** by the tray that goes away by itself (only the newest
+waits, so a burst never queues up), and a bigger one is a yellow
+**banner** that stays until you tap it, or about 45 seconds while you look
+at it. A big moment for your booth is a **pop-out** (above), never a full
+screen. While the scanner, a card, a confrontation or PLAYER SELECT is
+open, balloons and banners wait until you close it. The story's glitch
+never swallows a tap there either: over the scanner or a card it only
+flickers. An alert the story sends to **one guest** or **one
 room** (a guest's own heads-up, the lights going out in a room) doesn't
 banner your booth: your cue is the readout. A `!` readout that needs you
 jumps the queue and stays in **🔔 n** until you handle it. Tap the app once after signing in
@@ -245,12 +279,16 @@ yours:
   Mode it says *🚻 In Bathroom Mode: wait outside, never go in.* Several at
   once come as one *🚨 n programs marked* with **🚨 Open the Wanted board**.
 - **🙋 I'll get them** claims them: your pop-out turns into *WANTED ·
-  YOURS* with **📷 Scan their pass** and **Hand it back**; the other booths
+  YOURS* with **📷 Scan their pass**, **Hand it back** and **Later**; the other booths
   see *🙋 McAfee Anti-Virus is on Minesweeper.* for a few seconds. If two of
   you claim at once, one reads *… got there first.*
 - **The Wanted board** (the tray's 🚨 counter, or the NOW card's row): one
   poster per marked program, tabs **Open / Mine / Everyone**, kept across a
-  reload. **Hand back** puts a poster back for everyone; on someone else's
+  reload. A poster you claim stays where it was on **Open**, tagged
+  **YOURS** with **📷 Scan their pass**; one someone else claims stays too,
+  tagged *🙋 … is on it*, so the list never jumps under your finger. A
+  scan or a card opened from the board comes back to the board on ×.
+  **Hand back** puts a poster back for everyone; on someone else's
   claim that has gone quiet for ten minutes, **Still on it? 🙋 Take over**.
   A caught poster is stamped **CAPTURED · CAUGHT BY …** for a minute, then
   leaves. A wanted guest's card carries a maroon **WANTED** banner with the
@@ -263,10 +301,12 @@ scanner turns into **⚠ CORRUPTION DETECTED**: their picture, why, and a
 **SAY IT** box with your line, while their phone goes full screen (*… has
 found you*). The big **🛡 SEND TO THE INTERNET** wakes up after a moment;
 one tap and the screen stamps **CAPTURED** (*Walk them through the Tube to
-the tent. Their phone shows them the way.*), with **📷 Next guest** and the
-board. From the capture until their reinstallation their phone is
+the tent. Their phone shows them the way.*), with the board (and **📷 Next
+guest** at the door); × goes back to where you opened the scanner (the
+board, if that is where you started). From the capture until their reinstallation their phone is
 **locked** (wave 26): only their pass and Bathroom Mode work, so walk
-them there yourself ([How the house works](house-workings.md)). **Not now** keeps the mark and your claim; **🩹 Not them…** (two
+them there yourself ([How the house works](house-workings.md)). **Not now** keeps the mark and your claim and closes the scanner, back
+where you opened it; **🩹 Not them…** (two
 taps) lifts the mark. From a card's **📡 Scan again** (not in person) 🛡
 takes two taps. A program someone else already caught says so (*Caught by
 …*).
@@ -278,8 +318,10 @@ the four of you share the door. During the opening rush a **🚪 At the
 door** pop-out appears only if nobody has had them for a minute; later, a
 late arrival pops at once: *Winamp is waiting at the Optical Drive*, with
 how long, **🙋 I've got Winamp** (the others see you have them, and your
-scanner opens captioned *📷 Scan Winamp's pass*) and **🚪 Door queue (n)**
-(everyone waiting and who has them, with **📷 Scan the next pass**).
+scanner opens captioned *Scan Winamp's pass*) and **🚪 Door queue (n)**
+(everyone waiting and who has them, with **📷 Scan the next pass**). A
+card or a scan opened from the Door queue comes back to the queue on ×.
+Left untouched for 45 seconds, the pop-out moves into **🔔 Waiting**.
 
 ## PLAYER SELECT, lists and targets
 
@@ -296,10 +338,13 @@ Some objectives work through several guests with no scans:
   everyone**, **Skip**, **Later**, then **+ Another round** while the
   objective is still open (never for a round that has ended). *PLAYER SELECT is ready* pops out
   when the game starts (on a player's booth, Mission's big button opens it
-  too); it opens by itself right after a caller booth's own cue.
+  too); it opens by itself right after a caller booth's own cue, and right
+  after a player's own press on the program the game landed on (Clippy's
+  🎱). While it is open nothing pops over it.
 - **📋 A list** (Adobe Acrobat's Truth Pong cups, Clippy's cup-makers, the
   summons' **Still missing**): one row per guest with its place and up to two
-  buttons (*🏓 Made* / *🏓 Missed · ×2*). A pressed row greys with ✓ and
+  buttons (*🏓 Made* / *🏓 Missed · ×2*). A card opened from a row comes
+  back to the list on ×. A pressed row greys with ✓ and
   leaves; *Done here* folds what you did. During the summons the guests
   check themselves in with the Desktop's QR, so **📍 They're here** is only
   for a dead or lost phone.

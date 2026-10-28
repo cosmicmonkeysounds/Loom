@@ -7,6 +7,8 @@ import { foldName } from "../avatars.ts";
 import type { SpaceGroup } from "../rooms/spaces.ts";
 import { badgeWorthy } from "../stream/badges.ts";
 import type { Channel, CountdownSummary, GuestCardView, Interaction, ObjectiveView, PrimeGuest, WalletQueueView } from "../types.ts";
+import type { CardSeed } from "./card.tsx";
+import type { BoothObjective } from "./wire.ts";
 
 /** An objective's reserved button words: a guest's own pass / scan, never a booth's story button. */
 const RESERVED = new Set(["pass", "scan"]);
@@ -580,10 +582,48 @@ export function passAccepted(cardOpen: boolean, busy: boolean, gateAllows: boole
   return !cardOpen && !busy && gateAllows;
 }
 
-/** What the scanner window's × (or Escape) does: over a card it goes back
- *  to the live camera for the next guest; on the camera it leaves. */
-export function scannerClose(cardOpen: boolean): "camera" | "leave" {
-  return cardOpen ? "camera" : "leave";
+/** The scanner window's caption: the claim's "Scan Winamp's pass", else
+ *  "Scan a pass". The title bar already draws the camera, so a caption that
+ *  leads with 📷 loses it (wave 37, C3: never "📷 📷 Scan …"). */
+export function scanTitle(caption?: string): string {
+  const c = (caption ?? "").replace(/^\s*📷\s*/u, "").trim();
+  return c !== "" ? c : "Scan a pass";
+}
+
+// --- the booth's layers (wave 37, C1 + C2: × means done, back where it started) ---
+
+/** What sits over the booth: the scanner, the Guests list, one guest's card,
+ *  or (wave 18) the Wanted board, a picker, the door queue, the 🔔 Waiting
+ *  window. A scan or a card opened from a window carries that window in
+ *  `back` (depth one), and closing it lands there. */
+export type Layer = OpenLayer | null;
+export type OpenLayer = (
+  | { kind: "scan"; guest?: string; caption?: string }
+  | { kind: "guests" }
+  | { kind: "card"; id: string; seed?: CardSeed; confront?: "rescan" }
+  | { kind: "wanted"; fresh: string[] }
+  | { kind: "pick"; objective: string; opened: BoothObjective }
+  | { kind: "door" }
+  | { kind: "waiting" }
+) & { back?: OpenLayer };
+
+/** Where a scan or a card opened over `current` goes back to on ×: the
+ *  Wanted board, the Door queue, 🗂 Guests, or a rows window (`rows`: the
+ *  open pick is a rows list, not PLAYER SELECT's steps). Never a scan, a
+ *  card or 🔔 Waiting, and never deeper than one: the window comes back as
+ *  it was (the board with its `fresh`), without a `back` of its own. */
+export function backFor(current: Layer, rows = false): OpenLayer | undefined {
+  if (current === null) return undefined;
+  const keep = current.kind === "wanted" || current.kind === "door" || current.kind === "guests" || (current.kind === "pick" && rows);
+  if (!keep) return undefined;
+  const { back: _deeper, ...flat } = current;
+  return flat as OpenLayer;
+}
+
+/** What the booth shows after a layer's ×, Escape or the phone's Back: the
+ *  window it was opened from, else the booth itself. */
+export function closeTo(layer: Layer): Layer {
+  return layer?.back ?? null;
 }
 
 /**

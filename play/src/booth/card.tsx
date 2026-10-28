@@ -57,7 +57,8 @@ function cardError(e: unknown, view?: Parameters<typeof scanError>[1]): string {
 
 /**
  * The card's body — used inside the scanner (the camera waits under it) and
- * inside its own window (`GuestCard`). `onNext` = back to the camera.
+ * inside its own window (`GuestCard`). `onNext` = back to the camera (door
+ * work only, wave 37 C3); `onLeave` = the scanner's × (C1).
  */
 export function GuestCardBody({
   session,
@@ -69,6 +70,8 @@ export function GuestCardBody({
   confront: confrontMode,
   onBoard,
   onConfrontDone,
+  onLeave,
+  onPress,
 }: {
   session: PrimeSession;
   guestId: string;
@@ -80,8 +83,12 @@ export function GuestCardBody({
   confront?: "rescan";
   /** Open the Wanted board (the captured screen's Board button). */
   onBoard?: () => void;
-  /** Where the confrontation's Not now / Next guest go (default: `onNext`, else back to the card). */
+  /** Where the confrontation's Not now goes (default: `onLeave`, else back to the card). */
   onConfrontDone?: () => void;
+  /** Wave 37 (C1): leave the scanner (its ×): a confrontation's Not now from a scan's card. */
+  onLeave?: () => void;
+  /** Wave 37 (C14): a face button is about to be pressed (the booth notes its own fire). */
+  onPress?: (id: string) => void;
 }) {
   const [card, setCard] = useState<GuestCardView | null>(seed?.card ?? null);
   // What the last press / scan came to (C1): replies, the character's
@@ -190,6 +197,7 @@ export function GuestCardBody({
       setBusy(i.id);
       setErr("");
       setOutcome(null);
+      onPress?.(i.id);
       session.act(i.id, guestId).then(
         (r) => {
           setBusy(null);
@@ -289,12 +297,16 @@ export function GuestCardBody({
             press={(id) => session.act(id, guestId)}
             onNotNow={() => {
               setConfront(null);
-              (onConfrontDone ?? onNext)?.();
+              (onConfrontDone ?? onLeave)?.();
             }}
-            onNext={() => {
-              setConfront(null);
-              (onConfrontDone ?? onNext)?.();
-            }}
+            onNext={
+              onNext !== undefined
+                ? () => {
+                    setConfront(null);
+                    onNext();
+                  }
+                : undefined
+            }
             onBoard={onBoard}
           />
         </div>
@@ -340,7 +352,8 @@ export function GuestCardBody({
             ))}
           </ul>
         )}
-        {outcome !== null && <Outcome lines={outcome} />}
+        {/* C12: the result first; what the story said folds under it (a new press remounts it, folded). */}
+        {outcome !== null && <Outcome lines={outcome} foldSaid />}
         {err && (
           <div className="booth-err" role="alert">
             {err}
@@ -401,18 +414,39 @@ export function noneLine({ player, name, character, objectives }: { player: bool
   return objectives > 0 ? `Nothing your objective needs on ${name} right now.` : `Nothing for ${character} to press on ${name} right now.`;
 }
 
+/** Wave 37 (C12): which lines show at once and which fold behind *What
+ *  the story said*. With `foldSaid`, the character's `said` lines (the
+ *  guest's Tube narration) fold once there is a result to lead with (a
+ *  reply or a staff line that is not a refusal); said lines alone stay
+ *  open (they are the result), and so do they beside a refusal: on a host
+ *  booth a refused press may say why only through the character's line. */
+export function outcomeSplit(lines: readonly OutcomeLine[], foldSaid: boolean): { shown: OutcomeLine[]; folded: OutcomeLine[] } {
+  const lead = lines.some((l) => l.kind === "reply" || (l.kind === "staff" && !l.refused));
+  if (!foldSaid || !lead) return { shown: [...lines], folded: [] };
+  return { shown: lines.filter((l) => l.kind !== "said"), folded: lines.filter((l) => l.kind === "said") };
+}
+
+function SaidLine({ l }: { l: Extract<OutcomeLine, { kind: "said" }> }) {
+  return (
+    <p className="booth-said">
+      <span className="booth-said-from">{l.from !== "" ? `${l.from}:` : "Said:"}</span> {l.text}
+    </p>
+  );
+}
+
 /** What the last press or scan came to: the story's reply, the character's
- *  own line to the guest, a refusal from the staff room, or "no reply". */
-export function Outcome({ lines }: { lines: readonly OutcomeLine[] }) {
+ *  own line to the guest, a refusal from the staff room, or "no reply".
+ *  `foldSaid` (the card, wave 37 C12): replies in full, said lines folded. */
+export function Outcome({ lines, foldSaid = false }: { lines: readonly OutcomeLine[]; foldSaid?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const { shown, folded } = outcomeSplit(lines, foldSaid);
   const refused = lines.some((l) => l.kind === "staff" && l.refused);
   const none = lines.every((l) => l.kind === "none");
   return (
     <div className={`booth-reply ${none ? "none" : "w95-inset"}${refused ? " refused" : ""}`} role="status" aria-live="polite">
-      {lines.map((l, n) =>
+      {shown.map((l, n) =>
         l.kind === "said" ? (
-          <p key={n} className="booth-said">
-            <span className="booth-said-from">{l.from !== "" ? `${l.from}:` : "Said:"}</span> {l.text}
-          </p>
+          <SaidLine key={n} l={l} />
         ) : l.kind === "staff" ? (
           <p key={n} className={l.refused ? "booth-refusal" : "booth-staff"}>
             {l.refused && <BoothIcon name="warning" className="booth-refusal-ico" />}
@@ -423,6 +457,14 @@ export function Outcome({ lines }: { lines: readonly OutcomeLine[] }) {
             {l.text}
           </p>
         ),
+      )}
+      {folded.length > 0 && (
+        <div className="booth-earlier">
+          <button type="button" className="booth-fold" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+            {open ? "▾" : "▸"} What the story said
+          </button>
+          {open && folded.map((l, n) => (l.kind === "said" ? <SaidLine key={n} l={l} /> : null))}
+        </div>
       )}
     </div>
   );
@@ -438,6 +480,7 @@ export function GuestCard({
   onOpenThread,
   confront,
   onBoard,
+  onPress,
 }: {
   session: PrimeSession;
   guestId: string;
@@ -447,12 +490,14 @@ export function GuestCard({
   onOpenThread: () => void;
   confront?: "rescan";
   onBoard?: () => void;
+  /** Wave 37 (C14): a face button is about to be pressed. */
+  onPress?: (id: string) => void;
 }) {
   const name = session.view?.guests.find((g) => g.id === guestId)?.name ?? seed?.card?.guest.name ?? guestId;
   return (
     <BoothLayer title={<CardTitle name={name} />} label={`${name}'s card`} onClose={onClose} dock={false}>
       {/* Keyed per guest: a card's held face, outcome and fold never carry over to another guest. */}
-      <GuestCardBody key={guestId} session={session} guestId={guestId} seed={seed} admin={admin} onOpenThread={onOpenThread} confront={confront} onBoard={onBoard} onConfrontDone={confront === "rescan" ? onClose : undefined} />
+      <GuestCardBody key={guestId} session={session} guestId={guestId} seed={seed} admin={admin} onOpenThread={onOpenThread} confront={confront} onBoard={onBoard} onConfrontDone={confront === "rescan" ? onClose : undefined} onPress={onPress} />
     </BoothLayer>
   );
 }
