@@ -431,7 +431,7 @@ async def test_health_publishes_the_stats_retained():
     await asyncio.sleep(0.05)
     task.cancel()
     stats = json.loads(lights.mqtt.retained["health/lights/stats"])
-    assert set(stats) == {"fixtures", "looks", "devices", "last_look", "last_at", "z2m"}
+    assert set(stats) == {"fixtures", "looks", "devices", "last_look", "last_at", "z2m", "pulsed", "shown_posts"}
     assert stats["fixtures"] == 5 and stats["last_look"] == "heart_idle"
 
 
