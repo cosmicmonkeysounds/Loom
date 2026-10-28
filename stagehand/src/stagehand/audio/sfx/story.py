@@ -58,7 +58,7 @@ def access_denied(rng: np.random.Generator) -> np.ndarray:
     x = dsp.mix((buzz(0.2), 0.0), (buzz(0.32), 0.27), seconds=s)
     speaker = dsp.filt(x, dsp.Biquad.highpass(320, 0.9), dsp.Biquad.peak(1400, 6, 1.5), dsp.Biquad.lowpass(4200))
     hum = dsp.white(s, rng) * 0.004
-    return dsp.soft_clip(speaker * 0.6, 4) + hum
+    return dsp.dc_block(dsp.soft_clip(speaker * 0.6, 4)) + hum  # a tanh on a lopsided buzz leaves DC
 
 
 # -- beans ---------------------------------------------------------------------------

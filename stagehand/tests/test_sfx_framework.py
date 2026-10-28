@@ -194,8 +194,11 @@ def test_each_one_shot_ends_in_its_own_decay(name, rendered):
 @pytest.mark.parametrize("name", NAMES)
 def test_each_sound_has_no_dc_or_sub_audio_rumble(name, rendered):
     x, _ = rendered[name]
+    # a one-shot is held tighter: a tanh on a lopsided buzz without a
+    # dc_block after it (access_denied, wave 38 review) sat at 0.011
+    dc = 0.02 if SFX[name].loop else 2e-3
     for c in channels(x.astype(np.float64)):
-        assert abs(float(c.mean())) <= 0.02, f"{name}: DC offset {c.mean():.3f}"
+        assert abs(float(c.mean())) <= dc, f"{name}: DC offset {c.mean():.4f}"
         spec = np.abs(np.fft.rfft(c)) ** 2
         f = np.fft.rfftfreq(len(c), 1 / R.RATE)
         assert spec[f < 20].sum() <= 0.05 * spec.sum(), f"{name}: more than 5 % of its energy is below 20 Hz"
