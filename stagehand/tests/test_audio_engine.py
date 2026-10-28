@@ -103,6 +103,12 @@ def test_section_defaults(tmp_path):
     assert parse_audio_section(None, str(tmp_path)) == cfg
 
 
+def test_a_role_may_set_its_own_sidechain_threshold(tmp_path):
+    cfg = parse_audio_section({"sidechain": {"threshold_db": -45, "roles": {"clippy": {"threshold_db": -30}, "tv": {}}}}, str(tmp_path))
+    sc = cfg.sidechain
+    assert sc.threshold_for("clippy") == -30 and sc.threshold_for("tv") == -45 and sc.threshold_for("trabolta") == -45
+
+
 def test_section_paths_resolve_beside_the_yaml(tmp_path):
     (tmp_path / "a.json").write_text("{}")
     cfg = parse_audio_section({"sounds_dir": "media", "config_file": "a.json", "latency": 0.02, "mqtt": {"host": "127.0.0.1"}}, str(tmp_path))
@@ -132,6 +138,10 @@ def test_section_paths_resolve_beside_the_yaml(tmp_path):
         ({"priority": {"takeover": {"music": -60}}}, r"takeover\.music: fixed"),
         ({"sidechain": {"threshold": -40}}, r"sidechain\.threshold"),
         ({"sidechain": {"attack_s": 0}}, r"sidechain\.attack_s"),
+        ({"sidechain": {"roles": ["clippy"]}}, r"sidechain\.roles: a mapping"),
+        ({"sidechain": {"roles": {"clippy": {"threshold_db": 5}}}}, r"sidechain\.roles\.clippy\.threshold_db: a number"),
+        ({"sidechain": {"roles": {"clippy": {"hold_s": 1}}}}, r"sidechain\.roles\.clippy\.hold_s: unknown"),
+        ({"sidechain": {"roles": {"announce": {"threshold_db": -30}}}}, r"sidechain\.roles\.announce: an audio\.json input role"),
         ([], "mapping"),
     ],
 )

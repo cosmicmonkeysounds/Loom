@@ -385,7 +385,15 @@ audio:
     announce: { music: -15, sfx: -12 }   # the router's own announcements
     clippy:   { music: -12 }             # Clippy's wireless (role: clippy; reach: living)
                                   # (takeover: a soundtrack track silences the music on its speakers)
-  sidechain: { threshold_db: -45, attack_s: 0.04, hold_s: 0.8, release_s: 1.2 }
+  sidechain:                      # a block peak over threshold_db opens a role's duck
+    threshold_db: -45             # the TV's clean line (Trabolta): low, so a quiet line still ducks
+    attack_s: 0.04
+    hold_s: 0.8
+    release_s: 1.2
+    roles:                        # a role's own threshold: Clippy's open lav in the living room
+      clippy: { threshold_db: -30 }   # hears the party; at -45 it would hold the music down all
+                                  # night. Rehearsal: the music at party level, the lav idle, read
+                                  # input 1's peak (`stagehand music status`) and set this ~6 dB over it
   no_duck: [dance_song, rave, hand_jive]   # never ducked (by anything)
   soundtrack: media/soundtrack.yaml   # wave 38 (C3): the music beds, one set per act — the
                                   # scene from `cue music_<scene>` / Night.music (the catch-up);

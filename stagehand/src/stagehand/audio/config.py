@@ -210,17 +210,33 @@ def _sidechain(doc: dict) -> Sidechain:
     if raw is None:
         return Sidechain()
     if not isinstance(raw, dict):
-        raise ConfigError("audio.sidechain: a mapping (threshold_db, attack_s, hold_s, release_s)")
-    known = {"threshold_db", "attack_s", "hold_s", "release_s"}
+        raise ConfigError("audio.sidechain: a mapping (threshold_db, attack_s, hold_s, release_s, roles)")
+    known = {"threshold_db", "attack_s", "hold_s", "release_s", "roles"}
     extra = sorted(set(raw) - known)
     if extra:
-        raise ConfigError(f"audio.sidechain.{extra[0]}: unknown (threshold_db, attack_s, hold_s, release_s)")
+        raise ConfigError(f"audio.sidechain.{extra[0]}: unknown (threshold_db, attack_s, hold_s, release_s, roles)")
     d = Sidechain()
+    threshold = _num(raw, "threshold_db", d.threshold_db, -100, 0, "audio.sidechain.")
+    roles_raw = raw.get("roles") or {}
+    if not isinstance(roles_raw, dict):
+        raise ConfigError("audio.sidechain.roles: a mapping of role → {threshold_db}")
+    roles: list[tuple[str, float]] = []
+    for role, spec in roles_raw.items():
+        where = f"audio.sidechain.roles.{role}"
+        if not isinstance(role, str) or not role or role in RESERVED_SOURCES:
+            raise ConfigError(f"{where}: an audio.json input role (not {' or '.join(RESERVED_SOURCES)})")
+        if not isinstance(spec, dict):
+            raise ConfigError(f"{where}: a mapping ({{threshold_db: N}})")
+        bad = sorted(set(spec) - {"threshold_db"})
+        if bad:
+            raise ConfigError(f"{where}.{bad[0]}: unknown (threshold_db)")
+        roles.append((role, _num(spec, "threshold_db", threshold, -100, 0, f"{where}.")))
     return Sidechain(
-        threshold_db=_num(raw, "threshold_db", d.threshold_db, -100, 0, "audio.sidechain."),
+        threshold_db=threshold,
         attack_s=_num(raw, "attack_s", d.attack_s, 0.001, 10, "audio.sidechain."),
         hold_s=_num(raw, "hold_s", d.hold_s, 0, 30, "audio.sidechain."),
         release_s=_num(raw, "release_s", d.release_s, 0.001, 30, "audio.sidechain."),
+        roles=tuple(roles),
     )
 
 

@@ -393,7 +393,9 @@ class AudioRouter:
             + (f" (announce held {cfg.duck_hold_s:g}s per alexa announcement)" if not cfg.announce and cfg.duck_hold_s > 0 else "")
             + (f"; never ducked: {', '.join(cfg.no_duck)}" if cfg.no_duck else ""),
             f"sidechain: {'the inputs with a role, ' if cfg.passthrough else 'off (output-only stream: passthrough is false) — '}"
-            f"over {cfg.sidechain.threshold_db:+.0f} dBFS, attack {cfg.sidechain.attack_s:g}s, hold {cfg.sidechain.hold_s:g}s, release {cfg.sidechain.release_s:g}s",
+            f"over {cfg.sidechain.threshold_db:+.0f} dBFS"
+            + "".join(f", {role} over {db:+.0f} dBFS" for role, db in cfg.sidechain.roles)
+            + f", attack {cfg.sidechain.attack_s:g}s, hold {cfg.sidechain.hold_s:g}s, release {cfg.sidechain.release_s:g}s",
             *(
                 cfg.soundtrack.describe()
                 + [f"music    : scenes from `cue music_<scene>`, {cfg.music_topic if cfg.mqtt else 'no broker'}, the catch-up (night.music); tracks (takeover): {', '.join(cfg.soundtrack.tracks) or 'none'}"]

@@ -124,12 +124,18 @@ class Sidechain:
     """How an input's level opens its source (YAML `audio.sidechain`): a
     block peak over `threshold_db` opens it, it stays open `hold_s` after
     the last such block, and the activity rises to 1 over `attack_s` and
-    falls to 0 over `release_s` (linearly)."""
+    falls to 0 over `release_s` (linearly). `roles` gives a role its own
+    threshold ((role, dB) pairs: Clippy's open lav in the loudest room
+    needs a higher one than the TV's clean line)."""
 
     threshold_db: float = -45.0
     attack_s: float = 0.04
     hold_s: float = 0.8
     release_s: float = 1.2
+    roles: tuple[tuple[str, float], ...] = ()
+
+    def threshold_for(self, role: str) -> float:
+        return next((db for name, db in self.roles if name == role), self.threshold_db)
 
 
 @dataclass(frozen=True)
@@ -150,7 +156,7 @@ class _Source:
     """A priority source's state (the audio thread's)."""
 
     name: str
-    kind: str  # input | announce | takeover
+    kind: str  # input | announce | takeover | ghost (a dropped input's release)
     mask: np.ndarray  # bool per output: the reach
     inputs: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.intp))
     attack: int = 1
@@ -304,6 +310,10 @@ class Mixer:
         # and the duck gain each bus ended the last block on, per output.
         self._depth: dict[str, np.ndarray] = {}
         self._inputs: list[_Source] = []
+        #: Release-only copies of input sources a new source list dropped (or
+        #: whose reach shrank) while they were ducking: the duck releases
+        #: over `release_s` instead of snapping off in one block.
+        self._ghosts: list[_Source] = []
         everywhere = np.ones(n_out, dtype=bool)
         self._announce = _Source(ANNOUNCE, "announce", everywhere.copy(), attack=max(1, int(ANNOUNCE_ATTACK_S * rate)), release=max(1, int(ANNOUNCE_RELEASE_S * rate)))
         self._takeover = _Source(TAKEOVER, "takeover", np.zeros(n_out, dtype=bool), attack=max(1, int(TAKEOVER_ATTACK_S * rate)), release=max(1, int(TAKEOVER_RELEASE_S * rate)))
@@ -537,7 +547,7 @@ class Mixer:
 
     def _activities(self) -> dict[str, float]:
         out = {ANNOUNCE: self._announce.a, TAKEOVER: self._takeover.a}
-        for s in list(self._inputs):
+        for s in [*self._inputs, *self._ghosts]:
             out[s.name] = max(out.get(s.name, 0.0), s.a)
         return out
 
@@ -566,7 +576,7 @@ class Mixer:
         src.attack = max(1, int(sc.attack_s * self.rate))
         src.release = max(1, int(sc.release_s * self.rate))
         src.hold = max(0, int(sc.hold_s * self.rate))
-        src.threshold = db_to_lin(sc.threshold_db)
+        src.threshold = db_to_lin(sc.threshold_for(src.name))
 
     # -- the audio thread ----------------------------------------------------
 
@@ -620,6 +630,19 @@ class Mixer:
                     prev = old.get(s.name)
                     if prev is not None:
                         s.a, s.hold_left = prev.a, prev.hold_left
+                # A source still ducking that is dropped (its role removed or
+                # renamed, its input past the device) or whose reach shrank
+                # leaves a ghost on the outputs it no longer covers.
+                for prev in self._inputs:
+                    if prev.a <= 0.0:
+                        continue
+                    kept = np.zeros(self.n_out, dtype=bool)
+                    for s in arg:
+                        if s.name == prev.name:
+                            kept |= s.mask
+                    left = prev.mask & ~kept
+                    if left.any():
+                        self._ghosts.append(_Source(prev.name, "ghost", left, release=prev.release, a=prev.a))
                 self._inputs = arg
             elif kind == "sidechain":
                 self.sidechain = arg
@@ -700,6 +723,10 @@ class Mixer:
                 on = s.hold_left > 0
                 s.hold_left = max(0, s.hold_left - frames)
             self._move(s, on, frames)
+        if self._ghosts:
+            for g in self._ghosts:
+                self._move(g, False, frames)
+            self._ghosts = [g for g in self._ghosts if g.a > 0.0]
         # The built-ins: their reach is what is playing now (kept through
         # the release, so a duck never snaps back on the last block).
         ann = np.zeros(self.n_out, dtype=bool)
@@ -729,7 +756,7 @@ class Mixer:
         """(len(DUCKED), n_out): min over the sources reaching each output
         of 1 − a·(1 − depth)."""
         g = np.ones((len(DUCKED), self.n_out), dtype=np.float32)
-        for s in (*self._inputs, self._announce, self._takeover):
+        for s in (*self._inputs, *self._ghosts, self._announce, self._takeover):
             if s.a <= 0.0 or (exempt_takeover and s.kind == "takeover"):
                 continue
             depth = self._depth.get(s.name)

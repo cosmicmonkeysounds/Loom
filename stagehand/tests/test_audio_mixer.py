@@ -402,6 +402,52 @@ def test_a_source_keeps_its_activity_across_a_new_source_list_and_reserved_names
         m.set_sources([{"name": "takeover", "inputs": [1], "reach": [1]}])
 
 
+def test_a_dropped_source_releases_its_duck_instead_of_snapping_off():
+    # An audio.json edit during Trabolta's talk drops (or renames) his role:
+    # the duck still releases over release_s (0.3 s here), never in a block.
+    m = ducker(n_out=2)
+    m.play(tone(20_000, 0.1), {1: 0.0, 2: 0.0}, bus="music", fade_in_s=0)
+    for _ in range(3):
+        out = talk(m, trabolta=0.5)
+    ducked = 0.1 * db_to_lin(-18)
+    assert out[-1, 0] == pytest.approx(ducked, rel=0.02)
+    m.set_sources([])
+    out = talk(m)
+    assert out[0, 0] == pytest.approx(ducked, rel=0.05)  # no jump at the change
+    assert out[-1, 0] < 0.1 * db_to_lin(-6)  # one block on: still well down
+    assert m.activity("trabolta") == pytest.approx(2 / 3, abs=0.01)
+    for _ in range(3):
+        out = talk(m)
+    assert out[-1, 0] == pytest.approx(0.1, rel=1e-3) and m.activity("trabolta") == 0.0 and m._ghosts == []
+
+
+def test_a_shrunk_reach_releases_on_the_outputs_it_left():
+    m = ducker(n_out=2)
+    m.play(tone(20_000, 0.1), {1: 0.0, 2: 0.0}, bus="music", fade_in_s=0)
+    for _ in range(3):
+        talk(m, trabolta=0.5)
+    m.set_sources([SidechainSource("trabolta", (1,), (1,))])  # now only output 1
+    out = talk(m, trabolta=0.5)
+    ducked = 0.1 * db_to_lin(-18)
+    assert out[-1, 0] == pytest.approx(ducked, rel=0.02)  # still held where it reaches
+    assert ducked * 1.1 < out[-1, 1] < 0.1 * db_to_lin(-6)  # releasing where it left
+    for _ in range(3):
+        out = talk(m, trabolta=0.5)
+    assert out[-1, 1] == pytest.approx(0.1, rel=1e-3) and out[-1, 0] == pytest.approx(ducked, rel=0.02)
+
+
+def test_a_role_can_have_its_own_threshold():
+    sc = Sidechain(threshold_db=-45, attack_s=0.1, hold_s=0.2, release_s=0.3, roles=(("clippy", -20.0),))
+    m = Mixer(2, 1, RATE, sidechain=sc, priority=PRIORITY)
+    m.set_sources([SidechainSource("trabolta", (1,), (1,)), SidechainSource("clippy", (2,), (1,))])
+    for _ in range(3):
+        talk(m, trabolta=db_to_lin(-30), clippy=db_to_lin(-30))  # the lav's room noise
+    assert m.activity("trabolta") == 1.0 and m.activity("clippy") == 0.0
+    for _ in range(3):
+        talk(m, clippy=db_to_lin(-12))  # Clippy speaks
+    assert m.activity("clippy") == 1.0
+
+
 def test_two_inputs_with_one_role_take_the_louder():
     m = Mixer(2, 1, RATE, sidechain=FAST, priority=PRIORITY)
     m.set_sources([SidechainSource("clippy", (1,), (1,)), SidechainSource("clippy", (2,), (1,))])

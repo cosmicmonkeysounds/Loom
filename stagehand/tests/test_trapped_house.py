@@ -115,6 +115,8 @@ def test_the_house_config_loads():
     assert audio.passthrough is True
     assert audio.priority == {"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}}
     assert audio.sidechain.threshold_db == -45 and audio.sidechain.hold_s == 0.8
+    # Clippy's open lav hears the party: its own, higher threshold (the TV keeps -45).
+    assert audio.sidechain.threshold_for("clippy") == -30 and audio.sidechain.threshold_for("trabolta") == -45
     assert audio.mqtt is not None and ipaddress.ip_address(audio.mqtt.host).is_loopback
     assert set(audio.no_duck) == {n for n, s in load_manifest().items() if s.no_duck} == {"dance_song", "rave", "hand_jive"}
     # The uplink-down boot routes from the repo's files.
