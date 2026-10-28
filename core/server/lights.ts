@@ -15,12 +15,13 @@
 //! 4. `defaultLights()` (no fixtures, no looks).
 //!
 //! Routes (a mod token or the author's session; none on the host allowlist):
-//! - `GET /api/mod/lights[?after=<version>&tests=<seq>&pairs=<seq>&devicesAt=<ms>&wait=<s>&module=1&name=<host>]`
+//! - `GET /api/mod/lights[?after=<version>&tests=<seq>&pairs=<seq>&devicesAt=<ms>&presence=<seq>&wait=<s>&module=1&name=<host>]`
 //!   → `LightsView`; with `after` it is a long poll (the module, the map
 //!   editor): it answers at once when the version moved on, a test / pair
-//!   newer than the cursors is pending or the device list is newer than
-//!   `devicesAt` (the last view's), else after the first change (a
-//!   save, a project snapshot, a test, a pair, a new device list) or `wait`
+//!   newer than the cursors is pending, the device list is newer than
+//!   `devicesAt` (the last view's) or the presence set is not `presence`'s,
+//!   else after the first change (a save, a project snapshot, a test, a
+//!   pair, a new device list, a presence change) or `wait`
 //!   seconds (default 25, at most 30). `module=1` records the module's
 //!   presence (`LightsView.module`);
 //! - `POST /api/mod/lights {lights, base?}` → the director's save (400
@@ -34,7 +35,18 @@
 //! - `POST /api/mod/lights/devices {devices}` → the module's reduced
 //!   Zigbee2MQTT device + group list (memory only, replaced whole);
 //! - `POST /api/mod/lights/pair {seconds}` → let new Zigbee devices join for
-//!   that long (0 closes; memory only).
+//!   that long (0 closes; memory only);
+//! - (wave 39) `POST /api/mod/lights/shown {fixtures: {[id]: LightState}}` →
+//!   the module's model of what every fixture shows (memory only, replaced
+//!   whole; unknown ids and bad states dropped). The games' `lights` frame
+//!   reads it while it is fresh (`LIGHTS_SHOWN_FRESH_MS`) and the module is
+//!   online; else the server's own estimate (`lights-shown.ts`).
+//!
+//! (wave 39) **Presence**: the spatial hub judges which fixtures have a
+//! program under them in the games (`presenceStep`) and hands the set here
+//! (`setPresence`) when it changes; it rides the GET as `presence {seq,
+//! fixtures}`, and a `presence=<seq>` cursor answers the long poll at once
+//! when the set moved on.
 //!
 //! Transport-light: `LightsHub` takes an injected clock and store; the
 //! handlers take the runtime's context.
@@ -49,11 +61,14 @@ import {
   lightStateDoes,
   lightStateProblems,
   lightsHash,
+  samePulsed,
   validateLights,
+  type GameLightsSource,
   type HouseMap,
   type LightCaps,
   type LightState,
   type LightsConfig,
+  type PresenceEntry,
 } from "@loom/house";
 
 import type { SimModel } from "../src/runtime/sim/model.ts";
@@ -140,7 +155,23 @@ export interface LightsView {
    *  stamp here (a pairing's `until`, `module.at`, `devicesAt`), so a
    *  client counts down without trusting its own clock. */
   now: number;
+  /** (wave 39) The fixtures a program in the games is under now (the
+   *  spatial hub's `presenceStep`, held `LIGHT_PRESENCE_HOLD_MS` after the
+   *  last one left): the module pulses them. `seq` moves on every change of
+   *  the set (the GET's `presence=<seq>` cursor); `since` is server ms;
+   *  fixtures in file order. An older module ignores the field. */
+  presence: LightsPresenceView;
 }
+
+/** (wave 39) `LightsView.presence`. */
+export interface LightsPresenceView {
+  seq: number;
+  fixtures: Array<{ fixture: string; since: number }>;
+}
+
+/** (wave 39) What changed on the hub (`LightsHub.onChange`): the games'
+ *  `lights` frame follows each. `module`: the module came online or went away. */
+export type LightsChange = { kind: "config" } | { kind: "test"; test: LightTest } | { kind: "shown" } | { kind: "presence" } | { kind: "module" };
 
 /** How many tests ride a GET, and for how long. Wave 25: 32, not 8 — a
  *  house-desk cue queues a burst (a `look` plus one `{fixture, set}` per
@@ -159,6 +190,9 @@ export const LIGHT_DEVICES_MAX = 500;
 export const LIGHT_DEVICES_MAX_BYTES = 256 * 1024;
 /** Zigbee2MQTT's permit-join ceiling (seconds). */
 export const LIGHT_PAIR_MAX_S = 254;
+/** (wave 39) The module's `shown` report counts this long (ms): it posts
+ *  every 20 s anyway, so a live module never goes stale between two. */
+export const LIGHTS_SHOWN_FRESH_MS = 30_000;
 
 /** Is `path` the project's lights file (at the project's root)? */
 export function isLightsFile(path: string): boolean {
@@ -245,6 +279,18 @@ export function parseZ2mDevice(raw: unknown): Z2mDevice | null {
   return out;
 }
 
+/** (wave 39) A `shown` report's fixtures: ids the config in force lacks and
+ *  states `lightStateProblems` refuses are dropped (never the whole post). */
+export function parseShown(raw: Readonly<Record<string, unknown>>, lights: LightsConfig): Record<string, LightState> {
+  const ids = new Set(lights.fixtures.map((f) => f.id));
+  const out: Record<string, LightState> = {};
+  for (const [id, state] of Object.entries(raw)) {
+    if (!ids.has(id) || lightStateProblems(id, state).length > 0) continue;
+    out[id] = { ...(state as LightState) };
+  }
+  return out;
+}
+
 export interface LightsHubInit {
   store: Store;
   /** The project's `lights.json` text as the row snapshotted it: null = the
@@ -277,6 +323,14 @@ export class LightsHub {
   private moduleParked = 0;
   /** A problem logged once per text, not per request. */
   private readonly warned = new Set<string>();
+  /** (wave 39) The pulsed fixtures (the spatial hub's last step) and the
+   *  presence cursor. Memory only. */
+  private pulsed: ReadonlyMap<string, PresenceEntry> = new Map();
+  private presenceCounter = 0;
+  /** (wave 39) The module's last `shown` report and when it came. */
+  private shownMap: Record<string, LightState> = {};
+  private shownSeenAt: number | null = null;
+  private readonly listeners = new Set<(c: LightsChange) => void>();
 
   constructor(init: LightsHubInit) {
     this.store = init.store;
@@ -298,7 +352,10 @@ export class LightsHub {
     const was = this.current().version;
     this.projectText = text;
     this.store.saveLights(text);
-    if (this.current().version !== was) this.wake();
+    if (this.current().version !== was) {
+      this.wake();
+      this.emit({ kind: "config" });
+    }
   }
 
   /** The config in force, its version (content hash) and where it is from. */
@@ -308,13 +365,23 @@ export class LightsHub {
   }
 
   current(): { lights: LightsConfig; version: string; source: LightsSource } {
-    const pick = (lights: LightsConfig, source: LightsSource) => ({ lights, version: lightsHash(lights), source });
-    if (this.director !== null) return pick(this.director, "director");
+    const { lights, source } = this.inForce();
+    return { lights, version: lightsHash(lights), source };
+  }
+
+  /** (wave 39) The config in force without its hash: the presence step
+   *  reads it on every pose flush. */
+  config(): LightsConfig {
+    return this.inForce().lights;
+  }
+
+  private inForce(): { lights: LightsConfig; source: LightsSource } {
+    if (this.director !== null) return { lights: this.director, source: "director" };
     const project = this.projectLights();
-    if (project !== null) return pick(project, "project");
+    if (project !== null) return { lights: project, source: "project" };
     const env = this.envLights();
-    if (env !== null) return pick(env, "env");
-    return pick(defaultLights(), "default");
+    if (env !== null) return { lights: env, source: "env" };
+    return { lights: defaultLights(), source: "default" };
   }
 
   private projectLights(): LightsConfig | null {
@@ -368,6 +435,7 @@ export class LightsHub {
     this.director = lights;
     this.store.saveLightsSave(lights);
     this.wake();
+    this.emit({ kind: "config" });
     return { status: 200, version: lightsHash(lights), warnings: v.warnings };
   }
 
@@ -379,17 +447,22 @@ export class LightsHub {
     this.director = null;
     this.store.clearLightsSave();
     this.wake();
+    this.emit({ kind: "config" });
   }
 
   /** The module polled (or answered a long poll): it is listening. */
   noteModule(name: string | null): void {
+    const was = this.module()?.online === true;
     this.moduleSeenAt = this.now();
     if (name !== null && name.trim() !== "") this.moduleName = name.trim().slice(0, 64);
+    if (!was) this.emit({ kind: "module" });
   }
 
   /** A module long poll parked (+1) or let go (−1). */
   moduleWaiting(delta: 1 | -1): void {
+    const was = this.module()?.online === true;
     this.moduleParked = Math.max(0, this.moduleParked + delta);
+    if ((this.module()?.online === true) !== was) this.emit({ kind: "module" });
   }
 
   /** The module's presence, null when it never polled this server. */
@@ -405,6 +478,7 @@ export class LightsHub {
     this.testLog.push(test);
     if (this.testLog.length > LIGHT_TESTS) this.testLog.shift();
     this.wake();
+    this.emit({ kind: "test", test });
     return test;
   }
 
@@ -443,11 +517,93 @@ export class LightsHub {
     return { devices: [...this.deviceList], devicesAt: this.devicesSeenAt };
   }
 
+  // -- (wave 39) presence and what the fixtures show --------------------------
+
+  /** The spatial hub's presence step: when the pulsed *set* changed
+   *  (`samePulsed`), `presenceSeq` moves on, the long poll wakes and the
+   *  games' frame follows. The same set with new times is kept quietly. */
+  setPresence(entries: ReadonlyMap<string, PresenceEntry>): void {
+    const changed = !samePulsed(this.pulsed, entries);
+    this.pulsed = new Map(entries);
+    if (!changed) return;
+    this.presenceCounter++;
+    this.wake();
+    this.emit({ kind: "presence" });
+  }
+
+  /** The presence cursor: moves on with every change of the pulsed set. */
+  get presenceSeq(): number {
+    return this.presenceCounter;
+  }
+
+  /** The pulsed fixture ids now (any order). */
+  pulsedIds(): Set<string> {
+    return new Set(this.pulsed.keys());
+  }
+
+  /** `LightsView.presence`: the pulsed fixtures of the config in force, in file order. */
+  presenceView(): LightsPresenceView {
+    const fixtures: LightsPresenceView["fixtures"] = [];
+    for (const f of this.config().fixtures) {
+      const e = this.pulsed.get(f.id);
+      if (e !== undefined) fixtures.push({ fixture: f.id, since: e.since });
+    }
+    return { seq: this.presenceCounter, fixtures };
+  }
+
+  /** The module's `shown` report, replaced whole (already checked). */
+  setShown(fixtures: Record<string, LightState>): void {
+    this.shownMap = fixtures;
+    this.shownSeenAt = this.now();
+    this.emit({ kind: "shown" });
+  }
+
+  /** The module's last report (null: never) and when it came. */
+  shown(): { fixtures: Record<string, LightState>; at: number } | null {
+    return this.shownSeenAt === null ? null : { fixtures: this.shownMap, at: this.shownSeenAt };
+  }
+
+  /** Where the games' fixture states come from now: the module's report
+   *  while it is online and the report is ≤ `LIGHTS_SHOWN_FRESH_MS` old,
+   *  else the server's estimate. */
+  gameSource(): GameLightsSource {
+    const at = this.shownSeenAt;
+    return at !== null && this.now() - at <= LIGHTS_SHOWN_FRESH_MS && this.module()?.online === true ? "house" : "estimate";
+  }
+
+  /** When the source turns `estimate` by itself, with nothing posted (the
+   *  report going stale, the module's window lapsing); null when it is
+   *  `estimate` already or only an event can turn it (a parked module). */
+  sourceFlipAt(): number | null {
+    if (this.gameSource() !== "house") return null;
+    const stale = this.shownSeenAt! + LIGHTS_SHOWN_FRESH_MS + 1;
+    const away = this.moduleParked > 0 ? Infinity : this.moduleSeenAt! + LIGHTS_MODULE_ONLINE_MS;
+    return Math.min(stale, away);
+  }
+
+  /** Hear every change the games' frame follows; returns the unsubscribe. */
+  onChange(fn: (c: LightsChange) => void): () => void {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  private emit(c: LightsChange): void {
+    for (const fn of [...this.listeners]) {
+      try {
+        fn(c);
+      } catch (err) {
+        process.stderr.write(`  ⚠️  lights: a change listener failed (${err instanceof Error ? err.message : String(err)})\n`);
+      }
+    }
+  }
+
   /** Is anything newer than the poller's view? A cursor past this hub's own
    *  counter was issued by an earlier process (a server restart counts from
    *  1 again): stale, so the poll answers at once. */
-  moved(after: string, testsAfter: number | null, pairsAfter: number | null = null, devicesAfter: number | null = null): boolean {
+  moved(after: string, testsAfter: number | null, pairsAfter: number | null = null, devicesAfter: number | null = null, presenceAfter: number | null = null): boolean {
     if (this.current().version !== after) return true;
+    // (wave 39) The pulsed set moved on (or the cursor is an earlier process's).
+    if (presenceAfter !== null && presenceAfter !== this.presenceCounter) return true;
     // A device list newer than the poller's `devicesAt` (posted between two
     // of its polls) answers at once.
     if (devicesAfter !== null && this.devicesSeenAt !== null && this.devicesSeenAt > devicesAfter) return true;
@@ -498,11 +654,11 @@ export function lightsView(hub: LightsHub, ctx: LightsContext): LightsView {
   const cur = hub.current();
   const model = ctx.model();
   const v = validateLights(cur.lights, ctx.house());
-  return { ...cur, looks: storyLooks(model), locations: storyLocations(model), tests: hub.tests(), pair: hub.currentPair(), ...hub.devices(), module: hub.module(), problems: v.problems, warnings: v.warnings, now: hub.clock() };
+  return { ...cur, looks: storyLooks(model), locations: storyLocations(model), tests: hub.tests(), pair: hub.currentPair(), ...hub.devices(), module: hub.module(), problems: v.problems, warnings: v.warnings, now: hub.clock(), presence: hub.presenceView() };
 }
 
 /**
- * `GET /api/mod/lights[?after=&tests=&pairs=&devicesAt=&wait=&module=1&name=]` — the
+ * `GET /api/mod/lights[?after=&tests=&pairs=&devicesAt=&presence=&wait=&module=1&name=]` — the
  * config + the long poll. Returns true when it answered (or will: a parked
  * long poll).
  */
@@ -520,13 +676,14 @@ export async function handleLightsGet(hub: LightsHub, ctx: LightsContext, req: I
   const testsAfter = cursor("tests");
   const pairsAfter = cursor("pairs");
   const devicesAfter = cursor("devicesAt");
+  const presenceAfter = cursor("presence");
   const waitRaw = Number(url.searchParams.get("wait") ?? LIGHTS_WAIT_S);
   const waitS = Number.isFinite(waitRaw) ? Math.min(LIGHTS_WAIT_MAX_S, Math.max(0, waitRaw)) : LIGHTS_WAIT_S;
   // The house Mac's module says who it is (`module=1`); the map editor's own
   // long poll does not, so it never passes for one.
   const isModule = url.searchParams.get("module") === "1";
   if (isModule) hub.noteModule(url.searchParams.get("name"));
-  if (after !== null && after !== "" && !hub.moved(after, testsAfter, pairsAfter, devicesAfter) && waitS > 0) {
+  if (after !== null && after !== "" && !hub.moved(after, testsAfter, pairsAfter, devicesAfter, presenceAfter) && waitS > 0) {
     const w = hub.waitChange(waitS * 1000);
     // A caller that hangs up frees its waiter at once.
     req.on?.("close", w.cancel);
@@ -550,7 +707,7 @@ export interface LightsProjectLink {
 }
 
 /**
- * `POST /api/mod/lights`, `…/project`, `…/test`, `…/devices`, `…/pair` —
+ * `POST /api/mod/lights`, `…/project`, `…/test`, `…/devices`, `…/pair`, `…/shown` —
  * already authorized by the runtime's mod gate. Returns false for any other path.
  */
 export async function handleLightsPost(hub: LightsHub, ctx: LightsContext, path: string, body: Record<string, unknown>, res: ServerResponse, project: LightsProjectLink | null, by: string): Promise<boolean> {
@@ -652,6 +809,16 @@ export async function handleLightsPost(hub: LightsHub, ctx: LightsContext, path:
       }
       hub.setDevices(devices);
       sendJson(res, 200, { ok: true, n: devices.length });
+      return true;
+    }
+    case "/api/mod/lights/shown": {
+      const raw = body["fixtures"];
+      if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+        sendJson(res, 400, { error: "send {fixtures: {<fixture id>: <state>}}" });
+        return true;
+      }
+      hub.setShown(parseShown(raw as Record<string, unknown>, hub.config()));
+      sendJson(res, 200, { ok: true });
       return true;
     }
     case "/api/mod/lights/pair": {
