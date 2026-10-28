@@ -4498,11 +4498,12 @@ func _test_intro_game() -> void:
 	player.face(rad_to_deg(atan2(-to.x, -to.z)))
 	game._process(0.016)
 	_check(game.intro.faced and game.intro_space.body_text() == IntroFlow.TURN_DONE, "intro: facing the duck → \"that's it\"")
-	var panel_dir := game.intro_space.panel_transform().origin - player.feet()
-	_check(IntroFlow.facing(player.head_yaw(), Vector3(player.feet().x, 0, player.feet().z), Vector3(game.intro_space.panel_transform().origin.x, 0, game.intro_space.panel_transform().origin.z)) and Vector2(panel_dir.x, panel_dir.z).length() > 1.0, "intro: … the panel comes round in front again")
+	var at_panel := game.intro_space.panel_transform().origin
+	_check(game.sfx.log.has("quack") and not IntroFlow.facing(player.head_yaw(), Vector3(player.feet().x, 0, player.feet().z), Vector3(at_panel.x, 0, at_panel.z)), "intro: … the duck quacks; the panel stays behind, never in front of the duck")
 	game._process(IntroFlow.TURN_DONE_HOLD)
 	game._process(0.016)
-	_check(game.intro.step == IntroFlow.Step.COMFORT and game.intro_space.button_ids() == ["start"], "intro: … then COMFORT by itself")
+	at_panel = game.intro_space.panel_transform().origin
+	_check(game.intro.step == IntroFlow.Step.COMFORT and game.intro_space.button_ids() == ["start"] and IntroFlow.facing(player.head_yaw(), Vector3(player.feet().x, 0, player.feet().z), Vector3(at_panel.x, 0, at_panel.z)), "intro: … then COMFORT by itself, the panel in front again")
 	_check(link.get("readies") == 0 and game.in_intro(), "intro: not ready yet")
 	game._process(IntroFlow.ARM_DELAY)
 	_intro_click(game, "start")

@@ -631,8 +631,9 @@ func _intro_events(events: Array) -> void:
 				sfx.play("chime")
 				player.pulse(0.25, 0.08)
 				if intro.step == IntroFlow.Step.TURN and intro.faced:
-					# Turned round to the duck: the panel follows, in front again.
-					intro_space.place_panel(player.feet(), player.head_yaw())
+					# Turned round to the duck: it quacks, and the panel stays
+					# put so nothing hides it (COMFORT comes round after).
+					sfx.quack_at(intro_space.duck.emitter)
 			"done":
 				_finish_intro()
 
