@@ -1362,6 +1362,21 @@ def test_a_story_track_streams_as_a_takeover_and_its_ms_is_the_headers(tmp_path)
     assert r.play_sound_ms("ghost_track")[0] == "no-file"
 
 
+def test_a_track_playing_when_the_stream_reopens_is_closed_with_the_old_mixer(tmp_path):
+    r = with_house(music_router(tmp_path))
+    write_wav(tmp_path / "sounds" / "dance_song.wav", seconds=30.0, rate=MUSIC_RATE)
+    r.apply(answer("v1"))
+    assert r.play_sound_ms("dance_song")[0] == "played"
+    old = r.mixer
+    voice = next(v for v in old._live.values() if v.tag == "dance_song")
+    voice.stream.wait_ready(2.0)
+    spin(r, 3)
+    r.engine.close()  # the watchdog: the MOTU dropped
+    assert r.ensure_engine() and r.mixer is not old
+    voice.stream._thread.join(timeout=1.0)
+    assert voice.stream._closed and voice.stream._file_closed and not voice.stream._thread.is_alive()
+
+
 def test_health_and_the_report_carry_the_music(tmp_path):
     r = with_house(music_router(tmp_path))
     r.apply(answer("v1"))

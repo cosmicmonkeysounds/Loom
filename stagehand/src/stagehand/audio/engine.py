@@ -278,14 +278,18 @@ class Engine:
         return mixer
 
     def close(self) -> None:
+        """Stop and close the stream, then close the mixer's streamed voices
+        (a reopen builds a new mixer: the old one's tracks would otherwise
+        keep their workers and files for the life of the process)."""
         stream, self.stream = self.stream, None
-        if stream is None:
-            return
-        for step in ("stop", "close"):
-            try:
-                getattr(stream, step)()
-            except Exception as err:  # noqa: BLE001 — a dead device raises on stop
-                log.debug("stream %s: %s", step, err)
+        if stream is not None:
+            for step in ("stop", "close"):
+                try:
+                    getattr(stream, step)()
+                except Exception as err:  # noqa: BLE001 — a dead device raises on stop
+                    log.debug("stream %s: %s", step, err)
+        if self.mixer is not None:
+            self.mixer.close()
 
     # -- the audio thread ----------------------------------------------------
 

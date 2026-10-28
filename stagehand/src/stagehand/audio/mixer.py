@@ -327,6 +327,8 @@ class Mixer:
         self.frames = 0
         #: Blocks a streamed voice ran dry before its end (ever).
         self.underruns = 0
+        #: `close`d: the stream that called `process` is gone for good.
+        self.closed = False
         self.set_priority(priority or {})
         self._drain()
 
@@ -390,6 +392,12 @@ class Mixer:
         mask = np.zeros(self.n_out, dtype=bool)
         mask[voice.outs] = True
         voice.mask = mask
+        if self.closed:
+            # Nothing will ever process this mixer again: never start a
+            # worker that nobody reads (it would hold its file open forever).
+            if stream is not None:
+                stream.close(wait=False)
+            return vid
         self._live[vid] = voice
         self._commands.put(("play", voice))
         return vid
@@ -409,6 +417,33 @@ class Mixer:
         if vid is None and tag is None:
             raise ValueError("level: a vid or a tag")
         self._commands.put(("level", (vid, tag, db_to_lin(db), max(0, int(ramp_s * self.rate)))))
+
+    def close(self) -> None:
+        """The audio stream stopped for good (`Engine.close`; call it from
+        the control side once the callback no longer runs). Closes the
+        stream of every voice, queued or playing: a streamed track (a
+        takeover song) is otherwise closed only when `process` retires it,
+        and a mixer nobody processes would leave its worker polling and its
+        file open (on Windows, a file that can't be replaced). Idempotent;
+        `Stream.close` is too, so a bed the soundtrack also closes is fine."""
+        self.closed = True
+        while True:
+            try:
+                kind, arg = self._commands.get_nowait()
+            except queue.Empty:
+                break
+            if kind == "play":
+                self.voices.append(arg)
+        seen: set[int] = set()
+        for v in [*self.voices, *list(self._live.values())]:
+            if v.stream is not None and id(v.stream) not in seen:
+                seen.add(id(v.stream))
+                try:
+                    v.stream.close(wait=False)
+                except Exception:  # noqa: BLE001 — a dead worker must not stop the rest closing
+                    pass
+        self.voices.clear()
+        self._live.clear()
 
     def pos(self, vid: int) -> int | None:
         """Source frames voice `vid` has played (0 while it waits to

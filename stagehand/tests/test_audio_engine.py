@@ -249,6 +249,33 @@ def test_a_stalled_stream_is_marked_for_a_reinit():
     assert pa.reinits == 1 and e.reinits == 1
 
 
+def test_a_reopen_closes_the_old_mixers_streamed_tracks(tmp_path):
+    # A takeover track (dance_song) is a Stream only the mixer closes: a
+    # reopen (watchdog, replug, a device change) must not leave its worker
+    # polling and its file open on the old mixer, playing or still queued.
+    from stagehand.audio.stream import Stream
+
+    long = write_wav(tmp_path / "dance_song.wav", seconds=30.0)
+    e = Engine("MOTU", 2, 2, query=fake_query(2, 2), stream_factory=lambda **kw: FakeStream(**kw))
+    old = e.open()
+    track = Stream(long, RATE, name="dance_song")
+    assert track.wait_ready(2.0)
+    old.play(track, {1: 0.0}, takeover=True)
+    for _ in range(10):
+        FakeStream.opened[-1].pump(400)
+    queued = Stream(long, RATE, name="queued")
+    old.play(queued, {2: 0.0}, takeover=True)  # never drained by a block
+    new = e.open()
+    assert new is not old and old.closed
+    for s in (track, queued):
+        s._thread.join(timeout=1.0)
+        assert not s._thread.is_alive() and s._file_closed
+    late = Stream(long, RATE, name="late")
+    old.play(late, {1: 0.0})  # a play that lands on the dead mixer: closed at once
+    late._thread.join(timeout=1.0)
+    assert not late._thread.is_alive() and late._file_closed and not old.playing(3)
+
+
 def test_a_blank_device_name_is_the_default_output():
     asked = []
 
