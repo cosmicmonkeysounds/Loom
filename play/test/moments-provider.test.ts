@@ -7,13 +7,14 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Alerts } from "../src/alerts.ts";
 import type { SessionStorage } from "../src/host.ts";
 import { MEMORY_MAX, MOMENTS_MEMORY, announceLoud, freshMemory, loadDone, memoryKey, recallMoments, rememberMoments, saveDoneList } from "../src/moments/memory.ts";
-import { CARD_AFTERGLOW_MS, ECHO_MS, EMPTY_MOMENTS, GLANCE_MS, READOUT_WAIT_MS, afterWait, missedCount, momentsReducer, sortArrivals, surfacesOf, type Moment, type ToastSeen } from "../src/moments/model.ts";
+import { CARD_AFTERGLOW_MS, ECHO_MS, EMPTY_MOMENTS, GLANCE_MS, READOUT_WAIT_MS, STICKY_MS, afterWait, missedCount, momentsReducer, sortArrivals, surfacesOf, type Moment, type ToastSeen } from "../src/moments/model.ts";
 import { MomentsLayer, MomentsProvider, type MomentsInput } from "../src/moments/provider.tsx";
-import type { ObjectiveView } from "../src/types.ts";
+import type { ChatMessage, ObjectiveView } from "../src/types.ts";
+import { mountHooks } from "./hooks-harness.ts";
 
 function moment(seq: number, over: Partial<Moment> = {}): Moment {
   return { key: `m:${seq}`, seq, severity: "minor", kind: "readout", caption: "Norton", text: `readout ${seq}`, channel: "dm:Norton", at: seq * 1000, phase: null, ...over };
@@ -204,5 +205,148 @@ describe("the memory across a remount (the cutscene ⇄ main switch)", () => {
     rememberMoments("guest", null, freshMemory());
     expect(MOMENTS_MEMORY.size).toBe(MEMORY_MAX);
     MOMENTS_MEMORY.clear();
+  });
+});
+
+describe("wave 37: banners leave, and what reached the screen is read (C16, C17, C20)", () => {
+  type Engine = { surfaces: { sticky: { moment: { key: string } } | null; modal: { moment: { key: string } } | null }; notif: { sign: { seen: Set<string>; readMark: number }; unread: number } };
+  const engineOf = (h: { output: unknown }) => (h.output as { props: { value: Engine } }).props.value;
+  const alertsOf = (histories = 0): Alerts => ({ alert: null, dismiss: () => {}, raise: () => {}, onHistory: () => {}, rebase: () => {}, mark: () => -1, settle: () => {}, epoch: 0, recent: () => [], histories: () => histories });
+  const base = (session: string, over: Partial<MomentsInput> = {}): MomentsInput => ({ role: "guest", me: "g1", session, messages: new Map(), alerts: alertsOf(), alertLevel: "sticky", objectives: undefined, phase: "doors", clock: 0, sound: false, ...over });
+  const house = (seq: number, over: Partial<Moment> = {}): Moment => ({ key: `m:${seq}`, seq, severity: "major", kind: "alert", caption: "Announcement", text: `📣 House line ${seq}`, channel: "lobby", at: 0, phase: "doors", house: true, ...over });
+  const Provider = MomentsProvider as unknown as (p: MomentsInput & { children: null }) => unknown;
+  let listener: (() => void) | null = null;
+  let hidden = false;
+  const stubPage = () => {
+    vi.useFakeTimers({ now: 5_000_000 });
+    listener = null;
+    hidden = false;
+    vi.stubGlobal("window", {
+      setTimeout: (f: () => void, ms: number) => setTimeout(f, ms),
+      clearTimeout: (t: ReturnType<typeof setTimeout>) => clearTimeout(t),
+      setInterval: (f: () => void, ms: number) => setInterval(f, ms),
+      clearInterval: (t: ReturnType<typeof setInterval>) => clearInterval(t),
+    });
+    vi.stubGlobal("document", {
+      get visibilityState() {
+        return hidden ? "hidden" : "visible";
+      },
+      addEventListener: (_: string, f: () => void) => void (listener = f),
+      removeEventListener: () => {},
+    });
+  };
+  /** Mount a provider whose sign-in already holds `moments` in its queue (a remount carries on). */
+  const mount = (session: string, moments: Moment[], level: "sticky" | "dialog" = "sticky") => {
+    const mem = { ...freshMemory(), session, epoch: 0 };
+    mem.state = momentsReducer(EMPTY_MOMENTS, { type: "arrive", moments, visible: true, level, role: "guest", now: Date.now(), phase: "doors", batch: false });
+    rememberMoments("guest", session, mem);
+    const input = base(session, { alertLevel: level });
+    return { h: mountHooks(Provider, { ...input, children: null }), input };
+  };
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    MOMENTS_MEMORY.clear();
+  });
+
+  it("a banner leaves after 45 s on screen, seen (in the bin, read)", () => {
+    stubPage();
+    const { h } = mount("w37-a", [house(1)]);
+    expect(engineOf(h).surfaces.sticky?.moment.key).toBe("m:1");
+    h.act(() => vi.advanceTimersByTime(STICKY_MS - 1_000));
+    expect(engineOf(h).surfaces.sticky?.moment.key).toBe("m:1");
+    h.act(() => vi.advanceTimersByTime(1_000));
+    expect(engineOf(h).surfaces.sticky).toBeNull();
+    expect(engineOf(h).notif.sign.seen.has("m:1")).toBe(true);
+    h.unmount();
+  });
+
+  it("never while the page is hidden: the 45 s are visible time", () => {
+    stubPage();
+    const { h } = mount("w37-b", [house(1)]);
+    h.act(() => vi.advanceTimersByTime(30_000));
+    h.act(() => {
+      hidden = true;
+      listener?.();
+    });
+    h.act(() => vi.advanceTimersByTime(STICKY_MS * 2));
+    expect(engineOf(h).surfaces.sticky?.moment.key).toBe("m:1");
+    h.act(() => {
+      hidden = false;
+      listener?.();
+    });
+    h.act(() => vi.advanceTimersByTime(STICKY_MS));
+    expect(engineOf(h).surfaces.sticky).toBeNull();
+    h.unmount();
+  });
+
+  it("a card's sticky and a loud objective's wait for their answer", () => {
+    stubPage();
+    const card = mount("w37-c", [house(1, { kind: "card", text: "Pick a side", card: { seq: 1, kind: "poll", glyph: "🗳" } })]);
+    card.h.act(() => vi.advanceTimersByTime(STICKY_MS * 3));
+    expect(engineOf(card.h).surfaces.sticky?.moment.key).toBe("m:1");
+    card.h.unmount();
+    const obj = mount("w37-d", [{ key: "o:hunt", seq: null, severity: "major", kind: "objective", caption: "New objective", text: "Hunt", channel: null, at: 0, phase: "doors" }]);
+    obj.h.act(() => vi.advanceTimersByTime(STICKY_MS * 3));
+    expect(engineOf(obj.h).surfaces.sticky?.moment.key).toBe("o:hunt");
+    obj.h.unmount();
+  });
+
+  it("shown 5 s, then a phase change retires it: read; one that never reached the screen stays unread", () => {
+    stubPage();
+    // A dialog on screen; the sticky waits under it (C18: never shown).
+    const { h, input } = mount("w37-e", [house(1, { text: "📣 Everyone to the Desktop" }), house(2, { severity: "minor", text: "📣 The doors are open" })], "dialog");
+    expect(engineOf(h).surfaces.modal?.moment.key).toBe("m:1");
+    expect(engineOf(h).surfaces.sticky).toBeNull();
+    h.act(() => vi.advanceTimersByTime(5_000));
+    h.rerender({ ...input, phase: "hunt", children: null });
+    expect(engineOf(h).surfaces.modal).toBeNull();
+    expect(engineOf(h).notif.sign.seen.has("m:1")).toBe(true);
+    expect(engineOf(h).notif.sign.seen.has("m:2")).toBe(false);
+    h.unmount();
+  });
+
+  it("a glance (under 1 s) before the phase change is not read", () => {
+    stubPage();
+    const { h, input } = mount("w37-f", [house(1)]);
+    h.act(() => vi.advanceTimersByTime(GLANCE_MS - 500));
+    h.rerender({ ...input, phase: "hunt", children: null });
+    expect(engineOf(h).surfaces.sticky).toBeNull();
+    expect(engineOf(h).notif.sign.seen.has("m:1")).toBe(false);
+    h.unmount();
+  });
+
+  it("balloonsWait (a booth busy face to face): no balloon on screen and no 8 s timer; it shows after (C5)", () => {
+    stubPage();
+    const session = "w37-i";
+    const mem = { ...freshMemory(), session, epoch: 0 };
+    const line: Moment = { key: "m:4", seq: 4, severity: "minor", kind: "other", caption: "GarageBand", text: "Clippy, help", channel: "guest:g1", at: 0, phase: "doors" };
+    mem.state = momentsReducer(EMPTY_MOMENTS, { type: "arrive", moments: [line], visible: true, level: "sticky", role: "booth", now: Date.now(), phase: "doors", batch: false });
+    rememberMoments("booth", session, mem);
+    const input = { ...base(session, { role: "booth", me: "Clippy", balloonsWait: true }), children: null };
+    const h = mountHooks(Provider, input);
+    const balloon = () => (h.output as { props: { value: { surfaces: { balloon: { moment: { key: string } } | null } } } }).props.value.surfaces.balloon;
+    expect(balloon()).toBeNull();
+    h.act(() => vi.advanceTimersByTime(60_000));
+    expect(mem.state.queue.map((q) => q.moment.key)).toEqual(["m:4"]);
+    h.rerender({ ...input, balloonsWait: false });
+    expect(balloon()?.moment.key).toBe("m:4");
+    h.act(() => vi.advanceTimersByTime(8_000));
+    expect(balloon()).toBeNull();
+    h.unmount();
+  });
+
+  it("a new sign-in's bin starts quiet: once its first backlog is in, it is read (C20)", () => {
+    stubPage();
+    const msg = (seq: number): ChatMessage => ({ seq, channel: "lobby", channelKind: "lobby", title: "Lobby", from: "", kind: "signal", text: `📣 Old news ${seq}`, ts: 0, audience: "all", parentSeq: null, hidden: false, alert: true, moment: "major" }) as ChatMessage;
+    const messages = new Map([3, 7, 9].map((s) => [s, msg(s)] as const));
+    // Before the first history: nothing moves.
+    const early = mountHooks(Provider, { ...base("w37-g", { messages }), children: null });
+    expect(engineOf(early).notif.sign.readMark).toBe(-1);
+    early.unmount();
+    const h = mountHooks(Provider, { ...base("w37-h", { messages, alerts: alertsOf(1) }), children: null });
+    expect(engineOf(h).notif.sign.readMark).toBe(9);
+    expect(engineOf(h).notif.unread).toBe(0);
+    h.unmount();
   });
 });

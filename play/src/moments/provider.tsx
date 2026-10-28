@@ -36,8 +36,10 @@ import {
   GLITCH_MS,
   GLANCE_MS,
   READOUT_WAIT_MS,
+  STICKY_MS,
   afterWait,
   arrivals,
+  bigEchoes,
   doneAbove,
   missedCount,
   momentExit,
@@ -54,6 +56,7 @@ import {
   takeoverStart,
   storyNow,
   surfacesOf,
+  waitBalloons,
   type Moment,
   type Queued,
   type Surfaces,
@@ -78,6 +81,7 @@ import {
   saveKeys,
   saveNow,
   saveNumber,
+  seedReadMark,
   seenKey,
   type EngineMemory,
 } from "./memory.ts";
@@ -193,6 +197,10 @@ export interface MomentsInput {
    *  booth: ~6 s, swallows taps), `light` (a host booth: 2.5 s, look only).
    *  Absent → nothing (the director phone). Embedded → never. */
   takeover?: "full" | "light";
+  /** Wave 37 (C5, a booth): a pop-out, the scanner, a guest card or PLAYER
+   *  SELECT is up — no balloon shows (peeks too) and none times out; they
+   *  wait. Stickies, the NOW bar and the modals are unaffected. Default false. */
+  balloonsWait?: boolean;
 }
 
 /** How long the NOW bar stays flashed open on a new objective (visible time). */
@@ -409,6 +417,14 @@ function useMomentsEngine(input: MomentsInput): Engine {
       recent: alerts.recent(),
       now: wall,
     });
+    // Wave 37 (C19): a house alert said beside a big moment (queued or
+    // arriving) is that big again: read, straight to the bin, never shown.
+    const echoes = bigEchoes(sorted.now, mem.state.queue);
+    if (echoes.size > 0) {
+      for (const k of echoes) markSeen(k);
+      sorted.now = sorted.now.filter((m) => !echoes.has(m.key));
+      dispatch({ type: "read", keys: [...echoes] });
+    }
     // Until the queue renders them, the mark must not pass them (an effect
     // later in this commit settles against the state before the dispatch).
     for (const m of sorted.now) if (m.seq !== null) mem.inflight.add(m.seq);
@@ -452,6 +468,16 @@ function useMomentsEngine(input: MomentsInput): Engine {
     arrive(old, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.messages, input.objectives, input.widgets?.answered, session]);
+
+  // Wave 37 (C20): a new sign-in's bin starts quiet — once its first
+  // backlog is in, the rows from before it joined are read.
+  useEffect(() => {
+    if (session === null || role !== "guest" || (alerts.histories?.() ?? 1) === 0) return;
+    if (!seedReadMark(mem.signIn, input.messages.values())) return;
+    saveNumber(host.storage, readMarkKey(session), mem.signIn.readMark);
+    setRev((r) => r + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.messages, session]);
 
   // A big moment a newer one replaced in a backlog is read: acknowledged, so
   // no reload brings it back and Notifications never holds it "in use".
@@ -626,6 +652,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
   }, [role, session, mem]);
 
   const surfaces = surfacesOf(state, held, input.nowBar === true, held ? tick : Number.POSITIVE_INFINITY, takeover !== null);
+  // Wave 37 (C5): what shows — a booth's balloons wait while it is busy face to face.
+  const shown = waitBalloons(surfaces, input.balloonsWait === true);
 
   // The blue screen's boilerplate: only the sign-in's first (G6).
   if (surfaces.modal !== null && surfaces.modal.level === "bsod" && mem.firstBsod === null && !mem.signIn.bsodShown && session !== null) {
@@ -637,7 +665,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
 
   // On-screen time per moment (a glance < 1 s is missed), and the chime the
   // first time a major (or big) moment reaches the screen.
-  const onScreen = [surfaces.big, surfaces.now, surfaces.balloon, surfaces.sticky, surfaces.modal].filter((q): q is Queued => q !== null);
+  const onScreen = [surfaces.big, surfaces.now, shown.balloon, surfaces.sticky, surfaces.modal].filter((q): q is Queued => q !== null);
   const onScreenKeys = onScreen.map((q) => q.moment.key).join("|");
   useEffect(() => {
     if (!visible) return;
@@ -685,15 +713,39 @@ function useMomentsEngine(input: MomentsInput): Engine {
     [close, session, host],
   );
 
-  // A balloon tip times out after 8 s of visible time.
-  const balloonKey = surfaces.balloon?.moment.key ?? null;
+  // A balloon tip times out after 8 s of visible time (on screen: never while it waits).
+  const balloonKey = shown.balloon?.moment.key ?? null;
   useEffect(() => {
-    if (balloonKey === null || !visible || surfaces.balloon === null) return;
-    const q = surfaces.balloon;
+    if (balloonKey === null || !visible || shown.balloon === null) return;
+    const q = shown.balloon;
     const t = window.setTimeout(() => dismiss(q), BALLOON_MS);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [balloonKey, visible, dismiss]);
+
+  // Wave 37 (C16): a banner leaves after 45 s of visible time (seen: it was
+  // on screen); a card's or a loud objective's sticky waits for its answer.
+  const stickyKey = surfaces.sticky?.moment.key ?? null;
+  useEffect(() => {
+    const q = surfaces.sticky;
+    if (q === null || !visible || q.moment.kind === "card" || q.moment.kind === "objective") return;
+    const t = window.setTimeout(() => dismiss(q), STICKY_MS);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stickyKey, visible, dismiss]);
+
+  // Wave 37 (C17): what reached the screen is read. A moment that left the
+  // queue without a close (a NOW or phase change, an objective's end, a
+  // newer banner) after a glance on screen is seen, not an unread row.
+  useEffect(() => {
+    const t = Date.now();
+    for (const [k, at] of mem.shownAt) {
+      if (state.queue.some((q) => q.moment.key === k)) continue;
+      mem.shownAt.delete(k);
+      if (t - at >= GLANCE_MS) markSeen(k);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.queue]);
 
   // The NOW bar's flash folds back after 12 s of visible time (read, unless
   // it was a glance; a tap that opens the objective is the moment acted on).
@@ -845,7 +897,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
   return {
     input,
     level,
-    surfaces,
+    surfaces: shown,
     held,
     missed: role === "guest" ? notif.unread : missedCount(state, held, tick),
     glitch,
