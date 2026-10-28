@@ -3,7 +3,6 @@
 //! notices folded per glyph + phase, newest first; unread, in use, deleted.
 
 import { describe, expect, it } from "vitest";
-import { loadSignIn, readMarkKey, seedReadMark } from "../src/moments/memory.ts";
 import type { Viewer } from "../src/moments/model.ts";
 import { NOTIFICATIONS_MAX, bellCount, deleteKeys, isUnread, notificationsOf, unreadOf } from "../src/moments/notifications.ts";
 import type { ChatMessage } from "../src/types.ts";
@@ -78,40 +77,5 @@ describe("unread and the bell", () => {
 
   it("the bell reads nothing at 0 and 9+ above nine", () => {
     expect([bellCount(0), bellCount(3), bellCount(9), bellCount(10)]).toEqual(["", "3", "9", "9+"]);
-  });
-});
-
-describe("a late arrival's bin starts quiet (wave 37 C20)", () => {
-  const store = (seed: Record<string, unknown> = {}) => {
-    const data = new Map(Object.entries(seed));
-    return { load: <T,>(k: string) => (data.has(k) ? (data.get(k) as T) : null), save: (k: string, v: unknown) => void data.set(k, v), drop: (k: string) => void data.delete(k) };
-  };
-
-  it("a sign-in with no stored read mark takes the newest seq of its first backlog; the rows stay listed, read", () => {
-    const sign = loadSignIn(store(), "tok");
-    expect(sign.unmarked).toBe(true);
-    const list = [msg(1, { alert: true, moment: "major" }), msg(4, { alert: true, moment: "major" }), msg(9, { alert: true, moment: "major" }), { ...msg(9.5), seq: 9.5 }];
-    expect(seedReadMark(sign, list)).toBe(true);
-    expect([sign.readMark, sign.unmarked]).toEqual([9, undefined]);
-    const rows = notificationsOf(list.slice(0, 3), guest, null, none, none);
-    expect(rows).toHaveLength(3);
-    expect(unreadOf(rows, sign.seen, sign.readMark)).toBe(0);
-    // Once only: a later line is news.
-    expect(seedReadMark(sign, [...list, msg(12)])).toBe(false);
-    expect(sign.readMark).toBe(9);
-    expect(unreadOf(notificationsOf([...list.slice(0, 3), msg(12, { alert: true, moment: "major" })], guest, null, none, none), sign.seen, sign.readMark)).toBe(1);
-  });
-
-  it("a stored read mark (a reload, the window read) is never moved", () => {
-    const sign = loadSignIn(store({ [readMarkKey("tok")]: 2 }), "tok");
-    expect(sign.unmarked).toBeUndefined();
-    expect(seedReadMark(sign, [msg(1), msg(9)])).toBe(false);
-    expect(sign.readMark).toBe(2);
-  });
-
-  it("an empty first backlog leaves the mark where it is (the first live line is news)", () => {
-    const sign = loadSignIn(store(), "tok");
-    expect(seedReadMark(sign, [])).toBe(false);
-    expect([sign.readMark, sign.unmarked]).toEqual([-1, undefined]);
   });
 });

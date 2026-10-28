@@ -247,37 +247,16 @@ export interface SignInMemory {
   seen: Set<string>;
   /** Notifications read up to this seq (the window was open and closed). */
   readMark: number;
-  /** Wave 37 (C20): no read mark was stored (a new sign-in): `seedReadMark`
-   *  sets it under the first backlog. */
-  unmarked?: true;
 }
 
 export function loadSignIn(storage: SessionStorage, session: string): SignInMemory {
-  const mark = loadNumber(storage, readMarkKey(session));
   return {
     acked: new Set(loadKeys(storage, ackedKey(session))),
     bsodShown: loadNumber(storage, bsodKey(session)) === 1,
     deleted: new Set(loadKeys(storage, deletedKey(session))),
     seen: new Set(loadKeys(storage, seenKey(session))),
-    readMark: mark ?? -1,
-    ...(mark === null ? { unmarked: true as const } : {}),
+    readMark: loadNumber(storage, readMarkKey(session)) ?? -1,
   };
-}
-
-/**
- * Wave 37 (C20): a late arrival's bin starts quiet. A sign-in with no read
- * mark, once its first backlog is in, has read every row from before it
- * existed: the mark moves to the newest seq there (the rows stay listed).
- * True when the mark moved (save it).
- */
-export function seedReadMark(sign: SignInMemory, messages: Iterable<{ seq: number }>): boolean {
-  if (sign.unmarked !== true) return false;
-  delete sign.unmarked;
-  let max = -1;
-  for (const m of messages) if (Number.isInteger(m.seq) && m.seq > max) max = m.seq;
-  if (max <= sign.readMark) return false;
-  sign.readMark = max;
-  return true;
 }
 
 export function emptySignIn(): SignInMemory {
