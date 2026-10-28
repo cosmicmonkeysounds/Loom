@@ -3,8 +3,11 @@
 ## that matters (rails, the trail, the duck). Every texture is drawn
 ## procedurally into an [ImageTexture] (no imported assets, nothing to
 ## compress), filtered NEAREST for the chunky 1997 pixels. Materials are
-## per-vertex lit — cheap on the Quest's tiler, and enough light to read
-## corners.
+## Lambert-lit with no specular: per pixel on the `medium` and `high`
+## graphics tiers (wave 39: the real house's lights pool on the walls and
+## floors, [HouseLamps]), per vertex on `low` — cheapest on the Quest's
+## tiler, and enough light to read corners. [method set_tier] picks it
+## before anything is built.
 class_name HouseLook
 extends RefCounted
 
@@ -19,6 +22,18 @@ const INK := Color("#e8fbff")
 
 static var _materials := {}
 static var _textures := {}
+## Per-pixel lighting ([method set_tier]); per vertex on `low`.
+static var per_pixel := true
+
+
+## Take a graphics tier before the house, the lobby and the intro are
+## built: `low` lights per vertex. Clears the cached materials when it
+## changes (what is already built keeps its own).
+static func set_tier(tier: String) -> void:
+	var pp := HouseLights.tier_of(tier) != "low"
+	if pp != per_pixel:
+		per_pixel = pp
+		_materials.clear()
 
 
 ## A cached material by key, built once by `make`.
@@ -30,7 +45,8 @@ static func _cached(key: String, make: Callable) -> Material:
 
 static func _lit(albedo: Color, tex: Texture2D = null) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if per_pixel else BaseMaterial3D.SHADING_MODE_PER_VERTEX
+	m.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT
 	m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	m.roughness = 1.0
 	m.albedo_color = albedo
@@ -246,16 +262,42 @@ static func label(text: String, height := 0.18, color := INK) -> Label3D:
 	return l
 
 
-## The world environment: night background, teal fog, soft ambient light.
-static func environment() -> Environment:
+## The tone map's white point (ACES): the Mobile renderer's HDR buffer tops
+## out near 2, so anything brighter — a bulb, a screen — rolls off into it.
+const TONEMAP_WHITE := 2.0
+const TONEMAP_EXPOSURE := 1.0
+
+
+## The world environment: night background, teal fog, soft ambient light,
+## and (wave 39) the picture for a graphics tier ([method HouseLights.tier_of]):
+## an ACES (filmic) tone map on every tier, and glow — the bulbs, the
+## screens, the trail and the duck bloom — on `high` only. Quest 3 holds its
+## frame rate on `medium`: no glow, no SSAO / SSR / SSIL / volumetric fog
+## on any tier (the Mobile renderer has none of them to spare).
+static func environment(tier := HouseLights.DEFAULT_TIER) -> Environment:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = NIGHT
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("#9fd8e0")
-	env.ambient_light_energy = 0.55
+	env.ambient_light_color = HouseLights.DAY_COLOR
+	env.ambient_light_energy = HouseLights.DAY_AMBIENT
 	env.fog_enabled = true
 	env.fog_light_color = FOG
 	env.fog_density = 0.035
-	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_white = TONEMAP_WHITE
+	env.tonemap_exposure = TONEMAP_EXPOSURE
+	env.glow_enabled = HouseLights.tier_of(tier) == "high"
+	if env.glow_enabled:
+		env.glow_intensity = 0.7
+		env.glow_strength = 1.0
+		env.glow_bloom = 0.0
+		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+		env.glow_hdr_threshold = 0.85
+		env.glow_hdr_scale = 2.0
 	return env
+
+
+## The 3D anti-aliasing for a tier: 2× MSAA on `high` only.
+static func msaa(tier := HouseLights.DEFAULT_TIER) -> Viewport.MSAA:
+	return Viewport.MSAA_2X if HouseLights.tier_of(tier) == "high" else Viewport.MSAA_DISABLED

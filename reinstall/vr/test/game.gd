@@ -79,6 +79,11 @@ func _run() -> void:
 	await _test_autopilot_physics()
 	await _test_room_scale()
 	await _test_intro_game()
+	_test_house_lights()
+	_test_house_lights_link()
+	_test_graphics_config()
+	await _test_house_lamps()
+	await _test_house_lamps_game()
 
 	print("reinstall-vr: %d checks, %d failures" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -4561,3 +4566,276 @@ func _test_intro_game() -> void:
 	main.queue_free()
 	await process_frame
 	await process_frame
+
+
+
+# --- wave 39: the real house's lights ---------------------------------------
+
+
+## `gameLightsOf` / `pulseFactor` pinned to what `house/src/lights-presence.ts`
+## answers for the same inputs (computed with node, 2026-10-28).
+func _test_house_lights() -> void:
+	for raw: Variant in [null, 3, "x", {}, {"lights": 3}]:
+		_check(HouseLights.game_lights_of(raw) == null, "lights: %s is no frame" % [raw])
+	var frame: Variant = HouseLights.game_lights_of({"at": 12, "source": "house", "pulse": "breathe", "lights": [
+		{"id": "a", "room": "desktop", "pos": {"x": 1, "y": 2.1, "z": 3}, "kind": "wled", "color": "#FFAA00", "level": 0.5, "effect": "breathe", "pulse": true, "safety": false},
+		{"id": "b", "pos": {"x": 1, "y": 2, "z": "3"}},
+		{"id": 4, "pos": {"x": 1, "y": 2, "z": 3}},
+		{"id": "c", "room": 5, "pos": {"x": 0, "y": 0, "z": 0}, "kind": "lamp", "color": "red", "level": 7, "effect": "glow", "pulse": 1, "safety": "yes"},
+		{"id": "d", "pos": {"x": 0, "y": 0, "z": 0}, "level": -2},
+		"junk",
+		{"id": "e", "pos": null},
+	]})
+	var want: Variant = JSON.parse_string('{"at":12,"source":"house","pulse":"breathe","lights":[{"id":"a","room":"desktop","pos":{"x":1,"y":2.1,"z":3},"kind":"wled","color":"#ffaa00","level":0.5,"effect":"breathe","pulse":true,"safety":false},{"id":"c","room":"","pos":{"x":0,"y":0,"z":0},"kind":"zigbee","color":"#ffd9a8","level":1,"effect":null,"pulse":false,"safety":false},{"id":"d","room":"","pos":{"x":0,"y":0,"z":0},"kind":"zigbee","color":"#ffd9a8","level":0,"effect":null,"pulse":false,"safety":false}]}')
+	_check(frame == want, "lights: a frame decodes as gameLightsOf does; malformed lights dropped, not the frame (%s)" % [JSON.stringify(frame)])
+	var bare: Variant = HouseLights.game_lights_of({"source": "estimate", "pulse": "wave", "lights": []})
+	_check(bare == {"at": 0.0, "source": "estimate", "pulse": null, "lights": []}, "lights: an unknown pulse is null, a missing at 0 (%s)" % [bare])
+	_check(HouseLights.game_lights_of({"source": "lamp", "lights": []})["source"] == "estimate", "lights: any source but house is the estimate")
+	var ts := [1, 0.675, 0.35, 0.6749999999999999, 1, 0.675, 0.6749999999999999, 0.4839697930049459]
+	var ok := true
+	var at := [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, -0.5, 3.3]
+	for i in at.size():
+		ok = ok and _near(HouseLights.pulse_factor(at[i]), ts[i], 1e-9)
+	_check(ok, "lights: pulse_factor matches pulseFactor (1 → 0.35 → 1 every 2 s, negative t too)")
+	_check(_near(HouseLights.pulse_factor(1.0, 4.0), 0.675, 1e-9) and _near(HouseLights.pulse_factor(0.25, 1.0), 0.675, 1e-9), "lights: … with a period")
+
+	# What a fixture shows; where it hangs.
+	var lit := {"id": "x", "room": "desktop", "pos": {"x": 0.0, "y": 2.1, "z": 7.0}, "level": 0.8, "pulse": false}
+	_check(HouseLights.shown_level(lit, 1.0) == 0.8, "lights: an unpulsed fixture shows its level")
+	lit["pulse"] = true
+	_check(_near(HouseLights.shown_level(lit, 1.0), 0.8 * 0.35), "lights: a pulsed one breathes with the curve")
+	_check(HouseLights.shown_level({"level": 0.0, "pulse": true}, 1.3) == 0.0, "lights: a dark fixture stays dark under a pulse")
+	var house: Dictionary = _read_json("res://house/house.json")
+	_check(HouseLights.light_floor(house, lit) == "main", "lights: a fixture hangs on its room's floor")
+	_check(HouseLights.light_floor(house, {"room": "nowhere", "pos": {"x": 0.0, "y": -0.6, "z": 0.0}}) == "basement", "lights: … else on the floor its height is on")
+
+	# The pool: lit fixtures on the player's floor, nearest first.
+	var lights := [
+		{"id": "far", "room": "desktop", "pos": {"x": 4.9, "y": 2.1, "z": 7.25}, "level": 1.0},
+		{"id": "near", "room": "desktop", "pos": {"x": -0.9, "y": 2.1, "z": 7.25}, "level": 0.5},
+		{"id": "dark", "room": "desktop", "pos": {"x": 0.0, "y": 2.1, "z": 7.25}, "level": 0.0},
+		{"id": "down", "room": "ram", "pos": {"x": -0.9, "y": -0.6, "z": 7.25}, "level": 1.0},
+		{"id": "mid", "room": "desktop", "pos": {"x": 2.0, "y": 2.1, "z": 7.25}, "level": 0.3},
+	]
+	var feet := [-1.0, 0.0, 7.0]
+	_check(HouseLights.pick_pool(lights, house, "main", feet, 4) == ["near", "mid", "far"], "lights: the pool takes the lit fixtures on the player's floor, nearest first (%s)" % [HouseLights.pick_pool(lights, house, "main", feet, 4)])
+	_check(HouseLights.pick_pool(lights, house, "main", feet, 2) == ["near", "mid"], "lights: … at most the pool's size")
+	_check(HouseLights.pick_pool(lights, house, "basement", feet, 4) == ["down"], "lights: … another floor, its own fixtures")
+	_check(HouseLights.pick_pool(lights, house, "", feet, 4).is_empty() and HouseLights.pick_pool(lights, house, "main", feet, 0).is_empty(), "lights: no floor or no pool, none")
+
+	# The ambient: today's without a frame; the night floor with one, lifted
+	# by how bright the real house is.
+	var day := HouseLights.ambient({})
+	_check(day["energy"] == HouseLights.DAY_AMBIENT and day["sun"] == HouseLights.DAY_SUN and day["color"] == HouseLights.DAY_COLOR, "lights: no frame, the house as today")
+	var dark := HouseLights.ambient({"lights": [{"level": 0.0, "color": "#ff0000"}]})
+	_check(dark["energy"] == HouseLights.NIGHT_AMBIENT and dark["sun"] == HouseLights.NIGHT_SUN and dark["color"] == HouseLights.DAY_COLOR, "lights: a dark house, the night floor (never darker)")
+	_check(HouseLights.ambient({"lights": []})["energy"] == HouseLights.NIGHT_AMBIENT, "lights: a frame with no fixtures, the night floor")
+	var bright := HouseLights.ambient({"lights": [{"level": 1.0, "color": "#ff0000"}]})
+	_check(bright["energy"] > HouseLights.NIGHT_AMBIENT and bright["energy"] < HouseLights.DAY_AMBIENT and bright["sun"] > HouseLights.NIGHT_SUN, "lights: a lit house lifts it part of the way (%s)" % [bright])
+	_check((bright["color"] as Color).r > HouseLights.DAY_COLOR.r, "lights: … tinted by the real colour")
+
+	# The tiers.
+	_check(HouseLights.tier_of("HIGH") == "high" and HouseLights.tier_of(" low ") == "low" and HouseLights.tier_of("ultra") == "medium" and HouseLights.tier_of(null) == "medium", "graphics: tier_of reads a tier, else medium")
+	_check(HouseLights.pool_size("low") == 2 and HouseLights.pool_size("medium") == 4 and HouseLights.pool_size("high") == 6 and HouseLights.pool_size("?") == 4, "graphics: the pool is 2 / 4 / 6")
+	for t: String in HouseLights.TIERS:
+		var env := HouseLook.environment(t)
+		_check(env.tonemap_mode == Environment.TONE_MAPPER_ACES, "graphics: %s tone-maps ACES" % t)
+		_check(env.glow_enabled == (t == "high"), "graphics: %s %s glow" % [t, "has" if t == "high" else "has no"])
+		_check(not env.ssao_enabled and not env.ssr_enabled and not env.ssil_enabled and not env.volumetric_fog_enabled and not env.sdfgi_enabled, "graphics: %s has no SSAO / SSR / SSIL / volumetric fog / SDFGI" % t)
+		_check(_near(env.ambient_light_energy, HouseLights.DAY_AMBIENT), "graphics: %s starts at today's ambient" % t)
+	_check(HouseLook.msaa("high") == Viewport.MSAA_2X and HouseLook.msaa("medium") == Viewport.MSAA_DISABLED and HouseLook.msaa("low") == Viewport.MSAA_DISABLED, "graphics: MSAA on high only")
+	HouseLook.set_tier("low")
+	var low_mat := HouseLook.wall() as StandardMaterial3D
+	HouseLook.set_tier("medium")
+	var med_mat := HouseLook.wall() as StandardMaterial3D
+	_check(low_mat.shading_mode == BaseMaterial3D.SHADING_MODE_PER_VERTEX and med_mat.shading_mode == BaseMaterial3D.SHADING_MODE_PER_PIXEL, "graphics: low lights per vertex, medium per pixel")
+	_check(med_mat.diffuse_mode == BaseMaterial3D.DIFFUSE_LAMBERT and med_mat.specular_mode == BaseMaterial3D.SPECULAR_DISABLED, "graphics: … Lambert, no specular")
+
+
+## The `lights` frame on the link: kept, signalled, cleared with the link.
+func _test_house_lights_link() -> void:
+	var fl: LinkBase = preload("res://test/fake_link.gd").new()
+	var got: Array = []
+	fl.lights_changed.connect(func(l: Dictionary) -> void: got.append(l))
+	fl._adopt_lights({"at": 1, "lights": [{"id": "a", "pos": {"x": 0, "y": 2, "z": 0}, "level": 0.4}]})
+	_check(got.size() == 1 and fl.lights["lights"].size() == 1 and fl.lights["lights"][0]["id"] == "a", "lights link: a frame is kept and signalled")
+	fl._adopt_lights({"lights": "nope"})
+	_check(got.size() == 1 and fl.lights["lights"].size() == 1, "lights link: a malformed frame is ignored")
+	fl._adopt_lights({})
+	fl._adopt_lights({})
+	_check(got.size() == 2 and got[1].is_empty() and fl.lights.is_empty(), "lights link: {} forgets it, once")
+	fl.free()
+
+	var sl := _linked_server_link()
+	var seen: Array = []
+	sl.lights_changed.connect(func(l: Dictionary) -> void: seen.append(l))
+	var frames: Array = []
+	sl.stream_frame.connect(func(e: String, _d: Variant) -> void: frames.append(e))
+	sl._on_frame("lights", {"at": 5, "source": "house", "pulse": "breathe", "lights": [{"id": "living-1", "room": "desktop", "pos": {"x": -0.92, "y": 2.1, "z": 7.25}, "kind": "zigbee", "color": "#ffd9a8", "level": 0.7, "effect": null, "pulse": true, "safety": false}]})
+	_check(seen.size() == 1 and sl.lights["source"] == "house" and sl.lights["lights"][0]["pulse"] == true, "lights link: the stream's lights frame reaches lights_changed")
+	_check(frames == ["lights"], "lights link: … and the raw frame still goes out")
+	sl._on_frame("lights", "garbage")
+	sl._on_frame("sparkles", {"lights": []})
+	_check(seen.size() == 1 and sl.lights["lights"].size() == 1, "lights link: a bad lights frame or an unknown frame changes nothing")
+	sl.call("_relink", "gone", false)
+	_check(seen.size() == 2 and sl.lights.is_empty(), "lights link: a lost link forgets the lights (the house as before)")
+	_free_server_link(sl)
+
+
+func _test_graphics_config() -> void:
+	_check(StationConfig.defaults()["graphics"] == "medium", "graphics: medium by default")
+	var committed := StationConfig.read_file(StationConfig.RES_PATH)
+	_check(committed.get("graphics") == "medium" and committed.get("code") == StationConfig.PLACEHOLDER_CODE, "graphics: the committed station.json says medium (and keeps CHANGEME)")
+	_check(StationConfig.merge(StationConfig.defaults(), {"graphics": " HIGH "})["graphics"] == "high", "graphics: a file's tier is read")
+	_check(StationConfig.merge(StationConfig.merge(StationConfig.defaults(), {"graphics": "low"}), {"graphics": "ultra"})["graphics"] == "low", "graphics: a bad tier keeps the one before")
+	_check(StationConfig.merge(StationConfig.defaults(), {"graphics": 3})["graphics"] == "medium", "graphics: a number is no tier")
+	_check(StationConfig.resolve([StationConfig.RES_PATH], PackedStringArray(["--graphics", "low"]))["graphics"] == "low", "graphics: --graphics low")
+	_check(StationConfig.resolve([StationConfig.RES_PATH], PackedStringArray(["--graphics=high"]))["graphics"] == "high", "graphics: --graphics=high")
+
+
+## Three fixtures on the main floor (one pulsed, one dark), one in the basement.
+static func _lights_frame() -> Dictionary:
+	return HouseLights.game_lights_of({"at": 1, "source": "house", "pulse": "breathe", "lights": [
+		{"id": "living-1", "room": "desktop", "pos": {"x": -0.92, "y": 2.1, "z": 7.25}, "kind": "zigbee", "color": "#ff8040", "level": 0.8, "pulse": true},
+		{"id": "living-2", "room": "desktop", "pos": {"x": 2.0, "y": 2.1, "z": 7.25}, "kind": "zigbee", "color": "#4080ff", "level": 0.5},
+		{"id": "living-3", "room": "desktop", "pos": {"x": 4.92, "y": 2.1, "z": 7.25}, "kind": "zigbee", "color": "#ffffff", "level": 0.0},
+		{"id": "kitchen-1", "room": "start-bar", "pos": {"x": 3.0, "y": 2.1, "z": 14.13}, "kind": "zigbee", "color": "#ffd9a8", "level": 1.0},
+		{"id": "ram-1", "room": "ram", "pos": {"x": -4.0, "y": -0.6, "z": 9.88}, "kind": "zigbee", "color": "#ff00ff", "level": 1.0},
+	]})
+
+
+## HouseLamps on its own: bulbs, the pulse, the fixed pool, the ambient.
+func _test_house_lamps() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var b := HouseBuilder.new()
+	root.add_child(b)
+	b.build(house)
+	var env := HouseLook.environment("medium")
+	var sun := DirectionalLight3D.new()
+	root.add_child(sun)
+	var lamps := HouseLamps.new()
+	root.add_child(lamps)
+	lamps.set_process(false)
+	lamps.setup(b, env, sun, "medium")
+	_check(lamps.pool.size() == 4 and lamps.get_child_count() == 4, "lamps: medium builds a pool of 4 lights, before any frame")
+	_check(lamps.pool.all(func(l: OmniLight3D) -> bool: return not l.shadow_enabled and not l.visible), "lamps: … no shadows, all off")
+	_check(_near(sun.light_energy, HouseLights.DAY_SUN) and _near(env.ambient_light_energy, HouseLights.DAY_AMBIENT), "lamps: no frame, today's ambient and sun")
+
+	var frame := _lights_frame()
+	lamps.apply(frame)
+	_check(lamps.bulb_ids().size() == 5 and lamps.pool.size() == 4, "lamps: a bulb per fixture; the pool unchanged")
+	var p1 := lamps.bulb("living-1").global_position
+	_check(p1.distance_to(b.to_world([-0.92, 2.1, 7.25])) < 1e-4, "lamps: the bulb hangs at its fixture")
+	var dark := lamps.bulb("living-3")
+	_check(not (dark.get_node("Glow") as Node3D).visible, "lamps: a dark fixture has no glow")
+	var lit2 := lamps.bulb("living-2")
+	_check((lit2.get_node("Glow") as Node3D).visible, "lamps: a lit one glows")
+	var bulb_mat := (lit2.get_node("Bulb") as MeshInstance3D).material_override as StandardMaterial3D
+	_check(bulb_mat.albedo_color.b > bulb_mat.albedo_color.r and bulb_mat.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED, "lamps: … in its colour, unshaded")
+	_check(lamps.bulb_level("living-2") == 0.5 and lamps.bulb_level("living-1") == 0.8, "lamps: a pulse starts at full")
+	lamps.step(1.0)
+	_check(_near(lamps.bulb_level("living-1"), 0.8 * 0.35) and lamps.bulb_level("living-2") == 0.5, "lamps: the pulsed one breathes, the other holds (%f)" % lamps.bulb_level("living-1"))
+
+	# The lobby: no real lights, today's ambient.
+	_check(lamps.pool.all(func(l: OmniLight3D) -> bool: return not l.visible), "lamps: outside the house the pool is dark")
+	_check(_near(env.ambient_light_energy, HouseLights.DAY_AMBIENT), "lamps: … and the ambient is today's")
+
+	# In the living room: the lit fixtures on the main floor, nearest first.
+	lamps.in_house = true
+	lamps.feet = func() -> Array: return [-1.0, 0.0, 7.0]
+	lamps.step(0.3)
+	var on := {}
+	for i in lamps.pool.size():
+		if lamps.pool[i].visible:
+			on[lamps.slots[i]] = lamps.pool[i]
+	_check(on.keys().size() == 3 and on.has("living-1") and on.has("living-2") and on.has("kitchen-1"), "lamps: the pool lights the lit fixtures on the player's floor (%s)" % [on.keys()])
+	_check(not on.has("ram-1") and not on.has("living-3"), "lamps: … never the basement's or a dark one")
+	var l2: OmniLight3D = on.get("living-2")
+	_check(l2 != null and _near(l2.light_energy, HouseLamps.LIGHT_ENERGY * 0.5) and l2.light_color.is_equal_approx(Color("#4080ff")), "lamps: a pool light carries its fixture's colour × level")
+	_check(l2 != null and l2.global_position.distance_to(b.to_world([2.0, 2.1 - HouseLamps.LIGHT_DROP, 7.25])) < 1e-4, "lamps: … just under the fixture")
+	var before := env.ambient_light_energy
+	_check(before < HouseLights.DAY_AMBIENT and sun.light_energy < HouseLights.DAY_SUN, "lamps: in the house with a frame, the ambient dims (%f)" % before)
+	for i in 40:
+		lamps.step(0.25)
+	var night := HouseLights.ambient(frame)
+	_check(_near(env.ambient_light_energy, night["energy"], 0.01) and env.ambient_light_energy >= HouseLights.NIGHT_AMBIENT, "lamps: … easing to the frame's night (%f → %f)" % [env.ambient_light_energy, night["energy"]])
+
+	# A light keeps its fixture while it stays picked.
+	var slot_of_1 := lamps.slots.find("living-1")
+	lamps.feet = func() -> Array: return [2.0, 0.0, 10.0]
+	lamps.step(0.3)
+	_check(lamps.slots.find("living-1") == slot_of_1, "lamps: a picked fixture keeps its light")
+	# Down the stairs: the basement's.
+	lamps.feet = func() -> Array: return [-4.0, -2.7, 10.0]
+	lamps.step(0.3)
+	var down: Array = lamps.slots.filter(func(id: String) -> bool: return id != "")
+	_check(down == ["ram-1"], "lamps: in the basement, the basement's fixtures (%s)" % [down])
+
+	# A new frame drops a fixture that went; the pool never resizes.
+	var less := frame.duplicate(true)
+	(less["lights"] as Array).remove_at(4)
+	lamps.apply(less)
+	_check(lamps.bulb("ram-1") == null and not lamps.slots.has("ram-1") and lamps.pool.size() == 4, "lamps: a fixture that left the frame loses its bulb and light")
+	# A rebuild (a map save) puts the bulbs back on their fixtures.
+	b.build(house)
+	_check(lamps.bulb("living-2").global_position.distance_to(b.to_world([2.0, 2.1, 7.25])) < 1e-4, "lamps: a rebuild keeps the bulbs on their fixtures")
+
+	# The frame gone (the link lost): back to today's house.
+	lamps.apply({})
+	for i in 40:
+		lamps.step(0.25)
+	_check(lamps.bulb_ids().is_empty() and _near(env.ambient_light_energy, HouseLights.DAY_AMBIENT, 0.01) and _near(sun.light_energy, HouseLights.DAY_SUN, 0.01), "lamps: no frame, no bulbs, the ambient back to today's")
+	_check(lamps.pool.all(func(l: OmniLight3D) -> bool: return not l.visible), "lamps: … and the pool dark")
+
+	# Tiers: 2 and 6.
+	lamps.set_tier("low")
+	_check(lamps.pool.size() == 2, "lamps: low pools 2")
+	lamps.set_tier("high")
+	_check(lamps.pool.size() == 6, "lamps: high pools 6")
+	lamps.queue_free()
+	b.queue_free()
+	sun.queue_free()
+	await process_frame
+
+
+## The game: main wires the tier, the environment, the sun and the frame.
+func _test_house_lamps_game() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset", "intro": false, "trail_delay": 0, "graphics": "high"})
+	link.house = house
+	link.house_version = "test"
+	link._adopt_lights(_lights_frame())
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var player := game.player
+	player.set_physics_process(false)
+	player.read_input = false
+	game.clock = func() -> float: return _now
+	var env: Environment = (main.get_node("WorldEnvironment") as WorldEnvironment).environment
+	_check(env.glow_enabled and env.tonemap_mode == Environment.TONE_MAPPER_ACES and game.world_env == env, "lamps game: high glows and tone-maps; the game has the environment")
+	_check(main.get_viewport().msaa_3d == Viewport.MSAA_2X, "lamps game: high turns MSAA on")
+	_check(game.lamps != null and game.lamps.pool.size() == 6 and game.lamps.bulb_ids().size() == 5, "lamps game: a frame already in is drawn; high pools 6")
+	game._process(0.016)
+	_check(not game.lamps.in_house and _near(env.ambient_light_energy, HouseLights.DAY_AMBIENT, 1e-3), "lamps game: the lobby keeps today's ambient")
+	link.assignment_received.emit(_assignment(house, "lamps-1", true))
+	game._process(0.016)
+	_check(game.state() == GameFlow.State.PLAYING and game.lamps.in_house, "lamps game: walking the house, the lamps follow")
+	for i in 20:
+		game._process(0.25)
+		game.lamps.step(0.25)
+	_check(env.ambient_light_energy < HouseLights.DAY_AMBIENT - 0.05, "lamps game: … the ambient dims (%f)" % env.ambient_light_energy)
+	var f2 := _lights_frame()
+	(f2["lights"] as Array).resize(1)
+	link._adopt_lights(f2)
+	_check(game.lamps.bulb_ids() == ["living-1"], "lamps game: a new frame on the link reaches the lamps")
+	link.session_over.emit("test")
+	main.queue_free()
+	await process_frame
+	await process_frame
+	HouseLook.set_tier("medium")
+	root.msaa_3d = Viewport.MSAA_DISABLED

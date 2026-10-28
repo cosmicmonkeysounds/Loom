@@ -11,8 +11,6 @@ var xr_interface: OpenXRInterface = null
 
 
 func _ready() -> void:
-	$WorldEnvironment.environment = HouseLook.environment()
-	$Sun.rotation_degrees = Vector3(-55.0, 35.0, 0.0)
 	var xr_on := _start_xr()
 	if link == null:
 		link = get_node_or_null("/root/ServerLink") as LinkBase
@@ -20,6 +18,16 @@ func _ready() -> void:
 		link = LinkBase.new()
 		link.name = "NoLink"
 		add_child(link)
+	# The picture's tier (wave 39, `graphics` in station.json): the shading,
+	# the tone map and glow, the anti-aliasing, the house lights' pool.
+	var tier := HouseLights.tier_of(link.config.get("graphics", HouseLights.DEFAULT_TIER))
+	HouseLook.set_tier(tier)
+	$WorldEnvironment.environment = HouseLook.environment(tier)
+	get_viewport().msaa_3d = HouseLook.msaa(tier)
+	$Sun.rotation_degrees = Vector3(-55.0, 35.0, 0.0)
+	$Sun.light_energy = HouseLights.DAY_SUN
+	game.world_env = $WorldEnvironment.environment
+	game.sun = $Sun
 	game.setup(link, xr_on)
 
 
