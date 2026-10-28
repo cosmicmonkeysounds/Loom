@@ -17,6 +17,11 @@
                      write a labelled placeholder per story sound
                      (media/sounds.yaml) into the router's sounds_dir; never
                      touches a real file.
+    stagehand sounds library --config house.yaml [--out DIR] [--only a,b] [--list] [--story]
+                     render the synthesized SFX library (audio/sfx) to
+                     media/library/<category>/<name>.wav; --story also puts
+                     each story sound's stand-in into sounds_dir (over a
+                     placeholder, never a real file).
     stagehand lights test <fixture|look> [--color #rrggbb] [--brightness N] [--off] --config house.yaml
     stagehand lights pair [--seconds 120] --config house.yaml
     stagehand lights devices --config house.yaml
@@ -81,8 +86,8 @@ def main(argv: list[str] | None = None) -> int:
     ann.add_argument("--voice", help="server voice (default: the section's voice)")
     ann.add_argument("--offline", action="store_true", help="don't ask the server — cache, then say")
     ann.add_argument("text", nargs="+")
-    snd = sub.add_parser("sounds", help="the house speaker router by hand: stop, play, placeholders")
-    snd.add_argument("action", choices=("stop", "play", "placeholders"))
+    snd = sub.add_parser("sounds", help="the house speaker router by hand: stop, play, placeholders, library")
+    snd.add_argument("action", choices=("stop", "play", "placeholders", "library"))
     snd.add_argument("name", nargs="?", help="play: the story sound's name")
     snd.add_argument("--config", required=True)
     snd.add_argument("--announce", action="store_true", help="stop: also cut the announcement and empty the queue")
@@ -92,8 +97,10 @@ def main(argv: list[str] | None = None) -> int:
     snd.add_argument("--gain", type=float, metavar="DB", help="play: dB added to the cue's gain (−60…12), as a house desk step's")
     snd.add_argument("--force", action="store_true", help="placeholders: rewrite existing placeholders (never a real file)")
     snd.add_argument("--no-say", action="store_true", help="placeholders: no spoken label (no `say`)")
-    snd.add_argument("--only", help="placeholders: a comma list of names")
-    snd.add_argument("--out", help="placeholders: write here instead of the router's sounds_dir")
+    snd.add_argument("--only", help="placeholders / library: a comma list of names")
+    snd.add_argument("--out", help="placeholders: write here instead of the router's sounds_dir; library: instead of media/library")
+    snd.add_argument("--list", action="store_true", help="library: list the sounds, write nothing")
+    snd.add_argument("--story", action="store_true", help="library: also write each story sound's stand-in (sounds.yaml library:) into sounds_dir")
     snd.add_argument("--manifest", help="placeholders: another manifest (default: media/sounds.yaml)")
     lt = sub.add_parser("lights", help="the house lights by hand, through the server: test, pair, devices")
     lt.add_argument("action", choices=("test", "pair", "devices"))
@@ -350,6 +357,10 @@ def _sounds(cfg: StagehandConfig, args: argparse.Namespace) -> int:
         to = [t.strip() for v in args.to for t in v.split(",") if t.strip()]
         gain = {} if args.gain is None else {"gain": max(-60.0, min(12.0, args.gain))}
         return _to_router(router, rc.play_topic, {"name": args.name, **({"to": to} if to else {}), **gain})
+    if args.action == "library":
+        from .audio.sfx.cli import run as library
+
+        return library(args, rc.sounds_dir)
     from .audio.placeholders import MANIFEST, generate, load_manifest
 
     try:

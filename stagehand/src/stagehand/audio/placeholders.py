@@ -19,6 +19,7 @@ existing placeholder is rewritten only with `--force`.
 
 from __future__ import annotations
 
+import re
 import shutil
 import struct
 import subprocess
@@ -37,6 +38,8 @@ from .sounds import EXTENSIONS, PLACEHOLDER_TAG, is_placeholder
 RATE = 48000
 #: The tracked manifest beside the YAML configs (stagehand/media/sounds.yaml).
 MANIFEST = Path(__file__).resolve().parents[3] / "media" / "sounds.yaml"
+#: An SFX library name (audio/sfx/spec.py: snake_case, or an ambient's hyphens).
+_LIBRARY_NAME = re.compile(r"^[a-z][a-z0-9_-]{0,47}$")
 MOTIFS = (
     "modem", "arpeggio_up", "jingle", "glitch", "ticks", "grind", "rattle", "zip", "bell", "siren",
     "shutdown", "beat", "beat_fast", "beat_swing", "vocoder", "vocoder_sad", "engine", "pad", "fanfare",
@@ -51,6 +54,9 @@ class SoundSpec:
     real: str
     lead_silence: float = 0.0
     no_duck: bool = False
+    #: The SFX library sound that stands in for it (wave 38, C6): `stagehand
+    #: sounds library --story` writes that sound here as `<name>.wav`.
+    library: str | None = None
 
 
 def load_manifest(path: str | Path = MANIFEST) -> dict[str, SoundSpec]:
@@ -71,7 +77,10 @@ def load_manifest(path: str | Path = MANIFEST) -> dict[str, SoundSpec]:
         lead = raw.get("lead_silence", 0)
         if isinstance(lead, bool) or not isinstance(lead, (int, float)) or not 0 <= lead <= 60:
             raise ValueError(f"{path}: sounds.{name}.lead_silence must be 0–60")
-        out[str(name)] = SoundSpec(str(name), motif, float(seconds), str(raw.get("real") or ""), float(lead), raw.get("no_duck") is True)
+        library = raw.get("library")
+        if library is not None and (not isinstance(library, str) or not _LIBRARY_NAME.match(library)):
+            raise ValueError(f"{path}: sounds.{name}.library must be an SFX library sound name")
+        out[str(name)] = SoundSpec(str(name), motif, float(seconds), str(raw.get("real") or ""), float(lead), raw.get("no_duck") is True, library)
     return out
 
 
