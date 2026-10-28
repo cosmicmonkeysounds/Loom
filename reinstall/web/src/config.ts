@@ -15,6 +15,7 @@
 //! save the house map. The passcode itself is never stored.
 
 import { api, ApiError } from "@loom/play/client.ts";
+import { parseQuality, type QualityChoice } from "./game/quality.ts";
 
 /** What this device does with a scanned program: plays it here, sends it
  *  to a VR headset, or offers both. */
@@ -40,6 +41,9 @@ export interface ReinstallConfig {
    *  begin and the controls tutorial after it. Missing = on; `intro=0`
    *  turns it off (a rehearsal device, a director's test walk). */
   intro?: boolean;
+  /** (wave 39) The graphics cap (`quality=low|medium|high|auto`): the game's
+   *  setting picks under it and `auto` adapts under it. Missing = no cap. */
+  quality?: QualityChoice;
 }
 
 export const CONFIG_KEY = "loom.reinstall";
@@ -77,6 +81,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> | null = safeStorag
       arrowsTurn: typeof c.arrowsTurn === "boolean" ? c.arrowsTurn : base.arrowsTurn,
       voice: typeof c.voice === "boolean" ? c.voice : base.voice,
       ...(typeof c.intro === "boolean" ? { intro: c.intro } : {}),
+      ...(parseQuality(c.quality) !== null ? { quality: parseQuality(c.quality)! } : {}),
     };
   } catch {
     return null;
@@ -107,7 +112,7 @@ function safeStorage(): Storage | null {
   }
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&role=&camera=&arrows=&voice=&intro=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&role=&camera=&arrows=&voice=&intro=&quality=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -118,8 +123,12 @@ export interface UrlHints {
   voice: boolean | null;
   /** `intro=1` / `intro=0` (wave 33; missing from an older caller = no hint). */
   intro?: boolean | null;
+  /** `quality=low|medium|high|auto` (wave 39): the graphics cap. */
+  quality?: QualityChoice | null;
 }
 
+// `quality` stays on the URL (no secret, and the tent terminal's flow reads
+// it off its own page's URL: `qualityHint`).
 const HINT_KEYS = ["code", "name", "role", "camera", "arrows", "voice", "intro"] as const;
 
 export function hintsFromSearch(search: string): UrlHints {
@@ -137,7 +146,15 @@ export function hintsFromSearch(search: string): UrlHints {
     arrowsTurn: arrows === "turn" ? true : arrows === "strafe" ? false : null,
     voice: voice === "1" ? true : voice === "0" ? false : null,
     intro: intro === "1" ? true : intro === "0" ? false : null,
+    quality: parseQuality(p.get("quality")),
   };
+}
+
+/** (wave 39) The graphics cap on a page's URL (`?quality=`), null when none:
+ *  the game reads it when the config has none (the tent terminal mounts the
+ *  flow with a config of its own, under its own page's URL). */
+export function qualityHint(search: string): QualityChoice | null {
+  return parseQuality(new URLSearchParams(search).get("quality"));
 }
 
 /** The URL with the passcode (and the other provisioning hints) scrubbed. */
@@ -158,6 +175,7 @@ export function applyHints(c: ReinstallConfig, hints: Omit<UrlHints, "code">): R
     arrowsTurn: hints.arrowsTurn ?? c.arrowsTurn,
     voice: hints.voice ?? c.voice,
     ...(typeof hints.intro === "boolean" ? { intro: hints.intro } : {}),
+    ...(hints.quality !== undefined && hints.quality !== null ? { quality: hints.quality } : {}),
   };
 }
 

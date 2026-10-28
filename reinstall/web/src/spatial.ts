@@ -2,9 +2,14 @@
 //! player table — the one reducer the game (other players as ghosts) and
 //! the map page (live dots) share — plus the thin `EventSource` wiring, and
 //! the wire helpers for what rides beside the players: the shared King
-//! (`kingOf`) and a ghost's profile picture (`avatarUrl`).
+//! (`kingOf`), a ghost's profile picture (`avatarUrl`) and (wave 39) the
+//! real house lights (`LIGHTS_FRAME`, `decodeLights`): a frame of its own,
+//! read with `@loom/house`'s `gameLightsOf` and handed to `onLights` — never
+//! into the player table, so a malformed one (or a stream that never sends
+//! one: an older server) changes nothing.
 
-import type { DuckSpot, KingState, PlayerState, SpatialFrame, SpatialFrameName } from "@loom/house";
+import { gameLightsOf } from "@loom/house";
+import type { DuckSpot, GameLights, KingState, PlayerState, SpatialFrame, SpatialFrameName } from "@loom/house";
 
 export const FRAME_NAMES: readonly SpatialFrameName[] = ["hello", "join", "poses", "found", "leave", "house", "duck", "reset", "king", "avatar"];
 
@@ -62,6 +67,9 @@ export function applyFrame(players: ReadonlyMap<string, PlayerState>, frame: Spa
       return players.size === 0 ? players : new Map();
     case "house":
     case "king":
+      return players;
+    default:
+      // A frame this table has no use for (`lights`, or one from a newer server).
       return players;
   }
 }
@@ -137,6 +145,19 @@ export function decodeFrame(event: string, data: string): SpatialFrame | null {
   }
 }
 
+/** (wave 39) The spatial stream's `lights` frame (§2.2): what the real house
+ *  lights show now. Sent after `hello`, then on every change. */
+export const LIGHTS_FRAME = "lights";
+
+/** Decode a `lights` frame's data (null when it isn't one). */
+export function decodeLights(data: string): GameLights | null {
+  try {
+    return gameLightsOf(JSON.parse(data));
+  } catch {
+    return null;
+  }
+}
+
 export interface SpatialStreamHandle {
   close(): void;
 }
@@ -182,7 +203,7 @@ export function streamGone(status: number | null): boolean {
  */
 export function openSpatialStream(
   url: string,
-  handlers: { onFrame: (f: SpatialFrame) => void; onState?: (up: boolean) => void; onDead?: () => void },
+  handlers: { onFrame: (f: SpatialFrame) => void; onLights?: (l: GameLights) => void; onState?: (up: boolean) => void; onDead?: () => void },
   opts: { probe?: () => Promise<number | null>; source?: (url: string) => SpatialSource } = {},
 ): SpatialStreamHandle {
   const source = opts.source ?? ((u: string) => new EventSource(u) as SpatialSource);
@@ -202,6 +223,13 @@ export function openSpatialStream(
       me.addEventListener(name, (e) => {
         const f = decodeFrame(name, (e as MessageEvent<string>).data);
         if (f !== null) handlers.onFrame(f);
+      });
+    }
+    const onLights = handlers.onLights;
+    if (onLights !== undefined) {
+      me.addEventListener(LIGHTS_FRAME, (e) => {
+        const l = decodeLights((e as MessageEvent<string>).data);
+        if (l !== null) onLights(l);
       });
     }
     me.onopen = () => {
