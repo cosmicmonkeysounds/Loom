@@ -241,6 +241,11 @@ def _targets(raw: Any, where: str) -> tuple[str, ...]:
     return tuple(t.strip() for t in raw)
 
 
+def _key(name: Any) -> Any:
+    """A scene's key: YAML 1.1 turns a bare `off` / `on` into a boolean."""
+    return {False: OFF, True: "on"}[name] if isinstance(name, bool) else name
+
+
 def _scene(name: Any, raw: Any, playlists: dict[str, Playlist], where: str) -> tuple[Entry, ...]:
     if not isinstance(name, str) or not NAME.match(name):
         raise ConfigError(f"{where}: a scene name is a-z, 0-9 and _ (`cue music_<scene>`; got {name!r})")
@@ -283,7 +288,8 @@ def parse_soundtrack(doc: Any, base_dir: str | Path, path: str = "soundtrack.yam
     raw_scenes = doc.get("scenes") or {}
     if not isinstance(raw_scenes, dict):
         raise ConfigError(f"{where}.scenes: a mapping of name → [{{to, play}}, …]")
-    scenes = {str(n): _scene(n, r, playlists, f"{where}.scenes") for n, r in raw_scenes.items()}
+    # YAML 1.1 reads a bare `off:` (or `on:`) as a boolean key.
+    scenes = {_key(n): _scene(_key(n), r, playlists, f"{where}.scenes") for n, r in raw_scenes.items()}
     raw_tracks = doc.get("tracks") or {}
     if not isinstance(raw_tracks, dict):
         raise ConfigError(f"{where}.tracks: a mapping of story sound → {{takeover: true}}")
@@ -438,6 +444,9 @@ class Bed:
     cur: Playing | None = None
     #: The incoming track of a crossfade (played `start_at` a future frame).
     nxt: Playing | None = None
+    #: The outgoing track of a crossfade, until its fade ends (no third
+    #: track opens while it is still open).
+    out: Playing | None = None
     #: The next track, opened ahead so its worker prefills it.
     pending: tuple[str, Any] | None = None
     #: Mixer frame before which a failed open / an empty playlist is not retried.
@@ -603,10 +612,10 @@ class Director:
         return new
 
     def _fade_out(self, bed: Bed, fade_s: float) -> None:
-        for v in (bed.cur, bed.nxt):
+        for v in (bed.cur, bed.nxt, bed.out):
             if v is not None and self.mixer is not None:
                 self.mixer.stop(vid=v.vid, fade_s=fade_s)
-        bed.cur = bed.nxt = None
+        bed.cur = bed.nxt = bed.out = None
         self._close_pending(bed)
 
     @staticmethod
@@ -684,7 +693,9 @@ class Director:
     def _tick(self, bed: Bed, now: int) -> None:
         mixer = self.mixer
         if bed.nxt is not None and (bed.nxt.start is None or now >= bed.nxt.start):
-            bed.cur, bed.nxt = bed.nxt, None
+            bed.out, bed.cur, bed.nxt = bed.cur, bed.nxt, None
+        if bed.out is not None and not mixer.playing(bed.out.vid):
+            bed.out = None
         cur = bed.cur
         if cur is None:
             if now >= bed.retry_at:
@@ -705,7 +716,7 @@ class Director:
         here = cur.here()
         remaining = end - here
         fade = min(self._frames(self.st.crossfade_s), max(0, end) // 3)
-        if bed.pending is None and remaining <= fade + self._frames(PREPARE_S) and now >= bed.retry_at:
+        if bed.pending is None and bed.out is None and remaining <= fade + self._frames(PREPARE_S) and now >= bed.retry_at:
             bed.pending = self._next_stream(bed)
         if bed.pending is None or remaining > fade + self._frames(LEAD_S):
             return
