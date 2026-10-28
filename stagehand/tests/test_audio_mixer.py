@@ -208,6 +208,35 @@ def test_too_many_voices_never_drop_music_and_fade_the_dropped_sfx():
     assert dropped == ["oldest"] and m.active("music") == 1 and np.allclose(out[:, 1], 0.01)
 
 
+def test_too_many_voices_keep_a_takeover_track_and_drop_the_oldest_short_sfx():
+    # The show's songs (dance_song, ceremony_bed) are takeover streams on the
+    # sfx bus, so nearly always the oldest sfx voice: a burst of dings over
+    # the cap fades a ding, never the song.
+    m = Mixer(1, 2, RATE)
+    dropped: list[str] = []
+    f = ArrayFile(np.full((60_000, 1), 0.3, dtype=np.float32), RATE)
+    song = Stream("dance_song.mp3", RATE, opener=lambda p: f, start=False, chunk_s=0.1, buffer_s=2.0, prefill_s=0.1)
+    song.fill()
+    vid = m.play(song, {2: 0.0}, takeover=True, duck=False, fade_in_s=0, done=lambda: dropped.append("song"))
+    m.play(tone(10_000, 0.5), {1: 0.0}, fade_in_s=0, done=lambda: dropped.append("oldest ding"))
+    block(m)
+    for _ in range(MAX_VOICES - 1):
+        m.play(tone(10_000, 0.0), {1: 0.0})  # the 33rd voice is the last of these
+    out = block(m, 20)
+    assert out[5, 0] == pytest.approx(0.25, rel=0.01) and not out[10:, 0].any()  # the ding's 10 ms fade
+    assert dropped == ["oldest ding"] and m.playing(vid) and np.allclose(out[:, 1], 0.3)
+    assert not song.finished and not f.closed
+
+
+def test_when_every_voice_is_a_track_the_cap_still_holds():
+    m = Mixer(1, 1, RATE)
+    dropped: list[int] = []
+    for i in range(MAX_VOICES + 1):
+        m.play(tone(10_000, 0.0), {1: 0.0}, takeover=True, done=lambda i=i: dropped.append(i))
+    block(m, 20)
+    assert dropped == [0] and m.active() == MAX_VOICES
+
+
 # -- priority ducking (wave 38, C2) ------------------------------------------
 
 PRIORITY = {"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}}

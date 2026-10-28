@@ -54,8 +54,9 @@ import numpy as np
 BUSES = ("sfx", "music", "announce", "test")
 #: The buses priority ducking acts on (in the depth vectors' order).
 DUCKED = ("sfx", "music")
-#: Voices beyond this fade out the oldest sfx voice (a runaway cue can't
-#: pile up). A music voice is never the one dropped.
+#: Voices beyond this fade out the oldest short sfx voice (a runaway cue
+#: can't pile up). A music voice is never the one dropped, and a takeover or
+#: streamed track (the show's songs) only when nothing else is left.
 MAX_VOICES = 32
 #: The fade a voice dropped by the cap gets (a cut would click).
 CAP_FADE_S = 0.010
@@ -613,12 +614,24 @@ class Mixer:
         v.stop_at, v.stop_len = int(round(v.age - (1.0 - g) * span)), span
 
     def _cap(self) -> None:
-        """Over MAX_VOICES: fade out the oldest sfx voice (else the oldest
-        that isn't music) over CAP_FADE_S."""
+        """Over MAX_VOICES: fade out the oldest short sfx voice (else the
+        oldest short one that isn't music) over CAP_FADE_S. A takeover or a
+        streamed voice (a soundtrack track: dance_song, ceremony_bed) is
+        nearly always the oldest, and is the worst one to lose: it goes only
+        when every other candidate is a track too."""
         live = [v for v in self.voices if v.stop_at is None]
         if len(live) <= MAX_VOICES:
             return
-        oldest = next((v for v in live if v.bus == "sfx"), None) or next((v for v in live if v.bus != "music"), None)
+
+        def short(v: Voice) -> bool:
+            return not v.takeover and v.stream is None
+
+        oldest = (
+            next((v for v in live if v.bus == "sfx" and short(v)), None)
+            or next((v for v in live if v.bus != "music" and short(v)), None)
+            or next((v for v in live if v.bus == "sfx"), None)
+            or next((v for v in live if v.bus != "music"), None)
+        )
         if oldest is not None:
             oldest.stop_at, oldest.stop_len = oldest.age, max(1, int(CAP_FADE_S * self.rate))
 
