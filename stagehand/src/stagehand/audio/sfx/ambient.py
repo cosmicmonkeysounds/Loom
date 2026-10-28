@@ -283,7 +283,7 @@ def cable_rattle(rng: np.random.Generator) -> np.ndarray:
             events.append((dsp.pan(thunk * rng.uniform(0.5, 0.9), where), at))
     rattles = _scatter(events, s)
     draught = _band_noise(s, rng, 120, 700, channels=2) * (0.8 + 0.2 * _wander(s, rng, 0.08))[:, None]
-    x = rattles + draught * 0.12
+    x = rattles + draught * 0.05
     return _finish(_room(x, room=0.6, damp=0.4, wet=0.22), low_cut=60)
 
 
@@ -610,7 +610,7 @@ SOUNDS: list[Spec] = [
          note="the Desktop: a monitor on its screensaver, mains hum, tube hiss, a soft swelling open chord"),
     Spec("pitch-black", "ambient", pitch_black, 30.0, loop=True, level_db=-22,
          note="the Optical Drive: a deep, barely-there drone and a dark breathing rumble"),
-    Spec("cable-rattle", "ambient", cable_rattle, 30.0, loop=True, level_db=-27,
+    Spec("cable-rattle", "ambient", cable_rattle, 30.0, loop=True, level_db=-31,
          note="the Tube: cables in a metal duct, sparse runs of rattles, lone ticks, a flexing thunk"),
     Spec("fridge-hum", "ambient", fridge_hum, 30.0, loop=True,
          note="the Start Bar: a refrigerator's compressor beating gently against the mains, fan air, a gurgle"),
