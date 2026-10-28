@@ -177,8 +177,8 @@ tracks:                 # story `sound X` that take the speakers they play on
   `takeover: false` streams the track without taking the speakers.
 - **Scene sources**, first one that applies wins at each moment:
   1. a live `cue music_<scene>` on the mod feed (`sim` directive `cue`,
-     first word `music_<scene>`; an unknown scene is logged once and kept
-     as nothing);
+     first word `music_<scene>`; an unknown scene is logged once and
+     ignored: the current scene plays on);
   2. MQTT `show/audio/music {"scene": "<scene>"}` (or `{"next": true}`:
      skip the current track on every bed; `{"stop": true}`: scene `off`).
      A stop or scene by hand **holds**: later feed catch-ups skip it until

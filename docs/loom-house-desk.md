@@ -208,7 +208,8 @@ on the next answer (a long poll answers within 25 s).
   (no `to`: `cues[sound].to`, else everywhere). `gain` is added to each
   speaker's gain. A `say` play rings the chime (unless `chime: false`) and
   speaks on the `announce` bus to `to` (no `to`: `audio.json`
-  `announce.to`), ducking the sfx bus as ever.
+  `announce.to`), ducking the sfx bus as ever and, since wave 38, the music
+  (`priority.announce`).
 - `POST /api/mod/audio/report {health?, acks?}` (memory only):
   - `acks`: `[{seq, kind: "play" | "test", result: "played" | "closed" |
     "nowhere" | "no-file" | "error", ms?}]`. `ms` is the sound's or the

@@ -206,7 +206,7 @@ sound, the lights and each outside mind connected, and what to do when
 one isn't) and **Try it** (play a look, a story sound or a line on the
 speakers) are in [The Desk: setup and tests](house-desk.md).
 
-- **The status chips**: the house Mac's router (*🔊 router online*, or
+- **The status chips**: the house sound router (*🔊 router online*, or
   offline), sound files missing or still placeholders, the lights module,
   lights Zigbee2MQTT doesn't know, and problems in the desk itself.
 - **■ STOP ALL** stops every desk cue that is playing **and** the house

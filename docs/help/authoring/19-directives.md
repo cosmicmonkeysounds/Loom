@@ -141,8 +141,9 @@ set Night.music = "act_1"
 - The music ducks under Trabolta's voice, Clippy's mic and the
   announcements on its own.
 - `Night.music` is what the router reads to catch up after a restart, so
-  always set it with the cue. An unknown scene is logged once and plays
-  nothing.
+  always set it with the cue. A cue for an unknown scene is logged once
+  and changes nothing (the music plays on); an unknown `Night.music` after
+  a restart is silence.
 - `music_` is the soundtrack's: no lights look and no house desk cue may
   start with it.
 
