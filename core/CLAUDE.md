@@ -271,8 +271,8 @@ regenerates `generated/questions.loom`, `codex/9-facts.loom`,
 `generated/print-stacks.md` and the marked blocks in `trabolta.mind.md`
 and `DESIGN.md`. Never hand-edit the generated files.
 
-The VPS (`app.mapsandducks.com`) runs release `w32` (master through
-waves 32–33; rollback `w31`; the root `CLAUDE.md` has the release status). Release and sync
+The VPS (`app.mapsandducks.com`) runs release `w33b` (master through
+waves 32–36; rollback `w32`; the root `CLAUDE.md` has the release status). Release and sync
 procedure: `scripts/ops/` and
 [`docs/loom-docker-deploy.md`](../docs/loom-docker-deploy.md).
 Show-night diagnostics from any machine: `pnpm showctl`
