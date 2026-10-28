@@ -21,6 +21,23 @@ export function atBottom(el: { scrollTop: number; scrollHeight: number; clientHe
   return el.scrollHeight - el.scrollTop - el.clientHeight <= slack;
 }
 
+/** What a scroll of the stream does to following the newest line: `pin`
+ *  (follow it), `unpin` (leave the reader where they are), `stick` (a
+ *  scroll the browser made on its own while following: back to the
+ *  bottom) or `keep`. `user` is a scroll that follows a touch, the wheel
+ *  or a key; `up` is one that moved up. A reader's own scroll up lets go
+ *  at once, even inside the slack (the Optical Drive's CAPTCHA: nudge up
+ *  to read the question, tap a tile, and the stream used to jump back
+ *  down). Landing on the very bottom (a clamp as a card folds) still
+ *  follows. */
+export function scrollPin(o: { pinned: boolean; user: boolean; up: boolean; gap: number }): "pin" | "unpin" | "stick" | "keep" {
+  if (o.gap <= 1) return "pin";
+  if (o.user && o.up) return "unpin";
+  if (o.gap <= STICK_SLACK) return "pin";
+  if (o.user) return "unpin";
+  return o.pinned ? "stick" : "keep";
+}
+
 type NodeLike = { nodeType: number };
 type RecordLike = { type: string; target: unknown; addedNodes: ArrayLike<NodeLike>; removedNodes: ArrayLike<NodeLike> };
 
@@ -42,8 +59,9 @@ export function rowChanges<N extends NodeLike>(records: readonly RecordLike[], b
  * while the reader is at (or near) the bottom, anything that makes the
  * stream taller — a line the crawl reveals, a card, the pass, a picture
  * loading — or the box itself shorter (the decision tray docking under it)
- * scrolls it back to the bottom. Scroll up to read the backlog and it
- * leaves you there until you come back down. Returns a callback ref for
+ * scrolls it back to the bottom. Scroll up to read the backlog (any
+ * distance: `scrollPin`) and it leaves you there until you come back
+ * down. Returns a callback ref for
  * the scrolling element.
  */
 export function useStickToBottom<T extends HTMLElement>(): (el: T | null) => void {
@@ -76,10 +94,15 @@ export function useStickToBottom<T extends HTMLElement>(): (el: T | null) => voi
     const touch = () => {
       touched = Date.now();
     };
+    let lastTop = el.scrollTop;
     const onScroll = () => {
-      if (atBottom(el)) pinned = true;
-      else if (Date.now() - touched < USER_SCROLL_MS) pinned = false;
-      else if (pinned) stickNow();
+      const top = el.scrollTop;
+      const up = top < lastTop - 0.5;
+      lastTop = top;
+      const step = scrollPin({ pinned, user: Date.now() - touched < USER_SCROLL_MS, up, gap: el.scrollHeight - top - el.clientHeight });
+      if (step === "pin") pinned = true;
+      else if (step === "unpin") pinned = false;
+      else if (step === "stick") stickNow();
     };
     for (const ev of ["touchstart", "touchmove", "wheel", "pointerdown", "keydown"]) el.addEventListener(ev, touch, { passive: true });
     el.addEventListener("scroll", onScroll, { passive: true });
