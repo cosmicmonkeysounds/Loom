@@ -138,6 +138,8 @@ def test_the_example_config_parses(tmp_path):
     assert audio.cfg.no_duck == ("dance_song", "rave", "hand_jive") and audio.cfg.duck_hold_s == 7
     assert audio.cfg.priority == {"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}}
     assert (audio.cfg.sidechain.threshold_db, audio.cfg.sidechain.attack_s, audio.cfg.sidechain.hold_s, audio.cfg.sidechain.release_s) == (-45, 0.04, 0.8, 1.2)
+    assert audio.cfg.soundtrack is None and audio.music is None  # commented out in the example
+    assert audio.cfg.music_topic == "show/audio/music"
 
 
 # -- the stream --------------------------------------------------------------

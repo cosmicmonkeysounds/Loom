@@ -387,9 +387,14 @@ audio:
                                   # (takeover: a soundtrack track silences the music on its speakers)
   sidechain: { threshold_db: -45, attack_s: 0.04, hold_s: 0.8, release_s: 1.2 }
   no_duck: [dance_song, rave, hand_jive]   # never ducked (by anything)
+  soundtrack: media/soundtrack.yaml   # wave 38 (C3): the music beds, one set per act — the
+                                  # scene from `cue music_<scene>` / Night.music (the catch-up);
+                                  # the MP3s go in media/music/<act>/ (git-ignored; the file's
+                                  # header says which folder is which)
   mqtt: { host: 127.0.0.1, port: 1883, client_id: stagehand-audio }   # the Desktop's loopback; the MacBook fallback: the Desktop's :1884 (trapped.macbook.yaml)
                                   # show/announce, show/chime, show/audio/test, show/audio/stop,
-                                  # show/audio/play — all work on the LAN with the uplink down
+                                  # show/audio/play, show/audio/music — all work on the LAN with
+                                  # the uplink down
   say_voice: Samantha             # `say -v '?'` lists them; an Enhanced/Premium one is nicer
   chime: synth                    # or a file: chime: media/announce_chime.wav
   announce_gain_db: 0
