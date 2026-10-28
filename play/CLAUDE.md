@@ -27,8 +27,8 @@ Run from the repo root (`pnpm install` once covers every JS package).
 `scripts/ops/predeploy.sh` runs `pnpm -r typecheck`, every package's tests,
 and `pnpm --filter loom-play build && node play/scripts/first-load.mjs
 --max-kb 148`. A change that pushes the guest's first load over 148 kB
-fails predeploy. With wave 26 merged it measures about 146 kB (145.92),
-so there is about 2 kB of room.
+fails predeploy. With wave 36 merged it measures 147.35 kB, so there is
+well under 1 kB of room.
 
 ## How a session works
 
@@ -401,6 +401,19 @@ copy. Any new guest line must pass it.
   `Array.prototype.at`, `structuredClone`, an unguarded `color-mix()`.
   `test/css-old-devices.test.ts` adds `:focus-visible` (Safari < 15.4
   drops the whole rule list) and `aspect-ratio`.
+- **The page never stays zoomed** (wave 36). An iPhone left zoomed in
+  pans the whole app sideways. `html` has `touch-action: manipulation`
+  (no double-tap zoom on the two-tap arm buttons; a pinch still zooms)
+  and `overflow-x: hidden`, and every text field is 16 px
+  (`font-size: 16px !important` in `base.css`: iOS zooms into anything
+  smaller and never zooms back out). Never add `maximum-scale` or
+  `user-scalable` to the viewport. `test/w36-old-phones.test.tsx`.
+- **Pictures retry** (wave 36). `PersonAvatar` and `PictureGrid` load a
+  picture through `usePictureTries` (`ui/primitives.tsx`) over the pure
+  tries in `avatars.ts`: a failed load shows the initials, retries after
+  `PICTURE_RETRY_MS` (2 s, 8 s) with `?try=n`, then gives up. React owns
+  the `<img>`: never remove or hide it by hand in `onError`. Avatars load
+  eagerly (no `loading="lazy"`). The server's avatar 404 is `no-store`.
 - **44 px targets.** Every control used on the night is at least 44 × 44
   (`test/floor-css.test.ts`).
 - **No QR server calls.** The pass QR is drawn in the browser
