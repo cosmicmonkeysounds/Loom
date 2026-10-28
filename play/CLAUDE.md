@@ -219,7 +219,10 @@ windows), the Desk, the director phone and Help are lazy chunks.
   soon as `missionShown` turns true, with the blink instead. A player's
   own `dm:` big shaped `… · …` (YOUR GAME IS ON) is a `game:` pop-out
   (`AdapterCtx.me` / `player`; priority 55, under the target's 60, 60 s,
-  ▣ Go to Mission), and a newer game retires the older. It is an alarm
+  ▣ Go to Mission), and a newer game retires the older. A held game also
+  retires a minute after it was raised (on screen or not) or once the
+  headline moves on more than 10 s after it, so one held under PLAYER
+  SELECT or a card never comes back stale. It is an alarm
   (red caption, chime) with `PopOutSpec.yields`: after the grace it gives
   way to any live pop-out that outranks it (LANDED ON, a big readout) and
   shows again after them. WANTED · YOURS has

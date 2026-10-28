@@ -290,9 +290,16 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
   const heldKey = rung.held.map((e) => `${e.spec.key}:${e.restored === true ? 1 : 0}:${(e.spec.rows ?? []).length}`).join("|");
   const objIds = JSON.stringify((view?.objectives ?? []).map((o) => [o.id, (o as BoothObjective).target?.id ?? null]));
   const caughtKey = guests.filter((g) => g.captured).map((g) => g.id).join(",");
+  // When the headline last changed while this booth watched (a game's cue is
+  // over then), and a slow clock so a held game retires at its minute.
+  const headline = useRef<{ id: string; at: number | null } | null>(null);
+  if (headline.current === null) headline.current = { id: headId, at: null };
+  else if (headline.current.id !== headId) headline.current = { id: headId, at: now };
+  const gameBucket = rung.held.some((e) => e.spec.key.startsWith("game:")) ? Math.floor(now / 5_000) : 0;
   useEffect(() => {
     if (rung.held.length === 0) return;
     const r = reconcilePopOuts(rung.held, {
+      headlineAt: headline.current?.at ?? null,
       wanted,
       objectives: (view?.objectives ?? []) as BoothObjective[],
       calls,
@@ -302,7 +309,7 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     for (const k of r.retire) rung.retire(k);
     for (const d of r.rebind) rung.raise(bind(d));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heldKey, wantedKey, objIds, callsKey, caughtKey]);
+  }, [heldKey, wantedKey, objIds, callsKey, caughtKey, gameBucket]);
 
   // A deferred *Call it?* pops once its countdown is up; and when a
   // countdown ends with the caller's own cue as the sheet's NEXT, it pops too.

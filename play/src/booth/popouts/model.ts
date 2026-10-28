@@ -327,6 +327,9 @@ export interface ReconcileCtx {
   calls: CallsView | null;
   guestOf: (id: string) => BoothGuest | null;
   wctx: WantedCtx;
+  /** Story ms the headline objective last changed while this booth watched
+   *  (null: not since it opened). A game raised well before it is over. */
+  headlineAt?: number | null;
 }
 
 function loose(ctx: ReconcileCtx, id: string): WantedEntry | null {
@@ -348,7 +351,9 @@ function loose(ctx: ReconcileCtx, id: string): WantedEntry | null {
  * - `cue:<id>:<presses>` — the sheet moved on, or the cue stopped being live;
  * - `mission:<id>` — wave 37 (C7): `<id>` is not the headline any more, or a
  *   held `game:` landed within 10 s of it (one cue, one pop-out);
- * - `game:<seq>` — wave 37 (C8): a newer game is held;
+ * - `game:<seq>` — wave 37 (C8): a newer game is held, it is a minute old
+ *   (`GAME_RETIRE_MS` since it was raised, on screen or not), or the
+ *   headline changed more than `MISSION_GAME_MS` after it (its cue is over);
  * - `msg:<seq>` 🚨 about a guest — wave 37 (C10): that guest is not loose on
  *   the board any more (caught, unmarked).
  */
@@ -417,8 +422,11 @@ export function reconcilePopOuts(held: readonly HeldPopOut[], ctx: ReconcileCtx)
       continue;
     }
     if (k.startsWith("game:")) {
-      // Wave 37 (C8): one game at a time; a restored one gets its Go back.
-      if (newestGame !== null && newestGame !== h) retire.push(k);
+      // Wave 37 (C8): one game at a time, never past its minute or its cue
+      // (one held under PLAYER SELECT or a card never comes back stale); a
+      // restored one gets its Go back.
+      const over = ctx.wctx.now - s.at >= GAME_RETIRE_MS || (ctx.headlineAt != null && ctx.headlineAt - s.at > MISSION_GAME_MS);
+      if ((newestGame !== null && newestGame !== h) || over) retire.push(k);
       else if (h.restored === true) rebind.push({ ...base(s), yields: true, autoRetireMs: GAME_RETIRE_MS, actions: [GAME_GO] });
       continue;
     }

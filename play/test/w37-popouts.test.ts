@@ -119,6 +119,17 @@ describe("C7 / C8: reconcile NEW MISSION and the game pop-outs", () => {
     expect(r.rebind[0]!.actions).toEqual([{ id: "go", label: "▣ Go to Mission", kind: "primary", do: { kind: "mission" } }]);
     expect(r.rebind[0]!.autoRetireMs).toBe(60_000);
   });
+
+  it("a game held quiet never comes back stale: it goes at its minute, or once its cue's headline moved on", () => {
+    const game = held("game:42", { at: 100_000, tone: "alarm", priority: 55 });
+    const at = (now: number, headlineAt: number | null = null) => rctx({ wctx: { ...rctx().wctx, now }, headlineAt });
+    expect(reconcilePopOuts([game], at(159_999)).retire).toEqual([]);
+    expect(reconcilePopOuts([game], at(160_000)).retire).toEqual(["game:42"]);
+    // The headline that came with it (the DM lands first) keeps it ...
+    expect(reconcilePopOuts([game], at(105_000, 100_000 + MISSION_GAME_MS)).retire).toEqual([]);
+    // ... a later one ("The Bingo is over") means its moment is over.
+    expect(reconcilePopOuts([game], at(130_000, 125_000)).retire).toEqual(["game:42"]);
+  });
 });
 
 describe("C10: no stale 🚨 readout pop-out", () => {
