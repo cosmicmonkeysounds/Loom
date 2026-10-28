@@ -439,12 +439,21 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
   it("carries the judge defaults", () => {
     expect(facts.judge).toEqual({ mode_var: "Night.judge_mode", confirm: { accurate: "fact_accurate", lie: "fact_lie", uncertain: "fact_uncertain" } });
   });
-  it("carries 30 main + 6 trabolta + 24 character facts, three colour stacks and three round briefs", () => {
-    const by = (c: string) => facts.facts.filter((f) => f.category === c);
-    expect(by("main").map((f) => f.id)).toEqual(Array.from({ length: 30 }, (_, i) => `M${String(i + 1).padStart(2, "0")}`));
-    expect(by("trabolta").map((f) => f.id)).toEqual(["T1", "T2", "T3", "T4", "T5", "T6"]);
-    expect(by("character").map((f) => f.id)).toEqual(Array.from({ length: 24 }, (_, i) => `C${String(i + 1).padStart(2, "0")}`));
-    expect(Object.keys(facts.categories!)).toEqual(["main", "trabolta", "character"]);
+  it("carries 72 main + 12 trabolta + 24 character + 30 relations facts in four tiers, and three round briefs", () => {
+    const by = (c: string) => facts.facts.filter((f) => f.category === c).map((f) => f.id);
+    const ids = (p: string, n: number, from = 1) => Array.from({ length: n }, (_, i) => `${p}${String(i + from).padStart(2, "0")}`);
+    // Wave 35: M31–M57 are new commons; V01–V09 and L01–L06 (very rare,
+    // legendary) are main too, V10–V12 relations.
+    expect(by("main")).toEqual([...ids("M", 57), ...ids("V", 9), ...ids("L", 6)]);
+    expect(by("trabolta")).toEqual(["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"]);
+    expect(by("character")).toEqual(ids("C", 24));
+    expect(by("relations")).toEqual([...ids("R", 27), ...ids("V", 3, 10)]);
+    expect(Object.keys(facts.categories!)).toEqual(["main", "trabolta", "character", "relations"]);
+    expect(Object.keys(facts.tiers!)).toEqual(["common", "rare", "very-rare", "legendary"]);
+    const perTier = Object.keys(facts.tiers!).map((t) => facts.facts.filter((f) => f.tier === t).length);
+    expect(perTier).toEqual([61, 48, 20, 9]);
+    // Every wave 35 card awaits the sign-off.
+    for (const f of facts.facts.filter((x) => /^(?:[RVL]\d|M(?:3[1-9]|[45]\d)|T(?:[7-9]|1\d))/u.test(x.id))) expect(f.draft, f.id).toBe(true);
     expect(Object.keys(facts.rounds!)).toEqual(["1", "2", "3"]);
     expect(facts.rounds!["1"]!.questTitle).toBe("The Truth Scavenger Hunt · Round 1");
     expect(facts.rounds!["3"]!.questTitle).toBe("The Final Fact-Finding Round");
@@ -499,9 +508,10 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
     expect(new Set(abouts).size).toBe(12);
     for (const a of new Set(abouts)) expect(abouts.filter((x) => x === a)).toHaveLength(2);
   });
-  it("the facts that name his nature, his heart or his shutdown are secret; the rest are not", () => {
+  it("the facts that name his nature, his heart or his shutdown are secret, and every very-rare or legendary card (wave 35); the rest are not", () => {
     const secret = facts.facts.filter((f) => f.codex?.secret === true).map((f) => f.id);
-    expect(secret).toEqual(["M01", "M10", "M11", "M12", "M14", "M22", "M28", "M30"]);
+    expect(secret).toEqual(["M01", "M10", "M11", "M12", "M14", "M22", "M28", "M30", ...SECRET_W35]);
+    for (const f of facts.facts.filter((x) => x.codex !== undefined && /^[VL]/u.test(x.id))) expect(f.codex!.secret === true, f.id).toBe(f.id !== "V11"); // V11 retells C19, which is not secret
   });
   it("every character fact's third entry ends on why he chose them", () => {
     const thirds = facts.facts.filter((f) => f.category === "character").filter((_, i) => i % 2 === 1);
@@ -509,6 +519,8 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
     for (const f of thirds) expect(f.codex!.text, f.id).toMatch(/Why Trabolta chose you: /u);
   });
 });
+
+const SECRET_W35 = ["V01",  "V02",  "V03",  "V04",  "V05",  "V06",  "V07",  "V08",  "V09",  "V10",  "V12",  "L01",  "L02",  "L03",  "L04",  "L05",  "L06"];
 
 describe("showFactsProblems — the server-room door (wave 7)", () => {
   const door = (over: Record<string, unknown> = {}) => ({ code: "1997", clue: "FOUR DIGITS. THE YEAR.", codex: { id: "The Door Code", title: "The Door Code", text: "The code is 1997." }, ...over });

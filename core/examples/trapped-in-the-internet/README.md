@@ -110,7 +110,7 @@ cast/props.loom        The Uploader · The Router · The Screensaver · The Tabl
                        hidden secret state)
 cast/trabolta.loom     the AI: his vars, hooks, and 11 agent powers (wave 20 deleted stand_down: the
                        heart's talk replaced it; the_line_works retired 2026-10-19)
-codex/1-world.loom …   200 CODEX entries: 192 in nine numbered files + the 8 hunt answers
+codex/1-world.loom …   278 CODEX entries: 270 in nine numbered files + the 8 hunt answers
                        in generated/questions.loom (9-facts.loom is GENERATED from
                        facts.json; 3-hunt.loom is gone; 85-ties.loom holds the 16
                        Connections ties and Program Briefing, which deals them at
@@ -195,7 +195,7 @@ These rules matter when you edit. Break one and something fails silently.
 
 As of 2026-10-22 (the wave 18b integration) the project compiles clean, both
 per file and concatenated the way the server joins them (`loomcheck`):
-**34 files, 0 errors, 0 warnings; 112 beats, 200 codex entries (94 with codes), 27
+**34 files, 0 errors, 0 warnings; 112 beats, 278 codex entries (172 with codes; wave 35's tiered facts counted), 27
 quests, 117 rules, 123 INTERACTIONs**. Wave 18b added `beats/review.loom`
 (The Night In Review, Your File and their shared beats) and
 `codex/85-ties.loom` (the 16 Connections ties + Program Briefing), The DSL
@@ -317,10 +317,12 @@ to `reset_server_room`.
    an appearance later tonight. Please do not move the mouse."*
 6. **Print** from Run → Join → **🖨 Print sheet…** (K-12: the join poster,
    every codex QR and the room check-in signs, QRs drawn in the browser,
-   1, 2 or 4 per page), plus the Bingo cards (appendix). Sort the
-   Desktop's codex posters into the four print stacks of
-   `generated/print-stacks.md` (gold: the hunt answers · green · blue ·
-   red: the character facts) and hide each pile where its row says.
+   1, 2 or 4 per page), plus the Bingo cards (appendix). Sort the codex
+   posters by their colour band into the stacks of
+   `generated/print-stacks.md` (gold: the hunt answers, hidden where each
+   row says; then the four rarity tiers, wave 35: green common, blue rare,
+   purple very rare, black legendary) and scatter each tier through the
+   house the way its stack says. Nobody tracks a single fact card.
    Wave 11: hide the four **silver** digit notes in their rooms (never the
    server room or a bathroom), tape the new keypad sign by the door
    (wave 11b moved the code: program the keypad to `facts.json`
@@ -760,8 +762,9 @@ but not used".
 ## Knowledge is the currency: the Codex
 
 Every `CODEX` entry is a piece of lore a participant can **hold**. There
-are **200**, and **94** of them carry a code (the 60 generated from
-`facts.json` included: wave 11 added the cold door's four digit notes). An entry reaches a holder in one of five ways:
+are **278**, and **172** of them carry a code (the 126 generated from
+`facts.json` included: wave 11 added the cold door's four digit notes,
+wave 35 the 78 new tiered facts). An entry reaches a holder in one of five ways:
 
 1. **A code.** `code: MISTER-PICKLES` is printed as a QR in the house.
    Scanning it opens the app with `?code=<event>&unlock=<code>` and redeems
@@ -789,7 +792,7 @@ are **200**, and **94** of them carry a code (the 60 generated from
 |---|---|---|
 | **E** environmental | `1-world` (21), `2-files` (22) | Halifax, the billboard, the sinkhole, the pet cemetery, the Halifax Computer, the printer, the Y2K clock, the virus QRs, *The Cold Door* (the keypad sign, secret: four notes or the King, no riddle since wave 11), and **21 coded "files"** hidden around the house. The **ID** files point at someone's human identity without naming them (a casino deed, an FBI lanyard, a 1988 campaign button…). |
 | **H** hunt answers | `generated/questions.loom` (8, from `facts.json`) | One per question, each on a document in the Desktop's books. Each ends `▒ HUNT ANSWER <id> ▒`, the lore marker Trabolta's worker hides. The six-stamp pickup-line mechanic was retired 2026-10-16 (U9): the line is learnable from Sandy's lore and asked on the pickup-line card. |
-| **F** facts | `9-facts` (48 coded, from `facts.json`) | The team's scannable facts, in the Desktop's print media by colour — 48 generated from `facts.json`'s 60 rows: **main** (what this place is: 30 rows, 21 generated here; the other 9 point at hand-written entries in `1-world` / `4-trabolta`, 6 of them coded), **trabolta** (6 rows: 3 generated, 3 hand-written in `2-files` / `4-trabolta`) and **character** (24: two coded facts per invitee — their secret and their goal tonight — the second and third of the three entries each invitation promises; the first is the identity entry, and all three reach the invitee at Featured Briefing). `generated/print-stacks.md` says which stack and where. Five of the hand-written entries gained codes in wave 4 (`UNIFIED-FIELD`, `TARGET-SELECTION`, `TRUST-CHART`, `SANDY-FILE`, `ALL-FOR-HER`, all in `4-trabolta`). |
+| **F** facts | `9-facts` (126 coded, from `facts.json`) | The team's scannable facts, scattered through the house by **rarity tier** (wave 35): **common** (green, in the open), **rare** (blue, odd but findable places; most of the ties between programs), **very rare** (purple, tucked away; each changes the plot: the King, the notes, the cables, the heart, the majority) and **legendary** (black, one to a room at most; the deep truths about Sandy, Grok and the machine). 126 generated from `facts.json`'s 138 rows, by topic: **main** (72 rows, 63 generated; the other 9 point at hand-written entries in `1-world` / `4-trabolta`, 6 of them coded), **trabolta** (12 rows: 9 generated, 3 hand-written in `2-files` / `4-trabolta`), **character** (24: two coded facts per invitee — their secret and their goal tonight — the second and third of the three entries each invitation promises; the first is the identity entry, and all three reach the invitee at Featured Briefing) and **relations** (30: who is tied to whom; no `about:`, so nobody holds one until they find it). Every very-rare and legendary card is `secret: true`: never in Trabolta's requests, never shared. `generated/print-stacks.md` lists each tier, its count and how it hides. Five of the hand-written entries gained codes in wave 4 (`UNIFIED-FIELD`, `TARGET-SELECTION`, `TRUST-CHART`, `SANDY-FILE`, `ALL-FOR-HER`, all in `4-trabolta`). |
 | **T1** Trabolta surface | `4-trabolta` | *Jean Trabolta*, *The Unified Field Theory*, *Target Selection*, *The Trust Chart* (`about: Trabolta`, so he holds and may share them). |
 | **T2** Trabolta private | `4-trabolta` | *The Sandy File*, *The Question Of Force*, *The LiveJournal* (`TRABOLTA-4EVER`), *Omnipotence*, *Oil And Lightning* (was *Greased Lightning*: no film in his own files since 2026-10-19). His stage rules keep these back until *unravelling*. |
 | **L / P** the heart | `4-trabolta` | *The Legendary Fact* + four combo halves, `about: The Server Room`, all `secret: true` since wave 7 (no model ever reads them, not even the orchestrator's lore block). **He never holds them.** Only the majority faction gets them, via The Whole Truth. |
@@ -1162,20 +1165,21 @@ Print each as a QR of its `?code=&unlock=` link (from `POST
 prints them with the join poster and the room check-in signs (skip The
 Server Room's sign — the check-in rule doesn't handle it).
 
-**The Desktop's print stacks** (`generated/print-stacks.md`, from
-`facts.json`): the 8 hunt answers (gold, each on its own document: the
+**The print stacks** (`generated/print-stacks.md`, from `facts.json`):
+the 8 hunt answers (gold, each on its own document in the Desktop: the
 lease invoice in volume B, the plaque rubbing in P, the programme on the
-mantel, the Customer Care card in the atlas, …), the 30 **main** facts
-(green: inside the encyclopaedias, volumes A–M), the 6 **trabolta** facts
-(blue: deep in the print media on the mantel) and the 24 **character**
-facts (red: the back pages of volumes N–Z and the atlas) all hide in the
-living room's old newspapers, encyclopaedias and atlas. The stacks list
+mantel, the Customer Care card in the atlas, …), then the facts by
+rarity tier (wave 35), scattered through the whole house with no list of
+where each one went: **common** (green, out in the open), **rare** (blue,
+odd but findable), **very rare** (purple, tucked away, counted with the
+four silver digit notes) and **legendary** (black, one to a room at
+most, in its hardest reachable place). The stacks list
 twelve hand-written rows as "already placed" (nine with a code; M06, M13
 and M26 have no QR to print): `MAPSANDDUCKS-COM`,
 `BARRINGTON-ST`, `COLD-STORAGE`, `GROK-ONLINE` keep the rooms below, and
 the five new hand-written codes go in the Desktop piles too
-(`UNIFIED-FIELD`, `TARGET-SELECTION`, `TRUST-CHART` green; `SANDY-FILE`,
-`ALL-FOR-HER` blue). Room check-in QRs are unchanged.
+(`UNIFIED-FIELD`, `TARGET-SELECTION`, `TRUST-CHART`, `SANDY-FILE`,
+`ALL-FOR-HER`). Room check-in QRs are unchanged.
 
 | Where | Codes |
 |---|---|
