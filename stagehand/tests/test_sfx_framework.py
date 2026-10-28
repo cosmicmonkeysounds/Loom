@@ -191,6 +191,16 @@ def test_each_one_shot_ends_in_its_own_decay(name, rendered):
     assert dsp.rms_db(tail) < -40, f"{name}: {dsp.rms_db(tail):.1f} dBFS just before the end (cut, not decayed)"
 
 
+@pytest.mark.parametrize("name", [n for n in NAMES if not SFX[n].loop])
+def test_each_one_shot_is_not_padded_with_dead_air(name, rendered):
+    # its declared length is the sound: a cue or a desk timeline that chains
+    # on it must not wait on digital silence (packet_burst was 52 % silence)
+    x = rendered[name][0].astype(np.float64)
+    live = np.nonzero(np.abs(x) >= 0.5 / 32767)[0]
+    dead = (len(x) - 1 - int(live[-1])) / len(x)
+    assert dead <= 0.25, f"{name}: the last {dead:.0%} is digital silence; shorten its seconds"
+
+
 @pytest.mark.parametrize("name", NAMES)
 def test_each_sound_has_no_dc_or_sub_audio_rumble(name, rendered):
     x, _ = rendered[name]

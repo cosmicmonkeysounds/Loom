@@ -359,7 +359,7 @@ def keyboard_typing(rng: np.random.Generator) -> np.ndarray:
 def mouse_click(rng: np.random.Generator) -> np.ndarray:
     """One mouse click: a tight plastic tick on the press and a lighter one
     on the release."""
-    s = 0.25
+    s = 0.14
     press = _click(rng, ((3200, 1.0, 0.007), (5400, 0.4, 0.004), (1400, 0.5, 0.012)), noise=0.9, noise_ms=0.5)
     release = _click(rng, ((3600, 0.6, 0.006), (1600, 0.3, 0.01)), noise=0.5, noise_ms=0.4)
     x = dsp.mix((press, 0.01), (release, 0.095, -5), seconds=s)
@@ -436,7 +436,7 @@ def dot_matrix_jam(rng: np.random.Generator) -> np.ndarray:
 def cd_tray(rng: np.random.Generator) -> np.ndarray:
     """A CD tray ejecting: the latch click, the little gear motor whirring
     it out, the thunk at the end of travel and the disc settling."""
-    s = 1.6
+    s = 1.35
     latch = _click(rng, ((2500, 0.8, 0.012), (4200, 0.4, 0.008)), noise=0.7)
     run = 0.85
     mf = dsp.jitter(dsp.line([(0, 80), (0.1, 105), (run, 112)], run), rng, cents_rms=15, rate=20)
@@ -527,7 +527,7 @@ SOUNDS: list[Spec] = [
     Spec("hdd_seek", "retro", hdd_seek, 2.5, note="an old hard drive: spindle whine and bursts of head-seek clicks"),
     Spec("floppy_read", "retro", floppy_read, 3.0, note="a floppy drive reading: clunk, stepper buzzes and ticks, spindle whir"),
     Spec("keyboard_typing", "retro", keyboard_typing, 4.0, note="typing on a clicky mechanical keyboard, spacebar between words"),
-    Spec("mouse_click", "retro", mouse_click, 0.25, note="one mouse click: press and release"),
+    Spec("mouse_click", "retro", mouse_click, 0.14, note="one mouse click: press and release"),
     Spec(
         "dot_matrix_jam", "retro", dot_matrix_jam, 5.0, story="printer_grind",
         note="a dot-matrix printer prints a line, feeds, starts the next and jams: grinding, gears skipping",
@@ -537,6 +537,6 @@ SOUNDS: list[Spec] = [
         "system_shutdown", "retro", system_shutdown, 3.0, story="windows_shutdown",
         note="an original wistful shutdown chord: four falling e-piano notes onto a dimming pad",
     ),
-    Spec("cd_tray", "retro", cd_tray, 1.6, note="a CD tray ejecting: latch click, gear motor whir, thunk"),
+    Spec("cd_tray", "retro", cd_tray, 1.35, note="a CD tray ejecting: latch click, gear motor whir, thunk"),
     Spec("fan_spin_up", "retro", fan_spin_up, 3.2, note="a PC case fan spinning up from rest: blade hum and rushing air"),
 ]

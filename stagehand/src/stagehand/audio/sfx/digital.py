@@ -123,7 +123,7 @@ def _mono(x: np.ndarray) -> np.ndarray:
 def packet_burst(rng: np.random.Generator) -> np.ndarray:
     """A short squirt of data: three FSK packets at rising speeds, each with
     a sync chirp in front, the last one crushed as if it barely got through."""
-    s = 1.5
+    s = 0.8  # the third packet ends at 0.72 s: 80 ms of filter tail, no dead air
     layers = []
     at = 0.05
     for i, baud in enumerate((300, 600, 1200)):
@@ -497,7 +497,7 @@ def teleport(rng: np.random.Generator) -> np.ndarray:
 
 
 SOUNDS: list[Spec] = [
-    Spec("packet_burst", "digital", packet_burst, 1.5, note="three FSK data packets at rising speeds, the last one crushed"),
+    Spec("packet_burst", "digital", packet_burst, 0.8, note="three FSK data packets at rising speeds, the last one crushed"),
     Spec("glitch_burst_1", "digital", glitch_burst_1, 0.8, note="data glitch: bleeps catch on a slice, roll faster into a buzz, slam into a crushed hit"),
     Spec("glitch_burst_2", "digital", glitch_burst_2, 1.2, note="data glitch: a chord chopped into chunks at jumping sample rates, sped up, slowed, dropped"),
     Spec("glitch_burst_3", "digital", glitch_burst_3, 1.0, note="data glitch: a warble swells backwards, winds down like a tape stop, two crushed blips"),

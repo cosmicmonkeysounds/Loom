@@ -179,7 +179,7 @@ def warning_beep(rng: np.random.Generator) -> np.ndarray:
     """Three bright beeps at ≈ 1 kHz, an instrument-panel warning: a sine with
     a band-limited square's edge mixed in and rolled off above 4 kHz, so it
     cuts without stinging; dry, as a panel speaker is."""
-    s = 0.75
+    s = 0.6
     on, step = 0.11, 0.2
     env = dsp.gates(s, [(i * step, on) for i in range(3)], attack=0.004, release=0.012)
     tone = dsp.sine(1046.5, s) + 0.3 * dsp.square(1046.5, s)
@@ -304,7 +304,7 @@ SOUNDS: list[Spec] = [
     Spec("chime_up", "dings", chime_up, 1.6, note="three bell notes rising (G5 C6 E6)"),
     Spec("chime_down", "dings", chime_down, 1.6, note="three bell notes falling (E6 B5 G5)"),
     Spec("error_ding", "dings", error_ding, 0.9, note="dull low bonk-bonk falling a minor third: nope"),
-    Spec("warning_beep", "dings", warning_beep, 0.75, note="three bright 1 kHz instrument-panel warning beeps"),
+    Spec("warning_beep", "dings", warning_beep, 0.6, note="three bright 1 kHz instrument-panel warning beeps"),
     Spec("critical_stop", "dings", critical_stop, 1.8, note="hard stop: low dissonant saw cluster slammed with a dark thud"),
     Spec("success_flourish", "dings", success_flourish, 1.7, note="upbeat four-step mallet flourish ending on a ringing C major chord"),
     Spec("doorbell", "dings", doorbell, 2.7, note="ding-dong on two metal tone bars (E5, C5), felt hammers, a hallway"),
