@@ -225,8 +225,11 @@ def _bong(seconds: float) -> np.ndarray:
     reversal half way (the band-limited line dips at the flip, which is the
     bong's knock), swelling in and ringing down."""
     t = dsp.timebase(seconds)
-    flip = np.where(t >= seconds / 2, 0.5, 0.0)
-    tone = np.sin(dsp.TAU * (1200 * t + flip)) + 0.8 * np.sin(dsp.TAU * (2400 * t + flip))
+    tone = np.sin(dsp.TAU * 1200 * t) + 0.8 * np.sin(dsp.TAU * 2400 * t)
+    # the reversal as a 3 ms crossfade into the inverted tone: it still dips
+    # through zero (the knock) but without a hard step's crackle
+    flip = np.clip((t - seconds / 2) / 0.003 + 0.5, 0, 1)
+    tone = tone * (1 - 2 * flip)
     return tone * dsp.line([(0, 0), (0.015, 1), (seconds * 0.6, 0.85), (seconds, 0)], seconds)
 
 
