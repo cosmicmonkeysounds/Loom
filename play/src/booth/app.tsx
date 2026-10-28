@@ -46,7 +46,7 @@ import { GuestsSheet } from "./guests.tsx";
 import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, playerStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
 import { backFor, boothFoldable, boothHost, boothSidebar, closeTo, closedGate, guestsWaiting, keepsCardGuest, soonest, viewPaused, type Layer } from "./model.ts";
-import { boothMomentFeed } from "./moments-feed.ts";
+import { boothMine, boothMomentFeed } from "./moments-feed.ts";
 import { PeopleSheet } from "./people.tsx";
 import { PlayerMission, playerTaskbarButtons } from "./player.tsx";
 import { WANTED_ROOM, playerChats } from "./mission-model.ts";
@@ -235,6 +235,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // (the same rule as `player` below), and the guests that are this
   // booth's own (its escort claims, the arrivals it took at the door).
   const player0 = s.auth !== null && isPlayer(s.view) && !boothHost(s.auth, s.view) && !s.auth.admin;
+  // A booth that claims escorts (an Antivirus) hunts every loose, unclaimed mark.
+  const hunts0 = mayPress(s.view?.interactions, "claim_escort", character0);
   const claimKey = [
     ...(wantedOf(s.view) ?? []).filter((w) => w.claimedBy === character0).map((w) => w.id),
     ...(boothView(s.view)?.guests ?? []).filter((g) => doorClaimer(g) === character0).map((g) => `door:${g.id}`),
@@ -257,10 +259,11 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
       // Wave 37 (C6): no quest balloons on a player; a quiet readout about a
       // guest reaches the layer only when the guest is mine.
       player: player0,
-      mine: (id) => wantedNow.some((w) => w.id === id && w.claimedBy === character0) || doorClaimer(rows.find((g) => g.id === id)) === character0,
+      // A hunting booth's are also the loose marks nobody has claimed yet.
+      mine: boothMine(wantedNow, (id) => doorClaimer(rows.find((g) => g.id === id)), character0, hunts0),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.messages, character0, staffKey, guestKey, wantedKey, claimKey, player0]);
+  }, [s.messages, character0, staffKey, guestKey, wantedKey, claimKey, player0, hunts0]);
   // Wave 18: story time now (the view's clock plus the wall time since it arrived).
   const clockAt = useRef({ clock: s.view?.clock, at: Date.now() });
   if (clockAt.current.clock !== s.view?.clock) clockAt.current = { clock: s.view?.clock, at: Date.now() };

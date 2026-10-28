@@ -24,6 +24,7 @@
 
 import { staffLineWorthy } from "../stream/badges.ts";
 import type { ChatMessage } from "../types.ts";
+import type { WantedEntry } from "./wire.ts";
 
 /** What a booth readout's moment is captioned (never the booth's own name). */
 export const READOUT_CAPTION = "Readout";
@@ -103,6 +104,17 @@ export function staffMoment(m: ChatMessage, opts: Pick<BoothFeedOptions, "charac
 /** A readout to this booth (`dm:<Character>`, `readout: true`). */
 function readoutToMe(m: ChatMessage, character: string): boolean {
   return m.readout === true && m.channel === `dm:${character}` && !m.hidden && m.parentSeq == null;
+}
+
+/**
+ * Wave 37 (C6, fix round): which guests are this booth's, for `mine`: its
+ * escort claims and door claims, and, on a booth that can claim escorts
+ * (`hunts`), every loose mark nobody has claimed yet, so the ⚠️ approach
+ * warnings that land before any claim reach every hunting Antivirus. Another
+ * booth's claim or capture is not.
+ */
+export function boothMine(wanted: readonly Pick<WantedEntry, "id" | "claimedBy" | "captured">[], doorOf: (id: string) => string | null, me: string, hunts: boolean): (id: string) => boolean {
+  return (id) => wanted.some((w) => w.id === id && (w.claimedBy === me || (hunts && !w.captured && w.claimedBy === null))) || doorOf(id) === me;
 }
 
 /**
