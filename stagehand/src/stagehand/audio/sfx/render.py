@@ -3,9 +3,14 @@
 `render(spec)` runs the sound's own render with a generator seeded from a
 stable hash of its name (crc32, never Python's salted `hash`), checks what
 came back (finite, not silent, the right length and shape) and sets the
-level: a one-shot is peak-normalised to −1 dBFS with a 0.5 ms / 5 ms edge
-fade; a loop is set to its RMS target (−18 dBFS unless `level_db`) with a
-soft limiter holding the peak at −1 dBFS. `wav_bytes` writes 48 kHz 16-bit
+level. A one-shot gets a 0.5 ms / 5 ms edge fade and is set by loudness, not
+peak: its loudest 400 ms window (`dsp.loudness_db`) goes to −16 dBFS RMS
+(`level_db` moves it), so a steady beeper and a tick land at about the same
+perceived level; the peak is capped at −1 dBFS by turning the whole sound
+down (a plain gain, never a limiter or a clip), so a very spiky sound (a
+click, a tick) may land under its target. A loop is set to its RMS target
+(−18 dBFS unless `level_db`) with a soft limiter holding the peak at −1
+dBFS. `wav_bytes` writes 48 kHz 16-bit
 PCM (stereo only for a stereo loop) with a RIFF LIST/INFO chunk right after
 `fmt ` — INAM = the name, ICMT = `loom-sfx v1 — <note>` — the same chunk the
 placeholders carry, with a different tag: the router treats a loom-sfx file
@@ -31,6 +36,8 @@ RATE = dsp.RATE
 #: The tag a library sound carries in its RIFF INFO comment.
 SFX_TAG = "loom-sfx v1"
 ONESHOT_PEAK_DB = -1.0
+#: A one-shot's loudness target: the RMS of its loudest 400 ms window.
+ONESHOT_LOUD_DB = -16.0
 LOOP_RMS_DB = -18.0
 LOOP_PEAK_DB = -1.0
 LENGTH_TOLERANCE = 0.05
@@ -84,7 +91,10 @@ def level(spec: Spec, x: np.ndarray) -> np.ndarray:
     """Set the finished level (see the module docstring)."""
     if not spec.loop:
         x = dsp.fade(x, 0.0005, 0.005, curve="linear")
-        return dsp.normalize_peak(x, ONESHOT_PEAK_DB)
+        target = ONESHOT_LOUD_DB if spec.level_db is None else spec.level_db
+        gain_db = target - dsp.loudness_db(x)
+        room_db = ONESHOT_PEAK_DB - dsp.peak_db(x)
+        return dsp.gain(x, min(gain_db, room_db))
     target = LOOP_RMS_DB if spec.level_db is None else spec.level_db
     ceiling = dsp.db_to_lin(LOOP_PEAK_DB)
     for _ in range(4):
@@ -145,8 +155,12 @@ def is_sfx(path: str | Path) -> bool:
 
 
 def stats(samples: np.ndarray) -> dict[str, float]:
-    """Peak and RMS dBFS and length: for `--list`, inspect and the tests."""
-    return {"peak_db": dsp.peak_db(samples), "rms_db": dsp.rms_db(samples), "seconds": len(samples) / RATE}
+    """Peak, RMS and loudness (the loudest 400 ms) dBFS and length: for
+    inspect and the tests."""
+    return {
+        "peak_db": dsp.peak_db(samples), "rms_db": dsp.rms_db(samples),
+        "loud_db": dsp.loudness_db(samples), "seconds": len(samples) / RATE,
+    }
 
 
 def describe(spec: Spec) -> str:
@@ -155,7 +169,7 @@ def describe(spec: Spec) -> str:
 
 
 __all__ = [
-    "LOOP_PEAK_DB", "LOOP_RMS_DB", "ONESHOT_PEAK_DB", "RATE", "RenderError", "SFX_TAG",
+    "LOOP_PEAK_DB", "LOOP_RMS_DB", "ONESHOT_LOUD_DB", "ONESHOT_PEAK_DB", "RATE", "RenderError", "SFX_TAG",
     "describe", "is_sfx", "level", "library_path", "pcm16", "raw", "render", "rng_for", "seed", "stats",
     "wav_bytes", "write_bytes",
 ]

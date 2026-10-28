@@ -31,8 +31,9 @@ class Spec:
     it). `story` is the story `sound X` it stands in for, if any (the
     manifest's `library:` key is the switch; this is the cross-check). `note`
     says what it is in a few words and lands in the WAV's ICMT. `level_db`
-    moves a loop's RMS target off −18 dBFS (a sparse bed: drips, a ticking
-    clock) and is refused on a one-shot."""
+    moves the level target: a loop's RMS off −18 dBFS (a sparse bed: drips,
+    a ticking clock), a one-shot's loudness (its loudest 400 ms) off −16
+    dBFS (a sound meant to sit quieter, or louder, than the rest)."""
 
     name: str
     category: str
@@ -56,7 +57,7 @@ class Spec:
             raise ValueError(f"sfx {self.name!r}: seconds must be 0.05–600")
         if not self.note or len(self.note) > MAX_NOTE:
             raise ValueError(f"sfx {self.name!r}: needs a note of 1–{MAX_NOTE} chars")
-        if self.level_db is not None and (not self.loop or not -40 <= self.level_db <= -6):
-            raise ValueError(f"sfx {self.name!r}: level_db is a loop's RMS target, −40…−6 dBFS")
+        if self.level_db is not None and (isinstance(self.level_db, bool) or not -40 <= self.level_db <= -6):
+            raise ValueError(f"sfx {self.name!r}: level_db is the RMS target (a one-shot's loudest 400 ms), −40…−6 dBFS")
         if self.story is not None and not NAME.match(self.story):
             raise ValueError(f"sfx {self.name!r}: story {self.story!r} is not a story sound name")

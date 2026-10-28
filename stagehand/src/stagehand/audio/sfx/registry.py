@@ -37,8 +37,10 @@ CNG (`dsp.call_progress`, `dsp.dtmf`, `dsp.ansam`, `dsp.fsk`). A sound in
 the *style* of an era (a 90s start-up chord, an 8-bit power-up) uses your own
 notes.
 
-Levels (render.py does them, so render at any level). A one-shot is peak
-normalised to −1 dBFS. A loop is set to ≈ −18 dBFS RMS with its peak held ≤
+Levels (render.py does them, so render at any level). A one-shot is set by
+loudness: its loudest 400 ms goes to −16 dBFS RMS (`level_db=` moves it),
+with its peak capped at −1 dBFS by plain gain, so a spiky sound (a tick, a
+click) lands short of the target: give it body rather than bare grains. A loop is set to ≈ −18 dBFS RMS with its peak held ≤
 −1 dBFS by a soft limiter; a sparse loop whose crest factor is above ≈ 17 dB
 (drips, ticks) should ask for a lower RMS with `level_db=` (e.g. −24) rather
 than be squashed. A one-shot gets a 0.5 ms fade in and a 5 ms fade out (no

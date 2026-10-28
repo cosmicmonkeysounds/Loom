@@ -4,7 +4,7 @@
 
 Each sound is rendered exactly as the library writes it and drawn as its
 waveform over a log-frequency spectrogram, titled with its category, length,
-peak and RMS dBFS. A loop is drawn twice round (the seam in the middle,
+peak, RMS and loudness (the loudest 400 ms) dBFS. A loop is drawn twice round (the seam in the middle,
 marked) so a click or a jump at the seam shows. `contact.png` puts every
 spectrogram on one sheet for a quick pass over a whole category.
 
@@ -47,7 +47,7 @@ def title(spec: Spec, x: np.ndarray) -> str:
     ch = "stereo" if x.ndim == 2 else "mono"
     return (
         f"{spec.name} · {spec.category} · {st['seconds']:.2f} s {kind} {ch} · "
-        f"peak {st['peak_db']:.1f} dBFS · RMS {st['rms_db']:.1f} dBFS"
+        f"peak {st['peak_db']:.1f} dBFS · RMS {st['rms_db']:.1f} dBFS · loudest 400 ms {st['loud_db']:.1f} dBFS"
     )
 
 

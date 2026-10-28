@@ -298,6 +298,20 @@ def test_levels():
     assert dsp.peak_db(np.zeros(0)) < -200
 
 
+def test_loudness_is_the_rms_of_the_loudest_400_ms():
+    tone = dsp.sine(dsp.loop_freq(440, 1.0), 1.0)
+    assert dsp.loudness_db(tone) == pytest.approx(-3.01, abs=0.01)
+    # a 400 ms burst inside 3 s of silence reads as the burst, not the average
+    burst = dsp.mix((dsp.sine(440, 0.4), 1.3), seconds=3.0)
+    assert dsp.loudness_db(burst) == pytest.approx(-3.01, abs=0.05)
+    assert dsp.rms_db(burst) < -10
+    # shorter than the window: padded with silence (100 ms ≈ −6 dB under 400 ms)
+    assert dsp.loudness_db(dsp.sine(440, 0.1)) == pytest.approx(-3.01 - 6.02, abs=0.1)
+    # stereo: the channels' mean power
+    assert dsp.loudness_db(dsp.stereo(tone)) == pytest.approx(-3.01, abs=0.01)
+    assert dsp.loudness_db(np.zeros(0)) < -200 and dsp.loudness_db(np.zeros(10)) < -200
+
+
 def test_mix_places_layers_and_wraps_a_loop():
     a = np.ones(4800)
     m = dsp.mix((a, 0.05, -6), a)

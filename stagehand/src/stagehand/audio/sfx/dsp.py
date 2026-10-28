@@ -910,6 +910,29 @@ def rms_db(x: Signal) -> float:
     return lin_to_db(float(np.sqrt(np.mean(np.square(x))))) if np.size(x) else -240.0
 
 
+#: The window of `loudness_db`: about how long the ear integrates loudness
+#: over (BS.1770's momentary loudness uses the same 400 ms).
+LOUDNESS_WINDOW_S = 0.4
+
+
+def loudness_db(x: Signal, window: float = LOUDNESS_WINDOW_S) -> float:
+    """Perceived loudness, simply: the RMS dBFS of the loudest `window`-second
+    stretch (every start sample, via a running sum). A sound shorter than the
+    window counts as padded with silence, so a 20 ms click reads quieter than
+    a 400 ms beep at the same RMS, as it sounds. Mono; a stereo signal is
+    measured on its channels' mean power."""
+    x = np.asarray(x, dtype=np.float64)
+    if not np.size(x):
+        return -240.0
+    power = np.square(x) if x.ndim == 1 else np.mean(np.square(x), axis=1)
+    n = max(1, frames(window))
+    if len(power) < n:
+        power = np.concatenate([power, np.zeros(n - len(power))])
+    run = np.concatenate([[0.0], np.cumsum(power)])
+    best = float((run[n:] - run[:-n]).max()) / n
+    return 10 * math.log10(max(best, 1e-24))
+
+
 def normalize_peak(x: Signal, dbfs: float = -1.0) -> Signal:
     return np.asarray(x) * (db_to_lin(dbfs) / max(1e-12, float(np.abs(x).max())))
 

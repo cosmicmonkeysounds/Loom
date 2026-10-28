@@ -125,7 +125,9 @@ def test_the_registry_refuses_a_duplicate_or_a_misplaced_spec():
         ({"seconds": 0}, "seconds"),
         ({"note": ""}, "note"),
         ({"note": "x" * 200}, "note"),
-        ({"level_db": -24}, "level_db"),
+        ({"level_db": -3}, "level_db"),
+        ({"level_db": -60}, "level_db"),
+        ({"level_db": True}, "level_db"),
         ({"loop": True, "level_db": -3}, "level_db"),
         ({"story": "Not A Name"}, "story"),
     ],
@@ -163,7 +165,15 @@ def test_each_sound_is_at_its_level(name, rendered):
         assert abs(dsp.rms_db(x) - target) <= 1.0, f"{name}: RMS {dsp.rms_db(x):.2f} dBFS, want ≈ {target}"
         assert peak <= R.LOOP_PEAK_DB + 0.01
     else:
-        assert abs(peak - R.ONESHOT_PEAK_DB) <= 0.05
+        # loudness, not peak: the loudest 400 ms at the target, unless the
+        # −1 dBFS peak cap turned the whole sound down first (a spiky sound)
+        target = R.ONESHOT_LOUD_DB if spec.level_db is None else spec.level_db
+        loud = dsp.loudness_db(x)
+        assert peak <= R.ONESHOT_PEAK_DB + 0.01, f"{name}: peak {peak:.2f} dBFS over the cap"
+        if abs(peak - R.ONESHOT_PEAK_DB) > 0.05:
+            assert abs(loud - target) <= 0.1, f"{name}: loudest 400 ms {loud:.2f} dBFS, want {target}"
+        else:
+            assert loud <= target + 0.1, f"{name}: loudest 400 ms {loud:.2f} dBFS over its target {target}"
         assert abs(float(x[0])) < 0.01 and abs(float(x[-1])) < 0.01, "a one-shot starts and ends at silence"
     assert dsp.rms_db(x) > -60, "not silent"
 
@@ -238,6 +248,29 @@ def test_a_peaky_loop_is_held_under_the_ceiling_and_level_db_is_honoured():
     assert dsp.peak_db(x) <= R.LOOP_PEAK_DB + 0.01
     quiet = R.render(Spec("drips", "ambient", drips, 4.0, loop=True, note="probe", level_db=-30))
     assert abs(dsp.rms_db(quiet) - -30) <= 1.0
+
+
+def test_a_one_shot_is_set_by_loudness_with_its_peak_capped_by_gain():
+    def beeps(rng):  # a steady beeper: the old peak normalisation made it ~ −4 dBFS loud
+        return dsp.square(1000, 1.0) * 0.3
+
+    def tick(rng):  # one bare grain: the cap binds long before the target
+        x = np.zeros(dsp.frames(1.0))
+        x[1000:1010] = 1.0
+        return x
+
+    loud = R.render(Spec("beeps", "dings", beeps, 1.0, note="probe"))
+    assert dsp.loudness_db(loud) == pytest.approx(R.ONESHOT_LOUD_DB, abs=0.1)
+    assert dsp.peak_db(loud) < R.ONESHOT_PEAK_DB
+    quiet = R.render(Spec("beeps", "dings", beeps, 1.0, note="probe", level_db=-24))
+    assert dsp.loudness_db(quiet) == pytest.approx(-24, abs=0.1)
+    spiky = R.render(Spec("tick", "dings", tick, 1.0, note="probe"))
+    assert dsp.peak_db(spiky) == pytest.approx(R.ONESHOT_PEAK_DB, abs=0.01)
+    assert dsp.loudness_db(spiky) < R.ONESHOT_LOUD_DB - 10
+    # a plain gain: the faded render scaled, never limited or clipped
+    shaped = dsp.fade(tick(None), 0.0005, 0.005, curve="linear")
+    ratio = spiky[1000:1010] / shaped[1000:1010]
+    assert np.allclose(ratio, ratio[0], rtol=1e-5)
 
 
 def test_the_seed_is_stable_across_runs():
