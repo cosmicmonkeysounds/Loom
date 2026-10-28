@@ -58,8 +58,8 @@ describe("tablets that also say the announcements (Q8)", () => {
     expect(floors.indexOf("top")).toBeGreaterThan(floors.lastIndexOf("main"));
     const tv = rows.find((r) => r.id === "desktop-tv")!;
     expect(tv.on).toBe(true);
-    expect(tv.reached).toEqual(["Living L", "Living R"]);
-    expect(tv.hint).toMatch(/say them too \(Living L, Living R\): the tablet would echo them/u);
+    expect(tv.reached).toEqual(["Living L", "Living R", "Living sub"]);
+    expect(tv.hint).toMatch(/say them too \(Living L, Living R, Living sub\): the tablet would echo them/u);
     const cpu = rows.find((r) => r.id === "cpu")!;
     expect(cpu.speakers).toEqual([]);
     expect(cpu.hint).toMatch(/only voice/u);
