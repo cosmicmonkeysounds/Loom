@@ -41,7 +41,7 @@ def touch_tone_dial(rng: np.random.Generator) -> np.ndarray:
         line_hiss,
         seconds=s,
     )
-    return dsp.saturate(dsp.telephone(x), 0.15)
+    return dsp.dc_block(dsp.saturate(dsp.telephone(x), 0.15), 40)
 
 
 SOUNDS: list[Spec] = [

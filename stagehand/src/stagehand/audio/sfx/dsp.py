@@ -881,11 +881,14 @@ def hard_clip(x: Signal, ceiling: float = 1.0) -> Signal:
 
 def saturate(x: Signal, amount: float = 0.3) -> Signal:
     """Asymmetric warmth (a tube, a cheap speaker): even harmonics from a
-    biased tanh, the bias's DC taken back out."""
+    biased tanh (silence stays at 0, and a ±1 input stays within ±1). The
+    asymmetry rectifies a little: `dc_block` after it."""
     x = np.asarray(x, dtype=np.float64)
     bias = amount * 0.5
-    y = np.tanh(x * (1 + 3 * amount) + bias) - math.tanh(bias)
-    return y / max(1e-12, math.tanh(1 + 3 * amount + bias) - math.tanh(bias))
+    k = 1 + 3 * amount
+    y = np.tanh(x * k + bias) - math.tanh(bias)
+    # the negative side bends harder: scale by it so a ±1 input stays within ±1
+    return y / max(1e-12, math.tanh(bias) - math.tanh(bias - k), math.tanh(k + bias) - math.tanh(bias))
 
 
 # -- mixing ---------------------------------------------------------------------

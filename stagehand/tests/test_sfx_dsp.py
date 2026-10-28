@@ -285,7 +285,8 @@ def test_lofi_and_drive():
     assert np.abs(dsp.soft_clip(x * 4, 6)).max() <= 1 / math.tanh(dsp.db_to_lin(6)) + 1e-9
     assert np.abs(dsp.hard_clip(x * 2, 0.5)).max() == 0.5
     sat = dsp.saturate(x, 0.5)
-    assert np.abs(sat).max() <= 1.0 + 1e-9 and abs(sat.mean()) < 0.1
+    assert np.abs(sat).max() <= 1.0 + 1e-9 and dsp.saturate(np.zeros(3), 0.5).max() == 0
+    assert abs(sat.mean()) > 0.05 and abs(dsp.dc_block(sat, circular=True).mean()) < 1e-9
 
 
 def test_levels():
