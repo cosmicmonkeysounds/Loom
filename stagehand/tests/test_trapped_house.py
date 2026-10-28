@@ -748,7 +748,7 @@ def test_the_audio_json_is_the_828x_on_its_own_outs():
 
     house = json.loads((STORY / "house.json").read_text(encoding="utf-8"))
     specs, notes = sidechain_sources(parse_audio(audio), house)
-    assert {s.name: s.reach for s in specs} == {"clippy": (1, 9, 10), "trabolta": (3, 4, 8, 9, 10)} and notes == []
+    assert {s.name: s.reach for s in specs} == {"clippy": (1, 9, 10), "trabolta": (1, 3, 4, 8, 9, 10)} and notes == []
 
 
 # -- the soundtrack against the story (wave 38, C5) -----------------------------------------
