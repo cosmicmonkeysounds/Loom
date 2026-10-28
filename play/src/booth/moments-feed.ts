@@ -107,14 +107,13 @@ function readoutToMe(m: ChatMessage, character: string): boolean {
 }
 
 /**
- * Wave 37 (C6, fix round): which guests are this booth's, for `mine`: its
- * escort claims and door claims, and, on a booth that can claim escorts
- * (`hunts`), every loose mark nobody has claimed yet, so the ⚠️ approach
- * warnings that land before any claim reach every hunting Antivirus. Another
- * booth's claim or capture is not.
+ * Wave 37 (C6): which guests are this booth's, for `mine`: its escort
+ * claims and door claims. Not every loose mark (wave 37b): a readout lands
+ * before the view that ends the mark, so "Off the escort list" after another
+ * booth's catch reached every Antivirus. The poster shows where a mark is.
  */
-export function boothMine(wanted: readonly Pick<WantedEntry, "id" | "claimedBy" | "captured">[], doorOf: (id: string) => string | null, me: string, hunts: boolean): (id: string) => boolean {
-  return (id) => wanted.some((w) => w.id === id && (w.claimedBy === me || (hunts && !w.captured && w.claimedBy === null))) || doorOf(id) === me;
+export function boothMine(wanted: readonly Pick<WantedEntry, "id" | "claimedBy">[], doorOf: (id: string) => string | null, me: string): (id: string) => boolean {
+  return (id) => wanted.some((w) => w.id === id && w.claimedBy === me) || doorOf(id) === me;
 }
 
 /**

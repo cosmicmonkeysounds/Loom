@@ -239,8 +239,9 @@ windows), the Desk, the director phone and Help are lazy chunks.
   a line to everyone (`audience: "all"`: the TV, the speakers and the 📜
   Chat log say it), a player gets no quest moments, and a minor readout
   about a guest who is not this booth's (`BoothFeedOptions.mine`, built by
-  `boothMine`: its escort claim, its door claim, and on a booth that can
-  claim escorts every loose mark nobody has claimed) only badges Readouts.
+  `boothMine`: its escort claim, its door claim; since wave 37b not every
+  loose mark, since a readout lands before the view that ends the mark)
+  only badges Readouts.
   The lines still land in their rooms.
 - **The Wanted board keeps a claimed poster in place** (wave 37, C11;
   `openTabIds`): Open shows what it showed since the board opened, a claim
