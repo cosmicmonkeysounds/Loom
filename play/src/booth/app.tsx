@@ -71,7 +71,7 @@ import { DoorWindow } from "./door.tsx";
 import { boardRowCount, nowRow } from "./now-card.tsx";
 import { PlayerSelect } from "./pick/select.tsx";
 import { RowsWindow } from "./pick/rows.tsx";
-import { boothPopOutAdapter, coveredElsewhere, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
+import { boothPopOutAdapter, coveredElsewhere, doorClaimer, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
 import { PopOutHost, PopOutQuiet, PopOutScope, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
 import { useSystemBack } from "../back-gesture.ts";
 import { bindDraft, useBoothPopOuts, type BoothOpeners } from "./popouts/use-booth-popouts.ts";
@@ -228,21 +228,35 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   const guestKey = (s.view?.guests ?? []).map((g) => `${g.id}\t${g.name}`).join("\n");
   // Wave 18 (§4.12): what a pop-out (or the open confrontation) covers never reaches the moments layer.
   const wantedKey = (wantedOf(s.view) ?? []).map((w) => w.id).join("\n");
+  // Wave 37 (C6, C8): a player booth, known before sign-in's early return
+  // (the same rule as `player` below), and the guests that are this
+  // booth's own (its escort claims, the arrivals it took at the door).
+  const player0 = s.auth !== null && isPlayer(s.view) && !boothHost(s.auth, s.view) && !s.auth.admin;
+  const claimKey = [
+    ...(wantedOf(s.view) ?? []).filter((w) => w.claimedBy === character0).map((w) => w.id),
+    ...(boothView(s.view)?.guests ?? []).filter((g) => doorClaimer(g) === character0).map((g) => `door:${g.id}`),
+  ].join("\n");
   const adapterCtx: AdapterCtx = { wanted: wantedOf(s.view), openGuest: () => (layer?.kind === "card" || layer?.kind === "scan" ? cardGuest.current : null), guestName: (id) => s.view?.guests.find((g) => g.id === id)?.name ?? null };
   const adapterRef = useRef(adapterCtx);
   adapterRef.current = adapterCtx;
   const momentFeed = useMemo(() => {
     const guests = s.view?.guests ?? [];
     const byId = new Map(guests.map((g) => [g.id, g.name]));
+    const wantedNow = wantedOf(s.view) ?? [];
+    const rows = boothView(s.view)?.guests ?? [];
     return boothMomentFeed(s.messages, {
       character: character0,
       staffRooms: new Set(s.view?.staffRooms ?? []),
       guestName: (id) => byId.get(id) ?? null,
       names: guests.map((g) => g.name),
       covered: (m) => coveredElsewhere(m as BoothMessage, adapterRef.current),
+      // Wave 37 (C6): no quest balloons on a player; a quiet readout about a
+      // guest reaches the layer only when the guest is mine.
+      player: player0,
+      mine: (id) => wantedNow.some((w) => w.id === id && w.claimedBy === character0) || doorClaimer(rows.find((g) => g.id === id)) === character0,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.messages, character0, staffKey, guestKey, wantedKey]);
+  }, [s.messages, character0, staffKey, guestKey, wantedKey, claimKey, player0]);
   // Wave 18: story time now (the view's clock plus the wall time since it arrived).
   const clockAt = useRef({ clock: s.view?.clock, at: Date.now() });
   if (clockAt.current.clock !== s.view?.clock) clockAt.current = { clock: s.view?.clock, at: Date.now() };

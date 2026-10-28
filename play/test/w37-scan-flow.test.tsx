@@ -353,3 +353,15 @@ describe("wave 37 wiring (C5): balloons wait behind a pop-out and face-to-face w
     expect(src("booth/app.tsx")).toContain('balloonsWait: rung.current !== null || layer?.kind === "scan" || layer?.kind === "card" || layer?.kind === "pick",');
   });
 });
+
+describe("wave 37 wiring (C6): a performer's phone is about their job", () => {
+  it("the feed knows a player and which guests are mine (an escort claim or a door claim)", () => {
+    const app = src("booth/app.tsx");
+    expect(app).toMatch(/player: player0,\s*mine: \(id\) => wantedNow\.some\(\(w\) => w\.id === id && w\.claimedBy === character0\) \|\| doorClaimer\(/u);
+    // The feed recomputes when a claim moves, not only when the board's ids do.
+    expect(app).toContain("claimKey, player0]");
+    // player0 is the same rule as the render's `player`, before sign-in's early return.
+    expect(app).toContain("const player0 = s.auth !== null && isPlayer(s.view) && !boothHost(s.auth, s.view) && !s.auth.admin;");
+    expect(app).toContain("const player = isPlayer(s.view) && !isHost && !admin;");
+  });
+});
