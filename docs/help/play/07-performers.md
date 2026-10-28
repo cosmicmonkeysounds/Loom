@@ -155,7 +155,7 @@ to where you opened the scanner: Mission, Show, the Wanted board or the
 Door queue. At the door (the Antivirus), **📷 Next guest** brings the
 camera back for the next pass instead; the camera stays on the whole
 time the scanner is open, so a queue scans pass after pass. Anyone else
-taps 📷 Scan again for the next one. The pass you just closed is ignored
+taps **📷 Scan** in the taskbar for the next one. The pass you just closed is ignored
 for a few seconds, so it never reopens by itself, and a scan tapped twice
 counts once. It needs the https address, on iPhone and Android.
 
