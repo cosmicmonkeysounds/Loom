@@ -12,7 +12,7 @@ import type { PrimeSession } from "../../session/prime.ts";
 import type { Interaction } from "../../types.ts";
 import { boothView, callsOf, mayPress, wantedOf, type BoothGuest, type BoothMessage, type BoothObjective } from "../wire.ts";
 import { countdownRunning, cueAtEnd, cueSpecs, cueWaitsFor, doorQueue, doorSpec, pickLayout, pickReadySpec, reconcilePopOuts, rememberCountdowns, targetSpec, wantedSpecs, type BoothDo, type CountdownMemo, type Draft, type SeenMap } from "./model.ts";
-import { usePopOuts, type PopOutSpec } from "./rung.ts";
+import { playTone, usePopOuts, type PopOutSpec } from "./rung.ts";
 import { newMissionSpec } from "../mission-model.ts";
 
 /** What a bound pop-out's buttons may open in the booth. */
@@ -85,9 +85,15 @@ export interface DriverOpts {
   ownFireAt: () => number | null;
   /** The target pop-out's current key (the NOW row taps it back). */
   targetKey?: { current: string | null };
+  /** Wave 37 (C7): is this objective's Mission card on screen now? Then a
+   *  NEW MISSION for it pops nothing: the driver chimes once and calls
+   *  `onMissionNews` (the booth blinks its title bar). Default: never. */
+  missionShown?: (objectiveId: string) => boolean;
+  /** Wave 37 (C7): a NEW MISSION said by the title bar, not a pop-out. */
+  onMissionNews?: (o: { id: string; title: string }) => void;
 }
 
-export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, targetKey }: DriverOpts): void {
+export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, targetKey, missionShown, onMissionNews }: DriverOpts): void {
   const host = usePlayHost();
   const rung = usePopOuts();
   const token = session.auth?.token ?? "";
@@ -222,7 +228,14 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     } catch {
       /* kept in memory */
     }
-    if (r.draft !== null) rung.raise(bind(r.draft));
+    if (r.draft === null) return;
+    const id = r.draft.key.slice("mission:".length);
+    if (missionShown?.(id) === true) {
+      // Wave 37 (C7): said once — the Mission card is the instruction. Face
+      // to face (PLAYER SELECT is a quiet scope) it says it without a tone.
+      if (!rung.quietNow()) playTone("info", host.sound && r.draft.sound !== false);
+      onMissionNews?.({ id, title: r.draft.title });
+    } else rung.raise(bind(r.draft));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headId, player]);
 

@@ -6,8 +6,9 @@
 //! 🔔 tray across a reload when deferred with *Later*.
 //!
 //! The rules (§2.2), each a pure function or a reducer case, tested in
-//! `test/moments-popout.test.tsx`: one on screen, never replaced while
-//! unhandled; the queue by priority then age; a handled `{key, rev}` never
+//! `test/moments-popout.test.tsx`: one on screen, replaced while unhandled
+//! only by an alarm that outranks an info one shown ≥ 2 s (wave 37, C9:
+//! `PREEMPT_GRACE_MS`); the queue by priority then age; a handled `{key, rev}` never
 //! shows again until its `rev` changes; *Later* moves it to the tray; a
 //! pop-out about the open card's guest waits. `popout.tsx` holds the store
 //! and renders it (the booth's chunk); `popout-registry.ts` is the engine's
@@ -77,6 +78,9 @@ export interface PopOutSpec {
   status?: string;
   /** Retire itself after this long on screen untouched. */
   autoRetireMs?: number;
+  /** Wave 37 (C9): defer itself (as *Later*: into 🔔 Waiting) after this
+   *  long on screen untouched. A re-raise with the same rev keeps it there. */
+  autoLaterMs?: number;
   /** Default true; false = silent (no tone, no vibrate). */
   sound?: boolean;
   /** Story ms of the cause; orders equal priorities (older first). */
@@ -99,11 +103,15 @@ export interface PopState {
   tray: PopEntry[];
   /** Handled `{key, rev}` pairs, oldest first (persisted, cap `HANDLED_MAX`). */
   handled: Array<{ key: string; rev: string }>;
-  /** The key on screen (it holds until handled or deferred). */
+  /** The key on screen (it holds until handled, deferred or pre-empted). */
   shown: string | null;
+  /** Wall ms it went on screen (wave 37, C9: the pre-emption grace); null = unknown (no grace). */
+  shownAt: number | null;
 }
 
-export const EMPTY_POPOUTS: PopState = { live: [], tray: [], handled: [], shown: null };
+export const EMPTY_POPOUTS: PopState = { live: [], tray: [], handled: [], shown: null, shownAt: null };
+/** Wave 37 (C9): an alarm takes the screen from an info pop-out only once that one has been up this long. */
+export const PREEMPT_GRACE_MS = 2_000;
 /** How many handled pairs a sign-in remembers. */
 export const HANDLED_MAX = 300;
 /** At most this many buttons (before *Later*). */
@@ -112,11 +120,13 @@ export const POP_ACTIONS_MAX = 4;
 export const DOCK_ACTIONS_MAX = 3;
 
 export type PopOp =
-  | { type: "raise"; spec: PopOutSpec }
+  /** `at`: wall ms (the shown one changing its rev in place starts its grace again). */
+  | { type: "raise"; spec: PopOutSpec; at?: number }
   | { type: "retire"; key: string }
   | { type: "defer"; key: string; at: number }
-  | { type: "restore"; key: string }
-  | { type: "show"; key: string | null }
+  | { type: "restore"; key: string; at?: number }
+  /** `at`: wall ms it went on screen (the pre-emption grace starts). */
+  | { type: "show"; key: string | null; at?: number }
   | { type: "hydrate"; stored: StoredPopOuts }
   | { type: "reset" };
 
@@ -147,8 +157,12 @@ export function popReducer(s: PopState, a: PopOp): PopState {
       if (at >= 0) {
         // Idempotent by key: an existing one updates in place (buttons back after a reload).
         const live = s.live.slice();
+        const was = live[at]!;
         live[at] = { spec };
-        return { ...s, live, handled };
+        // Wave 37 (C9): the one on screen with new content (WANTED → YOURS)
+        // is new to the eye: an alarm waits its full grace again.
+        const fresh = s.shown === spec.key && revOf(was.spec) !== rev;
+        return { ...s, live, handled, ...(fresh && a.at !== undefined ? { shownAt: a.at } : {}) };
       }
       const t = s.tray.findIndex((e) => e.spec.key === spec.key);
       if (t >= 0) {
@@ -168,22 +182,22 @@ export function popReducer(s: PopState, a: PopOp): PopState {
         live: s.live.filter((x) => x.spec.key !== a.key),
         tray: s.tray.filter((x) => x.spec.key !== a.key),
         handled: markHandled(s.handled, a.key, rev),
-        shown: s.shown === a.key ? null : s.shown,
+        ...(s.shown === a.key ? { shown: null, shownAt: null } : { shown: s.shown, shownAt: s.shownAt }),
       };
     }
     case "defer": {
       const e = s.live.find((x) => x.spec.key === a.key);
       if (e === undefined) return s;
-      return { ...s, live: s.live.filter((x) => x !== e), tray: [{ ...e, deferredAt: a.at }, ...s.tray], shown: s.shown === a.key ? null : s.shown };
+      return { ...s, live: s.live.filter((x) => x !== e), tray: [{ ...e, deferredAt: a.at }, ...s.tray], ...(s.shown === a.key ? { shown: null, shownAt: null } : {}) };
     }
     case "restore": {
       const e = s.tray.find((x) => x.spec.key === a.key);
       if (e === undefined) return s;
       const { deferredAt: _d, ...rest } = e;
-      return { ...s, tray: s.tray.filter((x) => x !== e), live: [rest, ...s.live], shown: a.key };
+      return { ...s, tray: s.tray.filter((x) => x !== e), live: [rest, ...s.live], shown: a.key, shownAt: a.at ?? null };
     }
     case "show":
-      return s.shown === a.key ? s : { ...s, shown: a.key };
+      return s.shown === a.key ? s : { ...s, shown: a.key, shownAt: a.key !== null ? (a.at ?? null) : null };
     case "hydrate": {
       const handled = a.stored.handled.slice(-HANDLED_MAX);
       const isDone = (k: string, rev: string) => handled.some((h) => h.key === k && h.rev === rev);
@@ -197,25 +211,51 @@ export function popReducer(s: PopState, a: PopOp): PopState {
         else live.push({ spec, restored: true });
       }
       tray.sort((x, y) => (y.deferredAt ?? 0) - (x.deferredAt ?? 0));
-      return { live, tray, handled: [...handled, ...s.handled.filter((h) => !handled.some((x) => x.key === h.key))].slice(-HANDLED_MAX), shown: s.shown };
+      return { live, tray, handled: [...handled, ...s.handled.filter((h) => !handled.some((x) => x.key === h.key))].slice(-HANDLED_MAX), shown: s.shown, shownAt: s.shownAt };
     }
     case "reset":
       return EMPTY_POPOUTS;
   }
 }
 
+/** The best waiting alarm that outranks the info pop-out `held` (wave 37, C9), grace aside. */
+function rivalOf(s: PopState, held: PopEntry, ok: (e: PopEntry) => boolean): PopEntry | null {
+  if (held.spec.tone === "alarm") return null;
+  let best: PopEntry | null = null;
+  for (const e of s.live)
+    if (e !== held && ok(e) && e.spec.tone === "alarm" && e.spec.priority > held.spec.priority && (best === null || popOrder(e.spec, best.spec) < 0)) best = e;
+  return best;
+}
+
+const okFor = (blockedGuest: string | null) => (e: PopEntry) => blockedGuest === null || e.spec.guest?.id !== blockedGuest;
+
 /**
  * The pop-out on screen (§2.2 rules 1, 2, 7): the one already shown while
- * it is live (never replaced); else the first in queue order. One about the
- * open card's guest (`blockedGuest`) waits; the next one shows instead.
+ * it is live; else the first in queue order. One about the open card's
+ * guest (`blockedGuest`) waits; the next one shows instead. Wave 37 (C9):
+ * an alarm that outranks a shown info pop-out takes the screen once that
+ * one has been up `PREEMPT_GRACE_MS` (it stays live and shows again later).
  */
-export function currentOf(s: PopState, blockedGuest: string | null = null): PopEntry | null {
-  const ok = (e: PopEntry) => blockedGuest === null || e.spec.guest?.id !== blockedGuest;
+export function currentOf(s: PopState, blockedGuest: string | null = null, now: number = Date.now()): PopEntry | null {
+  const ok = okFor(blockedGuest);
   const held = s.shown !== null ? s.live.find((e) => e.spec.key === s.shown) : undefined;
-  if (held !== undefined && ok(held)) return held;
+  if (held !== undefined && ok(held)) {
+    const rival = rivalOf(s, held, ok);
+    return rival !== null && (s.shownAt === null || now - s.shownAt >= PREEMPT_GRACE_MS) ? rival : held;
+  }
   let best: PopEntry | null = null;
   for (const e of s.live) if (ok(e) && (best === null || popOrder(e.spec, best.spec) < 0)) best = e;
   return best;
+}
+
+/** When a waiting pre-emption is due (wall ms), if only the grace holds it back; else null. */
+export function preemptDueAt(s: PopState, blockedGuest: string | null = null, now: number = Date.now()): number | null {
+  if (s.shownAt === null || s.shown === null) return null;
+  const ok = okFor(blockedGuest);
+  const held = s.live.find((e) => e.spec.key === s.shown);
+  if (held === undefined || !ok(held) || rivalOf(s, held, ok) === null) return null;
+  const due = s.shownAt + PREEMPT_GRACE_MS;
+  return due > now ? due : null;
 }
 
 /** How many wait behind the one on screen (the pager's n − 1). */
@@ -303,6 +343,18 @@ export function deferredText(at: number | undefined, now: number): string {
 /** A pop-out's body as paragraphs. */
 export function paragraphs(body: string | string[]): string[] {
   return (Array.isArray(body) ? body : [body]).map((p) => p.trim()).filter((p) => p !== "");
+}
+
+/** How long a 🔔 Waiting row's text runs (wave 37, C8). */
+export const TRAY_LINE_MAX = 60;
+
+/** A 🔔 Waiting row's text: the body's first paragraph, cut to 60 characters; null when it has none. */
+export function trayLine(body: string | string[]): string | null {
+  const p = paragraphs(body)[0];
+  if (p === undefined) return null;
+  // Cut on code points: an emoji astride the cut never leaves half of itself.
+  const cps = Array.from(p);
+  return cps.length <= TRAY_LINE_MAX ? p : `${cps.slice(0, TRAY_LINE_MAX - 1).join("").trimEnd()}…`;
 }
 
 /** The docked strip's words: "{glyph} {title}: {guest} · 📍 {location}". */

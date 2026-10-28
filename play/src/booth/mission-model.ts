@@ -14,7 +14,7 @@ import { CHAT_SECTION_TITLES, type ChatSectionId, type Chats } from "../rooms/ch
 import { CODEX_ROOM, QUEST_LOG, WALLET_ROOM } from "../rooms/spaces.ts";
 import type { Channel, Interaction, ObjectiveView, PrimeView } from "../types.ts";
 import { FEED_ID, guestAwaitsReply, heldCount, viewPaused } from "./model.ts";
-import { pickLayout, withoutGlyph, type Draft } from "./popouts/model.ts";
+import { MISSION_RETIRE_MS, missionHeadline, pickLayout, withoutGlyph, type Draft } from "./popouts/model.ts";
 import { globalButtonsOf, statsOf, type BoothObjective } from "./wire.ts";
 
 /** The booth's Readouts room id (= `session/prime.ts` INBOX; kept here so this module stays light). */
@@ -150,20 +150,17 @@ export function boothActionOf(id: string, view: Pick<PrimeView, "objectives" | "
 
 // --- the new-mission pop-out (P5) --------------------------------------------
 
-/** The first live objective worth a pop-out: never an evergreen one. */
-function headline(objectives: readonly ObjectiveView[]): ObjectiveView | null {
-  const o = objectives[0];
-  return o === undefined || evergreenFlag(o) === true ? null : o;
-}
-
 /**
  * The NEW MISSION pop-out (P5): when the first live objective changes to one
  * this sign-in has not seen. `seen` = the ids already seen (null: the first
  * look, which only remembers — signing in never pops what is already on
- * Mission). Returns the draft (or null) and the ids seen now.
+ * Mission). Returns the draft (or null) and the ids seen now. Wave 37 (C7):
+ * the headline rule is `missionHeadline` (reconcile retires one that is not
+ * the headline any more), and a NEW MISSION that pops leaves after 20 s
+ * (the driver blinks the title bar instead while Mission is on screen).
  */
 export function newMissionSpec(objectives: readonly ObjectiveView[], seen: readonly string[] | null, at: number): { draft: Draft | null; seen: string[] } {
-  const o = headline(objectives);
+  const o = missionHeadline(objectives);
   const was = seen ?? [];
   if (o === null || was.includes(o.id)) return { draft: null, seen: [...was] };
   const next = [...was, o.id];
@@ -181,6 +178,7 @@ export function newMissionSpec(objectives: readonly ObjectiveView[], seen: reado
       sticky: false,
       sound: true,
       priority: 35,
+      autoRetireMs: MISSION_RETIRE_MS,
       at,
     },
   };

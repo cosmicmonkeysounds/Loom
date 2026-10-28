@@ -11,17 +11,24 @@
 //!   booth's `MomentsProvider`.
 //! - `PopOutHost` — mounted once by `booth/app.tsx`: the floating Win95
 //!   window above the dock and the taskbar, no scrim, no tap-outside or
-//!   Escape close; nothing while a dock is mounted.
+//!   Escape close; nothing while a dock or a `PopOutQuiet` is mounted. It
+//!   also lets an alarm take the screen from an info one once its 2 s grace
+//!   is up (wave 37, C9: `currentOf`, `preemptDueAt`).
 //! - `PopOutDock` — the first child of a booth window's scroll body (a
 //!   guest card, the scanner, Guests, the Wanted board, a picker, the host
 //!   drawer): the pop-out as a 56 px strip there, in flow, that expands in
 //!   place — so it can never cover the open card's face.
+//! - `PopOutQuiet` — wave 37 (C4): mounted inside a face-to-face window (the
+//!   scanner, a guest card, the confrontation, PLAYER SELECT). While one is
+//!   mounted nothing floats or docks, nothing is marked shown, no tone plays
+//!   and no auto timer runs; once the last one unmounts the one on screen
+//!   floats and announces, once.
 //! - `PopOutTrayList` — the deferred ones, for the booth's 🔔 window.
 //! - `PopOut` — the window itself (both layouts), for a booth that places it.
 //!
 //! The guest app never imports this file (its bundle stays as it was).
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { playTone } from "../alerts.ts";
 import { useArmButtons, ARM_LINE } from "../arm.ts";
 import { usePlayHost, type SessionStorage } from "../host.ts";
@@ -37,9 +44,11 @@ import {
   parseStored,
   popKey,
   popReducer,
+  preemptDueAt,
   queuedOf,
   storedOf,
   stripText,
+  trayLine,
   type PopAction,
   type PopEntry,
   type PopGuest,
@@ -53,6 +62,8 @@ import { typingIn } from "../ui/focus.ts";
 
 export type { PopAction, PopGuest, PopOutAdapter, PopOutSpec, PopOutVerdict, PopTone } from "./popout-model.ts";
 export { raisePopOut, retirePopOut } from "./popout-registry.ts";
+/** Wave 37 (C7): the booth's driver chimes a NEW MISSION it does not pop. */
+export { playTone } from "../alerts.ts";
 
 // --- the store: one per sign-in ------------------------------------------------
 
@@ -61,6 +72,8 @@ interface Store {
   state: PopState;
   /** Mounted docks, oldest first (the newest renders). */
   docks: number[];
+  /** Wave 37 (C4): mounted `PopOutQuiet`s; while any is, nothing shows. */
+  quiets: number[];
   /** Storage, once a hook has handed it over (hydrated then). */
   storage: SessionStorage | null;
   /** Each key's tone when it was last announced. */
@@ -78,7 +91,7 @@ let dockSeq = 0;
 function storeFor(session: string, storage: SessionStorage | null = null): Store {
   let s = stores.get(session);
   if (s === undefined) {
-    s = { session, state: EMPTY_POPOUTS, docks: [], storage: null, announced: new Map(), listeners: new Set(), version: 0 };
+    s = { session, state: EMPTY_POPOUTS, docks: [], quiets: [], storage: null, announced: new Map(), listeners: new Set(), version: 0 };
     stores.set(session, s);
     while (stores.size > 16) stores.delete(stores.keys().next().value!);
   }
@@ -119,11 +132,11 @@ function target(session: string | null): Store | null {
 
 registerPopSink({
   offer(session, m, verdict, ctx) {
-    apply(storeFor(session), { type: "raise", spec: verdict === "default" ? defaultPopOut(m, ctx) : verdict });
+    apply(storeFor(session), { type: "raise", spec: verdict === "default" ? defaultPopOut(m, ctx) : verdict, at: Date.now() });
   },
   raise(session, spec) {
     const s = target(session);
-    if (s !== null) apply(s, { type: "raise", spec });
+    if (s !== null) apply(s, { type: "raise", spec, at: Date.now() });
   },
   retire(session, key) {
     const s = target(session);
@@ -160,6 +173,14 @@ export interface PopOutsApi {
   dock: () => { id: number; off: () => void };
   /** The id of the dock that renders (null → the floating window). */
   activeDock: number | null;
+  /** Wave 37 (C4): a `PopOutQuiet` mounts (nothing shows while any is): its unmount. */
+  quiet: () => { off: () => void };
+  /** Is a `PopOutQuiet` mounted (as of this render)? */
+  quieted: boolean;
+  /** Is one mounted right now (read in an effect: a quiet that mounted in the same commit counts)? */
+  quietNow: () => boolean;
+  /** Wall ms a waiting alarm takes the screen from the info one shown (C9), else null. */
+  preemptAt: number | null;
 }
 
 const NOOP_API: PopOutsApi = {
@@ -175,6 +196,10 @@ const NOOP_API: PopOutsApi = {
   retire: () => {},
   dock: () => ({ id: 0, off: () => {} }),
   activeDock: null,
+  quiet: () => ({ off: () => {} }),
+  quieted: false,
+  quietNow: () => false,
+  preemptAt: null,
 };
 
 const noSubscribe = () => () => {};
@@ -198,7 +223,7 @@ export function PopOutScope({ session, cardGuest, seed, children }: { session: s
   if (!seeded.current && seed !== undefined && session !== null) {
     seeded.current = true;
     const store = storeFor(session, host.storage);
-    for (const spec of seed) apply(store, { type: "raise", spec });
+    for (const spec of seed) apply(store, { type: "raise", spec, at: Date.now() });
   }
   return <PopScopeContext.Provider value={{ session, ...(cardGuest !== undefined ? { cardGuest } : {}) }}>{children}</PopScopeContext.Provider>;
 }
@@ -230,7 +255,9 @@ export function usePopOuts(): PopOutsApi {
   useSyncExternalStore(store !== null ? subscribe : noSubscribe, snap, snap);
   if (store === null) return NOOP_API;
   const st = store.state;
-  const entry = currentOf(st, scope.cardGuest?.() ?? null);
+  const blocked = scope.cardGuest?.() ?? null;
+  const now = Date.now();
+  const entry = currentOf(st, blocked, now);
   return {
     current: entry?.spec ?? null,
     entry,
@@ -239,8 +266,8 @@ export function usePopOuts(): PopOutsApi {
     trayEntries: st.tray,
     held: [...st.live, ...st.tray],
     defer: (key) => apply(store, { type: "defer", key, at: Date.now() }),
-    restore: (key) => apply(store, { type: "restore", key }),
-    raise: (spec) => apply(store, { type: "raise", spec }),
+    restore: (key) => apply(store, { type: "restore", key, at: Date.now() }),
+    raise: (spec) => apply(store, { type: "raise", spec, at: Date.now() }),
     retire: (key) => apply(store, { type: "retire", key }),
     dock: () => {
       const id = ++dockSeq;
@@ -255,25 +282,54 @@ export function usePopOuts(): PopOutsApi {
       };
     },
     activeDock: store.docks.length > 0 ? store.docks[store.docks.length - 1]! : null,
+    quiet: () => {
+      const id = ++dockSeq;
+      store.quiets = [...store.quiets, id];
+      changed(store);
+      return {
+        off: () => {
+          if (!store.quiets.includes(id)) return;
+          store.quiets = store.quiets.filter((x) => x !== id);
+          changed(store);
+        },
+      };
+    },
+    quieted: store.quiets.length > 0,
+    quietNow: () => store.quiets.length > 0,
+    preemptAt: preemptDueAt(st, blocked, now),
   };
 }
 
-/** The one on screen holds (rule 1) and is announced once per tone (rule 8): the host runs this. */
+/** The one on screen holds (rule 1) and is announced once per tone (rule 8): the host runs this.
+ *  While quiet (C4) nothing is marked shown and nothing sounds. The store is
+ *  asked, not this render: a `PopOutQuiet` that mounts in the same commit
+ *  (a card opened from the pop-out, later in the tree than the host)
+ *  registers in a layout effect, before this passive one runs. */
 function useHoldAndAnnounce(api: PopOutsApi): void {
   const { session, sound } = usePopScope();
   const key = api.entry?.spec.key ?? null;
   const tone = api.entry?.spec.tone ?? null;
+  const quiet = api.quieted;
   useEffect(() => {
     if (session === null) return;
     lastSession = session;
     const store = storeFor(session);
-    if (store.state.shown !== key) apply(store, { type: "show", key });
+    if (store.quiets.length > 0) return;
+    if (store.state.shown !== key) apply(store, { type: "show", key, at: Date.now() });
     if (key === null || tone === null) return;
     if (store.announced.get(key) === tone) return;
     store.announced.set(key, tone);
     playTone(tone, sound && api.entry?.spec.sound !== false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, key, tone]);
+  }, [session, key, tone, quiet]);
+  // A pre-emption waiting only on its grace (C9): look again when it ends.
+  const [, rerender] = useState(0);
+  const due = quiet ? null : api.preemptAt;
+  useEffect(() => {
+    if (due === null) return;
+    const t = setTimeout(() => rerender((n) => n + 1), Math.max(0, due - Date.now()) + 10);
+    return () => clearTimeout(t);
+  }, [due]);
 }
 
 /** Is focus in a text field (never steal it)? */
@@ -338,6 +394,12 @@ export function PopOut({ entry, api, docked = false }: { entry: PopEntry; api: P
     const t = window.setTimeout(() => apiRef.current.retire(spec.key), spec.autoRetireMs);
     return () => window.clearTimeout(t);
   }, [spec.key, spec.rev, spec.autoRetireMs]);
+  // Wave 37 (C9): a reminder goes to 🔔 Waiting by itself (as Later).
+  useEffect(() => {
+    if (spec.autoLaterMs === undefined) return;
+    const t = setTimeout(() => apiRef.current.defer(spec.key), spec.autoLaterMs);
+    return () => clearTimeout(t);
+  }, [spec.key, spec.rev, spec.autoLaterMs]);
 
   const runAction = (a: PopAction) => {
     if (busy) return;
@@ -433,7 +495,7 @@ export function PopOut({ entry, api, docked = false }: { entry: PopEntry; api: P
 export function PopOutHost() {
   const api = usePopOuts();
   useHoldAndAnnounce(api);
-  if (api.entry === null || api.activeDock !== null) return null;
+  if (api.entry === null || api.activeDock !== null || api.quieted) return null;
   return (
     <div className="popout-host">
       <PopOut key={api.entry.spec.key} entry={api.entry} api={api} />
@@ -460,7 +522,7 @@ export function PopOutDock() {
   }, []);
   const key = api.entry?.spec.key ?? null;
   useEffect(() => setOpen(false), [key]);
-  if (api.entry === null || id === null || api.activeDock !== id) return null;
+  if (api.entry === null || id === null || api.activeDock !== id || api.quieted) return null;
   const spec = api.entry.spec;
   if (!open)
     return (
@@ -481,6 +543,27 @@ export function PopOutDock() {
   );
 }
 
+/**
+ * Wave 37 (C4): face to face, nothing floats. Mount one inside the scanner,
+ * a guest card, the confrontation or PLAYER SELECT: while any is mounted
+ * `PopOutHost` and `PopOutDock` render nothing, the one on screen is not
+ * marked shown, no tone plays and no auto timer runs. When the last one
+ * unmounts, the one on screen floats and announces, once. Renders nothing.
+ */
+export function PopOutQuiet(): null {
+  const api = usePopOuts();
+  // Registered once per mount (the api object is new every render), in a
+  // layout effect: before any passive effect of the same commit, so the
+  // host's announce (earlier in the tree) already sees it.
+  const latest = useRef(api);
+  latest.current = api;
+  useLayoutEffect(() => {
+    const q = latest.current.quiet();
+    return q.off;
+  }, []);
+  return null;
+}
+
 /** The deferred pop-outs (the booth's 🔔 window): one row each, a tap brings it back. */
 export function PopOutTrayList({ onPick }: { onPick?: (key: string) => void }) {
   const api = usePopOuts();
@@ -488,29 +571,33 @@ export function PopOutTrayList({ onPick }: { onPick?: (key: string) => void }) {
   if (api.trayEntries.length === 0) return <p className="popout-tray-empty">Nothing waiting. You&apos;re on top of it.</p>;
   return (
     <ul className="popout-tray">
-      {api.trayEntries.map((e) => (
-        <li key={e.spec.key}>
-          <button
-            type="button"
-            className="popout-tray-row"
-            onClick={() => {
-              api.restore(e.spec.key);
-              onPick?.(e.spec.key);
-            }}
-          >
-            <span className="popout-glyph" aria-hidden>
-              {e.spec.glyph}
-            </span>
-            <span className="popout-tray-words">
-              <span className="popout-tray-title">
-                {e.spec.title}
-                {e.spec.guest ? `: ${e.spec.guest.name}` : ""}
+      {api.trayEntries.map((e) => {
+        const line = trayLine(e.spec.body);
+        return (
+          <li key={e.spec.key}>
+            <button
+              type="button"
+              className="popout-tray-row"
+              onClick={() => {
+                api.restore(e.spec.key);
+                onPick?.(e.spec.key);
+              }}
+            >
+              <span className="popout-glyph" aria-hidden>
+                {e.spec.glyph}
               </span>
-              <span className="popout-tray-when">{deferredText(e.deferredAt, now)}</span>
-            </span>
-          </button>
-        </li>
-      ))}
+              <span className="popout-tray-words">
+                <span className="popout-tray-title">
+                  {e.spec.title}
+                  {e.spec.guest ? `: ${e.spec.guest.name}` : ""}
+                </span>
+                {line !== null && <span className="popout-tray-when">{line}</span>}
+                <span className="popout-tray-when">{deferredText(e.deferredAt, now)}</span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }

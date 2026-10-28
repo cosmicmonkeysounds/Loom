@@ -3,10 +3,13 @@
 //! from the NOW card's row, its 🚨 chip, the tray's LED, a burst pop-out,
 //! and (read-only) a host's Needs row. It reads only `PrimeView.wanted`, so
 //! it survives a reload. Caught programs stay 60 s under the CAPTURED stamp.
+//! Wave 37 (C11): a poster shown on Open stays in its place there until it
+//! is caught: claimed by you it reads YOU with 📷 Scan their pass, claimed
+//! by someone else it names them and has no claim button (`openTabIds`).
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { BoothLayer } from "../layer.tsx";
-import { boardOrder, boardStatus, boardTab, type BoardTab } from "../popouts/model.ts";
+import { boardOrder, boardStatus, boardTab, openTabIds, type BoardTab } from "../popouts/model.ts";
 import type { WantedEntry } from "../wire.ts";
 import { Poster } from "./poster.tsx";
 
@@ -47,8 +50,14 @@ export function defaultBoardTab(wanted: readonly WantedEntry[], me: string): Boa
 export function WantedBoard(p: WantedBoardProps) {
   const [tab, setTab] = useState<BoardTab>(() => (p.readOnly ? "everyone" : defaultBoardTab(p.wanted, p.me)));
   const [busy, setBusy] = useState<string | null>(null);
+  // The ids shown on Open since the board opened, in first-shown order (C11).
+  const kept = useRef<Set<string>>(new Set());
+  const open = openTabIds(p.wanted, kept.current, p.me);
+  const byId = new Map(p.wanted.map((w) => [w.id, w]));
+  const tabRows = (t: BoardTab) => (t === "open" ? open.map((id) => byId.get(id)!) : boardOrder(p.wanted, p.me).filter((w) => boardTab(w, t, p.me)));
   const loose = p.wanted.filter((w) => !w.captured);
-  const rows = boardOrder(p.wanted, p.me).filter((w) => boardTab(w, tab, p.me));
+  const rows = tabRows(tab);
+  if (tab === "open" && !p.readOnly) for (const id of open) kept.current.add(id);
   const run = (id: string, f: ((id: string) => Promise<unknown> | void) | undefined) => () => {
     if (f === undefined || busy !== null) return;
     setBusy(id);
@@ -70,7 +79,7 @@ export function WantedBoard(p: WantedBoardProps) {
         {!p.readOnly && (
           <div className="booth-tabs" role="tablist" aria-label="Which posters">
             {TABS.map((t) => {
-              const n = p.wanted.filter((w) => boardTab(w, t.id, p.me)).length;
+              const n = tabRows(t.id).length;
               return (
                 <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`booth-tab ${tab === t.id ? "current" : ""} ${n === 0 ? "zero" : ""}`} onClick={() => setTab(t.id)}>
                   {t.label} ({n})
