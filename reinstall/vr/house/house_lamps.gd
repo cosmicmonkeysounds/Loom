@@ -30,8 +30,8 @@ const BULB_RADIUS := 0.07
 ## The glow quad's size across (m) at full level.
 const HALO_SIZE := 0.8
 ## A real light's reach (m) and its energy at full level.
-const LIGHT_RANGE := 4.5
-const LIGHT_ENERGY := 1.4
+const LIGHT_RANGE := 5.0
+const LIGHT_ENERGY := 3.0
 ## Below the bulb: the light sits a little under the fixture, so the
 ## ceiling it hangs on catches some too.
 const LIGHT_DROP := 0.15

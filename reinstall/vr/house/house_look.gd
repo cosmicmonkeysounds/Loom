@@ -289,11 +289,11 @@ static func environment(tier := HouseLights.DEFAULT_TIER) -> Environment:
 	env.tonemap_exposure = TONEMAP_EXPOSURE
 	env.glow_enabled = HouseLights.tier_of(tier) == "high"
 	if env.glow_enabled:
-		env.glow_intensity = 0.7
+		env.glow_intensity = 0.9
 		env.glow_strength = 1.0
-		env.glow_bloom = 0.0
-		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
-		env.glow_hdr_threshold = 0.85
+		env.glow_bloom = 0.05
+		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+		env.glow_hdr_threshold = 0.7
 		env.glow_hdr_scale = 2.0
 	return env
 

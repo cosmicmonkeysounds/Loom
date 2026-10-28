@@ -37,11 +37,11 @@ const LIT_MIN := 0.02
 ## checkerboards and the walls readable: the duck hunt never suffers.
 const DAY_AMBIENT := 0.55
 const DAY_SUN := 0.7
-const NIGHT_AMBIENT := 0.3
+const NIGHT_AMBIENT := 0.24
 const NIGHT_SUN := 0.22
 ## How much of the way back to the day a fully lit house brings the
 ## ambient, and how far its mean colour tints it.
-const LIT_LIFT := 0.5
+const LIT_LIFT := 0.4
 const TINT := 0.3
 const DAY_COLOR := Color("#9fd8e0")
 
