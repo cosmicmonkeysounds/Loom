@@ -5,7 +5,8 @@
 //! target or picker, a caller's cue: all read off the booth's view.
 
 import { destructive, armsFirst } from "../model.ts";
-import type { ChatMessage, CountdownSummary, Interaction } from "../../types.ts";
+import { evergreenFlag } from "../../guest/wire.ts";
+import type { ChatMessage, CountdownSummary, Interaction, ObjectiveView } from "../../types.ts";
 import type { BoothGuest, BoothMessage, BoothObjective, CallsView, WantedEntry } from "../wire.ts";
 import type { PopOutSpec, PopTone } from "./rung.ts";
 
@@ -149,6 +150,9 @@ function reasonLines(w: Pick<WantedEntry, "reason">): string[] {
   return r !== "" ? ["Marked for reinstallation:", r] : ["Marked for reinstallation."];
 }
 
+/** Wave 37 (C9): WANTED · YOURS leaves the screen after this long untouched. */
+export const YOURS_RETIRE_MS = 15_000;
+
 /** The three variants of one entry's pop-out. */
 export function wantedSpec(w: WantedEntry, variant: "open" | "mine" | "taken", ctx: WantedCtx, again = false): Draft {
   const key = `wanted:${w.id}`;
@@ -185,10 +189,12 @@ export function wantedSpec(w: WantedEntry, variant: "open" | "mine" | "taken", c
         ...(ctx.canRelease ? [{ id: "release", label: "Hand it back", do: { kind: "act" as const, name: "release_escort", guest: w.id } }] : []),
         { id: "ok", label: "OK", do: { kind: "ok" } },
       ],
-      noLater: true,
+      // Wave 37 (C9): a reminder, not a wall: Later, and it leaves by itself
+      // (the 🚨 tray count and the board's Mine tab keep it).
       tone: "info",
       sticky: true,
       priority: 85,
+      autoRetireMs: YOURS_RETIRE_MS,
       at: w.markedAt,
     };
   }
@@ -304,6 +310,15 @@ export interface HeldPopOut {
   restored?: boolean;
 }
 
+/** Wave 37 (C7): the first live objective a NEW MISSION is about (never an evergreen one). */
+export function missionHeadline<O extends ObjectiveView>(objectives: readonly O[]): O | null {
+  const o = objectives[0];
+  return o === undefined || evergreenFlag(o) === true ? null : o;
+}
+
+/** A NEW MISSION this close (story ms) to a YOUR GAME IS ON is the same cue: the game pop-out says it (C7). */
+export const MISSION_GAME_MS = 10_000;
+
 export interface ReconcileCtx {
   /** `PrimeView.wanted`, or null (no board for this booth / an older server). */
   wanted: readonly WantedEntry[] | null;
@@ -330,12 +345,20 @@ function loose(ctx: ReconcileCtx, id: string): WantedEntry | null {
  * - `wanted-burst:…` — fewer than two of its programs still loose and
  *   unclaimed (its rows shrink to those that are);
  * - `confront:<seq>` — the program is caught, or no longer marked (NM-F8);
- * - `cue:<id>:<presses>` — the sheet moved on, or the cue stopped being live.
+ * - `cue:<id>:<presses>` — the sheet moved on, or the cue stopped being live;
+ * - `mission:<id>` — wave 37 (C7): `<id>` is not the headline any more, or a
+ *   held `game:` landed within 10 s of it (one cue, one pop-out);
+ * - `game:<seq>` — wave 37 (C8): a newer game is held;
+ * - `msg:<seq>` 🚨 about a guest — wave 37 (C10): that guest is not loose on
+ *   the board any more (caught, unmarked).
  */
 export function reconcilePopOuts(held: readonly HeldPopOut[], ctx: ReconcileCtx): { retire: string[]; rebind: Draft[] } {
   const retire: string[] = [];
   const rebind: Draft[] = [];
   const base = (s: HeldPopOut["spec"]) => ({ ...s, body: s.body });
+  const games = held.filter((h) => h.spec.key.startsWith("game:"));
+  const newestGame = games.reduce<HeldPopOut | null>((a, h) => (a === null || gameOrder(h.spec, a.spec) > 0 ? h : a), null);
+  const headline = missionHeadline(ctx.objectives);
   for (const h of held) {
     const s = h.spec;
     const k = s.key;
@@ -385,10 +408,24 @@ export function reconcilePopOuts(held: readonly HeldPopOut[], ctx: ReconcileCtx)
       continue;
     }
     if (k.startsWith("mission:")) {
-      // Wave 21 (P5): moot once its objective has ended; a restored one gets its Go back.
+      // Wave 21 (P5): moot once its objective has ended; wave 37 (C7): or
+      // once it is not the headline, or a game pop-out of the same cue says
+      // it. A restored one gets its Go back.
       const id = k.slice("mission:".length);
-      if (!ctx.objectives.some((o) => o.id === id)) retire.push(k);
-      else if (h.restored === true) rebind.push({ ...base(s), actions: [{ id: "go", label: "▣ Go", kind: "primary", do: { kind: "mission" } }] });
+      if (headline?.id !== id || games.some((g) => Math.abs(g.spec.at - s.at) <= MISSION_GAME_MS)) retire.push(k);
+      else if (h.restored === true) rebind.push({ ...base(s), autoRetireMs: MISSION_RETIRE_MS, actions: [{ id: "go", label: "▣ Go", kind: "primary", do: { kind: "mission" } }] });
+      continue;
+    }
+    if (k.startsWith("game:")) {
+      // Wave 37 (C8): one game at a time; a restored one gets its Go back.
+      if (newestGame !== null && newestGame !== h) retire.push(k);
+      else if (h.restored === true) rebind.push({ ...base(s), autoRetireMs: GAME_RETIRE_MS, actions: [GAME_GO] });
+      continue;
+    }
+    if (k.startsWith("msg:")) {
+      // Wave 37 (C10): a 🚨 readout about a guest is moot once they are off the loose board.
+      const id = s.guest?.id;
+      if (id !== undefined && s.glyph === "🚨" && ctx.wanted !== null && loose(ctx, id) === null) retire.push(k);
       continue;
     }
     if (k.startsWith("cue:")) {
@@ -425,6 +462,27 @@ export function boardTab(w: WantedEntry, tab: BoardTab, me: string): boolean {
   if (tab === "everyone") return true;
   if (tab === "open") return !w.captured && w.claimedBy === null;
   return !w.captured && w.claimedBy === me;
+}
+
+/**
+ * Wave 37 (C11): the Open tab's posters, ids in order. Those already shown
+ * on Open since the board opened (`kept`, first-shown order) stay in place
+ * until caught, claimed or not (a claim no longer reflows the list under
+ * another Antivirus' thumb); open ones not shown yet follow, newest mark
+ * first.
+ */
+export function openTabIds(wanted: readonly WantedEntry[], kept: Iterable<string>, me: string): string[] {
+  const byId = new Map(wanted.map((w) => [w.id, w]));
+  const out: string[] = [];
+  const have = new Set<string>();
+  for (const id of kept) {
+    const w = byId.get(id);
+    if (w === undefined || w.captured || have.has(id)) continue;
+    out.push(id);
+    have.add(id);
+  }
+  for (const w of boardOrder(wanted, me)) if (!have.has(w.id) && boardTab(w, "open", me)) out.push(w.id);
+  return out;
 }
 
 /** The board's status bar: "3 marked · 2 claimed · 0 caught". */
@@ -636,20 +694,24 @@ export function doorQueue(messages: Iterable<BoothMessage>, guests: readonly Boo
 /** How long the oldest arrival waits unclaimed before the door pops during Door Duty. */
 export const DOOR_WAIT_MS = 60_000;
 
-/** The door pop-out (§4.4): at once after `Night.step ≥ 1`, else after a minute unclaimed. */
+/** Wave 37 (C9): the door pop-out goes to 🔔 Waiting after this long on screen untouched. */
+export const DOOR_LATER_MS = 45_000;
+
+/** The door pop-out (§4.4): at once after `Night.step ≥ 1`, else after a
+ *  minute unclaimed. Wave 37 (C9): it goes to 🔔 Waiting after 45 s
+ *  untouched, and the queue's size is on its button, not in its body. */
 export function doorSpec(queue: readonly DoorEntry[], step: number | null | undefined, now: number, canClaim: boolean): Draft | null {
   const open = queue.filter((e) => e.claimedBy === null);
   const oldest = open[0];
   if (oldest === undefined) return null;
   const late = typeof step === "number" && step >= 1;
   if (!late && now - oldest.since < DOOR_WAIT_MS) return null;
-  const more = queue.length - 1;
   return {
     key: "door",
     rev: oldest.id,
     glyph: "🚪",
     title: "At the door",
-    body: [`${oldest.name} is waiting at the Optical Drive.`, `waiting ${mmss(now - oldest.since)}${more > 0 ? `   +${more} more` : ""}`],
+    body: [`${oldest.name} is waiting at the Optical Drive.`, `waiting ${mmss(now - oldest.since)}`],
     guest: { id: oldest.id, name: oldest.name },
     actions: [
       canClaim
@@ -660,6 +722,7 @@ export function doorSpec(queue: readonly DoorEntry[], step: number | null | unde
     tone: "info",
     sticky: false,
     priority: 50,
+    autoLaterMs: DOOR_LATER_MS,
     at: oldest.since,
   };
 }
@@ -765,9 +828,59 @@ export interface AdapterCtx {
   /** The guest whose scanner card / card window is open now, else null. */
   openGuest: () => string | null;
   guestName: (id: string) => string | null;
+  /** Wave 37 (C8): the booth's character (its readouts' room is `dm:<me>`). */
+  me?: string;
+  /** Wave 37 (C8): a player's booth (Clippy's YOUR GAME IS ON is a game pop-out). */
+  player?: boolean;
 }
 
 const bareText = (m: Pick<ChatMessage, "text">) => m.text.trim().replace(/^!+/u, "").trim();
+
+/** Wave 37 (C8): YOUR GAME IS ON leaves the screen after this long untouched. */
+export const GAME_RETIRE_MS = 60_000;
+/** Wave 37 (C7): a NEW MISSION that pops (Mission off screen) leaves after this long untouched. */
+export const MISSION_RETIRE_MS = 20_000;
+/** Below the target's 60 (LANDED ON first at the call), above the door's 50. */
+export const GAME_PRIORITY = 55;
+const GAME_GO: DraftAction = { id: "go", label: "▣ Go to Mission", kind: "primary", do: { kind: "mission" } };
+const SEQ_OF = (key: string) => Number(key.slice(key.indexOf(":") + 1)) || 0;
+
+/** Newer game first: by the cause's time, then by seq. */
+function gameOrder(a: Pick<PopOutSpec, "key" | "at">, b: Pick<PopOutSpec, "key" | "at">): number {
+  return a.at - b.at || SEQ_OF(a.key) - SEQ_OF(b.key);
+}
+
+/**
+ * Wave 37 (C8): a player's own big readout shaped `{glyph} {TITLE} · {body}`
+ * (Clippy's `!!🎱 YOUR GAME IS ON · Computer Bingo, …`) as one game pop-out:
+ * red caption and chime, ▣ Go to Mission, below the target, gone after a
+ * minute. Null for any other message.
+ */
+export function gameDraft(m: BoothMessage, ctx: Pick<AdapterCtx, "me" | "player">): Draft | null {
+  if (ctx.player !== true || ctx.me === undefined || m.channel !== `dm:${ctx.me}`) return null;
+  if (typeof m.about === "string" && m.about !== "") return null;
+  if ((m.moment as string | undefined) !== "big") return null;
+  const text = bareText(m);
+  const cut = text.indexOf(" · ");
+  if (cut < 0) return null;
+  const head = text.slice(0, cut);
+  const glyph = leadingGlyph(head);
+  const title = withoutGlyph(head);
+  const body = text.slice(cut + 3).trim();
+  if (title === "") return null;
+  return {
+    key: `game:${m.seq}`,
+    glyph: glyph !== "" ? glyph : "▣",
+    title,
+    body: body !== "" ? [body] : [],
+    actions: [GAME_GO],
+    tone: "alarm",
+    sticky: false,
+    priority: GAME_PRIORITY,
+    autoRetireMs: GAME_RETIRE_MS,
+    at: m.ts,
+  };
+}
 
 /**
  * The adapter the moments lane calls for a booth `big` moment and every
@@ -778,7 +891,12 @@ const bareText = (m: Pick<ChatMessage, "text">) => m.text.trim().replace(/^!+/u,
 export function adaptBoothMessage(m: BoothMessage, ctx: AdapterCtx): Draft | null | "default" {
   const text = bareText(m);
   const about = typeof m.about === "string" ? m.about : null;
+  const game = gameDraft(m, ctx);
+  if (game !== null) return game;
   if (about !== null && isDoorReadout(m)) return null;
+  // Wave 37 (C10): marks are the Wanted pop-outs' and the board's, even when
+  // the readout lands before the view lists the guest.
+  if (about !== null && ctx.wanted !== null && text.startsWith("🚨")) return null;
   if (about !== null && text.startsWith("🛡")) {
     if (ctx.openGuest() === about) return null;
     const name = m.aboutName ?? ctx.guestName(about) ?? about;
