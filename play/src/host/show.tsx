@@ -1,10 +1,10 @@
 //! The Show window (wave 25, docs/loom-house-desk.md §6.2): a host's home,
 //! in place of the pull-up drawer. Top to bottom: the night strip (act ·
-//! phase · show clock · caller · paused), Who's calling, a big NEXT card
-//! (ARM → FIRE with the drain, what it does, `then:`), the console's last
-//! word (a toast, a refusal, a stale view), LAST with `did:`, then the
-//! sections — *Your jobs* (the NOW card laid open), *Needs you*, *Coming
-//! up*, Judge, the cue sheet, People and More. The sections are the
+//! phase · show clock · caller · paused, one line that scrolls sideways),
+//! Who's calling, a big NEXT card (ARM → FIRE with the drain, what it does,
+//! `then:`), the console's last word (a toast, a refusal, a stale view),
+//! LAST with `did:`, then the sections — *Needs you*, *Your jobs* (the NOW
+//! card laid open), *Coming up*, Judge, the cue sheet, People and More. The sections are the
 //! drawer's own tabs (`tab-*.tsx`), unchanged, on the same console
 //! (`HostConsole` in `dock.tsx`): an arm made here fires from the slim bar.
 //! Wave 32: while a talk scene is on, the 🤖 Talk card (`talk.tsx`) sits

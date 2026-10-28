@@ -12,7 +12,7 @@ import type { PrimeSession } from "../../session/prime.ts";
 import type { Interaction } from "../../types.ts";
 import { boothView, callsOf, mayPress, wantedOf, type BoothGuest, type BoothMessage, type BoothObjective } from "../wire.ts";
 import { countdownRunning, cueAtEnd, cueSpecs, cueWaitsFor, doorQueue, doorSpec, pickLayout, pickReadySpec, reconcilePopOuts, rememberCountdowns, targetSpec, wantedSpecs, type BoothDo, type CountdownMemo, type Draft, type SeenMap } from "./model.ts";
-import { usePopOuts, type PopOutSpec } from "./rung.ts";
+import { playTone, usePopOuts, type PopOutSpec } from "./rung.ts";
 import { newMissionSpec } from "../mission-model.ts";
 
 /** What a bound pop-out's buttons may open in the booth. */
@@ -85,9 +85,15 @@ export interface DriverOpts {
   ownFireAt: () => number | null;
   /** The target pop-out's current key (the NOW row taps it back). */
   targetKey?: { current: string | null };
+  /** Wave 37 (C7): is this objective's Mission card on screen now? Then a
+   *  NEW MISSION for it pops nothing: the driver chimes once and calls
+   *  `onMissionNews` (the booth blinks its title bar). Default: never. */
+  missionShown?: (objectiveId: string) => boolean;
+  /** Wave 37 (C7): a NEW MISSION said by the title bar, not a pop-out. */
+  onMissionNews?: (o: { id: string; title: string }) => void;
 }
 
-export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, targetKey }: DriverOpts): void {
+export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, targetKey, missionShown, onMissionNews }: DriverOpts): void {
   const host = usePlayHost();
   const rung = usePopOuts();
   const token = session.auth?.token ?? "";
@@ -222,9 +228,32 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     } catch {
       /* kept in memory */
     }
-    if (r.draft !== null) rung.raise(bind(r.draft));
+    if (r.draft === null) return;
+    const id = r.draft.key.slice("mission:".length);
+    if (missionShown?.(id) === true) {
+      // Wave 37 (C7): said once — the Mission card is the instruction. Face
+      // to face (PLAYER SELECT is a quiet scope) it says it without a tone.
+      if (!rung.quietNow()) playTone("info", host.sound && r.draft.sound !== false);
+      onMissionNews?.({ id, title: r.draft.title });
+    } else rung.raise(bind(r.draft));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headId, player]);
+  // Wave 37 (C7, fix round): one that popped while Mission was off screen
+  // (raised under a card or the scanner, held quiet) is moot once Mission is
+  // on screen (× landed there): the title bar blinks instead. It chimes then
+  // only if it never reached the screen.
+  const moot = player ? rung.held.find((e) => e.deferredAt === undefined && e.spec.key.startsWith("mission:") && missionShown?.(e.spec.key.slice("mission:".length)) === true) : undefined;
+  const mootKey = moot?.spec.key ?? null;
+  const onScreenMission = rung.current?.key.startsWith("mission:") === true && !rung.quieted ? rung.current.key : null;
+  const missionsSeen = useRef(new Set<string>());
+  if (onScreenMission !== null && onScreenMission !== mootKey) missionsSeen.current.add(onScreenMission);
+  useEffect(() => {
+    if (moot === undefined || mootKey === null) return;
+    rung.retire(mootKey);
+    if (!missionsSeen.current.has(mootKey) && !rung.quietNow()) playTone("info", host.sound && moot.spec.sound !== false);
+    onMissionNews?.({ id: mootKey.slice("mission:".length), title: moot.spec.title });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mootKey]);
 
   // A caller: *Call it?* when one of its cues turns live after the first look.
   const calls = callsOf(view);
@@ -261,9 +290,16 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
   const heldKey = rung.held.map((e) => `${e.spec.key}:${e.restored === true ? 1 : 0}:${(e.spec.rows ?? []).length}`).join("|");
   const objIds = JSON.stringify((view?.objectives ?? []).map((o) => [o.id, (o as BoothObjective).target?.id ?? null]));
   const caughtKey = guests.filter((g) => g.captured).map((g) => g.id).join(",");
+  // When the headline last changed while this booth watched (a game's cue is
+  // over then), and a slow clock so a held game retires at its minute.
+  const headline = useRef<{ id: string; at: number | null } | null>(null);
+  if (headline.current === null) headline.current = { id: headId, at: null };
+  else if (headline.current.id !== headId) headline.current = { id: headId, at: now };
+  const gameBucket = rung.held.some((e) => e.spec.key.startsWith("game:")) ? Math.floor(now / 5_000) : 0;
   useEffect(() => {
     if (rung.held.length === 0) return;
     const r = reconcilePopOuts(rung.held, {
+      headlineAt: headline.current?.at ?? null,
       wanted,
       objectives: (view?.objectives ?? []) as BoothObjective[],
       calls,
@@ -273,7 +309,7 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     for (const k of r.retire) rung.retire(k);
     for (const d of r.rebind) rung.raise(bind(d));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heldKey, wantedKey, objIds, callsKey, caughtKey]);
+  }, [heldKey, wantedKey, objIds, callsKey, caughtKey, gameBucket]);
 
   // A deferred *Call it?* pops once its countdown is up; and when a
   // countdown ends with the caller's own cue as the sheet's NEXT, it pops too.

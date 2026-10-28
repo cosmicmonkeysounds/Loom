@@ -15,9 +15,16 @@
 //!    pile of stickies. The rest of the burst still lands in Readouts; only
 //!    the moments layer sees them folded. Every readout's moment is
 //!    captioned "Readout" (its room is titled with the booth's own name).
+//! 3. Wave 37 (C6): a performer's phone is about their job. A line to
+//!    everyone (`audience: "all"`) never reaches a booth's layer (the house
+//!    says it on the TV, the speakers and the 📜 Chat log); a player gets no
+//!    "New quest" moment (the Quest Log's dot says it); and a minor readout
+//!    about a guest who is not this booth's (`mine`) only badges Readouts.
+//!    Every one of them still lands in its room.
 
 import { staffLineWorthy } from "../stream/badges.ts";
 import type { ChatMessage } from "../types.ts";
+import type { WantedEntry } from "./wire.ts";
 
 /** What a booth readout's moment is captioned (never the booth's own name). */
 export const READOUT_CAPTION = "Readout";
@@ -72,6 +79,11 @@ export interface BoothFeedOptions {
   /** Wave 18 (§4.12): a message a pop-out (or the open confrontation) covers:
    *  the moments layer never sees it (it still lands in Readouts). */
   covered?: (m: ChatMessage) => boolean;
+  /** Wave 37 (C6): a player's booth (Antivirus, Clippy): no quest moments. */
+  player?: boolean;
+  /** Wave 37 (C6): is this guest this booth's (its claim, its door)? When
+   *  given, a minor readout about anyone else stays in Readouts only. */
+  mine?: (guestId: string) => boolean;
 }
 
 /** Does `text` name `who` as a word ("Password Manager: the patch bay" names Password Manager)? */
@@ -95,6 +107,29 @@ function readoutToMe(m: ChatMessage, character: string): boolean {
 }
 
 /**
+ * Wave 37 (C6, fix round): which guests are this booth's, for `mine`: its
+ * escort claims and door claims, and, on a booth that can claim escorts
+ * (`hunts`), every loose mark nobody has claimed yet, so the ⚠️ approach
+ * warnings that land before any claim reach every hunting Antivirus. Another
+ * booth's claim or capture is not.
+ */
+export function boothMine(wanted: readonly Pick<WantedEntry, "id" | "claimedBy" | "captured">[], doorOf: (id: string) => string | null, me: string, hunts: boolean): (id: string) => boolean {
+  return (id) => wanted.some((w) => w.id === id && (w.claimedBy === me || (hunts && !w.captured && w.claimedBy === null))) || doorOf(id) === me;
+}
+
+/**
+ * Wave 37 (C6): does the booth's layer skip `m` (it still lands in its
+ * room)? A line to everyone; a quest on a player's booth; a minor readout
+ * about a guest who is not this booth's (only when `mine` is given).
+ */
+export function offDuty(m: ChatMessage, opts: Pick<BoothFeedOptions, "character" | "player" | "mine">): boolean {
+  if (m.audience === "all") return true;
+  if (opts.player === true && m.quest !== undefined) return true;
+  if (opts.mine === undefined || opts.character === "" || !readoutToMe(m, opts.character)) return false;
+  return typeof m.about === "string" && m.about !== "" && m.alert !== true && (m.moment as string | undefined) !== "big" && opts.mine(m.about) !== true;
+}
+
+/**
  * The messages the booth's moments layer reads: the session's, with the
  * staff-room moments stamped (`moment: "minor"`) and each readout burst
  * folded into its last message (the others `hidden` for the layer only,
@@ -109,6 +144,11 @@ export function boothMomentFeed(messages: ReadonlyMap<number, ChatMessage>, opts
   for (const m of messages.values()) {
     if (opts.covered?.(m) === true) {
       patch.set(m.seq, { ...m, hidden: true });
+      continue;
+    }
+    if (offDuty(m, opts)) {
+      // Off duty (C6): never a moment here, never counted in a burst.
+      if (!m.hidden) patch.set(m.seq, { ...m, hidden: true });
       continue;
     }
     if (staffMoment(m, opts)) patch.set(m.seq, { ...m, moment: "minor" });

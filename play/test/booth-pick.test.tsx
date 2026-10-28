@@ -17,7 +17,7 @@ import { PopOutScope } from "../src/booth/popouts/rung.ts";
 import { ApiError } from "../src/client.ts";
 import type { BoothObjective, CallsView } from "../src/booth/wire.ts";
 import type { Interaction, PrimeGuest } from "../src/types.ts";
-import type { PrimeSession } from "../src/session/prime.ts";
+import { notePress, type PrimeSession } from "../src/session/prime.ts";
 
 const noop = () => {};
 const press = () => Promise.resolve({ ok: true as const, guest: null });
@@ -136,8 +136,32 @@ describe("PLAYER SELECT, wave 26 (B3–B5)", () => {
     expect(sel).toMatch(/setDone\(steps\.map\(\(\) => null\)\);\s*setFresh\(false\);/u);
     // The booth hands its own presses in.
     expect(readFileSync(new URL("../src/booth/app.tsx", import.meta.url), "utf8")).toContain("seed={s.lastPressedOn}");
-    // …remembered only for a press the story took (a refusal is not a pick).
-    expect(readFileSync(new URL("../src/session/prime.ts", import.meta.url), "utf8")).toMatch(/if \(r\.refused !== true && guest != null && guest !== ""\) pressedOn\.current\.set\(name, guest\);/u);
+    // …noted at the press (PLAYER SELECT may open before the reply), undone on a refusal or a failure.
+    const prime = readFileSync(new URL("../src/session/prime.ts", import.meta.url), "utf8");
+    expect(prime).toContain("const undo = notePress(pressedOn.current, name, guest);");
+    expect(prime).toMatch(/if \(r\.refused === true\) undo\(\);/u);
+  });
+  it("notePress: the SAME row is there before the reply; a refusal puts the old one back", () => {
+    const m = new Map<string, string>();
+    const first = steps4[0]!.id;
+    const undo = notePress(m, first, "g1");
+    // PLAYER SELECT opening now (the view moved, the POST not back yet) seeds ① with it.
+    const ticked = steps4.map((x, i) => (i === 0 ? { ...x, satisfied: true } : x));
+    expect(openingFor(ticked, (n) => m.get(n) ?? null).done[0]).toBe("g1");
+    undo();
+    expect(m.has(first)).toBe(false);
+    m.set("bingo_winner", "g0");
+    const undo2 = notePress(m, "bingo_winner", "g2");
+    undo2();
+    expect(m.get("bingo_winner")).toBe("g0");
+    // A newer press of the same button stays.
+    const undo3 = notePress(m, "bingo_winner", "g3");
+    notePress(m, "bingo_winner", "g4");
+    undo3();
+    expect(m.get("bingo_winner")).toBe("g4");
+    // No guest: nothing noted.
+    notePress(m, "start", null)();
+    expect(m.has("start")).toBe(false);
   });
   it("B5: an ended objective offers no + Another round, only Close", () => {
     const live = renderToStaticMarkup(<PlayerSelect objective={nobody} steps={steps4} guests={guests} press={press} onClose={noop} />);

@@ -1,7 +1,9 @@
 // Wave 18 (booth lane): the booth's pop-outs decided (BOOTH-SPEC §4) — the
 // Wanted pop-out's variants and bursts, the confrontation trigger, the
 // picker layout, PLAYER SELECT's steps, the door queue, Clippy's *Call it?*
-// and the moments adapter's table (§4.12).
+// and the moments adapter's table (§4.12). Wave 37: YOURS has Later and
+// leaves by itself (C9), the door goes to Waiting (C9), Clippy's game
+// pop-out (C8) and the 🚨 race (C10).
 import { describe, expect, it } from "vitest";
 
 import {
@@ -16,9 +18,11 @@ import {
   cueSpecs,
   doorQueue,
   doorSpec,
+  gameDraft,
   leadingGlyph,
   pickLayout,
   pickReadySpec,
+  reconcilePopOuts,
   replyLine,
   shieldId,
   stepWord,
@@ -67,6 +71,10 @@ describe("the Wanted pop-out (§4.1)", () => {
     expect(mine.title).toBe("WANTED · YOURS");
     expect(mine.actions[0]!.label).toBe("📷 Scan their pass");
     expect(mine.actions[0]!.do).toEqual({ kind: "scan", guest: "mine", name: "MINE" });
+    // Wave 37 (C9): a reminder: Later, and gone after 15 s untouched.
+    expect(mine.noLater).toBeUndefined();
+    expect(mine.autoRetireMs).toBe(15_000);
+    expect(mine.priority).toBe(85);
     const withRelease = wantedSpecs([W("mine", { claimedBy: "Norton" })], seen, ctx({ canRelease: true })).raise[0]!;
     expect(withRelease.actions.map((a) => a.label)).toContain("Hand it back");
     const taken = wantedSpecs([W("mine", { claimedBy: "McAfee Anti-Virus" })], seen, ctx()).raise[0]!;
@@ -255,12 +263,15 @@ describe("the door queue (§4.4)", () => {
     const q = doorQueue(msgs, [G("winamp"), G("icq")]);
     expect(doorSpec(q, 0, 30_000, true)).toBeNull();
     const d = doorSpec(q, 0, 66_000, true)!;
-    expect(d).toMatchObject({ key: "door", rev: "winamp", priority: 50, sticky: false });
-    expect(d.body).toEqual(["winamp is waiting at the Optical Drive.", "waiting 1:01   +1 more"]);
+    expect(d).toMatchObject({ key: "door", rev: "winamp", priority: 50, sticky: false, autoLaterMs: 45_000 });
+    // Wave 37 (C9): the queue's size is on its button only.
+    expect(d.body).toEqual(["winamp is waiting at the Optical Drive.", "waiting 1:01"]);
     expect(d.actions.map((a) => a.label)).toEqual(["🙋 I've got winamp", "🚪 Door queue (2)"]);
     expect(doorSpec(q, 1, 6000, false)!.actions[0]!.label).toBe("📷 Scan winamp's pass");
     // Claimed: the pop-out moves on to the next unclaimed guest.
     expect(doorSpec([{ ...q[0]!, claimedBy: "Norton" }, q[1]!], 1, 10_000, true)!.rev).toBe("icq");
+    // A new guest behind an unclaimed one changes nothing (the same rev: a deferred door stays in Waiting).
+    expect(doorSpec([...q, { id: "aim", name: "aim", since: 9_500, claimedBy: null }], 1, 10_000, true)!.rev).toBe("winamp");
     expect(doorSpec([], 1, 0, true)).toBeNull();
   });
 });
@@ -290,9 +301,60 @@ describe("the moments adapter's table (§4.12)", () => {
     expect(d).toMatchObject({ title: "Confrontation: Minesweeper", tone: "alarm" });
     expect((d as { actions: Array<{ do: unknown }> }).actions[0]!.do).toEqual({ kind: "card", guest: "g1", confront: "rescan" });
     expect(adaptBoothMessage(msg(5, { readout: true, alert: true, about: "zz", text: "⚠ zz did a thing" }), actx())).toBe("default");
+    // Wave 37 (C10): a 🚨 mark that lands before the board lists the guest is still the board's.
+    expect(adaptBoothMessage(msg(7, { readout: true, alert: true, about: "zz", text: "🚨 zz is marked: find them and scan their pass" }), actx())).toBeNull();
+    expect(adaptBoothMessage(msg(7, { readout: true, alert: true, about: "zz", text: "🚨 zz is marked" }), { ...actx(), wanted: null })).toBe("default");
     // The moments feed drops only what the adapter covers.
     expect(coveredElsewhere(msg(1, { readout: true, alert: true, about: "g1", text: "🚨 G1 is marked" }), actx())).toBe(true);
     expect(coveredElsewhere(msg(6, { readout: true, about: "g1", text: "plain" }), actx())).toBe(false);
   });
 });
 
+
+describe("wave 37 (C8): YOUR GAME IS ON is Clippy's game pop-out", () => {
+  // The seven shapes in cast/hosts.loom (Clippy's YOUR GAME IS ON readouts).
+  const shapes: Array<[string, string, string]> = [
+    ["🎱", "!!🎱 YOUR GAME IS ON · Computer Bingo, 20 minutes. Fill the Desktop with noise; winners come to you. ⭐ +10 per winner you call.", "Computer Bingo, 20 minutes. Fill the Desktop with noise; winners come to you. ⭐ +10 per winner you call."],
+    ["🎱", "!!🎱 YOUR GAME IS ON · The Bingo results. 2/X is in your Codex. 🎱 each winner, 🎀 the ribbon, 🎯 the program they name. Demand applause.", "The Bingo results. 2/X is in your Codex. 🎱 each winner, 🎀 the ribbon, 🎯 the program they name. Demand applause."],
+    ["🔎", "!!🔎 YOUR GAME IS ON · The Truth Scavenger Hunt, 15 minutes. Trabolta explains the rules; keep the programs hunting.", "The Truth Scavenger Hunt, 15 minutes. Trabolta explains the rules; keep the programs hunting."],
+    ["⚖️", "!!⚖️ YOUR GAME IS ON · The First Moment of Truth. Trabolta reads the results; judge what is said aloud. ⭐ +5 per answer you judge.", "The First Moment of Truth. Trabolta reads the results; judge what is said aloud. ⭐ +5 per answer you judge."],
+    ["🏓", "!!🏓 YOUR GAME IS ON · Truth Pong. Cup-makers answer; you judge them. ⭐ +5 per cup and per answer.", "Truth Pong. Cup-makers answer; you judge them. ⭐ +5 per cup and per answer."],
+    ["🍎", "!!🍎 YOUR GAME IS ON · Bobbing for Truth, with Adobe. ⭐ +15 for the program who brings up the Bag.", "Bobbing for Truth, with Adobe. ⭐ +15 for the program who brings up the Bag."],
+    ["🏆", "!!🏆 YOUR GAME IS ON · The awards ceremony. Lead the applause; the staff awards come last, and one of them might be yours.", "The awards ceremony. Lead the applause; the staff awards come last, and one of them might be yours."],
+  ];
+  const clippy = { wanted: null, openGuest: () => null, guestName: () => null, me: "Clippy", player: true };
+  const game = (seq: number, text: string, extra: Partial<BoothMessage> = {}) => msg(seq, { channel: "dm:Clippy", readout: true, moment: "big" as never, text, ...extra });
+
+  it("each of the seven shapes is a game draft: its glyph, YOUR GAME IS ON, the rest, ▣ Go to Mission, alarm, 55, a minute", () => {
+    shapes.forEach(([glyph, text, body], n) => {
+      const d = adaptBoothMessage(game(100 + n, text), clippy);
+      expect(d).toMatchObject({ key: `game:${100 + n}`, glyph, title: "YOUR GAME IS ON", body: [body], tone: "alarm", yields: true, sticky: false, priority: 55, autoRetireMs: 60_000, at: (100 + n) * 1000 });
+      expect((d as { actions: unknown[] }).actions).toEqual([{ id: "go", label: "▣ Go to Mission", kind: "primary", do: { kind: "mission" } }]);
+    });
+  });
+
+  it("a host booth, a line with no ' · ', one about a guest, another room or a non-big line stay as they were", () => {
+    const [, text] = shapes[0]!;
+    expect(adaptBoothMessage(game(1, text), { ...clippy, player: false })).toBe("default");
+    expect(adaptBoothMessage(game(1, text), { wanted: null, openGuest: () => null, guestName: () => null })).toBe("default");
+    expect(adaptBoothMessage(game(1, "!!🎱 YOUR GAME IS ON"), clippy)).toBe("default");
+    expect(gameDraft(game(1, text, { about: "g1" }), clippy)).toBeNull();
+    expect(gameDraft(game(1, text, { channel: "dm:Norton Anti-Virus" }), clippy)).toBeNull();
+    expect(gameDraft(game(1, text, { moment: undefined }), clippy)).toBeNull();
+  });
+
+  it("at the Bingo call LANDED ON (the target, 60) comes before the game (55), which comes before the door (50)", () => {
+    const bottle = obj({ id: "bingo", title: "🎱 Check The Bingo", target: { id: "g1", name: "Napster" }, buttons: ["bingo_winner"] });
+    const target = targetSpec(bottle, ["bingo_winner"], ints, () => null, 5)!;
+    const g = gameDraft(game(9, shapes[1]![1]), clippy)!;
+    const door = doorSpec([{ id: "w", name: "W", since: 0, claimedBy: null }], 1, 1000, true)!;
+    expect([target, g, door].sort((a, b) => b.priority - a.priority).map((d) => d.key.split(":")[0])).toEqual(["target", "game", "door"]);
+  });
+
+  it("a restored game gets its Go back and still yields", () => {
+    const g = gameDraft(game(9, shapes[1]![1]), clippy)!;
+    const { actions: _a, yields: _y, ...stored } = g;
+    const out = reconcilePopOuts([{ spec: stored, restored: true }], { wanted: null, objectives: [], calls: null, guestOf: () => null, wctx: { me: "Clippy", now: 0, placeTitle: () => null, guestOf: () => null, tried: new Set(), canRelease: false } });
+    expect(out.rebind[0]).toMatchObject({ key: "game:9", yields: true, autoRetireMs: 60_000 });
+  });
+});

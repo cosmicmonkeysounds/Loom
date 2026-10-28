@@ -3,9 +3,19 @@
 // score tiles, Quest Log / Codex / Wallet / 🚨 Wanted tiles, big buttons that
 // are actions), Chats in sections with 📋 Notes and the Team rooms, a lean
 // Start menu with 👥 People, the NEW MISSION pop-out, and a guest card with
-// no staff-room lines.
-import { describe, expect, it } from "vitest";
+// no staff-room lines. Wave 37 (C7): NEW MISSION said once — over its own
+// Mission card the driver chimes and hands it to the title bar.
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ReactElement } from "react";
+import { playTone } from "../src/alerts.ts";
+import { PlayHostContext, browserHost, memoryStore } from "../src/host.ts";
+import { PopOutQuiet, PopOutScope, resetPopOutStores, usePopOuts, type PopOutsApi } from "../src/booth/popouts/rung.ts";
+import { useBoothPopOuts, type DriverOpts } from "../src/booth/popouts/use-booth-popouts.ts";
+import type { PrimeSession } from "../src/session/prime.ts";
+import { mountHooks } from "./hooks-harness.ts";
+
+vi.mock("../src/alerts.ts", async (importOriginal) => ({ ...(await importOriginal<typeof import("../src/alerts.ts")>()), playTone: vi.fn() }));
 
 import { NOTES_ID, NOTES_TITLE, WANTED_NAV, boothActionOf, boothMissionOf, boothWhereOf, newMissionSpec, playerChats, playerStartIds, scanCaption } from "../src/booth/mission-model.ts";
 import { PlayerMission, playerTaskbarButtons } from "../src/booth/player.tsx";
@@ -220,5 +230,114 @@ describe("the NEW MISSION pop-out (P5)", () => {
     const ctx = { wanted: null, calls: null, guestOf: () => null, wctx: {} as never };
     expect(reconcilePopOuts(held, { ...ctx, objectives: [b] }).retire).toEqual([]);
     expect(reconcilePopOuts(held, { ...ctx, objectives: [a] }).retire).toEqual(["mission:b"]);
+  });
+});
+
+describe("wave 37 (C7): NEW MISSION, said once", () => {
+  const a = obj("a", "🎱 Bingo", { brief: "Pick the winner." });
+  const b = obj("b", "🍾 The bottle", { brief: "Make them answer." });
+  type Ctx = { _currentValue: unknown };
+  const scopeCtx = ((mountHooks(PopOutScope, { session: null, children: null }).output as ReactElement).type as unknown as { _context: Ctx })._context;
+  const hostCtx = PlayHostContext as unknown as Ctx;
+  const session = (objectives: ObjectiveView[]): PrimeSession =>
+    ({ auth: { token: "tok-w37", character: "Norton Anti-Virus" }, view: view({ objectives, interactions: [] }), messages: new Map(), card: () => new Promise(() => {}) }) as unknown as PrimeSession;
+  const opener = { act: async () => {}, card: () => {}, scan: () => {}, board: () => {}, door: () => {}, pick: () => {}, cue: () => {}, mission: () => {} };
+  const opts = (objectives: ObjectiveView[], extra: Partial<DriverOpts> = {}): DriverOpts => ({ session: session(objectives), open: opener, now: 1_000, placeTitle: () => null, ownFireAt: () => null, ...extra });
+  const heldKeys = () => (mountHooks(usePopOuts, undefined as never).output as PopOutsApi).held.map((e) => e.spec);
+  beforeEach(() => {
+    resetPopOutStores();
+    vi.mocked(playTone).mockClear();
+    scopeCtx._currentValue = { session: "tok-w37" };
+    hostCtx._currentValue = { ...browserHost, storage: memoryStore(), sound: true };
+  });
+  afterEach(() => {
+    scopeCtx._currentValue = null;
+    hostCtx._currentValue = browserHost;
+  });
+
+  it("over its own Mission card: no pop-out, one chime, onMissionNews once with the title", () => {
+    const news: Array<{ id: string; title: string }> = [];
+    const extra = { missionShown: (id: string) => id === "b", onMissionNews: (o: { id: string; title: string }) => news.push(o) };
+    const h = mountHooks(useBoothPopOuts, opts([a], extra));
+    expect(news).toEqual([]);
+    h.rerender(opts([b, a], extra));
+    expect(news).toEqual([{ id: "b", title: "NEW MISSION · The bottle" }]);
+    expect(vi.mocked(playTone)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(playTone).mock.calls[0]).toEqual(["info", true]);
+    expect(heldKeys().map((x) => x.key)).toEqual([]);
+    h.rerender(opts([b, a], extra));
+    expect(news).toHaveLength(1);
+    expect(vi.mocked(playTone)).toHaveBeenCalledTimes(1);
+  });
+
+  it("over its own card in PLAYER SELECT (a quiet scope): onMissionNews, but no tone face to face", () => {
+    const news: Array<{ id: string; title: string }> = [];
+    const extra = { missionShown: (id: string) => id === "b", onMissionNews: (o: { id: string; title: string }) => news.push(o) };
+    const h = mountHooks(useBoothPopOuts, opts([a], extra));
+    const q = mountHooks(PopOutQuiet, {});
+    h.rerender(opts([b, a], extra));
+    expect(news).toEqual([{ id: "b", title: "NEW MISSION · The bottle" }]);
+    expect(vi.mocked(playTone)).not.toHaveBeenCalled();
+    expect(heldKeys()).toEqual([]);
+    q.unmount();
+  });
+
+  it("anywhere else: it pops (keeping its brief) and leaves by itself after 20 s; the driver plays nothing", () => {
+    const news: unknown[] = [];
+    const h = mountHooks(useBoothPopOuts, opts([a], { missionShown: () => false, onMissionNews: (o) => news.push(o) }));
+    h.rerender(opts([b, a], { missionShown: () => false, onMissionNews: (o) => news.push(o) }));
+    expect(news).toEqual([]);
+    expect(vi.mocked(playTone)).not.toHaveBeenCalled();
+    expect(heldKeys()).toMatchObject([{ key: "mission:b", title: "NEW MISSION · The bottle", body: ["Make them answer."], autoRetireMs: 20_000 }]);
+    // No option given: as before (it pops). A fresh sign-in's memory.
+    resetPopOutStores();
+    hostCtx._currentValue = { ...browserHost, storage: memoryStore(), sound: true };
+    const plain = mountHooks(useBoothPopOuts, opts([a]));
+    plain.rerender(opts([b, a]));
+    expect(heldKeys().map((x) => x.key)).toEqual(["mission:b"]);
+  });
+
+  it("raised under a card (held quiet), then × lands on Mission: no pop-out, the blink, one chime", () => {
+    const news: Array<{ id: string; title: string }> = [];
+    let onMission = false;
+    const extra = () => ({ missionShown: () => onMission, onMissionNews: (o: { id: string; title: string }) => news.push(o) });
+    const h = mountHooks(useBoothPopOuts, opts([a], extra()));
+    const q = mountHooks(PopOutQuiet, {});
+    h.rerender(opts([b, a], extra()));
+    expect(heldKeys().map((x) => x.key)).toEqual(["mission:b"]);
+    expect(news).toEqual([]);
+    // × on the card: the quiet scope goes, and Mission is the window under it.
+    q.unmount();
+    onMission = true;
+    h.rerender(opts([b, a], extra()));
+    expect(heldKeys()).toEqual([]);
+    expect(news).toEqual([{ id: "b", title: "NEW MISSION · The bottle" }]);
+    expect(vi.mocked(playTone)).toHaveBeenCalledTimes(1);
+    h.rerender(opts([b, a], extra()));
+    expect(news).toHaveLength(1);
+  });
+
+  it("one already on screen (in Chats) that meets Mission goes too, with the blink and no second chime", () => {
+    const news: Array<{ id: string; title: string }> = [];
+    let onMission = false;
+    const extra = () => ({ missionShown: () => onMission, onMissionNews: (o: { id: string; title: string }) => news.push(o) });
+    const h = mountHooks(useBoothPopOuts, opts([a], extra()));
+    h.rerender(opts([b, a], extra()));
+    h.rerender(opts([b, a], extra()));
+    expect(heldKeys().map((x) => x.key)).toEqual(["mission:b"]);
+    onMission = true;
+    h.rerender(opts([b, a], extra()));
+    expect(heldKeys()).toEqual([]);
+    expect(news).toEqual([{ id: "b", title: "NEW MISSION · The bottle" }]);
+    expect(vi.mocked(playTone)).not.toHaveBeenCalled();
+  });
+
+  it("a mission whose objective stays live but moves off the headline goes; one beside a game of the same cue goes", () => {
+    const held = [{ spec: { key: "mission:b", title: "NEW MISSION · The bottle", glyph: "🍾", body: [], tone: "info" as const, priority: 35, at: 50_000, sticky: false } }];
+    const ctx = { wanted: null, calls: null, guestOf: () => null, wctx: {} as never };
+    expect(reconcilePopOuts(held, { ...ctx, objectives: [b, a] }).retire).toEqual([]);
+    expect(reconcilePopOuts(held, { ...ctx, objectives: [a, b] }).retire).toEqual(["mission:b"]);
+    const game = { spec: { key: "game:9", title: "YOUR GAME IS ON", glyph: "🍾", body: [], tone: "alarm" as const, priority: 55, at: 52_000, sticky: false } };
+    expect(reconcilePopOuts([...held, game], { ...ctx, objectives: [b, a] }).retire).toEqual(["mission:b"]);
   });
 });

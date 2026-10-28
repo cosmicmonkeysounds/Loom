@@ -1,10 +1,13 @@
 // Wave 18 (booth lane): the Wanted board and its posters (BOOTH-SPEC §4.2),
 // the card's WANTED banner, the confrontation screen (§4.3) and the pop-out
-// dock inside the card's scroll, never over its face (§2.2 rule 6).
+// dock inside the card's scroll, never over its face (§2.2 rule 6). Wave 37
+// (C11): a claimed poster stays in its place on Open.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ReactElement } from "react";
+import { elements, mountHooks } from "./hooks-harness.ts";
 
 import { Poster, WantedBanner } from "../src/booth/wanted/poster.tsx";
 import { WantedBoard, defaultBoardTab } from "../src/booth/wanted/board.tsx";
@@ -29,14 +32,15 @@ describe("the Wanted poster (§4.2)", () => {
     expect(html).toContain("🙋 I&#x27;ll get them");
     expect(html).toContain("🗂 Card ›");
   });
-  it("mine: 🙋 YOU + Scan their pass (+ Hand back with A2); theirs: grey, take-over only when stale and A3", () => {
+  it("mine: YOURS + Scan their pass (+ Hand back with A2); theirs: grey, take-over only when stale and A3", () => {
     const mine = renderToStaticMarkup(<Poster w={W("Encarta", { claimedBy: "Norton" })} me="Norton" now={0} wall={0} place="The Desktop" canRelease />);
-    expect(mine).toContain("🙋 YOU");
+    // Wave 37 (C11): the tag reads YOURS / "🙋 X is on it", as a kept poster on Open does.
+    expect(mine).toContain('<span class="wanted-tag you">YOURS</span>');
     expect(mine).toContain("📷 Scan their pass");
     expect(mine).toContain("Hand back");
     const theirs = renderToStaticMarkup(<Poster w={W("ICQ", { claimedBy: "McAfee Anti-Virus" })} me="Norton" now={11 * 60_000} wall={11 * 60_000} claimedAt={0} place="The Tube" canTakeOver />);
     expect(theirs).toContain("wanted-poster theirs");
-    expect(theirs).toContain("🙋 McAfee Anti-Virus");
+    expect(theirs).toContain('<span class="wanted-tag">🙋 McAfee Anti-Virus is on it</span>');
     expect(theirs).toContain("claimed 11 min ago");
     expect(theirs).toContain("Still on it?");
     expect(theirs).toContain("🙋 Take over");
@@ -74,6 +78,65 @@ describe("the Wanted board (§4.2)", () => {
   });
 });
 
+describe("wave 37 (C11): the Open tab keeps a claimed poster in place", () => {
+  const props = (wanted: WantedEntry[]) => ({ wanted, me: "Norton", now: 0, placeTitle: (l: string | null) => l, onCard: noop, onClose: noop, onClaim: noop, onScan: noop });
+  const posters = (out: unknown) => elements(out).filter((e) => e.type === Poster) as Array<ReactElement<{ w: WantedEntry }>>;
+  const tabs = (out: unknown) => elements(out).filter((e) => e.props && (e.props as { role?: string }).role === "tab").map((e) => (e.props as { children: unknown[] }).children.join(""));
+  const marks = [W("Pong", { markedAt: 1 }), W("Encarta", { markedAt: 2 }), W("WinZip", { markedAt: 3 })];
+
+  it("my claim keeps the poster at its index, as mine (📷 Scan their pass, no claim)", () => {
+    const h = mountHooks(WantedBoard, props(marks));
+    expect(posters(h.output).map((p) => p.props.w.id)).toEqual(["WinZip", "Encarta", "Pong"]);
+    h.rerender(props([marks[0]!, W("Encarta", { markedAt: 2, claimedBy: "Norton" }), marks[2]!]));
+    const after = posters(h.output);
+    expect(after.map((p) => p.props.w.id)).toEqual(["WinZip", "Encarta", "Pong"]);
+    // Open counts the two still open; the kept, claimed one is an extra row.
+    expect(tabs(h.output)).toEqual(["Open (2)", "Mine (1)", "Everyone (3)"]);
+    const mine = renderToStaticMarkup(<Poster {...after[1]!.props} me="Norton" now={0} place={null} onScan={noop} />);
+    expect(mine).toContain("📷 Scan their pass");
+    expect(mine).toContain("YOURS");
+    expect(mine).not.toContain("I&#x27;ll get them");
+  });
+
+  it("someone else's claim keeps it too, named, with no claim button; a capture takes it off", () => {
+    const h = mountHooks(WantedBoard, props(marks));
+    h.rerender(props([marks[0]!, W("Encarta", { markedAt: 2, claimedBy: "McAfee Anti-Virus" }), marks[2]!]));
+    const after = posters(h.output);
+    expect(after.map((p) => p.props.w.id)).toEqual(["WinZip", "Encarta", "Pong"]);
+    const theirs = renderToStaticMarkup(<Poster {...after[1]!.props} me="Norton" now={0} place={null} />);
+    expect(theirs).toContain('<span class="wanted-tag">🙋 McAfee Anti-Virus is on it</span>');
+    expect(theirs).not.toContain("I&#x27;ll get them");
+    h.rerender(props([marks[0]!, W("Encarta", { markedAt: 2, claimedBy: "McAfee Anti-Virus", captured: true }), marks[2]!]));
+    expect(posters(h.output).map((p) => p.props.w.id)).toEqual(["WinZip", "Pong"]);
+  });
+
+  it("back from a scan or a card (a remount) finds the tab chosen and the kept posters as they were", () => {
+    const memo = { tab: null, kept: new Set<string>() };
+    const h = mountHooks(WantedBoard, { ...props(marks), memo });
+    const claimed = [marks[0]!, W("Encarta", { markedAt: 2, claimedBy: "Norton" }), marks[2]!];
+    h.rerender({ ...props(claimed), memo });
+    h.unmount();
+    // Back on the board after × (it mounts again): Encarta, mine now, is still in its place on Open.
+    const again = mountHooks(WantedBoard, { ...props([...claimed, W("ICQ", { markedAt: 9 })]), memo });
+    expect(posters(again.output).map((p) => p.props.w.id)).toEqual(["WinZip", "Encarta", "Pong", "ICQ"]);
+    // A tab picked on the board comes back too.
+    const mineTab = elements(again.output).find((e) => (e.props as { role?: string; children?: unknown[] })?.role === "tab" && String((e.props as { children: unknown[] }).children[0]) === "Mine")!;
+    again.act(() => (mineTab.props as { onClick: () => void }).onClick());
+    again.unmount();
+    expect(memo.tab).toBe("mine");
+    const third = mountHooks(WantedBoard, { ...props(claimed), memo });
+    expect(posters(third.output).map((p) => p.props.w.id)).toEqual(["Encarta"]);
+    // A fresh opening (no memo) starts on Open with nothing kept.
+    expect(posters(mountHooks(WantedBoard, props(claimed)).output).map((p) => p.props.w.id)).toEqual(["WinZip", "Pong"]);
+  });
+
+  it("a mark that lands while the board is open joins below, never on top", () => {
+    const h = mountHooks(WantedBoard, props(marks));
+    h.rerender(props([...marks, W("ICQ", { markedAt: 9 })]));
+    expect(posters(h.output).map((p) => p.props.w.id)).toEqual(["WinZip", "Encarta", "Pong", "ICQ"]);
+  });
+});
+
 describe("the confrontation (§4.3)", () => {
   const c = { guest: "g1", name: "Minesweeper", reason: "named on the Bingo card", shield: "send to the internet", arm: false, deadMs: 600, claimedBy: "Norton" };
   const press = () => Promise.resolve({ ok: true as const, guest: null });
@@ -101,15 +164,16 @@ describe("the confrontation (§4.3)", () => {
   });
 });
 
-describe("the pop-out dock on a card (§2.2 rule 6)", () => {
+describe("the pop-outs on a card (§2.2 rule 6; wave 37 C4: quiet, never docked)", () => {
   const spec: PopOutSpec = { key: "wanted:icq", glyph: "🚨", title: "WANTED", body: "x", guest: { id: "icq", name: "ICQ", location: "The Tube" }, actions: [], tone: "alarm", sticky: true, priority: 90, at: 1 };
-  it("the dock is the first child of .booth-card-scroll, before the face", () => {
+  it("the quiet scope is in .booth-card-scroll, before the face; no dock", () => {
     const src = readFileSync(join(__dirname, "../src/booth/card.tsx"), "utf8");
     const scroll = src.indexOf('className="booth-card-scroll"');
     expect(scroll).toBeGreaterThan(-1);
     const after = src.slice(scroll);
-    expect(after.indexOf("<PopOutDock />")).toBeGreaterThan(-1);
-    expect(after.indexOf("<PopOutDock />")).toBeLessThan(after.indexOf("booth-card-foot"));
+    expect(after.indexOf("<PopOutQuiet />")).toBeGreaterThan(-1);
+    expect(after.indexOf("<PopOutQuiet />")).toBeLessThan(after.indexOf("booth-card-foot"));
+    expect(src).not.toContain("PopOutDock");
   });
   it("a scope's seed lands in that booth's store (the strip's words)", () => {
     resetPopOutStores();

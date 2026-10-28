@@ -47,8 +47,10 @@ export interface ConfrontProps {
   showClock?: ShowClock | null;
   /** Press a story button on this guest. */
   press: (id: string) => Promise<PrimeActResult>;
+  /** Not now (and 🩹 once it lands): leave, back where the scan started (wave 37, C1). */
   onNotNow: () => void;
-  onNext: () => void;
+  /** 📷 Next guest on CAPTURED: door work only (wave 37, C3); without it there is none. */
+  onNext?: () => void;
   onBoard?: () => void;
   /** Wave 21: a player booth — no staff-room lines in the outcome. */
   player?: boolean;
@@ -122,9 +124,11 @@ export function ConfrontScreen(p: ConfrontProps) {
               🚨 Board ({p.board})
             </button>
           )}
-          <button type="button" className="w95-btn booth-default confront-btn" onClick={p.onNext}>
-            <Icon name="scan" /> Next guest
-          </button>
+          {p.onNext !== undefined && (
+            <button type="button" className="w95-btn booth-default confront-btn" onClick={p.onNext}>
+              <Icon name="scan" /> Next guest
+            </button>
+          )}
         </div>
       </div>
     );

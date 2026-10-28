@@ -36,6 +36,7 @@ import {
   GLITCH_MS,
   GLANCE_MS,
   READOUT_WAIT_MS,
+  STICKY_MS,
   afterWait,
   arrivals,
   doneAbove,
@@ -54,6 +55,7 @@ import {
   takeoverStart,
   storyNow,
   surfacesOf,
+  waitBalloons,
   type Moment,
   type Queued,
   type Surfaces,
@@ -193,6 +195,10 @@ export interface MomentsInput {
    *  booth: ~6 s, swallows taps), `light` (a host booth: 2.5 s, look only).
    *  Absent → nothing (the director phone). Embedded → never. */
   takeover?: "full" | "light";
+  /** Wave 37 (C5, a booth): a pop-out, the scanner, a guest card or PLAYER
+   *  SELECT is up — no balloon shows (peeks too) and none times out; they
+   *  wait. Stickies, the NOW bar and the modals are unaffected. Default false. */
+  balloonsWait?: boolean;
 }
 
 /** How long the NOW bar stays flashed open on a new objective (visible time). */
@@ -236,6 +242,8 @@ interface Engine {
   ack: (q: Queued) => void;
   dismissToast: () => void;
   hold: (delta: number) => void;
+  /** Wave 37: the sticky is folded away (the pin rail's "+n"): off the screen, its clock stopped. */
+  fold: (delta: number) => void;
   /** These moments are read (shown elsewhere in full): off the queue, never missed. */
   readMany: (keys: readonly string[]) => void;
   /** Close a moment with no exit taken: `acted` = it was opened (never missed). */
@@ -273,6 +281,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
   mem.state = state;
   const [holds, setHolds] = useState(0);
   const held = holds > 0;
+  const [folds, setFolds] = useState(0);
   // Wave 26 (T2, C3): the glitch takeover on screen. While it runs every
   // surface waits (`surfacesOf`'s `covered`), so a sticky or a balloon lands
   // right after it, never under it; the wiring is with the glitch below.
@@ -326,6 +335,9 @@ function useMomentsEngine(input: MomentsInput): Engine {
     mem.pending = new Set();
     mem.inflight = new Set();
     mem.extras = [];
+    // A restart renumbers the seqs: an old on-screen stamp is no new m:<seq>.
+    mem.shownAt.clear();
+    mem.rung.clear();
     dispatch({ type: "reset" });
     if (session === null) {
       mem.signIn = emptySignIn();
@@ -626,6 +638,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
   }, [role, session, mem]);
 
   const surfaces = surfacesOf(state, held, input.nowBar === true, held ? tick : Number.POSITIVE_INFINITY, takeover !== null);
+  // Wave 37 (C5): what shows — a booth's balloons wait while it is busy face to face.
+  const shown = waitBalloons(surfaces, input.balloonsWait === true);
 
   // The blue screen's boilerplate: only the sign-in's first (G6).
   if (surfaces.modal !== null && surfaces.modal.level === "bsod" && mem.firstBsod === null && !mem.signIn.bsodShown && session !== null) {
@@ -635,24 +649,57 @@ function useMomentsEngine(input: MomentsInput): Engine {
   }
   const boilerplate = useCallback((key: string) => mem.firstBsod === key, []);
 
+  // Wave 37: a sticky under a hold's layer (the booth's windows, the scan
+  // sheet, the pass) or folded into the pin rail's "+n" is not on screen.
+  const sticky = held || folds > 0 ? null : surfaces.sticky;
   // On-screen time per moment (a glance < 1 s is missed), and the chime the
-  // first time a major (or big) moment reaches the screen.
-  const onScreen = [surfaces.big, surfaces.now, surfaces.balloon, surfaces.sticky, surfaces.modal].filter((q): q is Queued => q !== null);
+  // first time a major (or big) moment reaches the screen. A sticky chimes
+  // on arrival even under a hold or a fold (the server-room alarm while the
+  // Door queue is open); its clock waits until it is really on screen.
+  // Face to face (balloons wait: the scanner, a card) nothing chimes until ×.
+  const onScreen = [surfaces.big, surfaces.now, shown.balloon, sticky, surfaces.modal].filter((q): q is Queued => q !== null);
   const onScreenKeys = onScreen.map((q) => q.moment.key).join("|");
+  const arrivedSticky = input.balloonsWait === true ? null : surfaces.sticky;
   useEffect(() => {
+    const t = Date.now();
+    const on = visible ? onScreen.map((q) => q.moment.key) : [];
+    // Wave 37: the clock runs only on screen. Off it (covered, folded, the
+    // page hidden) `shownAt` holds minus the time it was on (`onMs`).
+    // Wave 37 (C17): what reached the screen is read. A moment that left the
+    // queue without a close (a NOW or phase change, an objective's end, a
+    // newer banner) after a glance on screen is seen, not an unread row.
+    for (const [k, at] of mem.shownAt) {
+      if (!state.queue.some((q) => q.moment.key === k)) {
+        if (onMs(k) >= GLANCE_MS) markSeen(k);
+      } else if (on.includes(k) === at <= 0) mem.shownAt.set(k, at <= 0 ? t + at : at - t);
+    }
     if (!visible) return;
     let ring = false;
+    const hear = (q: Queued) => {
+      if (mem.rung.has(q.moment.key)) return;
+      mem.rung.add(q.moment.key);
+      if (q.moment.severity === "major" || q.moment.severity === "big") ring = true;
+    };
     for (const q of onScreen) {
       if (mem.shownAt.has(q.moment.key)) continue;
-      mem.shownAt.set(q.moment.key, Date.now());
-      if (q.moment.severity === "major" || q.moment.severity === "big") ring = true;
+      mem.shownAt.set(q.moment.key, t);
+      hear(q);
     }
+    if (arrivedSticky !== null) hear(arrivedSticky);
     if (ring && input.sound) {
       playChime();
       vibrate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onScreenKeys, visible]);
+  }, [onScreenKeys, arrivedSticky?.moment.key, visible, state.queue]);
+
+  // How long a moment was on screen (in all), and forget it.
+  const onMs = (k: string) => {
+    const t = Date.now();
+    const at = mem.shownAt.get(k) ?? t;
+    mem.shownAt.delete(k);
+    return at <= 0 ? -at : t - at;
+  };
 
   // A moment seen (≥ 1 s on screen, or acted on) is read in Notifications.
   const markSeen = useCallback(
@@ -667,9 +714,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
 
   const close = useCallback(
     (q: Queued, acted: boolean, keep = false) => {
-      const at = mem.shownAt.get(q.moment.key);
-      mem.shownAt.delete(q.moment.key);
-      const onScreenMs = at === undefined ? 0 : Date.now() - at;
+      const onScreenMs = onMs(q.moment.key);
       if (acted || onScreenMs >= GLANCE_MS || q.level === "big") markSeen(q.moment.key);
       dispatch({ type: "dismiss", key: q.moment.key, onScreenMs, acted, ...(keep ? { keep: true } : {}) });
     },
@@ -685,15 +730,26 @@ function useMomentsEngine(input: MomentsInput): Engine {
     [close, session, host],
   );
 
-  // A balloon tip times out after 8 s of visible time.
-  const balloonKey = surfaces.balloon?.moment.key ?? null;
+  // A balloon tip times out after 8 s of visible time (on screen: never while it waits).
+  const balloonKey = shown.balloon?.moment.key ?? null;
   useEffect(() => {
-    if (balloonKey === null || !visible || surfaces.balloon === null) return;
-    const q = surfaces.balloon;
+    if (balloonKey === null || !visible || shown.balloon === null) return;
+    const q = shown.balloon;
     const t = window.setTimeout(() => dismiss(q), BALLOON_MS);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [balloonKey, visible, dismiss]);
+
+  // Wave 37 (C16): a banner leaves after 45 s of visible time (seen: it was
+  // on screen); a card's or a loud objective's sticky waits for its answer.
+  const stickyKey = sticky?.moment.key ?? null;
+  useEffect(() => {
+    const q = sticky;
+    if (q === null || !visible || q.moment.kind === "card" || q.moment.kind === "objective") return;
+    const t = window.setTimeout(() => dismiss(q), STICKY_MS);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stickyKey, visible, dismiss]);
 
   // The NOW bar's flash folds back after 12 s of visible time (read, unless
   // it was a glance; a tap that opens the objective is the moment acted on).
@@ -801,11 +857,12 @@ function useMomentsEngine(input: MomentsInput): Engine {
     [act, goTo],
   );
   const hold = useCallback((delta: number) => setHolds((h) => Math.max(0, h + delta)), []);
+  const fold = useCallback((delta: number) => setFolds((h) => Math.max(0, h + delta)), []);
   // A booth tray's 🔔 (the old missed tray): everything missed comes back.
   const replay = useCallback(() => wake(true), [wake]);
   const readMany = useCallback((keys: readonly string[]) => {
     if (keys.length === 0) return;
-    for (const k of keys) mem.shownAt.delete(k);
+    for (const k of keys) onMs(k);
     dispatch({ type: "read", keys });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -845,7 +902,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
   return {
     input,
     level,
-    surfaces,
+    surfaces: shown,
     held,
     missed: role === "guest" ? notif.unread : missedCount(state, held, tick),
     glitch,
@@ -860,6 +917,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
     ack,
     dismissToast: alerts.dismiss,
     hold,
+    fold,
     readMany,
     close,
     boilerplate,
@@ -917,6 +975,7 @@ export function useMomentsEngineContext(): Engine | null {
  *  moment, and the glitch. No surface has a Dismiss all (G6). */
 export function MomentsLayer({ foldSticky = false }: { foldSticky?: boolean } = {}) {
   const e = useContext(EngineContext);
+  useCounted(foldSticky, e?.fold);
   if (e === null) return null;
   const { surfaces: s } = e;
   const modal = s.modal;
@@ -1077,11 +1136,14 @@ export function BellButton({ onOpen, className }: { onOpen?: () => void; classNa
  *  8 s; moments queue behind it and show when the last hold releases (one
  *  kept back 30 s counts as missed). A booth's pop-outs dock instead. */
 export function useMomentsHold(active: boolean): void {
-  const e = useContext(EngineContext);
-  const hold = e?.hold;
+  useCounted(active, useContext(EngineContext)?.hold);
+}
+
+/** One of a counter's users (`hold`, `fold`) while `active`. */
+function useCounted(active: boolean, count: ((delta: number) => void) | undefined): void {
   useEffect(() => {
-    if (!active || hold === undefined) return;
-    hold(1);
-    return () => hold(-1);
-  }, [active, hold]);
+    if (!active || count === undefined) return;
+    count(1);
+    return () => count(-1);
+  }, [active, count]);
 }

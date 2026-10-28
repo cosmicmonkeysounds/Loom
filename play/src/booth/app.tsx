@@ -45,15 +45,15 @@ import { GuestCard, type CardSeed } from "./card.tsx";
 import { GuestsSheet } from "./guests.tsx";
 import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, playerStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
-import { boothFoldable, boothHost, boothSidebar, closedGate, guestsWaiting, soonest, viewPaused } from "./model.ts";
-import { boothMomentFeed } from "./moments-feed.ts";
+import { backFor, boothFoldable, boothHost, boothSidebar, closeTo, closedGate, guestsWaiting, keepsCardGuest, soonest, viewPaused, type Layer } from "./model.ts";
+import { boothMine, boothMomentFeed } from "./moments-feed.ts";
 import { PeopleSheet } from "./people.tsx";
 import { PlayerMission, playerTaskbarButtons } from "./player.tsx";
 import { WANTED_ROOM, playerChats } from "./mission-model.ts";
 import { ChatsWindow } from "../guest/chats.tsx";
 import { NowBar } from "../guest/frame.tsx";
 import { chatsDot } from "../rooms/chats.ts";
-import { missionLine } from "../chrome/title-bar.tsx";
+import { TitleBar, missionLine } from "../chrome/title-bar.tsx";
 import { CODEX_ROOM, QUEST_LOG } from "../rooms/spaces.ts";
 import type { Nav } from "../moments/exits.ts";
 import { Icon } from "../chrome/icons.tsx";
@@ -71,8 +71,8 @@ import { DoorWindow } from "./door.tsx";
 import { boardRowCount, nowRow } from "./now-card.tsx";
 import { PlayerSelect } from "./pick/select.tsx";
 import { RowsWindow } from "./pick/rows.tsx";
-import { boothPopOutAdapter, coveredElsewhere, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
-import { PopOutHost, PopOutScope, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
+import { boothPopOutAdapter, coveredElsewhere, doorClaimer, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
+import { PopOutHost, PopOutQuiet, PopOutScope, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
 import { useSystemBack } from "../back-gesture.ts";
 import { bindDraft, useBoothPopOuts, type BoothOpeners } from "./popouts/use-booth-popouts.ts";
 import { WaitingWindow } from "./waiting.tsx";
@@ -145,17 +145,18 @@ export function boothFrameClass(o: { clocked?: boolean; alarmed?: boolean; windo
   return `app-frame booth-frame${o.clocked === true ? " clocked" : ""}${o.alarmed === true ? " alarmed" : ""}${o.windowed === true ? " windowed" : ""}`;
 }
 
-/** What sits over the booth: the scanner, the Guests list, one guest's card,
- *  or (wave 18) the Wanted board, a picker, the door queue, the 🔔 Waiting window. */
-export type Layer =
-  | { kind: "scan"; guest?: string; caption?: string }
-  | { kind: "guests" }
-  | { kind: "card"; id: string; seed?: CardSeed; confront?: "rescan" }
-  | { kind: "wanted"; fresh: string[] }
-  | { kind: "pick"; objective: string; opened: BoothObjective }
-  | { kind: "door" }
-  | { kind: "waiting" }
-  | null;
+/** What sits over the booth (`model.ts` `Layer`: a scan or card opened
+ *  from a window carries it in `back`, wave 37 C2). */
+export type { Layer } from "./model.ts";
+
+/** Wave 37 (C14): does pressing `buttonId` count as this booth's own fire?
+ *  A player pressing a button of the NOW objective that names its target
+ *  (Clippy's 🎱 on the Bingo caller): PLAYER SELECT then opens at once
+ *  instead of popping "PLAYER SELECT is ready" (`pickReadySpec`, 10 s). */
+export function ownFireFor(player: boolean, nowObj: BoothObjective | undefined, buttonId: string, interactions: readonly Interaction[]): boolean {
+  if (!player || nowObj === undefined) return false;
+  return pickLayout(nowObj, interactions) === "target" && nowObj.buttons.includes(buttonId);
+}
 
 
 const BOARD_KEY = (token: string) => `loom.booth.board.${token}`;
@@ -206,6 +207,9 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   const [peopleOpen, setPeopleOpen] = useState(false);
   // Wave 25: a host's window (Show, Chats or the Desk).
   const [hwin, setHwin] = useState<HostWindow>("show");
+  // Wave 37 (C7): NEW MISSION while Mission is on screen is a blink of the
+  // title bar (the driver plays the chime), not a pop-out over the card.
+  const [missionNews, setMissionNews] = useState<{ id: string; title: string } | null>(null);
   const wake = useWakeLock(host.storage);
   // The just-closed pass, ignored for a moment: kept for the sign-in, not
   // per scanner opening, so leaving and reopening the scanner with the pass
@@ -227,21 +231,39 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   const guestKey = (s.view?.guests ?? []).map((g) => `${g.id}\t${g.name}`).join("\n");
   // Wave 18 (§4.12): what a pop-out (or the open confrontation) covers never reaches the moments layer.
   const wantedKey = (wantedOf(s.view) ?? []).map((w) => w.id).join("\n");
-  const adapterCtx: AdapterCtx = { wanted: wantedOf(s.view), openGuest: () => (layer?.kind === "card" || layer?.kind === "scan" ? cardGuest.current : null), guestName: (id) => s.view?.guests.find((g) => g.id === id)?.name ?? null };
+  // Wave 37 (C6, C8): a player booth, known before sign-in's early return
+  // (the same rule as `player` below), and the guests that are this
+  // booth's own (its escort claims, the arrivals it took at the door).
+  const player0 = s.auth !== null && isPlayer(s.view) && !boothHost(s.auth, s.view) && !s.auth.admin;
+  // A booth that claims escorts (an Antivirus) hunts every loose, unclaimed mark.
+  const hunts0 = mayPress(s.view?.interactions, "claim_escort", character0);
+  const claimKey = [
+    ...(wantedOf(s.view) ?? []).filter((w) => w.claimedBy === character0).map((w) => w.id),
+    ...(boothView(s.view)?.guests ?? []).filter((g) => doorClaimer(g) === character0).map((g) => `door:${g.id}`),
+  ].join("\n");
+  // Wave 37 (C8): `me` + `player`: a player's own `dm:` "… · …" big is its game pop-out.
+  const adapterCtx: AdapterCtx = { wanted: wantedOf(s.view), openGuest: () => (layer?.kind === "card" || layer?.kind === "scan" ? cardGuest.current : null), guestName: (id) => s.view?.guests.find((g) => g.id === id)?.name ?? null, me: character0, player: player0 };
   const adapterRef = useRef(adapterCtx);
   adapterRef.current = adapterCtx;
   const momentFeed = useMemo(() => {
     const guests = s.view?.guests ?? [];
     const byId = new Map(guests.map((g) => [g.id, g.name]));
+    const wantedNow = wantedOf(s.view) ?? [];
+    const rows = boothView(s.view)?.guests ?? [];
     return boothMomentFeed(s.messages, {
       character: character0,
       staffRooms: new Set(s.view?.staffRooms ?? []),
       guestName: (id) => byId.get(id) ?? null,
       names: guests.map((g) => g.name),
       covered: (m) => coveredElsewhere(m as BoothMessage, adapterRef.current),
+      // Wave 37 (C6): no quest balloons on a player; a quiet readout about a
+      // guest reaches the layer only when the guest is mine.
+      player: player0,
+      // A hunting booth's are also the loose marks nobody has claimed yet.
+      mine: boothMine(wantedNow, (id) => doorClaimer(rows.find((g) => g.id === id)), character0, hunts0),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.messages, character0, staffKey, guestKey, wantedKey]);
+  }, [s.messages, character0, staffKey, guestKey, wantedKey, claimKey, player0, hunts0]);
   // Wave 18: story time now (the view's clock plus the wall time since it arrived).
   const clockAt = useRef({ clock: s.view?.clock, at: Date.now() });
   if (clockAt.current.clock !== s.view?.clock) clockAt.current = { clock: s.view?.clock, at: Date.now() };
@@ -269,10 +291,12 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     if (opensHome(signedIn, wide, activeId, home, s.roomLinkPending) && home !== null) t.open(home);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, wide, activeId, home, s.roomLinkPending]);
-  // The scanner or the Guests list opening shows no card yet: the last
-  // card's guest is not on screen, so an alert about them is news again.
+  // No card on screen (the scanner or a list opening, or a one-tap × back to
+  // a window or the booth): the last card's guest is not in front of you,
+  // so a pop-out about them is news again.
   useEffect(() => {
-    if (layer?.kind === "scan" || layer?.kind === "guests" || layer?.kind === "wanted") cardGuest.current = null;
+    if (!keepsCardGuest(layer)) cardGuest.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layer?.kind]);
   // Wave 26 (B5): PLAYER SELECT closes when its objective leaves the view
   // (one round only), after a beat so the last press's reply shows first.
@@ -286,6 +310,17 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickGone]);
+  // C7: the blink stays 6 s, and never past its headline. (The driver is a
+  // child: its onMissionNews for a new headline runs before this updater.)
+  useEffect(() => {
+    if (missionNews === null) return;
+    const t = setTimeout(() => setMissionNews(null), 6000);
+    return () => clearTimeout(t);
+  }, [missionNews]);
+  const headNow = s.view?.objectives?.[0]?.id ?? null;
+  useEffect(() => {
+    setMissionNews((n) => (n !== null && n.id !== headNow ? null : n));
+  }, [headNow]);
   // A notification's `?room=scanner` link (the old Scanner room's readouts)
   // opens Readouts, where those readouts live now.
   useEffect(() => {
@@ -296,7 +331,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // the scanner, a sheet) instead of leaving the app mid-escort (NMR-2,
   // the booth half of NM-F9); only when the app owns the page.
   useSystemBack(host.ownsPage && signedIn, boothAway({ layer, sheet, people: people ?? (peopleOpen ? true : null), help }), () => {
-    if (layer !== null) setLayer(null);
+    if (layer !== null) setLayer((l) => closeTo(l));
     else if (peopleOpen) setPeopleOpen(false);
     else if (sheet !== null) setSheet(null);
     else if (people !== null) setPeople(null);
@@ -323,9 +358,21 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // Cards the story deals to this character (`show … to <Character>`): the
   // booth answers them like a guest, through `/api/prime/widget`.
   const widgets: WidgetHook = { answer: (seq, r) => void s.answerWidget(seq, r).catch(() => {}), answered: s.widgetAnswers };
+  // Wave 37 (C2): a scan or a card opened from the board, the Door queue, a
+  // rows window or 🗂 Guests goes back there on × (`backFor` / `closeTo`).
+  const backOf = (l: Layer) => {
+    const back = backFor(l, l?.kind === "pick" && pickLayout(l.opened, s.view?.interactions ?? []) === "rows");
+    return back !== undefined ? { back } : {};
+  };
+  const closeLayer = () => setLayer((l) => closeTo(l));
   const openCard = (guestId: string, seed?: CardSeed, confront?: "rescan") => {
     cardGuest.current = guestId;
-    setLayer({ kind: "card", id: guestId, ...(seed !== undefined ? { seed } : {}), ...(confront !== undefined ? { confront } : {}) });
+    setLayer((l) => ({ kind: "card", id: guestId, ...(seed !== undefined ? { seed } : {}), ...(confront !== undefined ? { confront } : {}), ...backOf(l) }));
+  };
+  // C14: a player's own press of the NOW target's button (🎱) opens PLAYER SELECT at once.
+  // The same wall clock `pickReadySpec` compares (`Date.now()`, as CueBar's `onFired`).
+  const noteOwnFire = (id: string) => {
+    if (ownFireFor(player, (s.view?.objectives ?? [])[0] as BoothObjective | undefined, id, s.view?.interactions ?? [])) ownFire.current = Date.now();
   };
   // Wave 18: the windows a pop-out, the NOW row and the tray open.
   const placeTitle = (loc: string | null) => (loc === null ? null : (s.view?.channels.find((c) => c.id === `loc:${loc}`)?.title ?? loc));
@@ -343,9 +390,10 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     } catch {
       /* kept in memory */
     }
-    setLayer({ kind: "wanted", fresh });
+    setLayer({ kind: "wanted", fresh, memo: { tab: null, kept: new Set() } });
   };
-  const openScan = (guest?: string, name?: string) => setLayer({ kind: "scan", ...(guest !== undefined ? { guest } : {}), ...(name !== undefined ? { caption: `📷 Scan ${name}'s pass` } : {}) });
+  // C3: the title bar draws the camera; the caption never repeats it.
+  const openScan = (guest?: string, name?: string) => setLayer((l) => ({ kind: "scan", ...(guest !== undefined ? { guest } : {}), ...(name !== undefined ? { caption: `Scan ${name}'s pass` } : {}), ...backOf(l) }));
   const openPick = (objective: string) => {
     const o = (s.view?.objectives ?? []).find((x) => x.id === objective) as BoothObjective | undefined;
     // Its "PLAYER SELECT is ready" pop-out is answered by opening it — or,
@@ -360,7 +408,10 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     setLayer({ kind: "pick", objective, opened: o });
   };
   const openers: BoothOpeners = {
-    act: (n, g) => s.act(n, g ?? null),
+    act: (n, g) => {
+      noteOwnFire(n);
+      return s.act(n, g ?? null);
+    },
     card: (g, c) => openCard(g, undefined, c),
     scan: openScan,
     board: openBoard,
@@ -571,7 +622,13 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     clock: s.view?.clock,
     // Wave 26 (T2): a player's booth gets the guest's takeover; a host's a look-only one.
     glitch: s.view?.night?.glitch,
-    takeover: player ? "full" : "light",
+    // Wave 37 (C13): never over a face-to-face tap (the scanner, a card): look only.
+    takeover: player && layer?.kind !== "scan" && layer?.kind !== "card" ? "full" : "light",
+    // Wave 37 (C5): one thing at the bottom. A balloon waits (its 8 s not
+    // running) while a pop-out is up, and while the scanner, a card or a
+    // picker is open (PopOutQuiet hides a held pop-out there, so the layer
+    // term covers it).
+    balloonsWait: rung.current !== null || layer?.kind === "scan" || layer?.kind === "card" || layer?.kind === "pick",
     // A readout's room is the booth's own `dm:<Character>`: that is Readouts here.
     openRoom: (id) => t.open(id === `dm:${character}` ? INBOX : id),
     filter: boothAlertFilter(character),
@@ -621,14 +678,27 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               {(keyboard) => (
                 <HostConsole session={s} wide={wide} openCard={(id) => openCard(id)} openWanted={openBoard} enabled={hostWins} showing={hostShown === "show"} onShow={() => hostTap("show")} keyboardOpen={keyboard}>
               {player ? (
-                <NowBar
-                  objectives={s.view?.objectives}
-                  fallback={s.view?.title ?? s.auth?.title ?? character}
-                  onOpen={() => playerTap("mission")}
-                  sub={s.view?.mission?.place != null ? `📍 ${s.view.mission.place}` : undefined}
-                  paused={viewPaused(s.view)}
-                  act={pwin === "mission" && t.activeId === null ? missionLine(s.view?.objectives) : undefined}
-                />
+                missionNews !== null ? (
+                  // C7: the blink is the existing `.title-bar.flash` (4 × 0.5 s); its line reads "NEW MISSION · …".
+                  <TitleBar
+                    objectives={s.view?.objectives}
+                    fallback={s.view?.title ?? s.auth?.title ?? character}
+                    onOpen={() => playerTap("mission")}
+                    sub={s.view?.mission?.place != null ? `📍 ${s.view.mission.place}` : undefined}
+                    paused={viewPaused(s.view)}
+                    act={pwin === "mission" && t.activeId === null ? missionLine(s.view?.objectives) : undefined}
+                    flash={{ id: missionNews.id, title: missionNews.title, brief: "" }}
+                  />
+                ) : (
+                  <NowBar
+                    objectives={s.view?.objectives}
+                    fallback={s.view?.title ?? s.auth?.title ?? character}
+                    onOpen={() => playerTap("mission")}
+                    sub={s.view?.mission?.place != null ? `📍 ${s.view.mission.place}` : undefined}
+                    paused={viewPaused(s.view)}
+                    act={pwin === "mission" && t.activeId === null ? missionLine(s.view?.objectives) : undefined}
+                  />
+                )
               ) : hostShown === "show" ? null : (
               <NowCard
                 objectives={s.view?.objectives}
@@ -675,17 +745,30 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 </HostConsole>
               )}
             </BoothFrame>
-            <PopOutDriver session={s} open={openers} now={storyMs} placeTitle={placeTitle} ownFireAt={() => ownFire.current} targetKey={targetKey} />
+            <PopOutDriver
+              session={s}
+              open={openers}
+              now={storyMs}
+              placeTitle={placeTitle}
+              ownFireAt={() => ownFire.current}
+              targetKey={targetKey}
+              // C7: Mission on screen (or this objective's PLAYER SELECT) is the instruction: no pop-out, a blink + chime.
+              missionShown={(id) => (player && pwin === "mission" && layer === null && t.activeId === null) || (layer?.kind === "pick" && layer.objective === id)}
+              onMissionNews={(o) => setMissionNews({ id: o.id, title: o.title })}
+            />
             {layer?.kind === "scan" && (
-              <ScannerScreen session={s} admin={admin} gate={passGate} caption={layer.caption} onBoard={openBoard} onClose={() => setLayer(null)} onOpenThread={openThread} onCardGuest={(id) => {
+              <ScannerScreen session={s} admin={admin} gate={passGate} caption={layer.caption} onBoard={openBoard} onClose={closeLayer} onOpenThread={openThread} onPress={noteOwnFire}
+                // C3: 📷 Next guest is door work: an Antivirus at the door, or a scan opened from the Door queue.
+                queue={mayPress(s.view?.interactions, "claim_door", character) || layer.back?.kind === "door"}
+                onCardGuest={(id) => {
                   cardGuest.current = guestByName(id)?.id ?? id;
-                  // The scan landed: the "Scan Winamp's pass" caption has done its job (BN-F16).
-                  setLayer((l) => (l?.kind === "scan" && l.caption !== undefined ? { kind: "scan" } : l));
+                  // The scan landed: the "Scan Winamp's pass" caption has done its job (BN-F16); where it goes back to stays.
+                  setLayer((l) => (l?.kind === "scan" && l.caption !== undefined ? { kind: "scan", ...(l.back !== undefined ? { back: l.back } : {}) } : l));
                 }} />
             )}
-            {layer?.kind === "guests" && <GuestsSheet view={s.view} me={character} session={token} now={storyMs} onPick={(id) => openCard(id)} onClose={() => setLayer(null)} />}
+            {layer?.kind === "guests" && <GuestsSheet view={s.view} me={character} session={token} now={storyMs} onPick={(id) => openCard(id)} onClose={closeLayer} />}
             {layer?.kind === "card" && (
-              <GuestCard key={layer.id} session={s} guestId={layer.id} seed={layer.seed} admin={admin} confront={layer.confront} onBoard={openBoard} onClose={() => setLayer(null)} onOpenThread={() => openThread(layer.id)} />
+              <GuestCard key={layer.id} session={s} guestId={layer.id} seed={layer.seed} admin={admin} confront={layer.confront} onBoard={openBoard} onClose={closeLayer} onOpenThread={() => openThread(layer.id)} onPress={noteOwnFire} />
             )}
             {layer?.kind === "wanted" && (
               <WantedBoard
@@ -697,13 +780,14 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 canRelease={mayPress(s.view?.interactions, "release_escort", character)}
                 canTakeOver={mayPress(s.view?.interactions, "take_over_escort", character)}
                 fresh={new Set(layer.fresh)}
+                {...(layer.memo !== undefined ? { memo: layer.memo } : {})}
                 claimedAt={(id) => claimSeen.current.get(id)?.at ?? null}
                 onClaim={(id) => s.act("claim_escort", id)}
                 onRelease={(id) => s.act("release_escort", id)}
                 onTakeOver={(id) => s.act("take_over_escort", id)}
                 onScan={(id, name) => openScan(id, name)}
                 onCard={(id) => openCard(id)}
-                onClose={() => setLayer(null)}
+                onClose={closeLayer}
               />
             )}
             {layer?.kind === "pick" && (() => {
@@ -712,9 +796,13 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               const ints = s.view?.interactions ?? [];
               const press = (id: string, guest: string) => s.act(id, guest);
               return pickLayout(layer.opened, ints) === "steps" ? (
-                <PlayerSelect objective={o} steps={wizardSteps(layer.opened, ints)} guests={guests} press={press} player={player} ended={live === undefined} seed={s.lastPressedOn} onClose={() => setLayer(null)} onLater={() => setLayer(null)} />
+                <>
+                  {/* Wave 37 (C4): nothing docks inside PLAYER SELECT (NEW MISSION of the same objective included). */}
+                  <PopOutQuiet />
+                  <PlayerSelect objective={o} steps={wizardSteps(layer.opened, ints)} guests={guests} press={press} player={player} ended={live === undefined} seed={s.lastPressedOn} onClose={closeLayer} onLater={closeLayer} />
+                </>
               ) : (
-                <RowsWindow objective={live} opened={layer.opened} interactions={ints} guests={guests} placeTitle={placeTitle} wanted={wanted !== null ? loose : null} press={press} onCard={(id) => openCard(id)} onBoard={openBoard} onClose={() => setLayer(null)} />
+                <RowsWindow objective={live} opened={layer.opened} interactions={ints} guests={guests} placeTitle={placeTitle} wanted={wanted !== null ? loose : null} press={press} onCard={(id) => openCard(id)} onBoard={openBoard} onClose={closeLayer} />
               );
             })()}
             {layer?.kind === "door" && (
@@ -726,10 +814,10 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 onClaim={(e: DoorEntry) => void s.act("claim_door", e.id).finally(() => openScan(e.id, e.name))}
                 onScan={(e) => (e !== null ? openScan(e.id, e.name) : openScan())}
                 onCard={(id) => openCard(id)}
-                onClose={() => setLayer(null)}
+                onClose={closeLayer}
               />
             )}
-            {layer?.kind === "waiting" && <WaitingWindow onClose={() => setLayer(null)} />}
+            {layer?.kind === "waiting" && <WaitingWindow onClose={closeLayer} />}
             {picking && t.active && (
               <InviteSheet
                 title={`Invite to ${t.active.title}`}

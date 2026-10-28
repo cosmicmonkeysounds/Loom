@@ -27,8 +27,9 @@ Run from the repo root (`pnpm install` once covers every JS package).
 `scripts/ops/predeploy.sh` runs `pnpm -r typecheck`, every package's tests,
 and `pnpm --filter loom-play build && node play/scripts/first-load.mjs
 --max-kb 148`. A change that pushes the guest's first load over 148 kB
-fails predeploy. With wave 36 merged it measures 147.35 kB, so there is
-well under 1 kB of room.
+fails predeploy. With wave 37 merged it measures 147.84 kB, so there is
+about 0.16 kB of room. Wave 37 cut two guest changes (a late
+arrival's quiet bin, a house line echoing a big) to stay under it.
 
 ## How a session works
 
@@ -81,7 +82,7 @@ windows), the Desk, the director phone and Help are lazy chunks.
 |---|---|---|
 | Guest | `guest/app.tsx` | The frame: NOW title bar, one window at a time (Mission home, Chats, Notifications), taskbar `⊞ · Mission · Chats · Pass · Scan` |
 | Performer (booth) | `booth/app.tsx` | NOW card, big 📷 Scan → the guest card, Readouts, Messages, 🗂 Guests, staff rooms, pop-outs |
-| Player booth (wave 21) | `booth/app.tsx` + `booth/player.tsx` | A `player: true` part (`PrimeView.player`): the guest frame, Mission + Chats, `⊞ · Mission · Chats · Scan`, a ⭐ score chip, NEW MISSION pop-outs; no host dock, no cue bar, no staff lines |
+| Player booth (wave 21) | `booth/app.tsx` + `booth/player.tsx` | A `player: true` part (`PrimeView.player`): the guest frame, Mission + Chats, `⊞ · Mission · Chats · Scan`, a ⭐ score chip, NEW MISSION (a title-bar blink while Mission is on screen, else a pop-out); no host dock, no cue bar, no staff lines |
 | Host | `booth/app.tsx` + `host/` (wave 25) | An `admin: true` part, or a booth holding the mod passcode: taskbar `⊞ · Show · Chats · Desk · Scan`; Show is home (NEXT with ARM → FIRE, jobs, needs, sections), the slim NEXT bar while Show is off screen, the Desk (lazy) for the house desk |
 | Director phone | `director.tsx` (`?role=director`) | The mod passcode + a name; the cue sheet by act, tap to arm, tap again to fire |
 
@@ -183,6 +184,70 @@ windows), the Desk, the director phone and Help are lazy chunks.
   as the guest's phone; a booth-only reply reads `→ Sent · …`. A stale
   press (a round already closed, ↩ / 🎱 / 🤐 included) comes back
   `refused: true`, and the booth reads it as refused.
+- **× means done** (wave 37, C1–C3). The scanner's ×, Escape or the
+  phone's Back over a card, a confrontation or CAPTURED gates that pass
+  (`gate.closed`, also on unmount) and leaves the scanner; so does the
+  confrontation's *Not now*. Where a close lands is pure in
+  `booth/model.ts`: a `Layer` may carry `back` (depth one: the Wanted
+  board, the Door queue, a rows picker or 🗂 Guests, set by `backFor`), and
+  every layer's close and the system Back go through `closeTo`. Only door
+  work gets **📷 Next guest** (`ScannerScreen` `queue`: `claim_door`, or a
+  scan opened from the Door queue; `scanHint(queue)`). `scanTitle` keeps
+  one camera in the caption. The clearance card shows replies and folds
+  the story's `said` lines behind *▸ What the story said* (`outcomeSplit`;
+  a refusal never folds). A player's own press of the NOW target
+  objective's button counts as its own fire (`ownFireFor`, C14), so
+  PLAYER SELECT opens at once. A player's takeover is `light` over the
+  scanner or a card (C13).
+- **Face to face, nothing floats** (wave 37, C4). The scanner (camera
+  included), a guest card, the confrontation and PLAYER SELECT mount
+  `PopOutQuiet` (`moments/popout.tsx`, re-exported by
+  `booth/popouts/rung.ts`) in place of `PopOutDock`. While one is mounted
+  nothing floats or docks, nothing is marked shown, no tone plays and no
+  auto timer runs; after × the one waiting floats and chimes once. It
+  registers in a layout effect, so effects read the store
+  (`PopOutsApi.quietNow()`), not the render's `quieted`. `PopOutDock`
+  stays in Guests, the board, the Door queue, rows and 🔔 Waiting.
+- **Pop-out timing** (wave 37, C7–C9). NEW MISSION while Mission (or
+  that objective's PLAYER SELECT) is on screen raises nothing: the driver
+  (`DriverOpts.missionShown` / `onMissionNews`) plays the chime and the
+  player's title bar blinks *NEW MISSION · …* for 6 s (`TitleBar`'s
+  `flash`). One that pops leaves after 20 s (`MISSION_RETIRE_MS`), and
+  reconcile retires it once it is not the headline (`missionHeadline`) or
+  a game pop-out of the same cue is held (`MISSION_GAME_MS`). One held
+  while Mission was off screen (under a card, held quiet) is retired as
+  soon as `missionShown` turns true, with the blink instead. A player's
+  own `dm:` big shaped `… · …` (YOUR GAME IS ON) is a `game:` pop-out
+  (`AdapterCtx.me` / `player`; priority 55, under the target's 60, 60 s,
+  ▣ Go to Mission), and a newer game retires the older. A held game also
+  retires a minute after it was raised (on screen or not) or once the
+  headline moves on more than 10 s after it, so one held under PLAYER
+  SELECT or a card never comes back stale. It is an alarm
+  (red caption, chime) with `PopOutSpec.yields`: after the grace it gives
+  way to any live pop-out that outranks it (LANDED ON, a big readout) and
+  shows again after them. WANTED · YOURS has
+  Later and leaves after 15 s. `PopOutSpec.autoLaterMs` defers a pop-out
+  untouched that long into 🔔 Waiting (the door: 45 s; it comes back when
+  the next guest reaches the front, a new rev). An alarm pop-out takes the
+  screen from a lower info one held at least `PREEMPT_GRACE_MS` (2 s;
+  `PopState.shownAt`, `currentOf(…, now)`); the pre-empted one stays live.
+  A 🚨 readout about a guest on the Wanted view never pops (the board owns
+  marks), and a held one retires once the guest is not loose.
+- **A performer's phone is about their job** (wave 37, C6;
+  `booth/moments-feed.ts` `offDuty`). The booth's moments layer never gets
+  a line to everyone (`audience: "all"`: the TV, the speakers and the 📜
+  Chat log say it), a player gets no quest moments, and a minor readout
+  about a guest who is not this booth's (`BoothFeedOptions.mine`, built by
+  `boothMine`: its escort claim, its door claim, and on a booth that can
+  claim escorts every loose mark nobody has claimed) only badges Readouts.
+  The lines still land in their rooms.
+- **The Wanted board keeps a claimed poster in place** (wave 37, C11;
+  `openTabIds`): Open shows what it showed since the board opened, a claim
+  of mine as YOURS with 📷 Scan their pass, someone else's as *🙋 X is on
+  it*, so the list never reflows under a finger. The wanted layer's
+  `BoardMemo` (the tab, the kept ids) survives a scan or a card opened from
+  the board, so × back finds it as it was. The Open tab counts only the
+  posters still open.
 - **The windowed bar** (wave 26, P2): a player's or a host's booth frame is
   `booth-frame windowed` (`boothFrameClass`): the guest's taskbar rules
   (`--taskbar-h: 56px`, windows 48–120 px, Scan a normal primary, the tray
@@ -209,11 +274,13 @@ bar shows is pure in `host/show-model.ts` (`hostWindowShown`,
 - **Show** (`host/show.tsx` + `host/show-model.ts`) is home and stands
   where the room list was (the player's Mission pattern): a ▣ SHOW title
   bar, the night strip (`nightStrip`: caller · act · phase · show clock ·
-  ⏸ / 🚪 · watch values · countdown), Who's calling, a big NEXT
+  ⏸ / 🚪 · watch values · countdown; one line that scrolls sideways since
+  wave 37, `.host-show-strip`), Who's calling, a big NEXT
   (`tab-cues.tsx` `NextBox`), the console's last word, LAST + `did:`, then
-  folding sections (`showSections`): *Your jobs* (`booth/now-card.tsx`
+  folding sections (`showSections`): *Needs you* (`NeedsTab`; first since
+  wave 37, open while something waits), *Your jobs* (`booth/now-card.tsx`
   `NowJobs`, the NOW card laid open — the pinned card steps aside while
-  Show is up), *Needs you* (`NeedsTab`), *Coming up* (`comingUp`), Judge,
+  Show is up), *Coming up* (`comingUp`), Judge,
   Cue sheet (`CueSheet`), People, More (the old tab components,
   unchanged). A jump (`ctx.go`, a need's row, the caller chip, a refused
   press) opens Show at that section (`showTarget`).
@@ -368,6 +435,25 @@ copy. Any new guest line must pass it.
   on every phone (`takeoverStart` / `takeoverKind` in `moments/model.ts`). While it is on
   screen `surfacesOf(…, covered)` holds every surface (stickies and
   balloons too), so they land right after it (C3).
+- **Moments, wave 37.** One thing at the bottom of a booth:
+  `MomentsInput.balloonsWait` (the booth passes it while a pop-out is up
+  or the scanner, a card or a picker is open) shows no balloon and runs no
+  balloon timer (`waitBalloons`). A booth's queue folds balloons
+  (`foldBalloons`): the newest queued one (story time, then seq) stays and
+  the rest are gone from the screen (a guest's line still badges Chats),
+  except an older readout, which a newer chat line waits behind. A banner
+  (a sticky that is no card and no loud objective) leaves after
+  `STICKY_MS` (45 s) on screen, read; its clock runs only while it is
+  really on screen (not under a hold, not folded into the pin rail's +n:
+  the engine's `hold` / `fold` counters). Its chime follows arrival, not
+  the screen (`EngineMemory.rung`, once per moment): under a hold it rings
+  at once, except face to face (`balloonsWait`), where it rings after ×.
+  A moment counts as read once it
+  was on screen `GLANCE_MS` (1 s) in total, also when a NOW, phase or
+  objective change retires it. While a dialog is up nothing peeks under
+  it. A menu pick or a deed (`pick` / `act` lines) is never a guest
+  writing to the booth (`stream/badges.ts` `guestLineToBooth`). Dialog
+  buttons wrap inside the box (`css/moments.css`).
 - **Lazy chunks** go through `lazy-chunk.tsx` (`retryImport` once, then a
   `ChunkBoundary` with Reload), so a page left open across a deploy never
   goes white. `main.tsx` wraps the whole app in one more `ChunkBoundary`
