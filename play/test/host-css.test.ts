@@ -53,6 +53,30 @@ describe("the host console's colours", () => {
   });
 });
 
+describe("Show's night strip (wave 37)", () => {
+  const body = (sel: string) => rules(host).find((r) => r.sel === sel)?.body ?? "";
+  it("is one line that scrolls sideways inside itself, never the page", () => {
+    const strip = body(".host-show-strip");
+    expect(strip).toMatch(/flex-wrap:\s*nowrap/u);
+    expect(strip).not.toMatch(/flex-wrap:\s*wrap\b/u);
+    expect(strip).toMatch(/overflow-x:\s*auto/u);
+    // It may never be wider than Show: the overflow stays in the strip.
+    expect(strip).toMatch(/max-width:\s*100%/u);
+    expect(strip).toMatch(/min-width:\s*0/u);
+  });
+  it("its chips keep their width and their words on one line", () => {
+    const chip = body(".host-show-chip");
+    expect(chip).toMatch(/flex:\s*none/u);
+    expect(chip).toMatch(/white-space:\s*nowrap/u);
+    expect(chip).not.toMatch(/overflow-wrap:\s*anywhere/u);
+  });
+  it("Show's scroll never scrolls sideways itself (no width or nowrap on it)", () => {
+    const scroll = body(".host-show-scroll");
+    expect(scroll).not.toMatch(/overflow-x:\s*(auto|scroll)/u);
+    expect(scroll).not.toMatch(/white-space/u);
+  });
+});
+
 describe("the host console's touch targets", () => {
   it("no control in host.css sets a min-height under the 44 px floor", () => {
     for (const r of rules(host)) {
