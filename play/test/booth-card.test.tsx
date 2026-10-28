@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { FACE_MAX, FACE_SETTLE_MS, boothHost, cardButtons, cardGuestFacts, cardReadKey, faceSettled, factChips, inFlightGate, pressOutcome, scanRepeated } from "../src/booth/model.ts";
+import { FACE_MAX, FACE_SETTLE_MS, REFUSED_SILENT, boothHost, cardButtons, cardGuestFacts, cardReadKey, faceSettled, factChips, inFlightGate, pressOutcome, scanRepeated } from "../src/booth/model.ts";
 import { ApiError } from "../src/client.ts";
 import { ARM_DEAD_MS } from "../src/arm.ts";
 import { GuestCardBody, outcomeSplit } from "../src/booth/card.tsx";
@@ -295,6 +295,15 @@ describe("what a press or a scan came to (C1, fix round)", () => {
     expect(outcomeSplit([reply, said], true)).toEqual({ shown: [reply], folded: [said] });
     expect(outcomeSplit([staff, said], true)).toEqual({ shown: [staff], folded: [said] });
     expect(outcomeSplit([said], true)).toEqual({ shown: [said], folded: [] });
+    // A refusal is no result to lead with: the character's line saying why stays open.
+    const silent = { kind: "staff", text: REFUSED_SILENT, refused: true } as const;
+    const notYet = { kind: "said", from: NORTON, text: "Not yet. Finish your upload." } as const;
+    expect(outcomeSplit([notYet, silent], true)).toEqual({ shown: [notYet, silent], folded: [] });
+    const why = { kind: "staff", text: "Ada has no upload yet.", refused: true } as const;
+    expect(outcomeSplit([notYet, why], true)).toEqual({ shown: [notYet, why], folded: [] });
+    // The host booth's path end to end: a refused press with only the character's line.
+    const host = pressOutcome({ said: [{ from: NORTON, text: "Not yet. Finish your upload." }], refused: true }, "press");
+    expect(outcomeSplit(host, true).folded).toEqual([]);
     // Without `foldSaid` (the confrontation's refusal) every line shows.
     expect(outcomeSplit([reply, said], false)).toEqual({ shown: [reply, said], folded: [] });
   });

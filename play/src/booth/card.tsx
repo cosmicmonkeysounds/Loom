@@ -417,9 +417,11 @@ export function noneLine({ player, name, character, objectives }: { player: bool
 /** Wave 37 (C12): which lines show at once and which fold behind *What
  *  the story said*. With `foldSaid`, the character's `said` lines (the
  *  guest's Tube narration) fold once there is a result to lead with (a
- *  reply or a staff line); said lines alone stay open (they are the result). */
+ *  reply or a staff line that is not a refusal); said lines alone stay
+ *  open (they are the result), and so do they beside a refusal: on a host
+ *  booth a refused press may say why only through the character's line. */
 export function outcomeSplit(lines: readonly OutcomeLine[], foldSaid: boolean): { shown: OutcomeLine[]; folded: OutcomeLine[] } {
-  const lead = lines.some((l) => l.kind === "reply" || l.kind === "staff");
+  const lead = lines.some((l) => l.kind === "reply" || (l.kind === "staff" && !l.refused));
   if (!foldSaid || !lead) return { shown: [...lines], folded: [] };
   return { shown: lines.filter((l) => l.kind !== "said"), folded: lines.filter((l) => l.kind === "said") };
 }
