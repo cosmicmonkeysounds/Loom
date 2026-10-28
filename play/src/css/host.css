@@ -360,12 +360,17 @@
   overscroll-behavior: contain; padding: 8px 8px calc(16px + var(--safe-bottom));
   background: var(--dialog-face);
 }
-/* The night strip: act · phase · show clock · caller · paused, wrapping. */
-.host-show-strip { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; scroll-margin-top: 8px; }
+/* The night strip: caller · act · phase · show clock · paused · watch values ·
+   countdown, on ONE line (wave 37): the rest scrolls sideways inside the
+   strip, never the page, so NEXT and Needs you keep their place. */
+.host-show-strip {
+  display: flex; flex-wrap: nowrap; gap: 4px; margin: 0 0 6px; scroll-margin-top: 8px;
+  overflow-x: auto; overflow-y: hidden; min-width: 0; max-width: 100%; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
+}
 .host-show-chip {
-  display: inline-flex; align-items: center; padding: 5px 8px;
+  display: inline-flex; flex: none; align-items: center; padding: 5px 8px;
   border-radius: var(--radius); background: var(--white); color: var(--ink); box-shadow: var(--sunken);
-  font: 700 13px var(--ui-font); font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+  font: 700 13px var(--ui-font); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .host-show-chip.caller { color: var(--navy); font-weight: 800; }
 .host-show-chip.act { font-weight: 800; }

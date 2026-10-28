@@ -26,15 +26,20 @@ describe("the host's windows", () => {
 });
 
 describe("Show's sections", () => {
-  it("in order; jobs and coming up open, needs and judge open while something waits, the long ones folded", () => {
+  it("in order (wave 37: Needs you first); jobs and coming up open, needs and judge open while something waits, the long ones folded", () => {
     const s = showSections({ jobs: 1, needs: 2, judging: { pending: 0 }, people: 40 });
-    expect(s.map((x) => x.id)).toEqual(["jobs", "needs", "coming", "judge", "cues", "people", "more"]);
-    expect(s.filter((x) => x.open).map((x) => x.id)).toEqual(["jobs", "needs", "coming"]);
+    expect(s.map((x) => x.id)).toEqual(["needs", "jobs", "coming", "judge", "cues", "people", "more"]);
+    expect(s.filter((x) => x.open).map((x) => x.id)).toEqual(["needs", "jobs", "coming"]);
+    // Nothing waiting: Needs stays first, folded to its head, so Your jobs
+    // is the first open section and the head never moves.
+    const quiet = showSections({ jobs: 1, needs: 0, judging: null, people: 0 });
+    expect(quiet.map((x) => x.id)).toEqual(["needs", "jobs", "coming", "cues", "people", "more"]);
+    expect(quiet.filter((x) => x.open).map((x) => x.id)).toEqual(["jobs", "coming"]);
     expect(showSections({ jobs: 0, needs: 0, judging: null, people: 0 }).map((x) => x.id)).not.toContain("judge");
     expect(showSections({ jobs: 0, needs: 0, judging: { pending: 3 }, people: 0 }).find((x) => x.id === "judge")!.open).toBe(true);
   });
   it("heads count what waits; a fold wins over the default", () => {
-    const [jobs, needs] = showSections({ jobs: 2, needs: 0, judging: null, people: 0 });
+    const [needs, jobs] = showSections({ jobs: 2, needs: 0, judging: null, people: 0 });
     expect(sectionHead(jobs!)).toBe("Your jobs (2)");
     expect(sectionHead(needs!)).toBe("Needs you · nothing");
     expect(sectionHead({ id: "cues", title: "Cue sheet", open: false })).toBe("Cue sheet");

@@ -107,7 +107,7 @@ describe("the Show window", () => {
     expect(html).toContain("Call everyone to the Desktop");
     expect(html).toMatch(/aria-label="Arm C1"[^>]*>ARM</u);
     const heads = [...html.matchAll(/class="host-show-head[^"]*" aria-expanded="(true|false)">[\s\S]*?<\/span>([^<]*)<\/button>/gu)].map((m) => `${m[2]}:${m[1]}`);
-    expect(heads).toEqual(["Your jobs (1):true", "Needs you (2):true", "Coming up:true", "Judge (1):true", "Cue sheet:false", "People (2):false", "More:false"]);
+    expect(heads).toEqual(["Needs you (2):true", "Your jobs (1):true", "Coming up:true", "Judge (1):true", "Cue sheet:false", "People (2):false", "More:false"]);
     expect(html).toContain("Run the door");
     // Needs is open, with today's rows; the cue sheet is folded.
     expect(html).toContain("💰 1 held transfer");
