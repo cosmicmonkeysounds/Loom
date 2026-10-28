@@ -2,13 +2,15 @@
 //! camera already on and a typed-id box under it. A pass the camera reads
 //! (or an id typed) is scanned at once and that guest's card opens in its
 //! place — the story's reply on it, the buttons that matter now on its
-//! face. "📷 Next guest", the window's × or Escape on a card bring the live
-//! camera back, so a door queue goes pass after pass; × on the camera leaves.
-//! The camera stays mounted (and running) under the card, so the next guest
-//! never waits for it to restart; passes it reads while a card is up are
-//! dropped, and the pass that was just closed is ignored for a moment
-//! (`closedGate`, kept by the booth across scanner openings), so closing a
-//! card never re-opens it.
+//! face. Wave 37 (C1): × means done. The window's ×, Escape or the phone's
+//! Back over a card, a confrontation or CAPTURED leaves the scanner (back
+//! where it was opened), and so does the confrontation's *Not now*. Only a
+//! door worker (`queue`) gets "📷 Next guest", which brings the live camera
+//! back, so a door queue goes pass after pass. The camera stays mounted
+//! (and running) under the card, so the next guest never waits for it to
+//! restart; passes it reads while a card is up are dropped, and the pass
+//! that was just closed is ignored for a moment (`closedGate`, kept by the
+//! booth across scanner openings), so closing a card never re-opens it.
 
 import { showClockOf } from "../show-clock.ts";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -17,7 +19,7 @@ import { BADGE_NOT_LINKED, cameraProblem, parseScan, scanProblem, typedTarget, t
 import { CameraScanner } from "../scanner.tsx";
 import { CardTitle, GuestCardBody, type CardSeed } from "./card.tsx";
 import { BoothLayer } from "./layer.tsx";
-import { cameraOn, closedGate, passAccepted, scanError, scannerClose } from "./model.ts";
+import { cameraOn, closedGate, passAccepted, scanError, scanTitle } from "./model.ts";
 import { Icon } from "../chrome/icons.tsx";
 import { ConfrontScreen } from "./confront.tsx";
 import { unmarkIdOf } from "./card.tsx";
@@ -92,6 +94,8 @@ export function ScannerScreen({
   onCardGuest,
   caption,
   onBoard,
+  queue = false,
+  onPress,
 }: {
   session: PrimeSession;
   admin: boolean;
@@ -104,6 +108,12 @@ export function ScannerScreen({
   caption?: string;
   /** Open the Wanted board (the CAPTURED screen's Board button). */
   onBoard?: () => void;
+  /** Wave 37 (C3): door work (an Antivirus, or opened from the Door queue):
+   *  the card and CAPTURED offer 📷 Next guest. Without it they don't (the
+   *  taskbar's Scan is one tap after ×). */
+  queue?: boolean;
+  /** Wave 37 (C14): a face button on the scanned card is about to be pressed. */
+  onPress?: (id: string) => void;
 }) {
   const [cam, setCam] = useState<CameraState>("off");
   const [note, setNote] = useState("");
@@ -168,14 +178,19 @@ export function ScannerScreen({
     // A browser may have paused the hidden preview; wake it for the next pass.
     void scanBox.current?.querySelector("video")?.play()?.catch(() => {});
   };
-  const close = () => (scannerClose(card !== null) === "camera" ? next() : onClose());
+  // × means done (C1): over a card the pass is gated (still held to the
+  // lens), then the scanner leaves; on the camera it just leaves.
+  const leave = () => {
+    if (card !== null) gate.closed(card.id);
+    onClose();
+  };
 
   const name = card === null ? "" : (card.seed.card?.guest.name ?? session.view?.guests.find((g) => g.id === card.id)?.name ?? card.id);
   return (
     <BoothLayer
-      title={card !== null ? <CardTitle name={name} /> : <span className="booth-layer-title"><Icon name="scan" /> {caption ?? "Scan a pass"}</span>}
+      title={card !== null ? <CardTitle name={name} /> : <span className="booth-layer-title"><Icon name="scan" /> {scanTitle(caption)}</span>}
       label={card !== null ? `${name}'s card` : "Scanner"}
-      onClose={close}
+      onClose={leave}
       tone={card?.confront !== undefined ? "alarm" : undefined}
       dock={card === null}
     >
@@ -212,8 +227,8 @@ export function ScannerScreen({
               caughtBy={(wantedOf(session.view) ?? []).find((w) => w.id === card.id && w.captured)?.claimedBy ?? null}
               showClock={showClockOf(session.view)}
               press={(id) => session.act(id, card.id)}
-              onNotNow={next}
-              onNext={next}
+              onNotNow={leave}
+              onNext={queue ? next : undefined}
               onBoard={onBoard}
             />
           </div>
@@ -230,7 +245,9 @@ export function ScannerScreen({
             gate.closed(card.id);
             onOpenThread(card.id);
           }}
-          onNext={next}
+          onNext={queue ? next : undefined}
+          onLeave={leave}
+          onPress={onPress}
           onBoard={onBoard}
         />
       )}
