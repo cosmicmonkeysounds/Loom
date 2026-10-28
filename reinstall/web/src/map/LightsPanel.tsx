@@ -5,14 +5,16 @@
 //! countdown), zones (lit on the plan), and the **looks** the story's `cue X`
 //! plays: targets, steps (on / brightness / colour / white / effect /
 //! transition, Zigbee-safe spacing shown as you type), once / a few times /
-//! loop / give the light back, ▶ Test look. Its own save (`base` → 409),
+//! loop / give the light back, ▶ Test look; wave 39's **Presence** (a program
+//! in the reinstallation games pulses the light it walks under: on / off,
+//! which lights, how near, the firmware effect). Its own save (`base` → 409),
 //! Save to project, Download JSON. Every edit is an op from `lights.ts`
 //! handed to `commit` (one undo step each).
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { LIGHT_EFFECTS, LIGHT_MAX_REPEAT, resolveLightTargets, validateLights } from "@loom/house";
-import type { HouseMap, LightEffect, LightLook, LightsConfig, LightState } from "@loom/house";
+import { LIGHT_EFFECTS, LIGHT_MAX_REPEAT, LIGHT_PRESENCE_EFFECTS, LIGHT_PRESENCE_RADIUS_MAX, LIGHT_PRESENCE_RADIUS_MIN, presenceFixtures, presenceSettings, resolveLightTargets, validateLights } from "@loom/house";
+import type { HouseMap, LightEffect, LightLook, LightPresenceEffect, LightsConfig, LightState } from "@loom/house";
 import { lightsConflictText, moduleBadge, serverNowOf, type LightTestTarget, type LightsView, type Z2mDevice } from "./lights-api.ts";
 import {
   addLightZone,
@@ -25,6 +27,7 @@ import {
   removeLightConfirm,
   removeLightZone,
   renameLightZone,
+  setLightPresence,
   setLightZoneMember,
   testable,
   type LightSave,
@@ -141,6 +144,48 @@ const ago = (at: number, now: number): string => {
   return s < 60 ? `${s} s ago` : `${Math.round(s / 60)} min ago`;
 };
 const clock = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+/** What a presence pulse's firmware effect does on a bulb. */
+const PRESENCE_EFFECT_TEXT: Record<LightPresenceEffect, string> = {
+  breathe: "breathe (a slow fade down and up)",
+  blink: "blink (one flash)",
+  okay: "okay (two quick flashes)",
+};
+
+/**
+ * (wave 39) `presence`: a program walking under a light in the
+ * reinstallation games pulses it in the real house. A safety light never
+ * pulses (its breathe would go dark), whatever the targets say.
+ */
+function Presence({ lights, house, options, off, commit, onHighlight }: { lights: LightsConfig; house: HouseMap; options: readonly LightTargetOption[]; off: boolean; commit: (l: LightsConfig) => void; onHighlight: (ids: readonly string[] | null) => void }) {
+  const s = presenceSettings(lights);
+  const pulsing = presenceFixtures(lights, house);
+  const safety = resolveLightTargets(lights, house, s.to).fixtures.filter((id) => lights.fixtures.find((f) => f.id === id)?.safety === true);
+  return (
+    <Section title="Presence (the games pulse a light)" count={s.enabled ? `${pulsing.length} light${pulsing.length === 1 ? "" : "s"}` : "off"} open={false}>
+      <p className="small">A program walking under a light in the reinstallation games makes that light pulse in the real house, while it stays and a few seconds after.</p>
+      <label className="radio checkbox">
+        <input type="checkbox" checked={s.enabled} disabled={off} onChange={(e) => commit(setLightPresence(lights, { enabled: e.target.checked }))} /> Pulse the lights the programs walk under
+      </label>
+      <div className="field" onMouseEnter={() => onHighlight(pulsing.map((f) => f.id))} onMouseLeave={() => onHighlight(null)}>
+        which lights{" "}
+        <Targets value={s.to} options={options} disabled={off || !s.enabled} onChange={(to) => commit(setLightPresence(lights, { to }))} empty="none" />
+      </div>
+      {safety.length > 0 && <p className="muted small">🛡 Never pulsed (safety): {safety.map((id) => lights.fixtures.find((f) => f.id === id)?.name ?? id).join(", ")}.</p>}
+      <Num label={`how near (m, ${LIGHT_PRESENCE_RADIUS_MIN}–${LIGHT_PRESENCE_RADIUS_MAX})`} value={s.radius} step={0.1} disabled={off || !s.enabled} onChange={(v) => commit(setLightPresence(lights, { radius: v }))} />
+      <label className="field">
+        effect
+        <select className="w98-input" value={s.effect} disabled={off || !s.enabled} onChange={(e) => commit(setLightPresence(lights, { effect: e.target.value as LightPresenceEffect }))}>
+          {LIGHT_PRESENCE_EFFECTS.map((x) => (
+            <option key={x} value={x}>
+              {PRESENCE_EFFECT_TEXT[x]}
+            </option>
+          ))}
+        </select>
+      </label>
+    </Section>
+  );
+}
 
 export function LightsPanel(p: LightsPanelProps) {
   const { lights, house, edit, commit } = p;
@@ -349,6 +394,8 @@ export function LightsPanel(p: LightsPanelProps) {
           </button>
         )}
       </Section>
+
+      <Presence lights={lights} house={house} options={options} off={off} commit={commit} onHighlight={onHighlight} />
 
       <Section title="Looks (the story's cue names)" count={Object.keys(lights.looks).length}>
         <label className="field">
