@@ -1,6 +1,6 @@
 """The router's media: story sounds from `sounds_dir`, and the test signals.
 
-`sound printer_grind` plays `<sounds_dir>/printer_grind.(wav|aiff|aif|flac)`,
+`sound printer_grind` plays `<sounds_dir>/printer_grind.(wav|aiff|aif|flac|mp3|ogg)`,
 decoded with libsndfile and resampled once to the device rate with a
 band-limited (FFT, ideal low-pass) resampler — songs are full range, so the
 alexa player's linear resample (fine for a chime and a voice) would alias
@@ -10,7 +10,13 @@ then case-insensitively; a name that isn't a plain file name (`../x`) is
 refused. A real file always wins over a generated placeholder (wave 18b: a
 `.wav` whose header carries the `loom-placeholder` tag, `placeholders.py`),
 so a real `dance_song.aiff` dropped beside the placeholder `dance_song.wav`
-is the one that plays.
+is the one that plays. Of two real files of one name the lossless one wins
+(`EXTENSIONS` order: wav, aiff, aif, flac, then mp3, ogg; wave 38 added the
+last two: libsndfile ≥ 1.1 decodes MP3).
+
+A long file (a soundtrack track, a takeover track) should not be decoded
+whole: `SoundBank.stream` opens it as a `stream.Stream` instead (decoded and
+resampled by a worker, a chunk at a time), never cached.
 
 The speaker test is a 1.5 s identifying tone — three rising beeps whose
 pitch steps with the output number, so a walk round the house can tell
@@ -28,7 +34,8 @@ import numpy as np
 
 log = logging.getLogger("stagehand.audio")
 
-EXTENSIONS = (".wav", ".aiff", ".aif", ".flac")
+#: Lossless first: a name with both a .wav and an .mp3 plays the .wav.
+EXTENSIONS = (".wav", ".aiff", ".aif", ".flac", ".mp3", ".ogg")
 _SAFE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,80}$")
 IDENTIFY_S = 1.5
 #: The tag a generated placeholder carries in its RIFF INFO comment.
@@ -241,6 +248,28 @@ class SoundBank:
         self._cache[str(path)] = (mtime, data)
         self.missing.discard(name)
         return data
+
+    def stream(self, name: str, *, loop: bool = False, opener=None, start: bool = True):
+        """`name` as a `stream.Stream` at the bank's rate (a long track: never
+        decoded whole, never cached), or None (missing / unreadable, logged
+        once like `load`). The caller hands it to `Mixer.play`, which owns it."""
+        from .stream import Stream
+
+        path = self.find(name)
+        if path is None:
+            if name not in self.missing:
+                self.missing.add(name)
+                log.warning("sound %r: no file in %s (%s) — skipped", name, self.dir, "/".join(e[1:] for e in EXTENSIONS))
+            return None
+        try:
+            stream = Stream(path, self.rate, loop=loop, opener=opener, start=start, name=name)
+        except Exception as err:  # noqa: BLE001 — libsndfile raises its own types
+            if name not in self.missing:
+                self.missing.add(name)
+                log.warning("sound %r: can't open %s (%s) — skipped", name, path, err)
+            return None
+        self.missing.discard(name)
+        return stream
 
     def off_rate(self, names) -> list[tuple[str, int]]:
         """(name, file rate) for every file not at the bank's rate — they play
