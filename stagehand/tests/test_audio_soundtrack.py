@@ -484,3 +484,97 @@ def test_a_track_that_dies_with_no_warning_starts_the_next_at_once(tmp_path):
     assert np.allclose(out[400:2500], 0.2)
     assert np.allclose(out[2700:], 0.4, atol=0.01)  # y within two blocks, not at 3.5 s
     assert [Path(t.path).stem for t in lib.opened] == ["x", "y"]
+
+
+def test_a_scene_note_repeated_in_every_scene_is_one_warning(tmp_path):
+    entries = [{"to": "everywhere", "play": "a"}, {"to": "crawl", "play": "a"}]
+    st = soundtrack(tmp_path, {"playlists": {"a": {"dir": "music/a"}}, "scenes": {"x": entries, "y": entries, "z": entries[:1]}})
+    notes = [w for w in st.warnings(DOC, HOUSE) if "crawl" in w]
+    assert notes == ["music: (a): crawl reaches no wired speaker (in 2 scenes: x, y)"]
+
+
+# -- a file that gives no audio, a crossfade's third track (wave 38 review) ---------------
+
+
+def test_a_playlist_whose_only_file_holds_no_audio_waits_instead_of_reopening_every_tick(tmp_path, caplog):
+    # A 0-frame render, a file still being copied: it opens fine and ends at
+    # once. Without a back-off the bed reopened it every 0.1 s tick all night.
+    _fill(tmp_path, {"a": ["empty.wav"]})
+    doc = {"playlists": {"a": {"dir": "music/a"}}, "scenes": {"s": [{"to": "desk-l", "play": "a"}]}}
+    d, m, lib = director(tmp_path, doc, Library({"empty": (0.2, 1)}))
+    d.set_scene("s")
+    run(d, m, 30)  # 3 s (the bug: ~30 opens)
+    first = len(lib.opened)
+    assert first <= 2  # the open, and the next one prepared ahead
+    run(d, m, 220)  # 25 s in all: one more pass every 10 s
+    assert len(lib.opened) <= first + 2 * 2, [t.path for t in lib.opened]
+    assert d.status()["beds"][0]["track"] is None
+    assert caplog.text.count("played no audio") == 1  # logged once
+
+
+@pytest.mark.parametrize("loop", [False, True])
+def test_a_real_zero_frame_wav_is_tried_every_10_s_not_every_tick(tmp_path, loop):
+    import soundfile as sf
+
+    d0 = folder(tmp_path, "a", [])
+    sf.write(str(d0 / "dryer.wav"), np.zeros((0, 1), dtype=np.float32), 48000)
+    files = {"dir": "music/a"} if not loop else {"files": ["music/a/dryer.wav"], "loop": True}
+    st = soundtrack(tmp_path, {"playlists": {"a": files}, "scenes": {"s": [{"to": "desk-l", "play": "a"}]}})
+    opened: list = []
+
+    def real(path, rate, *, loop=False, offset=0):
+        from stagehand.audio.stream import Stream
+
+        s = Stream(path, rate, loop=loop, offset=offset)
+        s.wait_ready(1.0)
+        opened.append(s)
+        return s
+
+    d = Director(st, stream_factory=real, rng=random.Random(1))
+    m = Mixer(1, 7, RATE)
+    d.attach(m, DOC, HOUSE)
+    d.set_scene("s")
+    run(d, m, 30)  # 3 s: the bug opened it ~25 times
+    assert len(opened) <= 2
+    for s in opened:
+        s.close()
+
+
+def test_one_empty_file_among_good_ones_never_pauses_the_bed(tmp_path):
+    _fill(tmp_path, {"a": ["e.mp3", "x.mp3", "y.mp3"]})
+    doc = {"playlists": {"a": {"dir": "music/a", "shuffle": False}}, "scenes": {"s": [{"to": "desk-l", "play": "a"}]}}
+    d, m, lib = director(tmp_path, doc, Library({"e": (0.9, 1), "x": (0.2, 2000), "y": (0.4, 2000)}))
+    d.set_scene("s")
+    out = run(d, m, 150)[:, 0]  # 15 s: e, x, y, e, x, y, …
+    names = [Path(t.path).stem for t in lib.opened]
+    assert names[:6] == ["e", "x", "y", "e", "x", "y"]
+    assert len(np.flatnonzero(out[500:] < 0.05)) <= 3 * BLOCK  # never a 10 s back-off: at most a block per pass
+
+
+def test_a_track_that_dies_before_its_scheduled_crossfade_never_leaves_a_third_track(tmp_path):
+    _fill(tmp_path, {"a": ["x.mp3", "y.mp3", "z.mp3"]})
+    doc = {"playlists": {"a": {"dir": "music/a", "shuffle": False}}, "scenes": {"s": [{"to": "desk-l", "play": "a"}]}}
+    d, m, lib = director(tmp_path, doc, Library({"x": (0.2, 60_000), "y": (0.2, 60_000), "z": (0.2, 60_000)}))
+    d.set_scene("s")
+    run(d, m, 10)
+    assert d.next() == 1  # y scheduled LEAD_S ahead
+    d.beds["a"].cur.stream.close()  # x's worker dies inside that window
+    out = run(d, m, 30)
+    assert m.active("music") == 1 and out[-1, 0] == pytest.approx(0.2, abs=1e-3)
+    assert d.next() == 1
+    run(d, m, 3)
+    d.stop(0.3, "stop house sounds")
+    out = run(d, m, 10)
+    assert not out[-1].any() and m.active("music") == 0
+
+
+def test_stop_silences_a_music_voice_the_director_lost_track_of(tmp_path):
+    _fill(tmp_path, {"a": ["x.mp3"]})
+    doc = {"playlists": {"a": {"dir": "music/a"}}, "scenes": {"s": [{"to": "desk-l", "play": "a"}]}}
+    d, m, lib = director(tmp_path, doc, Library({"x": (0.2, 60_000)}))
+    d.set_scene("s")
+    m.play(np.full((60_000, 1), 0.3, dtype=np.float32), {2: 0.0}, bus="music", fade_in_s=0)  # an orphan
+    run(d, m, 5)
+    d.stop(0.3, "stop house sounds")
+    out = run(d, m, 10)
+    assert not out[-1].any() and m.active("music") == 0

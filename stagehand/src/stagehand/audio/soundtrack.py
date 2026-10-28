@@ -77,6 +77,11 @@ LEAD_S = 0.3
 RETRY_S = 10.0
 #: A track that ended early (or failed): the next one's fade-in.
 CUT_FADE_S = 0.05
+#: A track that ends having played less than this (a 0-frame render, a file
+#: still being copied, a bad rip) counts as one that gave no audio: once a
+#: whole pass of the playlist does that, the bed waits RETRY_S instead of
+#: reopening the file every tick.
+SHORT_S = 1.0
 
 _TOP = ("version", "level_db", "crossfade_s", "scene_fade_s", "playlists", "scenes", "tracks")
 _PLAYLIST = ("dir", "files", "shuffle", "loop", "level_db")
@@ -171,10 +176,23 @@ class Soundtrack:
         reaches no speaker (the Fan Closet's until its speaker is placed)."""
         out = [f"music: playlist {name} has no file ({self.playlists[name].where()}) — its bed is silent" for name in self.missing()]
         if doc is not None:
+            # One line per condition: every scene repeating the same entry
+            # (the Fan Closet's, in all eight) is one warning, not eight.
+            grouped: dict[str, list[str]] = {}
+            first: dict[str, str] = {}
             for scene in self.scenes:
                 _, notes = scene_beds(self, scene, doc, house)
-                out.extend(f"music: {n}" for n in notes)
+                for n in notes:
+                    m = _NOTE.match(n)
+                    key = f"{m.group(2)}: {m.group(3)}" if m else n
+                    grouped.setdefault(key, []).append(scene)
+                    first.setdefault(key, n)
+            for key, scenes in grouped.items():
+                out.append(f"music: {first[key]}" if len(scenes) == 1 else f"music: {key} (in {len(scenes)} scenes: {', '.join(scenes)})")
         return out
+
+
+_NOTE = re.compile(r"^scene (\S+) entry \d+ (\(.*?\)): (.*)$")
 
 
 # -- parsing -----------------------------------------------------------------
@@ -451,6 +469,8 @@ class Bed:
     pending: tuple[str, Any] | None = None
     #: Mixer frame before which a failed open / an empty playlist is not retried.
     retry_at: int = 0
+    #: Tracks in a row that ended with (almost) no audio (`SHORT_S`).
+    short: int = 0
 
 
 class Director:
@@ -525,6 +545,10 @@ class Director:
             log.info("🎵 soundtrack: every bed fades out over %gs%s", fade_s, f" ({why})" if why else "")
         for bed in self.beds.values():
             self._fade_out(bed, fade_s)
+        if self.mixer is not None:
+            # The backstop: only the director plays on the music bus, so a
+            # voice it lost track of still stops with Stop house sounds.
+            self.mixer.stop(bus="music", fade_s=fade_s)
         self.beds = {}
         self.scene = None
 
@@ -698,22 +722,42 @@ class Director:
     def _tick(self, bed: Bed, now: int) -> None:
         mixer = self.mixer
         if bed.nxt is not None and (bed.nxt.start is None or now >= bed.nxt.start):
+            if bed.out is not None and mixer.playing(bed.out.vid):
+                # Never drop a voice untracked (it would outlive every stop):
+                # one still fading keeps its own, shorter fade.
+                mixer.stop(vid=bed.out.vid, fade_s=self.st.crossfade_s)
             bed.out, bed.cur, bed.nxt = bed.cur, bed.nxt, None
         if bed.out is not None and not mixer.playing(bed.out.vid):
             bed.out = None
         cur = bed.cur
         if cur is None:
-            if now >= bed.retry_at:
+            # A crossfade already scheduled takes over when it starts: never
+            # a third track beside it.
+            if bed.nxt is None and now >= bed.retry_at:
                 self._begin(bed, self.st.crossfade_s if bed.retry_at else self.st.scene_fade_s)
             return
         if not mixer.playing(cur.vid):
             # It ended before the crossfade was due (an MP3 shorter than its
             # header, a decode error): the next one now.
             bed.cur = None
+            played = int(getattr(cur.stream, "played", 0) or 0)
+            if played < self._frames(SHORT_S) or getattr(cur.stream, "error", None):
+                # It gave (almost) no audio: once every file in the playlist
+                # has, wait RETRY_S (as an empty playlist does) rather than
+                # reopen it every tick all night.
+                bed.short += 1
+                if bed.short >= max(1, self._deck(bed.playlist).size()):
+                    bed.short = 0
+                    bed.retry_at = now + self._frames(RETRY_S)
+                    self._note(f"playlist {bed.playlist}: {Path(cur.path).name} played no audio — the bed tries again every {RETRY_S:g}s")
+            else:
+                bed.short = 0
             # (A crossfade already set starts within LEAD_S: it is let be.)
             if bed.nxt is None and now >= bed.retry_at:
                 self._begin(bed, CUT_FADE_S)
             return
+        if bed.short and int(getattr(cur.stream, "played", 0) or 0) >= self._frames(SHORT_S):
+            bed.short = 0
         if cur.looping or bed.nxt is not None:
             return
         end = cur.end()
