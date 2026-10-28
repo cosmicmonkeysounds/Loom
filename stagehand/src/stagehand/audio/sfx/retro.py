@@ -147,7 +147,8 @@ def chip_powerup(rng: np.random.Generator) -> np.ndarray:
     echo = dsp.sequence([(n, t + 0.05, d * 0.8, -9) for n, t, d in notes], _chip(0.5), seconds=s)
     spark = dsp.bitcrush(dsp.highpass(dsp.white(0.3, rng), 5000), 4) * dsp.decay(0.3, 0.25)
     x = dsp.mix(lead, echo, (spark, len(climb) * step, -12), seconds=s)
-    return dsp.downsample(x, 24000)
+    # a lowpass, not a 24 kHz sample-and-hold: the hold's images above 12 kHz were fizz
+    return dsp.lowpass(x, 11000)
 
 
 def coin(rng: np.random.Generator) -> np.ndarray:
