@@ -275,6 +275,7 @@ describe("a held frame — no find and no quack under an overlay", () => {
       camera: { position: noop, rotation: noop },
       trail: { update: () => {} },
       house: { update: () => {} },
+      lamps: { repick: () => {}, update: () => {} }, // wave 39
       ghosts: new Map(),
       renderer: { render: () => {} },
       lastHudAt: 1000,

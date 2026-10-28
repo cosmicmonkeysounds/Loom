@@ -23,7 +23,11 @@ import {
   LIGHT_SAFETY_MIN,
   LIGHT_STEP_MIN_MS,
   LIGHTS_EVERYWHERE,
+  LIGHT_PRESENCE_RADIUS_M,
+  LIGHT_PRESENCE_RADIUS_MAX,
+  LIGHT_PRESENCE_RADIUS_MIN,
   cloneData,
+  presenceSettings,
   defaultLights,
   distanceToBoundary,
   floorById,
@@ -38,7 +42,7 @@ import {
   safetyMin,
   validateLights,
 } from "@loom/house";
-import type { HouseMap, LightCaps, LightFixture, LightKind, LightLook, LightState, LightStep, LightsConfig, Room, Vec2 } from "@loom/house";
+import type { HouseMap, LightCaps, LightFixture, LightKind, LightLook, LightPresence, LightPresenceEffect, LightPresenceSettings, LightState, LightStep, LightsConfig, Room, Vec2 } from "@loom/house";
 import type { Problem } from "./check.ts";
 import { rectSideOf, round } from "./doors.ts";
 import { rebaseField, type History } from "./history.ts";
@@ -223,6 +227,35 @@ function retarget(l: LightsConfig, from: string, to: string | null): void {
       if (s.to.length === 0) delete s.to;
     }
   }
+  // (wave 39) The presence targets follow too.
+  const pr = l.presence;
+  if (isObj(pr) && Array.isArray(pr.to)) pr.to = fix(pr.to);
+}
+
+/**
+ * (wave 39) Edit `presence` (which fixtures a program in the games pulses).
+ * A field set to its default is dropped (`to: ["everywhere"]`, `radius`
+ * 1.6, `effect: "breathe"`, `enabled: true`), and the block with it once it
+ * is empty: an absent block is presence on with the defaults. A radius is
+ * clamped to 0.5–5 m.
+ */
+export function setLightPresence(lights: LightsConfig, patch: { enabled?: boolean; to?: string[]; radius?: number | null; effect?: LightPresenceEffect }): LightsConfig {
+  const was = presenceSettings(lights);
+  const want: LightPresenceSettings = {
+    enabled: patch.enabled ?? was.enabled,
+    to: patch.to ?? was.to,
+    radius: patch.radius === null ? LIGHT_PRESENCE_RADIUS_M : patch.radius !== undefined && Number.isFinite(patch.radius) ? Math.round(Math.max(LIGHT_PRESENCE_RADIUS_MIN, Math.min(LIGHT_PRESENCE_RADIUS_MAX, patch.radius)) * 100) / 100 : was.radius,
+    effect: patch.effect ?? was.effect,
+  };
+  const block: LightPresence = {};
+  if (!want.enabled) block.enabled = false;
+  if (!(want.to.length === 1 && foldTarget(want.to[0]!) === LIGHTS_EVERYWHERE)) block.to = [...want.to];
+  if (want.radius !== LIGHT_PRESENCE_RADIUS_M) block.radius = want.radius;
+  if (want.effect !== "breathe") block.effect = want.effect;
+  const next = clone(lights);
+  if (Object.keys(block).length === 0) delete next.presence;
+  else next.presence = block;
+  return JSON.stringify(next.presence ?? null) === JSON.stringify(lights.presence ?? null) ? lights : next;
 }
 
 /** The looks a delete leaves lighting nothing: they named something before and resolve to no fixture after. */

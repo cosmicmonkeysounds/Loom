@@ -292,6 +292,27 @@ letters, digits and `_`; never a `screens_` / `terminals_` / `tv_` /
 `tablet_` / `room_` cue, which are the screens', or a `music_` cue, which
 is the soundtrack's).
 
+**Presence** (a program pulses the light it walks under). In the
+reinstallation games, a program that walks under a light makes that
+light pulse in the real house: the server sees who stands within the
+**radius** of a light in the same room (**1.6 m** by default), and the
+lights module plays the bulb's own firmware effect while they stay and
+for **4 s** after they leave (a Hue *breathe* is re-sent every 12 s). The
+**Presence** section edits it:
+
+- **Pulse the lights the programs walk under** — on unless you untick it;
+- **which lights** — lights, zones, rooms or LOCATIONs (everywhere when
+  left alone; removing every chip pulses nothing). A **safety light never
+  pulses**, whatever the list says: a breathe goes dark, and its floor
+  can't hold;
+- **how near** — the radius in metres, 0.5 to 5;
+- **effect** — *breathe* (a slow fade down and up), *blink* or *okay*. A
+  WLED strip plays its own breathe (or blink).
+
+A pulse never stops a look, and a bulb a look turned off stays dark. The
+games draw every light the way the real house shows it, and pulse it
+there too.
+
 To **test** every speaker, output, story sound, light and look one row
 at a time, and to build house cues that play sounds and lights together,
 use Run → House ([the house desk](47-house-desk.md)).

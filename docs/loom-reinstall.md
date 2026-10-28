@@ -1428,6 +1428,58 @@ and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
   the server's `warnings` on a save add `guardWarnings` (a king too far
   from the door he guards).
 
+### The real house lights and the graphics (wave 39)
+
+Contract: `docs/loom-w39-contract.md` C4. The stream's `lights` frame
+(`GameLights`, §2.2) is read by `spatial.ts` (`LIGHTS_FRAME`,
+`decodeLights` → `gameLightsOf`; `onLights` on `openSpatialStream`) and
+never enters the player table: a stream without one (an older server) and
+a malformed one change nothing.
+
+- **The bulbs** (`game/lamps.ts`, pure half `game/house-lights.ts`): every
+  fixture is a small emissive sphere + an additive glow sprite at its
+  `pos`, in its colour × level (over 1 in linear light, so it blooms). A
+  fixture with `pulse` (a program under it) or a firmware breathe / blink /
+  okay breathes with `pulseFactor` (`lampLevel`, the phase kept per fixture
+  across frames); a level-0 bulb stays dark, pulse or not, as in the house.
+- **The point lights**: a fixed pool per tier (2 / 4 / 8), handed every
+  500 ms to the nearest lit fixtures, the player's floor first
+  (`pickLamps`; a light keeps its fixture while it stays picked), the rest
+  at intensity 0. The pool's size changes only with the tier (three
+  recompiles the materials then; the frame time is ignored over 250 ms).
+  `LAMP_CANDELA` 18 at level 1, range 7 m, decay 2.
+- **The ambient**: with a frame, the house scene's own `house:hemi` and
+  `house:sun` ease (1.2 s) to `ambientFactor`: 0.5 (`NIGHT_FLOOR`, the real
+  house dark) to 0.65 (every fixture full) of their built intensity.
+  Without one, the house looks as it did before wave 39. The terminals'
+  world view and the map preview are untouched (`buildHouseScene` as is).
+- **Quality** (`game/quality.ts`, pure): `low` (pixel ratio ≤ 1, 0.75 under
+  pressure; 2 lights; no post-processing: the renderer's ACES tone map),
+  `medium` (≤ 1; 4 lights; bloom at half resolution; vignette + grain),
+  `high` (≤ 1.5; 8 lights; full bloom; + a faint chromatic edge; 4× MSAA on
+  the post target). The canvas has no MSAA. `auto` (the default) starts at
+  `medium` (`low` on a coarse pointer); down a step when the median frame
+  interval of a 2 s window is over 24 ms, up after 10 s with every
+  window's median under 17.5 ms (holding 60 fps: an interval can't beat the
+  display's, so the contract's 13 ms only fires on a 90 Hz+ screen), at
+  most one change per 5 s, and each time a level was left for being slow,
+  going back up to it waits 3× longer. The **cap** is the device's
+  `?quality=low|medium|high` (`config.ts`, kept in its config and on the
+  URL; the tent terminal's flow reads it off the terminal's URL,
+  `qualityHint`): the ⚙ setting (Auto / Low / Medium / High, remembered in
+  `localStorage` `loom.reinstall.quality`) picks under it, `auto` adapts
+  under it. On the tent's 2014 MacBook use `…&quality=medium` if `high`
+  ever stutters.
+- **Post-processing** (`game/post.ts`, a lazy chunk: `low` never loads
+  it): `EffectComposer` into a half-float target (8-bit without a
+  float colour buffer, then no bloom), `UnrealBloomPass` (threshold 0.82),
+  then one grade pass to the screen (three's ACES curve at the same
+  exposure, sRGB, vignette, grain, chromatic edge). Exposure 1.3 on every
+  tier.
+- Dev only: `?lightsDemo=1` on the Vite dev server feeds a synthetic
+  frame (`demoLights`: a light per indoor room, the one you stand under
+  pulsing).
+
 ## 4. The terminals — world view
 
 `TerminalConfig` gains `spot` (a `house.terminals[].id`; the terminal's

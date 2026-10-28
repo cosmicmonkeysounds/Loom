@@ -3,14 +3,17 @@
 //! points along the trail), this visit's one ⚔ hit while the King is near
 //! (wave 26, R3: his bar is drawn over his head only, never on the HUD), the twin sticks on a touch screen, the 🎤 voice link toggle (when
 //! this device has it on), and the celebration when Gerald is found.
+//! Wave 39: the ⚙ graphics setting (Auto / Low / Medium / High, remembered on
+//! the device, never above the URL's `quality` cap).
 
 import { useEffect, useRef, useState } from "react";
 import type { Assignment, HouseMap, KingState } from "@loom/house";
 import { postEnd, type FoundAnswer } from "../api.ts";
-import { baseOf, type ReinstallConfig } from "../config.ts";
+import { baseOf, qualityHint, type ReinstallConfig } from "../config.ts";
 import { ProgressBar, Window } from "../wizard.tsx";
 import type { Sfx } from "./audio.ts";
-import { Game, type GameEnd, type HudState, type KingHud } from "./engine.ts";
+import { Game, type GameEnd, type HudState, type KingHud, type QualityHud } from "./engine.ts";
+import { capOf, choiceAllowed, loadQuality, QUALITY_CHOICES, QUALITY_LABEL, saveQuality, type QualityChoice } from "./quality.ts";
 import { earsLine, type VoiceHudState } from "./voice.ts";
 import { HIT_USED } from "./fight.ts";
 import { bearingOf, FIND_GERALD, findCopy, findOutcome, HEAT_LABEL, kingClearsHud, kingStands, type FindOutcome } from "./hud.ts";
@@ -26,6 +29,17 @@ export { NO_WEBGL2 } from "./no-start.ts";
 
 /** Seconds the celebration stays before returning to the scanner by itself. */
 const CELEBRATE_S = 15;
+
+/** The device's graphics cap: its config's `quality`, else its page's URL
+ *  (the tent terminal's link: the flow there runs under the terminal's config). */
+function qualityCap(config: ReinstallConfig) {
+  return capOf(config.quality ?? (typeof location === "undefined" ? null : qualityHint(location.search)));
+}
+
+/** `?lightsDemo=1` on the dev server: a synthetic lights frame (no server lane needed). */
+function lightsDemo(): boolean {
+  return import.meta.env.DEV && typeof location !== "undefined" && new URLSearchParams(location.search).get("lightsDemo") === "1";
+}
 
 function touchDevice(): boolean {
   return (typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches) || (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0);
@@ -67,6 +81,7 @@ export function Play({
   // old help card does.
   const tutorialOn = config.intro !== false;
   const [helpOpen, setHelpOpen] = useState(!tutorialOn);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const exit = useRef(onExit);
   exit.current = onExit;
   const heldRef = useRef(held);
@@ -96,6 +111,8 @@ export function Play({
         voice: config.voice,
         mic,
         ...(tutorialOn ? { intro: { touch: touchDevice(), skippable: introSkippable(assignment.reinstalled) } } : {}),
+        quality: { choice: loadQuality(), cap: qualityCap(config) },
+        lightsDemo: lightsDemo(),
       });
     } catch (e) {
       void mic?.then((s) => s?.getTracks().forEach((t) => t.stop()));
@@ -198,6 +215,10 @@ export function Play({
               <div className="hud-clock w98-sunken" title="time in the simulation">
                 {hud.elapsed}
               </div>
+              {/* DRAFT w39 (UI copy) */}
+              <button className="w98-button hud-gear" onClick={() => setSettingsOpen((o) => !o)} aria-label="Graphics settings" aria-expanded={settingsOpen} title="Graphics">
+                ⚙
+              </button>
               <button className="w98-button hud-quit" onClick={quit} aria-label="Leave the simulation">
                 ✕
               </button>
@@ -209,6 +230,16 @@ export function Play({
             {assignment.name} · {hud.others > 0 ? `${hud.others} other program${hud.others === 1 ? "" : "s"} in here` : "alone in the simulation"}
             {hud.voice !== null && earsLine(hud.voice) !== null && <> · {earsLine(hud.voice)}</>}
           </div>
+          {settingsOpen && (
+            <QualityMenu
+              quality={hud.quality}
+              onPick={(c) => {
+                saveQuality(c);
+                game.current?.setQuality(c);
+              }}
+              onClose={() => setSettingsOpen(false)}
+            />
+          )}
           {hud.king !== null && <KingActions king={hud.king} onHit={() => game.current?.hit()} />}
           {hud.notice !== null && <div className="hud-notice">{hud.notice}</div>}
           {hud.caption !== null && (
@@ -328,6 +359,25 @@ function TutorialCard({ tutorial, touch, onSkip }: { tutorial: TutorialHud; touc
           </button>
         </div>
       )}
+    </Window>
+  );
+}
+
+/** The ⚙ menu (wave 39): the graphics setting. Auto says the tier it draws
+ *  now; a tier over the device's cap is off. DRAFT w39 (UI copy). */
+function QualityMenu({ quality, onPick, onClose }: { quality: QualityHud; onPick: (c: QualityChoice) => void; onClose: () => void }) {
+  return (
+    <Window title="Graphics" icon="⚙" className="quality-menu" onClose={onClose}>
+      <div role="radiogroup" aria-label="Graphics quality">
+        {QUALITY_CHOICES.map((c) => (
+          <label key={c} className={`radio${choiceAllowed(c, quality.cap) ? "" : " off"}`}>
+            <input type="radio" name="quality" checked={quality.choice === c} disabled={!choiceAllowed(c, quality.cap)} onChange={() => onPick(c)} />
+            {QUALITY_LABEL[c]}
+            {c === "auto" && quality.choice === "auto" && <span className="muted"> — {QUALITY_LABEL[quality.tier].toLowerCase()} now</span>}
+          </label>
+        ))}
+      </div>
+      <p className="muted small">Lower is smoother on an older computer.</p>
     </Window>
   );
 }

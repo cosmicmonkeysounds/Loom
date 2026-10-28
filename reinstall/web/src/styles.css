@@ -370,6 +370,11 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .hud-right { justify-self: end; display: flex; gap: 6px; align-items: stretch; }
 .hud-clock { padding: 0.05em 0.5em; background: #000; color: #4f4; font-size: clamp(24px, 3vw, 32px); line-height: 1.2; text-shadow: 0 0 6px #2f2; min-width: 3.6em; text-align: center; }
 .hud-quit { min-width: 2.4em; font-family: var(--ui); }
+.hud-gear { min-width: 2.4em; font-family: var(--ui); }
+/* Wave 39: the ⚙ graphics setting, under the top-right buttons. */
+.quality-menu { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 64px); right: max(10px, env(safe-area-inset-right)); width: min(260px, calc(100% - 20px)); z-index: 6; }
+.quality-menu .radio.off { opacity: 0.5; }
+.quality-menu p { margin: 0.4em 0 0; }
 .hud-mic { font-family: var(--ui); white-space: nowrap; padding: 0 0.6em; }
 .hud-mic.mic-live { color: #060; font-weight: bold; }
 .hud-mic.mic-muted { color: #a00; font-weight: bold; }
