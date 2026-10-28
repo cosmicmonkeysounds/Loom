@@ -51,7 +51,7 @@ path reveal, the quack) start, and `POST /api/spatial/ready` restarts the
 server's. A session that ends mid-intro (session over, the headset off)
 stops the video and goes back to the lobby. `--intro false` (or `"intro":
 false` in a station file) skips it; the autopilot never plays it. Its
-copy is marked `DRAFT w33` in `game/intro_flow.gd`. Unproven on the
+copy (in `game/intro_flow.gd`) was signed off on 2026-10-28. Unproven on the
 Quest: Theora at 720p30 in software, and the video's audio level.
 
 ## Layout

@@ -1023,7 +1023,7 @@ first-person game's (0.12°/px under pointer lock; Esc gives it back; the
 celebration, a hold and the end release it); a browser that refuses the
 lock (`pointerlockerror`) drags to look, as before, and the drag passes
 the click step. `?intro=0` turns the intro off on a device (the config's
-`intro`). The copy is marked `DRAFT w33`.
+`intro`). The copy was signed off on 2026-10-28.
 
 The two videos are encoded from the source recording (an iPhone HEVC
 10-bit HLG `.MOV`): bt2020 → bt709 SDR, 1280×720, stereo. Re-encode both
@@ -1754,7 +1754,7 @@ guest is placed at the spawn, the path reveal and quack clocks start, and
 `mark_ready()` posts `POST /api/spatial/ready` (an old server's 404 is
 ignored). A session that ends mid-intro stops the video and returns to the
 lobby. `intro: false` (`--intro false`) skips it; `--autopilot` never
-plays it. The copy is `DRAFT w33`. Unproven on hardware: Theora at 720p30
+plays it. The copy was signed off on 2026-10-28. Unproven on hardware: Theora at 720p30
 beside 90 Hz rendering, the video's level, the panel's comfort.
 
 ## 6. The story
