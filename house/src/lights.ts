@@ -143,6 +143,81 @@ export interface LightsConfig {
   looks: Record<string, LightLook>;
   /** Applied by the module on boot and after a story reset (optional). */
   boot?: string;
+  /** (wave 39) A program walking under a fixture in the reinstallation games
+   *  pulses it in the real house. Absent: on, with the defaults below. */
+  presence?: LightPresence;
+}
+
+/** (wave 39) The firmware effects a presence pulse may use. */
+export const LIGHT_PRESENCE_EFFECTS = ["breathe", "blink", "okay"] as const;
+export type LightPresenceEffect = (typeof LIGHT_PRESENCE_EFFECTS)[number];
+/** How close (plan metres, same room) a program stands to a fixture to be under it. */
+export const LIGHT_PRESENCE_RADIUS_M = 1.6;
+export const LIGHT_PRESENCE_RADIUS_MIN = 0.5;
+export const LIGHT_PRESENCE_RADIUS_MAX = 5;
+/** Hysteresis: a program already under a fixture stays under it this much further out. */
+export const LIGHT_PRESENCE_LEAVE_M = 0.6;
+/** A pulse lasts at least this long after the last program left (ms): no flapping on Zigbee. */
+export const LIGHT_PRESENCE_HOLD_MS = 4000;
+/** The module re-sends a Zigbee effect this often while a fixture stays pulsed
+ *  (a Hue `breathe` runs ~15 s and then stops on its own). */
+export const LIGHT_PRESENCE_REPEAT_MS = 12_000;
+
+/** (wave 39) `lights.json` `presence`: which fixtures pulse for a program in the games. */
+export interface LightPresence {
+  /** false: nothing pulses (default true). */
+  enabled?: boolean;
+  /** Targets that may pulse (default `["everywhere"]`); a safety fixture never does. */
+  to?: string[];
+  /** Plan metres (default `LIGHT_PRESENCE_RADIUS_M`, 0.5–5). */
+  radius?: number;
+  /** The Zigbee firmware effect (default `breathe`); WLED plays its breathe or blink. */
+  effect?: LightPresenceEffect;
+}
+
+/** `presence` with every default filled in. */
+export interface LightPresenceSettings {
+  enabled: boolean;
+  to: string[];
+  radius: number;
+  effect: LightPresenceEffect;
+}
+
+export function presenceSettings(lights: LightsConfig): LightPresenceSettings {
+  const p = isObj(lights.presence) ? (lights.presence as LightPresence) : {};
+  const radius = isNum(p.radius) && p.radius >= LIGHT_PRESENCE_RADIUS_MIN && p.radius <= LIGHT_PRESENCE_RADIUS_MAX ? p.radius : LIGHT_PRESENCE_RADIUS_M;
+  const effect = (LIGHT_PRESENCE_EFFECTS as readonly unknown[]).includes(p.effect) ? (p.effect as LightPresenceEffect) : "breathe";
+  const to = Array.isArray(p.to) && p.to.every((t) => isStr(t)) ? [...p.to] : [LIGHTS_EVERYWHERE];
+  return { enabled: p.enabled !== false, to, radius, effect };
+}
+
+/** The fixtures a program may pulse, in file order: `presence.to`, never a
+ *  safety fixture (a firmware breathe goes dark: the floor can't hold).
+ *  [] when presence is off. */
+export function presenceFixtures(lights: LightsConfig, house: HouseMap | null | undefined): LightFixture[] {
+  const s = presenceSettings(lights);
+  if (!s.enabled) return [];
+  const hit = new Set(resolveLightTargets(lights, house, s.to).fixtures);
+  return (lights.fixtures ?? []).filter((f) => hit.has(f.id) && f.safety !== true);
+}
+
+/** The problems / warnings with a `presence` block (validateLights calls it). */
+function presenceProblems(lights: LightsConfig, house: HouseMap | null | undefined, problems: string[], warnings: string[]): void {
+  const p = (lights as unknown as Obj)["presence"];
+  if (p === undefined) return;
+  if (!isObj(p)) return void problems.push("presence must be an object {enabled?, to?, radius?, effect?}");
+  for (const k of Object.keys(p)) if (!["enabled", "to", "radius", "effect"].includes(k)) problems.push(`presence: unknown field "${k}"`);
+  if (p["enabled"] !== undefined && typeof p["enabled"] !== "boolean") problems.push("presence.enabled must be true or false");
+  if (p["radius"] !== undefined && (!isNum(p["radius"]) || p["radius"] < LIGHT_PRESENCE_RADIUS_MIN || p["radius"] > LIGHT_PRESENCE_RADIUS_MAX)) problems.push(`presence.radius must be metres from ${LIGHT_PRESENCE_RADIUS_MIN} to ${LIGHT_PRESENCE_RADIUS_MAX}`);
+  if (p["effect"] !== undefined && !(LIGHT_PRESENCE_EFFECTS as readonly unknown[]).includes(p["effect"])) problems.push(`presence.effect must be ${LIGHT_PRESENCE_EFFECTS.map((e) => `"${e}"`).join(" | ")}`);
+  const to = p["to"];
+  if (to !== undefined && !(Array.isArray(to) && to.every((t) => isStr(t)))) return void problems.push("presence.to must be a list of fixtures, zones, rooms or LOCATIONs");
+  if (!Array.isArray(lights.fixtures) || !Array.isArray(lights.zones)) return;
+  for (const t of (to as string[] | undefined) ?? []) if (resolveLightTargets(lights, house, [t]).fixtures.length === 0) warnings.push(`presence.to: "${t}" reaches no fixture`);
+  if (Array.isArray(to)) {
+    const safe = resolveLightTargets(lights, house, to).fixtures.filter((id) => lights.fixtures.find((f) => f.id === id)?.safety === true);
+    if (safe.length > 0 && !to.some((t) => foldTarget(t) === LIGHTS_EVERYWHERE)) warnings.push(`presence.to reaches safety fixture${safe.length === 1 ? "" : "s"} ${safe.join(", ")}: a safety light never pulses`);
+  }
 }
 
 export interface LightsValidation {
@@ -621,6 +696,7 @@ export function validateLights(lights: unknown, house?: HouseMap | null): Lights
   const boot = lights["boot"];
   if (boot !== undefined && isObj(looks) && (!isStr(boot) || !Object.prototype.hasOwnProperty.call(looks, boot))) problems.push(`boot names no look (${JSON.stringify(boot)})`);
   if (isObj(looks)) for (const id of fixtures.keys()) if (!used.has(id)) warnings.push(`fixture "${id}" is in no look`);
+  presenceProblems(config, house, problems, warnings);
   return done();
 }
 
