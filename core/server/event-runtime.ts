@@ -5324,7 +5324,10 @@ export class EventRuntime {
       const target = /^[0-9a-f]{16}$/u.test(key) ? this.avatars.urlFor(key) : null;
       const img = target === null ? null : await this.images.get(target);
       if (img === null) {
-        sendJson(res, 404, { error: "no such picture" });
+        // Often a moment, not the picture (Wikipedia slow, the fetch still
+        // running): never cached, so the phone's retry asks again (wave 36).
+        res.writeHead(404, { "content-type": "application/json", "cache-control": "no-store" });
+        res.end(JSON.stringify({ error: "no such picture" }));
         return true;
       }
       res.writeHead(200, {

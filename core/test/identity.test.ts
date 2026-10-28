@@ -518,7 +518,12 @@ describe("guests: exclusive programs, any software, never antivirus", () => {
     expect(pic.status).toBe(200);
     expect(pic.headers["content-type"]).toBe("image/png");
     expect(new TextDecoder().decode(pic.raw!)).toBe("PNG:https://img.test/nhl97.png");
-    expect((await get(rt, "/api/avatar/0000000000000000")).status).toBe(404);
+    const miss = await get(rt, "/api/avatar/0000000000000000");
+    expect(miss.status).toBe(404);
+    // A miss is never cached: a phone's retry asks again (wave 36).
+    expect(miss.headers["cache-control"]).toBe("no-store");
+    // A retry's `?try=n` is the same picture.
+    expect((await get(rt, `/api/avatar/${ok.json.avatar}?try=1`)).status).toBe(200);
     expect((await get(rt, "/api/avatar/not-a-key")).status).toBe(404);
   });
 
