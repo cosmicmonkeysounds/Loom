@@ -135,8 +135,6 @@ export const BALLOON_MS = 8_000;
 /** Wave 37 (C16): how long a banner (a sticky that is no card and no loud
  *  objective) stays up (visible time); then it is in the bin, read. */
 export const STICKY_MS = 45_000;
-/** Wave 37 (C19): a house alert this close (story clock) to a big moment is the big said again. */
-export const BIG_ECHO_MS = 5_000;
 /** A moment on screen for less than this before it was dismissed counts as missed. */
 export const GLANCE_MS = 1_000;
 /**
@@ -668,13 +666,6 @@ function foldBalloons(queue: Queued[], fresh: readonly Queued[]): { queue: Queue
     queue: queue.filter((q) => !drop.includes(q)).map((q) => (q === top && readout !== null ? { ...q, behind: readout.moment.key } : q)),
     out: drop.map((q) => q.moment),
   };
-}
-
-/** Wave 37 (C19): the house alerts (queued or arriving) that echo a big moment queued or arriving with them: read, never shown. */
-export function bigEchoes(moments: readonly Moment[], queue: readonly Queued[]): Set<string> {
-  const all = [...queue.map((q) => q.moment), ...moments];
-  const bigs = all.filter((m) => m.severity === "big");
-  return new Set(all.filter((m) => isHouseAlert(m) && bigs.some((b) => Math.abs(b.at - m.at) <= BIG_ECHO_MS)).map((m) => m.key));
 }
 
 /**
