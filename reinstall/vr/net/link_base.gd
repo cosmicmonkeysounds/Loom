@@ -152,13 +152,6 @@ func mark_ready() -> void:
 	pass
 
 
-## Save this program's settings (`{"turn": "snap" | "smooth"}`, `POST
-## /api/spatial/prefs`); the server deals them back on every later
-## assignment's `prefs`.
-func save_prefs(_prefs: Dictionary) -> void:
-	pass
-
-
 ## End our session (found + celebrated, headset off, …).
 func end_session(_reason: String) -> void:
 	session = {}

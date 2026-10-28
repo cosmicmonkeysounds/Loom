@@ -179,7 +179,8 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   /api/spatial/ready` restarts a session's run clock once, `POST
   /api/spatial/prefs` saves `{turn}` to `spatial-prefs.json` in the state
   dir (kept across restarts and story resets). Neither commits to the
-  story.
+  story. Since wave 33b no client posts `prefs` (VR's snap turn is gone);
+  the route stays (additive).
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to
@@ -270,8 +271,8 @@ regenerates `generated/questions.loom`, `codex/9-facts.loom`,
 `generated/print-stacks.md` and the marked blocks in `trabolta.mind.md`
 and `DESIGN.md`. Never hand-edit the generated files.
 
-The VPS (`app.mapsandducks.com`) runs release `w32` (master through
-waves 32–33; rollback `w31`; the root `CLAUDE.md` has the release status). Release and sync
+The VPS (`app.mapsandducks.com`) runs release `w33b` (master through
+waves 32–36; rollback `w32`; the root `CLAUDE.md` has the release status). Release and sync
 procedure: `scripts/ops/` and
 [`docs/loom-docker-deploy.md`](../docs/loom-docker-deploy.md).
 Show-night diagnostics from any machine: `pnpm showctl`

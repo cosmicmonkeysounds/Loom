@@ -26,6 +26,7 @@ import {
   DUCK_FLIGHT,
   FEED_H,
   FEED_W,
+  GAME_TERMINAL_SCALE,
 } from "../src/three/index.ts";
 import { buildFloors } from "../src/index.ts";
 import { fixture, loadHouse, SHOW_HOUSE } from "./golden.ts";
@@ -189,6 +190,22 @@ describe("buildHouseScene (the show's map, headless)", () => {
     }
     scene.dispose();
     expect(scene.setTerminalFeed(spot.id, null)).toBe(false);
+  });
+
+  it("the games' terminals: 3x across the wall, never deeper; 1x by default (wave 33b)", () => {
+    expect(GAME_TERMINAL_SCALE).toBe(3);
+    const plain = buildHouseScene(show, { labels: false });
+    const big = buildHouseScene(show, { labels: false, terminalScale: GAME_TERMINAL_SCALE });
+    for (const spot of show.terminals) {
+      const a = plain.terminals.get(spot.id)!;
+      const b = big.terminals.get(spot.id)!;
+      expect(a.scale.toArray()).toEqual([1, 1, 1]);
+      expect(b.scale.toArray()).toEqual([3, 3, 1]);
+      expect(b.position.toArray()).toEqual(a.position.toArray()); // the same spot, proud of the same wall
+    }
+    expect(buildHouseScene(show, { labels: false, terminalScale: 0 }).terminals.get(show.terminals[0]!.id)!.scale.x).toBe(1);
+    plain.dispose();
+    big.dispose();
   });
 
   it("options drop parts; update animates without throwing", () => {

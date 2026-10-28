@@ -6,7 +6,7 @@
 ## line after `--`:
 ##
 ##   godot --path . -- --server http://10.0.0.2:7000 --code 4821 \
-##         --station vr-1 --name "Headset 1" [--guest g-3f9a1c] [--offline] [--smooth-turn]
+##         --station vr-1 --name "Headset 1" [--guest g-3f9a1c] [--offline]
 ##         [--autopilot [--hit-king]] [--voice false] [--mic false] [--trail-delay 0]
 ##         [--intro false]
 ##
@@ -48,7 +48,6 @@ const KEYS := {
 	"name": TYPE_STRING,
 	"guest": TYPE_STRING,
 	"offline": TYPE_BOOL,
-	"smooth_turn": TYPE_BOOL,
 	"autopilot": TYPE_BOOL,
 	"hit_king": TYPE_BOOL,
 	"voice": TYPE_BOOL,
@@ -66,7 +65,6 @@ static func defaults() -> Dictionary:
 		"name": "Headset",
 		"guest": "",
 		"offline": false,
-		"smooth_turn": false,
 		"autopilot": false,
 		"hit_king": false,
 		"voice": true,

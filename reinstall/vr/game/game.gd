@@ -11,11 +11,10 @@
 ## - **The intro** (wave 33, [IntroFlow] in [IntroSpace]): before each walk,
 ##   on a calm practice floor away from the house, the reinstallation video
 ##   on a cinema screen, then a gentle tutorial (look around, point and
-##   pull the trigger, walk into a ring, SNAP / SMOOTH turn tried live and
-##   saved to the program's prefs, a comfort line, START). Both are
-##   skippable only once the program has completed a reinstallation (the
-##   assignment's `reinstalled` ≥ 1); a saved `prefs.turn` is in force from
-##   the assignment on. The spawn pose keeps the session alive throughout
+##   pull the trigger, walk into a ring, turn round to a duck, a comfort
+##   line, START). Both are skippable only once the program has completed a
+##   reinstallation (the assignment's `reinstalled` ≥ 1). Turning is always
+##   smooth (wave 33b). The spawn pose keeps the session alive throughout
 ##   (the server would time it out); no voice link, hum, quack, void or
 ##   find runs; the walk's clocks (the path reveal, the quack) start at its
 ##   end, and [method LinkBase.mark_ready] restarts the server's. Off with
@@ -263,7 +262,6 @@ func setup(l: LinkBase, xr: bool) -> void:
 	add_child(cams)
 	player = PLAYER_SCENE.instantiate()
 	player.xr_active = xr
-	player.smooth_turn = bool(link.config.get("smooth_turn", false))
 	add_child(player)
 	hud = Hud.new()
 	hud.name = "Hud"
@@ -329,8 +327,6 @@ func enter_lobby() -> void:
 	flow.abort()
 	intro.abort()
 	intro_space.close()
-	# A program's saved turn setting was for its walk: the station's again.
-	player.smooth_turn = bool(link.config.get("smooth_turn", false))
 	_update_route_house()
 	duck.remove()
 	trail.clear()
@@ -509,10 +505,6 @@ func _on_assignment(a: Dictionary) -> void:
 	lobby.visible = false
 	pointer.hide_beam()
 	player.capture_mouse = true
-	# A returning program's own turn setting (wave 33), over the station's.
-	var saved := IntroFlow.saved_turn(a.get("prefs"))
-	if saved != "":
-		player.smooth_turn = saved == "smooth"
 	duck.place(builder.to_world(a["duck"]["pos"]))
 	ghosts.own_session = str(a.get("session", ""))
 	ghosts.on_frame("leave", {"session": ghosts.own_session})
@@ -594,7 +586,7 @@ func _start_intro(a: Dictionary) -> void:
 	hud.hide_all()
 	_notice_left = 0.0
 	sfx.set_hum(false)
-	var events := intro.start(a.get("reinstalled", 0), "smooth" if player.smooth_turn else "snap")
+	var events := intro.start(a.get("reinstalled", 0))
 	print("reinstall-vr: intro — %s (reinstalled %s: %s)" % [a.get("name", ""), a.get("reinstalled", 0), "skippable" if intro.skippable else "no skipping"])
 	_intro_events(events)
 	intro_space.render(intro)
@@ -639,13 +631,9 @@ func _intro_events(events: Array) -> void:
 				sfx.play("chime")
 				player.pulse(0.25, 0.08)
 				if intro.step == IntroFlow.Step.TURN and intro.faced:
-					# Turned round to the duck: the panel follows, in front again.
-					intro_space.place_panel(player.feet(), player.head_yaw())
-			"turn":
-				player.smooth_turn = e["turn"] == "smooth"
-				player.pulse(0.15, 0.04)
-			"save":
-				link.save_prefs({"turn": str(e["turn"])})
+					# Turned round to the duck: it quacks, and the panel stays
+					# put so nothing hides it (COMFORT comes round after).
+					sfx.quack_at(intro_space.duck.emitter)
 			"done":
 				_finish_intro()
 
@@ -680,7 +668,7 @@ func _finish_intro() -> void:
 	pointer.hide_beam()
 	_start_play()
 	link.mark_ready()
-	print("reinstall-vr: intro — over; walking (%s turn)" % ("smooth" if player.smooth_turn else "snap"))
+	print("reinstall-vr: intro — over; walking")
 
 
 func _on_found_answered(ok: bool, data: Dictionary) -> void:

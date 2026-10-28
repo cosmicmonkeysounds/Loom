@@ -60,6 +60,7 @@ func _run() -> void:
 	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
+	await _test_wall_bump()
 	_test_lobby_geometry()
 	_test_lobby_pure()
 	_test_server_link_setup()
@@ -578,20 +579,22 @@ func _test_config() -> void:
 	_check(o.get("name") == "Headset 2", "config: a quoted name with a space")
 	_check(o.get("offline") == true, "config: a bare flag is true")
 	_check(not o.has("bogus"), "config: unknown keys are ignored")
-	_check(StationConfig.parse_args(PackedStringArray(["--smooth-turn"])).get("smooth_turn") == true, "config: --smooth-turn")
+	_check(StationConfig.parse_args(PackedStringArray(["--intro", "false"])).get("intro") == false, "config: --intro false")
+	_check(not StationConfig.parse_args(PackedStringArray(["--smooth-turn"])).has("smooth_turn") and not StationConfig.defaults().has("smooth_turn"), "config: no smooth_turn setting (smooth only, wave 33b)")
 
 	var dir := "user://config-test"
 	DirAccess.make_dir_recursive_absolute(dir)
 	var a := dir + "/a.json"
 	var b := dir + "/b.json"
 	_write(a, {"server": "http://a:1", "code": "AAA", "station": "vr-a", "name": "From A"})
-	_write(b, {"code": "BBB", "name": "  ", "smooth_turn": true})
+	_write(b, {"code": "BBB", "name": "  ", "mic": false, "smooth_turn": true})
 	var cfg := StationConfig.resolve([a, b, dir + "/missing.json"], PackedStringArray(["--station", "vr-cli"]))
 	_check(cfg["server"] == "http://a:1", "config: res file applies over the defaults")
 	_check(cfg["code"] == "BBB", "config: the user file overrides the res file")
 	_check(cfg["name"] == "From A", "config: an empty string never overrides")
 	_check(cfg["station"] == "vr-cli", "config: the command line overrides both files")
-	_check(cfg["smooth_turn"] == true, "config: booleans merge")
+	_check(cfg["mic"] == false, "config: booleans merge")
+	_check(not cfg.has("smooth_turn"), "config: an old file's smooth_turn is ignored")
 	_check(not StationConfig.is_configured(StationConfig.merge(cfg, {"code": "CHANGEME"})), "config: the placeholder passcode is unconfigured")
 	_check(StationConfig.is_configured(cfg), "config: a real passcode + URL is configured")
 	var committed := StationConfig.read_file(StationConfig.RES_PATH)
@@ -633,9 +636,9 @@ func _test_config_setup() -> void:
 	_check(StationConfig.save_user({"server": "http://127.0.0.1:7000", "code": "K7PQ3M", "name": "Headset", "bogus": 1}, path), "setup file: saved")
 	var back := StationConfig.read_file(path)
 	_check(back.get("code") == "K7PQ3M" and back.get("server") == "http://127.0.0.1:7000" and not back.has("bogus"), "setup file: known keys only (%s)" % [back])
-	_check(StationConfig.save_user({"name": "Headset 2", "smooth_turn": true}, path), "setup file: saved again")
+	_check(StationConfig.save_user({"name": "Headset 2", "mic": false}, path), "setup file: saved again")
 	back = StationConfig.read_file(path)
-	_check(back.get("code") == "K7PQ3M" and back.get("name") == "Headset 2" and back.get("smooth_turn") == true, "setup file: a second save merges over the first (%s)" % [back])
+	_check(back.get("code") == "K7PQ3M" and back.get("name") == "Headset 2" and back.get("mic") == false, "setup file: a second save merges over the first (%s)" % [back])
 	var cfg := StationConfig.resolve([StationConfig.RES_PATH, path], PackedStringArray())
 	_check(cfg["code"] == "K7PQ3M" and StationConfig.is_configured(cfg), "setup file: the user file configures the station over the committed placeholder")
 	_check(StationConfig.forget_user(path) and not FileAccess.file_exists(path), "setup file: forgotten")
@@ -1183,11 +1186,16 @@ func _test_locomotion() -> void:
 	_check(_v3(Locomotion.head_relative(Vector2(0, 1), 90.0), Vector3(-1, 0, 0)), "loco: stick up looking west walks west")
 	_check(_v3(Locomotion.head_relative(Vector2(1, 0), 90.0), Vector3(0, 0, -1)), "loco: stick right looking west steps north")
 	_check(_v3(Locomotion.head_relative(Vector2(0, -1), 180.0), Vector3(0, 0, -1)), "loco: stick down looking south backs north")
-	_check(_near(Locomotion.smooth_turn(1.0, 0.5), -45.0), "loco: smooth turn right lowers the yaw")
-
-	var snap := Locomotion.SnapTurn.new()
-	var seq := [snap.update(0.7), snap.update(0.9), snap.update(0.4), snap.update(0.8), snap.update(0.2), snap.update(-0.9)]
-	_check(seq == [-45.0, 0.0, 0.0, 0.0, 0.0, 45.0], "loco: snap fires once per flick, re-arms under 0.3 (%s)" % [seq])
+	_check(_near(Locomotion.smooth_turn(1.0, 0.5), -Locomotion.TURN_RATE * 0.5), "loco: a full push right turns at TURN_RATE, lowering the yaw")
+	_check(_near(Locomotion.smooth_turn(-1.0, 0.5), Locomotion.TURN_RATE * 0.5) and _near(Locomotion.smooth_turn(2.0, 1.0), -Locomotion.TURN_RATE), "loco: left turns left; never past TURN_RATE")
+	var half := absf(Locomotion.smooth_turn(0.5, 1.0))
+	_check(half < Locomotion.TURN_RATE * 0.4 and half > 0.0, "loco: a half push turns well under half speed (%.1f°/s)" % half)
+	_check(Locomotion.smooth_turn(0.0, 1.0) == 0.0, "loco: a centred stick doesn't turn")
+	_check(Locomotion.WALK_SPEED <= 1.5 and Locomotion.TURN_RATE <= 75.0, "loco: a first-timer's pace (walk %.1f m/s, turn %.0f°/s)" % [Locomotion.WALK_SPEED, Locomotion.TURN_RATE])
+	_check(Locomotion.axis_lock(Vector2(0.3, 0.9)) == Vector2(0, 0.9), "loco: one stick — a crooked push forward walks straight")
+	_check(Locomotion.axis_lock(Vector2(-0.8, 0.2)) == Vector2(-0.8, 0), "loco: … a crooked turn doesn't creep")
+	_check(Locomotion.axis_lock(Vector2(0.6, 0.7)) == Vector2(0.6, 0.7), "loco: … a real diagonal walks and turns")
+	_check(Locomotion.axis_lock(Vector2.ZERO) == Vector2.ZERO, "loco: … centred stays centred")
 
 	var t := Locomotion.rotate_about(Transform3D(Basis.IDENTITY, Vector3(2, 0, 0)), Vector3(1, 3, 0), 90.0)
 	_check(_v3(t.origin, Vector3(1, 0, -1)), "loco: rotate_about turns about the pivot")
@@ -1514,6 +1522,8 @@ func _test_cam_panels() -> void:
 	_check(not (root_node.get_node("Glass") as Node3D).visible and (root_node.get_node("Feed/Video") as MeshInstance3D).mesh.size == HouseBuilder.CAM_SIZE, "cams: … a 4:3 panel in place of the screen")
 	var mat := (root_node.get_node("Feed/Video") as MeshInstance3D).material_override as StandardMaterial3D
 	_check(mat.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED and is_same(mat.albedo_texture, c.texture("optical-drive")), "cams: … unshaded, showing the feed's texture")
+	var feed_world := (root_node.get_node("Feed/Video") as Node3D).global_transform.basis
+	_check(_near(feed_world.x.length(), HouseBuilder.TERMINAL_SCALE) and _near(feed_world.y.length(), HouseBuilder.TERMINAL_SCALE) and _near(feed_world.z.length(), 1.0), "cams: … the terminal drawn %dx across the wall, no deeper (wave 33b)" % int(HouseBuilder.TERMINAL_SCALE))
 	asked.clear()
 	c.tick(0.1, house, feet, base, "sess")
 	_check(asked.is_empty(), "cams: about three frames a second, not every tick")
@@ -2221,18 +2231,23 @@ func _test_main_and_game() -> void:
 	_check(game.state() == GameFlow.State.PLAYING, "game: … and putting it on keeps it")
 	link.session_over.emit("test")
 
-	# The snap turn closes the vignette on its own frame.
+	# Turning is smooth only (wave 33b) and closes the vignette fast.
 	link.assignment_received.emit(_assignment(house, "s-4g", true))
 	player.right_stick = Vector2.ZERO
 	player._physics_process(1.0 / 72.0)
 	var yaw0 := player.head_yaw()
 	player.right_stick = Vector2(1, 0)
 	player._physics_process(1.0 / 72.0)
-	_check(_near(HouseFrames.wrap_yaw(player.head_yaw() - yaw0), -45.0) and player.vignette_strength() >= 0.8, "player: a snap turn closes the vignette on the same frame (%.2f)" % player.vignette_strength())
-	player.right_stick = Vector2.ZERO
-	for i in 36:
+	var step1 := HouseFrames.wrap_yaw(player.head_yaw() - yaw0)
+	_check(step1 < 0.0 and step1 > -2.0, "player: a full push turns a little each frame, never a jump (%.2f°)" % step1)
+	for i in 17:
 		player._physics_process(1.0 / 72.0)
-	_check(player.vignette_strength() < 0.05, "player: … and it opens again within half a second (%.2f)" % player.vignette_strength())
+	_check(_near(HouseFrames.wrap_yaw(player.head_yaw() - yaw0), -Locomotion.TURN_RATE * 0.25, 0.5) and player.vignette_strength() >= 0.8, "player: a quarter second of turning: %.0f°, the vignette closed (%.2f)" % [Locomotion.TURN_RATE * 0.25, player.vignette_strength()])
+	player.right_stick = Vector2.ZERO
+	for i in 72:
+		player._physics_process(1.0 / 72.0)
+	_check(player.vignette_strength() < 0.05, "player: … and it opens again within a second (%.2f)" % player.vignette_strength())
+
 	link.session_over.emit("test")
 
 	# Ghosts from the stream (never ourselves).
@@ -4245,17 +4260,51 @@ func _test_voice_generator() -> void:
 	await process_frame
 
 
+## A bare rig on a floor: walking in the open never buzzes; walking into a
+## wall buzzes the controllers, at most every WALL_BUMP_EVERY (wave 33b).
+func _test_wall_bump() -> void:
+	var world := Node3D.new()
+	root.add_child(world)
+	var solid := func(size: Vector3, at: Vector3) -> void:
+		var body := StaticBody3D.new()
+		var cs := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = size
+		cs.shape = box
+		body.add_child(cs)
+		world.add_child(body)
+		body.global_position = at
+	solid.call(Vector3(20, 0.2, 20), Vector3(0, -0.1, 0))
+	solid.call(Vector3(4, 2, 0.2), Vector3(0, 1, -3))  # 3 m north
+	var player: VrPlayer = Game.PLAYER_SCENE.instantiate()
+	player.set_physics_process(false)
+	player.read_input = false
+	world.add_child(player)
+	await physics_frame
+	player.teleport(Vector3(0, 0, 0), 180.0)  # facing south: open floor
+	player.left_stick = Vector2(0, 1)
+	for i in 72:
+		player._physics_process(1.0 / 72.0)
+	_check(player.wall_bumps == 0 and player.feet().z > 1.0, "player: walking in the open never buzzes (%d, walked to z %.2f)" % [player.wall_bumps, player.feet().z])
+	player.teleport(Vector3(0, 0, -1.5), 0.0)  # facing north, the wall 1.4 m ahead
+	var pulses0 := player.pulses
+	for i in 144:
+		player._physics_process(1.0 / 72.0)
+	_check(player.feet().z > -2.9 and player.wall_bumps >= 2 and player.wall_bumps <= 3 and player.pulses > pulses0, "player: into a wall: a buzz, at most every %.1f s (%d in 2 s, stopped at z %.2f)" % [VrPlayer.WALL_BUMP_EVERY, player.wall_bumps, player.feet().z])
+	world.queue_free()
+	await process_frame
+
+
 # --- the intro (wave 33) -----------------------------------------------------------
 
 
 ## The intro's steps, pure: the skips, the order, what advances each step,
-## the fallback buttons, the live turn choice and its save.
+## the fallback buttons, the turn step's hold.
 func _test_intro_flow() -> void:
 	_check(not IntroFlow.skippable_for(null) and not IntroFlow.skippable_for(0) and IntroFlow.skippable_for(1) and IntroFlow.skippable_for(3.0) and not IntroFlow.skippable_for("1"), "intro: skippable from one completed reinstallation (missing = 0)")
-	_check(IntroFlow.saved_turn({"turn": "snap"}) == "snap" and IntroFlow.saved_turn({"turn": "smooth"}) == "smooth" and IntroFlow.saved_turn({"turn": "fast"}) == "" and IntroFlow.saved_turn(null) == "" and IntroFlow.saved_turn({}) == "", "intro: a program's saved turn (else none)")
 	var f := IntroFlow.new()
 	_check(not f.running(), "intro: not running until started")
-	var ev := f.start(null, "snap")
+	var ev := f.start(null)
 	_check(f.step == IntroFlow.Step.VIDEO and ev == [{"event": "step", "step": IntroFlow.Step.VIDEO}] and not f.skippable, "intro: starts at the video")
 	_check(f.buttons().is_empty() and f.press("skip").is_empty() and f.progress() == "", "intro: a first-timer's video has no SKIP")
 	_check(not f.locomotion(), "intro: no walking during the video")
@@ -4280,38 +4329,36 @@ func _test_intro_flow() -> void:
 	_check(f.buttons() == ["next"], "intro: … NEXT after %d s for the stuck" % int(IntroFlow.WALK_NEXT_AFTER))
 	ev = f.tick(0.016, {"in_ring": true})
 	_check(f.step == IntroFlow.Step.TURN and ev.has({"event": "success"}), "intro: into the ring → TURN")
-	_check(f.buttons() == ["snap", "smooth"] and f.turn == "snap", "intro: TURN offers SNAP / SMOOTH (snap picked), KEEP waits")
-	f.tick(IntroFlow.ARM_DELAY, {})
-	_check(f.press("smooth") == [{"event": "turn", "turn": "smooth"}] and f.turn == "smooth", "intro: SMOOTH switches the setting live")
-	_check(f.press("smooth").is_empty(), "intro: … pressing it again does nothing")
+	_check(f.buttons().is_empty() and f.locomotion() and f.body().contains("turn"), "intro: TURN has no buttons — no turn setting to pick (wave 33b)")
 	ev = f.tick(0.1, {"facing": true})
-	_check(f.faced and ev == [{"event": "success"}] and f.body() == IntroFlow.TURN_DONE and f.buttons().has("keep"), "intro: facing the duck → success, KEEP THIS ONE")
-	_check(f.tick(0.1, {"facing": true}).is_empty(), "intro: … once")
-	ev = f.press("keep")
-	_check(ev.has({"event": "save", "turn": "smooth"}) and f.step == IntroFlow.Step.COMFORT and f.progress() == "5 / 5", "intro: KEEP saves the choice → COMFORT")
+	_check(f.faced and ev == [{"event": "success"}] and f.body() == IntroFlow.TURN_DONE and f.buttons().is_empty(), "intro: facing the duck → success, \"that's it\"")
+	_check(f.tick(0.1, {"facing": true}).is_empty() and f.step == IntroFlow.Step.TURN, "intro: … once, and the line stays a moment")
+	ev = f.tick(IntroFlow.TURN_DONE_HOLD, {"facing": false})
+	_check(f.step == IntroFlow.Step.COMFORT and ev == [{"event": "step", "step": IntroFlow.Step.COMFORT}] and f.progress() == "5 / 5", "intro: … then COMFORT by itself (%.0f s)" % IntroFlow.TURN_DONE_HOLD)
 	_check(f.buttons() == ["start"] and f.press("start").is_empty(), "intro: COMFORT's START (armed after a moment)")
 	f.tick(IntroFlow.ARM_DELAY, {})
 	ev = f.press("start")
 	_check(not f.running() and ev.has({"event": "done"}), "intro: START → done")
 	_check(f.tick(1.0, {"pressed": "start"}).is_empty(), "intro: nothing after done")
 
-	# KEEP shows anyway after a while; snap is the default unless the setting says smooth.
+	# NEXT for anyone who can't find the duck.
 	var k := IntroFlow.new()
-	k.start(0, "smooth")
-	_check(k.turn == "smooth", "intro: the setting in force is pre-picked")
+	k.start(0)
 	k.tick(0.1, {"video_done": true})
 	k.tick(IntroFlow.WELCOME_OK_AFTER, {})
 	k.press("ok")
 	k.tick(1.0, {"in_ring": false})
 	k.press("ok")
 	k.tick(0.0, {"in_ring": true})
-	_check(k.step == IntroFlow.Step.TURN and not k.buttons().has("keep"), "intro: (to TURN)")
-	k.tick(IntroFlow.TURN_KEEP_AFTER, {})
-	_check(k.buttons().has("keep") and not k.faced, "intro: KEEP after %d s without the duck" % int(IntroFlow.TURN_KEEP_AFTER))
+	_check(k.step == IntroFlow.Step.TURN and k.buttons().is_empty(), "intro: (to TURN)")
+	k.tick(IntroFlow.TURN_NEXT_AFTER, {})
+	_check(k.buttons() == ["next"] and not k.faced, "intro: NEXT after %d s without the duck" % int(IntroFlow.TURN_NEXT_AFTER))
+	k.press("next")
+	_check(k.step == IntroFlow.Step.COMFORT, "intro: … NEXT → COMFORT")
 
 	# A returning program: SKIP on the video, SKIP TUTORIAL on every step.
 	var r := IntroFlow.new()
-	r.start(2, "snap")
+	r.start(2)
 	_check(r.skippable and r.buttons() == ["skip"], "intro: a returning program may skip the video")
 	_check(r.press("skip").is_empty(), "intro: … not within the arm delay")
 	r.tick(IntroFlow.ARM_DELAY, {})
@@ -4320,9 +4367,9 @@ func _test_intro_flow() -> void:
 	_check(r.buttons() == ["skip_tutorial"], "intro: … which it may skip too")
 	r.tick(IntroFlow.ARM_DELAY, {})
 	ev = r.press("skip_tutorial")
-	_check(not r.running() and ev.has({"event": "done"}) and not ev.has({"event": "save", "turn": "snap"}), "intro: SKIP TUTORIAL → done, nothing saved")
+	_check(not r.running() and ev.has({"event": "done"}), "intro: SKIP TUTORIAL → done")
 	var x := IntroFlow.new()
-	x.start(0, "snap")
+	x.start(0)
 	x.abort()
 	_check(not x.running() and x.tick(1.0, {"video_done": true}).is_empty(), "intro: abort stops it silently")
 
@@ -4333,29 +4380,27 @@ func _test_intro_flow() -> void:
 	_check(IntroFlow.name_of(IntroFlow.Step.TURN) == "TURN", "intro: step names")
 
 
-## mark_ready / save_prefs over the wire: the session's token, `{}` /
-## `{turn}`, a 404 (an old server) ignored, a 410 ends the session.
+## mark_ready over the wire: the session's token, `{}`, a 404 (an old
+## server) ignored, a 410 ends the session. No prefs (wave 33b).
 func _test_server_link_intro() -> void:
 	var sl := _linked_server_link()
 	var tr: Variant = sl.get("transport")
 	var over: Array = []
 	sl.session_over.connect(func(r: String) -> void: over.append(r))
 	sl.mark_ready()
-	sl.save_prefs({"turn": "snap"})
-	_check(tr.count("/api/spatial/ready") == 0 and tr.count("/api/spatial/prefs") == 0, "link: no ready / prefs without a session")
+	_check(tr.count("/api/spatial/ready") == 0, "link: no ready without a session")
+	_check(not sl.has_method("save_prefs"), "link: no prefs to save (smooth turning only)")
 	sl.adopt({"session": "s-in", "token": "t-in", "houseVersion": ""})
 	sl.mark_ready()
 	var c: Dictionary = tr.calls.back()
 	_check(c["method"] == "POST" and c["path"] == "/e/e1/api/spatial/ready" and c["token"] == "t-in" and c["body"] == {}, "link: ready posts {} with the session's token (%s)" % [c["path"]])
 	tr.answer("/spatial/ready", 404, {"error": "not found"})
 	_check(sl.has_session() and over.is_empty(), "link: … an old server's 404 is ignored")
-	sl.save_prefs({"turn": "smooth"})
-	c = tr.calls.back()
-	_check(c["path"] == "/e/e1/api/spatial/prefs" and c["token"] == "t-in" and c["body"] == {"turn": "smooth"}, "link: prefs posts {turn} with the session's token")
-	tr.answer("/spatial/prefs", 200, {"ok": true, "prefs": {"turn": "smooth"}})
+	sl.mark_ready()
+	tr.answer("/spatial/ready", 200, {"ok": true})
 	_check(sl.has_session() and over.is_empty(), "link: … 200 changes nothing")
-	sl.save_prefs({"turn": "snap"})
-	tr.answer("/spatial/prefs", 410, {"error": "gone"})
+	sl.mark_ready()
+	tr.answer("/spatial/ready", 410, {"error": "gone"})
 	_check(over == ["over"] and not sl.has_session(), "link: a 410 ends the session")
 	_free_server_link(sl)
 	sl = _linked_server_link()
@@ -4363,8 +4408,7 @@ func _test_server_link_intro() -> void:
 	tr = sl.get("transport")
 	sl.adopt({"session": "offline-1", "token": "", "houseVersion": ""})
 	sl.mark_ready()
-	sl.save_prefs({"turn": "snap"})
-	_check(tr.log.filter(func(p: String) -> bool: return p.contains("/ready") or p.contains("/prefs")).is_empty(), "link: offline, nothing is posted")
+	_check(tr.log.filter(func(p: String) -> bool: return p.contains("/ready")).is_empty(), "link: offline, nothing is posted")
 	_free_server_link(sl)
 
 
@@ -4382,10 +4426,10 @@ func _intro_click(game: Game, id: String) -> void:
 
 
 ## The intro in the game: a first-timer's unskippable video then the
-## tutorial step by step (the laser, the ring, the live turn choice saved),
+## tutorial step by step (the laser, the ring, turning round to the duck),
 ## the session kept alive at the spawn with nothing of the walk running,
-## the walk's clocks and `ready` after it; a returning program's skips and
-## saved prefs; a session that ends mid-intro.
+## the walk's clocks and `ready` after it; a returning program's skips (an
+## old server's `prefs` ignored); a session that ends mid-intro.
 func _test_intro_game() -> void:
 	var house: Dictionary = _read_json("res://house/house.json")
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
@@ -4407,8 +4451,6 @@ func _test_intro_game() -> void:
 	game.clock = func() -> float: return _now
 	_check(game.intro_wanted() and game.intro_space != null and not game.intro_space.visible, "intro: on by default, nothing up in the lobby")
 
-	# A first-timer, whose program saved smooth turning on an earlier visit? No:
-	# a first-timer has no prefs — the station's snap turn is in force.
 	var a := _assignment(house, "in-1", true)
 	a["reinstalled"] = 0
 	link.assignment_received.emit(a)
@@ -4417,7 +4459,6 @@ func _test_intro_game() -> void:
 	_check(game.intro_space.visible and game.intro_space.cinema_shown() and game.intro_space.video_on() and not game.intro_space.panel_shown(), "intro: … the cinema up")
 	_check(not game.intro_space.lit(), "intro: … the practice floor dark for the video")
 	_check(game.intro_space.button_ids().is_empty(), "intro: … and no SKIP for a first-timer")
-	_check(not player.smooth_turn, "intro: no prefs: the station's snap turn")
 	var poses_before: int = link.poses.size()
 	var pulses_before := player.pulses
 	for i in 30:
@@ -4451,53 +4492,46 @@ func _test_intro_game() -> void:
 	player.teleport(Vector3(ring.x, IntroSpace.SPOT.y, ring.z), player.head_yaw())
 	game._process(0.016)
 	_check(game.intro.step == IntroFlow.Step.TURN and not game.intro_space.ring_shown() and game.intro_space.duck.visible, "intro: in the ring → TURN, the duck behind")
-	_check(game.intro.turn == "snap" and game.intro_space.button_ids() == ["snap", "smooth"], "intro: SNAP picked, SMOOTH offered, KEEP waits")
-	game._process(IntroFlow.ARM_DELAY)
-	_intro_click(game, "smooth")
-	_check(player.smooth_turn and game.intro.turn == "smooth", "intro: SMOOTH applies live")
-	_intro_click(game, "snap")
-	_check(not player.smooth_turn and game.intro.turn == "snap", "intro: SNAP back again, live")
+	_check(game.intro_space.button_ids().is_empty() and player.locomotion_enabled, "intro: TURN: no buttons, the stick turns")
 	var duck_at := game.intro_space.duck.global_position
 	var to := duck_at - player.camera.global_position
 	player.face(rad_to_deg(atan2(-to.x, -to.z)))
 	game._process(0.016)
-	_check(game.intro.faced and game.intro_space.button_ids().has("keep"), "intro: facing the duck → KEEP THIS ONE")
-	var panel_dir := game.intro_space.panel_transform().origin - player.feet()
-	_check(IntroFlow.facing(player.head_yaw(), Vector3(player.feet().x, 0, player.feet().z), Vector3(game.intro_space.panel_transform().origin.x, 0, game.intro_space.panel_transform().origin.z)) and Vector2(panel_dir.x, panel_dir.z).length() > 1.0, "intro: … the panel comes round in front again")
-	_check(link.get("saved_prefs").is_empty(), "intro: nothing saved before KEEP")
-	_intro_click(game, "keep")
-	_check(link.get("saved_prefs") == [{"turn": "snap"}] and game.intro.step == IntroFlow.Step.COMFORT, "intro: KEEP saves the choice (save_prefs) → COMFORT")
+	_check(game.intro.faced and game.intro_space.body_text() == IntroFlow.TURN_DONE, "intro: facing the duck → \"that's it\"")
+	var at_panel := game.intro_space.panel_transform().origin
+	_check(game.sfx.log.has("quack") and not IntroFlow.facing(player.head_yaw(), Vector3(player.feet().x, 0, player.feet().z), Vector3(at_panel.x, 0, at_panel.z)), "intro: … the duck quacks; the panel stays behind, never in front of the duck")
+	game._process(IntroFlow.TURN_DONE_HOLD)
+	game._process(0.016)
+	at_panel = game.intro_space.panel_transform().origin
+	_check(game.intro.step == IntroFlow.Step.COMFORT and game.intro_space.button_ids() == ["start"] and IntroFlow.facing(player.head_yaw(), Vector3(player.feet().x, 0, player.feet().z), Vector3(at_panel.x, 0, at_panel.z)), "intro: … then COMFORT by itself, the panel in front again")
 	_check(link.get("readies") == 0 and game.in_intro(), "intro: not ready yet")
 	game._process(IntroFlow.ARM_DELAY)
 	_intro_click(game, "start")
 	_check(not game.in_intro() and not game.intro_space.visible and link.get("readies") == 1, "intro: START → the walk, ready posted once")
-	_check(_v3(player.feet(), HouseFrames.vec(spawn)) and player.locomotion_enabled and not player.smooth_turn, "intro: … at the spawn, walking, the chosen turn kept")
+	_check(_v3(player.feet(), HouseFrames.vec(spawn)) and player.locomotion_enabled, "intro: … at the spawn, walking")
 	_check(game.hud.room_text() != "" and game.sfx.hum_on() and not game.trail_revealed, "intro: … the HUD and the hum on, the trail hidden")
 	_check(float(game.get("_played_for")) < 0.1 and _near(float(game.get("_quack_in")), Sfx.QUACK_FIRST, 0.05), "intro: the walk's clocks start now (played %.2f s)" % float(game.get("_played_for")))
 	for i in 5:
 		game._process(0.1)
 	_check(link.get("readies") == 1 and _near(float(game.get("_played_for")), 0.5, 0.05), "intro: ready once; the reveal clock counts from here")
 	link.session_over.emit("test")
-	_check(game.state() == GameFlow.State.LOBBY and not player.smooth_turn, "intro: (back to the lobby)")
+	_check(game.state() == GameFlow.State.LOBBY, "intro: (back to the lobby)")
 
-	# A returning program with smooth turning saved: in force at once; SKIP on
-	# the video and the tutorial; nothing saved, ready still sent.
+	# A returning program (with an old server's saved snap turn, ignored):
+	# SKIP on the video and the tutorial; ready still sent.
 	var b := _assignment(house, "in-2", false)
 	b["reinstalled"] = 1
-	b["prefs"] = {"turn": "smooth"}
+	b["prefs"] = {"turn": "snap"}
 	link.assignment_received.emit(b)
-	_check(player.smooth_turn and game.intro.turn == "smooth", "intro: a saved prefs.turn applies straight away (and is pre-picked)")
 	_check(game.intro_space.button_ids() == ["skip"], "intro: a returning program may skip the video")
 	game._process(IntroFlow.ARM_DELAY)
 	_intro_click(game, "skip")
 	_check(game.intro.step == IntroFlow.Step.WELCOME and not game.intro_space.video_on(), "intro: SKIP stops the video → the tutorial")
 	_check(game.intro_space.button_ids() == ["skip_tutorial"], "intro: … SKIP TUTORIAL offered")
 	game._process(IntroFlow.ARM_DELAY)
-	var saved_before: int = link.get("saved_prefs").size()
 	_intro_click(game, "skip_tutorial")
-	_check(not game.in_intro() and link.get("readies") == 2 and link.get("saved_prefs").size() == saved_before and player.smooth_turn, "intro: SKIP TUTORIAL → the walk with the saved setting, ready posted, nothing saved")
+	_check(not game.in_intro() and link.get("readies") == 2, "intro: SKIP TUTORIAL → the walk, ready posted")
 	link.session_over.emit("test")
-	_check(not player.smooth_turn, "intro: back in the lobby the station's setting returns")
 
 	# A session that ends mid-video: back to the lobby, the video stopped.
 	link.assignment_received.emit(_assignment(house, "in-3", true))

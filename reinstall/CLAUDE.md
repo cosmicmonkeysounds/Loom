@@ -46,7 +46,7 @@ reveal, and `--trail-delay 0` turns it off for a hand-driven dev run).
 | `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`; wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); wave 33 `tutorial.ts` (the training's steps, the skip rule); `cams.ts`, `voice.ts`, `audio.ts` |
 | `web/src/map/` | the editor: `MapApp.tsx`, `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx`; lights `lights*.ts` + `LightsPanel.tsx` |
 | `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate + presence, route, frames, duck, the King, and wave 26's `house_escape.gd` + `house_moment.gd`), diffed against `test/golden/`; `house_builder.gd` also draws the heart and the disk |
-| `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, wave 33 `mark_ready` + `save_prefs`, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay`, wave 33 `intro` and the build stamp) |
+| `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, wave 33 `mark_ready`, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay`, wave 33 `intro` and the build stamp) |
 | `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk, the intro), wave 33's intro (`intro_flow.gd`: the video → tutorial steps and the skip rule, pure; `intro_space.gd`: the cinema, the practice floor, the tutorial panel), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts, HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
 | `vr/media/reinstallation.ogv` | the intro's video (Theora 720p30), shipped in the APK |
 | `vr/house/house.json`, `vr/test/golden/` | **copies** written by `pnpm house:sync`; never edit them here |
@@ -101,8 +101,9 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   video before the begin (`reinstall/web/public/intro/reinstallation.mp4`)
   and the training in the house (`game/tutorial.ts`); VR ships its own
   Theora copy in the APK (`vr/media/reinstallation.ogv`) and teaches the
-  one right controller, with a live SNAP / SMOOTH turn choice saved by
-  `POST /api/spatial/prefs` and dealt back as the assignment's `prefs`.
+  one right controller. VR turns smoothly only (wave 33b: the snap turn
+  and its saved setting are gone; the server's `POST /api/spatial/prefs`
+  stays, unused).
   Both post `POST /api/spatial/ready` when the intro ends (the run clock
   restarts). Off with `?intro=0` (web) / `intro: false` (VR); the VR
   autopilot never plays it. Re-encode both videos from the source if it
@@ -124,6 +125,15 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
 - **GDScript ports stay literal.** A change to `@loom/house`'s geometry,
   routing or the King's reach needs the same change in `vr/house/*.gd`,
   regenerated goldens and a green `pnpm test:vr`.
+- **Terminals at 3×** (wave 33b). Both games draw every terminal (the
+  screen and the camera window, the mirror into the real house) three
+  times its size across the wall (`GAME_TERMINAL_SCALE`, VR
+  `HouseBuilder.TERMINAL_SCALE`); the terminals' world view and the map
+  editor keep 1×. The terminals send 320 × 240 frames to fill them.
+- **Comfort in VR** (wave 33b). Smooth turning only, gentle near the
+  stick's centre; a 1.4 m/s walk with no acceleration; the one stick's
+  axis lock; the vignette; a light buzz on a wall. Keep new movement to
+  that standard: most players have never worn a headset.
 - **Station config.** VR reads `user://station.json` (written by the
   in-headset setup) over the committed `config/station.json` (which must
   keep `CHANGEME`; a test checks it). Never write `res://`.

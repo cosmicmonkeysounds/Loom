@@ -57,6 +57,23 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body, #root { height: 100%; }
+/* A phone app, not a page (wave 36). An iPhone left zoomed in pans
+   sideways as if the app were wider than the screen, and nothing but a
+   pinch brings it back. Two things zoom it: a double tap (the arm-then-fire
+   buttons are two quick taps), which `manipulation` turns off while a pinch
+   still zooms; and focusing a text field under 16px (below). Landscape
+   doesn't inflate the text, and the page itself never scrolls sideways
+   (on `html` it is the viewport's, so no sticky bar changes scroller). */
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+/* iOS Safari zooms the page into any text field set under 16px and never
+   zooms back out. 16px is the floor for every field, whatever its own rule
+   says (none asks for more). */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { font-size: 16px !important; }
 body {
   margin: 0;
   font: 14px/1.45 var(--ui-font);

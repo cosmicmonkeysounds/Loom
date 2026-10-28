@@ -230,7 +230,6 @@ export function Play({
       {hud?.tutorial != null && found === null && <TutorialCard tutorial={hud.tutorial} touch={showSticks} onSkip={() => game.current?.skipTutorial()} />}
 
       {hud !== null && hud.tutorial === null && hud.mouseHint && !showSticks && found === null && hud.caption === null && (
-        // DRAFT w33
         <div className="mouse-hint w98-raised" aria-hidden="true">
           🖱 Click the picture to look around with the mouse
         </div>
@@ -318,14 +317,12 @@ export function Play({
 function TutorialCard({ tutorial, touch, onSkip }: { tutorial: TutorialHud; touch: boolean; onSkip: () => void }) {
   const copy = tutorialCopy(tutorial.step, touch);
   return (
-    // DRAFT w33 (the window's title)
     <Window title={`Training — step ${tutorial.index} of ${tutorial.total}`} icon="🎓" className={`tutorial-card step-${tutorial.step}${touch ? " over-sticks" : ""}`}>
       <h2>{copy.title}</h2>
       <p>{copy.line}</p>
       {tutorial.step !== "done" && tutorial.step !== "click" && <ProgressBar value={tutorial.progress} />}
       {tutorial.skippable && (
         <div className="w98-actions">
-          {/* DRAFT w33 */}
           <button className="w98-button" onClick={onSkip}>
             Skip training ▶
           </button>

@@ -42,9 +42,14 @@ const RAIL_THICKNESS := 0.05
 const FENCE_MAX_THICKNESS := 0.06
 ## Terminal screens stand this far proud of their wall's face (as in three.js).
 const TERMINAL_PROUD := 0.035
-## A terminal's camera feed panel (4:3, metres) and its bezel.
+## A terminal's camera feed panel (4:3, metres) and its bezel, before
+## [constant TERMINAL_SCALE].
 const CAM_SIZE := Vector2(0.48, 0.36)
 const CAM_BEZEL := 0.015
+## The game draws every terminal (its screen, the camera feed — the mirror
+## into the real house — and its label) this many times its size, across
+## the wall but no deeper (wave 33b; three.js: `GAME_TERMINAL_SCALE`).
+const TERMINAL_SCALE := 3.0
 ## Floor colliders are this thick (below the surface).
 const SLAB := 0.2
 ## How far the outside ground reaches past the house.
@@ -853,6 +858,7 @@ func _build_terminals() -> void:
 		var root := Node3D.new()
 		root.name = "Terminal_%s" % t["id"]
 		root.transform = terminal_transform(house, t)
+		root.scale = Vector3(TERMINAL_SCALE, TERMINAL_SCALE, 1.0)
 		add_child(root)
 		var frame := MeshInstance3D.new()
 		var fb := BoxMesh.new()

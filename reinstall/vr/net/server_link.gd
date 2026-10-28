@@ -733,10 +733,6 @@ func mark_ready() -> void:
 	_post_session("/api/spatial/ready", {})
 
 
-func save_prefs(prefs: Dictionary) -> void:
-	_post_session("/api/spatial/prefs", prefs)
-
-
 ## A session-token call whose answer only matters when the session is dead
 ## (401 / 410 → the lobby); a 404 (an old server without the route) or any
 ## other refusal is ignored. Nothing offline.

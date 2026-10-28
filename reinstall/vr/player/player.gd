@@ -2,18 +2,22 @@
 ## headset camera and both controllers, carried by a [CharacterBody3D] that
 ## collides with the house and stands on its floors and ramps.
 ##
-## - **Left stick** walks where the head looks (dead zone 0.15, 1.8 m/s).
-## - **Right stick** snap-turns 45° about the head (re-arm under 0.3), or
-##   turns smoothly with [member smooth_turn]. With the left stick idle (one
-##   controller), its forward / back walks too.
+## - **Left stick** walks where the head looks (dead zone 0.15, 1.4 m/s).
+## - **Right stick** turns smoothly about the head (gentle near the centre,
+##   at most 70°/s; no snap turn — its jumps made people dizzy). With the
+##   left stick idle (the show's headsets have only the right controller),
+##   its forward / back walks too, each axis locked out unless the push is
+##   a real diagonal ([method Locomotion.axis_lock]).
 ## - **Room scale**: each physics tick the head's horizontal offset from the
 ##   body is folded into the body with its own slide (so a real step climbs a
 ##   stair and slides along a wall like a stick step) and taken back out of
 ##   the origin. Whatever the walls refused is pushed back too (past a few
 ##   centimetres of slack), so leaning or stepping into a wall slides the
 ##   world back instead of letting the head through it.
-## - A comfort vignette closes in while moving or turning — at once on a
-##   snap turn, opening gently after.
+## - A comfort vignette closes in while moving or turning (closing fast,
+##   opening gently after).
+## - Walking into a wall gives a light buzz ([constant WALL_BUMP_EVERY]), so
+##   a first-timer knows why they stopped.
 ## - **Hit** ([member hit_button]): either trigger, or A / X — the King's
 ##   hit (the game takes the press, not the hold).
 ## - **Mute** ([member mute_button]): B / Y — the voice link's mic.
@@ -37,13 +41,13 @@ const MOUSE_SENSITIVITY := 0.15
 ## the view is pushed back — slack for a slope's slower climb, well short of
 ## [constant RADIUS] so the head never reaches a wall the body touches.
 const MAX_HEAD_GAP := 0.05
-## The snap-turn vignette, and how fast the vignette closes / opens (per s).
-const SNAP_VIGNETTE := 0.9
+## The vignette at full-speed turning (turning is what upsets stomachs
+## most), and how fast the vignette closes / opens (per s).
+const TURN_VIGNETTE := 0.85
 const VIGNETTE_CLOSE := 10.0
 const VIGNETTE_OPEN := 2.5
-
-## Smooth turning instead of 45° snaps.
-@export var smooth_turn := false
+## Walking into a wall buzzes the controllers at most this often (s).
+const WALL_BUMP_EVERY := 0.6
 ## False in the lobby: the sticks drive the picker, not the body.
 @export var locomotion_enabled := true
 
@@ -71,7 +75,7 @@ var capture_mouse := true
 @onready var right_hand: XRController3D = $XROrigin3D/RightHand
 @onready var vignette: MeshInstance3D = $XROrigin3D/XRCamera3D/Vignette
 
-var _snap := Locomotion.SnapTurn.new()
+var _bump_wait := 0.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var _vignette := 0.0
 var _turn_flash := 0.0
@@ -140,7 +144,6 @@ func teleport(pos: Vector3, yaw: float) -> void:
 		# off screen, with no captured mouse there to look back up.
 		_pitch = 0.0
 		camera.rotation.x = 0.0
-	_snap.armed = false  # a stick held through a teleport must not snap at once
 
 
 ## A haptic pulse on both controllers (`amplitude` 0 … 1, `seconds`) —
@@ -155,6 +158,8 @@ func pulse(amplitude: float, seconds: float) -> void:
 
 ## How many haptic pulses were asked for ([method pulse]).
 var pulses := 0
+## How many wall bumps buzzed (for the tests).
+var wall_bumps := 0
 
 
 ## Turn the rig about the head to face `yaw` (world frame) — the autopilot's
@@ -171,16 +176,11 @@ func _physics_process(delta: float) -> void:
 		_read_sticks()
 	if xr_active:
 		_fold_head()
-	var turn := 0.0
-	if locomotion_enabled:
-		turn = Locomotion.smooth_turn(right_stick.x, delta) if smooth_turn else _snap.update(right_stick.x)
+	if locomotion_enabled and delta > 0.0:
+		var turn := Locomotion.smooth_turn(right_stick.x, delta)
 		if turn != 0.0:
 			origin.global_transform = Locomotion.rotate_about(origin.global_transform, camera.global_position, turn)
-			if smooth_turn:
-				_turn_flash = maxf(_turn_flash, absf(right_stick.x))
-			else:
-				_turn_flash = 1.0
-				_vignette = maxf(_vignette, SNAP_VIGNETTE)  # closed on the frame of the snap
+			_turn_flash = maxf(_turn_flash, absf(turn) / (Locomotion.TURN_RATE * delta))
 	var walk := Locomotion.head_relative(left_stick, head_yaw()) * Locomotion.WALK_SPEED if locomotion_enabled else Vector3.ZERO
 	velocity.x = walk.x
 	velocity.z = walk.z
@@ -189,13 +189,27 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y -= _gravity * delta
 	move_and_slide()
+	_wall_bump(delta, Vector2(walk.x, walk.z).length())
 	_update_vignette(delta, Vector2(velocity.x, velocity.z).length())
+
+
+## A light buzz when a walk is held up by a wall (not on every frame of it).
+func _wall_bump(delta: float, wanted: float) -> void:
+	_bump_wait = maxf(0.0, _bump_wait - delta)
+	if wanted < 0.3 * Locomotion.WALK_SPEED or not is_on_wall():
+		return
+	var real := get_real_velocity()
+	if Vector2(real.x, real.z).length() > 0.5 * wanted or _bump_wait > 0.0:
+		return
+	_bump_wait = WALL_BUMP_EVERY
+	wall_bumps += 1
+	pulse(0.12, 0.03)
 
 
 func _read_sticks() -> void:
 	if xr_active:
 		left_stick = Locomotion.dead_zone(left_hand.get_vector2("primary"))
-		right_stick = Locomotion.dead_zone(right_hand.get_vector2("primary"))
+		right_stick = Locomotion.axis_lock(Locomotion.dead_zone(right_hand.get_vector2("primary")))
 		# One controller: with the left stick idle (or no left controller),
 		# the right stick's forward / back walks while its sideways turns.
 		if left_stick == Vector2.ZERO:
@@ -250,7 +264,7 @@ func head_gap() -> float:
 func _update_vignette(delta: float, speed: float) -> void:
 	_turn_flash = move_toward(_turn_flash, 0.0, delta * 4.0)
 	var target := clampf(speed / Locomotion.WALK_SPEED, 0.0, 1.0) * 0.75
-	target = maxf(target, _turn_flash * SNAP_VIGNETTE)
+	target = maxf(target, _turn_flash * TURN_VIGNETTE)
 	# Close fast (it must be there while the view moves), open gently.
 	_vignette = move_toward(_vignette, target, delta * (VIGNETTE_CLOSE if target > _vignette else VIGNETTE_OPEN))
 	vignette.visible = _vignette > 0.01

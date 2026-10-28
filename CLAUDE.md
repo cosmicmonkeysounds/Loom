@@ -186,8 +186,15 @@ its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 
 ### Release status
 
-The VPS runs **`w32`** (master `09798a99`, shipped 2026-10-27; rollback
-`w31`), and the preview was synced (`--keep-maps --keep-audio
+The VPS runs **`w33b`** (master `9c852e30`, shipped 2026-10-28; rollback
+`w32`): wave 33b (smooth turning only in VR, gentler movement, a wall
+buzz, the terminals 3× in both games with 320×240 feeds; the intro copy
+signed off) and wave 35 (the facts' rarity tiers, 78 new facts; show text
+`DRAFT` on `SIGNOFF-w35.md`). The preview was synced (`--keep-maps
+--keep-audio --keep-lights --keep-desk`) and reloaded on it. For 33b,
+reload every terminal (the bigger feeds) and re-export and sideload the
+Quest APK. Before it, `w32` (master `09798a99`, shipped 2026-10-27;
+rollback `w31`), and the preview was synced (`--keep-maps --keep-audio
 --keep-lights --keep-desk`) and reloaded. It carries wave 32 (Trabolta
 talks back: Task Manager's 🤖 Talk card relays Clippy to a live Trabolta
 on the TV, canned lines for both, ⚡ and timed ad bursts, the punched-up

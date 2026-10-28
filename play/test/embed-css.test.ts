@@ -54,6 +54,10 @@ for (const [name, css] of [
 }
 
 describe("the rewrite rules", () => {
+  it("turns a bare html rule into the pane root (wave 36's zoom guards)", () => {
+    expect(scopeCss("html { touch-action: manipulation; }")).toContain(".play-root { touch-action: manipulation; }");
+    expect(scopeCss("a{}html{overflow-x:hidden}")).toContain("}.play-root {overflow-x:hidden}");
+  });
   it("turns the dynamic viewport units into container units", () => {
     const out = scopeCss(".pass { height: 100vh; height: 100dvh; min-height: 50svh; max-height: 90lvh; width: 100dvw; }");
     expect(out).toContain(".pass { height: 100cqh; height: 100cqh; min-height: 50cqh; max-height: 90cqh; width: 100cqw; }");

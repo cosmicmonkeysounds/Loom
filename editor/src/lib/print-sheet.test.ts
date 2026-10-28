@@ -98,19 +98,19 @@ describe('print sheet', () => {
     expect(mixed[1]!.hint).toBe('Scan, then pick New Part.')
   })
 
-  it('sorts codex posters by stack gold → green → blue → red → unstacked, stable within a stack', () => {
+  it('sorts codex posters by stack gold → green → blue → purple → unstacked, stable within a stack', () => {
     const entry = (id: string) => ({ id, title: id, about: null, code: id.toLowerCase(), url: `u/${id}` })
     const items = buildPrintItems({
       ...CODES,
       codex: ['Lore', 'Red1', 'Blue1', 'Green1', 'Gold1', 'Green2', 'Odd', 'Gold2'].map(entry),
       stacks: {
-        Red1: { colour: 'red', stack: 'deepest', where: null },
+        Red1: { colour: 'purple', stack: 'deepest', where: null },
         Blue1: { colour: 'blue', stack: 'deep', where: null },
         Green1: { colour: 'green', stack: 'shelf', where: 'already placed' },
         Green2: { colour: 'Green', stack: 'shelf', where: null },
         Gold1: { colour: 'gold', stack: 'hunt answers', where: 'volume B' },
         Gold2: { colour: 'gold', stack: 'hunt answers', where: 'the atlas' },
-        Odd: { colour: 'purple', stack: 'elsewhere', where: null },
+        Odd: { colour: 'orange', stack: 'elsewhere', where: null },
       },
     }).filter((i) => i.kind === PrintKind.Codex)
     expect(items.map((i) => [i.ref, i.title])).toEqual([
@@ -124,9 +124,10 @@ describe('print sheet', () => {
       ['C08', 'Lore'],
     ])
     expect(stackLine(items[0]!.stack!)).toBe('GOLD · hunt answers · volume B')
-    expect(stackLine(items[5]!.stack!)).toBe('RED · deepest')
+    expect(stackLine(items[5]!.stack!)).toBe('PURPLE · deepest')
     expect(stackInk('gold')).not.toBe(stackInk('purple'))
-    expect(stackRank(null)).toBeGreaterThan(stackRank({ colour: 'purple', stack: '', where: null }))
+    expect(stackInk('black')).not.toBe(stackInk('orange'))
+    expect(stackRank(null)).toBeGreaterThan(stackRank({ colour: 'orange', stack: '', where: null }))
   })
 
   it('wave 11: the door code\'s digit clues sit on their own silver stack and print title + QR only', () => {
@@ -137,12 +138,12 @@ describe('print sheet', () => {
       stacks: {
         'The First Note': { colour: 'silver', stack: 'the cold door', where: 'behind the fridge magnet 4' },
         'The Second Note': { colour: 'Silver', stack: 'the cold door', where: 'under the stairs' },
-        Red1: { colour: 'red', stack: 'deepest', where: null },
+        Red1: { colour: 'purple', stack: 'deepest', where: null },
       },
     }).filter((i) => i.kind === PrintKind.Codex)
-    // silver prints after red, before an unstacked poster
+    // silver prints after purple (very rare), before an unstacked poster
     expect(items.map((i) => i.title)).toEqual(['Red1', 'The First Note', 'The Second Note', 'Lore'])
-    expect(STACK_ORDER.indexOf(DIGIT_CLUE_STACK)).toBeGreaterThan(STACK_ORDER.indexOf('red'))
+    expect(STACK_ORDER.indexOf(DIGIT_CLUE_STACK)).toBeGreaterThan(STACK_ORDER.indexOf('purple'))
     const clues = items.filter((i) => isDigitClue(i.stack))
     expect(clues).toHaveLength(2)
     for (const c of clues) {

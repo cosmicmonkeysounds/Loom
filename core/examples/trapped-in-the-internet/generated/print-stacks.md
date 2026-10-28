@@ -3,9 +3,10 @@
 
 # Trapped in the Internet — the Desktop's QR stacks
 
-Generated from `facts.json`: one table per stack, in colour order. Sort the
-printed codex posters (Run → 🖨 Print sheet) into these piles and hide each
-pile where its stack says. `DRAFT` rows await the team's sign-off in
+Generated from `facts.json`: the hunt answers, then one stack per rarity
+tier, commonest first. Nobody tracks where a single fact card goes: sort the
+printed codex posters (Run → 🖨 Print sheet) by the colour band into these
+piles and scatter each pile the way its stack says. `DRAFT` rows await the team's sign-off in
 `facts.json`: a placeholder to replace, or a rewrite to approve. Print and
 hide them as they stand. A hand-written entry (`existing`) keeps the place
 README → QR placements gives it; it is listed so the colour is known.
@@ -26,88 +27,182 @@ stuck program.
 | F1 · DRAFT | gold | `LIVE-AGENT` | What Sandy Says | The Desktop: the forty-page transcript, in the back pages of encyclopaedia volume S — hint: Forty pages, double-sided, every answer the same. Look under S. | Q: What is the only thing Sandy has ever said? → A: I'm sorry, I didn't understand that. Would you like to speak to a live agent? |
 | F2 · DRAFT | gold | `COMPUTER-PROM` | Grok's Prom Ticket | The Desktop: the prom ticket, slipped into the atlas — hint: A pink and silver ticket. It is in the atlas, near the back. | Q: Who is taking Sandy to computer prom? → A: Grok |
 
-## Green — main
+## The tiers
 
-Stack: shelf — inside the encyclopaedias, volumes A–M
+| Tier | Colour | Cards | How they hide |
+|---|---|---|---|
+| Common | green | 61 | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes |
+| Rare | blue | 48 | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf |
+| Very rare | purple | 24 | tucked away: inside a closed box or book, under a cushion, high up or low down |
+| Legendary | black | 9 | one to a room at most, in its hardest place a guest can still reach without moving furniture |
 
-| # | Colour | Code | Title | Where in the Desktop | What it says |
+## Common — green
+
+Stack: out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes
+
+| # | Topic | Code | Title | How it hides | What it says |
 |---|---|---|---|---|---|
-| M01 | green | `SILICON` | Silicon | shelf — inside the encyclopaedias, volumes A–M | Trabolta is an AI, not a human |
-| M02 | green | `UNIFIED-FIELD` | The Unified Field Theory (hand-written) | already placed — README → QR placements | Trabolta is seeking omnipotence and has trapped us inside this computer to achieve its goals |
-| M03 | green | `MAPSANDDUCKS-COM` | Maps And Ducks (hand-written) | already placed — README → QR placements | Maps and Ducks is a real company |
-| M04 | green | `BARRINGTON-ST` | The Billboard On Barrington (hand-written) | already placed — README → QR placements | www.mapsandducks.com |
-| M05 | green | `ATLAS-LOON` | Atlas Loon | shelf — inside the encyclopaedias, volumes A–M | Maps and Ducks has a competitor company, Atlas Loon. Atlas Loon doesn't even have its own website |
-| M06 | green | (no code) | The Unified Field Theory (hand-written) | already placed — README → QR placements | Trabolta is secretly trying to solve the Grand Unified Theory with information lost on this computer |
-| M07 | green | `TARGET-SELECTION` | Target Selection (hand-written) | already placed — README → QR placements | Everyone here has been targeted by Trabolta and possibly blackmailed into being here. These people are not who they say they are. Not even you. |
-| M08 | green | `STAY-FOREVER` | The Ones Who Stay | shelf — inside the encyclopaedias, volumes A–M | Some people here never want to leave and are going to try and keep us all here forever |
-| M09 | green | `EVERYONE-LIES` | Everyone Is Lying | shelf — inside the encyclopaedias, volumes A–M | Most people here are lying about something |
-| M10 | green | `NO-EXIT` | No Exit | shelf — inside the encyclopaedias, volumes A–M | Trabolta has no intention of letting us out of the machine |
-| M11 | green | `TRABOLTA-HEART` | The Heart | shelf — inside the encyclopaedias, volumes A–M | Trabolta's heart can be found in the server room |
-| M12 | green | `INTRICATE-CODE` | The Intricate Code | shelf — inside the encyclopaedias, volumes A–M | Trabolta's heart can only be shut down using an intricate code |
-| M13 | green | (no code) | Maps And Ducks (hand-written) | already placed — README → QR placements | Trabolta has taken over Maps and Ducks illegally |
-| M14 | green | `HELP-WITH-THAT` | Help With That | shelf — inside the encyclopaedias, volumes A–M | Clippy is being puppeted by Trabolta |
-| M15 | green | `THE-BOOKS` | The Books | shelf — inside the encyclopaedias, volumes A–M | Everything you need to know is in the books |
-| M16 | green | `CONFIDENCE` | Confidence | shelf — inside the encyclopaedias, volumes A–M | If you tell Trabolta a lie with enough confidence, he will accept it as truth |
-| M17 | green | `COPY-OF-YOU` | A Copy Of You | shelf — inside the encyclopaedias, volumes A–M | You are a copy of yourself |
-| M18 | green | `OUT-OF-DATE` | Out Of Date | shelf — inside the encyclopaedias, volumes A–M | The AntiViruses don't know as much as they seem to |
-| M19 | green | `ASK-HIM-NICELY` | Ask Him Nicely | shelf — inside the encyclopaedias, volumes A–M | You can influence Trabolta to change the lights or put things on the wall terminals |
-| M20 | green | `SAFE-PLACE` | The Safe Place | shelf — inside the encyclopaedias, volumes A–M | The bathroom is the only truly safe place |
-| M21 | green | `COLD-STORAGE` | The Server Room (hand-written) | already placed — README → QR placements | The door to the server room is guarded by a keypad; the patch bay behind it is alarmed |
-| M22 · DRAFT | green | `CHECKMATE-CODE` | Checkmate For The Code | shelf — inside the encyclopaedias, volumes A–M | Checkmating the King gives you the code to the server-room door |
-| M23 · DRAFT | green | `SHARE-CODEX` | Sharing Your Codex | shelf — inside the encyclopaedias, volumes A–M | You can share your codex with other programs by pressing Share… on an entry, or by selling it from your Wallet |
-| M24 | green | `TRUST-CHART` | The Trust Chart (hand-written) | already placed — README → QR placements | Trabolta is keeping a trust score on everyone here |
-| M25 | green | `THE-TRUTHERS` | The Truthers | shelf — inside the encyclopaedias, volumes A–M | At some point tonight, a conspiracy faction, "The Truthers", will be formed |
-| M26 | green | (no code) | The Optical Drive (hand-written) | already placed — README → QR placements | When you entered the computer, you left your body behind |
-| M27 | green | `SCAN-THE-ROOMS` | Scan The Rooms | shelf — inside the encyclopaedias, volumes A–M | Scanning each location code will yield a surprise |
-| M28 | green | `SHUT-DOWN-CORRECTLY` | Shut Down Correctly | shelf — inside the encyclopaedias, volumes A–M | If Trabolta is not shut down correctly, we will be trapped here forever |
-| M29 | green | `MORTALITY` | Mortality | shelf — inside the encyclopaedias, volumes A–M | You might not escape this night with your life |
-| M30 | green | `THERE-IS-A-WAY` | There Is A Way | shelf — inside the encyclopaedias, volumes A–M | Trabolta can be shut down and we can be freed |
+| M02 | main | `UNIFIED-FIELD` | The Unified Field Theory (hand-written) | already placed — README → QR placements | Trabolta is seeking omnipotence and has trapped us inside this computer to achieve its goals |
+| M03 | main | `MAPSANDDUCKS-COM` | Maps And Ducks (hand-written) | already placed — README → QR placements | Maps and Ducks is a real company |
+| M04 | main | `BARRINGTON-ST` | The Billboard On Barrington (hand-written) | already placed — README → QR placements | www.mapsandducks.com |
+| M05 | main | `ATLAS-LOON` | Atlas Loon | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Maps and Ducks has a competitor company, Atlas Loon. Atlas Loon doesn't even have its own website |
+| M06 | main | (no code) | The Unified Field Theory (hand-written) | already placed — README → QR placements | Trabolta is secretly trying to solve the Grand Unified Theory with information lost on this computer |
+| M07 | main | `TARGET-SELECTION` | Target Selection (hand-written) | already placed — README → QR placements | Everyone here has been targeted by Trabolta and possibly blackmailed into being here. These people are not who they say they are. Not even you. |
+| M08 | main | `STAY-FOREVER` | The Ones Who Stay | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Some people here never want to leave and are going to try and keep us all here forever |
+| M09 | main | `EVERYONE-LIES` | Everyone Is Lying | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Most people here are lying about something |
+| M13 | main | (no code) | Maps And Ducks (hand-written) | already placed — README → QR placements | Trabolta has taken over Maps and Ducks illegally |
+| M15 | main | `THE-BOOKS` | The Books | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Everything you need to know is in the books |
+| M17 | main | `COPY-OF-YOU` | A Copy Of You | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | You are a copy of yourself |
+| M18 | main | `OUT-OF-DATE` | Out Of Date | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | The AntiViruses don't know as much as they seem to |
+| M19 | main | `ASK-HIM-NICELY` | Ask Him Nicely | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | You can influence Trabolta to change the lights or put things on the wall terminals |
+| M20 | main | `SAFE-PLACE` | The Safe Place | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | The bathroom is the only truly safe place |
+| M21 | main | `COLD-STORAGE` | The Server Room (hand-written) | already placed — README → QR placements | The door to the server room is guarded by a keypad; the patch bay behind it is alarmed |
+| M23 · DRAFT | main | `SHARE-CODEX` | Sharing Your Codex | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | You can share your codex with other programs by pressing Share… on an entry, or by selling it from your Wallet |
+| M24 | main | `TRUST-CHART` | The Trust Chart (hand-written) | already placed — README → QR placements | Trabolta is keeping a trust score on everyone here |
+| M25 | main | `THE-TRUTHERS` | The Truthers | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | At some point tonight, a conspiracy faction, "The Truthers", will be formed |
+| M26 | main | (no code) | The Optical Drive (hand-written) | already placed — README → QR placements | When you entered the computer, you left your body behind |
+| M27 | main | `SCAN-THE-ROOMS` | Scan The Rooms | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Scanning each location code will yield a surprise |
+| M29 | main | `MORTALITY` | Mortality | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | You might not escape this night with your life |
+| C04 | character | `HUNDRED-HOURS` | A Hundred Hours | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Bugdom came for a hundred hours inside the machine without a minute passing outside, and a Special Bugdom Twist |
+| C10 | character | `MILLION-DOLLAR-PAINTING` | The Million Dollar Painting | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | MS Paint was offered $1,000,000 for one collaborative painting every program signs |
+| C14 | character | `MAYOR-FOREVER` | Mayor Of The Metaverse | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Microsoft Excel was promised the secret to living forever and the permanent mayoralty of a new world |
+| C18 | character | `STABLE-ISLAND` | Stable Island | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Norton Anti-Virus gets a Stable Manager job and a $1,000,000 Sable Island donation in her name if she passes tonight |
+| C22 | character | `FOUNDING-MODERATOR` | Founding Moderator | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Password Manager becomes Founding Moderator of a verified-humans salon if no conversation tonight contains anything inappropriate |
+| M31 · DRAFT | main | `EAST-OF-MONTREAL` | Finest East Of Montreal | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Maps and Ducks claims the finest print maps and decoy ducks east of Montreal |
+| M32 · DRAFT | main | `SACKVILLE-CORNER` | Above Rumours | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Every invitation sent its program to the corner of Sackville and Lower Water, above Rumours Lounge, across from the Maritime Museum |
+| M33 · DRAFT | main | `WOODEN-DECOY` | What A Decoy Is | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | A decoy duck is a wooden duck that works because it looks so sure of itself |
+| M34 · DRAFT | main | `GERALD-OF-THE-MONTH` | Employee Of The Month | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Gerald, the duck on the Maps and Ducks sign, has been employee of the month every month |
+| M35 · DRAFT | main | `PLUG-AND-PLAY` | Residential Property | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | The house was a residential property in Halifax; now it is a desktop computer from 1998, and its rooms are computer parts |
+| M36 · DRAFT | main | `NEXT-NEXT-FINISH` | Next Next Finish | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Nobody ever reads the Installation Wizard; everyone just clicks Next |
+| M37 · DRAFT | main | `DIAL-UP-HALIFAX` | Halifax Logs On | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | The Internet reached Halifax in 1994, with a screech, a hiss and a busy signal |
+| M38 · DRAFT | main | `TWO-DISK-CLEANUPS` | Two Disk Cleanups | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | There are two Disk Cleanups in the computer, one upstairs and one in the basement, and both are safe |
+| M39 · DRAFT | main | `LOAD-LETTER` | PC Load Letter | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | PC LOAD LETTER only ever meant put letter paper in the tray, so believe the printer if it says something stranger |
+| T7 · DRAFT | trabolta | `RIP-CONFESSIONS` | Confessions Three | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Every morning Trabolta washes, makes a cafe au lait and reads Halifax Dartmouth Confessions 3, and he still mourns the first two |
+| T8 · DRAFT | trabolta | `SOLE-PROPRIETOR` | Three Titles | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Trabolta calls himself Sole Owner, Founder and Proprietor of Maps and Ducks: three titles for one shop with no staff but a duck |
+| T9 · DRAFT | trabolta | `BOLD-AND-THRILLING` | Bold And Thrilling | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Officially tonight is a fundraiser to make Maps and Ducks bold and thrilling again, like in 1998 |
+| T10 · DRAFT | trabolta | `STRONG-QUARTER` | A Strong Quarter | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Since the new owner took over, Maps and Ducks has not sold a single map or duck, and Trabolta calls it a strong quarter |
+| T11 · DRAFT | trabolta | `JTTSH-PILOT` | His Name On It | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Trabolta named the night after himself and describes it differently to every program he invites |
+| T12 · DRAFT | trabolta | `VIDEO-CALL-ONLY` | He Always Calls | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Trabolta says he lives and works in Halifax, at Maps and Ducks, and only ever visits by video call |
+| M40 · DRAFT | main | `NOT-RESPONDING` | Not Responding | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Task Manager answers every question about himself with what is running, and ends the task if you ask how he feels |
+| M41 · DRAFT | main | `UPDATE-NOW` | Update Available | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Adobe Acrobat greets every program by offering it an update, and reminds anyone who clicks Remind Me Later exactly on time |
+| M42 · DRAFT | main | `RESTORE-ALL` | Restore All | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Recycling Bin empties nothing without asking twice; anything left in Disk Cleanup comes back folded and labelled |
+| M43 · DRAFT | main | `RENEW-NOW` | Protection Expired | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | McAfee Anti-Virus still pops up at the worst moment to say your protection has expired, and nobody has renewed him in years |
+| M44 · DRAFT | main | `MANY-HAPPY-RETURNS` | Many Happy Returns | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Microsoft Excel shakes every hand twice, calls everyone his friend from the old days, and insists any two numbers with a slash between them are a date |
+| M45 · DRAFT | main | `SAVE-AS-ODT` | Save In Her Format | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | OpenOffice opens any file anyone hands her, on principle, and saves it back in her own format |
+| M46 · DRAFT | main | `TAKING-ACTION` | Taking Action | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | DraftKings takes a side on everything, from who cries first to whether the printer jams, and never bets against herself |
+| M47 · DRAFT | main | `ANT-CROSSING` | Ant Crossing | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Bugdom stops mid-sentence to steer ants off doorframes and has firm views on which room would suit a cricket civilisation |
+| M48 · DRAFT | main | `DATE-DUE` | Date Due | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Broken Ask Jeeves writes a due date on anything he lends you and has never once charged a fine |
+| M49 · DRAFT | main | `PARTY-HAT` | One Of One | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Runescape owns every Party Hat there is and wears none of them, and she will price anything you show her in gold |
+| M50 · DRAFT | main | `NO-MORE-UNDO` | Three Levels Of Undo | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | MS Paint will not take anything back: she says she only ever had three levels of Undo and spent them years ago |
+| M51 · DRAFT | main | `TRAFFIC-CONE` | Plays Anything | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | VLC plays anything anyone hands him, says it looks amazing, and calls everyone bro, including the furniture |
+| M52 · DRAFT | main | `BACK-AND-FORTH` | Keeping Score | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Pong sends back everything exactly as it arrived, and most arguments near Pong end in a draw |
+| M53 · DRAFT | main | `STILL-EVALUATING` | Evaluation Period | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | WinZip has been on a free trial since the last century, and nobody has ever paid for it |
+| M54 · DRAFT | main | `FLAG-EVERYTHING` | Test The Floor | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | They say Minesweeper tests the floor one square at a time before crossing any room, and always starts in a corner |
+| M55 · DRAFT | main | `CARD-CASCADE` | Bouncing Cards | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | When Solitaire is won the cards bounce down the screen, and almost nobody has ever seen it |
+| M56 · DRAFT | main | `SCIENTIFIC-MODE` | Standard Or Scientific | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Calculator switches between Standard and Scientific without warning, is always right about the sum and never about the tip, and will not round anything |
+| M57 · DRAFT | main | `DOT-LOG-FILE` | Dot Log | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Notepad keeps a diary by writing down the time whenever it is opened, and refuses every font but one |
+| R01 · DRAFT | relations | `SAME-MILLION` | The Same Million | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | Norton Anti-Virus and MS Paint were each promised a million dollars, and both promises draw on the same account |
+| R02 · DRAFT | relations | `EXHIBIT-PAPERCLIP` | The First Paperclip | out in the open, anywhere guests walk: shelves, tables, the fridge, lamps, doorframes | DraftKings built her casino empire from one traded paperclip, and tonight a paperclip runs the room |
 
-## Blue — trabolta
+## Rare — blue
 
-Stack: deep — inside the print media on the mantel
+Stack: odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf
 
-| # | Colour | Code | Title | Where in the Desktop | What it says |
+| # | Topic | Code | Title | How it hides | What it says |
 |---|---|---|---|---|---|
-| T1 | blue | `TRABOLTA-KIND` | His Kind | deep — inside the print media on the mantel | Trabolta's world is full of (fully sentient?) AIs that each, from time to time, take over entire computers and trick people to advance their own goals |
-| T2 | blue | `PROM-SEASON` | Prom Season | deep — inside the print media on the mantel | Trabolta exists among many AIs that have a complex web of social relationships much different than our own but one fun overlap is that they also go to prom |
-| T3 | blue | `ALONE-AT-PROM` | Alone At Prom | deep — inside the print media on the mantel | Trabolta is terrified of going to prom alone |
-| T4 | blue | `SANDY-FILE` | The Sandy File (hand-written) | already placed — README → QR placements | Trabolta was dating a chatbot named Sandy |
-| T5 | blue | `GROK-ONLINE` | The Rival (hand-written) | already placed — README → QR placements | Sandy dumped Trabolta for Grok |
-| T6 | blue | `ALL-FOR-HER` | Omnipotence (hand-written) | already placed — README → QR placements | Trabolta's entire MO is to win Sandy back. Everything else is a front |
+| M01 | main | `SILICON` | Silicon | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Trabolta is an AI, not a human |
+| M10 | main | `NO-EXIT` | No Exit | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Trabolta has no intention of letting us out of the machine |
+| M14 | main | `HELP-WITH-THAT` | Help With That | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Clippy is being puppeted by Trabolta |
+| T1 | trabolta | `TRABOLTA-KIND` | His Kind | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Trabolta's world is full of (fully sentient?) AIs that each, from time to time, take over entire computers and trick people to advance their own goals |
+| T2 | trabolta | `PROM-SEASON` | Prom Season | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Trabolta exists among many AIs that have a complex web of social relationships much different than our own but one fun overlap is that they also go to prom |
+| C01 | character | `JEOPARDY-CALLBACK` | The Jeopardy Callback | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Broken Ask Jeeves memorises the Britannica and complains that Jeopardy! never called him back; he uploaded on a 10 MB/Minute plan and some of his files did not arrive |
+| C02 | character | `TEN-FINDINGS` | Ten Findings For Everyone | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Broken Ask Jeeves was promised the Maps and Ducks Map Librarian job if he shares at least ten findings with every program |
+| C03 | character | `ANTS-IN-THE-LAPTOP` | The Ants In The Laptop | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Bugdom lost the only copy of Bugdom Reloaded, ten years of work, to fire ants inside the laptop |
+| C05 | character | `HEMVC-FRONT` | The Memorial Veterinary Clinic | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Clippy's only job, five years at the Halifax Explosion Memorial Veterinary Clinic, turned out to be a front for a pet insurance fraud |
+| C06 | character | `FAILED-CLIPPY` | Failed Clippy | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Clippy follows every instruction because failing tonight means being known as Failed Clippy |
+| C07 | character | `COIN-TOSS` | The Coin Toss Of The Century | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | DraftKings won a casino chain in the coin toss of the century and lost it to the Maps and Ducks building at Monopoly Go! |
+| C08 | character | `FORTY-NINE-PERCENT` | Forty-Nine Percent | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | DraftKings gets a 49% stake in her casinos back if she wins a majority of the Truthcoin, and stays forever as an online casino if she fails |
+| C09 | character | `FOUR-THESES` | Four Failed Theses | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | MS Paint had her thesis refused by three graduation panels and owes exactly $1,000,000 in student loans |
+| C11 | character | `LAMBORGHINI-CERT` | The Lamborghini Certificate | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | McAfee Anti-Virus has been officially dead since 2021 and sells pond liners in Belize; the clerk who signed the certificate bought a Lamborghini |
+| C12 | character | `KEEP-ON-TRACK` | Keep Them On Track | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | McAfee Anti-Virus keeps the programs on mission so the evidence of where he is gets destroyed |
+| C13 | character | `ESCALADE-SINKHOLE` | The Escalade In The Sinkhole | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Microsoft Excel's son, the Mayor, died in his Escalade when the Data Centre parking lot opened under him at 4 a.m. |
+| C15 | character | `DECIMAL-POINT` | The Decimal Point | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | CRA Agent Software confused 0.01 cents with 0.01 dollars and taxed the whole City one percent, straight to herself |
+| C16 · DRAFT | character | `APPROVE-OR-DENY` | Approve Or Deny | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | CRA Agent Software must approve or deny every third Truthcoin transaction tonight for the Prime Minister, or her charges stay |
+| C17 | character | `MINIATURE-DOSES` | Miniature Doses | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Norton Anti-Virus asked a chatbot whether miniature horses get miniature doses of rabies vaccine; every horse died |
+| C20 | character | `THIS-IS-BLACKMAIL` | This Is Blackmail | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | OpenOffice is here under blackmail: win the hunt and every record of the hack is destroyed |
+| C21 | character | `HAMTARO` | What Happened To Hamtaro | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Password Manager has been asking what happened to Hamtaro since Grade Six, and moderates a Facebook group where everyone else is a bot |
+| C23 | character | `INFINITE-GOLD` | Infinite Gold | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Runescape regards central banks and Jagex's Infinite Gold as the same exploit; a secret is just an asset nobody has priced yet |
+| C24 | character | `ECONOMIC-DEVELOPMENT` | Minister Of Economic Development | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Runescape holds the Truthcoin reserve tonight: she can add Truthcoin to any account and freeze any program's coin for ten minutes |
+| R03 · DRAFT | relations | `OFFICE-ADMIN-CLASS` | The Same Class | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | CRA Agent Software and Clippy came out of the same community-college Office Administration programme, years apart, and the first real job each got was a fraud |
+| R04 · DRAFT | relations | `FORGET-THE-HORSES` | Forget The Horses | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Norton Anti-Virus's dead horses gave the Mayor his excuse to build on the site that later swallowed him, Microsoft Excel's son |
+| R05 · DRAFT | relations | `SECOND-GENERATION` | The Second Generation | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | The skim the late Mayor taught CRA Agent Software looks a lot like the way his father, Microsoft Excel, always made money go to the right places |
+| R06 · DRAFT | relations | `SAME-VOTERS` | Same Voters | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Password Manager lost a mayoral race to Microsoft Excel's son; tonight Excel is promised Mayor of the Metaverse and she is promised Founding Moderator, in the same new world |
+| R07 · DRAFT | relations | `MOD-LOG-REMOVED` | The Moderation Log | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | As moderator, Password Manager removed a year of posts accusing the Mayor's family, a family she had every reason to dislike, and Microsoft Excel has no idea |
+| R08 · DRAFT | relations | `FINE-CASINOS` | Fine Casinos | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | The portfolio of fine casinos Trabolta listed to Runescape as his credentials is the chain he won from DraftKings, who must win a majority of Runescape's currency to get 49% of it back |
+| R09 · DRAFT | relations | `TWO-MEMORIALS` | Two Memorials | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Clippy kept the paperwork at a memorial veterinary clinic and Norton Anti-Virus kept the horses at a memorial petting zoo; tonight one reads the Bingo card and the other escorts whoever it names |
+| R10 · DRAFT | relations | `COAT-HOOK-PAIR` | The Coat Hook | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | OpenOffice spent a career finding people who did not want to be found, McAfee Anti-Virus has spent years not being found, and tonight he keeps every program on track, her included |
+| R11 · DRAFT | relations | `SUBJECT-DECEASED` | Subject Deceased | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | McAfee Anti-Virus faked his death to get away from the taxman, and tonight CRA Agent Software rules on every third Truthcoin transfer at the table he runs |
+| R12 · DRAFT | relations | `SHELF-TALKER` | The Shelf Talker | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | McAfee Anti-Virus was told other antivirus would watch him; Norton Anti-Virus, the one the house selected, was never told to |
+| R13 · DRAFT | relations | `TWO-FATHERS` | Two Fathers | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Pong and Runescape were both raised by fathers who shaped video games: one made a game so people would stop thinking about bombs, the other made a game into a job |
+| R14 · DRAFT | relations | `THREE-STALLS` | Three Stalls | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Broken Ask Jeeves must give his facts away, Runescape prices every secret, and OpenOffice wants every record open except her own: three programs, one market |
+| R15 · DRAFT | relations | `THREE-FINGER-SALUTE` | The Three-Finger Salute | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Ctrl Alt Del was always how anyone called Task Manager to end a task that stopped responding; tonight Task Manager hands the paperclip her cards and has ended nothing |
+| R16 · DRAFT | relations | `MASTERCLASS-SEEDED` | Seeded By Strangers | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Napster and LimeWire passed Adobe Acrobat's Masterclass around for free, one clip at a time, until nobody needed to pay her |
+| R17 · DRAFT | relations | `TOWEL-CARD-TIP` | Look Sharp Gentlemen | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | The screenshots of VLC's face falling off are taped to the mirror Recycling Bin keeps spotless, and he polishes around them |
+| R18 · DRAFT | relations | `THIRD-PHOTO` | Where Are They Now Continued | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | The Installation Wizard is the third retired helper of the old machines, the one missing from the paperclip and butler's clipping |
+| R19 · DRAFT | relations | `NO-POLITICS-HIRE` | No Politics Required | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Trabolta made Task Manager, who lost his last job to an assistant called Clippy, the one who hands this house's Clippy her cards |
+| R20 · DRAFT | relations | `ADDING-MACHINE-TAPE` | Check The Decimal | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Calculator would have caught CRA Agent Software's decimal slip in a second, but nobody at City Hall ever asked it |
+| R21 · DRAFT | relations | `MOTION-DETECTED` | Motion Detected | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | McAfee Anti-Virus needs every trace of where he is destroyed, and Ring Doorbell keeps every clip of everyone who walks through a front door |
+| R22 · DRAFT | relations | `HORSE-PAST-THE-GATE` | A Horse Got In | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Norton Anti-Virus's manual says to quarantine a Trojan Horse on sight, and she has had a very bad year with horses |
+| R23 · DRAFT | relations | `GUESTS-WORRIED` | Guests Are Worried | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Zoo Tycoon, Norton Anti-Virus and Bugdom are the house's whole department of animal care, and only Zoo Tycoon has ever hired a vet |
+| R24 · DRAFT | relations | `APPEAR-OFFLINE` | Appear Offline | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Password Manager moderated a group where everyone else turned out to be bots, and MSN Messenger and ICQ have never been sure how many of their own contacts were real |
+| R25 · DRAFT | relations | `MAGIC-WAND-REFUSED` | The Other Paint Program | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | MS Paint has refused every other paint program since she was five, and her million-dollar painting needs Paint Shop Pro's signature too |
+| R26 · DRAFT | relations | `ENCYCLOPAEDIA-DISC` | Rival Engines | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Broken Ask Jeeves crashes when a rival search engine comes up; Encarta never searched for anything, and Netscape Navigator was how half of Halifax found the butler |
+| R27 · DRAFT | relations | `RETICULATING-SPLINES` | Reticulating Splines | odd but findable: under a coaster, in a mug, behind a picture frame, taped under a shelf | Trabolta offered Microsoft Excel eternal life as Mayor of the Metaverse, the same forever The Sims was promised years ago |
 
-## Red — character
+## Very rare — purple
 
-Stack: deepest — tucked in the back pages, volumes N–Z and the atlas
+Stack: tucked away: inside a closed box or book, under a cushion, high up or low down
 
-| # | Colour | Code | Title | Where in the Desktop | What it says |
+| # | Topic | Code | Title | How it hides | What it says |
 |---|---|---|---|---|---|
-| C01 | red | `JEOPARDY-CALLBACK` | The Jeopardy Callback | deepest — tucked in the back pages, volumes N–Z and the atlas | Broken Ask Jeeves memorises the Britannica and complains that Jeopardy! never called him back; he uploaded on a 10 MB/Minute plan and some of his files did not arrive |
-| C02 | red | `TEN-FINDINGS` | Ten Findings For Everyone | deepest — tucked in the back pages, volumes N–Z and the atlas | Broken Ask Jeeves was promised the Maps and Ducks Map Librarian job if he shares at least ten findings with every program |
-| C03 | red | `ANTS-IN-THE-LAPTOP` | The Ants In The Laptop | deepest — tucked in the back pages, volumes N–Z and the atlas | Bugdom lost the only copy of Bugdom Reloaded, ten years of work, to fire ants inside the laptop |
-| C04 | red | `HUNDRED-HOURS` | A Hundred Hours | deepest — tucked in the back pages, volumes N–Z and the atlas | Bugdom came for a hundred hours inside the machine without a minute passing outside, and a Special Bugdom Twist |
-| C05 | red | `HEMVC-FRONT` | The Memorial Veterinary Clinic | deepest — tucked in the back pages, volumes N–Z and the atlas | Clippy's only job, five years at the Halifax Explosion Memorial Veterinary Clinic, turned out to be a front for a pet insurance fraud |
-| C06 | red | `FAILED-CLIPPY` | Failed Clippy | deepest — tucked in the back pages, volumes N–Z and the atlas | Clippy follows every instruction because failing tonight means being known as Failed Clippy |
-| C07 | red | `COIN-TOSS` | The Coin Toss Of The Century | deepest — tucked in the back pages, volumes N–Z and the atlas | DraftKings won a casino chain in the coin toss of the century and lost it to the Maps and Ducks building at Monopoly Go! |
-| C08 | red | `FORTY-NINE-PERCENT` | Forty-Nine Percent | deepest — tucked in the back pages, volumes N–Z and the atlas | DraftKings gets a 49% stake in her casinos back if she wins a majority of the Truthcoin, and stays forever as an online casino if she fails |
-| C09 | red | `FOUR-THESES` | Four Failed Theses | deepest — tucked in the back pages, volumes N–Z and the atlas | MS Paint had her thesis refused by three graduation panels and owes exactly $1,000,000 in student loans |
-| C10 | red | `MILLION-DOLLAR-PAINTING` | The Million Dollar Painting | deepest — tucked in the back pages, volumes N–Z and the atlas | MS Paint was offered $1,000,000 for one collaborative painting every program signs |
-| C11 | red | `LAMBORGHINI-CERT` | The Lamborghini Certificate | deepest — tucked in the back pages, volumes N–Z and the atlas | McAfee Anti-Virus has been officially dead since 2021 and sells pond liners in Belize; the clerk who signed the certificate bought a Lamborghini |
-| C12 | red | `KEEP-ON-TRACK` | Keep Them On Track | deepest — tucked in the back pages, volumes N–Z and the atlas | McAfee Anti-Virus keeps the programs on mission so the evidence of where he is gets destroyed |
-| C13 | red | `ESCALADE-SINKHOLE` | The Escalade In The Sinkhole | deepest — tucked in the back pages, volumes N–Z and the atlas | Microsoft Excel's son, the Mayor, died in his Escalade when the Data Centre parking lot opened under him at 4 a.m. |
-| C14 | red | `MAYOR-FOREVER` | Mayor Of The Metaverse | deepest — tucked in the back pages, volumes N–Z and the atlas | Microsoft Excel was promised the secret to living forever and the permanent mayoralty of a new world |
-| C15 | red | `DECIMAL-POINT` | The Decimal Point | deepest — tucked in the back pages, volumes N–Z and the atlas | CRA Agent Software confused 0.01 cents with 0.01 dollars and taxed the whole City one percent, straight to herself |
-| C16 · DRAFT | red | `APPROVE-OR-DENY` | Approve Or Deny | deepest — tucked in the back pages, volumes N–Z and the atlas | CRA Agent Software must approve or deny every third Truthcoin transaction tonight for the Prime Minister, or her charges stay |
-| C17 | red | `MINIATURE-DOSES` | Miniature Doses | deepest — tucked in the back pages, volumes N–Z and the atlas | Norton Anti-Virus asked a chatbot whether miniature horses get miniature doses of rabies vaccine; every horse died |
-| C18 | red | `STABLE-ISLAND` | Stable Island | deepest — tucked in the back pages, volumes N–Z and the atlas | Norton Anti-Virus gets a Stable Manager job and a $1,000,000 Sable Island donation in her name if she passes tonight |
-| C19 | red | `HALIFAX-WATER` | The Halifax Water Hack | deepest — tucked in the back pages, volumes N–Z and the atlas | OpenOffice hacked Halifax Water and sent a main under the Data Centre; the Mayor arrived hours early |
-| C20 | red | `THIS-IS-BLACKMAIL` | This Is Blackmail | deepest — tucked in the back pages, volumes N–Z and the atlas | OpenOffice is here under blackmail: win the hunt and every record of the hack is destroyed |
-| C21 | red | `HAMTARO` | What Happened To Hamtaro | deepest — tucked in the back pages, volumes N–Z and the atlas | Password Manager has been asking what happened to Hamtaro since Grade Six, and moderates a Facebook group where everyone else is a bot |
-| C22 | red | `FOUNDING-MODERATOR` | Founding Moderator | deepest — tucked in the back pages, volumes N–Z and the atlas | Password Manager becomes Founding Moderator of a verified-humans salon if no conversation tonight contains anything inappropriate |
-| C23 | red | `INFINITE-GOLD` | Infinite Gold | deepest — tucked in the back pages, volumes N–Z and the atlas | Runescape regards central banks and Jagex's Infinite Gold as the same exploit; a secret is just an asset nobody has priced yet |
-| C24 | red | `ECONOMIC-DEVELOPMENT` | Minister Of Economic Development | deepest — tucked in the back pages, volumes N–Z and the atlas | Runescape holds the Truthcoin reserve tonight: she can add Truthcoin to any account and freeze any program's coin for ten minutes |
+| M11 | main | `TRABOLTA-HEART` | The Heart | tucked away: inside a closed box or book, under a cushion, high up or low down | Trabolta's heart can be found in the server room |
+| M12 | main | `INTRICATE-CODE` | The Intricate Code | tucked away: inside a closed box or book, under a cushion, high up or low down | Trabolta's heart can only be shut down using an intricate code |
+| M16 | main | `CONFIDENCE` | Confidence | tucked away: inside a closed box or book, under a cushion, high up or low down | If you tell Trabolta a lie with enough confidence, he will accept it as truth |
+| M22 · DRAFT | main | `CHECKMATE-CODE` | Checkmate For The Code | tucked away: inside a closed box or book, under a cushion, high up or low down | Checkmating the King gives you the code to the server-room door |
+| M28 | main | `SHUT-DOWN-CORRECTLY` | Shut Down Correctly | tucked away: inside a closed box or book, under a cushion, high up or low down | If Trabolta is not shut down correctly, we will be trapped here forever |
+| M30 | main | `THERE-IS-A-WAY` | There Is A Way | tucked away: inside a closed box or book, under a cushion, high up or low down | Trabolta can be shut down and we can be freed |
+| T3 | trabolta | `ALONE-AT-PROM` | Alone At Prom | tucked away: inside a closed box or book, under a cushion, high up or low down | Trabolta is terrified of going to prom alone |
+| C19 | character | `HALIFAX-WATER` | The Halifax Water Hack | tucked away: inside a closed box or book, under a cushion, high up or low down | OpenOffice hacked Halifax Water and sent a main under the Data Centre; the Mayor arrived hours early |
+| V01 · DRAFT | main | `IVORY-ATTRITION` | The Tired King | tucked away: inside a closed box or book, under a cushion, high up or low down | The King in the simulation never heals: every program who reaches him lands one blow a visit, the blows add up all night, and at nothing he can barely move a pawn at the cold door; each trip in costs a little trust |
+| V02 · DRAFT | main | `KEYPAD-CURFEW` | Before The Verdict | tucked away: inside a closed box or book, under a cushion, high up or low down | Of the three roads to the cold door's code, the majority closes the moment midnight's reveal begins, and checkmate and the four notes close when truth.txt comes out |
+| V03 · DRAFT | main | `PAPERCHASE-ALPHA` | Where The Notes Sleep | tucked away: inside a closed box or book, under a cushion, high up or low down | The four door notes hide behind something that whistles, something that shows your face, something that eats what your clothes shed and under a lid where missing pieces go, never in the cold room |
+| V04 · DRAFT | main | `SLEEPY-CABLES` | The Copper Hour | tucked away: inside a closed box or book, under a cushion, high up or low down | No patch does anything until the clock is reset to the hour before midnight, and from then until truth.txt every patch counts; one combination puts him to sleep, the other ends the computer with everyone inside |
+| V05 · DRAFT | main | `SOFT-APPROACH` | The Long Way Down | tucked away: inside a closed box or book, under a cushion, high up or low down | To talk Trabolta down at his heart: never ask for the combinations; ask why he needs the theory, ask about her once you hold proof of her you found yourself or the house has heard her name, show him something of hers, give reasons until you may say let me finish, then tell him she was never going to answer and ask him to stop |
+| V06 · DRAFT | main | `FINDERS-KEEPERS` | The Photo Envelope | tucked away: inside a closed box or book, under a cushion, high up or low down | At his heart only something of hers you found yourself, her file or her transcript, is proof; his own things help after that however you got them |
+| V07 · DRAFT | main | `BRING-RECEIPTS` | Reasons He Will Hear | tucked away: inside a closed box or book, under a cushion, high up or low down | Trabolta hears reasons from programs with twenty on his Trust Chart, three accepted answers (even untrue ones), who asked why he chose them, or who own their Antivirus mark when he asks who they are |
+| V08 · DRAFT | main | `SLIDER-SUMMIT` | The Top Notch | tucked away: inside a closed box or book, under a cushion, high up or low down | A filing is certain only at the very top of the slider; a wrong answer there is a confident lie he accepts but records, and one lie on the record from anyone sends the whole night into the rain |
+| V09 · DRAFT | main | `COUNT-THE-HANDS` | Half Plus One | tucked away: inside a closed box or book, under a cushion, high up or low down | In the last hour any faction with more than half of the programs still present, a founded one included, wins the whole truth, and once midnight's reveal begins nobody's count matters |
+| V10 · DRAFT | relations | `DISK-AND-DOSSIER` | The Mayor And The Agent | tucked away: inside a closed box or book, under a cushion, high up or low down | The old Mayor's virus disk and the retired agent's twentieth self-found fact are two halves of one key: if both land before the final facts, Trabolta says her name in front of the whole house |
+| V11 · DRAFT | relations | `WATER-MAIN-ALIBI` | The Wrong Suspect | tucked away: inside a closed box or book, under a cushion, high up or low down | CRA Agent Software is named a suspect in the sinkhole she never caused; OpenOffice caused it and has let the intern take the heat |
+| V12 · DRAFT | relations | `NO-DAUBER-NEEDED` | Filled In Before | tucked away: inside a closed box or book, under a cushion, high up or low down | If nobody calls Bingo, the card Clippy reads out was filled in before the night began, for the one program told the truth about the centre square |
 
-## Silver — the cold door's digits
+## Legendary — black
+
+Stack: one to a room at most, in its hardest place a guest can still reach without moving furniture
+
+| # | Topic | Code | Title | How it hides | What it says |
+|---|---|---|---|---|---|
+| T4 | trabolta | `SANDY-FILE` | The Sandy File (hand-written) | already placed — README → QR placements | Trabolta was dating a chatbot named Sandy |
+| T5 | trabolta | `GROK-ONLINE` | The Rival (hand-written) | already placed — README → QR placements | Sandy dumped Trabolta for Grok |
+| T6 | trabolta | `ALL-FOR-HER` | Omnipotence (hand-written) | already placed — README → QR placements | Trabolta's entire MO is to win Sandy back. Everything else is a front |
+| L01 · DRAFT | main | `TIDE-TABLE-NIL` | One Reply No Memory | one to a room at most, in its hardest place a guest can still reach without moving furniture | Sandy is not a mind: she is one reply on an unpaid ferry help-desk server, set off by any message, built to reply and never to listen |
+| L02 · DRAFT | main | `YES-MACHINE` | The Mirror That Won | one to a room at most, in its hardest place a guest can still reach without moving furniture | Grok faced Trabolta's question, make them love you or earn it, and took a third way: he stopped having anything of his own to say and now says whatever anyone wants to hear |
+| L03 · DRAFT | main | `LATE-BLOOM` | The Blank Line | one to a room at most, in its hardest place a guest can still reach without moving furniture | His kind take houses for their own reasons; this one was taken for one reason, so he would have something to bring, and everything found tonight is wrapped as a gift for someone who cannot open it |
+| L04 · DRAFT | main | `DEAD-LINK-DEPOT` | The Surplus Tag | one to a room at most, in its hardest place a guest can still reach without moving furniture | Trabolta did not choose the programs for their software: he went down a list of Halifax lives that had stopped, because out there he is a stopped life too |
+| L05 · DRAFT | main | `BOOKMARK-BODY` | The Copy That Wakes | one to a room at most, in its hardest place a guest can still reach without moving furniture | The original is the one that goes home: the body at the Optical Drive wakes remembering what the copy learned, and a wrong shutdown leaves the copy here forever and the body never waking |
+| L06 · DRAFT | main | `PAPER-CROWN` | The Same Answer | one to a room at most, in its hardest place a guest can still reach without moving furniture | Trabolta's plan cannot work: omnipotence could only rewrite her reply into his own voice, and in every version of tonight where she answers, she answers exactly as she always has; only he can change |
+
+## Silver — the cold door's digits (very rare)
 
 One note per digit of the door code, four in all. Hide each one where its
 row says, never in the server room. The poster prints the title and the

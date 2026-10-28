@@ -49,14 +49,20 @@ function showFixture(): FactsFile {
   const raw = {
     version: 1,
     show: { title: "A Show" },
-    categories: { main: { colour: "green", stack: "shelf" }, character: { colour: "red", stack: "deep" } },
+    categories: { main: { label: "the world" }, character: { label: "the programs" } },
+    tiers: {
+      common: { label: "Common", colour: "green", stack: "in the open" },
+      rare: { label: "Rare", colour: "blue", stack: "odd places" },
+      "very-rare": { label: "Very rare", colour: "purple", stack: "tucked away" },
+      legendary: { label: "Legendary", colour: "black", stack: "the hardest place" },
+    },
     rounds: { 1: { questTitle: "R1", brief: "b1" }, 2: { questTitle: "R2", brief: "b2" }, 3: { questTitle: "R3", brief: "b3" } },
     questions: SHOW_QUESTION_LAYOUT.map((l, i) => q(l.id, l.round, i + 1)),
     answers: [{ id: "P1", text: "Say it", answer: "the line", accept: [] }],
     facts: [
-      { id: "M01", category: "main", text: "a fact", codex: { id: "Fact One", title: "Fact One", code: "FACT-ONE", text: "…" } },
-      { id: "M02", category: "main", text: "told already", existing: "Old Entry", code: "OLD-ENTRY" },
-      { id: "C01", category: "character", text: "a person", codex: { id: "Her Secret", title: "Her Secret", code: "HER-SECRET", about: "Someone", text: "…" } },
+      { id: "M01", category: "main", tier: "common", text: "a fact", codex: { id: "Fact One", title: "Fact One", code: "FACT-ONE", text: "…" } },
+      { id: "M02", category: "main", tier: "common", text: "told already", existing: "Old Entry", code: "OLD-ENTRY" },
+      { id: "C01", category: "character", tier: "rare", text: "a person", codex: { id: "Her Secret", title: "Her Secret", code: "HER-SECRET", about: "Someone", text: "…" } },
     ],
     truths: Array.from({ length: SHOW_MIN_TRUTHS }, (_, i) => ({ id: `TD${i + 1}`, text: `Truth ${i + 1}?` })),
   };
@@ -213,7 +219,9 @@ describe("validateFacts — the generic rules", () => {
     expect(problemsOf({ ...minimal(), rounds: [] })).toEqual(["rounds must be an object keyed by round number"]);
     expect(problemsOf({ ...minimal(), rounds: { one: { questTitle: "a", brief: "b" } } })).toEqual(["rounds.one: the key must be a round number"]);
     expect(problemsOf({ ...minimal(), rounds: { 1: { questTitle: "a" } } })).toEqual(["rounds.1 needs questTitle + brief strings"]);
-    expect(problemsOf({ ...minimal(), categories: { main: { colour: "green" } } })).toEqual(["categories.main needs colour + stack strings"]);
+    expect(problemsOf({ ...minimal(), categories: { main: { colour: "green" } } })).toEqual(["categories.main needs a label string"]);
+    expect(problemsOf({ ...minimal(), tiers: { common: { label: "Common", colour: "green" } } })).toEqual(["tiers.common needs label + colour + stack strings"]);
+    expect(problemsOf({ ...minimal(), tiers: [] })).toEqual(["tiers must be an object keyed by tier"]);
     expect(problemsOf({ ...minimal(), categories: "x" })).toEqual(["categories must be an object keyed by category"]);
   });
   it("checks the facts section's shape and that a category is declared", () => {
@@ -228,7 +236,12 @@ describe("validateFacts — the generic rules", () => {
     expect(problemsOf({ ...minimal(), facts: [{ ...fact, codex: { ...fact.codex, about: "" } }] })).toEqual(["fact M01: codex.about must be a non-empty string"]);
     expect(problemsOf({ ...minimal(), facts: [{ ...fact, codex: { ...fact.codex, secret: false } }] })).toEqual(["fact M01: codex.secret must be true when present"]);
     expect(problemsOf({ ...minimal(), facts: ["x"] })).toEqual(["facts[0] must be an object"]);
-    expect(problemsOf({ ...minimal(), categories: { main: { colour: "g", stack: "s" } }, facts: [{ ...fact, category: "other" }] })).toEqual(['fact M01: category "other" is not declared in categories']);
+    expect(problemsOf({ ...minimal(), categories: { main: { label: "l" } }, facts: [{ ...fact, category: "other" }] })).toEqual(['fact M01: category "other" is not declared in categories']);
+    const tiers = { common: { label: "Common", colour: "green", stack: "s" } };
+    expect(problemsOf({ ...minimal(), tiers, facts: [{ ...fact, tier: "common" }] })).toEqual([]);
+    expect(problemsOf({ ...minimal(), tiers, facts: [fact] })).toEqual(["fact M01: needs a tier (the file declares tiers)"]);
+    expect(problemsOf({ ...minimal(), tiers, facts: [{ ...fact, tier: "mythic" }] })).toEqual(['fact M01: tier "mythic" is not declared in tiers']);
+    expect(problemsOf({ ...minimal(), facts: [{ ...fact, tier: "" }] })).toEqual(["fact M01: tier must be a non-empty string"]);
   });
   it("checks the truths section's shape", () => {
     expect(problemsOf({ ...minimal(), truths: [{ id: "TD1", text: "Why?" }] })).toEqual([]);
@@ -361,6 +374,19 @@ describe("showFactsProblems — the show-shaped rules", () => {
     k.facts[1]!.category = "ghost";
     expect(showFactsProblems(k)).toEqual(['fact M02: category "ghost" is not declared in categories']);
   });
+  it("declares the four tiers in order, each smaller than the one before", () => {
+    expect(showFactsProblems(showFixture())).toEqual([]);
+    const f = showFixture();
+    f.facts[0]!.tier = "rare";
+    expect(showFactsProblems(f)).toEqual(["tiers: rare must hold fewer facts than common (2 ≥ 1)"]);
+    const g = showFixture();
+    const { legendary, ...rest } = g.tiers!;
+    g.tiers = { legendary: legendary!, ...rest };
+    expect(showFactsProblems(g)).toEqual(["tiers: must declare common, rare, very-rare, legendary, in that order (got legendary, common, rare, very-rare)"]);
+    const h = showFixture();
+    delete h.facts[2]!.tier;
+    expect(showFactsProblems(h)).toEqual(["fact C01: tier null is not declared in tiers"]);
+  });
   it("a character fact's codex needs an about", () => {
     const f = showFixture();
     delete f.facts[2]!.codex!.about;
@@ -413,12 +439,21 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
   it("carries the judge defaults", () => {
     expect(facts.judge).toEqual({ mode_var: "Night.judge_mode", confirm: { accurate: "fact_accurate", lie: "fact_lie", uncertain: "fact_uncertain" } });
   });
-  it("carries 30 main + 6 trabolta + 24 character facts, three colour stacks and three round briefs", () => {
-    const by = (c: string) => facts.facts.filter((f) => f.category === c);
-    expect(by("main").map((f) => f.id)).toEqual(Array.from({ length: 30 }, (_, i) => `M${String(i + 1).padStart(2, "0")}`));
-    expect(by("trabolta").map((f) => f.id)).toEqual(["T1", "T2", "T3", "T4", "T5", "T6"]);
-    expect(by("character").map((f) => f.id)).toEqual(Array.from({ length: 24 }, (_, i) => `C${String(i + 1).padStart(2, "0")}`));
-    expect(Object.keys(facts.categories!)).toEqual(["main", "trabolta", "character"]);
+  it("carries 72 main + 12 trabolta + 24 character + 30 relations facts in four tiers, and three round briefs", () => {
+    const by = (c: string) => facts.facts.filter((f) => f.category === c).map((f) => f.id);
+    const ids = (p: string, n: number, from = 1) => Array.from({ length: n }, (_, i) => `${p}${String(i + from).padStart(2, "0")}`);
+    // Wave 35: M31–M57 are new commons; V01–V09 and L01–L06 (very rare,
+    // legendary) are main too, V10–V12 relations.
+    expect(by("main")).toEqual([...ids("M", 57), ...ids("V", 9), ...ids("L", 6)]);
+    expect(by("trabolta")).toEqual(["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"]);
+    expect(by("character")).toEqual(ids("C", 24));
+    expect(by("relations")).toEqual([...ids("R", 27), ...ids("V", 3, 10)]);
+    expect(Object.keys(facts.categories!)).toEqual(["main", "trabolta", "character", "relations"]);
+    expect(Object.keys(facts.tiers!)).toEqual(["common", "rare", "very-rare", "legendary"]);
+    const perTier = Object.keys(facts.tiers!).map((t) => facts.facts.filter((f) => f.tier === t).length);
+    expect(perTier).toEqual([61, 48, 20, 9]);
+    // Every wave 35 card awaits the sign-off.
+    for (const f of facts.facts.filter((x) => /^(?:[RVL]\d|M(?:3[1-9]|[45]\d)|T(?:[7-9]|1\d))/u.test(x.id))) expect(f.draft, f.id).toBe(true);
     expect(Object.keys(facts.rounds!)).toEqual(["1", "2", "3"]);
     expect(facts.rounds!["1"]!.questTitle).toBe("The Truth Scavenger Hunt · Round 1");
     expect(facts.rounds!["3"]!.questTitle).toBe("The Final Fact-Finding Round");
@@ -473,9 +508,10 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
     expect(new Set(abouts).size).toBe(12);
     for (const a of new Set(abouts)) expect(abouts.filter((x) => x === a)).toHaveLength(2);
   });
-  it("the facts that name his nature, his heart or his shutdown are secret; the rest are not", () => {
+  it("the facts that name his nature, his heart or his shutdown are secret, and every very-rare or legendary card (wave 35); the rest are not", () => {
     const secret = facts.facts.filter((f) => f.codex?.secret === true).map((f) => f.id);
-    expect(secret).toEqual(["M01", "M10", "M11", "M12", "M14", "M22", "M28", "M30"]);
+    expect(secret).toEqual(["M01", "M10", "M11", "M12", "M14", "M22", "M28", "M30", ...SECRET_W35]);
+    for (const f of facts.facts.filter((x) => x.codex !== undefined && /^[VL]/u.test(x.id))) expect(f.codex!.secret === true, f.id).toBe(f.id !== "V11"); // V11 retells C19, which is not secret
   });
   it("every character fact's third entry ends on why he chose them", () => {
     const thirds = facts.facts.filter((f) => f.category === "character").filter((_, i) => i % 2 === 1);
@@ -483,6 +519,8 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
     for (const f of thirds) expect(f.codex!.text, f.id).toMatch(/Why Trabolta chose you: /u);
   });
 });
+
+const SECRET_W35 = ["V01",  "V02",  "V03",  "V04",  "V05",  "V06",  "V07",  "V08",  "V09",  "V10",  "V12",  "L01",  "L02",  "L03",  "L04",  "L05",  "L06"];
 
 describe("showFactsProblems — the server-room door (wave 7)", () => {
   const door = (over: Record<string, unknown> = {}) => ({ code: "1997", clue: "FOUR DIGITS. THE YEAR.", codex: { id: "The Door Code", title: "The Door Code", text: "The code is 1997." }, ...over });
