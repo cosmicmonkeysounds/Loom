@@ -208,7 +208,7 @@ describe("the memory across a remount (the cutscene ⇄ main switch)", () => {
   });
 });
 
-describe("wave 37: banners leave, and what reached the screen is read (C16, C17)", () => {
+describe("wave 37: banners leave, and what reached the screen is read (C16, C17, C20)", () => {
   type Engine = { surfaces: { sticky: { moment: { key: string } } | null; modal: { moment: { key: string } } | null }; notif: { sign: { seen: Set<string>; readMark: number }; unread: number }; hold: (d: number) => void; fold: (d: number) => void };
   const engineOf = (h: { output: unknown }) => (h.output as { props: { value: Engine } }).props.value;
   const alertsOf = (histories = 0): Alerts => ({ alert: null, dismiss: () => {}, raise: () => {}, onHistory: () => {}, rebase: () => {}, mark: () => -1, settle: () => {}, epoch: 0, recent: () => [], histories: () => histories });
@@ -437,6 +437,20 @@ describe("wave 37: banners leave, and what reached the screen is read (C16, C17)
     expect(balloon()?.moment.key).toBe("m:4");
     h.act(() => vi.advanceTimersByTime(8_000));
     expect(balloon()).toBeNull();
+    h.unmount();
+  });
+
+  it("a new sign-in's bin starts quiet: once its first backlog is in, it is read (C20)", () => {
+    stubPage();
+    const msg = (seq: number): ChatMessage => ({ seq, channel: "lobby", channelKind: "lobby", title: "Lobby", from: "", kind: "signal", text: `📣 Old news ${seq}`, ts: 0, audience: "all", parentSeq: null, hidden: false, alert: true, moment: "major" }) as ChatMessage;
+    const messages = new Map([3, 7, 9].map((s) => [s, msg(s)] as const));
+    // Before the first history: nothing moves.
+    const early = mountHooks(Provider, { ...base("w37-g", { messages }), children: null });
+    expect(engineOf(early).notif.sign.readMark).toBe(-1);
+    early.unmount();
+    const h = mountHooks(Provider, { ...base("w37-h", { messages, alerts: alertsOf(1) }), children: null });
+    expect(engineOf(h).notif.sign.readMark).toBe(9);
+    expect(engineOf(h).notif.unread).toBe(0);
     h.unmount();
   });
 });

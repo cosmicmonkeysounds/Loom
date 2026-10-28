@@ -80,6 +80,7 @@ import {
   saveKeys,
   saveNow,
   saveNumber,
+  seedReadMark,
   seenKey,
   type EngineMemory,
 } from "./memory.ts";
@@ -464,6 +465,16 @@ function useMomentsEngine(input: MomentsInput): Engine {
     arrive(old, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.messages, input.objectives, input.widgets?.answered, session]);
+
+  // Wave 37 (C20): a new sign-in's bin starts quiet — once its first
+  // backlog is in, the rows from before it joined are read.
+  useEffect(() => {
+    if (session === null || role !== "guest" || (alerts.histories?.() ?? 1) === 0) return;
+    if (!seedReadMark(mem.signIn, input.messages.values())) return;
+    saveNumber(host.storage, readMarkKey(session), mem.signIn.readMark);
+    setRev((r) => r + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.messages, session]);
 
   // A big moment a newer one replaced in a backlog is read: acknowledged, so
   // no reload brings it back and Notifications never holds it "in use".
