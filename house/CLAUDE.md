@@ -18,7 +18,7 @@ code and that file disagree, fix one of them in the same change.
 ## Commands
 
 ```bash
-pnpm --filter @loom/house test        # vitest: 419 passed + 4 skipped, 19 files
+pnpm --filter @loom/house test        # vitest: 432 passed + 4 skipped, 20 files
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate geometry/route/king change
 pnpm --filter @loom/house sync        # copy the show's house.json, goldens and voice vectors into reinstall/vr/
@@ -121,6 +121,24 @@ LIGHT_RESERVED_PREFIXES += "music_"; // the soundtrack's scenes are never a look
 - stagehand mirrors the role and the reach in `audio/routing.py`
   (`Input`, `input_reach`, `sidechain_sources`) and `music_` in
   `lights/routing.py` `RESERVED_PREFIXES`.
+
+## Wave 39 API (contract `docs/loom-w39-contract.md` C1)
+
+```ts
+// lights.ts — a program in the games pulses the real light it walks under
+LightsConfig.presence?: { enabled?: boolean; to?: string[]; radius?: number; effect?: "breathe" | "blink" | "okay" };
+export const LIGHT_PRESENCE_RADIUS_M = 1.6, LIGHT_PRESENCE_LEAVE_M = 0.6, LIGHT_PRESENCE_HOLD_MS = 4000, LIGHT_PRESENCE_REPEAT_MS = 12_000;
+export function presenceSettings(lights); presenceFixtures(lights, house); // never a safety fixture
+
+// lights-presence.ts — the server's step and the games' `lights` frame
+export function presenceStep(lights, house, players: PresencePlayer[], prev, now): Map<string, PresenceEntry>;
+export function samePulsed(a, b); mergeLightState(was, set); lampOf(state); gameLight(f, lamp, pulse);
+export function gameLightsOf(raw): GameLights | null; pulseFactor(t, period?);
+```
+
+- Under = the same (presence) room and ≤ `radius` in plan, held 4 s after
+  the last program left. A safety fixture never pulses (a firmware breathe
+  goes dark). Tests: `test/lights-presence.test.ts`.
 
 ## Test layout
 

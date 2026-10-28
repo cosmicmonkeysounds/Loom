@@ -1673,5 +1673,13 @@
         }
       ]
     }
+  },
+  "presence": {
+    "enabled": true,
+    "to": [
+      "rooms"
+    ],
+    "radius": 1.6,
+    "effect": "breathe"
   }
 }
