@@ -158,6 +158,7 @@ refreshing while the phone is locked and picks up again when you look.
 
 Pausing, restarting, going live, chat and the World editor stay on the
 laptop. **☰ → Keep my screen on** stops the phone sleeping mid-show, and
-**☰ → 🔇 Stop all house sounds** fades out every story sound playing
-through the house speakers (never the TV's voice or the announcements:
-those are on the laptop and a host's phone).
+**☰ → 🔇 Stop all house sounds** fades out every story sound and the
+music playing through the house speakers, never the TV's voice or the
+announcements (those are on the laptop and a host's phone). The music
+comes back at the next act.

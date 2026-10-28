@@ -50,12 +50,15 @@ Every page shares one header:
   page.
 - **⏳ N** — pending decisions across the run; click to answer them in
   Chat.
-- **■ Stop house sounds** (server runs) — fades out every story sound
-  and speaker test on the house speakers at once (0.3 s), from any page.
-  It is a panic button: one press, no confirm, nothing journaled. The TV's
-  voice (it has its own mute), the terminals and the live mics are
-  untouched, and stopping the dance song does not move the story's
-  clock. The button then reads one of three things:
+- **■ Stop house sounds** (server runs) — fades out every story sound,
+  speaker test and the music on the house speakers at once (0.3 s), from
+  any page. It is a panic button: one press, no confirm, nothing
+  journaled. The music stays off until the story's next music cue (the
+  next act), or until the router catches up after a restart; to bring it
+  back sooner, run `stagehand music scene <name>` on the router's
+  computer. The TV's voice (it has its own mute), the terminals and the
+  live mics are untouched, and stopping the dance song does not move the
+  story's clock. The button then reads one of three things:
   - **■ Stopped**: the router heard it and fades out now.
   - **■ No router: stop it at the router** (amber): the server took
     the stop, but no router is listening, so it can't reach the

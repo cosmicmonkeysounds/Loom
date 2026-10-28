@@ -18,7 +18,8 @@ Top to bottom:
 - **The status chips**: one line each for the sound router, the lights,
   each outside mind (🧠) and problems in the desk itself.
 - **■ STOP ALL**: the panic. It stops every desk cue that is playing
-  **and** the house sounds. Use it whenever something is wrong.
+  **and** the house sounds. The music stops too and comes back at the
+  next act. Use it whenever something is wrong.
 - **▸ How the Desk works**: five lines, folded. Tap to read them.
 - **Setup** (below).
 - **STANDBY** and the big **GO**, then **Playing**, then the **Cues**.

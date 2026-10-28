@@ -37,7 +37,8 @@ Run → House has three views, under the status strip:
   (and on which interface), missing sound files or placeholders, a moved
   interface layout, is the lights module online, lights Zigbee2MQTT
   doesn't know. **■ STOP ALL** is the panic: it stops every running desk
-  cue **and** fades out every house sound. On the right, where the desk
+  cue **and** fades out every house sound, the music too (it comes back
+  at the story's next music cue). On the right, where the desk
   comes from (the project's `desk.json`, or a director's save for this
   event) with **Save to project**.
 - **The transport and the cue list** on the left. The big **GO** plays
@@ -61,7 +62,8 @@ Press **+ Cue**, then in the inspector:
 - **id** — what the story writes after `cue`. Lower-case letters,
   digits, `_` and `-`. **↻** makes it from the name. It can never start
   with a screens' prefix (`room_`, `tv_`, `tablet_`, `terminals_`,
-  `screens_`) and never equals a lights look's name.
+  `screens_`) or `music_` (the soundtrack's scenes) and never equals a
+  lights look's name.
 - **when it ends, fire** — a story event fired once the cue's last step
   has ended (never after a stop).
 - **notes** for whoever runs the desk.
