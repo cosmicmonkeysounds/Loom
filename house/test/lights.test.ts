@@ -146,6 +146,11 @@ describe("validateLights — looks", () => {
     }
   });
 
+  it("never a soundtrack scene either: the router takes every `cue music_*` (wave 38)", () => {
+    expect(withLook("music_off", one({ brightness: 100 })).problems).toEqual([`looks["music_off"]: "music_" cues are the soundtrack's, never a look`]);
+    expect(withLook("music_final", one({ brightness: 100 })).problems).toHaveLength(1);
+  });
+
   it("exactly one of set or steps, a target list", () => {
     expect(withLook("x", { to: ["desk-lamp"] }).problems).toEqual(['looks["x"] must have exactly one of set or steps']);
     expect(withLook("x", { to: ["desk-lamp"], set: { brightness: 9 }, steps: [{ at: 0, set: { brightness: 9 } }] }).problems).toEqual(['looks["x"] must have exactly one of set or steps']);
@@ -423,6 +428,8 @@ describe("isLightLookName / lightStateProblems", () => {
     expect(isLightLookName("2heart")).toBe(false);
     expect(isLightLookName("room_heart_wake")).toBe(false);
     expect(isLightLookName("screens_flicker")).toBe(false);
+    expect(isLightLookName("music_off")).toBe(false);
+    expect(isLightLookName("musical")).toBe(true);
     expect(isLightLookName("")).toBe(false);
   });
 

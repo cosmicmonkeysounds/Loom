@@ -3,7 +3,10 @@
 `Engine.open` resolves the CoreAudio device by substring, opens ONE
 `sounddevice` stream — duplex (N in / N out) when the matrix passes inputs
 through, output-only otherwise (no microphone permission needed) — at the
-device rate, and hands every block to a fresh `Mixer`. A stream that dies
+device rate, and hands every block to a fresh `Mixer`. Only a duplex stream
+hands the mixer its inputs, so only a duplex stream meters them and drives
+the priority sidechains (wave 38: the TV's input under Trabolta, Clippy's
+mic); an output-only router still ducks under its own announcements. A stream that dies
 (the MOTU unplugged) reports `running == False`; the router reopens it.
 
 PortAudio reads the device list once, when it initialises, and never again,
@@ -275,14 +278,18 @@ class Engine:
         return mixer
 
     def close(self) -> None:
+        """Stop and close the stream, then close the mixer's streamed voices
+        (a reopen builds a new mixer: the old one's tracks would otherwise
+        keep their workers and files for the life of the process)."""
         stream, self.stream = self.stream, None
-        if stream is None:
-            return
-        for step in ("stop", "close"):
-            try:
-                getattr(stream, step)()
-            except Exception as err:  # noqa: BLE001 — a dead device raises on stop
-                log.debug("stream %s: %s", step, err)
+        if stream is not None:
+            for step in ("stop", "close"):
+                try:
+                    getattr(stream, step)()
+                except Exception as err:  # noqa: BLE001 — a dead device raises on stop
+                    log.debug("stream %s: %s", step, err)
+        if self.mixer is not None:
+            self.mixer.close()
 
     # -- the audio thread ----------------------------------------------------
 

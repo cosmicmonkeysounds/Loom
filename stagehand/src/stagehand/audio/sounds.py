@@ -1,6 +1,6 @@
 """The router's media: story sounds from `sounds_dir`, and the test signals.
 
-`sound printer_grind` plays `<sounds_dir>/printer_grind.(wav|aiff|aif|flac)`,
+`sound printer_grind` plays `<sounds_dir>/printer_grind.(wav|aiff|aif|flac|mp3|ogg)`,
 decoded with libsndfile and resampled once to the device rate with a
 band-limited (FFT, ideal low-pass) resampler — songs are full range, so the
 alexa player's linear resample (fine for a chime and a voice) would alias
@@ -10,7 +10,13 @@ then case-insensitively; a name that isn't a plain file name (`../x`) is
 refused. A real file always wins over a generated placeholder (wave 18b: a
 `.wav` whose header carries the `loom-placeholder` tag, `placeholders.py`),
 so a real `dance_song.aiff` dropped beside the placeholder `dance_song.wav`
-is the one that plays.
+is the one that plays. Of two real files of one name the lossless one wins
+(`EXTENSIONS` order: wav, aiff, aif, flac, then mp3, ogg; wave 38 added the
+last two: libsndfile ≥ 1.1 decodes MP3).
+
+A long file (a soundtrack track, a takeover track) should not be decoded
+whole: `SoundBank.stream` opens it as a `stream.Stream` instead (decoded and
+resampled by a worker, a chunk at a time), never cached.
 
 The speaker test is a 1.5 s identifying tone — three rising beeps whose
 pitch steps with the output number, so a walk round the house can tell
@@ -28,38 +34,57 @@ import numpy as np
 
 log = logging.getLogger("stagehand.audio")
 
-EXTENSIONS = (".wav", ".aiff", ".aif", ".flac")
+#: Lossless first: a name with both a .wav and an .mp3 plays the .wav.
+EXTENSIONS = (".wav", ".aiff", ".aif", ".flac", ".mp3", ".ogg")
 _SAFE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,80}$")
 IDENTIFY_S = 1.5
 #: The tag a generated placeholder carries in its RIFF INFO comment.
 PLACEHOLDER_TAG = "loom-placeholder v1"
 _HEAD = 4096
-#: path → (mtime, size, is a placeholder): a header is read once per change.
-_tagged: dict[str, tuple[float, int, bool]] = {}
+#: The tag the SFX library's renders carry (`audio/sfx/render.py` SFX_TAG):
+#: real sounds, but a stand-in that any file you put there outranks.
+SFX_TAG = "loom-sfx v1"
+#: path → (mtime, size, tag): a header is read once per change.
+_tagged: dict[str, tuple[float, int, str | None]] = {}
 
 
-def is_placeholder(path: str | Path) -> bool:
-    """Does the file's first 4 KB carry the placeholder tag? (cached by mtime)"""
+def _tag(path: str | Path) -> str | None:
+    """Which generator tag the file's first 4 KB carries: "placeholder",
+    "sfx", or None for a real file. Cached by mtime and size."""
     p = Path(path)
     try:
         st = p.stat()
     except OSError:
-        return False
+        return None
     hit = _tagged.get(str(p))
     if hit is not None and hit[0] == st.st_mtime and hit[1] == st.st_size:
         return hit[2]
     try:
         with p.open("rb") as f:
-            tagged = PLACEHOLDER_TAG.encode() in f.read(_HEAD)
+            head = f.read(_HEAD)
     except OSError:
-        return False
-    _tagged[str(p)] = (st.st_mtime, st.st_size, tagged)
-    return tagged
+        return None
+    tag = "placeholder" if PLACEHOLDER_TAG.encode() in head else "sfx" if SFX_TAG.encode() in head else None
+    _tagged[str(p)] = (st.st_mtime, st.st_size, tag)
+    return tag
+
+
+def is_placeholder(path: str | Path) -> bool:
+    """Does the file's first 4 KB carry the placeholder tag? (cached by mtime)"""
+    return _tag(path) == "placeholder"
+
+
+def is_stand_in(path: str | Path) -> bool:
+    """Is the file an SFX library render (`stagehand sounds library --story`)?"""
+    return _tag(path) == "sfx"
 
 
 def _best(paths: list[Path]) -> Path | None:
-    """The first real file, else the first placeholder."""
-    return next((p for p in paths if not is_placeholder(p)), paths[0] if paths else None)
+    """The first file someone put there, else the first library stand-in,
+    else the first placeholder: a real `ad_jingle.mp3` beats the library's
+    `ad_jingle.wav`, whatever the extension order."""
+    rank = {None: 0, "sfx": 1, "placeholder": 2}
+    return min(paths, key=lambda p: rank[_tag(p)]) if paths else None
 
 
 def placeholders_in(directory: str | Path) -> list[str]:
@@ -204,7 +229,7 @@ class SoundBank:
             return None
         exact = [p for p in (self.dir / f"{name}{ext}" for ext in EXTENSIONS) if p.is_file()]
         hit = _best(exact)
-        if hit is not None and not is_placeholder(hit):
+        if hit is not None and _tag(hit) is None:
             return hit
         try:
             entries = list(self.dir.iterdir())
@@ -212,7 +237,7 @@ class SoundBank:
             return hit
         low = name.lower()
         folded = [p for p in sorted(entries) if p.suffix.lower() in EXTENSIONS and p.stem.lower() == low and p.is_file()]
-        # A real file in another case beats an exact-named placeholder.
+        # A real file in another case beats an exact-named placeholder or stand-in.
         return _best([*exact, *(p for p in folded if p not in exact)])
 
     def load(self, name: str) -> np.ndarray | None:
@@ -241,6 +266,28 @@ class SoundBank:
         self._cache[str(path)] = (mtime, data)
         self.missing.discard(name)
         return data
+
+    def stream(self, name: str, *, loop: bool = False, opener=None, start: bool = True):
+        """`name` as a `stream.Stream` at the bank's rate (a long track: never
+        decoded whole, never cached), or None (missing / unreadable, logged
+        once like `load`). The caller hands it to `Mixer.play`, which owns it."""
+        from .stream import Stream
+
+        path = self.find(name)
+        if path is None:
+            if name not in self.missing:
+                self.missing.add(name)
+                log.warning("sound %r: no file in %s (%s) — skipped", name, self.dir, "/".join(e[1:] for e in EXTENSIONS))
+            return None
+        try:
+            stream = Stream(path, self.rate, loop=loop, opener=opener, start=start, name=name)
+        except Exception as err:  # noqa: BLE001 — libsndfile raises its own types
+            if name not in self.missing:
+                self.missing.add(name)
+                log.warning("sound %r: can't open %s (%s) — skipped", name, path, err)
+            return None
+        self.missing.discard(name)
+        return stream
 
     def off_rate(self, names) -> list[tuple[str, int]]:
         """(name, file rate) for every file not at the bank's rate — they play

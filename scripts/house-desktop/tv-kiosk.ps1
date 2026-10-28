@@ -25,11 +25,17 @@
     Trabolta, TEST VOICE; then close and run without -Setup. M mutes the TV
     voice (Run -> Terminals shows it).
 
-    The TV's sound leaves Windows' default output: set it in Settings ->
-    System -> Sound (HDMI to the TV's speakers, or the MOTU's living-room
-    pair if the router runs on this PC and its driver allows WDM next to
-    ASIO), and turn off Windows' own sounds (Sound -> Sounds -> No Sounds)
-    so no system ping ever plays in the living room.
+    The TV's sound (wave 38) goes to the house speakers, not the TV's own:
+    Chrome's output device is the PC's line out (Settings -> System ->
+    Sound -> Volume mixer; on Windows 10, App volume and device
+    preferences), cabled into the 828x's rear Analog In 1, where the audio
+    router routes it to every speaker and ducks the music under it. The
+    TV's own volume stays down, or Trabolta plays twice. This script does
+    not set the output device; Windows keeps it per program (every Chrome
+    window on this PC). In the MacBook fallback the router does not route
+    the TV: set Chrome back to HDMI. Turn off Windows' own sounds (Sound ->
+    Sounds -> No Sounds) so no system ping ever plays in the house.
+    README section 3.5.
 
 .PARAMETER ModCode
     The mod passcode for the first provisioning (default: $env:LOOM_MOD_CODE).

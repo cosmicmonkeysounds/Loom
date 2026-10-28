@@ -21,6 +21,11 @@
 #   lead_silence  seconds of silence before it (dance_song: the blackout)
 #   no_duck       never ducked under an announcement (trapped.house.yaml no_duck)
 #   real          what the real file should be (the asset list, HW-AUD-15)
+#   library       the SFX library sound that stands in for it (wave 38, C6):
+#                 `uv run stagehand sounds library --story --config …` writes
+#                 that synthesized sound into sounds_dir as <name>.wav,
+#                 replacing a placeholder (or an older library file), never
+#                 a real file. The songs have none.
 #
 # `announce_chime` is not here: the router synthesises the chime
 # (`chime: synth`) and rings it with the announcements.
@@ -31,46 +36,57 @@ sounds:
     motif: modem
     seconds: 4
     real: "56k dial-up handshake, ~6 s, The Optical Drive (arrival, the Login beat)"
+    library: modem_handshake
   bingo_start:
     motif: arpeggio_up
     seconds: 2.5
     real: "game-show 'let's play' sting, 2-3 s, living room (Computer Bingo starts)"
+    library: bingo_start
   ad_jingle:
     motif: jingle
     seconds: 6
     real: "cheesy 1999 TV-ad jingle with '000. 000. 000.', 10-20 s, everywhere (the ad hijack)"
+    library: ad_jingle
   truther_glitch:
     motif: glitch
     seconds: 3
     real: "data-corruption glitch burst + a download chirp, 3-5 s, everywhere (the Truther Download)"
+    library: truther_glitch
   countdown_tick:
     motif: ticks
     seconds: 5
     real: "clock-tick countdown bed, 5-10 s, everywhere (the five-minute call)"
+    library: clock_tick
   printer_grind:
     motif: grind
     seconds: 4
     real: "dot-matrix printer jam grind, 4-6 s, living room (the printer button)"
+    library: dot_matrix_jam
   beans_spill:
     motif: rattle
     seconds: 3
     real: "beans pouring and rattling, 2-4 s, living room (PRINT FAILED)"
+    library: beans_spill
   zip:
     motif: zip
     seconds: 1.5
     real: "zipper / compression whoosh, ~1.5 s, everywhere (the Antivirus zip everyone out)"
+    library: zipper
   y2k_chime:
     motif: bell
     seconds: 3
     real: "one clock-tower strike, 3-5 s, everywhere (the Y2K hour and midnight; plays 6x)"
+    library: tower_bell
   alarm_siren:
     motif: siren
     seconds: 6
     real: "server-room alarm siren, 6-10 s, everywhere (the alarm latch)"
+    library: server_alarm
   windows_shutdown:
     motif: shutdown
     seconds: 3
     real: "Windows 98 shutdown chord, ~3 s, everywhere (before the dance)"
+    library: system_shutdown
   dance_song:
     motif: beat
     seconds: 20
@@ -81,6 +97,7 @@ sounds:
     motif: engine
     seconds: 5
     real: "motorcycle start + ride away, 5-8 s, everywhere (Trabolta leaves)"
+    library: motorcycle
   youre_the_one_vocoder:
     motif: vocoder
     seconds: 12
@@ -107,3 +124,4 @@ sounds:
     motif: fanfare
     seconds: 3
     real: "brass fanfare, 2-4 s, living room (each award)"
+    library: fanfare

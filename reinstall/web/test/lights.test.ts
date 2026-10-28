@@ -317,6 +317,7 @@ describe("the looks builder", () => {
     expect(lookNameOf(" Heart Wake! ")).toBe("heart_wake");
     expect(lookNameOf("2 fast")).toBe("fast");
     expect(lookNameError(l, "room_heart")).toMatch(/screens/);
+    expect(lookNameError(l, "music_off")).toMatch(/soundtrack/);
     expect(lookNameError(l, "Heart")).toMatch(/lower-case/);
     const a = addLook(l, "heart_idle", ["heart"]);
     if ("error" in a) throw new Error(a.error);

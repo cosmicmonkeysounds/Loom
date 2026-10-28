@@ -110,6 +110,7 @@ def test_parse_refuses_what_the_module_cannot_play():
 def test_look_names_never_take_a_screens_family():
     assert is_look_name("heart_wake")
     assert not is_look_name("room_heart_wake") and not is_look_name("screens_flicker") and not is_look_name("Heart")
+    assert not is_look_name("music_off") and not is_look_name("music_act_1")  # the soundtrack's scene cues (wave 38)
 
 
 def test_the_mqtt_words_for_identify_and_pairing():

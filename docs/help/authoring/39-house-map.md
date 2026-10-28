@@ -2,7 +2,7 @@
 title: The house map — drawing the house from a survey
 section: Live Shows
 order: 39
-keywords: house map, house desk, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop, light, lights, bulb, lights.json, Lights tab, Zigbee, Zigbee2MQTT, Z2M, pair, pairing, permit join, device, identify, colour, look, looks, cue, safety light, WLED, zone
+keywords: house map, house desk, map editor, voice link, microphone, mic, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, 828x, ADAT, expander, expect, layout, inputs, ducks as, reach, sidechain, subwoofer, outputs, routing, matrix, zone, cue, announcements, TV voice, tablets, terminals, announce, test, router, stagehand, placeholder, stop, light, lights, bulb, lights.json, Lights tab, Zigbee, Zigbee2MQTT, Z2M, pair, pairing, permit join, device, identify, colour, look, looks, cue, safety light, WLED, zone
 ---
 
 The reinstallation games and the wall terminals share one **house map**
@@ -134,17 +134,33 @@ The **Audio** tab is the rest of the file, top to bottom:
   optical ports set to ADAT, even with nothing plugged in; when mirroring
   Main and Phones, 96 kHz or an optical port on TOSLink changes that, every channel after the change
   is off, so `stagehand check` fails and the router logs it (it still
-  plays). Live mics are mixed on the interface itself (CueMix FX).
+  plays). Clippy's wireless mic is mixed on the interface itself (CueMix);
+  the TV's sound comes in on input 3 and the router sends it on (Routing,
+  below), so in CueMix input 3 goes to no output.
 - **Speakers** — every speaker, its room and its outputs. Select one on
   the plan for its inspector: name, id (renaming it renames it in every
   zone and cue), position and height, angle, gain in dB, its outputs as a
-  grid (an output another speaker uses is marked) and its zones.
+  grid (an output another speaker uses is marked) and its zones. The
+  show's living room is Main L/R (outputs 9–10) plus a subwoofer on
+  Analog 1 (output 1), a speaker of its own (`living-sub`) so its gain is
+  its own; the three make the `living` zone. A gain change is heard at
+  once, even on a long music track.
 - **Outputs** — a label per output and the speakers on it.
 - **Inputs** — a label per input and what it is: software (the router's
   computer, a virtual return), a mic, or a line from another device.
+  **Ducks as** says whose voice the input carries: *none*, *trabolta*,
+  *clippy* or a custom name. The router then listens to that input and
+  turns the music down while it hears it (how far: the router's
+  settings). With a role set, **ducks on** lists where the music goes
+  down (zones, rooms, speakers, `everywhere`); left empty, it is the
+  outputs the input's Routing row feeds (or everywhere with no route).
+  The show's TV (input 3) ducks as *trabolta* everywhere, the sub
+  included; Clippy's mic (input 1) ducks as *clippy* in the living room.
 - **Routing** — the inputs × outputs matrix. Tap a cell to send that input
   to that output at 0 dB, tap again to cut it; the selected cell has a
-  gain field.
+  gain field. The show's TV row (input 3) sends Trabolta to every speaker
+  but the sub: **a new speaker needs its cell ticked on that row** (the
+  Fan Closet's, once it is placed), or he is not heard there.
 - **Zones** — named groups of speakers a cue can name. `everywhere` is
   every speaker and needs no zone. **◉** keeps a zone lit on the plan.
 - **Story sounds** — every `sound` in the story, each with its targets
@@ -154,8 +170,8 @@ The **Audio** tab is the rest of the file, top to bottom:
   its own: it rings with the announcements.
 - **Announcements and the TV voice** — the speakers the house
   announcements play on (and whether a chime goes first), and the
-  speakers the TV's voice should also reach (patched on the interface's
-  own mixer for now).
+  speakers the TV's voice should also reach (a note: the TV row of
+  Routing is what sends it).
 - **Tablets that also say them** — every terminal spot on the map, by
   room. Tick a spot and the tablet hanging there also says each house
   announcement in its own voice. It is an option, off for every room until
@@ -183,8 +199,9 @@ writes `audio.json` into the project for the next launch and every
 co-writer; **Download JSON** gives you the file. With no file yet the tab starts from a blank
 16 in / 16 out interface.
 
-The speaker router (stagehand's `audio` job, at the show on John's MacBook)
-plays every story sound and every house announcement (the show's
+The speaker router (stagehand's `audio` job, at the show on John's Desktop;
+the MacBook is only the fallback) plays every story sound, every house
+announcement and the music (see [music all night](19-directives.md)) (the show's
 `trapped.house.yaml` turns both on). An announcement reaches it as MQTT
 `show/announce` from stagehand's `show` job (on John's Desktop), so both
 jobs must be up and on the same broker. Until each real sound file is in, it plays a labelled placeholder:
@@ -192,8 +209,8 @@ a short tone, then the sound's name spoken (`stagehand sounds
 placeholders`); a real file always wins, and `stagehand check` lists the
 placeholders still there. **■ Stop house sounds** on Run (or a host's
 phone) fades every story sound at once; see [Run mode](43-run-mode.md).
-Setting it up: `scripts/house-macbook/audio.md` (the MacBook),
-`scripts/house-desktop/README.md` §7 (if the router moves to the Desktop), `docs/trapped/room-audio.md`
+Setting it up: `scripts/house-desktop/README.md` (the Desktop),
+`scripts/house-macbook/audio.md` (the MacBook fallback), `docs/trapped/room-audio.md`
 §11–§12 and the `audio` module in `stagehand/README.md`.
 
 ## The house lights
@@ -272,7 +289,8 @@ saved look now. The **boot look** plays when the module starts and after a
 story reset. A look may never turn a safety light off or below its floor
 (the save is refused), and its name is the story's cue name (lower-case
 letters, digits and `_`; never a `screens_` / `terminals_` / `tv_` /
-`tablet_` / `room_` cue, which are the screens').
+`tablet_` / `room_` cue, which are the screens', or a `music_` cue, which
+is the soundtrack's).
 
 To **test** every speaker, output, story sound, light and look one row
 at a time, and to build house cues that play sounds and lights together,

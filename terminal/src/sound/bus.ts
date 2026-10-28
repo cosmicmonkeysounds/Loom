@@ -30,8 +30,10 @@
 import { audioContext, voiceFloor } from "../speech/engine.ts";
 import { CHIME_PARTS, partsLength, recipe, type NoisePart, type Part, type SfxName, type TonePart } from "./library.ts";
 
-/** The effects' level per view: the TV's are quiet accents (the house speakers are beside it). */
-export const VIEW_VOLUME = { tv: 0.35, other: 0.6 } as const;
+/** The effects' level per view. The TV's are silent (wave 38): its sound is
+ *  cabled into the house router as Trabolta's channel, so an effect here would
+ *  play on every house speaker and duck the music under it like his voice. */
+export const VIEW_VOLUME = { tv: 0, other: 0.6 } as const;
 /** An effect asked `{over: true}` while a voice speaks plays at this share of its level. */
 export const OVER_GAIN = 0.4;
 /** The same effect again inside this long plays once (ms). */

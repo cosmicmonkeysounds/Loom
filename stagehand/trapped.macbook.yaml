@@ -8,9 +8,15 @@
 # MacBook runs only `agents` (laptop.yaml; scripts/house-macbook/trabolta.md).
 #
 # Builds on trapped.house.yaml (`extends:`; the router's settings live there
-# once) and runs ONE job from it, `audio` — the MOTU 828x + the ADAT
-# expander on this Mac, every story `sound X` and the house announcements
-# (chime + `say` Samantha). The other house jobs (show, lights) run on John's
+# once) and runs ONE job from it, `audio` — the MOTU 828x on its own outs
+# (no ADAT expander) on this Mac, every story `sound X` and the house announcements
+# (chime + `say` Samantha). It overrides the house file's `passthrough: true`
+# with an output-only stream: a launchd job (a bare `uv run` CLI, no app
+# bundle) can't be granted the microphone, so a duplex stream would get
+# silent inputs with no warning. On the fallback the TV input (Trabolta) is
+# therefore not routed to the house speakers (he is heard on the TV only)
+# and nothing ducks under Trabolta or Clippy; the announcements still duck
+# the music and the takeover tracks still silence it. The other house jobs (show, lights) run on John's
 # Desktop (trapped.desktop.yaml), which also hosts Mosquitto, so this file
 # points the router at the Desktop's broker instead of this Mac's loopback:
 # the announcements reach the router only as MQTT show/announce from the
@@ -34,6 +40,7 @@ extends: trapped.house.yaml
 show: null   # the Desktop's job (two show jobs would fire every cue twice)
 
 audio:
+  passthrough: false     # output-only: no microphone permission for a launchd job (see above)
   mqtt:
     host: 192.168.8.10   # John's Desktop: the house's DHCP reservation (moved from the house Mac)
     port: 1884           # Mosquitto's password-only LAN listener

@@ -66,3 +66,16 @@ def test_no_secret_in_the_machine_files():
         live = [line.split("#", 1)[0] for line in p.read_text(encoding="utf-8").splitlines()]
         for key in ("password:", "mod_passcode:", "mod_token:", "event:"):
             assert not any(key in line for line in live), f"{p.name}: {key} belongs in the .local.yaml"
+
+
+def test_both_routers_inherit_the_soundtrack_and_the_desktop_the_duplex_stream(env, monkeypatch):
+    """Wave 38: the house file's soundtrack, priority and sidechain reach
+    whichever machine runs the router (the Desktop, or the MacBook fallback)."""
+    monkeypatch.setenv("SD_ENABLE_ASIO", "1")
+    for path in (DESKTOP, MACBOOK):
+        audio = load_config(path, only=["audio"], env=env).modules["audio"].cfg
+        # The MacBook's launchd job can't be granted the microphone: its
+        # fallback stream is output-only (no TV routing, no sidechain).
+        assert audio.passthrough is (path is DESKTOP), path.name
+        assert audio.soundtrack is not None and audio.soundtrack.path == str((ROOT / "media" / "soundtrack.yaml").resolve()), path.name
+        assert audio.music_topic == "show/audio/music" and audio.priority["trabolta"] == {"music": -18, "sfx": -8}, path.name

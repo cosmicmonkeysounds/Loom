@@ -48,8 +48,11 @@ every announcement.
    🔊 Sound and 💡 Lights green. The router plays the story's sounds and
    the house announcements through the 828x and owns the chime: the
    story's `sound announce_chime` rides MQTT `show/chime` to it, so a chime
-   and an announcement ring once. ■ Stop house sounds on Run fades them
-   out.
+   and an announcement ring once. Since wave 38 it also plays the music
+   (a set per act, cued by the story) and Trabolta's TV voice on every
+   speaker: Chrome on this PC plays to its line out, cabled into the 828x,
+   and the TV's own volume stays down (or he is heard twice). ■ Stop house
+   sounds on Run fades the sounds and the music out.
 3. **The MacBook.** On its charger, `caffeinate` running, sleep off;
    **Focus → Do Not Disturb all night**. Ollama with `OLLAMA_KEEP_ALIVE=-1`
    and `OLLAMA_MAX_LOADED_MODELS=2`. Trabolta runs on the story mind
@@ -136,7 +139,10 @@ automatic dance). You press **■ Stop house sounds** (Run's header; if the
 server can't be reached, `uv run stagehand sounds stop --announce --config
 trapped.macbook.yaml` from the MacBook, which publishes on the Desktop's
 broker), mute the TV voice (Run → Terminals,
-or `M` on the TV page), then the wall switches.
+or `M` on the TV page: Stop house sounds never touches it), then the wall
+switches. The music stays off until the next act's music cue; to bring it
+back sooner: `uv run stagehand music scene <the current act> --config
+trapped.macbook.yaml` from the MacBook (`music status` shows the scene).
 You stay at the MacBook; the house manager leads people.
 
 **You own:** the blackout safety check (with the house manager), the ad-hijack

@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-    stagehand on the house PC: sync, check, install the Task Scheduler
-    jobs (show + lights + the audio router; -NoAudio leaves the router to
-    the MacBook), show their state.
+    stagehand on the house PC: sync, render the SFX library, check, install
+    the Task Scheduler jobs (show + lights + the audio router; -NoAudio
+    leaves the router to the MacBook), show their state.
 
 .DESCRIPTION
     Every job is `uv run stagehand tasks ...` underneath (stagehand's
@@ -10,7 +10,7 @@
     user's logon, no console window, logs in
     %LOCALAPPDATA%\stagehand\logs\<job>.log.
 
-        .\start-stagehand.ps1                      # uv sync, check, install + start show, lights and audio
+        .\start-stagehand.ps1                      # uv sync, the SFX library, check, install + start show, lights and audio
         .\start-stagehand.ps1 -NoAudio             # show and lights only: the router runs on the MacBook (the fallback)
         .\start-stagehand.ps1 -Check               # stagehand check only
         .\start-stagehand.ps1 -Status              # every task + the last log lines
@@ -25,6 +25,12 @@
     default (2026-10-27). Never run it here AND on the MacBook: two routers
     would speak every announcement twice. -WithAudio is the default now and
     changes nothing (older notes name it).
+
+    Before the check (not with -NoAudio or -Check) it renders the SFX
+    library and the story's stand-ins into stagehand\media
+    (`stagehand sounds library --story`: a file with the same bytes is not
+    rewritten, and a real sound file is never replaced) and makes the empty
+    soundtrack folders media\music\<act>\ for the MP3s (README section 3.4).
 
 .PARAMETER Config
     The machine YAML (default trapped.desktop.yaml in stagehand\).
@@ -88,6 +94,21 @@ if (-not $Check) {
     Push-Location $script:StagehandDir
     try { & $uv sync | Out-Host; $rc = $LASTEXITCODE } finally { Pop-Location }
     if ($rc -ne 0) { Write-Host 'uv sync failed' -ForegroundColor Red; exit $rc }
+}
+
+if (-not $NoAudio -and -not $Check) {
+    # The soundtrack's folders (stagehand\media\soundtrack.yaml's playlists;
+    # git-ignored): made empty here so the MP3s have somewhere to go.
+    $musicDir = Join-Path $script:StagehandDir 'media\music'
+    foreach ($act in $script:MusicFolders) {
+        $d = Join-Path $musicDir $act
+        if (-not (Test-Path -LiteralPath $d)) { $null = New-Item -ItemType Directory -Path $d -Force }
+    }
+    Write-Step 'stagehand sounds library --story (the SFX library + the story stand-ins)'
+    $rc = Invoke-Stagehand @('sounds', 'library', '--story', '--config', $Config)
+    # A failed render never blocks the jobs: the router plays what is there
+    # (a placeholder, or silence for a missing library loop).
+    if ($rc -ne 0) { Write-Host ('sounds library failed (exit ' + $rc + '): the jobs still install; run it again by hand (README section 3.4)') -ForegroundColor Yellow }
 }
 
 Write-Step ('stagehand check --only ' + $only)

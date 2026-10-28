@@ -33,7 +33,7 @@ EVERYWHERE = "everywhere"
 LIGHTS_FILE = "lights.json"
 #: A look name (and so a story `cue X`), never a screens cue family.
 LOOK_RE = re.compile(r"^[a-z][a-z0-9_]*$")
-RESERVED_PREFIXES = ("screens_", "terminals_", "tv_", "tablet_", "room_")
+RESERVED_PREFIXES = ("screens_", "terminals_", "tv_", "tablet_", "room_", "music_")
 
 
 class LightsDocError(ValueError):

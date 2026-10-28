@@ -136,6 +136,10 @@ def test_the_example_config_parses(tmp_path):
     audio = cfg.modules["audio"]
     assert audio.cfg.play_sounds is False and audio.cfg.announce is False
     assert audio.cfg.no_duck == ("dance_song", "rave", "hand_jive") and audio.cfg.duck_hold_s == 7
+    assert audio.cfg.priority == {"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}}
+    assert (audio.cfg.sidechain.threshold_db, audio.cfg.sidechain.attack_s, audio.cfg.sidechain.hold_s, audio.cfg.sidechain.release_s) == (-45, 0.04, 0.8, 1.2)
+    assert audio.cfg.soundtrack is None and audio.music is None  # commented out in the example
+    assert audio.cfg.music_topic == "show/audio/music"
 
 
 # -- the stream --------------------------------------------------------------
@@ -580,7 +584,7 @@ def test_a_held_alexa_lock_blocks_only_the_announcements(tmp_path, caplog):
             if r.played:
                 break
         await asyncio.sleep(0.05)
-        state = (r.engine_running(), r.played, r.announce_state(), r.health()["announce"], list(said), r.mixer.duck_hold > 0 or r.mixer.duck < 1.0)
+        state = (r.engine_running(), r.played, r.announce_state(), r.health()["announce"], list(said), r.mixer.duck_hold > 0 or r.mixer.activity("announce") > 0)
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
         return state
@@ -840,10 +844,97 @@ def test_the_servers_default_doc_with_no_device_name_opens_the_default_output(tm
 def test_health_reports_the_night(tmp_path):
     r = playing(tmp_path)
     r.on_sim({"type": "directive", "verb": "sfx", "args": "zip, rooms: hall"})
-    stream_of(r).pump(200)
+    indata = np.zeros((200, 16), dtype=np.float32)
+    indata[:, 2] = 0.5
+    stream_of(r).pump(200, indata)
     h = r.health()
     assert h["ok"] and h["played"] == 1 and h["config"] == "v1" and h["blocks"] == 1
     assert h["peak_db"] > -20 and "MOTU" in h["device"]
+    # The duplex stream's input meters, by channel; the sources; underruns.
+    assert h["inputs"]["3"] == pytest.approx(-6.0, abs=0.1) and h["inputs"]["1"] == -120.0 and len(h["inputs"]) == 16
+    assert h["sources"] == {"announce": 0.0, "takeover": 0.0} and h["underruns"] == 0
+    json.dumps(h)  # the MQTT stats line
+
+
+# -- priority, the trims, the sidechain (wave 38, C2) -------------------------------------
+
+
+ROLES = [
+    {"ch": 1, "label": "Clippy's mic", "kind": "mic", "role": "clippy", "reach": ["living"]},
+    {"ch": 3, "label": "the TV", "kind": "line", "role": "trabolta"},
+]
+PRIORITY = {"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}}
+
+
+def test_a_speaker_trim_is_the_outputs_and_an_edit_is_heard_on_a_playing_sound(tmp_path):
+    r = playing(tmp_path)
+    write_wav(tmp_path / "sounds" / "bed.wav", seconds=2)
+    r.on_sim({"type": "directive", "verb": "sfx", "args": "bed, rooms: start-bar"})  # bar-1: −3 dB trim
+    s = stream_of(r)
+    out = s.pump(400)
+    assert out[-1, 2] == pytest.approx(0.25 * 10 ** (-3 / 20), rel=0.01)
+    speakers = [{**sp, "gain": -9} if sp["id"] == "bar-1" else sp for sp in FIXTURE["audio"]["speakers"]]
+    assert r.apply(answer("v2", speakers=speakers))
+    out = s.pump(400)  # the trim ramps over 50 ms (400 frames at 8 kHz) …
+    assert out[-1, 2] == pytest.approx(0.25 * 10 ** (-9 / 20), rel=0.01)  # … on the sound already playing
+    assert out[0, 2] > out[-1, 2]
+
+
+def test_the_tv_input_ducks_the_sounds_on_its_reach_and_the_matrix_carries_it(tmp_path):
+    r = playing(tmp_path, priority=PRIORITY, sidechain={"threshold_db": -45, "attack_s": 0.01, "hold_s": 0.1, "release_s": 0.1})
+    write_wav(tmp_path / "sounds" / "bed.wav", seconds=3)
+    # Trabolta's TV on input 3, routed to 1 + 2 (the fixture's route): no
+    # `reach`, so it ducks what its route feeds; Clippy's mic reaches `living`.
+    assert r.apply(answer("v2", inputs=ROLES))
+    r.on_sim({"type": "directive", "verb": "sfx", "args": "bed, rooms: The Desktop start-bar"})  # 1, 2 + 3, 4
+    s = stream_of(r)
+    quiet = s.pump(400)
+    tv = np.zeros((400, 16), dtype=np.float32)
+    tv[:, 2] = 0.3
+    for _ in range(4):
+        out = s.pump(400, tv)
+    duck = 10 ** (-8 / 20)
+    assert out[-1, 3] == pytest.approx(quiet[-1, 3], rel=1e-3)  # the kitchen: off the TV's reach
+    # The living room: the bed ducked −8 dB under Trabolta, his voice on top through the matrix (−6 dB).
+    assert out[-1, 0] == pytest.approx(0.25 * duck + 0.3 * 10 ** (-6 / 20), rel=0.01)
+    assert r.mixer.activity("trabolta") == 1.0 and r.mixer.activity("clippy") == 0.0
+    for _ in range(4):  # he stops: hold 0.1 s, release 0.1 s
+        out = s.pump(400)
+    assert out[-1, 0] == pytest.approx(quiet[-1, 0], rel=1e-3)
+
+
+def test_an_explicit_reach_and_the_check_warnings(tmp_path):
+    roles = [{**ROLES[0], "reach": ["start-bar", "nowhere"]}, ROLES[1], {"ch": 4, "label": "spare", "role": "guest_mic"}, {"ch": 5, "label": "x", "role": "takeover"}]
+    r = router(tmp_path, play_sounds=True, priority=PRIORITY, config_file=_local(tmp_path, inputs=roles))
+    warnings = "\n".join(r.warnings())
+    assert "'guest_mic' has no audio.priority entry" in warnings
+    assert "reach 'nowhere' names no zone" in warnings
+    assert "'takeover': reserved" in warnings
+    assert "'trabolta' has no" not in warnings and "'clippy' has no" not in warnings  # both have a priority row
+    off = router(tmp_path, passthrough=False, priority=PRIORITY, config_file=_local(tmp_path, inputs=ROLES))
+    assert any("need a duplex stream" in w for w in off.warnings())
+    lines = "\n".join(r.describe())
+    assert "priority : trabolta music -18, sfx -8; announce music -15, sfx -12; clippy music -12; takeover silences the music" in lines
+    assert "sidechain: the inputs with a role, over -45 dBFS" in lines
+
+
+def _local(tmp_path, **over) -> str:
+    path = tmp_path / "local-audio.json"
+    path.write_text(json.dumps({**FIXTURE["audio"], **over}))
+    return str(path)
+
+
+def test_a_house_change_rewires_a_reach_that_names_a_location(tmp_path):
+    r = router(tmp_path, priority=PRIORITY, sidechain={"attack_s": 0.01})
+    r.apply(answer("v1", inputs=[{"ch": 2, "label": "m", "role": "clippy", "reach": ["The Tube"]}]))
+    s = stream_of(r)
+    mic = np.zeros((400, 16), dtype=np.float32)
+    mic[:, 1] = 0.5
+    s.pump(400, mic)
+    assert not r.mixer._inputs[0].mask.any()  # no house yet: a LOCATION reaches nothing
+    r.set_house(FIXTURE["house"], persist=False)
+    s.pump(400, mic)
+    assert [i + 1 for i in np.flatnonzero(r.mixer._inputs[0].mask)] == [5, 6]
 
 
 def test_check_compares_the_device_with_the_cached_config(tmp_path, capsys):
@@ -1066,3 +1157,399 @@ def test_run_end_to_end_with_a_fake_server(tmp_path):
 
     r, stream = run(go())
     assert r.played == 1 and r.house == FIXTURE["house"] and stream.closed
+
+
+# -- the soundtrack (wave 38, C3) ----------------------------------------------------------
+
+
+from stagehand.audio.mixer import db_to_lin  # noqa: E402
+from test_audio_soundtrack import Library  # noqa: E402 — the fake tracks
+
+MUSIC_RATE = 8000
+MUSIC = {
+    "level_db": 0,
+    "crossfade_s": 0.05,
+    "scene_fade_s": 0.05,
+    "playlists": {"a": {"dir": "music/a"}, "b": {"dir": "music/b"}, "empty": {"dir": "music/empty"}},
+    "scenes": {
+        "one": [{"to": "everywhere", "play": "a"}, {"to": "The Start Bar", "play": "b"}],
+        "two": [{"to": "everywhere", "play": "b"}, {"to": "The Fan Closet", "play": "a"}],
+        "off": [],
+    },
+    "tracks": {"dance_song": {"takeover": True}, "ghost_track": None},
+}
+
+
+def music_router(tmp_path, soundtrack: dict | None = None, lib: Library | None = None, *, query=None, **over) -> AudioRouter:
+    import random
+
+    import yaml
+
+    for name, files in (("a", ["a1.mp3"]), ("b", ["b1.mp3"])):
+        d = tmp_path / "music" / name
+        d.mkdir(parents=True, exist_ok=True)
+        for f in files:
+            (d / f).write_bytes(b"")
+    (tmp_path / "soundtrack.yaml").write_text(yaml.safe_dump(soundtrack or MUSIC))
+    (tmp_path / "sounds").mkdir(exist_ok=True)
+    section = {
+        "sounds_dir": str(tmp_path / "sounds"),
+        "cache_dir": str(tmp_path / "cache"),
+        "announce_lock_dir": str(tmp_path / "lock"),
+        "soundtrack": "soundtrack.yaml",
+        "rate": MUSIC_RATE,
+        "play_sounds": True,
+        **over,
+    }
+    return AudioRouter(
+        parse_audio_section(section, str(tmp_path)),
+        query=query or fake_query(),
+        stream_factory=lambda **kw: FakeStream(**kw),
+        render_say=lambda text, voice: wav_bytes(0.05),
+        speak_direct=lambda text, voice, device: None,
+        music_streams=lib or Library({"a1": (0.2, 10**7), "b1": (0.4, 10**7)}),
+        music_rng=random.Random(1),
+    )
+
+
+def spin(r: AudioRouter, blocks: int = 10, indata=None) -> np.ndarray:
+    """The director's clock and the stream, block by block."""
+    out = None
+    for _ in range(blocks):
+        r.music.tick()
+        out = stream_of(r).pump(400, indata)
+    return out
+
+
+def test_a_feed_cue_lays_the_scene_on_its_speakers(tmp_path, caplog):
+    r = with_house(music_router(tmp_path))
+    r.apply(answer("v1"))
+    assert r.on_sim({"type": "directive", "verb": "cue", "args": "music_one"}) == "music"
+    out = spin(r)
+    trim = 10 ** (-3 / 20)  # bar-1's −3 dB, the output's
+    assert out[-1] == pytest.approx([0.2, 0.2, 0.4 * trim, 0.4 * trim, 0.2, 0.2, 0.2, *[0.0] * 9], abs=1e-4)  # bar-1 (3, 4) plays b
+    assert r.on_sim({"type": "directive", "verb": "cue", "args": "lights_game"}) is None  # the lights job's
+    with caplog.at_level(logging.WARNING):
+        assert r.on_sim({"type": "directive", "verb": "cue", "args": "music_rave_party"}) is None
+        assert r.on_sim({"type": "directive", "verb": "cue", "args": "music_rave_party"}) is None
+    assert caplog.text.count("rave_party") == 1 and r.music.scene == "one"
+    # A later scene: b everywhere; a only on the Fan Closet, which has no speaker (a warning, no bed).
+    assert r.on_sim({"type": "directive", "verb": "cue", "args": "music_two"}) == "music"
+    out = spin(r)
+    assert out[-1, :7] == pytest.approx([0.4, 0.4, 0.4 * trim, 0.4 * trim, 0.4, 0.4, 0.4], abs=1e-4) and list(r.music.beds) == ["b"]
+
+
+def test_mqtt_music_scene_next_and_stop(tmp_path):
+    async def go():
+        r = with_house(music_router(tmp_path, mqtt={"host": "127.0.0.1"}))
+        r.apply(answer("v1"))
+        r.mqtt = FakeBridge(
+            [
+                ("show/audio/music", b'{"scene": "two"}', True),  # retained: never replayed
+                ("show/audio/music", b'{"scene": "one", "by": "cli"}', False),
+                ("show/audio/music", b"garbage", False),
+            ]
+        )
+        task = asyncio.ensure_future(r._mqtt_loop())
+        await asyncio.sleep(0.02)
+        scene = r.music.scene
+        r.mqtt.queue.put_nowait(("show/audio/music", b'{"next": true}', False))
+        r.mqtt.queue.put_nowait(("show/audio/music", b'{"stop": true}', False))
+        await asyncio.sleep(0.02)
+        task.cancel()
+        return r, scene
+
+    r, scene = run(go())
+    assert scene == "one" and r.music.scene == "off" and r.music.beds == {}
+    assert r._music_live == 2  # the scene and the stop are live: a catch-up in flight loses to them
+
+
+class StateMod(FakeMod):
+    """The server's screen state for the catch-up (+ the poll's answers)."""
+
+    def __init__(self, night=None, error=None, hold: asyncio.Event | None = None):
+        super().__init__([])
+        self.night, self.error, self.hold = night, error, hold
+        self.reads = 0
+
+    async def get(self, path, params=None, timeout=None):
+        if path != "/api/screen/state":
+            return await super().get(path, params, timeout)
+        self.reads += 1
+        if self.hold is not None:
+            await self.hold.wait()
+        if self.error is not None:
+            raise self.error
+        return {"night": self.night} if self.night is not None else {}
+
+
+def test_the_catch_up_reads_night_music_and_a_live_cue_during_the_read_wins(tmp_path):
+    async def go():
+        r = with_house(music_router(tmp_path))
+        r.apply(answer("v1"))
+        r.loop = asyncio.get_running_loop()
+        results = []
+        for mod in (StateMod({"music": "two"}), StateMod({"music": "nope"}), StateMod({"music": None}), StateMod({}), StateMod(error=ModApiError("GET → 404", 404))):
+            r._mod = mod
+            r.music.set_scene("one")
+            results.append(await r.music_catch_up("start"))
+        r._mod = StateMod(error=httpx.ConnectError("down"))
+        r.music.set_scene("one")
+        results.append((await r.music_catch_up("feed"), r.music.scene))
+        # A live cue lands while the state is read: it wins.
+        hold = asyncio.Event()
+        r._mod = StateMod({"music": "two"}, hold=hold)
+        r.music.set_scene("off")
+        task = asyncio.ensure_future(r.music_catch_up("feed"))
+        await asyncio.sleep(0.01)
+        r.on_sim({"type": "directive", "verb": "cue", "args": "music_one"})
+        hold.set()
+        results.append((await task, r.music.scene))
+        return results
+
+    assert run(go()) == ["two", "off", "off", "off", "off", (None, "one"), (None, "one")]
+
+
+def test_a_hand_stop_or_scene_over_mqtt_survives_a_feed_reconnect_catch_up(tmp_path):
+    # C3's ranks: MQTT (2) beats the catch-up (3). A Wi-Fi blip reopens the
+    # feed and catches up; it must not undo the crew's `stagehand music stop`.
+    async def go():
+        r = with_house(music_router(tmp_path))
+        r.apply(answer("v1"))
+        r.loop = asyncio.get_running_loop()
+        r._mod = StateMod({"music": "one"})
+        r.on_sim({"type": "directive", "verb": "cue", "args": "music_one"})
+        r.on_music({"stop": True, "by": "cli"})
+        stopped = (await r.music_catch_up("feed"), r.music.scene)
+        r.on_music({"scene": "two", "by": "cli"})
+        picked = (await r.music_catch_up("feed"), r.music.scene)
+        # The next live cue hands the scene back to the story.
+        r.on_sim({"type": "directive", "verb": "cue", "args": "music_two"})
+        r.music.set_scene("off")
+        story = (await r.music_catch_up("feed"), r.music.scene)
+        # A story restart does too, even after a hand stop.
+        r.on_music({"stop": True})
+        r.on_lifecycle({"kind": "reset"})
+        restart = (await r.music_catch_up("reset"), r.music.scene)
+        return stopped, picked, story, restart
+
+    stopped, picked, story, restart = run(go())
+    assert stopped == (None, "off") and picked == (None, "two")
+    assert story == ("one", "one") and restart == ("one", "one")
+
+
+def test_a_restart_fades_the_beds_and_catches_up_two_seconds_later(tmp_path, monkeypatch):
+    import stagehand.audio.module as module
+
+    monkeypatch.setattr(module, "MUSIC_CATCH_UP_DELAY_S", 0.02)
+
+    async def go():
+        r = with_house(music_router(tmp_path))
+        r.apply(answer("v1"))
+        r.loop = asyncio.get_running_loop()
+        r._mod = StateMod({"music": "two"})
+        r.music.set_scene("one")
+        spin(r, 3)
+        r.on_lifecycle({"kind": "reset"})
+        stopped = (r.music.scene, dict(r.music.beds))
+        out = spin(r, 30)  # 1 s fade at 8 kHz
+        quiet = out[-1].copy()
+        await asyncio.sleep(0.05)
+        return r, stopped, quiet
+
+    r, stopped, quiet = run(go())
+    assert stopped == (None, {}) and not quiet.any()
+    assert r._mod.reads == 1 and r.music.scene == "two"
+
+
+def test_stop_house_sounds_fades_the_beds_and_the_same_scene_comes_back(tmp_path):
+    r = with_house(music_router(tmp_path))
+    r.apply(answer("v1"))
+    r.on_sim({"type": "directive", "verb": "cue", "args": "music_one"})
+    spin(r, 3)
+    assert r.stop_all(by="Run")
+    out = spin(r, 10)
+    assert not out[-1].any() and r.music.scene is None
+    assert r.on_sim({"type": "directive", "verb": "cue", "args": "music_one"}) == "music"
+    assert spin(r)[-1, 0] == pytest.approx(0.2, abs=1e-4)
+
+
+def test_a_story_track_streams_as_a_takeover_and_its_ms_is_the_headers(tmp_path):
+    r = with_house(music_router(tmp_path))
+    write_wav(tmp_path / "sounds" / "dance_song.wav", seconds=2.0, rate=MUSIC_RATE)
+    write_wav(tmp_path / "sounds" / "zip.wav", seconds=0.1, rate=MUSIC_RATE)
+    r.apply(answer("v1"))
+    result, ms = r.play_sound_ms("dance_song")
+    assert result == "played" and ms == pytest.approx(2000, abs=1)
+    voice = next(v for v in r.mixer._live.values() if v.tag == "dance_song")
+    assert voice.stream is not None and voice.takeover and voice.bus == "sfx"
+    voice.stream.close()
+    zip_result, _ = r.play_sound_ms("zip", to=["hall"])
+    plain = next(v for v in r.mixer._live.values() if v.tag == "zip")
+    assert zip_result == "played" and plain.stream is None and not plain.takeover  # not a track: in memory
+    assert r.play_sound_ms("ghost_track")[0] == "no-file"
+
+
+def test_a_track_playing_when_the_stream_reopens_is_closed_with_the_old_mixer(tmp_path):
+    r = with_house(music_router(tmp_path))
+    write_wav(tmp_path / "sounds" / "dance_song.wav", seconds=30.0, rate=MUSIC_RATE)
+    r.apply(answer("v1"))
+    assert r.play_sound_ms("dance_song")[0] == "played"
+    old = r.mixer
+    voice = next(v for v in old._live.values() if v.tag == "dance_song")
+    voice.stream.wait_ready(2.0)
+    spin(r, 3)
+    r.engine.close()  # the watchdog: the MOTU dropped
+    assert r.ensure_engine() and r.mixer is not old
+    voice.stream._thread.join(timeout=1.0)
+    assert voice.stream._closed and voice.stream._file_closed and not voice.stream._thread.is_alive()
+
+
+def test_health_and_the_report_carry_the_music(tmp_path):
+    r = with_house(music_router(tmp_path))
+    r.apply(answer("v1"))
+    r.on_sim({"type": "directive", "verb": "cue", "args": "music_one"})
+    spin(r, 10)
+    h = r.health()
+    assert h["music"]["scene"] == "one" and h["music"]["missing"] == ["empty"]
+    assert h["music"]["beds"][1] == {"playlist": "b", "speakers": ["bar-1"], "track": "b1", "pos_s": 0.5}
+    json.dumps(h)
+    rep = r.report_health(h, {})
+    assert rep["music"] == {
+        "scene": "one",
+        "beds": [{"playlist": b["playlist"], "speakers": b["speakers"], "track": b["track"], "posS": b["pos_s"]} for b in h["music"]["beds"]],
+        "missing": ["empty"],
+    }
+    assert set(rep) >= {"inputs", "sources", "underruns", "music"} and rep["inputs"]["1"] == -120.0
+    assert "music" not in router(tmp_path).report_health(router(tmp_path).health(), {})  # no soundtrack, no field
+
+
+def test_check_lists_the_playlists_and_warns_per_c3(tmp_path):
+    r = music_router(tmp_path, config_file=_local(tmp_path), house_file=None)
+    (tmp_path / "cache").mkdir(exist_ok=True)
+    (tmp_path / "cache" / "house.json").write_text(json.dumps(FIXTURE["house"]))
+    warnings = "\n".join(r.warnings())
+    assert "music: playlist empty has no file" in warnings
+    assert "scene two entry 2 (a): 'The Fan Closet' names no zone, room, LOCATION or speaker" in warnings
+    assert "music: no file for the track(s) dance_song, ghost_track" in warnings
+    lines = "\n".join(r.describe())
+    assert "music    : " in lines and "  a            1 file(s)" in lines and "  empty        0 file(s)" in lines
+
+
+def test_check_says_a_missing_sounds_dir_once_not_again_for_the_tracks(tmp_path):
+    r = music_router(tmp_path, sounds_dir=str(tmp_path / "nowhere"), config_file=_local(tmp_path), house_file=None)
+    warnings = r.warnings()
+    assert any("does not exist" in w and "nowhere" in w for w in warnings)
+    assert not any("no file for the track(s)" in w for w in warnings)
+
+
+def test_check_flags_an_mp3_that_would_stop_at_its_header_guess(tmp_path, monkeypatch):
+    import stagehand.audio.module as module
+
+    asked: list[str] = []
+
+    def fake(path):
+        asked.append(Path(path).name)
+        return f"{Path(path).name}: a VBR MP3 without a length header" if Path(path).name in ("a1.mp3", "zip.mp3") else None
+
+    monkeypatch.setattr(module, "mp3_length_problem", fake)
+    r = music_router(tmp_path, config_file=_local(tmp_path), house_file=None)
+    (tmp_path / "sounds" / "zip.mp3").write_bytes(b"")
+    warnings = r.warnings()
+    assert "audio: music: playlist a: a1.mp3: a VBR MP3 without a length header" in warnings
+    assert "audio: zip.mp3: a VBR MP3 without a length header" in warnings
+    assert asked.count("a1.mp3") == 1 and "b1.mp3" in asked
+
+
+def test_the_run_loop_catches_up_on_start_and_ticks_the_beds(tmp_path):
+    class FeedMod(StateMod):
+        def feed_url(self, client_id="stagehand"):
+            return "fake://feed"
+
+        async def stream(self, url, on_open=None):
+            on_open()  # the feed's connect catches up again
+            await asyncio.sleep(3600)
+            yield "", ""
+
+    class Ctx:
+        mod = FeedMod({"music": "one"})
+
+    Ctx.mod.answers = [answer("v1")]
+
+    async def go():
+        r = music_router(tmp_path)
+        task = asyncio.ensure_future(r.run(Ctx()))
+        for _ in range(100):
+            await asyncio.sleep(0.01)
+            if r.music.beds and r.engine is not None:
+                break
+        for _ in range(5):
+            stream_of(r).pump(400)
+            await asyncio.sleep(0.12)
+        out = stream_of(r).pump(400)
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        return r, out
+
+    r, out = run(go())
+    assert r.music.scene == "one" and Ctx.mod.reads >= 1 and out[-1, 0] == pytest.approx(0.2, abs=1e-4)
+
+
+# -- end to end: the show's audio.json, a bed, the TV and Clippy's mic (C2 + C3) -------------------
+
+
+SHOW_STORY = Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the-internet"
+
+
+def test_the_bed_ducks_under_trabolta_on_his_reach_and_under_clippy_on_the_living_room(tmp_path):
+    """The show's audio.json, a bed everywhere: Trabolta's TV (input 3)
+    ducks the music −18 dB on every speaker (his reach is everywhere; his
+    voice itself is routed everywhere but the sub); Clippy's mic (input 1) ducks it −12 dB on
+    the living room only (Main L/R and the sub); both: the deeper wins."""
+    show = json.loads((SHOW_STORY / "audio.json").read_text(encoding="utf-8"))
+    house = json.loads((SHOW_STORY / "house.json").read_text(encoding="utf-8"))
+    doc = {"level_db": -10, "crossfade_s": 1, "scene_fade_s": 0.01, "playlists": {"a": {"dir": "music/a"}}, "scenes": {"one": [{"to": "everywhere", "play": "a"}]}}
+    r = music_router(
+        tmp_path,
+        doc,
+        Library({"a1": (0.5, 10**8)}),
+        query=fake_query(32, 30, name="MOTU 828x"),  # device.expect: the optical ports on ADAT
+        priority={"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}},
+        sidechain={"threshold_db": -45, "attack_s": 0.04, "hold_s": 0.8, "release_s": 1.2},
+    )
+    r.set_house(house, persist=False)
+    assert r.apply({"audio": show, "version": "show"}) and stream_of(r).kwargs["channels"] == (10, 12)
+    r.on_sim({"type": "directive", "verb": "cue", "args": "music_one"})
+    bed = 0.5 * db_to_lin(-10)
+    quiet = spin(r, 10, np.zeros((400, 10), dtype=np.float32))
+    assert quiet[-1] == pytest.approx([bed, 0, bed, bed, 0, 0, 0, bed, bed, bed, 0, 0], abs=1e-4)  # every speaker's output
+
+    def level(ins: dict[int, float]) -> np.ndarray:
+        indata = np.zeros((400, 10), dtype=np.float32)
+        for ch, v in ins.items():
+            indata[:, ch - 1] = v
+        return spin(r, 4, indata)[-1]  # 0.2 s: past the 40 ms attack
+
+    def settle() -> None:
+        spin(r, 60, np.zeros((400, 10), dtype=np.float32))  # hold 0.8 s + release 1.2 s
+
+    tv = 0.1
+    out = level({3: tv})  # Trabolta talks on the TV: his voice reaches 3, 4, 8, 9, 10 through the matrix
+    for o in (3, 4, 8, 9, 10):
+        assert out[o - 1] - tv == pytest.approx(bed * db_to_lin(-18), rel=0.01), o
+    assert out[0] == pytest.approx(bed * db_to_lin(-18), rel=0.01)  # the sub: not on his route, but on his reach (everywhere)
+    settle()
+    out = level({1: 0.1})  # Clippy's wireless: metered, never routed (CueMix plays it)
+    for o in (1, 9, 10):
+        assert out[o - 1] == pytest.approx(bed * db_to_lin(-12), rel=0.01), o
+    for o in (3, 4, 8):
+        assert out[o - 1] == pytest.approx(bed, rel=1e-3), o
+    settle()
+    out = level({1: 0.1, 3: tv})  # both: the deeper claim on each output
+    for o in (9, 10):
+        assert out[o - 1] - tv == pytest.approx(bed * db_to_lin(-18), rel=0.01), o
+    assert out[0] == pytest.approx(bed * db_to_lin(-18), rel=0.01)
+    assert out[2] - tv == pytest.approx(bed * db_to_lin(-18), rel=0.01)
+    h = r.health()
+    assert h["sources"]["trabolta"] == 1.0 and h["sources"]["clippy"] == 1.0
+    assert h["inputs"]["3"] == pytest.approx(-20.0, abs=0.1) and h["music"]["beds"][0]["speakers"] == ["living-l", "living-r", "living-sub", "kitchen-l", "kitchen-r", "optical-drive"]

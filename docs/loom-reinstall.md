@@ -555,8 +555,8 @@ tolerance: metres, and m² for orientations).
   `LOOM_AUDIO` is the LAN fallback, and `sync-example` merges it like a
   map with its own `--keep-audio` / `--replace-audio`. Routes: `GET | POST
   /api/mod/audio`, `POST /api/mod/audio/{project,test}`
-  (`core/server/audio.ts`); the stagehand `audio` router (John's MacBook by
-  default, or John's Windows Desktop) reads
+  (`core/server/audio.ts`); the stagehand `audio` router (John's Windows
+  Desktop; John's MacBook only in the fallback) reads
   it — [`docs/trapped/room-audio.md`](./trapped/room-audio.md) §11.
 - **The house lights are not in the map either** (wave 20, §1.4).
 

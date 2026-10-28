@@ -2,7 +2,7 @@
 title: Instructions — verbs, cues, and the long form
 section: Language
 order: 19
-keywords: directive, sfx, cue, room cue, room_, room terminal, server room, sound in, rooms, speakers, house speakers, audio.json, zone, L1213, pause, flash, anchor, fire, set, goal, spawn, run, broadcast, angle brackets, luau, extension, instruction, verb, sound, reply, move, add, remove, reveal, do, long form, show, widget, captcha
+keywords: directive, sfx, cue, music, soundtrack, music_, Night.music, playlist, takeover, room cue, room_, room terminal, server room, sound in, rooms, speakers, house speakers, audio.json, zone, L1213, pause, flash, anchor, fire, set, goal, spawn, run, broadcast, angle brackets, luau, extension, instruction, verb, sound, reply, move, add, remove, reveal, do, long form, show, widget, captcha
 ---
 
 An **instruction** is a plain lowercase verb at the start of a line —
@@ -113,6 +113,39 @@ Lint **`L1213 SoundRoomUnresolved`** (a warning) flags a target of
 several words that is no LOCATION — a misspelt place, or two Capitalised
 zones written side by side without a comma. One-word targets live in
 `audio.json`, which the story can't see, so the lint can't check those.
+
+## Music all night: `cue music_<scene>`
+
+The speaker router can also play a **soundtrack**: shuffled playlists
+under every sound, one set per act. The scenes and their playlists live
+in stagehand's `media/soundtrack.yaml`, not in the story. The story only
+picks the scene, with a cue and a mirror beside it (the lights work the
+same way):
+
+```loom
+cue music_act_1
+set Night.music = "act_1"
+```
+
+- A **scene** says which playlist each speaker plays. The speakers that
+  share one form a **bed**: one stream, crossfading track to track. A
+  later entry wins on the speakers it reaches, so one room (the Fan
+  Closet's dryer loop) can play its own thing under an everywhere scene.
+- On a scene change, a bed that keeps its playlist and its speakers
+  plays on untouched; the others fade out and the new ones fade in.
+  `cue music_off` is silence (*Trapped in the Internet* cues it at every
+  ending).
+- A sound the soundtrack lists under `tracks:` (the dance songs, the
+  ceremony bed) **takes over**: the music on its speakers goes quiet
+  while it plays and comes back after.
+- The music ducks under Trabolta's voice, Clippy's mic and the
+  announcements on its own.
+- `Night.music` is what the router reads to catch up after a restart, so
+  always set it with the cue. A cue for an unknown scene is logged once
+  and changes nothing (the music plays on); an unknown `Night.music` after
+  a restart is silence.
+- `music_` is the soundtrack's: no lights look and no house desk cue may
+  start with it.
 
 ## Pictures on a room's terminal: `cue room_*`
 

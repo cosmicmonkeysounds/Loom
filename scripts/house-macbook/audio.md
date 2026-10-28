@@ -31,9 +31,11 @@ story  sound announce_chime   ─┘   Desktop's stagehand show → MQTT show/ch
         │                          (the Desktop's Mosquitto, LAN listener :1884, user props)
         ▼  one output stream on the 828x (audio.json: 10 in / 12 out used)
    voices:  media/sounds/<name>.wav → the audio.json cue's speakers
+   music:   media/music/<act>/ → the soundtrack's beds (wave 38), the
+             scene from `cue music_<scene>` / Night.music
    announce: chime + macOS `say` (Samantha) → audio.json announce.to,
-             the story's sounds ducked −12 dB under it (never dance_song,
-             rave or hand_jive)
+             the music ducked −15 dB and the story's sounds −12 dB under
+             it (never dance_song, rave or hand_jive)
    tests:   the map editor's 🔈 → a tone + the speaker's name
    stops:   Run's ■ Stop house sounds / a host phone / show/audio/stop
 ```
@@ -52,8 +54,8 @@ Where everything is:
   *The Audio tab*). The repo's copy is
   `core/examples/trapped-in-the-internet/audio.json`.
 - **What the router may do**: the `audio:` section of
-  `stagehand/trapped.house.yaml` (play_sounds, announce, passthrough off,
-  the voice). The MacBook runs **`stagehand/trapped.macbook.yaml`**, which
+  `stagehand/trapped.house.yaml` (play_sounds, announce, the priority
+  ducking, the soundtrack, the voice). The MacBook runs **`stagehand/trapped.macbook.yaml`**, which
   `extends:` the house file, drops its `show:` section (the Desktop runs
   it) and points `audio.mqtt` at the Desktop's broker (`192.168.8.10:1884`,
   user `props`).
@@ -61,8 +63,10 @@ Where everything is:
   holds `server: { event, mod_passcode }`; `trapped.macbook.local.yaml`
   holds the broker password, `audio: { mqtt: { password: "…" } }`.
 - **The sound files**: `stagehand/media/sounds/<name>.wav` (or `.aiff` /
-  `.aif` / `.flac`), git-ignored. `stagehand/media/sounds.yaml` (tracked)
-  lists the 19 story sounds and what each real file should be.
+  `.aif` / `.flac` / `.mp3` / `.ogg`), git-ignored. `stagehand/media/sounds.yaml` (tracked)
+  lists the 19 story sounds and what each real file should be. Also
+  git-ignored: `media/library/` (the synthesized SFX library) and
+  `media/music/<act>/` (the soundtrack's MP3s, `media/soundtrack.yaml`).
 - **The code**: `stagehand/src/stagehand/audio/`.
 - **Logs**: `~/Library/Logs/stagehand/audio.log`.
 
@@ -84,14 +88,22 @@ Where everything is:
    L/R 11–12** (each pair from a front headphone jack); inputs Mic/Gtr 1–2,
    Analog 3–10. S/PDIF 13–14 and the ADAT channels stay unused.
 4. **Live mics are mixed in CueMix FX** (hardware: no latency, no microphone
-   permission for a launchd job). The router opens an output-only stream
-   (`passthrough: false`); CueMix sums the computer's playback with its mix
-   on each output.
+   permission for a launchd job): Clippy's mic (input 1) to the living
+   room, which is Main L/R (9–10) plus the sub on Analog 1 since wave 38.
+   **The fallback is output-only on purpose**: `trapped.macbook.yaml` sets
+   `passthrough: false` (the Desktop's router is duplex), because a launchd
+   job can't be granted the microphone and a duplex stream would read
+   silent inputs with no warning. So on this Mac the TV's input is **not**
+   routed to the house speakers (Trabolta is heard on the TV only: Chrome
+   on the Desktop back to HDMI, the TV's volume up) and **nothing ducks
+   under Trabolta or Clippy**. Announcements still duck the music, and the
+   takeover tracks still silence it. CueMix sums the computer's playback
+   with its mix on each output; leave input 3 out of every CueMix mix.
 5. **The MacBook's own sounds**: System Settings → Sound → *Play sound
    effects through* the internal speakers, and keep the **internal speakers
    the default output**, so a browser tab, the director's Run console or a
-   notification never lands on Analog 1–2 (the living-room speakers). Turn
-   on Do Not Disturb for the night.
+   notification never lands on the 828x. Turn on Do Not Disturb for the
+   night.
 6. **The CoreAudio name**: `cd stagehand && uv run python -m sounddevice`.
    `audio.json` `device.name` is the substring `828x`; if the device shows a
    name without it, fix `device.name` on the Audio tab (or set `device:` in
@@ -122,16 +134,23 @@ Where everything is:
    `lights`) launchd job. Those run on the Desktop now; remove them here or
    every cue fires twice: `uv run stagehand launchd uninstall --job show`
    (and `--job lights`). `uv run stagehand launchd status` lists what is left.
-4. The sound files:
-   `cd stagehand && uv run stagehand sounds placeholders --config trapped.macbook.yaml`
-   writes a labelled placeholder per story sound (a distinct tone, then
-   "Placeholder. printer grind."). Drop the real files in
-   `stagehand/media/sounds/` as they arrive: a real file always wins, and the
-   generator never touches one.
+4. The sound files: copy the Desktop's `stagehand\media\sounds\`,
+   `media\library\` and `media\music\` folders into `stagehand/media/`
+   here (a USB stick, or a share). Or make them here:
+   `cd stagehand && uv run stagehand sounds library --story --config trapped.macbook.yaml`
+   renders the SFX library (with the Fan Closet's dryer loop) and the 13
+   story stand-ins, then `uv run stagehand sounds placeholders --config
+   trapped.macbook.yaml` writes a labelled placeholder for each sound still
+   without a file (the songs). The music is the user's MP3s: they come
+   from the Desktop's `media\music\<act>\`. A real file always wins over a
+   placeholder or a library stand-in, whatever its format, and neither
+   generator ever touches one.
 5. `uv run stagehand check --config trapped.macbook.yaml --only audio` — it
-   shows the device's 32 / 30 against audio.json's 10 / 12 and fails if the
-   layout moved; its warnings list every placeholder still there (the
-   pre-show gate: none on the night). It must print **no `PLACEHOLDER
+   shows the device's 32 / 30 against audio.json's 10 / 12 (`output-only`)
+   and fails if the layout moved; its warnings list every placeholder
+   still there (the pre-show gate: none on the night), every empty music
+   folder, and the audio.json roles an output-only stream can't meter
+   (expected here). It must print **no `PLACEHOLDER
    server.…` line** (else step 2's overlay is missing). A warning that
    *the cached audio.json … is older than config_file* means an old
    router's cache is still there: delete

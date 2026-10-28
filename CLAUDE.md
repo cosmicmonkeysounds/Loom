@@ -41,7 +41,7 @@ crates are the original one and lag far behind it.
 | `bank/` | `@loom/bank`: the `.loombank` compiler and the normative reference interpreter | `bank/CLAUDE.md` |
 | `engines/godot/` | The GDScript runtime + Godot addon, conformance-tested against `bank` | `engines/godot/CLAUDE.md` |
 | `desktop/` | `loom-desktop`: the editor in a Tauri 2 shell, with the Godot integration | `desktop/README.md` |
-| `stagehand/` | Python (uv) live-event bridge: `agents` (Trabolta's voice), `show`, `lights`, `audio` | `stagehand/CLAUDE.md` |
+| `stagehand/` | Python (uv) live-event bridge: `agents` (Trabolta's voice), `show`, `lights`, `audio` (the speakers, the soundtrack, the SFX library) | `stagehand/CLAUDE.md` |
 | `hardware/server-room-m4/` | Grand Central M4 firmware: the server-room door sensor and the patch bay | its `README.md` |
 | `hardware/server-room/` | ESP32 firmware. **Not installed** for Oct 31 | its `README.md` |
 | `invite/` | `loom-invite`: the party invitation one-pager | — |
@@ -163,7 +163,7 @@ are in `TECH.md`.
 |---|---|
 | VPS (`app.mapsandducks.com`) | The event server, Postgres, Caddy |
 | John's MacBook (macOS, M3 Max 48 GB) | **Trabolta**: Ollama `gpt-oss:20b` + stagehand `agents` (`stagehand/laptop.yaml`, local); `predeploy` / `ship` / `sync-show` / `showbackup`; a director's Run console. The audio router's fallback host only (`trapped.macbook.yaml`) |
-| John's Desktop (Windows) | **The audio and the lights** (decided 2026-10-27): the audio router (stagehand `audio`) on the MOTU 828x's own outs (no ADAT expander since wave 31); Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs, each paired under its `lights.json` name (no Zigbee groups, scenes or WLED presets: every `lights_*` cue is a `lights.json` look); the living room's WLED (ESP32) strip over Wi-Fi (`wled/living`); Mosquitto (anonymous on 127.0.0.1:1883, password-only `props` on the LAN at :1884); stagehand `show` + `lights` + `audio` as Task Scheduler tasks (`trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, spot `desktop-tv`). Runbook: `scripts/house-desktop/README.md` |
+| John's Desktop (Windows) | **The audio and the lights** (decided 2026-10-27): the audio router (stagehand `audio`) on the MOTU 828x's own outs (no ADAT expander since wave 31), with the living room on Main L/R (outs 9–10) plus the sub on Analog Out 1 (wave 38) and the soundtrack's MP3s in `stagehand/media/music/`; Zigbee2MQTT on the CC2652P stick with the Philips Hue and ThirdReality ZL1 bulbs, each paired under its `lights.json` name (no Zigbee groups, scenes or WLED presets: every `lights_*` cue is a `lights.json` look); the living room's WLED (ESP32) strip over Wi-Fi (`wled/living`); Mosquitto (anonymous on 127.0.0.1:1883, password-only `props` on the LAN at :1884); stagehand `show` + `lights` + `audio` as Task Scheduler tasks (`trapped.desktop.yaml`); the living-room TV over HDMI (Chrome kiosk, spot `desktop-tv`), its sound cabled from the PC's line out into the 828x's Analog In 1 (input 3), which the router plays on every speaker as Trabolta's channel (the TV's own speakers off; input 3 mixed nowhere in CueMix). Runbook: `scripts/house-desktop/README.md` |
 | Steph's laptop | The server-room terminal in Chrome (`…&spot=server-room&door=serial&camera=user`) + the Grand Central M4 over USB (door + patch bay); webcam, monitor, mouse, keyboard |
 | John's old laptop | The tent: `/terminal/?code=<mod>&spot=tent&announce=1`, the reinstall wizard and web game. Needs WebGL2 |
 

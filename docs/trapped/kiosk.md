@@ -67,7 +67,10 @@ A terminal's own speaker plays only **accents**: popup dings, clicks,
 cutscene stingers, the casino's jingles, synthesised in the page and
 dropped while the character speaks. **Every story `sound X` and every
 announcement comes out of the house speakers** (the stagehand `audio`
-router with the MOTU 828x; John's MacBook by default). Nothing on a tablet
+router with the MOTU 828x, on John's Desktop; the MacBook only in the
+fallback). Since wave 38 Trabolta's TV voice plays there too (the
+Desktop's line out is cabled into the 828x), and the TV page's own
+accents are silent. Nothing on a tablet
 plays a story sound. The house speakers are set up in the project file
 `audio.json` (the map editor's 🔊 Audio tab at `/reinstall/map`); the
 contract is [`room-audio.md`](./room-audio.md) §11.

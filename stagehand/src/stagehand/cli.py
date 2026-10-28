@@ -17,6 +17,11 @@
                      write a labelled placeholder per story sound
                      (media/sounds.yaml) into the router's sounds_dir; never
                      touches a real file.
+    stagehand sounds library --config house.yaml [--out DIR] [--only a,b] [--list] [--story]
+                     render the synthesized SFX library (audio/sfx) to
+                     media/library/<category>/<name>.wav; --story also puts
+                     each story sound's stand-in into sounds_dir (over a
+                     placeholder, never a real file).
     stagehand lights test <fixture|look> [--color #rrggbb] [--brightness N] [--off] --config house.yaml
     stagehand lights pair [--seconds 120] --config house.yaml
     stagehand lights devices --config house.yaml
@@ -81,8 +86,8 @@ def main(argv: list[str] | None = None) -> int:
     ann.add_argument("--voice", help="server voice (default: the section's voice)")
     ann.add_argument("--offline", action="store_true", help="don't ask the server — cache, then say")
     ann.add_argument("text", nargs="+")
-    snd = sub.add_parser("sounds", help="the house speaker router by hand: stop, play, placeholders")
-    snd.add_argument("action", choices=("stop", "play", "placeholders"))
+    snd = sub.add_parser("sounds", help="the house speaker router by hand: stop, play, placeholders, library")
+    snd.add_argument("action", choices=("stop", "play", "placeholders", "library"))
     snd.add_argument("name", nargs="?", help="play: the story sound's name")
     snd.add_argument("--config", required=True)
     snd.add_argument("--announce", action="store_true", help="stop: also cut the announcement and empty the queue")
@@ -92,8 +97,10 @@ def main(argv: list[str] | None = None) -> int:
     snd.add_argument("--gain", type=float, metavar="DB", help="play: dB added to the cue's gain (−60…12), as a house desk step's")
     snd.add_argument("--force", action="store_true", help="placeholders: rewrite existing placeholders (never a real file)")
     snd.add_argument("--no-say", action="store_true", help="placeholders: no spoken label (no `say`)")
-    snd.add_argument("--only", help="placeholders: a comma list of names")
-    snd.add_argument("--out", help="placeholders: write here instead of the router's sounds_dir")
+    snd.add_argument("--only", help="placeholders / library: a comma list of names")
+    snd.add_argument("--out", help="placeholders: write here instead of the router's sounds_dir; library: instead of media/library")
+    snd.add_argument("--list", action="store_true", help="library: list the sounds, write nothing")
+    snd.add_argument("--story", action="store_true", help="library: also write each story sound's stand-in (sounds.yaml library:) into sounds_dir")
     snd.add_argument("--manifest", help="placeholders: another manifest (default: media/sounds.yaml)")
     lt = sub.add_parser("lights", help="the house lights by hand, through the server: test, pair, devices")
     lt.add_argument("action", choices=("test", "pair", "devices"))
@@ -103,6 +110,7 @@ def main(argv: list[str] | None = None) -> int:
     lt.add_argument("--brightness", type=int, help="test: publish this brightness (0–254, safety-clamped)")
     lt.add_argument("--off", action="store_true", help="test: publish OFF (a safety fixture stays at its floor)")
     lt.add_argument("--seconds", type=int, default=120, help="pair: how long joining stays open (0 closes it)")
+    _music_parser(sub)
     ld = sub.add_parser("launchd", help="install / restart a module as its own launchd job (macOS)")
     ld.add_argument("action", choices=("install", "uninstall", "restart", "status", "print"))
     ld.add_argument("--job", choices=JOBS, help="which module (status: default every job)")
@@ -137,6 +145,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         only = {"ask": ["agents"], "announce": [_announcer(args.config)], "sounds": ["audio"], "lights": ["lights"]}.get(args.command) or _only(getattr(args, "only", None))
+        if args.command == "music":
+            only = ["audio"]
         cfg = load_config(args.config, only=only)
     except ConfigError as err:
         print(f"config error: {err}", file=sys.stderr)
@@ -150,6 +160,8 @@ def main(argv: list[str] | None = None) -> int:
         return _sounds(cfg, args)
     if args.command == "lights":
         return _lights(cfg, args)
+    if args.command == "music":
+        return _music(cfg, args)
 
     print(_describe(cfg))
     todo = placeholders(cfg.server)
@@ -345,6 +357,10 @@ def _sounds(cfg: StagehandConfig, args: argparse.Namespace) -> int:
         to = [t.strip() for v in args.to for t in v.split(",") if t.strip()]
         gain = {} if args.gain is None else {"gain": max(-60.0, min(12.0, args.gain))}
         return _to_router(router, rc.play_topic, {"name": args.name, **({"to": to} if to else {}), **gain})
+    if args.action == "library":
+        from .audio.sfx.cli import run as library
+
+        return library(args, rc.sounds_dir)
     from .audio.placeholders import MANIFEST, generate, load_manifest
 
     try:
@@ -363,6 +379,78 @@ def _sounds(cfg: StagehandConfig, args: argparse.Namespace) -> int:
         print(f"{action:<5} {name}" + {"keep": " (a real file is there)", "skip": " (a placeholder is there; --force rewrites it)"}.get(action, ""))
     wrote = sum(1 for _, a in done if a == "wrote")
     print(f"{wrote} placeholder(s) written to {out}")
+    return 0
+
+
+def _music_parser(sub) -> None:
+    """`stagehand music scene <name> | next | stop | status` (wave 38, C3)."""
+    mus = sub.add_parser("music", help="the house soundtrack by hand (MQTT): a scene, the next track, stop, status")
+    mus.add_argument("action", choices=("scene", "next", "stop", "status"))
+    mus.add_argument("name", nargs="?", help="scene: the scene's name (soundtrack.yaml; `off` is silence)")
+    mus.add_argument("--config", required=True)
+
+
+def _music(cfg: StagehandConfig, args: argparse.Namespace) -> int:
+    """The soundtrack over the LAN broker, like `sounds play` (the uplink may
+    be down): `scene` / `next` / `stop` publish to the router's music topic;
+    `status` reads its retained `health/audio/stats` (the scene, every bed,
+    the input levels)."""
+    router = cfg.modules["audio"]
+    rc = router.cfg  # type: ignore[attr-defined]
+    st = rc.soundtrack
+    if st is None:
+        print("the audio: section has no soundtrack: — the router plays no music", file=sys.stderr)
+        return 2
+    if args.action == "status":
+        return _music_status(router)
+    if args.action == "scene":
+        if not args.name:
+            print(f"music scene: which one? ({', '.join(sorted({*st.scenes, 'off'}))})", file=sys.stderr)
+            return 2
+        if not st.has_scene(args.name):
+            print(f"music scene: no scene {args.name!r} in {st.path} ({', '.join(sorted({*st.scenes, 'off'}))})", file=sys.stderr)
+            return 2
+        return _to_router(router, rc.music_topic, {"scene": args.name, "by": "cli"})
+    return _to_router(router, rc.music_topic, {args.action: True, "by": "cli"})
+
+
+def _music_status(router) -> int:
+    from .audio.module import STATS_TOPIC
+
+    m = router.cfg.mqtt
+    if m is None:
+        print("the audio: section has no mqtt: broker — the status is the router's retained health/audio/stats", file=sys.stderr)
+        return 2
+    auth = {"username": m.username, "password": m.password} if m.username else None
+    try:
+        raw = READ_RETAINED(STATS_TOPIC, hostname=m.host, port=m.port, client_id=f"{m.client_id}-cli-music", auth=auth)
+    except Exception as err:  # noqa: BLE001 — a refused socket, paho's own errors
+        print(f"no broker at {m.host}:{m.port} ({err})", file=sys.stderr)
+        return 2
+    try:
+        h = json.loads(raw) if raw else None
+    except ValueError:
+        h = None
+    if not isinstance(h, dict):
+        print(f"nothing retained on {STATS_TOPIC} — is the audio job running? {_job_hint('audio')}", file=sys.stderr)
+        return 1
+    music = h.get("music") if isinstance(h.get("music"), dict) else None
+    if music is None:
+        print("the router reports no soundtrack (an older router, or no soundtrack: in its YAML)")
+    else:
+        print(f"scene    : {music.get('scene') or '— (none: stopped, or no cue yet)'}")
+        for b in music.get("beds") or []:
+            print(f"  {b.get('playlist')}: {b.get('track') or '—'} at {float(b.get('pos_s') or 0):.0f}s on {', '.join(b.get('speakers') or [])}")
+        if music.get("missing"):
+            print(f"no files : {', '.join(music['missing'])}")
+    inputs = h.get("inputs") if isinstance(h.get("inputs"), dict) else {}
+    if inputs:
+        print("inputs   : " + "  ".join(f"{ch} {float(db):.0f} dBFS" for ch, db in sorted(inputs.items(), key=lambda kv: int(kv[0]) if str(kv[0]).isdigit() else 0)))
+    else:
+        print("inputs   : — (an output-only stream: nothing metered)")
+    sources = {k: v for k, v in (h.get("sources") or {}).items() if isinstance(v, (int, float)) and v > 0}
+    if sources:
+        print("ducking  : " + ", ".join(f"{k} {v:.0%}" for k, v in sources.items()))
     return 0
 
 

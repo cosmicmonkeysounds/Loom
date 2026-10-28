@@ -34,8 +34,10 @@ export const DESK_ID_RE = /^[a-z0-9][a-z0-9_-]*$/u;
 export const DESK_EVENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 /** A sound name, as `sound X` writes it (the router's file name). */
 export const DESK_SOUND_RE = /^[A-Za-z_][A-Za-z0-9_.-]*$/u;
-/** Cue families a desk cue id may never start with (they are the screens'). */
-export const DESK_RESERVED_PREFIXES = ["screens_", "terminals_", "tv_", "tablet_", "room_"] as const;
+/** Cue families a desk cue id may never start with: the screens', and (wave
+ *  38) `music_`, the soundtrack's scenes (the router takes every `cue
+ *  music_<scene>`, so a desk cue named so would fire with a scene change). */
+export const DESK_RESERVED_PREFIXES = ["screens_", "terminals_", "tv_", "tablet_", "room_", "music_"] as const;
 /** The story's announcement chime: rung with the announcements, never as a cue. */
 export const DESK_CHIME_SOUND = "announce_chime";
 export const DESK_MAX_CUES = 200;
@@ -262,7 +264,7 @@ export function validateDesk(raw: unknown, refs: DeskRefs = {}): DeskValidation 
     else {
       if (seen.has(id)) problems.push(`${named}: the id is used twice`);
       seen.add(id);
-      if (DESK_RESERVED_PREFIXES.some((p) => id.startsWith(p))) problems.push(`${named}: ids starting ${DESK_RESERVED_PREFIXES.join(" / ")} are the screens' cues`);
+      if (DESK_RESERVED_PREFIXES.some((p) => id.startsWith(p))) problems.push(`${named}: ids starting ${DESK_RESERVED_PREFIXES.join(" / ")} are the screens' cues or the soundtrack's scenes`);
       if (refs.looks !== undefined && refs.looks.includes(id)) problems.push(`${named}: a lights look has this name too (\`cue ${id}\` would play both)`);
     }
     if (typeof c["name"] !== "string" || c["name"].trim() === "") problems.push(`${named}: name must be text`);
@@ -690,6 +692,13 @@ export interface DeskAudioHealth {
   placeholders: string[];
   /** How many sound files it has. */
   files: number;
+  /** (wave 38) The soundtrack's scene, its beds and the playlists with no
+   *  file; each input's peak (dBFS) and each ducking source's activity
+   *  (0..1); stream underruns. Absent from an older router. */
+  music?: { scene: string | null; beds: Array<{ playlist: string; speakers: string[]; track: string | null; posS: number }>; missing: string[] };
+  inputs?: Record<string, number>;
+  sources?: Record<string, number>;
+  underruns?: number;
 }
 
 export interface DeskPresence {

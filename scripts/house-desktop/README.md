@@ -23,7 +23,7 @@ cross-machine diagnostics (`pnpm showctl …`) in
 
 | Machine | Runs |
 |---|---|
-| **John's Desktop** (Windows, this folder) | the **sound**: stagehand **`audio`** (the router) on the **MOTU 828x** (its own outs, no ADAT expander) over USB 2, through ASIO · the **lights**: **Zigbee2MQTT** on the CC2652P stick (`COMn`) with the Hue and ZL1 bulbs, the living room's **WLED** strip on its ESP32 controller (Wi-Fi), stagehand **`lights`** (`lights.json`: every bulb, the strip and the story's `lights_*` looks) · stagehand **`show`** (Trabolta's room cuts and the flicker bulb by bulb, the sensors back, the `do announce` relay) · **Mosquitto**, the house broker (anonymous `127.0.0.1:1883`, password-only `props` on the LAN at `:1884`) · the **TV**: Chrome kiosk over HDMI, spot `desktop-tv` |
+| **John's Desktop** (Windows, this folder) | the **sound**: stagehand **`audio`** (the router) on the **MOTU 828x** (its own outs, no ADAT expander) over USB 2, through ASIO: every story sound, the announcements, the house soundtrack (wave 38) and Trabolta's TV voice on every speaker (the TV's sound is cabled into the 828x, §3.5) · the **lights**: **Zigbee2MQTT** on the CC2652P stick (`COMn`) with the Hue and ZL1 bulbs, the living room's **WLED** strip on its ESP32 controller (Wi-Fi), stagehand **`lights`** (`lights.json`: every bulb, the strip and the story's `lights_*` looks) · stagehand **`show`** (Trabolta's room cuts and the flicker bulb by bulb, the sensors back, the `do announce` relay) · **Mosquitto**, the house broker (anonymous `127.0.0.1:1883`, password-only `props` on the LAN at `:1884`) · the **TV**: Chrome kiosk over HDMI, spot `desktop-tv` |
 | **John's MacBook** (macOS) | **Trabolta**: Ollama `gpt-oss:20b` + stagehand `agents` (`stagehand/laptop.yaml`) · a director's Run console · `scripts/ops/` · the router only as the fallback (`stagehand/trapped.macbook.yaml`) |
 | Steph's laptop | the server-room terminal (Chrome) + the Grand Central M4 on USB |
 | John's old laptop | the tent: `/terminal/?…&spot=tent&announce=1` |
@@ -83,10 +83,12 @@ show's `showctl` diagnostics.
 - **Windows Update → Pause updates** past Nov 1, and set active hours.
 - **Do not disturb on** (Settings → System → Notifications), **system sounds
   off** (Sound → More sound settings → Sounds → *No Sounds*).
-- **Windows' default playback device stays the TV (HDMI)**, never the MOTU:
-  Chrome, a notification or the director's console must never land on the
-  828x's Analog 1–2 (the living-room speakers). The router opens the MOTU
-  itself, through ASIO, whatever the default is.
+- **Windows' default playback device is never the MOTU** (leave it on the
+  TV's HDMI): a notification or a stray app must never land on the 828x
+  (Analog 1 is the living-room sub). The router opens the MOTU itself,
+  through ASIO, whatever the default is. Chrome is the exception: since wave
+  38 its output goes to the PC's line out, which is cabled into the 828x
+  (§3.5).
 
 ## 2. Mosquitto (the house broker)
 
@@ -156,22 +158,41 @@ on the MacBook (§11) and move on.
 - **Main outs and Phones NOT mirrored** (in CueMix): the show uses Main L/R
   and Phones L/R as four separate channels; mirrored, they play the same
   thing.
-- Live mics are mixed in **CueMix FX** (hardware, no latency): the router
-  opens an output-only stream (`passthrough: false`) and CueMix sums the
-  computer's playback with its mix on each output.
+- **CueMix FX**: Clippy's wireless mic (input 1) stays mixed there to the
+  living room's outs, as before (hardware, no latency). The living room is
+  now **Main L/R**: if the old mix sent the mic to Analog 1–2, move it to
+  Main L/R (Analog 1 is the sub now). **Input 3 (the TV) is never in a
+  CueMix mix**: the router routes it, and CueMix would play it a second
+  time. CueMix sums the computer's playback with its mix on each output.
+- **The router opens a duplex stream** (`passthrough: true` since wave 38):
+  10 in / 12 out of the device's 32 / 30, through ASIO. It plays to the
+  outputs, routes the TV's input to the speakers and meters every input,
+  so the music ducks under Trabolta and under Clippy's mic (§3.6).
 
 **Our channel numbers are the 828x's own** (no channel map), as in
 `audio.json`:
 
-| Channels | Outputs |
-|---|---|
-| 1–8 | **Analog 1–8**, the line outs on the back |
-| 9–10 | **Main L/R**, taken from a front headphone jack |
-| 11–12 | **Phones L/R**, taken from the other front headphone jack |
+| Output | On the 828x | Show use |
+|---|---|---|
+| 1 | Analog 1 (back) | the living-room **subwoofer** (speaker `living-sub`, its own trim) |
+| 2 | Analog 2 (back) | spare |
+| 3–4 | Analog 3–4 (back) | the kitchen L/R |
+| 5–7 | Analog 5–7 (back) | the hall (The Tube), the Steam Room, the CPU: no speaker yet |
+| 8 | Analog 8 (back) | The Optical Drive (the mud room) |
+| 9–10 | **Main L/R** | the living room L/R (`living-l`, `living-r`) |
+| 11–12 | **Phones L/R**, a front headphone jack | unused |
 
-Inputs: Mic/Gtr 1–2 (front), Analog 3–10. S/PDIF 13–14 and the ADAT
-channels are left unused. The 5 placed speakers are on channels 1, 2, 3, 4
-and 8 (living room L/R, kitchen L/R, The Optical Drive).
+| Input | On the 828x | Show use |
+|---|---|---|
+| 1 | Mic/Gtr 1 (front) | Clippy's wireless receiver: mixed in CueMix to the living room; the router only meters it (role `clippy`) |
+| 2 | Mic/Gtr 2 (front) | spare |
+| 3 | **Analog In 1** (back) | **the TV**: Chrome's sound from the PC's line out (role `trabolta`, §3.5) |
+| 4–10 | Analog In 2–8 (back) | unused |
+
+S/PDIF and the ADAT channels are left unused. The 6 placed speakers are
+the living room L/R on 9–10 and its sub on 1, the kitchen L/R on 3–4 and
+The Optical Drive on 8. The zone `living` is all three living-room
+speakers. The Fan Closet's speaker is placed later (§8).
 
 ### 3.3 Prove it: one ASIO device, 32 in / 30 out
 
@@ -199,7 +220,8 @@ fails to load. The real event id and passcode come from
 `trapped.house.local.yaml`, §7.)
 
 **The counts must be 32 in / 30 out**, `audio.json`'s `device.expect`
-(the show uses 10 in / 12 out of them). `stagehand check --only audio`
+(the show uses 10 in / 12 out of them; `check` prints `828x on ASIO (10 in
+/ 12 out) duplex`). `stagehand check --only audio`
 (§7) fails, and the router logs `LAYOUT MOVED`, when they differ. Other
 counts mean the sample rate, mirroring or an optical port's format is
 wrong (§3.2): fix the 828x, never the file. If MOTU's ASIO
@@ -214,24 +236,199 @@ voice falls back to the installed female one).
 
 ### 3.4 The sound files
 
-The router plays `stagehand\media\sounds\<name>.wav` (or `.aiff` / `.aif`
-/ `.flac`) for every story `sound <name>`. The folder is git-ignored (the
-real tracks include copyrighted songs). `stagehand\media\sounds.yaml`
-(tracked) lists the 19 story sounds and what each real file should be.
+Three kinds, all git-ignored (the real tracks include copyrighted songs),
+all on this PC only:
+
+| Folder (in `C:\loom\stagehand\media\`) | What | Where it comes from |
+|---|---|---|
+| `library\<category>\` | the **SFX library**: 115 synthesized sounds (sirens, dings, telephony, digital, retro, party, story, ambient loops), 48 kHz WAV | rendered here: `sounds library` (below) |
+| `sounds\` | one file per story `sound <name>` (19 names, `media\sounds.yaml`) | the library's stand-ins, placeholders, then the real files |
+| `music\<act>\` | **the soundtrack**: the user's MP3s, one folder per act (§3.6) | copied in by hand |
 
 ```powershell
 cd C:\loom\stagehand
+uv run stagehand sounds library --story --config trapped.desktop.yaml
 uv run stagehand sounds placeholders --config trapped.desktop.yaml
 ```
 
-writes a labelled placeholder per story sound (a distinct tone, then
-"Placeholder. printer grind." in the SAPI voice). Then **copy the real
-files in** as they arrive, named exactly after the sound
-(`dance_song.wav`, …; 48 kHz is best, others are resampled): a real file
-always wins over a placeholder, and the generator never touches a real
-file. If the files were collected on the MacBook, copy its whole
-`stagehand/media/sounds/` folder over (a USB stick, or a share). `stagehand
-check --only audio` lists every placeholder still left: none on the night.
+- **`sounds library --story`** renders the whole library into
+  `media\library\` (about half a minute; a file with the same bytes is not
+  rewritten, so a re-run changes nothing) and writes the **stand-ins**: the
+  13 story sounds with a library equivalent (`library:` in `sounds.yaml`:
+  `modem_handshake`, `alarm_siren`, `y2k_chime`, …) go into `media\sounds\`
+  as `<name>.wav`. It replaces only a placeholder or an older library file,
+  never a real file. It also writes the Fan Closet's dryer loop
+  (`library\ambient\dryer-tumble.wav`). `.\start-stagehand.ps1` runs it
+  on every install (§7); `.\preflight.ps1` warns when it is missing.
+- **`sounds placeholders`** writes a labelled placeholder for each story
+  sound still without a file (a distinct tone, then "Placeholder. rave." in
+  the SAPI voice): after the stand-ins, that is the 6 songs (`dance_song`,
+  `rave`, `hand_jive`, the two *You're the One* versions, `ceremony_bed`).
+- **Then copy the real files in** as they arrive, named exactly after the
+  sound (`dance_song.wav`, …): a real file always wins over a placeholder
+  or a stand-in, and neither generator ever touches one. `.wav`, `.aiff`,
+  `.aif`, `.flac`, and since wave 38 `.mp3` and `.ogg` (a `.wav` of the same
+  name wins); any rate, resampled. **A real file always beats a stand-in**,
+  whatever its format: drop `ad_jingle.mp3` beside the stand-in
+  `ad_jingle.wav` and the next `sound ad_jingle` plays the MP3 (no need to
+  delete anything; `sounds library --story` never touches a real file).
+  The 13 names with a stand-in: `modem_handshake`, `bingo_start`,
+  `ad_jingle`, `truther_glitch`, `countdown_tick`, `printer_grind`,
+  `beans_spill`, `zip`, `y2k_chime`, `alarm_siren`, `windows_shutdown`,
+  `motorcycle`, `award_fanfare`. The **takeover tracks** (`dance_song`,
+  `rave`, `hand_jive`, `youre_the_one_vocoder`, `youre_the_one_sandy_only`,
+  `ceremony_bed`, `ad_jingle`; `tracks:` in `media\soundtrack.yaml`)
+  stream from the file, so an MP3 is fine for them. If the files were
+  collected on the MacBook, copy its whole `stagehand/media/sounds/` and
+  `media/music/` folders over (a USB stick, or a share).
+- **The music**: drop the MP3s into `media\music\doors\`, `act-1\`,
+  `malware\`, `act-2\`, `act-3\`, `final\`, `ceremony\`, `afterparty\`
+  (`.\start-stagehand.ps1` makes the folders). Any of `.mp3`, `.wav`, `.flac`,
+  `.ogg`, `.aiff`, `.aif`, any sample rate; only the folder itself, no
+  subfolders. A folder is read again at each pass, so a track dropped in
+  mid-show joins the next pass.
+
+`stagehand check --only audio` lists every placeholder still left (none on
+the night), each playlist with its file count (an empty one is a warning:
+that act plays no music), and **a VBR MP3 without a length header** (it
+would stop early: *plays only the first 236 s of 600 s*); re-encode that
+one with the `ffmpeg` line the warning prints (`ffmpeg -i in.mp3 -c:a
+libmp3lame -q:a 2 out.mp3`) and replace the file.
+
+### 3.5 The TV's sound into the 828x (Trabolta on every speaker)
+
+Trabolta speaks from the TV page (Chrome, spot `desktop-tv`). Since wave 38
+he is heard on the TV **and** on every house speaker: Chrome's sound goes
+out of the PC's line out into the 828x, and the router routes it to the
+speakers and ducks the music under it (§3.6). There is no server round
+trip: the router hears the signal itself.
+
+1. **Chrome's output to the line out.** Windows 11: Settings → System →
+   Sound → **Volume mixer**; Windows 10: Settings → System → Sound → **App
+   volume and device preferences**. Chrome shows there only while it plays
+   something: open the TV with `.\tv-kiosk.ps1 -Setup` and press ⚙ → TEST
+   VOICE. Set Chrome's **Output device** to the motherboard's line out (the
+   green jack), or any spare output that is neither HDMI nor the MOTU.
+2. **Cable** the line out (3.5 mm stereo) into the 828x's **rear Analog In
+   1** (input 3) with a 3.5 mm stereo to two 1/4" TS cable: the left plug
+   into Analog In 1, the right one stays loose (Trabolta's voice is the
+   same on both sides).
+3. **The level.** Chrome and the line out near full volume. A TEST VOICE
+   should peak well above −45 dBFS on input 3 (the duck opens over it) and
+   never clip: CueMix's input meter, or `uv run stagehand music status
+   --config trapped.desktop.yaml` (`inputs   : … 3 -18 dBFS …`; it reads the
+   router's health, sent once a minute, and shows the loudest moment since
+   the one before).
+4. **The TV's own speakers get nothing from Chrome.** Chrome is off HDMI
+   (step 1) and the TV's volume is down. Otherwise **Trabolta plays twice**:
+   once from the TV, once from the living-room speakers a moment later.
+5. **CueMix: input 3 is in no mix** (§3.2). The router routes it: the TV
+   row of the map editor's Audio-tab matrix (input 3) feeds outputs 3, 4,
+   8, 9 and 10 (the kitchen, The Optical Drive, the living room L/R; not
+   the sub). A new speaker (the Fan Closet's) needs its cell ticked on that
+   row, then Save to project.
+6. **No other Chrome on this PC during the show.** Windows' per-app output
+   is per program: every Chrome window on this PC plays through the line
+   out into every house speaker. The director's Run console is on the
+   MacBook.
+
+**Unverified on this PC:** that the TV page's device voice (Microsoft
+David or Mark) follows Chrome's per-app output. TEST VOICE must come out of
+the house speakers and not the TV; if it still comes out of the TV, set
+Windows' default output to the line out instead (and keep notifications
+and system sounds off, §1). The TV page's own sound effects are silent
+since wave 38 (only its voice reaches the line out), so a click on the page
+never ducks the music.
+
+In the **MacBook fallback** (§11) the router is output-only: nothing is
+routed from input 3, so set Chrome's output back to HDMI and the TV's
+volume up, or Trabolta is not heard at all.
+
+### 3.6 The soundtrack and who ducks what
+
+The router plays **music all night** on its `music` bus, under every story
+sound and announcement: one set per act, shuffled (a new order each pass,
+never the same track twice in a row), crossfading over 3 s, at −10 dB
+(`media\soundtrack.yaml`, tracked; `docs/loom-w38-contract.md` C3). The
+story picks the set: `cue music_<scene>` at each act change, mirrored in
+`Night.music`, which the router reads back after a restart or a reconnect.
+
+| Scene | Folder | Starts at |
+|---|---|---|
+| `doors` | `music\doors\` | Power On (🚪 Open the doors) |
+| `act_1` | `music\act-1\` | the call to the Desktop (or an early Bingo) |
+| `malware` | `music\malware\` | the Ad Hijack (`ad_jingle` takes the speakers first) |
+| `act_2` | `music\act-2\` | the five-minute warning (or an early Truth Pong) |
+| `act_3` | `music\act-3\` | the Y2K clock |
+| `final` | `music\final\` | the final reveal |
+| `off` | — | every ending: silence |
+| `ceremony` | `music\ceremony\` | the ceremony (`ceremony_bed` takes the living room while it plays) |
+| `afterparty` | `music\afterparty\` | the resurrection, to the end of the night |
+
+**Per room.** Each scene says which playlist each speaker plays: today
+every scene is its act's playlist everywhere, plus the dryer loop
+(`fan_closet`, the synthesized `dryer-tumble`) in The Fan Closet, which
+runs on untouched across the acts. Until the Fan Closet's speaker is
+placed, that entry reaches no speaker: `check` warns once (*The Fan Closet
+reaches no wired speaker (in 8 scenes …)*), never a failure.
+
+**Takeover tracks.** A story `sound` listed under `tracks:` (the songs,
+`ceremony_bed`, `ad_jingle`) silences the music on the speakers it plays
+on, and the music comes back over about 2 s after it ends.
+
+**Priority.** At full strength, the music ducks:
+
+| Under | Music | Story sounds | Where |
+|---|---|---|---|
+| **Trabolta** (the TV, input 3) | −18 dB | −8 dB | every speaker, the sub too |
+| **an announcement** | −15 dB | −12 dB | where the announcement plays (`announce.to`: everywhere) |
+| **Clippy's mic** (input 1) | −12 dB | — | the living room (L, R, sub) |
+
+The deepest duck on a speaker wins. A source opens when its input's peak
+goes over the sidechain threshold, holds 0.8 s after the last loud
+moment and lets go over 1.2 s (`audio.priority` and `audio.sidechain` in
+`trapped.house.yaml`). `dance_song`, `rave` and `hand_jive` are never
+ducked. Trabolta cannot duck Clippy: the mic is in CueMix, outside the
+router.
+
+**Set Clippy's threshold at the rehearsal.** The TV's line is clean, so
+its threshold is low (−45 dBFS). Clippy's lav hears the party, so his has
+its own: `audio.sidechain.roles.clippy.threshold_db`, −30 dBFS in
+`trapped.house.yaml`, a guess. At the tech rehearsal: the music at party
+level, people talking, the lav on and silent for a minute; read input 1
+in `stagehand music status` (the loudest moment of the last minute), and
+set the threshold about 6 dB above it. Edit that line in
+`stagehand\trapped.house.yaml` (a `.local.yaml` may not set it; the value
+is no secret, so commit it):
+
+```yaml
+    roles:
+      clippy: { threshold_db: -24 }
+```
+
+then `.\start-stagehand.ps1 -Restart audio`. Too low and the living room's music stays ducked all
+night; too high and it doesn't duck while he talks. `check` prints the
+result (`sidechain: … clippy over -24 dBFS …`).
+
+**By hand** (over this PC's broker, so it works with the uplink down):
+
+```powershell
+uv run stagehand music status --config trapped.desktop.yaml       # the scene, each bed's track, the input levels, who is ducking
+uv run stagehand music scene act_2 --config trapped.desktop.yaml  # any scene in soundtrack.yaml; `off` is silence
+uv run stagehand music next --config trapped.desktop.yaml         # skip the current track everywhere
+uv run stagehand music stop --config trapped.desktop.yaml         # scene off
+```
+
+- A **hand `music scene` or `music stop` holds** until the next music cue
+  the story sends live (the next act), a story restart or a router
+  restart; a feed reconnect does not undo it.
+- **■ Stop house sounds** (Run, a host phone, `sounds stop`) fades the
+  music out too. It stays off until the next act's music cue, a `music
+  scene <name>`, or the router's catch-up after a restart or a reconnect.
+  To bring it back at once: `music scene <the current act>`. It never
+  touches the TV's route: Trabolta still plays on the speakers (`M` on
+  the TV page mutes him).
+- `pnpm showctl doctor` prints the scene and the input levels too.
 
 ## 4. Zigbee2MQTT on the CC2652P
 
@@ -515,7 +712,7 @@ server: { event: <the live event's id>, mod_passcode: "<the mod passcode>" }
 and `trapped.desktop.local.yaml` with the MOTU's ASIO name (§3.3). Then:
 
 ```powershell
-.\start-stagehand.ps1            # uv sync, check, install + start the show, lights and audio tasks
+.\start-stagehand.ps1            # uv sync, render the SFX library, check, install + start the show, lights and audio tasks
 .\start-stagehand.ps1 -Status    # every task + the last lines of each log
 .\start-stagehand.ps1 -NoAudio   # show + lights only (the router runs on the MacBook: §11)
 ```
@@ -527,16 +724,25 @@ launchd jobs: started at sign-in in your session (ASIO needs it), no
 console window, normal priority, restarted within a minute if it dies.
 Logs: `%LOCALAPPDATA%\stagehand\logs\<job>.log`.
 
-`check --only show,lights,audio` (the script runs it before installing)
-must show the MOTU with **32 in / 30 out** and no `PLACEHOLDER server.…`
-line; its warnings list each placeholder sound still left. Then, with the
-router up:
+Before the check the script renders the SFX library and the story's
+stand-ins (`sounds library --story`, §3.4; unchanged files are not
+rewritten) and makes the empty `media\music\<act>\` folders; `-NoAudio`
+skips both. `check --only show,lights,audio` (the script runs it before
+installing) must show the MOTU with **32 in / 30 out** (`duplex`) and no
+`PLACEHOLDER server.…` line. Its warnings list each placeholder sound
+still left, each empty music folder, any VBR MP3 without a length header
+and The Fan Closet reaching no speaker (expected until it is placed); its
+`priority :`, `sidechain:` and `music    :` lines show the ducking and
+every playlist's file count. Then, with the router up:
 
 ```powershell
 cd C:\loom\stagehand
 uv run stagehand announce --config trapped.desktop.yaml "Test."               # chime + the line on announce.to
 uv run stagehand sounds play printer_grind --config trapped.desktop.yaml      # one story sound
 uv run stagehand sounds stop --announce --config trapped.desktop.yaml         # stop everything
+uv run stagehand music scene doors --config trapped.desktop.yaml              # the soundtrack (§3.6)
+uv run stagehand music status --config trapped.desktop.yaml
+uv run stagehand music stop --config trapped.desktop.yaml
 ```
 
 The config is `stagehand/trapped.desktop.yaml`. It **extends**
@@ -554,7 +760,24 @@ project:
   room on its 828x output channel, then **🔈 Test** each one: a tone and its
   name come out of exactly that speaker. Walk every speaker once on this PC
   even if it was tested on the Mac: ASIO's channel order may not be Core
-  Audio's.
+  Audio's. **The sub** (`living-sub`, output 1): its 🔈 Test is a tone
+  around 440 Hz and the speaker's name, which the sub's own low-pass
+  mostly removes, so expect little from it. Test it with music instead:
+  a track in `music\act-1\`, `music scene act_1`, and the bass comes from
+  the sub. Set its level with its own trim on the Audio tab (a trim is
+  heard at once, even on the music). Place **The Fan Closet's speaker**
+  when it is cabled: its output, 🔈 Test, then tick its cell on the TV row
+  (input 3) of the matrix, Save to project; the router re-reads
+  `audio.json` and the dryer loop starts there during a scene.
+- **The TV route** (after §3.5): `music scene act_1`, then a TEST VOICE on
+  the TV (⚙). Trabolta comes out of the living room, the kitchen and The
+  Optical Drive, **not** the TV's own speakers, once, and the music dips
+  under him on every speaker, the sub too. Talk into Clippy's mic: the
+  living room's music dips, the kitchen's does not. `stagehand music
+  status` after the next health (up to a minute) shows inputs 1 and 3
+  over their thresholds on its `inputs` line (and `ducking  : trabolta …`
+  if he is speaking at that moment). Then
+  `music stop`.
 - **Lights**: nothing to place. `lights.json` already holds every bulb of
   §5.4 and the living-room strip, each in its room with its `device` name,
   its safety flag and its floor, plus the zones (`living`, `kitchen`,
@@ -616,8 +839,9 @@ needed:
 
 If the kiosk opens on the wrong screen (display scaling can shift Chrome's
 window position), make the TV the main display (Settings → System → Display
-→ *Make this my main display*) and use `-Display 1`. Sound: Chrome plays to
-Windows' default output — HDMI to the TV's speakers (§1: never the MOTU).
+→ *Make this my main display*) and use `-Display 1`. Sound: Chrome's
+output is the PC's line out, cabled into the 828x, so Trabolta plays on
+the house speakers and not on the TV's own (§3.5; the TV's volume down).
 `M` mutes the TV voice; Run → Terminals shows it.
 
 ## 10. Show night
@@ -631,10 +855,16 @@ Windows' default output — HDMI to the TV's speakers (§1: never the MOTU).
    --only show,lights,audio`, the tasks, the retained `health/stagehand`,
    `health/lights` and `health/audio`, the MOTU's ASIO line, the server's
    `/api/health`, the TV kiosk, then `showctl preflight desktop` (set
-   `$env:LOOM_MOD_CODE` in that window first). Exit 1 on any FAIL. With the
-   router on the MacBook tonight: `.\preflight.ps1 -NoAudio`.
+   `$env:LOOM_MOD_CODE` in that window first), and a warning for each
+   empty music folder. Exit 1 on any FAIL. With the router on the MacBook
+   tonight: `.\preflight.ps1 -NoAudio`.
 3. Run → House → Setup: 🔊, 💡 and 🧠 all green. Run → Terminals: the TV
    live.
+4. The sound: `uv run stagehand music status --config
+   trapped.desktop.yaml` answers with no `no files :` line (scene `off`
+   or none before the doors; `doors` once Power On plays). A TV TEST
+   VOICE plays on the house speakers and ducks the music, and not from
+   the TV's own speakers (§8). Close the TV's ⚙ afterwards.
 
 ## 11. The MacBook fallback (the router on the MacBook)
 
@@ -651,14 +881,22 @@ router: two would each speak every announcement.
    `uv run stagehand launchd install --job audio --config trapped.macbook.yaml`).
    The MacBook dials this PC's broker on `:1884`, so announcements then need
    both machines up.
-3. Copy `stagehand\media\sounds\` to the MacBook.
+3. Copy `stagehand\media\sounds\`, `media\library\` and `media\music\`
+   to the MacBook (or render the library there: `sounds library --story`).
 4. Walk every speaker with 🔈 Test again (Core Audio's channel order).
+   The fallback is **output-only on purpose** (`passthrough: false` in
+   `trapped.macbook.yaml`): nothing is routed from the TV's input and
+   nothing ducks under Trabolta or Clippy (announcements still duck the
+   music, takeover tracks still silence it). So set Chrome's output back to
+   the TV's HDMI here and turn the TV's volume up (§3.5), or Trabolta is
+   not heard.
 5. Preflight with the fallback flag on both machines: `.\preflight.ps1
    -NoAudio` here (it runs `showctl preflight desktop --router macbook`),
    `pnpm showctl preflight macbook --router macbook` there.
 
 To come back: `uv run stagehand launchd uninstall --job audio` on the
-MacBook, then `.\start-stagehand.ps1 -Restart audio` here.
+MacBook, then `.\start-stagehand.ps1 -Restart audio` here, and Chrome's
+output back to the line out with the TV's volume down (§3.5).
 
 ## 12. When something is wrong
 
@@ -674,8 +912,15 @@ MacBook, then `.\start-stagehand.ps1 -Restart audio` here.
 | The WLED strip ignores the story | `mosquitto_sub … -t 'wled/#' -v`; its page → Info | MQTT connected (Info shows it); broker `192.168.8.10`, port `1884`, user `props`; the device topic = the light's `device` |
 | A job keeps dying | `.\start-stagehand.ps1 -Status` (the log) | `.\start-stagehand.ps1 -Stop <job>`, then `-Foreground <job>` to watch it in a window |
 | `config error` / CHANGE-ME | `.\start-stagehand.ps1 -Check` | `stagehand\trapped.house.local.yaml` (§7) |
-| The TV is silent | Run → Terminals (muted?), Windows' default output | `M` unmutes; Settings → Sound (the TV's HDMI); reopen with `.\tv-kiosk.ps1` (autoplay flag) |
-| Every house sound must stop now | — | Run → ■ Stop house sounds; or `uv run stagehand sounds stop --announce --config trapped.desktop.yaml` here |
+| The TV is silent | Run → Terminals (muted?); the house speakers (Trabolta plays there, not on the TV, §3.5) | `M` unmutes; Chrome's output on the line out; reopen with `.\tv-kiosk.ps1` (autoplay flag) |
+| No music | `uv run stagehand music status --config trapped.desktop.yaml`: the scene, `no files :` | no scene (■ Stop house sounds, or no act cue yet): `music scene <the current act>`; an empty folder: copy the MP3s into `media\music\<act>\` (they join at the next pass, or `music next`); `stagehand check --only audio` for a VBR MP3 that stops early |
+| The music doesn't duck under Trabolta | `music status`: input 3 on the `inputs` line after he talks (`—` means an output-only stream) | Chrome's output on the line out and the cable in Analog In 1 (§3.5); the level over −45 dBFS; `passthrough: true` (the house file; the MacBook fallback never ducks) |
+| The music doesn't duck under Clippy, or stays ducked in the living room | `music status`: input 1's peak with the lav idle | the receiver into Mic/Gtr 1; `audio.sidechain.roles.clippy.threshold_db` about 6 dB over the idle peak (§3.6), then `-Restart audio` |
+| Trabolta heard twice (an echo in the living room) | the TV's volume; Windows' Volume mixer; CueMix | Chrome off HDMI and the TV's volume down; input 3 in no CueMix mix (§3.5) |
+| Trabolta not heard on the house speakers | Volume mixer: Chrome's output; CueMix's input 3 meter | Chrome to the line out, the cable into Analog In 1; the TV row of the Audio-tab matrix ticked for each speaker |
+| The Fan Closet is silent | the map's Audio tab; `music status` (`no files : fan_closet`) | place its speaker (§8); render the library (`sounds library --story`, or `.\start-stagehand.ps1`) |
+| A howl, a hum or a buzz on every speaker (the TV route) | pull the cable out of Analog In 1: if it stops, it is the TV's line (while it is out Trabolta is heard nowhere: Chrome back to HDMI and the TV's volume up) | a hum: a ground-loop isolator on the line-out cable; a howl: Chrome's output must not be the MOTU, input 3 in no CueMix mix, and in Windows' Sound → Recording no device has *Listen to this device* ticked. To cut the route without the cable: untick the TV row (input 3) on the map's Audio tab and 💾 Save speakers (the router follows at once). ■ Stop house sounds never touches the route |
+| Every house sound must stop now | — | Run → ■ Stop house sounds; or `uv run stagehand sounds stop --announce --config trapped.desktop.yaml` here (the music too, until the next act's cue or `music scene <name>`). The TV's voice still plays through the house: mute it with `M` on the TV page or Run → Terminals |
 
 The tasks by hand: `uv run stagehand tasks status|restart|stop|uninstall
 --job show|lights|audio` from `C:\loom\stagehand`, or Task Scheduler → `Loom`.

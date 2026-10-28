@@ -18,7 +18,7 @@ code and that file disagree, fix one of them in the same change.
 ## Commands
 
 ```bash
-pnpm --filter @loom/house test        # vitest: 412 passed + 4 skipped, 19 files
+pnpm --filter @loom/house test        # vitest: 419 passed + 4 skipped, 19 files
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate geometry/route/king change
 pnpm --filter @loom/house sync        # copy the show's house.json, goldens and voice vectors into reinstall/vr/
@@ -99,6 +99,28 @@ HouseScene.hearts / .pickups / .ground; HouseScene.setPickupTaken(id, taken): bo
   `VoiceCodec.hears_terminals` / `hears_players`. `house_builder.gd` draws
   the heart (shown only while the King has fallen, always on a map with
   no King) and the floppy disk (hidden once this program took it).
+
+## Wave 38 API (contract `docs/loom-w38-contract.md` C1)
+
+```ts
+// audio.ts — an input drives a priority source (the router's sidechain)
+export const AUDIO_ROLE_PATTERN = /^[a-z][a-z0-9_-]{0,31}$/u;
+export const AUDIO_RESERVED_ROLES = ["announce", "takeover"] as const; // the router's own sources: refused
+export const AUDIO_KNOWN_ROLES = ["trabolta", "clippy"] as const;      // the map editor's picker
+AudioInput.role?: string;    // two inputs may share one (their activity is the max)
+AudioInput.reach?: string[]; // targets as a cue's `to`; absent: the outputs its routes feed, else everywhere
+
+// lights.ts
+LIGHT_RESERVED_PREFIXES += "music_"; // the soundtrack's scenes are never a look
+```
+
+- `validateAudio` refuses a malformed or reserved role and a reach that
+  is not a list of strings; a reach target that reaches no speaker, or
+  `reach: []`, is a warning. An unknown well-formed role is fine (the
+  router ignores a role with no `priority` row). Older files stay valid.
+- stagehand mirrors the role and the reach in `audio/routing.py`
+  (`Input`, `input_reach`, `sidechain_sources`) and `music_` in
+  `lights/routing.py` `RESERVED_PREFIXES`.
 
 ## Test layout
 

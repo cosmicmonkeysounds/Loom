@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DESK_ACK_MS,
+  DESK_RESERVED_PREFIXES,
   DESK_STOP_MS,
   beginRun,
   checkProgress,
@@ -75,6 +76,15 @@ describe("validateDesk", () => {
     expect(v.ok).toBe(false);
     const all = v.problems.join("\n");
     for (const bit of ["cues[0]: id must match", "cue dup: the id is used twice", "cue dup step 1: ms must be whole ms", "kind must be one of", "screens' cues", "text must be what to say", "a lights look has this name too", "to must name some lights", "gain must be -60 to 12 dB", "a sound step has no extra", "no LOCATION Narnia", "lights.json has no look nope", 'start must be "with" or "after"']) expect(all).toContain(bit);
+  });
+
+  it("music_ is the soundtrack's (wave 38): a desk cue may never take a scene's name", () => {
+    expect(DESK_RESERVED_PREFIXES).toContain("music_");
+    const v = validateDesk({ version: 1, cues: [{ id: "music_act_1", name: "act one bed", steps: [{ kind: "wait", ms: 10 }] }] }, {});
+    expect(v.ok).toBe(false);
+    expect(v.problems.join("\n")).toContain("are the screens' cues or the soundtrack's scenes");
+    // Only the prefix: a cue that merely mentions music is fine.
+    expect(validateDesk({ version: 1, cues: [{ id: "dj_music", name: "dj", steps: [{ kind: "wait", ms: 10 }] }] }, {}).problems).toEqual([]);
   });
 
   it("warns about what may still work", () => {

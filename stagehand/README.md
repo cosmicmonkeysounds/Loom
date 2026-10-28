@@ -10,7 +10,7 @@ the YAML switches on a **module**:
 |---|---|---|
 | **show** | `show:` | story → MQTT / OSC cues (Trabolta's room cuts and the flicker, bulb by bulb; the announcement relay); MQTT sensors → journaled story signals |
 | **agents** | `agents:` | voices every `mind: external` character (Trabolta) with a local model through Ollama |
-| **audio** | `audio:` | the house speaker router: every story `sound X`, the house announcements, speaker tests and Run's ■ Stop house sounds, through one multichannel interface (the MOTU 828x on its own outs, no ADAT expander) |
+| **audio** | `audio:` | the house speaker router: every story `sound X`, the house announcements, the soundtrack (music beds per act, ducked under Trabolta, Clippy's mic and the announcements), Trabolta's TV routed to every speaker, speaker tests and Run's ■ Stop house sounds, through one multichannel interface (the MOTU 828x on its own outs, no ADAT expander); also renders the synthesized SFX library |
 | **lights** | `lights:` | plays the event's `lights.json` looks (every story `cue lights_*` and `heart_*`) on Zigbee2MQTT / WLED, bulb by bulb, safety-clamped, with identify / test / pairing from the map editor, and catches the house look up from the screen state's `night.lights` |
 | **alexa** | `alexa:` | **retired for the show** (wave 18b): a standalone announcement player. The router speaks the announcements now; the code stays for a house that wants one |
 
@@ -46,7 +46,8 @@ stagehand: they are terminals in Chrome.
    │  (audio: only the fallback, dialling   │  audio   ─┘ ── MOTU 828x ──► speakers
    │   the Desktop's :1884)                 │  Zigbee2MQTT ── CC2652P ── Hue + ZL1 bulbs
    └────────────────────────────────────────┘  Mosquitto (:1884 for the LAN) ◄── WLED controller (Wi-Fi)
-                                               Chrome kiosk ── HDMI ── the TV
+                                               Chrome kiosk ── HDMI ── the TV (picture)
+                                               Chrome's sound ── line out ── 828x Analog In 1 (input 3)
 ```
 
 **Announcements.** `do announce "…"` reaches the speakers as: the
@@ -116,6 +117,8 @@ survives.
 | `stagehand launchd install\|uninstall\|restart\|status\|print --job show\|agents\|audio\|lights [--config F]` | macOS: one per-user LaunchAgent per module |
 | `stagehand tasks install\|uninstall\|restart\|stop\|status\|print --job … [--config F]` | Windows: one Task Scheduler task per module |
 | `stagehand sounds stop [--announce] \| play <name> [--to T] [--gain DB] \| placeholders [--force] [--no-say] [--only a,b] [--out DIR] --config F` | the router by hand over MQTT, and the labelled placeholder sounds |
+| `stagehand sounds library [--list] [--only a,b] [--out DIR] [--story] --config F` | render the synthesized SFX library into `media/library/`; `--story` also writes each story sound's stand-in into `sounds_dir` (never over a real file) |
+| `stagehand music scene <name> \| next \| stop \| status --config F` | the soundtrack by hand over MQTT; `status` prints the scene, each bed's track, the input levels and who is ducking |
 | `stagehand announce --config F [--no-chime] text…` | one announcement now: through the router over MQTT (or an `alexa:` section's player) |
 | `stagehand lights test <fixture\|look> [--color #rrggbb] [--brightness N] [--off] \| pair [--seconds N] \| devices --config F` | the lights through the event server (the `lights` job must be running) |
 | `stagehand ask --config laptop.yaml [--character C] [--name N] [--var k=v] [--reflect] [--power P] [text…]` | talk to a persona straight through the model, no server |
@@ -312,7 +315,7 @@ restore test.
 | `props/<prop>/…` | story → prop | publish retained so props re-converge |
 | `show/scene`, `show/vibe` | story → all | retained global show state |
 | `show/announce`, `show/chime` | show → router | the house announcements |
-| `show/audio/play`, `show/audio/stop`, `show/audio/test` | anyone on the broker → router | by hand, with the uplink down |
+| `show/audio/play`, `show/audio/stop`, `show/audio/test`, `show/audio/music` | anyone on the broker → router | by hand, with the uplink down |
 | `health/<node>` | LWT | `health/stagehand`, `health/audio`, `health/lights` (`online` / `lost`) |
 
 ## agents — characters with a language model for a mind
@@ -391,14 +394,62 @@ audio:
   sounds_dir: media/sounds   # sound printer_grind → media/sounds/printer_grind.wav|aiff|flac
   play_sounds: true          # the router plays `sound X` (the show module then skips OSC sound cues)
   announce: true             # the router plays `do announce` (no alexa: section allowed beside it)
-  passthrough: false         # output-only: live mics are mixed in CueMix FX
+  passthrough: true          # duplex: the TV's input is routed and every input is metered
+  priority:                  # dB at full activity, per bus (sfx = story sounds, music = the beds)
+    trabolta: { music: -18, sfx: -8 }
+    announce: { music: -15, sfx: -12 }
+    clippy:   { music: -12 }
+  sidechain: { threshold_db: -45, attack_s: 0.04, hold_s: 0.8, release_s: 1.2,
+               roles: { clippy: { threshold_db: -30 } } }
+  soundtrack: media/soundtrack.yaml
 ```
 
 - **One stream** on the device named by `audio.json` `device.name` (a
   substring; `device:` overrides), mixed in numpy (`audio/mixer.py`):
-  voices laid out per speaker, the matrix, an sfx duck under
-  announcements, a master gain and a per-output limiter. A stream that
-  dies is reopened every 2 s.
+  voices laid out per speaker, the matrix, priority ducking, a per-output
+  trim (the speakers' gain, heard at once on a long bed), a master gain
+  and a per-output limiter. A stream that dies is reopened every 2 s.
+- **The rig** (wave 38): the living room is the 828x's Main L/R (outs
+  9–10) plus the sub on Analog Out 1 (its own speaker `living-sub`, its
+  own trim). Chrome's sound on the Desktop (the TV's Trabolta) leaves the
+  PC's line out into the 828x's Analog In 1 (input 3), and the router
+  sends it to every placed speaker but the sub (`audio.json` `routes`); the TV's own speakers
+  get nothing, or he plays twice. Clippy's wireless mic (input 1) stays
+  mixed in CueMix to the living room; the router only meters it. In
+  CueMix, input 3 goes to no output (the router routes it).
+- **Priority ducking**: an `audio.json` input with a `role` (`trabolta`,
+  `clippy`) is a sidechain: its level over `sidechain.threshold_db` (or
+  the role's own) ducks the buses its `priority` row names on the
+  speakers its `reach` covers (the TV everywhere, Clippy the living
+  room). Announcements duck by `priority.announce`; a takeover track
+  silences the music on its speakers. A `no_duck` sound, the
+  announcements, the tests and the live inputs are never ducked. Set
+  Clippy's threshold at rehearsal: the music at party level, the lav
+  idle, read input 1 in `stagehand music status`, set it ~6 dB over.
+  The MacBook fallback is output-only: no TV route and no input ducks.
+- **The soundtrack** (`media/soundtrack.yaml`; the file's header is the
+  guide): a playlist per act (`media/music/doors/`, `act-1/`, `malware/`,
+  `act-2/`, `act-3/`, `final/`, `ceremony/`, `afterparty/`; git-ignored,
+  any of mp3 / wav / flac / ogg / aiff), shuffled and crossfaded,
+  streamed (never decoded whole). The story's `cue music_<scene>` picks
+  the scene; after a restart the router catches up from the screen
+  state's `night.music`. A story sound under `tracks:` (the dance
+  songs, `ceremony_bed`, `ad_jingle`) streams as a takeover: the beds on
+  its speakers fall silent until it ends. An empty folder is a `check`
+  warning and a silent bed (it retries every 10 s). `check` also flags
+  a VBR MP3 with no length header (it would stop early) with the
+  `ffmpeg` line that fixes it. By hand: `stagehand music scene act_1`,
+  which holds until the story's next music cue or a restart.
+- **The SFX library** (`audio/sfx/`): original synthesized sounds
+  (sirens, dings, telephony, digital, retro, party, story stand-ins,
+  ambient loops), 48 kHz WAVs, rendered byte-identically every time:
+  `uv run stagehand sounds library --story --config
+  trapped.desktop.yaml` on the Desktop writes `media/library/` and
+  replaces each story placeholder that has a stand-in. A real file is
+  never replaced, and a real file of any format plays instead of a
+  stand-in beside it (`ad_jingle.mp3` beats the stand-in
+  `ad_jingle.wav`). Look at them with `uv run --with matplotlib python -m
+  stagehand.audio.sfx.inspect --only a,b --out DIR`.
 - **`device.expect`**: the show's 828x must report 32 in / 30 out (both
   optical ports on ADAT, even with no expander plugged in); anything else
   means mirroring, 96 kHz or TOSLink moved the layout, and `check` fails.
@@ -409,13 +460,19 @@ audio:
 - **Announcements**: a chime, then the machine's own voice — macOS `say`
   (`Samantha`) or Windows SAPI (`Microsoft Zira Desktop`;
   `voice_engine: auto` picks per platform) — on `announce.to`, the sounds
-  ducked −12 dB except `no_duck` (`dance_song`, `rave`, `hand_jive`).
+  ducked −12 dB and the music −15 dB (`priority.announce`) except
+  `no_duck` (`dance_song`, `rave`, `hand_jive`).
 - **Placeholders**: `media/sounds.yaml` (tracked) lists the 19 story
   sounds; `stagehand sounds placeholders` writes a labelled stand-in for
-  each, never over a real file. `check` lists every placeholder left.
+  each, never over a real file (a wav, aiff, flac, mp3 or ogg; a `.wav`
+  wins over the others). `check` lists every placeholder left.
 - **Stop all house sounds**: Run's ■, a host's dock or the director phone
-  (`POST /api/mod/audio/stop`); a 0.3 s fade, `--announce` also cuts the
-  line and the queue. On the LAN: `stagehand sounds stop`.
+  (`POST /api/mod/audio/stop`); a 0.3 s fade of the story sounds, the
+  tests and the music beds, `--announce` also cuts the line and the
+  queue. The music stays off until the story's next music cue (or a
+  catch-up after a restart or a reconnect); bring it back sooner with
+  `stagehand music scene <name>`. The TV's route and the live mics are
+  untouched. On the LAN: `stagehand sounds stop`.
 - **The house desk** (wave 25, [`docs/loom-house-desk.md`](../docs/loom-house-desk.md)
   §4): a desk cue's `sound` and `say` steps reach the router as *plays*
   on its poll (`plays=<seq>`). A sound play routes like `sound X with
@@ -430,7 +487,8 @@ audio:
 - **Health**: a line every `health_s`; `health/audio` and the retained
   `health/audio/stats`; the same numbers go to the server's report (the
   desk's chips and checks), with every file in `sounds_dir` and its
-  length. A server too old for the report answers 404: logged once, and
+  length, the soundtrack's scene and beds, the input levels, who is
+  ducking and the underruns (`pnpm showctl doctor` prints them). A server too old for the report answers 404: logged once, and
   the router plays on.
 
 **Windows** (the Desktop, the router's home since 2026-10-27): `host_api: asio`
@@ -457,15 +515,17 @@ and an `alexa:` section beside `audio.announce: true` is a config error
 ## Tests
 
 ```bash
-uv run pytest            # ≈ 1100 tests, a few seconds per file, no hardware
+uv run pytest            # 2193 passed + 4 skipped, ~70 s, no hardware
 ```
 
 Pure units over fakes: the config loader (`extends:`, overlays,
 placeholders), directives, conditions, topics, both maps, the SSE parser,
 the whole agents path (persona, prompts, guards, memos, the wire, the
 judge, answer secrecy, the classic snapshot, the replay harness without a
-model), the router (routing fixtures, the mixer block by block, a fake
-stream and server), the lights (planner fixtures, the module, the CLI),
+model), the router (routing fixtures, the mixer block by block, streams and the
+resampler, the soundtrack, priority ducking end to end on the show's
+`audio.json`, a fake stream and server), every SFX library sound
+(levels, seams, determinism), the lights (planner fixtures, the module, the CLI),
 launchd plists and Task Scheduler XML, the SAPI voice, the PowerShell
 scripts' syntax (`test_house_desktop_scripts.py`), Windows imports, the
 machine files (`test_machine_configs.py`) and the real rig against the

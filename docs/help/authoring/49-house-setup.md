@@ -21,7 +21,9 @@ below); this is the map.
 
 The MacBook can take the sound router instead, if the MOTU misbehaves on
 Windows: `scripts/house-macbook/audio.md`, and the Desktop README's
-*MacBook fallback* section. Only one computer may ever run the router (two
+*MacBook fallback* section. The fallback plays the sounds, the
+announcements and the music, but not the TV's sound, and nothing ducks
+under Trabolta or Clippy there. Only one computer may ever run the router (two
 would say every announcement twice).
 
 The machines, the cables and the open questions: `TECH.md` in the show's
@@ -33,7 +35,13 @@ folder. Every stagehand job and config: `stagehand/README.md`.
    through it: the cues, the announcements, the bulbs, the strip.
 2. **The audio interface**: the 828x powered, its Windows driver proven
    (one ASIO device, 32 in / 30 out: both optical ports set to ADAT even
-   with nothing plugged in, Main and Phones not mirrored).
+   with nothing plugged in, Main and Phones not mirrored). The living
+   room is Main L/R plus the sub on Analog Out 1. Chrome's sound (the
+   TV's Trabolta) goes to the Desktop's line out, cabled into the 828x's
+   Analog In 1, and the TV's own speakers get nothing from Chrome (or he
+   plays twice). In CueMix, Clippy's mic stays mixed to the living room
+   and Analog In 1 goes to no output: the router sends it to every
+   speaker.
 3. **Zigbee2MQTT** on the USB stick, then the **lights job**, then pair
    each bulb (a Hue bulb needs a reset first: Touchlink, its serial
    number, a Hue dimmer or the Hue app, never its switch), give it its
@@ -43,7 +51,10 @@ folder. Every stagehand job and config: `stagehand/README.md`.
    the broker as `wled/living`; no presets.
 4. **stagehand on the Desktop**: `show`, `lights` and `audio`, one
    scheduled task each, with this event's id and the moderator passcode in
-   its local config (never in the repo).
+   its local config (never in the repo). The music goes in
+   `stagehand/media/music/<act>/` (one folder per act: `doors`, `act-1`,
+   …), and `uv run stagehand sounds library --story --config
+   trapped.desktop.yaml` renders the sound effects.
 5. **Check the [house map](39-house-map.md)**: each speaker on its output
    (🔈 Test it). *Trapped in the Internet*'s `lights.json` already places
    every bulb and the strip in its room, with the halls and bathrooms as

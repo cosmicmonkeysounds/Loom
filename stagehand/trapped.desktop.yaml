@@ -55,8 +55,10 @@ lights:
   take_looks: true   # the show job drops any cue rule whose name lights.json defines
 
 # --- the speaker router (its home since 2026-10-27; the MacBook is the fallback) ---
-# Inherited from the house file: play_sounds, announce, passthrough: false,
-# mqtt 127.0.0.1:1883 (right for this PC), audio.json / house.json. The show
+# Inherited from the house file: play_sounds, announce, passthrough: true
+# (duplex: the TV input routed to the speakers, the inputs metered for the
+# priority ducking), priority, sidechain, mqtt 127.0.0.1:1883 (right for
+# this PC), audio.json / house.json. The show
 # job reads `play_sounds` from here, so keep this section even when the
 # router runs on the MacBook. What Windows needs on top
 # (scripts/house-desktop/README.md §3):

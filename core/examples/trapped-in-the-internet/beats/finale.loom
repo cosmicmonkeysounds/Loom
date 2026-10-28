@@ -239,6 +239,8 @@ set Night.phase = "finale_song"
 set Night.step = 19
 cue lights_song
 set Night.lights = "song"
+cue music_off
+set Night.music = "off"
 cue screens_song
 set Night.screen = "song"
 set Night.terminals = "song"
@@ -295,6 +297,8 @@ set Night.ended = true
 set Night.ending = "rave"
 set Night.phase = "finale_rave"
 set Night.step = 19
+cue music_off
+set Night.music = "off"
 broadcast "!🏍 Nobody had the line. Trabolta takes his shot anyway, then rides away forever. You are trapped. PARTY OVER: RAVE." to everyone
 sound youre_the_one_sandy_only
 Trabolta: Well. It's time to still take my shot.

@@ -324,6 +324,8 @@ export function screenChecks(state: Json): Check[] {
   const king = state["king"] as Json | null | undefined;
   if (king) out.push(row("The King", "info", `${num(king["hp"]) ?? "?"}/${num(king["max"]) ?? "?"}${king["fallen"] === true ? " · FALLEN" : ""}${king["armed"] === true ? " · for the code" : ""}`, read));
   if (night["phase"] !== undefined && night["phase"] !== null) out.push(row("Night.phase", "info", String(night["phase"]), read));
+  // Wave 38: the scene the story last cued (the router's catch-up reads it).
+  if (night["music"] !== undefined) out.push(row("Night.music", "info", night["music"] === null ? "none (the router plays off)" : String(night["music"]), read));
   if (night["server_door"] !== null && night["server_door"] !== undefined) out.push(row("Server-room door", "info", `story says ${String(night["server_door"])}`, read));
   if (night["door_override"] === true) out.push(row("Door sensor", "warn", "IGNORED: the story follows the 🚪 buttons (Night.door_override) — 🚪 Trust the door sensor again once it reads right", read));
   if (night["patch_override"] === true) out.push(row("Patch bay", "warn", "IGNORED: the story follows the 🔌 buttons (Night.patch_override) — trust_patch_bay once the bay reads right", read));
@@ -342,6 +344,67 @@ export function audioCheck(view: Json): Check[] {
   else out.push(row("Sound router", "fail", `OFFLINE${num(r["lastSeen"]) !== null ? "" : " (never polled since the server started)"} — no story sound or announcement plays; start the audio job (the Desktop: scripts\\house-desktop\\start-stagehand.ps1 -Status / -Restart audio; the MacBook fallback: stagehand launchd status --job audio)`, read));
   if (problems.length > 0) out.push(row("audio.json", "warn", `${problems.length} problem(s): ${problems.slice(0, 3).join("; ")}`, read));
   else if (warnings.length > 0) out.push(row("audio.json", "info", `${warnings.length} warning(s): ${warnings.slice(0, 2).join("; ")}`, read));
+  out.push(...soundtrackChecks(view));
+  return out;
+}
+
+/** dBFS for a row: one decimal is noise, a whole number reads. */
+const db = (v: number): string => (v <= -120 ? "silent" : `${Math.round(v)} dBFS`);
+
+/**
+ * (wave 38) The router's soundtrack and its sidechain meters, off the audio
+ * view's `health` (the router's last report; absent from an older server or
+ * router, and then no row). The scene and its beds; a playlist with no file
+ * or a stream underrun is amber (a bed is silent, or stuttered). The input
+ * levels are the inputs `audio.json` gives a `role` (Clippy's mic, the TV),
+ * each with its source's activity: the music ducks while it is up.
+ */
+export function soundtrackChecks(view: Json): Check[] {
+  const read = "GET /api/mod/audio";
+  const h = view["health"];
+  if (h === null || typeof h !== "object" || Array.isArray(h)) return [];
+  const health = h as Json;
+  const out: Check[] = [];
+  const music = health["music"];
+  const underruns = num(health["underruns"]);
+  if (music !== null && typeof music === "object" && !Array.isArray(music)) {
+    const m = music as Json;
+    const scene = strOf(m["scene"]);
+    const beds = arr(m["beds"]);
+    const missing = Array.isArray(m["missing"]) ? (m["missing"] as unknown[]).map(String) : [];
+    const bedText = beds
+      .map((b) => {
+        const n = Array.isArray(b["speakers"]) ? (b["speakers"] as unknown[]).length : 0;
+        const track = strOf(b["track"]);
+        return `${String(b["playlist"])} on ${n} speaker(s)${track ? ` (${track})` : ""}`;
+      })
+      .join("; ");
+    const bad = missing.length > 0 || (underruns !== null && underruns > 0);
+    const detail = [
+      scene === null ? "no scene yet" : `scene ${scene}`,
+      beds.length > 0 ? bedText : scene === null || scene === "off" ? null : "no bed playing",
+      missing.length > 0 ? `NO FILES for ${missing.join(", ")} (that bed is silent: put the tracks in stagehand/media/music/)` : null,
+      underruns !== null && underruns > 0 ? `${underruns} underrun(s) (the stream starved: the Desktop is busy, or the files are slow to read)` : null,
+    ]
+      .filter((x) => x !== null)
+      .join(" · ");
+    out.push(row("Soundtrack", bad ? "warn" : "info", detail, read));
+  } else if (underruns !== null && underruns > 0) out.push(row("Soundtrack", "warn", `${underruns} underrun(s)`, read));
+
+  const inputs = health["inputs"];
+  if (inputs !== null && typeof inputs === "object" && !Array.isArray(inputs)) {
+    const levels = inputs as Json;
+    const sources = (health["sources"] !== null && typeof health["sources"] === "object" ? health["sources"] : {}) as Json;
+    const audio = (view["audio"] ?? {}) as Json;
+    const roles = arr(audio["inputs"]).filter((i) => strOf(i["role"]) !== null && num(i["ch"]) !== null);
+    const shown = roles.length > 0 ? roles.map((i) => ({ ch: String(i["ch"]), role: strOf(i["role"]) })) : Object.keys(levels).map((ch) => ({ ch, role: null as string | null }));
+    const parts = shown.map(({ ch, role }) => {
+      const peak = num(levels[ch]);
+      const act = role === null ? null : num(sources[role]);
+      return `${role ?? "in"} ${ch}: ${peak === null ? "not metered" : db(peak)}${act === null ? "" : ` (ducking ${Math.round(act * 100)}%)`}`;
+    });
+    if (parts.length > 0) out.push(row("Sidechain inputs", "info", parts.join(" · "), read));
+  }
   return out;
 }
 

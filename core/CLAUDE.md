@@ -181,6 +181,24 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   dir (kept across restarts and story resets). Neither commits to the
   story. Since wave 33b no client posts `prefs` (VR's snap turn is gone);
   the route stays (additive).
+- **The house soundtrack** (wave 38,
+  [`docs/loom-w38-contract.md`](../docs/loom-w38-contract.md) C3/C5).
+  The story cues `cue music_<scene>` at each act change and mirrors it in
+  `set Night.music = "<scene>"` (the `Night.lights` pattern; `off` at
+  every ending). The screen state's `ScreenNight.music` reads
+  `Night.music` (`SCREEN_NIGHT_VARS.music`; "none" reads null), and the
+  router catches its scene up from it after a restart. `music_` is
+  reserved: never a desk cue id (`DESK_RESERVED_PREFIXES`) or a lights
+  look (`@loom/house` `LIGHT_RESERVED_PREFIXES`, so `server/lights.ts`
+  `storyLooks` never offers a `music_*` cue). `AudioHealth` gains
+  optional `music {scene, beds: [{playlist, speakers, track, posS}],
+  missing}`, `inputs {"<ch>": dBFS}`, `sources {name: 0..1}` and
+  `underruns`, each judged alone (`audioHealthW38Of`: a malformed one is
+  dropped, lists capped, peaks clamped). `AudioView.health` carries the
+  last report minus `sounds` (null before one, absent on `router=1`); the
+  desk's `DeskAudioHealth` carries the same. Tests:
+  `test/trapped-w38-music.test.ts` (the cue / mirror pairs, the scenes,
+  the endings, the out-of-order starts).
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

@@ -181,7 +181,8 @@ While you type, the bar steps aside with the taskbar.
   - **📟 Terminals**: every wall terminal and the TV, red when silent,
     **Identify**, and the TV's mute.
   - **🔊 House sound**: **🔇 Stop all house sounds** fades out every story
-    sound and speaker test playing through the house speakers;
+    sound, speaker test and the music playing through the house speakers
+    (the music comes back at the next act);
     **🔇 + the announcement** also cuts what the house is saying and the
     ones queued behind it. It never touches the TV's voice (its mute is
     above), the terminals or the live mics, and stopping the dance song
@@ -210,11 +211,11 @@ sound, the lights and each outside mind connected, and what to do when
 one isn't) and **Try it** (play a look, a story sound or a line on the
 speakers) are in [The Desk: setup and tests](house-desk.md).
 
-- **The status chips**: the house Mac's router (*🔊 router online*, or
+- **The status chips**: the house sound router (*🔊 router online*, or
   offline), sound files missing or still placeholders, the lights module,
   lights Zigbee2MQTT doesn't know, and problems in the desk itself.
 - **■ STOP ALL** stops every desk cue that is playing **and** the house
-  sounds. Use it whenever something is wrong.
+  sounds, the music too until the next act. Use it whenever something is wrong.
 - **STANDBY** is the cue **GO** plays: its number and name, the operator's
   note, its steps in words and **⚡ Tells the story: …** — the story events
   it fires, so nobody fires them by surprise. GO plays the cue on standby

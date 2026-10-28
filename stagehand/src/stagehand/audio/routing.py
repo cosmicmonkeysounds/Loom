@@ -22,6 +22,14 @@ Names fold like `foldTarget`: case, `_` / `-` and runs of spaces don't
 matter (`The_Desktop` = `the desktop`, `start-bar` = `Start Bar`).
 Speakers come back in the doc's order, outputs ascending, each once.
 `unknown` (router only) lists the targets that name nothing at all.
+
+Wave 38 (C1.1): an input may carry a `role` (the priority source it drives:
+`trabolta`, `clippy`, …) and a `reach` (targets, read like a cue's `to`,
+that source ducks; by default the outputs the input's `routes` feed, else
+everywhere). `sidechain_sources` turns them into the mixer's sources. A
+role that is malformed or reserved (`announce`, `takeover`: the mixer's
+own) is ignored here with a warning (`AudioDoc.warnings`), never a refusal:
+routing works without it.
 """
 
 from __future__ import annotations
@@ -33,6 +41,9 @@ from typing import Any
 EVERYWHERE = "everywhere"
 #: The interface limits `validateAudio` enforces.
 MAX_CHANNELS = 64
+#: An input's `role` (C1.1). `announce` / `takeover` are the mixer's own sources.
+ROLE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
+RESERVED_ROLES = ("announce", "takeover")
 
 
 class AudioDocError(ValueError):
@@ -52,6 +63,17 @@ class Speaker:
     room: str
     out: tuple[int, ...]
     gain_db: float = 0.0
+
+
+@dataclass(frozen=True)
+class Input:
+    ch: int
+    label: str = ""
+    kind: str = ""
+    #: The priority source this input drives (None: it ducks nothing).
+    role: str | None = None
+    #: Targets the source ducks, as a cue's `to` (None: the default, C1.1).
+    reach: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -83,6 +105,8 @@ class AudioDoc:
     outputs: int
     rate: int | None = None
     input_labels: dict[int, str] = field(default_factory=dict)
+    #: The inputs as listed (wave 38: their `role` / `reach`).
+    input_list: tuple[Input, ...] = ()
     output_labels: dict[int, str] = field(default_factory=dict)
     speakers: tuple[Speaker, ...] = ()
     zones: tuple[Zone, ...] = ()
@@ -97,6 +121,9 @@ class AudioDoc:
     #: nothing to compare. (`announce.terminals` is the tablets' list, never
     #: the router's: it is not read here.)
     expect: tuple[int, int] | None = None
+    #: What was read but ignored (a malformed or reserved input role): for
+    #: the router's log and `stagehand check`, never a refusal.
+    warnings: tuple[str, ...] = ()
 
     def speaker(self, sid: str) -> Speaker | None:
         return next((s for s in self.speakers if s.id == sid), None)
@@ -156,9 +183,13 @@ def parse_audio(doc: Any) -> AudioDoc:
     expect = _expect(dev.get("expect"))
 
     input_labels: dict[int, str] = {}
+    input_list: list[Input] = []
+    warnings: list[str] = []
     for i, raw in enumerate(_list(doc, "inputs")):
         if isinstance(raw, dict):
-            input_labels[_ch(raw.get("ch"), f"audio.inputs[{i}].ch", n_in)] = str(raw.get("label") or "")
+            ch = _ch(raw.get("ch"), f"audio.inputs[{i}].ch", n_in)
+            input_labels[ch] = str(raw.get("label") or "")
+            input_list.append(_input(raw, ch, f"audio.inputs[{i}]", warnings))
     output_labels: dict[int, str] = {}
     for i, raw in enumerate(_list(doc, "outputs")):
         if isinstance(raw, dict):
@@ -239,7 +270,28 @@ def parse_audio(doc: Any) -> AudioDoc:
         announce_to=announce_to,
         announce_chime=announce.get("chime") is not False,
         expect=expect,
+        input_list=tuple(input_list),
+        warnings=tuple(warnings),
     )
+
+
+def _input(raw: dict, ch: int, where: str, warnings: list[str]) -> Input:
+    """One input's `role` / `reach`, read leniently (C1.1)."""
+    role = raw.get("role")
+    if role is not None and (not isinstance(role, str) or not ROLE.match(role)):
+        warnings.append(f"{where}.role {role!r}: not a role (a-z, 0-9, _ or -, ≤ 32) — ignored")
+        role = None
+    elif role in RESERVED_ROLES:
+        warnings.append(f"{where}.role {role!r}: reserved for the router's own source — ignored")
+        role = None
+    reach = raw.get("reach")
+    if reach is not None:
+        try:
+            reach = _names(reach, f"{where}.reach")
+        except AudioDocError as err:
+            warnings.append(f"{err} — the default reach")
+            reach = None
+    return Input(ch=ch, label=str(raw.get("label") or ""), kind=str(raw.get("kind") or ""), role=role, reach=reach)
 
 
 def _expect(raw: Any) -> tuple[int, int] | None:
@@ -348,17 +400,70 @@ def split_targets(text: str, audio: AudioDoc, house: Any) -> list[str]:
 
 
 def output_gains(audio: AudioDoc, speakers: tuple[str, ...], gain_db: float = 0.0) -> dict[int, float]:
-    """Output channel → dB for a sound on these speakers: the speaker's own
-    trim plus the cue's gain; two speakers on one output take the louder."""
+    """Output channel → dB for a sound on these speakers: the cue's gain on
+    every output they use. The speakers' own trims are not in it (wave 38):
+    they are the outputs' (`output_trims`, the mixer's `set_trim`), so a
+    trim edit is heard at once on a sound already playing."""
     out: dict[int, float] = {}
     for sid in speakers:
         s = audio.speaker(sid)
         if s is None:
             continue
         for ch in s.out:
-            db = s.gain_db + gain_db
-            out[ch] = max(out.get(ch, -1e9), db)
+            out[ch] = gain_db
     return out
+
+
+def output_trims(audio: AudioDoc) -> dict[int, float]:
+    """Output channel → the trim (dB) of the speaker wired to it; two
+    speakers on one output take the louder. Unwired outputs: none (0 dB)."""
+    out: dict[int, float] = {}
+    for s in audio.speakers:
+        for ch in s.out:
+            out[ch] = max(out.get(ch, -1e9), s.gain_db)
+    return out
+
+
+@dataclass(frozen=True)
+class SourceSpec:
+    """An input-driven priority source as the mixer takes it (C1.1/C2)."""
+
+    name: str
+    inputs: tuple[int, ...]
+    reach: tuple[int, ...]
+
+
+def input_reach(audio: AudioDoc, house: Any, inp: Input) -> tuple[tuple[int, ...], list[str]]:
+    """(the outputs an input's source ducks, warnings). `reach` resolves
+    like a cue's `to`; with none, the outputs its `routes` rows feed; with
+    no route either, everywhere."""
+    warnings: list[str] = []
+    if inp.reach is not None:
+        res = resolve_targets(audio, house, inp.reach)
+        for name in res.unknown:
+            warnings.append(f"input {inp.ch} ({inp.role}) reach {name!r} names no zone, room, LOCATION or speaker")
+        for name in inp.reach:
+            if name not in res.unknown and not resolve_targets(audio, house, [name]).outputs:
+                warnings.append(f"input {inp.ch} ({inp.role}) reach {name!r} reaches no wired speaker")
+        return res.outputs, warnings
+    routed = sorted({o for r in audio.routes if r.inp == inp.ch for o in r.out})
+    if routed:
+        return tuple(routed), warnings
+    return resolve_targets(audio, house, [EVERYWHERE]).outputs, warnings
+
+
+def sidechain_sources(audio: AudioDoc, house: Any) -> tuple[list[SourceSpec], list[str]]:
+    """Every input with a `role` → one mixer source each (two inputs may
+    share a role: the mixer takes the louder), and the reach warnings."""
+    out: list[SourceSpec] = []
+    warnings: list[str] = []
+    for inp in audio.input_list:
+        if inp.role is None:
+            continue
+        reach, notes = input_reach(audio, house, inp)
+        warnings.extend(notes)
+        out.append(SourceSpec(inp.role, (inp.ch,), reach))
+    return out, warnings
 
 
 def speaker_layout(audio: AudioDoc, speakers: tuple[str, ...]) -> tuple[tuple[int, ...], ...]:

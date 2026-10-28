@@ -402,7 +402,7 @@ describe("cues and targets", () => {
     expect(opts.filter((o) => o.kind === "zone").map((o) => o.value)).toEqual(["living"]);
     expect(opts.filter((o) => o.kind === "location").map((o) => o.value)).toEqual(["The Desktop", "The Start Bar"]);
     expect(opts.filter((o) => o.kind === "room")).toHaveLength(h.rooms.length);
-    expect(opts.filter((o) => o.kind === "speaker").map((o) => o.value)).toEqual(["living-l", "living-r", "kitchen-l", "kitchen-r", "optical-drive"]);
+    expect(opts.filter((o) => o.kind === "speaker").map((o) => o.value)).toEqual(["living-l", "living-r", "living-sub", "kitchen-l", "kitchen-r", "optical-drive"]);
     expect(targetChip(opts, "everywhere")).toEqual({ text: "🌐 everywhere", kind: "everywhere" });
     expect(targetChip(opts, "living")).toEqual({ text: "◎ Living room", kind: "zone" });
     expect(targetChip(opts, "the_desktop")).toEqual({ text: "📍 The Desktop", kind: "location" });
@@ -420,13 +420,14 @@ describe("the starter config in the editor", () => {
     const a = normalizeAudio(starter);
     const p = audioProblemList(a, h);
     expect(p.errors).toEqual([]);
-    expect(resolveTargets(a, h, ["living"]).outputs).toEqual([1, 2]);
+    // Wave 38: the living room is Main L/R (9, 10) plus the sub on Analog 1.
+    expect(resolveTargets(a, h, ["living"]).outputs).toEqual([1, 9, 10]);
     // A speaker moved out of its room is an error that selects it; output warnings open the Audio tab.
     const out = { ...a, speakers: a.speakers.map((s) => (s.id === "kitchen-r" ? { ...s, pos: { ...s.pos, x: 99 } } : s)) };
     const bad = audioProblemList(out, h);
     expect(bad.errors[0]!.sel).toEqual({ kind: "speaker", id: "kitchen-r" });
     expect(bad.errors[0]!.text.startsWith("🔊 ")).toBe(true);
-    const free = bad.warnings.find((w) => /outputs 5, 6, .* have no speaker/.test(w.text))!;
+    const free = bad.warnings.find((w) => /outputs 2, 5, 6, .* have no speaker/.test(w.text))!;
     expect(free.sel).toBeNull();
     expect(free.tab).toBe("audio");
     expect(bad.warnings.filter((w) => /(has|have) no speaker/.test(w.text))).toHaveLength(1);

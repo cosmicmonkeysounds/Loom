@@ -363,6 +363,10 @@ describe("the router's plays and report", () => {
     // A story sound the router has no file for reads missing (judged off `sounds`, not `missing`).
     await call(rt, "POST", "/api/mod/audio/report", { health: { ...health, sounds: { zip: 300 } } });
     expect((await deskView(rt)).house.sounds[0]).toMatchObject({ file: "missing", ms: null });
+    expect((await deskView(rt)).house.health).not.toHaveProperty("music"); // an older router
+    // Wave 38: the soundtrack and the meters ride the desk's health too.
+    await call(rt, "POST", "/api/mod/audio/report", { health: { ...health, music: { scene: "doors", beds: [{ playlist: "doors", speakers: ["hall"], track: "a.mp3", pos_s: 3 }], missing: [] }, inputs: { "3": -20 }, sources: { trabolta: 0.5 }, underruns: 0 } });
+    expect((await deskView(rt)).house.health).toMatchObject({ music: { scene: "doors", beds: [{ playlist: "doors", speakers: ["hall"], track: "a.mp3", posS: 3 }] }, inputs: { "3": -20 }, sources: { trabolta: 0.5 }, underruns: 0 });
     expect(v.house.router.online).toBe(true); // a report is the router being there
     expect(v.recent[0]).toMatchObject({ kind: "say" });
     rt.dispose();

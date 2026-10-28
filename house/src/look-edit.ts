@@ -52,7 +52,7 @@ function canonical(look: LightLook, steps: LightStep[]): LightLook {
 /** Why `name` can't be a new look (null: it can). */
 export function lookNameError(lights: LightsConfig, name: string, self?: string): string | null {
   if (name === "") return "a look needs a name (the story's cue name)";
-  if (!isLightLookName(name)) return /^[a-z][a-z0-9_]*$/.test(name) ? `“${name}”: screens_ / terminals_ / tv_ / tablet_ / room_ cues are the screens'` : `“${name}”: lower-case letters, digits and "_", starting with a letter`;
+  if (!isLightLookName(name)) return /^[a-z][a-z0-9_]*$/.test(name) ? (name.startsWith("music_") ? `“${name}”: music_ cues are the soundtrack's` : `“${name}”: screens_ / terminals_ / tv_ / tablet_ / room_ cues are the screens'`) : `“${name}”: lower-case letters, digits and "_", starting with a letter`;
   if (name !== self && Object.prototype.hasOwnProperty.call(lights.looks, name)) return `“${name}” is already a look`;
   return null;
 }

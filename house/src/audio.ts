@@ -38,6 +38,15 @@ export const AUDIO_SPOT_TOLERANCE = 0.05;
 /** What an input carries. */
 export const AUDIO_INPUT_KINDS = ["software", "mic", "line"] as const;
 export type AudioInputKind = (typeof AUDIO_INPUT_KINDS)[number];
+/** (wave 38) An input's `role`: the priority source it drives (the router's
+ *  sidechain ducks the music under it). Lower-case, so a YAML `priority` key
+ *  matches it without folding. */
+export const AUDIO_ROLE_PATTERN = /^[a-z][a-z0-9_-]{0,31}$/u;
+/** Sources the router derives itself (the announcement bus, a takeover track):
+ *  an input claiming one would merge a live mic into them, so it is refused. */
+export const AUDIO_RESERVED_ROLES = ["announce", "takeover"] as const;
+/** The roles the map editor offers by name (any well-formed one is accepted). */
+export const AUDIO_KNOWN_ROLES = ["trabolta", "clippy"] as const;
 
 export interface AudioDevice {
   /** A substring of the CoreAudio device name ("MOTU"). */
@@ -59,6 +68,13 @@ export interface AudioInput {
   ch: number;
   label: string;
   kind: AudioInputKind;
+  /** (wave 38) The priority source this input drives ("trabolta", "clippy"):
+   *  the router meters it and ducks the music under it. Two inputs may share
+   *  one (their activity is the max). Never `announce` / `takeover`. */
+  role?: string;
+  /** (wave 38) The targets (as a cue's `to`) the source ducks. Absent: the
+   *  outputs this input's `routes` rows feed, or `everywhere` with no route. */
+  reach?: string[];
 }
 
 /** One interface output (1-based `ch`). */
@@ -269,6 +285,11 @@ export function validateAudio(audio: unknown, house?: HouseMap | null): AudioVal
       else seen.add(c["ch"] as number);
       if (!isStr(c["label"])) problems.push(`${at}.label must be a string`);
       if (key === "inputs" && !(AUDIO_INPUT_KINDS as readonly unknown[]).includes(c["kind"])) problems.push(`${at}.kind must be ${AUDIO_INPUT_KINDS.map((k) => `"${k}"`).join(" | ")}`);
+      if (key === "inputs" && c["role"] !== undefined) {
+        const role = c["role"];
+        if (!isStr(role) || !AUDIO_ROLE_PATTERN.test(role)) problems.push(`${at}.role must be a lower-case name (a letter, then up to 31 of a-z 0-9 _ -)`);
+        else if ((AUDIO_RESERVED_ROLES as readonly string[]).includes(role)) problems.push(`${at}.role: "${role}" is reserved for the router's own ducking`);
+      }
     });
     return seen;
   };
@@ -371,6 +392,15 @@ export function validateAudio(audio: unknown, house?: HouseMap | null): AudioVal
       if (resolveTargets(config, house, [t]).speakers.length === 0) warnings.push(`${at}: "${t}" reaches no speaker`);
     }
   };
+  // (wave 38) Each input's reach is a target list like a cue's `to`.
+  const inputs = audio["inputs"];
+  if (Array.isArray(inputs))
+    inputs.forEach((c, i) => {
+      if (!isObj(c) || c["reach"] === undefined) return;
+      const at = `inputs[${i}].reach`;
+      if (!Array.isArray(c["reach"]) || c["reach"].some((t) => !isStr(t))) return void problems.push(`${at} must be a list of zones, rooms, LOCATIONs or speakers`);
+      targets(at, c["reach"]);
+    });
   const cues = audio["cues"];
   if (!isObj(cues)) problems.push("cues must be an object {sound name: {to}}");
   else {

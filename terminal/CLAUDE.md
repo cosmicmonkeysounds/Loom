@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 1078 tests, 88 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 1117 tests, 89 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -341,7 +341,11 @@ them out.
 - **Sound.** Terminals play only synthesised accents through `sfx()`,
   dropped while a voice holds the floor. Never play a story `sound X` here;
   those are the house router's. Every voice on the page waits on the one
-  `VoiceFloor`.
+  `VoiceFloor`. **The TV's effects are silent** since wave 38
+  (`sound/bus.ts` `VIEW_VOLUME.tv = 0`): Chrome's sound on the Desktop is
+  cabled into the 828x as Trabolta's channel, which the router plays on
+  every house speaker and ducks the music under, so a TV accent would
+  play house-wide and duck the music like his voice.
 - **Fiction safety.** Nothing names the character before the
   introduction (idle-show copy, scenes with `namesCharacter`). Casino bets
   are never retried. Chess results are retried and kept for 60 s across a

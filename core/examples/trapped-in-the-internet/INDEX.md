@@ -48,9 +48,30 @@ plays), the show's data files, the crew's printed packs, and the docs.
 |---|---|---|
 | `facts.json` | `titi:facts`, the server's judge | The team's one hand-edited facts file: the hunt questions and answer key, the scannable facts in four rarity tiers (`tiers`: common, rare, very rare, legendary; wave 35), the truths, the door code. **Holds secrets** |
 | `house.json`, `house.shed.json` | The server, both reinstallation games, the terminals | The house map (tent night and rain night): rooms, terminal spots, ducks, the King |
-| `audio.json` | The server, the stagehand `audio` router, the map editor | The MOTU's inputs and outputs, the placed speakers, zones, cues |
+| `audio.json` | The server, the stagehand `audio` router, the map editor | The MOTU's inputs and outputs, the placed speakers, zones, cues; since wave 38 the inputs' ducking roles (`trabolta` = the TV on input 3, `clippy` = his mic on input 1) and their `reach`, and the TV's route to the speakers |
 | `lights.json` | The server, the stagehand `lights` module, the map editor | The server-room RGB bulb and its `heart_*` looks |
 | `desk.json` | The server's house desk, Run → House, a host's Desk | Wave 25: the house's own cue list (DRAFT: tech checks only, no show cues yet). Schema: `core/src/house-desk.ts`, contract `docs/loom-house-desk.md` |
+
+### The house soundtrack (outside this folder)
+
+Wave 38 ([`docs/loom-w38-contract.md`](../../../docs/loom-w38-contract.md)).
+The router plays music all night, one set per act; the story only names
+the scene.
+
+| Path | What it is |
+|---|---|
+| `stagehand/media/soundtrack.yaml` | Tracked. The playlists (one folder per act), the scenes (which playlist each speaker plays: the act's everywhere, the dryer loop in The Fan Closet) and the takeover tracks (the songs, `ceremony_bed`, `ad_jingle`) |
+| `stagehand/media/music/<act>/` | Git-ignored, on the router machine only: the user's MP3s, in `doors`, `act-1`, `malware`, `act-2`, `act-3`, `final`, `ceremony`, `afterparty` |
+| `stagehand/media/library/` | Git-ignored: the synthesized SFX library, rendered by `uv run stagehand sounds library --story` (which also writes the 13 story sounds' stand-ins into `media/sounds/`) |
+
+The scenes are cued in `main.loom` (and `beats/finale.loom` for two
+endings): each act change runs `cue music_<scene>` and mirrors it in
+`set Night.music = "<scene>"` (as the lights' `Night.lights`), `off` at
+every ending. The router reads `Night.music` back from the screen
+state after a restart. `music_` is reserved: never a desk cue id or a
+lights look. Pinned by `stagehand/tests/test_trapped_house.py` and
+`core/test/trapped-w38-music.test.ts`. The runbook:
+`scripts/house-desktop/README.md` §3.4–§3.6.
 
 ### Runtime config
 

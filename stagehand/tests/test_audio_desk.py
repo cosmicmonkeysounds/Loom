@@ -396,7 +396,9 @@ def test_the_health_loop_reports_the_stats_and_every_sound_file(tmp_path):
     path, body = mod.posts[0]
     h = body["health"]
     assert path == REPORT and set(body) == {"health"}
-    assert set(h) == {"ok", "device", "layout", "voices", "xruns", "peakDb", "announce", "missing", "placeholders", "sounds"}
+    assert set(h) == {"ok", "device", "layout", "voices", "xruns", "peakDb", "announce", "missing", "placeholders", "sounds", "inputs", "sources", "underruns"}
+    # Wave 38 (C2): the input meters (none pumped yet), the sources, the underruns.
+    assert h["inputs"] == {} and h["sources"] == {"announce": 0.0, "takeover": 0.0} and h["underruns"] == 0
     assert h["ok"] is True and "MOTU" in h["device"] and h["layout"] == "ok" and h["announce"] == "off"
     assert h["sounds"] == {"Motorcycle": 50, "beans_spill": 50, "dance_song": 50, "long": 1500, "printer_grind": 50, "zip": 50}
     assert r.mqtt.published  # the MQTT stats go out as ever

@@ -69,8 +69,9 @@ Quest APK). Verify what runs with
    ```
 
    Then move the CC2652P (and Zigbee2MQTT's `data/`), the MOTU 828x (no
-   ADAT expander since wave 31), and the sound files (`stagehand/media/sounds/`) to the
-   Desktop. `uv run stagehand launchd status` then lists only `agents`.
+   ADAT expander since wave 31), and the sound files (`stagehand/media/sounds/`,
+   and the soundtrack's MP3s in `stagehand/media/music/` if they were
+   collected here) to the Desktop. `uv run stagehand launchd status` then lists only `agents`.
 6. **Desktop, first time only** (`scripts/house-desktop/README.md`): from an
    elevated PowerShell, `.\scripts\house-desktop\setup-mosquitto.ps1` (it
    asks for the `props` password; add `-SetPrivate` if the network is
@@ -81,8 +82,14 @@ Quest APK). Verify what runs with
    `-Check`. The 828x: MOTU's Windows driver, the ASIO proof, both optical
    ports on ADAT and Main / Phones not mirrored (`scripts/house-desktop/README.md` §3), the MOTU's ASIO name in
    `stagehand\trapped.desktop.local.yaml`, and the sound files copied into
-   `stagehand\media\sounds\`. The TV:
-   `.\scripts\house-desktop\tv-kiosk.ps1 -Setup`, then `-InstallTask`.
+   `stagehand\media\sounds\`. Wave 38's cabling (README §3.2, §3.5): the
+   living room on **Main L/R** (outs 9–10) and the **sub** on Analog Out 1;
+   in CueMix, Clippy's mic (input 1) mixed to the living room as before (to
+   Main L/R now) and input 3 in no mix. The TV:
+   `.\scripts\house-desktop\tv-kiosk.ps1 -Setup`, then `-InstallTask`;
+   then Chrome's output to the Desktop's line out (Windows' Volume mixer),
+   the line out cabled into the 828x's rear **Analog In 1** (input 3), and
+   the TV's own volume down, or Trabolta plays twice.
 7. **Desktop, before the sync:** put the real event id and the mod passcode
    in `stagehand\trapped.house.local.yaml` (git-ignored; the tracked file
    says `CHANGE-ME`), `git pull`, then
@@ -94,6 +101,9 @@ Quest APK). Verify what runs with
    speaker survey saved to the project into the repo's `audio.json` (the
    replace below overwrites the project's copy). Then
    `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show --replace-audio`.
+   Wave 38's `audio.json` (the living room on Main L/R + the sub, the TV
+   and Clippy's inputs with their ducking roles, the TV's route) reaches
+   the project only this way: the router plays the project's copy.
    **Add `--replace-lights`** (wave 31): the project's `lights.json` holds
    only the server-room bulb, and the repo's now holds every house bulb,
    the living-room strip and the `lights_*` looks. First Download JSON any
@@ -111,19 +121,37 @@ Quest APK). Verify what runs with
 11. **Desktop, the sound router** (its home since 2026-10-27; the MacBook
     is the fallback, `TECH.md`): with the 828x proven under ASIO (step 6)
     and the `audio` task running from step 7,
+    `start-stagehand.ps1` has rendered the SFX library and the 13 story
+    stand-ins (`uv run stagehand sounds library --story --config
+    trapped.desktop.yaml` by hand; unchanged files are not rewritten);
     `uv run stagehand sounds placeholders --config trapped.desktop.yaml`
-    for any sound with no real file yet;
+    for any sound with no real file yet (the songs); the user's MP3s in
+    `stagehand\media\music\<act>\` (`doors`, `act-1`, `malware`, `act-2`,
+    `act-3`, `final`, `ceremony`, `afterparty`; README §3.4);
     `uv run stagehand check --config trapped.desktop.yaml --only audio`
-    (32 in / 30 out, the layout not moved, no `PLACEHOLDER server.…` line);
+    (32 in / 30 out `duplex`, the layout not moved, no `PLACEHOLDER
+    server.…` line, a file count for every playlist; a VBR MP3 without a
+    length header is re-encoded with the line it prints);
     then `.\scripts\house-desktop\start-stagehand.ps1 -Restart audio` after
     any `git pull`, so the router is wave 26's and says *Anti Virus*. Walk
     every speaker with 🔈 Test on the map's Audio tab (ASIO's channel order),
-    then `uv run stagehand announce --config trapped.desktop.yaml "Test."`.
+    the sub with music (its own trim), then `uv run stagehand announce
+    --config trapped.desktop.yaml "Test."`. **The sidechain walk** (README
+    §8): `uv run stagehand music scene act_1 --config trapped.desktop.yaml`;
+    a TV TEST VOICE plays once on the house speakers (not the TV's) and the
+    music dips under it everywhere, the sub too; Clippy talking dips the
+    living room only. **At the tech rehearsal** set Clippy's threshold:
+    the lav idle with the party on, read input 1 in `stagehand music
+    status`, set `audio.sidechain.roles.clippy.threshold_db` in
+    `stagehand/trapped.house.yaml` about 6 dB above it, commit, `-Restart
+    audio` (README §3.6). Then `music stop`.
     **The fallback** (the 828x won't run on Windows): `-Stop audio` on the
     Desktop, then `scripts/house-macbook/audio.md` on the MacBook (its
     `trapped.macbook.local.yaml` with `server: {}` and the props password,
     `launchd install --job audio --config trapped.macbook.yaml`); both
-    preflights then take `--router macbook` / `-NoAudio`.
+    preflights then take `--router macbook` / `-NoAudio`. The fallback is
+    output-only: no TV route and no ducking under Trabolta or Clippy, so
+    Chrome goes back to HDMI and the TV's volume up.
 12. **Desktop, the lights:** with Zigbee2MQTT up on the CC2652P and the
     `lights` task running (it must run before pairing), pair every bulb
     under its `lights.json` name (`server_room_rgb`, `living_1`…, the
@@ -265,7 +293,15 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 - The `show`, `lights` and `audio` tasks run
   (`.\scripts\house-desktop\start-stagehand.ps1 -Status`).
 - `uv run stagehand check --config trapped.desktop.yaml --only audio` shows
-  the MOTU at 32 / 30 with no placeholder left.
+  the MOTU at 32 / 30 with no placeholder left and every music playlist
+  with files (`.\scripts\house-desktop\preflight.ps1` warns on an empty
+  folder).
+- `uv run stagehand music status --config trapped.desktop.yaml` answers
+  with no `no files :` line; its `inputs` line has a level for 1 and 3
+  (an output-only stream shows `—`).
+- The TV's sound: Chrome on the line out into the 828x, the TV's own
+  volume down; a TEST VOICE plays once, on the house speakers, and ducks
+  the music.
 - Run → House → Setup: 🔊 Sound and 💡 Lights green; the WLED strip and
   every placed bulb answer 💡 Identify.
 - The TV kiosk on spot `desktop-tv`, **clicked once after its last boot**
@@ -309,7 +345,7 @@ $env:LOOM_MOD_CODE = '<mod>'                # Windows
 4. Every machine's preflight is green: `pnpm showctl preflight macbook`, `desktop` (via `preflight.ps1`), `serverroom` and `tent`; `pnpm showctl doctor` shows no red.
 5. Trabolta: the worker connected (a *mind · story* chip), the mind Reset, `ollama ps` shows `gpt-oss:20b` alone, the MacBook on its charger; `uv run stagehand check --config laptop.yaml --only agents` shows `ctx 20480` and no warning; he is hidden and asleep.
 6. Terminals: every tablet green on `pnpm showctl terminals`, on the idle show, and every wall terminal's ⚙ names Trabolta; the TV on the screensaver, clicked once after its last boot; the Server Door terminal on THE KING.
-7. Audio: the `audio` job running on the Desktop (on the MacBook only in the fallback) with the MOTU at 32 / 30 and no placeholder left, Run → House → Setup's 🔊 Sound row green, a 🔈 Test per speaker at show level, one announcement heard through the router (this needs the Desktop's `show` job and broker too).
+7. Audio: the `audio` job running on the Desktop (on the MacBook only in the fallback) with the MOTU at 32 / 30 and no placeholder left, Run → House → Setup's 🔊 Sound row green, a 🔈 Test per speaker at show level (the sub with music), one announcement heard through the router (this needs the Desktop's `show` job and broker too). The soundtrack: the SFX library rendered on the Desktop (`start-stagehand.ps1`, or `stagehand sounds library --story`), every `media/music/<act>/` folder filled, and `stagehand music status` shows the scene (`off` or none before the doors) with no `no files :` line. The sidechain walk: a TV line ducks the music on every speaker, Clippy's mic ducks the living room's, and the TV's own speakers stay silent for Chrome (Trabolta is heard once).
 8. Lights: the server-room bulb answers 💡 Identify and sits on `heart_idle`; `stagehand check --only lights` is green, `health/lights` online and Run → House → Setup's 💡 Lights row green; the bulb never drops under 80 / 254. Every placed Hue and ZL1 bulb and the WLED strip answer 💡 Identify; one `lights_blackout` test (the halls and both bathrooms stay at their dim floor, the server room on its heart look).
 9. The server-room door: the keypad was set by hand to `facts.json` `door.code` and tested at 15:00, and it opens from inside with no code; the keypad sign hangs beside it; the sensor reads 🚪 shut / open on Run → Terminals within a second, with no fault and no override; then 🔄.
 10. The patch bay: all unplugged; ⚙'s live table reads every input empty; Run → Terminals shows no 🔌 fault and the story is not on the buttons (or 🔌 Trust the patch bay again was pressed).
@@ -397,7 +433,10 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 |---|---|
 | Trabolta silent ("Jean Trabolta is not responding…") | On the MacBook: `cd stagehand && uv run stagehand launchd restart --job agents`. Meanwhile a director answers as Trabolta from Run (identity → Trabolta); performers say he is processing a high volume of requests. A hung-but-connected worker is slow to post the hold line: answer by hand at once. **Never `pkill -f "stagehand run"`.** |
 | No announcements anywhere | On the Desktop: `.\scripts\house-desktop\preflight.ps1` (`health/stagehand`, `health/audio`); restart `show` and the router (`.\scripts\house-desktop\start-stagehand.ps1 -Restart show`, `-Restart audio`); check the broker (`.\scripts\house-desktop\setup-mosquitto.ps1 -Check`). In the router fallback, on the MacBook: `uv run stagehand launchd status --job audio`. |
-| Every house sound must stop now | ■ Stop house sounds; or on the Desktop `uv run stagehand sounds stop --announce --config trapped.desktop.yaml` (the fallback: on the MacBook with `--config trapped.macbook.yaml`) |
+| Every house sound must stop now | ■ Stop house sounds; or on the Desktop `uv run stagehand sounds stop --announce --config trapped.desktop.yaml` (the fallback: on the MacBook with `--config trapped.macbook.yaml`). It stops the music too, until the next act's music cue. The TV's voice still plays on the speakers: mute it with `M` on the TV page or Run → Terminals |
+| The music stopped (after ■ Stop house sounds, or none at all) | On the Desktop: `uv run stagehand music status --config trapped.desktop.yaml`; bring it back with `uv run stagehand music scene <the current act> --config trapped.desktop.yaml` (`doors`, `act_1`, `malware`, `act_2`, `act_3`, `final`, `ceremony`, `afterparty`). A hand scene holds until the next act's cue. `music next` skips a bad track. From the MacBook the same commands take `--config trapped.macbook.yaml` (they go through the Desktop's broker). |
+| Trabolta heard twice (an echo in the living room) | Turn the TV's volume down; Chrome's output must be the line out, not HDMI (`scripts/house-desktop/README.md` §3.5) |
+| A howl or a hum on every speaker | Pull the cable out of the 828x's Analog In 1 (the TV's line): the music plays on, but Trabolta is then heard nowhere: meanwhile set Chrome's output back to HDMI (Volume mixer) and turn the TV's volume up. Then `scripts/house-desktop/README.md` §12 (a ground-loop isolator for a hum; CueMix and Windows' *Listen to this device* for a howl) |
 | The server-room bulb ignores the story | On the Desktop: `.\scripts\house-desktop\start-stagehand.ps1 -Restart lights`; `.\scripts\house-desktop\zigbee2mqtt.ps1 -Check` (a moved stick has a new COM port) |
 | House internet down | Guests turn Wi-Fi off and use cellular. Keep firing cues from Run on a phone hotspot. Stagehand catches the lights up once it reconnects. |
 | Server restarted | Nothing to press. Everything reconnects; the server answers 503 `starting` until the events are back. Reinstallation walks end (rescan in the tent). |

@@ -1,5 +1,5 @@
-> **Status (2026-10-24). Read this first.** Sections §0–§10 are the
-> 2026-10-15 design note and are kept as history; §11–§12 describe what is
+> **Status (2026-10-28). Read this first.** Sections §0–§10 are the
+> 2026-10-15 design note and are kept as history; §11–§13 describe what is
 > built. What holds today:
 >
 > - **The router is built and is the show's only sound player.** Stagehand's
@@ -13,20 +13,26 @@
 >   built; the speakers and routes are `audio.json`, not YAML.
 > - **There is no single "house Mac" any more, and the "TV computer" of
 >   §0–§10 is not a Mac.** The rig is split: **John's Desktop (Windows)**
->   is the TV computer: it drives the living-room TV over HDMI
->   (Chrome kiosk, `view=tv`; Chrome plays to Windows' default output, most
->   simply HDMI to the TV's own speakers), and runs Mosquitto, Zigbee2MQTT and the
->   stagehand `show` + `lights` jobs. **John's MacBook (macOS)** runs Ollama
->   and Trabolta's `agents` worker.
-> - **Where the MOTU lives — two options.** *Default:* the 828x is cabled to
->   the **MacBook**, which runs the router (`stagehand/trapped.macbook.yaml`,
->   launchd) and dials the Desktop's broker on `:1884`
->   ([`scripts/house-macbook/audio.md`](../../scripts/house-macbook/audio.md)).
->   *Alternative:* the 828x moves to the **Desktop**, once it is proven
->   there through MOTU's Windows driver and ASIO (`host_api: asio`, the SAPI
->   voice, `stagehand tasks install --job audio`;
+>   is the TV computer: it drives the living-room TV over HDMI (Chrome
+>   kiosk, `view=tv`), and runs Mosquitto, Zigbee2MQTT and the stagehand
+>   `show` + `lights` jobs. **John's MacBook (macOS)** runs Ollama and
+>   Trabolta's `agents` worker.
+> - **The MOTU and the router live on the Desktop** (since 2026-10-27):
+>   the 828x over USB 2 and ASIO (`host_api: asio`, the SAPI voice, a Task
+>   Scheduler task;
 >   [`scripts/house-desktop/README.md`](../../scripts/house-desktop/README.md)
->   §7). Only one machine runs the router.
+>   §3 and §7). The **MacBook is the fallback** only
+>   (`stagehand/trapped.macbook.yaml`, launchd, dialling the Desktop's
+>   broker on `:1884`;
+>   [`scripts/house-macbook/audio.md`](../../scripts/house-macbook/audio.md)),
+>   and an output-only one. Only one machine runs the router.
+> - **Wave 38 adds the music and Trabolta on every speaker** (§13): a
+>   soundtrack all night (MP3 playlists per act, cued by the story), the
+>   TV's sound cabled from the Desktop's line out into the 828x (Chrome no
+>   longer plays on the TV's own speakers), priority ducking on the
+>   router's own inputs (Trabolta, then announcements, then Clippy's mic),
+>   live output trims, and a synthesized SFX library. The living room is
+>   now Main L/R plus a subwoofer.
 > - **Announcements cross machines**: the server's feed → the Desktop's
 >   `show` job → MQTT `show/announce` → the router. With the Desktop's
 >   broker or `show` job down, nothing is spoken (the tent's
@@ -537,7 +543,7 @@ stream, a fake server).
 
 | | `audio.json` (the event's project file) | `audio:` (the router machine's YAML) |
 |---|---|---|
-| Says | the device (name substring, channels used — the show's 828x: 10 in / 12 out — rate, `expect`), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to` / `announce.terminals`, `voice.tv` | what the router may do on its machine: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`, `duck_db`), `say_voice`, `chime`, an optional broker |
+| Says | the device (name substring, channels used — the show's 828x: 10 in / 12 out — rate, `expect`), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to` / `announce.terminals`, `voice.tv` | what the router may do on its machine: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`), the ducking (`priority`, `sidechain`, `no_duck`; wave 38, §13), the `soundtrack`, `say_voice`, `chime`, an optional broker |
 | Edited in | the map editor's Audio panel (a director save in the event state dir beats the project copy; `LOOM_AUDIO` is the LAN fallback) | `trapped.house.yaml` (shared) + the machine file (`trapped.macbook.yaml` / `trapped.desktop.yaml`), then restart the `audio` job (`stagehand launchd restart --job audio` on the MacBook, `stagehand tasks restart --job audio` on the Desktop) |
 | Reaches the router | a long-poll, `GET /api/mod/audio?router=1&name=<host>&after=<version>&tests=<seq>&stops=<seq>&wait=25` (returns at once on a new version, a pending speaker test or a stop; `router=1` is what the editor's router badge reads) | at boot |
 
@@ -561,8 +567,9 @@ numpy callback per block mixes:
    speaker's own `out` order), the mono downmix ((L + R) / 2) on a
    one-output speaker. The speaker's trim + the cue's gain, 5 ms fade-in, a
    fade-out on stop; at most 32 (the oldest sfx drops);
-3. the duck: sfx voices −12 dB (down over 0.3 s, back over 1 s) while the
-   router's own announcement plays — or, while the `alexa` player speaks
+3. the duck: sfx voices −12 dB and, since wave 38, the music −15 dB
+   (`priority.announce`; down over 0.3 s, back over 1 s) while the
+   router's own announcement plays (the inputs' ducking is §13) — or, while the `alexa` player speaks
    them (`announce: false`, or its lock still held), for `duck_hold_s` (7 s)
    after each `do announce` on the feed. Sounds
    in `no_duck` (the show's `dance_song`, `rave`, `hand_jive`) or with
@@ -646,13 +653,17 @@ warned about.
   queued for later, `announce: blocked` in the health JSON — and every
   sound, the matrix and the tests play from the start; the router retries
   the lock every 5 s.
-- Trabolta's TV voice comes from Chrome on the TV computer, John's Desktop,
-  out of its HDMI to the TV's own speakers. It reaches the 828x only if the
-  router (and the 828x) moves to the Desktop and the TV voice is fed into
-  an 828x input; `audio.json` `voice.tv` documents where it should then
-  reach (build that fan-out in CueMix FX). The router machine's own default
-  output must never be the 828x's Analog 1–2 (the living room): on the
-  MacBook keep the internal speakers the default.
+- Trabolta's TV voice comes from Chrome on the TV computer, John's Desktop.
+  Since wave 38 Chrome's output is the Desktop's line out, cabled into the
+  828x's rear Analog In 1 (input 3); `audio.json`'s routes play it on every
+  placed speaker but the sub, and the router ducks the music under it
+  (§13). It is never in a CueMix mix (that would play it twice), and the
+  TV's own speakers get nothing. `audio.json` `voice.tv` is a note of where
+  it should reach; the routes row is what sends it. The router machine's
+  own default output must never be the 828x (Analog 1 is the living-room
+  sub): on the Desktop leave it on the TV's HDMI, on the MacBook the
+  internal speakers. The MacBook fallback is output-only: no route, so
+  Chrome goes back to HDMI there.
 
 ### 11.5 Speaker tests and health
 
@@ -668,8 +679,8 @@ warned about.
   `router {online, lastSeen, name}` (online while it is parked on a long
   poll or polled in the last 40 s). The Audio tab shows *router online* /
   *router last seen …*, and a Test sent while nobody listens says it was
-  only queued: check the `audio` job on the router's machine (the MacBook
-  by default).
+  only queued: check the `audio` job on the router's machine (the Desktop;
+  the MacBook in the fallback).
 - `stagehand check --only audio` probes the device against the cached /
   local `audio.json` (channel counts, and `device.expect`: §12.1), lists cue
   sounds with no file and every placeholder still in `sounds_dir` (§12.2), and
@@ -782,3 +793,68 @@ speaker-reach hint (*the house speakers here say them too: the tablet would
 echo them* / *no house speaker in this room: the tablet would be the only
 voice*); Run → Terminals shows a 📢 badge and a per-spot toggle.
 
+## 13. What wave 38 added
+
+The contract is [`docs/loom-w38-contract.md`](../loom-w38-contract.md); the
+runbook is [`scripts/house-desktop/README.md`](../../scripts/house-desktop/README.md)
+§3.2–§3.6 and §8. In short:
+
+- **The soundtrack** (`stagehand/media/soundtrack.yaml`, `audio/soundtrack.py`).
+  Playlists (a folder of MP3 / WAV / FLAC / OGG / AIFF, shuffled each pass,
+  never the same track twice in a row, or a seamless one-file loop),
+  scenes (each speaker takes the last entry that reaches it; the speakers
+  sharing a playlist are one bed) and takeover tracks. Beds crossfade over
+  3 s on the mixer's clock at −10 dB; a scene change leaves an unchanged
+  bed alone (the Fan Closet's dryer loop runs on across the acts) and fades
+  the rest over 2.5 s. The story cues `cue music_<scene>` at each act
+  change and mirrors it in `Night.music`; the router catches up from the
+  screen state's `night.music` on start, on a feed reconnect and after a
+  story restart. A hand `stagehand music scene|stop` holds until the next
+  live music cue; ■ Stop house sounds fades the beds too, until the next
+  scene. The MP3s live in `stagehand/media/music/<act>/` (git-ignored).
+- **Streams** (`audio/stream.py`). Long files are never decoded whole: a
+  worker thread decodes and resamples (a windowed-sinc polyphase filter,
+  state kept across chunks) into a ring buffer the callback reads. An
+  underrun plays silence and counts in the health. Story sounds may be MP3
+  or OGG; the takeover tracks stream.
+- **Priority ducking on sidechain inputs.** `audio.json` inputs carry a
+  `role` and a `reach`. With `passthrough: true` the stream is duplex and
+  every input is metered; a role's input over its threshold (−45 dBFS, or
+  its own: `sidechain.roles`) ducks the buses on its reach by
+  `audio.priority`: `trabolta` (the TV, input 3, reach everywhere) music
+  −18 dB / sfx −8 dB, `announce` −15 / −12, `clippy` (input 1, the living
+  room) music −12 dB; a takeover track silences the music on its own
+  speakers. The deepest duck on each output wins; `no_duck` sounds, the
+  announce and test buses and the routed inputs are never ducked. Clippy's
+  mic stays in CueMix (hardware); the router only meters it, so Trabolta
+  cannot duck Clippy. `duck_db` is gone (a config error naming
+  `priority.announce.sfx`).
+- **The TV route.** Chrome's sound leaves the Desktop's line out into the
+  828x's rear Analog In 1; `audio.json`'s route plays it on outputs 3, 4,
+  8, 9 and 10 (every placed speaker but the sub), with no server round trip.
+  The TV page's own sound effects are silent (`terminal/src/sound/bus.ts`
+  `VIEW_VOLUME.tv = 0`), so they never open Trabolta's duck; the TV's own
+  speakers get nothing, or he plays twice. The MacBook fallback is
+  output-only (no route, no input ducking).
+- **Output trims.** A speaker's `gain` is a per-output trim after the mix,
+  ramped over 50 ms, so a trim (the sub's) is heard at once on long beds;
+  it applies to tests, announcements and the routed inputs too.
+- **The SFX library** (`audio/sfx/`). 115 original synthesized sounds in
+  eight categories (sirens, dings, telephony, digital, retro, party, story,
+  ambient loops), deterministic, 48 kHz, one-shots levelled by loudness and
+  peak-capped at −1 dBFS, loops seamless. `stagehand sounds library
+  [--story]` renders them to `stagehand/media/library/` and puts 13 story
+  stand-ins into `sounds_dir` (never over a real file). The router ranks
+  a real file of any format above a stand-in (`loom-sfx` tag), and a
+  stand-in above a placeholder.
+- **Health.** The router's health and report carry `music {scene, beds,
+  missing}`, the input peaks, each source's activity and the underruns;
+  `stagehand music status` and `pnpm showctl doctor` print them. `stagehand
+  check` lists every playlist's file count, scene entries that reach no
+  speaker (the Fan Closet until its speaker is placed), tracks with no
+  file, roles with no priority, and VBR MP3s with no length header.
+
+Not checked on hardware yet: the duplex stream under ASIO, the TV's line
+level and the per-app output, the sidechain thresholds in a full room
+(Clippy's is set at rehearsal), the sub, and the library on the house
+speakers.

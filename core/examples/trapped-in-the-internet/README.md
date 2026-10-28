@@ -294,16 +294,19 @@ to `reset_server_room`.
 4. **Hardware.** The old single "house Mac" is split in two (the whole map
    is [`TECH.md`](./TECH.md)). **John's Windows Desktop** hosts Mosquitto
    (anonymous on `127.0.0.1:1883`, password-only `props` on the LAN at
-   `:1884`), Zigbee2MQTT on the CC2652P stick, and the stagehand `show` and
-   `lights` jobs as Task Scheduler tasks from `stagehand/trapped.desktop.yaml`
-   (which `extends:` `trapped.house.yaml`; runbook
+   `:1884`), Zigbee2MQTT on the CC2652P stick, and the stagehand `show`,
+   `lights` and `audio` jobs as Task Scheduler tasks from
+   `stagehand/trapped.desktop.yaml` (which `extends:` `trapped.house.yaml`;
+   runbook
    [`scripts/house-desktop/README.md`](../../../scripts/house-desktop/README.md)).
-   **John's MacBook** runs the house router by default (`launchd install
-   --job audio --config trapped.macbook.yaml`, after `stagehand sounds
-   placeholders` and `stagehand check --only audio` reads 32 / 30;
-   [`scripts/house-macbook/audio.md`](../../../scripts/house-macbook/audio.md)),
-   dialling the Desktop's broker on `:1884`. Announcements reach the router
-   only through the Desktop's `show` job, so both machines must be up. The
+   The `audio` job is the house router on the MOTU 828x (since 2026-10-27):
+   the story's sounds, the announcements, the soundtrack and, since wave 38,
+   Trabolta's TV voice on every speaker. **John's MacBook** runs Trabolta's
+   mind and takes the router only in the fallback (`launchd install --job
+   audio --config trapped.macbook.yaml`, output-only, dialling the
+   Desktop's broker on `:1884`;
+   [`scripts/house-macbook/audio.md`](../../../scripts/house-macbook/audio.md)).
+   Announcements reach the router through the Desktop's `show` job. The
    YAML reads no door since wave 20 (D16) and judges no patch bay since
    wave 22: both are the Grand Central M4's
    ([`hardware/server-room-m4/`](../../../hardware/server-room-m4)), bridged

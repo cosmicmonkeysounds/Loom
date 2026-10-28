@@ -8,8 +8,9 @@ Shape (`audio.example.yaml` carries a commented copy):
                                    # module's OSC sound cues are then skipped)
       announce: false              # true: the router plays `do announce` too
                                    # (the `alexa:` section must be gone)
-      passthrough: true            # the audio.json input→output matrix; false
-                                   # opens an output-only stream (no mic access)
+      passthrough: true            # duplex: the audio.json input→output matrix and
+                                   # the input meters / sidechains; false opens an
+                                   # output-only stream (no mic access, no sidechain)
       device: null                 # override audio.json's device.name (substring)
       host_api: null               # Windows: asio (the MOTU: one N-channel device;
                                    # sets SD_ENABLE_ASIO) | wasapi | wdm-ks | directsound | mme
@@ -18,8 +19,16 @@ Shape (`audio.example.yaml` carries a commented copy):
       latency: high                # low | high | seconds
       master_db: 0
       limit_db: -1                 # the per-output limiter's ceiling
-      duck_db: -12                 # sfx under an announcement
-      duck_hold_s: 7               # announce: false — the duck held for an
+      priority:                    # dB at full activity, per bus (sfx, music), per
+        announce: {music: -15, sfx: -12}   # source: an input `role` in audio.json, or the
+        trabolta: {music: -18, sfx: -8}    # built-in `announce` / `takeover` (takeover →
+                                   # music is always silence); a bus a source does not
+                                   # name is not ducked by it. Absent: the announce row.
+      sidechain: {threshold_db: -45, attack_s: 0.04, hold_s: 0.8, release_s: 1.2}
+                                   # how an input with a `role` opens its source
+      soundtrack: null             # media/soundtrack.yaml: the music beds per scene
+                                   # (audio/soundtrack.py; loaded and checked at boot)
+      duck_hold_s: 7               # announce: false — the announce source held for an
                                    # announcement the alexa player speaks
       no_duck: []                  # sounds that never duck (the show's
                                    # dance_song, rave, hand_jive)
@@ -40,15 +49,21 @@ Shape (`audio.example.yaml` carries a commented copy):
       test_topic: show/audio/test
       stop_topic: show/audio/stop  # {} or {"announce": true}: stop every house sound
       play_topic: show/audio/play  # {"name": "zip", "to"?: ["living"]}: hand-play one
+      music_topic: show/audio/music  # {"scene": "act_1"} | {"next": true} | {"stop": true}
 
 Everything has a default, so `audio: {}` is a router that only passes the
 matrix through and answers the map editor's Test buttons.
+
+`duck_db` (one depth for everything under an announcement) is gone since
+wave 38: a YAML that still sets it is refused, naming its new home,
+`priority.announce.sfx`.
 """
 
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -57,8 +72,15 @@ from ..alexa.config import DEFAULT_CACHE as ALEXA_CACHE
 from ..module import ConfigError
 from ..paths import user_cache
 from ..show.config import MqttConfig
+from .mixer import DUCKED, RESERVED_SOURCES, TAKEOVER, Sidechain
+from .soundtrack import Soundtrack, load_soundtrack
 
 DEFAULT_CACHE = user_cache("stagehand-audio")  # ~/Library/Caches/… ; %LOCALAPPDATA%\stagehand\… on Windows
+#: With no `priority:` an announcement ducks as the show's does (C4's
+#: announce row): the router with no YAML still sits under its own voice.
+DEFAULT_PRIORITY: dict[str, dict[str, float]] = {"announce": {"music": -15.0, "sfx": -12.0}}
+#: A priority source's name: an audio.json input `role`, or a built-in.
+SOURCE_NAME = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
 
 
 @dataclass(frozen=True)
@@ -76,7 +98,12 @@ class AudioConfig:
     latency: str | float = "high"
     master_db: float = 0.0
     limit_db: float = -1.0
-    duck_db: float = -12.0
+    #: `{source: {bus: dB}}` (wave 38, C4): how deep each priority source
+    #: ducks the sfx / music buses at full activity.
+    priority: dict[str, dict[str, float]] = field(default_factory=lambda: dict(DEFAULT_PRIORITY))
+    sidechain: Sidechain = Sidechain()
+    #: The soundtrack (wave 38, C3), parsed at load: a bad file fails the boot.
+    soundtrack: Soundtrack | None = None
     duck_hold_s: float = 7.0
     no_duck: tuple[str, ...] = ()
     config_file: str | None = None
@@ -99,6 +126,8 @@ class AudioConfig:
     #: and a hand-fired `sound X` (the router replaces QLab's hand-fire).
     stop_topic: str = "show/audio/stop"
     play_topic: str = "show/audio/play"
+    #: The soundtrack by hand (wave 38): a scene, the next track, stop.
+    music_topic: str = "show/audio/music"
     #: The `alexa` player's lock directory: an announcing router holds the
     #: same lock, so the two never both own the house's voice.
     announce_lock_dir: str = ALEXA_CACHE
@@ -111,10 +140,10 @@ def _bool(doc: dict, key: str, default: bool) -> bool:
     return value
 
 
-def _num(doc: dict, key: str, default: float, lo: float, hi: float) -> float:
+def _num(doc: dict, key: str, default: float, lo: float, hi: float, prefix: str = "audio.") -> float:
     value = doc.get(key, default)
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not lo <= value <= hi:
-        raise ConfigError(f"audio.{key}: a number from {lo:g} to {hi:g}")
+        raise ConfigError(f"{prefix}{key}: a number from {lo:g} to {hi:g}")
     return float(value)
 
 
@@ -148,11 +177,81 @@ def _names(doc: dict, key: str) -> tuple[str, ...]:
     return tuple(value)
 
 
+def _priority(doc: dict) -> dict[str, dict[str, float]]:
+    raw = doc.get("priority")
+    if raw is None:
+        return {k: dict(v) for k, v in DEFAULT_PRIORITY.items()}
+    if not isinstance(raw, dict):
+        raise ConfigError("audio.priority: a mapping of source → {sfx: dB, music: dB}")
+    out: dict[str, dict[str, float]] = {}
+    for name, buses in raw.items():
+        where = f"audio.priority.{name}"
+        if not isinstance(name, str) or not SOURCE_NAME.match(name):
+            raise ConfigError(f"{where}: a source is an input role (a-z, 0-9, _ or -, ≤ 32) or {' / '.join(RESERVED_SOURCES)}")
+        if buses is None:
+            buses = {}
+        if not isinstance(buses, dict):
+            raise ConfigError(f"{where}: a mapping of bus → dB ({', '.join(DUCKED)})")
+        depths: dict[str, float] = {}
+        for bus, db in buses.items():
+            if bus not in DUCKED:
+                raise ConfigError(f"{where}.{bus}: only {' and '.join(DUCKED)} duck (announce and test never do)")
+            if name == TAKEOVER and bus == "music":
+                raise ConfigError(f"{where}.music: fixed — a takeover always silences the music on its speakers")
+            if isinstance(db, bool) or not isinstance(db, (int, float)) or not -120 <= db <= 0:
+                raise ConfigError(f"{where}.{bus}: dB from -120 to 0")
+            depths[bus] = float(db)
+        out[name] = depths
+    return out
+
+
+def _sidechain(doc: dict) -> Sidechain:
+    raw = doc.get("sidechain")
+    if raw is None:
+        return Sidechain()
+    if not isinstance(raw, dict):
+        raise ConfigError("audio.sidechain: a mapping (threshold_db, attack_s, hold_s, release_s, roles)")
+    known = {"threshold_db", "attack_s", "hold_s", "release_s", "roles"}
+    extra = sorted(set(raw) - known)
+    if extra:
+        raise ConfigError(f"audio.sidechain.{extra[0]}: unknown (threshold_db, attack_s, hold_s, release_s, roles)")
+    d = Sidechain()
+    threshold = _num(raw, "threshold_db", d.threshold_db, -100, 0, "audio.sidechain.")
+    roles_raw = raw.get("roles") or {}
+    if not isinstance(roles_raw, dict):
+        raise ConfigError("audio.sidechain.roles: a mapping of role → {threshold_db}")
+    roles: list[tuple[str, float]] = []
+    for role, spec in roles_raw.items():
+        where = f"audio.sidechain.roles.{role}"
+        if not isinstance(role, str) or not role or role in RESERVED_SOURCES:
+            raise ConfigError(f"{where}: an audio.json input role (not {' or '.join(RESERVED_SOURCES)})")
+        if not isinstance(spec, dict):
+            raise ConfigError(f"{where}: a mapping ({{threshold_db: N}})")
+        bad = sorted(set(spec) - {"threshold_db"})
+        if bad:
+            raise ConfigError(f"{where}.{bad[0]}: unknown (threshold_db)")
+        roles.append((role, _num(spec, "threshold_db", threshold, -100, 0, f"{where}.")))
+    return Sidechain(
+        threshold_db=threshold,
+        attack_s=_num(raw, "attack_s", d.attack_s, 0.001, 10, "audio.sidechain."),
+        hold_s=_num(raw, "hold_s", d.hold_s, 0, 30, "audio.sidechain."),
+        release_s=_num(raw, "release_s", d.release_s, 0.001, 30, "audio.sidechain."),
+        roles=tuple(roles),
+    )
+
+
+def _soundtrack(doc: dict, base_dir: str) -> Soundtrack | None:
+    path = _path(doc, "soundtrack", base_dir, must_exist=True)
+    return load_soundtrack(path) if path is not None else None
+
+
 def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
     if doc is None:
         doc = {}
     if not isinstance(doc, dict):
         raise ConfigError("'audio:' must be a mapping")
+    if "duck_db" in doc:
+        raise ConfigError("audio.duck_db: removed (wave 38) — the announcement's depth is priority.announce.sfx (and priority.announce.music)")
 
     latency: str | float = doc.get("latency", "high")
     if latency not in ("low", "high"):
@@ -210,7 +309,9 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         latency=latency,
         master_db=_num(doc, "master_db", 0.0, -60, 12),
         limit_db=_num(doc, "limit_db", -1.0, -30, 0),
-        duck_db=_num(doc, "duck_db", -12.0, -60, 0),
+        priority=_priority(doc),
+        sidechain=_sidechain(doc),
+        soundtrack=_soundtrack(doc, base_dir),
         duck_hold_s=_num(doc, "duck_hold_s", 7.0, 0, 60),
         no_duck=_names(doc, "no_duck"),
         config_file=_path(doc, "config_file", base_dir, must_exist=True),
@@ -229,6 +330,7 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         test_topic=_str(doc, "test_topic", "show/audio/test") or "show/audio/test",
         stop_topic=_str(doc, "stop_topic", "show/audio/stop") or "show/audio/stop",
         play_topic=_str(doc, "play_topic", "show/audio/play") or "show/audio/play",
+        music_topic=_str(doc, "music_topic", "show/audio/music") or "show/audio/music",
         announce_lock_dir=os.path.expanduser(_str(doc, "announce_lock_dir", ALEXA_CACHE) or ALEXA_CACHE),
     )
 

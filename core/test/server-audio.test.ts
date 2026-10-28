@@ -15,7 +15,7 @@ import { AUDIO_CHIME_SOUND, resolveTargets, validateAudio, type AudioConfig } fr
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { snapshotDiffers } from "../server/events-api.ts";
-import { AUDIO_ROUTER_ONLINE_MS, AUDIO_STOP_MS, AUDIO_TEST_MS, audioFileOf, audioOf, storySounds, type AudioView } from "../server/audio.ts";
+import { AUDIO_HEALTH_BEDS_MAX, AUDIO_PEAK_FLOOR_DB, AUDIO_ROUTER_ONLINE_MS, AUDIO_STOP_MS, AUDIO_TEST_MS, audioFileOf, audioHealthOf, audioOf, storySounds, type AudioView } from "../server/audio.ts";
 import type { MapFiles, ProjectLink } from "../server/house-maps.ts";
 import { Store } from "../server/store.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
@@ -465,6 +465,84 @@ describe("stop all house sounds (wave 18b, Q7)", () => {
     expect((await poll("name=Loose&view=auto")).spot).toBeUndefined();
     const list = (await call(rt, "GET", "/api/mod/screen/terminals")).json as { terminals: Array<{ name: string; announce?: boolean }> };
     expect(Object.fromEntries(list.terminals.map((x) => [x.name, x.announce]))).toEqual({ Hall: true, Den: false, Loose: undefined });
+    rt.dispose();
+  });
+});
+
+// Wave 38 (contract docs/loom-w38-contract.md C3): the router's report
+// carries the soundtrack and the meters; the server keeps them and shows
+// them on the audio view (showctl doctor) and the house desk.
+describe("the router's soundtrack and meters in its health (wave 38)", () => {
+  const BASE = { ok: true, device: "828x", layout: "ok", voices: 3, xruns: 0, peakDb: -9, announce: "on", missing: [], placeholders: [], sounds: { zip: 300 } };
+  const MUSIC = {
+    scene: "act_1",
+    beds: [
+      { playlist: "act_1", speakers: ["living-l", "living-r"], track: "song-03.mp3", pos_s: 61.27 },
+      { playlist: "fan_closet", speakers: [], track: "dryer-tumble.wav", posS: 4 },
+    ],
+    missing: ["doors"],
+  };
+
+  it("an older report (none of them) parses as before, with no new keys", () => {
+    const h = audioHealthOf(BASE, 5)!;
+    expect(h).not.toBeNull();
+    expect(Object.keys(h).sort()).toEqual(["announce", "at", "device", "layout", "missing", "ok", "peakDb", "placeholders", "sounds", "voices", "xruns"]);
+  });
+
+  it("reads music, inputs, sources and underruns; pos_s or posS", () => {
+    const h = audioHealthOf({ ...BASE, music: MUSIC, inputs: { "1": -38.44, "3": -12 }, sources: { clippy: 0.25, trabolta: 1, announce: 0 }, underruns: 2 }, 5)!;
+    expect(h.music).toEqual({
+      scene: "act_1",
+      beds: [
+        { playlist: "act_1", speakers: ["living-l", "living-r"], track: "song-03.mp3", posS: 61.3 },
+        { playlist: "fan_closet", speakers: [], track: "dryer-tumble.wav", posS: 4 },
+      ],
+      missing: ["doors"],
+    });
+    expect(h.inputs).toEqual({ "1": -38.4, "3": -12 });
+    expect(h.sources).toEqual({ clippy: 0.25, trabolta: 1, announce: 0 });
+    expect(h.underruns).toBe(2);
+    // No scene yet (null) is a scene report too.
+    expect(audioHealthOf({ ...BASE, music: { scene: null, beds: [], missing: [] } }, 5)!.music).toEqual({ scene: null, beds: [], missing: [] });
+  });
+
+  it("clamps, cuts and drops what is malformed, never the whole report", () => {
+    const beds = Array.from({ length: 40 }, (_, i) => ({ playlist: `p${i}`, speakers: ["a", 7, ""], track: 3, posS: -5 }));
+    const h = audioHealthOf(
+      {
+        ...BASE,
+        music: { scene: 7, beds, missing: "doors" },
+        inputs: { "1": 99, "2": null, "3": "loud", x: -10, "0": -10, "100": -10, "4": -500 },
+        sources: { clippy: 2, trabolta: -1, "Bad Name": 0.5, dj: "on" },
+        underruns: -3.6,
+      },
+      5,
+    )!;
+    expect(h.ok).toBe(true);
+    // A music block with a malformed scene is dropped as a whole.
+    expect(h.music).toBeUndefined();
+    expect(h.inputs).toEqual({ "1": 24, "2": AUDIO_PEAK_FLOOR_DB, "4": AUDIO_PEAK_FLOOR_DB });
+    expect(h.sources).toEqual({ clippy: 1, trabolta: 0 });
+    expect(h.underruns).toBe(0);
+    const cut = audioHealthOf({ ...BASE, music: { scene: "doors", beds, missing: ["", 3, "act_1"] } }, 5)!;
+    expect(cut.music!.beds).toHaveLength(AUDIO_HEALTH_BEDS_MAX);
+    expect(cut.music!.beds[0]).toEqual({ playlist: "p0", speakers: ["a"], track: null, posS: 0 });
+    expect(cut.music!.missing).toEqual(["act_1"]);
+    // Not objects: ignored.
+    const flat = audioHealthOf({ ...BASE, music: "act_1", inputs: [1, 2], sources: null, underruns: "2" }, 5)!;
+    expect([flat.music, flat.inputs, flat.sources, flat.underruns]).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
+  it("the audio view carries the last report without its sounds (never on the router's own read)", async () => {
+    const rt = runtime({ audio: AUDIO_TEXT });
+    expect((await view(rt)).health).toBeNull();
+    const report = { ...BASE, music: MUSIC, inputs: { "1": -50, "3": -14 }, sources: { clippy: 0, trabolta: 0.8 }, underruns: 1 };
+    expect((await call(rt, "POST", "/api/mod/audio/report", { health: report })).json).toEqual({ ok: true });
+    const v = await view(rt);
+    expect(v.health).toMatchObject({ ok: true, device: "828x", music: { scene: "act_1", missing: ["doors"] }, inputs: { "1": -50, "3": -14 }, sources: { trabolta: 0.8 }, underruns: 1 });
+    expect(v.health!.music!.beds[0]!.posS).toBe(61.3);
+    expect(v.health).not.toHaveProperty("sounds");
+    expect(await view(rt, "?router=1&name=desktop")).not.toHaveProperty("health");
     rt.dispose();
   });
 });

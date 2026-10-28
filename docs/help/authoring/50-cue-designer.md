@@ -102,7 +102,14 @@ length, *no file* or *placeholder*. Pick one to:
   optionally tells the story an event once both have finished.
 
 Sound files live on the machine running the router, in
-`stagehand/media/sounds/`. Which speakers a story sound uses by default
+`stagehand/media/sounds/`: `.wav`, `.aiff`, `.flac`, `.mp3` or `.ogg`
+(a `.wav` wins over another file of the same name). Many story sounds
+have a synthesized stand-in in stagehand's SFX library: on the router's
+computer, `uv run stagehand sounds library --story --config
+trapped.desktop.yaml` renders the library into `stagehand/media/library/`
+and puts each stand-in in place of its placeholder, never over a real
+file. A real file you drop in beside a stand-in always plays instead,
+whatever its format (`ad_jingle.mp3` beats the stand-in `ad_jingle.wav`). Which speakers a story sound uses by default
 is set on the [house map](39-house-map.md)'s 🔊 Audio tab.
 
 ## Desk cues
