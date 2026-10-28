@@ -645,22 +645,23 @@ function enqueue(queue: Queued[], moments: readonly Moment[], level: AlertLevel,
   const a = oneHouseBanner([...queue, ...kept]);
   const b = capBlueScreens(a.queue);
   const c = questDedupe(b.queue);
-  const d = role === "booth" ? foldBalloons(c.queue, kept) : { queue: c.queue, out: [] };
+  const d = role === "booth" ? foldBalloons(c.queue) : { queue: c.queue, out: [] };
   return { queue: ordered(d.queue), out: [...a.out, ...b.out, ...c.out, ...d.out] };
 }
 
 /**
- * Wave 37 (C5): a booth's balloons never pile up. The newest one to join
- * folds every other balloon into the missed list (the 🔔), except an older
- * readout when it is not a readout itself: that one stays on screen and the
- * newcomer waits behind it. A peek is never folded.
+ * Wave 37 (C5): a booth's balloons never pile up. The newest queued one
+ * (story time, then seq: a wake's replay of an older line never wins) folds
+ * every other balloon away, except an older readout when it is not a
+ * readout itself: that one stays on screen and the newest waits behind it.
+ * A peek is never folded. Folded is gone from the booth's screen: no booth
+ * surface lists the missed (a guest's line still badges Chats).
  */
-function foldBalloons(queue: Queued[], fresh: readonly Queued[]): { queue: Queued[]; out: Moment[] } {
+function foldBalloons(queue: Queued[]): { queue: Queued[]; out: Moment[] } {
   const plain = (q: Queued) => q.level === "balloon" && !isPeek(q.moment);
-  const top = newestOf(fresh.filter((q) => plain(q) && queue.includes(q)));
-  if (top === null) return { queue, out: [] };
+  const top = newestOf(queue.filter(plain));
   const others = queue.filter((q) => plain(q) && q !== top);
-  const readout = top.moment.kind === "readout" ? null : newestOf(others.filter((q) => q.moment.kind === "readout"));
+  const readout = top?.moment.kind === "readout" ? null : newestOf(others.filter((q) => q.moment.kind === "readout"));
   const drop = others.filter((q) => q !== readout);
   return {
     queue: queue.filter((q) => !drop.includes(q)).map((q) => (q === top && readout !== null ? { ...q, behind: readout.moment.key } : q)),

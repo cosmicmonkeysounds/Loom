@@ -4,7 +4,8 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { EMPTY_MOMENTS, STICKY_MS, momentsReducer, surfacesOf, waitBalloons, type Moment, type MomentsState } from "../src/moments/model.ts";
+import { EMPTY_MOMENTS, STICKY_MS, momentOf, momentsReducer, surfacesOf, waitBalloons, type Moment, type MomentsState } from "../src/moments/model.ts";
+import type { ChatMessage } from "../src/types.ts";
 
 const T = 1_000_000;
 function mo(seq: number, over: Partial<Moment> = {}): Moment {
@@ -58,6 +59,16 @@ describe("C5: a booth's balloons wait behind pop-outs and face-to-face windows",
     // A newer readout outranks the older one and the waiting line.
     const s4 = arrive(s3, [mo(4, { kind: "readout", text: "⏰ ICQ is late" })]);
     expect(keys(s4)).toEqual(["m:4"]);
+  });
+
+  it("an older arrival (a wake's replay) never folds the newer balloon waiting: it folds itself", () => {
+    const s = arrive(arrive(EMPTY_MOMENTS, [mo(5)]), [mo(2)]);
+    expect(keys(s)).toEqual(["m:5"]);
+    expect(s.missed.map((m) => m.key)).toEqual(["m:2"]);
+    // A replayed older readout still outranks the newer chat line, which waits behind it.
+    const r = arrive(arrive(EMPTY_MOMENTS, [mo(5)]), [mo(2, { kind: "readout", channel: "dm:Norton" })]);
+    expect(keys(r).sort()).toEqual(["m:2", "m:5"]);
+    expect(surfacesOf(r, false).balloon?.moment.key).toBe("m:2");
   });
 
   it("a guest's balloons never fold", () => {
@@ -116,5 +127,18 @@ describe("C15: a dialog's buttons always fit", () => {
     expect(nowrap.body).toContain("white-space: nowrap");
     expect(go.body).toContain("white-space: normal");
     expect(go.at).toBeGreaterThan(nowrap.at);
+  });
+});
+
+describe("C21: a menu pick in a booth's DM is no guest writing to it", () => {
+  const clippy = { role: "booth" as const, me: "Clippy" };
+  const line = (over: Partial<ChatMessage> = {}): ChatMessage =>
+    ({ seq: 40, channel: "dm:Clippy", channelKind: "dm", title: "Clippy", from: "GarageBand", kind: "line", text: "Deposited", ts: 0, audience: ["g-1"], parentSeq: null, hidden: false, ...over }) as ChatMessage;
+
+  it("a pick gives no balloon; the same line typed is a minor balloon", () => {
+    expect(momentOf(line({ pick: true }), clippy, null)).toBeNull();
+    expect(momentOf(line({ act: true }), clippy, null)).toBeNull();
+    const typed = momentOf(line(), clippy, null);
+    expect([typed?.severity, typed?.kind, typed?.channel]).toEqual(["minor", "other", "guest:g-1"]);
   });
 });
