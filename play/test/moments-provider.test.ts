@@ -209,7 +209,7 @@ describe("the memory across a remount (the cutscene ⇄ main switch)", () => {
 });
 
 describe("wave 37: banners leave, and what reached the screen is read (C16, C17)", () => {
-  type Engine = { surfaces: { sticky: { moment: { key: string } } | null; modal: { moment: { key: string } } | null }; notif: { sign: { seen: Set<string>; readMark: number }; unread: number } };
+  type Engine = { surfaces: { sticky: { moment: { key: string } } | null; modal: { moment: { key: string } } | null }; notif: { sign: { seen: Set<string>; readMark: number }; unread: number }; hold: (d: number) => void; fold: (d: number) => void };
   const engineOf = (h: { output: unknown }) => (h.output as { props: { value: Engine } }).props.value;
   const alertsOf = (histories = 0): Alerts => ({ alert: null, dismiss: () => {}, raise: () => {}, onHistory: () => {}, rebase: () => {}, mark: () => -1, settle: () => {}, epoch: 0, recent: () => [], histories: () => histories });
   const base = (session: string, over: Partial<MomentsInput> = {}): MomentsInput => ({ role: "guest", me: "g1", session, messages: new Map(), alerts: alertsOf(), alertLevel: "sticky", objectives: undefined, phase: "doors", clock: 0, sound: false, ...over });
@@ -313,6 +313,110 @@ describe("wave 37: banners leave, and what reached the screen is read (C16, C17)
     h.rerender({ ...input, phase: "hunt", children: null });
     expect(engineOf(h).surfaces.sticky).toBeNull();
     expect(engineOf(h).notif.sign.seen.has("m:1")).toBe(false);
+    h.unmount();
+  });
+
+  it("a glance's clock stops off the screen: 0.5 s, the page hidden, then a phase change is unread", () => {
+    stubPage();
+    const { h, input } = mount("w37-g", [house(1)]);
+    h.act(() => vi.advanceTimersByTime(500));
+    h.act(() => {
+      hidden = true;
+      listener?.();
+    });
+    h.act(() => vi.advanceTimersByTime(10_000));
+    h.rerender({ ...input, phase: "hunt", children: null });
+    expect(engineOf(h).notif.sign.seen.has("m:1")).toBe(false);
+    h.unmount();
+  });
+
+  it("on-screen time adds up across a hidden page: 0.6 s + 0.6 s, then a phase change is read", () => {
+    stubPage();
+    const { h, input } = mount("w37-h", [house(1)]);
+    const flip = (to: boolean) =>
+      h.act(() => {
+        hidden = to;
+        listener?.();
+      });
+    h.act(() => vi.advanceTimersByTime(600));
+    flip(true);
+    h.act(() => vi.advanceTimersByTime(30_000));
+    flip(false);
+    h.act(() => vi.advanceTimersByTime(600));
+    h.rerender({ ...input, phase: "hunt", children: null });
+    expect(engineOf(h).notif.sign.seen.has("m:1")).toBe(true);
+    h.unmount();
+  });
+
+  it("a NOW change retires it: shown 5 s is read; an objective that ended takes its shown sticky, read", () => {
+    stubPage();
+    const o = (id: string): ObjectiveView => ({ id, title: `Do ${id}`, brief: "", checklist: [], buttons: [], act: null });
+    const now = mount("w37-n", [house(1)]);
+    const input = { ...now.input, objectives: [o("a")], children: null };
+    now.h.rerender(input);
+    now.h.act(() => vi.advanceTimersByTime(5_000));
+    now.h.rerender({ ...input, objectives: [o("b")], clock: 60_000 });
+    expect(engineOf(now.h).surfaces.sticky).toBeNull();
+    expect(engineOf(now.h).notif.sign.seen.has("m:1")).toBe(true);
+    now.h.unmount();
+    const obj = mount("w37-o", [{ key: "o:hunt", seq: null, severity: "major", kind: "objective", caption: "New objective", text: "Hunt", channel: null, at: 0, phase: "doors" }]);
+    const oi = { ...obj.input, objectives: [o("hunt")], children: null };
+    obj.h.rerender(oi);
+    expect(engineOf(obj.h).surfaces.sticky?.moment.key).toBe("o:hunt");
+    obj.h.act(() => vi.advanceTimersByTime(5_000));
+    obj.h.rerender({ ...oi, objectives: [] });
+    expect(engineOf(obj.h).surfaces.sticky).toBeNull();
+    expect(engineOf(obj.h).notif.sign.seen.has("o:hunt")).toBe(true);
+    obj.h.unmount();
+  });
+
+  it("under a hold (a booth's windows, the scan sheet) a sticky's 45 s never run: it waits, unseen, and shows after", () => {
+    stubPage();
+    const session = "w37-k";
+    const mem = { ...freshMemory(), session, epoch: 0 };
+    const line: Moment = { key: "m:7", seq: 7, severity: "major", kind: "alert", caption: "Norton", text: "Code red", channel: "dm:Norton", at: 0, phase: "doors" };
+    mem.state = momentsReducer(EMPTY_MOMENTS, { type: "arrive", moments: [line], visible: true, level: "sticky", role: "booth", now: Date.now(), phase: "doors", batch: false });
+    expect(mem.state.queue.map((q) => [q.moment.key, q.level])).toEqual([["m:7", "sticky"]]);
+    rememberMoments("booth", session, mem);
+    const h = mountHooks(Provider, { ...base(session, { role: "booth", me: "Norton" }), children: null });
+    h.act(() => engineOf(h).hold(1));
+    h.act(() => vi.advanceTimersByTime(60_000));
+    expect(mem.state.queue.map((q) => q.moment.key)).toEqual(["m:7"]);
+    expect(engineOf(h).notif.sign.seen.has("m:7")).toBe(false);
+    // It showed before the hold: its clock stopped under the layer (minus the time on).
+    expect(mem.shownAt.get("m:7")).toBeLessThanOrEqual(0);
+    h.act(() => engineOf(h).hold(-1));
+    expect(engineOf(h).surfaces.sticky?.moment.key).toBe("m:7");
+    h.act(() => vi.advanceTimersByTime(STICKY_MS));
+    expect(mem.state.queue).toEqual([]);
+    expect(engineOf(h).notif.sign.seen.has("m:7")).toBe(true);
+    h.unmount();
+  });
+
+  it("folded into the pin rail's +n, a banner is not on screen: no 45 s, still unread", () => {
+    stubPage();
+    const { h } = mount("w37-l", [house(1)]);
+    const mem = recallMoments("guest", "w37-l");
+    h.act(() => engineOf(h).fold(1));
+    h.act(() => vi.advanceTimersByTime(60_000));
+    expect(mem.state.queue.map((q) => q.moment.key)).toEqual(["m:1"]);
+    expect(engineOf(h).notif.sign.seen.has("m:1")).toBe(false);
+    h.act(() => engineOf(h).fold(-1));
+    h.act(() => vi.advanceTimersByTime(STICKY_MS));
+    expect(mem.state.queue).toEqual([]);
+    expect(engineOf(h).notif.sign.seen.has("m:1")).toBe(true);
+    h.unmount();
+  });
+
+  it("a story restart forgets what was on screen: the renumbered m:<seq> is not pre-read", () => {
+    stubPage();
+    const session = "w37-r";
+    const { h, input } = mount(session, [house(1)]);
+    h.act(() => vi.advanceTimersByTime(5_000));
+    h.rerender({ ...input, alerts: { ...alertsOf(), epoch: 1 }, children: null });
+    expect(engineOf(h).surfaces.sticky).toBeNull();
+    expect(engineOf(h).notif.sign.seen.has("m:1")).toBe(false);
+    expect(recallMoments("guest", session).shownAt.size).toBe(0);
     h.unmount();
   });
 
