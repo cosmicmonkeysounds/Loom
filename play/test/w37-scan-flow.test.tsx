@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { backFor, closeTo, closedGate, scanTitle, type Layer, type OpenLayer } from "../src/booth/model.ts";
+import { backFor, closeTo, closedGate, keepsCardGuest, scanTitle, type Layer, type OpenLayer } from "../src/booth/model.ts";
+import { EMPTY_POPOUTS, currentOf, popReducer, type PopOutSpec } from "../src/moments/popout-model.ts";
 import { CLOSED_PASS_MS, Scanner, ScannerScreen, scanHint } from "../src/booth/scanner.tsx";
 import { GuestCardBody } from "../src/booth/card.tsx";
 import { ConfrontScreen } from "../src/booth/confront.tsx";
@@ -257,6 +258,21 @@ describe("C2: back to where the scan started", () => {
     expect(app).toMatch(/setLayer\(\(l\) => \(\{ kind: "card"[^\n]*\.\.\.backOf\(l\)/u);
     // The caption leaving after a scan keeps where it goes back to.
     expect(app).toContain('{ kind: "scan", ...(l.back !== undefined ? { back: l.back } : {}) }');
+  });
+
+  it("a card's × forgets its guest, so a pop-out about them shows again (the door Antivirus gets that guest's WANTED)", () => {
+    // Only a card keeps the open card's guest; × to the board, the door, a list or the booth clears it.
+    expect(keepsCardGuest({ kind: "card", id: "g-1" })).toBe(true);
+    for (const l of [null, { kind: "scan" }, { kind: "guests" }, { kind: "wanted", fresh: [] }, { kind: "door" }, { kind: "waiting" }] as Layer[]) expect(keepsCardGuest(l)).toBe(false);
+    // The rung's rule, fed what the ref holds after that close.
+    let ref: string | null = "g-1";
+    const wanted: PopOutSpec = { key: "wanted:g-1", glyph: "🚨", title: "WANTED", body: [], guest: { id: "g-1", name: "Ada" }, actions: [], tone: "alarm", sticky: true, priority: 90, at: 1 };
+    const s = popReducer(EMPTY_POPOUTS, { type: "raise", spec: wanted });
+    expect(currentOf(s, ref)).toBeNull();
+    const after = closeTo({ kind: "card", id: "g-1" });
+    if (!keepsCardGuest(after)) ref = null;
+    expect(currentOf(s, ref)?.spec.key).toBe("wanted:g-1");
+    expect(src("booth/app.tsx")).toContain("if (!keepsCardGuest(layer)) cardGuest.current = null;");
   });
 });
 

@@ -626,6 +626,14 @@ export function closeTo(layer: Layer): Layer {
   return layer?.back ?? null;
 }
 
+/** Whether the open card's guest (the one pop-outs about them wait for)
+ *  outlives a change of layer to `layer`: only under a card. A scan, a list,
+ *  the board or nothing (a one-tap ×, wave 37 C1) clears it; the scanner
+ *  sets it again when its own scan lands. */
+export function keepsCardGuest(layer: Layer): boolean {
+  return layer?.kind === "card";
+}
+
 /**
  * After a card closes the guest is often still holding their pass to the
  * lens: ignore that one pass for `ms`, so closing a card never re-opens it,

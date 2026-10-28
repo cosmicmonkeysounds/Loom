@@ -45,7 +45,7 @@ import { GuestCard, type CardSeed } from "./card.tsx";
 import { GuestsSheet } from "./guests.tsx";
 import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, playerStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
-import { backFor, boothFoldable, boothHost, boothSidebar, closeTo, closedGate, guestsWaiting, soonest, viewPaused, type Layer } from "./model.ts";
+import { backFor, boothFoldable, boothHost, boothSidebar, closeTo, closedGate, guestsWaiting, keepsCardGuest, soonest, viewPaused, type Layer } from "./model.ts";
 import { boothMomentFeed } from "./moments-feed.ts";
 import { PeopleSheet } from "./people.tsx";
 import { PlayerMission, playerTaskbarButtons } from "./player.tsx";
@@ -288,10 +288,12 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     if (opensHome(signedIn, wide, activeId, home, s.roomLinkPending) && home !== null) t.open(home);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, wide, activeId, home, s.roomLinkPending]);
-  // The scanner or the Guests list opening shows no card yet: the last
-  // card's guest is not on screen, so an alert about them is news again.
+  // No card on screen (the scanner or a list opening, or a one-tap × back to
+  // a window or the booth): the last card's guest is not in front of you,
+  // so a pop-out about them is news again.
   useEffect(() => {
-    if (layer?.kind === "scan" || layer?.kind === "guests" || layer?.kind === "wanted") cardGuest.current = null;
+    if (!keepsCardGuest(layer)) cardGuest.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layer?.kind]);
   // Wave 26 (B5): PLAYER SELECT closes when its objective leaves the view
   // (one round only), after a beat so the last press's reply shows first.
