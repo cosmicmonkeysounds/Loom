@@ -297,6 +297,41 @@ describe("wave 37 (C7): NEW MISSION, said once", () => {
     expect(heldKeys().map((x) => x.key)).toEqual(["mission:b"]);
   });
 
+  it("raised under a card (held quiet), then × lands on Mission: no pop-out, the blink, one chime", () => {
+    const news: Array<{ id: string; title: string }> = [];
+    let onMission = false;
+    const extra = () => ({ missionShown: () => onMission, onMissionNews: (o: { id: string; title: string }) => news.push(o) });
+    const h = mountHooks(useBoothPopOuts, opts([a], extra()));
+    const q = mountHooks(PopOutQuiet, {});
+    h.rerender(opts([b, a], extra()));
+    expect(heldKeys().map((x) => x.key)).toEqual(["mission:b"]);
+    expect(news).toEqual([]);
+    // × on the card: the quiet scope goes, and Mission is the window under it.
+    q.unmount();
+    onMission = true;
+    h.rerender(opts([b, a], extra()));
+    expect(heldKeys()).toEqual([]);
+    expect(news).toEqual([{ id: "b", title: "NEW MISSION · The bottle" }]);
+    expect(vi.mocked(playTone)).toHaveBeenCalledTimes(1);
+    h.rerender(opts([b, a], extra()));
+    expect(news).toHaveLength(1);
+  });
+
+  it("one already on screen (in Chats) that meets Mission goes too, with the blink and no second chime", () => {
+    const news: Array<{ id: string; title: string }> = [];
+    let onMission = false;
+    const extra = () => ({ missionShown: () => onMission, onMissionNews: (o: { id: string; title: string }) => news.push(o) });
+    const h = mountHooks(useBoothPopOuts, opts([a], extra()));
+    h.rerender(opts([b, a], extra()));
+    h.rerender(opts([b, a], extra()));
+    expect(heldKeys().map((x) => x.key)).toEqual(["mission:b"]);
+    onMission = true;
+    h.rerender(opts([b, a], extra()));
+    expect(heldKeys()).toEqual([]);
+    expect(news).toEqual([{ id: "b", title: "NEW MISSION · The bottle" }]);
+    expect(vi.mocked(playTone)).not.toHaveBeenCalled();
+  });
+
   it("a mission whose objective stays live but moves off the headline goes; one beside a game of the same cue goes", () => {
     const held = [{ spec: { key: "mission:b", title: "NEW MISSION · The bottle", glyph: "🍾", body: [], tone: "info" as const, priority: 35, at: 50_000, sticky: false } }];
     const ctx = { wanted: null, calls: null, guestOf: () => null, wctx: {} as never };
