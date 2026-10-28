@@ -21,15 +21,16 @@ Run from the repo root (`pnpm install` once covers every JS package).
 | `pnpm --filter loom-play build` | `play/dist`, which the event server serves at `/` (`LOOM_APP_DIST` overrides) |
 | `pnpm --filter loom-play test` | vitest over `test/` |
 | `pnpm --filter loom-play typecheck` | `tsc --noEmit` |
-| `pnpm --filter loom-play size` | `scripts/first-load.mjs`: the guest's first load, gzipped, against the 148 kB gate (needs a build) |
+| `pnpm --filter loom-play size` | `scripts/first-load.mjs`: the guest's first load, gzipped, against the 149 kB gate (needs a build) |
 | `pnpm dev` (root) | builds play + terminal + reinstall and runs the server + editor (`scripts/dev.mjs`); `--play` adds this Vite |
 
 `scripts/ops/predeploy.sh` runs `pnpm -r typecheck`, every package's tests,
 and `pnpm --filter loom-play build && node play/scripts/first-load.mjs
---max-kb 148`. A change that pushes the guest's first load over 148 kB
-fails predeploy. With wave 37 merged it measures 147.84 kB, so there is
-about 0.16 kB of room. Wave 37 cut two guest changes (a late
-arrival's quiet bin, a house line echoing a big) to stay under it.
+--max-kb 149`. A change that pushes the guest's first load over 149 kB
+fails predeploy. The gate was 148 kB until wave 37b, which raised it by
+1 kB (about a millisecond on slow 3G) to keep two guest fixes: a late
+arrival's quiet bin (C20) and a house line echoing a big going to the
+bin (C19). With them it measures 148.06 kB. Keep new JS lazy.
 
 ## How a session works
 
@@ -374,7 +375,7 @@ src/
   help-staff.tsx                   the performers' Help (+ role: performer articles)
   chat.tsx · guest.tsx · performer.tsx · session.ts · threads.ts   barrels for pre-wave-13 names
 public/                  sw.js (push only), manifest.webmanifest, pictures/ (Trabolta's two SVGs)
-scripts/first-load.mjs   the 148 kB first-load gate
+scripts/first-load.mjs   the 149 kB first-load gate
 test/                    vitest; *.test.ts(x) per module and lane
 ```
 
@@ -473,7 +474,7 @@ copy. Any new guest line must pass it.
 
 ## Gotchas
 
-- **The 148 kB gate.** Do not import the booth, the host dock, the
+- **The 149 kB gate.** Do not import the booth, the host dock, the
   director phone, Help, the staff Help, the Scan sheet, the lock screen's
   body, the glitch takeover, `jsqr` or `qrcode` statically from anything
   the guest app loads at start. `test/first-load.test.ts` pins the lazy
