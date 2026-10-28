@@ -44,8 +44,9 @@ How loud the rest is, is the story's choice, and it can change during the
 night. From quiet to loud:
 
 - **A balloon tip** pops up by the tray and goes away by itself.
-- **A yellow banner** across the top stays until you tap it (×). Only one
-  announcement to everyone shows at a time: the newest.
+- **A yellow banner** across the top stays until you tap it (×), or for
+  about 45 seconds while you look at it; then it is in the bin, read. Only
+  one announcement to everyone shows at a time: the newest.
 - **A dialog box** covers the screen with **OK**; more than one waits its
   turn.
 - **The blue screen**: everything the story says to you takes over the
