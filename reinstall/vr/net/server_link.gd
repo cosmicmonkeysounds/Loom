@@ -32,6 +32,11 @@
 ## prop), and maps the answer by its `error` string: a 404 that is not
 ## `"no such prop"` is an old server without the route (`"not found"`).
 ##
+## The real house's lights (wave 39): a `lights` stream frame (sent after
+## `hello`, then on change) is read by [method HouseLights.game_lights_of]
+## into [member LinkBase.lights] ([signal LinkBase.lights_changed]); a
+## malformed one is ignored, and a dropped or reconfigured link forgets it.
+##
 ## `--offline` plays without a server at all (the duck is picked locally,
 ## the King's bar is kept here; a moment answers "offline").
 ##
