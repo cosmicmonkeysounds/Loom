@@ -2,5 +2,6 @@
   "server": "https://app.mapsandducks.com",
   "code": "CHANGEME",
   "station": "vr-1",
-  "name": "Headset 1"
+  "name": "Headset 1",
+  "graphics": "medium"
 }

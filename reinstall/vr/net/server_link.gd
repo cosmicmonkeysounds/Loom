@@ -32,6 +32,11 @@
 ## prop), and maps the answer by its `error` string: a 404 that is not
 ## `"no such prop"` is an old server without the route (`"not found"`).
 ##
+## The real house's lights (wave 39): a `lights` stream frame (sent after
+## `hello`, then on change) is read by [method HouseLights.game_lights_of]
+## into [member LinkBase.lights] ([signal LinkBase.lights_changed]); a
+## malformed one is ignored, and a dropped or reconfigured link forgets it.
+##
 ## `--offline` plays without a server at all (the duck is picked locally,
 ## the King's bar is kept here; a moment answers "offline").
 ##
@@ -353,6 +358,7 @@ func _on_station(status_code: int, data: Variant) -> void:
 ## event).
 func _relink(message: String, event_gone: bool) -> void:
 	stream.close()
+	_adopt_lights({})  # no stream, no real lights: the house as before
 	transport.clear_queue()
 	if event_gone:
 		_lose_session("event ended")
@@ -456,6 +462,7 @@ func configure(cfg: Dictionary) -> void:
 	if transport != null:
 		transport.clear_queue()
 	_lose_session("reconfigured")
+	_adopt_lights({})
 	phase = "idle"
 	_mod_token = ""
 	event_id = ""
@@ -879,6 +886,10 @@ func _on_frame(event: String, data: Variant) -> void:
 				_adopt_king(d.get("king"))  # missing (an old server) = no shared King
 		"king":
 			_adopt_king(d)
+		"lights":
+			# Wave 39 (C5): the real house's lights; a malformed frame is ignored.
+			if not d.is_empty():
+				_adopt_lights(d)
 		"duck":
 			if str(d.get("session", "")) == session_id() and session_id() != "":
 				# Sent right after the `house` frame: the duck on the map it named.

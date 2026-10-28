@@ -35,6 +35,10 @@ check "json_escape" eq "$(json_escape 'a"b\c')" 'a\"b\\c'
 json="$(station_json vr-2 'Headset "2"' 'p4ss' https://app.mapsandducks.com)"
 parsed="$(printf '%s' "$json" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["server"], d["code"], d["station"], d["name"], len(d))' 2>&1)"
 check "station_json is valid JSON with every key" eq "$parsed" 'https://app.mapsandducks.com p4ss vr-2 Headset "2" 4'
+# Wave 39: an optional graphics tier.
+gjson="$(station_json vr-2 'Headset 2' 'p4ss' https://app.mapsandducks.com high | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["graphics"], d["name"], len(d))' 2>&1)"
+check "station_json carries a graphics tier when given" eq "$gjson" 'high Headset 2 5'
+check "valid_graphics low|medium|high" bash -c "(QUEST_SH_SOURCE_ONLY=1 . '$q'; valid_graphics low && valid_graphics medium && valid_graphics high && ! valid_graphics ultra && ! valid_graphics '')"
 
 # The build stamp (wave 26, R8): valid JSON, the short sha, staged only.
 stamp="$(build_json abc1234 2026-10-26T12:00Z | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["build"], d["at"])' 2>&1)"
@@ -54,6 +58,9 @@ check "java_major 1.8 → 8" eq "$(java_major "$fake/j8")" "8"
 # Dry runs print the plan and change nothing.
 out="$("$q" --dry-run station vr-1 --code 1234 2>&1)"
 check "station prints the HTTPS VPS by default" bash -c "printf '%s' '$out' | grep -q '\"server\": \"https://app.mapsandducks.com\"'"
+check "station --graphics low bakes the tier" bash -c "'$q' --dry-run station vr-1 --code 1234 --graphics low 2>&1 | grep -q '\"graphics\": \"low\"'"
+check "station refuses a bad tier" bash -c "! '$q' station vr-1 --code 1234 --graphics ultra >/dev/null 2>&1"
+check "build --graphics needs --station" bash -c "! LOOM_MOD_CODE=1 GODOT=/bin/echo '$q' --dry-run build --graphics high >/dev/null 2>&1"
 check "station needs a passcode" bash -c "! LOOM_MOD_CODE= '$q' station vr-1 >/dev/null 2>&1"
 check "build --station needs a passcode" bash -c "! LOOM_MOD_CODE= '$q' --dry-run build --station vr-1 >/dev/null 2>&1"
 plan="$(LOOM_MOD_CODE=1234 GODOT=/bin/echo "$q" --dry-run build --debug --station vr-1 2>&1)"

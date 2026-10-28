@@ -25,7 +25,7 @@ pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
 pnpm --filter loom-reinstall test         # vitest: 649 tests, 48 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1115 checks + quest.sh 37
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1208 checks + quest.sh 42
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
@@ -45,8 +45,8 @@ reveal, and `--trail-delay 0` turns it off for a hand-driven dev run).
 | `web/src/config.ts`, `api.ts`, `spatial.ts`, `kiosk.ts` | provisioning (`?code= name= role= camera= arrows= voice= intro=`), the spatial routes and stream, the 2 s holds |
 | `web/src/game/` | `engine.ts` (three.js), `Play.tsx` + `joystick.tsx`, and pure `physics.ts` (with the outside ground), `input.ts`, `pump.ts` (10 Hz latest-only poses), `hud.ts` (with the path reveal and `kingInView`), `fight.ts` (the King), `trail.ts`, `leash.ts`; wave 26: `moments.ts` (the void, the heart, the disk: when to post and what each answer means), `lines.ts` (`LinePlayer`: in-game captions + the device voice), `Scare.tsx` (the jump scare); wave 33 `tutorial.ts` (the training's steps, the skip rule); `cams.ts`, `voice.ts`, `audio.ts` |
 | `web/src/map/` | the editor: `MapApp.tsx`, `Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, `Preview3D.tsx`, `ProjectBar.tsx`, and pure `plan.ts`, `edit.ts`, `doors.ts`, `yards.ts`, `structure.ts`, `props.ts`, `history.ts`, `check.ts`, `project.ts`; speakers `audio*.ts` + `AudioPanel.tsx` (wave 38: an input's *Ducks as* role and its reach, `setInputRole` / `setInputReach` / `inputReachSpeakers`; renaming or removing a speaker or zone rewrites every input's reach too); lights `lights*.ts` + `LightsPanel.tsx` |
-| `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate + presence, route, frames, duck, the King, and wave 26's `house_escape.gd` + `house_moment.gd`), diffed against `test/golden/`; `house_builder.gd` also draws the heart and the disk |
-| `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, wave 33 `mark_ready`, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay`, wave 33 `intro` and the build stamp) |
+| `vr/house/*.gd` | literal GDScript ports of `@loom/house` (walls, locate + presence, route, frames, duck, the King, and wave 26's `house_escape.gd` + `house_moment.gd`), diffed against `test/golden/`; `house_builder.gd` also draws the heart and the disk; wave 39 `house_lights.gd` (`gameLightsOf` / `pulseFactor` ported, the pool pick, the night ambient, the graphics tiers) and `house_lamps.gd` (the real house's bulbs, the fixed `OmniLight3D` pool, the ambient) |
+| `vr/net/` | `server_link.gd` (the autoload: config, polling, begin / pose / found / hit / moment, wave 33 `mark_ready`, the stream), `cam_feeds.gd` (the presence room's feeds), `voice_link.gd` (with `hold_for`, TEST MIC, ASK AGAIN) + `voice_codec.gd`, `avatar_cache.gd`, `config.gd` (with `trail_delay`, wave 33 `intro`, wave 39 `graphics` and the build stamp); the stream's `lights` frame → `LinkBase.lights_changed` / `lights` (wave 39) |
 | `vr/game/`, `vr/player/` | the state machine (`game.gd`: the path reveal, the void, the heart, the disk, the intro), wave 33's intro (`intro_flow.gd`: the video → tutorial steps and the skip rule, pure; `intro_space.gd`: the cinema, the practice floor, the tutorial panel), the lobby (PICK YOUR PROGRAM tiles, SET UP THIS HEADSET, the MICROPHONE box with the build stamp), the duck, trail, ghosts, HUD; wave 26 `sfx.gd` (synthesised sounds on the `Sfx` bus) and `speech.gd` (captions + `tts_speak`); the XR rig and pointer |
 | `vr/media/reinstallation.ogv` | the intro's video (Theora 720p30), shipped in the APK |
 | `vr/house/house.json`, `vr/test/golden/` | **copies** written by `pnpm house:sync`; never edit them here |
@@ -134,6 +134,11 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   stick's centre; a 1.4 m/s walk with no acceleration; the one stick's
   axis lock; the vignette; a light buzz on a wall. Keep new movement to
   that standard: most players have never worn a headset.
+- **Graphics tiers** (wave 39). VR's `graphics` (`low | medium | high`,
+  default `medium`) sets the house lights' pool (2 / 4 / 5), the shading
+  (per vertex on `low`), and glow + 2× MSAA (`high` only); ACES on all.
+  Quest 3 must hold its frame rate on `medium`: keep SSAO / SSR / SSIL /
+  volumetric fog off, ≤ 8 omni lights on a mesh (5 pool + the duck, heart and disk), and the pool fixed.
 - **Station config.** VR reads `user://station.json` (written by the
   in-headset setup) over the committed `config/station.json` (which must
   keep `CHANGEME`; a test checks it). Never write `res://`.
