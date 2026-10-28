@@ -1359,7 +1359,10 @@ class AudioRouter:
             log.info(
                 "audio health: %s | audio.json %s (%s) | voices %d | played %d skipped %d | xruns %d | limited %d/%d | peak %.1f dBFS | announce %s%s%s",
                 h["device"] or "closed", h["config"] or "—", h["source"], h["voices"], h["played"], h["skipped"], h["xruns"], h["limited"], h["blocks"], h["peak_db"], h["announce"],
-                (" | LAYOUT MOVED (device.expect)" if h["layout"] == "moved" else "") + (f" | {len(h['placeholders'])} placeholder(s)" if h["placeholders"] else ""),
+                (" | LAYOUT MOVED (device.expect)" if h["layout"] == "moved" else "")
+                + (f" | {len(h['placeholders'])} placeholder(s)" if h["placeholders"] else "")
+                + (f" | underruns {h['underruns']}" if h["underruns"] else "")
+                + (f" | ducking: {', '.join(f'{k} {v:.0%}' for k, v in h['sources'].items() if v > 0)}" if any(v > 0 for v in h["sources"].values()) else ""),
                 f" | no file: {', '.join(h['missing'])}" if h["missing"] else "",
             )
             if self.mqtt is not None:
