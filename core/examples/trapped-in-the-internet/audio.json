@@ -30,7 +30,10 @@
       "ch": 3,
       "label": "Analog 1 in — the TV (Trabolta)",
       "kind": "line",
-      "role": "trabolta"
+      "role": "trabolta",
+      "reach": [
+        "everywhere"
+      ]
     },
     {
       "ch": 4,

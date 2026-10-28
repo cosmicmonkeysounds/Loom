@@ -1435,8 +1435,8 @@ SHOW_STORY = Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the
 
 def test_the_bed_ducks_under_trabolta_on_his_reach_and_under_clippy_on_the_living_room(tmp_path):
     """The show's audio.json, a bed everywhere: Trabolta's TV (input 3)
-    ducks the music −18 dB on its route's outputs (the kitchen, the Optical
-    Drive, Main L/R: not the sub); Clippy's mic (input 1) ducks it −12 dB on
+    ducks the music −18 dB on every speaker (his reach is everywhere; his
+    voice itself is routed everywhere but the sub); Clippy's mic (input 1) ducks it −12 dB on
     the living room only (Main L/R and the sub); both: the deeper wins."""
     show = json.loads((SHOW_STORY / "audio.json").read_text(encoding="utf-8"))
     house = json.loads((SHOW_STORY / "house.json").read_text(encoding="utf-8"))
@@ -1469,7 +1469,7 @@ def test_the_bed_ducks_under_trabolta_on_his_reach_and_under_clippy_on_the_livin
     out = level({3: tv})  # Trabolta talks on the TV: his voice reaches 3, 4, 8, 9, 10 through the matrix
     for o in (3, 4, 8, 9, 10):
         assert out[o - 1] - tv == pytest.approx(bed * db_to_lin(-18), rel=0.01), o
-    assert out[0] == pytest.approx(bed, rel=1e-3)  # the sub: off his reach
+    assert out[0] == pytest.approx(bed * db_to_lin(-18), rel=0.01)  # the sub: not on his route, but on his reach (everywhere)
     settle()
     out = level({1: 0.1})  # Clippy's wireless: metered, never routed (CueMix plays it)
     for o in (1, 9, 10):
@@ -1480,7 +1480,7 @@ def test_the_bed_ducks_under_trabolta_on_his_reach_and_under_clippy_on_the_livin
     out = level({1: 0.1, 3: tv})  # both: the deeper claim on each output
     for o in (9, 10):
         assert out[o - 1] - tv == pytest.approx(bed * db_to_lin(-18), rel=0.01), o
-    assert out[0] == pytest.approx(bed * db_to_lin(-12), rel=0.01)
+    assert out[0] == pytest.approx(bed * db_to_lin(-18), rel=0.01)
     assert out[2] - tv == pytest.approx(bed * db_to_lin(-18), rel=0.01)
     h = r.health()
     assert h["sources"]["trabolta"] == 1.0 and h["sources"]["clippy"] == 1.0

@@ -736,7 +736,7 @@ def test_the_audio_json_is_the_828x_on_its_own_outs():
     assert speakers["living-sub"]["room"] == "desktop" == speakers["living-l"]["room"] == speakers["living-r"]["room"]
     assert [(z["id"], z["speakers"]) for z in audio["zones"]] == [("living", ["living-l", "living-r", "living-sub"])]
     roles = {c["ch"]: (c.get("role"), c.get("reach")) for c in audio["inputs"] if c.get("role")}
-    assert roles == {1: ("clippy", ["living"]), 3: ("trabolta", None)}
+    assert roles == {1: ("clippy", ["living"]), 3: ("trabolta", ["everywhere"])}  # Trabolta ducks every speaker, the sub too
     assert "CueMix" in audio["inputs"][0]["label"] and "TV" in audio["inputs"][2]["label"]
     # The TV everywhere but the sub (a new speaker needs its cell ticked on this row).
     assert audio["routes"] == [{"in": 3, "out": [3, 4, 8, 9, 10]}]
