@@ -268,11 +268,10 @@ uv run stagehand sounds placeholders --config trapped.desktop.yaml
   sound (`dance_song.wav`, …): a real file always wins over a placeholder
   or a stand-in, and neither generator ever touches one. `.wav`, `.aiff`,
   `.aif`, `.flac`, and since wave 38 `.mp3` and `.ogg` (a `.wav` of the same
-  name wins); any rate, resampled. **A stand-in is a `.wav` and counts as
-  a real file**, so it beats a real `.mp3`, `.ogg`, `.flac` or `.aiff` of
-  the same name, and `check` does not say so. When the real one is not a
-  `.wav` (say `ad_jingle.mp3`), delete the stand-in `media\sounds\<name>.wav`
-  first; a re-run of `sounds library --story` then leaves the name alone.
+  name wins); any rate, resampled. **A real file always beats a stand-in**,
+  whatever its format: drop `ad_jingle.mp3` beside the stand-in
+  `ad_jingle.wav` and the next `sound ad_jingle` plays the MP3 (no need to
+  delete anything; `sounds library --story` never touches a real file).
   The 13 names with a stand-in: `modem_handshake`, `bingo_start`,
   `ad_jingle`, `truther_glitch`, `countdown_tick`, `printer_grind`,
   `beans_spill`, `zip`, `y2k_chime`, `alarm_siren`, `windows_shutdown`,
@@ -920,7 +919,6 @@ output back to the line out with the TV's volume down (§3.5).
 | Trabolta heard twice (an echo in the living room) | the TV's volume; Windows' Volume mixer; CueMix | Chrome off HDMI and the TV's volume down; input 3 in no CueMix mix (§3.5) |
 | Trabolta not heard on the house speakers | Volume mixer: Chrome's output; CueMix's input 3 meter | Chrome to the line out, the cable into Analog In 1; the TV row of the Audio-tab matrix ticked for each speaker |
 | The Fan Closet is silent | the map's Audio tab; `music status` (`no files : fan_closet`) | place its speaker (§8); render the library (`sounds library --story`, or `.\start-stagehand.ps1`) |
-| A real sound file is in, but the stand-in still plays | `media\sounds\`: a `<name>.wav` beside the real `<name>.mp3` (or `.ogg`, `.flac`, `.aiff`) | delete the stand-in `.wav` (§3.4); the next `sound <name>` plays the real file |
 | A howl, a hum or a buzz on every speaker (the TV route) | pull the cable out of Analog In 1: if it stops, it is the TV's line (while it is out Trabolta is heard nowhere: Chrome back to HDMI and the TV's volume up) | a hum: a ground-loop isolator on the line-out cable; a howl: Chrome's output must not be the MOTU, input 3 in no CueMix mix, and in Windows' Sound → Recording no device has *Listen to this device* ticked. To cut the route without the cable: untick the TV row (input 3) on the map's Audio tab and 💾 Save speakers (the router follows at once). ■ Stop house sounds never touches the route |
 | Every house sound must stop now | — | Run → ■ Stop house sounds; or `uv run stagehand sounds stop --announce --config trapped.desktop.yaml` here (the music too, until the next act's cue or `music scene <name>`). The TV's voice still plays through the house: mute it with `M` on the TV page or Run → Terminals |
 

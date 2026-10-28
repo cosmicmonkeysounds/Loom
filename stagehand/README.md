@@ -446,10 +446,9 @@ audio:
   `uv run stagehand sounds library --story --config
   trapped.desktop.yaml` on the Desktop writes `media/library/` and
   replaces each story placeholder that has a stand-in. A real file is
-  never replaced. A stand-in is a `.wav` and counts as real, so it beats
-  a real `.mp3` / `.ogg` / `.flac` / `.aiff` of the same name (and
-  `check` does not flag it): delete the stand-in when the real file
-  comes in another format. Look at them with `uv run --with matplotlib python -m
+  never replaced, and a real file of any format plays instead of a
+  stand-in beside it (`ad_jingle.mp3` beats the stand-in
+  `ad_jingle.wav`). Look at them with `uv run --with matplotlib python -m
   stagehand.audio.sfx.inspect --only a,b --out DIR`.
 - **`device.expect`**: the show's 828x must report 32 in / 30 out (both
   optical ports on ADAT, even with no expander plugged in); anything else

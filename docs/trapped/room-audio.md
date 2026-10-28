@@ -844,10 +844,9 @@ runbook is [`scripts/house-desktop/README.md`](../../scripts/house-desktop/READM
   ambient loops), deterministic, 48 kHz, one-shots levelled by loudness and
   peak-capped at −1 dBFS, loops seamless. `stagehand sounds library
   [--story]` renders them to `stagehand/media/library/` and puts 13 story
-  stand-ins into `sounds_dir` (never over a real file). A stand-in is a
-  `.wav` and counts as real, so it beats a real `.mp3` / `.ogg` / `.flac`
-  / `.aiff` of the same name: delete the stand-in when the real file
-  comes in another format.
+  stand-ins into `sounds_dir` (never over a real file). The router ranks
+  a real file of any format above a stand-in (`loom-sfx` tag), and a
+  stand-in above a placeholder.
 - **Health.** The router's health and report carry `music {scene, beds,
   missing}`, the input peaks, each source's activity and the underruns;
   `stagehand music status` and `pnpm showctl doctor` print them. `stagehand

@@ -108,8 +108,8 @@ have a synthesized stand-in in stagehand's SFX library: on the router's
 computer, `uv run stagehand sounds library --story --config
 trapped.desktop.yaml` renders the library into `stagehand/media/library/`
 and puts each stand-in in place of its placeholder, never over a real
-file. A stand-in is a `.wav`, so it wins over a real `.mp3` of the same
-name: delete the stand-in when the real file is not a `.wav`. Which speakers a story sound uses by default
+file. A real file you drop in beside a stand-in always plays instead,
+whatever its format (`ad_jingle.mp3` beats the stand-in `ad_jingle.wav`). Which speakers a story sound uses by default
 is set on the [house map](39-house-map.md)'s 🔊 Audio tab.
 
 ## Desk cues

@@ -284,11 +284,12 @@ module docstrings that explain the why).
   restart; else the catch-up (`night.music`). Stop house sounds forgets
   the scene: the beds stay silent until the next music cue or catch-up.
   An empty or dead playlist retries every 10 s (`RETRY_S`).
-- **A library stand-in counts as a real file.** `loom-sfx` WAVs are not
-  placeholders (`sounds.is_placeholder` is false), and `SoundBank.find`
-  takes the first real file in `EXTENSIONS` order, so a stand-in
-  `<name>.wav` beats a real `<name>.mp3` / `.ogg` / `.flac` / `.aiff`,
-  and `check` lists nothing. The runbooks say to delete the stand-in.
+- **Three ranks of sound file.** `sounds._best` ranks a file someone put
+  there (no tag) over a library stand-in (`loom-sfx v1`, `is_stand_in`)
+  over a placeholder (`loom-placeholder v1`), then `EXTENSIONS` order, so
+  a real `ad_jingle.mp3` beats the stand-in `ad_jingle.wav`. A stand-in
+  is not a placeholder: `check` never lists it. `sounds.SFX_TAG` must
+  equal `sfx/render.SFX_TAG` (`tests/test_audio_stand_in.py`).
 - **The MacBook fallback is output-only** (`passthrough: false` in
   `trapped.macbook.yaml`): a launchd job gets no microphone, so the TV is
   not routed and nothing ducks under Trabolta or Clippy there.

@@ -41,32 +41,50 @@ IDENTIFY_S = 1.5
 #: The tag a generated placeholder carries in its RIFF INFO comment.
 PLACEHOLDER_TAG = "loom-placeholder v1"
 _HEAD = 4096
-#: path → (mtime, size, is a placeholder): a header is read once per change.
-_tagged: dict[str, tuple[float, int, bool]] = {}
+#: The tag the SFX library's renders carry (`audio/sfx/render.py` SFX_TAG):
+#: real sounds, but a stand-in that any file you put there outranks.
+SFX_TAG = "loom-sfx v1"
+#: path → (mtime, size, tag): a header is read once per change.
+_tagged: dict[str, tuple[float, int, str | None]] = {}
 
 
-def is_placeholder(path: str | Path) -> bool:
-    """Does the file's first 4 KB carry the placeholder tag? (cached by mtime)"""
+def _tag(path: str | Path) -> str | None:
+    """Which generator tag the file's first 4 KB carries: "placeholder",
+    "sfx", or None for a real file. Cached by mtime and size."""
     p = Path(path)
     try:
         st = p.stat()
     except OSError:
-        return False
+        return None
     hit = _tagged.get(str(p))
     if hit is not None and hit[0] == st.st_mtime and hit[1] == st.st_size:
         return hit[2]
     try:
         with p.open("rb") as f:
-            tagged = PLACEHOLDER_TAG.encode() in f.read(_HEAD)
+            head = f.read(_HEAD)
     except OSError:
-        return False
-    _tagged[str(p)] = (st.st_mtime, st.st_size, tagged)
-    return tagged
+        return None
+    tag = "placeholder" if PLACEHOLDER_TAG.encode() in head else "sfx" if SFX_TAG.encode() in head else None
+    _tagged[str(p)] = (st.st_mtime, st.st_size, tag)
+    return tag
+
+
+def is_placeholder(path: str | Path) -> bool:
+    """Does the file's first 4 KB carry the placeholder tag? (cached by mtime)"""
+    return _tag(path) == "placeholder"
+
+
+def is_stand_in(path: str | Path) -> bool:
+    """Is the file an SFX library render (`stagehand sounds library --story`)?"""
+    return _tag(path) == "sfx"
 
 
 def _best(paths: list[Path]) -> Path | None:
-    """The first real file, else the first placeholder."""
-    return next((p for p in paths if not is_placeholder(p)), paths[0] if paths else None)
+    """The first file someone put there, else the first library stand-in,
+    else the first placeholder: a real `ad_jingle.mp3` beats the library's
+    `ad_jingle.wav`, whatever the extension order."""
+    rank = {None: 0, "sfx": 1, "placeholder": 2}
+    return min(paths, key=lambda p: rank[_tag(p)]) if paths else None
 
 
 def placeholders_in(directory: str | Path) -> list[str]:
@@ -211,7 +229,7 @@ class SoundBank:
             return None
         exact = [p for p in (self.dir / f"{name}{ext}" for ext in EXTENSIONS) if p.is_file()]
         hit = _best(exact)
-        if hit is not None and not is_placeholder(hit):
+        if hit is not None and _tag(hit) is None:
             return hit
         try:
             entries = list(self.dir.iterdir())
@@ -219,7 +237,7 @@ class SoundBank:
             return hit
         low = name.lower()
         folded = [p for p in sorted(entries) if p.suffix.lower() in EXTENSIONS and p.stem.lower() == low and p.is_file()]
-        # A real file in another case beats an exact-named placeholder.
+        # A real file in another case beats an exact-named placeholder or stand-in.
         return _best([*exact, *(p for p in folded if p not in exact)])
 
     def load(self, name: str) -> np.ndarray | None:
