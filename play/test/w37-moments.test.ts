@@ -1,10 +1,11 @@
 //! Wave 37, lane C (the moments): the interrupt rules that de-clutter Play —
 //! a booth's balloons wait behind pop-outs and fold to one (C5), nothing
-//! peeks under a dialog (C18), and a dialog's buttons always fit (C15).
+//! peeks under a dialog (C18), a house line that echoes the big moment
+//! beside it goes to the bin (C19), and a dialog's buttons always fit (C15).
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { EMPTY_MOMENTS, STICKY_MS, momentOf, momentsReducer, surfacesOf, waitBalloons, type Moment, type MomentsState } from "../src/moments/model.ts";
+import { BIG_ECHO_MS, EMPTY_MOMENTS, STICKY_MS, bigEchoes, momentOf, momentsReducer, surfacesOf, waitBalloons, type Moment, type MomentsState } from "../src/moments/model.ts";
 import type { ChatMessage } from "../src/types.ts";
 
 const T = 1_000_000;
@@ -108,6 +109,39 @@ describe("C18: nothing peeks under a dialog", () => {
   });
 });
 
+describe("C19: a house line that echoes the big you just answered goes to the bin", () => {
+  const big = mo(10, { severity: "big", kind: "card", caption: "Y2K", text: "The doors", channel: "lobby", at: T });
+  const alert = (dt: number) => mo(11, { severity: "major", kind: "alert", alarm: true, house: true, caption: "Announcement", text: "SYSTEM CLOCK RESET", channel: "lobby", at: T + dt });
+  const queued = (m: Moment[]) => arrive(EMPTY_MOMENTS, m, "guest", "dialog").queue;
+
+  it("in one batch with the big: the alert is an echo", () => {
+    expect([...bigEchoes([big, alert(0)], [])]).toEqual(["m:11"]);
+  });
+
+  it("1 s later, with the big queued (on screen counts): still the echo", () => {
+    expect([...bigEchoes([alert(1_000)], queued([big]))]).toEqual(["m:11"]);
+    expect([...bigEchoes([alert(BIG_ECHO_MS)], queued([big]))]).toEqual(["m:11"]);
+  });
+
+  it("an alert queued first, then its big: the queued alert is the echo", () => {
+    expect([...bigEchoes([big], queued([alert(-1_000)]))]).toEqual(["m:11"]);
+  });
+
+  it("6 s apart, or no big at all: kept", () => {
+    expect(bigEchoes([alert(6_000)], queued([big])).size).toBe(0);
+    expect(bigEchoes([alert(0)], []).size).toBe(0);
+    // Only a house alert is an echo: a personal line beside the big is not.
+    expect(bigEchoes([big, mo(12, { severity: "major", kind: "readout", at: T })], []).size).toBe(0);
+  });
+
+  it("the provider reads the echo (marks it seen) and drops it before it queues", () => {
+    const src = readFileSync(new URL("../src/moments/provider.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/const echoes = bigEchoes\(sorted\.now, mem\.state\.queue\);/u);
+    expect(src).toMatch(/for \(const k of echoes\) markSeen\(k\);/u);
+    expect(src).toMatch(/dispatch\(\{ type: "read", keys: \[\.\.\.echoes\] \}\)/u);
+  });
+});
+
 describe("C15: a dialog's buttons always fit", () => {
   const css = readFileSync(new URL("../src/css/moments.css", import.meta.url), "utf8");
   const rule = (sel: string) => {
@@ -127,6 +161,14 @@ describe("C15: a dialog's buttons always fit", () => {
     expect(nowrap.body).toContain("white-space: nowrap");
     expect(go.body).toContain("white-space: normal");
     expect(go.at).toBeGreaterThan(nowrap.at);
+  });
+
+  it("on a phone, exits stack full width with OK last (no right-to-left staircase); OK alone is untouched", () => {
+    const at = css.indexOf("@media (max-width: 430px)");
+    expect(at).toBeGreaterThanOrEqual(0);
+    const block = css.slice(at, css.indexOf("\n}", at));
+    expect(block).toMatch(/\.moments-dialog-buttons > \.moments-go,\s*\.moments-dialog-buttons > \.moments-go ~ \.moments-ok \{ flex: 1 1 100%; \}/u);
+    expect(block).not.toMatch(/^\s*\.moments-ok \{/mu);
   });
 });
 

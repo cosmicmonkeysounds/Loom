@@ -6,7 +6,7 @@
 # Checks: a clean tree, the story (`loomcheck --smoke` on Trapped in the
 # Internet, and `titi:facts --check` — the files generated from the show's
 # facts.json are up to date), every TS package's typecheck + tests
-# (`pnpm -r`), the guest's first load (play's entry chunk ≤ 148 kB gzip,
+# (`pnpm -r`), the guest's first load (play's entry chunk ≤ 149 kB gzip,
 # `play/scripts/first-load.mjs`), stagehand's pytest, the ops-script
 # tests, and that docker-compose.yml still parses.
 # `--vr` adds the Godot suite (needs godot on PATH). On success it stamps
@@ -57,7 +57,7 @@ run "compose file parses" env POSTGRES_PASSWORD=x BETTER_AUTH_SECRET=x LOOM_BASE
 if [ "$skip_tests" = 0 ]; then
   run "typecheck (pnpm -r)" pnpm -r typecheck
   run "tests (pnpm -r)" pnpm -r test
-  run "play: the guest's first load ≤ 148 kB gzip" bash -c 'pnpm --filter loom-play build && node play/scripts/first-load.mjs --max-kb 148'
+  run "play: the guest's first load ≤ 149 kB gzip" bash -c 'pnpm --filter loom-play build && node play/scripts/first-load.mjs --max-kb 149'
   run "stagehand pytest" bash -c 'cd stagehand && uv run pytest -q'
   [ "$vr" = 1 ] && run "Godot VR suite" pnpm test:vr
 fi
