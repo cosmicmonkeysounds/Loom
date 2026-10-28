@@ -24,7 +24,9 @@ export interface EngineMemory {
   lastHoldEnd: number;
   /** The history count last processed: a new one means the messages are a reconnect's backlog. */
   historiesSeen: number;
-  /** When each moment on screen first showed (wall clock): a glance < 1 s is missed. */
+  /** When each moment on screen first showed (wall clock): a glance < 1 s is
+   *  missed. Wave 37: its clock runs only on screen; off it, the value is
+   *  minus the time it was on (the provider's `onMs`). */
   shownAt: Map<string, number>;
   /** The done list last persisted (`doneAbove`). */
   savedDone: string;
