@@ -90,7 +90,8 @@ describe("wave 37 (C11): the Open tab keeps a claimed poster in place", () => {
     h.rerender(props([marks[0]!, W("Encarta", { markedAt: 2, claimedBy: "Norton" }), marks[2]!]));
     const after = posters(h.output);
     expect(after.map((p) => p.props.w.id)).toEqual(["WinZip", "Encarta", "Pong"]);
-    expect(tabs(h.output)).toEqual(["Open (3)", "Mine (1)", "Everyone (3)"]);
+    // Open counts the two still open; the kept, claimed one is an extra row.
+    expect(tabs(h.output)).toEqual(["Open (2)", "Mine (1)", "Everyone (3)"]);
     const mine = renderToStaticMarkup(<Poster {...after[1]!.props} me="Norton" now={0} place={null} onScan={noop} />);
     expect(mine).toContain("📷 Scan their pass");
     expect(mine).toContain("YOURS");

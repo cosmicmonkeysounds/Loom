@@ -88,7 +88,8 @@ export function WantedBoard(p: WantedBoardProps) {
         {!p.readOnly && (
           <div className="booth-tabs" role="tablist" aria-label="Which posters">
             {TABS.map((t) => {
-              const n = tabRows(t.id).length;
+              // Open counts the posters still open, not the kept, claimed ones.
+              const n = t.id === "open" ? p.wanted.filter((w) => boardTab(w, "open", p.me)).length : tabRows(t.id).length;
               return (
                 <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`booth-tab ${tab === t.id ? "current" : ""} ${n === 0 ? "zero" : ""}`} onClick={() => setTab(t.id)}>
                   {t.label} ({n})
