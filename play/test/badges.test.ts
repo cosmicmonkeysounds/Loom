@@ -76,6 +76,17 @@ describe("a guest's typed line to a booth", () => {
     // The guest's own words never badge the guest.
     expect(badgeWorthy(typed(), { id: "g-1019a0", name: "GarageBand", booth: false })).toBe(false);
   });
+
+  it("never a menu pick or a deed (wave 37 C21: the server's pick lines are no guest writing to the booth)", () => {
+    expect(guestLineToBooth(typed({ text: "Deposited", pick: true }), "Clippy")).toBe(false);
+    expect(guestLineToBooth(typed({ text: "shows the receipt", pick: true, act: true }), "Clippy")).toBe(false);
+    expect(guestLineToBooth(typed({ text: "shows the receipt", act: true }), "Clippy")).toBe(false);
+    expect(badgeWorthy(typed({ pick: true }), clippy)).toBe(false);
+    const thread: Channel = { id: "guest:g-1019a0", kind: "guest", title: "GarageBand", spaceId: "guests", messages: [typed({ pick: true }), typed()], unread: 0, decision: null, lastTs: 0 };
+    expect(unreadOf(thread, -1, clippy)).toBe(1); // only the typed one
+    // A typed line still is.
+    expect(guestLineToBooth(typed({ text: "where is the bingo card?" }), "Clippy")).toBe(true);
+  });
 });
 
 describe("unreadOf", () => {

@@ -15,10 +15,11 @@ import { WIDGETS, cardAsks } from "../widgets.tsx";
  * (`audience: [<guest id>]`, never `@<Character>`), so the audience alone
  * never says it is for the booth: a typed line (no beat) in `dm:<me>` from
  * someone other than the character is. The story's own lines in that thread
- * (from the character, or a beat's) never are.
+ * (from the character, or a beat's) never are, nor a menu pick (wave 28's
+ * server `pick` / `act` line, wave 37 C21): the guest chose, not wrote.
  */
-export function guestLineToBooth(m: Pick<ChatMessage, "channel" | "from" | "kind" | "beat" | "hidden">, character: string): boolean {
-  if (character === "" || m.hidden === true || m.kind !== "line") return false;
+export function guestLineToBooth(m: Pick<ChatMessage, "channel" | "from" | "kind" | "beat" | "hidden" | "pick" | "act">, character: string): boolean {
+  if (character === "" || m.hidden === true || m.kind !== "line" || m.pick === true || m.act === true) return false;
   if (m.channel !== `dm:${character}`) return false;
   if (m.beat !== undefined && m.beat !== null && m.beat !== "") return false;
   const from = m.from.trim();
@@ -28,11 +29,11 @@ export function guestLineToBooth(m: Pick<ChatMessage, "channel" | "from" | "kind
 
 /** Is this message addressed to the viewer (a guest by id, a booth as
  *  `@<character>`, or a guest's typed line in the booth's own DM thread)? */
-export function addressedTo(m: Pick<ChatMessage, "audience"> & Partial<Pick<ChatMessage, "channel" | "from" | "kind" | "beat" | "hidden">>, me: Viewer): boolean {
+export function addressedTo(m: Pick<ChatMessage, "audience"> & Partial<Pick<ChatMessage, "channel" | "from" | "kind" | "beat" | "hidden" | "pick" | "act">>, me: Viewer): boolean {
   if (!Array.isArray(m.audience)) return false;
   if (!me.booth) return m.audience.includes(me.id);
   if (m.audience.includes(`@${me.name}`)) return true;
-  return m.channel !== undefined && m.from !== undefined && m.kind !== undefined && guestLineToBooth(m as Pick<ChatMessage, "channel" | "from" | "kind" | "beat" | "hidden">, me.name);
+  return m.channel !== undefined && m.from !== undefined && m.kind !== undefined && guestLineToBooth(m as Pick<ChatMessage, "channel" | "from" | "kind" | "beat" | "hidden" | "pick" | "act">, me.name);
 }
 
 /** Does one message earn a badge for `me`? */
