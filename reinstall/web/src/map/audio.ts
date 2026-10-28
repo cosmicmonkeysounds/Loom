@@ -181,7 +181,7 @@ export function toggleSpeakerOutput(audio: AudioConfig, id: string, ch: number):
   return patchSpeaker(audio, id, { out: s.out.includes(ch) ? s.out.filter((c) => c !== ch) : [...s.out, ch] });
 }
 
-/** Swap a target name everywhere a target list names it (cues, announce, TV voice). */
+/** Swap a target name everywhere a target list names it (cues, announce, TV voice, input reach). */
 function retarget(a: AudioConfig, from: string, to: string | null): void {
   const f = foldTarget(from);
   const fix = (list: string[]): string[] => {
@@ -191,6 +191,15 @@ function retarget(a: AudioConfig, from: string, to: string | null): void {
   for (const c of Object.values(a.cues)) c.to = fix(c.to);
   if (a.announce !== undefined) a.announce.to = fix(a.announce.to);
   if (a.voice?.tv !== undefined) a.voice.tv = fix(a.voice.tv);
+  // An input's reach (wave 38): a list left empty is dropped, as
+  // setInputReach does, so the router falls back to the input's routes
+  // (an empty list would duck nowhere).
+  for (const i of a.inputs) {
+    if (i.reach === undefined) continue;
+    const r = fix(i.reach);
+    if (r.length === 0) delete i.reach;
+    else i.reach = r;
+  }
 }
 
 /** Rename a speaker's id (and every zone / target naming it). Refused

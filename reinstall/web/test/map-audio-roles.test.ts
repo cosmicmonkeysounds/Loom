@@ -9,7 +9,7 @@ import { defaultAudio, validateAudio } from "@loom/house";
 import type { AudioConfig } from "@loom/house";
 import starter from "../../../core/examples/trapped-in-the-internet/audio.json";
 import { AudioPanel } from "../src/map/AudioPanel.tsx";
-import { addSpeaker, inputReachSpeakers, normalizeAudio, roleAllowed, setCell, setDevice, setInputReach, setInputRole } from "../src/map/audio.ts";
+import { addSpeaker, inputReachSpeakers, normalizeAudio, removeSpeaker, removeZone, renameSpeaker, roleAllowed, setCell, setDevice, setInputReach, setInputRole } from "../src/map/audio.ts";
 import { SHOW, TWO_ROOMS } from "./houses.ts";
 
 const START = (): AudioConfig => normalizeAudio(starter);
@@ -151,5 +151,30 @@ describe("the Inputs section renders the picker and the reach", () => {
     const out = html(START(), false);
     expect(cell(out, "input-ducks-1")).toMatch(/<select[^>]*disabled=""[^>]*aria-label="Input 1 ducks the music as"/u);
     expect(cell(out, "input-reach-1")).not.toContain("+ add…");
+  });
+});
+
+describe("a reach follows the speakers and zones it names", () => {
+  it("removing the living zone drops Clippy's reach (the router's default, not a stale name that ducks nothing)", () => {
+    const a = START();
+    expect(input(a, 1)?.reach).toEqual(["living"]);
+    const b = removeZone(a, "living");
+    expect(input(b, 1)?.reach).toBeUndefined();
+    expect(input(b, 1)?.role).toBe("clippy");
+    expect(validateAudio(b, null).warnings.filter((w) => /^inputs/u.test(w))).toEqual([]);
+  });
+
+  it("renaming a reached speaker renames it in the reach; removing it drops it", () => {
+    const a = setInputReach(START(), 1, ["living-l", "living"]);
+    expect(input(renameSpeaker(a, "living-l", "living-left"), 1)?.reach).toEqual(["living-left", "living"]);
+    expect(inputReachSpeakers(renameSpeaker(a, "living-l", "living-left"), SHOW(), 1)).toContain("living-left");
+    expect(input(removeSpeaker(a, "living-l"), 1)?.reach).toEqual(["living"]);
+    const only = setInputReach(START(), 1, ["living-l"]);
+    expect(input(removeSpeaker(only, "living-l"), 1)?.reach).toBeUndefined();
+  });
+
+  it("an everywhere reach is untouched", () => {
+    const a = START();
+    expect(input(removeZone(a, "living"), 3)?.reach).toEqual(["everywhere"]);
   });
 });
