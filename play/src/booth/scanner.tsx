@@ -76,6 +76,12 @@ export function Scanner({ onScan, busy = false }: { onScan: (id: string) => Prom
   );
 }
 
+/** The live camera's hint. Only door work (`queue`) has a next guest
+ *  waiting (C3); anyone else's × leaves after each card. */
+export function scanHint(queue: boolean): string {
+  return queue ? "Hold a pass up to the camera. It stays on for the next guest." : "Hold a pass up to the camera.";
+}
+
 /** The booth's just-closed-pass gate (`closedGate`); `PerformerApp` keeps
  *  one for the whole sign-in, so leaving and reopening the scanner with the
  *  same pass still held up never re-fires its scan. */
@@ -125,6 +131,18 @@ export function ScannerScreen({
   const problem = cameraProblem(cam);
   const live = cameraOn(true, card !== null);
   const scanBox = useRef<HTMLDivElement>(null);
+  // Any way out over a card gates its pass (C1): the window's ×, the
+  // phone's Back (the booth closes the layer, so this unmounts), the
+  // taskbar, a thread or the board. `closed` is idempotent.
+  const cardRef = useRef(card);
+  cardRef.current = card;
+  useEffect(
+    () => () => {
+      if (cardRef.current !== null) gate.closed(cardRef.current.id);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
   // While a card is up the camera section is inert (no Tab stop, no tap).
   useEffect(() => {
     const el = scanBox.current;
@@ -179,7 +197,8 @@ export function ScannerScreen({
     void scanBox.current?.querySelector("video")?.play()?.catch(() => {});
   };
   // × means done (C1): over a card the pass is gated (still held to the
-  // lens), then the scanner leaves; on the camera it just leaves.
+  // lens), then the scanner leaves; on the camera it just leaves. (The
+  // unmount gates it too; doing it here first keeps the order plain.)
   const leave = () => {
     if (card !== null) gate.closed(card.id);
     onClose();
@@ -204,7 +223,7 @@ export function ScannerScreen({
           ) : null}
         </div>
         <p className="booth-scan-hint" role="status" aria-live="polite">
-          {note !== "" ? note : cam === "live" ? "Hold a pass up to the camera. It stays on for the next guest." : " "}
+          {note !== "" ? note : cam === "live" ? scanHint(queue) : " "}
         </p>
         {err && (
           <div className="booth-err" role="alert">

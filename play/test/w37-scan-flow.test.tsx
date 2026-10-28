@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { backFor, closeTo, closedGate, scanTitle, type Layer, type OpenLayer } from "../src/booth/model.ts";
-import { CLOSED_PASS_MS, Scanner, ScannerScreen } from "../src/booth/scanner.tsx";
+import { CLOSED_PASS_MS, Scanner, ScannerScreen, scanHint } from "../src/booth/scanner.tsx";
 import { GuestCardBody } from "../src/booth/card.tsx";
 import { ConfrontScreen } from "../src/booth/confront.tsx";
 import { ownFireFor } from "../src/booth/app.tsx";
@@ -16,6 +16,7 @@ import type { BoothObjective } from "../src/booth/wire.ts";
 import type { PrimeSession } from "../src/session/prime.ts";
 import type { Interaction } from "../src/types.ts";
 import { elements, mountHooks } from "./hooks-harness.ts";
+import type { ReactElement } from "react";
 
 const src = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), "utf8");
 
@@ -87,9 +88,122 @@ describe("C1: × means done", () => {
     expect(s.closed()).toBe(1);
   });
 
+  it("the phone's Back (the booth closes the layer: the scanner unmounts) gates the pass over a card", async () => {
+    const s = await scanned();
+    expect(s.body()).toBeDefined();
+    expect(s.gate.allows("g-1")).toBe(true);
+    s.h.unmount();
+    expect(s.gate.allows("g-1")).toBe(false);
+    expect(s.closed()).toBe(0);
+  });
+
+  it("over a confrontation too; and leaving from the camera gates nobody", async () => {
+    const s = await scanned({ wanted: true });
+    expect(s.confront()).toBeDefined();
+    s.h.unmount();
+    expect(s.gate.allows("g-1")).toBe(false);
+    const gate = closedGate(CLOSED_PASS_MS);
+    let closedIds = 0;
+    const counting = { closed: (id: string) => ((closedIds += 1), gate.closed(id)), allows: gate.allows };
+    const h = mountHooks(ScannerScreen, { session: session(), admin: false, gate: counting, onClose: () => {}, onOpenThread: () => {} });
+    h.unmount();
+    expect(closedIds).toBe(0);
+  });
+
+  it("Next guest gates the card it closed, and a Back on the camera after it keeps that gate", async () => {
+    const s = await scanned({ queue: true });
+    s.body()!.onNext!();
+    s.h.act(() => {});
+    s.h.unmount();
+    expect(s.gate.allows("g-1")).toBe(false);
+  });
+
   it("scannerClose is gone (never deprecated): the pure rule is closeTo", () => {
     expect(src("booth/model.ts")).not.toContain("scannerClose");
     expect(src("booth/scanner.tsx")).not.toContain("scannerClose");
+  });
+});
+
+/** The text inside an element (strings and numbers, children walked). */
+function textOf(node: unknown): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join("");
+  if (node !== null && typeof node === "object" && "props" in node) return textOf((node as ReactElement<{ children?: unknown }>).props.children);
+  return "";
+}
+const tick = () => new Promise((r) => setTimeout(r, 0));
+type Btn = { onClick: () => void; className?: string; children?: unknown };
+const buttonWith = (out: unknown, words: string) => elements(out).find((e) => e.type === "button" && textOf(e).includes(words))?.props as Btn | undefined;
+
+describe("C1: the card's own Scan again confrontation", () => {
+  const card = { guest: { id: "g-1", name: "Ada", faction: null, captured: false, location: null }, live: ["send"], guestScoped: [], readouts: [] };
+  async function rescanned(o: { onLeave?: () => void }) {
+    const h = mountHooks(GuestCardBody, { session: session({ wanted: true }), guestId: "g-1", seed: { card }, admin: false, onOpenThread: () => {}, ...(o.onLeave !== undefined ? { onLeave: o.onLeave } : {}) } as Parameters<typeof GuestCardBody>[0]);
+    const again = buttonWith(h.output, "Scan again");
+    expect(again).toBeDefined();
+    h.act(() => again!.onClick());
+    await tick();
+    h.act(() => {});
+    return h;
+  }
+  const confrontOf = (out: unknown) => elements(out).find((e) => e.type === ConfrontScreen)?.props as { onNotNow: () => void } | undefined;
+
+  it("inside the scanner, its Not now leaves (onLeave, once)", async () => {
+    let left = 0;
+    const h = await rescanned({ onLeave: () => (left += 1) });
+    expect(confrontOf(h.output)).toBeDefined();
+    h.act(() => confrontOf(h.output)!.onNotNow());
+    expect(left).toBe(1);
+  });
+
+  it("in the card window (no onLeave, no onConfrontDone), Not now goes back to the card", async () => {
+    const h = await rescanned({});
+    expect(confrontOf(h.output)).toBeDefined();
+    h.act(() => confrontOf(h.output)!.onNotNow());
+    expect(confrontOf(h.output)).toBeUndefined();
+    expect(buttonWith(h.output, "Scan again")).toBeDefined();
+  });
+});
+
+describe("C1: CAPTURED has no way on but × (and Next guest at the door)", () => {
+  const c = { guest: "g-1", name: "Ada", reason: null, shield: "send", arm: false, deadMs: 0, claimedBy: null };
+  async function captured(onNext?: () => void) {
+    const h = mountHooks(ConfrontScreen, { c, me: NORTON, press: () => Promise.resolve({ ok: true, responses: ["🛡 Ada is on the way."] } as never), onNotNow: () => {}, ...(onNext !== undefined ? { onNext } : {}) });
+    const shield = elements(h.output).find((e) => e.type === "button" && String((e.props as Btn).className).includes("confront-shield"))?.props as Btn;
+    h.act(() => shield.onClick());
+    await tick();
+    h.act(() => {});
+    return h;
+  }
+
+  it("a non-door booth's CAPTURED: no Not now, no Next guest (the window's × leaves)", async () => {
+    const h = await captured();
+    expect((h.output as ReactElement<{ "aria-label": string }>).props["aria-label"]).toBe("Ada captured");
+    expect(buttonWith(h.output, "Not now")).toBeUndefined();
+    expect(buttonWith(h.output, "Next guest")).toBeUndefined();
+  });
+
+  it("a door worker's CAPTURED offers Next guest", async () => {
+    let next = 0;
+    const h = await captured(() => (next += 1));
+    buttonWith(h.output, "Next guest")!.onClick();
+    expect(next).toBe(1);
+  });
+
+  it("the scanner's × over a confrontation leaves and gates it", async () => {
+    const s = await scanned({ wanted: true });
+    expect(s.confront()).toBeDefined();
+    s.x();
+    expect(s.closed()).toBe(1);
+    expect(s.gate.allows("g-1")).toBe(false);
+  });
+});
+
+describe("C3: the camera hint promises a next guest only at the door", () => {
+  it("scanHint", () => {
+    expect(scanHint(true)).toBe("Hold a pass up to the camera. It stays on for the next guest.");
+    expect(scanHint(false)).toBe("Hold a pass up to the camera.");
+    expect(src("booth/scanner.tsx")).toContain('cam === "live" ? scanHint(queue) : " "');
   });
 });
 
