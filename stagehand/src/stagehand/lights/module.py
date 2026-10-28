@@ -1,16 +1,18 @@
 """The house lights (the `lights` module) — the story's `cue <look>` → Zigbee2MQTT / WLED.
 
-    event server  GET /api/mod/lights   (long poll: lights.json + tests + pairs; module=1)
+    event server  GET /api/mod/lights   (long poll: lights.json + tests + pairs + presence; module=1)
                   GET /api/spatial/house (rooms → LOCATIONs, every 5 min)
                   GET /api/screen/state  (the catch-up: the story's heart vars)
                   mod feed  sim directive `cue X`, lifecycle
                   POST /api/mod/lights/devices (Z2M's device list, reduced)
+                  POST /api/mod/lights/shown   (what every fixture shows: the games' lights)
          │
          ▼
     this module ── MQTT on this Mac's broker (Zigbee2MQTT's)
                    ├─ looks: `cue heart_wake` → looks.heart_wake → timed steps
                    │   zigbee2mqtt/<device>/set · <wled>/api, safety-clamped
                    ├─ tests: identify a fixture, play a look, publish one state
+                   ├─ presence: a program in the games under a bulb → its firmware pulse
                    ├─ pairing: zigbee2mqtt/bridge/request/permit_join {"time": N}
                    ├─ zigbee2mqtt/bridge/{devices,groups,state} → the server
                    └─ health/lights (online / LWT lost) + health/lights/stats
@@ -38,6 +40,30 @@ house look the server room opens over), when lights.json has that look; the
 heart look then takes the server-room bulb, which no house look reaches. A
 live cue that lands while the state is read wins (the catch-up then plays
 nothing).
+
+**Presence pulses (wave 39).** The server judges which fixtures have a
+program from the reinstallation games under them (`presence` on the long
+poll, cursor `presence=<seq>`). A fixture entering that set — and still
+allowed locally: presence on in `lights.json`, in `presence.to`, never a
+`safety` fixture (`presence_fixtures`) — plays its firmware effect: Zigbee
+`{"effect": <presence.effect>}`, re-sent every 12 s while it stays (a Hue
+breathe ends by itself after ~15 s), `{"effect": "finish_effect"}` when it
+leaves; WLED its breathe (`seg fx 2`; blink → `fx 1`) once, and the `fx` its
+looks left it on when it leaves. A pulse never touches the sequencer (no
+look loses a fixture to it) and a look never stops a pulse: a Zigbee look's
+command goes out as written (the next repeat brings the pulse back); a WLED
+look's `effect` is held back while the strip pulses and comes back when the
+program leaves. An identify test wins for its 2 s: nothing pulse-related is
+sent meanwhile, and the pulse is put back (or ended) when it is over.
+
+**The report (wave 39).** `shown` is every command the module publishes
+(looks, give-backs, tests, catch-ups, pulses; never an identify flash),
+clamped and merged per fixture like `mergeLightState`: what each bulb
+shows. It goes to `POST /api/mod/lights/shown` 250 ms after a change (at
+most 4 a second) and every 20 s anyway (the server's freshness keepalive),
+so the games light their virtual house with the real one. Nothing is posted
+before the first command; a 404 (an older server) is logged once and
+posting stops until the module restarts.
 """
 
 from __future__ import annotations
@@ -57,8 +83,17 @@ import httpx
 from ..modapi import ModApiError, ModClient, run_stream
 from ..module import ConfigError, Context
 from .config import LightsSectionConfig, parse_lights_section
-from .plan import Command, Plan, ordered, plan_look
-from .routing import LIGHTS_FILE, LightsDoc, LightsDocError, parse_lights
+from .plan import Command, Plan, clamp_for_safety, ordered, plan_look
+from .routing import (
+    LIGHTS_FILE,
+    PRESENCE_REPEAT_MS,
+    LightsDoc,
+    LightsDocError,
+    merge_light_state,
+    parse_lights,
+    presence_fixtures,
+    presence_settings,
+)
 from .z2m import (
     bridge_online,
     identify_payload,
@@ -78,8 +113,16 @@ LIFECYCLE_CATCH_UP_DELAY_S = 1.5
 HOUSE_REFRESH_S = 300.0
 #: Z2M's device list settles for this long before it goes to the server.
 DEVICES_DEBOUNCE_S = 2.0
-#: A WLED identify blinks this long, then the fixture's settled state comes back.
-WLED_IDENTIFY_MS = 2000
+#: An identify lasts this long: a WLED strip then gets its settled state back,
+#: and a pulse that the flash interrupted (or that ended meanwhile) is put right.
+IDENTIFY_MS = 2000
+#: A presence pulse on a WLED strip: its Breathe (fx 2), or Blink (fx 1).
+WLED_PULSE_FX = {"breathe": 2, "blink": 1, "okay": 2}
+#: The `shown` report: posted this long after a change (ms, so at most 4 a
+#: second) and at least this often (the server's freshness keepalive).
+SHOWN_DEBOUNCE_MS = 250
+SHOWN_KEEPALIVE_MS = 20_000
+SHOWN_PATH = "/api/mod/lights/shown"
 #: A restore look gives the settled state back over this many seconds when it carried no `transition` (§4's swells).
 RESTORE_FADE_S = 0.8
 #: The heart stages in which an open door plays the door loop (D21).
@@ -171,6 +214,17 @@ class Run:
         return self.task is not None and self.task.done()
 
 
+@dataclass
+class Pulse:
+    """One fixture a program stands under (wave 39)."""
+
+    fixture: str
+    kind: str
+    effect: str
+    #: Zigbee: the 12 s re-send.
+    task: asyncio.Task | None = None
+
+
 class HouseLights:
     name = "lights"
 
@@ -209,6 +263,21 @@ class HouseLights:
         self._catch_up_task: asyncio.Task | None = None
         self._live_cues = 0
         self._tasks: set[asyncio.Task] = set()
+        # Presence (wave 39): the server's pulsed set, the pulses playing, identifies running.
+        self.presence_seq = 0
+        self.presence_wanted: list[str] = []
+        self.pulses: dict[str, Pulse] = {}
+        self._identify_until: dict[str, float] = {}
+        self._ended_in_identify: set[str] = set()
+        # The report (wave 39): what each fixture shows, and what the looks left it (no pulses).
+        self.shown: dict[str, dict] = {}
+        self.base: dict[str, dict] = {}
+        self.shown_posts = 0
+        self.shown_off = False
+        self._shown_dirty = False
+        self._shown_last = float("-inf")
+        self._shown_task: asyncio.Task | None = None
+        self._shown_failing = False
 
     # -- describe / check ------------------------------------------------------
 
@@ -343,7 +412,207 @@ class HouseLights:
         f = self.doc.fixture(fid) if self.doc is not None else None
         if f is None:
             return
-        self.publish(light_topic(f, self.cfg.z2m_base), payload_for(f, state))
+        wire = state
+        if fid in self.pulses and f.get("kind") == "wled" and "effect" in state:
+            # A strip pulses until the program leaves: the look's effect waits (`base`).
+            wire = {k: v for k, v in state.items() if k != "effect"}
+            if not payload_for(f, wire):
+                self._remember(f, state)
+                return
+        self.publish(light_topic(f, self.cfg.z2m_base), payload_for(f, wire))
+        self._remember(f, state, wire)
+
+    # -- the report (wave 39) -----------------------------------------------------------
+
+    def _remember(self, f: dict, state: dict, wire: dict | None = None, pulse: bool = False) -> None:
+        """Merge one published command into the model: `base` (what the looks
+        left: no pulse) and `shown` (what the fixture shows: `wire`)."""
+        fid = f["id"]
+        if not pulse:
+            self.base[fid] = merge_light_state(self.base.get(fid, {}), clamp_for_safety(f, state))
+        if wire is None:
+            return
+        was = self.shown.get(fid)
+        now = merge_light_state(was or {}, clamp_for_safety(f, wire))
+        if now != was:
+            self.shown[fid] = now
+            self._shown_changed()
+
+    def _shown_changed(self) -> None:
+        self._shown_dirty = True
+        if self.shown_off or self.mod is None:
+            return
+        if self._shown_task is None or self._shown_task.done():
+            self._shown_task = self._spawn(self._shown_flush())
+
+    async def _shown_flush(self) -> None:
+        """The debounce: one post 250 ms after the first change, again while
+        more arrived meanwhile (so never more than 4 a second)."""
+        while self._shown_dirty and not self.shown_off:
+            await self.timer.sleep_until(self.timer.now() + SHOWN_DEBOUNCE_MS)
+            if self._shown_dirty:  # else the keepalive just sent it
+                await self.post_shown()
+
+    def shown_body(self) -> dict:
+        known = (lambda fid: self.doc.fixture(fid) is not None) if self.doc is not None else (lambda fid: True)
+        return {"fixtures": {fid: dict(state) for fid, state in self.shown.items() if known(fid)}}
+
+    async def post_shown(self) -> bool:
+        """`POST /api/mod/lights/shown` with the whole model. → posted?"""
+        self._shown_dirty = False
+        self._shown_last = self.timer.now()
+        if self.shown_off or self.mod is None or not self.shown:
+            return False
+        try:
+            await self.mod.post(SHOWN_PATH, self.shown_body())
+        except ModApiError as err:
+            if err.status == 404:
+                self.shown_off = True
+                log.warning("the server has no %s (an older release): the games light the house from its own estimate; not posting again until a restart", SHOWN_PATH)
+                return False
+            self._shown_failed(err)
+            return False
+        except (httpx.HTTPError, OSError) as err:
+            self._shown_failed(err)
+            return False
+        if self._shown_failing:
+            log.info("the fixtures' report reaches the server again")
+            self._shown_failing = False
+        self.shown_posts += 1
+        return True
+
+    def _shown_failed(self, err: Exception) -> None:
+        if not self._shown_failing:
+            log.warning("posting what the fixtures show failed (%s) — retrying on the next change or in %d s", err or type(err).__name__, SHOWN_KEEPALIVE_MS // 1000)
+        self._shown_failing = True
+
+    async def _shown_loop(self) -> None:
+        """The keepalive: the whole model at least every 20 s."""
+        while not self.shown_off:
+            due = self._shown_last + SHOWN_KEEPALIVE_MS
+            if self.timer.now() >= due:
+                await self.post_shown()
+            else:
+                await self.timer.sleep_until(due)
+
+    # -- presence pulses (wave 39) -------------------------------------------------------
+
+    def take_presence(self, answer: dict) -> bool:
+        """A poll answer's `presence` → the pulses. → True when its seq moved
+        (the answer came early for it). An older server: nothing pulses."""
+        pres = answer.get("presence")
+        if not isinstance(pres, dict):
+            if self.presence_wanted:
+                self.set_presence([])
+            return False
+        seq = pres.get("seq")
+        moved = False
+        if isinstance(seq, int) and not isinstance(seq, bool):
+            moved = seq != self.presence_seq
+            self.presence_seq = seq
+        entries = pres.get("fixtures")
+        fixtures = [e["fixture"] for e in entries if isinstance(e, dict) and isinstance(e.get("fixture"), str)] if isinstance(entries, list) else []
+        self.set_presence(fixtures)
+        return moved
+
+    def set_presence(self, fixtures: list[str]) -> None:
+        """The server's pulsed set (fixture ids) → start / end pulses."""
+        self.presence_wanted = list(dict.fromkeys(fixtures))
+        self.sync_pulses()
+
+    def pulse_targets(self) -> list[str]:
+        """The server's set, kept to what this `lights.json` lets pulse."""
+        if self.doc is None:
+            return []
+        ok = {f["id"] for f in presence_fixtures(self.doc, self.house)}
+        return [fid for fid in self.presence_wanted if fid in ok]
+
+    def sync_pulses(self) -> None:
+        """Make the pulses match the wanted set (also after a doc or map change)."""
+        want = self.pulse_targets()
+        for fid in [fid for fid in self.pulses if fid not in want]:
+            self._pulse_leave(fid)
+        if not want:
+            return
+        effect = presence_settings(self.doc).effect if self.doc is not None else "breathe"
+        for fid in want:
+            p = self.pulses.get(fid)
+            if p is None:
+                self._pulse_enter(fid, effect)
+            elif p.effect != effect:
+                p.effect = effect
+                self._pulse_on(fid)
+
+    def _pulse_enter(self, fid: str, effect: str) -> None:
+        f = self.doc.fixture(fid) if self.doc is not None else None
+        if f is None or f.get("safety") is True:
+            return
+        p = Pulse(fixture=fid, kind=str(f.get("kind")), effect=effect)
+        self.pulses[fid] = p
+        self._ended_in_identify.discard(fid)
+        log.info("presence: %s pulses (%s)", fid, effect)
+        self._pulse_on(fid)
+        if p.kind != "wled":
+            p.task = self._spawn(self._pulse_repeat(p))
+
+    def _pulse_leave(self, fid: str) -> None:
+        p = self.pulses.pop(fid, None)
+        if p is None:
+            return
+        if p.task is not None and not p.task.done():
+            p.task.cancel()
+        log.info("presence: %s stops pulsing", fid)
+        if fid in self._identify_until:
+            self._ended_in_identify.add(fid)  # the identify's end puts it right
+            return
+        self._pulse_off(fid)
+
+    def _pulse_on(self, fid: str) -> None:
+        """Send a pulsed fixture its effect (never during an identify)."""
+        p = self.pulses.get(fid)
+        f = self.doc.fixture(fid) if self.doc is not None else None
+        if p is None or f is None or f.get("safety") is True or fid in self._identify_until:
+            return
+        topic = light_topic(f, self.cfg.z2m_base)
+        if p.kind == "wled":
+            self.publish(topic, {"seg": [{"fx": WLED_PULSE_FX.get(p.effect, 2)}]})
+            self._remember(f, {}, {"effect": "blink" if p.effect == "blink" else "breathe"}, pulse=True)
+        else:
+            self.publish(topic, {"effect": p.effect})
+            self._remember(f, {}, {"effect": p.effect}, pulse=True)
+
+    def _pulse_off(self, fid: str) -> None:
+        """A fixture no program stands under: Zigbee finishes its effect; a
+        WLED strip goes back to the effect its looks left (else solid)."""
+        f = self.doc.fixture(fid) if self.doc is not None else None
+        if f is None:
+            return
+        topic = light_topic(f, self.cfg.z2m_base)
+        if f.get("kind") == "wled":
+            back = {"effect": (self.base.get(fid) or {}).get("effect") or "stop_effect"}
+            self.publish(topic, payload_for(f, back))
+            self._remember(f, {}, back, pulse=True)
+        else:
+            self.publish(topic, {"effect": "finish_effect"})
+            self._remember(f, {}, {"effect": "finish_effect"}, pulse=True)
+
+    async def _pulse_repeat(self, p: Pulse) -> None:
+        start = self.timer.now()
+        n = 1
+        try:
+            while self.pulses.get(p.fixture) is p:
+                await self.timer.sleep_until(start + n * PRESENCE_REPEAT_MS)
+                n += 1
+                if self.pulses.get(p.fixture) is not p:
+                    return
+                self._pulse_on(p.fixture)
+        except asyncio.CancelledError:
+            pass
+
+    def repulse(self) -> None:
+        """A broker reconnect: paho dropped what was in flight; every pulse again."""
+        for fid in list(self.pulses):
+            self._pulse_on(fid)
 
     # -- the sequencer -------------------------------------------------------------
 
@@ -469,14 +738,30 @@ class HouseLights:
             self._send(f["id"], {k: v for k, v in state.items() if v is not None})
             return f"set {f['id']}"
         self.publish(light_topic(f, self.cfg.z2m_base), identify_payload(f))
-        if f.get("kind") == "wled":
-            self._spawn(self._wled_identify_end(f["id"]))
+        until = self.timer.now() + IDENTIFY_MS
+        self._identify_until[f["id"]] = until
+        self._spawn(self._identify_end(f["id"], until))
         return f"identify {f['id']}"
 
-    async def _wled_identify_end(self, fid: str) -> None:
-        await self.timer.sleep_until(self.timer.now() + WLED_IDENTIFY_MS)
-        state = self.settled.get(fid)
-        self._send(fid, state if state else {"effect": "stop_effect"})
+    async def _identify_end(self, fid: str, until: float) -> None:
+        """An identify's 2 s are over: a WLED strip gets its settled state
+        back; a pulse comes back (or, ended meanwhile, is finished)."""
+        try:
+            await self.timer.sleep_until(until)
+        except asyncio.CancelledError:
+            return
+        if self._identify_until.get(fid) != until:
+            return  # a later identify owns the end
+        del self._identify_until[fid]
+        f = self.doc.fixture(fid) if self.doc is not None else None
+        if f is not None and f.get("kind") == "wled":
+            state = self.settled.get(fid)
+            self._send(fid, state if state else {"effect": "stop_effect"})
+        if fid in self.pulses:
+            self._pulse_on(fid)
+        elif fid in self._ended_in_identify:
+            self._pulse_off(fid)
+        self._ended_in_identify.discard(fid)
 
     def pair(self, seconds: int) -> None:
         self.publish(permit_join_topic(self.cfg.z2m_base), permit_join_payload(seconds))
@@ -626,6 +911,8 @@ class HouseLights:
             "last_look": self.last_look,
             "last_at": self.last_at,
             "z2m": self.z2m,
+            "pulsed": sorted(self.pulses),
+            "shown_posts": self.shown_posts,
         }
 
     async def _health_loop(self) -> None:
@@ -643,7 +930,7 @@ class HouseLights:
         while True:
             params: dict[str, Any] = {"module": 1, "name": socket.gethostname().split(".")[0][:64]}
             if self.version is not None and self.source not in ("cache", "file", "none"):
-                params.update({"after": self.version, "tests": self.test_seq, "pairs": self.pair_seq, "wait": int(self.cfg.poll_wait)})
+                params.update({"after": self.version, "tests": self.test_seq, "pairs": self.pair_seq, "presence": self.presence_seq, "wait": int(self.cfg.poll_wait)})
             asked = time.monotonic()
             try:
                 answer = await mod.get("/api/mod/lights", params, timeout=self.cfg.poll_wait + 15)
@@ -666,6 +953,7 @@ class HouseLights:
                 quick = time.monotonic() - asked < 1.0 and "after" in params
                 changed = self.apply(answer)
                 tests, pair = self.take(answer, immediate=quick)
+                pulsed = self.take_presence(answer)
                 if first:
                     first = False
                     self.schedule_catch_up("start")
@@ -677,11 +965,15 @@ class HouseLights:
                     self._spawn(self._refresh_house(mod))
                 if answer.get("devicesAt") is None and self._raw_devices is not None:
                     self.schedule_devices(0)
-                if quick and not tests and pair is None and not changed:
+                if quick and not tests and pair is None and not changed and not pulsed:
                     await asyncio.sleep(5.0)  # a server answering at once must not be hammered
                 continue
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, 30.0)
+
+    def _on_broker(self) -> None:
+        self.schedule_catch_up("mqtt")
+        self.repulse()
 
     async def _refresh_house(self, mod: ModClient) -> None:
         try:
@@ -690,6 +982,7 @@ class HouseLights:
             log.warning("house map read failed (%s) — LOCATIONs resolve from the cached map", err)
             return
         self.set_house(doc.get("house"))
+        self.sync_pulses()  # a LOCATION in presence.to may reach other rooms now
 
     async def _house_loop(self, mod: ModClient) -> None:
         while True:
@@ -734,7 +1027,7 @@ class HouseLights:
             password=m.password,
             health_topic=HEALTH_TOPIC,
         )
-        self.mqtt.on_connected = lambda: self.schedule_catch_up("mqtt")
+        self.mqtt.on_connected = self._on_broker
         self.mqtt.start()
         tasks = [
             asyncio.ensure_future(self._config_loop(ctx.mod)),
@@ -742,6 +1035,7 @@ class HouseLights:
             asyncio.ensure_future(self._feed_loop(ctx.mod)),
             asyncio.ensure_future(self._mqtt_loop()),
             asyncio.ensure_future(self._health_loop()),
+            asyncio.ensure_future(self._shown_loop()),
         ]
         try:
             await asyncio.gather(*tasks)
@@ -750,6 +1044,9 @@ class HouseLights:
                 t.cancel()
             await asyncio.gather(*tasks, *self._tasks, return_exceptions=True)
             self.running.clear()
+            self.mod = None  # no report from here on
+            for fid in list(self.pulses):
+                self._pulse_leave(fid)  # best effort: no strip left breathing
             if self.mqtt is not None:
                 self.mqtt.stop()
                 self.mqtt = None

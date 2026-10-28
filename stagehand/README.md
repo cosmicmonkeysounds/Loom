@@ -356,8 +356,10 @@ the map editor's 💡 Lights tab, served at `GET /api/mod/lights`, schema in
 `@loom/house` `house/src/lights.ts`) places each light the story drives —
 a Zigbee bulb, a Z2M group or a WLED strip — on a room and defines
 **looks** keyed by cue name (`cue heart_wake` plays `looks.heart_wake`).
-The show's file holds one fixture, the server room's RGB bulb, and the 13
-`heart_*` looks; every other light is still the `show` rules.
+The show's file places every house bulb (Hue and ThirdReality, each by its
+Zigbee2MQTT name), the living room's WLED strip and the server room's RGB
+bulb, with every `lights_*` and `heart_*` look (no Zigbee groups, scenes or
+WLED presets).
 
 - **The sequencer** (`lights/plan.py`, the Python mirror of `planLook`,
   pinned to the house package's fixtures in
@@ -373,10 +375,34 @@ The show's file holds one fixture, the server room's RGB bulb, and the 13
 - **The catch-up** reads `GET /api/screen/state` on start, on a reconnect
   and after a reset / reload / go live: the alarm → `heart_alarm`; the door
   open mid-heart → `heart_door_open`; else `night.heart_look`; else `boot`.
+- **Presence pulses** (wave 39, `docs/loom-w39-contract.md` C3): when a
+  program in the reinstallation games (web or VR) walks under a real
+  light, the server marks that fixture present (`presence` on the long
+  poll, cursor `presence=<seq>`) and the module pulses the bulb with its
+  own firmware effect: Zigbee `{"effect": "breathe"}` (or `lights.json`'s
+  `presence.effect`), re-sent every 12 s while the program stays, then
+  `{"effect": "finish_effect"}`; a WLED strip its Breathe (`fx 2`; blink
+  → `fx 1`) once, then back to the effect its looks left it on. Only what
+  `presence.to` reaches, never a `safety` fixture, nothing with
+  `presence.enabled: false` (`presence_settings` / `presence_fixtures`
+  in `lights/routing.py`, pinned to `lights-presence.json`). A pulse never
+  takes a fixture from a look, a look never stops a pulse (a WLED look's
+  effect waits until the program leaves) and an identify wins for its 2 s.
+  A breathe on a bulb a look turned off shows nothing: a dark scene stays
+  dark.
+- **What the fixtures show** (wave 39): every command the module sends
+  (looks, give-backs, tests, catch-ups, pulses; not identify flashes),
+  safety-clamped and merged per fixture like `mergeLightState`, goes to
+  `POST /api/mod/lights/shown` 250 ms after a change (at most 4 a second)
+  and every 20 s anyway, so the games light their virtual house with the
+  real one. Nothing is posted before the first command. An older server
+  (a 404) is logged once and the module stops posting until it restarts;
+  the games then use the server's own estimate.
 - **The hand-off**: with `take_looks: true`, a `show:` in the same config
   drops each cue rule whose look `lights.json` defines, so a cue never
   drives a bulb twice.
-- **Health**: `health/lights` and the retained `health/lights/stats`.
+- **Health**: `health/lights` and the retained `health/lights/stats`
+  (`pulsed`: the fixtures pulsing now; `shown_posts`).
 
 Runbook: [`scripts/house-macbook/lights.md`](../scripts/house-macbook/lights.md)
 (it covers the Desktop too).

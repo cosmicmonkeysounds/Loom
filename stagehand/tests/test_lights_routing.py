@@ -1,6 +1,6 @@
 """The `lights` module's mirrors of `@loom/house` `lights.ts`: target
 resolution, the safety clamp, `planLook` and both payload builders, pinned by
-the shared fixtures `house/test/fixtures/lights-{basic,house,resolve,plan}.json`.
+the shared fixtures `house/test/fixtures/lights-{basic,house,resolve,plan,presence}.json`.
 Stagehand keeps byte-identical copies in `tests/fixtures/house-lights/`
 (stagehand ships without the JS tree); when the house package sits beside
 it, a test diffs the copies against it."""
@@ -13,7 +13,15 @@ from pathlib import Path
 import pytest
 
 from stagehand.lights.plan import clamp_for_safety, plan_look, safety_min
-from stagehand.lights.routing import LightsDocError, is_look_name, parse_lights, resolve_targets
+from stagehand.lights.routing import (
+    LightsDocError,
+    is_look_name,
+    merge_light_state,
+    parse_lights,
+    presence_fixtures,
+    presence_settings,
+    resolve_targets,
+)
 from stagehand.lights.z2m import (
     bridge_online,
     caps_of,
@@ -30,7 +38,7 @@ from stagehand.lights.z2m import (
 HERE = Path(__file__).parent
 COPY = HERE / "fixtures" / "house-lights"
 HOME = HERE.parent.parent / "house" / "test" / "fixtures"
-FILES = ("lights-basic.json", "lights-house.json", "lights-resolve.json", "lights-plan.json")
+FILES = ("lights-basic.json", "lights-house.json", "lights-resolve.json", "lights-plan.json", "lights-presence.json")
 
 
 def _load(name: str):
@@ -39,6 +47,7 @@ def _load(name: str):
 
 RESOLVE = _load("lights-resolve.json")
 PLAN = _load("lights-plan.json")
+PRESENCE = _load("lights-presence.json")
 DOC = parse_lights(_load(RESOLVE["lights"]))
 HOUSE = _load(RESOLVE["house"])
 
@@ -179,3 +188,42 @@ def test_the_bridge_state_reads_both_majors():
     assert bridge_online(b'{"state":"online"}') is True
     assert bridge_online(b"offline") is False
     assert bridge_online(b"?") is None
+
+
+def _with_presence(case: dict):
+    """lights-basic.json with the case's `presence` (no key: the block is absent)."""
+    raw = _load(PRESENCE["lights"])
+    if "presence" in case:
+        raw["presence"] = case["presence"]
+    return parse_lights(raw)
+
+
+def _case_id(case: dict) -> str:
+    return (json.dumps(case["presence"]) if "presence" in case else "absent") + ("/no-house" if case.get("house") is False else "")
+
+
+def test_the_presence_fixture_reads_the_basic_lights_on_the_house():
+    assert (PRESENCE["lights"], PRESENCE["house"]) == ("lights-basic.json", "lights-house.json")
+
+
+@pytest.mark.parametrize("case", PRESENCE["settings"], ids=_case_id)
+def test_presence_settings_match_the_shared_house_fixture(case):
+    assert presence_settings(_with_presence(case)).as_json() == case["settings"]
+
+
+@pytest.mark.parametrize("case", PRESENCE["fixtures"], ids=_case_id)
+def test_presence_fixtures_match_the_shared_house_fixture(case):
+    house = None if case.get("house") is False else HOUSE
+    assert [f["id"] for f in presence_fixtures(_with_presence(case), house)] == case["fixtures"]
+
+
+@pytest.mark.parametrize("case", PRESENCE["merge"], ids=lambda c: json.dumps(c["set"]))
+def test_merge_light_state_matches_the_shared_house_fixture(case):
+    assert merge_light_state(case["was"], case["set"]) == case["out"]
+
+
+def test_a_presence_block_survives_the_cache():
+    raw = _load("lights-basic.json")
+    raw["presence"] = {"to": ["rooms"], "effect": "blink"}
+    assert parse_lights(parse_lights(raw).as_json()).presence == {"to": ["rooms"], "effect": "blink"}
+    assert "presence" not in parse_lights(_load("lights-basic.json")).as_json()

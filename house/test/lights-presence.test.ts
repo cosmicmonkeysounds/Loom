@@ -21,7 +21,7 @@ import {
   samePulsed,
   validateLights,
 } from "../src/index.ts";
-import type { HouseMap, LightsConfig, PresenceEntry, PresencePlayer, Vec3 } from "../src/index.ts";
+import type { HouseMap, LightState, LightsConfig, PresenceEntry, PresencePlayer, Vec3 } from "../src/index.ts";
 import { FIXTURES } from "./golden.ts";
 
 const load = <T>(name: string): T => JSON.parse(readFileSync(join(FIXTURES, name), "utf8")) as T;
@@ -121,4 +121,36 @@ describe("the games' frame", () => {
     expect(pulseFactor(1)).toBeCloseTo(0.35);
     expect(pulseFactor(2)).toBeCloseTo(1);
   });
+});
+
+describe("the shared presence cases (stagehand mirrors these)", () => {
+  type Shared = {
+    lights: string;
+    house: string;
+    settings: Array<{ presence?: unknown; settings: unknown }>;
+    fixtures: Array<{ presence?: unknown; house?: false; fixtures: string[] }>;
+    merge: Array<{ was: LightState; set: LightState; out: LightState }>;
+  };
+  const shared = load<Shared>("lights-presence.json");
+  const cfg = (c: { presence?: unknown }): LightsConfig => ("presence" in c ? fresh(c.presence) : fresh());
+
+  it("reads lights-basic.json on lights-house.json", () => {
+    expect([shared.lights, shared.house]).toEqual(["lights-basic.json", "lights-house.json"]);
+    expect(shared.fixtures.some((c) => !("presence" in c))).toBe(true);
+  });
+  for (const c of shared.settings) {
+    it(`settings ${"presence" in c ? JSON.stringify(c.presence) : "(absent)"}`, () => {
+      expect(presenceSettings(cfg(c))).toEqual(c.settings);
+    });
+  }
+  for (const c of shared.fixtures) {
+    it(`fixtures ${"presence" in c ? JSON.stringify(c.presence) : "(absent)"}${c.house === false ? " (no house)" : ""}`, () => {
+      expect(presenceFixtures(cfg(c), c.house === false ? null : HOUSE).map((f) => f.id)).toEqual(c.fixtures);
+    });
+  }
+  for (const c of shared.merge) {
+    it(`merge ${JSON.stringify(c.was)} + ${JSON.stringify(c.set)}`, () => {
+      expect(mergeLightState(c.was, c.set)).toEqual(c.out);
+    });
+  }
 });
