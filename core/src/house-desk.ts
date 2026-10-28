@@ -692,6 +692,13 @@ export interface DeskAudioHealth {
   placeholders: string[];
   /** How many sound files it has. */
   files: number;
+  /** (wave 38) The soundtrack's scene, its beds and the playlists with no
+   *  file; each input's peak (dBFS) and each ducking source's activity
+   *  (0..1); stream underruns. Absent from an older router. */
+  music?: { scene: string | null; beds: Array<{ playlist: string; speakers: string[]; track: string | null; posS: number }>; missing: string[] };
+  inputs?: Record<string, number>;
+  sources?: Record<string, number>;
+  underruns?: number;
 }
 
 export interface DeskPresence {

@@ -839,7 +839,26 @@ export function deskHouseOf(i: DeskHouseInputs): DeskHouse {
   const roomTargets = [...rooms.flatMap((r) => [r.id, r.label, ...(r.location !== undefined ? [r.location] : [])]), ...locations];
   const h = i.health;
   const health: DeskAudioHealth | null =
-    h === null ? null : { at: h.at, ok: h.ok, device: h.device, layout: h.layout, voices: h.voices, xruns: h.xruns, peakDb: h.peakDb, announce: h.announce, missing: [...h.missing], placeholders: [...h.placeholders], files: Object.keys(h.sounds).length };
+    h === null
+      ? null
+      : {
+          at: h.at,
+          ok: h.ok,
+          device: h.device,
+          layout: h.layout,
+          voices: h.voices,
+          xruns: h.xruns,
+          peakDb: h.peakDb,
+          announce: h.announce,
+          missing: [...h.missing],
+          placeholders: [...h.placeholders],
+          files: Object.keys(h.sounds).length,
+          // Wave 38: the soundtrack and the meters, when the router sends them.
+          ...(h.music !== undefined ? { music: { scene: h.music.scene, beds: h.music.beds.map((b) => ({ ...b, speakers: [...b.speakers] })), missing: [...h.music.missing] } } : {}),
+          ...(h.inputs !== undefined ? { inputs: { ...h.inputs } } : {}),
+          ...(h.sources !== undefined ? { sources: { ...h.sources } } : {}),
+          ...(h.underruns !== undefined ? { underruns: h.underruns } : {}),
+        };
   const sounds = storySounds(i.model).map((name) => ({
     name,
     to: i.audio.cues[name]?.to !== undefined ? [...i.audio.cues[name]!.to] : null,
