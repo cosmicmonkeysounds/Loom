@@ -27,8 +27,8 @@ Run from the repo root (`pnpm install` once covers every JS package).
 `scripts/ops/predeploy.sh` runs `pnpm -r typecheck`, every package's tests,
 and `pnpm --filter loom-play build && node play/scripts/first-load.mjs
 --max-kb 148`. A change that pushes the guest's first load over 148 kB
-fails predeploy. With wave 37 merged it measures 147.74 kB, so there is
-about a quarter of a kB of room. Wave 37 cut two guest changes (a late
+fails predeploy. With wave 37 merged it measures 147.84 kB, so there is
+about 0.16 kB of room. Wave 37 cut two guest changes (a late
 arrival's quiet bin, a house line echoing a big) to stay under it.
 
 ## How a session works
