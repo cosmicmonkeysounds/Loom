@@ -14,10 +14,11 @@
 //!   Escape close; nothing while a dock or a `PopOutQuiet` is mounted. It
 //!   also lets an alarm take the screen from an info one once its 2 s grace
 //!   is up (wave 37, C9: `currentOf`, `preemptDueAt`).
-//! - `PopOutDock` — the first child of a booth window's scroll body (a
-//!   guest card, the scanner, Guests, the Wanted board, a picker, the host
-//!   drawer): the pop-out as a 56 px strip there, in flow, that expands in
-//!   place — so it can never cover the open card's face.
+//! - `PopOutDock` — the first child of a booth window's scroll body
+//!   (Guests, the Wanted board, the Door queue, a rows picker, 🔔 Waiting):
+//!   the pop-out as a 56 px strip there, in flow, that expands in place.
+//!   Since wave 37 the scanner, a guest card and PLAYER SELECT mount
+//!   `PopOutQuiet` instead.
 //! - `PopOutQuiet` — wave 37 (C4): mounted inside a face-to-face window (the
 //!   scanner, a guest card, the confrontation, PLAYER SELECT). While one is
 //!   mounted nothing floats or docks, nothing is marked shown, no tone plays
