@@ -9,9 +9,8 @@ var found_calls := 0
 var ended: Array = []
 var candidate_requests := 0
 var king_hits := 0
-## [method mark_ready] calls, and each [method save_prefs]'s prefs.
+## [method mark_ready] calls.
 var readies := 0
-var saved_prefs: Array = []
 
 
 func begin(guest: String) -> void:
@@ -41,10 +40,6 @@ func hit_king() -> void:
 
 func mark_ready() -> void:
 	readies += 1
-
-
-func save_prefs(prefs: Dictionary) -> void:
-	saved_prefs.append(prefs)
 
 
 ## `[kind, prop]` per [method moment]; answer with [method answer_moment].
