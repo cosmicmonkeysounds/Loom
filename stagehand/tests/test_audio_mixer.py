@@ -5,7 +5,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from stagehand.audio.mixer import MAX_VOICES, Mixer, db_to_lin, lin_to_db
+from stagehand.audio.mixer import MAX_VOICES, Mixer, Sidechain, SidechainSource, db_to_lin, lin_to_db
+from stagehand.audio.stream import Stream
+
+from test_audio_stream import ArrayFile  # the fake file
 
 RATE = 1000  # small blocks keep the arithmetic readable
 
@@ -92,51 +95,6 @@ def test_stop_with_no_filter_stops_every_voice():
     assert m.active() == 0
 
 
-def test_an_announcement_ducks_the_sfx_bus_only():
-    m = Mixer(1, 2, RATE, duck_db=-12, duck_s=0.1, duck_release_s=0.1)
-    m.play(tone(2000, 0.1), {1: 0.0}, fade_in_s=0)  # a bed
-    m.play(tone(2000, 0.1), {2: 0.0}, bus="test", fade_in_s=0)
-    block(m)
-    m.play(tone(300, 0.1), {2: -60.0}, bus="announce", fade_in_s=0)
-    out = block(m)
-    out = block(m)
-    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=0.05)
-    assert out[-1, 1] == pytest.approx(0.1, rel=0.01)
-    for _ in range(4):  # the announcement ends; the bed comes back
-        out = block(m)
-    assert out[-1, 0] == pytest.approx(0.1, rel=0.02)
-
-
-def test_a_timed_duck_holds_then_releases_slowly():
-    m = Mixer(1, 1, RATE, duck_db=-12, duck_s=0.1, duck_release_s=0.5)
-    m.play(tone(5000, 0.1), {1: 0.0}, fade_in_s=0)
-    block(m)
-    m.duck_for(0.7)  # the alexa player speaks: no announce voice here
-    m.duck_for(0.2)  # a shorter hold never cuts the longer one
-    for _ in range(3):
-        out = block(m)
-    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=0.05)
-    for _ in range(4):  # still held at 0.7 s
-        out = block(m)
-    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=0.05)
-    out = block(m)  # released: on its way up, not back at once
-    assert 0.1 * db_to_lin(-12) * 1.05 < out[-1, 0] < 0.09
-    for _ in range(20):
-        out = block(m)
-    assert out[-1, 0] == pytest.approx(0.1, rel=0.02)
-
-
-def test_a_no_duck_voice_keeps_its_level_under_an_announcement():
-    m = Mixer(1, 2, RATE, duck_db=-12, duck_s=0.1)
-    m.play(tone(2000, 0.1), {1: 0.0}, fade_in_s=0)  # a bed
-    m.play(tone(2000, 0.1), {2: 0.0}, fade_in_s=0, duck=False)  # dance_song
-    m.duck_for(1.0)
-    block(m)
-    out = block(m)
-    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=0.05)
-    assert out[-1, 1] == pytest.approx(0.1, rel=0.01)
-
-
 def test_a_stereo_file_on_a_mono_speaker_plays_the_downmix():
     m = Mixer(1, 2, RATE)
     stereo = np.stack([np.full(200, 0.2), np.full(200, 0.4)], axis=1).astype(np.float32)
@@ -201,8 +159,9 @@ def test_the_limiter_holds_the_ceiling_and_releases():
     out = block(m)
     assert np.abs(out[:, 0]).max() <= ceiling + 1e-6
     assert np.allclose(out[:, 1], 0.1)  # another room is untouched
-    peak, limited, blocks = m.take_meters()
-    assert limited == 1 and blocks == 1 and peak[0] == pytest.approx(ceiling, rel=1e-3)
+    meters = m.take_meters()
+    assert meters.limited == 1 and meters.blocks == 1 and meters.peak[0] == pytest.approx(ceiling, rel=1e-3)
+    assert meters.inputs == {} and meters.underruns == 0  # no input block yet: output-only
     for _ in range(3):
         block(m)
     assert m.limiter[0] > ceiling / 0.9  # releasing once the loud voice ended
@@ -231,4 +190,299 @@ def test_master_gain_and_an_unknown_bus():
     m.play(tone(100, 0.5), {1: 0.0}, fade_in_s=0)
     assert block(m)[0, 0] == pytest.approx(0.5 * db_to_lin(-6))
     with pytest.raises(ValueError):
-        m.play(tone(10), {1: 0.0}, bus="music")
+        m.play(tone(10), {1: 0.0}, bus="beds")
+
+
+def test_too_many_voices_never_drop_music_and_fade_the_dropped_sfx():
+    m = Mixer(1, 2, RATE)
+    dropped: list[str] = []
+    m.play(tone(10_000, 0.01), {2: 0.0}, bus="music", fade_in_s=0, done=lambda: dropped.append("music"))
+    m.play(tone(10_000, 0.5), {1: 0.0}, fade_in_s=0, done=lambda: dropped.append("oldest"))
+    for _ in range(MAX_VOICES - 2):
+        m.play(tone(10_000, 0.0), {1: 0.0})
+    block(m)
+    m.play(tone(10_000, 0.0), {1: 0.0})  # the 33rd
+    out = block(m, 20)
+    # A 10 ms fade (10 frames here), not a cut.
+    assert out[0, 0] == pytest.approx(0.5) and out[5, 0] == pytest.approx(0.25, rel=0.01) and not out[10:, 0].any()
+    assert dropped == ["oldest"] and m.active("music") == 1 and np.allclose(out[:, 1], 0.01)
+
+
+# -- priority ducking (wave 38, C2) ------------------------------------------
+
+PRIORITY = {"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}}
+FAST = Sidechain(threshold_db=-45, attack_s=0.1, hold_s=0.2, release_s=0.3)
+
+
+def ducker(n_in: int = 2, n_out: int = 3, **kw) -> Mixer:
+    m = Mixer(n_in, n_out, RATE, sidechain=FAST, priority=PRIORITY, **kw)
+    m.set_sources([SidechainSource("trabolta", (1,), tuple(range(1, n_out + 1))), SidechainSource("clippy", (2,), (1,))])
+    return m
+
+
+def talk(m: Mixer, *, trabolta: float = 0.0, clippy: float = 0.0, frames: int = 100) -> np.ndarray:
+    ind = np.zeros((frames, m.n_in), dtype=np.float32)
+    ind[:, 0], ind[:, 1] = trabolta, clippy
+    return block(m, frames, ind)
+
+
+def test_an_announcement_ducks_music_and_sfx_by_their_own_depths_and_never_the_test_bus():
+    m = Mixer(1, 3, RATE, priority=PRIORITY)
+    m.play(tone(5000, 0.1), {1: 0.0}, fade_in_s=0)  # a story sound
+    m.play(tone(5000, 0.1), {2: 0.0}, bus="music", fade_in_s=0)  # a bed
+    m.play(tone(5000, 0.1), {3: 0.0}, bus="test", fade_in_s=0)
+    block(m)
+    m.play(tone(500, 0.1), {1: -120.0, 2: -120.0, 3: -120.0}, bus="announce", fade_in_s=0)  # silent, everywhere
+    for _ in range(5):  # attack 0.3 s
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=0.02)
+    assert out[-1, 1] == pytest.approx(0.1 * db_to_lin(-15), rel=0.02)
+    assert out[-1, 2] == pytest.approx(0.1, rel=1e-3)
+    assert m.activity("announce") == 1.0
+    for _ in range(12):  # it ended; release 1.0 s
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.1, rel=1e-3) and out[-1, 1] == pytest.approx(0.1, rel=1e-3)
+
+
+def test_an_announcement_ducks_only_the_outputs_it_plays_on():
+    m = Mixer(1, 2, RATE, priority=PRIORITY)
+    m.play(tone(5000, 0.1), {1: 0.0, 2: 0.0}, bus="music", fade_in_s=0)
+    m.play(tone(1000, 0.1), {1: -120.0}, bus="announce", fade_in_s=0)
+    for _ in range(5):
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-15), rel=0.02) and out[-1, 1] == pytest.approx(0.1, rel=1e-3)
+
+
+def test_a_timed_announcement_hold_extends_ducks_its_reach_and_releases_slowly():
+    m = Mixer(1, 2, RATE, priority=PRIORITY)
+    m.set_announce_reach([1])  # audio.json announce.to
+    m.play(tone(9000, 0.1), {1: 0.0, 2: 0.0}, fade_in_s=0)
+    block(m)
+    m.duck_for(0.7)  # the alexa player speaks: no announce voice here
+    m.duck_for(0.2)  # a shorter hold never cuts the longer one
+    for _ in range(4):
+        out = block(m)
+    ducked = 0.1 * db_to_lin(-12)
+    assert out[-1, 0] == pytest.approx(ducked, rel=0.02) and out[-1, 1] == pytest.approx(0.1, rel=1e-3)
+    for _ in range(3):  # still held at 0.7 s
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(ducked, rel=0.02)
+    out = block(m)  # released: on its way up, not back at once
+    assert ducked * 1.05 < out[-1, 0] < 0.09
+    for _ in range(12):
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.1, rel=1e-3)
+
+
+def test_trabolta_ducks_deeper_than_clippy_and_the_deepest_claim_wins():
+    m = ducker()
+    m.play(tone(20_000, 0.1), {1: 0.0, 2: 0.0}, bus="music", fade_in_s=0)
+    m.play(tone(20_000, 0.1), {3: 0.0}, fade_in_s=0)  # a story sound
+    for _ in range(3):  # Clippy talks (attack 0.1 s): the living room's music only
+        out = talk(m, clippy=0.3)
+    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=0.02)
+    assert out[-1, 1] == pytest.approx(0.1, rel=1e-3)  # outside Clippy's reach
+    assert out[-1, 2] == pytest.approx(0.1, rel=1e-3)  # Clippy never ducks the sfx
+    for _ in range(3):  # Trabolta too: everywhere, deeper
+        out = talk(m, trabolta=0.3, clippy=0.3)
+    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-18), rel=0.02)
+    assert out[-1, 1] == pytest.approx(0.1 * db_to_lin(-18), rel=0.02)
+    assert out[-1, 2] == pytest.approx(0.1 * db_to_lin(-8), rel=0.02)
+    meters = m.take_meters()
+    assert meters.sources == {"announce": 0.0, "takeover": 0.0, "trabolta": 1.0, "clippy": 1.0}
+    assert meters.inputs == {1: pytest.approx(lin_to_db(0.3), abs=0.1), 2: pytest.approx(lin_to_db(0.3), abs=0.1)}
+
+
+def test_a_sidechain_holds_then_releases_and_ignores_a_quiet_input():
+    m = ducker()
+    m.play(tone(20_000, 0.1), {2: 0.0}, bus="music", fade_in_s=0)
+    for _ in range(3):
+        out = talk(m, trabolta=db_to_lin(-50))  # under the −45 dB threshold
+    assert out[-1, 1] == pytest.approx(0.1, rel=1e-3) and m.activity("trabolta") == 0.0
+    for _ in range(2):
+        out = talk(m, trabolta=0.5)
+    ducked = 0.1 * db_to_lin(-18)
+    assert out[-1, 1] == pytest.approx(ducked, rel=0.02)
+    out = talk(m)  # quiet, but held 0.2 s
+    out = talk(m)
+    assert out[-1, 1] == pytest.approx(ducked, rel=0.02)
+    out = talk(m)  # the hold ran out: releasing (0.3 s), not back at once
+    assert ducked * 1.2 < out[-1, 1] < 0.09
+    for _ in range(4):
+        out = talk(m)
+    assert out[-1, 1] == pytest.approx(0.1, rel=1e-3)
+
+
+def test_a_duck_is_a_ramp_not_a_step():
+    m = ducker()
+    m.play(tone(20_000, 0.1), {2: 0.0}, bus="music", fade_in_s=0)
+    talk(m)
+    out = talk(m, trabolta=0.5)[:, 1]
+    assert np.all(np.diff(out) <= 1e-7) and out[0] > out[-1] and np.abs(np.diff(out)).max() < 0.002
+
+
+def test_no_duck_voices_the_matrix_and_the_announce_and_test_buses_never_duck():
+    m = ducker(n_out=4)
+    m.set_routes({(1, 4): 0.0})  # the TV → output 4 (also Trabolta's sidechain)
+    m.play(tone(20_000, 0.1), {1: 0.0}, bus="music", fade_in_s=0, duck=False)  # a no_duck track
+    m.play(tone(20_000, 0.1), {2: 0.0}, bus="announce", fade_in_s=0)
+    m.play(tone(20_000, 0.1), {3: 0.0}, bus="test", fade_in_s=0)
+    for _ in range(4):
+        out = talk(m, trabolta=0.2)
+    assert np.allclose(out[-1, :3], 0.1, rtol=1e-3)
+    assert out[-1, 3] == pytest.approx(0.2, rel=1e-3)
+
+
+def test_a_takeover_silences_the_music_on_its_outputs_only_and_it_comes_back():
+    m = Mixer(1, 3, RATE, priority=PRIORITY)
+    m.play(tone(30_000, 0.1), {1: 0.0, 2: 0.0}, bus="music", fade_in_s=0)  # a bed on 1 + 2
+    m.play(tone(30_000, 0.1), {3: 0.0}, fade_in_s=0)  # a story sound
+    block(m)
+    rave = m.play(tone(1000, 0.3), {1: 0.0, 3: 0.0}, fade_in_s=0, takeover=True, duck=False)
+    for _ in range(6):  # attack 0.5 s
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.3, abs=1e-4)  # the track alone: the bed is silent under it
+    assert out[-1, 1] == pytest.approx(0.1, rel=1e-3)  # off the track's outputs: untouched
+    assert out[-1, 2] == pytest.approx(0.4, rel=1e-3)  # sfx is not music: takeover leaves it
+    assert m.playing(rave)
+    for _ in range(5):  # the track ends (1 s); the release is 2 s
+        out = block(m)
+    assert not m.playing(rave) and 0.0 < out[-1, 0] < 0.1
+    for _ in range(20):
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.1, rel=1e-3) and m.activity("takeover") == 0.0
+
+
+def test_a_takeover_voice_that_ducks_is_never_ducked_by_its_own_claim():
+    m = Mixer(1, 1, RATE, priority={**PRIORITY, "takeover": {"sfx": -20}})
+    m.play(tone(5000, 0.1), {1: 0.0}, fade_in_s=0)  # a story sound
+    m.play(tone(5000, 0.2), {1: 0.0}, fade_in_s=0, takeover=True)
+    for _ in range(8):
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.2 + 0.1 * db_to_lin(-20), rel=0.01)
+
+
+def test_a_source_keeps_its_activity_across_a_new_source_list_and_reserved_names_are_refused():
+    m = ducker()
+    for _ in range(2):
+        talk(m, trabolta=0.5)
+    m.set_sources([SidechainSource("trabolta", (1,), (1, 2, 3))])
+    talk(m)
+    assert m.activity("trabolta") == 1.0 and m.activity("clippy") == 0.0
+    with pytest.raises(ValueError, match="reserved"):
+        m.set_sources([{"name": "takeover", "inputs": [1], "reach": [1]}])
+
+
+def test_two_inputs_with_one_role_take_the_louder():
+    m = Mixer(2, 1, RATE, sidechain=FAST, priority=PRIORITY)
+    m.set_sources([SidechainSource("clippy", (1,), (1,)), SidechainSource("clippy", (2,), (1,))])
+    for _ in range(2):
+        talk(m, clippy=0.5)  # input 2 only
+    assert m.activity("clippy") == 1.0 and m.take_meters().sources["clippy"] == 1.0
+
+
+def test_an_output_only_stream_meters_nothing_and_never_opens_a_sidechain():
+    m = ducker()
+    for _ in range(3):
+        block(m)
+    meters = m.take_meters()
+    assert meters.inputs == {} and meters.sources["trabolta"] == 0.0
+
+
+# -- the trim, the live level, the clock --------------------------------------
+
+
+def test_the_trim_is_per_output_after_the_mix_and_ramps_over_50_ms():
+    m = Mixer(1, 2, RATE)
+    m.set_routes({(1, 2): 0.0})
+    m.play(tone(5000, 0.5), {1: 0.0}, fade_in_s=0)
+    ind = np.full((100, 1), 0.2, dtype=np.float32)
+    for _ in range(2):
+        block(m, indata=ind)
+    m.set_trim({1: -6.0, 2: -12.0})
+    out = block(m, indata=ind)
+    assert out[0, 0] == pytest.approx(0.5 - 0.5 * (1 - db_to_lin(-6)) / 50, rel=1e-3)  # step 1 of 50
+    assert out[25, 0] == pytest.approx(0.5 + (0.5 * db_to_lin(-6) - 0.5) * 26 / 50, rel=1e-3)
+    assert np.allclose(out[50:, 0], 0.5 * db_to_lin(-6)) and np.allclose(out[50:, 1], 0.2 * db_to_lin(-12), atol=1e-4)
+    m.set_trim({})  # back to 0 dB
+    block(m, indata=ind)
+    out = block(m, indata=ind)
+    assert np.allclose(out[:, 0], 0.5) and np.allclose(out[:, 1], 0.2, atol=1e-4)
+
+
+def test_a_live_level_ramps_a_playing_voice_by_id_or_tag():
+    m = Mixer(1, 2, RATE)
+    a = m.play(tone(5000, 0.5), {1: 0.0}, fade_in_s=0, tag="bed")
+    m.play(tone(5000, 0.5), {2: 0.0}, fade_in_s=0, tag="other", level_db=-6)
+    out = block(m)
+    assert np.allclose(out[:, 1], 0.5 * db_to_lin(-6))
+    m.level(vid=a, db=-120, ramp_s=0.2)  # 200 frames
+    out = block(m)
+    assert out[49, 0] == pytest.approx(0.5 * 0.75, rel=1e-3) and out[99, 0] == pytest.approx(0.25, rel=1e-3)
+    m.level(tag="bed", db=0, ramp_s=0)  # a new level takes over at once
+    assert np.allclose(block(m)[:, 0], 0.5)
+    with pytest.raises(ValueError):
+        m.level(db=0)
+
+
+def test_the_frame_clock_positions_and_a_sample_exact_start():
+    m = Mixer(1, 1, RATE)
+    assert m.frames == 0
+    block(m, 64)
+    block(m, 64)
+    assert m.frames == 128
+    first = m.play(np.ones((100, 1), dtype=np.float32) * 0.1, {1: 0.0}, fade_in_s=0)
+    second = m.play(np.ones((100, 1), dtype=np.float32) * 0.2, {1: 0.0}, fade_in_s=0, start_at=128 + 100)
+    assert m.pos(first) == 0 and m.playing(second)
+    out = block(m, 64)
+    assert m.pos(first) == 64 and m.pos(second) == 0 and np.allclose(out[:, 0], 0.1)
+    out = block(m, 64)  # frames 192..255: the first ends at 228, the second starts there
+    assert np.allclose(out[:36, 0], 0.1) and np.allclose(out[36:, 0], 0.2)
+    assert m.pos(first) is None and m.pos(second) == 28 and m.frames == 256
+
+
+def test_a_stopped_voice_that_never_started_is_dropped_at_once():
+    m = Mixer(1, 1, RATE)
+    calls: list[int] = []
+    vid = m.play(tone(100), {1: 0.0}, start_at=10_000, done=lambda: calls.append(1))
+    block(m)
+    m.stop(vid=vid)
+    block(m)
+    assert calls == [1] and not m.playing(vid) and m.active() == 0
+
+
+# -- streamed voices --------------------------------------------------------------
+
+
+def test_a_streamed_voice_waits_for_its_prefill_plays_counts_underruns_and_closes():
+    f = ArrayFile(np.full((300, 2), 0.25, dtype=np.float32), RATE)
+    s = Stream("bed.wav", RATE, opener=lambda p: f, start=False, chunk_s=0.1, buffer_s=0.5, prefill_s=0.15)
+    done: list[int] = []
+    m = Mixer(1, 2, RATE)
+    vid = m.play(s, {1: 0.0, 2: 0.0}, bus="music", fade_in_s=0, done=lambda: done.append(1))
+    out = block(m)
+    assert not out.any() and m.pos(vid) == 0  # not prefilled: waiting, not an underrun
+    s._step()  # 100 frames: still short of the 150-frame prefill
+    assert not block(m).any()
+    s._step()
+    out = block(m, 150)
+    assert np.allclose(out, 0.25) and m.take_meters().underruns == 0
+    out = block(m, 100)  # the worker is behind: 50 real frames, then silence
+    assert np.allclose(out[:50], 0.25) and not out[50:].any() and m.take_meters().underruns == 1
+    s.fill()
+    out = block(m, 200)  # the last 100 frames, then the end
+    assert np.allclose(out[:100], 0.25) and not out[100:].any()
+    assert done == [1] and not m.playing(vid) and f.closed and m.underruns == 1
+
+
+def test_stopping_a_streamed_voice_fades_and_closes_it():
+    f = ArrayFile(np.full((5000, 1), 0.5, dtype=np.float32), RATE)
+    s = Stream("bed.wav", RATE, opener=lambda p: f, start=False, chunk_s=0.1, buffer_s=1.0, prefill_s=0.1)
+    s.fill()
+    m = Mixer(1, 1, RATE)
+    m.play(s, {1: 0.0}, bus="music", fade_in_s=0, tag="bed")
+    block(m)
+    m.stop(tag="bed", fade_s=0.05)
+    out = block(m)
+    assert out[25, 0] == pytest.approx(0.25, abs=0.02) and not out[60:].any()
+    assert m.active() == 0 and s.finished and f.closed
