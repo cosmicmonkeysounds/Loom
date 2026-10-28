@@ -28,6 +28,9 @@ export interface EngineMemory {
    *  missed. Wave 37: its clock runs only on screen; off it, the value is
    *  minus the time it was on (the provider's `onMs`). */
   shownAt: Map<string, number>;
+  /** Wave 37: the moments that have chimed (once each, on arrival, even
+   *  under a hold that keeps a sticky's clock from running). */
+  rung: Set<string>;
   /** The done list last persisted (`doneAbove`). */
   savedDone: string;
   /** Readouts waiting out `READOUT_WAIT_MS`. */
@@ -70,6 +73,7 @@ export function freshMemory(): EngineMemory {
     lastHoldEnd: Number.NEGATIVE_INFINITY,
     historiesSeen: 0,
     shownAt: new Map(),
+    rung: new Set(),
     savedDone: "",
     pending: new Set(),
     inflight: new Set(),

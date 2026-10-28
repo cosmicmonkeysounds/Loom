@@ -337,6 +337,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
     mem.extras = [];
     // A restart renumbers the seqs: an old on-screen stamp is no new m:<seq>.
     mem.shownAt.clear();
+    mem.rung.clear();
     dispatch({ type: "reset" });
     if (session === null) {
       mem.signIn = emptySignIn();
@@ -652,9 +653,13 @@ function useMomentsEngine(input: MomentsInput): Engine {
   // sheet, the pass) or folded into the pin rail's "+n" is not on screen.
   const sticky = held || folds > 0 ? null : surfaces.sticky;
   // On-screen time per moment (a glance < 1 s is missed), and the chime the
-  // first time a major (or big) moment reaches the screen.
+  // first time a major (or big) moment reaches the screen. A sticky chimes
+  // on arrival even under a hold or a fold (the server-room alarm while the
+  // Door queue is open); its clock waits until it is really on screen.
+  // Face to face (balloons wait: the scanner, a card) nothing chimes until ×.
   const onScreen = [surfaces.big, surfaces.now, shown.balloon, sticky, surfaces.modal].filter((q): q is Queued => q !== null);
   const onScreenKeys = onScreen.map((q) => q.moment.key).join("|");
+  const arrivedSticky = input.balloonsWait === true ? null : surfaces.sticky;
   useEffect(() => {
     const t = Date.now();
     const on = visible ? onScreen.map((q) => q.moment.key) : [];
@@ -670,17 +675,23 @@ function useMomentsEngine(input: MomentsInput): Engine {
     }
     if (!visible) return;
     let ring = false;
+    const hear = (q: Queued) => {
+      if (mem.rung.has(q.moment.key)) return;
+      mem.rung.add(q.moment.key);
+      if (q.moment.severity === "major" || q.moment.severity === "big") ring = true;
+    };
     for (const q of onScreen) {
       if (mem.shownAt.has(q.moment.key)) continue;
       mem.shownAt.set(q.moment.key, t);
-      if (q.moment.severity === "major" || q.moment.severity === "big") ring = true;
+      hear(q);
     }
+    if (arrivedSticky !== null) hear(arrivedSticky);
     if (ring && input.sound) {
       playChime();
       vibrate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onScreenKeys, visible, state.queue]);
+  }, [onScreenKeys, arrivedSticky?.moment.key, visible, state.queue]);
 
   // How long a moment was on screen (in all), and forget it.
   const onMs = (k: string) => {
