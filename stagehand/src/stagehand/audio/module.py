@@ -30,8 +30,15 @@ announcements. When the router plays sounds the `show` module drops its OSC
 `alexa:` section in the same YAML is a config error and the router takes the
 alexa player's lock before it speaks (a leftover alexa job blocks only the
 announcements, never the sounds), so the house never has two voices. With
-`announce: false` each `do announce` ducks the router's sounds for
-`duck_hold_s`; sounds in `no_duck` (the dance tracks) never duck.
+`announce: false` each `do announce` holds the `announce` priority source
+for `duck_hold_s`; sounds in `no_duck` (the dance tracks) never duck.
+
+Priority (wave 38, C2/C4): the YAML's `priority` says how deep each source
+ducks the sfx and music buses; the sources are the audio.json inputs with a
+`role` (their sidechain: Trabolta's TV, Clippy's mic, metered only on a
+duplex stream, `passthrough: true`), the router's own announcements and
+the takeover tracks. The speakers' trims are the outputs' (`set_trim`),
+not the voices', so an edit on the map is heard at once on a long bed.
 
 "Stop all house sounds" (wave 18b, Q7) is one-shot and never journaled: every
 sfx voice and speaker test fades over 0.3 s; `+ announcements` also cuts the
@@ -83,16 +90,18 @@ from ..show.config import MqttConfig
 from ..show.directives import parse_directive, unquote
 from .config import AudioConfig, parse_audio_section
 from .engine import Engine, device_name, enable_host_api, layout_problem, probe, with_host_api
-from .mixer import Mixer, lin_to_db
+from .mixer import Mixer, SidechainSource, lin_to_db
 from .routing import (
     EVERYWHERE,
     AudioDoc,
     AudioDocError,
     Resolved,
     output_gains,
+    output_trims,
     parse_audio,
     fold,
     resolve_targets,
+    sidechain_sources,
     speaker_layout,
     split_targets,
 )
@@ -335,9 +344,14 @@ class AudioRouter:
             f"config   : the server's audio.json (long-poll {cfg.poll_wait:.0f}s)" + (f"; local {cfg.config_file}" if cfg.config_file else "") + f"; cache {cfg.cache_dir}",
             f"desk     : plays the house desk's sound / say steps; acks + health (every {cfg.health_s:g}s) to {REPORT_PATH}",
             f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port} ← {cfg.test_topic}, {cfg.stop_topic}, {cfg.play_topic}' + (f', {cfg.announce_topic}, {cfg.chime_topic}' if cfg.announce else '') if cfg.mqtt else '— (tests, stops + announcements from the server only)'}",
-            f"levels   : master {cfg.master_db:+.0f} dB, limit {cfg.limit_db:+.0f} dBFS, duck {cfg.duck_db:+.0f} dB"
-            + (f" (held {cfg.duck_hold_s:g}s per alexa announcement)" if not cfg.announce and cfg.duck_hold_s > 0 else "")
+            f"levels   : master {cfg.master_db:+.0f} dB, limit {cfg.limit_db:+.0f} dBFS",
+            "priority : "
+            + ("; ".join(f"{name} " + ", ".join(f"{bus} {db:+.0f}" for bus, db in buses.items()) for name, buses in cfg.priority.items()) or "nothing ducks")
+            + "; takeover silences the music"
+            + (f" (announce held {cfg.duck_hold_s:g}s per alexa announcement)" if not cfg.announce and cfg.duck_hold_s > 0 else "")
             + (f"; never ducked: {', '.join(cfg.no_duck)}" if cfg.no_duck else ""),
+            f"sidechain: {'the inputs with a role, ' if cfg.passthrough else 'off (output-only stream: passthrough is false) — '}"
+            f"over {cfg.sidechain.threshold_db:+.0f} dBFS, attack {cfg.sidechain.attack_s:g}s, hold {cfg.sidechain.hold_s:g}s, release {cfg.sidechain.release_s:g}s",
         ]
 
     @staticmethod
@@ -457,6 +471,8 @@ class AudioRouter:
                 note = localvoice.voice_warning(self.cfg.voice_engine, self.cfg.say_voice)
                 if note is not None:
                     out.append(f"audio: say_voice — {note}")
+        if doc is not None:
+            out.extend(f"audio: {w}" for w in self.priority_warnings(doc))
         stale = self._stale_cache()
         if stale is not None:
             cached, local = stale
@@ -471,6 +487,19 @@ class AudioRouter:
             out.append("audio: no local audio.json (config_file / cache) — the router waits for the server")
         elif self._check_answer is not None:
             out.append("audio: checked against the server's audio.json (nothing cached on this Mac yet)")
+        return out
+
+    def priority_warnings(self, doc: AudioDoc) -> list[str]:
+        """The inputs' roles against the YAML's `priority` (C1.1): a refused
+        role, a reach that reaches nothing, a role no `priority` entry
+        names (it ducks nothing), a sidechain on an output-only stream."""
+        out = list(doc.warnings)
+        specs, notes = sidechain_sources(doc, self.house)
+        out.extend(notes)
+        for role in sorted({s.name for s in specs} - set(self.cfg.priority)):
+            out.append(f"input role {role!r} has no audio.priority entry — it ducks nothing")
+        if specs and not self.cfg.passthrough:
+            out.append(f"input roles {', '.join(sorted({s.name for s in specs}))} need a duplex stream (passthrough: true) — nothing is metered, nothing ducks under them")
         return out
 
     # -- config ----------------------------------------------------------------
@@ -542,9 +571,11 @@ class AudioRouter:
         log.info("audio.json %s (%s): %d speaker(s), %d zone(s), %d route(s), %d cue(s)", self.version or "?", self.source, len(doc.speakers), len(doc.zones), len(doc.routes), len(doc.cues))
         if persist:
             self._write_json("audio.json", {k: answer[k] for k in ("audio", "version", "source", "sounds") if k in answer})
+        for note in doc.warnings:
+            log.warning("audio.json: %s", note)
         self.ensure_engine()
         if self.mixer is not None:
-            self.mixer.set_routes(self._routes(doc))
+            self._wire(self.mixer, doc)
         return True
 
     @staticmethod
@@ -555,12 +586,29 @@ class AudioRouter:
                 out[(r.inp, o)] = r.gain_db
         return out
 
+    def _wire(self, mixer: Mixer, doc: AudioDoc) -> None:
+        """Everything the mixer takes from audio.json (+ house.json): the
+        matrix, the speakers' trims, the sidechain sources and where an
+        external announcement is heard."""
+        mixer.set_routes(self._routes(doc))
+        mixer.set_trim(output_trims(doc))
+        specs, notes = sidechain_sources(doc, self.house)
+        for note in notes:
+            if note not in self._unknown_logged:
+                self._unknown_logged.add(note)
+                log.warning("audio.json: %s", note)
+        mixer.set_sources([SidechainSource(s.name, s.inputs, s.reach) for s in specs])
+        mixer.set_announce_reach(resolve_targets(doc, self.house, list(doc.announce_to)).outputs)
+
     def set_house(self, house: Any, persist: bool = True) -> None:
         if isinstance(house, dict):
             self.house = house
             self._unknown_logged.clear()
             if persist:
                 self._write_json("house.json", house)
+            # A reach or announce.to may name a room or a LOCATION.
+            if self.mixer is not None and self.doc is not None:
+                self._wire(self.mixer, self.doc)
 
     # -- the stream ------------------------------------------------------------
 
@@ -597,7 +645,7 @@ class AudioRouter:
                 duplex=cfg.passthrough,
                 blocksize=cfg.blocksize,
                 latency=cfg.latency,
-                mixer_args={"master_db": cfg.master_db, "limit_db": cfg.limit_db, "duck_db": cfg.duck_db},
+                mixer_args={"master_db": cfg.master_db, "limit_db": cfg.limit_db, "sidechain": cfg.sidechain, "priority": cfg.priority},
                 query=self._query,
                 stream_factory=self._stream_factory,
                 expect=doc.expect,
@@ -612,7 +660,7 @@ class AudioRouter:
                 self._last_open_error = now
             return False
         mixer.set_passthrough(cfg.passthrough)
-        mixer.set_routes(self._routes(doc))
+        self._wire(mixer, doc)
         self.bank = SoundBank(cfg.sounds_dir, mixer.rate, **({"decode": self._decode} if self._decode else {}))
         return True
 
@@ -1247,7 +1295,9 @@ class AudioRouter:
 
     def health(self) -> dict[str, Any]:
         mixer = self.mixer
-        peak, limited, blocks = mixer.take_meters() if mixer is not None else (np.zeros(0), 0, 0)
+        meters = mixer.take_meters() if mixer is not None else None
+        peak = meters.peak if meters is not None else np.zeros(0)
+        limited, blocks = (meters.limited, meters.blocks) if meters is not None else (0, 0)
         return {
             "ok": self.engine_running(),
             "device": self.engine.describe() if self.engine is not None else None,
@@ -1267,6 +1317,12 @@ class AudioRouter:
             "placeholders": placeholders_in(self.cfg.sounds_dir) if self.cfg.play_sounds else [],
             # `device.expect` disagreed with the device at the last open.
             "layout": self.layout_state(),
+            # Wave 38 (C2): the inputs' peaks (dBFS since the last health;
+            # empty on an output-only stream), each priority source's
+            # activity (0..1) and the streamed voices' underruns (ever).
+            "inputs": {str(ch): db for ch, db in meters.inputs.items()} if meters is not None else {},
+            "sources": dict(meters.sources) if meters is not None else {},
+            "underruns": meters.underruns if meters is not None else 0,
         }
 
     def sound_lengths(self) -> dict[str, int]:
@@ -1287,6 +1343,9 @@ class AudioRouter:
             "missing": list(h["missing"]),
             "placeholders": list(h["placeholders"]),
             "sounds": sounds,
+            "inputs": dict(h["inputs"]),
+            "sources": dict(h["sources"]),
+            "underruns": h["underruns"],
         }
 
     async def _health_loop(self) -> None:

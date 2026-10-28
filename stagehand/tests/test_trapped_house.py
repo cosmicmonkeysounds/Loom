@@ -109,7 +109,12 @@ def test_the_house_config_loads():
     assert show.mqtt is not None and show.osc_targets == {}
     assert show.cues and show.sensors
     audio = cfg.modules["audio"].cfg
-    assert audio.play_sounds and audio.announce and audio.passthrough is False
+    assert audio.play_sounds and audio.announce
+    # Wave 38 (C4): duplex — the TV input is routed and every input metered;
+    # Trabolta ducks deepest, then an announcement, then Clippy (music only).
+    assert audio.passthrough is True
+    assert audio.priority == {"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}}
+    assert audio.sidechain.threshold_db == -45 and audio.sidechain.hold_s == 0.8
     assert audio.mqtt is not None and ipaddress.ip_address(audio.mqtt.host).is_loopback
     assert set(audio.no_duck) == {n for n, s in load_manifest().items() if s.no_duck} == {"dance_song", "rave", "hand_jive"}
     # The uplink-down boot routes from the repo's files.

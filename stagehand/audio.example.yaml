@@ -24,7 +24,7 @@ server:
 
 audio:
   # Story sounds: `sound printer_grind` plays sounds_dir/printer_grind.wav
-  # (or .aiff / .aif / .flac). A name with no file is logged once, never fatal.
+  # (or .aiff / .aif / .flac / .mp3 / .ogg). A name with no file is logged once, never fatal.
   # `uv run stagehand sounds placeholders --config …` fills it with labelled
   # placeholders (media/sounds.yaml); a real file always wins over one.
   sounds_dir: media/sounds
@@ -36,8 +36,10 @@ audio:
                        # on audio.json `announce.to` — remove the `alexa:`
                        # section first (one owner of the house's voice)
 
-  # The audio.json routes (mics / a line / the TV on the inputs → outputs).
-  # false opens an output-only stream: no microphone permission needed.
+  # Duplex: the audio.json routes (mics / a line / the TV on the inputs →
+  # outputs) and the input meters every sidechain needs (an input with a
+  # `role` in audio.json). false opens an output-only stream: no microphone
+  # permission needed, but nothing is metered and no input ducks anything.
   passthrough: true
 
   # device: "MOTU"     # override audio.json's device.name (a substring of the device name)
@@ -48,9 +50,23 @@ audio:
   latency: high        # low | high | seconds
   master_db: 0
   limit_db: -1         # each output's limiter ceiling (dBFS)
-  duck_db: -12         # sounds under an announcement
+  # Priority ducking: dB at full activity, per bus (sfx = story sounds,
+  # music = the soundtrack's beds), per source. A source is an audio.json
+  # input `role` (its sidechain: the TV, a mic) or a built-in: `announce`
+  # (an announcement playing) or `takeover` (a track that takes its
+  # speakers: the music there is always silenced). A bus a source does not
+  # name is not ducked by it; announcements, tests and the live inputs
+  # never duck. (duck_db is gone: it is priority.announce.sfx.)
+  priority:
+    trabolta: { music: -18, sfx: -8 }
+    announce: { music: -15, sfx: -12 }
+    clippy:   { music: -12 }
+  # How an input's level opens its source: a block over threshold_db opens
+  # it, it holds hold_s after the last one, and fades in over attack_s and
+  # out over release_s.
+  sidechain: { threshold_db: -45, attack_s: 0.04, hold_s: 0.8, release_s: 1.2 }
   duck_hold_s: 7       # announce: false — how long each `do announce` (spoken
-                       # by the alexa player) ducks the router's sounds
+                       # by the alexa player) holds the announce source
   no_duck: [dance_song, rave, hand_jive]   # never ducked (the dance tracks)
 
   # Until the server answers (the house internet down at boot) the router

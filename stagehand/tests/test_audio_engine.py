@@ -120,6 +120,15 @@ def test_section_paths_resolve_beside_the_yaml(tmp_path):
         ({"blocksize": 7}, "blocksize"),
         ({"no_duck": "dance_song"}, "no_duck"),
         ({"duck_hold_s": 90}, "duck_hold_s"),
+        # Wave 38 (C4): duck_db is gone, renamed into priority.
+        ({"duck_db": -12}, r"duck_db: removed .* priority\.announce\.sfx"),
+        ({"priority": [1]}, "audio.priority"),
+        ({"priority": {"Trabolta": {"music": -18}}}, r"priority\.Trabolta"),
+        ({"priority": {"trabolta": {"announce": -18}}}, r"priority\.trabolta\.announce"),
+        ({"priority": {"trabolta": {"music": 6}}}, r"priority\.trabolta\.music: dB"),
+        ({"priority": {"takeover": {"music": -60}}}, r"takeover\.music: fixed"),
+        ({"sidechain": {"threshold": -40}}, r"sidechain\.threshold"),
+        ({"sidechain": {"attack_s": 0}}, r"sidechain\.attack_s"),
         ([], "mapping"),
     ],
 )

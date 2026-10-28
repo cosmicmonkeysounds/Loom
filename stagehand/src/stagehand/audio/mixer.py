@@ -585,7 +585,10 @@ class Mixer:
             elif kind == "priority":
                 self._depth = arg
             elif kind == "trim":
-                self._trim_to, self._trim_left = arg, self.trim_frames
+                if self.ticks == 0:  # a fresh stream starts at its trims: nothing to ramp from
+                    self.trim, self._trim_to, self._trim_left = arg.copy(), arg, 0
+                else:
+                    self._trim_to, self._trim_left = arg, self.trim_frames
 
     def _cap(self) -> None:
         """Over MAX_VOICES: fade out the oldest sfx voice (else the oldest

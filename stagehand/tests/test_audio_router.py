@@ -136,6 +136,8 @@ def test_the_example_config_parses(tmp_path):
     audio = cfg.modules["audio"]
     assert audio.cfg.play_sounds is False and audio.cfg.announce is False
     assert audio.cfg.no_duck == ("dance_song", "rave", "hand_jive") and audio.cfg.duck_hold_s == 7
+    assert audio.cfg.priority == {"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}}
+    assert (audio.cfg.sidechain.threshold_db, audio.cfg.sidechain.attack_s, audio.cfg.sidechain.hold_s, audio.cfg.sidechain.release_s) == (-45, 0.04, 0.8, 1.2)
 
 
 # -- the stream --------------------------------------------------------------
@@ -580,7 +582,7 @@ def test_a_held_alexa_lock_blocks_only_the_announcements(tmp_path, caplog):
             if r.played:
                 break
         await asyncio.sleep(0.05)
-        state = (r.engine_running(), r.played, r.announce_state(), r.health()["announce"], list(said), r.mixer.duck_hold > 0 or r.mixer.duck < 1.0)
+        state = (r.engine_running(), r.played, r.announce_state(), r.health()["announce"], list(said), r.mixer.duck_hold > 0 or r.mixer.activity("announce") > 0)
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
         return state
@@ -840,10 +842,97 @@ def test_the_servers_default_doc_with_no_device_name_opens_the_default_output(tm
 def test_health_reports_the_night(tmp_path):
     r = playing(tmp_path)
     r.on_sim({"type": "directive", "verb": "sfx", "args": "zip, rooms: hall"})
-    stream_of(r).pump(200)
+    indata = np.zeros((200, 16), dtype=np.float32)
+    indata[:, 2] = 0.5
+    stream_of(r).pump(200, indata)
     h = r.health()
     assert h["ok"] and h["played"] == 1 and h["config"] == "v1" and h["blocks"] == 1
     assert h["peak_db"] > -20 and "MOTU" in h["device"]
+    # The duplex stream's input meters, by channel; the sources; underruns.
+    assert h["inputs"]["3"] == pytest.approx(-6.0, abs=0.1) and h["inputs"]["1"] == -120.0 and len(h["inputs"]) == 16
+    assert h["sources"] == {"announce": 0.0, "takeover": 0.0} and h["underruns"] == 0
+    json.dumps(h)  # the MQTT stats line
+
+
+# -- priority, the trims, the sidechain (wave 38, C2) -------------------------------------
+
+
+ROLES = [
+    {"ch": 1, "label": "Clippy's mic", "kind": "mic", "role": "clippy", "reach": ["living"]},
+    {"ch": 3, "label": "the TV", "kind": "line", "role": "trabolta"},
+]
+PRIORITY = {"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}}
+
+
+def test_a_speaker_trim_is_the_outputs_and_an_edit_is_heard_on_a_playing_sound(tmp_path):
+    r = playing(tmp_path)
+    write_wav(tmp_path / "sounds" / "bed.wav", seconds=2)
+    r.on_sim({"type": "directive", "verb": "sfx", "args": "bed, rooms: start-bar"})  # bar-1: −3 dB trim
+    s = stream_of(r)
+    out = s.pump(400)
+    assert out[-1, 2] == pytest.approx(0.25 * 10 ** (-3 / 20), rel=0.01)
+    speakers = [{**sp, "gain": -9} if sp["id"] == "bar-1" else sp for sp in FIXTURE["audio"]["speakers"]]
+    assert r.apply(answer("v2", speakers=speakers))
+    out = s.pump(400)  # the trim ramps over 50 ms (400 frames at 8 kHz) …
+    assert out[-1, 2] == pytest.approx(0.25 * 10 ** (-9 / 20), rel=0.01)  # … on the sound already playing
+    assert out[0, 2] > out[-1, 2]
+
+
+def test_the_tv_input_ducks_the_sounds_on_its_reach_and_the_matrix_carries_it(tmp_path):
+    r = playing(tmp_path, priority=PRIORITY, sidechain={"threshold_db": -45, "attack_s": 0.01, "hold_s": 0.1, "release_s": 0.1})
+    write_wav(tmp_path / "sounds" / "bed.wav", seconds=3)
+    # Trabolta's TV on input 3, routed to 1 + 2 (the fixture's route): no
+    # `reach`, so it ducks what its route feeds; Clippy's mic reaches `living`.
+    assert r.apply(answer("v2", inputs=ROLES))
+    r.on_sim({"type": "directive", "verb": "sfx", "args": "bed, rooms: The Desktop start-bar"})  # 1, 2 + 3, 4
+    s = stream_of(r)
+    quiet = s.pump(400)
+    tv = np.zeros((400, 16), dtype=np.float32)
+    tv[:, 2] = 0.3
+    for _ in range(4):
+        out = s.pump(400, tv)
+    duck = 10 ** (-8 / 20)
+    assert out[-1, 3] == pytest.approx(quiet[-1, 3], rel=1e-3)  # the kitchen: off the TV's reach
+    # The living room: the bed ducked −8 dB under Trabolta, his voice on top through the matrix (−6 dB).
+    assert out[-1, 0] == pytest.approx(0.25 * duck + 0.3 * 10 ** (-6 / 20), rel=0.01)
+    assert r.mixer.activity("trabolta") == 1.0 and r.mixer.activity("clippy") == 0.0
+    for _ in range(4):  # he stops: hold 0.1 s, release 0.1 s
+        out = s.pump(400)
+    assert out[-1, 0] == pytest.approx(quiet[-1, 0], rel=1e-3)
+
+
+def test_an_explicit_reach_and_the_check_warnings(tmp_path):
+    roles = [{**ROLES[0], "reach": ["start-bar", "nowhere"]}, ROLES[1], {"ch": 4, "label": "spare", "role": "guest_mic"}, {"ch": 5, "label": "x", "role": "takeover"}]
+    r = router(tmp_path, play_sounds=True, priority=PRIORITY, config_file=_local(tmp_path, inputs=roles))
+    warnings = "\n".join(r.warnings())
+    assert "'guest_mic' has no audio.priority entry" in warnings
+    assert "reach 'nowhere' names no zone" in warnings
+    assert "'takeover': reserved" in warnings
+    assert "'trabolta' has no" not in warnings and "'clippy' has no" not in warnings  # both have a priority row
+    off = router(tmp_path, passthrough=False, priority=PRIORITY, config_file=_local(tmp_path, inputs=ROLES))
+    assert any("need a duplex stream" in w for w in off.warnings())
+    lines = "\n".join(r.describe())
+    assert "priority : trabolta music -18, sfx -8; announce music -15, sfx -12; clippy music -12; takeover silences the music" in lines
+    assert "sidechain: the inputs with a role, over -45 dBFS" in lines
+
+
+def _local(tmp_path, **over) -> str:
+    path = tmp_path / "local-audio.json"
+    path.write_text(json.dumps({**FIXTURE["audio"], **over}))
+    return str(path)
+
+
+def test_a_house_change_rewires_a_reach_that_names_a_location(tmp_path):
+    r = router(tmp_path, priority=PRIORITY, sidechain={"attack_s": 0.01})
+    r.apply(answer("v1", inputs=[{"ch": 2, "label": "m", "role": "clippy", "reach": ["The Tube"]}]))
+    s = stream_of(r)
+    mic = np.zeros((400, 16), dtype=np.float32)
+    mic[:, 1] = 0.5
+    s.pump(400, mic)
+    assert not r.mixer._inputs[0].mask.any()  # no house yet: a LOCATION reaches nothing
+    r.set_house(FIXTURE["house"], persist=False)
+    s.pump(400, mic)
+    assert [i + 1 for i in np.flatnonzero(r.mixer._inputs[0].mask)] == [5, 6]
 
 
 def test_check_compares_the_device_with_the_cached_config(tmp_path, capsys):
