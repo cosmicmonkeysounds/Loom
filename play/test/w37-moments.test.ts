@@ -162,6 +162,14 @@ describe("C15: a dialog's buttons always fit", () => {
     expect(go.body).toContain("white-space: normal");
     expect(go.at).toBeGreaterThan(nowrap.at);
   });
+
+  it("on a phone, exits stack full width with OK last (no right-to-left staircase); OK alone is untouched", () => {
+    const at = css.indexOf("@media (max-width: 430px)");
+    expect(at).toBeGreaterThanOrEqual(0);
+    const block = css.slice(at, css.indexOf("\n}", at));
+    expect(block).toMatch(/\.moments-dialog-buttons > \.moments-go,\s*\.moments-dialog-buttons > \.moments-go ~ \.moments-ok \{ flex: 1 1 100%; \}/u);
+    expect(block).not.toMatch(/^\s*\.moments-ok \{/mu);
+  });
 });
 
 describe("C21: a menu pick in a booth's DM is no guest writing to it", () => {
