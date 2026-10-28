@@ -214,10 +214,15 @@ windows), the Desk, the director phone and Help are lazy chunks.
   player's title bar blinks *NEW MISSION · …* for 6 s (`TitleBar`'s
   `flash`). One that pops leaves after 20 s (`MISSION_RETIRE_MS`), and
   reconcile retires it once it is not the headline (`missionHeadline`) or
-  a game pop-out of the same cue is held (`MISSION_GAME_MS`). A player's
+  a game pop-out of the same cue is held (`MISSION_GAME_MS`). One held
+  while Mission was off screen (under a card, held quiet) is retired as
+  soon as `missionShown` turns true, with the blink instead. A player's
   own `dm:` big shaped `… · …` (YOUR GAME IS ON) is a `game:` pop-out
   (`AdapterCtx.me` / `player`; priority 55, under the target's 60, 60 s,
-  ▣ Go to Mission), and a newer game retires the older. WANTED · YOURS has
+  ▣ Go to Mission), and a newer game retires the older. It is an alarm
+  (red caption, chime) with `PopOutSpec.yields`: after the grace it gives
+  way to any live pop-out that outranks it (LANDED ON, a big readout) and
+  shows again after them. WANTED · YOURS has
   Later and leaves after 15 s. `PopOutSpec.autoLaterMs` defers a pop-out
   untouched that long into 🔔 Waiting (the door: 45 s; it comes back when
   the next guest reaches the front, a new rev). An alarm pop-out takes the
@@ -229,13 +234,17 @@ windows), the Desk, the director phone and Help are lazy chunks.
   `booth/moments-feed.ts` `offDuty`). The booth's moments layer never gets
   a line to everyone (`audience: "all"`: the TV, the speakers and the 📜
   Chat log say it), a player gets no quest moments, and a minor readout
-  about a guest who is not this booth's (`BoothFeedOptions.mine`: its
-  escort claim or its door claim) only badges Readouts. The lines still
-  land in their rooms.
+  about a guest who is not this booth's (`BoothFeedOptions.mine`, built by
+  `boothMine`: its escort claim, its door claim, and on a booth that can
+  claim escorts every loose mark nobody has claimed) only badges Readouts.
+  The lines still land in their rooms.
 - **The Wanted board keeps a claimed poster in place** (wave 37, C11;
-  `openTabIds`): Open shows what it showed since it mounted, a claim of
-  mine as YOURS with 📷 Scan their pass, someone else's as *🙋 X is on
-  it*, so the list never reflows under a finger.
+  `openTabIds`): Open shows what it showed since the board opened, a claim
+  of mine as YOURS with 📷 Scan their pass, someone else's as *🙋 X is on
+  it*, so the list never reflows under a finger. The wanted layer's
+  `BoardMemo` (the tab, the kept ids) survives a scan or a card opened from
+  the board, so × back finds it as it was. The Open tab counts only the
+  posters still open.
 - **The windowed bar** (wave 26, P2): a player's or a host's booth frame is
   `booth-frame windowed` (`boothFrameClass`): the guest's taskbar rules
   (`--taskbar-h: 56px`, windows 48–120 px, Scan a normal primary, the tray
@@ -433,7 +442,10 @@ copy. Any new guest line must pass it.
   (a sticky that is no card and no loud objective) leaves after
   `STICKY_MS` (45 s) on screen, read; its clock runs only while it is
   really on screen (not under a hold, not folded into the pin rail's +n:
-  the engine's `hold` / `fold` counters). A moment counts as read once it
+  the engine's `hold` / `fold` counters). Its chime follows arrival, not
+  the screen (`EngineMemory.rung`, once per moment): under a hold it rings
+  at once, except face to face (`balloonsWait`), where it rings after ×.
+  A moment counts as read once it
   was on screen `GLANCE_MS` (1 s) in total, also when a NOW, phase or
   objective change retires it. While a dialog is up nothing peeks under
   it. A menu pick or a deed (`pick` / `act` lines) is never a guest
