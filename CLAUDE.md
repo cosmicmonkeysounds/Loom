@@ -186,8 +186,19 @@ its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 
 ### Release status
 
-The VPS runs **`w33b`** (master `9c852e30`, shipped 2026-10-28; rollback
-`w32`): wave 33b (smooth turning only in VR, gentler movement, a wall
+The VPS runs **`w37b`** (master `90bdd2e0`, shipped 2026-10-28; rollback
+`w37`): wave 37 (the Play de-clutter: one × closes a scan, nothing floats
+over a scan or a card, one thing at the bottom of a booth, NEW MISSION said
+once, game pop-outs that yield and retire, a performer's feed about their
+own job, banners that leave after 45 s, Show's *Needs you* first; the
+guest first-load gate is 149 kB since 37b) and wave 38 (the house
+soundtrack, priority ducking, the SFX library: its house steps are in
+`docs/loom-w38-contract.md`; the project's `audio.json` was kept, so the
+soundtrack's file reaches the preview only with `sync-show
+--replace-audio`). The preview was synced (`--keep-maps --keep-audio
+--keep-lights --keep-desk`) and reloaded on it, and the bots played a
+full night there (23/23). Reload every phone. Before it, `w33b` (master
+`9c852e30`, shipped 2026-10-28; rollback `w32`): wave 33b (smooth turning only in VR, gentler movement, a wall
 buzz, the terminals 3× in both games with 320×240 feeds; the intro copy
 signed off) and wave 35 (the facts' rarity tiers, 78 new facts; show text
 `DRAFT` on `SIGNOFF-w35.md`). The preview was synced (`--keep-maps
