@@ -81,11 +81,11 @@ describe("inputReachSpeakers (what the plan lights on hover)", () => {
     expect(inputReachSpeakers(setInputReach(setInputRole(routed, 1, "clippy"), 1, ["a"]), h, 1)).toEqual(["speaker-1"]);
   });
 
-  it("the show: Clippy's mic ducks the living room; the TV ducks every speaker its route feeds (all but the sub)", () => {
+  it("the show: Clippy's mic ducks the living room; the TV ducks every speaker (its reach is everywhere, the sub too)", () => {
     const a = START();
     const h = SHOW();
     expect(inputReachSpeakers(a, h, 1)).toEqual(["living-l", "living-r", "living-sub"]);
-    expect(inputReachSpeakers(a, h, 3)).toEqual(["living-l", "living-r", "kitchen-l", "kitchen-r", "optical-drive"]);
+    expect(inputReachSpeakers(a, h, 3)).toEqual(["living-l", "living-r", "living-sub", "kitchen-l", "kitchen-r", "optical-drive"]);
   });
 });
 
@@ -123,7 +123,7 @@ describe("the Inputs section renders the picker and the reach", () => {
     return out.slice(at, out.indexOf("</td>", at));
   };
 
-  it("the show's two sidechain inputs: Clippy with the living room, the TV with its route's default", () => {
+  it("the show's two sidechain inputs: Clippy with the living room, the TV everywhere", () => {
     const out = html(START());
     expect(out).toContain("2 duck the music");
     const clippy = cell(out, "input-ducks-1");
@@ -132,7 +132,7 @@ describe("the Inputs section renders the picker and the reach", () => {
     expect(cell(out, "input-reach-1")).toContain("◎ Living room");
     const tv = cell(out, "input-ducks-3");
     expect(tv).toMatch(/<option value="trabolta" selected="">/u);
-    expect(tv).toContain("(the outputs its route feeds)");
+    expect(cell(out, "input-reach-3")).toMatch(/k-everywhere[^>]*>[^<]*everywhere/u);
     // An input with no role: the picker reads none and there is no reach list.
     const two = cell(out, "input-ducks-2");
     expect(two).toMatch(/<option value="" selected="">ducks nothing<\/option>/u);

@@ -199,7 +199,7 @@ describe("validateAudio — wave 38: an input's role and reach", () => {
     expect(v.warnings.filter((w) => w.startsWith("inputs["))).toEqual([]);
     expect(audio.inputs.filter((i) => i.role !== undefined).map((i) => [i.ch, i.role, i.reach ?? null])).toEqual([
       [1, "clippy", ["living"]],
-      [3, "trabolta", null],
+      [3, "trabolta", ["everywhere"]],
     ]);
   });
 });
