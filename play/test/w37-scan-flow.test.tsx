@@ -391,3 +391,12 @@ describe("wave 37 wiring (C7): NEW MISSION, said once", () => {
     expect(renderToStaticMarkup(<TitleBar objectives={[o]} fallback="Norton" onOpen={() => {}} act="Sweep every program" />)).not.toContain("title-bar-news");
   });
 });
+
+describe("wave 37 wiring (C8): YOUR GAME IS ON is the player's game pop-out", () => {
+  it("the adapter knows who this booth is and whether it plays", () => {
+    const app = src("booth/app.tsx");
+    expect(app).toMatch(/const adapterCtx: AdapterCtx = \{[^\n]*me: character0, player: player0 \};/u);
+    // player0 is defined before the adapter reads it.
+    expect(app.indexOf("const player0 =")).toBeLessThan(app.indexOf("const adapterCtx: AdapterCtx"));
+  });
+});

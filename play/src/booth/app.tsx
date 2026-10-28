@@ -239,7 +239,8 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     ...(wantedOf(s.view) ?? []).filter((w) => w.claimedBy === character0).map((w) => w.id),
     ...(boothView(s.view)?.guests ?? []).filter((g) => doorClaimer(g) === character0).map((g) => `door:${g.id}`),
   ].join("\n");
-  const adapterCtx: AdapterCtx = { wanted: wantedOf(s.view), openGuest: () => (layer?.kind === "card" || layer?.kind === "scan" ? cardGuest.current : null), guestName: (id) => s.view?.guests.find((g) => g.id === id)?.name ?? null };
+  // Wave 37 (C8): `me` + `player`: a player's own `dm:` "… · …" big is its game pop-out.
+  const adapterCtx: AdapterCtx = { wanted: wantedOf(s.view), openGuest: () => (layer?.kind === "card" || layer?.kind === "scan" ? cardGuest.current : null), guestName: (id) => s.view?.guests.find((g) => g.id === id)?.name ?? null, me: character0, player: player0 };
   const adapterRef = useRef(adapterCtx);
   adapterRef.current = adapterCtx;
   const momentFeed = useMemo(() => {
