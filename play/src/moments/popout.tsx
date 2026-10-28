@@ -11,7 +11,9 @@
 //!   booth's `MomentsProvider`.
 //! - `PopOutHost` — mounted once by `booth/app.tsx`: the floating Win95
 //!   window above the dock and the taskbar, no scrim, no tap-outside or
-//!   Escape close; nothing while a dock is mounted.
+//!   Escape close; nothing while a dock or a `PopOutQuiet` is mounted. It
+//!   also lets an alarm take the screen from an info one once its 2 s grace
+//!   is up (wave 37, C9: `currentOf`, `preemptDueAt`).
 //! - `PopOutDock` — the first child of a booth window's scroll body (a
 //!   guest card, the scanner, Guests, the Wanted board, a picker, the host
 //!   drawer): the pop-out as a 56 px strip there, in flow, that expands in
