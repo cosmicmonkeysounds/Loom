@@ -142,8 +142,10 @@ Where everything is:
    story stand-ins, then `uv run stagehand sounds placeholders --config
    trapped.macbook.yaml` writes a labelled placeholder for each sound still
    without a file (the songs). The music is the user's MP3s: they come
-   from the Desktop's `media\music\<act>\`. A real file always wins, and
-   neither generator ever touches one.
+   from the Desktop's `media\music\<act>\`. A real file always wins over a
+   placeholder, and neither generator ever touches one. A stand-in is a
+   `.wav` and counts as real, so it beats a real `.mp3` / `.ogg` / `.flac`
+   / `.aiff` of the same name: delete the stand-in first.
 5. `uv run stagehand check --config trapped.macbook.yaml --only audio` — it
    shows the device's 32 / 30 against audio.json's 10 / 12 (`output-only`)
    and fails if the layout moved; its warnings list every placeholder

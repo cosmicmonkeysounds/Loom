@@ -543,7 +543,7 @@ stream, a fake server).
 
 | | `audio.json` (the event's project file) | `audio:` (the router machine's YAML) |
 |---|---|---|
-| Says | the device (name substring, channels used — the show's 828x: 10 in / 12 out — rate, `expect`), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to` / `announce.terminals`, `voice.tv` | what the router may do on its machine: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`, `duck_db`), `say_voice`, `chime`, an optional broker |
+| Says | the device (name substring, channels used — the show's 828x: 10 in / 12 out — rate, `expect`), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to` / `announce.terminals`, `voice.tv` | what the router may do on its machine: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`), the ducking (`priority`, `sidechain`, `no_duck`; wave 38, §13), the `soundtrack`, `say_voice`, `chime`, an optional broker |
 | Edited in | the map editor's Audio panel (a director save in the event state dir beats the project copy; `LOOM_AUDIO` is the LAN fallback) | `trapped.house.yaml` (shared) + the machine file (`trapped.macbook.yaml` / `trapped.desktop.yaml`), then restart the `audio` job (`stagehand launchd restart --job audio` on the MacBook, `stagehand tasks restart --job audio` on the Desktop) |
 | Reaches the router | a long-poll, `GET /api/mod/audio?router=1&name=<host>&after=<version>&tests=<seq>&stops=<seq>&wait=25` (returns at once on a new version, a pending speaker test or a stop; `router=1` is what the editor's router badge reads) | at boot |
 
@@ -567,8 +567,9 @@ numpy callback per block mixes:
    speaker's own `out` order), the mono downmix ((L + R) / 2) on a
    one-output speaker. The speaker's trim + the cue's gain, 5 ms fade-in, a
    fade-out on stop; at most 32 (the oldest sfx drops);
-3. the duck: sfx voices −12 dB (down over 0.3 s, back over 1 s) while the
-   router's own announcement plays — or, while the `alexa` player speaks
+3. the duck: sfx voices −12 dB and, since wave 38, the music −15 dB
+   (`priority.announce`; down over 0.3 s, back over 1 s) while the
+   router's own announcement plays (the inputs' ducking is §13) — or, while the `alexa` player speaks
    them (`announce: false`, or its lock still held), for `duck_hold_s` (7 s)
    after each `do announce` on the feed. Sounds
    in `no_duck` (the show's `dance_song`, `rave`, `hand_jive`) or with
@@ -652,13 +653,17 @@ warned about.
   queued for later, `announce: blocked` in the health JSON — and every
   sound, the matrix and the tests play from the start; the router retries
   the lock every 5 s.
-- Trabolta's TV voice comes from Chrome on the TV computer, John's Desktop,
-  out of its HDMI to the TV's own speakers. It reaches the 828x only if the
-  router (and the 828x) moves to the Desktop and the TV voice is fed into
-  an 828x input; `audio.json` `voice.tv` documents where it should then
-  reach (build that fan-out in CueMix FX). The router machine's own default
-  output must never be the 828x's Analog 1–2 (the living room): on the
-  MacBook keep the internal speakers the default.
+- Trabolta's TV voice comes from Chrome on the TV computer, John's Desktop.
+  Since wave 38 Chrome's output is the Desktop's line out, cabled into the
+  828x's rear Analog In 1 (input 3); `audio.json`'s routes play it on every
+  placed speaker but the sub, and the router ducks the music under it
+  (§13). It is never in a CueMix mix (that would play it twice), and the
+  TV's own speakers get nothing. `audio.json` `voice.tv` is a note of where
+  it should reach; the routes row is what sends it. The router machine's
+  own default output must never be the 828x (Analog 1 is the living-room
+  sub): on the Desktop leave it on the TV's HDMI, on the MacBook the
+  internal speakers. The MacBook fallback is output-only: no route, so
+  Chrome goes back to HDMI there.
 
 ### 11.5 Speaker tests and health
 
@@ -674,8 +679,8 @@ warned about.
   `router {online, lastSeen, name}` (online while it is parked on a long
   poll or polled in the last 40 s). The Audio tab shows *router online* /
   *router last seen …*, and a Test sent while nobody listens says it was
-  only queued: check the `audio` job on the router's machine (the MacBook
-  by default).
+  only queued: check the `audio` job on the router's machine (the Desktop;
+  the MacBook in the fallback).
 - `stagehand check --only audio` probes the device against the cached /
   local `audio.json` (channel counts, and `device.expect`: §12.1), lists cue
   sounds with no file and every placeholder still in `sounds_dir` (§12.2), and
@@ -839,7 +844,10 @@ runbook is [`scripts/house-desktop/README.md`](../../scripts/house-desktop/READM
   ambient loops), deterministic, 48 kHz, one-shots levelled by loudness and
   peak-capped at −1 dBFS, loops seamless. `stagehand sounds library
   [--story]` renders them to `stagehand/media/library/` and puts 13 story
-  stand-ins into `sounds_dir` (never over a real file).
+  stand-ins into `sounds_dir` (never over a real file). A stand-in is a
+  `.wav` and counts as real, so it beats a real `.mp3` / `.ogg` / `.flac`
+  / `.aiff` of the same name: delete the stand-in when the real file
+  comes in another format.
 - **Health.** The router's health and report carry `music {scene, beds,
   missing}`, the input peaks, each source's activity and the underruns;
   `stagehand music status` and `pnpm showctl doctor` print them. `stagehand

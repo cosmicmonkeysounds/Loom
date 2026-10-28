@@ -413,7 +413,7 @@ audio:
   9–10) plus the sub on Analog Out 1 (its own speaker `living-sub`, its
   own trim). Chrome's sound on the Desktop (the TV's Trabolta) leaves the
   PC's line out into the 828x's Analog In 1 (input 3), and the router
-  sends it to every speaker (`audio.json` `routes`); the TV's own speakers
+  sends it to every placed speaker but the sub (`audio.json` `routes`); the TV's own speakers
   get nothing, or he plays twice. Clippy's wireless mic (input 1) stays
   mixed in CueMix to the living room; the router only meters it. In
   CueMix, input 3 goes to no output (the router routes it).
@@ -446,7 +446,10 @@ audio:
   `uv run stagehand sounds library --story --config
   trapped.desktop.yaml` on the Desktop writes `media/library/` and
   replaces each story placeholder that has a stand-in. A real file is
-  never replaced. Look at them with `uv run --with matplotlib python -m
+  never replaced. A stand-in is a `.wav` and counts as real, so it beats
+  a real `.mp3` / `.ogg` / `.flac` / `.aiff` of the same name (and
+  `check` does not flag it): delete the stand-in when the real file
+  comes in another format. Look at them with `uv run --with matplotlib python -m
   stagehand.audio.sfx.inspect --only a,b --out DIR`.
 - **`device.expect`**: the show's 828x must report 32 in / 30 out (both
   optical ports on ADAT, even with no expander plugged in); anything else
