@@ -11,3 +11,7 @@ house.yaml
 # the router's sound files (wave 18b): placeholders + the real, partly
 # copyrighted tracks live only on the house Mac; media/sounds.yaml is tracked
 media/sounds/
+# wave 38: the rendered SFX library (re-rendered byte for byte by
+# `stagehand sounds library`) and the soundtrack's MP3s
+media/library/
+media/music/
