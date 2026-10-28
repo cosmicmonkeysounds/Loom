@@ -321,7 +321,9 @@ how long, **🙋 I've got Winamp** (the others see you have them, and your
 scanner opens captioned *Scan Winamp's pass*) and **🚪 Door queue (n)**
 (everyone waiting and who has them, with **📷 Scan the next pass**). A
 card or a scan opened from the Door queue comes back to the queue on ×.
-Left untouched for 45 seconds, the pop-out moves into **🔔 Waiting**.
+Left untouched for 45 seconds, the pop-out moves into **🔔 Waiting**; it
+pops again when the next guest reaches the front of the queue (the one it
+named was taken or let in), not for each new arrival behind them.
 
 ## PLAYER SELECT, lists and targets
 
