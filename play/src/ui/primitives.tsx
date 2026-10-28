@@ -4,7 +4,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { ARM_LINE } from "../arm.ts";
-import { useAvatars } from "../avatars.ts";
+import { PICTURE_RETRY_MS, PICTURE_START, pictureFailed, pictureRetry, pictureUrl, useAvatars, type PictureTries } from "../avatars.ts";
 import { usePlayHost } from "../host.ts";
 import { prettyName } from "../rooms/spaces.ts";
 import type { Action, Channel } from "../types.ts";
@@ -48,13 +48,37 @@ export function PersonAvatar({ name, size = "md", kind, src }: { name: string; s
   const lookup = useAvatars();
   const picture = src === undefined ? lookup.srcFor(name) : src;
   // The initials stay underneath: they show while the picture loads, and
-  // stay if it never does (a broken image removes itself).
+  // stay if it never does.
   return (
     <span className={`pavatar ${size} ${kind ?? ""} ${picture !== null ? "pic" : ""}`} style={{ background: colorFor(name) }} aria-hidden>
       {initialsOf(name)}
-      {picture !== null && <img src={picture} alt="" loading="lazy" draggable={false} onError={(e) => e.currentTarget.remove()} />}
+      {picture !== null && <AvatarImg key={picture} src={picture} />}
     </span>
   );
+}
+
+/** A picture's tries (`PICTURE_RETRY_MS`): a load that fails waits and
+ *  tries again before the picture is given up. Keyed by the picture, so a
+ *  new one starts over. */
+export function usePictureTries(): [PictureTries, () => void] {
+  const [tries, setTries] = useState(PICTURE_START);
+  useEffect(() => {
+    if (!tries.waiting) return;
+    const id = setTimeout(() => setTries(pictureRetry), PICTURE_RETRY_MS[tries.fails - 1]);
+    return () => clearTimeout(id);
+  }, [tries]);
+  return [tries, () => setTries(pictureFailed)];
+}
+
+/** An avatar tile's picture (wave 36). React owns the node: a failed load
+ *  unmounts it (the initials show) and a retry mounts it again, where the
+ *  old tile pulled the `<img>` out from under React for good on the first
+ *  error. No `loading="lazy"`: a tile is tiny and one URL repeats on every
+ *  line, so it saved nothing and was one more thing older phones differ on. */
+function AvatarImg({ src }: { src: string }) {
+  const [tries, failed] = usePictureTries();
+  const url = pictureUrl(src, tries);
+  return url === null ? null : <img src={url} alt="" decoding="async" draggable={false} onError={failed} />;
 }
 
 /** `(min-width: …)`-style media query as a boolean, live. */
