@@ -231,8 +231,9 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     if (r.draft === null) return;
     const id = r.draft.key.slice("mission:".length);
     if (missionShown?.(id) === true) {
-      // Wave 37 (C7): said once — the Mission card is the instruction.
-      playTone("info", host.sound && r.draft.sound !== false);
+      // Wave 37 (C7): said once — the Mission card is the instruction. Face
+      // to face (PLAYER SELECT is a quiet scope) it says it without a tone.
+      if (!rung.quietNow()) playTone("info", host.sound && r.draft.sound !== false);
       onMissionNews?.({ id, title: r.draft.title });
     } else rung.raise(bind(r.draft));
     // eslint-disable-next-line react-hooks/exhaustive-deps

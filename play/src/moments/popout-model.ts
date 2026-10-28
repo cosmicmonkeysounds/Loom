@@ -120,7 +120,8 @@ export const POP_ACTIONS_MAX = 4;
 export const DOCK_ACTIONS_MAX = 3;
 
 export type PopOp =
-  | { type: "raise"; spec: PopOutSpec }
+  /** `at`: wall ms (the shown one changing its rev in place starts its grace again). */
+  | { type: "raise"; spec: PopOutSpec; at?: number }
   | { type: "retire"; key: string }
   | { type: "defer"; key: string; at: number }
   | { type: "restore"; key: string; at?: number }
@@ -156,8 +157,12 @@ export function popReducer(s: PopState, a: PopOp): PopState {
       if (at >= 0) {
         // Idempotent by key: an existing one updates in place (buttons back after a reload).
         const live = s.live.slice();
+        const was = live[at]!;
         live[at] = { spec };
-        return { ...s, live, handled };
+        // Wave 37 (C9): the one on screen with new content (WANTED → YOURS)
+        // is new to the eye: an alarm waits its full grace again.
+        const fresh = s.shown === spec.key && revOf(was.spec) !== rev;
+        return { ...s, live, handled, ...(fresh && a.at !== undefined ? { shownAt: a.at } : {}) };
       }
       const t = s.tray.findIndex((e) => e.spec.key === spec.key);
       if (t >= 0) {
@@ -347,7 +352,9 @@ export const TRAY_LINE_MAX = 60;
 export function trayLine(body: string | string[]): string | null {
   const p = paragraphs(body)[0];
   if (p === undefined) return null;
-  return p.length <= TRAY_LINE_MAX ? p : `${p.slice(0, TRAY_LINE_MAX - 1).trimEnd()}…`;
+  // Cut on code points: an emoji astride the cut never leaves half of itself.
+  const cps = Array.from(p);
+  return cps.length <= TRAY_LINE_MAX ? p : `${cps.slice(0, TRAY_LINE_MAX - 1).join("").trimEnd()}…`;
 }
 
 /** The docked strip's words: "{glyph} {title}: {guest} · 📍 {location}". */

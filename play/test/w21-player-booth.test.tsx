@@ -10,7 +10,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactElement } from "react";
 import { playTone } from "../src/alerts.ts";
 import { PlayHostContext, browserHost, memoryStore } from "../src/host.ts";
-import { PopOutScope, resetPopOutStores, usePopOuts, type PopOutsApi } from "../src/booth/popouts/rung.ts";
+import { PopOutQuiet, PopOutScope, resetPopOutStores, usePopOuts, type PopOutsApi } from "../src/booth/popouts/rung.ts";
 import { useBoothPopOuts, type DriverOpts } from "../src/booth/popouts/use-booth-popouts.ts";
 import type { PrimeSession } from "../src/session/prime.ts";
 import { mountHooks } from "./hooks-harness.ts";
@@ -268,6 +268,18 @@ describe("wave 37 (C7): NEW MISSION, said once", () => {
     h.rerender(opts([b, a], extra));
     expect(news).toHaveLength(1);
     expect(vi.mocked(playTone)).toHaveBeenCalledTimes(1);
+  });
+
+  it("over its own card in PLAYER SELECT (a quiet scope): onMissionNews, but no tone face to face", () => {
+    const news: Array<{ id: string; title: string }> = [];
+    const extra = { missionShown: (id: string) => id === "b", onMissionNews: (o: { id: string; title: string }) => news.push(o) };
+    const h = mountHooks(useBoothPopOuts, opts([a], extra));
+    const q = mountHooks(PopOutQuiet, {});
+    h.rerender(opts([b, a], extra));
+    expect(news).toEqual([{ id: "b", title: "NEW MISSION · The bottle" }]);
+    expect(vi.mocked(playTone)).not.toHaveBeenCalled();
+    expect(heldKeys()).toEqual([]);
+    q.unmount();
   });
 
   it("anywhere else: it pops (keeping its brief) and leaves by itself after 20 s; the driver plays nothing", () => {

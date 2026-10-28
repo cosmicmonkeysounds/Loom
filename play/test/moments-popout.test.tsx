@@ -332,6 +332,54 @@ describe("wave 37 (C9): an alarm takes the screen from an info pop-out", () => {
     expect(currentOf(s, null, 10_000)?.spec.key).toBe("wanted:g1");
   });
 
+  it("the one shown changing its rev in place (WANTED → YOURS) starts the grace again: a queued alarm still waits 2 s", () => {
+    let s = shownAt(run([raise(spec("wanted:a", { rev: "open:1", priority: 90 })), raise(spec("wanted:b", { rev: "open:2", priority: 90, at: 2_000 }))]), 0);
+    expect(s.shown).toBe("wanted:a");
+    s = popReducer(s, { type: "raise", spec: info("wanted:a", 85), at: 10_000 });
+    expect(s.shownAt).toBe(10_000);
+    expect(currentOf(s, null, 11_000)?.spec.key).toBe("wanted:a");
+    expect(preemptDueAt(s, null, 11_000)).toBe(10_000 + PREEMPT_GRACE_MS);
+    expect(currentOf(s, null, 10_000 + PREEMPT_GRACE_MS)?.spec.key).toBe("wanted:b");
+    // The same rev re-raised (a re-bind after a reload) keeps the grace where it was.
+    const again = popReducer(s, { type: "raise", spec: info("wanted:a", 85), at: 11_500 });
+    expect(again.shownAt).toBe(10_000);
+    // A rev change on one that is not on screen touches nothing.
+    expect(popReducer(s, { type: "raise", spec: spec("wanted:b", { rev: "taken:x", priority: 90, at: 2_000 }), at: 11_500 }).shownAt).toBe(10_000);
+  });
+
+  it("the host swaps the window when the grace ends, by its own timer, and chimes the alarm", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(100_000);
+    resetPopOutStores();
+    vi.mocked(playTone).mockClear();
+    const ctx = ((mountHooks(PopOutScope, { session: null, children: null }).output as ReactElement).type as unknown as { _context: { _currentValue: unknown } })._context;
+    ctx._currentValue = { session: "tok-grace" };
+    try {
+      const rung = () => mountHooks(usePopOuts, undefined as never).output as PopOutsApi;
+      const keyOf = (out: unknown) => ((out as ReactElement | null)?.props as { children?: ReactElement<{ entry: { spec: PopOutSpec } }> } | undefined)?.children?.props.entry.spec.key ?? null;
+      rung().raise(info("yours", 85));
+      const host = mountHooks(PopOutHost, {});
+      expect(keyOf(host.output)).toBe("yours");
+      vi.advanceTimersByTime(500);
+      rung().raise(spec("wanted:new", { priority: 90 }));
+      host.rerender({});
+      expect(keyOf(host.output)).toBe("yours");
+      expect(vi.mocked(playTone).mock.calls.map((c) => c[0])).toEqual(["info"]);
+      host.act(() => vi.advanceTimersByTime(1_600));
+      expect(keyOf(host.output)).toBe("wanted:new");
+      expect(vi.mocked(playTone).mock.calls.map((c) => c[0])).toEqual(["info", "alarm"]);
+      // It holds now (shown is the alarm): a higher alarm raised later waits behind it.
+      rung().raise(spec("wanted:big", { priority: 95 }));
+      vi.advanceTimersByTime(10_000);
+      host.rerender({});
+      expect(keyOf(host.output)).toBe("wanted:new");
+      host.unmount();
+    } finally {
+      ctx._currentValue = null;
+      vi.useRealTimers();
+    }
+  });
+
   it("restore starts the grace; hydrate and reset keep the shape", () => {
     let s = run([raise(info("door", 50)), { type: "defer", key: "door", at: 0 }, raise(spec("w", { priority: 90 }))]);
     s = popReducer(s, { type: "restore", key: "door", at: 5_000 });
@@ -343,7 +391,7 @@ describe("wave 37 (C9): an alarm takes the screen from an info pop-out", () => {
 });
 
 describe("wave 37 (C9): autoLaterMs and the 🔔 Waiting row (C8)", () => {
-  it("a deferred door re-raised with the same rev stays in Waiting; the next arrival (a new rev) comes back", () => {
+  it("a deferred door re-raised with the same rev stays in Waiting; the next guest at the front of the queue (a new rev) comes back", () => {
     const door = (rev: string, wait: string) => spec("door", { rev, tone: "info", priority: 50, sticky: false, autoLaterMs: 45_000, body: ["Winamp is waiting at the Optical Drive.", wait] });
     let s = run([raise(door("winamp", "waiting 0:10")), { type: "defer", key: "door", at: 1 }]);
     s = run([raise(door("winamp", "waiting 0:55"))], s);
@@ -374,6 +422,15 @@ describe("wave 37 (C9): autoLaterMs and the 🔔 Waiting row (C8)", () => {
     expect(long.length).toBeLessThanOrEqual(60);
     expect(long.endsWith("…")).toBe(true);
     expect(trayLine([])).toBeNull();
+  });
+
+  it("a Waiting row is cut on code points: an emoji astride the cut stays whole", () => {
+    const body = `${"x".repeat(58)}🎱 and the rest of the line, well past sixty.`;
+    expect(body.charCodeAt(58)).toBeGreaterThanOrEqual(0xd800);
+    const line = trayLine(body)!;
+    expect(line).toBe(`${"x".repeat(58)}🎱…`);
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(line)).toBe(false);
+    expect(Array.from(line)).toHaveLength(60);
   });
 });
 
@@ -410,6 +467,35 @@ describe("wave 37 (C4): face to face, nothing floats (PopOutQuiet)", () => {
     expect(vi.mocked(playTone).mock.calls[0]![0]).toBe("info");
     host.rerender({});
     expect(vi.mocked(playTone)).toHaveBeenCalledTimes(1);
+  });
+
+  it("a card opened for the shown one's guest, its quiet later in the tree in the same commit: no swap, no tone", () => {
+    let card: string | null = null;
+    scopeCtx._context._currentValue = { session: "tok-quiet", cardGuest: () => card };
+    offer("tok-quiet", spec("a", { priority: 90, guest: { id: "g1", name: "Winamp" } }));
+    offer("tok-quiet", spec("b", { priority: 80, guest: { id: "g2", name: "ICQ" } }));
+    // The booth's frame: the host first, the card's PopOutQuiet after it (the harness
+    // commits every layout effect before any passive one, as React does).
+    const Frame = ({ quiet }: { quiet: boolean }) => {
+      const out = PopOutHost();
+      if (quiet) PopOutQuiet();
+      return out;
+    };
+    const f = mountHooks(Frame, { quiet: false });
+    expect(keyOf(f.output)).toBe("a");
+    expect(vi.mocked(playTone)).toHaveBeenCalledTimes(1);
+    vi.mocked(playTone).mockClear();
+    card = "g1";
+    f.rerender({ quiet: true });
+    expect(vi.mocked(playTone)).not.toHaveBeenCalled();
+    f.rerender({ quiet: true });
+    expect(f.output).toBeNull();
+    expect(vi.mocked(playTone)).not.toHaveBeenCalled();
+    f.unmount();
+    // The card closed: "a" was still the one held (state.shown never moved to "b").
+    card = null;
+    const api = mountHooks(usePopOuts, undefined as never).output as PopOutsApi;
+    expect([api.current?.key, api.quieted, api.quietNow()]).toEqual(["a", false, false]);
   });
 
   it("a dock renders nothing while quiet; two quiets need both gone", () => {

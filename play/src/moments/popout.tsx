@@ -28,7 +28,7 @@
 //!
 //! The guest app never imports this file (its bundle stays as it was).
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { playTone } from "../alerts.ts";
 import { useArmButtons, ARM_LINE } from "../arm.ts";
 import { usePlayHost, type SessionStorage } from "../host.ts";
@@ -132,11 +132,11 @@ function target(session: string | null): Store | null {
 
 registerPopSink({
   offer(session, m, verdict, ctx) {
-    apply(storeFor(session), { type: "raise", spec: verdict === "default" ? defaultPopOut(m, ctx) : verdict });
+    apply(storeFor(session), { type: "raise", spec: verdict === "default" ? defaultPopOut(m, ctx) : verdict, at: Date.now() });
   },
   raise(session, spec) {
     const s = target(session);
-    if (s !== null) apply(s, { type: "raise", spec });
+    if (s !== null) apply(s, { type: "raise", spec, at: Date.now() });
   },
   retire(session, key) {
     const s = target(session);
@@ -175,8 +175,10 @@ export interface PopOutsApi {
   activeDock: number | null;
   /** Wave 37 (C4): a `PopOutQuiet` mounts (nothing shows while any is): its unmount. */
   quiet: () => { off: () => void };
-  /** Is a `PopOutQuiet` mounted? */
+  /** Is a `PopOutQuiet` mounted (as of this render)? */
   quieted: boolean;
+  /** Is one mounted right now (read in an effect: a quiet that mounted in the same commit counts)? */
+  quietNow: () => boolean;
   /** Wall ms a waiting alarm takes the screen from the info one shown (C9), else null. */
   preemptAt: number | null;
 }
@@ -196,6 +198,7 @@ const NOOP_API: PopOutsApi = {
   activeDock: null,
   quiet: () => ({ off: () => {} }),
   quieted: false,
+  quietNow: () => false,
   preemptAt: null,
 };
 
@@ -220,7 +223,7 @@ export function PopOutScope({ session, cardGuest, seed, children }: { session: s
   if (!seeded.current && seed !== undefined && session !== null) {
     seeded.current = true;
     const store = storeFor(session, host.storage);
-    for (const spec of seed) apply(store, { type: "raise", spec });
+    for (const spec of seed) apply(store, { type: "raise", spec, at: Date.now() });
   }
   return <PopScopeContext.Provider value={{ session, ...(cardGuest !== undefined ? { cardGuest } : {}) }}>{children}</PopScopeContext.Provider>;
 }
@@ -264,7 +267,7 @@ export function usePopOuts(): PopOutsApi {
     held: [...st.live, ...st.tray],
     defer: (key) => apply(store, { type: "defer", key, at: Date.now() }),
     restore: (key) => apply(store, { type: "restore", key, at: Date.now() }),
-    raise: (spec) => apply(store, { type: "raise", spec }),
+    raise: (spec) => apply(store, { type: "raise", spec, at: Date.now() }),
     retire: (key) => apply(store, { type: "retire", key }),
     dock: () => {
       const id = ++dockSeq;
@@ -292,12 +295,16 @@ export function usePopOuts(): PopOutsApi {
       };
     },
     quieted: store.quiets.length > 0,
+    quietNow: () => store.quiets.length > 0,
     preemptAt: preemptDueAt(st, blocked, now),
   };
 }
 
 /** The one on screen holds (rule 1) and is announced once per tone (rule 8): the host runs this.
- *  While quiet (C4) nothing is marked shown and nothing sounds. */
+ *  While quiet (C4) nothing is marked shown and nothing sounds. The store is
+ *  asked, not this render: a `PopOutQuiet` that mounts in the same commit
+ *  (a card opened from the pop-out, later in the tree than the host)
+ *  registers in a layout effect, before this passive one runs. */
 function useHoldAndAnnounce(api: PopOutsApi): void {
   const { session, sound } = usePopScope();
   const key = api.entry?.spec.key ?? null;
@@ -306,8 +313,8 @@ function useHoldAndAnnounce(api: PopOutsApi): void {
   useEffect(() => {
     if (session === null) return;
     lastSession = session;
-    if (quiet) return;
     const store = storeFor(session);
+    if (store.quiets.length > 0) return;
     if (store.state.shown !== key) apply(store, { type: "show", key, at: Date.now() });
     if (key === null || tone === null) return;
     if (store.announced.get(key) === tone) return;
@@ -545,10 +552,12 @@ export function PopOutDock() {
  */
 export function PopOutQuiet(): null {
   const api = usePopOuts();
-  // Registered once per mount (the api object is new every render).
+  // Registered once per mount (the api object is new every render), in a
+  // layout effect: before any passive effect of the same commit, so the
+  // host's announce (earlier in the tree) already sees it.
   const latest = useRef(api);
   latest.current = api;
-  useEffect(() => {
+  useLayoutEffect(() => {
     const q = latest.current.quiet();
     return q.off;
   }, []);
