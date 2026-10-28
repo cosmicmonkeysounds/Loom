@@ -39,6 +39,7 @@ import {
   STICKY_MS,
   afterWait,
   arrivals,
+  bigEchoes,
   doneAbove,
   missedCount,
   momentExit,
@@ -422,6 +423,14 @@ function useMomentsEngine(input: MomentsInput): Engine {
       recent: alerts.recent(),
       now: wall,
     });
+    // Wave 37 (C19): a house alert said beside a big moment (queued or
+    // arriving) is that big again: read, straight to the bin, never shown.
+    const echoes = bigEchoes(sorted.now, mem.state.queue);
+    if (echoes.size > 0) {
+      for (const k of echoes) markSeen(k);
+      sorted.now = sorted.now.filter((m) => !echoes.has(m.key));
+      dispatch({ type: "read", keys: [...echoes] });
+    }
     // Until the queue renders them, the mark must not pass them (an effect
     // later in this commit settles against the state before the dispatch).
     for (const m of sorted.now) if (m.seq !== null) mem.inflight.add(m.seq);
