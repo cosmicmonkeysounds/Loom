@@ -476,10 +476,10 @@ function useMomentsEngine(input: MomentsInput): Engine {
   }, [input.messages, input.objectives, input.widgets?.answered, session]);
 
   // Wave 37 (C20): a new sign-in's bin starts quiet — once its first
-  // backlog is in, the rows from before it joined are read.
+  // backlog is in, the rows from before it joined are read (never its own).
   useEffect(() => {
     if (session === null || role !== "guest" || (alerts.histories?.() ?? 1) === 0) return;
-    if (!seedReadMark(mem.signIn, input.messages.values())) return;
+    if (!seedReadMark(mem.signIn, input.messages.values(), input.me)) return;
     saveNumber(host.storage, readMarkKey(session), mem.signIn.readMark);
     setRev((r) => r + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps

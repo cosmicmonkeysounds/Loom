@@ -273,16 +273,21 @@ export function loadSignIn(storage: SessionStorage, session: string): SignInMemo
 /**
  * Wave 37 (C20): a late arrival's bin starts quiet. A sign-in with no read
  * mark, once its first backlog is in, has read every row from before it
- * existed: the mark moves to the newest seq there (the rows stay listed).
- * True when the mark moved (save it).
+ * existed: the mark moves to the newest seq there, but never past a row
+ * addressed to `me` (a guest back in on a new phone keeps their own unread
+ * rows). True when the seed was used (save the mark, even unmoved).
  */
-export function seedReadMark(sign: SignInMemory, messages: Iterable<{ seq: number }>): boolean {
+export function seedReadMark(sign: SignInMemory, messages: Iterable<{ seq: number; audience?: unknown }>, me?: string): boolean {
   if (sign.unmarked !== true) return false;
   delete sign.unmarked;
   let max = -1;
-  for (const m of messages) if (Number.isInteger(m.seq) && m.seq > max) max = m.seq;
-  if (max <= sign.readMark) return false;
-  sign.readMark = max;
+  let mine = Infinity;
+  for (const m of messages) {
+    if (!Number.isInteger(m.seq)) continue;
+    if (m.seq > max) max = m.seq;
+    if (me !== undefined && Array.isArray(m.audience) && m.audience.includes(me) && m.seq < mine) mine = m.seq;
+  }
+  sign.readMark = Math.max(sign.readMark, Math.min(max, mine - 1));
   return true;
 }
 
