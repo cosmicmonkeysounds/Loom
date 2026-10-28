@@ -7126,10 +7126,12 @@ export class EventRuntime {
           sendJson(res, 400, { error: `invalid ${DESK_FILE}`, problems: deskBad });
           return true;
         }
+        // (wave 39) The lights first: the restart boots the games' estimate
+        // with the config's `boot` look, so it must read the new file.
+        if (lights !== undefined) this.setProjectLights(lightsText);
         this.restart(source, name, { by });
         if (facts !== undefined) this.setProjectFacts(factsText);
         if (audio !== undefined) this.setProjectAudio(audioText);
-        if (lights !== undefined) this.setProjectLights(lightsText);
         if (desk !== undefined) this.setProjectDesk(deskText);
         if (maps !== null) {
           this.setProjectMaps(maps);

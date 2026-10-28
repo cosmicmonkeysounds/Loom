@@ -610,6 +610,20 @@ describe("the runtime (C2)", () => {
     expect(rt.gameLights.pending).toBe(false);
   });
 
+  it("a load's lights.json is in force before its restart boots the estimate", async () => {
+    let t = 71_000_000;
+    const rt = runtime({ now: () => t });
+    rt.spatial.setHouse(HOUSE, "show", false);
+    const frames: GameLights[] = [];
+    rt.spatial.attach({ id: "term", name: "T", send: (event, data) => event === "lights" && frames.push(data as GameLights) });
+    expect((await call(rt, "POST", "/api/mod/load", { lights: warmBoot() })).status).toBe(200);
+    t += 5000;
+    rt.gameLights.changed();
+    // The new file's boot (house_warm), not the old one's (heart_idle's cyan).
+    expect(frames.at(-1)!.lights.find((l) => l.id === "server-room-rgb")!.level).toBe(Math.round((120 / 254) * 1000) / 1000);
+    rt.dispose();
+  });
+
   it("a story reset plays the boot look into the estimate again", async () => {
     let t = 70_000_000;
     const rt = runtime({ now: () => t });
