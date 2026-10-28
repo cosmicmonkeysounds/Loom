@@ -374,12 +374,27 @@ audio:
                                   # them (a real file always wins; `check` lists what is left)
   play_sounds: true               # the router plays every `sound X`
   announce: true                  # chime + the machine's voice (say / SAPI) on audio.json announce.to
-  passthrough: false              # output-only: live mics are mixed in CueMix FX (hardware, no
-                                  # latency, no microphone permission for a launchd job)
-  no_duck: [dance_song, rave, hand_jive]   # never ducked under an announcement
+  passthrough: true               # duplex (wave 38): the TV's input (Trabolta) is routed to the
+                                  # speakers (audio.json routes) and every input is metered, so
+                                  # the music ducks on the signal itself. Clippy's mic stays in
+                                  # CueMix (hardware, no latency): the router only meters it.
+                                  # On the MacBook fallback a launchd job needs the microphone
+                                  # permission for this.
+  priority:                       # dB at full activity, per bus (wave 38, C4)
+    trabolta: { music: -18, sfx: -8 }    # the TV input's sidechain (audio.json role: trabolta)
+    announce: { music: -15, sfx: -12 }   # the router's own announcements
+    clippy:   { music: -12 }             # Clippy's wireless (role: clippy; reach: living)
+                                  # (takeover: a soundtrack track silences the music on its speakers)
+  sidechain: { threshold_db: -45, attack_s: 0.04, hold_s: 0.8, release_s: 1.2 }
+  no_duck: [dance_song, rave, hand_jive]   # never ducked (by anything)
+  soundtrack: media/soundtrack.yaml   # wave 38 (C3): the music beds, one set per act — the
+                                  # scene from `cue music_<scene>` / Night.music (the catch-up);
+                                  # the MP3s go in media/music/<act>/ (git-ignored; the file's
+                                  # header says which folder is which)
   mqtt: { host: 127.0.0.1, port: 1883, client_id: stagehand-audio }   # the Desktop's loopback; the MacBook fallback: the Desktop's :1884 (trapped.macbook.yaml)
                                   # show/announce, show/chime, show/audio/test, show/audio/stop,
-                                  # show/audio/play — all work on the LAN with the uplink down
+                                  # show/audio/play, show/audio/music — all work on the LAN with
+                                  # the uplink down
   say_voice: Samantha             # `say -v '?'` lists them; an Enhanced/Premium one is nicer
   chime: synth                    # or a file: chime: media/announce_chime.wav
   announce_gain_db: 0

@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -15,7 +17,8 @@ import soundfile as sf
 
 from stagehand.audio.config import parse_audio_section
 from stagehand.audio.engine import Engine, probe
-from stagehand.audio.sounds import IDENTIFY_S, SoundBank, _smooth, identify_label, identify_tone, resample_hq
+from stagehand.audio.mixer import SidechainSource
+from stagehand.audio.sounds import EXTENSIONS, IDENTIFY_S, SoundBank, _smooth, identify_label, identify_tone, placeholders_in, resample_hq, sound_lengths
 from stagehand.modapi import ModClient
 from stagehand.module import ConfigError
 
@@ -120,6 +123,15 @@ def test_section_paths_resolve_beside_the_yaml(tmp_path):
         ({"blocksize": 7}, "blocksize"),
         ({"no_duck": "dance_song"}, "no_duck"),
         ({"duck_hold_s": 90}, "duck_hold_s"),
+        # Wave 38 (C4): duck_db is gone, renamed into priority.
+        ({"duck_db": -12}, r"duck_db: removed .* priority\.announce\.sfx"),
+        ({"priority": [1]}, "audio.priority"),
+        ({"priority": {"Trabolta": {"music": -18}}}, r"priority\.Trabolta"),
+        ({"priority": {"trabolta": {"announce": -18}}}, r"priority\.trabolta\.announce"),
+        ({"priority": {"trabolta": {"music": 6}}}, r"priority\.trabolta\.music: dB"),
+        ({"priority": {"takeover": {"music": -60}}}, r"takeover\.music: fixed"),
+        ({"sidechain": {"threshold": -40}}, r"sidechain\.threshold"),
+        ({"sidechain": {"attack_s": 0}}, r"sidechain\.attack_s"),
         ([], "mapping"),
     ],
 )
@@ -150,6 +162,29 @@ def test_output_only_without_passthrough_and_smaller_devices_drop_channels(caplo
     assert s.kwargs["channels"] == 8 and s.kwargs["device"] == 3 and s.kwargs["samplerate"] == 48000
     assert mixer.n_out == 8 and "the rest are dropped" in caplog.text
     assert s.pump(64).shape == (64, 8)
+
+
+def test_a_duplex_stream_at_512_meters_its_inputs_and_drives_a_sidechain():
+    """Wave 38: the show's blocksize, duplex; each block's input peak feeds
+    the meters and the sidechain, the matrix passes the TV through."""
+    FakeStream.opened.clear()
+    e = Engine("MOTU", 4, 4, rate=48000, blocksize=512, query=fake_query(4, 4, rate=48000), stream_factory=lambda **kw: FakeStream(**kw))
+    mixer = e.open()
+    s = FakeStream.opened[-1]
+    assert s.kwargs["blocksize"] == 512 and s.kwargs["channels"] == (4, 4)
+    mixer.set_routes({(3, 1): 0.0})
+    mixer.set_priority({"trabolta": {"music": -18}})
+    mixer.set_sources([SidechainSource("trabolta", (3,), (1, 2))])
+    mixer.play(np.full((48000, 1), 0.1, dtype=np.float32), {2: 0.0}, bus="music", fade_in_s=0)
+    tv = np.zeros((512, 4), dtype=np.float32)
+    tv[:, 2] = 0.25
+    for _ in range(40):  # 427 ms: past the 40 ms attack and the matrix's smoothing
+        out = s.pump(512, tv)
+    assert out.shape == (512, 4) and out[-1, 0] == pytest.approx(0.25, rel=1e-3)
+    assert out[-1, 1] == pytest.approx(0.1 * 10 ** (-18 / 20), rel=0.01)
+    meters = mixer.take_meters()
+    assert meters.inputs == {1: -120.0, 2: -120.0, 3: pytest.approx(-12.04, abs=0.1), 4: -120.0}
+    assert meters.sources["trabolta"] == 1.0 and meters.blocks == 40 and e.errors == 0
 
 
 def test_a_callback_that_fails_writes_silence_and_counts():
@@ -352,6 +387,51 @@ def test_the_bank_lists_files_off_the_device_rate(tmp_path):
     write_wav(tmp_path / "zip.wav", rate=RATE)
     write_wav(tmp_path / "song.wav", rate=RATE * 2)
     assert SoundBank(tmp_path, RATE).off_rate(["zip", "song", "missing"]) == [("song", RATE * 2)]
+
+
+def make_mp3(path: Path, seconds: float = 0.5, rate: int = 44100) -> Path:
+    """An MP3 made by ffmpeg in the test's tmp dir (no fixture to commit)."""
+    wav = path.with_suffix(".src.wav")
+    sf.write(str(wav), np.full((int(rate * seconds), 1), 0.2, dtype=np.float32) * np.sin(np.arange(int(rate * seconds)) * 0.1)[:, None], rate)
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(wav), "-b:a", "96k", str(path)], check=True)
+    wav.unlink()
+    return path
+
+
+def test_mp3_and_ogg_come_after_the_lossless_extensions():
+    assert EXTENSIONS == (".wav", ".aiff", ".aif", ".flac", ".mp3", ".ogg")
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+def test_the_bank_plays_lists_and_measures_an_mp3_and_a_wav_beside_it_wins(tmp_path):
+    make_mp3(tmp_path / "rave.mp3", seconds=1.0)
+    bank = SoundBank(tmp_path, 48000)
+    assert bank.find("rave") == tmp_path / "rave.mp3" and bank.find("RAVE").samefile(tmp_path / "rave.mp3")
+    data = bank.load("rave")
+    assert data is not None and abs(len(data) - 48000) < 4800  # the decoder's padding is approximate
+    assert abs(sound_lengths(tmp_path)["rave"] - 1000) < 100
+    assert bank.off_rate(["rave"]) == [("rave", 44100)]
+    assert placeholders_in(tmp_path) == []
+    write_wav(tmp_path / "rave.wav", rate=48000)
+    assert bank.find("rave") == tmp_path / "rave.wav"  # lossless first
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+def test_the_bank_streams_a_long_track_without_caching_it(tmp_path, caplog):
+    make_mp3(tmp_path / "doors.mp3", seconds=1.0)
+    bank = SoundBank(tmp_path, 48000)
+    s = bank.stream("doors", start=False)
+    assert s is not None and s.wait_ready() and s.rate == 48000 and s.file_rate == 44100
+    assert bank._cache == {}
+    total = 0
+    while not s.finished:
+        total += s.read(4096)[1]
+        s.fill()
+    assert abs(total - 48000) < 4800
+    s.close()
+    with caplog.at_level(logging.WARNING):
+        assert bank.stream("nothing") is None and bank.stream("nothing") is None
+    assert caplog.text.count("'nothing'") == 1
 
 
 # ── Windows: the host API (the MOTU through ASIO) ──────────────────────────

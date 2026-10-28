@@ -10,7 +10,10 @@
 # Builds on trapped.house.yaml (`extends:`; the router's settings live there
 # once) and runs ONE job from it, `audio` — the MOTU 828x + the ADAT
 # expander on this Mac, every story `sound X` and the house announcements
-# (chime + `say` Samantha). The other house jobs (show, lights) run on John's
+# (chime + `say` Samantha). The house file's `passthrough: true` opens a
+# duplex stream (the TV input, the sidechain meters): the launchd job needs
+# the microphone permission (System Settings → Privacy → Microphone), or
+# CoreAudio hands it silence and nothing ducks under Trabolta or Clippy. The other house jobs (show, lights) run on John's
 # Desktop (trapped.desktop.yaml), which also hosts Mosquitto, so this file
 # points the router at the Desktop's broker instead of this Mac's loopback:
 # the announcements reach the router only as MQTT show/announce from the

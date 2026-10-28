@@ -118,3 +118,50 @@ def test_the_retained_look_gives_up_quietly_with_no_broker():
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
     assert cli._read_retained("health/audio", hostname="127.0.0.1", port=port, client_id="t", auth=None, timeout=0.3) is None
+
+
+# -- the soundtrack by hand (wave 38, C3) ------------------------------------------------
+
+
+def music_conf(tmp_path) -> str:
+    (tmp_path / "soundtrack.yaml").write_text(
+        "playlists: {act_1: {dir: music/act-1}}\nscenes:\n  act_1: [{to: everywhere, play: act_1}]\n  off: []\n"
+    )
+    return conf(tmp_path, BROKER + ", soundtrack: soundtrack.yaml")
+
+
+def test_music_scene_next_and_stop_publish_to_the_router(tmp_path, sent, capsys):
+    path = music_conf(tmp_path)
+    assert cli.main(["music", "scene", "act_1", "--config", path]) == 0
+    assert cli.main(["music", "scene", "off", "--config", path]) == 0
+    assert cli.main(["music", "next", "--config", path]) == 0
+    assert cli.main(["music", "stop", "--config", path]) == 0
+    assert [(t, d) for t, d, _ in sent] == [
+        ("show/audio/music", {"scene": "act_1", "by": "cli"}),
+        ("show/audio/music", {"scene": "off", "by": "cli"}),
+        ("show/audio/music", {"next": True, "by": "cli"}),
+        ("show/audio/music", {"stop": True, "by": "cli"}),
+    ]
+    assert cli.main(["music", "scene", "rave", "--config", path]) == 2
+    assert "no scene 'rave'" in capsys.readouterr().err
+    assert cli.main(["music", "scene", "--config", path]) == 2
+    assert cli.main(["music", "next", "--config", conf(tmp_path, BROKER)]) == 2  # no soundtrack:
+    assert "no soundtrack" in capsys.readouterr().err and len(sent) == 4
+
+
+def test_music_status_prints_the_scene_the_beds_and_the_inputs(tmp_path, monkeypatch, capsys):
+    stats = {
+        "music": {"scene": "act_1", "beds": [{"playlist": "act_1", "speakers": ["living-l", "living-r"], "track": "song", "pos_s": 61.4}], "missing": ["final"]},
+        "inputs": {"1": -38.2, "3": -12.0, "10": -120.0},
+        "sources": {"announce": 0.0, "trabolta": 0.75},
+    }
+    seen: list[str] = []
+    monkeypatch.setattr(cli, "READ_RETAINED", lambda topic, **kw: seen.append(topic) or json.dumps(stats))
+    assert cli.main(["music", "status", "--config", music_conf(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert seen == ["health/audio/stats"]
+    assert "scene    : act_1" in out and "act_1: song at 61s on living-l, living-r" in out and "no files : final" in out
+    assert "inputs   : 1 -38 dBFS  3 -12 dBFS  10 -120 dBFS" in out and "ducking  : trabolta 75%" in out
+    monkeypatch.setattr(cli, "READ_RETAINED", lambda topic, **kw: None)
+    assert cli.main(["music", "status", "--config", music_conf(tmp_path)]) == 1
+    assert "nothing retained" in capsys.readouterr().err

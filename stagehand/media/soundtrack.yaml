@@ -1,0 +1,109 @@
+# The house soundtrack (wave 38, C3): music all night, one set per act,
+# played by the audio router (stagehand/src/stagehand/audio/soundtrack.py)
+# on the `music` bus, under every story sound and announcement.
+#
+# WHERE THE FILES GO. Paths here are relative to this folder
+# (stagehand/media/). Drop the tracks into these folders on the router
+# machine (John's Desktop; the MacBook in the fallback). They are
+# git-ignored, like media/sounds/: the music is copyrighted and lives only
+# on the machine that plays it.
+#
+#   media/music/doors/        while the guests arrive (Power On)
+#   media/music/act-1/        the first act (from the call to the Desktop)
+#   media/music/malware/      the Ad Hijack (the second hunt)
+#   media/music/act-2/        from the five-minute warning
+#   media/music/act-3/        from the Y2K clock
+#   media/music/final/        the final reveal
+#   media/music/ceremony/     the awards ceremony
+#   media/music/afterparty/   the resurrection, and on to the end of the night
+#   media/library/ambient/    the synthesized ambient loops
+#                             (`uv run stagehand sounds library` writes them)
+#
+# Any of .mp3 .wav .flac .ogg .aiff .aif; any sample rate (resampled as they
+# stream, never decoded whole); stereo plays L / R per speaker like a story
+# sound (a one-output speaker gets the mono mix). A folder is read again at
+# the start of each pass, so a track dropped in mid-show joins the next pass.
+# An empty or missing folder is a warning in `stagehand check`, never an
+# error: that bed is silent until a file is there.
+#
+# HOW IT PLAYS.
+#   playlists  a folder (`dir`) or a list of `files`; shuffled (a new order
+#              every pass, never the same track twice in a row) unless
+#              `shuffle: false`; `level_db` on top of the top-level one.
+#              `loop: true` on a one-file playlist is one seamless loop.
+#   scenes     `cue music_<scene>` in the story (and `Night.music`, which
+#              the router catches up from after a restart). Each entry is
+#              {to: targets, play: playlist | null}; a speaker takes the
+#              LAST entry that reaches it (null: silence). The speakers that
+#              share a playlist are one bed: one stream, crossfading between
+#              tracks over `crossfade_s`. On a scene change a bed that keeps
+#              its playlist and speakers plays on untouched (the Fan Closet's
+#              dryer runs on across the acts); the others fade over
+#              `scene_fade_s`.
+#   tracks     story `sound X` that take their speakers over: they stream
+#              from media/sounds/ (an MP3 is fine) and the music on their
+#              speakers falls silent while they play, then comes back.
+#              Every `no_duck` sound of media/sounds.yaml is one
+#              (tests/test_trapped_house.py pins it).
+#
+# Every scene but `off` must be cued somewhere in the story, and every
+# `cue music_*` must be a scene here (tests/test_trapped_house.py).
+#
+#   uv run stagehand check --config trapped.desktop.yaml --only audio   # file counts, warnings
+#   uv run stagehand music scene act_1 --config trapped.desktop.yaml    # by hand (MQTT)
+#   uv run stagehand music next | stop | status --config trapped.desktop.yaml
+#
+# The Fan Closet's speaker is not placed yet: until it is (the map editor's
+# Audio tab), its entries reach no speaker (a warning) and the dryer is
+# silent.
+version: 1
+level_db: -10           # every bed's gain (beds sit under the cues)
+crossfade_s: 3          # between two tracks of one playlist
+scene_fade_s: 2.5       # a bed that leaves or joins on a scene change
+
+playlists:
+  doors:      { dir: music/doors }
+  act_1:      { dir: music/act-1 }
+  malware:    { dir: music/malware }
+  act_2:      { dir: music/act-2 }
+  act_3:      { dir: music/act-3 }
+  final:      { dir: music/final }
+  ceremony:   { dir: music/ceremony }
+  afterparty: { dir: music/afterparty }
+  fan_closet: { files: [library/ambient/dryer-tumble.wav], loop: true, level_db: -14 }
+
+scenes:
+  doors:
+    - { to: everywhere, play: doors }
+    - { to: The Fan Closet, play: fan_closet }
+  act_1:
+    - { to: everywhere, play: act_1 }
+    - { to: The Fan Closet, play: fan_closet }
+  malware:              # the Ad Hijack: ad_jingle (a track) takes over first
+    - { to: everywhere, play: malware }
+    - { to: The Fan Closet, play: fan_closet }
+  act_2:
+    - { to: everywhere, play: act_2 }
+    - { to: The Fan Closet, play: fan_closet }
+  act_3:
+    - { to: everywhere, play: act_3 }
+    - { to: The Fan Closet, play: fan_closet }
+  final:
+    - { to: everywhere, play: final }
+    - { to: The Fan Closet, play: fan_closet }
+  ceremony:             # ceremony_bed (a track) takes the living room over while it plays
+    - { to: everywhere, play: ceremony }
+    - { to: The Fan Closet, play: fan_closet }
+  afterparty:
+    - { to: everywhere, play: afterparty }
+    - { to: The Fan Closet, play: fan_closet }
+  off: []               # silence (the end of the night)
+
+tracks:                 # story `sound X` that take the speakers they play on
+  dance_song: { takeover: true }
+  rave: { takeover: true }
+  hand_jive: { takeover: true }
+  youre_the_one_vocoder: { takeover: true }
+  youre_the_one_sandy_only: { takeover: true }
+  ceremony_bed: { takeover: true }
+  ad_jingle: { takeover: true }

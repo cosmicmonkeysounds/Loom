@@ -109,12 +109,20 @@ def test_the_house_config_loads():
     assert show.mqtt is not None and show.osc_targets == {}
     assert show.cues and show.sensors
     audio = cfg.modules["audio"].cfg
-    assert audio.play_sounds and audio.announce and audio.passthrough is False
+    assert audio.play_sounds and audio.announce
+    # Wave 38 (C4): duplex — the TV input is routed and every input metered;
+    # Trabolta ducks deepest, then an announcement, then Clippy (music only).
+    assert audio.passthrough is True
+    assert audio.priority == {"trabolta": {"music": -18, "sfx": -8}, "announce": {"music": -15, "sfx": -12}, "clippy": {"music": -12}}
+    assert audio.sidechain.threshold_db == -45 and audio.sidechain.hold_s == 0.8
     assert audio.mqtt is not None and ipaddress.ip_address(audio.mqtt.host).is_loopback
     assert set(audio.no_duck) == {n for n, s in load_manifest().items() if s.no_duck} == {"dance_song", "rave", "hand_jive"}
     # The uplink-down boot routes from the repo's files.
     assert audio.config_file == str(AUDIO_JSON.resolve()) and audio.house_file == str((STORY / "house.json").resolve())
     assert audio.sounds_dir == str((ROOT / "media" / "sounds").resolve())
+    # Wave 38 (C3): the soundtrack, loaded (and so checked) at boot.
+    assert audio.soundtrack is not None and audio.soundtrack.path == str((ROOT / "media" / "soundtrack.yaml").resolve())
+    assert audio.music_topic == "show/audio/music" and "duck_db" not in _raw()["audio"]
 
 
 RETAINED_OK = {"show/serverroom/lock"}  # an indicator, not a command
@@ -699,19 +707,126 @@ def test_the_audio_json_is_the_828x_on_its_own_outs():
     """Wave 31: no ADAT expander. Our channel numbers are the 828x's own —
     Analog 1–8, Main L/R 9–10, Phones L/R 11–12 out (each from a front
     headphone jack); Mic/Gtr 1–2 + Analog 3–10 in. The device must still
-    report 32 / 30 (`device.expect`: the optical ports left on ADAT), the
-    placed speakers unmoved on 1, 2, 3, 4 and 8, and no tablet says the
-    announcements by itself (`announce.terminals` empty)."""
+    report 32 / 30 (`device.expect`: the optical ports left on ADAT), and no
+    tablet says the announcements by itself (`announce.terminals` empty).
+    Wave 38 (C1.2): the living room is on Main L/R (9, 10) plus a sub on
+    Analog 1, one zone; the TV (Trabolta) comes in on Analog 1 in (input 3)
+    and is routed everywhere but the sub; Clippy's wireless (Mic/Gtr 1)
+    stays in CueMix and is only metered, ducking the living room."""
     audio = json.loads(AUDIO_JSON.read_text(encoding="utf-8"))
     dev = audio["device"]
     assert (dev["name"], dev["inputs"], dev["outputs"], dev["rate"], dev["expect"]) == ("828x", 10, 12, 48000, {"inputs": 32, "outputs": 30})
     assert [c["ch"] for c in audio["inputs"]] == list(range(1, 11))
     assert [c["ch"] for c in audio["outputs"]] == list(range(1, 13))
     assert "ADAT" not in json.dumps(audio["outputs"]) + json.dumps(audio["inputs"])
-    assert [c["label"].split(" (")[0] for c in audio["outputs"][8:]] == ["Main L", "Main R", "Phones L", "Phones R"]
-    assert {s["id"]: s["out"] for s in audio["speakers"]} == {"living-l": [1], "living-r": [2], "kitchen-l": [3], "kitchen-r": [4], "optical-drive": [8]}
-    assert audio["routes"] == [] and audio["announce"] == {"to": ["everywhere"], "chime": True, "terminals": []}
+    labels = [c["label"] for c in audio["outputs"]]
+    assert labels[0] == "Analog 1 — Living sub" and labels[1] == "Analog 2 — spare"
+    assert [lab.split(" — ")[-1].split(" (")[0] for lab in labels[2:8]] == ["Kitchen L", "Kitchen R", "Hall", "Steam Room", "CPU", "Optical Drive"]
+    assert labels[8:10] == ["Main L — Living L", "Main R — Living R"]
+    assert [lab.split(" (")[0] for lab in labels[10:]] == ["Phones L", "Phones R"]
+    speakers = {s["id"]: s for s in audio["speakers"]}
+    assert {sid: s["out"] for sid, s in speakers.items()} == {
+        "living-l": [9],
+        "living-r": [10],
+        "living-sub": [1],
+        "kitchen-l": [3],
+        "kitchen-r": [4],
+        "optical-drive": [8],
+    }
+    assert speakers["living-sub"]["room"] == "desktop" == speakers["living-l"]["room"] == speakers["living-r"]["room"]
+    assert [(z["id"], z["speakers"]) for z in audio["zones"]] == [("living", ["living-l", "living-r", "living-sub"])]
+    roles = {c["ch"]: (c.get("role"), c.get("reach")) for c in audio["inputs"] if c.get("role")}
+    assert roles == {1: ("clippy", ["living"]), 3: ("trabolta", None)}
+    assert "CueMix" in audio["inputs"][0]["label"] and "TV" in audio["inputs"][2]["label"]
+    # The TV everywhere but the sub (a new speaker needs its cell ticked on this row).
+    assert audio["routes"] == [{"in": 3, "out": [3, 4, 8, 9, 10]}]
+    assert audio["announce"] == {"to": ["everywhere"], "chime": True, "terminals": []}
+    assert audio["voice"]["tv"] == ["everywhere"]
     assert "QLab" not in json.dumps(audio)
+    # The router reads it as written: Trabolta's reach is his route; Clippy's the living room.
+    from stagehand.audio.routing import parse_audio, sidechain_sources
+
+    house = json.loads((STORY / "house.json").read_text(encoding="utf-8"))
+    specs, notes = sidechain_sources(parse_audio(audio), house)
+    assert {s.name: s.reach for s in specs} == {"clippy": (1, 9, 10), "trabolta": (3, 4, 8, 9, 10)} and notes == []
+
+
+# -- the soundtrack against the story (wave 38, C5) -----------------------------------------
+
+
+SOUNDTRACK = ROOT / "media" / "soundtrack.yaml"
+
+
+def _soundtrack():
+    from stagehand.audio.soundtrack import load_soundtrack
+
+    return load_soundtrack(SOUNDTRACK)
+
+
+def _music_cues() -> set[str]:
+    # `cue music_act_1` or the tag form `<cue: music_act_1>`.
+    return set(re.findall(r"\bcue:?\s+music_([a-z0-9_]+)\b", _code(_story_text())))
+
+
+def _music_values() -> set[str]:
+    return set(re.findall(r'\bset\s+Night\.music\s*=\s*"([a-z0-9_]+)"', _code(_story_text())))
+
+
+def test_every_music_cue_and_night_music_value_is_a_scene():
+    """C5: the story cues `music_<scene>` and mirrors it in `Night.music`
+    (the router's catch-up) at each act change; every name must be a
+    soundtrack.yaml scene, or the router logs it and plays nothing."""
+    st = _soundtrack()
+    cues, values = _music_cues(), _music_values()
+    assert cues, "the story cues no music (C5: `do cue music_<scene>` at each act change)"
+    assert values, "the story never sets Night.music (C5: the catch-up's mirror)"
+    assert not sorted(c for c in cues if not st.has_scene(c)), f"cue music_* with no scene: {sorted(c for c in cues if not st.has_scene(c))}"
+    assert not sorted(v for v in values if not st.has_scene(v)), f"Night.music values with no scene: {sorted(v for v in values if not st.has_scene(v))}"
+    code = _code(_story_text())
+    assert re.search(r"\bNight\.music\b", (STORY / "main.loom").read_text(encoding="utf-8")), "Night.music is declared in main.loom"
+    assert "set Night.music" in code
+
+
+def test_every_scene_is_reachable_from_the_story_or_is_off():
+    """C5: a scene nobody cues is music nobody hears (and a folder of MP3s
+    nobody plays); `off` is the router's own stop and the catch-up's
+    default, so it may go uncued."""
+    st = _soundtrack()
+    reached = _music_cues() | _music_values()
+    unreached = sorted(name for name in st.scenes if name != "off" and name not in reached)
+    assert not unreached, f"soundtrack.yaml scenes the story never reaches: {unreached}"
+
+
+def test_every_no_duck_sound_is_a_takeover_track():
+    """C3/C5: the dance tracks never duck and take every speaker they play
+    on (the beds fall silent under them), so each `no_duck` sound of the
+    manifest and the YAML is a `tracks:` entry with `takeover: true`; every
+    track is a story sound with a cue in audio.json."""
+    st = _soundtrack()
+    no_duck = {n for n, s in load_manifest().items() if s.no_duck} | set(load_config(HOUSE).modules["audio"].cfg.no_duck)
+    assert no_duck and all(st.track(n) is not None and st.track(n).takeover for n in no_duck), sorted(n for n in no_duck if st.track(n) is None)
+    cues = json.loads(AUDIO_JSON.read_text(encoding="utf-8"))["cues"]
+    assert sorted(t for t in st.tracks if t not in cues or t not in _story_sounds()) == []
+
+
+def test_the_soundtracks_scenes_reach_the_house_but_the_fan_closet():
+    """Every scene's `everywhere` bed reaches every wired speaker; the Fan
+    Closet's speaker is placed later (C0), so until then its entry reaches
+    nothing — a warning, never a failure."""
+    from stagehand.audio.routing import parse_audio
+    from stagehand.audio.soundtrack import scene_beds
+
+    st = _soundtrack()
+    doc = parse_audio(json.loads(AUDIO_JSON.read_text(encoding="utf-8")))
+    house = json.loads((STORY / "house.json").read_text(encoding="utf-8"))
+    every = tuple(s.id for s in doc.speakers if s.out)
+    for name in st.scenes:
+        beds, notes = scene_beds(st, name, doc, house)
+        if name == "off":
+            assert beds == {} and notes == []
+            continue
+        assert beds.get(name) == every or set(beds.get(name, ())) | set(beds.get("fan_closet", ())) == set(every), name
+        assert all("The Fan Closet" in n for n in notes), notes
 
 
 def test_server_open_catches_up_the_y2k_house_look_underneath():

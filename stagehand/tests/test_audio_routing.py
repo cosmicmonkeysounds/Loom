@@ -15,9 +15,12 @@ import pytest
 from stagehand.audio.routing import (
     AudioDocError,
     fold,
+    input_reach,
     output_gains,
+    output_trims,
     parse_audio,
     resolve_targets,
+    sidechain_sources,
     split_targets,
 )
 
@@ -130,9 +133,63 @@ def test_split_targets_keeps_a_spaced_location_whole():
     assert split_targets("  ", AUDIO, HOUSE) == []
 
 
-def test_output_gains_add_the_cue_and_take_the_louder_speaker():
-    gains = output_gains(AUDIO, ("desk-l", "bar-1"), gain_db=-4)
-    assert gains == {1: -4.0, 3: -7.0, 4: -7.0}
+def test_output_gains_are_the_cue_and_the_trims_are_the_outputs():
+    """Wave 38: a speaker's trim is its outputs' (the mixer's `set_trim`),
+    never inside a voice's gains; two speakers on one output, the louder."""
+    assert output_gains(AUDIO, ("desk-l", "bar-1"), gain_db=-4) == {1: -4.0, 3: -4.0, 4: -4.0}
+    assert output_trims(AUDIO) == {1: 0.0, 2: 0.0, 3: -3.0, 4: -3.0, 5: 0.0, 6: 0.0, 7: 0.0}
+    shared = {**FIXTURE["audio"], "speakers": [*FIXTURE["audio"]["speakers"], {"id": "bar-2", "out": [3], "gain": -1}]}
+    assert output_trims(parse_audio(shared))[3] == -1.0
+
+
+def _with_inputs(*inputs, routes=None) -> dict:
+    return {**FIXTURE["audio"], "inputs": list(inputs), **({"routes": routes} if routes is not None else {})}
+
+
+def test_input_roles_and_reach_are_read_leniently():
+    """C1.1: `role` + `reach` per input; a malformed or reserved role is
+    ignored with a warning, never a refusal (the server validated the doc)."""
+    doc = parse_audio(
+        _with_inputs(
+            {"ch": 1, "label": "Clippy", "kind": "mic", "role": "clippy", "reach": ["living"]},
+            {"ch": 2, "label": "x", "kind": "mic", "role": "Bad Role"},
+            {"ch": 3, "label": "TV", "kind": "line", "role": "trabolta"},
+            {"ch": 4, "label": "y", "kind": "line", "role": "announce"},
+            {"ch": 5, "label": "z", "kind": "line", "role": "takeover", "reach": 7},
+            {"ch": 6, "label": "w", "kind": "line", "reach": "hall"},
+        )
+    )
+    roles = {i.ch: (i.role, i.reach) for i in doc.input_list}
+    assert roles == {1: ("clippy", ("living",)), 2: (None, None), 3: ("trabolta", None), 4: (None, None), 5: (None, None), 6: (None, ("hall",))}
+    assert doc.input_labels[1] == "Clippy" and doc.input_list[0].kind == "mic"
+    text = "\n".join(doc.warnings)
+    assert "'Bad Role'" in text and "'announce': reserved" in text and "'takeover': reserved" in text and "reach" in text
+    assert parse_audio(FIXTURE["audio"]).warnings == ()  # an older file: no roles, no warnings
+
+
+def test_a_sources_reach_defaults_to_its_routes_then_everywhere():
+    doc = parse_audio(
+        _with_inputs(
+            {"ch": 1, "label": "Clippy", "role": "clippy", "reach": ["living"]},
+            {"ch": 2, "label": "spare", "role": "spare"},
+            {"ch": 3, "label": "TV", "role": "trabolta"},
+            routes=[{"in": 3, "out": [3, 4, 5]}],
+        )
+    )
+    specs, warnings = sidechain_sources(doc, HOUSE)
+    assert [(s.name, s.inputs, s.reach) for s in specs] == [
+        ("clippy", (1,), (1, 2)),  # its reach: the living zone
+        ("spare", (2,), (1, 2, 3, 4, 5, 6, 7)),  # no reach, no route: everywhere
+        ("trabolta", (3,), (3, 4, 5)),  # no reach: the outputs its routes feed
+    ]
+    assert warnings == []
+
+
+def test_a_reach_that_reaches_nothing_is_a_warning():
+    doc = parse_audio(_with_inputs({"ch": 1, "label": "m", "role": "clippy", "reach": ["nowhere", "The Internet", "hall"]}))
+    reach, warnings = input_reach(doc, HOUSE, doc.input_list[0])
+    assert reach == (5,)
+    assert any("'nowhere' names no zone" in w for w in warnings) and any("'The Internet' reaches no wired speaker" in w for w in warnings)
 
 
 def test_parse_reads_device_expect_leniently_and_ignores_the_tablets_list():
