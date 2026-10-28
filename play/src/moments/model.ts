@@ -132,6 +132,11 @@ export interface Viewer {
 export const BOOTH_CAP: AlertLevel = "sticky";
 /** How long a balloon tip stays up (visible time). */
 export const BALLOON_MS = 8_000;
+/** Wave 37 (C16): how long a banner (a sticky that is no card and no loud
+ *  objective) stays up (visible time); then it is in the bin, read. */
+export const STICKY_MS = 45_000;
+/** Wave 37 (C19): a house alert this close (story clock) to a big moment is the big said again. */
+export const BIG_ECHO_MS = 5_000;
 /** A moment on screen for less than this before it was dismissed counts as missed. */
 export const GLANCE_MS = 1_000;
 /**
@@ -451,6 +456,8 @@ export interface Queued {
   level: Rung;
   /** Wall time it joined the queue (the hold's 30 s; a big's 8 s). */
   queuedAt: number;
+  /** Wave 37 (C5, a booth's balloon): the readout balloon it waits behind. */
+  behind?: string;
 }
 
 export interface MomentsState {
@@ -640,7 +647,34 @@ function enqueue(queue: Queued[], moments: readonly Moment[], level: AlertLevel,
   const a = oneHouseBanner([...queue, ...kept]);
   const b = capBlueScreens(a.queue);
   const c = questDedupe(b.queue);
-  return { queue: ordered(c.queue), out: [...a.out, ...b.out, ...c.out] };
+  const d = role === "booth" ? foldBalloons(c.queue, kept) : { queue: c.queue, out: [] };
+  return { queue: ordered(d.queue), out: [...a.out, ...b.out, ...c.out, ...d.out] };
+}
+
+/**
+ * Wave 37 (C5): a booth's balloons never pile up. The newest one to join
+ * folds every other balloon into the missed list (the 🔔), except an older
+ * readout when it is not a readout itself: that one stays on screen and the
+ * newcomer waits behind it. A peek is never folded.
+ */
+function foldBalloons(queue: Queued[], fresh: readonly Queued[]): { queue: Queued[]; out: Moment[] } {
+  const plain = (q: Queued) => q.level === "balloon" && !isPeek(q.moment);
+  const top = newestOf(fresh.filter((q) => plain(q) && queue.includes(q)));
+  if (top === null) return { queue, out: [] };
+  const others = queue.filter((q) => plain(q) && q !== top);
+  const readout = top.moment.kind === "readout" ? null : newestOf(others.filter((q) => q.moment.kind === "readout"));
+  const drop = others.filter((q) => q !== readout);
+  return {
+    queue: queue.filter((q) => !drop.includes(q)).map((q) => (q === top && readout !== null ? { ...q, behind: readout.moment.key } : q)),
+    out: drop.map((q) => q.moment),
+  };
+}
+
+/** Wave 37 (C19): the house alerts (queued or arriving) that echo a big moment queued or arriving with them: read, never shown. */
+export function bigEchoes(moments: readonly Moment[], queue: readonly Queued[]): Set<string> {
+  const all = [...queue.map((q) => q.moment), ...moments];
+  const bigs = all.filter((m) => m.severity === "big");
+  return new Set(all.filter((m) => isHouseAlert(m) && bigs.some((b) => Math.abs(b.at - m.at) <= BIG_ECHO_MS)).map((m) => m.key));
 }
 
 /**
@@ -887,6 +921,9 @@ export function onNowBar(q: Queued, nowBar: boolean): boolean {
  * surface, stickies and balloons too: nothing reaches the screen (no
  * chime, no balloon timer) under the takeover, and nothing leaves the
  * queue, so it all lands right after it.
+ * Wave 37: a booth's balloon `behind` a readout waits for it (C5), and a
+ * dialog or a blue screen on screen (C18) shows alone: no sticky or balloon
+ * under it until it is closed.
  */
 export function surfacesOf(s: MomentsState, held: boolean, nowBar = false, now = Number.POSITIVE_INFINITY, covered = false): Surfaces {
   if (covered) return { big: null, bigIndex: 0, bigTotal: 0, now: null, balloon: null, sticky: null, stickyCount: 0, stickyKeys: [], modal: null, modalIndex: 0, modalTotal: 0 };
@@ -898,23 +935,30 @@ export function surfacesOf(s: MomentsState, held: boolean, nowBar = false, now =
   const rest0 = s.queue.filter((q) => q.level !== "big");
   const nowQ = rest0.find((q) => onNowBar(q, nowBar)) ?? null;
   const rest = nowBar ? rest0.filter((q) => !onNowBar(q, nowBar)) : rest0;
-  // A peek shows only while the hold lasts (its twin's sticky takes over after).
-  const balloon = rest.find((q) => q.level === "balloon" && (held || !isPeek(q.moment))) ?? null;
-  const stickies = rest.filter((q) => q.level === "sticky");
   const modals = s.queue.filter((q) => isModal(q.level));
+  const modal = held ? null : (modals[0] ?? null);
+  // A peek shows only while the hold lasts (its twin's sticky takes over after).
+  const balloon = modal !== null ? null : (rest.find((q) => q.level === "balloon" && (held || !isPeek(q.moment)) && !rest.some((r) => r.moment.key === q.behind)) ?? null);
+  const stickies = rest.filter((q) => q.level === "sticky");
   return {
     big: null,
     bigIndex: 0,
     bigTotal: 0,
     now: nowQ,
     balloon,
-    sticky: stickies[0] ?? null,
+    sticky: modal !== null ? null : (stickies[0] ?? null),
     stickyCount: stickies.length,
-    stickyKeys: stickies.map((q) => q.moment.key),
-    modal: held ? null : (modals[0] ?? null),
+    stickyKeys: modal !== null ? [] : stickies.map((q) => q.moment.key),
+    modal,
     modalIndex: s.burst + 1,
     modalTotal: s.burst + modals.length,
   };
+}
+
+/** Wave 37 (C5): `wait` (a booth: a pop-out or a face-to-face window is up)
+ *  holds every balloon, peeks too — none shows, none times out. */
+export function waitBalloons(s: Surfaces, wait: boolean): Surfaces {
+  return wait && s.balloon !== null ? { ...s, balloon: null } : s;
 }
 
 /** The missed count: the missed list, plus modal moments a hold has kept back too long. */
