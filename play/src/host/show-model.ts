@@ -1,9 +1,9 @@
 //! The host's windows and the Show window, as plain decisions (wave 25,
 //! docs/loom-house-desk.md §6.2). A host booth's taskbar reads
 //! `Show · Chats · Desk · Scan`; Show is home. It lays out the night the
-//! pull-up drawer used to hold: the night strip, NEXT, LAST, *Your jobs*,
-//! *Needs you*, *Coming up*, then Judge, the cue sheet, People and More as
-//! sections that fold. The slim NEXT bar shows only while Show is off
+//! pull-up drawer used to hold: the night strip, NEXT, LAST, *Needs you*,
+//! *Your jobs*, *Coming up*, then Judge, the cue sheet, People and More as
+//! sections that fold (wave 37: Needs first, so it sits above the fold). The slim NEXT bar shows only while Show is off
 //! screen. No React, so every rule is tested on plain values.
 
 import { countdownLeft, cueTitleTags, type CueRow } from "../../../core/src/cue-sheet.ts";
@@ -46,15 +46,18 @@ export interface ShowSectionInfo {
 }
 
 /**
- * The sections under NEXT and LAST, in order. *Your jobs* and *Coming up*
- * stand open; *Needs you* and Judge open while something waits; the cue
- * sheet, People and More start folded (they are long, and reached on
- * purpose). Judge only when the event has facts.
+ * The sections under NEXT and LAST, in order: *Needs you* first (wave 37:
+ * it is what a host glances for, and *Your jobs*' cast-pack paragraphs
+ * used to push it to the fold all night), then *Your jobs*, *Coming up*,
+ * Judge, the cue sheet, People and More. *Your jobs* and *Coming up* stand
+ * open; *Needs you* and Judge open while something waits (folded, Needs is
+ * one 44 px head); the cue sheet, People and More start folded (they are
+ * long, and reached on purpose). Judge only when the event has facts.
  */
 export function showSections(o: { jobs: number; needs: number; judging: { pending: number } | null; people: number }): ShowSectionInfo[] {
   const out: ShowSectionInfo[] = [
-    { id: "jobs", title: "Your jobs", count: o.jobs, open: true },
     { id: "needs", title: "Needs you", count: o.needs, open: o.needs > 0 },
+    { id: "jobs", title: "Your jobs", count: o.jobs, open: true },
     { id: "coming", title: "Coming up", open: true },
   ];
   if (o.judging !== null) out.push({ id: "judge", title: "Judge", count: o.judging.pending, open: o.judging.pending > 0 });
@@ -104,8 +107,10 @@ export interface NightItem {
 
 /** The night strip at Show's top: the bar's strip (📣 caller · act · phase ·
  *  ⏸ / 🚪 · watch values · the soonest countdown) with the show clock after
- *  the phase. A window wraps, so nothing drops; the ⚠ count is left to the
- *  *Needs you* head. */
+ *  the phase. Nothing drops: since wave 37 the strip is one line that
+ *  scrolls sideways inside itself (css/host.css), so the watch values and
+ *  the countdown are a swipe away; the ⚠ count is left to the *Needs you*
+ *  head. */
 export function nightStrip(strip: readonly HostStripItem[], showClock: string | null): NightItem[] {
   const out: NightItem[] = [];
   const items = strip.filter((it) => it.kind !== "needs");
