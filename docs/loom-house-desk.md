@@ -304,11 +304,12 @@ A host booth gets two windows in place of the pull-up drawer. The taskbar
 reads `Show · Chats · Desk · Scan`.
 
 - **Show** (the default window, `host/show-model.ts` pure + a `.tsx`):
-  - the night strip (act · phase · show clock · caller · paused);
+  - the night strip (act · phase · show clock · caller · paused), on one
+    line that scrolls sideways (wave 37: `.host-show-strip` never wraps);
   - a big NEXT card with ARM → FIRE, its description and `then:`;
   - LAST with `did:`;
+  - *Needs you* (wave 37: first, and open while something waits);
   - *Your jobs*: the host's own objectives, the NOW card's content;
-  - *Needs you*;
   - *Coming up*: the next cues of the act and the countdowns;
   - the Judge, People and More sections the drawer had.
 - **The slim NEXT bar.** It stays above the taskbar only while another
