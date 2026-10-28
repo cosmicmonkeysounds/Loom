@@ -540,8 +540,8 @@ def coil_whine(rng: np.random.Generator) -> np.ndarray:
 
 
 def _seek(rng: np.random.Generator, clicks: int, spacing: tuple[float, float]) -> np.ndarray:
-    """The head actuator seeking: a run of small, hard ticks, in the
-    drive's little box."""
+    """The head actuator seeking: a run of small, hard ticks, each ringing
+    the drive's little box (its resonances are the room: no reverb)."""
     d = spacing[1] * clicks + 0.1
     imp = np.zeros(dsp.frames(d))
     at = 0.0
@@ -549,8 +549,7 @@ def _seek(rng: np.random.Generator, clicks: int, spacing: tuple[float, float]) -
         imp[dsp.frames(at)] = rng.uniform(0.5, 1.0) * rng.choice((-1.0, 1.0))
         at += rng.uniform(*spacing)
     x = dsp.filt(imp, dsp.Biquad.bandpass(rng.uniform(1200, 1500), 4)) + 0.6 * dsp.filt(imp, dsp.Biquad.bandpass(rng.uniform(2900, 3400), 6)) + 0.4 * dsp.filt(imp, dsp.Biquad.bandpass(420, 3))
-    x = dsp.normalize_peak(x, 0.0)
-    return dsp.reverb(dsp.pad(x, after=0.25), room=0.2, damp=0.7, wet=0.15, width=0.5)
+    return dsp.normalize_peak(x, 0.0)
 
 
 def platter_spin(rng: np.random.Generator) -> np.ndarray:
@@ -566,7 +565,7 @@ def platter_spin(rng: np.random.Generator) -> np.ndarray:
     events = []
     for at in _times(rng, s, (1.0, 4.5)):
         count = int(rng.choice((1, 2, 3, 4, 6)))
-        events.append((dsp.pan(dsp.to_mono(_seek(rng, count, (0.012, 0.05))) * rng.uniform(0.5, 1.0), rng.uniform(-0.2, 0.2)), at))
+        events.append((dsp.pan(_seek(rng, count, (0.012, 0.05)) * rng.uniform(0.5, 1.0), rng.uniform(-0.2, 0.2)), at))
     events.append((_seek(rng, 22, (0.006, 0.014)) * 0.7, _onset(rng, s, 4, s - 4)))
     x = sp.render() + _scatter(events, s) * 0.6
     return _finish(x, low_cut=50)
