@@ -3,7 +3,7 @@ title: Hosting the night
 section: Performers
 order: 14
 role: performer
-keywords: players, clippy, antivirus, new mission, all buttons, stop sounds, house sound, 🔇, judge queue, queued, host, hosts, caller, calling, who's calling, i'll call, stop calling, fire anyway, did, then, judging, auto, review, wanted, marked, escorts, night, house, setup, crews, show, show window, home, your jobs, needs you, coming up, host console, next bar, next, last, arm, fire, cue, cues, cue sheet, strip, act, phase, show clock, needs, judge, people, more, open the doors, doors, pause, resume, announce, announcement, alert level, dial, balloon, sticky, dialog, blue screen, glitch, wallet holds, king, terminals, codes, join qr, invitation, open 2 min, release, part, trabolta, answer as, waiting, task manager, adobe acrobat, recycling bin, cues moved, not taken, desk, house desk, standby, go, stop all, panic, checks, walk, test, test tone, heard it, nothing, speaker, speakers, output, lights, bulb, look, colours, standby moved
+keywords: players, swipe, banner, 45 seconds, clippy, antivirus, new mission, all buttons, stop sounds, house sound, 🔇, judge queue, queued, host, hosts, caller, calling, who's calling, i'll call, stop calling, fire anyway, did, then, judging, auto, review, wanted, marked, escorts, night, house, setup, crews, show, show window, home, your jobs, needs you, coming up, host console, next bar, next, last, arm, fire, cue, cues, cue sheet, strip, act, phase, show clock, needs, judge, people, more, open the doors, doors, pause, resume, announce, announcement, alert level, dial, balloon, sticky, dialog, blue screen, glitch, wallet holds, king, terminals, codes, join qr, invitation, open 2 min, release, part, trabolta, answer as, waiting, task manager, adobe acrobat, recycling bin, cues moved, not taken, desk, house desk, standby, go, stop all, panic, checks, walk, test, test tone, heard it, nothing, speaker, speakers, output, lights, bulb, look, colours, standby moved
 ---
 
 A **host** runs the night from their own booth: the cue sheet, what
@@ -53,11 +53,11 @@ every phone, guests' included.
 
 Top to bottom:
 
-- **The night strip**: **📣 who is calling** (*📣 You*, *📣 Task
-  Manager*, *📣 Run*, *📣 nobody*), the act, the story's phase, the show
-  clock (*🕐 7:42 PM*), ⏸ or 🚪 while the clock is stopped or the doors
-  are closed, the values the story asks hosts to watch (*Marked 3*) and
-  the soonest countdown.
+- **The night strip**, on one line; swipe it for the rest: **📣 who is
+  calling** (*📣 You*, *📣 Task Manager*, *📣 Run*, *📣 nobody*), the act,
+  the story's phase, the show clock (*🕐 7:42 PM*), ⏸ or 🚪 while the
+  clock is stopped or the doors are closed, the values the story asks
+  hosts to watch (*Marked 3*) and the soonest countdown.
 - **Who's calling**: *📣 Task Manager is calling.* / *You're calling.* /
   *Nobody is calling.*, with **📣 I'll call** or **Stop calling**.
 - **NEXT**, big: the cue the sheet suggests with its code and title,
@@ -82,15 +82,20 @@ Top to bottom:
 - **LAST**: the cue and who pressed it, and for a press from this phone,
   **did:** what the story said back (*the summons opened · 7 not checked
   in*).
-- **Your jobs**: your own objectives, the NOW card laid open — the
+- Then the sections, in this order: **Needs you (n)**, **Your jobs**,
+  **Coming up** (the next cues of the act and every countdown), **Judge
+  (n)**, **Cue sheet**, **People** and **More**. Each head folds its
+  section; Needs and Judge open by themselves while something waits.
+  A row that takes you somewhere (a need, the caller chip, a refused
+  press) opens its section and scrolls to it.
+- **Your jobs** is your own objectives, the NOW card laid open — the
   brief, the whole checklist (tick your own to-dos), and its button (a
   picker, a target's card). The NOW card at the top steps aside while
   Show is open.
-- **Needs you (n)**, **Coming up** (the next cues of the act and every
-  countdown), **Judge (n)**, **Cue sheet**, **People** and **More**.
-  Each head folds its section; Needs and Judge open by themselves while
-  something waits. A row that takes you somewhere (a need, the caller
-  chip, a refused press) opens its section and scrolls to it.
+
+Announcements to everyone do not pop on a host's phone: LAST says what
+fired, and the 📜 Chat log has the words. A banner on a host phone
+leaves by itself after about 45 seconds.
 
 **Every host may call the show.** Whoever is calling says so with **📣
 I'll call**. Everyone sees it, the director's laptop and phone included.
