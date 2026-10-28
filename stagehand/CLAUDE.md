@@ -17,7 +17,7 @@ does not apply here.
 |---|---|---|---|
 | `show:` | `show/` | the mod feed's `sim` directives → MQTT / OSC (`cuemap.py`); MQTT topics → `/api/mod/signal` / `beat` / `set` (`sensormap.py`); the lights catch-up | John's Desktop (Windows) |
 | `agents:` | `agents/` | the agent worker: holds `GET /api/agent/stream`, answers requests, judges filings, records thoughts, takes `control` frames | John's MacBook |
-| `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream, numpy mixer, announcements, tests, stops, the house desk's plays, the report, placeholders | John's Desktop (since 2026-10-27); the MacBook is the fallback |
+| `audio:` | `audio/` | the speaker router: `audio.json` on one `sounddevice` stream (duplex: the TV's input routed, every input metered), numpy mixer with priority ducking (the inputs' sidechains, announcements, takeover tracks) and per-output trims, the soundtrack (music beds per scene, `soundtrack.py`), streamed long files, announcements, tests, stops, the house desk's plays, the report, placeholders, the synthesized SFX library (`audio/sfx/`) | John's Desktop (since 2026-10-27); the MacBook is the fallback (output-only) |
 | `lights:` | `lights/` | `lights.json` looks (every bulb by name, the WLED strip, every `lights_*` / `heart_*` look; no Zigbee groups, scenes or WLED presets) → Zigbee2MQTT / WLED, safety clamp, identify / test / pair, device list, catch-up (the heart look and `night.lights`) | the Desktop |
 | `alexa:` | `alexa/` | the standalone announcement player. **Retired for the show** (wave 18b); the code and its `Announcer` stay (the router reuses the announcer and the voice lock) | none |
 
@@ -41,7 +41,11 @@ stagehand/
   trapped.macbook.yaml             extends it: the audio router fallback on John's MacBook
   laptop.yaml                      git-ignored: the MacBook's agents config (from agents.example.yaml)
   *.local.yaml                     git-ignored: per-machine secrets / overrides
-  media/sounds.yaml                tracked list of the 19 story sounds; media/sounds/ is git-ignored
+  media/sounds.yaml                tracked list of the 19 story sounds (`library:` names a story sound's
+                                   SFX stand-in); media/sounds/ is git-ignored
+  media/soundtrack.yaml            tracked: the soundtrack's playlists, scenes and takeover tracks (wave 38)
+  media/music/<act>/               git-ignored: the MP3s, one folder per playlist (doors, act-1, …)
+  media/library/<category>/        git-ignored: the rendered SFX library (`stagehand sounds library`)
   docs/agents.md                   the agents reference
   src/stagehand/
     cli.py                         the `stagehand` command (argparse; one function per subcommand)
@@ -58,7 +62,13 @@ stagehand/
     agents/                        module (the worker loop), persona, prompt (classic), voice (lean),
                                    story_mind, mind, orchestrator, guards, secrets, judge, trace,
                                    wire, reply, llm, facts, cards
-    audio/                         module, config, engine (the stream), mixer, routing, sounds, placeholders
+    audio/                         module, config, engine (the stream), mixer, routing, sounds, placeholders;
+                                   stream (a file decoded + resampled by a worker into a ring buffer),
+                                   soundtrack (playlists, scenes, beds, the `Director`), mp3len (VBR MP3s
+                                   with no length header, for `check`)
+    audio/sfx/                     the SFX library: dsp (synthesis toolkit), spec + registry (`SFX`), render,
+                                   cli, inspect (PNGs), one module per category (sirens, dings, telephony,
+                                   digital, retro, party, story, ambient)
     lights/                        module, config, plan (planLook mirror), routing, z2m
     alexa/                         module, config, player (retired)
     replay/                        the K-04 replay harness (`python -m stagehand.replay`)
@@ -70,11 +80,15 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run pytest                                      # ≈ 1100 tests, ~40 s, no hardware, no network
+uv run pytest                                      # 2193 passed + 4 skipped, ~70 s, no hardware, no network
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
 uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
 uv run stagehand check --config trapped.macbook.yaml --only audio   # the router fallback
+uv run stagehand sounds library [--list] [--only a,b] [--out DIR] [--story] --config trapped.desktop.yaml
+                                                   # render the SFX library; --story also fills sounds_dir
+uv run stagehand music scene <name> | next | stop | status --config trapped.desktop.yaml
+uv run --with matplotlib python -m stagehand.audio.sfx.inspect --only a,b --out DIR   # look at sounds
 uv run stagehand check --config laptop.yaml        # prints mind mode, switches, context sizes
 uv run stagehand ask --config laptop.yaml [--reflect] "text"   # a persona with no server
 uv run stagehand launchd print --job agents --config laptop.yaml   # the plist only
@@ -91,7 +105,7 @@ module docstrings that explain the why).
 | Machine | Jobs | Config | Supervisor | Runbook |
 |---|---|---|---|---|
 | John's MacBook (macOS, M3 Max 48 GB) | `agents` + Ollama `gpt-oss:20b`; `audio` only as the fallback | `laptop.yaml`; `trapped.macbook.yaml` | `stagehand launchd` | `scripts/house-macbook/trabolta.md`; `audio.md` (fallback) |
-| John's Desktop (Windows) | `show`, `lights`, `audio` + the MOTU 828x, no ADAT expander (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
+| John's Desktop (Windows) | `show`, `lights`, `audio` + the MOTU 828x, no ADAT expander (the living room on Main L/R + the sub on Analog Out 1; Chrome's sound, the TV's Trabolta, cabled into input 3) (+ Mosquitto, Zigbee2MQTT with Hue / ZL1 bulbs, the WLED controller, the TV kiosk) | `trapped.desktop.yaml` | `stagehand tasks` | `scripts/house-desktop/README.md` |
 
 - **`extends:`** (`config.py`): a file in the same folder; mappings merge
   key by key, anything else replaces, `null` deletes. Order: parent,
@@ -118,9 +132,13 @@ module docstrings that explain the why).
   test, result, ms?}]}` as soon as a play or a server test is handled
   (`ms`: the file's length; chime + speech; tone + label), and `{health:
   {ok, device, layout, voices, xruns, peakDb, announce, missing,
-  placeholders, sounds: {name: ms}}}` every `health_s` (first after ≤ 5
-  s). A 404 (an older server) is logged once and ignored. Tests:
-  `tests/test_audio_desk.py`.
+  placeholders, sounds: {name: ms}, inputs: {"<ch>": dBFS}, sources:
+  {name: 0..1}, underruns, music?: {scene, beds: [{playlist, speakers,
+  track, posS}], missing}}}` every `health_s` (first after ≤ 5 s; wave 38
+  added the last four, camelCase like `peakDb`; no `music` without a
+  soundtrack). A 404 (an older server) is logged once and ignored. The
+  soundtrack's catch-up reads `GET /api/screen/state` → `night.music`.
+  Tests: `tests/test_audio_desk.py`, `tests/test_audio_router.py`.
 - **The server room** is not stagehand's: the Grand Central M4 on Steph's
   laptop reads the door and the patch bay, and the terminal page posts
   `door_sensor_*` and `patch_changed {combo}` (wave 22,
@@ -157,7 +175,25 @@ module docstrings that explain the why).
   `cue lights_*` or `sound X` in the story needs a rule here, a new sensor
   signal needs a `when` in the story, and the safety edits (no lock, no
   darkened safety room, nothing to the server-room bulb) are asserted.
-  `tests/test_machine_configs.py` pins the two machine files.
+  `tests/test_machine_configs.py` pins the two machine files. Since wave
+  38 the soundtrack is pinned too: every `cue music_*` and `Night.music`
+  value is a `soundtrack.yaml` scene, every scene but `off` is cued by the
+  story, and every `no_duck` sound is a `tracks:` entry.
+- **The audio callback never waits** (wave 38, `audio/stream.py`). It
+  never decodes, resamples or does file I/O, and holds a lock only for an
+  index update or a buffer copy; a stream's worker thread does the rest.
+  An underrun plays silence and counts. Keep new mixer work O(block) and
+  allocation-light (the callback's budget is ~10 ms at 512 frames).
+- **Long files stream, never cache.** Soundtrack beds and `tracks:` open
+  as a `Stream` (`SoundBank.stream`); at most the current and next track
+  of each bed are open; `_preload` skips tracks. Short story sounds stay
+  decoded in memory.
+- **The SFX library is original and deterministic** (C6): no samples,
+  no trademarked motifs; each sound's seed comes from its name, so a
+  re-render is byte-identical. One-shots are set by loudness (the loudest
+  400 ms at −16 dBFS RMS, the peak capped at −1 dBFS by gain); loops sit
+  near −18 dBFS RMS and are seamless. `--story` overwrites only a
+  placeholder or an older `loom-sfx` file.
 - **Windows must import.** `tests/test_windows_import.py` re-imports every
   module with no `fcntl` / `os.getuid` and a fake `msvcrt`. No POSIX-only
   name at import time; guard it (see `alexa/module.py`'s lock).
@@ -242,6 +278,15 @@ module docstrings that explain the why).
   an older YAML silently keeps the two-model mind.
 - **`check` exit codes matter to scripts**: `preflight.ps1`,
   `start-stagehand.ps1` and `scripts/accept/*.sh` read them.
+- **The soundtrack's scene has three owners** (wave 38). A live `cue
+  music_<scene>` wins; a hand `stagehand music stop | scene` (MQTT) holds
+  against feed catch-ups until the next live music cue or a story
+  restart; else the catch-up (`night.music`). Stop house sounds forgets
+  the scene: the beds stay silent until the next music cue or catch-up.
+  An empty or dead playlist retries every 10 s (`RETRY_S`).
+- **The MacBook fallback is output-only** (`passthrough: false` in
+  `trapped.macbook.yaml`): a launchd job gets no microphone, so the TV is
+  not routed and nothing ducks under Trabolta or Clippy there.
 - `stagehand check` with no `--only` on a YAML holding `audio:` imports
   sounddevice and probes the device; on a machine without the interface it
   fails by design.

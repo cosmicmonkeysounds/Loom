@@ -1,4 +1,4 @@
-"""The house speaker router (the `audio` module) — the house Mac plays the house.
+"""The house speaker router (the `audio` module) — the router machine plays the house.
 
     event server  GET /api/mod/audio  (long-poll: audio.json + tests, stops, desk plays)
                   POST /api/mod/audio/report  (acks for plays + tests, the health)
@@ -6,14 +6,16 @@
                   mod feed  sim directive sfx / announce, lifecycle
          │
          ▼
-    this module ── ONE sounddevice stream on the interface (the MOTU 828x + an
-                   │  ADAT expander: audio.json 24 in / 22 out, device.expect 32 / 30)
+    this module ── ONE sounddevice stream on the interface (the MOTU 828x on its
+                   │  own outs: audio.json 10 in / 12 out, device.expect 32 / 30)
                    ├─ voices: `sound X` → sounds_dir/X.wav → its speakers' outputs
                    ├─ announcements: chime + `say` → audio.json `announce.to`
                    ├─ tests: a 1.5 s tone + the spoken label on one speaker / output
                    ├─ stops: Run's ■ Stop house sounds (`stops=`) / show/audio/stop
                    ├─ plays: the house desk's sound / say steps (`plays=`, wave 25) / show/audio/play
-                   └─ the matrix: inputs (mics, the TV, a line) → outputs, audio.json `routes`
+                   ├─ the soundtrack: music beds per scene (`cue music_<scene>`, wave 38)
+                   └─ the matrix: inputs (mics, the TV, a line) → outputs, audio.json `routes`;
+                      every input metered, a `role` input ducks the music (its sidechain)
 
 Where a `sound X` goes, first rule that applies:
   1. the story line's own rooms (`sound X with rooms: …` / `sound X in <Place>`)

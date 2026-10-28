@@ -13,8 +13,9 @@ which is how the router and `stagehand check` tell a placeholder from a real
 asset (`sounds.is_placeholder`).
 
 Never destructive: an untagged file is never overwritten, and a name that
-already has a real `.wav` / `.aiff` / `.aif` / `.flac` is skipped. An
-existing placeholder is rewritten only with `--force`.
+already has a real `.wav` / `.aiff` / `.aif` / `.flac` / `.mp3` / `.ogg`
+(`sounds.EXTENSIONS`; a `loom-sfx` library render counts as real) is
+skipped. An existing placeholder is rewritten only with `--force`.
 """
 
 from __future__ import annotations

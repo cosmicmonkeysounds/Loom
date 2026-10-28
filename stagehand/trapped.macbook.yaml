@@ -8,8 +8,8 @@
 # MacBook runs only `agents` (laptop.yaml; scripts/house-macbook/trabolta.md).
 #
 # Builds on trapped.house.yaml (`extends:`; the router's settings live there
-# once) and runs ONE job from it, `audio` — the MOTU 828x + the ADAT
-# expander on this Mac, every story `sound X` and the house announcements
+# once) and runs ONE job from it, `audio` — the MOTU 828x on its own outs
+# (no ADAT expander) on this Mac, every story `sound X` and the house announcements
 # (chime + `say` Samantha). It overrides the house file's `passthrough: true`
 # with an output-only stream: a launchd job (a bare `uv run` CLI, no app
 # bundle) can't be granted the microphone, so a duplex stream would get

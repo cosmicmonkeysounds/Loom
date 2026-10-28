@@ -1,5 +1,6 @@
 # stagehand — the house speaker router (the `audio` module), on the machine
-# wired to the interface (for Oct 31, John's MacBook by default).
+# wired to the interface (for Oct 31, John's Desktop; the MacBook is the
+# fallback, output-only: trapped.macbook.yaml).
 #
 #   uv run stagehand check --config audio.example.yaml        # the device vs audio.json
 #   uv run stagehand run   --config audio.example.yaml --only audio
@@ -63,13 +64,17 @@ audio:
     clippy:   { music: -12 }
   # How an input's level opens its source: a block over threshold_db opens
   # it, it holds hold_s after the last one, and fades in over attack_s and
-  # out over release_s.
+  # out over release_s. `roles: {clippy: {threshold_db: -30}}` gives one
+  # role its own threshold (an open lav hears the party; set it at rehearsal
+  # about 6 dB over the idle mic's peak in `stagehand music status`).
   sidechain: { threshold_db: -45, attack_s: 0.04, hold_s: 0.8, release_s: 1.2 }
   # The soundtrack (wave 38): music beds per scene — playlists of MP3s per
   # act, crossfaded, laid on the speakers each scene names, scenes from the
   # story's `cue music_<scene>` (and `Night.music` after a restart). Story
   # `sound X` listed under its `tracks:` stream and take their speakers
-  # over (the beds there fall silent). Off without it. The show's:
+  # over (the beds there fall silent). Off without it. Music files are
+  # streamed, never cached; `stagehand check` lists each playlist's files
+  # and flags a VBR MP3 with no length header (it would stop early). The show's:
   # soundtrack: media/soundtrack.yaml   (its header says where the files go)
   duck_hold_s: 7       # announce: false — how long each `do announce` (spoken
                        # by the alexa player) holds the announce source
