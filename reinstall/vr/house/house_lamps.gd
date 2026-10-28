@@ -8,7 +8,7 @@
 ##   bulb with no glow. A fixture with a program under it (`pulse`)
 ##   breathes with [method HouseLights.pulse_factor] — the same curve the
 ##   web game draws — counted from when it started.
-## - **A fixed pool of real lights** ([OmniLight3D], no shadows; 2 / 4 / 6
+## - **A fixed pool of real lights** ([OmniLight3D], no shadows; 2 / 4 / 5
 ##   by graphics tier, [method HouseLights.pool_size]) on the lit fixtures
 ##   nearest the player on their floor ([method HouseLights.pick_pool]),
 ##   re-picked [constant REPICK] times a second. A light keeps its fixture

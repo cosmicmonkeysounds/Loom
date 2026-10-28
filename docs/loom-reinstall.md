@@ -1711,7 +1711,7 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   `main.tscn` with a fake link, the wave 26 moments, sounds, speech and
   path reveal, and the autopilot reaching every show duck spot
   kinematically and with real collision, and (wave 39) the real lights
-  and the graphics tiers (1207 checks, plus 42 for `quest.sh`, among them
+  and the graphics tiers (1208 checks, plus 42 for `quest.sh`, among them
   the `text_to_speech` setting, the build stamp and `--graphics`).
 - **Not proven on hardware** (wave 26): whether Horizon OS has a TTS voice
   (without one the headset only captions) and whether the Quest's mic
@@ -1774,12 +1774,13 @@ draws it:
   no glow. A fixture with `pulse` breathes with `pulseFactor`, counted from
   when it started. (The real pulse is the server's and stagehand's; this is
   the game showing it.)
-- **A fixed pool of `OmniLight3D`s** (no shadows): 2 / 4 / 6 by tier, made
+- **A fixed pool of `OmniLight3D`s** (no shadows): 2 / 4 / 5 by tier, made
   once, re-picked four times a second onto the lit fixtures (level > 0.02)
   nearest the player on their floor (`HouseLights.pick_pool`); a light
   keeps its fixture while it stays picked; unused ones are hidden. The
-  Mobile renderer lights a mesh with at most 8 omni lights, and the duck,
-  the heart and the disk carry one each.
+  Mobile renderer lights a mesh with at most 8 omni lights (it drops the
+  rest), and the duck, the heart and the disk carry one each: `high` stops
+  at 5 so a large floor mesh never loses one, least of all the duck's.
 - **The ambient**: while a frame is in and the player walks the house (not
   the lobby, not the intro), the environment's ambient (0.55 today) and the
   sun (0.7) ease (≈ 1.5 s) toward a night floor of 0.24 / 0.22, lifted back
@@ -1796,7 +1797,7 @@ picks the picture (`HouseLook.environment(tier)`, `HouseLook.msaa`,
 |---|---|---|---|---|---|
 | low | 2 | per vertex | ACES (white 2.0) | off | off |
 | medium | 4 | per pixel (Lambert, no specular) | ACES | off | off |
-| high | 6 | per pixel | ACES | on (screen, threshold 0.7) | 2× |
+| high | 5 | per pixel | ACES | on (screen, threshold 0.7) | 2× |
 
 No tier has SSAO, SSR, SSIL, SDFGI or volumetric fog. Comfort is unchanged.
 Unproven on hardware: whether Quest 3 holds 90 Hz on `medium` (per-pixel

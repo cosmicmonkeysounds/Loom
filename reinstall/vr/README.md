@@ -105,7 +105,7 @@ program is standing under), the virtual house shows it:
   glow; a dark fixture is a grey bulb. A fixture someone stands under
   **breathes** (1 → 0.35 → 1 every 2 s), the way the real bulb does;
 - the lit fixtures **nearest the player on their floor** light the walls
-  and floor for real, from a fixed pool of 2 / 4 / 6 lights (by graphics
+  and floor for real, from a fixed pool of 2 / 4 / 5 lights (by graphics
   tier; never shadows);
 - while the player walks the house, the **ambient dims** toward night
   (never so dark Gerald is hard to find), brighter the brighter the real
@@ -126,7 +126,7 @@ volumetric fog.
 |---|---|---|---|---|
 | `low` | 2 | per vertex | — | — |
 | `medium` | 4 | per pixel | — | — |
-| `high` | 6 | per pixel | on | 2× |
+| `high` | 5 | per pixel | on | 2× |
 
 Set it with `--graphics` (desktop), `"graphics"` in `user://station.json`,
 or bake / push it: `tools/quest.sh build --station vr-1 --graphics low`
@@ -513,7 +513,7 @@ with `released: true` while you walk to Gerald.
 ```
 
 On 2026-10-28 (wave 39, branch `oct31-w39/vr`, Godot 4.7.1) it reports
-1207 checks and `quest.sh` 42, all passing.
+1208 checks and `quest.sh` 42, all passing.
 
 The runner refreshes the import, compiles every script and loads every
 scene, then runs `test/game.gd` headless with `--offline`:

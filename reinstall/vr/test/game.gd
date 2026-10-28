@@ -4636,7 +4636,8 @@ func _test_house_lights() -> void:
 
 	# The tiers.
 	_check(HouseLights.tier_of("HIGH") == "high" and HouseLights.tier_of(" low ") == "low" and HouseLights.tier_of("ultra") == "medium" and HouseLights.tier_of(null) == "medium", "graphics: tier_of reads a tier, else medium")
-	_check(HouseLights.pool_size("low") == 2 and HouseLights.pool_size("medium") == 4 and HouseLights.pool_size("high") == 6 and HouseLights.pool_size("?") == 4, "graphics: the pool is 2 / 4 / 6")
+	_check(HouseLights.POOL.values().all(func(n: int) -> bool: return n + 3 <= 8), "graphics: every pool + the duck, heart and disk lights stays within the Mobile renderer's 8 omni lights a mesh")
+	_check(HouseLights.pool_size("low") == 2 and HouseLights.pool_size("medium") == 4 and HouseLights.pool_size("high") == 5 and HouseLights.pool_size("?") == 4, "graphics: the pool is 2 / 4 / 5")
 	for t: String in HouseLights.TIERS:
 		var env := HouseLook.environment(t)
 		_check(env.tonemap_mode == Environment.TONE_MAPPER_ACES, "graphics: %s tone-maps ACES" % t)
@@ -4791,7 +4792,7 @@ func _test_house_lamps() -> void:
 	lamps.set_tier("low")
 	_check(lamps.pool.size() == 2, "lamps: low pools 2")
 	lamps.set_tier("high")
-	_check(lamps.pool.size() == 6, "lamps: high pools 6")
+	_check(lamps.pool.size() == 5, "lamps: high pools 5")
 	lamps.queue_free()
 	b.queue_free()
 	sun.queue_free()
@@ -4819,7 +4820,7 @@ func _test_house_lamps_game() -> void:
 	var env: Environment = (main.get_node("WorldEnvironment") as WorldEnvironment).environment
 	_check(env.glow_enabled and env.tonemap_mode == Environment.TONE_MAPPER_ACES and game.world_env == env, "lamps game: high glows and tone-maps; the game has the environment")
 	_check(main.get_viewport().msaa_3d == Viewport.MSAA_2X, "lamps game: high turns MSAA on")
-	_check(game.lamps != null and game.lamps.pool.size() == 6 and game.lamps.bulb_ids().size() == 5, "lamps game: a frame already in is drawn; high pools 6")
+	_check(game.lamps != null and game.lamps.pool.size() == 5 and game.lamps.bulb_ids().size() == 5, "lamps game: a frame already in is drawn; high pools 5")
 	game._process(0.016)
 	_check(not game.lamps.in_house and _near(env.ambient_light_energy, HouseLights.DAY_AMBIENT, 1e-3), "lamps game: the lobby keeps today's ambient")
 	link.assignment_received.emit(_assignment(house, "lamps-1", true))

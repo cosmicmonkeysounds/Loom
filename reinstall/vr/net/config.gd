@@ -22,7 +22,7 @@
 ## (the autopilot always does).
 ##
 ## `graphics` (wave 39, default `medium`) is the picture's tier
-## ([HouseLights]): `low` (2 real house lights), `medium` (4) or `high` (6,
+## ([HouseLights]): `low` (2 real house lights), `medium` (4) or `high` (5,
 ## plus glow and 2× MSAA). Anything else reads as `medium`.
 ##
 ## `--autopilot` (dev / CI only) walks the trail to the duck by itself and

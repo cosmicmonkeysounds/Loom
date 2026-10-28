@@ -25,7 +25,7 @@ pnpm --filter loom-reinstall build        # dist/ (base /reinstall/)
 pnpm --filter loom-reinstall test         # vitest: 649 tests, 48 files
 pnpm --filter loom-reinstall typecheck
 pnpm dev --reinstall                      # repo root: the dev stack + this Vite on :5176
-pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1207 checks + quest.sh 42
+pnpm test:vr                              # = reinstall/vr/test/run.sh [godot]: 1208 checks + quest.sh 42
 pnpm house:sync                           # after any show-map or house geometry change
 reinstall/vr/tools/quest.sh setup|build --station vr-N|install   # the Quest APKs
 ```
@@ -135,10 +135,10 @@ presence rooms and `moment`), `spatial-cams.ts`, `spatial-voice.ts` and the
   axis lock; the vignette; a light buzz on a wall. Keep new movement to
   that standard: most players have never worn a headset.
 - **Graphics tiers** (wave 39). VR's `graphics` (`low | medium | high`,
-  default `medium`) sets the house lights' pool (2 / 4 / 6), the shading
+  default `medium`) sets the house lights' pool (2 / 4 / 5), the shading
   (per vertex on `low`), and glow + 2× MSAA (`high` only); ACES on all.
   Quest 3 must hold its frame rate on `medium`: keep SSAO / SSR / SSIL /
-  volumetric fog off, ≤ 8 omni lights on a mesh, and the pool fixed.
+  volumetric fog off, ≤ 8 omni lights on a mesh (5 pool + the duck, heart and disk), and the pool fixed.
 - **Station config.** VR reads `user://station.json` (written by the
   in-headset setup) over the committed `config/station.json` (which must
   keep `CHANGEME`; a test checks it). Never write `res://`.

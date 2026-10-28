@@ -213,7 +213,7 @@ Files: `reinstall/vr/**` (GDScript only), `reinstall/vr/test/`,
   `pulseFactor` (`house/house_lights.gd` or similar, unit-tested in
   `test/run.sh`).
 - The house: a bulb (unshaded emissive sphere + glow quad) per `GameLight`,
-  `OmniLight3D`s from a fixed pool (low 2, medium 4, high 6; no shadows, the
+  `OmniLight3D`s from a fixed pool (low 2, medium 4, high 5 — with the duck, heart and disk lights ≤ 8 on a mesh; no shadows, the
   nearest lit fixtures on the player's floor), pulsing with `pulseFactor`;
   the ambient dims toward a night floor while frames arrive.
 - `HouseLook.environment()`: a filmic / ACES tone map and, on `high`, glow

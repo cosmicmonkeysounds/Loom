@@ -26,9 +26,11 @@ const SETTLED_COLOR := "#ffd9a8"
 const TIERS := ["low", "medium", "high"]
 const DEFAULT_TIER := "medium"
 ## Real [OmniLight3D]s per tier: a fixed pool, never resized while running.
-## The Mobile renderer lights a mesh with at most 8 omni lights; the duck,
-## the heart and the disk carry one each.
-const POOL := {"low": 2, "medium": 4, "high": 6}
+## The Mobile renderer lights a mesh with at most 8 omni lights and drops
+## the rest; the duck, the heart and the disk carry one each, so `high`
+## stops at 5: 5 + 3 ≤ 8 on a large floor mesh, and the duck's own glow is
+## never the one dropped.
+const POOL := {"low": 2, "medium": 4, "high": 5}
 ## A fixture this dim (shown level) or darker gets no real light.
 const LIT_MIN := 0.02
 
