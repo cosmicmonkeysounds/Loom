@@ -2,7 +2,7 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, video, reinstallation process, training, tutorial, skip, snap turn, smooth turn, mouse, reinstall, reinstalled, quarantined, locked, Installation Wizard, wizard, Gerald, find gerald, duck, golden duck, egg, VR, headset, tablet, laptop, joystick, stick, controls, tent, backyard, tunnel, tube, Internet, game, walk, play here, send to a headset, pick your program, laser, pointer, lobby, the King, king, hit, trigger, ghost, ghosts, picture, profile picture, reinstallation station, not marked, paused, notice, wall screens, TV, voice, microphone, mic, mute, talk, hear, test mic, ask again, bathroom, exit, queasy
+keywords: simulation, reinstallation, video, reinstallation process, training, tutorial, skip, turn, turning, dizzy, mouse, reinstall, reinstalled, quarantined, locked, Installation Wizard, wizard, Gerald, find gerald, duck, golden duck, egg, VR, headset, tablet, laptop, joystick, stick, controls, tent, backyard, tunnel, tube, Internet, game, walk, play here, send to a headset, pick your program, laser, pointer, lobby, the King, king, hit, trigger, ghost, ghosts, picture, profile picture, reinstallation station, not marked, paused, notice, wall screens, TV, voice, microphone, mic, mute, talk, hear, test mic, ask again, bathroom, exit, queasy
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
@@ -61,9 +61,8 @@ each step finishes when you do it.
   run with **Shift**. **Esc** gives you the mouse back.
 - In a **headset**: look around, point the beam at a button and pull the
   **trigger**, push the thumbstick forward to walk into a glowing circle,
-  then try both ways of turning: **SNAP TURN** (small jumps, easiest on
-  the stomach) or **SMOOTH TURN** (a glide). Keep the one you like: it is
-  saved with your program, so any headset starts with it next time.
+  then turn round to face a duck behind you — push the stick left or
+  right (a small push turns slowly), or just turn your body.
 
 Been reinstalled before? **Skip training ▶** jumps straight in.
 
@@ -79,7 +78,7 @@ headset, your microphone.
 | | Headset | Tablet |
 |---|---|---|
 | Walk | **left stick** — forward is wherever you're looking | **left** on-screen stick |
-| Turn | **right stick** — left or right, a step at a time | **right** on-screen stick (push up/down to look up/down) |
+| Turn | **right stick** — left or right (gently: a small push turns slowly), or turn your body | **right** on-screen stick (push up/down to look up/down) |
 | Look | turn your head | drag on the screen |
 | Hit the King | **trigger** (either hand), or **A / X** | **⚔ HIT** |
 | Mute your mic | **B / Y** | **🎤** (or **M**), when the tablet has a voice link |
