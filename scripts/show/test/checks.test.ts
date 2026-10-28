@@ -2,7 +2,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
-import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "../lib/checks.ts";
+import { agentChecks, agentsBeforeDoorsCheck, audioCheck, beforeDoors, soundtrackChecks, healthCheck, joinBaseCheck, judgeCheck, lightsCheck, metricsCheck, peopleChecks, runCheck, screenChecks, stationsCheck, terminalChecks, terminalVerdict } from "../lib/checks.ts";
 
 const level = (name: string, rows: { name: string; level: string }[]) => rows.find((r) => r.name === name)?.level;
 
@@ -146,4 +146,46 @@ test("stations, load, join links", () => {
   assert.equal(joinBaseCheck({ joinUrl: "http://192.168.1.2:7000" }, "https://app.example.com").level, "fail");
   assert.equal(joinBaseCheck({ joinUrl: "http://localhost:7000" }, "http://127.0.0.1:7000").level, "ok", "a local server may be local");
   assert.ok(!joinBaseCheck({ joinUrl: "https://app.example.com/?code=SECRET" }, "https://app.example.com").detail.includes("SECRET"), "only the origin prints");
+});
+
+test("wave 38: the router's soundtrack and its sidechain meters, only when its health carries them", () => {
+  const base = { router: { online: true, name: "desktop" }, source: "project", problems: [], warnings: [] };
+  // An older server (no health) or router (no music / inputs): no new row.
+  assert.deepEqual(soundtrackChecks(base), []);
+  assert.deepEqual(soundtrackChecks({ ...base, health: null }), []);
+  assert.deepEqual(soundtrackChecks({ ...base, health: { ok: true, voices: 0 } }), []);
+  assert.equal(audioCheck(base).length, 1);
+
+  const audio = { inputs: [{ ch: 1, label: "Mic", kind: "mic", role: "clippy", reach: ["living"] }, { ch: 2, label: "x", kind: "mic" }, { ch: 3, label: "TV", kind: "line", role: "trabolta" }] };
+  const health = {
+    ok: true,
+    music: { scene: "act_1", beds: [{ playlist: "act_1", speakers: ["living-l", "living-r"], track: "song-03.mp3", posS: 61 }, { playlist: "fan_closet", speakers: ["fan"], track: null, posS: 0 }], missing: [] },
+    inputs: { "1": -52.4, "2": -80, "3": -14.6 },
+    sources: { clippy: 0, trabolta: 0.8 },
+    underruns: 0,
+  };
+  const rows = audioCheck({ ...base, audio, health });
+  const music = rows.find((r) => r.name === "Soundtrack")!;
+  assert.equal(music.level, "info");
+  assert.equal(music.detail, "scene act_1 · act_1 on 2 speaker(s) (song-03.mp3); fan_closet on 1 speaker(s)");
+  const side = rows.find((r) => r.name === "Sidechain inputs")!;
+  // Only the inputs audio.json gives a role, each with its source's activity.
+  assert.equal(side.detail, "clippy 1: -52 dBFS (ducking 0%) · trabolta 3: -15 dBFS (ducking 80%)");
+
+  // A playlist with no file or an underrun is amber; no scene and silence read plainly.
+  const missing = soundtrackChecks({ ...base, audio, health: { ...health, music: { scene: "doors", beds: [], missing: ["doors"] }, underruns: 3, inputs: { "1": -120 } } });
+  assert.equal(missing[0]!.level, "warn");
+  assert.match(missing[0]!.detail, /^scene doors · no bed playing · NO FILES for doors .* · 3 underrun\(s\)/u);
+  assert.match(missing[1]!.detail, /^clippy 1: silent \(ducking 0%\) · trabolta 3: not metered/u);
+  assert.equal(soundtrackChecks({ ...base, health: { music: { scene: null, beds: [], missing: [] } } })[0]!.detail, "no scene yet");
+  assert.equal(soundtrackChecks({ ...base, health: { music: { scene: "off", beds: [], missing: [] } } })[0]!.detail, "scene off");
+  // No roles in audio.json: every metered input.
+  assert.equal(soundtrackChecks({ ...base, health: { inputs: { "1": -30, "3": -20 } } })[0]!.detail, "in 1: -30 dBFS · in 3: -20 dBFS");
+});
+
+test("wave 38: the screen state's Night.music", () => {
+  const scr = (music: unknown) => screenChecks({ night: { phase: "desktop", music }, terminals: [] }).find((r) => r.name === "Night.music");
+  assert.equal(scr("act_1")!.detail, "act_1");
+  assert.match(scr(null)!.detail, /^none/u);
+  assert.equal(scr(undefined), undefined); // an older server
 });
