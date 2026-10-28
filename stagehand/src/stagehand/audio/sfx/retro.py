@@ -206,7 +206,7 @@ def jump(rng: np.random.Generator) -> np.ndarray:
     """A jump: a 25 % pulse sliding up a bit more than an octave, quick."""
     s = 0.35
     f = dsp.line([(0, 260), (0.16, 820), (s, 900)], s, curve="exp")
-    x = dsp.pulse(f, width=0.25) * _frames60(dsp.line([(0, 1.0), (0.12, 0.8), (s, 0.0)], s))
+    x = dsp.pulse(f, width=0.25) * _frames60(dsp.line([(0, 1.0), (0.12, 0.8), (s - 0.04, 0.0)], s))  # silent before the end, not cut on a step
     return dsp.lowpass(x, 10000)
 
 

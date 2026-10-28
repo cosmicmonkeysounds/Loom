@@ -95,7 +95,7 @@ def siren_wail(rng: np.random.Generator) -> np.ndarray:
     )
     f = dsp.jitter(dsp.smooth(contour, 0.22), rng, cents_rms=4, rate=5)
     body = _horn(f, drive=0.3)
-    env = _envelope([(0, 0), (0.06, 1), (7.3, 1), (s, 0)], s)
+    env = _envelope([(0, 0), (0.06, 1), (7.0, 1), (7.4, 0)], s)  # 0.6 s of street tail inside s
     return _street(body * env, s)
 
 
@@ -116,7 +116,7 @@ def siren_yelp(rng: np.random.Generator) -> np.ndarray:
     s = 4.5
     f = dsp.jitter(_yelp_curve(s), rng, cents_rms=3, rate=6)
     body = _horn(f, drive=0.3)
-    env = _envelope([(0, 0), (0.04, 1), (4.2, 1), (s, 0)], s)
+    env = _envelope([(0, 0), (0.04, 1), (3.8, 1), (4.0, 0)], s)  # 0.5 s of street tail inside s
     return _street(body * env, s, wet=0.18)
 
 

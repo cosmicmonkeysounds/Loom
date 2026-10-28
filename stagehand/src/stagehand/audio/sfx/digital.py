@@ -183,7 +183,7 @@ def glitch_burst_2(rng: np.random.Generator) -> np.ndarray:
         blip = _beep(float(rng.choice((2637.0, 3136.0, 2349.3))), 0.018, 0.0)
         parts.append(_edges(dsp.mix(piece, (blip, 0.0, -4), seconds=dur)))
         t += dur
-    x = dsp.fit(np.concatenate(parts), s) * dsp.line([(0, 1), (s - 0.15, 1), (s, 0.3)], s)
+    x = dsp.fit(np.concatenate(parts), s) * dsp.line([(0, 1), (s - 0.18, 1), (s - 0.03, 0.0)], s)
     return dsp.filt(x, dsp.Biquad.highpass(90), dsp.Biquad.lowpass(8000))
 
 

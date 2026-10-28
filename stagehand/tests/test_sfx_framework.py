@@ -178,6 +178,19 @@ def test_each_sound_is_at_its_level(name, rendered):
     assert dsp.rms_db(x) > -60, "not silent"
 
 
+#: One-shots that end on purpose at full tilt (the riser stops at its peak).
+ENDS_AT_ITS_PEAK = {"riser"}
+
+
+@pytest.mark.parametrize("name", [n for n in NAMES if not SFX[n].loop and n not in ENDS_AT_ITS_PEAK])
+def test_each_one_shot_ends_in_its_own_decay(name, rendered):
+    # the renderer's 5 ms fade is a safety net, not the ending: the 30 ms to
+    # 6 ms before the end is already quiet, or the fade chops a live sound
+    x = rendered[name][0].astype(np.float64)
+    tail = x[-dsp.frames(0.030) : -dsp.frames(0.006)]
+    assert dsp.rms_db(tail) < -40, f"{name}: {dsp.rms_db(tail):.1f} dBFS just before the end (cut, not decayed)"
+
+
 @pytest.mark.parametrize("name", NAMES)
 def test_each_sound_has_no_dc_or_sub_audio_rumble(name, rendered):
     x, _ = rendered[name]
