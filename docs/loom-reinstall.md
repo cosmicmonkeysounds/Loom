@@ -712,10 +712,13 @@ does (`presenceFixtures`).
   started (a `then: "restore"` look gives that back). It hears a live
   batch's `cue X` naming a look (never a journal replay), every
   `/api/mod/lights/test` with a `look` or a `{fixture, set}` (a desk cue's
-  too; an identify is ignored), and the config's `boot` look on first use
-  and after every story restart (reset, reload, go live). A fixture nothing
-  reached shows `LAMP_SETTLED`. Memory only: a server restart starts again
-  from the boot look.
+  too; an identify is ignored), and the config's `boot` look: at start as
+  long settled (the module played it when it started), and played afresh
+  after every story restart (reset, reload, go live). A fixture nothing
+  reached shows `LAMP_SETTLED`. The module's report names only fixtures it
+  has commanded since it started (colours normalised to lower case); under
+  `house` every other fixture is estimated. Memory only: a server restart
+  starts again from the settled boot look.
 
 ## 2. Server — `core/server/spatial.ts`
 

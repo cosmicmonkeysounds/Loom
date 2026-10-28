@@ -225,6 +225,8 @@ describe("LightsHub presence + shown (C2.1, C2.2)", () => {
 
   it("parseShown drops unknown fixtures and bad states, never the post", () => {
     expect(parseShown({ "desk-lamp": { state: "ON", brightness: 100 }, ghost: { state: "ON" }, "hall-group": { brightness: 999 }, "attic-bulb": "on" }, LIGHTS)).toEqual({ "desk-lamp": { state: "ON", brightness: 100 } });
+    // An upper-case colour (the module's) is kept lower-case.
+    expect(parseShown({ "hall-group": { color: "#FF00AA", effect: "breathe" } }, LIGHTS)).toEqual({ "hall-group": { color: "#ff00aa", effect: "breathe" } });
   });
 
   it("the source is house while the module is online and its report fresh; sourceFlipAt says when it lapses", () => {
@@ -540,6 +542,10 @@ describe("the runtime (C2)", () => {
     expect((await view(rt, `?after=${v.version}&presence=1&wait=0.1`)).presence.seq).toBe(1);
     expect(Date.now() - t1).toBeGreaterThanOrEqual(80);
     expect((await view(rt, `?after=${v.version}&presence=0&wait=5`)).presence.seq).toBe(1);
+    // A cursor past the hub's seq is an earlier process's (a restart): at once.
+    const t2 = Date.now();
+    expect((await view(rt, `?after=${v.version}&presence=9&wait=5`)).presence.seq).toBe(1);
+    expect(Date.now() - t2).toBeLessThan(1000);
     t += 1;
     rt.dispose();
   });
@@ -566,11 +572,8 @@ describe("the runtime (C2)", () => {
     const rgb = (f: GameLights) => f.lights.find((l) => l.id === "server-room-rgb")!;
     expect(frames.map((f) => f.event)).toEqual(["hello", "lights"]);
     expect(lightsFrames()[0]!.source).toBe("estimate");
-    // The boot look (house_warm, 2 s) settles: a warm white on the heart.
-    t += 5000;
-    rt.gameLights.changed();
-    const warm = rgb(lightsFrames().at(-1)!);
-    expect(warm.level).toBe(Math.round((120 / 254) * 1000) / 1000);
+    // The boot look (house_warm), long settled: a warm white on the heart.
+    expect(rgb(lightsFrames()[0]!).level).toBe(Math.round((120 / 254) * 1000) / 1000);
     // A test look: the heart turns orange.
     t += 1000;
     expect((await call(rt, "POST", "/api/mod/lights/test", { look: "heart_nag" })).status).toBe(200);
@@ -596,6 +599,8 @@ describe("the runtime (C2)", () => {
     await call(rt, "POST", "/api/mod/lights/shown", { fixtures: { "server-room-rgb": { state: "ON", color: "#123456", brightness: 254 } } });
     expect(lightsFrames().at(-1)!.source).toBe("house");
     expect(rgb(lightsFrames().at(-1)!)).toMatchObject({ color: "#123456", level: 1 });
+    // A fixture the module never commanded is estimated (the boot's warm white).
+    expect(lightsFrames().at(-1)!.lights.find((l) => l.id === "attic-bulb")!.level).toBe(Math.round((120 / 254) * 1000) / 1000);
     // A program under the desk lamp: pulse true.
     t += 1000;
     rt.spatial.begin({ guest: "ann", name: "Ann", world: "web", device: "Tent", station: null, captured: false });

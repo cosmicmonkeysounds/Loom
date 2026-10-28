@@ -865,10 +865,10 @@ export class EventRuntime {
   /** (wave 39) The server's replay of what each house light shows
    *  (`lights-shown.ts`): the games' `lights` frame reads it while the
    *  module's own report is missing or stale. Memory only; the config's
-   *  `boot` look plays into it on first use (from `lightsBootAt`). */
+   *  `boot` look plays into it on first use, as long settled (the module
+   *  played it when it started), and again after every story restart. */
   private readonly lightsEstimate = new LightsEstimate();
   private lightsBooted = false;
-  private lightsBootAt = 0;
   /** (wave 39) When the spatial stream's `lights` frame goes out. */
   readonly gameLights: GameLightsFeed;
   /** Near misses a restore found still pending (person, question, answer):
@@ -1064,7 +1064,6 @@ export class EventRuntime {
       lightsHello: () => this.gameLights.hello(),
       onHouse: () => this.gameLights.changed(),
     });
-    this.lightsBootAt = this.clock();
     this.gameLights = new GameLightsFeed({
       now: () => this.clock(),
       build: () => this.gameLightsFrame(),
@@ -2258,7 +2257,9 @@ export class EventRuntime {
   private estimate(): LightsEstimate {
     if (!this.lightsBooted) {
       this.lightsBooted = true;
-      this.lightsEstimate.boot(this.lights.config(), this.spatialHouse(), this.lightsBootAt);
+      // Started at 0: long settled. (No clock read here: a fake clock that
+      // counts its reads must not see a new one.)
+      this.lightsEstimate.boot(this.lights.config(), this.spatialHouse(), 0);
     }
     return this.lightsEstimate;
   }

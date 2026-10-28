@@ -286,7 +286,10 @@ export function parseShown(raw: Readonly<Record<string, unknown>>, lights: Light
   const out: Record<string, LightState> = {};
   for (const [id, state] of Object.entries(raw)) {
     if (!ids.has(id) || lightStateProblems(id, state).length > 0) continue;
-    out[id] = { ...(state as LightState) };
+    const s = { ...(state as LightState) };
+    // The module may send `#RRGGBB`: kept lower-case, like the frame's.
+    if (s.color !== undefined) s.color = s.color.toLowerCase();
+    out[id] = s;
   }
   return out;
 }
