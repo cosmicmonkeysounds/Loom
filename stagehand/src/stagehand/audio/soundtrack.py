@@ -479,8 +479,13 @@ class Director:
         house map re-reads the scene with the scene-change rules, so a bed
         whose speakers did not move is never touched."""
         if mixer is not self.mixer:
+            # The old mixer's voices died with its stream: close their
+            # files (their workers would otherwise run on), then start over.
             for bed in self.beds.values():
                 self._close_pending(bed)
+                for v in (bed.cur, bed.nxt, bed.out):
+                    if v is not None:
+                        v.stream.close(wait=False)
             self.beds = {}
             self.mixer = mixer
         self.doc, self.house = doc, house
@@ -705,6 +710,7 @@ class Director:
             # It ended before the crossfade was due (an MP3 shorter than its
             # header, a decode error): the next one now.
             bed.cur = None
+            # (A crossfade already set starts within LEAD_S: it is let be.)
             if bed.nxt is None and now >= bed.retry_at:
                 self._begin(bed, CUT_FADE_S)
             return

@@ -456,6 +456,7 @@ def test_a_new_mixer_starts_the_scene_again_and_a_scene_before_the_mixer_waits_f
     assert run(d, m, 5)[-1, 0] == pytest.approx(0.2)
     m2 = Mixer(1, 7, RATE)  # the stream reopened (a replugged interface)
     d.attach(m2, DOC, HOUSE)
+    assert lib.opened[0].closed  # the old mixer's track is closed, not left running
     assert run(d, m2, 5)[-1, 0] == pytest.approx(0.2) and d.beds["a"].cur.vid == 1
 
 
@@ -468,3 +469,18 @@ def test_the_level_is_the_top_level_plus_the_playlists(tmp_path):
     d.attach(m, DOC, HOUSE)
     d.set_scene("s")
     assert run(d, m, 5)[-1, 0] == pytest.approx(0.5 * db_to_lin(-14), rel=1e-3)
+
+
+def test_a_track_that_dies_with_no_warning_starts_the_next_at_once(tmp_path):
+    # The worst case: the decoder never reports the real end (no `eof`), the
+    # header says 4 s, and the file stops at 2.5 s: the prefilled next track
+    # starts on the next tick, not at the header's crossfade.
+    _fill(tmp_path, {"a": ["x.mp3", "y.mp3"]})
+    lib = Library({"x": (0.2, 2500, 4000), "y": (0.4, 60_000)}, buffer=-10_000)
+    doc = {"playlists": {"a": {"dir": "music/a", "shuffle": False}}, "scenes": {"s": [{"to": "desk-l", "play": "a"}]}}
+    d, m, lib = director(tmp_path, doc, lib)
+    d.set_scene("s")
+    out = run(d, m, 24)[:, 0]
+    assert np.allclose(out[400:2500], 0.2)
+    assert np.allclose(out[2700:], 0.4, atol=0.01)  # y within two blocks, not at 3.5 s
+    assert [Path(t.path).stem for t in lib.opened] == ["x", "y"]
