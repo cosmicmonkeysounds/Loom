@@ -33,20 +33,14 @@ describe("C6: the booth's moments feed is about the booth's job", () => {
     expect(feed([quest]).get(quest.seq)!.hidden).toBe(false);
   });
 
-  it("boothMine: my claims and door claims; on a hunting booth also every loose mark nobody has claimed (the ⚠️ approach warnings)", () => {
+  it("boothMine: my claims and door claims only (wave 37b: not every loose mark — a readout lands before the view that ends the mark)", () => {
     const board = [W("g-1"), W("g-2", { claimedBy: "McAfee Anti-Virus" }), W("g-3", { claimedBy: ME }), W("g-4", { captured: true })];
     const door = (id: string) => (id === "g-9" ? ME : null);
-    const hunting = boothMine(board, door, ME, true);
-    expect(["g-1", "g-2", "g-3", "g-4", "g-9", "g-0"].map(hunting)).toEqual([true, false, true, false, true, false]);
-    const notHunting = boothMine(board, door, ME, false);
-    expect(["g-1", "g-3", "g-9"].map(notHunting)).toEqual([false, true, true]);
-    // Through the feed: the approach warning about the unclaimed mark is a moment; the same about McAfee's is not.
-    const warn = (about: string) => m({ readout: true, about, moment: "minor" as never, text: "⚠️ A made-up mark is in a room. Wait outside." });
-    const a = warn("g-1");
-    const b = warn("g-2");
-    const out = feed([a, b], { mine: hunting });
-    expect(out.get(a.seq)!.hidden).toBe(false);
-    expect(out.get(b.seq)!.hidden).toBe(true);
+    const mine = boothMine(board, door, ME);
+    expect(["g-1", "g-2", "g-3", "g-4", "g-9", "g-0"].map(mine)).toEqual([false, false, true, false, true, false]);
+    // Through the feed: "Off the escort list" about an unclaimed mark another booth caught is not a moment.
+    const off = m({ readout: true, about: "g-1", moment: "minor" as never, text: "✅ A made-up program: sent on. Off the escort list." });
+    expect(feed([off], { mine }).get(off.seq)!.hidden).toBe(true);
   });
 
   it("a minor readout about someone else's guest only badges Readouts; about mine it is a moment", () => {
