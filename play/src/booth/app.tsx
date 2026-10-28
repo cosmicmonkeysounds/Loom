@@ -590,6 +590,11 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     glitch: s.view?.night?.glitch,
     // Wave 37 (C13): never over a face-to-face tap (the scanner, a card): look only.
     takeover: player && layer?.kind !== "scan" && layer?.kind !== "card" ? "full" : "light",
+    // Wave 37 (C5): one thing at the bottom. A balloon waits (its 8 s not
+    // running) while a pop-out is up, and while the scanner, a card or a
+    // picker is open (PopOutQuiet hides a held pop-out there, so the layer
+    // term covers it).
+    balloonsWait: rung.current !== null || layer?.kind === "scan" || layer?.kind === "card" || layer?.kind === "pick",
     // A readout's room is the booth's own `dm:<Character>`: that is Readouts here.
     openRoom: (id) => t.open(id === `dm:${character}` ? INBOX : id),
     filter: boothAlertFilter(character),

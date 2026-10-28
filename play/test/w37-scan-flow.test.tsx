@@ -347,3 +347,9 @@ describe("wave 37 wiring (C4): face to face, nothing floats", () => {
     expect(src("booth/layer.tsx")).toContain("{dock && <PopOutDock />}");
   });
 });
+
+describe("wave 37 wiring (C5): balloons wait behind a pop-out and face-to-face windows", () => {
+  it("app.tsx hands the moments layer balloonsWait", () => {
+    expect(src("booth/app.tsx")).toContain('balloonsWait: rung.current !== null || layer?.kind === "scan" || layer?.kind === "card" || layer?.kind === "pick",');
+  });
+});
