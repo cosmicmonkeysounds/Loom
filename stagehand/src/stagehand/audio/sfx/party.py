@@ -245,25 +245,34 @@ def countdown_beeps(rng: np.random.Generator) -> np.ndarray:
 def clock_tick(rng: np.random.Generator) -> np.ndarray:
     """The countdown's clock: seven seconds of a mechanical clock, tick and
     tock twice a second (the tock lower and softer, a faint escapement click
-    just before each), in a small room."""
+    just before each), in a small room. Each tick is a clack with a body: the
+    pallet's three quick impacts on a woody case knock and the wheel's rings,
+    saturated so the clack, not one bare grain, sets its peak: it has to carry
+    the five-minute call over the music, at the level of the other cues."""
     s = 7.2
     n = 14
-    def click(freqs, amp: float) -> np.ndarray:
-        d = 0.09
+    d = 0.16
+    impacts = ((0.0, 1.0), (0.016, 0.6), (0.031, 0.4))
+
+    def strike(freqs, amp: float) -> np.ndarray:
         ring = sum(a * dsp.sine(f, d) * dsp.decay(d, t60) for f, a, t60 in freqs)
         grain = dsp.highpass(dsp.white(d, rng), 1500) * dsp.decay(d, 0.006)
-        knock = dsp.bandpass(dsp.white(d, rng), 420, 1.5) * dsp.decay(d, 0.025)
-        return amp * (ring + 0.8 * grain + 0.5 * knock)
+        knock = dsp.bandpass(dsp.white(d, rng), 1000, 1.2) * dsp.decay(d, 0.08)
+        return amp * (ring + 0.25 * grain + 1.5 * knock)
 
-    tick = ((2950, 1.0, 0.04), (4420, 0.6, 0.028), (6100, 0.3, 0.02), (1650, 0.4, 0.06))
-    tock = ((2230, 1.0, 0.045), (3540, 0.55, 0.03), (5120, 0.25, 0.02), (1260, 0.45, 0.07))
+    def click(freqs, amp: float) -> np.ndarray:
+        x = dsp.mix(*[(strike(freqs, amp * g), at) for at, g in impacts])
+        return dsp.soft_clip(x * 0.5, 9)
+
+    tick = ((2950, 1.0, 0.07), (4420, 0.6, 0.05), (6100, 0.3, 0.035), (1650, 0.8, 0.105))
+    tock = ((2230, 1.0, 0.08), (3540, 0.55, 0.052), (5120, 0.25, 0.035), (1260, 0.9, 0.12))
     layers = []
     for i in range(n):
         at = 0.08 + i * 0.5 + rng.normal(0, 0.0015)
         amp = (1.0 if i % 2 == 0 else 0.78) * rng.uniform(0.92, 1.05)
         layers.append((click(tick if i % 2 == 0 else tock, amp), at))
         layers.append((click(tock, amp * 0.12), at - 0.011))  # the escapement, just ahead
-    return _room(dsp.mix(*layers, seconds=s), room=0.25, wet=0.12, damp=0.6)
+    return dsp.dc_block(_room(dsp.mix(*layers, seconds=s), room=0.25, wet=0.18, damp=0.6))
 
 
 def timer_buzzer(rng: np.random.Generator) -> np.ndarray:

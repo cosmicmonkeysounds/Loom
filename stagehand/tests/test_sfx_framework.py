@@ -273,6 +273,28 @@ def test_a_one_shot_is_set_by_loudness_with_its_peak_capped_by_gain():
     assert np.allclose(ratio, ratio[0], rtol=1e-5)
 
 
+def test_the_story_stand_ins_sit_within_a_few_db_of_each_other(rendered):
+    # one fader for the whole house: the five-minute tick must not vanish
+    # under the modem (wave 38 review: a 21 dB spread under peak levels)
+    louds = {lib: dsp.loudness_db(rendered[lib][0]) for lib in sfx_cli.story_map().values() if lib in SFX}
+    assert louds
+    quietest = min(louds, key=louds.get)
+    assert louds[quietest] >= R.ONESHOT_LOUD_DB - 6, f"{quietest}: loudest 400 ms {louds[quietest]:.1f} dBFS"
+    assert max(louds.values()) <= R.ONESHOT_LOUD_DB + 0.1
+
+
+def test_the_countdown_tick_has_a_body_not_bare_grains(rendered):
+    # the peak sits in a clack with body, so the −1 dBFS cap does not hold the
+    # tick 13 dB under the other cues (it was 14 dB over its own 10 ms RMS)
+    x = rendered["clock_tick"][0].astype(np.float64)
+    i = int(np.argmax(np.abs(x)))
+    around = x[max(0, i - 240) : i + 240]
+    assert dsp.peak_db(x) - dsp.rms_db(around) < 10
+    spectrum = np.abs(np.fft.rfft(x)) ** 2
+    f = np.fft.rfftfreq(len(x), 1 / R.RATE)
+    assert spectrum[f < 2000].sum() >= 0.3 * spectrum.sum(), "a woody body under the 2–5 kHz rings"
+
+
 def test_the_seed_is_stable_across_runs():
     # crc32, never Python's salted hash(): a re-render on another day is the same file
     assert R.seed("siren_wail") == zlib.crc32(b"siren_wail")
