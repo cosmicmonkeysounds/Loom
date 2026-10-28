@@ -52,8 +52,8 @@ describe("the project file", () => {
 });
 
 describe("storyLooks", () => {
-  it("lists every cue that can be a look, sorted and deduped; screens families and odd names left out", () => {
-    const story = `# T\n\nLOCATION The Server Room\n\nwhen heart opens:\n  cue heart_wake\n\n== Boot\n  setting: The Server Room\ncue heart_idle\ncue room_heart_wake\ncue tv_static\ncue Heart_Loud\n<cue: lights_y2k, fade: 2>\ncue heart_idle\nHello.\n`;
+  it("lists every cue that can be a look, sorted and deduped; screens families, soundtrack scenes and odd names left out", () => {
+    const story = `# T\n\nLOCATION The Server Room\n\nwhen heart opens:\n  cue heart_wake\n\n== Boot\n  setting: The Server Room\ncue heart_idle\ncue room_heart_wake\ncue tv_static\ncue music_off\ncue Heart_Loud\n<cue: lights_y2k, fade: 2>\ncue heart_idle\nHello.\n`;
     expect(storyLooks(Sim.fromSources(story).model)).toEqual(["heart_idle", "heart_wake", "lights_y2k"]);
     expect(storyLooks(null)).toEqual([]);
   });

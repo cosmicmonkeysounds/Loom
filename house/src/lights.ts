@@ -50,8 +50,9 @@ export const LIGHT_LOOK_MAX_MS = 120_000;
 export const LIGHT_MAX_STEPS = 64;
 /** A safety fixture's floor (Z2M brightness 0–254) unless its own `min` is higher. */
 export const LIGHT_SAFETY_MIN = 40;
-/** Cue families a look name may never start with (they are the screens'). */
-export const LIGHT_RESERVED_PREFIXES = ["screens_", "terminals_", "tv_", "tablet_", "room_"] as const;
+/** Cue families a look name may never start with: the screens', and since
+ *  wave 38 the soundtrack's (`music_`: the router takes every `cue music_*`). */
+export const LIGHT_RESERVED_PREFIXES = ["screens_", "terminals_", "tv_", "tablet_", "room_", "music_"] as const;
 /** How far outside its room a fixture may stand in plan (as a speaker). */
 export const LIGHT_SPOT_TOLERANCE = 0.05;
 /** How high above the top floor a fixture may hang (m). */
@@ -500,7 +501,7 @@ export function validateLights(lights: unknown, house?: HouseMap | null): Lights
       const at = `looks["${name}"]`;
       if (!LOOK_RE.test(name)) problems.push(`${at}: a look name is lower-case letters, digits and "_", starting with a letter (it is the story's cue name)`);
       const reserved = LIGHT_RESERVED_PREFIXES.find((p) => name.startsWith(p));
-      if (reserved !== undefined) problems.push(`${at}: "${reserved}" cues are the screens', never a look`);
+      if (reserved !== undefined) problems.push(`${at}: "${reserved}" cues are the ${reserved === "music_" ? "soundtrack's" : "screens'"}, never a look`);
       if (!isObj(look)) {
         problems.push(`${at} must be an object {to, set | steps}`);
         continue;
