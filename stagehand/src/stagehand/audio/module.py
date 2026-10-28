@@ -370,6 +370,10 @@ class AudioRouter:
         #: Bumped by every live scene (a feed cue, MQTT): a catch-up that read
         #: the state while one landed plays nothing (the live one wins).
         self._music_live = 0
+        #: The scene in force was chosen by hand over MQTT (`stagehand music
+        #: stop | scene`, C3's rank 2): a feed-reconnect catch-up (rank 3)
+        #: leaves it be. The next live cue, or a story restart, clears it.
+        self._music_hand = False
         self._music_catch_up: asyncio.Future | None = None
 
     # -- describe / check ----------------------------------------------------
@@ -569,7 +573,7 @@ class AudioRouter:
         if st is None:
             return []
         out = st.warnings(doc, self._local_house())
-        if self.cfg.play_sounds:
+        if self.cfg.play_sounds and Path(self.cfg.sounds_dir).is_dir():  # no folder: the sounds_dir warning says it
             bank = SoundBank(self.cfg.sounds_dir, self.cfg.rate or 48000)
             missing = sorted(n for n in st.tracks if bank.find(n) is None)
             if missing:
@@ -1128,13 +1132,16 @@ class AudioRouter:
             log.info("lifecycle %s: every sound fades out", kind)
             self.mixer.stop(bus="sfx", fade_s=RESTART_FADE_S)
         if self.music is not None:
+            self._music_hand = False  # a restart: the story's scene again
             self.music.stop(RESTART_FADE_S, f"lifecycle {kind}")
             self.schedule_music_catch_up(kind, delay=MUSIC_CATCH_UP_DELAY_S)
 
     # -- the soundtrack's scene (wave 38, C3) ------------------------------------------
 
-    def music_scene(self, scene: str, why: str) -> bool:
+    def music_scene(self, scene: str, why: str, *, hand: bool = False) -> bool:
         """A live scene (a feed cue, MQTT): it wins over a catch-up in flight.
+        `hand` (MQTT's stop / scene) also holds it against later feed
+        catch-ups; a cue (`hand=False`) hands the scene back to the story.
         → False for a scene the soundtrack does not define (logged once)."""
         if self.music is None:
             return False
@@ -1142,6 +1149,7 @@ class AudioRouter:
             self.music.set_scene(scene, why)  # logs it once
             return False
         self._music_live += 1
+        self._music_hand = hand
         return self.music.set_scene(scene, why)
 
     def on_music(self, doc: Any) -> str | None:
@@ -1150,13 +1158,13 @@ class AudioRouter:
             return None
         by = str(doc.get("by") or "mqtt")
         if doc.get("stop") is True:
-            return "stop" if self.music_scene(OFF, f"{by}: stop") else None
+            return "stop" if self.music_scene(OFF, f"{by}: stop", hand=True) else None
         if doc.get("next") is True:
             log.info("🎵 soundtrack: %s skips to the next track (%d bed(s))", by, self.music.next())
             return "next"
         scene = doc.get("scene")
         if isinstance(scene, str) and scene.strip():
-            return "scene" if self.music_scene(scene.strip(), by) else None
+            return "scene" if self.music_scene(scene.strip(), by, hand=True) else None
         return None
 
     def schedule_music_catch_up(self, why: str, delay: float = 0.0) -> None:
@@ -1188,6 +1196,9 @@ class AudioRouter:
         if delay > 0:
             await asyncio.sleep(delay)
         if self.music is None or self._mod is None:
+            return None
+        if self._music_hand and why not in RESTART_KINDS:
+            log.info("🎵 soundtrack catch-up (%s) skipped: a scene chosen by hand holds (until the next music cue)", why)
             return None
         seen = self._music_live
         answer: Any = None

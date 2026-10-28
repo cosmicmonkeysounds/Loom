@@ -1310,6 +1310,34 @@ def test_the_catch_up_reads_night_music_and_a_live_cue_during_the_read_wins(tmp_
     assert run(go()) == ["two", "off", "off", "off", "off", (None, "one"), (None, "one")]
 
 
+def test_a_hand_stop_or_scene_over_mqtt_survives_a_feed_reconnect_catch_up(tmp_path):
+    # C3's ranks: MQTT (2) beats the catch-up (3). A Wi-Fi blip reopens the
+    # feed and catches up; it must not undo the crew's `stagehand music stop`.
+    async def go():
+        r = with_house(music_router(tmp_path))
+        r.apply(answer("v1"))
+        r.loop = asyncio.get_running_loop()
+        r._mod = StateMod({"music": "one"})
+        r.on_sim({"type": "directive", "verb": "cue", "args": "music_one"})
+        r.on_music({"stop": True, "by": "cli"})
+        stopped = (await r.music_catch_up("feed"), r.music.scene)
+        r.on_music({"scene": "two", "by": "cli"})
+        picked = (await r.music_catch_up("feed"), r.music.scene)
+        # The next live cue hands the scene back to the story.
+        r.on_sim({"type": "directive", "verb": "cue", "args": "music_two"})
+        r.music.set_scene("off")
+        story = (await r.music_catch_up("feed"), r.music.scene)
+        # A story restart does too, even after a hand stop.
+        r.on_music({"stop": True})
+        r.on_lifecycle({"kind": "reset"})
+        restart = (await r.music_catch_up("reset"), r.music.scene)
+        return stopped, picked, story, restart
+
+    stopped, picked, story, restart = run(go())
+    assert stopped == (None, "off") and picked == (None, "two")
+    assert story == ("one", "one") and restart == ("one", "one")
+
+
 def test_a_restart_fades_the_beds_and_catches_up_two_seconds_later(tmp_path, monkeypatch):
     import stagehand.audio.module as module
 
@@ -1406,6 +1434,13 @@ def test_check_lists_the_playlists_and_warns_per_c3(tmp_path):
     assert "music: no file for the track(s) dance_song, ghost_track" in warnings
     lines = "\n".join(r.describe())
     assert "music    : " in lines and "  a            1 file(s)" in lines and "  empty        0 file(s)" in lines
+
+
+def test_check_says_a_missing_sounds_dir_once_not_again_for_the_tracks(tmp_path):
+    r = music_router(tmp_path, sounds_dir=str(tmp_path / "nowhere"), config_file=_local(tmp_path), house_file=None)
+    warnings = r.warnings()
+    assert any("does not exist" in w and "nowhere" in w for w in warnings)
+    assert not any("no file for the track(s)" in w for w in warnings)
 
 
 def test_the_run_loop_catches_up_on_start_and_ticks_the_beds(tmp_path):
