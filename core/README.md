@@ -382,7 +382,7 @@ token or the owning author's session.
 | Screens | `GET /api/screen/state`, `/api/mod/screen/{terminals,voice,identify}`, `/api/mod/tts` | `routes/screen.ts`, `tts.ts` |
 | House sound | `/api/mod/audio{,/project,/test,/stop,/announce,/play,/report}` | `audio.ts` (`audio.json`); wave 25: `play` (one sound / announcement, hosts too) and the router's `report` (acks + health, memory only) |
 | House desk | `GET /api/mod/desk[?after=&wait=]`, `POST /api/mod/desk{,/project,/go,/standby,/stop,/check,/check/reset}` | `desk.ts` (`desk.json`, wave 25); hosts reach the GET, `go`, `standby`, `stop`, `check`; the contract is [`docs/loom-house-desk.md`](../docs/loom-house-desk.md) |
-| House lights | `/api/mod/lights{,/project,/test,/devices,/pair}` | `lights.ts` (`lights.json`) |
+| House lights | `/api/mod/lights{,/project,/test,/devices,/pair,/shown}` (wave 39: `presence` + the `presence=<seq>` cursor on the GET) | `lights.ts` (`lights.json`), `lights-shown.ts` (the games' `lights` frame) |
 | Web Push | `/api/push/{config,subscribe,unsubscribe,visible}`, `/api/mod/push/status`, `/api/guest/homescreen` | `push.ts`, `routes/k31.ts`, `routes/k31b.ts` |
 | Process | `GET /api/health`, `GET /api/landing`, `/api/qr` | `boot.ts`, `server.ts` |
 

@@ -669,6 +669,54 @@ version, and both map variants share one physical house. Never name it
   rides the GET for 60 s so the module sends it). Tests, pairs and devices
   are memory only.
 
+#### Presence: a program pulses the light it walks under (wave 39)
+
+`lights.json` `presence {enabled?, to?, radius?, effect?}` (`@loom/house`
+`presenceSettings`: on, `to: ["everywhere"]`, `radius` 1.6 m, `effect:
+"breathe"` by default; the show's is `to: ["rooms"]`) says which fixtures
+a program in the reinstallation games may pulse; a **safety** fixture never
+does (`presenceFixtures`).
+
+- **The server judges it** (`core/server/spatial.ts`). On every pose flush
+  (100 ms, moved or not), a session leaving, a map swap and a story reset,
+  `SpatialHub` runs `presenceStep` over its joined sessions (a director's
+  `force` walk too): `{session, room: its presence room, p: its feet}`. A
+  fixture is under a program when its `room` is the program's presence room
+  and its plan distance is ≤ `radius` (+ `LIGHT_PRESENCE_LEAVE_M` 0.6 for
+  one already under it); it stays pulsed `LIGHT_PRESENCE_HOLD_MS` 4 s after
+  the last one left (the flush loop keeps running for that). A story reset
+  is a cut: no pulse is held over it. The hub reads the config through an
+  injected getter and tells the runtime when the pulsed **set** changes;
+  memory only.
+- **The module hears it** on its long poll: `LightsView.presence = {seq,
+  fixtures: [{fixture, since}]}` (`since` server ms, the config's file
+  order). `seq` moves on with every change of the set (never for the same
+  set with new times); `GET /api/mod/lights?…&presence=<seq>` answers at
+  once when the server's seq is not `<seq>` (a newer set, or a cursor from
+  before a restart) and a parked poll wakes on a change. An older module
+  sends no cursor and ignores the field. The module plays the firmware
+  effect (one command on arrival, one every `LIGHT_PRESENCE_REPEAT_MS` 12 s,
+  `finish_effect` on leaving; `docs/loom-show-control.md`).
+- **What the fixtures show**: `POST /api/mod/lights/shown {fixtures: {[id]:
+  LightState}}` (a mod token, like `/devices`; never on the host allowlist)
+  is the module's model of every fixture, every command it published merged
+  like `mergeLightState`, replacing the last report whole. An id the config
+  in force lacks, or a state `lightStateProblems` refuses, is dropped (not
+  the post); 400 only when `fixtures` is not an object; `{ok: true}`;
+  memory only. The games' source (§2.2 `lights`) is `house` while the
+  module is online (`LightsView.module.online`) and its report is ≤
+  `LIGHTS_SHOWN_FRESH_MS` 30 s old, else `estimate`.
+- **The estimate** (`core/server/lights-shown.ts` `LightsEstimate`): per
+  fixture, the last look or test that reached it, replayed with `planLook`
+  + `previewAt` at `now − start` from what the fixture showed when it
+  started (a `then: "restore"` look gives that back). It hears a live
+  batch's `cue X` naming a look (never a journal replay), every
+  `/api/mod/lights/test` with a `look` or a `{fixture, set}` (a desk cue's
+  too; an identify is ignored), and the config's `boot` look on first use
+  and after every story restart (reset, reload, go live). A fixture nothing
+  reached shows `LAMP_SETTLED`. Memory only: a server restart starts again
+  from the boot look.
+
 ## 2. Server — `core/server/spatial.ts`
 
 A transport-free **`SpatialHub`** (the `AgentHub` pattern: injected `now`,
@@ -746,6 +794,36 @@ found last (when another spot remains).
 | `reset` | `{kind}` — the story restarted; every session is over |
 | `king` | `KingState & {by}` — the shared King changed: a hit (`by` = the hitter's display name), a director's edit or the story's restore (`by: null`), a map swap. Sent **only when** `id:hp/max` differs from the last one sent; the runtime calls `syncKing()` after every committed mutation, so a story `set Night.king_hp = …` reaches the games too |
 | `avatar` | `{session, avatar}` — a live player's profile picture changed (their own pick on `/api/guest/picture`, a Wikipedia lookup that landed), one frame per live session of that guest |
+| `lights` | `GameLights` (wave 39, `@loom/house` `lights-presence.ts`; read it with `gameLightsOf`) — what every real house light shows now, below |
+
+**The `lights` frame** (wave 39): `{at, source: "house" | "estimate",
+pulse: "breathe" | "blink" | "okay" | null, lights: GameLight[]}` with
+`GameLight = {id, room, pos: {x, y, z}, kind, color: "#rrggbb", level:
+0..1, effect, pulse, safety}`. `lights` is every fixture of the config in
+force whose room is on the map in force, in file order (absolute house
+metres, like `lights.json`); `color` is the colour at full brightness and
+`level` its brightness (OFF is 0; rounded to 0.001); `pulse` is true for a
+fixture a program is under (§1.4 presence) and the top-level `pulse` is
+the presence effect, null when presence is off. `source` says where the
+states come from: `house` is the lights module's own report (a fixture
+the report lacks is estimated), `estimate` the server's replay (§1.4).
+It is sent:
+
+- to each new subscriber right after its `hello`, **only when it has
+  lights** (a config with nothing placed on this map sends no frame, so a
+  game draws the house as it always did);
+- to every subscriber on a change (a `shown` report, a presence change, a
+  story cue, a test, a config save or snapshot, a map swap, the module
+  coming or going), at most once per `GAME_LIGHTS_MIN_MS` 250 ms with the
+  trailing edge kept, and only when it differs from the last one sent
+  (`at` aside);
+- every 250 ms while the source is `estimate` and a fade, a repeat, an
+  effect or a loop is running, again only when it changed (a settled house
+  sends nothing); and once when a `house` report goes stale by itself.
+
+Once a stream has had lights, a change that leaves none sends `lights:
+[]`: a game treats that like no frame. No timer runs while the stream has
+no subscriber, and `dispose()` stops them. Older clients ignore the frame.
 
 `PlayerState = {session, guest, name, world, device, p, yaw, pitch, room,
 floor, duck, found, startedAt, avatar}`; `room`/`floor` are computed
