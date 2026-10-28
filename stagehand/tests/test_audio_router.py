@@ -1443,6 +1443,24 @@ def test_check_says_a_missing_sounds_dir_once_not_again_for_the_tracks(tmp_path)
     assert not any("no file for the track(s)" in w for w in warnings)
 
 
+def test_check_flags_an_mp3_that_would_stop_at_its_header_guess(tmp_path, monkeypatch):
+    import stagehand.audio.module as module
+
+    asked: list[str] = []
+
+    def fake(path):
+        asked.append(Path(path).name)
+        return f"{Path(path).name}: a VBR MP3 without a length header" if Path(path).name in ("a1.mp3", "zip.mp3") else None
+
+    monkeypatch.setattr(module, "mp3_length_problem", fake)
+    r = music_router(tmp_path, config_file=_local(tmp_path), house_file=None)
+    (tmp_path / "sounds" / "zip.mp3").write_bytes(b"")
+    warnings = r.warnings()
+    assert "audio: music: playlist a: a1.mp3: a VBR MP3 without a length header" in warnings
+    assert "audio: zip.mp3: a VBR MP3 without a length header" in warnings
+    assert asked.count("a1.mp3") == 1 and "b1.mp3" in asked
+
+
 def test_the_run_loop_catches_up_on_start_and_ticks_the_beds(tmp_path):
     class FeedMod(StateMod):
         def feed_url(self, client_id="stagehand"):

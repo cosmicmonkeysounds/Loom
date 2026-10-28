@@ -104,6 +104,7 @@ from ..show.directives import parse_directive, unquote
 from .config import AudioConfig, parse_audio_section
 from .engine import Engine, device_name, enable_host_api, layout_problem, probe, with_host_api
 from .mixer import Mixer, SidechainSource, lin_to_db
+from .mp3len import length_problem as mp3_length_problem
 from .routing import (
     EVERYWHERE,
     AudioDoc,
@@ -504,6 +505,10 @@ class AudioRouter:
                     out.append(f"audio: {len(held)} placeholder sound(s) still in sounds_dir — replace them with the real files: {', '.join(held)}")
                 # Every file in the folder, not just the cues: `sound X` plays any name.
                 names |= {p.stem for p in Path(self.cfg.sounds_dir).iterdir() if p.suffix.lower() in EXTENSIONS}
+                for f in sorted(Path(self.cfg.sounds_dir).iterdir()):
+                    problem = mp3_length_problem(f) if f.suffix.lower() == ".mp3" else None
+                    if problem is not None:
+                        out.append(f"audio: {problem}")
                 off = bank.off_rate(names)
                 if off:
                     listed = ", ".join(f"{n} ({r} Hz)" for n, r in off)
@@ -578,6 +583,15 @@ class AudioRouter:
             missing = sorted(n for n in st.tracks if bank.find(n) is None)
             if missing:
                 out.append(f"music: no file for the track(s) {', '.join(missing)} in {self.cfg.sounds_dir}")
+        # A VBR MP3 with no length header plays only libsndfile's guess.
+        seen: set[str] = set()
+        for p in st.playlists.values():
+            for path in p.tracks():
+                if path not in seen:
+                    seen.add(path)
+                    problem = mp3_length_problem(path)
+                    if problem is not None:
+                        out.append(f"music: playlist {p.name}: {problem}")
         return out
 
     # -- config ----------------------------------------------------------------
