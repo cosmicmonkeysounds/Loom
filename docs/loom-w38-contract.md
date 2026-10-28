@@ -5,6 +5,24 @@ lanes: names, shapes and files here are binding; anything not written here is
 the lane's own choice. When code and this file disagree, fix one of them in
 the same change.
 
+**Changed in integration (2026-10-28).** The review and the integrator moved
+these; each is edited in place below.
+
+- C1.2: input 3 (the TV) has `reach: [everywhere]`, so the sub ducks under
+  Trabolta too.
+- C3: the report's bed position is camelCase `posS` (the health's own
+  `pos_s`), like `peakDb`. Built beyond the text: a hand `music stop` /
+  `scene` holds until the next live music cue; an empty or dead playlist
+  backs off 10 s; a track's `takeover` defaults to true; a bare `off:` key
+  is scene `off`.
+- C4: `sidechain.roles` gives a role its own `threshold_db` (Clippy −30, a
+  guess to set at rehearsal). The MacBook fallback is output-only.
+- C5: the story writes `cue music_<scene>` (the keyword form, like `cue
+  lights_*`); act 1 and act 2 also start out of order; a stray
+  `line_accepted` does nothing.
+- C6: one-shots are set by loudness, not peak. The TV page's own effects
+  are silent (`terminal/src/sound/bus.ts`).
+
 ## C0. What the user asked for
 
 1. **A library of synthesized SFX** (sirens, dings, dial-up tones, digital
@@ -63,7 +81,7 @@ interface AudioInput {
 | Outputs | 1 `Analog 1 — Living sub`, 2 `Analog 2 — spare`, 3/4 Kitchen L/R, 5 Hall, 6 Steam Room, 7 CPU, 8 Optical Drive, 9 `Main L — Living L`, 10 `Main R — Living R`, 11/12 Phones L/R |
 | Speakers | `living-l` out [9], `living-r` out [10], `living-sub` out [1] (room `desktop`), `kitchen-l` [3], `kitchen-r` [4], `optical-drive` [8] |
 | Zones | `living` = living-l, living-r, living-sub |
-| Inputs | ch 1 `Mic/Gtr 1 — Clippy's wireless (CueMix)`, `role: clippy`, `reach: [living]`; ch 3 `Analog 1 in — the TV (Trabolta)`, `role: trabolta` |
+| Inputs | ch 1 `Mic/Gtr 1 — Clippy's wireless (CueMix)`, `role: clippy`, `reach: [living]`; ch 3 `Analog 1 in — the TV (Trabolta)`, `role: trabolta`, `reach: [everywhere]` (he ducks every speaker, the sub included; the default reach, his route, would leave the sub out) |
 | Routes | `{in: 3, out: [3, 4, 8, 9, 10]}`: the TV everywhere but the sub. A new speaker needs its cell ticked on this row |
 | `voice.tv` | `["everywhere"]` (documentation, as before) |
 
@@ -133,11 +151,16 @@ tracks:                 # story `sound X` that take the speakers they play on
 
 - **Playlist**: `dir` (every audio file in it, non-recursive) or `files`;
   `shuffle` (default true: a Fisher–Yates order, reshuffled at each pass,
-  never the same track twice in a row across passes), `loop` (default
-  false: a one-file playlist with `loop: true` is a seamless stream loop; a
-  many-file playlist always cycles), `level_db` (added to the top level).
-  A missing or empty folder is a warning; that bed is silent.
-- **Scene**: an ordered list of `{to: targets, play: playlist | null}`.
+  never the same track twice in a row across passes; the folder is read
+  again at each pass), `loop` (default false: a one-file playlist with
+  `loop: true` is a seamless stream loop; without it a one-file playlist
+  cycles, crossfading into itself; a many-file playlist always cycles),
+  `level_db` (added to the top level). A missing or empty folder is a
+  warning; that bed is silent and tries again every 10 s (`RETRY_S`). A
+  file that plays under 1 s or fails to decode counts as dead: once a
+  whole pass is dead, the bed backs off 10 s too (logged once).
+- **Scene**: an ordered list of `{to: targets, play: playlist | null}`. A
+  bare `off:` key (YAML reads it as `false`) is the scene `off`.
   Each speaker takes the last entry that reaches it; `null` is silence. The
   speakers that share a playlist form one **bed**: one stream (stereo laid
   per speaker as today), crossfading between tracks.
@@ -150,13 +173,16 @@ tracks:                 # story `sound X` that take the speakers they play on
 - **Tracks** (`tracks:`): a story `sound X` named here plays as a *stream*
   on the `sfx` bus with `takeover: true` (C2: the beds on its outputs fall
   silent while it plays and come back after). Every `no_duck` sound of the
-  show is a track. A track may be an MP3.
+  show is a track. A track may be an MP3. `takeover` defaults to true;
+  `takeover: false` streams the track without taking the speakers.
 - **Scene sources**, first one that applies wins at each moment:
   1. a live `cue music_<scene>` on the mod feed (`sim` directive `cue`,
      first word `music_<scene>`; an unknown scene is logged once and kept
      as nothing);
   2. MQTT `show/audio/music {"scene": "<scene>"}` (or `{"next": true}`:
-     skip the current track on every bed; `{"stop": true}`: scene `off`);
+     skip the current track on every bed; `{"stop": true}`: scene `off`).
+     A stop or scene by hand **holds**: later feed catch-ups skip it until
+     the next live `cue music_*` or a story restart;
   3. **the catch-up**: `night.music` from `GET /api/screen/state` (as the
      lights job reads `night.lights`), on module start, on a feed
      reconnect, and 2 s after a lifecycle restart (`reset`, `reload`,
@@ -165,8 +191,10 @@ tracks:                 # story `sound X` that take the speakers they play on
 - **Stop house sounds** (`stop_all`) fades the beds out too; the next scene
   cue (or a `{"scene"}` MQTT message, or a catch-up) brings them back.
 - **Health / report**: `music: {scene, beds: [{playlist, speakers, track,
-  pos_s}], missing: [playlists with no file]}`, plus `inputs`, `sources`,
-  `underruns` (C2). The server's `AudioHealth` accepts these optional fields
+  posS}], missing: [playlists with no file]}` in the report (the health's
+  own dict and `health/audio/stats` say `pos_s`; the report is camelCase,
+  like `peakDb`), plus `inputs`, `sources`, `underruns` (C2). A router
+  with no soundtrack sends no `music`. The server's `AudioHealth` accepts these optional fields
   and `showctl doctor` prints the scene and the input levels.
 - **CLI**: `stagehand music scene <name> | next | stop | status --config …`
   (MQTT like `sounds play`; `status` reads the retained
@@ -185,8 +213,25 @@ audio:
     trabolta: {music: -18, sfx: -8}
     announce: {music: -15, sfx: -12}
     clippy:   {music: -12}
-  sidechain: {threshold_db: -45, attack_s: 0.04, hold_s: 0.8, release_s: 1.2}
+  sidechain:
+    threshold_db: -45
+    attack_s: 0.04
+    hold_s: 0.8
+    release_s: 1.2
+    roles: {clippy: {threshold_db: -30}}   # a role's own threshold
 ```
+
+- `sidechain.roles.<role>.threshold_db` overrides the threshold for one
+  role. Clippy's open lav hears the party, so the show sets −30 dBFS (the
+  TV's clean line stays at −45). The −30 is a guess: at rehearsal, play
+  the music at party level with the lav idle, read input 1 in `stagehand
+  music status`, and set it about 6 dB over that.
+- With no `priority:` key the default is `{announce: {music: -15, sfx:
+  -12}}`.
+- **The MacBook fallback is output-only** (`trapped.macbook.yaml`
+  `passthrough: false`): a launchd job gets no microphone, so the TV is not
+  routed and nothing ducks under Trabolta or Clippy there; the
+  announcements and the takeover tracks still duck.
 
 `duck_db` is removed (rename, never deprecate: a YAML that still has it is a
 config error naming `priority.announce.sfx`). `duck_hold_s` stays (the
@@ -195,8 +240,9 @@ external announcer's hold). `no_duck` stays.
 ## C5. The story (`core/examples/trapped-in-the-internet/`)
 
 - A new mirror `Night.music` (declared with the other `Night.*` vars),
-  and at each act change both `do cue music_<scene>` and
-  `set Night.music = "<scene>"`, the lights pattern:
+  and at each act change both `cue music_<scene>` (the keyword form every
+  `cue lights_*` uses; the same `cue` directive) and
+  `set Night.music = "<scene>"` at the same indent, the lights pattern:
 
 | Scene | Where |
 |---|---|
@@ -209,6 +255,14 @@ external announcer's hold). `no_duck` stays.
 | `off` | every rule that ends the night (`Night.ended = true`) |
 | `ceremony` | `start_the_ceremony` |
 | `afterparty` | `resurrection` |
+
+- **Out of order.** `act_1` also starts at `start_the_bingo` (Bingo
+  before the Desktop call) and `act_2` at `truth_pong` (Truth Pong before
+  the five-minute warning), each only while the music is still on the
+  scene before it (`doors`, `malware`).
+- **`line_accepted`** has its ROLE caller's guard (`Night.phase ==
+  "grok_prom"` and the night not ended): a stray press after an ending
+  does nothing and says nothing (no new host text).
 
 - The server's `ScreenNight` gains `music: string | null` (from
   `Night.music`, as `lights`).
@@ -231,9 +285,12 @@ external announcer's hold). `no_duck` stays.
   V.8 / V.34 handshake character, fax CNG) are fine.
 - Deterministic: a seeded `np.random.Generator` per sound (seed from the
   name), so a re-render is byte-identical.
-- Render: 48 kHz, 16-bit, mono (an ambient loop may be stereo), peak −1
-  dBFS for one-shots, ambient loops ≈ −18 dBFS RMS and **seamless** (the
-  last sample flows into the first). RIFF INFO `ICMT = "loom-sfx v1 —
+- Render: 48 kHz, 16-bit, mono (an ambient loop may be stereo). One-shots
+  are set by loudness: the loudest 400 ms window at −16 dBFS RMS
+  (`ONESHOT_LOUD_DB`; a `Spec.level_db` overrides it), the peak capped at
+  −1 dBFS by turning the whole sound down (never by clipping), so a spiky
+  sound may land under target. Ambient loops ≈ −18 dBFS RMS (or their
+  `level_db`) and **seamless** (the last sample flows into the first). RIFF INFO `ICMT = "loom-sfx v1 —
   <note>"` (not the placeholder tag, so the router treats it as real).
 - `stagehand sounds library [--out DIR] [--only a,b] [--list] [--story]`:
   writes `media/library/<category>/<name>.wav` (ambient loops in
@@ -243,6 +300,11 @@ external announcer's hold). `no_duck` stays.
   placeholder or an older `loom-sfx` file, never another real file.
 - The ambient loops include one per `LOCATION … ambient:` key in
   `main.loom` (`dryer-tumble` is the Fan Closet's).
+
+- **The TV page's own effects are silent** (`terminal/src/sound/bus.ts`
+  `VIEW_VOLUME.tv = 0`). Its sound is cabled into input 3 as Trabolta's
+  channel, so an accent there would play on every house speaker and duck
+  the music like his voice.
 
 ## C7. Out of scope (wave 38)
 
