@@ -11,6 +11,7 @@
 //! restart; passes it reads while a card is up are dropped, and the pass
 //! that was just closed is ignored for a moment (`closedGate`, kept by the
 //! booth across scanner openings), so closing a card never re-opens it.
+//! While it is open the pop-outs are quiet (`PopOutQuiet`, C4).
 
 import { showClockOf } from "../show-clock.ts";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -24,7 +25,7 @@ import { Icon } from "../chrome/icons.tsx";
 import { ConfrontScreen } from "./confront.tsx";
 import { unmarkIdOf } from "./card.tsx";
 import { confrontFor, type Confront } from "./popouts/model.ts";
-import { PopOutDock } from "./popouts/rung.ts";
+import { PopOutQuiet } from "./popouts/rung.ts";
 import { looseWanted, wantedOf } from "./wire.ts";
 
 /** How long a just-closed card's pass is ignored by the camera. */
@@ -211,8 +212,10 @@ export function ScannerScreen({
       label={card !== null ? `${name}'s card` : "Scanner"}
       onClose={leave}
       tone={card?.confront !== undefined ? "alarm" : undefined}
-      dock={card === null}
+      dock={false}
     >
+      {/* Wave 37 (C4): face to face, nothing floats: what arrives waits until × (camera included). */}
+      <PopOutQuiet />
       <div className={`booth-scan ${card !== null ? "behind" : ""}`} ref={scanBox} aria-hidden={card !== null || undefined}>
         <div className={`booth-cam ${cam}`}>
           {live && !problem && <CameraScanner onCode={onCode} onState={setCam} />}
@@ -235,7 +238,6 @@ export function ScannerScreen({
       {card !== null && card.confront !== undefined && (
         <div className="booth-card">
           <div className="booth-card-scroll">
-            <PopOutDock />
             <ConfrontScreen
               key={card.id}
               c={card.confront}

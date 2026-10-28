@@ -332,3 +332,18 @@ describe("C14: Clippy's 🎱 opens PLAYER SELECT directly", () => {
     expect(src("booth/cue-bar.tsx")).toContain("onFired?.(Date.now());");
   });
 });
+
+describe("wave 37 wiring (C4): face to face, nothing floats", () => {
+  it("the scanner and the card mount PopOutQuiet, never PopOutDock; PLAYER SELECT is quiet", () => {
+    for (const f of ["booth/scanner.tsx", "booth/card.tsx"]) {
+      expect(src(f), f).not.toContain("PopOutDock");
+      expect(src(f), f).toContain("<PopOutQuiet />");
+    }
+    // The scanner's quiet scope covers the camera too, and its layer never docks.
+    expect(src("booth/scanner.tsx")).toContain("dock={false}");
+    expect(src("booth/scanner.tsx")).toMatch(/<PopOutQuiet \/>\s*<div className=\{`booth-scan /u);
+    expect(src("booth/app.tsx")).toMatch(/<PopOutQuiet \/>\s*<PlayerSelect /u);
+    // The board, the door, rows and Waiting keep their dock.
+    expect(src("booth/layer.tsx")).toContain("{dock && <PopOutDock />}");
+  });
+});

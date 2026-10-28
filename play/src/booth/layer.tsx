@@ -5,7 +5,8 @@
 //! does), and focus goes back where it was on close. A sheet opened inside
 //! it (the card's "Share lore…") takes Escape first. Every one is a busy
 //! surface for the moments layer (no dialog or blue screen covers it).
-//! Wave 18: a waiting pop-out docks at the top of the body (`PopOutDock`).
+//! Wave 18: a waiting pop-out docks at the top of the body (`PopOutDock`);
+//! the scanner, a card and PLAYER SELECT mount `PopOutQuiet` instead (wave 37, C4).
 
 import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { usePlayHost } from "../host.ts";

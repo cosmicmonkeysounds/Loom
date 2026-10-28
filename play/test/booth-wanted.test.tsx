@@ -141,15 +141,16 @@ describe("the confrontation (§4.3)", () => {
   });
 });
 
-describe("the pop-out dock on a card (§2.2 rule 6)", () => {
+describe("the pop-outs on a card (§2.2 rule 6; wave 37 C4: quiet, never docked)", () => {
   const spec: PopOutSpec = { key: "wanted:icq", glyph: "🚨", title: "WANTED", body: "x", guest: { id: "icq", name: "ICQ", location: "The Tube" }, actions: [], tone: "alarm", sticky: true, priority: 90, at: 1 };
-  it("the dock is the first child of .booth-card-scroll, before the face", () => {
+  it("the quiet scope is in .booth-card-scroll, before the face; no dock", () => {
     const src = readFileSync(join(__dirname, "../src/booth/card.tsx"), "utf8");
     const scroll = src.indexOf('className="booth-card-scroll"');
     expect(scroll).toBeGreaterThan(-1);
     const after = src.slice(scroll);
-    expect(after.indexOf("<PopOutDock />")).toBeGreaterThan(-1);
-    expect(after.indexOf("<PopOutDock />")).toBeLessThan(after.indexOf("booth-card-foot"));
+    expect(after.indexOf("<PopOutQuiet />")).toBeGreaterThan(-1);
+    expect(after.indexOf("<PopOutQuiet />")).toBeLessThan(after.indexOf("booth-card-foot"));
+    expect(src).not.toContain("PopOutDock");
   });
   it("a scope's seed lands in that booth's store (the strip's words)", () => {
     resetPopOutStores();

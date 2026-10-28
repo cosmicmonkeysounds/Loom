@@ -23,7 +23,7 @@ import { Icon } from "../chrome/icons.tsx";
 import { BoothIcon } from "./icons.tsx";
 import { ConfrontScreen } from "./confront.tsx";
 import { confrontFor, leadingGlyph, type Confront } from "./popouts/model.ts";
-import { PopOutDock } from "./popouts/rung.ts";
+import { PopOutQuiet } from "./popouts/rung.ts";
 import { WantedBanner } from "./wanted/poster.tsx";
 import { isPlayer, looseWanted, wantedOf } from "./wire.ts";
 
@@ -285,7 +285,7 @@ export function GuestCardBody({
     return (
       <div className="booth-card">
         <div className="booth-card-scroll">
-          <PopOutDock />
+          <PopOutQuiet />
           <ConfrontScreen
             c={confront.c}
             me={character}
@@ -328,8 +328,8 @@ export function GuestCardBody({
   return (
     <div className="booth-card">
       <div className="booth-card-scroll">
-        {/* Wave 18 (§2.2 rule 6): a waiting pop-out docks here, never over the face. */}
-        <PopOutDock />
+        {/* Wave 37 (C4): face to face, nothing floats: a pop-out waits (unshown, untimed, silent) until the card closes. */}
+        <PopOutQuiet />
         <div className="booth-card-who">
           <PersonAvatar name={name} size="md" />
           <div className="booth-card-name">

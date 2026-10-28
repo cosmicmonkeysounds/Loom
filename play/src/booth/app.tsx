@@ -72,7 +72,7 @@ import { boardRowCount, nowRow } from "./now-card.tsx";
 import { PlayerSelect } from "./pick/select.tsx";
 import { RowsWindow } from "./pick/rows.tsx";
 import { boothPopOutAdapter, coveredElsewhere, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
-import { PopOutHost, PopOutScope, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
+import { PopOutHost, PopOutQuiet, PopOutScope, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
 import { useSystemBack } from "../back-gesture.ts";
 import { bindDraft, useBoothPopOuts, type BoothOpeners } from "./popouts/use-booth-popouts.ts";
 import { WaitingWindow } from "./waiting.tsx";
@@ -733,7 +733,11 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               const ints = s.view?.interactions ?? [];
               const press = (id: string, guest: string) => s.act(id, guest);
               return pickLayout(layer.opened, ints) === "steps" ? (
-                <PlayerSelect objective={o} steps={wizardSteps(layer.opened, ints)} guests={guests} press={press} player={player} ended={live === undefined} seed={s.lastPressedOn} onClose={closeLayer} onLater={closeLayer} />
+                <>
+                  {/* Wave 37 (C4): nothing docks inside PLAYER SELECT (NEW MISSION of the same objective included). */}
+                  <PopOutQuiet />
+                  <PlayerSelect objective={o} steps={wizardSteps(layer.opened, ints)} guests={guests} press={press} player={player} ended={live === undefined} seed={s.lastPressedOn} onClose={closeLayer} onLater={closeLayer} />
+                </>
               ) : (
                 <RowsWindow objective={live} opened={layer.opened} interactions={ints} guests={guests} placeTitle={placeTitle} wanted={wanted !== null ? loose : null} press={press} onCard={(id) => openCard(id)} onBoard={openBoard} onClose={closeLayer} />
               );
