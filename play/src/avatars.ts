@@ -101,6 +101,46 @@ export function avatarUrl(eventId: string, key: string): string {
   return `/e/${encodeURIComponent(eventId)}/api/avatar/${encodeURIComponent(key)}`;
 }
 
+/** When a picture that failed to load is asked for again, in ms after each
+ *  failure (wave 36). A failure on a phone is often a moment, not the
+ *  picture: a Wi-Fi hiccup, or the server still fetching it from
+ *  Wikipedia. After the last retry the tile keeps its initials. */
+export const PICTURE_RETRY_MS: readonly number[] = [2000, 8000];
+
+/** One picture's tries so far: how many loads failed, and whether a
+ *  retry is waiting its turn. */
+export interface PictureTries {
+  fails: number;
+  waiting: boolean;
+}
+
+export const PICTURE_START: PictureTries = { fails: 0, waiting: false };
+
+/** A load failed: wait for the next retry, or give up after the last. */
+export function pictureFailed(t: PictureTries): PictureTries {
+  const fails = t.fails + 1;
+  return { fails, waiting: fails <= PICTURE_RETRY_MS.length };
+}
+
+/** The retry's wait is over: load again. */
+export function pictureRetry(t: PictureTries): PictureTries {
+  return { ...t, waiting: false };
+}
+
+/** Has this picture given up for good? */
+export function pictureGaveUp(t: PictureTries): boolean {
+  return t.fails > PICTURE_RETRY_MS.length;
+}
+
+/** The URL to load now, or null (waiting, or given up: the initials show).
+ *  A retry carries `?try=n`, so a browser that remembered the failure
+ *  (Safari keeps a broken image for the page's life) asks the server
+ *  again; the server ignores the query. */
+export function pictureUrl(src: string, t: PictureTries): string | null {
+  if (t.waiting || pictureGaveUp(t)) return null;
+  return t.fails === 0 ? src : `${src}${src.includes("?") ? "&" : "?"}try=${t.fails}`;
+}
+
 /** Everyone's pictures, ready to look up by (any spelling of) a name. */
 export interface AvatarLookup {
   /** The picture URL for a display name, or null when they have none. */

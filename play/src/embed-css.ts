@@ -33,6 +33,7 @@ export function scopeCss(css: string): string {
       .replace(/:root\b/gu, ".play-root")
       .replace(/(^|[}\n])\s*html,\s*body,\s*#root\s*\{/gu, "$1.play-root {")
       .replace(/(^|[}\n])\s*body\s*\{/gu, "$1.play-root {")
+      .replace(/(^|[}\n])\s*html\s*\{/gu, "$1.play-root {")
       .replace(/(\d*\.?\d+)[dsl]?vh\b/gu, "$1cqh")
       .replace(/(\d*\.?\d+)[dsl]?vw\b/gu, "$1cqw")
       .replace(/@media ?\((min|max)-(height|width):/gu, "@container play ($1-$2:")
