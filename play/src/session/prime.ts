@@ -314,6 +314,23 @@ export interface PrimeSession {
   roomLinkPending: boolean;
 }
 
+/**
+ * Wave 37 fix round: remember the guest a button was pressed on (`lastPressedOn`,
+ * PLAYER SELECT's SAME row) at the press, not at the reply. The undo puts the
+ * old one back (a refusal, a failed POST); it is a no-op once a newer press
+ * of the same button has taken its place.
+ */
+export function notePress(map: Map<string, string>, name: string, guest: string | null | undefined): () => void {
+  if (guest == null || guest === "") return () => {};
+  const was = map.get(name);
+  map.set(name, guest);
+  return () => {
+    if (map.get(name) !== guest) return;
+    if (was === undefined) map.delete(name);
+    else map.set(name, was);
+  };
+}
+
 export function usePrimeSession(): PrimeSession {
   const host = usePlayHost();
   const { load, save, drop } = host.storage;
@@ -485,11 +502,21 @@ export function usePrimeSession(): PrimeSession {
   );
   const pressedOn = useRef(new Map<string, string>());
   const act = useCallback(
-    (name: string, guest?: string | null) =>
-      post<PrimeActResult>("/api/prime/act", guest != null && guest !== "" ? { name, guest } : { name }, auth!.token).then((r) => {
-        if (r.refused !== true && guest != null && guest !== "") pressedOn.current.set(name, guest);
-        return r;
-      }),
+    (name: string, guest?: string | null) => {
+      // Noted before the POST: PLAYER SELECT can open on the view update the
+      // press causes, before the reply (its SAME row reads this).
+      const undo = notePress(pressedOn.current, name, guest);
+      return post<PrimeActResult>("/api/prime/act", guest != null && guest !== "" ? { name, guest } : { name }, auth!.token).then(
+        (r) => {
+          if (r.refused === true) undo();
+          return r;
+        },
+        (e: unknown) => {
+          undo();
+          throw e;
+        },
+      );
+    },
     [post, auth],
   );
   const lastPressedOn = useCallback((name: string) => pressedOn.current.get(name) ?? null, []);
