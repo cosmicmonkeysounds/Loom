@@ -1,11 +1,11 @@
-//! Where an app keeps the credits roll (wave 44, C7): eager and tiny, the
-//! guest's first load. `useCredits` is the open state and the roll this
-//! phone saw on its first view; `CreditsSlot` mounts the lazy chunk
-//! (`roll.tsx`) once the story has rolled them (`NightView.credits`). The
-//! chunk decides the auto-open (`credits-model.ts` `creditsDue`), waits
-//! behind the pass, a `!!` takeover or the glitch, fetches and rolls. A
-//! chunk that won't load is a card with the ✕ (closing it retries), never
-//! a white page.
+// Where an app keeps the credits roll (wave 44, C7): eager and tiny, the
+// guest's first load. `useCredits` is the open state and the roll this
+// phone saw on its first view; `CreditsSlot` mounts the lazy chunk
+// (`roll.tsx`) once the story has rolled them (`NightView.credits`). The
+// chunk decides the auto-open (`credits-model.ts` `creditsDue`), waits
+// behind the pass, a `!!` takeover or the glitch, fetches and rolls. A
+// chunk that won't load is a card with the ✕ (closing it retries), never
+// a white page.
 
 import { Suspense, useRef, useState } from "react";
 import type { StartItem } from "../chrome/start-menu.tsx";

@@ -1,32 +1,32 @@
-//! Push to a locked phone (K-31a — Android + booths). The server pushes `!`
-//! alerts always, and a character's DM / a booth readout only while this
-//! page says it is hidden (`core/server/push.ts`). This module is the
-//! phone's half:
-//!
-//! - **Opt-in from a tap.** Android asks for notification permission only
-//!   from a gesture, so the app shows a 🔔 "Get alerts" card (and a row in
-//!   the profile sheet); a phone that already granted it re-binds silently
-//!   on every sign-in (a story restart unbinds every guest's device).
-//! - **The service worker** is `/sw.js` (push-only, no fetch handler —
-//!   `play/public/sw.js`). It is **never registered when the app is
-//!   embedded** (the editor's Run → Players, `host.embedded`).
-//! - **Visibility.** Every `visibilitychange` (and `pagehide`) is beaconed
-//!   to `/api/push/visible` — `sendBeacon` survives the page going away,
-//!   and "the SSE stream dropped" is the wrong test for "locked".
-//! - **Off cleanly.** No VAPID keys on the server (`enabled: false`), no
-//!   Push API, or an insecure origin (plain-http LAN) → no card, nothing
-//!   registered.
-//! - **iPhones (K-31b).** iOS has no Push API outside a Home Screen app, so
-//!   an iPhone tab gets a card that says what to do instead: on iOS 16.4+
-//!   with the server's `homescreen` switch on, the Add-to-Home-Screen steps
-//!   (`ios-install` — a guest's tab first mints a one-time nonce and points
-//!   `<link rel=manifest>` at it, so the icon opens signed in as them, and
-//!   points it back at the static file when that session ends; a booth is
-//!   told to Sign out — that frees its part — and sign in from the icon);
-//!   otherwise "keep the app open, screen on" (`ios-keep-open`). Inside the Home Screen app
-//!   the Push API is there and the normal flow runs.
-//!
-//! Pure helpers first (unit-tested in `test/push.test.ts`), then the hook.
+// Push to a locked phone (K-31a — Android + booths). The server pushes `!`
+// alerts always, and a character's DM / a booth readout only while this
+// page says it is hidden (`core/server/push.ts`). This module is the
+// phone's half:
+//
+// - **Opt-in from a tap.** Android asks for notification permission only
+//   from a gesture, so the app shows a 🔔 "Get alerts" card (and a row in
+//   the profile sheet); a phone that already granted it re-binds silently
+//   on every sign-in (a story restart unbinds every guest's device).
+// - **The service worker** is `/sw.js` (push-only, no fetch handler —
+//   `play/public/sw.js`). It is **never registered when the app is
+//   embedded** (the editor's Run → Players, `host.embedded`).
+// - **Visibility.** Every `visibilitychange` (and `pagehide`) is beaconed
+//   to `/api/push/visible` — `sendBeacon` survives the page going away,
+//   and "the SSE stream dropped" is the wrong test for "locked".
+// - **Off cleanly.** No VAPID keys on the server (`enabled: false`), no
+//   Push API, or an insecure origin (plain-http LAN) → no card, nothing
+//   registered.
+// - **iPhones (K-31b).** iOS has no Push API outside a Home Screen app, so
+//   an iPhone tab gets a card that says what to do instead: on iOS 16.4+
+//   with the server's `homescreen` switch on, the Add-to-Home-Screen steps
+//   (`ios-install` — a guest's tab first mints a one-time nonce and points
+//   `<link rel=manifest>` at it, so the icon opens signed in as them, and
+//   points it back at the static file when that session ends; a booth is
+//   told to Sign out — that frees its part — and sign in from the icon);
+//   otherwise "keep the app open, screen on" (`ios-keep-open`). Inside the Home Screen app
+//   the Push API is there and the normal flow runs.
+//
+// Pure helpers first (unit-tested in `test/push.test.ts`), then the hook.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./client.ts";
