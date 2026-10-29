@@ -79,6 +79,9 @@ const FADE_IN_MS := 10
 const FADE_OUT_MS := 60
 const MIC_BUS := "VoiceMic"
 
+## How often (ms) an ungranted mic asks Android again ([method _granted]).
+const GRANT_RECHECK_MS := 1000
+
 ## The mic may be used (config `mic`); off = listen only.
 var mic_enabled := true
 var muted := false
@@ -138,6 +141,10 @@ var _asked_permission := false
 var _asked_early := false
 ## The last Android answer for RECORD_AUDIO was a refusal (cleared by a grant).
 var _refused_grant := false
+## RECORD_AUDIO seen granted: it stays so (Android kills an app whose grant
+## is revoked), so [method _granted] stops asking the OS.
+var _grant_seen := false
+var _grant_checked_ms := -1000000
 ## A grant request is out (the system dialog is up).
 var _asking_grant := false
 ## The OS refused the input itself (ERR_UNAUTHORIZED: a desktop whose
@@ -701,8 +708,17 @@ func _start_mic() -> void:
 func _granted() -> bool:
 	if permission_check.is_valid():
 		return bool(permission_check.call())
+	# The lobby asks every frame, and on a Quest each OS query logs a Java
+	# stack trace on the render thread: ask at most every GRANT_RECHECK_MS.
+	if _grant_seen:
+		return true
+	var now := Time.get_ticks_msec()
+	if now - _grant_checked_ms < GRANT_RECHECK_MS:
+		return false
+	_grant_checked_ms = now
 	for p: String in OS.get_granted_permissions():
 		if p.ends_with("RECORD_AUDIO"):
+			_grant_seen = true
 			return true
 	return false
 
@@ -713,6 +729,8 @@ func _on_permission(permission: String, granted: bool) -> void:
 		return
 	_asking_grant = false
 	_refused_grant = not granted
+	_grant_seen = _grant_seen or granted
+	_grant_checked_ms = -GRANT_RECHECK_MS
 	_log("RECORD_AUDIO %s" % ("granted" if granted else "refused"))
 	if mic_state != "asking":
 		return
