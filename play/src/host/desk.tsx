@@ -19,6 +19,8 @@
 //!   whole list a tap away. Once the doors are open a test asks first.
 //! - Try it (wave 30): tap a look or a story sound to play it, or say a line
 //!   on the speakers. No marks; once the doors are open each one asks first.
+//! - 🎚 Mixer (wave 40, `mixer.tsx`), folded under Setup: the house's live
+//!   balance and the soundtrack's transport, polled only while open.
 //!
 //! The view is a long poll (`GET /api/mod/desk?after=<rev>&wait=25`) with
 //! the booth's token, parked while the page is hidden (`startPoll`).
@@ -31,6 +33,7 @@ import type { PrimeSession } from "../session/prime.ts";
 import { hostCalls, type HostCalls } from "./api.ts";
 import { browserPollDeps, eventBase, fetchHostPost, type HostAuth } from "./client.ts";
 import { ActButton, ConfirmButton, HostEmpty, failText } from "./kit.tsx";
+import { MixerSection } from "./mixer.tsx";
 import {
   DESK_POLL_TIMEOUT_MS,
   DESK_REPOLL_MS,
@@ -154,11 +157,11 @@ export function DeskWindow({ session }: DeskWindowProps) {
       </div>
     );
   }
-  return <DeskBody view={d.view} calls={calls} client={d} me={auth?.character ?? "you"} />;
+  return <DeskBody view={d.view} calls={calls} client={d} me={auth?.character ?? "you"} mixer={token !== null && eventId !== null ? { token, eventId } : undefined} />;
 }
 
 /** The window over one view (the tests render it with a fixture). */
-export function DeskBody({ view, calls, client, me }: { view: DeskView; calls: HostCalls; client: Pick<DeskClient, "receivedAt" | "connected" | "error" | "refresh">; me: string }) {
+export function DeskBody({ view, calls, client, me, mixer }: { view: DeskView; calls: HostCalls; client: Pick<DeskClient, "receivedAt" | "connected" | "error" | "refresh">; me: string; mixer?: HostAuth }) {
   const [note, setNote] = useState<string | null>(null);
   const [wall, setWall] = useState(() => Date.now());
   const running = view.runs.some((r) => r.state === "running");
@@ -210,6 +213,7 @@ export function DeskBody({ view, calls, client, me }: { view: DeskView; calls: H
         </p>
         <How view={view} />
         <Setup view={view} />
+        {mixer !== undefined && <MixerSection auth={mixer} calls={calls} />}
 
         <fieldset className={`host-box host-desk-standby${card.running ? " running" : ""}`} data-testid="host-desk-standby">
           <legend>STANDBY</legend>
