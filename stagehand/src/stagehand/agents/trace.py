@@ -52,7 +52,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .llm import SERVED_BY, Completion, LlmConfig
+from .llm import SERVED_BY, SERVED_MODEL, Completion, LlmConfig
 from .slots import PRIMARY
 
 log = logging.getLogger("stagehand.agents.trace")
@@ -184,6 +184,10 @@ def new_thought(
     if model is not None:
         t.model = model_info(model)
         t.engine = engine or SERVED_BY.get()
+        served = SERVED_MODEL.get() if engine is None else None
+        if served is not None and served.endpoint != model.endpoint:
+            # Moved to another engine after this one failed: where it went.
+            t.model.update(name=served.model, api=served.api, endpoint=served.endpoint)
     # What the Mind page shows (it reads the note): an overflow engine by
     # name (the primary goes unsaid, as before wave 42b), brief mode.
     extra = [x for x in ("brief" if brief else "", f"engine {t.engine}" if t.engine and t.engine != PRIMARY else "") if x]

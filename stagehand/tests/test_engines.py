@@ -623,3 +623,13 @@ def test_an_engine_on_another_api_does_not_inherit_the_character_s_extra():
     assert lan.model(base).extra == base.extra  # the same api: the character's own
     own = OverflowEngine("own", 1, {"endpoint": "https://hosted.example/v1", "api": "openai", "extra": {"top_p": 0.9}, "api_key_env": None})
     assert own.model(base).extra == {"top_p": 0.9}
+
+
+def test_a_line_moved_to_another_engine_is_traced_with_that_engine_s_endpoint(tmp_path):
+    agents, primary, over = two(tmp_path, voice={"warm_head": "off"})
+    primary.fail = "down"
+    run(agents._handle(req("r1")))
+    thought = voice_thoughts(agents)[0]
+    assert thought["engine"] == "overflow"
+    assert thought["model"]["endpoint"] == OVERFLOW["endpoint"]  # not the primary's, which never answered
+    assert thought["model"]["max_tokens"] == agents.models["Trabolta"].max_tokens  # the line's own settings

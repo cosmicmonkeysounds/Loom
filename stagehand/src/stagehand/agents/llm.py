@@ -39,6 +39,10 @@ class LlmError(RuntimeError):
 #: (`engines.EngineCall` sets it before each call; `trace.new_thought`
 #: records it). Task-local: concurrent lines never see each other's.
 SERVED_BY: ContextVar[str | None] = ContextVar("stagehand_served_by", default=None)
+#: (wave 42b) The model that call went out as (its endpoint, model, api),
+#: beside `SERVED_BY`: after a retry on another engine the thought shows
+#: where the line really went, not the engine that failed.
+SERVED_MODEL: ContextVar["LlmConfig | None"] = ContextVar("stagehand_served_model", default=None)
 #: (wave 42b) The warm head's budget: one token (the call exists for its
 #: prompt). An engine that is not `api: ollama` never gets one.
 WARM_TOKENS = 1

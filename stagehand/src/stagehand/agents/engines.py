@@ -28,7 +28,8 @@ to hand it. That function:
     **once** on another engine that is up, taking a free slot there or
     waiting for one at the front of its lane. A second failure raises,
     and the voice says the persona's fallback;
-  - records the engine (`llm.SERVED_BY`) so the thought says who served it.
+  - records the engine and the model it went out as (`llm.SERVED_BY`,
+    `SERVED_MODEL`) so the thought says who served it.
 
 `primary_only=True` (a quiet summary, a letter, a director's Rewrite or
 re-run) keeps a call on the primary: no other engine, no retry elsewhere.
@@ -43,7 +44,7 @@ from dataclasses import fields, replace
 from typing import Any
 
 from .config import AgentsConfig, OverflowEngine
-from .llm import SERVED_BY, WARM_TOKENS, Completion, LlmConfig, LlmError, LlmTruncated
+from .llm import SERVED_BY, SERVED_MODEL, WARM_TOKENS, Completion, LlmConfig, LlmError, LlmTruncated
 from .slots import NORMAL, PRIMARY, Hold, Slots
 
 log = logging.getLogger("stagehand.agents.engines")
@@ -131,6 +132,7 @@ class EngineCall:
             engine = self.engine
             call_cfg = self._rebased(cfg)
             SERVED_BY.set(engine)
+            SERVED_MODEL.set(call_cfg)
             if cfg.max_tokens == WARM_TOKENS and call_cfg.api != "ollama":
                 return Completion(content="")  # no warm head off Ollama (after a switch to an openai engine)
             try:
