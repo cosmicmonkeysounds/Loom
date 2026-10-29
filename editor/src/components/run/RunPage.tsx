@@ -4,7 +4,8 @@
 //! codes, QR, join link, performer sign-in per character), who is
 //! directing, the terminals, the house map's tent ⇄ shed switch
 //! (`HouseMapCard`, when the event has a map), the wallet (`WalletCard`, when the story has
-//! a currency), and guest lookup by pass QR. The lifecycle (pause / restart
+//! a currency), Trabolta's letters (`LettersCard`, wave 41, under Join and
+//! its Print sheet), and guest lookup by pass QR. The lifecycle (pause / restart
 //! / push draft / go live / end) lives ONCE, in the stage header — never
 //! here; the rail, the Chat decision tray, and the Inspector cover status,
 //! personas, and pending choices. Reads the cockpit contract only, so the
@@ -26,6 +27,7 @@ import { TerminalsCard } from './TerminalsCard'
 import { HouseSoundCard } from './HouseSoundCard'
 import { HouseMapCard } from './HouseMapCard'
 import { WalletCard, WalletLocalNote } from './WalletCard'
+import { LettersCard } from './LettersCard'
 
 // The Barcode Detection API isn't in the TS DOM lib; narrow shim (no `any`).
 interface BarcodeDetectorLike {
@@ -426,6 +428,7 @@ export function RunPage() {
         {server ? (
           <>
             <JoinCard />
+            <LettersCard key={run.eventId ?? ''} />
             <DirectingCard />
             <TerminalsCard />
             <HouseSoundCard />
