@@ -11,7 +11,7 @@ the show's device setup is [`../docs/trapped/kiosk.md`](../docs/trapped/kiosk.md
 ```bash
 pnpm --filter loom-terminal dev        # Vite :5175, proxies /api + /e to LOOM_SERVER (default http://localhost:7000)
 pnpm --filter loom-terminal build      # dist/ (base /terminal/)
-pnpm --filter loom-terminal test       # vitest run: 1128 tests, 90 files (test/**/*.test.ts)
+pnpm --filter loom-terminal test       # vitest run: 1166 tests, 93 files (test/**/*.test.ts)
 pnpm --filter loom-terminal typecheck  # tsc --noEmit
 pnpm --filter loom-terminal exec vitest run test/door-bridge.test.ts   # one file
 ```
@@ -48,7 +48,7 @@ play app's own `useChatStream` (imported as source) and narrows it to
 | `src/slides.ts`, `src/ScreenLayer.tsx` | the screen layer: overlay > slide > attract > base, holds, `PeekClock`, slide copy, the live Y2K clock and Trust Chart, TV mp4 slides, the glitch (`glitchLayer`, `GlitchTakeover`, `coverOf`) and the ad burst (wave 32: `burstLayer`, `isBurst`; `burst-flash.tsx` where no cutscene layer draws it) |
 | `src/Attract.tsx`, `src/attract.ts` | the asleep screen (the idle show full screen); Mystify's pure parts |
 | `src/idle-show/` | the idle show: `schedule.ts` (seeded segments; `PATTERN`, `CALM_PATTERN`), `pools.ts` (by `Night.phase`; `calm`), `field.ts` (popup lives and places, `popupCap`, `calmPace`), `ads.ts` + `art.tsx`, `popups.ts`, `storm.ts`, `gags.ts`, `savers/`, `ScanBox.tsx` + `scan-copy.ts` |
-| `src/cutscene/` | `SceneDef` (`types.ts`), `pick.ts` (which scene plays, `MomentQueue`), `clock.ts` (server time), `CutsceneLayer.tsx`, `registry.ts`, `kit/` (Win98 blocks, typewriter, particles…), `scenes/{act1,act2,act3,moments,house,heart}.tsx`, `speech-bus.ts` + `voice-clock.ts` + `voice-scenes.ts` (the TV's voice-timed scenes), `preview.tsx` (`?preview=`) |
+| `src/cutscene/` | `SceneDef` (`types.ts`), `pick.ts` (which scene plays, `MomentQueue`), `clock.ts` (server time), `CutsceneLayer.tsx`, `registry.ts`, `kit/` (Win98 blocks, typewriter, particles…), `scenes/{act1,act2,act3,moments,house,heart,credits}.tsx`, `access-bus.ts` (the app's event base + token for a scene that fetches), `credits-fetch.ts` + `credits-roll.ts` (wave 44), `speech-bus.ts` + `voice-clock.ts` + `voice-scenes.ts` (the TV's voice-timed scenes), `preview.tsx` (`?preview=`) |
 | `src/sound/` | `bus.ts` (master, effects, voices buses; `soundPlayingUntil`), `library.ts` (30 synthesised `SFX_NAMES`), `sfx()` |
 | `src/speech/` | `engine.ts` (browser → Fully → silent ladder, opt-in server voice, the queue and its pauses, `VoiceFloor`), `lexicon.ts` + `pronounce.json` (how a word is said), `split.ts`, `pick-voice.ts` (male for the character, female for announcements; macOS + Windows names), `said.ts` (`RoomSpeech` → `talk` / `said` / `sp`, `PollPacer`, the drain re-poll) |
 | `src/announce.ts` | which house announcements a terminal says, the chime |
@@ -178,6 +178,35 @@ bundle's CSS-only `burst-flash.tsx` `BurstFlash` draws a lighter one
 `screens_flicker`. `?preview=burst&t=&text=` draws it;
 `test/w32-burst.test.ts` reads `main.loom` and pins the pairing, so a
 change to the burst rule's sound needs `BURST_MOMENTS` updated.
+
+## The credits (wave 44, C8)
+
+At the very end of the night the story cues `screens_credits` (slide
+value `credits`, `CREDITS_SLIDE` in `core/src/credits.ts`, imported by
+relative path), which beats attract. `scenes/credits.tsx` is its held,
+silent scene on the TV and the walls (no speech, no sfx, no face mood):
+
+- **Fetch.** `credits-fetch.ts` asks `GET /e/<id>/api/credits` with
+  `x-loom-token` once per slide (`creditsKey(announceEpoch, seq)`; a G12
+  re-roll is a new seq). The scenes get the base and token from
+  `access-bus.ts`, which `app.tsx` sets while rendering from its config. A
+  404 is final; an error shows the fallback and is asked again
+  (`CREDITS_RETRY_MS` 5 s, `CREDITS_TRIES` 4 in all). The page's one
+  `creditsCache` holds the newest 4 rolls.
+- **Roll.** `credits-roll.ts` `rollFrame(t, creditsRollMs(rows), contentPx,
+  viewPx)`: the measured column (ResizeObserver, feature-detected) moves
+  up at one speed from `ROLL_START` of the screen until every row is gone,
+  from the slide's `at` on the server clock (a reload lands mid-roll);
+  then the end card (`endCard`: the title + `end` lines) fades in and holds
+  for the rest of the slide. The TV: a slow starfield, part beside name. A
+  wall: plainer and bigger, part above name.
+- **Reduce Motion** pages through (`creditsPages` by `PAGE_METRICS` row
+  weights, `pageFrame`: equal shares of the roll, cross-faded).
+- **Fallback.** 404 / no answer: the end card only, from
+  `CREDITS_FALLBACK_TITLE` / `CREDITS_FALLBACK_END` (*Thank you for
+  playing.*, `DRAFT w44`). A failed cutscene chunk shows `SLIDE_COPY.credits`.
+- `?preview=credits[&programs=<n>][&credits=none]` draws it over
+  `fake.ts` `fakeCredits` (made-up names; never the real crew's).
 
 ## The idle show
 
