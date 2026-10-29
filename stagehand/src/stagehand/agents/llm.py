@@ -24,6 +24,7 @@ import json
 import os
 import re
 import time
+from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -32,6 +33,15 @@ import httpx
 
 class LlmError(RuntimeError):
     pass
+
+
+#: (wave 42b) The engine the calling task's last model call went to
+#: (`engines.EngineCall` sets it before each call; `trace.new_thought`
+#: records it). Task-local: concurrent lines never see each other's.
+SERVED_BY: ContextVar[str | None] = ContextVar("stagehand_served_by", default=None)
+#: (wave 42b) The warm head's budget: one token (the call exists for its
+#: prompt). An engine that is not `api: ollama` never gets one.
+WARM_TOKENS = 1
 
 
 class LlmTruncated(LlmError):
