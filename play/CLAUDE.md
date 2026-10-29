@@ -30,7 +30,8 @@ and `pnpm --filter loom-play build && node play/scripts/first-load.mjs
 fails predeploy. The gate was 148 kB until wave 37b, which raised it by
 1 kB (about a millisecond on slow 3G) to keep two guest fixes: a late
 arrival's quiet bin (C20) and a house line echoing a big going to the
-bin (C19). With them it measures 148.08 kB. Keep new JS lazy.
+bin (C19). With them it measures 148.08 kB; master measured 148.51 kB
+before wave 44 and 148.90 kB with its credits roll. Keep new JS lazy.
 
 ## How a session works
 
@@ -103,6 +104,28 @@ windows), the Desk, the director phone and Help are lazy chunks.
 - **Me** (`guest/me.tsx`) is your picture: badges, settings. The **Recycle
   Bin** is the Notifications window (`moments/notifications.tsx`, the
   delete gags in `moments/delete-gags.ts`).
+- **The credits** (wave 44, C7; `docs/loom-w44-contract.md`). The eager
+  part is `credits/lazy.tsx` only: `useCredits` (the open state, and the
+  roll seen on the first view with a clock), `creditsStartItem` (⊞ Start's
+  `🎬 Credits` while `NightView.credits` is set: a guest's after the
+  story's buttons, a player booth's first) and `CreditsSlot`, which the
+  guest app (every branch: cutscene, locked, frame) and a player booth
+  mount once the story has rolled them. Everything else is the lazy
+  `credits/roll.tsx` chunk (+ `roll-model.ts`, `credits-model.ts`, core's
+  `credits.ts`): `CreditsHost` opens it by itself once per roll when
+  `roll` rises live (`creditsDue`: never embedded, never the first view,
+  `at` within 60 s of the story clock; the roll kept in host storage
+  `loom.credits.<eventId>`), keeps an open roll mounted but hidden (its
+  clock stopped) behind the full pass, a `!!` takeover, the glitch, or a
+  booth's scanner / card / PLAYER SELECT (`creditsShown`), and holds the
+  moments' dialogs while on screen. `CreditsRoll` fetches `GET
+  /e/:id/api/credits` once per open, rolls `creditsRows` up the screen
+  over `creditsRollMs` (a transform per frame), then holds the `end`
+  lines; a tap pauses, the ✕ (44 px), Escape and Back (the app's own
+  `useSystemBack`) close it; reduced motion is a list to scroll; 403
+  `not_yet` / 404 / offline is *The credits aren't ready*. CSS
+  `css/credits.css` (z 43: over the taskbar, under the pass). Copy is
+  `DRAFT w44`. Tests: `test/w44-credits.test.tsx`.
 - **Sides** (`sides/`, one lazy chunk): the doors widget, the Sides or
   Factions sheet, recruit by pass, founding a crew or faction. Faction mode
   (`founding:` in the story) shows your own count only.
@@ -376,6 +399,7 @@ src/
   rooms/                 room order + tiers, Chats sections, spaces, thread state
   session/               guest.ts / prime.ts sessions, channels, stream handlers
   sides/                 sides, crews, factions (lazy)
+  credits/               the credits roll (wave 44): lazy.tsx eager, roll.tsx + its models lazy
   ui/                    primitives, Win95 windows, objective card, progress
   css/                   base, themes, w95 + one file per lane; styles.css imports them
   widgets.tsx · widgets-fact.tsx   show-card registry (captcha, image, poll, tutorial, pass, fact, answer, email: wave 41's optional inbox, `emailResult`)
@@ -396,7 +420,7 @@ Play imports a few dependency-free core modules **by relative path**
 `host-board.ts`, `house-desk.ts` (the house desk, Desk chunk only), `delivery.ts` (alert levels, effect manners),
 `show-clock.ts`, `runtime/sim/badges.ts`, `runtime/sim/crews.ts`, `pick-echo.ts`
 (wave 28: how a pick reads; `session/guest.ts` `choiceEcho`), `talk-back.ts` + `talk-scenes.ts` (wave 32: the Talk card,
-host chunk only).
+host chunk only), `credits.ts` (wave 44: the credits roll, its chunk only).
 `@loom/core` is not a package dependency. Keep those core files free of
 Node imports, or the play build breaks.
 

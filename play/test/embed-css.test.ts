@@ -9,7 +9,7 @@ const CSS = readBundledCss();
 const MINIFIED = (await transformWithEsbuild(CSS, "styles.css", { loader: "css", minify: true })).code;
 
 describe("styles.css is only the lane files, in order", () => {
-  it("imports exactly the eight files", () => {
+  it("imports exactly the lane files (wave 44: the credits roll last)", () => {
     expect(stylesImports()).toEqual([
       "./css/base.css",
       "./css/themes.css",
@@ -20,6 +20,7 @@ describe("styles.css is only the lane files, in order", () => {
       "./css/moments.css",
       "./css/booth.css",
       "./css/host.css",
+      "./css/credits.css",
     ]);
   });
 });

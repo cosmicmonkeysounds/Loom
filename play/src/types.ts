@@ -536,6 +536,12 @@ export interface NightView {
    *  story's glitch is a burst (`Night.glitch_kind == "burst"`, a talk
    *  scene's ⚡): every phone plays the light, look-only takeover. */
   glitch?: { at: number; text: string | null; light?: true };
+  /** (wave 44, C5) The credits roll: `roll` = `Night.credits_roll` (it
+   *  rises by one each time the story rolls them), `at` = `Night.credits_at`
+   *  in story ms (like `glitch.at`). Absent while the roll is 0 or unset, or
+   *  from an older server. The phone rolls them once when `roll` rises live
+   *  (`credits/credits-model.ts`) and keeps them under ⊞ Start. */
+  credits?: { roll: number; at: number };
 }
 
 /** A ROLE-scoped `watch:` item for one guest (the booth card's facts). */
