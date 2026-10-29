@@ -61,7 +61,8 @@ stagehand/
     show/                          cuemap, sensormap, mqtt, osc, topics, directives
     agents/                        module (the worker loop), persona, prompt (classic), voice (lean),
                                    story_mind, mind, orchestrator, guards, secrets, judge, trace,
-                                   wire, reply, llm, facts, cards
+                                   wire, reply, llm, facts, cards, letter, slots (the generation
+                                   slots and lanes), engines (overflow engines, wave 42b)
     audio/                         module, config, engine (the stream), mixer, routing, sounds, placeholders;
                                    stream (a file decoded + resampled by a worker into a ring buffer),
                                    soundtrack (playlists, scenes, beds, the `Director`), mp3len (VBR MP3s
@@ -81,7 +82,7 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run pytest                                      # 2323 passed + 4 skipped, ~85 s, no hardware, no network
+uv run pytest                                      # 2376 passed + 4 skipped, ~100 s, no hardware, no network
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
 uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
@@ -276,6 +277,26 @@ module docstrings that explain the why).
   call must queue. `stagehand check` reads launchctl's
   `OLLAMA_NUM_PARALLEL` on macOS (`launchd_ollama_parallel`). Tests:
   `tests/test_worker_capacity.py`.
+- **Engines and brief mode** (wave 42b, `docs/agents.md` "Overflow
+  engines" / "Brief mode"). `agents.overflow` (`config.OverflowEngine`,
+  validated in `config._overflow`) adds model servers to the one worker
+  and its one mind. `slots.Slots` now holds every engine's slots
+  (`engines=[(name, n)]`, the primary `slots.PRIMARY` first): `acquire`
+  returns the engine, `only=` keeps a call to some engines, `mark_down`
+  skips one for `ENGINE_DOWN_S` (30 s), `switch` moves a held slot (the
+  one retry, `front=True`). `engines.Engines.call(lane, primary_only=)`
+  yields an `EngineCall`: `bind(base, shape)` is the character's model on
+  the slot's engine, `complete` is the complete_fn to hand the voice (the
+  warm head only on `api: ollama`, failover once, `llm.SERVED_BY` /
+  `SERVED_MODEL` for the thought's `engine`). Every model call in
+  `module.py` goes through it; quiet summaries, letters, Rewrite and
+  re-run are `primary_only`. `Agents.capacity` is the slots' sum (≤ 16).
+  `llm._redacted` keeps the bearer key out of every LlmError. Brief mode:
+  `Agents._brief` (the frame's `queued` ≥ `voice.brief_at`, `lane_of` ==
+  NORMAL) sets `VoiceOptions.brief`; `voice.answer_lean` re-checks
+  `brief_applies` (no stage, no heart, lean only), caps `max_tokens` at
+  `brief_max_tokens` and `reminder` adds `BRIEF_NOTE`. Tests:
+  `tests/test_engines.py`, `tests/test_brief.py`.
 - Docstrings cite "the wave 12 contract §Cn.m": that lane contract was
   never committed. `docs/agents.md` and the tests describe the behaviour.
 

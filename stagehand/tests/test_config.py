@@ -58,6 +58,35 @@ def test_example_agents_config_loads():
     assert (agents.cfg.voice.memo, agents.cfg.voice.repeat_guard, agents.cfg.voice.dossier_on_close, agents.cfg.voice.layout) == (True, True, True, "lean")
     assert agents.cfg.voice.warm_head is True
     assert (agents.cfg.mind.stage_from_phase, agents.cfg.mind.phase_poll_s) == (True, 30.0)
+    # (wave 42b) brief mode at its defaults; the overflow engines only as a comment.
+    assert (agents.cfg.voice.brief_at, agents.cfg.voice.brief_max_tokens) == (6, 600)
+    assert agents.cfg.overflow == () and agents.capacity == 1
+
+
+def test_the_example_s_commented_overflow_engines_load_when_uncommented():
+    """(wave 42b) The commented `overflow:` block in agents.example.yaml is
+    a working example: uncommented, it loads as two engines."""
+    import yaml
+
+    from stagehand.agents.config import parse_agents
+
+    lines = AGENTS_EXAMPLE.read_text(encoding="utf-8").splitlines()
+    start = lines.index("  # overflow:")
+    block = []
+    for line in lines[start:]:
+        if not line.startswith("  # "):
+            break
+        block.append(line[4:])
+    doc = yaml.safe_load("\n".join(block))
+    example = yaml.safe_load(AGENTS_EXAMPLE.read_text(encoding="utf-8"))["agents"]
+    cfg = parse_agents({**example, "overflow": doc["overflow"]}, str(AGENTS_EXAMPLE.parent))
+    assert cfg.engines == [("primary", 1), ("desktop", 1), ("hosted", 2)]
+    desktop, hosted = cfg.overflow
+    voice = cfg.models["Trabolta"]
+    lan = desktop.model(voice)
+    assert (lan.model, lan.api, lan.keep_alive, lan.context_window) == ("gpt-oss:20b", "ollama", "60m", 32768)
+    cloud = hosted.model(voice)
+    assert (cloud.model, cloud.api, cloud.api_key_env, cloud.num_ctx) == ("openai/gpt-oss-20b", "openai", "LOOM_OVERFLOW_KEY", None)
 
 
 def _agents(tmp_path, **section):

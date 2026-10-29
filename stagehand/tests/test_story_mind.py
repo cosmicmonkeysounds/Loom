@@ -688,7 +688,7 @@ def test_a_quiet_conversation_is_condensed_once_on_the_voice_model(tmp_path):
     assert run(busy()) is None  # never on a busy slot
     lanes = []
     real_lane = agents._slots.lane
-    agents._slots.lane = lambda lane: (lanes.append(lane), real_lane(lane))[1]  # type: ignore[method-assign]
+    agents._slots.lane = lambda lane, **kw: (lanes.append(lane), real_lane(lane, **kw))[1]  # type: ignore[method-assign]
     run(agents._summarise("Trabolta", "g-1"))
     assert lanes == [BACKGROUND]  # behind every guest, the heart and the stage
     d = agents.minds["Trabolta"].people["g-1"]

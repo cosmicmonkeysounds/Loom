@@ -67,7 +67,7 @@ from .guards import (
     thread_replies,
     uses_catchphrase,
 )
-from .llm import Completion, LlmConfig, LlmError, LlmTruncated
+from .llm import WARM_TOKENS, Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
 from .prompt import adjust_names, allowed_powers, build_messages, dossier_block, gate_context, is_stage, matching_situations, outside_block, situation_block, stage_of, their_variables, them_adjust_line
 from .reply import MAX_MEMO, Reply, fold, parse_reply
@@ -680,16 +680,26 @@ def _said_by(name: Any, text: Any) -> str:
     return f"{who}: {text}" if who else str(text or "")
 
 
-def reminder(persona: Persona, req: dict[str, Any], *, memo: bool = True, lookup_round: bool = False) -> str:
+#: (wave 42b) Brief mode's length rule in the closing note: it comes after
+#: the persona's own ("1-3 sentences"), so it is the one the model reads last.
+#: Neutral on purpose: a note about a queue gets said back to the guest.
+BRIEF_NOTE = "Keep this answer short: at most 2 short sentences."
+
+
+def reminder(persona: Persona, req: dict[str, Any], *, memo: bool = True, lookup_round: bool = False, brief: bool = False) -> str:
     """The closing format reminder: the same text for every call of a persona
-    (but for the lookup round, which may not look up again)."""
+    (but for the lookup round, which may not look up again, and brief mode,
+    wave 42b, which asks for two short sentences)."""
     shape = '{"say": "..."'
     if persona.variables:
         shape += f', "adjust": {{{_zeros(persona)}}}'
     if memo:
         shape += ', "memo": "..."'
     shape += "}"
-    tail = ["Answer their last message in character.", f"Reply with one JSON object only: {shape}."]
+    tail = ["Answer their last message in character."]
+    if brief:
+        tail.append(BRIEF_NOTE)
+    tail.append(f"Reply with one JSON object only: {shape}.")
     if persona.variables:
         tail.append("Set each number by how this exchange changed you.")
     extras = []
@@ -803,7 +813,7 @@ def build_lean_messages(
     now = right_now(persona, req, ctx)
     if now:
         out.append({"role": "system", "content": now})
-    out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None)})
+    out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None, brief=ctx.options.brief)})
     if retry is not None:
         out.append({"role": "system", "content": retry_note or retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
     return out
@@ -834,10 +844,6 @@ async def _complete_with_room(complete_fn: CompleteFn, messages: list[dict[str, 
     log.warning("%s: empty answer from %s — retrying once with max_tokens=%d", who, model.model, roomy.max_tokens)
     note = note or f"first attempt was empty; retried with max_tokens={roomy.max_tokens}"
     return Completion.of(await complete_fn(messages, roomy)), note
-
-
-#: The warm head's budget: one token (the call exists for its prompt).
-WARM_TOKENS = 1
 
 
 async def warm_head(complete_fn: CompleteFn, messages: list[dict[str, str]], model: LlmConfig, who: str) -> int:
@@ -1002,6 +1008,14 @@ def crack(say: str, seed: int, rate: float | None) -> str:
     return say[: m.start()] + new + say[m.end() :]
 
 
+def brief_applies(req: dict[str, Any]) -> bool:
+    """(wave 42b) Brief mode never shortens a stage answer (the whole
+    Desktop listens) or a guest at his heart (the night's big talk)."""
+    if is_stage(req):
+        return False
+    return str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() != "true"
+
+
 async def answer_lean(
     persona: Persona,
     model: LlmConfig,
@@ -1021,6 +1035,14 @@ async def answer_lean(
     started = time.monotonic()
     opts = ctx.options
     lean = opts.layout != "classic"
+    if opts.brief and not (lean and brief_applies(req)):
+        ctx = replace(ctx, options=replace(opts, brief=False))
+        opts = ctx.options
+    brief = opts.brief
+    if brief:
+        # (wave 42b) Lines queue behind this one: a smaller budget (reasoning
+        # counts against it) and two short sentences (`reminder`).
+        model = replace(model, max_tokens=min(model.max_tokens, opts.brief_max_tokens))
     memo_on = opts.memo and lean
     powers = [p for p in (req.get("powers") or []) if isinstance(p, dict)]
     codex = tuple(str(e.get("title", "")) for e in persona.secrets.visible((req.get("self") or {}).get("codex")))
@@ -1060,7 +1082,7 @@ async def answer_lean(
     async def record(kind: str, trigger: str, msgs: list[dict[str, str]], completion: Completion | None, reply: Reply | None, error: str | None = None, note: str = "") -> None:
         if trace is None:
             return
-        await trace.record(new_thought(persona.character, kind, trigger=trigger, model=model, messages=msgs, completion=completion, request=req, result=_result(reply), error=error, note=note))
+        await trace.record(new_thought(persona.character, kind, trigger=trigger, model=model, messages=msgs, completion=completion, request=req, result=_result(reply), error=error, note=note, brief=brief))
 
     async def settle(reply: Reply) -> tuple[Reply, list[str]]:
         """The story's ids for loose args (facts fetched lazily). A power the
