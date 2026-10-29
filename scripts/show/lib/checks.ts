@@ -14,6 +14,7 @@
 //! combos, the door code) is never read here, and a terminal row's fields
 //! are the heartbeat's own (`door`, `mic`, …), which carry no codes.
 
+import { MIX_DB_MIN, parseMixKey } from "../../../core/src/house-mixer.ts";
 import type { Check, Level } from "./ui.ts";
 import { ago } from "./ui.ts";
 
@@ -345,7 +346,50 @@ export function audioCheck(view: Json): Check[] {
   if (problems.length > 0) out.push(row("audio.json", "warn", `${problems.length} problem(s): ${problems.slice(0, 3).join("; ")}`, read));
   else if (warnings.length > 0) out.push(row("audio.json", "info", `${warnings.length} warning(s): ${warnings.slice(0, 2).join("; ")}`, read));
   out.push(...soundtrackChecks(view));
+  out.push(...mixerChecks(view));
   return out;
+}
+
+/**
+ * (wave 40) The house mixer's levels that are not at unity, off the audio
+ * view's `mix` (absent from an older server: no row). Info when every level
+ * is at unity or only some are moved; amber when something is silenced
+ * everywhere (the master, or a source's own `src:` level, muted or at the
+ * floor): the Run → House → 🎚 Mixer's Reset brings it back.
+ */
+export function mixerChecks(view: Json): Check[] {
+  const read = "GET /api/mod/audio";
+  const mix = view["mix"];
+  if (mix === null || typeof mix !== "object" || Array.isArray(mix)) return [];
+  const levels = (mix as Json)["levels"];
+  if (levels === null || typeof levels !== "object" || Array.isArray(levels)) return [];
+  const order = { master: 0, src: 1, room: 2, spk: 3 } as const;
+  const moved: Array<{ rank: number; text: string; silencedEverywhere: boolean }> = [];
+  for (const [key, raw] of Object.entries(levels as Json)) {
+    const parsed = parseMixKey(key);
+    if (parsed === null || raw === null || typeof raw !== "object") continue;
+    const l = raw as Json;
+    const dbv = num(l["db"]) ?? 0;
+    const muted = l["mute"] === true;
+    if (dbv === 0 && !muted) continue;
+    const silenced = muted || dbv <= MIX_DB_MIN;
+    const amount = muted ? "muted" : dbv <= MIX_DB_MIN ? "silenced" : `${dbv > 0 ? "+" : ""}${dbv} dB`;
+    const sc = parsed.scope;
+    const src = parsed.source;
+    let rank: number;
+    let text: string;
+    if (sc.kind === "all" && src === null) [rank, text] = [order.master, `master ${amount}`];
+    else if (sc.kind === "all") [rank, text] = [order.src, `${src} ${amount} everywhere`];
+    else if (sc.kind === "room") [rank, text] = [order.room, src === null ? `room ${sc.room} ${amount}` : `${src} ${amount} in ${sc.room}`];
+    else [rank, text] = [order.spk, `speaker ${sc.kind === "speaker" ? sc.speaker : "?"} ${amount}`];
+    moved.push({ rank, text, silencedEverywhere: silenced && sc.kind === "all" });
+  }
+  if (moved.length === 0) return [row("Mixer", "info", "every level at unity", read)];
+  moved.sort((a, b) => a.rank - b.rank);
+  const shown = moved.slice(0, 4).map((m) => m.text);
+  if (moved.length > 4) shown.push(`+${moved.length - 4} more`);
+  const bad = moved.some((m) => m.silencedEverywhere);
+  return [row("Mixer", bad ? "warn" : "info", `${moved.length} level${moved.length === 1 ? "" : "s"} moved; ${shown.join("; ")}${bad ? " (silent everywhere: Run → House → 🎚 Mixer, Reset)" : ""}`, read)];
 }
 
 /** dBFS for a row: one decimal is noise, a whole number reads. */
