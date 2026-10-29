@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "./types.ts";
+import type { AgentWaitNotice } from "./agent-wait.ts";
 import type { TypingNotice } from "./typing.ts";
 
 /** A non-2xx reply — the server's `error` text plus the HTTP status, so a
@@ -99,7 +100,7 @@ export interface FeedSource {
 const CLOSED = 2;
 
 /** The frames the chat stream carries. */
-export const CHAT_FRAMES = ["snapshot", "response", "lifecycle", "typing", "history", "message", "messageExpired", "messageModerated"] as const;
+export const CHAT_FRAMES = ["snapshot", "response", "lifecycle", "typing", "agentWait", "history", "message", "messageExpired", "messageModerated"] as const;
 export type ChatFrame = (typeof CHAT_FRAMES)[number];
 
 export const REOPEN_MS = 1000;
@@ -279,6 +280,8 @@ export interface ChatStreamHandlers {
   onLifecycle?: (n: LifecycleNotice) => void;
   /** An agent-voiced character started / stopped composing a reply. */
   onTyping?: (n: TypingNotice) => void;
+  /** Wave 42b: where this guest stands in an agent's line (`agent-wait.ts`). */
+  onAgentWait?: (n: AgentWaitNotice) => void;
   /** The full thread history just (re)loaded — the baseline for "new". */
   onHistory?: (messages: ChatMessage[]) => void;
   /** A live `message` frame (never the history), before it is applied —
@@ -318,6 +321,9 @@ export function chatFrameHandler(handlers: () => ChatStreamHandlers, ops: ChatMa
         return;
       case "typing":
         handlers().onTyping?.(d as TypingNotice);
+        return;
+      case "agentWait":
+        handlers().onAgentWait?.(d as AgentWaitNotice);
         return;
       case "history": {
         const list = d as ChatMessage[];
