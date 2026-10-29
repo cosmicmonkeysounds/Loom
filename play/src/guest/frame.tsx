@@ -127,6 +127,8 @@ export interface GuestStartInput {
   /** Wave 18b, faction mode (`founding:`): the item reads "Factions". */
   factions?: boolean;
   people: boolean;
+  /** Wave 44 (C7): `🎬 Credits` while the story has rolled them (`creditsStartItem`). */
+  credits?: StartItem | null;
   open: {
     act: (i: Interaction) => void;
     sides: () => void;
@@ -155,9 +157,9 @@ export function splitIcon(label: string): { icon?: string; label: string } {
 
 /** The guest's Start menu, top to bottom (pure — `test/start-menu.test.tsx`,
  *  GUEST-SPEC §8.2): the story's own buttons first (they are what a guest
- *  comes here for), then Sides & crews, People, Notifications, Help, and
- *  Leave last, behind its confirmation — at most five items past the
- *  story's. Your picture, the wake lock and alerts moved to the Me sheet;
+ *  comes here for), then 🎬 Credits once the story has rolled them (wave
+ *  44), Sides & crews, People, Notifications, Help, and Leave last, behind
+ *  its confirmation — at most five items past the story's and the credits. Your picture, the wake lock and alerts moved to the Me sheet;
  *  switching sides to the Sides sheet. An `arm: true` button arms, then
  *  fires, through core's arm model (`chrome/start-menu.tsx`). */
 export function guestStartItems(o: GuestStartInput): StartItem[] {
@@ -167,6 +169,7 @@ export function guestStartItems(o: GuestStartInput): StartItem[] {
     onClick: () => o.open.act(i),
     ...(i.arm === true ? { arm: true } : {}),
   }));
+  if (o.credits != null) items.push(o.credits);
   if (o.sides) items.push({ id: "sides", label: o.factions === true ? "Factions" : "Sides & crews", icon: <Icon name="door" />, onClick: o.open.sides });
   if (o.people) items.push({ id: "people", label: "People", icon: <Icon name="people" />, onClick: o.open.people });
   items.push({ id: "notifications", label: "Notifications", icon: <Icon name="bell" />, onClick: o.open.notifications });

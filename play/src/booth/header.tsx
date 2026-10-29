@@ -72,7 +72,8 @@ export function boothStartItems({
 /**
  * A player's Start menu (wave 21, P4): Help, Keep my screen on, Get alerts,
  * 👥 People, Sign out (confirmed). No moderator powers and no "What X
- * knows" — Mission's Codex tile is the character's knowledge.
+ * knows" — Mission's Codex tile is the character's knowledge. Wave 44
+ * (C7): 🎬 Credits first, once the story has rolled them.
  */
 export function playerStartItems({
   character,
@@ -82,6 +83,7 @@ export function playerStartItems({
   onSheet,
   onPeople,
   onSignOut,
+  credits = null,
 }: {
   character: string;
   wake: Pick<WakeLock, "supported" | "on" | "toggle">;
@@ -90,8 +92,11 @@ export function playerStartItems({
   onSheet: (s: BoothSheet) => void;
   onPeople: () => void;
   onSignOut: () => void;
+  /** Wave 44 (C7): `🎬 Credits` while the story has rolled them (`creditsStartItem`), first. */
+  credits?: StartItem | null;
 }): StartItem[] {
-  const items: StartItem[] = [{ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp }];
+  const items: StartItem[] = credits !== null ? [credits] : [];
+  items.push({ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp });
   if (!embedded && wake.supported) {
     items.push({ id: "wake", icon: <Icon name={wake.on ? "screen-on" : "screen-off"} />, label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });
   }
