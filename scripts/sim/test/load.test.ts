@@ -610,6 +610,11 @@ test("load safety: --rerun looks past only this driver's bots, only on a scratch
   assert.equal(scratch.skipped, 2);
   assert.deepEqual(scratch.argv, ["--rerun", "--yes"]);
   assert.equal(scratch.local, true);
+  // Winamp is nobody's bot: still refused, in this tool's words.
+  assert.match(scratch.refusal ?? "", /1 guest\(s\) on the roster who are not this driver's bots \(Winamp\)/u);
+  assert.equal(guardInput("http://127.0.0.1:7942", ["--rerun"], roster.slice(0, 2), battery).refusal, null);
+  assert.match(guardInput("http://127.0.0.1:7942", [], roster.slice(0, 2), battery).refusal ?? "", /--rerun/u);
+  assert.doesNotMatch(guardInput("https://app.example.com", ["--allow-remote"], roster, battery).refusal ?? "", /--rerun|i-know/u);
   // Without --rerun every row goes to the guard.
   assert.equal(guardInput("http://127.0.0.1:7942", [], roster, battery).roster!.length, 4);
   // Off a scratch server: the whole roster, never --yes, never the live override.

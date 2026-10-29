@@ -586,6 +586,10 @@ async function main(): Promise<void> {
   const st = await login();
   const guard = guardInput(base, process.argv, st.roster, new Set(battery.map((b) => b.as.name.toLowerCase())));
   if (guard.skipped > 0) say(dim(`  --rerun: the guard looks past ${guard.skipped} of this driver's own bots`));
+  if (guard.refusal !== null) {
+    console.error(`  ✘ ${guard.refusal}`);
+    process.exit(3);
+  }
   await liveGuard({ title: st.title, where: `${base}${http.scope}`, roster: guard.roster, action: "run the Trabolta load driver", argv: guard.argv, local: guard.local });
 
   const eventPass = await doors(st);

@@ -19,7 +19,7 @@
 // refused outright: the load driver never runs over real guests), and off a
 // scratch server the guard always asks y/N (`--yes` counts only on one).
 
-import { LIVE_OVERRIDE, type GuardRow } from "../../accept/live-guard.ts";
+import { LIVE_OVERRIDE, guestNames, realGuests, type GuardRow } from "../../accept/live-guard.ts";
 import { isLocal } from "./http.ts";
 import { isDevServer, isScratch } from "./safety.ts";
 
@@ -70,12 +70,20 @@ export function guardInput(
   argv: readonly string[],
   roster: readonly GuardRow[] | undefined,
   batteryNames: ReadonlySet<string>,
-): { roster: GuardRow[] | undefined; argv: string[]; local: boolean; skipped: number } {
+): { roster: GuardRow[] | undefined; argv: string[]; local: boolean; skipped: number; refusal: string | null } {
   const scratch = isScratch(base);
   const rerun = argv.includes(`--${LOAD_SAFETY_FLAGS.rerun}`) && scratch;
   const kept = roster === undefined ? undefined : rerun ? roster.filter((r) => !isOwnBot(r.name, batteryNames)) : [...roster];
   const out = argv.filter((a) => a !== `--${LIVE_OVERRIDE}` && (scratch || a !== "--yes"));
-  return { roster: kept, argv: out, local: scratch, skipped: (roster?.length ?? 0) - (kept?.length ?? 0) };
+  // Refused here, in this tool's words, before the shared guard would point
+  // at the live override this tool does not take.
+  const real = realGuests(kept);
+  const refusal =
+    real.length === 0
+      ? null
+      : `refusing to run the Trabolta load driver: ${real.length} guest(s) on the roster ${rerun ? "who are not this driver's bots " : ""}(${guestNames(real)}). ` +
+        (scratch && !rerun ? `If they are an earlier run's bots, --${LOAD_SAFETY_FLAGS.rerun}; else a fresh scratch server.` : "It runs only where no real guest is on.");
+  return { roster: kept, argv: out, local: scratch, skipped: (roster?.length ?? 0) - (kept?.length ?? 0), refusal };
 }
 
 /** Flags that take a value, given without one (`--fake-worker` at the end
