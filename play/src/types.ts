@@ -7,6 +7,7 @@ import type { CueCaller, CueRow } from "../../core/src/cue-sheet.ts";
 import type { CrewView, InviteView, SideView } from "../../core/src/runtime/sim/crews.ts";
 import type { NameBadge } from "../../core/src/runtime/sim/badges.ts";
 import type { ShowClock } from "../../core/src/show-clock.ts";
+import type { AgentWait } from "./agent-wait.ts";
 
 // Wave 13: the interrupt ladder and the host view are dependency-free core
 // modules, re-exported so every app reads one definition.
@@ -667,6 +668,8 @@ export interface Channel {
   lastTs: number;
   /** "<name> is typing…" — an agent-voiced character composing a reply here. */
   typing?: string | null;
+  /** Wave 42b: in line for an agent-voiced character's reply (`agent-wait.ts`). */
+  wait?: AgentWait;
   /** The `data-tour` anchor this row carries (the guided tour points at it). */
   tour?: string;
   /** An agent-voiced character's `dm:` row (wave 13; set by the stream lane). */

@@ -17,6 +17,7 @@ import { guestDotOf } from "../stream/badges.ts";
 import type { ChatMessage, Decision, GuestView } from "../types.ts";
 import { echoOf } from "../../../core/src/pick-echo.ts";
 import { useTyping } from "../typing.ts";
+import { useAgentWait } from "../agent-wait.ts";
 import type { WidgetResult } from "../widgets.tsx";
 import type { CheckinAnswer, RedeemAnswer, ScanDone } from "../scan-done.tsx";
 import { loadScanDone, settled } from "../scan-done-lazy.tsx";
@@ -450,12 +451,15 @@ export function useGuestSession(): GuestSession {
   // needs the hook's `onHistory` — a ref breaks the cycle.
   const alertsRef = useRef<ReturnType<typeof useAlerts> | null>(null);
   const { typing, onTyping } = useTyping(me !== null ? { role: "guest" } : null);
+  const { waits, onAgentWait, onWaitsReset } = useAgentWait(me?.id ?? null);
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => {
       setStatus(v as GuestView);
       setLocked403(false);
     },
     onTyping,
+    onAgentWait,
+    onWaitsReset,
     // The crawl decides at arrival (wave 13: a no-op until the stream lane)
     // and the backlog sets its baseline (stream-handlers.ts).
     ...guestStreamHandlers(crawl, me, (list) => {
@@ -776,7 +780,7 @@ export function useGuestSession(): GuestSession {
   const [opened, setOpened] = usePerSession(me?.token ?? null, NONE_OPENED);
   const dock = requiredDecision(status, { choose: (i, m) => void choose(i, m), escape: () => void escape() });
   const threads = useThreads(
-    withAgents(buildGuestChannels(shown, dock, status, opened, new Set(answeredNow.keys())), status, typing),
+    withAgents(buildGuestChannels(shown, dock, status, opened, new Set(answeredNow.keys())), status, typing, waits),
     { store: host.storage, slot: GUEST_READ, session: me?.token ?? null },
     { me: me !== null ? { id: me.id, name: me.name, booth: false } : undefined, unread: guestDotOf, order: roomOrder },
   );

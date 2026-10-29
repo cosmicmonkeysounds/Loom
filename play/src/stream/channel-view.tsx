@@ -15,6 +15,7 @@ import { CardTray } from "./card-tray.tsx";
 import { ChunkBoundary, retryableLazy } from "../lazy-chunk.tsx";
 import { trayCards } from "./settled.ts";
 import { AmbientTicker } from "./ticker.tsx";
+import type { AgentWait } from "../agent-wait.ts";
 import { Composer, cantPostNote } from "./composer.tsx";
 import { MessageList, useStickToBottom } from "./list.tsx";
 import { groupRuns, questStatusOf, repliesFor } from "./runs.ts";
@@ -49,6 +50,29 @@ function PinnedRoom({ kind, messages, meId, empty, focusEntry }: { kind: "codex"
       )}
     >
       <Suspense fallback={<p className="booth-none">Opening…</p>}>{kind === "codex" ? <Codex messages={messages} meId={meId} empty={empty} focusEntry={focusEntry} /> : <Quests messages={messages} empty={empty} />}</Suspense>
+    </ChunkBoundary>
+  );
+}
+
+/** Wave 42b (B5): in line for an agent's reply, the strip above the
+ *  composer. Its own chunk; loading or failed, it shows nothing (the typing
+ *  note follows when he answers), and a failed load is tried again by the
+ *  next wait's mount. */
+type WaitProps = { name: string; wait: AgentWait };
+const LazyWaitStrip = retryableLazy<WaitProps>(() => import("./wait-strip.tsx").then((m): { default: ComponentType<WaitProps> } => ({ default: m.WaitStrip })));
+
+function WaitSlot(p: WaitProps) {
+  const Strip = LazyWaitStrip.current();
+  return (
+    <ChunkBoundary
+      fallback={() => {
+        LazyWaitStrip.again();
+        return null;
+      }}
+    >
+      <Suspense fallback={null}>
+        <Strip {...p} />
+      </Suspense>
     </ChunkBoundary>
   );
 }
@@ -451,6 +475,7 @@ export function ChannelView({
           />
         </StreamModeProvider>
       )}
+      {channel.wait?.state === "queued" && <WaitSlot name={channel.title} wait={channel.wait} />}
       {channel.typing && (
         <div className="typing-note" aria-live="polite">
           {channel.typing} is typing<span className="dots" />

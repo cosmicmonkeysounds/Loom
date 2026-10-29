@@ -1,9 +1,9 @@
-//! "Trabolta is typing…" — the indicator an agent-voiced character shows
-//! while a stagehand worker composes its reply. The server sends `typing`
-//! frames (`{channel, from, on, audience}`) only to the people in that
-//! thread; this maps one onto the thread id each app uses and keeps the
-//! set of threads currently being typed into. A frame that never gets its
-//! `on: false` (a dropped stream) ages out after `TYPING_TTL_MS`.
+// "Trabolta is typing…" — the indicator an agent-voiced character shows
+// while a stagehand worker composes its reply. The server sends `typing`
+// frames (`{channel, from, on, audience}`) only to the people in that
+// thread; this maps one onto the thread id each app uses and keeps the
+// set of threads currently being typed into. A frame that never gets its
+// `on: false` (a dropped stream) ages out after `TYPING_TTL_MS`.
 
 import { useCallback, useEffect, useState } from "react";
 

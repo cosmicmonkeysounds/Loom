@@ -2,6 +2,7 @@
 //! rooms are listed, the pinned rooms, the cutscene's personal stream, a
 //! card still waiting, the agent DM rows.
 
+import type { AgentWait } from "../agent-wait.ts";
 import { pmOtherParty } from "../codex.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM, channelHead, prettyName } from "../rooms/spaces.ts";
@@ -230,20 +231,23 @@ export function isVoiced(view: Pick<GuestView, "voiced"> | null, character: stri
  * anyone is answering, and shows "… is typing" while a reply is composed.
  * A character with a `hold:` line always answers (the story covers for a
  * missing worker), so its row never says "away": it previews the last
- * message like any other thread.
+ * message like any other thread. Wave 42b: a wait `answering` reads as
+ * typing; one still `queued` (and nobody typing) is the thread's `wait`,
+ * the strip above its composer.
  */
-export function withAgents(channels: Channel[], view: GuestView | null, typing: ReadonlyMap<string, string>): Channel[] {
+export function withAgents(channels: Channel[], view: GuestView | null, typing: ReadonlyMap<string, string>, waits: ReadonlyMap<string, AgentWait> = new Map()): Channel[] {
   const agents = new Map((view?.people ?? []).filter((p) => p.agent !== undefined).map((p) => [`dm:${p.id}`, p.agent!]));
   return channels.map((c) => {
     const agent = agents.get(c.id);
-    const who = typing.get(c.id);
-    if (agent === undefined && who === undefined) return c;
+    const w = waits.get(c.id);
+    const who = typing.get(c.id) ?? (w?.state === "answering" ? w.character : undefined);
+    if (agent === undefined && who === undefined && w === undefined) return c;
     const presence = agent !== undefined && agent.hold !== true && c.subtitle === undefined;
     return {
       ...c,
       ...(agent !== undefined ? { agent: true as const } : {}),
       ...(presence ? { subtitle: agent.online ? "online" : "away — they'll answer when they're back" } : {}),
-      ...(who !== undefined ? { typing: who } : {}),
+      ...(who !== undefined ? { typing: who } : w !== undefined ? { wait: w } : {}),
     };
   });
 }
