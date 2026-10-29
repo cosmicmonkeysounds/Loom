@@ -106,6 +106,57 @@ VPS event server ◄── HTTPS (SSE GET /api/agent/stream + POSTs) ── stag
    OLLAMA_NUM_PARALLEL`, reopen Ollama, restart the job. Never set
    `concurrency` above `OLLAMA_NUM_PARALLEL`.
 
+6. **(Wave 42b) More compute: an overflow engine.** When one MacBook is not
+   enough, add a second model server to the **same** worker (one mind:
+   his memory never splits). In `laptop.yaml`, under `agents:`, uncomment
+   and edit the `overflow:` block from `agents.example.yaml` (reference:
+   `stagehand/docs/agents.md`, "Overflow engines"). The worker then
+   announces `concurrency` + each engine's `capacity`; a line takes the
+   MacBook first, then each engine in order; an engine that fails is
+   skipped for 30 s and the line retried once on another. Summaries and
+   the letters stay on the MacBook.
+
+   - **A second Ollama on the LAN** (e.g. the Windows Desktop, only if it
+     has a GPU that holds gpt-oss:20b): there, `ollama pull gpt-oss:20b`,
+     set `OLLAMA_HOST=0.0.0.0` (and `OLLAMA_NUM_PARALLEL` ≥ its
+     `capacity`), allow port 11434 through its firewall on the private
+     network, then:
+
+     ```yaml
+     overflow:
+       - name: desktop
+         endpoint: http://192.168.8.10:11434/v1
+         capacity: 1
+     ```
+
+     The guests' lines stay in the house.
+   - **A hosted OpenAI-compatible gpt-oss-20b endpoint.** **Privacy: every
+     line it serves leaves the house**, with his whole prompt (the guest's
+     words and name, his notes about them, the story's facts). Decide that
+     before doors, not during. Set `model:` to the provider's name for it,
+     `api: openai`, and `api_key_env:` to the **name** of an environment
+     variable; the key itself never goes in the YAML, a doc or a chat. The
+     launchd job does not read your shell, so give the key to launchd
+     without it landing in the shell history:
+
+     ```bash
+     read -rs KEY && launchctl setenv LOOM_OVERFLOW_KEY "$KEY"; unset KEY
+     export LOOM_OVERFLOW_KEY="$(launchctl getenv LOOM_OVERFLOW_KEY)"   # for `check` in this shell
+     ```
+
+     Like `OLLAMA_NUM_PARALLEL`, it does not survive a reboot.
+
+   Then `stagehand check` (§4): the `engines :` line counts every slot, each
+   engine's line says `key LOOM_OVERFLOW_KEY set` (never the key), and a
+   hosted one adds a note that the lines leave the house. Restart the job
+   (§6). To go back: comment the block out again and restart. Run → Mind
+   shows `engine <name>` on each thought an overflow engine served.
+
+   **Brief mode** (wave 42b, on by default): when 6 or more lines wait for
+   him on the server, a DM gets at most two short sentences (never a talk
+   scene, never a guest at his heart). `voice.brief_at: 0` in
+   `laptop.yaml` turns it off.
+
 ## 3. `stagehand/laptop.yaml` (git-ignored)
 
 ```bash

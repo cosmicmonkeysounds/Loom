@@ -135,6 +135,93 @@ also reads `launchctl getenv OLLAMA_NUM_PARALLEL` and warns when it is
 unset or below `concurrency` (it cannot see an `ollama serve` started from
 a shell, nor whether a running Ollama was reopened since).
 
+### Overflow engines: more compute for one mind (wave 42b)
+
+One laptop GPU tops out near 17 replies a minute. `agents.overflow` adds
+model servers to the **same worker** (`engines.py`): one process, one
+mind, so every line still reads and writes the same memos, said lines and
+brief; only the generation moves.
+
+```yaml
+agents:
+  concurrency: 1            # the primary's slots (`llm:`)
+  llm: { … }                # the primary engine
+  overflow:
+    - name: desktop         # shown in the trace and `stagehand check`
+      endpoint: http://192.168.8.10:11434/v1
+      capacity: 1           # its slots, 1..16
+    - name: hosted
+      endpoint: https://models.example.com/v1
+      model: openai/gpt-oss-20b
+      api: openai
+      capacity: 2
+      api_key_env: LOOM_OVERFLOW_KEY   # the NAME of an env var holding the key
+```
+
+- **What an entry may set:** `name`, `endpoint` (required, `http(s)://`),
+  `capacity` (default 1), and any of `model`, `api`, `reasoning_effort`,
+  `temperature`, `max_tokens`, `timeout_s`, `keep_alive`, `num_ctx`,
+  `api_key_env`, `extra`. Everything else comes from the character's own
+  voice model, except `api_key_env` (never inherited: the primary's key
+  never reaches another host), `extra` when the engine's `api` differs
+  from the character's (Ollama's `options` / `think` are a 400 on a hosted
+  endpoint), and `num_ctx` on an `api: openai` engine (none is sent). An
+  unknown key, a missing endpoint, a duplicate name or `primary` (the
+  primary's name), a capacity outside 1..16, or an `api_key_env` that is
+  not an environment-variable name fails at load.
+- **Capacity** is the sum: the stream announces `concurrency` + every
+  engine's `capacity` (at most 16; `check` warns past it), so the server
+  hands the worker that many lines at once.
+- **Which engine:** a line takes a primary slot when one is free, else the
+  first listed engine with a free slot; a waiting line takes the first slot
+  any engine frees (lanes as before: the stage, the heart, DMs and rulings,
+  then the background). **Rulings** may take an overflow slot (with the
+  ruling's low temperature on that engine). **Quiet summaries, letters
+  and a director's Rewrite / re-run stay on the primary** (they wait for
+  it even when an overflow slot is free, and are never retried elsewhere).
+- **The warm head** runs on the same engine as the line's main call, and
+  only on an `api: ollama` engine (only Ollama keeps the cache checkpoint
+  it is for).
+- **Failover:** an engine whose call fails (unreachable, a non-200, a
+  timeout, a garbled answer; not a reply cut short by its token budget) is
+  marked **down for 30 s**: its slots are skipped (unless every engine a
+  call may use is down) and handed out again when it is back. The line is
+  retried **once** on another engine that is up, at the front of its lane
+  (waiting for a slot there if none is free); the voice's own settings
+  for that call (its budget, a retry's temperature) move with it. If the
+  second engine fails too, the persona's fallback goes out.
+- **The trace:** each thought records `engine` (`primary` or the entry's
+  name) and the endpoint it really went to; the note says `engine
+  <name>` for an overflow engine (the primary goes unsaid).
+- **`stagehand check`** lists every engine with its slots, model,
+  endpoint and api, and whether its `api_key_env` is **set** in this
+  environment (never the key), notes an Ollama engine that needs
+  `OLLAMA_NUM_PARALLEL` ≥ its capacity and an endpoint that is not on
+  this machine or a private network, and warns about a key name that is
+  not set and an engine whose context is too small for a late-night line.
+- **Keys:** `api_key_env` sends `Authorization: Bearer <key>`. The key
+  never appears in a log line, an error, the trace or `check` (an
+  endpoint that echoes it in an error has it replaced by `[key]`).
+- **Privacy:** a hosted engine sees every line it serves with his whole
+  prompt: the guest's words and name, his memos about them, the story's
+  facts. Guest lines leave the house. A second Ollama on the LAN keeps
+  them in. With one engine (no `overflow:`) the worker is exactly as
+  before.
+
+### Brief mode: shorter answers under a deep queue (wave 42b)
+
+When a request frame's `queued` (the lines waiting for him on the
+server) is at least `voice.brief_at` (default 6; 0 = off), the lean voice
+asks for a short answer: the closing note gains *"Keep this answer short:
+at most 2 short sentences."* after the persona's own length rule (it is
+read last, and is neutral on purpose: a note about a queue gets said back
+to the guest), and the call's `max_tokens` is capped at
+`min(max_tokens, voice.brief_max_tokens)` (default 600; reasoning counts
+against it, so at least 400). The cap and the note hold through the
+voice's retry. **Never** for a stage request (a talk scene), a guest at
+his heart (`them.at_the_heart`), a frame without `queued`, or `layout:
+classic`. The thought carries `brief: true` and its note says `brief`.
+
 ### Stage requests: answering aloud (wave 32)
 
 During a talk scene (the story's `Night.talk`) a host relays what Clippy
@@ -339,6 +426,8 @@ agents:
     dossier_on_close: on   # the quiet summary
     warm_head: on          # the one-token cache warm before each line (api: ollama)
     layout: lean           # lean | classic (today's prompt inside the new mind)
+    brief_at: 6            # (wave 42b) brief mode at this many lines queued (0 = off)
+    brief_max_tokens: 600  # … and its token cap (≥ 400)
   mind:
     stage_from_phase: on   # the phase cards set stage / favours / drives / powers / brief
     phase_poll_s: 30       # the phase watch's facts fetch (0 = off)
@@ -549,7 +638,10 @@ mind and the revision number. Kinds: `voice`, `lookup`, `reflect`,
 `survey`, `rerun`, `judge`, and (the story mind) `brief` (a Rewrite
 brief) and `summary` (the quiet summary), plus `reset` / `control` /
 `error` markers. A thought carries `prompt_ms` (Ollama's prompt
-evaluation time; null on the OpenAI dialect). The voice's long first
+evaluation time; null on the OpenAI dialect), and (wave 42b) `engine`
+(which engine served it: `primary` or an `overflow` name) and `brief`
+(asked in brief mode); the server keeps only fields it knows, so the
+note also says `engine <name>` (an overflow engine) and `brief`. The voice's long first
 system message (P1) is stored once: later thoughts carry `[same prefix
 as th-…]` instead, and the Mind page fetches the holder by id. A thought
 the server answered `accepted: 0` never becomes a holder. Thoughts
