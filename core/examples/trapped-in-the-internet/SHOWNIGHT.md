@@ -468,8 +468,9 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 3. **Sun Nov 1: change the mod passcode** and rotate anything printed.
 4. **Trabolta's letters, before End** (wave 41; End stops the event and
    the letters go with it). With the MacBook's `agents` job running: Run →
-   **Letters** → ✍ Ask Trabolta to write them (about 20 s a letter), read
-   every draft, edit or ↻ Rewrite any that miss, then ✉ Send. The card
+   **Letters** → ✍ Ask Trabolta to write them (about 20 s a letter, so
+   ~15 min for 40), read every draft (gpt-oss pads a thin night with
+   made-up detail: cut it), edit or ↻ Rewrite any that miss, then ✉ Send. The card
    says Send is off when the VPS has no `LOOM_RESEND_API_KEY` /
    `LOOM_WEBMASTER_FROM`. Help: `docs/help/authoring/52-letters.md`.
 5. End the event; archive the ceremony script, the recap and photos.

@@ -54,15 +54,13 @@ LETTER_ATTEMPTS = 2
 LETTER_MAX_TOKENS = 3000
 
 
-#: A letter is written once and read before it is sent: it can think longer
-#: than a live line (gpt-oss: ~40 s a letter at medium on the MacBook).
-LETTER_EFFORT = "medium"
 
 
 def letter_model(model: LlmConfig) -> LlmConfig:
-    """The voice model with room for a whole letter, thinking a little longer."""
-    effort = LETTER_EFFORT if model.reasoning_effort in ("low", "minimal", None, "") else model.reasoning_effort
-    return replace(model, max_tokens=max(model.max_tokens, LETTER_MAX_TOKENS), reasoning_effort=effort)
+    """The voice model with room for a whole letter. Its own reasoning
+    effort: on the MacBook `medium` took ~45 s a letter against `low`'s
+    ~18 s and wrote no better (2026-10-29, three scratch drafts each)."""
+    return replace(model, max_tokens=max(model.max_tokens, LETTER_MAX_TOKENS))
 
 # DRAFT w41: the letter brief (the show text the user signs off).
 LETTER_BRIEF = """=== TONIGHT YOU WRITE A LETTER ===

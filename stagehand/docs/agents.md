@@ -654,7 +654,8 @@ in), what they left behind, their side and `night.ending_note`. Fields
 that say nothing (null, false, 0) are left out; never the address.
 
 `agents/letter.py` makes one call on the voice model (with
-`max_tokens` raised to 3000 for a whole letter) with the persona's
+`max_tokens` raised to 3000 for a whole letter; ~18 s a letter on the
+MacBook at `low`) with the persona's
 system prompt, the `outside:` block and `LETTER_BRIEF` (DRAFT w41), and
 answers `POST /api/agent/letter {id, worker, subject, text}` (410: the
 frame is gone). A staff member's part is called staff, never the outside
