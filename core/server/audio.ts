@@ -67,6 +67,28 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { AUDIO_FILE, audioHash, defaultAudio, validateAudio, type AudioConfig, type HouseMap } from "@loom/house";
 
+import {
+  MIX_CHANGES_MAX,
+  MIX_LEVELS_MAX,
+  MIX_METERS_STALE_MS,
+  MIX_WATCH_MS,
+  MUSIC_COMMAND_MS,
+  MUSIC_COMMANDS,
+  applyMixChanges,
+  mixChangeOf,
+  mixLevelsOf,
+  mixerRooms,
+  mixerSources,
+  musicCommandOf,
+  type AudioMix,
+  type MixChange,
+  type MixerMeters,
+  type MixerMusic,
+  type MixerMusicBed,
+  type MixerView,
+  type MusicCommand,
+  type MusicCommandEntry,
+} from "../src/house-mixer.ts";
 import type { SimModel } from "../src/runtime/sim/model.ts";
 import { queryTokenOf, sendJson } from "./http-util.ts";
 import type { Store } from "./store.ts";
@@ -181,23 +203,17 @@ export interface AudioHealth {
   underruns?: number;
 }
 
-/** (wave 38) One soundtrack bed: a playlist on a set of speakers. */
-export interface AudioMusicBed {
-  playlist: string;
-  speakers: string[];
-  /** The file playing (its name), or null between tracks. */
-  track: string | null;
-  /** Seconds into the track. */
-  posS: number;
-}
+/** (wave 38) One soundtrack bed: a playlist on a set of speakers, the file
+ *  playing (or null between tracks), seconds into it (`posS`) and, since
+ *  wave 40, its length (`durS`) when the router knows it. The house mixer's
+ *  `MixerMusicBed` (`src/house-mixer.ts`) is the one shape. */
+export type AudioMusicBed = MixerMusicBed;
 
 /** (wave 38) The router's soundtrack: the scene in force, its beds, and the
- *  playlists with no file (each a silent bed). */
-export interface AudioMusicHealth {
-  scene: string | null;
-  beds: AudioMusicBed[];
-  missing: string[];
-}
+ *  playlists with no file (each a silent bed); since wave 40 also every
+ *  scene (`scenes`), whether one was picked by hand (`hand`) and every
+ *  playlist's size (`playlists`). The house mixer's `MixerMusic`. */
+export type AudioMusicHealth = MixerMusic;
 /** At most this many sounds in a health report's `sounds`. */
 export const AUDIO_HEALTH_SOUNDS_MAX = 1000;
 /** (wave 38) At most this many beds, speakers per bed, metered inputs and sources. */
@@ -208,6 +224,12 @@ export const AUDIO_HEALTH_SOURCES_MAX = 32;
 /** (wave 38) An input peak is clamped to this range (dBFS); silence reads the floor. */
 export const AUDIO_PEAK_FLOOR_DB = -120;
 export const AUDIO_PEAK_CEIL_DB = 24;
+/** (wave 40) At most this many scenes and playlists in a music report. */
+export const AUDIO_MUSIC_SCENES_MAX = 64;
+export const AUDIO_MUSIC_PLAYLISTS_MAX = 64;
+/** (wave 40) At most this many output channels and buses in a meters packet. */
+export const AUDIO_METER_OUTPUTS_MAX = 64;
+export const AUDIO_METER_BUSES_MAX = 16;
 
 /** A play request off an untrusted body, or the 400's error text. */
 export function audioPlayOf(body: Record<string, unknown>): AudioPlayRequest | string {
@@ -297,46 +319,112 @@ const clampNum = (v: number, lo: number, hi: number): number => Math.min(hi, Mat
  */
 export function audioHealthW38Of(h: Record<string, unknown>): Pick<AudioHealth, "music" | "inputs" | "sources" | "underruns"> {
   const out: Pick<AudioHealth, "music" | "inputs" | "sources" | "underruns"> = {};
-  const name = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v.slice(0, AUDIO_NAME_MAX) : null);
-  const m = h["music"];
-  if (isRecord(m)) {
-    const scene = m["scene"] === null ? null : name(m["scene"]);
-    const beds: AudioMusicBed[] = [];
-    if (Array.isArray(m["beds"]))
-      for (const b of m["beds"].slice(0, AUDIO_HEALTH_BEDS_MAX)) {
-        if (!isRecord(b)) continue;
-        const playlist = name(b["playlist"]);
-        if (playlist === null) continue;
-        const speakers = Array.isArray(b["speakers"]) ? b["speakers"].flatMap((x) => (name(x) === null ? [] : [name(x)!])).slice(0, AUDIO_HEALTH_SPEAKERS_MAX) : [];
-        const pos = b["posS"] ?? b["pos_s"];
-        beds.push({ playlist, speakers, track: b["track"] === null ? null : (typeof b["track"] === "string" && b["track"] !== "" ? b["track"].slice(0, 128) : null), posS: typeof pos === "number" && Number.isFinite(pos) ? clampNum(Math.round(pos * 10) / 10, 0, 24 * 3600) : 0 });
-      }
-    const missing = Array.isArray(m["missing"]) ? m["missing"].flatMap((x) => (name(x) === null ? [] : [name(x)!])).slice(0, AUDIO_HEALTH_BEDS_MAX) : [];
-    if (scene !== null || m["scene"] === null) out.music = { scene, beds, missing };
-  }
-  const inputs = h["inputs"];
-  if (isRecord(inputs)) {
-    const got: Record<string, number> = {};
-    for (const [k, v] of Object.entries(inputs).slice(0, AUDIO_HEALTH_INPUTS_MAX)) {
-      if (!/^[1-9]\d?$/u.test(k)) continue;
-      // A silent input may come as null (JSON has no -Infinity): the floor.
-      if (v === null) got[k] = AUDIO_PEAK_FLOOR_DB;
-      else if (typeof v === "number" && !Number.isNaN(v)) got[k] = Math.round(clampNum(v, AUDIO_PEAK_FLOOR_DB, AUDIO_PEAK_CEIL_DB) * 10) / 10;
-    }
-    out.inputs = got;
-  }
-  const sources = h["sources"];
-  if (isRecord(sources)) {
-    const got: Record<string, number> = {};
-    for (const [k, v] of Object.entries(sources).slice(0, AUDIO_HEALTH_SOURCES_MAX)) {
-      if (!/^[a-z][a-z0-9_-]{0,31}$/u.test(k) || typeof v !== "number" || !Number.isFinite(v)) continue;
-      got[k] = Math.round(clampNum(v, 0, 1) * 1000) / 1000;
-    }
-    out.sources = got;
-  }
+  const music = audioMusicOf(h["music"]);
+  if (music !== null) out.music = music;
+  const inputs = peaksOf(h["inputs"], AUDIO_HEALTH_INPUTS_MAX);
+  if (inputs !== null) out.inputs = inputs;
+  const sources = activityOf(h["sources"]);
+  if (sources !== null) out.sources = sources;
   const u = h["underruns"];
   if (typeof u === "number" && Number.isFinite(u)) out.underruns = Math.max(0, Math.round(u));
   return out;
+}
+
+/** Channel → peak dBFS ("1"…"99"; null reads the floor: JSON has no
+ *  -Infinity), clamped to [floor, ceiling] at 0.1 dB; null when not a record. */
+function peaksOf(raw: unknown, max: number): Record<string, number> | null {
+  if (!isRecord(raw)) return null;
+  const got: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw).slice(0, max)) {
+    if (!/^[1-9]\d?$/u.test(k)) continue;
+    // A silent input may come as null (JSON has no -Infinity): the floor.
+    if (v === null) got[k] = AUDIO_PEAK_FLOOR_DB;
+    else if (typeof v === "number" && !Number.isNaN(v)) got[k] = Math.round(clampNum(v, AUDIO_PEAK_FLOOR_DB, AUDIO_PEAK_CEIL_DB) * 10) / 10;
+  }
+  return got;
+}
+
+/** Each ducking source → its activity 0..1; null when not a record. */
+function activityOf(raw: unknown): Record<string, number> | null {
+  if (!isRecord(raw)) return null;
+  const got: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw).slice(0, AUDIO_HEALTH_SOURCES_MAX)) {
+    if (!/^[a-z][a-z0-9_-]{0,31}$/u.test(k) || typeof v !== "number" || !Number.isFinite(v)) continue;
+    got[k] = Math.round(clampNum(v, 0, 1) * 1000) / 1000;
+  }
+  return got;
+}
+
+/**
+ * The router's soundtrack report (a health's `music`, wave 38; a meters
+ * packet's, wave 40), or null when it is not one (no sound `scene`). The
+ * scene, the beds and the missing playlists as in wave 38; since wave 40 also
+ * `scenes`, `hand`, `playlists [{name, tracks, loop}]` and each bed's `durS`
+ * (or the router's `dur_s`), each kept when sound and dropped alone when not
+ * (a malformed playlist entry is skipped).
+ */
+export function audioMusicOf(m: unknown): AudioMusicHealth | null {
+  if (!isRecord(m)) return null;
+  const name = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v.slice(0, AUDIO_NAME_MAX) : null);
+  const names = (v: unknown, max: number): string[] => (Array.isArray(v) ? v.flatMap((x) => (name(x) === null ? [] : [name(x)!])).slice(0, max) : []);
+  const secs = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? clampNum(Math.round(v * 10) / 10, 0, 24 * 3600) : null);
+  const scene = m["scene"] === null ? null : name(m["scene"]);
+  if (scene === null && m["scene"] !== null) return null;
+  const beds: AudioMusicBed[] = [];
+  if (Array.isArray(m["beds"]))
+    for (const b of m["beds"].slice(0, AUDIO_HEALTH_BEDS_MAX)) {
+      if (!isRecord(b)) continue;
+      const playlist = name(b["playlist"]);
+      if (playlist === null) continue;
+      const speakers = names(b["speakers"], AUDIO_HEALTH_SPEAKERS_MAX);
+      const track = b["track"] === null ? null : typeof b["track"] === "string" && b["track"] !== "" ? b["track"].slice(0, 128) : null;
+      const bed: AudioMusicBed = { playlist, speakers, track, posS: secs(b["posS"] ?? b["pos_s"]) ?? 0 };
+      const dur = secs(b["durS"] ?? b["dur_s"]);
+      if (dur !== null) bed.durS = dur;
+      beds.push(bed);
+    }
+  const out: AudioMusicHealth = { scene, beds, missing: names(m["missing"], AUDIO_HEALTH_BEDS_MAX) };
+  if (Array.isArray(m["scenes"])) out.scenes = names(m["scenes"], AUDIO_MUSIC_SCENES_MAX);
+  if (typeof m["hand"] === "boolean") out.hand = m["hand"];
+  if (Array.isArray(m["playlists"])) {
+    out.playlists = [];
+    for (const p of m["playlists"].slice(0, AUDIO_MUSIC_PLAYLISTS_MAX)) {
+      if (!isRecord(p)) continue;
+      const pname = name(p["name"]);
+      const tracks = p["tracks"];
+      if (pname === null || typeof tracks !== "number" || !Number.isFinite(tracks)) continue;
+      out.playlists.push({ name: pname, tracks: clampNum(Math.round(tracks), 0, 100_000), loop: p["loop"] === true });
+    }
+  }
+  return out;
+}
+
+/**
+ * (wave 40) The router's live meters packet (`POST /api/mod/audio/meters`)
+ * off an untrusted body, stamped `at` (server now): output and input peaks
+ * clamped to [−120, 24] dBFS, the ducking sources' activity, each bus's
+ * per-output peaks; every list cut like the health's. A malformed field is
+ * empty (never a refusal: a meter matters less than the next packet). The
+ * packet's `music`, when sound, is returned beside it.
+ */
+export function mixerMetersOf(body: Record<string, unknown>, at: number): { meters: MixerMeters; music: AudioMusicHealth | null } {
+  const meters: MixerMeters = {
+    at,
+    outputs: peaksOf(body["outputs"], AUDIO_METER_OUTPUTS_MAX) ?? {},
+    inputs: peaksOf(body["inputs"], AUDIO_HEALTH_INPUTS_MAX) ?? {},
+    sources: activityOf(body["sources"]) ?? {},
+  };
+  const buses = body["buses"];
+  if (isRecord(buses)) {
+    const got: Record<string, Record<string, number>> = {};
+    for (const [k, v] of Object.entries(buses).slice(0, AUDIO_METER_BUSES_MAX)) {
+      const per = peaksOf(v, AUDIO_METER_OUTPUTS_MAX);
+      if (!/^[a-z][a-z0-9_:-]{0,63}$/u.test(k) || per === null) continue;
+      got[k] = per;
+    }
+    meters.buses = got;
+  }
+  return { meters, music: audioMusicOf(body["music"]) };
 }
 
 /** How many stops ride a GET, and for how long. */
@@ -479,6 +567,20 @@ export class AudioHub {
   private routerParked = 0;
   /** A problem logged once per text, not per request. */
   private readonly warned = new Set<string>();
+  /** (wave 40) The house mixer's live balance: kept in the state dir
+   *  (`audio-mix.json`), its seq too, so a restart never reuses one. */
+  private mixState: AudioMix;
+  /** (wave 40) The soundtrack's one-shot commands and their own counter
+   *  (`music=`), memory only like the desk's plays. */
+  private musicLog: MusicCommandEntry[] = [];
+  private musicSeq = 0;
+  /** (wave 40) The router's last meters packet (memory only) and the last
+   *  sound `music` a packet carried, with when it arrived. */
+  private lastMeters: MixerMeters | null = null;
+  private metersMusic: { at: number; music: AudioMusicHealth } | null = null;
+  /** (wave 40) A mixer panel is open until then (server ms): each mixer GET
+   *  extends it by `MIX_WATCH_MS`. */
+  private watchUntil: number | null = null;
 
   constructor(init: AudioHubInit) {
     this.store = init.store;
@@ -489,6 +591,86 @@ export class AudioHub {
     const saved = init.store.loadAudioSave();
     this.director = saved !== null && validateAudio(saved).ok ? (saved as AudioConfig) : null;
     this.announceList = init.store.loadAudioAnnounce();
+    const mix = init.store.loadAudioMix();
+    this.mixState = { seq: mix?.seq ?? 0, levels: mixLevelsOf(mix?.levels) };
+  }
+
+  /** (wave 40) The mix in force (a copy). */
+  mix(): AudioMix {
+    const levels: AudioMix["levels"] = {};
+    for (const [k, l] of Object.entries(this.mixState.levels)) levels[k] = { db: l.db, mute: l.mute };
+    return { seq: this.mixState.seq, levels };
+  }
+
+  /** (wave 40) Apply checked changes (after clearing every level, with
+   *  `resetAll`): the new mix (seq + 1, saved), or the refusal's text when
+   *  the result holds more than `MIX_LEVELS_MAX` levels. Wakes the long poll. */
+  setMix(changes: readonly MixChange[], o: { resetAll?: boolean } = {}): AudioMix | string {
+    const levels = applyMixChanges(o.resetAll === true ? {} : this.mixState.levels, changes);
+    if (Object.keys(levels).length > MIX_LEVELS_MAX) return `the mix holds at most ${MIX_LEVELS_MAX} levels: reset a scope first`;
+    this.mixState = { seq: this.mixState.seq + 1, levels };
+    this.store.saveAudioMix(this.mixState);
+    this.wake();
+    return this.mix();
+  }
+
+  /** (wave 40) Queue one soundtrack command for the router. */
+  music(cmd: MusicCommand, by: string): MusicCommandEntry {
+    const entry: MusicCommandEntry = { ...cmd, seq: ++this.musicSeq, at: this.now(), by: by.slice(0, 64) };
+    this.musicLog.push(entry);
+    if (this.musicLog.length > MUSIC_COMMANDS) this.musicLog.shift();
+    this.wake();
+    return entry;
+  }
+
+  /** (wave 40) The recent music commands (≤ `MUSIC_COMMANDS`, ≤
+   *  `MUSIC_COMMAND_MS` old), oldest first. */
+  musicCommands(): MusicCommandEntry[] {
+    const since = this.now() - MUSIC_COMMAND_MS;
+    this.musicLog = this.musicLog.filter((c) => c.at >= since);
+    return this.musicLog.map((c) => ({ ...c }));
+  }
+
+  /** (wave 40) The router's meters packet (already parsed, stamped): kept
+   *  (memory only); its `music`, when sound, is the newest now-playing. A
+   *  packet is the router being there. Answers whether a panel still watches. */
+  meters(packet: { meters: MixerMeters; music: AudioMusicHealth | null }): boolean {
+    this.lastMeters = packet.meters;
+    if (packet.music !== null) this.metersMusic = { at: packet.meters.at, music: packet.music };
+    this.routerSeenAt = this.now();
+    return this.mixWatched();
+  }
+
+  /** (wave 40) The router's last meters, or null when none arrived in
+   *  `MIX_METERS_STALE_MS`. */
+  liveMeters(): MixerMeters | null {
+    const m = this.lastMeters;
+    return m !== null && this.now() - m.at <= MIX_METERS_STALE_MS ? m : null;
+  }
+
+  /** (wave 40) The soundtrack now: the freshest of the meters' music and
+   *  the last health's, null with neither. */
+  nowPlaying(): AudioMusicHealth | null {
+    const h = this.lastHealth;
+    const fromHealth = h?.music !== undefined ? { at: h.at, music: h.music } : null;
+    const m = this.metersMusic;
+    if (m === null) return fromHealth?.music ?? null;
+    if (fromHealth === null) return m.music;
+    return m.at >= fromHealth.at ? m.music : fromHealth.music;
+  }
+
+  /** (wave 40) A mixer panel looked (each mixer GET): the router keeps its
+   *  meters coming for `MIX_WATCH_MS`. The first look after a quiet spell
+   *  wakes the long poll, so the router hears `mixWatch` at once. */
+  watchMixer(): void {
+    const was = this.mixWatched();
+    this.watchUntil = this.now() + MIX_WATCH_MS;
+    if (!was) this.wake();
+  }
+
+  /** (wave 40) Is a mixer panel open (a GET within `MIX_WATCH_MS`)? */
+  mixWatched(): boolean {
+    return this.watchUntil !== null && this.now() < this.watchUntil;
   }
 
   /** Is the tablets list this event's own (`setAnnounceTerminal`), laid over
@@ -709,10 +891,17 @@ export class AudioHub {
    *  own counter was issued by an earlier process (a server restart counts
    *  from 1 again): stale, so the poll answers at once with today's list
    *  instead of holding a stop for the whole long poll. */
-  moved(after: string, testsAfter: number | null, stopsAfter: number | null = null, playsAfter: number | null = null): boolean {
+  /** (wave 40) `mix`: the mix seq the poller holds (moved when it
+   *  differs); `music`: its music-command cursor (as `plays`); `watch`:
+   *  whether it thinks a panel watches (moved when `mixWatched()` differs). */
+  moved(after: string, testsAfter: number | null, stopsAfter: number | null = null, playsAfter: number | null = null, mixer: { mix?: number | null; music?: number | null; watch?: boolean | null } = {}): boolean {
     if (this.current().version !== after) return true;
     if (testsAfter !== null && (testsAfter > this.testSeq || this.tests().some((t) => t.seq > testsAfter))) return true;
     if (playsAfter !== null && (playsAfter > this.playSeq || this.plays().some((p) => p.seq > playsAfter))) return true;
+    if (mixer.mix !== undefined && mixer.mix !== null && mixer.mix !== this.mixState.seq) return true;
+    const musicAfter = mixer.music;
+    if (musicAfter !== undefined && musicAfter !== null && (musicAfter > this.musicSeq || this.musicCommands().some((c) => c.seq > musicAfter))) return true;
+    if (mixer.watch !== undefined && mixer.watch !== null && mixer.watch !== this.mixWatched()) return true;
     return stopsAfter !== null && (stopsAfter > this.stopSeq || this.stops().some((s) => s.seq > stopsAfter));
   }
 
@@ -782,13 +971,22 @@ export interface AudioView {
    *  read (`router=1`), which has no use for its own report. Absent from an
    *  older server. */
   health?: Omit<AudioHealth, "sounds"> | null;
+  /** (wave 40) The house mixer's balance in force; the router applies it
+   *  when `seq` moves and holds `mix=<seq>` on its long poll. */
+  mix: AudioMix;
+  /** (wave 40) The soundtrack's recent commands (≤ `MUSIC_COMMANDS`, ≤
+   *  `MUSIC_COMMAND_MS` old, oldest first); the router keeps its own
+   *  `music=` cursor and drops one more than 10 s old by `now`. */
+  music: MusicCommandEntry[];
+  /** (wave 40) A mixer panel is open: the router posts its meters. */
+  mixWatch: boolean;
 }
 
 export function audioView(hub: AudioHub, ctx: AudioContext, o: { router?: boolean } = {}): AudioView {
   const cur = hub.current();
   const model = ctx.model();
   const v = validateAudio(cur.audio, ctx.house());
-  const view: AudioView = { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), stops: hub.stops(), plays: hub.plays(), now: hub.clock(), router: hub.router(), announceSaved: hub.announceSaved, problems: v.problems, warnings: v.warnings };
+  const view: AudioView = { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), stops: hub.stops(), plays: hub.plays(), now: hub.clock(), router: hub.router(), announceSaved: hub.announceSaved, problems: v.problems, warnings: v.warnings, mix: hub.mix(), music: hub.musicCommands(), mixWatch: hub.mixWatched() };
   if (o.router !== true) {
     const h = hub.health();
     if (h === null) view.health = null;
@@ -801,7 +999,7 @@ export function audioView(hub: AudioHub, ctx: AudioContext, o: { router?: boolea
 }
 
 /**
- * `GET /api/mod/audio[?after=&tests=&stops=&plays=&wait=]` — the config + the long poll.
+ * `GET /api/mod/audio[?after=&tests=&stops=&plays=&mix=&music=&watch=&wait=]` — the config + the long poll.
  * Returns true when it answered (or will: a parked long poll).
  */
 export async function handleAudioGet(hub: AudioHub, ctx: AudioContext, req: IncomingMessage, res: ServerResponse, url: URL, authorized: (token: string | undefined) => boolean): Promise<boolean> {
@@ -817,13 +1015,20 @@ export async function handleAudioGet(hub: AudioHub, ctx: AudioContext, req: Inco
   const stopsAfter = /^\d+$/u.test(stopsRaw) ? Number(stopsRaw) : null;
   const playsRaw = url.searchParams.get("plays") ?? "";
   const playsAfter = /^\d+$/u.test(playsRaw) ? Number(playsRaw) : null;
+  // Wave 40: the mixer's cursors (the mix's seq, the music commands', the watch).
+  const cursor = (k: string): number | null => {
+    const raw = url.searchParams.get(k) ?? "";
+    return /^\d+$/u.test(raw) ? Number(raw) : null;
+  };
+  const watchRaw = url.searchParams.get("watch");
+  const mixer = { mix: cursor("mix"), music: cursor("music"), watch: watchRaw === "1" ? true : watchRaw === "0" ? false : null };
   const waitRaw = Number(url.searchParams.get("wait") ?? AUDIO_WAIT_S);
   const waitS = Number.isFinite(waitRaw) ? Math.min(AUDIO_WAIT_MAX_S, Math.max(0, waitRaw)) : AUDIO_WAIT_S;
   // The house Mac's router says who it is (`router=1`); the map editor's own
   // long poll does not, so it never passes for one.
   const router = url.searchParams.get("router") === "1";
   if (router) hub.noteRouter(url.searchParams.get("name"));
-  if (after !== null && after !== "" && !hub.moved(after, testsAfter, stopsAfter, playsAfter) && waitS > 0) {
+  if (after !== null && after !== "" && !hub.moved(after, testsAfter, stopsAfter, playsAfter, mixer) && waitS > 0) {
     const w = hub.waitChange(waitS * 1000);
     // A caller that hangs up frees its waiter at once.
     req.on?.("close", w.cancel);
@@ -837,6 +1042,58 @@ export async function handleAudioGet(hub: AudioHub, ctx: AudioContext, req: Inco
   if (router) hub.noteRouter(url.searchParams.get("name"));
   sendJson(res, 200, audioView(hub, ctx, { router }));
   return true;
+}
+
+/** (wave 40) The house mixer's view (`GET /api/mod/audio/mixer`): the mix,
+ *  the sources and rooms of the config in force (rooms named from the house
+ *  map in force), the live meters (null when stale), the soundtrack now and
+ *  the router's presence. Never a `by`: hosts read it too. */
+export function mixerView(hub: AudioHub, ctx: AudioContext): MixerView {
+  const { audio } = hub.current();
+  const house = ctx.house();
+  const roomName = (id: string): string | null => {
+    const label = house?.rooms.find((r) => r.id === id)?.label;
+    return label !== undefined && label.trim() !== "" ? label : null;
+  };
+  return { mix: hub.mix(), sources: mixerSources(audio), rooms: mixerRooms(audio, roomName), meters: hub.liveMeters(), music: hub.nowPlaying(), router: hub.router(), now: hub.clock() };
+}
+
+/**
+ * `GET /api/mod/audio/mixer` (wave 40) — a director's or a host's mixer
+ * panel, polled every second while it is shown. Each read keeps the
+ * router's meters coming (`watchMixer`). Never the router's own read.
+ */
+export function handleMixerGet(hub: AudioHub, ctx: AudioContext, req: IncomingMessage, res: ServerResponse, url: URL, authorized: (token: string | undefined) => boolean): boolean {
+  if (!authorized(queryTokenOf(req, url))) {
+    sendJson(res, 403, { error: "hosts and directors only" });
+    return true;
+  }
+  res.setHeader?.("cache-control", "no-store");
+  hub.watchMixer();
+  sendJson(res, 200, mixerView(hub, ctx));
+  return true;
+}
+
+/** A mix post's changes for the server log ("master −6 dB, src:music muted, …"). */
+function mixChangesText(changes: readonly MixChange[], resetAll: boolean): string {
+  const one = (c: MixChange): string => (c.reset === true ? `${c.key} reset` : [c.key, c.db !== undefined ? `${c.db} dB` : null, c.mute === true ? "muted" : c.mute === false ? "unmuted" : null].filter((x) => x !== null).join(" "));
+  const parts = changes.slice(0, 4).map(one);
+  if (changes.length > 4) parts.push(`+${changes.length - 4} more`);
+  return [resetAll ? "reset all" : null, parts.length > 0 ? parts.join(", ") : null].filter((x) => x !== null).join(", then ");
+}
+
+/** A music command for the server log. */
+function musicCommandText(c: MusicCommand): string {
+  switch (c.action) {
+    case "next":
+      return c.playlist !== undefined ? `skipped the ${c.playlist} bed's track` : "skipped every bed's track";
+    case "scene":
+      return `played the ${c.scene} scene by hand`;
+    case "stop":
+      return "stopped the soundtrack";
+    case "story":
+      return "let the story's music cues back in";
+  }
 }
 
 /** The project link the save needs (`ProjectLink.writeFile` + the row snapshot). */
@@ -955,6 +1212,62 @@ export async function handleAudioPost(hub: AudioHub, ctx: AudioContext, path: st
       }
       hub.report({ health, acks });
       sendJson(res, 200, { ok: true });
+      return true;
+    }
+    case "/api/mod/audio/mix": {
+      // Wave 40: the house mixer (a director's Run → House → 🎚 Mixer, a host's Desk).
+      const raw = body["changes"];
+      const resetAll = body["resetAll"];
+      if (resetAll !== undefined && typeof resetAll !== "boolean") {
+        sendJson(res, 400, { error: "resetAll must be true or false" });
+        return true;
+      }
+      if (raw === undefined ? resetAll !== true : !Array.isArray(raw)) {
+        sendJson(res, 400, { error: "changes must be a list of {key, db?, mute?, reset?}" });
+        return true;
+      }
+      const list = (raw ?? []) as unknown[];
+      if (list.length > MIX_CHANGES_MAX) {
+        sendJson(res, 400, { error: `at most ${MIX_CHANGES_MAX} changes in one post` });
+        return true;
+      }
+      const changes: MixChange[] = [];
+      for (const [i, c] of list.entries()) {
+        const change = mixChangeOf(c);
+        if (typeof change === "string") {
+          sendJson(res, 400, { error: `changes[${i}]: ${change}` });
+          return true;
+        }
+        changes.push(change);
+      }
+      if (changes.length === 0 && resetAll !== true) {
+        sendJson(res, 400, { error: "send changes or resetAll" });
+        return true;
+      }
+      const mix = hub.setMix(changes, { resetAll: resetAll === true });
+      if (typeof mix === "string") {
+        sendJson(res, 400, { error: mix });
+        return true;
+      }
+      process.stdout.write(`  🎚 audio: ${by} moved the mix: ${mixChangesText(changes, resetAll === true)} (${Object.keys(mix.levels).length} level(s) off unity, seq ${mix.seq})\n`);
+      sendJson(res, 200, { ok: true, mix });
+      return true;
+    }
+    case "/api/mod/audio/music": {
+      const cmd = musicCommandOf(body);
+      if (typeof cmd === "string") {
+        sendJson(res, 400, { error: cmd });
+        return true;
+      }
+      const entry = hub.music(cmd, by);
+      process.stdout.write(`  🎚 audio: ${by} ${musicCommandText(cmd)}\n`);
+      sendJson(res, 200, { ok: true, seq: entry.seq, router: hub.router() });
+      return true;
+    }
+    case "/api/mod/audio/meters": {
+      // The router's own (never a host's): its live meters while a panel watches.
+      const watch = hub.meters(mixerMetersOf(body, hub.clock()));
+      sendJson(res, 200, { ok: true, watch });
       return true;
     }
     case "/api/mod/audio/stop": {
