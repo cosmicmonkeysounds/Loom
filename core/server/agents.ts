@@ -43,6 +43,25 @@
 //! stream is a new worker); the queue then goes to it at once. No request is
 //! ever moved between workers on a stall.
 //!
+//! **Windowed workers** (wave 42, "Trabolta under load", C1–C6). The
+//! above is the **legacy** mode, kept exactly for a worker that opens its
+//! stream without `capacity=`. A worker that sends `capacity=N` (its
+//! `agents.concurrency`, 1..16) is **windowed**: it never holds more than N
+//! open voice requests, rulings and letters together. The rest wait in the
+//! hub's queue (`worker === null`) in `rank` order, FIFO within a rank, and
+//! every settle, cancel, timeout, detach, attach and stall clear **pumps**
+//! the queue into free slots (pull-based: a slow worker takes less). A
+//! queued body is built at dispatch (fresh history and world, every line
+//! said while it waited; a line meanwhile only marks it stale), so typing
+//! turns on only when a slot has it. Each request in a slot runs its own
+//! reply clock from its dispatch; the worker is stalled when it holds one
+//! and nothing came back from it (an answer, or one of its requests
+//! settling) for `stallAfterMs` since the later of its last answer and its
+//! oldest dispatch. The busy line goes to a request still in the hub's
+//! queue at `busyAfterMs` while a worker answers. A ruling takes a free
+//! slot when no voice request waits, or once it has waited `judgeAgeMs`
+//! (15 s); a letter, when a slot is free and no voice request waits.
+//!
 //! Within one stall a thread hears the hold line once, however many
 //! requests the guest's lines open meanwhile (a given-up request's thread
 //! starts its next request held); once the stall ends — or the worker goes
@@ -847,6 +866,28 @@ export interface AgentWorker {
   /** The characters this worker voices. */
   characters: Set<string>;
   send: (event: string, data: unknown) => void;
+  /** Wave 42 (C1): how many requests it works on at once (its stream's
+   *  `capacity=`, the worker's `agents.concurrency`, 1..16). Set = a
+   *  **windowed** worker: it never holds more than this many open voice
+   *  requests, rulings and letters; the rest wait in the hub's queue.
+   *  Absent = a **legacy** worker (an older stagehand): every request goes
+   *  to it at once and it answers its line one at a time, as before. */
+  capacity?: number;
+}
+
+/** The largest `capacity=` a worker may announce (wave 42, C1). */
+export const AGENT_CAPACITY_MAX = 16;
+
+/**
+ * A worker stream's `capacity=` (wave 42, C1): a whole number 1..16, else
+ * null — a missing, empty, fractional or out-of-range value is an older (or
+ * confused) worker, which keeps the legacy behaviour exactly rather than a
+ * guessed window.
+ */
+export function agentCapacityOf(raw: string | null | undefined): number | null {
+  if (typeof raw !== "string" || !/^\s*\d{1,3}\s*$/.test(raw)) return null;
+  const n = Number(raw.trim());
+  return Number.isInteger(n) && n >= 1 && n <= AGENT_CAPACITY_MAX ? n : null;
 }
 
 interface OpenRequest {
@@ -875,6 +916,12 @@ interface OpenRequest {
   /** It waited in a worker's line behind another request (a burst) — the
    *  busy line's case; a request its worker went straight to never was. */
   behind: boolean;
+  /** Wave 42 (C2): hub clock of the newest line folded into it while it
+   *  waited in the hub's queue for a windowed worker's slot. Such a line
+   *  only marks the body stale (it is rebuilt at dispatch, not per line),
+   *  so the queue's max age reads this as the legacy rebuild's `req.at`
+   *  would. Null when no line came while it was queued that way. */
+  lineAt: number | null;
 }
 
 /**
@@ -941,6 +988,15 @@ export interface AgentQueue {
   oldestMs: number | null;
   /** Every connected worker voicing it has stalled (connected, not answering). */
   stalled: boolean;
+  /** (wave 42, C6) Of `depth`, the requests a worker holds right now — with
+   *  a windowed worker, the ones being answered (`depth - inFlight` wait in
+   *  the hub). Present only while a windowed worker voicing it is
+   *  connected: a legacy worker holds its whole line, so the split would
+   *  read every queued guest as "answering". */
+  inFlight?: number;
+  /** (wave 42, C6) The windowed workers' slots for it, summed (connected
+   *  ones, stalled included). Present with `inFlight`. */
+  capacity?: number;
   /** (wave 18b) Its judge queue, when it has rulings waiting or out, or a
    *  judge stall; absent otherwise. */
   judging?: AgentJudging;
@@ -1007,8 +1063,21 @@ export interface AgentHubOptions {
   /** (wave 18b) A worker's rulings expired `AGENT_JUDGE_STALL_EXPIRIES`
    *  times in a row: the judge stall's one `# hosts` line. */
   judgeStalled?: (worker: { name: string; characters: string[] }) => void;
+  /** (wave 42, C5) With a windowed worker and voice requests waiting in the
+   *  hub's queue, a ruling waits for a slot until the oldest unsent one has
+   *  waited this long, then takes the next free slot ahead of them (15 s).
+   *  A legacy worker keeps "voice first". */
+  judgeAgeMs?: number;
+  /** (wave 42, C2) The `letter` frames out with `workerId` now (the
+   *  runtime's `LettersBook.outOn`): each takes one of a windowed worker's
+   *  slots. Default: none. */
+  letterLoad?: (workerId: string) => number;
   now?: () => number;
 }
+
+/** A ruling waiting this long goes to the next free slot of a windowed
+ *  worker even while voice requests wait (the default `judgeAgeMs`). */
+export const AGENT_JUDGE_AGE_MS = 15_000;
 
 /** A queued request no worker picked up within this long is dropped (the
  *  default `queueMaxAgeMs`; a restore re-asks only lines this recent). */
@@ -1047,6 +1116,11 @@ export class AgentHub {
   private readonly judgeExpiries = new Map<string, number>();
   /** Workers in a judge stall (no frames until they answer or reconnect). */
   private readonly judgeStalls = new Set<string>();
+  /** Wave 42 (C3): per windowed worker, the hub clock something last came
+   *  back from it — a reply (a late one too), or one of its requests
+   *  settling by hand. Its stall clock runs from this or its oldest
+   *  in-flight request's dispatch, whichever is later. */
+  private readonly lastBack = new Map<string, number>();
 
   private readonly o: AgentHubOptions;
 
@@ -1075,6 +1149,43 @@ export class AgentHub {
     return false;
   }
 
+  /** Wave 42 (C1): does `w` work in a window (it sent `capacity=`)? */
+  private windowed(w: AgentWorker | undefined): w is AgentWorker & { capacity: number } {
+    return w !== undefined && typeof w.capacity === "number";
+  }
+
+  /** Is any windowed worker connected? Without one the hub is the legacy
+   *  hub exactly: nothing that pumps on a settle runs. */
+  private anyWindowed(): boolean {
+    for (const w of this.workers.values()) if (this.windowed(w)) return true;
+    return false;
+  }
+
+  /** Is a windowed worker voicing `character` connected? */
+  private windowedFor(character: string): boolean {
+    for (const w of this.workers.values()) if (this.windowed(w) && w.characters.has(character)) return true;
+    return false;
+  }
+
+  /** Wave 42 (C2): what takes one of `workerId`'s slots — its open voice
+   *  requests, its ruling out and its letter out. */
+  private slotLoad(workerId: string): number {
+    let n = this.loadOf(workerId);
+    for (const j of this.judges.values()) if (j.worker === workerId) n += 1;
+    return n + (this.o.letterLoad?.(workerId) ?? 0);
+  }
+
+  /** A windowed worker with a slot free now (a legacy one: always). */
+  private hasSlot(w: AgentWorker): boolean {
+    return !this.windowed(w) || this.slotLoad(w.id) < w.capacity;
+  }
+
+  /** Is a voice request waiting in the hub's queue that `w` voices? */
+  private voiceWaitingFor(w: AgentWorker): boolean {
+    for (const r of this.open.values()) if (r.worker === null && w.characters.has(r.req.character)) return true;
+    return false;
+  }
+
   /** Is a worker voicing `character` connected *and* answering (not stalled)? */
   private canAnswer(character: string): boolean {
     for (const w of this.workers.values()) if (w.characters.has(character) && !this.stalls.has(w.id)) return true;
@@ -1091,6 +1202,15 @@ export class AgentHub {
       if (oldest === null || r.since < oldest) oldest = r.since;
     }
     const out: AgentQueue = { depth, oldestMs: oldest === null ? null : Math.max(0, this.now() - oldest), stalled: this.isOnline(character) && !this.canAnswer(character) };
+    // Wave 42 (C6): with a windowed worker, how many are being answered.
+    let capacity = 0;
+    for (const w of this.workers.values()) if (this.windowed(w) && w.characters.has(character)) capacity += w.capacity;
+    if (capacity > 0) {
+      let inFlight = 0;
+      for (const r of this.open.values()) if (r.req.character === character && r.worker !== null) inFlight += 1;
+      out.inFlight = inFlight;
+      out.capacity = capacity;
+    }
     const judging = this.judgingOf(character);
     if (judging.queued > 0 || judging.out > 0 || judging.stalled) out.judging = judging;
     return out;
@@ -1134,15 +1254,22 @@ export class AgentHub {
    * Wave 41 (C6): the connected workers voicing `character` free to take a
    * `letter` frame now: not stalled or judge-stalled and — voice first — no
    * open voice request or ruling out. With `all`, every connected one (a
-   * `cancel` reaches a busy worker too).
+   * `cancel` reaches a busy worker too). Wave 42 (C5): a windowed worker
+   * takes one when it has a slot free and no voice request waits in the
+   * hub's queue for it (its other slots may be answering).
    */
   letterWorkers(character: string, all = false): AgentWorker[] {
     const out: AgentWorker[] = [];
     for (const w of this.workers.values()) {
       if (!w.characters.has(character)) continue;
       if (!all) {
-        if (this.stalls.has(w.id) || this.judgeStalls.has(w.id) || this.loadOf(w.id) > 0) continue;
-        if ([...this.judges.values()].some((j) => j.worker === w.id)) continue;
+        if (this.stalls.has(w.id) || this.judgeStalls.has(w.id)) continue;
+        if (this.windowed(w)) {
+          if (!this.hasSlot(w) || this.voiceWaitingFor(w)) continue;
+        } else {
+          if (this.loadOf(w.id) > 0) continue;
+          if ([...this.judges.values()].some((j) => j.worker === w.id)) continue;
+        }
       }
       out.push(w);
     }
@@ -1171,7 +1298,23 @@ export class AgentHub {
     this.judgeExpiries.delete(workerId);
     this.judgeStalls.delete(workerId);
     this.stalls.delete(workerId);
+    this.lastBack.delete(workerId);
     this.pruneHeld();
+    if (this.anyWindowed()) {
+      // Wave 42 (C2): its requests rejoin the hub's queue first, then the
+      // queue goes out in its order (rank, then opening) to free slots — a
+      // request the gone worker held never jumps one that waited longer.
+      for (const r of this.open.values()) {
+        if (r.worker !== workerId) continue;
+        r.worker = null;
+        r.dispatchedAt = null;
+        r.startedAt = null;
+        this.o.typing?.(r.req.thread, false);
+      }
+      this.o.presence?.();
+      this.pump();
+      return;
+    }
     for (const r of this.open.values()) {
       if (r.worker !== workerId) continue;
       r.worker = null;
@@ -1182,6 +1325,24 @@ export class AgentHub {
     }
     this.o.presence?.();
     this.pumpJudges(); // another worker may take the queue now
+  }
+
+  /**
+   * Wave 42 (C2/C5): hand out what waits to the slots free now. An aged
+   * ruling first (it has waited `judgeAgeMs` behind voice requests), then
+   * the voice queue in its order, then any ruling a slot is still free for.
+   * Pull-based: called on every settle, cancel, timeout, detach and stall
+   * clear, so a slow worker simply takes less. With no windowed worker it
+   * is the legacy `pumpJudges` alone (a legacy queue only moves on an
+   * attach or a stall clearing). The runtime calls it when a letter frame
+   * comes back (a slot freed).
+   */
+  pump(): void {
+    if (this.anyWindowed()) {
+      this.pumpJudges();
+      for (const r of this.queuedInOrder()) this.dispatch(r);
+    }
+    this.pumpJudges();
   }
 
   /** The requests queued in the hub, in the order they go out: by `rank`
@@ -1217,7 +1378,12 @@ export class AgentHub {
     if (openId !== undefined) {
       const r = this.open.get(openId);
       if (r !== undefined) {
-        if (r.worker === null) {
+        if (r.worker === null && this.windowedFor(r.req.character)) {
+          // Wave 42 (C2): waiting for a windowed worker's slot — the body is
+          // built at dispatch, so a line only marks it stale (no O(chat)
+          // rebuild per line while 50 guests type into a long queue).
+          r.lineAt = this.now();
+        } else if (r.worker === null) {
           // Still queued: refresh the body so the eventual answer sees the
           // whole burst (one request, not one per line).
           const fresh = this.o.build(thread, r.req.id);
@@ -1236,11 +1402,16 @@ export class AgentHub {
     const req = this.o.build(thread, id);
     if (req === null) return;
     const key = threadKey(thread);
-    const r: OpenRequest = { req, key, worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, createdAt: this.now(), since: 0, held: held || this.heldThreads.has(key), behind: false };
+    const r: OpenRequest = { req, key, worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, createdAt: this.now(), since: 0, held: held || this.heldThreads.has(key), behind: false, lineAt: null };
     r.since = since !== undefined && Number.isFinite(since) ? Math.min(since, r.createdAt) : r.createdAt;
     this.open.set(id, r);
     this.byThread.set(r.key, id);
-    this.dispatch(r);
+    // Wave 42 (C2): with requests already waiting for a windowed worker's
+    // slot, it joins the queue and the queue goes out in its order (a slot
+    // freed by a letter coming back may not have pumped yet — never jump
+    // the line). Else straight to a worker, as ever.
+    if (this.windowedFor(req.character) && [...this.open.values()].some((o) => o !== r && o.worker === null && o.req.character === req.character)) this.pump();
+    else this.dispatch(r, null, true);
   }
 
   /** How many requests are in `workerId`'s line. */
@@ -1256,20 +1427,40 @@ export class AgentHub {
    * worker the reply timeout just took `r` back from, gets its re-send
    * (exactly as for a healthy worker — so a sent request never sits queued
    * while an old copy may still be answered). Else `r` stays queued.
+   *
+   * Wave 42 (C2): a windowed worker takes it only into a free slot (least
+   * busy = the smallest share of its slots in use), and its body is built
+   * now — fresh history and world, every line said while it waited —
+   * unless `fresh` (`create` built it a moment ago). The rebuilt body
+   * carries whatever was said, so a follow-up mark ends there.
    */
-  private dispatch(r: OpenRequest, retryOn: string | null = null): void {
+  private dispatch(r: OpenRequest, retryOn: string | null = null, fresh = false): void {
     let best: AgentWorker | null = null;
     let bestLoad = Infinity;
     for (const w of this.workers.values()) {
       if (!w.characters.has(r.req.character)) continue;
       if (this.stalls.has(w.id) && w.id !== retryOn) continue;
-      const load = this.loadOf(w.id);
+      if (!this.hasSlot(w)) continue;
+      const load = this.windowed(w) ? this.slotLoad(w.id) / w.capacity : this.loadOf(w.id);
       if (load < bestLoad) {
         best = w;
         bestLoad = load;
       }
     }
     if (best === null) return;
+    const windowed = this.windowed(best);
+    if (windowed && !fresh) {
+      const body = this.o.build(r.req.thread, r.req.id);
+      if (body === null) {
+        // Nothing left to answer (the story moved under it): drop it
+        // before it takes a slot.
+        this.drop(r.req.id, r);
+        return;
+      }
+      r.req = body;
+      r.followUp = false;
+      r.lineAt = null;
+    }
     r.worker = best.id;
     r.dispatchedAt = this.now();
     r.dispatchSeq = ++this.dispatches;
@@ -1277,6 +1468,11 @@ export class AgentHub {
     r.attempts += 1;
     best.send("request", r.req);
     this.o.typing?.(r.req.thread, true);
+    if (windowed) {
+      // In a slot, the worker is on it now: its own reply clock (C3).
+      r.startedAt = r.dispatchedAt;
+      return;
+    }
     this.startHead(best.id);
     if (r.startedAt === null) r.behind = true; // in line behind another
   }
@@ -1320,7 +1516,9 @@ export class AgentHub {
     if (r.worker !== null) this.startHead(r.worker);
     const by = workerId ?? r.worker;
     if (by !== null) this.answering(by);
-    this.pumpJudges(); // voice first: a worker free of voice requests rules next
+    // Voice first (legacy): a worker free of voice requests rules next.
+    // Wave 42: a windowed worker's freed slot takes the queue's next.
+    this.pump();
     return { req: r.req, followUp: r.followUp };
   }
 
@@ -1328,6 +1526,7 @@ export class AgentHub {
    *  18b — a judge stall), and the queue goes to it. */
   private answering(workerId: string): void {
     this.judgeAnswered(workerId);
+    if (this.workers.has(workerId)) this.lastBack.set(workerId, this.now()); // wave 42 (C3)
     if (!this.workers.has(workerId) || !this.stalls.delete(workerId)) return;
     this.pruneHeld();
     this.o.presence?.();
@@ -1398,6 +1597,7 @@ export class AgentHub {
     const busyAfter = this.o.busyAfterMs ?? 40_000;
     const stallAfter = this.o.stallAfterMs ?? 60_000;
     const judgeTimeout = this.o.judgeTimeoutMs ?? AGENT_JUDGE_TIMEOUT_MS;
+    const windowedAny = this.anyWindowed();
     let judgeMoved = false;
     for (const [id, j] of [...this.judges]) {
       // Only a frame that was sent expires (from `sentAt`): a queued
@@ -1416,17 +1616,33 @@ export class AgentHub {
         this.o.judgeStalled?.({ name: w.name, characters: [...w.characters].sort() });
       }
     }
-    if (judgeMoved) this.pumpJudges();
+    if (judgeMoved) this.pump(); // wave 42: an expiry frees a windowed slot
     const heads = new Set<OpenRequest>(); // each worker's oldest in flight
     for (const w of this.workers.values()) {
       const h = this.headOf(w.id);
       if (h === null) continue;
       heads.add(h);
+      if (this.windowed(w)) {
+        // Wave 42 (C3): every slot is worked on at once, so the worker is
+        // stalled only when nothing came back from it for `stallAfter` —
+        // counted from its last answer, or from its oldest request in
+        // flight if that went out later. One stuck slot while the others
+        // answer is that request's timeout, not a stall.
+        if (this.stalls.has(w.id)) continue;
+        let oldest = Infinity;
+        for (const r of this.open.values()) if (r.worker === w.id && r.dispatchedAt !== null && r.dispatchedAt < oldest) oldest = r.dispatchedAt;
+        if (oldest === Infinity) continue;
+        if (now - Math.max(oldest, this.lastBack.get(w.id) ?? -Infinity) > stallAfter) this.stall(w);
+        continue;
+      }
       if (!this.stalls.has(w.id) && h.startedAt !== null && now - h.startedAt > stallAfter) this.stall(w);
     }
     for (const [id, r] of [...this.open]) {
       if (r.worker !== null && r.dispatchedAt !== null) {
-        if (!heads.has(r)) continue;
+        // Legacy: only a worker's head is being worked on. Windowed (wave
+        // 42, C3): each request in a slot runs its own clock from its
+        // dispatch.
+        if (!heads.has(r) && !this.windowed(this.workers.get(r.worker))) continue;
         r.startedAt ??= now;
         if (now - r.startedAt <= timeout) continue;
         const worker = r.worker;
@@ -1443,7 +1659,7 @@ export class AgentHub {
           continue;
         }
         this.dispatch(r, worker);
-      } else if (r.worker === null && now - r.req.at > maxAge) {
+      } else if (r.worker === null && now - Math.max(r.req.at, r.lineAt ?? -Infinity) > maxAge) {
         this.giveUp(id, r);
       } else if (r.worker === null && !r.held && now - r.createdAt >= holdAfter && !this.canAnswer(r.req.character)) {
         // Nobody can answer (none online, or only a stalled worker): say the
@@ -1452,12 +1668,20 @@ export class AgentHub {
         this.holdOnce(r);
       }
     }
-    this.pumpJudges(); // a voice request given back may have freed a worker
+    // A voice request given back may have freed a worker (legacy: for a
+    // ruling; wave 42: a slot for the queue), and a ruling may have aged.
+    this.pump();
     // Behind a burst on a worker still answering: the busy line, once per
     // thread. A lone request's own wait is the stall's to call.
     for (const r of this.open.values()) {
       // Wave 32 (C4): a public talk thread never hears the busy line.
-      if (r.req.thread.public === true || !r.behind || r.held || r.worker === null || this.stalls.has(r.worker) || this.busyThreads.has(r.key) || now - r.createdAt <= busyAfter) continue;
+      if (r.req.thread.public === true || r.held || this.busyThreads.has(r.key) || now - r.createdAt <= busyAfter) continue;
+      // Legacy: in a worker's line behind another, on a worker answering.
+      const behind = r.behind && r.worker !== null && !this.stalls.has(r.worker);
+      // Wave 42 (C4): still in the hub's queue for a slot while a worker
+      // that answers is online (with none, the hold line covers it).
+      const waiting = windowedAny && r.worker === null && this.canAnswer(r.req.character);
+      if (!behind && !waiting) continue;
       this.busyThreads.add(r.key);
       this.o.busy?.(r.req);
     }
@@ -1488,9 +1712,11 @@ export class AgentHub {
       r.since = moved(r.since);
       if (r.dispatchedAt !== null) r.dispatchedAt = moved(r.dispatchedAt);
       if (r.startedAt !== null) r.startedAt = moved(r.startedAt);
+      if (r.lineAt !== null) r.lineAt = moved(r.lineAt);
       r.req = { ...r.req, at: moved(r.req.at) };
     }
     for (const [w, at] of this.stalls) this.stalls.set(w, moved(at));
+    for (const [w, at] of this.lastBack) this.lastBack.set(w, moved(at));
     for (const j of this.judges.values()) {
       if (j.sentAt !== null) j.sentAt = moved(j.sentAt);
       j.queuedAt = moved(j.queuedAt);
@@ -1519,7 +1745,10 @@ export class AgentHub {
       // The cancel frees the worker for the next in its line: its clock
       // starts now, not at the worker's last answer.
       this.startHead(r.worker);
-      this.pumpJudges();
+      // Wave 42 (C3): one of its requests settled — a windowed worker's
+      // stall clock restarts here, as a legacy head's does above.
+      if (this.windowed(this.workers.get(r.worker))) this.lastBack.set(r.worker, this.now());
+      this.pump();
     }
     return true;
   }
@@ -1552,6 +1781,7 @@ export class AgentHub {
     // again on its first head), every thread may hear busy / hold anew.
     const wasStalled = this.stalls.size > 0;
     this.stalls.clear();
+    this.lastBack.clear();
     this.busyThreads.clear();
     this.heldThreads.clear();
     if (wasStalled) this.o.presence?.();
@@ -1589,14 +1819,28 @@ export class AgentHub {
    * first: a worker voicing the ruling's character, connected, not
    * stalled or judge-stalled, with fewer than `AGENT_JUDGE_INFLIGHT` out
    * and — voice first — no open voice request.
+   *
+   * Wave 42 (C5): a windowed worker instead needs a free slot, and either
+   * no voice request waiting in the hub's queue for it or the oldest unsent
+   * ruling having waited `judgeAgeMs` (a burst of DMs no longer starves the
+   * judge: an aged ruling takes the next slot that frees, as `pump` asks
+   * it first).
    */
   private pumpJudges(): void {
+    const judgeAge = this.o.judgeAgeMs ?? AGENT_JUDGE_AGE_MS;
+    const now = this.now();
+    /** Per character, the oldest unsent ruling's wait (FIFO: the first seen). */
+    const oldestUnsent = new Map<string, number>();
+    for (const j of this.judges.values()) if (j.worker === null && !oldestUnsent.has(j.req.character)) oldestUnsent.set(j.req.character, now - j.queuedAt);
     for (const j of this.judges.values()) {
       if (j.worker !== null) continue;
       let best: AgentWorker | null = null;
       for (const w of this.workers.values()) {
         if (!w.characters.has(j.req.character) || this.stalls.has(w.id) || this.judgeStalls.has(w.id)) continue;
-        if (this.loadOf(w.id) > 0) continue; // voice first
+        if (this.windowed(w)) {
+          if (!this.hasSlot(w)) continue;
+          if (this.voiceWaitingFor(w) && (oldestUnsent.get(j.req.character) ?? 0) < judgeAge) continue;
+        } else if (this.loadOf(w.id) > 0) continue; // voice first
         let out = 0;
         for (const o of this.judges.values()) if (o.worker === w.id) out += 1;
         if (out >= AGENT_JUDGE_INFLIGHT) continue;
@@ -1638,7 +1882,7 @@ export class AgentHub {
     // expiry count ends too, so two expiries around it are no stall.
     if (workerId === undefined) this.judgeAnswered(j.worker);
     this.judges.delete(id);
-    this.pumpJudges();
+    this.pump(); // wave 42: a windowed worker's slot freed
     return j.req;
   }
 
@@ -1651,7 +1895,7 @@ export class AgentHub {
     this.judges.delete(id);
     if (j.worker !== null) this.workers.get(j.worker)?.send("cancel", { id });
     this.o.judgeGone?.(j.req, "cancelled");
-    this.pumpJudges();
+    this.pump(); // wave 42: a windowed worker's slot freed
     return true;
   }
 

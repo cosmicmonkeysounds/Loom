@@ -151,6 +151,7 @@ import {
   AgentHub,
   AgentTraceLog,
   agentActs,
+  agentCapacityOf,
   agentControl,
   agentMindReport,
   agentThought,
@@ -165,6 +166,7 @@ import {
   type AgentRecent,
   type AgentRequest,
   type AgentThread,
+  type AgentWorker,
   threadKey,
 } from "./agents.ts";
 import { agentDossierOn, buildDossier, codeMentions, dossierVerdictOf } from "./agent-dossier.ts";
@@ -973,6 +975,8 @@ export class EventRuntime {
     // judge stall's one `# hosts` line.
     judgeSent: () => this.pushModSnapshots(),
     judgeStalled: () => this.postJudgeStall(),
+    // Wave 42 (C2): a letter out takes one of a windowed worker's slots.
+    letterLoad: (worker) => this.letters?.outOn(worker) ?? 0,
     now: () => this.clock(),
     presence: () => {
       this.letters?.pump(); // wave 41: a worker came back for the letters
@@ -1025,7 +1029,9 @@ export class EventRuntime {
       ...(init.now !== undefined ? { now: init.now } : {}),
     });
     this.lettersTimer = setInterval(() => {
-      if (this.letters.pending() > 0) this.letters.tick();
+      if (this.letters.pending() === 0) return;
+      this.letters.tick();
+      this.agents.pump(); // wave 42: an expired letter freed a windowed slot
     }, 5000);
     this.lettersTimer.unref?.();
     // The house desk drives both hubs and fires story events (wave 25).
@@ -3539,7 +3545,10 @@ export class EventRuntime {
     }
   }
 
-  /** `GET /api/agent/stream?characters=A,B&name=laptop` — one worker. */
+  /** `GET /api/agent/stream?characters=A,B&name=laptop[&capacity=N]` — one
+   *  worker. Wave 42 (C1): `capacity` (1..16, the worker's
+   *  `agents.concurrency`) makes it a windowed worker; missing or invalid
+   *  keeps the legacy hub for it. */
   private openAgentStream(req: IncomingMessage, res: ServerResponse, url: URL): void {
     const wanted = (url.searchParams.get("characters") ?? "")
       .split(",")
@@ -3552,11 +3561,13 @@ export class EventRuntime {
     const characters = new Set(wanted.length > 0 ? wanted : known);
     res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
     res.write(":ok\n\n");
-    const worker = {
+    const capacity = agentCapacityOf(url.searchParams.get("capacity"));
+    const worker: AgentWorker = {
       id: randomUUID(),
       name: url.searchParams.get("name") ?? "agent",
       characters,
       send: (event: string, data: unknown) => sseSend(res, event, data),
+      ...(capacity !== null ? { capacity } : {}),
     };
     sseSend(res, "hello", {
       worker: worker.id,
@@ -3567,6 +3578,9 @@ export class EventRuntime {
       // Wave 12 (C1.4): the newest thought this server holds per character
       // (the worker's own stamp), so a reconnect replays only what is newer.
       traceAfter: Object.fromEntries([...characters].map((c) => [c, this.agentTrace.list(c, 0, 1)[0]?.at ?? 0])),
+      // Wave 42 (C1): the window the server holds it to (null = legacy:
+      // every request at once, as before), so the worker can log it.
+      capacity,
     });
     this.agentStreams.add(res);
     this.agents.attach(worker);
@@ -5789,6 +5803,7 @@ export class EventRuntime {
         return true;
       }
       handleAgentLetter(this.letters, body, res);
+      this.agents.pump(); // wave 42: the draft freed a windowed worker's slot
       return true;
     }
     if (path === "/api/agent/trace") {
