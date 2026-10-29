@@ -23,7 +23,7 @@
           api: ollama              #   native /api/chat: `think` + `keep_alive` honoured
           extra: { think: false }  #   reasoning off (the OpenAI shim ignores this)
           keep_alive: 30m          #   stay resident between reflections
-          num_ctx: 20480           #   the default: a late-night reflection is ≈ 16k tokens
+          num_ctx: 24576           #   the default: a late-night reflection is ≈ 21k tokens
         quiet_s: 1.5               #   idle seconds before a reflection may start
         preempt: true              #   a new request cancels a running reflection
         survey_every_s: 120        #   look at the whole house this often (0 = never)
@@ -74,12 +74,12 @@ from .slots import PRIMARY
 ORCHESTRATOR_MODEL = "tobestyledintro/qwen3.8-9b-distill:q8_0"
 #: The orchestrator's default context (`api: ollama`). The reflect prompt —
 #: the mind file + persona + the house + the lore + a mind grown through the
-#: night — is ≈ 10k tokens at the doors and ≈ 16k late (`stagehand check`'s
+#: night — is ≈ 10k tokens at the doors and ≈ 21k late (w42c) (`stagehand check`'s
 #: estimate, at 3 characters a token, plus the reply), and on Ollama's default
 #: context the runner cuts its middle while the mind update still looks
-#: confident. 20k costs the 9B orchestrator ≈ 3 GB of KV cache. `num_ctx: …` (or `extra: {options: {num_ctx: …}}`)
+#: confident. 24k costs the 9B orchestrator ≈ 3.5 GB of KV cache. `num_ctx: …` (or `extra: {options: {num_ctx: …}}`)
 #: overrides it; `num_ctx: 0` sends none (the server's default).
-ORCHESTRATOR_NUM_CTX = 20480
+ORCHESTRATOR_NUM_CTX = 24576
 #: The voice's default context (`api: ollama`). A late-night line — the
 #: persona + the mind block + the house + a long thread + every situation —
 #: is ≈ 14k tokens, and Ollama's own default depends on the version and the

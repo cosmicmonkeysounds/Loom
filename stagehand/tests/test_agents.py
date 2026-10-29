@@ -675,8 +675,8 @@ def test_an_ollama_orchestrator_gets_a_late_night_context_unless_told_otherwise(
     # The live laptop.yaml shape: `extra` replaced wholesale, no num_ctx anywhere.
     agents = worker(tmp_path, None, orchestrator={"llm": {"api": "ollama", "extra": {"think": False}, "keep_alive": "60m"}})
     om = agents.cfg.orchestrator_models["Trabolta"]
-    assert ORCHESTRATOR_NUM_CTX == 20480
-    assert (om.num_ctx, om.context_window) == (20480, 20480)
+    assert ORCHESTRATOR_NUM_CTX == 24576
+    assert (om.num_ctx, om.context_window) == (24576, 24576)
     # The voice (api: openai) is left alone: no num_ctx, no context to compare.
     vm = agents.cfg.models["Trabolta"]
     assert (vm.num_ctx, vm.context_window) == (None, None)
@@ -779,7 +779,7 @@ def test_check_warns_when_the_reflect_prompt_outgrows_the_context(tmp_path, caps
     write("{extra: {think: false}}")  # the default 20k fits
     assert main(["check", "--config", str(conf)]) == 0
     out = capsys.readouterr()
-    assert "warning:" not in out.err and "ctx 20480" in out.out
+    assert "warning:" not in out.err and "ctx 24576" in out.out
     write("{num_ctx: 4096}")  # a warning, not a failure
     assert main(["check", "--config", str(conf)]) == 0
     err = capsys.readouterr().err
