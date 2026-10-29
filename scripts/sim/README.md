@@ -333,7 +333,10 @@ the fake worker at 3 s with one slot, 50 guests, burst 90 s): 20 replies a
 minute (the worker's ceiling), p50 wait ≈ 108 s and p90 ≈ 141 s, every
 guest heard the busy line first, and "is typing" was on within 0.1 s of
 every line however long it then waited (wave 42 C4: typing only once a
-request is dispatched).
+request is dispatched). Mixed, 10 guests, fake 2 s: Clippy's public line
+waited ≈ 14 s for his answer behind six DMs already in the worker's line
+(the hub's rank applies only to its own queue), and at `hunt1` four
+filings' rulings sat queued until the DMs let up (voice first, C5).
 
 ## The battery
 

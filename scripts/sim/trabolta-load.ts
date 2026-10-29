@@ -421,7 +421,7 @@ async function converse(g: Guest, endAt: number, tag: string): Promise<void> {
     const l = await send(g, nextLine(pool, r, g.last), tag);
     if (l.status === 200) await closed(l, replyTimeoutMs, endAt);
     if (Date.now() >= endAt) break;
-    await sleep(between(r, thinkMinMs, thinkMaxMs));
+    await sleep(Math.min(between(r, thinkMinMs, thinkMaxMs), endAt - Date.now()));
   }
 }
 
@@ -429,7 +429,7 @@ async function steady(g: Guest, endAt: number): Promise<void> {
   await sleep(between(r, 0, intervalMs));
   while (Date.now() < endAt) {
     await send(g, nextLine(pool, r, g.last), "steady");
-    await sleep(Math.max(500, intervalMs + between(r, -jitterMs, jitterMs)));
+    await sleep(Math.min(Math.max(500, intervalMs + between(r, -jitterMs, jitterMs)), Math.max(0, endAt - Date.now())));
   }
 }
 
