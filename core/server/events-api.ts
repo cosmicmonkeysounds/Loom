@@ -42,6 +42,7 @@ import {
   lastEventCodes,
   lastEventMapVariant,
   listFiles,
+  getFile,
   projectSource,
   setEventHouseMaps,
   setEventMapVariant,
@@ -119,6 +120,10 @@ export function projectLink(projectId: string, eventId: string): ProjectLink {
     },
     async saveVariant(file) {
       await setEventMapVariant(eventId, file);
+    },
+    async readFile(path) {
+      await collabHub().flush(projectId);
+      return (await getFile(projectId, path))?.content ?? null;
     },
     async resyncFiles() {
       await collabHub().resyncFromStorage(projectId);

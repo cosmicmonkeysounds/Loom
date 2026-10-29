@@ -1,31 +1,31 @@
-//! The crawl — which lines type in like game dialogue, and how fast (wave
-//! 13). Each host (the page, every embedded pane) holds its own, so two
-//! panes never share a crawl. The `Crawl` contract lives in `host.ts`.
-//!
-//! The rule is decided at ARRIVAL, not when a bubble mounts: a live message
-//! crawls only if it lands while its room is the one on screen and the page
-//! is visible. The backlog, other rooms, a reload, a hidden phone: instant.
-//! Three tiers:
-//!
-//! - `none` — typed chat (no `beat`), agent replies, readouts, your own
-//!   words, system lines, cards, codex / quest / wallet, the backlog.
-//! - `fast` — a scripted `line` / `narration` (it has a `beat`): ≈ 5 ms a
-//!   character, at most 700 ms a line, and a batch budget of 1.5 s — a line
-//!   that would start later than that appears at once (with everything
-//!   queued ahead of it), and so does the rest of that burst.
-//! - `fx` — effect text (`msg.fx`: a glitch manner, a `crawl: fx` speaker)
-//!   and `!` alert / `!!` takeover lines: the slow glyph-scramble decode,
-//!   ≈ 25 ms a character, at most 2.5 s. Never dropped by the budget: the
-//!   budget counts only the fast lines' time, and a fast line over it that
-//!   lands behind an fx line still decoding waits its turn and then shows
-//!   whole, so the effect is never cut short by the narration after it.
-//!
-//! Order is kept: when a message that does not crawl lands in a room behind
-//! queued lines, those lines finish at once — nothing later ever sits under
-//! a line still waiting its turn. Tap the stream → `flush`.
-//!
-//! Type-only import from `host.ts`: `host.ts` calls `createCrawl()` at
-//! module init, so a value import back would be a TDZ cycle.
+// The crawl — which lines type in like game dialogue, and how fast (wave
+// 13). Each host (the page, every embedded pane) holds its own, so two
+// panes never share a crawl. The `Crawl` contract lives in `host.ts`.
+//
+// The rule is decided at ARRIVAL, not when a bubble mounts: a live message
+// crawls only if it lands while its room is the one on screen and the page
+// is visible. The backlog, other rooms, a reload, a hidden phone: instant.
+// Three tiers:
+//
+// - `none` — typed chat (no `beat`), agent replies, readouts, your own
+//   words, system lines, cards, codex / quest / wallet, the backlog.
+// - `fast` — a scripted `line` / `narration` (it has a `beat`): ≈ 5 ms a
+//   character, at most 700 ms a line, and a batch budget of 1.5 s — a line
+//   that would start later than that appears at once (with everything
+//   queued ahead of it), and so does the rest of that burst.
+// - `fx` — effect text (`msg.fx`: a glitch manner, a `crawl: fx` speaker)
+//   and `!` alert / `!!` takeover lines: the slow glyph-scramble decode,
+//   ≈ 25 ms a character, at most 2.5 s. Never dropped by the budget: the
+//   budget counts only the fast lines' time, and a fast line over it that
+//   lands behind an fx line still decoding waits its turn and then shows
+//   whole, so the effect is never cut short by the narration after it.
+//
+// Order is kept: when a message that does not crawl lands in a room behind
+// queued lines, those lines finish at once — nothing later ever sits under
+// a line still waiting its turn. Tap the stream → `flush`.
+//
+// Type-only import from `host.ts`: `host.ts` calls `createCrawl()` at
+// module init, so a value import back would be a TDZ cycle.
 
 import type { Crawl, CrawlTier } from "./host.ts";
 import { CODEX_ROOM, QUEST_LOG, WALLET_ROOM } from "./rooms/spaces.ts";

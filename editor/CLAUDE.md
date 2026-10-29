@@ -168,7 +168,13 @@ World, Director, Mind and House close under a lens.
   poster, door sign, codex posters by stack, room check-in signs, cast
   cards (each QR the part's own `castLinks` sign-in when the server sends
   them), invitations, and blank ID badges from `/api/mod/badges` (3 × 4 in,
-  4-up, a count + first number to load); QRs drawn in the browser), **Directing now**,
+  4-up, a count + first number to load); QRs drawn in the browser),
+  **✉ Letters** (`LettersCard`, wave 41), **🎥 Video consent**
+  (`VideoConsentCard` + pure `video-consent.ts`, wave 44: `GET
+  /api/mod/video` every 10 s, the opted-out first with their pictures,
+  ⬇ Download CSV), **🎬 Credits** (`CreditsCard` + pure `credits-card.ts`,
+  wave 44: `GET /api/credits` as text via `creditsRows`, source, problems;
+  read only), **Directing now**,
   **Terminals**, **House sound**, **House map** (when the event has a map:
   variants, the shared King, the 💡 lights row), **Wallet** (only with a
   `currency:` story), and **Look up a guest**.
@@ -288,7 +294,7 @@ character's feed, readouts and ⏏ Release.
 source through aliases in `vite.config.ts` and `tsconfig.app.json`: no
 wasm, no build step. The aliases are `parser`, `lsp`, `sim`, `runtime`
 (for `@loom/bank`), `chat`, `views`, `mod-patch`, `cue-sheet`,
-`host-board`, `house-desk`, `house-mixer`, then bare `@loom/core`, plus `@loom/house`
+`host-board`, `house-desk`, `house-mixer`, `credits`, then bare `@loom/core`, plus `@loom/house`
 (wave 30, the Cue designer), `@loom/bank` and `@loom/play/embed`.
 
 - `lib/loom-language.ts`: the highlighter, built on the parser's keyword

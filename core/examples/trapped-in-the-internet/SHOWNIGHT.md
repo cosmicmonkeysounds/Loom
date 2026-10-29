@@ -473,9 +473,18 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
    made-up detail: cut it), edit or ↻ Rewrite any that miss, then ✉ Send. The card
    says Send is off when the VPS has no `LOOM_RESEND_API_KEY` /
    `LOOM_WEBMASTER_FROM`. Help: `docs/help/authoring/52-letters.md`.
-5. End the event; archive the ceremony script, the recap and photos.
-6. Teardown: the tent, cords, GFCIs; tablets back to their owners
+5. **The credits** (wave 44). G11 🎃 rolls them by itself on the TV,
+   every wall terminal and every phone, after any ending; G12 🎬 rolls
+   them again. The names are the project's `credits.json` (Writing; a
+   change shows on the next roll, no reload). Run → 🎬 Credits shows the
+   roll as text and any problem with the file.
+6. **The video list, before End** (wave 44). Run → 🎥 Video consent →
+   ⬇ Download CSV: every program, `out` first. Give it to whoever edits
+   the footage. A program who never answered the card did not opt out.
+   Help: `docs/help/authoring/53-credits-and-video.md`.
+7. End the event; archive the ceremony script, the recap and photos.
+8. Teardown: the tent, cords, GFCIs; tablets back to their owners
    (factory-reset borrowed ones); back up Zigbee2MQTT's `data\` on the
    Desktop.
-7. A one-hour retro with the crew; the post-party roadmap is
+9. A one-hour retro with the crew; the post-party roadmap is
    [`SCHEDULE.md`](./SCHEDULE.md).

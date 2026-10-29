@@ -25,6 +25,7 @@ import { splitRevealQuietly, statementToDirective } from "../src/parser/statemen
 import { Workspace } from "../src/lsp/index.ts";
 import { indexOutsideQuotes, splitArgsCommas } from "../src/parser/rust.ts";
 import { DESK_FILE, deskEvents, validateDesk, type DeskConfig } from "../src/house-desk.ts";
+import { CREDITS_FILE, parseCredits } from "../src/credits.ts";
 
 const args = process.argv.slice(2);
 const dir = args.find((a) => !a.startsWith("--"));
@@ -311,6 +312,20 @@ for (const h of allHooks) {
       for (const p of v.problems) report("ERROR", `${DESK_FILE}: ${p}`);
       if (v.ok) for (const e of deskEvents(raw as DeskConfig)) if (!fired.has(foldName(e))) fired.set(foldName(e), DESK_FILE);
     }
+  }
+}
+// Wave 44: the project's credits.json (`src/credits.ts`): a file the roll
+// can't use is an error; a skipped row or a bad field a warning.
+{
+  let text: string | null = null;
+  try {
+    text = readFileSync(join(root, CREDITS_FILE), "utf8");
+  } catch {
+    text = null;
+  }
+  if (text !== null && text.trim() !== "") {
+    const { file, problems } = parseCredits(text);
+    for (const p of problems) report(file === null ? "ERROR" : "WARN", `${CREDITS_FILE}: ${p}`);
   }
 }
 

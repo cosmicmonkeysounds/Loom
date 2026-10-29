@@ -7,6 +7,7 @@
 //! the device, never above the URL's `quality` cap).
 
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { Assignment, HouseMap, KingState } from "@loom/house";
 import { postEnd, type FoundAnswer } from "../api.ts";
 import { baseOf, qualityHint, type ReinstallConfig } from "../config.ts";
@@ -54,6 +55,7 @@ export function Play({
   sfx,
   held = false,
   takeMic,
+  help = null,
   onExit,
 }: {
   config: ReinstallConfig;
@@ -69,6 +71,8 @@ export function Play({
   held?: boolean;
   /** Hand over the mic opened in the Play here tap (once; null when none). */
   takeMic?: () => Promise<MediaStream | null> | null;
+  /** Wave 44 (C9): the tent's 🆘 Help Me, drawn first in the top-right row. */
+  help?: ReactNode;
   onExit: (e: PlayExit) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -211,6 +215,7 @@ export function Play({
               </div>
             )}
             <div className="hud-right">
+              {help}
               {hud.voice !== null && <MicButton voice={hud.voice} onToggle={() => game.current?.toggleMute()} />}
               <div className="hud-clock w98-sunken" title="time in the simulation">
                 {hud.elapsed}

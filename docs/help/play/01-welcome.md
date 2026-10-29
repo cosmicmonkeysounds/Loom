@@ -2,7 +2,7 @@
 title: Getting connected
 section: Guest Guide
 order: 1
-keywords: welcome, join, code, event code, log on, name, start, start menu, taskbar, tray, now, objective, title bar, mission, chats, recycle bin, tour, qr, lost phone, dead phone, re-pair, pair, sign back in, new phone, browser, reconnecting, offline, dropped, live dot, invitation, invited, reserved, claim, locked, scan, camera, wrong browser, countdown, clock, other rooms
+keywords: video, filmed, filming, camera, recording, opt out, consent, credits, welcome, join, code, event code, log on, name, start, start menu, taskbar, tray, now, objective, title bar, mission, chats, recycle bin, tour, qr, lost phone, dead phone, re-pair, pair, sign back in, new phone, browser, reconnecting, offline, dropped, live dot, invitation, invited, reserved, claim, locked, scan, camera, wrong browser, countdown, clock, other rooms
 ---
 
 Welcome to the show. This app is your window into a **live interactive
@@ -97,6 +97,13 @@ between.
 - **The taskbar**: **⊞ Start**, **▣ Mission**, **💬 Chats**, **🎟 Pass** (your
   QR, full screen, one tap — see [Your pass](your-pass.md)) and **📷 Scan**,
   on every screen, inside rooms too.
+
+**Being filmed.** While you're uploaded the app asks whether video of you
+from tonight may be used afterwards. If you'd rather not be in it, tap
+*No, leave me out*. Change your mind any time from **⊞ Start** (*🎥 Leave
+me out of the video* or *🎥 Video of me is OK*). Not answering means video
+of you may be used. At the very end of the night the app rolls the
+**credits**; **⊞ Start → 🎬 Credits** plays them again.
 
 The tray's left edge is a **live dot**: green while you're connected. If
 it changes colour (*reconnecting…*), you've dropped: the app keeps

@@ -2,7 +2,7 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, video, reinstallation process, training, tutorial, skip, turn, turning, dizzy, mouse, reinstall, reinstalled, quarantined, locked, Installation Wizard, wizard, Gerald, find gerald, duck, golden duck, egg, VR, headset, tablet, laptop, joystick, stick, controls, tent, backyard, tunnel, tube, Internet, game, walk, play here, send to a headset, pick your program, laser, pointer, lobby, the King, king, hit, trigger, ghost, ghosts, picture, profile picture, reinstallation station, not marked, paused, notice, wall screens, TV, voice, microphone, mic, mute, talk, hear, test mic, ask again, bathroom, exit, queasy
+keywords: help me, help, stuck, lost, unwell, call a host, simulation, reinstallation, video, reinstallation process, training, tutorial, skip, turn, turning, dizzy, mouse, reinstall, reinstalled, quarantined, locked, Installation Wizard, wizard, Gerald, find gerald, duck, golden duck, egg, VR, headset, tablet, laptop, joystick, stick, controls, tent, backyard, tunnel, tube, Internet, game, walk, play here, send to a headset, pick your program, laser, pointer, lobby, the King, king, hit, trigger, ghost, ghosts, picture, profile picture, reinstallation station, not marked, paused, notice, wall screens, TV, voice, microphone, mic, mute, talk, hear, test mic, ask again, bathroom, exit, queasy
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
@@ -19,6 +19,14 @@ until you are reinstalled, and it shows the **Installation Wizard**'s
 instructions: why you are there, the headset or the laptop, Bathroom
 Mode, and where the exit is (it is clearly marked; it is for safety).
 Click Next.
+
+## Help Me
+
+Stuck, lost, feeling unwell, or the headset isn't working? Tap
+**🆘 Help Me**: it is on your locked phone, beside Bathroom Mode, and in
+the corner of the reinstallation station's screen while you play. A host
+is called out to you straight away. Stay where you are. Tapping it again
+within a minute only tells you help is already coming.
 
 ## Getting in
 

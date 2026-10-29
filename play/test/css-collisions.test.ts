@@ -8,7 +8,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const LANE_FILES = ["w95", "chrome", "stream", "moments", "booth", "host"] as const;
+const LANE_FILES = ["w95", "chrome", "stream", "moments", "booth", "host", "credits"] as const;
 
 /** Lane rules that restyle a base class on purpose: `"<file> | <selector>"`.
  *  Only chrome restyles the shared primitives (CONTRACTS §0): the 44 px

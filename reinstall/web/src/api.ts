@@ -24,6 +24,7 @@ import type {
 import { baseOf, type ReinstallConfig } from "./config.ts";
 import { isEligible, isMarked, type Program } from "./program.ts";
 import { showHouse } from "./show-house.ts";
+import { TENT_HELP_SIGNAL } from "./help.ts";
 import { isDuckSpot, kingOf } from "./spatial.ts";
 
 export { ApiError };
@@ -33,6 +34,18 @@ async function getJson<T>(path: string, token: string): Promise<T> {
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
   return data as T;
+}
+
+/** 🆘 Help Me (wave 44, C9): fire the story's guest button for the program
+ *  this device serves, as the device (`label`). "failed" when the server
+ *  refused it or the story turned it down (its # hosts line says why). */
+export async function askForHelp(config: ReinstallConfig, guest: string): Promise<"ok" | "failed"> {
+  try {
+    const r = await api<{ ok?: boolean; refused?: boolean }>(`${baseOf(config)}/api/mod/signal`, { name: TENT_HELP_SIGNAL, subject: guest, label: `Tent · ${config.name}`.slice(0, 60) }, config.token);
+    return r.ok === true && r.refused !== true ? "ok" : "failed";
+  } catch {
+    return "failed";
+  }
 }
 
 /** Is the device's moderator token still honoured? (A server that is away

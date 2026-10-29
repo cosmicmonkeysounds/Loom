@@ -20,6 +20,9 @@ import type { DeskConfig, DeskTestCall, DeskView } from '@loom/core/house-desk'
 import type { AudioMix, MixChange, MixerView, MusicCommand } from '@loom/core/house-mixer'
 import { audioMixOf, mixerViewOf } from '@/lib/house-mixer-view'
 import { lettersViewOf, type LettersView } from '@/components/run/letters'
+import { videoConsentViewOf, type VideoConsentView } from '@/components/run/video-consent'
+import { creditsViewOf } from '@/components/run/credits-card'
+import type { CreditsView } from '@loom/core/credits'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -764,5 +767,42 @@ export const lettersApi = {
   /** Take one row off file. */
   async forget(eventId: string, key: string): Promise<void> {
     await req<unknown>('POST', `/e/${eventId}/api/mod/letters/forget`, { key })
+  },
+}
+
+// --- who opted out of the video (wave 44, `docs/loom-w44-contract.md` C6) --
+
+/** The same-origin URL of a profile picture by serving key (`ModView.avatars`
+ *  values, `VideoConsentRow.avatar`): the event server serves it publicly at
+ *  `/e/:id/api/avatar/<key>`, as play draws it. */
+export function avatarUrl(eventId: string, key: string): string {
+  return `${BASE}/e/${encodeURIComponent(eventId)}/api/avatar/${encodeURIComponent(key)}`
+}
+
+/** Run's video consent: directors only (never on the host allowlist). */
+export const videoApi = {
+  /** Every guest's answer, the counts. 404 from an older server. */
+  async view(eventId: string): Promise<VideoConsentView> {
+    const v = videoConsentViewOf(await req<unknown>('GET', `/e/${eventId}/api/mod/video`))
+    if (v === null) throw new ApiError(502, { error: 'the server’s video answer is not one' })
+    return v
+  },
+  /** The same rows as `text/csv` (`program,video,id`, `out` first). */
+  async csv(eventId: string): Promise<string> {
+    const res = await fetch(`${BASE}/e/${eventId}/api/mod/video?format=csv`, { credentials: 'include' })
+    if (!res.ok) throw new ApiError(res.status, (await res.json().catch(() => ({}))) as Record<string, unknown>)
+    return await res.text()
+  },
+}
+
+// --- the credits (wave 44, `docs/loom-w44-contract.md` C5) ------------------
+
+/** The roll as the server would send it now (mod: with `source` and
+ *  `problems`). 404 `no_credits` with no file. */
+export const creditsApi = {
+  async view(eventId: string): Promise<CreditsView> {
+    const v = creditsViewOf(await req<unknown>('GET', `/e/${eventId}/api/credits`))
+    if (v === null) throw new ApiError(502, { error: 'the server’s credits answer is not one' })
+    return v
   },
 }

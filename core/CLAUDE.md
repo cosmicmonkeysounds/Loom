@@ -314,6 +314,23 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   (`replayAgentWaits`, `AgentHub.waitList`), so `answering` stands in for
   the typing it missed; only non-idle ones are sent, so a client clears
   its waits on `history` (an idle it slept through is never re-told). Memory only. Tests: `test/agents-wait.test.ts`.
+- **The credits and the video list** (wave 44,
+  [`docs/loom-w44-contract.md`](../docs/loom-w44-contract.md)).
+  `credits.json` (schema and the roll's layout: `src/credits.ts`,
+  `@loom/core/credits`) is read **live** by `server/credits.ts`
+  (`CreditsSource`: the project file via the optional
+  `ProjectLink.readFile`, else `LOOM_CREDITS`, else, with no project, the
+  scenario's own; cached 5 s; never journaled or snapshotted).
+  `GET /api/credits` (`routes/credits.ts`): a moderator always (with
+  `source` / `problems`), a booth or guest once `Night.credits_roll` ≥ 1
+  (403 `not_yet`), 404 `no_credits`; a `programs: true` section lists the
+  roster's guests (no personas, not gone). `NightView.credits {roll, at}`
+  mirrors the roll; the `credits` slide persists. `sync-show` always
+  replaces the project's `credits.json` (like `facts.json`); `loomcheck`
+  lints it. `GET /api/mod/video[?format=csv]` (`routes/video.ts`,
+  directors only, never on the host allowlist) reads every guest's `video`
+  slot. Tests: `test/w44-credits.test.ts`, `test/w44-server.test.ts`,
+  `test/trapped-w44.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

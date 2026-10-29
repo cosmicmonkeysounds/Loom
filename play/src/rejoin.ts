@@ -1,27 +1,27 @@
-//! Getting back in (wave 23, `core/server/routes/rejoin.ts`). A guest who
-//! lost this phone's session — another browser, cleared tabs, *Leave the
-//! event* — comes back as the SAME program three ways, no director needed:
-//!
-//! - **Their badge.** The crew prints blank ID badges; each QR is
-//!   `…/?code=<guest code>&badge=<code>`. Scanned at join it links to the
-//!   program picked (`register {…, badge}`), or later from Me
-//!   (`/api/guest/badge`). Opened in a browser with no session it signs in
-//!   (`/api/guest/enter {passcode, badge}`); a blank badge carries on into
-//!   the join and links there. Opened by a signed-in guest it links (their
-//!   own) or reads as a pass (someone else's) — never a switch.
-//! - **Their invitation** (a featured guest's `?claim=`): the same `enter`
-//!   once their program has joined.
-//! - **Ask a host.** Pick your program from the joined ones; a host taps
-//!   Approve on Needs (or the director phone) and this phone is in.
-//!
-//! A performer's **cast card** (`…/?code=<prime code>&part=<code>`) signs in
-//! as that part and takes it back from a lost booth (`/api/prime/login
-//! {passcode, part}`).
-//!
-//! The badge and part codes are credentials: `main.tsx` strips them from the
-//! address bar before anything renders. This file is the links and the
-//! answers (pure, in the first load); the server calls are their own chunk,
-//! `rejoin-calls.ts`. Both are tested in `test/rejoin.test.ts`.
+// Getting back in (wave 23, `core/server/routes/rejoin.ts`). A guest who
+// lost this phone's session — another browser, cleared tabs, *Leave the
+// event* — comes back as the SAME program three ways, no director needed:
+//
+// - **Their badge.** The crew prints blank ID badges; each QR is
+//   `…/?code=<guest code>&badge=<code>`. Scanned at join it links to the
+//   program picked (`register {…, badge}`), or later from Me
+//   (`/api/guest/badge`). Opened in a browser with no session it signs in
+//   (`/api/guest/enter {passcode, badge}`); a blank badge carries on into
+//   the join and links there. Opened by a signed-in guest it links (their
+//   own) or reads as a pass (someone else's) — never a switch.
+// - **Their invitation** (a featured guest's `?claim=`): the same `enter`
+//   once their program has joined.
+// - **Ask a host.** Pick your program from the joined ones; a host taps
+//   Approve on Needs (or the director phone) and this phone is in.
+//
+// A performer's **cast card** (`…/?code=<prime code>&part=<code>`) signs in
+// as that part and takes it back from a lost booth (`/api/prime/login
+// {passcode, part}`).
+//
+// The badge and part codes are credentials: `main.tsx` strips them from the
+// address bar before anything renders. This file is the links and the
+// answers (pure, in the first load); the server calls are their own chunk,
+// `rejoin-calls.ts`. Both are tested in `test/rejoin.test.ts`.
 
 import type { SessionStorage } from "./host.ts";
 

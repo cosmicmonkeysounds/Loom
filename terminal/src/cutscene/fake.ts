@@ -2,6 +2,7 @@
 //! the preview harness and the lanes' tests. Every field the cutscenes read
 //! has a plausible late-night value; override what a scene needs.
 
+import { creditsView, type CreditsFile, type CreditsView } from "../../../core/src/credits.ts";
 import { EMPTY_NIGHT, type ResultOutcome, type ResultRow, type RulingStamp, type ScreenChart, type ScreenKing, type ScreenMoment, type ScreenNight, type ScreenResultQuestion, type ScreenResults, type ScreenState, type ScreenTarget } from "../screen.ts";
 
 export interface FakeOpts {
@@ -129,4 +130,27 @@ export function fakeResults(kind: ScreenResults["kind"], o: { ns?: readonly numb
     return { ...q, text: null, filed: truth === "none" ? 0 : 9, accepted: truth === "none" ? 0 : 7, guesses: truth === "none" ? 0 : 2, truth, answer: tv ? FAKE_SAID[i % FAKE_SAID.length]! : null, liars: tv ? liars : null };
   });
   return { kind, seq: o.seq ?? 9, at: o.at ?? 0, questions };
+}
+
+// --- made-up credits (wave 44) ------------------------------------------------------------
+//
+// Made-up people: never the crew's or the cast's real names (the show's
+// `credits.json` has those).
+
+const FAKE_CREDITS_FILE: CreditsFile = {
+  title: "Trapped in the Internet",
+  subtitle: "A night on the Desktop",
+  sections: [
+    { heading: "Cast", people: [{ role: "Clippy", name: "Alex Example" }, { role: "Task Manager", name: "Sam Sample" }, { role: "Norton Anti-Virus", name: "Jordan Placeholder" }, { role: "The Installation Wizard", name: "Robin Fixture" }] },
+    { heading: "Crew", people: [{ role: "Director", name: "Casey Demo" }, { role: "Sound and lights", name: "Morgan Mock" }, { role: "The server room", name: "Taylor Stub" }] },
+    { heading: "Starring the programs", programs: true },
+    { heading: "Thanks", lines: ["Everyone who came, and everyone who stayed for the credits."] },
+  ],
+  end: ["Thank you for playing.", "Happy Halloween."],
+};
+
+/** A made-up `CreditsView` with `programs` of the fake programs (cycled, numbered past the list). */
+export function fakeCredits(programs = FAKE_PROGRAMS.length): CreditsView {
+  const names = Array.from({ length: Math.max(0, programs) }, (_, i) => (i < FAKE_PROGRAMS.length ? FAKE_PROGRAMS[i]! : `${FAKE_PROGRAMS[i % FAKE_PROGRAMS.length]!} ${Math.floor(i / FAKE_PROGRAMS.length) + 1}`));
+  return creditsView(FAKE_CREDITS_FILE, names, 1);
 }

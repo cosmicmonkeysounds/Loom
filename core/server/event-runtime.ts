@@ -80,6 +80,10 @@ import { LettersBook, emailOf, type LetterEntry, type LettersMailer } from "./le
 import { letterFactsOf } from "./letter-facts.ts";
 import { lettersMailerFromEnv } from "./letters-mail.ts";
 import { handleAgentLetter, handleLettersPost, handlePrimeLetter, lettersView, type LettersContext } from "./routes/letters.ts";
+import { CreditsSource } from "./credits.ts"; // w44
+import { CREDITS_ROUTE, creditsAnswer, sendCredits } from "./routes/credits.ts"; // w44
+import { VIDEO_ROUTE, sendVideoConsent, videoConsentView } from "./routes/video.ts"; // w44
+import { CREDITS_FILE } from "../src/credits.ts"; // w44
 import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
@@ -610,6 +614,8 @@ export interface EventRuntimeInit {
   desk?: string | null;
   /** The desk's LAN fallback file (`LOOM_DESK`; null = none). */
   deskFile?: string | null;
+  /** Wave 44 (C5): the credits' fallback file (`LOOM_CREDITS`; null = none). */
+  creditsFile?: string | null;
   /** The desk's timers (tests inject; default `setTimeout`). */
   deskTimers?: DeskTimers;
   /** Is this event an author's private preview / shared rehearsal right now
@@ -871,6 +877,8 @@ export class EventRuntime {
   // only: never in the world, the journal or a message.
   private projectFacts: string | null;
   private readonly factsFile: string;
+  /** Wave 44 (C5): the credits, read live (`credits.ts`). */
+  private readonly credits: CreditsSource;
   private factsMemo: { text: string; book: FactsBook | null } | null = null;
   private showFacts: { mtimeMs: number; book: FactsBook | null } | null = null;
   private readonly factsWatch = new FactsWatch();
@@ -1018,6 +1026,16 @@ export class EventRuntime {
     // The project's facts.json rides the same row record as the maps; the
     // state dir's copy covers an event with no row snapshot.
     this.factsFile = init.factsFile ?? defaultFactsFile(this.houseFile);
+    // Wave 44 (C5): the project's credits.json, else LOOM_CREDITS, else (no
+    // project) the scenario's own beside its house map.
+    const readCredits = this.project?.readFile;
+    const creditsEnv = init.creditsFile !== undefined ? init.creditsFile : (process.env.LOOM_CREDITS ?? null);
+    this.credits = new CreditsSource({
+      project: readCredits !== undefined && this.project !== null ? () => readCredits.call(this.project, CREDITS_FILE) : null,
+      envFile: creditsEnv,
+      scenarioFile: join(dirname(this.houseFile), CREDITS_FILE),
+      ...(init.now !== undefined ? { now: init.now } : {}),
+    });
     this.projectFacts = init.facts !== undefined ? init.facts : this.store.loadFacts();
     if (init.facts !== undefined) this.store.saveFacts(init.facts);
     // The speakers ride the same record; a director's save in the state dir wins.
@@ -5530,6 +5548,20 @@ export class EventRuntime {
     if (method === "GET" && path === "/api/mod/letters") {
       if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
       else sendJson(res, 200, lettersView(this.lettersContext()));
+      return true;
+    }
+    // --- wave 44 (C6): who opted out of the video (directors only, never a host booth) ---
+    if (method === "GET" && path === VIDEO_ROUTE) {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
+      else if (this.sim === null) sendJson(res, 409, { error: "no scenario loaded" });
+      else sendVideoConsent(res, url, videoConsentView(this.sim, { isPersona: (id) => this.personaOwners.has(id) || id.startsWith("p-"), avatarOf: (name) => this.avatars.keyFor(name) }));
+      return true;
+    }
+    // --- wave 44 (C5): the credits (a moderator always; a booth or guest once they roll) ---
+    if (method === "GET" && path === CREDITS_ROUTE) {
+      const token = queryTokenOf(req, url);
+      const caller = opts.moderator === true || this.sessions.canModerate(token) ? "mod" : this.guestOf(token) !== null || this.sessions.has(token) ? "player" : "none";
+      sendCredits(res, creditsAnswer(caller, await this.credits.read(), this.sim, (id) => this.personaOwners.has(id) || id.startsWith("p-")));
       return true;
     }
     // --- wave 14: the scan-from-the-screen cards (directors only, never a host booth) ---

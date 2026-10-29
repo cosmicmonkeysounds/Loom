@@ -333,7 +333,8 @@ describe("Trapped in the Internet — compile", () => {
     const ints = [...m.interactions.values()];
     const by = (w: string) => ints.filter((i) => i.who === w).map((i) => i.id);
     // Wave 26 (B1): a guest's 🎱 BINGO!.
-    expect(by("guest")).toEqual(["go to the bathroom", "back from the bathroom", "call_bingo", "plant_the_virus"]);
+    // Wave 44 (C1, C2): 🆘 Help Me and the two 🎥 video buttons.
+    expect(by("guest")).toEqual(["go to the bathroom", "back from the bathroom", "tent_help_me", "video_leave_me_out", "video_use_me", "call_bingo", "plant_the_virus"]);
     const perf = by("performer");
     for (const p of ["accurate_q1", "accurate_q2", "accurate_q3", "confident_q1", "confident_q2", "confident_q3", "fact_accurate", "fact_lie", "fact_uncertain", "send to the internet", "mark as reinstalled", "named_at_bingo", "unmark_for_reinstallation", "truth_answered", "truth_refused", "chose_dare"]) expect(perf).toContain(p);
     // The hat is gone (wave 4, lane B): the bottle's buttons replace it.
@@ -5442,8 +5443,12 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     }
     expect(pins(r, "unpinned").filter((p) => p.startsWith("g1|"))).toEqual([]); // wave 18: a mark pins nothing
     expect(v(sim, "Trabolta.awake")).toBe(false);
-    expect(cues(r)).toEqual(expect.arrayContaining(["cue screens_screensaver", "cue lights_restore"]));
-    expect(v(sim, "Night.screen")).toBe("screensaver");
+    // Wave 44 (C3): the show ends on the credits, not the screensaver.
+    expect(cues(r)).toEqual(expect.arrayContaining(["cue screens_credits", "cue lights_restore"]));
+    expect(cues(r)).not.toContain("cue screens_screensaver");
+    expect(v(sim, "Night.screen")).toBe("credits");
+    expect(v(sim, "Night.terminals")).toBe("credits");
+    expect(v(sim, "Night.credits_roll")).toBe(1);
     expect(v(sim, "Night.lights")).toBe("restore");
     const cast = casts(r).map((c) => c.cue.replace(/^"|"$/gu, ""));
     expect(cast).toEqual(["!🎃 The show is over: you are human again. Hang out. The night is yours."]);

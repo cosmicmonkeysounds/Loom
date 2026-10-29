@@ -85,6 +85,7 @@ import { HostShowWindow } from "../host/show.tsx";
 import { hostWindowShown, type HostWindow } from "../host/show-model.ts";
 import { LazyDeskWindow, hostTaskbarButtons } from "../host/windows.tsx";
 import { NowJobs } from "./now-card.tsx";
+import { CreditsSlot, creditsStartItem, useCredits } from "../credits/lazy.tsx";
 
 /**
  * A guest's thread as the booth shows it: its rows come from several rooms,
@@ -117,8 +118,8 @@ export { WantedBoard } from "./wanted/board.tsx";
 /** The room a performer lands in wide: Readouts (wave 18, G2: the house's
  *  broadcast feed is the far-away Chat log, never a default room). */
 /** Is something open over the booth's home that the phone's Back should close? */
-export function boothAway(open: { layer: unknown; sheet: unknown; people: unknown; help: boolean }): boolean {
-  return open.layer !== null || open.sheet !== null || open.people !== null || open.help;
+export function boothAway(open: { layer: unknown; sheet: unknown; people: unknown; help: boolean; credits?: boolean }): boolean {
+  return open.layer !== null || open.sheet !== null || open.people !== null || open.help || open.credits === true;
 }
 
 export function boothHome(list: Channel[]): string | null {
@@ -329,8 +330,14 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   // The phone's own Back closes the booth's top layer (a card, the board,
   // the scanner, a sheet) instead of leaving the app mid-escort (NMR-2,
   // the booth half of NM-F9); only when the app owns the page.
-  useSystemBack(host.ownsPage && signedIn, boothAway({ layer, sheet, people: people ?? (peopleOpen ? true : null), help }), () => {
-    if (layer !== null) setLayer((l) => closeTo(l));
+  // Wave 44 (C7): a player's credits roll, by itself once when the story
+  // rolls them live, and from ⊞ Start; it waits while the booth is face to
+  // face (the scanner, a card, PLAYER SELECT).
+  const credits = useCredits(s.view?.night?.credits?.roll, s.view?.clock);
+  const creditsFace = layer?.kind === "scan" || layer?.kind === "card" || layer?.kind === "pick";
+  useSystemBack(host.ownsPage && signedIn, boothAway({ layer, sheet, people: people ?? (peopleOpen ? true : null), help, credits: credits.open !== null }), () => {
+    if (credits.open !== null && !creditsFace) credits.set(null);
+    else if (layer !== null) setLayer((l) => closeTo(l));
     else if (peopleOpen) setPeopleOpen(false);
     else if (sheet !== null) setSheet(null);
     else if (people !== null) setPeople(null);
@@ -642,6 +649,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
         character,
         wake,
         embedded: host.embedded,
+        credits: creditsStartItem(s.view?.night?.credits, () => credits.set(Date.now())),
         onHelp: () => setHelp(true),
         onSheet: setSheet,
         onPeople: () => setPeopleOpen(true),
@@ -856,6 +864,9 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
             {sheet === "powers" && <PowersSheet session={s} onClose={() => setSheet(null)} />}
             {sheet === "alerts" && <AlertsSheet session={s} push={push} onClose={() => setSheet(null)} />}
             {help && <StaffHelpSheet onClose={() => setHelp(false)} />}
+            {player && s.view?.night?.credits && (
+              <CreditsSlot c={credits} credits={s.view.night.credits} clock={s.view.clock} eventId={s.auth.eventId} token={token} auto cover={{ face: creditsFace }} />
+            )}
           </div>
           </BoothBadgesProvider>
         </WalletActionsProvider>

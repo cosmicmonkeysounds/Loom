@@ -67,6 +67,7 @@ import { SidesContext } from "../sides/context.ts";
 import { LazySidesLayer } from "../sides/lazy.tsx";
 import type { SidesWhich } from "../sides/index.tsx";
 import { registerSidesWidgets } from "../sides/widgets.tsx";
+import { CreditsSlot, creditsStartItem, useCredits } from "../credits/lazy.tsx";
 
 // The doors (`sides`) and the invitation (`invite`) card kinds (CONTRACTS A8).
 registerSidesWidgets();
@@ -216,6 +217,9 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   const tour = !cut.showing && s.me !== null ? pendingWidget(s.messages, "tutorial", new Set(s.widgetAnswers.keys())) : null;
   const tourSeq = tour?.seq ?? null;
   const signedIn = s.me !== null && s.ready && !cut.showing;
+  // Wave 44 (C7): the credits roll, by itself once when the story rolls
+  // them live, and from ⊞ Start while they are set.
+  const credits = useCredits(st?.night?.credits?.roll, st?.clock);
 
   // --- the window, the room over it, and every exit's `go` ----------------
   const cards = useMemo(() => liveCardsOf(t.list, s.widgetAnswers), [t.list, s.widgetAnswers]);
@@ -262,8 +266,9 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     if (onMission && nowId !== seenNow) setSeenNow(nowId);
   }, [onMission, nowId, seenNow]);
   // The phone's own Back steps back inside the app (NM-F9), when it owns the page.
-  useSystemBack(host.ownsPage && signedIn, nav.overlay !== null || t.activeId !== null || nav.window !== "mission", () => {
+  useSystemBack(host.ownsPage && signedIn, nav.overlay !== null || credits.open !== null || t.activeId !== null || nav.window !== "mission", () => {
     if (nav.overlay !== null) nav.setOverlay(null);
+    else if (credits.open !== null) credits.set(null);
     else if (t.activeId !== null) nav.back();
     else nav.go({ to: "mission" });
   });
@@ -328,7 +333,8 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   const pins = activePins(t.list.flatMap((c) => c.messages));
   // A `!!` pin covers the whole app — from every received message, so a
   // restricted guest whose list hides the lobby still sees it.
-  const takeover = <Takeover pin={activeTakeover(s.messages.values())} />;
+  const bang = activeTakeover(s.messages.values());
+  const takeover = <Takeover pin={bang} />;
   const restricted = st?.restricted ?? false;
   // A scanned codex code redeems like a typed one, a room's sign checks in,
   // someone else's pass opens the Recruit sheet (wave 18, F3). Wave 18b
@@ -455,6 +461,8 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
   );
 
   const passing = nav.overlay === "pass";
+  // Wave 44 (C7): never over the pass; it waits behind a `!!` takeover and the glitch.
+  const roll = st.night?.credits && <CreditsSlot c={credits} credits={st.night.credits} clock={st.clock} eventId={s.me.eventId} token={s.me.token} auto cover={{ pass: passing, takeover: bang !== null }} />;
   if (cut.showing) {
     const dock = t.list.find((c) => c.decision !== null)?.decision ?? s.decision?.decision ?? null;
     const here = st.location !== null ? (t.list.find((c) => c.id === `loc:${st.location}`)?.title ?? st.location) : null;
@@ -474,6 +482,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
           onPass={() => nav.setOverlay("pass")}
           offline={offline}
         />
+        {roll}
         {passing && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => nav.setOverlay(null)} />}
         {takeover}
       </div>,
@@ -496,6 +505,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
           onPass={() => nav.setOverlay("pass")}
           onAct={(i) => void s.act(i.id, i.label).catch(() => {})}
         />
+        {roll}
         {passing && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => nav.setOverlay(null)} />}
         {takeover}
       </div>,
@@ -632,6 +642,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
     interactions,
     ...startSides,
     people: (st.people?.length ?? 0) > 0,
+    credits: creditsStartItem(st.night?.credits, () => credits.set(Date.now())),
     open: {
       act,
       sides: () => setSidesWhich({ sheet: "sides" }),
@@ -794,6 +805,7 @@ export function GuestApp({ onLeave, badgeLink = null }: { onLeave: () => void; b
       {help && <HelpSheet onClose={() => setHelp(false)} />}
       {s.scanDone !== null && <LazyScanDone done={s.scanDone} onClose={s.clearScan} />}
       {nav.overlay === "scan" && <ScanSheet meId={s.me.id} onScan={onScanned} onClose={() => nav.setOverlay(null)} rooms={scanRooms} />}
+      {roll}
       {passing && <FullPass guestId={meId} name={meName} onClose={() => nav.setOverlay(null)} />}
       {st.wallet && (walletSheet === "send" || walletSheet === "request" || walletSheet === "grant") && (
         <PeopleAmountSheet

@@ -198,9 +198,11 @@ queued.
    (wave 21: no winner to name, the story picks the player; The Mole is the
    last award), then
    **G11 🎃 Resurrection** last: it frees and unmarks everyone, puts Trabolta
-   to sleep and tells every phone the show is over (pressed before the last
+   to sleep, rolls the credits on the TV, the walls and every phone (wave
+   44) and tells every phone the show is over (pressed before the last
    award, `# hosts` asks and the sheet says *Not taken*, nothing ticks; press
-   again within 30 s to end it anyway).
+   again within 30 s to end it anyway). **G12 🎬** rolls the credits again.
+   Then Run → 🎥 Video consent → ⬇ Download CSV, before End.
 
 **10. The backup console.** If your laptop dies, John signs in on his; if the
 editor is down, the radio is the console (W-26): tell the tech op what to fire
