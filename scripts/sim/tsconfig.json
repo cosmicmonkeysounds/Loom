@@ -19,5 +19,5 @@
     // The specs' Playwright types (playwright.d.ts): the editor's install.
     "paths": { "@playwright/test": ["../../editor/node_modules/@playwright/test"] }
   },
-  "include": ["evening.ts", "heart.ts", "heart.spec.ts", "browser.spec.ts", "playwright.config.ts", "playwright.d.ts", "lib/*.ts", "test/*.ts"]
+  "include": ["evening.ts", "heart.ts", "trabolta-load.ts", "heart.spec.ts", "browser.spec.ts", "playwright.config.ts", "playwright.d.ts", "lib/*.ts", "test/*.ts"]
 }

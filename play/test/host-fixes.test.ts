@@ -64,5 +64,8 @@ describe("the queue's oldest wait and each guest's", () => {
     expect(agentQueue({ queue: { depth: 1, oldestMs: 5_000, stalled: true }, waiting: [] }, 9_000)).toEqual({ depth: 1, oldestMs: 5_000, stalled: true });
     expect(agentQueue({ queue: null, waiting: [] }, 0)).toBeNull();
   });
+  it("wave 42 (C6): a windowed worker's split rides through", () => {
+    expect(agentQueue({ queue: { depth: 5, oldestMs: 5_000, stalled: false, inFlight: 2, capacity: 2 }, waiting: [] }, 9_000)).toEqual({ depth: 5, oldestMs: 5_000, stalled: false, inFlight: 2, capacity: 2 });
+  });
 });
 

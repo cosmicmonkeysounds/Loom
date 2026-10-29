@@ -15,7 +15,18 @@
     fallback: "…"                      # said when the model fails (else silence)
     fallbacks: {formal: ["One moment."]}  # the new voice's dead-air lines, by stage
                                        #   (a list = any stage): one this guest
-                                       #   has not heard yet, else `fallback`
+                                       #   has not heard yet, else `fallback`.
+                                       #   (wave 42d) A stage may key its lines by
+                                       #   what the guest just did: {offer: […],
+                                       #   praise: […], refuse: […], other: […]}
+                                       #   (`guards.fallback_intent`; `other`, or
+                                       #   a plain list, for the rest)
+    card_lines: {formal: ["On the 📝 card, every word."]}  # (wave 42e) a fact offered and
+                                       #   no word of the 📝 card in his reply: one of
+                                       #   these is added (by stage; a list = any)
+    distress: "Step out now: …"        # (wave 42c) the fixed answer to a guest in
+                                       #   real distress (no model; else a built-in
+                                       #   line, `voice.DISTRESS_LINE`)
     temperature: 0.9                   # optional per-character model overrides:
     max_tokens: 800                    #   model / temperature / max_tokens /
     reasoning_effort: low              #   reasoning_effort
@@ -108,6 +119,7 @@ _KNOWN = {
     "when",
     "unavailable",
     "fallback",
+    "distress",
     "model",
     "endpoint",
     "temperature",
@@ -126,6 +138,7 @@ _KNOWN = {
     "catchphrases",
     "catchphrase_stages",
     "fallbacks",
+    "card_lines",
     "unsaid",
     "outside",
 }
@@ -182,6 +195,10 @@ class Persona:
     when: Condition | None = None
     unavailable: str = ""
     fallback: str = ""
+    #: (wave 42c) The fixed, kind line the worker sends with no model call when a
+    #: guest is in real distress (`distress:`); "" = the voice's built-in
+    #: `DISTRESS_LINE`.
+    distress: str = ""
     #: Per-character model overrides (merged over the section's `llm:`).
     llm: dict[str, Any] = field(default_factory=dict)
     source: str = ""
@@ -218,7 +235,12 @@ class Persona:
     catchphrase_stages: tuple[str, ...] = ()
     #: The new voice's lines for nothing usable left, by stage ("" = any
     #: stage; `fallbacks:`); `guards.pick_fallback` picks one not heard yet.
+    #: (wave 42d) A stage's lines keyed by the guest's intent sit under
+    #: "<stage>.<intent>" (`FALLBACK_INTENTS`; "other" is the plain key).
     fallbacks: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    #: (wave 42e) The short sentence added to a reply to a fact offered that
+    #: never points to the 📝 card, by stage ("" = any; `card_lines:`).
+    card_lines: dict[str, tuple[str, ...]] = field(default_factory=dict)
     #: Names the new voice never says until the story has (`unsaid:`): each
     #: (name, condition), the condition read like `when:`.
     unsaid: tuple[tuple[str, Condition], ...] = ()
@@ -417,10 +439,15 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         powers = _names(raw_powers, f"{source}: powers")
     outside = _names(meta.get("outside"), f"{source}: outside")
     fallbacks = _fallbacks(meta.get("fallbacks"), stages, secrets, source)
+    card_lines = _fallbacks(meta.get("card_lines"), stages, secrets, source, key="card_lines", intents=False)
     catchphrases = _catchphrases(meta.get("catchphrases"), source)
     situations = _situations(meta.get("situations"), source, secrets)
-    in_world: list[tuple[str, str]] = [("the system prompt", body), ("fallback:", str(meta.get("fallback") or "")), ("unavailable:", str(meta.get("unavailable") or ""))]
+    distress = " ".join(str(meta.get("distress") or "").split())
+    if distress and secrets.leaks(distress):
+        raise ConfigError(f"{source}: distress: carries a secrets.never word")
+    in_world: list[tuple[str, str]] = [("the system prompt", body), ("fallback:", str(meta.get("fallback") or "")), ("unavailable:", str(meta.get("unavailable") or "")), ("distress:", distress)]
     in_world += [(f"fallbacks: {stage or '(any)'}", line) for stage, lines in fallbacks.items() for line in lines]
+    in_world += [(f"card_lines: {stage or '(any)'}", line) for stage, lines in card_lines.items() for line in lines]
     in_world += [("catchphrases:", line) for line in catchphrases]
     in_world += [(f"the {sit.heading} situation's fallbacks", line) for sit in situations for line in sit.fallbacks]
     for phase, card in table.cards.items():
@@ -440,6 +467,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         when=when,
         unavailable=str(meta.get("unavailable") or ""),
         fallback=str(meta.get("fallback") or ""),
+        distress=distress,
         llm=llm,
         source=source,
         mind_prompt=mind_prompt,
@@ -459,6 +487,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         catchphrases=catchphrases,
         catchphrase_stages=_catchphrase_stages(meta.get("catchphrase_stages"), stages, source),
         fallbacks=fallbacks,
+        card_lines=card_lines,
         unsaid=_unsaid(meta.get("unsaid"), source),
         outside=outside,
         phase_cards=dict(table.cards),
@@ -501,24 +530,51 @@ def _catchphrase_stages(value: Any, stages: tuple[str, ...], source: str) -> tup
     return names
 
 
-def _fallbacks(value: Any, stages: tuple[str, ...], secrets: Secrets, source: str) -> dict[str, tuple[str, ...]]:
+#: (wave 42d) What a guest's last line did, for the dead-air line that
+#: answers it (`guards.fallback_intent`): offered a fact, praised him, asked
+#: for a deal / a stop / payment he refuses, or anything else ("other": the
+#: stage's plain lines).
+#: (wave 42e) also: asked whether their fact was right ("check"), a short
+#: hello ("greet"), an insult ("rude"), and the malware, the advert or the
+#: glitch ("malware": a sub-pool of "other", the rattled stage's denial).
+FALLBACK_INTENTS = ("offer", "praise", "refuse", "unknown", "help", "check", "greet", "rude", "malware", "other")
+
+
+def _fallbacks(value: Any, stages: tuple[str, ...], secrets: Secrets, source: str, *, key: str = "fallbacks", intents: bool = True) -> dict[str, tuple[str, ...]]:
+    """`fallbacks:` as {stage: lines}, a stage's intent pools as
+    {"<stage>.<intent>": lines} ("other" stays the plain stage key). A
+    stage's value is a list (every intent), or (wave 42d) a mapping of
+    intent → list. (wave 42e) `card_lines:` the same, without intents."""
     if value in (None, ""):
         return {}
     raw = {"": value} if isinstance(value, list) else value
     if not isinstance(raw, dict):
-        raise ConfigError(f"{source}: fallbacks: expected a list of lines, or a mapping of stage → lines")
+        raise ConfigError(f"{source}: {key}: expected a list of lines, or a mapping of stage → lines")
     out: dict[str, tuple[str, ...]] = {}
-    for key, lines in raw.items():
-        stage = str(key).strip()
-        if stage and stages and stage not in stages:
-            raise ConfigError(f"{source}: fallbacks.{stage}: not a declared stage ({', '.join(stages)})")
+
+    def put(at: str, lines: Any, where: str) -> None:
         if isinstance(lines, str):
             lines = [lines]
         if not isinstance(lines, list) or not all(isinstance(x, str) and x.strip() for x in lines):
-            raise ConfigError(f"{source}: fallbacks.{stage or '(any)'}: expected a list of lines")
+            raise ConfigError(f"{source}: {key}.{where}: expected a list of lines")
         if any(secrets.leaks(x) for x in lines):
-            raise ConfigError(f"{source}: fallbacks.{stage or '(any)'}: carries a secrets.never word")
-        out[stage] = tuple(" ".join(x.split()) for x in lines)
+            raise ConfigError(f"{source}: {key}.{where}: carries a secrets.never word")
+        out[at] = tuple(" ".join(x.split()) for x in lines)
+
+    for k, lines in raw.items():
+        stage = str(k).strip()
+        if stage and stages and stage not in stages:
+            raise ConfigError(f"{source}: {key}.{stage}: not a declared stage ({', '.join(stages)})")
+        if not isinstance(lines, dict):
+            put(stage, lines, stage or "(any)")
+            continue
+        if not intents:
+            raise ConfigError(f"{source}: {key}.{stage or '(any)'}: expected a list of lines")
+        for ikey, pool in lines.items():
+            intent = str(ikey).strip()
+            if intent not in FALLBACK_INTENTS:
+                raise ConfigError(f"{source}: fallbacks.{stage or '(any)'}.{intent}: not an intent ({', '.join(FALLBACK_INTENTS)})")
+            put(stage if intent == "other" else f"{stage}.{intent}", pool, f"{stage or '(any)'}.{intent}")
     return out
 
 

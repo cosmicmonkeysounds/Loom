@@ -224,6 +224,8 @@ class Wire:
         self.suspect = False
         #: The server trace log's `seq` after the last post it answered.
         self.last_seq: int | None = None
+        #: (wave 42) The newest live send (`Agents._trace_sends`) whose answer was read.
+        self.last_sent: int | None = None
         self.posted = 0
         self.skipped = 0
 
@@ -245,17 +247,32 @@ class Wire:
         agents.trace.restart_prefixes()
         self.suspect = True
 
-    def trace_posted(self, agents: Any, answer: Any, *, replay: bool = False) -> None:
+    def trace_posted(self, agents: Any, answer: Any, *, replay: bool = False, sent: int | None = None) -> None:
         """A trace POST's answer `{accepted, seq}`. A live post into an empty
         log (`seq <= accepted`) or a `seq` lower than the last one means the
         server's trace restarted under this connection. A replay only sets
-        the baseline (a fresh server is what it is for)."""
+        the baseline (a fresh server is what it is for).
+
+        `sent` (wave 42): the post's send number. A background post and an
+        inline one (a ruling's thought) may overlap, and the older one's
+        answer may come back second with the lower `seq`: that is order, not
+        a restart, so an answer to a send older than the last one read only
+        checks for an empty log."""
         seq = answer.get("seq") if isinstance(answer, dict) else None
         if not isinstance(seq, int) or isinstance(seq, bool):
             return
         accepted = answer.get("accepted")
+        late = sent is not None and self.last_sent is not None and sent < self.last_sent
+        if sent is not None and not late:
+            self.last_sent = sent
         if not replay:
             fresh = isinstance(accepted, int) and not isinstance(accepted, bool) and 0 < accepted and seq <= accepted
+            if late:
+                if fresh:
+                    if not self.suspect:
+                        log.info("the server's trace log is new since the last hello: the next replay sends everything")
+                    self.lost(agents)
+                return  # its seq is older than the one already read
             if fresh or (self.last_seq is not None and seq < self.last_seq):
                 if not self.suspect:
                     log.info("the server's trace log is new since the last hello: the next replay sends everything")

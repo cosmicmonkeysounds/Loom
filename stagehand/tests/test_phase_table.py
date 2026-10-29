@@ -153,6 +153,22 @@ def test_a_persona_carries_the_table_catchphrases_and_warnings(tmp_path):
         parse_persona("---\ncharacter: T\ncatchphrases: [1, 2]\n---\nYou are T.\n")
 
 
+def test_a_persona_carries_its_distress_line(tmp_path):
+    # (w42c) `distress:` is the fixed line the worker sends, with no model,
+    # to a guest in real distress: whitespace folded, "" when absent, and
+    # never a `secrets.never` word.
+    p = parse_persona('---\ncharacter: T\ndistress: "Step out now.\n  Find a host."\n---\nYou are T.\n')
+    assert p.distress == "Step out now. Find a host."
+    assert parse_persona("---\ncharacter: T\n---\nYou are T.\n").distress == ""
+    (tmp_path / "t.mind.md").write_text("---\nsecrets:\n  never:\n    - \"4321\"\n---\nMind.\n", encoding="utf-8")
+    (tmp_path / "t.persona.md").write_text("---\ncharacter: T\nmind: t.mind.md\ndistress: \"The code is 4321.\"\n---\nYou are T.\n", encoding="utf-8")
+    with pytest.raises(ConfigError, match="distress"):
+        load_persona(tmp_path / "t.persona.md")
+    # An `outside:` word in it is a warning, like any of his in-world lines.
+    q = parse_persona('---\ncharacter: T\noutside: [Loom]\ndistress: "Find Loom."\n---\nYou are T.\n')
+    assert any("distress:" in w for w in q.warnings)
+
+
 def test_the_shipped_mind_file_parses_and_every_card_validates():
     """On this branch the show's table is bare cues; after lane C merges it
     is the real card table — either way it must load through the parser."""

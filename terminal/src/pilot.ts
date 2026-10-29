@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, useChatStream } from "@loom/play/client.ts";
 import { useTyping } from "@loom/play/typing.ts";
+import { useAgentWait, type AgentWait } from "@loom/play/agent-wait.ts";
 import type { ChatMessage, GuestView } from "@loom/play/types.ts";
 import { baseOf, foldName, roomOf, type TerminalConfig } from "./config.ts";
 
@@ -405,6 +406,9 @@ export interface PilotSession {
   beforeVisit: (line: { answers?: number }) => boolean;
   /** The character is composing a reply. */
   typing: boolean;
+  /** Wave 42b (B5): the guest's line is queued behind other programs
+   *  (`agentWait` `queued`, nobody typing), with his name in the guest's view. */
+  wait: { name: string; wait: AgentWait } | null;
   /** Character is answered by an agent that is online now (null = unknown). */
   online: boolean | null;
   /** Say something to the character, as the guest. */
@@ -422,6 +426,23 @@ export interface PilotSession {
 export function characterIdOf(configured: string, view: Pick<GuestView, "people"> | null): string {
   const want = foldName(configured);
   return view?.people?.find((p) => p.kind === "character" && foldName(p.id) === want)?.id ?? configured;
+}
+
+/**
+ * Wave 42b (B5): a wait `answering` is the typing row (as on the phone); one
+ * still `queued` with nobody typing is the thread's wait line, named as the
+ * guest's own view names him (else his id).
+ */
+export function pilotWait(
+  w: AgentWait | undefined,
+  typing: boolean,
+  view: Pick<GuestView, "people"> | null,
+  character: string,
+): { typing: boolean; wait: { name: string; wait: AgentWait } | null } {
+  if (typing || w?.state === "answering") return { typing: true, wait: null };
+  if (w === undefined) return { typing: false, wait: null };
+  const name = view?.people?.find((p) => p.kind === "character" && p.id === character)?.name ?? character;
+  return { typing: false, wait: { name, wait: w } };
 }
 
 export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): PilotSession {
@@ -442,6 +463,7 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
   const listeners = useRef(new Set<(line: Line) => void>());
   const announced = useRef(new Set<number>());
   const { typing, onTyping } = useTyping(pilot !== null ? { role: "guest" } : null);
+  const { waits, onAgentWait, onWaitsReset } = useAgentWait(pilot?.id ?? null);
 
   useEffect(() => {
     setView(null);
@@ -455,6 +477,8 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setView(v as GuestView),
     onTyping,
+    onAgentWait,
+    onWaitsReset,
     onHistory: (list) => {
       baseline.current = list.reduce((m, x) => Math.max(m, x.seq), -1);
       setFloor((prev) => floorAfter(prev, list, undefined, pilotRef.current?.visitSeq));
@@ -516,5 +540,6 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
     return me?.agent?.online ?? null;
   }, [view, character]);
 
-  return { view, connected, ready, lines, visitLines, pinFloor, beforeVisit, typing: typing.has(channel), online, say, onNewLine, dead };
+  const waiting = pilotWait(waits.get(channel), typing.has(channel), view, character);
+  return { view, connected, ready, lines, visitLines, pinFloor, beforeVisit, typing: waiting.typing, wait: waiting.wait, online, say, onNewLine, dead };
 }

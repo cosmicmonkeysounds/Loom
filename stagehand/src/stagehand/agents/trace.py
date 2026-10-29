@@ -52,7 +52,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .llm import Completion, LlmConfig
+from .llm import SERVED_BY, SERVED_MODEL, Completion, LlmConfig
+from .slots import PRIMARY
 
 log = logging.getLogger("stagehand.agents.trace")
 
@@ -123,6 +124,14 @@ class Thought:
     error: str | None = None
     #: Free text for markers (`control`: what the director did).
     note: str = ""
+    #: (wave 42b) The engine that served the call (`primary` or an
+    #: `agents.overflow` name); None for a marker or a classic mind's
+    #: orchestrator. The server keeps only the note's "engine …" (it drops
+    #: fields it does not know).
+    engine: str | None = None
+    #: (wave 42b) Asked in brief mode (lines queued behind it: two short
+    #: sentences, a smaller token cap).
+    brief: bool = False
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)
@@ -165,11 +174,25 @@ def new_thought(
     result: dict[str, Any] | None = None,
     error: str | None = None,
     note: str = "",
+    engine: str | None = None,
+    brief: bool = False,
 ) -> Thought:
-    """Build a thought from the pieces the pipeline has in hand."""
-    t = Thought(id=f"th-{uuid.uuid4().hex[:10]}", character=character, at=time.time(), kind=kind, trigger=trigger, note=note)
+    """Build a thought from the pieces the pipeline has in hand. A thought
+    with a model records the engine that served it: `engine`, else the
+    calling task's last call (`llm.SERVED_BY`, wave 42b)."""
+    t = Thought(id=f"th-{uuid.uuid4().hex[:10]}", character=character, at=time.time(), kind=kind, trigger=trigger, note=note, brief=brief)
     if model is not None:
         t.model = model_info(model)
+        t.engine = engine or SERVED_BY.get()
+        served = SERVED_MODEL.get() if engine is None else None
+        if served is not None and served.endpoint != model.endpoint:
+            # Moved to another engine after this one failed: where it went.
+            t.model.update(name=served.model, api=served.api, endpoint=served.endpoint)
+    # What the Mind page shows (it reads the note): an overflow engine by
+    # name (the primary goes unsaid, as before wave 42b), brief mode.
+    extra = [x for x in ("brief" if brief else "", f"engine {t.engine}" if t.engine and t.engine != PRIMARY else "") if x]
+    if extra:
+        t.note = " · ".join([note, *extra] if note else extra)
     if messages:
         t.messages = [{"role": str(m.get("role", "")), "content": _clip(str(m.get("content", "")), MAX_CONTENT)} for m in messages]
     if completion is not None:

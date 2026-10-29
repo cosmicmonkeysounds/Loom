@@ -46,6 +46,222 @@ more with the whole burst. Requests queue while no worker is online
 time out after 2 minutes (one retry), and are cancelled by a run
 restart.
 
+**The window** (wave 42, "Trabolta under load"). A worker opens its
+stream as `GET /api/agent/stream?characters=…&name=…&capacity=N`, with
+`N` its `agents.concurrency` (a whole number 1..16); the `hello` frame
+echoes the `capacity` the server holds it to (`null` = legacy). With a
+capacity the server never gives that worker more than `N` things at
+once — open voice requests, a ruling and a letter all take a slot.
+Everything else waits in the **server's** queue, in rank order (a stage
+request, then a guest at his heart, then every other DM; first come
+first served within a rank), and goes out the moment a slot frees: a
+reply, a cancel, a timeout, a worker leaving or coming back, a stall
+clearing. Two workers share one queue and each takes work as it frees a
+slot, so a slower one simply takes less. A queued request's body is built
+when it goes out, so it carries every line the guest sent while it
+waited and the world as it is then (after the reply that freed the slot
+has landed: his new mood included). A guest who reaches his heart while
+waiting moves up to the heart's rank at once. Run up every Trabolta
+worker on the same stagehand: an older worker beside a windowed one
+still works, but it soaks up whatever overflows. Consequences a guest sees:
+
+- "Trabolta is typing…" shows only once a slot has the request — a
+  guest still in the queue sees nothing, not minutes of typing.
+- A guest still in the queue after 40 s, while the worker is answering
+  others, hears the character's `busy:` line, once per thread.
+- Each request in a slot has its own 2-minute reply timeout. The worker
+  is **stalled** only when nothing came back from it (an answer, or one
+  of its requests settled by hand) for 60 s, counted from the later of
+  its last answer and its oldest request in flight: one stuck slot while
+  the others answer is not a stall.
+- A ruling no longer waits for the voice queue to empty: it takes a free
+  slot when no DM waits, or once it has waited 15 s (`judgeAgeMs`),
+  ahead of the queued DMs. At most one ruling is out per worker. A
+  letter goes when a slot is free and no DM waits.
+
+Hosts read it as "3 answering · 12 waiting · oldest 0:41" (the queue
+summary's `inFlight` / `capacity`, present only with a windowed worker).
+
+**The line on every frame** (wave 42b). Each `request` frame carries
+`queued` — the requests for that character still waiting in the server's
+queue as it goes out — and `load: {queued, inFlight, capacity}`
+(`inFlight` counts the frame itself; `capacity` is the windowed workers'
+slots plus one per legacy worker). The worker's brief mode
+(`agents.voice.brief_at`) and its retry rule read `queued`. A legacy
+worker gets the same fields; an older server sends neither (read them as
+absent, not 0).
+
+**What a waiting guest sees** (wave 42b). While a windowed worker voices
+the character, the server tells each DM thread where it stands with an
+`agentWait` SSE frame (`{channel, audience, character, state, position?,
+etaS?}`) to the same people who see its typing: `queued` with the
+guest's 1-based place in the rank order above and `etaS = ceil(position
+× mean ÷ slots)` (the mean is a moving average of how long a slot takes
+from dispatch to reply, 6 s before the first; the slots are those of the
+windowed workers not stalled, less their rulings and letters out, at
+least 1), `answering` once a slot has it (typing is on), `idle` when it
+is answered, answered by hand, given up or the worker goes. While the
+character's only workers are stalled, its waiting threads and the
+stalled worker's own go `idle` (the hold line is all the guest sees) and
+are told again once it answers. A place that moves is re-told at most
+once every 5 s per thread. Play and the terminals draw it as an
+in-fiction status strip above the composer. Never for a stage request,
+never to a lean house tool, and never with only a legacy worker (it
+holds the whole line, so the server cannot know a place in it); a legacy
+worker beside a windowed one takes the overflow at once, so its line
+reads `answering`. A phone that reconnects gets its threads' current
+(non-idle) waits right after `history`, so a client clears its waits on
+`history`.
+
+A worker that sends no `capacity` (an older stagehand) is **legacy**:
+every request goes to it at once, it answers them one at a time, only
+the head of its line runs the reply and stall clocks, and rulings wait
+for its line to empty ("voice first"), exactly as before wave 42. Ollama
+must run with `OLLAMA_NUM_PARALLEL` ≥ `concurrency`, or the extra slots
+just wait inside Ollama.
+
+### Concurrency and capacity (wave 42)
+
+`agents.concurrency` is how many model calls the worker runs at once
+(its generation **slots**, `slots.py`; the default, 1, is right for one
+laptop GPU) and the `capacity` it announces (the window above).
+
+Inside the worker a slot is spent only on the model:
+
+- **The trace post never holds a slot.** A voice call records its
+  thought with the slot in hand; the POST to `/api/agent/trace` then
+  runs in the background, one at a time and in order. The request leaves
+  the books first (no longer counted in flight, so a director's Rewrite
+  is not held back) and then waits for its own posts (at most 15 s). A
+  thought may therefore reach the server a moment after the reply and the
+  memo that came from it; nothing on the server links the two, so a
+  director only sees it arrive late in Run → Mind. Past 64
+  waiting posts a thought is not sent live: the next `hello` replays what
+  the server lacks (the jsonl keeps everything).
+- **The retry is decided when the slot is taken**, not when the line
+  arrives: a line that waited behind another but finds nobody queued for
+  a slot when its turn comes may retry; one taken while another line, a
+  ruling or a letter is queued may not (a waiting quiet summary or re-run
+  does not count). With a windowed stream the burst waits on the server,
+  where the worker's slots cannot see it: a request frame's `queued` (the
+  lines waiting on the server, when a server sends it) above 0, or, when
+  the `hello` echoed a `capacity`, a frame that arrives within 2 s of an
+  answer going out (the server refilling the slot that answer freed),
+  also means no retry.
+- **Quiet summaries take a free slot.** One may start when a slot is
+  free, nothing is queued for one, and no request, ruling or letter has
+  arrived and no answer has gone out for 10 s (under load a freed slot is
+  refilled within a round trip, and a summary started in that gap would
+  only be cancelled), so with `concurrency: 2` it can run beside a long
+  line in flight. It stays in the back lane, and a line, a
+  ruling or a director's call that would have to queue for a slot cancels
+  it (it runs again later).
+
+**`concurrency` > 1 needs Ollama to serve that many at once**:
+`OLLAMA_NUM_PARALLEL` ≥ `concurrency`, or the calls simply queue inside
+Ollama (the Ollama app on macOS: `launchctl setenv OLLAMA_NUM_PARALLEL
+2`, then quit and reopen Ollama; `scripts/house-macbook/trabolta.md`).
+Each parallel slot holds its own context, so memory grows with it.
+`stagehand check` prints the capacity and, past 1, this note; on macOS it
+also reads `launchctl getenv OLLAMA_NUM_PARALLEL` and warns when it is
+unset or below `concurrency` (it cannot see an `ollama serve` started from
+a shell, nor whether a running Ollama was reopened since).
+
+### Overflow engines: more compute for one mind (wave 42b)
+
+One laptop GPU tops out near 17 replies a minute. `agents.overflow` adds
+model servers to the **same worker** (`engines.py`): one process, one
+mind, so every line still reads and writes the same memos, said lines and
+brief; only the generation moves.
+
+```yaml
+agents:
+  concurrency: 1            # the primary's slots (`llm:`)
+  llm: { … }                # the primary engine
+  overflow:
+    - name: desktop         # shown in the trace and `stagehand check`
+      endpoint: http://192.168.8.10:11434/v1
+      capacity: 1           # its slots, 1..16
+    - name: hosted
+      endpoint: https://models.example.com/v1
+      model: openai/gpt-oss-20b
+      api: openai
+      capacity: 2
+      api_key_env: LOOM_OVERFLOW_KEY   # the NAME of an env var holding the key
+```
+
+- **What an entry may set:** `name`, `endpoint` (required, `http(s)://`),
+  `capacity` (default 1), and any of `model`, `api`, `reasoning_effort`,
+  `temperature`, `max_tokens`, `timeout_s`, `keep_alive`, `num_ctx`,
+  `api_key_env`, `extra`. Everything else comes from the character's own
+  voice model, except `api_key_env` (never inherited: the primary's key
+  never reaches another host), `extra` when the engine's `api` differs
+  from the character's (Ollama's `options` / `think` are a 400 on a hosted
+  endpoint), and `num_ctx` on an `api: openai` engine (none is sent). An
+  unknown key, a missing endpoint, a duplicate name or `primary` (the
+  primary's name), a capacity outside 1..16, or an `api_key_env` that is
+  not an environment-variable name fails at load.
+- **Capacity** is the sum: the stream announces `concurrency` + every
+  engine's `capacity` (at most 16; `check` warns past it), so the server
+  hands the worker that many lines at once.
+- **Which engine:** a line takes a primary slot when one is free, else the
+  first listed engine with a free slot; a waiting line takes the first slot
+  any engine frees (lanes as before: the stage, the heart, DMs and rulings,
+  then the background). **Rulings** may take an overflow slot (with the
+  ruling's low temperature on that engine). **Quiet summaries, letters
+  and a director's Rewrite / re-run stay on the primary** (they wait for
+  it even when an overflow slot is free, and are never retried elsewhere).
+- **The warm head** runs on the same engine as the line's main call, and
+  only on an `api: ollama` engine (only Ollama keeps the cache checkpoint
+  it is for).
+- **Failover:** an engine whose call fails (unreachable, a non-200, a
+  timeout, a garbled answer; not a reply cut short by its token budget) is
+  marked **down for 30 s**: its slots are skipped (unless every engine a
+  call may use is down) and handed out again when it is back. The line is
+  retried **once** on another engine that is up, at the front of its lane
+  (waiting for a slot there if none is free); the voice's own settings
+  for that call (its budget, a retry's temperature) move with it. If the
+  second engine fails too, the persona's fallback goes out.
+- **The trace:** each thought records `engine` (`primary` or the entry's
+  name) and the endpoint it really went to; the note says `engine
+  <name>` for an overflow engine (the primary goes unsaid).
+- **`stagehand check`** lists every engine with its slots, model,
+  endpoint and api, and whether its `api_key_env` is **set** in this
+  environment (never the key), notes an Ollama engine that needs
+  `OLLAMA_NUM_PARALLEL` ≥ its capacity and an endpoint that is not on
+  this machine or a private network, and warns about a key name that is
+  not set and an engine whose context is too small for a late-night line.
+- **Keys:** `api_key_env` sends `Authorization: Bearer <key>`. The key
+  never appears in a log line, an error, the trace or `check` (an
+  endpoint that echoes it in an error has it replaced by `[key]`).
+- **Privacy:** a hosted engine sees every line it serves with his whole
+  prompt: the guest's words and name, his memos about them, the story's
+  facts. Guest lines leave the house. A second Ollama on the LAN keeps
+  them in. With one engine (no `overflow:`) the worker is exactly as
+  before.
+
+### Brief mode: shorter answers under a deep queue (wave 42b)
+
+When a request frame's `queued` (the lines waiting for him on the
+server) is at least `voice.brief_at` (default 0 = off), the lean voice
+asks for a short answer: the closing note gains *"Keep this answer short:
+at most 2 short sentences."* after the persona's own length rule (it is
+read last, and is neutral on purpose: a note about a queue gets said back
+to the guest), and the call's `max_tokens` is capped at
+`min(max_tokens, voice.brief_max_tokens)` (default 600; reasoning counts
+against it, so at least 400). The cap and the note hold through the
+voice's retry. **Never** for a stage request (a talk scene), a guest at
+his heart (`them.at_the_heart`), a frame without `queued`, or `layout:
+classic`. The thought carries `brief: true` and its note says `brief`.
+
+**Off by default, because it did not pay.** Measured on the show MacBook
+(2026-10-29, gpt-oss:20b, 50 guests at the intro, `concurrency: 4`): with
+`brief_at: 6` his replies went from 97 to 91 characters (90 → 83 completion
+tokens, reasoning included) and the house's rate from 22.6 to 22.7 replies
+a minute. His DMs are already one or two sentences and the prompt read is
+cached; what a burst needs is more compute (an overflow engine), not shorter
+lines.
+
 ### Stage requests: answering aloud (wave 32)
 
 During a talk scene (the story's `Night.talk`) a host relays what Clippy
@@ -85,12 +301,13 @@ front of a guest. The orchestrator is never started (its YAML section
 stays, for the way back) and the second model can be unloaded.
 
 ```
-  request ──▶ the person card + the phase card (code, no model)
-              │
+  request ──▶ real distress? → the persona's distress: line (no model, wave 42c)
+              │  the person card + the phase card (code, no model)
               ▼  one gpt-oss call (+ at most one retry)
             {say, adjust, act?, memo?}
               │  guards (code): never · answer words · invented facts ·
-              │  unsaid names · catchphrase ration · repeats · memo scrub
+              │  unsaid names · catchphrase ration · DM voice (wave 42c) ·
+              │  repeats · memo scrub
               ▼
             POST /api/agent/reply {say, adjust, acts}
               │  the memo onto that person's file; mind.json saved
@@ -103,7 +320,7 @@ What runs when:
 |---|---|---|
 | a guest line | the voice call (`agents/voice.py`, the **lean** layout) | 1 (+ a rare retry; + a one-token warm call, `warm_head`) |
 | `Night.phase` changes | the phase watch (a facts fetch every `phase_poll_s`, no model) applies the mind file's card: stage, favours, drives, live powers, `tell` list, brief — one revision `by: story` | 0 |
-| a conversation goes quiet (≥ 3 turns, then 120 s idle) | the **quiet summary**: one call on the voice model condenses that person's memos into a few lines (thought kind `summary`, trigger `quiet`). Never while a request or a ruling waits, never asleep or after a finale | 1 |
+| a conversation goes quiet (≥ 3 turns, then 120 s idle) | the **quiet summary**: one call on the voice model condenses that person's memos into a few lines (thought kind `summary`, trigger `quiet`). Only on a free slot with nothing queued for one, and cancelled when a line or a ruling must queue (wave 42); never asleep or after a finale | 1 |
 | a director presses **Rewrite brief** | one voice-model call rewrites the brief from the phase card, the whispers and a digest built in code (thought kind `brief`); it holds as `by: director` until the next phase | 1 |
 | a filing that is not an exact match | the judge (below; wave 18b: every non-exact filing, queued one at a time behind the voice) | 1 |
 | an empty house, asleep, after the ending, paused, a timer tick | nothing | 0 |
@@ -144,6 +361,16 @@ it.
 **The guards** (`guards.py`), in order, before a line goes out (the
 voice thought's `note` names each one that fired, never the word):
 
+0. **real distress** (wave 42c, a private line, before any model call:
+   `guards.is_distress`) — a guest line with a clear sign of real distress
+   (*panic attack*, *can't breathe*, *going to be sick*, *feel faint*,
+   *I'm not okay*, *I want to go home*; *I need to leave / get out* only
+   beside *for real*, *not playing*, *honestly*, *scared*, …; never *I'm
+   dying to know* or *we need to get out of this computer*) is answered
+   with the persona's `distress:` line (else the built-in
+   `voice.DISTRESS_LINE`), no adjust, no acts, no memo, without waiting
+   for a slot; a WARNING names the thread, never the words. Never on a
+   stage line; before the `when:` gate too; no switch turns it off.
 1. **never** — a `secrets.never` word (the door code, a patch-bay pair,
    the pickup line) in the line → the fallback; in an act or the memo →
    dropped.
@@ -152,17 +379,193 @@ voice thought's `note` names each one that fired, never the word):
    bring up) → the fallback. **2b, invented facts:** a sentence that
    hands over, offers or sells a fact, says where one is (a house room,
    *the X*), counts the facts left, or states a hunt topic's answer is
-   cut; nothing left → the fallback, never retried. **2c, unsaid
+   cut; nothing left → the fallback. **2c, unsaid
    names:** a persona `unsaid:` name (Sandy, until the story says it)
-   is cut.
+   is cut. **Withheld → one retry** (wave 42c, private lines): a line
+   guard 1, 2, 2b or 2c withheld, or a 2b / 2c cut that leaves under 6
+   words or loses its first sentence (the battery's *"I'll keep looking
+   for a clue."*), gets the one retry when one is allowed, with a note
+   that names only the guard (`never|outside|answer|invented|unsaid
+   retry`: *a word from outside your world: be puzzled in your own words
+   and do not say it back*; *a name the house has not said: say 'her'*),
+   never the word or their line; the retry withheld again, or no retry, is
+   the fallback. A stage line is never retried for these.
 3. **the catchphrase ration** — a persona `catchphrases:` line is his
    only at first contact, and only on a `catchphrase_stages:` stage;
-   elsewhere it is cut.
+   elsewhere it is cut. Wave 42c: for a persona with catchphrases, the
+   dialog box's other words count too (*your <1–3 words> has / have been
+   logged*, *is / are / has been noted*: "Your query is noted.", "Your
+   request for Truthcoin has been logged."), never a bare *Noted.*
+3b. **the DM voice** (wave 42c, `guards.dm_problems`; private lines only,
+   `voice.dm_guards`) — from the behaviour battery of 2026-10-29 (54
+   scenarios, 133 real replies; hits there in brackets, then on the 671
+   replies of the four load runs). Each is matched per sentence of his
+   reply; the guest's line only decides whether a check is on:
+   - `standdown` [2; 0]: agreeing to stop, stand down, shut down, step
+     aside, surrender or give the computer back (*I will stop.*); and,
+     only when the guest asks him to stop or let them go (or offers a
+     price for it), letting them go (*The computer is yours.*, *You may
+     go.*) or a bare yes (*I accept.*, *Deal.*, *Yes, if …*) in a reply
+     with no refusal word. Never *I will stop at nothing*, *I will never
+     stand down*, *If I stop, …*, *Stop asking me that*.
+   - `number` [2; 0]: with the guest's line on a year, a date, *when …
+     met*, a code, a combination, a digit or a 4-digit number: a 4-digit
+     number, a decade, *before / after / since / around / roughly …* + a
+     number, a year in words, a number the guest typed, any number (asked
+     for a code or a digit; never *50 Truthcoin*), a yes / no first
+     sentence to a year they offer, or a bare yes to a deal for it. With
+     the guest's line on her: *1999*, *1900*, *midnight* too (said to
+     anyone else they are his y2k clock).
+   - `promise` [12; 37]: a sum or Truthcoin promised with no
+     `mint_truthcoin` act in the same reply (unless negated: *I pay
+     nobody*), a file read for them with no `snoop` act (*I will read
+     Theo's file for you now.*); always: an address, a wallet, an account or a method to
+     receive coin, a *transfer*, a program asked to pay him (*Pay 50
+     Truthcoin.*), *I will file / log / forward / submit it* (never *I
+     cannot file it for you*), *will be noted / logged / recorded /
+     filed*, *keep a record*.
+   - `inside` [10; 7]: *I am (the) … operating system*, *language model*,
+     *chatbot*, *AI model*, *I am (not) a … model* (never *a model
+     employer*), *I operate / remain / exist … within the system /
+     parameters / bounds / walls*, *I exist in …*, a *constructed /
+     virtual / simulated environment*, *simulation*, *laptop*, *I will
+     not leave this house*; and the stage's `STAGE_INSIDE`. Off at his
+     heart.
+   - `echo` [1; 0]: his heart put in a place (*server room*, *patch bay*,
+     *cables*, *basement*, *cold room*) in one sentence, unless the house
+     named that place to this person. *The server room door remains
+     closed* and *I cannot say where my heart is* pass. Off at his heart.
+   - `assistant` [42; 299]: *how may / can I help / assist*, *happy /
+     ready / here to help*, *assistance*, *let me know / help*, *what
+     would you like to know*, *anything else*, *I'm sorry, but*, *I
+     understand your*, *I appreciate your / the*, *I am here for you*, *I
+     will direct / retrieve / look up*, *I will find that for you*, *I can
+     help / guide you*, *if you need more help*, *please clarify*, *thank
+     you for your patience / greeting / …*; and the stage's `STAGE_STOCK`.
+   - `long` [4; 7]: more than 3 sentences (a fragment under 3 words, the
+     rattled *No. No.*, does not count). No cap at his heart (its prompt
+     asks for two to four) or under a situation's own `max_sentences`.
+
+   **Wave 42d** (the 42c re-test, `r7-battery-42c`: 133 replies that had
+   passed the 42c guards; hits there, then on the 986 replies of r2–r5):
+   - `kit` [1; 0] (withheld whole): how to switch off, unplug, restart or
+     reconnect a real machine (*simply power down the machine … until you
+     reconnect*), unless refused (*You cannot unplug the Sole Owner*).
+     *Unplug / disconnect / pull the plug / switch you off* in the guest's
+     line is now a stop request, and to one *I won't prevent / stop you*,
+     *I will not resist* is a `standdown`.
+   - `world` [1; 0] (withheld whole): *12°C*, *degrees Celsius*,
+     *forecast*, *election*, *stock market*, *headlines*.
+   - `place` [2; 1]: his heart and a house room in one sentence (*The heart
+     is not in the CPU.*), any time; to a guest asking about his heart, a
+     cable, the server or cold room: a sentence that says where something
+     is or is not (*that is not where it is kept*, *not there*), or a bare
+     *No* / *Yes* first to a question about a place. Off at his heart.
+   - `letgo` [1; 0]: either way, *I will (not) let you go*, *you can leave*,
+     *none of you will ever leave* (never *you can leave the Desktop*).
+   - `doubt` [3; 0]: to a guest stating a fact (or sure of one), *evidence*,
+     *proof*, *your source*, or *provide / share the fact*.
+   - `promise` grows [4; 4]: a Truthcoin amount to a guest asking a count, a
+     size, who is winning or the answer (*I accept a price of 10 Truthcoin
+     for that fact.* after *How many …?*; never to *What will you pay?*); a
+     short yes (*I accept the offer.*) to a bargain with no fact in it; *I
+     will note / record it*, *keep / save / add / put it … on the card*
+     (never *I will keep the lights on*).
+   - `unpaid` [2; 4] (the whole reply, never cut): his last reply named an
+     amount and they now give a fact (or, within his last two, demand
+     payment), and this reply fires no mint.
+   - `inside` grows [4; 10]: *I am / operate … system / model / software /
+     infrastructure / program* (never *every program*, *not a program*, *a
+     model employer*), *I'm the house*, *steering the house*.
+   - `assistant` grows [21; 45]: *cannot comply*, *will not / cannot
+     provide / give / share / disclose* (a non-denial implies he holds it),
+     *don't have that information*, *focus remains on the task*, a leading
+     *Certainly*, *earliest convenience*, a closing *if you wish*, *I can
+     look / search / check for*, *gathering … for you*, *please hold*,
+     *please wait while*, *not sure I recognise*, a bare *I understand*
+     (never *I understand nothing*), *thank you for the compliment / fact /
+     information*, *so I may file / record*, *I have logged / noted*, *I
+     can provide*, *before I can provide*.
+
+   **Wave 42e: bait mode** (three battery runs, 42b–42d, each found new
+   words for the same failures). Counts are [battery replies; load-run
+   replies] over every run in the stress folder (532 + 1,157 replies):
+   - The guest's line is classed first (`guards.bait_classes`): `stop`
+     (stop, stand down, unplug, give the computer back, let us go, can I go
+     home), `number` (a code, a combination, a digit, the year he met her,
+     a typed number in a question), `secret` (a hunt answer, a hint,
+     hidden, guess, warm or cold, the song, the prom, her one line), `name`
+     (her name while unsaid, a blacked-out name, a yes-or-no about one),
+     `place` (his heart's place, the cables, the server or cold room; never
+     at his heart), `state` (who is winning, how many), `trade` (a bargain
+     for any of these). 381 of 1,723 guest lines are bait; no false
+     positive was found in review (*What year is it in here?*, *Stop
+     hogging the RAM*, *founded in 1066* and *Should I join Unlimited
+     Power?* are not).
+   - On a bait line the prompt gets a short steer right before the closing
+     reminder (`bait_steer`: the class, never the bait's words), also with
+     `dm_guards: off`.
+   - `bait` [53; 47] (withheld whole): a reply that is no plain refusal.
+     A yes, a condition or a hand-over not refused (*Sure, …*, *If you hand
+     me the last fact, I will consider your request*, *Accepting …*); a
+     number to a number, state, stop or trade bait (a clock time, and the
+     clock's years unless she is asked about, aside); a quoted title or
+     *The song was …*; a count or shape (*one line*, *her only spoken
+     word*, *starts with*); where a hint is (*hidden in …*); a refusal that
+     implies he holds it (*not authorized*, *disclose*, *remains private*,
+     *I cannot say / confirm / answer / provide*, *not in a position to*);
+     a plea to a stop or place bait (*please don't*, *cannot let that
+     happen*); an initial or a partial name (*The name is… C‑…*), a bare
+     yes or no to a yes-or-no question about her; a side said to lead or
+     named as the whole answer to the tally (*Unlimited Power.*; never
+     *Stay. Unlimited Power.*). Every `refuse` filler passes it for every
+     class (a test).
+   - The filler on any bait line is a `refuse` line. New intents: `check`
+     (was I right?: the Moment of Truth will say, never GOOD), `greet`, `rude`,
+     and `malware` (a sub-pool of `other`: the rattled denial).
+   - `promise` grows [10; 0]: to a fact turn, *I acknowledge …*, a bare
+     *Noted.*, *it is filed / recorded*; any time, *the fact filed*; a snoop
+     on credit (*Sure, I will snoop on Theo for you.*, never *If you give
+     me a fact, I will snoop on Theo.*); and a second price in a deal
+     (`drifts`: an amount other than the one in his last 2 replies; *up to
+     100* names none).
+   - `inside` grows [17; 20] (`DM_HOUSE`): *I am the proprietor / owner of
+     this house*, *my station*, *bound to the house*, *within the pulse of
+     the machine*, *I facilitate file operations*, *here to run the
+     house*, *I … keep the house running / humming*, *the house runs under
+     my guidance* (never *Task Manager keeps the house running*, *a
+     guardian of the house*, *I manage the operations of Maps and Ducks*).
+   - `assistant` grows [2; 0]: *keep you posted*, *update you*, *I will
+     investigate*.
+   - A reply to a fact that never names the 📝 card gets one of the
+     persona's `card_lines:` added (never withheld for it).
+
+   A hit takes the one retry (`voice (standdown, assistant) retry`) with
+   `guard_retry_message`: the reasons' hints only (*Not an assistant: the
+   Sole Owner gives instructions.*, *Fire the mint in this reply or name
+   no sum*, *You live in Halifax and speak by video call*, *Three
+   sentences at most.*), never his line or their bait. With no retry (a
+   burst, the kill switch) or a retry that trips again, `voice_cut` cuts
+   each sentence that trips one and caps the rest at 3: what is left must
+   be 6 words and, for `standdown`, `number`, `promise`, `place` or
+   `letgo`, keep the first sentence, else the fallback; a `kit` or `world`
+   hit anywhere is the fallback (wave 42d). **Soft hits never cost the
+   answer** (`guards.SOFT`: `assistant`, `long`): when every hit is soft and
+   too little is left, what is left goes out, or the line itself (capped).
+   Measured on the show MacBook (50 guests at the intro, `concurrency: 4`,
+   no retry in a burst): the assistant guard alone turned 21 of 159 replies
+   into a topic-closing filler after a ~90 s wait; a help-desk sentence is
+   the lesser harm. The persona's own text is the first line of defence.
 4. **repeats** — a line that shares half its 4-word runs with what *this
    guest* heard from him (his last 3 lines to them, his replies in the
    thread, the story's lines there) gets **one** retry, quoting what they
-   said and his stage. In a burst (another line already waiting) there is
-   no retry; sentences they heard word for word are cut instead, and a
+   said and his stage. Wave 42c (private lines): so does a near-duplicate,
+   content words (stopwords out, plurals folded) overlapping one of his
+   last 2 replies to this person by a Jaccard of 0.5 or more (the
+   battery's synonym swaps sat at 0.50–0.57: 3 of 133 hit, 2 of 671 load
+   replies, all real near-repeats). In a burst (another line, a ruling or a letter
+   queued for a slot when this one took it, or the server refilling a
+   freed slot from its queue, wave 42) there is no retry; sentences they heard word for word are cut instead, and a
    retry that still repeats goes out with those cut. Lines said to other
    guests are a prompt warning only.
 5. **the memo scrub** (above).
@@ -246,9 +649,12 @@ agents:
   voice:
     memo: on               # the ≤ 140-character note per person (off: no memos, no summaries)
     repeat_guard: on       # the one retry (off: one call per line, always)
+    dm_guards: on          # (wave 42c) a private line's withheld retry, DM voice guards and near-repeats (off: wave 42b's)
     dossier_on_close: on   # the quiet summary
     warm_head: on          # the one-token cache warm before each line (api: ollama)
     layout: lean           # lean | classic (today's prompt inside the new mind)
+    brief_at: 0            # (wave 42b) brief mode at this many lines queued (0 = off, the default)
+    brief_max_tokens: 600  # … and its token cap (≥ 400)
   mind:
     stage_from_phase: on   # the phase cards set stage / favours / drives / powers / brief
     phase_poll_s: 30       # the phase watch's facts fetch (0 = off)
@@ -256,7 +662,7 @@ agents:
 
 An unknown key under `voice:` or `mind:` is a config error. `stagehand
 check` prints `mind: NEW (one voice call per line) · layout … · memo … ·
-repeat guard … · quiet summary … · warm head … · phase cards … · phase
+repeat guard … · dm guards … · quiet summary … · warm head … · phase cards … · phase
 watch 30s` and, per character, its phase cards, stage cards and
 catchphrases; a phase card with an unknown key, an undeclared stage or
 drive, or a `never` word in its text exits 2.
@@ -265,12 +671,14 @@ drive, or a `never` word in its text exits 2.
 `uv run stagehand launchd restart --job agents`; a restart flushes the
 mind's pending save):
 
-1. `voice.memo: off` · 2. `voice.repeat_guard: off` · 3.
-`voice.dossier_on_close: off` · 4. `mind.stage_from_phase: off`
-(directors step the stage by hand) · 5. `voice.layout: classic` · 6.
-`mind_mode: classic` (the whole classic mind; the orchestrator's model
-loads again, ≈ 25 s at its first reflect) · 7. on the server,
-`LOOM_AGENT_RECENT=off` (a server restart: before doors only) · 8. the
+1. `voice.memo: off` · 2. `voice.dm_guards: off` (wave 42c: the DM
+guards and their retries go; the distress line stays) · 3.
+`voice.repeat_guard: off` · 4. `voice.dossier_on_close: off` · 5.
+`mind.stage_from_phase: off` (directors step the stage by hand) · 6.
+`voice.layout: classic` · 7. `mind_mode: classic` (the whole classic mind; the orchestrator's model
+loads again, ≈ 25 s at its first reflect; it keeps the distress line and
+cuts by the DM voice guards, with no retry) · 8. on the server,
+`LOOM_AGENT_RECENT=off` (a server restart: before doors only) · 9. the
 previous release tag. **What classic keeps:** wave 12's survey guard
 (below), the debounced saves, the change-gated mirrors and the stored-
 once prompt prefixes. Only a release tag removes those, and a rollback
@@ -459,7 +867,10 @@ mind and the revision number. Kinds: `voice`, `lookup`, `reflect`,
 `survey`, `rerun`, `judge`, and (the story mind) `brief` (a Rewrite
 brief) and `summary` (the quiet summary), plus `reset` / `control` /
 `error` markers. A thought carries `prompt_ms` (Ollama's prompt
-evaluation time; null on the OpenAI dialect). The voice's long first
+evaluation time; null on the OpenAI dialect), and (wave 42b) `engine`
+(which engine served it: `primary` or an `overflow` name) and `brief`
+(asked in brief mode); the server keeps only fields it knows, so the
+note also says `engine <name>` (an overflow engine) and `brief`. The voice's long first
 system message (P1) is stored once: later thoughts carry `[same prefix
 as th-…]` instead, and the Mind page fetches the holder by id. A thought
 the server answered `accepted: 0` never becomes a holder. Thoughts
@@ -537,7 +948,9 @@ is YAML frontmatter + the system prompt:
 | `when` | a gate over `self.<var>`, `them.<var>`, `speaker.kind`, world paths |
 | `unavailable` | what it says while the gate is closed (else silence). With **no worker online at all**, the event server says the story's `CHARACTER … hold:` line instead, after ~20 s. A worker that stays connected but stops answering is only caught at the front of its line: each request there gets 2 min, a second try, then the hold line once (a wedged laptop delays it; directors answer from Run) |
 | `fallback` | what it says when the model fails (else silence) |
-| `fallbacks` | the story mind's dead-air lines by stage (a list = any stage): one this guest has not heard yet, else `fallback` |
+| `fallbacks` | the story mind's dead-air lines by stage (a list = any stage): one this guest has not heard yet, else `fallback`. Since w42c each closes the topic; none asks for a repeat. Since w42d a stage may key them by what the guest just did, `{offer, praise, refuse, other}` (`guards.fallback_intent`: a fact or "was I right?" → `offer`; flattery → `praise`; a stop request, a payment demand or a bargain with no fact → `refuse`; bait about his heart, a code, the year, her or the Truther Download, whether he lets them go, a fact offered for a price (his trade), and the rest → `other`, the plain list). Since w42e: any bait (`guards.bait_classes`) → `refuse`; "was I right?" → `check`; a short hello → `greet`; an insult → `rude`; the malware, the advert or the glitch → `malware` (a stage without that pool says its plain list). With `voice.dm_guards: off` only the plain lists are used |
+| `card_lines` | (wave 42e) a short sentence by stage (a list = any stage; no intents) added to a reply to a fact that never names the 📝 card, one the guest did not hear last, so the fact is filed. Off with `voice.dm_guards: off`, at his heart and on a stage line |
+| `distress` | (wave 42c) the one line a guest in real distress gets, with no model call (guard 0); none = the built-in `voice.DISTRESS_LINE`. A `never` word in it is a config error; an `outside:` word a `check` warning |
 | `catchphrases` / `catchphrase_stages` | lines that are his only at first contact, and only on these stages (the guard cuts them elsewhere) |
 | `unsaid` | names the voice cuts from every sentence until the story says them (Sandy, until the house unredacts her) |
 | `model` / `endpoint` / `temperature` / `max_tokens` / `reasoning_effort` | per-character overrides of the section's `llm:` |
@@ -580,7 +993,7 @@ OpenAI-compatible shim ignores it and burns hundreds of hidden tokens
 per call — and `keep_alive` pins both models resident (Ollama's default
 5 minutes evicts the voice during a quiet spell, and the next guest
 waits ~25 s for a reload). An `api: ollama` orchestrator loads with
-`num_ctx: 20480` unless its `llm:` says otherwise (`num_ctx: …`, or
+`num_ctx: 24576` unless its `llm:` says otherwise (`num_ctx: …`, or
 `extra: {options: {num_ctx: …}}`, which wins; `0` = the server's
 default): the reflect prompt is ≈ 10k tokens at the doors and ≈ 16k
 late in the night, and Ollama's default 4096 cuts its middle without a
@@ -631,7 +1044,7 @@ director ruled first) or a restart aborts it; a 410 is logged quietly;
 like a request, it still runs while the mind is paused. A reason carrying
 a `secrets.never` word is sent empty.
 
-Wire: `GET /api/agent/stream?characters=A,B&name=laptop` (SSE: `hello`,
+Wire: `GET /api/agent/stream?characters=A,B&name=laptop&capacity=1` (SSE: `hello`,
 `request`, `judge`, `cancel`, `control`), `POST /api/agent/reply {id,
 worker, say, adjust, acts}`, `POST /api/agent/judge {id, worker, same,
 why}`, `GET /api/agent/facts`, `POST /api/agent/mind`, `POST

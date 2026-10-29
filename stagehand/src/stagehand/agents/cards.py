@@ -66,12 +66,18 @@ class Said:
 class VoiceOptions:
     memo: bool = True
     repeat_guard: bool = True
+    #: (wave 42c) `voice.dm_guards`: a DM's withheld retry and voice guards.
+    dm_guards: bool = True
     #: "lean" | "classic"
     layout: str = "lean"
     #: False while another request waits in the worker (a burst): no retry.
     retry_allowed: bool = True
     #: `voice.warm_head`: a one-token call with P1 + P2 first (lean, api: ollama).
     warm_head: bool = True
+    #: (wave 42b) Brief mode: many lines queued behind this one (the frame's
+    #: `queued` ≥ `voice.brief_at`): two short sentences, `brief_max_tokens`.
+    brief: bool = False
+    brief_max_tokens: int = 600
 
 
 @dataclass(frozen=True)

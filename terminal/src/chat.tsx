@@ -8,7 +8,53 @@
 //! still queued for the voice waits behind one typing row.
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { waitBar } from "@loom/play/agent-wait-words.ts";
+import type { AgentWait } from "@loom/play/agent-wait.ts";
+import { useWaitWords } from "@loom/play/stream/wait-strip.tsx";
 import type { Line } from "./pilot.ts";
+
+/** The wait to draw: `name` is his display name in the guest's view. */
+export interface WaitProps {
+  name: string;
+  wait: AgentWait;
+}
+
+/** Ten cells of block bar, phosphor-legible across a room. */
+export function waitCells(w: Pick<AgentWait, "position" | "from">, cells = 10): string | null {
+  const b = waitBar(w);
+  if (b === null) return null;
+  const on = Math.max(1, Math.min(cells, Math.round((b.done / b.total) * cells)));
+  return `${"■".repeat(on)}${"□".repeat(cells - on)}`;
+}
+
+/**
+ * Wave 42b (B5): the phone's "you are 7th in line" strip, as a system line
+ * at the foot of the log (the typing row's place) — the same words
+ * (`waitWords`, DRAFT w42) and a block bar. Not a message: it goes when he
+ * starts answering (the typing row) or the wait ends.
+ */
+function WaitLine({ name, wait }: WaitProps) {
+  const bar = waitCells(wait);
+  // The estimate counts down; only the place is spoken.
+  const [said, eta, tail] = useWaitWords(name, wait);
+  return (
+    <div className="line system wait" role="status" aria-live="polite">
+      <span className="text">
+        <span className="wait-glass" aria-hidden>
+          ⌛{" "}
+        </span>
+        {said}
+        <span aria-hidden>{eta}</span>
+        {tail}
+        {bar !== null && (
+          <span className="wait-cells" aria-hidden>
+            {`[${bar}]`}
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
 
 function stamp(ts: number): string {
   const d = new Date(ts);
@@ -29,6 +75,7 @@ export function Thread({
   guestName,
   earlier = false,
   empty,
+  wait = null,
 }: {
   lines: Line[];
   /** How much of each of the character's messages to show (seq → chars). */
@@ -40,6 +87,8 @@ export function Thread({
   earlier?: boolean;
   /** The empty thread's line (default: say something). */
   empty?: string;
+  /** Wave 42b (B5): the guest's line is queued behind other programs. */
+  wait?: WaitProps | null;
 }) {
   const end = useRef<HTMLDivElement>(null);
   const last = lines[lines.length - 1];
@@ -50,7 +99,7 @@ export function Thread({
   const queued = lines.some(waiting);
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
-  }, [lines.length, typing, lastReveal, queued]);
+  }, [lines.length, typing, lastReveal, queued, wait != null]);
   return (
     <div className="thread" role="log" aria-live="polite">
       {earlier && (
@@ -82,6 +131,7 @@ export function Thread({
           </div>
         );
       })}
+      {wait != null && !typing && !queued && <WaitLine {...wait} />}
       {(typing || queued) && (
         <div className="line theirs typing">
           <span className="meta">

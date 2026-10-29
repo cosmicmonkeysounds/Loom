@@ -500,7 +500,7 @@ export function threadLine(m: Pick<ChatMessage, "from" | "kind" | "text" | "widg
  *  same clock as each guest's own "waiting 1:42" (the rows' `since`), so the
  *  two numbers in one card never disagree. With no guest row the server's
  *  own `oldestMs` stands. */
-export function agentQueue(a: Pick<HostView["agents"][number], "queue" | "waiting">, now: number): { depth: number; oldestMs: number | null; stalled: boolean } | null {
+export function agentQueue(a: Pick<HostView["agents"][number], "queue" | "waiting">, now: number): { depth: number; oldestMs: number | null; stalled: boolean; inFlight?: number; capacity?: number } | null {
   if (a.queue === null && a.waiting.length === 0) return null;
   let oldest: number | null = null;
   for (const w of a.waiting) if (oldest === null || w.since < oldest) oldest = w.since;
@@ -509,6 +509,9 @@ export function agentQueue(a: Pick<HostView["agents"][number], "queue" | "waitin
     // Whole seconds, floored like `waitingFor`, so both read the same digit.
     oldestMs: oldest !== null ? Math.floor(Math.max(0, now - oldest) / 1000) * 1000 : a.queue?.oldestMs ?? null,
     stalled: a.queue?.stalled ?? false,
+    // Wave 42 (C6): a windowed worker's split ("3 answering · 12 waiting").
+    ...(typeof a.queue?.inFlight === "number" ? { inFlight: a.queue.inFlight } : {}),
+    ...(typeof a.queue?.capacity === "number" ? { capacity: a.queue.capacity } : {}),
   };
 }
 
