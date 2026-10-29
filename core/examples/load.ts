@@ -22,6 +22,7 @@ import { join, relative, sep } from "node:path";
 
 import { isMapFile } from "../server/house-maps.ts";
 import { FACTS_FILE } from "../src/facts.ts";
+import { CREDITS_FILE } from "../src/credits.ts";
 
 export interface ScenarioFile {
   /** Project-relative path (`main.loom`, `cast/algorithm.loom`). */
@@ -93,6 +94,21 @@ export function scenarioFactsFile(name: string): ScenarioFile | null {
     return null;
   }
   return { path: FACTS_FILE, source: readFileSync(full, "utf8") };
+}
+
+/**
+ * The example's `credits.json` (wave 44, `src/credits.ts`) as `{ path,
+ * source }`, or null when the example has none. Not story: synced as a
+ * project file, read live by the server (`server/credits.ts`).
+ */
+export function scenarioCreditsFile(name: string): ScenarioFile | null {
+  const full = join(scenarioDir(name), CREDITS_FILE);
+  try {
+    if (!statSync(full).isFile()) return null;
+  } catch {
+    return null;
+  }
+  return { path: CREDITS_FILE, source: readFileSync(full, "utf8") };
 }
 
 /**

@@ -140,14 +140,15 @@ describe("Trapped in the Internet — wave 26: the locked phone (R1, C1, C2)", (
     expect(isLocked(n.sim, "g5")).toBe(true);
     const gv = guestView(n.sim, "g5");
     expect(gv.locked).toBe(true);
-    expect(gv.interactions.map((i) => i.id).sort()).toEqual(["go to the bathroom"]);
+    // Wave 44 (C2): 🆘 Help Me beside 🚻.
+    expect(gv.interactions.map((i) => i.id).sort()).toEqual(["go to the bathroom", "tent_help_me"]);
     // The Find Gerald card: the pass and the bathroom pair, no way to the Internet's room.
     const now = objectivesFor(n.sim, { guest: "g5" })[0]!;
     expect(now.title).toMatch(/Find Gerald/u);
     expect(n.sim.model.objectives.get("Find Gerald")?.go ?? null).toBeNull();
     expect(now.buttons).toEqual(["pass", "go to the bathroom"]);
     n.press("go to the bathroom", "g5");
-    expect(guestView(n.sim, "g5").interactions.map((i) => i.id)).toEqual(["back from the bathroom"]);
+    expect(guestView(n.sim, "g5").interactions.map((i) => i.id).sort()).toEqual(["back from the bathroom", "tent_help_me"]);
     n.press("back from the bathroom", "g5");
     n.press("mark as reinstalled", "g5", "Norton Anti-Virus");
     expect(isLocked(n.sim, "g5")).toBe(false);
