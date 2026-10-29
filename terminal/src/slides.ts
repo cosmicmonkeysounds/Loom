@@ -612,6 +612,8 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   hamster_dance: { title: "THE HAMSTER DANCE", lines: ["Welcome to Hampton's page.", "♪ ♪ ♪"] },
   under_construction: { title: "UNDER CONSTRUCTION", lines: ["This page is under construction.", "Please come back soon!"] },
   youve_got_mail: { title: "YOU'VE GOT MAIL!", lines: ["1 new message in your Inbox."] },
+  // The very end (wave 44): the card if the credits scene's chunk can't load. DRAFT w44
+  credits: { title: "THE END", lines: ["Thank you for playing."] },
 };
 
 /** A slide's text card: its copy, else its value made readable. */

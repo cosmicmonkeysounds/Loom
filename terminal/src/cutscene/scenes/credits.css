@@ -1,0 +1,177 @@
+/* The credits (wave 44, `credits.tsx`): a column rolled up the screen,
+   then the end card. Read across a room: big type, sized off the screen's
+   short side. Chrome 87 / Safari 14: no flex `gap`, no `aspect-ratio`;
+   motion is the column's transform and the cards' opacity only. */
+
+.cr-stage {
+  --cr-bg: #02030b;
+  --cr-gold: #ffd23f;
+  --cr-role: #aab8ff;
+  --cr-head: #5ff1ff;
+  background: var(--cr-bg);
+  font-family: var(--kit-ui);
+  -webkit-font-smoothing: antialiased;
+  text-align: center;
+  pointer-events: none;
+}
+.cr-tv {
+  font-size: 4vmin;
+}
+.cr-wall {
+  font-size: 5.4vmin;
+  background: radial-gradient(ellipse at 50% 38%, #10205a 0%, var(--cr-bg) 72%);
+}
+
+.cr-column,
+.cr-page {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  will-change: transform, opacity;
+}
+.cr-page {
+  top: 50%;
+  transform: translateY(-50%);
+  will-change: opacity;
+}
+
+.cr-row {
+  padding: 0 6%;
+  overflow-wrap: break-word;
+  line-height: 1.25;
+}
+
+.cr-title {
+  font-weight: 700;
+  font-size: 2.3em;
+  line-height: 1.1;
+  color: var(--cr-gold);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 0.35em rgba(255, 190, 40, 0.45), 0 0.06em 0 #7a4b00;
+  margin-bottom: 0.2em;
+}
+.cr-subtitle {
+  font-family: var(--mono);
+  font-size: 1.3em;
+  color: var(--cr-head);
+  letter-spacing: 0.08em;
+}
+.cr-heading {
+  font-family: var(--mono);
+  font-size: 1.35em;
+  color: var(--cr-head);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 0.35em;
+  text-shadow: 0 0 0.3em rgba(95, 241, 255, 0.35);
+}
+.cr-gap {
+  height: 1.5em;
+}
+.cr-line {
+  color: #fff;
+  font-size: 0.95em;
+  margin-bottom: 0.15em;
+}
+
+/* The TV: part and name either side of a centre line. */
+.cr-person {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 0.2em;
+}
+.cr-role {
+  flex: 1 1 50%;
+  min-width: 0;
+  text-align: right;
+  padding-right: 0.45em;
+  color: var(--cr-role);
+  font-size: 0.85em;
+}
+.cr-name {
+  flex: 1 1 50%;
+  min-width: 0;
+  text-align: left;
+  padding-left: 0.45em;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* A wall: the part above its name. */
+.cr-wall .cr-person {
+  display: block;
+  margin-bottom: 0.55em;
+}
+.cr-wall .cr-role,
+.cr-wall .cr-name {
+  display: block;
+  text-align: center;
+  padding: 0;
+}
+.cr-wall .cr-role {
+  font-size: 0.62em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.cr-wall .cr-role:empty {
+  display: none;
+}
+.cr-wall .cr-title {
+  font-size: 1.9em;
+}
+
+/* The roll fades in at the bottom and out at the top. */
+.cr-fade {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 16%;
+}
+.cr-fade-top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--cr-bg), rgba(2, 3, 11, 0));
+}
+.cr-fade-bottom {
+  bottom: 0;
+  background: linear-gradient(to top, var(--cr-bg), rgba(2, 3, 11, 0));
+}
+
+/* The end card, held. */
+.cr-end {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7%;
+  box-sizing: border-box;
+}
+.cr-end-title {
+  font-weight: 700;
+  font-size: 2.7em;
+  line-height: 1.1;
+  color: var(--cr-gold);
+  text-shadow: 0 0 0.4em rgba(255, 190, 40, 0.5), 0 0.06em 0 #7a4b00;
+  margin-bottom: 0.5em;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+.cr-end-line {
+  font-size: 1.3em;
+  line-height: 1.3;
+  color: #fff;
+  margin-top: 0.25em;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+.cr-wall .cr-end-title {
+  font-size: 2.1em;
+}
+.cr-wall .cr-end-line {
+  font-size: 1.1em;
+}
