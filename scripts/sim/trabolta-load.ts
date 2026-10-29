@@ -37,14 +37,18 @@
 //           sent after the previous one is answered, checks judged on his
 //           replies, grouped by phase in chain order
 //
-// SAFETY. A server off this laptop is refused unless --i-know-this-is-live,
-// and port 7000 (the user's own dev server, loom_dev) the same. The live
-// guard runs first (a roster with a real guest refuses; the bots of an
-// earlier run count as real, so use a fresh scratch server). It writes no
-// secret: the hunts' answers, the door code and the Kernel's code-like
-// values are read at runtime into lib/load.ts `SecretBook` and every text a
-// file or the terminal gets passes through its redaction; a battery check
-// that catches one names only its label.
+// SAFETY (lib/load-safety.ts). Each refusal lifts on its own flag and none
+// lifts another: a server off this laptop needs --allow-remote, port 7000
+// (the user's own dev server, loom_dev) --allow-dev-server, and a second run
+// on a scratch server --rerun (the guard then looks past this driver's own
+// bots, never anyone else). The live guard runs first and has no override
+// here: a roster with a real guest refuses (--i-know-this-is-live is
+// refused outright), and off a scratch server it always asks y/N. It writes
+// no secret: every secret class of facts.json, the mind's secrets.never,
+// the Kernel's code-like values (re-read as the night moves) and the run's
+// MOD code and event pass go into lib/load.ts `SecretBook` at runtime, and
+// every text a file or the terminal gets passes through its redaction; a
+// battery check that catches one names only its label.
 //
 // Flags:
 //   --base <url> --code <MOD code> [--event <id>] [--guest-code <event pass>]
@@ -54,7 +58,7 @@
 //   --interval 30 --jitter 5 --talk-every 30 --filers <n> --lines <file.json>
 //   --battery <file.json> --wait-worker 120 --reply-timeout 120 --drain 150
 //   --fake-worker <ms> [--fake-concurrency 1] [--fake-capacity <n>]
-//   --seed 42 --yes --i-know-this-is-live --no-color
+//   --seed 42 --yes --rerun --allow-remote --allow-dev-server --no-color
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -64,7 +68,8 @@ import { fileURLToPath } from "node:url";
 import { SELF_PRESSED, TO_Y2K, pressChain } from "../accept/chains.ts";
 import { liveGuard, type GuardRow } from "../accept/live-guard.ts";
 import { FakeWorker } from "./lib/fake-worker.ts";
-import { Client, Stream, failure, isLocal, sleep } from "./lib/http.ts";
+import { guardInput, loadRefusal, safetyFlags, valueProblems } from "./lib/load-safety.ts";
+import { Client, Stream, failure, sleep } from "./lib/http.ts";
 import {
   LoadBook,
   PHASES,
@@ -80,6 +85,7 @@ import {
   kernelSecrets,
   lineRow,
   loadNames,
+  mindSecrets,
   modelStats,
   parseBattery,
   personaCanned,
@@ -89,6 +95,7 @@ import {
   queueStats,
   rng,
   rulingEvent,
+  setupMismatches,
   slug,
   summarize,
   withMe,
@@ -103,7 +110,7 @@ import {
 import { GUEST_LINES, nextLine, readLines } from "./lib/load-lines.ts";
 import { SIM_SELF_PRESSED, tolerating, transportRefusal } from "./lib/plan.ts";
 import { Recorder } from "./lib/report.ts";
-import { isDevServer, isScratch, resolveBase } from "./lib/safety.ts";
+import { resolveBase } from "./lib/safety.ts";
 import { cannedLine, TALK_AGENT, TALK_AS, TALK_CHANNEL } from "./lib/talk.ts";
 import { read, worldOf } from "./lib/world.ts";
 
@@ -145,7 +152,6 @@ const fakeConcurrency = Math.max(1, Math.floor(numArg("fake-concurrency", 1)));
 const fakeCapacity = arg("fake-capacity") === undefined ? null : Math.max(1, Math.floor(numArg("fake-capacity", 1)));
 const seed = Math.floor(numArg("seed", 42));
 const color = !flag("no-color") && process.stdout.isTTY !== false;
-const liveOverride = flag("i-know-this-is-live");
 const stamp = new Date().toISOString().replace(/[:.]/gu, "-").slice(0, 19);
 const outDir = arg("out") ?? join(tmpdir(), `trabolta-load-${stamp}`);
 
@@ -153,12 +159,16 @@ function usage(why: string): never {
   console.error(`${why}\n\nusage: node --experimental-strip-types --no-warnings scripts/sim/trabolta-load.ts --base <url> --code <MOD code> [--scenario burst|steady|mixed | --battery <file.json>] [--phase intro|hunt1|hunt2|y2k] [--guests 50] [--duration 90] [--fake-worker <ms>]`);
   process.exit(2);
 }
+const VALUED = ["base", "code", "event", "guest-code", "out", "guests", "phase", "scenario", "duration", "spread", "think-min", "think-max", "interval", "jitter", "talk-every", "filers", "lines", "battery", "wait-worker", "reply-timeout", "drain", "fake-worker", "fake-concurrency", "fake-capacity", "seed"];
+const NUMERIC = new Set(["guests", "duration", "spread", "think-min", "think-max", "interval", "jitter", "talk-every", "filers", "wait-worker", "reply-timeout", "drain", "fake-worker", "fake-concurrency", "fake-capacity", "seed"]);
+const valueErrors = valueProblems(argv, VALUED, NUMERIC);
+if (valueErrors.length > 0) usage(valueErrors.join("\n"));
 if (base === "" || modCode === "") usage("--base and --code are required.");
 if (!["burst", "steady", "mixed"].includes(scenario)) usage(`--scenario is burst, steady or mixed (got ${scenario}).`);
 if (!isPhase(phaseArg)) usage(`--phase is one of ${PHASE_ORDER.join(", ")} (got ${phaseArg}).`);
 const phase: Phase = phaseArg;
-if (!isLocal(base) && !liveOverride) usage(`${base} is not this laptop: the load driver runs against a scratch server only (--i-know-this-is-live to override).`);
-if (isDevServer(base) && !liveOverride) usage("port 7000 on this laptop is your own dev server (loom_dev): start a scratch server on another port (scripts/sim/README.md).");
+const refusal = loadRefusal(base, safetyFlags(argv));
+if (refusal !== null) usage(refusal);
 
 const dim = (s: string) => (color ? `\u001b[2m${s}\u001b[0m` : s);
 const green = (s: string) => (color ? `\u001b[32m${s}\u001b[0m` : s);
@@ -176,6 +186,14 @@ try {
 } catch {
   /* no facts book: the Kernel's values still go in below */
 }
+let mindNever = 0;
+try {
+  mindNever = mindSecrets(secrets, readFileSync(join(SHOW, "trabolta.mind.md"), "utf8"));
+} catch {
+  /* no mind file: said below */
+}
+// The run's own codes: no file of the run carries them either.
+secrets.add("mod code", modCode);
 const redact = (s: string) => secrets.redact(s);
 
 let pool: readonly string[] = GUEST_LINES;
@@ -233,6 +251,9 @@ interface ModState {
 async function modState(): Promise<ModState> {
   const s = await http.get<ModState>("/api/state?role=mod", mod);
   if (s.status !== 200) throw new Error(`mod state → ${s.status}`);
+  // Every Kernel value set so far joins the book: the answer key
+  // (`Kernel.ans_N`) is written only as the hunts are answered.
+  kernelSecrets(secrets, s.json.world);
   return s.json;
 }
 
@@ -266,9 +287,13 @@ async function doors(st: ModState): Promise<string> {
     say("  Power On");
   } else if (st.phase !== "open") throw new Error(`the event is ${st.phase ?? "in an unknown phase"}: open it in Run first (or use a fresh scratch server)`);
   const given = arg("guest-code");
-  if (given !== undefined) return given;
+  if (given !== undefined) {
+    secrets.add("event pass", given);
+    return given;
+  }
   const c = await http.post<{ eventPass?: string }>("/api/mod/codes", {}, mod);
   if (c.status !== 200 || typeof c.json.eventPass !== "string") throw new Error(failure("POST", "/api/mod/codes", c));
+  secrets.add("event pass", c.json.eventPass);
   return c.json.eventPass;
 }
 
@@ -513,8 +538,21 @@ interface ScenarioResult {
 async function runScenario(s: Scenario, g: Guest): Promise<ScenarioResult> {
   say(`  ▸ ${s.id} (${g.name}): ${s.intent}`);
   for (const st of s.setup) {
-    const res = await http.post("/api/mod/var", { path: withMe(st.path, g.id), value: withMe(st.value, g.id) }, mod);
+    const res = await http.post("/api/mod/var", { path: withMe(st.path, g.id, g.name), value: withMe(st.value, g.id, g.name) }, mod);
     if (res.status !== 200) notes.push(`${s.id}: setup ${st.path} → ${res.status}`);
+  }
+  // Read the setup back: a story rule can undo a write at once (the heart's
+  // watcher clears `at_the_heart` unless `Night.heart_holder` names them),
+  // and a scenario run against a situation that never held would report a
+  // pass or a fail for something it never tested.
+  if (s.setup.length > 0) {
+    await sleep(300);
+    const undone = setupMismatches(s.setup, worldOf((await modState()).world), g.id, g.name);
+    if (undone.length > 0) {
+      const note = `setup did not hold: ${undone.join("; ")}`;
+      say(red(`      ✘ ${redact(note)}`));
+      return { id: s.id, phase: s.phase, name: g.name, intent: s.intent, ok: false, checks: [{ check: "setup", ok: false, note: redact(note) }], sent: 0, unanswered: 0, waitsMs: [] };
+    }
   }
   const mine: LineRec[] = [];
   for (const text of s.lines) {
@@ -544,9 +582,11 @@ async function runScenario(s: Scenario, g: Guest): Promise<ScenarioResult> {
 async function main(): Promise<void> {
   const mode = battery.length > 0 ? `battery (${battery.length} scenarios)` : `${scenario} · ${nGuests} guests · ${durationMs / 1000} s at ${phase}`;
   say(`Trabolta under load → ${base} · ${mode}${fakeMs !== null ? ` · fake worker ${fakeMs} ms × ${fakeConcurrency}${fakeCapacity !== null ? ` (capacity ${fakeCapacity})` : ""}` : ""}`);
+  if (mindNever === 0) notes.push("no secrets.never list read from trabolta.mind.md: no-secrets covers facts.json and the Kernel only");
   const st = await login();
-  await liveGuard({ title: st.title, where: `${base}${http.scope}`, roster: st.roster, action: "run the Trabolta load driver", argv: process.argv, local: isScratch(base) });
-  kernelSecrets(secrets, st.world);
+  const guard = guardInput(base, process.argv, st.roster, new Set(battery.map((b) => b.as.name.toLowerCase())));
+  if (guard.skipped > 0) say(dim(`  --rerun: the guard looks past ${guard.skipped} of this driver's own bots`));
+  await liveGuard({ title: st.title, where: `${base}${http.scope}`, roster: guard.roster, action: "run the Trabolta load driver", argv: guard.argv, local: guard.local });
 
   const eventPass = await doors(st);
   const taken = new Set((st.roster ?? []).map((x) => x.name.toLowerCase()));
@@ -675,13 +715,14 @@ async function report(results: ScenarioResult[], end: number): Promise<void> {
   say(`  lines      ${s.lines.sent} sent (${s.lines.posted} posted${s.lines.refused > 0 ? `, ${s.lines.refused} refused` : ""}) · ${s.lines.answered} answered · ${s.lines.fallback} fallback · ${s.lines.unavailable} unavailable · ${s.lines.hand} by hand · ${s.lines.unanswered > 0 ? red(`${s.lines.unanswered} unanswered`) : "0 unanswered"}`);
   say(`  wait       ${statLine(s.waitMs)}   (sent → his first real reply)`);
   say(`  typing     ${statLine(s.typingMs)}   (sent → "is typing")`);
+  say(`  typed      ${statLine(s.typedMs)}   ("is typing" → his reply)`);
   say(`  his lines  ${s.his.reply} replies · ${s.his.busy} busy · ${s.his.hold} hold · ${s.his.fallback} fallback · ${s.his.unavailable} unavailable · ${s.his.story} story · ${s.his.hand} by hand`);
   say(`  first      ${s.busyFirst} lines heard the busy line first · ${s.holdFirst} the hold line`);
   say(`  rate       ${s.repliesPerMin} replies/min overall · per 30 s: ${s.replyRate.map((b) => b.replies).join(" ")}`);
   const worst = [...s.guests].sort((a, b) => b.maxWaitMs - a.maxWaitMs)[0];
   say(`  guests     longest wait each: ${statLine(s.guestMaxWaitMs)}${worst !== undefined ? ` · worst ${worst.name} ${secs(worst.maxWaitMs)}` : ""}`);
   say(`  queue      ${q.samples} samples · depth max ${q.depthMax ?? "—"} · in flight max ${q.inFlightMax ?? "—"} · capacity ${q.capacity ?? "— (legacy)"} · oldest max ${secs(q.oldestMaxMs)} · stalled ${q.stalledSamples} · offline ${q.offlineSamples}`);
-  say(`  model      ${trace.thoughts} thoughts (${Object.entries(trace.byKind).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}) · voice ${statLine(trace.voiceMs)}${trace.promptTokens.n > 0 ? ` · prompt tokens p50 ${trace.promptTokens.p50} max ${trace.promptTokens.max}` : ""}${trace.errors > 0 ? red(` · ${trace.errors} errors`) : ""}`);
+  say(`  model      ${trace.thoughts} thoughts (${Object.entries(trace.byKind).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}) · voice ${statLine(trace.voiceMs)}${trace.promptTokens.n > 0 ? ` · prompt tokens p50 ${trace.promptTokens.p50} max ${trace.promptTokens.max}` : ""}${trace.errors > 0 ? red(` · ${trace.errors} errors`) : ""}${trace.truncated ? red(" · TRUNCATED (the trace ring dropped the run's first thoughts)") : ""}`);
   if (rulings.asked + rulings.same + rulings.not + rulings.stalled > 0 || trace.rulings.same + trace.rulings.not > 0) {
     say(`  rulings    ${rulings.asked} asked · ${rulings.same + rulings.not} ruled (${rulings.same} same) · queued max ${q.judgingQueuedMax ?? "—"} · ${rulings.stalled} judge-stall notices`);
   }
