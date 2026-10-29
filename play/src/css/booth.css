@@ -533,3 +533,21 @@
 /* Wave 25: *Your jobs* in a host's Show window — the NOW card laid open. */
 .booth-now-jobs { display: flex; flex-direction: column; gap: 6px; }
 .booth-now-jobs-none { margin: 4px 2px; font: 13px/1.4 var(--ui-font); color: var(--muted-ink); }
+
+/* ── wave 41 (C3): the letter opt-in on the booth's home ──────────────── */
+.booth-letter {
+  flex: 0 0 auto; margin: 4px 8px; padding: 8px 10px;
+  background: var(--face); box-shadow: var(--raised); font: 14px var(--ui-font); color: var(--ink);
+}
+.booth-letter-title { font: 700 14px var(--ui-font); }
+.booth-letter-copy { margin: 4px 0 6px; font: 13px/1.35 var(--ui-font); color: var(--dim-ink); }
+.booth-letter-row { display: flex; gap: 6px; }
+.booth-letter-input {
+  flex: 1 1 auto; min-width: 0; min-height: var(--tap); padding: 0 10px; border: none;
+  background: var(--white); color: var(--ink); box-shadow: var(--sunken);
+  font: 16px var(--ui-font); /* 16 px: iOS never zooms the page into it */
+}
+.booth-letter-go { flex: 0 0 auto; width: auto; min-height: var(--tap); margin: 0; padding: 0 18px; }
+.booth-letter-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.booth-letter.on-file { display: flex; align-items: center; gap: 8px; padding: 0 10px; min-height: var(--tap); }
+.booth-letter-addr { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }

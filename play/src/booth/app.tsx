@@ -58,6 +58,8 @@ import { CODEX_ROOM, QUEST_LOG } from "../rooms/spaces.ts";
 import type { Nav } from "../moments/exits.ts";
 import { Icon } from "../chrome/icons.tsx";
 import { BoothIcon } from "./icons.tsx";
+import { LetterCard } from "./letter.tsx";
+import { letterOnHome } from "./letter-model.ts";
 import { NowCard } from "./now-card.tsx";
 import { ReadoutsView } from "./readouts.tsx";
 import { CLOSED_PASS_MS, ScannerScreen } from "./scanner.tsx";
@@ -714,6 +716,10 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
               )}
               {/* The sticky banner flows under the NOW card (the booth's title bar). */}
               <MomentsLayer />
+              {/* Wave 41 (C3): the letter opt-in, on the booth's home only, never over a scan. */}
+              {letterOnHome({ player, mission: pwin === "mission", host: hostWins, showOnScreen: hostShown === "show", wide, roomOpen: t.activeId !== null, scanning: layer?.kind === "scan" }) && (
+                <LetterCard letter={s.view?.letter} eventId={s.auth?.eventId ?? ""} character={character} save={s.letter} />
+              )}
               <Shell side={side} stage={stage} wide={wide} placeholder={player ? "Pick a chat, or follow your mission." : "Pick a room — or 📷 Scan a pass."} />
               {/* No `hidden` here: the dock owns its keyboard rule. With the
                   keyboard up the slim NEXT bar steps aside, but the award
