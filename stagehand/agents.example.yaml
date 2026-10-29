@@ -18,7 +18,12 @@ server:
 
 agents:
   name: laptop                 # how directors see this worker
-  concurrency: 1               # one generation at a time on a laptop GPU
+  concurrency: 1               # one generation at a time on a laptop GPU. Also the
+                               #   stream's capacity (wave 42): the server hands this worker at
+                               #   most this many lines at once and queues the rest itself.
+                               #   2 or more needs Ollama with OLLAMA_NUM_PARALLEL >= concurrency
+                               #   (macOS app: launchctl setenv OLLAMA_NUM_PARALLEL 2, quit and
+                               #   reopen Ollama); `stagehand check` prints both
   mind_mode: new               # new: one voice call per line, the story keeps the mind
                                #   (phase cards in the mind file); classic: the two-model
                                #   mind (voice + orchestrator) as before wave 12.
