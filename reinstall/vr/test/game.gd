@@ -2204,12 +2204,9 @@ func _test_main_and_game() -> void:
 	var spawn_pos: Array = house["spawn"]["pos"]
 	var kept := [float(spawn_pos[0]) + 0.5, float(spawn_pos[1]), float(spawn_pos[2])]
 	var resumes_before: int = link.resumes.size()
-	game.player.hit_button = false
-	game._process(0.016)  # arm the press edge
-	game.player.hit_button = true
-	game._process(0.016)
-	_check(link.resumes.size() == resumes_before + 1 and game._resume_offer.is_empty(), "game: Yes asks the server to resume")
-	game.player.hit_button = false
+	_check(game.lobby.resuming(), "game: the lobby shows the resume card")
+	game.lobby.press("resume:yes")  # point + trigger (or stick-pick) YES
+	_check(link.resumes.size() == resumes_before + 1 and game._resume_offer.is_empty() and not game.lobby.resuming(), "game: Yes asks the server to resume")
 	link.answer_resumed(_assignment(house, "s-4", true), {"p": kept, "yaw": 90.0, "pitch": 0.0}, true)
 	_check(game.state() == GameFlow.State.PLAYING and not game.in_intro(), "game: a resumed walk is back in the house (intro done)")
 	var feet_h := game.builder.to_house(game.player.feet())
@@ -2221,13 +2218,9 @@ func _test_main_and_game() -> void:
 	game.presence_changed(false)
 	_now += Game.PRESENCE_GRACE + 0.1
 	game._process(0.016)
-	_check(not game._resume_offer.is_empty(), "game: … a held walk offers a resume")
-	game.player.mute_button = false
-	game._process(0.016)
-	game.player.mute_button = true
-	game._process(0.016)
-	_check(game.state() == GameFlow.State.LOBBY and link.ended.back() == "handed off" and game._resume_offer.is_empty(), "game: No ends the walk (handed off)")
-	game.player.mute_button = false
+	_check(not game._resume_offer.is_empty() and game.lobby.resuming(), "game: … a held walk offers a resume")
+	game.lobby.press("resume:no")  # NO: hand the headset off
+	_check(game.state() == GameFlow.State.LOBBY and link.ended.back() == "handed off" and game._resume_offer.is_empty() and not game.lobby.resuming(), "game: No ends the walk (handed off)")
 
 	# Focus coming back never cancels a headset-off countdown (then it offers a resume).
 	link.assignment_received.emit(_assignment(house, "s-4c", true))
@@ -2238,6 +2231,7 @@ func _test_main_and_game() -> void:
 	game._process(0.016)
 	_check(game.state() == GameFlow.State.LOBBY and not game._resume_offer.is_empty(), "game: focus coming back never cancels a headset-off countdown")
 	game._resume_offer = {}
+	game.lobby.clear_resume()
 
 	link.assignment_received.emit(_assignment(house, "s-4d", true))
 	game.focus_changed(false)
@@ -2250,19 +2244,16 @@ func _test_main_and_game() -> void:
 	game.app_resumed()
 	_check(game.state() == GameFlow.State.LOBBY and not game._resume_offer.is_empty(), "game: resuming from a pause past the grace offers a resume")
 	game._resume_offer = {}
+	game.lobby.clear_resume()
 
 	link.assignment_received.emit(_assignment(house, "s-4e", true))
 	var ended_at_xr: int = link.ended.size()
 	game.headset_gone()
 	_check(game.state() == GameFlow.State.LOBBY and link.ended.size() == ended_at_xr and not game._resume_offer.is_empty(), "game: the XR session stopping leaves the house and offers a resume")
 	# The grace elapsed under us: the server refuses, and the lobby moves on.
-	game.player.hit_button = false
-	game._process(0.016)
-	game.player.hit_button = true
-	game._process(0.016)
-	game.player.hit_button = false
+	game.lobby.press("resume:yes")
 	link.resume_failed.emit()
-	_check(game.state() == GameFlow.State.LOBBY and game._resume_offer.is_empty(), "game: a refused resume starts fresh")
+	_check(game.state() == GameFlow.State.LOBBY and game._resume_offer.is_empty() and not game.lobby.resuming(), "game: a refused resume starts fresh")
 
 	# Sent while the headset is still off (a past deadline in the lobby): plays.
 	game.presence_changed(false)
@@ -4598,6 +4589,7 @@ func _test_intro_game() -> void:
 	game._process(0.016)
 	_check(game.state() == GameFlow.State.LOBBY and link.ended.size() == ended_mid and not game._resume_offer.is_empty() and not game.intro_space.visible, "intro: the headset off mid-tutorial → the lobby offers a resume")
 	game._resume_offer = {}
+	game.lobby.clear_resume()
 	game.presence_changed(true)
 
 	# The intro config off: straight to the house.

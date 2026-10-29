@@ -102,9 +102,8 @@ const PRESENCE_GRACE := 2.0
 ## Lost focus (system menu, or off on a runtime without user presence).
 const UNFOCUSED_GRACE := 15.0
 const NOTICE_TIME := 4.0
-## (wave 40, DRAFT w40) The resume prompt shown in the lobby when a headset
-## with a held walk is put back on (or picked up after a relaunch).
-const RESUME_PROMPT := "Are you %s?  Trigger: yes · B / Y: no"
+## (wave 40, DRAFT w40) Flashed when a resume is declined by the server — the
+## held walk's grace elapsed, or another program took the headset's station.
 const RESUME_GONE := "That walk already ended."
 ## Within this (plan metres, same floor) of a `king` prop the headset is told how to hit him.
 const KING_NEAR := 1.5
@@ -222,9 +221,6 @@ var _resume_offer := {}
 ## (wave 40) Respawn here instead of the spawn when a resumed walk starts
 ## in the house (`{p, yaw}`), `{}` otherwise.
 var _resume_pose := {}
-## The Yes / No buttons on the last resume-prompt frame (a press, not a hold).
-var _prompt_hit_was := false
-var _prompt_mute_was := false
 ## Seconds now (wall clock); tests inject a fake.
 var clock: Callable = func() -> float: return Time.get_unix_time_from_system()
 var _notice_left := 0.0
@@ -317,6 +313,7 @@ func setup(l: LinkBase, xr: bool) -> void:
 	add_child(pointer)
 	lobby.attach(link, ghosts.avatars)
 	lobby.mic_action.connect(_on_mic_action)
+	lobby.resume_answered.connect(_on_resume_answer)  # (wave 40) the resume card's YES / NO
 	lobby.set_build(StationConfig.build_stamp())
 	if bool(link.config.get("autopilot", false)):
 		autopilot = Autopilot.new()
@@ -400,6 +397,7 @@ func enter_lobby() -> void:
 	# is set right after this call returns.
 	_suspended = false
 	_resume_offer = {}
+	lobby.clear_resume()  # (wave 40) any stale resume card goes; a fresh offer re-shows it
 	state_changed.emit(flow.state)
 
 
@@ -535,6 +533,7 @@ func _on_assignment(a: Dictionary) -> void:
 	if flow.state != GameFlow.State.LOBBY:
 		return
 	_resume_offer = {}  # (wave 40) a real assignment supersedes a pending resume offer
+	lobby.clear_resume()
 	if builder.house.is_empty():
 		lobby.flash("No house map yet.", 5.0, true)
 		return
@@ -897,15 +896,13 @@ func _end_for_headset() -> bool:
 # --- resume (wave 40) ----------------------------------------------------------
 
 
-## Show the lobby's "Are you {program}?" prompt for a held walk; the picker
-## is held while it is up ([method _tick_resume_prompt] reads Yes / No).
+## Show the lobby's "Are you {program}?" card for a held walk; the lobby
+## owns the view until YES / NO ([method _on_resume_answer]).
 func _show_resume_offer(token: String, name: String) -> void:
 	if token == "":
 		return
 	_resume_offer = {"token": token, "name": name}
-	_prompt_hit_was = player.hit_button
-	_prompt_mute_was = player.mute_button
-	lobby.flash(RESUME_PROMPT % (name if name != "" else "this program"), 3600.0)
+	lobby.offer_resume(name if name != "" else "this program")
 
 
 ## A walk saved before a relaunch (the Quest slept and the app was killed):
@@ -918,22 +915,19 @@ func _maybe_offer_saved() -> void:
 		_show_resume_offer(str(walk.get("token", "")), str(walk.get("name", "")))
 
 
-## One frame of the resume prompt: the hit button (a trigger / A / X) says
-## yes, the mute button (B / Y) says no — each a press, not a hold.
-func _tick_resume_prompt() -> void:
-	var hit := player.hit_button
-	var mute := player.mute_button
-	if hit and not _prompt_hit_was:
-		var token := str(_resume_offer.get("token", ""))
-		_resume_offer = {}
+## The lobby's resume card was answered ([signal Lobby.resume_answered]):
+## YES asks the server for the held walk back, NO hands the headset off.
+func _on_resume_answer(yes: bool) -> void:
+	if _resume_offer.is_empty():
+		return
+	var token := str(_resume_offer.get("token", ""))
+	_resume_offer = {}
+	lobby.clear_resume()
+	if yes:
 		lobby.flash("Resuming…", 3.0)
 		link.resume(token)
-	elif mute and not _prompt_mute_was:
-		_resume_offer = {}
+	else:
 		link.end_session("handed off")
-		enter_lobby()
-	_prompt_hit_was = hit
-	_prompt_mute_was = mute
 
 
 ## The server gave the held walk back ([signal LinkBase.resumed]): take it
@@ -941,6 +935,7 @@ func _tick_resume_prompt() -> void:
 ## → the intro plays first (they had not finished it).
 func _on_resumed(a: Dictionary, pose: Dictionary, ready: bool) -> void:
 	_resume_offer = {}
+	lobby.clear_resume()
 	if flow.state != GameFlow.State.LOBBY:
 		return
 	if builder.house.is_empty() or not a.get("duck") is Dictionary or not a.get("spawn") is Dictionary:
@@ -952,6 +947,7 @@ func _on_resumed(a: Dictionary, pose: Dictionary, ready: bool) -> void:
 ## No held walk to resume ([signal LinkBase.resume_failed]): start fresh.
 func _on_resume_failed() -> void:
 	_resume_offer = {}
+	lobby.clear_resume()
 	if flow.state != GameFlow.State.LOBBY:
 		enter_lobby()
 	else:
@@ -1003,11 +999,9 @@ func _process(delta: float) -> void:
 
 
 func _tick_lobby(delta: float) -> void:
-	# (wave 40) While a resume is offered, the prompt owns the input: no
-	# picking, no candidate refresh, until Yes / No.
-	if not _resume_offer.is_empty():
-		_tick_resume_prompt()
-		return
+	# (wave 40) While a resume is offered the lobby shows its own card (YES /
+	# NO), so the normal pointer + stick path drives it; a program begin
+	# cannot fire under it (the tiles are not in this view).
 	var aim := pointer.poll()
 	pointer.draw(aim, lobby.aim(aim, delta))
 	# Either stick drives the picker: the larger deflection on each axis.
