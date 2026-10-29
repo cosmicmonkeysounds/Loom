@@ -62,7 +62,7 @@ function upload(sim: Sim, id: string, name: string): void {
   sim.signal("captcha answered", id, { passed: true });
   sim.signal("captcha answered", id, { passed: false });
   const p = sim.pendingChoiceFor(id);
-  if (p && p.length === 4) sim.choose(id, 0);
+  if (p && p.length === 5) sim.choose(id, 0);
   sim.choose(id, 0);
   sim.scan("Norton Anti-Virus", id);
 }
@@ -683,16 +683,17 @@ describe("The Heart — the talk (wave 20)", () => {
   it("a stale non-heart menu queued before the heart: the heart menu is the newest Heart entry, answering it leaves the stale one", { timeout: SLOW }, () => {
     const sim = awake();
     // Wave 26 (R1, C2): The Tablet Video has no menu any more (a corrupted
-    // phone is locked), so the stale menu is the Uploader's form, replayed.
-    sim.fireBeat("Upload", "g1");
+    // phone is locked), so the stale menu is the Uploader's form, replayed
+    // (wave 41: the deposit menu is its own beat, Upload Deposit).
+    sim.fireBeat("Upload Deposit", "g1");
     const stale = sim.pendingChoicesFor("g1");
-    expect(stale.map((c) => c.beat)).toEqual(["Upload"]);
+    expect(stale.map((c) => c.beat)).toEqual(["Upload Deposit"]);
     atLayerOne(sim);
     const menus = sim.pendingChoicesFor("g1");
-    expect(menus.map((c) => c.beat)).toEqual(["Upload", "Heart Layer One"]);
+    expect(menus.map((c) => c.beat)).toEqual(["Upload Deposit", "Heart Layer One"]);
     expect(heartMenu(sim, "g1")!.id).toBe(menus[1]!.id);
     pick(sim, "g1", "I'm a person");
-    expect(sim.pendingChoicesFor("g1").map((c) => c.beat)).toEqual(["Upload", "Heart Layer Two"]);
+    expect(sim.pendingChoicesFor("g1").map((c) => c.beat)).toEqual(["Upload Deposit", "Heart Layer Two"]);
   });
 
   it("a second program after the first: per-program progress, Another one., one heart at a time", { timeout: SLOW }, () => {

@@ -127,7 +127,7 @@ const allHooks: Hook[] = [
 const listened = new Set(allHooks.filter((h) => h.timer === null && h.condition === null && h.verb !== "").map((h) => foldName(h.verb)));
 const fired = new Map<string, string>(); // folded event → where
 // Wave 18: `sides` (the side reveal's doors) and `invite` (a recruit) are the guest lane's.
-const SHOW_KINDS = new Set(["captcha", "image", "poll", "tutorial", "pass", "fact", "answer", "sides", "invite"]);
+const SHOW_KINDS = new Set(["captcha", "image", "poll", "tutorial", "pass", "fact", "answer", "sides", "invite", "email"]);
 const VERB_PROSE = /^(set|fire|cue|sound|sfx|move|add|remove|reveal|unlock|broadcast|show|reply|start quest|update quest|complete quest|finish quest|fail quest|capture|release|do|wait|spawn|run|cancel)\s/;
 
 /** `fire` / `show` argument traps: an unbalanced quote swallows the whole

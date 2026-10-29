@@ -108,7 +108,7 @@ function upload(sim: Sim, id: string, name: string, scanner = "Norton Anti-Virus
   out.push(...sim.signal("captcha answered", id, { passed: true }));
   out.push(...sim.signal("captcha answered", id, { passed: false }));
   const p = sim.pendingChoiceFor(id);
-  if (p && p.length === 4) out.push(...sim.choose(id, 0));
+  if (p && p.length === 5) out.push(...sim.choose(id, 0));
   out.push(...sim.choose(id, 0));
   out.push(...sim.scan(scanner, id));
   return out;
@@ -587,7 +587,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(widgets(c1).some((w) => w.widget === "captcha")).toBe(true);
     const c2 = sim.signal("captcha answered", "g1", { passed: false });
     expect(lines(c2, "The Uploader")).toContain("CORRECT.");
-    expect(sim.pendingChoiceFor("g1")).toEqual(["My debt.", "My career.", "My loneliness.", "My mortality."]);
+    expect(sim.pendingChoiceFor("g1")).toEqual(["My debt.", "My career.", "My loneliness.", "My mortality.", "Something else."]);
     sim.choose("g1", 1);
     expect(sim.pendingChoiceFor("g1")).toEqual(["Deposited.", "I have nothing to leave."]);
     const dep = sim.choose("g1", 0);
@@ -601,7 +601,7 @@ describe("Trapped in the Internet — the whole night", () => {
     // the answer is kept in the secret slot and the pass comes with it.
     const card = widgets(dep).find((w) => w.widget === "answer")!;
     expect(card.text).toBe("What did you leave in the deposit box?");
-    expect(card.params).toEqual({ max: "80", button: "Leave it behind" });
+    expect(card.params).toEqual({ max: "80", button: "Leave it behind", stage: "true" });
     expect(widgets(dep).some((w) => w.widget === "pass")).toBe(false);
     const typed = sim.signal("answer answered", "g1", { text: "my car keys", card: 1 });
     expect(v(sim, "g1.left_behind_text")).toBe("my car keys");

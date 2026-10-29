@@ -113,6 +113,8 @@ const AUDIO_ANNOUNCE = "audio-announce.json";
 /** Wave 40: the house mixer's live balance (`audio.ts`, `house-mixer.ts`):
  *  its levels and its seq, kept across a restart, never journaled. */
 const AUDIO_MIX = "audio-mix.json";
+/** Wave 41: Trabolta's letters (the inboxes, drafts and sends). Never journaled. */
+const LETTERS = "letters.json";
 /** The project's `lights.json` as this event snapshotted it (wave 20,
  *  `lights.ts`). Not `lights.json`: `LOOM_LIGHTS` may sit in the same dir. */
 const LIGHTS = "project-lights.json";
@@ -405,6 +407,15 @@ export class Store {
   }
   saveAudioMix(mix: { seq: number; levels: unknown }): void {
     writeFileSync(this.path(AUDIO_MIX), JSON.stringify({ version: 1, seq: mix.seq, levels: mix.levels }));
+  }
+
+  /** (wave 41) The letters book's document, unvalidated (`LettersBook`
+   *  reads it), or null when none was ever saved. */
+  loadLetters(): unknown {
+    return readJson<unknown>(this.path(LETTERS));
+  }
+  saveLetters(doc: unknown): void {
+    writeFileSync(this.path(LETTERS), JSON.stringify(doc));
   }
 
   // The project's `lights.json` this event snapshotted (launch, reload,

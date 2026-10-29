@@ -187,6 +187,15 @@ window; `docs/loom-w40-contract.md`). A host's phone has the same Setup and chec
 its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 `50-cue-designer.md`, `47-house-desk.md`.
 
+**Trabolta's letters** (wave 41, not shipped; `docs/loom-w41-contract.md`,
+show text `DRAFT w41` on `SIGNOFF-w41.md`): the upload ends with an
+optional inbox card (performers get one in their booth), the problem form
+takes a write-in (*Something else*), and after the ending a director runs
+Run → **Letters**: ✍ the MacBook's Trabolta writes one letter per inbox
+from that person's night, a director reads / edits, then ✉ Send (Resend as
+the webmaster address). Addresses never enter the journal. Send before
+End (SHOWNIGHT §8). Help: `docs/help/authoring/52-letters.md`.
+
 ### Release status
 
 The VPS runs **`w40`** (master `87927a52`, shipped 2026-10-29; rollback

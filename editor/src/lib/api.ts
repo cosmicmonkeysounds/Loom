@@ -19,6 +19,7 @@ import type { LightsConfig } from '@loom/house'
 import type { DeskConfig, DeskTestCall, DeskView } from '@loom/core/house-desk'
 import type { AudioMix, MixChange, MixerView, MusicCommand } from '@loom/core/house-mixer'
 import { audioMixOf, mixerViewOf } from '@/lib/house-mixer-view'
+import { lettersViewOf, type LettersView } from '@/components/run/letters'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -731,5 +732,37 @@ export const mapApi = {
   async setKing(eventId: string, hp: number): Promise<KingView | null> {
     const r = await req<{ king?: unknown }>('POST', `/e/${eventId}/api/mod/spatial/king`, { hp })
     return kingFromWire(r.king)
+  },
+}
+
+// --- Trabolta's letters (wave 41, `docs/loom-w41-contract.md` C5) ---------
+
+/** Run's letters: directors only (never on the host allowlist). */
+export const lettersApi = {
+  /** Every address on file, its draft and its send. 404 from an older server. */
+  async view(eventId: string): Promise<LettersView> {
+    const v = lettersViewOf(await req<unknown>('GET', `/e/${eventId}/api/mod/letters`))
+    if (v === null) throw new ApiError(502, { error: 'the server’s letters answer is not one' })
+    return v
+  },
+  /** Ask the writer for every row without a draft (or `keys`; `redo`
+   *  replaces a draft that is not sent). 409 `no_writer`. */
+  async write(eventId: string, keys?: string[], redo?: boolean): Promise<{ queued: number }> {
+    const r = await req<{ queued?: unknown }>('POST', `/e/${eventId}/api/mod/letters/write`, { ...(keys !== undefined ? { keys } : {}), ...(redo ? { redo: true } : {}) })
+    return { queued: typeof r.queued === 'number' ? r.queued : 0 }
+  },
+  /** A director's own edit of one draft (`by` = you). */
+  async draft(eventId: string, key: string, subject: string, text: string): Promise<void> {
+    await req<unknown>('POST', `/e/${eventId}/api/mod/letters/draft`, { key, subject, text })
+  },
+  /** Send every drafted, unsent row (or `keys`), in the background. 409
+   *  `mail_off` / `nothing_to_send` / `busy`. */
+  async send(eventId: string, keys?: string[]): Promise<{ sending: number }> {
+    const r = await req<{ sending?: unknown }>('POST', `/e/${eventId}/api/mod/letters/send`, keys !== undefined ? { keys } : {})
+    return { sending: typeof r.sending === 'number' ? r.sending : 0 }
+  },
+  /** Take one row off file. */
+  async forget(eventId: string, key: string): Promise<void> {
+    await req<unknown>('POST', `/e/${eventId}/api/mod/letters/forget`, { key })
   },
 }

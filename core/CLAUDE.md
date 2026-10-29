@@ -230,6 +230,24 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   /api/mod/audio/mix` and `/music` are on the host allowlist, `POST
   /api/mod/audio/meters` (the router's) is not. Tests:
   `test/w40-mixer-server.test.ts`.
+- **Trabolta's letters** (wave 41,
+  [`docs/loom-w41-contract.md`](../docs/loom-w41-contract.md)). The
+  `email` card's address is taken out at `/api/guest/widget` (and
+  `/api/prime/widget`) by `widgetArgsOf`: the story hears `email answered`
+  with `given` / `skipped`, the address goes to `LettersBook`
+  (`server/letters.ts`, `letters.json` in the state dir, never journaled;
+  a story restart drops the guests', Go live the booths'). A performer's
+  inbox: `POST /api/prime/letter`, `PrimeView.letter`. Run:
+  `GET /api/mod/letters`, `POST /api/mod/letters/{write,draft,send,forget}`
+  (`routes/letters.ts`, directors only, never on the host allowlist).
+  `letter` frames go to the `judge:` character's idle worker
+  (`AgentHub.letterWorkers`, voice first, one each), re-queued after
+  180 s, three tries; `POST /api/agent/letter` stores the draft. The night
+  file is `letter-facts.ts` (pure, over the recap; the show's featured
+  identities and endings live there). Send: Resend as `Jean Trabolta
+  <LOOM_WEBMASTER_FROM>` (`letters-mail.ts`), 600 ms apart, once each. The
+  frames in flight are memory only. Tests: `test/w41-letters.test.ts`,
+  `test/trapped-w41-upload.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to

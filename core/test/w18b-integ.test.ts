@@ -83,7 +83,7 @@ class Night {
     this.raw("captcha answered", id, { passed: true });
     this.raw("captcha answered", id, { passed: false });
     const p = this.sim.pendingChoiceFor(id);
-    if (p && p.length === 4) this.take(this.sim.choose(id, 0)); // a pool program's problem: debt
+    if (p && p.length === 5) this.take(this.sim.choose(id, 0)); // a pool program's problem: debt
     this.take(this.sim.choose(id, 0));
     this.take(this.sim.scan("Norton Anti-Virus", id));
   }

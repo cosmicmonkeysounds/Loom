@@ -68,6 +68,7 @@ from .config import AgentsConfig, parse_agents
 from .facts import Facts, FactsClient
 from .guards import outside_guard, situation_guard
 from .judge import JUDGE_DEADLINE_S, Ruling, judge_messages, judge_model, parse_ruling
+from .letter import LETTER_ATTEMPTS, LETTER_DEADLINE_S, RETRY_NOTE, Letter, letter_messages, letter_model, letter_problem, parse_letter
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
 from .mind import Mind, mind_path
 from .orchestrator import Job, Orchestrator, reflect_tokens_needed, voice_tokens_needed
@@ -274,6 +275,8 @@ class Agents:
         #: Judge rulings in flight, by request id (never thread-bound, never
         #: a `request`: `judge.py`).
         self.judging: dict[str, asyncio.Task[None]] = {}
+        #: (wave 41) Letters being written, by frame id (`letter.py`).
+        self.lettering: dict[str, asyncio.Task[None]] = {}
         self.mod: ModClient | None = None
         #: The generation slots (wave 32: a stage request waits in the front lane, `slots.py`).
         self._slots = Slots(cfg.concurrency)
@@ -429,10 +432,11 @@ class Agents:
     def abandon_all(self) -> None:
         from .wire import wire_of
 
-        for task in [*self.tasks.values(), *self.judging.values()]:
+        for task in [*self.tasks.values(), *self.judging.values(), *self.lettering.values()]:
             task.cancel()
         self.tasks.clear()
         self.judging.clear()
+        self.lettering.clear()
         wire_of(self).flush_saves()  # a (re)connect or a shutdown never loses a debounced save
 
     # -- minds ----------------------------------------------------------------
@@ -819,9 +823,19 @@ class Agents:
                 return
             self._preempt()  # a ruling has a 55 s deadline: nothing else holds the voice slot
             self.judging[jid] = asyncio.ensure_future(self._judge(frame))
+        elif event == "letter":
+            frame = json.loads(data)
+            if not isinstance(frame, dict):
+                return
+            lid = str(frame.get("id"))
+            if lid in self.lettering:
+                return
+            # After the night: a guest's request (if any) still goes first
+            # through the slots; the server sends one letter at a time.
+            self.lettering[lid] = asyncio.ensure_future(self._letter(frame))
         elif event == "cancel":
             cid = str(json.loads(data).get("id"))
-            for tasks in (self.tasks, self.judging):
+            for tasks in (self.tasks, self.judging, self.lettering):
                 task = tasks.pop(cid, None)
                 if task is not None:
                     task.cancel()
@@ -1340,6 +1354,85 @@ class Agents:
                 self._inflight = max(0, self._inflight - 1)
             if self.judging.get(jid) is asyncio.current_task():
                 del self.judging[jid]
+
+    # -- the letter (wave 41) ---------------------------------------------------------
+
+    async def _letter(self, frame: dict[str, Any]) -> None:
+        """Write one letter (`letter.py`): the voice model with the persona's
+        system prompt and the letter brief, traced as a `letter` thought,
+        answered on `/api/agent/letter`. Touches no mind and no thread. A
+        draft a guard rejects is written once more; no usable draft answers
+        nothing (the server asks again, then marks it failed)."""
+        lid = str(frame.get("id"))
+        character = str(frame.get("character") or "")
+        to = frame.get("to") if isinstance(frame.get("to"), dict) else {}
+        try:
+            persona = self.cfg.personas.get(character)
+            if persona is None:
+                return  # not ours: the server re-queues it
+            model = letter_model(self.models[character])
+            log.info("%s ✉ writes to %s", character, str(to.get("name") or "?")[:60])
+            letter: Letter | None = None
+            note = ""
+            deadline = time.monotonic() + LETTER_DEADLINE_S
+            for attempt in range(LETTER_ATTEMPTS):
+                left = deadline - time.monotonic()
+                if left <= 1:
+                    break
+                messages = letter_messages(persona, frame, RETRY_NOTE if attempt > 0 else "")
+                completion: Completion | None = None
+                error: str | None = None
+                draft: Letter | None = None
+                try:
+                    completion, note = await asyncio.wait_for(self._judge_call(messages, model, character), left)
+                    draft = parse_letter(completion.content)
+                except LlmError as err:
+                    error = str(err)
+                except asyncio.TimeoutError:
+                    error = f"no letter within {LETTER_DEADLINE_S:.0f}s"
+                problem = None if draft is None else letter_problem(persona, draft)
+                if draft is None and error is None:
+                    error = "no letter in the output"
+                elif problem is not None:
+                    error = f"draft thrown away: {problem}"
+                ok = draft is not None and problem is None
+                result = {"subject": draft.subject, "chars": len(draft.text)} if ok and draft is not None else None
+                await self.trace.record(
+                    new_thought(character, "letter", trigger="letter", model=model, messages=messages, completion=completion, request={"id": lid}, result=result, error=None if ok else error, note=note)
+                )
+                if ok:
+                    letter = draft
+                    break
+                log.warning("%s ✉ %s: %s", character, lid, error)
+                if error is not None and error.startswith("no letter within"):
+                    break
+            if letter is None:
+                return
+            if not self.cfg.dry_run:
+                await self._send_letter(lid, letter)
+        except asyncio.CancelledError:
+            log.info("letter %s cancelled", lid)
+            raise
+        except Exception:  # noqa: BLE001 — one bad letter must not kill the worker
+            log.exception("letter %s failed", lid)
+        finally:
+            if self.lettering.get(lid) is asyncio.current_task():
+                del self.lettering[lid]
+
+    async def _send_letter(self, lid: str, letter: Letter) -> None:
+        assert self.mod is not None
+        body: dict[str, Any] = {"id": lid, "text": letter.text}
+        if letter.subject:
+            body["subject"] = letter.subject
+        if self.worker:
+            body["worker"] = self.worker
+        try:
+            await self.mod.post("/api/agent/letter", body)
+        except ModApiError as err:
+            if err.status == 410:
+                log.info("letter %s was already settled (forgotten, expired, or the run restarted)", lid)
+            else:
+                log.warning("could not send letter %s: %s", lid, err)
 
     async def _judge_call(self, messages: list[dict[str, str]], model: LlmConfig, who: str) -> tuple[Completion, str]:
         async with self._slots:

@@ -50,7 +50,7 @@ function upload(sim: Sim, id: string, name: string, scanner = "Norton Anti-Virus
   out.push(...sim.signal("captcha answered", id, { passed: true }));
   out.push(...sim.signal("captcha answered", id, { passed: false }));
   const p = sim.pendingChoiceFor(id);
-  if (p && p.length === 4) out.push(...sim.choose(id, 0));
+  if (p && p.length === 5) out.push(...sim.choose(id, 0));
   out.push(...sim.choose(id, 0));
   out.push(...sim.scan(scanner, id));
   return out;

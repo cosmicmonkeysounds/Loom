@@ -251,7 +251,7 @@ function boot(): Sim {
     sim.signal("captcha answered", id, { passed: true } as never);
     sim.signal("captcha answered", id, { passed: false } as never);
     const p = sim.pendingChoiceFor(id);
-    if (p && p.length === 4) sim.choose(id, 0);
+    if (p && p.length === 5) sim.choose(id, 0);
     sim.choose(id, 0);
     sim.scan("Norton Anti-Virus", id);
   }
@@ -289,7 +289,7 @@ describe("Trapped in the Internet — wave 13 integration: the copy names the ne
     const events = [...sim.fireBeat("Power On"), ...sim.createPerson("g1", "Calculator")];
     events.push(...sim.signal("captcha answered", "g1", { passed: true } as never), ...sim.signal("captcha answered", "g1", { passed: false } as never));
     const p = sim.pendingChoiceFor("g1");
-    if (p && p.length === 4) events.push(...sim.choose("g1", 0));
+    if (p && p.length === 5) events.push(...sim.choose("g1", 0));
     events.push(...sim.choose("g1", 0), ...sim.scan("Norton Anti-Virus", "g1"));
     const tours = events.filter((e): e is Extract<typeof e, { type: "widget" }> => e.type === "widget" && e.widget === "tutorial");
     expect(tours).toHaveLength(1);

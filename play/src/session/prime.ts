@@ -309,6 +309,10 @@ export interface PrimeSession {
   answerWidget: (seq: number, result: WidgetResult) => Promise<void>;
   /** Cards (by seq) this booth has answered — rendered resolved, never re-asked. */
   widgetAnswers: ReadonlyMap<number, WidgetResult>;
+  /** Wave 41 (C3): put this character's address on file for Trabolta's
+   *  letter (`POST /api/prime/letter`), or take it off (`null`). Optional so
+   *  a test's fake session needs none. */
+  letter?: (email: string | null) => Promise<{ ok: true; email: string | null }>;
   leave: () => void;
   /** A notification's room link is waiting to open (SW-PLAY-20). */
   roomLinkPending: boolean;
@@ -600,6 +604,10 @@ export function usePrimeSession(): PrimeSession {
     },
     [post, auth],
   );
+  const letter = useCallback(
+    (email: string | null) => post<{ ok: true; email: string | null }>("/api/prime/letter", { email }, auth!.token),
+    [post, auth],
+  );
   const leave = useCallback(() => {
     // Sign out frees the part on the server too, so the same performer can
     // sign in from another phone (the iPhone Home Screen icon) without a
@@ -633,5 +641,5 @@ export function usePrimeSession(): PrimeSession {
   const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
+  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, lastPressedOn, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, letter, leave, roomLinkPending };
 }

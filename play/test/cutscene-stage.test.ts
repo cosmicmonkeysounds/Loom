@@ -28,6 +28,13 @@ describe("the cutscene stage", () => {
     expect(stageMessages([captcha, pass, fact], null).map((x) => x.widget?.kind)).toEqual(["captcha", "pass"]);
   });
 
+  it("wave 41: an answer card dealt with stage: true (the upload's write-in) and the inbox card land on the stage", () => {
+    const writeIn = m({ kind: "widget", channel: "dm:Task Manager", widget: { kind: "answer", text: "Which problem?", params: { max: "60", stage: "true" } } });
+    const deposit = m({ kind: "widget", channel: "dm:Task Manager", widget: { kind: "answer", text: "What did you leave?", params: { max: "80" } } });
+    const inbox = m({ kind: "widget", channel: "dm:Task Manager", widget: { kind: "email", text: "Your inbox", params: {} } });
+    expect(stageMessages([writeIn, deposit, inbox], null).map((x) => x.widget?.text)).toEqual(["Which problem?", "Your inbox"]);
+  });
+
   it("once moved on, only the story's lines to them still land: the hand-off, never a later card or notice", () => {
     const before = m({ text: "Scanned. Go through the Tube." });
     const freeze = before.seq;

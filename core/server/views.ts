@@ -2199,6 +2199,10 @@ export interface PrimeView {
    *  or a plain performer's); null when no talk scene is on; absent from an
    *  older server. */
   talk?: TalkView | null;
+  /** Wave 41 (C3): this part's inbox for Trabolta's letter (`email` on
+   *  file or null) and the From line it would come from (null: mail is off).
+   *  Absent from an old server and from the bare sim projection. */
+  letter?: { email: string | null; from: string | null };
   /** The story clock (ms, `Sim.elapsed()`) when this view was built — the
    *  "now" a client measures a message's `ts` against (e.g. only banner an
    *  alert it missed if it is under 10 minutes old). */
