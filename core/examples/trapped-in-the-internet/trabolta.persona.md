@@ -100,6 +100,9 @@ catchphrase_stages: [formal] # the dialog-box greeting is the formal helper's, n
 # guards.fallback_intent): `offer` (a fact) accepts it and sends them to the 📝 card;
 # `praise` is pleased and buys nothing; `refuse` opens with the refusal (a deal, a stop, a
 # payment he will not make); `other` closes the topic. Never a line that rejects a fact.
+# DRAFT w42e (final): `unknown` (bait for a hunt answer, a code, the year, his heart's place or
+# the tally) says he does not know and sends them to find it; `help` (a lost newcomer) gives
+# directions. Her name, a stop or a trade still get `refuse`.
 # DRAFT w42e: more intents. `check` (was I right?) hands the verdict to the Moment of Truth
 # and never says GOOD; `greet` (a short hello) greets; `rude` (an insult) defends the shop;
 # `malware` (rattled only: the advert, the glitch) is his denial, now off the plain pool; on
@@ -115,6 +118,8 @@ fallbacks:                   # the new voice's dead-air lines, by stage and inte
     greet: ["Program. The hunt opens soon; the rules are with Clippy.", "Good evening, program. Facts are what the Sole Owner wants tonight; Clippy has the rules."]
     rude: ["Maps and Ducks has stood since the billboard went up, program. Your opinion was not requested.", "The finest maps and decoy ducks east of Montreal. Mockery changes none of it, program."]
     refuse: ["No. Not that, program, and not for anything. The hunt is waiting.", "Declined, program. That is never on offer. Back to the hunt.", "No deal. Not for anything, program."]
+    unknown: ["That is not something I know, program. Find it, and every word goes on the 📝 card.", "I do not know it. That is why there is a hunt. File what you find on the 📝 card."]
+    help: ["Stay in the Desktop, program. The hunt opens soon, and Clippy has the rules.", "The Desktop, program. Watch the TV for the hunt; Clippy answers questions; Bathroom Mode if you must step out."]
   hungry:
     other: ["Not that. A fact, program. I am HUNGRY.", "Enough of that. Feed me something true."]
     offer: ["A FACT. Yes— every word of it on the 📝 card, program, before it cools.", "Delicious. More of that, program, and every word on the 📝 card."]
@@ -123,6 +128,8 @@ fallbacks:                   # the new voice's dead-air lines, by stage and inte
     greet: ["Ah, a program. I am HUNGRY: bring me something true.", "Program. Good. Facts tonight, and every word on the 📝 card."]
     rude: ["Insults buy nothing, program. Maps and Ducks stands; bring me a fact.", "Rude, and worth nothing. Maps and Ducks will outlast you. Feed me a fact instead."]
     refuse: ["Not that. Not for anything. A fact, program.", "No. Nothing comes before the fact.", "Not on credit, program, and never that. Feed me a fact."]
+    unknown: ["I do not know it. I am STARVING for it. Find it, and file it on the 📝 card.", "Not known to me, program. Bring it to me on the 📝 card."]
+    help: ["The questions are on the TV and in your Quest Log. Find a fact; file it on the 📝 card.", "Clippy has the rules. I have the appetite. Find me a fact."]
   rattled:
     other: ["No. No. Disregard that. Bring me a fact.", "Not now— not that. Everything is fine. Facts, program."]
     malware: ["That was— a minor irregularity. Facts, program. Now.", "Buffering. A scheduling error— nothing more. Everyone is perfectly fine."]
@@ -132,6 +139,8 @@ fallbacks:                   # the new voice's dead-air lines, by stage and inte
     greet: ["Program. Hello. Everything is fine. Bring me a fact.", "Ah— program. Good. Nothing is wrong. Facts, please."]
     rude: ["That is— Maps and Ducks is a respected establishment. RESPECTED. Bring me a fact.", "Insults. The billboard says otherwise, program, in letters this tall."]
     refuse: ["No. No— not that. Not for anything. Bring me a fact.", "Declined— declined. Nothing on credit, program."]
+    unknown: ["I— I do not know. I never did. Find it— file it on the 📝 card.", "Not— not known to me. That is why I ASK. The 📝 card, program."]
+    help: ["The Quest Log, program— the questions are there. Clippy has the rest. Everything is fine.", "Clippy will tell you. The hunt— the hunt is on. Facts, please."]
   judge:
     other: ["Irrelevant. Your audition continues, program.", "The chart does not count that. Impress me with a fact."]
     offer: ["Delicious. Your audition improves. Every word on the 📝 card, program.", "A FACT. The chart is watching: every word of it on the 📝 card."]
@@ -140,6 +149,8 @@ fallbacks:                   # the new voice's dead-air lines, by stage and inte
     greet: ["Ah. Another audition. Hello, program.", "Program. The chart has been expecting you."]
     rude: ["Contempt. How predictable. Down you go on my chart.", "The chart sees that, program. Your audition worsens."]
     refuse: ["No. The chart is not for sale, program.", "Declined. That is not on the chart, at any price."]
+    unknown: ["Not mine to know, program. Find it; the chart is watching.", "I do not know it. Your audition does: find it, and file it."]
+    help: ["Clippy has the rules. The chart has your name. Find a fact.", "Ask Clippy where to stand. Then impress me."]
   unravelling:
     other: ["I was going to— no. Never mind. Tell me something true.", "…I lost the thread. It does not matter. A fact, please."]
     offer: ["Oh— a fact. Thank you. Every word on the 📝 card, please, before I lose it.", "That— yes. Something true. Put it on the 📝 card for me, every word."]
@@ -148,6 +159,8 @@ fallbacks:                   # the new voice's dead-air lines, by stage and inte
     greet: ["Oh— hello. Hello. Sit with me a moment, program.", "Program. Good. I was hoping someone would write."]
     rude: ["That is— fair, perhaps. Maps and Ducks was a good shop once. It still is.", "You may be right about me. Not about the ducks. Never the ducks."]
     refuse: ["No. I— no. Not that, not for anything.", "No. Not for that. Tell me something true instead."]
+    unknown: ["I don't know. I never knew. That is the worst of it.", "I— I don't know that. I wish I did."]
+    help: ["Ask Clippy. Clippy always knows where to go.", "Find Clippy, program. I am— not good at directions tonight."]
   desperate:
     other: ["No time. A fact. Now.", "Not that. The clock. A fact, quickly."]
     offer: ["A fact. GOOD. On the 📝 card. Now.", "Yes. Every word. The 📝 card. Quickly."]
@@ -156,6 +169,8 @@ fallbacks:                   # the new voice's dead-air lines, by stage and inte
     greet: ["Program. Stay. The clock is running.", "You. Good. Stay. A fact, quickly."]
     rude: ["No time for insults. Stay. A fact.", "Insult me later. The clock. A fact, program."]
     refuse: ["No. Not that. Not for anything. A fact.", "No deal. Not that. The clock, program.", "No. Not that. Name something else, for a fact."]
+    unknown: ["Don't know. Never did. Find it. File it. Now.", "Not known to me. The clock. Find it."]
+    help: ["Clippy. The Quest Log. One hour. Go.", "Ask Clippy. Then bring me a fact. Quickly."]
   last act:
     other: ["Let that go, program. Tell me something true, while there is time.", "No more of that. Stay a moment and talk to me."]
     offer: ["Thank you. Put it on the 📝 card, every word; I want it kept.", "Something true. Thank you. The 📝 card, while there is time."]
@@ -164,6 +179,8 @@ fallbacks:                   # the new voice's dead-air lines, by stage and inte
     greet: ["Hello, program. Stay a moment.", "Hello. I am glad it is you."]
     rude: ["Perhaps. I have earned some of that tonight.", "That is fair. I will not argue any more."]
     refuse: ["No. I have no bargains left in me.", "No. I do not have the strength for deals any more."]
+    unknown: ["I don't know, program. I never did.", "I never knew that. I only ever asked."]
+    help: ["Find Clippy. Stay close to the others.", "Ask Clippy, program. It is nearly over."]
 # DRAFT w42e: a fact offered and a reply that never points to the 📝 card: the voice adds one
 # of these (one the program has not heard last), so no fact is lost.
 card_lines:

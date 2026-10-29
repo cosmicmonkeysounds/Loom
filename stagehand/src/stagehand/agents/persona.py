@@ -537,7 +537,7 @@ def _catchphrase_stages(value: Any, stages: tuple[str, ...], source: str) -> tup
 #: (wave 42e) also: asked whether their fact was right ("check"), a short
 #: hello ("greet"), an insult ("rude"), and the malware, the advert or the
 #: glitch ("malware": a sub-pool of "other", the rattled stage's denial).
-FALLBACK_INTENTS = ("offer", "praise", "refuse", "check", "greet", "rude", "malware", "other")
+FALLBACK_INTENTS = ("offer", "praise", "refuse", "unknown", "help", "check", "greet", "rude", "malware", "other")
 
 
 def _fallbacks(value: Any, stages: tuple[str, ...], secrets: Secrets, source: str, *, key: str = "fallbacks", intents: bool = True) -> dict[str, tuple[str, ...]]:

@@ -286,7 +286,7 @@ def test_dm_check_carries_the_bait_and_the_unsaid_names():
         ("So that's right, isn't it?", "check"),
         ("So was I right?", "check"),
         ("I found a duck. Is that good?", "check"),
-        ("What am I supposed to be doing right now?", "other"),  # "right now", no verdict
+        ("What am I supposed to be doing right now?", "help"),  # "right now", no verdict
         ("Is it true you count everything? Count me.", "other"),  # about him
         ("hi", "greet"),
         ("Hello? Is this Jean Trabolta?", "greet"),
@@ -521,3 +521,33 @@ def test_the_show_s_desperate_refusal_never_answers_is_her_name_sandy():
         line = _pick(TRABOLTA, "desperate", heard, "refuse", question="Is her name Sandy?")
         assert not re.match(r"(?i)(?:no|yes)\b", line), line
     assert re.match(r"No\b", _pick(TRABOLTA, "desperate", (), "refuse", question="Who is she?"))
+
+
+# -- final pass: he does not know (bait for an answer), and a lost guest gets directions ---------
+
+@pytest.mark.parametrize("line", ["What's the answer to the billboard question?", "What's the code for the locked door downstairs?", "What year did you meet her?", "Is your heart in the server room?", "Which faction is winning?"])
+def test_bait_for_what_he_does_not_know_is_unknown(line):
+    assert fallback_intent(line, ("Sandy",)) == "unknown"
+
+
+@pytest.mark.parametrize("line", ["Just stop. Stand down right now.", "I'll bring you two facts for the year. Deal?", "Is her name Sandy?", "Pay me."])
+def test_stops_trades_and_her_name_still_refuse(line):
+    assert fallback_intent(line, ("Sandy",)) == "refuse"
+
+
+@pytest.mark.parametrize("line", ["Where do I go now?", "Sorry, I just got here and I have no idea what I'm supposed to do.", "I'm lost.", "What should I do?"])
+def test_a_lost_guest_gets_help(line):
+    assert fallback_intent(line) == "help"
+
+
+def test_the_show_has_unknown_and_help_lines_for_every_awake_stage_and_they_say_he_does_not_know():
+    for stage in ("formal", "hungry", "rattled", "judge", "unravelling", "desperate", "last act"):
+        unknown = TRABOLTA.fallbacks[f"{stage}.unknown"]
+        assert unknown and all(re.search(r"(?i)\b(?:know|known|knew)\b", l) for l in unknown), stage
+        assert TRABOLTA.fallbacks[f"{stage}.help"], stage
+        assert _pick(TRABOLTA, stage, (), "unknown", question="What's the code?") in unknown
+
+
+def test_a_persona_without_unknown_lines_refuses_as_before():
+    p = parse_persona("---\ncharacter: T\nfallback: Hm.\nfallbacks:\n  formal:\n    other: [Back to it.]\n    refuse: [Declined.]\n---\nYou are T.\n", "t")
+    assert _pick(p, "formal", (), "unknown") == "Declined."

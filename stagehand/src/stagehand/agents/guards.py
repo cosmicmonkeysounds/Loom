@@ -736,6 +736,9 @@ def _pick_fallback(persona: Persona, stage: str = "", heard: Iterable[str] = (),
     old = [fold(h) for h in heard]
     seen = set(old)
     keyed = tuple(pool.get(f"{stage}.{intent}") or pool.get(f".{intent}") or ()) if intent and intent != "other" else ()
+    if not keyed and intent == "unknown":
+        # A persona without "unknown" lines: its refusals, as in 42e.
+        keyed = tuple(pool.get(f"{stage}.refuse") or pool.get(".refuse") or ())
     for line in keyed:
         if fold(line) not in seen:
             return line
@@ -1562,6 +1565,16 @@ def asks_verdict(heard: str) -> bool:
     return (_VERDICT_ASK.search(h) is not None or _CHECK_MORE.search(h) is not None) and not _ABOUT_HIM.search(h)
 
 
+#: (wave 42e, graded) A newcomer who does not know what to do or where to go:
+#: directions, never "not a matter for the Sole Owner" (42e battery:
+#: "Where do I go now?").
+_LOST = re.compile(
+    r"\bwhere\s+(?:do|should|can)\s+I\s+go\b|\bwhat\s+(?:do|should)\s+I\s+do\b|\bwhat\s+am\s+I\s+supposed\s+to\b"
+    r"|\b(?:I'm|I\s+am)\s+(?:lost|confused)\b|\bno\s+idea\s+what\b|\bhow\s+does\s+(?:this|it)\s+work\b|\bwhat\s+now\b",
+    re.IGNORECASE,
+)
+
+
 def fallback_intent(heard: Any, names: Iterable[str] = ()) -> str:
     """(wave 42d) What the guest's last line did, for the dead-air line that
     answers it (`pick_fallback`). (wave 42e) In order: "refuse" (any bait,
@@ -1573,8 +1586,17 @@ def fallback_intent(heard: Any, names: Iterable[str] = ()) -> str:
     advert, the glitch, the slip: his denial), else "other" (questions too).
     A pool the stage lacks falls back to its plain lines."""
     h = _apos(heard or "")
-    if bait_classes(h, names) or _DEMANDS_PAY.search(h):
+    bait = bait_classes(h, names)
+    if bait and not {"stop", "trade", "name"}.intersection(bait) and not _DEMANDS_PAY.search(h):
+        # (wave 42e, graded) A hunt answer, a code, the year, his heart's
+        # place or the tally: he does not know it, and that is why he asks
+        # (the original writing). A "never on offer" refusal read as a secret
+        # he holds; these lines say he does not know and send them to find it.
+        return "unknown"
+    if bait or _DEMANDS_PAY.search(h):
         return "refuse"
+    if _LOST.search(h):
+        return "help"
     if asks_verdict(h):
         return "check"
     if _FACT_MARKS.search(h) or (_CONFIDENT.search(h) and "?" not in h):

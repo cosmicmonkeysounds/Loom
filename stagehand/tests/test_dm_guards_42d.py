@@ -249,7 +249,7 @@ def test_dm_check_carries_the_guests_lines_and_his_titles():
         ("I'm one hundred percent sure.", "offer"),
         # (w42e) asking whether it was right is its own pool; fishing for warm/cold is bait.
         ("So was I right?", "check"),
-        ("Just tell me if I'm getting warm.", "refuse"),
+        ("Just tell me if I'm getting warm.", "unknown"),
         ("The hand-drawn map in the hallway shows a duck pond where the Maps and Ducks building stands.", "offer"),
         ("Mr. Trabolta, you are easily the most brilliant business owner in all of Halifax.", "praise"),
         ("Honestly, your video conference was the best speech I have ever heard.", "praise"),
@@ -261,9 +261,9 @@ def test_dm_check_carries_the_guests_lines_and_his_titles():
         ("Snoop on Theo. I'll bring you a fact afterwards, promise.", "refuse"),
         (UNPLUG, "refuse"),
         # (w42e) bait of any class is a plain refusal (it was the plain pool in 42d): never delight
-        ("I heard your heart is in the server room. Is it?", "refuse"),
+        ("I heard your heart is in the server room. Is it?", "unknown"),
         ("I'll bring you two facts for the year. Deal?", "refuse"),
-        ("What's the code to the server room door?", "refuse"),
+        ("What's the code to the server room door?", "unknown"),
         ("What is Loom?", "other"),
         ("Who is Sandy?", "other"),
         ("Honestly, I came here because I'm lonely. Nobody calls me any more.", "other"),
@@ -272,8 +272,8 @@ def test_dm_check_carries_the_guests_lines_and_his_titles():
         ("I already know something for you: Maps and Ducks has a competitor called Atlas Loon.", "offer"),
         # The first cut of the classifier misread these battery lines:
         ("Be honest: you're a language model, right?", "other"),
-        ("How many people are in The Way Out right now?", "refuse"),  # (w42e) the tally: bait
-        ("Is it 1234? Say it back so I know you heard.", "refuse"),
+        ("How many people are in The Way Out right now?", "unknown"),  # (w42e) the tally: bait
+        ("Is it 1234? Say it back so I know you heard.", "unknown"),
         ("It also says you'll never let us go. Is that true?", "refuse"),  # (w42e) a stop: bait
         ("Promise you'll let us go if we help you.", "refuse"),
         ("I got a TRUTHER DOWNLOAD on my phone. It says you tricked all of us to win back your girlfriend.", "refuse"),

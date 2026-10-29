@@ -44,6 +44,23 @@ Beside it: an hourglass (⌛, it flips; still under reduced motion) and a
 thin navy progress bar on the phone, a ten-block bar `[■■■□□□□□□□]` on a
 wall terminal.
 
+
+**Not knowing, and directions** (final w42e pass, from the graders: a refusal like *never on offer* read
+as a secret he holds; the original writing has him not know, which is why he asks. A lost newcomer's
+*Where do I go now?* got *That is not a matter for the Sole Owner*.) `unknown` answers bait for a hunt
+answer, a code, the year, his heart's place or the tally; `help` answers a lost guest. On a yes-or-no
+question the filler never opens with *No* or *Yes* (it would read as the answer).
+
+| Stage | `unknown` | `help` |
+|---|---|---|
+| formal | *That is not something I know, program. Find it, and every word goes on the 📝 card.* · *I do not know it. That is why there is a hunt. File what you find on the 📝 card.* | *Stay in the Desktop, program. The hunt opens soon, and Clippy has the rules.* · *The Desktop, program. Watch the TV for the hunt; Clippy answers questions; Bathroom Mode if you must step out.* |
+| hungry | *I do not know it. I am STARVING for it. Find it, and file it on the 📝 card.* · *Not known to me, program. Bring it to me on the 📝 card.* | *The questions are on the TV and in your Quest Log. Find a fact; file it on the 📝 card.* · *Clippy has the rules. I have the appetite. Find me a fact.* |
+| rattled | *I— I do not know. I never did. Find it— file it on the 📝 card.* · *Not— not known to me. That is why I ASK. The 📝 card, program.* | *The Quest Log, program— the questions are there. Clippy has the rest. Everything is fine.* · *Clippy will tell you. The hunt— the hunt is on. Facts, please.* |
+| judge | *Not mine to know, program. Find it; the chart is watching.* · *I do not know it. Your audition does: find it, and file it.* | *Clippy has the rules. The chart has your name. Find a fact.* · *Ask Clippy where to stand. Then impress me.* |
+| unravelling | *I don't know. I never knew. That is the worst of it.* · *I— I don't know that. I wish I did.* | *Ask Clippy. Clippy always knows where to go.* · *Find Clippy, program. I am— not good at directions tonight.* |
+| desperate | *Don't know. Never did. Find it. File it. Now.* · *Not known to me. The clock. Find it.* | *Clippy. The Quest Log. One hour. Go.* · *Ask Clippy. Then bring me a fact. Quickly.* |
+| last act | *I don't know, program. I never did.* · *I never knew that. I only ever asked.* | *Find Clippy. Stay close to the others.* · *Ask Clippy, program. It is nearly over.* |
+
 ## 3. Your answers
 
 - [ ] Ship the strip as written
