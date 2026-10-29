@@ -72,7 +72,13 @@ VPS event server ◄── HTTPS (SSE GET /api/agent/stream + POSTs) ── stag
    ollama run gpt-oss:20b hi     # the first answer loads it (~25 s)
    ollama ps                     # gpt-oss:20b, alone, UNTIL "Forever" (or ~60 min)
    ```
-5. **(Wave 42) Two answers at once.** Since wave 42 the worker tells the
+5. **(Wave 42) Two answers at once: only after a measured run.** Leave
+   `concurrency: 1` unless a load run on this MacBook (`pnpm sim:trabolta
+   --scenario burst` against a scratch server, with this worker attached,
+   once with each setting) shows `concurrency: 2` answering more lines a
+   minute without each line taking much longer. Nobody has measured it on
+   the M3 Max yet, and `stagehand check` can only read what launchctl
+   holds, not what the running Ollama started with. Since wave 42 the worker tells the
    server how many lines it can work on at once (`agents.concurrency`, sent
    as the stream's `capacity`), and the server queues the rest itself. One
    gpt-oss call at a time manages about 16 replies a minute; with 50 guests

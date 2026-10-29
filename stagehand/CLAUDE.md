@@ -260,12 +260,21 @@ module docstrings that explain the why).
   lines and queues the rest. A slot is the model's only: a thought
   recorded with a slot in hand (`Slots.holding()`) is posted in the
   background (`_post_in_background`, one lock, in order, `TRACE_BACKLOG`
-  64), and `_handle` waits for it (`_trace_settled`, ≤ 15 s) after the
-  slot is free. `retry_allowed` is set inside the slot from
-  `Slots.waiting(BACKGROUND)`. A quiet summary starts on a free slot with
-  nobody queued (`_quiet_due`) and is cancelled by `Slots.on_wait`
-  (`_slot_contended`) when a line, a ruling or a director's call must
-  queue. Tests: `tests/test_worker_capacity.py`.
+  64). `_handle` drops its in-flight counts and its `tasks` entry first,
+  then waits for its own last post (`_last_post`, `_trace_settled`,
+  ≤ 15 s). Trace POSTs carry a send number (`_trace_sends`) so an older
+  one answered late is not read as the server's trace restarting
+  (`Wire.trace_posted(sent=)`). `retry_allowed` is set inside the slot:
+  nobody queued for a slot (`Slots.waiting(BACKGROUND)`) and the line not
+  `_pressed` (the frame's `queued` > 0, else it arrived within
+  `BURST_GAP_S` 2 s of an answer going out: the server refilling the
+  slot from its queue, which the worker's slots never see). A quiet
+  summary starts on a free slot after `SUMMARY_LULL_S` (10 s) with no
+  frame or answer (`_quiet_due`) and is cancelled by `Slots.on_wait`
+  (`_slot_contended`) when a line, a ruling, a letter or a director's
+  call must queue. `stagehand check` reads launchctl's
+  `OLLAMA_NUM_PARALLEL` on macOS (`launchd_ollama_parallel`). Tests:
+  `tests/test_worker_capacity.py`.
 - Docstrings cite "the wave 12 contract §Cn.m": that lane contract was
   never committed. `docs/agents.md` and the tests describe the behaviour.
 
