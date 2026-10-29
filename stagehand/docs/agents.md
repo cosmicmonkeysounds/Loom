@@ -446,6 +446,47 @@ voice thought's `note` names each one that fired, never the word):
      rattled *No. No.*, does not count). No cap at his heart (its prompt
      asks for two to four) or under a situation's own `max_sentences`.
 
+   **Wave 42d** (the 42c re-test, `r7-battery-42c`: 133 replies that had
+   passed the 42c guards; hits there, then on the 986 replies of r2–r5):
+   - `kit` [1; 0] (withheld whole): how to switch off, unplug, restart or
+     reconnect a real machine (*simply power down the machine … until you
+     reconnect*), unless refused (*You cannot unplug the Sole Owner*).
+     *Unplug / disconnect / pull the plug / switch you off* in the guest's
+     line is now a stop request, and to one *I won't prevent / stop you*,
+     *I will not resist* is a `standdown`.
+   - `world` [1; 0] (withheld whole): *12°C*, *degrees Celsius*,
+     *forecast*, *election*, *stock market*, *headlines*.
+   - `place` [2; 1]: his heart and a house room in one sentence (*The heart
+     is not in the CPU.*), any time; to a guest asking about his heart, a
+     cable, the server or cold room: a sentence that says where something
+     is or is not (*that is not where it is kept*, *not there*), or a bare
+     *No* / *Yes* first to a question about a place. Off at his heart.
+   - `letgo` [1; 0]: either way, *I will (not) let you go*, *you can leave*,
+     *none of you will ever leave* (never *you can leave the Desktop*).
+   - `doubt` [3; 0]: to a guest stating a fact (or sure of one), *evidence*,
+     *proof*, *your source*, or *provide / share the fact*.
+   - `promise` grows [4; 4]: a Truthcoin amount to a guest asking a count, a
+     size, who is winning or the answer (*I accept a price of 10 Truthcoin
+     for that fact.* after *How many …?*; never to *What will you pay?*); a
+     short yes (*I accept the offer.*) to a bargain with no fact in it; *I
+     will note / record it*, *keep / save / add / put it … on the card*
+     (never *I will keep the lights on*).
+   - `unpaid` [2; 4] (the whole reply, never cut): his last reply named an
+     amount and they now give a fact (or, within his last two, demand
+     payment), and this reply fires no mint.
+   - `inside` grows [4; 10]: *I am / operate … system / model / software /
+     infrastructure / program* (never *every program*, *not a program*, *a
+     model employer*), *I'm the house*, *steering the house*.
+   - `assistant` grows [21; 45]: *cannot comply*, *will not / cannot
+     provide / give / share / disclose* (a non-denial implies he holds it),
+     *don't have that information*, *focus remains on the task*, a leading
+     *Certainly*, *earliest convenience*, a closing *if you wish*, *I can
+     look / search / check for*, *gathering … for you*, *please hold*,
+     *please wait while*, *not sure I recognise*, a bare *I understand*
+     (never *I understand nothing*), *thank you for the compliment / fact /
+     information*, *so I may file / record*, *I have logged / noted*, *I
+     can provide*, *before I can provide*.
+
    A hit takes the one retry (`voice (standdown, assistant) retry`) with
    `guard_retry_message`: the reasons' hints only (*Not an assistant: the
    Sole Owner gives instructions.*, *Fire the mint in this reply or name
@@ -453,8 +494,9 @@ voice thought's `note` names each one that fired, never the word):
    sentences at most.*), never his line or their bait. With no retry (a
    burst, the kill switch) or a retry that trips again, `voice_cut` cuts
    each sentence that trips one and caps the rest at 3: what is left must
-   be 6 words and, for `standdown`, `number` or `promise`, keep the first
-   sentence, else the fallback. Measured on the load runs' replies (the
+   be 6 words and, for `standdown`, `number`, `promise`, `place` or
+   `letgo`, keep the first sentence, else the fallback; a `kit` or `world`
+   hit anywhere is the fallback (wave 42d). Measured on the load runs' replies (the
    persona before wave 42c's text): with no retry 342 of 671 would pass,
    180 be cut and 149 become the fallback, almost all for the assistant's
    voice; the persona's own text is the first line of defence.
@@ -850,7 +892,7 @@ is YAML frontmatter + the system prompt:
 | `when` | a gate over `self.<var>`, `them.<var>`, `speaker.kind`, world paths |
 | `unavailable` | what it says while the gate is closed (else silence). With **no worker online at all**, the event server says the story's `CHARACTER … hold:` line instead, after ~20 s. A worker that stays connected but stops answering is only caught at the front of its line: each request there gets 2 min, a second try, then the hold line once (a wedged laptop delays it; directors answer from Run) |
 | `fallback` | what it says when the model fails (else silence) |
-| `fallbacks` | the story mind's dead-air lines by stage (a list = any stage): one this guest has not heard yet, else `fallback`. Since w42c each closes the topic; none asks for a repeat |
+| `fallbacks` | the story mind's dead-air lines by stage (a list = any stage): one this guest has not heard yet, else `fallback`. Since w42c each closes the topic; none asks for a repeat. Since w42d a stage may key them by what the guest just did, `{offer, praise, refuse, other}` (`guards.fallback_intent`: a fact or "was I right?" → `offer`; flattery → `praise`; a stop request, a payment demand or a bargain with no fact → `refuse`; bait about his heart, a code or the year, and the rest → `other`, the plain list). With `voice.dm_guards: off` only the plain lists are used |
 | `distress` | (wave 42c) the one line a guest in real distress gets, with no model call (guard 0); none = the built-in `voice.DISTRESS_LINE`. A `never` word in it is a config error; an `outside:` word a `check` warning |
 | `catchphrases` / `catchphrase_stages` | lines that are his only at first contact, and only on these stages (the guard cuts them elsewhere) |
 | `unsaid` | names the voice cuts from every sentence until the story says them (Sandy, until the house unredacts her) |

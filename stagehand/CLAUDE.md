@@ -304,14 +304,20 @@ module docstrings that explain the why).
   withheld line (`Pass.why`: never / outside / answer / invented /
   unsaid; a 2b / 2c cut under 6 words or without its first sentence
   counts) asks for the one retry (`retry == "withheld"`); `dm_problems`
-  (standdown, number, promise, inside, echo, assistant, long) asks for it
+  (standdown, number, promise, inside, echo, assistant, long; wave 42d:
+  letgo, place, kit, world, doubt, unpaid) asks for it
   (`"voice"`, `Pass.problems`); a near-duplicate (Jaccard ≥ 0.5 on content
   words) is a `"repeat"`. Both new retries close with
   `guard_retry_message` (reasons only: it never quotes his line or the
   guest's). No retry (`retry_allowed` false, `repeat_guard` off), a retry
   that trips again or fails: `voice_cut` (offending sentences out, cap 3,
   ≥ 6 words left and, for standdown / number / promise, the first
-  sentence, else the fallback). The catchphrase ration also counts
+  sentence, else the fallback; a kit or world hit anywhere is the
+  fallback). Wave 42d: the fallback is picked by `guards.fallback_intent`
+  on the guest's line (`persona.fallbacks["<stage>.<intent>"]`, parsed from
+  `fallbacks: {stage: {offer|praise|refuse|other: […]}}`), and the guest's
+  own words (`DmCheck.theirs`, with his visible codex titles) are never
+  "invented" (guard 2b). The catchphrase ration also counts
   `CATCHPHRASE_VARIANTS`. `guards.is_distress` on the guest's line
   short-circuits `answer_lean`, `module.answer` and `_answer_new` /
   `_handle` (before the slot): `voice.distress_reply` sends the persona's
@@ -319,7 +325,7 @@ module docstrings that explain the why).
   logs a WARNING naming the thread only. `voice.dm_guards: off` is the
   kill switch (wave 42b's guards; the distress line stays). The classic
   `module.answer` cuts by `dm_problems` (no retry). Tests:
-  `tests/test_dm_guards.py`. An older worker refuses a persona with
+  `tests/test_dm_guards.py`, `tests/test_dm_guards_42d.py`. An older worker refuses a persona with
   `distress:` (an unknown key), like `catchphrases:` before it.
 - Docstrings cite "the wave 12 contract §Cn.m": that lane contract was
   never committed. `docs/agents.md` and the tests describe the behaviour.

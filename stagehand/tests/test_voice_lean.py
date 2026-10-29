@@ -475,13 +475,13 @@ def test_a_line_said_to_another_guest_is_no_retry_even_word_for_word():
     # K-04 facts-offers: 14 guests offering facts in a row. The procedural
     # line the last guest was given goes out again with no retry (the
     # ALREADY SAID warning in the prompt is all), never as "…packet loss".
-    line = "Thank you for the fact. Please file it on the card."
+    line = "Delicious, a fact. Please file it on the card."
     said = Said(to_them=(), elsewhere=(line,))
     model = Model(say(line))
     trace = Trace()
     reply = run(answer_lean(P, MODEL, request(), context(said=said), model, trace=trace))
     assert len(model.calls) == 1 and reply.say == line
-    assert "Elsewhere tonight you opened with" in model.calls[0][2]["content"] and "- Thank you for the…" in model.calls[0][2]["content"]
+    assert "Elsewhere tonight you opened with" in model.calls[0][2]["content"] and "- Delicious, a fact. Please…" in model.calls[0][2]["content"]
 
 
 def test_in_a_burst_a_repeat_has_no_retry_but_never_goes_out_word_for_word():
@@ -942,8 +942,8 @@ def test_a_retry_that_still_repeats_sends_the_first_line_cut_and_a_stage_line_ne
     line word for word → "…packet loss". Now the first line goes with only
     the sentences they already heard cut; with nothing left, a dead-air line
     for his stage this guest has not heard yet."""
-    old = "I cannot disclose that information about my feelings."
-    first = "I cannot disclose that information about my feelings. Love is not filed."
+    old = "My feelings are not a matter for programs tonight."
+    first = "My feelings are not a matter for programs tonight. Love is not filed."
     model = Model(say(first), say(old))
     reply = run(answer_lean(P, MODEL, request(), context(said=Said(to_them=(old,))), model))
     assert len(model.calls) == 2 and reply.say == "Love is not filed."

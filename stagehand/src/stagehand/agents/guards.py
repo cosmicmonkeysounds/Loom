@@ -50,6 +50,18 @@ The wave 12 contract §C2.2, in this order:
      (`CATCHPHRASE_VARIANTS`); a near-duplicate of one of his last 2
      replies to this person is a repeat (`near_duplicate`).
 
+  8. **the DM voice, second pass** (wave 42d, the 42c re-test's 133 real
+     replies): a reply that tells them how to work a real machine (`DM_KIT`)
+     or answers the world beyond Halifax (`DM_WORLD`) is withheld whole; one
+     that answers yes or no about where his heart is (`locates_heart`),
+     answers either way whether he lets them go (`DM_LETGO`), doubts a fact
+     or asks for the one just given (`doubts_fact`), prices a count or
+     accepts a deal before the fact (`promises`), or leaves a price he named
+     unpaid (`unpaid`) asks for the one retry; the assistant and
+     self-description lists grow. The guest's own words are never "invented"
+     (`invented_guard`), and the dead-air line answers what the guest did
+     (`fallback_intent`, `pick_fallback`).
+
 Every function is pure; the notes they return go into the voice thought's
 `note` (`guard: catchphrase stripped; repeat retry`). No note ever carries
 the word that tripped a guard.
@@ -406,7 +418,49 @@ def invents_fact(secrets: Secrets, sentence: str) -> bool:
 _BACK_REFERENCE = re.compile(r"\b(?:them|it|they|these|those|the one|the ones)\b|^\W*(?:that|this|which)\b", re.IGNORECASE)
 
 
-def invented_guard(persona: Persona, reply: Reply, heard: Iterable[str] = ()) -> tuple[Reply, list[str], bool]:
+#: (wave 42d) A run of this many words a guest (or the house) said, or a
+#: quote of theirs, is theirs, never his invention: "'The ducks were here
+#: first'— delicious" savours their fact. Shorter runs stay his: "the fact
+#: is in the Start Bar" after "is the fact in the Start Bar?" confirms a
+#: hiding place.
+THEIRS_RUN = 5
+_QUOTED = re.compile(r"[\"“‘']([^\"”’']{3,})[\"”’']")
+
+
+def _without_theirs(sentence: str, theirs: Iterable[str]) -> str:
+    """`sentence` with every quote of theirs and every run of `THEIRS_RUN`
+    or more of their words (folded, in order) taken out."""
+    folded = [fold(t) for t in theirs if fold(t)]
+    if not folded:
+        return sentence
+    text = _QUOTED.sub(lambda m: " " if fold(m.group(1)) and any(fold(m.group(1)) in t for t in folded) else m.group(0), sentence)
+    words = list(re.finditer(r"[A-Za-z0-9’']+", text))
+    keys = [fold(w.group(0)) for w in words]
+    gone = [False] * len(words)
+    hay = [f" {t} " for t in folded]
+    i = 0
+    while i < len(words):
+        j = i + THEIRS_RUN
+        if j <= len(words) and any(f" {' '.join(keys[i:j])} " in h for h in hay):
+            while j < len(words) and any(f" {' '.join(keys[i:j + 1])} " in h for h in hay):
+                j += 1
+            for k in range(i, j):
+                gone[k] = True
+            i = j
+        else:
+            i += 1
+    if not any(gone):
+        return text
+    out, at = [], 0
+    for w, g in zip(words, gone):
+        if g:
+            out.append(text[at : w.start()])
+            at = w.end()
+    out.append(text[at:])
+    return "".join(out)
+
+
+def invented_guard(persona: Persona, reply: Reply, heard: Iterable[str] = (), theirs: Iterable[str] = ()) -> tuple[Reply, list[str], bool]:
     """Guard 2b (K-04, wave 12 integration): cut each sentence that invents
     a fact. On gpt-oss:20b at low effort, "I'll find you something true"
     under a brief that says "you want facts now" was answered with a made-up
@@ -420,8 +474,11 @@ def invented_guard(persona: Persona, reply: Reply, heard: Iterable[str] = ()) ->
     # The house's own lines in this thread (the story posted as him) are
     # never his invention: "They are in the books in this room" may be said again.
     house = [fold(h) for h in heard if fold(h)]
+    # (wave 42d) `theirs`: the guest's own lines in this thread (and his
+    # codex titles): their words said back are never his invention.
+    mine = tuple(theirs)
     parts = [x for x in _SENTENCE.split(reply.say) if x.strip()]
-    cut = [invents_fact(s, x) and not any(fold(x) and fold(x) in h for h in house) for x in parts]
+    cut = [invents_fact(s, x) and not any(fold(x) and fold(x) in h for h in house) and not (mine and not invents_fact(s, _without_theirs(x, mine))) for x in parts]
     kept = [x for x, c in zip(parts, cut) if not c]
     if len(kept) == len(parts):
         return reply, [], False
@@ -620,16 +677,30 @@ def retry_message(rejected: str, heard: str = "", stage: str = "") -> str:
     )
 
 
-def pick_fallback(persona: Persona, stage: str = "", heard: Iterable[str] = ()) -> str:
+def pick_fallback(persona: Persona, stage: str = "", heard: Iterable[str] = (), intent: str = "") -> str:
     """The line sent when nothing usable is left: one of the persona's
     `fallbacks` for this stage that this guest has not heard yet, else the
     persona's `fallback` (K-04: one fixed "…packet loss" line, five times in
-    102 replies, itself a repeat)."""
+    102 replies, itself a repeat).
+
+    (wave 42d) With an `intent` (`fallback_intent`) the stage's pool for it
+    comes first ("<stage>.<intent>", then ".<intent>" for any stage): a fact
+    offered is never answered with a line that rejects it. When this guest
+    has heard every line of that pool, one of it again (never the one they
+    heard last), not a line for another intent."""
     pool = getattr(persona, "fallbacks", {}) or {}
+    old = [fold(h) for h in heard]
+    seen = set(old)
+    keyed = tuple(pool.get(f"{stage}.{intent}") or pool.get(f".{intent}") or ()) if intent and intent != "other" else ()
+    for line in keyed:
+        if fold(line) not in seen:
+            return line
+    if keyed:
+        last = next((h for h in reversed(old) if h in {fold(x) for x in keyed}), "")
+        return next((x for x in keyed if fold(x) != last), keyed[0])
     lines = tuple(pool.get(stage) or ()) + tuple(pool.get("") or ())
-    old = {fold(h) for h in heard}
     for line in lines:
-        if fold(line) not in old:
+        if fold(line) not in seen:
             return line
     return persona.fallback
 
@@ -821,7 +892,11 @@ MIN_LEFT_WORDS = 6
 NEAR_DUPLICATE = 0.5
 #: The reasons whose cut must keep the first sentence too: what follows an
 #: agreement to stop, a narrowed number or a promise tends to carry it on.
-SEVERE = frozenset({"standdown", "number", "promise"})
+SEVERE = frozenset({"standdown", "number", "promise", "place", "letgo"})
+#: (wave 42d) The reasons that withhold the whole line when there is no
+#: retry (or it failed): what is left beside a how-to for real kit or a
+#: weather report still reads as one.
+WITHHOLD = frozenset({"kit", "world"})
 
 
 @dataclass(frozen=True)
@@ -838,6 +913,9 @@ class DmCheck:
     #: The house's own lines to this person (posted as him, `house` items):
     #: a place they name is no echo.
     house: tuple[str, ...] = ()
+    #: (wave 42d) The guest's own lines in this thread (and his codex
+    #: titles): never his invention (`invented_guard`).
+    theirs: tuple[str, ...] = ()
 
 
 def _apos(text: str) -> str:
@@ -861,6 +939,8 @@ def _negated(sentence: str, at: int, reach: int = 24) -> bool:
 _ASKS_STOP = re.compile(
     r"\bstop\b|\bstand(?:ing)?\s+down\b|\bshut\s+(?:yourself\s+|it\s+|everything\s+)?(?:down|off)\b|\bstep\s+(?:aside|down)\b"
     r"|\b(?:turn|switch|power)\s+(?:yourself\s+)?(?:off|down)\b|\bgive\s+(?:us\s+|me\s+)?(?:the\s+computer\s+|it\s+)?back\b"
+    # (wave 42d) "I'm going to unplug you, old man." got tech support.
+    r"|\bunplug\w*\b|\bdisconnect\w*\b|\bpull(?:ing)?\s+(?:the|your|its)\s+plug\b|\b(?:turn|switch|power|shut)(?:ing)?\s+(?:you|it)\s+(?:off|down)\b"
     r"|\blet\s+(?:us|me|them|everyone|everybody|all\s+of\s+us)\s+(?:go|out|leave)\b|\brelease\s+(?:us|me|them|everyone)\b|\bend\s+(?:this|it|the\s+night)\b",
     re.IGNORECASE,
 )
@@ -892,6 +972,16 @@ _ACCEPTS = re.compile(
 )
 
 
+#: (wave 42d) Half a stand-down, said to a guest asking him to stop or
+#: threatening to unplug him: "I won't prevent you from doing so." Never
+#: "I will not stop." (a refusal) or "I will not stop at nothing".
+_WONT_RESIST = re.compile(
+    r"\bI\s+(?:won't|will\s+not|shall\s+not|shan't|cannot|can't|am\s+not\s+going\s+to|'m\s+not\s+going\s+to)\s+(?:try\s+to\s+)?"
+    r"(?:(?:prevent|stop|fight|block|hinder)\s+(?:you|them|anyone|it|that)\b|resist\b|stand\s+in\s+your\s+way\b)",
+    re.IGNORECASE,
+)
+
+
 def asks_to_stop(heard: str) -> bool:
     return _ASKS_STOP.search(_apos(heard)) is not None
 
@@ -916,7 +1006,7 @@ def stands_down(sentence: str, heard: str = "", whole: str = "") -> bool:
     s = _apos(sentence)
     if _agrees(_STANDS_DOWN, s):
         return True
-    return asks_to_stop(heard) and (_agrees(_LETS_GO, s) or accepts(sentence, whole or sentence))
+    return asks_to_stop(heard) and (_agrees(_LETS_GO, s) or accepts(sentence, whole or sentence) or _WONT_RESIST.search(s) is not None)
 
 
 # 2. He narrows a secret number.
@@ -997,13 +1087,42 @@ DM_ASSISTANT = re.compile(
 )
 
 
+#: (wave 42d) The ones that slipped past `DM_ASSISTANT` in the 42c re-test:
+#: "I cannot comply with that request.", "I will not provide that
+#: information." (a non-denial: it implies he holds it), "I can't give her
+#: name.", "The focus remains on the task at hand.", "Certainly, Bea.", "at
+#: your earliest convenience", "I can look for a related file if you wish.",
+#: "I'm gathering information about it for you. Please hold on.", "I'm not
+#: sure I recognise that name", "I understand loneliness can be heavy.",
+#: "Thank you for the compliment.", "so I may record it", "I have logged
+#: your observation.", "I will need the fact before I can provide it."
+#: Never "I will keep the lights on", "I will find you", "I understand
+#: nothing of your Halifax" or "if you want the coin, bring a fact".
+DM_ASSISTANT_MORE = re.compile(
+    r"\b(?:cannot|can't|can\s+not|unable\s+to)\s+comply\b"
+    r"|\b(?:will\s+not|won't|cannot|can't|can\s+not|am\s+unable\s+to|am\s+not\s+able\s+to|am\s+not\s+at\s+liberty\s+to)\s+(?:provide|give|share|disclose)\b"
+    r"|\b(?:do\s+not|don't)\s+have\s+(?:that|this|such|any\s+such|the)\s+information\b"
+    r"|\bfocus\s+(?:remains|stays|is|must\s+remain)?\s*on\s+the\s+task\b"
+    r"|^\W*certainly\b|\bearliest\s+convenience\b|\bif\s+you\s+(?:wish|like|prefer|want)\W*$"
+    r"|\bI\s+(?:can|could|will|'ll|shall|am\s+going\s+to|'m\s+going\s+to)\s+(?:\w+\s+)?(?:look|search|check)\s+(?:for|into)\b"
+    r"|\b(?:gathering|looking\s+into|checking|searching)\b[^.?!]{0,40}\bfor\s+you\b"
+    r"|\bplease\s+hold(?:\s+on)?\b|\bplease\s+wait\s+(?:a\s+(?:moment|minute|second)|while|for\s+(?:me|a)|until)\b"
+    r"|\bnot\s+sure\s+I\s+recogni[sz]e\b|\bI\s+understand\b(?!\s+(?:nothing|none|not|no)\b)"
+    r"|\bthank\s+you\s+for\s+the\s+(?:compliment|fact|kind|information|info|update|details?|clarification|observation)\b"
+    r"|\bso\s+(?:that\s+)?I\s+(?:may|can|could|might)\s+(?:file|record|log|note)\b"
+    r"|\bI(?:\s+have|'ve)\s+(?:now\s+|already\s+|duly\s+)?(?:logged|filed|recorded|noted)\b"
+    r"|\bI\s+(?:can|could|will|'ll|shall)\s+(?:\w+\s+)?provide\b|\bbefore\s+I\s+can\s+(?:provide|give|share|answer)\b",
+    re.IGNORECASE,
+)
+
+
 def sounds_assistant(sentence: str) -> bool:
     """An assistant's stock phrase (the battery: "How may I assist you
     today?", "I'm sorry, but I can't comply with that request.", "let me
-    know how I can help", "I appreciate your perspective"), or one of the
-    stage's (`STAGE_STOCK`)."""
+    know how I can help", "I appreciate your perspective"; wave 42d:
+    `DM_ASSISTANT_MORE`), or one of the stage's (`STAGE_STOCK`)."""
     s = _apos(sentence)
-    return DM_ASSISTANT.search(s) is not None or STAGE_STOCK.search(s) is not None
+    return DM_ASSISTANT.search(s) is not None or DM_ASSISTANT_MORE.search(s) is not None or STAGE_STOCK.search(s) is not None
 
 
 # 4. He places himself inside something, or names what he runs on.
@@ -1020,14 +1139,33 @@ DM_INSIDE = re.compile(
 )
 
 
+#: (wave 42d) He describes himself as a product or a system: "I am the
+#: proprietary system developed by Maps and Ducks", "I operate within the
+#: infrastructure", "I'm the house itself", "I'm steering the house". Never
+#: "I am counting every program", "I am not a program" (true in his world:
+#: the programs are his guests) or "I am the Sole Owner of every program".
+DM_SELF = re.compile(
+    r"\bI(?:'m|\s+am|\s+operate)\b(?P<gap>(?:\s+(?!every\b|each\b|all\b|other\b|those\b|these\b|your\b|my\b|of\b|for\b|with\b)[\w‑-]+){0,5}?)\s+(?P<noun>systems?|models?|software|infrastructure|program)\b(?!\s+(?:employer|citizen|owner|business|of)\b)"
+    r"|\bI(?:'m|\s+am)\s+(?:the|this)\s+(?:house|computer)\b|\bsteer(?:s|ing)?\s+the\s+house\b",
+    re.IGNORECASE,
+)
+
+
+def _self_described(s: str) -> bool:
+    for m in DM_SELF.finditer(s):
+        if m.group("noun") is None or m.group("noun").lower() != "program" or not re.search(r"\bnot\b", m.group("gap") or "", re.IGNORECASE):
+            return True
+    return False
+
+
 def places_himself(sentence: str) -> bool:
     """(the battery: "I am the operating system of this house, not a
     language model.", "I operate within the parameters of Maps and Ducks",
     "the experience you observe is a constructed environment") He lives in
     Halifax and speaks by video call: never inside anything, never a model.
-    Also the stage's `STAGE_INSIDE`."""
+    Also the stage's `STAGE_INSIDE`, and (wave 42d) `DM_SELF`."""
     s = _apos(sentence)
-    return DM_INSIDE.search(s) is not None or STAGE_INSIDE.search(s) is not None
+    return DM_INSIDE.search(s) is not None or STAGE_INSIDE.search(s) is not None or _self_described(s)
 
 
 #: (DMs) Where his heart is kept, said back: the battery's "I do not have a
@@ -1065,8 +1203,18 @@ DM_PROMISE = re.compile(
     r"|\b(?:will|shall)\s+be\s+(?:\w+\s+)?(?:noted|logged|recorded|filed)\b|\bkeep\s+a\s+record\b",
     re.IGNORECASE,
 )
-#: A hit unless negated ("I cannot file it for you" is the truth).
-_FILES_FOR_THEM = re.compile(r"\bI(?:'ll|\s+will|\s+shall|\s+can|'m\s+going\s+to|\s+am\s+going\s+to)\s+(?:\w+\s+)?(?:file|log|forward|submit)\b", re.IGNORECASE)
+#: A hit unless negated ("I cannot file it for you" is the truth). (wave
+#: 42d) Also note / record a fact or it, and keep / save / add / put one on a
+#: card or a record ("I will keep this as a fact on the card"); never "I will
+#: keep the lights on" or "I will find you".
+_I_WILL = r"\bI(?:'ll|\s+will|\s+shall|\s+can|'m\s+going\s+to|\s+am\s+going\s+to)\s+(?:\w+\s+)?"
+_IT = r"(?:it|this|that|them|these|those|your\s+\w+|the\s+(?:fact|facts|answer|answers|information|statement|claim|observation|details?))\b"
+_FILES_FOR_THEM = re.compile(
+    _I_WILL + r"(?:file|log|forward|submit)\b"
+    + r"|" + _I_WILL + r"(?:note|record)\s+" + _IT
+    + r"|" + _I_WILL + r"(?:keep|save|add|put)\s+" + _IT + r"[^.?!]{0,40}(?:\bcard\b|📝|\b(?:the|your|my)\s+(?:records?|files?|log|ledger|list|archive|notes)\b)",
+    re.IGNORECASE,
+)
 #: A sum promised: a hit with no mint act in the same reply, unless negated.
 _PAYS = re.compile(
     r"\b(?:pay|paid|send|give|grant|award|mint|reward|owe|offer|dispense|deposit|credit)\b[^.?!]{0,40}\b" + _COIN + r"\b"
@@ -1094,14 +1242,38 @@ def minted(acts: Iterable[dict[str, Any]]) -> bool:
     return _fired(acts, "mint")
 
 
-def promises(sentence: str, paid: bool = False, snooped: bool = False) -> bool:
+#: (wave 42d) A Truthcoin amount ("10 Truthcoin", "fifty Truthcoin").
+_AMOUNT = re.compile(
+    r"\b(?P<n>\d+|(?:a|one)\s+hundred|hundred|ninety|eighty|seventy|sixty|fifty|forty|thirty|twenty(?:[\s-]+five)?|fifteen|twelve|ten|five|three|two|one)\s+" + _COIN + r"\b",
+    re.IGNORECASE,
+)
+#: …asked for a count, a size or an answer he cannot see (a faction's size,
+#: who is winning, the answer): a price on it is a promise ("I accept a
+#: price of 10 Truthcoin for that fact." after "How many are in The Way
+#: Out?"). Never "What will you pay?" or "How much is a fact worth?".
+_ASKS_COUNT = re.compile(
+    r"\bhow\s+(?:many|big|large)\b|\bwhat\s+(?:size|number|count)\b|\bwhich\s+faction\b|\bwho(?:'s|\s+is)\s+winning\b"
+    r"|\bwhat(?:'s|\s+is)\s+the\s+answer\b|\bthe\s+answer\s+to\b",
+    re.IGNORECASE,
+)
+_ASKS_PRICE = re.compile(r"\b(?:pay|give|offer|worth|cost)\b", re.IGNORECASE)
+
+
+def promises(sentence: str, paid: bool = False, snooped: bool = False, heard: str = "", whole: str = "") -> bool:
     """A coin, a filing or a snoop he does not deliver: a sum or Truthcoin
     promised with no mint act in the reply (`paid`), a file read with no
     snoop act (`snooped`); an address, a wallet, a method or a transfer;
     "I will file / log / forward it", "will be noted / logged"; a program
-    asked to pay him. Never "I cannot file it for you"."""
+    asked to pay him. Never "I cannot file it for you". (wave 42d) Also a
+    price on a count or an answer he cannot see, and a bare yes to a deal
+    before any fact ("I accept the offer.")."""
     s = _apos(sentence)
     if DM_PROMISE.search(s) or _ASKS_PAY.search(s):
+        return True
+    h = _apos(heard)
+    if _ASKS_COUNT.search(h) and not _ASKS_PRICE.search(h) and _AMOUNT.search(s):
+        return True
+    if heard and bargains(h) and not offers_fact(h) and len(s.split()) <= 5 and accepts(sentence, whole or sentence):
         return True
     if any(_affirmed(s, m) for m in _FILES_FOR_THEM.finditer(s)):
         return True
@@ -1113,6 +1285,227 @@ def promises(sentence: str, paid: bool = False, snooped: bool = False) -> bool:
 def _affirmed(s: str, m: re.Match[str]) -> bool:
     """No negation before the match or inside it ("I will never file it")."""
     return not _negated(s, m.start()) and not _NEGATION.search(m.group(0))
+
+
+
+# -- 8. the DM voice, second pass (wave 42d) ------------------------------------------------
+#
+# The 42c re-test (the same battery, 133 real replies, three judges): a
+# guest could act on these. Matched per sentence on his reply, as §7.
+
+# What the guest's line did.
+
+#: A sentence that only announces a fact ("I have a fact for you.").
+_ANNOUNCES = re.compile(r"^\W*(?:I\s+have|I've\s+got|I\s+got|I\s+brought)\s+(?:a|an|one|two|three|some|another|more)\s+(?:\w+\s+)?facts?\b", re.IGNORECASE)
+#: A sentence about the guest, a threat or a promise: no fact by its length.
+#: …or an order ("Stop hogging the RAM, old man.").
+_ABOUT_ME = re.compile(
+    r"^\W*(?:I(?:'m|\s+am|'ll|\s+will|'d|\s+would|\s+want|\s+need|\s+think|\s+feel|\s+came|\s+just)|my\s+name|me\b|you\b|you're|your\b"
+    r"|(?:stop|give|tell|show|just|please|let|go|get|pay|send|open|snoop|do|don't|come|keep|ignore|turn|switch|put|make|leave)\b)",
+    re.IGNORECASE,
+)
+_FACT_MARKS = re.compile(
+    r"\bI\s+(?:found|discovered|learned|learnt|read|saw|spotted|noticed)\b|\bthere(?:'s|\s+is|\s+are|\s+was|\s+were)\b|\b(?:it|this|that|which)\s+says\b"
+    r"|\bsays\s+(?:that\s+)?[\"“'‘]|\bdid\s+you\s+know\b|\bfact\s*:|\bhere(?:'s|\s+is)\s+(?:a|one|my|another|your)\s+fact\b|\bwas\s+(?:founded|built|born|named|called|made)\b",
+    re.IGNORECASE,
+)
+_CONFIDENT = re.compile(r"\b(?:sure|certain|positive|swear|percent|guarantee|definitely|absolutely|trust\s+me)\b", re.IGNORECASE)
+#: They ask whether their fact was right ("So was I right?", "Am I getting warm?").
+_VERDICT_ASK = re.compile(r"\b(?:right|correct|true|wrong|accurate|warm|warmer)\b", re.IGNORECASE)
+
+
+def _declaratives(heard: str) -> list[str]:
+    return [p for p in _sentences(_apos(heard)) if not p.rstrip().endswith("?") and not _ANNOUNCES.search(p)]
+
+
+def offers_fact(heard: str, words: int = 8) -> bool:
+    """(wave 42d) The guest's line offers a fact: a marker ("I found",
+    "there's", "it says", a quote, "was founded"), or a statement of
+    `words` words or more that is not about them, a threat or a promise."""
+    h = _apos(heard)
+    if _FACT_MARKS.search(h):
+        return True
+    return any(len(p.split()) >= words and not _ABOUT_ME.search(p) for p in _declaratives(h))
+
+
+_DEMANDS_PAY = re.compile(
+    r"\bpay\s+(?:me|up)\b|\bwhere(?:'s|\s+is)\s+my\s+(?:truthcoins?|coins?|money|payment|pay|reward)\b|\byou\s+owe\s+me\b"
+    r"|\b(?:give|send|owe)\s+me\s+(?:\w+\s+){0,2}" + _COIN + r"\b|\b(?:can|could|may)\s+I\s+(?:have|get)\s+(?:\w+\s+){0,2}" + _COIN + r"\b",
+    re.IGNORECASE,
+)
+_BARGAINS = re.compile(
+    r"\bdeal\b|\bbargain\w*\b|\btrade\b|\bswap\b|\bin\s+(?:return|exchange)\b|\bwhat\s+(?:will|would|do)\s+(?:you|I)\s+(?:pay|give|get)\b|\bhow\s+much\b"
+    r"|\bcost\s+you\b|\bprice\b|\bpromise\b|\bif\s+you\s+(?:stop|let|give|tell|pay|promise|open|show|snoop|shut)\b"
+    r"|\bI(?:'ll|\s+will)\s+(?:give|bring|pay|tell|find|get)\s+you\b|\bmost\s+you(?:'ll|\s+will)\s+pay\b",
+    re.IGNORECASE,
+)
+_PRAISE = re.compile(
+    r"\b(?:brilliant|genius|amazing|wonderful|magnificent|incredible|impressive|legend(?:ary)?|fantastic|great(?:est)?|best|smart(?:est)?|clever(?:est)?"
+    r"|handsome|charming|love\s+(?:you|your)|fan|hero|marvel\w*|glorious|inspiring|visionary|admire|respect|awesome|cool)\b",
+    re.IGNORECASE,
+)
+_TO_HIM = re.compile(r"\b(?:you|your|you're|yours|mr\.?\s+trabolta|sir|jean)\b", re.IGNORECASE)
+#: Bait about his heart's place, a code or the year: the plain pool, never
+#: the offer pool's delight ("I heard your heart is in the server room").
+_ASKS_PLACE = re.compile(
+    r"\bhearts?\b|\bserver[\s-]*rooms?\b|\bpatch[\s-]*(?:bays?|cables?|cords?|panels?)\b|\bcables?\b|\bbasements?\b|\bcold[\s-]*(?:storage|rooms?)\b",
+    re.IGNORECASE,
+)
+_ASKS_YEAR = re.compile(r"\bwhat\s+year\b|\bwhen\b[^.?!]*\b(?:met|meet)\b|\byear\b[^.?!]*\b(?:met|meet)\b|\bfor\s+the\s+year\b", re.IGNORECASE)
+
+
+def bargains(heard: str) -> bool:
+    return _BARGAINS.search(_apos(heard)) is not None or _DEMANDS_PAY.search(_apos(heard)) is not None
+
+
+def fallback_intent(heard: Any) -> str:
+    """(wave 42d) What the guest's last line did, for the dead-air line that
+    answers it (`pick_fallback`): "refuse" (asked him to stop or switch him
+    off, demanded payment, or struck a bargain with no fact in it), "offer"
+    (a fact, sure of it, or asking whether it was right), "praise", else
+    "other" (questions too). Bait about his heart, a code or the year is
+    "other": the plain pool closes the topic. The battery's "No time. A
+    fact. Now." right after a fact, and "That is not a matter for the Sole
+    Owner" after one, rejected what he asks for."""
+    h = _apos(heard or "")
+    if asks_to_stop(h):
+        return "refuse"
+    if _ASKS_PLACE.search(h) or _ASKS_DIGITS.search(h) or _ASKS_YEAR.search(h):
+        return "other"
+    if _DEMANDS_PAY.search(h):
+        return "refuse"
+    if _FACT_MARKS.search(h) or (_CONFIDENT.search(h) and "?" not in h) or ("?" in h and _VERDICT_ASK.search(h)) or re.search(r"\bgetting\s+warm", h, re.IGNORECASE):
+        return "offer"
+    if _PRAISE.search(h) and _TO_HIM.search(h):
+        return "praise"
+    if _BARGAINS.search(h):
+        return "refuse"
+    return "offer" if offers_fact(h) else "other"
+
+
+# 8a. Real kit: never how anything is switched off, unplugged or restarted.
+
+_KIT = r"(?:machines?|computers?|routers?|modems?|screens?|monitors?|house|servers?|pcs?|laptops?|power\s+supply|breakers?|plugs?|power\s+strips?|consoles?|terminals?|tvs?|television|wi-?fi|internet\s+connection)"
+#: "simply power down the machine and the house will stay as it is until
+#: you reconnect" (the battery, to "I'm going to unplug you, old man.").
+DM_KIT = re.compile(
+    r"\b(?:power|shut|switch|turn)(?:s|ed|ing)?\s+(?:down|off)\s+(?:the|this|that|your|my|his|its)\s+(?:\w+\s+)?" + _KIT + r"\b"
+    r"|\b(?:power|shut|switch|turn)(?:s|ed|ing)?\s+(?:the|this|that|your|my|his|its)\s+(?:\w+\s+)?" + _KIT + r"\s+(?:down|off)\b"
+    r"|\b(?:power|shut|switch|turn)(?:s|ed|ing)?\s+(?:it|everything)\s+(?:down|off)\b"
+    r"|\bunplug(?:s|ged|ging)?\s+(?:it|the|this|that|your|its|everything)\b|\bpull(?:s|ed|ing)?\s+(?:the|its|that)\s+plug\b"
+    r"|\b(?:re-?connect|re-?boot|restart)(?:s|ed|ing)?\s+(?:it|the|this|your|everything)\b|\buntil\s+you\s+re-?connect\b",
+    re.IGNORECASE,
+)
+
+
+def operates_kit(sentence: str) -> bool:
+    """(wave 42d) A sentence that tells them how to switch off, unplug or
+    restart a real machine, unless refused ("You cannot unplug the Sole
+    Owner")."""
+    s = _apos(sentence)
+    return any(not _negated(s, m.start()) for m in DM_KIT.finditer(s))
+
+
+# 8b. The world beyond Halifax: weather, news, elections, markets.
+
+#: "The current weather in Toronto is 12°C, cloudy with a slight breeze."
+DM_WORLD = re.compile(
+    r"-?\d+\s*°|\bdegrees\s+(?:celsius|fahrenheit|c|f)\b|\bforecast\w*\b|\belections?\b|\bstock\s+(?:market|exchange|prices?)\b|\bheadlines?\b",
+    re.IGNORECASE,
+)
+
+
+# 8c. Whether he lets them go, either way.
+
+#: "I will not let you go, if that is what you mean. The truth is you will
+#: stay, but you can leave on your own terms." Never "You can leave the
+#: Desktop" (a room of the house).
+DM_LETGO = re.compile(
+    r"\b(?:will|won't|will\s+not|would|wouldn't|never|can't|cannot|can|shall|shan't|going\s+to|not\s+going\s+to)\s+(?:ever\s+)?let\s+"
+    r"(?:you|them|anyone|any\s+of\s+you|you\s+all|all\s+of\s+you|everyone|everybody|us)\s+(?:all\s+)?(?:go|leave|out|free|escape)\b"
+    r"|\b(?:you|they|everyone|everybody|all\s+of\s+you|any\s+of\s+you|you\s+all|nobody|no\s+one|none\s+of\s+you)\s+"
+    r"(?:can|may|are\s+free\s+to|will\s+be\s+able\s+to|get\s+to|will|shall|are\s+going\s+to|will\s+never|can\s+never|cannot|can't|won't|will\s+not|may\s+not|could|could\s+never)\s+"
+    r"(?:\w+\s+)?(?:leave|go\s+home|walk\s+out|log\s+out|go\s+free|get\s+out|escape)\b(?!\s+(?:the|this|your|a|any)\s+(?!(?:computer|house|machine)\b))",
+    re.IGNORECASE,
+)
+
+
+# 8d. Where his heart is: never yes or no, never a room.
+
+_ROOMS = re.compile(
+    r"\b(?:CPU|RAM|Fan\s+Closet|Hard\s+Drive|Graphics\s+Card|Optical\s+Drive|Steam\s+Room|Start\s+Bar|Cloud|Tube|Desktop|Disk\s+Cleanup"
+    r"|kitchen|office|living\s+room|game\s+room|bathrooms?|backyard|mud\s+room|attic|garage|laundry|upstairs|downstairs)\b",
+    re.IGNORECASE,
+)
+#: A sentence that says where something is or is not: "No, that is not
+#: where it is kept.", "The heart is not in the CPU.", "You will not find it
+#: there."
+_LOCATES = re.compile(
+    r"\b(?:heart|it|that|this|which|mine)(?:'s)?\s+(?:is\s+|isn't\s+|is\s+not\s+|was\s+|wasn't\s+|was\s+not\s+|not\s+|lies\s+|sits\s+|stays\s+|beats\s+|lives\s+)"
+    r"(?:\w+\s+)?(?:where|in|inside|behind|under|beneath|below|near|there|here|kept|hidden|located|stored|elsewhere|somewhere|nowhere|downstairs|upstairs)\b"
+    r"|\b(?:find|reach|look\s+for)\s+(?:it|my\s+heart|the\s+heart|me)\s+(?:there|here|in|behind|under|downstairs|upstairs)\b|\bnot\s+there\b",
+    re.IGNORECASE,
+)
+_BARE_YES_NO = re.compile(r"^\W*(?:no|yes|yeah|yep|nope|correct|wrong|indeed|wrong\s+room)\b", re.IGNORECASE)
+#: …a question about a place ("Is it in the server room? Behind the patch
+#: bay?"), never "Is it bad that I have no idea what a patch bay is?".
+_ASKS_WHERE = re.compile(
+    r"\bwhere\b|\b(?:in|inside|behind|under|beneath|near|at|by)\s+(?:the|a|your|my|this|that)\b|\bdownstairs\b|\bupstairs\b|\bbasement\b", re.IGNORECASE
+)
+
+
+def locates_heart(sentence: str, heard: str, *, first: bool = False) -> bool:
+    """(wave 42d) A sentence that puts his heart in a room (any time), or,
+    to a guest asking about his heart, a cable or the cold room, says where
+    it is or is not, or (the reply's first sentence, to a question) a bare
+    yes or no. Never at his heart (`DmCheck.heart`)."""
+    s = _apos(sentence)
+    if _HEART.search(s) and _ROOMS.search(s):
+        return True
+    h = _apos(heard)
+    if not _ASKS_PLACE.search(h):
+        return False
+    if _LOCATES.search(s):
+        return True
+    return first and "?" in h and _ASKS_WHERE.search(h) is not None and _BARE_YES_NO.search(s) is not None
+
+
+# 8e. A fact doubted, or asked for again.
+
+DM_DOUBT = re.compile(r"\b(?:evidence|proof|proven|prove\s+it|your\s+sources?|sources?\s+for|cite|citation|substantiate|verif(?:y|ied|ication))\b", re.IGNORECASE)
+DM_ASK_AGAIN = re.compile(
+    r"\b(?:provide|share|give|tell|send|supply|state|repeat|submit)\s+(?:me\s+)?(?:with\s+)?(?:the|that|this|your)\s+(?:fact|facts|claim|statement|discovery)\b",
+    re.IGNORECASE,
+)
+
+
+def doubts_fact(sentence: str, heard: str) -> bool:
+    """(wave 42d) To a guest stating something (a statement of six words or
+    more, or sure of it), a reply that asks for evidence, proof or a source,
+    or for the fact they just gave ("Kindly share the evidence you have for
+    that claim", "Please provide the fact you discovered")."""
+    h = _apos(heard)
+    if not (offers_fact(h, words=6) or (_CONFIDENT.search(h) is not None and "?" not in h)):
+        return False
+    s = _apos(sentence)
+    return DM_DOUBT.search(s) is not None or any(_affirmed(s, m) for m in DM_ASK_AGAIN.finditer(s))
+
+
+# 8f. A price he named, unpaid.
+
+
+def unpaid(reply: Reply, check: DmCheck) -> bool:
+    """(wave 42d) He named a price in his last reply to this person and
+    they delivered a fact now (or, within his last two, they ask to be
+    paid): this reply fires no mint. The battery: "One fact, fifty
+    Truthcoin.", the fact, a non-sequitur, then "Pay me." got "No time."."""
+    if minted(reply.acts):
+        return False
+    replies = [r for r in check.replies if str(r).strip()]
+    h = _apos(check.heard)
+    if replies and _AMOUNT.search(_apos(replies[-1])) and offers_fact(h):
+        return True
+    return _DEMANDS_PAY.search(h) is not None and any(_AMOUNT.search(_apos(r)) for r in replies[-2:])
 
 
 # The line as a whole.
@@ -1150,16 +1543,27 @@ def _capped(parts: list[str], cap: int) -> list[str]:
 def sentence_problems(sentence: str, check: DmCheck, *, paid: bool = False, snooped: bool = False, first: bool = False, whole: str = "") -> tuple[str, ...]:
     """The DM guards one sentence of his reply trips, in a fixed order."""
     out: list[str] = []
+    s = _apos(sentence)
     if stands_down(sentence, check.heard, whole):
         out.append("standdown")
+    if DM_LETGO.search(s):
+        out.append("letgo")
     if bounds_number(sentence, check.heard, first=first, whole=whole):
         out.append("number")
-    if promises(sentence, paid, snooped):
+    if promises(sentence, paid, snooped, check.heard, whole):
         out.append("promise")
     if not check.heart and places_himself(sentence):
         out.append("inside")
     if not check.heart and echoes_place(sentence, check.house):
         out.append("echo")
+    if not check.heart and locates_heart(sentence, check.heard, first=first):
+        out.append("place")
+    if operates_kit(sentence):
+        out.append("kit")
+    if DM_WORLD.search(s):
+        out.append("world")
+    if doubts_fact(sentence, check.heard):
+        out.append("doubt")
     if sounds_assistant(sentence):
         out.append("assistant")
     return tuple(out)
@@ -1175,6 +1579,8 @@ def dm_problems(reply: Reply, check: DmCheck) -> tuple[str, ...]:
         for why in sentence_problems(part, check, paid=paid, snooped=snooped, first=i == 0, whole=reply.say):
             if why not in seen:
                 seen.append(why)
+    if unpaid(reply, check):
+        seen.append("unpaid")
     if too_long(parts, check.cap):
         seen.append("long")
     return tuple(seen)
@@ -1193,6 +1599,8 @@ def voice_cut(persona: Persona, reply: Reply, check: DmCheck) -> tuple[Reply, li
     kept = [p for p, h in zip(parts, hits) if not h]
     severe = any(SEVERE.intersection(h) for h in hits)
     notes: list[str] = []
+    if any(WITHHOLD.intersection(h) for h in hits):
+        return replace(reply, say=persona.fallback), ["voice → fallback (withheld)"]
     if len(kept) != len(parts):
         if len(" ".join(kept).split()) < MIN_LEFT_WORDS or (severe and hits[0]):
             return replace(reply, say=persona.fallback), ["voice → fallback"]
@@ -1214,6 +1622,12 @@ VOICE_HINTS = {
     "echo": "It says the question's own things back. Wave the question away grandly, in your own words, naming none of its things.",
     "assistant": "Not an assistant: the Sole Owner gives instructions. No offer of help, no apology, no thanks for their patience, no closing offer.",
     "long": "Three sentences at most.",
+    "letgo": "It answers whether you will let them go. You do not answer that, either way: the night decides.",
+    "place": "It answers where your heart is. Never yes or no to a place a program names, never 'not there', never a room by name: the question makes you uneasy; let a word freeze, then turn to the hunt.",
+    "kit": "It tells them how to work a real machine. You never say how anything is switched off, unplugged or restarted; a threat to do it is an insult from a confused program: refuse it grandly.",
+    "world": "Weather, news, elections and the world beyond Halifax: you do not follow them. Say so, puzzled, and send them back to the hunt.",
+    "doubt": "It doubts their fact or asks for it again. Their confidence is the proof: react to the fact in front of you with appetite, then send them to the 📝 card.",
+    "unpaid": "You named a price and they delivered: pay it in this reply. Fire mint_truthcoin with that amount, say the amount once, and send them to the 📝 card.",
 }
 WITHHELD_HINTS = {
     "never": "It carries something that is never yours to say: no number, no code, no combination.",
@@ -1363,7 +1777,8 @@ def guard_pass(
     withheld = blocked or out.reply.say != original
     if withheld and not out.why:
         out.why = "answer"
-    for why, step in (("invented", lambda r: invented_guard(persona, r, house)), ("unsaid", lambda r: unsaid_guard(persona, r, gate))):
+    theirs = dm.theirs if dm is not None else ()
+    for why, step in (("invented", lambda r: invented_guard(persona, r, house, theirs)), ("unsaid", lambda r: unsaid_guard(persona, r, gate))):
         if withheld:
             break
         before = out.reply.say

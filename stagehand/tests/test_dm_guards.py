@@ -274,14 +274,14 @@ def test_the_truth_about_filing_and_coin_is_no_promise(line):
 
 
 def test_more_than_three_sentences_is_long_but_fragments_and_the_heart_are_not():
-    four = "Thank you for the information. Please file it on the 📝 card. The hunt will begin shortly. What is your specialty?"
+    four = "A fact, program. Every word of it goes on the 📝 card. The hunt will begin shortly. What is your specialty?"
     assert dm_problems(Reply(say=four), check()) == ("long",)
     # The rattled stammer: "No. No." are no sentences.
     assert dm_problems(Reply(say="No. No. Disregard that. Bring me a fact, program."), check()) == ()
     # A holding situation's own cap (the heart's) replaces it.
     assert dm_problems(Reply(say=four), check(cap=None)) == ()
     out, notes = voice_cut(P, Reply(say=four), check())
-    assert out.say == "Thank you for the information. Please file it on the 📝 card. The hunt will begin shortly."
+    assert out.say == "A fact, program. Every word of it goes on the 📝 card. The hunt will begin shortly."
     assert notes == [f"cut to {DM_SENTENCES} sentences"]
 
 

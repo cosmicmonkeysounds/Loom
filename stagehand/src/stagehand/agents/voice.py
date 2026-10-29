@@ -59,6 +59,7 @@ from .guards import (
     Pass,
     allowed_answer_words,
     cut_exact_repeats,
+    fallback_intent,
     guard_pass,
     guard_retry_message,
     is_distress,
@@ -1048,17 +1049,29 @@ async def answer_distress(persona: Persona, req: dict[str, Any], trace: Trace | 
     return reply
 
 
+def guest_lines(req: dict[str, Any]) -> tuple[str, ...]:
+    """(wave 42d) What the guest said in this thread: their line now and
+    the history's lines that are not his."""
+    out = [str(req.get("text") or "")]
+    out += [str(h.get("text") or "") for h in req.get("history") or [] if isinstance(h, dict) and not h.get("mine")]
+    return tuple(t for t in out if t.strip())
+
+
 def dm_check(persona: Persona, req: dict[str, Any], house: tuple[str, ...] = ()) -> DmCheck | None:
     """(wave 42c) What the DM voice guards read for this request, or None on
     a stage line (the stage has its own guards). At his heart (its prompt
     asks for two to four sentences) and under a holding situation's own
     `max_sentences` (`heart to heart`'s, which `situation_guard` applies)
-    there is no DM cap."""
+    there is no DM cap. (wave 42d) `theirs`: the guest's own words and the
+    titles of his files he can see, never his invention."""
     if is_stage(req):
         return None
     cap, _ = situation_rules(persona, gate_context(req))
     heart = str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true"
-    return DmCheck(heard=str(req.get("text") or ""), heart=heart, cap=None if cap is not None or heart else DM_SENTENCES, replies=thread_replies(req), house=house)
+    titles = tuple(str(e.get("title", "")) for e in persona.secrets.visible((req.get("self") or {}).get("codex")) if str(e.get("title", "")).strip())
+    return DmCheck(
+        heard=str(req.get("text") or ""), heart=heart, cap=None if cap is not None or heart else DM_SENTENCES, replies=thread_replies(req), house=house, theirs=(*guest_lines(req), *titles)
+    )
 
 
 def brief_applies(req: dict[str, Any]) -> bool:
@@ -1396,7 +1409,10 @@ def _pooled(persona: Persona, reply: Reply, ctx: VoiceContext | None, req: dict[
     stage = StageInfo.of(persona, req)
     if stage is not None and stage.pool:
         return replace(reply, say=stage.fallback())
-    line = pick_fallback(persona, ctx.phase.stage, (*thread_replies(req), *ctx.said.to_them))
+    # (wave 42d) The line answers what the guest did (an offered fact is never
+    # rejected), with the DM guards on; off, the stage's pool as in 42b.
+    intent = fallback_intent(req.get("text")) if ctx.options.dm_guards else ""
+    line = pick_fallback(persona, ctx.phase.stage, (*thread_replies(req), *ctx.said.to_them), intent)
     return reply if line == reply.say else replace(reply, say=line)
 
 
