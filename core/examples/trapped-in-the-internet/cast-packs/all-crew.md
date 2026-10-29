@@ -122,6 +122,13 @@ keep the radio away from them. The TV and the tent laptop never send sound.
   quarantine` is the Antivirus' back room (no escort pins since wave 18: the
   Wanted board lists the marked). Never put a faction's secret there.
 - **Never say a guest's real name** aloud or in the app. Everyone is their program.
+- **🆘 HELP ME in `# hosts`** (wave 44, pinned and pushed): a program being
+  reinstalled pressed Help Me on their phone or the tent's screen. The
+  nearest free host goes out to the backyard now and says so on the radio.
+  They can ask again after a minute.
+- **The video list.** Guests can opt out of the video at the upload or from
+  ⊞ Start. Don't film anyone who asks you not to; the director downloads
+  the list from Run at the end.
 
 ## The blackout rule (Combo A or Combo B)
 

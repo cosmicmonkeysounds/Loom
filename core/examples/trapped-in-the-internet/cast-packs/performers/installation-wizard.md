@@ -9,6 +9,11 @@
 
 ## Card
 
+**🆘 Help Me** (wave 44): a program in the tent can press it on their
+locked phone or in the corner of the laptop's screen. It pings `# hosts`
+and a host comes out. You don't need to do anything; if you are already
+helping them, say so on the radio.
+
 **Every capture:**
 
 1. The program arrives (an Antivirus walks them through the tunnel and

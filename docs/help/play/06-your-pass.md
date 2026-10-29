@@ -79,8 +79,8 @@ and an Antivirus walks you to the Internet.
 From then until you are reinstalled your phone is **locked**. The title
 bar turns red and a ⛔ QUARANTINED screen takes the place of your windows.
 It shows what to do next and the Installation Wizard's instructions, to
-read. Only **🎟 Show my pass** and **🚻 Bathroom Mode** (and **Back from
-the bathroom**) work: no messages, no posting, no Codex, no Wallet, no
+read. Only **🎟 Show my pass**, **🚻 Bathroom Mode** (and **Back from
+the bathroom**) and **🆘 Help Me** (a host comes out to you) work: no messages, no posting, no Codex, no Wallet, no
 check-ins. Anything else you try is refused. Once you are reinstalled the
 phone unlocks by itself. Being captured isn't losing; it's a plot
 development. See [The simulation](reinstallation.md).

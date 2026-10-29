@@ -211,6 +211,16 @@ fillers keyed to what the guest did, and a model-free distress line. The
 54-scenario behaviour battery (from the original story documents) is
 `scripts/sim/trabolta-battery-54.json` + `pnpm sim:trabolta --battery`.
 
+**Video consent, Help Me, the credits** (wave 44, not shipped;
+`docs/loom-w44-contract.md`, show text `DRAFT w44` on `SIGNOFF-w44.md`):
+the upload deals a 🎥 card (an opt-out: unanswered, video may be used;
+⊞ Start changes it), and Run → 🎥 Video consent lists it with a CSV
+(download before End). A program being reinstalled has 🆘 Help Me on the
+locked phone and the tent's screen: a `!` alert in `# hosts`, once a
+minute. G11 ends every night on the credits (the project's
+`credits.json`, read live) on the TV, the walls and every phone; G12 🎬
+rolls them again. Help: `docs/help/authoring/53-credits-and-video.md`.
+
 ### Release status
 
 The VPS runs **`w40`** (master `87927a52`, shipped 2026-10-29; rollback
