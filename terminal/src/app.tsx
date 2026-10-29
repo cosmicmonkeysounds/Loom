@@ -107,6 +107,7 @@ import { PeekClock, canPeek, coverOf, screenLayers } from "./slides.ts";
 import { api, withTimeout } from "@loom/play/client.ts";
 import { serverNow } from "./cutscene/clock.ts";
 import { onSceneFace } from "./cutscene/face-bus.ts";
+import { setSceneAccess } from "./cutscene/access-bus.ts";
 import { useDoorLink } from "./serial/use-door.ts";
 import { useDoorStatus } from "./serial/door-status.ts";
 import { doorOpenNow } from "./serial/door-bridge.ts";
@@ -137,6 +138,10 @@ type Screen = { kind: "setup"; notice: string | null; step?: "connect" | "charac
 
 export function App() {
   const [config, setConfig] = useState<TerminalConfig | null>(() => loadConfig());
+  // (wave 44) A scene that asks the server itself (the credits) reads the
+  // event and the token here. Set while rendering, so a scene that mounts
+  // in this same commit already has it (its effects run before ours).
+  setSceneAccess(config === null ? null : { base: baseOf(config), token: config.token });
   const [screen, setScreen] = useState<Screen>(() => (loadConfig() ? { kind: "attract" } : { kind: "setup", notice: null }));
   const [awake, setAwake] = useState(() => audioUnlocked());
   // The tent laptop (`view=reinstall`) has a walk or the wizard on screen.

@@ -5,7 +5,10 @@
 //! (`&play=1` runs it from there); `?preview=glitch&t=<ms>` the screen
 //! layer's glitch takeover (wave 26, T2; a tap replays it);
 //! `?preview=flicker&lag=<ms>` a ⚡'s flicker brought `lag` ms late by the
-//! poll (wave 32 review; a tap sends the next). Open in dev (`pnpm --filter
+//! poll (wave 32 review; a tap sends the next); `?preview=credits` the
+//! credits roll (wave 44) over a made-up `CreditsView` (`fakeCredits`):
+//! `programs=<n>` names that many programs, `credits=none` draws a 404's
+//! fallback card. Open in dev (`pnpm --filter
 //! loom-terminal dev`, :5175), or on a provisioned terminal (a stored mod
 //! config): `main.tsx` decides.
 //!
@@ -30,7 +33,8 @@ import { sfx } from "../sound/bus.ts";
 import { audioUnlocked, unlock } from "../speech/engine.ts";
 import { SceneStage } from "./CutsceneLayer.tsx";
 import { useReducedMotion } from "./clock.ts";
-import { fakeResults, fakeState } from "./fake.ts";
+import { fakeCredits, fakeResults, fakeState } from "./fake.ts";
+import { creditsCache } from "./credits-fetch.ts";
 import { AdBurst } from "./kit/ad-burst.tsx";
 import { LiveScreenLayer, ScreenLayer } from "../ScreenLayer.tsx";
 import { screenLayers } from "../slides.ts";
@@ -92,7 +96,22 @@ export function Preview() {
   if (id === "glitch") return <PreviewGlitch q={q} />;
   if (id === "burst") return <PreviewBurst q={q} />;
   if (id === "flicker") return <PreviewFlicker q={q} />;
+  if (id === "credits") return <PreviewCredits q={q} />;
   return <PreviewOne id={id} q={q} />;
+}
+
+// --- the credits (wave 44) -----------------------------------------------------------
+
+/** `?preview=credits[&programs=<n>][&credits=none]`: the scene, its fetch answered by a fixture. */
+function PreviewCredits({ q }: { q: URLSearchParams }) {
+  useState(() => {
+    const none = q.get("credits") === "none";
+    const n = q.get("programs");
+    const view = fakeCredits(n === null ? undefined : Math.max(0, Number(n) || 0));
+    creditsCache.setLoad(() => Promise.resolve(none ? { kind: "none" as const } : { kind: "ok" as const, view }));
+    return true;
+  });
+  return <PreviewOne id="credits" q={q} />;
 }
 
 // --- the glitch takeover (wave 26, T2) ------------------------------------------------
