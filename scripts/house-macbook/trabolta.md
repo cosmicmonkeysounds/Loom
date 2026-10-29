@@ -72,22 +72,22 @@ VPS event server ◄── HTTPS (SSE GET /api/agent/stream + POSTs) ── stag
    ollama run gpt-oss:20b hi     # the first answer loads it (~25 s)
    ollama ps                     # gpt-oss:20b, alone, UNTIL "Forever" (or ~60 min)
    ```
-5. **(Wave 42) Two answers at once: only after a measured run.** Leave
-   `concurrency: 1` unless a load run on this MacBook (`pnpm sim:trabolta
-   --scenario burst` against a scratch server, with this worker attached,
-   once with each setting) shows `concurrency: 2` answering more lines a
-   minute without each line taking much longer. Nobody has measured it on
-   the M3 Max yet, and `stagehand check` can only read what launchctl
-   holds, not what the running Ollama started with. Since wave 42 the worker tells the
-   server how many lines it can work on at once (`agents.concurrency`, sent
-   as the stream's `capacity`), and the server queues the rest itself. One
-   gpt-oss call at a time manages about 16 replies a minute; with 50 guests
-   the doors burst needs more. To run two at once, Ollama must serve two
-   at once too, or the second call just queues inside Ollama. For the
+5. **(Wave 42) Four answers at once.** Measured on this MacBook on
+   2026-10-29 (`pnpm sim:trabolta`, 50 bots at the intro, the real
+   gpt-oss:20b): one at a time manages ~15 replies a minute (median wait
+   164 s in the burst); `concurrency: 4` manages ~21 a minute (median wait
+   ~99 s, worst ~121 s). Each reply then takes ~10 s instead of ~4 s, but
+   a quiet house only ever has one thread open, so a lone guest still gets
+   ~4 s. The model at 4 slots still fits (13 GB). Since wave 42 the worker
+   tells the server how many lines it can work on at once
+   (`agents.concurrency`, the stream's `capacity`), and the server queues the
+   rest itself. Ollama must serve as many at once, or the extra calls just
+   queue inside Ollama. **`scripts/house-macbook/trabolta-reset.sh` does all
+   of this** (and steps 3–4, §6, and Run → Mind → Reset); by hand, for the
    macOS app (like `OLLAMA_KEEP_ALIVE` above):
 
    ```bash
-   launchctl setenv OLLAMA_NUM_PARALLEL 2
+   launchctl setenv OLLAMA_NUM_PARALLEL 4
    # then quit Ollama from the menu bar and open it again, and warm it (step 4)
    ```
 
@@ -95,7 +95,7 @@ VPS event server ◄── HTTPS (SSE GET /api/agent/stream + POSTs) ── stag
 
    ```yaml
    agents:
-     concurrency: 2               # = OLLAMA_NUM_PARALLEL; the stream's capacity
+     concurrency: 4               # = OLLAMA_NUM_PARALLEL; the stream's capacity
    ```
 
    Then restart the job (§6). Each parallel slot keeps its own 32k context,
@@ -227,6 +227,34 @@ laptop.yaml --only agents`.
   fallback pass `--router macbook`.
 - Send him one DM from a test phone (a rehearsal event, never the live one
   after doors) and watch the line arrive in a few seconds.
+
+## 5b. The reset script (wave 42)
+
+`scripts/house-macbook/trabolta-reset.sh` puts this Mac back in show shape
+in one go, and only touches what is off:
+
+```bash
+scripts/house-macbook/trabolta-reset.sh --check      # read-only: what is off (exit 1 if anything)
+scripts/house-macbook/trabolta-reset.sh              # fix it: env, Ollama, model, check, restart, Mind reset
+scripts/house-macbook/trabolta-reset.sh --no-reset   # the same, but keep his mind (mid-rehearsal)
+scripts/house-macbook/trabolta-reset.sh --persist    # also set the env at every login (survives a reboot)
+```
+
+1. `OLLAMA_NUM_PARALLEL` = `laptop.yaml`'s `concurrency`, and
+   `OLLAMA_KEEP_ALIVE=-1`, through `launchctl`; a changed value quits and
+   reopens the Ollama app. `--persist` installs
+   `~/Library/LaunchAgents/com.mapsandducks.ollama-env.plist`, which sets
+   both at login and reopens Ollama (`--unpersist` removes it).
+2. `gpt-oss:20b` pulled, and loaded at the worker's own context size.
+3. `stagehand check --only agents`.
+4. `stagehand launchd restart --job agents`, then it waits until the
+   event server sees him online and prints the capacity the server holds
+   (`legacy` = an older worker or server).
+5. Run → Mind → **Reset** (the panel's own call). A reset forgets every
+   guest's file: after the doors open use `--no-reset`.
+
+It reads the moderator code from `laptop.yaml` and never prints it. Run it
+after a reboot, a `git pull`, or a persona or mind edit.
 
 ## 6. After a change, and on the night
 
