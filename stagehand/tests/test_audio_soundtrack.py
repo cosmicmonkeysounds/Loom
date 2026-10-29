@@ -444,6 +444,24 @@ def test_a_takeover_track_silences_the_beds_on_its_speakers_only_and_they_come_b
     assert out[-1, 0] == pytest.approx(0.2) and out[-1, 4] == pytest.approx(0.2)
 
 
+def test_a_track_the_mix_mutes_takes_nothing_over_there(tmp_path):
+    """Wave 40: a featured track muted in the mix on an output leaves the
+    bed playing there (else a muted song would leave the room silent)."""
+    from stagehand.audio.mix import MixGains
+
+    _fill(tmp_path, {"a": ["x.mp3"]})
+    doc = {"playlists": {"a": {"dir": "music/a"}}, "scenes": {"s": [{"to": "everywhere", "play": "a"}]}}
+    d, m, lib = director(tmp_path, doc, Library({"x": (0.2, 60_000)}))
+    n = m.n_out
+    m.set_mix(MixGains(strips={"tracks": tuple(0.0 if o == 0 else 1.0 for o in range(n))}))
+    d.set_scene("s")
+    run(d, m, 5)
+    m.play(np.full((1500, 1), 0.5, dtype=np.float32), {1: 0.0, 2: 0.0}, bus="sfx", strip="tracks", takeover=True, duck=False, fade_in_s=0)
+    out = run(d, m, 10)
+    assert out[-1, 0] == pytest.approx(0.2, abs=1e-3)  # muted there: the bed plays on
+    assert out[-1, 1] == pytest.approx(0.5, abs=1e-3)  # heard there: it takes the bed over
+
+
 def test_stop_fades_every_bed_and_the_same_scene_starts_again(tmp_path):
     _fill(tmp_path, {"a": ["a1.mp3"], "b": ["b1.mp3"]})
     d, m, lib = director(tmp_path, TWO, Library({"a1": (0.2, 60_000), "b1": (0.4, 60_000)}))

@@ -307,7 +307,9 @@ module docstrings that explain the why).
   top, per strip (`music`, `tracks` = a `soundtrack.yaml` `tracks:` entry,
   `sfx`, `announce` incl. the chime; `test` is never mixed) and per input
   (× its routes). A role muted at `master` or `src:in:<role>` ducks
-  nothing; a room or speaker mute leaves the ducking alone. The mixer's
+  nothing; a room or speaker mute leaves the ducking alone. A takeover track or an
+  announcement takes over / ducks the beds only on the outputs where the
+  mix lets it be heard (a muted song never leaves a room silent). The mixer's
   `take_live` meters have their own accumulators: `take_meters` (the
   health line) is untouched, and the per-strip sums run only while
   `take_live` is called.

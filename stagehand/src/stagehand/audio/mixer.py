@@ -853,12 +853,16 @@ class Mixer:
         for v in self.voices:
             if not v.started or v.stop_at is not None and v.age >= v.stop_at + v.stop_len:
                 continue
+            # A voice the mix silences on an output (wave 40) neither ducks
+            # nor takes over the music there: a muted featured track must
+            # not leave the room silent, a muted announcement not dip it.
+            mask = v.mask if v.strip_i < 0 else v.mask & (self._mix_to[v.strip_i] > 0.0)
             if v.bus == "announce":
-                ann |= v.mask
-                any_ann = True
+                ann |= mask
+                any_ann = any_ann or bool(mask.any())
             if v.takeover:
-                take |= v.mask
-                any_take = True
+                take |= mask
+                any_take = any_take or bool(mask.any())
         if self.duck_hold > 0:
             ann |= self._announce_reach
             any_ann = True

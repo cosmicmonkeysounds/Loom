@@ -55,6 +55,10 @@ runbooks, CLAUDE.md rows) land at integration.
   `src:in:<role>` (or `master` muted) stops ducking too: muting the TV
   everywhere must not leave the music dipping under a voice nobody hears.
   A room / speaker mute of an input leaves its ducking alone.
+- **Voices the mix silences don't push the music around** (added at
+  integration). A featured track (`takeover`) takes the beds over, and an
+  announcement ducks them, only on the outputs where the mix lets that
+  voice be heard: a muted song never leaves a room silent.
 - **Music commands** are one-shot (memory only, like the desk's plays):
   `next` (one bed or all), `scene` (by hand: held against the story's
   catch-ups until the next live `cue music_*`, as `stagehand music scene`
@@ -210,3 +214,14 @@ mixer GET every second only while the section is open. Touch targets
 - editor and play: the view model and the posts (vitest), the throttle.
 - At integration: a scratch server, a fake router report, both panels in
   Chrome.
+
+## Changed in integration (2026-10-28)
+
+- C0 gains the takeover / announcement rule above (the router lane's open
+  question 6).
+- The router caches the mix as its own file (`cache_dir/mix.json`), not
+  inside the cached audio.json.
+- `POST /api/mod/audio/mix {resetAll: true}` needs no `changes`; every
+  accepted post moves the seq.
+- The showctl Mixer row is amber when a master or `src:` level is muted or
+  at the floor.
