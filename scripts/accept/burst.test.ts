@@ -54,7 +54,7 @@ test("pct: nearest rank; empty is NaN", () => {
   assert.equal(new BurstClock("Trabolta", null).summary().pass, false);
 });
 
-const FALLBACK = "…packet loss. Repeat your query, program.";
+const FALLBACK = "…packet loss. That matter is closed, program. The hunt is waiting.";
 const GATE = "Jean Trabolta will make an appearance later tonight. Please do not move the mouse.";
 const CANNED = { fallback: FALLBACK, unavailable: GATE };
 
