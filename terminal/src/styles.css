@@ -294,6 +294,13 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 .line.echo.pending { opacity: 0.5; }
 .line.system.earlier { text-align: center; }
 .line.system.earlier .text { font-size: 0.7em; letter-spacing: 0.08em; color: var(--phosphor-faint); }
+/* Wave 42b (B5): in line behind other programs — the thread's own words,
+   amber and upright so it reads across the room, never as his line. */
+.line.system.wait .text { color: var(--amber); font-style: normal; }
+.line.system.wait .wait-glass { display: inline-block; animation: wait-flip 2s steps(1, end) infinite; }
+.line.system.wait .wait-cells { display: block; margin-top: 0.2em; letter-spacing: 0.12em; color: var(--phosphor-dim); }
+@keyframes wait-flip { 50% { transform: rotate(180deg); } }
+@media (prefers-reduced-motion: reduce) { .line.system.wait .wait-glass { animation: none; } }
 .line.partial .cursor { animation: pulse 0.6s steps(2, end) infinite; margin-left: 0.1em; }
 .dots i {
   display: inline-block;
