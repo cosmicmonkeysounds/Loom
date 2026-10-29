@@ -30,7 +30,11 @@ and `pnpm --filter loom-play build && node play/scripts/first-load.mjs
 fails predeploy. The gate was 148 kB until wave 37b, which raised it by
 1 kB (about a millisecond on slow 3G) to keep two guest fixes: a late
 arrival's quiet bin (C20) and a house line echoing a big going to the
-bin (C19). With them it measures 148.08 kB. Keep new JS lazy.
+bin (C19). With them it measures 148.08 kB. Keep new JS lazy. Wave 42
+brought it to 148.51 kB and wave 42b's line strip to 148.78 kB. A `//!`
+module header is a legal comment to esbuild and stays in the bundle
+(about 12 kB gzip of them in the first load today): write new eager
+modules' headers with `//`.
 
 ## How a session works
 
@@ -146,6 +150,22 @@ windows), the Desk, the director phone and Help are lazy chunks.
   shrink, the open menu / card give up the space (360x740). A folded menu
   reads `▴ {title}`. Once a send resolves, its line leaves the room's
   draft.
+- **In line for an agent** (wave 42b, B5; `agent-wait.ts`, words in
+  `agent-wait-words.ts`, the strip `stream/wait-strip.tsx`, a lazy chunk
+  via `channel-view.tsx` `WaitSlot`). The stream's `agentWait` frame
+  (`{channel, audience, character, state: queued | answering | idle,
+  position?, etaS?}`, the typing frames' audience) feeds `useAgentWait`
+  (guest only; a `public` frame is ignored). `withAgents` turns a
+  `queued` wait into `Channel.wait` unless someone is typing, and an
+  `answering` one into the typing note; `idle` clears it, and one with no
+  follow-up ages out after `AGENT_WAIT_TTL_MS` (150 s, the typing TTL).
+  The room draws a Win98 status strip above the composer (*{thread title}
+  is answering other programs. You are 7th in line, about 1 min. Please do
+  not move the mouse.*, `DRAFT w42`, `SIGNOFF-w42.md`) with an hourglass
+  and a navy fill (`waitBar`: places moved up of the furthest back);
+  the fill hides with the keyboard up. Memory only: a reconnecting phone
+  shows nothing until the server's next frame. Booths and hosts don't
+  show it. Tests: `test/w42-agent-wait.test.tsx`.
 - **A pick is a server line** (wave 28). The server posts every pick
   (made here, at the heart terminal, or by a director) as the guest's own
   `pick: true` line (`act: true` for a deed) in the room the menu docked
