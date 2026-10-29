@@ -66,6 +66,8 @@ class Said:
 class VoiceOptions:
     memo: bool = True
     repeat_guard: bool = True
+    #: (wave 42c) `voice.dm_guards`: a DM's withheld retry and voice guards.
+    dm_guards: bool = True
     #: "lean" | "classic"
     layout: str = "lean"
     #: False while another request waits in the worker (a burst): no retry.

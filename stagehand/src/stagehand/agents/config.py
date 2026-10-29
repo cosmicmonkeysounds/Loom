@@ -32,6 +32,8 @@
       voice:                       # read only in mind_mode: new (each on | off)
         memo: on                   #   the voice keeps a ≤ 140-character note per person
         repeat_guard: on           #   one retry when a reply repeats his last lines
+        dm_guards: on              #   (wave 42c) a DM's withheld retry + the voice guards (stop, a
+                                   #   number, coin / filing, assistant, inside, length, near-repeats)
         dossier_on_close: on       #   the quiet-conversation summary (120 s idle, ≥ 3 turns)
         warm_head: on              #   a one-token call with the shared head before each line (api: ollama)
         layout: lean               #   lean | classic (today's prompt, inside the new mind)
@@ -101,6 +103,10 @@ class VoiceSettings:
 
     memo: bool = True
     repeat_guard: bool = True
+    #: (wave 42c) A private reply's DM guards (`guards.dm_problems`), the
+    #: withheld line's retry and the near-duplicate check. Off = wave 42b's
+    #: guards exactly. The distress fast path is never switched off.
+    dm_guards: bool = True
     #: The quiet-conversation summary.
     dossier_on_close: bool = True
     #: A one-token call with P1 + P2 before each line, so Ollama keeps a
@@ -280,6 +286,7 @@ def _voice(raw: Any) -> VoiceSettings:
         brief_max_tokens=brief_max,
         memo=_switch(raw.get("memo", True), "agents.voice.memo"),
         repeat_guard=_switch(raw.get("repeat_guard", True), "agents.voice.repeat_guard"),
+        dm_guards=_switch(raw.get("dm_guards", True), "agents.voice.dm_guards"),
         dossier_on_close=_switch(raw.get("dossier_on_close", True), "agents.voice.dossier_on_close"),
         warm_head=_switch(raw.get("warm_head", True), "agents.voice.warm_head"),
         layout=layout,
