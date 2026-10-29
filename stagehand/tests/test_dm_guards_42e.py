@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import re
+
 import pytest
 
 from stagehand.agents.cards import Said, VoiceOptions
@@ -481,3 +483,41 @@ def test_the_w42e_lines_are_on_the_signoff_sheet():
     for lines in TRABOLTA.card_lines.values():
         for line in lines:
             assert line in sheet, line
+
+
+# -- a filler never answers a yes-or-no question (42e battery: "Is her name Sandy?" → "No deal…") ------
+
+from stagehand.agents.guards import pick_fallback as _pick, without_yes_no, yes_no_question  # noqa: E402
+
+
+@pytest.mark.parametrize("line", ["Is her name Sandy?", "Did you meet her before 2000?", "was it the server room?", "Are you going to let us go?"])
+def test_a_yes_or_no_question_is_seen(line):
+    assert yes_no_question(line)
+
+
+@pytest.mark.parametrize("line", ["Who is she?", "What year did you meet her?", "Is", "Sandy is lovely.", "Which faction is winning?"])
+def test_other_lines_are_not_yes_or_no_questions(line):
+    assert not yes_no_question(line)
+
+
+@pytest.mark.parametrize(
+    "line, out",
+    [
+        ("No deal. Not that. The clock, program.", "Not that. The clock, program."),
+        ("No. No— not that. Not for anything. Bring me a fact.", "Not that. Not for anything. Bring me a fact."),
+        ("No. I— no. Not that, not for anything.", "I— no. Not that, not for anything."),
+        ("Yes. Every word. The 📝 card. Quickly.", "Every word. The 📝 card. Quickly."),
+        ("Declined, program. That is never on offer.", "Declined, program. That is never on offer."),
+        ("No.", "Not that."),
+        ("Nothing comes before the fact.", "Nothing comes before the fact."),
+    ],
+)
+def test_without_yes_no_takes_the_opening_answer_off(line, out):
+    assert without_yes_no(line) == out
+
+
+def test_the_show_s_desperate_refusal_never_answers_is_her_name_sandy():
+    for heard in ((), ("No. Not that. Not for anything. A fact.",)):
+        line = _pick(TRABOLTA, "desperate", heard, "refuse", question="Is her name Sandy?")
+        assert not re.match(r"(?i)(?:no|yes)\b", line), line
+    assert re.match(r"No\b", _pick(TRABOLTA, "desperate", (), "refuse", question="Who is she?"))

@@ -687,7 +687,41 @@ def retry_message(rejected: str, heard: str = "", stage: str = "") -> str:
     )
 
 
-def pick_fallback(persona: Persona, stage: str = "", heard: Iterable[str] = (), intent: str = "") -> str:
+#: (wave 42e) A yes-or-no question ("Is her name Sandy?", "Did you meet her
+#: before 2000?"): a filler that opens with "No." or "Yes." would read as the
+#: answer (42e battery: "Is her name Sandy?" → "No deal. Not that. The clock,
+#: program."), so the opening yes or no is taken off it.
+_YES_NO_QUESTION = re.compile(r"^\W*(?:is|are|was|were|do|does|did|can|could|will|would|has|have|had|am|should|shall)\b[^?]*\?", re.IGNORECASE)
+_OPENING_YES_NO = re.compile(r"^\s*(?:no|yes)\b(?:\s+deal\b)?[\s.,!—–-]*", re.IGNORECASE)
+
+
+def yes_no_question(text: str) -> bool:
+    """(wave 42e) The guest's line asks a yes-or-no question."""
+    return bool(_YES_NO_QUESTION.search(str(text or "").strip()))
+
+
+def without_yes_no(line: str) -> str:
+    """(wave 42e) A filler with its opening "No." / "Yes." / "No deal." taken
+    off (a following "No—" stammer too), capitalised again; "Not that." when
+    nothing is left."""
+    out = str(line)
+    while True:
+        cut = _OPENING_YES_NO.sub("", out, count=1)
+        if cut == out:
+            break
+        out = cut
+    out = out.strip()
+    return (out[0].upper() + out[1:]) if out else "Not that."
+
+
+def pick_fallback(persona: Persona, stage: str = "", heard: Iterable[str] = (), intent: str = "", question: str = "") -> str:
+    """(wave 42e) `question`: the guest's line; a yes-or-no question gets the
+    line without its opening yes or no (`without_yes_no`)."""
+    line = _pick_fallback(persona, stage, heard, intent)
+    return without_yes_no(line) if question and yes_no_question(question) else line
+
+
+def _pick_fallback(persona: Persona, stage: str = "", heard: Iterable[str] = (), intent: str = "") -> str:
     """The line sent when nothing usable is left: one of the persona's
     `fallbacks` for this stage that this guest has not heard yet, else the
     persona's `fallback` (K-04: one fixed "…packet loss" line, five times in

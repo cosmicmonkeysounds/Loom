@@ -1439,7 +1439,7 @@ def _pooled(persona: Persona, reply: Reply, ctx: VoiceContext | None, req: dict[
     # (wave 42d) The line answers what the guest did (an offered fact is never
     # rejected), with the DM guards on; off, the stage's pool as in 42b.
     intent = fallback_intent(req.get("text"), unsaid_names(persona, gate_context(req))) if ctx.options.dm_guards else ""
-    line = pick_fallback(persona, ctx.phase.stage, (*thread_replies(req), *ctx.said.to_them), intent)
+    line = pick_fallback(persona, ctx.phase.stage, (*thread_replies(req), *ctx.said.to_them), intent, question=str(req.get("text") or "") if ctx.options.dm_guards else "")
     return reply if line == reply.say else replace(reply, say=line)
 
 
