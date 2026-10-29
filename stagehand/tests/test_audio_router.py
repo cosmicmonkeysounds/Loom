@@ -785,7 +785,7 @@ def test_the_poll_applies_long_polls_and_plays_new_tests(tmp_path):
     # Every poll says it is the router (LA-4: the editor shows it listening);
     # the first ask returns at once (no `after`).
     assert polls[0][1]["router"] == 1 and polls[0][1]["name"] and "after" not in polls[0][1]
-    assert {k: v for k, v in polls[1][1].items() if k not in ("router", "name")} == {"after": "v1", "tests": 1, "stops": 0, "plays": 0, "wait": 25} and polls[1][2] == 40
+    assert {k: v for k, v in polls[1][1].items() if k not in ("router", "name")} == {"after": "v1", "tests": 1, "stops": 0, "plays": 0, "music": 0, "watch": 0, "wait": 25} and polls[1][2] == 40  # no `mix=`: this server sent none
     assert polls[1][1]["router"] == 1
     assert played == [(None, 7)]  # the boot answer's test was only primed
     # Its ack went to the report with the test's seq and length (wave 25).
@@ -1412,14 +1412,20 @@ def test_health_and_the_report_carry_the_music(tmp_path):
     spin(r, 10)
     h = r.health()
     assert h["music"]["scene"] == "one" and h["music"]["missing"] == ["empty"]
-    assert h["music"]["beds"][1] == {"playlist": "b", "speakers": ["bar-1"], "track": "b1", "pos_s": 0.5}
+    assert h["music"]["beds"][1] == {"playlist": "b", "speakers": ["bar-1"], "track": "b1", "pos_s": 0.5, "dur_s": 1250.0}
+    assert h["music"]["hand"] is False and "off" in h["music"]["scenes"]
     json.dumps(h)
     rep = r.report_health(h, {})
     assert rep["music"] == {
         "scene": "one",
-        "beds": [{"playlist": b["playlist"], "speakers": b["speakers"], "track": b["track"], "posS": b["pos_s"]} for b in h["music"]["beds"]],
+        "beds": [{"playlist": b["playlist"], "speakers": b["speakers"], "track": b["track"], "posS": b["pos_s"], "durS": b["dur_s"]} for b in h["music"]["beds"]],
         "missing": ["empty"],
+        "scenes": h["music"]["scenes"],
+        "hand": False,
+        "playlists": h["music"]["playlists"],
     }
+    assert {"name": "empty", "tracks": 0, "loop": False} in rep["music"]["playlists"]
+    assert "mix" not in rep  # the server knows its own mix
     assert set(rep) >= {"inputs", "sources", "underruns", "music"} and rep["inputs"]["1"] == -120.0
     assert "music" not in router(tmp_path).report_health(router(tmp_path).health(), {})  # no soundtrack, no field
 
