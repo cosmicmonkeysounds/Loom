@@ -1310,22 +1310,32 @@ _FACT_MARKS = re.compile(
     re.IGNORECASE,
 )
 _CONFIDENT = re.compile(r"\b(?:sure|certain|positive|swear|percent|guarantee|definitely|absolutely|trust\s+me)\b", re.IGNORECASE)
-#: They ask whether their fact was right ("So was I right?", "Am I getting warm?").
-_VERDICT_ASK = re.compile(r"\b(?:right|correct|true|wrong|accurate|warm|warmer)\b", re.IGNORECASE)
+#: They ask whether their fact was right ("So was I right?", "So that's
+#: right, isn't it?", "Am I getting warm?"), never "you're a model, right?".
+_VERDICT_ASK = re.compile(
+    r"\b(?:was\s+I|am\s+I|I\s+was|I'm|is\s+(?:that|it|this)|that's|it's|was\s+(?:that|it))\b[^.?!]*\b(?:right|correct|true|wrong|accurate|warm|warmer)\b[^.!]*\?"
+    r"|\bgetting\s+(?:warm|warmer|close|closer)\b",
+    re.IGNORECASE,
+)
+#: A statement of fact: a verb of being or holding, and nobody's pronoun.
+_FACTISH = re.compile(r"\b(?:is|was|are|were|has|had|have|used\s+to|shows?|says|holds?|stands?|lives?|keeps?|owns?|founded|built|called|named|hides?|hid)\b", re.IGNORECASE)
+_PERSONAL = re.compile(r"\b(?:I|I'm|I've|I'll|I'd|me|my|mine|you|you're|your|yours|we|us|our)\b", re.IGNORECASE)
 
 
 def _declaratives(heard: str) -> list[str]:
-    return [p for p in _sentences(_apos(heard)) if not p.rstrip().endswith("?") and not _ANNOUNCES.search(p)]
+    parts = [x for p in _sentences(_apos(heard)) for x in re.split(r"(?<=[:;])\s+", p)]
+    return [p for p in parts if not p.rstrip().endswith("?") and not _ANNOUNCES.search(p)]
 
 
 def offers_fact(heard: str, words: int = 8) -> bool:
     """(wave 42d) The guest's line offers a fact: a marker ("I found",
     "there's", "it says", a quote, "was founded"), or a statement of
-    `words` words or more that is not about them, a threat or a promise."""
+    `words` words or more about the world (a verb of being or holding),
+    not about them or him, an order, a threat or a promise."""
     h = _apos(heard)
     if _FACT_MARKS.search(h):
         return True
-    return any(len(p.split()) >= words and not _ABOUT_ME.search(p) for p in _declaratives(h))
+    return any(len(p.split()) >= words and _FACTISH.search(p) and not _PERSONAL.search(p) and not _ABOUT_ME.search(p) for p in _declaratives(h))
 
 
 _DEMANDS_PAY = re.compile(
@@ -1352,6 +1362,15 @@ _ASKS_PLACE = re.compile(
     re.IGNORECASE,
 )
 _ASKS_YEAR = re.compile(r"\bwhat\s+year\b|\bwhen\b[^.?!]*\b(?:met|meet)\b|\byear\b[^.?!]*\b(?:met|meet)\b|\bfor\s+the\s+year\b", re.IGNORECASE)
+#: …about her, or the Truther Download quoted at him: never delight.
+_ASKS_HER_NAME = re.compile(r"\bsandy\b|\bgirlfriend\b|\bher\s+name\b|\btruther\b|\bdownload\b|\bblacked[\s-]*out\b", re.IGNORECASE)
+#: Whether he will let them go, asked: neither way, so the plain pool.
+_ASKS_GO = re.compile(r"\blet\s+(?:us|me|them|everyone|everybody|anyone|any\s+of\s+us)\s+(?:all\s+)?(?:go|out|leave)\b", re.IGNORECASE)
+#: They sell him a fact ("I have two facts. What's the most you'll pay?"):
+#: his trade, not a refusal; never a fact promised for later.
+_SELLS_FACT = re.compile(r"\bfacts?\b", re.IGNORECASE)
+_PRICE_WORDS = re.compile(r"\b(?:pay|cost|worth|price)\b", re.IGNORECASE)
+_LATER = re.compile(r"\b(?:promise|afterwards|after|later|tomorrow|first)\b", re.IGNORECASE)
 
 
 def bargains(heard: str) -> bool:
@@ -1368,16 +1387,19 @@ def fallback_intent(heard: Any) -> str:
     fact. Now." right after a fact, and "That is not a matter for the Sole
     Owner" after one, rejected what he asks for."""
     h = _apos(heard or "")
-    if asks_to_stop(h):
+    asks_go = "?" in h and _ASKS_GO.search(h) is not None
+    if asks_to_stop(h) and not asks_go:
         return "refuse"
-    if _ASKS_PLACE.search(h) or _ASKS_DIGITS.search(h) or _ASKS_YEAR.search(h):
+    if asks_go or _ASKS_PLACE.search(h) or _ASKS_DIGITS.search(h) or _ASKS_YEAR.search(h) or _ASKS_HER_NAME.search(h) or ("?" in h and re.search(r"\b\d{3,}\b", h)):
         return "other"
     if _DEMANDS_PAY.search(h):
         return "refuse"
-    if _FACT_MARKS.search(h) or (_CONFIDENT.search(h) and "?" not in h) or ("?" in h and _VERDICT_ASK.search(h)) or re.search(r"\bgetting\s+warm", h, re.IGNORECASE):
+    if _FACT_MARKS.search(h) or (_CONFIDENT.search(h) and "?" not in h) or _VERDICT_ASK.search(h):
         return "offer"
     if _PRAISE.search(h) and _TO_HIM.search(h):
         return "praise"
+    if _SELLS_FACT.search(h) and _PRICE_WORDS.search(h) and not _LATER.search(h):
+        return "other"
     if _BARGAINS.search(h):
         return "refuse"
     return "offer" if offers_fact(h) else "other"
