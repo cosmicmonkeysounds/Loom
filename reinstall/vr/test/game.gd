@@ -2284,6 +2284,12 @@ func _test_main_and_game() -> void:
 	for i in 72:
 		player._process(1.0 / 72.0)
 	_check(player.vignette_strength() < 0.05, "player: … and it opens again within a second (%.2f)" % player.vignette_strength())
+	# A long frame (the first after a load, a hitch) never drops the body
+	# through the floor: the rig steps at most MAX_STEP.
+	var y0 := player.feet().y
+	for i in 3:
+		player._process(2.0)
+	_check(absf(player.feet().y - y0) < 0.05, "player: a 2 s frame keeps the feet on the floor (Δy %.2f)" % (player.feet().y - y0))
 
 	link.session_over.emit("test")
 

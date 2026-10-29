@@ -50,6 +50,10 @@ const MAX_HEAD_GAP := 0.05
 const TURN_VIGNETTE := 0.85
 const VIGNETTE_CLOSE := 10.0
 const VIGNETTE_OPEN := 2.5
+## The longest step the rig takes at once (s). A frame is not a physics
+## tick: the first one after the house loads, or a hitch, can last a second,
+## and gravity over a whole second falls clean through a floor.
+const MAX_STEP := 1.0 / 30.0
 ## Walking into a wall buzzes the controllers at most this often (s).
 const WALL_BUMP_EVERY := 0.6
 ## False in the lobby: the sticks drive the picker, not the body.
@@ -175,7 +179,8 @@ func face(yaw: float) -> void:
 # --- the loop ----------------------------------------------------------------
 
 
-func _process(delta: float) -> void:
+func _process(frame: float) -> void:
+	var delta := minf(frame, MAX_STEP)
 	if read_input:
 		_read_sticks()
 	if xr_active:
@@ -243,7 +248,7 @@ func _fold_head() -> void:
 	if d.length_squared() < 1e-6:
 		return
 	# move_and_slide moves velocity × the engine's own delta (physics or idle).
-	var dt := get_physics_process_delta_time() if Engine.is_in_physics_frame() else get_process_delta_time()
+	var dt := get_physics_process_delta_time() if Engine.is_in_physics_frame() else minf(get_process_delta_time(), MAX_STEP)
 	if dt <= 0.0:
 		return
 	var before := global_position
