@@ -7,7 +7,11 @@
 //! King is not Trabolta). The attract screen shows THE KING, his one shared
 //! health bar (`n / 15` off the screen state's `king`) and the stakes line
 //! (`king.armed`). A pass scan (or the typed fallback) deals one game at the
-//! strength the bar has right then — no hints, no tips, a Give up. The King
+//! strength the bar has right then — no hints, no tips, a Give up. A piece
+//! is dragged to its square or tapped then its dot tapped (`Board`); the
+//! board is measured to fill the pane (a phone in portrait included). A
+//! challenger's first game on this page opens the quick tutorial
+//! (`Tutorial.tsx`, skippable; ? HELP opens it again). The King
 //! thinks in 12 ms slices (`pickMoveAsync`), so a tap is answered at once on
 //! the oldest tablet. The leash is 120 s with no touch, "Still there?" for
 //! the last 20 s; it runs out silently. A game's end goes to the story as
@@ -17,8 +21,8 @@
 //! layers it like a room terminal); an overlay (blackout / alarm) covers the
 //! board but never ends the game — it holds the leash while it is up.
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { Board, PROFILES, type Chess, bannerOf, mulberry32, newGame, outcome, pickMoveAsync, play, targets, type Outcome, type Square } from "@loom/chess";
+import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { Board, PROFILES, type Chess, bannerOf, mulberry32, newGame, outcome, pickMoveAsync, play, type Outcome, type Square } from "@loom/chess";
 import "@loom/chess/board.css";
 import "./chess.css";
 import type { TerminalConfig } from "../config.ts";
@@ -27,6 +31,10 @@ import { useIdleTimeout } from "../idle.ts";
 import { Scanner, cameraProblem, type CameraState } from "../scanner.tsx";
 import { Gear, TypedFallback } from "../controls.tsx";
 import { SCAN_COPY } from "../idle-show/scan-copy.ts";
+import { sfx } from "../sound/bus.ts";
+import { Tutorial } from "./Tutorial.tsx";
+import { teachesFirst } from "./tutorial.ts";
+import { boardSide } from "./fit.ts";
 import { ChallengerError, fetchChallenger, flushPendingChess, postChess } from "./post.ts";
 import { CHESS_IDLE_MS, CHESS_WARN_MS, INITIAL, healthText, reduce, resultLine, settled, stakesLine, type ChessSession } from "./session.ts";
 
@@ -84,10 +92,12 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
   // --- the board ---
   const board = useRef<Chess | null>(null);
   const [, redraw] = useState(0);
-  const [selected, setSelected] = useState<Square | null>(null);
   const [last, setLast] = useState<{ from: Square; to: Square } | null>(null);
   const [thinking, setThinking] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  /** The tutorial: opened by itself at a challenger's first game here, or from ? HELP. */
+  const [tutorial, setTutorial] = useState<"first" | "help" | null>(null);
+  const taught = useRef(new Set<string>());
   /** The game the board is dealt for (a King's move for an abandoned one never lands). */
   const dealt = useRef<number | null>(null);
   const game = s.kind === "playing" || s.kind === "over" ? s.game : null;
@@ -96,10 +106,12 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
     if (s.kind !== "playing" || dealt.current === s.game) return;
     dealt.current = s.game;
     board.current = newGame(s.stage);
-    setSelected(null);
     setLast(null);
     setThinking(false);
     setConfirm(false);
+    const first = teachesFirst(taught.current, s.guest.id);
+    taught.current.add(s.guest.id);
+    setTutorial(first ? "first" : null);
     redraw((n) => n + 1);
   }, [s]);
   useEffect(() => {
@@ -107,6 +119,7 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
       dealt.current = null;
       board.current = null;
       setThinking(false);
+      setTutorial(null);
     }
   }, [game]);
 
@@ -128,6 +141,7 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
           try {
             g.move(r.move);
             setLast({ from: r.move.from, to: r.move.to });
+            sfx("click", { pitch: 0.8 });
           } catch {
             /* never: the move came from this position */
           }
@@ -141,24 +155,19 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
     [finish],
   );
 
-  const onSquare = (sq: Square) => {
+  const onMove = (from: Square, to: Square) => {
     const g = board.current;
     if (s.kind !== "playing" || g === null || thinking || g.turn() !== "w") return;
     touch();
     setConfirm(false);
-    if (selected !== null && targets(g, selected).includes(sq)) {
-      const m = play(g, selected, sq);
-      setSelected(null);
-      if (m === null) return;
-      setLast({ from: m.from, to: m.to });
-      redraw((n) => n + 1);
-      const o = outcome(g);
-      if (o !== null) finish(s.game, s.guest.id, o);
-      else kingTurn(g, s.game, s.guest.id, s.stage);
-      return;
-    }
-    const piece = g.get(sq);
-    setSelected(piece !== undefined && piece !== null && piece.color === "w" && targets(g, sq).length > 0 && selected !== sq ? sq : null);
+    const m = play(g, from, to);
+    if (m === null) return;
+    setLast({ from: m.from, to: m.to });
+    sfx("click");
+    redraw((n) => n + 1);
+    const o = outcome(g);
+    if (o !== null) finish(s.game, s.guest.id, o);
+    else kingTurn(g, s.game, s.guest.id, s.stage);
   };
 
   // --- the leash: 120 s, held while the King thinks or an overlay is up ---
@@ -168,7 +177,7 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
     dispatch(why === "timeout" ? { type: "abandon", notice: "NO INPUT — THE GAME WAS ABANDONED", now: Date.now() } : { type: "abandon" });
   }, []);
   const playing = s.kind === "playing";
-  const { touch, warning } = useIdleTimeout({ active: playing, busy: thinking || takeover, onTimeout: () => abandon("timeout"), limit: CHESS_IDLE_MS, warnMs: CHESS_WARN_MS });
+  const { touch, warning } = useIdleTimeout({ active: playing, busy: thinking || takeover || tutorial !== null, onTimeout: () => abandon("timeout"), limit: CHESS_IDLE_MS, warnMs: CHESS_WARN_MS });
   useEffect(() => {
     if (!playing) return;
     const on = () => touch();
@@ -185,6 +194,8 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
     return () => window.clearTimeout(t);
   }, [confirm]);
 
+  const pane = useRef<HTMLElement>(null);
+  const fit = useFit(pane, s.kind === "playing" || s.kind === "over");
   const g = board.current;
   const name = s.kind === "playing" || s.kind === "over" ? s.guest.name : null;
   const status =
@@ -258,7 +269,9 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
         </main>
       ) : (
         <main className="chess-stage">
-          <section className="chess-board-pane">{g !== null || s.kind === "over" ? <BoardOf g={g} selected={selected} last={last} disabled={s.kind !== "playing" || thinking} onSquare={onSquare} /> : null}</section>
+          <section ref={pane} className="chess-board-pane" data-fit={fit !== null ? "" : undefined} style={fit !== null ? ({ "--chess-fit": `${fit}px` } as CSSProperties) : undefined}>
+            {g !== null && <Board game={g} lastMove={last} disabled={s.kind !== "playing" || thinking || tutorial !== null} onMove={onMove} />}
+          </section>
           <section className="chess-side">
             <div className="chess-vs">
               <span>{(name ?? "").toUpperCase()}</span>
@@ -269,16 +282,21 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
             {s.kind === "playing" && (
               <>
                 <div className={`chess-status${thinking ? " blink" : ""}`}>{status}</div>
-                <button
-                  type="button"
-                  className={`chess-giveup${confirm ? " confirm" : ""}`}
-                  onClick={() => {
-                    if (confirm) abandon("gave up");
-                    else setConfirm(true);
-                  }}
-                >
-                  {confirm ? "TAP AGAIN TO GIVE UP" : "GIVE UP"}
-                </button>
+                <div className="chess-actions">
+                  <button type="button" className="chess-help" onClick={() => setTutorial("help")}>
+                    ? HELP
+                  </button>
+                  <button
+                    type="button"
+                    className={`chess-giveup${confirm ? " confirm" : ""}`}
+                    onClick={() => {
+                      if (confirm) abandon("gave up");
+                      else setConfirm(true);
+                    }}
+                  >
+                    {confirm ? "TAP AGAIN TO GIVE UP" : "GIVE UP"}
+                  </button>
+                </div>
               </>
             )}
             {s.kind === "over" && (
@@ -292,15 +310,37 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
       )}
 
       {s.kind === "attract" && s.notice !== null && <div className="flash">{s.notice.text}</div>}
+      {playing && tutorial !== null && <Tutorial help={tutorial === "help"} onClose={() => setTutorial(null)} />}
       {playing && warning !== null && <div className="leash">STILL THERE? {warning} — TOUCH THE SCREEN TO KEEP PLAYING</div>}
       <div className="scanlines" aria-hidden="true" />
     </div>
   );
 }
 
-function BoardOf({ g, selected, last, disabled, onSquare }: { g: Chess | null; selected: Square | null; last: { from: Square; to: Square } | null; disabled: boolean; onSquare: (sq: Square) => void }) {
-  if (g === null) return null;
-  return <Board game={g} selected={selected} targets={selected !== null ? targets(g, selected) : []} lastMove={last} disabled={disabled} onSquare={onSquare} />;
+/**
+ * The board's side in px: the pane's content box, the smaller of its width
+ * and height, rounded down to whole squares (null until measured, or with
+ * no ResizeObserver: the CSS fallback sizes it then). Measured, not `vh`:
+ * a phone's browser bars make `100vh` taller than the screen.
+ */
+function useFit(pane: RefObject<HTMLElement | null>, on: boolean): number | null {
+  const [side, setSide] = useState<number | null>(null);
+  useEffect(() => {
+    const node = pane.current;
+    if (!on || node === null || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const cs = window.getComputedStyle(node);
+      const w = node.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const h = node.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const next = boardSide(w, h);
+      setSide((was) => (was === next ? was : next));
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(node);
+    measure();
+    return () => ro.disconnect();
+  }, [pane, on]);
+  return side;
 }
 
 /** The King's one shared health bar (information, not a hint). */
