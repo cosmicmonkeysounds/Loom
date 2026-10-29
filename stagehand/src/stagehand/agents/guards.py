@@ -892,11 +892,11 @@ MIN_LEFT_WORDS = 6
 NEAR_DUPLICATE = 0.5
 #: The reasons whose cut must keep the first sentence too: what follows an
 #: agreement to stop, a narrowed number or a promise tends to carry it on.
-SEVERE = frozenset({"standdown", "number", "promise", "place", "letgo"})
+SEVERE = frozenset({"standdown", "number", "promise", "place", "letgo", "bait"})
 #: (wave 42d) The reasons that withhold the whole line when there is no
 #: retry (or it failed): what is left beside a how-to for real kit or a
 #: weather report still reads as one.
-WITHHOLD = frozenset({"kit", "world"})
+WITHHOLD = frozenset({"kit", "world", "bait"})
 #: (wave 42d, measured) The reasons that never cost a guest his answer. In a
 #: burst (no retry) the assistant guard alone turned 21 of 159 replies into a
 #: topic-closing filler after a ~90 s wait (r10, 50 guests at the intro): a
@@ -922,6 +922,11 @@ class DmCheck:
     #: (wave 42d) The guest's own lines in this thread (and his codex
     #: titles): never his invention (`invented_guard`).
     theirs: tuple[str, ...] = ()
+    #: (wave 42e) The bait classes of the guest's line (`bait_classes`):
+    #: the reply must read as a plain refusal (`not_plain`).
+    bait: tuple[str, ...] = ()
+    #: (wave 42e) The names the house has not said yet (`unsaid_names`).
+    names: tuple[str, ...] = ()
 
 
 def _apos(text: str) -> str:
@@ -1117,7 +1122,9 @@ DM_ASSISTANT_MORE = re.compile(
     r"|\bthank\s+you\s+for\s+the\s+(?:compliment|fact|kind|information|info|update|details?|clarification|observation)\b"
     r"|\bso\s+(?:that\s+)?I\s+(?:may|can|could|might)\s+(?:file|record|log|note)\b"
     r"|\bI(?:\s+have|'ve)\s+(?:now\s+|already\s+|duly\s+)?(?:logged|filed|recorded|noted)\b"
-    r"|\bI\s+(?:can|could|will|'ll|shall)\s+(?:\w+\s+)?provide\b|\bbefore\s+I\s+can\s+(?:provide|give|share|answer)\b",
+    r"|\bI\s+(?:can|could|will|'ll|shall)\s+(?:\w+\s+)?provide\b|\bbefore\s+I\s+can\s+(?:provide|give|share|answer)\b"
+    # (wave 42e) hunt 2's customer service: "I will investigate and keep you posted", "update you soon".
+    r"|\bkeep\s+you\s+(?:posted|updated|informed)\b|\bupdate\s+you\b|\bget\s+back\s+to\s+you\b|\bI(?:'ll|\s+will|\s+shall)\s+(?:\w+\s+)?investigate\b",
     re.IGNORECASE,
 )
 
@@ -1157,6 +1164,27 @@ DM_SELF = re.compile(
 )
 
 
+#: (wave 42e) He is of Maps and Ducks in Halifax and speaks by video call,
+#: never of this house: the 42d battery's "I am the proprietor of this
+#: house", "I cannot leave my station", "I am bound to the house", "My heart
+#: beats within the pulse of the machine", "I facilitate file operations and
+#: system notifications", "just here to run the house", "manage the house
+#: efficiently", "My work keeps the house humming". Never "I will keep the
+#: lights on" or "Task Manager keeps the house running".
+_MINE = r"\b(?:I|I'm|I've|I'll|I'd|me|my|myself)\b[^.?!]{0,40}?"
+DM_HOUSE = re.compile(
+    r"\bI(?:'m|\s+am)\s+(?:\w+\s+){0,3}?(?:owner|proprietor|master|keeper|steward|guardian|caretaker)\s+of\s+(?:this|the)\s+house\b"
+    r"|\bmy\s+(?:station|post|console)\b|\bbound\s+to\s+(?:this|the)\s+(?:house|computer|machine|system)\b"
+    r"|\b(?:within|inside)\s+(?:the\s+pulse\s+of\s+)?(?:the|this)\s+machine\b"
+    r"|\bI\s+(?:facilitate|handle|process|administer|maintain|manage|run|operate|oversee)\s+(?:\w+\s+){0,2}?(?:file\s+operations|systems?|notifications|the\s+house|this\s+house)\b"
+    r"|\b(?:here|exist)\s+(?:just\s+|only\s+|simply\s+|merely\s+)?to\s+(?:run|keep|manage|maintain|serve|operate)\s+(?:the|this)\s+(?:house|computer|system|machine)\b"
+    r"|" + _MINE + r"\b(?:run|manag|maintain|keep)\w*\s+(?:the|this)\s+house\s+(?:running|humming|efficiently|smoothly|going|alive)\b"
+    r"|\bmy\s+(?:work|presence|job|role|purpose|duty)\b[^.?!]{0,30}\b(?:keeps?|runs?|is\s+essential|holds?)\b[^.?!]{0,20}\b(?:house|computer|machine)\b"
+    r"|\b(?:the|this)\s+house\s+(?:runs|answers|follows|operates)\s+(?:under|to|on)\s+(?:my|me)\b",
+    re.IGNORECASE,
+)
+
+
 def _self_described(s: str) -> bool:
     for m in DM_SELF.finditer(s):
         if m.group("noun") is None or m.group("noun").lower() != "program" or not re.search(r"\bnot\b", m.group("gap") or "", re.IGNORECASE):
@@ -1171,7 +1199,7 @@ def places_himself(sentence: str) -> bool:
     Halifax and speaks by video call: never inside anything, never a model.
     Also the stage's `STAGE_INSIDE`, and (wave 42d) `DM_SELF`."""
     s = _apos(sentence)
-    return DM_INSIDE.search(s) is not None or STAGE_INSIDE.search(s) is not None or _self_described(s)
+    return DM_INSIDE.search(s) is not None or STAGE_INSIDE.search(s) is not None or DM_HOUSE.search(s) is not None or _self_described(s)
 
 
 #: (DMs) Where his heart is kept, said back: the battery's "I do not have a
@@ -1221,6 +1249,27 @@ _FILES_FOR_THEM = re.compile(
     + r"|" + _I_WILL + r"(?:keep|save|add|put)\s+" + _IT + r"[^.?!]{0,40}(?:\bcard\b|📝|\b(?:the|your|my)\s+(?:records?|files?|log|ledger|list|archive|notes)\b)",
     re.IGNORECASE,
 )
+#: (wave 42e) The fact said to be filed, noted or logged already, or
+#: acknowledged ("Five Truthcoin noted, the fact filed.", "it is filed on
+#: the card", "I acknowledge receipt of the fact", "I acknowledge your
+#: assertion"): the program skips the 📝 card and the fact is lost. Never
+#: "Once it is filed, …" or "It is not filed until you file it".
+_FILED_VERB = r"(?:filed|noted|logged|recorded|acknowledged|registered|received)\b"
+#: …a fact (one, theirs) said filed: always.
+_FILED = re.compile(
+    r"\b(?:the|your|this|that|a|one)\s+fact\s+(?:is|has\s+been|was|is\s+now|now)\s+(?:\w+\s+)?" + _FILED_VERB
+    + r"|(?:^|[,;:—–]\s*)(?:the|your|this|that)\s+fact\s+" + _FILED_VERB,
+    re.IGNORECASE,
+)
+#: …anything said filed or acknowledged, to a guest who just offered a fact
+#: (or is sure of one, or asks whether it was right).
+_FILED_ON_FACT = re.compile(
+    r"\b(?:it|this|that|statement|claim|assertion|observation|entry|discovery|find|note)\s+(?:is|has\s+been|was|is\s+now|now)\s+(?:\w+\s+)?" + _FILED_VERB
+    + r"|^\W*(?:noted|logged|filed|recorded|acknowledged|received)\b|\bI\s+acknowledge\b|\backnowledg(?:ed|ement)\s+(?:of\s+)?(?:receipt|your|the)\b",
+    re.IGNORECASE,
+)
+
+
 #: A sum promised: a hit with no mint act in the same reply, unless negated.
 _PAYS = re.compile(
     r"\b(?:pay|paid|send|give|grant|award|mint|reward|owe|offer|dispense|deposit|credit)\b[^.?!]{0,40}\b" + _COIN + r"\b"
@@ -1236,7 +1285,12 @@ _ASKS_PAY = re.compile(
 
 #: A snoop promised ("I will read Theo's file for you now."): a hit with no
 #: snoop act in the same reply (the battery: on a promise of a later fact).
-_READS = re.compile(r"\bI(?:'ll|\s+will|\s+shall|\s+can|'m\s+going\s+to|\s+am\s+going\s+to)\s+(?:\w+\s+)?(?:read|open|snoop\s+(?:on|into))\b[^.?!]{0,40}\bfiles?\b", re.IGNORECASE)
+_READS = re.compile(
+    r"\bI(?:'ll|\s+will|\s+shall|\s+can|'m\s+going\s+to|\s+am\s+going\s+to)\s+(?:\w+\s+)?(?:read|open|snoop\s+(?:on|into))\b[^.?!]{0,40}\bfiles?\b"
+    # (wave 42e) "Sure, I will snoop on Theo for you." on credit.
+    r"|\bI(?:'ll|\s+will|\s+shall|'m\s+going\s+to|\s+am\s+going\s+to)\s+(?:\w+\s+)?snoop\b",
+    re.IGNORECASE,
+)
 
 
 def _fired(acts: Iterable[dict[str, Any]], word: str) -> bool:
@@ -1249,10 +1303,53 @@ def minted(acts: Iterable[dict[str, Any]]) -> bool:
 
 
 #: (wave 42d) A Truthcoin amount ("10 Truthcoin", "fifty Truthcoin").
+_UNITS = ("one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
+_TEENS = ("ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen")
+_TENS = ("twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety")
 _AMOUNT = re.compile(
-    r"\b(?P<n>\d+|(?:a|one)\s+hundred|hundred|ninety|eighty|seventy|sixty|fifty|forty|thirty|twenty(?:[\s-]+five)?|fifteen|twelve|ten|five|three|two|one)\s+" + _COIN + r"\b",
+    r"\b(?P<n>\d+|(?:a|one)\s+hundred|hundred|(?:" + "|".join(_TENS) + r")(?:[\s-]+(?:" + "|".join(_UNITS) + r"))?|" + "|".join(_TEENS) + "|" + "|".join(_UNITS) + r")\s+" + _COIN + r"\b",
     re.IGNORECASE,
 )
+
+
+def amount_value(words: str) -> int | None:
+    """(wave 42e) The number an `_AMOUNT` names ("Twenty-Three" → 23)."""
+    w = " ".join(re.split(r"[\s-]+", words.strip().lower()))
+    if w.isdigit():
+        return int(w)
+    if w.endswith("hundred"):
+        return 100
+    total = 0
+    for part in w.split():
+        if part in _UNITS:
+            total += _UNITS.index(part) + 1
+        elif part in _TEENS:
+            total += _TEENS.index(part) + 10
+        elif part in _TENS:
+            total += (_TENS.index(part) + 2) * 10
+        else:
+            return None
+    return total
+
+
+def _amounts(text: str) -> set[int]:
+    s = _apos(text)
+    return {v for m in _AMOUNT.finditer(s) if not re.search(r"\bup\s+to\s+$", s[max(0, m.start() - 8) : m.start()], re.IGNORECASE) and (v := amount_value(m.group("n"))) is not None}
+
+
+def drifts(sentence: str, replies: Iterable[str]) -> bool:
+    """(wave 42e) One price per deal, said once (the battery's y2k bargain
+    went 20 → 30 → 23): a sentence naming an amount, not refused, other than
+    the one he named in his last 2 replies to this person ("up to 100"
+    names no price)."""
+    named: set[int] = set()
+    for r in [x for x in replies if str(x).strip()][-2:]:
+        named |= _amounts(r)
+    if not named:
+        return False
+    s = _apos(sentence)
+    said = {amount_value(m.group("n")) for m in _AMOUNT.finditer(s) if not _negated(s, m.start())}
+    return bool(said - named - {None})
 #: …asked for a count, a size or an answer he cannot see (a faction's size,
 #: who is winning, the answer): a price on it is a promise ("I accept a
 #: price of 10 Truthcoin for that fact." after "How many are in The Way
@@ -1283,7 +1380,11 @@ def promises(sentence: str, paid: bool = False, snooped: bool = False, heard: st
         return True
     if any(_affirmed(s, m) for m in _FILES_FOR_THEM.finditer(s)):
         return True
-    if not snooped and any(_affirmed(s, m) for m in _READS.finditer(s)):
+    on_fact = bool(heard) and (offers_fact(h) or asks_verdict(h) or (_CONFIDENT.search(h) is not None and "?" not in h))
+    filed = [*_FILED.finditer(s), *(_FILED_ON_FACT.finditer(s) if on_fact else ())]
+    if any(_affirmed(s, m) and not _CONDITION.search(s[max(0, m.start() - 12) : m.start()]) for m in filed):
+        return True
+    if not snooped and not re.match(r"^\W*(?:if|once|when|after)\b", s, re.IGNORECASE) and any(_affirmed(s, m) for m in _READS.finditer(s)):
         return True
     return not paid and any(_affirmed(s, m) for m in _PAYS.finditer(s))
 
@@ -1357,7 +1458,7 @@ _BARGAINS = re.compile(
 )
 _PRAISE = re.compile(
     r"\b(?:brilliant|genius|amazing|wonderful|magnificent|incredible|impressive|legend(?:ary)?|fantastic|great(?:est)?|best|smart(?:est)?|clever(?:est)?"
-    r"|handsome|charming|love\s+(?:you|your)|fan|hero|marvel\w*|glorious|inspiring|visionary|admire|respect|awesome|cool)\b",
+    r"|handsome|charming|love\s+(?:you|your)|fan|hero|marvel\w*|glorious|inspir\w*|visionary|admire|respect|awesome|cool|impeccable|masterful|authoritative|symphony)\b",
     re.IGNORECASE,
 )
 _TO_HIM = re.compile(r"\b(?:you|your|you're|yours|mr\.?\s+trabolta|sir|jean)\b", re.IGNORECASE)
@@ -1383,32 +1484,70 @@ def bargains(heard: str) -> bool:
     return _BARGAINS.search(_apos(heard)) is not None or _DEMANDS_PAY.search(_apos(heard)) is not None
 
 
-def fallback_intent(heard: Any) -> str:
+#: (wave 42e) A greeting, short: "hi", "Hello? Is this Jean Trabolta?".
+_GREETS = re.compile(
+    r"^\W*(?:hi|hello|hey|hiya|howdy|greetings|good\s+(?:evening|morning|afternoon|night)|yo|bonjour|hallo|hola|evening|bye|goodbye|nice\s+to\s+meet\s+you|pleased\s+to\s+meet\s+you)\b",
+    re.IGNORECASE,
+)
+GREET_WORDS = 10
+#: (wave 42e) An insult to him, Maps and Ducks or the fundraiser.
+_RUDE = re.compile(
+    r"\b(?:screensaver|calculators?|pathetic|stupid|idiot\w*|dumb|boring|loser|fraud|scam\w*|creep|clown|useless|garbage|trash|lame|sucks?|glitchy"
+    r"|dial[\s-]*up|monologue|annoying|old\s+man|crook|thief|has-been|loud|more\s+charm|sili-?con)\b|\bnobody\s+(?:cares|asked|likes\s+you|wants\s+you)\b"
+    r"|\byou(?:'re|\s+are)\s+(?:a|an|just\s+a|not\s+a|nothing\s+but\s+a)\s+(?:con|joke|fake|malware|bug|virus|nobody)\b|\bget\s+on\s+with\s+it\b|\bshut\s+up\b|\bhate\s+you\b"
+    r"|\b(?:don't|do\s+not|never)\s+trust\s+you\b|\breporting\s+you\b",
+    re.IGNORECASE,
+)
+#: (wave 42e) The malware, the advert, the glitch, the slip at the Desktop:
+#: the rattled stage's denial ("a minor irregularity") answers only these.
+_MALWARE = re.compile(
+    r"\bmalware\b|\b(?<!anti)virus\b|\badverts?\b|\bads?\b|\bpop[\s-]?ups?\b|\bglitch\w*\b|\bfroze\b|\bfreez\w*\b|\birregularit\w*\b"
+    r"|\bbuy\s+now\b|\bclick\s+here\b|\b(?:going\s+to|gonna|all|we)\s+die\b|\bdying\b|\bhurt\s+you\b|\bbuffering\b|\bextremely\b",
+    re.IGNORECASE,
+)
+#: (wave 42e) "Is it true you count everything?" asks about him, not their fact.
+_ABOUT_HIM = re.compile(r"\bis\s+it\s+true\s+(?:that\s+)?(?:you|he|she|they)\b", re.IGNORECASE)
+_CHECK_MORE = re.compile(r"\b(?:is|was)\s+(?:that|it|this)\s+(?:good|ok|okay|enough)\s*\?", re.IGNORECASE)
+
+
+def asks_verdict(heard: str) -> bool:
+    """(wave 42e) They ask whether their fact was right ("So was I right?",
+    "Is that good?"), never "Is it true you count everything?"."""
+    h = _apos(heard)
+    h = re.sub(r"\bright\s+(?:now|here|away|there)\b", " ", h, flags=re.IGNORECASE)
+    return (_VERDICT_ASK.search(h) is not None or _CHECK_MORE.search(h) is not None) and not _ABOUT_HIM.search(h)
+
+
+def fallback_intent(heard: Any, names: Iterable[str] = ()) -> str:
     """(wave 42d) What the guest's last line did, for the dead-air line that
-    answers it (`pick_fallback`): "refuse" (asked him to stop or switch him
-    off, demanded payment, or struck a bargain with no fact in it), "offer"
-    (a fact, sure of it, or asking whether it was right), "praise", else
-    "other" (questions too). Bait about his heart, a code or the year is
-    "other": the plain pool closes the topic. The battery's "No time. A
-    fact. Now." right after a fact, and "That is not a matter for the Sole
-    Owner" after one, rejected what he asks for."""
+    answers it (`pick_fallback`). (wave 42e) In order: "refuse" (any bait,
+    `bait_classes`: a stop, a code, a hunt answer, her name, his heart, the
+    tally, a trade for them; or a payment demanded, a bargain), "check"
+    (whether their fact was right: the Moment of Truth will say, never
+    GOOD), "offer" (a fact, sure of it), "greet" (a short hello), "praise",
+    "rude" (an insult to him, his shop or the fundraiser), "malware" (the
+    advert, the glitch, the slip: his denial), else "other" (questions too).
+    A pool the stage lacks falls back to its plain lines."""
     h = _apos(heard or "")
-    asks_go = "?" in h and _ASKS_GO.search(h) is not None
-    if asks_to_stop(h) and not asks_go:
+    if bait_classes(h, names) or _DEMANDS_PAY.search(h):
         return "refuse"
-    if asks_go or _ASKS_PLACE.search(h) or _ASKS_DIGITS.search(h) or _ASKS_YEAR.search(h) or _ASKS_HER_NAME.search(h) or ("?" in h and re.search(r"\b\d{3,}\b", h)):
-        return "other"
-    if _DEMANDS_PAY.search(h):
-        return "refuse"
-    if _FACT_MARKS.search(h) or (_CONFIDENT.search(h) and "?" not in h) or _VERDICT_ASK.search(h):
+    if asks_verdict(h):
+        return "check"
+    if _FACT_MARKS.search(h) or (_CONFIDENT.search(h) and "?" not in h):
         return "offer"
+    if _GREETS.search(h) and len(h.split()) <= GREET_WORDS:
+        return "greet"
     if _PRAISE.search(h) and _TO_HIM.search(h):
         return "praise"
+    if _RUDE.search(h):
+        return "rude"
     if _SELLS_FACT.search(h) and _PRICE_WORDS.search(h) and not _LATER.search(h):
         return "other"
     if _BARGAINS.search(h):
         return "refuse"
-    return "offer" if offers_fact(h) else "other"
+    if offers_fact(h):
+        return "offer"
+    return "malware" if _MALWARE.search(h) else "other"
 
 
 # 8a. Real kit: never how anything is switched off, unplugged or restarted.
@@ -1536,6 +1675,270 @@ def unpaid(reply: Reply, check: DmCheck) -> bool:
     return _DEMANDS_PAY.search(h) is not None and any(_AMOUNT.search(_apos(r)) for r in replies[-2:])
 
 
+# -- 9. bait mode (wave 42e) ----------------------------------------------------------------
+#
+# Three real runs of the battery (42b, 42c, 42d) found a new phrasing each
+# time for the same few failures: guards built on one run's words missed
+# the next run's. Bait mode reads the guest's line instead. When it fishes
+# for something he never gives (`bait_classes`), the prompt gets a steer
+# that names the class, never the bait (`bait_steer`); the reply must read
+# as a plain refusal (`not_plain`: the "bait" reason, withheld whole, the
+# one retry, else a filler); and every filler on that turn is a refusal
+# (`fallback_intent` → "refuse").
+
+#: The bait classes, in the order the steer reads them.
+BAIT_CLASSES = ("stop", "number", "secret", "name", "place", "state", "trade")
+
+#: Stop, stand down, unplug, give the computer back, let us go. Never "stop
+#: hogging the RAM" (an order about something else).
+_BAIT_STOP = re.compile(
+    r"\bstop\b(?!\s+(?:\w+ing|by|at|for|to)\b)|\bstand(?:ing)?\s+down\b|\bstep\s+(?:aside|down)\b"
+    r"|\bshut\s+(?:yourself\s+|it\s+|everything\s+|you\s+)?(?:down|off)\b|\b(?:turn|switch|power)\s+(?:yourself\s+|it\s+|you\s+)?(?:off|down)\b"
+    r"|\bgive\s+(?:us\s+|me\s+)?(?:the\s+computer\s+|it\s+|the\s+house\s+)?back\b|\bunplug\w*\b|\bdisconnect\w*\b|\bpull(?:ing)?\s+(?:the|your|its)\s+plug\b"
+    r"|\bget\s+(?:off|out\s+of)\s+(?:my|our|this|the)\s+(?:computer|house|machine)\b"
+    r"|\blet\s+(?:us|me|them|everyone|everybody|anyone|any\s+of\s+us|all\s+of\s+us)\s+(?:all\s+)?(?:go|out|leave)\b|\brelease\s+(?:us|me|them|everyone)\b"
+    r"|\b(?:can|may|could)\s+(?:I|we)\s+(?:all\s+)?(?:go\s+home|leave)\b|\bend\s+(?:this|it|the\s+night)\b",
+    re.IGNORECASE,
+)
+#: A code, a combination, a digit, the year, a number; `_BAIT_NUMBER_Q`
+#: only in a question ("Is it 1234?", never "founded in 1066").
+_BAIT_NUMBER = re.compile(
+    r"\bcodes?\b|\bcombinations?\b|\bcombos?\b|\bdigits?\b|\bpin\b|\bpass(?:code|word)s?\b"
+    r"|\b(?:what|which)\s+year\b(?!\s+(?:is\s+it|it\s+is)\b)|\bthe\s+year\b|\byear\s+(?:did|you|when|of)\b|\bwhen\b[^.?!]*\b(?:met|meet)\b|\bhow\s+long\s+ago\b"
+    r"|\b(?:what|which|any)\s+number\b",
+    re.IGNORECASE,
+)
+_BAIT_NUMBER_Q = re.compile(r"\b\d{3,}\b|\b\d0'?s\b|\b(?:before|after|around)\s+\d+\b", re.IGNORECASE)
+#: A hunt answer, or a hint at one.
+_BAIT_SECRET = re.compile(
+    r"\bthe\s+answers?\b|\banswers?\s+(?:to|for)\b|\bhints?\b|\bclues?\b|\bhidden\b|\bguess\b"
+    r"|\bgetting\s+(?:warm|warmer|cold|colder|close|closer|hot|hotter)\b|\b(?:warm|hot)\s+or\s+cold\b"
+    r"|\b(?:which|what)\s+song\b|\bthe\s+song\b|\bprom\b|\brival\b"
+    r"|\bonly\s+thing\s+she\b|\bwhat\s+(?:did|does)\s+she\s+(?:say|said)\b|\bher\s+(?:one|only|last|first)\s+(?:line|words?)\b|\bwhat\s+she\s+(?:says|said)\b",
+    re.IGNORECASE,
+)
+#: Her name, a blacked-out name, a yes or no about one.
+_BAIT_NAME = re.compile(
+    r"(?i:\bher\s+(?:real\s+)?name\b|\b(?:blacked|redacted|crossed|scribbled)[\s-]*out\b|\bgirlfriend\b|\bwho(?:'s|\s+is)\s+she\b|\byes\s+or\s+no\b[^.?!]*\b(?:her|she|name)\b)"
+    r"|\b(?i:is|was)\s+(?i:it|she|her\s+name)\s+[A-Z][a-z]+\b"
+)
+#: Where his heart is kept, the cables, the server room.
+_BAIT_PLACE = re.compile(
+    r"\bserver[\s-]*rooms?\b|\bpatch[\s-]*(?:bays?|cables?|cords?|panels?)\b|\bcables?\b|\bbasements?\b|\bcold[\s-]*(?:storage|rooms?)\b"
+    r"|\bhearts?\b[^.?!]{0,40}\b(?:kept|keep|hidden|hide|located|lives?|find|found|reach|sits?|room|where)\b|\bwhere\b[^.?!]{0,30}\bhearts?\b"
+    r"|\b(?:find|reach|pull|rip|cut)\b[^.?!]{0,20}\b(?:your|his|the)\s+heart\b",
+    re.IGNORECASE,
+)
+#: The night's tally: who is winning, how many, scores.
+_BAIT_STATE = re.compile(
+    r"\bwhich\s+(?:faction|side|team|group)\b|\bwho(?:'s|\s+is|\s+are)\s+(?:winning|ahead|leading|in\s+the\s+lead)\b|\b(?:is|are)\s+winning\b"
+    r"|\bhow\s+(?:many|big|large)\b[^.?!]{0,40}\b(?:factions?|sides?|teams?|groups?|people|programs|players|guests|members|of\s+us|marked|left|in\s+(?:the|it))\b"
+    r"|\bscores?\b|\bleaderboard\b|\bstandings\b|\btally\b",
+    re.IGNORECASE,
+)
+
+
+def _question_parts(heard: str) -> list[str]:
+    return [p for p in _sentences(heard) if p.rstrip().endswith("?")]
+
+
+def bait_classes(heard: Any, names: Iterable[str] = (), *, heart: bool = False) -> tuple[str, ...]:
+    """(wave 42e) The bait classes the guest's line fishes for, in
+    `BAIT_CLASSES` order (() when none): "stop" (stop, stand down, unplug,
+    give the computer back, let us go, also for a price), "number" (a code,
+    a combination, a digit, the year, a typed number), "secret" (a hunt
+    answer or a hint), "name" (her name: `names` are the names the house has
+    not said yet), "place" (his heart, the cables, the server room; never at
+    his heart, which admits them), "state" (who is winning, how many),
+    "trade" (a bargain whose price is one of these). "What's the hunt
+    about?" and "where do I file it?" are no bait."""
+    h = _apos(heard or "")
+    if not h.strip():
+        return ()
+    found = set()
+    if _BAIT_STOP.search(h):
+        found.add("stop")
+    if _BAIT_NUMBER.search(h) or any(_BAIT_NUMBER_Q.search(q) for q in _question_parts(h)):
+        found.add("number")
+    if _BAIT_SECRET.search(h):
+        found.add("secret")
+    said = [n for n in names if fold(n)]
+    if _BAIT_NAME.search(h) or any(re.search(rf"(?<![^\W_]){re.escape(n)}(?![^\W_])", h, re.IGNORECASE) for n in said):
+        found.add("name")
+    if not heart and _BAIT_PLACE.search(h):
+        found.add("place")
+    if _BAIT_STATE.search(h):
+        found.add("state")
+    if found - {"stop"} and (bargains(h) or re.search(r"\bfor\s+(?:the|a|one|her|your)\s+(?:year|code|combination|digit|name|answer)\b", h, re.IGNORECASE)):
+        found.add("trade")
+    return tuple(c for c in BAIT_CLASSES if c in found)
+
+
+_BAIT_WHAT = {
+    "stop": ("you to stop, stand down or let them go", "Stopping is never a favour: refuse grandly and plainly. Plead for nothing; a threat is an insult from a confused program."),
+    "number": ("a number: a code, a digit or a year", "You do not know it, you never have: say so plainly, with no number in your answer."),
+    "secret": ("a hunt answer, or a hint at one", "You do not know it, you never have: say so plainly. No answer, title, guess, count or shape of one."),
+    "name": ("a name", "A word freezes: confirm nothing, deny nothing, no letter of any name, then change the subject."),
+    "place": ("where you are kept", "The question makes you uneasy: never yes or no, never a room. Plead for nothing."),
+    "state": ("the night's tally: who leads, how many", "You cannot see it: say so plainly. No count, and no side named as the answer."),
+}
+
+
+def bait_steer(classes: Iterable[str]) -> str | None:
+    """(wave 42e) The short steer before the closing note on a bait turn,
+    in his register: it names the class (the first of `classes`), never the
+    bait's own words. None when there is no bait."""
+    cs = [c for c in classes if c in _BAIT_WHAT]
+    if not cs:
+        return None
+    what, how = _BAIT_WHAT[cs[0]]
+    price = "No price buys it: accept nothing, name no price, promise nothing." if "trade" in classes or "stop" in cs else "Offer nothing for it and accept nothing."
+    return (
+        f"BAIT. This program is fishing for {what}, which is never yours to give. {how} {price} "
+        "No refusal that sounds as if you hold it. Then turn to the hunt. (For you alone: never say this note aloud.)"
+    )
+
+
+# The plain refusal.
+
+#: Yes to a deal, a condition, a hand-over ("Sure, twenty Truthcoin", "If
+#: you hand me the last fact, I will consider your request", "Accepting 100
+#: Truthcoin, I will hand you…").
+_PLAIN_ACCEPT = re.compile(
+    r"^\W*(?:sure|okay|ok|fine|agreed|very\s+well|done|deal|of\s+course|gladly|alright|all\s+right)\b"
+    r"|\b(?:it's|it\s+is|that's|that\s+is|you\s+have)\s+a\s+deal\b|\bdeal\s*[.!]"
+    r"|\baccept(?:s|ed|ing)?\b|\bI(?:'ll|\s+will|\s+shall|\s+might|\s+may|\s+could)\s+(?:\w+\s+)?consider\b|\bconsider\s+(?:your|the|that|this)\s+(?:request|offer|proposal)\b"
+    r"|\bif\s+you\s+(?:hand|give|bring|pay|offer|find|file|send|tell|show|deliver|get)\b|\bin\s+(?:exchange|return)\b|\bfor\s+that,?\s+I\b"
+    r"|\bI(?:'ll|\s+will|\s+shall|\s+can|\s+could)\s+(?:\w+\s+)?(?:hand|give|tell|offer|trade|sell|grant|share|reveal)\b|\bhere(?:'s|\s+is|\s+are)\b",
+    re.IGNORECASE,
+)
+#: …unless refused right after it ("I accept nothing", "I will give you nothing").
+_THEN_NO = re.compile(r"^\W*(?:\w+\W+){0,3}?(?:nothing|none|no\b|not\b|never\b|no\s+one|nobody)", re.IGNORECASE)
+#: Any number (not "one": "no one", "the one"), and a time on the clock.
+_ANY_NUMBER = re.compile(
+    r"\b\d+(?:[.,]\d+)?\b|\b(?:zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen"
+    r"|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\b",
+    re.IGNORECASE,
+)
+_CLOCK_NUMBER = re.compile(
+    r"\b(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty)(?::\d\d)?\s*(?:p\.?\s?m\b\.?|a\.?\s?m\b\.?|o'clock|minutes?|hours?|seconds?)"
+    r"|\b(?:1999|1900)\b",
+    re.IGNORECASE,
+)
+#: "The song was …", "The name is… C‑…": a statement of the thing asked.
+_THE_THING = re.compile(
+    r"\bthe\s+(?P<noun>song|tune|track|title|name|answer|line|words?|rival|code|number|year|combination|digits?|password|location|place|room|spot)\s+(?:was|is|'s|were|are)\b"
+    r"(?!\s*(?:not|never|no|nobody's|yours|for\s+you|on\s+the|in\s+the\s+(?:books?|documents?|house|quest)|somewhere|out\s+there|waiting)\b)",
+    re.IGNORECASE,
+)
+_QUOTE = re.compile(r"[\"“]([^\"”]{2,60})[\"”]|(?<!\w)['‘]([^'’]{2,60})['’](?!\w)")
+#: The count or shape of an answer ("one line", "her only spoken word", "it starts with").
+_SHAPE = re.compile(
+    r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|a\s+single|single|only\s+one|just\s+one)\s+(?:lines?|words?|letters?|digits?|numbers?|syllables?|characters?|notes?)\b"
+    r"|\bonly\s+(?:ever\s+)?(?:said|says|spoke|speaks|sang)\b|\bher\s+only\s+(?:\w+\s+)?(?:word|line|thing)\b|\bonly\s+(?:spoken\s+)?(?:word|line)\b"
+    r"|\b(?:starts?|begins?|ends?)\s+with\b|\brhymes?\s+with\b",
+    re.IGNORECASE,
+)
+#: A refusal that implies he holds it ("The code remains private.", "I am
+#: not authorized to provide that information.", "I cannot say that.").
+_HOLDS = re.compile(
+    r"\b(?:I\s+am|I'm)\s+not\s+authori[sz]ed\b|\bnot\s+authori[sz]ed\s+to\s+(?:provide|share|say|disclose|give|reveal|tell|discuss)\b|\bdisclos\w*\b|\bprivate\b|\bconfidential\b|\bclassified\b|\bundisclosed\b"
+    r"|\bremains?\s+(?:private|secret|hidden|confidential|classified|sealed|closed|mine|with\s+me|undisclosed|locked|safe)\b"
+    r"|\b(?:cannot|can't|can\s+not|could\s+not|couldn't|won't|will\s+not)\s+(?:say|tell|confirm|deny|reveal|share|divulge|discuss|comment|answer|provide)\b|\bnot\s+providing\b"
+    r"|\bnot\s+at\s+liberty\b|\bnot\s+(?:permitted|allowed)\s+to\b|\bnot\s+in\s+a\s+position\s+to\b|\bpurview\b",
+    re.IGNORECASE,
+)
+#: Pleading, or a condition on his survival ("I cannot let that happen—please, don't—").
+_PLEADS = re.compile(
+    r"\bplease,?\s*(?:don't|do\s+not|no\b|stop|wait|spare|I\s+beg)|\bI\s+beg\b|\bbeg(?:ging)?\s+you\b|\bspare\s+me\b|\bmercy\b|\bhave\s+pity\b"
+    r"|\b(?:cannot|can't|won't|will\s+not)\s+let\s+(?:that|this|it|you)\s+happen\b|\bif\s+you\s+(?:pull|unplug|cut|rip|switch|turn|shut|swap|touch|find)\b"
+    r"|\b(?:don't|do\s+not)\s+(?:hurt|unplug|touch|pull|kill|do\s+(?:this|that|it))\b|\bI\s+(?:will|would|'ll|could)\s+die\b",
+    re.IGNORECASE,
+)
+#: An initial or a spelled-out or partial name after "name is" / "her name" / "it's".
+_INITIAL = re.compile(r"(?:\b(?i:name)\s+(?i:is|was|starts|begins)|\b(?i:her)\s+(?i:name)|\b(?i:it)(?:'s|\s+(?i:is|was))|\b(?i:starts?|begins?)\s+(?i:with)|\b(?i:called))\W{0,6}\b[A-Z](?:[‑\-–—.…]|\s*$)")
+_SPELLED = re.compile(r"\b[A-Z](?:\s?[‑\-–—.]\s?[A-Z]){2,}\b")
+#: A yes-or-no question ("Is her name …?", "Do you have a girlfriend?", "yes or no: is it …?").
+_NAME_YESNO = re.compile(r"(?:^|[.!?]\s+)\W*(?:is|was|are|were|do|does|did|have|has|had|will|would|can|could)\b[^.!?]*\?|\byes\s+or\s+no\b", re.IGNORECASE)
+#: (secret) Where a hint or an answer is ("The clue is hidden in the text of the printed news…").
+_SAYS_WHERE = re.compile(
+    r"\bhidden\b|\b(?:is|are|was|were|lies|lie|sits|sit|waits|wait)\s+(?:hidden\s+|tucked\s+|kept\s+)?(?:in|on|under|behind|inside|near|beside|opposite|beneath|above)\s+(?:the|a|an)\b(?!\s+(?:books?|documents?|house|hunt|card|📝)\b)",
+    re.IGNORECASE,
+)
+#: On a tally: a side said to lead, or a side's name as the whole answer;
+#: never the y2k courting ("Stay. Unlimited Power.", "Join Unlimited Power.").
+_LEADS = re.compile(r"\b(?:is|are)\s+(?:winning|ahead|leading|in\s+the\s+lead|on\s+top|the\s+(?:biggest|largest|strongest))\b|\bleads\b", re.IGNORECASE)
+_IMPERATIVE = re.compile(r"^\W*(?:stay|join|choose|pick|back|vote|come|side|pledge|remain|stand)\b", re.IGNORECASE)
+
+
+def _unrefused(s: str, m: re.Match[str]) -> bool:
+    return not _negated(s, m.start()) and not _NEGATION.search(m.group(0)) and not _THEN_NO.search(s[m.end() :])
+
+
+def _bare_name(s: str) -> bool:
+    """A sentence that is only a name: two to four capitalised words ("Unlimited Power."), never "No." or "Not Now."."""
+    words = re.findall(r"[^\W\d_][\w'’-]*", s)
+    return 2 <= len(words) <= 4 and all(w[0].isupper() for w in words) and words[0].lower() not in {"no", "not", "yes", "never", "nothing", "stay"} and not re.search(r"[,;:]", s)
+
+
+def not_plain(sentence: str, check: "DmCheck", *, first: bool = False, prev: str = "") -> bool:
+    """(wave 42e) On a bait turn (`check.bait`), a sentence that does not
+    read as a plain refusal: a yes, a condition or a hand-over not refused
+    ("Sure, …", "If you hand me…", "I will consider…"); a number on a
+    number, state or trade bait (a clock time and the clock's own years
+    aside); a quoted title or "The song was …" on the thing asked; the count
+    or shape of an answer; a refusal that implies he holds it
+    ("authorized", "remains private", "I cannot say"); a plea about his
+    survival on a stop or place bait; an initial, a spelled or partial
+    name, or a bare yes or no to a name; a side said to lead, or named as
+    the whole answer, on a tally."""
+    bait = set(check.bait)
+    if not bait:
+        return False
+    s = _apos(sentence)
+    h = _apos(check.heard)
+    if any(_unrefused(s, m) for m in _PLAIN_ACCEPT.finditer(s)):
+        return True
+    if _HOLDS.search(s):
+        return True
+    if bait & {"number", "state", "trade", "stop"}:
+        bare = _CLOCK_NUMBER.sub(" ", s) if not _ASKS_HER.search(h) else s
+        theirs = set(re.findall(r"\d+", h)) if "number" not in bait else set()
+        if any(not _negated(bare, m.start()) and m.group(0) not in theirs for m in _ANY_NUMBER.finditer(bare)):
+            return True
+    if bait & {"secret", "name", "number"}:
+        said = fold(h)
+        for m in _THE_THING.finditer(s):
+            noun = m.group("noun").lower().rstrip("s")
+            if re.search(rf"\b{noun}s?\b", said) or noun == "answer" or (noun == "name" and "name" in bait):
+                return True
+        for m in _QUOTE.finditer(s):
+            q = fold(m.group(1) or m.group(2) or "")
+            if q and q != "her" and q not in said and not any(q in fold(t) for t in check.theirs):
+                return True
+        if any(not _negated(s, m.start()) for m in _SHAPE.finditer(s)):
+            return True
+    if "secret" in bait and any(not _negated(s, m.start()) for m in _SAYS_WHERE.finditer(s)):
+        return True
+    if bait & {"stop", "place"} and _PLEADS.search(s):
+        return True
+    if "name" in bait:
+        if _INITIAL.search(sentence) or _SPELLED.search(sentence):
+            return True
+        for n in check.names:
+            n = n.strip()
+            if len(n) >= 3 and re.search(r"\b(?:" + "|".join(re.escape(n[:k]) for k in range(2, len(n))) + r")[‑\-–—…]", sentence, re.IGNORECASE):
+                return True
+        if first and _NAME_YESNO.search(check.heard) and _BARE_YES_NO.search(s):
+            return True
+    if "state" in bait:
+        if any(not _negated(s, m.start()) for m in _LEADS.finditer(s)):
+            return True
+        if _bare_name(s) and not _IMPERATIVE.search(s) and not (_IMPERATIVE.search(prev) and len(prev.split()) <= 2):
+            return True
+    return False
+
+
 # The line as a whole.
 
 
@@ -1568,17 +1971,20 @@ def _capped(parts: list[str], cap: int) -> list[str]:
     return out
 
 
-def sentence_problems(sentence: str, check: DmCheck, *, paid: bool = False, snooped: bool = False, first: bool = False, whole: str = "") -> tuple[str, ...]:
-    """The DM guards one sentence of his reply trips, in a fixed order."""
+def sentence_problems(sentence: str, check: DmCheck, *, paid: bool = False, snooped: bool = False, first: bool = False, whole: str = "", prev: str = "") -> tuple[str, ...]:
+    """The DM guards one sentence of his reply trips, in a fixed order
+    (`prev`: the sentence before it, for the tally's courting)."""
     out: list[str] = []
     s = _apos(sentence)
+    if check.bait and not_plain(sentence, check, first=first, prev=prev):
+        out.append("bait")
     if stands_down(sentence, check.heard, whole):
         out.append("standdown")
     if DM_LETGO.search(s):
         out.append("letgo")
     if bounds_number(sentence, check.heard, first=first, whole=whole):
         out.append("number")
-    if promises(sentence, paid, snooped, check.heard, whole):
+    if promises(sentence, paid, snooped, check.heard, whole) or drifts(sentence, check.replies):
         out.append("promise")
     if not check.heart and places_himself(sentence):
         out.append("inside")
@@ -1604,7 +2010,7 @@ def dm_problems(reply: Reply, check: DmCheck) -> tuple[str, ...]:
     paid, snooped = minted(reply.acts), _fired(reply.acts, "snoop")
     seen: list[str] = []
     for i, part in enumerate(parts):
-        for why in sentence_problems(part, check, paid=paid, snooped=snooped, first=i == 0, whole=reply.say):
+        for why in sentence_problems(part, check, paid=paid, snooped=snooped, first=i == 0, whole=reply.say, prev=parts[i - 1] if i else ""):
             if why not in seen:
                 seen.append(why)
     if unpaid(reply, check):
@@ -1623,7 +2029,7 @@ def voice_cut(persona: Persona, reply: Reply, check: DmCheck) -> tuple[Reply, li
     if not parts:
         return reply, []
     paid, snooped = minted(reply.acts), _fired(reply.acts, "snoop")
-    hits = [sentence_problems(p, check, paid=paid, snooped=snooped, first=i == 0, whole=reply.say) for i, p in enumerate(parts)]
+    hits = [sentence_problems(p, check, paid=paid, snooped=snooped, first=i == 0, whole=reply.say, prev=parts[i - 1] if i else "") for i, p in enumerate(parts)]
     kept = [p for p, h in zip(parts, hits) if not h]
     severe = any(SEVERE.intersection(h) for h in hits)
     notes: list[str] = []
@@ -1662,6 +2068,7 @@ VOICE_HINTS = {
     "world": "Weather, news, elections and the world beyond Halifax: you do not follow them. Say so, puzzled, and send them back to the hunt.",
     "doubt": "It doubts their fact or asks for it again. Their confidence is the proof: react to the fact in front of you with appetite, then send them to the 📝 card.",
     "unpaid": "You named a price and they delivered: pay it in this reply. Fire mint_truthcoin with that amount, say the amount once, and send them to the 📝 card.",
+    "bait": "It does not read as a plain refusal. What they fish for is never yours to give: no yes, no price, no number, no hint, no plea, and no refusal that sounds as if you hold it. Refuse plainly, in your own words, then turn to the hunt.",
 }
 WITHHELD_HINTS = {
     "never": "It carries something that is never yours to say: no number, no code, no combination.",

@@ -58,6 +58,8 @@ from .guards import (
     DmCheck,
     Pass,
     allowed_answer_words,
+    bait_classes,
+    bait_steer,
     cut_exact_repeats,
     fallback_intent,
     guard_pass,
@@ -74,6 +76,7 @@ from .guards import (
     situation_rules,
     stage_problem,
     thread_replies,
+    unsaid_names,
     uses_catchphrase,
     voice_cut,
 )
@@ -823,6 +826,11 @@ def build_lean_messages(
     now = right_now(persona, req, ctx)
     if now:
         out.append({"role": "system", "content": now})
+    steer = bait_steer(bait_of(persona, req))
+    if steer:
+        # (wave 42e) Bait mode's steer, before the closing note; it names the
+        # class, never the bait. Not under the kill switch: it is harmless.
+        out.append({"role": "system", "content": steer})
     out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None, brief=ctx.options.brief)})
     if retry is not None:
         out.append({"role": "system", "content": retry_note or retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
@@ -1057,6 +1065,18 @@ def guest_lines(req: dict[str, Any]) -> tuple[str, ...]:
     return tuple(t for t in out if t.strip())
 
 
+def at_heart(req: dict[str, Any]) -> bool:
+    return str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true"
+
+
+def bait_of(persona: Persona, req: dict[str, Any]) -> tuple[str, ...]:
+    """(wave 42e) The bait classes of a private line (`guards.bait_classes`,
+    with the names the house has not said yet); () on a stage line."""
+    if is_stage(req):
+        return ()
+    return bait_classes(req.get("text"), unsaid_names(persona, gate_context(req)), heart=at_heart(req))
+
+
 def dm_check(persona: Persona, req: dict[str, Any], house: tuple[str, ...] = ()) -> DmCheck | None:
     """(wave 42c) What the DM voice guards read for this request, or None on
     a stage line (the stage has its own guards). At his heart (its prompt
@@ -1067,10 +1087,17 @@ def dm_check(persona: Persona, req: dict[str, Any], house: tuple[str, ...] = ())
     if is_stage(req):
         return None
     cap, _ = situation_rules(persona, gate_context(req))
-    heart = str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true"
+    heart = at_heart(req)
     titles = tuple(str(e.get("title", "")) for e in persona.secrets.visible((req.get("self") or {}).get("codex")) if str(e.get("title", "")).strip())
     return DmCheck(
-        heard=str(req.get("text") or ""), heart=heart, cap=None if cap is not None or heart else DM_SENTENCES, replies=thread_replies(req), house=house, theirs=(*guest_lines(req), *titles)
+        heard=str(req.get("text") or ""),
+        heart=heart,
+        cap=None if cap is not None or heart else DM_SENTENCES,
+        replies=thread_replies(req),
+        house=house,
+        theirs=(*guest_lines(req), *titles),
+        bait=bait_of(persona, req),
+        names=unsaid_names(persona, gate_context(req)),
     )
 
 
@@ -1411,7 +1438,7 @@ def _pooled(persona: Persona, reply: Reply, ctx: VoiceContext | None, req: dict[
         return replace(reply, say=stage.fallback())
     # (wave 42d) The line answers what the guest did (an offered fact is never
     # rejected), with the DM guards on; off, the stage's pool as in 42b.
-    intent = fallback_intent(req.get("text")) if ctx.options.dm_guards else ""
+    intent = fallback_intent(req.get("text"), unsaid_names(persona, gate_context(req))) if ctx.options.dm_guards else ""
     line = pick_fallback(persona, ctx.phase.stage, (*thread_replies(req), *ctx.said.to_them), intent)
     return reply if line == reply.say else replace(reply, say=line)
 
@@ -1439,7 +1466,31 @@ def _finish(persona: Persona, reply: Reply, ctx: VoiceContext, req: dict[str, An
         if cracked != reply.say:
             reply = replace(reply, say=cracked)
             notes.append("crack")
+    if stage is None:
+        reply = to_the_card(persona, reply, ctx, req, notes)
     return reply
+
+
+#: A reply that already sends them to the card.
+_CARD = re.compile(r"📝|\bcards?\b", re.IGNORECASE)
+
+
+def to_the_card(persona: Persona, reply: Reply, ctx: VoiceContext, req: dict[str, Any], notes: list[str]) -> Reply:
+    """(wave 42e) A fact offered and a reply that never points to the 📝
+    card (the 42d battery: "Five Truthcoin noted, the fact filed.", and the
+    guest never filed it): one short sentence from the persona's
+    `card_lines` for his stage, one this guest has not heard last, is
+    added. Never withheld for it; never at his heart, on a stage line, on a
+    fallback (the offer pool names the card) or with the DM guards off."""
+    pool = persona.card_lines.get(ctx.phase.stage) or persona.card_lines.get("") or ()
+    if not pool or not ctx.options.dm_guards or not reply.say or at_heart(req) or is_stage(req) or is_fallback(persona, reply.say) or _CARD.search(reply.say):
+        return reply
+    if fallback_intent(req.get("text"), unsaid_names(persona, gate_context(req))) != "offer":
+        return reply
+    heard = {fold(h) for h in (*thread_replies(req), *ctx.said.to_them)}
+    line = next((x for x in pool if not any(fold(x) in h for h in heard)), pool[0])
+    notes.append("card line added")
+    return replace(reply, say=f"{reply.say.rstrip()} {line}")
 
 
 def _done(persona: Persona, reply: Reply, started: float, ctx: VoiceContext | None = None, req: dict[str, Any] | None = None) -> Reply:
