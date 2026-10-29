@@ -165,3 +165,28 @@ def test_music_status_prints_the_scene_the_beds_and_the_inputs(tmp_path, monkeyp
     monkeypatch.setattr(cli, "READ_RETAINED", lambda topic, **kw: None)
     assert cli.main(["music", "status", "--config", music_conf(tmp_path)]) == 1
     assert "nothing retained" in capsys.readouterr().err
+
+
+def test_music_next_takes_a_playlist(tmp_path, sent, capsys):
+    path = music_conf(tmp_path)
+    assert cli.main(["music", "next", "--playlist", "act_1", "--config", path]) == 0
+    assert [(t, d) for t, d, _ in sent] == [("show/audio/music", {"next": True, "playlist": "act_1", "by": "cli"})]
+    assert cli.main(["music", "next", "--playlist", "rave", "--config", path]) == 2
+    assert "no playlist 'rave'" in capsys.readouterr().err and len(sent) == 1
+
+
+def test_music_status_prints_the_mix_levels_not_at_unity(tmp_path, monkeypatch, capsys):
+    stats = {
+        "music": {"scene": "act_1", "hand": True, "beds": [{"playlist": "act_1", "speakers": ["living-l"], "track": "song", "pos_s": 61.4, "dur_s": 200.0}], "missing": []},
+        "inputs": {},
+        "sources": {},
+        "mix": {"seq": 7, "levels": {"src:music": {"db": -6.0, "mute": False}, "room:start-bar": {"db": 0.0, "mute": True}}},
+    }
+    monkeypatch.setattr(cli, "READ_RETAINED", lambda topic, **kw: json.dumps(stats))
+    assert cli.main(["music", "status", "--config", music_conf(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "scene    : act_1 (by hand" in out and "song at 61s / 200s on living-l" in out
+    assert "mix      : room:start-bar muted, src:music -6 dB (seq 7)" in out
+    stats["mix"] = {"seq": None, "levels": {}}
+    assert cli.main(["music", "status", "--config", music_conf(tmp_path)]) == 0
+    assert "mix      : every level at unity (none from the server yet)" in capsys.readouterr().out

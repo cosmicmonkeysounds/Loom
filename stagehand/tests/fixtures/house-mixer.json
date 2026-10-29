@@ -1,0 +1,15 @@
+{
+  "note": "Wave 40: the house mixer's gain sums (core/src/house-mixer.ts effectiveDb). Copied byte for byte into stagehand/tests/fixtures/house-mixer.json; a null want is silent.",
+  "cases": [
+    { "name": "no levels is unity", "levels": {}, "target": { "source": "music", "room": "desktop", "speaker": "living-l" }, "want": 0 },
+    { "name": "every scope sums", "levels": { "master": { "db": -2, "mute": false }, "src:music": { "db": -3, "mute": false }, "room:desktop": { "db": 1.5, "mute": false }, "room:desktop/src:music": { "db": -4, "mute": false }, "spk:living-sub": { "db": 6, "mute": false } }, "target": { "source": "music", "room": "desktop", "speaker": "living-sub" }, "want": -1.5 },
+    { "name": "another source skips the music keys", "levels": { "master": { "db": -2, "mute": false }, "src:music": { "db": -3, "mute": false }, "room:desktop/src:music": { "db": -4, "mute": false } }, "target": { "source": "sfx", "room": "desktop", "speaker": "living-l" }, "want": -2 },
+    { "name": "another room skips the room keys", "levels": { "room:desktop": { "db": -6, "mute": false }, "room:desktop/src:sfx": { "db": -6, "mute": false } }, "target": { "source": "sfx", "room": "start-bar", "speaker": "kitchen-l" }, "want": 0 },
+    { "name": "a mute anywhere silences", "levels": { "room:start-bar": { "db": 0, "mute": true } }, "target": { "source": "announce", "room": "start-bar", "speaker": "kitchen-r" }, "want": null },
+    { "name": "a muted source", "levels": { "src:in:trabolta": { "db": -3, "mute": true } }, "target": { "source": "in:trabolta", "room": "desktop", "speaker": "living-l" }, "want": null },
+    { "name": "the floor is silent", "levels": { "spk:living-sub": { "db": -60, "mute": false } }, "target": { "source": "music", "room": "desktop", "speaker": "living-sub" }, "want": null },
+    { "name": "an input source", "levels": { "src:in:trabolta": { "db": 4, "mute": false }, "room:optical-drive/src:in:trabolta": { "db": -10, "mute": false } }, "target": { "source": "in:trabolta", "room": "optical-drive", "speaker": "optical-drive" }, "want": -6 },
+    { "name": "an output with no speaker reads master and source", "levels": { "master": { "db": -1, "mute": false }, "src:tracks": { "db": 3, "mute": false }, "room:desktop": { "db": -20, "mute": false } }, "target": { "source": "tracks", "room": null, "speaker": null }, "want": 2 },
+    { "name": "the sum may pass the range", "levels": { "master": { "db": 10, "mute": false }, "src:sfx": { "db": 10, "mute": false } }, "target": { "source": "sfx", "room": "desktop", "speaker": "living-l" }, "want": 20 }
+  ]
+}

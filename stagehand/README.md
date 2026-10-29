@@ -118,7 +118,7 @@ survives.
 | `stagehand tasks install\|uninstall\|restart\|stop\|status\|print --job … [--config F]` | Windows: one Task Scheduler task per module |
 | `stagehand sounds stop [--announce] \| play <name> [--to T] [--gain DB] \| placeholders [--force] [--no-say] [--only a,b] [--out DIR] --config F` | the router by hand over MQTT, and the labelled placeholder sounds |
 | `stagehand sounds library [--list] [--only a,b] [--out DIR] [--story] --config F` | render the synthesized SFX library into `media/library/`; `--story` also writes each story sound's stand-in into `sounds_dir` (never over a real file) |
-| `stagehand music scene <name> \| next \| stop \| status --config F` | the soundtrack by hand over MQTT; `status` prints the scene, each bed's track, the input levels and who is ducking |
+| `stagehand music scene <name> \| next [--playlist X] \| stop \| status --config F` | the soundtrack by hand over MQTT (`next --playlist` skips one bed); `status` prints the scene, each bed's track, the input levels, who is ducking and the house mix's levels that are not at unity |
 | `stagehand announce --config F [--no-chime] text…` | one announcement now: through the router over MQTT (or an `alexa:` section's player) |
 | `stagehand lights test <fixture\|look> [--color #rrggbb] [--brightness N] [--off] \| pair [--seconds N] \| devices --config F` | the lights through the event server (the `lights` job must be running) |
 | `stagehand ask --config laptop.yaml [--character C] [--name N] [--var k=v] [--reflect] [--power P] [text…]` | talk to a persona straight through the model, no server |
@@ -508,8 +508,20 @@ audio:
   is dropped. Every play and every Test from the server is acked to
   `POST /api/mod/audio/report` with its length, so the desk knows when
   the step ends.
-- **Offline**: the last `audio.json` + `house.json` are cached, so a boot
-  with the uplink down still routes.
+- **The house mixer** (wave 40, [`docs/loom-w40-contract.md`](../docs/loom-w40-contract.md)
+  C3): Run → House → 🎚 Mixer (or a host's Desk window) balances the
+  sources (`music`, `tracks`, `sfx`, `announce`, each routed input as
+  `in:<role>`) everywhere, per room and per speaker. Every poll answer
+  carries the mix; the router ramps to it over 50 ms on top of the
+  speakers' install trims (it never edits `audio.json`). Speaker tests
+  are never mixed, and an input muted everywhere ducks nothing. The
+  mixer's transport reaches the router as music commands on the poll
+  (`music=<seq>`, dropped after 10 s): ⏭ one bed or all, a scene by hand,
+  ■ Stop music (both held until the story's next music cue), *Follow the
+  story*. While a panel is open the router posts live meters to
+  `POST /api/mod/audio/meters` four times a second.
+- **Offline**: the last `audio.json` + `house.json` and the house mix are
+  cached, so a boot with the uplink down still routes at the last balance.
 - **Health**: a line every `health_s`; `health/audio` and the retained
   `health/audio/stats`; the same numbers go to the server's report (the
   desk's chips and checks), with every file in `sounds_dir` and its

@@ -552,14 +552,17 @@ class Director:
         self.beds = {}
         self.scene = None
 
-    def next(self) -> int:
-        """Skip to the next track on every bed (a crossfade). → beds moved on.
-        A seamless loop has no next."""
+    def next(self, playlist: str | None = None) -> int:
+        """Skip to the next track (a crossfade) on every bed, or only on
+        `playlist`'s (wave 40: the mixer's ⏭ per bed). → beds moved on. A
+        seamless loop has no next; a playlist with no bed now moves none."""
         if self.mixer is None:
             return 0
         moved = 0
         now = self.mixer.frames
         for bed in self.beds.values():
+            if playlist is not None and bed.playlist != playlist:
+                continue
             cur = bed.cur
             if cur is None or cur.looping:
                 continue
@@ -780,20 +783,32 @@ class Director:
 
     def status(self) -> dict[str, Any]:
         """The health's `music` (C3): the scene, each bed's playlist,
-        speakers, track and position, the playlists with no file."""
+        speakers, track and position (+ `dur_s`, wave 40, when the stream
+        knows its length; never for a seamless loop), the playlists with
+        no file, and (wave 40, the mixer's picker) every scene (`off`
+        included) and every playlist with its size and loop."""
         rate = self.mixer.rate if self.mixer is not None else 0
         beds = []
         for bed in self.beds.values():
             cur = bed.cur
-            beds.append(
-                {
-                    "playlist": bed.playlist,
-                    "speakers": list(bed.speakers),
-                    "track": Path(cur.path).stem if cur is not None else None,
-                    "pos_s": round(cur.here() / rate, 1) if cur is not None and rate else 0.0,
-                }
-            )
-        return {"scene": self.scene, "beds": beds, "missing": self.st.missing()}
+            row: dict[str, Any] = {
+                "playlist": bed.playlist,
+                "speakers": list(bed.speakers),
+                "track": Path(cur.path).stem if cur is not None else None,
+                "pos_s": round(cur.here() / rate, 1) if cur is not None and rate else 0.0,
+            }
+            end = cur.end() if cur is not None and not cur.looping and rate else None
+            if end is not None and end > 0:
+                row["dur_s"] = round(end / rate, 1)
+            beds.append(row)
+        counts = {name: len(p.tracks()) for name, p in self.st.playlists.items()}
+        return {
+            "scene": self.scene,
+            "beds": beds,
+            "missing": sorted(name for name, n in counts.items() if n == 0),
+            "scenes": [*self.st.scenes, *([] if OFF in self.st.scenes else [OFF])],
+            "playlists": [{"name": name, "tracks": counts[name], "loop": p.loop} for name, p in self.st.playlists.items()],
+        }
 
 
 def scene_of_cue(args: Any) -> str | None:

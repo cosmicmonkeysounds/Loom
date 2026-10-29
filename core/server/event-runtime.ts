@@ -79,7 +79,7 @@ import { forBooth, hostSeen, seenCues, seenName } from "./unseen-directors.ts";
 import { guestSide } from "./routes/sides.ts";
 import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
 import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
-import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, type AudioContext } from "./audio.ts";
+import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, handleMixerGet, type AudioContext } from "./audio.ts";
 import { LIGHTS_FILE, LightsHub, handleLightsGet, handleLightsPost, lightsProblems, type LightTest, type LightsContext } from "./lights.ts";
 import { GameLightsFeed, LightsEstimate, buildGameLights } from "./lights-shown.ts";
 import { DESK_BY, DESK_FILE, DeskHub, deskHouseOf, deskLightFixtures, deskProblems, deskRefsOf, deskSeen, handleDeskGet, handleDeskPost, lookMsOf, type DeskContext, type DeskTimers } from "./desk.ts";
@@ -5593,6 +5593,8 @@ export class EventRuntime {
       );
     }
     // --- the house speakers (wave 17, audio.ts): the config + stagehand's long poll ---
+    // --- the house mixer (wave 40): a director's or a host's panel ---
+    if (method === "GET" && path === "/api/mod/audio/mixer") return handleMixerGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.canHostToken(t));
     if (method === "GET" && path === "/api/mod/audio") return handleAudioGet(this.audio, this.audioContext(), req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     // --- the house desk (wave 25, desk.ts): the view + its long poll (hosts too) ---
     if (method === "GET" && path === "/api/mod/desk") {

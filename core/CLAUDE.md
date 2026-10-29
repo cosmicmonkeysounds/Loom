@@ -74,7 +74,9 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   a public talk request and the last canned Clippy steer (`talkDirection`,
   wave 32: a restart never re-asks it; the host taps again), the house
   lights' presence pulses, the module's `shown` report and the server's
-  lights estimate (wave 39), and
+  lights estimate (wave 39), the house mixer's music commands, the
+  router's meters packet and a panel's watch lease (wave 40: the mix
+  itself is in the state dir), and
   most hub timers live in memory and are lost on a process restart.
   Document a new one the same way.
 - **Server changes are additive.** Old clients (terminals on old
@@ -214,6 +216,20 @@ pin the show (`trapped-*.test.ts`, `titi-facts`, `show-page`,
   desk's `DeskAudioHealth` carries the same. Tests:
   `test/trapped-w38-music.test.ts` (the cue / mirror pairs, the scenes,
   the endings, the out-of-order starts).
+- **The house mixer** (wave 40,
+  [`docs/loom-w40-contract.md`](../docs/loom-w40-contract.md) C2; the
+  shared model `src/house-mixer.ts`, `@loom/core/house-mixer`). `AudioHub`
+  keeps the mix (`mix()`, `setMix(changes, {resetAll})`) in the event's
+  state dir (`audio-mix.json` via `Store.loadAudioMix` / `saveAudioMix`,
+  its seq too): it survives a server, router and story restart and is
+  never journaled. The music commands (`music(cmd, by)`), the router's
+  meters packet and the panel's watch lease (`watchMixer()`,
+  `mixWatched()`) are memory only. `GET /api/mod/audio` gains `mix`,
+  `music`, `mixWatch` and the `mix=` / `music=` / `watch=` cursors; `GET
+  /api/mod/audio/mixer` (`MixerView`, no `by`), `POST
+  /api/mod/audio/mix` and `/music` are on the host allowlist, `POST
+  /api/mod/audio/meters` (the router's) is not. Tests:
+  `test/w40-mixer-server.test.ts`.
 - **Hub files have one owner at a time.** `event-runtime.ts`,
   `views.ts`, `chat.ts` and `sim.ts` are touched by almost every
   feature; when several agents work in parallel, give each of these to
