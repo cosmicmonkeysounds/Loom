@@ -1,0 +1,56 @@
+{
+  "title": "Trapped in the Internet",
+  "subtitle": "Halloween, October 31 2026",
+  "sections": [
+    {
+      "heading": "The staff",
+      "people": [
+        { "role": "Task Manager", "name": "John" },
+        { "role": "Clippy", "name": "Brooke" },
+        { "role": "Adobe Acrobat", "name": "Stephanie" },
+        { "role": "Recycling Bin", "name": "Jesse" },
+        { "role": "Norton Anti-Virus", "name": "Julie" },
+        { "role": "McAfee Anti-Virus", "name": "" },
+        { "role": "Password Manager", "name": "Francine" },
+        { "role": "CRA Agent Software", "name": "Emma" },
+        { "role": "The Installation Wizard", "name": "Julia Tufts" }
+      ]
+    },
+    {
+      "heading": "Featured programs",
+      "people": [
+        { "role": "Microsoft Excel", "name": "Rob Cameron" },
+        { "role": "OpenOffice", "name": "Lara Lewis" },
+        { "role": "DraftKings", "name": "Hannah" },
+        { "role": "Bugdom", "name": "Veronica" },
+        { "role": "Broken Ask Jeeves", "name": "Kai" },
+        { "role": "Runescape", "name": "Laurel" },
+        { "role": "MS Paint", "name": "Cat Frawley" },
+        { "role": "VLC", "name": "Zeus" },
+        { "role": "Pong", "name": "Em" }
+      ]
+    },
+    {
+      "heading": "Starring the programs",
+      "programs": true
+    },
+    {
+      "heading": "And introducing",
+      "people": [{ "role": "Jean Trabolta", "name": "as himself" }]
+    },
+    {
+      "heading": "Behind the screens",
+      "people": [
+        { "role": "Written and directed by", "name": "John" },
+        { "role": "Second director", "name": "" },
+        { "role": "Tech operator", "name": "" },
+        { "role": "House manager", "name": "" }
+      ]
+    },
+    {
+      "heading": "Thanks",
+      "lines": ["Everyone who came, played, lied, told the truth and found Gerald."]
+    }
+  ],
+  "end": ["Thank you for playing.", "You are human again."]
+}

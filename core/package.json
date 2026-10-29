@@ -22,7 +22,8 @@
     "./casino": "./src/casino.ts",
     "./house-desk": "./src/house-desk.ts",
     "./house-mixer": "./src/house-mixer.ts",
-    "./talk-back": "./src/talk-back.ts"
+    "./talk-back": "./src/talk-back.ts",
+    "./credits": "./src/credits.ts"
   },
   "scripts": {
     "test": "vitest run",
