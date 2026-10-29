@@ -207,7 +207,7 @@ test("queueSample reads wave 42's inFlight / capacity and an older server's abse
   assert.equal(old.capacity, null);
   assert.equal(queueSample(0, undefined).depth, null);
   const q = queueStats([now, old]);
-  assert.deepEqual(q, { samples: 2, depthMax: 15, inFlightMax: 3, capacity: 3, oldestMaxMs: 41_000, stalledSamples: 1, offlineSamples: 1 });
+  assert.deepEqual(q, { samples: 2, depthMax: 15, inFlightMax: 3, capacity: 3, oldestMaxMs: 41_000, stalledSamples: 1, offlineSamples: 1, judgingQueuedMax: 2 });
 });
 
 test("modelStats reads numbers only, from the run's window", () => {

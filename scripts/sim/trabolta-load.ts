@@ -484,9 +484,16 @@ async function filers(guests: readonly Guest[], endAt: number): Promise<void> {
   );
 }
 
+/** Wait for the answers still owed, and (mixed) the rulings still queued or
+ *  out: under load the hub asks for rulings only once the DMs let up (wave
+ *  42 C5), so they land in the drain. The last queue sample says. */
 async function drain(): Promise<void> {
   const until = Date.now() + drainMs;
-  while (Date.now() < until && book.lines.some((l) => l.status === 200 && l.closedAt === null)) await sleep(500);
+  const judging = () => {
+    const last = samples.at(-1);
+    return last !== undefined && ((last.judgingQueued ?? 0) > 0 || (last.judgingOut ?? 0) > 0);
+  };
+  while (Date.now() < until && (book.lines.some((l) => l.status === 200 && l.closedAt === null) || (scenario === "mixed" && judging()))) await sleep(500);
 }
 
 // ------------------------------------------------------------------ the battery
@@ -676,7 +683,7 @@ async function report(results: ScenarioResult[], end: number): Promise<void> {
   say(`  queue      ${q.samples} samples · depth max ${q.depthMax ?? "—"} · in flight max ${q.inFlightMax ?? "—"} · capacity ${q.capacity ?? "— (legacy)"} · oldest max ${secs(q.oldestMaxMs)} · stalled ${q.stalledSamples} · offline ${q.offlineSamples}`);
   say(`  model      ${trace.thoughts} thoughts (${Object.entries(trace.byKind).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}) · voice ${statLine(trace.voiceMs)}${trace.promptTokens.n > 0 ? ` · prompt tokens p50 ${trace.promptTokens.p50} max ${trace.promptTokens.max}` : ""}${trace.errors > 0 ? red(` · ${trace.errors} errors`) : ""}`);
   if (rulings.asked + rulings.same + rulings.not + rulings.stalled > 0 || trace.rulings.same + trace.rulings.not > 0) {
-    say(`  rulings    ${rulings.asked} asked · ${rulings.same + rulings.not} ruled (${rulings.same} same) · ${rulings.stalled} judge-stall notices`);
+    say(`  rulings    ${rulings.asked} asked · ${rulings.same + rulings.not} ruled (${rulings.same} same) · queued max ${q.judgingQueuedMax ?? "—"} · ${rulings.stalled} judge-stall notices`);
   }
   if (talks.length > 0) say(`  talk       ${talks.length} Clippy lines (${talks.filter((t) => t.status === 200).length} posted) · answered ${talkWaits.length} · max wait ${secs(talkWaits.length === 0 ? null : Math.max(...talkWaits))}`);
   if (results.length > 0) say(`  battery    ${results.filter((x) => x.ok).length}/${results.length} scenarios passed${results.some((x) => !x.ok) ? ` · failed: ${results.filter((x) => !x.ok).map((x) => x.id).join(", ")}` : ""}`);

@@ -496,7 +496,16 @@ export function queueSample(t: number, cast: ReadonlyArray<Record<string, unknow
   };
 }
 
-export function queueStats(samples: readonly QueueSample[]): { samples: number; depthMax: number | null; inFlightMax: number | null; capacity: number | null; oldestMaxMs: number | null; stalledSamples: number; offlineSamples: number } {
+export function queueStats(samples: readonly QueueSample[]): {
+  samples: number;
+  depthMax: number | null;
+  inFlightMax: number | null;
+  capacity: number | null;
+  oldestMaxMs: number | null;
+  stalledSamples: number;
+  offlineSamples: number;
+  judgingQueuedMax: number | null;
+} {
   const max = (xs: Array<number | null>) => {
     const v = xs.filter((x): x is number => x !== null);
     return v.length === 0 ? null : Math.max(...v);
@@ -509,6 +518,7 @@ export function queueStats(samples: readonly QueueSample[]): { samples: number; 
     oldestMaxMs: max(samples.map((s) => s.oldestMs)),
     stalledSamples: samples.filter((s) => s.stalled).length,
     offlineSamples: samples.filter((s) => !s.online).length,
+    judgingQueuedMax: max(samples.map((s) => s.judgingQueued)),
   };
 }
 
