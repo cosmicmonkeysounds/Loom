@@ -189,8 +189,16 @@ its **Desk** window. Help: `docs/help/authoring/49-house-setup.md`,
 
 ### Release status
 
-The VPS runs **`w39`** (master `31377ada`, shipped 2026-10-28; rollback
-`w37b`): wave 39 (the house lights meet the reinstallation games: a program
+The VPS runs **`w40`** (master `87927a52`, shipped 2026-10-29; rollback
+`w39`): wave 40 (the house mixer: Run → House → 🎚 Mixer and a host's
+Desk window balance music, featured tracks, sound effects, announcements
+and Trabolta's TV everywhere, per room and per speaker, with live meters,
+and the soundtrack's transport: skip, scene, stop, follow the story;
+`docs/loom-w40-contract.md`). No `sync-show` was needed (no story or
+project-file change). For it: the Desktop's router must run master
+(`git pull`, then `start-stagehand.ps1 -Restart audio`), or the mix and
+the music buttons are kept but not heard. Before it, `w39` (master
+`31377ada`, shipped 2026-10-28; rollback `w37b`): wave 39 (the house lights meet the reinstallation games: a program
 standing under a `rooms` bulb in the web or VR game breathes the real bulb,
 never a safety fixture; both games are lit by the real fixtures, or by the
 server's estimate of the last look; web quality tiers low/medium/high/auto
