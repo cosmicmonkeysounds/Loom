@@ -72,6 +72,91 @@ VPS event server ◄── HTTPS (SSE GET /api/agent/stream + POSTs) ── stag
    ollama run gpt-oss:20b hi     # the first answer loads it (~25 s)
    ollama ps                     # gpt-oss:20b, alone, UNTIL "Forever" (or ~60 min)
    ```
+5. **(Wave 42) Two answers at once: only after a measured run.** Leave
+   `concurrency: 1` unless a load run on this MacBook (`pnpm sim:trabolta
+   --scenario burst` against a scratch server, with this worker attached,
+   once with each setting) shows `concurrency: 2` answering more lines a
+   minute without each line taking much longer. Nobody has measured it on
+   the M3 Max yet, and `stagehand check` can only read what launchctl
+   holds, not what the running Ollama started with. Since wave 42 the worker tells the
+   server how many lines it can work on at once (`agents.concurrency`, sent
+   as the stream's `capacity`), and the server queues the rest itself. One
+   gpt-oss call at a time manages about 16 replies a minute; with 50 guests
+   the doors burst needs more. To run two at once, Ollama must serve two
+   at once too, or the second call just queues inside Ollama. For the
+   macOS app (like `OLLAMA_KEEP_ALIVE` above):
+
+   ```bash
+   launchctl setenv OLLAMA_NUM_PARALLEL 2
+   # then quit Ollama from the menu bar and open it again, and warm it (step 4)
+   ```
+
+   and in `laptop.yaml` set the matching line (§3):
+
+   ```yaml
+   agents:
+     concurrency: 2               # = OLLAMA_NUM_PARALLEL; the stream's capacity
+   ```
+
+   Then restart the job (§6). Each parallel slot keeps its own 32k context,
+   so the model takes more memory; check `ollama ps` still shows it loaded
+   (100% GPU), and a single line may take a little longer while another is
+   being written. `launchctl setenv` does not survive a reboot, like
+   `OLLAMA_KEEP_ALIVE`. To go back: `concurrency: 1` and `launchctl unsetenv
+   OLLAMA_NUM_PARALLEL`, reopen Ollama, restart the job. Never set
+   `concurrency` above `OLLAMA_NUM_PARALLEL`.
+
+6. **(Wave 42b) More compute: an overflow engine.** When one MacBook is not
+   enough, add a second model server to the **same** worker (one mind:
+   his memory never splits). In `laptop.yaml`, under `agents:`, uncomment
+   and edit the `overflow:` block from `agents.example.yaml` (reference:
+   `stagehand/docs/agents.md`, "Overflow engines"). The worker then
+   announces `concurrency` + each engine's `capacity`; a line takes the
+   MacBook first, then each engine in order; an engine that fails is
+   skipped for 30 s and the line retried once on another. Summaries and
+   the letters stay on the MacBook.
+
+   - **A second Ollama on the LAN** (e.g. the Windows Desktop, only if it
+     has a GPU that holds gpt-oss:20b): there, `ollama pull gpt-oss:20b`,
+     set `OLLAMA_HOST=0.0.0.0` (and `OLLAMA_NUM_PARALLEL` ≥ its
+     `capacity`), allow port 11434 through its firewall on the private
+     network, then:
+
+     ```yaml
+     overflow:
+       - name: desktop
+         endpoint: http://192.168.8.10:11434/v1
+         capacity: 1
+     ```
+
+     The guests' lines stay in the house.
+   - **A hosted OpenAI-compatible gpt-oss-20b endpoint.** **Privacy: every
+     line it serves leaves the house**, with his whole prompt (the guest's
+     words and name, his notes about them, the story's facts). Decide that
+     before doors, not during. Set `model:` to the provider's name for it,
+     `api: openai`, and `api_key_env:` to the **name** of an environment
+     variable; the key itself never goes in the YAML, a doc or a chat. The
+     launchd job does not read your shell, so give the key to launchd
+     without it landing in the shell history:
+
+     ```bash
+     read -rs KEY && launchctl setenv LOOM_OVERFLOW_KEY "$KEY"; unset KEY
+     export LOOM_OVERFLOW_KEY="$(launchctl getenv LOOM_OVERFLOW_KEY)"   # for `check` in this shell
+     ```
+
+     Like `OLLAMA_NUM_PARALLEL`, it does not survive a reboot.
+
+   Then `stagehand check` (§4): the `engines :` line counts every slot, each
+   engine's line says `key LOOM_OVERFLOW_KEY set` (never the key), and a
+   hosted one adds a note that the lines leave the house. Restart the job
+   (§6). To go back: comment the block out again and restart. Run → Mind
+   shows `engine <name>` on each thought an overflow engine served.
+
+   **Brief mode** (wave 42b, off by default): `voice.brief_at: 6` in
+   `laptop.yaml` asks for at most two short sentences when 6 or more lines
+   wait for him (never a talk scene, never a guest at his heart). Measured
+   on this MacBook it bought no throughput (his DMs are already short), so
+   leave it off.
 
 ## 3. `stagehand/laptop.yaml` (git-ignored)
 
@@ -93,7 +178,8 @@ server:
 Leave `agents: mind_mode: new`, `llm: model: gpt-oss:20b`, `api: ollama`,
 `keep_alive: 60m` and the persona path
 (`../core/examples/trapped-in-the-internet/trabolta.persona.md`) as they
-are. `laptop.yaml` holds the passcode: it stays git-ignored, never pasted
+are, except `concurrency:`, which matches Ollama's `OLLAMA_NUM_PARALLEL`
+(§2 step 5, wave 42; 1 if you did not set it). `laptop.yaml` holds the passcode: it stays git-ignored, never pasted
 into a doc or a chat. On the morning of the show, if the live event is a
 new one, change `event:` and restart the job (§5).
 
@@ -111,7 +197,9 @@ uv run stagehand check --config laptop.yaml --only agents
 ```
 
 It must reach the server and the model and print the mind mode
-(`mind : NEW …`), the voice line with `ctx 32768` (the orchestrator's
+(`mind : NEW …`), the `agents :` line with `concurrency N · capacity N`
+(wave 42: the N you set; past 1 it adds a note naming
+`OLLAMA_NUM_PARALLEL`), the voice line with `ctx 32768` (the orchestrator's
 `mind` line, if printed, reads `ctx 20480`), and **no warning** and no
 `PLACEHOLDER server.…` line. Then:
 
@@ -153,6 +241,7 @@ laptop.yaml --only agents`.
   restart of the job): `stagehand/agents.example.yaml`'s comment and
   `stagehand/docs/agents.md`.
 - **After a reboot**: log in (or let automatic login), `launchctl setenv
-  OLLAMA_KEEP_ALIVE -1` and reopen Ollama, warm the model (`ollama run
+  OLLAMA_KEEP_ALIVE -1` (and, with `concurrency: 2`, `launchctl setenv
+  OLLAMA_NUM_PARALLEL 2`) and reopen Ollama, warm the model (`ollama run
   gpt-oss:20b hi`), `caffeinate -dims`, then `uv run stagehand launchd
   status`.

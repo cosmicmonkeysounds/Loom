@@ -24,6 +24,7 @@ import json
 import os
 import re
 import time
+from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -32,6 +33,19 @@ import httpx
 
 class LlmError(RuntimeError):
     pass
+
+
+#: (wave 42b) The engine the calling task's last model call went to
+#: (`engines.EngineCall` sets it before each call; `trace.new_thought`
+#: records it). Task-local: concurrent lines never see each other's.
+SERVED_BY: ContextVar[str | None] = ContextVar("stagehand_served_by", default=None)
+#: (wave 42b) The model that call went out as (its endpoint, model, api),
+#: beside `SERVED_BY`: after a retry on another engine the thought shows
+#: where the line really went, not the engine that failed.
+SERVED_MODEL: ContextVar["LlmConfig | None"] = ContextVar("stagehand_served_model", default=None)
+#: (wave 42b) The warm head's budget: one token (the call exists for its
+#: prompt). An engine that is not `api: ollama` never gets one.
+WARM_TOKENS = 1
 
 
 class LlmTruncated(LlmError):
@@ -197,6 +211,15 @@ class LlmConfig:
         return replace(self, **{k: v for k, v in overrides.items() if k in self.__dataclass_fields__})
 
 
+def _redacted(text: str, cfg: LlmConfig) -> str:
+    """(wave 42b) `text` without the bearer key `cfg.api_key_env` names. A
+    hosted endpoint's 401 may echo the key it was sent, and an LlmError's
+    text reaches the log, `stagehand ask` and the trace (the Mind page).
+    Redacted before any clipping, so no prefix of the key survives."""
+    key = os.environ.get(cfg.api_key_env) if cfg.api_key_env else None
+    return text.replace(key, "[key]") if key else text
+
+
 async def complete(
     messages: list[dict[str, str]],
     cfg: LlmConfig,
@@ -226,16 +249,16 @@ async def complete(
         async with httpx.AsyncClient(timeout=cfg.timeout_s, transport=transport) as client:
             r = await client.post(url, json=body, headers=headers)
     except httpx.HTTPError as err:
-        raise LlmError(f"model endpoint {url} unreachable: {err!r}") from err
+        raise LlmError(_redacted(f"model endpoint {url} unreachable: {err!r}", cfg)) from err
     if r.status_code != 200:
-        raise LlmError(f"model endpoint → HTTP {r.status_code}: {r.text[:200]}")
+        raise LlmError(f"model endpoint → HTTP {r.status_code}: {_redacted(r.text, cfg)[:200]}")
     try:
         data = r.json()
         choice = data["choices"][0]
         message = choice["message"]
         content = message.get("content")
     except (ValueError, KeyError, IndexError, TypeError) as err:
-        raise LlmError(f"unexpected model response: {r.text[:200]}") from err
+        raise LlmError(f"unexpected model response: {_redacted(r.text, cfg)[:200]}") from err
     finish = str(choice.get("finish_reason") or "")
     usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
     thinking = _text(message.get("reasoning")) or _text(message.get("reasoning_content"))
@@ -298,15 +321,15 @@ async def complete_ollama(
         async with httpx.AsyncClient(timeout=cfg.timeout_s, transport=transport) as client:
             r = await client.post(url, json=body, headers=headers)
     except httpx.HTTPError as err:
-        raise LlmError(f"model endpoint {url} unreachable: {err!r}") from err
+        raise LlmError(_redacted(f"model endpoint {url} unreachable: {err!r}", cfg)) from err
     if r.status_code != 200:
-        raise LlmError(f"model endpoint → HTTP {r.status_code}: {r.text[:200]}")
+        raise LlmError(f"model endpoint → HTTP {r.status_code}: {_redacted(r.text, cfg)[:200]}")
     try:
         data = r.json()
         message = data["message"]
         content = message.get("content")
     except (ValueError, KeyError, TypeError) as err:
-        raise LlmError(f"unexpected model response: {r.text[:200]}") from err
+        raise LlmError(f"unexpected model response: {_redacted(r.text, cfg)[:200]}") from err
     finish = str(data.get("done_reason") or "")
     thinking = _text(message.get("thinking"))
     ms = int((time.monotonic() - started) * 1000)

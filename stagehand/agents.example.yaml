@@ -18,7 +18,12 @@ server:
 
 agents:
   name: laptop                 # how directors see this worker
-  concurrency: 1               # one generation at a time on a laptop GPU
+  concurrency: 1               # one generation at a time on a laptop GPU. Also the
+                               #   stream's capacity (wave 42): the server hands this worker at
+                               #   most this many lines at once and queues the rest itself.
+                               #   2 or more needs Ollama with OLLAMA_NUM_PARALLEL >= concurrency
+                               #   (macOS app: launchctl setenv OLLAMA_NUM_PARALLEL 2, quit and
+                               #   reopen Ollama); `stagehand check` prints both
   mind_mode: new               # new: one voice call per line, the story keeps the mind
                                #   (phase cards in the mind file); classic: the two-model
                                #   mind (voice + orchestrator) as before wave 12.
@@ -29,15 +34,27 @@ agents:
     repeat_guard: on           #   one retry when a reply repeats what this guest heard from him (his
                                #   last 3 lines to them, his thread replies); in a burst, no retry: the
                                #   sentences they heard are cut instead
+    dm_guards: on              #   (wave 42c) a private reply: a withheld line gets the one retry, and
+                               #   agreeing to stop, narrowing a secret number, promising coin or a
+                               #   filing, the assistant's voice, placing himself inside, > 3 sentences
+                               #   and a near-repeat retry once (in a burst: cut, else the fallback);
+                               #   off = wave 42b's guards. A guest in real distress always gets the
+                               #   persona's `distress:` line with no model call.
     dossier_on_close: on       #   condense a quiet conversation (≥ 3 turns, 120 s idle) on the voice model
     warm_head: on              #   api: ollama — a one-token call with the shared head first, so the
                                #   prompt cache holds under gpt-oss's sliding window (~5 s → ~2 s a line)
     layout: lean               #   lean (the cached P1–P4 prompt) | classic (today's prompt, new mind)
+    brief_at: 0                #   (wave 42b) brief mode: a DM with this many lines queued behind it on
+                               #   the server asks for at most 2 short sentences (0 = never, the default:
+                               #   his DMs are already ~1-2 sentences, so on the show MacBook it saved
+                               #   ~7 tokens a reply and no throughput); never a stage line or a guest at
+                               #   his heart; the lean layout only
+    brief_max_tokens: 600      #   … and its call's max_tokens is capped here (reasoning counts: ≥ 400)
   mind:                        # read only in mind_mode: new
     stage_from_phase: on       #   Night.phase's card sets stage, favours, drives, live powers, brief
     phase_poll_s: 30           #   the phase watch: a facts fetch every N s, no model call (0 = off)
   # The kill-switch ladder, one step at a time (then `stagehand launchd restart --job
-  # agents`): voice.memo off → voice.repeat_guard off → voice.dossier_on_close off →
+  # agents`): voice.memo off → voice.dm_guards off → voice.repeat_guard off → voice.dossier_on_close off →
   # mind.stage_from_phase off → voice.layout classic → mind_mode classic (the qwen
   # model below loads again) → the server's LOOM_AGENT_RECENT=off → the previous
   # release tag (the whole checkout, never stagehand alone).
@@ -51,6 +68,26 @@ agents:
     api: ollama                # native /api/chat so `keep_alive` is honoured …
     keep_alive: 60m            # … and the voice stays loaded through a quiet spell
     num_ctx: 32768             # the default: a late-night line ≈ 14–16k tokens (`stagehand check` sizes it)
+  # (wave 42b) Overflow engines: more model servers for the SAME mind (one worker,
+  # one memory). `llm:` above stays the primary (`concurrency` slots); a line takes
+  # a primary slot when one is free, else the first engine below with a free slot.
+  # The stream's capacity becomes the sum (here 1 + 1 + 2 = 4, at most 16). An engine
+  # that errors is skipped for 30 s and the line is retried once on another; the
+  # persona's fallback only when both fail. Quiet summaries, letters and a director's
+  # Rewrite stay on the primary; rulings may overflow. An entry sets only what
+  # differs from `llm:` (it never inherits `api_key_env`, nor `extra` across apis).
+  # overflow:
+  #   - name: desktop          # a second Ollama on the LAN (the Windows Desktop, if it
+  #     endpoint: http://192.168.8.10:11434/v1   # has a GPU: OLLAMA_HOST=0.0.0.0, port
+  #     capacity: 1            # 11434 open, OLLAMA_NUM_PARALLEL >= capacity, gpt-oss:20b
+  #                            # pulled). Same api: model / keep_alive / num_ctx as `llm:`
+  #   - name: hosted           # a hosted OpenAI-compatible gpt-oss-20b. PRIVACY: every
+  #     endpoint: https://models.example.com/v1  # guest line it serves, with his whole
+  #     model: openai/gpt-oss-20b                # prompt (names, memos, the story's
+  #     api: openai            # facts), LEAVES THE HOUSE to that provider
+  #     capacity: 2
+  #     api_key_env: LOOM_OVERFLOW_KEY   # the NAME of an env var holding the key; the key
+  #                            # itself never goes in a YAML, a log or the trace
   orchestrator:                # the SLOW model — grows each character's mind (classic only;
     enabled: true              #   never started in mind_mode: new) between turns; never on the reply path
     llm:
@@ -60,7 +97,7 @@ agents:
       api: ollama              #   native /api/chat: `think` + `keep_alive` honoured
       extra:                   #   reasoning off (the OpenAI shim ignores this), and a
         think: false           #   context that fits a late-night reflect prompt (mind file +
-        options: { num_ctx: 20480 }  # persona + lore + a grown mind ≈ 16k tokens; Ollama's default truncates)
+        options: { num_ctx: 24576 }  # persona + lore + a grown mind ≈ 21k tokens since w42c; Ollama's default truncates)
       keep_alive: 60m
     quiet_s: 1.5               #   idle seconds before a reflection may start
     preempt: true              #   a new request cancels a running reflection

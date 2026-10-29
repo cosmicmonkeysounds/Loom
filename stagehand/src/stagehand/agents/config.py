@@ -23,7 +23,7 @@
           api: ollama              #   native /api/chat: `think` + `keep_alive` honoured
           extra: { think: false }  #   reasoning off (the OpenAI shim ignores this)
           keep_alive: 30m          #   stay resident between reflections
-          num_ctx: 20480           #   the default: a late-night reflection is ≈ 16k tokens
+          num_ctx: 24576           #   the default: a late-night reflection is ≈ 21k tokens
         quiet_s: 1.5               #   idle seconds before a reflection may start
         preempt: true              #   a new request cancels a running reflection
         survey_every_s: 120        #   look at the whole house this often (0 = never)
@@ -32,9 +32,20 @@
       voice:                       # read only in mind_mode: new (each on | off)
         memo: on                   #   the voice keeps a ≤ 140-character note per person
         repeat_guard: on           #   one retry when a reply repeats his last lines
+        dm_guards: on              #   (wave 42c) a DM's withheld retry + the voice guards (stop, a
+                                   #   number, coin / filing, assistant, inside, length, near-repeats)
         dossier_on_close: on       #   the quiet-conversation summary (120 s idle, ≥ 3 turns)
         warm_head: on              #   a one-token call with the shared head before each line (api: ollama)
         layout: lean               #   lean | classic (today's prompt, inside the new mind)
+        brief_at: 0                #   (wave 42b) a request with this many lines queued behind it
+                                   #   asks for two short sentences (0 = never, the default: measured
+                                   #   on the show MacBook it saved ~7 tokens a reply and no throughput)
+        brief_max_tokens: 600      #   … and caps the call's max_tokens (reasoning counts: ≥ 400)
+      overflow:                    # (wave 42b) more engines for the same mind (one worker)
+        - name: desktop            #   shown in the trace and `check`
+          endpoint: http://192.168.8.10:11434/v1
+          capacity: 1              #   its slots (1..16); the worker's capacity is the sum
+          api: ollama              #   any llm: key but json_mode; api_key_env names an env var
       mind:                        # read only in mind_mode: new
         stage_from_phase: on       #   the mind file's phase cards set stage / drives / brief
         phase_poll_s: 30           #   the phase watch (no model call); 0 = off
@@ -50,6 +61,7 @@ Persona paths resolve relative to the config file.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -58,17 +70,18 @@ from ..module import ConfigError
 from .llm import LlmConfig
 from .orchestrator import OrchestratorConfig
 from .persona import Persona, load_persona
+from .slots import PRIMARY
 
 #: The orchestrator's default model when the section doesn't name one.
 ORCHESTRATOR_MODEL = "tobestyledintro/qwen3.8-9b-distill:q8_0"
 #: The orchestrator's default context (`api: ollama`). The reflect prompt —
 #: the mind file + persona + the house + the lore + a mind grown through the
-#: night — is ≈ 10k tokens at the doors and ≈ 16k late (`stagehand check`'s
+#: night — is ≈ 10k tokens at the doors and ≈ 21k late (w42c) (`stagehand check`'s
 #: estimate, at 3 characters a token, plus the reply), and on Ollama's default
 #: context the runner cuts its middle while the mind update still looks
-#: confident. 20k costs the 9B orchestrator ≈ 3 GB of KV cache. `num_ctx: …` (or `extra: {options: {num_ctx: …}}`)
+#: confident. 24k costs the 9B orchestrator ≈ 3.5 GB of KV cache. `num_ctx: …` (or `extra: {options: {num_ctx: …}}`)
 #: overrides it; `num_ctx: 0` sends none (the server's default).
-ORCHESTRATOR_NUM_CTX = 20480
+ORCHESTRATOR_NUM_CTX = 24576
 #: The voice's default context (`api: ollama`). A late-night line — the
 #: persona + the mind block + the house + a long thread + every situation —
 #: is ≈ 14k tokens, and Ollama's own default depends on the version and the
@@ -90,6 +103,10 @@ class VoiceSettings:
 
     memo: bool = True
     repeat_guard: bool = True
+    #: (wave 42c) A private reply's DM guards (`guards.dm_problems`), the
+    #: withheld line's retry and the near-duplicate check. Off = wave 42b's
+    #: guards exactly. The distress fast path is never switched off.
+    dm_guards: bool = True
     #: The quiet-conversation summary.
     dossier_on_close: bool = True
     #: A one-token call with P1 + P2 before each line, so Ollama keeps a
@@ -97,6 +114,61 @@ class VoiceSettings:
     warm_head: bool = True
     #: "lean" | "classic"
     layout: str = "lean"
+    #: (wave 42b) Brief mode: a request frame whose `queued` (lines waiting
+    #: on the server) is at least this asks for at most two short
+    #: sentences and caps the call's tokens. 0 = never. Never a stage
+    #: request or a guest at his heart.
+    brief_at: int = 0
+    #: (wave 42b) Brief mode's `max_tokens` cap (reasoning counts against it).
+    brief_max_tokens: int = 600
+
+
+#: (wave 42b) The least `voice.brief_max_tokens` may be: gpt-oss at low
+#: effort spends ~100–300 tokens reasoning before the answer starts.
+BRIEF_MIN_TOKENS = 400
+#: (wave 42b) The most slots one overflow engine may have (the stream's own cap).
+ENGINE_CAPACITY_MAX = 16
+#: (wave 42b) What an `agents.overflow` entry may set besides name / capacity.
+OVERFLOW_LLM_KEYS = ("endpoint", "model", "api", "reasoning_effort", "temperature", "max_tokens", "timeout_s", "keep_alive", "num_ctx", "api_key_env", "extra")
+_ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+@dataclass(frozen=True)
+class OverflowEngine:
+    """(wave 42b) One `agents.overflow` entry: a second (third …) model
+    server for the same mind. `overrides` are the LlmConfig fields it sets
+    over each character's voice model; the rest are the character's."""
+
+    name: str
+    capacity: int
+    overrides: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def api_key_env(self) -> str | None:
+        return self.overrides.get("api_key_env")
+
+    def model(self, base: LlmConfig) -> LlmConfig:
+        """A character's voice model on this engine."""
+        return engine_model(base, self.overrides)
+
+
+def engine_model(base: LlmConfig, overrides: dict[str, Any]) -> LlmConfig:
+    """`base` (a character's voice model) with an engine's own fields. An
+    `api: openai` engine carries no `num_ctx`; an `api: ollama` one with
+    none of its own and none inherited gets the voice's default. An engine
+    on another api than the character's never inherits its `extra` (body
+    fields for that api: Ollama's `options` / `think` sent to a hosted
+    OpenAI endpoint is a 400)."""
+    if not overrides:
+        return base
+    cfg = replace(base, **overrides)
+    if cfg.api != base.api and "extra" not in overrides:
+        cfg = replace(cfg, extra={})
+    if cfg.api != "ollama":
+        return replace(cfg, num_ctx=None)
+    if cfg.num_ctx is None and "num_ctx" not in overrides:
+        return replace(cfg, num_ctx=VOICE_NUM_CTX)
+    return cfg
 
 
 @dataclass(frozen=True)
@@ -128,6 +200,13 @@ class AgentsConfig:
     mind_mode: str = "classic"
     voice: VoiceSettings = field(default_factory=VoiceSettings)
     mind: MindSettings = field(default_factory=MindSettings)
+    #: (wave 42b) Engines beyond `llm:`, in preference order.
+    overflow: tuple[OverflowEngine, ...] = ()
+
+    @property
+    def engines(self) -> list[tuple[str, int]]:
+        """(wave 42b) Every engine's name and slots: the primary first."""
+        return [(PRIMARY, self.concurrency), *((e.name, e.capacity) for e in self.overflow)]
 
     @property
     def new_mind(self) -> bool:
@@ -196,9 +275,18 @@ def _voice(raw: Any) -> VoiceSettings:
     layout = str(raw.get("layout", "lean")).strip().lower()
     if layout not in VOICE_LAYOUTS:
         raise ConfigError(f"agents.voice.layout: must be one of {', '.join(VOICE_LAYOUTS)}")
+    brief_at = raw.get("brief_at", 0)
+    if isinstance(brief_at, bool) or not isinstance(brief_at, int) or brief_at < 0:
+        raise ConfigError("agents.voice.brief_at: must be a whole number of queued lines (0 = never)")
+    brief_max = raw.get("brief_max_tokens", 600)
+    if isinstance(brief_max, bool) or not isinstance(brief_max, int) or brief_max < BRIEF_MIN_TOKENS:
+        raise ConfigError(f"agents.voice.brief_max_tokens: must be a whole number of tokens, at least {BRIEF_MIN_TOKENS} (reasoning counts against it)")
     return VoiceSettings(
+        brief_at=brief_at,
+        brief_max_tokens=brief_max,
         memo=_switch(raw.get("memo", True), "agents.voice.memo"),
         repeat_guard=_switch(raw.get("repeat_guard", True), "agents.voice.repeat_guard"),
+        dm_guards=_switch(raw.get("dm_guards", True), "agents.voice.dm_guards"),
         dossier_on_close=_switch(raw.get("dossier_on_close", True), "agents.voice.dossier_on_close"),
         warm_head=_switch(raw.get("warm_head", True), "agents.voice.warm_head"),
         layout=layout,
@@ -222,10 +310,53 @@ def _mind(raw: Any) -> MindSettings:
     return MindSettings(stage_from_phase=_switch(raw.get("stage_from_phase", True), "agents.mind.stage_from_phase"), phase_poll_s=poll)
 
 
+def _overflow(raw: Any) -> tuple[OverflowEngine, ...]:
+    """(wave 42b) `agents.overflow:` — a list of engines, each validated
+    alone. Each must name its endpoint; an `api_key_env` is the NAME of an
+    environment variable (the key itself never goes in a YAML), and is
+    never inherited from `llm:` (a hosted key must not reach another host)."""
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise ConfigError("agents.overflow: a list of engines ({name, endpoint, capacity, …})")
+    out: list[OverflowEngine] = []
+    names = {PRIMARY}
+    for i, entry in enumerate(raw):
+        where = f"agents.overflow[{i}]"
+        if not isinstance(entry, dict):
+            raise ConfigError(f"{where}: a mapping {{name, endpoint, capacity, …}}")
+        unknown = sorted(str(k) for k in set(entry) - {"name", "capacity", *OVERFLOW_LLM_KEYS})
+        if unknown:
+            raise ConfigError(f"{where}: unknown key(s) {', '.join(unknown)}")
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            raise ConfigError(f"{where}: needs a name (shown in the trace and `stagehand check`)")
+        if name in names:
+            raise ConfigError(f"{where}: the name {name!r} is taken ({PRIMARY!r} is agents.llm)")
+        names.add(name)
+        where = f"agents.overflow[{name}]"
+        endpoint = entry.get("endpoint")
+        if not isinstance(endpoint, str) or not endpoint.strip().startswith(("http://", "https://")):
+            raise ConfigError(f"{where}: needs an endpoint (http://host:port/v1)")
+        cap = entry.get("capacity", 1)
+        if isinstance(cap, bool) or not isinstance(cap, int) or not 1 <= cap <= ENGINE_CAPACITY_MAX:
+            raise ConfigError(f"{where}: capacity must be a whole number of slots from 1 to {ENGINE_CAPACITY_MAX}")
+        key_env = entry.get("api_key_env")
+        if key_env not in (None, "") and (not isinstance(key_env, str) or not _ENV_NAME.match(key_env)):
+            raise ConfigError(f"{where}: api_key_env is the NAME of an environment variable holding the key (never the key itself)")
+        given = {k: entry[k] for k in OVERFLOW_LLM_KEYS if k in entry}
+        given["endpoint"] = endpoint.strip()
+        checked = _llm(given, LlmConfig(), where)  # the types, the api, num_ctx
+        overrides = {k: getattr(checked, k) for k in given}
+        overrides["api_key_env"] = checked.api_key_env if "api_key_env" in given else None
+        out.append(OverflowEngine(name=name, capacity=cap, overrides=overrides))
+    return tuple(out)
+
+
 def parse_agents(doc: Any, base_dir: str = ".") -> AgentsConfig:
     if not isinstance(doc, dict):
         raise ConfigError("'agents:' must be a mapping")
-    unknown = sorted(set(doc) - {"name", "concurrency", "dry_run", "llm", "characters", "orchestrator", "state_dir", "facts_ttl_s", "mind_mode", "voice", "mind"})
+    unknown = sorted(set(doc) - {"name", "concurrency", "dry_run", "llm", "characters", "orchestrator", "state_dir", "facts_ttl_s", "mind_mode", "voice", "mind", "overflow"})
     if unknown:
         raise ConfigError(f"agents: unknown key(s) {', '.join(unknown)}")
     # The section's defaults keep the voice's context until each character's
@@ -298,6 +429,7 @@ def parse_agents(doc: Any, base_dir: str = ".") -> AgentsConfig:
         raise ConfigError(f"agents.mind_mode: must be one of {', '.join(MIND_MODES)} (absent = classic)")
     voice = _voice(doc.get("voice"))
     mind = _mind(doc.get("mind"))
+    overflow = _overflow(doc.get("overflow"))
     state_dir = Path(str(doc.get("state_dir") or ".stagehand-minds"))
     if not state_dir.is_absolute():
         state_dir = Path(base_dir) / state_dir
@@ -315,4 +447,5 @@ def parse_agents(doc: Any, base_dir: str = ".") -> AgentsConfig:
         mind_mode=mind_mode,
         voice=voice,
         mind=mind,
+        overflow=overflow,
     )

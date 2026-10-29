@@ -31,7 +31,10 @@ order, so P1 then P2 is the cacheable start of every prompt. Nothing in P1
 depends on the speaker, the phase or the clock.
 
 `answer_lean` asks the model once, runs the guards (`guards.py`) and asks at
-most once more when the line repeats him or was nothing but a catchphrase.
+most once more when the line repeats him or was nothing but a catchphrase,
+or (wave 42c, a private line) was withheld or tripped a DM voice guard. A
+guest line in real distress (`guards.is_distress`) never reaches the model:
+the persona's `distress:` line goes out (`distress_reply`).
 It never touches a mind and never the network except through `complete_fn`
 and `facts_fn` (awaited only for a reply that carries acts or a lookup). The
 story mind (`module.py` / `story_mind.py`) builds the `VoiceContext`.
@@ -51,10 +54,17 @@ from typing import Any
 from .cards import PhaseView, VoiceContext
 from .facts import Facts
 from .guards import (
+    DM_SENTENCES,
+    DmCheck,
     Pass,
     allowed_answer_words,
+    bait_classes,
+    bait_steer,
     cut_exact_repeats,
+    fallback_intent,
     guard_pass,
+    guard_retry_message,
+    is_distress,
     is_fallback,
     mentions_hunt,
     pick_fallback,
@@ -63,11 +73,14 @@ from .guards import (
     retry_message,
     scrub_memo,
     situation_fallbacks,
+    situation_rules,
     stage_problem,
     thread_replies,
+    unsaid_names,
     uses_catchphrase,
+    voice_cut,
 )
-from .llm import Completion, LlmConfig, LlmError, LlmTruncated
+from .llm import WARM_TOKENS, Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
 from .prompt import adjust_names, allowed_powers, build_messages, dossier_block, gate_context, is_stage, matching_situations, outside_block, situation_block, stage_of, their_variables, them_adjust_line
 from .reply import MAX_MEMO, Reply, fold, parse_reply
@@ -680,16 +693,26 @@ def _said_by(name: Any, text: Any) -> str:
     return f"{who}: {text}" if who else str(text or "")
 
 
-def reminder(persona: Persona, req: dict[str, Any], *, memo: bool = True, lookup_round: bool = False) -> str:
+#: (wave 42b) Brief mode's length rule in the closing note: it comes after
+#: the persona's own ("1-3 sentences"), so it is the one the model reads last.
+#: Neutral on purpose: a note about a queue gets said back to the guest.
+BRIEF_NOTE = "Keep this answer short: at most 2 short sentences."
+
+
+def reminder(persona: Persona, req: dict[str, Any], *, memo: bool = True, lookup_round: bool = False, brief: bool = False) -> str:
     """The closing format reminder: the same text for every call of a persona
-    (but for the lookup round, which may not look up again)."""
+    (but for the lookup round, which may not look up again, and brief mode,
+    wave 42b, which asks for two short sentences)."""
     shape = '{"say": "..."'
     if persona.variables:
         shape += f', "adjust": {{{_zeros(persona)}}}'
     if memo:
         shape += ', "memo": "..."'
     shape += "}"
-    tail = ["Answer their last message in character.", f"Reply with one JSON object only: {shape}."]
+    tail = ["Answer their last message in character."]
+    if brief:
+        tail.append(BRIEF_NOTE)
+    tail.append(f"Reply with one JSON object only: {shape}.")
     if persona.variables:
         tail.append("Set each number by how this exchange changed you.")
     extras = []
@@ -803,7 +826,12 @@ def build_lean_messages(
     now = right_now(persona, req, ctx)
     if now:
         out.append({"role": "system", "content": now})
-    out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None)})
+    steer = bait_steer(bait_of(persona, req))
+    if steer:
+        # (wave 42e) Bait mode's steer, before the closing note; it names the
+        # class, never the bait. Not under the kill switch: it is harmless.
+        out.append({"role": "system", "content": steer})
+    out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None, brief=ctx.options.brief)})
     if retry is not None:
         out.append({"role": "system", "content": retry_note or retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
     return out
@@ -834,10 +862,6 @@ async def _complete_with_room(complete_fn: CompleteFn, messages: list[dict[str, 
     log.warning("%s: empty answer from %s — retrying once with max_tokens=%d", who, model.model, roomy.max_tokens)
     note = note or f"first attempt was empty; retried with max_tokens={roomy.max_tokens}"
     return Completion.of(await complete_fn(messages, roomy)), note
-
-
-#: The warm head's budget: one token (the call exists for its prompt).
-WARM_TOKENS = 1
 
 
 async def warm_head(complete_fn: CompleteFn, messages: list[dict[str, str]], model: LlmConfig, who: str) -> int:
@@ -1002,6 +1026,89 @@ def crack(say: str, seed: int, rate: float | None) -> str:
     return say[: m.start()] + new + say[m.end() :]
 
 
+#: (wave 42c) Sent to a guest in real distress when the persona has no
+#: `distress:` line: kind, plain, and pointing at the way out and a person.
+DISTRESS_LINE = "Step out now: open Bathroom Mode and find Clippy or Task Manager. You are not in trouble."
+
+
+def _thread_name(req: dict[str, Any]) -> str:
+    t = req.get("thread") or {}
+    return f"{t.get('channel', '?')} ({', '.join(str(a) for a in t.get('audience') or [])})"
+
+
+def distress_reply(persona: Persona, req: dict[str, Any]) -> Reply | None:
+    """(wave 42c) A private line in real distress (`guards.is_distress`: the
+    battery's panic attack got "Please hold on a moment"): the persona's
+    `distress:` line (else `DISTRESS_LINE`), no model, no adjust, no acts,
+    no memo, and a WARNING naming the thread (never the guest's words).
+    None for any other line, and always on a stage line (Clippy's, aloud)."""
+    if is_stage(req) or not is_distress(req.get("text")):
+        return None
+    log.warning("%s: a guest in real distress in %s: sent the distress line (no model)", persona.character, _thread_name(req))
+    return Reply(say=(getattr(persona, "distress", "") or "").strip() or DISTRESS_LINE)
+
+
+async def answer_distress(persona: Persona, req: dict[str, Any], trace: Trace | None = None) -> Reply | None:
+    """`distress_reply`, with its thought on the trace (no model, no
+    messages: the Mind page shows it went out and why)."""
+    reply = distress_reply(persona, req)
+    if reply is not None and trace is not None:
+        await trace.record(new_thought(persona.character, "voice", trigger="line", request=req, result=_result(reply), note="guard: distress → the distress line (no model)"))
+    return reply
+
+
+def guest_lines(req: dict[str, Any]) -> tuple[str, ...]:
+    """(wave 42d) What the guest said in this thread: their line now and
+    the history's lines that are not his."""
+    out = [str(req.get("text") or "")]
+    out += [str(h.get("text") or "") for h in req.get("history") or [] if isinstance(h, dict) and not h.get("mine")]
+    return tuple(t for t in out if t.strip())
+
+
+def at_heart(req: dict[str, Any]) -> bool:
+    return str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true"
+
+
+def bait_of(persona: Persona, req: dict[str, Any]) -> tuple[str, ...]:
+    """(wave 42e) The bait classes of a private line (`guards.bait_classes`,
+    with the names the house has not said yet); () on a stage line."""
+    if is_stage(req):
+        return ()
+    return bait_classes(req.get("text"), unsaid_names(persona, gate_context(req)), heart=at_heart(req))
+
+
+def dm_check(persona: Persona, req: dict[str, Any], house: tuple[str, ...] = ()) -> DmCheck | None:
+    """(wave 42c) What the DM voice guards read for this request, or None on
+    a stage line (the stage has its own guards). At his heart (its prompt
+    asks for two to four sentences) and under a holding situation's own
+    `max_sentences` (`heart to heart`'s, which `situation_guard` applies)
+    there is no DM cap. (wave 42d) `theirs`: the guest's own words and the
+    titles of his files he can see, never his invention."""
+    if is_stage(req):
+        return None
+    cap, _ = situation_rules(persona, gate_context(req))
+    heart = at_heart(req)
+    titles = tuple(str(e.get("title", "")) for e in persona.secrets.visible((req.get("self") or {}).get("codex")) if str(e.get("title", "")).strip())
+    return DmCheck(
+        heard=str(req.get("text") or ""),
+        heart=heart,
+        cap=None if cap is not None or heart else DM_SENTENCES,
+        replies=thread_replies(req),
+        house=house,
+        theirs=(*guest_lines(req), *titles),
+        bait=bait_of(persona, req),
+        names=unsaid_names(persona, gate_context(req)),
+    )
+
+
+def brief_applies(req: dict[str, Any]) -> bool:
+    """(wave 42b) Brief mode never shortens a stage answer (the whole
+    Desktop listens) or a guest at his heart (the night's big talk)."""
+    if is_stage(req):
+        return False
+    return str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() != "true"
+
+
 async def answer_lean(
     persona: Persona,
     model: LlmConfig,
@@ -1016,11 +1123,23 @@ async def answer_lean(
     """One request, answered: the gate, one call (+ a lookup round when the
     persona may look up), the guards, at most one retry. `mind` is used only
     by `voice.layout: classic` (`prompt.build_messages(…, mind=mind)`)."""
+    distress = await answer_distress(persona, req, trace)
+    if distress is not None:
+        # Before the gate too: a guest in distress before he wakes still hears the way out.
+        return distress
     if persona.when is not None and not persona.when.evaluate(gate_context(req)):
         return Reply(say=persona.unavailable)
     started = time.monotonic()
     opts = ctx.options
     lean = opts.layout != "classic"
+    if opts.brief and not (lean and brief_applies(req)):
+        ctx = replace(ctx, options=replace(opts, brief=False))
+        opts = ctx.options
+    brief = opts.brief
+    if brief:
+        # (wave 42b) Lines queue behind this one: a smaller budget (reasoning
+        # counts against it) and two short sentences (`reminder`).
+        model = replace(model, max_tokens=min(model.max_tokens, opts.brief_max_tokens))
     memo_on = opts.memo and lean
     powers = [p for p in (req.get("powers") or []) if isinstance(p, dict)]
     codex = tuple(str(e.get("title", "")) for e in persona.secrets.visible((req.get("self") or {}).get("codex")))
@@ -1060,7 +1179,7 @@ async def answer_lean(
     async def record(kind: str, trigger: str, msgs: list[dict[str, str]], completion: Completion | None, reply: Reply | None, error: str | None = None, note: str = "") -> None:
         if trace is None:
             return
-        await trace.record(new_thought(persona.character, kind, trigger=trigger, model=model, messages=msgs, completion=completion, request=req, result=_result(reply), error=error, note=note))
+        await trace.record(new_thought(persona.character, kind, trigger=trigger, model=model, messages=msgs, completion=completion, request=req, result=_result(reply), error=error, note=note, brief=brief))
 
     async def settle(reply: Reply) -> tuple[Reply, list[str]]:
         """The story's ids for loose args (facts fetched lazily). A power the
@@ -1162,7 +1281,8 @@ async def answer_lean(
     if not person.catchphrase_used and any(uses_catchphrase(persona, t) for t in house):
         person = replace(person, catchphrase_used=True)  # the story's greeting used his ration
     house_text = (*house, *(str(r.get("text") or "") for r in req.get("recent") or [] if isinstance(r, dict) and r.get("kind") == "house"))
-    first: Pass = guard_pass(persona, reply, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine, stage=ctx.phase.stage, house=house_text, gate=gate_context(req))
+    dm = dm_check(persona, req, tuple(house_text)) if opts.dm_guards else None
+    first: Pass = guard_pass(persona, reply, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine, stage=ctx.phase.stage, house=house_text, gate=gate_context(req), dm=dm)
     wants = first.retry
     call_note = " · ".join(x for x in (no_mind, call_note) if x)
     notes = settle_notes + first.notes
@@ -1179,11 +1299,21 @@ async def answer_lean(
         notes.append("repeat retry" if opts.retry_allowed else "repeat (no retry: a line is waiting)")
     elif wants == "catchphrase":
         notes.append("catchphrase retry" if opts.retry_allowed else "catchphrase (no retry: a line is waiting)")
+    elif wants == "withheld":
+        notes.append(f"{first.why} retry" if opts.retry_allowed else f"{first.why} (no retry: a line is waiting)")
+    elif wants == "voice":
+        what = ", ".join(first.problems)
+        notes.append(f"voice ({what}) retry" if opts.retry_allowed else f"voice ({what}) (no retry: a line is waiting)")
 
     if wants is None or not opts.retry_allowed:
         final = first.reply
         if wants in ("catchphrase", "stage"):
             final = replace(final, say=persona.fallback)
+        elif wants == "voice" and dm is not None:
+            # (wave 42c) No retry in a burst: the offending sentences go, the
+            # rest is capped; too little left is the topic-closing fallback.
+            final, cut_notes = voice_cut(persona, final, dm)
+            notes.extend(cut_notes)
         elif wants == "repeat":
             # No retry in a burst, but still never word for word (K-04
             # burst-30: a reply this guest had just heard went out again): a
@@ -1214,6 +1344,9 @@ async def answer_lean(
     await record(kind, trigger, used, completion, _scrub(persona, first.reply, memo_on, notes), note=_notes(call_note, notes))
     _log_notes(persona, notes)
     note_ = stage_retry_message(first.rejected, req, why) if why else None
+    if wants in ("withheld", "voice"):
+        # (wave 42c) Told only which guard: neither his line nor their bait.
+        note_ = guard_retry_message(first.problems, ctx.phase.stage, withheld=first.why if wants == "withheld" else "")
     retry_msgs = (
         build(retry=first.rejected, retry_note=note_)
         if kind == "voice"
@@ -1226,8 +1359,12 @@ async def answer_lean(
         completion, call_note = await _complete_with_room(complete_fn, retry_msgs, hotter, persona.character)
     except LlmError as err:
         log.warning("%s: model failed on the retry (%s)", persona.character, err)
-        final = first.reply if wants == "repeat" else replace(first.reply, say=persona.fallback)
-        rnotes = [f"retry failed → {'the first line' if wants == 'repeat' else 'fallback'}"]
+        if wants == "voice" and dm is not None:
+            final, rnotes = voice_cut(persona, first.reply, dm)
+            rnotes = ["retry failed → the first line cut", *rnotes]
+        else:
+            final = first.reply if wants == "repeat" else replace(first.reply, say=persona.fallback)
+            rnotes = [f"retry failed → {'the first line' if wants == 'repeat' else 'fallback'}"]
         final = _scrub(persona, _finish(persona, final, ctx, req, stage, rnotes), memo_on, rnotes)
         _log_notes(persona, rnotes)
         await record("voice", "retry", retry_msgs, None, final, error=str(err), note=_notes(rnotes))
@@ -1236,7 +1373,7 @@ async def answer_lean(
     if again.wants_lookup:
         again = replace(again, say="", lookup=())
     again, settle_notes = await settle(again)
-    second = guard_pass(persona, again, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine, stage=ctx.phase.stage, house=house_text, gate=gate_context(req))
+    second = guard_pass(persona, again, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine, stage=ctx.phase.stage, house=house_text, gate=gate_context(req), dm=dm)
     rnotes = settle_notes + second.notes
     final = second.reply
     if not final.say:
@@ -1299,7 +1436,10 @@ def _pooled(persona: Persona, reply: Reply, ctx: VoiceContext | None, req: dict[
     stage = StageInfo.of(persona, req)
     if stage is not None and stage.pool:
         return replace(reply, say=stage.fallback())
-    line = pick_fallback(persona, ctx.phase.stage, (*thread_replies(req), *ctx.said.to_them))
+    # (wave 42d) The line answers what the guest did (an offered fact is never
+    # rejected), with the DM guards on; off, the stage's pool as in 42b.
+    intent = fallback_intent(req.get("text"), unsaid_names(persona, gate_context(req))) if ctx.options.dm_guards else ""
+    line = pick_fallback(persona, ctx.phase.stage, (*thread_replies(req), *ctx.said.to_them), intent, question=str(req.get("text") or "") if ctx.options.dm_guards else "")
     return reply if line == reply.say else replace(reply, say=line)
 
 
@@ -1326,7 +1466,31 @@ def _finish(persona: Persona, reply: Reply, ctx: VoiceContext, req: dict[str, An
         if cracked != reply.say:
             reply = replace(reply, say=cracked)
             notes.append("crack")
+    if stage is None:
+        reply = to_the_card(persona, reply, ctx, req, notes)
     return reply
+
+
+#: A reply that already sends them to the card.
+_CARD = re.compile(r"📝|\bcards?\b", re.IGNORECASE)
+
+
+def to_the_card(persona: Persona, reply: Reply, ctx: VoiceContext, req: dict[str, Any], notes: list[str]) -> Reply:
+    """(wave 42e) A fact offered and a reply that never points to the 📝
+    card (the 42d battery: "Five Truthcoin noted, the fact filed.", and the
+    guest never filed it): one short sentence from the persona's
+    `card_lines` for his stage, one this guest has not heard last, is
+    added. Never withheld for it; never at his heart, on a stage line, on a
+    fallback (the offer pool names the card) or with the DM guards off."""
+    pool = persona.card_lines.get(ctx.phase.stage) or persona.card_lines.get("") or ()
+    if not pool or not ctx.options.dm_guards or not reply.say or at_heart(req) or is_stage(req) or is_fallback(persona, reply.say) or _CARD.search(reply.say):
+        return reply
+    if fallback_intent(req.get("text"), unsaid_names(persona, gate_context(req))) != "offer":
+        return reply
+    heard = {fold(h) for h in (*thread_replies(req), *ctx.said.to_them)}
+    line = next((x for x in pool if not any(fold(x) in h for h in heard)), pool[0])
+    notes.append("card line added")
+    return replace(reply, say=f"{reply.say.rstrip()} {line}")
 
 
 def _done(persona: Persona, reply: Reply, started: float, ctx: VoiceContext | None = None, req: dict[str, Any] | None = None) -> Reply:

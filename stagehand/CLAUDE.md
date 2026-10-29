@@ -61,7 +61,8 @@ stagehand/
     show/                          cuemap, sensormap, mqtt, osc, topics, directives
     agents/                        module (the worker loop), persona, prompt (classic), voice (lean),
                                    story_mind, mind, orchestrator, guards, secrets, judge, trace,
-                                   wire, reply, llm, facts, cards
+                                   wire, reply, llm, facts, cards, letter, slots (the generation
+                                   slots and lanes), engines (overflow engines, wave 42b)
     audio/                         module, config, engine (the stream), mixer, routing, sounds, placeholders;
                                    stream (a file decoded + resampled by a worker into a ring buffer),
                                    soundtrack (playlists, scenes, beds, the `Director`), mp3len (VBR MP3s
@@ -81,7 +82,7 @@ stagehand/
 ```bash
 cd stagehand
 uv sync                                            # once; makes .venv
-uv run pytest                                      # 2301 passed + 4 skipped, ~75 s, no hardware, no network
+uv run pytest                                      # 2499 passed + 4 skipped, ~80 s, no hardware, no network
 uv run pytest tests/test_trapped_house.py -q       # after any story or rig change
 uv run stagehand modules
 uv run stagehand check --config trapped.desktop.yaml --only show,lights,audio
@@ -242,9 +243,9 @@ module docstrings that explain the why).
   `voice.classic_stage_block`. The persona's `before the whole Desktop`
   block and one block per `Night.talk` hold (`speaker.stage == true`);
   `orchestrator.situation_chars` counts the stage-only blocks apart.
-  **Priority lane:** `slots.py` `Slots` keeps one generation slot but
-  serves waiters by lane: `module.lane_of` puts a stage request in
-  `FIRST`, a guest at his heart (`them.at_the_heart`) in `HEART`, every
+  **Priority lane:** `slots.py` `Slots` keeps `concurrency` generation
+  slots and serves waiters by lane: `module.lane_of` puts a stage
+  request in `FIRST`, a guest at his heart (`them.at_the_heart`) in `HEART`, every
   other DM and ruling in `NORMAL`, and the quiet summaries and a
   director's re-run in `BACKGROUND`. A generation already running is
   never interrupted, so the longest a stage line waits is one generation.
@@ -254,6 +255,97 @@ module docstrings that explain the why).
   reply: on a 410 (the scene closed) the worker skips the memo,
   `after_turn` and `remember_said`, so an unsaid line is never "already
   said". Tests: `tests/test_talk_back.py`.
+- **Capacity** (wave 42, `docs/agents.md` "Concurrency and capacity").
+  The stream URL carries `capacity=<concurrency>` (≤ 16,
+  `Agents.capacity`); the server then hands the worker at most that many
+  lines and queues the rest. A slot is the model's only: a thought
+  recorded with a slot in hand (`Slots.holding()`) is posted in the
+  background (`_post_in_background`, one lock, in order, `TRACE_BACKLOG`
+  64). `_handle` drops its in-flight counts and its `tasks` entry first,
+  then waits for its own last post (`_last_post`, `_trace_settled`,
+  ≤ 15 s). Trace POSTs carry a send number (`_trace_sends`) so an older
+  one answered late is not read as the server's trace restarting
+  (`Wire.trace_posted(sent=)`). `retry_allowed` is set inside the slot:
+  nobody queued for a slot (`Slots.waiting(BACKGROUND)`) and the line not
+  `_pressed` (the frame's `queued` > 0, else, when the `hello` echoed a
+  `capacity` (`_windowed`), it arrived within `BURST_GAP_S` 2 s of an
+  answer going out: the server refilling the slot from its queue, which
+  the worker's slots never see). A quiet
+  summary starts on a free slot after `SUMMARY_LULL_S` (10 s) with no
+  frame or answer (`_quiet_due`) and is cancelled by `Slots.on_wait`
+  (`_slot_contended`) when a line, a ruling, a letter or a director's
+  call must queue. `stagehand check` reads launchctl's
+  `OLLAMA_NUM_PARALLEL` on macOS (`launchd_ollama_parallel`). Tests:
+  `tests/test_worker_capacity.py`.
+- **Engines and brief mode** (wave 42b, `docs/agents.md` "Overflow
+  engines" / "Brief mode"). `agents.overflow` (`config.OverflowEngine`,
+  validated in `config._overflow`) adds model servers to the one worker
+  and its one mind. `slots.Slots` now holds every engine's slots
+  (`engines=[(name, n)]`, the primary `slots.PRIMARY` first): `acquire`
+  returns the engine, `only=` keeps a call to some engines, `mark_down`
+  skips one for `ENGINE_DOWN_S` (30 s), `switch` moves a held slot (the
+  one retry, `front=True`). `engines.Engines.call(lane, primary_only=)`
+  yields an `EngineCall`: `bind(base, shape)` is the character's model on
+  the slot's engine, `complete` is the complete_fn to hand the voice (the
+  warm head only on `api: ollama`, failover once, `llm.SERVED_BY` /
+  `SERVED_MODEL` for the thought's `engine`). Every model call in
+  `module.py` goes through it; quiet summaries, letters, Rewrite and
+  re-run are `primary_only`. `Agents.capacity` is the slots' sum (≤ 16).
+  `llm._redacted` keeps the bearer key out of every LlmError. Brief mode:
+  `Agents._brief` (off by default: `voice.brief_at` 0; the frame's `queued` ≥ it, `lane_of` ==
+  NORMAL) sets `VoiceOptions.brief`; `voice.answer_lean` re-checks
+  `brief_applies` (no stage, no heart, lean only), caps `max_tokens` at
+  `brief_max_tokens` and `reminder` adds `BRIEF_NOTE`. Tests:
+  `tests/test_engines.py`, `tests/test_brief.py`.
+- **The DM guards** (wave 42c, `docs/agents.md` "The guards" 0, 2, 3, 3b,
+  4). A private line (never a stage line: `voice.dm_check` is None there)
+  gets `guards.DmCheck` (the guest's line, at the heart or not, the cap,
+  his last replies, the house's lines) passed to `guard_pass(dm=)`. Then a
+  withheld line (`Pass.why`: never / outside / answer / invented /
+  unsaid; a 2b / 2c cut under 6 words or without its first sentence
+  counts) asks for the one retry (`retry == "withheld"`); `dm_problems`
+  (standdown, number, promise, inside, echo, assistant, long; wave 42d:
+  letgo, place, kit, world, doubt, unpaid) asks for it
+  (`"voice"`, `Pass.problems`); a near-duplicate (Jaccard ≥ 0.5 on content
+  words) is a `"repeat"`. Both new retries close with
+  `guard_retry_message` (reasons only: it never quotes his line or the
+  guest's). No retry (`retry_allowed` false, `repeat_guard` off), a retry
+  that trips again or fails: `voice_cut` (offending sentences out, cap 3,
+  ≥ 6 words left and, for standdown / number / promise, the first
+  sentence, else the fallback; a kit or world hit anywhere is the
+  fallback; only `guards.SOFT` hits, assistant / long, never the
+  fallback: what is left, or the line). Wave 42d: the fallback is picked by `guards.fallback_intent`
+  on the guest's line (`persona.fallbacks["<stage>.<intent>"]`, parsed from
+  `fallbacks: {stage: {offer|praise|refuse|other: […]}}`), and the guest's
+  own words (`DmCheck.theirs`, with his visible codex titles) are never
+  "invented" (guard 2b). The catchphrase ration also counts
+  `CATCHPHRASE_VARIANTS`. `guards.is_distress` on the guest's line
+  short-circuits `answer_lean`, `module.answer` and `_answer_new` /
+  `_handle` (before the slot): `voice.distress_reply` sends the persona's
+  `distress:` (parsed in `persona.py`, else `voice.DISTRESS_LINE`) and
+  logs a WARNING naming the thread only. `voice.dm_guards: off` is the
+  kill switch (wave 42b's guards; the distress line stays). The classic
+  `module.answer` cuts by `dm_problems` (no retry). Tests:
+  `tests/test_dm_guards.py`, `tests/test_dm_guards_42d.py`. An older worker refuses a persona with
+  `distress:` (an unknown key), like `catchphrases:` before it.
+- **Bait mode** (wave 42e, `guards.py` §9). `guards.bait_classes(heard,
+  names, heart=)` classes the guest's line (stop, number, secret, name,
+  place, state, trade; `names` = `unsaid_names`, place never at the
+  heart); `voice.bait_of` feeds it. On a bait line `build_lean_messages`
+  adds `bait_steer` (names the class, never the bait) right before the
+  closing reminder, also with `dm_guards: off` (classic layout and stage
+  lines: none); `DmCheck.bait` / `.names` turn on `not_plain`, the
+  `"bait"` reason (in `SEVERE` and `WITHHOLD`: the one retry, else the
+  whole line is the fallback), and `fallback_intent` returns `refuse` on
+  any bait. New intents: `check` (was I right?), `greet`, `rude`,
+  `malware` (a sub-pool of other; a stage without it says its plain
+  lines). Also `promises` counts a fact said filed / acknowledged (to a
+  fact turn) and a snoop on credit, `drifts` (a second price in a deal)
+  is a promise, `DM_HOUSE` joins `places_himself`, and `voice.to_the_card`
+  adds one of the persona's `card_lines:` (by stage, parsed like
+  `fallbacks:` without intents) to a reply to a fact that never names the
+  📝 card. Tests: `tests/test_dm_guards_42e.py`. An older worker refuses a
+  persona with `card_lines:`.
 - Docstrings cite "the wave 12 contract §Cn.m": that lane contract was
   never committed. `docs/agents.md` and the tests describe the behaviour.
 
@@ -284,7 +376,7 @@ module docstrings that explain the why).
   ≈ 25 s for a reload. gpt-oss sometimes answers with `tool_calls` instead
   of JSON content; `llm.tool_calls_as_json` folds them back. Its reasoning
   tokens count against `max_tokens` (keep ≥ 1000). Set `num_ctx`
-  (voice 32768, orchestrator 20480 are the defaults the loader applies):
+  (voice 32768, orchestrator 24576 are the defaults the loader applies):
   Ollama's own default can silently truncate. `stagehand check` estimates
   the late-night prompt and warns.
 - **The replay harness and a live worker share Ollama.** Real-model runs

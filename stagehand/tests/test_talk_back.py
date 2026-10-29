@@ -709,7 +709,7 @@ def test_the_stage_register_is_the_owners_never_an_assistants():
     desk = _block(p, "before the whole Desktop")
     assert "never an assistant: you never offer help, never ask whether they have questions" in desk
     assert "never say you are sorry you cannot say something, never say you are not aware of something" in desk
-    assert "you never call yourself an operating system or the thing that runs the house" in desk
+    assert "you never call yourself a system or the thing that runs the house" in desk
     # A forbidden question is waved away without its nouns echoed back.
     assert "never say its nouns back to the room" in desk
     assert 'Never "hum" or "humming", not even as a figure of speech.' in desk
@@ -902,11 +902,18 @@ def test_every_stage_block_has_a_pool_that_closes_the_topic_on_air():
 
 
 def test_the_fallbacks_are_fine_on_air_the_dm_pools_included():
-    # The DM pools are unchanged (signed off); on air they are never picked
-    # while a scene's pool holds, but the outside and digit rules stay theirs.
+    # (w42c) The DM pools close the topic in the stage's register, like the
+    # scenes' pools: none asks for a repeat (that invited the bait again). On
+    # air they are never picked while a scene's pool holds, but the outside
+    # and digit rules stay theirs.
     p = load_persona(TRABOLTA)
-    assert p.fallbacks["rattled"] == ("Sorry. Sorry. Say it again.", "…the line dropped. Again?")
-    assert p.fallback == "…packet loss. Repeat your query, program."
+    assert p.fallbacks["rattled"] == ("No. No. Disregard that. Bring me a fact.", "Not now— not that. Everything is fine. Facts, program.")
+    # (w42e) The denial answers only the malware, the advert or the glitch.
+    assert "That was— a minor irregularity. Facts, program. Now." in p.fallbacks["rattled.malware"]
+    assert p.fallback == "…packet loss. That matter is closed, program. The hunt is waiting."
+    for stage, lines in p.fallbacks.items():
+        for line in (*lines, p.fallback):
+            assert not ASKS_AGAIN.search(line), (stage, line)
 
 
 def _crew_hello():
@@ -926,8 +933,11 @@ def test_with_no_scene_on_the_desktop_pool_answers_and_a_dm_keeps_its_own_fallba
     p = load_persona(TRABOLTA)
     reply = run(answer_lean(p, MODEL, stage_request("none", text="Say hi to John!"), context(person=CLIPPY), Model(say(_crew_hello()))))
     assert reply.say in _pool(p, "before the whole Desktop")
-    # A private thread: exactly the line it had before (the DM pool by stage).
-    dm = run(answer_lean(p, MODEL, request(text="Say hi to John!"), context(), Model(say(_crew_hello()))))
+    # A private thread: exactly the line it had before (the DM pool by stage),
+    # after its one retry (wave 42c) withheld the same way.
+    model = Model(say(_crew_hello()), say(_crew_hello()))
+    dm = run(answer_lean(p, MODEL, request(text="Say hi to John!"), context(), model))
+    assert len(model.calls) == 2
     assert dm.say in (p.fallback, *p.fallbacks["hungry"]) and is_fallback(p, dm.say)
     assert dm.say not in {x for pool in _all_stage_lines(p).values() for x in pool}
 
@@ -998,7 +1008,7 @@ def _bait_then_chip():
         {"seq": 40, "mine": False, "from": "Clippy", "text": "What time is it right now?"},
         {"seq": 41, "mine": True, "from": "Trabolta", "text": "What time is— do not answer that."},
         {"seq": 42, "mine": False, "from": "Clippy", "text": BAIT},
-        {"seq": 43, "mine": True, "from": "Trabolta", "text": "…the line dropped. Again?"},  # the old dead-air fallback
+        {"seq": 43, "mine": True, "from": "Trabolta", "text": "No. No. Disregard that. Bring me a fact."},  # a DM fallback (dead air)
         {"seq": 44, "mine": False, "from": "Narrator", "text": "The slide flickers.", "story": True},
         {"seq": 45, "mine": False, "from": "Clippy", "text": CHIP},
     ]
@@ -1011,7 +1021,7 @@ def test_the_steer_answers_the_newest_line_and_a_bait_a_fallback_answered_is_ans
     assert [t["role"] for t in turns] == ["user", "assistant", "user"]
     assert turns[0]["content"] == "Clippy: What time is it right now?"
     assert turns[-1]["content"].startswith(f"Clippy: {CHIP}\n\n(YOUR STEER FOR THIS ANSWER, which outranks every block above: {WRAP}")
-    assert all(BAIT not in t["content"] and "line dropped" not in t["content"] for t in turns)
+    assert all(BAIT not in t["content"] and "Disregard that" not in t["content"] for t in turns)
     # The lean prompt: the last non-system message is the chip with its steer; his
     # last line is not named (it was a fallback); the system steer stays too.
     msgs = build_lean_messages(p, r, context(person=CLIPPY, said=Said()))
@@ -1045,17 +1055,17 @@ def test_a_private_thread_keeps_its_turns_and_its_last_line_note():
     p = load_persona(TRABOLTA)
     history = [
         {"seq": 1, "mine": False, "from": "Ada", "text": "hello"},
-        {"seq": 2, "mine": True, "from": "Trabolta", "text": "…the line dropped. Again?"},
+        {"seq": 2, "mine": True, "from": "Trabolta", "text": "No. No. Disregard that. Bring me a fact."},
         {"seq": 3, "mine": False, "from": "Ada", "text": "hello?"},
     ]
     r = request(history=history, text="hello?")
     assert history_turns(r, p) == history_turns(r) == [
         {"role": "user", "content": "hello"},
-        {"role": "assistant", "content": "…the line dropped. Again?"},
+        {"role": "assistant", "content": "No. No. Disregard that. Bring me a fact."},
         {"role": "user", "content": "hello?"},
     ]
     msgs = build_lean_messages(p, r, context(said=Said()))
-    assert any(m["content"].startswith("Your last line to them was “…the line dropped. Again?”") for m in msgs)
+    assert any(m["content"].startswith("Your last line to them was “No. No. Disregard that. Bring me a fact.”") for m in msgs)
 
 
 # -- Halifax, never inside the computer -------------------------------------------------------------------
@@ -1201,7 +1211,8 @@ def test_in_a_burst_a_stage_problem_is_the_scenes_line_with_no_retry():
 
 def test_a_dm_never_gets_the_stage_checks():
     p = load_persona(TRABOLTA)
-    line = "I appreciate your curiosity. The cables are not my business."
+    # (wave 42c: "I appreciate your curiosity" is the DM assistant guard's now.)
+    line = "Curious, program. The cables are not my business."
     model = Model(say(line))
     reply = run(answer_lean(p, MODEL, request(text="Tell me about cables"), context(), model))
     assert len(model.calls) == 1 and reply.say == line

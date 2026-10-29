@@ -155,6 +155,7 @@ import {
   AgentHub,
   AgentTraceLog,
   agentActs,
+  agentCapacityOf,
   agentControl,
   agentMindReport,
   agentThought,
@@ -169,6 +170,8 @@ import {
   type AgentRecent,
   type AgentRequest,
   type AgentThread,
+  type AgentLineWait,
+  type AgentWorker,
   threadKey,
 } from "./agents.ts";
 import { agentDossierOn, buildDossier, codeMentions, dossierVerdictOf } from "./agent-dossier.ts";
@@ -970,9 +973,14 @@ export class EventRuntime {
     admits: (thread) => this.agentAdmits(thread),
     stale: (req) => this.talkStale(req),
     // Wave 32: the room waiting on the TV first, then a guest at his heart
-    // (the heart terminal waiting on him), then every other DM.
-    rank: (req) => (req.thread.public === true ? 0 : req.them?.vars?.["at_the_heart"] === "true" ? 1 : 2),
+    // (the heart terminal waiting on him), then every other DM. Wave 42:
+    // the heart is read live, not from the body — a body waiting for a
+    // windowed worker's slot is built at dispatch, so a guest who walked
+    // to the heart while queued would keep the rank he opened with.
+    rank: (req) => (req.thread.public === true ? 0 : this.sim !== null && this.agentPeek(`${req.speaker.id}.at_the_heart`) === "true" ? 1 : 2),
     typing: (thread, on) => this.pushTyping(thread, on),
+    // Wave 42b (B2): a guest's place in a windowed worker's line.
+    wait: (thread, wait) => this.pushAgentWait(thread, wait),
     hold: (req) => this.postAgentHold(req),
     busy: (req) => this.postAgentBusy(req),
     stalled: (worker, waiting) => this.postAgentStall(worker, waiting),
@@ -981,6 +989,8 @@ export class EventRuntime {
     // judge stall's one `# hosts` line.
     judgeSent: () => this.pushModSnapshots(),
     judgeStalled: () => this.postJudgeStall(),
+    // Wave 42 (C2): a letter out takes one of a windowed worker's slots.
+    letterLoad: (worker) => this.letters?.outOn(worker) ?? 0,
     now: () => this.clock(),
     presence: () => {
       this.letters?.pump(); // wave 41: a worker came back for the letters
@@ -1043,7 +1053,9 @@ export class EventRuntime {
       ...(init.now !== undefined ? { now: init.now } : {}),
     });
     this.lettersTimer = setInterval(() => {
-      if (this.letters.pending() > 0) this.letters.tick();
+      if (this.letters.pending() === 0) return;
+      this.letters.tick();
+      this.agents.pump(); // wave 42: an expired letter freed a windowed slot
     }, 5000);
     this.lettersTimer.unref?.();
     // The house desk drives both hubs and fires story events (wave 25).
@@ -1662,7 +1674,9 @@ export class EventRuntime {
     // agent's oldest wait, who was seen when).
     if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return this.hostSeen(this.withCaller(this.withShowClock(hit.view)));
     const waiting = new Map<string, Array<{ guest: string; name: string; since: number; text: string }>>();
-    for (const r of this.agents.pending) {
+    // Wave 42: fresh bodies — a guest's newest line, not the one that
+    // opened a request still waiting for a windowed worker's slot.
+    for (const r of this.agents.pendingFresh) {
       if (r.speaker.kind !== "guest" || r.thread.channel !== `dm:${r.character}`) continue;
       const list = waiting.get(r.character) ?? [];
       // Since the request was opened (or the owed line, after a restart) —
@@ -3542,7 +3556,6 @@ export class EventRuntime {
 
   /** Show / hide "<Character> is typing…" to whoever is in the thread. */
   private pushTyping(thread: AgentThread, on: boolean): void {
-    const who = thread.audience[0]!;
     const data = { channel: thread.channel, from: thread.character, on };
     if (thread.public === true) {
       // Wave 32 (C4): his thinking reaches the host booths and the directors
@@ -3551,13 +3564,56 @@ export class EventRuntime {
       return;
     }
     for (const c of this.clients) {
-      if (c.role === "guest" ? c.id === who : c.role === "prime" ? `@${c.id}` === who || c.admin === true : true) {
-        sseSend(c.res, "typing", { ...data, audience: thread.audience });
-      }
+      if (this.seesAgentThread(c, thread)) sseSend(c.res, "typing", { ...data, audience: thread.audience });
     }
   }
 
-  /** `GET /api/agent/stream?characters=A,B&name=laptop` — one worker. */
+  /** May `c` see a DM agent thread's typing and wait frames? Its guest, a
+   *  performer whose cast thread it is, an admin booth, every director. */
+  private seesAgentThread(c: Client, thread: AgentThread): boolean {
+    const who = thread.audience[0]!;
+    return c.role === "guest" ? c.id === who : c.role === "prime" ? `@${c.id}` === who || c.admin === true : true;
+  }
+
+  /** The `agentWait` frame's body (wave 42b, B2). */
+  private static agentWaitFrame(thread: AgentThread, wait: AgentLineWait): Record<string, unknown> {
+    return {
+      channel: thread.channel,
+      audience: thread.audience,
+      character: thread.character,
+      state: wait.state,
+      ...(wait.position !== undefined ? { position: wait.position } : {}),
+      ...(wait.etaS !== undefined ? { etaS: wait.etaS } : {}),
+    };
+  }
+
+  /**
+   * Wave 42b (B2): tell a DM thread where it stands in a windowed worker's
+   * line (`agentWait {channel, audience, character, state, position?,
+   * etaS?}`), to the same audience as its typing frames. Never for a public
+   * talk thread (the hub never asks; this is the belt), never for a lean
+   * house tool (it never reads them, and a burst sends several a second).
+   * Memory only: a reconnecting stream gets its threads' current waits
+   * after `history` (`replayAgentWaits`).
+   */
+  private pushAgentWait(thread: AgentThread, wait: AgentLineWait): void {
+    if (thread.public === true) return;
+    const frame = EventRuntime.agentWaitFrame(thread, wait);
+    for (const c of this.clients) if (c.lean !== true && this.seesAgentThread(c, thread)) sseSend(c.res, "agentWait", frame);
+  }
+
+  /** A stream (re)opened: the waits of the threads it may see, as they
+   *  stand now — typing is not replayed, so `answering` stands in for it. */
+  private replayAgentWaits(c: Client): void {
+    for (const { thread, wait } of this.agents.waitList()) {
+      if (thread.public !== true && this.seesAgentThread(c, thread)) sseSend(c.res, "agentWait", EventRuntime.agentWaitFrame(thread, wait));
+    }
+  }
+
+  /** `GET /api/agent/stream?characters=A,B&name=laptop[&capacity=N]` — one
+   *  worker. Wave 42 (C1): `capacity` (1..16, the worker's
+   *  `agents.concurrency`) makes it a windowed worker; missing or invalid
+   *  keeps the legacy hub for it. */
   private openAgentStream(req: IncomingMessage, res: ServerResponse, url: URL): void {
     const wanted = (url.searchParams.get("characters") ?? "")
       .split(",")
@@ -3570,11 +3626,13 @@ export class EventRuntime {
     const characters = new Set(wanted.length > 0 ? wanted : known);
     res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
     res.write(":ok\n\n");
-    const worker = {
+    const capacity = agentCapacityOf(url.searchParams.get("capacity"));
+    const worker: AgentWorker = {
       id: randomUUID(),
       name: url.searchParams.get("name") ?? "agent",
       characters,
       send: (event: string, data: unknown) => sseSend(res, event, data),
+      ...(capacity !== null ? { capacity } : {}),
     };
     sseSend(res, "hello", {
       worker: worker.id,
@@ -3585,6 +3643,9 @@ export class EventRuntime {
       // Wave 12 (C1.4): the newest thought this server holds per character
       // (the worker's own stamp), so a reconnect replays only what is newer.
       traceAfter: Object.fromEntries([...characters].map((c) => [c, this.agentTrace.list(c, 0, 1)[0]?.at ?? 0])),
+      // Wave 42 (C1): the window the server holds it to (null = legacy:
+      // every request at once, as before), so the worker can log it.
+      capacity,
     });
     this.agentStreams.add(res);
     this.agents.attach(worker);
@@ -3600,11 +3661,23 @@ export class EventRuntime {
 
   /** `POST /api/agent/reply {id, say?, adjust?: {var: delta}, worker?}`. */
   private agentReply(res: ServerResponse, body: Record<string, unknown>): void {
-    const settled = this.agents.settle(str(body, "id"), str(body, "worker") || undefined);
+    // Wave 42: a windowed hub hands the freed slot out only after this
+    // reply's say, adjustments and acts are committed (the `finally`), so
+    // the next queued body — built at its dispatch — sees his new mood.
+    const settled = this.agents.settle(str(body, "id"), str(body, "worker") || undefined, { defer: true });
     if (settled === null) {
       sendJson(res, 410, { error: "no such open request (answered, timed out, or the run restarted)" });
       return;
     }
+    try {
+      this.agentReplyCommit(res, body, settled);
+    } finally {
+      if (settled.pumpOwed === true) this.agents.pump();
+    }
+  }
+
+  /** `agentReply`'s commit, once the hub has settled the request. */
+  private agentReplyCommit(res: ServerResponse, body: Record<string, unknown>, settled: { req: AgentRequest; followUp: boolean }): void {
     const { req, followUp } = settled;
     const sim = this.sim;
     if (sim === null) {
@@ -5438,6 +5511,8 @@ export class EventRuntime {
         // A moderator sees the full feed *including* hidden messages (greyed in
         // the UI) so they can un-hide; performers see the public feed only.
         sseSend(res, "history", this.historyFor(client));
+        // Wave 42b (B2): a phone back from sleep learns its place in line.
+        this.replayAgentWaits(client);
       }
       if (!fullMod) this.pushPresence();
       const ping = setInterval(() => {
@@ -5821,6 +5896,7 @@ export class EventRuntime {
         return true;
       }
       handleAgentLetter(this.letters, body, res);
+      this.agents.pump(); // wave 42: the draft freed a windowed worker's slot
       return true;
     }
     if (path === "/api/agent/trace") {

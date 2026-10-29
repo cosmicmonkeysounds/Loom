@@ -362,3 +362,14 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
   font: italic 16px var(--chat-font); color: var(--muted-ink);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* Wave 42b (B5): in line for an agent's reply — a Win98 status strip above
+   the composer (`stream/wait-strip.tsx`). With the keyboard up only the
+   words stay. */
+.wait-strip { flex: 0 0 auto; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; margin: 4px 10px 6px; padding: 5px 8px; background: var(--face); box-shadow: var(--raised); border-radius: var(--radius); font: 12px/1.35 var(--ui-font); color: var(--ink); }
+.wait-glass { font-size: 16px; animation: wait-flip 2s steps(1, end) infinite; }
+.wait-bar { grid-column: 2; display: block; height: 10px; padding: 2px; background: var(--white); box-shadow: var(--sunken); border-radius: var(--radius); }
+.wait-bar i { display: block; height: 100%; background: var(--navy); transition: width 600ms linear; }
+.kbd .wait-bar { display: none; }
+@keyframes wait-flip { 50% { transform: rotate(180deg); } }
+@media (prefers-reduced-motion: reduce) { .wait-glass { animation: none; } .wait-bar i { transition: none; } }

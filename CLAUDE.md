@@ -196,6 +196,21 @@ from that person's night, a director reads / edits, then ✉ Send (Resend as
 the webmaster address). Addresses never enter the journal. Send before
 End (SHOWNIGHT §8). Help: `docs/help/authoring/52-letters.md`.
 
+**Trabolta under load, and as intended** (wave 42, 42b–42e, not shipped;
+`docs/loom-w42-contract.md`, show text `DRAFT w42*` on `SIGNOFF-w42.md`):
+a worker announces `capacity=`, the server hands it only that many threads
+and queues the rest in order (talk scene, heart, then first come); a waiting
+guest sees their place in line (the 🕑 strip, `agentWait`), "typing" only
+while he writes; rulings no longer starve; one worker can add overflow
+engines under one mind. Measured on the MacBook with 50 bots at the intro
+(`pnpm sim:trabolta`): today's code waits ~164 s median, wave 42 at
+`concurrency: 4` (+ `OLLAMA_NUM_PARALLEL=4`) ~95 s, ~21 replies a minute is
+this GPU's ceiling. His DMs get guards (stand-down, numbers, promises,
+bait mode on anything he never gives, assistant voice, self-placement),
+fillers keyed to what the guest did, and a model-free distress line. The
+54-scenario behaviour battery (from the original story documents) is
+`scripts/sim/trabolta-battery-54.json` + `pnpm sim:trabolta --battery`.
+
 ### Release status
 
 The VPS runs **`w40`** (master `87927a52`, shipped 2026-10-29; rollback

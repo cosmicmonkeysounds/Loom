@@ -267,17 +267,32 @@ def test_classic_layout_through_agents_sends_todays_prompt_with_the_mind(tmp_pat
     assert "without a mind" not in voice.note
 
 
-def test_a_waiting_request_forbids_the_retry(tmp_path):
+def test_the_retry_is_decided_when_the_slot_is_taken(tmp_path):
+    """(wave 42) Not when the line arrives: `a` is taken while `b` queues
+    (no retry); `b` waited behind it but nobody queues when its turn
+    comes (it may retry); a quiet summary or a re-run waiting never counts."""
     agents, voice = make(tmp_path)
 
     async def go():
-        agents.tasks["other"] = asyncio.ensure_future(asyncio.sleep(0))
-        agents.tasks["ar-1"] = asyncio.current_task()
-        await agents._handle(req())
-        await agents.tasks.pop("other")
+        await agents._slots.acquire()  # a generation already running
+        a = asyncio.ensure_future(agents._handle(req(rid="a")))
+        b = asyncio.ensure_future(agents._handle(req(rid="b", pid="g-2", name="Bo")))
+        while agents._slots.waiting() < 2:
+            await asyncio.sleep(0)
+        agents._slots.release()
+        await asyncio.gather(a, b)
+        await agents._slots.acquire()
+        background = asyncio.ensure_future(agents._slots.acquire(BACKGROUND))
+        c = asyncio.ensure_future(agents._handle(req(rid="c")))
+        while agents._slots.waiting() < 2:
+            await asyncio.sleep(0)
+        agents._slots.release()  # c (NORMAL) goes before the background waiter
+        await c
+        await background
+        agents._slots.release()
 
     run(go())
-    assert voice.calls[0][1].options.retry_allowed is False
+    assert {r["id"]: ctx.options.retry_allowed for r, ctx in voice.calls} == {"a": False, "b": True, "c": True}
 
 
 def test_a_memo_off_or_carrying_a_never_word_is_not_stored(tmp_path):
@@ -661,12 +676,19 @@ def test_a_quiet_conversation_is_condensed_once_on_the_voice_model(tmp_path):
     now = agents._quiet[("Trabolta", "g-1")]["at"]
     assert agents._quiet_due(now + 60) is None  # not quiet long enough
     assert agents._quiet_due(now + 121) == ("Trabolta", "g-1")
-    agents.tasks["busy"] = None  # type: ignore[assignment]
-    assert agents._quiet_due(now + 121) is None  # never while a request waits
-    del agents.tasks["busy"]
+
+
+    async def busy():
+        await agents._slots.acquire()  # (wave 42) concurrency 1: the only slot is taken
+        try:
+            return agents._quiet_due(now + 121)
+        finally:
+            agents._slots.release()
+
+    assert run(busy()) is None  # never on a busy slot
     lanes = []
     real_lane = agents._slots.lane
-    agents._slots.lane = lambda lane: (lanes.append(lane), real_lane(lane))[1]  # type: ignore[method-assign]
+    agents._slots.lane = lambda lane, **kw: (lanes.append(lane), real_lane(lane, **kw))[1]  # type: ignore[method-assign]
     run(agents._summarise("Trabolta", "g-1"))
     assert lanes == [BACKGROUND]  # behind every guest, the heart and the stage
     d = agents.minds["Trabolta"].people["g-1"]

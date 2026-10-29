@@ -1132,7 +1132,8 @@ function Terminal({
     },
     [config, pilot],
   );
-  const leash = lineLeash({ answering: session.typing || speaking || queue.busy || roomBusy, filesOpen, heart, doorOpen: doorOpen === true && talkWaitsOnDoor(state?.night?.heart_stage) });
+  // Wave 42b: a line queued behind other programs holds the leash like his typing.
+  const leash = lineLeash({ answering: session.typing || session.wait !== null || speaking || queue.busy || roomBusy, filesOpen, heart, doorOpen: doorOpen === true && talkWaitsOnDoor(state?.night?.heart_stage) });
   const busy = leash.busy;
   const { touch, warning, remaining } = useIdleTimeout({ active: pilot !== null, busy, limit: leash.limit, warnMs: leash.warnMs, onTimeout: () => end("timeout") });
   useEffect(() => {
@@ -1355,7 +1356,7 @@ function Terminal({
                   </button>
                 </div>
               )}
-              <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
+              <Thread lines={withPendingPicks(thread.lines, pendingPicks, pilot.name, session.lines)} revealed={revealed} typing={session.typing} wait={session.wait} character={config.character} guestName={pilot.name} earlier={thread.earlier} empty={emptyThreadText({ character: config.character, keys: config.keys, heart: heartTerminal, stage: state?.night?.heart_stage ?? null, waited: now - pilotSince.current })} />
               {panelPlace(menu, showComposer) === "main" && menu !== null && (
                 <ChoicePanel menu={menu} doorOpen={doorOpen} numberKeys={true} onActivity={touch} onPick={(i) => choose(menu, i)} voiceBusy={voiceBusy} sceneEndsAt={sceneEndsAt} onSkip={roomBusy ? undefined : skipVoice} />
               )}
