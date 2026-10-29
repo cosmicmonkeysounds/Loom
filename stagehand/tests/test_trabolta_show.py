@@ -87,6 +87,7 @@ def test_no_pre_overshare_phase_cue_nor_the_bargain_names_sandy():
 
 import re  # noqa: E402
 
+from stagehand.agents.guards import mentions_outside  # noqa: E402
 from stagehand.agents.prompt import allowed_powers, build_messages, matching_situations, their_variables  # noqa: E402
 
 
@@ -191,7 +192,7 @@ def test_no_power_ends_him_and_the_page_says_so():
     p = load_persona(TRABOLTA)
     assert "stand_down" not in p.system and "STANDING DOWN" not in p.system
     assert "stand_down" not in p.bargain and "STANDING DOWN" not in p.bargain
-    assert "Never offer to stop or stand down" in p.system
+    assert "Never offer, agree or accept to stop, stand down" in flat(p.system) and "for any price or plea" in flat(p.system)
     assert "the questions on your heart's screen decide it" in " ".join(p.bargain.split()) and "no act of yours ends" in " ".join(p.bargain.split())
     for s in p.situations:
         assert "stand_down" not in s.prompt and "STANDING DOWN" not in s.prompt, s.heading
@@ -450,6 +451,17 @@ def test_he_is_hungry_for_the_facts_he_asks_for_and_never_judges_them():
     assert "never thank them" not in system
     # The bargain pays for a fact given or filed, never one he "can check".
     assert "a fact you can check" not in flat(p.bargain) and "a fact given or filed buys" in flat(p.bargain)
+
+
+def test_the_distress_line_is_kind_short_and_points_to_a_way_out():
+    # (w42c) The worker's fixed answer to a guest in real distress (DRAFT w42c,
+    # SIGNOFF-w42.md): Bathroom Mode and a host, no wait, no fact, no Internet.
+    p = load_persona(TRABOLTA)
+    line = p.distress
+    assert "Bathroom Mode" in line and "Clippy" in line and "Task Manager" in line
+    assert "?" not in line and not re.search(r"\b(?:internet|wait|fact|hold on)\b", line, re.I)
+    assert len(re.findall(r"[.!]", line)) <= 2
+    assert not p.secrets.leaks(line) and not mentions_outside(p, line)
 
 
 def test_the_catchphrase_is_a_greeting_not_his_voice():
