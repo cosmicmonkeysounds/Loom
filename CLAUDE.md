@@ -233,8 +233,15 @@ recap lists the minutes, the switches and who never went. Help:
 
 ### Release status
 
-The VPS runs **`w44`** (master `cef5d7f2`, shipped 2026-10-29; rollback
-`w40`): waves 41 (Trabolta's letters), 42 (Trabolta under load and as
+The VPS runs **`w45`** (master `d7c52aef`, shipped 2026-10-29; rollback
+`w44`): wave 45 (the Bathroom Report, G13) and the merged
+`oct31-w40/reinstall-resume` branch (the reinstall walk resumes across
+devices; the Desktop's lights fixes and `scripts/house-desktop/INFO.md`;
+the Quest export presets and `reinstall/vr/tools/quest-win.ps1`). The
+preview was synced (`--keep-maps --keep-audio --keep-lights --keep-desk`)
+and reloaded. Still owed for it: reload the web game and the tent, and
+re-export and sideload the Quest APK. Before it, `w44` (master `cef5d7f2`,
+shipped 2026-10-29; rollback `w40`): waves 41 (Trabolta's letters), 42 (Trabolta under load and as
 intended: the windowed hub, the queue strip, bait mode; `docs/loom-w42-contract.md`),
 43 (the King's board on a phone) and 44 (video consent, Help Me, the
 credits). The preview was synced (`--keep-maps --keep-audio --keep-lights
