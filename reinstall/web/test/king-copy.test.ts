@@ -34,8 +34,12 @@ describe("the King's tablet copy (wave 11)", () => {
       // Nothing from @loom/chess at all (wave 26, R3: the stage ladder went
       // with the HUD's King bar): never the board, the rules or the AI.
       expect(text, f).not.toMatch(/from "@loom\/chess/u);
-      expect(text, f).not.toMatch(/\/api\/mod\/signal|chess won|chess lost|chess drawn/u);
+      // Wave 44 (C9): the one signal the tablet posts is the tent's 🆘 Help Me.
+      const rest = f === "api.ts" ? text.replace(/export async function askForHelp[\s\S]*?\n\}\n/u, "") : text;
+      expect(rest, f).not.toMatch(/\/api\/mod\/signal|chess won|chess lost|chess drawn/u);
     }
+    expect(src("api.ts").match(/\/api\/mod\/signal/gu)).toHaveLength(1);
+    expect(src("api.ts")).toMatch(/name: TENT_HELP_SIGNAL, subject: guest/u);
     expect(src("game/Play.tsx")).not.toMatch(/import\(.*chess/u);
     expect(readFileSync(new URL("../vite.config.ts", import.meta.url), "utf8")).not.toMatch(/chess/u);
   });

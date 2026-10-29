@@ -22,12 +22,14 @@ Lanes (branches `oct31-w44/<lane>`, merged `--no-ff`):
 ## C1 The story: video consent
 
 - `ROLE Program` gains `video: text? = none` (`"ok"` / `"out"`; `"none"`
-  = not asked yet), listed in `secret:` (never in an agent request).
-- `== Upload Deposit` opens with the question, before the deposit box, so
-  no other card is open (the problem write-in has been answered by then):
-  a menu of two, *Yes, use video of me.* (`video = "ok"`) and *No. Leave
-  me out of the video.* (`video = "out"`). Featured programs are asked
-  too.
+  = the card not answered: an opt-out, so video may be used), listed in
+  `secret:` (never in an agent request).
+- `== Upload Deposit` deals a `poll` card just before the inbox card:
+  `show poll "🎥 May video of you from tonight be used?" to program with
+  options: "Yes, use video of me | No, leave me out"`. It never holds the
+  upload up (a menu there would stall every scripted upload: the tests,
+  the bots, the replays). `when poll answered for program` sets the slot
+  from the two choices (their own words, so never a vote or the bottle).
 - Two guest buttons in ⊞ Start change it any time after the upload
   (never on a locked phone: no `restricted: allow`):
   `INTERACTION video_leave_me_out` (`🎥 Leave me out of the video`,

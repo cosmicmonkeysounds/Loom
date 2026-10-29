@@ -244,7 +244,7 @@ ROLE Program
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom). Wave 21: `tipped`, `slid` and
   // `slipped` (a player's quiet favour to this program) are secret too.
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, human_problem_text, inbox, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door, whole_truth, quest.a_faction_of_your_own, tipped, slid, slipped
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, human_problem_text, inbox, video, help_at, help_asks, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door, whole_truth, quest.a_faction_of_your_own, tipped, slid, slipped
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
@@ -257,6 +257,14 @@ ROLE Program
   // Wave 41 (C1, C2): the inbox card's answer, "given" or "skipped". Never
   // the address: that is in the server's letters book, not the story.
   inbox: text? = none
+  // Wave 44 (C1): may the house use video of them? "ok" / "out"; "none" =
+  // the upload's card not answered (an opt-out: video may be used). Secret:
+  // Run's 🎥 Video consent card reads it.
+  video: text? = none
+  // Wave 44 (C2): their last 🆘 Help Me in the Internet (story seconds) and
+  // how many times they asked.
+  help_at: 0 to 100000 = 0
+  help_asks: 0 to 100 = 0
   skipped_orientation: bool = false
   featured: text? = none
   anti_ai: bool = false
@@ -2585,6 +2593,31 @@ ROLE Program
         set program.inbox = "skipped"
         Task Manager: No inbox. Noted. Not flagged.
 
+  // Wave 44 (C1): the video question's answer, changed from ⊞ Start any
+  // time after the upload. DRAFT w44
+  when video_leave_me_out for program:
+    set program.video = "out"
+    reply 🎥 Noted: no video of you will be used. Change it any time from START.
+
+  when video_use_me for program:
+    set program.video = "ok"
+    reply 🎥 Noted: video of you may be used. Change it any time from START.
+
+  // Wave 44 (C2): 🆘 Help Me, on the locked phone (and the tent's devices,
+  // which fire it for the program they serve). One alert a minute: a second
+  // press inside it only reassures. DRAFT w44
+  when tent_help_me for program:
+    // A marked program at the tent's screen (its begin captures them) counts.
+    if program.corrupted != true and program.marked != true:
+      reply You are not being reinstalled. For help with the app, message Task Manager.
+    else if program.help_asks > 0 and Time.elapsed < program.help_at + 60:
+      reply 🆘 Help is already on the way. Stay where you are.
+    else:
+      set program.help_at = Time.elapsed
+      set program.help_asks += 1
+      reply 🆘 Help is on the way. A host is coming out to the Internet. Stay where you are.
+      broadcast "!🆘 HELP ME: {program.name} needs a host in the Internet, out in the backyard where the reinstallation is. Go now." to channel(hosts)
+
   when pickup_line_works for program:
     set Kernel._pressed_by = "none"
     if Night.phase == "grok_prom" and Night.ended != true and Night.line_by == "none":
@@ -2606,7 +2639,16 @@ ROLE Program
   // card's own options count as a vote, so a late tap on an old bottle card
   // never votes (or spends that program's real vote).
   when poll answered for program:
-    if Night.poll == "advice" and program.advice == "none" and (choice == "Help him" or choice == "Thwart him"):
+    // Wave 44 (C1): the upload's video card (its own options, so never a
+    // vote or the bottle). DRAFT w44
+    if choice == "Yes, use video of me" or choice == "No, leave me out":
+      if choice == "No, leave me out":
+        set program.video = "out"
+        Task Manager: Noted. No video of you will be used.
+      else:
+        set program.video = "ok"
+        Task Manager: Noted. You may appear in the video.
+    else if Night.poll == "advice" and program.advice == "none" and (choice == "Help him" or choice == "Thwart him"):
       if choice == "Help him":
         set Night.help_votes += 1
         set program.advice = "help"
@@ -3478,7 +3520,7 @@ INTERACTION award_staff_mole
 INTERACTION resurrection
   label: G11 · 🎃 Resurrection: the show is over (after the ceremony)
   who: admin
-  description: Only once the ceremony has started (G1), after the last award (G10c, The Mole; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
+  description: Only once the ceremony has started (G1), after the last award (G10c, The Mole; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep, rolls the credits on every screen and phone (wave 44; G12 rolls them again), restores the lights and tells every phone they are human again. Once.
   // Wave 21: NEXT waits for The Mole (G10c), never the press.
   while: Night.ceremony == true and Night.ceremony_done == true
 
@@ -3593,6 +3635,16 @@ INTERACTION ad_burst
   repeat: true
   while: Night.talk != "none"
   description: Only while a talk scene is on (🤖 Talk on the hosts' phones). Before the ad attack the screens flicker; from the ad attack on, a short ad bursts through every screen and phone with one of Trabolta's pained lines. The scene also glitches on its own every 45 seconds or so. Two seconds apart at least.
+
+// Wave 44 (C3), appended last so no cue number moves; it rejoins the
+// awards ceremony (G). G11 rolls the credits once; this rolls them again.
+INTERACTION roll_the_credits
+  label: G12 · 🎬 Roll the credits again
+  who: admin
+  act: G · The awards ceremony
+  sequence: false
+  description: After G11 (which rolls them once): the credits again on the TV, every wall terminal and every phone. Edit the names in the project's credits.json; a change shows on the next roll.
+  while: Night.resurrected == true
 
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
@@ -4093,6 +4145,29 @@ INTERACTION back from the bathroom
   who: guest
   while: program.afk == true
   restricted: allow
+
+// Wave 44 (C2): calls a host to the reinstallation tent. `restricted:
+// allow`, so the locked phone shows it beside 🚻. DRAFT w44
+INTERACTION tent_help_me
+  label: 🆘 Help Me
+  who: guest
+  while: program.corrupted == true and Night.banish != true
+  restricted: allow
+  description: In the Internet, being reinstalled: calls a host out to the reinstallation tent.
+
+// Wave 44 (C1): the video question, changed any time after the upload
+// (never on a locked phone). Exactly one shows. DRAFT w44
+INTERACTION video_leave_me_out
+  label: 🎥 Leave me out of the video
+  who: guest
+  while: program.uploaded == true and program.video != "out"
+  description: The house is filmed tonight. No video of you will be used.
+
+INTERACTION video_use_me
+  label: 🎥 Video of me is OK
+  who: guest
+  while: program.video == "out"
+  description: Video of you from tonight may be used after all.
 
 // Wave 26 (R1): never on a phone in the Internet (the hook refuses there anyway).
 // Wave 26 (B1): a guest with a line calls the results themselves (two taps).
@@ -6286,9 +6361,13 @@ when resurrection:
     set Night.alarm_on = false
     set Trabolta.awake = false
     fire lift_the_takeover
-    cue screens_screensaver
-    set Night.screen = "screensaver"
-    set Night.terminals = "screensaver"
+    // Wave 44 (C3): every night ends on the credits (`credits.json`), on
+    // the TV, every wall and every phone. The slide beats attract.
+    cue screens_credits
+    set Night.screen = "credits"
+    set Night.terminals = "credits"
+    set Night.credits_roll += 1
+    set Night.credits_at = Time.elapsed
     cue lights_restore
     set Night.lights = "restore"
     cue music_afterparty
@@ -6301,6 +6380,17 @@ when resurrection:
     broadcast "🎃 The show is already over. Nothing happens." to channel(hosts)
   else:
     broadcast "🎃 Only once the ceremony has started (G1, after an ending). Nothing happens." to channel(hosts)
+
+// G12 (wave 44, C3): the credits again, on every screen and phone.
+when roll_the_credits:
+  if Night.resurrected == true:
+    cue screens_credits
+    set Night.screen = "credits"
+    set Night.terminals = "credits"
+    set Night.credits_roll += 1
+    set Night.credits_at = Time.elapsed
+  else:
+    broadcast "🎬 The credits roll at G11, once the show is over. Nothing happens." to channel(hosts)
 
 // ── The players' game (wave 21) ──────────────────────────
 // Clippy and the four Antivirus (TRAIT Player, cast/kit.loom).
@@ -6576,6 +6666,9 @@ set Night.takeover = false
 set Night.resurrected = false
 set Night.ceremony_done = false
 set Night._resurrect_ask_at = 0
+// Wave 44 (C3): the credits' roll count and when the last one started.
+set Night.credits_roll = 0
+set Night.credits_at = 0
 set Night.painting = false
 set Night.signatures = 0
 set Night.goals_todo = ""
