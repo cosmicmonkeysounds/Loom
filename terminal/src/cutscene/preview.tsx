@@ -23,7 +23,9 @@
 //! is on this screen: the duck's see-through take), `results=auto|none|read|
 //! verdict` (wave 18b: a made-up results block — `auto` gives the reading
 //! scenes theirs: question `results_q` for hunt_results, H4–H6 for the
-//! tally, the verdict for The Verdict), `rows=<n>` (filings per question).
+//! tally, the verdict for The Verdict), `rows=<n>` (filings per question),
+//! `bath=one|nobody|none` (wave 45: the Bathroom Report's made-up numbers;
+//! `none` is an older server's, with no report).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./kit/kit.css";
@@ -33,7 +35,7 @@ import { sfx } from "../sound/bus.ts";
 import { audioUnlocked, unlock } from "../speech/engine.ts";
 import { SceneStage } from "./CutsceneLayer.tsx";
 import { useReducedMotion } from "./clock.ts";
-import { fakeCredits, fakeResults, fakeState } from "./fake.ts";
+import { fakeBathroom, fakeCredits, fakeResults, fakeState } from "./fake.ts";
 import { creditsCache } from "./credits-fetch.ts";
 import { AdBurst } from "./kit/ad-burst.tsx";
 import { LiveScreenLayer, ScreenLayer } from "../ScreenLayer.tsx";
@@ -228,6 +230,7 @@ function PreviewOne({ id, q }: { id: string; q: URLSearchParams }) {
   const beats = q.get("beats") ?? "";
   const resultsQ = q.get("results") ?? "auto";
   const rowsQ = q.get("rows");
+  const bathQ = q.get("bath");
   // `world=1`: before the scene mounts, as a world view would be.
   const [world] = useState(() => (q.get("world") === "1" ? noteWorldShowing() : null));
   useEffect(() => () => world?.(), [world]);
@@ -239,13 +242,13 @@ function PreviewOne({ id, q }: { id: string; q: URLSearchParams }) {
       now: AT + t,
       introduced: intro,
       target: target === "tv" ? "tv" : "terminals",
-      night,
+      night: id === "bathroom" && bathQ !== "none" ? { ...night, bathroom: fakeBathroom(bathQ) } : night,
       countdown: countdown !== null ? "y2k" : null,
       remaining: countdown !== null ? Math.max(0, Number(countdown) - Math.floor(t / 1000)) : null,
       moments: previewBeats(beats, t),
       results,
     });
-  }, [t, target, countdown, phase, intro, nightQ, beats, id, resultsQ, rowsQ]);
+  }, [t, target, countdown, phase, intro, nightQ, beats, id, resultsQ, rowsQ, bathQ]);
   if (def === null) return <div className="pv-missing">No scene called “{id}”. Try ?preview=list.</div>;
   const blocked = def.namesCharacter === true && !introduced(state);
   // Scrubbing is silent: sounds only while it plays.

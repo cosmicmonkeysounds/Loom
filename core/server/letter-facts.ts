@@ -63,6 +63,8 @@ const LIST_LABELS: Readonly<Record<RecapList, string>> = {
   shares: "files shared with others",
   chess: "chess wins against the King",
   bathroom: "bathroom breaks",
+  bathroomMinutes: "minutes in the bathroom",
+  bathroomSwitches: "switches of Bathroom Mode on and off",
 };
 /** Fewer programs than this and a place means nothing (1st of 2). */
 export const HIGHLIGHT_MIN_PROGRAMS = 4;

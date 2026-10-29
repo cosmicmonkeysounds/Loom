@@ -221,6 +221,16 @@ minute. G11 ends every night on the credits (the project's
 `credits.json`, read live) on the TV, the walls and every phone; G12 🎬
 rolls them again. Help: `docs/help/authoring/53-credits-and-video.md`.
 
+**The Bathroom Report** (wave 45, not shipped; show text `DRAFT w45` on
+`SIGNOFF-w45.md`): each program counts its Bathroom Mode trips, story
+seconds and on/off switches (`bath_*`). G13 🚻 (appended last, an aside)
+reads the party's minutes, most / least time, most switches and how many
+never went, on the TV too (`award_bathroom`, the screen state's
+`night.bathroom`). At G1 a program that never went loses 5 trust (THE
+TRUST FORMULA's `- no_bath * 5`); a first trip after gives it back. Run's
+recap lists the minutes, the switches and who never went. Help:
+`docs/help/authoring/54-bathroom-report.md`.
+
 ### Release status
 
 The VPS runs **`w44`** (master `cef5d7f2`, shipped 2026-10-29; rollback

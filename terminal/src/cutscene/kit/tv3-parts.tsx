@@ -312,6 +312,17 @@ const EMBLEMS: Record<EmblemKind, ReactNode> = {
       <path d="M26 50 Q32 53 38 50" fill="none" stroke="#3a2412" strokeWidth="1.2" />
     </>
   ),
+  // Wave 45: the Bathroom Report's toilet roll, a sheet hanging off it.
+  roll: (
+    <>
+      <rect x="17" y="18" width="26" height="22" fill="#f4f1ea" stroke="#5a5640" strokeWidth="1.6" />
+      <ellipse cx="17" cy="29" rx="5" ry="11" fill="#e4dfd2" stroke="#5a5640" strokeWidth="1.6" />
+      <ellipse cx="17" cy="29" rx="2" ry="4.5" fill="#8a8470" />
+      <ellipse cx="43" cy="29" rx="5" ry="11" fill="#f4f1ea" stroke="#5a5640" strokeWidth="1.6" />
+      <path d="M43 40 H50 V52 Q46 50 43 52 Z" fill="#f4f1ea" stroke="#5a5640" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M44 46 H49" stroke="#c9c39a" strokeWidth="1" strokeDasharray="1.5 1.5" />
+    </>
+  ),
 };
 
 /** Gerald, the golden duck (original): `gold` gilds him; `sad` droops his head; `egg` lays the golden egg beside him. */

@@ -464,9 +464,9 @@ ul.check label { min-width: 0; cursor: pointer; }
     </table></div>
     <dl class="counts">
 <div><dt>Story files</dt><dd>35</dd></div>
-<div><dt>Beats</dt><dd>141 (138 written; a trait's beat counts once per character that has it)</dd></div>
-<div><dt>Admin cues</dt><dd>78 (44 in sequence)</dd></div>
-<div><dt>Story rules</dt><dd>153</dd></div>
+<div><dt>Beats</dt><dd>142 (139 written; a trait's beat counts once per character that has it)</dd></div>
+<div><dt>Admin cues</dt><dd>79 (44 in sequence)</dd></div>
+<div><dt>Story rules</dt><dd>154</dd></div>
 <div><dt>Rooms (LOCATIONs)</dt><dd>14</dd></div>
 <div><dt>Characters</dt><dd>48</dd></div>
 <div><dt>Codex entries</dt><dd>278 (172 with a QR code)</dd></div>
@@ -727,7 +727,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <tr><td class="n">49</td><td class="label">🪦 After the dance: Clippy reads the summary (a host calls it)<span class="tags"><span class="tag">has while:</span></span></td><td><code>clippy_reads_summary</code></td><td class="desc"></td></tr>
 </tbody></table></div>
 <h3 class="act" id="cues-act-7">G · The awards ceremony</h3>
-<p class="act-note">14 in sequence, 2 off the running order (timers, fallbacks, toggles).</p>
+<p class="act-note">14 in sequence, 3 off the running order (timers, fallbacks, toggles).</p>
 <div class="scroll"><table class="cues"><thead><tr><th scope="col">#</th><th scope="col">Cue</th><th scope="col">Id</th><th scope="col">What it does</th></tr></thead><tbody>
 <tr class="aside"><td class="n">50</td><td class="label">✍ Our own award lines (Trabolta hosts): on / off<span class="tags"><span class="tag aside">off sequence</span></span></td><td><code>own_award_lines</code></td><td class="desc">For a second director who prepared Trabolta's award lines (job 9.2). Press it once (any time before the awards): each award then plays its fanfare and slide but skips Trabolta's template line, and you post yours as Trabolta in The Desktop right after you fire the award (the TV speaks it). Press again to bring the template lines back. Clippy's lines (after destroyed / rave), the sounds and the slides never change.</td></tr>
 <tr><td class="n">51</td><td class="label">G1 · 🏆 Start the awards ceremony (after the ending)<span class="tags"><span class="tag">has while:</span></span></td><td><code>start_the_ceremony</code></td><td class="desc">Only once the night has ended. Trabolta hosts; Clippy hosts after destroyed and rave, and reads every line aloud. The three staff awards (G10a–c) come after the programs' awards.</td></tr>
@@ -745,6 +745,7 @@ ul.check label { min-width: 0; cursor: pointer; }
 <tr><td class="n">63</td><td class="label">G10c · 🤫 Staff award: The Mole (most quiet favours; the last award)<span class="tags"><span class="tag">has while:</span></span></td><td><code>award_staff_mole</code></td><td class="desc">The player who did the programs the most quiet favours behind Trabolta's back, revealed here for the first time (nobody, if nobody did). The last award: G11 waits for it.</td></tr>
 <tr><td class="n">64</td><td class="label">G11 · 🎃 Resurrection: the show is over (after the ceremony)<span class="tags"><span class="tag">has while:</span></span></td><td><code>resurrection</code></td><td class="desc">Only once the ceremony has started (G1), after the last award (G10c, The Mole; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep, rolls the credits on every screen and phone (wave 44; G12 rolls them again), restores the lights and tells every phone they are human again. Once.</td></tr>
 <tr class="aside"><td class="n">78</td><td class="label">G12 · 🎬 Roll the credits again<span class="tags"><span class="tag aside">off sequence</span><span class="tag">has while:</span></span></td><td><code>roll_the_credits</code></td><td class="desc">After G11 (which rolls them once): the credits again on the TV, every wall terminal and every phone. Edit the names in the project's credits.json; a change shows on the next roll.</td></tr>
+<tr class="aside"><td class="n">79</td><td class="label">G13 · 🚻 The Bathroom Report (between awards)<span class="tags"><span class="tag aside">off sequence</span><span class="tag">has while:</span></span></td><td><code>bathroom_report</code></td><td class="desc">Any time after G1, between two awards (before the trust awards G2 / G3 reads best). The host reads the party's Bathroom Mode numbers off the story and the TV shows them: the time everyone spent in Disk Cleanup all together, who spent the most and the least (of those who went), who switched Bathroom Mode on and off the most, and how many never went. Those never went lost 5 trust at G1 and are told here; a first trip now gives it back. Press again to read it again with the newest numbers.</td></tr>
 </tbody></table></div>
   </div>
 </section>
@@ -929,10 +930,11 @@ ul.check label { min-width: 0; cursor: pointer; }
 <li><span class="beat">What We Did</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Your File</span> <span class="setting">The Desktop</span></li>
 </ol></details>
-<details class="beats"><summary><span class="part">G · The awards ceremony</span> <code>beats/ceremony.loom</code> <span class="count">2 beats</span></summary>
+<details class="beats"><summary><span class="part">G · The awards ceremony</span> <code>beats/ceremony.loom</code> <span class="count">3 beats</span></summary>
 <ol>
 <li><span class="beat">The Ceremony</span> <span class="setting">The Desktop</span></li>
 <li><span class="beat">Present Award</span> <span class="setting">The Desktop</span></li>
+<li><span class="beat">Bathroom Report</span> <span class="setting">The Desktop</span></li>
 </ol></details>
 <details class="beats"><summary><span class="part">Generated from facts.json (hunt readings, seeds)</span> <code>generated/questions.loom</code> <span class="count">5 beats</span></summary>
 <ol>

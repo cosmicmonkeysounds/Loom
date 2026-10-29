@@ -629,6 +629,11 @@ featured: text? = none             // §2.1 tags
 anti_ai: bool = false              // this program is Kernel.anti_ai
 afk: bool = false                  // Bathroom Mode
 afk_since: 0 to 100000 = 0         // Time.elapsed at 🚻 (the 15-minute timeout, W-10)
+bath_trips: 0 to 1000 = 0          // wave 45: Bathroom Mode trips (the Bathroom Report, G13)
+bath_s: 0 to 100000 = 0            // wave 45: story seconds in Bathroom Mode over the closed trips
+bath_presses: 0 to 1000 = 0        // wave 45: real switches of Bathroom Mode, on and off
+bath_open: 0 to 1 = 0              // wave 45: 1 while a trip is open (an expression adds its seconds)
+no_bath: 0 to 1 = 0                // wave 45: 1 from G1 for a program that never went: −5 on the Trust Chart
 from_jeeves: 0 to 99 = 0           // findings Broken Ask Jeeves shared with this program (Ten Findings)
 jeeves_told: 0 to 99 = 0           // Jeeves's own: the Kernel.jeeves_reached his quest log last reported
 signed: bool = false               // a host pressed 🖌 Signed the painting on this program (B15)
@@ -680,10 +685,11 @@ OpenOffice's facts), `program.codex.<slug>`, `program.captured`, `program.group`
 rehearsal persona), both left out of the majority (§3 D10).
 
 **The TRUST FORMULA** (paste exactly wherever a component changes: `accurate_truth`,
-`confident_lie`, `when captured`, the `assess` power, and wave 26's `simulation escape attempt`
-hook, which adds one to `program.escapes`):
+`confident_lie`, `when captured`, the `assess` power, wave 26's `simulation escape attempt`
+hook, which adds one to `program.escapes`, and wave 45's G1 watcher and `go to the bathroom`
+hook, which set and clear `program.no_bath`):
 ```
-set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment
+set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 - program.escapes * 5 + program.assessment - program.no_bath * 5
 ```
 (In hooks bound as `self`, write `self.` instead.) Trabolta counts what he *accepted*
 (10 per truth, accurate or confident); he cannot tell a confident lie from a truth until

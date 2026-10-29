@@ -285,6 +285,33 @@ export interface ScreenNight {
   door_override: boolean | null;
   /** (wave 22) A director has the patch bay on the 🔌 buttons: the story ignores the bay. */
   patch_override: boolean | null;
+  /** (wave 45) The Bathroom Report's numbers, only while its slide
+   *  (`award_bathroom`) is up; absent otherwise or from an older server. */
+  bathroom?: ScreenBathroom | null;
+}
+
+/** (wave 45) The Bathroom Report (G13), as the story read it (the server's
+ *  `ScreenBathroom`). Story seconds; a name may be a tie ("A and B"), null
+ *  for nobody; `least` is null with fewer than two who went. */
+export interface ScreenBathroom {
+  goers: number;
+  never: number;
+  total_s: number;
+  most: string | null;
+  most_s: number;
+  least: string | null;
+  least_s: number;
+  toggler: string | null;
+  toggles: number;
+}
+
+/** (wave 45) The report off the wire; null unless it is an object. A bad number reads 0. */
+export function bathroomOf(raw: unknown): ScreenBathroom | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const n = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
+  const who = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" && v.trim().toLowerCase() !== "none" ? v.trim() : null);
+  return { goers: n(r["goers"]), never: n(r["never"]), total_s: n(r["total_s"]), most: who(r["most"]), most_s: n(r["most_s"]), least: who(r["least"]), least_s: n(r["least_s"]), toggler: who(r["toggler"]), toggles: n(r["toggles"]) };
 }
 
 export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, bottle_open: null, results_q: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null, ended: null, collection_complete: null, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null, server_door: null, heart_stage: null, heart_look: null, alarm_on: null, door_override: null, patch_override: null };
@@ -326,6 +353,8 @@ export function nightOf(raw: unknown): ScreenNight {
     alarm_on: bool(r["alarm_on"]),
     door_override: bool(r["door_override"]),
     patch_override: bool(r["patch_override"]),
+    // Wave 45: present only while the server sends it (its slide is up).
+    ...((b) => (b === null ? {} : { bathroom: b }))(bathroomOf(r["bathroom"])),
   };
 }
 

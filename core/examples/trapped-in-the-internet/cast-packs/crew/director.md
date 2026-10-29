@@ -72,7 +72,7 @@ does ends the night or needs you; you may read their numbers in Run → World
 | 17 | **🏍** (after Combo A) or **🪦** (after Combo B), else auto **🌑** at midnight | | *last act* at 🌑 |
 | 18 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | | |
 | 19 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
-| 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT skips it) → **G10a–c** the three staff awards (no winner to pick: 🛡 Trabolta's Favourite Staff, ⭐ Staff Player Of The Night, 🤫 The Mole, the last) → **G11 🎃** Resurrection (last: ends the show and rolls the credits; **G12 🎬** rolls them again) | | |
+| 20 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT skips it) → **G10a–c** the three staff awards (no winner to pick: 🛡 Trabolta's Favourite Staff, ⭐ Staff Player Of The Night, 🤫 The Mole, the last) → **G11 🎃** Resurrection (last: ends the show and rolls the credits; **G12 🎬** rolls them again). **G13 🚻** The Bathroom Report: any time between G1 and G11, best before G2 (no winner to pick; programs that never went already lost 5 trust at G1) | | |
 
 **The talk scenes (wave 32).** At the four 🤖 marks above, Clippy talks
 with Trabolta live in front of the room: Task Manager types what Clippy

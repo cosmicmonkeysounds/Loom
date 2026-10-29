@@ -462,6 +462,9 @@ stays at or under 3 Hz; no open flames; VR is played seated with a spotter.
 
 1. The recap for the ceremony: `pnpm showctl recap --text` (or
    `/e/<event>/api/mod/recap?format=text`), read before the awards.
+   Read it **after G1** for Most / Least Trusted (wave 45: G1 takes 5
+   trust from every program that never used Bathroom Mode). **G13 🚻 The
+   Bathroom Report** reads its own numbers: press it between two awards.
 2. Backups: on the VPS `deploy/backup.sh --label show`; Run → Export
    (`loom-run/1`) for the archive; `scripts/ops/showbackup.sh uninstall` on
    the MacBook once the night's copies are safe.

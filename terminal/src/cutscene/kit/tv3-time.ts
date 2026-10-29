@@ -13,7 +13,7 @@ import { clamp01, ease, hashSeed, loop, noise1, progress, typedCount, typedDurat
 // --- the awards (beats/ceremony.loom) --------------------------------------------------
 
 /** An award's emblem (drawn by `tv3-parts.tsx` `AwardEmblem`). */
-export type AwardEmblem = "shield" | "beans" | "plane" | "book" | "coin" | "mask" | "duck" | "scroll" | "palette" | "trophy" | "lanyard" | "star" | "mole";
+export type AwardEmblem = "shield" | "beans" | "plane" | "book" | "coin" | "mask" | "duck" | "scroll" | "palette" | "trophy" | "lanyard" | "star" | "mole" | "roll";
 
 export interface AwardInfo {
   /** The slide value's tail (`most_trusted`). */
@@ -43,11 +43,26 @@ export const AWARDS: readonly AwardInfo[] = [
   { id: "duck_speedrun", title: "Golden Duck Speedrun", kind: "Bonus award", label: "Reached the golden duck in", emblem: "duck", line: "Gerald was not ready." },
   { id: "quest_completionist", title: "Quest Completionist", kind: "Bonus award", label: "Quests completed", emblem: "scroll", line: "Nobody finished more of the Quest Log." },
   { id: "the_painting", title: "The Million Dollar Painting", kind: "Bonus award", label: "Signatures on the canvas", emblem: "palette", line: "It goes to silent auction." },
+  // Wave 45: G13, the Bathroom Report (its own scene, `BathroomScene`; this row names it). DRAFT w45
+  { id: "bathroom", title: "The Bathroom Report", kind: "Bonus award", label: "All together, in Disk Cleanup", emblem: "roll", line: "Bathroom Mode is a promise. Every promise was logged." },
   // Wave 21: the staff's own awards, after G10 and before G11 (`Night.award` staff_trusted / staff_points / staff_mole).
   { id: "staff_trusted", title: "Trabolta's Favourite Staff", kind: "Staff award", label: "Trust score", emblem: "lanyard", line: "He could not run the house without you. He has said so." },
   { id: "staff_points", title: "Staff Player Of The Night", kind: "Staff award", label: "Points", emblem: "star", line: "The staff played too. You played best." },
   { id: "staff_mole", title: "The Mole", kind: "Staff award", label: "Quiet defections", emblem: "mole", line: "Somebody on the staff was never on his side." },
 ];
+
+/**
+ * (wave 45) Story seconds as the Bathroom Report's slide says them:
+ * "under a minute", "12 min", "1 h 05 min" (whole minutes, rounded to the
+ * nearest, as the host reads them). 0 is "none".
+ */
+export function bathTime(s: number): string {
+  if (!Number.isFinite(s) || s <= 0) return "none";
+  const m = Math.round(s / 60);
+  if (m < 1) return "under a minute";
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`;
+}
 
 /** The staff awards' ids (wave 21): the ones a player part takes. */
 export const STAFF_AWARD_IDS: readonly string[] = AWARDS.filter((a) => a.kind === "Staff award").map((a) => a.id);
