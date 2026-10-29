@@ -26,6 +26,7 @@ import { badgesOf, type NameBadge } from "../src/runtime/sim/badges.ts"; // w18b
 import { isPrivateSlot, statsFor, type StatView } from "../src/runtime/sim/stats.ts"; // w21 stats
 import type { ShowClock } from "../src/show-clock.ts";
 import type { TalkView } from "../src/talk-back.ts";
+import { CREDITS_AT_PATH, CREDITS_ROLL_PATH } from "../src/credits.ts"; // w44
 
 export type { NameBadge } from "../src/runtime/sim/badges.ts";
 export type { RaceFaction, RaceView } from "../src/runtime/sim/crews.ts";
@@ -1559,6 +1560,10 @@ export interface NightView {
    *  when `Night.glitch_kind` is `"burst"` (a talk scene's short ad burst:
    *  phones play the look-only takeover); absent for the full one. */
   glitch?: { at: number; text: string | null; light?: true };
+  /** (wave 44, C5) The credits' roll: `roll` = `Night.credits_roll`, `at` =
+   *  `Night.credits_at` × 1000 (story ms, like `glitch.at`). Absent while the
+   *  roll is 0 or unset. */
+  credits?: { roll: number; at: number };
 }
 
 /** (wave 26, T2) The world paths `NightView.glitch` reads. */
@@ -1771,8 +1776,12 @@ export function nightView(sim: Sim): NightView {
     const glitchText = worldText(sim, GLITCH_TEXT_PATH);
     const light = worldText(sim, GLITCH_KIND_PATH) === "burst" ? { light: true as const } : {};
     const glitch = Number.isFinite(glitchAt) && glitchAt > 0 ? { glitch: { at: Math.round(glitchAt * 1000), text: glitchText === null || glitchText === "none" ? null : glitchText, ...light } } : {};
+    // Wave 44 (C5): the credits' roll.
+    const roll = Number(worldText(sim, CREDITS_ROLL_PATH) ?? NaN);
+    const rollAt = Number(worldText(sim, CREDITS_AT_PATH) ?? NaN);
+    const credits = Number.isFinite(roll) && roll > 0 ? { credits: { roll, at: Number.isFinite(rollAt) ? Math.round(rollAt * 1000) : 0 } } : {};
     // The phase reads the same as a message's moment stamp (`chat.ts` `storyPhase`).
-    return { act, phase: storyPhase(sim) ?? null, step: Number.isFinite(n) ? n : null, ...glitch };
+    return { act, phase: storyPhase(sim) ?? null, step: Number.isFinite(n) ? n : null, ...glitch, ...credits };
   });
 }
 

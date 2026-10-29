@@ -227,4 +227,8 @@ export interface ProjectLink {
    *  co-editing doc and refresh every editor's tree (T4-04). Optional — a
    *  link with no co-editing (a test fake) leaves it out. */
   resyncFiles?(): Promise<void>;
+  /** Wave 44 (C5): a project file's current text (the open co-editing doc
+   *  flushed first), null when the project has none. Optional — a test
+   *  fake leaves it out. */
+  readFile?(path: string): Promise<string | null>;
 }
